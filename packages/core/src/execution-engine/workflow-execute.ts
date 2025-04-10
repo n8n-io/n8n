@@ -35,11 +35,11 @@ import type {
 	WorkflowExecuteMode,
 	CloseFunction,
 	StartNodeData,
-	NodeExecutionHint,
 	IRunNodeResponse,
 	IWorkflowIssues,
 	INodeIssues,
 	INodeType,
+	ITaskStartedData,
 } from 'n8n-workflow';
 import {
 	LoggerProxy as Logger,
@@ -1304,11 +1304,8 @@ export class WorkflowExecute {
 		// Variables which hold temporary data for each node-execution
 		let executionData: IExecuteData;
 		let executionError: ExecutionBaseError | undefined;
-		let executionHints: NodeExecutionHint[] = [];
 		let executionNode: INode;
-		let nodeSuccessData: INodeExecutionData[][] | null | undefined;
 		let runIndex: number;
-		let startTime: number;
 
 		if (this.runExecutionData.startData === undefined) {
 			this.runExecutionData.startData = {};
@@ -1356,19 +1353,20 @@ export class WorkflowExecute {
 					// Set the incoming data of the node that it can be saved correctly
 
 					executionData = this.runExecutionData.executionData!.nodeExecutionStack[0];
+					const taskData: ITaskData = {
+						startTime: Date.now(),
+						executionIndex: 0,
+						executionTime: 0,
+						data: {
+							main: executionData.data.main,
+						},
+						source: [],
+						executionStatus: 'error',
+						hints: [],
+					};
 					this.runExecutionData.resultData = {
 						runData: {
-							[executionData.node.name]: [
-								{
-									startTime,
-									executionTime: new Date().getTime() - startTime,
-									data: {
-										main: executionData.data.main,
-									} as ITaskDataConnections,
-									source: [],
-									executionStatus: 'error',
-								},
-							],
+							[executionData.node.name]: [taskData],
 						},
 						lastNodeExecuted: executionData.node.name,
 						error: executionError,
@@ -1391,12 +1389,18 @@ export class WorkflowExecute {
 						return;
 					}
 
-					nodeSuccessData = null;
+					let nodeSuccessData: INodeExecutionData[][] | null | undefined = null;
 					executionError = undefined;
-					executionHints = [];
 					executionData =
 						this.runExecutionData.executionData!.nodeExecutionStack.shift() as IExecuteData;
 					executionNode = executionData.node;
+
+					const taskStartedData: ITaskStartedData = {
+						startTime: Date.now(),
+						executionIndex: this.additionalData.currentNodeExecutionIndex++,
+						source: !executionData.source ? [] : executionData.source.main,
+						hints: [],
+					};
 
 					// Update the pairedItem information on items
 					const newTaskDataConnections: ITaskDataConnections = {};
@@ -1425,7 +1429,7 @@ export class WorkflowExecute {
 						node: executionNode.name,
 						workflowId: workflow.id,
 					});
-					await hooks.runHook('nodeExecuteBefore', [executionNode.name]);
+					await hooks.runHook('nodeExecuteBefore', [executionNode.name, taskStartedData]);
 
 					// Get the index of the current run
 					runIndex = 0;
@@ -1456,8 +1460,6 @@ export class WorkflowExecute {
 						lastExecutionTry = currentExecutionTry;
 						continue executionLoop;
 					}
-
-					startTime = new Date().getTime();
 
 					let maxTries = 1;
 					if (executionData.node.retryOnFail === true) {
@@ -1534,7 +1536,7 @@ export class WorkflowExecute {
 								}
 
 								if (runNodeData.hints?.length) {
-									executionHints.push(...runNodeData.hints);
+									taskStartedData.hints!.push(...runNodeData.hints);
 								}
 
 								if (nodeSuccessData && executionData.node.onError === 'continueErrorOutput') {
@@ -1631,10 +1633,8 @@ export class WorkflowExecute {
 					}
 
 					const taskData: ITaskData = {
-						hints: executionHints,
-						startTime,
-						executionTime: new Date().getTime() - startTime,
-						source: !executionData.source ? [] : executionData.source.main,
+						...taskStartedData,
+						executionTime: Date.now() - taskStartedData.startTime,
 						metadata: executionData.metadata,
 						executionStatus: this.runExecutionData.waitTill ? 'waiting' : 'success',
 					};

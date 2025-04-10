@@ -1,6 +1,6 @@
 {
   "name": "@n8n/n8n-nodes-langchain",
-  "version": "1.87.0",
+  "version": "1.88.0",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -83,6 +83,8 @@
       "dist/nodes/llms/LMCohere/LmCohere.node.js",
       "dist/nodes/llms/LMOllama/LmOllama.node.js",
       "dist/nodes/llms/LMOpenHuggingFaceInference/LmOpenHuggingFaceInference.node.js",
+      "dist/nodes/mcp/McpClientTool/McpClientTool.node.js",
+      "dist/nodes/mcp/McpTrigger/McpTrigger.node.js",
       "dist/nodes/memory/MemoryBufferWindow/MemoryBufferWindow.node.js",
       "dist/nodes/memory/MemoryMotorhead/MemoryMotorhead.node.js",
       "dist/nodes/memory/MemoryPostgresChat/MemoryPostgresChat.node.js",
@@ -167,6 +169,7 @@
     "@langchain/qdrant": "0.1.1",
     "@langchain/redis": "0.1.0",
     "@langchain/textsplitters": "0.1.0",
+    "@modelcontextprotocol/sdk": "1.9.0",
     "@mozilla/readability": "0.6.0",
     "@n8n/json-schema-to-zod": "workspace:*",
     "@n8n/typeorm": "0.3.20-12",

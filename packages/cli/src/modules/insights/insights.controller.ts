@@ -10,14 +10,16 @@ import { InsightsService } from './insights.service';
 
 @RestController('/insights')
 export class InsightsController {
-	private readonly maxAgeInDaysFilteredInsights = 14;
+	private readonly maxAgeInDaysFilteredInsights = 7;
 
 	constructor(private readonly insightsService: InsightsService) {}
 
 	@Get('/summary')
 	@GlobalScope('insights:list')
 	async getInsightsSummary(): Promise<InsightsSummary> {
-		return await this.insightsService.getInsightsSummary();
+		return await this.insightsService.getInsightsSummary({
+			periodLengthInDays: this.maxAgeInDaysFilteredInsights,
+		});
 	}
 
 	@Get('/by-workflow', { middlewares: [paginationListQueryMiddleware, sortByQueryMiddleware] })

@@ -14,9 +14,8 @@ import LogsDetailsPanel from '@/components/CanvasChat/future/components/LogDetai
 import { LOGS_PANEL_STATE, type LogEntrySelection } from '@/components/CanvasChat/types/logs';
 import LogsPanelActions from '@/components/CanvasChat/future/components/LogsPanelActions.vue';
 import {
-	createAiData,
+	createLogEntries,
 	findLogEntryToAutoSelect,
-	getTreeNodeData,
 	type TreeNode,
 } from '@/components/RunDataAi/utils';
 
@@ -36,8 +35,10 @@ const telemetry = useTelemetry();
 const { rootStyles, height, chatWidth, onWindowResize, onResizeDebounced, onResizeChatDebounced } =
 	useResize(container);
 
-const { currentSessionId, messages, connectedNode, sendMessage, refreshSession, displayExecution } =
-	useChatState(isReadOnly, onWindowResize);
+const { currentSessionId, messages, sendMessage, refreshSession, displayExecution } = useChatState(
+	isReadOnly,
+	onWindowResize,
+);
 
 const hasChat = computed(() =>
 	isReadOnly
@@ -48,17 +49,10 @@ const hasChat = computed(() =>
 );
 const workflow = computed(() => workflowsStore.getCurrentWorkflow());
 const executionTree = computed<TreeNode[]>(() =>
-	connectedNode.value
-		? getTreeNodeData(
-				connectedNode.value.name,
-				workflow.value,
-				createAiData(
-					connectedNode.value.name,
-					workflow.value,
-					workflowsStore.getWorkflowResultDataByNodeName,
-				),
-			)
-		: [],
+	createLogEntries(
+		workflow.value,
+		workflowsStore.workflowExecutionData?.data?.resultData.runData ?? {},
+	),
 );
 const manualLogEntrySelection = ref<LogEntrySelection>({ type: 'initial' });
 const autoSelectedLogEntry = computed(() =>
@@ -179,7 +173,6 @@ watch([panelState, height], ([state, h]) => {
 					<LogsOverviewPanel
 						:class="$style.logsOverview"
 						:is-open="panelState !== LOGS_PANEL_STATE.CLOSED"
-						:node="connectedNode"
 						:is-read-only="isReadOnly"
 						:selection="selectedLogEntry"
 						:execution-tree="executionTree"

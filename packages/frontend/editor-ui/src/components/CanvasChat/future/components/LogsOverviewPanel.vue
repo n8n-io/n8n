@@ -257,6 +257,7 @@ async function handleTriggerPartialExecution(treeNode: TreeNode) {
 
 .switchViewButtons {
 	position: absolute;
+	z-index: 10; /* higher than log entry rows background */
 	right: 0;
 	top: 0;
 	margin: var(--spacing-2xs);
