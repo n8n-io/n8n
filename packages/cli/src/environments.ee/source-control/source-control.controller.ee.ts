@@ -180,7 +180,6 @@ export class SourceControlController {
 			res.statusCode = result.statusCode;
 			return result.statusResult;
 		} catch (error) {
-			console.log('Error pushing workfolder:', error);
 			throw new BadRequestError((error as { message: string }).message);
 		}
 	}

@@ -36,7 +36,7 @@ describe('SourceControlController', () => {
 	});
 
 	describe('pushWorkfolder', () => {
-		it('should push workfolder with proper parameters', async () => {
+		it('should push workfolder with expected parameters', async () => {
 			const req = mock<AuthenticatedRequest>({
 				user: { firstName: 'John', lastName: 'Doe', email: 'john.doe@example.com' },
 			});
@@ -53,7 +53,7 @@ describe('SourceControlController', () => {
 	});
 
 	describe('pullWorkfolder', () => {
-		it('should pull workfolder with proper parameters', async () => {
+		it('should pull workfolder with expected parameters', async () => {
 			const req = mock<AuthenticatedRequest>({
 				user: { firstName: 'John', lastName: 'Doe', email: 'john.doe@example.com' },
 			});
@@ -66,7 +66,7 @@ describe('SourceControlController', () => {
 	});
 
 	describe('getStatus', () => {
-		it('should call getStatus with proper parameters', async () => {
+		it('should call getStatus with expected parameters', async () => {
 			const user = { firstName: 'John', lastName: 'Doe', email: 'john.doe@example.com' };
 			const query = {
 				direction: 'pull',
@@ -84,7 +84,7 @@ describe('SourceControlController', () => {
 	});
 
 	describe('status', () => {
-		it('should call getStatus with proper parameters', async () => {
+		it('should call getStatus with expected parameters', async () => {
 			const user = { firstName: 'John', lastName: 'Doe', email: 'john.doe@example.com' };
 			const query = {
 				direction: 'pull',
