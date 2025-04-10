@@ -128,6 +128,7 @@ export const generateBarChartOptions = (
 						boxHeight: 8,
 						borderRadius: 2,
 						useBorderRadius: true,
+						color: colorTextLight.value,
 					},
 				},
 				tooltip: {
