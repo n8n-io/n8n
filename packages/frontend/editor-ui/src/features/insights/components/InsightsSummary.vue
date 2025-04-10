@@ -218,7 +218,6 @@ const getImpactStyle = (id: keyof InsightsSummary, value: number) => {
 				gap: var(--spacing-5xs);
 
 				i {
-					color: var(--color-text-light);
 					font-size: 22px;
 					font-style: normal;
 				}
