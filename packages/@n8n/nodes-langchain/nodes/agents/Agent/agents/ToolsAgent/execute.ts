@@ -346,11 +346,20 @@ export async function prepareMessages(
 		outputParser?: N8nOutputParser;
 	},
 ): Promise<BaseMessagePromptTemplateLike[]> {
-	const messages: BaseMessagePromptTemplateLike[] = [
-		['system', `{system_message}${options.outputParser ? '\n\n{formatting_instructions}' : ''}`],
-		['placeholder', '{chat_history}'],
-		['human', '{input}'],
-	];
+	const useSystemMessage = options.systemMessage ?? ctx.getNode().typeVersion < 1.9;
+
+	const messages: BaseMessagePromptTemplateLike[] = [];
+
+	if (useSystemMessage) {
+		messages.push([
+			'system',
+			`{system_message}${options.outputParser ? '\n\n{formatting_instructions}' : ''}`,
+		]);
+	} else if (options.outputParser) {
+		messages.push(['system', '{formatting_instructions}']);
+	}
+
+	messages.push(['placeholder', '{chat_history}'], ['human', '{input}']);
 
 	// If there is binary data and the node option permits it, add a binary message
 	const hasBinaryData = ctx.getInputData()?.[itemIndex]?.binary !== undefined;
