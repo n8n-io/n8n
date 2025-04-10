@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 import { Container, Service } from '@n8n/di';
 import { readFileSync } from 'fs';
+import { z } from 'zod';
 
 // eslint-disable-next-line @typescript-eslint/ban-types
 type Class = Function;
@@ -10,6 +11,7 @@ type PropertyType = number | boolean | string | Class;
 interface PropertyMetadata {
 	type: PropertyType;
 	envName?: string;
+	schema?: z.ZodType<unknown>;
 }
 
 const globalMetadata = new Map<Class, Map<PropertyKey, PropertyMetadata>>();
@@ -33,14 +35,22 @@ export const Config: ClassDecorator = (ConfigClass: Class) => {
 			throw new Error('Invalid config class: ' + ConfigClass.name);
 		}
 
-		for (const [key, { type, envName }] of classMetadata) {
+		for (const [key, { type, envName, schema }] of classMetadata) {
 			if (typeof type === 'function' && globalMetadata.has(type)) {
 				config[key] = Container.get(type as Constructable);
 			} else if (envName) {
 				const value = readEnv(envName);
 				if (value === undefined) continue;
 
-				if (type === Number) {
+				if (schema) {
+					const result = schema.safeParse(value);
+					if (result.error) {
+						console.warn(
+							`Invalid value for ${envName} - ${result.error.issues[0].message}. Falling back to default value.`,
+						);
+						continue;
+					}
+				} else if (type === Number) {
 					const parsed = Number(value);
 					if (isNaN(parsed)) {
 						console.warn(`Invalid number value for ${envName}: ${value}`);
@@ -84,18 +94,21 @@ export const Nested: PropertyDecorator = (target: object, key: PropertyKey) => {
 };
 
 export const Env =
-	(envName: string): PropertyDecorator =>
+	(envName: string, schema?: PropertyMetadata['schema']): PropertyDecorator =>
 	(target: object, key: PropertyKey) => {
 		const ConfigClass = target.constructor;
 		const classMetadata =
 			globalMetadata.get(ConfigClass) ?? new Map<PropertyKey, PropertyMetadata>();
+
 		const type = Reflect.getMetadata('design:type', target, key) as PropertyType;
-		if (type === Object) {
+		const isEnum = schema instanceof z.ZodEnum;
+		if (type === Object && !isEnum) {
 			// eslint-disable-next-line n8n-local-rules/no-plain-errors
 			throw new Error(
 				`Invalid decorator metadata on key "${key as string}" on ${ConfigClass.name}\n Please use explicit typing on all config fields`,
 			);
 		}
-		classMetadata.set(key, { type, envName });
+
+		classMetadata.set(key, { type, envName, schema });
 		globalMetadata.set(ConfigClass, classMetadata);
 	};

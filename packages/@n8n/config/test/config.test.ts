@@ -399,4 +399,20 @@ describe('GlobalConfig', () => {
 			'Invalid number value for DB_LOGGING_MAX_EXECUTION_TIME: abcd',
 		);
 	});
+
+	describe('string unions', () => {
+		it('on invalid value, should warn and fall back to default value', () => {
+			process.env = {
+				N8N_RUNNERS_MODE: 'non-existing-mode',
+			};
+
+			const globalConfig = Container.get(GlobalConfig);
+			expect(globalConfig.taskRunners.mode).toEqual('internal');
+			expect(consoleWarnMock).toHaveBeenCalledWith(
+				expect.stringContaining(
+					"Invalid value for N8N_RUNNERS_MODE - Invalid enum value. Expected 'internal' | 'external', received 'non-existing-mode'. Falling back to default value.",
+				),
+			);
+		});
+	});
 });
