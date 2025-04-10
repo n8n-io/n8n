@@ -36,6 +36,7 @@ const emit = defineEmits<{
 }>();
 
 const hiddenBreadcrumbsItemsAsync = ref<Promise<PathItem[]>>(new Promise(() => {}));
+const cachedHiddenBreadcrumbsItems = ref<PathItem[]>([]);
 
 const resourceTypeLabel = computed(() => i18n.baseText('generic.folder').toLowerCase());
 
@@ -98,10 +99,16 @@ const fetchHiddenBreadCrumbsItems = async () => {
 	if (!props.data.homeProject?.id || !projectName.value || !props.data.parentFolder) {
 		hiddenBreadcrumbsItemsAsync.value = Promise.resolve([]);
 	} else {
-		hiddenBreadcrumbsItemsAsync.value = foldersStore.getHiddenBreadcrumbsItems(
+		if (cachedHiddenBreadcrumbsItems.value.length) {
+			hiddenBreadcrumbsItemsAsync.value = Promise.resolve(cachedHiddenBreadcrumbsItems.value);
+			return;
+		}
+		const loadedItem = foldersStore.getHiddenBreadcrumbsItems(
 			{ id: props.data.homeProject.id, name: projectName.value },
 			props.data.parentFolder.id,
 		);
+		hiddenBreadcrumbsItemsAsync.value = loadedItem;
+		cachedHiddenBreadcrumbsItems.value = await loadedItem;
 	}
 };
 
