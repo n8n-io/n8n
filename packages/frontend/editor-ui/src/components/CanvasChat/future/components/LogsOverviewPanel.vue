@@ -19,10 +19,10 @@ import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useRouter } from 'vue-router';
 
-const { isOpen, isReadOnly, selection, executionTree } = defineProps<{
+const { isOpen, isReadOnly, selected, executionTree } = defineProps<{
 	isOpen: boolean;
 	isReadOnly: boolean;
-	selection?: TreeNode;
+	selected?: TreeNode;
 	executionTree: TreeNode[];
 }>();
 
@@ -75,7 +75,7 @@ function onClearExecutionData() {
 }
 
 function handleClickNode(clicked: TreeNode) {
-	if (selection?.node === clicked.node && selection?.runIndex === clicked.runIndex) {
+	if (selected?.node === clicked.node && selected?.runIndex === clicked.runIndex) {
 		emit('select', undefined);
 		return;
 	}
@@ -174,8 +174,8 @@ async function handleTriggerPartialExecution(treeNode: TreeNode) {
 							:data="data"
 							:node="elTreeNode"
 							:is-read-only="isReadOnly"
-							:is-selected="data.node === selection?.node && data.runIndex === selection?.runIndex"
-							:is-compact="selection !== undefined"
+							:is-selected="data.node === selected?.node && data.runIndex === selected?.runIndex"
+							:is-compact="selected !== undefined"
 							:should-show-consumed-tokens="consumedTokens.totalTokens > 0"
 							@toggle-expanded="handleToggleExpanded"
 							@open-ndv="handleOpenNdv"
@@ -186,7 +186,7 @@ async function handleTriggerPartialExecution(treeNode: TreeNode) {
 				<N8nRadioButtons
 					size="medium"
 					:class="$style.switchViewButtons"
-					:model-value="selection ? 'details' : 'overview'"
+					:model-value="selected ? 'details' : 'overview'"
 					:options="switchViewOptions"
 					@update:model-value="handleSwitchView"
 				/>

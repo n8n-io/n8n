@@ -116,7 +116,7 @@ export function useChatState(isReadOnly: boolean, onWindowResize: () => void): C
 		sendMessage,
 		currentSessionId,
 		isLoading,
-		isDisabled: ref(isReadOnly),
+		isDisabled: computed(() => isReadOnly),
 		allowFileUploads,
 		locale,
 	});

@@ -80,6 +80,7 @@ function isLastChild(level: number) {
 	);
 }
 
+// When selected, scroll into view
 watch(
 	[() => props.isSelected, containerRef],
 	([isSelected, ref]) => {

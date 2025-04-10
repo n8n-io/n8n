@@ -6,7 +6,6 @@ import { useChatState } from '@/components/CanvasChat/composables/useChatState';
 import { useResize } from '@/components/CanvasChat/composables/useResize';
 import { usePiPWindow } from '@/components/CanvasChat/composables/usePiPWindow';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { CHAT_TRIGGER_NODE_TYPE, MANUAL_CHAT_TRIGGER_NODE_TYPE } from '@/constants';
 import LogsOverviewPanel from '@/components/CanvasChat/future/components/LogsOverviewPanel.vue';
 import { useCanvasStore } from '@/stores/canvas.store';
 import ChatMessagesPanel from '@/components/CanvasChat/components/ChatMessagesPanel.vue';
@@ -18,6 +17,7 @@ import {
 	findLogEntryToAutoSelect,
 	type TreeNode,
 } from '@/components/RunDataAi/utils';
+import { isChatNode } from '@/components/CanvasChat/utils';
 
 const { isReadOnly } = withDefaults(defineProps<{ isReadOnly?: boolean }>(), {
 	isReadOnly: false,
@@ -41,11 +41,7 @@ const { currentSessionId, messages, sendMessage, refreshSession, displayExecutio
 );
 
 const hasChat = computed(() =>
-	isReadOnly
-		? messages.value.length > 0
-		: workflowsStore.workflowTriggerNodes.some((node) =>
-				[CHAT_TRIGGER_NODE_TYPE, MANUAL_CHAT_TRIGGER_NODE_TYPE].includes(node.type),
-			),
+	isReadOnly ? messages.value.length > 0 : workflowsStore.workflowTriggerNodes.some(isChatNode),
 );
 const workflow = computed(() => workflowsStore.getCurrentWorkflow());
 const executionTree = computed<TreeNode[]>(() =>
@@ -174,7 +170,7 @@ watch([panelState, height], ([state, h]) => {
 						:class="$style.logsOverview"
 						:is-open="panelState !== LOGS_PANEL_STATE.CLOSED"
 						:is-read-only="isReadOnly"
-						:selection="selectedLogEntry"
+						:selected="selectedLogEntry"
 						:execution-tree="executionTree"
 						@click-header="handleClickHeader"
 						@select="handleSelectLogEntry"
