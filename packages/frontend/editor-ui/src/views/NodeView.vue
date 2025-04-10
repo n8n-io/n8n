@@ -86,7 +86,6 @@ import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useHistoryStore } from '@/stores/history.store';
 import { useProjectsStore } from '@/stores/projects.store';
-import { usePostHog } from '@/stores/posthog.store';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useExecutionDebugging } from '@/composables/useExecutionDebugging';
 import { useUsersStore } from '@/stores/users.store';
@@ -164,7 +163,6 @@ const tagsStore = useTagsStore();
 const pushConnectionStore = usePushConnectionStore();
 const ndvStore = useNDVStore();
 const templatesStore = useTemplatesStore();
-const posthogStore = usePostHog();
 
 const canvasEventBus = createEventBus<CanvasEventBusEvents>();
 

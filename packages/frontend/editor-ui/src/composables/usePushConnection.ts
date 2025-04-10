@@ -37,7 +37,6 @@ import { useAssistantStore } from '@/stores/assistant.store';
 import NodeExecutionErrorMessage from '@/components/NodeExecutionErrorMessage.vue';
 import type { IExecutionResponse } from '@/Interface';
 import { clearPopupWindowState, hasTrimmedData, hasTrimmedItem } from '../utils/executionUtils';
-import { usePostHog } from '@/stores/posthog.store';
 import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
 import { useSchemaPreviewStore } from '@/stores/schemaPreview.store';
 
@@ -56,7 +55,6 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 	const uiStore = useUIStore();
 	const workflowsStore = useWorkflowsStore();
 	const assistantStore = useAssistantStore();
-	const posthogStore = usePostHog();
 
 	const retryTimeout = ref<NodeJS.Timeout | null>(null);
 	const pushMessageQueue = ref<PushMessageQueueItem[]>([]);
