@@ -57,11 +57,17 @@ export function subcategorizeItems(items: SimplifiedNodeType[]) {
 		// Only some subcategories are allowed
 		let subcategories: string[] = [DEFAULT_SUBCATEGORY];
 
-		WHITE_LISTED_SUBCATEGORIES.forEach((category) => {
+		const matchedSubcategories = WHITE_LISTED_SUBCATEGORIES.flatMap((category) => {
 			if (item.codex?.categories?.includes(category)) {
-				subcategories = item.codex?.subcategories?.[category] ?? [];
+				return item.codex?.subcategories?.[category] ?? [];
 			}
+
+			return [];
 		});
+
+		if (matchedSubcategories.length > 0) {
+			subcategories = matchedSubcategories;
+		}
 
 		subcategories.forEach((subcategory: string) => {
 			if (!acc[subcategory]) {
