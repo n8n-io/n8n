@@ -10,11 +10,6 @@ on:
       tag:
         description: 'Name of the docker tag to create.'
         required: true
-      merge-master:
-        description: 'Merge with master.'
-        type: boolean
-        required: true
-        default: false
       user:
         description: ''
         required: false
@@ -43,11 +38,6 @@ jobs:
         with:
           ref: ${{ github.event.inputs.branch }}
 
-      - name: Merge Master - optionally
-        if: github.event.inputs.merge-master
-        run: git remote add upstream https://github.com/n8n-io/n8n.git -f; git merge upstream/master --allow-unrelated-histories || echo ""
-        shell: bash
-
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3.3.0
 
@@ -75,7 +65,7 @@ jobs:
           push: true
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          tags: ghcr.io/${{ github.repository_owner }}/n8n:${{ inputs.tag }}
+          tags: ghcr.io/${{ github.repository_owner }}/n8n-plus:${{ inputs.tag }}
 
       - name: Call Success URL - optionally
         if: ${{ github.event.inputs.success-url != '' }}
