@@ -1,8 +1,14 @@
-import type { SectionCreateElement, SimplifiedNodeType } from '@/Interface';
+import type {
+	ActionTypeDescription,
+	NodeCreateElement,
+	SectionCreateElement,
+	SimplifiedNodeType,
+} from '@/Interface';
 import {
 	formatTriggerActionName,
 	getMoreFromCommunity,
 	groupItemsInSections,
+	prepareCommunityNodeDetailsViewStack,
 	sortNodeCreateElements,
 } from './utils';
 import {
@@ -124,6 +130,199 @@ describe('NodeCreator - utils', () => {
 			expect(result.length).toEqual(2);
 			expect(result[1].key).toEqual('n8n-nodes-preview-test.SampleNode');
 			expect(result[0].key).toEqual('n8n-nodes-preview-test.OtherNode');
+		});
+	});
+	describe('prepareCommunityNodeDetailsViewStack', () => {
+		const nodeCreateElement: NodeCreateElement = {
+			key: 'n8n-nodes-preview-test.OtherNode',
+			properties: {
+				defaults: {
+					name: 'OtherNode',
+				},
+				description: 'Other node description',
+				displayName: 'Other Node',
+				group: ['transform'],
+				name: 'n8n-nodes-preview-test.OtherNode',
+				outputs: ['main'],
+			},
+			subcategory: '*',
+			type: 'node',
+			uuid: 'n8n-nodes-preview-test.OtherNode-32f238f0-2b05-47ce-b43d-7fab6d7ba3cb',
+		};
+
+		test('should return "community-node" view stack', () => {
+			const result = prepareCommunityNodeDetailsViewStack(nodeCreateElement, undefined, undefined);
+
+			expect(result).toEqual({
+				communityNodeDetails: {
+					description: 'Other node description',
+					installed: false,
+					key: 'n8n-nodes-preview-test.OtherNode',
+					nodeIcon: undefined,
+					packageName: 'n8n-nodes-test',
+					title: 'Other Node',
+				},
+				hasSearch: false,
+				items: [
+					{
+						key: 'n8n-nodes-preview-test.OtherNode',
+						properties: {
+							defaults: {
+								name: 'OtherNode',
+							},
+							description: 'Other node description',
+							displayName: 'Other Node',
+							group: ['transform'],
+							name: 'n8n-nodes-preview-test.OtherNode',
+							outputs: ['main'],
+						},
+						subcategory: '*',
+						type: 'node',
+						uuid: 'n8n-nodes-preview-test.OtherNode-32f238f0-2b05-47ce-b43d-7fab6d7ba3cb',
+					},
+				],
+				mode: 'community-node',
+				rootView: undefined,
+				subcategory: 'Other Node',
+				title: 'Community node details',
+			});
+		});
+
+		test('should return "actions" view stack', () => {
+			const nodeActions: ActionTypeDescription[] = [
+				{
+					name: 'n8n-nodes-preview-test.OtherNode',
+					group: ['trigger'],
+					codex: {
+						label: 'Log Actions',
+						categories: ['Actions'],
+					},
+					iconUrl: 'icons/n8n-nodes-preview-test/dist/nodes/Test/test.svg',
+					outputs: ['main'],
+					defaults: {
+						name: 'LogSnag',
+					},
+					actionKey: 'publish',
+					description: 'Publish an event',
+					displayOptions: {
+						show: {
+							resource: ['log'],
+						},
+					},
+					values: {
+						operation: 'publish',
+					},
+					displayName: 'Publish an event',
+				},
+				{
+					name: 'n8n-nodes-preview-test.OtherNode',
+					group: ['trigger'],
+					codex: {
+						label: 'Insight Actions',
+						categories: ['Actions'],
+					},
+					iconUrl: 'icons/n8n-nodes-preview-test/dist/nodes/Test/test.svg',
+					outputs: ['main'],
+					defaults: {
+						name: 'LogSnag',
+					},
+					actionKey: 'publish',
+					description: 'Publish an insight',
+					displayOptions: {
+						show: {
+							resource: ['insight'],
+						},
+					},
+					values: {
+						operation: 'publish',
+					},
+					displayName: 'Publish an insight',
+				},
+			];
+			const result = prepareCommunityNodeDetailsViewStack(
+				nodeCreateElement,
+				undefined,
+				undefined,
+				nodeActions,
+			);
+
+			expect(result).toEqual({
+				communityNodeDetails: {
+					description: 'Other node description',
+					installed: false,
+					key: 'n8n-nodes-preview-test.OtherNode',
+					nodeIcon: undefined,
+					packageName: 'n8n-nodes-test',
+					title: 'Other Node',
+				},
+				hasSearch: false,
+				items: [
+					{
+						key: 'n8n-nodes-preview-test.OtherNode',
+						properties: {
+							actionKey: 'publish',
+							codex: {
+								categories: ['Actions'],
+								label: 'Log Actions',
+							},
+							defaults: {
+								name: 'LogSnag',
+							},
+							description: 'Publish an event',
+							displayName: 'Publish an event',
+							displayOptions: {
+								show: {
+									resource: ['log'],
+								},
+							},
+							group: ['trigger'],
+							iconUrl: 'icons/n8n-nodes-preview-test/dist/nodes/Test/test.svg',
+							name: 'n8n-nodes-preview-test.OtherNode',
+							outputs: ['main'],
+							values: {
+								operation: 'publish',
+							},
+						},
+						subcategory: 'Other Node',
+						type: 'action',
+						uuid: expect.any(String),
+					},
+					{
+						key: 'n8n-nodes-preview-test.OtherNode',
+						properties: {
+							actionKey: 'publish',
+							codex: {
+								categories: ['Actions'],
+								label: 'Insight Actions',
+							},
+							defaults: {
+								name: 'LogSnag',
+							},
+							description: 'Publish an insight',
+							displayName: 'Publish an insight',
+							displayOptions: {
+								show: {
+									resource: ['insight'],
+								},
+							},
+							group: ['trigger'],
+							iconUrl: 'icons/n8n-nodes-preview-test/dist/nodes/Test/test.svg',
+							name: 'n8n-nodes-preview-test.OtherNode',
+							outputs: ['main'],
+							values: {
+								operation: 'publish',
+							},
+						},
+						subcategory: 'Other Node',
+						type: 'action',
+						uuid: expect.any(String),
+					},
+				],
+				mode: 'actions',
+				rootView: undefined,
+				subcategory: 'Other Node',
+				title: 'Community node details',
+			});
 		});
 	});
 });

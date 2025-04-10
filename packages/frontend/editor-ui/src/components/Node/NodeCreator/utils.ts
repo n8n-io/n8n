@@ -268,7 +268,7 @@ export function prepareCommunityNodeDetailsViewStack(
 
 		return {
 			subcategory: item.properties.displayName,
-			title: 'Community node details',
+			title: i18n.baseText('nodeSettings.communityNodeDetails.title'),
 			rootView,
 			hasSearch: false,
 			mode: 'actions',
@@ -279,7 +279,7 @@ export function prepareCommunityNodeDetailsViewStack(
 
 	return {
 		subcategory: item.properties.displayName,
-		title: 'Community node details',
+		title: i18n.baseText('nodeSettings.communityNodeDetails.title'),
 		rootView,
 		hasSearch: false,
 		items: [item],
