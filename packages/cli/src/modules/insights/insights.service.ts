@@ -348,8 +348,12 @@ export class InsightsService {
 		});
 	}
 
-	async getInsightsSummary(): Promise<InsightsSummary> {
-		const rows = await this.insightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates();
+	async getInsightsSummary({
+		periodLengthInDays,
+	}: { periodLengthInDays: number }): Promise<InsightsSummary> {
+		const rows = await this.insightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates({
+			periodLengthInDays,
+		});
 
 		// Initialize data structures for both periods
 		const data = {
