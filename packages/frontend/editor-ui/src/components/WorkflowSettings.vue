@@ -341,8 +341,6 @@ const saveSettings = async () => {
 	isLoading.value = true;
 	data.versionId = workflowsStore.workflowVersionId;
 
-	const oldSettings = deepCopy(workflowsStore.workflowSettings);
-
 	try {
 		const workflowData = await workflowsStore.updateWorkflow(String(route.params.name), data);
 		workflowsStore.setWorkflowVersionId(workflowData.versionId);
@@ -356,6 +354,8 @@ const saveSettings = async () => {
 	const localWorkflowSettings = Object.fromEntries(
 		Object.entries(workflowSettings.value).filter(([, value]) => value !== 'DEFAULT'),
 	);
+
+	const oldSettings = deepCopy(workflowsStore.workflowSettings);
 
 	workflowsStore.setWorkflowSettings(localWorkflowSettings);
 
