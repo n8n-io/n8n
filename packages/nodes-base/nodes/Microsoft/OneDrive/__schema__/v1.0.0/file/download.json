@@ -7,59 +7,14 @@
         "lastModifiedDateTime": {
             "type": "string"
         },
-        "webUrl": {
+        "name": {
             "type": "string"
         },
         "size": {
             "type": "integer"
         },
-        "parentReference": {
-            "type": "object",
-            "properties": {
-                "driveType": {
-                    "type": "string"
-                },
-                "driveId": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "path": {
-                    "type": "string"
-                },
-                "siteId": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "id"
-            ]
-        },
-        "file": {
-            "type": "object",
-            "properties": {
-                "mimeType": {
-                    "type": "string"
-                },
-                "hashes": {
-                    "type": "object",
-                    "properties": {
-                        "quickXorHash": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "quickXorHash"
-                    ]
-                }
-            },
-            "required": [
-                "mimeType"
-            ]
+        "webUrl": {
+            "type": "string"
         }
     },
     "version": 1

@@ -1,8 +1,20 @@
 {
     "type": "object",
     "properties": {
+        "due": {
+            "type": "null"
+        },
+        "dueReminder": {
+            "type": "null"
+        },
         "id": {
             "type": "string"
+        },
+        "idChecklist": {
+            "type": "string"
+        },
+        "idMember": {
+            "type": "null"
         },
         "name": {
             "type": "string"
@@ -11,18 +23,6 @@
             "type": "integer"
         },
         "state": {
-            "type": "string"
-        },
-        "due": {
-            "type": "null"
-        },
-        "dueReminder": {
-            "type": "null"
-        },
-        "idMember": {
-            "type": "null"
-        },
-        "idChecklist": {
             "type": "string"
         }
     },

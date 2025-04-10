@@ -10,50 +10,7 @@
                 "url": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "type",
-                "url"
-            ]
-        },
-        "Id": {
-            "type": "string"
-        },
-        "Status": {
-            "type": "string"
-        },
-        "Priority": {
-            "type": "string"
-        },
-        "IsHighPriority": {
-            "type": "boolean"
-        },
-        "OwnerId": {
-            "type": "string"
-        },
-        "IsDeleted": {
-            "type": "boolean"
-        },
-        "IsClosed": {
-            "type": "boolean"
-        },
-        "CreatedDate": {
-            "type": "string"
-        },
-        "CreatedById": {
-            "type": "string"
-        },
-        "LastModifiedDate": {
-            "type": "string"
-        },
-        "LastModifiedById": {
-            "type": "string"
-        },
-        "SystemModstamp": {
-            "type": "string"
-        },
-        "IsArchived": {
-            "type": "boolean"
+            }
         },
         "CallDisposition": {
             "type": "null"
@@ -61,11 +18,44 @@
         "CallObject": {
             "type": "null"
         },
-        "IsReminderSet": {
+        "CreatedById": {
+            "type": "string"
+        },
+        "CreatedDate": {
+            "type": "string"
+        },
+        "Id": {
+            "type": "string"
+        },
+        "IsArchived": {
+            "type": "boolean"
+        },
+        "IsClosed": {
+            "type": "boolean"
+        },
+        "IsDeleted": {
+            "type": "boolean"
+        },
+        "IsHighPriority": {
             "type": "boolean"
         },
         "IsRecurrence": {
             "type": "boolean"
+        },
+        "IsReminderSet": {
+            "type": "boolean"
+        },
+        "LastModifiedById": {
+            "type": "string"
+        },
+        "LastModifiedDate": {
+            "type": "string"
+        },
+        "OwnerId": {
+            "type": "string"
+        },
+        "Priority": {
+            "type": "string"
         },
         "RecurrenceDayOfMonth": {
             "type": "null"
@@ -78,6 +68,12 @@
         },
         "RecurrenceRegeneratedType": {
             "type": "null"
+        },
+        "Status": {
+            "type": "string"
+        },
+        "SystemModstamp": {
+            "type": "string"
         },
         "TaskSubtype": {
             "type": "string"

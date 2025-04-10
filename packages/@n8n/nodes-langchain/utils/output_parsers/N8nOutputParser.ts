@@ -1,5 +1,5 @@
 import type { IExecuteFunctions } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { N8nItemListOutputParser } from './N8nItemListOutputParser';
 import { N8nOutputFixingParser } from './N8nOutputFixingParser';
@@ -19,7 +19,7 @@ export async function getOptionalOutputParser(
 
 	if (ctx.getNodeParameter('hasOutputParser', 0, true) === true) {
 		outputParser = (await ctx.getInputConnectionData(
-			NodeConnectionType.AiOutputParser,
+			NodeConnectionTypes.AiOutputParser,
 			0,
 		)) as N8nOutputParser;
 	}

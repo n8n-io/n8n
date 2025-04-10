@@ -1,5 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import { NodeConnectionType, type INodeTypeDescription } from 'n8n-workflow';
+import { NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
 
 import * as mode from './mode';
 import { configuredInputs } from '../helpers/utils';
@@ -14,7 +14,7 @@ export const versionDescription: INodeTypeDescription = {
 		name: 'Merge',
 	},
 	inputs: `={{(${configuredInputs})($parameter)}}`,
-	outputs: [NodeConnectionType.Main],
+	outputs: [NodeConnectionTypes.Main],
 	// If mode is chooseBranch data from both branches is required
 	// to continue, else data from any input suffices
 	requiredInputs: '={{ $parameter["mode"] === "chooseBranch" ? [0, 1] : 1 }}',

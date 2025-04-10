@@ -1,19 +1,7 @@
 {
     "type": "object",
     "properties": {
-        "title": {
-            "type": "string"
-        },
-        "phone": {
-            "type": "string"
-        },
-        "skype": {
-            "type": "string"
-        },
-        "real_name": {
-            "type": "string"
-        },
-        "real_name_normalized": {
+        "avatar_hash": {
             "type": "string"
         },
         "display_name": {
@@ -22,249 +10,158 @@
         "display_name_normalized": {
             "type": "string"
         },
+        "email": {
+            "type": "string"
+        },
         "fields": {
             "type": "object",
             "properties": {
                 "Xf03UMDX9738": {
                     "type": "object",
                     "properties": {
-                        "value": {
-                            "type": "string"
-                        },
                         "alt": {
                             "type": "string"
-                        }
-                    },
-                    "required": [
-                        "value",
-                        "alt"
-                    ]
-                },
-                "Xf0403NW3YCQ": {
-                    "type": "object",
-                    "properties": {
+                        },
                         "value": {
                             "type": "string"
-                        },
-                        "alt": {
-                            "type": "string"
                         }
-                    },
-                    "required": [
-                        "value",
-                        "alt"
-                    ]
-                },
-                "Xf03UR35L6MT": {
-                    "type": "object",
-                    "properties": {
-                        "value": {
-                            "type": "string"
-                        },
-                        "alt": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "value",
-                        "alt"
-                    ]
+                    }
                 },
                 "Xf03UMDX98DC": {
                     "type": "object",
                     "properties": {
-                        "value": {
-                            "type": "string"
-                        },
                         "alt": {
                             "type": "string"
+                        },
+                        "value": {
+                            "type": "string"
                         }
-                    },
-                    "required": [
-                        "value",
-                        "alt"
-                    ]
+                    }
                 },
-                "Xf03V6LREDCZ": {
+                "Xf03UR35L6MT": {
                     "type": "object",
                     "properties": {
-                        "value": {
-                            "type": "string"
-                        },
                         "alt": {
                             "type": "string"
-                        }
-                    },
-                    "required": [
-                        "value",
-                        "alt"
-                    ]
-                },
-                "Xf03UU2E8W4S": {
-                    "type": "object",
-                    "properties": {
+                        },
                         "value": {
                             "type": "string"
-                        },
-                        "alt": {
-                            "type": "string"
                         }
-                    },
-                    "required": [
-                        "value",
-                        "alt"
-                    ]
-                },
-                "Xf05GWG5K0S0": {
-                    "type": "object",
-                    "properties": {
-                        "value": {
-                            "type": "string"
-                        },
-                        "alt": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "value",
-                        "alt"
-                    ]
-                },
-                "Xf08BT55JWBG": {
-                    "type": "object",
-                    "properties": {
-                        "value": {
-                            "type": "string"
-                        },
-                        "alt": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "value",
-                        "alt"
-                    ]
-                },
-                "Xf08BWUCR1LM": {
-                    "type": "object",
-                    "properties": {
-                        "value": {
-                            "type": "string"
-                        },
-                        "alt": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "value",
-                        "alt"
-                    ]
-                },
-                "Xf03UWFR6VJQ": {
-                    "type": "object",
-                    "properties": {
-                        "value": {
-                            "type": "string"
-                        },
-                        "alt": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "value",
-                        "alt"
-                    ]
+                    }
                 },
                 "Xf03UR35L7K7": {
                     "type": "object",
                     "properties": {
-                        "value": {
-                            "type": "string"
-                        },
                         "alt": {
                             "type": "string"
-                        }
-                    },
-                    "required": [
-                        "value",
-                        "alt"
-                    ]
-                },
-                "Xf08FLSF1456": {
-                    "type": "object",
-                    "properties": {
+                        },
                         "value": {
                             "type": "string"
-                        },
-                        "alt": {
-                            "type": "string"
                         }
-                    },
-                    "required": [
-                        "value",
-                        "alt"
-                    ]
+                    }
                 },
                 "Xf03UTUL86LB": {
                     "type": "object",
                     "properties": {
-                        "value": {
-                            "type": "string"
-                        },
                         "alt": {
                             "type": "string"
+                        },
+                        "value": {
+                            "type": "string"
                         }
-                    },
-                    "required": [
-                        "value",
-                        "alt"
-                    ]
+                    }
+                },
+                "Xf03UU2E8W4S": {
+                    "type": "object",
+                    "properties": {
+                        "alt": {
+                            "type": "string"
+                        },
+                        "value": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "Xf03UWFR6VJQ": {
+                    "type": "object",
+                    "properties": {
+                        "alt": {
+                            "type": "string"
+                        },
+                        "value": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "Xf03V6LREDCZ": {
+                    "type": "object",
+                    "properties": {
+                        "alt": {
+                            "type": "string"
+                        },
+                        "value": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "Xf0403NW3YCQ": {
+                    "type": "object",
+                    "properties": {
+                        "alt": {
+                            "type": "string"
+                        },
+                        "value": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "Xf05GWG5K0S0": {
+                    "type": "object",
+                    "properties": {
+                        "alt": {
+                            "type": "string"
+                        },
+                        "value": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "Xf08BT55JWBG": {
+                    "type": "object",
+                    "properties": {
+                        "alt": {
+                            "type": "string"
+                        },
+                        "value": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "Xf08BWUCR1LM": {
+                    "type": "object",
+                    "properties": {
+                        "alt": {
+                            "type": "string"
+                        },
+                        "value": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "Xf08FLSF1456": {
+                    "type": "object",
+                    "properties": {
+                        "alt": {
+                            "type": "string"
+                        },
+                        "value": {
+                            "type": "string"
+                        }
+                    }
                 }
             }
         },
-        "status_text": {
-            "type": "string"
-        },
-        "status_emoji": {
-            "type": "string"
-        },
-        "status_emoji_display_info": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "emoji_name": {
-                        "type": "string"
-                    },
-                    "display_url": {
-                        "type": "string"
-                    },
-                    "unicode": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "emoji_name",
-                    "display_url"
-                ]
-            }
-        },
-        "status_expiration": {
-            "type": "integer"
-        },
-        "avatar_hash": {
-            "type": "string"
-        },
-        "start_date": {
-            "type": "string"
-        },
-        "image_original": {
-            "type": "string"
-        },
-        "is_custom_image": {
-            "type": "boolean"
-        },
-        "email": {
+        "first_name": {
             "type": "string"
         },
         "huddle_state": {
@@ -273,10 +170,10 @@
         "huddle_state_expiration_ts": {
             "type": "integer"
         },
-        "first_name": {
+        "image_1024": {
             "type": "string"
         },
-        "last_name": {
+        "image_192": {
             "type": "string"
         },
         "image_24": {
@@ -288,19 +185,66 @@
         "image_48": {
             "type": "string"
         },
-        "image_72": {
-            "type": "string"
-        },
-        "image_192": {
-            "type": "string"
-        },
         "image_512": {
             "type": "string"
         },
-        "image_1024": {
+        "image_72": {
+            "type": "string"
+        },
+        "image_original": {
+            "type": "string"
+        },
+        "is_custom_image": {
+            "type": "boolean"
+        },
+        "last_name": {
+            "type": "string"
+        },
+        "phone": {
+            "type": "string"
+        },
+        "real_name": {
+            "type": "string"
+        },
+        "real_name_normalized": {
+            "type": "string"
+        },
+        "skype": {
+            "type": "string"
+        },
+        "start_date": {
+            "type": "string"
+        },
+        "status_emoji": {
+            "type": "string"
+        },
+        "status_emoji_display_info": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "display_url": {
+                        "type": "string"
+                    },
+                    "emoji_name": {
+                        "type": "string"
+                    },
+                    "unicode": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "status_expiration": {
+            "type": "integer"
+        },
+        "status_text": {
             "type": "string"
         },
         "status_text_canonical": {
+            "type": "string"
+        },
+        "title": {
             "type": "string"
         }
     },

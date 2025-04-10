@@ -1,70 +1,10 @@
 {
     "type": "object",
     "properties": {
+        "album_group": {
+            "type": "string"
+        },
         "album_type": {
-            "type": "string"
-        },
-        "total_tracks": {
-            "type": "integer"
-        },
-        "available_markets": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "external_urls": {
-            "type": "object",
-            "properties": {
-                "spotify": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "spotify"
-            ]
-        },
-        "href": {
-            "type": "string"
-        },
-        "id": {
-            "type": "string"
-        },
-        "images": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "url": {
-                        "type": "string"
-                    },
-                    "height": {
-                        "type": "integer"
-                    },
-                    "width": {
-                        "type": "integer"
-                    }
-                },
-                "required": [
-                    "url",
-                    "height",
-                    "width"
-                ]
-            }
-        },
-        "name": {
-            "type": "string"
-        },
-        "release_date": {
-            "type": "string"
-        },
-        "release_date_precision": {
-            "type": "string"
-        },
-        "type": {
-            "type": "string"
-        },
-        "uri": {
             "type": "string"
         },
         "artists": {
@@ -78,10 +18,7 @@
                             "spotify": {
                                 "type": "string"
                             }
-                        },
-                        "required": [
-                            "spotify"
-                        ]
+                        }
                     },
                     "href": {
                         "type": "string"
@@ -98,36 +35,64 @@
                     "uri": {
                         "type": "string"
                     }
-                },
-                "required": [
-                    "external_urls",
-                    "href",
-                    "id",
-                    "name",
-                    "type",
-                    "uri"
-                ]
+                }
             }
         },
-        "album_group": {
+        "available_markets": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "external_urls": {
+            "type": "object",
+            "properties": {
+                "spotify": {
+                    "type": "string"
+                }
+            }
+        },
+        "href": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "images": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "height": {
+                        "type": "integer"
+                    },
+                    "url": {
+                        "type": "string"
+                    },
+                    "width": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "name": {
+            "type": "string"
+        },
+        "release_date": {
+            "type": "string"
+        },
+        "release_date_precision": {
+            "type": "string"
+        },
+        "total_tracks": {
+            "type": "integer"
+        },
+        "type": {
+            "type": "string"
+        },
+        "uri": {
             "type": "string"
         }
     },
-    "required": [
-        "album_type",
-        "total_tracks",
-        "available_markets",
-        "external_urls",
-        "href",
-        "id",
-        "images",
-        "name",
-        "release_date",
-        "release_date_precision",
-        "type",
-        "uri",
-        "artists",
-        "album_group"
-    ],
     "version": 1
 }

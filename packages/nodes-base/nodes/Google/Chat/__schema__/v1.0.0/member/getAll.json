@@ -1,46 +1,35 @@
 {
     "type": "object",
     "properties": {
-        "name": {
-            "type": "string"
-        },
-        "state": {
+        "createTime": {
             "type": "string"
         },
         "member": {
             "type": "object",
             "properties": {
-                "name": {
-                    "type": "string"
-                },
-                "type": {
-                    "type": "string"
-                },
                 "displayName": {
                     "type": "string"
                 },
                 "domainId": {
                     "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
                 }
-            },
-            "required": [
-                "name",
-                "type"
-            ]
+            }
         },
-        "createTime": {
+        "name": {
             "type": "string"
         },
         "role": {
             "type": "string"
+        },
+        "state": {
+            "type": "string"
         }
     },
-    "required": [
-        "name",
-        "state",
-        "member",
-        "createTime",
-        "role"
-    ],
     "version": 1
 }

@@ -1,254 +1,48 @@
 import { Container } from '@n8n/di';
 import { readFileSync, readdirSync, mkdtempSync } from 'fs';
-import { mock } from 'jest-mock-extended';
 import { get } from 'lodash';
 import { isEmpty } from 'lodash';
-import {
-	BinaryDataService,
-	Credentials,
-	UnrecognizedNodeTypeError,
-	constructExecutionMetaData,
-	ExecutionLifecycleHooks,
-} from 'n8n-core';
+import { BinaryDataService, constructExecutionMetaData } from 'n8n-core';
 import type {
-	CredentialLoadingDetails,
-	ICredentialDataDecryptedObject,
-	ICredentialType,
-	ICredentialTypeData,
-	ICredentialTypes,
 	IDataObject,
-	IDeferredPromise,
 	IExecuteFunctions,
 	IGetNodeParameterOptions,
-	IHttpRequestHelper,
-	IHttpRequestOptions,
 	INode,
-	INodeCredentials,
-	INodeCredentialsDetails,
-	INodeType,
-	INodeTypeData,
-	INodeTypes,
 	IRun,
-	IVersionedNodeType,
 	IWorkflowBase,
-	IWorkflowExecuteAdditionalData,
-	NodeLoadingDetails,
 	WorkflowTestData,
 } from 'n8n-workflow';
-import { ApplicationError, ICredentialsHelper, NodeHelpers } from 'n8n-workflow';
+import { ApplicationError } from 'n8n-workflow';
+import nock from 'nock';
 import { tmpdir } from 'os';
 import path from 'path';
 
 import { executeWorkflow } from './ExecuteWorkflow';
-import { FAKE_CREDENTIALS_DATA } from './FakeCredentialsMap';
+import { LoadNodesAndCredentials } from './load-nodes-and-credentials';
 
 const baseDir = path.resolve(__dirname, '../..');
-
-const getFakeDecryptedCredentials = (
-	nodeCredentials: INodeCredentialsDetails,
-	type: string,
-	fakeCredentialsMap: IDataObject,
-) => {
-	if (nodeCredentials && fakeCredentialsMap[JSON.stringify(nodeCredentials)]) {
-		return fakeCredentialsMap[JSON.stringify(nodeCredentials)] as ICredentialDataDecryptedObject;
-	}
-
-	if (type && fakeCredentialsMap[type]) {
-		return fakeCredentialsMap[type] as ICredentialDataDecryptedObject;
-	}
-
-	return {};
-};
 
 export const readJsonFileSync = <T = any>(filePath: string) =>
 	JSON.parse(readFileSync(path.join(baseDir, filePath), 'utf-8')) as T;
 
-const knownCredentials = readJsonFileSync<Record<string, CredentialLoadingDetails>>(
-	'dist/known/credentials.json',
-);
+const loadNodesAndCredentials = new LoadNodesAndCredentials(baseDir);
+Container.set(LoadNodesAndCredentials, loadNodesAndCredentials);
 
-const knownNodes = readJsonFileSync<Record<string, NodeLoadingDetails>>('dist/known/nodes.json');
-
-class CredentialType implements ICredentialTypes {
-	credentialTypes: ICredentialTypeData = {};
-
-	addCredential(credentialTypeName: string, credentialType: ICredentialType) {
-		this.credentialTypes[credentialTypeName] = {
-			sourcePath: '',
-			type: credentialType,
-		};
-	}
-
-	recognizes(credentialType: string): boolean {
-		return credentialType in this.credentialTypes;
-	}
-
-	getByName(credentialType: string): ICredentialType {
-		return this.credentialTypes[credentialType].type;
-	}
-
-	getSupportedNodes(type: string): string[] {
-		return knownCredentials[type]?.supportedNodes ?? [];
-	}
-
-	getParentTypes(_typeName: string): string[] {
-		return [];
-	}
-}
-
-const credentialTypes = new CredentialType();
-
-export class CredentialsHelper extends ICredentialsHelper {
-	getCredentialsProperties() {
-		return [];
-	}
-
-	async authenticate(
-		credentials: ICredentialDataDecryptedObject,
-		typeName: string,
-		requestParams: IHttpRequestOptions,
-	): Promise<IHttpRequestOptions> {
-		const credentialType = credentialTypes.getByName(typeName);
-		if (typeof credentialType.authenticate === 'function') {
-			return await credentialType.authenticate(credentials, requestParams);
-		}
-		return requestParams;
-	}
-
-	async preAuthentication(
-		_helpers: IHttpRequestHelper,
-		_credentials: ICredentialDataDecryptedObject,
-		_typeName: string,
-		_node: INode,
-		_credentialsExpired: boolean,
-	): Promise<ICredentialDataDecryptedObject | undefined> {
-		return undefined;
-	}
-
-	getParentTypes(_name: string): string[] {
-		return [];
-	}
-
-	async getDecrypted(
-		_additionalData: IWorkflowExecuteAdditionalData,
-		nodeCredentials: INodeCredentialsDetails,
-		type: string,
-	): Promise<ICredentialDataDecryptedObject> {
-		return getFakeDecryptedCredentials(nodeCredentials, type, FAKE_CREDENTIALS_DATA);
-	}
-
-	async getCredentials(
-		_nodeCredentials: INodeCredentialsDetails,
-		_type: string,
-	): Promise<Credentials> {
-		return new Credentials({ id: null, name: '' }, '', '');
-	}
-
-	async updateCredentials(
-		_nodeCredentials: INodeCredentialsDetails,
-		_type: string,
-		_data: ICredentialDataDecryptedObject,
-	): Promise<void> {}
-}
-
-export function WorkflowExecuteAdditionalData(
-	waitPromise: IDeferredPromise<IRun>,
-	nodeExecutionOrder: string[],
-): IWorkflowExecuteAdditionalData {
-	const hooks = new ExecutionLifecycleHooks('trigger', '1', mock());
-	hooks.addHandler('nodeExecuteAfter', (nodeName) => {
-		nodeExecutionOrder.push(nodeName);
-	});
-	hooks.addHandler('workflowExecuteAfter', (fullRunData) => waitPromise.resolve(fullRunData));
-
-	return mock<IWorkflowExecuteAdditionalData>({
-		credentialsHelper: new CredentialsHelper(),
-		hooks,
-		// Get from node.parameters
-		currentNodeParameters: undefined,
-	});
-}
-
-class NodeTypes implements INodeTypes {
-	nodeTypes: INodeTypeData = {};
-
-	getByName(nodeType: string): INodeType | IVersionedNodeType {
-		return this.nodeTypes[nodeType].type;
-	}
-
-	addNode(nodeTypeName: string, nodeType: INodeType | IVersionedNodeType) {
-		const loadedNode = {
-			[nodeTypeName]: {
-				sourcePath: '',
-				type: nodeType,
-			},
-		};
-		this.nodeTypes = {
-			...this.nodeTypes,
-			...loadedNode,
-		};
-	}
-
-	getByNameAndVersion(nodeType: string, version?: number): INodeType {
-		return NodeHelpers.getVersionedNodeType(this.nodeTypes[nodeType].type, version);
-	}
-
-	getKnownTypes(): IDataObject {
-		throw new Error('Method not implemented.');
-	}
-}
+beforeAll(async () => await loadNodesAndCredentials.init());
+beforeEach(() => nock.disableNetConnect());
 
 export function createTemporaryDir(prefix = 'n8n') {
 	return mkdtempSync(path.join(tmpdir(), prefix));
 }
 
-export async function initBinaryDataService(mode: 'default' | 'filesystem' = 'default') {
+export async function initBinaryDataService() {
 	const binaryDataService = new BinaryDataService();
 	await binaryDataService.init({
 		mode: 'default',
-		availableModes: [mode],
+		availableModes: ['default'],
 		localStoragePath: createTemporaryDir(),
 	});
 	Container.set(BinaryDataService, binaryDataService);
-}
-
-export function setup(testData: WorkflowTestData[] | WorkflowTestData) {
-	if (!Array.isArray(testData)) {
-		testData = [testData];
-	}
-
-	const nodeTypes = new NodeTypes();
-
-	const nodes = [...new Set(testData.flatMap((data) => data.input.workflowData.nodes))];
-	const credentialNames = nodes
-		.filter((n) => n.credentials)
-		.flatMap(({ credentials }) => Object.keys(credentials as INodeCredentials));
-	for (const credentialName of credentialNames) {
-		const loadInfo = knownCredentials[credentialName];
-		if (!loadInfo) {
-			throw new ApplicationError(`Unknown credential type: ${credentialName}`, {
-				level: 'warning',
-			});
-		}
-		const sourcePath = loadInfo.sourcePath.replace(/^dist\//, './').replace(/\.js$/, '.ts');
-		const nodeSourcePath = path.join(baseDir, sourcePath);
-		const credential = new (require(nodeSourcePath)[loadInfo.className])() as ICredentialType;
-		credentialTypes.addCredential(credentialName, credential);
-	}
-
-	const nodeNames = nodes.map((n) => n.type);
-	for (const nodeName of nodeNames) {
-		const loadInfo = knownNodes[nodeName.replace('n8n-nodes-base.', '')];
-		if (!loadInfo) {
-			throw new UnrecognizedNodeTypeError('n8n-nodes-base', nodeName);
-		}
-		const sourcePath = loadInfo.sourcePath.replace(/^dist\//, './').replace(/\.js$/, '.ts');
-		const nodeSourcePath = path.join(baseDir, sourcePath);
-		const node = new (require(nodeSourcePath)[loadInfo.className])() as INodeType;
-		nodeTypes.addNode(nodeName, node);
-	}
-
-	return nodeTypes;
 }
 
 export function getResultNodeData(result: IRun, testData: WorkflowTestData) {
@@ -287,9 +81,9 @@ export function getResultNodeData(result: IRun, testData: WorkflowTestData) {
 	});
 }
 
-export const equalityTest = async (testData: WorkflowTestData, types: INodeTypes) => {
+export const equalityTest = async (testData: WorkflowTestData) => {
 	// execute workflow
-	const { result } = await executeWorkflow(testData, types);
+	const { result } = await executeWorkflow(testData);
 
 	// check if result node data matches expected test data
 	const resultNodeData = getResultNodeData(result, testData);
@@ -330,6 +124,7 @@ const preparePinData = (pinData: IDataObject) => {
 	);
 	return returnData;
 };
+
 export const workflowToTests = (workflowFiles: string[]) => {
 	const testCases: WorkflowTestData[] = [];
 	for (const filePath of workflowFiles) {
@@ -365,10 +160,9 @@ export const workflowToTests = (workflowFiles: string[]) => {
 
 export const testWorkflows = (workflows: string[]) => {
 	const tests = workflowToTests(workflows);
-	const nodeTypes = setup(tests);
 
 	for (const testData of tests) {
-		test(testData.description, async () => await equalityTest(testData, nodeTypes));
+		test(testData.description, async () => await equalityTest(testData));
 	}
 };
 

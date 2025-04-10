@@ -10,37 +10,33 @@
                 "url": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "type",
-                "url"
-            ]
+            }
         },
-        "Id": {
-            "type": "string"
-        },
-        "Name": {
+        "CreatedById": {
             "type": "string"
         },
         "CreatedDate": {
             "type": "string"
         },
-        "CreatedById": {
-            "type": "string"
-        },
-        "LastModifiedDate": {
-            "type": "string"
-        },
-        "LastModifiedById": {
-            "type": "string"
-        },
-        "SystemModstamp": {
+        "Id": {
             "type": "string"
         },
         "IsDeleted": {
             "type": "boolean"
         },
+        "LastModifiedById": {
+            "type": "string"
+        },
+        "LastModifiedDate": {
+            "type": "string"
+        },
+        "Name": {
+            "type": "string"
+        },
         "OwnerId": {
+            "type": "string"
+        },
+        "SystemModstamp": {
             "type": "string"
         }
     },

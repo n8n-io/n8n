@@ -1,6 +1,6 @@
 import type { VectorStore } from '@langchain/core/vectorstores';
 import type { INodeProperties } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { DEFAULT_OPERATION_MODES } from '../constants';
 import type { VectorStoreNodeConstructorArgs, NodeOperationMode } from '../types';
@@ -178,8 +178,8 @@ describe('Vector Store Utilities', () => {
 			const retrieveOption = result.find((option) => option.value === 'retrieve');
 			const retrieveAsToolOption = result.find((option) => option.value === 'retrieve-as-tool');
 
-			expect(retrieveOption?.outputConnectionType).toBe(NodeConnectionType.AiVectorStore);
-			expect(retrieveAsToolOption?.outputConnectionType).toBe(NodeConnectionType.AiTool);
+			expect(retrieveOption?.outputConnectionType).toBe(NodeConnectionTypes.AiVectorStore);
+			expect(retrieveAsToolOption?.outputConnectionType).toBe(NodeConnectionTypes.AiTool);
 		});
 	});
 });

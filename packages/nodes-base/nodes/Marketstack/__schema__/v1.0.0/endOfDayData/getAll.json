@@ -1,41 +1,24 @@
 {
     "type": "object",
     "properties": {
-        "volume": {
-            "type": "integer"
-        },
-        "split_factor": {
-            "type": "integer"
+        "date": {
+            "type": "string"
         },
         "dividend": {
+            "type": "integer"
+        },
+        "exchange": {
+            "type": "string"
+        },
+        "split_factor": {
             "type": "integer"
         },
         "symbol": {
             "type": "string"
         },
-        "exchange": {
-            "type": "string"
-        },
-        "date": {
-            "type": "string"
+        "volume": {
+            "type": "integer"
         }
     },
-    "required": [
-        "open",
-        "high",
-        "low",
-        "close",
-        "volume",
-        "adj_high",
-        "adj_low",
-        "adj_close",
-        "adj_open",
-        "adj_volume",
-        "split_factor",
-        "dividend",
-        "symbol",
-        "exchange",
-        "date"
-    ],
     "version": 1
 }

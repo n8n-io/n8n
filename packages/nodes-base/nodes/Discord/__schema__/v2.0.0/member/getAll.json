@@ -4,11 +4,17 @@
         "communication_disabled_until": {
             "type": "null"
         },
+        "deaf": {
+            "type": "boolean"
+        },
         "flags": {
             "type": "integer"
         },
         "joined_at": {
             "type": "string"
+        },
+        "mute": {
+            "type": "boolean"
         },
         "pending": {
             "type": "boolean"
@@ -22,25 +28,10 @@
         "user": {
             "type": "object",
             "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "username": {
-                    "type": "string"
-                },
-                "discriminator": {
-                    "type": "string"
-                },
-                "public_flags": {
-                    "type": "integer"
-                },
-                "flags": {
-                    "type": "integer"
-                },
-                "banner": {
+                "accent_color": {
                     "type": "null"
                 },
-                "accent_color": {
+                "banner": {
                     "type": "null"
                 },
                 "banner_color": {
@@ -48,33 +39,24 @@
                 },
                 "clan": {
                     "type": "null"
+                },
+                "discriminator": {
+                    "type": "string"
+                },
+                "flags": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "public_flags": {
+                    "type": "integer"
+                },
+                "username": {
+                    "type": "string"
                 }
-            },
-            "required": [
-                "id",
-                "username",
-                "avatar",
-                "discriminator",
-                "public_flags",
-                "flags",
-                "banner",
-                "accent_color",
-                "global_name",
-                "avatar_decoration_data",
-                "banner_color",
-                "clan"
-            ]
-        },
-        "mute": {
-            "type": "boolean"
-        },
-        "deaf": {
-            "type": "boolean"
+            }
         }
     },
-    "required": [
-        "roles",
-        "user"
-    ],
     "version": 1
 }

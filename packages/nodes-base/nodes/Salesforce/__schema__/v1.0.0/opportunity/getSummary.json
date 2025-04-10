@@ -88,73 +88,33 @@
                 "urls": {
                     "type": "object",
                     "properties": {
-                        "compactLayouts": {
-                            "type": "string"
-                        },
-                        "rowTemplate": {
-                            "type": "string"
-                        },
                         "approvalLayouts": {
                             "type": "string"
                         },
-                        "listviews": {
+                        "compactLayouts": {
                             "type": "string"
                         },
                         "describe": {
                             "type": "string"
                         },
+                        "layouts": {
+                            "type": "string"
+                        },
+                        "listviews": {
+                            "type": "string"
+                        },
                         "quickActions": {
                             "type": "string"
                         },
-                        "layouts": {
+                        "rowTemplate": {
                             "type": "string"
                         },
                         "sobject": {
                             "type": "string"
                         }
-                    },
-                    "required": [
-                        "compactLayouts",
-                        "rowTemplate",
-                        "approvalLayouts",
-                        "listviews",
-                        "describe",
-                        "quickActions",
-                        "layouts",
-                        "sobject"
-                    ]
+                    }
                 }
-            },
-            "required": [
-                "activateable",
-                "associateEntityType",
-                "associateParentEntity",
-                "createable",
-                "custom",
-                "customSetting",
-                "deepCloneable",
-                "deletable",
-                "deprecatedAndHidden",
-                "feedEnabled",
-                "hasSubtypes",
-                "isInterface",
-                "isSubtype",
-                "keyPrefix",
-                "label",
-                "labelPlural",
-                "layoutable",
-                "mergeable",
-                "mruEnabled",
-                "name",
-                "queryable",
-                "replicateable",
-                "retrieveable",
-                "searchable",
-                "triggerable",
-                "undeletable",
-                "updateable",
-                "urls"
-            ]
+            }
         },
         "recentItems": {
             "type": "array",
@@ -170,11 +130,7 @@
                             "url": {
                                 "type": "string"
                             }
-                        },
-                        "required": [
-                            "type",
-                            "url"
-                        ]
+                        }
                     },
                     "Id": {
                         "type": "string"
@@ -182,18 +138,9 @@
                     "Name": {
                         "type": "string"
                     }
-                },
-                "required": [
-                    "attributes",
-                    "Id",
-                    "Name"
-                ]
+                }
             }
         }
     },
-    "required": [
-        "objectDescribe",
-        "recentItems"
-    ],
     "version": 1
 }

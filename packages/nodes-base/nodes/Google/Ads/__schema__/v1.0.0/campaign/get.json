@@ -1,23 +1,17 @@
 {
     "type": "object",
     "properties": {
-        "resourceName": {
-            "type": "string"
-        },
-        "status": {
-            "type": "string"
-        },
         "advertisingChannelType": {
             "type": "string"
         },
-        "name": {
+        "amountMicros": {
             "type": "string"
         },
-        "id": {
-            "type": "string"
+        "averageCost": {
+            "type": "number"
         },
-        "videoViews": {
-            "type": "string"
+        "averageCpm": {
+            "type": "number"
         },
         "costMicros": {
             "type": "string"
@@ -25,11 +19,8 @@
         "ctr": {
             "type": "number"
         },
-        "averageCost": {
-            "type": "number"
-        },
-        "averageCpm": {
-            "type": "number"
+        "id": {
+            "type": "string"
         },
         "impressions": {
             "type": "string"
@@ -40,26 +31,21 @@
         "interactions": {
             "type": "string"
         },
+        "name": {
+            "type": "string"
+        },
         "period": {
             "type": "string"
         },
-        "amountMicros": {
+        "resourceName": {
+            "type": "string"
+        },
+        "status": {
+            "type": "string"
+        },
+        "videoViews": {
             "type": "string"
         }
     },
-    "required": [
-        "resourceName",
-        "status",
-        "advertisingChannelType",
-        "name",
-        "id",
-        "videoViews",
-        "conversions",
-        "costMicros",
-        "impressions",
-        "interactions",
-        "period",
-        "amountMicros"
-    ],
     "version": 1
 }

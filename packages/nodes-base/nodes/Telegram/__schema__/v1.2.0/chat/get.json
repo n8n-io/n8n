@@ -7,45 +7,35 @@
         "result": {
             "type": "object",
             "properties": {
-                "id": {
-                    "type": "integer"
-                },
-                "first_name": {
-                    "type": "string"
-                },
-                "type": {
-                    "type": "string"
-                },
-                "can_send_gift": {
-                    "type": "boolean"
-                },
-                "max_reaction_count": {
-                    "type": "integer"
-                },
                 "accent_color_id": {
                     "type": "integer"
-                },
-                "username": {
-                    "type": "string"
                 },
                 "active_usernames": {
                     "type": "array",
                     "items": {
                         "type": "string"
                     }
+                },
+                "can_send_gift": {
+                    "type": "boolean"
+                },
+                "first_name": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "max_reaction_count": {
+                    "type": "integer"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
                 }
-            },
-            "required": [
-                "id",
-                "type",
-                "max_reaction_count",
-                "accent_color_id"
-            ]
+            }
         }
     },
-    "required": [
-        "ok",
-        "result"
-    ],
     "version": 1
 }

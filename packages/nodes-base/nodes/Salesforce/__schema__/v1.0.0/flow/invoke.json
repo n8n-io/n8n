@@ -22,11 +22,7 @@
                 "Flow__InterviewStatus": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "Flow__InterviewGuid",
-                "Flow__InterviewStatus"
-            ]
+            }
         },
         "sortOrder": {
             "type": "integer"
@@ -35,14 +31,5 @@
             "type": "integer"
         }
     },
-    "required": [
-        "actionName",
-        "errors",
-        "invocationId",
-        "isSuccess",
-        "outputValues",
-        "sortOrder",
-        "version"
-    ],
     "version": 1
 }

@@ -1,62 +1,66 @@
 {
     "type": "object",
     "properties": {
-        "number": {
-            "type": "integer"
-        },
-        "threads": {
-            "type": "integer"
-        },
-        "type": {
-            "type": "string"
-        },
-        "folderId": {
-            "type": "integer"
-        },
-        "status": {
-            "type": "string"
-        },
-        "state": {
-            "type": "string"
-        },
-        "subject": {
-            "type": "string"
-        },
-        "mailboxId": {
-            "type": "integer"
-        },
-        "createdBy": {
+        "_links": {
             "type": "object",
             "properties": {
-                "id": {
-                    "type": "integer"
+                "closedBy": {
+                    "type": "object",
+                    "properties": {
+                        "href": {
+                            "type": "string"
+                        }
+                    }
                 },
-                "type": {
-                    "type": "string"
+                "createdByUser": {
+                    "type": "object",
+                    "properties": {
+                        "href": {
+                            "type": "string"
+                        }
+                    }
                 },
-                "first": {
-                    "type": "string"
+                "mailbox": {
+                    "type": "object",
+                    "properties": {
+                        "href": {
+                            "type": "string"
+                        }
+                    }
                 },
-                "last": {
-                    "type": "string"
+                "primaryCustomer": {
+                    "type": "object",
+                    "properties": {
+                        "href": {
+                            "type": "string"
+                        }
+                    }
                 },
-                "email": {
-                    "type": "string"
+                "self": {
+                    "type": "object",
+                    "properties": {
+                        "href": {
+                            "type": "string"
+                        }
+                    }
                 },
-                "photoUrl": {
-                    "type": "string"
+                "threads": {
+                    "type": "object",
+                    "properties": {
+                        "href": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "web": {
+                    "type": "object",
+                    "properties": {
+                        "href": {
+                            "type": "string"
+                        }
+                    }
                 }
-            },
-            "required": [
-                "id",
-                "type",
-                "first",
-                "last",
-                "email"
-            ]
-        },
-        "createdAt": {
-            "type": "string"
+            }
         },
         "closedBy": {
             "type": "integer"
@@ -64,40 +68,88 @@
         "closedByUser": {
             "type": "object",
             "properties": {
-                "id": {
-                    "type": "integer"
-                },
-                "type": {
+                "email": {
                     "type": "string"
                 },
                 "first": {
                     "type": "string"
                 },
+                "id": {
+                    "type": "integer"
+                },
                 "last": {
                     "type": "string"
                 },
-                "email": {
+                "type": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "id",
-                "type",
-                "first",
-                "last",
-                "email"
-            ]
+            }
         },
-        "userUpdatedAt": {
+        "createdAt": {
             "type": "string"
+        },
+        "createdBy": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "first": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "last": {
+                    "type": "string"
+                },
+                "photoUrl": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
         },
         "customerWaitingSince": {
             "type": "object",
             "properties": {
-                "time": {
+                "friendly": {
                     "type": "string"
                 },
-                "friendly": {
+                "time": {
+                    "type": "string"
+                }
+            }
+        },
+        "folderId": {
+            "type": "integer"
+        },
+        "mailboxId": {
+            "type": "integer"
+        },
+        "number": {
+            "type": "integer"
+        },
+        "primaryCustomer": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "first": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "last": {
+                    "type": "string"
+                },
+                "photoUrl": {
+                    "type": "string"
+                },
+                "type": {
                     "type": "string"
                 }
             }
@@ -111,158 +163,43 @@
                 "via": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "type",
-                "via"
-            ]
+            }
+        },
+        "state": {
+            "type": "string"
+        },
+        "status": {
+            "type": "string"
+        },
+        "subject": {
+            "type": "string"
         },
         "tags": {
             "type": "array",
             "items": {
                 "type": "object",
                 "properties": {
-                    "id": {
-                        "type": "integer"
-                    },
                     "color": {
                         "type": "string"
+                    },
+                    "id": {
+                        "type": "integer"
                     },
                     "tag": {
                         "type": "string"
                     }
-                },
-                "required": [
-                    "id",
-                    "color",
-                    "tag"
-                ]
+                }
             }
         },
-        "primaryCustomer": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "integer"
-                },
-                "type": {
-                    "type": "string"
-                },
-                "first": {
-                    "type": "string"
-                },
-                "last": {
-                    "type": "string"
-                },
-                "photoUrl": {
-                    "type": "string"
-                },
-                "email": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "id",
-                "type",
-                "first",
-                "last",
-                "photoUrl",
-                "email"
-            ]
+        "threads": {
+            "type": "integer"
         },
-        "_links": {
-            "type": "object",
-            "properties": {
-                "self": {
-                    "type": "object",
-                    "properties": {
-                        "href": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "href"
-                    ]
-                },
-                "mailbox": {
-                    "type": "object",
-                    "properties": {
-                        "href": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "href"
-                    ]
-                },
-                "primaryCustomer": {
-                    "type": "object",
-                    "properties": {
-                        "href": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "href"
-                    ]
-                },
-                "createdByUser": {
-                    "type": "object",
-                    "properties": {
-                        "href": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "href"
-                    ]
-                },
-                "closedBy": {
-                    "type": "object",
-                    "properties": {
-                        "href": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "href"
-                    ]
-                },
-                "threads": {
-                    "type": "object",
-                    "properties": {
-                        "href": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "href"
-                    ]
-                },
-                "web": {
-                    "type": "object",
-                    "properties": {
-                        "href": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "href"
-                    ]
-                }
-            },
-            "required": [
-                "self",
-                "mailbox",
-                "primaryCustomer",
-                "closedBy",
-                "threads",
-                "web"
-            ]
+        "type": {
+            "type": "string"
+        },
+        "userUpdatedAt": {
+            "type": "string"
         }
     },
-    "required": [
-        "id"
-    ],
     "version": 1
 }

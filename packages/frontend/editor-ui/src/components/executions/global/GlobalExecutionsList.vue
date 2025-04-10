@@ -2,7 +2,6 @@
 import ConcurrentExecutionsHeader from '@/components/executions/ConcurrentExecutionsHeader.vue';
 import ExecutionsFilter from '@/components/executions/ExecutionsFilter.vue';
 import GlobalExecutionsListItem from '@/components/executions/global/GlobalExecutionsListItem.vue';
-import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
 import { useI18n } from '@/composables/useI18n';
 import { useMessage } from '@/composables/useMessage';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
@@ -15,6 +14,7 @@ import { getResourcePermissions } from '@/permissions';
 import { useExecutionsStore } from '@/stores/executions.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { executionRetryMessage } from '@/utils/executionUtils';
 import { N8nButton, N8nCheckbox, N8nTableBase } from '@n8n/design-system';
 import { useIntersectionObserver } from '@vueuse/core';
 import { ElSkeletonItem } from 'element-plus';
@@ -244,18 +244,11 @@ async function retryOriginalExecution(execution: ExecutionSummary) {
 
 async function retryExecution(execution: ExecutionSummary, loadWorkflow?: boolean) {
 	try {
-		const retrySuccessful = await executionsStore.retryExecution(execution.id, loadWorkflow);
+		const retryStatus = await executionsStore.retryExecution(execution.id, loadWorkflow);
+		const retryMessage = executionRetryMessage(retryStatus);
 
-		if (retrySuccessful) {
-			toast.showMessage({
-				title: i18n.baseText('executionsList.showMessage.retrySuccessfulTrue.title'),
-				type: 'success',
-			});
-		} else {
-			toast.showMessage({
-				title: i18n.baseText('executionsList.showMessage.retrySuccessfulFalse.title'),
-				type: 'error',
-			});
+		if (retryMessage) {
+			toast.showMessage(retryMessage);
 		}
 	} catch (error) {
 		toast.showError(error, i18n.baseText('executionsList.showError.retryExecution.title'));
@@ -334,7 +327,7 @@ const goToUpgrade = () => {
 
 <template>
 	<div :class="$style.execListWrapper">
-		<ProjectHeader />
+		<slot />
 		<div :class="$style.execListHeaderControls">
 			<ExecutionsFilter
 				:workflows="workflows"
@@ -369,6 +362,7 @@ const goToUpgrade = () => {
 								<N8nCheckbox
 									:model-value="allExistingSelected"
 									data-test-id="select-all-executions-checkbox"
+									class="mb-0"
 									@update:model-value="handleCheckAllExistingChange"
 								/>
 							</th>
@@ -376,7 +370,7 @@ const goToUpgrade = () => {
 								{{
 									i18n.baseText('executionsList.selectAll', {
 										adjustToNumber: total,
-										interpolate: { executionNum: `${total}` },
+										interpolate: { count: `${total}` },
 									})
 								}}
 							</th>
@@ -387,6 +381,7 @@ const goToUpgrade = () => {
 									:model-value="allVisibleSelected"
 									:disabled="total < 1"
 									data-test-id="select-visible-executions-checkbox"
+									class="mb-0"
 									@update:model-value="handleCheckAllVisibleChange"
 								/>
 							</th>
@@ -403,9 +398,7 @@ const goToUpgrade = () => {
 
 							<th>{{ i18n.baseText('executionsList.id') }}</th>
 
-							<th>
-								{{ i18n.baseText('executionsList.trigger') }}
-							</th>
+							<th></th>
 							<th style="width: 69px"></th>
 							<th style="width: 50px"></th>
 						</tr>
@@ -540,10 +533,6 @@ const goToUpgrade = () => {
 </style>
 
 <style lang="scss" scoped>
-.execFilter:deep(button) {
-	height: 40px;
-}
-
 :deep(.el-checkbox) {
 	display: inline-flex;
 	align-items: center;

@@ -10,8 +10,5 @@
             }
         }
     },
-    "required": [
-        "data"
-    ],
     "version": 1
 }

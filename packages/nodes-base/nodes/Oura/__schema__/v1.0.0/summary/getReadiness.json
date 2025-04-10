@@ -1,9 +1,6 @@
 {
     "type": "object",
     "properties": {
-        "id": {
-            "type": "string"
-        },
         "contributors": {
             "type": "object",
             "properties": {
@@ -22,19 +19,12 @@
                 "resting_heart_rate": {
                     "type": "integer"
                 }
-            },
-            "required": [
-                "activity_balance",
-                "body_temperature",
-                "hrv_balance",
-                "previous_day_activity",
-                "previous_night",
-                "recovery_index",
-                "resting_heart_rate",
-                "sleep_balance"
-            ]
+            }
         },
         "day": {
+            "type": "string"
+        },
+        "id": {
             "type": "string"
         },
         "score": {
@@ -47,14 +37,5 @@
             "type": "string"
         }
     },
-    "required": [
-        "id",
-        "contributors",
-        "day",
-        "score",
-        "temperature_deviation",
-        "temperature_trend_deviation",
-        "timestamp"
-    ],
     "version": 1
 }

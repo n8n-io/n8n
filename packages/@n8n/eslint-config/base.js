@@ -5,6 +5,7 @@ const config = (module.exports = {
 	ignorePatterns: [
 		'node_modules/**',
 		'dist/**',
+		'tsup.config.ts',
 		// TODO: remove these
 		'*.js',
 	],

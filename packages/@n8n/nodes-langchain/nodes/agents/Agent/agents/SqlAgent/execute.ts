@@ -7,7 +7,7 @@ import { SqlDatabase } from 'langchain/sql_db';
 import {
 	type IExecuteFunctions,
 	type INodeExecutionData,
-	NodeConnectionType,
+	NodeConnectionTypes,
 	NodeOperationError,
 	type IDataObject,
 } from 'n8n-workflow';
@@ -32,7 +32,7 @@ export async function sqlAgentAgentExecute(
 	this.logger.debug('Executing SQL Agent');
 
 	const model = (await this.getInputConnectionData(
-		NodeConnectionType.AiLanguageModel,
+		NodeConnectionTypes.AiLanguageModel,
 		0,
 	)) as BaseLanguageModel;
 	const items = this.getInputData();
@@ -113,7 +113,7 @@ export async function sqlAgentAgentExecute(
 			const toolkit = new SqlToolkit(dbInstance, model);
 			const agentExecutor = createSqlAgent(model, toolkit, agentOptions);
 
-			const memory = (await this.getInputConnectionData(NodeConnectionType.AiMemory, 0)) as
+			const memory = (await this.getInputConnectionData(NodeConnectionTypes.AiMemory, 0)) as
 				| BaseChatMemory
 				| undefined;
 

@@ -1,10 +1,10 @@
 {
     "type": "object",
     "properties": {
-        "id": {
+        "date": {
             "type": "string"
         },
-        "date": {
+        "id": {
             "type": "string"
         },
         "idMember": {
@@ -22,21 +22,15 @@
         "name": {
             "type": "string"
         },
+        "pos": {
+            "type": "integer"
+        },
         "previews": {
             "type": "array",
             "items": {
                 "type": "object",
                 "properties": {
-                    "id": {
-                        "type": "string"
-                    },
                     "_id": {
-                        "type": "string"
-                    },
-                    "scaled": {
-                        "type": "boolean"
-                    },
-                    "url": {
                         "type": "string"
                     },
                     "bytes": {
@@ -45,26 +39,23 @@
                     "height": {
                         "type": "integer"
                     },
+                    "id": {
+                        "type": "string"
+                    },
+                    "scaled": {
+                        "type": "boolean"
+                    },
+                    "url": {
+                        "type": "string"
+                    },
                     "width": {
                         "type": "integer"
                     }
-                },
-                "required": [
-                    "id",
-                    "_id",
-                    "scaled",
-                    "url",
-                    "bytes",
-                    "height",
-                    "width"
-                ]
+                }
             }
         },
         "url": {
             "type": "string"
-        },
-        "pos": {
-            "type": "integer"
         }
     },
     "version": 1

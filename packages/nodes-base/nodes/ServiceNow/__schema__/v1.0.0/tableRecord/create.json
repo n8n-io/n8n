@@ -1,49 +1,100 @@
 {
     "type": "object",
     "properties": {
-        "sys_mod_count": {
+        "active": {
             "type": "string"
         },
-        "sys_updated_on": {
+        "activity_due": {
             "type": "string"
         },
-        "sys_tags": {
+        "additional_assignee_list": {
             "type": "string"
         },
-        "sys_class_name": {
+        "approval": {
             "type": "string"
         },
-        "number": {
+        "approval_history": {
             "type": "string"
         },
-        "sys_id": {
+        "approval_set": {
             "type": "string"
         },
-        "sys_updated_by": {
+        "assigned_to": {
             "type": "string"
         },
-        "sys_created_on": {
+        "business_duration": {
             "type": "string"
         },
-        "sys_created_by": {
+        "business_service": {
             "type": "string"
         },
-        "parent": {
+        "calendar_duration": {
+            "type": "string"
+        },
+        "close_notes": {
+            "type": "string"
+        },
+        "closed_at": {
+            "type": "string"
+        },
+        "closed_by": {
+            "type": "string"
+        },
+        "cmdb_ci": {
+            "type": "string"
+        },
+        "comments": {
+            "type": "string"
+        },
+        "comments_and_work_notes": {
+            "type": "string"
+        },
+        "contact_type": {
+            "type": "string"
+        },
+        "contract": {
+            "type": "string"
+        },
+        "correlation_display": {
+            "type": "string"
+        },
+        "correlation_id": {
+            "type": "string"
+        },
+        "description": {
+            "type": "string"
+        },
+        "due_date": {
+            "type": "string"
+        },
+        "escalation": {
+            "type": "string"
+        },
+        "expected_start": {
+            "type": "string"
+        },
+        "follow_up": {
+            "type": "string"
+        },
+        "group_list": {
+            "type": "string"
+        },
+        "impact": {
+            "type": "string"
+        },
+        "knowledge": {
+            "type": "string"
+        },
+        "location": {
             "type": "string"
         },
         "made_sla": {
             "type": "string"
         },
-        "watch_list": {
+        "number": {
             "type": "string"
         },
-        "upon_reject": {
-            "type": "string"
-        },
-        "task_effective_number": {
-            "type": "string"
-        },
-        "approval_history": {
+        "opened_at": {
             "type": "string"
         },
         "opened_by": {
@@ -55,13 +106,42 @@
                 "value": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "link",
-                "value"
-            ]
+            }
         },
-        "user_input": {
+        "order": {
+            "type": "string"
+        },
+        "parent": {
+            "type": "string"
+        },
+        "priority": {
+            "type": "string"
+        },
+        "reassignment_count": {
+            "type": "string"
+        },
+        "route_reason": {
+            "type": "string"
+        },
+        "service_offering": {
+            "type": "string"
+        },
+        "short_description": {
+            "type": "string"
+        },
+        "sla_due": {
+            "type": "string"
+        },
+        "state": {
+            "type": "string"
+        },
+        "sys_class_name": {
+            "type": "string"
+        },
+        "sys_created_by": {
+            "type": "string"
+        },
+        "sys_created_on": {
             "type": "string"
         },
         "sys_domain": {
@@ -73,159 +153,59 @@
                 "value": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "link",
-                "value"
-            ]
-        },
-        "state": {
-            "type": "string"
-        },
-        "route_reason": {
-            "type": "string"
-        },
-        "knowledge": {
-            "type": "string"
-        },
-        "order": {
-            "type": "string"
-        },
-        "closed_at": {
-            "type": "string"
-        },
-        "cmdb_ci": {
-            "type": "string"
-        },
-        "contract": {
-            "type": "string"
-        },
-        "impact": {
-            "type": "string"
-        },
-        "active": {
-            "type": "string"
-        },
-        "work_notes_list": {
-            "type": "string"
-        },
-        "business_service": {
-            "type": "string"
-        },
-        "priority": {
-            "type": "string"
+            }
         },
         "sys_domain_path": {
             "type": "string"
         },
-        "expected_start": {
+        "sys_id": {
             "type": "string"
         },
-        "opened_at": {
+        "sys_mod_count": {
             "type": "string"
         },
-        "business_duration": {
+        "sys_tags": {
             "type": "string"
         },
-        "group_list": {
+        "sys_updated_by": {
             "type": "string"
         },
-        "work_end": {
+        "sys_updated_on": {
             "type": "string"
         },
-        "approval_set": {
-            "type": "string"
-        },
-        "work_notes": {
+        "task_effective_number": {
             "type": "string"
         },
         "universal_request": {
             "type": "string"
         },
-        "short_description": {
+        "upon_approval": {
             "type": "string"
         },
-        "correlation_display": {
-            "type": "string"
-        },
-        "work_start": {
-            "type": "string"
-        },
-        "assignment_group": {
-            "type": "string"
-        },
-        "additional_assignee_list": {
-            "type": "string"
-        },
-        "description": {
-            "type": "string"
-        },
-        "calendar_duration": {
-            "type": "string"
-        },
-        "close_notes": {
-            "type": "string"
-        },
-        "service_offering": {
-            "type": "string"
-        },
-        "closed_by": {
-            "type": "string"
-        },
-        "follow_up": {
-            "type": "string"
-        },
-        "contact_type": {
+        "upon_reject": {
             "type": "string"
         },
         "urgency": {
             "type": "string"
         },
-        "reassignment_count": {
+        "user_input": {
             "type": "string"
         },
-        "activity_due": {
+        "watch_list": {
             "type": "string"
         },
-        "assigned_to": {
+        "work_end": {
             "type": "string"
         },
-        "comments": {
+        "work_notes": {
             "type": "string"
         },
-        "approval": {
+        "work_notes_list": {
             "type": "string"
         },
-        "sla_due": {
-            "type": "string"
-        },
-        "comments_and_work_notes": {
-            "type": "string"
-        },
-        "due_date": {
-            "type": "string"
-        },
-        "escalation": {
-            "type": "string"
-        },
-        "upon_approval": {
-            "type": "string"
-        },
-        "correlation_id": {
-            "type": "string"
-        },
-        "location": {
+        "work_start": {
             "type": "string"
         }
     },
-    "required": [
-        "sys_mod_count",
-        "sys_updated_on",
-        "sys_tags",
-        "sys_id",
-        "sys_updated_by",
-        "sys_created_on",
-        "sys_created_by"
-    ],
     "version": 1
 }

@@ -1,22 +1,7 @@
 {
     "type": "object",
     "properties": {
-        "user": {
-            "type": "string"
-        },
-        "type": {
-            "type": "string"
-        },
-        "ts": {
-            "type": "string"
-        },
-        "client_msg_id": {
-            "type": "string"
-        },
-        "text": {
-            "type": "string"
-        },
-        "team": {
+        "app_id": {
             "type": "string"
         },
         "blocks": {
@@ -24,9 +9,6 @@
             "items": {
                 "type": "object",
                 "properties": {
-                    "type": {
-                        "type": "string"
-                    },
                     "block_id": {
                         "type": "string"
                     },
@@ -35,58 +17,90 @@
                         "items": {
                             "type": "object",
                             "properties": {
-                                "type": {
-                                    "type": "string"
-                                },
                                 "elements": {
                                     "type": "array",
                                     "items": {
                                         "type": "object",
                                         "properties": {
-                                            "type": {
+                                            "text": {
                                                 "type": "string"
                                             },
-                                            "text": {
+                                            "type": {
                                                 "type": "string"
                                             },
                                             "url": {
                                                 "type": "string"
-                                            },
-                                            "style": {
-                                                "type": "object",
-                                                "properties": {
-                                                    "bold": {
-                                                        "type": "boolean"
-                                                    }
-                                                }
                                             }
-                                        },
-                                        "required": [
-                                            "type"
-                                        ]
+                                        }
                                     }
+                                },
+                                "type": {
+                                    "type": "string"
                                 }
-                            },
-                            "required": [
-                                "type"
-                            ]
+                            }
+                        }
+                    },
+                    "type": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "bot_id": {
+            "type": "string"
+        },
+        "bot_profile": {
+            "type": "object",
+            "properties": {
+                "app_id": {
+                    "type": "string"
+                },
+                "deleted": {
+                    "type": "boolean"
+                },
+                "icons": {
+                    "type": "object",
+                    "properties": {
+                        "image_36": {
+                            "type": "string"
+                        },
+                        "image_48": {
+                            "type": "string"
+                        },
+                        "image_72": {
+                            "type": "string"
                         }
                     }
                 },
-                "required": [
-                    "type",
-                    "block_id"
-                ]
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "team_id": {
+                    "type": "string"
+                },
+                "updated": {
+                    "type": "integer"
+                }
             }
         },
-        "subtype": {
+        "team": {
+            "type": "string"
+        },
+        "text": {
+            "type": "string"
+        },
+        "ts": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string"
+        },
+        "user": {
             "type": "string"
         }
     },
-    "required": [
-        "type",
-        "ts",
-        "text"
-    ],
     "version": 1
 }

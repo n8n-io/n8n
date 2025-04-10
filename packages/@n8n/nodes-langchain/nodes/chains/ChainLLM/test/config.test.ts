@@ -1,4 +1,4 @@
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { getInputs, nodeProperties } from '../methods/config';
 
@@ -8,24 +8,24 @@ describe('config', () => {
 			const inputs = getInputs({});
 
 			expect(inputs).toHaveLength(3);
-			expect(inputs[0].type).toBe(NodeConnectionType.Main);
-			expect(inputs[1].type).toBe(NodeConnectionType.AiLanguageModel);
-			expect(inputs[2].type).toBe(NodeConnectionType.AiOutputParser);
+			expect(inputs[0].type).toBe(NodeConnectionTypes.Main);
+			expect(inputs[1].type).toBe(NodeConnectionTypes.AiLanguageModel);
+			expect(inputs[2].type).toBe(NodeConnectionTypes.AiOutputParser);
 		});
 
 		it('should exclude the OutputParser when hasOutputParser is false', () => {
 			const inputs = getInputs({ hasOutputParser: false });
 
 			expect(inputs).toHaveLength(2);
-			expect(inputs[0].type).toBe(NodeConnectionType.Main);
-			expect(inputs[1].type).toBe(NodeConnectionType.AiLanguageModel);
+			expect(inputs[0].type).toBe(NodeConnectionTypes.Main);
+			expect(inputs[1].type).toBe(NodeConnectionTypes.AiLanguageModel);
 		});
 
 		it('should include the OutputParser when hasOutputParser is true', () => {
 			const inputs = getInputs({ hasOutputParser: true });
 
 			expect(inputs).toHaveLength(3);
-			expect(inputs[2].type).toBe(NodeConnectionType.AiOutputParser);
+			expect(inputs[2].type).toBe(NodeConnectionTypes.AiOutputParser);
 		});
 	});
 

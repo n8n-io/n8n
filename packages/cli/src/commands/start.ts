@@ -239,6 +239,8 @@ export class Start extends BaseCommand {
 			const taskRunnerModule = Container.get(TaskRunnerModule);
 			await taskRunnerModule.start();
 		}
+
+		await this.loadModules();
 	}
 
 	async initOrchestration() {

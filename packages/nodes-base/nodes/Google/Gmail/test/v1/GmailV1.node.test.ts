@@ -12,12 +12,9 @@ describe('Test Gmail Node v1', () => {
 		jest
 			.useFakeTimers({ doNotFake: ['setImmediate', 'nextTick'] })
 			.setSystemTime(new Date('2024-12-16 12:34:56.789Z'));
-
-		nock.disableNetConnect();
 	});
 
 	afterAll(() => {
-		nock.restore();
 		jest.resetAllMocks();
 	});
 

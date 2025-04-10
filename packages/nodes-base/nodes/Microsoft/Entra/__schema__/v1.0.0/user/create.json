@@ -4,10 +4,10 @@
         "@odata.context": {
             "type": "string"
         },
-        "id": {
+        "displayName": {
             "type": "string"
         },
-        "displayName": {
+        "id": {
             "type": "string"
         },
         "mobilePhone": {
@@ -16,37 +16,20 @@
         "officeLocation": {
             "type": "null"
         },
-        "preferredLanguage": {
-            "type": "null"
-        },
-        "userPrincipalName": {
-            "type": "string"
-        },
         "passwordProfile": {
             "type": "object",
             "properties": {
                 "forceChangePasswordNextSignIn": {
                     "type": "boolean"
                 }
-            },
-            "required": [
-                "forceChangePasswordNextSignIn"
-            ]
+            }
+        },
+        "preferredLanguage": {
+            "type": "null"
+        },
+        "userPrincipalName": {
+            "type": "string"
         }
     },
-    "required": [
-        "@odata.context",
-        "id",
-        "businessPhones",
-        "displayName",
-        "givenName",
-        "jobTitle",
-        "mail",
-        "mobilePhone",
-        "officeLocation",
-        "preferredLanguage",
-        "surname",
-        "userPrincipalName"
-    ],
     "version": 1
 }

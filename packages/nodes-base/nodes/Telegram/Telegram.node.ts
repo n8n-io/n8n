@@ -9,7 +9,7 @@ import type {
 import {
 	BINARY_ENCODING,
 	SEND_AND_WAIT_OPERATION,
-	NodeConnectionType,
+	NodeConnectionTypes,
 	NodeOperationError,
 } from 'n8n-workflow';
 import type { Readable } from 'stream';
@@ -38,8 +38,8 @@ export class Telegram implements INodeType {
 			name: 'Telegram',
 		},
 		usableAsTool: true,
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'telegramApi',

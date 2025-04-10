@@ -1,7 +1,7 @@
 {
     "type": "object",
     "properties": {
-        "resource_state": {
+        "achievement_count": {
             "type": "integer"
         },
         "athlete": {
@@ -13,29 +13,93 @@
                 "resource_state": {
                     "type": "integer"
                 }
-            },
-            "required": [
-                "id",
-                "resource_state"
-            ]
+            }
         },
-        "name": {
-            "type": "string"
-        },
-        "moving_time": {
+        "athlete_count": {
             "type": "integer"
+        },
+        "comment_count": {
+            "type": "integer"
+        },
+        "commute": {
+            "type": "boolean"
+        },
+        "device_watts": {
+            "type": "boolean"
+        },
+        "display_hide_heartrate_option": {
+            "type": "boolean"
         },
         "elapsed_time": {
             "type": "integer"
         },
-        "type": {
-            "type": "string"
+        "flagged": {
+            "type": "boolean"
         },
-        "sport_type": {
-            "type": "string"
+        "from_accepted_tag": {
+            "type": "boolean"
+        },
+        "has_heartrate": {
+            "type": "boolean"
+        },
+        "has_kudoed": {
+            "type": "boolean"
+        },
+        "heartrate_opt_out": {
+            "type": "boolean"
         },
         "id": {
             "type": "integer"
+        },
+        "kudos_count": {
+            "type": "integer"
+        },
+        "location_city": {
+            "type": "null"
+        },
+        "location_state": {
+            "type": "null"
+        },
+        "manual": {
+            "type": "boolean"
+        },
+        "map": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "resource_state": {
+                    "type": "integer"
+                },
+                "summary_polyline": {
+                    "type": "string"
+                }
+            }
+        },
+        "max_heartrate": {
+            "type": "integer"
+        },
+        "moving_time": {
+            "type": "integer"
+        },
+        "name": {
+            "type": "string"
+        },
+        "photo_count": {
+            "type": "integer"
+        },
+        "pr_count": {
+            "type": "integer"
+        },
+        "private": {
+            "type": "boolean"
+        },
+        "resource_state": {
+            "type": "integer"
+        },
+        "sport_type": {
+            "type": "string"
         },
         "start_date": {
             "type": "string"
@@ -46,93 +110,23 @@
         "timezone": {
             "type": "string"
         },
-        "utc_offset": {
+        "total_photo_count": {
             "type": "integer"
-        },
-        "location_city": {
-            "type": "null"
-        },
-        "location_state": {
-            "type": "null"
-        },
-        "achievement_count": {
-            "type": "integer"
-        },
-        "kudos_count": {
-            "type": "integer"
-        },
-        "comment_count": {
-            "type": "integer"
-        },
-        "athlete_count": {
-            "type": "integer"
-        },
-        "photo_count": {
-            "type": "integer"
-        },
-        "map": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "summary_polyline": {
-                    "type": "string"
-                },
-                "resource_state": {
-                    "type": "integer"
-                }
-            },
-            "required": [
-                "id",
-                "summary_polyline",
-                "resource_state"
-            ]
         },
         "trainer": {
             "type": "boolean"
         },
-        "commute": {
-            "type": "boolean"
-        },
-        "manual": {
-            "type": "boolean"
-        },
-        "private": {
-            "type": "boolean"
-        },
-        "visibility": {
+        "type": {
             "type": "string"
-        },
-        "flagged": {
-            "type": "boolean"
-        },
-        "has_heartrate": {
-            "type": "boolean"
-        },
-        "heartrate_opt_out": {
-            "type": "boolean"
-        },
-        "display_hide_heartrate_option": {
-            "type": "boolean"
         },
         "upload_id_str": {
             "type": "string"
         },
-        "from_accepted_tag": {
-            "type": "boolean"
-        },
-        "pr_count": {
+        "utc_offset": {
             "type": "integer"
         },
-        "total_photo_count": {
-            "type": "integer"
-        },
-        "has_kudoed": {
-            "type": "boolean"
-        },
-        "max_heartrate": {
-            "type": "integer"
+        "visibility": {
+            "type": "string"
         }
     },
     "version": 1

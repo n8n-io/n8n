@@ -4,53 +4,31 @@
         "@odata.context": {
             "type": "string"
         },
-        "id": {
-            "type": "string"
+        "body": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "type": "string"
+                },
+                "contentType": {
+                    "type": "string"
+                }
+            }
         },
-        "replyToId": {
-            "type": "null"
-        },
-        "etag": {
-            "type": "string"
-        },
-        "messageType": {
-            "type": "string"
-        },
-        "createdDateTime": {
-            "type": "string"
-        },
-        "lastModifiedDateTime": {
-            "type": "string"
-        },
-        "lastEditedDateTime": {
-            "type": "null"
-        },
-        "deletedDateTime": {
-            "type": "null"
-        },
-        "subject": {
-            "type": "null"
-        },
-        "summary": {
+        "channelIdentity": {
             "type": "null"
         },
         "chatId": {
             "type": "string"
         },
-        "importance": {
+        "createdDateTime": {
             "type": "string"
         },
-        "locale": {
+        "deletedDateTime": {
+            "type": "null"
+        },
+        "etag": {
             "type": "string"
-        },
-        "webUrl": {
-            "type": "null"
-        },
-        "channelIdentity": {
-            "type": "null"
-        },
-        "policyViolation": {
-            "type": "null"
         },
         "eventDetail": {
             "type": "null"
@@ -70,48 +48,54 @@
                         "@odata.type": {
                             "type": "string"
                         },
-                        "id": {
-                            "type": "string"
-                        },
                         "displayName": {
                             "type": "string"
                         },
-                        "userIdentityType": {
+                        "id": {
                             "type": "string"
                         },
                         "tenantId": {
                             "type": "string"
+                        },
+                        "userIdentityType": {
+                            "type": "string"
                         }
-                    },
-                    "required": [
-                        "@odata.type",
-                        "id",
-                        "displayName",
-                        "userIdentityType",
-                        "tenantId"
-                    ]
+                    }
                 }
-            },
-            "required": [
-                "application",
-                "device",
-                "user"
-            ]
+            }
         },
-        "body": {
-            "type": "object",
-            "properties": {
-                "contentType": {
-                    "type": "string"
-                },
-                "content": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "contentType",
-                "content"
-            ]
+        "id": {
+            "type": "string"
+        },
+        "importance": {
+            "type": "string"
+        },
+        "lastEditedDateTime": {
+            "type": "null"
+        },
+        "lastModifiedDateTime": {
+            "type": "string"
+        },
+        "locale": {
+            "type": "string"
+        },
+        "messageType": {
+            "type": "string"
+        },
+        "policyViolation": {
+            "type": "null"
+        },
+        "replyToId": {
+            "type": "null"
+        },
+        "subject": {
+            "type": "null"
+        },
+        "summary": {
+            "type": "null"
+        },
+        "webUrl": {
+            "type": "null"
         }
     },
     "version": 1

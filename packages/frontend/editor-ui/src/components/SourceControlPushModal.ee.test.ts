@@ -214,6 +214,16 @@ describe('SourceControlPushModal', () => {
 				file: '/Users/raul/.n8n/git/tags.json',
 				updatedAt: '2024-12-04T11:29:22.095Z',
 			},
+			{
+				id: 'mappings',
+				name: 'folders',
+				type: 'folders',
+				status: 'modified',
+				location: 'local',
+				conflict: false,
+				file: '/Users/raul/.n8n/git/folders.json',
+				updatedAt: '2024-12-04T11:29:22.095Z',
+			},
 		];
 
 		const sourceControlStore = mockedStore(useSourceControlStore);
@@ -233,6 +243,7 @@ describe('SourceControlPushModal', () => {
 		expect(getByRole('alert').textContent).toContain('Credentials: 1 added.');
 		expect(getByRole('alert').textContent).toContain('Variables: at least one new or modified.');
 		expect(getByRole('alert').textContent).toContain('Tags: at least one new or modified.');
+		expect(getByRole('alert').textContent).toContain('Folders: at least one new or modified.');
 
 		await userEvent.type(getByTestId('source-control-push-modal-commit'), commitMessage);
 

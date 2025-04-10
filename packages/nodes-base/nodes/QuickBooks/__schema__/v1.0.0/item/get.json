@@ -1,59 +1,34 @@
 {
     "type": "object",
     "properties": {
-        "Name": {
-            "type": "string"
-        },
-        "Description": {
-            "type": "string"
-        },
         "Active": {
-            "type": "boolean"
-        },
-        "FullyQualifiedName": {
-            "type": "string"
-        },
-        "Taxable": {
-            "type": "boolean"
-        },
-        "UnitPrice": {
-            "type": "integer"
-        },
-        "Type": {
-            "type": "string"
-        },
-        "IncomeAccountRef": {
-            "type": "object",
-            "properties": {
-                "value": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "value",
-                "name"
-            ]
-        },
-        "TrackQtyOnHand": {
             "type": "boolean"
         },
         "DeferredRevenue": {
             "type": "boolean"
         },
+        "Description": {
+            "type": "string"
+        },
         "domain": {
             "type": "string"
         },
-        "sparse": {
-            "type": "boolean"
+        "FullyQualifiedName": {
+            "type": "string"
         },
         "Id": {
             "type": "string"
         },
-        "SyncToken": {
-            "type": "string"
+        "IncomeAccountRef": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "string"
+                }
+            }
         },
         "MetaData": {
             "type": "object",
@@ -64,27 +39,29 @@
                 "LastUpdatedTime": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "CreateTime",
-                "LastUpdatedTime"
-            ]
+            }
+        },
+        "Name": {
+            "type": "string"
+        },
+        "sparse": {
+            "type": "boolean"
+        },
+        "SyncToken": {
+            "type": "string"
+        },
+        "Taxable": {
+            "type": "boolean"
+        },
+        "TrackQtyOnHand": {
+            "type": "boolean"
+        },
+        "Type": {
+            "type": "string"
+        },
+        "UnitPrice": {
+            "type": "integer"
         }
     },
-    "required": [
-        "Name",
-        "Active",
-        "FullyQualifiedName",
-        "Taxable",
-        "UnitPrice",
-        "Type",
-        "PurchaseCost",
-        "TrackQtyOnHand",
-        "domain",
-        "sparse",
-        "Id",
-        "SyncToken",
-        "MetaData"
-    ],
     "version": 1
 }

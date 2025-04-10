@@ -1,10 +1,10 @@
 {
     "type": "object",
     "properties": {
-        "createdAt": {
-            "type": "string"
+        "active": {
+            "type": "boolean"
         },
-        "updatedAt": {
+        "createdAt": {
             "type": "string"
         },
         "id": {
@@ -13,14 +13,17 @@
         "name": {
             "type": "string"
         },
-        "active": {
-            "type": "boolean"
-        },
         "nodes": {
             "type": "array",
             "items": {
                 "type": "object",
                 "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
                     "parameters": {
                         "type": "object",
                         "properties": {
@@ -29,26 +32,16 @@
                             }
                         }
                     },
-                    "type": {
-                        "type": "string"
-                    },
                     "position": {
                         "type": "array",
                         "items": {
                             "type": "integer"
                         }
                     },
-                    "id": {
-                        "type": "string"
-                    },
-                    "name": {
+                    "type": {
                         "type": "string"
                     }
-                },
-                "required": [
-                    "parameters",
-                    "id"
-                ]
+                }
             }
         },
         "settings": {
@@ -57,32 +50,17 @@
                 "executionOrder": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "executionOrder"
-            ]
-        },
-        "versionId": {
-            "type": "string"
+            }
         },
         "triggerCount": {
             "type": "integer"
+        },
+        "updatedAt": {
+            "type": "string"
+        },
+        "versionId": {
+            "type": "string"
         }
     },
-    "required": [
-        "createdAt",
-        "updatedAt",
-        "id",
-        "name",
-        "active",
-        "nodes",
-        "connections",
-        "settings",
-        "staticData",
-        "meta",
-        "pinData",
-        "versionId",
-        "triggerCount"
-    ],
     "version": 1
 }

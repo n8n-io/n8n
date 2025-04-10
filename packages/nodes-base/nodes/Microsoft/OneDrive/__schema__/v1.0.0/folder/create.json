@@ -7,30 +7,6 @@
         "@odata.etag": {
             "type": "string"
         },
-        "createdDateTime": {
-            "type": "string"
-        },
-        "eTag": {
-            "type": "string"
-        },
-        "id": {
-            "type": "string"
-        },
-        "lastModifiedDateTime": {
-            "type": "string"
-        },
-        "name": {
-            "type": "string"
-        },
-        "size": {
-            "type": "integer"
-        },
-        "webUrl": {
-            "type": "string"
-        },
-        "cTag": {
-            "type": "string"
-        },
         "commentSettings": {
             "type": "object",
             "properties": {
@@ -40,15 +16,9 @@
                         "isDisabled": {
                             "type": "boolean"
                         }
-                    },
-                    "required": [
-                        "isDisabled"
-                    ]
+                    }
                 }
-            },
-            "required": [
-                "commentingDisabled"
-            ]
+            }
         },
         "createdBy": {
             "type": "object",
@@ -62,11 +32,7 @@
                         "id": {
                             "type": "string"
                         }
-                    },
-                    "required": [
-                        "displayName",
-                        "id"
-                    ]
+                    }
                 },
                 "user": {
                     "type": "object",
@@ -80,16 +46,54 @@
                         "id": {
                             "type": "string"
                         }
-                    },
-                    "required": [
-                        "displayName"
-                    ]
+                    }
                 }
-            },
-            "required": [
-                "application",
-                "user"
-            ]
+            }
+        },
+        "createdDateTime": {
+            "type": "string"
+        },
+        "cTag": {
+            "type": "string"
+        },
+        "eTag": {
+            "type": "string"
+        },
+        "fileSystemInfo": {
+            "type": "object",
+            "properties": {
+                "createdDateTime": {
+                    "type": "string"
+                },
+                "lastModifiedDateTime": {
+                    "type": "string"
+                }
+            }
+        },
+        "folder": {
+            "type": "object",
+            "properties": {
+                "childCount": {
+                    "type": "integer"
+                },
+                "view": {
+                    "type": "object",
+                    "properties": {
+                        "sortBy": {
+                            "type": "string"
+                        },
+                        "sortOrder": {
+                            "type": "string"
+                        },
+                        "viewType": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "id": {
+            "type": "string"
         },
         "lastModifiedBy": {
             "type": "object",
@@ -103,11 +107,7 @@
                         "id": {
                             "type": "string"
                         }
-                    },
-                    "required": [
-                        "displayName",
-                        "id"
-                    ]
+                    }
                 },
                 "user": {
                     "type": "object",
@@ -121,16 +121,15 @@
                         "id": {
                             "type": "string"
                         }
-                    },
-                    "required": [
-                        "displayName"
-                    ]
+                    }
                 }
-            },
-            "required": [
-                "application",
-                "user"
-            ]
+            }
+        },
+        "lastModifiedDateTime": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
         },
         "parentReference": {
             "type": "object",
@@ -168,69 +167,15 @@
                         "webId": {
                             "type": "string"
                         }
-                    },
-                    "required": [
-                        "listId",
-                        "listItemUniqueId",
-                        "siteId",
-                        "siteUrl",
-                        "tenantId",
-                        "webId"
-                    ]
+                    }
                 }
-            },
-            "required": [
-                "driveId",
-                "driveType",
-                "id",
-                "path"
-            ]
+            }
         },
-        "fileSystemInfo": {
-            "type": "object",
-            "properties": {
-                "createdDateTime": {
-                    "type": "string"
-                },
-                "lastModifiedDateTime": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "createdDateTime",
-                "lastModifiedDateTime"
-            ]
+        "size": {
+            "type": "integer"
         },
-        "folder": {
-            "type": "object",
-            "properties": {
-                "childCount": {
-                    "type": "integer"
-                },
-                "view": {
-                    "type": "object",
-                    "properties": {
-                        "sortBy": {
-                            "type": "string"
-                        },
-                        "sortOrder": {
-                            "type": "string"
-                        },
-                        "viewType": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "sortBy",
-                        "sortOrder",
-                        "viewType"
-                    ]
-                }
-            },
-            "required": [
-                "childCount",
-                "view"
-            ]
+        "webUrl": {
+            "type": "string"
         }
     },
     "version": 1

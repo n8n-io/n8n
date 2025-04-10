@@ -1,41 +1,17 @@
 {
     "type": "object",
     "properties": {
-        "id": {
-            "type": "integer"
-        },
-        "user_id": {
-            "type": "integer"
-        },
-        "project_id": {
-            "type": "null"
-        },
-        "content": {
-            "type": "string"
+        "active_flag": {
+            "type": "boolean"
         },
         "add_time": {
             "type": "string"
         },
-        "update_time": {
+        "content": {
             "type": "string"
         },
-        "active_flag": {
-            "type": "boolean"
-        },
-        "pinned_to_deal_flag": {
-            "type": "boolean"
-        },
-        "pinned_to_person_flag": {
-            "type": "boolean"
-        },
-        "pinned_to_organization_flag": {
-            "type": "boolean"
-        },
-        "pinned_to_lead_flag": {
-            "type": "boolean"
-        },
-        "pinned_to_project_flag": {
-            "type": "boolean"
+        "id": {
+            "type": "integer"
         },
         "person": {
             "type": "object",
@@ -43,10 +19,28 @@
                 "name": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "name"
-            ]
+            }
+        },
+        "pinned_to_deal_flag": {
+            "type": "boolean"
+        },
+        "pinned_to_lead_flag": {
+            "type": "boolean"
+        },
+        "pinned_to_organization_flag": {
+            "type": "boolean"
+        },
+        "pinned_to_person_flag": {
+            "type": "boolean"
+        },
+        "pinned_to_project_flag": {
+            "type": "boolean"
+        },
+        "project_id": {
+            "type": "null"
+        },
+        "update_time": {
+            "type": "string"
         },
         "user": {
             "type": "object",
@@ -54,42 +48,17 @@
                 "email": {
                     "type": "string"
                 },
-                "name": {
-                    "type": "string"
-                },
                 "is_you": {
                     "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
                 }
-            },
-            "required": [
-                "email",
-                "name",
-                "icon_url",
-                "is_you"
-            ]
+            }
+        },
+        "user_id": {
+            "type": "integer"
         }
     },
-    "required": [
-        "id",
-        "user_id",
-        "deal_id",
-        "person_id",
-        "org_id",
-        "lead_id",
-        "content",
-        "add_time",
-        "update_time",
-        "active_flag",
-        "pinned_to_deal_flag",
-        "pinned_to_person_flag",
-        "pinned_to_organization_flag",
-        "pinned_to_lead_flag",
-        "last_update_user_id",
-        "organization",
-        "person",
-        "deal",
-        "lead",
-        "user"
-    ],
     "version": 1
 }

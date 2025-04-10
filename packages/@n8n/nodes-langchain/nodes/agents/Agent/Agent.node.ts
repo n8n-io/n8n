@@ -1,4 +1,4 @@
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import type {
 	INodeInputConfiguration,
 	INodeInputFilter,
@@ -7,6 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 	INodeProperties,
+	NodeConnectionType,
 } from 'n8n-workflow';
 
 import { promptTypeOptions, textFromPreviousNode, textInput } from '@utils/descriptions';
@@ -46,14 +47,14 @@ function getInputs(
 		inputs: SpecialInput[],
 	): Array<NodeConnectionType | INodeInputConfiguration> => {
 		const displayNames: { [key: string]: string } = {
-			[NodeConnectionType.AiLanguageModel]: 'Model',
-			[NodeConnectionType.AiMemory]: 'Memory',
-			[NodeConnectionType.AiTool]: 'Tool',
-			[NodeConnectionType.AiOutputParser]: 'Output Parser',
+			ai_languageModel: 'Model',
+			ai_memory: 'Memory',
+			ai_tool: 'Tool',
+			ai_outputParser: 'Output Parser',
 		};
 
 		return inputs.map(({ type, filter }) => {
-			const isModelType = type === NodeConnectionType.AiLanguageModel;
+			const isModelType = type === ('ai_languageModel' as NodeConnectionType);
 			let displayName = type in displayNames ? displayNames[type] : undefined;
 			if (
 				isModelType &&
@@ -65,11 +66,9 @@ function getInputs(
 				type,
 				displayName,
 				required: isModelType,
-				maxConnections: [
-					NodeConnectionType.AiLanguageModel,
-					NodeConnectionType.AiMemory,
-					NodeConnectionType.AiOutputParser,
-				].includes(type as NodeConnectionType)
+				maxConnections: ['ai_languageModel', 'ai_memory', 'ai_outputParser'].includes(
+					type as NodeConnectionType,
+				)
 					? 1
 					: undefined,
 			};
@@ -87,7 +86,7 @@ function getInputs(
 	if (agent === 'conversationalAgent') {
 		specialInputs = [
 			{
-				type: NodeConnectionType.AiLanguageModel,
+				type: 'ai_languageModel',
 				filter: {
 					nodes: [
 						'@n8n/n8n-nodes-langchain.lmChatAnthropic',
@@ -101,23 +100,24 @@ function getInputs(
 						'@n8n/n8n-nodes-langchain.lmChatAzureOpenAi',
 						'@n8n/n8n-nodes-langchain.lmChatDeepSeek',
 						'@n8n/n8n-nodes-langchain.lmChatOpenRouter',
+						'@n8n/n8n-nodes-langchain.lmChatXAiGrok',
 					],
 				},
 			},
 			{
-				type: NodeConnectionType.AiMemory,
+				type: 'ai_memory',
 			},
 			{
-				type: NodeConnectionType.AiTool,
+				type: 'ai_tool',
 			},
 			{
-				type: NodeConnectionType.AiOutputParser,
+				type: 'ai_outputParser',
 			},
 		];
 	} else if (agent === 'toolsAgent') {
 		specialInputs = [
 			{
-				type: NodeConnectionType.AiLanguageModel,
+				type: 'ai_languageModel',
 				filter: {
 					nodes: [
 						'@n8n/n8n-nodes-langchain.lmChatAnthropic',
@@ -131,24 +131,25 @@ function getInputs(
 						'@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
 						'@n8n/n8n-nodes-langchain.lmChatDeepSeek',
 						'@n8n/n8n-nodes-langchain.lmChatOpenRouter',
+						'@n8n/n8n-nodes-langchain.lmChatXAiGrok',
 					],
 				},
 			},
 			{
-				type: NodeConnectionType.AiMemory,
+				type: 'ai_memory',
 			},
 			{
-				type: NodeConnectionType.AiTool,
+				type: 'ai_tool',
 				required: true,
 			},
 			{
-				type: NodeConnectionType.AiOutputParser,
+				type: 'ai_outputParser',
 			},
 		];
 	} else if (agent === 'openAiFunctionsAgent') {
 		specialInputs = [
 			{
-				type: NodeConnectionType.AiLanguageModel,
+				type: 'ai_languageModel',
 				filter: {
 					nodes: [
 						'@n8n/n8n-nodes-langchain.lmChatOpenAi',
@@ -157,57 +158,55 @@ function getInputs(
 				},
 			},
 			{
-				type: NodeConnectionType.AiMemory,
+				type: 'ai_memory',
 			},
 			{
-				type: NodeConnectionType.AiTool,
+				type: 'ai_tool',
 				required: true,
 			},
 			{
-				type: NodeConnectionType.AiOutputParser,
+				type: 'ai_outputParser',
 			},
 		];
 	} else if (agent === 'reActAgent') {
 		specialInputs = [
 			{
-				type: NodeConnectionType.AiLanguageModel,
+				type: 'ai_languageModel',
 			},
 			{
-				type: NodeConnectionType.AiTool,
+				type: 'ai_tool',
 			},
 			{
-				type: NodeConnectionType.AiOutputParser,
+				type: 'ai_outputParser',
 			},
 		];
 	} else if (agent === 'sqlAgent') {
 		specialInputs = [
 			{
-				type: NodeConnectionType.AiLanguageModel,
+				type: 'ai_languageModel',
 			},
 			{
-				type: NodeConnectionType.AiMemory,
+				type: 'ai_memory',
 			},
 		];
 	} else if (agent === 'planAndExecuteAgent') {
 		specialInputs = [
 			{
-				type: NodeConnectionType.AiLanguageModel,
+				type: 'ai_languageModel',
 			},
 			{
-				type: NodeConnectionType.AiTool,
+				type: 'ai_tool',
 			},
 			{
-				type: NodeConnectionType.AiOutputParser,
+				type: 'ai_outputParser',
 			},
 		];
 	}
 
 	if (hasOutputParser === false) {
-		specialInputs = specialInputs.filter(
-			(input) => input.type !== NodeConnectionType.AiOutputParser,
-		);
+		specialInputs = specialInputs.filter((input) => input.type !== 'ai_outputParser');
 	}
-	return [NodeConnectionType.Main, ...getInputData(specialInputs)];
+	return ['main', ...getInputData(specialInputs)];
 }
 
 const agentTypeProperty: INodeProperties = {
@@ -264,7 +263,7 @@ export class Agent implements INodeType {
 		icon: 'fa:robot',
 		iconColor: 'black',
 		group: ['transform'],
-		version: [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8],
+		version: [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9],
 		description: 'Generates an action plan and executes it. Can use external tools.',
 		subtitle:
 			"={{ {	toolsAgent: 'Tools Agent', conversationalAgent: 'Conversational Agent', openAiFunctionsAgent: 'OpenAI Functions Agent', reActAgent: 'ReAct Agent', sqlAgent: 'SQL Agent', planAndExecuteAgent: 'Plan and Execute Agent' }[$parameter.agent] }}",
@@ -292,7 +291,7 @@ export class Agent implements INodeType {
 				return getInputs(agent, hasOutputParser)
 			})($parameter.agent, $parameter.hasOutputParser === undefined || $parameter.hasOutputParser === true)
 		}}`,
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-class-description-credentials-name-unsuffixed
@@ -432,7 +431,7 @@ export class Agent implements INodeType {
 				},
 			},
 			{
-				displayName: `Connect an <a data-action='openSelectiveNodeCreator' data-action-parameter-connectiontype='${NodeConnectionType.AiOutputParser}'>output parser</a> on the canvas to specify the output format you require`,
+				displayName: `Connect an <a data-action='openSelectiveNodeCreator' data-action-parameter-connectiontype='${NodeConnectionTypes.AiOutputParser}'>output parser</a> on the canvas to specify the output format you require`,
 				name: 'notice',
 				type: 'notice',
 				default: '',

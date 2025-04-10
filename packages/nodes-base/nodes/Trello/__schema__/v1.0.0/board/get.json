@@ -1,112 +1,141 @@
 {
     "type": "object",
     "properties": {
-        "id": {
-            "type": "string"
-        },
-        "name": {
-            "type": "string"
+        "closed": {
+            "type": "boolean"
         },
         "desc": {
             "type": "string"
         },
-        "closed": {
-            "type": "boolean"
-        },
-        "idOrganization": {
+        "id": {
             "type": "string"
         },
         "idEnterprise": {
             "type": "null"
         },
+        "idOrganization": {
+            "type": "string"
+        },
+        "labelNames": {
+            "type": "object",
+            "properties": {
+                "black": {
+                    "type": "string"
+                },
+                "black_dark": {
+                    "type": "string"
+                },
+                "black_light": {
+                    "type": "string"
+                },
+                "blue": {
+                    "type": "string"
+                },
+                "blue_dark": {
+                    "type": "string"
+                },
+                "blue_light": {
+                    "type": "string"
+                },
+                "green": {
+                    "type": "string"
+                },
+                "green_dark": {
+                    "type": "string"
+                },
+                "green_light": {
+                    "type": "string"
+                },
+                "lime": {
+                    "type": "string"
+                },
+                "lime_dark": {
+                    "type": "string"
+                },
+                "lime_light": {
+                    "type": "string"
+                },
+                "orange": {
+                    "type": "string"
+                },
+                "orange_dark": {
+                    "type": "string"
+                },
+                "orange_light": {
+                    "type": "string"
+                },
+                "pink": {
+                    "type": "string"
+                },
+                "pink_dark": {
+                    "type": "string"
+                },
+                "pink_light": {
+                    "type": "string"
+                },
+                "purple": {
+                    "type": "string"
+                },
+                "purple_dark": {
+                    "type": "string"
+                },
+                "purple_light": {
+                    "type": "string"
+                },
+                "red": {
+                    "type": "string"
+                },
+                "red_dark": {
+                    "type": "string"
+                },
+                "red_light": {
+                    "type": "string"
+                },
+                "sky": {
+                    "type": "string"
+                },
+                "sky_dark": {
+                    "type": "string"
+                },
+                "sky_light": {
+                    "type": "string"
+                },
+                "yellow": {
+                    "type": "string"
+                },
+                "yellow_dark": {
+                    "type": "string"
+                },
+                "yellow_light": {
+                    "type": "string"
+                }
+            }
+        },
+        "name": {
+            "type": "string"
+        },
         "pinned": {
             "type": "boolean"
-        },
-        "url": {
-            "type": "string"
-        },
-        "shortUrl": {
-            "type": "string"
         },
         "prefs": {
             "type": "object",
             "properties": {
-                "permissionLevel": {
-                    "type": "string"
-                },
-                "hideVotes": {
-                    "type": "boolean"
-                },
-                "voting": {
-                    "type": "string"
-                },
-                "comments": {
-                    "type": "string"
-                },
-                "invitations": {
-                    "type": "string"
-                },
-                "selfJoin": {
-                    "type": "boolean"
-                },
-                "cardCovers": {
-                    "type": "boolean"
-                },
-                "showCompleteStatus": {
-                    "type": "boolean"
-                },
-                "cardCounts": {
-                    "type": "boolean"
-                },
-                "isTemplate": {
-                    "type": "boolean"
-                },
-                "cardAging": {
-                    "type": "string"
-                },
-                "calendarFeedEnabled": {
-                    "type": "boolean"
-                },
-                "hiddenPluginBoardButtons": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "switcherViews": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "viewType": {
-                                "type": "string"
-                            },
-                            "enabled": {
-                                "type": "boolean"
-                            }
-                        },
-                        "required": [
-                            "viewType",
-                            "enabled"
-                        ]
-                    }
-                },
                 "background": {
-                    "type": "string"
-                },
-                "backgroundTile": {
-                    "type": "boolean"
-                },
-                "backgroundBrightness": {
                     "type": "string"
                 },
                 "backgroundBottomColor": {
                     "type": "string"
                 },
+                "backgroundBrightness": {
+                    "type": "string"
+                },
+                "backgroundTile": {
+                    "type": "boolean"
+                },
                 "backgroundTopColor": {
                     "type": "string"
                 },
-                "canBePublic": {
+                "calendarFeedEnabled": {
                     "type": "boolean"
                 },
                 "canBeEnterprise": {
@@ -118,170 +147,73 @@
                 "canBePrivate": {
                     "type": "boolean"
                 },
+                "canBePublic": {
+                    "type": "boolean"
+                },
                 "canInvite": {
                     "type": "boolean"
+                },
+                "cardAging": {
+                    "type": "string"
+                },
+                "cardCounts": {
+                    "type": "boolean"
+                },
+                "cardCovers": {
+                    "type": "boolean"
+                },
+                "comments": {
+                    "type": "string"
+                },
+                "hiddenPluginBoardButtons": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "hideVotes": {
+                    "type": "boolean"
+                },
+                "invitations": {
+                    "type": "string"
+                },
+                "isTemplate": {
+                    "type": "boolean"
+                },
+                "permissionLevel": {
+                    "type": "string"
+                },
+                "selfJoin": {
+                    "type": "boolean"
+                },
+                "showCompleteStatus": {
+                    "type": "boolean"
+                },
+                "switcherViews": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "enabled": {
+                                "type": "boolean"
+                            },
+                            "viewType": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "voting": {
+                    "type": "string"
                 }
-            },
-            "required": [
-                "permissionLevel",
-                "hideVotes",
-                "voting",
-                "comments",
-                "invitations",
-                "selfJoin",
-                "cardCovers",
-                "cardCounts",
-                "isTemplate",
-                "cardAging",
-                "calendarFeedEnabled",
-                "hiddenPluginBoardButtons",
-                "switcherViews",
-                "background",
-                "backgroundColor",
-                "backgroundImage",
-                "backgroundImageScaled",
-                "backgroundTile",
-                "backgroundBrightness",
-                "sharedSourceUrl",
-                "backgroundBottomColor",
-                "backgroundTopColor",
-                "canBePublic",
-                "canBeEnterprise",
-                "canBeOrg",
-                "canBePrivate",
-                "canInvite"
-            ]
+            }
         },
-        "labelNames": {
-            "type": "object",
-            "properties": {
-                "green": {
-                    "type": "string"
-                },
-                "yellow": {
-                    "type": "string"
-                },
-                "orange": {
-                    "type": "string"
-                },
-                "red": {
-                    "type": "string"
-                },
-                "purple": {
-                    "type": "string"
-                },
-                "blue": {
-                    "type": "string"
-                },
-                "sky": {
-                    "type": "string"
-                },
-                "lime": {
-                    "type": "string"
-                },
-                "pink": {
-                    "type": "string"
-                },
-                "black": {
-                    "type": "string"
-                },
-                "green_dark": {
-                    "type": "string"
-                },
-                "yellow_dark": {
-                    "type": "string"
-                },
-                "orange_dark": {
-                    "type": "string"
-                },
-                "red_dark": {
-                    "type": "string"
-                },
-                "purple_dark": {
-                    "type": "string"
-                },
-                "blue_dark": {
-                    "type": "string"
-                },
-                "sky_dark": {
-                    "type": "string"
-                },
-                "lime_dark": {
-                    "type": "string"
-                },
-                "pink_dark": {
-                    "type": "string"
-                },
-                "black_dark": {
-                    "type": "string"
-                },
-                "green_light": {
-                    "type": "string"
-                },
-                "yellow_light": {
-                    "type": "string"
-                },
-                "orange_light": {
-                    "type": "string"
-                },
-                "red_light": {
-                    "type": "string"
-                },
-                "purple_light": {
-                    "type": "string"
-                },
-                "blue_light": {
-                    "type": "string"
-                },
-                "sky_light": {
-                    "type": "string"
-                },
-                "lime_light": {
-                    "type": "string"
-                },
-                "pink_light": {
-                    "type": "string"
-                },
-                "black_light": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "green",
-                "yellow",
-                "orange",
-                "red",
-                "purple",
-                "blue",
-                "sky",
-                "lime",
-                "pink",
-                "black",
-                "green_dark",
-                "yellow_dark",
-                "orange_dark",
-                "red_dark",
-                "purple_dark",
-                "blue_dark",
-                "sky_dark",
-                "lime_dark",
-                "pink_dark",
-                "black_dark",
-                "green_light",
-                "yellow_light",
-                "orange_light",
-                "red_light",
-                "purple_light",
-                "blue_light",
-                "sky_light",
-                "lime_light",
-                "pink_light",
-                "black_light"
-            ]
+        "shortUrl": {
+            "type": "string"
+        },
+        "url": {
+            "type": "string"
         }
     },
-    "required": [
-        "id"
-    ],
     "version": 1
 }

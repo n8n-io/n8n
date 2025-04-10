@@ -1,19 +1,22 @@
 {
     "type": "object",
     "properties": {
-        "id": {
-            "type": "string"
-        },
-        "project_id": {
-            "type": "string"
-        },
-        "order": {
+        "comment_count": {
             "type": "integer"
         },
         "content": {
             "type": "string"
         },
+        "created_at": {
+            "type": "string"
+        },
+        "creator_id": {
+            "type": "string"
+        },
         "description": {
+            "type": "string"
+        },
+        "id": {
             "type": "string"
         },
         "is_completed": {
@@ -25,40 +28,14 @@
                 "type": "string"
             }
         },
+        "order": {
+            "type": "integer"
+        },
         "priority": {
             "type": "integer"
         },
-        "comment_count": {
-            "type": "integer"
-        },
-        "creator_id": {
+        "project_id": {
             "type": "string"
-        },
-        "created_at": {
-            "type": "string"
-        },
-        "due": {
-            "type": "object",
-            "properties": {
-                "date": {
-                    "type": "string"
-                },
-                "string": {
-                    "type": "string"
-                },
-                "lang": {
-                    "type": "string"
-                },
-                "is_recurring": {
-                    "type": "boolean"
-                }
-            },
-            "required": [
-                "date",
-                "string",
-                "lang",
-                "is_recurring"
-            ]
         },
         "url": {
             "type": "string"

@@ -1,10 +1,10 @@
 {
     "type": "object",
     "properties": {
-        "id": {
+        "historyId": {
             "type": "string"
         },
-        "historyId": {
+        "id": {
             "type": "string"
         },
         "messages": {
@@ -12,30 +12,37 @@
             "items": {
                 "type": "object",
                 "properties": {
-                    "id": {
+                    "ARC-Authentication-Results": {
                         "type": "string"
                     },
-                    "threadId": {
+                    "ARC-Message-Signature": {
                         "type": "string"
                     },
-                    "snippet": {
+                    "ARC-Seal": {
                         "type": "string"
                     },
-                    "payload": {
-                        "type": "object",
-                        "properties": {
-                            "mimeType": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "mimeType"
-                        ]
+                    "Authentication-Results": {
+                        "type": "string"
                     },
-                    "sizeEstimate": {
-                        "type": "integer"
+                    "Content-Type": {
+                        "type": "string"
+                    },
+                    "Date": {
+                        "type": "string"
+                    },
+                    "Delivered-To": {
+                        "type": "string"
+                    },
+                    "DKIM-Signature": {
+                        "type": "string"
+                    },
+                    "From": {
+                        "type": "string"
                     },
                     "historyId": {
+                        "type": "string"
+                    },
+                    "id": {
                         "type": "string"
                     },
                     "internalDate": {
@@ -52,34 +59,68 @@
                                 "name": {
                                     "type": "string"
                                 }
-                            },
-                            "required": [
-                                "id",
-                                "name"
-                            ]
+                            }
                         }
                     },
-                    "From": {
+                    "MIME-Version": {
+                        "type": "string"
+                    },
+                    "payload": {
+                        "type": "object",
+                        "properties": {
+                            "body": {
+                                "type": "object",
+                                "properties": {
+                                    "data": {
+                                        "type": "string"
+                                    },
+                                    "size": {
+                                        "type": "integer"
+                                    }
+                                }
+                            },
+                            "filename": {
+                                "type": "string"
+                            },
+                            "mimeType": {
+                                "type": "string"
+                            },
+                            "partId": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "Received": {
+                        "type": "string"
+                    },
+                    "Received-SPF": {
+                        "type": "string"
+                    },
+                    "Return-Path": {
+                        "type": "string"
+                    },
+                    "sizeEstimate": {
+                        "type": "integer"
+                    },
+                    "snippet": {
+                        "type": "string"
+                    },
+                    "Subject": {
+                        "type": "string"
+                    },
+                    "threadId": {
                         "type": "string"
                     },
                     "To": {
                         "type": "string"
                     },
-                    "Subject": {
+                    "X-Google-Smtp-Source": {
+                        "type": "string"
+                    },
+                    "X-Received": {
                         "type": "string"
                     }
-                },
-                "required": [
-                    "id",
-                    "threadId",
-                    "snippet",
-                    "payload",
-                    "sizeEstimate",
-                    "historyId",
-                    "internalDate",
-                    "labels",
-                    "From"
-                ]
+                }
             }
         }
     },

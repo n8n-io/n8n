@@ -4,7 +4,7 @@ import { PlanAndExecuteAgentExecutor } from 'langchain/experimental/plan_and_exe
 import {
 	type IExecuteFunctions,
 	type INodeExecutionData,
-	NodeConnectionType,
+	NodeConnectionTypes,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -21,7 +21,7 @@ export async function planAndExecuteAgentExecute(
 ): Promise<INodeExecutionData[][]> {
 	this.logger.debug('Executing PlanAndExecute Agent');
 	const model = (await this.getInputConnectionData(
-		NodeConnectionType.AiLanguageModel,
+		NodeConnectionTypes.AiLanguageModel,
 		0,
 	)) as BaseChatModel;
 
