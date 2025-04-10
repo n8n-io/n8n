@@ -1,5 +1,5 @@
 import { mock } from 'jest-mock-extended';
-import { type INode, type IDataObject, type Workflow } from 'n8n-workflow';
+import { type INode, type Workflow } from 'n8n-workflow';
 
 import { testWebhookTriggerNode } from '@test/nodes/TriggerHelpers';
 
@@ -33,12 +33,6 @@ jest.mock('../GenericFunctions', () => {
 });
 
 describe('TelegramTrigger', () => {
-	let staticData: IDataObject;
-
-	beforeEach(() => {
-		staticData = {};
-	});
-
 	afterEach(() => {
 		jest.resetAllMocks();
 	});
