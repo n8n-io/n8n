@@ -28,7 +28,6 @@ import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { toError } from '@/utils';
 
 const DEFAULT_REGISTRY = 'https://registry.npmjs.org';
-const VETTED_COMMUNITY_NODES_REGISTRY = 'https://registry.npmjs.org';
 
 const {
 	PACKAGE_NAME_NOT_PROVIDED,
@@ -333,14 +332,11 @@ export class CommunityPackagesService {
 		});
 	}
 
-	private getNpmRegistry(vettedNodesRegistry?: boolean) {
-		if (vettedNodesRegistry) return VETTED_COMMUNITY_NODES_REGISTRY;
-
+	private getNpmRegistry() {
 		const { registry } = this.globalConfig.nodes.communityPackages;
 		if (registry !== DEFAULT_REGISTRY && !this.license.isCustomNpmRegistryEnabled()) {
 			throw new FeatureNotLicensedError(LICENSE_FEATURES.COMMUNITY_NODES_CUSTOM_REGISTRY);
 		}
-
 		return registry;
 	}
 
@@ -378,10 +374,11 @@ export class CommunityPackagesService {
 	) {
 		const isUpdate = 'installedPackage' in options;
 		const packageVersion = isUpdate || !options.version ? 'latest' : options.version;
-		const isVettedPackageInstall = 'checksum' in options && options.checksum ? true : false;
-		const registryUrl = this.getNpmRegistry(isVettedPackageInstall);
+
+		const registryUrl = this.getNpmRegistry();
 		const command = `npm install ${packageName}@${packageVersion} --registry=${registryUrl}`;
 
+		const isVettedPackageInstall = 'checksum' in options && options.checksum ? true : false;
 		this.checkInstallPermissions(isUpdate, isVettedPackageInstall);
 
 		if (!isUpdate && options.checksum) {
