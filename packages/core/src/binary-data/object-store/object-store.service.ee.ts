@@ -55,7 +55,7 @@ export class ObjectStoreService {
 	 *
 	 * @doc https://docs.aws.amazon.com/AmazonS3/latest/API/API_HeadBucket.html
 	 */
-	async checkConnection() {
+	async checkConnection(): Promise<unknown> {
 		if (this.isReady) return;
 
 		return await this.request('HEAD', '');
@@ -66,7 +66,11 @@ export class ObjectStoreService {
 	 *
 	 * @doc https://docs.aws.amazon.com/AmazonS3/latest/API/API_PutObject.html
 	 */
-	async put(filename: string, buffer: Buffer, metadata: BinaryData.PreWriteMetadata = {}) {
+	async put(
+		filename: string,
+		buffer: Buffer,
+		metadata: BinaryData.PreWriteMetadata = {},
+	): Promise<unknown> {
 		const headers: Record<string, string | number> = {
 			'Content-Length': buffer.length,
 			'Content-MD5': createHash('md5').update(buffer).digest('base64'),
@@ -113,7 +117,7 @@ export class ObjectStoreService {
 	 *
 	 * @doc https://docs.aws.amazon.com/AmazonS3/latest/API/API_GetObject.html
 	 */
-	async deleteOne(fileId: string) {
+	async deleteOne(fileId: string): Promise<unknown> {
 		return await this.request('DELETE', fileId);
 	}
 
@@ -122,7 +126,7 @@ export class ObjectStoreService {
 	 *
 	 * @doc https://docs.aws.amazon.com/AmazonS3/latest/API/API_DeleteObjects.html
 	 */
-	async deleteMany(prefix: string) {
+	async deleteMany(prefix: string): Promise<unknown> {
 		const objects = await this.list(prefix);
 
 		if (objects.length === 0) return;
