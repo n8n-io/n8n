@@ -6,7 +6,7 @@ import { Buffer } from 'buffer';
 import { mock } from 'jest-mock-extended';
 import type { ToolsAgentAction } from 'langchain/dist/agents/tool_calling/output_parser';
 import type { Tool } from 'langchain/tools';
-import type { IExecuteFunctions } from 'n8n-workflow';
+import type { IExecuteFunctions, INode } from 'n8n-workflow';
 import { NodeOperationError, BINARY_ENCODING, NodeConnectionTypes } from 'n8n-workflow';
 import type { ZodType } from 'zod';
 import { z } from 'zod';
@@ -235,11 +235,11 @@ describe('prepareMessages', () => {
 
 	it('should not include system_message in prompt templates if not provided after version 1.9', async () => {
 		const fakeItem = { json: {} };
-		const ctx = createFakeExecuteFunctions({
-			getInputData: jest.fn().mockReturnValue([fakeItem]),
-		});
-		ctx.getNode().typeVersion = 1.9;
-		const messages = await prepareMessages(ctx, 0, {});
+		const mockNode = mock<INode>();
+		mockNode.typeVersion = 1.9;
+		mockContext.getInputData.mockReturnValue([fakeItem]);
+		mockContext.getNode.mockReturnValue(mockNode);
+		const messages = await prepareMessages(mockContext, 0, {});
 
 		expect(messages.length).toBe(3);
 		expect(messages).not.toContainEqual(['system', '{system_message}']);
@@ -247,11 +247,12 @@ describe('prepareMessages', () => {
 
 	it('should include system_message in prompt templates if provided after version 1.9', async () => {
 		const fakeItem = { json: {} };
-		const ctx = createFakeExecuteFunctions({
-			getInputData: jest.fn().mockReturnValue([fakeItem]),
-		});
-		ctx.getNode().typeVersion = 1.9;
-		const messages = await prepareMessages(ctx, 0, { systemMessage: 'Hello' });
+		const mockNode = mock<INode>();
+		mockNode.typeVersion = 1.9;
+		mockContext.getInputData.mockReturnValue([fakeItem]);
+		mockContext.getNode.mockReturnValue(mockNode);
+
+		const messages = await prepareMessages(mockContext, 0, { systemMessage: 'Hello' });
 
 		expect(messages.length).toBe(4);
 		expect(messages).toContainEqual(['system', '{system_message}']);
@@ -259,11 +260,12 @@ describe('prepareMessages', () => {
 
 	it('should include system_message in prompt templates if not provided before version 1.9', async () => {
 		const fakeItem = { json: {} };
-		const ctx = createFakeExecuteFunctions({
-			getInputData: jest.fn().mockReturnValue([fakeItem]),
-		});
-		ctx.getNode().typeVersion = 1.8;
-		const messages = await prepareMessages(ctx, 0, {});
+		const mockNode = mock<INode>();
+		mockNode.typeVersion = 1.8;
+		mockContext.getInputData.mockReturnValue([fakeItem]);
+		mockContext.getNode.mockReturnValue(mockNode);
+
+		const messages = await prepareMessages(mockContext, 0, {});
 
 		expect(messages.length).toBe(4);
 		expect(messages).toContainEqual(['system', '{system_message}']);
@@ -271,11 +273,12 @@ describe('prepareMessages', () => {
 
 	it('should include system_message with formatting_instructions in prompt templates if provided before version 1.9', async () => {
 		const fakeItem = { json: {} };
-		const ctx = createFakeExecuteFunctions({
-			getInputData: jest.fn().mockReturnValue([fakeItem]),
-		});
-		ctx.getNode().typeVersion = 1.8;
-		const messages = await prepareMessages(ctx, 0, {
+		const mockNode = mock<INode>();
+		mockNode.typeVersion = 1.8;
+		mockContext.getInputData.mockReturnValue([fakeItem]);
+		mockContext.getNode.mockReturnValue(mockNode);
+
+		const messages = await prepareMessages(mockContext, 0, {
 			systemMessage: 'Hello',
 			outputParser: mock<N8nOutputParser>(),
 		});
@@ -286,11 +289,14 @@ describe('prepareMessages', () => {
 
 	it('should add formatting instructions when omitting system message after version 1.9', async () => {
 		const fakeItem = { json: {} };
-		const ctx = createFakeExecuteFunctions({
-			getInputData: jest.fn().mockReturnValue([fakeItem]),
+		const mockNode = mock<INode>();
+		mockNode.typeVersion = 1.9;
+		mockContext.getInputData.mockReturnValue([fakeItem]);
+		mockContext.getNode.mockReturnValue(mockNode);
+
+		const messages = await prepareMessages(mockContext, 0, {
+			outputParser: mock<N8nOutputParser>(),
 		});
-		ctx.getNode().typeVersion = 1.9;
-		const messages = await prepareMessages(ctx, 0, { outputParser: mock<N8nOutputParser>() });
 
 		expect(messages.length).toBe(4);
 		expect(messages).toContainEqual(['system', '{formatting_instructions}']);
