@@ -341,6 +341,8 @@ const saveSettings = async () => {
 	isLoading.value = true;
 	data.versionId = workflowsStore.workflowVersionId;
 
+	const oldSettings = deepCopy(workflowsStore.workflowSettings);
+
 	try {
 		const workflowData = await workflowsStore.updateWorkflow(String(route.params.name), data);
 		workflowsStore.setWorkflowVersionId(workflowData.versionId);
@@ -354,8 +356,6 @@ const saveSettings = async () => {
 	const localWorkflowSettings = Object.fromEntries(
 		Object.entries(workflowSettings.value).filter(([, value]) => value !== 'DEFAULT'),
 	);
-
-	const oldSettings = deepCopy(workflowsStore.workflowSettings);
 
 	workflowsStore.setWorkflowSettings(localWorkflowSettings);
 
@@ -371,6 +371,9 @@ const saveSettings = async () => {
 	void externalHooks.run('workflowSettings.saveSettings', { oldSettings });
 	telemetry.track('User updated workflow settings', {
 		workflow_id: workflowsStore.workflowId,
+		// null and undefined values are removed from the object, but we need the keys to be there
+		time_saved: workflowSettings.value.timeSavedPerExecution ?? '',
+		error_workflow: workflowSettings.value.errorWorkflow ?? '',
 	});
 };
 
