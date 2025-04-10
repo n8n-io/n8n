@@ -27,6 +27,11 @@ export async function handleRetrieveAsToolOperation<T extends VectorStore = Vect
 		itemIndex,
 		true,
 	) as boolean;
+	const includeDocumentId = context.getNodeParameter(
+		'includeDocumentId',
+		itemIndex,
+		true,
+	) as boolean;
 
 	// Get metadata filters
 	const filter = getMetadataFiltersValues(context, itemIndex);
@@ -60,12 +65,13 @@ export async function handleRetrieveAsToolOperation<T extends VectorStore = Vect
 				// Format the documents for the tool output
 				return documents
 					.map((document) => {
-						if (includeDocumentMetadata) {
-							return { type: 'text', text: JSON.stringify(document[0]) };
-						}
 						return {
 							type: 'text',
-							text: JSON.stringify({ pageContent: document[0].pageContent }),
+							text: JSON.stringify({
+								pageContent: document[0].pageContent,
+								...(includeDocumentMetadata ? { metadata: document[0].metadata } : {}),
+								...(includeDocumentId ? { id: document[0].id } : {}),
+							}),
 						};
 					})
 					.filter((document) => !!document);

@@ -198,6 +198,18 @@ export const createVectorStoreNode = <T extends VectorStore = VectorStore>(
 						},
 					},
 				},
+				{
+					displayName: 'Include ID',
+					name: 'includeDocumentId',
+					type: 'boolean',
+					default: true,
+					description: 'Whether or not to include document ID',
+					displayOptions: {
+						show: {
+							mode: ['load', 'retrieve-as-tool'],
+						},
+					},
+				},
 				// ID is always used for update operation
 				{
 					displayName: 'ID',

@@ -26,6 +26,7 @@ const MOCK_DOCUMENTS: Array<[DocumentInterface, number]> = [
 			metadata: {
 				id: 123,
 			},
+			id: '0',
 		},
 		0,
 	],
@@ -35,6 +36,7 @@ const MOCK_DOCUMENTS: Array<[DocumentInterface, number]> = [
 			metadata: {
 				id: 567,
 			},
+			id: '1',
 		},
 		0,
 	],
@@ -103,6 +105,7 @@ describe('createVectorStoreNode', () => {
 				description: 'tool description',
 				toolName: 'tool name',
 				includeDocumentMetadata: true,
+				includeDocumentId: true,
 			};
 			context.getNodeParameter.mockImplementation(
 				(parameterName: string): NodeParameterValueType | object => parameters[parameterName],
@@ -138,6 +141,7 @@ describe('createVectorStoreNode', () => {
 				description: 'tool description',
 				toolName: 'tool name',
 				includeDocumentMetadata: false,
+				includeDocumentId: false,
 			};
 			context.getNodeParameter.mockImplementation(
 				(parameterName: string): NodeParameterValueType | object => parameters[parameterName],

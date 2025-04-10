@@ -25,6 +25,7 @@ describe('Vector Store Operation Handlers', () => {
 			prompt: 'test query',
 			topK: 3,
 			includeDocumentMetadata: true,
+			includeDocumentId: true,
 			toolName: 'test_tool',
 			toolDescription: 'Test tool description',
 		};
@@ -80,6 +81,14 @@ describe('Vector Store Operation Handlers', () => {
 			const result = await handleLoadOperation(mockContext, mockArgs, mockEmbeddings, 0);
 
 			expect(result[0].json.document).not.toHaveProperty('metadata');
+		});
+
+		it('should exclude document ID when includeDocumentId is false', async () => {
+			nodeParameters.includeDocumentId = false;
+
+			const result = await handleLoadOperation(mockContext, mockArgs, mockEmbeddings, 0);
+
+			expect(result[0].json.document).not.toHaveProperty('id');
 		});
 	});
 

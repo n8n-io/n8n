@@ -34,6 +34,7 @@ describe('handleRetrieveAsToolOperation', () => {
 			toolDescription: 'Search the test knowledge base',
 			topK: 3,
 			includeDocumentMetadata: true,
+			includeDocumentId: true,
 		};
 
 		mockContext = mock<ISupplyDataFunctions>();
@@ -47,8 +48,14 @@ describe('handleRetrieveAsToolOperation', () => {
 
 		mockVectorStore = mock<VectorStore>();
 		mockVectorStore.similaritySearchVectorWithScore.mockResolvedValue([
-			[{ pageContent: 'test content 1', metadata: { test: 'metadata 1' } } as Document, 0.95],
-			[{ pageContent: 'test content 2', metadata: { test: 'metadata 2' } } as Document, 0.85],
+			[
+				{ pageContent: 'test content 1', metadata: { test: 'metadata 1' }, id: '0' } as Document,
+				0.95,
+			],
+			[
+				{ pageContent: 'test content 2', metadata: { test: 'metadata 2' }, id: '1' } as Document,
+				0.85,
+			],
 		]);
 
 		mockArgs = {
@@ -147,6 +154,32 @@ describe('handleRetrieveAsToolOperation', () => {
 		const parsedFirst = JSON.parse(toolResult[0].text);
 		expect(parsedFirst).toHaveProperty('pageContent', 'test content 1');
 		expect(parsedFirst).not.toHaveProperty('metadata');
+	});
+
+	it('should include document ID in results when includeDocumentId is true', async () => {
+		const result = await handleRetrieveAsToolOperation(mockContext, mockArgs, mockEmbeddings, 0);
+		const tool = result.response as DynamicTool;
+
+		const toolResult = await tool.func('test query');
+
+		// Parse the JSON text to verify it includes document ID
+		const parsedFirst = JSON.parse(toolResult[0].text);
+		expect(parsedFirst).toHaveProperty('pageContent', 'test content 1');
+		expect(parsedFirst).toHaveProperty('id', '0');
+	});
+
+	it('should exclude document ID in results when includeDocumentId is false', async () => {
+		nodeParameters.includeDocumentId = false;
+
+		const result = await handleRetrieveAsToolOperation(mockContext, mockArgs, mockEmbeddings, 0);
+		const tool = result.response as DynamicTool;
+
+		const toolResult = await tool.func('test query');
+
+		// Parse the JSON text to verify it excludes document ID
+		const parsedFirst = JSON.parse(toolResult[0].text);
+		expect(parsedFirst).toHaveProperty('pageContent', 'test content 1');
+		expect(parsedFirst).not.toHaveProperty('id');
 	});
 
 	it('should limit results based on topK parameter', async () => {
