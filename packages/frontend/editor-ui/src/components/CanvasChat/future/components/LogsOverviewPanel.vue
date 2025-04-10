@@ -5,35 +5,28 @@ import { useI18n } from '@/composables/useI18n';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { N8nButton, N8nRadioButtons, N8nText, N8nTooltip } from '@n8n/design-system';
-import { computed, watch } from 'vue';
+import { computed } from 'vue';
 import { ElTree, type TreeNode as ElTreeNode } from 'element-plus';
 import {
-	createAiData,
-	findLogEntryToAutoSelect,
 	getSubtreeTotalConsumedTokens,
 	getTotalConsumedTokens,
-	getTreeNodeData,
 	type TreeNode,
 } from '@/components/RunDataAi/utils';
-import { type INodeUi } from '@/Interface';
 import { upperFirst } from 'lodash-es';
 import { useTelemetry } from '@/composables/useTelemetry';
 import ConsumedTokenCountText from '@/components/CanvasChat/future/components/ConsumedTokenCountText.vue';
-import { type LogEntrySelection } from '@/components/CanvasChat/types/logs';
-import LogsOverviewRow from '@/components/CanvasChat/future/components/LogsOverviewRow.vue';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useRouter } from 'vue-router';
-import { IN_PROGRESS_EXECUTION_ID } from '@/constants';
 
-const { node, isOpen, isReadOnly, selection } = defineProps<{
+const { isOpen, isReadOnly, selection, executionTree } = defineProps<{
 	isOpen: boolean;
 	isReadOnly: boolean;
-	node: INodeUi | null;
-	selection: LogEntrySelection;
+	selection?: TreeNode;
+	executionTree: TreeNode[];
 }>();
 
-const emit = defineEmits<{ clickHeader: []; select: [LogEntrySelection] }>();
+const emit = defineEmits<{ clickHeader: []; select: [TreeNode | undefined] }>();
 
 defineSlots<{ actions: {} }>();
 
@@ -46,15 +39,6 @@ const ndvStore = useNDVStore();
 const nodeHelpers = useNodeHelpers();
 const isClearExecutionButtonVisible = useClearExecutionButtonVisible();
 const workflow = computed(() => workflowsStore.getCurrentWorkflow());
-const executionTree = computed<TreeNode[]>(() =>
-	node
-		? getTreeNodeData(
-				node.name,
-				workflow.value,
-				createAiData(node.name, workflow.value, workflowsStore.getWorkflowResultDataByNodeName),
-			)
-		: [],
-);
 const isEmpty = computed(() => workflowsStore.workflowExecutionData === null);
 const switchViewOptions = computed(() => [
 	{ label: locale.baseText('logs.overview.header.switch.details'), value: 'details' as const },
@@ -82,7 +66,7 @@ const executionStatusText = computed(() => {
 	return upperFirst(execution.status);
 });
 const consumedTokens = computed(() =>
-	getTotalConsumedTokens(...executionTree.value.map(getSubtreeTotalConsumedTokens)),
+	getTotalConsumedTokens(...executionTree.map(getSubtreeTotalConsumedTokens)),
 );
 
 function onClearExecutionData() {
@@ -91,16 +75,12 @@ function onClearExecutionData() {
 }
 
 function handleClickNode(clicked: TreeNode) {
-	if (
-		selection.type === 'selected' &&
-		selection.data.node === clicked.node &&
-		selection.data.runIndex === clicked.runIndex
-	) {
-		emit('select', { type: 'none' });
+	if (selection?.node === clicked.node && selection?.runIndex === clicked.runIndex) {
+		emit('select', undefined);
 		return;
 	}
 
-	emit('select', { type: 'selected', data: clicked });
+	emit('select', clicked);
 	telemetry.track('User selected node in log view', {
 		node_type: workflowsStore.nodesByName[clicked.node].type,
 		node_id: workflowsStore.nodesByName[clicked.node].id,
@@ -110,12 +90,7 @@ function handleClickNode(clicked: TreeNode) {
 }
 
 function handleSwitchView(value: 'overview' | 'details') {
-	emit(
-		'select',
-		value === 'overview' || executionTree.value.length === 0
-			? { type: 'none' }
-			: { type: 'selected', data: executionTree.value[0] },
-	);
+	emit('select', value === 'overview' || executionTree.length === 0 ? undefined : executionTree[0]);
 }
 
 function handleToggleExpanded(treeNode: ElTreeNode) {
@@ -129,41 +104,6 @@ async function handleOpenNdv(treeNode: TreeNode) {
 async function handleTriggerPartialExecution(treeNode: TreeNode) {
 	await runWorkflow.runWorkflow({ destinationNode: treeNode.node });
 }
-
-// Apply auto selection of log entry
-watch(
-	executionTree,
-	() => {
-		if (selection.type !== 'initial' || executionTree.value.length === 0) {
-			return;
-		}
-
-		const logEntryToAutoSelect = findLogEntryToAutoSelect(
-			executionTree.value,
-			workflowsStore.nodesByName,
-			workflowsStore.workflowExecutionData?.data?.resultData.runData ?? {},
-		);
-
-		emit(
-			'select',
-			logEntryToAutoSelect ? { type: 'selected', data: logEntryToAutoSelect } : { type: 'none' },
-		);
-	},
-	{ immediate: true },
-);
-
-// Initialize selection when different execution is loaded
-watch(
-	() => workflowsStore.workflowExecutionData?.id,
-	(_, prev) => {
-		if (prev === IN_PROGRESS_EXECUTION_ID) {
-			// Preserve selection when execution is finished
-			return;
-		}
-
-		emit('select', { type: 'initial' });
-	},
-);
 </script>
 
 <template>
@@ -234,12 +174,8 @@ watch(
 							:data="data"
 							:node="elTreeNode"
 							:is-read-only="isReadOnly"
-							:is-selected="
-								selection.type === 'selected' &&
-								data.node === selection.data.node &&
-								data.runIndex === selection.data.runIndex
-							"
-							:is-compact="selection.type === 'selected'"
+							:is-selected="data.node === selection?.node && data.runIndex === selection?.runIndex"
+							:is-compact="selection !== undefined"
 							:should-show-consumed-tokens="consumedTokens.totalTokens > 0"
 							@toggle-expanded="handleToggleExpanded"
 							@open-ndv="handleOpenNdv"

@@ -1,9 +1,9 @@
 import { type TreeNode } from '@/components/RunDataAi/utils';
 
 export type LogEntrySelection =
-	| { type: 'selected'; data: TreeNode }
 	| { type: 'initial' }
-	| { type: 'none' };
+	| { type: 'selected'; workflowId: string; data: TreeNode }
+	| { type: 'none'; workflowId: string };
 
 export const LOGS_PANEL_STATE = {
 	CLOSED: 'closed',

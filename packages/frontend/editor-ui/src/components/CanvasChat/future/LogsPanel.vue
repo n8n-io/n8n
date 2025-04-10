@@ -13,6 +13,12 @@ import ChatMessagesPanel from '@/components/CanvasChat/components/ChatMessagesPa
 import LogsDetailsPanel from '@/components/CanvasChat/future/components/LogDetailsPanel.vue';
 import { LOGS_PANEL_STATE, type LogEntrySelection } from '@/components/CanvasChat/types/logs';
 import LogsPanelActions from '@/components/CanvasChat/future/components/LogsPanelActions.vue';
+import {
+	createAiData,
+	findLogEntryToAutoSelect,
+	getTreeNodeData,
+	type TreeNode,
+} from '@/components/RunDataAi/utils';
 
 const { isReadOnly } = withDefaults(defineProps<{ isReadOnly?: boolean }>(), {
 	isReadOnly: false,
@@ -22,7 +28,6 @@ const workflowsStore = useWorkflowsStore();
 const canvasStore = useCanvasStore();
 const panelState = computed(() => workflowsStore.logsPanelState);
 const container = ref<HTMLElement>();
-const logEntrySelection = ref<LogEntrySelection>({ type: 'initial' });
 const pipContainer = useTemplateRef('pipContainer');
 const pipContent = useTemplateRef('pipContent');
 const previousChatMessages = computed(() => workflowsStore.getPastChatMessages);
@@ -41,8 +46,37 @@ const hasChat = computed(() =>
 				[CHAT_TRIGGER_NODE_TYPE, MANUAL_CHAT_TRIGGER_NODE_TYPE].includes(node.type),
 			),
 );
-
-const isLogDetailsOpen = computed(() => logEntrySelection.value.type === 'selected');
+const workflow = computed(() => workflowsStore.getCurrentWorkflow());
+const executionTree = computed<TreeNode[]>(() =>
+	connectedNode.value
+		? getTreeNodeData(
+				connectedNode.value.name,
+				workflow.value,
+				createAiData(
+					connectedNode.value.name,
+					workflow.value,
+					workflowsStore.getWorkflowResultDataByNodeName,
+				),
+			)
+		: [],
+);
+const manualLogEntrySelection = ref<LogEntrySelection>({ type: 'initial' });
+const autoSelectedLogEntry = computed(() =>
+	findLogEntryToAutoSelect(
+		executionTree.value,
+		workflowsStore.nodesByName,
+		workflowsStore.workflowExecutionData?.data?.resultData.runData ?? {},
+	),
+);
+const selectedLogEntry = computed(() =>
+	manualLogEntrySelection.value.type === 'initial' ||
+	manualLogEntrySelection.value.workflowId !== workflowsStore.workflow.id
+		? autoSelectedLogEntry.value
+		: manualLogEntrySelection.value.type === 'none'
+			? undefined
+			: manualLogEntrySelection.value.data,
+);
+const isLogDetailsOpen = computed(() => selectedLogEntry.value !== undefined);
 
 const { canPopOut, isPoppedOut, pipWindow } = usePiPWindow({
 	initialHeight: 400,
@@ -81,8 +115,11 @@ function handleClickHeader() {
 	}
 }
 
-function handleSelectLogEntry(selected: LogEntrySelection) {
-	logEntrySelection.value = selected;
+function handleSelectLogEntry(selected: TreeNode | undefined) {
+	manualLogEntrySelection.value =
+		selected === undefined
+			? { type: 'none', workflowId: workflowsStore.workflow.id }
+			: { type: 'selected', workflowId: workflowsStore.workflow.id, data: selected };
 }
 
 function onPopOut() {
@@ -144,7 +181,8 @@ watch([panelState, height], ([state, h]) => {
 						:is-open="panelState !== LOGS_PANEL_STATE.CLOSED"
 						:node="connectedNode"
 						:is-read-only="isReadOnly"
-						:selection="logEntrySelection"
+						:selection="selectedLogEntry"
+						:execution-tree="executionTree"
 						@click-header="handleClickHeader"
 						@select="handleSelectLogEntry"
 					>
@@ -153,7 +191,7 @@ watch([panelState, height], ([state, h]) => {
 						</template>
 					</LogsOverviewPanel>
 					<LogsDetailsPanel
-						v-if="logEntrySelection.type === 'selected'"
+						v-if="selectedLogEntry !== undefined"
 						:class="$style.logDetails"
 						:is-open="panelState !== LOGS_PANEL_STATE.CLOSED"
 						@click-header="handleClickHeader"
