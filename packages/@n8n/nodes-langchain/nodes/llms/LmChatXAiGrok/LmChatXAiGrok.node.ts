@@ -238,11 +238,14 @@ export class LmChatXAiGrok implements INodeType {
 			maxRetries: options.maxRetries ?? 2,
 			configuration,
 			callbacks: [new N8nLlmTracing(this)],
-			modelKwargs: options.responseFormat
-				? {
-						response_format: { type: options.responseFormat },
-					}
-				: undefined,
+			modelKwargs: {
+				stream_options: undefined,
+				...(options.responseFormat
+					? {
+							response_format: { type: options.responseFormat },
+						}
+					: undefined),
+			},
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this, openAiFailedAttemptHandler),
 		});
 
