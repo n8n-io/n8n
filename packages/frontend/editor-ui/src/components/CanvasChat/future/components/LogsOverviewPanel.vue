@@ -8,7 +8,6 @@ import { N8nButton, N8nRadioButtons, N8nText, N8nTooltip } from '@n8n/design-sys
 import { computed } from 'vue';
 import { ElTree, type TreeNode as ElTreeNode } from 'element-plus';
 import {
-	createLogEntries,
 	getSubtreeTotalConsumedTokens,
 	getTotalConsumedTokens,
 	type TreeNode,
@@ -20,9 +19,11 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useRouter } from 'vue-router';
 import ExecutionSummary from '@/components/CanvasChat/future/components/ExecutionSummary.vue';
 
-const { isOpen, selected } = defineProps<{
+const { isOpen, isReadOnly, selected, executionTree } = defineProps<{
 	isOpen: boolean;
 	selected?: TreeNode;
+	isReadOnly: boolean;
+	executionTree: TreeNode[];
 }>();
 
 const emit = defineEmits<{ clickHeader: []; select: [TreeNode | undefined] }>();
@@ -38,12 +39,6 @@ const ndvStore = useNDVStore();
 const nodeHelpers = useNodeHelpers();
 const isClearExecutionButtonVisible = useClearExecutionButtonVisible();
 const workflow = computed(() => workflowsStore.getCurrentWorkflow());
-const executionTree = computed<TreeNode[]>(() =>
-	createLogEntries(
-		workflow.value,
-		workflowsStore.workflowExecutionData?.data?.resultData.runData ?? {},
-	),
-);
 const isEmpty = computed(() => workflowsStore.workflowExecutionData === null);
 const switchViewOptions = computed(() => [
 	{ label: locale.baseText('logs.overview.header.switch.details'), value: 'details' as const },
@@ -51,7 +46,7 @@ const switchViewOptions = computed(() => [
 ]);
 const execution = computed(() => workflowsStore.workflowExecutionData);
 const consumedTokens = computed(() =>
-	getTotalConsumedTokens(...executionTree.value.map(getSubtreeTotalConsumedTokens)),
+	getTotalConsumedTokens(...executionTree.map(getSubtreeTotalConsumedTokens)),
 );
 
 function onClearExecutionData() {
@@ -60,7 +55,7 @@ function onClearExecutionData() {
 }
 
 function handleClickNode(clicked: TreeNode) {
-	if (selected?.node === clicked.node && selected.runIndex === clicked.runIndex) {
+	if (selected?.node === clicked.node && selected?.runIndex === clicked.runIndex) {
 		emit('select', undefined);
 		return;
 	}
@@ -75,10 +70,7 @@ function handleClickNode(clicked: TreeNode) {
 }
 
 function handleSwitchView(value: 'overview' | 'details') {
-	emit(
-		'select',
-		value === 'overview' || executionTree.value.length === 0 ? undefined : executionTree.value[0],
-	);
+	emit('select', value === 'overview' || executionTree.length === 0 ? undefined : executionTree[0]);
 }
 
 function handleToggleExpanded(treeNode: ElTreeNode) {
@@ -160,6 +152,7 @@ async function handleTriggerPartialExecution(treeNode: TreeNode) {
 						<LogsOverviewRow
 							:data="data"
 							:node="elTreeNode"
+							:is-read-only="isReadOnly"
 							:is-selected="data.node === selected?.node && data.runIndex === selected?.runIndex"
 							:is-compact="selected !== undefined"
 							:should-show-consumed-tokens="consumedTokens.totalTokens > 0"

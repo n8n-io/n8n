@@ -6,7 +6,6 @@ import { useChatState } from '@/components/CanvasChat/composables/useChatState';
 import { useResize } from '@/components/CanvasChat/composables/useResize';
 import { usePiPWindow } from '@/components/CanvasChat/composables/usePiPWindow';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { CHAT_TRIGGER_NODE_TYPE, MANUAL_CHAT_TRIGGER_NODE_TYPE } from '@/constants';
 import LogsOverviewPanel from '@/components/CanvasChat/future/components/LogsOverviewPanel.vue';
 import { useCanvasStore } from '@/stores/canvas.store';
 import ChatMessagesPanel from '@/components/CanvasChat/components/ChatMessagesPanel.vue';
@@ -15,33 +14,63 @@ import {
 	LOG_DETAILS_CONTENT,
 	type LogDetailsContent,
 	LOGS_PANEL_STATE,
+	type LogEntrySelection,
 } from '@/components/CanvasChat/types/logs';
 import LogsPanelActions from '@/components/CanvasChat/future/components/LogsPanelActions.vue';
-import { type TreeNode } from '@/components/RunDataAi/utils';
+import {
+	createLogEntries,
+	findLogEntryToAutoSelect,
+	type TreeNode,
+} from '@/components/RunDataAi/utils';
+import { isChatNode } from '@/components/CanvasChat/utils';
+
+const { isReadOnly } = withDefaults(defineProps<{ isReadOnly?: boolean }>(), {
+	isReadOnly: false,
+});
 
 const workflowsStore = useWorkflowsStore();
 const canvasStore = useCanvasStore();
 const panelState = computed(() => workflowsStore.logsPanelState);
 const container = ref<HTMLElement>();
-const selectedLogEntry = ref<TreeNode | undefined>(undefined);
 const detailsContent = ref<LogDetailsContent>(LOG_DETAILS_CONTENT.BOTH);
 const pipContainer = useTemplateRef('pipContainer');
 const pipContent = useTemplateRef('pipContent');
 const previousChatMessages = computed(() => workflowsStore.getPastChatMessages);
-const hasChat = computed(() =>
-	workflowsStore.workflowTriggerNodes.some((node) =>
-		[CHAT_TRIGGER_NODE_TYPE, MANUAL_CHAT_TRIGGER_NODE_TYPE].includes(node.type),
-	),
-);
-
 const telemetry = useTelemetry();
 
 const { rootStyles, height, chatWidth, onWindowResize, onResizeDebounced, onResizeChatDebounced } =
 	useResize(container);
 
 const { currentSessionId, messages, sendMessage, refreshSession, displayExecution } = useChatState(
-	ref(false),
+	isReadOnly,
 	onWindowResize,
+);
+
+const hasChat = computed(() =>
+	isReadOnly ? messages.value.length > 0 : workflowsStore.workflowTriggerNodes.some(isChatNode),
+);
+const workflow = computed(() => workflowsStore.getCurrentWorkflow());
+const executionTree = computed<TreeNode[]>(() =>
+	createLogEntries(
+		workflow.value,
+		workflowsStore.workflowExecutionData?.data?.resultData.runData ?? {},
+	),
+);
+const manualLogEntrySelection = ref<LogEntrySelection>({ type: 'initial' });
+const autoSelectedLogEntry = computed(() =>
+	findLogEntryToAutoSelect(
+		executionTree.value,
+		workflowsStore.nodesByName,
+		workflowsStore.workflowExecutionData?.data?.resultData.runData ?? {},
+	),
+);
+const selectedLogEntry = computed(() =>
+	manualLogEntrySelection.value.type === 'initial' ||
+	manualLogEntrySelection.value.workflowId !== workflowsStore.workflow.id
+		? autoSelectedLogEntry.value
+		: manualLogEntrySelection.value.type === 'none'
+			? undefined
+			: manualLogEntrySelection.value.data,
 );
 const isLogDetailsOpen = computed(() => selectedLogEntry.value !== undefined);
 
@@ -83,7 +112,10 @@ function handleClickHeader() {
 }
 
 function handleSelectLogEntry(selected: TreeNode | undefined) {
-	selectedLogEntry.value = selected;
+	manualLogEntrySelection.value =
+		selected === undefined
+			? { type: 'none', workflowId: workflowsStore.workflow.id }
+			: { type: 'selected', workflowId: workflowsStore.workflow.id, data: selected };
 }
 
 function handleToggleLogDetailsInput() {
@@ -141,6 +173,7 @@ watch([panelState, height], ([state, h]) => {
 						<ChatMessagesPanel
 							data-test-id="canvas-chat"
 							:is-open="panelState !== LOGS_PANEL_STATE.CLOSED"
+							:is-read-only="isReadOnly"
 							:messages="messages"
 							:session-id="currentSessionId"
 							:past-chat-messages="previousChatMessages"
@@ -156,7 +189,9 @@ watch([panelState, height], ([state, h]) => {
 					<LogsOverviewPanel
 						:class="$style.logsOverview"
 						:is-open="panelState !== LOGS_PANEL_STATE.CLOSED"
+						:is-read-only="isReadOnly"
 						:selected="selectedLogEntry"
+						:execution-tree="executionTree"
 						@click-header="handleClickHeader"
 						@select="handleSelectLogEntry"
 					>
@@ -165,11 +200,11 @@ watch([panelState, height], ([state, h]) => {
 						</template>
 					</LogsOverviewPanel>
 					<LogsDetailsPanel
-						v-if="selectedLogEntry"
-						:log-entry="selectedLogEntry"
-						:content="detailsContent"
+						v-if="selectedLogEntry !== undefined"
 						:class="$style.logDetails"
 						:is-open="panelState !== LOGS_PANEL_STATE.CLOSED"
+						:log-entry="selectedLogEntry"
+						:content="detailsContent"
 						@click-header="handleClickHeader"
 						@toggle-input="handleToggleLogDetailsInput"
 						@toggle-output="handleToggleLogDetailsOutput"
