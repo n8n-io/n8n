@@ -8,13 +8,11 @@ import { N8nButton, N8nRadioButtons, N8nText, N8nTooltip } from '@n8n/design-sys
 import { computed } from 'vue';
 import { ElTree, type TreeNode as ElTreeNode } from 'element-plus';
 import {
-	createAiData,
+	createLogEntries,
 	getSubtreeTotalConsumedTokens,
 	getTotalConsumedTokens,
-	getTreeNodeData,
 	type TreeNode,
 } from '@/components/RunDataAi/utils';
-import { type INodeUi } from '@/Interface';
 import { upperFirst } from 'lodash-es';
 import { useTelemetry } from '@/composables/useTelemetry';
 import ConsumedTokenCountText from '@/components/CanvasChat/future/components/ConsumedTokenCountText.vue';
@@ -24,9 +22,8 @@ import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useRouter } from 'vue-router';
 
-const { node, isOpen, selected } = defineProps<{
+const { isOpen, selected } = defineProps<{
 	isOpen: boolean;
-	node: INodeUi | null;
 	selected?: LogEntryIdentity;
 }>();
 
@@ -44,13 +41,10 @@ const nodeHelpers = useNodeHelpers();
 const isClearExecutionButtonVisible = useClearExecutionButtonVisible();
 const workflow = computed(() => workflowsStore.getCurrentWorkflow());
 const executionTree = computed<TreeNode[]>(() =>
-	node
-		? getTreeNodeData(
-				node.name,
-				workflow.value,
-				createAiData(node.name, workflow.value, workflowsStore.getWorkflowResultDataByNodeName),
-			)
-		: [],
+	createLogEntries(
+		workflow.value,
+		workflowsStore.workflowExecutionData?.data?.resultData.runData ?? {},
+	),
 );
 const isEmpty = computed(() => workflowsStore.workflowExecutionData === null);
 const switchViewOptions = computed(() => [
@@ -272,6 +266,7 @@ async function handleTriggerPartialExecution(treeNode: TreeNode) {
 
 .switchViewButtons {
 	position: absolute;
+	z-index: 10; /* higher than log entry rows background */
 	right: 0;
 	top: 0;
 	margin: var(--spacing-2xs);
