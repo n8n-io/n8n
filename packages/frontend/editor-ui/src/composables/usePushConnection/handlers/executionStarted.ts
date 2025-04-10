@@ -1,6 +1,5 @@
 import type { ExecutionStarted } from '@n8n/api-types/push/execution';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useUIStore } from '@/stores/ui.store';
 import { parse } from 'flatted';
 
 /**
@@ -8,14 +7,12 @@ import { parse } from 'flatted';
  */
 export async function executionStarted({ data }: ExecutionStarted) {
 	const workflowsStore = useWorkflowsStore();
-	const uiStore = useUIStore();
 
-	// No workflow is running so ignore the message
-	if (!uiStore.isActionActive.workflowRunning) {
+	// No workflow execution is ongoing, so we can ignore this event
+	if (typeof workflowsStore.activeExecutionId === 'undefined') {
 		return;
-	}
-
-	if (!workflowsStore.activeExecutionId) {
+	} else if (workflowsStore.activeExecutionId === null) {
+		console.log('executionStarted', data.executionId);
 		workflowsStore.setActiveExecutionId(data.executionId);
 	}
 

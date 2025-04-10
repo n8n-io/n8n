@@ -100,14 +100,12 @@ const activeNodeType = computed(() => {
 	return null;
 });
 
-const workflowRunning = computed(() => uiStore.isActionActive.workflowRunning);
-
 const showTriggerWaitingWarning = computed(
 	() =>
 		triggerWaitingWarningEnabled.value &&
 		!!activeNodeType.value &&
 		!activeNodeType.value.group.includes('trigger') &&
-		workflowRunning.value &&
+		workflowsStore.isWorkflowRunning &&
 		workflowsStore.executionWaitingForWebhook,
 );
 
@@ -315,11 +313,11 @@ const featureRequestUrl = computed(() => {
 
 const outputPanelEditMode = computed(() => ndvStore.outputPanelEditMode);
 
-const isWorkflowRunning = computed(() => uiStore.isActionActive.workflowRunning);
-
 const isExecutionWaitingForWebhook = computed(() => workflowsStore.executionWaitingForWebhook);
 
-const blockUi = computed(() => isWorkflowRunning.value || isExecutionWaitingForWebhook.value);
+const blockUi = computed(
+	() => workflowsStore.isWorkflowRunning || isExecutionWaitingForWebhook.value,
+);
 
 const foreignCredentials = computed(() => {
 	const credentials = activeNode.value?.credentials;
@@ -454,7 +452,7 @@ const onUnlinkRun = (pane: string) => {
 
 const onNodeExecute = () => {
 	setTimeout(() => {
-		if (!activeNode.value || !workflowRunning.value) {
+		if (!activeNode.value || !workflowsStore.isWorkflowRunning) {
 			return;
 		}
 		triggerWaitingWarningEnabled.value = true;

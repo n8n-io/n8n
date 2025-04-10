@@ -8,13 +8,15 @@ import {
 	handleExecutionFinishedWithErrorOrCanceled,
 	handleExecutionFinishedWithWaitTill,
 } from './executionFinished';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 
 export async function executionRecovered({ data }: ExecutionRecovered) {
+	const workflowsStore = useWorkflowsStore();
 	const uiStore = useUIStore();
 
-	if (!uiStore.isActionActive.workflowRunning) {
-		// No workflow is running so ignore the messages
-		return false;
+	// No workflow is actively running, therefore we ignore this event
+	if (typeof workflowsStore.activeExecutionId === 'undefined') {
+		return;
 	}
 
 	uiStore.setProcessingExecutionResults(true);
@@ -22,7 +24,7 @@ export async function executionRecovered({ data }: ExecutionRecovered) {
 	const execution = await getExecutionData(data.executionId);
 	if (!execution) {
 		uiStore.setProcessingExecutionResults(false);
-		return false;
+		return;
 	}
 
 	const runExecutionData = getRunExecutionData(execution);
@@ -33,7 +35,7 @@ export async function executionRecovered({ data }: ExecutionRecovered) {
 	} else if (execution.status === 'error' || execution.status === 'canceled') {
 		handleExecutionFinishedWithErrorOrCanceled(execution, runExecutionData);
 	} else {
-		handleExecutionFinished(execution, runExecutionData, successToastAlreadyShown);
+		handleExecutionFinished(execution, runExecutionData);
 	}
 
 	const lineNumber = runExecutionData.resultData?.error?.lineNumber;

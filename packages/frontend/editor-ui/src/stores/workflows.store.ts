@@ -138,8 +138,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const currentWorkflowExecutions = ref<ExecutionSummary[]>([]);
 	const workflowExecutionData = ref<IExecutionResponse | null>(null);
 	const workflowExecutionPairedItemMappings = ref<Record<string, Set<string>>>({});
-	const activeExecutionId = ref<string | null>(null);
-	const previousExecutionId = ref<string | null>(null);
 	const subWorkflowExecutionError = ref<Error | null>(null);
 	const executionWaitingForWebhook = ref(false);
 	const workflowsById = ref<Record<string, IWorkflowDb>>({});
@@ -232,9 +230,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	});
 
 	const isWorkflowRunning = computed(() => {
-		if (uiStore.isActionActive.workflowRunning) return true;
-
-		if (activeExecutionId.value) {
+		if (activeExecutionId.value === null) {
+			return true;
+		} else if (activeExecutionId.value) {
 			const execution = getWorkflowExecution;
 			if (execution.value && execution.value.status === 'waiting' && !execution.value.finished) {
 				return true;
@@ -290,8 +288,20 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		Workflow.getConnectionsByDestination(workflow.value.connections),
 	);
 
-	function setActiveExecutionId(id: string | null) {
-		previousExecutionId.value = activeExecutionId.value;
+	/**
+	 * Sets the active execution id
+	 *
+	 * @param {string} id used to indicate the id of the active execution
+	 * @param {null} id used to indicate that an execution has started but its id has not been retrieved yet
+	 * @param {undefined} id used to indicate there is no active execution
+	 */
+	const activeExecutionId = ref<string | null | undefined>();
+	const previousExecutionId = ref<string | null | undefined>();
+	const readonlyActiveExecutionId = computed(() => activeExecutionId.value);
+	const readonlyPreviousExecutionId = computed(() => previousExecutionId.value);
+
+	function setActiveExecutionId(id: string | null | undefined) {
+		if (id) previousExecutionId.value = activeExecutionId.value;
 		activeExecutionId.value = id;
 	}
 
@@ -621,7 +631,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setWorkflowSettings({ ...defaults.settings });
 		setWorkflowTagIds([]);
 
-		setActiveExecutionId(null);
+		setActiveExecutionId(undefined);
 		executingNode.value.length = 0;
 		executionWaitingForWebhook.value = false;
 	}
@@ -1693,10 +1703,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	function markExecutionAsStopped() {
-		setActiveExecutionId(null);
+		setActiveExecutionId(undefined);
 		clearNodeExecutionQueue();
 		executionWaitingForWebhook.value = false;
-		uiStore.removeActiveAction('workflowRunning');
 		workflowHelpers.setDocumentTitle(workflowName.value, 'IDLE');
 
 		clearPopupWindowState();
@@ -1717,8 +1726,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		currentWorkflowExecutions,
 		workflowExecutionData,
 		workflowExecutionPairedItemMappings,
-		activeExecutionId: computed(() => activeExecutionId.value),
-		previousExecutionId: computed(() => previousExecutionId.value),
+		activeExecutionId: readonlyActiveExecutionId,
+		previousExecutionId: readonlyPreviousExecutionId,
 		setActiveExecutionId,
 		subWorkflowExecutionError,
 		executionWaitingForWebhook,

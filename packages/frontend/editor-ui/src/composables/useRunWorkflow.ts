@@ -26,7 +26,6 @@ import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { CHAT_TRIGGER_NODE_TYPE, SINGLE_WEBHOOK_TRIGGERS } from '@/constants';
 
 import { useRootStore } from '@/stores/root.store';
-import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { displayForm } from '@/utils/executionUtils';
 import { useExternalHooks } from '@/composables/useExternalHooks';
@@ -52,7 +51,6 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 
 	const rootStore = useRootStore();
 	const pushConnectionStore = usePushConnectionStore();
-	const uiStore = useUIStore();
 	const workflowsStore = useWorkflowsStore();
 	const executionsStore = useExecutionsStore();
 	const { dirtinessByName } = useNodeDirtiness();
@@ -67,26 +65,25 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 
 		workflowsStore.subWorkflowExecutionError = null;
 
-		uiStore.addActiveAction('workflowRunning');
+		// Set the execution as started, but still waiting for the execution to be retrieved
+		workflowsStore.setActiveExecutionId(null);
 
 		let response: IExecutionPushResponse;
-
 		try {
 			response = await workflowsStore.runWorkflow(runData);
 		} catch (error) {
-			uiStore.removeActiveAction('workflowRunning');
+			workflowsStore.setActiveExecutionId(undefined);
 			throw error;
 		}
 
-		if (
-			response.executionId !== undefined &&
-			workflowsStore.previousExecutionId !== response.executionId
-		) {
+		const workflowExecutionIdIsNew = workflowsStore.previousExecutionId !== response.executionId;
+		const workflowExecutionIdIsPending = workflowsStore.activeExecutionId === null;
+		if (response.executionId && workflowExecutionIdIsNew && workflowExecutionIdIsPending) {
 			workflowsStore.setActiveExecutionId(response.executionId);
 		}
 
 		if (response.waitingForWebhook === true && useWorkflowsStore().nodesIssuesExist) {
-			uiStore.removeActiveAction('workflowRunning');
+			workflowsStore.setActiveExecutionId(undefined);
 			throw new Error(i18n.baseText('workflowRun.showError.resolveOutstandingIssues'));
 		}
 
@@ -103,11 +100,11 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 		nodeData?: ITaskData;
 		source?: string;
 	}): Promise<IExecutionPushResponse | undefined> {
-		const workflow = workflowHelpers.getCurrentWorkflow();
-
-		if (uiStore.isActionActive.workflowRunning) {
+		if (workflowsStore.activeExecutionId) {
 			return;
 		}
+
+		const workflow = workflowHelpers.getCurrentWorkflow();
 
 		toast.clearAllStickyNotifications();
 
@@ -414,7 +411,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 
 	async function stopCurrentExecution() {
 		const executionId = workflowsStore.activeExecutionId;
-		if (executionId === null) {
+		if (!executionId) {
 			return;
 		}
 

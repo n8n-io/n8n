@@ -4,8 +4,8 @@ import type { INodeTypeDescription, INodeTypeNameVersion } from 'n8n-workflow';
 import { useCredentialsStore } from '@/stores/credentials.store';
 
 /**
- * Handles the 'reloadNodeType' event from the push connection, which indicates
- * that a node type needs to be reloaded.
+ * Handles the 'removeNodeType' event from the push connection, which indicates
+ * that a node type needs to be removed
  */
 export async function removeNodeType({ data }: RemoveNodeType) {
 	const nodeTypesStore = useNodeTypesStore();

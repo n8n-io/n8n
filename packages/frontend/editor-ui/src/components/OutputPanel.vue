@@ -141,7 +141,7 @@ const isNodeRunning = computed(() => {
 	return workflowRunning.value && !!node.value && workflowsStore.isNodeExecuting(node.value.name);
 });
 
-const workflowRunning = computed(() => uiStore.isActionActive.workflowRunning);
+const workflowRunning = computed(() => workflowsStore.isWorkflowRunning);
 
 const workflowExecution = computed(() => {
 	return workflowsStore.getWorkflowExecution;

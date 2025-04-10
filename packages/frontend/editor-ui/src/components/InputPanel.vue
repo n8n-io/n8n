@@ -157,7 +157,7 @@ const isMappingEnabled = computed(() => {
 	return true;
 });
 const isExecutingPrevious = computed(() => {
-	if (!workflowRunning.value) {
+	if (!workflowsStore.isWorkflowRunning) {
 		return false;
 	}
 	const triggeredNode = workflowsStore.executedNode;
@@ -178,7 +178,6 @@ const isExecutingPrevious = computed(() => {
 	}
 	return false;
 });
-const workflowRunning = computed(() => uiStore.isActionActive.workflowRunning);
 
 const rootNodesParents = computed(() => {
 	if (!rootNode.value) return [];

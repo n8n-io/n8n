@@ -1,6 +1,8 @@
+export * from './collaboratorsChanged';
 export * from './executionFinished';
 export * from './executionRecovered';
 export * from './executionStarted';
+export * from './executionWaiting';
 export * from './nodeDescriptionUpdated';
 export * from './nodeExecuteAfter';
 export * from './nodeExecuteBefore';
@@ -10,4 +12,6 @@ export * from './sendConsoleMessage';
 export * from './sendWorkerStatusMessage';
 export * from './testWebhookDeleted';
 export * from './testWebhookReceived';
+export * from './workflowActivated';
+export * from './workflowDeactivated';
 export * from './workflowFailedToActivate';

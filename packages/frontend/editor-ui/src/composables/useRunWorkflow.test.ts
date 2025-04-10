@@ -36,7 +36,6 @@ vi.mock('@/stores/workflows.store', async () => {
 		workflowExecutionData: null,
 		setWorkflowExecutionData: vi.fn(),
 		activeExecutionId: null,
-		previousExecutionId: null,
 		nodesIssuesExist: false,
 		executionWaitingForWebhook: false,
 		getCurrentWorkflow: vi.fn().mockReturnValue({ id: '123' }),

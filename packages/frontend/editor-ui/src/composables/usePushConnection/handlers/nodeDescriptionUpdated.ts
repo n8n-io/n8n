@@ -7,7 +7,7 @@ import { useCredentialsStore } from '@/stores/credentials.store';
  * that a node description has been updated.
  */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-export async function nodeDescriptionUpdated(_receivedData: NodeDescriptionUpdated) {
+export async function nodeDescriptionUpdated(_event: NodeDescriptionUpdated) {
 	const nodeTypesStore = useNodeTypesStore();
 	const credentialsStore = useCredentialsStore();
 

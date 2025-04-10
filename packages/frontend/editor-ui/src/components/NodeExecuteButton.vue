@@ -85,7 +85,7 @@ const nodeType = computed((): INodeTypeDescription | null => {
 });
 
 const isNodeRunning = computed(() => {
-	if (!uiStore.isActionActive.workflowRunning || codeGenerationInProgress.value) return false;
+	if (!workflowsStore.isWorkflowRunning || codeGenerationInProgress.value) return false;
 	const triggeredNode = workflowsStore.executedNode;
 	return (
 		workflowsStore.isNodeExecuting(node.value?.name ?? '') || triggeredNode === node.value?.name
@@ -95,8 +95,6 @@ const isNodeRunning = computed(() => {
 const isTriggerNode = computed(() => {
 	return node.value ? nodeTypesStore.isTriggerNode(node.value.type) : false;
 });
-
-const isWorkflowRunning = computed(() => uiStore.isActionActive.workflowRunning);
 
 const isManualTriggerNode = computed(() =>
 	nodeType.value ? nodeType.value.name === MANUAL_TRIGGER_NODE_TYPE : false,
@@ -168,7 +166,7 @@ const disabledHint = computed(() => {
 		return i18n.baseText('ndv.execute.requiredFieldsMissing');
 	}
 
-	if (isWorkflowRunning.value && !isNodeRunning.value) {
+	if (workflowsStore.isWorkflowRunning && !isNodeRunning.value) {
 		return i18n.baseText('ndv.execute.workflowAlreadyRunning');
 	}
 

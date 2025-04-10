@@ -11,6 +11,6 @@ export async function testWebhookDeleted({ data }: TestWebhookDeleted) {
 
 	if (data.workflowId === workflowsStore.workflowId) {
 		workflowsStore.executionWaitingForWebhook = false;
-		uiStore.removeActiveAction('workflowRunning');
+		workflowsStore.setActiveExecutionId(undefined);
 	}
 }
