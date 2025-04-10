@@ -1435,6 +1435,31 @@ describe('JsTaskRunner', () => {
 			// @ts-expect-error Non-existing property
 			expect(Duration.fromObject({ hours: 1 }).maliciousKey).toBeUndefined();
 		});
+
+		it('should allow prototype mutation when `allowPrototypeMutation` is true', async () => {
+			const runner = createRunnerWithOpts({
+				allowPrototypeMutation: true,
+			});
+
+			const outcome = await executeForAllItems({
+				code: `
+					const obj = {};
+
+					Object.prototype.maliciousProperty = 'compromised';
+
+					return [{ json: {
+						prototypeMutated: obj.maliciousProperty === 'compromised'
+					}}];
+				`,
+				inputItems: [{ a: 1 }],
+				runner,
+			});
+
+			expect(outcome.result).toEqual([wrapIntoJson({ prototypeMutated: true })]);
+
+			// @ts-expect-error Non-existing property
+			delete Object.prototype.maliciousProperty;
+		});
 	});
 
 	describe('stack trace', () => {
