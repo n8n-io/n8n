@@ -4,15 +4,16 @@ import { ChatOpenAI } from '@langchain/openai';
 const openAIKey = process.env.N8N_AI_OPENAI_API_KEY;
 const anthropicApiKey = process.env.N8N_AI_ANTHROPIC_KEY;
 
-export const llm = new ChatOpenAI({
+export const gpt4oMini = new ChatOpenAI({
 	modelName: 'gpt-4o-mini',
 	apiKey: openAIKey,
-	temperature: 0.1,
+	temperature: 0,
 });
 
 export const gpt4o = new ChatOpenAI({
 	modelName: 'gpt-4o',
 	apiKey: openAIKey,
+	temperature: 0,
 });
 
 export const o3mini = new ChatOpenAI({

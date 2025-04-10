@@ -279,28 +279,33 @@ function onSubmitFeedback(feedback: string) {
 			:class="{ [$style.inputWrapper]: true, [$style.disabledInput]: sessionEnded }"
 			data-test-id="chat-input-wrapper"
 		>
-			<textarea
-				ref="chatInput"
-				v-model="textInputValue"
-				class="ignore-key-press-node-creator ignore-key-press-canvas"
-				:disabled="sessionEnded"
-				:placeholder="t('assistantChat.inputPlaceholder')"
-				rows="1"
-				wrap="hard"
-				data-test-id="chat-input"
-				@keydown.enter.exact.prevent="onSendMessage"
-				@input.prevent="growInput"
-				@keydown.stop
-			/>
-			<n8n-icon-button
-				:class="{ [$style.sendButton]: true }"
-				icon="paper-plane"
-				type="text"
-				size="large"
-				data-test-id="send-message-button"
-				:disabled="sendDisabled"
-				@click="onSendMessage"
-			/>
+			<div v-if="$slots.inputPlaceholder" :class="$style.inputPlaceholder">
+				<slot name="inputPlaceholder" />
+			</div>
+			<template v-else>
+				<textarea
+					ref="chatInput"
+					v-model="textInputValue"
+					class="ignore-key-press-node-creator ignore-key-press-canvas"
+					:disabled="sessionEnded"
+					:placeholder="t('assistantChat.inputPlaceholder')"
+					rows="1"
+					wrap="hard"
+					data-test-id="chat-input"
+					@keydown.enter.exact.prevent="onSendMessage"
+					@input.prevent="growInput"
+					@keydown.stop
+				/>
+				<n8n-icon-button
+					:class="{ [$style.sendButton]: true }"
+					icon="paper-plane"
+					type="text"
+					size="large"
+					data-test-id="send-message-button"
+					:disabled="sendDisabled"
+					@click="onSendMessage"
+				/>
+			</template>
 		</div>
 	</div>
 </template>
@@ -445,5 +450,9 @@ function onSubmitFeedback(feedback: string) {
 	* {
 		cursor: not-allowed;
 	}
+}
+
+.inputPlaceholder {
+	width: 100%;
 }
 </style>

@@ -32,7 +32,7 @@ const nextStepTool = new DynamicStructuredTool({
 });
 
 export const supervisorChain = supervisorPrompt
-	.pipe(anthropicClaude35Sonnet.bindTools([nextStepTool], { tool_choice: 'route_next_step' }))
+	.pipe(o3mini.bindTools([nextStepTool], { tool_choice: 'route_next_step' }))
 	.pipe((x: AIMessageChunk) => {
 		const toolCall = x.tool_calls?.[0];
 		return toolCall?.args as { next: string };
@@ -40,7 +40,7 @@ export const supervisorChain = supervisorPrompt
 
 ///////////////////// Planner Agent /////////////////////
 export const plannerAgent = createReactAgent({
-	llm: anthropicClaude35Sonnet,
+	llm: o3mini,
 	tools: [
 		new DynamicStructuredTool({
 			name: 'generate_plan',
@@ -66,7 +66,7 @@ export const plannerAgent = createReactAgent({
 
 ///////////////////// Node Selection Agent /////////////////////
 export const nodeSelectionAgent = createReactAgent({
-	llm: anthropicClaude35Sonnet,
+	llm: o3mini,
 	tools: [
 		new DynamicStructuredTool({
 			name: 'select_n8n_nodes',

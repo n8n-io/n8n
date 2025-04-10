@@ -25,7 +25,33 @@ const Template: StoryFn = (args, { argTypes }) => ({
 	methods,
 });
 
+const TemplateWithInputPlaceholder: StoryFn = (args, { argTypes }) => ({
+	setup: () => ({ args }),
+	props: Object.keys(argTypes),
+	components: {
+		AskAssistantChat,
+	},
+	template: `
+		<div style="width:275px; height:500px">
+			<ask-assistant-chat v-bind="args" >
+				<template #inputPlaceholder>
+					<button>Click me</button>
+				</template>
+			</ask-assistant-chat>
+		</div>
+	`,
+	methods,
+});
+
 export const DefaultPlaceholderChat = Template.bind({});
+DefaultPlaceholderChat.args = {
+	user: {
+		firstName: 'Max',
+		lastName: 'Test',
+	},
+};
+
+export const InputPlaceholderChat = TemplateWithInputPlaceholder.bind({});
 DefaultPlaceholderChat.args = {
 	user: {
 		firstName: 'Max',
