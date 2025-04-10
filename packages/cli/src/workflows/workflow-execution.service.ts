@@ -208,7 +208,8 @@ export class WorkflowExecutionService {
 				},
 				resultData: {
 					pinData,
-					runData: runData ?? {},
+					// @ts-expect-error CAT-752
+					runData,
 				},
 				manualData: {
 					userId: data.userId,
