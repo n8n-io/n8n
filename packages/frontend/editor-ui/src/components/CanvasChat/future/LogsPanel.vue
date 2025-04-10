@@ -46,8 +46,10 @@ const { currentSessionId, messages, sendMessage, refreshSession, displayExecutio
 	onWindowResize,
 );
 
-const hasChat = computed(() =>
-	isReadOnly ? messages.value.length > 0 : workflowsStore.workflowTriggerNodes.some(isChatNode),
+const hasChat = computed(
+	() =>
+		workflowsStore.workflowTriggerNodes.some(isChatNode) &&
+		(!isReadOnly || messages.value.length > 0),
 );
 const workflow = computed(() => workflowsStore.getCurrentWorkflow());
 const executionTree = computed<TreeNode[]>(() =>
