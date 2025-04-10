@@ -9,10 +9,12 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import type { IWorkflowDataUpdate } from '@/Interface';
 import { nodeViewEventBus } from '@/event-bus';
 import { v4 as uuid } from 'uuid';
+import { useI18n } from '@/composables/useI18n';
 
 const builderStore = useBuilderStore();
 const usersStore = useUsersStore();
 const telemetry = useTelemetry();
+const i18n = useI18n();
 
 const user = computed(() => ({
 	firstName: usersStore.currentUser?.firstName ?? '',
@@ -64,7 +66,13 @@ function onInsertWorkflow(code: string) {
 	nodeViewEventBus.emit('importWorkflowData', { data: workflowData, tidyUp: true });
 	workflowGenerated.value = true;
 	builderStore.addAssistantMessages(
-		[{ type: 'rate-workflow', content: 'HOW WAS IT???', role: 'assistant' }],
+		[
+			{
+				type: 'rate-workflow',
+				content: i18n.baseText('aiAssistant.builder.feedbackPrompt'),
+				role: 'assistant',
+			},
+		],
 		uuid(),
 	);
 }
@@ -110,15 +118,15 @@ watch(
 					:streaming="builderStore.streaming"
 					:loading-message="loadingMessage"
 					:session-id="builderStore.currentSessionId"
-					mode="AI Builder"
+					:mode="i18n.baseText('aiAssistant.builder.mode')"
 					@close="onClose"
 					@message="onUserMessage"
 					@insert-workflow="onInsertWorkflow"
 				>
-					<template #placeholder> Please describe the workflow you want to create. </template>
+					<template #placeholder>{{ i18n.baseText('aiAssistant.builder.placeholder') }}</template>
 					<template v-if="workflowGenerated" #inputPlaceholder>
 						<n8n-button size="large" :class="$style.newWorkflowButton" @click="onNewWorkflow">
-							Generate new workflow
+							{{ i18n.baseText('aiAssistant.builder.generateNew') }}
 						</n8n-button>
 					</template>
 				</AskAssistantChat>
