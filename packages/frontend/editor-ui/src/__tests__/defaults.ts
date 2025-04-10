@@ -42,9 +42,6 @@ export const defaultSettings: FrontendSettings = {
 			},
 		},
 	},
-	expressions: {
-		evaluator: 'tournament',
-	},
 	executionMode: 'regular',
 	executionTimeout: 0,
 	hideUsagePage: false,
