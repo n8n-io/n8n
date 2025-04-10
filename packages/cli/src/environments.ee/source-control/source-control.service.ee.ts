@@ -242,14 +242,11 @@ export class SourceControlService {
 		// only determine file status if not provided by the frontend
 		let statusResult: SourceControlledFile[] = filesToPush;
 		if (statusResult.length === 0) {
-			statusResult = (await this.getStatus(
-				{
-					direction: 'push',
-					verbose: false,
-					preferLocalVersion: true,
-				},
-				user,
-			)) as SourceControlledFile[];
+			statusResult = (await this.getStatus(user, {
+				direction: 'push',
+				verbose: false,
+				preferLocalVersion: true,
+			})) as SourceControlledFile[];
 		}
 
 		if (!options.force) {
@@ -338,7 +335,7 @@ export class SourceControlService {
 		// #region Tracking Information
 		this.eventService.emit(
 			'source-control-user-finished-push-ui',
-			getTrackingInformationFromPostPushResult(statusResult, user.id),
+			getTrackingInformationFromPostPushResult(user.id, statusResult),
 		);
 		// #endregion
 
@@ -399,7 +396,7 @@ export class SourceControlService {
 	): Promise<{ statusCode: number; statusResult: SourceControlledFile[] }> {
 		await this.sanityCheck();
 
-		const statusResult = (await this.getStatus({
+		const statusResult = (await this.getStatus(user, {
 			direction: 'pull',
 			verbose: false,
 			preferLocalVersion: false,
@@ -463,7 +460,7 @@ export class SourceControlService {
 		// #region Tracking Information
 		this.eventService.emit(
 			'source-control-user-finished-pull-ui',
-			getTrackingInformationFromPullResult(statusResult),
+			getTrackingInformationFromPullResult(user.id, statusResult),
 		);
 		// #endregion
 
@@ -483,7 +480,7 @@ export class SourceControlService {
 	 * @returns either SourceControlledFile[] if verbose is false,
 	 * or multiple SourceControlledFile[] with all determined differences for debugging purposes
 	 */
-	async getStatus(options: SourceControlGetStatus, user?: User) {
+	async getStatus(user: User, options: SourceControlGetStatus) {
 		await this.sanityCheck();
 
 		const sourceControlledFiles: SourceControlledFile[] = [];
@@ -518,14 +515,14 @@ export class SourceControlService {
 
 		// #region Tracking Information
 		if (options.direction === 'push') {
-			this.eventService.emit('source-control-user-started-push-ui', {
-				...getTrackingInformationFromPrePushResult(sourceControlledFiles),
-				userId: user?.id,
-			});
+			this.eventService.emit(
+				'source-control-user-started-push-ui',
+				getTrackingInformationFromPrePushResult(user.id, sourceControlledFiles),
+			);
 		} else if (options.direction === 'pull') {
 			this.eventService.emit(
 				'source-control-user-started-pull-ui',
-				getTrackingInformationFromPullResult(sourceControlledFiles),
+				getTrackingInformationFromPullResult(user.id, sourceControlledFiles),
 			);
 		}
 		// #endregion

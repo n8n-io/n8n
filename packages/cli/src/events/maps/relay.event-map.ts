@@ -381,12 +381,14 @@ export type RelayEventMap = {
 	};
 
 	'source-control-user-started-pull-ui': {
+		userId?: string;
 		workflowUpdates: number;
 		workflowConflicts: number;
 		credConflicts: number;
 	};
 
 	'source-control-user-finished-pull-ui': {
+		userId?: string;
 		workflowUpdates: number;
 	};
 

@@ -131,9 +131,13 @@ function filterSourceControlledFilesUniqueIds(files: SourceControlledFile[]) {
 	);
 }
 
-export function getTrackingInformationFromPullResult(result: SourceControlledFile[]) {
+export function getTrackingInformationFromPullResult(
+	userId: string,
+	result: SourceControlledFile[],
+) {
 	const uniques = filterSourceControlledFilesUniqueIds(result);
 	return {
+		userId,
 		credConflicts: uniques.filter(
 			(file) =>
 				file.type === 'credential' && file.status === 'modified' && file.location === 'local',
@@ -145,9 +149,13 @@ export function getTrackingInformationFromPullResult(result: SourceControlledFil
 	};
 }
 
-export function getTrackingInformationFromPrePushResult(result: SourceControlledFile[]) {
+export function getTrackingInformationFromPrePushResult(
+	userId: string,
+	result: SourceControlledFile[],
+) {
 	const uniques = filterSourceControlledFilesUniqueIds(result);
 	return {
+		userId,
 		workflowsEligible: uniques.filter((file) => file.type === 'workflow').length,
 		workflowsEligibleWithConflicts: uniques.filter(
 			(file) => file.type === 'workflow' && file.conflict,
@@ -161,8 +169,8 @@ export function getTrackingInformationFromPrePushResult(result: SourceControlled
 }
 
 export function getTrackingInformationFromPostPushResult(
-	result: SourceControlledFile[],
 	userId: string,
+	result: SourceControlledFile[],
 ) {
 	const uniques = filterSourceControlledFilesUniqueIds(result);
 	return {
