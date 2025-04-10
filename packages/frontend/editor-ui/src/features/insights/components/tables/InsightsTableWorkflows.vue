@@ -116,7 +116,10 @@ const trackWorkflowClick = (item: Item) => {
 
 watch(sortBy, (newValue) => {
 	telemetry.track('User sorted insights table', {
-		sorted_by: newValue,
+		sorted_by: (newValue ?? []).map((item) => ({
+			...item,
+			label: headers.value.find((header) => header.key === item.id)?.title,
+		})),
 	});
 });
 </script>
