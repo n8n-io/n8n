@@ -83,7 +83,7 @@ const headers = ref<Array<TableHeader<Item>>>([
 	},
 ]);
 
-const sortTableBy = ref([{ id: 'total', desc: true }]);
+const sortBy = defineModel<Array<{ id: string; desc: boolean }>>('sortBy');
 const currentPage = ref(0);
 const itemsPerPage = ref(20);
 
@@ -102,7 +102,7 @@ const emit = defineEmits<{
 	<div>
 		<N8nHeading bold tag="h3" size="medium" class="mb-s">Workflow insights</N8nHeading>
 		<N8nDataTableServer
-			v-model:sort-by="sortTableBy"
+			v-model:sort-by="sortBy"
 			v-model:page="currentPage"
 			v-model:items-per-page="itemsPerPage"
 			:items="rows"

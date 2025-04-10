@@ -954,6 +954,8 @@ export interface RootState {
 	endpointForm: string;
 	endpointFormTest: string;
 	endpointFormWaiting: string;
+	endpointMcp: string;
+	endpointMcpTest: string;
 	endpointWebhook: string;
 	endpointWebhookTest: string;
 	endpointWebhookWaiting: string;
@@ -1547,7 +1549,7 @@ export interface IN8nPromptResponse {
 
 export type InputPanel = {
 	nodeName?: string;
-	run: number;
+	run?: number;
 	branch?: number;
 	data: {
 		isEmpty: boolean;
@@ -1555,7 +1557,6 @@ export type InputPanel = {
 };
 
 export type OutputPanel = {
-	run: number;
 	branch?: number;
 	data: {
 		isEmpty: boolean;
