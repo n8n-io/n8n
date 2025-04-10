@@ -569,8 +569,7 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 			void useSchemaPreviewStore().trackSchemaPreviewExecution(pushData);
 		} else if (receivedData.type === 'nodeExecuteBefore') {
 			// A node started to be executed. Set it as executing.
-			const pushData = receivedData.data;
-			workflowsStore.addExecutingNode(pushData.nodeName);
+			workflowsStore.setNodeExecuting(receivedData.data);
 		} else if (receivedData.type === 'testWebhookDeleted') {
 			// A test-webhook was deleted
 			const pushData = receivedData.data;
