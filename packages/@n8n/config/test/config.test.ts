@@ -407,13 +407,9 @@ describe('GlobalConfig', () => {
 			const globalConfig = Container.get(GlobalConfig);
 			expect(globalConfig.taskRunners.mode).toEqual('internal');
 			expect(consoleWarnMock).toHaveBeenCalledWith(
-				expect.stringContaining('Invalid value for N8N_RUNNERS_MODE'),
-			);
-			expect(consoleWarnMock).toHaveBeenCalledWith(
-				expect.stringContaining('Must be one of: internal, external'),
-			);
-			expect(consoleWarnMock).toHaveBeenCalledWith(
-				expect.stringContaining('Falling back to: internal'),
+				expect.stringContaining(
+					"Invalid value for N8N_RUNNERS_MODE - Invalid enum value. Expected 'internal' | 'external', received 'non-existing-mode'. Falling back to default value.",
+				),
 			);
 		});
 	});
