@@ -76,8 +76,8 @@ export const validCursor = (
 	return next();
 };
 
+const emptyMiddleware = (_req: Request, _res: Response, next: NextFunction) => next();
 export const apiKeyHasScope = (apiKeyScope: ApiKeyScope) => {
-	const emptyMiddleware = (_req: Request, _res: Response, next: NextFunction) => next();
 	return Container.get(License).isApiKeyScopesEnabled()
 		? Container.get(PublicApiKeyService).getApiKeyScopeMiddleware(apiKeyScope)
 		: emptyMiddleware;
