@@ -30,6 +30,11 @@ import {
 jest.mock('ws');
 
 const defaultConfig = new MainConfig();
+defaultConfig.jsRunnerConfig ??= {
+	allowedBuiltInModules: '',
+	allowedExternalModules: '',
+	allowPrototypeMutation: true, // needed for jest
+};
 
 describe('JsTaskRunner', () => {
 	const createRunnerWithOpts = (
