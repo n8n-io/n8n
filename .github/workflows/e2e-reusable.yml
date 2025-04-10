@@ -66,9 +66,12 @@ jobs:
 
       - name: Calculate Git Ref 🤔
         id: calculate_ref
-        # if pr_number is provided, use it, otherwise use the branch
-        run: echo "value=${{ inputs.pr_number && format('refs/pull/{0}/head', inputs.pr_number) || inputs.branch }}" >> $GITHUB_OUTPUT
-
+        run: |
+          if [ -n "${{ inputs.pr_number }}" ]; then
+            echo "value=refs/pull/${{ inputs.pr_number }}/head" >> $GITHUB_OUTPUT
+          else
+            echo "value=${{ inputs.branch }}" >> $GITHUB_OUTPUT
+          fi
   install:
     runs-on: blacksmith-4vcpu-ubuntu-2204
     needs: ['prepare']
