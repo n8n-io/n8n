@@ -30,6 +30,10 @@ on:
         required: false
         default: false
         type: boolean
+    secrets:
+      CODECOV_TOKEN:
+        description: 'Codecov upload token.'
+        required: false
 
 jobs:
   unit-test:
@@ -80,3 +84,9 @@ jobs:
       - name: Test Frontend
         if: ${{ !inputs.skipFrontendTests }}
         run: pnpm test:frontend
+
+      - name: Upload coverage to Codecov
+        if: inputs.collectCoverage
+        uses: codecov/codecov-action@v5.1.2
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
