@@ -1,6 +1,6 @@
 import { CommaSeparatedStringArray, ColonSeparatedStringArray } from '../src/custom-types';
 
-describe('CommaSeperatedStringArray', () => {
+describe('CommaSeparatedStringArray', () => {
 	it('should parse comma-separated string into array', () => {
 		const result = new CommaSeparatedStringArray('a,b,c');
 		expect(result).toEqual(['a', 'b', 'c']);
