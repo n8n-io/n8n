@@ -148,8 +148,13 @@ export class McpServer {
 
 				this.logger.debug(`Got request for ${requestedTool.name}, and executed it.`);
 
-				// TODO: Refactor this to no longer use the legacy tool result, but
-				return { toolResult: result };
+				if (typeof result === 'object') {
+					return { content: [{ type: 'text', text: JSON.stringify(result) }] };
+				}
+				if (typeof result === 'string') {
+					return { content: [{ type: 'text', text: result }] };
+				}
+				return { content: [{ type: 'text', text: String(result) }] };
 			} catch (error) {
 				this.logger.error(`Error while executing Tool ${requestedTool.name}: ${error}`);
 				return { isError: true, content: [{ type: 'text', text: `Error: ${error.message}` }] };
