@@ -101,15 +101,12 @@ const emit = defineEmits<{
 	];
 }>();
 
-const getWorkflowLink = (item: Item): RouteLocationRaw | null => {
-	if (item.workflowId === undefined) return null;
-	return {
-		name: VIEWS.WORKFLOW,
-		params: {
-			name: item.workflowId,
-		},
-	};
-};
+const getWorkflowLink = (item: Item): RouteLocationRaw => ({
+	name: VIEWS.WORKFLOW,
+	params: {
+		name: item.workflowId,
+	},
+});
 
 const trackWorkflowClick = (item: Item) => {
 	telemetry.track('User clicked on workflow from insights table', {
