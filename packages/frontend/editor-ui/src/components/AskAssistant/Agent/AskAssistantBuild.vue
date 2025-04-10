@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { useAssistantStore } from '@/stores/assistant.store';
+import { useBuilderStore } from '@/stores/builder.store';
 import { useDebounce } from '@/composables/useDebounce';
 import { useUsersStore } from '@/stores/users.store';
 import { computed, watch, ref } from 'vue';
@@ -10,7 +10,7 @@ import type { IWorkflowDataUpdate } from '@/Interface';
 import { nodeViewEventBus } from '@/event-bus';
 import { v4 as uuid } from 'uuid';
 
-const assistantStore = useAssistantStore();
+const builderStore = useBuilderStore();
 const usersStore = useUsersStore();
 const telemetry = useTelemetry();
 
@@ -20,10 +20,10 @@ const user = computed(() => ({
 }));
 
 const workflowGenerated = ref(false);
-const loadingMessage = computed(() => assistantStore.assistantThinkingMessage);
+const loadingMessage = computed(() => builderStore.assistantThinkingMessage);
 
 function onResize(data: { direction: string; x: number; width: number }) {
-	assistantStore.updateWindowWidth(data.width);
+	builderStore.updateWindowWidth(data.width);
 }
 
 function onResizeDebounced(data: { direction: string; x: number; width: number }) {
@@ -32,29 +32,23 @@ function onResizeDebounced(data: { direction: string; x: number; width: number }
 
 async function onUserMessage(content: string, quickReplyType?: string, isFeedback = false) {
 	// If there is no current session running, initialize the support chat session
-	if (!assistantStore.currentSessionId) {
-		await assistantStore.initSupportChat(content);
+	if (!builderStore.currentSessionId) {
+		await builderStore.initSupportChat(content);
 	} else {
-		await assistantStore.sendMessage({ text: content, quickReplyType });
+		await builderStore.sendMessage({ text: content, quickReplyType });
 	}
-	const task = assistantStore.chatSessionTask;
-	const solutionCount = assistantStore.chatMessages.filter(
-		(msg) => msg.role === 'assistant' && !['text', 'event'].includes(msg.type),
-	).length;
 	if (isFeedback) {
 		telemetry.track('User gave feedback', {
-			task,
-			chat_session_id: assistantStore.currentSessionId,
+			chat_session_id: builderStore.currentSessionId,
 			is_quick_reply: !!quickReplyType,
 			is_positive: quickReplyType === 'all-good',
-			solution_count: solutionCount,
 			response: content,
 		});
 	}
 }
 
 function onClose() {
-	assistantStore.closeChat();
+	builderStore.closeChat();
 	telemetry.track('User closed assistant', { source: 'top-toggle' });
 }
 
@@ -69,19 +63,19 @@ function onInsertWorkflow(code: string) {
 	}
 	nodeViewEventBus.emit('importWorkflowData', { data: workflowData, tidyUp: true });
 	workflowGenerated.value = true;
-	assistantStore.addAssistantMessages(
+	builderStore.addAssistantMessages(
 		[{ type: 'rate-workflow', content: 'HOW WAS IT???', role: 'assistant' }],
 		uuid(),
 	);
 }
 
 function onNewWorkflow() {
-	assistantStore.resetAssistantChat();
+	builderStore.resetBuilderChat();
 	workflowGenerated.value = false;
 }
 
 watch(
-	() => assistantStore.chatMessages,
+	() => builderStore.chatMessages,
 	(messages) => {
 		if (workflowGenerated.value) return;
 
@@ -97,14 +91,14 @@ watch(
 <template>
 	<SlideTransition>
 		<N8nResizeWrapper
-			v-show="assistantStore.isAssistantOpen"
+			v-show="builderStore.isAssistantOpen"
 			:supported-directions="['left']"
-			:width="assistantStore.chatWidth"
+			:width="builderStore.chatWidth"
 			data-test-id="ask-assistant-sidebar"
 			@resize="onResizeDebounced"
 		>
 			<div
-				:style="{ width: `${assistantStore.chatWidth}px` }"
+				:style="{ width: `${builderStore.chatWidth}px` }"
 				:class="$style.wrapper"
 				data-test-id="ask-assistant-chat"
 				tabindex="0"
@@ -112,10 +106,10 @@ watch(
 			>
 				<AskAssistantChat
 					:user="user"
-					:messages="assistantStore.chatMessages"
-					:streaming="assistantStore.streaming"
+					:messages="builderStore.chatMessages"
+					:streaming="builderStore.streaming"
 					:loading-message="loadingMessage"
-					:session-id="assistantStore.currentSessionId"
+					:session-id="builderStore.currentSessionId"
 					mode="AI Builder"
 					@close="onClose"
 					@message="onUserMessage"

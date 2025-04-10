@@ -116,7 +116,7 @@ import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
 import type { CanvasLayoutEvent } from '@/composables/useCanvasLayout';
 import { useClearExecutionButtonVisible } from '@/composables/useClearExecutionButtonVisible';
 import { LOGS_PANEL_STATE } from '@/components/CanvasChat/types/logs';
-import { post } from '@/utils/apiUtils';
+import { useBuilderStore } from '@/stores/builder.store';
 
 defineOptions({
 	name: 'NodeView',
@@ -168,6 +168,7 @@ const pushConnectionStore = usePushConnectionStore();
 const ndvStore = useNDVStore();
 const templatesStore = useTemplatesStore();
 const posthogStore = usePostHog();
+const builderStore = useBuilderStore();
 
 const canvasEventBus = createEventBus<CanvasEventBusEvents>();
 
@@ -1622,10 +1623,6 @@ watch(
 watch(
 	() => isLoading.value || isCanvasReadOnly.value,
 	(isEmptyOrLoading) => {
-		const isWorkflowBuilderEnabled =
-			posthogStore.getVariant(WORKFLOW_BUILDER_EXPERIMENT.name) ===
-			WORKFLOW_BUILDER_EXPERIMENT.variant;
-
 		const defaultFallbackNodes: INodeUi[] = [
 			{
 				id: CanvasNodeRenderType.AddNodes,
@@ -1637,7 +1634,7 @@ watch(
 			},
 		];
 
-		if (isWorkflowBuilderEnabled) {
+		if (builderStore.isAIBuilderEnabled) {
 			defaultFallbackNodes.unshift({
 				id: CanvasNodeRenderType.AIPrompt,
 				name: CanvasNodeRenderType.AIPrompt,

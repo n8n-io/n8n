@@ -2,6 +2,7 @@
 import { useI18n } from '@/composables/useI18n';
 import { useStyles } from '@/composables/useStyles';
 import { useAssistantStore } from '@/stores/assistant.store';
+import { useBuilderStore } from '@/stores/builder.store';
 import { useCanvasStore } from '@/stores/canvas.store';
 import AssistantAvatar from '@n8n/design-system/components/AskAssistantAvatar/AssistantAvatar.vue';
 import AskAssistantButton from '@n8n/design-system/components/AskAssistantButton/AskAssistantButton.vue';
@@ -11,6 +12,7 @@ const assistantStore = useAssistantStore();
 const i18n = useI18n();
 const { APP_Z_INDEXES } = useStyles();
 const canvasStore = useCanvasStore();
+const builderStore = useBuilderStore();
 
 const lastUnread = computed(() => {
 	const msg = assistantStore.lastUnread;
@@ -27,11 +29,13 @@ const lastUnread = computed(() => {
 });
 
 const onClick = () => {
-	assistantStore.openChat();
-	assistantStore.trackUserOpenedAssistant({
+	const selectedStore = builderStore.isAIBuilderEnabled ? builderStore : assistantStore;
+
+	selectedStore.openChat();
+	selectedStore.trackUserOpenedAssistant({
 		source: 'canvas',
 		task: 'placeholder',
-		has_existing_session: !assistantStore.isSessionEnded,
+		has_existing_session: !selectedStore.isSessionEnded,
 	});
 };
 </script>

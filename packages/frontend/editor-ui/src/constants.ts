@@ -698,6 +698,7 @@ export const enum STORES {
 	PUSH = 'push',
 	COLLABORATION = 'collaboration',
 	ASSISTANT = 'assistant',
+	BUILDER = 'builder',
 	BECOME_TEMPLATE_CREATOR = 'becomeTemplateCreator',
 	PROJECTS = 'projects',
 	API_KEYS = 'apiKeys',

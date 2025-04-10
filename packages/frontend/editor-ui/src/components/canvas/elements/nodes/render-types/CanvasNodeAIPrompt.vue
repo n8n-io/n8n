@@ -3,8 +3,8 @@ import { onBeforeUnmount, onMounted, ref } from 'vue';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { nodeViewEventBus } from '@/event-bus';
 import { useI18n } from '@/composables/useI18n';
-import { useAssistantStore } from '@/stores/assistant.store';
 import { useCanvasNode } from '@/composables/useCanvasNode';
+import { useBuilderStore } from '@/stores/builder.store';
 
 const emit = defineEmits<{
 	delete: [id: string];
@@ -13,7 +13,7 @@ const i18n = useI18n();
 
 const { id } = useCanvasNode();
 const nodeCreatorStore = useNodeCreatorStore();
-const assistantStore = useAssistantStore();
+const builderStore = useBuilderStore();
 
 const isTooltipVisible = ref(false);
 const isPromptVisible = ref(true);
@@ -40,9 +40,9 @@ function onHideTooltip() {
 }
 
 async function onSubmit() {
-	assistantStore.openChat();
+	builderStore.openChat();
 	emit('delete', id.value);
-	await assistantStore.initSupportChat(prompt.value);
+	await builderStore.initSupportChat(prompt.value);
 	isPromptVisible.value = false;
 }
 </script>

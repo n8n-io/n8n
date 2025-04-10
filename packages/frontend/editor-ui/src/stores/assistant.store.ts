@@ -1,4 +1,4 @@
-import { replaceCode, chatWithBuilder } from '@/api/ai';
+import { chatWithAssistant, replaceCode } from '@/api/ai';
 import {
 	VIEWS,
 	EDITABLE_CANVAS_VIEWS,
@@ -165,7 +165,6 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			(msg) => !(msg.id === id && msg.role === 'assistant'),
 		);
 		assistantThinkingMessage.value = undefined;
-
 		newMessages.forEach((msg) => {
 			if (msg.type === 'message') {
 				messages.push({
@@ -218,54 +217,6 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				});
 			} else if (msg.type === 'intermediate-step') {
 				assistantThinkingMessage.value = msg.text;
-			} else if (msg.type === 'workflow-step' && 'steps' in msg) {
-				messages.push({
-					id,
-					type: 'workflow-step',
-					role: 'assistant',
-					steps: msg.steps,
-					read,
-				});
-			} else if (msg.type === 'workflow-node' && 'nodes' in msg) {
-				messages.push({
-					id,
-					type: 'workflow-node',
-					role: 'assistant',
-					nodes: msg.nodes,
-					read,
-				});
-			} else if (msg.type === 'workflow-composed' && 'nodes' in msg) {
-				messages.push({
-					id,
-					type: 'workflow-composed',
-					role: 'assistant',
-					nodes: msg.nodes,
-					read,
-				});
-			} else if (msg.type === 'workflow-generated' && 'codeSnippet' in msg) {
-				messages.push({
-					id,
-					type: 'workflow-generated',
-					role: 'assistant',
-					codeSnippet: msg.codeSnippet,
-					read,
-				});
-			} else if (msg.type === 'workflow-connections' && 'workflowJSON' in msg) {
-				messages.push({
-					id,
-					type: 'workflow-connections',
-					role: 'assistant',
-					workflowJSON: msg.workflowJSON,
-					read,
-				});
-			} else if (msg.type === 'rate-workflow') {
-				messages.push({
-					id,
-					type: 'rate-workflow',
-					role: 'assistant',
-					content: msg.content,
-					read,
-				});
 			}
 		});
 		chatMessages.value = messages;
@@ -426,7 +377,6 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 					error: nodeError ? assistantHelpers.simplifyErrorForAssistant(nodeError) : undefined,
 				}
 			: undefined;
-
 		return {
 			currentView: {
 				name: currentView,
@@ -446,7 +396,9 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 						authType: nodeInfo?.authType?.name,
 					}
 				: undefined,
-			currentWorkflow: assistantHelpers.simplifyWorkflowForAssistant(workflowsStore.workflow),
+			currentWorkflow: workflowDataStale.value
+				? assistantHelpers.simplifyWorkflowForAssistant(workflowsStore.workflow)
+				: undefined,
 			executionData:
 				workflowExecutionDataStale.value && executionResult
 					? assistantHelpers.simplifyResultData(executionResult)
@@ -494,7 +446,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			};
 		}
 
-		chatWithBuilder(
+		chatWithAssistant(
 			rootStore.restApiContext,
 			{
 				payload,
@@ -547,7 +499,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			executionSchema: schemas,
 			authType,
 		};
-		chatWithBuilder(
+		chatWithAssistant(
 			rootStore.restApiContext,
 			{
 				payload,
@@ -570,7 +522,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		const id = getRandomId();
 		addLoadingAssistantMessage(locale.baseText('aiAssistant.thinkingSteps.thinking'));
 		streaming.value = true;
-		chatWithBuilder(
+		chatWithAssistant(
 			rootStore.restApiContext,
 			{
 				payload: {
@@ -648,7 +600,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			const nodeInfo = assistantHelpers.getNodeInfoForAssistant(activeNode);
 			const userContext = getVisualContext(nodeInfo);
 
-			chatWithBuilder(
+			chatWithAssistant(
 				rootStore.restApiContext,
 				{
 					payload: {

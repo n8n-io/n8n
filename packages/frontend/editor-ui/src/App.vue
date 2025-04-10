@@ -6,6 +6,7 @@ import { useRoute } from 'vue-router';
 import LoadingView from '@/views/LoadingView.vue';
 import BannerStack from '@/components/banners/BannerStack.vue';
 import AskAssistantBuild from '@/components/AskAssistant/Agent/AskAssistantBuild.vue';
+import AskAssistantChat from '@/components/AskAssistant/Chat/AskAssistantChat.vue';
 import Modals from '@/components/Modals.vue';
 import Telemetry from '@/components/Telemetry.vue';
 import AskAssistantFloatingButton from '@/components/AskAssistant/Chat/AskAssistantFloatingButton.vue';
@@ -13,15 +14,18 @@ import { loadLanguage } from '@/plugins/i18n';
 import { APP_MODALS_ELEMENT_ID, HIRING_BANNER, VIEWS } from '@/constants';
 import { useRootStore } from '@/stores/root.store';
 import { useAssistantStore } from '@/stores/assistant.store';
+import { useBuilderStore } from '@/stores/builder.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useHistoryHelper } from '@/composables/useHistoryHelper';
 import { useStyles } from './composables/useStyles';
+import { usePostHog } from '@/stores/posthog.store';
 
 const route = useRoute();
 const rootStore = useRootStore();
 const assistantStore = useAssistantStore();
+const builderStore = useBuilderStore();
 const uiStore = useUIStore();
 const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
@@ -39,6 +43,7 @@ const hasContentFooter = ref(false);
 const appGrid = ref<Element | null>(null);
 
 const assistantSidebarWidth = computed(() => assistantStore.chatWidth);
+const builderSidebarWidth = computed(() => builderStore.chatWidth);
 
 onMounted(async () => {
 	setAppZIndexes();
@@ -65,9 +70,8 @@ const updateGridWidth = async () => {
 		uiStore.appGridDimensions = { width, height };
 	}
 };
-
 // As assistant sidebar width changes, recalculate the total width regularly
-watch(assistantSidebarWidth, async () => {
+watch([assistantSidebarWidth, builderSidebarWidth], async () => {
 	await updateGridWidth();
 });
 
@@ -121,7 +125,8 @@ watch(defaultLocale, (newLocale) => {
 			<Telemetry />
 			<AskAssistantFloatingButton v-if="showAssistantButton" />
 		</div>
-		<AskAssistantBuild />
+		<AskAssistantBuild v-if="builderStore.isAIBuilderEnabled" />
+		<AskAssistantChat v-else />
 	</div>
 </template>
 
