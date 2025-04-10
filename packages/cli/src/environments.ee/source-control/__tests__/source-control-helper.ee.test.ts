@@ -217,8 +217,10 @@ describe('Source Control', () => {
 	});
 
 	it('should get tracking information from pre-push results', () => {
-		const trackingResult = getTrackingInformationFromPrePushResult(pushResult);
+		const userId = 'userId';
+		const trackingResult = getTrackingInformationFromPrePushResult(userId, pushResult);
 		expect(trackingResult).toEqual({
+			userId,
 			workflowsEligible: 3,
 			workflowsEligibleWithConflicts: 1,
 			credsEligible: 1,
@@ -228,8 +230,10 @@ describe('Source Control', () => {
 	});
 
 	it('should get tracking information from post-push results', () => {
-		const trackingResult = getTrackingInformationFromPostPushResult(pushResult);
+		const userId = 'userId';
+		const trackingResult = getTrackingInformationFromPostPushResult(userId, pushResult);
 		expect(trackingResult).toEqual({
+			userId,
 			workflowsPushed: 2,
 			workflowsEligible: 3,
 			credsPushed: 1,
@@ -238,8 +242,10 @@ describe('Source Control', () => {
 	});
 
 	it('should get tracking information from pull results', () => {
-		const trackingResult = getTrackingInformationFromPullResult(pullResult);
+		const userId = 'userId';
+		const trackingResult = getTrackingInformationFromPullResult(userId, pullResult);
 		expect(trackingResult).toEqual({
+			userId,
 			credConflicts: 1,
 			workflowConflicts: 1,
 			workflowUpdates: 3,
