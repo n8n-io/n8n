@@ -175,7 +175,8 @@ export class SourceControlController {
 				`${req.user.firstName} ${req.user.lastName}`,
 				req.user.email,
 			);
-			const result = await this.sourceControlService.pushWorkfolder(payload);
+
+			const result = await this.sourceControlService.pushWorkfolder(req.user, payload);
 			res.statusCode = result.statusCode;
 			return result.statusResult;
 		} catch (error) {
@@ -213,6 +214,7 @@ export class SourceControlController {
 	async getStatus(req: SourceControlRequest.GetStatus) {
 		try {
 			const result = (await this.sourceControlService.getStatus(
+				req.user,
 				new SourceControlGetStatus(req.query),
 			)) as SourceControlledFile[];
 			return result;
@@ -224,7 +226,10 @@ export class SourceControlController {
 	@Get('/status', { middlewares: [sourceControlLicensedMiddleware] })
 	async status(req: SourceControlRequest.GetStatus) {
 		try {
-			return await this.sourceControlService.getStatus(new SourceControlGetStatus(req.query));
+			return await this.sourceControlService.getStatus(
+				req.user,
+				new SourceControlGetStatus(req.query),
+			);
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
 		}
