@@ -101,7 +101,7 @@ export const Env =
 			globalMetadata.get(ConfigClass) ?? new Map<PropertyKey, PropertyMetadata>();
 
 		const type = Reflect.getMetadata('design:type', target, key) as PropertyType;
-		const isEnum = schema && schema instanceof z.ZodEnum;
+		const isEnum = schema instanceof z.ZodEnum;
 		if (type === Object && !isEnum) {
 			// eslint-disable-next-line n8n-local-rules/no-plain-errors
 			throw new Error(
