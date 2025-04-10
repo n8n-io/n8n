@@ -388,9 +388,8 @@ describe('GSuiteAdmin Node - user:update logic', () => {
 		});
 	});
 
-	it('should skip invalid custom fields (missing schemaName, fieldName or value)', async () => {
-		jest.spyOn(console, 'error').mockImplementation(() => {});
-		const mockCall = jest.fn().mockResolvedValue([{ updated: true }]);
+	it('should throw error for invalid custom fields', async () => {
+		const mockCall = jest.fn();
 		(googleApiRequest as jest.Mock).mockImplementation(mockCall);
 
 		const mockContextInvalidFields = {
@@ -408,8 +407,6 @@ describe('GSuiteAdmin Node - user:update logic', () => {
 							customFields: {
 								fieldValues: [
 									{ schemaName: '', fieldName: 'valid', value: 'ok' },
-									{ schemaName: 'ValidSchema', fieldName: '', value: 'ok' },
-									{ schemaName: 'ValidSchema', fieldName: 'missingValue' },
 									{ schemaName: 'ValidSchema', fieldName: 'valid', value: 'ok' },
 								],
 							},
@@ -426,12 +423,11 @@ describe('GSuiteAdmin Node - user:update logic', () => {
 			getInputData: () => [{ json: {} }],
 		} as unknown as IExecuteFunctions;
 
-		await new GSuiteAdmin().execute.call(mockContextInvalidFields);
+		await expect(new GSuiteAdmin().execute.call(mockContextInvalidFields)).rejects.toThrow(
+			'Invalid custom field data',
+		);
 
-		const calledBody = mockCall.mock.calls[0][2];
-		expect(calledBody.customSchemas).toEqual({
-			ValidSchema: { valid: 'ok' },
-		});
+		expect(mockCall).not.toHaveBeenCalled();
 	});
 
 	it('should throw an error if username is empty', () => {

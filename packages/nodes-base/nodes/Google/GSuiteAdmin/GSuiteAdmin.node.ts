@@ -506,8 +506,11 @@ export class GSuiteAdmin implements INodeType {
 									value: string;
 								};
 
-								if (!schemaName || !fieldName || value === undefined || value === '') {
-									return;
+								if (!schemaName || !fieldName || !value) {
+									throw new NodeOperationError(this.getNode(), 'Invalid custom field data', {
+										itemIndex: i,
+										description: 'Schema name, field name, and value are required.',
+									});
 								}
 
 								customSchemas[schemaName] ??= {};
@@ -775,8 +778,11 @@ export class GSuiteAdmin implements INodeType {
 									value: string;
 								};
 
-								if (!schemaName || !fieldName || value === undefined || value === '') {
-									return;
+								if (!schemaName || !fieldName || !value) {
+									throw new NodeOperationError(this.getNode(), 'Invalid custom field data', {
+										itemIndex: i,
+										description: 'Schema name, field name, and value are required.',
+									});
 								}
 
 								customSchemas[schemaName] ??= {};
