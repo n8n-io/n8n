@@ -396,6 +396,9 @@ importers:
       reflect-metadata:
         specifier: 'catalog:'
         version: 0.2.2
+      zod:
+        specifier: 'catalog:'
+        version: 3.24.1
     devDependencies:
       '@n8n/typescript-config':
         specifier: workspace:*
