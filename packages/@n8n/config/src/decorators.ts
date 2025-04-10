@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 import { Container, Service } from '@n8n/di';
 import { readFileSync } from 'fs';
+import type { z } from 'zod';
 
 // eslint-disable-next-line @typescript-eslint/ban-types
 type Class = Function;
@@ -10,13 +11,7 @@ type PropertyType = number | boolean | string | Class;
 interface PropertyMetadata {
 	type: PropertyType;
 	envName?: string;
-	unionMembers?: readonly string[];
-}
-
-const stringUnionsRegistry = new Map<string, readonly string[]>();
-
-export function registerStringUnion(key: string, unionMembers: readonly string[]) {
-	stringUnionsRegistry.set(key, unionMembers);
+	schema?: z.ZodType<unknown>;
 }
 
 const globalMetadata = new Map<Class, Map<PropertyKey, PropertyMetadata>>();
@@ -40,19 +35,21 @@ export const Config: ClassDecorator = (ConfigClass: Class) => {
 			throw new Error('Invalid config class: ' + ConfigClass.name);
 		}
 
-		for (const [key, { type, envName, unionMembers }] of classMetadata) {
+		for (const [key, { type, envName, schema }] of classMetadata) {
 			if (typeof type === 'function' && globalMetadata.has(type)) {
 				config[key] = Container.get(type as Constructable);
 			} else if (envName) {
 				const value = readEnv(envName);
 				if (value === undefined) continue;
 
-				if (unionMembers && !unionMembers.includes(value)) {
-					const defaultValue = unionMembers[0];
-					console.warn(
-						`Invalid value for ${envName}. Received: ${value}. Must be one of: ${unionMembers.join(', ')}. Falling back to: ${defaultValue}.`,
-					);
-					config[key] = defaultValue;
+				if (schema) {
+					const result = schema.safeParse(value);
+					if (result.error) {
+						console.warn(
+							`Invalid value for ${envName} - ${result.error.issues[0].message}. Falling back to default value.`,
+						);
+						continue;
+					}
 				} else if (type === Number) {
 					const parsed = Number(value);
 					if (isNaN(parsed)) {
@@ -97,7 +94,7 @@ export const Nested: PropertyDecorator = (target: object, key: PropertyKey) => {
 };
 
 export const Env =
-	(envName: string): PropertyDecorator =>
+	(envName: string, schema?: PropertyMetadata['schema']): PropertyDecorator =>
 	(target: object, key: PropertyKey) => {
 		const ConfigClass = target.constructor;
 		const classMetadata =
@@ -110,11 +107,6 @@ export const Env =
 			);
 		}
 
-		let unionMembers: readonly string[] | undefined;
-		if (type === String) {
-			unionMembers = stringUnionsRegistry.get(`${ConfigClass.name}.${String(key)}`);
-		}
-
-		classMetadata.set(key, { type, envName, unionMembers });
+		classMetadata.set(key, { type, envName, schema });
 		globalMetadata.set(ConfigClass, classMetadata);
 	};

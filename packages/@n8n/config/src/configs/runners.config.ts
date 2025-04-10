@@ -1,6 +1,10 @@
-import { Config, Env, registerStringUnion } from '../decorators';
+import { z } from 'zod';
 
-registerStringUnion('TaskRunnersConfig.mode', ['internal', 'external']);
+import { Config, Env } from '../decorators';
+
+const runnerModeSchema = z.enum(['internal', 'external']);
+
+type RunnerMode = z.infer<typeof runnerModeSchema>;
 
 @Config
 export class TaskRunnersConfig {
@@ -8,10 +12,11 @@ export class TaskRunnersConfig {
 	enabled: boolean = false;
 
 	/**
-	 * Whether the task runner should run as a child process spawned by n8n (internal mode) or as a separate process launched outside n8n (external mode).
+	 * Whether the task runner should run as a child process spawned by n8n (internal mode)
+	 * or as a separate process launched outside n8n (external mode).
 	 */
-	@Env('N8N_RUNNERS_MODE')
-	mode: 'internal' | 'external' = 'internal';
+	@Env('N8N_RUNNERS_MODE', runnerModeSchema)
+	mode: RunnerMode = 'internal';
 
 	/** Endpoint which task runners connect to */
 	@Env('N8N_RUNNERS_PATH')

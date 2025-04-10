@@ -22,7 +22,8 @@
   ],
   "dependencies": {
     "@n8n/di": "workspace:*",
-    "reflect-metadata": "catalog:"
+    "reflect-metadata": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*"
