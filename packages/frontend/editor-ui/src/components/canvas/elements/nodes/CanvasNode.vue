@@ -394,6 +394,7 @@ onBeforeUnmount(() => {
 			@move="onMove"
 			@update="onUpdate"
 			@open:contextmenu="onOpenContextMenuFromNode"
+			@delete="onDelete"
 		/>
 
 		<CanvasNodeTrigger

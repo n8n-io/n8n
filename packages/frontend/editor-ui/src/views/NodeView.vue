@@ -64,6 +64,7 @@ import {
 	VALID_WORKFLOW_IMPORT_URL_REGEX,
 	VIEWS,
 	AI_CREDITS_EXPERIMENT,
+	WORKFLOW_BUILDER_EXPERIMENT,
 } from '@/constants';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
@@ -115,6 +116,7 @@ import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
 import type { CanvasLayoutEvent } from '@/composables/useCanvasLayout';
 import { useClearExecutionButtonVisible } from '@/composables/useClearExecutionButtonVisible';
 import { LOGS_PANEL_STATE } from '@/components/CanvasChat/types/logs';
+import { post } from '@/utils/apiUtils';
 
 defineOptions({
 	name: 'NodeView',
@@ -228,6 +230,7 @@ const isExecutionPreview = ref(false);
 
 const canOpenNDV = ref(true);
 const hideNodeIssues = ref(false);
+const fallbackNodes = ref<INodeUi[]>([]);
 
 const initializedWorkflowId = ref<string | undefined>();
 const workflowId = computed(() => {
@@ -252,29 +255,6 @@ const isCanvasReadOnly = computed(() => {
 		!(workflowPermissions.value.update ?? projectPermissions.value.workflow.update)
 	);
 });
-
-const fallbackNodes = computed<INodeUi[]>(() =>
-	isLoading.value || isCanvasReadOnly.value
-		? []
-		: [
-				{
-					id: CanvasNodeRenderType.AIPrompt,
-					name: CanvasNodeRenderType.AIPrompt,
-					type: CanvasNodeRenderType.AIPrompt,
-					typeVersion: 1,
-					position: [0, -140],
-					parameters: {},
-				},
-				{
-					id: CanvasNodeRenderType.AddNodes,
-					name: CanvasNodeRenderType.AddNodes,
-					type: CanvasNodeRenderType.AddNodes,
-					typeVersion: 1,
-					position: [400, 0],
-					parameters: {},
-				},
-			],
-);
 
 const showFallbackNodes = computed(() => triggerNodes.value.length === 0);
 
@@ -609,7 +589,12 @@ function onRevertNodePosition({ nodeName, position }: { nodeName: string; positi
 }
 
 function onDeleteNode(id: string) {
-	deleteNode(id, { trackHistory: true });
+	const matchedFallbackNode = fallbackNodes.value.findIndex((node) => node.id === id);
+	if (matchedFallbackNode >= 0) {
+		fallbackNodes.value.splice(matchedFallbackNode, 1);
+	} else {
+		deleteNode(id, { trackHistory: true });
+	}
 }
 
 function onDeleteNodes(ids: string[]) {
@@ -1631,6 +1616,39 @@ watch(
 			(newRouteName === VIEWS.NEW_WORKFLOW && oldRouteName === VIEWS.WORKFLOW) ||
 			(newRouteName === VIEWS.WORKFLOW && oldRouteName === VIEWS.NEW_WORKFLOW);
 		await initializeRoute(force);
+	},
+);
+
+watch(
+	() => isLoading.value || isCanvasReadOnly.value,
+	(isEmptyOrLoading) => {
+		const isWorkflowBuilderEnabled =
+			posthogStore.getVariant(WORKFLOW_BUILDER_EXPERIMENT.name) ===
+			WORKFLOW_BUILDER_EXPERIMENT.variant;
+
+		const defaultFallbackNodes: INodeUi[] = [
+			{
+				id: CanvasNodeRenderType.AddNodes,
+				name: CanvasNodeRenderType.AddNodes,
+				type: CanvasNodeRenderType.AddNodes,
+				typeVersion: 1,
+				position: [400, 0],
+				parameters: {},
+			},
+		];
+
+		if (isWorkflowBuilderEnabled) {
+			defaultFallbackNodes.unshift({
+				id: CanvasNodeRenderType.AIPrompt,
+				name: CanvasNodeRenderType.AIPrompt,
+				type: CanvasNodeRenderType.AIPrompt,
+				typeVersion: 1,
+				position: [0, -140],
+				parameters: {},
+			});
+		}
+
+		fallbackNodes.value = isEmptyOrLoading ? [] : defaultFallbackNodes;
 	},
 );
 

@@ -4,9 +4,15 @@ import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { nodeViewEventBus } from '@/event-bus';
 import { useI18n } from '@/composables/useI18n';
 import { useAssistantStore } from '@/stores/assistant.store';
+import { useCanvasNode } from '@/composables/useCanvasNode';
 
-const nodeCreatorStore = useNodeCreatorStore();
+const emit = defineEmits<{
+	delete: [id: string];
+}>();
 const i18n = useI18n();
+
+const { id } = useCanvasNode();
+const nodeCreatorStore = useNodeCreatorStore();
 const assistantStore = useAssistantStore();
 
 const isTooltipVisible = ref(false);
@@ -35,6 +41,7 @@ function onHideTooltip() {
 
 async function onSubmit() {
 	assistantStore.openChat();
+	emit('delete', id.value);
 	await assistantStore.initSupportChat(prompt.value);
 	isPromptVisible.value = false;
 }
