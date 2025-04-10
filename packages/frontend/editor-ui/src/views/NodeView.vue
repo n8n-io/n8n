@@ -346,13 +346,7 @@ async function initializeRoute(force = false) {
 		const loadWorkflowFromJSON = route.query.fromJson === 'true';
 
 		if (loadWorkflowFromJSON) {
-			const isAiCreditsExperimentEnabled =
-				posthogStore.getVariant(AI_CREDITS_EXPERIMENT.name) === AI_CREDITS_EXPERIMENT.variant;
-
-			const easyAiWorkflowJson = getEasyAiWorkflowJson({
-				isInstanceInAiFreeCreditsExperiment: isAiCreditsExperimentEnabled,
-				withOpenAiFreeCredits: settingsStore.aiCreditsQuota,
-			});
+			const easyAiWorkflowJson = getEasyAiWorkflowJson();
 			await openTemplateFromWorkflowJSON(easyAiWorkflowJson);
 		} else {
 			await openWorkflowTemplate(templateId.toString());

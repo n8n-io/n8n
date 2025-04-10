@@ -701,13 +701,7 @@ const openAIWorkflow = async (source: string) => {
 		{ withPostHog: true },
 	);
 
-	const isAiCreditsExperimentEnabled =
-		posthogStore.getVariant(AI_CREDITS_EXPERIMENT.name) === AI_CREDITS_EXPERIMENT.variant;
-
-	const easyAiWorkflowJson = getEasyAiWorkflowJson({
-		isInstanceInAiFreeCreditsExperiment: isAiCreditsExperimentEnabled,
-		withOpenAiFreeCredits: settingsStore.aiCreditsQuota,
-	});
+	const easyAiWorkflowJson = getEasyAiWorkflowJson();
 
 	await router.push({
 		name: VIEWS.TEMPLATE_IMPORT,

@@ -214,12 +214,7 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 				clearPopupWindowState();
 				const workflow = workflowsStore.getWorkflowById(receivedData.data.workflowId);
 				if (workflow?.meta?.templateId) {
-					const isAiCreditsExperimentEnabled =
-						posthogStore.getVariant(AI_CREDITS_EXPERIMENT.name) === AI_CREDITS_EXPERIMENT.variant;
-					const easyAiWorkflowJson = getEasyAiWorkflowJson({
-						isInstanceInAiFreeCreditsExperiment: isAiCreditsExperimentEnabled,
-						withOpenAiFreeCredits: settingsStore.aiCreditsQuota,
-					});
+					const easyAiWorkflowJson = getEasyAiWorkflowJson();
 					const isEasyAIWorkflow = workflow.meta.templateId === easyAiWorkflowJson.meta.templateId;
 					if (isEasyAIWorkflow) {
 						telemetry.track(
