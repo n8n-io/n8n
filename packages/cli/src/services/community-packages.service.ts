@@ -364,6 +364,14 @@ export class CommunityPackagesService {
 		}
 	}
 
+	private checkInstallPermissions(isUpdate: boolean, isVettedPackageInstall: boolean) {
+		if (isUpdate) return;
+
+		if (this.globalConfig.nodes.communityPackages.forbidNotVetted && !isVettedPackageInstall) {
+			throw new UnexpectedError('Installation of non-vetted community packages is forbidden!');
+		}
+	}
+
 	private async installOrUpdatePackage(
 		packageName: string,
 		options: { version?: string; checksum?: string } | { installedPackage: InstalledPackages },
@@ -374,9 +382,7 @@ export class CommunityPackagesService {
 		const registryUrl = this.getNpmRegistry(isVettedPackageInstall);
 		const command = `npm install ${packageName}@${packageVersion} --registry=${registryUrl}`;
 
-		if (this.globalConfig.nodes.communityPackages.forbidNotVetted && !isVettedPackageInstall) {
-			throw new UnexpectedError('Installation of non-vetted community packages is forbidden!');
-		}
+		this.checkInstallPermissions(isUpdate, isVettedPackageInstall);
 
 		if (!isUpdate && options.checksum) {
 			const metadata = await this.getPackageMetadata(
