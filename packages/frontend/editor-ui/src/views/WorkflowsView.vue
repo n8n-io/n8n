@@ -355,6 +355,7 @@ watch(
 	() => route.params?.folderId,
 	async (newVal) => {
 		currentFolderId.value = newVal as string;
+		filters.value.search = '';
 		await fetchWorkflows();
 	},
 );
