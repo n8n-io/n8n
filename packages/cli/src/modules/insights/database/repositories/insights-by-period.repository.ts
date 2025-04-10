@@ -252,7 +252,9 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 				: `DATE_SUB(NOW(), INTERVAL ${maxAgeInDays} DAY)`;
 	}
 
-	async getPreviousAndCurrentPeriodTypeAggregates(): Promise<
+	async getPreviousAndCurrentPeriodTypeAggregates({
+		periodLengthInDays,
+	}: { periodLengthInDays: number }): Promise<
 		Array<{
 			period: 'previous' | 'current';
 			type: 0 | 1 | 2 | 3;
@@ -261,9 +263,9 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 	> {
 		const cte = sql`
 			SELECT
-				${this.getAgeLimitQuery(7)} AS current_start,
+				${this.getAgeLimitQuery(periodLengthInDays)} AS current_start,
 				${this.getAgeLimitQuery(0)} AS current_end,
-				${this.getAgeLimitQuery(14)}  AS previous_start
+				${this.getAgeLimitQuery(periodLengthInDays * 2)}  AS previous_start
 		`;
 
 		const rawRows = await this.createQueryBuilder('insights')

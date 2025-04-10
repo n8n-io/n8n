@@ -371,6 +371,9 @@ const saveSettings = async () => {
 	void externalHooks.run('workflowSettings.saveSettings', { oldSettings });
 	telemetry.track('User updated workflow settings', {
 		workflow_id: workflowsStore.workflowId,
+		// null and undefined values are removed from the object, but we need the keys to be there
+		time_saved: workflowSettings.value.timeSavedPerExecution ?? '',
+		error_workflow: workflowSettings.value.errorWorkflow ?? '',
 	});
 };
 
