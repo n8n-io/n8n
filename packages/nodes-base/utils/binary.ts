@@ -2,7 +2,6 @@ import iconv from 'iconv-lite';
 import get from 'lodash/get';
 import type { IBinaryData, IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError, BINARY_ENCODING } from 'n8n-workflow';
-import { getDocument as readPDF, version as pdfJsVersion } from 'pdfjs-dist';
 import type { DocumentInitParameters } from 'pdfjs-dist/types/src/display/api';
 import type { WorkBook, WritingOptions } from 'xlsx';
 import { utils as xlsxUtils, write as xlsxWrite } from 'xlsx';
@@ -29,10 +28,6 @@ export type JsonToBinaryOptions = {
 	itemIndex?: number;
 	format?: boolean;
 };
-
-type PdfDocument = Awaited<ReturnType<Awaited<typeof readPDF>>['promise']>;
-type PdfPage = Awaited<ReturnType<Awaited<PdfDocument['getPage']>>>;
-type PdfTextContent = Awaited<ReturnType<PdfPage['getTextContent']>>;
 
 export async function convertJsonToSpreadsheetBinary(
 	this: IExecuteFunctions,
@@ -136,22 +131,6 @@ export async function createBinaryFromJson(
 	return binaryData;
 }
 
-const parseText = (textContent: PdfTextContent) => {
-	let lastY = undefined;
-	const text = [];
-	for (const item of textContent.items) {
-		if ('str' in item) {
-			if (lastY == item.transform[5] || !lastY) {
-				text.push(item.str);
-			} else {
-				text.push(`\n${item.str}`);
-			}
-			lastY = item.transform[5];
-		}
-	}
-	return text.join('');
-};
-
 export async function extractDataFromPDF(
 	this: IExecuteFunctions,
 	binaryPropertyName: string,
@@ -160,6 +139,28 @@ export async function extractDataFromPDF(
 	joinPages = true,
 	itemIndex = 0,
 ) {
+	const { getDocument: readPDF, version: pdfJsVersion } = await import(
+		'pdfjs-dist/legacy/build/pdf.mjs'
+	);
+	type PdfDocument = Awaited<ReturnType<Awaited<typeof readPDF>>['promise']>;
+	type PdfPage = Awaited<ReturnType<Awaited<PdfDocument['getPage']>>>;
+	type PdfTextContent = Awaited<ReturnType<PdfPage['getTextContent']>>;
+
+	const parseText = (textContent: PdfTextContent) => {
+		let lastY = undefined;
+		const text = [];
+		for (const item of textContent.items) {
+			if ('str' in item) {
+				if (lastY == item.transform[5] || !lastY) {
+					text.push(item.str);
+				} else {
+					text.push(`\n${item.str}`);
+				}
+				lastY = item.transform[5];
+			}
+		}
+		return text.join('');
+	};
 	const binaryData = this.helpers.assertBinaryData(itemIndex, binaryPropertyName);
 
 	const params: DocumentInitParameters = { password, isEvalSupported: false };
