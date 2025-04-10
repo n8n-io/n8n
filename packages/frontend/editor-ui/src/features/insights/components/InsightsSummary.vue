@@ -10,6 +10,7 @@ import type { InsightsSummary } from '@n8n/api-types';
 import { smartDecimal } from '@n8n/utils/number/smartDecimal';
 import { computed, ref, useCssModule } from 'vue';
 import { useRoute } from 'vue-router';
+import { useTelemetry } from '@/composables/useTelemetry';
 
 const props = defineProps<{
 	summary: InsightsSummaryDisplay;
@@ -19,6 +20,7 @@ const props = defineProps<{
 const i18n = useI18n();
 const route = useRoute();
 const $style = useCssModule();
+const telemetry = useTelemetry();
 
 const lastNDays = ref(7);
 
@@ -50,6 +52,12 @@ const getImpactStyle = (id: keyof InsightsSummary, value: number) => {
 	}
 	return $style.neutral;
 };
+
+const trackTabClick = (insightType: keyof InsightsSummary) => {
+	telemetry.track(`User clicked ${summaryTitles.value[insightType]}`, {
+		referrer: route.name === VIEWS.INSIGHTS ? 'Dashboard' : 'Overview',
+	});
+};
 </script>
 
 <template>
@@ -61,7 +69,7 @@ const getImpactStyle = (id: keyof InsightsSummary, value: number) => {
 				:key="id"
 				:data-test-id="`insights-summary-tab-${id}`"
 			>
-				<router-link :to="to" :exact-active-class="$style.activeTab">
+				<router-link :to="to" :exact-active-class="$style.activeTab" @click="trackTabClick(id)">
 					<strong>
 						<N8nTooltip placement="bottom" :disabled="id !== 'timeSaved'">
 							<template #content>
