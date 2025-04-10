@@ -6,7 +6,7 @@ import {
 	SPLIT_IN_BATCHES_NODE_TYPE,
 } from '@/constants';
 
-import { NodeHelpers, ExpressionEvaluatorProxy, NodeConnectionTypes } from 'n8n-workflow';
+import { NodeHelpers, NodeConnectionTypes } from 'n8n-workflow';
 import type {
 	INodeProperties,
 	INodeCredentialDescription,
@@ -39,7 +39,6 @@ import type {
 
 import { isString } from '@/utils/typeGuards';
 import { isObject } from '@/utils/objectUtils';
-import { useSettingsStore } from '@/stores/settings.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
@@ -704,9 +703,6 @@ export function useNodeHelpers() {
 
 		if (nodeType?.subtitle !== undefined) {
 			try {
-				ExpressionEvaluatorProxy.setEvaluator(
-					useSettingsStore().settings.expressions?.evaluator ?? 'tmpl',
-				);
 				return workflow.expression.getSimpleParameterValue(
 					data,
 					nodeType.subtitle,

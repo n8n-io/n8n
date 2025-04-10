@@ -43,7 +43,6 @@
   },
   "dependencies": {
     "@n8n/tournament": "1.0.6",
-    "@n8n_io/riot-tmpl": "4.0.0",
     "ast-types": "0.15.2",
     "axios": "catalog:",
     "callsites": "catalog:",

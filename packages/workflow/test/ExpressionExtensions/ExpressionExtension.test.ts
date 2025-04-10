@@ -30,7 +30,7 @@ describe('Expression Extension Transforms', () => {
 	});
 });
 
-describe('tmpl Expression Parser', () => {
+describe('Expression Parser', () => {
 	describe('Compatible splitting', () => {
 		test('Lone expression', () => {
 			expect(splitExpression('{{ "" }}')).toEqual([
