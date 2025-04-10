@@ -31,7 +31,8 @@ interface Data {
 }
 
 const UPDATE_INTERVAL = 8 * 60 * 60 * 1000;
-const N8N_VETTED_NODE_TYPES_URL = 'http://localhost:5678/webhook/strapi-mock';
+const N8N_VETTED_NODE_TYPES_URL =
+	'https://bread-liberty-returns-impaired.trycloudflare.com/api/community-nodes';
 
 @Service()
 export class CommunityNodeTypesService {
