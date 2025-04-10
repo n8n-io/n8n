@@ -100,6 +100,37 @@ test('import:workflow should import active workflow from combined file and deact
 	});
 });
 
+test('import:workflow can import a single workflow object', async () => {
+	//
+	// ARRANGE
+	//
+	const owner = await createOwner();
+	const ownerProject = await getPersonalProject(owner);
+
+	//
+	// ACT
+	//
+	await command.run(['--input=./test/integration/commands/import-workflows/combined/single.json']);
+
+	//
+	// ASSERT
+	//
+	const after = {
+		workflows: await getAllWorkflows(),
+		sharings: await getAllSharedWorkflows(),
+	};
+	expect(after).toMatchObject({
+		workflows: [expect.objectContaining({ name: 'active-workflow', active: false })],
+		sharings: [
+			expect.objectContaining({
+				workflowId: '998',
+				projectId: ownerProject.id,
+				role: 'workflow:owner',
+			}),
+		],
+	});
+});
+
 test('`import:workflow --userId ...` should fail if the workflow exists already and is owned by somebody else', async () => {
 	//
 	// ARRANGE

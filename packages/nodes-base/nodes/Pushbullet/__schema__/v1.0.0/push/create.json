@@ -4,29 +4,26 @@
         "active": {
             "type": "boolean"
         },
-        "iden": {
+        "body": {
+            "type": "string"
+        },
+        "client_iden": {
             "type": "string"
         },
         "created": {
             "type": "number"
         },
-        "modified": {
-            "type": "number"
-        },
-        "type": {
+        "direction": {
             "type": "string"
         },
         "dismissed": {
             "type": "boolean"
         },
-        "direction": {
+        "iden": {
             "type": "string"
         },
-        "sender_name": {
-            "type": "string"
-        },
-        "receiver_iden": {
-            "type": "string"
+        "modified": {
+            "type": "number"
         },
         "receiver_email": {
             "type": "string"
@@ -34,28 +31,18 @@
         "receiver_email_normalized": {
             "type": "string"
         },
-        "client_iden": {
+        "receiver_iden": {
+            "type": "string"
+        },
+        "sender_name": {
             "type": "string"
         },
         "title": {
             "type": "string"
         },
-        "body": {
+        "type": {
             "type": "string"
         }
     },
-    "required": [
-        "active",
-        "iden",
-        "created",
-        "modified",
-        "type",
-        "dismissed",
-        "direction",
-        "receiver_iden",
-        "receiver_email",
-        "receiver_email_normalized",
-        "client_iden"
-    ],
     "version": 1
 }

@@ -68,8 +68,8 @@ import {
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { useExternalHooks } from '@/composables/useExternalHooks';
-import { NodeConnectionType, jsonParse } from 'n8n-workflow';
-import type { IDataObject, ExecutionSummary, IConnection } from 'n8n-workflow';
+import { NodeConnectionTypes, jsonParse } from 'n8n-workflow';
+import type { NodeConnectionType, IDataObject, ExecutionSummary, IConnection } from 'n8n-workflow';
 import { useToast } from '@/composables/useToast';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
@@ -114,6 +114,7 @@ import { isValidNodeConnectionType } from '@/utils/typeGuards';
 import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
 import type { CanvasLayoutEvent } from '@/composables/useCanvasLayout';
 import { useClearExecutionButtonVisible } from '@/composables/useClearExecutionButtonVisible';
+import { LOGS_PANEL_STATE } from '@/components/CanvasChat/types/logs';
 
 defineOptions({
 	name: 'NodeView',
@@ -273,7 +274,7 @@ const keyBindingsEnabled = computed(() => {
 	return !ndvStore.activeNode && uiStore.activeModals.length === 0;
 });
 
-const isChatOpen = computed(() => workflowsStore.chatPanelState !== 'closed');
+const isLogsPanelOpen = computed(() => workflowsStore.logsPanelState !== LOGS_PANEL_STATE.CLOSED);
 
 /**
  * Initialization
@@ -990,19 +991,19 @@ async function onAddNodesAndConnections(
 	const mappedConnections: CanvasConnectionCreateData[] = connections.map(({ from, to }) => {
 		const fromNode = editableWorkflow.value.nodes[offsetIndex + from.nodeIndex];
 		const toNode = editableWorkflow.value.nodes[offsetIndex + to.nodeIndex];
-		const type = from.type ?? to.type ?? NodeConnectionType.Main;
+		const type = from.type ?? to.type ?? NodeConnectionTypes.Main;
 
 		return {
 			source: fromNode.id,
 			sourceHandle: createCanvasConnectionHandleString({
 				mode: CanvasConnectionMode.Output,
-				type: isValidNodeConnectionType(type) ? type : NodeConnectionType.Main,
+				type: isValidNodeConnectionType(type) ? type : NodeConnectionTypes.Main,
 				index: from.outputIndex ?? 0,
 			}),
 			target: toNode.id,
 			targetHandle: createCanvasConnectionHandleString({
 				mode: CanvasConnectionMode.Input,
-				type: isValidNodeConnectionType(type) ? type : NodeConnectionType.Main,
+				type: isValidNodeConnectionType(type) ? type : NodeConnectionTypes.Main,
 				index: to.inputIndex ?? 0,
 			}),
 			data: {
@@ -1286,8 +1287,8 @@ const chatTriggerNodePinnedData = computed(() => {
 	return workflowsStore.pinDataByNodeName(chatTriggerNode.value.name);
 });
 
-async function onOpenChat() {
-	await toggleChatOpen('main');
+async function onOpenChat(isOpen?: boolean) {
+	await toggleChatOpen('main', isOpen);
 }
 
 /**
@@ -1787,9 +1788,9 @@ onBeforeUnmount(() => {
 			/>
 			<CanvasChatButton
 				v-if="containsChatTriggerNodes"
-				:type="isChatOpen ? 'tertiary' : 'primary'"
-				:label="isChatOpen ? i18n.baseText('chat.hide') : i18n.baseText('chat.open')"
-				@click="onOpenChat"
+				:type="isLogsPanelOpen ? 'tertiary' : 'primary'"
+				:label="isLogsPanelOpen ? i18n.baseText('chat.hide') : i18n.baseText('chat.open')"
+				@click="onOpenChat(!isLogsPanelOpen)"
 			/>
 			<CanvasStopCurrentExecutionButton
 				v-if="isStopExecutionButtonVisible"

@@ -11,7 +11,7 @@ import { createExpressionTelemetryPayload } from '@/utils/telemetryUtils';
 import { useTelemetry } from '@/composables/useTelemetry';
 import type { Segment } from '@/types/expressions';
 import type { INodeProperties } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import { outputTheme } from './ExpressionEditorModal/theme';
 import ExpressionOutput from './InlineExpressionEditor/ExpressionOutput.vue';
 import VirtualSchema from '@/components/VirtualSchema.vue';
@@ -172,7 +172,7 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 						:search="appliedSearch"
 						:nodes="parentNodes"
 						:mapping-enabled="!isReadOnly"
-						:connection-type="NodeConnectionType.Main"
+						:connection-type="NodeConnectionTypes.Main"
 						pane-type="input"
 					/>
 				</div>

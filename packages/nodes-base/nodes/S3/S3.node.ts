@@ -8,7 +8,7 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import { Builder } from 'xml2js';
 
 import { s3ApiRequestREST, s3ApiRequestSOAP, s3ApiRequestSOAPAllItems } from './GenericFunctions';
@@ -30,8 +30,8 @@ export class S3 implements INodeType {
 			name: 'S3',
 		},
 		usableAsTool: true,
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 's3',

@@ -1,135 +1,8 @@
 {
     "type": "object",
     "properties": {
-        "gid": {
-            "type": "string"
-        },
-        "resource_type": {
-            "type": "string"
-        },
-        "created_at": {
-            "type": "string"
-        },
-        "modified_at": {
-            "type": "string"
-        },
-        "members": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "gid": {
-                        "type": "string"
-                    },
-                    "resource_type": {
-                        "type": "string"
-                    },
-                    "name": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "gid",
-                    "resource_type",
-                    "name"
-                ]
-            }
-        },
-        "owner": {
-            "type": "object",
-            "properties": {
-                "gid": {
-                    "type": "string"
-                },
-                "resource_type": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "gid",
-                "resource_type",
-                "name"
-            ]
-        },
-        "completed_by": {
-            "type": "null"
-        },
-        "current_status": {
-            "type": "null"
-        },
-        "public": {
-            "type": "boolean"
-        },
-        "privacy_setting": {
-            "type": "string"
-        },
-        "name": {
-            "type": "string"
-        },
-        "notes": {
-            "type": "string"
-        },
         "archived": {
             "type": "boolean"
-        },
-        "workspace": {
-            "type": "object",
-            "properties": {
-                "gid": {
-                    "type": "string"
-                },
-                "resource_type": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "gid",
-                "resource_type",
-                "name"
-            ]
-        },
-        "team": {
-            "type": "object",
-            "properties": {
-                "gid": {
-                    "type": "string"
-                },
-                "resource_type": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "gid",
-                "resource_type",
-                "name"
-            ]
-        },
-        "default_view": {
-            "type": "string"
-        },
-        "default_access_level": {
-            "type": "string"
-        },
-        "minimum_access_level_for_customization": {
-            "type": "string"
-        },
-        "minimum_access_level_for_sharing": {
-            "type": "string"
-        },
-        "start_on": {
-            "type": "null"
-        },
-        "current_status_update": {
-            "type": "null"
         },
         "completed": {
             "type": "boolean"
@@ -137,10 +10,22 @@
         "completed_at": {
             "type": "null"
         },
-        "icon": {
+        "completed_by": {
+            "type": "null"
+        },
+        "created_at": {
             "type": "string"
         },
-        "permalink_url": {
+        "current_status": {
+            "type": "null"
+        },
+        "current_status_update": {
+            "type": "null"
+        },
+        "default_access_level": {
+            "type": "string"
+        },
+        "default_view": {
             "type": "string"
         },
         "followers": {
@@ -151,51 +36,110 @@
                     "gid": {
                         "type": "string"
                     },
+                    "name": {
+                        "type": "string"
+                    },
                     "resource_type": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "gid": {
+            "type": "string"
+        },
+        "icon": {
+            "type": "string"
+        },
+        "members": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "gid": {
                         "type": "string"
                     },
                     "name": {
                         "type": "string"
+                    },
+                    "resource_type": {
+                        "type": "string"
                     }
+                }
+            }
+        },
+        "minimum_access_level_for_customization": {
+            "type": "string"
+        },
+        "minimum_access_level_for_sharing": {
+            "type": "string"
+        },
+        "modified_at": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "notes": {
+            "type": "string"
+        },
+        "owner": {
+            "type": "object",
+            "properties": {
+                "gid": {
+                    "type": "string"
                 },
-                "required": [
-                    "gid",
-                    "resource_type",
-                    "name"
-                ]
+                "name": {
+                    "type": "string"
+                },
+                "resource_type": {
+                    "type": "string"
+                }
+            }
+        },
+        "permalink_url": {
+            "type": "string"
+        },
+        "privacy_setting": {
+            "type": "string"
+        },
+        "public": {
+            "type": "boolean"
+        },
+        "resource_type": {
+            "type": "string"
+        },
+        "start_on": {
+            "type": "null"
+        },
+        "team": {
+            "type": "object",
+            "properties": {
+                "gid": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "resource_type": {
+                    "type": "string"
+                }
+            }
+        },
+        "workspace": {
+            "type": "object",
+            "properties": {
+                "gid": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "resource_type": {
+                    "type": "string"
+                }
             }
         }
     },
-    "required": [
-        "gid",
-        "resource_type",
-        "created_at",
-        "modified_at",
-        "members",
-        "owner",
-        "completed_by",
-        "current_status",
-        "public",
-        "privacy_setting",
-        "name",
-        "notes",
-        "archived",
-        "workspace",
-        "team",
-        "default_view",
-        "default_access_level",
-        "minimum_access_level_for_customization",
-        "minimum_access_level_for_sharing",
-        "start_on",
-        "current_status_update",
-        "due_on",
-        "due_date",
-        "completed",
-        "completed_at",
-        "color",
-        "icon",
-        "permalink_url",
-        "followers"
-    ],
     "version": 1
 }

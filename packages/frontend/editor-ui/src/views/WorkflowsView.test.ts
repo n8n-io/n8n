@@ -40,6 +40,10 @@ const router = createRouter({
 	],
 });
 
+vi.mock('@/api/usage', () => ({
+	getLicense: vi.fn(),
+}));
+
 let pinia: ReturnType<typeof createTestingPinia>;
 let foldersStore: ReturnType<typeof mockedStore<typeof useFoldersStore>>;
 let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;

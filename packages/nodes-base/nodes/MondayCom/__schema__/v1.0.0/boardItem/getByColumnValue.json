@@ -1,78 +1,54 @@
 {
     "type": "object",
     "properties": {
-        "id": {
-            "type": "string"
-        },
-        "name": {
-            "type": "string"
-        },
-        "created_at": {
-            "type": "string"
-        },
-        "state": {
-            "type": "string"
-        },
         "board": {
             "type": "object",
             "properties": {
                 "id": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "id"
-            ]
+            }
         },
         "column_values": {
             "type": "array",
             "items": {
                 "type": "object",
                 "properties": {
-                    "id": {
-                        "type": "string"
-                    },
-                    "type": {
-                        "type": "string"
-                    },
                     "column": {
                         "type": "object",
                         "properties": {
-                            "title": {
-                                "type": "string"
-                            },
                             "archived": {
                                 "type": "boolean"
                             },
                             "settings_str": {
                                 "type": "string"
+                            },
+                            "title": {
+                                "type": "string"
                             }
-                        },
-                        "required": [
-                            "title",
-                            "archived",
-                            "description",
-                            "settings_str"
-                        ]
+                        }
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string"
                     }
-                },
-                "required": [
-                    "id",
-                    "text",
-                    "type",
-                    "value",
-                    "column"
-                ]
+                }
             }
+        },
+        "created_at": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "state": {
+            "type": "string"
         }
     },
-    "required": [
-        "id",
-        "name",
-        "created_at",
-        "state",
-        "board",
-        "column_values"
-    ],
     "version": 1
 }

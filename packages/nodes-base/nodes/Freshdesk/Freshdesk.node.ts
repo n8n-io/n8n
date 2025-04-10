@@ -7,7 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { contactFields, contactOperations } from './ContactDescription';
 import type { ICreateContactBody } from './ContactInterface';
@@ -18,29 +18,35 @@ import {
 	// validateJSON,
 } from './GenericFunctions';
 
-const enum Status {
-	Open = 2,
-	Pending = 3,
-	Resolved = 4,
-	Closed = 5,
-}
+const Statuses = {
+	Open: 2,
+	Pending: 3,
+	Resolved: 4,
+	Closed: 5,
+} as const;
 
-const enum Priority {
-	Low = 1,
-	Medium = 2,
-	High = 3,
-	Urgent = 4,
-}
+type Status = (typeof Statuses)[keyof typeof Statuses];
 
-const enum Source {
-	Email = 1,
-	Portal = 2,
-	Phone = 3,
-	Chat = 7,
-	Mobihelp = 8,
-	FeedbackWidget = 9,
-	OutboundEmail = 10,
-}
+const Priorities = {
+	Low: 1,
+	Medium: 2,
+	High: 3,
+	Urgent: 4,
+} as const;
+
+type Priority = (typeof Priorities)[keyof typeof Priorities];
+
+const Sources = {
+	Email: 1,
+	Portal: 2,
+	Phone: 3,
+	Chat: 7,
+	Mobihelp: 8,
+	FeedbackWidget: 9,
+	OutboundEmail: 10,
+} as const;
+
+type Source = (typeof Sources)[keyof typeof Sources];
 
 interface ICreateTicketBody {
 	name?: string;
@@ -82,8 +88,8 @@ export class Freshdesk implements INodeType {
 			name: 'Freshdesk',
 		},
 		usableAsTool: true,
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'freshdeskApi',

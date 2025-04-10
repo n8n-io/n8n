@@ -1,49 +1,16 @@
 {
     "type": "object",
     "properties": {
-        "first_name": {
-            "type": "string"
-        },
-        "last_name": {
-            "type": "string"
-        },
-        "full_name": {
-            "type": "string"
-        },
         "civility": {
-            "type": "string"
-        },
-        "linkedin": {
             "type": "string"
         },
         "company": {
             "type": "string"
         },
-        "website": {
-            "type": "string"
-        },
-        "country": {
-            "type": "string"
-        },
         "company_linkedin": {
             "type": "string"
         },
-        "phone": {
-            "type": "string"
-        },
-        "nb_employees": {
-            "type": "string"
-        },
-        "siren": {
-            "type": "string"
-        },
-        "naf5_code": {
-            "type": "string"
-        },
-        "naf5_des": {
-            "type": "string"
-        },
-        "vat": {
+        "country": {
             "type": "string"
         },
         "email": {
@@ -57,12 +24,41 @@
                     "qualification": {
                         "type": "string"
                     }
-                },
-                "required": [
-                    "email",
-                    "qualification"
-                ]
+                }
             }
+        },
+        "first_name": {
+            "type": "string"
+        },
+        "full_name": {
+            "type": "string"
+        },
+        "last_name": {
+            "type": "string"
+        },
+        "linkedin": {
+            "type": "string"
+        },
+        "naf5_code": {
+            "type": "string"
+        },
+        "naf5_des": {
+            "type": "string"
+        },
+        "nb_employees": {
+            "type": "string"
+        },
+        "phone": {
+            "type": "string"
+        },
+        "siren": {
+            "type": "string"
+        },
+        "vat": {
+            "type": "string"
+        },
+        "website": {
+            "type": "string"
         }
     },
     "version": 1

@@ -1,6 +1,7 @@
 import type { EdgeProps } from '@vue-flow/core';
 import { getBezierPath, getSmoothStepPath, Position } from '@vue-flow/core';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
+import type { NodeConnectionType } from 'n8n-workflow';
 
 const EDGE_PADDING_BOTTOM = 130;
 const EDGE_PADDING_X = 40;
@@ -15,7 +16,7 @@ export function getEdgeRenderData(
 		'sourceX' | 'sourceY' | 'sourcePosition' | 'targetX' | 'targetY' | 'targetPosition'
 	>,
 	{
-		connectionType = NodeConnectionType.Main,
+		connectionType = NodeConnectionTypes.Main,
 	}: {
 		connectionType?: NodeConnectionType;
 	} = {},
@@ -23,7 +24,7 @@ export function getEdgeRenderData(
 	const { targetX, targetY, sourceX, sourceY, sourcePosition, targetPosition } = props;
 	const isConnectorStraight = sourceY === targetY;
 
-	if (!isRightOfSourceHandle(sourceX, targetX) || connectionType !== NodeConnectionType.Main) {
+	if (!isRightOfSourceHandle(sourceX, targetX) || connectionType !== NodeConnectionTypes.Main) {
 		const segment = getBezierPath(props);
 		return {
 			segments: [segment],

@@ -124,7 +124,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 				SETUP_CREDENTIALS_MODAL_KEY,
 				PROJECT_MOVE_RESOURCE_MODAL,
 				NEW_ASSISTANT_SESSION_MODAL,
-				COMMUNITY_PLUS_ENROLLMENT_MODAL,
 			].map((modalKey) => [modalKey, { open: false }]),
 		),
 		[DELETE_USER_MODAL_KEY]: {
@@ -175,6 +174,12 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			activeId: null,
 			data: {
 				workflowListEventBus: undefined,
+			},
+		},
+		[COMMUNITY_PLUS_ENROLLMENT_MODAL]: {
+			open: false,
+			data: {
+				customHeading: undefined,
 			},
 		},
 	});

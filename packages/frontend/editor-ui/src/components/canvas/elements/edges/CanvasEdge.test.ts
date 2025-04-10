@@ -2,7 +2,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { Position } from '@vue-flow/core';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import { setActivePinia } from 'pinia';
 import CanvasEdge, { type CanvasEdgeProps } from './CanvasEdge.vue';
 
@@ -15,8 +15,8 @@ const DEFAULT_PROPS = {
 	targetPosition: Position.Bottom,
 	data: {
 		status: undefined,
-		source: { index: 0, type: NodeConnectionType.Main },
-		target: { index: 0, type: NodeConnectionType.Main },
+		source: { index: 0, type: NodeConnectionTypes.Main },
+		target: { index: 0, type: NodeConnectionTypes.Main },
 	},
 } satisfies Partial<CanvasEdgeProps>;
 const renderComponent = createComponentRenderer(CanvasEdge, {
@@ -159,7 +159,7 @@ describe('CanvasEdge', () => {
 				data: {
 					...DEFAULT_PROPS.data,
 					source: {
-						type: NodeConnectionType.AiTool,
+						type: NodeConnectionTypes.AiTool,
 					},
 				},
 				sourceX: 0,

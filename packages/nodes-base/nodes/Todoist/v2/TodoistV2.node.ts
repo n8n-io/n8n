@@ -8,7 +8,7 @@ import {
 	type INodeType,
 	type INodeTypeBaseDescription,
 	type INodeTypeDescription,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
 import type { OperationType, TodoistProjectType } from './Service';
@@ -42,8 +42,8 @@ const versionDescription: INodeTypeDescription = {
 		name: 'Todoist',
 	},
 	usableAsTool: true,
-	inputs: [NodeConnectionType.Main],
-	outputs: [NodeConnectionType.Main],
+	inputs: [NodeConnectionTypes.Main],
+	outputs: [NodeConnectionTypes.Main],
 	credentials: [
 		{
 			name: 'todoistApi',

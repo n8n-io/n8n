@@ -3,9 +3,11 @@ import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
 
+import type { FolderWithWorkflowAndSubFolderCount } from '@/databases/entities/folder';
 import type { TagEntity } from '@/databases/entities/tag-entity';
 import type { User } from '@/databases/entities/user';
 import type { Variables } from '@/databases/entities/variables';
+import type { FolderRepository } from '@/databases/repositories/folder.repository';
 import type { TagRepository } from '@/databases/repositories/tag.repository';
 import { SourceControlPreferencesService } from '@/environments.ee/source-control/source-control-preferences.service.ee';
 import { SourceControlService } from '@/environments.ee/source-control/source-control.service.ee';
@@ -24,6 +26,7 @@ describe('SourceControlService', () => {
 	);
 	const sourceControlImportService = mock<SourceControlImportService>();
 	const tagRepository = mock<TagRepository>();
+	const folderRepository = mock<FolderRepository>();
 	const sourceControlService = new SourceControlService(
 		mock(),
 		mock(),
@@ -31,6 +34,7 @@ describe('SourceControlService', () => {
 		mock(),
 		sourceControlImportService,
 		tagRepository,
+		folderRepository,
 		mock(),
 	);
 
@@ -171,6 +175,30 @@ describe('SourceControlService', () => {
 				mappings: [],
 			});
 
+			// Define a folder that does only exist locally.
+			// Pulling this would delete it so it should be marked as a conflict.
+			// Pushing this is conflict free.
+			const folder = mock<FolderWithWorkflowAndSubFolderCount>({
+				updatedAt: new Date(),
+				createdAt: new Date(),
+			});
+			folderRepository.find.mockResolvedValue([folder]);
+			sourceControlImportService.getRemoteFoldersAndMappingsFromFile.mockResolvedValue({
+				folders: [],
+			});
+			sourceControlImportService.getLocalFoldersAndMappingsFromDb.mockResolvedValue({
+				folders: [
+					{
+						id: folder.id,
+						name: folder.name,
+						parentFolderId: folder.parentFolder?.id ?? '',
+						homeProjectId: folder.homeProject.id,
+						createdAt: folder.createdAt.toISOString(),
+						updatedAt: folder.updatedAt.toISOString(),
+					},
+				],
+			});
+
 			// ACT
 			const pullResult = await sourceControlService.getStatus({
 				direction: 'pull',
@@ -185,8 +213,6 @@ describe('SourceControlService', () => {
 			});
 
 			// ASSERT
-			console.log(pullResult);
-			console.log(pushResult);
 
 			if (!Array.isArray(pullResult)) {
 				fail('Expected pullResult to be an array.');
@@ -195,8 +221,8 @@ describe('SourceControlService', () => {
 				fail('Expected pushResult to be an array.');
 			}
 
-			expect(pullResult).toHaveLength(4);
-			expect(pushResult).toHaveLength(4);
+			expect(pullResult).toHaveLength(5);
+			expect(pushResult).toHaveLength(5);
 
 			expect(pullResult.find((i) => i.type === 'workflow')).toHaveProperty('conflict', true);
 			expect(pushResult.find((i) => i.type === 'workflow')).toHaveProperty('conflict', false);
@@ -209,6 +235,9 @@ describe('SourceControlService', () => {
 
 			expect(pullResult.find((i) => i.type === 'tags')).toHaveProperty('conflict', true);
 			expect(pushResult.find((i) => i.type === 'tags')).toHaveProperty('conflict', false);
+
+			expect(pullResult.find((i) => i.type === 'folders')).toHaveProperty('conflict', true);
+			expect(pushResult.find((i) => i.type === 'folders')).toHaveProperty('conflict', false);
 		});
 	});
 });

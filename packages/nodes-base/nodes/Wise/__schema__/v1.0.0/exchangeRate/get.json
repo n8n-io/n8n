@@ -11,11 +11,5 @@
             "type": "string"
         }
     },
-    "required": [
-        "rate",
-        "source",
-        "target",
-        "time"
-    ],
     "version": 1
 }

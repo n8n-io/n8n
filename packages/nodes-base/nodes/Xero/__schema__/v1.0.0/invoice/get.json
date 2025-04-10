@@ -1,65 +1,6 @@
 {
     "type": "object",
     "properties": {
-        "Type": {
-            "type": "string"
-        },
-        "InvoiceID": {
-            "type": "string"
-        },
-        "InvoiceNumber": {
-            "type": "string"
-        },
-        "Reference": {
-            "type": "string"
-        },
-        "Overpayments": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "OverpaymentID": {
-                        "type": "string"
-                    },
-                    "CurrencyRate": {
-                        "type": "integer"
-                    },
-                    "AppliedAmount": {
-                        "type": "number"
-                    },
-                    "DateString": {
-                        "type": "string"
-                    },
-                    "Date": {
-                        "type": "string"
-                    },
-                    "Total": {
-                        "type": "number"
-                    }
-                },
-                "required": [
-                    "OverpaymentID",
-                    "CurrencyRate",
-                    "AppliedAmount",
-                    "DateString",
-                    "Date",
-                    "LineItems",
-                    "Total"
-                ]
-            }
-        },
-        "SentToContact": {
-            "type": "boolean"
-        },
-        "IsDiscounted": {
-            "type": "boolean"
-        },
-        "HasAttachments": {
-            "type": "boolean"
-        },
-        "HasErrors": {
-            "type": "boolean"
-        },
         "Attachments": {
             "type": "array",
             "items": {
@@ -68,44 +9,28 @@
                     "AttachmentID": {
                         "type": "string"
                     },
-                    "FileName": {
-                        "type": "string"
+                    "ContentLength": {
+                        "type": "integer"
                     },
-                    "Url": {
+                    "FileName": {
                         "type": "string"
                     },
                     "MimeType": {
                         "type": "string"
                     },
-                    "ContentLength": {
-                        "type": "integer"
+                    "Url": {
+                        "type": "string"
                     }
-                },
-                "required": [
-                    "AttachmentID",
-                    "FileName",
-                    "Url",
-                    "MimeType",
-                    "ContentLength"
-                ]
+                }
             }
+        },
+        "BrandingThemeID": {
+            "type": "string"
         },
         "Contact": {
             "type": "object",
             "properties": {
-                "ContactID": {
-                    "type": "string"
-                },
-                "ContactStatus": {
-                    "type": "string"
-                },
-                "Name": {
-                    "type": "string"
-                },
-                "EmailAddress": {
-                    "type": "string"
-                },
-                "BankAccountDetails": {
+                "AccountsReceivableTaxType": {
                     "type": "string"
                 },
                 "Addresses": {
@@ -113,54 +38,28 @@
                     "items": {
                         "type": "object",
                         "properties": {
+                            "AddressLine1": {
+                                "type": "string"
+                            },
                             "AddressType": {
                                 "type": "string"
                             },
                             "City": {
                                 "type": "string"
                             },
-                            "Region": {
+                            "Country": {
                                 "type": "string"
                             },
                             "PostalCode": {
                                 "type": "string"
                             },
-                            "Country": {
-                                "type": "string"
-                            },
-                            "AddressLine1": {
+                            "Region": {
                                 "type": "string"
                             }
-                        },
-                        "required": [
-                            "AddressType"
-                        ]
+                        }
                     }
                 },
-                "Phones": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "PhoneType": {
-                                "type": "string"
-                            },
-                            "PhoneNumber": {
-                                "type": "string"
-                            },
-                            "PhoneAreaCode": {
-                                "type": "string"
-                            },
-                            "PhoneCountryCode": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "PhoneType"
-                        ]
-                    }
-                },
-                "UpdatedDateUTC": {
+                "BankAccountDetails": {
                     "type": "string"
                 },
                 "ContactGroups": {
@@ -171,50 +70,86 @@
                             "ContactGroupID": {
                                 "type": "string"
                             },
+                            "HasValidationErrors": {
+                                "type": "boolean"
+                            },
                             "Name": {
                                 "type": "string"
                             },
                             "Status": {
                                 "type": "string"
-                            },
-                            "HasValidationErrors": {
-                                "type": "boolean"
                             }
-                        },
-                        "required": [
-                            "ContactGroupID",
-                            "Name",
-                            "Status",
-                            "Contacts",
-                            "HasValidationErrors"
-                        ]
+                        }
                     }
                 },
-                "IsSupplier": {
+                "ContactID": {
+                    "type": "string"
+                },
+                "ContactPersons": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "EmailAddress": {
+                                "type": "string"
+                            },
+                            "FirstName": {
+                                "type": "string"
+                            },
+                            "IncludeInEmails": {
+                                "type": "boolean"
+                            },
+                            "LastName": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "ContactStatus": {
+                    "type": "string"
+                },
+                "DefaultCurrency": {
+                    "type": "string"
+                },
+                "EmailAddress": {
+                    "type": "string"
+                },
+                "FirstName": {
+                    "type": "string"
+                },
+                "HasValidationErrors": {
                     "type": "boolean"
                 },
                 "IsCustomer": {
                     "type": "boolean"
                 },
-                "DefaultCurrency": {
+                "IsSupplier": {
+                    "type": "boolean"
+                },
+                "LastName": {
                     "type": "string"
                 },
-                "SalesTrackingCategories": {
+                "Name": {
+                    "type": "string"
+                },
+                "Phones": {
                     "type": "array",
                     "items": {
                         "type": "object",
                         "properties": {
-                            "TrackingCategoryName": {
+                            "PhoneAreaCode": {
                                 "type": "string"
                             },
-                            "TrackingOptionName": {
+                            "PhoneCountryCode": {
+                                "type": "string"
+                            },
+                            "PhoneNumber": {
+                                "type": "string"
+                            },
+                            "PhoneType": {
                                 "type": "string"
                             }
-                        },
-                        "required": [
-                            "TrackingCategoryName",
-                            "TrackingOptionName"
-                        ]
+                        }
                     }
                 },
                 "PurchasesTrackingCategories": {
@@ -228,82 +163,57 @@
                             "TrackingOptionName": {
                                 "type": "string"
                             }
-                        },
-                        "required": [
-                            "TrackingCategoryName",
-                            "TrackingOptionName"
-                        ]
+                        }
                     }
                 },
-                "ContactPersons": {
+                "SalesTrackingCategories": {
                     "type": "array",
                     "items": {
                         "type": "object",
                         "properties": {
-                            "FirstName": {
+                            "TrackingCategoryName": {
                                 "type": "string"
                             },
-                            "LastName": {
+                            "TrackingOptionName": {
                                 "type": "string"
-                            },
-                            "EmailAddress": {
-                                "type": "string"
-                            },
-                            "IncludeInEmails": {
-                                "type": "boolean"
                             }
-                        },
-                        "required": [
-                            "FirstName",
-                            "LastName",
-                            "EmailAddress",
-                            "IncludeInEmails"
-                        ]
+                        }
                     }
                 },
-                "HasValidationErrors": {
-                    "type": "boolean"
-                },
-                "FirstName": {
-                    "type": "string"
-                },
-                "LastName": {
-                    "type": "string"
-                },
-                "AccountsReceivableTaxType": {
+                "UpdatedDateUTC": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "ContactID",
-                "ContactStatus",
-                "Name",
-                "Addresses",
-                "Phones",
-                "UpdatedDateUTC",
-                "ContactGroups",
-                "IsSupplier",
-                "IsCustomer",
-                "SalesTrackingCategories",
-                "PurchasesTrackingCategories",
-                "ContactPersons",
-                "HasValidationErrors"
-            ]
+            }
         },
-        "DateString": {
+        "CurrencyCode": {
             "type": "string"
         },
         "Date": {
             "type": "string"
         },
-        "DueDateString": {
+        "DateString": {
             "type": "string"
         },
         "DueDate": {
             "type": "string"
         },
-        "Status": {
+        "DueDateString": {
             "type": "string"
+        },
+        "HasAttachments": {
+            "type": "boolean"
+        },
+        "HasErrors": {
+            "type": "boolean"
+        },
+        "InvoiceID": {
+            "type": "string"
+        },
+        "InvoiceNumber": {
+            "type": "string"
+        },
+        "IsDiscounted": {
+            "type": "boolean"
         },
         "LineAmountTypes": {
             "type": "string"
@@ -313,10 +223,19 @@
             "items": {
                 "type": "object",
                 "properties": {
-                    "TaxType": {
+                    "AccountCode": {
                         "type": "string"
                     },
-                    "AccountCode": {
+                    "AccountID": {
+                        "type": "string"
+                    },
+                    "Description": {
+                        "type": "string"
+                    },
+                    "LineItemID": {
+                        "type": "string"
+                    },
+                    "TaxType": {
                         "type": "string"
                     },
                     "Tracking": {
@@ -336,92 +255,56 @@
                                 "TrackingOptionID": {
                                     "type": "string"
                                 }
-                            },
-                            "required": [
-                                "Name",
-                                "Option",
-                                "TrackingCategoryID",
-                                "TrackingOptionID"
-                            ]
-                        }
-                    },
-                    "LineItemID": {
-                        "type": "string"
-                    },
-                    "AccountID": {
-                        "type": "string"
-                    },
-                    "Description": {
-                        "type": "string"
-                    },
-                    "ItemCode": {
-                        "type": "string"
-                    },
-                    "Item": {
-                        "type": "object",
-                        "properties": {
-                            "ItemID": {
-                                "type": "string"
-                            },
-                            "Code": {
-                                "type": "string"
-                            },
-                            "Name": {
-                                "type": "string"
                             }
-                        },
-                        "required": [
-                            "ItemID",
-                            "Code"
-                        ]
+                        }
                     }
-                },
-                "required": [
-                    "Tracking",
-                    "LineItemID",
-                    "ValidationErrors"
-                ]
+                }
             }
         },
+        "Overpayments": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "AppliedAmount": {
+                        "type": "number"
+                    },
+                    "CurrencyRate": {
+                        "type": "integer"
+                    },
+                    "Date": {
+                        "type": "string"
+                    },
+                    "DateString": {
+                        "type": "string"
+                    },
+                    "OverpaymentID": {
+                        "type": "string"
+                    },
+                    "Total": {
+                        "type": "number"
+                    }
+                }
+            }
+        },
+        "Reference": {
+            "type": "string"
+        },
+        "SentToContact": {
+            "type": "boolean"
+        },
+        "Status": {
+            "type": "string"
+        },
+        "Type": {
+            "type": "string"
+        },
         "UpdatedDateUTC": {
-            "type": "string"
-        },
-        "CurrencyCode": {
-            "type": "string"
-        },
-        "BrandingThemeID": {
             "type": "string"
         },
         "Url": {
             "type": "string"
         }
     },
-    "required": [
-        "Type",
-        "InvoiceID",
-        "InvoiceNumber",
-        "Reference",
-        "Prepayments",
-        "Overpayments",
-        "AmountDue",
-        "AmountPaid",
-        "SentToContact",
-        "IsDiscounted",
-        "HasAttachments",
-        "HasErrors",
-        "Attachments",
-        "InvoicePaymentServices",
-        "Contact",
-        "DateString",
-        "Date",
-        "Status",
-        "LineAmountTypes",
-        "LineItems",
-        "SubTotal",
-        "TotalTax",
-        "Total",
-        "UpdatedDateUTC",
-        "CurrencyCode"
-    ],
     "version": 1
 }

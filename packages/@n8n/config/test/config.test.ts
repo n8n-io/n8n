@@ -27,6 +27,12 @@ describe('GlobalConfig', () => {
 		port: 5678,
 		listen_address: '0.0.0.0',
 		protocol: 'http',
+		auth: {
+			cookie: {
+				samesite: 'lax',
+				secure: true,
+			},
+		},
 		database: {
 			logging: {
 				enabled: false,
@@ -118,7 +124,6 @@ describe('GlobalConfig', () => {
 				enabled: true,
 				registry: 'https://registry.npmjs.org',
 				reinstallMissing: false,
-				allowToolUsage: false,
 			},
 			errorTriggerType: 'n8n-nodes-base.errorTrigger',
 			include: [],
@@ -181,6 +186,8 @@ describe('GlobalConfig', () => {
 			form: 'form',
 			formTest: 'form-test',
 			formWaiting: 'form-waiting',
+			mcp: 'mcp',
+			mcpTest: 'mcp-test',
 			payloadSizeMax: 16,
 			formDataFileSizeMax: 200,
 			rest: 'rest',
@@ -269,7 +276,7 @@ describe('GlobalConfig', () => {
 		license: {
 			serverUrl: 'https://license.n8n.io/v1',
 			autoRenewalEnabled: true,
-			autoRenewOffset: 60 * 60 * 72,
+			detachFloatingOnShutdown: true,
 			activationKey: '',
 			tenantId: 1,
 			cert: '',
@@ -278,6 +285,7 @@ describe('GlobalConfig', () => {
 			restrictFileAccessTo: '',
 			blockFileAccessToN8nFiles: true,
 			daysAbandonedWorkflow: 90,
+			contentSecurityPolicy: '{}',
 		},
 		executions: {
 			pruneData: true,

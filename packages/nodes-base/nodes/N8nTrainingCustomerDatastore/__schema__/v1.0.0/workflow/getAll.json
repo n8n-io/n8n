@@ -1,32 +1,40 @@
 {
     "type": "object",
     "properties": {
-        "createdAt": {
-            "type": "string"
+        "active": {
+            "type": "boolean"
         },
-        "updatedAt": {
+        "createdAt": {
             "type": "string"
         },
         "id": {
             "type": "string"
         },
+        "meta": {
+            "type": "object",
+            "properties": {
+                "templateCredsSetupCompleted": {
+                    "type": "boolean"
+                }
+            }
+        },
         "name": {
             "type": "string"
-        },
-        "active": {
-            "type": "boolean"
         },
         "nodes": {
             "type": "array",
             "items": {
                 "type": "object",
                 "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
                     "parameters": {
                         "type": "object",
                         "properties": {
-                            "url": {
-                                "type": "string"
-                            },
                             "assignments": {
                                 "type": "object",
                                 "properties": {
@@ -44,30 +52,24 @@
                                                 "type": {
                                                     "type": "string"
                                                 }
-                                            },
-                                            "required": [
-                                                "id",
-                                                "name",
-                                                "value",
-                                                "type"
-                                            ]
+                                            }
                                         }
                                     }
-                                },
-                                "required": [
-                                    "assignments"
-                                ]
+                                }
                             },
-                            "path": {
-                                "type": "string"
-                            },
-                            "operation": {
+                            "authentication": {
                                 "type": "string"
                             },
                             "jsCode": {
                                 "type": "string"
                             },
-                            "authentication": {
+                            "operation": {
+                                "type": "string"
+                            },
+                            "path": {
+                                "type": "string"
+                            },
+                            "url": {
                                 "type": "string"
                             }
                         }
@@ -75,22 +77,10 @@
                     "type": {
                         "type": "string"
                     },
-                    "id": {
-                        "type": "string"
-                    },
-                    "name": {
-                        "type": "string"
-                    },
                     "webhookId": {
                         "type": "string"
                     }
-                },
-                "required": [
-                    "parameters",
-                    "type",
-                    "position",
-                    "name"
-                ]
+                }
             }
         },
         "settings": {
@@ -99,13 +89,7 @@
                 "executionOrder": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "executionOrder"
-            ]
-        },
-        "triggerCount": {
-            "type": "integer"
+            }
         },
         "tags": {
             "type": "array",
@@ -115,23 +99,23 @@
                     "createdAt": {
                         "type": "string"
                     },
-                    "updatedAt": {
-                        "type": "string"
-                    },
                     "id": {
                         "type": "string"
                     },
                     "name": {
                         "type": "string"
+                    },
+                    "updatedAt": {
+                        "type": "string"
                     }
-                },
-                "required": [
-                    "createdAt",
-                    "updatedAt",
-                    "id",
-                    "name"
-                ]
+                }
             }
+        },
+        "triggerCount": {
+            "type": "integer"
+        },
+        "updatedAt": {
+            "type": "string"
         }
     },
     "version": 1

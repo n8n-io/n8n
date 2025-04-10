@@ -1,6 +1,6 @@
 import * as a from 'assert';
-import type { IConnections, INode, WorkflowParameters } from 'n8n-workflow';
-import { NodeConnectionType, Workflow } from 'n8n-workflow';
+import type { IConnections, INode, WorkflowParameters, NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes, Workflow } from 'n8n-workflow';
 
 export type GraphConnection = {
 	from: INode;
@@ -186,7 +186,7 @@ export class DirectedGraph {
 
 		const connection: GraphConnection = {
 			...connectionInput,
-			type: connectionInput.type ?? NodeConnectionType.Main,
+			type: connectionInput.type ?? NodeConnectionTypes.Main,
 			outputIndex: connectionInput.outputIndex ?? 0,
 			inputIndex: connectionInput.inputIndex ?? 0,
 		};

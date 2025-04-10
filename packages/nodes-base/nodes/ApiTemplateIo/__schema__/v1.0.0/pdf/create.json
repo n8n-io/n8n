@@ -4,13 +4,13 @@
         "download_url": {
             "type": "string"
         },
+        "status": {
+            "type": "string"
+        },
         "template_id": {
             "type": "string"
         },
         "transaction_ref": {
-            "type": "string"
-        },
-        "status": {
             "type": "string"
         }
     },

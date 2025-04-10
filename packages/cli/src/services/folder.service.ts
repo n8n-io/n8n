@@ -138,7 +138,9 @@ export class FolderService {
 			throw new UserError('Cannot transfer folder contents to the folder being deleted');
 		}
 
-		await this.findFolderInProjectOrFail(transferToFolderId, projectId);
+		if (transferToFolderId !== PROJECT_ROOT) {
+			await this.findFolderInProjectOrFail(transferToFolderId, projectId);
+		}
 
 		return await this.folderRepository.manager.transaction(async (tx) => {
 			await this.folderRepository.moveAllToFolder(folderId, transferToFolderId, tx);

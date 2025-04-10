@@ -3,9 +3,42 @@ import {
 	type NodeTypeAndVersion,
 	type IWebhookFunctions,
 	type IWebhookResponseData,
+	type IBinaryData,
+	type IDataObject,
+	OperationalError,
 } from 'n8n-workflow';
 
 import { sanitizeCustomCss, sanitizeHtml } from './utils';
+
+const getBinaryDataFromNode = (context: IWebhookFunctions, nodeName: string): IDataObject => {
+	return context.evaluateExpression(`{{ $('${nodeName}').first().binary }}`) as IDataObject;
+};
+
+export const binaryResponse = async (
+	context: IWebhookFunctions,
+): Promise<{ data: string | Buffer; fileName: string; type: string }> => {
+	const inputDataFieldName = context.getNodeParameter('inputDataFieldName', '') as string;
+	const parentNodes = context.getParentNodes(context.getNode().name);
+	const binaryNode = parentNodes.find((node) =>
+		getBinaryDataFromNode(context, node?.name)?.hasOwnProperty(inputDataFieldName),
+	);
+	if (!binaryNode) {
+		throw new OperationalError(`No binary data with field ${inputDataFieldName} found.`);
+	}
+	const binaryData = getBinaryDataFromNode(context, binaryNode?.name)[
+		inputDataFieldName
+	] as IBinaryData;
+
+	return {
+		// If a binaryData has an id, the following field is set:
+		// N8N_DEFAULT_BINARY_DATA_MODE=filesystem
+		data: binaryData.id
+			? await context.helpers.binaryToBuffer(await context.helpers.getBinaryStream(binaryData.id))
+			: atob(binaryData.data),
+		fileName: binaryData.fileName ?? 'file',
+		type: binaryData.mimeType,
+	};
+};
 
 export const renderFormCompletion = async (
 	context: IWebhookFunctions,
@@ -20,6 +53,10 @@ export const renderFormCompletion = async (
 		customCss?: string;
 	};
 	const responseText = context.getNodeParameter('responseText', '') as string;
+	const binary =
+		context.getNodeParameter('respondWith', '') === 'returnBinary'
+			? await binaryResponse(context)
+			: '';
 
 	let title = options.formTitle;
 	if (!title) {
@@ -35,6 +72,7 @@ export const renderFormCompletion = async (
 		formTitle: title,
 		appendAttribution,
 		responseText: sanitizeHtml(responseText),
+		responseBinary: encodeURIComponent(JSON.stringify(binary)),
 		dangerousCustomCss: sanitizeCustomCss(options.customCss),
 		redirectUrl,
 	});

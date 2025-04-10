@@ -1,7 +1,7 @@
 import {
 	ADD_FORM_NOTICE,
 	type INodePropertyOptions,
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type INodeProperties,
 	type INodeType,
 	type INodeTypeBaseDescription,
@@ -43,7 +43,7 @@ const descriptionV2: INodeTypeDescription = {
 	},
 
 	inputs: [],
-	outputs: [NodeConnectionType.Main],
+	outputs: [NodeConnectionTypes.Main],
 	webhooks: [
 		{
 			name: 'setup',
@@ -52,7 +52,7 @@ const descriptionV2: INodeTypeDescription = {
 			isFullPath: true,
 			path: '={{ $parameter["path"] || $parameter["options"]?.path || $webhookId }}',
 			ndvHideUrl: true,
-			isForm: true,
+			nodeType: 'form',
 		},
 		{
 			name: 'default',
@@ -62,7 +62,7 @@ const descriptionV2: INodeTypeDescription = {
 			isFullPath: true,
 			path: '={{ $parameter["path"] || $parameter["options"]?.path || $webhookId }}',
 			ndvHideMethod: true,
-			isForm: true,
+			nodeType: 'form',
 		},
 	],
 	eventTriggerDescription: 'Waiting for you to submit the form',

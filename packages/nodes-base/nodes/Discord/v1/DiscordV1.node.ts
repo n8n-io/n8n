@@ -9,7 +9,7 @@ import type {
 import {
 	jsonParse,
 	NodeApiError,
-	NodeConnectionType,
+	NodeConnectionTypes,
 	NodeOperationError,
 	sleep,
 } from 'n8n-workflow';
@@ -27,8 +27,8 @@ const versionDescription: INodeTypeDescription = {
 	defaults: {
 		name: 'Discord',
 	},
-	inputs: [NodeConnectionType.Main],
-	outputs: [NodeConnectionType.Main],
+	inputs: [NodeConnectionTypes.Main],
+	outputs: [NodeConnectionTypes.Main],
 	properties: [
 		oldVersionNotice,
 		{

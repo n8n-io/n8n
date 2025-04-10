@@ -10,7 +10,7 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeConnectionType } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
 import { URL } from 'url';
 
 import { awsApiRequestSOAP } from '../GenericFunctions';
@@ -27,8 +27,8 @@ export class AwsSqs implements INodeType {
 		defaults: {
 			name: 'AWS SQS',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'aws',

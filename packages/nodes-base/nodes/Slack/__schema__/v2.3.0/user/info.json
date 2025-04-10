@@ -1,156 +1,25 @@
 {
     "type": "object",
     "properties": {
-        "id": {
-            "type": "string"
-        },
-        "team_id": {
-            "type": "string"
-        },
-        "name": {
+        "color": {
             "type": "string"
         },
         "deleted": {
             "type": "boolean"
         },
-        "color": {
+        "id": {
             "type": "string"
-        },
-        "real_name": {
-            "type": "string"
-        },
-        "tz": {
-            "type": "string"
-        },
-        "tz_label": {
-            "type": "string"
-        },
-        "tz_offset": {
-            "type": "integer"
-        },
-        "profile": {
-            "type": "object",
-            "properties": {
-                "title": {
-                    "type": "string"
-                },
-                "phone": {
-                    "type": "string"
-                },
-                "skype": {
-                    "type": "string"
-                },
-                "real_name": {
-                    "type": "string"
-                },
-                "real_name_normalized": {
-                    "type": "string"
-                },
-                "display_name": {
-                    "type": "string"
-                },
-                "display_name_normalized": {
-                    "type": "string"
-                },
-                "status_text": {
-                    "type": "string"
-                },
-                "status_emoji": {
-                    "type": "string"
-                },
-                "status_emoji_display_info": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "emoji_name": {
-                                "type": "string"
-                            },
-                            "display_url": {
-                                "type": "string"
-                            },
-                            "unicode": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "emoji_name",
-                            "display_url",
-                            "unicode"
-                        ]
-                    }
-                },
-                "status_expiration": {
-                    "type": "integer"
-                },
-                "avatar_hash": {
-                    "type": "string"
-                },
-                "image_original": {
-                    "type": "string"
-                },
-                "is_custom_image": {
-                    "type": "boolean"
-                },
-                "first_name": {
-                    "type": "string"
-                },
-                "last_name": {
-                    "type": "string"
-                },
-                "image_24": {
-                    "type": "string"
-                },
-                "image_32": {
-                    "type": "string"
-                },
-                "image_48": {
-                    "type": "string"
-                },
-                "image_72": {
-                    "type": "string"
-                },
-                "image_192": {
-                    "type": "string"
-                },
-                "image_512": {
-                    "type": "string"
-                },
-                "image_1024": {
-                    "type": "string"
-                },
-                "status_text_canonical": {
-                    "type": "string"
-                },
-                "team": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "title",
-                "phone",
-                "skype",
-                "real_name",
-                "real_name_normalized",
-                "display_name",
-                "display_name_normalized",
-                "fields",
-                "status_text",
-                "status_emoji",
-                "status_emoji_display_info",
-                "status_expiration",
-                "avatar_hash",
-                "image_24",
-                "image_32",
-                "image_48",
-                "image_72",
-                "image_192",
-                "image_512",
-                "status_text_canonical",
-                "team"
-            ]
         },
         "is_admin": {
+            "type": "boolean"
+        },
+        "is_app_user": {
+            "type": "boolean"
+        },
+        "is_bot": {
+            "type": "boolean"
+        },
+        "is_email_confirmed": {
             "type": "boolean"
         },
         "is_owner": {
@@ -165,31 +34,130 @@
         "is_ultra_restricted": {
             "type": "boolean"
         },
-        "is_bot": {
-            "type": "boolean"
+        "name": {
+            "type": "string"
         },
-        "is_app_user": {
-            "type": "boolean"
+        "profile": {
+            "type": "object",
+            "properties": {
+                "avatar_hash": {
+                    "type": "string"
+                },
+                "display_name": {
+                    "type": "string"
+                },
+                "display_name_normalized": {
+                    "type": "string"
+                },
+                "first_name": {
+                    "type": "string"
+                },
+                "huddle_state": {
+                    "type": "string"
+                },
+                "huddle_state_expiration_ts": {
+                    "type": "integer"
+                },
+                "image_1024": {
+                    "type": "string"
+                },
+                "image_192": {
+                    "type": "string"
+                },
+                "image_24": {
+                    "type": "string"
+                },
+                "image_32": {
+                    "type": "string"
+                },
+                "image_48": {
+                    "type": "string"
+                },
+                "image_512": {
+                    "type": "string"
+                },
+                "image_72": {
+                    "type": "string"
+                },
+                "image_original": {
+                    "type": "string"
+                },
+                "is_custom_image": {
+                    "type": "boolean"
+                },
+                "last_name": {
+                    "type": "string"
+                },
+                "phone": {
+                    "type": "string"
+                },
+                "real_name": {
+                    "type": "string"
+                },
+                "real_name_normalized": {
+                    "type": "string"
+                },
+                "skype": {
+                    "type": "string"
+                },
+                "status_emoji": {
+                    "type": "string"
+                },
+                "status_emoji_display_info": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "display_url": {
+                                "type": "string"
+                            },
+                            "emoji_name": {
+                                "type": "string"
+                            },
+                            "unicode": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "status_expiration": {
+                    "type": "integer"
+                },
+                "status_text": {
+                    "type": "string"
+                },
+                "status_text_canonical": {
+                    "type": "string"
+                },
+                "team": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "real_name": {
+            "type": "string"
+        },
+        "team_id": {
+            "type": "string"
+        },
+        "tz": {
+            "type": "string"
+        },
+        "tz_label": {
+            "type": "string"
+        },
+        "tz_offset": {
+            "type": "integer"
         },
         "updated": {
             "type": "integer"
-        },
-        "is_email_confirmed": {
-            "type": "boolean"
         },
         "who_can_share_contact_card": {
             "type": "string"
         }
     },
-    "required": [
-        "id",
-        "team_id",
-        "name",
-        "deleted",
-        "profile",
-        "is_bot",
-        "is_app_user",
-        "updated"
-    ],
     "version": 1
 }

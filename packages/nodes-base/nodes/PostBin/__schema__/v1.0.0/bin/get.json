@@ -4,17 +4,17 @@
         "binId": {
             "type": "string"
         },
-        "nowTimestamp": {
-            "type": "integer"
-        },
-        "nowIso": {
+        "expiresIso": {
             "type": "string"
         },
         "expiresTimestamp": {
             "type": "integer"
         },
-        "expiresIso": {
+        "nowIso": {
             "type": "string"
+        },
+        "nowTimestamp": {
+            "type": "integer"
         },
         "requestUrl": {
             "type": "string"
@@ -23,14 +23,5 @@
             "type": "string"
         }
     },
-    "required": [
-        "binId",
-        "nowTimestamp",
-        "nowIso",
-        "expiresTimestamp",
-        "expiresIso",
-        "requestUrl",
-        "viewUrl"
-    ],
     "version": 1
 }

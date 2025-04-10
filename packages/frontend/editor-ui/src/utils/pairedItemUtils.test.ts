@@ -15,6 +15,7 @@ const MOCK_EXECUTION: Partial<IExecutionResponse> = {
 				'When clicking ‘Test workflow’': [
 					{
 						startTime: 1706027170005,
+						executionIndex: 0,
 						executionTime: 0,
 						source: [],
 						executionStatus: 'success',
@@ -24,6 +25,7 @@ const MOCK_EXECUTION: Partial<IExecutionResponse> = {
 				DebugHelper: [
 					{
 						startTime: 1706027170005,
+						executionIndex: 1,
 						executionTime: 1,
 						source: [{ previousNode: 'When clicking ‘Test workflow’' }],
 						executionStatus: 'success',
@@ -58,6 +60,7 @@ const MOCK_EXECUTION: Partial<IExecutionResponse> = {
 				If: [
 					{
 						startTime: 1706027170006,
+						executionIndex: 2,
 						executionTime: 1,
 						source: [{ previousNode: 'DebugHelper' }],
 						executionStatus: 'success',
@@ -94,6 +97,7 @@ const MOCK_EXECUTION: Partial<IExecutionResponse> = {
 				'Edit Fields': [
 					{
 						startTime: 1706027170008,
+						executionIndex: 3,
 						executionTime: 0,
 						source: [{ previousNode: 'If', previousNodeOutput: 1 }],
 						executionStatus: 'success',
@@ -116,6 +120,7 @@ const MOCK_EXECUTION: Partial<IExecutionResponse> = {
 					},
 					{
 						startTime: 1706027170009,
+						executionIndex: 3,
 						executionTime: 0,
 						source: [{ previousNode: 'If' }],
 						executionStatus: 'success',
@@ -140,6 +145,7 @@ const MOCK_EXECUTION: Partial<IExecutionResponse> = {
 				'Edit Fields1': [
 					{
 						startTime: 1706027170008,
+						executionIndex: 4,
 						executionTime: 0,
 						source: [{ previousNode: 'Edit Fields' }],
 						executionStatus: 'success',
@@ -162,6 +168,7 @@ const MOCK_EXECUTION: Partial<IExecutionResponse> = {
 					},
 					{
 						startTime: 1706027170010,
+						executionIndex: 5,
 						executionTime: 0,
 						source: [{ previousNode: 'Edit Fields', previousNodeRun: 1 }],
 						executionStatus: 'success',
@@ -329,6 +336,7 @@ describe('pairedItemUtils', () => {
 							Start: [
 								{
 									startTime: 1706027170005,
+									executionIndex: 0,
 									executionTime: 0,
 									source: [],
 									executionStatus: 'success',
@@ -340,6 +348,7 @@ describe('pairedItemUtils', () => {
 							DebugHelper: [
 								{
 									startTime: 1706027170005,
+									executionIndex: 1,
 									executionTime: 1,
 									source: [{ previousNode: 'Start' }],
 									executionStatus: 'success',
@@ -409,8 +418,9 @@ describe('pairedItemUtils', () => {
 						runData: Object.fromEntries(
 							Array.from({ length: nodeCount }).map<[string, ITaskData[]]>((_, j) => [
 								`node_${j}`,
-								Array.from({ length: runCount }).map(() => ({
+								Array.from({ length: runCount }).map((_, executionIndex) => ({
 									startTime: 1706027170005,
+									executionIndex,
 									executionTime: 0,
 									source: j === 0 ? [] : [{ previousNode: `node_${j - 1}` }],
 									executionStatus: 'success',

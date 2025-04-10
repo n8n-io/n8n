@@ -4,91 +4,27 @@
         "_id": {
             "type": "integer"
         },
-        "link": {
-            "type": "string"
-        },
-        "title": {
-            "type": "string"
-        },
-        "excerpt": {
-            "type": "string"
-        },
-        "note": {
-            "type": "string"
-        },
-        "type": {
-            "type": "string"
-        },
-        "user": {
-            "type": "object",
-            "properties": {
-                "$ref": {
-                    "type": "string"
-                },
-                "$id": {
-                    "type": "integer"
-                }
-            },
-            "required": [
-                "$ref",
-                "$id"
-            ]
-        },
-        "cover": {
-            "type": "string"
-        },
-        "tags": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "removed": {
-            "type": "boolean"
-        },
         "collection": {
             "type": "object",
             "properties": {
-                "$ref": {
-                    "type": "string"
-                },
                 "$id": {
                     "type": "integer"
+                },
+                "$ref": {
+                    "type": "string"
                 },
                 "oid": {
                     "type": "integer"
                 }
-            },
-            "required": [
-                "$ref",
-                "$id"
-            ]
-        },
-        "media": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "type": {
-                        "type": "string"
-                    },
-                    "link": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "type",
-                    "link"
-                ]
             }
         },
+        "collectionId": {
+            "type": "integer"
+        },
+        "cover": {
+            "type": "string"
+        },
         "created": {
-            "type": "string"
-        },
-        "lastUpdate": {
-            "type": "string"
-        },
-        "domain": {
             "type": "string"
         },
         "creatorRef": {
@@ -100,32 +36,26 @@
                 "avatar": {
                     "type": "string"
                 },
-                "name": {
-                    "type": "string"
-                },
                 "email": {
                     "type": "string"
+                },
+                "name": {
+                    "type": "string"
                 }
-            },
-            "required": [
-                "_id",
-                "avatar",
-                "name",
-                "email"
-            ]
+            }
         },
-        "sort": {
-            "type": "integer"
+        "domain": {
+            "type": "string"
+        },
+        "excerpt": {
+            "type": "string"
         },
         "highlights": {
             "type": "array",
             "items": {
                 "type": "object",
                 "properties": {
-                    "text": {
-                        "type": "string"
-                    },
-                    "note": {
+                    "_id": {
                         "type": "string"
                     },
                     "color": {
@@ -134,32 +64,46 @@
                     "created": {
                         "type": "string"
                     },
-                    "lastUpdate": {
-                        "type": "string"
-                    },
                     "creatorRef": {
                         "type": "integer"
                     },
-                    "_id": {
+                    "lastUpdate": {
+                        "type": "string"
+                    },
+                    "note": {
+                        "type": "string"
+                    },
+                    "text": {
                         "type": "string"
                     }
-                },
-                "required": [
-                    "text",
-                    "note",
-                    "color",
-                    "created",
-                    "lastUpdate",
-                    "creatorRef",
-                    "_id"
-                ]
+                }
             }
-        },
-        "collectionId": {
-            "type": "integer"
         },
         "important": {
             "type": "boolean"
+        },
+        "lastUpdate": {
+            "type": "string"
+        },
+        "link": {
+            "type": "string"
+        },
+        "media": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "link": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "note": {
+            "type": "string"
         },
         "reminder": {
             "type": "object",
@@ -167,31 +111,37 @@
                 "date": {
                     "type": "null"
                 }
-            },
-            "required": [
-                "date"
-            ]
+            }
+        },
+        "removed": {
+            "type": "boolean"
+        },
+        "sort": {
+            "type": "integer"
+        },
+        "tags": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "title": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string"
+        },
+        "user": {
+            "type": "object",
+            "properties": {
+                "$id": {
+                    "type": "integer"
+                },
+                "$ref": {
+                    "type": "string"
+                }
+            }
         }
     },
-    "required": [
-        "_id",
-        "link",
-        "title",
-        "excerpt",
-        "note",
-        "type",
-        "user",
-        "cover",
-        "tags",
-        "removed",
-        "collection",
-        "media",
-        "created",
-        "lastUpdate",
-        "domain",
-        "sort",
-        "highlights",
-        "collectionId"
-    ],
     "version": 1
 }

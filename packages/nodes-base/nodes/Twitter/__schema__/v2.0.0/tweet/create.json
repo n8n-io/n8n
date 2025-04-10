@@ -1,17 +1,17 @@
 {
     "type": "object",
     "properties": {
-        "id": {
-            "type": "string"
-        },
-        "text": {
-            "type": "string"
-        },
         "edit_history_tweet_ids": {
             "type": "array",
             "items": {
                 "type": "string"
             }
+        },
+        "id": {
+            "type": "string"
+        },
+        "text": {
+            "type": "string"
         }
     },
     "version": 1

@@ -10,7 +10,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { BINARY_ENCODING, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { BINARY_ENCODING, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import type { Readable } from 'stream';
 
 import {
@@ -45,8 +45,8 @@ export class Jira implements INodeType {
 		defaults: {
 			name: 'Jira Software',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		usableAsTool: true,
 		credentials: [
 			{

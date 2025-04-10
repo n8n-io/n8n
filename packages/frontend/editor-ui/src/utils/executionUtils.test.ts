@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { displayForm, executionFilterToQueryFilter, waitingNodeTooltip } from './executionUtils';
 import type { INode, IRunData, IPinData } from 'n8n-workflow';
 import { type INodeUi } from '../Interface';
-import { CHAT_TRIGGER_NODE_TYPE, FORM_TRIGGER_NODE_TYPE } from '@/constants';
+import { CHAT_TRIGGER_NODE_TYPE, FORM_TRIGGER_NODE_TYPE, GITHUB_NODE_TYPE } from '@/constants';
 import { createTestNode } from '@/__tests__/mocks';
 
 const WAIT_NODE_TYPE = 'waitNode';
@@ -29,6 +29,7 @@ vi.mock('@/plugins/i18n', () => ({
 				'ndv.output.waitNodeWaiting': 'Waiting for execution to resume...',
 				'ndv.output.waitNodeWaitingForFormSubmission': 'Waiting for form submission: ',
 				'ndv.output.waitNodeWaitingForWebhook': 'Waiting for webhook call: ',
+				'ndv.output.githubNodeWaitingForWebhook': 'Waiting for webhook call: ',
 				'ndv.output.sendAndWaitWaitingApproval': 'Waiting for approval...',
 			};
 			return texts[key] || key;
@@ -281,6 +282,24 @@ describe('waitingNodeTooltip', () => {
 		};
 
 		expect(waitingNodeTooltip(node)).toBe('Waiting for approval...');
+	});
+
+	it('should handle GitHub dispatchAndWait operation', () => {
+		const node: INodeUi = {
+			id: '1',
+			name: 'GitHub',
+			type: GITHUB_NODE_TYPE,
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {
+				operation: 'dispatchAndWait',
+			},
+		};
+
+		const expectedUrl = 'http://localhost:5678/webhook-waiting/123';
+		expect(waitingNodeTooltip(node)).toBe(
+			`Waiting for webhook call: <a href="${expectedUrl}" target="_blank">${expectedUrl}</a>`,
+		);
 	});
 
 	it('should ignore object-type webhook suffix', () => {

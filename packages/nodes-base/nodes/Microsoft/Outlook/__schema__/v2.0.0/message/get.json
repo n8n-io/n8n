@@ -7,7 +7,7 @@
         "@odata.etag": {
             "type": "string"
         },
-        "id": {
+        "bodyPreview": {
             "type": "string"
         },
         "categories": {
@@ -16,35 +16,17 @@
                 "type": "string"
             }
         },
-        "hasAttachments": {
-            "type": "boolean"
-        },
-        "subject": {
-            "type": "string"
-        },
-        "bodyPreview": {
-            "type": "string"
-        },
         "conversationId": {
             "type": "string"
         },
-        "webLink": {
+        "hasAttachments": {
+            "type": "boolean"
+        },
+        "id": {
             "type": "string"
         },
-        "body": {
-            "type": "object",
-            "properties": {
-                "contentType": {
-                    "type": "string"
-                },
-                "content": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "contentType",
-                "content"
-            ]
+        "subject": {
+            "type": "string"
         }
     },
     "version": 1

@@ -15,6 +15,8 @@ export const defaultSettings: FrontendSettings = {
 	endpointForm: '',
 	endpointFormTest: '',
 	endpointFormWaiting: '',
+	endpointMcp: '',
+	endpointMcpTest: '',
 	endpointWebhook: '',
 	endpointWebhookTest: '',
 	endpointWebhookWaiting: '',
@@ -140,5 +142,10 @@ export const defaultSettings: FrontendSettings = {
 	},
 	folders: {
 		enabled: false,
+	},
+	insights: {
+		enabled: false,
+		summary: true,
+		dashboard: false,
 	},
 };

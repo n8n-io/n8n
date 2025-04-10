@@ -1,19 +1,22 @@
 {
     "type": "object",
     "properties": {
-        "id": {
-            "type": "string"
-        },
-        "project_id": {
-            "type": "string"
-        },
-        "order": {
+        "comment_count": {
             "type": "integer"
         },
         "content": {
             "type": "string"
         },
+        "created_at": {
+            "type": "string"
+        },
+        "creator_id": {
+            "type": "string"
+        },
         "description": {
+            "type": "string"
+        },
+        "id": {
             "type": "string"
         },
         "is_completed": {
@@ -25,23 +28,17 @@
                 "type": "string"
             }
         },
+        "order": {
+            "type": "integer"
+        },
         "priority": {
             "type": "integer"
         },
-        "comment_count": {
-            "type": "integer"
-        },
-        "creator_id": {
-            "type": "string"
-        },
-        "created_at": {
+        "project_id": {
             "type": "string"
         },
         "url": {
             "type": "string"
-        },
-        "duration": {
-            "type": "null"
         }
     },
     "version": 1

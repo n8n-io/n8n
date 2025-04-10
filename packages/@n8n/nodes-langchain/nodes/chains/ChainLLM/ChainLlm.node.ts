@@ -5,7 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeApiError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { getPromptInputByType } from '@utils/helpers';
 import { getOptionalOutputParser } from '@utils/output_parsers/N8nOutputParser';
@@ -34,7 +34,7 @@ export class ChainLlm implements INodeType {
 		icon: 'fa:link',
 		iconColor: 'black',
 		group: ['transform'],
-		version: [1, 1.1, 1.2, 1.3, 1.4, 1.5],
+		version: [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6],
 		description: 'A simple chain to prompt a large language model',
 		defaults: {
 			name: 'Basic LLM Chain',
@@ -55,7 +55,7 @@ export class ChainLlm implements INodeType {
 			},
 		},
 		inputs: `={{ ((parameter) => { ${getInputs.toString()}; return getInputs(parameter) })($parameter) }}`,
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [],
 		properties: nodeProperties,
 	};
@@ -73,7 +73,7 @@ export class ChainLlm implements INodeType {
 			try {
 				// Get the language model
 				const llm = (await this.getInputConnectionData(
-					NodeConnectionType.AiLanguageModel,
+					NodeConnectionTypes.AiLanguageModel,
 					0,
 				)) as BaseLanguageModel;
 
@@ -116,10 +116,13 @@ export class ChainLlm implements INodeType {
 					messages,
 				});
 
+				// If the node version is 1.6(and LLM is using `response_format: json_object`) or higher or an output parser is configured,
+				//  we unwrap the response and return the object directly as JSON
+				const shouldUnwrapObjects = this.getNode().typeVersion >= 1.6 || !!outputParser;
 				// Process each response and add to return data
 				responses.forEach((response) => {
 					returnData.push({
-						json: formatResponse(response),
+						json: formatResponse(response, shouldUnwrapObjects),
 					});
 				});
 			} catch (error) {

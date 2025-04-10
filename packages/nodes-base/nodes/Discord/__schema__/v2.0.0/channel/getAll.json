@@ -1,55 +1,11 @@
 {
     "type": "object",
     "properties": {
-        "id": {
-            "type": "string"
-        },
-        "type": {
-            "type": "integer"
-        },
         "flags": {
             "type": "integer"
         },
         "guild_id": {
             "type": "string"
-        },
-        "name": {
-            "type": "string"
-        },
-        "rate_limit_per_user": {
-            "type": "integer"
-        },
-        "position": {
-            "type": "integer"
-        },
-        "permission_overwrites": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "string"
-                    },
-                    "type": {
-                        "type": "integer"
-                    },
-                    "allow": {
-                        "type": "string"
-                    },
-                    "deny": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "id",
-                    "type",
-                    "allow",
-                    "deny"
-                ]
-            }
-        },
-        "nsfw": {
-            "type": "boolean"
         },
         "icon_emoji": {
             "type": "object",
@@ -60,25 +16,49 @@
                 "name": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "id",
-                "name"
-            ]
+            }
+        },
+        "id": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "nsfw": {
+            "type": "boolean"
+        },
+        "permission_overwrites": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "allow": {
+                        "type": "string"
+                    },
+                    "deny": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "position": {
+            "type": "integer"
+        },
+        "rate_limit_per_user": {
+            "type": "integer"
         },
         "theme_color": {
             "type": "null"
+        },
+        "type": {
+            "type": "integer"
         }
     },
-    "required": [
-        "id",
-        "type",
-        "flags",
-        "guild_id",
-        "name",
-        "parent_id",
-        "position",
-        "permission_overwrites"
-    ],
     "version": 1
 }

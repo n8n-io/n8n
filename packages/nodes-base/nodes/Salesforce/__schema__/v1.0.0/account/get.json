@@ -10,17 +10,31 @@
                 "url": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "type",
-                "url"
-            ]
+            }
+        },
+        "CreatedById": {
+            "type": "string"
+        },
+        "CreatedDate": {
+            "type": "string"
         },
         "Id": {
             "type": "string"
         },
         "IsDeleted": {
             "type": "boolean"
+        },
+        "Jigsaw": {
+            "type": "null"
+        },
+        "JigsawCompanyId": {
+            "type": "null"
+        },
+        "LastModifiedById": {
+            "type": "string"
+        },
+        "LastModifiedDate": {
+            "type": "string"
         },
         "MasterRecordId": {
             "type": "null"
@@ -31,29 +45,11 @@
         "OwnerId": {
             "type": "string"
         },
-        "CreatedDate": {
-            "type": "string"
-        },
-        "CreatedById": {
-            "type": "string"
-        },
-        "LastModifiedDate": {
-            "type": "string"
-        },
-        "LastModifiedById": {
-            "type": "string"
+        "SicDesc": {
+            "type": "null"
         },
         "SystemModstamp": {
             "type": "string"
-        },
-        "Jigsaw": {
-            "type": "null"
-        },
-        "JigsawCompanyId": {
-            "type": "null"
-        },
-        "SicDesc": {
-            "type": "null"
         }
     },
     "version": 1

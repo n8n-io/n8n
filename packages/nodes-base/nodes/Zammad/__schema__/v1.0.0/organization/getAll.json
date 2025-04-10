@@ -1,14 +1,23 @@
 {
     "type": "object",
     "properties": {
-        "id": {
-            "type": "integer"
+        "active": {
+            "type": "boolean"
         },
-        "name": {
+        "cod_torre": {
             "type": "string"
         },
-        "shared": {
-            "type": "boolean"
+        "contrato_sla": {
+            "type": "string"
+        },
+        "created_at": {
+            "type": "string"
+        },
+        "created_by_id": {
+            "type": "integer"
+        },
+        "dom_2nd": {
+            "type": "string"
         },
         "domain": {
             "type": "string"
@@ -16,49 +25,10 @@
         "domain_assignment": {
             "type": "boolean"
         },
-        "active": {
-            "type": "boolean"
-        },
-        "vip": {
-            "type": "boolean"
-        },
-        "updated_by_id": {
+        "id": {
             "type": "integer"
-        },
-        "created_by_id": {
-            "type": "integer"
-        },
-        "created_at": {
-            "type": "string"
-        },
-        "updated_at": {
-            "type": "string"
-        },
-        "r7regiao": {
-            "type": "string"
-        },
-        "sctntid": {
-            "type": "string"
         },
         "id_tele": {
-            "type": "string"
-        },
-        "cod_torre": {
-            "type": "string"
-        },
-        "stellarcyber_cases": {
-            "type": "boolean"
-        },
-        "stellar_ia": {
-            "type": "boolean"
-        },
-        "stellar_case_min_score": {
-            "type": "integer"
-        },
-        "contrato_sla": {
-            "type": "string"
-        },
-        "dom_2nd": {
             "type": "string"
         },
         "member_ids": {
@@ -67,28 +37,42 @@
                 "type": "integer"
             }
         },
+        "name": {
+            "type": "string"
+        },
+        "r7regiao": {
+            "type": "string"
+        },
+        "sctntid": {
+            "type": "string"
+        },
         "secondary_member_ids": {
             "type": "array",
             "items": {
                 "type": "integer"
             }
+        },
+        "shared": {
+            "type": "boolean"
+        },
+        "stellar_case_min_score": {
+            "type": "integer"
+        },
+        "stellar_ia": {
+            "type": "boolean"
+        },
+        "stellarcyber_cases": {
+            "type": "boolean"
+        },
+        "updated_at": {
+            "type": "string"
+        },
+        "updated_by_id": {
+            "type": "integer"
+        },
+        "vip": {
+            "type": "boolean"
         }
     },
-    "required": [
-        "id",
-        "name",
-        "shared",
-        "domain",
-        "domain_assignment",
-        "active",
-        "vip",
-        "note",
-        "updated_by_id",
-        "created_by_id",
-        "created_at",
-        "updated_at",
-        "member_ids",
-        "secondary_member_ids"
-    ],
     "version": 1
 }

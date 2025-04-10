@@ -1,5 +1,5 @@
 import type { IExecuteFunctions, INodeType, INodeTypeDescription } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 
 import { createMessage, WHATSAPP_BASE_URL } from './GenericFunctions';
 import { mediaFields, mediaTypeFields } from './MediaDescription';
@@ -28,8 +28,8 @@ export class WhatsApp implements INodeType {
 			name: 'WhatsApp Business Cloud',
 		},
 		usableAsTool: true,
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		webhooks: sendAndWaitWebhooksDescription,
 		credentials: [
 			{

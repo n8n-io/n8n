@@ -15,7 +15,9 @@ import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { getLdapLoginLabel } from '@/ldap.ee/helpers.ee';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { ModulesConfig } from '@/modules/modules.config';
 import { isApiEnabled } from '@/public-api';
+import { PushConfig } from '@/push/push.config';
 import type { CommunityPackagesService } from '@/services/community-packages.service';
 import { getSamlLoginLabel } from '@/sso.ee/saml/saml-helpers';
 import { getCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
@@ -44,6 +46,8 @@ export class FrontendService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly urlService: UrlService,
 		private readonly securityConfig: SecurityConfig,
+		private readonly modulesConfig: ModulesConfig,
+		private readonly pushConfig: PushConfig,
 	) {
 		loadNodesAndCredentials.addPostProcessor(async () => await this.generateTypes());
 		void this.generateTypes();
@@ -85,6 +89,8 @@ export class FrontendService {
 			endpointForm: this.globalConfig.endpoints.form,
 			endpointFormTest: this.globalConfig.endpoints.formTest,
 			endpointFormWaiting: this.globalConfig.endpoints.formWaiting,
+			endpointMcp: this.globalConfig.endpoints.mcp,
+			endpointMcpTest: this.globalConfig.endpoints.mcpTest,
 			endpointWebhook: this.globalConfig.endpoints.webhook,
 			endpointWebhookTest: this.globalConfig.endpoints.webhookTest,
 			endpointWebhookWaiting: this.globalConfig.endpoints.webhookWaiting,
@@ -103,7 +109,7 @@ export class FrontendService {
 			versionCli: N8N_VERSION,
 			concurrency: config.getEnv('executions.concurrency.productionLimit'),
 			authCookie: {
-				secure: config.getEnv('secure_cookie'),
+				secure: this.globalConfig.auth.cookie.secure,
 			},
 			releaseChannel: this.globalConfig.generic.releaseChannel,
 			oauthCallbackUrls: {
@@ -163,7 +169,7 @@ export class FrontendService {
 				host: this.globalConfig.templates.host,
 			},
 			executionMode: config.getEnv('executions.mode'),
-			pushBackend: config.getEnv('push.backend'),
+			pushBackend: this.pushConfig.backend,
 			communityNodesEnabled: this.globalConfig.nodes.communityPackages.enabled,
 			deployment: {
 				type: config.getEnv('deployment.type'),
@@ -234,6 +240,11 @@ export class FrontendService {
 			partialExecution: this.globalConfig.partialExecutions,
 			folders: {
 				enabled: false,
+			},
+			insights: {
+				enabled: this.modulesConfig.modules.includes('insights'),
+				summary: true,
+				dashboard: false,
 			},
 		};
 	}
@@ -354,6 +365,12 @@ export class FrontendService {
 			this.settings.aiCredits.credits = this.license.getAiCredits();
 		}
 
+		Object.assign(this.settings.insights, {
+			enabled: this.modulesConfig.modules.includes('insights'),
+			summary: this.license.isInsightsSummaryEnabled(),
+			dashboard: this.license.isInsightsDashboardEnabled(),
+		});
+
 		this.settings.mfa.enabled = config.get('mfa.enabled');
 
 		this.settings.executionMode = config.getEnv('executions.mode');
@@ -362,8 +379,7 @@ export class FrontendService {
 
 		this.settings.enterprise.projects.team.limit = this.license.getTeamProjectLimit();
 
-		this.settings.folders.enabled =
-			config.get('folders.enabled') || this.license.isFoldersEnabled();
+		this.settings.folders.enabled = this.license.isFoldersEnabled();
 
 		return this.settings;
 	}

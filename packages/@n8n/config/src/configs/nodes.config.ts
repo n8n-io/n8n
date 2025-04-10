@@ -33,10 +33,6 @@ class CommunityPackagesConfig {
 	/** Whether to reinstall any missing community packages */
 	@Env('N8N_REINSTALL_MISSING_PACKAGES')
 	reinstallMissing: boolean = false;
-
-	/** Whether to allow community packages as tools for AI agents */
-	@Env('N8N_COMMUNITY_PACKAGES_ALLOW_TOOL_USAGE')
-	allowToolUsage: boolean = false;
 }
 
 @Config

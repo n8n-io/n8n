@@ -1,27 +1,15 @@
 {
     "type": "object",
     "properties": {
-        "id": {
-            "type": "string"
-        },
-        "name": {
-            "type": "string"
-        },
-        "idBoard": {
-            "type": "string"
-        },
-        "idCard": {
-            "type": "string"
-        },
-        "pos": {
-            "type": "integer"
-        },
         "checkItems": {
             "type": "array",
             "items": {
                 "type": "object",
                 "properties": {
                     "id": {
+                        "type": "string"
+                    },
+                    "idChecklist": {
                         "type": "string"
                     },
                     "name": {
@@ -32,32 +20,25 @@
                     },
                     "state": {
                         "type": "string"
-                    },
-                    "idChecklist": {
-                        "type": "string"
                     }
-                },
-                "required": [
-                    "id",
-                    "name",
-                    "nameData",
-                    "pos",
-                    "state",
-                    "due",
-                    "dueReminder",
-                    "idMember",
-                    "idChecklist"
-                ]
+                }
             }
+        },
+        "id": {
+            "type": "string"
+        },
+        "idBoard": {
+            "type": "string"
+        },
+        "idCard": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "pos": {
+            "type": "integer"
         }
     },
-    "required": [
-        "id",
-        "name",
-        "idBoard",
-        "idCard",
-        "pos",
-        "checkItems"
-    ],
     "version": 1
 }

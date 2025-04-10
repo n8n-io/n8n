@@ -1,35 +1,11 @@
 {
     "type": "object",
     "properties": {
-        "id": {
+        "add_time": {
             "type": "string"
         },
-        "title": {
+        "cc_email": {
             "type": "string"
-        },
-        "owner_id": {
-            "type": "integer"
-        },
-        "creator_id": {
-            "type": "integer"
-        },
-        "label_ids": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "is_archived": {
-            "type": "boolean"
-        },
-        "source_name": {
-            "type": "string"
-        },
-        "origin": {
-            "type": "string"
-        },
-        "origin_id": {
-            "type": "null"
         },
         "channel": {
             "type": "null"
@@ -37,13 +13,37 @@
         "channel_id": {
             "type": "null"
         },
-        "was_seen": {
+        "creator_id": {
+            "type": "integer"
+        },
+        "id": {
+            "type": "string"
+        },
+        "is_archived": {
             "type": "boolean"
+        },
+        "label_ids": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
         },
         "next_activity_id": {
             "type": "null"
         },
-        "add_time": {
+        "origin": {
+            "type": "string"
+        },
+        "origin_id": {
+            "type": "null"
+        },
+        "owner_id": {
+            "type": "integer"
+        },
+        "source_name": {
+            "type": "string"
+        },
+        "title": {
             "type": "string"
         },
         "update_time": {
@@ -52,8 +52,8 @@
         "visible_to": {
             "type": "string"
         },
-        "cc_email": {
-            "type": "string"
+        "was_seen": {
+            "type": "boolean"
         }
     },
     "version": 1

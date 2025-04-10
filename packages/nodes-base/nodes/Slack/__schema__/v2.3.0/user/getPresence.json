@@ -8,9 +8,5 @@
             "type": "string"
         }
     },
-    "required": [
-        "ok",
-        "presence"
-    ],
     "version": 1
 }

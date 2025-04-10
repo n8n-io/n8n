@@ -2166,6 +2166,7 @@ describe('NodeHelpers', () => {
 					false,
 					false,
 					null,
+					null,
 				);
 				expect(result).toEqual(testData.output.noneDisplayedFalse.defaultsFalse);
 
@@ -2175,6 +2176,7 @@ describe('NodeHelpers', () => {
 					testData.input.nodeValues,
 					true,
 					false,
+					null,
 					null,
 				);
 				expect(result).toEqual(testData.output.noneDisplayedFalse.defaultsTrue);
@@ -2186,6 +2188,7 @@ describe('NodeHelpers', () => {
 					false,
 					true,
 					null,
+					null,
 				);
 				expect(result).toEqual(testData.output.noneDisplayedTrue.defaultsFalse);
 
@@ -2195,6 +2198,7 @@ describe('NodeHelpers', () => {
 					testData.input.nodeValues,
 					true,
 					true,
+					null,
 					null,
 				);
 				expect(result).toEqual(testData.output.noneDisplayedTrue.defaultsTrue);

@@ -46,6 +46,12 @@ const wfEvaluationJson = JSON.parse(
 	readFileSync(path.join(__dirname, './mock-data/workflow.evaluation.json'), { encoding: 'utf-8' }),
 );
 
+const wfEvaluationMiddleJson = JSON.parse(
+	readFileSync(path.join(__dirname, './mock-data/workflow.evaluation-middle.json'), {
+		encoding: 'utf-8',
+	}),
+);
+
 const wfMultipleTriggersJson = JSON.parse(
 	readFileSync(path.join(__dirname, './mock-data/workflow.multiple-triggers.json'), {
 		encoding: 'utf-8',
@@ -131,9 +137,22 @@ function mockEvaluationExecutionData(metrics: Record<string, GenericValue>) {
 	return mock<IRun>({
 		data: {
 			resultData: {
-				lastNodeExecuted: 'lastNode',
+				lastNodeExecuted: 'Success',
 				runData: {
-					lastNode: [
+					Success: [
+						{
+							data: {
+								main: [
+									[
+										{
+											json: metrics,
+										},
+									],
+								],
+							},
+						},
+					],
+					Fail: [
 						{
 							data: {
 								main: [
@@ -149,6 +168,52 @@ function mockEvaluationExecutionData(metrics: Record<string, GenericValue>) {
 				},
 				// error is an optional prop, but jest-mock-extended will mock it by default,
 				// which affects the code logic. So, we need to explicitly set it to undefined.
+				error: undefined,
+			},
+		},
+	});
+}
+
+function mockEvaluationMiddleExecutionData(
+	firstMetrics: Record<string, GenericValue>,
+	secondMetrics: Record<string, GenericValue>,
+) {
+	// Clone the metrics to avoid modifying the passed object
+	// For test assertions, these run-data need special handling
+	const runData: Record<string, any> = {
+		'First Metric': [
+			{
+				data: {
+					main: [
+						[
+							{
+								json: firstMetrics,
+							},
+						],
+					],
+				},
+			},
+		],
+		Success: [
+			{
+				data: {
+					main: [
+						[
+							{
+								json: secondMetrics,
+							},
+						],
+					],
+				},
+			},
+		],
+	};
+
+	return mock<IRun>({
+		data: {
+			resultData: {
+				lastNodeExecuted: 'Success',
+				runData,
 				error: undefined,
 			},
 		},
@@ -363,7 +428,6 @@ describe('TestRunnerService', () => {
 		expect(testRunRepository.markAsCompleted).toHaveBeenCalledTimes(1);
 		expect(testRunRepository.markAsCompleted).toHaveBeenCalledWith('test-run-id', {
 			metric1: 0.75,
-			metric2: 50,
 		});
 
 		expect(testRunRepository.incrementPassed).toHaveBeenCalledTimes(2);
@@ -866,6 +930,218 @@ describe('TestRunnerService', () => {
 		);
 
 		expect(workflowRunner.run).toHaveBeenCalledTimes(1);
+	});
+
+	test('should run workflow with metrics defined in the middle of the workflow', async () => {
+		const testRunnerService = new TestRunnerService(
+			logger,
+			telemetry,
+			workflowRepository,
+			workflowRunner,
+			executionRepository,
+			activeExecutions,
+			testRunRepository,
+			testCaseExecutionRepository,
+			testMetricRepository,
+			mockNodeTypes,
+			errorReporter,
+		);
+
+		workflowRepository.findById.calledWith('workflow-under-test-id').mockResolvedValueOnce({
+			id: 'workflow-under-test-id',
+			...wfUnderTestJson,
+		});
+
+		workflowRepository.findById.calledWith('evaluation-workflow-id').mockResolvedValueOnce({
+			id: 'evaluation-workflow-id',
+			...wfEvaluationMiddleJson,
+		});
+
+		workflowRunner.run.mockResolvedValueOnce('some-execution-id');
+		workflowRunner.run.mockResolvedValueOnce('some-execution-id-2');
+		workflowRunner.run.mockResolvedValueOnce('some-execution-id-3');
+		workflowRunner.run.mockResolvedValueOnce('some-execution-id-4');
+
+		// Mock executions of workflow under test
+		activeExecutions.getPostExecutePromise
+			.calledWith('some-execution-id')
+			.mockResolvedValue(mockExecutionData());
+
+		activeExecutions.getPostExecutePromise
+			.calledWith('some-execution-id-3')
+			.mockResolvedValue(mockExecutionData());
+
+		// Mock executions of evaluation workflow
+		activeExecutions.getPostExecutePromise
+			.calledWith('some-execution-id-2')
+			.mockResolvedValue(mockEvaluationMiddleExecutionData({ metric2: 1 }, { metric1: 1 }));
+
+		activeExecutions.getPostExecutePromise
+			.calledWith('some-execution-id-4')
+			.mockResolvedValue(mockEvaluationMiddleExecutionData({ metric2: 2 }, { metric1: 0.5 }));
+
+		await testRunnerService.runTest(
+			mock<User>(),
+			mock<TestDefinition>({
+				workflowId: 'workflow-under-test-id',
+				evaluationWorkflowId: 'evaluation-workflow-id',
+				mockedNodes: [{ id: '72256d90-3a67-4e29-b032-47df4e5768af' }],
+			}),
+		);
+
+		expect(workflowRunner.run).toHaveBeenCalledTimes(4);
+
+		// Check workflow under test was executed
+		expect(workflowRunner.run).toHaveBeenCalledWith(
+			expect.objectContaining({
+				executionMode: 'evaluation',
+				pinData: {
+					'When clicking ‘Test workflow’':
+						executionDataJson.resultData.runData['When clicking ‘Test workflow’'][0].data.main[0],
+				},
+				workflowData: expect.objectContaining({
+					id: 'workflow-under-test-id',
+				}),
+			}),
+		);
+
+		// Check evaluation workflow was executed
+		expect(workflowRunner.run).toHaveBeenCalledWith(
+			expect.objectContaining({
+				executionMode: 'integrated',
+				executionData: expect.objectContaining({
+					executionData: expect.objectContaining({
+						nodeExecutionStack: expect.arrayContaining([
+							expect.objectContaining({ data: expect.anything() }),
+						]),
+					}),
+				}),
+				workflowData: expect.objectContaining({
+					id: 'evaluation-workflow-id',
+				}),
+			}),
+		);
+
+		// Check Test Run status was updated correctly
+		expect(testRunRepository.createTestRun).toHaveBeenCalledTimes(1);
+		expect(testRunRepository.markAsRunning).toHaveBeenCalledTimes(1);
+		expect(testRunRepository.markAsRunning).toHaveBeenCalledWith('test-run-id', expect.any(Number));
+		expect(testRunRepository.markAsCompleted).toHaveBeenCalledTimes(1);
+		expect(testRunRepository.markAsCompleted).toHaveBeenCalledWith('test-run-id', {
+			metric1: 0.75,
+			metric2: 1.5,
+		});
+
+		expect(testRunRepository.incrementPassed).toHaveBeenCalledTimes(2);
+		expect(testRunRepository.incrementFailed).not.toHaveBeenCalled();
+	});
+
+	test('should properly override metrics from earlier nodes with later ones', async () => {
+		const testRunnerService = new TestRunnerService(
+			logger,
+			telemetry,
+			workflowRepository,
+			workflowRunner,
+			executionRepository,
+			activeExecutions,
+			testRunRepository,
+			testCaseExecutionRepository,
+			testMetricRepository,
+			mockNodeTypes,
+			errorReporter,
+		);
+
+		workflowRepository.findById.calledWith('workflow-under-test-id').mockResolvedValueOnce({
+			id: 'workflow-under-test-id',
+			...wfUnderTestJson,
+		});
+
+		workflowRepository.findById.calledWith('evaluation-workflow-id').mockResolvedValueOnce({
+			id: 'evaluation-workflow-id',
+			...wfEvaluationMiddleJson,
+		});
+
+		workflowRunner.run.mockResolvedValueOnce('some-execution-id');
+		workflowRunner.run.mockResolvedValueOnce('some-execution-id-2');
+		workflowRunner.run.mockResolvedValueOnce('some-execution-id-3');
+		workflowRunner.run.mockResolvedValueOnce('some-execution-id-4');
+
+		// Mock executions of workflow under test
+		activeExecutions.getPostExecutePromise
+			.calledWith('some-execution-id')
+			.mockResolvedValue(mockExecutionData());
+
+		activeExecutions.getPostExecutePromise
+			.calledWith('some-execution-id-3')
+			.mockResolvedValue(mockExecutionData());
+
+		// Mock executions of evaluation workflow
+		activeExecutions.getPostExecutePromise
+			.calledWith('some-execution-id-2')
+			.mockResolvedValue(
+				mockEvaluationMiddleExecutionData({ metric2: 5 }, { metric1: 1, metric2: 5 }),
+			);
+
+		activeExecutions.getPostExecutePromise
+			.calledWith('some-execution-id-4')
+			.mockResolvedValue(
+				mockEvaluationMiddleExecutionData({ metric2: 10 }, { metric1: 0.5, metric2: 10 }),
+			);
+
+		await testRunnerService.runTest(
+			mock<User>(),
+			mock<TestDefinition>({
+				workflowId: 'workflow-under-test-id',
+				evaluationWorkflowId: 'evaluation-workflow-id',
+				mockedNodes: [{ id: '72256d90-3a67-4e29-b032-47df4e5768af' }],
+			}),
+		);
+
+		expect(workflowRunner.run).toHaveBeenCalledTimes(4);
+
+		// Check workflow under test was executed
+		expect(workflowRunner.run).toHaveBeenCalledWith(
+			expect.objectContaining({
+				executionMode: 'evaluation',
+				pinData: {
+					'When clicking ‘Test workflow’':
+						executionDataJson.resultData.runData['When clicking ‘Test workflow’'][0].data.main[0],
+				},
+				workflowData: expect.objectContaining({
+					id: 'workflow-under-test-id',
+				}),
+			}),
+		);
+
+		// Check evaluation workflow was executed
+		expect(workflowRunner.run).toHaveBeenCalledWith(
+			expect.objectContaining({
+				executionMode: 'integrated',
+				executionData: expect.objectContaining({
+					executionData: expect.objectContaining({
+						nodeExecutionStack: expect.arrayContaining([
+							expect.objectContaining({ data: expect.anything() }),
+						]),
+					}),
+				}),
+				workflowData: expect.objectContaining({
+					id: 'evaluation-workflow-id',
+				}),
+			}),
+		);
+
+		// Check Test Run status was updated correctly
+		expect(testRunRepository.createTestRun).toHaveBeenCalledTimes(1);
+		expect(testRunRepository.markAsRunning).toHaveBeenCalledTimes(1);
+		expect(testRunRepository.markAsRunning).toHaveBeenCalledWith('test-run-id', expect.any(Number));
+		expect(testRunRepository.markAsCompleted).toHaveBeenCalledTimes(1);
+		expect(testRunRepository.markAsCompleted).toHaveBeenCalledWith('test-run-id', {
+			metric1: 0.75,
+			metric2: 7.5,
+		});
+
+		expect(testRunRepository.incrementPassed).toHaveBeenCalledTimes(2);
+		expect(testRunRepository.incrementFailed).not.toHaveBeenCalled();
 	});
 
 	describe('Test Run cancellation', () => {

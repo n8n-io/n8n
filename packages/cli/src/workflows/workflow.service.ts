@@ -9,7 +9,7 @@ import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPar
 import omit from 'lodash/omit';
 import pick from 'lodash/pick';
 import { BinaryDataService, Logger } from 'n8n-core';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, PROJECT_ROOT } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
@@ -281,8 +281,10 @@ export class WorkflowService {
 
 		if (parentFolderId) {
 			const project = await this.sharedWorkflowRepository.getWorkflowOwningProject(workflow.id);
-			await this.folderService.findFolderInProjectOrFail(parentFolderId, project?.id ?? '');
-			updatePayload.parentFolder = { id: parentFolderId };
+			if (parentFolderId !== PROJECT_ROOT) {
+				await this.folderService.findFolderInProjectOrFail(parentFolderId, project?.id ?? '');
+			}
+			updatePayload.parentFolder = parentFolderId === PROJECT_ROOT ? null : { id: parentFolderId };
 		}
 
 		await this.workflowRepository.update(workflowId, updatePayload);

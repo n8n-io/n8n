@@ -37,7 +37,7 @@ import type {
 import {
 	ApplicationError,
 	createDeferredPromise,
-	NodeConnectionType,
+	NodeConnectionTypes,
 	NodeHelpers,
 	Workflow,
 } from 'n8n-workflow';
@@ -77,11 +77,7 @@ describe('WorkflowExecute', () => {
 				});
 
 				const waitPromise = createDeferredPromise<IRun>();
-				const nodeExecutionOrder: string[] = [];
-				const additionalData = Helpers.WorkflowExecuteAdditionalData(
-					waitPromise,
-					nodeExecutionOrder,
-				);
+				const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
 
 				const workflowExecute = new WorkflowExecute(additionalData, executionMode);
 
@@ -110,6 +106,12 @@ describe('WorkflowExecute', () => {
 				}
 
 				// Check if the nodes did execute in the correct order
+				const nodeExecutionOrder: string[] = [];
+				Object.entries(result.data.resultData.runData).forEach(([nodeName, taskDataArr]) => {
+					taskDataArr.forEach((taskData) => {
+						nodeExecutionOrder[taskData.executionIndex] = nodeName;
+					});
+				});
 				expect(nodeExecutionOrder).toEqual(testData.output.nodeExecutionOrder);
 
 				// Check if other data has correct value
@@ -140,11 +142,7 @@ describe('WorkflowExecute', () => {
 				});
 
 				const waitPromise = createDeferredPromise<IRun>();
-				const nodeExecutionOrder: string[] = [];
-				const additionalData = Helpers.WorkflowExecuteAdditionalData(
-					waitPromise,
-					nodeExecutionOrder,
-				);
+				const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
 
 				const workflowExecute = new WorkflowExecute(additionalData, executionMode);
 
@@ -177,6 +175,12 @@ describe('WorkflowExecute', () => {
 				}
 
 				// Check if the nodes did execute in the correct order
+				const nodeExecutionOrder: string[] = [];
+				Object.entries(result.data.resultData.runData).forEach(([nodeName, taskDataArr]) => {
+					taskDataArr.forEach((taskData) => {
+						nodeExecutionOrder[taskData.executionIndex] = nodeName;
+					});
+				});
 				expect(nodeExecutionOrder).toEqual(testData.output.nodeExecutionOrder);
 
 				// Check if other data has correct value
@@ -207,11 +211,7 @@ describe('WorkflowExecute', () => {
 				});
 
 				const waitPromise = createDeferredPromise<IRun>();
-				const nodeExecutionOrder: string[] = [];
-				const additionalData = Helpers.WorkflowExecuteAdditionalData(
-					waitPromise,
-					nodeExecutionOrder,
-				);
+				const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
 
 				const workflowExecute = new WorkflowExecute(additionalData, executionMode);
 
@@ -259,8 +259,7 @@ describe('WorkflowExecute', () => {
 		test("deletes dirty nodes' run data", async () => {
 			// ARRANGE
 			const waitPromise = createDeferredPromise<IRun>();
-			const nodeExecutionOrder: string[] = [];
-			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise, nodeExecutionOrder);
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
 			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
 
 			const trigger = createNodeData({ name: 'trigger', type: 'n8n-nodes-base.manualTrigger' });
@@ -307,8 +306,7 @@ describe('WorkflowExecute', () => {
 		test('deletes run data of children of dirty nodes as well', async () => {
 			// ARRANGE
 			const waitPromise = createDeferredPromise<IRun>();
-			const nodeExecutionOrder: string[] = [];
-			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise, nodeExecutionOrder);
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
 			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
 			jest.spyOn(workflowExecute, 'processRunExecutionData').mockImplementationOnce(jest.fn());
 
@@ -369,8 +367,7 @@ describe('WorkflowExecute', () => {
 		test('removes disabled nodes from the workflow', async () => {
 			// ARRANGE
 			const waitPromise = createDeferredPromise<IRun>();
-			const nodeExecutionOrder: string[] = [];
-			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise, nodeExecutionOrder);
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
 			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
 
 			const trigger = createNodeData({ name: 'trigger', type: 'n8n-nodes-base.manualTrigger' });
@@ -423,8 +420,7 @@ describe('WorkflowExecute', () => {
 		test('passes filtered run data to `recreateNodeExecutionStack`', async () => {
 			// ARRANGE
 			const waitPromise = createDeferredPromise<IRun>();
-			const nodeExecutionOrder: string[] = [];
-			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise, nodeExecutionOrder);
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
 			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
 
 			const trigger = createNodeData({ name: 'trigger', type: 'n8n-nodes-base.manualTrigger' });
@@ -486,8 +482,7 @@ describe('WorkflowExecute', () => {
 		test('passes subgraph to `cleanRunData`', async () => {
 			// ARRANGE
 			const waitPromise = createDeferredPromise<IRun>();
-			const nodeExecutionOrder: string[] = [];
-			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise, nodeExecutionOrder);
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
 			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
 
 			const trigger = createNodeData({ name: 'trigger', type: 'n8n-nodes-base.manualTrigger' });
@@ -547,8 +542,7 @@ describe('WorkflowExecute', () => {
 		test('passes pruned dirty nodes to `cleanRunData`', async () => {
 			// ARRANGE
 			const waitPromise = createDeferredPromise<IRun>();
-			const nodeExecutionOrder: string[] = [];
-			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise, nodeExecutionOrder);
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
 			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
 
 			const trigger = createNodeData({ name: 'trigger', type: 'n8n-nodes-base.manualTrigger' });
@@ -599,8 +593,7 @@ describe('WorkflowExecute', () => {
 		test('works with a single node', async () => {
 			// ARRANGE
 			const waitPromise = createDeferredPromise<IRun>();
-			const nodeExecutionOrder: string[] = [];
-			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise, nodeExecutionOrder);
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
 			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
 
 			const trigger = createNodeData({ name: 'trigger' });
@@ -805,10 +798,10 @@ describe('WorkflowExecute', () => {
 				displayName: 'test',
 				defaultVersion: 1,
 				properties: [],
-				inputs: [{ type: NodeConnectionType.Main }],
+				inputs: [{ type: NodeConnectionTypes.Main }],
 				outputs: [
-					{ type: NodeConnectionType.Main },
-					{ type: NodeConnectionType.Main, category: 'error' },
+					{ type: NodeConnectionTypes.Main },
+					{ type: NodeConnectionTypes.Main, category: 'error' },
 				],
 			},
 		});
@@ -836,7 +829,7 @@ describe('WorkflowExecute', () => {
 				],
 			},
 			source: {
-				[NodeConnectionType.Main]: [
+				[NodeConnectionTypes.Main]: [
 					{
 						previousNode: 'previousNode',
 						previousNodeOutput: 0,
@@ -856,6 +849,7 @@ describe('WorkflowExecute', () => {
 							},
 							source: [],
 							startTime: 0,
+							executionIndex: 0,
 							executionTime: 0,
 						},
 					],
@@ -1132,14 +1126,15 @@ describe('WorkflowExecute', () => {
 						source: [],
 						data: { main: [[], []] },
 						startTime: 0,
+						executionIndex: 0,
 						executionTime: 0,
 					},
 				],
 			};
 
 			const inputConnections: IConnection[] = [
-				{ node: 'node1', type: NodeConnectionType.Main, index: 0 },
-				{ node: 'node1', type: NodeConnectionType.Main, index: 1 },
+				{ node: 'node1', type: NodeConnectionTypes.Main, index: 0 },
+				{ node: 'node1', type: NodeConnectionTypes.Main, index: 1 },
 			];
 
 			const result = workflowExecute.incomingConnectionIsEmpty(runData, inputConnections, 0);
@@ -1149,7 +1144,7 @@ describe('WorkflowExecute', () => {
 		test('should return true when input connection node does not exist in runData', () => {
 			const runData: IRunData = {};
 			const inputConnections: IConnection[] = [
-				{ node: 'nonexistentNode', type: NodeConnectionType.Main, index: 0 },
+				{ node: 'nonexistentNode', type: NodeConnectionTypes.Main, index: 0 },
 			];
 
 			const result = workflowExecute.incomingConnectionIsEmpty(runData, inputConnections, 0);
@@ -1165,14 +1160,15 @@ describe('WorkflowExecute', () => {
 							main: [[{ json: { data: 'test' } }], []],
 						},
 						startTime: 0,
+						executionIndex: 0,
 						executionTime: 0,
 					},
 				],
 			};
 
 			const inputConnections: IConnection[] = [
-				{ node: 'node1', type: NodeConnectionType.Main, index: 0 },
-				{ node: 'node1', type: NodeConnectionType.Main, index: 1 },
+				{ node: 'node1', type: NodeConnectionTypes.Main, index: 0 },
+				{ node: 'node1', type: NodeConnectionTypes.Main, index: 1 },
 			];
 
 			const result = workflowExecute.incomingConnectionIsEmpty(runData, inputConnections, 0);
@@ -1188,6 +1184,7 @@ describe('WorkflowExecute', () => {
 							main: [[]],
 						},
 						startTime: 0,
+						executionIndex: 0,
 						executionTime: 0,
 					},
 					{
@@ -1196,13 +1193,14 @@ describe('WorkflowExecute', () => {
 							main: [[{ json: { data: 'test' } }]],
 						},
 						startTime: 0,
+						executionIndex: 1,
 						executionTime: 0,
 					},
 				],
 			};
 
 			const inputConnections: IConnection[] = [
-				{ node: 'node1', type: NodeConnectionType.Main, index: 0 },
+				{ node: 'node1', type: NodeConnectionTypes.Main, index: 0 },
 			];
 
 			expect(workflowExecute.incomingConnectionIsEmpty(runData, inputConnections, 0)).toBe(true);
@@ -1215,13 +1213,14 @@ describe('WorkflowExecute', () => {
 					{
 						source: [],
 						startTime: 0,
+						executionIndex: 0,
 						executionTime: 0,
 					},
 				],
 			};
 
 			const inputConnections: IConnection[] = [
-				{ node: 'node1', type: NodeConnectionType.Main, index: 0 },
+				{ node: 'node1', type: NodeConnectionTypes.Main, index: 0 },
 			];
 
 			const result = workflowExecute.incomingConnectionIsEmpty(runData, inputConnections, 0);
@@ -1254,7 +1253,7 @@ describe('WorkflowExecute', () => {
 
 		test('should do nothing when there is no metadata', () => {
 			runExecutionData.resultData.runData = {
-				node1: [{ startTime: 0, executionTime: 0, source: [] }],
+				node1: [{ startTime: 0, executionTime: 0, source: [], executionIndex: 0 }],
 			};
 
 			workflowExecute.moveNodeMetadata();
@@ -1264,7 +1263,7 @@ describe('WorkflowExecute', () => {
 
 		test('should merge metadata into runData for single node', () => {
 			runExecutionData.resultData.runData = {
-				node1: [{ startTime: 0, executionTime: 0, source: [] }],
+				node1: [{ startTime: 0, executionTime: 0, source: [], executionIndex: 0 }],
 			};
 			runExecutionData.executionData!.metadata = {
 				node1: [{ parentExecution }],
@@ -1277,8 +1276,8 @@ describe('WorkflowExecute', () => {
 
 		test('should merge metadata into runData for multiple nodes', () => {
 			runExecutionData.resultData.runData = {
-				node1: [{ startTime: 0, executionTime: 0, source: [] }],
-				node2: [{ startTime: 0, executionTime: 0, source: [] }],
+				node1: [{ startTime: 0, executionTime: 0, source: [], executionIndex: 0 }],
+				node2: [{ startTime: 0, executionTime: 0, source: [], executionIndex: 1 }],
 			};
 			runExecutionData.executionData!.metadata = {
 				node1: [{ parentExecution }],
@@ -1297,6 +1296,7 @@ describe('WorkflowExecute', () => {
 				node1: [
 					{
 						startTime: 0,
+						executionIndex: 0,
 						executionTime: 0,
 						source: [],
 						metadata: { subExecutionsCount: 4 },
@@ -1318,8 +1318,8 @@ describe('WorkflowExecute', () => {
 		test('should handle multiple run indices', () => {
 			runExecutionData.resultData.runData = {
 				node1: [
-					{ startTime: 0, executionTime: 0, source: [] },
-					{ startTime: 0, executionTime: 0, source: [] },
+					{ startTime: 0, executionTime: 0, source: [], executionIndex: 0 },
+					{ startTime: 0, executionTime: 0, source: [], executionIndex: 1 },
 				],
 			};
 			runExecutionData.executionData!.metadata = {
@@ -1600,7 +1600,7 @@ describe('WorkflowExecute', () => {
 
 			workflow.connectionsByDestinationNode = {
 				[node.name]: {
-					main: [[{ node: parentNode.name, type: NodeConnectionType.Main, index: 0 }]],
+					main: [[{ node: parentNode.name, type: NodeConnectionTypes.Main, index: 0 }]],
 				},
 			};
 
@@ -1618,7 +1618,7 @@ describe('WorkflowExecute', () => {
 
 			workflow.connectionsByDestinationNode = {
 				[node.name]: {
-					main: [[{ node: parentNode.name, type: NodeConnectionType.Main, index: 0 }]],
+					main: [[{ node: parentNode.name, type: NodeConnectionTypes.Main, index: 0 }]],
 				},
 			};
 
@@ -1637,7 +1637,7 @@ describe('WorkflowExecute', () => {
 
 			workflow.connectionsByDestinationNode = {
 				[node.name]: {
-					main: [[{ node: parentNode.name, type: NodeConnectionType.Main, index: 0 }]],
+					main: [[{ node: parentNode.name, type: NodeConnectionTypes.Main, index: 0 }]],
 				},
 			};
 

@@ -1,89 +1,16 @@
 {
     "type": "object",
     "properties": {
-        "engagement": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "integer"
-                },
-                "portalId": {
-                    "type": "integer"
-                },
-                "active": {
-                    "type": "boolean"
-                },
-                "createdAt": {
-                    "type": "integer"
-                },
-                "lastUpdated": {
-                    "type": "integer"
-                },
-                "createdBy": {
-                    "type": "integer"
-                },
-                "modifiedBy": {
-                    "type": "integer"
-                },
-                "ownerId": {
-                    "type": "integer"
-                },
-                "type": {
-                    "type": "string"
-                },
-                "timestamp": {
-                    "type": "integer"
-                },
-                "source": {
-                    "type": "string"
-                },
-                "allAccessibleTeamIds": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "bodyPreview": {
-                    "type": "string"
-                },
-                "queueMembershipIds": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "bodyPreviewIsTruncated": {
-                    "type": "boolean"
-                },
-                "bodyPreviewHtml": {
-                    "type": "string"
-                },
-                "uid": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "id",
-                "portalId",
-                "active",
-                "createdAt",
-                "lastUpdated",
-                "type",
-                "timestamp",
-                "allAccessibleTeamIds",
-                "queueMembershipIds"
-            ]
-        },
         "associations": {
             "type": "object",
             "properties": {
-                "contactIds": {
+                "companyIds": {
                     "type": "array",
                     "items": {
                         "type": "integer"
                     }
                 },
-                "companyIds": {
+                "contactIds": {
                     "type": "array",
                     "items": {
                         "type": "integer"
@@ -107,21 +34,7 @@
                         "type": "integer"
                     }
                 }
-            },
-            "required": [
-                "contactIds",
-                "companyIds",
-                "dealIds",
-                "ownerIds",
-                "workflowIds",
-                "ticketIds",
-                "contentIds",
-                "quoteIds",
-                "marketingEventIds",
-                "partnerClientIds",
-                "orderIds",
-                "cartIds"
-            ]
+            }
         },
         "attachments": {
             "type": "array",
@@ -131,46 +44,79 @@
                     "id": {
                         "type": "integer"
                     }
+                }
+            }
+        },
+        "engagement": {
+            "type": "object",
+            "properties": {
+                "active": {
+                    "type": "boolean"
                 },
-                "required": [
-                    "id"
-                ]
+                "allAccessibleTeamIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "bodyPreview": {
+                    "type": "string"
+                },
+                "bodyPreviewHtml": {
+                    "type": "string"
+                },
+                "bodyPreviewIsTruncated": {
+                    "type": "boolean"
+                },
+                "createdAt": {
+                    "type": "integer"
+                },
+                "createdBy": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "lastUpdated": {
+                    "type": "integer"
+                },
+                "modifiedBy": {
+                    "type": "integer"
+                },
+                "ownerId": {
+                    "type": "integer"
+                },
+                "portalId": {
+                    "type": "integer"
+                },
+                "queueMembershipIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "source": {
+                    "type": "string"
+                },
+                "timestamp": {
+                    "type": "integer"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "uid": {
+                    "type": "string"
+                }
             }
         },
         "metadata": {
             "type": "object",
             "properties": {
-                "to": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "raw": {
-                                "type": "string"
-                            },
-                            "email": {
-                                "type": "string"
-                            },
-                            "firstName": {
-                                "type": "string"
-                            },
-                            "lastName": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "email"
-                        ]
-                    }
-                },
                 "cc": {
                     "type": "array",
                     "items": {
                         "type": "object",
                         "properties": {
-                            "raw": {
-                                "type": "string"
-                            },
                             "email": {
                                 "type": "string"
                             },
@@ -179,22 +125,21 @@
                             },
                             "lastName": {
                                 "type": "string"
+                            },
+                            "raw": {
+                                "type": "string"
                             }
-                        },
-                        "required": [
-                            "raw",
-                            "email"
-                        ]
+                        }
                     }
-                },
-                "subject": {
-                    "type": "string"
                 },
                 "html": {
                     "type": "string"
                 },
-                "status": {
-                    "type": "string"
+                "ownerIdsCc": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
                 },
                 "ownerIdsFrom": {
                     "type": "array",
@@ -208,20 +153,34 @@
                         "type": "integer"
                     }
                 },
-                "ownerIdsCc": {
+                "status": {
+                    "type": "string"
+                },
+                "subject": {
+                    "type": "string"
+                },
+                "to": {
                     "type": "array",
                     "items": {
-                        "type": "integer"
+                        "type": "object",
+                        "properties": {
+                            "email": {
+                                "type": "string"
+                            },
+                            "firstName": {
+                                "type": "string"
+                            },
+                            "lastName": {
+                                "type": "string"
+                            },
+                            "raw": {
+                                "type": "string"
+                            }
+                        }
                     }
                 }
             }
         }
     },
-    "required": [
-        "engagement",
-        "associations",
-        "attachments",
-        "metadata"
-    ],
     "version": 1
 }

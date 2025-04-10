@@ -55,10 +55,7 @@
                 "media": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "media"
-            ]
+            }
         },
         "to": {
             "type": "string"

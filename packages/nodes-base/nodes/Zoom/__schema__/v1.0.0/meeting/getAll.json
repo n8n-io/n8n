@@ -1,13 +1,28 @@
 {
     "type": "object",
     "properties": {
-        "uuid": {
+        "created_at": {
+            "type": "string"
+        },
+        "duration": {
+            "type": "integer"
+        },
+        "host_id": {
             "type": "string"
         },
         "id": {
             "type": "integer"
         },
-        "host_id": {
+        "join_url": {
+            "type": "string"
+        },
+        "start_time": {
+            "type": "string"
+        },
+        "supportGoLive": {
+            "type": "boolean"
+        },
+        "timezone": {
             "type": "string"
         },
         "topic": {
@@ -16,35 +31,9 @@
         "type": {
             "type": "integer"
         },
-        "start_time": {
+        "uuid": {
             "type": "string"
-        },
-        "duration": {
-            "type": "integer"
-        },
-        "timezone": {
-            "type": "string"
-        },
-        "created_at": {
-            "type": "string"
-        },
-        "join_url": {
-            "type": "string"
-        },
-        "supportGoLive": {
-            "type": "boolean"
         }
     },
-    "required": [
-        "uuid",
-        "id",
-        "host_id",
-        "topic",
-        "type",
-        "duration",
-        "timezone",
-        "created_at",
-        "join_url"
-    ],
     "version": 1
 }

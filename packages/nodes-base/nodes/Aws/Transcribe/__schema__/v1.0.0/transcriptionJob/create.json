@@ -10,10 +10,7 @@
                 "MediaFileUri": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "MediaFileUri"
-            ]
+            }
         },
         "StartTime": {
             "type": "number"

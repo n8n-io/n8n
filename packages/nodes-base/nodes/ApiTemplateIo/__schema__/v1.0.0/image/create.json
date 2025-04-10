@@ -4,25 +4,18 @@
         "download_url": {
             "type": "string"
         },
-        "template_id": {
-            "type": "string"
-        },
-        "transaction_ref": {
+        "download_url_png": {
             "type": "string"
         },
         "status": {
             "type": "string"
         },
-        "download_url_png": {
+        "template_id": {
+            "type": "string"
+        },
+        "transaction_ref": {
             "type": "string"
         }
     },
-    "required": [
-        "download_url",
-        "template_id",
-        "transaction_ref",
-        "status",
-        "download_url_png"
-    ],
     "version": 1
 }

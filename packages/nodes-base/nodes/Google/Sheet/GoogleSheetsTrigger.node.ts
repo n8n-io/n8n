@@ -5,7 +5,7 @@ import type {
 	INodeTypeDescription,
 	IPollFunctions,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import {
 	arrayOfArraysToJson,
@@ -34,7 +34,7 @@ export class GoogleSheetsTrigger implements INodeType {
 			name: 'Google Sheets Trigger',
 		},
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'googleSheetsTriggerOAuth2Api',

@@ -8,7 +8,7 @@ import {
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
 	type SupplyData,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 import type { RedisClientOptions } from 'redis';
 import { createClient } from 'redis';
@@ -57,10 +57,10 @@ export class MemoryRedisChat implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.AiMemory],
+		outputs: [NodeConnectionTypes.AiMemory],
 		outputNames: ['Memory'],
 		properties: [
-			getConnectionHintNoticeField([NodeConnectionType.AiAgent]),
+			getConnectionHintNoticeField([NodeConnectionTypes.AiAgent]),
 			{
 				displayName: 'Session Key',
 				name: 'sessionKey',

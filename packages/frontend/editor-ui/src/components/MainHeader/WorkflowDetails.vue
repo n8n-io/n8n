@@ -55,6 +55,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import type { BaseTextKey } from '@/plugins/i18n';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
+import { ProjectTypes } from '@/types/projects.types';
 
 const props = defineProps<{
 	readOnly?: boolean;
@@ -198,6 +199,26 @@ const isWorkflowHistoryFeatureEnabled = computed(() => {
 
 const workflowTagIds = computed(() => {
 	return (props.tags ?? []).map((tag) => (typeof tag === 'string' ? tag : tag.id));
+});
+
+const currentFolder = computed(() => {
+	if (props.id === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+		return undefined;
+	}
+
+	const workflow = workflowsStore.getWorkflowById(props.id);
+	if (!workflow) {
+		return undefined;
+	}
+
+	return workflow.parentFolder;
+});
+
+const currentProjectName = computed(() => {
+	if (projectsStore.currentProject?.type === ProjectTypes.Personal) {
+		return locale.baseText('projects.menu.personal');
+	}
+	return projectsStore.currentProject?.name;
 });
 
 watch(
@@ -533,16 +554,22 @@ function showCreateWorkflowSuccessToast(id?: string) {
 		let toastTitle = locale.baseText('workflows.create.personal.toast.title');
 		let toastText = locale.baseText('workflows.create.personal.toast.text');
 
-		if (
-			projectsStore.currentProject &&
-			projectsStore.currentProject.id !== projectsStore.personalProject?.id
-		) {
-			toastTitle = locale.baseText('workflows.create.project.toast.title', {
-				interpolate: { projectName: projectsStore.currentProject.name ?? '' },
-			});
+		if (projectsStore.currentProject) {
+			if (currentFolder.value) {
+				toastTitle = locale.baseText('workflows.create.folder.toast.title', {
+					interpolate: {
+						projectName: currentProjectName.value ?? '',
+						folderName: currentFolder.value.name ?? '',
+					},
+				});
+			} else if (projectsStore.currentProject.id !== projectsStore.personalProject?.id) {
+				toastTitle = locale.baseText('workflows.create.project.toast.title', {
+					interpolate: { projectName: currentProjectName.value ?? '' },
+				});
+			}
 
 			toastText = locale.baseText('workflows.create.project.toast.text', {
-				interpolate: { projectName: projectsStore.currentProject.name ?? '' },
+				interpolate: { projectName: currentProjectName.value ?? '' },
 			});
 		}
 
