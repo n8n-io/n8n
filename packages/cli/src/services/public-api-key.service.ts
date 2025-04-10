@@ -164,7 +164,7 @@ export class PublicApiKeyService {
 	async apiKeyHasValidScopes(apiKey: string, endpointScope: ApiKeyScope) {
 		const apiKeyData = await this.apiKeyRepository.findOne({
 			where: { apiKey },
-			select: ['scopes'],
+			select: { scopes: true },
 		});
 		if (!apiKeyData) return false;
 
