@@ -34,10 +34,9 @@ class CommunityPackagesConfig {
 	@Env('N8N_REINSTALL_MISSING_PACKAGES')
 	reinstallMissing: boolean = false;
 
-	/** Url to get vetted node types from, N8n_COMMUNITY_PACKAGES_ENABLED must be true */
-	@Env('N8N_VETTED_NODE_TYPES_URL')
-	// TODO: replace with production url
-	vettedNodeTypesUrl: string = 'http://localhost:5678/webhook/strapi-mock';
+	/** Whether to forbid not vetted packages */
+	@Env('N8N_FORBID_NOT_VETTED_PACKAGES')
+	forbidNotVetted: boolean = false;
 }
 
 @Config

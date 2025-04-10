@@ -107,6 +107,7 @@ export interface FrontendSettings {
 	executionMode: 'regular' | 'queue';
 	pushBackend: 'sse' | 'websocket';
 	communityNodesEnabled: boolean;
+	notVettedCommunityNodesForbidden: boolean;
 	aiAssistant: {
 		enabled: boolean;
 	};

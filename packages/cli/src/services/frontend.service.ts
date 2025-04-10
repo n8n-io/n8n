@@ -171,6 +171,7 @@ export class FrontendService {
 			executionMode: config.getEnv('executions.mode'),
 			pushBackend: this.pushConfig.backend,
 			communityNodesEnabled: this.globalConfig.nodes.communityPackages.enabled,
+			notVettedCommunityNodesForbidden: this.globalConfig.nodes.communityPackages.forbidNotVetted,
 			deployment: {
 				type: config.getEnv('deployment.type'),
 			},

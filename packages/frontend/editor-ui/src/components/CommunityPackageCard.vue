@@ -97,7 +97,10 @@ function onUpdateClick() {
 					<n8n-icon icon="exclamation-triangle" color="danger" size="large" />
 				</n8n-tooltip>
 				<n8n-tooltip
-					v-else-if="!useSettingsStore().isCloudDeployment && communityPackage.updateAvailable"
+					v-else-if="
+						!useSettingsStore().isNotVettedCommunityNodesForbidden &&
+						communityPackage.updateAvailable
+					"
 					placement="top"
 				>
 					<template #content>

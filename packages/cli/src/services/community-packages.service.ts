@@ -28,6 +28,7 @@ import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { toError } from '@/utils';
 
 const DEFAULT_REGISTRY = 'https://registry.npmjs.org';
+const VETTED_COMMUNITY_NODES_REGISTRY = 'https://registry.npmjs.org';
 
 const {
 	PACKAGE_NAME_NOT_PROVIDED,
@@ -332,16 +333,19 @@ export class CommunityPackagesService {
 		});
 	}
 
-	private getNpmRegistry() {
+	private getNpmRegistry(vettedNodesRegistry?: boolean) {
+		if (vettedNodesRegistry) return VETTED_COMMUNITY_NODES_REGISTRY;
+
 		const { registry } = this.globalConfig.nodes.communityPackages;
 		if (registry !== DEFAULT_REGISTRY && !this.license.isCustomNpmRegistryEnabled()) {
 			throw new FeatureNotLicensedError(LICENSE_FEATURES.COMMUNITY_NODES_CUSTOM_REGISTRY);
 		}
+
 		return registry;
 	}
 
-	private async getPackageMetadata(packageName: string, version: string) {
-		const registryUrl = `${this.getNpmRegistry()}/${packageName.replace('/', '%2F')}`;
+	private async getPackageMetadata(packageName: string, version: string, registryUrl: string) {
+		registryUrl = `${registryUrl}/${packageName.replace('/', '%2F')}`;
 		const response = await axios.get<{ dist: { tarball: string } }>(`${registryUrl}/${version}`);
 		return response.data;
 	}
@@ -366,10 +370,20 @@ export class CommunityPackagesService {
 	) {
 		const isUpdate = 'installedPackage' in options;
 		const packageVersion = isUpdate || !options.version ? 'latest' : options.version;
-		const command = `npm install ${packageName}@${packageVersion} --registry=${this.getNpmRegistry()}`;
+		const isVettedPackageInstall = 'checksum' in options && options.checksum ? true : false;
+		const registryUrl = this.getNpmRegistry(isVettedPackageInstall);
+		const command = `npm install ${packageName}@${packageVersion} --registry=${registryUrl}`;
+
+		if (this.globalConfig.nodes.communityPackages.forbidNotVetted && !isVettedPackageInstall) {
+			throw new UnexpectedError('Installation of non-vetted community packages is forbidden!');
+		}
 
 		if (!isUpdate && options.checksum) {
-			const metadata = await this.getPackageMetadata(packageName, options.version || 'latest');
+			const metadata = await this.getPackageMetadata(
+				packageName,
+				options.version || 'latest',
+				registryUrl,
+			);
 			const tarballUrl = metadata.dist.tarball;
 			await this.verifyPackageIntegrity(tarballUrl, options.checksum);
 		}

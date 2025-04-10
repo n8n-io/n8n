@@ -31,6 +31,7 @@ interface Data {
 }
 
 const UPDATE_INTERVAL = 8 * 60 * 60 * 1000;
+const N8N_VETTED_NODE_TYPES_URL = 'http://localhost:5678/webhook/strapi-mock';
 
 @Service()
 export class CommunityNodeTypesService {
@@ -60,13 +61,10 @@ export class CommunityNodeTypesService {
 		};
 
 		do {
-			const response = await axios.get<ResponseData>(
-				this.globalConfig.nodes.communityPackages.vettedNodeTypesUrl,
-				{
-					headers: { 'Content-Type': 'application/json' },
-					params,
-				},
-			);
+			const response = await axios.get<ResponseData>(N8N_VETTED_NODE_TYPES_URL, {
+				headers: { 'Content-Type': 'application/json' },
+				params,
+			});
 
 			responseData = response?.data?.data;
 			if (!responseData?.length) break;
@@ -80,10 +78,7 @@ export class CommunityNodeTypesService {
 	private async fetchNodeTypes() {
 		try {
 			let data: Data[] = [];
-			if (
-				this.globalConfig.nodes.communityPackages.enabled &&
-				this.globalConfig.nodes.communityPackages.vettedNodeTypesUrl
-			) {
+			if (this.globalConfig.nodes.communityPackages.enabled) {
 				data = await this.strapiPaginatedRequest();
 			}
 
