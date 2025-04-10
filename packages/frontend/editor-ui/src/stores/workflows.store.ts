@@ -1387,6 +1387,28 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return testUrl;
 	}
 
+	function setNodeExecuting(pushData: PushPayload<'nodeExecuteBefore'>): void {
+		addExecutingNode(pushData.nodeName);
+
+		if (settingsStore.isNewLogsEnabled) {
+			const node = getNodeByName(pushData.nodeName);
+
+			if (!node || !workflowExecutionData.value?.data) {
+				return;
+			}
+
+			if (workflowExecutionData.value.data.resultData.runData[pushData.nodeName] === undefined) {
+				workflowExecutionData.value.data.resultData.runData[pushData.nodeName] = [];
+			}
+
+			workflowExecutionData.value.data.resultData.runData[pushData.nodeName].push({
+				executionStatus: 'running',
+				executionTime: 0,
+				...pushData.data,
+			});
+		}
+	}
+
 	function updateNodeExecutionData(pushData: PushPayload<'nodeExecuteAfter'>): void {
 		if (!workflowExecutionData.value?.data) {
 			throw new Error('The "workflowExecutionData" is not initialized!');
@@ -1424,7 +1446,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 				openFormPopupWindow(testUrl);
 			}
 		} else {
-			if (tasksData.length && tasksData[tasksData.length - 1].executionStatus === 'waiting') {
+			const status = tasksData[tasksData.length - 1]?.executionStatus ?? 'unknown';
+
+			if ('waiting' === status || (settingsStore.isNewLogsEnabled && 'running' === status)) {
 				tasksData.splice(tasksData.length - 1, 1, data);
 			} else {
 				tasksData.push(data);
@@ -1785,7 +1809,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		makeNewWorkflowShareable,
 		resetWorkflow,
 		resetState,
-		addExecutingNode,
+		setNodeExecuting,
 		removeExecutingNode,
 		setWorkflowId,
 		setUsedCredentials,

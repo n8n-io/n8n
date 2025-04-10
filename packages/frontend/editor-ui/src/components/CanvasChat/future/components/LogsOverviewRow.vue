@@ -70,8 +70,12 @@ function isLastChild(level: number) {
 	}
 
 	const siblings = parent?.children ?? [];
+	const lastSibling = siblings[siblings.length - 1];
 
-	return data === siblings[siblings.length - 1];
+	return (
+		(data === undefined && lastSibling === undefined) ||
+		(data?.node === lastSibling?.node && data?.runIndex === lastSibling?.runIndex)
+	);
 }
 </script>
 
