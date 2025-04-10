@@ -41,7 +41,6 @@ function extractChatInput(
 	return {
 		text: message,
 		sender: 'user',
-		createdAt: new Date(runData.startTime).toISOString(),
 		id: uuid(),
 	};
 }
@@ -77,7 +76,6 @@ export function extractBotResponse(
 	return {
 		text: responseMessage,
 		sender: 'bot',
-		createdAt: new Date(nodeResponseData.startTime + nodeResponseData.executionTime).toISOString(),
 		id: executionId ?? uuid(),
 	};
 }

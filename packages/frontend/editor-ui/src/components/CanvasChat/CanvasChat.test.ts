@@ -311,7 +311,6 @@ describe('CanvasChat', () => {
 				id: '1',
 				text: 'Existing message',
 				sender: 'user',
-				createdAt: new Date().toISOString(),
 			},
 		];
 
@@ -470,13 +469,11 @@ describe('CanvasChat', () => {
 					id: '1',
 					text: 'Original message',
 					sender: 'user',
-					createdAt: new Date().toISOString(),
 				},
 				{
 					id: '2',
 					text: 'AI response',
 					sender: 'bot',
-					createdAt: new Date().toISOString(),
 				},
 			];
 			vi.spyOn(useChatMessaging, 'useChatMessaging').mockImplementation(({ messages }) => {

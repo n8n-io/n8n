@@ -187,7 +187,6 @@ export function useChatMessaging({
 		const newMessage: ChatMessage & { sessionId: string } = {
 			text: message,
 			sender: 'user',
-			createdAt: new Date().toISOString(),
 			sessionId: sessionId.value,
 			id: uuid(),
 			files,
