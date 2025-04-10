@@ -209,6 +209,7 @@ export function createTestTaskData(partialData: Partial<ITaskData>): ITaskData {
 	return {
 		startTime: 0,
 		executionTime: 1,
+		executionIndex: 0,
 		source: [],
 		executionStatus: 'success',
 		data: { main: [[{ json: {} }]] },
