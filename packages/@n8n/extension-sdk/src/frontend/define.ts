@@ -1,5 +1,5 @@
-import type { FrontendModule } from './types.ts';
+import type { FrontendExtension } from './types.ts';
 
-export function defineFrontendModule(module: FrontendModule): FrontendModule {
-	return module;
+export function defineFrontendExtension(extension: FrontendExtension): FrontendExtension {
+	return extension;
 }

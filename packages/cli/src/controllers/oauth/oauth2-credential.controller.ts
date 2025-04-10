@@ -62,7 +62,7 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 
 		const toUpdate: ICredentialDataDecryptedObject = { csrfSecret };
 		if (oauthCredentials.grantType === 'pkce') {
-			const { code_verifier, code_challenge } = pkceChallenge();
+			const { code_verifier, code_challenge } = await pkceChallenge();
 			oAuthOptions.query = {
 				...oAuthOptions.query,
 				code_challenge,

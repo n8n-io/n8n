@@ -6,11 +6,12 @@ import { Embeddings } from '@langchain/core/embeddings';
 import type { InputValues, MemoryVariables, OutputValues } from '@langchain/core/memory';
 import type { BaseMessage } from '@langchain/core/messages';
 import { BaseRetriever } from '@langchain/core/retrievers';
-import type { Tool } from '@langchain/core/tools';
+import type { StructuredTool, Tool } from '@langchain/core/tools';
 import { VectorStore } from '@langchain/core/vectorstores';
 import { TextSplitter } from '@langchain/textsplitters';
 import type { BaseDocumentLoader } from 'langchain/dist/document_loaders/base';
 import type {
+	IDataObject,
 	IExecuteFunctions,
 	INodeExecutionData,
 	ISupplyDataFunctions,
@@ -94,9 +95,10 @@ export function callMethodSync<T>(
 	}
 }
 
-export function logWrapper(
-	originalInstance:
+export function logWrapper<
+	T extends
 		| Tool
+		| StructuredTool
 		| BaseChatMemory
 		| BaseChatMessageHistory
 		| BaseRetriever
@@ -108,8 +110,7 @@ export function logWrapper(
 		| VectorStore
 		| N8nBinaryLoader
 		| N8nJsonLoader,
-	executeFunctions: IExecuteFunctions | ISupplyDataFunctions,
-) {
+>(originalInstance: T, executeFunctions: IExecuteFunctions | ISupplyDataFunctions): T {
 	return new Proxy(originalInstance, {
 		get: (target, prop) => {
 			let connectionType: NodeConnectionType | undefined;
@@ -372,8 +373,16 @@ export function logWrapper(
 				if (prop === '_call' && '_call' in target) {
 					return async (query: string): Promise<string> => {
 						connectionType = NodeConnectionTypes.AiTool;
+						const inputData: IDataObject = { query };
+
+						if (target.metadata?.isFromToolkit) {
+							inputData.tool = {
+								name: target.name,
+								description: target.description,
+							};
+						}
 						const { index } = executeFunctions.addInputData(connectionType, [
-							[{ json: { query } }],
+							[{ json: inputData }],
 						]);
 
 						const response = (await callMethodAsync.call(target, {
@@ -384,7 +393,7 @@ export function logWrapper(
 							arguments: [query],
 						})) as string;
 
-						logAiEvent(executeFunctions, 'ai-tool-called', { query, response });
+						logAiEvent(executeFunctions, 'ai-tool-called', { ...inputData, response });
 						executeFunctions.addOutputData(connectionType, index, [[{ json: { response } }]]);
 						return response;
 					};

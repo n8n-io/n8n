@@ -13,16 +13,16 @@ pnpm run debug:flaky:e2e -- <grep_filter> <burn_count>
 
 **Examples:**
 
-1.  **Run all tests tagged with `@CAT-726` ten times:**
+1.  **Run all tests tagged with `CAT-726` ten times:**
 
     ```bash
-    pnpm run debug:flaky:e2e -- @CAT-726 10
+    pnpm run debug:flaky:e2e CAT-726 10
     ```
 
 2.  **Run all tests containing "login" five times (default burn count):**
 
     ```bash
-    pnpm run debug:flaky:e2e -- login
+    pnpm run debug:flaky:e2e login
     ```
 
 3.  **Run all tests five times (default grep and burn count):**
