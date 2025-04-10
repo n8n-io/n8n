@@ -198,14 +198,14 @@ describe(createLogEntries, () => {
 		expect(
 			createLogEntries(workflow, {
 				A: [
-					createTaskData({ startTime: +new Date('2025-04-04T00:00:00.000Z'), executionIndex: 0 }),
+					createTaskData({ startTime: Date.parse('2025-04-04T00:00:00.000Z'), executionIndex: 0 }),
 				],
 				B: [
-					createTaskData({ startTime: +new Date('2025-04-04T00:00:01.000Z'), executionIndex: 1 }),
+					createTaskData({ startTime: Date.parse('2025-04-04T00:00:01.000Z'), executionIndex: 1 }),
 				],
 				C: [
-					createTaskData({ startTime: +new Date('2025-04-04T00:00:02.000Z'), executionIndex: 3 }),
-					createTaskData({ startTime: +new Date('2025-04-04T00:00:03.000Z'), executionIndex: 2 }),
+					createTaskData({ startTime: Date.parse('2025-04-04T00:00:02.000Z'), executionIndex: 3 }),
+					createTaskData({ startTime: Date.parse('2025-04-04T00:00:03.000Z'), executionIndex: 2 }),
 				],
 			}),
 		).toEqual([
@@ -236,14 +236,14 @@ describe(createLogEntries, () => {
 		expect(
 			createLogEntries(workflow, {
 				A: [
-					createTaskData({ startTime: +new Date('2025-04-04T00:00:00.000Z'), executionIndex: 0 }),
+					createTaskData({ startTime: Date.parse('2025-04-04T00:00:00.000Z'), executionIndex: 0 }),
 				],
 				B: [
-					createTaskData({ startTime: +new Date('2025-04-04T00:00:01.000Z'), executionIndex: 1 }),
+					createTaskData({ startTime: Date.parse('2025-04-04T00:00:01.000Z'), executionIndex: 1 }),
 				],
 				C: [
-					createTaskData({ startTime: +new Date('2025-04-04T00:00:02.000Z'), executionIndex: 3 }),
-					createTaskData({ startTime: +new Date('2025-04-04T00:00:03.000Z'), executionIndex: 2 }),
+					createTaskData({ startTime: Date.parse('2025-04-04T00:00:02.000Z'), executionIndex: 3 }),
+					createTaskData({ startTime: Date.parse('2025-04-04T00:00:03.000Z'), executionIndex: 2 }),
 				],
 			}),
 		).toEqual([
