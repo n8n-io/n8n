@@ -4,23 +4,26 @@ import { Config, Env, Nested } from '../decorators';
 class PostHogConfig {
 	/** API key for PostHog. */
 	@Env('N8N_DIAGNOSTICS_POSTHOG_API_KEY')
-	apiKey: string = '';
+	apiKey: string = 'phc_4URIAm1uYfJO7j8kWSe0J8lc8IqnstRLS7Jx8NcakHo';
 
 	/** API host for PostHog. */
 	@Env('N8N_DIAGNOSTICS_POSTHOG_API_HOST')
-	apiHost: string = '';
+	apiHost: string = 'https://ph.n8n.io';
 }
 
 @Config
 export class DiagnosticsConfig {
 	/** Whether diagnostics are enabled. */
-	enabled: boolean = false;
+	@Env('N8N_DIAGNOSTICS_ENABLED')
+	enabled: boolean = true;
 
 	/** Diagnostics config for frontend. */
-	frontendConfig: string = ';';
+	@Env('N8N_DIAGNOSTICS_CONFIG_FRONTEND')
+	frontendConfig: string = '1zPn9bgWPzlQc0p8Gj1uiK6DOTn;https://telemetry.n8n.io';
 
 	/** Diagnostics config for backend. */
-	backendConfig: string = ';';
+	@Env('N8N_DIAGNOSTICS_CONFIG_BACKEND')
+	backendConfig: string = '1zPn7YoGC3ZXE9zLeTKLuQCB4F6;https://telemetry.n8n.io';
 
 	@Nested
 	posthogConfig: PostHogConfig;
