@@ -176,15 +176,16 @@ export class WorkflowDataProxy {
 
 		const resource =
 			nodeType.description.properties
-				.find((x) => x.name === 'resource')
-				?.options?.find((x) => 'value' in x && x.value === resourceKey)?.name ?? null;
+				.find((nodeProperties) => nodeProperties.name === 'resource')
+				?.options?.find((option) => 'value' in option && option.value === resourceKey)?.name ??
+			null;
 
 		const operation =
 			nodeType.description.properties
 				.find(
-					(x) =>
-						x.name === 'operation' &&
-						x.displayOptions?.show?.resource?.some((y) => y === resourceKey),
+					(nodeProperty) =>
+						nodeProperty.name === 'operation' &&
+						nodeProperty.displayOptions?.show?.resource?.some((y) => y === resourceKey),
 				)
 				?.options?.find((y) => 'value' in y && y.value === operationKey)?.name ?? null;
 
@@ -197,7 +198,10 @@ export class WorkflowDataProxy {
 		const aiDefinedFields = Object.entries(node.parameters)
 			.map(([key, value]) => [key, isResourceLocatorValue(value) ? value.value : value] as const)
 			.filter(([_, value]) => value?.toString().toLowerCase().includes('$fromai'))
-			.map(([key]) => nodeType.description.properties.find((x) => x.name === key)?.displayName);
+			.map(
+				([key]) =>
+					nodeType.description.properties.find((property) => property.name === key)?.displayName,
+			);
 
 		return {
 			name: node.name,
@@ -211,29 +215,30 @@ export class WorkflowDataProxy {
 	}
 
 	private agentInfo() {
-		const node = this.workflow.getNode(this.activeNodeName);
-		if (!node || node.type !== AGENT_LANGCHAIN_NODE_TYPE) return undefined;
+		const agentNode = this.workflow.getNode(this.activeNodeName);
+		if (!agentNode || agentNode.type !== AGENT_LANGCHAIN_NODE_TYPE) return undefined;
 		const connectedTools = this.workflow
 			.getParentNodes(this.activeNodeName, NodeConnectionTypes.AiTool)
-			.map((x) => this.workflow.getNode(x))
-			.filter((x) => x) as INode[];
+			.map((nodeName) => this.workflow.getNode(nodeName))
+			.filter((node) => node) as INode[];
 		const memoryConnectedToAgent =
 			this.workflow.getParentNodes(this.activeNodeName, NodeConnectionTypes.AiMemory).length > 0;
-		const allTools = this.workflow.queryNodes((x) => {
-			return x.description.name.toLowerCase().includes('tool');
+		const allTools = this.workflow.queryNodes((nodeType) => {
+			return nodeType.description.name.toLowerCase().includes('tool');
 		});
 
 		const unconnectedTools = allTools
 			.filter(
-				(x) => this.workflow.getChildNodes(x.name, NodeConnectionTypes.AiTool, 1).length === 0,
+				(node) =>
+					this.workflow.getChildNodes(node.name, NodeConnectionTypes.AiTool, 1).length === 0,
 			)
-			.filter((x) => !connectedTools.includes(x));
+			.filter((node) => !connectedTools.includes(node));
 
 		return {
 			memoryConnectedToAgent,
 			tools: [
-				...connectedTools.map((x) => ({ connected: true, ...this.buildAgentToolInfo(x) })),
-				...unconnectedTools.map((x) => ({ connected: false, ...this.buildAgentToolInfo(x) })),
+				...connectedTools.map((node) => ({ connected: true, ...this.buildAgentToolInfo(node) })),
+				...unconnectedTools.map((node) => ({ connected: false, ...this.buildAgentToolInfo(node) })),
 			],
 		};
 	}
