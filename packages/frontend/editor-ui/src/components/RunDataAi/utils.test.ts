@@ -1,20 +1,20 @@
 import { createTestNode, createTestWorkflowObject } from '@/__tests__/mocks';
-import { createAiData, getTreeNodeData } from '@/components/RunDataAi/utils';
+import { createAiData, createLogEntries, getTreeNodeData } from '@/components/RunDataAi/utils';
 import { type ITaskData, NodeConnectionTypes } from 'n8n-workflow';
 
-describe(getTreeNodeData, () => {
-	function createTaskData(partialData: Partial<ITaskData>): ITaskData {
-		return {
-			startTime: 0,
-			executionIndex: 0,
-			executionTime: 1,
-			source: [],
-			executionStatus: 'success',
-			data: { main: [[{ json: {} }]] },
-			...partialData,
-		};
-	}
+function createTaskData(partialData: Partial<ITaskData>): ITaskData {
+	return {
+		startTime: 0,
+		executionIndex: 0,
+		executionTime: 1,
+		source: [],
+		executionStatus: 'success',
+		data: { main: [[{ json: {} }]] },
+		...partialData,
+	};
+}
 
+describe(getTreeNodeData, () => {
 	it('should generate one node per execution', () => {
 		const workflow = createTestWorkflowObject({
 			nodes: [
@@ -101,7 +101,7 @@ describe(getTreeNodeData, () => {
 		).toEqual([
 			{
 				depth: 0,
-				id: 'A',
+				id: 'A:0',
 				node: 'A',
 				runIndex: 0,
 				startTime: 0,
@@ -115,7 +115,7 @@ describe(getTreeNodeData, () => {
 				children: [
 					{
 						depth: 1,
-						id: 'B',
+						id: 'B:0',
 						node: 'B',
 						runIndex: 0,
 						startTime: Date.parse('2025-02-26T00:00:01.000Z'),
@@ -130,7 +130,7 @@ describe(getTreeNodeData, () => {
 							{
 								children: [],
 								depth: 2,
-								id: 'C',
+								id: 'C:0',
 								node: 'C',
 								runIndex: 0,
 								startTime: Date.parse('2025-02-26T00:00:02.000Z'),
@@ -146,7 +146,7 @@ describe(getTreeNodeData, () => {
 					},
 					{
 						depth: 1,
-						id: 'B',
+						id: 'B:1',
 						node: 'B',
 						runIndex: 1,
 						startTime: Date.parse('2025-02-26T00:00:03.000Z'),
@@ -161,7 +161,7 @@ describe(getTreeNodeData, () => {
 							{
 								children: [],
 								depth: 2,
-								id: 'C',
+								id: 'C:1',
 								node: 'C',
 								runIndex: 1,
 								startTime: Date.parse('2025-02-26T00:00:04.000Z'),
@@ -177,6 +177,85 @@ describe(getTreeNodeData, () => {
 					},
 				],
 			},
+		]);
+	});
+});
+
+describe(createLogEntries, () => {
+	it('should return root node log entries in ascending order of executionIndex', () => {
+		const workflow = createTestWorkflowObject({
+			nodes: [
+				createTestNode({ name: 'A' }),
+				createTestNode({ name: 'B' }),
+				createTestNode({ name: 'C' }),
+			],
+			connections: {
+				B: { main: [[{ node: 'A', type: NodeConnectionTypes.Main, index: 0 }]] },
+				C: { main: [[{ node: 'B', type: NodeConnectionTypes.Main, index: 0 }]] },
+			},
+		});
+
+		expect(
+			createLogEntries(workflow, {
+				A: [
+					createTaskData({ startTime: Date.parse('2025-04-04T00:00:00.000Z'), executionIndex: 0 }),
+				],
+				B: [
+					createTaskData({ startTime: Date.parse('2025-04-04T00:00:01.000Z'), executionIndex: 1 }),
+				],
+				C: [
+					createTaskData({ startTime: Date.parse('2025-04-04T00:00:02.000Z'), executionIndex: 3 }),
+					createTaskData({ startTime: Date.parse('2025-04-04T00:00:03.000Z'), executionIndex: 2 }),
+				],
+			}),
+		).toEqual([
+			expect.objectContaining({ node: 'A', runIndex: 0 }),
+			expect.objectContaining({ node: 'B', runIndex: 0 }),
+			expect.objectContaining({ node: 'C', runIndex: 1 }),
+			expect.objectContaining({ node: 'C', runIndex: 0 }),
+		]);
+	});
+
+	it('should return sub node log entries in ascending order of executionIndex', () => {
+		const workflow = createTestWorkflowObject({
+			nodes: [
+				createTestNode({ name: 'A' }),
+				createTestNode({ name: 'B' }),
+				createTestNode({ name: 'C' }),
+			],
+			connections: {
+				A: { main: [[{ node: 'B', type: NodeConnectionTypes.Main, index: 0 }]] },
+				C: {
+					[NodeConnectionTypes.AiLanguageModel]: [
+						[{ node: 'B', type: NodeConnectionTypes.AiLanguageModel, index: 0 }],
+					],
+				},
+			},
+		});
+
+		expect(
+			createLogEntries(workflow, {
+				A: [
+					createTaskData({ startTime: Date.parse('2025-04-04T00:00:00.000Z'), executionIndex: 0 }),
+				],
+				B: [
+					createTaskData({ startTime: Date.parse('2025-04-04T00:00:01.000Z'), executionIndex: 1 }),
+				],
+				C: [
+					createTaskData({ startTime: Date.parse('2025-04-04T00:00:02.000Z'), executionIndex: 3 }),
+					createTaskData({ startTime: Date.parse('2025-04-04T00:00:03.000Z'), executionIndex: 2 }),
+				],
+			}),
+		).toEqual([
+			expect.objectContaining({ node: 'A', runIndex: 0 }),
+			expect.objectContaining({
+				node: 'B',
+				runIndex: 0,
+				children: [
+					expect.objectContaining({ node: 'C', runIndex: 1 }),
+					expect.objectContaining({ node: 'C', runIndex: 0 }),
+				],
+			}),
 		]);
 	});
 });
