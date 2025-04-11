@@ -283,5 +283,55 @@ describe('McpClientTool', () => {
 				headers: { Accept: 'text/event-stream', Authorization: 'Bearer my-token' },
 			});
 		});
+
+		it('should support custom auth', async () => {
+			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [
+					{
+						name: 'MyTool1',
+						description: 'MyTool1 does something',
+						inputSchema: { type: 'object', properties: { input: { type: 'string' } } },
+					},
+				],
+			});
+
+			const supplyDataResult = await new McpClientTool().supplyData.call(
+				mock<ISupplyDataFunctions>({
+					getNode: jest.fn(() => mock<INode>({ typeVersion: 1 })),
+					getNodeParameter: jest.fn((key, _index) => {
+						const parameters: Record<string, any> = {
+							include: 'all',
+							authentication: 'customAuth',
+							sseEndpoint: 'https://my-mcp-endpoint.ai/sse',
+						};
+						return parameters[key];
+					}),
+					logger: { debug: jest.fn(), error: jest.fn() },
+					addInputData: jest.fn(() => ({ index: 0 })),
+					getCredentials: jest
+						.fn()
+						.mockResolvedValue({ json: '{"headers": {"X-Custom-Header": "custom-value"}}' }),
+				}),
+				0,
+			);
+
+			expect(supplyDataResult.closeFunction).toBeInstanceOf(Function);
+			expect(supplyDataResult.response).toBeInstanceOf(McpToolkit);
+
+			const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue(mock());
+			const url = new URL('https://my-mcp-endpoint.ai/sse');
+			expect(SSEClientTransport).toHaveBeenCalledTimes(1);
+			expect(SSEClientTransport).toHaveBeenCalledWith(url, {
+				eventSourceInit: { fetch: expect.any(Function) },
+				requestInit: { headers: { 'X-Custom-Header': 'custom-value' } },
+			});
+
+			const customFetch = jest.mocked(SSEClientTransport).mock.calls[0][1]?.eventSourceInit?.fetch;
+			await customFetch?.(url);
+			expect(fetchSpy).toHaveBeenCalledWith(url, {
+				headers: { Accept: 'text/event-stream', 'X-Custom-Header': 'custom-value' },
+			});
+		});
 	});
 });
