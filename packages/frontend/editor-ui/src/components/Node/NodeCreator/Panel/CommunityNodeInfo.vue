@@ -60,6 +60,7 @@ async function fetchPackageInfo(packageName: string) {
 		const downloadsUrl = `https://api.npmjs.org/downloads/range/2022-01-01:${today}/${packageName}`;
 
 		const downloadsResponse = await fetch(downloadsUrl);
+
 		if (!downloadsResponse.ok) {
 			console.log('Could not get downloads for package', packageName);
 			return;
@@ -92,7 +93,9 @@ onMounted(async () => {
 				<template #content>This community node has been reviewed and approved by n8n</template>
 				<div>
 					<FontAwesomeIcon :class="$style.tooltipIcon" icon="check-circle" />
-					<n8n-text color="text-light" size="xsmall" bold> Verified </n8n-text>
+					<n8n-text color="text-light" size="xsmall" bold data-test-id="verified-tag">
+						Verified
+					</n8n-text>
 				</div>
 			</n8n-tooltip>
 
@@ -108,12 +111,14 @@ onMounted(async () => {
 
 			<div v-if="downloads">
 				<FontAwesomeIcon :class="$style.tooltipIcon" icon="download" />
-				<n8n-text color="text-light" size="xsmall" bold> {{ downloads }} Downloads </n8n-text>
+				<n8n-text color="text-light" size="xsmall" bold data-test-id="number-of-downloads">
+					{{ downloads }} Downloads
+				</n8n-text>
 			</div>
 
 			<div v-if="publisherName">
 				<FontAwesomeIcon :class="$style.tooltipIcon" icon="user" />
-				<n8n-text color="text-light" size="xsmall" bold>
+				<n8n-text color="text-light" size="xsmall" bold data-test-id="publisher-name">
 					Published by {{ publisherName }}
 				</n8n-text>
 			</div>

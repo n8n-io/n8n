@@ -27,7 +27,7 @@ const toast = useToast();
 
 const isOwner = computed(() => useUsersStore().isInstanceOwner);
 
-const onInstallClick = async () => {
+const onInstall = async () => {
 	if (isOwner.value && activeViewStack.communityNodeDetails && !communityNodeDetails?.installed) {
 		const { key, packageName } = activeViewStack.communityNodeDetails;
 		const communityNodeAttributes = await useNodeTypesStore().getCommunityNodeAttributes(key);
@@ -112,7 +112,8 @@ const onInstallClick = async () => {
 					:disabled="loading"
 					label="Install Node"
 					size="small"
-					@click="onInstallClick"
+					@click="onInstall"
+					data-test-id="install-community-node-button"
 				/>
 			</div>
 		</div>

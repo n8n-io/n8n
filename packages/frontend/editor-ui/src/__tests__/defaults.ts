@@ -11,7 +11,7 @@ export const defaultSettings: FrontendSettings = {
 	},
 	allowedModules: {},
 	communityNodesEnabled: false,
-	notVettedCommunityNodesForbidden: false,
+	blockNotVetted: false,
 	defaultLocale: '',
 	endpointForm: '',
 	endpointFormTest: '',

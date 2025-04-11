@@ -98,8 +98,7 @@ function onUpdateClick() {
 				</n8n-tooltip>
 				<n8n-tooltip
 					v-else-if="
-						!useSettingsStore().isNotVettedCommunityNodesForbidden &&
-						communityPackage.updateAvailable
+						!useSettingsStore().isNotVettedPackagesBlocked && communityPackage.updateAvailable
 					"
 					placement="top"
 				>
