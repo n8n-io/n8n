@@ -19,26 +19,27 @@ defineProps<Props>();
 		:message="message"
 		:is-first-of-role="isFirstOfRole"
 		:user="user"
-		next-step="Composing nodes..."
+		next-step="Configuring nodes..."
 	>
-		<template #title>Selected Workflow Nodes</template>
-		<ul :class="$style.nodesList">
+		<template #title>Selected workflow nodes</template>
+		<ol :class="$style.nodesList">
 			<li v-for="node in message.nodes" :key="node">{{ node }}</li>
-		</ul>
+		</ol>
 	</BaseWorkflowMessage>
 </template>
 
 <style lang="scss" module>
 .nodesList {
-	list-style: none;
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing-3xs);
+	list-style-position: outside;
 	margin: 0;
-	padding: 0;
+	padding: 0 0 0 var(--spacing-s);
 
 	li {
-		margin-bottom: var(--spacing-4xs);
+		color: var(--color-text-base);
 		line-height: var(--font-line-height-loose);
-		padding-left: var(--spacing-2xs);
-		border-left: 2px solid var(--color-primary);
 	}
 }
 </style>

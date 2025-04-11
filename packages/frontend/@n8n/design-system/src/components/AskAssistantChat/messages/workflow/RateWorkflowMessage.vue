@@ -42,31 +42,57 @@ function onSubmitFeedback() {
 
 <template>
 	<BaseWorkflowMessage :message="message" :is-first-of-role="isFirstOfRole" :user="user">
-		<template #title>{{ message.content }}</template>
-		<div v-if="!showFeedback && !showSuccess" :class="$style.buttons">
-			<n8n-icon-button type="tertiary" icon="thumbs-up" @click="onRateButton('thumbsUp')" />
-			<n8n-icon-button type="tertiary" icon="thumbs-down" @click="onRateButton('thumbsDown')" />
-		</div>
-		<div v-if="showFeedback" :class="$style.feedback">
-			<n8n-input
-				v-model="feedback"
-				:class="$style.feedbackInput"
-				type="textarea"
-				placeholder="Build me a workflow to do X"
-				:read-only="false"
-				:resize="'none'"
-				:rows="5"
-			/>
-			<n8n-button native-type="submit" @click="onSubmitFeedback">Submit feedback</n8n-button>
-		</div>
+		<div :class="$style.content">
+			<p v-if="!showSuccess">{{ message.content }}</p>
+			<div v-if="!showFeedback && !showSuccess" :class="$style.buttons">
+				<n8n-icon-button type="tertiary" icon="thumbs-up" @click="onRateButton('thumbsUp')" />
+				<n8n-icon-button type="tertiary" icon="thumbs-down" @click="onRateButton('thumbsDown')" />
+			</div>
+			<div v-if="showFeedback" :class="$style.feedbackTextArea">
+				<n8n-input
+					v-model="feedback"
+					:class="$style.feedbackInput"
+					type="textarea"
+					placeholder="Tell us what went wrong"
+					:read-only="false"
+					:resize="'none'"
+					:rows="5"
+				/>
+				<div :class="$style.feedbackTextArea__footer">
+					<n8n-button native-type="submit" type="secondary" size="small" @click="onSubmitFeedback"
+						>Submit feedback</n8n-button
+					>
+				</div>
+			</div>
 
-		<div v-if="showSuccess" :class="$style.success">Thank you for your feedback!</div>
+			<p v-if="showSuccess" :class="$style.success">Thank you for your feedback!</p>
+		</div>
 	</BaseWorkflowMessage>
 </template>
 
 <style lang="scss" module>
+.content {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing-2xs);
+}
 .buttons {
 	display: flex;
 	gap: var(--spacing-2xs);
+}
+.feedbackTextArea {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing-2xs);
+
+	:global(.el-textarea__inner) {
+		resize: none;
+		font-family: var(--font-family);
+		font-size: var(--font-size-2xs);
+	}
+}
+.feedbackTextArea__footer {
+	display: flex;
+	justify-content: flex-end;
 }
 </style>

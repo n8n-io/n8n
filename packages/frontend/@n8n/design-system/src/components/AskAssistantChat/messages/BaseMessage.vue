@@ -46,6 +46,7 @@ const isUserMessage = computed(() => props.message.role === 'user');
 	display: flex;
 	align-items: center;
 	margin-bottom: var(--spacing-3xs);
+	height: var(--spacing-xl);
 	font-weight: var(--font-weight-bold);
 	font-size: var(--font-size-2xs);
 
@@ -55,6 +56,6 @@ const isUserMessage = computed(() => props.message.role === 'user');
 }
 
 .userSection {
-	margin-top: var(--spacing-l);
+	margin-top: var(--spacing-m);
 }
 </style>

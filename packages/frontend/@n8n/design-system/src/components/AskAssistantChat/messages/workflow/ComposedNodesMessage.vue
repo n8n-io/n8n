@@ -21,13 +21,13 @@ defineProps<Props>();
 		:user="user"
 		next-step="Generating final workflow..."
 	>
-		<template #title>Composed Workflow Nodes</template>
-		<div :class="$style.nodesList">
-			<div v-for="node in message.nodes" :key="node.name" :class="$style.node">
+		<template #title>Configured nodes</template>
+		<ol :class="$style.nodesList">
+			<li v-for="node in message.nodes" :key="node.name" :class="$style.node">
 				<div :class="$style.nodeName">{{ node.name }}</div>
 				<div :class="$style.nodeType">{{ node.type }}</div>
-			</div>
-		</div>
+			</li>
+		</ol>
 	</BaseWorkflowMessage>
 </template>
 
@@ -35,18 +35,15 @@ defineProps<Props>();
 .nodesList {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-2xs);
-}
+	gap: var(--spacing-3xs);
+	list-style-position: outside;
+	margin: 0;
+	padding: 0 0 0 var(--spacing-s);
 
-.node {
-	padding: var(--spacing-4xs) var(--spacing-2xs);
-	background-color: var(--color-background-base);
-	border-radius: var(--border-radius-base);
-}
-
-.nodeName {
-	font-weight: var(--font-weight-bold);
-	margin-bottom: var(--spacing-4xs);
+	li {
+		color: var(--color-text-base);
+		line-height: var(--font-line-height-loose);
+	}
 }
 
 .nodeType {

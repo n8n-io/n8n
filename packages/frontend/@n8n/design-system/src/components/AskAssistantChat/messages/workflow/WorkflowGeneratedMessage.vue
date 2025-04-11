@@ -25,17 +25,8 @@ const onInsertWorkflow = () => {
 
 <template>
 	<BaseWorkflowMessage :message="message" :is-first-of-role="isFirstOfRole" :user="user">
-		<template #title>🎉 Generated Workflow</template>
-		<div v-if="message.codeSnippet" :class="$style.codeSnippet">
-			<TextMessage
-				:message="{ ...message, content: '', type: 'text' }"
-				:is-first-of-role="false"
-				:user="user"
-			/>
-			<n8n-button type="tertiary" size="mini" @click="onInsertWorkflow">
-				Insert into workflow
-			</n8n-button>
-		</div>
+		<p>Your workflow was created successfully!</p>
+		<p>Fix any missing credential before testing it.</p>
 	</BaseWorkflowMessage>
 </template>
 

@@ -22,7 +22,7 @@ defineProps<Props>();
 			<div :class="$style.message">
 				<slot name="icon"></slot>
 				<div :class="$style.content">
-					<div :class="$style.title">
+					<div v-if="$slots.title" :class="$style.title">
 						<slot name="title"></slot>
 					</div>
 					<div :class="$style.details">
@@ -44,21 +44,23 @@ defineProps<Props>();
 .message {
 	display: flex;
 	gap: var(--spacing-s);
-	padding: var(--spacing-2xs);
+	padding: 0 var(--spacing-2xs) var(--spacing-2xs) 0;
 	background-color: var(--color-background-light);
 	border-radius: var(--border-radius-base);
 }
+
 .nextStep {
 	flex: 1;
 	width: 100%;
 }
+
 .content {
 	flex: 1;
 }
 
 .title {
-	font-weight: var(--font-weight-bold);
-	margin-bottom: var(--spacing-4xs);
+	font-weight: var(--font-weight-medium);
+	margin-bottom: var(--spacing-3xs);
 }
 
 .details {
