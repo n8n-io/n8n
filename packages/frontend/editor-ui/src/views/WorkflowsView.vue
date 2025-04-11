@@ -9,6 +9,7 @@ import type {
 } from '@/components/layouts/ResourcesListLayout.vue';
 import WorkflowCard from '@/components/WorkflowCard.vue';
 import WorkflowTagsDropdown from '@/components/WorkflowTagsDropdown.vue';
+import Draggable from '@/components/Draggable.vue';
 import {
 	EASY_AI_WORKFLOW_EXPERIMENT,
 	AI_CREDITS_EXPERIMENT,
@@ -131,6 +132,10 @@ const pageSize = ref(DEFAULT_WORKFLOW_PAGE_SIZE);
 const currentSort = ref('updatedAt:desc');
 
 const currentFolderId = ref<string | null>(null);
+
+const isDragging = computed(() => {
+	return foldersStore.draggedElement !== null;
+});
 
 /**
  * Folder actions
@@ -757,6 +762,101 @@ const getFolderContent = async (folderId: string) => {
 	}
 };
 
+/* #region Drag n Drop */
+
+const onDragStart = async (el: HTMLElement) => {
+	const dragTarget = el.closest('[data-target]') as HTMLElement;
+	if (!dragTarget) return;
+	const targetResource = dragTarget.dataset.target;
+	const targetId = dragTarget.dataset.resourceid;
+	const targetName = dragTarget.dataset.resourcename;
+	if (!targetResource || !targetId || !targetName) return;
+	foldersStore.draggedElement = {
+		type: targetResource === 'workflow-card' ? 'workflow' : 'folder',
+		id: targetId,
+		name: targetName,
+	};
+};
+
+const onDragEnd = () => {
+	foldersStore.draggedElement = null;
+	foldersStore.activeDropTarget = null;
+};
+
+const onDragEnter = (event: MouseEvent) => {
+	const targetElement = event.target as HTMLElement;
+	if (!targetElement || !isDragging.value) return;
+	event.preventDefault();
+	event.stopPropagation();
+	const dragTarget = targetElement.closest('[data-target]') as HTMLElement;
+	if (!dragTarget) return;
+	const targetResource = dragTarget.dataset.target;
+	const targetId = dragTarget.dataset.resourceid;
+	const targetName = dragTarget.dataset.resourcename;
+	if (!targetResource || !targetId || !targetName || targetId === foldersStore.draggedElement?.id)
+		return;
+
+	foldersStore.activeDropTarget = {
+		type: 'folder',
+		id: targetId,
+		name: targetName,
+	};
+};
+
+const onDrop = async (event: MouseEvent) => {
+	const targetElement = event.target as HTMLElement;
+	if (!targetElement || !isDragging.value) return;
+	event.preventDefault();
+
+	const draggedResourceId = foldersStore.draggedElement?.id;
+	const draggedResourceType = foldersStore.draggedElement?.type;
+	const draggedResourceName = foldersStore.draggedElement?.name;
+	if (!draggedResourceId || !draggedResourceType || !draggedResourceName) return;
+	onDragEnd();
+
+	const dropTarget = targetElement.closest('[data-target]') as HTMLElement;
+	if (!dropTarget) return;
+	const targetId = dropTarget.dataset.resourceid;
+	const targetName = dropTarget.dataset.resourcename;
+	if (!targetId || !targetName || targetId === draggedResourceId) return;
+
+	if (draggedResourceType === 'folder') {
+		await moveFolder({
+			folder: { id: draggedResourceId, name: draggedResourceName },
+			newParent: { id: targetId, name: targetName, type: 'folder' },
+			options: { skipFetch: true, skipNavigation: true },
+		});
+		// Remove the dragged folder from the list
+		workflowsAndFolders.value = workflowsAndFolders.value.filter(
+			(folder) => folder.id !== draggedResourceId,
+		);
+		// Increase the count of the target folder
+		const targetFolder = getFolderListItem(targetId);
+		if (targetFolder) {
+			targetFolder.subFolderCount += 1;
+		}
+	} else if (draggedResourceType) {
+		await onWorkflowMoved({
+			workflow: {
+				id: draggedResourceId,
+				name: draggedResourceName,
+				oldParentId: currentFolderId.value ?? '',
+			},
+			newParent: { id: targetId, name: targetName, type: 'folder' },
+			options: { skipFetch: true },
+		});
+		// Remove the dragged workflow from the list
+		workflowsAndFolders.value = workflowsAndFolders.value.filter(
+			(workflow) => workflow.id !== draggedResourceId,
+		);
+		// Increase the count of the target folder
+		const targetFolder = getFolderListItem(targetId);
+		if (targetFolder) {
+			targetFolder.workflowCount += 1;
+		}
+	}
+};
+
 // Breadcrumbs methods
 
 /**
@@ -1084,6 +1184,10 @@ const deleteFolder = async (folderId: string, workflowCount: number, subFolderCo
 const moveFolder = async (payload: {
 	folder: { id: string; name: string };
 	newParent: { id: string; name: string; type: 'folder' | 'project' };
+	options?: {
+		skipFetch?: boolean;
+		skipNavigation?: boolean;
+	};
 }) => {
 	if (!route.params.projectId) return;
 	try {
@@ -1093,6 +1197,7 @@ const moveFolder = async (payload: {
 			payload.newParent.type === 'project' ? '0' : payload.newParent.id,
 		);
 		const isCurrentFolder = currentFolderId.value === payload.folder.id;
+
 		const newFolderURL = router.resolve({
 			name: VIEWS.PROJECTS_FOLDERS,
 			params: {
@@ -1100,7 +1205,7 @@ const moveFolder = async (payload: {
 				folderId: payload.newParent.type === 'project' ? undefined : payload.newParent.id,
 			},
 		}).href;
-		if (isCurrentFolder) {
+		if (isCurrentFolder && !payload.options?.skipNavigation) {
 			// If we just moved the current folder, automatically navigate to the new folder
 			void router.push(newFolderURL);
 		} else {
@@ -1118,7 +1223,9 @@ const moveFolder = async (payload: {
 				},
 				type: 'success',
 			});
-			await fetchWorkflows();
+			if (!payload.options?.skipFetch) {
+				await fetchWorkflows();
+			}
 		}
 	} catch (error) {
 		toast.showError(error, i18n.baseText('folders.move.error.title'));
@@ -1147,6 +1254,9 @@ const moveWorkflowToFolder = async (payload: {
 const onWorkflowMoved = async (payload: {
 	workflow: { id: string; name: string; oldParentId: string };
 	newParent: { id: string; name: string; type: 'folder' | 'project' };
+	options?: {
+		skipFetch?: boolean;
+	};
 }) => {
 	if (!route.params.projectId) return;
 	try {
@@ -1164,7 +1274,9 @@ const onWorkflowMoved = async (payload: {
 			parentFolderId: payload.newParent.type === 'project' ? '0' : payload.newParent.id,
 			versionId: workflowResource?.versionId,
 		});
-		await fetchWorkflows();
+		if (!payload.options?.skipFetch) {
+			await fetchWorkflows();
+		}
 		toast.showToast({
 			title: i18n.baseText('folders.move.workflow.success.title'),
 			message: i18n.baseText('folders.move.workflow.success.message', {
@@ -1307,37 +1419,89 @@ const onCreateWorkflowClick = () => {
 				<FolderBreadcrumbs
 					:breadcrumbs="mainBreadcrumbs"
 					:actions="mainBreadcrumbsActions"
+					:hidden-items-trigger="isDragging ? 'hover' : 'click'"
 					@item-selected="onBreadcrumbItemClick"
 					@action="onBreadCrumbsAction"
 				/>
 			</div>
 		</template>
 		<template #item="{ item: data, index }">
-			<FolderCard
+			<Draggable
 				v-if="(data as FolderResource | WorkflowResource).resourceType === 'folder'"
 				:key="`folder-${index}`"
-				:data="data as FolderResource"
-				:actions="folderCardActions"
-				:read-only="readOnlyEnv || (!hasPermissionToDeleteFolders && !hasPermissionToCreateFolders)"
-				:personal-project="projectsStore.personalProject"
-				class="mb-2xs"
-				@action="onFolderCardAction"
-			/>
-			<WorkflowCard
+				type="move"
+				target-data-key="folder-card"
+				@dragstart="onDragStart"
+				@dragend="onDragEnd"
+			>
+				<template #preview>
+					<N8nCard>
+						<N8nText tag="h2" bold>
+							{{ (data as FolderResource).name }}
+						</N8nText>
+					</N8nCard>
+				</template>
+				<FolderCard
+					:data="data as FolderResource"
+					:actions="folderCardActions"
+					:read-only="
+						readOnlyEnv || (!hasPermissionToDeleteFolders && !hasPermissionToCreateFolders)
+					"
+					:personal-project="projectsStore.personalProject"
+					:data-resourceid="(data as FolderResource).id"
+					:data-resourcename="(data as FolderResource).name"
+					:class="{
+						['mb-2xs']: true,
+						[$style.dragging]:
+							foldersStore.draggedElement?.type === 'folder' &&
+							foldersStore.draggedElement?.id === (data as FolderResource).id,
+						[$style['drop-active']]:
+							foldersStore.activeDropTarget?.id === (data as FolderResource).id,
+					}"
+					data-target="folder-card"
+					class="mb-2xs"
+					@action="onFolderCardAction"
+					@mouseenter="onDragEnter"
+					@mouseup="onDrop"
+				/>
+			</Draggable>
+			<Draggable
 				v-else
 				:key="`workflow-${index}`"
-				data-test-id="resources-list-item-workflow"
-				class="mb-2xs"
-				:data="data as WorkflowResource"
-				:workflow-list-event-bus="workflowListEventBus"
-				:read-only="readOnlyEnv"
-				@click:tag="onClickTag"
-				@workflow:deleted="onWorkflowDeleted"
-				@workflow:moved="fetchWorkflows"
-				@workflow:duplicated="fetchWorkflows"
-				@workflow:active-toggle="onWorkflowActiveToggle"
-				@action:move-to-folder="moveWorkflowToFolder"
-			/>
+				type="move"
+				target-data-key="workflow-card"
+				@dragstart="onDragStart"
+				@dragend="onDragEnd"
+			>
+				<template #preview>
+					<N8nCard>
+						<N8nText tag="h2" bold>
+							{{ (data as WorkflowResource).name }}
+						</N8nText>
+					</N8nCard>
+				</template>
+				<WorkflowCard
+					data-test-id="resources-list-item-workflow"
+					:class="{
+						['mb-2xs']: true,
+						[$style.dragging]:
+							foldersStore.draggedElement?.type === 'workflow' &&
+							foldersStore.draggedElement?.id === (data as WorkflowResource).id,
+					}"
+					:data="data as WorkflowResource"
+					:workflow-list-event-bus="workflowListEventBus"
+					:read-only="readOnlyEnv"
+					:data-resourceid="(data as WorkflowResource).id"
+					:data-resourcename="(data as WorkflowResource).name"
+					data-target="workflow-card"
+					@click:tag="onClickTag"
+					@workflow:deleted="onWorkflowDeleted"
+					@workflow:moved="fetchWorkflows"
+					@workflow:duplicated="fetchWorkflows"
+					@workflow:active-toggle="onWorkflowActiveToggle"
+					@action:move-to-folder="moveWorkflowToFolder"
+				/>
+			</Draggable>
 		</template>
 		<template #empty>
 			<div class="text-center mt-s" data-test-id="list-empty-state">
@@ -1522,6 +1686,20 @@ const onCreateWorkflowClick = () => {
 .empty-folder-container {
 	button {
 		margin-top: var(--spacing-2xs);
+	}
+}
+
+.dragging {
+	transition: opacity 0.3s ease;
+	opacity: 0.3;
+	border-style: dashed;
+	pointer-events: none;
+}
+
+.drop-active {
+	:global(.card) {
+		border-color: var(--color-secondary);
+		background-color: var(--color-secondary-tint-3);
 	}
 }
 </style>

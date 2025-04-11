@@ -6,6 +6,7 @@ import { ProjectTypes } from '@/types/projects.types';
 import type { UserAction } from '@n8n/design-system/types';
 import { type PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import { computed } from 'vue';
+import { useFoldersStore } from '@/stores/folders.store';
 
 type Props = {
 	actions: UserAction[];
@@ -13,9 +14,12 @@ type Props = {
 		visibleItems: FolderPathItem[];
 		hiddenItems: FolderPathItem[];
 	};
+	hiddenItemsTrigger?: 'hover' | 'click';
 };
 
-defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), {
+	hiddenItemsTrigger: 'click',
+});
 
 const emit = defineEmits<{
 	itemSelected: [item: PathItem];
@@ -25,6 +29,7 @@ const emit = defineEmits<{
 const i18n = useI18n();
 
 const projectsStore = useProjectsStore();
+const foldersStore = useFoldersStore();
 
 const currentProject = computed(() => projectsStore.currentProject);
 
@@ -35,6 +40,10 @@ const projectName = computed(() => {
 	return currentProject.value?.name;
 });
 
+const isDragging = computed(() => {
+	return foldersStore.draggedElement !== null;
+});
+
 const onItemSelect = (item: PathItem) => {
 	emit('itemSelected', item);
 };
@@ -42,20 +51,40 @@ const onItemSelect = (item: PathItem) => {
 const onAction = (action: string) => {
 	emit('action', action);
 };
+
+const onItemHover = (item: PathItem) => {
+	if (!isDragging.value) {
+		return;
+	}
+	foldersStore.activeDropTarget = {
+		type: 'folder',
+		id: item.id,
+		name: item.label,
+	};
+};
 </script>
 <template>
-	<div :class="$style.container">
+	<div
+		:class="{ [$style.container]: true, [$style['dragging']]: isDragging }"
+		data-test-id="folder-breadcrumbs"
+	>
 		<n8n-breadcrumbs
 			v-if="breadcrumbs.visibleItems"
+			v-model:drag-active="isDragging"
 			:items="breadcrumbs.visibleItems"
 			:highlight-last-item="false"
 			:path-truncated="breadcrumbs.visibleItems[0].parentFolder"
 			:hidden-items="breadcrumbs.hiddenItems"
+			:hidden-items-trigger="props.hiddenItemsTrigger"
 			data-test-id="folder-list-breadcrumbs"
 			@item-selected="onItemSelect"
+			@item-hover="onItemHover"
 		>
 			<template v-if="currentProject" #prepend>
-				<div :class="$style['home-project']" data-test-id="home-project">
+				<div
+					:class="{ [$style['home-project']]: true, [$style.dragging]: isDragging }"
+					data-test-id="home-project"
+				>
 					<n8n-link :to="`/projects/${currentProject.id}`">
 						<N8nText size="medium" color="text-base">{{ projectName }}</N8nText>
 					</n8n-link>
@@ -88,6 +117,17 @@ const onAction = (action: string) => {
 .home-project {
 	display: flex;
 	align-items: center;
+	padding: var(--spacing-4xs);
+	border: var(--border-width-base) var(--border-style-base) transparent;
+
+	&.dragging:hover {
+		border: var(--border-width-base) var(--border-style-base) var(--color-secondary);
+		border-radius: var(--border-radius-base);
+		background-color: var(--color-secondary-tint-3);
+		* {
+			color: var(--color-text-base);
+		}
+	}
 
 	&:hover * {
 		color: var(--color-text-dark);
