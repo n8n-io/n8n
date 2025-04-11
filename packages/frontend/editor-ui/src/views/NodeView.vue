@@ -1640,7 +1640,7 @@ watch(
 				name: CanvasNodeRenderType.AIPrompt,
 				type: CanvasNodeRenderType.AIPrompt,
 				typeVersion: 1,
-				position: [0, -140],
+				position: [-290, -15],
 				parameters: {},
 			});
 		}
