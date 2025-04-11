@@ -260,7 +260,9 @@ export class MicrosoftTeamsTrigger implements INodeType {
 		],
 	};
 
-	methods = { listSearch };
+	methods = {
+		listSearch,
+	};
 
 	webhookMethods = {
 		default: {
@@ -341,34 +343,9 @@ export class MicrosoftTeamsTrigger implements INodeType {
 			},
 
 			async delete(this: IHookFunctions): Promise<boolean> {
-				const webhookData = this.getWorkflowStaticData('node');
-				const subscriptionIds = webhookData.subscriptionIds as string[] | undefined;
-
-				if (subscriptionIds) {
-					try {
-						await Promise.all(
-							subscriptionIds.map(async (subscriptionId) => {
-								try {
-									await microsoftApiRequest.call(
-										this as unknown as IExecuteFunctions,
-										'DELETE',
-										`/v1.0/subscriptions/${subscriptionId}`,
-									);
-								} catch (error) {
-									if ((error as JsonObject).httpStatusCode === 404) {
-									} else {
-										throw error;
-									}
-								}
-							}),
-						);
-						return true;
-					} catch (error) {
-						return false;
-					}
-				}
-
 				const webhookUrl = this.getNodeWebhookUrl('default');
+				const webhookData = this.getWorkflowStaticData('node');
+
 				try {
 					const subscriptions = (await microsoftApiRequestAllItems.call(
 						this as unknown as ILoadOptionsFunctions,
@@ -381,25 +358,27 @@ export class MicrosoftTeamsTrigger implements INodeType {
 						(subscription) => subscription.notificationUrl === webhookUrl,
 					);
 
-					if (matchingSubscriptions.length === 0) {
+					if (!matchingSubscriptions) {
 						return false;
 					}
 
-					for (const subscription of matchingSubscriptions) {
-						try {
-							await microsoftApiRequest.call(
-								this as unknown as IExecuteFunctions,
-								'DELETE',
-								`/v1.0/subscriptions/${subscription.id}`,
-							);
-						} catch (error) {
-							if ((error as JsonObject).httpStatusCode === 404) {
-							} else {
-								throw error;
+					await Promise.all(
+						matchingSubscriptions.map(async (subscription) => {
+							try {
+								await microsoftApiRequest.call(
+									this as unknown as IExecuteFunctions,
+									'DELETE',
+									`/v1.0/subscriptions/${subscription.id}`,
+								);
+							} catch (error) {
+								if ((error as JsonObject).httpStatusCode !== 404) {
+									throw error;
+								}
 							}
-						}
-					}
+						}),
+					);
 
+					webhookData.subscriptionIds = [];
 					return true;
 				} catch (error) {
 					return false;
