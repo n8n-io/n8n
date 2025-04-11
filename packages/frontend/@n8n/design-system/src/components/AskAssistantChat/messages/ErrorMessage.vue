@@ -19,7 +19,10 @@ const { t } = useI18n();
 <template>
 	<BaseMessage :message="message" :is-first-of-role="isFirstOfRole" :user="user">
 		<div :class="$style.error" data-test-id="chat-message-system">
-			<span>⚠️ {{ message.content }}</span>
+			<p :class="$style.errorText">
+				<n8n-icon icon="exclamation-triangle" size="small" :class="$style.errorIcon" />
+				{{ message.content }}
+			</p>
 			<n8n-button
 				v-if="message.retry"
 				type="secondary"
@@ -36,13 +39,23 @@ const { t } = useI18n();
 
 <style lang="scss" module>
 .error {
-	color: var(--color-danger);
 	display: flex;
-	flex-direction: column;
-	align-items: start;
+	align-items: center;
+	gap: var(--spacing-2xs);
+	padding: var(--spacing-2xs) var(--spacing-xs);
+	border: 1px solid var(--color-foreground-base);
+	border-radius: var(--border-radius-base);
+	background-color: var(--color-background-xlight);
 }
 
-.retryButton {
-	margin-top: var(--spacing-3xs);
+.errorIcon {
+	margin-right: var(--spacing-5xs);
+	color: var(--color-danger);
+}
+
+.errorText {
+	color: var(--color-danger);
+	font-weight: var(--font-weight-regular);
+	line-height: var(--font-line-height-tight);
 }
 </style>
