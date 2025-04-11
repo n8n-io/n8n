@@ -9,6 +9,7 @@ import type {
 } from '@/components/layouts/ResourcesListLayout.vue';
 import WorkflowCard from '@/components/WorkflowCard.vue';
 import WorkflowTagsDropdown from '@/components/WorkflowTagsDropdown.vue';
+import Draggable from '@/components/Draggable.vue';
 import {
 	EASY_AI_WORKFLOW_EXPERIMENT,
 	AI_CREDITS_EXPERIMENT,
@@ -131,6 +132,8 @@ const pageSize = ref(DEFAULT_WORKFLOW_PAGE_SIZE);
 const currentSort = ref('updatedAt:desc');
 
 const currentFolderId = ref<string | null>(null);
+
+const draggedElement = ref<{ type: 'workflow' | 'folder'; id: string } | null>(null);
 
 /**
  * Folder actions
@@ -757,6 +760,24 @@ const getFolderContent = async (folderId: string) => {
 	}
 };
 
+/* #region Drag n Drop */
+
+const onDragStart = (el: HTMLElement) => {
+	const dragTarget = el.closest('[data-target]') as HTMLElement;
+	if (!dragTarget) return;
+	const targetResource = dragTarget.dataset.target;
+	const targetId = dragTarget.dataset.resourceid;
+	if (!targetResource || !targetId) return;
+	draggedElement.value = {
+		type: targetResource === 'workflow-card' ? 'workflow' : 'folder',
+		id: targetId,
+	};
+};
+
+const onDragEnd = () => {
+	draggedElement.value = null;
+};
+
 // Breadcrumbs methods
 
 /**
@@ -1313,31 +1334,76 @@ const onCreateWorkflowClick = () => {
 			</div>
 		</template>
 		<template #item="{ item: data, index }">
-			<FolderCard
+			<Draggable
 				v-if="(data as FolderResource | WorkflowResource).resourceType === 'folder'"
 				:key="`folder-${index}`"
-				:data="data as FolderResource"
-				:actions="folderCardActions"
-				:read-only="readOnlyEnv || (!hasPermissionToDeleteFolders && !hasPermissionToCreateFolders)"
-				:personal-project="projectsStore.personalProject"
-				class="mb-2xs"
-				@action="onFolderCardAction"
-			/>
-			<WorkflowCard
+				type="move"
+				target-data-key="folder-card"
+				@dragstart="onDragStart"
+				@dragend="onDragEnd"
+			>
+				<template #preview="{ canDrop, el }">
+					<N8nCard>
+						<N8nText tag="h2" bold>
+							{{ (data as FolderResource).name }}
+						</N8nText>
+					</N8nCard>
+				</template>
+				<FolderCard
+					:data="data as FolderResource"
+					:actions="folderCardActions"
+					:read-only="
+						readOnlyEnv || (!hasPermissionToDeleteFolders && !hasPermissionToCreateFolders)
+					"
+					:personal-project="projectsStore.personalProject"
+					:data-resourceid="(data as FolderResource).id"
+					:class="{
+						['mb-2xs']: true,
+						[$style.dragging]:
+							draggedElement?.type === 'folder' &&
+							draggedElement?.id === (data as FolderResource).id,
+					}"
+					data-target="folder-card"
+					class="mb-2xs"
+					@action="onFolderCardAction"
+				/>
+			</Draggable>
+			<Draggable
 				v-else
 				:key="`workflow-${index}`"
-				data-test-id="resources-list-item-workflow"
-				class="mb-2xs"
-				:data="data as WorkflowResource"
-				:workflow-list-event-bus="workflowListEventBus"
-				:read-only="readOnlyEnv"
-				@click:tag="onClickTag"
-				@workflow:deleted="onWorkflowDeleted"
-				@workflow:moved="fetchWorkflows"
-				@workflow:duplicated="fetchWorkflows"
-				@workflow:active-toggle="onWorkflowActiveToggle"
-				@action:move-to-folder="moveWorkflowToFolder"
-			/>
+				type="move"
+				target-data-key="workflow-card"
+				@dragstart="onDragStart"
+				@dragend="onDragEnd"
+			>
+				<template #preview="{ canDrop, el }">
+					<N8nCard>
+						<N8nText tag="h2" bold>
+							{{ (data as WorkflowResource).name }}
+						</N8nText>
+					</N8nCard>
+				</template>
+				<WorkflowCard
+					data-test-id="resources-list-item-workflow"
+					:class="{
+						['mb-2xs']: true,
+						[$style.dragging]:
+							draggedElement?.type === 'workflow' &&
+							draggedElement?.id === (data as WorkflowResource).id,
+					}"
+					:data="data as WorkflowResource"
+					:workflow-list-event-bus="workflowListEventBus"
+					:read-only="readOnlyEnv"
+					:data-resourceid="(data as WorkflowResource).id"
+					data-target="workflow-card"
+					@click:tag="onClickTag"
+					@workflow:deleted="onWorkflowDeleted"
+					@workflow:moved="fetchWorkflows"
+					@workflow:duplicated="fetchWorkflows"
+					@workflow:active-toggle="onWorkflowActiveToggle"
+					@action:move-to-folder="moveWorkflowToFolder"
+				/>
+			</Draggable>
 		</template>
 		<template #empty>
 			<div class="text-center mt-s" data-test-id="list-empty-state">
@@ -1523,6 +1589,12 @@ const onCreateWorkflowClick = () => {
 	button {
 		margin-top: var(--spacing-2xs);
 	}
+}
+
+.dragging {
+	transition: opacity 0.3s ease;
+	opacity: 0.3;
+	border-style: dashed;
 }
 </style>
 
