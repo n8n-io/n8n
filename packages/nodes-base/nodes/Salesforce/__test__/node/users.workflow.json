@@ -1,0 +1,115 @@
+{
+	"name": "users.workflow",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "c7971ec9-8bbf-42c1-b99b-dc24de009760",
+			"name": "When clicking ‘Test workflow’"
+		},
+		{
+			"parameters": {
+				"resource": "user",
+				"operation": "getAll",
+				"returnAll": true,
+				"options": {}
+			},
+			"type": "n8n-nodes-base.salesforce",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"id": "b6762525-8485-4ac7-9cab-bad56c627187",
+			"name": "Salesforce",
+			"credentials": {
+				"salesforceOAuth2Api": {
+					"id": "gBXFg0tv79sQS6pc",
+					"name": "Salesforce account"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [440, 0],
+			"id": "006a7764-e287-437a-9475-d8a78e972172",
+			"name": "No Operation, do nothing"
+		}
+	],
+	"pinData": {
+		"No Operation, do nothing": [
+			{
+				"json": {
+					"attributes": {
+						"type": "User",
+						"url": "/services/data/v59.0/sobjects/User/id1"
+					},
+					"Id": "id1",
+					"Name": "User 1",
+					"Email": "test1@test.com"
+				}
+			},
+			{
+				"json": {
+					"attributes": {
+						"type": "User",
+						"url": "/services/data/v59.0/sobjects/User/id2"
+					},
+					"Id": "id2",
+					"Name": "User 2",
+					"Email": "test2@test.com"
+				}
+			},
+			{
+				"json": {
+					"attributes": {
+						"type": "User",
+						"url": "/services/data/v59.0/sobjects/User/id3"
+					},
+					"Id": "id3",
+					"Name": "User 3",
+					"Email": "test3@test.com"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Test workflow’": {
+			"main": [
+				[
+					{
+						"node": "Salesforce",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Salesforce": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1",
+		"saveExecutionProgress": true,
+		"callerPolicy": "workflowsFromSameOwner",
+		"executionTimeout": -1
+	},
+	"versionId": "f654747d-3ee9-4a7a-8ee0-6a74a5bc9898",
+	"meta": {
+		"templateCredsSetupCompleted": true,
+		"instanceId": "e115be144a6a5547dbfca93e774dfffa178aa94a181854c13e2ce5e14d195b2e"
+	},
+	"id": "3YnSQQ6F97w4Pzyj",
+	"tags": []
+}
