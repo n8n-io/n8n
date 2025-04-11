@@ -133,7 +133,15 @@ const currentSort = ref('updatedAt:desc');
 
 const currentFolderId = ref<string | null>(null);
 
-const draggedElement = ref<{ type: 'workflow' | 'folder'; id: string } | null>(null);
+// TODO: Move this to store
+// Resource that is currently being dragged
+const draggedElement = ref<{ type: 'workflow' | 'folder'; id: string; name: string } | null>(null);
+// Only folders can be drop targets
+const activeDropTarget = ref<{ type: 'folder'; id: string; name: string } | null>(null);
+
+const isDragging = computed(() => {
+	return draggedElement.value !== null;
+});
 
 /**
  * Folder actions
@@ -762,20 +770,76 @@ const getFolderContent = async (folderId: string) => {
 
 /* #region Drag n Drop */
 
-const onDragStart = (el: HTMLElement) => {
+const onDragStart = async (el: HTMLElement) => {
 	const dragTarget = el.closest('[data-target]') as HTMLElement;
 	if (!dragTarget) return;
 	const targetResource = dragTarget.dataset.target;
 	const targetId = dragTarget.dataset.resourceid;
-	if (!targetResource || !targetId) return;
+	const targetName = dragTarget.dataset.resourcename;
+	if (!targetResource || !targetId || !targetName) return;
 	draggedElement.value = {
 		type: targetResource === 'workflow-card' ? 'workflow' : 'folder',
 		id: targetId,
+		name: targetName,
 	};
 };
 
 const onDragEnd = () => {
 	draggedElement.value = null;
+	activeDropTarget.value = null;
+};
+
+const onDragEnter = (event: MouseEvent) => {
+	const targetElement = event.target as HTMLElement;
+	if (!targetElement || !isDragging.value) return;
+	event.preventDefault();
+	event.stopPropagation();
+	const dragTarget = targetElement.closest('[data-target]') as HTMLElement;
+	if (!dragTarget) return;
+	const targetResource = dragTarget.dataset.target;
+	const targetId = dragTarget.dataset.resourceid;
+	const targetName = dragTarget.dataset.resourcename;
+	if (!targetResource || !targetId || !targetName || targetId === draggedElement.value?.id) return;
+
+	activeDropTarget.value = {
+		type: 'folder',
+		id: targetId,
+		name: targetName,
+	};
+};
+
+const onDrop = async (event: MouseEvent) => {
+	const targetElement = event.target as HTMLElement;
+	if (!targetElement || !isDragging.value) return;
+	event.preventDefault();
+
+	const draggedResourceId = draggedElement.value?.id;
+	const draggedResourceType = draggedElement.value?.type;
+	const draggedResourceName = draggedElement.value?.name;
+	if (!draggedResourceId || !draggedResourceType || !draggedResourceName) return;
+	onDragEnd();
+
+	const dropTarget = targetElement.closest('[data-target]') as HTMLElement;
+	if (!dropTarget) return;
+	const targetId = dropTarget.dataset.resourceid;
+	const targetName = dropTarget.dataset.resourcename;
+	if (!targetId || !targetName) return;
+
+	// TODO:
+	// - Implement moving workflows
+	if (draggedResourceType === 'folder') {
+		await moveFolder({
+			folder: { id: draggedResourceId, name: draggedResourceName },
+			newParent: { id: targetId, name: targetName, type: 'folder' },
+			options: { skipFetch: true, skipNavigation: true },
+		});
+		// Remove the dragged folder from the list
+		workflowsAndFolders.value = workflowsAndFolders.value.filter(
+			(folder) => folder.id !== draggedResourceId,
+		);
+	} else {
+		console.log('Move workflow');
+	}
 };
 
 // Breadcrumbs methods
@@ -1105,6 +1169,10 @@ const deleteFolder = async (folderId: string, workflowCount: number, subFolderCo
 const moveFolder = async (payload: {
 	folder: { id: string; name: string };
 	newParent: { id: string; name: string; type: 'folder' | 'project' };
+	options?: {
+		skipFetch?: boolean;
+		skipNavigation?: boolean;
+	};
 }) => {
 	if (!route.params.projectId) return;
 	try {
@@ -1114,6 +1182,7 @@ const moveFolder = async (payload: {
 			payload.newParent.type === 'project' ? '0' : payload.newParent.id,
 		);
 		const isCurrentFolder = currentFolderId.value === payload.folder.id;
+
 		const newFolderURL = router.resolve({
 			name: VIEWS.PROJECTS_FOLDERS,
 			params: {
@@ -1121,7 +1190,7 @@ const moveFolder = async (payload: {
 				folderId: payload.newParent.type === 'project' ? undefined : payload.newParent.id,
 			},
 		}).href;
-		if (isCurrentFolder) {
+		if (isCurrentFolder && !payload.options?.skipNavigation) {
 			// If we just moved the current folder, automatically navigate to the new folder
 			void router.push(newFolderURL);
 		} else {
@@ -1139,7 +1208,9 @@ const moveFolder = async (payload: {
 				},
 				type: 'success',
 			});
-			await fetchWorkflows();
+			if (!payload.options?.skipFetch) {
+				await fetchWorkflows();
+			}
 		}
 	} catch (error) {
 		toast.showError(error, i18n.baseText('folders.move.error.title'));
@@ -1342,7 +1413,7 @@ const onCreateWorkflowClick = () => {
 				@dragstart="onDragStart"
 				@dragend="onDragEnd"
 			>
-				<template #preview="{ canDrop, el }">
+				<template #preview>
 					<N8nCard>
 						<N8nText tag="h2" bold>
 							{{ (data as FolderResource).name }}
@@ -1357,15 +1428,19 @@ const onCreateWorkflowClick = () => {
 					"
 					:personal-project="projectsStore.personalProject"
 					:data-resourceid="(data as FolderResource).id"
+					:data-resourcename="(data as FolderResource).name"
 					:class="{
 						['mb-2xs']: true,
 						[$style.dragging]:
 							draggedElement?.type === 'folder' &&
 							draggedElement?.id === (data as FolderResource).id,
+						[$style['drop-active']]: activeDropTarget?.id === (data as FolderResource).id,
 					}"
 					data-target="folder-card"
 					class="mb-2xs"
 					@action="onFolderCardAction"
+					@mouseenter="onDragEnter"
+					@mouseup="onDrop"
 				/>
 			</Draggable>
 			<Draggable
@@ -1376,7 +1451,7 @@ const onCreateWorkflowClick = () => {
 				@dragstart="onDragStart"
 				@dragend="onDragEnd"
 			>
-				<template #preview="{ canDrop, el }">
+				<template #preview>
 					<N8nCard>
 						<N8nText tag="h2" bold>
 							{{ (data as WorkflowResource).name }}
@@ -1395,6 +1470,7 @@ const onCreateWorkflowClick = () => {
 					:workflow-list-event-bus="workflowListEventBus"
 					:read-only="readOnlyEnv"
 					:data-resourceid="(data as WorkflowResource).id"
+					:data-resourcename="(data as WorkflowResource).name"
 					data-target="workflow-card"
 					@click:tag="onClickTag"
 					@workflow:deleted="onWorkflowDeleted"
@@ -1595,6 +1671,13 @@ const onCreateWorkflowClick = () => {
 	transition: opacity 0.3s ease;
 	opacity: 0.3;
 	border-style: dashed;
+}
+
+.drop-active {
+	:global(.card) {
+		border-color: var(--color-secondary);
+		background-color: var(--color-secondary-tint-3);
+	}
 }
 </style>
 
