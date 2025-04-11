@@ -30,19 +30,37 @@ describe('InsightsModule', () => {
 	describe('backgroundProcess', () => {
 		it('should start background process if instance is main and leader', () => {
 			instanceSettings = mockInstance(InstanceSettings, { instanceType: 'main', isLeader: true });
-			new InsightsModule(logger, insightsService, instanceSettings, orchestrationService);
+			const insightsModule = new InsightsModule(
+				logger,
+				insightsService,
+				instanceSettings,
+				orchestrationService,
+			);
+			insightsModule.initialize();
 			expect(insightsService.startBackgroundProcess).toHaveBeenCalled();
 		});
 
 		it('should not start background process if instance is main but not leader', () => {
 			instanceSettings = mockInstance(InstanceSettings, { instanceType: 'main', isLeader: false });
-			new InsightsModule(logger, insightsService, instanceSettings, orchestrationService);
+			const insightsModule = new InsightsModule(
+				logger,
+				insightsService,
+				instanceSettings,
+				orchestrationService,
+			);
+			insightsModule.initialize();
 			expect(insightsService.startBackgroundProcess).not.toHaveBeenCalled();
 		});
 
 		it('should start background process on leader takeover', () => {
 			instanceSettings = mockInstance(InstanceSettings, { instanceType: 'main', isLeader: false });
-			new InsightsModule(logger, insightsService, instanceSettings, orchestrationService);
+			const insightsModule = new InsightsModule(
+				logger,
+				insightsService,
+				instanceSettings,
+				orchestrationService,
+			);
+			insightsModule.initialize();
 			expect(insightsService.startBackgroundProcess).not.toHaveBeenCalled();
 			orchestrationService.multiMainSetup.emit('leader-takeover');
 			expect(insightsService.startBackgroundProcess).toHaveBeenCalled();
@@ -50,7 +68,13 @@ describe('InsightsModule', () => {
 
 		it('should stop background process on leader stepdown', () => {
 			instanceSettings = mockInstance(InstanceSettings, { instanceType: 'main', isLeader: true });
-			new InsightsModule(logger, insightsService, instanceSettings, orchestrationService);
+			const insightsModule = new InsightsModule(
+				logger,
+				insightsService,
+				instanceSettings,
+				orchestrationService,
+			);
+			insightsModule.initialize();
 			expect(insightsService.stopBackgroundProcess).not.toHaveBeenCalled();
 			orchestrationService.multiMainSetup.emit('leader-stepdown');
 			expect(insightsService.stopBackgroundProcess).toHaveBeenCalled();

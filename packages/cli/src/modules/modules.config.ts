@@ -41,7 +41,7 @@ export class ModulesConfig {
 	private readonly defaultModules: ModuleName[] = ['insights'];
 
 	// Loaded modules are the ones that have been loaded so far by the instance
-	readonly loadedModules: ModuleName[] = [];
+	readonly loadedModules = new Set<ModuleName>();
 
 	// Get all modules by merging default and enabled, and filtering out disabled modules
 	get modules(): ModuleName[] {
@@ -55,8 +55,6 @@ export class ModulesConfig {
 	}
 
 	addLoadedModule(module: ModuleName) {
-		if (!this.loadedModules.includes(module)) {
-			this.loadedModules.push(module);
-		}
+		this.loadedModules.add(module);
 	}
 }

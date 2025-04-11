@@ -23,6 +23,7 @@ import {
 } from '@/constants';
 import * as CrashJournal from '@/crash-journal';
 import * as Db from '@/db';
+import { ModuleRegistry } from '@/decorators/module';
 import { getDataDeduplicationService } from '@/deduplication';
 import { DeprecationService } from '@/deprecation/deprecation.service';
 import { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.service.ee';
@@ -86,11 +87,15 @@ export abstract class BaseCommand extends Command {
 					instance: this.instanceSettings,
 				})
 			) {
+				// register module in the registry for the dependency injection
 				await import(`../modules/${moduleName}/${moduleName}.module`);
+
 				this.modulesConfig.addLoadedModule(moduleName);
 				this.logger.debug(`Loaded module "${moduleName}"`);
 			}
 		}
+
+		Container.get(ModuleRegistry).initializeModules();
 	}
 
 	async init(): Promise<void> {

@@ -17,10 +17,9 @@ export class InsightsModule implements BaseN8nModule {
 		private readonly orchestrationService: OrchestrationService,
 	) {
 		this.logger = this.logger.scoped('insights');
-		this.initializeModule();
 	}
 
-	private initializeModule() {
+	initialize() {
 		// We want to initialize the insights background process (schedulers) for the main leader instance
 		// to have only one main instance saving the insights data
 		if (this.instanceSettings.instanceType === 'main' && this.instanceSettings.isLeader) {
