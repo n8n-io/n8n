@@ -224,6 +224,21 @@ exports[`createVectorStoreNode retrieve mode supplies vector store as data 1`] =
       "type": "boolean",
     },
     {
+      "default": true,
+      "description": "Whether or not to include document ID",
+      "displayName": "Include ID",
+      "displayOptions": {
+        "show": {
+          "mode": [
+            "load",
+            "retrieve-as-tool",
+          ],
+        },
+      },
+      "name": "includeDocumentId",
+      "type": "boolean",
+    },
+    {
       "default": "",
       "description": "ID of an embedding entry",
       "displayName": "ID",
