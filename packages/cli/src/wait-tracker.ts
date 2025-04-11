@@ -6,6 +6,7 @@ import { ActiveExecutions } from '@/active-executions';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { OrchestrationService } from '@/services/orchestration.service';
 import { OwnershipService } from '@/services/ownership.service';
+import { getDataLastExecutedNodeData } from '@/workflow-helpers';
 import { WorkflowRunner } from '@/workflow-runner';
 
 @Service()
@@ -137,9 +138,58 @@ export class WaitTracker {
 		const { parentExecution } = fullExecutionData.data;
 		if (parentExecution) {
 			// on child execution completion, resume parent execution
-			void this.activeExecutions.getPostExecutePromise(executionId).then(() => {
-				void this.startExecution(parentExecution.executionId);
-			});
+			void this.activeExecutions
+				.getPostExecutePromise(executionId)
+				.then(async (subworkflowResults) => {
+					if (!subworkflowResults) return;
+
+					const lastExecutedNodeData = getDataLastExecutedNodeData(subworkflowResults);
+					if (!lastExecutedNodeData?.data) return;
+
+					try {
+						const parent = await this.executionRepository.findSingleExecution(
+							parentExecution.executionId,
+							{
+								includeData: true,
+								unflattenData: true,
+							},
+						);
+
+						if (!parent || parent.status !== 'waiting') return;
+
+						const parentWithSubWorkflowResults = {
+							data: { ...parent.data },
+						};
+
+						if (
+							!parentWithSubWorkflowResults.data.executionData?.nodeExecutionStack ||
+							parentWithSubWorkflowResults.data.executionData.nodeExecutionStack.length === 0
+						) {
+							return;
+						}
+
+						// Copy the sub workflow result to the parent execution's Execute Workflow node inputs
+						// so that the Execute Workflow node returns the correct data when parent execution is resumed
+						// and the Execute Workflow node is executed again in disabled mode.
+						parentWithSubWorkflowResults.data.executionData.nodeExecutionStack[0].data =
+							lastExecutedNodeData.data;
+
+						await this.executionRepository.updateExistingExecution(
+							parentExecution.executionId,
+							parentWithSubWorkflowResults,
+						);
+					} catch (error: unknown) {
+						this.logger.error('Could not copy sub workflow result to waiting parent execution', {
+							executionId,
+							parentExecutionId: parentExecution.executionId,
+							workflowId,
+							error,
+						});
+					}
+				})
+				.then(() => {
+					void this.startExecution(parentExecution.executionId);
+				});
 		}
 	}
 
