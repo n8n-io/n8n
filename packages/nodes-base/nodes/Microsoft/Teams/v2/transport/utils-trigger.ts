@@ -1,48 +1,52 @@
-import type {
-	IExecuteFunctions,
-	IHookFunctions,
-	ILoadOptionsFunctions,
-	IDataObject,
-} from 'n8n-workflow';
+import type { IHookFunctions, IDataObject } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
 import type { TeamResponse, ChannelResponse, ChatResponse, SubscriptionResponse } from './types';
 import { microsoftApiRequest } from '../transport';
 
-export async function fetchAllTeams(this: ILoadOptionsFunctions): Promise<TeamResponse[]> {
-	const { value: teams } = await microsoftApiRequest.call(this, 'GET', '/v1.0/me/joinedTeams');
-	return teams.map((team: IDataObject) => ({
-		id: team.id as string,
-		displayName: team.displayName as string,
-	}));
+export async function fetchAllTeams(this: IHookFunctions): Promise<TeamResponse[]> {
+	const { value: teams } = (await microsoftApiRequest.call(
+		this,
+		'GET',
+		'/v1.0/me/joinedTeams',
+	)) as { value: IDataObject[] };
+	return teams.map(
+		(team) =>
+			({
+				id: team.id as string,
+				displayName: team.displayName as string,
+			}) as TeamResponse,
+	);
 }
 
 export async function fetchAllChannels(
-	this: ILoadOptionsFunctions,
+	this: IHookFunctions,
 	teamId: string,
 ): Promise<ChannelResponse[]> {
-	const { value: channels } = await microsoftApiRequest.call(
+	const { value: channels } = (await microsoftApiRequest.call(
 		this,
 		'GET',
 		`/v1.0/teams/${teamId}/channels`,
-	);
+	)) as { value: IDataObject[] };
 	return channels.map((channel: IDataObject) => ({
 		id: channel.id as string,
 		displayName: channel.displayName as string,
 	}));
 }
 
-export async function fetchAllChats(this: ILoadOptionsFunctions): Promise<ChatResponse[]> {
-	const { value: chats } = await microsoftApiRequest.call(this, 'GET', '/v1.0/chats');
+export async function fetchAllChats(this: IHookFunctions): Promise<ChatResponse[]> {
+	const { value: chats } = (await microsoftApiRequest.call(this, 'GET', '/v1.0/chats')) as {
+		value: IDataObject[];
+	};
 	return chats.map((chat: IDataObject) => ({
 		id: chat.id as string,
-		displayName: (chat.topic || chat.id) as string,
+		displayName: (chat.topic as string) || (chat.id as string),
 		url: chat.webUrl as string,
 	}));
 }
 
 export async function createSubscription(
-	this: IHookFunctions | IExecuteFunctions,
+	this: IHookFunctions,
 	webhookUrl: string,
 	resourcePath: string,
 ): Promise<SubscriptionResponse> {
@@ -56,18 +60,18 @@ export async function createSubscription(
 		lifecycleNotificationUrl: webhookUrl,
 	};
 
-	const response = await microsoftApiRequest.call(
-		this as unknown as IExecuteFunctions,
+	const response = (await microsoftApiRequest.call(
+		this,
 		'POST',
 		'/v1.0/subscriptions',
 		body,
-	);
+	)) as IDataObject;
 
 	return {
-		id: response.id,
-		resource: response.resource || resourcePath,
-		notificationUrl: response.notificationUrl,
-		expirationDateTime: response.expirationDateTime,
+		id: response.id as string,
+		resource: response.resource as string,
+		notificationUrl: response.notificationUrl as string,
+		expirationDateTime: response.expirationDateTime as string,
 	};
 }
 
@@ -99,7 +103,7 @@ export async function getResourcePath(
 			}) as boolean;
 
 			if (watchAllTeams) {
-				const teams = await fetchAllTeams.call(this as unknown as ILoadOptionsFunctions);
+				const teams = await fetchAllTeams.call(this);
 				return teams.map((team) => `/teams/${team.id}/channels`);
 			} else {
 				const teamId = this.getNodeParameter('teamId', undefined, { extractValue: true }) as string;
@@ -113,13 +117,10 @@ export async function getResourcePath(
 			}) as boolean;
 
 			if (watchAllTeams) {
-				const teams = await fetchAllTeams.call(this as unknown as ILoadOptionsFunctions);
+				const teams = await fetchAllTeams.call(this);
 				const teamChannels = await Promise.all(
 					teams.map(async (team) => {
-						const channels = await fetchAllChannels.call(
-							this as unknown as ILoadOptionsFunctions,
-							team.id,
-						);
+						const channels = await fetchAllChannels.call(this, team.id);
 						return channels.map((channel) => `/teams/${team.id}/channels/${channel.id}/messages`);
 					}),
 				);
@@ -131,10 +132,7 @@ export async function getResourcePath(
 				}) as boolean;
 
 				if (watchAllChannels) {
-					const channels = await fetchAllChannels.call(
-						this as unknown as ILoadOptionsFunctions,
-						teamId,
-					);
+					const channels = await fetchAllChannels.call(this, teamId);
 					return channels.map((channel) => `/teams/${teamId}/channels/${channel.id}/messages`);
 				} else {
 					const channelId = this.getNodeParameter('channelId', undefined, {
@@ -151,7 +149,7 @@ export async function getResourcePath(
 			}) as boolean;
 
 			if (watchAllTeams) {
-				const teams = await fetchAllTeams.call(this as unknown as ILoadOptionsFunctions);
+				const teams = await fetchAllTeams.call(this);
 				return teams.map((team) => `/teams/${team.id}/members`);
 			} else {
 				const teamId = this.getNodeParameter('teamId', undefined, { extractValue: true }) as string;

@@ -31,6 +31,5 @@ export interface SubscriptionResponse {
 	id: string;
 	expirationDateTime: string;
 	notificationUrl: string;
-
 	resource: string;
 }
