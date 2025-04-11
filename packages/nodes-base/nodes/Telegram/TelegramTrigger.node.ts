@@ -286,7 +286,7 @@ export class TelegramTrigger implements INodeType {
 				additionalFields,
 			);
 
-			if (downloadFilesResult) return downloadFilesResult;
+			if (Object.entries(downloadFilesResult).length !== 0) return downloadFilesResult;
 		}
 
 		if (nodeVersion >= 1.2) {
