@@ -12,7 +12,6 @@ export async function executionStarted({ data }: ExecutionStarted) {
 	if (typeof workflowsStore.activeExecutionId === 'undefined') {
 		return;
 	} else if (workflowsStore.activeExecutionId === null) {
-		console.log('executionStarted', data.executionId);
 		workflowsStore.setActiveExecutionId(data.executionId);
 	}
 

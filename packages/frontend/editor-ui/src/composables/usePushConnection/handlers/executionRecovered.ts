@@ -1,12 +1,12 @@
 import type { ExecutionRecovered } from '@n8n/api-types/push/execution';
 import { useUIStore } from '@/stores/ui.store';
-import { codeNodeEditorEventBus } from '@/event-bus';
 import {
 	getExecutionData,
 	getRunExecutionData,
-	handleExecutionFinished,
+	handleExecutionFinishedWithOther,
 	handleExecutionFinishedWithErrorOrCanceled,
 	handleExecutionFinishedWithWaitTill,
+	setRunExecutionData,
 } from './executionFinished';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 
@@ -35,9 +35,8 @@ export async function executionRecovered({ data }: ExecutionRecovered) {
 	} else if (execution.status === 'error' || execution.status === 'canceled') {
 		handleExecutionFinishedWithErrorOrCanceled(execution, runExecutionData);
 	} else {
-		handleExecutionFinished(execution, runExecutionData);
+		handleExecutionFinishedWithOther();
 	}
 
-	const lineNumber = runExecutionData.resultData?.error?.lineNumber;
-	codeNodeEditorEventBus.emit('highlightLine', lineNumber ?? 'last');
+	setRunExecutionData(execution, runExecutionData);
 }

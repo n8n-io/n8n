@@ -155,8 +155,13 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			: LOGS_PANEL_STATE.CLOSED,
 	);
 
-	const { executingNode, addExecutingNode, removeExecutingNode, clearNodeExecutionQueue } =
-		useExecutingNode();
+	const {
+		executingNode,
+		addExecutingNode,
+		removeExecutingNode,
+		isNodeExecuting,
+		clearNodeExecutionQueue,
+	} = useExecutingNode();
 
 	const workflowName = computed(() => workflow.value.name);
 
@@ -232,9 +237,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const isWorkflowRunning = computed(() => {
 		if (activeExecutionId.value === null) {
 			return true;
-		} else if (activeExecutionId.value) {
-			const execution = getWorkflowExecution;
-			if (execution.value && execution.value.status === 'waiting' && !execution.value.finished) {
+		} else if (activeExecutionId.value && workflowExecutionData.value) {
+			if (
+				['waiting', 'running'].includes(workflowExecutionData.value.status) &&
+				!workflowExecutionData.value.finished
+			) {
 				return true;
 			}
 		}
@@ -373,10 +380,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	function isNodePristine(nodeName: string): boolean {
 		return nodeMetadata.value[nodeName] === undefined || nodeMetadata.value[nodeName].pristine;
-	}
-
-	function isNodeExecuting(nodeName: string): boolean {
-		return executingNode.value.includes(nodeName);
 	}
 
 	function getExecutionDataById(id: string): ExecutionSummary | undefined {
@@ -1440,7 +1443,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 				tasksData.push(data);
 			}
 
-			removeExecutingNode(nodeName);
 			void trackNodeExecution(pushData);
 		}
 	}

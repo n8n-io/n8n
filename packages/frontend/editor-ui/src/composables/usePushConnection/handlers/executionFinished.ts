@@ -109,11 +109,10 @@ export async function executionFinished({ data }: ExecutionFinished) {
 	} else if (execution.status === 'error' || execution.status === 'canceled') {
 		handleExecutionFinishedWithErrorOrCanceled(execution, runExecutionData);
 	} else {
-		handleExecutionFinished(execution, runExecutionData, successToastAlreadyShown);
+		handleExecutionFinishedWithOther(successToastAlreadyShown);
 	}
 
-	const lineNumber = runExecutionData.resultData?.error?.lineNumber;
-	codeNodeEditorEventBus.emit('highlightLine', lineNumber ?? 'last');
+	setRunExecutionData(execution, runExecutionData);
 }
 
 /**
@@ -400,20 +399,14 @@ export function handleExecutionFinishedSuccessfully(workflowId: string) {
 /**
  * Handle the case when the workflow execution finished successfully.
  */
-export function handleExecutionFinished(
-	execution: SimplifiedExecution,
-	runExecutionData: IRunExecutionData,
-	successToastAlreadyShown: boolean = false,
-) {
+export function handleExecutionFinishedWithOther(successToastAlreadyShown: boolean = false) {
 	const workflowsStore = useWorkflowsStore();
 	const toast = useToast();
 	const i18n = useI18n();
 	const router = useRouter();
 	const workflowHelpers = useWorkflowHelpers({ router });
 	const nodeTypesStore = useNodeTypesStore();
-	const nodeHelpers = useNodeHelpers();
 	const workflowObject = workflowsStore.getCurrentWorkflow();
-	const runDataExecutedErrorMessage = getRunDataExecutedErrorMessage(execution);
 
 	workflowHelpers.setDocumentTitle(workflowObject.name as string, 'IDLE');
 
@@ -450,6 +443,16 @@ export function handleExecutionFinished(
 			type: 'success',
 		});
 	}
+}
+
+export function setRunExecutionData(
+	execution: SimplifiedExecution,
+	runExecutionData: IRunExecutionData,
+) {
+	const workflowsStore = useWorkflowsStore();
+	const nodeHelpers = useNodeHelpers();
+	const runDataExecutedErrorMessage = getRunDataExecutedErrorMessage(execution);
+	const workflowExecution = workflowsStore.getWorkflowExecution;
 
 	// It does not push the runData as it got already pushed with each
 	// node that did finish. For that reason copy in here the data
@@ -487,4 +490,7 @@ export function handleExecutionFinished(
 		runDataExecutedStartData: runExecutionData.startData,
 		resultDataError: runExecutionData.resultData.error,
 	});
+
+	const lineNumber = runExecutionData.resultData?.error?.lineNumber;
+	codeNodeEditorEventBus.emit('highlightLine', lineNumber ?? 'last');
 }

@@ -33,7 +33,7 @@ export function createEventQueue<T>(processEvent: (event: T) => Promise<void>) {
 		processing = false;
 
 		// Recursively process the next event.
-		void processNext();
+		await processNext();
 	}
 
 	/**
