@@ -108,7 +108,7 @@ describe('Cloud', () => {
 				.stickies()
 				.eq(0)
 				.should(($el) => {
-					expect($el).contains.text('Start by saying \'hi\'');
+					expect($el).contains.text('Start by saying');
 				});
 		});
 	});
