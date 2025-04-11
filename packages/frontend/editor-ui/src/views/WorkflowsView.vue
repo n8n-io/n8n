@@ -823,10 +823,8 @@ const onDrop = async (event: MouseEvent) => {
 	if (!dropTarget) return;
 	const targetId = dropTarget.dataset.resourceid;
 	const targetName = dropTarget.dataset.resourcename;
-	if (!targetId || !targetName) return;
+	if (!targetId || !targetName || targetId === draggedResourceId) return;
 
-	// TODO:
-	// - Implement moving workflows
 	if (draggedResourceType === 'folder') {
 		await moveFolder({
 			folder: { id: draggedResourceId, name: draggedResourceName },
@@ -837,8 +835,20 @@ const onDrop = async (event: MouseEvent) => {
 		workflowsAndFolders.value = workflowsAndFolders.value.filter(
 			(folder) => folder.id !== draggedResourceId,
 		);
-	} else {
-		console.log('Move workflow');
+	} else if (draggedResourceType) {
+		await onWorkflowMoved({
+			workflow: {
+				id: draggedResourceId,
+				name: draggedResourceName,
+				oldParentId: currentFolderId.value ?? '',
+			},
+			newParent: { id: targetId, name: targetName, type: 'folder' },
+			options: { skipFetch: true },
+		});
+		// Remove the dragged workflow from the list
+		workflowsAndFolders.value = workflowsAndFolders.value.filter(
+			(workflow) => workflow.id !== draggedResourceId,
+		);
 	}
 };
 
@@ -1239,6 +1249,9 @@ const moveWorkflowToFolder = async (payload: {
 const onWorkflowMoved = async (payload: {
 	workflow: { id: string; name: string; oldParentId: string };
 	newParent: { id: string; name: string; type: 'folder' | 'project' };
+	options?: {
+		skipFetch?: boolean;
+	};
 }) => {
 	if (!route.params.projectId) return;
 	try {
@@ -1256,7 +1269,9 @@ const onWorkflowMoved = async (payload: {
 			parentFolderId: payload.newParent.type === 'project' ? '0' : payload.newParent.id,
 			versionId: workflowResource?.versionId,
 		});
-		await fetchWorkflows();
+		if (!payload.options?.skipFetch) {
+			await fetchWorkflows();
+		}
 		toast.showToast({
 			title: i18n.baseText('folders.move.workflow.success.title'),
 			message: i18n.baseText('folders.move.workflow.success.message', {
