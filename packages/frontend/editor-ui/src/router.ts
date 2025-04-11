@@ -28,6 +28,8 @@ const ForgotMyPasswordView = async () => await import('./views/ForgotMyPasswordV
 const MainHeader = async () => await import('@/components/MainHeader/MainHeader.vue');
 const MainSidebar = async () => await import('@/components/MainSidebar.vue');
 const CanvasChatSwitch = async () => await import('@/components/CanvasChat/CanvasChatSwitch.vue');
+const DemoFooter = async () =>
+	await import('@/components/CanvasChat/future/components/DemoFooter.vue');
 const NodeView = async () => await import('@/views/NodeView.vue');
 const WorkflowExecutionsView = async () => await import('@/views/WorkflowExecutionsView.vue');
 const WorkflowExecutionsLandingPage = async () =>
@@ -372,6 +374,7 @@ export const routes: RouteRecordRaw[] = [
 		name: VIEWS.DEMO,
 		components: {
 			default: NodeView,
+			footer: DemoFooter,
 		},
 		meta: {
 			middleware: ['authenticated'],

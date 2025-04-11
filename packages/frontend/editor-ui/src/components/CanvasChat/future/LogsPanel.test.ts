@@ -46,6 +46,7 @@ describe('LogsPanel', () => {
 
 		workflowsStore = mockedStore(useWorkflowsStore);
 		workflowsStore.setWorkflowExecutionData(null);
+		workflowsStore.toggleLogsPanelOpen(false);
 
 		nodeTypeStore = mockedStore(useNodeTypesStore);
 		nodeTypeStore.setNodeTypes(nodeTypes);

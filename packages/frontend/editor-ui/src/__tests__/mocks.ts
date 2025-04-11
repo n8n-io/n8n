@@ -10,6 +10,7 @@ import type {
 	LoadedClass,
 	INodeTypeDescription,
 	INodeIssues,
+	ITaskData,
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeHelpers, Workflow } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
@@ -201,5 +202,17 @@ export function createTestNode(node: Partial<INode> = {}): INode {
 		position: [0, 0] as [number, number],
 		parameters: {},
 		...node,
+	};
+}
+
+export function createTestTaskData(partialData: Partial<ITaskData>): ITaskData {
+	return {
+		startTime: 0,
+		executionTime: 1,
+		executionIndex: 0,
+		source: [],
+		executionStatus: 'success',
+		data: { main: [[{ json: {} }]] },
+		...partialData,
 	};
 }

@@ -39,7 +39,11 @@ export function usePiPWindow({
 }: UsePiPWindowOptions): UsePiPWindowReturn {
 	const pipWindow = ref<Window>();
 	const isUnmounting = ref(false);
-	const canPopOut = computed(() => !!window.documentPictureInPicture);
+	const canPopOut = computed(
+		() =>
+			!!window.documentPictureInPicture /* Browser supports the API */ &&
+			window.parent === window /* Not in iframe */,
+	);
 	const isPoppedOut = computed(() => !!pipWindow.value);
 	const tooltipContainer = computed(() =>
 		isPoppedOut.value ? (content.value ?? undefined) : undefined,

@@ -21,7 +21,6 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 				id: uuidv4(),
 				text,
 				sender: 'bot',
-				createdAt: new Date().toISOString(),
 			})),
 		);
 
@@ -31,7 +30,6 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 				text,
 				sender: 'user',
 				files,
-				createdAt: new Date().toISOString(),
 			};
 
 			messages.value.push(sentMessage);
@@ -62,7 +60,6 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 				id: uuidv4(),
 				text: textMessage,
 				sender: 'bot',
-				createdAt: new Date().toISOString(),
 			};
 			messages.value.push(receivedMessage);
 
@@ -80,13 +77,11 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 
 			const sessionId = localStorage.getItem(localStorageSessionIdKey) ?? uuidv4();
 			const previousMessagesResponse = await api.loadPreviousSession(sessionId, options);
-			const timestamp = new Date().toISOString();
 
 			messages.value = (previousMessagesResponse?.data || []).map((message, index) => ({
 				id: `${index}`,
 				text: message.kwargs.content,
 				sender: message.id.includes('HumanMessage') ? 'user' : 'bot',
-				createdAt: timestamp,
 			}));
 
 			if (messages.value.length) {
