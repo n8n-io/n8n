@@ -1,19 +1,19 @@
-import axios from 'axios';
-import { createI18n } from 'vue-i18n';
 import { locale } from '@n8n/design-system';
+import axios from 'axios';
 import type { INodeProperties, INodePropertyCollection, INodePropertyOptions } from 'n8n-workflow';
+import { createI18n } from 'vue-i18n';
 
 import type { INodeTranslationHeaders } from '@/Interface';
-import { useUIStore } from '@/stores/ui.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useRootStore } from '@/stores/root.store';
+import { useUIStore } from '@/stores/ui.store';
 import englishBaseText from './locales/en.json';
 import koreanBaseText from './locales/ko.json';
 import {
 	deriveMiddleKey,
+	insertOptionsAndValues,
 	isNestedInCollectionLike,
 	normalize,
-	insertOptionsAndValues,
 } from './utils';
 
 export const i18nInstance = createI18n({
@@ -465,14 +465,3 @@ type GetCategoryName<T> = T extends `nodeCreator.categoryNames.${infer C}` ? C :
 
 export type CategoryName = GetCategoryName<keyof typeof englishBaseText>;
 
-/**
- * Initialize language setting
- */
-export async function initLanguage() {
-	const rootStore = useRootStore();
-	const userLanguage = rootStore.defaultLocale || 'en';
-	
-	if (userLanguage && loadedLanguages.includes(userLanguage)) {
-		await loadLanguage(userLanguage);
-	}
-}

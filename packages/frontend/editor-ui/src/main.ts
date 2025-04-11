@@ -1,13 +1,13 @@
 import { createApp } from 'vue';
 
+import '@vue-flow/controls/dist/style.css';
 import '@vue-flow/core/dist/style.css';
 import '@vue-flow/core/dist/theme-default.css';
-import '@vue-flow/controls/dist/style.css';
 import '@vue-flow/minimap/dist/style.css';
 import '@vue-flow/node-resizer/dist/style.css';
 
-import 'vue-json-pretty/lib/styles.css';
 import '@n8n/design-system/css/index.scss';
+import 'vue-json-pretty/lib/styles.css';
 // import '@n8n/design-system/css/tailwind/index.css';
 
 import './n8n-theme.scss';
@@ -15,16 +15,15 @@ import './n8n-theme.scss';
 import App from '@/App.vue';
 import router from './router';
 
-import { TelemetryPlugin } from './plugins/telemetry';
-import { i18nInstance } from './plugins/i18n';
-// import { i18nInstance, initLanguage } from './plugins/i18n';
 import { GlobalComponentsPlugin } from './plugins/components';
 import { GlobalDirectivesPlugin } from './plugins/directives';
+import { i18nInstance } from './plugins/i18n';
 import { FontAwesomePlugin } from './plugins/icons';
+import { TelemetryPlugin } from './plugins/telemetry';
 
-import { createPinia, PiniaVuePlugin } from 'pinia';
 import { ChartJSPlugin } from '@/plugins/chartjs';
 import { SentryPlugin } from '@/plugins/sentry';
+import { createPinia, PiniaVuePlugin } from 'pinia';
 
 const pinia = createPinia();
 
@@ -42,10 +41,6 @@ app.use(i18nInstance);
 app.use(ChartJSPlugin);
 
 app.mount('#app');
-// // Initialize the language setting
-// initLanguage().then(() => {
-// 	app.mount('#app');
-// });
 
 if (!import.meta.env.PROD) {
 	// Make sure that we get all error messages properly displayed
