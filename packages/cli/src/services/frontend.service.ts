@@ -366,7 +366,7 @@ export class FrontendService {
 		}
 
 		Object.assign(this.settings.insights, {
-			enabled: this.modulesConfig.modules.includes('insights'),
+			enabled: this.modulesConfig.loadedModules.has('insights'),
 			summary: this.license.isInsightsSummaryEnabled(),
 			dashboard: this.license.isInsightsDashboardEnabled(),
 		});
