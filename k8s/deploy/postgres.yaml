@@ -1,0 +1,91 @@
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    service: postgres-n8n
+  name: postgres
+  namespace: postgres
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      service: postgres-n8n
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        service: postgres-n8n
+    spec:
+      containers:
+        - image: postgres:16.1
+          name: postgres
+          args:
+          - "-c"
+          - "log_directory=/var/log/pglogs/logs"
+          - "-c"
+          - "data_directory=/var/lib/postgresql/data"
+          resources:
+            limits:
+              cpu: "4"
+              memory: 4Gi
+            requests:
+              cpu: "1"
+              memory: 2Gi
+          env:
+          - name: POSTGRES_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: postgres-secret
+                key: password
+          - name: PGDATA
+            value: /var/lib/postgresql/data
+          - name: PG_LOG
+            value: /var/log/pglogs/logs
+          ports:
+            - containerPort: 5432
+          volumeMounts:
+            - name: postgresql-pv
+              mountPath: /var/lib/postgresql/data
+      restartPolicy: Always
+      volumes:
+        - name: postgresql-pv
+          persistentVolumeClaim:
+            claimName: postgres-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-nodeport-service
+  namespace: postgres  # Match the Deployment's namespace
+  labels:
+    service: postgres-n8n # Match the Deployment's labels
+spec:
+  type: NodePort
+  selector:
+    service: postgres-n8n # Selects Pods with this label
+  ports:
+    - protocol: TCP
+      port: 5432         # Internal port the Service listens on
+      targetPort: 5432   # Port the Pods listen on (containerPort)
+      nodePort: 30543    # Port exposed on the Node's IP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-service # Matches POSTGRES_HOST in your Deployment
+  namespace: postgres   # Match the Deployment's namespace
+  labels:
+    service: postgres-n8n # Match the Deployment's labels
+spec:
+  type: ClusterIP # Default type, but explicit is good
+  selector:
+    service: postgres-n8n # Selects Pods with this label
+  ports:
+    - protocol: TCP
+      port: 5432         # Standard PostgreSQL port, matches POSTGRES_PORT
+      targetPort: 5432   # Port the Pods listen on (containerPort)
