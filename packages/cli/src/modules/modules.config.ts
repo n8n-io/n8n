@@ -18,7 +18,7 @@ class Modules extends CommaSeparatedStringArray<ModuleName> {
 
 @Config
 export class ModulesConfig {
-	/** Comma-separated list of all enabled modules */
+	/** Comma-separated list of all modules enabled */
 	@Env('N8N_ENABLED_MODULES')
 	enabledModules: Modules = [];
 
@@ -26,6 +26,7 @@ export class ModulesConfig {
 	@Env('N8N_DISABLED_MODULES')
 	disabledModules: Modules = [];
 
+	// Default modules are always enabled unless explicitly disabled
 	private readonly defaultModules: ModuleName[] = ['insights'];
 
 	// Get all modules by merging default and enabled, and filtering out disabled modules
@@ -34,10 +35,8 @@ export class ModulesConfig {
 			throw new UnexpectedError('Module cannot be both enabled and disabled', { level: 'fatal' });
 		}
 
-		// Concat enabled modules with default ones
 		const enabledModules = Array.from(new Set(this.defaultModules.concat(this.enabledModules)));
 
-		// filter out disabled modules
 		return enabledModules.filter((module) => !this.disabledModules.includes(module));
 	}
 }

@@ -24,7 +24,7 @@ export class InsightsModule implements BaseN8nModule {
 
 	private initializeModule() {
 		// If insights collection is disabled, no need to start compaction and flushing process
-		if (!this.shouldCollectInsights()) {
+		if (!this.isInsightsCollectionEnabled) {
 			return;
 		}
 
@@ -43,7 +43,7 @@ export class InsightsModule implements BaseN8nModule {
 		}
 	}
 
-	private shouldCollectInsights(): boolean {
+	private get isInsightsCollectionEnabled(): boolean {
 		// Disable insights for workers
 		if (this.instanceSettings.instanceType === 'worker') {
 			return false;
@@ -51,6 +51,7 @@ export class InsightsModule implements BaseN8nModule {
 
 		// Disable insights for sqlite if pool size is not set
 		// This is because legacy sqlite does not support nested transactions needed for insights
+		// TODO: remove once benchmarks confirm this issue is solved with buffering / flushing mechanism
 		if (
 			this.globalConfig.database.type === 'sqlite' &&
 			!this.globalConfig.database.sqlite.poolSize
@@ -65,7 +66,7 @@ export class InsightsModule implements BaseN8nModule {
 		const insightsService = this.insightsService;
 
 		// Workers should not be saving any insights
-		if (this.shouldCollectInsights()) {
+		if (this.isInsightsCollectionEnabled) {
 			hooks.addHandler('workflowExecuteAfter', async function (fullRunData) {
 				await insightsService.workflowExecuteAfterHandler(this, fullRunData);
 			});

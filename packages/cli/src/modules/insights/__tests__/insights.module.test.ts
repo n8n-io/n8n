@@ -117,7 +117,7 @@ describe('InsightsModule', () => {
 	});
 
 	describe('shouldCollectInsights', () => {
-		it('should return false if database type is sqlite and poolSize is not set', () => {
+		it('should not add handler if database type is sqlite and poolSize is not set', () => {
 			globalConfig.database.type = 'sqlite';
 			globalConfig.database.sqlite.poolSize = 0;
 
@@ -132,7 +132,7 @@ describe('InsightsModule', () => {
 			expect(hooks.addHandler).not.toHaveBeenCalled();
 		});
 
-		it('should return false if instance type is worker', () => {
+		it('should not add handler if instance type is worker', () => {
 			instanceSettings = mockInstance(InstanceSettings, { instanceType: 'worker' });
 
 			const module = new InsightsModule(
@@ -146,7 +146,7 @@ describe('InsightsModule', () => {
 			expect(hooks.addHandler).not.toHaveBeenCalled();
 		});
 
-		it('should return true if all conditions are met', () => {
+		it('should add handler if using postgres DB', () => {
 			globalConfig.database.type = 'postgresdb';
 			instanceSettings = mockInstance(InstanceSettings, { instanceType: 'main' });
 
