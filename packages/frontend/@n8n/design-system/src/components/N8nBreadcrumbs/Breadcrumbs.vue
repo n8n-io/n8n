@@ -167,7 +167,10 @@ const handleTooltipClose = () => {
 						:loading-row-count="loadingSkeletonRows"
 						:disabled="dropdownDisabled"
 						:class="$style['action-toggle']"
-						:popper-class="$style['hidden-items-menu-popper']"
+						:popper-class="{
+							[$style['hidden-items-menu-popper']]: true,
+							[$style.dragging]: dragActive,
+						}"
 						:trigger="hiddenItemsTrigger"
 						theme="dark"
 						placement="bottom"
@@ -241,7 +244,6 @@ const handleTooltipClose = () => {
 .container {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-5xs);
 
 	&.small {
 		display: inline-flex;
@@ -258,6 +260,10 @@ const handleTooltipClose = () => {
 	display: flex;
 	list-style: none;
 	align-items: center;
+}
+
+.item {
+	border: var(--border-width-base) var(--border-style-base) transparent;
 }
 
 .item.dragging:hover {
@@ -311,6 +317,10 @@ const handleTooltipClose = () => {
 	& > div ul {
 		max-height: 250px;
 		overflow: auto;
+	}
+
+	&.dragging li:hover {
+		background-color: var(--color-secondary-tint-3);
 	}
 
 	li {
@@ -407,7 +417,7 @@ const handleTooltipClose = () => {
 		max-width: var(--spacing-5xl);
 	}
 
-	.item a:hover * {
+	.item:not(.dragging) a:hover * {
 		color: var(--color-text-dark);
 	}
 

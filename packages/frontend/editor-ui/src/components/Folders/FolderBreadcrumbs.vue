@@ -56,7 +56,11 @@ const onItemHover = (item: PathItem) => {
 	if (!isDragging.value) {
 		return;
 	}
-	console.log('Hovered item:', item);
+	foldersStore.activeDropTarget = {
+		type: 'folder',
+		id: item.id,
+		name: item.label,
+	};
 };
 </script>
 <template>
@@ -113,11 +117,16 @@ const onItemHover = (item: PathItem) => {
 .home-project {
 	display: flex;
 	align-items: center;
+	padding: var(--spacing-4xs);
+	border: var(--border-width-base) var(--border-style-base) transparent;
 
 	&.dragging:hover {
 		border: var(--border-width-base) var(--border-style-base) var(--color-secondary);
 		border-radius: var(--border-radius-base);
 		background-color: var(--color-secondary-tint-3);
+		* {
+			color: var(--color-text-base);
+		}
 	}
 
 	&:hover * {
