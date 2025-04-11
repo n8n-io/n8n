@@ -170,11 +170,13 @@ export class TelemetryEventRelay extends EventRelay {
 	}
 
 	private sourceControlUserStartedPullUi({
+		userId,
 		workflowUpdates,
 		workflowConflicts,
 		credConflicts,
 	}: RelayEventMap['source-control-user-started-pull-ui']) {
 		this.telemetry.track('User started pull via UI', {
+			user_id: userId,
 			workflow_updates: workflowUpdates,
 			workflow_conflicts: workflowConflicts,
 			cred_conflicts: credConflicts,
@@ -182,9 +184,11 @@ export class TelemetryEventRelay extends EventRelay {
 	}
 
 	private sourceControlUserFinishedPullUi({
+		userId,
 		workflowUpdates,
 	}: RelayEventMap['source-control-user-finished-pull-ui']) {
 		this.telemetry.track('User finished pull via UI', {
+			user_id: userId,
 			workflow_updates: workflowUpdates,
 		});
 	}
@@ -200,6 +204,7 @@ export class TelemetryEventRelay extends EventRelay {
 	}
 
 	private sourceControlUserStartedPushUi({
+		userId,
 		workflowsEligible,
 		workflowsEligibleWithConflicts,
 		credsEligible,
@@ -207,6 +212,7 @@ export class TelemetryEventRelay extends EventRelay {
 		variablesEligible,
 	}: RelayEventMap['source-control-user-started-push-ui']) {
 		this.telemetry.track('User started push via UI', {
+			user_id: userId,
 			workflows_eligible: workflowsEligible,
 			workflows_eligible_with_conflicts: workflowsEligibleWithConflicts,
 			creds_eligible: credsEligible,
@@ -216,12 +222,14 @@ export class TelemetryEventRelay extends EventRelay {
 	}
 
 	private sourceControlUserFinishedPushUi({
+		userId,
 		workflowsEligible,
 		workflowsPushed,
 		credsPushed,
 		variablesPushed,
 	}: RelayEventMap['source-control-user-finished-push-ui']) {
 		this.telemetry.track('User finished push via UI', {
+			user_id: userId,
 			workflows_eligible: workflowsEligible,
 			workflows_pushed: workflowsPushed,
 			creds_pushed: credsPushed,
