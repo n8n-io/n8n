@@ -31,6 +31,7 @@ const emit = defineEmits<{
 	tooltipClosed: [];
 	hiddenItemsLoadingError: [error: unknown];
 	itemSelected: [item: PathItem];
+	itemHover: [item: PathItem];
 }>();
 
 const props = withDefaults(defineProps<Props>(), {
@@ -120,6 +121,14 @@ const emitItemSelected = (id: string) => {
 	emit('itemSelected', item);
 };
 
+const emitItemHover = (id: string) => {
+	const item = [...props.items, ...loadedHiddenItems.value].find((i) => i.id === id);
+	if (!item) {
+		return;
+	}
+	emit('itemHover', item);
+};
+
 const handleTooltipShow = async () => {
 	emit('tooltipOpened');
 	await getHiddenItems();
@@ -157,6 +166,7 @@ const handleTooltipClose = () => {
 						:disabled="dropdownDisabled"
 						:class="$style['action-toggle']"
 						:popper-class="$style['hidden-items-menu-popper']"
+						:trigger="hiddenItemsTrigger"
 						theme="dark"
 						placement="bottom"
 						size="small"
@@ -208,7 +218,10 @@ const handleTooltipClose = () => {
 					:data-test-id="
 						index === items.length - 1 ? 'breadcrumbs-item-current' : 'breadcrumbs-item'
 					"
+					:data-resourceid="item.id"
+					data-target="folder-breadcrumb-item"
 					@click.prevent="emitItemSelected(item.id)"
+					@mouseenter="emitItemHover(item.id)"
 				>
 					<n8n-link v-if="item.href" :href="item.href" theme="text">{{ item.label }}</n8n-link>
 					<n8n-text v-else>{{ item.label }}</n8n-text>
