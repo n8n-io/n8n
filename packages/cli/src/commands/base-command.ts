@@ -78,7 +78,7 @@ export abstract class BaseCommand extends Command {
 				preInitModule = (await import(
 					`../modules/${moduleName}/${moduleName}.pre-init`
 				)) as ModulePreInit;
-			} catch (e) {}
+			} catch {}
 
 			if (
 				!preInitModule ||
