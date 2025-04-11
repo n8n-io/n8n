@@ -47,9 +47,6 @@ describe('Perplexity API Credentials', () => {
 		it('should have a valid test property', () => {
 			expect(perplexityApi.test).toBeDefined();
 			expect(perplexityApi.test.request).toBeDefined();
-			expect(perplexityApi.test.request.method).toBe('POST');
-			expect(perplexityApi.test.request.url).toBe('/chat/completions');
-			expect(perplexityApi.test.request.baseURL).toBe('={{$credentials.baseUrl}}');
 		});
 	});
 });

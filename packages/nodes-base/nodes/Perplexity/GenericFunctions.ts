@@ -83,7 +83,7 @@ export async function getModels(
 	];
 
 	if (filter) {
-		models = models.filter((model) => model.name.toLowerCase().startsWith(filter.toLowerCase()));
+		models = models.filter((model) => model.name.toLowerCase().includes(filter.toLowerCase()));
 	}
 
 	return {

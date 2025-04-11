@@ -22,11 +22,11 @@ describe('Perplexity Node - Chat Completions', () => {
 					{ role: 'user', content: 'aaa' },
 				],
 				frequency_penalty: 1,
-				max_tokens: 1,
-				temperature: 0.2,
-				top_k: 0,
-				top_p: 0.9,
-				presence_penalty: 0,
+				max_tokens: 4,
+				temperature: 1.99,
+				top_k: 4,
+				top_p: 1,
+				presence_penalty: 2,
 				return_images: false,
 				return_related_questions: false,
 				search_recency: 'month',
@@ -52,6 +52,11 @@ describe('Perplexity Node - Chat Completions', () => {
 					},
 				],
 			});
+	});
+
+	afterEach(() => {
+		nock.cleanAll();
+		nock.enableNetConnect();
 	});
 
 	testWorkflows(workflows);

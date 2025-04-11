@@ -1,10 +1,7 @@
 import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
-import {
-	chatCompletionsFields,
-	chatCompletionsOperations,
-} from './descriptions/chat/complete.operation';
+import { chat } from './descriptions';
 import { getModels } from './GenericFunctions';
 
 export class Perplexity implements INodeType {
@@ -49,8 +46,8 @@ export class Perplexity implements INodeType {
 				],
 				default: 'chat',
 			},
-			...chatCompletionsOperations,
-			...chatCompletionsFields,
+
+			...chat.description,
 		],
 	};
 

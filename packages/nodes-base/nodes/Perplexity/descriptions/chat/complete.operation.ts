@@ -1,41 +1,7 @@
-import { updateDisplayOptions } from 'n8n-workflow';
 import type { INodeProperties } from 'n8n-workflow';
+import { updateDisplayOptions } from 'n8n-workflow';
 
-import { sendErrorPostReceive } from '../../GenericFunctions';
-
-export const chatCompletionsOperations: INodeProperties[] = [
-	{
-		displayName: 'Operation',
-		name: 'operation',
-		type: 'options',
-		noDataExpression: true,
-		displayOptions: {
-			show: {
-				resource: ['chat'],
-			},
-		},
-		options: [
-			{
-				name: 'Message a Model',
-				value: 'complete',
-				action: 'Message a model',
-				description: 'Create one or more completions for a given text',
-				routing: {
-					request: {
-						method: 'POST',
-						url: '/chat/completions',
-					},
-					output: {
-						postReceive: [sendErrorPostReceive],
-					},
-				},
-			},
-		],
-		default: 'complete',
-	},
-];
-
-export const chatCompletionsFields: INodeProperties[] = [
+const properties: INodeProperties[] = [
 	{
 		displayName: 'Model',
 		name: 'model',
@@ -68,9 +34,6 @@ export const chatCompletionsFields: INodeProperties[] = [
 				type: 'body',
 				property: 'model',
 			},
-			output: {
-				postReceive: [sendErrorPostReceive],
-			},
 		},
 	},
 	{
@@ -89,12 +52,6 @@ export const chatCompletionsFields: INodeProperties[] = [
 					content: '',
 				},
 			],
-		},
-		displayOptions: {
-			show: {
-				resource: ['chat'],
-				operation: ['complete'],
-			},
 		},
 		options: [
 			{
@@ -146,15 +103,34 @@ export const chatCompletionsFields: INodeProperties[] = [
 			},
 		},
 	},
-
-	...updateDisplayOptions(
-		{
-			show: {
-				resource: ['chat'],
-				operation: ['complete'],
+	{
+		displayName: 'Simplify',
+		name: 'simplify',
+		type: 'boolean',
+		default: false,
+		description: 'Whether to return only essential fields (ID, citations, message)',
+		routing: {
+			output: {
+				postReceive: [
+					{
+						type: 'set',
+						enabled: '={{ $value }}',
+						properties: {
+							value:
+								'={{ { "id": $response.body?.id, "created": $response.body?.created, "citations": $response.body?.citations, "message": $response.body?.choices?.[0]?.message?.content } }}',
+						},
+					},
+				],
 			},
 		},
-		[
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
+		options: [
 			{
 				displayName: 'Frequency Penalty',
 				name: 'frequencyPenalty',
@@ -298,8 +274,7 @@ export const chatCompletionsFields: INodeProperties[] = [
 					send: {
 						type: 'body',
 						property: 'search_domain_filter',
-						value:
-							'={{ $json["userTier"] && $json["userTier"] >= 3 ? $value.split(/\\s*,\\s*/) : undefined }}',
+						value: '={{ $value.split(",").map(domain => domain.trim()) }}',
 					},
 				},
 			},
@@ -335,26 +310,14 @@ export const chatCompletionsFields: INodeProperties[] = [
 				},
 			},
 		],
-	),
-	{
-		displayName: 'Simplify Output',
-		name: 'simplifyOutput',
-		type: 'boolean',
-		default: false,
-		description: 'Whether to return only essential fields (ID, citations, message)',
-		routing: {
-			output: {
-				postReceive: [
-					{
-						type: 'set',
-						enabled: '={{ $value }}',
-						properties: {
-							value:
-								'={{ { "id": $response.body?.id, "created": $response.body?.created, "citations": $response.body?.citations, "message": $response.body?.choices?.[0]?.message?.content } }}',
-						},
-					},
-				],
-			},
-		},
 	},
 ];
+
+const displayOptions = {
+	show: {
+		resource: ['chat'],
+		operation: ['complete'],
+	},
+};
+
+export const description = updateDisplayOptions(displayOptions, properties);

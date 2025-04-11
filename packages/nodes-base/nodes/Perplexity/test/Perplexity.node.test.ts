@@ -2,10 +2,7 @@ import type { ILoadOptionsFunctions } from 'n8n-workflow';
 
 import { getModels } from '../../Perplexity/GenericFunctions';
 import { Perplexity } from '../../Perplexity/Perplexity.node';
-import {
-	chatCompletionsFields,
-	chatCompletionsOperations,
-} from '../descriptions/chat/complete.operation';
+import { description } from '../descriptions/chat/complete.operation';
 
 jest.mock('../../Perplexity/GenericFunctions', () => ({
 	getModels: jest.fn(),
@@ -19,12 +16,10 @@ describe('Perplexity Node', () => {
 	});
 
 	describe('Node Description', () => {
-		it('should correctly integrate chatCompletionsOperations and chatCompletionsFields into properties', () => {
+		it('should correctly include chat completion properties', () => {
 			const properties = node.description.properties;
 
-			expect(properties).toEqual(
-				expect.arrayContaining([...chatCompletionsOperations, ...chatCompletionsFields]),
-			);
+			expect(properties).toEqual(expect.arrayContaining(description));
 		});
 	});
 
