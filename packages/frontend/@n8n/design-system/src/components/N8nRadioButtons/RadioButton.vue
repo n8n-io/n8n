@@ -5,13 +5,17 @@ interface RadioButtonProps {
 	active?: boolean;
 	disabled?: boolean;
 	size?: 'small' | 'medium';
+	customRender?: boolean;
 }
 
 withDefaults(defineProps<RadioButtonProps>(), {
 	active: false,
 	disabled: false,
 	size: 'medium',
+	customRender: false,
 });
+
+defineSlots<{ default?: {} }>();
 </script>
 
 <template>
@@ -22,6 +26,7 @@ withDefaults(defineProps<RadioButtonProps>(), {
 			'n8n-radio-button': true,
 			[$style.container]: true,
 			[$style.hoverable]: !disabled,
+			[$style.customRender]: customRender,
 		}"
 		:aria-checked="active"
 	>
@@ -34,7 +39,9 @@ withDefaults(defineProps<RadioButtonProps>(), {
 			}"
 			:data-test-id="`radio-button-${value}`"
 		>
-			{{ label }}
+			<slot>
+				{{ label }}
+			</slot>
 		</div>
 	</label>
 </template>
@@ -68,6 +75,10 @@ withDefaults(defineProps<RadioButtonProps>(), {
 	transition: background-color 0.2s ease;
 	cursor: pointer;
 	user-select: none;
+
+	.customRender & {
+		padding-inline: 0;
+	}
 }
 
 .disabled {

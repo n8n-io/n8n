@@ -77,7 +77,6 @@ import {
 	N8nInfoTip,
 	N8nLink,
 	N8nOption,
-	N8nRadioButtons,
 	N8nSelect,
 	N8nSpinner,
 	N8nTabs,
@@ -91,6 +90,8 @@ import { useSchemaPreviewStore } from '@/stores/schemaPreview.store';
 import { asyncComputed } from '@vueuse/core';
 import { usePostHog } from '@/stores/posthog.store';
 import ViewSubExecution from './ViewSubExecution.vue';
+import RunDataItemCount from '@/components/RunDataItemCount.vue';
+import RunDataDisplayModeSelect from '@/components/RunDataDisplayModeSelect.vue';
 
 const LazyRunDataTable = defineAsyncComponent(
 	async () => await import('@/components/RunDataTable.vue'),
@@ -256,33 +257,6 @@ const canPinData = computed(
 		pinnedData.isValidNodeType.value &&
 		!(binaryData.value && binaryData.value.length > 0),
 );
-const displayModes = computed(() => {
-	const defaults: Array<{ label: string; value: IRunDataDisplayMode }> = [
-		{ label: i18n.baseText('runData.table'), value: 'table' },
-		{ label: i18n.baseText('runData.json'), value: 'json' },
-	];
-
-	if (binaryData.value.length) {
-		defaults.push({ label: i18n.baseText('runData.binary'), value: 'binary' });
-	}
-
-	const schemaView = { label: i18n.baseText('runData.schema'), value: 'schema' } as const;
-	if (isPaneTypeInput.value) {
-		defaults.unshift(schemaView);
-	} else {
-		defaults.push(schemaView);
-	}
-
-	if (
-		isPaneTypeOutput.value &&
-		activeNode.value?.type === HTML_NODE_TYPE &&
-		activeNode.value.parameters.operation === 'generateHtmlTemplate'
-	) {
-		defaults.unshift({ label: 'HTML', value: 'html' });
-	}
-
-	return defaults;
-});
 
 const hasNodeRun = computed(() =>
 	Boolean(
@@ -608,6 +582,14 @@ const hasPreviewSchema = asyncComputed(async () => {
 	}
 	return false;
 }, false);
+
+const itemsCountProps = computed<InstanceType<typeof RunDataItemCount>['$props']>(() => ({
+	search: search.value,
+	dataCount: dataCount.value,
+	unfilteredDataCount: unfilteredDataCount.value,
+	subExecutionsCount: activeTaskMetadata.value?.subExecutionsCount,
+	muted: props.compact || (props.paneType === 'input' && maxRunIndex.value === 0),
+}));
 
 watch(node, (newNode, prevNode) => {
 	if (newNode?.id === prevNode?.id) return;
@@ -1392,17 +1374,24 @@ defineExpose({ enterEditMode });
 					/>
 				</Suspense>
 
-				<N8nRadioButtons
+				<RunDataDisplayModeSelect
 					v-show="
 						hasPreviewSchema ||
 						(hasNodeRun && (inputData.length || binaryData.length || search) && !editMode.enabled)
 					"
 					:class="$style.displayModeSelect"
-					:model-value="displayMode"
-					:options="displayModes"
-					data-test-id="ndv-run-data-display-mode"
-					@update:model-value="onDisplayModeChange"
+					:compact="props.compact"
+					:value="displayMode"
+					:has-binary-data="binaryData.length > 0"
+					:pane-type="paneType"
+					:node-generates-html="
+						activeNode?.type === HTML_NODE_TYPE &&
+						activeNode.parameters.operation === 'generateHtmlTemplate'
+					"
+					@change="onDisplayModeChange"
 				/>
+
+				<RunDataItemCount v-if="props.compact" v-bind="itemsCountProps" />
 
 				<N8nIconButton
 					v-if="!props.disableEdit && canPinData && !isReadOnlyRoute && !readOnlyEnv"
@@ -1547,37 +1536,12 @@ defineExpose({ enterEditMode });
 				!displaysMultipleNodes
 			"
 			v-show="!editMode.enabled"
-			:class="[$style.itemsCount, { [$style.muted]: paneType === 'input' && maxRunIndex === 0 }]"
+			:class="$style.itemsCount"
 			data-test-id="ndv-items-count"
 		>
 			<slot v-if="inputSelectLocation === 'items'" name="input-select"></slot>
 
-			<N8nText v-if="search" :class="$style.itemsText">
-				{{
-					i18n.baseText('ndv.search.items', {
-						adjustToNumber: unfilteredDataCount,
-						interpolate: { matched: dataCount, count: unfilteredDataCount },
-					})
-				}}
-			</N8nText>
-			<N8nText v-else :class="$style.itemsText">
-				<span>
-					{{
-						i18n.baseText('ndv.output.items', {
-							adjustToNumber: dataCount,
-							interpolate: { count: dataCount },
-						})
-					}}
-				</span>
-				<span v-if="activeTaskMetadata?.subExecutionsCount">
-					{{
-						i18n.baseText('ndv.output.andSubExecutions', {
-							adjustToNumber: activeTaskMetadata.subExecutionsCount,
-							interpolate: { count: activeTaskMetadata.subExecutionsCount },
-						})
-					}}
-				</span>
-			</N8nText>
+			<RunDataItemCount v-if="!props.compact" v-bind="itemsCountProps" />
 			<ViewSubExecution
 				v-if="activeTaskMetadata && !(paneType === 'input' && hasInputOverwrite)"
 				:task-metadata="activeTaskMetadata"
@@ -1966,6 +1930,8 @@ defineExpose({ enterEditMode });
 </template>
 
 <style lang="scss" module>
+@import '@/styles/variables';
+
 .infoIcon {
 	color: var(--color-foreground-dark);
 }
@@ -2082,18 +2048,6 @@ defineExpose({ enterEditMode });
 	padding-right: var(--spacing-s);
 	padding-bottom: var(--spacing-s);
 	flex-flow: wrap;
-
-	.itemsText {
-		flex-shrink: 0;
-		overflow: hidden;
-		white-space: nowrap;
-		text-overflow: ellipsis;
-	}
-
-	&.muted .itemsText {
-		color: var(--color-text-light);
-		font-size: var(--font-size-2xs);
-	}
 }
 
 .inputSelect {
@@ -2210,6 +2164,7 @@ defineExpose({ enterEditMode });
 .displayModes {
 	display: flex;
 	justify-content: flex-end;
+	align-items: center;
 	flex-grow: 1;
 	gap: var(--spacing-2xs);
 }
@@ -2288,15 +2243,12 @@ defineExpose({ enterEditMode });
 	padding: 0 var(--spacing-s);
 }
 
+.search,
 .displayModeSelect {
 	.compact & {
 		opacity: 0;
 		visibility: hidden;
-		position: absolute;
-		top: 0;
-		right: 0;
-		margin: var(--spacing-2xs);
-		transition: opacity 0.2s ease;
+		transition: opacity 0.3s $ease-out-expo;
 	}
 
 	.compact:hover & {

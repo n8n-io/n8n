@@ -175,6 +175,8 @@ async function handleTriggerPartialExecution(treeNode: TreeNode) {
 </template>
 
 <style lang="scss" module>
+@import '@/styles/variables';
+
 .container {
 	flex-grow: 1;
 	flex-shrink: 1;
@@ -238,7 +240,7 @@ async function handleTriggerPartialExecution(treeNode: TreeNode) {
 	margin: var(--spacing-2xs);
 	visibility: hidden;
 	opacity: 0;
-	transition: opacity 0.2s ease;
+	transition: opacity 0.3s $ease-out-expo;
 
 	.content:hover & {
 		visibility: visible;
