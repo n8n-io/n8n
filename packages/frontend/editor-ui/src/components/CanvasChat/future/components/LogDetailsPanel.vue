@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useResizeV2 } from '@/components/CanvasChat/composables/useResizeV2';
 import ExecutionSummary from '@/components/CanvasChat/future/components/ExecutionSummary.vue';
 import PanelHeader from '@/components/CanvasChat/future/components/PanelHeader.vue';
 import RunDataView from '@/components/CanvasChat/future/components/RunDataView.vue';
@@ -9,15 +10,17 @@ import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { N8nButton, N8nText } from '@n8n/design-system';
-import { computed, ref } from 'vue';
+import { N8nButton, N8nResizeWrapper, N8nText } from '@n8n/design-system';
+import { computed, ref, useTemplateRef } from 'vue';
+
+const MIN_IO_PANEL_WIDTH = 200;
 
 const { isOpen, logEntry } = defineProps<{
 	isOpen: boolean;
 	logEntry: TreeNode;
 }>();
 
-const emit = defineEmits<{ clickHeader: {} }>();
+const emit = defineEmits<{ clickHeader: [] }>();
 
 defineSlots<{ actions: {} }>();
 
@@ -38,32 +41,50 @@ const runData = computed(
 );
 const consumedTokens = computed(() => getSubtreeTotalConsumedTokens(logEntry));
 const isTriggerNode = computed(() => type.value?.group.includes('trigger'));
+const container = useTemplateRef<HTMLElement>('container');
+const resizer = useResizeV2({
+	container,
+	localStorageKey: 'N8N_LOGS_INPUT_PANEL_WIDTH',
+	minSize: MIN_IO_PANEL_WIDTH,
+	maxSize: (el) => el.offsetWidth - MIN_IO_PANEL_WIDTH,
+	onCollapse: () => handleTogglesInput(false),
+	onFullWidth: () => handleToggleOutput(false),
+});
+const shouldResize = computed(() => content.value === LOG_DETAILS_CONTENT.BOTH);
 
-function handleTogglesInput() {
-	const wasVisible = [LOG_DETAILS_CONTENT.INPUT, LOG_DETAILS_CONTENT.BOTH].includes(content.value);
+function handleTogglesInput(open?: boolean) {
+	const wasOpen = [LOG_DETAILS_CONTENT.INPUT, LOG_DETAILS_CONTENT.BOTH].includes(content.value);
 
-	content.value = wasVisible ? LOG_DETAILS_CONTENT.OUTPUT : LOG_DETAILS_CONTENT.BOTH;
+	if (open === wasOpen) {
+		return;
+	}
+
+	content.value = wasOpen ? LOG_DETAILS_CONTENT.OUTPUT : LOG_DETAILS_CONTENT.BOTH;
 
 	telemetry.track('User toggled log view sub pane', {
 		pane: 'input',
-		newState: wasVisible ? 'hidden' : 'visible',
+		newState: wasOpen ? 'hidden' : 'visible',
 	});
 }
 
-function handleToggleOutput() {
-	const wasVisible = [LOG_DETAILS_CONTENT.OUTPUT, LOG_DETAILS_CONTENT.BOTH].includes(content.value);
+function handleToggleOutput(open?: boolean) {
+	const wasOpen = [LOG_DETAILS_CONTENT.OUTPUT, LOG_DETAILS_CONTENT.BOTH].includes(content.value);
 
-	content.value = wasVisible ? LOG_DETAILS_CONTENT.INPUT : LOG_DETAILS_CONTENT.BOTH;
+	if (open === wasOpen) {
+		return;
+	}
+
+	content.value = wasOpen ? LOG_DETAILS_CONTENT.INPUT : LOG_DETAILS_CONTENT.BOTH;
 
 	telemetry.track('User toggled log view sub pane', {
 		pane: 'output',
-		newState: wasVisible ? 'hidden' : 'visible',
+		newState: wasOpen ? 'hidden' : 'visible',
 	});
 }
 </script>
 
 <template>
-	<div :class="$style.container" data-test-id="log-details">
+	<div ref="container" :class="$style.container" data-test-id="log-details">
 		<PanelHeader data-test-id="logs-details-header" @click="emit('clickHeader')">
 			<template #title>
 				<div :class="$style.title">
@@ -103,13 +124,26 @@ function handleToggleOutput() {
 			</template>
 		</PanelHeader>
 		<div v-if="isOpen" :class="$style.content" data-test-id="logs-details-body">
-			<RunDataView
+			<N8nResizeWrapper
 				v-if="!isTriggerNode && content !== LOG_DETAILS_CONTENT.OUTPUT"
-				pane-type="input"
-				:class="$style.runDataView"
-				:title="locale.baseText('logs.details.header.actions.input')"
-				:log-entry="logEntry"
-			/>
+				:class="$style.inputResizer"
+				:width="resizer.size.value"
+				:style="
+					shouldResize
+						? { width: resizer.size.value ? `${resizer.size.value}px` : '50%' }
+						: undefined
+				"
+				:supported-directions="['right']"
+				:is-resizing-enabled="shouldResize"
+				@resize="resizer.onResize"
+			>
+				<RunDataView
+					pane-type="input"
+					:class="$style.runDataView"
+					:title="locale.baseText('logs.details.header.actions.input')"
+					:log-entry="logEntry"
+				/>
+			</N8nResizeWrapper>
 			<RunDataView
 				v-if="isTriggerNode || content !== LOG_DETAILS_CONTENT.INPUT"
 				pane-type="output"
@@ -174,9 +208,7 @@ function handleToggleOutput() {
 	}
 }
 
-.runDataView {
-	flex-grow: 1;
-	flex-shrink: 1;
-	width: 50%;
+.inputResizer {
+	flex-shrink: 0;
 }
 </style>
