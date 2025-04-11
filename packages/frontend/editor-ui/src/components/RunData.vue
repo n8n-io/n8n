@@ -1906,6 +1906,9 @@ defineExpose({ enterEditMode });
 					</div>
 				</div>
 			</div>
+			<div v-else-if="!hasNodeRun" :class="$style.center">
+				<slot name="node-not-run"></slot>
+			</div>
 		</div>
 		<div
 			v-if="
