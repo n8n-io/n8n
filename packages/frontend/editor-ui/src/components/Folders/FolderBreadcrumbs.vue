@@ -66,6 +66,7 @@ const onItemHover = (item: PathItem) => {
 	>
 		<n8n-breadcrumbs
 			v-if="breadcrumbs.visibleItems"
+			v-model:drag-active="isDragging"
 			:items="breadcrumbs.visibleItems"
 			:highlight-last-item="false"
 			:path-truncated="breadcrumbs.visibleItems[0].parentFolder"
@@ -76,7 +77,10 @@ const onItemHover = (item: PathItem) => {
 			@item-hover="onItemHover"
 		>
 			<template v-if="currentProject" #prepend>
-				<div :class="$style['home-project']" data-test-id="home-project">
+				<div
+					:class="{ [$style['home-project']]: true, [$style.dragging]: isDragging }"
+					data-test-id="home-project"
+				>
 					<n8n-link :to="`/projects/${currentProject.id}`">
 						<N8nText size="medium" color="text-base">{{ projectName }}</N8nText>
 					</n8n-link>
@@ -109,6 +113,12 @@ const onItemHover = (item: PathItem) => {
 .home-project {
 	display: flex;
 	align-items: center;
+
+	&.dragging:hover {
+		border: var(--border-width-base) var(--border-style-base) var(--color-secondary);
+		border-radius: var(--border-radius-base);
+		background-color: var(--color-secondary-tint-3);
+	}
 
 	&:hover * {
 		color: var(--color-text-dark);

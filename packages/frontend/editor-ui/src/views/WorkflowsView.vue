@@ -1693,6 +1693,7 @@ const onCreateWorkflowClick = () => {
 	transition: opacity 0.3s ease;
 	opacity: 0.3;
 	border-style: dashed;
+	pointer-events: none;
 }
 
 .drop-active {

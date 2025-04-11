@@ -22,6 +22,7 @@ type Props = {
 	hiddenItemsTrigger?: 'hover' | 'click';
 	// Setting this to true will show the ellipsis even if there are no hidden items
 	pathTruncated?: boolean;
+	dragActive?: boolean;
 };
 
 defineOptions({ name: 'N8nBreadcrumbs' });
@@ -41,8 +42,9 @@ const props = withDefaults(defineProps<Props>(), {
 	loadingSkeletonRows: 3,
 	separator: '/',
 	highlightLastItem: true,
-	isPathTruncated: false,
+	pathTruncated: false,
 	hiddenItemsTrigger: 'click',
+	dragActive: false,
 });
 
 const loadedHiddenItems = ref<PathItem[]>([]);
@@ -213,6 +215,7 @@ const handleTooltipClose = () => {
 					:class="{
 						[$style.item]: true,
 						[$style.current]: props.highlightLastItem && index === items.length - 1,
+						[$style.dragging]: props.dragActive && index !== items.length - 1,
 					}"
 					:title="item.label"
 					:data-test-id="
@@ -255,6 +258,12 @@ const handleTooltipClose = () => {
 	display: flex;
 	list-style: none;
 	align-items: center;
+}
+
+.item.dragging:hover {
+	border: var(--border-width-base) var(--border-style-base) var(--color-secondary);
+	border-radius: var(--border-radius-base);
+	background-color: var(--color-secondary-tint-3);
 }
 
 .item * {
