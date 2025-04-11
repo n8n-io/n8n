@@ -28,6 +28,8 @@
     "n8n-workflow": "workspace:*",
     "xss": "catalog:",
     "zod": "catalog:",
-    "zod-class": "0.0.16"
+    "zod-class": "0.0.16",
+    "@n8n/permissions": "workspace:*"
+
   }
 }

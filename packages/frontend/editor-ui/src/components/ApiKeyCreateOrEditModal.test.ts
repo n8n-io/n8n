@@ -8,6 +8,8 @@ import { fireEvent } from '@testing-library/vue';
 import { useApiKeysStore } from '@/stores/apiKeys.store';
 import { DateTime } from 'luxon';
 import type { ApiKeyWithRawValue } from '@n8n/api-types';
+import { useSettingsStore } from '@/stores/settings.store';
+import { createMockEnterpriseSettings } from '@/__tests__/mocks';
 
 const renderComponent = createComponentRenderer(ApiKeyEditModal, {
 	pinia: createTestingPinia({
@@ -29,13 +31,17 @@ const testApiKey: ApiKeyWithRawValue = {
 	updatedAt: new Date().toString(),
 	rawApiKey: '123456',
 	expiresAt: 0,
+	scopes: ['user:create', 'user:list'],
 };
 
 const apiKeysStore = mockedStore(useApiKeysStore);
+const settingsStore = mockedStore(useSettingsStore);
 
 describe('ApiKeyCreateOrEditModal', () => {
 	beforeEach(() => {
 		createAppModals();
+		apiKeysStore.availableScopes = ['user:create', 'user:list'];
+		settingsStore.settings.enterprise = createMockEnterpriseSettings({ apiKeyScopes: false });
 	});
 
 	afterEach(() => {
@@ -87,6 +93,7 @@ describe('ApiKeyCreateOrEditModal', () => {
 			updatedAt: new Date().toString(),
 			rawApiKey: '***456',
 			expiresAt: 0,
+			scopes: ['user:create', 'user:list'],
 		});
 
 		const { getByText, getByPlaceholderText, getByTestId } = renderComponent({
@@ -184,6 +191,116 @@ describe('ApiKeyCreateOrEditModal', () => {
 		expect(getByText('new api key')).toBeInTheDocument();
 	});
 
+	test('should allow creating API key with scopes when feat:apiKeyScopes is enabled', async () => {
+		settingsStore.settings.enterprise = createMockEnterpriseSettings({ apiKeyScopes: true });
+
+		apiKeysStore.createApiKey.mockResolvedValue(testApiKey);
+
+		const { getByText, getByPlaceholderText, getByTestId, getAllByText } = renderComponent({
+			props: {
+				mode: 'new',
+			},
+		});
+
+		await retry(() => expect(getByText('Create API Key')).toBeInTheDocument());
+		expect(getByText('Label')).toBeInTheDocument();
+
+		const inputLabel = getByPlaceholderText('e.g Internal Project');
+		const saveButton = getByText('Save');
+
+		const scopesSelect = getByTestId('scopes-select');
+
+		expect(inputLabel).toBeInTheDocument();
+		expect(scopesSelect).toBeInTheDocument();
+		expect(saveButton).toBeInTheDocument();
+
+		await fireEvent.update(inputLabel, 'new label');
+
+		await fireEvent.click(scopesSelect);
+
+		const userCreateScope = getByText('user:create');
+
+		expect(userCreateScope).toBeInTheDocument();
+
+		await fireEvent.click(userCreateScope);
+
+		const [userCreateTag, userCreateSelectOption] = getAllByText('user:create');
+
+		expect(userCreateTag).toBeInTheDocument();
+		expect(userCreateSelectOption).toBeInTheDocument();
+
+		await fireEvent.click(saveButton);
+
+		expect(getByText('API Key Created')).toBeInTheDocument();
+
+		expect(getByText('Done')).toBeInTheDocument();
+
+		expect(
+			getByText('Make sure to copy your API key now as you will not be able to see this again.'),
+		).toBeInTheDocument();
+
+		expect(getByText('Click to copy')).toBeInTheDocument();
+
+		expect(getByText('new api key')).toBeInTheDocument();
+	});
+
+	test('should not let the user select scopes and show upgrade banner when feat:apiKeyScopes is disabled', async () => {
+		settingsStore.settings.enterprise = createMockEnterpriseSettings({ apiKeyScopes: false });
+
+		apiKeysStore.createApiKey.mockResolvedValue(testApiKey);
+
+		const { getByText, getByPlaceholderText, getByTestId, getAllByText } = renderComponent({
+			props: {
+				mode: 'new',
+			},
+		});
+
+		await retry(() => expect(getByText('Create API Key')).toBeInTheDocument());
+		expect(getByText('Label')).toBeInTheDocument();
+
+		const inputLabel = getByPlaceholderText('e.g Internal Project');
+		const saveButton = getByText('Save');
+
+		expect(getByText('Upgrade')).toBeInTheDocument();
+		expect(getByText('to unlock the ability to modify API key scopes')).toBeInTheDocument();
+
+		const scopesSelect = getByTestId('scopes-select');
+
+		expect(inputLabel).toBeInTheDocument();
+		expect(scopesSelect).toBeInTheDocument();
+		expect(saveButton).toBeInTheDocument();
+
+		await fireEvent.update(inputLabel, 'new label');
+
+		await fireEvent.click(scopesSelect);
+
+		const userCreateScope = getAllByText('user:create');
+
+		const [userCreateTag, userCreateSelectOption] = userCreateScope;
+		expect(userCreateTag).toBeInTheDocument();
+		expect(userCreateSelectOption).toBeInTheDocument();
+
+		expect(userCreateSelectOption).toBeInTheDocument();
+
+		expect(userCreateSelectOption.parentNode).toHaveClass('is-disabled');
+
+		await fireEvent.click(userCreateSelectOption);
+
+		await fireEvent.click(saveButton);
+
+		expect(getByText('API Key Created')).toBeInTheDocument();
+
+		expect(getByText('Done')).toBeInTheDocument();
+
+		expect(
+			getByText('Make sure to copy your API key now as you will not be able to see this again.'),
+		).toBeInTheDocument();
+
+		expect(getByText('Click to copy')).toBeInTheDocument();
+
+		expect(getByText('new api key')).toBeInTheDocument();
+	});
+
 	test('should allow editing API key label', async () => {
 		apiKeysStore.apiKeys = [testApiKey];
 
@@ -218,6 +335,9 @@ describe('ApiKeyCreateOrEditModal', () => {
 
 		await fireEvent.click(editButton);
 
-		expect(apiKeysStore.updateApiKey).toHaveBeenCalledWith('123', { label: 'updated api key' });
+		expect(apiKeysStore.updateApiKey).toHaveBeenCalledWith('123', {
+			label: 'updated api key',
+			scopes: ['user:create', 'user:list'],
+		});
 	});
 });

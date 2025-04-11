@@ -1,4 +1,4 @@
-import type { Scope } from '@n8n/permissions';
+import type { AssignableRole, GlobalRole, Scope } from '@n8n/permissions';
 import type { Application } from 'express';
 import type {
 	ExecutionError,
@@ -30,7 +30,7 @@ import type { AnnotationTagEntity } from '@/databases/entities/annotation-tag-en
 import type { AuthProviderType } from '@/databases/entities/auth-identity';
 import type { SharedCredentials } from '@/databases/entities/shared-credentials';
 import type { TagEntity } from '@/databases/entities/tag-entity';
-import type { AssignableRole, GlobalRole, User } from '@/databases/entities/user';
+import type { User } from '@/databases/entities/user';
 
 import type { LICENSE_FEATURES, LICENSE_QUOTAS } from './constants';
 import type { Folder } from './databases/entities/folder';
