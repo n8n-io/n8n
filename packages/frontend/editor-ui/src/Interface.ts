@@ -157,6 +157,8 @@ export interface INodeUpdatePropertiesInformation {
 
 export type XYPosition = [number, number];
 
+export type DraggableMode = 'mapping' | 'panel-resize';
+
 export interface INodeUi extends INode {
 	position: XYPosition;
 	color?: string;
