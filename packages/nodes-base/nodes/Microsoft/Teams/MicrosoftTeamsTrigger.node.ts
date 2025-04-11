@@ -11,10 +11,10 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
 
+import type { WebhookNotification, SubscriptionResponse } from './v2/helpers/types';
+import { createSubscription, getResourcePath } from './v2/helpers/utils-trigger';
 import { listSearch } from './v2/methods';
 import { microsoftApiRequest, microsoftApiRequestAllItems } from './v2/transport';
-import type { WebhookNotification, SubscriptionResponse } from './v2/transport/types';
-import { createSubscription, getResourcePath } from './v2/transport/utils-trigger';
 
 export class MicrosoftTeamsTrigger implements INodeType {
 	description: INodeTypeDescription = {

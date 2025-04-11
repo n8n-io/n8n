@@ -8,7 +8,7 @@ import {
 	fetchAllChats,
 	createSubscription,
 	getResourcePath,
-} from '../../v2/transport/utils-trigger';
+} from '../../v2/helpers/utils-trigger';
 
 jest.mock('../../v2/transport', () => ({
 	microsoftApiRequest: {
