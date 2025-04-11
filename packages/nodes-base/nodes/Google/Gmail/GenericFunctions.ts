@@ -532,72 +532,82 @@ export async function replyToEmail(
 			options.attachmentsUi as IDataObject,
 			itemIndex,
 		);
-		if (attachments.length) {
-			qs = {
-				userId: 'me',
-				uploadType: 'media',
-			};
-		}
+		// Original code potentially set qs here, structure assumes send handles attachments via raw body.
+		// if (attachments.length) {
+		// 	qs = { userId: 'me', uploadType: 'media' };
+		// }
 	}
 
 	const endpoint = `/gmail/v1/users/me/messages/${gmailId}`;
 
-	qs.format = 'metadata';
+	qs = { format: 'metadata' }; // Fetch metadata
 
 	const { payload, threadId } = await googleApiRequest.call(this, 'GET', endpoint, {}, qs);
 
-	const subject =
-		payload.headers.filter(
-			(data: { [key: string]: string }) => data.name.toLowerCase() === 'subject',
-		)[0]?.value || '';
+	let subject = '';
+	let messageIdGlobal = '';
+	let originalFromHeader: string | undefined; // Store original From header value
+	let originalReplyToHeader: string | undefined; // <<< Store Reply-To header value if found
 
-	const messageIdGlobal =
-		payload.headers.filter(
-			(data: { [key: string]: string }) => data.name.toLowerCase() === 'message-id',
-		)[0]?.value || '';
+	if (payload && Array.isArray(payload.headers)) {
+		for (const header of payload.headers as { name: string; value: string }[]) {
+			const headerNameLower = (header.name || '').toLowerCase();
+			if (headerNameLower === 'subject') {
+				subject = header.value || '';
+			} else if (headerNameLower === 'message-id') {
+				messageIdGlobal = header.value || '';
+			} else if (headerNameLower === 'from') {
+				originalFromHeader = header.value; // Store From value
+			} else if (headerNameLower === 'reply-to') { // <<< Check for Reply-To
+				originalReplyToHeader = header.value; // Store Reply-To value
+			}
+		}
+	} else {
+		throw new NodeOperationError(this.getNode(), 'Could not retrieve original email headers.', { itemIndex });
+	}
 
 	const { emailAddress } = await googleApiRequest.call(this, 'GET', '/gmail/v1/users/me/profile');
 
 	let to = '';
-	const replyToSenderOnly =
-		options.replyToSenderOnly === undefined ? false : (options.replyToSenderOnly as boolean);
+	const recipientHeaderValue = originalReplyToHeader || originalFromHeader; // Prioritize Reply-To, fallback to From
 
-	const prepareEmailString = (email: string) => {
-		if (email.includes(emailAddress as string)) return;
-		if (email.includes('<') && email.includes('>')) {
-			to += `${email}, `;
-		} else {
-			to += `<${email}>, `;
-		}
-	};
-
-	for (const header of payload.headers as IDataObject[]) {
-		if (((header.name as string) || '').toLowerCase() === 'from') {
-			const from = header.value as string;
-			if (from.includes('<') && from.includes('>')) {
-				to += `${from}, `;
-			} else {
-				to += `<${from}>, `;
-			}
-		}
-
-		if (((header.name as string) || '').toLowerCase() === 'to' && !replyToSenderOnly) {
-			const toEmails = header.value as string;
-			toEmails.split(',').forEach(prepareEmailString);
-		}
+	if (!recipientHeaderValue) {
+		throw new NodeOperationError(this.getNode(), 'Could not determine reply recipient (missing From/Reply-To header).', { itemIndex });
 	}
 
-	let from = '';
+	// Use the chosen header value to build the 'to' string
+	recipientHeaderValue.split(',').forEach((entry) => {
+		const email = entry.trim();
+		if (!email) return; // Skip empty entries if header has multiple addresses like "Name <a@b.c>, ,"
+		// Basic check to avoid adding self if possible (matches some original logic)
+		if (emailAddress && email.includes(emailAddress as string)) return;
+
+		if (email.includes('<') && email.includes('>')) {
+			to += `${email}, `;
+		} else if (email.includes('@')) { // Basic check if it looks like an email
+			to += `<${email}>, `;
+		} else {
+			// Add potentially just a name as-is, MailComposer might handle it
+			to += `${email}, `;
+		}
+	});
+	to = to.replace(/, $/, ''); // Remove trailing comma and space
+
+
+
+	let from = ''; // Prepare sender 'from' field
 	if (options.senderName) {
 		from = `${options.senderName as string} <${emailAddress}>`;
+	} else {
+		from = `<${emailAddress}>`; // Ensure default is set if senderName is not provided
 	}
 
 	const email: IEmail = {
 		from,
-		to,
+		to, // Uses the 'to' string built from Reply-To/From priority
 		cc,
 		bcc,
-		subject,
+		subject: subject.toLowerCase().startsWith('re:') ? subject : `Re: ${subject}`, // Add Re: if needed
 		attachments,
 		inReplyTo: messageIdGlobal,
 		reference: messageIdGlobal,
@@ -609,6 +619,7 @@ export async function replyToEmail(
 		threadId,
 	};
 
+	qs = {}; // Reset qs for the POST request
 	return await googleApiRequest.call(this, 'POST', '/gmail/v1/users/me/messages/send', body, qs);
 }
 
