@@ -86,6 +86,7 @@ const schemaPreviewStore = useSchemaPreviewStore();
 const environmentsStore = useEnvironmentsStore();
 const settingsStore = useSettingsStore();
 const posthogStore = usePostHog();
+
 const { getSchemaForExecutionData, getSchemaForJsonSchema, getSchema, filterSchema } =
 	useDataSchema();
 const { closedNodes, flattenSchema, flattenMultipleSchemas, toggleLeaf, toggleNode } =
@@ -97,6 +98,9 @@ const emit = defineEmits<{
 }>();
 
 const scroller = ref<RecycleScrollerInstance>();
+
+const canDraggableDrop = computed(() => ndvStore.canDraggableDrop);
+const draggableStickyPosition = computed(() => ndvStore.draggableStickyPos);
 
 const toggleNodeAndScrollTop = (id: string) => {
 	toggleNode(id);
@@ -333,11 +337,17 @@ watch(
 	{ once: true, immediate: true },
 );
 
-const onDragStart = () => {
+const onDragStart = (el: HTMLElement, data?: string) => {
+	ndvStore.draggableStartDragging({
+		type: 'mapping',
+		data: data ?? '',
+		dimensions: el?.getBoundingClientRect() ?? null,
+	});
 	ndvStore.resetMappingTelemetry();
 };
 
 const onDragEnd = (el: HTMLElement) => {
+	ndvStore.draggableStopDragging();
 	setTimeout(() => {
 		const mappingTelemetry = ndvStore.mappingTelemetry;
 		const parentNode = nodesSchemas.value.find(({ node }) => node.name === el.dataset.nodeName);
@@ -387,6 +397,8 @@ const onDragEnd = (el: HTMLElement) => {
 			type="mapping"
 			target-data-key="mappable"
 			:disabled="!mappingEnabled"
+			:can-drop="canDraggableDrop"
+			:sticky-position="draggableStickyPosition"
 			@dragstart="onDragStart"
 			@dragend="onDragEnd"
 		>
