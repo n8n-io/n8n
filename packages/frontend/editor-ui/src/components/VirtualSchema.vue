@@ -347,8 +347,8 @@ const onDragStart = (el: HTMLElement, data?: string) => {
 };
 
 const onDragEnd = (el: HTMLElement) => {
+	ndvStore.draggableStopDragging();
 	setTimeout(() => {
-		ndvStore.draggableStopDragging();
 		const mappingTelemetry = ndvStore.mappingTelemetry;
 		const parentNode = nodesSchemas.value.find(({ node }) => node.name === el.dataset.nodeName);
 
