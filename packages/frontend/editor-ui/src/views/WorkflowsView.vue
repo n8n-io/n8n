@@ -133,14 +133,8 @@ const currentSort = ref('updatedAt:desc');
 
 const currentFolderId = ref<string | null>(null);
 
-// TODO: Move this to store
-// Resource that is currently being dragged
-const draggedElement = ref<{ type: 'workflow' | 'folder'; id: string; name: string } | null>(null);
-// Only folders can be drop targets
-const activeDropTarget = ref<{ type: 'folder'; id: string; name: string } | null>(null);
-
 const isDragging = computed(() => {
-	return draggedElement.value !== null;
+	return foldersStore.draggedElement !== null;
 });
 
 /**
@@ -777,7 +771,7 @@ const onDragStart = async (el: HTMLElement) => {
 	const targetId = dragTarget.dataset.resourceid;
 	const targetName = dragTarget.dataset.resourcename;
 	if (!targetResource || !targetId || !targetName) return;
-	draggedElement.value = {
+	foldersStore.draggedElement = {
 		type: targetResource === 'workflow-card' ? 'workflow' : 'folder',
 		id: targetId,
 		name: targetName,
@@ -785,8 +779,8 @@ const onDragStart = async (el: HTMLElement) => {
 };
 
 const onDragEnd = () => {
-	draggedElement.value = null;
-	activeDropTarget.value = null;
+	foldersStore.draggedElement = null;
+	foldersStore.activeDropTarget = null;
 };
 
 const onDragEnter = (event: MouseEvent) => {
@@ -799,9 +793,10 @@ const onDragEnter = (event: MouseEvent) => {
 	const targetResource = dragTarget.dataset.target;
 	const targetId = dragTarget.dataset.resourceid;
 	const targetName = dragTarget.dataset.resourcename;
-	if (!targetResource || !targetId || !targetName || targetId === draggedElement.value?.id) return;
+	if (!targetResource || !targetId || !targetName || targetId === foldersStore.draggedElement?.id)
+		return;
 
-	activeDropTarget.value = {
+	foldersStore.activeDropTarget = {
 		type: 'folder',
 		id: targetId,
 		name: targetName,
@@ -813,9 +808,9 @@ const onDrop = async (event: MouseEvent) => {
 	if (!targetElement || !isDragging.value) return;
 	event.preventDefault();
 
-	const draggedResourceId = draggedElement.value?.id;
-	const draggedResourceType = draggedElement.value?.type;
-	const draggedResourceName = draggedElement.value?.name;
+	const draggedResourceId = foldersStore.draggedElement?.id;
+	const draggedResourceType = foldersStore.draggedElement?.type;
+	const draggedResourceName = foldersStore.draggedElement?.name;
 	if (!draggedResourceId || !draggedResourceType || !draggedResourceName) return;
 	onDragEnd();
 
@@ -1414,6 +1409,7 @@ const onCreateWorkflowClick = () => {
 				<FolderBreadcrumbs
 					:breadcrumbs="mainBreadcrumbs"
 					:actions="mainBreadcrumbsActions"
+					:hidden-items-trigger="isDragging ? 'hover' : 'click'"
 					@item-selected="onBreadcrumbItemClick"
 					@action="onBreadCrumbsAction"
 				/>
@@ -1447,9 +1443,10 @@ const onCreateWorkflowClick = () => {
 					:class="{
 						['mb-2xs']: true,
 						[$style.dragging]:
-							draggedElement?.type === 'folder' &&
-							draggedElement?.id === (data as FolderResource).id,
-						[$style['drop-active']]: activeDropTarget?.id === (data as FolderResource).id,
+							foldersStore.draggedElement?.type === 'folder' &&
+							foldersStore.draggedElement?.id === (data as FolderResource).id,
+						[$style['drop-active']]:
+							foldersStore.activeDropTarget?.id === (data as FolderResource).id,
 					}"
 					data-target="folder-card"
 					class="mb-2xs"
@@ -1478,8 +1475,8 @@ const onCreateWorkflowClick = () => {
 					:class="{
 						['mb-2xs']: true,
 						[$style.dragging]:
-							draggedElement?.type === 'workflow' &&
-							draggedElement?.id === (data as WorkflowResource).id,
+							foldersStore.draggedElement?.type === 'workflow' &&
+							foldersStore.draggedElement?.id === (data as WorkflowResource).id,
 					}"
 					:data="data as WorkflowResource"
 					:workflow-list-event-bus="workflowListEventBus"
