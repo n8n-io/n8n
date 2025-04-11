@@ -17,6 +17,7 @@ import router from './router';
 
 import { TelemetryPlugin } from './plugins/telemetry';
 import { i18nInstance } from './plugins/i18n';
+// import { i18nInstance, initLanguage } from './plugins/i18n';
 import { GlobalComponentsPlugin } from './plugins/components';
 import { GlobalDirectivesPlugin } from './plugins/directives';
 import { FontAwesomePlugin } from './plugins/icons';
@@ -41,6 +42,10 @@ app.use(i18nInstance);
 app.use(ChartJSPlugin);
 
 app.mount('#app');
+// // Initialize the language setting
+// initLanguage().then(() => {
+// 	app.mount('#app');
+// });
 
 if (!import.meta.env.PROD) {
 	// Make sure that we get all error messages properly displayed

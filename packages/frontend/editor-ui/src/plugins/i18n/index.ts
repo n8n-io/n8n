@@ -8,6 +8,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useRootStore } from '@/stores/root.store';
 import englishBaseText from './locales/en.json';
+import koreanBaseText from './locales/ko.json';
 import {
 	deriveMiddleKey,
 	isNestedInCollectionLike,
@@ -18,7 +19,10 @@ import {
 export const i18nInstance = createI18n({
 	locale: 'en',
 	fallbackLocale: 'en',
-	messages: { en: englishBaseText },
+	messages: { 
+		en: englishBaseText,
+		ko: koreanBaseText 
+	},
 	warnHtmlInMessage: 'off',
 });
 
@@ -373,10 +377,10 @@ export class I18nClass {
 	};
 }
 
-const loadedLanguages = ['en'];
+const loadedLanguages = ['en', 'ko'];
 
 async function setLanguage(language: string) {
-	i18nInstance.global.locale = language as 'en';
+	i18nInstance.global.locale = language as 'en' | 'ko';
 	axios.defaults.headers.common['Accept-Language'] = language;
 	document!.querySelector('html')!.setAttribute('lang', language);
 
@@ -460,3 +464,15 @@ export type BaseTextKey = GetBaseTextKey<keyof typeof englishBaseText>;
 type GetCategoryName<T> = T extends `nodeCreator.categoryNames.${infer C}` ? C : never;
 
 export type CategoryName = GetCategoryName<keyof typeof englishBaseText>;
+
+/**
+ * Initialize language setting
+ */
+export async function initLanguage() {
+	const rootStore = useRootStore();
+	const userLanguage = rootStore.defaultLocale || 'en';
+	
+	if (userLanguage && loadedLanguages.includes(userLanguage)) {
+		await loadLanguage(userLanguage);
+	}
+}
