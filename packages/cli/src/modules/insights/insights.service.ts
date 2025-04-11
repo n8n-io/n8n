@@ -73,6 +73,8 @@ export class InsightsService {
 
 	private flushesInProgress: Set<Promise<void>> = new Set();
 
+	private pruneInsightsTimer: NodeJS.Timer | undefined;
+
 	constructor(
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly insightsByPeriodRepository: InsightsByPeriodRepository,
@@ -80,14 +82,28 @@ export class InsightsService {
 		private readonly logger: Logger,
 	) {
 		this.logger = this.logger.scoped('insights');
-		this.initializeCompaction();
-		this.scheduleFlushing();
+		this.startBackgroundProcess();
 	}
 
-	initializeCompaction() {
-		if (this.compactInsightsTimer !== undefined) {
-			clearInterval(this.compactInsightsTimer);
-		}
+	get isPruningEnabled() {
+		return config.maxAgeDays > -1;
+	}
+
+	startBackgroundProcess() {
+		this.startCompactionScheduler();
+		this.startFlushingScheduler();
+		this.startPruningScheduling();
+	}
+
+	stopBackgroundProcess() {
+		this.stopCompactionScheduler();
+		this.stopFlushingScheduler();
+		this.stopPruningScheduling();
+	}
+
+	// Initialize regular compaction of insights data
+	private startCompactionScheduler() {
+		this.stopCompactionScheduler();
 		const intervalMilliseconds = config.compactionIntervalMinutes * 60 * 1000;
 		this.compactInsightsTimer = setInterval(
 			async () => await this.compactInsights(),
@@ -95,33 +111,54 @@ export class InsightsService {
 		);
 	}
 
-	scheduleFlushing() {
+	// Stop regular compaction of insights data
+	private stopCompactionScheduler() {
+		if (this.compactInsightsTimer !== undefined) {
+			clearInterval(this.compactInsightsTimer);
+			this.compactInsightsTimer = undefined;
+		}
+	}
+
+	private startFlushingScheduler() {
 		this.isAsynchronouslySavingInsights = true;
-		this.disposeFlushing();
+		this.stopFlushingScheduler();
 		this.flushInsightsRawBufferTimer = setTimeout(
 			async () => await this.flushEvents(),
 			config.flushIntervalSeconds * 1000,
 		);
 	}
 
-	disposeFlushing() {
+	private stopFlushingScheduler() {
 		if (this.flushInsightsRawBufferTimer !== undefined) {
 			clearInterval(this.flushInsightsRawBufferTimer);
 			this.flushInsightsRawBufferTimer = undefined;
 		}
 	}
 
-	@OnShutdown()
-	async shutdown() {
-		if (this.compactInsightsTimer !== undefined) {
-			clearInterval(this.compactInsightsTimer);
-			this.compactInsightsTimer = undefined;
+	startPruningScheduling() {
+		if (!this.isPruningEnabled) {
+			return;
 		}
 
-		if (this.flushInsightsRawBufferTimer !== undefined) {
-			clearInterval(this.flushInsightsRawBufferTimer);
-			this.flushInsightsRawBufferTimer = undefined;
+		this.stopPruningScheduling();
+		this.pruneInsightsTimer = setInterval(
+			async () => await this.pruneInsights(),
+			config.pruneCheckIntervalHours * 24 * 60 * 1000,
+		);
+		this.logger.debug(`Insights pruning every ${config.pruneCheckIntervalHours} hours`);
+	}
+
+	stopPruningScheduling() {
+		if (this.pruneInsightsTimer !== undefined) {
+			clearInterval(this.pruneInsightsTimer);
+			this.pruneInsightsTimer = undefined;
 		}
+	}
+
+	@OnShutdown()
+	async shutdown() {
+		this.stopCompactionScheduler();
+		this.stopFlushingScheduler();
 
 		// Prevent new insights from being added to the buffer (and never flushed)
 		// when remaining workflows are handled during shutdown
@@ -255,7 +292,7 @@ export class InsightsService {
 		}
 
 		// Stop timer to prevent concurrent flush from timer
-		this.disposeFlushing();
+		this.stopFlushingScheduler();
 
 		// Copy the buffer to a new set to avoid concurrent modification
 		// while we are flushing the events
@@ -272,7 +309,7 @@ export class InsightsService {
 					this.bufferedInsights.add(event);
 				}
 			} finally {
-				this.scheduleFlushing();
+				this.startFlushingScheduler();
 				this.flushesInProgress.delete(flushPromise!);
 			}
 		})();
@@ -280,6 +317,11 @@ export class InsightsService {
 		// Add the flush promise to the set of flushes in progress for shutdown await
 		this.flushesInProgress.add(flushPromise);
 		await flushPromise;
+	}
+
+	async pruneInsights() {
+		const result = await this.insightsByPeriodRepository.pruneOldData(config.maxAgeDays);
+		this.logger.debug('Hard-deleted insights', { count: result.affected });
 	}
 
 	async compactInsights() {
