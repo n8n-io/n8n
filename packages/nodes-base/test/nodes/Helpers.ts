@@ -98,7 +98,7 @@ export const equalityTest = async (testData: WorkflowTestData) => {
 				}
 
 				// Convert errors to JSON so tests can compare
-				if (json.error instanceof Error) {
+				if (json?.error instanceof Error) {
 					json.error = JSON.parse(
 						JSON.stringify(json.error, ['message', 'name', 'description', 'context']),
 					);
