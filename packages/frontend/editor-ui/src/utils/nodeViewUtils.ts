@@ -18,6 +18,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeHelpers, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 import type { RouteLocation } from 'vue-router';
+import type { ViewportBoundaries } from '@/types';
 
 /*
  * Canvas constants and functions
@@ -26,14 +27,20 @@ import type { RouteLocation } from 'vue-router';
 export const GRID_SIZE = 20;
 
 export const NODE_SIZE = 100;
-export const DEFAULT_NODE_SIZE = [100, 100];
-export const CONFIGURATION_NODE_SIZE = [80, 80];
-export const CONFIGURABLE_NODE_SIZE = [256, 100];
+export const DEFAULT_NODE_SIZE: [number, number] = [100, 100];
+export const CONFIGURATION_NODE_SIZE: [number, number] = [80, 80];
+export const CONFIGURABLE_NODE_SIZE: [number, number] = [256, 100];
 export const DEFAULT_START_POSITION_X = 180;
 export const DEFAULT_START_POSITION_Y = 240;
 export const HEADER_HEIGHT = 65;
 export const MAX_X_TO_PUSH_DOWNSTREAM_NODES = 300;
 export const PUSH_NODES_OFFSET = NODE_SIZE * 2 + GRID_SIZE;
+export const DEFAULT_VIEWPORT_BOUNDARIES: ViewportBoundaries = {
+	xMin: -Infinity,
+	yMin: -Infinity,
+	xMax: Infinity,
+	yMax: Infinity,
+};
 
 /**
  * Returns the leftmost and topmost node from the given list of nodes
@@ -51,9 +58,13 @@ export const getLeftmostTopNode = <T extends { position: XYPosition }>(nodes: T[
 /**
  * Checks if the given position is available for a new node
  */
-const canUsePosition = (position1: XYPosition, position2: XYPosition) => {
-	if (Math.abs(position1[0] - position2[0]) <= 100) {
-		if (Math.abs(position1[1] - position2[1]) <= 50) {
+const canUsePosition = (
+	position1: XYPosition,
+	position2: XYPosition,
+	size: [number, number] = DEFAULT_NODE_SIZE,
+) => {
+	if (Math.abs(position1[0] - position2[0]) <= size[0]) {
+		if (Math.abs(position1[1] - position2[1]) <= size[1]) {
 			return false;
 		}
 	}
@@ -88,17 +99,21 @@ const closestNumberDivisibleBy = (inputNumber: number, divisibleBy: number): num
  */
 export const getNewNodePosition = (
 	nodes: INodeUi[],
-	newPosition: XYPosition,
-	movePosition?: XYPosition,
+	initialPosition: XYPosition,
+	{
+		offset = [DEFAULT_NODE_SIZE[0] / 2, DEFAULT_NODE_SIZE[1] / 2],
+		size = DEFAULT_NODE_SIZE,
+		boundaries = DEFAULT_VIEWPORT_BOUNDARIES,
+	}: {
+		offset?: XYPosition;
+		size?: [number, number];
+		boundaries?: ViewportBoundaries;
+	} = {},
 ): XYPosition => {
-	const targetPosition: XYPosition = [...newPosition];
+	const newPosition: XYPosition = [...initialPosition];
 
-	targetPosition[0] = closestNumberDivisibleBy(targetPosition[0], GRID_SIZE);
-	targetPosition[1] = closestNumberDivisibleBy(targetPosition[1], GRID_SIZE);
-
-	if (!movePosition) {
-		movePosition = [40, 40];
-	}
+	newPosition[0] = closestNumberDivisibleBy(newPosition[0], GRID_SIZE);
+	newPosition[1] = closestNumberDivisibleBy(newPosition[1], GRID_SIZE);
 
 	let conflictFound = false;
 	let i, node;
@@ -111,19 +126,35 @@ export const getNewNodePosition = (
 				continue;
 			}
 
-			if (!canUsePosition(node.position, targetPosition)) {
+			if (!canUsePosition(node.position, newPosition, size)) {
 				conflictFound = true;
 				break;
 			}
 		}
 
 		if (conflictFound) {
-			targetPosition[0] += movePosition[0];
-			targetPosition[1] += movePosition[1];
+			newPosition[0] += offset[0];
+			newPosition[1] += offset[1];
 		}
 	} while (conflictFound);
 
-	return targetPosition;
+	if (newPosition[0] < boundaries.xMin + offset[0]) {
+		newPosition[0] = boundaries.xMin + offset[0];
+	}
+
+	if (newPosition[1] < boundaries.yMin + offset[1]) {
+		newPosition[1] = boundaries.yMin + offset[1];
+	}
+
+	if (newPosition[0] > boundaries.xMax - offset[0]) {
+		newPosition[0] = boundaries.xMax - size[0] - offset[0];
+	}
+
+	if (newPosition[1] > boundaries.yMax - offset[1]) {
+		newPosition[1] = boundaries.yMax - size[1] - offset[1];
+	}
+
+	return newPosition;
 };
 
 /**
