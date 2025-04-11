@@ -99,4 +99,21 @@ describe('Salesforce Node', () => {
 			salesforceNock.done();
 		});
 	});
+
+	describe('search', () => {
+		beforeAll(() => {
+			salesforceNock
+				.get('/query')
+				.query({
+					q: 'SELECT id, name, type FROM Account',
+				})
+				.reply(200, { records: accounts });
+		});
+
+		testWorkflows(['nodes/Salesforce/__test__/node/search.workflow.json']);
+
+		it('should make the correct network calls', () => {
+			salesforceNock.done();
+		});
+	});
 });
