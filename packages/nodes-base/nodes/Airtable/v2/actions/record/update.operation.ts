@@ -127,7 +127,10 @@ export async function execute(
 				}
 			}
 
-			const body: IDataObject = { typecast: options.typecast ? true : false };
+			const body: IDataObject = {
+				returnFieldsByFieldId: options.returnFieldsByFieldId ? true : false,
+				typecast: options.typecast ? true : false,
+			};
 
 			const responseData = await batchUpdate.call(this, endpoint, body, records);
 
