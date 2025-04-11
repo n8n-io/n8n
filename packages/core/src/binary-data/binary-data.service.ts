@@ -1,9 +1,13 @@
+import { BinaryDataConfig } from '@n8n/config';
 import { Container, Service } from '@n8n/di';
+import jwt from 'jsonwebtoken';
 import { BINARY_ENCODING } from 'n8n-workflow';
 import type { INodeExecutionData, IBinaryData } from 'n8n-workflow';
 import { readFile, stat } from 'node:fs/promises';
 import prettyBytes from 'pretty-bytes';
 import type { Readable } from 'stream';
+
+import { InstanceSettings } from '@/instance-settings';
 
 import type { BinaryData } from './types';
 import { areConfigModes, binaryToBuffer } from './utils';
@@ -15,6 +19,15 @@ export class BinaryDataService {
 	private mode: BinaryData.ServiceMode = 'default';
 
 	private managers: Record<string, BinaryData.Manager> = {};
+
+	constructor(
+		{ signingSecret }: InstanceSettings,
+		private readonly binaryDataConfig: BinaryDataConfig,
+	) {
+		if (!binaryDataConfig.signingSecret) {
+			binaryDataConfig.signingSecret = signingSecret;
+		}
+	}
 
 	async init(config: BinaryData.Config) {
 		if (!areConfigModes(config.availableModes)) throw new InvalidModeError();
@@ -38,6 +51,20 @@ export class BinaryDataService {
 
 			await this.managers.s3.init();
 		}
+	}
+
+	createSignedUrl(binaryDataId: string) {
+		const token = jwt.sign({ binaryDataId }, this.binaryDataConfig.signingSecret);
+
+		return `/rest/binary-data/signed?token=${token}`;
+	}
+
+	validateSignedToken(token: string) {
+		const { binaryDataId } = jwt.verify(token, this.binaryDataConfig.signingSecret) as {
+			binaryDataId: string;
+		};
+
+		return binaryDataId;
 	}
 
 	async copyBinaryFile(

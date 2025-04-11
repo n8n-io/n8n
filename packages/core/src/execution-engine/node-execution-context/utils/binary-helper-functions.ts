@@ -270,6 +270,10 @@ export async function prepareBinaryData(
 	return await setBinaryDataBuffer(returnData, binaryData, workflowId, executionId);
 }
 
+export function getBinarySignedUrl(binaryDataId: string): string {
+	return Container.get(BinaryDataService).createSignedUrl(binaryDataId);
+}
+
 export const getBinaryHelperFunctions = (
 	{ executionId }: IWorkflowExecuteAdditionalData,
 	workflowId: string,
@@ -279,6 +283,7 @@ export const getBinaryHelperFunctions = (
 	getBinaryMetadata,
 	binaryToBuffer,
 	binaryToString,
+	getBinarySignedUrl,
 	prepareBinaryData: async (binaryData, filePath, mimeType) =>
 		await prepareBinaryData(binaryData, executionId!, workflowId, filePath, mimeType),
 	setBinaryDataBuffer: async (data, binaryData) =>
