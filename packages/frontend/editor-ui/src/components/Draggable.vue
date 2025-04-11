@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import type { XYPosition } from '@/Interface';
+import type { DraggableMode, XYPosition } from '@/Interface';
 import { isPresent } from '@/utils/typesUtils';
 import { type StyleValue, computed, ref } from 'vue';
 
 type Props = {
-	type: string;
+	type: DraggableMode;
 	data?: string | null;
-	tag?: string;
+	tag?: keyof HTMLElementTagNameMap;
 	targetDataKey?: string | null;
 	disabled?: boolean;
 	canDrop?: boolean;
