@@ -2,7 +2,9 @@ import nock from 'nock';
 
 import { testWorkflows } from '@test/nodes/Helpers';
 
+import categories from './fixtures/categories.json';
 import channels from './fixtures/channels.json';
+import playlistItems from './fixtures/playlistItems.json';
 import playlists from './fixtures/playlists.json';
 
 describe('Test YouTube Node', () => {
@@ -60,6 +62,7 @@ describe('Test YouTube Node', () => {
 			youtubeNock.done();
 		});
 	});
+
 	describe('Playlist', () => {
 		beforeAll(() => {
 			youtubeNock
@@ -114,5 +117,69 @@ describe('Test YouTube Node', () => {
 		it('should make the correct network calls', () => {
 			youtubeNock.done();
 		});
+	});
+
+	describe('Video Categories', () => {
+		beforeAll(() => {
+			youtubeNock
+				.get('/v3/videoCategories')
+				.query({
+					part: 'snippet',
+					regionCode: 'GB',
+				})
+				.reply(200, { items: categories });
+			nock.emitter.on('no match', (req) => {
+				console.error('Unmatched request:', req);
+			});
+		});
+
+		testWorkflows(['nodes/Google/YouTube/__test__/node/videoCategories.workflow.json']);
+
+		it('should make the correct network calls', () => {
+			youtubeNock.done();
+		});
+	});
+	describe('Playlist Item', () => {
+		beforeAll(() => {
+			youtubeNock
+				.get('/v3/playlistItems')
+				.query({
+					part: 'contentDetails,id,snippet,status',
+					id: 'fakePlaylistItemId1',
+				})
+				.reply(200, { items: playlistItems[0] });
+			youtubeNock
+				.get('/v3/playlistItems')
+				.query({
+					playlistId: 'PLXXXXFAKEPLAYLISTID01',
+					part: 'contentDetails,id,snippet,status',
+					maxResults: 3,
+				})
+				.reply(200, { items: playlistItems });
+			youtubeNock
+				.post('/v3/playlistItems', {
+					snippet: {
+						playlistId: 'PLXXXXFAKEPLAYLISTID01',
+						resourceId: { kind: 'youtube#video', videoId: 'FAKEVIDID1' },
+					},
+					contentDetails: {},
+				})
+				.query({ part: 'snippet, contentDetails' })
+				.reply(200, playlistItems[0]);
+			youtubeNock
+				.delete('/v3/playlistItems', (body) => {
+					return body.id === 'UExWUDRtV2RxbGFhNWlwZEJRWXZVaFgyNk9RTENJRlV2cS41NkI0NEY2RDEwNTU3Q0M2';
+				})
+				.reply(200, {});
+			nock.emitter.on('no match', (req) => {
+				console.error('Unmatched request:', req);
+			});
+		});
+
+		testWorkflows(['nodes/Google/YouTube/__test__/node/playlistItems.workflow.json']);
+
+		// it('should make the correct network calls', () => {
+		// 	youtubeNock.done();
+		// });
 	});
 });
