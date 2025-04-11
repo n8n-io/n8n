@@ -2,6 +2,8 @@ import nock from 'nock';
 
 import { testWorkflows } from '@test/nodes/Helpers';
 
+import accountDetails from './fixtures/account-details.json';
+import accounts from './fixtures/accounts.json';
 import taskDetails from './fixtures/task-details.json';
 import taskSummary from './fixtures/task-summary.json';
 import tasks from './fixtures/tasks.json';
@@ -59,6 +61,39 @@ describe('Salesforce Node', () => {
 		});
 
 		testWorkflows(['nodes/Salesforce/__test__/node/tasks.workflow.json']);
+
+		it('should make the correct network calls', () => {
+			salesforceNock.done();
+		});
+	});
+
+	describe('accounts', () => {
+		beforeAll(() => {
+			salesforceNock
+				.post('/sobjects/account', { Name: 'Test Account' })
+				.reply(200, { id: 'id1', success: true, errors: [] })
+				.get('/query')
+				.query({
+					q: 'SELECT id,name,type FROM Account ',
+				})
+				.reply(200, { records: accounts })
+				.post('/sobjects/note', { Title: 'New note', ParentId: 'id1' })
+				.reply(200, {
+					id: 'noteid1',
+					success: true,
+					errors: [],
+				})
+				.get('/sobjects/account/id1')
+				.reply(200, accountDetails)
+				.patch('/sobjects/account/id1', { Website: 'https://foo.bar.baz' })
+				.reply(200, { success: true, errors: [] })
+				.patch('/sobjects/account/Id/id1', { Name: 'New account' })
+				.reply(200, { id: 'id1', created: false, success: true, errors: [] })
+				.delete('/sobjects/account/id1')
+				.reply(200, { success: true, errors: [] });
+		});
+
+		testWorkflows(['nodes/Salesforce/__test__/node/accounts.workflow.json']);
 
 		it('should make the correct network calls', () => {
 			salesforceNock.done();
