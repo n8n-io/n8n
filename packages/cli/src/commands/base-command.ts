@@ -72,9 +72,13 @@ export abstract class BaseCommand extends Command {
 
 	protected async loadModules() {
 		for (const moduleName of this.modulesConfig.modules) {
-			const preInitModule = (await import(
-				`../modules/${moduleName}/${moduleName}.pre-init`
-			)) as ModulePreInit;
+			let preInitModule: ModulePreInit | undefined;
+			try {
+				preInitModule = (await import(
+					`../modules/${moduleName}/${moduleName}.pre-init`
+				)) as ModulePreInit;
+			} catch (e) {}
+
 			if (
 				!preInitModule ||
 				preInitModule.shouldLoadModule?.({

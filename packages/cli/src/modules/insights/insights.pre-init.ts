@@ -1,18 +1,9 @@
 import type { ModulePreInitContext } from '../modules.config';
 
-export function shouldLoadModule(ctx: ModulePreInitContext): boolean {
-	// Only main instance should collect insights
+export const shouldLoadModule = (ctx: ModulePreInitContext) =>
+	// Only main instance(s) should collect insights
 	// Because main instances are informed of all finished workflow executions, whatever the mode
-	if (ctx.instance.instanceType !== 'main') {
-		return false;
-	}
-
-	// Disable insights for sqlite if pool size is not set
-	// This is because legacy sqlite does not support nested transactions needed for insights
+	ctx.instance.instanceType === 'main' &&
+	// This is because legacy sqlite (without pool) does not support nested transactions needed for insights
 	// TODO: remove once benchmarks confirm this issue is solved with buffering / flushing mechanism
-	if (ctx.database.type === 'sqlite' && !ctx.database.sqlite.poolSize) {
-		return false;
-	}
-
-	return true;
-}
+	(ctx.database.type !== 'sqlite' || ctx.database.sqlite.poolSize > 0);
