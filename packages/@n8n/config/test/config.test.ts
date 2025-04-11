@@ -404,6 +404,8 @@ describe('GlobalConfig', () => {
 		it('on invalid value, should warn and fall back to default value', () => {
 			process.env = {
 				N8N_RUNNERS_MODE: 'non-existing-mode',
+				N8N_RUNNERS_ENABLED: 'true',
+				DB_TYPE: 'postgresdb',
 			};
 
 			const globalConfig = Container.get(GlobalConfig);
@@ -413,6 +415,9 @@ describe('GlobalConfig', () => {
 					"Invalid value for N8N_RUNNERS_MODE - Invalid enum value. Expected 'internal' | 'external', received 'non-existing-mode'. Falling back to default value.",
 				),
 			);
+
+			expect(globalConfig.taskRunners.enabled).toEqual(true);
+			expect(globalConfig.database.type).toEqual('postgresdb');
 		});
 	});
 });
