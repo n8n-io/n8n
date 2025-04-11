@@ -26,7 +26,7 @@ import type {
 	NodeParameterValue,
 	Workflow,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, ExpressionEvaluatorProxy, NodeHelpers } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
 
 import type {
 	ICredentialsResponse,
@@ -57,7 +57,6 @@ import { useTemplatesStore } from '@/stores/templates.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { getSourceItems } from '@/utils/pairedItemUtils';
-import { useSettingsStore } from '@/stores/settings.store';
 import { getCredentialTypeName, isCredentialOnlyNodeType } from '@/utils/credentialOnlyNodes';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useExternalHooks } from '@/composables/useExternalHooks';
@@ -226,9 +225,6 @@ export function resolveParameter<T = IDataObject>(
 		_executeData = executeData(parentNode, contextNode!.name, inputName, runIndexParent);
 	}
 
-	ExpressionEvaluatorProxy.setEvaluator(
-		useSettingsStore().settings.expressions?.evaluator ?? 'tmpl',
-	);
 	return workflow.expression.getParameterValue(
 		parameter,
 		runExecutionData,

@@ -1,4 +1,3 @@
-import * as tmpl from '@n8n_io/riot-tmpl';
 import { DateTime, Duration, Interval } from 'luxon';
 
 import { ApplicationError } from './errors/application.error';
@@ -64,7 +63,7 @@ export class Expression {
 	constructor(private readonly workflow: Workflow) {}
 
 	static resolveWithoutWorkflow(expression: string, data: IDataObject = {}) {
-		return tmpl.tmpl(expression, data);
+		return evaluateExpression(expression, data);
 	}
 
 	/**
@@ -340,10 +339,7 @@ export class Expression {
 		return returnValue;
 	}
 
-	private renderExpression(
-		expression: string,
-		data: IWorkflowDataProxyData,
-	): tmpl.ReturnValue | undefined {
+	private renderExpression(expression: string, data: IWorkflowDataProxyData) {
 		try {
 			[Function, AsyncFunction].forEach(({ prototype }) =>
 				Object.defineProperty(prototype, 'constructor', { value: fnConstructors.mock }),
