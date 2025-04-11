@@ -19,7 +19,7 @@ import type { PushMessage } from '@n8n/api-types';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useToast } from '@/composables/useToast';
 import { AI_CREDITS_EXPERIMENT, WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
-import { getTriggerNodeServiceName } from '@/utils/nodeTypesUtils';
+import { getTriggerNodeServiceName, isCommunityPackageName } from '@/utils/nodeTypesUtils';
 import { codeNodeEditorEventBus, globalLinkActionsEventBus } from '@/event-bus';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -590,7 +590,11 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 			void processWaitingPushMessages();
 		} else if (receivedData.type === 'reloadNodeType') {
 			await nodeTypesStore.getNodeTypes();
-			await nodeTypesStore.getFullNodesProperties([receivedData.data]);
+			const isCommunityNode = isCommunityPackageName(receivedData.data.name);
+			await nodeTypesStore.getFullNodesProperties(
+				[receivedData.data],
+				isCommunityNode ? false : true,
+			);
 		} else if (receivedData.type === 'removeNodeType') {
 			const pushData = receivedData.data;
 

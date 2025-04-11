@@ -109,7 +109,7 @@ async function onSubmit() {
 				);
 				if (!updateInformation) return;
 
-				//updade code parameter
+				//update code parameter
 				emit('valueChanged', updateInformation);
 
 				//update code generated for prompt parameter

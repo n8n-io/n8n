@@ -1378,6 +1378,7 @@
 	"nodeSettings.scopes.expandedNoticeWithScopes": "<a data-key=\"toggle-expand\">{count} scope</a> available for {activeCredential} credentials<br>{scopes}<br><a data-key=\"show-less\">Show less</a> | <a data-key=\"toggle-expand\">{count} scopes</a> available for {activeCredential} credentials<br>{scopes}<br><a data-key=\"show-less\">Show less</a>",
 	"nodeSettings.scopes.notice": "<a data-key=\"toggle-expand\">{count} scope</a> available for {activeCredential} credentials | <a data-key=\"toggle-expand\">{count} scopes</a> available for {activeCredential} credentials",
 	"nodeSettings.theNodeIsNotValidAsItsTypeIsUnknown": "The node is not valid as its type ({nodeType}) is unknown",
+	"nodeSettings.communityNodeDetails.title": "Community node details",
 	"nodeSettings.communityNodeUnknown.title": "Install this node to use it",
 	"nodeSettings.communityNodeUnknown.description": "This node is not currently installed. It's part of the {action} community package.",
 	"nodeSettings.communityNodeUnknown.installLink.text": "How to install community nodes",

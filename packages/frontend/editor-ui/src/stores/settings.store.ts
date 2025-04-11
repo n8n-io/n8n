@@ -157,6 +157,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isCommunityNodesFeatureEnabled = computed(() => settings.value.communityNodesEnabled);
 
+	const isNotVettedPackagesBlocked = computed(() => settings.value.blockNotVetted);
+
 	const allowedModules = computed(() => settings.value.allowedModules);
 
 	const isQueueModeEnabled = computed(() => settings.value.executionMode === 'queue');
@@ -257,6 +259,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		const fetchedSettings = await settingsApi.getSettings(rootStore.restApiContext);
 		setSettings(fetchedSettings);
 		settings.value.communityNodesEnabled = fetchedSettings.communityNodesEnabled;
+		settings.value.blockNotVetted = fetchedSettings.blockNotVetted;
 		setAllowedModules(fetchedSettings.allowedModules);
 		setSaveDataErrorExecution(fetchedSettings.saveDataErrorExecution);
 		setSaveDataSuccessExecution(fetchedSettings.saveDataSuccessExecution);
@@ -423,6 +426,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		templatesHost,
 		pushBackend,
 		isCommunityNodesFeatureEnabled,
+		isNotVettedPackagesBlocked,
 		allowedModules,
 		isQueueModeEnabled,
 		isWorkerViewAvailable,
