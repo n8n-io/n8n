@@ -6,24 +6,28 @@ import { LOG_DETAILS_CONTENT, type LogDetailsContent } from '@/components/Canvas
 import NodeIcon from '@/components/NodeIcon.vue';
 import { getSubtreeTotalConsumedTokens, type TreeNode } from '@/components/RunDataAi/utils';
 import { useI18n } from '@/composables/useI18n';
+import { useTelemetry } from '@/composables/useTelemetry';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { N8nButton, N8nText } from '@n8n/design-system';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 
-const { isOpen, logEntry, content } = defineProps<{
+const { isOpen, logEntry } = defineProps<{
 	isOpen: boolean;
 	logEntry: TreeNode;
-	content: LogDetailsContent;
 }>();
 
-const emit = defineEmits<{ clickHeader: []; toggleInput: []; toggleOutput: [] }>();
+const emit = defineEmits<{ clickHeader: {} }>();
 
 defineSlots<{ actions: {} }>();
 
 const locale = useI18n();
+const telemetry = useTelemetry();
 const workflowsStore = useWorkflowsStore();
 const nodeTypeStore = useNodeTypesStore();
+
+const content = ref<LogDetailsContent>(LOG_DETAILS_CONTENT.BOTH);
+
 const node = computed(() => workflowsStore.nodesByName[logEntry.node]);
 const type = computed(() => (node.value ? nodeTypeStore.getNodeType(node.value.type) : undefined));
 const runData = computed(
@@ -34,6 +38,28 @@ const runData = computed(
 );
 const consumedTokens = computed(() => getSubtreeTotalConsumedTokens(logEntry));
 const isTriggerNode = computed(() => type.value?.group.includes('trigger'));
+
+function handleTogglesInput() {
+	const wasVisible = [LOG_DETAILS_CONTENT.INPUT, LOG_DETAILS_CONTENT.BOTH].includes(content.value);
+
+	content.value = wasVisible ? LOG_DETAILS_CONTENT.OUTPUT : LOG_DETAILS_CONTENT.BOTH;
+
+	telemetry.track('User toggled log view sub pane', {
+		pane: 'input',
+		newState: wasVisible ? 'hidden' : 'visible',
+	});
+}
+
+function handleToggleOutput() {
+	const wasVisible = [LOG_DETAILS_CONTENT.OUTPUT, LOG_DETAILS_CONTENT.BOTH].includes(content.value);
+
+	content.value = wasVisible ? LOG_DETAILS_CONTENT.INPUT : LOG_DETAILS_CONTENT.BOTH;
+
+	telemetry.track('User toggled log view sub pane', {
+		pane: 'output',
+		newState: wasVisible ? 'hidden' : 'visible',
+	});
+}
 </script>
 
 <template>
@@ -60,7 +86,7 @@ const isTriggerNode = computed(() => type.value?.group.includes('trigger'));
 						size="mini"
 						type="secondary"
 						:class="content === LOG_DETAILS_CONTENT.OUTPUT ? '' : $style.pressed"
-						@click.stop="emit('toggleInput')"
+						@click.stop="handleTogglesInput"
 					>
 						{{ locale.baseText('logs.details.header.actions.input') }}
 					</N8nButton>
@@ -68,7 +94,7 @@ const isTriggerNode = computed(() => type.value?.group.includes('trigger'));
 						size="mini"
 						type="secondary"
 						:class="content === LOG_DETAILS_CONTENT.INPUT ? '' : $style.pressed"
-						@click.stop="emit('toggleOutput')"
+						@click.stop="handleToggleOutput"
 					>
 						{{ locale.baseText('logs.details.header.actions.output') }}
 					</N8nButton>

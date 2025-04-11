@@ -10,12 +10,7 @@ import LogsOverviewPanel from '@/components/CanvasChat/future/components/LogsOve
 import { useCanvasStore } from '@/stores/canvas.store';
 import ChatMessagesPanel from '@/components/CanvasChat/components/ChatMessagesPanel.vue';
 import LogsDetailsPanel from '@/components/CanvasChat/future/components/LogDetailsPanel.vue';
-import {
-	LOG_DETAILS_CONTENT,
-	type LogDetailsContent,
-	LOGS_PANEL_STATE,
-	type LogEntrySelection,
-} from '@/components/CanvasChat/types/logs';
+import { LOGS_PANEL_STATE, type LogEntrySelection } from '@/components/CanvasChat/types/logs';
 import LogsPanelActions from '@/components/CanvasChat/future/components/LogsPanelActions.vue';
 import {
 	createLogEntries,
@@ -32,7 +27,6 @@ const workflowsStore = useWorkflowsStore();
 const canvasStore = useCanvasStore();
 const panelState = computed(() => workflowsStore.logsPanelState);
 const container = ref<HTMLElement>();
-const detailsContent = ref<LogDetailsContent>(LOG_DETAILS_CONTENT.BOTH);
 const pipContainer = useTemplateRef('pipContainer');
 const pipContent = useTemplateRef('pipContent');
 const previousChatMessages = computed(() => workflowsStore.getPastChatMessages);
@@ -120,20 +114,6 @@ function handleSelectLogEntry(selected: TreeNode | undefined) {
 			: { type: 'selected', workflowId: workflowsStore.workflow.id, data: selected };
 }
 
-function handleToggleLogDetailsInput() {
-	detailsContent.value =
-		detailsContent.value === LOG_DETAILS_CONTENT.OUTPUT
-			? LOG_DETAILS_CONTENT.BOTH
-			: LOG_DETAILS_CONTENT.OUTPUT;
-}
-
-function handleToggleLogDetailsOutput() {
-	detailsContent.value =
-		detailsContent.value === LOG_DETAILS_CONTENT.INPUT
-			? LOG_DETAILS_CONTENT.BOTH
-			: LOG_DETAILS_CONTENT.INPUT;
-}
-
 function onPopOut() {
 	telemetry.track('User toggled log view', { new_state: 'floating' });
 	workflowsStore.toggleLogsPanelOpen(true);
@@ -206,10 +186,7 @@ watch([panelState, height], ([state, h]) => {
 						:class="$style.logDetails"
 						:is-open="panelState !== LOGS_PANEL_STATE.CLOSED"
 						:log-entry="selectedLogEntry"
-						:content="detailsContent"
 						@click-header="handleClickHeader"
-						@toggle-input="handleToggleLogDetailsInput"
-						@toggle-output="handleToggleLogDetailsOutput"
 					>
 						<template #actions>
 							<LogsPanelActions v-if="isLogDetailsOpen" v-bind="logsPanelActionsProps" />
