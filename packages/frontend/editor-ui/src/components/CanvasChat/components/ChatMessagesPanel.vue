@@ -157,6 +157,7 @@ async function copySessionId() {
 						data-test-id="chat-session-id"
 						type="secondary"
 						size="mini"
+						:class="$style.newHeaderButton"
 						@click.stop="copySessionId"
 						>{{ sessionIdText }}</N8nButton
 					>
@@ -166,7 +167,7 @@ async function copySessionId() {
 					:content="locale.baseText('chat.window.session.resetSession')"
 				>
 					<N8nIconButton
-						:class="$style.headerButton"
+						:class="$style.newHeaderButton"
 						data-test-id="refresh-session-button"
 						outline
 						type="secondary"
@@ -310,6 +311,7 @@ async function copySessionId() {
 	overflow: hidden;
 	background-color: var(--color-background-light);
 }
+
 .chatHeader {
 	font-size: var(--font-size-s);
 	font-weight: var(--font-weight-regular);
@@ -322,9 +324,11 @@ async function copySessionId() {
 	justify-content: space-between;
 	align-items: center;
 }
+
 .chatTitle {
 	font-weight: var(--font-weight-medium);
 }
+
 .session {
 	display: flex;
 	align-items: center;
@@ -332,6 +336,7 @@ async function copySessionId() {
 	color: var(--color-text-base);
 	max-width: 70%;
 }
+
 .sessionId {
 	display: inline-block;
 	white-space: nowrap;
@@ -342,10 +347,17 @@ async function copySessionId() {
 		cursor: pointer;
 	}
 }
+
 .headerButton {
 	max-height: 1.1rem;
 	border: none;
 }
+
+.newHeaderButton {
+	border: none;
+	color: var(--color-text-light);
+}
+
 .chatBody {
 	display: flex;
 	height: 100%;

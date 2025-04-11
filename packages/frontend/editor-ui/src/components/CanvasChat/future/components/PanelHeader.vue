@@ -1,16 +1,18 @@
 <script setup lang="ts">
 import { N8nText } from '@n8n/design-system';
 
-defineProps<{ title: string }>();
+const { title } = defineProps<{ title?: string }>();
 
-defineSlots<{ actions: {} }>();
+defineSlots<{ actions: {}; title?: {} }>();
 
 const emit = defineEmits<{ click: [] }>();
 </script>
 
 <template>
 	<header :class="$style.container" @click="emit('click')">
-		<N8nText :class="$style.title" :bold="true" size="small">{{ title }}</N8nText>
+		<N8nText :class="$style.title" :bold="true" size="small">
+			<slot name="title">{{ title }}</slot>
+		</N8nText>
 		<div :class="$style.actions">
 			<slot name="actions" />
 		</div>
@@ -44,19 +46,18 @@ const emit = defineEmits<{ click: [] }>();
 .title {
 	flex-grow: 1;
 	flex-shrink: 1;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .actions {
+	flex-shrink: 0;
 	display: flex;
 	align-items: center;
 	color: var(--color-text-base);
 	max-width: 70%;
 	/* Let button heights not affect the header height */
 	margin-block: calc(-1 * var(--spacing-s));
-}
-
-.actions button {
-	border: none;
-	color: var(--color-text-light);
 }
 </style>

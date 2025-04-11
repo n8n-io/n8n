@@ -352,6 +352,7 @@ function activatePane() {
 
 <template>
 	<RunData
+		:class="$style.runData"
 		:node="currentNode"
 		:nodes="isMappingMode ? rootNodesParents : parentNodes"
 		:workflow="workflow"
@@ -521,6 +522,10 @@ function activatePane() {
 </template>
 
 <style lang="scss" module>
+.runData {
+	background-color: var(--color-run-data-background);
+}
+
 .mappedNode {
 	padding: 0 var(--spacing-s) var(--spacing-s);
 }

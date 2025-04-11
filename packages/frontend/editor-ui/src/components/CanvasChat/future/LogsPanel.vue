@@ -185,6 +185,7 @@ watch([panelState, height], ([state, h]) => {
 						v-if="selectedLogEntry !== undefined"
 						:class="$style.logDetails"
 						:is-open="panelState !== LOGS_PANEL_STATE.CLOSED"
+						:log-entry="selectedLogEntry"
 						@click-header="handleClickHeader"
 					>
 						<template #actions>
@@ -243,10 +244,10 @@ watch([panelState, height], ([state, h]) => {
 }
 
 .logsOverview {
-	flex-basis: 20%;
+	flex-basis: 25%;
 	flex-grow: 1;
 	flex-shrink: 1;
-	min-width: 360px;
+	min-width: 240px;
 }
 
 .logDetails {
