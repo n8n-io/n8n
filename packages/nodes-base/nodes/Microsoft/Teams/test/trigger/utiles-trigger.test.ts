@@ -1,7 +1,6 @@
 import { mock } from 'jest-mock-extended';
 import { NodeApiError } from 'n8n-workflow';
 
-import { microsoftApiRequest } from '../../v2/transport';
 import {
 	fetchAllTeams,
 	fetchAllChannels,
@@ -9,6 +8,7 @@ import {
 	createSubscription,
 	getResourcePath,
 } from '../../v2/helpers/utils-trigger';
+import { microsoftApiRequest } from '../../v2/transport';
 
 jest.mock('../../v2/transport', () => ({
 	microsoftApiRequest: {
