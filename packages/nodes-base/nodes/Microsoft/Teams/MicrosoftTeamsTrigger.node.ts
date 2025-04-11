@@ -358,7 +358,7 @@ export class MicrosoftTeamsTrigger implements INodeType {
 						(subscription) => subscription.notificationUrl === webhookUrl,
 					);
 
-					if (!matchingSubscriptions) {
+					if (matchingSubscriptions.length === 0) {
 						return false;
 					}
 
