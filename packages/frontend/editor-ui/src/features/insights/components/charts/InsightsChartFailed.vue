@@ -1,14 +1,14 @@
 <script lang="ts" setup>
+import { useI18n } from '@/composables/useI18n';
+import { generateBarChartOptions } from '@/features/insights/chartjs.utils';
+import { DATE_FORMAT_MASK } from '@/features/insights/insights.constants';
+import type { InsightsByTime, InsightsSummaryType } from '@n8n/api-types';
+import { smartDecimal } from '@n8n/utils/number/smartDecimal';
+import { useCssVar } from '@vueuse/core';
+import type { ChartData } from 'chart.js';
+import dateformat from 'dateformat';
 import { computed } from 'vue';
 import { Bar } from 'vue-chartjs';
-import type { ChartData } from 'chart.js';
-import { useCssVar } from '@vueuse/core';
-import dateformat from 'dateformat';
-import type { InsightsByTime, InsightsSummaryType } from '@n8n/api-types';
-import { generateBarChartOptions } from '@/features/insights/chartjs.utils';
-import { useI18n } from '@/composables/useI18n';
-import { smartDecimal } from '@n8n/utils/number/smartDecimal';
-import { DATE_FORMAT_MASK } from '@/features/insights/insights.constants';
 
 const props = defineProps<{
 	data: InsightsByTime[];
@@ -46,7 +46,7 @@ const chartData = computed<ChartData<'bar'>>(() => {
 		labels,
 		datasets: [
 			{
-				label: i18n.baseText('insights.banner.title.failed'),
+				label: i18n.baseText('insights.chart.failed'),
 				data,
 				backgroundColor: colorPrimary.value,
 			},

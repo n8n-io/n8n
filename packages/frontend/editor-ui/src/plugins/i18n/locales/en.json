@@ -3083,12 +3083,13 @@
 	"insights.banner.timeSaved.tooltip.link.text": "add time estimates",
 	"insights.banner.title.total": "Prod. executions",
 	"insights.banner.title.failed": "Failed prod. executions",
-	"insights.banner.title.succeeded": "Successful prod. executions",
 	"insights.banner.title.failureRate": "Failure rate",
 	"insights.banner.title.timeSaved": "Time saved",
 	"insights.banner.title.timeSavedDailyAverage": "Time saved daily avg.",
 	"insights.banner.title.averageRunTime": "Run time (avg.)",
 	"insights.dashboard.title": "Insights",
 	"insights.banner.title.timeSaved.tooltip": "Total time saved calculated from your estimated time savings per execution across all workflows",
-	"insights.banner.failureRate.deviation.tooltip": "Percentage point change from previous period"
+	"insights.banner.failureRate.deviation.tooltip": "Percentage point change from previous period",
+	"insights.chart.failed": "Failed",
+	"insights.chart.succeeded": "Successful"
 }
