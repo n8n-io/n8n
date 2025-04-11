@@ -830,6 +830,11 @@ const onDrop = async (event: MouseEvent) => {
 		workflowsAndFolders.value = workflowsAndFolders.value.filter(
 			(folder) => folder.id !== draggedResourceId,
 		);
+		// Increase the count of the target folder
+		const targetFolder = getFolderListItem(targetId);
+		if (targetFolder) {
+			targetFolder.subFolderCount += 1;
+		}
 	} else if (draggedResourceType) {
 		await onWorkflowMoved({
 			workflow: {
@@ -844,6 +849,11 @@ const onDrop = async (event: MouseEvent) => {
 		workflowsAndFolders.value = workflowsAndFolders.value.filter(
 			(workflow) => workflow.id !== draggedResourceId,
 		);
+		// Increase the count of the target folder
+		const targetFolder = getFolderListItem(targetId);
+		if (targetFolder) {
+			targetFolder.workflowCount += 1;
+		}
 	}
 };
 
