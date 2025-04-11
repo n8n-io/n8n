@@ -345,6 +345,7 @@ describe('FolderRepository', () => {
 				expect(childFolder?.parentFolder).toEqual({
 					id: expect.any(String),
 					name: 'Parent Folder',
+					parentFolderId: null,
 				});
 			});
 
