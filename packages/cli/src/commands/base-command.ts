@@ -33,6 +33,7 @@ import { ExternalHooks } from '@/external-hooks';
 import { ExternalSecretsManager } from '@/external-secrets.ee/external-secrets-manager.ee';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import type { ModulePreInit } from '@/modules/modules.config';
 import { ModulesConfig } from '@/modules/modules.config';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
@@ -71,8 +72,20 @@ export abstract class BaseCommand extends Command {
 
 	protected async loadModules() {
 		for (const moduleName of this.modulesConfig.modules) {
-			await import(`../modules/${moduleName}/${moduleName}.module`);
-			this.logger.debug(`Loaded module "${moduleName}"`);
+			const preInitModule = (await import(
+				`../modules/${moduleName}/${moduleName}.pre-init`
+			)) as ModulePreInit;
+			if (
+				!preInitModule ||
+				preInitModule.shouldLoadModule?.({
+					database: this.globalConfig.database,
+					instance: this.instanceSettings,
+				})
+			) {
+				await import(`../modules/${moduleName}/${moduleName}.module`);
+				this.modulesConfig.addLoadedModule(moduleName);
+				this.logger.debug(`Loaded module "${moduleName}"`);
+			}
 		}
 	}
 

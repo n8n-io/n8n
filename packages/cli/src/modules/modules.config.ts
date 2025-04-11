@@ -1,6 +1,15 @@
 import { CommaSeparatedStringArray, Config, Env } from '@n8n/config';
 import { UnexpectedError } from 'n8n-workflow';
 
+export type ModulePreInitContext = {
+	instance: InstanceSettings;
+	database: DatabaseConfig;
+};
+
+export type ModulePreInit = {
+	shouldLoadModule: (ctx: ModulePreInitContext) => boolean;
+};
+
 const moduleNames = ['insights'] as const;
 export type ModuleName = (typeof moduleNames)[number];
 
@@ -29,6 +38,9 @@ export class ModulesConfig {
 	// Default modules are always enabled unless explicitly disabled
 	private readonly defaultModules: ModuleName[] = ['insights'];
 
+	// Loaded modules are the ones that have been loaded so far by the instance
+	readonly loadedModules: ModuleName[] = [];
+
 	// Get all modules by merging default and enabled, and filtering out disabled modules
 	get modules(): ModuleName[] {
 		if (this.enabledModules.some((module) => this.disabledModules.includes(module))) {
@@ -38,5 +50,11 @@ export class ModulesConfig {
 		const enabledModules = Array.from(new Set(this.defaultModules.concat(this.enabledModules)));
 
 		return enabledModules.filter((module) => !this.disabledModules.includes(module));
+	}
+
+	addLoadedModule(module: ModuleName) {
+		if (!this.loadedModules.includes(module)) {
+			this.loadedModules.push(module);
+		}
 	}
 }

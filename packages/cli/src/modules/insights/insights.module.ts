@@ -1,4 +1,3 @@
-import { GlobalConfig } from '@n8n/config';
 import type { ExecutionLifecycleHooks } from 'n8n-core';
 import { InstanceSettings, Logger } from 'n8n-core';
 
@@ -15,7 +14,6 @@ export class InsightsModule implements BaseN8nModule {
 		private readonly logger: Logger,
 		private readonly insightsService: InsightsService,
 		private readonly instanceSettings: InstanceSettings,
-		private readonly globalConfig: GlobalConfig,
 		private readonly orchestrationService: OrchestrationService,
 	) {
 		this.logger = this.logger.scoped('insights');
@@ -23,12 +21,8 @@ export class InsightsModule implements BaseN8nModule {
 	}
 
 	private initializeModule() {
-		// If insights collection is disabled, no need to start compaction and flushing process
-		if (!this.isInsightsCollectionEnabled) {
-			return;
-		}
-
-		// Initialize background process for insights if instance is main and leader
+		// We want to initialize the insights background process (schedulers) for the main leader instance
+		// to have only one main instance saving the insights data
 		if (this.instanceSettings.instanceType === 'main' && this.instanceSettings.isLeader) {
 			this.insightsService.startBackgroundProcess();
 		}
@@ -43,33 +37,11 @@ export class InsightsModule implements BaseN8nModule {
 		}
 	}
 
-	private get isInsightsCollectionEnabled(): boolean {
-		// Disable insights for workers
-		if (this.instanceSettings.instanceType === 'worker') {
-			return false;
-		}
-
-		// Disable insights for sqlite if pool size is not set
-		// This is because legacy sqlite does not support nested transactions needed for insights
-		// TODO: remove once benchmarks confirm this issue is solved with buffering / flushing mechanism
-		if (
-			this.globalConfig.database.type === 'sqlite' &&
-			!this.globalConfig.database.sqlite.poolSize
-		) {
-			return false;
-		}
-
-		return true;
-	}
-
 	registerLifecycleHooks(hooks: ExecutionLifecycleHooks) {
 		const insightsService = this.insightsService;
 
-		// Workers should not be saving any insights
-		if (this.isInsightsCollectionEnabled) {
-			hooks.addHandler('workflowExecuteAfter', async function (fullRunData) {
-				await insightsService.workflowExecuteAfterHandler(this, fullRunData);
-			});
-		}
+		hooks.addHandler('workflowExecuteAfter', async function (fullRunData) {
+			await insightsService.workflowExecuteAfterHandler(this, fullRunData);
+		});
 	}
 }
