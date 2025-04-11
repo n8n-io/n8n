@@ -11,7 +11,7 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { apiRequest, getSecretToken } from './GenericFunctions';
 import type { IEvent } from './IEvent';
-import { downloadFiles } from './util/triggerUtils';
+import { downloadFile } from './util/triggerUtils';
 
 export class TelegramTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -279,12 +279,7 @@ export class TelegramTrigger implements INodeType {
 		const additionalFields = this.getNodeParameter('additionalFields') as IDataObject;
 
 		if (additionalFields.download) {
-			const downloadFilesResult = await downloadFiles(
-				this,
-				credentials,
-				bodyData,
-				additionalFields,
-			);
+			const downloadFilesResult = await downloadFile(this, credentials, bodyData, additionalFields);
 
 			if (Object.entries(downloadFilesResult).length !== 0) return downloadFilesResult;
 		}

@@ -8,7 +8,7 @@ import {
 import { apiRequest, getImageBySize } from '../GenericFunctions';
 import { type IEvent } from '../IEvent';
 
-export const downloadFiles = async (
+export const downloadFile = async (
 	webhookFunctions: IWebhookFunctions,
 	credentials: ICredentialDataDecryptedObject,
 	bodyData: IEvent,
