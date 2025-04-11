@@ -22,7 +22,7 @@ export class InsightsModule implements BaseN8nModule {
 	initialize() {
 		// We want to initialize the insights background process (schedulers) for the main leader instance
 		// to have only one main instance saving the insights data
-		if (this.instanceSettings.instanceType === 'main' && this.instanceSettings.isLeader) {
+		if (this.instanceSettings.isLeader) {
 			this.insightsService.startBackgroundProcess();
 		}
 
