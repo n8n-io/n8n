@@ -240,8 +240,11 @@ describe('Google Sheet - Update', () => {
 
 				mockGoogleSheet.getColumnValues.mockResolvedValueOnce([]);
 
-				await expect(execute.call(mockExecuteFunctions, mockGoogleSheet, 'Sheet1')).rejects.toThrow(
-					'Column to match on (row_number) is not defined. Since the field is used to determine the row to update, it needs to have a value set.',
+				await expect(execute.call(mockExecuteFunctions, mockGoogleSheet, 'Sheet1')).rejects.toEqual(
+					expect.objectContaining({
+						message: 'row_number is null',
+						description: "Since it's being used to determine the row to update, it cannot be null",
+					}),
 				);
 			},
 		);
