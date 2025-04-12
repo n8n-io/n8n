@@ -996,14 +996,67 @@ export class HttpRequestV3 implements INodeType {
 
 		returnItems = returnItems.map(replaceNullValues);
 
-		if (
+		const fieldsToSplitOut = this.getNodeParameter(
+			'options.response.response.fieldsToSplitOut',
+			0,
+			'',
+		) as string;
+
+		if (fieldsToSplitOut && fieldsToSplitOut.trim() !== '') {
+			const newReturnItems: INodeExecutionData[] = [];
+			let fieldFound = false;
+
+			for (const item of returnItems) {
+				if (
+					item.json &&
+					item.json[fieldsToSplitOut] !== undefined &&
+					item.json[fieldsToSplitOut] !== null
+				) {
+					fieldFound = true;
+					const fieldValue = item.json[fieldsToSplitOut];
+
+					if (Array.isArray(fieldValue)) {
+						for (const element of fieldValue) {
+							newReturnItems.push({
+								json: typeof element === 'object' ? element : { value: element },
+								pairedItem: item.pairedItem,
+								binary: item.binary,
+							} as INodeExecutionData);
+						}
+					} else if (typeof fieldValue === 'object') {
+						newReturnItems.push({
+							json: fieldValue,
+							pairedItem: item.pairedItem,
+							binary: item.binary,
+						} as INodeExecutionData);
+					} else {
+						newReturnItems.push({
+							json: { value: fieldValue },
+							pairedItem: item.pairedItem,
+							binary: item.binary,
+						});
+					}
+				} else {
+					newReturnItems.push(item);
+				}
+			}
+
+			returnItems = newReturnItems;
+
+			if (!fieldFound) {
+				this.addExecutionHints({
+					message: `The field "${fieldsToSplitOut}" to split out was not found in the response. Check the field name and response structure.`,
+					location: 'outputPane',
+				});
+			}
+		} else if (
 			returnItems.length === 1 &&
 			returnItems[0].json.data &&
 			Array.isArray(returnItems[0].json.data)
 		) {
 			this.addExecutionHints({
 				message:
-					'To split the contents of ‘data’ into separate items for easier processing, add a ‘Split Out’ node after this one',
+					'To split the contents of "data" into separate items for easier processing, set the "Field to Split Out" option or use an additional "Split Out" node.',
 				location: 'outputPane',
 			});
 		}

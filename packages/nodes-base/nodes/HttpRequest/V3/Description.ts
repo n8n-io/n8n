@@ -901,6 +901,14 @@ export const mainProperties: INodeProperties[] = [
 								description:
 									'Name of the binary property to which to write the data of the read file',
 							},
+							{
+								displayName: 'Field to Split Out',
+								name: 'fieldsToSplitOut',
+								type: 'string',
+								default: '',
+								description:
+									'Name of a field in the response to return as individual items. If the specified field contains an array, each array item will be output as a separate item.',
+							},
 						],
 					},
 				],
