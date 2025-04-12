@@ -98,7 +98,7 @@ const openPanel = ref<'params' | 'settings'>('params');
 const nodeValues = ref<INodeParameters>({
 	color: '#ff0000',
 	alwaysOutputData: false,
-	byPass: false,
+	byPass: '',
 	executeOnce: false,
 	notesInFlow: false,
 	onError: 'stopWorkflow',
