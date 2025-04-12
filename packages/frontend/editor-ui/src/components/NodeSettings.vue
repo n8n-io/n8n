@@ -98,6 +98,7 @@ const openPanel = ref<'params' | 'settings'>('params');
 const nodeValues = ref<INodeParameters>({
 	color: '#ff0000',
 	alwaysOutputData: false,
+	byPass: false,
 	executeOnce: false,
 	notesInFlow: false,
 	onError: 'stopWorkflow',
@@ -625,6 +626,15 @@ const populateSettings = () => {
 		nodeSettings.value.push(
 			...([
 				{
+					displayName: i18n.baseText('nodeSettings.byPass.displayName'),
+					name: 'byPass',
+					type: 'string',
+					default: '',
+					placeholder: 'e.g. fieldToInclude1,fieldToInclude2',
+					requiresDataPath: 'multiple',
+					description: i18n.baseText('nodeSettings.byPass.description'),
+				},
+				{
 					displayName: i18n.baseText('nodeSettings.alwaysOutputData.displayName'),
 					name: 'alwaysOutputData',
 					type: 'boolean',
@@ -802,6 +812,14 @@ const setNodeValues = () => {
 			nodeValues.value = {
 				...nodeValues.value,
 				notes: node.value.notes,
+			};
+		}
+
+		if (node.value.byPass) {
+			foundNodeSettings.push('byPass');
+			nodeValues.value = {
+				...nodeValues.value,
+				byPass: node.value.byPass,
 			};
 		}
 
