@@ -19,10 +19,11 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useRouter } from 'vue-router';
 import ExecutionSummary from '@/components/CanvasChat/future/components/ExecutionSummary.vue';
 
-const { isOpen, isReadOnly, selected, executionTree } = defineProps<{
+const { isOpen, isReadOnly, selected, isCompact, executionTree } = defineProps<{
 	isOpen: boolean;
 	selected?: TreeNode;
 	isReadOnly: boolean;
+	isCompact: boolean;
 	executionTree: TreeNode[];
 }>();
 
@@ -154,7 +155,7 @@ async function handleTriggerPartialExecution(treeNode: TreeNode) {
 							:node="elTreeNode"
 							:is-read-only="isReadOnly"
 							:is-selected="data.node === selected?.node && data.runIndex === selected?.runIndex"
-							:is-compact="selected !== undefined"
+							:is-compact="isCompact"
 							:should-show-consumed-tokens="consumedTokens.totalTokens > 0"
 							@toggle-expanded="handleToggleExpanded"
 							@open-ndv="handleOpenNdv"

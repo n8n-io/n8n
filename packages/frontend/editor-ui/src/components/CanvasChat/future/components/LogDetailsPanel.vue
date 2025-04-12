@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { useResizeV2 } from '@/components/CanvasChat/composables/useResizeV2';
 import ExecutionSummary from '@/components/CanvasChat/future/components/ExecutionSummary.vue';
 import PanelHeader from '@/components/CanvasChat/future/components/PanelHeader.vue';
 import RunDataView from '@/components/CanvasChat/future/components/RunDataView.vue';
+import { useResizablePanel } from '@/components/CanvasChat/future/composables/useResizablePanel';
 import { LOG_DETAILS_CONTENT, type LogDetailsContent } from '@/components/CanvasChat/types/logs';
 import NodeIcon from '@/components/NodeIcon.vue';
 import { getSubtreeTotalConsumedTokens, type TreeNode } from '@/components/RunDataAi/utils';
@@ -11,13 +11,15 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { N8nButton, N8nResizeWrapper, N8nText } from '@n8n/design-system';
+import { type ITaskData } from 'n8n-workflow';
 import { computed, ref, useTemplateRef } from 'vue';
 
 const MIN_IO_PANEL_WIDTH = 200;
 
-const { isOpen, logEntry } = defineProps<{
+const { isOpen, logEntry, window } = defineProps<{
 	isOpen: boolean;
 	logEntry: TreeNode;
+	window?: Window;
 }>();
 
 const emit = defineEmits<{ clickHeader: [] }>();
@@ -33,7 +35,7 @@ const content = ref<LogDetailsContent>(LOG_DETAILS_CONTENT.BOTH);
 
 const node = computed(() => workflowsStore.nodesByName[logEntry.node]);
 const type = computed(() => (node.value ? nodeTypeStore.getNodeType(node.value.type) : undefined));
-const runData = computed(
+const runData = computed<ITaskData | undefined>(
 	() =>
 		(workflowsStore.workflowExecutionData?.data?.resultData.runData[logEntry.node] ?? [])[
 			logEntry.runIndex
@@ -42,17 +44,17 @@ const runData = computed(
 const consumedTokens = computed(() => getSubtreeTotalConsumedTokens(logEntry));
 const isTriggerNode = computed(() => type.value?.group.includes('trigger'));
 const container = useTemplateRef<HTMLElement>('container');
-const resizer = useResizeV2({
+const resizer = useResizablePanel('N8N_LOGS_INPUT_PANEL_WIDTH', {
 	container,
-	localStorageKey: 'N8N_LOGS_INPUT_PANEL_WIDTH',
+	defaultSize: (size) => size / 2,
 	minSize: MIN_IO_PANEL_WIDTH,
-	maxSize: (el) => el.offsetWidth - MIN_IO_PANEL_WIDTH,
-	onCollapse: () => handleTogglesInput(false),
-	onFullWidth: () => handleToggleOutput(false),
+	maxSize: (size) => size - MIN_IO_PANEL_WIDTH,
+	allowCollapse: true,
+	allowFullSize: true,
 });
 const shouldResize = computed(() => content.value === LOG_DETAILS_CONTENT.BOTH);
 
-function handleTogglesInput(open?: boolean) {
+function handleToggleInput(open?: boolean) {
 	const wasOpen = [LOG_DETAILS_CONTENT.INPUT, LOG_DETAILS_CONTENT.BOTH].includes(content.value);
 
 	if (open === wasOpen) {
@@ -81,6 +83,18 @@ function handleToggleOutput(open?: boolean) {
 		newState: wasOpen ? 'hidden' : 'visible',
 	});
 }
+
+function handleResizeEnd() {
+	if (resizer.isCollapsed.value) {
+		handleToggleInput(false);
+	}
+
+	if (resizer.isFullSize.value) {
+		handleToggleOutput(false);
+	}
+
+	resizer.onResizeEnd();
+}
 </script>
 
 <template>
@@ -95,9 +109,9 @@ function handleToggleOutput(open?: boolean) {
 					<ExecutionSummary
 						v-if="isOpen"
 						:class="$style.executionSummary"
-						:status="runData.executionStatus ?? 'unknown'"
+						:status="runData?.executionStatus ?? 'unknown'"
 						:consumed-tokens="consumedTokens"
-						:time-took="runData.executionTime"
+						:time-took="runData?.executionTime"
 					/>
 				</div>
 			</template>
@@ -107,7 +121,7 @@ function handleToggleOutput(open?: boolean) {
 						size="mini"
 						type="secondary"
 						:class="content === LOG_DETAILS_CONTENT.OUTPUT ? '' : $style.pressed"
-						@click.stop="handleTogglesInput"
+						@click.stop="handleToggleInput"
 					>
 						{{ locale.baseText('logs.details.header.actions.input') }}
 					</N8nButton>
@@ -126,20 +140,21 @@ function handleToggleOutput(open?: boolean) {
 		<div v-if="isOpen" :class="$style.content" data-test-id="logs-details-body">
 			<N8nResizeWrapper
 				v-if="!isTriggerNode && content !== LOG_DETAILS_CONTENT.OUTPUT"
-				:class="$style.inputResizer"
+				:class="{
+					[$style.inputResizer]: true,
+					[$style.collapsed]: resizer.isCollapsed.value,
+					[$style.full]: resizer.isFullSize.value,
+				}"
 				:width="resizer.size.value"
-				:style="
-					shouldResize
-						? { width: resizer.size.value ? `${resizer.size.value}px` : '50%' }
-						: undefined
-				"
+				:style="shouldResize ? { width: `${resizer.size.value ?? 0}px` } : undefined"
 				:supported-directions="['right']"
 				:is-resizing-enabled="shouldResize"
+				:window="window"
 				@resize="resizer.onResize"
+				@resizeend="handleResizeEnd"
 			>
 				<RunDataView
 					pane-type="input"
-					:class="$style.runDataView"
 					:title="locale.baseText('logs.details.header.actions.input')"
 					:log-entry="logEntry"
 				/>
@@ -147,7 +162,7 @@ function handleToggleOutput(open?: boolean) {
 			<RunDataView
 				v-if="isTriggerNode || content !== LOG_DETAILS_CONTENT.INPUT"
 				pane-type="output"
-				:class="$style.runDataView"
+				:class="$style.outputPanel"
 				:title="locale.baseText('logs.details.header.actions.output')"
 				:log-entry="logEntry"
 			/>
@@ -202,13 +217,19 @@ function handleToggleOutput(open?: boolean) {
 	display: flex;
 	align-items: stretch;
 	overflow: hidden;
+}
 
-	& > *:not(:last-child) {
-		border-right: var(--border-base);
-	}
+.outputPanel {
+	width: 0;
+	flex-grow: 1;
 }
 
 .inputResizer {
+	overflow: hidden;
 	flex-shrink: 0;
+
+	&:not(:is(:last-child, .collapsed, .full)) {
+		border-right: var(--border-base);
+	}
 }
 </style>
