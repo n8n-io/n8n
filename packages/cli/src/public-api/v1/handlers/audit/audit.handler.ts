@@ -3,11 +3,11 @@ import type { Response } from 'express';
 
 import type { AuditRequest } from '@/public-api/types';
 
-import { apiKeyHasScope } from '../../shared/middlewares/global.middleware';
+import { apiKeyHasScopeWithGlobalScopeFallback } from '../../shared/middlewares/global.middleware';
 
 export = {
 	generateAudit: [
-		apiKeyHasScope('securityAudit:generate'),
+		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'securityAudit:generate' }),
 		async (req: AuditRequest.Generate, res: Response): Promise<Response> => {
 			try {
 				const { SecurityAuditService } = await import('@/security-audit/security-audit.service');
