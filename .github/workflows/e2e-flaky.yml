@@ -1,4 +1,4 @@
-name: Check Flaky E2E Test
+name: Debug Flaky E2E Test
 
 on:
   workflow_dispatch:
@@ -19,7 +19,7 @@ on:
 
 jobs:
   debug-test:
-    runs-on: blacksmith-2vcpu-ubuntu-2204
+    runs-on: blacksmith-4vcpu-ubuntu-2204
     timeout-minutes: 60
 
     steps:
