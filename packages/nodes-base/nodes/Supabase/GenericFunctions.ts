@@ -22,6 +22,7 @@ export async function supabaseApiRequest(
 	qs: IDataObject = {},
 	uri?: string,
 	headers: IDataObject = {},
+	returnData: boolean = true,
 ) {
 	const credentials = await this.getCredentials<{
 		host: string;
@@ -29,9 +30,7 @@ export async function supabaseApiRequest(
 	}>('supabaseApi');
 
 	const options: IRequestOptions = {
-		headers: {
-			Prefer: 'return=representation',
-		},
+		headers: returnData ? { Prefer: 'return=representation' } : { Prefer: 'return=minimal' },
 		method,
 		qs,
 		body,
