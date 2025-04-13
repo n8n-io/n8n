@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: n8n-puppeteer
+    env: docker
+    repo: https://github.com/quanquan2424/n8n
+    autoDeploy: true
+    dockerContext: .
+    dockerfilePath: Dockerfile.custom
+    envVars:
+      - key: N8N_BASIC_AUTH_ACTIVE
+        value: "true"
+      - key: N8N_BASIC_AUTH_USER
+        value: "admin"
+      - key: N8N_BASIC_AUTH_PASSWORD
+        value: "admin123"
+      - key: N8N_HOST
+        value: "n8n-service-5sd4.onrender.com"
+      - key: N8N_PORT
+        value: "5678"
+      - key: PUPPETEER_EXECUTABLE_PATH
+        value: "/usr/bin/chromium"
+      - key: PUPPETEER_SKIP_DOWNLOAD
+        value: "true"
+      - key: NODE_FUNCTION_ALLOW_EXTERNAL
+        value: "puppeteer,puppeteer-extra,puppeteer-extra-plugin-stealth,puppeteer-extra-plugin-human-typing"
+    plan: starter
+    healthCheckPath: /healthz
+    instanceSize: s-0.5vcpu-1gb 
+    disk:
+      name: n8n-data
+           sizeGB: 10  

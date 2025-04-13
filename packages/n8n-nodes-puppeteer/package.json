@@ -1,0 +1,53 @@
+{
+  "name": "n8n-nodes-puppeteer",
+  "version": "1.4.1",
+  "description": "n8n node for Puppeteer",
+  "license": "SEE LICENSE IN LICENSE.md",
+  "homepage": "https://n8n.io",
+  "author": {
+    "name": "Jan Oberhauser",
+    "email": "jan@n8n.io"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/n8n-io/n8n.git"
+  },
+  "main": "index.js",
+  "scripts": {
+    "dev": "npm run watch",
+    "build": "tsc && gulp",
+    "lint": "eslint --quiet src",
+    "lintfix": "eslint --quiet --fix src",
+    "watch": "tsc --watch",
+    "test": "jest"
+  },
+  "files": [
+    "dist"
+  ],
+  "n8n": {
+    "credentials": [
+      "dist/credentials/PuppeteerBrowser.credentials.js"
+    ],
+    "nodes": [
+      "dist/nodes/Puppeteer/Puppeteer.node.js"
+    ]
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.6",
+    "@types/request-promise-native": "~1.0.15",
+    "@typescript-eslint/parser": "^5.29.0",
+    "eslint": "^8.18.0",
+    "eslint-plugin-n8n-nodes-base": "^1.0.0",
+    "gulp": "^4.0.2",
+    "prettier": "^2.7.1",
+    "typescript": "~4.7.4"
+  },
+  "dependencies": {
+    "n8n-workflow": "~0.104.0",
+    "@n8n/vm2": "^3.9.11",
+    "puppeteer": "^13.7.0",
+    "puppeteer-extra": "^3.3.4",
+    "puppeteer-extra-plugin-human-typing": "github:0x7357/puppeteer-extra-plugin-human-typing",
+    "puppeteer-extra-plugin-stealth": "^2.11.0"
+  }
+}

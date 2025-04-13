@@ -10,6 +10,7 @@ packages/**/.turbo
 packages/**/*.test.*
 .git
 .github
+.gitignore
 !.github/scripts
 *.tsbuildinfo
 packages/cli/dist/**/e2e.*

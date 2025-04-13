@@ -1,0 +1,43 @@
+{
+	"$schema": "http://json.schemastore.org/tsconfig",
+	"compilerOptions": {
+		"lib": [
+			"es2017",
+			"es2019.array",
+			"dom"
+		],
+		"module": "commonjs",
+		"moduleResolution": "node",
+		"noImplicitAny": true,
+		"removeComments": true,
+		"strictNullChecks": true,
+		"strict": true,
+		"preserveConstEnums": true,
+		"resolveJsonModule": true,
+		"declaration": true,
+		"outDir": "./dist/",
+		"target": "es2017",
+		"sourceMap": true,
+		"allowSyntheticDefaultImports": true,
+		"skipLibCheck": true,
+		"declarationMap": true,
+		"esModuleInterop": true,
+		"emitDecoratorMetadata": true,
+		"experimentalDecorators": true,
+		"noFallthroughCasesInSwitch": true,
+		"noImplicitReturns": false,
+		"noUnusedLocals": true,
+		"noUnusedParameters": false,
+		"pretty": true,
+		"stripInternal": true,
+		"rootDir": "./",
+		"forceConsistentCasingInFileNames": true
+	},
+	"include": [
+		"nodes/**/*"
+	],
+	"exclude": [
+		"node_modules",
+		"dist"
+	]
+}

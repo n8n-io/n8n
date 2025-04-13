@@ -52,6 +52,7 @@
     "@types/jest": "^29.5.3",
     "@types/node": "*",
     "@types/supertest": "^6.0.2",
+    "@types/fs-extra": "11.0.4",
     "cross-env": "^7.0.3",
     "jest": "^29.6.2",
     "jest-environment-jsdom": "^29.6.2",
@@ -75,9 +76,6 @@
     "zx": "^8.1.4"
   },
   "pnpm": {
-    "onlyBuiltDependencies": [
-      "sqlite3"
-    ],
     "overrides": {
       "@types/node": "^18.16.16",
       "chokidar": "^4.0.1",
