@@ -10,7 +10,7 @@ export class PerplexityApi implements ICredentialType {
 
 	displayName = 'Perplexity API';
 
-	documentationUrl = 'https://docs.perplexity.ai/api-reference/chat-completions';
+	documentationUrl = 'https://docs.perplexity.ai';
 
 	properties: INodeProperties[] = [
 		{
@@ -21,13 +21,6 @@ export class PerplexityApi implements ICredentialType {
 			required: true,
 			default: '',
 			description: 'Your Perplexity API key. Get it from your Perplexity account.',
-		},
-		{
-			displayName: 'Base URL',
-			name: 'baseUrl',
-			type: 'string',
-			default: 'https://api.perplexity.ai',
-			description: 'The base URL for the Perplexity API.',
 		},
 	];
 
@@ -42,7 +35,7 @@ export class PerplexityApi implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: '={{$credentials.baseUrl}}',
+			baseURL: 'https://api.perplexity.ai',
 			url: '/chat/completions',
 			method: 'POST',
 			body: {

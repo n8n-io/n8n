@@ -23,6 +23,7 @@ export const description: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'POST',
+						baseURL: 'https://api.perplexity.ai',
 						url: '/chat/completions',
 					},
 					output: {
