@@ -98,7 +98,7 @@ const openPanel = ref<'params' | 'settings'>('params');
 const nodeValues = ref<INodeParameters>({
 	color: '#ff0000',
 	alwaysOutputData: false,
-	byPass: '',
+	passThrough: '',
 	executeOnce: false,
 	notesInFlow: false,
 	onError: 'stopWorkflow',
@@ -626,13 +626,13 @@ const populateSettings = () => {
 		nodeSettings.value.push(
 			...([
 				{
-					displayName: i18n.baseText('nodeSettings.byPass.displayName'),
-					name: 'byPass',
+					displayName: i18n.baseText('nodeSettings.passThrough.displayName'),
+					name: 'passThrough',
 					type: 'string',
 					default: '',
 					placeholder: 'e.g. fieldToInclude1,fieldToInclude2',
 					requiresDataPath: 'multiple',
-					description: i18n.baseText('nodeSettings.byPass.description'),
+					description: i18n.baseText('nodeSettings.passThrough.description'),
 				},
 				{
 					displayName: i18n.baseText('nodeSettings.alwaysOutputData.displayName'),
@@ -815,11 +815,11 @@ const setNodeValues = () => {
 			};
 		}
 
-		if (node.value.byPass) {
-			foundNodeSettings.push('byPass');
+		if (node.value.passThrough) {
+			foundNodeSettings.push('passThrough');
 			nodeValues.value = {
 				...nodeValues.value,
-				byPass: node.value.byPass,
+				passThrough: node.value.passThrough,
 			};
 		}
 

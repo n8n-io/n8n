@@ -1124,7 +1124,7 @@ export interface INode {
 	retryOnFail?: boolean;
 	maxTries?: number;
 	waitBetweenTries?: number;
-	byPass?: string;
+	passThrough?: string;
 	alwaysOutputData?: boolean;
 	executeOnce?: boolean;
 	onError?: OnError;

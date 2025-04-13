@@ -1519,11 +1519,11 @@ export class WorkflowExecute {
 
 								// After nodeSuccessData is set from runNodeData.data, add this code
 								if (
-									executionNode.byPass &&
-									typeof executionNode.byPass === 'string' &&
+									executionNode.passThrough &&
+									typeof executionNode.passThrough === 'string' &&
 									nodeSuccessData
 								) {
-									const fieldsToCopy = executionNode.byPass
+									const fieldsToCopy = executionNode.passThrough
 										.split(',')
 										.map((field) => field.trim())
 										.filter((field) => field.length > 0);
@@ -1552,7 +1552,7 @@ export class WorkflowExecute {
 													// Find the first item in previous output with the fields
 													const sourceItem = previousNodeOutput[0]?.json || {};
 
-													// Add bypass fields directly to node output results
+													// Add passThrough fields directly to node output results
 													if (nodeSuccessData.length > 0) {
 														for (
 															let outputIndex = 0;
@@ -1621,9 +1621,9 @@ export class WorkflowExecute {
 													}
 												}
 											} catch (error) {
-												// Error handling for byPass data processing - log and continue
+												// Error handling for passThrough data processing - log and continue
 												Logger.warn(
-													`Error processing byPass data for node "${executionNode.name}": ${error.message}`,
+													`Error processing passThrough data for node "${executionNode.name}": ${error.message}`,
 												);
 											}
 										}
