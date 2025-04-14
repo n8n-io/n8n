@@ -27,17 +27,17 @@ const configuredOutputs = (version: number) => {
 	if (version >= 1.2) {
 		return [
 			{
-				type: `${NodeConnectionTypes.Main}`,
+				type: 'main',
 				displayName: 'Input Data',
 			},
 			{
-				type: `${NodeConnectionTypes.Main}`,
+				type: 'main',
 				displayName: 'Response',
 			},
 		];
 	}
 
-	return [NodeConnectionTypes.Main];
+	return ['main'];
 };
 
 export class RespondToWebhook implements INodeType {
