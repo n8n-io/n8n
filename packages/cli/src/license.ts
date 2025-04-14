@@ -14,6 +14,7 @@ import {
 	LICENSE_QUOTAS,
 	N8N_VERSION,
 	SETTINGS_LICENSE_CERT_KEY,
+	Time,
 	UNLIMITED_LICENSE_QUOTA,
 } from './constants';
 import type { BooleanLicenseFeature, NumericLicenseFeature } from './interfaces';
@@ -60,7 +61,7 @@ export class License {
 		const isMainInstance = instanceType === 'main';
 		const server = this.globalConfig.license.serverUrl;
 		const offlineMode = !isMainInstance;
-		const autoRenewOffset = this.globalConfig.license.autoRenewOffset;
+		const autoRenewOffset = 72 * Time.hours.toSeconds;
 		const saveCertStr = isMainInstance
 			? async (value: TLicenseBlock) => await this.saveCertStr(value)
 			: async () => {};
@@ -92,6 +93,7 @@ export class License {
 				autoRenewEnabled: shouldRenew,
 				renewOnInit: shouldRenew,
 				autoRenewOffset,
+				detachFloatingOnShutdown: this.globalConfig.license.detachFloatingOnShutdown,
 				offlineMode,
 				logger: this.logger,
 				loadCertStr: async () => await this.loadCertStr(),
@@ -131,11 +133,18 @@ export class License {
 	}
 
 	async onFeatureChange(_features: TFeatures): Promise<void> {
+		const { isMultiMain, isLeader } = this.instanceSettings;
+
+		if (Object.keys(_features).length === 0) {
+			this.logger.error('Empty license features recieved', { isMultiMain, isLeader });
+			return;
+		}
+
 		this.logger.debug('License feature change detected', _features);
 
 		this.checkIsLicensedForMultiMain(_features);
 
-		if (this.instanceSettings.isMultiMain && !this.instanceSettings.isLeader) {
+		if (isMultiMain && !isLeader) {
 			this.logger
 				.scoped(['scaling', 'multi-main-setup', 'license'])
 				.debug('Instance is not leader, skipping sending of "reload-license" command...');
@@ -185,6 +194,15 @@ export class License {
 
 		await this.manager.renew();
 		this.logger.debug('License renewed');
+	}
+
+	async clear() {
+		if (!this.manager) {
+			return;
+		}
+
+		await this.manager.clear();
+		this.logger.info('License cleared');
 	}
 
 	@OnShutdown()
@@ -293,6 +311,22 @@ export class License {
 		return this.isFeatureEnabled(LICENSE_FEATURES.COMMUNITY_NODES_CUSTOM_REGISTRY);
 	}
 
+	isFoldersEnabled() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.FOLDERS);
+	}
+
+	isInsightsSummaryEnabled() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.INSIGHTS_VIEW_SUMMARY);
+	}
+
+	isInsightsDashboardEnabled() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.INSIGHTS_VIEW_DASHBOARD);
+	}
+
+	isInsightsHourlyDataEnabled() {
+		return this.getFeatureValue(LICENSE_FEATURES.INSIGHTS_VIEW_HOURLY_DATA);
+	}
+
 	getCurrentEntitlements() {
 		return this.manager?.getCurrentEntitlements() ?? [];
 	}
@@ -353,6 +387,18 @@ export class License {
 		return (
 			this.getFeatureValue(LICENSE_QUOTAS.WORKFLOW_HISTORY_PRUNE_LIMIT) ?? UNLIMITED_LICENSE_QUOTA
 		);
+	}
+
+	getInsightsMaxHistory() {
+		return this.getFeatureValue(LICENSE_QUOTAS.INSIGHTS_MAX_HISTORY_DAYS) ?? 7;
+	}
+
+	getInsightsRetentionMaxAge() {
+		return this.getFeatureValue(LICENSE_QUOTAS.INSIGHTS_RETENTION_MAX_AGE_DAYS) ?? 180;
+	}
+
+	getInsightsRetentionPruneInterval() {
+		return this.getFeatureValue(LICENSE_QUOTAS.INSIGHTS_RETENTION_PRUNE_INTERVAL_DAYS) ?? 24;
 	}
 
 	getTeamProjectLimit() {

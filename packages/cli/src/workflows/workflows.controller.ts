@@ -349,7 +349,7 @@ export class WorkflowsController {
 		const forceSave = req.query.forceSave === 'true';
 
 		let updateData = new WorkflowEntity();
-		const { tags, ...rest } = req.body;
+		const { tags, parentFolderId, ...rest } = req.body;
 		Object.assign(updateData, rest);
 
 		const isSharingEnabled = this.license.isSharingEnabled();
@@ -366,6 +366,7 @@ export class WorkflowsController {
 			updateData,
 			workflowId,
 			tags,
+			parentFolderId,
 			isSharingEnabled ? forceSave : true,
 		);
 

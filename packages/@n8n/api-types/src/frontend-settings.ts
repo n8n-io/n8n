@@ -32,6 +32,8 @@ export interface FrontendSettings {
 	endpointForm: string;
 	endpointFormTest: string;
 	endpointFormWaiting: string;
+	endpointMcp: string;
+	endpointMcpTest: string;
 	endpointWebhook: string;
 	endpointWebhookTest: string;
 	endpointWebhookWaiting: string;
@@ -180,5 +182,10 @@ export interface FrontendSettings {
 	easyAIWorkflowOnboarded: boolean;
 	partialExecution: {
 		version: 1 | 2;
+	};
+	insights: {
+		enabled: boolean;
+		summary: boolean;
+		dashboard: boolean;
 	};
 }

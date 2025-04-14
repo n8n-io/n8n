@@ -26,7 +26,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { type IUpdateInformation } from '../Interface';
+import { type IUpdateInformation } from '@/Interface';
 import { generateCodeForAiTransform } from '@/components/ButtonParameter/utils';
 
 const NODE_TEST_STEP_POPUP_COUNT_KEY = 'N8N_NODE_TEST_STEP_POPUP_COUNT';
@@ -155,7 +155,7 @@ const disabledHint = computed(() => {
 		return i18n.baseText('ndv.execute.generatingCode');
 	}
 
-	if (isTriggerNode.value && node?.value?.disabled) {
+	if (node?.value?.disabled) {
 		return i18n.baseText('ndv.execute.nodeIsDisabled');
 	}
 
@@ -367,28 +367,21 @@ async function onClick() {
 </script>
 
 <template>
-	<div>
-		<n8n-tooltip placement="right" :disabled="!tooltipText">
-			<template #content>
-				<div>{{ tooltipText }}</div>
-			</template>
-			<div>
-				<n8n-button
-					v-bind="$attrs"
-					:loading="isLoading"
-					:disabled="disabled || !!disabledHint"
-					:label="buttonLabel"
-					:type="type"
-					:size="size"
-					:icon="buttonIcon"
-					:transparent-background="transparent"
-					:title="
-						!isTriggerNode && !tooltipText ? i18n.baseText('ndv.execute.testNode.description') : ''
-					"
-					@mouseover="onMouseOver"
-					@click="onClick"
-				/>
-			</div>
-		</n8n-tooltip>
-	</div>
+	<N8nTooltip placement="right" :disabled="!tooltipText" :content="tooltipText">
+		<N8nButton
+			v-bind="$attrs"
+			:loading="isLoading"
+			:disabled="disabled || !!disabledHint"
+			:label="buttonLabel"
+			:type="type"
+			:size="size"
+			:icon="buttonIcon"
+			:transparent-background="transparent"
+			:title="
+				!isTriggerNode && !tooltipText ? i18n.baseText('ndv.execute.testNode.description') : ''
+			"
+			@mouseover="onMouseOver"
+			@click="onClick"
+		/>
+	</N8nTooltip>
 </template>

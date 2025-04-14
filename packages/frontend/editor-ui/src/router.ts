@@ -19,6 +19,7 @@ import type { RouterMiddleware } from '@/types/router';
 import { initializeAuthenticatedFeatures, initializeCore } from '@/init';
 import { tryToParseNumber } from '@/utils/typesUtils';
 import { projectsRoutes } from '@/routes/projects.routes';
+import { insightsRoutes } from '@/features/insights/insights.router';
 import TestDefinitionRunDetailView from './views/TestDefinition/TestDefinitionRunDetailView.vue';
 
 const ChangePasswordView = async () => await import('./views/ChangePasswordView.vue');
@@ -26,7 +27,7 @@ const ErrorView = async () => await import('./views/ErrorView.vue');
 const ForgotMyPasswordView = async () => await import('./views/ForgotMyPasswordView.vue');
 const MainHeader = async () => await import('@/components/MainHeader/MainHeader.vue');
 const MainSidebar = async () => await import('@/components/MainSidebar.vue');
-const CanvasChat = async () => await import('@/components/CanvasChat/CanvasChat.vue');
+const CanvasChatSwitch = async () => await import('@/components/CanvasChat/CanvasChatSwitch.vue');
 const NodeView = async () => await import('@/views/NodeView.vue');
 const WorkflowExecutionsView = async () => await import('@/views/WorkflowExecutionsView.vue');
 const WorkflowExecutionsLandingPage = async () =>
@@ -358,7 +359,7 @@ export const routes: RouteRecordRaw[] = [
 			default: NodeView,
 			header: MainHeader,
 			sidebar: MainSidebar,
-			footer: CanvasChat,
+			footer: CanvasChatSwitch,
 		},
 		meta: {
 			nodeView: true,
@@ -391,7 +392,7 @@ export const routes: RouteRecordRaw[] = [
 			default: NodeView,
 			header: MainHeader,
 			sidebar: MainSidebar,
-			footer: CanvasChat,
+			footer: CanvasChatSwitch,
 		},
 		meta: {
 			nodeView: true,
@@ -734,6 +735,7 @@ export const routes: RouteRecordRaw[] = [
 		},
 	},
 	...projectsRoutes,
+	...insightsRoutes,
 	{
 		path: '/:pathMatch(.*)*',
 		name: VIEWS.NOT_FOUND,

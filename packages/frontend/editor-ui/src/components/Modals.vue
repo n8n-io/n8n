@@ -33,6 +33,8 @@ import {
 	PROJECT_MOVE_RESOURCE_MODAL,
 	PROMPT_MFA_CODE_MODAL_KEY,
 	COMMUNITY_PLUS_ENROLLMENT_MODAL,
+	DELETE_FOLDER_MODAL_KEY,
+	MOVE_FOLDER_MODAL_KEY,
 } from '@/constants';
 
 import AboutModal from '@/components/AboutModal.vue';
@@ -278,6 +280,18 @@ import type { EventBus } from '@n8n/utils/event-bus';
 		<ModalRoot :name="COMMUNITY_PLUS_ENROLLMENT_MODAL">
 			<template #default="{ modalName, data }">
 				<CommunityPlusEnrollmentModal :modal-name="modalName" :data="data" />
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="DELETE_FOLDER_MODAL_KEY">
+			<template #default="{ modalName, activeId, data }">
+				<DeleteFolderModal :modal-name="modalName" :active-id="activeId" :data="data" />
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="MOVE_FOLDER_MODAL_KEY">
+			<template #default="{ modalName, activeId, data }">
+				<MoveToFolderModal :modal-name="modalName" :active-id="activeId" :data="data" />
 			</template>
 		</ModalRoot>
 	</div>

@@ -7,7 +7,7 @@ import { computed, ref } from 'vue';
 const { VUE_APP_URL_BASE_API } = import.meta.env;
 
 export const useRootStore = defineStore(STORES.ROOT, () => {
-	const state = ref({
+	const state = ref<RootState>({
 		baseUrl: VUE_APP_URL_BASE_API ?? window.BASE_PATH,
 		restEndpoint:
 			!window.REST_ENDPOINT || window.REST_ENDPOINT === '{{REST_ENDPOINT}}'
@@ -17,6 +17,8 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 		endpointForm: 'form',
 		endpointFormTest: 'form-test',
 		endpointFormWaiting: 'form-waiting',
+		endpointMcp: 'mcp',
+		endpointMcpTest: 'mcp-test',
 		endpointWebhook: 'webhook',
 		endpointWebhookTest: 'webhook-test',
 		endpointWebhookWaiting: 'webhook-waiting',
@@ -49,9 +51,17 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 
 	const webhookUrl = computed(() => `${state.value.urlBaseWebhook}${state.value.endpointWebhook}`);
 
+	const webhookTestUrl = computed(
+		() => `${state.value.urlBaseEditor}${state.value.endpointWebhookTest}`,
+	);
+
 	const webhookWaitingUrl = computed(
 		() => `${state.value.urlBaseEditor}${state.value.endpointWebhookWaiting}`,
 	);
+
+	const mcpUrl = computed(() => `${state.value.urlBaseWebhook}${state.value.endpointMcp}`);
+
+	const mcpTestUrl = computed(() => `${state.value.urlBaseEditor}${state.value.endpointMcpTest}`);
 
 	const pushRef = computed(() => state.value.pushRef);
 
@@ -66,10 +76,6 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 	const versionCli = computed(() => state.value.versionCli);
 
 	const OAuthCallbackUrls = computed(() => state.value.oauthCallbackUrls);
-
-	const webhookTestUrl = computed(
-		() => `${state.value.urlBaseEditor}${state.value.endpointWebhookTest}`,
-	);
 
 	const restUrl = computed(() => `${state.value.baseUrl}${state.value.restEndpoint}`);
 
@@ -164,7 +170,7 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 		state.value.defaultLocale = locale;
 	};
 
-	const setBinaryDataMode = (binaryDataMode: string) => {
+	const setBinaryDataMode = (binaryDataMode: RootState['binaryDataMode']) => {
 		state.value.binaryDataMode = binaryDataMode;
 	};
 
@@ -175,6 +181,8 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 		formUrl,
 		formTestUrl,
 		formWaitingUrl,
+		mcpUrl,
+		mcpTestUrl,
 		webhookUrl,
 		webhookTestUrl,
 		webhookWaitingUrl,

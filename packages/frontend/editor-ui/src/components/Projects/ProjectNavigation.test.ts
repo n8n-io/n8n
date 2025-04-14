@@ -5,6 +5,7 @@ import { mockedStore } from '@/__tests__/utils';
 import { createProjectListItem } from '@/__tests__/data/projects';
 import ProjectsNavigation from '@/components/Projects/ProjectNavigation.vue';
 import { useProjectsStore } from '@/stores/projects.store';
+import { useSettingsStore } from '@/stores/settings.store';
 
 vi.mock('vue-router', async () => {
 	const actual = await vi.importActual('vue-router');
@@ -62,6 +63,7 @@ const renderComponent = createComponentRenderer(ProjectsNavigation, {
 });
 
 let projectsStore: ReturnType<typeof mockedStore<typeof useProjectsStore>>;
+let settingsStore: ReturnType<typeof mockedStore<typeof useSettingsStore>>;
 
 const personalProjects = Array.from({ length: 3 }, createProjectListItem);
 const teamProjects = Array.from({ length: 3 }, () => createProjectListItem('team'));
@@ -71,6 +73,7 @@ describe('ProjectsNavigation', () => {
 		createTestingPinia();
 
 		projectsStore = mockedStore(useProjectsStore);
+		settingsStore = mockedStore(useSettingsStore);
 	});
 
 	it('should not throw an error', () => {
@@ -124,6 +127,23 @@ describe('ProjectsNavigation', () => {
 		expect(queryByRole('heading', { level: 3, name: 'Projects' })).not.toBeInTheDocument();
 	});
 
+	it('should show Personal project when folders are enabled but projects are disabled', async () => {
+		projectsStore.teamProjectsLimit = 0;
+		settingsStore.isFoldersFeatureEnabled = true;
+
+		const { queryByRole, getByTestId, queryByTestId } = renderComponent({
+			props: {
+				collapsed: false,
+			},
+		});
+
+		// Personal project menu item should be visible
+		expect(getByTestId('project-personal-menu-item')).toBeVisible();
+		// Projects section should not be visible
+		expect(queryByRole('heading', { level: 3, name: 'Projects' })).not.toBeInTheDocument();
+		expect(queryByTestId('project-plus-button')).not.toBeInTheDocument();
+	});
+
 	it('should show project icons when the menu is collapsed', async () => {
 		projectsStore.teamProjectsLimit = -1;
 
@@ -174,5 +194,23 @@ describe('ProjectsNavigation', () => {
 
 		expect(getByTestId('project-plus-button')).toBeVisible();
 		expect(getByTestId('add-first-project-button')).toBeVisible();
+	});
+
+	it('should show project plus button and add first project button in disabled state if user does not have permission', async () => {
+		projectsStore.teamProjectsLimit = -1;
+		projectsStore.hasPermissionToCreateProjects = false;
+
+		const { getByTestId } = renderComponent({
+			props: {
+				collapsed: false,
+			},
+		});
+		const plusButton = getByTestId('project-plus-button');
+		const addFirstProjectButton = getByTestId('add-first-project-button');
+
+		expect(plusButton).toBeVisible();
+		expect(plusButton).toBeDisabled();
+		expect(addFirstProjectButton).toBeVisible();
+		expect(addFirstProjectButton).toBeDisabled();
 	});
 });

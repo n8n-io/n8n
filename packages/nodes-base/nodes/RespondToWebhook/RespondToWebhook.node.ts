@@ -13,7 +13,7 @@ import {
 	jsonParse,
 	BINARY_ENCODING,
 	NodeOperationError,
-	NodeConnectionType,
+	NodeConnectionTypes,
 	WEBHOOK_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
@@ -27,17 +27,17 @@ const configuredOutputs = (version: number) => {
 	if (version >= 1.2) {
 		return [
 			{
-				type: `${NodeConnectionType.Main}`,
+				type: `${NodeConnectionTypes.Main}`,
 				displayName: 'Input Data',
 			},
 			{
-				type: `${NodeConnectionType.Main}`,
+				type: `${NodeConnectionTypes.Main}`,
 				displayName: 'Response',
 			},
 		];
 	}
 
-	return [NodeConnectionType.Main];
+	return [NodeConnectionTypes.Main];
 };
 
 export class RespondToWebhook implements INodeType {
@@ -51,7 +51,7 @@ export class RespondToWebhook implements INodeType {
 		defaults: {
 			name: 'Respond to Webhook',
 		},
-		inputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
 		outputs: `={{(${configuredOutputs})($nodeVersion)}}`,
 		credentials: [
 			{

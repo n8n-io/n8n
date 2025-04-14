@@ -1,4 +1,5 @@
 import type {
+	ChangeLocationSearchResult,
 	FolderCreateResponse,
 	FolderTreeResponseItem,
 	IExecutionResponse,
@@ -109,4 +110,75 @@ export async function getFolderPath(
 		'GET',
 		`/projects/${projectId}/folders/${folderId}/tree`,
 	);
+}
+
+export async function deleteFolder(
+	context: IRestApiContext,
+	projectId: string,
+	folderId: string,
+	transferToFolderId?: string,
+): Promise<void> {
+	return await makeRestApiRequest(context, 'DELETE', `/projects/${projectId}/folders/${folderId}`, {
+		transferToFolderId,
+	});
+}
+
+export async function renameFolder(
+	context: IRestApiContext,
+	projectId: string,
+	folderId: string,
+	name: string,
+): Promise<void> {
+	return await makeRestApiRequest(context, 'PATCH', `/projects/${projectId}/folders/${folderId}`, {
+		name,
+	});
+}
+
+export async function getProjectFolders(
+	context: IRestApiContext,
+	projectId: string,
+	options?: {
+		skip?: number;
+		take?: number;
+		sortBy?: string;
+	},
+	filter?: {
+		excludeFolderIdAndDescendants?: string;
+		name?: string;
+	},
+): Promise<ChangeLocationSearchResult[]> {
+	const res = await getFullApiResponse<ChangeLocationSearchResult[]>(
+		context,
+		'GET',
+		`/projects/${projectId}/folders`,
+		{
+			...(filter ? { filter } : {}),
+			...(options ? options : {}),
+		},
+	);
+	return res.data;
+}
+
+export async function moveFolder(
+	context: IRestApiContext,
+	projectId: string,
+	folderId: string,
+	parentFolderId?: string,
+): Promise<void> {
+	return await makeRestApiRequest(context, 'PATCH', `/projects/${projectId}/folders/${folderId}`, {
+		parentFolderId,
+	});
+}
+
+export async function getFolderContent(
+	context: IRestApiContext,
+	projectId: string,
+	folderId: string,
+): Promise<{ totalSubFolders: number; totalWorkflows: number }> {
+	const res = await getFullApiResponse<{ totalSubFolders: number; totalWorkflows: number }>(
+		context,
+		'GET',
+		`/projects/${projectId}/folders/${folderId}/content`,
+	);
+	return res.data;
 }

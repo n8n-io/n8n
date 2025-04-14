@@ -139,17 +139,21 @@ export class ScalingService {
 		else if (instanceType === 'worker') await this.stopWorker();
 	}
 
+	private async pauseQueue() {
+		await this.queue.pause(true, true); // no more jobs will be enqueued or picked up
+		this.logger.debug('Paused queue');
+	}
+
 	private async stopMain() {
-		if (this.instanceSettings.isSingleMain) {
-			await this.queue.pause(true, true); // no more jobs will be picked up
-			this.logger.debug('Queue paused');
-		}
+		if (this.instanceSettings.isSingleMain) await this.pauseQueue();
 
 		if (this.queueRecoveryContext.timeout) this.stopQueueRecovery();
 		if (this.isQueueMetricsEnabled) this.stopQueueMetrics();
 	}
 
 	private async stopWorker() {
+		await this.pauseQueue();
+
 		let count = 0;
 
 		while (this.getRunningJobsCount() !== 0) {

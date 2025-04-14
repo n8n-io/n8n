@@ -4,11 +4,12 @@ import type {
 	INodeTypeDescription,
 	INodeParameters,
 	INodeProperties,
+	NodeConnectionType,
 	NodeParameterValue,
 } from 'n8n-workflow';
 import {
 	NodeHelpers,
-	NodeConnectionType,
+	NodeConnectionTypes,
 	deepCopy,
 	isINodePropertyCollectionList,
 	isINodePropertiesList,
@@ -139,7 +140,7 @@ const isExecutable = computed(() => {
 		);
 		const inputNames = NodeHelpers.getConnectionTypes(inputs);
 
-		if (!inputNames.includes(NodeConnectionType.Main) && !isTriggerNode.value) {
+		if (!inputNames.includes(NodeConnectionTypes.Main) && !isTriggerNode.value) {
 			return false;
 		}
 	}
@@ -336,7 +337,7 @@ const removeMismatchedOptionValues = (
 			);
 		}
 
-		if (!hasValidOptions && displayParameter(nodeParameterValues, prop, node.value)) {
+		if (!hasValidOptions && displayParameter(nodeParameterValues, prop, node.value, nodeType)) {
 			unset(nodeParameterValues as object, prop.name);
 		}
 	});
@@ -394,6 +395,7 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 			false,
 			false,
 			_node,
+			nodeType,
 		);
 
 		const oldNodeParameters = Object.assign({}, nodeParameters);
@@ -452,6 +454,7 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 			true,
 			false,
 			_node,
+			nodeType,
 		);
 
 		for (const key of Object.keys(nodeParameters as object)) {
@@ -486,6 +489,7 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 			false,
 			false,
 			_node,
+			nodeType,
 		);
 		const oldNodeParameters = Object.assign({}, nodeParameters);
 
@@ -534,6 +538,7 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 			true,
 			false,
 			_node,
+			nodeType,
 		);
 
 		for (const key of Object.keys(nodeParameters as object)) {

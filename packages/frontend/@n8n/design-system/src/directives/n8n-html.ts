@@ -1,5 +1,5 @@
 import sanitize from 'sanitize-html';
-import type { DirectiveBinding, ObjectDirective } from 'vue';
+import type { DirectiveBinding, FunctionDirective } from 'vue';
 
 /**
  * Custom directive `n8nHtml` to replace v-html from Vue to sanitize content.
@@ -28,11 +28,11 @@ const configuredSanitize = (html: string) =>
 		},
 	});
 
-export const n8nHtml: ObjectDirective = {
-	beforeMount(el: HTMLElement, binding: DirectiveBinding<string>) {
+export const n8nHtml: FunctionDirective<HTMLElement, string> = (
+	el: HTMLElement,
+	binding: DirectiveBinding<string>,
+) => {
+	if (binding.value !== binding.oldValue) {
 		el.innerHTML = configuredSanitize(binding.value);
-	},
-	beforeUpdate(el: HTMLElement, binding: DirectiveBinding<string>) {
-		el.innerHTML = configuredSanitize(binding.value);
-	},
+	}
 };

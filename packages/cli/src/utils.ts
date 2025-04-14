@@ -1,5 +1,5 @@
 import { CliWorkflowOperationError, SubworkflowOperationError } from 'n8n-workflow';
-import type { INode } from 'n8n-workflow';
+import type { INode, INodeType } from 'n8n-workflow';
 
 import { STARTING_NODES } from '@/constants';
 
@@ -90,3 +90,18 @@ export function rightDiff<T1, T2>(
 export const assertNever = (_value: never) => {};
 
 export const isPositiveInteger = (maybeInt: string) => /^[1-9]\d*$/.test(maybeInt);
+
+/**
+ * Check if a execute method should be assigned to the node
+ */
+export const shouldAssignExecuteMethod = (nodeType: INodeType) => {
+	const isDeclarativeNode = nodeType?.description?.requestDefaults !== undefined;
+
+	return (
+		!nodeType.execute &&
+		!nodeType.poll &&
+		!nodeType.trigger &&
+		(!nodeType.webhook || isDeclarativeNode) &&
+		!nodeType.methods
+	);
+};

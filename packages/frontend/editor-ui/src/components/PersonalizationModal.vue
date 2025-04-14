@@ -567,6 +567,7 @@ const closeDialog = () => {
 			name: COMMUNITY_PLUS_ENROLLMENT_MODAL,
 			data: {
 				closeCallback,
+				customHeading: undefined,
 			},
 		});
 	} else {

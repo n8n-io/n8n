@@ -1,147 +1,90 @@
 {
     "type": "object",
     "properties": {
-        "id": {
-            "type": "integer"
-        },
-        "date": {
-            "type": "string"
-        },
-        "date_gmt": {
-            "type": "string"
-        },
-        "guid": {
-            "type": "object",
-            "properties": {
-                "rendered": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "rendered"
-            ]
-        },
-        "modified": {
-            "type": "string"
-        },
-        "modified_gmt": {
-            "type": "string"
-        },
-        "slug": {
-            "type": "string"
-        },
-        "status": {
-            "type": "string"
-        },
-        "type": {
-            "type": "string"
-        },
-        "link": {
-            "type": "string"
-        },
-        "title": {
-            "type": "object",
-            "properties": {
-                "rendered": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "rendered"
-            ]
-        },
-        "content": {
-            "type": "object",
-            "properties": {
-                "rendered": {
-                    "type": "string"
-                },
-                "protected": {
-                    "type": "boolean"
-                }
-            },
-            "required": [
-                "rendered",
-                "protected"
-            ]
-        },
-        "excerpt": {
-            "type": "object",
-            "properties": {
-                "rendered": {
-                    "type": "string"
-                },
-                "protected": {
-                    "type": "boolean"
-                }
-            },
-            "required": [
-                "rendered",
-                "protected"
-            ]
-        },
-        "author": {
-            "type": "integer"
-        },
-        "featured_media": {
-            "type": "integer"
-        },
-        "parent": {
-            "type": "integer"
-        },
-        "menu_order": {
-            "type": "integer"
-        },
-        "comment_status": {
-            "type": "string"
-        },
-        "ping_status": {
-            "type": "string"
-        },
-        "template": {
-            "type": "string"
-        },
-        "meta": {
-            "type": "object",
-            "properties": {
-                "footnotes": {
-                    "type": "string"
-                },
-                "advanced_seo_description": {
-                    "type": "string"
-                },
-                "jetpack_seo_html_title": {
-                    "type": "string"
-                },
-                "jetpack_seo_noindex": {
-                    "type": "boolean"
-                },
-                "jetpack_post_was_ever_published": {
-                    "type": "boolean"
-                },
-                "_starter_page_template": {
-                    "type": "string"
-                },
-                "_wpcom_template_layout_category": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                }
-            },
-            "required": [
-                "footnotes"
-            ]
-        },
-        "class_list": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
         "_links": {
             "type": "object",
             "properties": {
+                "about": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "href": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "author": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "embeddable": {
+                                "type": "boolean"
+                            },
+                            "href": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "collection": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "href": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "curies": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "href": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            },
+                            "templated": {
+                                "type": "boolean"
+                            }
+                        }
+                    }
+                },
+                "predecessor-version": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "href": {
+                                "type": "string"
+                            },
+                            "id": {
+                                "type": "integer"
+                            }
+                        }
+                    }
+                },
+                "replies": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "embeddable": {
+                                "type": "boolean"
+                            },
+                            "href": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
                 "self": {
                     "type": "array",
                     "items": {
@@ -159,79 +102,9 @@
                                             "type": "string"
                                         }
                                     }
-                                },
-                                "required": [
-                                    "allow"
-                                ]
+                                }
                             }
-                        },
-                        "required": [
-                            "href"
-                        ]
-                    }
-                },
-                "collection": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "href": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "href"
-                        ]
-                    }
-                },
-                "about": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "href": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "href"
-                        ]
-                    }
-                },
-                "author": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "embeddable": {
-                                "type": "boolean"
-                            },
-                            "href": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "embeddable",
-                            "href"
-                        ]
-                    }
-                },
-                "replies": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "embeddable": {
-                                "type": "boolean"
-                            },
-                            "href": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "embeddable",
-                            "href"
-                        ]
+                        }
                     }
                 },
                 "version-history": {
@@ -245,29 +118,7 @@
                             "href": {
                                 "type": "string"
                             }
-                        },
-                        "required": [
-                            "count",
-                            "href"
-                        ]
-                    }
-                },
-                "predecessor-version": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "id": {
-                                "type": "integer"
-                            },
-                            "href": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "id",
-                            "href"
-                        ]
+                        }
                     }
                 },
                 "wp:attachment": {
@@ -278,66 +129,105 @@
                             "href": {
                                 "type": "string"
                             }
-                        },
-                        "required": [
-                            "href"
-                        ]
-                    }
-                },
-                "curies": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "name": {
-                                "type": "string"
-                            },
-                            "href": {
-                                "type": "string"
-                            },
-                            "templated": {
-                                "type": "boolean"
-                            }
-                        },
-                        "required": [
-                            "name",
-                            "href",
-                            "templated"
-                        ]
+                        }
                     }
                 }
-            },
-            "required": [
-                "self",
-                "collection",
-                "about",
-                "author",
-                "replies",
-                "version-history",
-                "wp:attachment",
-                "curies"
-            ]
+            }
         },
-        "jetpack_sharing_enabled": {
-            "type": "boolean"
+        "author": {
+            "type": "integer"
         },
-        "jetpack_likes_enabled": {
-            "type": "boolean"
+        "comment_status": {
+            "type": "string"
         },
-        "jetpack_shortlink": {
+        "content": {
+            "type": "object",
+            "properties": {
+                "protected": {
+                    "type": "boolean"
+                },
+                "rendered": {
+                    "type": "string"
+                }
+            }
+        },
+        "date": {
+            "type": "string"
+        },
+        "date_gmt": {
+            "type": "string"
+        },
+        "excerpt": {
+            "type": "object",
+            "properties": {
+                "protected": {
+                    "type": "boolean"
+                },
+                "rendered": {
+                    "type": "string"
+                }
+            }
+        },
+        "featured_media": {
+            "type": "integer"
+        },
+        "guid": {
+            "type": "object",
+            "properties": {
+                "rendered": {
+                    "type": "string"
+                }
+            }
+        },
+        "id": {
+            "type": "integer"
+        },
+        "link": {
+            "type": "string"
+        },
+        "menu_order": {
+            "type": "integer"
+        },
+        "meta": {
+            "type": "object",
+            "properties": {
+                "footnotes": {
+                    "type": "string"
+                }
+            }
+        },
+        "modified": {
+            "type": "string"
+        },
+        "modified_gmt": {
+            "type": "string"
+        },
+        "parent": {
+            "type": "integer"
+        },
+        "ping_status": {
+            "type": "string"
+        },
+        "slug": {
+            "type": "string"
+        },
+        "status": {
+            "type": "string"
+        },
+        "template": {
+            "type": "string"
+        },
+        "title": {
+            "type": "object",
+            "properties": {
+                "rendered": {
+                    "type": "string"
+                }
+            }
+        },
+        "type": {
             "type": "string"
         }
     },
-    "required": [
-        "id",
-        "date",
-        "slug",
-        "type",
-        "link",
-        "title",
-        "excerpt",
-        "author",
-        "featured_media",
-        "_links"
-    ]
+    "version": 1
 }

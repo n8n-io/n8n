@@ -8,6 +8,7 @@ import type {
 } from 'n8n-workflow';
 
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
+import { ModuleRegistry } from '@/decorators/module';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { Push } from '@/push';
@@ -67,7 +68,7 @@ function hookFunctionsPush(
 	if (!pushRef) return;
 	const logger = Container.get(Logger);
 	const pushInstance = Container.get(Push);
-	hooks.addHandler('nodeExecuteBefore', function (nodeName) {
+	hooks.addHandler('nodeExecuteBefore', function (nodeName, data) {
 		const { executionId } = this;
 		// Push data to session which started workflow before each
 		// node which starts rendering
@@ -77,7 +78,10 @@ function hookFunctionsPush(
 			workflowId: this.workflowData.id,
 		});
 
-		pushInstance.send({ type: 'nodeExecuteBefore', data: { executionId, nodeName } }, pushRef);
+		pushInstance.send(
+			{ type: 'nodeExecuteBefore', data: { executionId, nodeName, data } },
+			pushRef,
+		);
 	});
 	hooks.addHandler('nodeExecuteAfter', function (nodeName, data) {
 		const { executionId } = this;
@@ -394,11 +398,13 @@ export function getLifecycleHooksForScalingWorker(
 		hookFunctionsPush(hooks, optionalParameters);
 	}
 
+	Container.get(ModuleRegistry).registerLifecycleHooks(hooks);
+
 	return hooks;
 }
 
 /**
- * Returns ExecutionLifecycleHooks instance for main process if workflow runs via worker
+ * Returns ExecutionLifecycleHooks instance for main process in scaling mode.
  */
 export function getLifecycleHooksForScalingMain(
 	data: IWorkflowExecutionDataProcess,
@@ -454,11 +460,13 @@ export function getLifecycleHooksForScalingMain(
 	hooks.handlers.nodeExecuteBefore = [];
 	hooks.handlers.nodeExecuteAfter = [];
 
+	Container.get(ModuleRegistry).registerLifecycleHooks(hooks);
+
 	return hooks;
 }
 
 /**
- * Returns ExecutionLifecycleHooks instance for running the main workflow
+ * Returns ExecutionLifecycleHooks instance for the main process in regular mode
  */
 export function getLifecycleHooksForRegularMain(
 	data: IWorkflowExecutionDataProcess,
@@ -476,5 +484,6 @@ export function getLifecycleHooksForRegularMain(
 	hookFunctionsSaveProgress(hooks, optionalParameters);
 	hookFunctionsStatistics(hooks);
 	hookFunctionsExternalHooks(hooks);
+	Container.get(ModuleRegistry).registerLifecycleHooks(hooks);
 	return hooks;
 }

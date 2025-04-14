@@ -32,30 +32,13 @@ const DEFAULT_FOLDER: FolderResource = {
 	updatedAt: new Date().toISOString(),
 	resourceType: 'folder',
 	readOnly: false,
-	workflowCount: 0,
+	workflowCount: 2,
+	subFolderCount: 2,
 	homeProject: {
 		id: '1',
 		name: 'Project 1',
 		icon: null,
 		type: 'personal',
-		createdAt: new Date().toISOString(),
-		updatedAt: new Date().toISOString(),
-	},
-} as const satisfies FolderResource;
-
-const PARENT_FOLDER: FolderResource = {
-	id: '2',
-	name: 'Folder 2',
-	createdAt: new Date().toISOString(),
-	updatedAt: new Date().toISOString(),
-	resourceType: 'folder',
-	readOnly: false,
-	workflowCount: 0,
-	homeProject: {
-		id: '1',
-		name: 'Project 1',
-		icon: null,
-		type: 'team',
 		createdAt: new Date().toISOString(),
 		updatedAt: new Date().toISOString(),
 	},
@@ -100,70 +83,24 @@ describe('FolderCard', () => {
 		const { getByTestId } = renderComponent();
 		expect(getByTestId('folder-card-icon')).toBeInTheDocument();
 		expect(getByTestId('folder-card-name')).toHaveTextContent(DEFAULT_FOLDER.name);
-		expect(getByTestId('folder-card-workflow-count')).toHaveTextContent('0');
+		expect(getByTestId('folder-card-workflow-count')).toHaveTextContent('2');
+		expect(getByTestId('folder-card-folder-count')).toHaveTextContent('2');
 		expect(getByTestId('folder-card-last-updated')).toHaveTextContent('Last updated just now');
 		expect(getByTestId('folder-card-created')).toHaveTextContent('Created just now');
 	});
 
-	it('should render breadcrumbs with personal folder', () => {
-		const { getByTestId } = renderComponent();
-		expect(getByTestId('folder-card-icon')).toBeInTheDocument();
-		expect(getByTestId('folder-card-breadcrumbs')).toHaveTextContent('Personal');
-	});
-
-	it('should render breadcrumbs with team project', () => {
-		const { getByTestId } = renderComponent({
+	it('should not render workflow & folder count if they are 0', () => {
+		const { queryByTestId } = renderComponent({
 			props: {
 				data: {
 					...DEFAULT_FOLDER,
-					homeProject: {
-						id: '1',
-						name: 'Project 1',
-						icon: null,
-						type: 'team',
-						createdAt: new Date().toISOString(),
-						updatedAt: new Date().toISOString(),
-					},
+					workflowCount: 0,
+					subFolderCount: 0,
 				},
 			},
 		});
-		expect(getByTestId('folder-card-icon')).toBeInTheDocument();
-		if (!DEFAULT_FOLDER.homeProject?.name) {
-			throw new Error('homeProject should be defined for this test');
-		}
-		expect(getByTestId('folder-card-breadcrumbs')).toHaveTextContent(
-			DEFAULT_FOLDER.homeProject.name,
-		);
-	});
-
-	it('should render breadcrumbs with home project and parent folder', () => {
-		const { getByTestId } = renderComponent({
-			props: {
-				data: {
-					...DEFAULT_FOLDER,
-					homeProject: {
-						id: '1',
-						name: 'Project 1',
-						icon: null,
-						type: 'team',
-						createdAt: new Date().toISOString(),
-						updatedAt: new Date().toISOString(),
-					},
-					parentFolder: PARENT_FOLDER,
-				},
-				breadcrumbs: {
-					visibleItems: [{ id: PARENT_FOLDER.id, label: PARENT_FOLDER.name, parentFolder: '1' }],
-					hiddenItems: [],
-				},
-			},
-		});
-		expect(getByTestId('folder-card-icon')).toBeInTheDocument();
-		if (!DEFAULT_FOLDER.homeProject?.name) {
-			throw new Error('homeProject should be defined for this test');
-		}
-		expect(getByTestId('folder-card-breadcrumbs')).toHaveTextContent(
-			`${DEFAULT_FOLDER.homeProject.name}/.../${PARENT_FOLDER.name}`,
-		);
+		expect(queryByTestId('folder-card-workflow-count')).not.toBeInTheDocument();
+		expect(queryByTestId('folder-card-folder-count')).not.toBeInTheDocument();
 	});
 
 	it('should not render action dropdown if no actions are provided', () => {

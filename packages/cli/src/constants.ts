@@ -29,6 +29,8 @@ export const STARTING_NODES = [
 	'n8n-nodes-base.manualTrigger',
 ];
 
+export const MCP_TRIGGER_NODE_TYPE = '@n8n/n8n-nodes-langchain.mcpTrigger';
+
 export const NODE_PACKAGE_PREFIX = 'n8n-nodes-';
 
 export const STARTER_TEMPLATE_NAME = `${NODE_PACKAGE_PREFIX}starter`;
@@ -94,6 +96,10 @@ export const LICENSE_FEATURES = {
 	ASK_AI: 'feat:askAi',
 	COMMUNITY_NODES_CUSTOM_REGISTRY: 'feat:communityNodes:customRegistry',
 	AI_CREDITS: 'feat:aiCredits',
+	FOLDERS: 'feat:folders',
+	INSIGHTS_VIEW_SUMMARY: 'feat:insights:viewSummary',
+	INSIGHTS_VIEW_DASHBOARD: 'feat:insights:viewDashboard',
+	INSIGHTS_VIEW_HOURLY_DATA: 'feat:insights:viewHourlyData',
 } as const;
 
 export const LICENSE_QUOTAS = {
@@ -103,6 +109,9 @@ export const LICENSE_QUOTAS = {
 	WORKFLOW_HISTORY_PRUNE_LIMIT: 'quota:workflowHistoryPrune',
 	TEAM_PROJECT_LIMIT: 'quota:maxTeamProjects',
 	AI_CREDITS: 'quota:aiCredits',
+	INSIGHTS_MAX_HISTORY_DAYS: 'quota:insights:maxHistoryDays',
+	INSIGHTS_RETENTION_MAX_AGE_DAYS: 'quota:insights:retention:maxAgeDays',
+	INSIGHTS_RETENTION_PRUNE_INTERVAL_DAYS: 'quota:insights:retention:pruneIntervalDays',
 } as const;
 export const UNLIMITED_LICENSE_QUOTA = -1;
 
@@ -194,3 +203,5 @@ export const WsStatusCodes = {
 } as const;
 
 export const FREE_AI_CREDITS_CREDENTIAL_NAME = 'n8n free OpenAI API credits';
+
+export const EVALUATION_METRICS_NODE = `${NODE_PACKAGE_PREFIX}base.evaluationMetrics`;

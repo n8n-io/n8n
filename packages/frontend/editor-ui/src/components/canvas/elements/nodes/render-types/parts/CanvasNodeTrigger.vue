@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { LOGS_PANEL_STATE } from '@/components/CanvasChat/types/logs';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import { useI18n } from '@/composables/useI18n';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
@@ -39,7 +40,7 @@ const uiStore = useUIStore();
 const { runEntireWorkflow } = useRunWorkflow({ router });
 const { toggleChatOpen } = useCanvasOperations({ router });
 
-const isChatOpen = computed(() => workflowsStore.isChatPanelOpen);
+const isChatOpen = computed(() => workflowsStore.logsPanelState !== LOGS_PANEL_STATE.CLOSED);
 const isExecuting = computed(() => uiStore.isActionActive.workflowRunning);
 const testId = computed(() => `execute-workflow-button-${name}`);
 </script>

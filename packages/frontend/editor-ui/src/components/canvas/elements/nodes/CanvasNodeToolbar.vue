@@ -94,17 +94,23 @@ function onMouseLeave() {
 		@mouseleave="onMouseLeave"
 	>
 		<div :class="$style.canvasNodeToolbarItems">
-			<N8nIconButton
-				v-if="isExecuteNodeVisible"
-				data-test-id="execute-node-button"
-				type="tertiary"
-				text
-				size="small"
-				icon="play"
-				:disabled="isExecuting"
-				:title="i18n.baseText('node.testStep')"
-				@click="executeNode"
-			/>
+			<N8nTooltip
+				placement="top"
+				:disabled="!isDisabled"
+				:content="i18n.baseText('ndv.execute.deactivated')"
+			>
+				<N8nIconButton
+					v-if="isExecuteNodeVisible"
+					data-test-id="execute-node-button"
+					type="tertiary"
+					text
+					size="small"
+					icon="play"
+					:disabled="isExecuting || isDisabled"
+					:title="i18n.baseText('node.testStep')"
+					@click="executeNode"
+				/>
+			</N8nTooltip>
 			<N8nIconButton
 				v-if="isDisableNodeVisible"
 				data-test-id="disable-node-button"

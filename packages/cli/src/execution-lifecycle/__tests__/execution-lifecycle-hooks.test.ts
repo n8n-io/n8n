@@ -17,6 +17,7 @@ import type {
 	INode,
 	IWorkflowBase,
 	WorkflowExecuteMode,
+	ITaskStartedData,
 } from 'n8n-workflow';
 
 import config from '@/config';
@@ -68,6 +69,7 @@ describe('Execution Lifecycle Hooks', () => {
 	};
 	const workflow = mock<Workflow>();
 	const staticData = mock<IDataObject>();
+	const taskStartedData = mock<ITaskStartedData>();
 	const taskData = mock<ITaskData>();
 	const runExecutionData = mock<IRunExecutionData>();
 	const successfulRun = mock<IRun>({
@@ -146,7 +148,7 @@ describe('Execution Lifecycle Hooks', () => {
 	const nodeEventsTests = () => {
 		describe('nodeExecuteBefore', () => {
 			it('should emit node-pre-execute event', async () => {
-				await lifecycleHooks.runHook('nodeExecuteBefore', [nodeName]);
+				await lifecycleHooks.runHook('nodeExecuteBefore', [nodeName, taskStartedData]);
 
 				expect(eventService.emit).toHaveBeenCalledWith('node-pre-execute', {
 					executionId,
@@ -246,10 +248,10 @@ describe('Execution Lifecycle Hooks', () => {
 
 		describe('nodeExecuteBefore', () => {
 			it('should send nodeExecuteBefore push event', async () => {
-				await lifecycleHooks.runHook('nodeExecuteBefore', [nodeName]);
+				await lifecycleHooks.runHook('nodeExecuteBefore', [nodeName, taskStartedData]);
 
 				expect(push.send).toHaveBeenCalledWith(
-					{ type: 'nodeExecuteBefore', data: { executionId, nodeName } },
+					{ type: 'nodeExecuteBefore', data: { executionId, nodeName, data: taskStartedData } },
 					pushRef,
 				);
 			});
@@ -471,8 +473,9 @@ describe('Execution Lifecycle Hooks', () => {
 				(successfulRun.data.resultData.runData = {
 					[nodeName]: [
 						{
-							executionTime: 1,
 							startTime: 1,
+							executionIndex: 0,
+							executionTime: 1,
 							source: [],
 							data: {
 								main: [
@@ -517,7 +520,7 @@ describe('Execution Lifecycle Hooks', () => {
 				expect(handlers.workflowExecuteBefore).toHaveLength(2);
 				expect(handlers.workflowExecuteAfter).toHaveLength(4);
 
-				await lifecycleHooks.runHook('nodeExecuteBefore', [nodeName]);
+				await lifecycleHooks.runHook('nodeExecuteBefore', [nodeName, taskStartedData]);
 				await lifecycleHooks.runHook('nodeExecuteAfter', [nodeName, taskData, runExecutionData]);
 				await lifecycleHooks.runHook('workflowExecuteBefore', [workflow, runExecutionData]);
 				await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);

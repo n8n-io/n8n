@@ -72,7 +72,8 @@
 				"n8n-core#test",
 				"n8n#test"
 			],
-			"outputs": ["coverage/**"]
+			"outputs": ["coverage/**"],
+			"inputs": ["jest.config.js"]
 		},
 		"test:frontend": {
 			"dependsOn": [
@@ -82,7 +83,8 @@
 				"@n8n/design-system#test",
 				"n8n-editor-ui#test"
 			],
-			"outputs": ["coverage/**"]
+			"outputs": ["coverage/**"],
+			"inputs": ["jest.config.js"]
 		},
 		"test:nodes": {
 			"dependsOn": [
@@ -90,7 +92,8 @@
 				"@n8n/n8n-nodes-langchain#test",
 				"@n8n/json-schema-to-zod#test"
 			],
-			"outputs": ["coverage/**"]
+			"outputs": ["coverage/**"],
+			"inputs": ["jest.config.js"]
 		},
 		"test": {},
 		"watch": {

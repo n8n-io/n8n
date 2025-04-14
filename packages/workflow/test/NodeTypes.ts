@@ -1,7 +1,7 @@
 import { mock } from 'jest-mock-extended';
 
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type IDataObject,
 	type INodeType,
 	type INodeTypeData,
@@ -62,8 +62,8 @@ const googleSheetsNode: LoadedClass<IVersionedNodeType> = {
 					defaults: {
 						name: 'Google Sheets',
 					},
-					inputs: [NodeConnectionType.Main],
-					outputs: [NodeConnectionType.Main],
+					inputs: [NodeConnectionTypes.Main],
+					outputs: [NodeConnectionTypes.Main],
 					credentials: [
 						{
 							name: 'googleApi',
@@ -288,9 +288,9 @@ const googleSheetsNode: LoadedClass<IVersionedNodeType> = {
 					displayName: 'Google Sheets',
 					group: ['input', 'output'],
 					icon: 'file:googleSheets.svg',
-					inputs: [NodeConnectionType.Main],
+					inputs: [NodeConnectionTypes.Main],
 					name: 'googleSheets',
-					outputs: [NodeConnectionType.Main],
+					outputs: [NodeConnectionTypes.Main],
 					properties: [
 						{
 							default: 'oAuth2',
@@ -553,8 +553,8 @@ const setNode: LoadedClass<INodeType> = {
 				name: 'Set',
 				color: '#0000FF',
 			},
-			inputs: [NodeConnectionType.Main],
-			outputs: [NodeConnectionType.Main],
+			inputs: [NodeConnectionTypes.Main],
+			outputs: [NodeConnectionTypes.Main],
 			properties: [
 				{
 					displayName: 'Value1',
@@ -590,7 +590,7 @@ const manualTriggerNode: LoadedClass<INodeType> = {
 				color: '#909298',
 			},
 			inputs: [],
-			outputs: [NodeConnectionType.Main],
+			outputs: [NodeConnectionTypes.Main],
 			properties: [
 				{
 					displayName:
@@ -828,6 +828,179 @@ const executeWorkflowNode: LoadedClass<INodeType> = {
 	sourcePath: '',
 };
 
+const aiAgentNode: LoadedClass<INodeType> = {
+	sourcePath: '',
+	type: {
+		description: {
+			displayName: 'AI Agent',
+			name: '@n8n/n8n-nodes-langchain.agent',
+			icon: 'fa:robot',
+			iconColor: 'black',
+			group: ['transform'],
+			version: [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8],
+			description: 'Generates an action plan and executes it. Can use external tools.',
+			defaults: {
+				name: 'AI Agent',
+				color: '#404040',
+			},
+			inputs: [
+				NodeConnectionTypes.Main,
+				NodeConnectionTypes.AiLanguageModel,
+				NodeConnectionTypes.AiTool,
+				NodeConnectionTypes.AiMemory,
+			],
+			outputs: [NodeConnectionTypes.Main],
+			properties: [],
+		},
+	},
+};
+
+const wikipediaTool: LoadedClass<INodeType> = {
+	sourcePath: '',
+	type: {
+		description: {
+			displayName: 'Wikipedia',
+			name: '@n8n/n8n-nodes-langchain.toolWikipedia',
+			icon: 'file:wikipedia.svg',
+			group: ['transform'],
+			version: 1,
+			description: 'Search in Wikipedia',
+			defaults: {
+				name: 'Wikipedia',
+			},
+			inputs: [],
+			outputs: [NodeConnectionTypes.AiTool],
+			properties: [],
+		},
+	},
+};
+
+const calculatorTool: LoadedClass<INodeType> = {
+	sourcePath: '',
+	type: {
+		description: {
+			displayName: 'Calculator',
+			name: '@n8n/n8n-nodes-langchain.toolCalculator',
+			icon: 'fa:calculator',
+			iconColor: 'black',
+			group: ['transform'],
+			version: 1,
+			description: 'Make it easier for AI agents to perform arithmetic',
+			defaults: {
+				name: 'Calculator',
+			},
+			inputs: [],
+			outputs: [NodeConnectionTypes.AiTool],
+			properties: [],
+		},
+	},
+};
+
+const googleCalendarTool: LoadedClass<INodeType> = {
+	sourcePath: '',
+	type: {
+		description: {
+			displayName: 'Google Calendar',
+			name: 'n8n-nodes-base.googleCalendarTool',
+			icon: 'file:googleCalendar.svg',
+			group: ['input'],
+			version: [1, 1.1, 1.2, 1.3],
+			subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
+			description: 'Consume Google Calendar API',
+			defaults: {
+				name: 'Google Calendar',
+			},
+			inputs: [NodeConnectionTypes.Main],
+			outputs: [NodeConnectionTypes.Main],
+			usableAsTool: true,
+			properties: [
+				{ name: 'start', type: 'dateTime', displayName: 'Start', default: '' },
+				{
+					displayName: 'Operation',
+					name: 'operation',
+					type: 'options',
+					noDataExpression: true,
+					displayOptions: {
+						show: {
+							resource: ['calendar'],
+						},
+					},
+					options: [
+						{
+							name: 'Availability',
+							value: 'availability',
+							description: 'If a time-slot is available in a calendar',
+							action: 'Get availability in a calendar',
+						},
+					],
+					default: 'availability',
+				},
+				{
+					displayName: 'Operation',
+					name: 'operation',
+					type: 'options',
+					noDataExpression: true,
+					displayOptions: {
+						show: {
+							resource: ['event'],
+						},
+					},
+					options: [
+						{
+							name: 'Create',
+							value: 'create',
+							description: 'Add a event to calendar',
+							action: 'Create an event',
+						},
+						{
+							name: 'Delete',
+							value: 'delete',
+							description: 'Delete an event',
+							action: 'Delete an event',
+						},
+						{
+							name: 'Get',
+							value: 'get',
+							description: 'Retrieve an event',
+							action: 'Get an event',
+						},
+						{
+							name: 'Get Many',
+							value: 'getAll',
+							description: 'Retrieve many events from a calendar',
+							action: 'Get many events',
+						},
+						{
+							name: 'Update',
+							value: 'update',
+							description: 'Update an event',
+							action: 'Update an event',
+						},
+					],
+					default: 'create',
+				},
+				{
+					displayName: 'Resource',
+					name: 'resource',
+					type: 'options',
+					noDataExpression: true,
+					options: [
+						{
+							name: 'Calendar',
+							value: 'calendar',
+						},
+						{
+							name: 'Event',
+							value: 'event',
+						},
+					],
+					default: 'event',
+				},
+			],
+		},
+	},
+};
+
 export class NodeTypes implements INodeTypes {
 	nodeTypes: INodeTypeData = {
 		'n8n-nodes-base.stickyNote': stickyNode,
@@ -848,8 +1021,8 @@ export class NodeTypes implements INodeTypes {
 						name: 'Set Multi',
 						color: '#0000FF',
 					},
-					inputs: [NodeConnectionType.Main],
-					outputs: [NodeConnectionType.Main],
+					inputs: [NodeConnectionTypes.Main],
+					outputs: [NodeConnectionTypes.Main],
 					properties: [
 						{
 							displayName: 'Values',
@@ -887,6 +1060,10 @@ export class NodeTypes implements INodeTypes {
 			},
 		},
 		'n8n-nodes-base.manualTrigger': manualTriggerNode,
+		'@n8n/n8n-nodes-langchain.agent': aiAgentNode,
+		'n8n-nodes-base.googleCalendarTool': googleCalendarTool,
+		'@n8n/n8n-nodes-langchain.toolCalculator': calculatorTool,
+		'@n8n/n8n-nodes-langchain.toolWikipedia': wikipediaTool,
 	};
 
 	getByName(nodeType: string): INodeType | IVersionedNodeType {
@@ -900,6 +1077,7 @@ export class NodeTypes implements INodeTypes {
 		return mock<INodeType>({
 			description: {
 				properties: [],
+				name: nodeType,
 			},
 		});
 	}

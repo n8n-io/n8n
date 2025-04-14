@@ -7,7 +7,7 @@ import * as ldapApi from '@/api/ldap';
 import * as settingsApi from '@/api/settings';
 import { testHealthEndpoint } from '@/api/templates';
 import type { ILdapConfig } from '@/Interface';
-import { STORES, INSECURE_CONNECTION_WARNING } from '@/constants';
+import { STORES, INSECURE_CONNECTION_WARNING, LOCAL_STORAGE_LOGS_2025_SPRING } from '@/constants';
 import { UserManagementAuthenticationMethod } from '@/Interface';
 import type { IDataObject, WorkflowSettings } from 'n8n-workflow';
 import { ExpressionEvaluatorProxy } from 'n8n-workflow';
@@ -182,6 +182,10 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	const isCommunityPlan = computed(() => planName.value.toLowerCase() === 'community');
 
 	const isDevRelease = computed(() => settings.value.releaseChannel === 'dev');
+
+	const isNewLogsEnabled = computed(
+		() => useLocalStorage(LOCAL_STORAGE_LOGS_2025_SPRING, '').value === 'true',
+	);
 
 	const setSettings = (newSettings: FrontendSettings) => {
 		settings.value = newSettings;
@@ -434,6 +438,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isAskAiEnabled,
 		isAiCreditsEnabled,
 		aiCreditsQuota,
+		isNewLogsEnabled,
 		reset,
 		testLdapConnection,
 		getLdapConfig,

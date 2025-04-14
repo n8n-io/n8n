@@ -1,19 +1,15 @@
 {
     "type": "object",
     "properties": {
+        "_id": {
+            "type": "string"
+        },
         "email": {
             "type": "string"
         },
         "status": {
             "type": "string"
-        },
-        "_id": {
-            "type": "string"
         }
     },
-    "required": [
-        "email",
-        "status",
-        "_id"
-    ]
+    "version": 1
 }

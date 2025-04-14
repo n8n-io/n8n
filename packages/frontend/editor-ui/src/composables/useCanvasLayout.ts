@@ -13,6 +13,7 @@ import { GRID_SIZE, NODE_SIZE } from '../utils/nodeViewUtils';
 
 export type CanvasLayoutOptions = { id?: string };
 export type CanvasLayoutTarget = 'selection' | 'all';
+export type CanvasLayoutSource = 'keyboard-shortcut' | 'canvas-button' | 'context-menu';
 export type CanvasLayoutTargetData = {
 	nodes: Array<GraphNode<CanvasNodeData>>;
 	edges: CanvasConnection[];
@@ -25,7 +26,13 @@ export type NodeLayoutResult = {
 	width?: number;
 	height?: number;
 };
-export type LayoutResult = { boundingBox: BoundingBox; nodes: NodeLayoutResult[] };
+export type CanvasLayoutResult = { boundingBox: BoundingBox; nodes: NodeLayoutResult[] };
+
+export type CanvasLayoutEvent = {
+	result: CanvasLayoutResult;
+	source: CanvasLayoutSource;
+	target: CanvasLayoutTarget;
+};
 
 export type CanvasNodeDictionary = Record<string, GraphNode<CanvasNodeData>>;
 
@@ -300,7 +307,7 @@ export function useCanvasLayout({ id: canvasId }: CanvasLayoutOptions = {}) {
 			]);
 	}
 
-	function layout(target: CanvasLayoutTarget): LayoutResult {
+	function layout(target: CanvasLayoutTarget): CanvasLayoutResult {
 		const { nodes, edges } = getTargetData(target);
 
 		const nonStickyNodes = nodes

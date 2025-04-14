@@ -6,7 +6,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { NodeConnectionType, NodeHelpers } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
 
 const nodeFactory = (data: Partial<INodeUi> = {}): INodeUi => ({
 	id: faker.string.uuid(),
@@ -47,6 +47,7 @@ describe('useContextMenu', () => {
 		} as never);
 
 		vi.spyOn(NodeHelpers, 'getNodeInputs').mockReturnValue([]);
+		vi.spyOn(NodeHelpers, 'isExecutable').mockReturnValue(true);
 	});
 
 	afterEach(() => {
@@ -96,14 +97,26 @@ describe('useContextMenu', () => {
 		const basicChain = nodeFactory({ type: BASIC_CHAIN_NODE_TYPE });
 		vi.spyOn(workflowsStore, 'getNodeById').mockReturnValue(basicChain);
 		vi.spyOn(NodeHelpers, 'getConnectionTypes').mockReturnValue([
-			NodeConnectionType.Main,
-			NodeConnectionType.AiLanguageModel,
+			NodeConnectionTypes.Main,
+			NodeConnectionTypes.AiLanguageModel,
 		]);
 		open(mockEvent, { source: 'node-right-click', nodeId: basicChain.id });
 
 		expect(isOpen.value).toBe(true);
 		expect(actions.value.find((action) => action.id === 'toggle_pin')?.disabled).toBe(true);
 		expect(targetNodeIds.value).toEqual([basicChain.id]);
+	});
+
+	it('should disable test step option for sub-nodes (AI tool nodes)', () => {
+		const { open, isOpen, actions, targetNodeIds } = useContextMenu();
+		const subNode = nodeFactory({ type: 'n8n-nodes-base.hackerNewsTool' });
+		vi.spyOn(workflowsStore, 'getNodeById').mockReturnValue(subNode);
+		vi.spyOn(NodeHelpers, 'isExecutable').mockReturnValueOnce(false);
+		open(mockEvent, { source: 'node-right-click', nodeId: subNode.id });
+
+		expect(isOpen.value).toBe(true);
+		expect(actions.value.find((action) => action.id === 'execute')?.disabled).toBe(true);
+		expect(targetNodeIds.value).toEqual([subNode.id]);
 	});
 
 	it('should return the correct actions when right clicking a Node', () => {
@@ -141,7 +154,6 @@ describe('useContextMenu', () => {
 			expect(actions.value).toMatchSnapshot();
 			expect(targetNodeIds.value).toEqual([sticky.id]);
 		});
-
 		it('should return the correct actions when right clicking a Node', () => {
 			vi.spyOn(uiStore, 'isReadOnlyView', 'get').mockReturnValue(true);
 			const { open, isOpen, actions, targetNodeIds } = useContextMenu();

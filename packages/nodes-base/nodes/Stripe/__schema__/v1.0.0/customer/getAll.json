@@ -1,12 +1,6 @@
 {
     "type": "object",
     "properties": {
-        "id": {
-            "type": "string"
-        },
-        "object": {
-            "type": "string"
-        },
         "balance": {
             "type": "integer"
         },
@@ -15,6 +9,9 @@
         },
         "delinquent": {
             "type": "boolean"
+        },
+        "id": {
+            "type": "string"
         },
         "invoice_prefix": {
             "type": "string"
@@ -31,16 +28,13 @@
                 "rendering_options": {
                     "type": "null"
                 }
-            },
-            "required": [
-                "custom_fields",
-                "default_payment_method",
-                "footer",
-                "rendering_options"
-            ]
+            }
         },
         "livemode": {
             "type": "boolean"
+        },
+        "object": {
+            "type": "string"
         },
         "preferred_locales": {
             "type": "array",
@@ -55,27 +49,5 @@
             "type": "null"
         }
     },
-    "required": [
-        "id",
-        "object",
-        "address",
-        "balance",
-        "created",
-        "currency",
-        "default_source",
-        "delinquent",
-        "description",
-        "discount",
-        "email",
-        "invoice_prefix",
-        "invoice_settings",
-        "livemode",
-        "metadata",
-        "name",
-        "phone",
-        "preferred_locales",
-        "shipping",
-        "tax_exempt",
-        "test_clock"
-    ]
+    "version": 1
 }

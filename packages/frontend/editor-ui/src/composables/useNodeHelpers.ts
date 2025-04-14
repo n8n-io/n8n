@@ -6,7 +6,7 @@ import {
 	SPLIT_IN_BATCHES_NODE_TYPE,
 } from '@/constants';
 
-import { NodeHelpers, ExpressionEvaluatorProxy, NodeConnectionType } from 'n8n-workflow';
+import { NodeHelpers, ExpressionEvaluatorProxy, NodeConnectionTypes } from 'n8n-workflow';
 import type {
 	INodeProperties,
 	INodeCredentialDescription,
@@ -27,6 +27,7 @@ import type {
 	INodeParameters,
 	INodeTypeNameVersion,
 	NodeParameterValue,
+	NodeConnectionType,
 } from 'n8n-workflow';
 
 import type {
@@ -105,7 +106,17 @@ export function useNodeHelpers() {
 		node: INodeUi | null,
 		displayKey: 'displayOptions' | 'disabledOptions' = 'displayOptions',
 	) {
-		return NodeHelpers.displayParameterPath(nodeValues, parameter, path, node, displayKey);
+		const nodeTypeDescription = node?.type
+			? nodeTypesStore.getNodeType(node.type, node.typeVersion)
+			: null;
+		return NodeHelpers.displayParameterPath(
+			nodeValues,
+			parameter,
+			path,
+			node,
+			nodeTypeDescription,
+			displayKey,
+		);
 	}
 
 	function getNodeIssues(
@@ -136,7 +147,7 @@ export function useNodeHelpers() {
 
 			// Add potential parameter issues
 			if (!ignoreIssues.includes('parameters')) {
-				nodeIssues = NodeHelpers.getNodeParametersIssues(nodeType.properties, node);
+				nodeIssues = NodeHelpers.getNodeParametersIssues(nodeType.properties, node, nodeType);
 			}
 
 			if (!ignoreIssues.includes('credentials')) {
@@ -286,6 +297,7 @@ export function useNodeHelpers() {
 		const fullNodeIssues: INodeIssues | null = NodeHelpers.getNodeParametersIssues(
 			localNodeType.properties,
 			node,
+			nodeType ?? null,
 		);
 
 		let newIssues: INodeIssueObjectProperty | null = null;
@@ -560,7 +572,7 @@ export function useNodeHelpers() {
 		runIndex = 0,
 		outputIndex = 0,
 		paneType: NodePanelType = 'output',
-		connectionType: NodeConnectionType = NodeConnectionType.Main,
+		connectionType: NodeConnectionType = NodeConnectionTypes.Main,
 	): INodeExecutionData[] {
 		//TODO: check if this needs to be fixed in different place
 		if (
@@ -592,7 +604,7 @@ export function useNodeHelpers() {
 	function getInputData(
 		connectionsData: ITaskDataConnections,
 		outputIndex: number,
-		connectionType: NodeConnectionType = NodeConnectionType.Main,
+		connectionType: NodeConnectionType = NodeConnectionTypes.Main,
 	): INodeExecutionData[] {
 		return connectionsData?.[connectionType]?.[outputIndex] ?? [];
 	}
@@ -602,7 +614,7 @@ export function useNodeHelpers() {
 		node: string | null,
 		runIndex: number,
 		outputIndex: number,
-		connectionType: NodeConnectionType = NodeConnectionType.Main,
+		connectionType: NodeConnectionType = NodeConnectionTypes.Main,
 	): IBinaryKeyData[] {
 		if (node === null) {
 			return [];

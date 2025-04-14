@@ -14,7 +14,7 @@ import type {
 	ITriggerResponse,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError, TriggerCloseError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, TriggerCloseError } from 'n8n-workflow';
 import rfc2047 from 'rfc2047';
 
 import { getNewEmails } from './utils';
@@ -47,7 +47,7 @@ const versionDescription: INodeTypeDescription = {
 	},
 	usableAsTool: true,
 	inputs: [],
-	outputs: [NodeConnectionType.Main],
+	outputs: [NodeConnectionTypes.Main],
 	credentials: [
 		{
 			name: 'imap',

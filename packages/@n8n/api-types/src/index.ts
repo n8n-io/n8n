@@ -27,3 +27,11 @@ export {
 	SOURCE_CONTROL_FILE_STATUS,
 	SOURCE_CONTROL_FILE_TYPE,
 } from './schemas/source-controlled-file.schema';
+
+export type {
+	InsightsSummaryType,
+	InsightsSummaryUnit,
+	InsightsSummary,
+	InsightsByWorkflow,
+	InsightsByTime,
+} from './schemas/insights.schema';

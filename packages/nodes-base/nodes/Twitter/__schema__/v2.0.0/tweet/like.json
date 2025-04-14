@@ -1,11 +1,9 @@
 {
-	"type": "object",
-	"properties": {
-		"liked": {
-			"type": "boolean"
-		}
-	},
-	"required": [
-		"liked"
-	]
+    "type": "object",
+    "properties": {
+        "liked": {
+            "type": "boolean"
+        }
+    },
+    "version": 1
 }

@@ -21,8 +21,8 @@ import config from '@/config';
 import type { ExecutionEntity } from '@/databases/entities/execution-entity';
 import type { User } from '@/databases/entities/user';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
+import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import { Telemetry } from '@/telemetry';
-import { PermissionChecker } from '@/user-management/permission-checker';
 import { WorkflowRunner } from '@/workflow-runner';
 import { mockInstance } from '@test/mocking';
 import { createExecution } from '@test-integration/db/executions';
@@ -131,7 +131,7 @@ describe('run', () => {
 		const activeExecutions = Container.get(ActiveExecutions);
 		jest.spyOn(activeExecutions, 'add').mockResolvedValue('1');
 		jest.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
-		const permissionChecker = Container.get(PermissionChecker);
+		const permissionChecker = Container.get(CredentialsPermissionChecker);
 		jest.spyOn(permissionChecker, 'check').mockResolvedValueOnce();
 
 		jest.spyOn(WorkflowExecute.prototype, 'processRunExecutionData').mockReturnValueOnce(
@@ -171,7 +171,7 @@ describe('run', () => {
 		const activeExecutions = Container.get(ActiveExecutions);
 		jest.spyOn(activeExecutions, 'add').mockResolvedValue('1');
 		jest.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
-		const permissionChecker = Container.get(PermissionChecker);
+		const permissionChecker = Container.get(CredentialsPermissionChecker);
 		jest.spyOn(permissionChecker, 'check').mockResolvedValueOnce();
 
 		jest.spyOn(WorkflowExecute.prototype, 'processRunExecutionData').mockReturnValueOnce(

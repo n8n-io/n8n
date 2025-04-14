@@ -104,7 +104,7 @@ const dirtiness = computed(() =>
 	display: flex;
 	align-items: center;
 	gap: var(--spacing-5xs);
-	font-weight: 600;
+	font-weight: var(--font-weight-bold);
 }
 
 .runData {

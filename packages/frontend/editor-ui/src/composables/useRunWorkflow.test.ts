@@ -2,19 +2,18 @@ import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { useRouter } from 'vue-router';
 import type router from 'vue-router';
-import {
-	ExpressionError,
-	type IPinData,
-	type IRunData,
-	type Workflow,
-	type IExecuteData,
-	type ITaskData,
-	NodeConnectionType,
-	type INodeConnections,
+import { ExpressionError, NodeConnectionTypes } from 'n8n-workflow';
+import type {
+	IPinData,
+	IRunData,
+	Workflow,
+	IExecuteData,
+	ITaskData,
+	INodeConnections,
 } from 'n8n-workflow';
 
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
-import type { IStartRunData, IWorkflowData } from '@/Interface';
+import type { IExecutionResponse, IStartRunData, IWorkflowData } from '@/Interface';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
@@ -23,30 +22,42 @@ import { useI18n } from '@/composables/useI18n';
 import { captor, mock } from 'vitest-mock-extended';
 import { useSettingsStore } from '@/stores/settings.store';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
-import { createTestNode } from '@/__tests__/mocks';
+import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
+import { waitFor } from '@testing-library/vue';
 
-vi.mock('@/stores/workflows.store', () => ({
-	useWorkflowsStore: vi.fn().mockReturnValue({
+vi.mock('@/stores/workflows.store', async () => {
+	const storeState: Partial<ReturnType<typeof useWorkflowsStore>> & {
+		activeExecutionId: string | null;
+	} = {
 		allNodes: [],
 		runWorkflow: vi.fn(),
 		subWorkflowExecutionError: null,
 		getWorkflowRunData: null,
+		workflowExecutionData: null,
 		setWorkflowExecutionData: vi.fn(),
 		activeExecutionId: null,
+		previousExecutionId: null,
 		nodesIssuesExist: false,
 		executionWaitingForWebhook: false,
 		getCurrentWorkflow: vi.fn().mockReturnValue({ id: '123' }),
 		getNodeByName: vi.fn(),
 		getExecution: vi.fn(),
-		nodeIssuesExit: vi.fn(),
 		checkIfNodeHasChatParent: vi.fn(),
 		getParametersLastUpdate: vi.fn(),
 		getPinnedDataLastUpdate: vi.fn(),
 		getPinnedDataLastRemovedAt: vi.fn(),
 		incomingConnectionsByNodeName: vi.fn(),
 		outgoingConnectionsByNodeName: vi.fn(),
-	}),
-}));
+		markExecutionAsStopped: vi.fn(),
+		setActiveExecutionId: vi.fn((id: string | null) => {
+			storeState.activeExecutionId = id;
+		}),
+	};
+
+	return {
+		useWorkflowsStore: vi.fn().mockReturnValue(storeState),
+	};
+});
 
 vi.mock('@/stores/pushConnection.store', () => ({
 	usePushConnectionStore: vi.fn().mockReturnValue({
@@ -149,6 +160,7 @@ describe('useRunWorkflow({ router })', () => {
 
 			const mockResponse = { executionId: '123', waitingForWebhook: false };
 			vi.mocked(workflowsStore).runWorkflow.mockResolvedValue(mockResponse);
+			vi.mocked(workflowsStore).setActiveExecutionId('123');
 
 			const response = await runWorkflowApi({} as IStartRunData);
 
@@ -340,18 +352,19 @@ describe('useRunWorkflow({ router })', () => {
 			];
 			vi.mocked(workflowsStore).outgoingConnectionsByNodeName.mockImplementation((nodeName) =>
 				nodeName === parentName
-					? { main: [[{ node: executeName, type: NodeConnectionType.Main, index: 0 }]] }
+					? { main: [[{ node: executeName, type: NodeConnectionTypes.Main, index: 0 }]] }
 					: ({} as INodeConnections),
 			);
 			vi.mocked(workflowsStore).incomingConnectionsByNodeName.mockImplementation((nodeName) =>
 				nodeName === executeName
-					? { main: [[{ node: parentName, type: NodeConnectionType.Main, index: 0 }]] }
+					? { main: [[{ node: parentName, type: NodeConnectionTypes.Main, index: 0 }]] }
 					: ({} as INodeConnections),
 			);
 			vi.mocked(workflowsStore).getWorkflowRunData = {
 				[parentName]: [
 					{
 						startTime: 1,
+						executionIndex: 0,
 						executionTime: 0,
 						source: [],
 					},
@@ -359,6 +372,7 @@ describe('useRunWorkflow({ router })', () => {
 				[executeName]: [
 					{
 						startTime: 1,
+						executionIndex: 1,
 						executionTime: 8,
 						source: [
 							{
@@ -669,6 +683,43 @@ describe('useRunWorkflow({ router })', () => {
 					nodes: [],
 				},
 			});
+		});
+	});
+
+	describe('stopCurrentExecution()', () => {
+		it('should not prematurely call markExecutionAsStopped() while execution status is still "running"', async () => {
+			const runWorkflowComposable = useRunWorkflow({ router });
+			const executionData: IExecutionResponse = {
+				id: 'test-exec-id',
+				workflowData: createTestWorkflow({ id: 'test-wf-id' }),
+				finished: false,
+				mode: 'manual',
+				status: 'running',
+				startedAt: new Date('2025-04-01T00:00:00.000Z'),
+				createdAt: new Date('2025-04-01T00:00:00.000Z'),
+			};
+			const markStoppedSpy = vi.spyOn(workflowsStore, 'markExecutionAsStopped');
+
+			workflowsStore.workflowExecutionData = executionData;
+			workflowsStore.activeWorkflows = ['test-wf-id'];
+			workflowsStore.setActiveExecutionId('test-exec-id');
+
+			// Exercise - don't wait for returned promise to resolve
+			void runWorkflowComposable.stopCurrentExecution();
+
+			// Assert that markExecutionAsStopped() isn't called yet after a simulated delay
+			await new Promise((resolve) => setTimeout(resolve, 10));
+			expect(markStoppedSpy).not.toHaveBeenCalled();
+
+			// Simulated executionFinished event
+			workflowsStore.workflowExecutionData = {
+				...executionData,
+				status: 'canceled',
+				stoppedAt: new Date('2025-04-01T00:00:99.000Z'),
+			};
+
+			// Assert that markExecutionAsStopped() is called eventually
+			await waitFor(() => expect(markStoppedSpy).toHaveBeenCalled());
 		});
 	});
 });

@@ -1,7 +1,7 @@
 import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 import { DateTime } from 'luxon';
-import type { INode, IPinData, IWorkflowBase } from 'n8n-workflow';
+import { PROJECT_ROOT, type INode, type IPinData, type IWorkflowBase } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
@@ -1056,8 +1056,7 @@ describe('GET /workflows', () => {
 						parentFolder: {
 							id: folder.id,
 							name: folder.name,
-							createdAt: expect.any(String),
-							updatedAt: expect.any(String),
+							parentFolderId: null,
 						},
 					},
 					{
@@ -1321,6 +1320,7 @@ describe('GET /workflows?includeFolders=true', () => {
 					},
 					parentFolder: null,
 					workflowCount: 0,
+					subFolderCount: 0,
 				}),
 			]),
 		});
@@ -1612,6 +1612,66 @@ describe('GET /workflows?includeFolders=true', () => {
 				.expect(200);
 
 			expect(response2.body.data).toHaveLength(0);
+		});
+
+		test('should filter workflows by parentFolderId and its descendants when filtering by name', async () => {
+			const pp = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(owner.id);
+
+			await createFolder(pp, {
+				name: 'Root Folder 1',
+			});
+
+			const rootFolder2 = await createFolder(pp, {
+				name: 'Root Folder 2',
+			});
+
+			await createFolder(pp, {
+				name: 'Root Folder 3',
+			});
+
+			const subfolder1 = await createFolder(pp, {
+				name: 'Root folder 2 subfolder 1 key',
+				parentFolder: rootFolder2,
+			});
+
+			await createWorkflow(
+				{
+					name: 'Workflow 1 key',
+					parentFolder: rootFolder2,
+				},
+				pp,
+			);
+
+			await createWorkflow(
+				{
+					name: 'workflow 2 key',
+					parentFolder: rootFolder2,
+				},
+				pp,
+			);
+
+			await createWorkflow(
+				{
+					name: 'workflow 3 key',
+					parentFolder: subfolder1,
+				},
+				pp,
+			);
+
+			const filter2Response = await authOwnerAgent
+				.get('/workflows')
+				.query(
+					`filter={ "projectId": "${pp.id}", "parentFolderId": "${rootFolder2.id}", "name": "key" }&includeFolders=true`,
+				);
+
+			expect(filter2Response.body.count).toBe(4);
+			expect(filter2Response.body.data).toHaveLength(4);
+			expect(
+				filter2Response.body.data.filter((w: WorkflowFolderUnionFull) => w.resource === 'workflow'),
+			).toHaveLength(3);
+			expect(
+				filter2Response.body.data.filter((w: WorkflowFolderUnionFull) => w.resource === 'folder'),
+			).toHaveLength(1);
 		});
 
 		test('should return homeProject when filtering workflows and folders by projectId', async () => {
@@ -2042,6 +2102,67 @@ describe('PATCH /workflows/:workflowId', () => {
 
 		expect(updatedWorkflow.id).toBe(workflow.id);
 		expect(updatedWorkflow.meta).toEqual(payload.meta);
+	});
+
+	test('should move workflow to folder', async () => {
+		const ownerPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(owner.id);
+		const folder1 = await createFolder(ownerPersonalProject, { name: 'folder1' });
+
+		const workflow = await createWorkflow({}, owner);
+		const payload = {
+			versionId: workflow.versionId,
+			parentFolderId: folder1.id,
+		};
+
+		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
+
+		expect(response.statusCode).toBe(200);
+
+		const updatedWorkflow = await Container.get(WorkflowRepository).findOneOrFail({
+			where: { id: workflow.id },
+			relations: ['parentFolder'],
+		});
+
+		expect(updatedWorkflow.parentFolder?.id).toBe(folder1.id);
+	});
+
+	test('should move workflow to project root', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const payload = {
+			versionId: workflow.versionId,
+			parentFolderId: PROJECT_ROOT,
+		};
+
+		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
+
+		expect(response.statusCode).toBe(200);
+
+		const updatedWorkflow = await Container.get(WorkflowRepository).findOneOrFail({
+			where: { id: workflow.id },
+			relations: ['parentFolder'],
+		});
+
+		expect(updatedWorkflow.parentFolder).toBe(null);
+	});
+
+	test('should fail if trying update workflow parent folder with a folder that does not belong to project', async () => {
+		const ownerPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(owner.id);
+		const memberPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(
+			member.id,
+		);
+
+		await createFolder(ownerPersonalProject, { name: 'folder1' });
+		const folder2 = await createFolder(memberPersonalProject, { name: 'folder2' });
+
+		const workflow = await createWorkflow({}, owner);
+		const payload = {
+			versionId: workflow.versionId,
+			parentFolderId: folder2.id,
+		};
+
+		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
+
+		expect(response.statusCode).toBe(500);
 	});
 });
 

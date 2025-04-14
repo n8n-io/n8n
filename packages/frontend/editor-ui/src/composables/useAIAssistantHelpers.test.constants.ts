@@ -1,6 +1,6 @@
 import { VIEWS } from '@/constants';
 import type { ChatRequest } from '@/types/assistant.types';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 export const PAYLOAD_SIZE_FOR_1_PASS = 4;
 export const PAYLOAD_SIZE_FOR_2_PASSES = 2;
@@ -115,7 +115,7 @@ export const SUPPORT_CHAT_TEST_PAYLOAD: ChatRequest.RequestPayload = {
 							[
 								{
 									node: 'Edit Fields',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -126,22 +126,22 @@ export const SUPPORT_CHAT_TEST_PAYLOAD: ChatRequest.RequestPayload = {
 							[
 								{
 									node: 'Bad request no chat found',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 								{
 									node: 'Slack',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 								{
 									node: 'Edit Fields1',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 								{
 									node: 'Edit Fields2',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -278,6 +278,7 @@ export const SUPPORT_CHAT_TEST_PAYLOAD: ChatRequest.RequestPayload = {
 						{
 							hints: [],
 							startTime: 1737540693122,
+							executionIndex: 0,
 							executionTime: 1,
 							source: [],
 							executionStatus: 'success',
@@ -287,6 +288,7 @@ export const SUPPORT_CHAT_TEST_PAYLOAD: ChatRequest.RequestPayload = {
 						{
 							hints: [],
 							startTime: 1737540693124,
+							executionIndex: 1,
 							executionTime: 2,
 							source: [
 								{
@@ -300,6 +302,7 @@ export const SUPPORT_CHAT_TEST_PAYLOAD: ChatRequest.RequestPayload = {
 						{
 							hints: [],
 							startTime: 1737540693126,
+							executionIndex: 2,
 							executionTime: 0,
 							source: [
 								{
@@ -313,6 +316,7 @@ export const SUPPORT_CHAT_TEST_PAYLOAD: ChatRequest.RequestPayload = {
 						{
 							hints: [],
 							startTime: 1737540693127,
+							executionIndex: 3,
 							executionTime: 0,
 							source: [
 								{
@@ -326,6 +330,7 @@ export const SUPPORT_CHAT_TEST_PAYLOAD: ChatRequest.RequestPayload = {
 						{
 							hints: [],
 							startTime: 1737540693127,
+							executionIndex: 4,
 							executionTime: 28,
 							source: [
 								{
