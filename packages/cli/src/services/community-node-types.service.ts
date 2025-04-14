@@ -1,39 +1,17 @@
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import axios from 'axios';
 import { Logger } from 'n8n-core';
 import type { CommunityNodeAttributes, INodeTypeDescription } from 'n8n-workflow';
 import { ensureError } from 'n8n-workflow';
 
 import { CommunityPackagesService } from './community-packages.service';
-
-interface ResponseData {
-	data: Data[];
-	meta: Meta;
-}
-
-interface Meta {
-	pagination: Pagination;
-}
-
-interface Pagination {
-	page: number;
-	pageSize: number;
-	pageCount: number;
-	total: number;
-}
-
-interface Data {
-	id: number;
-	attributes: CommunityNodeAttributes & {
-		nodeDescription: INodeTypeDescription;
-	};
-}
+import { strapiPaginatedRequest, type StrapiData } from '../utils/strapi-utils';
 
 const UPDATE_INTERVAL = 8 * 60 * 60 * 1000;
 
-const N8N_VETTED_NODE_TYPES_URL =
-	'https://shareholders-environment-sponsorship-boats.trycloudflare.com/api/community-nodes';
+// const N8N_VETTED_NODE_TYPES_URL =
+// 	'https://shareholders-environment-sponsorship-boats.trycloudflare.com/api/community-nodes';
+const N8N_VETTED_NODE_TYPES_URL = 'http://localhost:5678/webhook/strapi-mock';
 
 @Service()
 export class CommunityNodeTypesService {
@@ -51,40 +29,14 @@ export class CommunityNodeTypesService {
 		private communityPackagesService: CommunityPackagesService,
 	) {}
 
-	private async strapiPaginatedRequest() {
-		let returnData: Data[] = [];
-		let responseData;
-
-		const params = {
-			pagination: {
-				page: 1,
-				pageSize: 25,
-			},
-		};
-
-		do {
-			const response = await axios.get<ResponseData>(N8N_VETTED_NODE_TYPES_URL, {
-				headers: { 'Content-Type': 'application/json' },
-				params,
-			});
-
-			responseData = response?.data?.data;
-			if (!responseData?.length) break;
-			returnData = returnData.concat(responseData);
-			params.pagination.page++;
-		} while (!responseData.length);
-
-		return returnData;
-	}
-
 	private async fetchNodeTypes() {
 		try {
-			let data: Data[] = [];
+			let data: StrapiData[] = [];
 			if (
 				this.globalConfig.nodes.communityPackages.enabled &&
 				this.globalConfig.nodes.communityPackages.vettedEnabled
 			) {
-				data = await this.strapiPaginatedRequest();
+				data = await strapiPaginatedRequest(N8N_VETTED_NODE_TYPES_URL);
 			}
 
 			this.updateData(data);
@@ -93,7 +45,7 @@ export class CommunityNodeTypesService {
 		}
 	}
 
-	private updateData(data: Data[]) {
+	private updateData(data: StrapiData[]) {
 		if (!data?.length) return;
 
 		this.resetData();

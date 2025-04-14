@@ -2,8 +2,6 @@ import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import axios from 'axios';
 import { exec } from 'child_process';
-import type { BinaryLike } from 'crypto';
-import crypto from 'crypto';
 import { access as fsAccess, mkdir as fsMkdir } from 'fs/promises';
 import type { PackageDirectoryLoader } from 'n8n-core';
 import { InstanceSettings, Logger } from 'n8n-core';
@@ -26,6 +24,8 @@ import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { toError } from '@/utils';
+
+import { verifyIntegrity } from '../utils/npm-utils';
 
 const DEFAULT_REGISTRY = 'https://registry.npmjs.org';
 
@@ -340,26 +340,6 @@ export class CommunityPackagesService {
 		return registry;
 	}
 
-	private async getPackageMetadata(packageName: string, version: string, registryUrl: string) {
-		registryUrl = `${registryUrl}/${packageName.replace('/', '%2F')}`;
-		const response = await axios.get<{ dist: { tarball: string } }>(`${registryUrl}/${version}`);
-		return response.data;
-	}
-
-	private async verifyPackageIntegrity(
-		tarballUrl: string,
-		expectedIntegrity: string,
-	): Promise<void> {
-		const { data } = await axios.get<BinaryLike>(tarballUrl, { responseType: 'arraybuffer' });
-
-		const expected = expectedIntegrity.split('-')[1];
-		const actualHash = crypto.createHash('sha512').update(data).digest('base64');
-
-		if (actualHash !== expected) {
-			throw new UnexpectedError('Checksum verification failed. Package integrity does not match.');
-		}
-	}
-
 	private checkInstallPermissions(isUpdate: boolean, isVettedPackageInstall: boolean) {
 		if (isUpdate) return;
 
@@ -382,13 +362,7 @@ export class CommunityPackagesService {
 		this.checkInstallPermissions(isUpdate, isVettedPackageInstall);
 
 		if (!isUpdate && options.checksum) {
-			const metadata = await this.getPackageMetadata(
-				packageName,
-				options.version || 'latest',
-				registryUrl,
-			);
-			const tarballUrl = metadata.dist.tarball;
-			await this.verifyPackageIntegrity(tarballUrl, options.checksum);
+			await verifyIntegrity(packageName, packageVersion, registryUrl, options.checksum);
 		}
 
 		try {

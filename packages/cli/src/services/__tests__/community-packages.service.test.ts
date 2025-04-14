@@ -45,6 +45,7 @@ describe('CommunityPackagesService', () => {
 			communityPackages: {
 				reinstallMissing: false,
 				registry: 'some.random.host',
+				blockNotVetted: false,
 			},
 		},
 	});
@@ -437,6 +438,16 @@ describe('CommunityPackagesService', () => {
 			//
 			await expect(promise).rejects.toThrow(
 				'Your license does not allow for feat:communityNodes:customRegistry.',
+			);
+		});
+	});
+
+	describe('installPackage', () => {
+		test('should throw when installation of not vetted packages is forbidden', async () => {
+			globalConfig.nodes.communityPackages.blockNotVetted = true;
+			globalConfig.nodes.communityPackages.registry = 'https://registry.npmjs.org';
+			await expect(communityPackagesService.installPackage('package', '0.1.0')).rejects.toThrow(
+				'Installation of non-vetted community packages is forbidden!',
 			);
 		});
 	});
