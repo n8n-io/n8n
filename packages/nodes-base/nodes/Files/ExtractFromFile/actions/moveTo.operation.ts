@@ -9,7 +9,7 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 import { BINARY_ENCODING, NodeOperationError, deepCopy, jsonParse } from 'n8n-workflow';
-import { icsCalendarToObject } from 'ts-ics';
+import { convertIcsCalendar } from 'ts-ics';
 
 import { encodeDecodeOptions } from '@utils/descriptions';
 import { updateDisplayOptions } from '@utils/utilities';
@@ -143,7 +143,7 @@ export async function execute(
 			}
 
 			if (operation === 'fromIcs') {
-				convertedValue = icsCalendarToObject(convertedValue as string);
+				convertedValue = convertIcsCalendar(undefined, convertedValue as string);
 			}
 
 			const destinationKey = this.getNodeParameter('destinationKey', itemIndex, '') as string;
