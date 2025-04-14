@@ -173,7 +173,12 @@ export class PublicApiKeyService {
 
 	getApiKeyScopeMiddleware(endpointScope: ApiKeyScope) {
 		return async (req: Request, res: Response, next: NextFunction) => {
-			const apiKey = req.headers['x-n8n-api-key'] as string;
+			const apiKey = req.headers['x-n8n-api-key'];
+
+			if (apiKey === undefined || typeof apiKey !== 'string') {
+				res.status(401).json({ message: 'Unauthorized' });
+				return;
+			}
 
 			const valid = await this.apiKeyHasValidScopes(apiKey, endpointScope);
 
