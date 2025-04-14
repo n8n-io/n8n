@@ -157,7 +157,9 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isCommunityNodesFeatureEnabled = computed(() => settings.value.communityNodesEnabled);
 
-	const isNotVettedPackagesBlocked = computed(() => settings.value.blockNotVetted);
+	const isNotVettedPackagesBlocked = computed(() =>
+		isCloudDeployment.value ? true : settings.value.blockNotVetted,
+	);
 
 	const allowedModules = computed(() => settings.value.allowedModules);
 
