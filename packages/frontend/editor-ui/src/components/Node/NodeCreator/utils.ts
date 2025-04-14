@@ -94,8 +94,8 @@ export function sortNodeCreateElements(nodes: INodeCreateElement[]) {
 // but still want to show matching results when the user types `Telegram Tri` or `Telegram Trigger`
 // Ideally this would be handled via metadata, but that is a larger refactor.
 export function removeTrailingTrigger(searchFilter: string) {
-	const parts = searchFilter.split(' ');
-	if (parts.length > 1 && 'trigger'.startsWith(parts.slice(-1)[0]?.toLowerCase() ?? 'a')) {
+	const parts = searchFilter.toLowerCase().split(' ');
+	if (parts.length > 1 && 'trigger'.startsWith(parts.slice(-1)[0] ?? 'a')) {
 		return parts.slice(0, -1).join(' ').trimEnd();
 	}
 	return searchFilter;
