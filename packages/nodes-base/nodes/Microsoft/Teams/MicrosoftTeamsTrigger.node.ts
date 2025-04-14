@@ -343,32 +343,21 @@ export class MicrosoftTeamsTrigger implements INodeType {
 			},
 
 			async delete(this: IHookFunctions): Promise<boolean> {
-				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
+				const storedIds = webhookData.subscriptionIds as string[] | undefined;
+
+				if (!Array.isArray(storedIds)) {
+					return false;
+				}
 
 				try {
-					const subscriptions = (await microsoftApiRequestAllItems.call(
-						this as unknown as ILoadOptionsFunctions,
-						'value',
-						'GET',
-						'/v1.0/subscriptions',
-					)) as SubscriptionResponse[];
-
-					const matchingSubscriptions = subscriptions.filter(
-						(subscription) => subscription.notificationUrl === webhookUrl,
-					);
-
-					if (matchingSubscriptions.length === 0) {
-						return false;
-					}
-
 					await Promise.all(
-						matchingSubscriptions.map(async (subscription) => {
+						storedIds.map(async (subscriptionId) => {
 							try {
 								await microsoftApiRequest.call(
 									this as unknown as IExecuteFunctions,
 									'DELETE',
-									`/v1.0/subscriptions/${subscription.id}`,
+									`/v1.0/subscriptions/${subscriptionId}`,
 								);
 							} catch (error) {
 								if ((error as JsonObject).httpStatusCode !== 404) {
@@ -378,7 +367,7 @@ export class MicrosoftTeamsTrigger implements INodeType {
 						}),
 					);
 
-					webhookData.subscriptionIds = [];
+					delete webhookData.subscriptionIds;
 					return true;
 				} catch (error) {
 					return false;

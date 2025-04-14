@@ -126,19 +126,14 @@ describe('Microsoft Teams Trigger Node', () => {
 		});
 
 		describe('delete', () => {
-			it('should delete a subscription successfully', async () => {
-				(microsoftApiRequestAllItems.call as jest.Mock).mockResolvedValue([
-					{ id: 'subscription123', notificationUrl: 'https://webhook.url' },
-				]);
+			it('should delete subscriptions using stored IDs and clean static data', async () => {
+				const mockWebhookData = {
+					subscriptionIds: ['subscription123'],
+				};
+
+				mockWebhookFunctions.getWorkflowStaticData.mockReturnValue(mockWebhookData);
 
 				(microsoftApiRequest.call as jest.Mock).mockResolvedValue({});
-
-				mockWebhookFunctions.getNodeWebhookUrl.mockReturnValue('https://webhook.url');
-				mockWebhookFunctions.getWorkflowStaticData.mockReturnValue({
-					node: {
-						subscriptionIds: ['subscription123'],
-					},
-				});
 
 				const result = await new MicrosoftTeamsTrigger().webhookMethods.default.delete.call(
 					mockWebhookFunctions,
@@ -149,6 +144,7 @@ describe('Microsoft Teams Trigger Node', () => {
 					'DELETE',
 					'/v1.0/subscriptions/subscription123',
 				);
+				expect(mockWebhookData.subscriptionIds).toBeUndefined();
 			});
 
 			it('should return false if no subscription matches', async () => {

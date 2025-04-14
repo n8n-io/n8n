@@ -4,7 +4,6 @@ import { NodeApiError } from 'n8n-workflow';
 import {
 	fetchAllTeams,
 	fetchAllChannels,
-	fetchAllChats,
 	createSubscription,
 	getResourcePath,
 } from '../../v2/helpers/utils-trigger';
@@ -86,37 +85,6 @@ describe('Microsoft Teams Helpers Functions', () => {
 
 			await expect(fetchAllChannels.call(mockLoadOptionsFunctions, 'team1')).rejects.toThrow(
 				'Failed to fetch channels',
-			);
-		});
-	});
-
-	describe('fetchAllChats', () => {
-		it('should fetch all chats and map them correctly', async () => {
-			(microsoftApiRequest.call as jest.Mock).mockResolvedValue({
-				value: [
-					{ id: 'chat1', topic: 'Chat 1', webUrl: 'https://teams.microsoft.com/chat1' },
-					{ id: 'chat2', topic: 'Chat 2', webUrl: 'https://teams.microsoft.com/chat2' },
-				],
-			});
-
-			const result = await fetchAllChats.call(mockLoadOptionsFunctions);
-
-			expect(result).toEqual([
-				{ id: 'chat1', displayName: 'Chat 1', url: 'https://teams.microsoft.com/chat1' },
-				{ id: 'chat2', displayName: 'Chat 2', url: 'https://teams.microsoft.com/chat2' },
-			]);
-			expect(microsoftApiRequest.call).toHaveBeenCalledWith(
-				mockLoadOptionsFunctions,
-				'GET',
-				'/v1.0/chats',
-			);
-		});
-
-		it('should throw an error if getChats fails', async () => {
-			(microsoftApiRequest.call as jest.Mock).mockRejectedValue(new Error('Failed to fetch chats'));
-
-			await expect(fetchAllChats.call(mockLoadOptionsFunctions)).rejects.toThrow(
-				'Failed to fetch chats',
 			);
 		});
 	});
