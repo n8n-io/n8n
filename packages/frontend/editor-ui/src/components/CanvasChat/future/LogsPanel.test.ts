@@ -112,7 +112,9 @@ describe('LogsPanel', () => {
 		expect(rendered.getByTestId('log-details')).toBeInTheDocument();
 
 		// Click again to close the panel
-		await fireEvent.click(await rendered.findByText('AI Agent'));
+		await fireEvent.click(
+			await within(rendered.getByTestId('logs-overview-body')).findByText('AI Agent'),
+		);
 		expect(rendered.queryByTestId('log-details')).not.toBeInTheDocument();
 	});
 
@@ -130,11 +132,11 @@ describe('LogsPanel', () => {
 		// Click the toggle button to close the panel
 		await fireEvent.click(within(detailsPanel).getByLabelText('Collapse panel'));
 		expect(rendered.queryByTestId('chat-messages-empty')).not.toBeInTheDocument();
-		expect(rendered.queryByText('AI Agent', { exact: false })).not.toBeInTheDocument();
+		expect(rendered.queryByTestId('logs-overview-body')).not.toBeInTheDocument();
 
 		// Click again to open the panel
 		await fireEvent.click(within(detailsPanel).getByLabelText('Open panel'));
 		expect(await rendered.findByTestId('chat-messages-empty')).toBeInTheDocument();
-		expect(await rendered.findByText('AI Agent', { exact: false })).toBeInTheDocument();
+		expect(await rendered.findByTestId('logs-overview-body')).toBeInTheDocument();
 	});
 });
