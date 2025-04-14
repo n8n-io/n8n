@@ -120,7 +120,6 @@ describe('Salesforce Node', () => {
 		});
 	});
 
-	// TODO:
 	describe('opportunities', () => {
 		beforeAll(() => {
 			salesforceNock
