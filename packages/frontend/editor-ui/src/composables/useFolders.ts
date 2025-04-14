@@ -14,6 +14,16 @@ export type DragTarget = {
 	name: string;
 };
 
+export type DropTarget = {
+	type: 'folder' | 'project';
+	id: string;
+	name: string;
+};
+
+export function isDropTarget(target: DragTarget | DropTarget): target is DropTarget {
+	return target.type === 'folder' || target.type === 'project';
+}
+
 export function useFolders() {
 	const i18n = useI18n();
 
@@ -61,7 +71,7 @@ export function useFolders() {
 		const eventTarget = el.closest('[data-target]') as HTMLElement;
 		if (!eventTarget) return;
 
-		const dragTarget = getDragTarget(eventTarget);
+		const dragTarget = getDragAndDropTarget(eventTarget);
 		if (!dragTarget) return;
 
 		if (dragTarget.type === 'folder' || dragTarget.type === 'workflow') {
@@ -83,7 +93,7 @@ export function useFolders() {
 		if (!eventTarget || !isDragging.value) return;
 		event.preventDefault();
 		event.stopPropagation();
-		const dragTarget = getDragTarget(eventTarget);
+		const dragTarget = getDragAndDropTarget(eventTarget);
 		if (!dragTarget || dragTarget.type !== 'folder') return;
 
 		foldersStore.activeDropTarget = {
@@ -101,7 +111,7 @@ export function useFolders() {
 	 * Get the drag or drop target element from the event target
 	 * @param el
 	 */
-	function getDragTarget(el: HTMLElement): DragTarget | null {
+	function getDragAndDropTarget(el: HTMLElement): DragTarget | DropTarget | null {
 		const dragTarget = el.closest('[data-target]') as HTMLElement;
 		if (!dragTarget) return null;
 		const targetResource = dragTarget.dataset.target;
@@ -111,7 +121,7 @@ export function useFolders() {
 		if (!targetResource || !targetId || !targetName) return null;
 
 		return {
-			type: targetResource === 'workflow-card' ? 'workflow' : 'folder',
+			type: targetResource as 'folder' | 'workflow' | 'project',
 			id: targetId,
 			name: targetName,
 		};
@@ -122,12 +132,12 @@ export function useFolders() {
 	 * @param event
 	 * @returns {
 	 * 	draggedResource: DragTarget | undefined;
-	 * 	dropTarget: DragTarget | undefined;
+	 * 	dropTarget: DropTarget | undefined;
 	 * }
 	 */
 	function handleDrop(event: MouseEvent): {
 		draggedResource?: DragTarget;
-		dropTarget?: DragTarget;
+		dropTarget?: DropTarget;
 	} {
 		const eventTarget = event.target as HTMLElement;
 		if (!eventTarget || !isDragging.value) return {};
@@ -140,8 +150,8 @@ export function useFolders() {
 		if (!draggedResourceId || !draggedResourceType || !draggedResourceName) return {};
 		onDragEnd();
 
-		const dropTarget = getDragTarget(eventTarget);
-		if (!dropTarget) return {};
+		const dropTarget = getDragAndDropTarget(eventTarget);
+		if (!dropTarget || !isDropTarget(dropTarget)) return {};
 
 		return {
 			draggedResource: {

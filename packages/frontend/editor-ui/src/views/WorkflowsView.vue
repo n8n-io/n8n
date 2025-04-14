@@ -60,7 +60,8 @@ import { debounce } from 'lodash-es';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
 import { useFoldersStore } from '@/stores/folders.store';
-import { DragTarget, useFolders } from '@/composables/useFolders';
+import type { DragTarget, DropTarget } from '@/composables/useFolders';
+import { useFolders } from '@/composables/useFolders';
 import { useUsageStore } from '@/stores/usage.store';
 import { useInsightsStore } from '@/features/insights/insights.store';
 import InsightsSummary from '@/features/insights/components/InsightsSummary.vue';
@@ -823,7 +824,7 @@ const moveFolderToProjectRoot = async (id: string, name: string) => {
  * @param draggedResource
  * @param dropTarget
  */
-const moveResourceOnDrop = async (draggedResource: DragTarget, dropTarget: DragTarget) => {
+const moveResourceOnDrop = async (draggedResource: DragTarget, dropTarget: DropTarget) => {
 	if (draggedResource.type === 'folder') {
 		await moveFolder({
 			folder: { id: draggedResource.id, name: draggedResource.name },
@@ -1438,7 +1439,7 @@ const onCreateWorkflowClick = () => {
 				:key="`folder-${index}`"
 				:disabled="!isDragNDropEnabled"
 				type="move"
-				target-data-key="folder-card"
+				target-data-key="folder"
 				@dragstart="folderHelpers.onDragStart"
 				@dragend="folderHelpers.onDragEnd"
 			>
@@ -1467,7 +1468,7 @@ const onCreateWorkflowClick = () => {
 							foldersStore.activeDropTarget?.id === (data as FolderResource).id,
 					}"
 					:show-ownership-badge="showCardsBadge"
-					data-target="folder-card"
+					data-target="folder"
 					class="mb-2xs"
 					@action="onFolderCardAction"
 					@mouseenter="folderHelpers.onDragEnter"
@@ -1479,7 +1480,7 @@ const onCreateWorkflowClick = () => {
 				:key="`workflow-${index}`"
 				:disabled="!isDragNDropEnabled"
 				type="move"
-				target-data-key="workflow-card"
+				target-data-key="workflow"
 				@dragstart="folderHelpers.onDragStart"
 				@dragend="folderHelpers.onDragEnd"
 			>
@@ -1504,7 +1505,7 @@ const onCreateWorkflowClick = () => {
 					:data-resourceid="(data as WorkflowResource).id"
 					:data-resourcename="(data as WorkflowResource).name"
 					:show-ownership-badge="showCardsBadge"
-					data-target="workflow-card"
+					data-target="workflow"
 					@click:tag="onClickTag"
 					@workflow:deleted="onWorkflowDeleted"
 					@workflow:moved="fetchWorkflows"
