@@ -17,8 +17,8 @@ export class McpTrigger extends Node {
 		displayName: 'MCP Server Trigger',
 		name: 'mcpTrigger',
 		icon: {
-			light: 'file:mcp.svg',
-			dark: 'file:mcp.dark.svg',
+			light: 'file:../mcp.svg',
+			dark: 'file:../mcp.dark.svg',
 		},
 		group: ['trigger'],
 		version: 1,
@@ -26,6 +26,21 @@ export class McpTrigger extends Node {
 		activationMessage: 'You can now connect your MCP Clients to the SSE URL.',
 		defaults: {
 			name: 'MCP Server Trigger',
+		},
+		codex: {
+			categories: ['AI', 'Core Nodes'],
+			subcategories: {
+				AI: ['Root Nodes', 'Model Context Protocol'],
+				'Core Nodes': ['Other Trigger Nodes'],
+			},
+			alias: ['Model Context Protocol', 'MCP Server'],
+			resources: {
+				primaryDocumentation: [
+					{
+						url: 'https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-langchain.mcptrigger/',
+					},
+				],
+			},
 		},
 		triggerPanel: {
 			header: 'Listen for MCP events',
@@ -65,15 +80,6 @@ export class McpTrigger extends Node {
 					},
 				},
 			},
-			{
-				name: 'httpCustomAuth',
-				required: true,
-				displayOptions: {
-					show: {
-						authentication: ['customAuth'],
-					},
-				},
-			},
 		],
 		properties: [
 			{
@@ -84,7 +90,6 @@ export class McpTrigger extends Node {
 					{ name: 'None', value: 'none' },
 					{ name: 'Bearer Auth', value: 'bearerAuth' },
 					{ name: 'Header Auth', value: 'headerAuth' },
-					{ name: 'Custom Auth', value: 'customAuth' },
 				],
 				default: 'none',
 				description: 'The way to authenticate',

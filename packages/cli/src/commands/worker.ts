@@ -3,7 +3,6 @@ import { Flags, type Config } from '@oclif/core';
 
 import config from '@/config';
 import { N8N_VERSION, inTest } from '@/constants';
-import { WorkerMissingEncryptionKey } from '@/errors/worker-missing-encryption-key.error';
 import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-message-generic';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
@@ -58,8 +57,6 @@ export class Worker extends BaseCommand {
 	}
 
 	constructor(argv: string[], cmdConfig: Config) {
-		if (!process.env.N8N_ENCRYPTION_KEY) throw new WorkerMissingEncryptionKey();
-
 		if (config.getEnv('executions.mode') !== 'queue') {
 			config.set('executions.mode', 'queue');
 		}
