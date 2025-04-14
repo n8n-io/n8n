@@ -21,6 +21,11 @@ import { useI18n } from '@/composables/useI18n';
 import { useDebounce } from '@/composables/useDebounce';
 import NodeIcon from '@/components/NodeIcon.vue';
 
+import CommunityNodeDetails from './CommunityNodeDetails.vue';
+import CommunityNodeInfo from './CommunityNodeInfo.vue';
+import CommunityNodeDocsLink from './CommunityNodeDocsLink.vue';
+import CommunityNodeFooter from './CommunityNodeFooter.vue';
+
 const i18n = useI18n();
 const { callDebounced } = useDebounce();
 

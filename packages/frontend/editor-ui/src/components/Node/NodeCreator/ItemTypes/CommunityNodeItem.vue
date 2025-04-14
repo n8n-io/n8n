@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import CommunityNodeInstallHint from '../Panel/CommunityNodeInstallHint.vue';
 export interface Props {
 	isPreview: boolean;
 }
@@ -11,7 +12,7 @@ defineProps<Props>();
 		<CommunityNodeInstallHint v-if="isPreview" hint="Install this node to start using it" />
 
 		<div v-else :class="$style.marginLeft">
-			<n8n-button size="medium" type="secondary" icon="plus" label="Add to workwlow" outline />
+			<n8n-button size="medium" type="secondary" icon="plus" label="Add to workflow" outline />
 		</div>
 	</div>
 </template>

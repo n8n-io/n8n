@@ -30,6 +30,9 @@ import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import OrderSwitcher from './../OrderSwitcher.vue';
 import { isNodePreviewKey } from '../utils';
 
+import CommunityNodeInfo from '../Panel/CommunityNodeInfo.vue';
+import CommunityNodeFooter from '../Panel/CommunityNodeFooter.vue';
+
 const emit = defineEmits<{
 	nodeTypeSelected: [value: [actionKey: string, nodeName: string] | [nodeName: string]];
 }>();
@@ -120,7 +123,7 @@ const shouldShowTriggers = computed(() => {
 	if (communityNodeDetails.value && !parsedTriggerActions.value.length) {
 		// do not show baseline trigger actions for community nodes if it is not installed
 		return (
-			!isNodePreviewKey(useViewStacks().activeViewStack.items?.[0].key) && isTriggerRootView.value
+			!isNodePreviewKey(useViewStacks().activeViewStack?.items?.[0].key) && isTriggerRootView.value
 		);
 	}
 	return isTriggerRootView.value || parsedTriggerActionsBaseline.value.length !== 0;

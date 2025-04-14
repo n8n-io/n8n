@@ -154,7 +154,7 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 		</template>
 
 		<template
-			v-if="isCommunityNode && !isCommunityNodePreview && !activeViewStack.communityNodeDetails"
+			v-if="isCommunityNode && !isCommunityNodePreview && !activeViewStack?.communityNodeDetails"
 			#tooltip
 		>
 			<p

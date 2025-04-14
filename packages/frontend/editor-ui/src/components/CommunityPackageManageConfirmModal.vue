@@ -117,6 +117,7 @@ const onUpdate = async () => {
 		loading.value = true;
 		const updatedVersion = activePackage.value.updateAvailable;
 		await communityNodesStore.updatePackage(props.activePackageName);
+		await useNodeTypesStore().getNodeTypes();
 		toast.showMessage({
 			title: i18n.baseText('settings.communityNodes.messages.update.success.title'),
 			message: i18n.baseText('settings.communityNodes.messages.update.success.message', {

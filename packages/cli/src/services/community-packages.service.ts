@@ -354,15 +354,13 @@ export class CommunityPackagesService {
 	) {
 		const isUpdate = 'installedPackage' in options;
 		const packageVersion = isUpdate || !options.version ? 'latest' : options.version;
-
-		const registryUrl = this.getNpmRegistry();
-		const command = `npm install ${packageName}@${packageVersion} --registry=${registryUrl}`;
+		const command = `npm install ${packageName}@${packageVersion} --registry=${this.getNpmRegistry()}`;
 
 		const isVettedPackageInstall = 'checksum' in options && options.checksum ? true : false;
 		this.checkInstallPermissions(isUpdate, isVettedPackageInstall);
 
 		if (!isUpdate && options.checksum) {
-			await verifyIntegrity(packageName, packageVersion, registryUrl, options.checksum);
+			await verifyIntegrity(packageName, packageVersion, this.getNpmRegistry(), options.checksum);
 		}
 
 		try {

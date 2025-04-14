@@ -9,9 +9,8 @@ import { strapiPaginatedRequest, type StrapiData } from '../utils/strapi-utils';
 
 const UPDATE_INTERVAL = 8 * 60 * 60 * 1000;
 
-// const N8N_VETTED_NODE_TYPES_URL =
-// 	'https://shareholders-environment-sponsorship-boats.trycloudflare.com/api/community-nodes';
-const N8N_VETTED_NODE_TYPES_URL = 'http://localhost:5678/webhook/strapi-mock';
+const N8N_VETTED_NODE_TYPES_URL =
+	'https://tier-discussion-silly-transition.trycloudflare.com/api/community-nodes';
 
 @Service()
 export class CommunityNodeTypesService {
@@ -69,26 +68,24 @@ export class CommunityNodeTypesService {
 	async getDescriptions(): Promise<INodeTypeDescription[]> {
 		const nodesDescriptions: INodeTypeDescription[] = [];
 
-		try {
-			if (this.updateRequired() || !Object.keys(this.communityNodes).length) {
-				await this.fetchNodeTypes();
-			}
+		if (this.updateRequired() || !Object.keys(this.communityNodes).length) {
+			await this.fetchNodeTypes();
+		}
 
-			const installedPackages = (
-				(await this.communityPackagesService.getAllInstalledPackages()) ?? []
-			).map((p) => p.packageName);
+		const installedPackages = (
+			(await this.communityPackagesService.getAllInstalledPackages()) ?? []
+		).map((p) => p.packageName);
 
-			for (const node of Object.values(this.communityNodes)) {
-				if (installedPackages.includes(node.name.split('.')[0])) continue;
-				nodesDescriptions.push(node.nodeDescription);
-			}
-		} catch (error) {}
+		for (const node of Object.values(this.communityNodes)) {
+			if (installedPackages.includes(node.name.split('.')[0])) continue;
+			nodesDescriptions.push(node.nodeDescription);
+		}
 
 		return nodesDescriptions;
 	}
 
-	getCommunityNodeAttributes(nodeName: string): CommunityNodeAttributes | null {
-		const node = this.communityNodes[nodeName];
+	getCommunityNodeAttributes(type: string): CommunityNodeAttributes | null {
+		const node = this.communityNodes[type];
 		if (!node) return null;
 		const { nodeDescription, ...attributes } = node;
 		return attributes;

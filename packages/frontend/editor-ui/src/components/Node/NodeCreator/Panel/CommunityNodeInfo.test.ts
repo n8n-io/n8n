@@ -102,23 +102,29 @@ describe('CommunityNodeInfo', () => {
 		};
 
 		// Set up the fetch mock to return different responses based on URL
-		(global.fetch as jest.Mock).mockImplementation(async (url) => {
-			if (url.includes('registry.npmjs.org')) {
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async (url: RequestInfo | URL) => {
+				if (typeof url === 'string' && url.includes('registry.npmjs.org')) {
+					return {
+						ok: true,
+						json: async () => packageData,
+					};
+				}
+
+				if (typeof url === 'string' && url.includes('api.npmjs.org/downloads')) {
+					return {
+						ok: true,
+						json: async () => downloadsData,
+					};
+				}
+
 				return {
-					ok: true,
-					json: () => packageData,
+					ok: false,
+					json: async () => ({}),
 				};
-			}
-			if (url.includes('api.npmjs.org/downloads')) {
-				return {
-					ok: true,
-					json: () => downloadsData,
-				};
-			}
-			return {
-				ok: false,
-			};
-		});
+			}),
+		);
 
 		getCommunityNodeAttributes.mockResolvedValue(null);
 		const wrapper = renderComponent({ pinia });

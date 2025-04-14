@@ -77,6 +77,7 @@ export function getNodeIconSource(nodeType?: IconNodeType | null): NodeIconSourc
 		return {
 			type: 'file',
 			src: nodeType.iconUrl,
+			badge: undefined,
 		};
 	}
 

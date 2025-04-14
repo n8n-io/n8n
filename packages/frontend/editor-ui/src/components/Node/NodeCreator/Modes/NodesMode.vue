@@ -138,8 +138,7 @@ function onSelected(item: INodeCreateElement) {
 
 		if (isCommunityPackageName(item.key) && !activeViewStack.value.communityNodeDetails) {
 			if (!nodeActions.length) {
-				const { communityNodesAndActions } = useNodeTypesStore();
-				nodeActions = getFilteredActions(item, communityNodesAndActions.actions);
+				nodeActions = getFilteredActions(item, communityNodesAndActions.value.actions);
 			}
 
 			const viewStack = prepareCommunityNodeDetailsViewStack(

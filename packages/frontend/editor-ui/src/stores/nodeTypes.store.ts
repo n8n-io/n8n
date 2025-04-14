@@ -37,12 +37,14 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 
 	const rootStore = useRootStore();
 
+	const actionsGenerator = useActionsGenerator();
+
 	// ---------------------------------------------------------------------------
 	// #region Computed
 	// ---------------------------------------------------------------------------
 
 	const communityNodesAndActions = computed(() => {
-		return useActionsGenerator().generateMergedNodesAndActions(communityPreviews.value, []);
+		return actionsGenerator.generateMergedNodesAndActions(communityPreviews.value, []);
 	});
 
 	const allNodeTypes = computed(() => {

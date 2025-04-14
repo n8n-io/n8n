@@ -30,9 +30,9 @@ export async function getCommunityNodeTypes(
 
 export async function getCommunityNodeAttributes(
 	context: IRestApiContext,
-	nodeName: string,
+	type: string,
 ): Promise<CommunityNodeAttributes | null> {
-	return await makeRestApiRequest(context, 'GET', `/community-node-types/${nodeName}`);
+	return await makeRestApiRequest(context, 'GET', `/community-node-types/${type}`);
 }
 
 export async function getNodeTranslationHeaders(

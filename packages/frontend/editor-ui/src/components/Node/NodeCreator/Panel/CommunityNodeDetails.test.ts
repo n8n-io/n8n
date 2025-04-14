@@ -2,8 +2,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { type TestingPinia, createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import CommunityNodeDetails from './CommunityNodeDetails.vue';
-import { fireEvent } from '@testing-library/vue';
-import { sleep } from 'n8n-workflow';
+import { fireEvent, waitFor } from '@testing-library/vue';
 
 const fetchCredentialTypes = vi.fn();
 const getCommunityNodeAttributes = vi.fn(() => ({ npmVersion: '1.0.0' }));
@@ -135,7 +134,8 @@ describe('CommunityNodeDetails', () => {
 		expect(installButton.querySelector('span')?.textContent).toEqual('Install Node');
 
 		await fireEvent.click(installButton);
-		await sleep(500);
+
+		await waitFor(() => expect(removeNodeFromMergedNodes).toHaveBeenCalled());
 
 		expect(getCommunityNodeAttributes).toHaveBeenCalledWith('n8n-nodes-preview-test.OtherNode');
 		expect(installPackage).toHaveBeenCalledWith('n8n-nodes-test', true, '1.0.0');

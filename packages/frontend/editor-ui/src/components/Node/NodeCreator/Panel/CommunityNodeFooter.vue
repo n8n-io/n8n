@@ -10,7 +10,7 @@ const props = defineProps<Props>();
 
 const router = useRouter();
 
-const bugsUrl = ref<string | undefined>(undefined);
+const bugsUrl = ref<string>();
 
 async function openSettingsPage() {
 	await router.push({ name: VIEWS.COMMUNITY_NODES });
@@ -34,7 +34,7 @@ async function getBugsUrl(packageName: string) {
 
 		const data = await response.json();
 
-		bugsUrl.value = data.bugs?.url;
+		bugsUrl.value = data.bugs?.url ?? url;
 	} catch (error) {
 		console.error(error);
 	}

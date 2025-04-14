@@ -6,7 +6,8 @@ export interface Props {
 const props = defineProps<Props>();
 
 const openCommunityNodeDocsPage = () => {
-	window.open(`https://www.npmjs.com/package/${props.packageName}`, '_blank');
+	const newTab = window.open(`https://www.npmjs.com/package/${props.packageName}`, '_blank');
+	if (newTab) newTab.opener = null;
 };
 </script>
 

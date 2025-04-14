@@ -45,8 +45,8 @@ const onInstallClick = async () => {
 			infoTextErrorMessage.value = '';
 			loading.value = true;
 			await communityNodesStore.installPackage(packageName.value);
-			loading.value = false;
 			await useNodeTypesStore().getNodeTypes();
+			loading.value = false;
 			modalBus.emit('close');
 			toast.showMessage({
 				title: i18n.baseText('settings.communityNodes.messages.install.success'),

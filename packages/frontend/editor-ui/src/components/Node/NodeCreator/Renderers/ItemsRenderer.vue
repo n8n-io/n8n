@@ -9,6 +9,7 @@ import LabelItem from '../ItemTypes/LabelItem.vue';
 import ActionItem from '../ItemTypes/ActionItem.vue';
 import ViewItem from '../ItemTypes/ViewItem.vue';
 import LinkItem from '../ItemTypes/LinkItem.vue';
+import CommunityNodeItem from '../ItemTypes/CommunityNodeItem.vue';
 import CategorizedItemsRenderer from './CategorizedItemsRenderer.vue';
 
 import { useViewStacks } from '../composables/useViewStacks';
