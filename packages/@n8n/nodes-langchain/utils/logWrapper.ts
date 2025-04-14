@@ -395,7 +395,9 @@ export function logWrapper<
 
 						logAiEvent(executeFunctions, 'ai-tool-called', { ...inputData, response });
 						executeFunctions.addOutputData(connectionType, index, [[{ json: { response } }]]);
-						return response;
+
+						if (typeof response === 'string') return response;
+						return JSON.stringify(response);
 					};
 				}
 			}

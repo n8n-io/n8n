@@ -120,7 +120,8 @@ export class McpServer {
 					return {
 						name: tool.name,
 						description: tool.description,
-						inputSchema: zodToJsonSchema(tool.schema),
+						// Allow additional properties on tool call input
+						inputSchema: zodToJsonSchema(tool.schema, { removeAdditionalStrategy: 'strict' }),
 					};
 				}),
 			};
