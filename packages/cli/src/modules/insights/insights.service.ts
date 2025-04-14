@@ -67,7 +67,7 @@ export class InsightsService {
 
 	private bufferedInsights: Set<BufferedInsight> = new Set();
 
-	private flushInsightsRawBufferTimer: NodeJS.Timer | undefined;
+	private flushInsightsRawBufferTimer: NodeJS.Timeout | undefined;
 
 	private isAsynchronouslySavingInsights = true;
 
@@ -121,7 +121,7 @@ export class InsightsService {
 
 	private stopFlushingScheduler() {
 		if (this.flushInsightsRawBufferTimer !== undefined) {
-			clearInterval(this.flushInsightsRawBufferTimer);
+			clearTimeout(this.flushInsightsRawBufferTimer);
 			this.flushInsightsRawBufferTimer = undefined;
 		}
 	}
