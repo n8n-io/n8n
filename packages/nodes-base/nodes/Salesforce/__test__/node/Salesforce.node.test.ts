@@ -4,6 +4,9 @@ import { testWorkflows } from '@test/nodes/Helpers';
 
 import accountDetails from './fixtures/account-details.json';
 import accounts from './fixtures/accounts.json';
+import opportunitiesSummary from './fixtures/opportunities-summary.json';
+import opportunities from './fixtures/opportunities.json';
+import opportunityDetails from './fixtures/opportunity-details.json';
 import taskDetails from './fixtures/task-details.json';
 import taskSummary from './fixtures/task-summary.json';
 import tasks from './fixtures/tasks.json';
@@ -111,6 +114,50 @@ describe('Salesforce Node', () => {
 		});
 
 		testWorkflows(['nodes/Salesforce/__test__/node/search.workflow.json']);
+
+		it('should make the correct network calls', () => {
+			salesforceNock.done();
+		});
+	});
+
+	// TODO:
+	describe('opportunities', () => {
+		beforeAll(() => {
+			salesforceNock
+				.post('/sobjects/opportunity', {
+					Name: 'New Opportunity',
+					CloseDate: '2025-01-01T00:00:00',
+					StageName: 'Prospecting',
+					Amount: 1000,
+				})
+				.reply(200, { id: 'id1', success: true, errors: [] })
+				.get('/query')
+				.query({
+					q: 'SELECT id,accountId,amount,probability,type FROM Opportunity ',
+				})
+				.reply(200, { records: opportunities })
+				.post('/sobjects/note', { Title: 'New Note', ParentId: 'id1' })
+				.reply(200, {
+					id: 'noteid1',
+					success: true,
+					errors: [],
+				})
+				.get('/sobjects/opportunity/id1')
+				.reply(200, opportunityDetails)
+				.patch('/sobjects/opportunity/id1', { Amount: 123 })
+				.reply(200, { success: true, errors: [] })
+				.patch('/sobjects/opportunity/Name/SomeName', {
+					CloseDate: '2025-01-01T00:00:00',
+					StageName: 'Prospecting',
+				})
+				.reply(200, { id: 'id1', created: false, success: true, errors: [] })
+				.delete('/sobjects/opportunity/id1')
+				.reply(200, { success: true, errors: [] })
+				.get('/sobjects/opportunity')
+				.reply(200, opportunitiesSummary);
+		});
+
+		testWorkflows(['nodes/Salesforce/__test__/node/opportunities.workflow.json']);
 
 		it('should make the correct network calls', () => {
 			salesforceNock.done();
