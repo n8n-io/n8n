@@ -828,7 +828,7 @@ const moveResourceOnDrop = async (draggedResource: DragTarget, dropTarget: DropT
 	if (draggedResource.type === 'folder') {
 		await moveFolder({
 			folder: { id: draggedResource.id, name: draggedResource.name },
-			newParent: { id: dropTarget.id, name: dropTarget.name, type: 'folder' },
+			newParent: { id: dropTarget.id, name: dropTarget.name, type: dropTarget.type },
 			options: { skipFetch: true, skipNavigation: true },
 		});
 		// Remove the dragged folder from the list

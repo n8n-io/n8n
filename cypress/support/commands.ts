@@ -225,7 +225,7 @@ Cypress.Commands.add('draganddrop', (draggableSelector, droppableSelector, optio
 						cy.get(draggableSelector).trigger('mousedown');
 					},
 					() => {
-						cy.get(draggableSelector).realMouseDown();
+						cy.get(draggableSelector).realMouseDown({ position: options?.position ?? 'top' });
 					},
 				);
 			}
