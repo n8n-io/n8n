@@ -213,7 +213,10 @@ export class SourceControlService {
 		return;
 	}
 
-	async pushWorkfolder(options: PushWorkFolderRequestDto): Promise<{
+	async pushWorkfolder(
+		user: User,
+		options: PushWorkFolderRequestDto,
+	): Promise<{
 		statusCode: number;
 		pushResult: PushResult | undefined;
 		statusResult: SourceControlledFile[];
@@ -239,7 +242,7 @@ export class SourceControlService {
 		// only determine file status if not provided by the frontend
 		let statusResult: SourceControlledFile[] = filesToPush;
 		if (statusResult.length === 0) {
-			statusResult = (await this.getStatus({
+			statusResult = (await this.getStatus(user, {
 				direction: 'push',
 				verbose: false,
 				preferLocalVersion: true,
@@ -332,7 +335,7 @@ export class SourceControlService {
 		// #region Tracking Information
 		this.eventService.emit(
 			'source-control-user-finished-push-ui',
-			getTrackingInformationFromPostPushResult(statusResult),
+			getTrackingInformationFromPostPushResult(user.id, statusResult),
 		);
 		// #endregion
 
@@ -393,7 +396,7 @@ export class SourceControlService {
 	): Promise<{ statusCode: number; statusResult: SourceControlledFile[] }> {
 		await this.sanityCheck();
 
-		const statusResult = (await this.getStatus({
+		const statusResult = (await this.getStatus(user, {
 			direction: 'pull',
 			verbose: false,
 			preferLocalVersion: false,
@@ -457,7 +460,7 @@ export class SourceControlService {
 		// #region Tracking Information
 		this.eventService.emit(
 			'source-control-user-finished-pull-ui',
-			getTrackingInformationFromPullResult(statusResult),
+			getTrackingInformationFromPullResult(user.id, statusResult),
 		);
 		// #endregion
 
@@ -477,7 +480,7 @@ export class SourceControlService {
 	 * @returns either SourceControlledFile[] if verbose is false,
 	 * or multiple SourceControlledFile[] with all determined differences for debugging purposes
 	 */
-	async getStatus(options: SourceControlGetStatus) {
+	async getStatus(user: User, options: SourceControlGetStatus) {
 		await this.sanityCheck();
 
 		const sourceControlledFiles: SourceControlledFile[] = [];
@@ -514,12 +517,12 @@ export class SourceControlService {
 		if (options.direction === 'push') {
 			this.eventService.emit(
 				'source-control-user-started-push-ui',
-				getTrackingInformationFromPrePushResult(sourceControlledFiles),
+				getTrackingInformationFromPrePushResult(user.id, sourceControlledFiles),
 			);
 		} else if (options.direction === 'pull') {
 			this.eventService.emit(
 				'source-control-user-started-pull-ui',
-				getTrackingInformationFromPullResult(sourceControlledFiles),
+				getTrackingInformationFromPullResult(user.id, sourceControlledFiles),
 			);
 		}
 		// #endregion

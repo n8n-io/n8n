@@ -86,6 +86,7 @@ const schemaPreviewStore = useSchemaPreviewStore();
 const environmentsStore = useEnvironmentsStore();
 const settingsStore = useSettingsStore();
 const posthogStore = usePostHog();
+
 const { getSchemaForExecutionData, getSchemaForJsonSchema, getSchema, filterSchema } =
 	useDataSchema();
 const { closedNodes, flattenSchema, flattenMultipleSchemas, toggleLeaf, toggleNode } =
@@ -97,6 +98,9 @@ const emit = defineEmits<{
 }>();
 
 const scroller = ref<RecycleScrollerInstance>();
+
+const canDraggableDrop = computed(() => ndvStore.canDraggableDrop);
+const draggableStickyPosition = computed(() => ndvStore.draggableStickyPos);
 
 const toggleNodeAndScrollTop = (id: string) => {
 	toggleNode(id);
@@ -333,11 +337,17 @@ watch(
 	{ once: true, immediate: true },
 );
 
-const onDragStart = () => {
+const onDragStart = (el: HTMLElement, data?: string) => {
+	ndvStore.draggableStartDragging({
+		type: 'mapping',
+		data: data ?? '',
+		dimensions: el?.getBoundingClientRect() ?? null,
+	});
 	ndvStore.resetMappingTelemetry();
 };
 
 const onDragEnd = (el: HTMLElement) => {
+	ndvStore.draggableStopDragging();
 	setTimeout(() => {
 		const mappingTelemetry = ndvStore.mappingTelemetry;
 		const parentNode = nodesSchemas.value.find(({ node }) => node.name === el.dataset.nodeName);
@@ -387,6 +397,8 @@ const onDragEnd = (el: HTMLElement) => {
 			type="mapping"
 			target-data-key="mappable"
 			:disabled="!mappingEnabled"
+			:can-drop="canDraggableDrop"
+			:sticky-position="draggableStickyPosition"
 			@dragstart="onDragStart"
 			@dragend="onDragEnd"
 		>
@@ -432,14 +444,12 @@ const onDragEnd = (el: HTMLElement) => {
 							v-else-if="item.type === 'notice'"
 							v-n8n-html="item.message"
 							class="notice"
-							:style="{ marginLeft: `calc(var(--spacing-l) + var(--spacing-l) * ${item.level})` }"
+							:style="{ '--schema-level': item.level }"
 						/>
 						<div
 							v-else-if="item.type === 'empty'"
-							:style="{
-								paddingBottom: `var(--spacing-xs)`,
-								marginLeft: `var(--spacing-xl)`,
-							}"
+							class="empty-schema"
+							:style="{ '--schema-level': item.level }"
 						>
 							<N8nText tag="div" size="small">
 								<i18n-t
@@ -450,12 +460,12 @@ const onDragEnd = (el: HTMLElement) => {
 									<template #link>
 										<NodeExecuteButton
 											:node-name="item.nodeName"
+											:label="i18n.baseText('ndv.input.noOutputData.executePrevious')"
 											text
 											telemetry-source="inputs"
 											hide-icon
-											:label="i18n.baseText('ndv.input.noOutputData.executePrevious')"
 											size="small"
-											:style="{ padding: 0 }"
+											class="execute-button"
 										/>
 									</template>
 								</i18n-t>
@@ -506,5 +516,18 @@ const onDragEnd = (el: HTMLElement) => {
 	color: var(--color-text-base);
 	font-size: var(--font-size-2xs);
 	line-height: var(--font-line-height-loose);
+}
+
+.notice {
+	margin-left: calc(var(--spacing-l) * var(--schema-level));
+}
+
+.empty-schema {
+	padding-bottom: var(--spacing-xs);
+	margin-left: calc((var(--spacing-xl) * var(--schema-level)));
+}
+
+.execute-button {
+	padding: 0;
 }
 </style>

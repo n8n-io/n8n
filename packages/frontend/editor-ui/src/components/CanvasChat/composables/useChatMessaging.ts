@@ -130,8 +130,9 @@ export function useChatMessaging({
 			inputPayload.binary = binaryData;
 		}
 		const nodeData: ITaskData = {
-			startTime: new Date().getTime(),
+			startTime: Date.now(),
 			executionTime: 0,
+			executionIndex: 0,
 			executionStatus: 'success',
 			data: {
 				main: [[inputPayload]],

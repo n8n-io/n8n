@@ -359,8 +359,9 @@ describe('RunData', () => {
 		const { getByTestId, queryByTestId } = render({
 			runs: [
 				{
-					startTime: new Date().getTime(),
-					executionTime: new Date().getTime(),
+					startTime: Date.now(),
+					executionIndex: 0,
+					executionTime: 1,
 					data: {
 						main: [[{ json: {} }]],
 					},
@@ -368,8 +369,9 @@ describe('RunData', () => {
 					metadata,
 				},
 				{
-					startTime: new Date().getTime(),
-					executionTime: new Date().getTime(),
+					startTime: Date.now(),
+					executionIndex: 1,
+					executionTime: 1,
 					data: {
 						main: [[{ json: {} }]],
 					},
@@ -413,6 +415,7 @@ describe('RunData', () => {
 				{
 					hints: [],
 					startTime: 1737643696893,
+					executionIndex: 0,
 					executionTime: 2,
 					source: [
 						{
@@ -598,8 +601,9 @@ describe('RunData', () => {
 		runs?: ITaskData[];
 	}) => {
 		const defaultRun: ITaskData = {
-			startTime: new Date().getTime(),
-			executionTime: new Date().getTime(),
+			startTime: Date.now(),
+			executionIndex: 0,
+			executionTime: 1,
 			data: {
 				main: [defaultRunItems ?? [{ json: {} }]],
 			},

@@ -40,7 +40,6 @@ import { useTelemetry } from './useTelemetry';
 import { useSettingsStore } from '@/stores/settings.store';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { useNodeDirtiness } from '@/composables/useNodeDirtiness';
-import { LOGS_PANEL_STATE } from '@/components/CanvasChat/types/logs';
 
 export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof useRouter> }) {
 	const nodeHelpers = useNodeHelpers();
@@ -79,8 +78,11 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			throw error;
 		}
 
-		if (response.executionId !== undefined) {
-			workflowsStore.activeExecutionId = response.executionId;
+		if (
+			response.executionId !== undefined &&
+			workflowsStore.previousExecutionId !== response.executionId
+		) {
+			workflowsStore.setActiveExecutionId(response.executionId);
 		}
 
 		if (response.waitingForWebhook === true && useWorkflowsStore().nodesIssuesExist) {
@@ -183,7 +185,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 					// and halt the execution
 					if (!chatHasInputData && !chatHasPinData) {
 						workflowsStore.chatPartialExecutionDestinationNode = options.destinationNode;
-						workflowsStore.setPanelState(LOGS_PANEL_STATE.ATTACHED);
+						workflowsStore.toggleLogsPanelOpen(true);
 						return;
 					}
 				}

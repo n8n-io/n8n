@@ -111,7 +111,9 @@ const mainMenuItems = computed(() => [
 		customIconSize: 'medium',
 		position: 'bottom',
 		route: { to: { name: VIEWS.INSIGHTS } },
-		available: hasPermission(['rbac'], { rbac: { scope: 'insights:list' } }),
+		available:
+			settingsStore.settings.insights.enabled &&
+			hasPermission(['rbac'], { rbac: { scope: 'insights:list' } }),
 	},
 	{
 		id: 'help',
@@ -274,6 +276,8 @@ const handleSelect = (key: string) => {
 			trackHelpItemClick(key);
 			break;
 		}
+		case 'insights':
+			telemetry.track('User clicked insights link from side menu');
 		default:
 			break;
 	}
