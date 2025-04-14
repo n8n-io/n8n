@@ -82,6 +82,15 @@ describe('InsightsSummary', () => {
 				{ id: 'averageRunTime', value: 2.5, deviation: null, unit: 's', deviationUnit: 's' },
 			],
 		],
+		[
+			[
+				{ id: 'total', value: 0, deviation: 0, unit: '', deviationUnit: '%' },
+				{ id: 'failed', value: 0, deviation: 0, unit: '', deviationUnit: '%' },
+				{ id: 'failureRate', value: 0, deviation: 0, unit: '%', deviationUnit: 'pp' },
+				{ id: 'timeSaved', value: 0, deviation: 0, unit: 'h', deviationUnit: 'h' },
+				{ id: 'averageRunTime', value: 0, deviation: 0, unit: 's', deviationUnit: 's' },
+			],
+		],
 	])('should render the summary correctly', (summary) => {
 		const { html } = renderComponent({
 			props: {
