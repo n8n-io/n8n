@@ -60,7 +60,7 @@ import { debounce } from 'lodash-es';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
 import { useFoldersStore } from '@/stores/folders.store';
-import { useFolders } from '@/composables/useFolders';
+import { DragTarget, useFolders } from '@/composables/useFolders';
 import { useUsageStore } from '@/stores/usage.store';
 import { useInsightsStore } from '@/features/insights/insights.store';
 import InsightsSummary from '@/features/insights/components/InsightsSummary.vue';
@@ -776,179 +776,89 @@ const getFolderContent = async (folderId: string) => {
 	}
 };
 
-/* #region Drag n Drop */
+/* Drag and drop methods */
 
-const onDragStart = async (el: HTMLElement) => {
-	const dragTarget = el.closest('[data-target]') as HTMLElement;
-	if (!dragTarget) return;
-	const targetResource = dragTarget.dataset.target;
-	const targetId = dragTarget.dataset.resourceid;
-	const targetName = dragTarget.dataset.resourcename;
-	if (!targetResource || !targetId || !targetName) return;
-	foldersStore.draggedElement = {
-		type: targetResource === 'workflow-card' ? 'workflow' : 'folder',
-		id: targetId,
-		name: targetName,
-	};
-};
-
-const onDragEnd = () => {
-	foldersStore.draggedElement = null;
-	foldersStore.activeDropTarget = null;
-};
-
-const onDragEnter = (event: MouseEvent) => {
-	const targetElement = event.target as HTMLElement;
-	if (!targetElement || !isDragging.value) return;
-	event.preventDefault();
-	event.stopPropagation();
-	const dragTarget = targetElement.closest('[data-target]') as HTMLElement;
-	if (!dragTarget) return;
-	const targetResource = dragTarget.dataset.target;
-	const targetId = dragTarget.dataset.resourceid;
-	const targetName = dragTarget.dataset.resourcename;
-	if (!targetResource || !targetId || !targetName || targetId === foldersStore.draggedElement?.id)
-		return;
-
-	foldersStore.activeDropTarget = {
-		type: 'folder',
-		id: targetId,
-		name: targetName,
-	};
-};
-
-const onDrop = async (event: MouseEvent) => {
-	const targetElement = event.target as HTMLElement;
-	if (!targetElement || !isDragging.value) return;
-	event.preventDefault();
-
-	const draggedResourceId = foldersStore.draggedElement?.id;
-	const draggedResourceType = foldersStore.draggedElement?.type;
-	const draggedResourceName = foldersStore.draggedElement?.name;
-	if (!draggedResourceId || !draggedResourceType || !draggedResourceName) return;
-	onDragEnd();
-
-	const dropTarget = targetElement.closest('[data-target]') as HTMLElement;
-	if (!dropTarget) return;
-	const targetId = dropTarget.dataset.resourceid;
-	const targetName = dropTarget.dataset.resourcename;
-	if (!targetId || !targetName || targetId === draggedResourceId) return;
-
-	if (draggedResourceType === 'folder') {
-		await moveFolder({
-			folder: { id: draggedResourceId, name: draggedResourceName },
-			newParent: { id: targetId, name: targetName, type: 'folder' },
-			options: { skipFetch: true, skipNavigation: true },
-		});
-		// Remove the dragged folder from the list
-		workflowsAndFolders.value = workflowsAndFolders.value.filter(
-			(folder) => folder.id !== draggedResourceId,
-		);
-		// Increase the count of the target folder
-		const targetFolder = getFolderListItem(targetId);
-		if (targetFolder) {
-			targetFolder.subFolderCount += 1;
-		}
-	} else if (draggedResourceType) {
-		await onWorkflowMoved({
-			workflow: {
-				id: draggedResourceId,
-				name: draggedResourceName,
-				oldParentId: currentFolderId.value ?? '',
-			},
-			newParent: { id: targetId, name: targetName, type: 'folder' },
-			options: { skipFetch: true },
-		});
-		// Remove the dragged workflow from the list
-		workflowsAndFolders.value = workflowsAndFolders.value.filter(
-			(workflow) => workflow.id !== draggedResourceId,
-		);
-		// Increase the count of the target folder
-		const targetFolder = getFolderListItem(targetId);
-		if (targetFolder) {
-			targetFolder.workflowCount += 1;
-		}
-	}
+const onFolderCardDrop = async (event: MouseEvent) => {
+	const { draggedResource, dropTarget } = folderHelpers.handleDrop(event);
+	if (!draggedResource || !dropTarget) return;
+	await moveResourceOnDrop(draggedResource, dropTarget);
 };
 
 const onBreadCrumbsItemDrop = async (item: PathItem) => {
-	const draggedResourceId = foldersStore.draggedElement?.id;
-	const draggedResourceType = foldersStore.draggedElement?.type;
-	const draggedResourceName = foldersStore.draggedElement?.name;
-	if (!draggedResourceId || !draggedResourceType || !draggedResourceName) return;
-	onDragEnd();
-	if (draggedResourceType === 'folder') {
+	if (!foldersStore.draggedElement) return;
+	await moveResourceOnDrop(
+		{
+			id: foldersStore.draggedElement.id,
+			type: foldersStore.draggedElement.type,
+			name: foldersStore.draggedElement.name,
+		},
+		{
+			id: item.id,
+			type: 'folder',
+			name: item.label,
+		},
+	);
+	folderHelpers.onDragEnd();
+};
+
+const moveFolderToProjectRoot = async (_id: string, name: string) => {
+	if (!foldersStore.draggedElement) return;
+	await moveResourceOnDrop(
+		{
+			id: foldersStore.draggedElement.id,
+			type: foldersStore.draggedElement.type,
+			name: foldersStore.draggedElement.name,
+		},
+		{
+			id: '0',
+			type: 'project',
+			name,
+		},
+	);
+	folderHelpers.onDragEnd();
+};
+
+/**
+ * Perform resource move on drop, also handles toast messages and updating the UI
+ * @param draggedResource
+ * @param dropTarget
+ */
+const moveResourceOnDrop = async (draggedResource: DragTarget, dropTarget: DragTarget) => {
+	if (draggedResource.type === 'folder') {
 		await moveFolder({
-			folder: { id: draggedResourceId, name: draggedResourceName },
-			newParent: { id: item.id, name: item.label, type: 'folder' },
+			folder: { id: draggedResource.id, name: draggedResource.name },
+			newParent: { id: dropTarget.id, name: dropTarget.name, type: 'folder' },
 			options: { skipFetch: true, skipNavigation: true },
 		});
 		// Remove the dragged folder from the list
 		workflowsAndFolders.value = workflowsAndFolders.value.filter(
-			(folder) => folder.id !== draggedResourceId,
+			(folder) => folder.id !== draggedResource.id,
 		);
 		// Increase the count of the target folder
-		const targetFolder = getFolderListItem(item.id);
+		const targetFolder = getFolderListItem(dropTarget.id);
 		if (targetFolder) {
 			targetFolder.subFolderCount += 1;
 		}
-	} else if (draggedResourceType) {
+	} else if (draggedResource.type === 'workflow') {
 		await onWorkflowMoved({
 			workflow: {
-				id: draggedResourceId,
-				name: draggedResourceName,
+				id: draggedResource.id,
+				name: draggedResource.name,
 				oldParentId: currentFolderId.value ?? '',
 			},
-			newParent: { id: item.id, name: item.label, type: 'folder' },
+			newParent: { id: dropTarget.id, name: dropTarget.name, type: 'folder' },
 			options: { skipFetch: true },
 		});
 		// Remove the dragged workflow from the list
 		workflowsAndFolders.value = workflowsAndFolders.value.filter(
-			(workflow) => workflow.id !== draggedResourceId,
+			(workflow) => workflow.id !== draggedResource.id,
 		);
 		// Increase the count of the target folder
-		const targetFolder = getFolderListItem(item.label);
+		const targetFolder = getFolderListItem(dropTarget.id);
 		if (targetFolder) {
 			targetFolder.workflowCount += 1;
 		}
 	}
-};
-
-const moveFolderToProjectRoot = async (id: string, name: string) => {
-	const draggedResourceId = foldersStore.draggedElement?.id;
-	const draggedResourceType = foldersStore.draggedElement?.type;
-	const draggedResourceName = foldersStore.draggedElement?.name;
-	if (!draggedResourceId || !draggedResourceType || !draggedResourceName) return;
-	onDragEnd();
-	if (draggedResourceType === 'folder') {
-		await moveFolder({
-			folder: { id: draggedResourceId, name: draggedResourceName },
-			newParent: { id, name, type: 'project' },
-			options: { skipFetch: true, skipNavigation: true },
-		});
-		// Remove the dragged folder from the list
-		workflowsAndFolders.value = workflowsAndFolders.value.filter(
-			(folder) => folder.id !== draggedResourceId,
-		);
-	} else if (draggedResourceType) {
-		await onWorkflowMoved({
-			workflow: {
-				id: draggedResourceId,
-				name: draggedResourceName,
-				oldParentId: currentFolderId.value ?? '',
-			},
-			newParent: { id, name, type: 'project' },
-			options: { skipFetch: true },
-		});
-		// Remove the dragged workflow from the list
-		workflowsAndFolders.value = workflowsAndFolders.value.filter(
-			(workflow) => workflow.id !== draggedResourceId,
-		);
-	}
-};
-
-const resetDragging = () => {
-	foldersStore.activeDropTarget = null;
 };
 
 // Breadcrumbs methods
@@ -1427,7 +1337,7 @@ const onCreateWorkflowClick = () => {
 		@update:page-size="setPageSize"
 		@update:filters="onFiltersUpdated"
 		@sort="onSortUpdated"
-		@mouseleave="resetDragging"
+		@mouseleave="folderHelpers.resetDropTarget"
 	>
 		<template #header>
 			<ProjectHeader @create-folder="createFolderInCurrent">
@@ -1529,8 +1439,8 @@ const onCreateWorkflowClick = () => {
 				:disabled="!isDragNDropEnabled"
 				type="move"
 				target-data-key="folder-card"
-				@dragstart="onDragStart"
-				@dragend="onDragEnd"
+				@dragstart="folderHelpers.onDragStart"
+				@dragend="folderHelpers.onDragEnd"
 			>
 				<template #preview>
 					<N8nCard>
@@ -1560,8 +1470,8 @@ const onCreateWorkflowClick = () => {
 					data-target="folder-card"
 					class="mb-2xs"
 					@action="onFolderCardAction"
-					@mouseenter="onDragEnter"
-					@mouseup="onDrop"
+					@mouseenter="folderHelpers.onDragEnter"
+					@mouseup="onFolderCardDrop"
 				/>
 			</Draggable>
 			<Draggable
@@ -1570,8 +1480,8 @@ const onCreateWorkflowClick = () => {
 				:disabled="!isDragNDropEnabled"
 				type="move"
 				target-data-key="workflow-card"
-				@dragstart="onDragStart"
-				@dragend="onDragEnd"
+				@dragstart="folderHelpers.onDragStart"
+				@dragend="folderHelpers.onDragEnd"
 			>
 				<template #preview>
 					<N8nCard>
@@ -1601,7 +1511,7 @@ const onCreateWorkflowClick = () => {
 					@workflow:duplicated="fetchWorkflows"
 					@workflow:active-toggle="onWorkflowActiveToggle"
 					@action:move-to-folder="moveWorkflowToFolder"
-					@mouseenter="isDragging ? resetDragging() : {}"
+					@mouseenter="isDragging ? folderHelpers.resetDropTarget : {}"
 				/>
 			</Draggable>
 		</template>
