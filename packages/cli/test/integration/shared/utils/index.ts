@@ -1,4 +1,3 @@
-import { type BinaryDataConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import {
@@ -111,10 +110,7 @@ export async function initNodeTypes(customNodes?: INodeTypeData) {
  * Initialize a BinaryDataService for test runs.
  */
 export async function initBinaryDataService(mode: 'default' | 'filesystem' = 'default') {
-	const binaryDataService = new BinaryDataService(
-		mock<InstanceSettings>(),
-		mock<BinaryDataConfig>(),
-	);
+	const binaryDataService = new BinaryDataService(mock(), mock());
 	await binaryDataService.init({
 		mode,
 		availableModes: [mode],

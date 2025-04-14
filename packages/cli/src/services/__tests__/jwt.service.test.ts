@@ -12,7 +12,7 @@ describe('JwtService', () => {
 	const signedToken =
 		'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjEsImlhdCI6MTY5OTk4NDMxM30.xNZOAmcidW5ovEF_mwIOzCWkJ70FEO6MFNLK2QRDOeQ';
 
-	const instanceSettings = mock<InstanceSettings>({ signingSecret: 'test-key' });
+	const instanceSettings = mock<InstanceSettings>({ encryptionKey: 'test-key' });
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -29,7 +29,7 @@ describe('JwtService', () => {
 			config.set('userManagement.jwtSecret', '');
 			const jwtService = new JwtService(instanceSettings);
 			expect(jwtService.jwtSecret).toEqual(
-				'62af8704764faf8ea82fc61ce9c4c3908b6cb97d463a634e9e587d7c885db0ef',
+				'e9e2975005eddefbd31b2c04a0b0f2d9c37d9d718cf3676cddf76d65dec555cb',
 			);
 		});
 	});

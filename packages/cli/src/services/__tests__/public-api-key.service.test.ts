@@ -26,7 +26,7 @@ const mockReqWith = (apiKey: string, path: string, method: string) => {
 	});
 };
 
-const instanceSettings = mock<InstanceSettings>({ signingSecret: 'test-key' });
+const instanceSettings = mock<InstanceSettings>({ encryptionKey: 'test-key' });
 
 const eventService = mock<EventService>();
 

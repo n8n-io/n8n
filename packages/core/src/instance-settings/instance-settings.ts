@@ -106,20 +106,6 @@ export class InstanceSettings {
 		this.isMultiMainLicensed = newState;
 	}
 
-	/**
-	 * If we don't have a JWT secret set, generate one based on encryption key.
-	 * For a key off every other letter from encryption key
-	 * CAREFUL: do not change this or it breaks all existing tokens
-	 */
-	get signingSecret(): string {
-		let baseKey = '';
-		for (let i = 0; i < this.encryptionKey.length; i += 2) {
-			baseKey += this.encryptionKey[i];
-		}
-
-		return baseKey;
-	}
-
 	/** Whether this `main` instance is running in multi-main mode. */
 	get isMultiMain() {
 		return this.instanceType === 'main' && this.isMultiMainEnabled && this.isMultiMainLicensed;

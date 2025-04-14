@@ -1,4 +1,3 @@
-import { type BinaryDataConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { mkdtempSync, readFileSync } from 'fs';
 import { IncomingMessage } from 'http';
@@ -23,7 +22,6 @@ import {
 	detectBinaryEncoding,
 	getBinaryDataBuffer,
 	getBinaryHelperFunctions,
-	getBinarySignedUrl,
 	prepareBinaryData,
 	setBinaryDataBuffer,
 } from '../binary-helper-functions';
@@ -44,7 +42,7 @@ describe('test binary data helper methods', () => {
 	const temporaryDir = mkdtempSync(join(tmpdir(), 'n8n'));
 
 	beforeEach(() => {
-		binaryDataService = new BinaryDataService(mock<InstanceSettings>(), mock<BinaryDataConfig>());
+		binaryDataService = new BinaryDataService(mock<InstanceSettings>(), mock());
 		Container.set(BinaryDataService, binaryDataService);
 	});
 
@@ -454,22 +452,6 @@ describe('setBinaryDataBuffer', () => {
 	});
 });
 
-describe('getBinarySignedUrl', () => {
-	it('should get a signed url', async () => {
-		const binaryDataId = 'binary123';
-		const binaryDataService = mock<BinaryDataService>();
-		const signedUrl = 'https://example.com/signed-url';
-
-		binaryDataService.createSignedUrl.mockReturnValueOnce(signedUrl);
-		Container.set(BinaryDataService, binaryDataService);
-
-		const result = getBinarySignedUrl(binaryDataId);
-
-		expect(result).toBe(signedUrl);
-		expect(binaryDataService.createSignedUrl).toHaveBeenCalledWith(binaryDataId);
-	});
-});
-
 describe('getBinaryHelperFunctions', () => {
 	it('should return helper functions with correct context', async () => {
 		const additionalData = { executionId } as IWorkflowExecuteAdditionalData;
@@ -495,5 +477,26 @@ describe('getBinaryHelperFunctions', () => {
 		await expect(async () => await helperFunctions.copyBinaryFile()).rejects.toThrow(
 			'`copyBinaryFile` has been removed',
 		);
+	});
+});
+
+describe('createBinarySignedUrl', () => {
+	const restApiUrl = 'https://n8n.host/rest';
+
+	it('should get a signed url', async () => {
+		const additionalData = { restApiUrl } as IWorkflowExecuteAdditionalData;
+		const helperFunctions = getBinaryHelperFunctions(additionalData, workflowId);
+
+		const binaryData = mock<IBinaryData>();
+		const token = 'signed-token';
+
+		const binaryDataService = mock<BinaryDataService>();
+		Container.set(BinaryDataService, binaryDataService);
+		binaryDataService.createSignedToken.mockReturnValueOnce(token);
+
+		const result = helperFunctions.createBinarySignedUrl(binaryData);
+
+		expect(result).toBe(`${restApiUrl}/binary-data/signed?token=${token}`);
+		expect(binaryDataService.createSignedToken).toHaveBeenCalledWith(binaryData, undefined);
 	});
 });

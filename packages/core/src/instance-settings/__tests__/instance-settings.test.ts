@@ -209,38 +209,6 @@ describe('InstanceSettings', () => {
 		});
 	});
 
-	describe('signingSecret', () => {
-		let instanceSettings: InstanceSettings;
-		let mockConfig: InstanceSettingsConfig;
-		let mockLogger: Logger;
-
-		beforeEach(() => {
-			mockConfig = {
-				n8nFolder: '/tmp/n8n',
-				userHome: '/tmp',
-				enforceSettingsFilePermissions: false,
-			} as unknown as InstanceSettingsConfig;
-
-			mockLogger = {
-				info: jest.fn(),
-				warn: jest.fn(),
-			} as unknown as Logger;
-
-			instanceSettings = new InstanceSettings(mockConfig, mockLogger);
-
-			// Mock the encryptionKey
-			Object.defineProperty(instanceSettings, 'encryptionKey', {
-				get: jest.fn(() => 'abcdef123456'),
-			});
-		});
-
-		it('should derive signingSecret from encryptionKey by taking every other character', () => {
-			const signingSecret = instanceSettings.signingSecret;
-
-			expect(signingSecret).toBe('ace135');
-		});
-	});
-
 	describe('isDocker', () => {
 		let settings: InstanceSettings;
 
