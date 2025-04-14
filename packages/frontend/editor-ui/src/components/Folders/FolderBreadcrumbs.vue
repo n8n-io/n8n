@@ -24,6 +24,7 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
 	itemSelected: [item: PathItem];
 	action: [action: string];
+	itemDrop: [item: PathItem];
 }>();
 
 const i18n = useI18n();
@@ -79,6 +80,7 @@ const onItemHover = (item: PathItem) => {
 			data-test-id="folder-list-breadcrumbs"
 			@item-selected="onItemSelect"
 			@item-hover="onItemHover"
+			@item-drop="emit('itemDrop', $event)"
 		>
 			<template v-if="currentProject" #prepend>
 				<div

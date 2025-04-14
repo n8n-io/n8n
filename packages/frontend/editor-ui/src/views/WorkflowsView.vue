@@ -867,6 +867,49 @@ const onDrop = async (event: MouseEvent) => {
 	}
 };
 
+const onBreadCrumbsItemDrop = async (item: PathItem) => {
+	const draggedResourceId = foldersStore.draggedElement?.id;
+	const draggedResourceType = foldersStore.draggedElement?.type;
+	const draggedResourceName = foldersStore.draggedElement?.name;
+	if (!draggedResourceId || !draggedResourceType || !draggedResourceName) return;
+	onDragEnd();
+	if (draggedResourceType === 'folder') {
+		await moveFolder({
+			folder: { id: draggedResourceId, name: draggedResourceName },
+			newParent: { id: item.id, name: item.label, type: 'folder' },
+			options: { skipFetch: true, skipNavigation: true },
+		});
+		// Remove the dragged folder from the list
+		workflowsAndFolders.value = workflowsAndFolders.value.filter(
+			(folder) => folder.id !== draggedResourceId,
+		);
+		// Increase the count of the target folder
+		const targetFolder = getFolderListItem(item.id);
+		if (targetFolder) {
+			targetFolder.subFolderCount += 1;
+		}
+	} else if (draggedResourceType) {
+		await onWorkflowMoved({
+			workflow: {
+				id: draggedResourceId,
+				name: draggedResourceName,
+				oldParentId: currentFolderId.value ?? '',
+			},
+			newParent: { id: item.id, name: item.label, type: 'folder' },
+			options: { skipFetch: true },
+		});
+		// Remove the dragged workflow from the list
+		workflowsAndFolders.value = workflowsAndFolders.value.filter(
+			(workflow) => workflow.id !== draggedResourceId,
+		);
+		// Increase the count of the target folder
+		const targetFolder = getFolderListItem(item.label);
+		if (targetFolder) {
+			targetFolder.workflowCount += 1;
+		}
+	}
+};
+
 // Breadcrumbs methods
 
 /**
@@ -1432,6 +1475,7 @@ const onCreateWorkflowClick = () => {
 					:hidden-items-trigger="isDragging ? 'hover' : 'click'"
 					@item-selected="onBreadcrumbItemClick"
 					@action="onBreadCrumbsAction"
+					@item-drop="onBreadCrumbsItemDrop"
 				/>
 			</div>
 		</template>
