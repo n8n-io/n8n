@@ -119,9 +119,14 @@ function getBestQuoteChar(description: string) {
 	return "'";
 }
 
-function findBestName(props: OverrideContext) {
-	console.log(props);
-	return props.parameter.displayName;
+// Note that this is not *technically* unique, as two lists with the
+// same list name and the same property display name could theoretically
+// exist within one node. However, this is unlikely to happen in practice.
+function buildUniqueName(props: OverrideContext) {
+	const path = props.path.split('.');
+	// include any list segments in the path for uniqueness
+	const filteredPaths = path.filter((x) => /\[\d+\]/i.test(x));
+	return [...filteredPaths, props.parameter.displayName].join('_');
 }
 
 export function buildValueFromOverride(
@@ -131,7 +136,7 @@ export function buildValueFromOverride(
 ) {
 	const { extraPropValues, extraProps } = override;
 	const marker = includeMarker ? `${FROM_AI_AUTO_GENERATED_MARKER} ` : '';
-	const key = sanitizeFromAiParameterName(findBestName(props));
+	const key = sanitizeFromAiParameterName(buildUniqueName(props));
 	const description =
 		extraPropValues?.description?.toString() ?? extraProps.description.initialValue;
 
