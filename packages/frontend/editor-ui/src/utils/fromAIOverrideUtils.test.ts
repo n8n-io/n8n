@@ -1,6 +1,7 @@
 import type { INodeUi } from '@/Interface';
 import type { FromAIOverride, OverrideContext } from './fromAIOverrideUtils';
 import {
+	buildUniqueName,
 	buildValueFromOverride,
 	fromAIExtraProps,
 	isFromAIOverrideValue,
@@ -211,5 +212,32 @@ describe('FromAiOverride', () => {
 		expect(buildValueFromOverride(override, makeContext(''), false)).toEqual(
 			`={{ $fromAI('${DISPLAY_NAME}', \`${description}\`, 'string') }}`,
 		);
+	});
+});
+
+describe('buildUniqueName', () => {
+	describe('buildUniqueName', () => {
+		test.each<[string, string, string]>([
+			['no list segments', 'parameters.someParameter', DISPLAY_NAME],
+			[
+				'list segments in the path',
+				'parameters.someList[0].someParameter',
+				'someList[0]_' + DISPLAY_NAME,
+			],
+			[
+				'multiple list segments in the path',
+				'parameters.someList[0].nestedList[1].someParameter',
+				'someList[0]_nestedList[1]_' + DISPLAY_NAME,
+			],
+			[
+				'paths without parameters',
+				'someList[0].nestedList[1]',
+				'someList[0]_nestedList[1]_' + DISPLAY_NAME,
+			],
+			['empty paths', '', DISPLAY_NAME],
+		])('should build a unique name with %s', (_description, path, expected) => {
+			const context = makeContext('value', path);
+			expect(buildUniqueName(context)).toEqual(expected);
+		});
 	});
 });
