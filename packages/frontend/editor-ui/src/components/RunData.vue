@@ -139,6 +139,7 @@ type Props = {
 	disableEdit?: boolean;
 	disablePin?: boolean;
 	compact?: boolean;
+	tableHeaderBgColor?: 'base' | 'light';
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -157,7 +158,22 @@ const props = withDefaults(defineProps<Props>(), {
 	disableEdit: false,
 	disablePin: false,
 	compact: false,
+	tableHeaderBgColor: 'base',
 });
+
+defineSlots<{
+	content: {};
+	'callout-message': {};
+	header: {};
+	'input-select': {};
+	'before-data': {};
+	'run-info': {};
+	'node-waiting': {};
+	'node-not-run': {};
+	'no-output-data': {};
+	'recovered-artificial-output-data': {};
+}>();
+
 const emit = defineEmits<{
 	search: [search: string];
 	runChange: [runIndex: number];
@@ -1490,9 +1506,11 @@ defineExpose({ enterEditMode });
 
 		<slot v-if="!displaysMultipleNodes" name="before-data" />
 
-		<div v-if="props.calloutMessage" :class="$style.hintCallout">
+		<div v-if="props.calloutMessage || $slots['callout-message']" :class="$style.hintCallout">
 			<N8nCallout theme="info" data-test-id="run-data-callout">
-				<N8nText v-n8n-html="props.calloutMessage" size="small"></N8nText>
+				<slot name="callout-message">
+					<N8nText v-n8n-html="props.calloutMessage" size="small"></N8nText>
+				</slot>
 			</N8nCallout>
 		</div>
 
@@ -1529,6 +1547,7 @@ defineExpose({ enterEditMode });
 
 		<div
 			v-else-if="
+				!props.compact &&
 				hasNodeRun &&
 				!isSearchInSchemaView &&
 				((dataCount > 0 && maxRunIndex === 0) || search) &&
@@ -1541,7 +1560,7 @@ defineExpose({ enterEditMode });
 		>
 			<slot v-if="inputSelectLocation === 'items'" name="input-select"></slot>
 
-			<RunDataItemCount v-if="!props.compact" v-bind="itemsCountProps" />
+			<RunDataItemCount v-bind="itemsCountProps" />
 			<ViewSubExecution
 				v-if="activeTaskMetadata && !(paneType === 'input' && hasInputOverwrite)"
 				:task-metadata="activeTaskMetadata"
@@ -1757,6 +1776,7 @@ defineExpose({ enterEditMode });
 					:total-runs="maxRunIndex"
 					:has-default-hover-state="paneType === 'input' && !search"
 					:search="search"
+					:header-bg-color="tableHeaderBgColor"
 					@mounted="emit('tableMounted', $event)"
 					@active-row-changed="onItemHover"
 					@display-mode-change="onDisplayModeChange"
@@ -2010,10 +2030,6 @@ defineExpose({ enterEditMode });
 	line-height: var(--font-line-height-xloose);
 	word-break: normal;
 	height: 100%;
-
-	.compact & {
-		padding: 0 var(--spacing-2xs) var(--spacing-2xs) var(--spacing-2xs);
-	}
 }
 
 .inlineError {
