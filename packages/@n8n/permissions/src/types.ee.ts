@@ -16,7 +16,7 @@ type AllScopesObject = {
 	[R in Resource]: ResourceScope<R>;
 };
 
-export type Scope<K extends Resource = Resource> = AllScopesObject[K];
+export type Scope = AllScopesObject[Resource];
 
 export type ScopeLevel = 'global' | 'project' | 'resource';
 export type GetScopeLevel<T extends ScopeLevel> = Record<T, Scope[]>;
@@ -44,8 +44,7 @@ type AllApiKeyScopesObject = {
 	[R in PublicApiKeyResources]: ApiKeyResourceScope<R>;
 };
 
-export type ApiKeyScope<K extends PublicApiKeyResources = PublicApiKeyResources> =
-	AllApiKeyScopesObject[K];
+export type ApiKeyScope = AllApiKeyScopesObject[PublicApiKeyResources];
 
 export type GlobalRole = 'global:owner' | 'global:admin' | 'global:member';
 export type AssignableRole = Exclude<GlobalRole, 'global:owner'>;
