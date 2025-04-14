@@ -27,6 +27,7 @@ import { groupNodeTypesByNameAndType } from '@/utils/nodeTypes/nodeTypeTransform
 import { computed, ref } from 'vue';
 import { useActionsGenerator } from '../components/Node/NodeCreator/composables/useActionsGeneration';
 import { removePreviewToken } from '../components/Node/NodeCreator/utils';
+import { useSettingsStore } from '@/stores/settings.store';
 
 export type NodeTypesStore = ReturnType<typeof useNodeTypesStore>;
 
@@ -38,6 +39,8 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 	const rootStore = useRootStore();
 
 	const actionsGenerator = useActionsGenerator();
+
+	const settingsStore = useSettingsStore();
 
 	// ---------------------------------------------------------------------------
 	// #region Computed
@@ -347,10 +350,16 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 	};
 
 	const fetchCommunityNodePreviews = async () => {
+		if (!settingsStore.isCommunityNodesFeatureEnabled) {
+			return;
+		}
 		communityPreviews.value = await nodeTypesApi.getCommunityNodeTypes(rootStore.restApiContext);
 	};
 
 	const getCommunityNodeAttributes = async (nodeName: string) => {
+		if (!settingsStore.isCommunityNodesFeatureEnabled) {
+			return null;
+		}
 		return await nodeTypesApi.getCommunityNodeAttributes(
 			rootStore.restApiContext,
 			removePreviewToken(nodeName),
