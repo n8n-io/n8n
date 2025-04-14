@@ -801,7 +801,7 @@ const onBreadCrumbsItemDrop = async (item: PathItem) => {
 	folderHelpers.onDragEnd();
 };
 
-const moveFolderToProjectRoot = async (_id: string, name: string) => {
+const moveFolderToProjectRoot = async (id: string, name: string) => {
 	if (!foldersStore.draggedElement) return;
 	await moveResourceOnDrop(
 		{
@@ -810,7 +810,7 @@ const moveFolderToProjectRoot = async (_id: string, name: string) => {
 			name: foldersStore.draggedElement.name,
 		},
 		{
-			id: '0',
+			id,
 			type: 'project',
 			name,
 		},
@@ -846,7 +846,7 @@ const moveResourceOnDrop = async (draggedResource: DragTarget, dropTarget: DragT
 				name: draggedResource.name,
 				oldParentId: currentFolderId.value ?? '',
 			},
-			newParent: { id: dropTarget.id, name: dropTarget.name, type: 'folder' },
+			newParent: { id: dropTarget.id, name: dropTarget.name, type: dropTarget.type },
 			options: { skipFetch: true },
 		});
 		// Remove the dragged workflow from the list
