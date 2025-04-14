@@ -29,7 +29,7 @@ export function createQdrantClient(credentials: QdrantCredential): QdrantClient 
 	const { protocol, host, port } = parseQdrantUrl(credentials.qdrantUrl);
 
 	const qdrantClient = new QdrantClient({
-		url: host,
+		host,
 		apiKey: credentials.apiKey,
 		https: protocol === 'https:',
 		port,
