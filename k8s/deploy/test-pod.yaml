@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-pod
+  namespace: postgres
+spec:
+  containers:
+    - name: my-container
+      image: python:3.12.7
+      command:
+      - /bin/bash
+      - -c
+      - while sleep 1000; do :; done
+      volumeMounts:
+        - name: my-volume
+          mountPath: "/mnt/data"  # Path where PVC is mounted
+  volumes:
+    - name: my-volume
+      persistentVolumeClaim:
+        claimName: postgres-pvc

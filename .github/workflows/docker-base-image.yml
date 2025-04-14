@@ -32,12 +32,6 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Login to DockerHub
-        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-
       - name: Build
         uses: docker/build-push-action@b32b51a8eda65d6793cd0494a773d4f6bcef32dc # v6.11.0
         env:
@@ -51,5 +45,4 @@ jobs:
           provenance: false
           push: true
           tags: |
-            ${{ secrets.DOCKER_USERNAME }}/base:${{ github.event.inputs.node_version }}
-            ghcr.io/${{ github.repository_owner }}/base:${{ github.event.inputs.node_version }}
+            ghcr.io/${{ github.repository_owner }}/n8n-base:${{ github.event.inputs.node_version }}

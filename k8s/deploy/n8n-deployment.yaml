@@ -1,0 +1,97 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    service: n8n
+  name: n8n
+  namespace: n8n
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      service: n8n
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        service: n8n
+    spec:
+      initContainers:
+        - name: volume-permissions
+          image: busybox:1.36
+          command: ["sh", "-c", "chown 1000:1000 /data"]
+          volumeMounts:
+            - name: n8n
+              mountPath: /data
+      containers:
+        - command:
+            - /bin/sh
+          args:
+            - -c
+            - sleep 5; n8n start --tunnel
+          env:
+            - name: N8N_SECURE_COOKIE
+              value: "false"
+            - name: DB_TYPE
+              value: postgresdb
+            - name: DB_POSTGRESDB_HOST
+              value: postgres-service.postgres.svc.cluster.local
+            - name: DB_POSTGRESDB_PORT
+              value: "5432"
+            - name: DB_POSTGRESDB_DATABASE
+              value: n8n
+            - name: DB_POSTGRESDB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: user
+            - name: DB_POSTGRESDB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: password
+            - name: N8N_PROTOCOL
+              value: http
+            - name: N8N_PORT
+              value: "5678"
+            - name: N8N_EDITOR_BASE_URL
+              value: "http://192.168.68.120:30567"
+          image: ghcr.io/ozlevka/n8n:v0.0.1
+          name: n8n
+          ports:
+            - containerPort: 5678
+          resources:
+            requests:
+              memory: "250Mi"
+            limits:
+              memory: "500Mi"
+          volumeMounts:
+            - mountPath: /home/node/.n8n
+              name: n8n
+      restartPolicy: Always
+      volumes:
+        - name: n8n
+          persistentVolumeClaim:
+            claimName: n8n-pvc
+        - name: n8n-secret
+          secret:
+            secretName: n8n-secret
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: n8n-nodeport-service
+  namespace: n8n  # Match the Deployment's namespace
+  labels:
+    service: n8n-service # Match the Deployment's labels
+spec:
+  type: NodePort
+  selector:
+    service: n8n # Selects Pods with this label
+  ports:
+    - protocol: TCP
+      port: 5678         # Internal port the Service listens on
+      targetPort: 5678   # Port the Pods listen on (containerPort)
+      nodePort: 30567    # Port exposed on the Node's IP
+
