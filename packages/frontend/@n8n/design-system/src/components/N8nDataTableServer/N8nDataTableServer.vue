@@ -203,7 +203,7 @@ const page = defineModel<number>('page', { default: 0 });
 watch(page, () => table.setPageIndex(page.value));
 
 const itemsPerPage = defineModel<number>('items-per-page', { default: 10 });
-watch(itemsPerPage, () => table.setPageSize(itemsPerPage.value));
+watch(itemsPerPage, () => (page.value = 0));
 
 const pagination = computed<PaginationState>({
 	get() {
