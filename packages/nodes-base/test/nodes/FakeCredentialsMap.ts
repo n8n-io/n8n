@@ -285,4 +285,17 @@ BQIDAQAB
 	discordWebhookApi: {
 		webhookUri: 'https://discord.com/webhook',
 	},
+	salesforceOAuth2Api: {
+		grantType: 'pkce',
+		environment: 'production',
+		authUrl: 'https://login.salesforce.com/services/oauth2/authorize',
+		accessTokenUrl: 'https://login.salesforce.com/services/oauth2/token',
+		scope: 'full refresh_token',
+		authQueryParameters: '',
+		authentication: 'header',
+		oauthTokenData: {
+			access_token: 'ACCESSTOKEN',
+			instance_url: 'https://salesforce.instance',
+		},
+	},
 } as const;
