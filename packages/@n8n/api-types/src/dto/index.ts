@@ -3,6 +3,9 @@ export { AiChatRequestDto } from './ai/ai-chat-request.dto';
 export { AiApplySuggestionRequestDto } from './ai/ai-apply-suggestion-request.dto';
 export { AiFreeCreditsRequestDto } from './ai/ai-free-credits-request.dto';
 
+export { BinaryDataQueryDto } from './binary-data/binary-data-query.dto';
+export { BinaryDataSignedQueryDto } from './binary-data/binary-data-signed-query.dto';
+
 export { LoginRequestDto } from './auth/login-request.dto';
 export { ResolveSignupTokenQueryDto } from './auth/resolve-signup-token-query.dto';
 
