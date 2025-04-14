@@ -11,7 +11,6 @@ import WorkflowCard from '@/components/WorkflowCard.vue';
 import WorkflowTagsDropdown from '@/components/WorkflowTagsDropdown.vue';
 import {
 	EASY_AI_WORKFLOW_EXPERIMENT,
-	AI_CREDITS_EXPERIMENT,
 	EnterpriseEditionFeature,
 	VIEWS,
 	DEFAULT_WORKFLOW_PAGE_SIZE,
@@ -711,13 +710,7 @@ const openAIWorkflow = async (source: string) => {
 		{ withPostHog: true },
 	);
 
-	const isAiCreditsExperimentEnabled =
-		posthogStore.getVariant(AI_CREDITS_EXPERIMENT.name) === AI_CREDITS_EXPERIMENT.variant;
-
-	const easyAiWorkflowJson = getEasyAiWorkflowJson({
-		isInstanceInAiFreeCreditsExperiment: isAiCreditsExperimentEnabled,
-		withOpenAiFreeCredits: settingsStore.aiCreditsQuota,
-	});
+	const easyAiWorkflowJson = getEasyAiWorkflowJson();
 
 	await router.push({
 		name: VIEWS.TEMPLATE_IMPORT,
