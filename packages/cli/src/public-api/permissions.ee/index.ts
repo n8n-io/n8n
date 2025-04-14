@@ -16,10 +16,6 @@ export const getApiKeyScopesForRole = (role: GlobalRole) => {
 	return MAP_ROLE_SCOPES[role];
 };
 
-export const getAllApiKeyScopes = () => {
-	return MAP_ROLE_SCOPES['global:owner'];
-};
-
 export const getOwnerOnlyApiKeyScopes = () => {
 	const ownerScopes = new Set<ApiKeyScope>(MAP_ROLE_SCOPES['global:owner']);
 	const memberScopes = new Set<ApiKeyScope>(MAP_ROLE_SCOPES['global:member']);
