@@ -157,6 +157,8 @@ export interface INodeUpdatePropertiesInformation {
 
 export type XYPosition = [number, number];
 
+export type DraggableMode = 'mapping' | 'panel-resize';
+
 export interface INodeUi extends INode {
 	position: XYPosition;
 	color?: string;
@@ -346,6 +348,7 @@ export type FolderShortInfo = {
 	id: string;
 	name: string;
 	parentFolder?: string;
+	parentFolderId?: string | null;
 };
 
 export type BaseFolderItem = BaseResource & {
@@ -954,6 +957,8 @@ export interface RootState {
 	endpointForm: string;
 	endpointFormTest: string;
 	endpointFormWaiting: string;
+	endpointMcp: string;
+	endpointMcpTest: string;
 	endpointWebhook: string;
 	endpointWebhookTest: string;
 	endpointWebhookWaiting: string;

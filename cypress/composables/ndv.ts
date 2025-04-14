@@ -126,6 +126,10 @@ export function getNodeOutputErrorMessage() {
 	return getOutputPanel().findChildByTestId('node-error-message');
 }
 
+export function getParameterExpressionPreviewValue() {
+	return cy.getByTestId('parameter-expression-preview-value');
+}
+
 /**
  * Actions
  */
@@ -263,4 +267,8 @@ export function populateFixedCollection<T extends readonly string[]>(
 				.type(`${param}{downArrow}{enter}`);
 		}
 	}
+}
+
+export function assertInlineExpressionValid() {
+	cy.getByTestId('inline-expression-editor-input').find('.cm-valid-resolvable').should('exist');
 }

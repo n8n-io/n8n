@@ -407,6 +407,7 @@ function updateNodeIssues(): void {
 		const parameterIssues = NodeHelpers.getNodeParametersIssues(
 			nodeType.value?.properties ?? [],
 			props.node,
+			nodeType.value,
 		);
 		if (parameterIssues) {
 			ndvStore.updateNodeParameterIssues(parameterIssues);

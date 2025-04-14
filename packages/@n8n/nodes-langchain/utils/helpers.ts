@@ -3,6 +3,7 @@ import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import type { BaseLLM } from '@langchain/core/language_models/llms';
 import type { BaseMessage } from '@langchain/core/messages';
 import type { Tool } from '@langchain/core/tools';
+import { Toolkit } from 'langchain/agents';
 import type { BaseChatMemory } from 'langchain/memory';
 import { NodeConnectionTypes, NodeOperationError, jsonStringify } from 'n8n-workflow';
 import type {
@@ -184,19 +185,27 @@ export function escapeSingleCurlyBrackets(text?: string): string | undefined {
 }
 
 export const getConnectedTools = async (
-	ctx: IExecuteFunctions,
+	ctx: IExecuteFunctions | IWebhookFunctions,
 	enforceUniqueNames: boolean,
 	convertStructuredTool: boolean = true,
 	escapeCurlyBrackets: boolean = false,
 ) => {
-	const connectedTools =
-		((await ctx.getInputConnectionData(NodeConnectionTypes.AiTool, 0)) as Tool[]) || [];
+	const connectedTools = (
+		((await ctx.getInputConnectionData(NodeConnectionTypes.AiTool, 0)) as Array<Toolkit | Tool>) ??
+		[]
+	).flatMap((toolOrToolkit) => {
+		if (toolOrToolkit instanceof Toolkit) {
+			return toolOrToolkit.getTools() as Tool[];
+		}
+
+		return toolOrToolkit;
+	});
 
 	if (!enforceUniqueNames) return connectedTools;
 
 	const seenNames = new Set<string>();
 
-	const finalTools = [];
+	const finalTools: Tool[] = [];
 
 	for (const tool of connectedTools) {
 		const { name } = tool;
