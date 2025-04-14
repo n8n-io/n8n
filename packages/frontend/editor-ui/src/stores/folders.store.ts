@@ -23,8 +23,10 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 	const draggedElement = ref<{ type: 'workflow' | 'folder'; id: string; name: string } | null>(
 		null,
 	);
-	// Only folders can be drop targets
-	const activeDropTarget = ref<{ type: 'folder'; id: string; name: string } | null>(null);
+	// Only folders and projects can be drop targets
+	const activeDropTarget = ref<{ type: 'folder' | 'project'; id: string; name: string } | null>(
+		null,
+	);
 
 	/**
 	 * Cache visited folders so we can build breadcrumbs paths without fetching them from the server

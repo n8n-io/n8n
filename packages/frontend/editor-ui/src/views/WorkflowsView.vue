@@ -136,10 +136,6 @@ const currentFolderId = ref<string | null>(null);
 
 const showCardsBadge = ref(false);
 
-const isDragging = computed(() => {
-	return foldersStore.draggedElement !== null;
-});
-
 /**
  * Folder actions
  * These can appear on the list header, and then they are applied to current folder
@@ -215,6 +211,14 @@ const showFolders = computed(() => {
 
 const currentFolder = computed(() => {
 	return currentFolderId.value ? foldersStore.breadcrumbsCache[currentFolderId.value] : null;
+});
+
+const isDragging = computed(() => {
+	return foldersStore.draggedElement !== null;
+});
+
+const isDragNDropEnabled = computed(() => {
+	return !readOnlyEnv.value && hasPermissionToUpdateFolders.value;
 });
 
 const hasPermissionToCreateFolders = computed(() => {
@@ -910,6 +914,43 @@ const onBreadCrumbsItemDrop = async (item: PathItem) => {
 	}
 };
 
+const moveFolderToProjectRoot = async (id: string, name: string) => {
+	const draggedResourceId = foldersStore.draggedElement?.id;
+	const draggedResourceType = foldersStore.draggedElement?.type;
+	const draggedResourceName = foldersStore.draggedElement?.name;
+	if (!draggedResourceId || !draggedResourceType || !draggedResourceName) return;
+	onDragEnd();
+	if (draggedResourceType === 'folder') {
+		await moveFolder({
+			folder: { id: draggedResourceId, name: draggedResourceName },
+			newParent: { id, name, type: 'project' },
+			options: { skipFetch: true, skipNavigation: true },
+		});
+		// Remove the dragged folder from the list
+		workflowsAndFolders.value = workflowsAndFolders.value.filter(
+			(folder) => folder.id !== draggedResourceId,
+		);
+	} else if (draggedResourceType) {
+		await onWorkflowMoved({
+			workflow: {
+				id: draggedResourceId,
+				name: draggedResourceName,
+				oldParentId: currentFolderId.value ?? '',
+			},
+			newParent: { id, name, type: 'project' },
+			options: { skipFetch: true },
+		});
+		// Remove the dragged workflow from the list
+		workflowsAndFolders.value = workflowsAndFolders.value.filter(
+			(workflow) => workflow.id !== draggedResourceId,
+		);
+	}
+};
+
+const resetDragging = () => {
+	foldersStore.activeDropTarget = null;
+};
+
 // Breadcrumbs methods
 
 /**
@@ -1386,6 +1427,7 @@ const onCreateWorkflowClick = () => {
 		@update:page-size="setPageSize"
 		@update:filters="onFiltersUpdated"
 		@sort="onSortUpdated"
+		@mouseleave="resetDragging"
 	>
 		<template #header>
 			<ProjectHeader @create-folder="createFolderInCurrent">
@@ -1476,6 +1518,7 @@ const onCreateWorkflowClick = () => {
 					@item-selected="onBreadcrumbItemClick"
 					@action="onBreadCrumbsAction"
 					@item-drop="onBreadCrumbsItemDrop"
+					@project-drop="moveFolderToProjectRoot"
 				/>
 			</div>
 		</template>
@@ -1483,6 +1526,7 @@ const onCreateWorkflowClick = () => {
 			<Draggable
 				v-if="(data as FolderResource | WorkflowResource).resourceType === 'folder'"
 				:key="`folder-${index}`"
+				:disabled="!isDragNDropEnabled"
 				type="move"
 				target-data-key="folder-card"
 				@dragstart="onDragStart"
@@ -1523,6 +1567,7 @@ const onCreateWorkflowClick = () => {
 			<Draggable
 				v-else
 				:key="`workflow-${index}`"
+				:disabled="!isDragNDropEnabled"
 				type="move"
 				target-data-key="workflow-card"
 				@dragstart="onDragStart"
@@ -1556,6 +1601,7 @@ const onCreateWorkflowClick = () => {
 					@workflow:duplicated="fetchWorkflows"
 					@workflow:active-toggle="onWorkflowActiveToggle"
 					@action:move-to-folder="moveWorkflowToFolder"
+					@mouseenter="isDragging ? resetDragging() : {}"
 				/>
 			</Draggable>
 		</template>

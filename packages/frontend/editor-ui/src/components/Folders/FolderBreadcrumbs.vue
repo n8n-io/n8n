@@ -25,6 +25,7 @@ const emit = defineEmits<{
 	itemSelected: [item: PathItem];
 	action: [action: string];
 	itemDrop: [item: PathItem];
+	projectDrop: [id: string, name: string];
 }>();
 
 const i18n = useI18n();
@@ -51,6 +52,24 @@ const onItemSelect = (item: PathItem) => {
 
 const onAction = (action: string) => {
 	emit('action', action);
+};
+
+const onProjectMouseUp = () => {
+	if (!isDragging.value || !currentProject.value?.name) {
+		return;
+	}
+	emit('projectDrop', currentProject.value.id, currentProject.value.name);
+};
+
+const onProjectHover = () => {
+	if (!isDragging.value || !currentProject.value?.name) {
+		return;
+	}
+	foldersStore.activeDropTarget = {
+		type: 'project',
+		id: currentProject.value?.id,
+		name: currentProject.value?.name,
+	};
 };
 
 const onItemHover = (item: PathItem) => {
@@ -86,6 +105,8 @@ const onItemHover = (item: PathItem) => {
 				<div
 					:class="{ [$style['home-project']]: true, [$style.dragging]: isDragging }"
 					data-test-id="home-project"
+					@mouseenter="onProjectHover"
+					@mouseup="isDragging ? onProjectMouseUp() : null"
 				>
 					<n8n-link :to="`/projects/${currentProject.id}`">
 						<N8nText size="medium" color="text-base">{{ projectName }}</N8nText>
