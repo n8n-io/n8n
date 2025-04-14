@@ -1,10 +1,10 @@
-import { CommaSeperatedStringArray, Config, Env } from '@n8n/config';
+import { CommaSeparatedStringArray, Config, Env } from '@n8n/config';
 import { UnexpectedError } from 'n8n-workflow';
 
 const moduleNames = ['insights'] as const;
 type ModuleName = (typeof moduleNames)[number];
 
-class Modules extends CommaSeperatedStringArray<ModuleName> {
+class Modules extends CommaSeparatedStringArray<ModuleName> {
 	constructor(str: string) {
 		super(str);
 

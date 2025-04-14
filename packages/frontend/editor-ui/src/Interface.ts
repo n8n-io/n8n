@@ -348,6 +348,7 @@ export type FolderShortInfo = {
 	id: string;
 	name: string;
 	parentFolder?: string;
+	parentFolderId?: string | null;
 };
 
 export type BaseFolderItem = BaseResource & {

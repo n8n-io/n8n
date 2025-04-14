@@ -3087,9 +3087,12 @@
 	"insights.banner.title.timeSaved": "Time saved",
 	"insights.banner.title.timeSavedDailyAverage": "Time saved daily avg.",
 	"insights.banner.title.averageRunTime": "Run time (avg.)",
+	"insights.dashboard.table.projectName": "Project name",
+	"insights.dashboard.table.estimate": "Estimate",
 	"insights.dashboard.title": "Insights",
 	"insights.banner.title.timeSaved.tooltip": "Total time saved calculated from your estimated time savings per execution across all workflows",
 	"insights.banner.failureRate.deviation.tooltip": "Percentage point change from previous period",
 	"insights.chart.failed": "Failed",
-	"insights.chart.succeeded": "Successful"
+	"insights.chart.succeeded": "Successful",
+	"insights.chart.loading": "Loading data..."
 }

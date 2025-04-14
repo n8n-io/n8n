@@ -15,7 +15,7 @@ import { smartDecimal } from '@n8n/utils/number/smartDecimal';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { VIEWS } from '@/constants';
 import { computed, ref, watch } from 'vue';
-import { type RouteLocationRaw } from 'vue-router';
+import { type RouteLocationRaw, type LocationQueryRaw } from 'vue-router';
 
 const props = defineProps<{
 	data: InsightsByWorkflow;
@@ -81,7 +81,7 @@ const headers = ref<Array<TableHeader<Item>>>([
 		},
 	},
 	{
-		title: 'Project name',
+		title: i18n.baseText('insights.dashboard.table.projectName'),
 		key: 'projectName',
 		disableSort: true,
 	},
@@ -101,11 +101,12 @@ const emit = defineEmits<{
 	];
 }>();
 
-const getWorkflowLink = (item: Item): RouteLocationRaw => ({
+const getWorkflowLink = (item: Item, query?: LocationQueryRaw): RouteLocationRaw => ({
 	name: VIEWS.WORKFLOW,
 	params: {
 		name: item.workflowId,
 	},
+	query,
 });
 
 const trackWorkflowClick = (item: Item) => {
@@ -146,6 +147,18 @@ watch(sortBy, (newValue) => {
 					</N8nTooltip>
 				</router-link>
 			</template>
+			<template #[`item.timeSaved`]="{ item, value }">
+				<router-link
+					v-if="!item.timeSaved"
+					:to="getWorkflowLink(item, { settings: 'true' })"
+					class="link"
+				>
+					{{ i18n.baseText('insights.dashboard.table.estimate') }}
+				</router-link>
+				<template v-else>
+					{{ value }}
+				</template>
+			</template>
 			<template #[`item.projectName`]="{ item }">
 				<N8nTooltip v-if="item.projectName" :content="item.projectName" placement="top">
 					<div class="ellipsis">
@@ -164,13 +177,20 @@ watch(sortBy, (newValue) => {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	line-height: 1.2;
+	width: fit-content;
+	max-width: 100%;
 }
 
 .link {
-	display: flex;
+	display: inline-flex;
 	height: 100%;
 	align-items: center;
 	text-decoration: none;
 	color: var(--color-text-base);
+	text-decoration: underline;
+	max-width: 100%;
+	&:hover {
+		color: var(--color-text-dark);
+	}
 }
 </style>

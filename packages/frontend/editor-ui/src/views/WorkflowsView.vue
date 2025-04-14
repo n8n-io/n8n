@@ -65,6 +65,7 @@ import { useUsageStore } from '@/stores/usage.store';
 import { useInsightsStore } from '@/features/insights/insights.store';
 import InsightsSummary from '@/features/insights/components/InsightsSummary.vue';
 import { useOverview } from '@/composables/useOverview';
+import { PROJECT_ROOT } from 'n8n-workflow';
 
 const SEARCH_DEBOUNCE_TIME = 300;
 const FILTERS_DEBOUNCE_TIME = 100;
@@ -136,6 +137,7 @@ const currentFolderId = ref<string | null>(null);
 const isDragging = computed(() => {
 	return foldersStore.draggedElement !== null;
 });
+const showCardsBadge = ref(false);
 
 /**
  * Folder actions
@@ -357,6 +359,7 @@ watch(
 	() => route.params?.folderId,
 	async (newVal) => {
 		currentFolderId.value = newVal as string;
+		filters.value.search = '';
 		await fetchWorkflows();
 	},
 );
@@ -483,7 +486,9 @@ const fetchWorkflows = async () => {
 				name: filters.value.search || undefined,
 				active: activeFilter,
 				tags: tags.length ? tags : undefined,
-				parentFolderId: parentFolder ?? (isOverviewPage.value ? undefined : '0'), // Sending 0 will only show one level of folders
+				parentFolderId:
+					parentFolder ??
+					(isOverviewPage.value ? undefined : filters?.value.search ? undefined : PROJECT_ROOT), // Sending 0 will only show one level of folders
 			},
 			fetchFolders,
 		);
@@ -504,6 +509,10 @@ const fetchWorkflows = async () => {
 		}
 
 		workflowsAndFolders.value = fetchedResources;
+
+		// Toggle ownership cards visibility only after we have fetched the workflows
+		showCardsBadge.value = isOverviewPage.value || filters.value.search !== '';
+
 		return fetchedResources;
 	} catch (error) {
 		toast.showError(error, i18n.baseText('workflows.list.error.fetching'));
@@ -1493,6 +1502,7 @@ const onCreateWorkflowClick = () => {
 					:read-only="readOnlyEnv"
 					:data-resourceid="(data as WorkflowResource).id"
 					:data-resourcename="(data as WorkflowResource).name"
+					:show-ownership-badge="showCardsBadge"
 					data-target="workflow-card"
 					@click:tag="onClickTag"
 					@workflow:deleted="onWorkflowDeleted"

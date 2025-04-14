@@ -50,6 +50,7 @@ export const Config: ClassDecorator = (ConfigClass: Class) => {
 						);
 						continue;
 					}
+					config[key] = result.data;
 				} else if (type === Number) {
 					const parsed = Number(value);
 					if (isNaN(parsed)) {
