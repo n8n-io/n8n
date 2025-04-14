@@ -1,7 +1,9 @@
 import { Pinecone } from '@pinecone-database/pinecone';
-import { QdrantClient } from '@qdrant/js-client-rest';
 import { MilvusClient } from '@zilliz/milvus2-sdk-node';
 import { ApplicationError, type IDataObject, type ILoadOptionsFunctions } from 'n8n-workflow';
+
+import type { QdrantCredential } from '../../../VectorStoreQdrant/Qdrant.utils';
+import { createQdrantClient } from '../../../VectorStoreQdrant/Qdrant.utils';
 
 export async function pineconeIndexSearch(this: ILoadOptionsFunctions) {
 	const credentials = await this.getCredentials('pineconeApi');
@@ -54,10 +56,7 @@ export async function supabaseTableNameSearch(this: ILoadOptionsFunctions) {
 export async function qdrantCollectionsSearch(this: ILoadOptionsFunctions) {
 	const credentials = await this.getCredentials('qdrantApi');
 
-	const client = new QdrantClient({
-		url: credentials.qdrantUrl as string,
-		apiKey: credentials.apiKey as string,
-	});
+	const client = createQdrantClient(credentials as QdrantCredential);
 
 	const response = await client.getCollections();
 
