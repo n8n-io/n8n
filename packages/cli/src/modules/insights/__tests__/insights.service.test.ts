@@ -498,7 +498,7 @@ describe('workflowExecuteAfterHandler - flushEvents', () => {
 		// ARRANGE
 		jest.useFakeTimers();
 		trxMock.insert.mockClear();
-		insightsService.scheduleFlushing();
+		insightsService.startBackgroundProcess();
 		const ctx = mock<ExecutionLifecycleHooks>({ workflowData: workflow });
 
 		try {
@@ -523,7 +523,7 @@ describe('workflowExecuteAfterHandler - flushEvents', () => {
 		// ARRANGE
 		jest.useFakeTimers();
 		trxMock.insert.mockClear();
-		insightsService.scheduleFlushing();
+		insightsService.startBackgroundProcess();
 		const ctx = mock<ExecutionLifecycleHooks>({ workflowData: workflow });
 
 		try {
@@ -566,7 +566,7 @@ describe('workflowExecuteAfterHandler - flushEvents', () => {
 	test('flushes events synchronously while shutting down', async () => {
 		// ARRANGE
 		// reset insights async flushing
-		insightsService.scheduleFlushing();
+		insightsService.startBackgroundProcess();
 		trxMock.insert.mockClear();
 		const ctx = mock<ExecutionLifecycleHooks>({ workflowData: workflow });
 
@@ -599,7 +599,7 @@ describe('workflowExecuteAfterHandler - flushEvents', () => {
 		jest.useFakeTimers();
 		trxMock.insert.mockClear();
 		trxMock.insert.mockRejectedValueOnce(new Error('Test error'));
-		insightsService.scheduleFlushing();
+		insightsService.startBackgroundProcess();
 		const ctx = mock<ExecutionLifecycleHooks>({ workflowData: workflow });
 
 		try {
@@ -628,7 +628,7 @@ describe('workflowExecuteAfterHandler - flushEvents', () => {
 		// ARRANGE
 		const config = Container.get(InsightsConfig);
 		config.flushBatchSize = 10;
-		insightsService.scheduleFlushing();
+		insightsService.startBackgroundProcess();
 		trxMock.insert.mockClear();
 
 		const ctx = mock<ExecutionLifecycleHooks>({ workflowData: workflow });
@@ -944,7 +944,7 @@ describe('compaction', () => {
 			try {
 				// ARRANGE
 				const insightsService = Container.get(InsightsService);
-				insightsService.initializeCompaction();
+				insightsService.startBackgroundProcess();
 
 				// spy on the compactInsights method to check if it's called
 				insightsService.compactInsights = jest.fn();
