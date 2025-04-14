@@ -25,7 +25,7 @@ const emit = defineEmits<{
 	'update:modelValue': [value: Value, e: MouseEvent];
 }>();
 
-const slots = defineSlots<{ option: ((props: RadioOption) => {}) | undefined }>();
+const slots = defineSlots<{ option?: ((props: RadioOption) => {}) | undefined }>();
 
 const onClick = (
 	option: { label: string; value: Value; disabled?: boolean },
