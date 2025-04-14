@@ -571,12 +571,16 @@ export class SourceControlService {
 		);
 
 		const wfModifiedInEither: SourceControlWorkflowVersionId[] = [];
+
 		wfLocalVersionIds.forEach((local) => {
 			const mismatchingIds = wfRemoteVersionIds.find(
 				(remote) =>
 					remote.id === local.id &&
-					(remote.versionId !== local.versionId || remote.parentFolderId !== local.parentFolderId),
+					(remote.versionId !== local.versionId ||
+						(remote.parentFolderId !== undefined &&
+							remote.parentFolderId !== local.parentFolderId)),
 			);
+
 			let name = (options?.preferLocalVersion ? local?.name : mismatchingIds?.name) ?? 'Workflow';
 			if (local.name && mismatchingIds?.name && local.name !== mismatchingIds.name) {
 				name = options?.preferLocalVersion
