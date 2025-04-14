@@ -80,8 +80,10 @@ watch(
 			void insightsStore.summary.execute();
 		}
 
-		void insightsStore.charts.execute();
-		fetchPaginatedTableData({ sortBy: sortTableBy.value });
+		if (insightsStore.isDashboardEnabled) {
+			void insightsStore.charts.execute();
+			fetchPaginatedTableData({ sortBy: sortTableBy.value });
+		}
 	},
 	{
 		immediate: true,
