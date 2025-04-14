@@ -83,23 +83,21 @@ describe('NodeCreator - utils', () => {
 		});
 	});
 	describe('removeTrailingTrigger', () => {
-		describe('removeTrailingTrigger', () => {
-			test.each([
-				['Telegram Trigger', 'Telegram'],
-				['Trigger Telegram', 'Trigger Telegram'],
-				['Telegram Tri', 'Telegram'],
-				['Telegram Bot', 'Telegram Bot'],
-				['Tri', 'Tri'],
-				['Trigger', 'Trigger'],
-				['Telegram', 'Telegram'],
-				['Telegram Trigger Bot', 'Telegram Trigger Bot'],
-				['Telegram Trig', 'Telegram'],
-				['Telegram Bot trigger', 'Telegram Bot'],
-				['Telegram TRIGGER', 'Telegram'],
-				['', ''],
-			])('should transform "%s" to "%s"', (input, expected) => {
-				expect(removeTrailingTrigger(input)).toEqual(expected);
-			});
+		test.each([
+			['Telegram Trigger', 'Telegram'],
+			['Trigger Telegram', 'Trigger Telegram'],
+			['Telegram Tri', 'Telegram'],
+			['Telegram Bot', 'Telegram Bot'],
+			['Tri', 'Tri'],
+			['Trigger', 'Trigger'],
+			['Telegram', 'Telegram'],
+			['Telegram Trigger Bot', 'Telegram Trigger Bot'],
+			['Telegram Trig', 'Telegram'],
+			['Telegram Bot trigger', 'Telegram Bot'],
+			['Telegram TRIGGER', 'Telegram'],
+			['', ''],
+		])('should transform "%s" to "%s"', (input, expected) => {
+			expect(removeTrailingTrigger(input)).toEqual(expected);
 		});
 	});
 });
