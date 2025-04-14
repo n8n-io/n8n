@@ -94,8 +94,8 @@ export function sortNodeCreateElements(nodes: INodeCreateElement[]) {
 // but still want to show matching results when the user types `Telegram Tri` or `Telegram Trigger`
 // Ideally this would be handled via metadata, but that is a larger refactor.
 export function removeTrailingTrigger(searchFilter: string) {
-	const parts = searchFilter.toLowerCase().split(' ');
-	if (parts.length > 1 && 'trigger'.startsWith(parts.slice(-1)[0] ?? 'a')) {
+	const parts = searchFilter.split(' ');
+	if (parts.length > 1 && 'trigger'.startsWith(parts.slice(-1)[0]?.toLowerCase() ?? 'a')) {
 		return parts.slice(0, -1).join(' ').trimEnd();
 	}
 	return searchFilter;
@@ -107,7 +107,7 @@ export function searchNodes(searchFilter: string, items: INodeCreateElement[]) {
 		items = items.filter((item) => item.key !== AI_TRANSFORM_NODE_TYPE);
 	}
 
-	const trimmedFilter = removeTrailingTrigger(searchFilter);
+	const trimmedFilter = removeTrailingTrigger(searchFilter).toLowerCase();
 
 	// We have a snapshot of this call in sublimeSearch.test.ts to assert practical order for some cases
 	// Please update the snapshots per the README next to the the snapshots if you modify items significantly.
