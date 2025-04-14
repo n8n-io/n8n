@@ -1,5 +1,6 @@
 import { Container } from '@n8n/di';
 import { readFileSync, readdirSync, mkdtempSync } from 'fs';
+import { mock } from 'jest-mock-extended';
 import { get } from 'lodash';
 import { isEmpty } from 'lodash';
 import { BinaryDataService, constructExecutionMetaData } from 'n8n-core';
@@ -36,7 +37,7 @@ export function createTemporaryDir(prefix = 'n8n') {
 }
 
 export async function initBinaryDataService() {
-	const binaryDataService = new BinaryDataService();
+	const binaryDataService = new BinaryDataService(mock(), mock());
 	await binaryDataService.init({
 		mode: 'default',
 		availableModes: ['default'],
