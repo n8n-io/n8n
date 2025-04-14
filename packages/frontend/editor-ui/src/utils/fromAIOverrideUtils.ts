@@ -119,14 +119,19 @@ function getBestQuoteChar(description: string) {
 	return "'";
 }
 
+function findBestName(props: OverrideContext) {
+	console.log(props);
+	return props.parameter.displayName;
+}
+
 export function buildValueFromOverride(
 	override: FromAIOverride,
-	props: Pick<OverrideContext, 'parameter'>,
+	props: OverrideContext,
 	includeMarker: boolean,
 ) {
 	const { extraPropValues, extraProps } = override;
 	const marker = includeMarker ? `${FROM_AI_AUTO_GENERATED_MARKER} ` : '';
-	const key = sanitizeFromAiParameterName(props.parameter.displayName);
+	const key = sanitizeFromAiParameterName(findBestName(props));
 	const description =
 		extraPropValues?.description?.toString() ?? extraProps.description.initialValue;
 
