@@ -8,12 +8,6 @@ export interface ChannelResponse {
 	displayName: string;
 }
 
-export interface ChatResponse {
-	id: string;
-	displayName: string;
-	url?: string;
-}
-
 export interface WebhookNotification {
 	subscriptionId: string;
 	resource: string;
