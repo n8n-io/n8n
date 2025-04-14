@@ -134,10 +134,11 @@ const currentSort = ref('updatedAt:desc');
 
 const currentFolderId = ref<string | null>(null);
 
+const showCardsBadge = ref(false);
+
 const isDragging = computed(() => {
 	return foldersStore.draggedElement !== null;
 });
-const showCardsBadge = ref(false);
 
 /**
  * Folder actions
@@ -1467,6 +1468,7 @@ const onCreateWorkflowClick = () => {
 						[$style['drop-active']]:
 							foldersStore.activeDropTarget?.id === (data as FolderResource).id,
 					}"
+					:show-ownership-badge="showCardsBadge"
 					data-target="folder-card"
 					class="mb-2xs"
 					@action="onFolderCardAction"
