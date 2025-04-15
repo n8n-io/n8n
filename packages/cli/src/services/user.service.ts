@@ -234,8 +234,8 @@ export class UserService {
 	}
 
 	async changeUserRole(user: User, targetUser: User, newRole: RoleChangeRequestDto) {
-		return await this.userRepository.manager.transaction(async (tx) => {
-			await tx.update(User, { id: targetUser.id }, { role: newRole.newRoleName });
+		return await this.userRepository.manager.transaction(async (trx) => {
+			await trx.update(User, { id: targetUser.id }, { role: newRole.newRoleName });
 
 			const adminDowngradedToMember =
 				user.role === 'global:owner' &&
@@ -243,7 +243,7 @@ export class UserService {
 				newRole.newRoleName === 'global:member';
 
 			if (adminDowngradedToMember) {
-				await this.publicApiKeyService.removeOwnerOnlyScopesFromApiKeys(targetUser, tx);
+				await this.publicApiKeyService.removeOwnerOnlyScopesFromApiKeys(targetUser, trx);
 			}
 		});
 	}
