@@ -110,25 +110,29 @@ interface NodeView {
 	items: NodeViewItem[];
 }
 
+function getNodeView(node: INodeTypeDescription) {
+	return {
+		key: node.name,
+		type: 'node',
+		properties: {
+			group: [],
+			name: node.name,
+			displayName: node.displayName,
+			title: node.displayName,
+			description: node.description,
+			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+			icon: node.icon!,
+			iconUrl: node.iconUrl,
+		},
+	};
+}
+
 function getAiNodesBySubcategory(nodes: INodeTypeDescription[], subcategory: string) {
 	return nodes
 		.filter(
 			(node) => !node.hidden && node.codex?.subcategories?.[AI_SUBCATEGORY]?.includes(subcategory),
 		)
-		.map((node) => ({
-			key: node.name,
-			type: 'node',
-			properties: {
-				group: [],
-				name: node.name,
-				displayName: node.displayName,
-				title: node.displayName,
-				description: node.description,
-				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-				icon: node.icon!,
-				iconUrl: node.iconUrl,
-			},
-		}))
+		.map(getNodeView)
 		.sort((a, b) => a.properties.displayName.localeCompare(b.properties.displayName));
 }
 
@@ -144,6 +148,9 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 	websiteCategoryURLParams.append('utm_user_role', 'AdvancedAI');
 	const websiteCategoryURL =
 		templatesStore.constructTemplateRepositoryURL(websiteCategoryURLParams);
+
+	const aiTransformNode = nodeTypesStore.getNodeType(AI_TRANSFORM_NODE_TYPE);
+	const transformNode = aiTransformNode ? [getNodeView(aiTransformNode)] : [];
 
 	return {
 		value: AI_NODE_CREATOR_VIEW,
@@ -167,6 +174,7 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 			},
 			...agentNodes,
 			...chainNodes,
+			...transformNode,
 			{
 				key: AI_OTHERS_NODE_CREATOR_VIEW,
 				type: 'view',

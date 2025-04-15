@@ -44,10 +44,12 @@ const props = withDefaults(
 		data: WorkflowResource;
 		readOnly?: boolean;
 		workflowListEventBus?: EventBus;
+		showOwnershipBadge?: boolean;
 	}>(),
 	{
 		readOnly: false,
 		workflowListEventBus: undefined,
+		showOwnershipBadge: false,
 	},
 );
 
@@ -74,18 +76,18 @@ const projectsStore = useProjectsStore();
 const foldersStore = useFoldersStore();
 
 const hiddenBreadcrumbsItemsAsync = ref<Promise<PathItem[]>>(new Promise(() => {}));
+const cachedHiddenBreadcrumbsItems = ref<PathItem[]>([]);
 
 const resourceTypeLabel = computed(() => locale.baseText('generic.workflow').toLowerCase());
 const currentUser = computed(() => usersStore.currentUser ?? ({} as IUser));
 const workflowPermissions = computed(() => getResourcePermissions(props.data.scopes).workflow);
-const isOverviewPage = computed(() => route.name === VIEWS.WORKFLOWS);
 
 const showFolders = computed(() => {
 	return settingsStore.isFoldersFeatureEnabled && route.name !== VIEWS.WORKFLOWS;
 });
 
 const showCardBreadcrumbs = computed(() => {
-	return isOverviewPage.value && !isSomeoneElsesWorkflow.value && cardBreadcrumbs.value.length;
+	return props.showOwnershipBadge && !isSomeoneElsesWorkflow.value && cardBreadcrumbs.value.length;
 });
 
 const projectName = computed(() => {
@@ -289,10 +291,16 @@ const fetchHiddenBreadCrumbsItems = async () => {
 	if (!props.data.homeProject?.id || !projectName.value || !props.data.parentFolder) {
 		hiddenBreadcrumbsItemsAsync.value = Promise.resolve([]);
 	} else {
-		hiddenBreadcrumbsItemsAsync.value = foldersStore.getHiddenBreadcrumbsItems(
+		if (cachedHiddenBreadcrumbsItems.value.length) {
+			hiddenBreadcrumbsItemsAsync.value = Promise.resolve(cachedHiddenBreadcrumbsItems.value);
+			return;
+		}
+		const loadedItem = foldersStore.getHiddenBreadcrumbsItems(
 			{ id: props.data.homeProject.id, name: projectName.value },
 			props.data.parentFolder.id,
 		);
+		hiddenBreadcrumbsItemsAsync.value = loadedItem;
+		cachedHiddenBreadcrumbsItems.value = await loadedItem;
 	}
 };
 
@@ -356,6 +364,7 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 		<template #append>
 			<div :class="$style.cardActions" @click.stop>
 				<ProjectCardBadge
+					v-if="showOwnershipBadge"
 					:class="{ [$style.cardBadge]: true, [$style['with-breadcrumbs']]: showCardBreadcrumbs }"
 					:resource="data"
 					:resource-type="ResourceType.Workflow"
@@ -366,8 +375,10 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 					<div v-if="showCardBreadcrumbs" :class="$style.breadcrumbs">
 						<n8n-breadcrumbs
 							:items="cardBreadcrumbs"
-							:hidden-items="hiddenBreadcrumbsItemsAsync"
-							:path-truncated="true"
+							:hidden-items="
+								data.parentFolder?.parentFolderId !== null ? hiddenBreadcrumbsItemsAsync : undefined
+							"
+							:path-truncated="data.parentFolder?.parentFolderId !== null"
 							:highlight-last-item="false"
 							hidden-items-trigger="hover"
 							theme="small"

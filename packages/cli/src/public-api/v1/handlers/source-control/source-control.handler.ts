@@ -40,7 +40,7 @@ export = {
 
 				if (result.statusCode === 200) {
 					Container.get(EventService).emit('source-control-user-pulled-api', {
-						...getTrackingInformationFromPullResult(result.statusResult),
+						...getTrackingInformationFromPullResult(req.user.id, result.statusResult),
 						forced: payload.force ?? false,
 					});
 					return res.status(200).send(result.statusResult);

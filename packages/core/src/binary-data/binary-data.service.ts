@@ -1,10 +1,15 @@
 import { Container, Service } from '@n8n/di';
-import { BINARY_ENCODING } from 'n8n-workflow';
+import { createHash } from 'crypto';
+import jwt from 'jsonwebtoken';
+import { BINARY_ENCODING, UnexpectedError } from 'n8n-workflow';
 import type { INodeExecutionData, IBinaryData } from 'n8n-workflow';
 import { readFile, stat } from 'node:fs/promises';
 import prettyBytes from 'pretty-bytes';
 import type { Readable } from 'stream';
 
+import { InstanceSettings } from '@/instance-settings';
+
+import { BinaryDataConfig } from './binary-data.config';
 import type { BinaryData } from './types';
 import { areConfigModes, binaryToBuffer } from './utils';
 import { InvalidManagerError } from '../errors/invalid-manager.error';
@@ -15,6 +20,14 @@ export class BinaryDataService {
 	private mode: BinaryData.ServiceMode = 'default';
 
 	private managers: Record<string, BinaryData.Manager> = {};
+
+	readonly signingSecret: string;
+
+	constructor({ encryptionKey }: InstanceSettings, binaryDataConfig: BinaryDataConfig) {
+		this.signingSecret =
+			binaryDataConfig.signingSecret ??
+			createHash('sha256').update(`url-signing:${encryptionKey}`).digest('hex');
+	}
 
 	async init(config: BinaryData.Config) {
 		if (!areConfigModes(config.availableModes)) throw new InvalidModeError();
@@ -38,6 +51,23 @@ export class BinaryDataService {
 
 			await this.managers.s3.init();
 		}
+	}
+
+	createSignedToken(binaryData: IBinaryData, expiresIn = '1 day') {
+		if (!binaryData.id) {
+			throw new UnexpectedError('URL signing is not available in memory mode');
+		}
+
+		const signingPayload: BinaryData.SigningPayload = {
+			id: binaryData.id,
+		};
+
+		return jwt.sign(signingPayload, this.signingSecret, { expiresIn });
+	}
+
+	validateSignedToken(token: string) {
+		const signedPayload = jwt.verify(token, this.signingSecret) as BinaryData.SigningPayload;
+		return signedPayload.id;
 	}
 
 	async copyBinaryFile(

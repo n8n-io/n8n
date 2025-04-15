@@ -1,6 +1,6 @@
 {
   "name": "@n8n/n8n-benchmark",
-  "version": "1.14.0",
+  "version": "1.15.0",
   "description": "Cli for running benchmark tests for n8n",
   "main": "dist/index",
   "scripts": {
