@@ -28,6 +28,7 @@ import type {
 	GraphNode,
 	NodeDragEvent,
 	NodeMouseEvent,
+	NodeProps,
 	XYPosition,
 } from '@vue-flow/core';
 import { MarkerType, PanelPosition, useVueFlow, VueFlow } from '@vue-flow/core';
@@ -583,6 +584,17 @@ function onPaneMoveEnd() {
 	isPaneMoving.value = false;
 }
 
+// #AI-716: Due to a bug in vue-flow reactivity, the node data is not updated when the node is added
+// resulting in outdated data. This function is a workaround to get the latest node data.
+function getNodeData<T extends NodeProps>(nodeProps: T): T {
+	const nodeData = props.nodes.find((node) => node.id === nodeProps.id);
+
+	return {
+		...nodeProps,
+		...nodeData,
+	};
+}
+
 /**
  * Context menu
  */
@@ -811,7 +823,7 @@ provide(CanvasKey, {
 		<template #node-canvas-node="nodeProps">
 			<slot name="node" v-bind="{ nodeProps }">
 				<Node
-					v-bind="nodeProps"
+					v-bind="getNodeData(nodeProps)"
 					:read-only="readOnly"
 					:event-bus="eventBus"
 					:hovered="nodesHoveredById[nodeProps.id]"
