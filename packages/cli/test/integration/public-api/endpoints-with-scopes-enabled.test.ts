@@ -432,7 +432,7 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 				});
 			});
 			describe('DELETE /credentials/:id', () => {
-				test('should delete credential when API key has "credential:create" scope', async () => {
+				test('should delete credential when API key has "credential:delete" scope', async () => {
 					const owner = await createOwnerWithApiKey({ scopes: ['credential:delete'] });
 
 					const authOwnerAgent = testServer.publicApiAgentFor(owner);
