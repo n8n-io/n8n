@@ -68,7 +68,11 @@ defineExpose({
 </script>
 
 <template>
-	<span :class="$style.container" data-test-id="action-toggle" @click.stop.prevent>
+	<span
+		:class="['action-toggle', $style.container]"
+		data-test-id="action-toggle"
+		@click.stop.prevent
+	>
 		<ElDropdown
 			ref="actionToggleRef"
 			:placement="placement"

@@ -148,6 +148,7 @@ const onItemHover = (item: PathItem) => {
 		border-radius: var(--border-radius-base);
 		background-color: var(--color-callout-secondary-background);
 		* {
+			cursor: grabbing;
 			color: var(--color-text-base);
 		}
 	}

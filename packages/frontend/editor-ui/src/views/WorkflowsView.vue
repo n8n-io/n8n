@@ -1697,8 +1697,9 @@ const onCreateWorkflowClick = () => {
 	}
 }
 
-.drag-active * {
-	cursor: grabbing;
+.drag-active *,
+.drag-active :global(.action-toggle) {
+	cursor: grabbing !important;
 }
 
 .dragging {
