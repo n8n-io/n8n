@@ -296,18 +296,6 @@ export declare namespace LicenseRequest {
 	type Activate = AuthenticatedRequest<{}, {}, { activationKey: string }, {}>;
 }
 
-export type BinaryDataRequest = AuthenticatedRequest<
-	{},
-	{},
-	{},
-	{
-		id: string;
-		action: 'view' | 'download';
-		fileName?: string;
-		mimeType?: string;
-	}
->;
-
 // ----------------------------------
 //           /variables
 // ----------------------------------

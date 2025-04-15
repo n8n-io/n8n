@@ -63,7 +63,6 @@ import {
 	STICKY_NODE_TYPE,
 	VALID_WORKFLOW_IMPORT_URL_REGEX,
 	VIEWS,
-	AI_CREDITS_EXPERIMENT,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 } from '@/constants';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
@@ -88,7 +87,6 @@ import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useHistoryStore } from '@/stores/history.store';
 import { useProjectsStore } from '@/stores/projects.store';
-import { usePostHog } from '@/stores/posthog.store';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useExecutionDebugging } from '@/composables/useExecutionDebugging';
 import { useUsersStore } from '@/stores/users.store';
@@ -166,7 +164,6 @@ const tagsStore = useTagsStore();
 const pushConnectionStore = usePushConnectionStore();
 const ndvStore = useNDVStore();
 const templatesStore = useTemplatesStore();
-const posthogStore = usePostHog();
 
 const canvasEventBus = createEventBus<CanvasEventBusEvents>();
 
@@ -347,13 +344,7 @@ async function initializeRoute(force = false) {
 		const loadWorkflowFromJSON = route.query.fromJson === 'true';
 
 		if (loadWorkflowFromJSON) {
-			const isAiCreditsExperimentEnabled =
-				posthogStore.getVariant(AI_CREDITS_EXPERIMENT.name) === AI_CREDITS_EXPERIMENT.variant;
-
-			const easyAiWorkflowJson = getEasyAiWorkflowJson({
-				isInstanceInAiFreeCreditsExperiment: isAiCreditsExperimentEnabled,
-				withOpenAiFreeCredits: settingsStore.aiCreditsQuota,
-			});
+			const easyAiWorkflowJson = getEasyAiWorkflowJson();
 			await openTemplateFromWorkflowJSON(easyAiWorkflowJson);
 		} else {
 			await openWorkflowTemplate(templateId.toString());

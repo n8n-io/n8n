@@ -12,6 +12,7 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 import { Readable } from 'stream';
 
+import type { BinaryDataConfig } from '@/binary-data';
 import { BinaryDataService } from '@/binary-data/binary-data.service';
 
 import {
@@ -37,21 +38,24 @@ const bufferToIncomingMessage = (buffer: Buffer, encoding = 'utf-8') => {
 };
 
 describe('test binary data helper methods', () => {
-	let binaryDataService: BinaryDataService;
 	const temporaryDir = mkdtempSync(join(tmpdir(), 'n8n'));
+	const binaryDataConfig = mock<BinaryDataConfig>({
+		mode: 'default',
+		availableModes: ['default', 'filesystem'],
+		localStoragePath: temporaryDir,
+	});
+	let binaryDataService: BinaryDataService;
 
 	beforeEach(() => {
-		binaryDataService = new BinaryDataService();
+		jest.resetAllMocks();
+		binaryDataService = new BinaryDataService(binaryDataConfig);
 		Container.set(BinaryDataService, binaryDataService);
 	});
 
 	test("test getBinaryDataBuffer(...) & setBinaryDataBuffer(...) methods in 'default' mode", async () => {
 		// Setup a 'default' binary data manager instance
-		await binaryDataService.init({
-			mode: 'default',
-			availableModes: ['default'],
-			localStoragePath: temporaryDir,
-		});
+		binaryDataConfig.mode = 'default';
+		await binaryDataService.init();
 
 		// Set our binary data buffer
 		const inputData: Buffer = Buffer.from('This is some binary data', 'utf8');
@@ -97,11 +101,8 @@ describe('test binary data helper methods', () => {
 
 	test("test getBinaryDataBuffer(...) & setBinaryDataBuffer(...) methods in 'filesystem' mode", async () => {
 		// Setup a 'filesystem' binary data manager instance
-		await binaryDataService.init({
-			mode: 'filesystem',
-			availableModes: ['filesystem'],
-			localStoragePath: temporaryDir,
-		});
+		binaryDataConfig.mode = 'filesystem';
+		await binaryDataService.init();
 
 		// Set our binary data buffer
 		const inputData: Buffer = Buffer.from('This is some binary data', 'utf8');
@@ -476,5 +477,26 @@ describe('getBinaryHelperFunctions', () => {
 		await expect(async () => await helperFunctions.copyBinaryFile()).rejects.toThrow(
 			'`copyBinaryFile` has been removed',
 		);
+	});
+});
+
+describe('createBinarySignedUrl', () => {
+	const restApiUrl = 'https://n8n.host/rest';
+
+	it('should get a signed url', async () => {
+		const additionalData = { restApiUrl } as IWorkflowExecuteAdditionalData;
+		const helperFunctions = getBinaryHelperFunctions(additionalData, workflowId);
+
+		const binaryData = mock<IBinaryData>();
+		const token = 'signed-token';
+
+		const binaryDataService = mock<BinaryDataService>();
+		Container.set(BinaryDataService, binaryDataService);
+		binaryDataService.createSignedToken.mockReturnValueOnce(token);
+
+		const result = helperFunctions.createBinarySignedUrl(binaryData);
+
+		expect(result).toBe(`${restApiUrl}/binary-data/signed?token=${token}`);
+		expect(binaryDataService.createSignedToken).toHaveBeenCalledWith(binaryData, undefined);
 	});
 });

@@ -3,6 +3,7 @@ import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { Command, Errors } from '@oclif/core';
 import {
+	BinaryDataConfig,
 	BinaryDataService,
 	InstanceSettings,
 	Logger,
@@ -182,8 +183,9 @@ export abstract class BaseCommand extends Command {
 	}
 
 	async initObjectStoreService() {
-		const isSelected = config.getEnv('binaryDataManager.mode') === 's3';
-		const isAvailable = config.getEnv('binaryDataManager.availableModes').includes('s3');
+		const binaryDataConfig = Container.get(BinaryDataConfig);
+		const isSelected = binaryDataConfig.mode === 's3';
+		const isAvailable = binaryDataConfig.availableModes.includes('s3');
 
 		if (!isSelected) return;
 
@@ -220,8 +222,7 @@ export abstract class BaseCommand extends Command {
 			process.exit(1);
 		}
 
-		const binaryDataConfig = config.getEnv('binaryDataManager');
-		await Container.get(BinaryDataService).init(binaryDataConfig);
+		await Container.get(BinaryDataService).init();
 	}
 
 	protected async initDataDeduplicationService() {
