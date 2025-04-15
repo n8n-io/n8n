@@ -259,6 +259,8 @@ export class InsightsService {
 	async flushEvents() {
 		// Prevent flushing if there are no events to flush
 		if (this.bufferedInsights.size === 0) {
+			// reschedule the timer to flush again
+			this.startFlushingScheduler();
 			return;
 		}
 
