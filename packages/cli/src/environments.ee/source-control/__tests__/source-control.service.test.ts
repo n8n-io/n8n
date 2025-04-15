@@ -45,8 +45,9 @@ describe('SourceControlService', () => {
 
 	describe('pushWorkfolder', () => {
 		it('should throw an error if a file is given that is not in the workfolder', async () => {
+			const user = mock<User>();
 			await expect(
-				sourceControlService.pushWorkfolder({
+				sourceControlService.pushWorkfolder(user, {
 					fileNames: [
 						{
 							file: '/etc/passwd',
@@ -115,8 +116,9 @@ describe('SourceControlService', () => {
 		});
 
 		it('should throw an error if a file is given that is not in the workfolder', async () => {
+			const user = mock<User>();
 			await expect(
-				sourceControlService.pushWorkfolder({
+				sourceControlService.pushWorkfolder(user, {
 					fileNames: [
 						{
 							file: '/etc/passwd',
@@ -138,6 +140,7 @@ describe('SourceControlService', () => {
 	describe('getStatus', () => {
 		it('conflict depends on the value of `direction`', async () => {
 			// ARRANGE
+			const user = mock<User>();
 
 			// Define a credential that does only exist locally.
 			// Pulling this would delete it so it should be marked as a conflict.
@@ -200,13 +203,13 @@ describe('SourceControlService', () => {
 			});
 
 			// ACT
-			const pullResult = await sourceControlService.getStatus({
+			const pullResult = await sourceControlService.getStatus(user, {
 				direction: 'pull',
 				verbose: false,
 				preferLocalVersion: false,
 			});
 
-			const pushResult = await sourceControlService.getStatus({
+			const pushResult = await sourceControlService.getStatus(user, {
 				direction: 'push',
 				verbose: false,
 				preferLocalVersion: false,

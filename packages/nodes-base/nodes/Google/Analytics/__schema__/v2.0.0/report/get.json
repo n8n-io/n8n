@@ -4,9 +4,9 @@
         "date": {
             "type": "string"
         },
-        "totalUsers": {
+        "sessions": {
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

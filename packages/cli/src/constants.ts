@@ -29,6 +29,8 @@ export const STARTING_NODES = [
 	'n8n-nodes-base.manualTrigger',
 ];
 
+export const MCP_TRIGGER_NODE_TYPE = '@n8n/n8n-nodes-langchain.mcpTrigger';
+
 export const NODE_PACKAGE_PREFIX = 'n8n-nodes-';
 
 export const STARTER_TEMPLATE_NAME = `${NODE_PACKAGE_PREFIX}starter`;

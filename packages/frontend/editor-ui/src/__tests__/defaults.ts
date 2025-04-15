@@ -15,6 +15,8 @@ export const defaultSettings: FrontendSettings = {
 	endpointForm: '',
 	endpointFormTest: '',
 	endpointFormWaiting: '',
+	endpointMcp: '',
+	endpointMcpTest: '',
 	endpointWebhook: '',
 	endpointWebhookTest: '',
 	endpointWebhookWaiting: '',

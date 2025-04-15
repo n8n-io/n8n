@@ -382,12 +382,14 @@ export type RelayEventMap = {
 	};
 
 	'source-control-user-started-pull-ui': {
+		userId?: string;
 		workflowUpdates: number;
 		workflowConflicts: number;
 		credConflicts: number;
 	};
 
 	'source-control-user-finished-pull-ui': {
+		userId?: string;
 		workflowUpdates: number;
 	};
 
@@ -397,6 +399,7 @@ export type RelayEventMap = {
 	};
 
 	'source-control-user-started-push-ui': {
+		userId?: string;
 		workflowsEligible: number;
 		workflowsEligibleWithConflicts: number;
 		credsEligible: number;
@@ -405,6 +408,7 @@ export type RelayEventMap = {
 	};
 
 	'source-control-user-finished-push-ui': {
+		userId: string;
 		workflowsEligible: number;
 		workflowsPushed: number;
 		credsPushed: number;

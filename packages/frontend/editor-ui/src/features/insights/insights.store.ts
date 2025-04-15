@@ -19,6 +19,7 @@ export const useInsightsStore = defineStore('insights', () => {
 	);
 
 	const isInsightsEnabled = computed(() => settingsStore.settings.insights.enabled);
+	const isDashboardEnabled = computed(() => settingsStore.settings.insights.dashboard);
 
 	const isSummaryEnabled = computed(
 		() => globalInsightsPermissions.value.list && isInsightsEnabled.value,
@@ -49,13 +50,14 @@ export const useInsightsStore = defineStore('insights', () => {
 			count: 0,
 			data: [],
 		},
-		{ immediate: false },
+		{ resetOnExecute: false, immediate: false },
 	);
 
 	return {
 		globalInsightsPermissions,
 		isInsightsEnabled,
 		isSummaryEnabled,
+		isDashboardEnabled,
 		summary,
 		charts,
 		table,

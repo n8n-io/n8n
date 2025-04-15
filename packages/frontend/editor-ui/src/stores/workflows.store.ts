@@ -6,6 +6,7 @@ import {
 	DUPLICATE_POSTFFIX,
 	ERROR_TRIGGER_NODE_TYPE,
 	FORM_NODE_TYPE,
+	LOCAL_STORAGE_LOGS_PANEL_OPEN,
 	MAX_WORKFLOW_NAME_LENGTH,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	START_NODE_TYPE,
@@ -92,6 +93,7 @@ import { useUsersStore } from '@/stores/users.store';
 import { updateCurrentUserSettings } from '@/api/users';
 import { useExecutingNode } from '@/composables/useExecutingNode';
 import { LOGS_PANEL_STATE } from '@/components/CanvasChat/types/logs';
+import { useLocalStorage } from '@vueuse/core';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
@@ -139,6 +141,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const workflowExecutionData = ref<IExecutionResponse | null>(null);
 	const workflowExecutionPairedItemMappings = ref<Record<string, Set<string>>>({});
 	const activeExecutionId = ref<string | null>(null);
+	const previousExecutionId = ref<string | null>(null);
 	const subWorkflowExecutionError = ref<Error | null>(null);
 	const executionWaitingForWebhook = ref(false);
 	const workflowsById = ref<Record<string, IWorkflowDb>>({});
@@ -146,7 +149,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const isInDebugMode = ref(false);
 	const chatMessages = ref<string[]>([]);
 	const chatPartialExecutionDestinationNode = ref<string | null>(null);
-	const isLogsPanelOpen = ref(false);
+	const isLogsPanelOpen = useLocalStorage(LOCAL_STORAGE_LOGS_PANEL_OPEN, false);
 	const preferPopOutLogsView = ref(false);
 	const logsPanelState = computed(() =>
 		isLogsPanelOpen.value
@@ -288,6 +291,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const connectionsByDestinationNode = computed(() =>
 		Workflow.getConnectionsByDestination(workflow.value.connections),
 	);
+
+	function setActiveExecutionId(id: string | null) {
+		previousExecutionId.value = activeExecutionId.value;
+		activeExecutionId.value = id;
+	}
 
 	function getWorkflowResultDataByNodeName(nodeName: string): ITaskData[] | null {
 		if (getWorkflowRunData.value === null) {
@@ -615,7 +623,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setWorkflowSettings({ ...defaults.settings });
 		setWorkflowTagIds([]);
 
-		activeExecutionId.value = null;
+		setActiveExecutionId(null);
 		executingNode.value.length = 0;
 		executionWaitingForWebhook.value = false;
 	}
@@ -1381,6 +1389,28 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return testUrl;
 	}
 
+	function setNodeExecuting(pushData: PushPayload<'nodeExecuteBefore'>): void {
+		addExecutingNode(pushData.nodeName);
+
+		if (settingsStore.isNewLogsEnabled) {
+			const node = getNodeByName(pushData.nodeName);
+
+			if (!node || !workflowExecutionData.value?.data) {
+				return;
+			}
+
+			if (workflowExecutionData.value.data.resultData.runData[pushData.nodeName] === undefined) {
+				workflowExecutionData.value.data.resultData.runData[pushData.nodeName] = [];
+			}
+
+			workflowExecutionData.value.data.resultData.runData[pushData.nodeName].push({
+				executionStatus: 'running',
+				executionTime: 0,
+				...pushData.data,
+			});
+		}
+	}
+
 	function updateNodeExecutionData(pushData: PushPayload<'nodeExecuteAfter'>): void {
 		if (!workflowExecutionData.value?.data) {
 			throw new Error('The "workflowExecutionData" is not initialized!');
@@ -1418,7 +1448,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 				openFormPopupWindow(testUrl);
 			}
 		} else {
-			if (tasksData.length && tasksData[tasksData.length - 1].executionStatus === 'waiting') {
+			const status = tasksData[tasksData.length - 1]?.executionStatus ?? 'unknown';
+
+			if ('waiting' === status || (settingsStore.isNewLogsEnabled && 'running' === status)) {
 				tasksData.splice(tasksData.length - 1, 1, data);
 			} else {
 				tasksData.push(data);
@@ -1687,7 +1719,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	function markExecutionAsStopped() {
-		activeExecutionId.value = null;
+		setActiveExecutionId(null);
 		clearNodeExecutionQueue();
 		executionWaitingForWebhook.value = false;
 		uiStore.removeActiveAction('workflowRunning');
@@ -1711,7 +1743,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		currentWorkflowExecutions,
 		workflowExecutionData,
 		workflowExecutionPairedItemMappings,
-		activeExecutionId,
+		activeExecutionId: computed(() => activeExecutionId.value),
+		previousExecutionId: computed(() => previousExecutionId.value),
+		setActiveExecutionId,
 		subWorkflowExecutionError,
 		executionWaitingForWebhook,
 		executingNode,
@@ -1777,7 +1811,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		makeNewWorkflowShareable,
 		resetWorkflow,
 		resetState,
-		addExecutingNode,
+		setNodeExecuting,
 		removeExecutingNode,
 		setWorkflowId,
 		setUsedCredentials,

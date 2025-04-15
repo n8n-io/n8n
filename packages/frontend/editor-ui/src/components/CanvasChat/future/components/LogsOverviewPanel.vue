@@ -8,29 +8,25 @@ import { N8nButton, N8nRadioButtons, N8nText, N8nTooltip } from '@n8n/design-sys
 import { computed } from 'vue';
 import { ElTree, type TreeNode as ElTreeNode } from 'element-plus';
 import {
-	createAiData,
 	getSubtreeTotalConsumedTokens,
 	getTotalConsumedTokens,
-	getTreeNodeData,
 	type TreeNode,
 } from '@/components/RunDataAi/utils';
-import { type INodeUi } from '@/Interface';
 import { upperFirst } from 'lodash-es';
 import { useTelemetry } from '@/composables/useTelemetry';
 import ConsumedTokenCountText from '@/components/CanvasChat/future/components/ConsumedTokenCountText.vue';
-import { type LogEntryIdentity } from '@/components/CanvasChat/types/logs';
-import LogsOverviewRow from '@/components/CanvasChat/future/components/LogsOverviewRow.vue';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useRouter } from 'vue-router';
 
-const { node, isOpen, selected } = defineProps<{
+const { isOpen, isReadOnly, selected, executionTree } = defineProps<{
 	isOpen: boolean;
-	node: INodeUi | null;
-	selected?: LogEntryIdentity;
+	isReadOnly: boolean;
+	selected?: TreeNode;
+	executionTree: TreeNode[];
 }>();
 
-const emit = defineEmits<{ clickHeader: []; select: [LogEntryIdentity | undefined] }>();
+const emit = defineEmits<{ clickHeader: []; select: [TreeNode | undefined] }>();
 
 defineSlots<{ actions: {} }>();
 
@@ -43,15 +39,6 @@ const ndvStore = useNDVStore();
 const nodeHelpers = useNodeHelpers();
 const isClearExecutionButtonVisible = useClearExecutionButtonVisible();
 const workflow = computed(() => workflowsStore.getCurrentWorkflow());
-const executionTree = computed<TreeNode[]>(() =>
-	node
-		? getTreeNodeData(
-				node.name,
-				workflow.value,
-				createAiData(node.name, workflow.value, workflowsStore.getWorkflowResultDataByNodeName),
-			)
-		: [],
-);
 const isEmpty = computed(() => workflowsStore.workflowExecutionData === null);
 const switchViewOptions = computed(() => [
 	{ label: locale.baseText('logs.overview.header.switch.details'), value: 'details' as const },
@@ -79,7 +66,7 @@ const executionStatusText = computed(() => {
 	return upperFirst(execution.status);
 });
 const consumedTokens = computed(() =>
-	getTotalConsumedTokens(...executionTree.value.map(getSubtreeTotalConsumedTokens)),
+	getTotalConsumedTokens(...executionTree.map(getSubtreeTotalConsumedTokens)),
 );
 
 function onClearExecutionData() {
@@ -88,12 +75,12 @@ function onClearExecutionData() {
 }
 
 function handleClickNode(clicked: TreeNode) {
-	if (selected?.node === clicked.node && selected.runIndex === clicked.runIndex) {
+	if (selected?.node === clicked.node && selected?.runIndex === clicked.runIndex) {
 		emit('select', undefined);
 		return;
 	}
 
-	emit('select', { node: clicked.node, runIndex: clicked.runIndex });
+	emit('select', clicked);
 	telemetry.track('User selected node in log view', {
 		node_type: workflowsStore.nodesByName[clicked.node].type,
 		node_id: workflowsStore.nodesByName[clicked.node].id,
@@ -103,10 +90,7 @@ function handleClickNode(clicked: TreeNode) {
 }
 
 function handleSwitchView(value: 'overview' | 'details') {
-	emit(
-		'select',
-		value === 'overview' || executionTree.value.length === 0 ? undefined : executionTree.value[0],
-	);
+	emit('select', value === 'overview' || executionTree.length === 0 ? undefined : executionTree[0]);
 }
 
 function handleToggleExpanded(treeNode: ElTreeNode) {
@@ -189,6 +173,7 @@ async function handleTriggerPartialExecution(treeNode: TreeNode) {
 						<LogsOverviewRow
 							:data="data"
 							:node="elTreeNode"
+							:is-read-only="isReadOnly"
 							:is-selected="data.node === selected?.node && data.runIndex === selected?.runIndex"
 							:is-compact="selected !== undefined"
 							:should-show-consumed-tokens="consumedTokens.totalTokens > 0"
@@ -272,6 +257,7 @@ async function handleTriggerPartialExecution(treeNode: TreeNode) {
 
 .switchViewButtons {
 	position: absolute;
+	z-index: 10; /* higher than log entry rows background */
 	right: 0;
 	top: 0;
 	margin: var(--spacing-2xs);

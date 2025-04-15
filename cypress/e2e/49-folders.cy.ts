@@ -14,6 +14,8 @@ import {
 	deleteEmptyFolderFromListDropdown,
 	deleteFolderWithContentsFromCardDropdown,
 	deleteFolderWithContentsFromListDropdown,
+	dragAndDropToFolder,
+	dragAndDropToProjectRoot,
 	getAddResourceDropdown,
 	getCurrentBreadcrumb,
 	getFolderCard,
@@ -490,9 +492,9 @@ describe('Folders', () => {
 		});
 	});
 
-	describe('Workflow card breadcrumbs', () => {
-		it('should correctly show workflow card breadcrumbs', () => {
-			createNewProject('Test workflow breadcrumbs', { openAfterCreate: true });
+	describe('Card breadcrumbs', () => {
+		it('should correctly show workflow card breadcrumbs in overview page', () => {
+			createNewProject('Test card breadcrumbs', { openAfterCreate: true });
 			createFolderFromProjectHeader('Parent Folder');
 			createFolderInsideFolder('Child Folder', 'Parent Folder');
 			getFolderCard('Child Folder').click();
@@ -508,8 +510,88 @@ describe('Folders', () => {
 			cy.get('[role=tooltip]').should('exist');
 			cy.get('[role=tooltip]').should(
 				'contain.text',
-				'est workflow breadcrumbs / Parent Folder / Child Folder / Child Folder 2',
+				'Test card breadcrumbs / Parent Folder / Child Folder / Child Folder 2',
 			);
+		});
+
+		it('should correctly toggle folder and workflow card breadcrumbs in projects and folders', () => {
+			createNewProject('Test nested search', { openAfterCreate: true });
+			createFolderFromProjectHeader('Parent Folder');
+			getFolderCard('Parent Folder').click();
+			createWorkflowFromEmptyState('Child - Workflow');
+			getProjectMenuItem('Test nested search').click();
+			createFolderInsideFolder('Child Folder', 'Parent Folder');
+			// Should not show breadcrumbs in the folder if there is no search term
+			cy.getByTestId('card-badge').should('not.exist');
+			// Back to project root
+			getHomeProjectBreadcrumb().click();
+			// Should not show breadcrumbs in the project if there is no search term
+			cy.getByTestId('card-badge').should('not.exist');
+			// Search for something
+			cy.getByTestId('resources-list-search').type('child', { delay: 20 });
+			// Both folder and workflow from child folder should be in the results - nested search works
+			getFolderCards().should('have.length', 1);
+			getWorkflowCards().should('have.length', 1);
+			// Card badges with breadcrumbs should be shown
+			getFolderCard('Child Folder').findChildByTestId('card-badge').should('exist');
+			getWorkflowCard('Child - Workflow').findChildByTestId('card-badge').should('exist');
+		});
+	});
+
+	describe('Drag and drop', () => {
+		it('should drag and drop folders into folders', () => {
+			const PROJECT_NAME = 'Drag and Drop Test';
+			const TARGET_NAME = 'Drag me';
+			const DESTINATION_NAME = 'Folder Destination';
+
+			createNewProject(PROJECT_NAME, { openAfterCreate: true });
+			createFolderFromProjectHeader(TARGET_NAME);
+			createFolderFromProjectHeader(DESTINATION_NAME);
+
+			dragAndDropToFolder(TARGET_NAME, DESTINATION_NAME);
+			successToast().should('contain.text', `${TARGET_NAME} has been moved to ${DESTINATION_NAME}`);
+			// Only one folder card should remain
+			getFolderCards().should('have.length', 1);
+			// Check folder in the destination
+			getFolderCard(DESTINATION_NAME).click();
+			getFolderCard(TARGET_NAME).should('exist');
+		});
+
+		it('should drag and drop folders into project root breadcrumb', () => {
+			const PROJECT_NAME = 'Drag to root test';
+			const TARGET_NAME = 'To Project root';
+			const PARENT_NAME = 'Parent Folder';
+
+			createNewProject(PROJECT_NAME, { openAfterCreate: true });
+			createFolderFromProjectHeader(PARENT_NAME);
+			createFolderInsideFolder(TARGET_NAME, PARENT_NAME);
+
+			dragAndDropToProjectRoot(TARGET_NAME);
+
+			// No folder cards should be shown in the parent folder
+			getFolderCards().should('not.exist');
+			successToast().should('contain.text', `${TARGET_NAME} has been moved to ${PROJECT_NAME}`);
+			// Check folder in the project root
+			getProjectMenuItem(PROJECT_NAME).click();
+			getFolderCard(TARGET_NAME).should('exist');
+		});
+
+		it('should drag and drop workflows into folders', () => {
+			const PROJECT_NAME = 'Drag and Drop WF Test';
+			const TARGET_NAME = 'Drag me - WF';
+			const DESTINATION_NAME = 'Workflow Destination';
+
+			createNewProject(PROJECT_NAME, { openAfterCreate: true });
+			createFolderFromProjectHeader(DESTINATION_NAME);
+			createWorkflowFromProjectHeader(undefined, TARGET_NAME);
+			getProjectMenuItem(PROJECT_NAME).click();
+			dragAndDropToFolder(TARGET_NAME, DESTINATION_NAME);
+			// No workflow cards should be shown in the project root
+			getWorkflowCards().should('not.exist');
+			successToast().should('contain.text', `${TARGET_NAME} has been moved to ${DESTINATION_NAME}`);
+			// Check workflow in the destination
+			getFolderCard(DESTINATION_NAME).click();
+			getWorkflowCard(TARGET_NAME).should('exist');
 		});
 	});
 });
