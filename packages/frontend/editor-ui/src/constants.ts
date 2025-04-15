@@ -21,6 +21,8 @@ export const MAX_DISPLAY_ITEMS_AUTO_ALL = 250;
 
 export const PLACEHOLDER_FILLED_AT_EXECUTION_TIME = '[filled at execution time]';
 
+export const IN_PROGRESS_EXECUTION_ID = '__IN_PROGRESS__';
+
 // parameter input
 export const CUSTOM_API_CALL_KEY = '__CUSTOM_API_CALL__';
 export const CUSTOM_API_CALL_NAME = 'Custom API Call';
@@ -474,6 +476,7 @@ export const LOCAL_STORAGE_HIDE_GITHUB_STAR_BUTTON = 'N8N_HIDE_HIDE_GITHUB_STAR_
 export const LOCAL_STORAGE_NDV_INPUT_PANEL_DISPLAY_MODE = 'N8N_NDV_INPUT_PANEL_DISPLAY_MODE';
 export const LOCAL_STORAGE_NDV_OUTPUT_PANEL_DISPLAY_MODE = 'N8N_NDV_OUTPUT_PANEL_DISPLAY_MODE';
 export const LOCAL_STORAGE_LOGS_2025_SPRING = 'N8N_LOGS_2025_SPRING';
+export const LOCAL_STORAGE_LOGS_PANEL_OPEN = 'N8N_LOGS_PANEL_OPEN';
 export const BASE_NODE_SURVEY_URL = 'https://n8n-community.typeform.com/to/BvmzxqYv#nodename=';
 export const COMMUNITY_PLUS_DOCS_URL =
 	'https://docs.n8n.io/hosting/community-edition-features/#registered-community-edition';
