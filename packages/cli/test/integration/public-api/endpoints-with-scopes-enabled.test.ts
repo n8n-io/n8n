@@ -187,7 +187,7 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 					/**
 					 * Arrange
 					 */
-					const owner = await createOwnerWithApiKey();
+					const owner = await createOwnerWithApiKey({ scopes: ['user:create'] });
 					const payload = [{ email: 'test@test.com', role: 'global:admin' }];
 
 					/**
@@ -243,7 +243,7 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 					/**
 					 * Arrange
 					 */
-					const owner = await createOwnerWithApiKey();
+					const owner = await createOwnerWithApiKey({ scopes: ['user:changeRole'] });
 					const member = await createMember();
 					const payload = { newRoleName: 'global:admin' };
 
@@ -291,7 +291,7 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 					 */
 					testServer.license.enable('feat:advancedPermissions');
 
-					const owner = await createOwnerWithApiKey();
+					const owner = await createOwnerWithApiKey({ scopes: ['user:changeRole'] });
 					const admin = await createAdminWithApiKey();
 					const payload = { newRoleName: 'global:member' };
 
@@ -324,7 +324,7 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 					 */
 					testServer.license.enable('feat:advancedPermissions');
 					testServer.license.enable('feat:apiKeyScopes');
-					const owner = await createOwnerWithApiKey();
+					const owner = await createOwnerWithApiKey({ scopes: ['user:delete'] });
 					const member = await createMember();
 
 					/**
@@ -386,7 +386,7 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 				});
 
 				test('should create credential when API key has "credential:create" scope', async () => {
-					const owner = await createOwnerWithApiKey();
+					const owner = await createOwnerWithApiKey({ scopes: ['credential:create'] });
 
 					const authOwnerAgent = testServer.publicApiAgentFor(owner);
 
@@ -433,7 +433,7 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 			});
 			describe('DELETE /credentials/:id', () => {
 				test('should delete credential when API key has "credential:create" scope', async () => {
-					const owner = await createOwnerWithApiKey();
+					const owner = await createOwnerWithApiKey({ scopes: ['credential:delete'] });
 
 					const authOwnerAgent = testServer.publicApiAgentFor(owner);
 
@@ -480,7 +480,7 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 					 * Arrange
 					 */
 
-					const owner = await createOwnerWithApiKey();
+					const owner = await createOwnerWithApiKey({ scopes: ['credential:move'] });
 					const authOwnerAgent = testServer.publicApiAgentFor(owner);
 
 					const [firstProject, secondProject] = await Promise.all([
@@ -546,7 +546,7 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 		describe('executions', () => {
 			describe('GET /executions/:id', () => {
 				test('should retrieve execution when API key has "execution:read" scope', async () => {
-					const owner = await createOwnerWithApiKey();
+					const owner = await createOwnerWithApiKey({ scopes: ['execution:read'] });
 					const authOwnerAgent = testServer.publicApiAgentFor(owner);
 
 					const workflow = await createWorkflow({}, owner);
@@ -596,7 +596,9 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 
 			describe('DELETE /executions/:id', () => {
 				test('should delete execution when API key has "execution:delete" scope', async () => {
-					const owner = await createOwnerWithApiKey();
+					const owner = await createOwnerWithApiKey({
+						scopes: ['execution:delete', 'execution:read'],
+					});
 					const authOwnerAgent = testServer.publicApiAgentFor(owner);
 
 					const workflow = await createWorkflow({}, owner);
@@ -646,7 +648,7 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 
 			describe('GET /executions', () => {
 				test('should retrieve all executions when API key has "execution:list" scope', async () => {
-					const owner = await createOwnerWithApiKey();
+					const owner = await createOwnerWithApiKey({ scopes: ['execution:list'] });
 
 					const authOwnerAgent = testServer.publicApiAgentFor(owner);
 
@@ -710,7 +712,7 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 				test('should retrieve all tags when API key has "tag:list" scope', async () => {
 					await Promise.all([createTag({}), createTag({}), createTag({})]);
 
-					const owner = await createOwnerWithApiKey();
+					const owner = await createOwnerWithApiKey({ scopes: ['tag:list'] });
 
 					const authOwnerAgent = testServer.publicApiAgentFor(owner);
 
@@ -736,7 +738,7 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 
 			describe('POST /tags', () => {
 				test('should create a tag when API key has "tag:create" scope', async () => {
-					const member = await createMemberWithApiKey();
+					const member = await createMemberWithApiKey({ scopes: ['tag:create'] });
 
 					const authMemberAgent = testServer.publicApiAgentFor(member);
 
@@ -784,7 +786,7 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 
 			describe('DELETE /tags/:id', () => {
 				test('should delete a tag when API key has "tag:delete" scope', async () => {
-					const owner = await createOwnerWithApiKey();
+					const owner = await createOwnerWithApiKey({ scopes: ['tag:delete'] });
 
 					const authOwnerAgent = testServer.publicApiAgentFor(owner);
 
@@ -826,7 +828,7 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 				test('should update a tag when API key has "tag:update" scope', async () => {
 					const tag = await createTag({});
 
-					const owner = await createOwnerWithApiKey();
+					const owner = await createOwnerWithApiKey({ scopes: ['tag:update'] });
 
 					const authOwnerAgent = testServer.publicApiAgentFor(owner);
 
@@ -877,7 +879,7 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 					// create tag
 					const tag = await createTag({});
 
-					const member = await createMemberWithApiKey();
+					const member = await createMemberWithApiKey({ scopes: ['tag:read'] });
 
 					const authMemberAgent = testServer.publicApiAgentFor(member);
 
@@ -915,7 +917,7 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 					 * Arrange
 					 */
 					testServer.license.enable('feat:variables');
-					const owner = await createOwnerWithApiKey();
+					const owner = await createOwnerWithApiKey({ scopes: ['variable:list'] });
 					const variables = await Promise.all([
 						createVariable(),
 						createVariable(),
@@ -964,7 +966,7 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 					/**
 					 * Arrange
 					 */
-					const owner = await createOwnerWithApiKey();
+					const owner = await createOwnerWithApiKey({ scopes: ['variable:create'] });
 					const variablePayload = { key: 'key', value: 'value' };
 
 					/**
@@ -1013,7 +1015,7 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 					/**
 					 * Arrange
 					 */
-					const owner = await createOwnerWithApiKey();
+					const owner = await createOwnerWithApiKey({ scopes: ['project:create'] });
 					const projectPayload = { name: 'some-project' };
 
 					/**
@@ -1068,7 +1070,7 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 					/**
 					 * Arrange
 					 */
-					const owner = await createOwnerWithApiKey();
+					const owner = await createOwnerWithApiKey({ scopes: ['project:list'] });
 					const projects = await Promise.all([
 						createTeamProject(),
 						createTeamProject(),
@@ -1117,7 +1119,7 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 					/**
 					 * Arrange
 					 */
-					const owner = await createOwnerWithApiKey();
+					const owner = await createOwnerWithApiKey({ scopes: ['project:delete'] });
 					const project = await createTeamProject();
 
 					/**
@@ -1160,7 +1162,7 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 					/**
 					 * Arrange
 					 */
-					const owner = await createOwnerWithApiKey();
+					const owner = await createOwnerWithApiKey({ scopes: ['project:update'] });
 					const project = await createTeamProject('old-name');
 
 					/**
@@ -1204,7 +1206,7 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 		describe('workflows', () => {
 			describe('POST /workflows', () => {
 				test('should create workflow when API key has "workflow:create" scope', async () => {
-					const member = await createMemberWithApiKey();
+					const member = await createMemberWithApiKey({ scopes: ['workflow:create'] });
 					const memberPersonalProject = await Container.get(
 						ProjectRepository,
 					).getPersonalProjectForUserOrFail(member.id);
@@ -1312,7 +1314,7 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 
 			describe('GET /workflows', () => {
 				test('should retrieve all workflows when API key has "workflow:list" scope', async () => {
-					const member = await createMemberWithApiKey();
+					const member = await createMemberWithApiKey({ scopes: ['workflow:list'] });
 
 					const authMemberAgent = testServer.publicApiAgentFor(member);
 
@@ -1374,7 +1376,7 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 
 			describe('GET /workflows/:id', () => {
 				test('should retrieve a workflow when API key has "workflow:read" scope', async () => {
-					const member = await createMemberWithApiKey();
+					const member = await createMemberWithApiKey({ scopes: ['workflow:read'] });
 
 					const authMemberAgent = testServer.publicApiAgentFor(member);
 
@@ -1424,7 +1426,7 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 
 			describe('DELETE /workflows/:id', () => {
 				test('should delete a workflow when API key has "workflow:delete" scope', async () => {
-					const member = await createMemberWithApiKey();
+					const member = await createMemberWithApiKey({ scopes: ['workflow:delete'] });
 					const authMemberAgent = testServer.publicApiAgentFor(member);
 					const workflow = await createWorkflow({}, member);
 
@@ -1475,7 +1477,7 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 
 			describe('PUT /workflows/:id', () => {
 				test('should update workflow when API key has "workflow:update" scope', async () => {
-					const member = await createMemberWithApiKey();
+					const member = await createMemberWithApiKey({ scopes: ['workflow:update'] });
 
 					const memberPersonalProject = await Container.get(
 						ProjectRepository,
@@ -1603,7 +1605,7 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 
 			describe('GET /workflows/:id/tags', () => {
 				test('should retrieve all workflow tags when API key has "workflowTags:list" scope', async () => {
-					const member = await createMemberWithApiKey();
+					const member = await createMemberWithApiKey({ scopes: ['workflowTags:list'] });
 					const authMemberAgent = testServer.publicApiAgentFor(member);
 
 					const tags = await Promise.all([await createTag({}), await createTag({})]);
@@ -1645,7 +1647,7 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 
 			describe('PUT /workflows/:id/tags', () => {
 				test('should update workflow tags when API key has "workflowTags:update" scope', async () => {
-					const member = await createMemberWithApiKey();
+					const member = await createMemberWithApiKey({ scopes: ['workflowTags:update'] });
 
 					const memberPersonalProject = await Container.get(
 						ProjectRepository,
