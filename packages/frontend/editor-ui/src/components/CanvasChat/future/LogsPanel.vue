@@ -19,9 +19,7 @@ import {
 } from '@/components/RunDataAi/utils';
 import { isChatNode } from '@/components/CanvasChat/utils';
 
-const { isReadOnly } = withDefaults(defineProps<{ isReadOnly?: boolean }>(), {
-	isReadOnly: false,
-});
+const props = withDefaults(defineProps<{ isReadOnly?: boolean }>(), { isReadOnly: false });
 
 const workflowsStore = useWorkflowsStore();
 const canvasStore = useCanvasStore();
@@ -36,14 +34,14 @@ const { rootStyles, height, chatWidth, onWindowResize, onResizeDebounced, onResi
 	useResize(container);
 
 const { currentSessionId, messages, sendMessage, refreshSession, displayExecution } = useChatState(
-	isReadOnly,
+	props.isReadOnly,
 	onWindowResize,
 );
 
 const hasChat = computed(
 	() =>
 		workflowsStore.workflowTriggerNodes.some(isChatNode) &&
-		(!isReadOnly || messages.value.length > 0),
+		(!props.isReadOnly || messages.value.length > 0),
 );
 const workflow = computed(() => workflowsStore.getCurrentWorkflow());
 const executionTree = computed<TreeNode[]>(() =>
