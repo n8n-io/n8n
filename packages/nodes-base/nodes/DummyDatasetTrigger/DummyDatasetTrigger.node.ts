@@ -3,6 +3,8 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 	ITriggerResponse,
+	IDeferredPromise,
+	IRun,
 } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
@@ -49,11 +51,29 @@ export class DummyDatasetTrigger implements INodeType {
 
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
 		const manualTriggerFunction = async () => {
-			this.emit([this.helpers.returnJsonArray([{ text: mockDataset[0] }])]);
+			void (async () => {
+				for (const testCase of mockDataset) {
+					const responsePromise: IDeferredPromise<IRun> = this.helpers.createDeferredPromise();
+
+					this.emit(
+						[this.helpers.returnJsonArray([{ text: testCase }])],
+						undefined,
+						responsePromise,
+					);
+
+					console.log(await responsePromise.promise);
+				}
+			})();
+
+			// setTimeout(() => {
+			// 	this.emit([this.helpers.returnJsonArray([{ text: mockDataset[1] }])]);
+			// }, 3000);
 		};
 
 		return {
 			manualTriggerFunction,
 		};
 	}
+
+	getDataset(): {};
 }
