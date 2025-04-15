@@ -172,10 +172,10 @@ function handleResizeOverviewPanelEnd() {
 							</LogsOverviewPanel>
 						</N8nResizeWrapper>
 						<LogsDetailsPanel
-							v-if="isLogDetailsOpenOrCollapsing"
+							v-if="isLogDetailsOpenOrCollapsing && selectedLogEntry"
 							:class="$style.logDetails"
 							:is-open="isOpen"
-							:log-entry="selectedLogEntry!"
+							:log-entry="selectedLogEntry"
 							:window="pipWindow"
 							@click-header="onToggleOpen(true)"
 						>

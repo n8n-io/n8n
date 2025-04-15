@@ -222,7 +222,7 @@ export function createTestLogEntry(data: Partial<TreeNode>): TreeNode {
 	return {
 		node: 'test node',
 		runIndex: 0,
-		id: String(Math.random()),
+		id: uuid(),
 		children: [],
 		consumedTokens: { completionTokens: 0, totalTokens: 0, promptTokens: 0, isEstimate: false },
 		depth: 0,

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ConsumedTokenCountText from '@/components/CanvasChat/future/components/ConsumedTokenCountText.vue';
 import { useI18n } from '@/composables/useI18n';
 import { type LlmTokenUsageData } from '@/Interface';
 import { N8nText } from '@n8n/design-system';
@@ -26,13 +27,7 @@ const executionStatusText = computed(() =>
 </script>
 
 <template>
-	<N8nText
-		v-if="executionStatusText !== undefined"
-		tag="div"
-		color="text-light"
-		size="small"
-		:class="$style.container"
-	>
+	<N8nText tag="div" color="text-light" size="small" :class="$style.container">
 		<span>{{ executionStatusText }}</span>
 		<ConsumedTokenCountText
 			v-if="consumedTokens.totalTokens > 0"

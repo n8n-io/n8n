@@ -15,6 +15,8 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { type FrontendSettings } from '@n8n/api-types';
 
+let originalOffsetWidth = 0;
+
 describe('LogDetailsPanel', () => {
 	let pinia: TestingPinia;
 	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
@@ -34,6 +36,21 @@ describe('LogDetailsPanel', () => {
 			},
 		});
 	}
+
+	beforeAll(() => {
+		originalOffsetWidth = HTMLElement.prototype.offsetWidth;
+
+		Object.defineProperty(HTMLElement.prototype, 'offsetWidth', {
+			configurable: true,
+			get() {
+				return 1000;
+			},
+		});
+		vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({
+			x: 0,
+			width: 1000,
+		} as DOMRect);
+	});
 
 	beforeEach(() => {
 		pinia = createTestingPinia({ stubActions: false, fakeApp: true });
@@ -78,17 +95,15 @@ describe('LogDetailsPanel', () => {
 			createdAt: '2025-04-16T00:00:00.000Z',
 			startedAt: '2025-04-16T00:00:01.000Z',
 		});
+	});
 
+	afterAll(() => {
 		Object.defineProperty(HTMLElement.prototype, 'offsetWidth', {
 			configurable: true,
 			get() {
-				return 1000;
+				return originalOffsetWidth;
 			},
 		});
-		vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({
-			x: 0,
-			width: 1000,
-		} as DOMRect);
 	});
 
 	it('should show name, run status, input, and output of the node', async () => {

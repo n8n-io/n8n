@@ -318,7 +318,7 @@ watch(
 	width: 10%;
 	text-align: right;
 
-	.compact {
+	.compact & {
 		flex-shrink: 1;
 	}
 

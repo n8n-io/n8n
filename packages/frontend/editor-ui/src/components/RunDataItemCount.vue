@@ -2,7 +2,13 @@
 import { useI18n } from '@/composables/useI18n';
 import { N8nText } from '@n8n/design-system';
 
-const { dataCount, unfilteredDataCount, subExecutionsCount, search, muted } = defineProps<{
+const {
+	dataCount,
+	unfilteredDataCount,
+	subExecutionsCount = 0,
+	search,
+	muted,
+} = defineProps<{
 	dataCount: number;
 	unfilteredDataCount: number;
 	subExecutionsCount?: number;
@@ -31,7 +37,7 @@ const i18n = useI18n();
 				})
 			}}
 		</span>
-		<span v-if="subExecutionsCount">
+		<span v-if="subExecutionsCount > 0">
 			{{
 				i18n.baseText('ndv.output.andSubExecutions', {
 					adjustToNumber: subExecutionsCount,
