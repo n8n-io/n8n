@@ -13,7 +13,6 @@ coverage:
         threshold: 0.5%
         paths:
           - packages/nodes-base/**
-        informational: false
 
 github_checks:
   annotations: false
