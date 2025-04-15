@@ -37,8 +37,8 @@ describe('InsightsController', () => {
 				total: { deviation: null, unit: 'count', value: 0 },
 				failed: { deviation: null, unit: 'count', value: 0 },
 				failureRate: { deviation: null, unit: 'ratio', value: 0 },
-				averageRunTime: { deviation: null, unit: 'time', value: 0 },
-				timeSaved: { deviation: null, unit: 'time', value: 0 },
+				averageRunTime: { deviation: null, unit: 'millisecond', value: 0 },
+				timeSaved: { deviation: null, unit: 'minute', value: 0 },
 			});
 		});
 
@@ -59,8 +59,8 @@ describe('InsightsController', () => {
 				total: { deviation: null, unit: 'count', value: 30 },
 				failed: { deviation: null, unit: 'count', value: 10 },
 				failureRate: { deviation: null, unit: 'ratio', value: 0.333 },
-				averageRunTime: { deviation: null, unit: 'time', value: 10 },
-				timeSaved: { deviation: null, unit: 'time', value: 10 },
+				averageRunTime: { deviation: null, unit: 'millisecond', value: 10 },
+				timeSaved: { deviation: null, unit: 'minute', value: 10 },
 			});
 		});
 
@@ -85,8 +85,8 @@ describe('InsightsController', () => {
 				total: { deviation: 10, unit: 'count', value: 30 },
 				failed: { deviation: 6, unit: 'count', value: 10 },
 				failureRate: { deviation: 0.333 - 0.2, unit: 'ratio', value: 0.333 },
-				averageRunTime: { deviation: 300 / 30 - 40 / 20, unit: 'time', value: 10 },
-				timeSaved: { deviation: 5, unit: 'time', value: 10 },
+				averageRunTime: { deviation: 300 / 30 - 40 / 20, unit: 'millisecond', value: 10 },
+				timeSaved: { deviation: 5, unit: 'minute', value: 10 },
 			});
 		});
 	});
