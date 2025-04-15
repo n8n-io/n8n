@@ -70,4 +70,8 @@ export namespace BinaryData {
 
 		rename(oldFileId: string, newFileId: string): Promise<void>;
 	}
+
+	export type SigningPayload = {
+		id: string;
+	};
 }

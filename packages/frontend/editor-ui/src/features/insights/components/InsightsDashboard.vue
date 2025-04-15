@@ -104,7 +104,22 @@ watch(
 				/>
 				<div v-if="insightsStore.isInsightsEnabled" :class="$style.insightsContent">
 					<div :class="$style.insightsChartWrapper">
-						<template v-if="insightsStore.charts.isLoading"> loading </template>
+						<div v-if="insightsStore.charts.isLoading" :class="$style.chartLoader">
+							<svg
+								width="22"
+								height="22"
+								viewBox="0 0 22 22"
+								fill="none"
+								xmlns="http://www.w3.org/2000/svg"
+							>
+								<path
+									d="M21 11C21 16.5228 16.5228 21 11 21C5.47715 21 1 16.5228 1 11C1 5.47715 5.47715 1 11 1C11.6293 1 12.245 1.05813 12.8421 1.16931"
+									stroke="currentColor"
+									stroke-width="2"
+								/>
+							</svg>
+							{{ i18n.baseText('insights.chart.loading') }}
+						</div>
 						<component
 							:is="chartComponents[props.insightType]"
 							v-else
@@ -168,5 +183,14 @@ watch(
 
 .insightsTableWrapper {
 	padding: var(--spacing-l) var(--spacing-l) 0;
+}
+
+.chartLoader {
+	height: 100%;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 9px;
 }
 </style>
