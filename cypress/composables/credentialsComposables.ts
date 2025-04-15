@@ -33,6 +33,10 @@ export function getNewCredentialModal() {
 	return cy.getByTestId('selectCredential-modal', { timeout: 5000 });
 }
 
+export function getEditCredentialModal() {
+	return cy.getByTestId('editCredential-modal', { timeout: 5000 });
+}
+
 export function getNewCredentialTypeSelect() {
 	return cy.getByTestId('new-credential-type-select');
 }
@@ -98,6 +102,6 @@ export function createNewCredential(type: string, name: string, parameter: strin
 	setCredentialName(name);
 	saveCredential();
 	if (closeModal) {
-		close();
+		getEditCredentialModal().find('.el-dialog__close').first().click();
 	}
 }
