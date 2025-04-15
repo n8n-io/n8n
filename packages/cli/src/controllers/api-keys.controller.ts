@@ -28,7 +28,7 @@ export class ApiKeysController {
 	 * Create an API Key
 	 */
 	@Post('/', { middlewares: [isApiEnabledMiddleware] })
-	async createAPIKey(
+	async createApiKey(
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Body body: CreateApiKeyRequestDto,
@@ -53,7 +53,7 @@ export class ApiKeysController {
 	 * Get API keys
 	 */
 	@Get('/', { middlewares: [isApiEnabledMiddleware] })
-	async getAPIKeys(req: AuthenticatedRequest) {
+	async getApiKeys(req: AuthenticatedRequest) {
 		const apiKeys = await this.publicApiKeyService.getRedactedApiKeysForUser(req.user);
 		return apiKeys;
 	}
@@ -62,7 +62,7 @@ export class ApiKeysController {
 	 * Delete an API Key
 	 */
 	@Delete('/:id', { middlewares: [isApiEnabledMiddleware] })
-	async deleteAPIKey(req: AuthenticatedRequest, _res: Response, @Param('id') apiKeyId: string) {
+	async deleteApiKey(req: AuthenticatedRequest, _res: Response, @Param('id') apiKeyId: string) {
 		await this.publicApiKeyService.deleteApiKeyForUser(req.user, apiKeyId);
 
 		this.eventService.emit('public-api-key-deleted', { user: req.user, publicApi: false });
@@ -74,7 +74,7 @@ export class ApiKeysController {
 	 * Patch an API Key
 	 */
 	@Patch('/:id', { middlewares: [isApiEnabledMiddleware] })
-	async updateAPIKey(
+	async updateApiKey(
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('id') apiKeyId: string,

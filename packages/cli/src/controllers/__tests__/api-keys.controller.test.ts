@@ -44,7 +44,7 @@ describe('ApiKeysController', () => {
 
 			// Act
 
-			const newApiKey = await controller.createAPIKey(req, mock(), mock());
+			const newApiKey = await controller.createApiKey(req, mock(), mock());
 
 			// Assert
 
@@ -64,6 +64,32 @@ describe('ApiKeysController', () => {
 				'public-api-key-created',
 				expect.objectContaining({ user: req.user, publicApi: false }),
 			);
+		});
+
+		it('should fail to create API key if user uses a scope not allow for its role', async () => {
+			// Arrange
+
+			const req = mock<AuthenticatedRequest>({ user: mock<User>({ id: '123' }) });
+
+			publicApiKeyService.apiKeyHasValidScopesForRole.mockReturnValue(false);
+
+			// Act and Assert
+
+			await expect(controller.createApiKey(req, mock(), mock())).rejects.toThrowError();
+		});
+	});
+
+	describe('updateApiKey', () => {
+		it('should fail to update API key if user uses a scope not allow for its role', async () => {
+			// Arrange
+
+			const req = mock<AuthenticatedRequest>({ user: mock<User>({ id: '123' }) });
+
+			publicApiKeyService.apiKeyHasValidScopesForRole.mockReturnValue(false);
+
+			// Act and Assert
+
+			await expect(controller.updateApiKey(req, mock(), mock(), mock())).rejects.toThrowError();
 		});
 	});
 
@@ -86,7 +112,7 @@ describe('ApiKeysController', () => {
 
 			// Act
 
-			const apiKeys = await controller.getAPIKeys(req);
+			const apiKeys = await controller.getApiKeys(req);
 
 			// Assert
 
@@ -113,7 +139,7 @@ describe('ApiKeysController', () => {
 
 			// Act
 
-			await controller.deleteAPIKey(req, mock(), user.id);
+			await controller.deleteApiKey(req, mock(), user.id);
 
 			publicApiKeyService.deleteApiKeyForUser.mockResolvedValue();
 
