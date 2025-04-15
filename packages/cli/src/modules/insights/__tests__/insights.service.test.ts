@@ -1280,10 +1280,10 @@ describe('getInsightsSummary', () => {
 
 		// ASSERT
 		expect(summary).toEqual({
-			averageRunTime: { deviation: -123, unit: 'time', value: 0 },
+			averageRunTime: { deviation: -123, unit: 'millisecond', value: 0 },
 			failed: { deviation: 1, unit: 'count', value: 1 },
 			failureRate: { deviation: 0.333, unit: 'ratio', value: 0.333 },
-			timeSaved: { deviation: 0, unit: 'time', value: 0 },
+			timeSaved: { deviation: 0, unit: 'minute', value: 0 },
 			total: { deviation: 2, unit: 'count', value: 3 },
 		});
 	});
@@ -1343,10 +1343,10 @@ describe('getInsightsSummary', () => {
 
 		// ASSERT
 		expect(summary).toEqual({
-			averageRunTime: { deviation: 0, unit: 'time', value: 0 },
+			averageRunTime: { deviation: 0, unit: 'millisecond', value: 0 },
 			failed: { deviation: 2, unit: 'count', value: 2 },
 			failureRate: { deviation: 0.5, unit: 'ratio', value: 0.5 },
-			timeSaved: { deviation: 0, unit: 'time', value: 0 },
+			timeSaved: { deviation: 0, unit: 'minute', value: 0 },
 			total: { deviation: -1, unit: 'count', value: 4 },
 		});
 	});
