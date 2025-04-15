@@ -1169,9 +1169,12 @@ export const mainProperties: INodeProperties[] = [
 			},
 		],
 	},
-	...optimizeResponseProperties.map((x) => ({
-		...x,
-		displayOptions: { ...x.displayOptions, show: { ...x.displayOptions?.show, '@tool': [true] } },
+	...optimizeResponseProperties.map((prop) => ({
+		...prop,
+		displayOptions: {
+			...prop.displayOptions,
+			show: { ...prop.displayOptions?.show, '@tool': [true] },
+		},
 	})),
 	{
 		displayName:
