@@ -140,7 +140,7 @@ describe('usePushConnection()', () => {
 			const workflowId = 'abc';
 
 			beforeEach(() => {
-				workflowsStore.activeExecutionId = executionId;
+				workflowsStore.setActiveExecutionId(executionId);
 				uiStore.isActionActive.workflowRunning = true;
 			});
 
@@ -239,13 +239,16 @@ describe('usePushConnection()', () => {
 			it("enqueues messages if we don't have the active execution id yet", async () => {
 				uiStore.isActionActive.workflowRunning = true;
 				const event: PushMessage = {
-					type: 'executionStarted',
+					type: 'nodeExecuteAfter',
 					data: {
 						executionId: '1',
-						mode: 'manual',
-						startedAt: new Date(),
-						workflowId: '1',
-						flattedRunData: stringify({}),
+						nodeName: 'Node',
+						data: {
+							executionIndex: 0,
+							startTime: 0,
+							executionTime: 0,
+							source: [],
+						},
 					},
 				};
 
@@ -281,7 +284,7 @@ describe('usePushConnection()', () => {
 						workflowId: '1',
 					},
 				};
-				workflowsStore.activeExecutionId = event.data.executionId;
+				workflowsStore.setActiveExecutionId(event.data.executionId);
 
 				// ACT
 				const result = await pushConnection.pushMessageReceived(event);

@@ -11,7 +11,6 @@ import WorkflowCard from '@/components/WorkflowCard.vue';
 import WorkflowTagsDropdown from '@/components/WorkflowTagsDropdown.vue';
 import {
 	EASY_AI_WORKFLOW_EXPERIMENT,
-	AI_CREDITS_EXPERIMENT,
 	EnterpriseEditionFeature,
 	VIEWS,
 	DEFAULT_WORKFLOW_PAGE_SIZE,
@@ -64,6 +63,7 @@ import { useUsageStore } from '@/stores/usage.store';
 import { useInsightsStore } from '@/features/insights/insights.store';
 import InsightsSummary from '@/features/insights/components/InsightsSummary.vue';
 import { useOverview } from '@/composables/useOverview';
+import { PROJECT_ROOT } from 'n8n-workflow';
 
 const SEARCH_DEBOUNCE_TIME = 300;
 const FILTERS_DEBOUNCE_TIME = 100;
@@ -131,6 +131,8 @@ const pageSize = ref(DEFAULT_WORKFLOW_PAGE_SIZE);
 const currentSort = ref('updatedAt:desc');
 
 const currentFolderId = ref<string | null>(null);
+
+const showCardsBadge = ref(false);
 
 /**
  * Folder actions
@@ -352,6 +354,7 @@ watch(
 	() => route.params?.folderId,
 	async (newVal) => {
 		currentFolderId.value = newVal as string;
+		filters.value.search = '';
 		await fetchWorkflows();
 	},
 );
@@ -478,7 +481,9 @@ const fetchWorkflows = async () => {
 				name: filters.value.search || undefined,
 				active: activeFilter,
 				tags: tags.length ? tags : undefined,
-				parentFolderId: parentFolder ?? (isOverviewPage.value ? undefined : '0'), // Sending 0 will only show one level of folders
+				parentFolderId:
+					parentFolder ??
+					(isOverviewPage.value ? undefined : filters?.value.search ? undefined : PROJECT_ROOT), // Sending 0 will only show one level of folders
 			},
 			fetchFolders,
 		);
@@ -499,6 +504,10 @@ const fetchWorkflows = async () => {
 		}
 
 		workflowsAndFolders.value = fetchedResources;
+
+		// Toggle ownership cards visibility only after we have fetched the workflows
+		showCardsBadge.value = isOverviewPage.value || filters.value.search !== '';
+
 		return fetchedResources;
 	} catch (error) {
 		toast.showError(error, i18n.baseText('workflows.list.error.fetching'));
@@ -701,13 +710,7 @@ const openAIWorkflow = async (source: string) => {
 		{ withPostHog: true },
 	);
 
-	const isAiCreditsExperimentEnabled =
-		posthogStore.getVariant(AI_CREDITS_EXPERIMENT.name) === AI_CREDITS_EXPERIMENT.variant;
-
-	const easyAiWorkflowJson = getEasyAiWorkflowJson({
-		isInstanceInAiFreeCreditsExperiment: isAiCreditsExperimentEnabled,
-		withOpenAiFreeCredits: settingsStore.aiCreditsQuota,
-	});
+	const easyAiWorkflowJson = getEasyAiWorkflowJson();
 
 	await router.push({
 		name: VIEWS.TEMPLATE_IMPORT,
@@ -1320,6 +1323,7 @@ const onCreateWorkflowClick = () => {
 				:actions="folderCardActions"
 				:read-only="readOnlyEnv || (!hasPermissionToDeleteFolders && !hasPermissionToCreateFolders)"
 				:personal-project="projectsStore.personalProject"
+				:show-ownership-badge="showCardsBadge"
 				class="mb-2xs"
 				@action="onFolderCardAction"
 			/>
@@ -1331,6 +1335,7 @@ const onCreateWorkflowClick = () => {
 				:data="data as WorkflowResource"
 				:workflow-list-event-bus="workflowListEventBus"
 				:read-only="readOnlyEnv"
+				:show-ownership-badge="showCardsBadge"
 				@click:tag="onClickTag"
 				@workflow:deleted="onWorkflowDeleted"
 				@workflow:moved="fetchWorkflows"

@@ -349,7 +349,7 @@ export class Server extends AbstractServer {
 				}
 				res.sendStatus(404);
 			};
-			this.app.use('/schemas/:node/:version/:resource/:operation.json', serveSchemas);
+			this.app.use('/schemas/:node/:version{/:resource}{/:operation}.json', serveSchemas);
 
 			const isTLSEnabled =
 				this.globalConfig.protocol === 'https' && !!(this.sslKey && this.sslCert);
