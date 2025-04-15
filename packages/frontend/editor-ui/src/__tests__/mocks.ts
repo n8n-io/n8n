@@ -29,6 +29,7 @@ import {
 } from '@/constants';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
 import { CanvasNodeRenderType } from '@/types';
+import { type TreeNode } from '@/components/RunDataAi/utils';
 
 export const mockNode = ({
 	id = uuid(),
@@ -214,5 +215,18 @@ export function createTestTaskData(partialData: Partial<ITaskData>): ITaskData {
 		executionStatus: 'success',
 		data: { main: [[{ json: {} }]] },
 		...partialData,
+	};
+}
+
+export function createTestLogEntry(data: Partial<TreeNode>): TreeNode {
+	return {
+		node: 'test node',
+		runIndex: 0,
+		id: String(Math.random()),
+		children: [],
+		consumedTokens: { completionTokens: 0, totalTokens: 0, promptTokens: 0, isEstimate: false },
+		depth: 0,
+		startTime: 0,
+		...data,
 	};
 }

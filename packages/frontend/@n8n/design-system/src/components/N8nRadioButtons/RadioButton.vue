@@ -5,14 +5,14 @@ interface RadioButtonProps {
 	active?: boolean;
 	disabled?: boolean;
 	size?: 'small' | 'medium';
-	customRender?: boolean;
+	noPadding?: boolean;
 }
 
 withDefaults(defineProps<RadioButtonProps>(), {
 	active: false,
 	disabled: false,
 	size: 'medium',
-	customRender: false,
+	noPadding: false,
 });
 
 defineSlots<{ default?: {} }>();
@@ -26,7 +26,7 @@ defineSlots<{ default?: {} }>();
 			'n8n-radio-button': true,
 			[$style.container]: true,
 			[$style.hoverable]: !disabled,
-			[$style.customRender]: customRender,
+			[$style.noPadding]: noPadding,
 		}"
 		:aria-checked="active"
 	>
@@ -76,7 +76,7 @@ defineSlots<{ default?: {} }>();
 	cursor: pointer;
 	user-select: none;
 
-	.customRender & {
+	.noPadding & {
 		padding-inline: 0;
 	}
 }

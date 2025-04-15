@@ -1,10 +1,14 @@
-import { createTestNode, createTestTaskData, createTestWorkflowObject } from '@/__tests__/mocks';
+import {
+	createTestLogEntry,
+	createTestNode,
+	createTestTaskData,
+	createTestWorkflowObject,
+} from '@/__tests__/mocks';
 import {
 	createAiData,
 	findLogEntryToAutoSelect,
 	getTreeNodeData,
 	createLogEntries,
-	type TreeNode,
 } from '@/components/RunDataAi/utils';
 import {
 	AGENT_LANGCHAIN_NODE_TYPE,
@@ -12,19 +16,6 @@ import {
 	type ITaskData,
 	NodeConnectionTypes,
 } from 'n8n-workflow';
-
-function createTestLogEntry(data: Partial<TreeNode>): TreeNode {
-	return {
-		node: 'test node',
-		runIndex: 0,
-		id: String(Math.random()),
-		children: [],
-		consumedTokens: { completionTokens: 0, totalTokens: 0, promptTokens: 0, isEstimate: false },
-		depth: 0,
-		startTime: 0,
-		...data,
-	};
-}
 
 describe(getTreeNodeData, () => {
 	it('should generate one node per execution', () => {

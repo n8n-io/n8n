@@ -8,6 +8,7 @@ import NodeIcon from '@/components/NodeIcon.vue';
 import { getSubtreeTotalConsumedTokens, type TreeNode } from '@/components/RunDataAi/utils';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { type INodeUi } from '@/Interface';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { N8nButton, N8nResizeWrapper, N8nText } from '@n8n/design-system';
@@ -33,7 +34,7 @@ const nodeTypeStore = useNodeTypesStore();
 
 const content = ref<LogDetailsContent>(LOG_DETAILS_CONTENT.BOTH);
 
-const node = computed(() => workflowsStore.nodesByName[logEntry.node]);
+const node = computed<INodeUi | undefined>(() => workflowsStore.nodesByName[logEntry.node]);
 const type = computed(() => (node.value ? nodeTypeStore.getNodeType(node.value.type) : undefined));
 const runData = computed<ITaskData | undefined>(
 	() =>
@@ -99,12 +100,12 @@ function handleResizeEnd() {
 
 <template>
 	<div ref="container" :class="$style.container" data-test-id="log-details">
-		<PanelHeader data-test-id="logs-details-header" @click="emit('clickHeader')">
+		<PanelHeader data-test-id="log-details-header" @click="emit('clickHeader')">
 			<template #title>
 				<div :class="$style.title">
 					<NodeIcon :node-type="type" :size="16" :class="$style.icon" />
 					<N8nText tag="div" :bold="true" size="small" :class="$style.name">
-						{{ node.name }}
+						{{ node?.name }}
 					</N8nText>
 					<ExecutionSummary
 						v-if="isOpen"
@@ -154,6 +155,7 @@ function handleResizeEnd() {
 				@resizeend="handleResizeEnd"
 			>
 				<RunDataView
+					data-test-id="log-details-input"
 					pane-type="input"
 					:title="locale.baseText('logs.details.header.actions.input')"
 					:log-entry="logEntry"
@@ -161,6 +163,7 @@ function handleResizeEnd() {
 			</N8nResizeWrapper>
 			<RunDataView
 				v-if="isTriggerNode || content !== LOG_DETAILS_CONTENT.INPUT"
+				data-test-id="log-details-output"
 				pane-type="output"
 				:class="$style.outputPanel"
 				:title="locale.baseText('logs.details.header.actions.output')"

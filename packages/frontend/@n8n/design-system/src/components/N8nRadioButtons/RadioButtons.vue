@@ -50,7 +50,7 @@ const onClick = (
 			:active="modelValue === option.value"
 			:size="size"
 			:disabled="disabled || option.disabled"
-			:custom-render="!!slots.option"
+			:no-padding="!!slots.option"
 			@click.prevent.stop="onClick(option, $event)"
 		>
 			<slot name="option" v-bind="option" />

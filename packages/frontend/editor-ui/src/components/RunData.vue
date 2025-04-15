@@ -1434,7 +1434,7 @@ defineExpose({ enterEditMode });
 					@toggle-pin-data="onTogglePinData({ source: 'pin-icon-click' })"
 				/>
 
-				<div v-show="editMode.enabled" :class="$style.editModeActions">
+				<div v-if="!props.disableEdit" v-show="editMode.enabled" :class="$style.editModeActions">
 					<N8nButton
 						type="tertiary"
 						:label="i18n.baseText('runData.editor.cancel')"
