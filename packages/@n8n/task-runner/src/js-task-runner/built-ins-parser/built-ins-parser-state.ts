@@ -17,8 +17,25 @@ export class BuiltInsParserState {
 
 	needs$prevNode = false;
 
+	/**
+	 * Typically we check for dollar-sign properties in order to request data from
+	 * the broker, but here we check for `$evaluateExpression` only to see if it
+	 * is used so that we can conditionally unfreeze the prototype for
+	 * `Expression` to allow `$evaluateExpression` to be called.
+	 *
+	 * We do this because `Expression` has a workaround that mutates the prototype
+	 * to protect against arbitrary code execution. Once task runners are the only
+	 * way to execute Code nodes, that workaround in `Expression` and so detecting
+	 * `$usesEvaluateExpression` can both be removed.
+	 */
+	uses$evaluateExpression? = false;
+
 	constructor(opts: Partial<BuiltInsParserState> = {}) {
 		Object.assign(this, opts);
+	}
+
+	mark$evaluateExpressionAsUsed() {
+		this.uses$evaluateExpression = true;
 	}
 
 	/**

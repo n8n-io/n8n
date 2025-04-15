@@ -22,6 +22,7 @@ import * as a from 'node:assert';
 import { inspect } from 'node:util';
 import { type Context, createContext, runInContext } from 'node:vm';
 
+import type { JsRunnerConfig } from '@/config/js-runner-config';
 import type { MainConfig } from '@/config/main-config';
 import { UnsupportedFunctionError } from '@/js-task-runner/errors/unsupported-function.error';
 import { EXPOSED_RPC_METHODS, UNSUPPORTED_HELPER_FUNCTIONS } from '@/runner-types';
@@ -89,6 +90,8 @@ export class JsTaskRunner extends TaskRunner {
 
 	private readonly taskDataReconstruct = new DataRequestResponseReconstruct();
 
+	private readonly jsRunnerConfig: JsRunnerConfig;
+
 	constructor(config: MainConfig, name = 'JS Task Runner') {
 		super({
 			taskType: 'javascript',
@@ -117,13 +120,12 @@ export class JsTaskRunner extends TaskRunner {
 			allowedExternalModules,
 		});
 
-		this.preventPrototypePollution(allowedExternalModules, jsRunnerConfig.allowPrototypeMutation);
+		this.preventPrototypePollution(allowedExternalModules);
+
+		this.jsRunnerConfig = jsRunnerConfig;
 	}
 
-	private preventPrototypePollution(
-		allowedExternalModules: Set<string> | '*',
-		allowPrototypeMutation: boolean,
-	) {
+	private preventPrototypePollution(allowedExternalModules: Set<string> | '*') {
 		if (allowedExternalModules instanceof Set) {
 			// This is a workaround to enable the allowed external libraries to mutate
 			// prototypes directly. For example momentjs overrides .toString() directly
@@ -133,17 +135,6 @@ export class JsTaskRunner extends TaskRunner {
 			for (const module of allowedExternalModules) {
 				require(module);
 			}
-		}
-
-		// Freeze globals if needed
-		if (!allowPrototypeMutation) {
-			Object.getOwnPropertyNames(globalThis)
-				// @ts-expect-error globalThis does not have string in index signature
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access
-				.map((name) => globalThis[name])
-				.filter((value) => typeof value === 'function')
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access
-				.forEach((fn) => Object.freeze(fn.prototype));
 		}
 
 		// Freeze internal classes
@@ -165,6 +156,19 @@ export class JsTaskRunner extends TaskRunner {
 		const neededBuiltIns = neededBuiltInsResult.ok
 			? neededBuiltInsResult.result
 			: BuiltInsParserState.newNeedsAllDataState();
+
+		if (neededBuiltIns.uses$evaluateExpression) {
+			// $evaluateExpression relies on prototype mutation, so for now we have to skip freezing
+			delete neededBuiltIns.uses$evaluateExpression;
+		} else if (!this.jsRunnerConfig.allowPrototypeMutation) {
+			Object.getOwnPropertyNames(globalThis)
+				// @ts-expect-error globalThis does not have string in index signature
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access
+				.map((name) => globalThis[name])
+				.filter((value) => typeof value === 'function')
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access
+				.forEach((fn) => Object.freeze(fn.prototype));
+		}
 
 		const dataResponse = await this.requestData<DataRequestResponse>(
 			taskId,
