@@ -1,27 +1,14 @@
 import nock from 'nock';
 
-import {
-	getWorkflowFilenames,
-	initBinaryDataService,
-	testWorkflows,
-} from '../../../../../test/nodes/Helpers';
+import { getWorkflowFilenames, testWorkflows } from '../../../../../test/nodes/Helpers';
 
 describe('AWS Cognito - Update Group', () => {
 	const workflows = getWorkflowFilenames(__dirname).filter((filename) =>
 		filename.includes('update.workflow.json'),
 	);
 
-	beforeAll(async () => {
-		await initBinaryDataService();
-	});
-
 	beforeEach(() => {
-		if (!nock.isActive()) {
-			nock.activate();
-		}
-
 		const baseUrl = 'https://cognito-idp.eu-central-1.amazonaws.com/';
-		nock.cleanAll();
 
 		nock(baseUrl)
 			.persist()
@@ -39,10 +26,6 @@ describe('AWS Cognito - Update Group', () => {
 					Description: 'Updated description',
 				},
 			});
-	});
-
-	afterEach(() => {
-		nock.cleanAll();
 	});
 
 	testWorkflows(workflows);

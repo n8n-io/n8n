@@ -1,27 +1,14 @@
 import nock from 'nock';
 
-import {
-	getWorkflowFilenames,
-	initBinaryDataService,
-	testWorkflows,
-} from '../../../../../test/nodes/Helpers';
+import { getWorkflowFilenames, testWorkflows } from '../../../../../test/nodes/Helpers';
 
 describe('AWS Cognito - Create Group', () => {
 	const workflows = getWorkflowFilenames(__dirname).filter((filename) =>
 		filename.includes('create.workflow.json'),
 	);
 
-	beforeAll(async () => {
-		await initBinaryDataService();
-	});
-
 	beforeEach(() => {
-		if (!nock.isActive()) {
-			nock.activate();
-		}
-
 		const baseUrl = 'https://cognito-idp.eu-central-1.amazonaws.com/';
-		nock.cleanAll();
 		nock(baseUrl)
 			.persist()
 			.defaultReplyHeaders({ 'Content-Type': 'application/x-amz-json-1.1' })
@@ -37,10 +24,6 @@ describe('AWS Cognito - Create Group', () => {
 					LastModifiedDate: 1743068959.243,
 				},
 			});
-	});
-
-	afterEach(() => {
-		nock.cleanAll();
 	});
 
 	testWorkflows(workflows);

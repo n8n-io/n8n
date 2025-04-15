@@ -6,33 +6,22 @@ import type {
 	IN8nHttpFullResponse,
 	INodeExecutionData,
 } from 'n8n-workflow';
-import { jsonParse, NodeApiError, NodeOperationError, OperationalError } from 'n8n-workflow';
+import { jsonParse, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import type { IUserPool } from './interfaces';
-import { searchUsersForGroup } from './searchFunctions';
+import type {
+	IGroup,
+	IListGroupsResponse,
+	IUser,
+	IUserAttribute,
+	IUserAttributeInput,
+	IUserPool,
+} from './interfaces';
+// eslint-disable-next-line import/no-cycle
 import { searchUsers } from '../methods/listSearch';
 import { awsApiRequest } from '../transport';
 
 const validateEmail = (email: string): boolean => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 const validatePhoneNumber = (phone: string): boolean => /^\+[0-9]\d{1,14}$/.test(phone);
-
-export function parseRequestBody(body: unknown): IDataObject {
-	if (typeof body === 'string') {
-		try {
-			return jsonParse(body);
-		} catch {
-			throw new OperationalError('Failed to parse request body: Invalid JSON format.');
-		}
-	}
-
-	if (body && typeof body === 'object') {
-		return body as IDataObject;
-	}
-
-	throw new OperationalError(
-		`Invalid request body type: Expected string or object, received ${typeof body}`,
-	);
-}
 
 export async function preSendStringifyBody(
 	this: IExecuteSingleFunctions,
@@ -57,32 +46,97 @@ export async function getUserPool(
 		method: 'POST',
 		headers: { 'X-Amz-Target': 'AWSCognitoIdentityProviderService.DescribeUserPool' },
 		body: JSON.stringify({ UserPoolId: userPoolId }),
-	})) as unknown as IUserPool;
+	})) as IDataObject;
 
 	if (!response?.UserPool) {
 		throw new NodeOperationError(this.getNode(), 'User Pool not found in response');
 	}
 
-	return response;
+	return response.UserPool as IUserPool;
+}
+
+export async function searchUsersForGroup(
+	this: IExecuteSingleFunctions | ILoadOptionsFunctions,
+	groupName: string,
+	userPoolId: string,
+	paginationToken?: string,
+): Promise<IDataObject> {
+	if (!userPoolId) {
+		throw new NodeOperationError(this.getNode(), 'User Pool ID is required');
+	}
+
+	const requestBody: IDataObject = {
+		UserPoolId: userPoolId,
+		GroupName: groupName,
+		Limit: 50,
+	};
+
+	if (paginationToken) {
+		requestBody.NextToken = paginationToken;
+	}
+
+	const responseData = (await awsApiRequest.call(this, {
+		url: '',
+		method: 'POST',
+		headers: {
+			'X-Amz-Target': 'AWSCognitoIdentityProviderService.ListUsersInGroup',
+		},
+		body: JSON.stringify(requestBody),
+	})) as IDataObject;
+
+	const users = responseData.Users as IUser[];
+
+	if (users.length === 0) {
+		return { results: [] };
+	}
+
+	const results = users.map(
+		({
+			Username,
+			Enabled,
+			UserCreateDate,
+			UserLastModifiedDate,
+			UserStatus,
+			Attributes,
+		}: IUser) => {
+			const userAttributes = Object.fromEntries(
+				(Attributes ?? [])
+					.filter(({ Name }) => Name?.trim())
+					.map(({ Name, Value }) => [Name, Value ?? '']),
+			);
+			return {
+				Enabled,
+				...userAttributes,
+				UserCreateDate,
+				UserLastModifiedDate,
+				UserStatus,
+				Username,
+			};
+		},
+	);
+
+	return {
+		results,
+	};
 }
 
 export async function preSendUserFields(
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
-	_paginationToken?: string,
 ): Promise<IHttpRequestOptions> {
 	const operation = this.getNodeParameter('operation') as string;
 	const userPoolId = this.getNodeParameter('userPool', undefined, {
 		extractValue: true,
 	}) as string;
-
-	const userPool = (await awsApiRequest.call(this, {
+	const userPoolResponse = (await awsApiRequest.call(this, {
 		url: '',
 		method: 'POST',
 		headers: { 'X-Amz-Target': 'AWSCognitoIdentityProviderService.DescribeUserPool' },
 		body: JSON.stringify({ UserPoolId: userPoolId }),
-	})) as unknown as IUserPool;
-	const usernameAttributes = userPool?.UserPool.UsernameAttributes ?? [];
+	})) as IDataObject;
+
+	const userPool = userPoolResponse.UserPool as IUserPool;
+	const usernameAttributes = userPool.UsernameAttributes ?? [];
 	const isEmailAuth = usernameAttributes.includes('email');
 	const isPhoneAuth = usernameAttributes.includes('phone_number');
 	const isEmailOrPhone = isEmailAuth || isPhoneAuth;
@@ -111,17 +165,25 @@ export async function preSendUserFields(
 			extractValue: true,
 		}) as string;
 
-		const { results: users } = await searchUsers.call(this as unknown as ILoadOptionsFunctions);
+		if (isEmailOrPhone) {
+			return userName;
+		}
+
+		const { results: users } = await searchUsers.call(this);
 
 		const matchedUser = users?.find((user) => user.value === userName);
 
-		return isEmailOrPhone ? userName : matchedUser?.name;
+		return matchedUser?.name;
 	};
 
 	const finalUserName =
 		operation === 'create' ? getValidatedNewUserName() : await getUserNameFromExistingUsers();
 
-	const body = parseRequestBody(requestOptions.body);
+	const body = jsonParse<IDataObject>(String(requestOptions.body), {
+		acceptJSObject: true,
+		errorMessage: 'Invalid request body. Request body must be valid JSON.',
+	});
+
 	return {
 		...requestOptions,
 		body: JSON.stringify({
@@ -140,16 +202,13 @@ export async function processGroupResponse(
 		extractValue: true,
 	}) as string;
 	const include = this.getNodeParameter('includeUsers') as boolean;
-	const body = parseRequestBody(response.body);
+	const responseBody = response.body as { Group: IGroup };
+	const group = responseBody.Group ?? [];
 
-	if (!include) {
-		return [{ json: body.Group as IDataObject }];
-	}
+	if (!include) return this.helpers.returnJsonArray({ ...group });
 
-	const group = body.Group as IDataObject;
-	const users = await searchUsersForGroup.call(this, group.GroupName as string, userPoolId);
-
-	return [{ json: { ...group, Users: users.results ?? [] } }];
+	const users = await searchUsersForGroup.call(this, group.GroupName, userPoolId);
+	return this.helpers.returnJsonArray({ ...group, Users: users.results ?? [] });
 }
 
 export async function processGroupsResponse(
@@ -160,21 +219,17 @@ export async function processGroupsResponse(
 	const userPoolId = this.getNodeParameter('userPool', undefined, {
 		extractValue: true,
 	}) as string;
-	const include = this.getNodeParameter('includeUsers') as boolean;
-	const body = parseRequestBody(response.body);
+	const includeUsers = this.getNodeParameter('includeUsers') as boolean;
+	const responseBody = response.body as IListGroupsResponse;
+	const groups = responseBody.Groups ?? [];
 
-	if (!include) {
+	if (!includeUsers) {
 		return items;
 	}
 
 	const processedGroups: IDataObject[] = [];
-	const groups = Array.isArray(body?.Groups) ? body.Groups : [];
 	for (const group of groups) {
-		const usersResponse = await searchUsersForGroup.call(
-			this,
-			group.GroupName as string,
-			userPoolId,
-		);
+		const usersResponse = await searchUsersForGroup.call(this, group.GroupName, userPoolId);
 		processedGroups.push({
 			...group,
 			Users: usersResponse.results ?? [],
@@ -209,11 +264,15 @@ export async function simplifyUserPool(
 	_response: IN8nHttpFullResponse,
 ): Promise<INodeExecutionData[]> {
 	const simple = this.getNodeParameter('simple') as boolean;
-	if (!simple) return items;
+	if (!simple) {
+		return items;
+	}
 	return items
 		.map((item) => {
-			const data = item.json?.UserPool as IDataObject | undefined;
-			if (!data) return undefined;
+			const data = item.json?.UserPool as IUserPool;
+			if (!data) {
+				return;
+			}
 
 			const {
 				AccountRecoverySetting,
@@ -240,20 +299,24 @@ export async function simplifyUser(
 	_response: IN8nHttpFullResponse,
 ): Promise<INodeExecutionData[]> {
 	const simple = this.getNodeParameter('simple') as boolean;
-	if (!simple) return items;
+	if (!simple) {
+		return items;
+	}
 	return items
 		.map((item) => {
-			const userData = item.json as IDataObject | undefined;
-			if (!userData) return undefined;
+			const data = item.json;
+			if (!data) {
+				return;
+			}
 
-			const attributesArray = Array.isArray(userData.UserAttributes) ? userData.UserAttributes : [];
+			const attributesArray = data.UserAttributes as IUserAttribute[];
 
 			const userAttributes = Object.fromEntries(
-				(attributesArray ?? [])
+				attributesArray
 					.filter(({ Name }) => Name?.trim())
 					.map(({ Name, Value }) => [Name, Value ?? '']),
 			);
-			const { UserAttributes, ...selectedData } = userData;
+			const { UserAttributes, ...selectedData } = data;
 
 			return { json: { ...selectedData, ...userAttributes } };
 		})
@@ -266,16 +329,17 @@ export async function simplifyUsers(
 	_response: IN8nHttpFullResponse,
 ): Promise<INodeExecutionData[]> {
 	const simple = this.getNodeParameter('simple') as boolean;
-	if (!simple) return items;
+	if (!simple) {
+		return items;
+	}
 	return items
 		.map((item) => {
-			const users = item.json?.Users as IDataObject[] | undefined;
-			if (!users) return undefined;
+			const users = (item.json?.Users as IUser[]) ?? [];
 
 			const processedUsers = users.map((user) => {
-				const attributesArray = Array.isArray(user.Attributes) ? user.Attributes : [];
+				const attributesArray = user.Attributes;
 				const userAttributes = Object.fromEntries(
-					(attributesArray ?? [])
+					attributesArray
 						.filter(({ Name }) => Name?.trim())
 						.map(({ Name, Value }) => [Name, Value ?? '']),
 				);
@@ -287,4 +351,108 @@ export async function simplifyUsers(
 			return { json: { Users: processedUsers } };
 		})
 		.filter(Boolean) as INodeExecutionData[];
+}
+
+export async function preSendAttributes(
+	this: IExecuteSingleFunctions,
+	requestOptions: IHttpRequestOptions,
+): Promise<IHttpRequestOptions> {
+	const operation = this.getNodeParameter('operation', 0) as string;
+
+	const parameterName =
+		operation === 'create'
+			? 'additionalFields.userAttributes.attributes'
+			: 'userAttributes.attributes';
+	const attributes = this.getNodeParameter(parameterName, []) as IUserAttributeInput[];
+
+	if (operation === 'update' && (!attributes || attributes.length === 0)) {
+		throw new NodeOperationError(this.getNode(), 'No user attributes provided', {
+			description: 'At least one user attribute must be provided for the update operation.',
+		});
+	}
+
+	if (operation === 'create') {
+		const hasEmail = attributes.some((a) => a.standardName === 'email');
+		const hasEmailVerifiedTrue = attributes.some(
+			(a) => a.standardName === 'email_verified' && a.value === 'true',
+		);
+
+		if (hasEmailVerifiedTrue && !hasEmail) {
+			throw new NodeOperationError(this.getNode(), 'Missing required "email" attribute', {
+				description:
+					'"email_verified" is set to true, but the corresponding "email" attribute is not provided.',
+			});
+		}
+
+		const hasPhone = attributes.some((a) => a.standardName === 'phone_number');
+		const hasPhoneVerifiedTrue = attributes.some(
+			(a) => a.standardName === 'phone_number_verified' && a.value === 'true',
+		);
+
+		if (hasPhoneVerifiedTrue && !hasPhone) {
+			throw new NodeOperationError(this.getNode(), 'Missing required "phone_number" attribute', {
+				description:
+					'"phone_number_verified" is set to true, but the corresponding "phone_number" attribute is not provided.',
+			});
+		}
+	}
+
+	const body = jsonParse<IDataObject>(String(requestOptions.body), {
+		acceptJSObject: true,
+		errorMessage: 'Invalid request body. Request body must be valid JSON.',
+	});
+
+	body.UserAttributes = attributes.map(({ attributeType, standardName, customName, value }) => {
+		if (!value || !attributeType || !(standardName ?? customName)) {
+			throw new NodeOperationError(this.getNode(), 'Invalid User Attribute', {
+				description: 'Each attribute must have a valid name and value.',
+			});
+		}
+
+		const attributeName =
+			attributeType === 'standard'
+				? standardName
+				: `custom:${customName?.startsWith('custom:') ? customName : customName}`;
+
+		return { Name: attributeName, Value: value };
+	});
+
+	requestOptions.body = JSON.stringify(body);
+
+	return requestOptions;
+}
+
+export async function preSendDesiredDeliveryMediums(
+	this: IExecuteSingleFunctions,
+	requestOptions: IHttpRequestOptions,
+): Promise<IHttpRequestOptions> {
+	const desiredDeliveryMediums = this.getNodeParameter(
+		'additionalFields.desiredDeliveryMediums',
+		[],
+	) as string[];
+
+	const attributes = this.getNodeParameter(
+		'additionalFields.userAttributes.attributes',
+		[],
+	) as IUserAttributeInput[];
+
+	const hasEmail = attributes.some((attr) => attr.standardName === 'email' && !!attr.value?.trim());
+	const hasPhone = attributes.some(
+		(attr) => attr.standardName === 'phone_number' && !!attr.value?.trim(),
+	);
+
+	if (desiredDeliveryMediums.includes('EMAIL') && !hasEmail) {
+		throw new NodeOperationError(this.getNode(), 'Missing required "email" attribute', {
+			description: 'Email is selected as a delivery medium but no email attribute is provided.',
+		});
+	}
+
+	if (desiredDeliveryMediums.includes('SMS') && !hasPhone) {
+		throw new NodeOperationError(this.getNode(), 'Missing required "phone_number" attribute', {
+			description:
+				'SMS is selected as a delivery medium but no phone_number attribute is provided.',
+		});
+	}
+
+	return requestOptions;
 }

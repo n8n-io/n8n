@@ -1,27 +1,14 @@
 import nock from 'nock';
 
-import {
-	getWorkflowFilenames,
-	initBinaryDataService,
-	testWorkflows,
-} from '../../../../../test/nodes/Helpers';
+import { getWorkflowFilenames, testWorkflows } from '../../../../../test/nodes/Helpers';
 
 describe('AWS Cognito - Get All Groups', () => {
 	const workflows = getWorkflowFilenames(__dirname).filter((filename) =>
 		filename.includes('getAll.workflow.json'),
 	);
 
-	beforeAll(async () => {
-		await initBinaryDataService();
-	});
-
 	beforeEach(() => {
-		if (!nock.isActive()) {
-			nock.activate();
-		}
-
 		const baseUrl = 'https://cognito-idp.eu-central-1.amazonaws.com/';
-		nock.cleanAll();
 
 		nock(baseUrl)
 			.persist()
@@ -78,7 +65,7 @@ describe('AWS Cognito - Get All Groups', () => {
 			.post('/', {
 				UserPoolId: 'eu-central-1_KkXQgdCJv',
 				GroupName: 'MyNewTesttttt',
-				MaxResults: 60,
+				Limit: 50,
 			})
 			.matchHeader('x-amz-target', 'AWSCognitoIdentityProviderService.ListUsersInGroup')
 			.reply(200, {
@@ -91,7 +78,7 @@ describe('AWS Cognito - Get All Groups', () => {
 			.post('/', {
 				UserPoolId: 'eu-central-1_KkXQgdCJv',
 				GroupName: 'MyNewGroup',
-				MaxResults: 60,
+				Limit: 50,
 			})
 			.matchHeader('x-amz-target', 'AWSCognitoIdentityProviderService.ListUsersInGroup')
 			.reply(200, {
@@ -104,7 +91,7 @@ describe('AWS Cognito - Get All Groups', () => {
 			.post('/', {
 				UserPoolId: 'eu-central-1_KkXQgdCJv',
 				GroupName: 'MyNewTest1',
-				MaxResults: 60,
+				Limit: 50,
 			})
 			.matchHeader('x-amz-target', 'AWSCognitoIdentityProviderService.ListUsersInGroup')
 			.reply(200, {
@@ -150,10 +137,6 @@ describe('AWS Cognito - Get All Groups', () => {
 					},
 				],
 			});
-	});
-
-	afterEach(() => {
-		nock.cleanAll();
 	});
 
 	testWorkflows(workflows);

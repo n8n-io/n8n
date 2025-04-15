@@ -1,42 +1,29 @@
 import nock from 'nock';
 
-import {
-	getWorkflowFilenames,
-	initBinaryDataService,
-	testWorkflows,
-} from '../../../../../test/nodes/Helpers';
+import { getWorkflowFilenames, testWorkflows } from '../../../../../test/nodes/Helpers';
 
 describe('AWS Cognito - Get User', () => {
 	const workflows = getWorkflowFilenames(__dirname).filter((filename) =>
 		filename.includes('get.workflow.json'),
 	);
 
-	beforeAll(async () => {
-		await initBinaryDataService();
-	});
-
 	beforeEach(() => {
-		if (!nock.isActive()) {
-			nock.activate();
-		}
-
 		const baseUrl = 'https://cognito-idp.eu-central-1.amazonaws.com/';
-		nock.cleanAll();
 
 		nock(baseUrl)
 			.persist()
 			.defaultReplyHeaders({ 'Content-Type': 'application/x-amz-json-1.1' })
 			.post('/', {
-				UserPoolId: 'eu-central-1_W3WwpiBXV',
+				UserPoolId: 'eu-central-1_EUZ4iEF1T',
 			})
 			.matchHeader('x-amz-target', 'AWSCognitoIdentityProviderService.DescribeUserPool')
 			.reply(200, {
 				UserPool: {
-					Arn: 'arn:aws:cognito-idp:eu-central-1:130450532146:userpool/eu-central-1_W3WwpiBXV',
+					Arn: 'arn:aws:cognito-idp:eu-central-1:130450532146:userpool/eu-central-1_EUZ4iEF1T',
 					CreationDate: 1739530218.869,
 					DeletionProtection: 'INACTIVE',
 					EstimatedNumberOfUsers: 4,
-					Id: 'eu-central-1_W3WwpiBXV',
+					Id: 'eu-central-1_EUZ4iEF1T',
 					LastModifiedDate: 1739530218.869,
 					MfaConfiguration: 'OFF',
 					Name: 'UserPoolSimple',
@@ -47,22 +34,22 @@ describe('AWS Cognito - Get User', () => {
 			.persist()
 			.defaultReplyHeaders({ 'Content-Type': 'application/x-amz-json-1.1' })
 			.post('/', {
-				UserPoolId: 'eu-central-1_W3WwpiBXV',
-				MaxResults: 60,
+				UserPoolId: 'eu-central-1_EUZ4iEF1T',
+				Limit: 50,
 			})
 			.matchHeader('x-amz-target', 'AWSCognitoIdentityProviderService.ListUsers')
 			.reply(200, {
 				Users: [
 					{
-						Username: '0394e8e2-5081-7020-06bd-44bdfc84dd10',
-						Attributes: [
-							{ Name: 'email', Value: 'UserSimple' },
-							{ Name: 'Sub', Value: '0394e8e2-5081-7020-06bd-44bdfc84dd10' },
-							{ Name: 'Enabled', Value: true },
-							{ Name: 'UserCreateDate', Value: 1736343033.226 },
-							{ Name: 'UserLastModifiedDate', Value: 1736343033.226 },
-							{ Name: 'UserStatus', Value: 'FORCE_CHANGE_PASSWORD' },
+						Username: 'userName10',
+						UserAttributes: [
+							{ Name: 'sub', Value: 'b30498c2-d0f1-70a8-4b0c-3da25a3b998f' },
+							{ Name: 'family_name', Value: 'New FamilyName 2' },
 						],
+						UserCreateDate: 1744206331.569,
+						UserLastModifiedDate: 1744206366.034,
+						Enabled: true,
+						UserStatus: 'FORCE_CHANGE_PASSWORD',
 					},
 				],
 			});
@@ -71,25 +58,21 @@ describe('AWS Cognito - Get User', () => {
 			.persist()
 			.defaultReplyHeaders({ 'Content-Type': 'application/x-amz-json-1.1' })
 			.post('/', {
-				UserPoolId: 'eu-central-1_W3WwpiBXV',
-				Username: '0394e8e2-5081-7020-06bd-44bdfc84dd10',
+				UserPoolId: 'eu-central-1_EUZ4iEF1T',
+				Username: 'b30498c2-d0f1-70a8-4b0c-3da25a3b998f',
 			})
 			.matchHeader('x-amz-target', 'AWSCognitoIdentityProviderService.AdminGetUser')
 			.reply(200, {
-				User: {
-					Enabled: true,
-					UserCreateDate: 1739528018.102,
-					UserLastModifiedDate: 1740655109.821,
-					UserStatus: 'FORCE_CHANGE_PASSWORD',
-					Username: 'UserSimple',
-					address: 'newAddress223',
-					sub: '0394e8e2-5081-7020-06bd-44bdfc84dd10',
-				},
+				Username: 'userName10',
+				UserAttributes: [
+					{ Name: 'sub', Value: 'b30498c2-d0f1-70a8-4b0c-3da25a3b998f' },
+					{ Name: 'family_name', Value: 'New FamilyName 2' },
+				],
+				UserCreateDate: 1744206331.569,
+				UserLastModifiedDate: 1744206366.034,
+				Enabled: true,
+				UserStatus: 'FORCE_CHANGE_PASSWORD',
 			});
-	});
-
-	afterEach(() => {
-		nock.cleanAll();
 	});
 
 	testWorkflows(workflows);

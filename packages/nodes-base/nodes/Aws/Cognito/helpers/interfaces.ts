@@ -1,3 +1,5 @@
+import type { IDataObject } from 'n8n-workflow';
+
 export interface IUserAttribute {
 	Name: string;
 	Value: string;
@@ -12,22 +14,41 @@ export interface IUser {
 	Attributes: IUserAttribute[];
 }
 
+export interface IGroup {
+	GroupName: string;
+}
+
 export interface IListUsersResponse {
 	Users: IUser[];
 	NextToken?: string;
 }
 
+export interface IListGroupsResponse {
+	Groups: IGroup[];
+	NextToken?: string;
+}
+
 export interface IUserAttributeInput {
-	attributeType?: string;
-	standardName?: string;
-	customName?: string;
-	Value?: string;
+	attributeType: string;
+	standardName: string;
+	customName: string;
+	value: string;
 }
 
 export interface IUserPool {
-	UserPool: {
-		UsernameAttributes: string[];
-	};
+	Id: string;
+	Name: string;
+	UsernameAttributes?: string[];
+	AccountRecoverySetting?: IDataObject;
+	AdminCreateUserConfig?: IDataObject;
+	EmailConfiguration?: IDataObject;
+	LambdaConfig?: IDataObject;
+	Policies?: IDataObject;
+	SchemaAttributes?: IDataObject;
+	UserAttributeUpdateSettings?: IDataObject;
+	UserPoolTags?: IDataObject;
+	UserPoolTier?: string;
+	VerificationMessageTemplate?: IDataObject;
 }
 
 export interface Filters {

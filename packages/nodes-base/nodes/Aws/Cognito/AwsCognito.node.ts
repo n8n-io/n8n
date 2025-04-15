@@ -9,12 +9,17 @@ export class AwsCognito implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'AWS Cognito',
 		name: 'awsCognito',
-		icon: 'file:AwsCognito.svg',
+		icon: {
+			light: 'file:cognito.svg',
+			dark: 'file:cognito.svg',
+		},
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Interacts with Amazon Cognito',
-		defaults: { name: 'AWS Cognito' },
+		description: 'Sends data to AWS Cognito',
+		defaults: {
+			name: 'AWS Cognito',
+		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
 		credentials: [

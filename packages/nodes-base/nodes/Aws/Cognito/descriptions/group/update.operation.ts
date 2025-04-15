@@ -7,11 +7,17 @@ import type {
 import { NodeApiError, updateDisplayOptions } from 'n8n-workflow';
 
 import { validateArn } from '../../helpers/utils';
-import { groupResourceLocator, userPoolResourceLocator } from '../common';
+import { groupResourceLocator, userPoolResourceLocator } from '../common.description';
 
 const properties: INodeProperties[] = [
-	{ ...userPoolResourceLocator, description: 'Select the user pool to use' },
-	{ ...groupResourceLocator, description: 'Select the group you want to update' },
+	{
+		...userPoolResourceLocator,
+		description: 'Select the user pool to use',
+	},
+	{
+		...groupResourceLocator,
+		description: 'Select the group you want to update',
+	},
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',

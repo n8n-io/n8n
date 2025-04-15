@@ -1,46 +1,79 @@
-import { equalityTest, setup, workflowToTests } from '../../../../../test/nodes/Helpers';
+import nock from 'nock';
+
+import { getWorkflowFilenames, testWorkflows } from '../../../../../test/nodes/Helpers';
 
 describe('AWS Cognito - Get User Pool', () => {
-	const workflows = ['nodes/Aws/Cognito/test/userPool/get.workflow.json'];
-	const workflowTests = workflowToTests(workflows);
+	const workflows = getWorkflowFilenames(__dirname).filter((filename) =>
+		filename.includes('get.workflow.json'),
+	);
 
-	describe('should retrieve user pool details', () => {
-		const nodeTypes = setup(workflowTests);
+	beforeEach(() => {
+		const baseUrl = 'https://cognito-idp.eu-central-1.amazonaws.com/';
 
-		for (const workflow of workflowTests) {
-			workflow.nock = {
-				baseUrl: 'https://cognito-idp.eu-central-1.amazonaws.com/',
-				mocks: [
+		nock(baseUrl)
+			.persist()
+			.defaultReplyHeaders({ 'Content-Type': 'application/x-amz-json-1.1' })
+			.post('/', {
+				UserPoolId: 'eu-central-1_W3WwpiBXV',
+			})
+			.matchHeader('x-amz-target', 'AWSCognitoIdentityProviderService.DescribeUserPool')
+			.reply(200, {
+				UserPool: {
+					Arn: 'arn:aws:cognito-idp:eu-central-1:130450532146:userpool/eu-central-1_W3WwpiBXV',
+					CreationDate: 1739527771.267,
+					DeletionProtection: 'INACTIVE',
+					EstimatedNumberOfUsers: 8,
+					Id: 'eu-central-1_W3WwpiBXV',
+					LastModifiedDate: 1739527771.267,
+					MfaConfiguration: 'OFF',
+					Name: 'UserPoolSimple',
+				},
+			});
+
+		nock(baseUrl)
+			.persist()
+			.defaultReplyHeaders({ 'Content-Type': 'application/x-amz-json-1.1' })
+			.post('/', {
+				UserPoolId: 'eu-central-1_EUZ4iEF1T',
+				Limit: 50,
+			})
+			.matchHeader('x-amz-target', 'AWSCognitoIdentityProviderService.ListUsers')
+			.reply(200, {
+				Users: [
 					{
-						method: 'post',
-						path: '/',
-						statusCode: 200,
-						requestBody: {
-							UserPoolId: 'eu-central-1_W3WwpiBXV',
-						},
-						requestHeaders: {
-							'x-amz-target': 'AWSCognitoIdentityProviderService.DescribeUserPool',
-							'Content-Type': 'application/x-amz-json-1.1',
-						},
-						responseBody: {
-							UserPool: {
-								Arn: 'arn:aws:cognito-idp:eu-central-1:130450532146:userpool/eu-central-1_W3WwpiBXV',
-								CreationDate: 1739527771.267,
-								DeletionProtection: 'INACTIVE',
-								EstimatedNumberOfUsers: 8,
-								Id: 'eu-central-1_W3WwpiBXV',
-								LastModifiedDate: 1739527771.267,
-								MfaConfiguration: 'OFF',
-								Name: 'UserPoolSimple',
-							},
-						},
+						Username: 'userName10',
+						UserAttributes: [
+							{ Name: 'sub', Value: 'b30498c2-d0f1-70a8-4b0c-3da25a3b998f' },
+							{ Name: 'family_name', Value: 'New FamilyName 2' },
+						],
+						UserCreateDate: 1744206331.569,
+						UserLastModifiedDate: 1744206366.034,
+						Enabled: true,
+						UserStatus: 'FORCE_CHANGE_PASSWORD',
 					},
 				],
-			};
-
-			test(workflow.description, async () => {
-				await equalityTest(workflow, nodeTypes);
 			});
-		}
+
+		nock(baseUrl)
+			.persist()
+			.defaultReplyHeaders({ 'Content-Type': 'application/x-amz-json-1.1' })
+			.post('/', {
+				UserPoolId: 'eu-central-1_EUZ4iEF1T',
+				Username: 'b30498c2-d0f1-70a8-4b0c-3da25a3b998f',
+			})
+			.matchHeader('x-amz-target', 'AWSCognitoIdentityProviderService.AdminGetUser')
+			.reply(200, {
+				Username: 'userName10',
+				UserAttributes: [
+					{ Name: 'sub', Value: 'b30498c2-d0f1-70a8-4b0c-3da25a3b998f' },
+					{ Name: 'family_name', Value: 'New FamilyName 2' },
+				],
+				UserCreateDate: 1744206331.569,
+				UserLastModifiedDate: 1744206366.034,
+				Enabled: true,
+				UserStatus: 'FORCE_CHANGE_PASSWORD',
+			});
 	});
+
+	testWorkflows(workflows);
 });

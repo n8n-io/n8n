@@ -2,10 +2,13 @@ import type { IExecuteSingleFunctions, IHttpRequestOptions, INodeProperties } fr
 import { NodeApiError, updateDisplayOptions } from 'n8n-workflow';
 
 import { validateArn } from '../../helpers/utils';
-import { userPoolResourceLocator } from '../common';
+import { userPoolResourceLocator } from '../common.description';
 
 const properties: INodeProperties[] = [
-	{ ...userPoolResourceLocator, description: 'Select the user pool to use' },
+	{
+		...userPoolResourceLocator,
+		description: 'Select the user pool to use',
+	},
 	{
 		displayName: 'Group Name',
 		name: 'newGroupName',

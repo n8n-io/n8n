@@ -1,14 +1,15 @@
 import type {
 	IDataObject,
-	IHttpRequestOptions,
+	IExecuteSingleFunctions,
 	ILoadOptionsFunctions,
 	INodeListSearchItems,
 	INodeListSearchResult,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import type { IUserAttribute, IUserPool } from '../helpers/interfaces';
-import { searchUsersForGroup } from '../helpers/searchFunctions';
+import type { IGroup, IUser, IUserAttribute, IUserPool } from '../helpers/interfaces';
+// eslint-disable-next-line import/no-cycle
+import { searchUsersForGroup } from '../helpers/utils';
 import { awsApiRequest } from '../transport';
 
 function formatResults(items: IDataObject[], filter?: string): INodeListSearchItems[] {
@@ -33,12 +34,12 @@ export async function searchGroups(
 		throw new NodeOperationError(this.getNode(), 'User Pool ID is required to search groups');
 	}
 
-	const responseData = await awsApiRequest.call(this, {
+	const responseData = (await awsApiRequest.call(this, {
 		url: '',
 		method: 'POST',
 		headers: { 'X-Amz-Target': 'AWSCognitoIdentityProviderService.ListGroups' },
-		body: JSON.stringify({ UserPoolId: userPoolId, MaxResults: 60, NextToken: paginationToken }),
-	});
+		body: JSON.stringify({ UserPoolId: userPoolId, Limit: 50, NextToken: paginationToken }),
+	})) as IDataObject;
 
 	const groups = responseData.Groups as IDataObject[];
 
@@ -64,56 +65,54 @@ export async function searchGroupsForUser(
 		extractValue: true,
 	}) as string;
 
-	const listGroupsOpts: IHttpRequestOptions = {
-		url: '',
-		method: 'POST',
-		headers: { 'X-Amz-Target': 'AWSCognitoIdentityProviderService.ListGroups' },
-		body: JSON.stringify({ UserPoolId: userPoolId, MaxResults: 60 }),
-	};
-
 	try {
-		const responseData: IDataObject = await awsApiRequest.call(this, listGroupsOpts);
-		const groups = Array.isArray(responseData.Groups) ? responseData.Groups : [];
+		const responseData = (await awsApiRequest.call(this, {
+			url: '',
+			method: 'POST',
+			headers: { 'X-Amz-Target': 'AWSCognitoIdentityProviderService.ListGroups' },
+			body: JSON.stringify({ UserPoolId: userPoolId, Limit: 50 }),
+		})) as IDataObject;
+		const groups = responseData.Groups as IGroup[];
 
-		if (!groups || groups.length === 0) return { results: [], paginationToken: undefined };
-
+		if (!groups || groups.length === 0) {
+			return { results: [] };
+		}
 		const isUserInGroup = async (groupName: string): Promise<boolean> => {
 			const usersInGroup = await searchUsersForGroup.call(this, groupName, userPoolId);
+
 			const users =
 				usersInGroup.results && Array.isArray(usersInGroup.results) ? usersInGroup.results : [];
-			return users.some((user) => user.Username === userName);
+			return users.some((user: IUser) => user.Username === userName);
 		};
 
-		const validUserGroups = await Promise.all(
-			groups.map(async (group) => {
-				const groupName = group.GroupName;
-				if (groupName && (await isUserInGroup(groupName))) {
-					return { name: groupName, value: groupName };
-				}
-				return null;
-			}),
-		);
+		const validUserGroups = (
+			await Promise.all(
+				groups.map(async (group) => {
+					const groupName = group.GroupName;
+					if (groupName && (await isUserInGroup(groupName))) {
+						return { name: groupName, value: groupName };
+					}
+					return null;
+				}),
+			)
+		).filter((group) => group !== null);
 
-		const filteredGroups: INodeListSearchItems[] = validUserGroups.filter(
-			(group): group is INodeListSearchItems => group !== null,
-		);
-
-		const resultGroups = filteredGroups
+		const resultGroups = validUserGroups
 			.filter((group) => !filter || group.name.toLowerCase().includes(filter.toLowerCase()))
 			.sort((a, b) => a.name.localeCompare(b.name));
 
-		return { results: resultGroups, paginationToken: paginationToken ?? undefined };
+		return { results: resultGroups, paginationToken };
 	} catch (error) {
-		return { results: [], paginationToken: undefined };
+		return { results: [] };
 	}
 }
 
 export async function searchUsers(
-	this: ILoadOptionsFunctions,
+	this: IExecuteSingleFunctions | ILoadOptionsFunctions,
 	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
-	const userPoolId = (this.getNodeParameter('userPool') as IDataObject).value as string;
+	const userPoolId = this.getNodeParameter('userPool', undefined, { extractValue: true }) as string;
 
 	if (!userPoolId) {
 		throw new NodeOperationError(this.getNode(), 'User Pool ID is required to search users');
@@ -124,44 +123,39 @@ export async function searchUsers(
 		method: 'POST',
 		headers: { 'X-Amz-Target': 'AWSCognitoIdentityProviderService.DescribeUserPool' },
 		body: JSON.stringify({ UserPoolId: userPoolId }),
-	})) as unknown as IUserPool;
+	})) as IDataObject;
 
-	const userPool = userPoolData.UserPool;
+	const userPool = userPoolData.UserPool as IUserPool;
+	const usernameAttributes = userPool.UsernameAttributes;
 
-	const usernameAttributes = Array.isArray(userPool?.UsernameAttributes)
-		? userPool.UsernameAttributes
-		: [];
-
-	const listUsersOpts: IHttpRequestOptions = {
+	const responseData = (await awsApiRequest.call(this, {
 		url: '',
 		method: 'POST',
 		headers: { 'X-Amz-Target': 'AWSCognitoIdentityProviderService.ListUsers' },
 		body: JSON.stringify({
 			UserPoolId: userPoolId,
-			MaxResults: 60,
+			Limit: 50,
 			NextToken: paginationToken,
 		}),
-	};
+	})) as IDataObject;
 
-	const responseData = await awsApiRequest.call(this, listUsersOpts);
-
-	const users = Array.isArray(responseData.Users) ? responseData.Users : [];
+	const users = responseData.Users as IUser[];
 
 	if (!users.length) {
 		return { results: [] };
 	}
 
 	const userResults = users.map((user) => {
-		const attributes: IUserAttribute[] = user.Attributes || [];
+		const attributes: IUserAttribute[] = user.Attributes ?? [];
 		const username = user.Username;
 
 		const email = attributes.find((attr) => attr.Name === 'email')?.Value ?? '';
 		const phoneNumber = attributes.find((attr) => attr.Name === 'phone_number')?.Value ?? '';
 		const sub = attributes.find((attr) => attr.Name === 'sub')?.Value ?? '';
 
-		const name = usernameAttributes.includes('email')
+		const name = usernameAttributes?.includes('email')
 			? email
-			: usernameAttributes.includes('phone_number')
+			: usernameAttributes?.includes('phone_number')
 				? phoneNumber
 				: username;
 
@@ -176,18 +170,18 @@ export async function searchUserPools(
 	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
-	const responseData = await awsApiRequest.call(this, {
+	const responseData = (await awsApiRequest.call(this, {
 		url: '',
 		method: 'POST',
 		headers: { 'X-Amz-Target': 'AWSCognitoIdentityProviderService.ListUserPools' },
-		body: JSON.stringify({ MaxResults: 60, NextToken: paginationToken }),
-	});
+		body: JSON.stringify({ Limit: 50, NextToken: paginationToken }),
+	})) as IDataObject;
 
-	const userPools = responseData.UserPools as IDataObject[];
+	const userPools = responseData.UserPools as IUserPool[];
 
-	const userPoolsMapped = userPools.map(({ Name, Id }) => ({
-		id: Id,
-		name: Name,
+	const userPoolsMapped = userPools.map((userPool) => ({
+		id: userPool.Id,
+		name: userPool.Name,
 	}));
 
 	const formattedResults = formatResults(userPoolsMapped, filter);

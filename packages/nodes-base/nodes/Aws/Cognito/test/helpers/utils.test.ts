@@ -1,76 +1,53 @@
-import type { IHttpRequestOptions } from 'n8n-workflow';
-import { OperationalError, NodeOperationError, NodeApiError } from 'n8n-workflow';
-import nock from 'nock';
+import { mock } from 'jest-mock-extended';
+import type { MockProxy } from 'jest-mock-extended';
+import type { IExecuteSingleFunctions, IHttpRequestOptions } from 'n8n-workflow';
+import { NodeOperationError, NodeApiError } from 'n8n-workflow';
 
+import { FAKE_CREDENTIALS_DATA } from '../../../../../test/nodes/FakeCredentialsMap';
 import {
-	parseRequestBody,
-	preSendStringifyBody,
 	getUserPool,
-	processGroupResponse,
 	validateArn,
 	simplifyUserPool,
 	simplifyUser,
 	simplifyUsers,
-	processGroupsResponse,
+	preSendUserFields,
+	preSendAttributes,
+	preSendDesiredDeliveryMediums,
+	searchUsersForGroup,
 } from '../../helpers/utils';
+import { searchUsers } from '../../methods/listSearch';
 import { awsApiRequest } from '../../transport/index';
 
 jest.mock('../../transport/index', () => ({
 	awsApiRequest: jest.fn(),
 }));
 
+jest.mock('../../methods/listSearch', () => ({
+	searchUsers: jest.fn(),
+}));
+
 describe('AWS Cognito - Helpers functions', () => {
-	let mockNode: any;
+	let loadOptionsFunctions: MockProxy<IExecuteSingleFunctions>;
+	let mockRequestWithAuthentication: jest.Mock;
+	let mockReturnJsonArray: jest.Mock;
+	let requestOptions: IHttpRequestOptions;
 
 	beforeEach(() => {
-		mockNode = {
-			getNodeParameter: jest.fn(),
-			getNode: jest.fn(),
-			getCredentials: jest.fn(),
-			searchUsersForGroup: jest.fn(),
-			httpRequestWithAuthentication: jest.fn(),
-		};
-		nock.cleanAll();
+		loadOptionsFunctions = mock<IExecuteSingleFunctions>();
+		mockRequestWithAuthentication = jest.fn();
+		mockReturnJsonArray = jest.fn();
+		loadOptionsFunctions.helpers.httpRequestWithAuthentication = mockRequestWithAuthentication;
+		loadOptionsFunctions.helpers.returnJsonArray = mockReturnJsonArray;
+		loadOptionsFunctions.getCredentials.mockResolvedValue(FAKE_CREDENTIALS_DATA.aws);
 	});
 
-	describe('parseRequestBody', () => {
-		it('should correctly parse a JSON string', () => {
-			const jsonString = '{"key": "value"}';
-			expect(parseRequestBody(jsonString)).toEqual({ key: 'value' });
-		});
-
-		it('should throw an error if the JSON string is invalid', () => {
-			const invalidJsonString = '{"key": "value"';
-			expect(() => parseRequestBody(invalidJsonString)).toThrowError(OperationalError);
-		});
-
-		it('should return the same object if the body is already an object', () => {
-			const data = { key: 'value' };
-			expect(parseRequestBody(data)).toEqual(data);
-		});
-	});
-
-	describe('preSendStringifyBody', () => {
-		it('should stringify the body in requestOptions', async () => {
-			const requestOptions: IHttpRequestOptions = {
-				url: 'https://example.com/api',
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: { key: 'value' },
-			};
-			const result = await preSendStringifyBody.call(mockNode, requestOptions);
-			expect(result.body).toBe(JSON.stringify({ key: 'value' }));
-		});
+	afterEach(() => {
+		jest.resetAllMocks();
 	});
 
 	describe('getUserPool', () => {
 		it('should fetch the user pool information', async () => {
 			const userPoolId = 'eu-central-1_W3WwpiBXV';
-			const baseUrl = 'https://cognito-idp.eu-central-1.amazonaws.com/';
-
-			mockNode.getCredentials.mockReturnValue({
-				aws: { id: 'your-aws-id', name: 'your-aws-name' },
-			});
 
 			const mockResponse = {
 				UserPool: {
@@ -81,13 +58,15 @@ describe('AWS Cognito - Helpers functions', () => {
 
 			(awsApiRequest as jest.Mock).mockResolvedValue(mockResponse);
 
-			const userPool = await getUserPool.call(mockNode, userPoolId);
+			const userPool = await getUserPool.call(loadOptionsFunctions, userPoolId);
 
-			expect(userPool).toEqual({ UserPool: { Id: userPoolId, Name: 'UserPoolSimple' } });
+			expect(userPool).toEqual({ Id: userPoolId, Name: 'UserPoolSimple' });
 		});
 
 		it('should throw an error if user pool ID is missing', async () => {
-			await expect(getUserPool.call(mockNode, '')).rejects.toThrowError(NodeOperationError);
+			await expect(getUserPool.call(loadOptionsFunctions, '')).rejects.toThrowError(
+				NodeOperationError,
+			);
 		});
 
 		it('should throw an error if user pool is not found', async () => {
@@ -95,118 +74,145 @@ describe('AWS Cognito - Helpers functions', () => {
 
 			(awsApiRequest as jest.Mock).mockResolvedValue({});
 
-			await expect(getUserPool.call(mockNode, userPoolId)).rejects.toThrowError(NodeOperationError);
+			await expect(getUserPool.call(loadOptionsFunctions, userPoolId)).rejects.toThrowError(
+				NodeOperationError,
+			);
 		});
 	});
 
-	describe('processGroupResponse', () => {
-		it('should return the group without users when "includeUsers" is false', async () => {
-			mockNode.getNodeParameter.mockImplementation((name: string) =>
-				name === 'includeUsers' ? false : undefined,
-			);
+	describe('searchUsersForGroup', () => {
+		it('should throw an error if UserPoolId is missing', async () => {
+			loadOptionsFunctions.getNodeParameter.mockReturnValue(undefined);
 
-			const response = {
-				body: '{"Group": {"GroupName": "MyGroup"}}',
-				headers: {},
-				statusCode: 200,
-			};
-			const result = await processGroupResponse.call(mockNode, [], response);
-			expect(result).toEqual([{ json: { GroupName: 'MyGroup' } }]);
-		});
-	});
-
-	describe('processGroupsResponse', () => {
-		it('should return the group without users when "includeUsers" is false', async () => {
-			mockNode.getNodeParameter.mockImplementation((name: string) =>
-				name === 'includeUsers' ? false : undefined,
-			);
-
-			const response = {
-				body: '{"Group": {"GroupName": "MyGroup"}}',
-				headers: {},
-				statusCode: 200,
-			};
-			const result = await processGroupResponse.call(mockNode, [], response);
-			expect(result).toEqual([{ json: { GroupName: 'MyGroup' } }]);
+			await expect(
+				searchUsersForGroup.call(loadOptionsFunctions, 'groupName', ''),
+			).rejects.toThrowError(NodeOperationError);
 		});
 
-		it('should handle empty groups', async () => {
-			mockNode.getNodeParameter.mockImplementation((name: string, _index?: number) => {
-				if (name === 'includeUsers') return true;
-				if (name === 'userPoolId') return 'eu-central-1_W3WwpiBXV';
-				return undefined;
-			});
+		it('should return an empty list if no users are found', async () => {
+			loadOptionsFunctions.getNodeParameter.mockReturnValue('userPoolId');
+			const mockResponse = { Users: [] };
 
-			mockNode.getCredentials.mockReturnValue({
-				aws: { id: 'mockId', name: 'mockName' },
-			});
+			(awsApiRequest as jest.Mock).mockResolvedValue(mockResponse);
 
-			const response = {
-				body: JSON.stringify({
-					Groups: [],
-				}),
-				headers: {},
-				statusCode: 200,
-			};
+			const result = await searchUsersForGroup.call(
+				loadOptionsFunctions,
+				'groupName',
+				'userPoolId',
+			);
+			expect(result).toEqual({ results: [] });
+		});
 
-			const items = [{ json: { someKey: 'someValue' } }];
-
-			const result = await processGroupsResponse.call(mockNode, items, response);
-
-			expect(result).toEqual([
+		it('should return users correctly', async () => {
+			loadOptionsFunctions.getNodeParameter.mockReturnValue('userPoolId');
+			const mockUsers = [
 				{
-					json: {
-						someKey: 'someValue',
-						Groups: [],
-					},
+					Username: 'user1',
+					Enabled: true,
+					Attributes: [{ Name: 'email', Value: 'user1@example.com' }],
 				},
-			]);
+				{
+					Username: 'user2',
+					Enabled: true,
+					Attributes: [{ Name: 'email', Value: 'user2@example.com' }],
+				},
+			];
+			const mockResponse = { Users: mockUsers, NextToken: 'next-token' };
+
+			(awsApiRequest as jest.Mock).mockResolvedValue(mockResponse);
+
+			const result = await searchUsersForGroup.call(
+				loadOptionsFunctions,
+				'groupName',
+				'userPoolId',
+			);
+			expect(result).toEqual({
+				results: [
+					{
+						Username: 'user1',
+						Enabled: true,
+						email: 'user1@example.com',
+					},
+					{
+						Username: 'user2',
+						Enabled: true,
+						email: 'user2@example.com',
+					},
+				],
+			});
+		});
+
+		it('should handle empty attributes and missing values', async () => {
+			loadOptionsFunctions.getNodeParameter.mockReturnValue('userPoolId');
+			const mockUsers = [
+				{ Username: 'user1', Enabled: true, Attributes: [{ Name: 'email', Value: '' }] },
+			];
+			const mockResponse = { Users: mockUsers };
+
+			(awsApiRequest as jest.Mock).mockResolvedValue(mockResponse);
+
+			const result = await searchUsersForGroup.call(
+				loadOptionsFunctions,
+				'groupName',
+				'userPoolId',
+			);
+			expect(result).toEqual({
+				results: [
+					{
+						Username: 'user1',
+						Enabled: true,
+						email: '',
+					},
+				],
+			});
 		});
 	});
 
 	describe('validateArn', () => {
 		it('should validate the ARN format', async () => {
-			mockNode.getNodeParameter.mockImplementation((name: string) => {
+			loadOptionsFunctions.getNodeParameter.mockImplementation((name: string) => {
 				if (name === 'additionalFields.arn') {
 					return 'arn:aws:iam::123456789012:role/GroupRole';
 				}
 				return '';
 			});
 
-			const requestOptions = {
+			requestOptions = {
 				body: { additionalFields: { arn: 'arn:aws:iam::123456789012:role/GroupRole' } },
 				headers: {},
 				url: 'example.com',
 			};
 
-			const result = await validateArn.call(mockNode, requestOptions);
+			const result = await validateArn.call(loadOptionsFunctions, requestOptions);
 
 			expect(result).toEqual(requestOptions);
 		});
 
 		it('should throw an error if the ARN format is invalid', async () => {
-			mockNode.getNodeParameter.mockImplementation((name: string) => {
+			loadOptionsFunctions.getNodeParameter.mockImplementation((name: string) => {
 				if (name === 'additionalFields.arn') {
 					return 'invalid-arn';
 				}
 				return '';
 			});
 
-			const requestOptions = {
+			requestOptions = {
 				body: { additionalFields: { arn: 'invalid-arn' } },
 				headers: {},
 				url: 'example.com',
 			};
 
-			await expect(validateArn.call(mockNode, requestOptions)).rejects.toThrowError(NodeApiError);
+			await expect(validateArn.call(loadOptionsFunctions, requestOptions)).rejects.toThrowError(
+				NodeApiError,
+			);
 		});
 	});
 
 	describe('simplifyUserPool', () => {
 		it('should simplify the user pool data when simple is true', async () => {
-			mockNode.getNodeParameter.mockImplementation(() => true);
+			loadOptionsFunctions.getNodeParameter.mockImplementation(() => true);
 			const items = [{ json: { UserPool: { Id: 'userPoolId', Name: 'UserPoolName' } } }];
-			const result = await simplifyUserPool.call(mockNode, items, {
+			const result = await simplifyUserPool.call(loadOptionsFunctions, items, {
 				body: {},
 				headers: {},
 				statusCode: 200,
@@ -217,9 +223,9 @@ describe('AWS Cognito - Helpers functions', () => {
 
 	describe('simplifyUser', () => {
 		it('should simplify the user data when simple is true', async () => {
-			mockNode.getNodeParameter.mockImplementation(() => true);
+			loadOptionsFunctions.getNodeParameter.mockImplementation(() => true);
 			const items = [{ json: { UserAttributes: [{ Name: 'email', Value: 'user@example.com' }] } }];
-			const result = await simplifyUser.call(mockNode, items, {
+			const result = await simplifyUser.call(loadOptionsFunctions, items, {
 				body: {},
 				headers: {},
 				statusCode: 200,
@@ -230,16 +236,368 @@ describe('AWS Cognito - Helpers functions', () => {
 
 	describe('simplifyUsers', () => {
 		it('should simplify multiple users when simple is true', async () => {
-			mockNode.getNodeParameter.mockImplementation(() => true);
+			loadOptionsFunctions.getNodeParameter.mockImplementation(() => true);
 			const items = [
 				{ json: { Users: [{ Attributes: [{ Name: 'email', Value: 'user1@example.com' }] }] } },
 			];
-			const result = await simplifyUsers.call(mockNode, items, {
+			const result = await simplifyUsers.call(loadOptionsFunctions, items, {
 				body: {},
 				headers: {},
 				statusCode: 200,
 			});
 			expect(result).toEqual([{ json: { Users: [{ email: 'user1@example.com' }] } }]);
+		});
+	});
+
+	describe('preSendUserFields', () => {
+		beforeEach(() => {
+			loadOptionsFunctions.getNodeParameter.mockImplementation((name: string) => {
+				if (name === 'operation') return 'create';
+				if (name === 'userPool') return 'test-pool-id';
+				if (name === 'newUserName') return 'test@example.com';
+				return undefined;
+			});
+		});
+
+		it('should return the request body with the correct username when operation is "create" and valid email is provided', async () => {
+			requestOptions = {
+				body: JSON.stringify({ someField: 'value' }),
+				method: 'POST',
+				url: '',
+				headers: {},
+			};
+
+			(awsApiRequest as jest.Mock).mockResolvedValue({
+				UserPool: { UsernameAttributes: ['email'] },
+			});
+
+			const result = await preSendUserFields.call(loadOptionsFunctions, requestOptions);
+
+			expect(result.body).toEqual(
+				JSON.stringify({
+					someField: 'value',
+					Username: 'test@example.com',
+				}),
+			);
+		});
+
+		it('should return the request body with the correct username when operation is "update" and user exists', async () => {
+			requestOptions = {
+				body: JSON.stringify({ someField: 'value' }),
+				method: 'POST',
+				url: '',
+				headers: {},
+			};
+
+			loadOptionsFunctions.getNodeParameter.mockImplementation((name: string) => {
+				if (name === 'operation') return 'update';
+				if (name === 'user') return 'existing-user';
+				return undefined;
+			});
+
+			(awsApiRequest as jest.Mock).mockResolvedValue({
+				UserPool: { UsernameAttributes: ['email'] },
+			});
+
+			(searchUsers as jest.Mock).mockResolvedValue({
+				results: [{ name: 'existing-user', value: 'existing-user' }],
+			});
+
+			const result = await preSendUserFields.call(loadOptionsFunctions, requestOptions);
+
+			expect(result.body).toEqual(
+				JSON.stringify({
+					someField: 'value',
+					Username: 'existing-user',
+				}),
+			);
+		});
+
+		it('should return the request body without a username when operation is "update" and no user is found', async () => {
+			requestOptions = {
+				body: JSON.stringify({ someField: 'value' }),
+				method: 'POST',
+				url: '',
+				headers: {},
+			};
+
+			loadOptionsFunctions.getNodeParameter.mockImplementationOnce((name: string) => {
+				if (name === 'operation') return 'update';
+				if (name === 'user') return 'non-existing-user';
+				return undefined;
+			});
+
+			(awsApiRequest as jest.Mock).mockResolvedValue({
+				UserPool: { UsernameAttributes: ['email'] },
+			});
+
+			(searchUsers as jest.Mock).mockResolvedValue({
+				results: [],
+			});
+
+			const result = await preSendUserFields.call(loadOptionsFunctions, requestOptions);
+
+			expect(result.body).toEqual(
+				JSON.stringify({
+					someField: 'value',
+				}),
+			);
+		});
+	});
+
+	describe('preSendAttributes', () => {
+		beforeEach(() => {
+			requestOptions = {
+				body: JSON.stringify({ someField: 'value' }),
+				method: 'POST',
+				url: '',
+				headers: {},
+			};
+		});
+
+		it('should throw an error if no user attributes are provided (update operation)', async () => {
+			loadOptionsFunctions.getNodeParameter.mockImplementation((name: string) => {
+				if (name === 'operation') return 'update';
+				if (name === 'userAttributes.attributes') return [];
+				return undefined;
+			});
+
+			await expect(
+				preSendAttributes.call(loadOptionsFunctions, requestOptions),
+			).rejects.toThrowError(
+				new NodeOperationError(loadOptionsFunctions.getNode(), 'No user attributes provided', {
+					description: 'At least one user attribute must be provided for the update operation.',
+				}),
+			);
+		});
+
+		it('should throw an error if a user attribute is invalid (empty value) (create operation)', async () => {
+			loadOptionsFunctions.getNodeParameter.mockImplementation((name: string) => {
+				if (name === 'operation') return 'create';
+				if (name === 'additionalFields.userAttributes.attributes') {
+					return [{ attributeType: 'standard', standardName: 'email', value: '' }];
+				}
+				return undefined;
+			});
+
+			await expect(
+				preSendAttributes.call(loadOptionsFunctions, requestOptions),
+			).rejects.toThrowError(
+				new NodeOperationError(loadOptionsFunctions.getNode(), 'Invalid User Attribute', {
+					description: 'Each attribute must have a valid name and value.',
+				}),
+			);
+		});
+
+		it('should throw an error if email_verified is true but email is missing (create operation)', async () => {
+			loadOptionsFunctions.getNodeParameter.mockImplementation((name: string) => {
+				if (name === 'operation') return 'create';
+				if (name === 'additionalFields.userAttributes.attributes') {
+					return [{ attributeType: 'standard', standardName: 'email_verified', value: 'true' }];
+				}
+				return undefined;
+			});
+
+			await expect(
+				preSendAttributes.call(loadOptionsFunctions, requestOptions),
+			).rejects.toThrowError(
+				new NodeOperationError(
+					loadOptionsFunctions.getNode(),
+					'Missing required "email" attribute',
+					{
+						description:
+							'"email_verified" is set to true, but the corresponding "email" attribute is not provided.',
+					},
+				),
+			);
+		});
+
+		it('should throw an error if phone_number_verified is true but phone_number is missing (create operation)', async () => {
+			loadOptionsFunctions.getNodeParameter.mockImplementation((name: string) => {
+				if (name === 'operation') return 'create';
+				if (name === 'additionalFields.userAttributes.attributes') {
+					return [
+						{ attributeType: 'standard', standardName: 'phone_number_verified', value: 'true' },
+					];
+				}
+				return undefined;
+			});
+
+			await expect(
+				preSendAttributes.call(loadOptionsFunctions, requestOptions),
+			).rejects.toThrowError(
+				new NodeOperationError(
+					loadOptionsFunctions.getNode(),
+					'Missing required "phone_number" attribute',
+					{
+						description:
+							'"phone_number_verified" is set to true, but the corresponding "phone_number" attribute is not provided.',
+					},
+				),
+			);
+		});
+
+		it('should add the user attribute to the body when valid (create operation)', async () => {
+			loadOptionsFunctions.getNodeParameter.mockImplementation((name: string) => {
+				if (name === 'operation') return 'create';
+				if (name === 'additionalFields.userAttributes.attributes') {
+					return [
+						{ attributeType: 'standard', standardName: 'email', value: 'test@example.com' },
+						{ attributeType: 'standard', standardName: 'phone_number', value: '1234567890' },
+					];
+				}
+				return undefined;
+			});
+
+			const result = await preSendAttributes.call(loadOptionsFunctions, requestOptions);
+
+			expect(result.body).toEqual(
+				JSON.stringify({
+					someField: 'value',
+					UserAttributes: [
+						{ Name: 'email', Value: 'test@example.com' },
+						{ Name: 'phone_number', Value: '1234567890' },
+					],
+				}),
+			);
+		});
+
+		it('should correctly process custom attributes (create operation)', async () => {
+			loadOptionsFunctions.getNodeParameter.mockImplementation((name: string) => {
+				if (name === 'operation') return 'create';
+				if (name === 'additionalFields.userAttributes.attributes') {
+					return [
+						{
+							attributeType: 'custom',
+							customName: 'custom_attr',
+							value: 'custom_value',
+						},
+					];
+				}
+				return undefined;
+			});
+
+			const result = await preSendAttributes.call(loadOptionsFunctions, requestOptions);
+
+			expect(result.body).toEqual(
+				JSON.stringify({
+					someField: 'value',
+					UserAttributes: [{ Name: 'custom:custom_attr', Value: 'custom_value' }],
+				}),
+			);
+		});
+
+		it('should throw an error if a custom attribute has no name or value (create operation)', async () => {
+			loadOptionsFunctions.getNodeParameter.mockImplementation((name: string) => {
+				if (name === 'operation') return 'create';
+				if (name === 'additionalFields.userAttributes.attributes') {
+					return [{ attributeType: 'custom', customName: '', value: '' }];
+				}
+				return undefined;
+			});
+
+			await expect(
+				preSendAttributes.call(loadOptionsFunctions, requestOptions),
+			).rejects.toThrowError(
+				new NodeOperationError(loadOptionsFunctions.getNode(), 'Invalid User Attribute', {
+					description: 'Each attribute must have a valid name and value.',
+				}),
+			);
+		});
+	});
+
+	describe('preSendDesiredDeliveryMediums', () => {
+		beforeEach(() => {
+			requestOptions = { body: {}, url: '' };
+		});
+
+		it('should not throw an error if EMAIL is selected and email is provided', async () => {
+			loadOptionsFunctions.getNodeParameter.mockImplementation((name: string) => {
+				if (name === 'additionalFields.desiredDeliveryMediums') {
+					return ['EMAIL'];
+				}
+				if (name === 'additionalFields.userAttributes.attributes') {
+					return [
+						{ standardName: 'email', value: 'test@example.com' },
+						{ standardName: 'phone_number', value: '1234567890' },
+					];
+				}
+				return undefined;
+			});
+
+			await expect(
+				preSendDesiredDeliveryMediums.call(loadOptionsFunctions, requestOptions),
+			).resolves.toEqual(requestOptions);
+		});
+
+		it('should throw an error if EMAIL is selected but email is missing', async () => {
+			loadOptionsFunctions.getNodeParameter.mockImplementation((name: string) => {
+				if (name === 'additionalFields.desiredDeliveryMediums') {
+					return ['EMAIL'];
+				}
+				if (name === 'additionalFields.userAttributes.attributes') {
+					return [{ standardName: 'phone_number', value: '1234567890' }];
+				}
+				return undefined;
+			});
+
+			await expect(
+				preSendDesiredDeliveryMediums.call(loadOptionsFunctions, requestOptions),
+			).rejects.toThrowError('Missing required "email" attribute');
+		});
+
+		it('should not throw an error if SMS is selected and phone number is provided', async () => {
+			loadOptionsFunctions.getNodeParameter.mockImplementation((name: string) => {
+				if (name === 'additionalFields.desiredDeliveryMediums') {
+					return ['SMS'];
+				}
+				if (name === 'additionalFields.userAttributes.attributes') {
+					return [
+						{ standardName: 'email', value: 'test@example.com' },
+						{ standardName: 'phone_number', value: '1234567890' },
+					];
+				}
+				return undefined;
+			});
+
+			await expect(
+				preSendDesiredDeliveryMediums.call(loadOptionsFunctions, requestOptions),
+			).resolves.toEqual(requestOptions);
+		});
+
+		it('should throw an error if SMS is selected but phone number is missing', async () => {
+			loadOptionsFunctions.getNodeParameter.mockImplementation((name: string) => {
+				if (name === 'additionalFields.desiredDeliveryMediums') {
+					return ['SMS'];
+				}
+				if (name === 'additionalFields.userAttributes.attributes') {
+					return [{ standardName: 'email', value: 'test@example.com' }];
+				}
+				return undefined;
+			});
+
+			await expect(
+				preSendDesiredDeliveryMediums.call(loadOptionsFunctions, requestOptions),
+			).rejects.toThrowError('Missing required "phone_number" attribute');
+		});
+
+		it('should not throw an error if both EMAIL and SMS are selected and both attributes are provided', async () => {
+			loadOptionsFunctions.getNodeParameter.mockImplementation((name: string) => {
+				if (name === 'additionalFields.desiredDeliveryMediums') {
+					return ['EMAIL', 'SMS'];
+				}
+				if (name === 'additionalFields.userAttributes.attributes') {
+					return [
+						{ standardName: 'email', value: 'test@example.com' },
+						{ standardName: 'phone_number', value: '1234567890' },
+					];
+				}
+				return undefined;
+			});
+
+			await expect(
+				preSendDesiredDeliveryMediums.call(loadOptionsFunctions, requestOptions),
+			).resolves.toEqual(requestOptions);
 		});
 	});
 });

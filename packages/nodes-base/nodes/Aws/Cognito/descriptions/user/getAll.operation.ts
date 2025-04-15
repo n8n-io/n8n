@@ -1,12 +1,19 @@
-import type { IExecuteSingleFunctions, IHttpRequestOptions, INodeProperties } from 'n8n-workflow';
-import { updateDisplayOptions } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecuteSingleFunctions,
+	IHttpRequestOptions,
+	INodeProperties,
+} from 'n8n-workflow';
+import { jsonParse, updateDisplayOptions } from 'n8n-workflow';
 
 import type { Filters } from '../../helpers/interfaces';
-import { parseRequestBody } from '../../helpers/utils';
-import { userPoolResourceLocator } from '../common';
+import { userPoolResourceLocator } from '../common.description';
 
 const properties: INodeProperties[] = [
-	{ ...userPoolResourceLocator, description: 'Select the user pool to use' },
+	{
+		...userPoolResourceLocator,
+		description: 'Select the user pool to use',
+	},
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -37,8 +44,9 @@ const properties: INodeProperties[] = [
 		type: 'number',
 		typeOptions: {
 			minValue: 1,
+			maxValue: 60,
 		},
-		default: 20,
+		default: 50,
 		description: 'Max number of results to return',
 		displayOptions: {
 			show: {
@@ -76,7 +84,10 @@ const properties: INodeProperties[] = [
 						const filter = filters.filter;
 						if (!filter?.value) return requestOptions;
 						const { attribute: filterAttribute, value: filterValue } = filter;
-						const body = parseRequestBody(requestOptions.body);
+						const body = jsonParse<IDataObject>(String(requestOptions.body), {
+							acceptJSObject: true,
+							errorMessage: 'Invalid request body. Request body must be valid JSON.',
+						});
 						const filterString = filterAttribute ? `"${filterAttribute}"^="${filterValue}"` : '';
 						return {
 							...requestOptions,

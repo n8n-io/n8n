@@ -1,27 +1,65 @@
 import nock from 'nock';
 
-import {
-	getWorkflowFilenames,
-	initBinaryDataService,
-	testWorkflows,
-} from '../../../../../test/nodes/Helpers';
+import { getWorkflowFilenames, testWorkflows } from '../../../../../test/nodes/Helpers';
 
 describe('AWS Cognito - Get Group', () => {
 	const workflows = getWorkflowFilenames(__dirname).filter((filename) =>
 		filename.includes('get.workflow.json'),
 	);
 
-	beforeAll(async () => {
-		await initBinaryDataService();
-	});
-
 	beforeEach(() => {
-		if (!nock.isActive()) {
-			nock.activate();
-		}
-
 		const baseUrl = 'https://cognito-idp.eu-central-1.amazonaws.com/';
-		nock.cleanAll();
+		nock(baseUrl)
+			.persist()
+			.defaultReplyHeaders({ 'Content-Type': 'application/x-amz-json-1.1' })
+			.post('/', {
+				UserPoolId: 'eu-central-1_qqle3XBUA',
+			})
+			.matchHeader('x-amz-target', 'AWSCognitoIdentityProviderService.DescribeUserPool')
+			.reply(200, {
+				UserPool: {
+					Arn: 'arn:aws:cognito-idp:eu-central-1:123456789012:userpool/eu-central-1_qqle3XBUA',
+					CreationDate: 1739530218.869,
+					DeletionProtection: 'INACTIVE',
+					EstimatedNumberOfUsers: 4,
+					Id: 'eu-central-1_qqle3XBUA',
+					LastModifiedDate: 1739530218.869,
+					MfaConfiguration: 'OFF',
+					Name: 'UserPoolThree',
+				},
+			});
+
+		nock(baseUrl)
+			.persist()
+			.defaultReplyHeaders({ 'Content-Type': 'application/x-amz-json-1.1' })
+			.post('/', {
+				UserPoolId: 'eu-central-1_qqle3XBUA',
+				Limit: 50,
+			})
+			.matchHeader('x-amz-target', 'AWSCognitoIdentityProviderService.ListGroups')
+			.reply(200, {
+				Groups: [
+					{
+						CreationDate: 1741609269.287,
+						GroupName: 'MyNewGroup2',
+						LastModifiedDate: 1741609269.287,
+						UserPoolId: 'eu-central-1_qqle3XBUA',
+					},
+				],
+			});
+		nock(baseUrl)
+			.persist()
+			.defaultReplyHeaders({ 'Content-Type': 'application/x-amz-json-1.1' })
+			.post('/', {
+				UserPoolId: 'eu-central-1_qqle3XBUA',
+				GroupName: 'MyNewGroup2',
+				Limit: 50,
+			})
+			.matchHeader('x-amz-target', 'AWSCognitoIdentityProviderService.ListUsersInGroup')
+			.reply(200, {
+				Users: [],
+			});
+
 		nock(baseUrl)
 			.persist()
 			.defaultReplyHeaders({ 'Content-Type': 'application/x-amz-json-1.1' })
@@ -29,18 +67,15 @@ describe('AWS Cognito - Get Group', () => {
 				UserPoolId: 'eu-central-1_qqle3XBUA',
 				GroupName: 'MyNewGroup2',
 			})
+			.matchHeader('x-amz-target', 'AWSCognitoIdentityProviderService.GetGroup')
 			.reply(200, {
 				Group: {
-					GroupName: 'MyNewGroup2',
-					UserPoolId: 'eu-central-1_qqle3XBUA',
 					CreationDate: 1741609269.287,
+					GroupName: 'MyNewGroup2',
 					LastModifiedDate: 1741609269.287,
+					UserPoolId: 'eu-central-1_qqle3XBUA',
 				},
 			});
-	});
-
-	afterEach(() => {
-		nock.cleanAll();
 	});
 
 	testWorkflows(workflows);

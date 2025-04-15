@@ -85,14 +85,14 @@ export async function handleError(
 
 	let inputValue: string | undefined;
 
-	try {
-		inputValue = this.getNodeParameter(resource, 0, { extractValue: true }) as string;
-	} catch {
+	if (operation === 'create') {
 		if (resource === 'user') {
-			inputValue = this.getNodeParameter('newUserName') as string;
+			inputValue = this.getNodeParameter('newUserName', '') as string;
 		} else if (resource === 'group') {
-			inputValue = this.getNodeParameter('newGroupName') as string;
+			inputValue = this.getNodeParameter('newGroupName', '') as string;
 		}
+	} else {
+		inputValue = this.getNodeParameter(resource, '', { extractValue: true }) as string;
 	}
 
 	const responseBody = response.body as AwsError;
@@ -106,12 +106,12 @@ export async function handleError(
 
 	const specificError = mapErrorToResponse(errorType, resource, operation, inputValue);
 
-	if (specificError) {
-		throw new NodeApiError(this.getNode(), response as unknown as JsonObject, specificError);
-	} else {
-		throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
+	throw new NodeApiError(
+		this.getNode(),
+		response as unknown as JsonObject,
+		specificError ?? {
 			message: errorType,
 			description: errorMessage,
-		});
-	}
+		},
+	);
 }

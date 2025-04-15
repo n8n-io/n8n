@@ -2,7 +2,6 @@ import type {
 	ILoadOptionsFunctions,
 	IPollFunctions,
 	IHttpRequestOptions,
-	IDataObject,
 	IExecuteSingleFunctions,
 } from 'n8n-workflow';
 
@@ -11,7 +10,7 @@ import type { AwsCredentialsType } from '../../../../credentials/Aws.credentials
 export async function awsApiRequest(
 	this: ILoadOptionsFunctions | IPollFunctions | IExecuteSingleFunctions,
 	opts: IHttpRequestOptions,
-): Promise<IDataObject> {
+): Promise<any> {
 	const credentialsType = 'aws';
 	const credentials = await this.getCredentials<AwsCredentialsType>(credentialsType);
 

@@ -1,10 +1,14 @@
 import type { INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions } from 'n8n-workflow';
 
-import { userPoolResourceLocator } from '../common';
+import { preSendAttributes, preSendDesiredDeliveryMediums } from '../../helpers/utils';
+import { userPoolResourceLocator } from '../common.description';
 
 const properties: INodeProperties[] = [
-	{ ...userPoolResourceLocator, description: 'Select the user pool to retrieve' },
+	{
+		...userPoolResourceLocator,
+		description: 'Select the user pool to retrieve',
+	},
 	{
 		displayName: 'User Name',
 		name: 'newUserName',
@@ -33,17 +37,18 @@ const properties: INodeProperties[] = [
 				displayName: 'Message Action',
 				name: 'messageAction',
 				default: 'RESEND',
-				description:
-					"Set to RESEND to resend the invitation message to a user that already exists and reset the expiration limit on the user's account. Set to SUPPRESS to suppress sending the message.",
 				type: 'options',
 				options: [
 					{
 						name: 'Resend',
 						value: 'RESEND',
+						description:
+							"Resend the invitation message to a user that already exists and reset the expiration limit on the user's account",
 					},
 					{
 						name: 'Suppress',
 						value: 'SUPPRESS',
+						description: 'Suppress sending the message',
 					},
 				],
 				routing: {
@@ -60,7 +65,7 @@ const properties: INodeProperties[] = [
 				validateType: 'boolean',
 				default: false,
 				description:
-					'Whether this parameter is used only if the phone_number_verified or email_verified attribute is set to True. Otherwise, it is ignored. If set to True, and the phone number or email address specified in the UserAttributes parameter already exists as an alias with a different user, the alias will be migrated. If set to False, an AliasExistsException error is thrown if the alias already exists',
+					'Whether this parameter is used only if the phone_number_verified or email_verified attribute is set to true. Otherwise, it is ignored. If set to true, and the phone number or email address specified in the UserAttributes parameter already exists as an alias with a different user, the alias will be migrated. If set to false, an AliasExistsException error is thrown if the alias already exists.',
 				routing: {
 					send: {
 						type: 'body',
@@ -69,11 +74,162 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
+				displayName: 'User Attributes',
+				name: 'userAttributes',
+				type: 'fixedCollection',
+				placeholder: 'Add Attribute',
+				default: {
+					attributes: [],
+				},
+				required: true,
+				description: 'Attributes to update for the user',
+				typeOptions: {
+					multipleValues: true,
+				},
+				routing: {
+					send: {
+						preSend: [preSendAttributes],
+					},
+				},
+				options: [
+					{
+						displayName: 'Attributes',
+						name: 'attributes',
+						values: [
+							{
+								displayName: 'Attribute Type',
+								name: 'attributeType',
+								type: 'options',
+								default: 'standard',
+								options: [
+									{
+										name: 'Standard Attribute',
+										value: 'standard',
+									},
+									{
+										name: 'Custom Attribute',
+										value: 'custom',
+									},
+								],
+							},
+							{
+								displayName: 'Standard Attribute',
+								name: 'standardName',
+								type: 'options',
+								default: 'address',
+								options: [
+									{
+										name: 'Address',
+										value: 'address',
+									},
+									{
+										name: 'Birthdate',
+										value: 'birthdate',
+									},
+									{
+										name: 'Email',
+										value: 'email',
+									},
+									{
+										name: 'Email Verified',
+										value: 'email_verified',
+									},
+									{
+										name: 'Family Name',
+										value: 'family_name',
+									},
+									{
+										name: 'Gender',
+										value: 'gender',
+									},
+									{
+										name: 'Given Name',
+										value: 'given_name',
+									},
+									{
+										name: 'Locale',
+										value: 'locale',
+									},
+									{
+										name: 'Middle Name',
+										value: 'middle_name',
+									},
+									{
+										name: 'Name',
+										value: 'name',
+									},
+									{
+										name: 'Nickname',
+										value: 'nickname',
+									},
+									{
+										name: 'Phone Number',
+										value: 'phone_number',
+									},
+									{
+										name: 'Phone Number Verified',
+										value: 'phone_number_verified',
+									},
+									{
+										name: 'Preferred Username',
+										value: 'preferred_username',
+									},
+									{
+										name: 'Profile Picture',
+										value: 'profilepicture',
+									},
+									{
+										name: 'Updated At',
+										value: 'updated_at',
+									},
+									{
+										name: 'User Sub',
+										value: 'sub',
+									},
+									{
+										name: 'Website',
+										value: 'website',
+									},
+									{
+										name: 'Zone Info',
+										value: 'zoneinfo',
+									},
+								],
+								displayOptions: {
+									show: {
+										attributeType: ['standard'],
+									},
+								},
+							},
+							{
+								displayName: 'Custom Attribute Name',
+								name: 'customName',
+								type: 'string',
+								default: '',
+								placeholder: 'custom:myAttribute',
+								description: 'The name of the custom attribute (must start with "custom:")',
+								displayOptions: {
+									show: {
+										attributeType: ['custom'],
+									},
+								},
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+								description: 'The value of the attribute',
+							},
+						],
+					},
+				],
+			},
+			{
 				displayName: 'Desired Delivery Mediums',
 				name: 'desiredDeliveryMediums',
 				default: ['SMS'],
-				description:
-					'Specify EMAIL if email will be used to send the welcome message. Specify SMS if the phone number will be used. The default value is SMS. You can specify more than one value.',
+				description: 'Specify how to send the welcome message',
 				type: 'multiOptions',
 				options: [
 					{
@@ -87,6 +243,7 @@ const properties: INodeProperties[] = [
 				],
 				routing: {
 					send: {
+						preSend: [preSendDesiredDeliveryMediums],
 						property: 'DesiredDeliveryMediums',
 						type: 'body',
 					},

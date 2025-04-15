@@ -113,7 +113,7 @@ export const description: INodeProperties[] = [
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Retrieve information of a user',
+				description: 'Retrieve information of an existing user',
 				action: 'Get user',
 				routing: {
 					send: {
@@ -140,10 +140,6 @@ export const description: INodeProperties[] = [
 						method: 'POST',
 						headers: {
 							'X-Amz-Target': 'AWSCognitoIdentityProviderService.ListUsers',
-						},
-						qs: {
-							pageSize:
-								'={{ $parameter["limit"] ? ($parameter["limit"] < 60 ? $parameter["limit"] : 60) : 60 }}',
 						},
 						ignoreHttpStatusErrors: true,
 					},
@@ -194,7 +190,7 @@ export const description: INodeProperties[] = [
 			{
 				name: 'Update',
 				value: 'update',
-				description: 'Update a user',
+				description: 'Update an existing user',
 				action: 'Update user',
 				routing: {
 					send: {

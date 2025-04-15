@@ -1,10 +1,13 @@
 import type { INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions } from 'n8n-workflow';
 
-import { userPoolResourceLocator } from '../common';
+import { userPoolResourceLocator } from '../common.description';
 
 const properties: INodeProperties[] = [
-	{ ...userPoolResourceLocator, description: 'Select the user pool to use' },
+	{
+		...userPoolResourceLocator,
+		description: 'Select the user pool to use',
+	},
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -17,7 +20,6 @@ const properties: INodeProperties[] = [
 					type: 'generic',
 					properties: {
 						continue: '={{ !!$response.body?.NextToken }}',
-
 						request: {
 							body: {
 								NextToken: '={{ $response.body?.NextToken }}',
@@ -35,8 +37,9 @@ const properties: INodeProperties[] = [
 		type: 'number',
 		typeOptions: {
 			minValue: 1,
+			maxValue: 60,
 		},
-		default: 20,
+		default: 50,
 		description: 'Max number of results to return',
 		displayOptions: {
 			show: {
@@ -51,7 +54,7 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Include User List',
+		displayName: 'Include Users',
 		name: 'includeUsers',
 		type: 'boolean',
 		default: false,

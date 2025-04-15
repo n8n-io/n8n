@@ -1,12 +1,14 @@
-import type { IExecuteSingleFunctions, IHttpRequestOptions, INodeProperties } from 'n8n-workflow';
-import { NodeApiError, updateDisplayOptions } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
+import { updateDisplayOptions } from 'n8n-workflow';
 
-import type { IUserAttributeInput } from '../../helpers/interfaces';
-import { parseRequestBody } from '../../helpers/utils';
-import { userPoolResourceLocator, userResourceLocator } from '../common';
+import { preSendAttributes } from '../../helpers/utils';
+import { userPoolResourceLocator, userResourceLocator } from '../common.description';
 
 const properties: INodeProperties[] = [
-	{ ...userPoolResourceLocator, description: 'Select the user pool to use' },
+	{
+		...userPoolResourceLocator,
+		description: 'Select the user pool to use',
+	},
 	userResourceLocator,
 	{
 		displayName: 'User Attributes',
@@ -23,47 +25,7 @@ const properties: INodeProperties[] = [
 		},
 		routing: {
 			send: {
-				preSend: [
-					async function (
-						this: IExecuteSingleFunctions,
-						requestOptions: IHttpRequestOptions,
-					): Promise<IHttpRequestOptions> {
-						const attributes = this.getNodeParameter(
-							'userAttributes.attributes',
-							[],
-						) as IUserAttributeInput[];
-
-						if (attributes.length === 0) {
-							throw new NodeApiError(this.getNode(), {
-								message: 'No user attributes provided',
-								description: 'At least one user attribute must be provided.',
-							});
-						}
-
-						const body = parseRequestBody(requestOptions.body);
-
-						body.UserAttributes = attributes.map(
-							({ attributeType, standardName, customName, Value }) => {
-								if (!Value || !attributeType || !(standardName ?? customName)) {
-									throw new NodeApiError(this.getNode(), {
-										message: 'Invalid User Attribute',
-										description: 'Each attribute must have a valid name and value.',
-									});
-								}
-
-								const attributeName =
-									attributeType === 'standard'
-										? standardName
-										: `custom:${customName?.startsWith('custom:') ? customName : customName}`;
-
-								return { Name: attributeName, Value };
-							},
-						);
-
-						requestOptions.body = JSON.stringify(body);
-						return requestOptions;
-					},
-				],
+				preSend: [preSendAttributes],
 			},
 		},
 		options: [
@@ -183,7 +145,7 @@ const properties: INodeProperties[] = [
 					},
 					{
 						displayName: 'Value',
-						name: 'Value',
+						name: 'value',
 						type: 'string',
 						default: '',
 						description: 'The value of the attribute',

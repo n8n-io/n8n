@@ -4,7 +4,7 @@ import {
 	type INodeListSearchResult,
 } from 'n8n-workflow';
 
-import { searchUsersForGroup } from '../../helpers/searchFunctions';
+import { searchUsersForGroup } from '../../helpers/utils';
 import {
 	searchUsers,
 	searchGroups,
@@ -17,14 +17,19 @@ jest.mock('../../transport/index', () => ({
 	awsApiRequest: jest.fn(),
 }));
 
-jest.mock('../../helpers/searchFunctions', () => ({
-	...jest.requireActual('../../helpers/searchFunctions'),
+jest.mock('../../helpers/utils', () => ({
 	searchUsersForGroup: jest.fn(),
 }));
 
 describe('AWS Cognito Functions', () => {
 	describe('searchUsers', () => {
 		it('should return user results when users are found', async () => {
+			const mockDescribeUserPoolResponse = {
+				UserPool: {
+					UsernameAttributes: ['email'],
+				},
+			};
+
 			const mockResponse = {
 				Users: [
 					{
@@ -47,12 +52,14 @@ describe('AWS Cognito Functions', () => {
 				NextToken: 'next-token',
 			};
 
-			(awsApiRequest as jest.Mock).mockResolvedValue(mockResponse);
+			(awsApiRequest as jest.Mock)
+				.mockResolvedValueOnce(mockDescribeUserPoolResponse)
+				.mockResolvedValueOnce(mockResponse);
 
 			const mockContext = {
 				getNodeParameter: jest.fn((param) => {
 					if (param === 'userPool') {
-						return { value: 'user-pool-id' };
+						return 'user-pool-id';
 					}
 					return null;
 				}),
@@ -62,8 +69,8 @@ describe('AWS Cognito Functions', () => {
 
 			const expectedResult: INodeListSearchResult = {
 				results: [
-					{ name: 'User1', value: 'sub1' },
-					{ name: 'User2', value: 'sub2' },
+					{ name: 'user1@example.com', value: 'sub1' },
+					{ name: 'user2@example.com', value: 'sub2' },
 				],
 				paginationToken: 'next-token',
 			};
@@ -180,7 +187,7 @@ describe('AWS Cognito Functions', () => {
 					url: '',
 					method: 'POST',
 					headers: { 'X-Amz-Target': 'AWSCognitoIdentityProviderService.ListUserPools' },
-					body: expect.stringContaining('MaxResults'),
+					body: expect.stringContaining('Limit'),
 				}),
 			);
 		});
