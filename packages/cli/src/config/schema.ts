@@ -1,14 +1,5 @@
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
-import convict from 'convict';
-
-import { ensureStringArray } from './utils';
-
-convict.addFormat({
-	name: 'comma-separated-list',
-	coerce: (rawStr: string) => rawStr.split(','),
-	validate: ensureStringArray,
-});
 
 export const schema = {
 	executions: {

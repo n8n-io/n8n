@@ -11,8 +11,7 @@ type AbstractConstructable<T = unknown> = abstract new (...args: unknown[]) => T
 
 type ServiceIdentifier<T = unknown> = Constructable<T> | AbstractConstructable<T>;
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Factory<T = unknown> = (...args: any[]) => T;
+type Factory<T = unknown> = (...args: unknown[]) => T;
 
 interface Metadata<T = unknown> {
 	instance?: T;
