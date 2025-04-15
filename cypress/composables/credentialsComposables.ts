@@ -54,7 +54,9 @@ export function getCredentialConnectionParameterInputs() {
 }
 
 export function getConnectionParameter(fieldName: string) {
-	return getCredentialConnectionParameterInputs().find(`:contains('${fieldName}') .n8n-input input`);
+	return getCredentialConnectionParameterInputs().find(
+		`:contains('${fieldName}') .n8n-input input`,
+	);
 }
 
 export function getCredentialSaveButton() {
@@ -67,7 +69,7 @@ export function getCredentialSaveButton() {
 
 export function setCredentialName(name: string) {
 	cy.getByTestId('credential-name').click();
-	cy.getByTestId('credential-name').find('input').clear()
+	cy.getByTestId('credential-name').find('input').clear();
 	cy.getByTestId('credential-name').type(name);
 }
 export function saveCredential() {
@@ -89,7 +91,13 @@ export function closeNewCredentialModal() {
 	getNewCredentialModal().find('.el-dialog__close').first().click();
 }
 
-export function createNewCredential(type: string, name: string, parameter: string, parameterValue: string, closeModal = true) {
+export function createNewCredential(
+	type: string,
+	name: string,
+	parameter: string,
+	parameterValue: string,
+	closeModal = true,
+) {
 	getEmptyListCreateCredentialButton().click();
 
 	getNewCredentialModal().should('be.visible');
