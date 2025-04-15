@@ -1,297 +1,107 @@
-import { stringify } from 'flatted';
-import { useRouter } from 'vue-router';
-import { createPinia, setActivePinia } from 'pinia';
-import type { PushMessage, PushPayload } from '@n8n/api-types';
-import type { ITaskData, WorkflowOperationError, IRunData } from 'n8n-workflow';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import type { PushMessage } from '@n8n/api-types';
 
+// Stub the push store
+const addEventListenerMock = vi.fn();
+const removeEventListenerMock = vi.fn();
+
+vi.mock('@/stores/pushConnection.store', () => ({
+	usePushConnectionStore: () => ({
+		addEventListener: addEventListenerMock.mockImplementation(
+			(cb: (event: PushMessage) => void) => {
+				// Return the removal callback
+				return removeEventListenerMock;
+			},
+		),
+	}),
+}));
+
+// Stub the handler functions. Each handler returns a resolved promise.
+const testWebhookDeleted = vi.fn(async (event: any) => Promise.resolve('deleted'));
+const testWebhookReceived = vi.fn(async (event: any) => Promise.resolve('received'));
+const reloadNodeType = vi.fn(async (event: any) => Promise.resolve('reload'));
+const removeNodeType = vi.fn(async (event: any) => Promise.resolve('remove'));
+const nodeDescriptionUpdated = vi.fn(async (event: any) => Promise.resolve('description'));
+const nodeExecuteBefore = vi.fn(async (event: any) => Promise.resolve('before'));
+const nodeExecuteAfter = vi.fn(async (event: any) => Promise.resolve('after'));
+const executionStarted = vi.fn(async (event: any) => Promise.resolve('started'));
+const executionWaiting = vi.fn(async (event: any) => Promise.resolve('waiting'));
+const sendWorkerStatusMessage = vi.fn(async (event: any) => Promise.resolve('worker'));
+const sendConsoleMessage = vi.fn(async (event: any) => Promise.resolve('console'));
+const workflowFailedToActivate = vi.fn(async (event: any) => Promise.resolve('failed'));
+const executionFinished = vi.fn(async (event: any) => Promise.resolve('finished'));
+const executionRecovered = vi.fn(async (event: any) => Promise.resolve('recovered'));
+const workflowActivated = vi.fn(async (event: any) => Promise.resolve('activated'));
+const workflowDeactivated = vi.fn(async (event: any) => Promise.resolve('deactivated'));
+const collaboratorsChanged = vi.fn(async (event: any) => Promise.resolve('collab'));
+
+vi.mock('@/composables/usePushConnection/handlers', () => ({
+	testWebhookDeleted,
+	testWebhookReceived,
+	reloadNodeType,
+	removeNodeType,
+	nodeDescriptionUpdated,
+	nodeExecuteBefore,
+	nodeExecuteAfter,
+	executionStarted,
+	executionWaiting,
+	sendWorkerStatusMessage,
+	sendConsoleMessage,
+	workflowFailedToActivate,
+	executionFinished,
+	executionRecovered,
+	workflowActivated,
+	workflowDeactivated,
+	collaboratorsChanged,
+}));
+
+// Now import the composable to test.
 import { usePushConnection } from '@/composables/usePushConnection';
-import { usePushConnectionStore } from '@/stores/pushConnection.store';
-import { useOrchestrationStore } from '@/stores/orchestration.store';
-import { useUIStore } from '@/stores/ui.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useToast } from '@/composables/useToast';
-import type { IExecutionResponse } from '@/Interface';
 
-vi.mock('vue-router', () => {
-	return {
-		RouterLink: vi.fn(),
-		useRouter: () => ({
-			push: vi.fn(),
-		}),
-		useRoute: () => ({}),
-	};
-});
-
-vi.mock('@/composables/useToast', () => {
-	const showMessage = vi.fn();
-	const showError = vi.fn();
-	return {
-		useToast: () => {
-			return {
-				showMessage,
-				showError,
-			};
-		},
-	};
-});
-
-describe('usePushConnection()', () => {
-	let router: ReturnType<typeof useRouter>;
-	let pushStore: ReturnType<typeof usePushConnectionStore>;
-	let orchestrationStore: ReturnType<typeof useOrchestrationStore>;
+describe('usePushConnection composable', () => {
 	let pushConnection: ReturnType<typeof usePushConnection>;
-	let uiStore: ReturnType<typeof useUIStore>;
-	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
-	let toast: ReturnType<typeof useToast>;
 
 	beforeEach(() => {
-		setActivePinia(createPinia());
-
-		router = vi.mocked(useRouter)();
-		pushStore = usePushConnectionStore();
-		orchestrationStore = useOrchestrationStore();
-		uiStore = useUIStore();
-		workflowsStore = useWorkflowsStore();
-		pushConnection = usePushConnection({ router });
-		toast = useToast();
+		vi.clearAllMocks();
+		pushConnection = usePushConnection();
 	});
 
 	afterEach(() => {
-		vi.restoreAllMocks();
-		pushConnection.pushMessageQueue.value = [];
+		// In case some test leaves fake timers active or similar,
+		// restore them.
+		vi.useRealTimers();
 	});
 
-	describe('initialize()', () => {
-		it('should add event listener to the pushStore', () => {
-			const spy = vi.spyOn(pushStore, 'addEventListener').mockImplementation(() => () => {});
-
-			pushConnection.initialize();
-
-			expect(spy).toHaveBeenCalled();
-		});
+	it('should register an event listener on initialize', () => {
+		pushConnection.initialize();
+		expect(addEventListenerMock).toHaveBeenCalledTimes(1);
 	});
 
-	describe('terminate()', () => {
-		it('should remove event listener from the pushStore', () => {
-			const returnFn = vi.fn();
-			vi.spyOn(pushStore, 'addEventListener').mockImplementation(() => returnFn);
+	it('should call the correct handler when an event is received', async () => {
+		pushConnection.initialize();
 
-			pushConnection.initialize();
-			pushConnection.terminate();
+		// Get the event callback which was registered via addEventListener.
+		const eventCallback = addEventListenerMock.mock.calls[0][0];
 
-			expect(returnFn).toHaveBeenCalled();
-		});
+		// Create a test event for one of the handled types.
+		// In this test, we simulate the event type 'testWebhookReceived'.
+		const testEvent: PushMessage = { type: 'testWebhookReceived', payload: 'dummy' } as PushMessage;
+
+		// Call the event callback with our test event.
+		await eventCallback(testEvent);
+
+		// Allow any microtasks to complete.
+		await Promise.resolve();
+
+		// Verify that the correct handler was called.
+		expect(testWebhookReceived).toHaveBeenCalledTimes(1);
+		expect(testWebhookReceived).toHaveBeenCalledWith(testEvent);
 	});
 
-	describe('queuePushMessage()', () => {
-		it('should add message to the queue and sets timeout if not already set', () => {
-			const event: PushMessage = {
-				type: 'sendWorkerStatusMessage',
-				data: {
-					workerId: '1',
-					status: {} as PushPayload<'sendWorkerStatusMessage'>['status'],
-				},
-			};
+	it('should call removeEventListener when terminate is called', () => {
+		pushConnection.initialize();
+		pushConnection.terminate();
 
-			pushConnection.queuePushMessage(event, 5);
-
-			expect(pushConnection.pushMessageQueue.value).toHaveLength(1);
-			expect(pushConnection.pushMessageQueue.value[0]).toEqual({ message: event, retriesLeft: 5 });
-			expect(pushConnection.retryTimeout.value).not.toBeNull();
-		});
-	});
-
-	describe('processWaitingPushMessages()', () => {
-		it('should clear the queue and reset the timeout', async () => {
-			const event: PushMessage = { type: 'executionRecovered', data: { executionId: '1' } };
-
-			pushConnection.queuePushMessage(event, 0);
-			expect(pushConnection.pushMessageQueue.value).toHaveLength(1);
-			expect(pushConnection.retryTimeout.value).toBeDefined();
-
-			await pushConnection.processWaitingPushMessages();
-
-			expect(pushConnection.pushMessageQueue.value).toHaveLength(0);
-			expect(pushConnection.retryTimeout.value).toBeNull();
-		});
-	});
-
-	describe('pushMessageReceived()', () => {
-		describe('sendWorkerStatusMessage', () => {
-			it('should handle event type correctly', async () => {
-				const spy = vi.spyOn(orchestrationStore, 'updateWorkerStatus').mockImplementation(() => {});
-				const event: PushMessage = {
-					type: 'sendWorkerStatusMessage',
-					data: {
-						workerId: '1',
-						status: {} as PushPayload<'sendWorkerStatusMessage'>['status'],
-					},
-				};
-
-				const result = await pushConnection.pushMessageReceived(event);
-
-				expect(spy).toHaveBeenCalledWith(event.data.status);
-				expect(result).toBeTruthy();
-			});
-		});
-
-		describe('executionFinished', () => {
-			const executionId = '1';
-			const workflowId = 'abc';
-
-			beforeEach(() => {
-				workflowsStore.setActiveExecutionId(executionId);
-				uiStore.isActionActive.workflowRunning = true;
-			});
-
-			it('should handle executionFinished event correctly', async () => {
-				const result = await pushConnection.pushMessageReceived({
-					type: 'executionFinished',
-					data: {
-						executionId,
-						workflowId,
-						status: 'success',
-						rawData: stringify({
-							resultData: {
-								runData: {},
-							},
-						}),
-					},
-				});
-
-				expect(result).toBeTruthy();
-				expect(workflowsStore.workflowExecutionData).toBeDefined();
-				expect(uiStore.isActionActive.workflowRunning).toBeTruthy();
-
-				expect(toast.showMessage).toHaveBeenCalledWith({
-					title: 'Workflow executed successfully',
-					type: 'success',
-				});
-			});
-
-			it('should handle isManualExecutionCancelled correctly', async () => {
-				const result = await pushConnection.pushMessageReceived({
-					type: 'executionFinished',
-					data: {
-						executionId,
-						workflowId,
-						status: 'error',
-						rawData: stringify({
-							startData: {},
-							resultData: {
-								runData: {
-									'Last Node': [],
-								},
-								lastNodeExecuted: 'Last Node',
-								error: {
-									message:
-										'Your trial has ended. <a href="https://app.n8n.cloud/account/change-plan">Upgrade now</a> to keep automating',
-									name: 'NodeApiError',
-									node: 'Last Node',
-								} as unknown as WorkflowOperationError,
-							},
-						}),
-					},
-				});
-
-				expect(useToast().showMessage).toHaveBeenCalledWith({
-					message:
-						'Your trial has ended. <a href="https://app.n8n.cloud/account/change-plan">Upgrade now</a> to keep automating',
-					title: 'Problem in node ‘Last Node‘',
-					type: 'error',
-					duration: 0,
-				});
-
-				expect(result).toBeTruthy();
-				expect(workflowsStore.workflowExecutionData).toBeDefined();
-				expect(uiStore.isActionActive.workflowRunning).toBeTruthy();
-			});
-		});
-
-		describe('nodeExecuteAfter', async () => {
-			it("enqueues messages if we don't have the active execution id yet", async () => {
-				uiStore.isActionActive.workflowRunning = true;
-				const event: PushMessage = {
-					type: 'nodeExecuteAfter',
-					data: {
-						executionId: '1',
-						nodeName: 'foo',
-						data: {} as ITaskData,
-					},
-				};
-
-				expect(pushConnection.retryTimeout.value).toBeNull();
-				expect(pushConnection.pushMessageQueue.value.length).toBe(0);
-
-				const result = await pushConnection.pushMessageReceived(event);
-
-				expect(result).toBe(false);
-				expect(pushConnection.pushMessageQueue.value).toHaveLength(1);
-				expect(pushConnection.pushMessageQueue.value).toContainEqual({
-					message: event,
-					retriesLeft: 5,
-				});
-				expect(pushConnection.retryTimeout).not.toBeNull();
-			});
-		});
-
-		describe('executionStarted', async () => {
-			it("enqueues messages if we don't have the active execution id yet", async () => {
-				uiStore.isActionActive.workflowRunning = true;
-				const event: PushMessage = {
-					type: 'nodeExecuteAfter',
-					data: {
-						executionId: '1',
-						nodeName: 'Node',
-						data: {
-							startTime: 0,
-							executionTime: 0,
-							source: [],
-						},
-					},
-				};
-
-				expect(pushConnection.retryTimeout.value).toBeNull();
-				expect(pushConnection.pushMessageQueue.value.length).toBe(0);
-
-				const result = await pushConnection.pushMessageReceived(event);
-
-				expect(result).toBe(false);
-				expect(pushConnection.pushMessageQueue.value).toHaveLength(1);
-				expect(pushConnection.pushMessageQueue.value).toContainEqual({
-					message: event,
-					retriesLeft: 5,
-				});
-				expect(pushConnection.retryTimeout).not.toBeNull();
-			});
-
-			it('overwrites the run data in the workflow store', async () => {
-				// ARRANGE
-				uiStore.isActionActive.workflowRunning = true;
-				const oldRunData: IRunData = { foo: [] };
-				workflowsStore.workflowExecutionData = {
-					data: { resultData: { runData: oldRunData } },
-				} as IExecutionResponse;
-				const newRunData: IRunData = { bar: [] };
-				const event: PushMessage = {
-					type: 'executionStarted',
-					data: {
-						executionId: '1',
-						flattedRunData: stringify(newRunData),
-						mode: 'manual',
-						startedAt: new Date(),
-						workflowId: '1',
-					},
-				};
-				workflowsStore.setActiveExecutionId(event.data.executionId);
-
-				// ACT
-				const result = await pushConnection.pushMessageReceived(event);
-
-				// ASSERT
-				expect(result).toBe(true);
-				expect(workflowsStore.workflowExecutionData.data?.resultData.runData).toEqual(newRunData);
-			});
-		});
+		expect(removeEventListenerMock).toHaveBeenCalledTimes(1);
 	});
 });

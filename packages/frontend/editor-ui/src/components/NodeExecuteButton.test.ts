@@ -193,7 +193,8 @@ describe('NodeExecuteButton', () => {
 		workflowsStore.getNodeByName.mockReturnValue(node);
 		workflowsStore.isNodeExecuting = vi.fn(() => true);
 		nodeTypesStore.isTriggerNode = () => true;
-		uiStore.isActionActive.workflowRunning = true;
+
+		workflowsStore.activeExecutionId = 'abc123';
 
 		const { getByRole } = renderComponent();
 		expect(getByRole('button').textContent).toBe('Stop Listening');
@@ -203,7 +204,7 @@ describe('NodeExecuteButton', () => {
 		const node = mockNode({ name: 'test-node', type: SET_NODE_TYPE });
 		workflowsStore.getNodeByName.mockReturnValue(node);
 		workflowsStore.isNodeExecuting = vi.fn(() => true);
-		uiStore.isActionActive.workflowRunning = true;
+		workflowsStore.activeExecutionId = 'abc123';
 
 		const { getByRole } = renderComponent();
 		expect(getByRole('button').querySelector('.n8n-spinner')).toBeVisible();
@@ -227,7 +228,7 @@ describe('NodeExecuteButton', () => {
 	});
 
 	it('should be disabled when workflow is running but node is not executing', async () => {
-		uiStore.isActionActive.workflowRunning = true;
+		workflowsStore.activeExecutionId = 'abc123';
 		workflowsStore.isNodeExecuting.mockReturnValue(false);
 		workflowsStore.getNodeByName.mockReturnValue(
 			mockNode({ name: 'test-node', type: SET_NODE_TYPE }),
