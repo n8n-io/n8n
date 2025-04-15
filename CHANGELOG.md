@@ -1,3 +1,17 @@
+## [1.89.1](https://github.com/n8n-io/n8n/compare/n8n@1.89.0...n8n@1.89.1) (2025-04-15)
+
+
+### Bug Fixes
+
+* **editor:** Fix Insights display time saved from minutes ([#14622](https://github.com/n8n-io/n8n/issues/14622)) ([04622b9](https://github.com/n8n-io/n8n/commit/04622b91f4a6da18bcd8544ec3d0d3b1be854f8b))
+
+
+### Features
+
+* **editor:** Fix paywall for dashboard disabled licences ([#14617](https://github.com/n8n-io/n8n/issues/14617)) ([68ed1ee](https://github.com/n8n-io/n8n/commit/68ed1eef5b135f2a60bf149f537010ff95855f9d))
+
+
+
 # [1.89.0](https://github.com/n8n-io/n8n/compare/n8n@1.88.0...n8n@1.89.0) (2025-04-14)
 
 
