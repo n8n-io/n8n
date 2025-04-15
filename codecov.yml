@@ -8,6 +8,11 @@ coverage:
     project:
       default:
         threshold: 0.5%
+      nodes:
+        target: 80%
+        threshold: 0.5%
+        paths:
+          - packages/nodes-base/**
 
 github_checks:
   annotations: false
