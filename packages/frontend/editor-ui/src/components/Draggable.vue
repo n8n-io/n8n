@@ -122,6 +122,7 @@ const onDragEnd = () => {
 		:is="tag"
 		ref="wrapper"
 		:class="{ [$style.dragging]: isDragging }"
+		data-test-id="draggable"
 		@mousedown="onDragStart"
 	>
 		<slot :is-dragging="isDragging"></slot>
