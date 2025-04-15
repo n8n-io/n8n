@@ -2,6 +2,8 @@ import type { UnixTimestamp, UpdateApiKeyRequestDto } from '@n8n/api-types';
 import type { CreateApiKeyRequestDto } from '@n8n/api-types/src/dto/api-keys/create-api-key-request.dto';
 import { Service } from '@n8n/di';
 import type { GlobalRole, ApiKeyScope } from '@n8n/permissions';
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
+import type { EntityManager } from '@n8n/typeorm';
 import type { NextFunction, Request, Response } from 'express';
 import { TokenExpiredError } from 'jsonwebtoken';
 import type { OpenAPIV3 } from 'openapi-types';
@@ -15,7 +17,6 @@ import { getApiKeyScopesForRole, getOwnerOnlyApiKeyScopes } from '@/public-api/p
 import type { AuthenticatedRequest } from '@/requests';
 
 import { JwtService } from './jwt.service';
-import { EntityManager } from '@n8n/typeorm';
 
 const API_KEY_AUDIENCE = 'public-api';
 const API_KEY_ISSUER = 'n8n';
