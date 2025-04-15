@@ -384,6 +384,40 @@ describe('PublicApiKeyService', () => {
 			expect(res.status).toHaveBeenCalledWith(403);
 			expect(res.json).toHaveBeenCalledWith({ message: 'Forbidden' });
 		});
+
+		it('should deny access when header x-n8n-api-key is not present', async () => {
+			// Arrange
+
+			const requiredScope = 'workflow:read' as ApiKeyScope;
+
+			const req = mock<AuthenticatedRequest>({
+				path: '/test',
+				method: 'GET',
+			});
+
+			const res = mockDeep<Response>();
+
+			res.status.mockReturnThis();
+			res.json.mockReturnThis();
+
+			const next = jest.fn() as NextFunction;
+
+			const publicApiKeyService = new PublicApiKeyService(
+				apiKeyRepository,
+				userRepository,
+				jwtService,
+				eventService,
+			);
+
+			// Act
+			const middleware = publicApiKeyService.getApiKeyScopeMiddleware(requiredScope);
+			await middleware(req, res, next);
+
+			// Assert
+			expect(next).not.toHaveBeenCalled();
+			expect(res.status).toHaveBeenCalled();
+			expect(res.json).toHaveBeenCalled();
+		});
 	});
 
 	describe('apiKeyHasValidScopes', () => {
