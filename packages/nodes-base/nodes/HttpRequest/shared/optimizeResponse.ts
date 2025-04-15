@@ -9,7 +9,6 @@ import {
 	NodeOperationError,
 	type IDataObject,
 	type IExecuteFunctions,
-	NodeError,
 } from 'n8n-workflow';
 
 type ResponseOptimizerFn = (
