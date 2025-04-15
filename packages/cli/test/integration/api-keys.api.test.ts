@@ -188,6 +188,34 @@ describe('Owner shell', () => {
 		});
 	});
 
+	test('PATCH /api-keys should update API key scopes', async () => {
+		const newApiKeyResponse = await testServer
+			.authAgentFor(ownerShell)
+			.post('/api-keys')
+			.send({ label: 'My API Key', expiresAt: null, scopes: ['user:create'] });
+
+		const newApiKey = newApiKeyResponse.body.data as ApiKeyWithRawValue;
+
+		await testServer
+			.authAgentFor(ownerShell)
+			.patch(`/api-keys/${newApiKey.id}`)
+			.send({ label: 'updated label', scopes: ['user:create', 'workflow:create'] });
+
+		const newStoredApiKey = await Container.get(ApiKeyRepository).findOneByOrFail({
+			userId: ownerShell.id,
+		});
+
+		expect(newStoredApiKey).toEqual({
+			id: expect.any(String),
+			label: 'updated label',
+			userId: ownerShell.id,
+			apiKey: newApiKey.rawApiKey,
+			createdAt: expect.any(Date),
+			updatedAt: expect.any(Date),
+			scopes: ['user:create', 'workflow:create'],
+		});
+	});
+
 	test('PATCH /api-keys should not modify API key expiration', async () => {
 		const newApiKeyResponse = await testServer
 			.authAgentFor(ownerShell)
