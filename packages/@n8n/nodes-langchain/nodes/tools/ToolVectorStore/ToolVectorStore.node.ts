@@ -10,6 +10,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
+import { nodeNameToToolName } from '@utils/helpers';
 import { logWrapper } from '@utils/logWrapper';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
@@ -102,7 +103,7 @@ export class ToolVectorStore implements INodeType {
 		const name =
 			typeVersion <= 1
 				? (this.getNodeParameter('name', itemIndex) as string)
-				: node.name.replace(/ /g, '_');
+				: nodeNameToToolName(node);
 		const toolDescription = this.getNodeParameter('description', itemIndex) as string;
 		const topK = this.getNodeParameter('topK', itemIndex, 4) as number;
 

@@ -20,6 +20,7 @@ import {
 	buildJsonSchemaExampleField,
 	schemaTypeField,
 } from '@utils/descriptions';
+import { nodeNameToToolName } from '@utils/helpers';
 import { convertJsonSchemaToZod, generateSchema } from '@utils/schemaParsing';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
@@ -185,7 +186,7 @@ export class ToolCode implements INodeType {
 		const name =
 			typeVersion <= 1.1
 				? (this.getNodeParameter('name', itemIndex) as string)
-				: node.name.replace(/ /g, '_');
+				: nodeNameToToolName(node);
 
 		const description = this.getNodeParameter('description', itemIndex) as string;
 
