@@ -86,6 +86,52 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 
 	describe('with "feat:apiKeyScopes" enabled', () => {
 		describe('users', () => {
+			describe('GET /user', () => {
+				test('should return the user when API key has "user:read" scope', async () => {
+					const owner = await createOwnerWithApiKey({ scopes: ['user:read'] });
+
+					await createUser();
+
+					const authOwnerAgent = testServer.publicApiAgentFor(owner);
+
+					const response = await authOwnerAgent.get(`/users/${owner.id}`).expect(200);
+
+					const {
+						id,
+						email,
+						firstName,
+						lastName,
+						personalizationAnswers,
+						role,
+						password,
+						isPending,
+						createdAt,
+						updatedAt,
+					} = response.body;
+
+					expect(validator.isUUID(id)).toBe(true);
+					expect(email).toBeDefined();
+					expect(firstName).toBeDefined();
+					expect(lastName).toBeDefined();
+					expect(personalizationAnswers).toBeUndefined();
+					expect(password).toBeUndefined();
+					expect(isPending).toBe(false);
+					expect(role).toBeUndefined();
+					expect(createdAt).toBeDefined();
+					expect(updatedAt).toBeDefined();
+				});
+
+				test('should fail to return the user when API key doesn\'t have "user:read" scope', async () => {
+					const owner = await createOwnerWithApiKey({ scopes: ['tag:create'] });
+
+					const authOwnerAgent = testServer.publicApiAgentFor(owner);
+
+					const response = await authOwnerAgent.get(`/users/${owner.id}`);
+
+					expect(response.statusCode).toBe(403);
+				});
+			});
+
 			describe('GET /users', () => {
 				test('should return all users when API key has "user:list" scope', async () => {
 					const owner = await createOwnerWithApiKey({ scopes: ['user:list'] });
