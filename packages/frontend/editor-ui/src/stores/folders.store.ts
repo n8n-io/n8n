@@ -10,6 +10,7 @@ import * as workflowsApi from '@/api/workflows';
 import { useRootStore } from './root.store';
 import { ref } from 'vue';
 import { useI18n } from '@/composables/useI18n';
+import type { DragTarget, DropTarget } from '@/composables/useFolders';
 
 const BREADCRUMBS_MIN_LOADING_TIME = 300;
 
@@ -20,13 +21,9 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 	const totalWorkflowCount = ref<number>(0);
 
 	// Resource that is currently being dragged
-	const draggedElement = ref<{ type: 'workflow' | 'folder'; id: string; name: string } | null>(
-		null,
-	);
+	const draggedElement = ref<DragTarget | null>(null);
 	// Only folders and projects can be drop targets
-	const activeDropTarget = ref<{ type: 'folder' | 'project'; id: string; name: string } | null>(
-		null,
-	);
+	const activeDropTarget = ref<DropTarget | null>(null);
 
 	/**
 	 * Cache visited folders so we can build breadcrumbs paths without fetching them from the server

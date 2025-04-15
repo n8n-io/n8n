@@ -9,7 +9,7 @@ import { useFoldersStore } from '@/stores/folders.store';
 import { computed } from 'vue';
 
 export type DragTarget = {
-	type: 'folder' | 'workflow' | 'project';
+	type: 'folder' | 'workflow';
 	id: string;
 	name: string;
 };
@@ -22,6 +22,10 @@ export type DropTarget = {
 
 export function isDropTarget(target: DragTarget | DropTarget): target is DropTarget {
 	return target.type === 'folder' || target.type === 'project';
+}
+
+export function isValidResourceType(value: string): value is 'folder' | 'workflow' | 'project' {
+	return ['folder', 'workflow', 'project'].includes(value);
 }
 
 export function useFolders() {
@@ -67,7 +71,7 @@ export function useFolders() {
 	/**
 	 * Drag and drop methods
 	 */
-	async function onDragStart(el: HTMLElement): Promise<void> {
+	function onDragStart(el: HTMLElement): void {
 		const eventTarget = el.closest('[data-target]') as HTMLElement;
 		if (!eventTarget) return;
 
@@ -118,10 +122,11 @@ export function useFolders() {
 		const targetId = dragTarget.dataset.resourceid;
 		const targetName = dragTarget.dataset.resourcename;
 
-		if (!targetResource || !targetId || !targetName) return null;
+		if (!targetResource || !targetId || !targetName || !isValidResourceType(targetResource))
+			return null;
 
 		return {
-			type: targetResource as 'folder' | 'workflow' | 'project',
+			type: targetResource,
 			id: targetId,
 			name: targetName,
 		};
