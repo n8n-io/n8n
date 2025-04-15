@@ -514,7 +514,7 @@ describe('GET /workflows/:workflowId', () => {
 		});
 	});
 
-	test.only('should return parent folder', async () => {
+	test('should return parent folder', async () => {
 		const personalProject = await projectRepository.getPersonalProjectForUserOrFail(owner.id);
 
 		const folder1 = await createFolder(personalProject, { name: 'Folder 1' });
