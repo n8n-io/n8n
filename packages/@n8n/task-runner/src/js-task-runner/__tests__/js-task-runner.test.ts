@@ -1504,4 +1504,15 @@ describe('JsTaskRunner', () => {
 			});
 		});
 	});
+
+	describe('expressions', () => {
+		it('should evaluate expressions with $evaluateExpression', async () => {
+			const outcome = await executeForAllItems({
+				code: "return { val: $evaluateExpression('{{ 1 + 1 }}') }",
+				inputItems: [],
+			});
+
+			expect(outcome.result).toEqual([wrapIntoJson({ val: 2 })]);
+		});
+	});
 });
