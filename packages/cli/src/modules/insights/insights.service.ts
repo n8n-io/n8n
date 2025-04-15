@@ -414,7 +414,7 @@ export class InsightsService {
 		const result: InsightsSummary = {
 			averageRunTime: {
 				value: currentAvgRuntime,
-				unit: 'time',
+				unit: 'millisecond',
 				deviation: getDeviation(currentAvgRuntime, previousAvgRuntime),
 			},
 			failed: {
@@ -429,7 +429,7 @@ export class InsightsService {
 			},
 			timeSaved: {
 				value: currentTimeSaved,
-				unit: 'time',
+				unit: 'minute',
 				deviation: getDeviation(currentTimeSaved, previousTimeSaved),
 			},
 			total: {
