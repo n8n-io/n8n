@@ -12,8 +12,8 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 import { Readable } from 'stream';
 
+import type { BinaryDataConfig } from '@/binary-data';
 import { BinaryDataService } from '@/binary-data/binary-data.service';
-import { type InstanceSettings } from '@/instance-settings';
 
 import {
 	assertBinaryData,
@@ -38,21 +38,24 @@ const bufferToIncomingMessage = (buffer: Buffer, encoding = 'utf-8') => {
 };
 
 describe('test binary data helper methods', () => {
-	let binaryDataService: BinaryDataService;
 	const temporaryDir = mkdtempSync(join(tmpdir(), 'n8n'));
+	const binaryDataConfig = mock<BinaryDataConfig>({
+		mode: 'default',
+		availableModes: ['default', 'filesystem'],
+		localStoragePath: temporaryDir,
+	});
+	let binaryDataService: BinaryDataService;
 
 	beforeEach(() => {
-		binaryDataService = new BinaryDataService(mock<InstanceSettings>(), mock());
+		jest.resetAllMocks();
+		binaryDataService = new BinaryDataService(binaryDataConfig);
 		Container.set(BinaryDataService, binaryDataService);
 	});
 
 	test("test getBinaryDataBuffer(...) & setBinaryDataBuffer(...) methods in 'default' mode", async () => {
 		// Setup a 'default' binary data manager instance
-		await binaryDataService.init({
-			mode: 'default',
-			availableModes: ['default'],
-			localStoragePath: temporaryDir,
-		});
+		binaryDataConfig.mode = 'default';
+		await binaryDataService.init();
 
 		// Set our binary data buffer
 		const inputData: Buffer = Buffer.from('This is some binary data', 'utf8');
@@ -98,11 +101,8 @@ describe('test binary data helper methods', () => {
 
 	test("test getBinaryDataBuffer(...) & setBinaryDataBuffer(...) methods in 'filesystem' mode", async () => {
 		// Setup a 'filesystem' binary data manager instance
-		await binaryDataService.init({
-			mode: 'filesystem',
-			availableModes: ['filesystem'],
-			localStoragePath: temporaryDir,
-		});
+		binaryDataConfig.mode = 'filesystem';
+		await binaryDataService.init();
 
 		// Set our binary data buffer
 		const inputData: Buffer = Buffer.from('This is some binary data', 'utf8');

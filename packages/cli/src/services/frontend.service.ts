@@ -4,7 +4,7 @@ import { Container, Service } from '@n8n/di';
 import { createWriteStream } from 'fs';
 import { mkdir } from 'fs/promises';
 import uniq from 'lodash/uniq';
-import { InstanceSettings, Logger } from 'n8n-core';
+import { BinaryDataConfig, InstanceSettings, Logger } from 'n8n-core';
 import type { ICredentialType, INodeTypeBaseDescription } from 'n8n-workflow';
 import path from 'path';
 
@@ -48,6 +48,7 @@ export class FrontendService {
 		private readonly securityConfig: SecurityConfig,
 		private readonly modulesConfig: ModulesConfig,
 		private readonly pushConfig: PushConfig,
+		private readonly binaryDataConfig: BinaryDataConfig,
 	) {
 		loadNodesAndCredentials.addPostProcessor(async () => await this.generateTypes());
 		void this.generateTypes();
@@ -104,7 +105,7 @@ export class FrontendService {
 			timezone: this.globalConfig.generic.timezone,
 			urlBaseWebhook: this.urlService.getWebhookBaseUrl(),
 			urlBaseEditor: instanceBaseUrl,
-			binaryDataMode: config.getEnv('binaryDataManager.mode'),
+			binaryDataMode: this.binaryDataConfig.mode,
 			nodeJsVersion: process.version.replace(/^v/, ''),
 			versionCli: N8N_VERSION,
 			concurrency: config.getEnv('executions.concurrency.productionLimit'),
@@ -294,8 +295,8 @@ export class FrontendService {
 			this.settings.easyAIWorkflowOnboarded = false;
 		}
 
-		const isS3Selected = config.getEnv('binaryDataManager.mode') === 's3';
-		const isS3Available = config.getEnv('binaryDataManager.availableModes').includes('s3');
+		const isS3Selected = this.binaryDataConfig.mode === 's3';
+		const isS3Available = this.binaryDataConfig.availableModes.includes('s3');
 		const isS3Licensed = this.license.isBinaryDataS3Licensed();
 		const isAiAssistantEnabled = this.license.isAiAssistantEnabled();
 		const isAskAiEnabled = this.license.isAskAiEnabled();
@@ -375,7 +376,7 @@ export class FrontendService {
 
 		this.settings.executionMode = config.getEnv('executions.mode');
 
-		this.settings.binaryDataMode = config.getEnv('binaryDataManager.mode');
+		this.settings.binaryDataMode = this.binaryDataConfig.mode;
 
 		this.settings.enterprise.projects.team.limit = this.license.getTeamProjectLimit();
 
