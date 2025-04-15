@@ -1471,7 +1471,8 @@ export type CloudUpdateLinkSourceType =
 	| 'worker-view'
 	| 'external-secrets'
 	| 'rbac'
-	| 'debug';
+	| 'debug'
+	| 'insights';
 
 export type UTMCampaign =
 	| 'upgrade-custom-data-filter'
@@ -1494,7 +1495,8 @@ export type UTMCampaign =
 	| 'upgrade-worker-view'
 	| 'upgrade-external-secrets'
 	| 'upgrade-rbac'
-	| 'upgrade-debug';
+	| 'upgrade-debug'
+	| 'upgrade-insights';
 
 export type N8nBanners = {
 	[key in BannerName]: {
