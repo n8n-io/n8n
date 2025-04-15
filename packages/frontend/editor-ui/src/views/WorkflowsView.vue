@@ -1454,6 +1454,7 @@ const onCreateWorkflowClick = () => {
 					:data-resourcename="(data as FolderResource).name"
 					:class="{
 						['mb-2xs']: true,
+						[$style['drag-active']]: isDragging,
 						[$style.dragging]:
 							foldersStore.draggedElement?.type === 'folder' &&
 							foldersStore.draggedElement?.id === (data as FolderResource).id,
@@ -1488,6 +1489,7 @@ const onCreateWorkflowClick = () => {
 					data-test-id="resources-list-item-workflow"
 					:class="{
 						['mb-2xs']: true,
+						[$style['drag-active']]: isDragging,
 						[$style.dragging]:
 							foldersStore.draggedElement?.type === 'workflow' &&
 							foldersStore.draggedElement?.id === (data as WorkflowResource).id,
@@ -1505,7 +1507,7 @@ const onCreateWorkflowClick = () => {
 					@workflow:duplicated="fetchWorkflows"
 					@workflow:active-toggle="onWorkflowActiveToggle"
 					@action:move-to-folder="moveWorkflowToFolder"
-					@mouseenter="isDragging ? folderHelpers.resetDropTarget : {}"
+					@mouseenter="isDragging ? folderHelpers.resetDropTarget() : {}"
 				/>
 			</Draggable>
 		</template>
@@ -1693,6 +1695,10 @@ const onCreateWorkflowClick = () => {
 	button {
 		margin-top: var(--spacing-2xs);
 	}
+}
+
+.drag-active * {
+	cursor: grabbing;
 }
 
 .dragging {
