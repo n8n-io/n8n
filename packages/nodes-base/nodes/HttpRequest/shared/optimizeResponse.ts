@@ -9,9 +9,18 @@ import {
 	NodeOperationError,
 	type IDataObject,
 	type IExecuteFunctions,
+	NodeError,
 } from 'n8n-workflow';
 
-const htmlOptimizer = (ctx: IExecuteFunctions, itemIndex: number, maxLength: number) => {
+type ResponseOptimizerFn = (
+	x: IDataObject | IDataObject[] | string,
+) => IDataObject | IDataObject[] | string;
+
+function htmlOptimizer(
+	ctx: IExecuteFunctions,
+	itemIndex: number,
+	maxLength: number,
+): ResponseOptimizerFn {
 	const cssSelector = ctx.getNodeParameter('cssSelector', itemIndex, '') as string;
 	const onlyContent = ctx.getNodeParameter('onlyContent', itemIndex, false) as boolean;
 	let elementsToOmit: string[] = [];
@@ -29,7 +38,7 @@ const htmlOptimizer = (ctx: IExecuteFunctions, itemIndex: number, maxLength: num
 		}
 	}
 
-	return <T>(response: T) => {
+	return (response) => {
 		if (typeof response !== 'string') {
 			throw new NodeOperationError(
 				ctx.getNode(),
@@ -77,10 +86,14 @@ const htmlOptimizer = (ctx: IExecuteFunctions, itemIndex: number, maxLength: num
 
 		return text;
 	};
-};
+}
 
-const textOptimizer = (ctx: IExecuteFunctions, itemIndex: number, maxLength: number) => {
-	return (response: string | IDataObject) => {
+const textOptimizer = (
+	ctx: IExecuteFunctions,
+	itemIndex: number,
+	maxLength: number,
+): ResponseOptimizerFn => {
+	return (response) => {
 		if (typeof response === 'object') {
 			try {
 				response = JSON.stringify(response, null, 2);
@@ -110,12 +123,20 @@ const textOptimizer = (ctx: IExecuteFunctions, itemIndex: number, maxLength: num
 	};
 };
 
-const jsonOptimizer = (ctx: IExecuteFunctions, itemIndex: number) => {
-	return (response: IDataObject | IDataObject[] | string): IDataObject | IDataObject[] => {
-		let responseData: IDataObject | IDataObject[] | string = response;
+const jsonOptimizer = (ctx: IExecuteFunctions, itemIndex: number): ResponseOptimizerFn => {
+	return (response) => {
+		let responseData: IDataObject | IDataObject[] | string | null = response;
 
 		if (typeof response === 'string') {
-			responseData = jsonParse(response);
+			try {
+				responseData = jsonParse(response, { errorMessage: 'Invalid JSON response' });
+			} catch (error) {
+				throw new NodeOperationError(
+					ctx.getNode(),
+					`Received invalid JSON from response '${response}'`,
+					{ itemIndex },
+				);
+			}
 		}
 
 		if (typeof responseData !== 'object' || !responseData) {
@@ -189,7 +210,10 @@ const jsonOptimizer = (ctx: IExecuteFunctions, itemIndex: number) => {
 	};
 };
 
-export const configureResponseOptimizer = (ctx: IExecuteFunctions, itemIndex: number) => {
+export const configureResponseOptimizer = (
+	ctx: IExecuteFunctions,
+	itemIndex: number,
+): ResponseOptimizerFn => {
 	const optimizeResponse = ctx.getNodeParameter('optimizeResponse', itemIndex, false) as boolean;
 
 	if (optimizeResponse) {
@@ -215,7 +239,7 @@ export const configureResponseOptimizer = (ctx: IExecuteFunctions, itemIndex: nu
 		}
 	}
 
-	return <T>(x: T) => x;
+	return (x) => x;
 };
 
 export const optimizeResponseProperties: INodeProperties[] = [
