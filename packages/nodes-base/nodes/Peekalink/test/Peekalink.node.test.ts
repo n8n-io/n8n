@@ -1,8 +1,7 @@
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, type WorkflowTestData } from 'n8n-workflow';
 
 import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
 import * as Helpers from '@test/nodes/Helpers';
-import type { WorkflowTestData } from '@test/nodes/types';
 
 import { apiUrl } from '../Peekalink.node';
 
@@ -167,10 +166,8 @@ describe('Peekalink Node', () => {
 		},
 	];
 
-	const nodeTypes = Helpers.setup(tests);
-
 	test.each(tests)('$description', async (testData) => {
-		const { result } = await executeWorkflow(testData, nodeTypes);
+		const { result } = await executeWorkflow(testData);
 		const resultNodeData = Helpers.getResultNodeData(result, testData);
 		resultNodeData.forEach(({ nodeName, resultData }) =>
 			expect(resultData).toEqual(testData.output.nodeData[nodeName]),

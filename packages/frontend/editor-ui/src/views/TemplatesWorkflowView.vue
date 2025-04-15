@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
 import { useTemplatesStore } from '@/stores/templates.store';
-import { usePostHog } from '@/stores/posthog.store';
 import { useTemplateWorkflow } from '@/utils/templates/templateActions';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -13,7 +12,6 @@ import TemplatesView from './TemplatesView.vue';
 
 const externalHooks = useExternalHooks();
 const templatesStore = useTemplatesStore();
-const posthogStore = usePostHog();
 const nodeTypesStore = useNodeTypesStore();
 
 const route = useRoute();
@@ -34,7 +32,6 @@ const template = computed(() => templatesStore.getFullTemplateById(templateId.va
 
 const openTemplateSetup = async (id: string, e: PointerEvent) => {
 	await useTemplateWorkflow({
-		posthogStore,
 		router,
 		templateId: id,
 		inNewBrowserTab: e.metaKey || e.ctrlKey,

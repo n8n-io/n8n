@@ -183,15 +183,6 @@ export const schema = {
 		env: 'EXTERNAL_FRONTEND_HOOKS_URLS',
 	},
 
-	push: {
-		backend: {
-			format: ['sse', 'websocket'] as const,
-			default: 'websocket',
-			env: 'N8N_PUSH_BACKEND',
-			doc: 'Backend to use for push notifications',
-		},
-	},
-
 	binaryDataManager: {
 		availableModes: {
 			format: 'comma-separated-list',

@@ -27,6 +27,7 @@ import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import {
 	EnterpriseEditionFeature,
 	FORM_TRIGGER_NODE_TYPE,
+	MCP_TRIGGER_NODE_TYPE,
 	STICKY_NODE_TYPE,
 	UPDATE_WEBHOOK_ID_NODE_TYPES,
 	WEBHOOK_NODE_TYPE,
@@ -175,11 +176,15 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 	}
 
 	function trackTidyUp({ result, source, target }: CanvasLayoutEvent) {
-		telemetry.track('User tidied up canvas', {
-			source,
-			target,
-			nodes_count: result.nodes.length,
-		});
+		telemetry.track(
+			'User tidied up canvas',
+			{
+				source,
+				target,
+				nodes_count: result.nodes.length,
+			},
+			{ withPostHog: true },
+		);
 	}
 
 	function updateNodesPosition(
@@ -869,6 +874,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 			true,
 			false,
 			node,
+			nodeTypeDescription,
 		);
 
 		node.parameters = nodeParameters ?? {};
@@ -1066,7 +1072,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 
 		// if it's a webhook and the path is empty set the UUID as the default path
 		if (
-			[WEBHOOK_NODE_TYPE, FORM_TRIGGER_NODE_TYPE].includes(node.type) &&
+			[WEBHOOK_NODE_TYPE, FORM_TRIGGER_NODE_TYPE, MCP_TRIGGER_NODE_TYPE].includes(node.type) &&
 			node.parameters.path === ''
 		) {
 			node.parameters.path = node.webhookId as string;
@@ -1968,12 +1974,10 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		return data;
 	}
 
-	async function toggleChatOpen(source: 'node' | 'main') {
+	async function toggleChatOpen(source: 'node' | 'main', isOpen?: boolean) {
 		const workflow = workflowsStore.getCurrentWorkflow();
 
-		workflowsStore.setPanelState(
-			workflowsStore.chatPanelState === 'closed' ? 'attached' : 'closed',
-		);
+		workflowsStore.toggleLogsPanelOpen(isOpen);
 
 		const payload = {
 			workflow_id: workflow.id,

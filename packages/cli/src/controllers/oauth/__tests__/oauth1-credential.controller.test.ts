@@ -230,15 +230,11 @@ describe('OAuth1CredentialController', () => {
 			});
 			jest.spyOn(Csrf.prototype, 'verify').mockReturnValueOnce(true);
 			nock('https://example.domain')
-				.post('/oauth/access_token', {
-					oauth_token: 'token',
-					oauth_verifier: 'verifier',
-				})
+				.post('/oauth/access_token', 'oauth_token=token&oauth_verifier=verifier')
 				.once()
 				.reply(200, 'access_token=new_token');
 
 			await controller.handleCallback(req, res);
-
 			const dataCaptor = captor();
 			expect(credentialsRepository.update).toHaveBeenCalledWith(
 				'1',
