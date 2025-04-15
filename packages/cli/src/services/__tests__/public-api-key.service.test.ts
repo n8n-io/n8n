@@ -469,4 +469,52 @@ describe('PublicApiKeyService', () => {
 			expect(result).toBe(false);
 		});
 	});
+
+	describe('apiKeyHasValidScopesForRole', () => {
+		it('should return true if API key has the required scope for the role', async () => {
+			// Arrange
+			const publicApiKeyService = new PublicApiKeyService(
+				apiKeyRepository,
+				userRepository,
+				jwtService,
+				eventService,
+			);
+
+			const ownerOnlyScopes = getOwnerOnlyApiKeyScopes();
+
+			// Act
+
+			const result = publicApiKeyService.apiKeyHasValidScopesForRole(
+				'global:owner',
+				ownerOnlyScopes,
+			);
+
+			// Assert
+
+			expect(result).toBe(true);
+		});
+
+		it('should return false if API key does not have the required scope for the role', async () => {
+			// Arrange
+			const publicApiKeyService = new PublicApiKeyService(
+				apiKeyRepository,
+				userRepository,
+				jwtService,
+				eventService,
+			);
+
+			const ownerOnlyScopes = getOwnerOnlyApiKeyScopes();
+
+			// Act
+
+			const result = publicApiKeyService.apiKeyHasValidScopesForRole(
+				'global:member',
+				ownerOnlyScopes,
+			);
+
+			// Assert
+
+			expect(result).toBe(false);
+		});
+	});
 });
