@@ -415,7 +415,7 @@ describe('PublicApiKeyService', () => {
 
 			// Assert
 			expect(next).not.toHaveBeenCalled();
-			expect(res.status).toHaveBeenCalled();
+			expect(res.status).toHaveBeenCalledWith(401);
 			expect(res.json).toHaveBeenCalled();
 		});
 	});
