@@ -15,6 +15,7 @@ import { getApiKeyScopesForRole, getOwnerOnlyApiKeyScopes } from '@/public-api/p
 import type { AuthenticatedRequest } from '@/requests';
 
 import { JwtService } from './jwt.service';
+import { EntityManager } from '@n8n/typeorm';
 
 const API_KEY_AUDIENCE = 'public-api';
 const API_KEY_ISSUER = 'n8n';
@@ -190,10 +191,12 @@ export class PublicApiKeyService {
 		};
 	}
 
-	async removeOwnerOnlyScopesFromApiKeys(user: User) {
+	async removeOwnerOnlyScopesFromApiKeys(user: User, tx?: EntityManager) {
+		const manager = tx ?? this.apiKeyRepository.manager;
+
 		const ownerOnlyScopes = getOwnerOnlyApiKeyScopes();
 
-		const userApiKeys = await this.apiKeyRepository.find({
+		const userApiKeys = await manager.find(ApiKey, {
 			where: { userId: user.id },
 		});
 
@@ -204,7 +207,7 @@ export class PublicApiKeyService {
 		return await Promise.all(
 			keysWithOwnerScopes.map(
 				async (currentApiKey) =>
-					await this.apiKeyRepository.update(currentApiKey.id, {
+					await manager.update(ApiKey, currentApiKey.id, {
 						scopes: currentApiKey.scopes.filter((scope) => !ownerOnlyScopes.includes(scope)),
 					}),
 			),
