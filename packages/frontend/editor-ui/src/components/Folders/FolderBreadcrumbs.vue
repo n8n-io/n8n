@@ -146,7 +146,7 @@ const onItemHover = (item: PathItem) => {
 	&.dragging:hover {
 		border: var(--border-width-base) var(--border-style-base) var(--color-secondary);
 		border-radius: var(--border-radius-base);
-		background-color: var(--color-secondary-tint-3);
+		background-color: var(--color-callout-secondary-background);
 		* {
 			color: var(--color-text-base);
 		}

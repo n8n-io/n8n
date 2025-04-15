@@ -1711,7 +1711,7 @@ const onCreateWorkflowClick = () => {
 .drop-active {
 	:global(.card) {
 		border-color: var(--color-secondary);
-		background-color: var(--color-secondary-tint-3);
+		background-color: var(--color-callout-secondary-background);
 	}
 }
 </style>
