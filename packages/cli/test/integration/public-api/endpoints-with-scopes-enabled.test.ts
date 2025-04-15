@@ -266,7 +266,9 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 					expect(response.status).toBe(204);
 
 					const formerAdminApiKey = await apiKeyRepository.findOneByOrFail({ userId: admin.id });
-					expect(formerAdminApiKey.scopes).not.toContain(ownerOnlyScopes);
+					for (const ownerScope of ownerOnlyScopes) {
+						expect(formerAdminApiKey.scopes).not.toContain(ownerScope);
+					}
 				});
 			});
 
