@@ -16,9 +16,7 @@ import {
 import { isChatNode } from '@/components/CanvasChat/utils';
 import { useLayout } from '@/components/CanvasChat/future/composables/useLayout';
 
-const { isReadOnly } = withDefaults(defineProps<{ isReadOnly?: boolean }>(), {
-	isReadOnly: false,
-});
+const props = withDefaults(defineProps<{ isReadOnly?: boolean }>(), { isReadOnly: false });
 
 const workflowsStore = useWorkflowsStore();
 const container = useTemplateRef('container');
@@ -47,13 +45,14 @@ const {
 	onOverviewPanelResizeEnd,
 } = useLayout(pipContainer, pipContent, container, logsContainer);
 
-const { currentSessionId, messages, sendMessage, refreshSession, displayExecution } =
-	useChatState(isReadOnly);
+const { currentSessionId, messages, sendMessage, refreshSession, displayExecution } = useChatState(
+	props.isReadOnly,
+);
 
 const hasChat = computed(
 	() =>
 		workflowsStore.workflowTriggerNodes.some(isChatNode) &&
-		(!isReadOnly || messages.value.length > 0),
+		(!props.isReadOnly || messages.value.length > 0),
 );
 const workflow = computed(() => workflowsStore.getCurrentWorkflow());
 const executionTree = computed<TreeNode[]>(() =>

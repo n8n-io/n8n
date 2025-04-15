@@ -1,0 +1,98 @@
+{
+	"name": "search.workflow",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-240, 100],
+			"id": "e3a94904-ddfa-4fe8-bac2-e2c796c677a3",
+			"name": "When clicking ‘Test workflow’"
+		},
+		{
+			"parameters": {
+				"resource": "search",
+				"query": "SELECT id, name, type FROM Account"
+			},
+			"type": "n8n-nodes-base.salesforce",
+			"typeVersion": 1,
+			"position": [-20, 100],
+			"id": "0fcf65ac-c9a3-48b5-9c39-599216208b62",
+			"name": "Salesforce",
+			"credentials": {
+				"salesforceOAuth2Api": {
+					"id": "gBXFg0tv79sQS6pc",
+					"name": "Salesforce account"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [200, 100],
+			"id": "8319a07f-465f-4456-b6b0-012aa36ce08b",
+			"name": "No Operation, do nothing"
+		}
+	],
+	"pinData": {
+		"No Operation, do nothing": [
+			{
+				"json": {
+					"attributes": {
+						"type": "Account",
+						"url": "/services/data/v59.0/sobjects/Account/id1"
+					},
+					"Id": "id1",
+					"Name": "Account 1",
+					"Type": "Customer - Direct"
+				}
+			},
+			{
+				"json": {
+					"attributes": {
+						"type": "Account",
+						"url": "/services/data/v59.0/sobjects/Account/id2"
+					},
+					"Id": "id2",
+					"Name": "Account 2",
+					"Type": "Customer - Direct"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Test workflow’": {
+			"main": [
+				[
+					{
+						"node": "Salesforce",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Salesforce": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "ca0a5b64-d016-4412-8ea9-0cefc269f2c1",
+	"meta": {
+		"instanceId": "e115be144a6a5547dbfca93e774dfffa178aa94a181854c13e2ce5e14d195b2e"
+	},
+	"id": "ODC4s7m6nIRLkeE9",
+	"tags": []
+}

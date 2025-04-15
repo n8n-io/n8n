@@ -18,7 +18,7 @@ import type { PushMessage } from '@n8n/api-types';
 
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useToast } from '@/composables/useToast';
-import { AI_CREDITS_EXPERIMENT, WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
+import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
 import { getTriggerNodeServiceName } from '@/utils/nodeTypesUtils';
 import { codeNodeEditorEventBus, globalLinkActionsEventBus } from '@/event-bus';
 import { useUIStore } from '@/stores/ui.store';
@@ -37,7 +37,6 @@ import { useAssistantStore } from '@/stores/assistant.store';
 import NodeExecutionErrorMessage from '@/components/NodeExecutionErrorMessage.vue';
 import type { IExecutionResponse } from '@/Interface';
 import { clearPopupWindowState, hasTrimmedData, hasTrimmedItem } from '../utils/executionUtils';
-import { usePostHog } from '@/stores/posthog.store';
 import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
 import { useSchemaPreviewStore } from '@/stores/schemaPreview.store';
 
@@ -56,7 +55,6 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 	const uiStore = useUIStore();
 	const workflowsStore = useWorkflowsStore();
 	const assistantStore = useAssistantStore();
-	const posthogStore = usePostHog();
 
 	const retryTimeout = ref<NodeJS.Timeout | null>(null);
 	const pushMessageQueue = ref<PushMessageQueueItem[]>([]);
@@ -214,12 +212,7 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 				clearPopupWindowState();
 				const workflow = workflowsStore.getWorkflowById(receivedData.data.workflowId);
 				if (workflow?.meta?.templateId) {
-					const isAiCreditsExperimentEnabled =
-						posthogStore.getVariant(AI_CREDITS_EXPERIMENT.name) === AI_CREDITS_EXPERIMENT.variant;
-					const easyAiWorkflowJson = getEasyAiWorkflowJson({
-						isInstanceInAiFreeCreditsExperiment: isAiCreditsExperimentEnabled,
-						withOpenAiFreeCredits: settingsStore.aiCreditsQuota,
-					});
+					const easyAiWorkflowJson = getEasyAiWorkflowJson();
 					const isEasyAIWorkflow = workflow.meta.templateId === easyAiWorkflowJson.meta.templateId;
 					if (isEasyAIWorkflow) {
 						telemetry.track(
