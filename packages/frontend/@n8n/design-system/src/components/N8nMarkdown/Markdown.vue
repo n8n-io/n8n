@@ -360,6 +360,8 @@ input[type='checkbox'] + label {
 	}
 
 	a {
+		word-break: break-word;
+		overflow-wrap: break-word;
 		&:hover {
 			text-decoration: underline;
 		}
