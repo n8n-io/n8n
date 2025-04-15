@@ -188,7 +188,6 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 					 * Arrange
 					 */
 					const owner = await createOwnerWithApiKey();
-					await createOwnerWithApiKey();
 					const payload = [{ email: 'test@test.com', role: 'global:admin' }];
 
 					/**
