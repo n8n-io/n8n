@@ -380,8 +380,6 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 
 					const response = await authOwnerAgent.post('/credentials').send(payload);
 
-					console.log(response.body);
-
 					expect(response.statusCode).toBe(403);
 				});
 
