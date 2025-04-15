@@ -80,8 +80,10 @@ watch(
 			void insightsStore.summary.execute();
 		}
 
-		void insightsStore.charts.execute();
-		fetchPaginatedTableData({ sortBy: sortTableBy.value });
+		if (insightsStore.isDashboardEnabled) {
+			void insightsStore.charts.execute();
+			fetchPaginatedTableData({ sortBy: sortTableBy.value });
+		}
 	},
 	{
 		immediate: true,
@@ -102,41 +104,46 @@ watch(
 					:loading="insightsStore.summary.isLoading"
 					:class="$style.insightsBanner"
 				/>
-				<div v-if="insightsStore.isInsightsEnabled" :class="$style.insightsContent">
-					<div :class="$style.insightsChartWrapper">
-						<div v-if="insightsStore.charts.isLoading" :class="$style.chartLoader">
-							<svg
-								width="22"
-								height="22"
-								viewBox="0 0 22 22"
-								fill="none"
-								xmlns="http://www.w3.org/2000/svg"
-							>
-								<path
-									d="M21 11C21 16.5228 16.5228 21 11 21C5.47715 21 1 16.5228 1 11C1 5.47715 5.47715 1 11 1C11.6293 1 12.245 1.05813 12.8421 1.16931"
-									stroke="currentColor"
-									stroke-width="2"
-								/>
-							</svg>
-							{{ i18n.baseText('insights.chart.loading') }}
+				<div :class="$style.insightsContent">
+					<InsightsPaywall
+						v-if="!insightsStore.isDashboardEnabled"
+						data-test-id="insights-dashboard-unlicensed"
+					/>
+					<div v-else>
+						<div :class="$style.insightsChartWrapper">
+							<div v-if="insightsStore.charts.isLoading" :class="$style.chartLoader">
+								<svg
+									width="22"
+									height="22"
+									viewBox="0 0 22 22"
+									fill="none"
+									xmlns="http://www.w3.org/2000/svg"
+								>
+									<path
+										d="M21 11C21 16.5228 16.5228 21 11 21C5.47715 21 1 16.5228 1 11C1 5.47715 5.47715 1 11 1C11.6293 1 12.245 1.05813 12.8421 1.16931"
+										stroke="currentColor"
+										stroke-width="2"
+									/>
+								</svg>
+								{{ i18n.baseText('insights.chart.loading') }}
+							</div>
+							<component
+								:is="chartComponents[props.insightType]"
+								v-else
+								:type="props.insightType"
+								:data="insightsStore.charts.state"
+							/>
 						</div>
-						<component
-							:is="chartComponents[props.insightType]"
-							v-else
-							:type="props.insightType"
-							:data="insightsStore.charts.state"
-						/>
-					</div>
-					<div :class="$style.insightsTableWrapper">
-						<InsightsTableWorkflows
-							v-model:sort-by="sortTableBy"
-							:data="insightsStore.table.state"
-							:loading="insightsStore.table.isLoading"
-							@update:options="fetchPaginatedTableData"
-						/>
+						<div :class="$style.insightsTableWrapper">
+							<InsightsTableWorkflows
+								v-model:sort-by="sortTableBy"
+								:data="insightsStore.table.state"
+								:loading="insightsStore.table.isLoading"
+								@update:options="fetchPaginatedTableData"
+							/>
+						</div>
 					</div>
 				</div>
-				<InsightsPaywall v-else data-test-id="insights-dashboard-unlicensed" />
 			</div>
 		</div>
 	</div>
