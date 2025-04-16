@@ -12,7 +12,7 @@ export const versionDescription: INodeTypeDescription = {
 	defaults: {
 		name: 'Call n8n Workflow Tool',
 	},
-	version: [2, 2.1],
+	version: [2, 2.1, 2.2],
 	inputs: [],
 	outputs: [NodeConnectionTypes.AiTool],
 	outputNames: ['Tool'],
@@ -34,6 +34,11 @@ export const versionDescription: INodeTypeDescription = {
 			validateType: 'string-alphanumeric',
 			description:
 				'The name of the function to be called, could contain letters, numbers, and underscores only',
+			displayOptions: {
+				show: {
+					'@version': [{ _cnd: { lte: 2.1 } }],
+				},
+			},
 		},
 		{
 			displayName: 'Description',
