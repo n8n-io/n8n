@@ -18,7 +18,7 @@ import {
 } from './constants';
 import type { KeyPair } from './types/key-pair';
 import type { KeyPairType } from './types/key-pair-type';
-import { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
+import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
 
 export function stringContainsExpression(testString: string): boolean {
 	return /^=.*\{\{.*\}\}/.test(testString);
