@@ -10,7 +10,7 @@ import { strapiPaginatedRequest, type StrapiData } from '../utils/strapi-utils';
 const UPDATE_INTERVAL = 8 * 60 * 60 * 1000;
 
 const N8N_VETTED_NODE_TYPES_URL =
-	'https://them-fatal-supplement-institution.trycloudflare.com/api/community-nodes';
+	'https://pic-mariah-centres-trainer.trycloudflare.com/api/community-nodes';
 
 @Service()
 export class CommunityNodeTypesService {
