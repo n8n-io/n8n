@@ -258,7 +258,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		for (const node of workflow.value.nodes) {
 			const isNodeDisabled = node.disabled === true;
 			const noNodeIssues = node.issues === undefined || Object.keys(node.issues).length === 0;
-			if (isNodeDisabled || noNodeIssues) {
+			const nodeHasConnections = Object.keys(workflow.value.connections[node.name] ?? {}).length;
+			if (isNodeDisabled || noNodeIssues || !nodeHasConnections) {
 				continue;
 			}
 
