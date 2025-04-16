@@ -287,7 +287,7 @@ function onSubmitFeedback(feedback: string) {
 					ref="chatInput"
 					v-model="textInputValue"
 					class="ignore-key-press-node-creator ignore-key-press-canvas"
-					:disabled="sessionEnded"
+					:disabled="sessionEnded || streaming"
 					:placeholder="t('assistantChat.inputPlaceholder')"
 					rows="1"
 					wrap="hard"
