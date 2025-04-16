@@ -320,6 +320,9 @@ importers:
 
   packages/@n8n/api-types:
     dependencies:
+      '@n8n/permissions':
+        specifier: workspace:*
+        version: link:../permissions
       n8n-workflow:
         specifier: workspace:*
         version: link:../../workflow
