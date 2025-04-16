@@ -64,14 +64,12 @@ export class BinaryDataController {
 		fileName?: string,
 		mimeType?: string,
 	) {
-		if (!fileName || !mimeType) {
-			try {
-				const metadata = await this.binaryDataService.getMetadata(binaryDataId);
-				fileName = metadata.fileName;
-				mimeType = metadata.mimeType;
-				res.setHeader('Content-Length', metadata.fileSize);
-			} catch {}
-		}
+		try {
+			const metadata = await this.binaryDataService.getMetadata(binaryDataId);
+			fileName = metadata.fileName ?? fileName;
+			mimeType = metadata.mimeType ?? mimeType;
+			res.setHeader('Content-Length', metadata.fileSize);
+		} catch {}
 
 		if (mimeType) {
 			res.setHeader('Content-Type', mimeType);
