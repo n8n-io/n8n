@@ -29,6 +29,7 @@ import {
 } from '@/constants';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
 import { CanvasNodeRenderType } from '@/types';
+import type { FrontendSettings } from '@n8n/api-types';
 
 export const mockNode = ({
 	id = uuid(),
@@ -202,6 +203,35 @@ export function createTestNode(node: Partial<INode> = {}): INode {
 		position: [0, 0] as [number, number],
 		parameters: {},
 		...node,
+	};
+}
+
+export function createMockEnterpriseSettings(
+	overrides: Partial<FrontendSettings['enterprise']> = {},
+): FrontendSettings['enterprise'] {
+	return {
+		sharing: false,
+		ldap: false,
+		saml: false,
+		logStreaming: false,
+		advancedExecutionFilters: false,
+		variables: false,
+		sourceControl: false,
+		auditLogs: false,
+		externalSecrets: false,
+		showNonProdBanner: false,
+		debugInEditor: false,
+		binaryDataS3: false,
+		workflowHistory: false,
+		workerView: false,
+		advancedPermissions: false,
+		apiKeyScopes: false,
+		projects: {
+			team: {
+				limit: 0,
+			},
+		},
+		...overrides, // Override with any passed properties
 	};
 }
 
