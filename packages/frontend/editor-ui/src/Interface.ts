@@ -1544,7 +1544,8 @@ export type EnterpriseEditionFeatureKey =
 	| 'DebugInEditor'
 	| 'WorkflowHistory'
 	| 'WorkerView'
-	| 'AdvancedPermissions';
+	| 'AdvancedPermissions'
+	| 'ApiKeyScopes';
 
 export type EnterpriseEditionFeatureValue = keyof Omit<FrontendSettings['enterprise'], 'projects'>;
 

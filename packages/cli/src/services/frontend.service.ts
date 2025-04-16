@@ -195,6 +195,7 @@ export class FrontendService {
 				workflowHistory: false,
 				workerView: false,
 				advancedPermissions: false,
+				apiKeyScopes: false,
 				projects: {
 					team: {
 						limit: 0,
@@ -322,6 +323,7 @@ export class FrontendService {
 				this.license.isWorkflowHistoryLicensed() && config.getEnv('workflowHistory.enabled'),
 			workerView: this.license.isWorkerViewLicensed(),
 			advancedPermissions: this.license.isAdvancedPermissionsLicensed(),
+			apiKeyScopes: this.license.isApiKeyScopesEnabled(),
 		});
 
 		if (this.license.isLdapEnabled()) {
