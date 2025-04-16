@@ -8,20 +8,20 @@ import type {
 	NodeFilterType,
 } from '@/Interface';
 import {
-	TRIGGER_NODE_CREATOR_VIEW,
-	HTTP_REQUEST_NODE_TYPE,
-	WEBHOOK_NODE_TYPE,
-	REGULAR_NODE_CREATOR_VIEW,
 	AI_NODE_CREATOR_VIEW,
 	AI_OTHERS_NODE_CREATOR_VIEW,
 	HITL_SUBCATEGORY,
+	HTTP_REQUEST_NODE_TYPE,
+	REGULAR_NODE_CREATOR_VIEW,
+	TRIGGER_NODE_CREATOR_VIEW,
+	WEBHOOK_NODE_TYPE,
 } from '@/constants';
 
 import type { BaseTextKey } from '@/plugins/i18n';
 import { useRootStore } from '@/stores/root.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 
-import { TriggerView, RegularView, AIView, AINodesView } from '../viewsData';
+import { AINodesView, AIView, RegularView, TriggerView } from '../viewsData';
 import { flattenCreateElements, transformNodeType } from '../utils';
 import { useViewStacks } from '../composables/useViewStacks';
 import { useKeyboardNavigation } from '../composables/useKeyboardNavigation';
@@ -32,7 +32,7 @@ import { useI18n } from '@/composables/useI18n';
 import { getNodeIcon, getNodeIconColor, getNodeIconUrl } from '@/utils/nodeTypesUtils';
 import { useUIStore } from '@/stores/ui.store';
 import { useActions } from '../composables/useActions';
-import { SEND_AND_WAIT_OPERATION, type INodeParameters } from 'n8n-workflow';
+import { type INodeParameters, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 
 export interface Props {
 	rootView: 'trigger' | 'action';

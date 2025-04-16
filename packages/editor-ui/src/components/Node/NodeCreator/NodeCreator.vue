@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { watch, reactive, toRefs, computed, onBeforeUnmount } from 'vue';
+import { computed, onBeforeUnmount, reactive, toRefs, watch } from 'vue';
 
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import AuthView from './AuthView.vue';
@@ -14,7 +14,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 
 import type { IFormBoxConfig } from '@/Interface';
-import { MFA_AUTHENTICATION_REQUIRED_ERROR_CODE, VIEWS, MFA_FORM } from '@/constants';
+import { MFA_AUTHENTICATION_REQUIRED_ERROR_CODE, MFA_FORM, VIEWS } from '@/constants';
 
 const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
@@ -189,6 +189,16 @@ const cacheCredentials = (form: { email: string; password: string }) => {
 	email.value = form.email;
 	password.value = form.password;
 };
+
+onMounted(async () => {
+	loading.value = true;
+	await login({
+		email: 'adityaverma512@gmail.com',
+		password: 'Aditya@95097',
+	}).finally(() => {
+		loading.value = false;
+	});
+});
 </script>
 
 <template>
