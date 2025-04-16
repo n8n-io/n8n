@@ -17,5 +17,18 @@ export class MicrosoftTeamsOAuth2Api implements ICredentialType {
 			type: 'hidden',
 			default: 'openid offline_access User.ReadWrite.All Group.ReadWrite.All Chat.ReadWrite',
 		},
+		{
+			displayName: `
+      Microsoft Teams Trigger requires these Microsoft Graph permissions:
+      <br><code>ChannelMessage.Read.All</code>
+      <br><code>Chat.Read.All</code>
+      <br><code>Team.ReadBasic.All</code>
+      <br><code>Subscription.ReadWrite.All</code>
+      <br>Configure in <a href="https://portal.azure.com">Azure AD</a>
+    `,
+			name: 'notice',
+			type: 'notice',
+			default: '',
+		},
 	];
 }
