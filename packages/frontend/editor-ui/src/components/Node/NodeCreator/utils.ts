@@ -95,8 +95,12 @@ export function sortNodeCreateElements(nodes: INodeCreateElement[]) {
 // Ideally this would be handled via metadata, but that is a larger refactor.
 export function removeTrailingTrigger(searchFilter: string) {
 	const parts = searchFilter.split(' ');
-	if (parts.length > 1 && 'trigger'.startsWith(parts.slice(-1)[0]?.toLowerCase() ?? 'a')) {
-		return parts.slice(0, -1).join(' ').trimEnd();
+	if (parts.length > 1 && 'trigger'.startsWith(parts.slice(-1)[0].toLowerCase())) {
+		return parts
+			.slice(0, -1)
+			.filter((x) => x)
+			.join(' ')
+			.trimEnd();
 	}
 	return searchFilter;
 }

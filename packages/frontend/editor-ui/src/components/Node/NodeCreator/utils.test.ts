@@ -96,6 +96,9 @@ describe('NodeCreator - utils', () => {
 			['Telegram Bot trigger', 'Telegram Bot'],
 			['Telegram TRIGGER', 'Telegram'],
 			['', ''],
+			['Telegram　Trigger', 'Telegram　Trigger'], // full-width space,
+			['Telegram Trigger  ', 'Telegram Trigger'],
+			['Telegram   Trigger', 'Telegram'],
 		])('should transform "%s" to "%s"', (input, expected) => {
 			expect(removeTrailingTrigger(input)).toEqual(expected);
 		});
