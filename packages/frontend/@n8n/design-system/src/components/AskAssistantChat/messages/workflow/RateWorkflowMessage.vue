@@ -24,12 +24,11 @@ const showFeedback = ref(false);
 const showSuccess = ref(false);
 
 function onRateButton(rating: 'thumbsUp' | 'thumbsDown') {
+	showFeedback.value = true;
 	if (rating === 'thumbsUp') {
 		emit('thumbsUp');
-		showSuccess.value = true;
 	} else {
 		emit('thumbsDown');
-		showFeedback.value = true;
 	}
 }
 
@@ -59,9 +58,9 @@ function onSubmitFeedback() {
 					:rows="5"
 				/>
 				<div :class="$style.feedbackTextArea__footer">
-					<n8n-button native-type="submit" type="secondary" size="small" @click="onSubmitFeedback"
-						>Submit feedback</n8n-button
-					>
+					<n8n-button native-type="submit" type="secondary" size="small" @click="onSubmitFeedback">
+						Submit feedback
+					</n8n-button>
 				</div>
 			</div>
 
