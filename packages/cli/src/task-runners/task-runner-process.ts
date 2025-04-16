@@ -59,6 +59,7 @@ export class TaskRunnerProcess extends TypedEmitter<TaskRunnerProcessEventMap> {
 		'NODE_FUNCTION_ALLOW_BUILTIN',
 		'NODE_FUNCTION_ALLOW_EXTERNAL',
 		'N8N_SENTRY_DSN',
+		'N8N_RUNNERS_ALLOW_PROTOTYPE_MUTATION',
 		// Metadata about the environment
 		'N8N_VERSION',
 		'ENVIRONMENT',

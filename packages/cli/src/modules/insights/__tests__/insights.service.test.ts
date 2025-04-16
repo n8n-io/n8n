@@ -544,6 +544,29 @@ describe('workflowExecuteAfterHandler - flushEvents', () => {
 		}
 	});
 
+	test('reschedule flush on no buffered insights', async () => {
+		// ARRANGE
+		jest.useFakeTimers();
+		trxMock.insert.mockClear();
+		insightsService.startBackgroundProcess();
+		const flushEventsSpy = jest.spyOn(insightsService, 'flushEvents');
+
+		try {
+			// ACT
+			await jest.advanceTimersByTimeAsync(31 * 1000);
+
+			// ASSERT
+			expect(flushEventsSpy).toHaveBeenCalledTimes(1);
+			expect(trxMock.insert).not.toHaveBeenCalled();
+
+			// ACT
+			await jest.advanceTimersByTimeAsync(31 * 1000);
+			expect(flushEventsSpy).toHaveBeenCalledTimes(2);
+		} finally {
+			jest.useRealTimers();
+		}
+	});
+
 	test('flushes events to the database on shutdown', async () => {
 		// ARRANGE
 		trxMock.insert.mockClear();

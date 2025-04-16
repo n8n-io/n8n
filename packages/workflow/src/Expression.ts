@@ -48,17 +48,6 @@ setErrorHandler((error: Error) => {
 	if (isExpressionError(error)) throw error;
 });
 
-const AsyncFunction = (async () => {}).constructor as FunctionConstructor;
-
-const fnConstructors = {
-	sync: Function.prototype.constructor,
-
-	async: AsyncFunction.prototype.constructor,
-	mock: () => {
-		throw new ExpressionError('Arbitrary code execution detected');
-	},
-};
-
 export class Expression {
 	constructor(private readonly workflow: Workflow) {}
 
@@ -216,8 +205,6 @@ export class Expression {
 		data.Reflect = {};
 		data.Proxy = {};
 
-		data.constructor = {};
-
 		// Deprecated
 		data.escape = {};
 		data.unescape = {};
@@ -341,10 +328,6 @@ export class Expression {
 
 	private renderExpression(expression: string, data: IWorkflowDataProxyData) {
 		try {
-			[Function, AsyncFunction].forEach(({ prototype }) =>
-				Object.defineProperty(prototype, 'constructor', { value: fnConstructors.mock }),
-			);
-
 			return evaluateExpression(expression, data);
 		} catch (error) {
 			if (isExpressionError(error)) throw error;
@@ -358,11 +341,6 @@ export class Expression {
 
 				throw new ApplicationError(match.groups.msg);
 			}
-		} finally {
-			Object.defineProperty(Function.prototype, 'constructor', { value: fnConstructors.sync });
-			Object.defineProperty(AsyncFunction.prototype, 'constructor', {
-				value: fnConstructors.async,
-			});
 		}
 
 		return null;

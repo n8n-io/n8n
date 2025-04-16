@@ -1,4 +1,5 @@
 import type * as express from 'express';
+import { type IncomingHttpHeaders } from 'http';
 import { mock } from 'jest-mock-extended';
 import get from 'lodash/get';
 import merge from 'lodash/merge';
@@ -31,6 +32,7 @@ type TestTriggerNodeOptions = {
 	timezone?: string;
 	workflowStaticData?: IDataObject;
 	credential?: ICredentialDataDecryptedObject;
+	helpers?: Partial<ITriggerFunctions['helpers']>;
 };
 
 type TestWebhookTriggerNodeOptions = TestTriggerNodeOptions & {
@@ -38,6 +40,8 @@ type TestWebhookTriggerNodeOptions = TestTriggerNodeOptions & {
 	request?: MockDeepPartial<express.Request>;
 	bodyData?: IDataObject;
 	childNodes?: NodeTypeAndVersion[];
+	workflow?: Workflow;
+	headerData?: IncomingHttpHeaders;
 };
 
 type TestPollingTriggerNodeOptions = TestTriggerNodeOptions & {};
@@ -117,6 +121,7 @@ export async function testWebhookTriggerNode(
 	const version = trigger.description.version;
 	const node = merge(
 		{
+			id: options.node?.id ?? '1',
 			type: trigger.description.name,
 			name: trigger.description.defaults.name ?? `Test Node (${trigger.description.name})`,
 			typeVersion: typeof version === 'number' ? version : version.at(-1),
@@ -130,6 +135,7 @@ export async function testWebhookTriggerNode(
 		returnJsonArray,
 		registerCron: (cronExpression, onTick) =>
 			scheduledTaskManager.registerCron(workflow, cronExpression, onTick),
+		prepareBinaryData: options.helpers?.prepareBinaryData ?? jest.fn(),
 	});
 
 	const request = mock<express.Request>({
@@ -147,13 +153,14 @@ export async function testWebhookTriggerNode(
 		getMode: () => options.mode ?? 'trigger',
 		getInstanceId: () => 'instanceId',
 		getBodyData: () => options.bodyData ?? {},
-		getHeaderData: () => ({}),
+		getHeaderData: () => options.headerData ?? {},
 		getInputConnectionData: async () => ({}),
 		getNodeWebhookUrl: (name) => `/test-webhook-url/${name}`,
 		getParamsData: () => ({}),
 		getQueryData: () => ({}),
 		getRequestObject: () => request,
 		getResponseObject: () => response,
+		getWorkflow: () => options.workflow ?? mock<Workflow>(),
 		getWebhookName: () => options.webhookName ?? 'default',
 		getWorkflowStaticData: () => options.workflowStaticData ?? {},
 		getNodeParameter: (parameterName, fallback) => get(node.parameters, parameterName) ?? fallback,

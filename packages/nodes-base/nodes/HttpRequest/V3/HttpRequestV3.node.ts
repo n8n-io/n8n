@@ -38,6 +38,7 @@ import {
 	sanitizeUiMessage,
 	setAgentOptions,
 } from '../GenericFunctions';
+import { configureResponseOptimizer } from '../shared/optimizeResponse';
 
 function toText<T>(data: T) {
 	if (typeof data === 'object' && data !== null) {
@@ -70,6 +71,15 @@ export class HttpRequestV3 implements INodeType {
 					},
 				},
 			],
+			usableAsTool: {
+				replacements: {
+					codex: {
+						subcategories: {
+							Tools: ['Recommended Tools'],
+						},
+					},
+				},
+			},
 			properties: mainProperties,
 		};
 	}
@@ -832,6 +842,8 @@ export class HttpRequestV3 implements INodeType {
 						}
 					}
 				}
+				// This is a no-op outside of tool usage
+				const optimizeResponse = configureResponseOptimizer(this, itemIndex);
 
 				if (autoDetectResponseFormat && !fullResponse) {
 					delete response.headers;
@@ -839,9 +851,10 @@ export class HttpRequestV3 implements INodeType {
 					delete response.statusMessage;
 				}
 				if (!fullResponse) {
-					response = response.body;
+					response = optimizeResponse(response.body);
+				} else {
+					response.body = optimizeResponse(response.body);
 				}
-
 				if (responseFormat === 'file') {
 					const outputPropertyName = this.getNodeParameter(
 						'options.response.response.outputPropertyName',
@@ -911,7 +924,6 @@ export class HttpRequestV3 implements INodeType {
 								returnItem[outputPropertyName] = toText(response[property]);
 								continue;
 							}
-
 							returnItem[property] = response[property];
 						}
 						returnItems.push({
@@ -1001,11 +1013,17 @@ export class HttpRequestV3 implements INodeType {
 			returnItems[0].json.data &&
 			Array.isArray(returnItems[0].json.data)
 		) {
-			this.addExecutionHints({
-				message:
-					'To split the contents of ‘data’ into separate items for easier processing, add a ‘Split Out’ node after this one',
-				location: 'outputPane',
-			});
+			const message =
+				'To split the contents of ‘data’ into separate items for easier processing, add a ‘Split Out’ node after this one';
+
+			if (this.addExecutionHints) {
+				this.addExecutionHints({
+					message,
+					location: 'outputPane',
+				});
+			} else {
+				this.logger.info(message);
+			}
 		}
 
 		return [returnItems];
