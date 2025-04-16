@@ -281,7 +281,7 @@ export abstract class TaskRunner extends EventEmitter {
 			this.send({
 				type: 'runner:taskrejected',
 				taskId,
-				reason: 'Offer expired - broker too slow to accept',
+				reason: 'Offer expired - not accepted within validity window',
 			});
 			return;
 		} else {
