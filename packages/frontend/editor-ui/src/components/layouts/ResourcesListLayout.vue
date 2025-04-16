@@ -301,21 +301,11 @@ watch(
 	},
 );
 
-watch(
-	() => props.resources,
-	async () => {
-		await nextTick();
-		focusSearchInput();
-	},
-);
-
 // Lifecycle hooks
 onMounted(async () => {
 	await loadPaginationFromQueryString();
 	await props.initialize();
 	await nextTick();
-
-	focusSearchInput();
 
 	if (hasAppliedFilters()) {
 		hasFilters.value = true;
