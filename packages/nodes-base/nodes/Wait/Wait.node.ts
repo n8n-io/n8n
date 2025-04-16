@@ -506,7 +506,15 @@ export class Wait extends Webhook {
 			// a number of seconds added to the current timestamp
 			waitTill = new Date(new Date().getTime() + waitAmount);
 		} else {
-			const dateTimeStr = context.getNodeParameter('dateTime', 0) as string;
+			const dateTimeStrRaw = context.getNodeParameter('dateTime', 0);
+			const dateTimeStr =
+				dateTimeStrRaw instanceof Date
+					? dateTimeStrRaw.toISOString()
+					: dateTimeStrRaw instanceof DateTime
+						? dateTimeStrRaw.toISO()
+						: typeof 'string' === dateTimeStrRaw
+							? dateTimeStrRaw
+							: 'invalid';
 
 			if (isNaN(Date.parse(dateTimeStr))) {
 				throw new NodeOperationError(
