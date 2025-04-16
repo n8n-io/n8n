@@ -4,7 +4,7 @@ import { createReactAgent } from '@langchain/langgraph/prebuilt';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { anthropicClaude35Sonnet, gpt41mini } from './llm-config';
+import { anthropicClaude35Sonnet, o3mini } from './llm-config';
 import {
 	supervisorPrompt,
 	plannerPrompt,
@@ -32,7 +32,7 @@ const nextStepTool = new DynamicStructuredTool({
 });
 
 export const supervisorChain = supervisorPrompt
-	.pipe(gpt41mini.bindTools([nextStepTool], { tool_choice: 'route_next_step' }))
+	.pipe(o3mini.bindTools([nextStepTool], { tool_choice: 'route_next_step' }))
 	.pipe((x: AIMessageChunk) => {
 		const toolCall = x.tool_calls?.[0];
 		return toolCall?.args as { next: string };
@@ -40,7 +40,7 @@ export const supervisorChain = supervisorPrompt
 
 ///////////////////// Planner Agent /////////////////////
 export const plannerAgent = createReactAgent({
-	llm: gpt41mini,
+	llm: o3mini,
 	tools: [
 		new DynamicStructuredTool({
 			name: 'generate_plan',
@@ -70,7 +70,7 @@ export const plannerAgent = createReactAgent({
 
 ///////////////////// Node Selection Agent /////////////////////
 export const nodeSelectionAgent = createReactAgent({
-	llm: gpt41mini,
+	llm: o3mini,
 	tools: [
 		new DynamicStructuredTool({
 			name: 'select_n8n_nodes',
