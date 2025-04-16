@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref, computed } from 'vue';
+import { ref, computed } from 'vue';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
-import { nodeViewEventBus } from '@/event-bus';
 import { useI18n } from '@/composables/useI18n';
 import { useCanvasNode } from '@/composables/useCanvasNode';
 import { useBuilderStore } from '@/stores/builder.store';
@@ -22,24 +21,6 @@ const isFocused = ref(false);
 // const prompt = ref('Every morning at 9 am get current weather in Prague and send me an email if it's going to rain');
 const prompt = ref('');
 const hasContent = computed(() => prompt.value.trim().length > 0);
-
-onMounted(() => {
-	nodeViewEventBus.on('runWorkflowButton:mouseenter', onShowTooltip);
-	nodeViewEventBus.on('runWorkflowButton:mouseleave', onHideTooltip);
-});
-
-onBeforeUnmount(() => {
-	nodeViewEventBus.off('runWorkflowButton:mouseenter', onShowTooltip);
-	nodeViewEventBus.off('runWorkflowButton:mouseleave', onHideTooltip);
-});
-
-function onShowTooltip() {
-	isTooltipVisible.value = true;
-}
-
-function onHideTooltip() {
-	isTooltipVisible.value = false;
-}
 
 async function onSubmit() {
 	builderStore.openChat();
@@ -64,6 +45,7 @@ async function onSubmit() {
 						v-model="prompt"
 						:class="$style.form_textarea"
 						type="textarea"
+						:disabled="builderStore.streaming"
 						placeholder="What would you like to automate?"
 						:read-only="false"
 						:rows="15"
@@ -71,7 +53,12 @@ async function onSubmit() {
 						@blur="isFocused = false"
 					/>
 					<div :class="$style.form_footer">
-						<n8n-button native-type="submit" :disabled="!hasContent">Build workflow</n8n-button>
+						<n8n-button
+							native-type="submit"
+							:disabled="!hasContent || builderStore.streaming"
+							@keydown.enter="onSubmit"
+							>Build workflow</n8n-button
+						>
 					</div>
 				</form>
 				<template #content> Type your prompt here </template>
