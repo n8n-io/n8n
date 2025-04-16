@@ -475,13 +475,13 @@ describe('Execution', () => {
 	it('should send proper payload for node rerun', () => {
 		const mockUserData = [
 			{
-				"firstname": "Lawrence",
-				"lastname": "Kertzmann"
-			}
+				firstname: 'Lawrence',
+				lastname: 'Kertzmann',
+			},
 		];
 		cy.intercept('GET', 'https://internal.users.n8n.cloud/webhook/random-data-api', {
 			statusCode: 200,
-			body: mockUserData
+			body: mockUserData,
 		}).as('getRandomUsers');
 
 		cy.createFixtureWorkflow('Multiple_trigger_node_rerun.json', 'Multiple trigger node rerun');
