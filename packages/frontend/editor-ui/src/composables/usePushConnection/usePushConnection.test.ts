@@ -1,62 +1,36 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { usePushConnection } from '@/composables/usePushConnection';
+import { testWebhookReceived } from '@/composables/usePushConnection/handlers';
+import type { TestWebhookReceived } from '@n8n/api-types/push/webhook';
 import type { PushMessage } from '@n8n/api-types';
 
-// Stub the push store
-const addEventListenerMock = vi.fn();
-const removeEventListenerMock = vi.fn();
+const removeEventListener = vi.fn();
+const addEventListener = vi.fn((event: PushMessage) => removeEventListener);
 
 vi.mock('@/stores/pushConnection.store', () => ({
 	usePushConnectionStore: () => ({
-		addEventListener: addEventListenerMock.mockImplementation(
-			(cb: (event: PushMessage) => void) => {
-				// Return the removal callback
-				return removeEventListenerMock;
-			},
-		),
+		addEventListener,
 	}),
 }));
 
-// Stub the handler functions. Each handler returns a resolved promise.
-const testWebhookDeleted = vi.fn(async (event: any) => Promise.resolve('deleted'));
-const testWebhookReceived = vi.fn(async (event: any) => Promise.resolve('received'));
-const reloadNodeType = vi.fn(async (event: any) => Promise.resolve('reload'));
-const removeNodeType = vi.fn(async (event: any) => Promise.resolve('remove'));
-const nodeDescriptionUpdated = vi.fn(async (event: any) => Promise.resolve('description'));
-const nodeExecuteBefore = vi.fn(async (event: any) => Promise.resolve('before'));
-const nodeExecuteAfter = vi.fn(async (event: any) => Promise.resolve('after'));
-const executionStarted = vi.fn(async (event: any) => Promise.resolve('started'));
-const executionWaiting = vi.fn(async (event: any) => Promise.resolve('waiting'));
-const sendWorkerStatusMessage = vi.fn(async (event: any) => Promise.resolve('worker'));
-const sendConsoleMessage = vi.fn(async (event: any) => Promise.resolve('console'));
-const workflowFailedToActivate = vi.fn(async (event: any) => Promise.resolve('failed'));
-const executionFinished = vi.fn(async (event: any) => Promise.resolve('finished'));
-const executionRecovered = vi.fn(async (event: any) => Promise.resolve('recovered'));
-const workflowActivated = vi.fn(async (event: any) => Promise.resolve('activated'));
-const workflowDeactivated = vi.fn(async (event: any) => Promise.resolve('deactivated'));
-const collaboratorsChanged = vi.fn(async (event: any) => Promise.resolve('collab'));
-
 vi.mock('@/composables/usePushConnection/handlers', () => ({
-	testWebhookDeleted,
-	testWebhookReceived,
-	reloadNodeType,
-	removeNodeType,
-	nodeDescriptionUpdated,
-	nodeExecuteBefore,
-	nodeExecuteAfter,
-	executionStarted,
-	executionWaiting,
-	sendWorkerStatusMessage,
-	sendConsoleMessage,
-	workflowFailedToActivate,
-	executionFinished,
-	executionRecovered,
-	workflowActivated,
-	workflowDeactivated,
-	collaboratorsChanged,
+	testWebhookDeleted: vi.fn(),
+	testWebhookReceived: vi.fn(),
+	reloadNodeType: vi.fn(),
+	removeNodeType: vi.fn(),
+	nodeDescriptionUpdated: vi.fn(),
+	nodeExecuteBefore: vi.fn(),
+	nodeExecuteAfter: vi.fn(),
+	executionStarted: vi.fn(),
+	executionWaiting: vi.fn(),
+	sendWorkerStatusMessage: vi.fn(),
+	sendConsoleMessage: vi.fn(),
+	workflowFailedToActivate: vi.fn(),
+	executionFinished: vi.fn(),
+	executionRecovered: vi.fn(),
+	workflowActivated: vi.fn(),
+	workflowDeactivated: vi.fn(),
+	collaboratorsChanged: vi.fn(),
 }));
-
-// Now import the composable to test.
-import { usePushConnection } from '@/composables/usePushConnection';
 
 describe('usePushConnection composable', () => {
 	let pushConnection: ReturnType<typeof usePushConnection>;
@@ -66,29 +40,29 @@ describe('usePushConnection composable', () => {
 		pushConnection = usePushConnection();
 	});
 
-	afterEach(() => {
-		// In case some test leaves fake timers active or similar,
-		// restore them.
-		vi.useRealTimers();
-	});
-
 	it('should register an event listener on initialize', () => {
 		pushConnection.initialize();
-		expect(addEventListenerMock).toHaveBeenCalledTimes(1);
+		expect(addEventListener).toHaveBeenCalledTimes(1);
 	});
 
 	it('should call the correct handler when an event is received', async () => {
 		pushConnection.initialize();
 
 		// Get the event callback which was registered via addEventListener.
-		const eventCallback = addEventListenerMock.mock.calls[0][0];
+		const fn = addEventListener.mock.calls[0][0];
 
 		// Create a test event for one of the handled types.
 		// In this test, we simulate the event type 'testWebhookReceived'.
-		const testEvent: PushMessage = { type: 'testWebhookReceived', payload: 'dummy' } as PushMessage;
+		const testEvent: TestWebhookReceived = {
+			type: 'testWebhookReceived',
+			data: {
+				executionId: '123',
+				workflowId: '456',
+			},
+		};
 
 		// Call the event callback with our test event.
-		await eventCallback(testEvent);
+		await fn(testEvent);
 
 		// Allow any microtasks to complete.
 		await Promise.resolve();
@@ -102,6 +76,6 @@ describe('usePushConnection composable', () => {
 		pushConnection.initialize();
 		pushConnection.terminate();
 
-		expect(removeEventListenerMock).toHaveBeenCalledTimes(1);
+		expect(removeEventListener).toHaveBeenCalledTimes(1);
 	});
 });
