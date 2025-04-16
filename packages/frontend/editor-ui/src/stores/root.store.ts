@@ -1,15 +1,15 @@
 import {
 	CLOUD_BASE_URL_PRODUCTION,
-	CLOUD_BASE_URL_STAGING, LOCAL_STORAGE_LOCALE,
-	LOCAL_STORAGE_THEME,
-	STORES
+	CLOUD_BASE_URL_STAGING,
+	LOCAL_STORAGE_LOCALE,
+	STORES,
 } from '@/constants';
 import type { RootState } from '@/Interface';
 import { randomString, setGlobalState } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
-import {useStorage} from "@/composables/useStorage";
-import {loadLanguage} from "@/plugins/i18n";
+import { useStorage } from '@/composables/useStorage';
+import { loadLanguage } from '@/plugins/i18n';
 
 const { VUE_APP_URL_BASE_API } = import.meta.env;
 
@@ -196,11 +196,11 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 	// #endregion
 
 	// set storage locale
-	if (localeRef.value){
-		console.log('init storage locale', localeRef.value);
+	if (localeRef.value) {
+		// init storage locale
 		setLocale(localeRef.value);
-	}else if (defaultLocale.value){
-		console.log('init default locale', defaultLocale.value);
+	} else if (defaultLocale.value) {
+		// init default locale
 		setLocale(defaultLocale.value);
 	}
 

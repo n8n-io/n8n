@@ -16,8 +16,8 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { createFormEventBus } from '@n8n/design-system/utils';
 import type { MfaModalEvents } from '@/event-bus/mfa';
 import { promptMfaCodeBus } from '@/event-bus/mfa';
-import {BaseTextKey, loadLanguage} from '@/plugins/i18n';
-import {useRootStore} from "@/stores/root.store";
+import type { BaseTextKey } from '@/plugins/i18n';
+import { useRootStore } from '@/stores/root.store';
 
 type UserBasicDetailsForm = {
 	firstName: string;
@@ -52,7 +52,7 @@ const themeOptions = ref<Array<{ name: ThemeOption; label: BaseTextKey }>>([
 		label: 'settings.personal.theme.dark',
 	},
 ]);
-const rootStore = useRootStore()
+const rootStore = useRootStore();
 const currentLocale = ref(rootStore.locale);
 const localeOptions = ref<Array<{ name: string; label: BaseTextKey }>>([
 	{
@@ -62,7 +62,7 @@ const localeOptions = ref<Array<{ name: string; label: BaseTextKey }>>([
 	{
 		name: 'zh-CN',
 		label: 'settings.personal.languages.zh-CN',
-	}
+	},
 ]);
 
 const uiStore = useUIStore();
@@ -89,8 +89,7 @@ const isMfaFeatureEnabled = computed((): boolean => {
 	return settingsStore.isMfaFeatureEnabled;
 });
 const hasAnyPersonalisationChanges = computed((): boolean => {
-	return currentSelectedTheme.value !== uiStore.theme
-		|| currentLocale.value !== rootStore.locale;
+	return currentSelectedTheme.value !== uiStore.theme || currentLocale.value !== rootStore.locale;
 });
 const hasAnyChanges = computed(() => {
 	return hasAnyBasicInfoChanges.value || hasAnyPersonalisationChanges.value;
@@ -208,8 +207,7 @@ async function updatePersonalisationSettings() {
 
 	if (currentLocale.value !== rootStore.locale) {
 		// update locale
-		console.log('update locale', currentLocale.value);
-		rootStore.setLocale(currentLocale.value)
+		rootStore.setLocale(currentLocale.value);
 
 		// refresh
 		location.reload();
@@ -376,7 +374,10 @@ onBeforeUnmount(() => {
 					</n8n-select>
 				</n8n-input-label>
 
-				<n8n-input-label :label="i18n.baseText('settings.personal.languages')" :class="$style.languagesInputLabel">
+				<n8n-input-label
+					:label="i18n.baseText('settings.personal.languages')"
+					:class="$style.languagesInputLabel"
+				>
 					<n8n-select
 						v-model="currentLocale"
 						:class="$style.languagesSelect"
@@ -468,7 +469,7 @@ onBeforeUnmount(() => {
 	max-width: 50%;
 }
 
-.languagesInputLabel{
+.languagesInputLabel {
 	margin-top: 10px;
 }
 .languagesSelect {
