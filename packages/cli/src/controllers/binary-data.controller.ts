@@ -1,4 +1,4 @@
-import { BinaryDataQueryDto, BinaryDataSignedQueryDto } from '@n8n/api-types';
+import { BinaryDataQueryDto, BinaryDataSignedQueryDto, ViewableMimeTypes } from '@n8n/api-types';
 import { Request, Response } from 'express';
 import { JsonWebTokenError } from 'jsonwebtoken';
 import { BinaryDataService, FileNotFoundError, isValidNonDefaultMode } from 'n8n-core';
@@ -64,22 +64,19 @@ export class BinaryDataController {
 		fileName?: string,
 		mimeType?: string,
 	) {
-		if (!fileName || !mimeType) {
-			try {
-				const metadata = await this.binaryDataService.getMetadata(binaryDataId);
-				fileName = metadata.fileName;
-				mimeType = metadata.mimeType;
-				res.setHeader('Content-Length', metadata.fileSize);
-			} catch {}
+		try {
+			const metadata = await this.binaryDataService.getMetadata(binaryDataId);
+			fileName = metadata.fileName ?? fileName;
+			mimeType = metadata.mimeType ?? mimeType;
+			res.setHeader('Content-Length', metadata.fileSize);
+		} catch {}
+
+		if (action === 'view' && (!mimeType || !ViewableMimeTypes.includes(mimeType.toLowerCase()))) {
+			throw new BadRequestError('Content not viewable');
 		}
 
 		if (mimeType) {
 			res.setHeader('Content-Type', mimeType);
-
-			// Sandbox html files when viewed in a browser
-			if (mimeType.includes('html') && action === 'view') {
-				res.header('Content-Security-Policy', 'sandbox');
-			}
 		}
 
 		if (action === 'download' && fileName) {

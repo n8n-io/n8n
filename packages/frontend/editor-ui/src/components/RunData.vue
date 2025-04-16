@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ViewableMimeTypes } from '@n8n/api-types';
 import { useStorage } from '@/composables/useStorage';
 import { saveAs } from 'file-saver';
 import type {
@@ -1182,10 +1183,8 @@ function closeBinaryDataDisplay() {
 }
 
 function isViewable(index: number, key: string | number): boolean {
-	const { fileType } = binaryData.value[index][key];
-	return (
-		!!fileType && ['image', 'audio', 'video', 'text', 'json', 'pdf', 'html'].includes(fileType)
-	);
+	const { mimeType } = binaryData.value[index][key];
+	return ViewableMimeTypes.includes(mimeType);
 }
 
 function isDownloadable(index: number, key: string | number): boolean {
