@@ -1,11 +1,6 @@
 import { chatWithBuilder } from '@/api/ai';
 import type { VIEWS } from '@/constants';
-import {
-	EDITABLE_CANVAS_VIEWS,
-	STORES,
-	PLACEHOLDER_EMPTY_WORKFLOW_ID,
-	WORKFLOW_BUILDER_EXPERIMENT,
-} from '@/constants';
+import { EDITABLE_CANVAS_VIEWS, STORES, WORKFLOW_BUILDER_EXPERIMENT } from '@/constants';
 import type { ChatRequest } from '@/types/assistant.types';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
 import { defineStore } from 'pinia';
@@ -21,23 +16,12 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useUIStore } from './ui.store';
 import { useAIAssistantHelpers } from '@/composables/useAIAssistantHelpers';
 import { usePostHog } from './posthog.store';
+import { useNodeTypesStore } from './nodeTypes.store';
 
 export const MAX_CHAT_WIDTH = 425;
 export const MIN_CHAT_WIDTH = 250;
 export const DEFAULT_CHAT_WIDTH = 330;
 export const ENABLED_VIEWS = [...EDITABLE_CANVAS_VIEWS];
-
-// Only workflow builder specific message types
-const BUILDER_MESSAGE_TYPES = [
-	'text',
-	'block',
-	'workflow-step',
-	'workflow-node',
-	'workflow-composed',
-	'workflow-generated',
-	'workflow-connections',
-	'rate-workflow',
-];
 
 export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	// Core state
@@ -59,6 +43,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const telemetry = useTelemetry();
 	const assistantHelpers = useAIAssistantHelpers();
 	const posthogStore = usePostHog();
+	const nodeTypesStore = useNodeTypesStore();
 
 	// Computed properties
 	const isAssistantEnabled = computed(() => settings.isAiAssistantEnabled);
@@ -170,11 +155,14 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 					read,
 				});
 			} else if (msg.type === 'workflow-node' && 'nodes' in msg) {
+				const mappedNodes = msg.nodes.map(
+					(node) => nodeTypesStore.getNodeType(node)?.displayName ?? node,
+				);
 				messages.push({
 					id,
 					type: 'workflow-node',
 					role: 'assistant',
-					nodes: msg.nodes,
+					nodes: mappedNodes,
 					read,
 				});
 			} else if (msg.type === 'workflow-composed' && 'nodes' in msg) {
