@@ -75,12 +75,12 @@ export class TestRunsController {
 
 	@Get('/:testDefinitionId/runs/:id')
 	async getOne(req: TestRunsRequest.GetOne) {
-		const { testDefinitionId, id } = req.params;
+		const { id } = req.params;
 
 		await this.getTestDefinition(req);
 
 		try {
-			return await this.testRunRepository.getTestRunSummaryById(testDefinitionId, id);
+			return await this.testRunRepository.getTestRunSummaryById(id);
 		} catch (error) {
 			if (error instanceof UnexpectedError) throw new NotFoundError(error.message);
 			throw error;
