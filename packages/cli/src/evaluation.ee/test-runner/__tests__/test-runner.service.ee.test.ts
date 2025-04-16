@@ -1,6 +1,5 @@
 import type { User } from '@n8n/db';
 import type { ExecutionEntity } from '@n8n/db';
-import type { TestDefinition } from '@n8n/db';
 import type { TestRun } from '@n8n/db';
 import type { ExecutionRepository } from '@n8n/db';
 import type { TestCaseExecutionRepository } from '@n8n/db';
@@ -305,14 +304,7 @@ describe('TestRunnerService', () => {
 
 		workflowRunner.run.mockResolvedValue('some-execution-id');
 
-		await testRunnerService.runTest(
-			mock<User>(),
-			mock<TestDefinition>({
-				workflowId: 'workflow-under-test-id',
-				evaluationWorkflowId: 'evaluation-workflow-id',
-				mockedNodes: [{ id: '72256d90-3a67-4e29-b032-47df4e5768af' }],
-			}),
-		);
+		await testRunnerService.runTest(mock<User>(), 'workflow-under-test-id');
 
 		expect(executionRepository.createQueryBuilder).toHaveBeenCalledTimes(1);
 		expect(executionRepository.findOne).toHaveBeenCalledTimes(2);
@@ -366,14 +358,7 @@ describe('TestRunnerService', () => {
 			.calledWith('some-execution-id-4')
 			.mockResolvedValue(mockEvaluationExecutionData({ metric1: 0.5, metric2: 100 }));
 
-		await testRunnerService.runTest(
-			mock<User>(),
-			mock<TestDefinition>({
-				workflowId: 'workflow-under-test-id',
-				evaluationWorkflowId: 'evaluation-workflow-id',
-				mockedNodes: [{ id: '72256d90-3a67-4e29-b032-47df4e5768af' }],
-			}),
-		);
+		await testRunnerService.runTest(mock<User>(), 'workflow-under-test-id');
 
 		expect(workflowRunner.run).toHaveBeenCalledTimes(4);
 
@@ -469,14 +454,7 @@ describe('TestRunnerService', () => {
 			.calledWith('some-execution-id-4')
 			.mockRejectedValue(new Error('Some error'));
 
-		await testRunnerService.runTest(
-			mock<User>(),
-			mock<TestDefinition>({
-				workflowId: 'workflow-under-test-id',
-				evaluationWorkflowId: 'evaluation-workflow-id',
-				mockedNodes: [],
-			}),
-		);
+		await testRunnerService.runTest(mock<User>(), 'workflow-under-test-id');
 
 		expect(testRunRepository.incrementPassed).toHaveBeenCalledTimes(1);
 		expect(testRunRepository.incrementFailed).toHaveBeenCalledTimes(1);
@@ -525,14 +503,7 @@ describe('TestRunnerService', () => {
 			.calledWith('some-execution-id-2')
 			.mockResolvedValue(mockEvaluationExecutionData({ metric1: 1, metric2: 0 }));
 
-		await testRunnerService.runTest(
-			mock<User>(),
-			mock<TestDefinition>({
-				workflowId: 'workflow-under-test-id',
-				evaluationWorkflowId: 'evaluation-workflow-id',
-				mockedNodes: [],
-			}),
-		);
+		await testRunnerService.runTest(mock<User>(), 'workflow-under-test-id');
 
 		expect(testRunRepository.incrementPassed).toHaveBeenCalledTimes(1);
 		expect(testRunRepository.incrementFailed).toHaveBeenCalledTimes(1);
@@ -585,14 +556,7 @@ describe('TestRunnerService', () => {
 			.calledWith('some-execution-id-4')
 			.mockResolvedValue(mockErrorExecutionData());
 
-		await testRunnerService.runTest(
-			mock<User>(),
-			mock<TestDefinition>({
-				workflowId: 'workflow-under-test-id',
-				evaluationWorkflowId: 'evaluation-workflow-id',
-				mockedNodes: [],
-			}),
-		);
+		await testRunnerService.runTest(mock<User>(), 'workflow-under-test-id');
 
 		expect(testRunRepository.incrementPassed).toHaveBeenCalledTimes(1);
 		expect(testRunRepository.incrementFailed).toHaveBeenCalledTimes(1);
@@ -645,14 +609,7 @@ describe('TestRunnerService', () => {
 			.calledWith('some-execution-id-4')
 			.mockResolvedValue(mockEvaluationExecutionData({ metric1: 0.5 }));
 
-		await testRunnerService.runTest(
-			mock<User>(),
-			mock<TestDefinition>({
-				workflowId: 'workflow-under-test-id',
-				evaluationWorkflowId: 'evaluation-workflow-id',
-				mockedNodes: [{ id: '72256d90-3a67-4e29-b032-47df4e5768af' }],
-			}),
-		);
+		await testRunnerService.runTest(mock<User>(), 'workflow-under-test-id');
 
 		expect(workflowRunner.run).toHaveBeenCalledTimes(4);
 
@@ -757,14 +714,7 @@ describe('TestRunnerService', () => {
 
 		workflowRunner.run.mockResolvedValue('test-execution-id');
 
-		await testRunnerService.runTest(
-			mock<User>(),
-			mock<TestDefinition>({
-				workflowId: 'workflow-under-test-id',
-				evaluationWorkflowId: 'evaluation-workflow-id',
-				mockedNodes: [{ id: '72256d90-3a67-4e29-b032-47df4e5768af' }],
-			}),
-		);
+		await testRunnerService.runTest(mock<User>(), 'workflow-under-test-id');
 
 		expect(executionRepository.createQueryBuilder).toHaveBeenCalledTimes(1);
 		expect(executionRepository.findOne).toHaveBeenCalledTimes(2);
@@ -958,14 +908,7 @@ describe('TestRunnerService', () => {
 			.calledWith('some-execution-id-4')
 			.mockResolvedValue(mockEvaluationMiddleExecutionData({ metric2: 2 }, { metric1: 0.5 }));
 
-		await testRunnerService.runTest(
-			mock<User>(),
-			mock<TestDefinition>({
-				workflowId: 'workflow-under-test-id',
-				evaluationWorkflowId: 'evaluation-workflow-id',
-				mockedNodes: [{ id: '72256d90-3a67-4e29-b032-47df4e5768af' }],
-			}),
-		);
+		await testRunnerService.runTest(mock<User>(), 'workflow-under-test-id');
 
 		expect(workflowRunner.run).toHaveBeenCalledTimes(4);
 
@@ -1066,14 +1009,7 @@ describe('TestRunnerService', () => {
 				mockEvaluationMiddleExecutionData({ metric2: 10 }, { metric1: 0.5, metric2: 10 }),
 			);
 
-		await testRunnerService.runTest(
-			mock<User>(),
-			mock<TestDefinition>({
-				workflowId: 'workflow-under-test-id',
-				evaluationWorkflowId: 'evaluation-workflow-id',
-				mockedNodes: [{ id: '72256d90-3a67-4e29-b032-47df4e5768af' }],
-			}),
-		);
+		await testRunnerService.runTest(mock<User>(), 'workflow-under-test-id');
 
 		expect(workflowRunner.run).toHaveBeenCalledTimes(4);
 
@@ -1180,14 +1116,7 @@ describe('TestRunnerService', () => {
 				);
 
 			// Do not await here to test canceling
-			void testRunnerService.runTest(
-				mock<User>(),
-				mock<TestDefinition>({
-					workflowId: 'workflow-under-test-id',
-					evaluationWorkflowId: 'evaluation-workflow-id',
-					mockedNodes: [{ id: '72256d90-3a67-4e29-b032-47df4e5768af' }],
-				}),
-			);
+			void testRunnerService.runTest(mock<User>(), 'workflow-under-test-id');
 
 			// Simulate the moment when first test case is running (wf under test execution)
 			await jest.advanceTimersByTimeAsync(100);

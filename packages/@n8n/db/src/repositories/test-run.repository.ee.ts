@@ -31,13 +31,10 @@ export class TestRunRepository extends Repository<TestRun> {
 		return await this.save(testRun);
 	}
 
-	async markAsRunning(id: string, totalCases: number) {
+	async markAsRunning(id: string) {
 		return await this.update(id, {
 			status: 'running',
 			runAt: new Date(),
-			totalCases,
-			passedCases: 0,
-			failedCases: 0,
 		});
 	}
 
@@ -78,7 +75,7 @@ export class TestRunRepository extends Repository<TestRun> {
 	async getMany(workflowId: string, options: ListQuery.Options) {
 		// FIXME: optimize fetching final result of each test run
 		const findManyOptions: FindManyOptions<TestRun> = {
-			where: { workflow: { id: workflowId } },
+			// where: { workflow: { id: workflowId } },
 			order: { createdAt: 'DESC' },
 			relations: ['testCaseExecutions'],
 		};
