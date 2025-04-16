@@ -22,10 +22,10 @@ export class TestRunRepository extends Repository<TestRun> {
 		super(TestRun, dataSource.manager);
 	}
 
-	async createTestRun(testDefinitionId: string) {
+	// TODO: Use workfloId here.
+	async createTestRun(workflowId: string) {
 		const testRun = this.create({
 			status: 'new',
-			testDefinition: { id: testDefinitionId },
 		});
 
 		return await this.save(testRun);
@@ -75,10 +75,10 @@ export class TestRunRepository extends Repository<TestRun> {
 		return await trx.increment(TestRun, { id }, 'failedCases', 1);
 	}
 
-	async getMany(testDefinitionId: string, options: ListQuery.Options) {
+	async getMany(workflowId: string, options: ListQuery.Options) {
 		// FIXME: optimize fetching final result of each test run
 		const findManyOptions: FindManyOptions<TestRun> = {
-			where: { testDefinition: { id: testDefinitionId } },
+			where: { workflow: { id: workflowId } },
 			order: { createdAt: 'DESC' },
 			relations: ['testCaseExecutions'],
 		};
@@ -103,12 +103,9 @@ export class TestRunRepository extends Repository<TestRun> {
 	 * E.g. Test Run is considered successful if all test case executions are successful.
 	 * Test Run is considered failed if at least one test case execution is failed.
 	 */
-	async getTestRunSummaryById(
-		testDefinitionId: string,
-		testRunId: string,
-	): Promise<TestRunSummary> {
+	async getTestRunSummaryById(testRunId: string): Promise<TestRunSummary> {
 		const testRun = await this.findOne({
-			where: { id: testRunId, testDefinition: { id: testDefinitionId } },
+			where: { id: testRunId },
 			relations: ['testCaseExecutions'],
 		});
 

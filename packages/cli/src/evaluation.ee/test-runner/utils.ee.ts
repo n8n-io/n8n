@@ -10,10 +10,15 @@ import type {
 } from 'n8n-workflow';
 
 import type { TestCaseExecution } from '@/databases/entities/test-case-execution.ee';
-import type { MockedNodeItem } from '@/databases/entities/test-definition.ee';
 import type { TestRunFinalResult } from '@/databases/repositories/test-run.repository.ee';
 import { TestCaseExecutionError } from '@/evaluation.ee/test-runner/errors.ee';
 import type { TestCaseRunMetadata } from '@/evaluation.ee/test-runner/test-runner.service.ee';
+
+// Entity representing a node in a workflow under test, for which data should be mocked during test execution
+export type MockedNodeItem = {
+	name?: string;
+	id: string;
+};
 
 /**
  * Extracts the execution data from the past execution

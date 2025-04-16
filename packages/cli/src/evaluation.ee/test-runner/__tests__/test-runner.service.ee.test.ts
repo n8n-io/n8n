@@ -11,12 +11,10 @@ import type { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
 import type { ExecutionEntity } from '@/databases/entities/execution-entity';
 import type { TestDefinition } from '@/databases/entities/test-definition.ee';
-import type { TestMetric } from '@/databases/entities/test-metric.ee';
 import type { TestRun } from '@/databases/entities/test-run.ee';
 import type { User } from '@/databases/entities/user';
 import type { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import type { TestCaseExecutionRepository } from '@/databases/repositories/test-case-execution.repository.ee';
-import type { TestMetricRepository } from '@/databases/repositories/test-metric.repository.ee';
 import type { TestRunRepository } from '@/databases/repositories/test-run.repository.ee';
 import type { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
@@ -236,7 +234,6 @@ describe('TestRunnerService', () => {
 	const workflowRunner = mock<WorkflowRunner>();
 	const activeExecutions = mock<ActiveExecutions>();
 	const testRunRepository = mock<TestRunRepository>();
-	const testMetricRepository = mock<TestMetricRepository>();
 	const testCaseExecutionRepository = mock<TestCaseExecutionRepository>();
 
 	const mockNodeTypes = mockInstance(NodeTypes);
@@ -259,11 +256,6 @@ describe('TestRunnerService', () => {
 			.mockResolvedValueOnce(executionMocks[1]);
 
 		testRunRepository.createTestRun.mockResolvedValue(mock<TestRun>({ id: 'test-run-id' }));
-
-		testMetricRepository.find.mockResolvedValue([
-			mock<TestMetric>({ name: 'metric1' }),
-			mock<TestMetric>({ name: 'metric2' }),
-		]);
 	});
 
 	afterEach(() => {
@@ -282,7 +274,6 @@ describe('TestRunnerService', () => {
 			activeExecutions,
 			testRunRepository,
 			testCaseExecutionRepository,
-			testMetricRepository,
 			mockNodeTypes,
 			errorReporter,
 		);
@@ -300,7 +291,6 @@ describe('TestRunnerService', () => {
 			activeExecutions,
 			testRunRepository,
 			testCaseExecutionRepository,
-			testMetricRepository,
 			mockNodeTypes,
 			errorReporter,
 		);
@@ -341,7 +331,6 @@ describe('TestRunnerService', () => {
 			activeExecutions,
 			testRunRepository,
 			testCaseExecutionRepository,
-			testMetricRepository,
 			mockNodeTypes,
 			errorReporter,
 		);
@@ -444,7 +433,6 @@ describe('TestRunnerService', () => {
 			activeExecutions,
 			testRunRepository,
 			testCaseExecutionRepository,
-			testMetricRepository,
 			mockNodeTypes,
 			errorReporter,
 		);
@@ -505,7 +493,6 @@ describe('TestRunnerService', () => {
 			activeExecutions,
 			testRunRepository,
 			testCaseExecutionRepository,
-			testMetricRepository,
 			mockNodeTypes,
 			errorReporter,
 		);
@@ -562,7 +549,6 @@ describe('TestRunnerService', () => {
 			activeExecutions,
 			testRunRepository,
 			testCaseExecutionRepository,
-			testMetricRepository,
 			mockNodeTypes,
 			errorReporter,
 		);
@@ -623,7 +609,6 @@ describe('TestRunnerService', () => {
 			activeExecutions,
 			testRunRepository,
 			testCaseExecutionRepository,
-			testMetricRepository,
 			mockNodeTypes,
 			errorReporter,
 		);
@@ -700,7 +685,6 @@ describe('TestRunnerService', () => {
 			activeExecutions,
 			testRunRepository,
 			testCaseExecutionRepository,
-			testMetricRepository,
 			mockNodeTypes,
 			errorReporter,
 		);
@@ -729,7 +713,6 @@ describe('TestRunnerService', () => {
 			activeExecutions,
 			testRunRepository,
 			testCaseExecutionRepository,
-			testMetricRepository,
 			mockNodeTypes,
 			errorReporter,
 		);
@@ -758,7 +741,6 @@ describe('TestRunnerService', () => {
 			activeExecutions,
 			testRunRepository,
 			testCaseExecutionRepository,
-			testMetricRepository,
 			mockNodeTypes,
 			errorReporter,
 		);
@@ -799,7 +781,6 @@ describe('TestRunnerService', () => {
 			activeExecutions,
 			testRunRepository,
 			testCaseExecutionRepository,
-			testMetricRepository,
 			mockNodeTypes,
 			errorReporter,
 		);
@@ -830,7 +811,6 @@ describe('TestRunnerService', () => {
 			activeExecutions,
 			testRunRepository,
 			testCaseExecutionRepository,
-			testMetricRepository,
 			mockNodeTypes,
 			errorReporter,
 		);
@@ -891,7 +871,6 @@ describe('TestRunnerService', () => {
 			activeExecutions,
 			testRunRepository,
 			testCaseExecutionRepository,
-			testMetricRepository,
 			mockNodeTypes,
 			errorReporter,
 		);
@@ -942,7 +921,6 @@ describe('TestRunnerService', () => {
 			activeExecutions,
 			testRunRepository,
 			testCaseExecutionRepository,
-			testMetricRepository,
 			mockNodeTypes,
 			errorReporter,
 		);
@@ -1046,7 +1024,6 @@ describe('TestRunnerService', () => {
 			activeExecutions,
 			testRunRepository,
 			testCaseExecutionRepository,
-			testMetricRepository,
 			mockNodeTypes,
 			errorReporter,
 		);
@@ -1159,7 +1136,6 @@ describe('TestRunnerService', () => {
 				activeExecutions,
 				testRunRepository,
 				testCaseExecutionRepository,
-				testMetricRepository,
 				mockNodeTypes,
 				errorReporter,
 			);

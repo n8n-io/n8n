@@ -80,7 +80,6 @@ const repositories = [
 	'SharedWorkflow',
 	'Tag',
 	'TestDefinition',
-	'TestMetric',
 	'TestRun',
 	'User',
 	'Variables',
