@@ -71,12 +71,12 @@ export class BinaryDataController {
 			res.setHeader('Content-Length', metadata.fileSize);
 		} catch {}
 
-		if (mimeType) {
-			res.setHeader('Content-Type', mimeType);
-		}
-
 		if (action === 'view' && (!mimeType || !ViewableMimeTypes.includes(mimeType))) {
 			throw new BadRequestError('Content not viewable');
+		}
+
+		if (mimeType) {
+			res.setHeader('Content-Type', mimeType);
 		}
 
 		if (action === 'download' && fileName) {
