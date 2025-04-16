@@ -36,7 +36,7 @@ export function useResizablePanel(
 	localStorageKey: string,
 	{
 		container,
-		defaultSize = (size) => size / 2,
+		defaultSize,
 		snap = true,
 		minSize = 0,
 		maxSize = (size) => size,

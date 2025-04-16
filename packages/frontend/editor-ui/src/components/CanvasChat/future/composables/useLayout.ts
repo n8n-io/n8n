@@ -104,10 +104,6 @@ export function useLayout(
 	}
 
 	watch([panelState, resizer.size], ([state, height]) => {
-		if (!height) {
-			return;
-		}
-
 		canvasStore.setPanelHeight(
 			state === LOGS_PANEL_STATE.FLOATING
 				? 0

@@ -15,15 +15,13 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { type FrontendSettings } from '@n8n/api-types';
 
-let originalOffsetWidth = 0;
-
 describe('LogDetailsPanel', () => {
 	let pinia: TestingPinia;
 	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
 	let settingsStore: ReturnType<typeof mockedStore<typeof useSettingsStore>>;
 
 	function render(props: InstanceType<typeof LogDetailsPanel>['$props']) {
-		return renderComponent(LogDetailsPanel, {
+		const rendered = renderComponent(LogDetailsPanel, {
 			props,
 			global: {
 				plugins: [
@@ -35,22 +33,21 @@ describe('LogDetailsPanel', () => {
 				],
 			},
 		});
-	}
+		const container = rendered.getByTestId('log-details');
 
-	beforeAll(() => {
-		originalOffsetWidth = HTMLElement.prototype.offsetWidth;
-
-		Object.defineProperty(HTMLElement.prototype, 'offsetWidth', {
+		Object.defineProperty(container, 'offsetWidth', {
 			configurable: true,
 			get() {
 				return 1000;
 			},
 		});
-		vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({
+		vi.spyOn(container, 'getBoundingClientRect').mockReturnValue({
 			x: 0,
 			width: 1000,
 		} as DOMRect);
-	});
+
+		return rendered;
+	}
 
 	beforeEach(() => {
 		pinia = createTestingPinia({ stubActions: false, fakeApp: true });
@@ -94,15 +91,6 @@ describe('LogDetailsPanel', () => {
 			},
 			createdAt: '2025-04-16T00:00:00.000Z',
 			startedAt: '2025-04-16T00:00:01.000Z',
-		});
-	});
-
-	afterAll(() => {
-		Object.defineProperty(HTMLElement.prototype, 'offsetWidth', {
-			configurable: true,
-			get() {
-				return originalOffsetWidth;
-			},
 		});
 	});
 
