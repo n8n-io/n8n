@@ -163,7 +163,7 @@
 	"aiAssistant.builder.mode": "AI Builder",
 	"aiAssistant.builder.placeholder": "Please describe the workflow you want to create",
 	"aiAssistant.builder.generateNew": "Generate new workflow",
-	"aiAssistant.builder.feedbackPrompt": "How would you rate this workflow?",
+	"aiAssistant.builder.feedbackPrompt": "Is this workflow helpful?",
 	"aiAssistant.assistant": "AI Assistant",
 	"aiAssistant.newSessionModal.title.part1": "Start new",
 	"aiAssistant.newSessionModal.title.part2": "session",

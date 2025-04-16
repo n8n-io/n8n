@@ -526,7 +526,7 @@ RateWorkflowMessage.args = {
 			id: '126',
 			type: 'rate-workflow',
 			role: 'assistant',
-			content: 'How would you rate this workflow?',
+			content: 'Is this workflow helpful?',
 			read: false,
 		},
 	]),

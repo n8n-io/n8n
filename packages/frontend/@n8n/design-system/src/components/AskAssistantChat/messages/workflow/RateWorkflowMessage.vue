@@ -52,7 +52,7 @@ function onSubmitFeedback() {
 					v-model="feedback"
 					:class="$style.feedbackInput"
 					type="textarea"
-					placeholder="Tell us what went wrong"
+					placeholder="Tell us about your experience"
 					:read-only="false"
 					:resize="'none'"
 					:rows="5"
