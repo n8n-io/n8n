@@ -101,8 +101,7 @@ export class MicrosoftTeamsTrigger implements INodeType {
 					value: '',
 				},
 				required: true,
-				description:
-					'Select the team from the list, by URL, or by ID (the ID is the "groupId" parameter in the URL you get from "Get a link to the team")',
+				description: 'Select a team from the list or enter an ID',
 				modes: [
 					{
 						displayName: 'From List',
@@ -161,8 +160,7 @@ export class MicrosoftTeamsTrigger implements INodeType {
 					value: '',
 				},
 				required: true,
-				description:
-					'Select the channel from the list, by URL, or by ID (the ID is the "threadId" in the URL)',
+				description: 'Select a channel from the list or enter an ID',
 				modes: [
 					{
 						displayName: 'From List',
@@ -220,8 +218,7 @@ export class MicrosoftTeamsTrigger implements INodeType {
 					value: '',
 				},
 				required: true,
-				description:
-					'Select the chat from the list, by ID, or by URL (find the chat ID after "conversations/" in the URL)',
+				description: 'Select a chat from the list or enter an ID',
 				modes: [
 					{
 						displayName: 'From List',
