@@ -573,37 +573,37 @@ export class SourceControlService {
 
 		const wfModifiedInEither: SourceControlWorkflowVersionId[] = [];
 
-		wfLocalVersionIds.forEach((local) => {
-			const remoteWorkflowWithSameId = wfRemoteVersionIds.find((remote) => remote.id === local.id);
+		wfLocalVersionIds.forEach((localWorkflow) => {
+			const remoteWorkflowWithSameId = wfRemoteVersionIds.find(
+				(removeWorkflow) => removeWorkflow.id === localWorkflow.id,
+			);
 
 			if (!remoteWorkflowWithSameId) {
 				return;
 			}
 
-			if (isWorkflowModified(local, remoteWorkflowWithSameId)) {
+			if (isWorkflowModified(localWorkflow, remoteWorkflowWithSameId)) {
 				let name =
-					(options?.preferLocalVersion ? local?.name : remoteWorkflowWithSameId?.name) ??
+					(options?.preferLocalVersion ? localWorkflow?.name : remoteWorkflowWithSameId?.name) ??
 					'Workflow';
 				if (
-					local.name &&
+					localWorkflow.name &&
 					remoteWorkflowWithSameId?.name &&
-					local.name !== remoteWorkflowWithSameId.name
+					localWorkflow.name !== remoteWorkflowWithSameId.name
 				) {
 					name = options?.preferLocalVersion
-						? `${local.name} (Remote: ${remoteWorkflowWithSameId.name})`
-						: (name = `${remoteWorkflowWithSameId.name} (Local: ${local.name})`);
+						? `${localWorkflow.name} (Remote: ${remoteWorkflowWithSameId.name})`
+						: (name = `${remoteWorkflowWithSameId.name} (Local: ${localWorkflow.name})`);
 				}
-				if (remoteWorkflowWithSameId) {
-					wfModifiedInEither.push({
-						...local,
-						name,
-						versionId: options.preferLocalVersion
-							? local.versionId
-							: remoteWorkflowWithSameId.versionId,
-						localId: local.versionId,
-						remoteId: remoteWorkflowWithSameId.versionId,
-					});
-				}
+				wfModifiedInEither.push({
+					...localWorkflow,
+					name,
+					versionId: options.preferLocalVersion
+						? localWorkflow.versionId
+						: remoteWorkflowWithSameId.versionId,
+					localId: localWorkflow.versionId,
+					remoteId: remoteWorkflowWithSameId.versionId,
+				});
 			}
 		});
 
