@@ -599,7 +599,8 @@ describe('NDV', () => {
 				cy.getByTestId(`add-subnode-${group.id}`).click();
 
 				cy.getByTestId('nodes-list-header').contains(group.title).should('exist');
-				nodeCreator.getters.getNthCreatorItem(1).click();
+				// Add HTTP Request tool
+				nodeCreator.getters.getNthCreatorItem(2).click();
 				getFloatingNodeByPosition('outputSub').should('exist');
 				getFloatingNodeByPosition('outputSub').click({ force: true });
 
@@ -610,7 +611,8 @@ describe('NDV', () => {
 					// Expand the subgroup
 					cy.getByTestId('subnode-connection-group-ai_tool').click();
 					cy.getByTestId(`add-subnode-${group.id}`).click();
-					nodeCreator.getters.getNthCreatorItem(1).click();
+					// Add HTTP Request tool
+					nodeCreator.getters.getNthCreatorItem(2).click();
 					getFloatingNodeByPosition('outputSub').click({ force: true });
 					cy.getByTestId('subnode-connection-group-ai_tool')
 						.findChildByTestId('floating-subnode')
@@ -619,7 +621,7 @@ describe('NDV', () => {
 			});
 
 			// Since language model has no credentials set, it should show an error
-			// Sinse code tool require alphanumeric tool name it would also show an error(2 errors, 1 for each tool node)
+			// Since HTTP Request tool requires URL it would also show an error(2 errors, 1 for each tool node)
 			cy.get('[class*=hasIssues]').should('have.length', 3);
 		});
 
