@@ -1,8 +1,15 @@
-import { CLOUD_BASE_URL_PRODUCTION, CLOUD_BASE_URL_STAGING, STORES } from '@/constants';
+import {
+	CLOUD_BASE_URL_PRODUCTION,
+	CLOUD_BASE_URL_STAGING, LOCAL_STORAGE_LOCALE,
+	LOCAL_STORAGE_THEME,
+	STORES
+} from '@/constants';
 import type { RootState } from '@/Interface';
 import { randomString, setGlobalState } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
+import {useStorage} from "@/composables/useStorage";
+import {loadLanguage} from "@/plugins/i18n";
 
 const { VUE_APP_URL_BASE_API } = import.meta.env;
 
@@ -14,6 +21,7 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 				? 'rest'
 				: window.REST_ENDPOINT,
 		defaultLocale: 'en',
+		locale: null,
 		endpointForm: 'form',
 		endpointFormTest: 'form-test',
 		endpointFormWaiting: 'form-waiting',
@@ -97,6 +105,10 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 		pushRef: state.value.pushRef,
 	}));
 
+	// locale
+	const localeRef = useStorage(LOCAL_STORAGE_LOCALE);
+	const locale = computed(() => state.value.locale);
+
 	// #endregion
 
 	// ---------------------------------------------------------------------------
@@ -170,11 +182,27 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 		state.value.defaultLocale = locale;
 	};
 
+	const setLocale = (locale: string) => {
+		state.value.locale = locale;
+		localeRef.value = locale;
+		// update language
+		loadLanguage(locale);
+	};
+
 	const setBinaryDataMode = (binaryDataMode: RootState['binaryDataMode']) => {
 		state.value.binaryDataMode = binaryDataMode;
 	};
 
 	// #endregion
+
+	// set storage locale
+	if (localeRef.value){
+		console.log('init storage locale', localeRef.value);
+		setLocale(localeRef.value);
+	}else if (defaultLocale.value){
+		console.log('init default locale', defaultLocale.value);
+		setLocale(defaultLocale.value);
+	}
 
 	return {
 		baseUrl,
@@ -194,6 +222,7 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 		instanceId,
 		pushRef,
 		defaultLocale,
+		locale,
 		binaryDataMode,
 		OAuthCallbackUrls,
 		executionTimeout,
@@ -215,6 +244,7 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 		setOauthCallbackUrls,
 		setN8nMetadata,
 		setDefaultLocale,
+		setLocale,
 		setBinaryDataMode,
 	};
 });

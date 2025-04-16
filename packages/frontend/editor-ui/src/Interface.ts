@@ -954,6 +954,7 @@ export interface RootState {
 	baseUrl: string;
 	restEndpoint: string;
 	defaultLocale: string;
+	locale: string;
 	endpointForm: string;
 	endpointFormTest: string;
 	endpointFormWaiting: string;
