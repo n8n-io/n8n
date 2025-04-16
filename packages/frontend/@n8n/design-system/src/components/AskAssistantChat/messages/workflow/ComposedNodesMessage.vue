@@ -25,7 +25,6 @@ defineProps<Props>();
 		<ol :class="$style.nodesList">
 			<li v-for="node in message.nodes" :key="node.name" :class="$style.node">
 				<div :class="$style.nodeName">{{ node.name }}</div>
-				<div :class="$style.nodeType">{{ node.type }}</div>
 			</li>
 		</ol>
 	</BaseWorkflowMessage>
