@@ -154,9 +154,10 @@ const jsonOptimizer = (ctx: IExecuteFunctions, itemIndex: number): ResponseOptim
 				if (!Object.prototype.hasOwnProperty.call(responseData, dataField)) {
 					throw new NodeOperationError(
 						ctx.getNode(),
-						`Target field "${dataField}" not found in response`,
+						`Target field "${dataField}" not found in response.`,
 						{
 							itemIndex,
+							description: `The response contained these fields: [${Object.keys(responseData).join(', ')}]`,
 						},
 					);
 				}
