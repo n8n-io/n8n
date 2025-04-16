@@ -44,8 +44,20 @@ function onSubmitFeedback() {
 		<div :class="$style.content">
 			<p v-if="!showSuccess">{{ message.content }}</p>
 			<div v-if="!showFeedback && !showSuccess" :class="$style.buttons">
-				<n8n-icon-button type="tertiary" icon="thumbs-up" @click="onRateButton('thumbsUp')" />
-				<n8n-icon-button type="tertiary" icon="thumbs-down" @click="onRateButton('thumbsDown')" />
+				<n8n-button
+					type="secondary"
+					size="small"
+					:label="'Helpful'"
+					icon="thumbs-up"
+					@click="onRateButton('thumbsUp')"
+				/>
+				<n8n-button
+					type="secondary"
+					size="small"
+					:label="'Not helpful'"
+					icon="thumbs-down"
+					@click="onRateButton('thumbsDown')"
+				/>
 			</div>
 			<div v-if="showFeedback" :class="$style.feedbackTextArea">
 				<n8n-input
