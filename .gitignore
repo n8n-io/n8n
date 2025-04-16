@@ -24,3 +24,4 @@ CHANGELOG-*.md
 build-storybook.log
 *.junit.xml
 junit.xml
+your_database.sqlite
