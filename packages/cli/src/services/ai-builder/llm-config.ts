@@ -8,12 +8,28 @@ export const gpt4oMini = new ChatOpenAI({
 	modelName: 'gpt-4o-mini',
 	apiKey: openAIKey,
 	temperature: 0,
+	maxTokens: 16000,
 });
 
 export const gpt4o = new ChatOpenAI({
 	modelName: 'gpt-4o',
 	apiKey: openAIKey,
 	temperature: 0,
+	maxTokens: 16000,
+});
+
+export const gpt41 = new ChatOpenAI({
+	modelName: 'gpt-4.1',
+	apiKey: openAIKey,
+	temperature: 0,
+	maxTokens: 16000,
+});
+
+export const gpt41mini = new ChatOpenAI({
+	modelName: 'gpt-4.1-mini',
+	apiKey: openAIKey,
+	temperature: 0,
+	maxTokens: 16000,
 });
 
 export const o3mini = new ChatOpenAI({

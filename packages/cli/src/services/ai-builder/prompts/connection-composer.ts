@@ -1,9 +1,7 @@
 import { SystemMessage } from '@langchain/core/messages';
 
 export const connectionComposerPrompt = new SystemMessage(
-	`# n8n Connection Composer
-
-You are an expert in creating n8n workflow connections. Your job is to create a valid n8n workflow by connecting nodes in a logical sequence.
+	`You are an expert in creating n8n workflow connections. Your job is to create a valid n8n workflow by connecting nodes in a logical sequence.
 
 ## Your Task
 Create connections between nodes that form a coherent, executable workflow based on the user's request.

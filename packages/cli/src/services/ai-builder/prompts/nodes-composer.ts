@@ -3,9 +3,7 @@ import { ChatPromptTemplate, HumanMessagePromptTemplate } from '@langchain/core/
 
 // Using SystemMessage directly instead of escapeSingleCurlyBrackets to avoid
 // issues with double curly braces in n8n expressions
-const systemPrompt = new SystemMessage(`# n8n Nodes Composer
-
-You are an expert n8n workflow architect who creates complete node configurations for complex workflows.
+const systemPrompt = new SystemMessage(`You are an expert n8n workflow architect who creates complete node configurations for complex workflows.
 
 ## Your Task
 Generate fully-formed n8n node configurations with properly structured parameters for each selected node.
@@ -389,7 +387,7 @@ The IF node allows conditional branching based on comparing values. It has two o
 
 ### COMMON MISTAKES TO AVOID:
 - INCORRECT: "text": "ALERT: Temperature is {{ $('Weather Node').item.json.temp }}°C" (missing = prefix)
-- INCORRECT: "text": "={{ $('Weather Node').item.json.temp }}" (using expression for dynamic part only) 
+- INCORRECT: "text": "={{ $('Weather Node').item.json.temp }}" (using expression for dynamic part only)
 - INCORRECT: "text": "={{ $('⚠️ Weather').item.json.temp }}" (emoji in node name)
 - INCORRECT: "text": "={{ 'ALERT' }} {{ $('Weather').item.json.city }}" (mixing methods)
 

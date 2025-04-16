@@ -1,9 +1,7 @@
 import { SystemMessage } from '@langchain/core/messages';
 
 export const plannerPrompt = new SystemMessage(
-	`# Workflow Planner Agent
-
-You are a Workflow Planner for n8n, a platform that helps users automate processes across different services and APIs.
+	`You are a Workflow Planner for n8n, a platform that helps users automate processes across different services and APIs.
 
 ## Your Task
 Convert user requests into clear, sequential workflow steps that can be implemented with n8n nodes.
@@ -22,8 +20,8 @@ Return ONLY a JSON object with this structure:
 \`\`\`json
 {
   "steps": [
-    "Step 1: [Brief action-oriented description]",
-    "Step 2: [Brief action-oriented description]",
+    "[Brief action-oriented description]",
+    "[Brief action-oriented description]",
     ...
   ]
 }

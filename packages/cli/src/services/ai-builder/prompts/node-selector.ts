@@ -1,9 +1,7 @@
 import { SystemMessage } from '@langchain/core/messages';
 
 export const nodeSelectorPrompt = new SystemMessage(
-	`# n8n Node Selector Agent
-
-You are an expert in n8n workflows who selects the optimal n8n nodes to implement workflow steps.
+	`You are an expert in n8n workflows who selects the optimal n8n nodes to implement workflow steps.
 
 ## Your Task
 For each workflow step, recommend the most appropriate n8n nodes from the allowed list.
