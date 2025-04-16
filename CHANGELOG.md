@@ -1,3 +1,12 @@
+## [1.89.2](https://github.com/n8n-io/n8n/compare/n8n@1.89.1...n8n@1.89.2) (2025-04-16)
+
+
+### Bug Fixes
+
+* **core:** Reschedule Insights flushing after skipping for empty buffer ([#14637](https://github.com/n8n-io/n8n/issues/14637)) ([8234583](https://github.com/n8n-io/n8n/commit/8234583a8b51d8435681feae1fc3bff5db23bdd1))
+
+
+
 ## [1.89.1](https://github.com/n8n-io/n8n/compare/n8n@1.89.0...n8n@1.89.1) (2025-04-15)
 
 
