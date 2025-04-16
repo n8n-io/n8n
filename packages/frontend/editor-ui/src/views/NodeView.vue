@@ -937,8 +937,8 @@ async function onImportWorkflowDataEvent(data: IDataObject) {
 	selectNodes(workflowData.nodes?.map((node) => node.id) ?? []);
 	if (data.tidyUp) {
 		setTimeout(() => {
-			canvasEventBus.emit('tidyUp', 'import-workflow-data');
-		}, 0);
+			canvasEventBus.emit('tidyUp', { source: 'import-workflow-data' });
+		}, 100);
 	}
 }
 
@@ -1621,8 +1621,10 @@ watch(
 );
 
 watch(
-	() => isLoading.value || isCanvasReadOnly.value,
-	(isEmptyOrLoading) => {
+	() => {
+		return isLoading.value || isCanvasReadOnly.value || editableWorkflow.value.nodes.length !== 0;
+	},
+	(isReadOnlyOrLoading) => {
 		const defaultFallbackNodes: INodeUi[] = [
 			{
 				id: CanvasNodeRenderType.AddNodes,
@@ -1645,7 +1647,7 @@ watch(
 			});
 		}
 
-		fallbackNodes.value = isEmptyOrLoading ? [] : defaultFallbackNodes;
+		fallbackNodes.value = isReadOnlyOrLoading ? [] : defaultFallbackNodes;
 	},
 );
 
