@@ -50,25 +50,60 @@ export class SdrAgent implements INodeType {
 	methods = {
 		loadOptions: {
 			async getSDRAgents(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const connection = await getDbConnection();
-				const [rows] = await connection.execute('SELECT id, agent_identifier_name FROM sdr_agents');
-				return (rows as { id: number; agent_identifier_name: string }[]).map((row) => ({
-					name: row.agent_identifier_name,
-					value: row.id,
-				}));
+				const objectInfo = Object.assign(this);
+				const userId = objectInfo?.additionalData?.userId;
+				let result: { name: string; value: number }[] = [];
+				if (userId) {
+					const connection = await getDbConnection();
+					let [company] = await connection.execute(
+						'SELECT * FROM companies WHERE workflow_acc_id = ?',
+						[userId],
+					);
+					company = company as any[];
+					const companyInfo = company[0] as any;
+					const companyId = companyInfo.id;
+					const [rows] = await connection.execute(
+						'SELECT id, agent_identifier_name FROM sdr_agents WHERE company_id = ? AND status = ?',
+						[companyId, 'active'],
+					);
+					result = (rows as { id: number; agent_identifier_name: string }[]).map((row) => ({
+						name: row.agent_identifier_name,
+						value: row.id,
+					}));
+				}
+				return result;
 			},
 
 			async getSegments(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const sdrAgentId = this.getNodeParameter('sdrAgentId') as number;
 				if (!sdrAgentId) return [];
 
-				const connection = await getDbConnection();
-				const [rows] = await connection.execute('SELECT id, name FROM segments');
+				const objectInfo = Object.assign(this);
+				const userId = objectInfo?.additionalData?.userId;
+				let result: { name: string; value: number }[] = [];
 
-				return (rows as { id: number; name: string }[]).map((row) => ({
-					name: row.name,
-					value: row.id,
-				}));
+				if (userId) {
+					const connection = await getDbConnection();
+					let [company] = await connection.execute(
+						'SELECT * FROM companies WHERE workflow_acc_id = ?',
+						[userId],
+					);
+					company = company as any[];
+					const companyInfo = company[0] as any;
+					const companyId = companyInfo.id;
+
+					const [rows] = await connection.execute(
+						'SELECT id, name FROM segments WHERE company_id = ? AND status = ?',
+						[companyId, 'active'],
+					);
+
+					result = (rows as { id: number; name: string }[]).map((row) => ({
+						name: row.name,
+						value: row.id,
+					}));
+				}
+
+				return result;
 			},
 		},
 	};
@@ -76,11 +111,15 @@ export class SdrAgent implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const sdrAgentId = this.getNodeParameter('sdrAgentId', 0) as number;
 		const segmentId = this.getNodeParameter('segmentId', 0) as number;
-
-		// // Save in workflow static data
-		// this.getWorkflowStaticData('global').sdrAgentId = sdrAgentId;
-		// this.getWorkflowStaticData('global').segmentId = segmentId;
-
-		return [[{ json: { sdrAgentId, segmentId } }]];
+		return [
+			[
+				{
+					json: {
+						sdrAgentId,
+						segmentId,
+					},
+				},
+			],
+		];
 	}
 }
