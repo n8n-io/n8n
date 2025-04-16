@@ -51,6 +51,7 @@ async function onSubmit() {
 						:rows="15"
 						@focus="isFocused = true"
 						@blur="isFocused = false"
+						@keydown.meta.enter.stop="onSubmit"
 					/>
 					<div :class="$style.form_footer">
 						<n8n-button

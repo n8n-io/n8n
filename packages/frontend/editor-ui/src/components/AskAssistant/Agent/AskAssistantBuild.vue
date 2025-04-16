@@ -2,7 +2,7 @@
 import { useBuilderStore } from '@/stores/builder.store';
 import { useDebounce } from '@/composables/useDebounce';
 import { useUsersStore } from '@/stores/users.store';
-import { computed, watch, ref } from 'vue';
+import { computed, watch, ref, onBeforeUnmount } from 'vue';
 import SlideTransition from '@/components/transitions/SlideTransition.vue';
 import AskAssistantChat from '@n8n/design-system/components/AskAssistantChat/AskAssistantChat.vue';
 import { useTelemetry } from '@/composables/useTelemetry';
@@ -35,11 +35,7 @@ function onResizeDebounced(data: { direction: string; x: number; width: number }
 
 async function onUserMessage(content: string, quickReplyType?: string, isFeedback = false) {
 	// If there is no current session running, initialize the support chat session
-	if (!builderStore.currentSessionId) {
-		await builderStore.initSupportChat(content);
-	} else {
-		await builderStore.sendMessage({ text: content, quickReplyType });
-	}
+	await builderStore.initSupportChat(content);
 	if (isFeedback) {
 		telemetry.track('User gave feedback', {
 			chat_session_id: builderStore.currentSessionId,
@@ -136,6 +132,16 @@ watch(
 	},
 	{ deep: true },
 );
+
+const unsubscribe = builderStore.$onAction(({ name }) => {
+	if (name === 'initSupportChat') {
+		onNewWorkflow();
+	}
+});
+
+onBeforeUnmount(() => {
+	unsubscribe();
+});
 </script>
 
 <template>
