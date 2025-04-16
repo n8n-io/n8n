@@ -173,6 +173,9 @@ patchedDependencies:
   bull@4.12.1:
     hash: 4b8aae78debc54697a9106a44b1a949089d4facfeee057883e32116ab8c80f68
     path: patches/bull@4.12.1.patch
+  element-plus@2.4.3:
+    hash: fe650d17e32d13a07f54411f2ee552a8faeae20d92ef5e5a23424d590ba4a382
+    path: patches/element-plus@2.4.3.patch
   eslint-plugin-n8n-local-rules:
     hash: e0fd59254ab02473c6940fa25fcc8102ebc7d371c015ec53333a43f48af33cc2
     path: patches/eslint-plugin-n8n-local-rules.patch
@@ -1547,7 +1550,7 @@ importers:
         version: 10.11.0(vue@3.5.13(typescript@5.8.2))
       element-plus:
         specifier: catalog:frontend
-        version: 2.4.3(vue@3.5.13(typescript@5.8.2))
+        version: 2.4.3(patch_hash=fe650d17e32d13a07f54411f2ee552a8faeae20d92ef5e5a23424d590ba4a382)(vue@3.5.13(typescript@5.8.2))
       is-emoji-supported:
         specifier: ^0.0.5
         version: 0.0.5
@@ -1791,7 +1794,7 @@ importers:
         version: 3.0.3
       element-plus:
         specifier: catalog:frontend
-        version: 2.4.3(vue@3.5.13(typescript@5.8.2))
+        version: 2.4.3(patch_hash=fe650d17e32d13a07f54411f2ee552a8faeae20d92ef5e5a23424d590ba4a382)(vue@3.5.13(typescript@5.8.2))
       email-providers:
         specifier: ^2.0.1
         version: 2.0.1
@@ -21404,7 +21407,7 @@ snapshots:
 
   electron-to-chromium@1.5.114: {}
 
-  element-plus@2.4.3(vue@3.5.13(typescript@5.8.2)):
+  element-plus@2.4.3(patch_hash=fe650d17e32d13a07f54411f2ee552a8faeae20d92ef5e5a23424d590ba4a382)(vue@3.5.13(typescript@5.8.2)):
     dependencies:
       '@ctrl/tinycolor': 3.6.0
       '@element-plus/icons-vue': 2.3.1(vue@3.5.13(typescript@5.8.2))
