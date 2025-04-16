@@ -87,7 +87,6 @@ describe('NDV', () => {
 		ndv.actions.selectInputNode('Set1');
 		ndvComposables.verifyInputHoverState('1000');
 
-
 		ndv.actions.dragMainPanelToRight();
 
 		ndvComposables.resetHoverState();

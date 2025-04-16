@@ -282,17 +282,17 @@ export function hoverInputItemByText(text: string) {
 }
 
 export function verifyInputHoverState(expectedText: string) {
-  getInputPanelDataContainer()
-    .find('[data-test-id="hovering-item"]')
-    .should('be.visible')
-    .should('have.text', expectedText);
+	getInputPanelDataContainer()
+		.find('[data-test-id="hovering-item"]')
+		.should('be.visible')
+		.should('have.text', expectedText);
 }
 
 export function verifyOutputHoverState(expectedText: string) {
-  getOutputPanelDataContainer()
-    .find('[data-test-id="hovering-item"]')
-    .should('be.visible')
-    .should('have.text', expectedText);
+	getOutputPanelDataContainer()
+		.find('[data-test-id="hovering-item"]')
+		.should('be.visible')
+		.should('have.text', expectedText);
 }
 
 export function resetHoverState() {
