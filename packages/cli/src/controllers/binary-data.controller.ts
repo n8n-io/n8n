@@ -71,7 +71,7 @@ export class BinaryDataController {
 			res.setHeader('Content-Length', metadata.fileSize);
 		} catch {}
 
-		if (action === 'view' && (!mimeType || !ViewableMimeTypes.includes(mimeType))) {
+		if (action === 'view' && (!mimeType || !ViewableMimeTypes.includes(mimeType.toLowerCase()))) {
 			throw new BadRequestError('Content not viewable');
 		}
 

@@ -121,12 +121,12 @@ describe('BinaryDataController', () => {
 			expect(response.setHeader).not.toHaveBeenCalled();
 		});
 
-		it('should allow viewing of jpeg files', async () => {
+		it('should allow viewing of jpeg files, and handle mime-type casing', async () => {
 			const query = {
 				id: 'filesystem:123',
 				action: 'view',
 				fileName: 'test.jpg',
-				mimeType: 'image/jpeg',
+				mimeType: 'image/Jpeg',
 			} as BinaryDataQueryDto;
 
 			binaryDataService.getAsStream.mockResolvedValue(mock());
