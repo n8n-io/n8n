@@ -26,9 +26,10 @@ import { TestCaseExecutionError, TestRunError } from '@/evaluation.ee/test-runne
 import { NodeTypes } from '@/node-types';
 import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
-import { MockedNodeItem } from './utils.ee';
+
 import { EvaluationMetrics } from './evaluation-metrics.ee';
 import { createPinData, getPastExecutionTriggerNode } from './utils.ee';
+import type { MockedNodeItem } from './utils.ee';
 
 export interface TestRunMetadata {
 	testRunId: string;
@@ -217,6 +218,7 @@ export class TestRunnerService {
 
 		return await executePromise;
 	}
+
 	/**
 	 * Get the evaluation metrics nodes from a workflow.
 	 */
@@ -288,7 +290,7 @@ export class TestRunnerService {
 			const pastExecutionIds = pastExecutions.map((e) => e.id);
 
 			// Update test run status
-			await this.testRunRepository.markAsRunning(testRun.id, pastExecutions.length);
+			await this.testRunRepository.markAsRunning(testRun.id);
 
 			this.telemetry.track('User ran test', {
 				user_id: user.id,

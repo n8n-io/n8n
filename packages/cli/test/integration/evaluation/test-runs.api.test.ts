@@ -5,7 +5,6 @@ import type { IWorkflowBase } from 'n8n-workflow';
 import type { TestDefinition } from '@/databases/entities/test-definition.ee';
 import type { User } from '@/databases/entities/user';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { TestDefinitionRepository } from '@/databases/repositories/test-definition.repository.ee';
 import { TestRunRepository } from '@/databases/repositories/test-run.repository.ee';
 import { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.service.ee';
 import { createUserShell } from '@test-integration/db/users';

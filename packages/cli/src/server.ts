@@ -65,7 +65,6 @@ import '@/events/events.controller';
 import '@/executions/executions.controller';
 import '@/external-secrets.ee/external-secrets.controller.ee';
 import '@/license/license.controller';
-import '@/evaluation.ee/test-definitions.controller.ee';
 import '@/evaluation.ee/test-runs.controller.ee';
 import '@/workflows/workflow-history.ee/workflow-history.controller.ee';
 import '@/workflows/workflows.controller';
