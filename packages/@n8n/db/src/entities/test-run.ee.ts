@@ -1,9 +1,8 @@
-import { Column, Entity, Index, ManyToOne, OneToMany, RelationId } from '@n8n/typeorm';
+import { Column, Entity, OneToMany } from '@n8n/typeorm';
 import type { IDataObject } from 'n8n-workflow';
 
 import { DateTimeColumn, JsonColumn, WithTimestampsAndStringId } from './abstract-entity';
 import type { TestCaseExecution } from './test-case-execution.ee';
-import { TestDefinition } from './test-definition.ee';
 import { AggregatedTestRunMetrics } from './types-db';
 import type { TestRunErrorCode, TestRunFinalResult } from './types-db';
 
@@ -14,14 +13,7 @@ export type TestRunStatus = 'new' | 'running' | 'completed' | 'error' | 'cancell
  * It stores info about a specific run of a test, combining the test definition with the status and collected metrics
  */
 @Entity()
-@Index(['testDefinition'])
 export class TestRun extends WithTimestampsAndStringId {
-	@ManyToOne('TestDefinition', 'runs')
-	testDefinition: TestDefinition;
-
-	@RelationId((testRun: TestRun) => testRun.testDefinition)
-	testDefinitionId: string;
-
 	@Column('varchar')
 	status: TestRunStatus;
 

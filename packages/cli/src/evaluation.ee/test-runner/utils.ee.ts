@@ -1,4 +1,3 @@
-import type { MockedNodeItem } from '@n8n/db';
 import assert from 'assert';
 import { mapValues, pick } from 'lodash';
 import type {
@@ -12,6 +11,12 @@ import type {
 
 import { TestCaseExecutionError } from '@/evaluation.ee/test-runner/errors.ee';
 import type { TestCaseRunMetadata } from '@/evaluation.ee/test-runner/test-runner.service.ee';
+
+// Entity representing a node in a workflow under test, for which data should be mocked during test execution
+export type MockedNodeItem = {
+	name?: string;
+	id: string;
+};
 
 /**
  * Extracts the execution data from the past execution
