@@ -171,11 +171,25 @@ onBeforeUnmount(() => {
 					@message="onUserMessage"
 					@insert-workflow="onInsertWorkflow"
 				>
-					<template #placeholder>{{ i18n.baseText('aiAssistant.builder.placeholder') }}</template>
+					<template #placeholder>
+						<n8n-text :class="$style.topText">{{
+							i18n.baseText('aiAssistant.builder.placeholder')
+						}}</n8n-text>
+					</template>
 					<template v-if="workflowGenerated" #inputPlaceholder>
-						<n8n-button size="large" :class="$style.newWorkflowButton" @click="onNewWorkflow">
-							{{ i18n.baseText('aiAssistant.builder.generateNew') }}
-						</n8n-button>
+						<div :class="$style.newWorkflowButtonWrapper">
+							<n8n-button
+								type="secondary"
+								size="small"
+								@click="onNewWorkflow"
+								:class="$style.newWorkflowButton"
+							>
+								{{ i18n.baseText('aiAssistant.builder.generateNew') }}
+							</n8n-button>
+							<n8n-text :class="$style.newWorkflowText"
+								>The created workflow will be added to the editor</n8n-text
+							>
+						</div>
 					</template>
 				</AskAssistantChat>
 			</div>
@@ -183,11 +197,26 @@ onBeforeUnmount(() => {
 	</SlideTransition>
 </template>
 
-<style module>
+<style module lang="scss">
 .wrapper {
 	height: 100%;
 }
-.newWorkflowButton {
-	width: 100%;
+
+.topText {
+	color: var(--color-text-base);
+}
+
+.newWorkflowButtonWrapper {
+	display: flex;
+	flex-direction: column;
+	flex-flow: wrap;
+	gap: var(--spacing-2xs);
+	background-color: var(--color-background-light);
+	padding: var(--spacing-xs);
+	border: 0;
+}
+.newWorkflowText {
+	color: var(--color-text-base);
+	font-size: var(--font-size-2xs);
 }
 </style>
