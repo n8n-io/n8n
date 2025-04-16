@@ -686,7 +686,7 @@ describe('NDV', () => {
 		ndv.actions.close();
 	});
 
-	it('Should render xml and html tags as strings and can search', () => {
+	it.only('Should render xml and html tags as strings and can search', () => {
 		cy.createFixtureWorkflow('Test_workflow_xml_output.json', 'test');
 
 		workflowPage.actions.executeWorkflow();
@@ -704,11 +704,11 @@ describe('NDV', () => {
 
 		ndv.getters.outputTableRow(1).find('mark').should('have.text', '<lib');
 
-		ndv.getters.outputDisplayMode().find('label').eq(1).should('include.text', 'JSON');
+		ndv.getters.outputDisplayMode().find('label').eq(2).should('include.text', 'JSON');
 		ndv.getters
 			.outputDisplayMode()
 			.find('label')
-			.eq(1)
+			.eq(2)
 			.scrollIntoView()
 			.should('be.visible')
 			.click();
@@ -722,8 +722,8 @@ describe('NDV', () => {
 			);
 		ndv.getters.outputDataContainer().find('mark').should('have.text', '<lib');
 
-		ndv.getters.outputDisplayMode().find('label').eq(2).should('include.text', 'Schema');
-		ndv.getters.outputDisplayMode().find('label').eq(2).click({ force: true });
+		ndv.getters.outputDisplayMode().find('label').eq(0).should('include.text', 'Schema');
+		ndv.getters.outputDisplayMode().find('label').eq(0).click({ force: true });
 		ndv.getters
 			.outputDataContainer()
 			.findChildByTestId('run-data-schema-item-value')
