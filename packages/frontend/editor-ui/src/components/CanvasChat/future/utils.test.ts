@@ -1,4 +1,5 @@
 import {
+	createTestLogEntry,
 	createTestNode,
 	createTestTaskData,
 	createTestWorkflow,
@@ -6,12 +7,13 @@ import {
 	createTestWorkflowObject,
 } from '@/__tests__/mocks';
 import {
-	findLogEntryToAutoSelect,
 	getTreeNodeData,
 	createLogEntries,
+	findSelectedLogEntry,
 } from '@/components/CanvasChat/future/utils';
 import { type IExecutionResponse } from '@/Interface';
 import { AGENT_LANGCHAIN_NODE_TYPE, type ExecutionError, NodeConnectionTypes } from 'n8n-workflow';
+import { type LogEntrySelection } from '../types/logs';
 
 describe(getTreeNodeData, () => {
 	it('should generate one node per execution', () => {
@@ -145,9 +147,9 @@ describe(getTreeNodeData, () => {
 	});
 });
 
-describe(findLogEntryToAutoSelect, () => {
-	function find(response: IExecutionResponse) {
-		return findLogEntryToAutoSelect({
+describe(findSelectedLogEntry, () => {
+	function find(state: LogEntrySelection, response: IExecutionResponse) {
+		return findSelectedLogEntry(state, {
 			...response,
 			tree: createLogEntries(
 				createTestWorkflowObject(response.workflowData),
@@ -156,141 +158,177 @@ describe(findLogEntryToAutoSelect, () => {
 		});
 	}
 
-	it('should return undefined if no log entry is provided', () => {
-		const response = createTestWorkflowExecutionResponse({
-			workflowData: createTestWorkflow({
-				nodes: [
-					createTestNode({ name: 'A' }),
-					createTestNode({ name: 'B' }),
-					createTestNode({ name: 'C' }),
-				],
-			}),
+	describe('when log is not manually selected', () => {
+		it('should return undefined if no execution data exists', () => {
+			const response = createTestWorkflowExecutionResponse({
+				workflowData: createTestWorkflow({
+					nodes: [
+						createTestNode({ name: 'A' }),
+						createTestNode({ name: 'B' }),
+						createTestNode({ name: 'C' }),
+					],
+				}),
+				data: { resultData: { runData: {} } },
+			});
+
+			expect(find({ type: 'initial' }, response)).toBe(undefined);
 		});
 
-		expect(find(response)).toBe(undefined);
+		it('should return first log entry with error', () => {
+			const response = createTestWorkflowExecutionResponse({
+				workflowData: createTestWorkflow({
+					nodes: [
+						createTestNode({ name: 'A' }),
+						createTestNode({ name: 'B' }),
+						createTestNode({ name: 'C' }),
+					],
+				}),
+				data: {
+					resultData: {
+						runData: {
+							A: [createTestTaskData({ executionStatus: 'success' })],
+							B: [createTestTaskData({ executionStatus: 'success' })],
+							C: [
+								createTestTaskData({ executionStatus: 'success' }),
+								createTestTaskData({ error: {} as ExecutionError, executionStatus: 'error' }),
+								createTestTaskData({ error: {} as ExecutionError, executionStatus: 'error' }),
+							],
+						},
+					},
+				},
+			});
+
+			expect(find({ type: 'initial' }, response)).toEqual(
+				expect.objectContaining({ node: expect.objectContaining({ name: 'C' }), runIndex: 1 }),
+			);
+		});
+
+		it("should return first log entry with error even if it's on a sub node", () => {
+			const response = createTestWorkflowExecutionResponse({
+				workflowData: createTestWorkflow({
+					nodes: [
+						createTestNode({ name: 'A' }),
+						createTestNode({ name: 'B' }),
+						createTestNode({ name: 'C' }),
+					],
+					connections: {
+						C: {
+							[NodeConnectionTypes.AiLanguageModel]: [
+								[{ node: 'B', type: NodeConnectionTypes.AiLanguageModel, index: 0 }],
+							],
+						},
+					},
+				}),
+				data: {
+					resultData: {
+						runData: {
+							A: [createTestTaskData({ executionStatus: 'success' })],
+							B: [createTestTaskData({ executionStatus: 'success' })],
+							C: [
+								createTestTaskData({ executionStatus: 'success' }),
+								createTestTaskData({ error: {} as ExecutionError, executionStatus: 'error' }),
+								createTestTaskData({ error: {} as ExecutionError, executionStatus: 'error' }),
+							],
+						},
+					},
+				},
+			});
+
+			expect(find({ type: 'initial' }, response)).toEqual(
+				expect.objectContaining({ node: expect.objectContaining({ name: 'C' }), runIndex: 1 }),
+			);
+		});
+
+		it('should return first log entry for AI agent node if there is no log entry with error', () => {
+			const response = createTestWorkflowExecutionResponse({
+				workflowData: createTestWorkflow({
+					nodes: [
+						createTestNode({ name: 'A' }),
+						createTestNode({ name: 'B', type: AGENT_LANGCHAIN_NODE_TYPE }),
+						createTestNode({ name: 'C' }),
+					],
+				}),
+				data: {
+					resultData: {
+						runData: {
+							A: [createTestTaskData({ executionStatus: 'success' })],
+							B: [createTestTaskData({ executionStatus: 'success' })],
+							C: [
+								createTestTaskData({ executionStatus: 'success' }),
+								createTestTaskData({ error: {} as ExecutionError, executionStatus: 'error' }),
+								createTestTaskData({ error: {} as ExecutionError, executionStatus: 'error' }),
+							],
+						},
+					},
+				},
+			});
+
+			expect(find({ type: 'initial' }, response)).toEqual(
+				expect.objectContaining({ node: expect.objectContaining({ name: 'B' }), runIndex: 0 }),
+			);
+		});
+
+		it('should return first log entry if there is no log entry with error nor executed AI agent node', () => {
+			const response = createTestWorkflowExecutionResponse({
+				workflowData: createTestWorkflow({
+					nodes: [
+						createTestNode({ name: 'A' }),
+						createTestNode({ name: 'B' }),
+						createTestNode({ name: 'C' }),
+					],
+				}),
+				data: {
+					resultData: {
+						runData: {
+							A: [createTestTaskData({ executionStatus: 'success' })],
+							B: [createTestTaskData({ executionStatus: 'success' })],
+							C: [
+								createTestTaskData({ executionStatus: 'success' }),
+								createTestTaskData({ executionStatus: 'success' }),
+								createTestTaskData({ executionStatus: 'success' }),
+							],
+						},
+					},
+				},
+			});
+
+			expect(find({ type: 'initial' }, response)).toEqual(
+				expect.objectContaining({ node: expect.objectContaining({ name: 'A' }), runIndex: 0 }),
+			);
+		});
 	});
 
-	it('should return first log entry with error', () => {
-		const response = createTestWorkflowExecutionResponse({
-			workflowData: createTestWorkflow({
-				nodes: [
-					createTestNode({ name: 'A' }),
-					createTestNode({ name: 'B' }),
-					createTestNode({ name: 'C' }),
-				],
-			}),
-			data: {
-				resultData: {
-					runData: {
-						A: [createTestTaskData({ executionStatus: 'success' })],
-						B: [createTestTaskData({ executionStatus: 'success' })],
-						C: [
-							createTestTaskData({ executionStatus: 'success' }),
-							createTestTaskData({ error: {} as ExecutionError, executionStatus: 'error' }),
-							createTestTaskData({ error: {} as ExecutionError, executionStatus: 'error' }),
-						],
+	describe('when log is manually selected', () => {
+		it('should return manually selected log', () => {
+			const nodeA = createTestNode({ name: 'A' });
+			const response = createTestWorkflowExecutionResponse({
+				workflowData: createTestWorkflow({
+					id: 'test-wf-id',
+					nodes: [nodeA, createTestNode({ name: 'B' })],
+				}),
+				data: {
+					resultData: {
+						runData: {
+							A: [createTestTaskData({ executionStatus: 'success' })],
+							B: [createTestTaskData({ error: {} as ExecutionError, executionStatus: 'error' })],
+						},
 					},
 				},
-			},
+			});
+
+			const result = find(
+				{
+					type: 'selected',
+					workflowId: 'test-wf-id',
+					data: createTestLogEntry({ node: nodeA, runIndex: 0 }),
+				},
+				response,
+			);
+
+			expect(result).toEqual(
+				expect.objectContaining({ node: expect.objectContaining({ name: 'A' }), runIndex: 0 }),
+			);
 		});
-
-		expect(find(response)).toEqual(
-			expect.objectContaining({ node: expect.objectContaining({ name: 'C' }), runIndex: 1 }),
-		);
-	});
-
-	it("should return first log entry with error even if it's on a sub node", () => {
-		const response = createTestWorkflowExecutionResponse({
-			workflowData: createTestWorkflow({
-				nodes: [
-					createTestNode({ name: 'A' }),
-					createTestNode({ name: 'B' }),
-					createTestNode({ name: 'C' }),
-				],
-				connections: {
-					C: {
-						[NodeConnectionTypes.AiLanguageModel]: [
-							[{ node: 'B', type: NodeConnectionTypes.AiLanguageModel, index: 0 }],
-						],
-					},
-				},
-			}),
-			data: {
-				resultData: {
-					runData: {
-						A: [createTestTaskData({ executionStatus: 'success' })],
-						B: [createTestTaskData({ executionStatus: 'success' })],
-						C: [
-							createTestTaskData({ executionStatus: 'success' }),
-							createTestTaskData({ error: {} as ExecutionError, executionStatus: 'error' }),
-							createTestTaskData({ error: {} as ExecutionError, executionStatus: 'error' }),
-						],
-					},
-				},
-			},
-		});
-
-		expect(find(response)).toEqual(
-			expect.objectContaining({ node: expect.objectContaining({ name: 'C' }), runIndex: 1 }),
-		);
-	});
-
-	it('should return first log entry for AI agent node if there is no log entry with error', () => {
-		const response = createTestWorkflowExecutionResponse({
-			workflowData: createTestWorkflow({
-				nodes: [
-					createTestNode({ name: 'A' }),
-					createTestNode({ name: 'B', type: AGENT_LANGCHAIN_NODE_TYPE }),
-					createTestNode({ name: 'C' }),
-				],
-			}),
-			data: {
-				resultData: {
-					runData: {
-						A: [createTestTaskData({ executionStatus: 'success' })],
-						B: [createTestTaskData({ executionStatus: 'success' })],
-						C: [
-							createTestTaskData({ executionStatus: 'success' }),
-							createTestTaskData({ error: {} as ExecutionError, executionStatus: 'error' }),
-							createTestTaskData({ error: {} as ExecutionError, executionStatus: 'error' }),
-						],
-					},
-				},
-			},
-		});
-
-		expect(find(response)).toEqual(
-			expect.objectContaining({ node: expect.objectContaining({ name: 'B' }), runIndex: 0 }),
-		);
-	});
-
-	it('should return first log entry if there is no log entry with error nor executed AI agent node', () => {
-		const response = createTestWorkflowExecutionResponse({
-			workflowData: createTestWorkflow({
-				nodes: [
-					createTestNode({ name: 'A' }),
-					createTestNode({ name: 'B' }),
-					createTestNode({ name: 'C' }),
-				],
-			}),
-			data: {
-				resultData: {
-					runData: {
-						A: [createTestTaskData({ executionStatus: 'success' })],
-						B: [createTestTaskData({ executionStatus: 'success' })],
-						C: [
-							createTestTaskData({ executionStatus: 'success' }),
-							createTestTaskData({ executionStatus: 'success' }),
-							createTestTaskData({ executionStatus: 'success' }),
-						],
-					},
-				},
-			},
-		});
-
-		expect(find(response)).toEqual(
-			expect.objectContaining({ node: expect.objectContaining({ name: 'A' }), runIndex: 0 }),
-		);
 	});
 });
 

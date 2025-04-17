@@ -11,8 +11,7 @@ import LogsPanelActions from '@/components/CanvasChat/future/components/LogsPane
 import {
 	createLogEntries,
 	type ExecutionLogViewData,
-	findLogEntryToAutoSelect,
-	getSelectedLogEntry,
+	findSelectedLogEntry,
 	type LogEntry,
 } from '@/components/CanvasChat/future/utils';
 import { isChatNode } from '@/components/CanvasChat/utils';
@@ -91,11 +90,8 @@ const execution = computed<ExecutionLogViewData | undefined>(() => {
 	};
 });
 const manualLogEntrySelection = ref<LogEntrySelection>({ type: 'initial' });
-const autoSelectedLogEntry = computed(() =>
-	execution.value ? findLogEntryToAutoSelect(execution.value) : undefined,
-);
 const selectedLogEntry = computed(() =>
-	getSelectedLogEntry(manualLogEntrySelection.value, execution.value, autoSelectedLogEntry.value),
+	findSelectedLogEntry(manualLogEntrySelection.value, execution.value),
 );
 const isLogDetailsOpen = computed(
 	() => selectedLogEntry.value !== undefined && !isCollapsingDetailsPanel.value,

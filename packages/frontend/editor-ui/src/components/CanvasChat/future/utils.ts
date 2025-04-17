@@ -160,10 +160,6 @@ export function formatTokenUsageCount(
 	return usage.isEstimate ? `~${count}` : count.toLocaleString();
 }
 
-export function findLogEntryToAutoSelect(data: ExecutionLogViewData): LogEntry | undefined {
-	return findLogEntryToAutoSelectRec(data, data.tree, 0);
-}
-
 function findLogEntryToAutoSelectRec(
 	data: ExecutionLogViewData,
 	subTree: LogEntry[],
@@ -219,18 +215,23 @@ export function createLogEntries(workflow: Workflow, runData: IRunData) {
 }
 
 export function includesLogEntry(log: LogEntry, logs: LogEntry[]): boolean {
-	return logs.some((l) => l.id === log.id || includesLogEntry(log, l.children));
+	return logs.some(
+		(l) =>
+			(l.node.name === log.node.name && log.runIndex === l.runIndex) ||
+			includesLogEntry(log, l.children),
+	);
 }
 
-export function getSelectedLogEntry(
+export function findSelectedLogEntry(
 	state: LogEntrySelection,
 	execution?: ExecutionLogViewData,
-	defaultSelection?: LogEntry,
 ): LogEntry | undefined {
 	return state.type === 'initial' ||
 		state.workflowId !== execution?.workflowData.id ||
 		(state.type === 'selected' && !includesLogEntry(state.data, execution.tree))
-		? defaultSelection
+		? execution
+			? findLogEntryToAutoSelectRec(execution, execution.tree, 0)
+			: undefined
 		: state.type === 'none'
 			? undefined
 			: state.data;
