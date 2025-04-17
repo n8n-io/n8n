@@ -121,6 +121,7 @@ export interface CanvasNodeData {
 		outputMap: ExecutionOutputMap;
 		iterations: number;
 		visible: boolean;
+		executionTime: number;
 	};
 	render: CanvasNodeDefaultRender | CanvasNodeStickyNoteRender | CanvasNodeAddNodesRender;
 }

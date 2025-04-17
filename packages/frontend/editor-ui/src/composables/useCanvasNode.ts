@@ -29,7 +29,7 @@ export function useCanvasNode() {
 				execution: {
 					running: false,
 				},
-				runData: { iterations: 0, outputMap: {}, visible: false },
+				runData: { iterations: 0, outputMap: {}, visible: false, executionTime: 0 },
 				render: {
 					type: CanvasNodeRenderType.Default,
 					options: {},
@@ -64,6 +64,7 @@ export function useCanvasNode() {
 	const runDataOutputMap = computed(() => data.value.runData.outputMap);
 	const runDataIterations = computed(() => data.value.runData.iterations);
 	const hasRunData = computed(() => data.value.runData.visible);
+	const totalExecutionTime = computed(() => data.value.runData.executionTime);
 
 	const render = computed(() => data.value.render);
 
@@ -86,6 +87,7 @@ export function useCanvasNode() {
 		runDataIterations,
 		runDataOutputMap,
 		hasRunData,
+		totalExecutionTime,
 		issues,
 		hasIssues,
 		executionStatus,

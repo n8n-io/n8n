@@ -30,6 +30,7 @@ const {
 	executionWaiting,
 	executionRunning,
 	hasRunData,
+	totalExecutionTime,
 	hasIssues,
 	render,
 } = useCanvasNode();
@@ -53,6 +54,7 @@ const classes = computed(() => {
 		[$style.node]: true,
 		[$style.selected]: isSelected.value,
 		[$style.disabled]: isDisabled.value,
+		// [$style.success]: hasRunData.value,
 		[$style.success]: hasRunData.value,
 		[$style.error]: hasIssues.value,
 		[$style.pinned]: hasPinnedData.value,
@@ -81,6 +83,19 @@ const styles = computed(() => {
 
 	stylesObject['--canvas-node--main-input-count'] = mainInputs.value.length;
 	stylesObject['--canvas-node--main-output-count'] = mainOutputs.value.length;
+
+	if (totalExecutionTime.value > 0) {
+		// Currently hardcoded between 0s and 10s for 100%
+		// Could do % of total execution time relative to amount of nodes
+		const percentage = Math.min(
+			100,
+			Math.max(0, Math.floor((totalExecutionTime.value / 10000) * 100)),
+		);
+		// console.log(label.value, percentage);
+		// these are our border
+		stylesObject['border-color'] =
+			`color-mix(in srgb, rgb(41, 163, 102), rgb(255, 97, 110) ${percentage}%)`;
+	}
 
 	return stylesObject;
 });

@@ -30,7 +30,7 @@ export function createCanvasNodeData({
 	execution = { running: false },
 	issues = { items: [], visible: false },
 	pinnedData = { count: 0, visible: false },
-	runData = { outputMap: {}, iterations: 0, visible: false },
+	runData = { outputMap: {}, iterations: 0, visible: false, executionTime: 0 },
 	render = {
 		type: CanvasNodeRenderType.Default,
 		options: { configurable: false, configuration: false, trigger: false },

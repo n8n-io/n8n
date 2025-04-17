@@ -581,6 +581,9 @@ export function useCanvasMapping({
 					outputMap: nodeExecutionRunDataOutputMapById.value[node.id],
 					iterations: nodeExecutionRunDataById.value[node.id]?.length ?? 0,
 					visible: !!nodeExecutionRunDataById.value[node.id],
+					executionTime:
+						nodeExecutionRunDataById.value[node.id]?.reduce((acc, x) => acc + x.executionTime, 0) ??
+						0,
 				},
 				render: renderTypeByNodeId.value[node.id] ?? { type: 'default', options: {} },
 			};
