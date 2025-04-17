@@ -222,19 +222,31 @@ describe('buildUniqueName', () => {
 			[
 				'list segments in the path',
 				'parameters.someList[0].someParameter',
-				'someList[0]_' + DISPLAY_NAME,
+				'someList0_' + DISPLAY_NAME,
 			],
 			[
 				'multiple list segments in the path',
 				'parameters.someList[0].nestedList[1].someParameter',
-				'someList[0]_nestedList[1]_' + DISPLAY_NAME,
+				'someList0_nestedList1_' + DISPLAY_NAME,
 			],
 			[
 				'paths without parameters',
 				'someList[0].nestedList[1]',
-				'someList[0]_nestedList[1]_' + DISPLAY_NAME,
+				'someList0_nestedList1_' + DISPLAY_NAME,
 			],
 			['empty paths', '', DISPLAY_NAME],
+			[
+				'path with multiple lists and segment exceeding 63 characters',
+				'parameters.someLoooooongList[0].nestedListWithAVeryLongNameThatExceedsTheLimit[1].someParameter',
+				`someLoooooongList0_nestedListWithAVeryLongNameThatExceedsTheLimit1_${DISPLAY_NAME}`.slice(
+					-63,
+				),
+			],
+			[
+				'path with multiple long segments and truncation',
+				'parameters.someExtremelyLongListNameThatExceedsTheLimit.anotherLongSegmentName.finalParameter',
+				DISPLAY_NAME,
+			],
 		])('should build a unique name with %s', (_description, path, expected) => {
 			const context = makeContext('value', path);
 			expect(buildUniqueName(context)).toEqual(expected);

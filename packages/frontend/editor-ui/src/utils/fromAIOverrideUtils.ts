@@ -124,9 +124,21 @@ function getBestQuoteChar(description: string) {
 // exist within one node. However, this is unlikely to happen in practice.
 export function buildUniqueName(props: OverrideContext) {
 	const path = props.path.split('.');
-	// include any list segments in the path for uniqueness
-	const filteredPaths = path.filter((x) => /\[\d+\]/i.test(x));
-	return [...filteredPaths, props.parameter.displayName].join('_');
+	// include any list segments in the path (e.g. .myListName[0].) for uniqueness
+	// but drop brackets to avoid token limits
+	const filteredPaths = path
+		.filter((x) => /\[\d+\]/i.test(x))
+		.map((x) => x.replaceAll(/[\[\]]/gi, ''));
+	let result = [...filteredPaths, props.parameter.displayName].join('_');
+
+	// Langchain requires the name to be <64 characters
+	if (filteredPaths.length > 1) {
+		result = result.slice(-63);
+	} else {
+		result = result.slice(0, 63);
+	}
+
+	return result;
 }
 
 export function buildValueFromOverride(
