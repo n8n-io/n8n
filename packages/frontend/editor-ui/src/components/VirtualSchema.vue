@@ -459,7 +459,7 @@ const onDragEnd = (el: HTMLElement) => {
 											telemetry-source="inputs"
 											hide-icon
 											size="small"
-											class="execute-button"
+											:class="$style.executeButton"
 										/>
 									</template>
 								</i18n-t>
@@ -472,6 +472,12 @@ const onDragEnd = (el: HTMLElement) => {
 		</Draggable>
 	</div>
 </template>
+
+<style lang="css" module>
+.executeButton {
+	padding: 0;
+}
+</style>
 
 <style lang="css" scoped>
 .full-height {
@@ -519,9 +525,5 @@ const onDragEnd = (el: HTMLElement) => {
 .empty-schema {
 	padding-bottom: var(--spacing-xs);
 	margin-left: calc((var(--spacing-xl) * var(--schema-level)));
-}
-
-.execute-button {
-	padding: 0;
 }
 </style>
