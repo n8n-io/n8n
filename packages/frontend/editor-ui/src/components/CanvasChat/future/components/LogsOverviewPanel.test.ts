@@ -27,6 +27,7 @@ describe('LogsOverviewPanel', () => {
 		const mergedProps: InstanceType<typeof LogsOverviewPanel>['$props'] = {
 			isOpen: false,
 			isReadOnly: false,
+			isCompact: false,
 			executionTree: createLogEntries(
 				workflowsStore.getCurrentWorkflow(),
 				workflowsStore.workflowExecutionData?.data?.resultData.runData ?? {},
