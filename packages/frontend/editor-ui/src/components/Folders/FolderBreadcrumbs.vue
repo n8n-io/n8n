@@ -191,7 +191,7 @@ const onItemHover = (item: PathItem) => {
 			<slot name="append"></slot>
 		</div>
 		<n8n-action-toggle
-			v-if="visibleBreadcrumbsItems"
+			v-if="visibleBreadcrumbsItems && actions?.length"
 			:actions="actions"
 			:class="$style['action-toggle']"
 			theme="dark"
