@@ -35,6 +35,7 @@ import {
 	COMMUNITY_PLUS_ENROLLMENT_MODAL,
 	DELETE_FOLDER_MODAL_KEY,
 	MOVE_FOLDER_MODAL_KEY,
+	EXECUTE_STEP_MODAL_KEY,
 } from '@/constants';
 
 import AboutModal from '@/components/AboutModal.vue';
@@ -292,6 +293,12 @@ import type { EventBus } from '@n8n/utils/event-bus';
 		<ModalRoot :name="MOVE_FOLDER_MODAL_KEY">
 			<template #default="{ modalName, activeId, data }">
 				<MoveToFolderModal :modal-name="modalName" :active-id="activeId" :data="data" />
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="EXECUTE_STEP_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<ExecuteStepModal :modal-name="modalName" :data="data" />
 			</template>
 		</ModalRoot>
 	</div>

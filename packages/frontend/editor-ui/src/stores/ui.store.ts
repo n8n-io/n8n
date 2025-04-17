@@ -39,6 +39,7 @@ import {
 	API_KEY_CREATE_OR_EDIT_MODAL_KEY,
 	DELETE_FOLDER_MODAL_KEY,
 	MOVE_FOLDER_MODAL_KEY,
+	EXECUTE_STEP_MODAL_KEY,
 } from '@/constants';
 import type {
 	INodeUi,
@@ -180,6 +181,12 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			open: false,
 			data: {
 				customHeading: undefined,
+			},
+		},
+		[EXECUTE_STEP_MODAL_KEY]: {
+			open: false,
+			data: {
+				nodeName: undefined,
 			},
 		},
 	});
