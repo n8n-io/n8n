@@ -1,7 +1,4 @@
 import get from 'lodash/get';
-
-import { parseString } from 'xml2js';
-
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -13,6 +10,7 @@ import type {
 	IHttpRequestMethods,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
+import { parseString } from 'xml2js';
 
 export async function awsApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,

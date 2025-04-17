@@ -1,4 +1,4 @@
-import type { ICredentialType, INodeProperties, INodePropertyOptions } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties, INodePropertyOptions, Icon } from 'n8n-workflow';
 
 const algorithms: INodePropertyOptions[] = [
 	{
@@ -64,7 +64,7 @@ export class JwtAuth implements ICredentialType {
 
 	documentationUrl = 'jwt';
 
-	icon = 'file:icons/jwt.svg';
+	icon: Icon = 'file:icons/jwt.svg';
 
 	properties: INodeProperties[] = [
 		{

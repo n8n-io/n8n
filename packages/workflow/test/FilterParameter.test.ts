@@ -1,11 +1,18 @@
-import { executeFilter } from '@/NodeParameters/FilterParameter';
-import type { FilterConditionValue, FilterValue } from '@/Interfaces';
 import merge from 'lodash/merge';
 import { DateTime } from 'luxon';
+
+import type { FilterConditionValue, FilterValue } from '@/Interfaces';
+import { arrayContainsValue, executeFilter } from '@/NodeParameters/FilterParameter';
 
 type DeepPartial<T> = {
 	[P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P];
 };
+
+type Tests = Array<{
+	left: FilterConditionValue['leftValue'];
+	right: FilterConditionValue['rightValue'];
+	expected: boolean;
+}>;
 
 const filterFactory = (data: DeepPartial<FilterValue> = {}): FilterValue =>
 	merge(
@@ -13,6 +20,7 @@ const filterFactory = (data: DeepPartial<FilterValue> = {}): FilterValue =>
 			combinator: 'and',
 			conditions: [],
 			options: {
+				version: 1,
 				leftValue: '',
 				caseSensitive: false,
 				typeValidation: 'strict',
@@ -224,6 +232,48 @@ describe('FilterParameter', () => {
 					).toThrowError(
 						"Conversion error: the string 'a string' can't be converted to a number [condition 0, item 0]",
 					);
+				});
+			});
+		});
+
+		describe('options.version', () => {
+			describe('version 1', () => {
+				it('should parse "false" as true', () => {
+					expect(
+						executeFilter(
+							filterFactory({
+								conditions: [
+									{
+										id: '1',
+										leftValue: 'false',
+										rightValue: false,
+										operator: { operation: 'equals', type: 'boolean' },
+									},
+								],
+								options: { typeValidation: 'loose', version: 1 },
+							}),
+						),
+					).toEqual(false);
+				});
+			});
+
+			describe('version 2', () => {
+				it('should parse "false" as false', () => {
+					expect(
+						executeFilter(
+							filterFactory({
+								conditions: [
+									{
+										id: '1',
+										leftValue: 'false',
+										rightValue: false,
+										operator: { operation: 'equals', type: 'boolean' },
+									},
+								],
+								options: { typeValidation: 'loose', version: 2 },
+							}),
+						),
+					).toEqual(true);
 				});
 			});
 		});
@@ -529,10 +579,96 @@ describe('FilterParameter', () => {
 
 			describe('number', () => {
 				it.each([
+					{ left: 0, expected: true },
+					{ left: 15, expected: true },
+					{ left: -15.4, expected: true },
+					{ left: NaN, expected: false },
+					{ left: null, expected: false },
+				])('number:exists($left) === $expected', ({ left, expected }) => {
+					const result = executeFilter(
+						filterFactory({
+							conditions: [
+								{
+									id: '1',
+									leftValue: left,
+									operator: { operation: 'exists', type: 'number' },
+								},
+							],
+						}),
+					);
+					expect(result).toBe(expected);
+				});
+
+				it.each([
+					{ left: 0, expected: false },
+					{ left: 15, expected: false },
+					{ left: -15.4, expected: false },
+					{ left: NaN, expected: true },
+					{ left: null, expected: true },
+				])('number:notExists($left) === $expected', ({ left, expected }) => {
+					const result = executeFilter(
+						filterFactory({
+							conditions: [
+								{
+									id: '1',
+									leftValue: left,
+									operator: { operation: 'notExists', type: 'number' },
+								},
+							],
+						}),
+					);
+					expect(result).toBe(expected);
+				});
+
+				it.each([
+					{ left: 0, expected: false },
+					{ left: 15, expected: false },
+					{ left: -15.4, expected: false },
+					{ left: NaN, expected: true },
+					{ left: null, expected: true },
+				])('number:empty($left) === $expected', ({ left, expected }) => {
+					const result = executeFilter(
+						filterFactory({
+							conditions: [
+								{
+									id: '1',
+									leftValue: left,
+									operator: { operation: 'empty', type: 'number' },
+								},
+							],
+						}),
+					);
+					expect(result).toBe(expected);
+				});
+
+				it.each([
+					{ left: 0, expected: true },
+					{ left: 15, expected: true },
+					{ left: -15.4, expected: true },
+					{ left: NaN, expected: false },
+					{ left: null, expected: false },
+				])('number:notEmpty($left) === $expected', ({ left, expected }) => {
+					const result = executeFilter(
+						filterFactory({
+							conditions: [
+								{
+									id: '1',
+									leftValue: left,
+									operator: { operation: 'notEmpty', type: 'number' },
+								},
+							],
+						}),
+					);
+					expect(result).toBe(expected);
+				});
+
+				it.each([
 					{ left: 0, right: 0, expected: true },
 					{ left: 15, right: 15, expected: true },
 					{ left: 15.34, right: 15.34, expected: true },
 					{ left: 15, right: 15.3249038, expected: false },
+					{ left: 15, right: NaN, expected: false },
+					{ left: NaN, right: NaN, expected: false },
 				])('number:equals($left,$right) === $expected', ({ left, right, expected }) => {
 					const result = executeFilter(
 						filterFactory({
@@ -554,6 +690,8 @@ describe('FilterParameter', () => {
 					{ left: 15, right: 15, expected: false },
 					{ left: 15.34, right: 15.34, expected: false },
 					{ left: 15, right: 15.3249038, expected: true },
+					{ left: 15, right: NaN, expected: true },
+					{ left: NaN, right: NaN, expected: true },
 				])('number:notEquals($left,$right) === $expected', ({ left, right, expected }) => {
 					const result = executeFilter(
 						filterFactory({
@@ -575,6 +713,7 @@ describe('FilterParameter', () => {
 					{ left: 15, right: 16, expected: false },
 					{ left: 16, right: 15, expected: true },
 					{ left: 15.34001, right: 15.34, expected: true },
+					{ left: 15, right: NaN, expected: false },
 				])('number:gt($left,$right) === $expected', ({ left, right, expected }) => {
 					const result = executeFilter(
 						filterFactory({
@@ -596,6 +735,7 @@ describe('FilterParameter', () => {
 					{ left: 15, right: 16, expected: true },
 					{ left: 16, right: 15, expected: false },
 					{ left: 15.34001, right: 15.34, expected: false },
+					{ left: 15, right: NaN, expected: false },
 				])('number:lt($left,$right) === $expected', ({ left, right, expected }) => {
 					const result = executeFilter(
 						filterFactory({
@@ -617,6 +757,7 @@ describe('FilterParameter', () => {
 					{ left: 15, right: 16, expected: false },
 					{ left: 16, right: 15, expected: true },
 					{ left: 15.34001, right: 15.34, expected: true },
+					{ left: 15, right: NaN, expected: false },
 				])('number:gte($left,$right) === $expected', ({ left, right, expected }) => {
 					const result = executeFilter(
 						filterFactory({
@@ -638,6 +779,7 @@ describe('FilterParameter', () => {
 					{ left: 15, right: 16, expected: true },
 					{ left: 16, right: 15, expected: false },
 					{ left: 15.34001, right: 15.34, expected: false },
+					{ left: 15, right: NaN, expected: false },
 				])('number:lte($left,$right) === $expected', ({ left, right, expected }) => {
 					const result = executeFilter(
 						filterFactory({
@@ -656,6 +798,42 @@ describe('FilterParameter', () => {
 			});
 
 			describe('dateTime', () => {
+				it.each([
+					{ left: '2023-11-15T17:10:49.113Z', expected: false },
+					{ left: null, expected: true },
+				])('dateTime:empty($left) === $expected', ({ left, expected }) => {
+					const result = executeFilter(
+						filterFactory({
+							conditions: [
+								{
+									id: '1',
+									leftValue: left,
+									operator: { operation: 'empty', type: 'dateTime' },
+								},
+							],
+						}),
+					);
+					expect(result).toBe(expected);
+				});
+
+				it.each([
+					{ left: '2023-11-15T17:10:49.113Z', expected: true },
+					{ left: null, expected: false },
+				])('dateTime:notEmpty($left) === $expected', ({ left, expected }) => {
+					const result = executeFilter(
+						filterFactory({
+							conditions: [
+								{
+									id: '1',
+									leftValue: left,
+									operator: { operation: 'notEmpty', type: 'dateTime' },
+								},
+							],
+						}),
+					);
+					expect(result).toBe(expected);
+				});
+
 				it.each([
 					{ left: '2023-11-15T17:10:49.113Z', right: '2023-11-15T17:10:49.113Z', expected: true },
 					{ left: '2023-11-15T17:10:49.113Z', right: '2023-11-15T17:12:49.113Z', expected: false },
@@ -704,21 +882,24 @@ describe('FilterParameter', () => {
 						right: '1-Feb-2024',
 						expected: false,
 					},
-				])('dateTime:after("$left", "$right") === $expected', ({ left, right, expected }) => {
-					const result = executeFilter(
-						filterFactory({
-							conditions: [
-								{
-									id: '1',
-									leftValue: left,
-									rightValue: right,
-									operator: { operation: 'after', type: 'dateTime' },
-								},
-							],
-						}),
-					);
-					expect(result).toBe(expected);
-				});
+				] as Tests)(
+					'dateTime:after("$left", "$right") === $expected',
+					({ left, right, expected }) => {
+						const result = executeFilter(
+							filterFactory({
+								conditions: [
+									{
+										id: '1',
+										leftValue: left,
+										rightValue: right,
+										operator: { operation: 'after', type: 'dateTime' },
+									},
+								],
+							}),
+						);
+						expect(result).toBe(expected);
+					},
+				);
 
 				it.each([
 					{ left: '2023-11-15T17:10:49.113Z', right: '2023-11-15T17:10:49.113Z', expected: false },
@@ -788,6 +969,44 @@ describe('FilterParameter', () => {
 			});
 
 			describe('boolean', () => {
+				it.each([
+					{ left: true, expected: false },
+					{ left: false, expected: false },
+					{ left: null, expected: true },
+				])('boolean:empty($left) === $expected', ({ left, expected }) => {
+					const result = executeFilter(
+						filterFactory({
+							conditions: [
+								{
+									id: '1',
+									leftValue: left,
+									operator: { operation: 'empty', type: 'boolean' },
+								},
+							],
+						}),
+					);
+					expect(result).toBe(expected);
+				});
+
+				it.each([
+					{ left: true, expected: true },
+					{ left: false, expected: true },
+					{ left: null, expected: false },
+				])('boolean:notEmpty($left) === $expected', ({ left, expected }) => {
+					const result = executeFilter(
+						filterFactory({
+							conditions: [
+								{
+									id: '1',
+									leftValue: left,
+									operator: { operation: 'notEmpty', type: 'boolean' },
+								},
+							],
+						}),
+					);
+					expect(result).toBe(expected);
+				});
+
 				it.each([
 					{ left: true, expected: true },
 					{ left: false, expected: false },
@@ -869,7 +1088,7 @@ describe('FilterParameter', () => {
 				it.each([
 					{ left: ['foo', 'bar'], right: 'foo', expected: true },
 					{ left: ['foo', 'bar'], right: 'ba', expected: false },
-				])('array:contains($left,$right) === $expected', ({ left, right, expected }) => {
+				] as Tests)('array:contains($left,$right) === $expected', ({ left, right, expected }) => {
 					const result = executeFilter(
 						filterFactory({
 							conditions: [
@@ -888,67 +1107,76 @@ describe('FilterParameter', () => {
 				it.each([
 					{ left: ['foo', 'bar'], right: 'foo', expected: false },
 					{ left: ['foo', 'bar'], right: 'ba', expected: true },
-				])('array:notContains($left,$right) === $expected', ({ left, right, expected }) => {
-					const result = executeFilter(
-						filterFactory({
-							conditions: [
-								{
-									id: '1',
-									leftValue: left,
-									rightValue: right,
-									operator: { operation: 'notContains', type: 'array', rightType: 'any' },
-								},
-							],
-						}),
-					);
-					expect(result).toBe(expected);
-				});
+				] as Tests)(
+					'array:notContains($left,$right) === $expected',
+					({ left, right, expected }) => {
+						const result = executeFilter(
+							filterFactory({
+								conditions: [
+									{
+										id: '1',
+										leftValue: left,
+										rightValue: right,
+										operator: { operation: 'notContains', type: 'array', rightType: 'any' },
+									},
+								],
+							}),
+						);
+						expect(result).toBe(expected);
+					},
+				);
 
 				it.each([
 					{ left: ['foo', 'bar'], right: 2, expected: true },
 					{ left: [], right: 0, expected: true },
 					{ left: ['foo', 'bar'], right: 1, expected: false },
-				])('array:lengthEquals($left,$right) === $expected', ({ left, right, expected }) => {
-					const result = executeFilter(
-						filterFactory({
-							conditions: [
-								{
-									id: '1',
-									leftValue: left,
-									rightValue: right,
-									operator: { operation: 'lengthEquals', type: 'array', rightType: 'number' },
-								},
-							],
-						}),
-					);
-					expect(result).toBe(expected);
-				});
+				] as Tests)(
+					'array:lengthEquals($left,$right) === $expected',
+					({ left, right, expected }) => {
+						const result = executeFilter(
+							filterFactory({
+								conditions: [
+									{
+										id: '1',
+										leftValue: left,
+										rightValue: right,
+										operator: { operation: 'lengthEquals', type: 'array', rightType: 'number' },
+									},
+								],
+							}),
+						);
+						expect(result).toBe(expected);
+					},
+				);
 
 				it.each([
 					{ left: ['foo', 'bar'], right: 2, expected: false },
 					{ left: [], right: 0, expected: false },
 					{ left: ['foo', 'bar'], right: 1, expected: true },
-				])('array:lengthNotEquals($left,$right) === $expected', ({ left, right, expected }) => {
-					const result = executeFilter(
-						filterFactory({
-							conditions: [
-								{
-									id: '1',
-									leftValue: left,
-									rightValue: right,
-									operator: { operation: 'lengthNotEquals', type: 'array', rightType: 'number' },
-								},
-							],
-						}),
-					);
-					expect(result).toBe(expected);
-				});
+				] as Tests)(
+					'array:lengthNotEquals($left,$right) === $expected',
+					({ left, right, expected }) => {
+						const result = executeFilter(
+							filterFactory({
+								conditions: [
+									{
+										id: '1',
+										leftValue: left,
+										rightValue: right,
+										operator: { operation: 'lengthNotEquals', type: 'array', rightType: 'number' },
+									},
+								],
+							}),
+						);
+						expect(result).toBe(expected);
+					},
+				);
 
 				it.each([
 					{ left: ['foo', 'bar'], right: 2, expected: false },
 					{ left: [], right: 0, expected: false },
 					{ left: ['foo', 'bar'], right: 1, expected: true },
-				])('array:lengthGt($left,$right) === $expected', ({ left, right, expected }) => {
+				] as Tests)('array:lengthGt($left,$right) === $expected', ({ left, right, expected }) => {
 					const result = executeFilter(
 						filterFactory({
 							conditions: [
@@ -969,7 +1197,7 @@ describe('FilterParameter', () => {
 					{ left: [], right: 0, expected: false },
 					{ left: ['foo', 'bar'], right: 1, expected: false },
 					{ left: ['foo', 'bar'], right: 3, expected: true },
-				])('array:lengthLt($left,$right) === $expected', ({ left, right, expected }) => {
+				] as Tests)('array:lengthLt($left,$right) === $expected', ({ left, right, expected }) => {
 					const result = executeFilter(
 						filterFactory({
 							conditions: [
@@ -990,7 +1218,7 @@ describe('FilterParameter', () => {
 					{ left: [], right: 0, expected: true },
 					{ left: ['foo', 'bar'], right: 1, expected: true },
 					{ left: ['foo', 'bar'], right: 3, expected: false },
-				])('array:lengthGte($left,$right) === $expected', ({ left, right, expected }) => {
+				] as Tests)('array:lengthGte($left,$right) === $expected', ({ left, right, expected }) => {
 					const result = executeFilter(
 						filterFactory({
 							conditions: [
@@ -1011,7 +1239,7 @@ describe('FilterParameter', () => {
 					{ left: [], right: 0, expected: true },
 					{ left: ['foo', 'bar'], right: 1, expected: false },
 					{ left: ['foo', 'bar'], right: 3, expected: true },
-				])('array:lengthLte($left,$right) === $expected', ({ left, right, expected }) => {
+				] as Tests)('array:lengthLte($left,$right) === $expected', ({ left, right, expected }) => {
 					const result = executeFilter(
 						filterFactory({
 							conditions: [
@@ -1067,6 +1295,39 @@ describe('FilterParameter', () => {
 						}),
 					);
 					expect(result).toBe(expected);
+				});
+			});
+
+			describe('arrayContainsValue', () => {
+				test('should return true if the array contains the value', () => {
+					expect(arrayContainsValue([1, 2, 3], 2, false)).toBe(true);
+				});
+
+				test('should return false if the array does not contain the value', () => {
+					expect(arrayContainsValue([1, 2, 3], 4, false)).toBe(false);
+				});
+
+				test('should return true if the array contains the string value and ignoreCase is true', () => {
+					expect(arrayContainsValue(['a', 'b', 'c'], 'A', true)).toBe(true);
+				});
+
+				test('should return false if the array contains the string value but ignoreCase is false', () => {
+					expect(arrayContainsValue(['a', 'b', 'c'], 'A', false)).toBe(false);
+				});
+
+				test('should return false if the array does not contain the string value and ignoreCase is true', () => {
+					expect(arrayContainsValue(['a', 'b', 'c'], 'd', true)).toBe(false);
+				});
+
+				test('should handle non-string values correctly when ignoreCase is true', () => {
+					expect(arrayContainsValue([1, 2, 3], 2, true)).toBe(true);
+					expect(arrayContainsValue([1, 2, 3], '2', true)).toBe(false);
+				});
+
+				test('should handle mixed types in the array correctly', () => {
+					expect(arrayContainsValue(['a', 2, 'c'], 'A', true)).toBe(true);
+					expect(arrayContainsValue(['a', 2, 'c'], 2, false)).toBe(true);
+					expect(arrayContainsValue(['a', 2, 'c'], '2', false)).toBe(false);
 				});
 			});
 		});

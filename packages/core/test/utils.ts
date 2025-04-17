@@ -1,12 +1,11 @@
-import { Container } from 'typedi';
+import type { Constructable } from '@n8n/di';
+import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { Duplex } from 'stream';
-
 import type { DeepPartial } from 'ts-essentials';
-import type { Class } from '@/Interfaces';
 
 export const mockInstance = <T>(
-	constructor: Class<T>,
+	constructor: Constructable<T>,
 	data: DeepPartial<T> | undefined = undefined,
 ) => {
 	const instance = mock<T>(data);

@@ -1,0 +1,167 @@
+{
+  "meta": {
+    "instanceId": "777c68374367604fdf2a0bcfe9b1b574575ddea61aa8268e4bf034434bd7c894"
+  },
+  "nodes": [
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0effebfc-fa8c-4d41-8a37-6d5695dfc9ee",
+              "name": "test",
+              "value": "test",
+              "type": "string"
+            },
+            {
+              "id": "beb8723f-6333-4186-ab88-41d4e2338866",
+              "name": "test",
+              "value": "test",
+              "type": "string"
+            },
+            {
+              "id": "85095836-4e94-442f-9270-e1a89008c129",
+              "name": "test",
+              "value": "test",
+              "type": "string"
+            },
+            {
+              "id": "85095836-4e94-442f-9270-e1a89008c125",
+              "name": "test",
+              "value": "test",
+              "type": "string"
+            },
+            {
+              "id": "85095836-4e94-442f-9270-e1a89008c121",
+              "name": "test",
+              "value": "test",
+              "type": "string"
+            },
+            {
+              "id": "b6163f8a-bca6-4364-8b38-182df37c55cd",
+              "name": "=should be visible!",
+              "value": "=not visible",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "950fcdc1-9e92-410f-8377-d4240e9bf6ff",
+      "name": "Edit Fields1",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        680,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "messageType": "block",
+        "blocksUi": "blocks",
+        "text": "=should be visible",
+        "otherOptions": {
+          "includeLinkToWorkflow": true,
+          "link_names": false,
+          "mrkdwn": true,
+          "unfurl_links": false,
+          "sendAsUser": "=not visible"
+        }
+      },
+      "id": "dcf7410d-0f8e-4cdb-9819-ae275558bdaa",
+      "name": "Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        900,
+        460
+      ],
+      "webhookId": "002b502e-31e5-4fdb-ac43-a56cfde8f82a"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {},
+            {},
+            {
+              "field": "=should be visible"
+            },
+            {
+              "field": "=not visible"
+            }
+          ]
+        }
+      },
+      "id": "4c948a3f-19d4-4b08-a8be-f7d2964a21f4",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        460,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "5dcaab37-1146-49c6-97a3-3b2f73483270",
+              "name": "object",
+              "value": "=1 visible!\n2 {\n3  \"str\": \"two\",\n4  \"str_date\": \"{{ $now }}\",\n5  \"str_int\": \"1\",\n6  \"str_float\": \"1.234\",\n7 not visible!\n  \"str_bool\": \"true\",\n  \"str_email\": \"david@thedavid.com\",\n  \"str_with_email\":\"My email is david@n8n.io\",\n  \"str_json_single\":\"{'one':'two'}\",\n  \"str_json_double\":\"{\\\"one\\\":\\\"two\\\"}\",\n  \"bool\": true,\n  \"list\": [1, 2, 3],\n  \"decimal\": 1.234,\n  \"timestamp1\": 1708695471,\n  \"timestamp2\": 1708695471000,\n  \"timestamp3\": 1708695471000000,\n  \"num_one\": 1\n}",
+              "type": "object"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "a41dfb0d-38aa-42d2-b3e2-1854090bd319",
+      "name": "With long expression",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [
+        1100,
+        460
+      ]
+    }
+  ],
+  "connections": {
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack": {
+      "main": [
+        [
+          {
+            "node": "With long expression",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {}
+}

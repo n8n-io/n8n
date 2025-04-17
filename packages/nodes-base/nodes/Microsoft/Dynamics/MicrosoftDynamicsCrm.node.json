@@ -6,7 +6,7 @@
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/microsoft"
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/microsoft/"
 			}
 		],
 		"primaryDocumentation": [

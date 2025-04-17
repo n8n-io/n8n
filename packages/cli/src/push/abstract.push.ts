@@ -1,9 +1,15 @@
-import { EventEmitter } from 'events';
+import type { PushMessage } from '@n8n/api-types';
+import { Service } from '@n8n/di';
+import { ErrorReporter, Logger } from 'n8n-core';
 import { assert, jsonStringify } from 'n8n-workflow';
-import type { IPushDataType } from '@/Interfaces';
-import type { Logger } from '@/Logger';
-import type { User } from '@db/entities/User';
-import type { OrchestrationService } from '@/services/orchestration.service';
+
+import type { User } from '@/databases/entities/user';
+import type { OnPushMessage } from '@/push/types';
+import { TypedEmitter } from '@/typed-emitter';
+
+export interface AbstractPushEvents {
+	message: OnPushMessage;
+}
 
 /**
  * Abstract class for two-way push communication.
@@ -11,22 +17,26 @@ import type { OrchestrationService } from '@/services/orchestration.service';
  *
  * @emits message when a message is received from a client
  */
-export abstract class AbstractPush<T> extends EventEmitter {
-	protected connections: Record<string, T> = {};
+@Service()
+export abstract class AbstractPush<Connection> extends TypedEmitter<AbstractPushEvents> {
+	protected connections: Record<string, Connection> = {};
 
 	protected userIdByPushRef: Record<string, string> = {};
 
-	protected abstract close(connection: T): void;
-	protected abstract sendToOneConnection(connection: T, data: string): void;
+	protected abstract close(connection: Connection): void;
+	protected abstract sendToOneConnection(connection: Connection, data: string): void;
+	protected abstract ping(connection: Connection): void;
 
 	constructor(
 		protected readonly logger: Logger,
-		private readonly orchestrationService: OrchestrationService,
+		protected readonly errorReporter: ErrorReporter,
 	) {
 		super();
+		// Ping all connected clients every 60 seconds
+		setInterval(() => this.pingAll(), 60 * 1000);
 	}
 
-	protected add(pushRef: string, userId: User['id'], connection: T) {
+	protected add(pushRef: string, userId: User['id'], connection: Connection) {
 		const { connections, userIdByPushRef } = this;
 		this.logger.debug('Add editor-UI session', { pushRef });
 
@@ -58,8 +68,8 @@ export abstract class AbstractPush<T> extends EventEmitter {
 		delete this.userIdByPushRef[pushRef];
 	}
 
-	private sendTo(type: IPushDataType, data: unknown, pushRefs: string[]) {
-		this.logger.debug(`Send data of type "${type}" to editor-UI`, {
+	private sendTo({ type, data }: PushMessage, pushRefs: string[]) {
+		this.logger.debug(`Pushed to frontend: ${type}`, {
 			dataType: type,
 			pushRefs: pushRefs.join(', '),
 		});
@@ -73,40 +83,32 @@ export abstract class AbstractPush<T> extends EventEmitter {
 		}
 	}
 
-	sendToAll(type: IPushDataType, data?: unknown) {
-		this.sendTo(type, data, Object.keys(this.connections));
+	private pingAll() {
+		for (const pushRef in this.connections) {
+			this.ping(this.connections[pushRef]);
+		}
 	}
 
-	sendToOneSession(type: IPushDataType, data: unknown, pushRef: string) {
-		/**
-		 * Multi-main setup: In a manual webhook execution, the main process that
-		 * handles a webhook might not be the same as the main process that created
-		 * the webhook. If so, the handler process commands the creator process to
-		 * relay the former's execution lifecycle events to the creator's frontend.
-		 */
-		if (this.orchestrationService.isMultiMainSetupEnabled && !this.hasPushRef(pushRef)) {
-			const payload = { type, args: data, pushRef };
+	sendToAll(pushMsg: PushMessage) {
+		this.sendTo(pushMsg, Object.keys(this.connections));
+	}
 
-			void this.orchestrationService.publish('relay-execution-lifecycle-event', payload);
-
-			return;
-		}
-
+	sendToOne(pushMsg: PushMessage, pushRef: string) {
 		if (this.connections[pushRef] === undefined) {
 			this.logger.error(`The session "${pushRef}" is not registered.`, { pushRef });
 			return;
 		}
 
-		this.sendTo(type, data, [pushRef]);
+		this.sendTo(pushMsg, [pushRef]);
 	}
 
-	sendToUsers(type: IPushDataType, data: unknown, userIds: Array<User['id']>) {
+	sendToUsers(pushMsg: PushMessage, userIds: Array<User['id']>) {
 		const { connections } = this;
 		const userPushRefs = Object.keys(connections).filter((pushRef) =>
 			userIds.includes(this.userIdByPushRef[pushRef]),
 		);
 
-		this.sendTo(type, data, userPushRefs);
+		this.sendTo(pushMsg, userPushRefs);
 	}
 
 	closeAllConnections() {

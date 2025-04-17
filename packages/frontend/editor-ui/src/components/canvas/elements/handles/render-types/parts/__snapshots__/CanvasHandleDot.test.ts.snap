@@ -1,0 +1,3 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`CanvasHandleDot > should render with default props 1`] = `"<div class="dot"></div>"`;

@@ -5,9 +5,9 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { buildFields, buildOperations } from './BuildDescription';
-
 import { travisciApiRequest, travisciApiRequestAllItems } from './GenericFunctions';
 
 export class TravisCi implements INodeType {
@@ -23,8 +23,9 @@ export class TravisCi implements INodeType {
 		defaults: {
 			name: 'TravisCI',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'travisCiApi',

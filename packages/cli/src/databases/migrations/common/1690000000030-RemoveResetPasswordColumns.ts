@@ -1,4 +1,4 @@
-import type { MigrationContext, ReversibleMigration } from '@db/types';
+import type { MigrationContext, ReversibleMigration } from '@/databases/types';
 
 export class RemoveResetPasswordColumns1690000000030 implements ReversibleMigration {
 	async up({ schemaBuilder: { dropColumns } }: MigrationContext) {

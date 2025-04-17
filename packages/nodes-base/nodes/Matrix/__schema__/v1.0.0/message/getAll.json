@@ -1,0 +1,49 @@
+{
+    "type": "object",
+    "properties": {
+        "age": {
+            "type": "integer"
+        },
+        "content": {
+            "type": "object",
+            "properties": {
+                "body": {
+                    "type": "string"
+                },
+                "msgtype": {
+                    "type": "string"
+                }
+            }
+        },
+        "event_id": {
+            "type": "string"
+        },
+        "origin_server_ts": {
+            "type": "integer"
+        },
+        "room_id": {
+            "type": "string"
+        },
+        "sender": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string"
+        },
+        "unsigned": {
+            "type": "object",
+            "properties": {
+                "age": {
+                    "type": "integer"
+                },
+                "membership": {
+                    "type": "string"
+                }
+            }
+        },
+        "user_id": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

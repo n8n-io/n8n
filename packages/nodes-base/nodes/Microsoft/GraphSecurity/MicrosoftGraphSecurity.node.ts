@@ -5,12 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-
-import {
-	msGraphSecurityApiRequest,
-	throwOnEmptyUpdate,
-	tolerateDoubleQuotes,
-} from './GenericFunctions';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import {
 	secureScoreControlProfileFields,
@@ -18,6 +13,11 @@ import {
 	secureScoreFields,
 	secureScoreOperations,
 } from './descriptions';
+import {
+	msGraphSecurityApiRequest,
+	throwOnEmptyUpdate,
+	tolerateDoubleQuotes,
+} from './GenericFunctions';
 
 export class MicrosoftGraphSecurity implements INodeType {
 	description: INodeTypeDescription = {
@@ -31,8 +31,9 @@ export class MicrosoftGraphSecurity implements INodeType {
 		defaults: {
 			name: 'Microsoft Graph Security',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'microsoftGraphSecurityOAuth2Api',

@@ -1,0 +1,10 @@
+{
+	"sessionId": "1",
+	"messages": [
+		{
+			"role": "assistant",
+			"type": "message",
+			"text": "Hey, this is an assistant message"
+		}
+	]
+}

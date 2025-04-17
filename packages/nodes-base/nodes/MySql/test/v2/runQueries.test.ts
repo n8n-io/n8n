@@ -1,10 +1,11 @@
-import type { IDataObject, INode } from 'n8n-workflow';
 import mysql2 from 'mysql2/promise';
-import { configureQueryRunner } from '../../v2/helpers/utils';
-import type { Mysql2Pool, QueryRunner } from '../../v2/helpers/interfaces';
-import { BATCH_MODE } from '../../v2/helpers/interfaces';
+import type { IDataObject, INode } from 'n8n-workflow';
 
 import { createMockExecuteFunction } from '@test/nodes/Helpers';
+
+import type { Mysql2Pool, QueryRunner } from '../../v2/helpers/interfaces';
+import { BATCH_MODE } from '../../v2/helpers/interfaces';
+import { configureQueryRunner } from '../../v2/helpers/utils';
 
 const mySqlMockNode: INode = {
 	id: '1',
@@ -48,6 +49,7 @@ describe('Test MySql V2, runQueries', () => {
 			const pool = createFakePool(fakeConnection);
 			const mockExecuteFns = createMockExecuteFunction({}, mySqlMockNode);
 
+			// @ts-expect-error
 			pool.query = jest.fn(async () => [
 				[[{ finishedAt: '2023-12-30' }], [{ finishedAt: '2023-12-31' }]],
 			]);

@@ -1,5 +1,4 @@
 import moment from 'moment-timezone';
-
 import type {
 	IPollFunctions,
 	IDataObject,
@@ -9,17 +8,18 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
+import type { EntryType } from './EntryType';
+import { EntryTypes } from './EntryType';
 import { clockifyApiRequest } from './GenericFunctions';
-
-import { EntryTypeEnum } from './EntryTypeEnum';
 import type { IUserDto } from './UserDtos';
 import type { IWorkspaceDto } from './WorkpaceInterfaces';
 
 export class ClockifyTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Clockify Trigger',
-		icon: 'file:clockify.svg',
+		icon: { light: 'file:clockify.svg', dark: 'file:clockify.dark.svg' },
 		name: 'clockifyTrigger',
 		group: ['trigger'],
 		version: 1,
@@ -28,7 +28,7 @@ export class ClockifyTrigger implements INodeType {
 			name: 'Clockify Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'clockifyApi',
@@ -42,7 +42,7 @@ export class ClockifyTrigger implements INodeType {
 				name: 'workspaceId',
 				type: 'options',
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'listWorkspaces',
 				},
@@ -57,11 +57,11 @@ export class ClockifyTrigger implements INodeType {
 				options: [
 					{
 						name: 'New Time Entry',
-						value: EntryTypeEnum.NEW_TIME_ENTRY,
+						value: EntryTypes.NEW_TIME_ENTRY,
 					},
 				],
 				required: true,
-				default: EntryTypeEnum.NEW_TIME_ENTRY,
+				default: EntryTypes.NEW_TIME_ENTRY,
 			},
 		],
 	};
@@ -90,7 +90,7 @@ export class ClockifyTrigger implements INodeType {
 
 	async poll(this: IPollFunctions): Promise<INodeExecutionData[][] | null> {
 		const webhookData = this.getWorkflowStaticData('node');
-		const triggerField = this.getNodeParameter('watchField') as EntryTypeEnum;
+		const triggerField = this.getNodeParameter('watchField') as EntryType;
 		const workspaceId = this.getNodeParameter('workspaceId');
 
 		if (!webhookData.userId) {
@@ -104,7 +104,7 @@ export class ClockifyTrigger implements INodeType {
 		let result = null;
 
 		switch (triggerField) {
-			case EntryTypeEnum.NEW_TIME_ENTRY:
+			case EntryTypes.NEW_TIME_ENTRY:
 			default:
 				const workflowTimezone = this.getTimezone();
 				resource = `workspaces/${workspaceId}/user/${webhookData.userId}/time-entries`;

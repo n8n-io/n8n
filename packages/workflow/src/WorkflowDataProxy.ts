@@ -2,9 +2,15 @@
 /* eslint-disable @typescript-eslint/no-this-alias */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 
-import { DateTime, Duration, Interval, Settings } from 'luxon';
 import * as jmespath from 'jmespath';
+import { DateTime, Duration, Interval, Settings } from 'luxon';
 
+import { augmentArray, augmentObject } from './AugmentObject';
+import { AGENT_LANGCHAIN_NODE_TYPE, SCRIPTING_NODE_TYPES } from './Constants';
+import { ApplicationError } from './errors/application.error';
+import { ExpressionError, type ExpressionErrorOptions } from './errors/expression.error';
+import { getGlobalState } from './GlobalState';
+import { NodeConnectionTypes } from './Interfaces';
 import type {
 	IDataObject,
 	IExecuteData,
@@ -20,15 +26,14 @@ import type {
 	NodeParameterValueType,
 	WorkflowExecuteMode,
 	ProxyInput,
+	INode,
 } from './Interfaces';
 import * as NodeHelpers from './NodeHelpers';
-import { ExpressionError, type ExpressionErrorOptions } from './errors/expression.error';
+import { deepCopy, isObjectEmpty } from './utils';
 import type { Workflow } from './Workflow';
-import { augmentArray, augmentObject } from './AugmentObject';
-import { deepCopy } from './utils';
-import { getGlobalState } from './GlobalState';
-import { ApplicationError } from './errors/application.error';
-import { SCRIPTING_NODE_TYPES } from './Constants';
+import type { EnvProviderState } from './WorkflowDataProxyEnvProvider';
+import { createEnvProvider, createEnvProviderState } from './WorkflowDataProxyEnvProvider';
+import { getPinDataIfManualExecution } from './WorkflowDataProxyHelpers';
 
 export function isResourceLocatorValue(value: unknown): value is INodeParameterResourceLocator {
 	return Boolean(
@@ -64,6 +69,7 @@ export class WorkflowDataProxy {
 		private defaultReturnRunIndex = -1,
 		private selfData: IDataObject = {},
 		private contextNodeName: string = activeNodeName,
+		private envProviderState?: EnvProviderState,
 	) {
 		this.runExecutionData = isScriptingNode(this.contextNodeName, workflow)
 			? runExecutionData !== null
@@ -154,13 +160,97 @@ export class WorkflowDataProxy {
 		);
 	}
 
+	private buildAgentToolInfo(node: INode) {
+		const nodeType = this.workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+		const type = nodeType.description.displayName;
+		const params = NodeHelpers.getNodeParameters(
+			nodeType.description.properties,
+			node.parameters,
+			true,
+			false,
+			node,
+			nodeType.description,
+		);
+		const resourceKey = params?.resource;
+		const operationKey = params?.operation;
+
+		const resource =
+			nodeType.description.properties
+				.find((nodeProperties) => nodeProperties.name === 'resource')
+				?.options?.find((option) => 'value' in option && option.value === resourceKey)?.name ??
+			null;
+
+		const operation =
+			nodeType.description.properties
+				.find(
+					(nodeProperty) =>
+						nodeProperty.name === 'operation' &&
+						nodeProperty.displayOptions?.show?.resource?.some((y) => y === resourceKey),
+				)
+				?.options?.find((y) => 'value' in y && y.value === operationKey)?.name ?? null;
+
+		const hasCredentials = !isObjectEmpty(node.credentials ?? {});
+
+		const hasValidCalendar = nodeType.description.name.includes('googleCalendar')
+			? isResourceLocatorValue(node.parameters.calendar) && node.parameters.calendar.value !== ''
+			: undefined;
+
+		const aiDefinedFields = Object.entries(node.parameters)
+			.map(([key, value]) => [key, isResourceLocatorValue(value) ? value.value : value] as const)
+			.filter(([_, value]) => value?.toString().toLowerCase().includes('$fromai'))
+			.map(
+				([key]) =>
+					nodeType.description.properties.find((property) => property.name === key)?.displayName,
+			);
+
+		return {
+			name: node.name,
+			type,
+			resource,
+			operation,
+			hasCredentials,
+			hasValidCalendar,
+			aiDefinedFields,
+		};
+	}
+
+	private agentInfo() {
+		const agentNode = this.workflow.getNode(this.activeNodeName);
+		if (!agentNode || agentNode.type !== AGENT_LANGCHAIN_NODE_TYPE) return undefined;
+		const connectedTools = this.workflow
+			.getParentNodes(this.activeNodeName, NodeConnectionTypes.AiTool)
+			.map((nodeName) => this.workflow.getNode(nodeName))
+			.filter((node) => node) as INode[];
+		const memoryConnectedToAgent =
+			this.workflow.getParentNodes(this.activeNodeName, NodeConnectionTypes.AiMemory).length > 0;
+		const allTools = this.workflow.queryNodes((nodeType) => {
+			return nodeType.description.name.toLowerCase().includes('tool');
+		});
+
+		const unconnectedTools = allTools
+			.filter(
+				(node) =>
+					this.workflow.getChildNodes(node.name, NodeConnectionTypes.AiTool, 1).length === 0,
+			)
+			.filter((node) => !connectedTools.includes(node));
+
+		return {
+			memoryConnectedToAgent,
+			tools: [
+				...connectedTools.map((node) => ({ connected: true, ...this.buildAgentToolInfo(node) })),
+				...unconnectedTools.map((node) => ({ connected: false, ...this.buildAgentToolInfo(node) })),
+			],
+		};
+	}
+
 	/**
 	 * Returns a proxy which allows to query parameter data of a given node
 	 *
 	 * @private
 	 * @param {string} nodeName The name of the node to query data from
+	 * @param {boolean} [resolveValue=true] If the expression value should get resolved
 	 */
-	private nodeParameterGetter(nodeName: string) {
+	private nodeParameterGetter(nodeName: string, resolveValue = true) {
 		const that = this;
 		const node = this.workflow.nodes[nodeName];
 
@@ -218,7 +308,7 @@ export class WorkflowDataProxy {
 					}
 				}
 
-				if (typeof returnValue === 'string' && returnValue.charAt(0) === '=') {
+				if (resolveValue && typeof returnValue === 'string' && returnValue.charAt(0) === '=') {
 					// The found value is an expression so resolve it
 					return that.workflow.expression.getParameterValue(
 						returnValue,
@@ -239,6 +329,29 @@ export class WorkflowDataProxy {
 				return returnValue;
 			},
 		});
+	}
+
+	private getNodeExecutionOrPinnedData({
+		nodeName,
+		branchIndex,
+		runIndex,
+		shortSyntax = false,
+	}: {
+		nodeName: string;
+		branchIndex?: number;
+		runIndex?: number;
+		shortSyntax?: boolean;
+	}) {
+		try {
+			return this.getNodeExecutionData(nodeName, shortSyntax, branchIndex, runIndex);
+		} catch (e) {
+			const pinData = getPinDataIfManualExecution(this.workflow, nodeName, this.mode);
+			if (pinData) {
+				return pinData;
+			}
+
+			throw e;
+		}
 	}
 
 	/**
@@ -283,7 +396,7 @@ export class WorkflowDataProxy {
 
 			if (
 				!that.runExecutionData.resultData.runData.hasOwnProperty(nodeName) &&
-				!that.workflow.getPinDataOfNode(nodeName)
+				!getPinDataIfManualExecution(that.workflow, nodeName, that.mode)
 			) {
 				throw new ExpressionError('Referenced node is unexecuted', {
 					runIndex: that.runIndex,
@@ -322,7 +435,7 @@ export class WorkflowDataProxy {
 				const nodeConnection = that.workflow.getNodeConnectionIndexes(
 					that.contextNodeName,
 					nodeName,
-					'main',
+					NodeConnectionTypes.Main,
 				);
 
 				if (nodeConnection === undefined) {
@@ -360,8 +473,13 @@ export class WorkflowDataProxy {
 	 * @private
 	 * @param {string} nodeName The name of the node query data from
 	 * @param {boolean} [shortSyntax=false] If short syntax got used
+	 * @param {boolean} [throwOnMissingExecutionData=true] If an error should get thrown if no execution data is available
 	 */
-	private nodeDataGetter(nodeName: string, shortSyntax = false) {
+	private nodeDataGetter(
+		nodeName: string,
+		shortSyntax = false,
+		throwOnMissingExecutionData = true,
+	) {
 		const that = this;
 		const node = this.workflow.nodes[nodeName];
 
@@ -383,7 +501,14 @@ export class WorkflowDataProxy {
 					}
 
 					if (['binary', 'data', 'json'].includes(name)) {
-						const executionData = that.getNodeExecutionData(nodeName, shortSyntax, undefined);
+						const executionData = that.getNodeExecutionOrPinnedData({
+							nodeName,
+							shortSyntax,
+						});
+
+						if (executionData.length === 0 && !throwOnMissingExecutionData) {
+							return undefined;
+						}
 
 						if (executionData.length === 0) {
 							if (that.workflow.getParentNodes(nodeName).length === 0) {
@@ -454,40 +579,6 @@ export class WorkflowDataProxy {
 					}
 
 					return Reflect.get(target, name, receiver);
-				},
-			},
-		);
-	}
-
-	/**
-	 * Returns a proxy to query data from the environment
-	 *
-	 * @private
-	 */
-	private envGetter() {
-		const that = this;
-		return new Proxy(
-			{},
-			{
-				has: () => true,
-				get(_, name) {
-					if (name === 'isProxy') return true;
-
-					if (typeof process === 'undefined') {
-						throw new ExpressionError('not accessible via UI, please run node', {
-							runIndex: that.runIndex,
-							itemIndex: that.itemIndex,
-						});
-					}
-					if (process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE === 'true') {
-						throw new ExpressionError('access to env vars denied', {
-							causeDetailed:
-								'If you need access please contact the administrator to remove the environment variable ‘N8N_BLOCK_ENV_ACCESS_IN_NODE‘',
-							runIndex: that.runIndex,
-							itemIndex: that.itemIndex,
-						});
-					}
-					return process.env[name.toString()];
 				},
 			},
 		);
@@ -616,22 +707,8 @@ export class WorkflowDataProxy {
 	 * Returns the data proxy object which allows to query data from current run
 	 *
 	 */
-	getDataProxy(): IWorkflowDataProxyData {
+	getDataProxy(opts?: { throwOnMissingExecutionData: boolean }): IWorkflowDataProxyData {
 		const that = this;
-
-		const getNodeOutput = (nodeName?: string, branchIndex?: number, runIndex?: number) => {
-			let executionData: INodeExecutionData[];
-
-			if (nodeName === undefined) {
-				executionData = that.connectionInputData;
-			} else {
-				branchIndex = branchIndex || 0;
-				runIndex = runIndex === undefined ? -1 : runIndex;
-				executionData = that.getNodeExecutionData(nodeName, false, branchIndex, runIndex);
-			}
-
-			return executionData;
-		};
 
 		// replacing proxies with the actual data.
 		const jmespathWrapper = (data: IDataObject | IDataObject[], query: string) => {
@@ -671,7 +748,7 @@ export class WorkflowDataProxy {
 
 			if (context?.nodeCause) {
 				const nodeName = context.nodeCause;
-				const pinData = this.workflow.getPinDataOfNode(nodeName);
+				const pinData = getPinDataIfManualExecution(that.workflow, nodeName, that.mode);
 
 				if (pinData) {
 					if (!context) {
@@ -711,17 +788,19 @@ export class WorkflowDataProxy {
 			});
 		};
 
-		const createMissingPairedItemError = (nodeCause: string) => {
-			return createExpressionError("Can't get data for expression", {
-				messageTemplate: 'Info for expression missing from previous node',
+		const createMissingPairedItemError = (
+			nodeCause: string,
+			usedMethodName: 'itemMatching' | 'pairedItem' | 'item' | '$getPairedItem' = 'pairedItem',
+		) => {
+			const message = `Using the ${usedMethodName} method doesn't work with pinned data in this scenario. Please unpin '${nodeCause}' and try again.`;
+			return new ExpressionError(message, {
+				runIndex: that.runIndex,
+				itemIndex: that.itemIndex,
 				functionality: 'pairedItem',
-				functionOverrides: {
-					message: "Can't get data",
-				},
-				nodeCause,
 				descriptionKey: isScriptingNode(nodeCause, that.workflow)
 					? 'pairedItemNoInfoCodeNode'
 					: 'pairedItemNoInfo',
+				nodeCause,
 				causeDetailed: `Missing pairedItem data (node '${nodeCause}' probably didn't supply it)`,
 				type: 'paired_item_no_info',
 			});
@@ -745,6 +824,7 @@ export class WorkflowDataProxy {
 			destinationNodeName: string,
 			incomingSourceData: ISourceData | null,
 			pairedItem: IPairedItemData,
+			usedMethodName: 'pairedItem' | 'itemMatching' | 'item' | '$getPairedItem' = '$getPairedItem',
 		): INodeExecutionData | null => {
 			let taskData: ITaskData | undefined;
 
@@ -785,7 +865,8 @@ export class WorkflowDataProxy {
 
 				const previousNodeOutputData =
 					taskData?.data?.main?.[previousNodeOutput] ??
-					(that.workflow.getPinDataOfNode(sourceData.previousNode) as INodeExecutionData[]);
+					getPinDataIfManualExecution(that.workflow, sourceData.previousNode, that.mode) ??
+					[];
 				const source = taskData?.source ?? [];
 
 				if (pairedItem.item >= previousNodeOutputData.length) {
@@ -797,13 +878,13 @@ export class WorkflowDataProxy {
 				const itemPreviousNode: INodeExecutionData = previousNodeOutputData[pairedItem.item];
 
 				if (itemPreviousNode.pairedItem === undefined) {
-					throw createMissingPairedItemError(sourceData.previousNode);
+					throw createMissingPairedItemError(sourceData.previousNode, usedMethodName);
 				}
 
 				if (Array.isArray(itemPreviousNode.pairedItem)) {
 					// Item is based on multiple items so check all of them
 					const results = itemPreviousNode.pairedItem
-						// eslint-disable-next-line @typescript-eslint/no-loop-func
+
 						.map((item) => {
 							try {
 								const itemInput = item.input || 0;
@@ -813,7 +894,7 @@ export class WorkflowDataProxy {
 									throw new ApplicationError('Not found');
 								}
 
-								return getPairedItem(destinationNodeName, source[itemInput], item);
+								return getPairedItem(destinationNodeName, source[itemInput], item, usedMethodName);
 							} catch (error) {
 								// Means pairedItem could not be found
 								return null;
@@ -865,6 +946,7 @@ export class WorkflowDataProxy {
 						// A trigger node got reached, so looks like that that item can not be resolved
 						throw createNoConnectionError(destinationNodeName);
 					}
+
 					throw createExpressionError('Can’t get data for expression', {
 						messageTemplate: 'Can’t get data for expression under ‘%%PARAMETER%%’ field',
 						functionality: 'pairedItem',
@@ -906,9 +988,29 @@ export class WorkflowDataProxy {
 			}
 
 			taskData =
-				that.runExecutionData!.resultData.runData[sourceData.previousNode][
+				that.runExecutionData!.resultData.runData[sourceData.previousNode]?.[
 					sourceData?.previousNodeRun || 0
 				];
+
+			if (!taskData) {
+				const pinData = getPinDataIfManualExecution(
+					that.workflow,
+					sourceData.previousNode,
+					that.mode,
+				);
+
+				if (pinData) {
+					taskData = {
+						data: {
+							main: [pinData],
+						},
+						startTime: 0,
+						executionTime: 0,
+						executionIndex: 0,
+						source: [],
+					};
+				}
+			}
 
 			const previousNodeOutput = sourceData.previousNodeOutput || 0;
 			if (previousNodeOutput >= taskData.data!.main.length) {
@@ -934,6 +1036,49 @@ export class WorkflowDataProxy {
 			return taskData.data!.main[previousNodeOutput]![pairedItem.item];
 		};
 
+		const handleFromAi = (
+			name: string,
+			_description?: string,
+			_type: string = 'string',
+			defaultValue?: unknown,
+		) => {
+			const { itemIndex, runIndex } = that;
+			if (!name || name === '') {
+				throw new ExpressionError("Add a key, e.g. $fromAI('placeholder_name')", {
+					runIndex,
+					itemIndex,
+				});
+			}
+			const nameValidationRegex = /^[a-zA-Z0-9_-]{0,64}$/;
+			if (!nameValidationRegex.test(name)) {
+				throw new ExpressionError(
+					'Invalid parameter key, must be between 1 and 64 characters long and only contain lowercase letters, uppercase letters, numbers, underscores, and hyphens',
+					{
+						runIndex,
+						itemIndex,
+					},
+				);
+			}
+			const inputData =
+				that.runExecutionData?.resultData.runData[that.activeNodeName]?.[runIndex].inputOverride;
+			const placeholdersDataInputData =
+				inputData?.[NodeConnectionTypes.AiTool]?.[0]?.[itemIndex].json;
+
+			if (Boolean(!placeholdersDataInputData)) {
+				throw new ExpressionError('No execution data available', {
+					runIndex,
+					itemIndex,
+					type: 'no_execution_data',
+				});
+			}
+			return (
+				// TS does not know that the key exists, we need to address this in refactor
+				(placeholdersDataInputData?.query as Record<string, unknown>)?.[name] ??
+				placeholdersDataInputData?.[name] ??
+				defaultValue
+			);
+		};
+
 		const base = {
 			$: (nodeName: string) => {
 				if (!nodeName) {
@@ -953,7 +1098,7 @@ export class WorkflowDataProxy {
 				const ensureNodeExecutionData = () => {
 					if (
 						!that?.runExecutionData?.resultData?.runData.hasOwnProperty(nodeName) &&
-						!that.workflow.getPinDataOfNode(nodeName)
+						!getPinDataIfManualExecution(that.workflow, nodeName, that.mode)
 					) {
 						throw createExpressionError('Referenced node is unexecuted', {
 							runIndex: that.runIndex,
@@ -991,10 +1136,11 @@ export class WorkflowDataProxy {
 								);
 							}
 
-							if (['pairedItem', 'itemMatching', 'item'].includes(property as string)) {
+							if (property === 'pairedItem' || property === 'itemMatching' || property === 'item') {
 								// Before resolving the pairedItem make sure that the requested node comes in the
 								// graph before the current one
 								const activeNode = that.workflow.getNode(that.activeNodeName);
+
 								let contextNode = that.contextNodeName;
 								if (activeNode) {
 									const parentMainInputNode = that.workflow.getParentMainInputNode(activeNode);
@@ -1017,8 +1163,20 @@ export class WorkflowDataProxy {
 										itemIndex = that.itemIndex;
 									}
 
+									if (!that.connectionInputData.length) {
+										const pinnedData = getPinDataIfManualExecution(
+											that.workflow,
+											nodeName,
+											that.mode,
+										);
+
+										if (pinnedData) {
+											return pinnedData[itemIndex];
+										}
+									}
+
 									const executionData = that.connectionInputData;
-									const input = executionData[itemIndex];
+									const input = executionData?.[itemIndex];
 									if (!input) {
 										throw createExpressionError('Can’t get data for expression', {
 											messageTemplate: 'Can’t get data for expression under ‘%%PARAMETER%%’ field',
@@ -1040,7 +1198,7 @@ export class WorkflowDataProxy {
 									const pairedItem = input.pairedItem as IPairedItemData;
 
 									if (pairedItem === undefined) {
-										throw createMissingPairedItemError(that.activeNodeName);
+										throw createMissingPairedItemError(that.activeNodeName, property);
 									}
 
 									if (!that.executeData?.source) {
@@ -1061,7 +1219,7 @@ export class WorkflowDataProxy {
 										that.executeData.source.main[pairedItem.input || 0] ??
 										that.executeData.source.main[0];
 
-									return getPairedItem(nodeName, sourceData, pairedItem);
+									return getPairedItem(nodeName, sourceData, pairedItem, property);
 								};
 
 								if (property === 'item') {
@@ -1069,10 +1227,21 @@ export class WorkflowDataProxy {
 								}
 								return pairedItemMethod;
 							}
+
 							if (property === 'first') {
 								ensureNodeExecutionData();
 								return (branchIndex?: number, runIndex?: number) => {
-									const executionData = getNodeOutput(nodeName, branchIndex, runIndex);
+									branchIndex =
+										branchIndex ??
+										// default to the output the active node is connected to
+										that.workflow.getNodeConnectionIndexes(that.activeNodeName, nodeName)
+											?.sourceIndex ??
+										0;
+									const executionData = that.getNodeExecutionOrPinnedData({
+										nodeName,
+										branchIndex,
+										runIndex,
+									});
 									if (executionData[0]) return executionData[0];
 									return undefined;
 								};
@@ -1080,7 +1249,17 @@ export class WorkflowDataProxy {
 							if (property === 'last') {
 								ensureNodeExecutionData();
 								return (branchIndex?: number, runIndex?: number) => {
-									const executionData = getNodeOutput(nodeName, branchIndex, runIndex);
+									branchIndex =
+										branchIndex ??
+										// default to the output the active node is connected to
+										that.workflow.getNodeConnectionIndexes(that.activeNodeName, nodeName)
+											?.sourceIndex ??
+										0;
+									const executionData = that.getNodeExecutionOrPinnedData({
+										nodeName,
+										branchIndex,
+										runIndex,
+									});
 									if (!executionData.length) return undefined;
 									if (executionData[executionData.length - 1]) {
 										return executionData[executionData.length - 1];
@@ -1090,8 +1269,15 @@ export class WorkflowDataProxy {
 							}
 							if (property === 'all') {
 								ensureNodeExecutionData();
-								return (branchIndex?: number, runIndex?: number) =>
-									getNodeOutput(nodeName, branchIndex, runIndex);
+								return (branchIndex?: number, runIndex?: number) => {
+									branchIndex =
+										branchIndex ??
+										// default to the output the active node is connected to
+										that.workflow.getNodeConnectionIndexes(that.activeNodeName, nodeName)
+											?.sourceIndex ??
+										0;
+									return that.getNodeExecutionOrPinnedData({ nodeName, branchIndex, runIndex });
+								};
 							}
 							if (property === 'context') {
 								return that.nodeContextGetter(nodeName);
@@ -1198,7 +1384,11 @@ export class WorkflowDataProxy {
 
 			$binary: {}, // Placeholder
 			$data: {}, // Placeholder
-			$env: this.envGetter(),
+			$env: createEnvProvider(
+				that.runIndex,
+				that.itemIndex,
+				that.envProviderState ?? createEnvProviderState(),
+			),
 			$evaluateExpression: (expression: string, itemIndex?: number) => {
 				itemIndex = itemIndex || that.itemIndex;
 				return that.workflow.expression.getParameterValue(
@@ -1235,6 +1425,10 @@ export class WorkflowDataProxy {
 				);
 				return dataProxy.getDataProxy();
 			},
+			$fromAI: handleFromAi,
+			// Make sure mis-capitalized $fromAI is handled correctly even though we don't auto-complete it
+			$fromai: handleFromAi,
+			$fromAi: handleFromAi,
 			$items: (nodeName?: string, outputIndex?: number, runIndex?: number) => {
 				if (nodeName === undefined) {
 					nodeName = (that.prevNodeGetter() as { name: string }).name;
@@ -1258,6 +1452,7 @@ export class WorkflowDataProxy {
 			$node: this.nodeGetter(),
 			$self: this.selfGetter(),
 			$parameter: this.nodeParameterGetter(this.activeNodeName),
+			$rawParameter: this.nodeParameterGetter(this.activeNodeName, false),
 			$prevNode: this.prevNodeGetter(),
 			$runIndex: this.runIndex,
 			$mode: this.mode,
@@ -1266,11 +1461,11 @@ export class WorkflowDataProxy {
 			$now: DateTime.now(),
 			$today: DateTime.now().set({ hour: 0, minute: 0, second: 0, millisecond: 0 }),
 			$jmesPath: jmespathWrapper,
-			// eslint-disable-next-line @typescript-eslint/naming-convention
+
 			DateTime,
-			// eslint-disable-next-line @typescript-eslint/naming-convention
+
 			Interval,
-			// eslint-disable-next-line @typescript-eslint/naming-convention
+
 			Duration,
 			...that.additionalKeys,
 			$getPairedItem: getPairedItem,
@@ -1281,7 +1476,12 @@ export class WorkflowDataProxy {
 			$thisItem: that.connectionInputData[that.itemIndex],
 			$thisItemIndex: this.itemIndex,
 			$thisRunIndex: this.runIndex,
+			$nodeVersion: that.workflow.getNode(that.activeNodeName)?.typeVersion,
+			$nodeId: that.workflow.getNode(that.activeNodeName)?.id,
+			$agentInfo: this.agentInfo(),
+			$webhookId: that.workflow.getNode(that.activeNodeName)?.webhookId,
 		};
+		const throwOnMissingExecutionData = opts?.throwOnMissingExecutionData ?? true;
 
 		return new Proxy(base, {
 			has: () => true,
@@ -1289,10 +1489,11 @@ export class WorkflowDataProxy {
 				if (name === 'isProxy') return true;
 
 				if (['$data', '$json'].includes(name as string)) {
-					return that.nodeDataGetter(that.contextNodeName, true)?.json;
+					return that.nodeDataGetter(that.contextNodeName, true, throwOnMissingExecutionData)?.json;
 				}
 				if (name === '$binary') {
-					return that.nodeDataGetter(that.contextNodeName, true)?.binary;
+					return that.nodeDataGetter(that.contextNodeName, true, throwOnMissingExecutionData)
+						?.binary;
 				}
 
 				return Reflect.get(target, name, receiver);

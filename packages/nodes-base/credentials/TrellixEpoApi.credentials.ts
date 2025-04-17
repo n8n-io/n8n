@@ -1,4 +1,4 @@
-import type { IAuthenticateGeneric, ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { IAuthenticateGeneric, ICredentialType, INodeProperties, Icon } from 'n8n-workflow';
 
 export class TrellixEpoApi implements ICredentialType {
 	name = 'trellixEpoApi';
@@ -7,7 +7,7 @@ export class TrellixEpoApi implements ICredentialType {
 
 	documentationUrl = 'trellixepo';
 
-	icon = 'file:icons/Trellix.svg';
+	icon: Icon = 'file:icons/Trellix.svg';
 
 	httpRequestNode = {
 		name: 'Trellix (McAfee) ePolicy Orchestrator',

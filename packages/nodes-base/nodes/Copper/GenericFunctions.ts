@@ -1,5 +1,6 @@
 import { createHash } from 'crypto';
-
+import flow from 'lodash/flow';
+import omit from 'lodash/omit';
 import type {
 	ICredentialDataDecryptedObject,
 	IDataObject,
@@ -7,14 +8,11 @@ import type {
 	IHookFunctions,
 	IHttpRequestMethods,
 	ILoadOptionsFunctions,
-	IRequestOptions,
+	IHttpRequestOptions,
 	IWebhookFunctions,
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
-
-import flow from 'lodash/flow';
-import omit from 'lodash/omit';
 
 import type {
 	AddressFixedCollection,
@@ -35,19 +33,14 @@ export async function copperApiRequest(
 	uri = '',
 	option: IDataObject = {},
 ) {
-	const credentials = (await this.getCredentials('copperApi')) as { apiKey: string; email: string };
-
-	let options: IRequestOptions = {
+	let options: IHttpRequestOptions = {
 		headers: {
-			'X-PW-AccessToken': credentials.apiKey,
-			'X-PW-Application': 'developer_api',
-			'X-PW-UserEmail': credentials.email,
 			'Content-Type': 'application/json',
 		},
 		method,
 		qs,
 		body,
-		uri: uri || `https://api.prosperworks.com/developer_api/v1${resource}`,
+		url: uri || `https://api.copper.com/developer_api/v1${resource}`,
 		json: true,
 	};
 
@@ -62,7 +55,7 @@ export async function copperApiRequest(
 	}
 
 	try {
-		return await this.helpers.request(options);
+		return await this.helpers.requestWithAuthentication.call(this, 'copperApi', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}

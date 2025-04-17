@@ -1,5 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-import { NodeConnectionType } from 'n8n-workflow';
+import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
+import { AIMessage, SystemMessage, HumanMessage, type BaseMessage } from '@langchain/core/messages';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -7,8 +9,6 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
-import { AIMessage, SystemMessage, HumanMessage, type BaseMessage } from '@langchain/core/messages';
 
 type MessageRole = 'ai' | 'system' | 'user';
 interface MessageRecord {
@@ -68,6 +68,7 @@ export class MemoryManager implements INodeType {
 		displayName: 'Chat Memory Manager',
 		name: 'memoryManager',
 		icon: 'fa:database',
+		iconColor: 'black',
 		group: ['transform'],
 		version: [1, 1.1],
 		description: 'Manage chat messages memory and use it in the workflow',
@@ -77,7 +78,7 @@ export class MemoryManager implements INodeType {
 		codex: {
 			categories: ['AI'],
 			subcategories: {
-				AI: ['Miscellaneous'],
+				AI: ['Miscellaneous', 'Root Nodes'],
 			},
 			resources: {
 				primaryDocumentation: [
@@ -91,11 +92,11 @@ export class MemoryManager implements INodeType {
 		inputs: [
 			{
 				displayName: '',
-				type: NodeConnectionType.Main,
+				type: NodeConnectionTypes.Main,
 			},
 			{
 				displayName: 'Memory',
-				type: NodeConnectionType.AiMemory,
+				type: NodeConnectionTypes.AiMemory,
 				required: true,
 				maxConnections: 1,
 			},
@@ -104,7 +105,7 @@ export class MemoryManager implements INodeType {
 		outputs: [
 			{
 				displayName: '',
-				type: NodeConnectionType.Main,
+				type: NodeConnectionTypes.Main,
 			},
 		],
 		properties: [
@@ -296,7 +297,7 @@ export class MemoryManager implements INodeType {
 		const items = this.getInputData();
 		const mode = this.getNodeParameter('mode', 0, 'load') as 'load' | 'insert' | 'delete';
 		const memory = (await this.getInputConnectionData(
-			NodeConnectionType.AiMemory,
+			NodeConnectionTypes.AiMemory,
 			0,
 		)) as BaseChatMemory;
 

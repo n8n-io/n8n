@@ -1,7 +1,6 @@
 import {
 	HTTP_REQUEST_NODE_NAME,
 	IF_NODE_NAME,
-	INSTANCE_OWNER,
 	MANUAL_TRIGGER_NODE_NAME,
 	EDIT_FIELDS_SET_NODE_NAME,
 } from '../constants';
@@ -19,9 +18,9 @@ describe('Debug', () => {
 	it('should be able to debug executions', () => {
 		cy.intercept('GET', '/rest/executions?filter=*').as('getExecutions');
 		cy.intercept('GET', '/rest/executions/*').as('getExecution');
-		cy.intercept('POST', '/rest/workflows/run').as('postWorkflowRun');
+		cy.intercept('POST', '/rest/workflows/**/run?**').as('postWorkflowRun');
 
-		cy.signin({ email: INSTANCE_OWNER.email, password: INSTANCE_OWNER.password });
+		cy.signinAsOwner();
 
 		workflowPage.actions.visit();
 
@@ -88,11 +87,28 @@ describe('Debug', () => {
 		confirmDialog.get('.btn--confirm').click();
 		cy.url().should('include', '/debug');
 
-		workflowPage.getters.canvasNodes().first().should('have.descendants', '.node-pin-data-icon');
-		workflowPage.getters
-			.canvasNodes()
-			.not(':first')
-			.should('not.have.descendants', '.node-pin-data-icon');
+		cy.ifCanvasVersion(
+			() => {
+				workflowPage.getters
+					.canvasNodes()
+					.first()
+					.should('have.descendants', '.node-pin-data-icon');
+				workflowPage.getters
+					.canvasNodes()
+					.not(':first')
+					.should('not.have.descendants', '.node-pin-data-icon');
+			},
+			() => {
+				workflowPage.getters
+					.canvasNodes()
+					.first()
+					.should('have.descendants', '[data-test-id="canvas-node-status-pinned"]');
+				workflowPage.getters
+					.canvasNodes()
+					.not(':first')
+					.should('not.have.descendants', '[data-test-id="canvas-node-status-pinned"]');
+			},
+		);
 
 		cy.reload(true);
 		cy.wait(['@getExecution']);
@@ -115,10 +131,22 @@ describe('Debug', () => {
 		confirmDialog.get('.btn--confirm').click();
 		cy.url().should('include', '/debug');
 
-		workflowPage.getters.canvasNodes().last().find('.node-info-icon').should('be.empty');
+		cy.ifCanvasVersion(
+			() => {
+				workflowPage.getters.canvasNodes().last().find('.node-info-icon').should('be.empty');
+			},
+			() => {
+				workflowPage.getters
+					.canvasNodes()
+					.last()
+					.find('[class*="statusIcons"]')
+					.should('not.exist');
+			},
+		);
 
 		workflowPage.getters.canvasNodes().first().dblclick();
-		ndv.getters.pinDataButton().click();
+		ndv.actions.unPinData();
+
 		ndv.actions.close();
 
 		workflowPage.actions.saveWorkflowUsingKeyboardShortcut();

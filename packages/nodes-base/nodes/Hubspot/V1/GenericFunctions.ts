@@ -1,3 +1,4 @@
+import moment from 'moment-timezone';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialTestFunctions,
@@ -10,8 +11,6 @@ import type {
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
-
-import moment from 'moment-timezone';
 
 export async function hubspotApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
@@ -78,7 +77,7 @@ export async function hubspotApiRequest(
  */
 export async function hubspotApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	propertyName: string,
+	_propertyName: string,
 	method: IHttpRequestMethods,
 	endpoint: string,
 	// tslint:disable-next-line:no-any

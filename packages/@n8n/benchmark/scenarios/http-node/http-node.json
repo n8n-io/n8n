@@ -1,0 +1,213 @@
+{
+	"createdAt": "2024-09-04T07:18:29.011Z",
+	"updatedAt": "2024-09-04T07:27:58.000Z",
+	"id": "rUXzWNGsUDUmgaFS",
+	"name": "HTTP Request",
+	"active": false,
+	"nodes": [
+		{
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "benchmark-http-node",
+				"responseMode": "responseNode",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [-60, 20],
+			"id": "f11378b4-5f28-4a6c-9332-5878342cd3cf",
+			"name": "Webhook",
+			"webhookId": "c40014cc-4d64-4fcf-8c13-9e94b6792756"
+		},
+		{
+			"parameters": {
+				"respondWith": "allIncomingItems",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.respondToWebhook",
+			"typeVersion": 1.1,
+			"position": [1060, 20],
+			"id": "f42552c7-9c6e-4616-b9d5-ac79445ef4ed",
+			"name": "Respond to Webhook"
+		},
+		{
+			"parameters": {
+				"url": "http://mockapi:8080/users/clair.bahringer/received_events/public",
+				"options": {
+					"response": {
+						"response": {
+							"fullResponse": true
+						}
+					}
+				}
+			},
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [300, -180],
+			"id": "20de816e-0fbe-4e28-bc53-f508a2dda117",
+			"name": "Mock public received events"
+		},
+		{
+			"parameters": {
+				"url": "http://mockapi:8080/repos/udke6pujoywnagxkcvab2riw23khzn2tibo2vincws32qexb50ey7h97d42vnzyol0rxypgsg4pomsf7sgnmdaihstljw8edcijrwmy7mfi76yif19c4/47i31dh737el215j62ts2f2782nw3ss26rul3s8jw13u3vu0xm349a5hyay5asmwnlnf7nx8p9h4g62so6s1cis7xv9puj5j98t4m980sbe2455fn1obccjl/events",
+				"options": {
+					"response": {
+						"response": {
+							"fullResponse": true
+						}
+					}
+				}
+			},
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [300, 20],
+			"id": "083e02b3-a257-49a8-8f7d-42222cb9194c",
+			"name": "Mock repository events"
+		},
+		{
+			"parameters": {
+				"url": "http://mockapi:8080/orgs/g02pp066qoyithcjevhd6m1wfii3c4x51k39n9apybljhx69/events",
+				"options": {
+					"response": {
+						"response": {
+							"fullResponse": true
+						}
+					}
+				}
+			},
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [300, 220],
+			"id": "f4c3b5d2-0257-4883-a585-ade4c3a1082c",
+			"name": "Mock organization events"
+		},
+		{
+			"parameters": {
+				"numberInputs": 3
+			},
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 3,
+			"position": [600, 20],
+			"id": "273985b7-b0ae-4cde-bbe9-7b3e4b29fe61",
+			"name": "Merge"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "89608adb-f487-416f-a7d8-3ebb1f7b50e5",
+							"name": "statusCode",
+							"value": "={{ $json.statusCode }}",
+							"type": "number"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "231275a7-44e7-47bb-8ccf-fe62dc48356b",
+			"name": "Select statusCode",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [820, 20]
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Mock public received events",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Mock repository events",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Mock organization events",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Mock public received events": {
+			"main": [
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Mock repository events": {
+			"main": [
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"Mock organization events": {
+			"main": [
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 2
+					}
+				]
+			]
+		},
+		"Merge": {
+			"main": [
+				[
+					{
+						"node": "Select statusCode",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Select statusCode": {
+			"main": [
+				[
+					{
+						"node": "Respond to Webhook",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": { "executionOrder": "v1" },
+	"staticData": null,
+	"meta": null,
+	"pinData": {
+		"Webhook": [
+			{
+				"json": {
+					"headers": { "host": "localhost:5678", "user-agent": "curl/8.6.0", "accept": "*/*" },
+					"params": {},
+					"query": {},
+					"body": {},
+					"webhookUrl": "http://localhost:5678/webhook-test/benchmark-http-node",
+					"executionMode": "test"
+				}
+			}
+		]
+	},
+	"versionId": "9fa91e54-e73a-4a34-b781-d64f2b02f333",
+	"triggerCount": 0,
+	"tags": []
+}

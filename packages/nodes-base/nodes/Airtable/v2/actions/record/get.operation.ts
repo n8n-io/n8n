@@ -5,10 +5,11 @@ import type {
 	NodeApiError,
 	IExecuteFunctions,
 } from 'n8n-workflow';
+
 import { updateDisplayOptions, wrapData } from '../../../../../utils/utilities';
-import { apiRequest, downloadRecordAttachments } from '../../transport';
-import { flattenOutput, processAirtableError } from '../../helpers/utils';
 import type { IRecord } from '../../helpers/interfaces';
+import { flattenOutput, processAirtableError } from '../../helpers/utils';
+import { apiRequest, downloadRecordAttachments } from '../../transport';
 
 const properties: INodeProperties[] = [
 	{
@@ -28,7 +29,7 @@ const properties: INodeProperties[] = [
 		type: 'collection',
 		default: {},
 		description: 'Additional options which decide which records should be returned',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		options: [
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options

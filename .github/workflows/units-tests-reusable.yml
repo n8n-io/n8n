@@ -4,46 +4,64 @@ on:
   workflow_call:
     inputs:
       ref:
-        description: 'GitHub ref to test.'
+        description: GitHub ref to test.
         required: false
         type: string
-        default: 'master'
+        default: master
       nodeVersion:
-        description: 'Version of node to use.'
+        description: Version of node to use.
         required: false
         type: string
-        default: '18.x'
+        default: 20.x
       cacheKey:
-        description: 'Cache key for modules and build artifacts.'
+        description: Cache key for modules and build artifacts.
         required: false
         default: ''
         type: string
       collectCoverage:
         required: false
-        default: 'false'
-        type: string
+        default: false
+        type: boolean
+      ignoreTurboCache:
+        required: false
+        default: false
+        type: boolean
+      skipFrontendTests:
+        required: false
+        default: false
+        type: boolean
+    secrets:
+      CODECOV_TOKEN:
+        description: 'Codecov upload token.'
+        required: false
 
 jobs:
   unit-test:
     name: Unit tests
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2204
     env:
+      TURBO_FORCE: ${{ inputs.ignoreTurboCache }}
       COVERAGE_ENABLED: ${{ inputs.collectCoverage }}
     steps:
       - uses: actions/checkout@v4.1.1
         with:
-          repository: n8n-io/n8n
           ref: ${{ inputs.ref }}
 
-      - run: corepack enable
       - name: Use Node.js ${{ inputs.nodeVersion }}
-        uses: actions/setup-node@v4.0.1
+        uses: useblacksmith/setup-node@v5
         with:
           node-version: ${{ inputs.nodeVersion }}
-          cache: pnpm
+
+      - name: Setup corepack and pnpm
+        run: |
+          npm i -g corepack@0.31
+          corepack enable
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Setup build cache
+        uses: useblacksmith/caching-for-turbo@v1
 
       - name: Build
         if: ${{ inputs.cacheKey == '' }}
@@ -51,10 +69,11 @@ jobs:
 
       - name: Restore cached build artifacts
         if: ${{ inputs.cacheKey != '' }}
-        uses: actions/cache/restore@v4.0.0
+        uses: useblacksmith/cache/restore@v5
         with:
           path: ./packages/**/dist
           key: ${{ inputs.cacheKey }}
+          fail-on-cache-miss: true
 
       - name: Test Backend
         run: pnpm test:backend
@@ -63,10 +82,17 @@ jobs:
         run: pnpm test:nodes
 
       - name: Test Frontend
+        if: ${{ !inputs.skipFrontendTests }}
         run: pnpm test:frontend
 
-      - name: Upload coverage to Codecov
-        if: ${{ inputs.collectCoverage == 'true' }}
-        uses: codecov/codecov-action@v3
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() }}  # Run even if tests fail
+        uses: codecov/test-results-action@v1
         with:
-          files: packages/@n8n/chat/coverage/cobertura-coverage.xml,packages/@n8n/nodes-langchain/coverage/cobertura-coverage.xml,packages/@n8n/permissions/coverage/cobertura-coverage.xml,packages/@n8n/client-oauth2/coverage/cobertura-coverage.xml,packages/cli/coverage/cobertura-coverage.xml,packages/core/coverage/cobertura-coverage.xml,packages/design-system/coverage/cobertura-coverage.xml,packages/editor-ui/coverage/cobertura-coverage.xml,packages/nodes-base/coverage/cobertura-coverage.xml,packages/workflow/coverage/cobertura-coverage.xml
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Upload coverage to Codecov
+        if: inputs.collectCoverage
+        uses: codecov/codecov-action@v5.1.2
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}

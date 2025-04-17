@@ -1,6 +1,7 @@
 import type { INodeProperties } from 'n8n-workflow';
-import { updateDisplayOptions } from '../../../utils/utilities';
+
 import { searchProperties } from './common.descriptions';
+import { updateDisplayOptions } from '../../../utils/utilities';
 
 const searchDisplayOptions = {
 	show: {
@@ -168,7 +169,7 @@ export const attributeFields: INodeProperties[] = [
 				type: 'options',
 				default: '',
 				description:
-					'Use only for when <code>Sharing Group</code> is selected in <code>Distribution</code>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'Use only for when <code>Sharing Group</code> is selected in <code>Distribution</code>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getSharingGroups',
 				},
@@ -317,7 +318,7 @@ export const attributeFields: INodeProperties[] = [
 				default: '',
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>. Use only for when <code>Sharing Group</code> is selected in <code>Distribution</code>.',
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>. Use only for when <code>Sharing Group</code> is selected in <code>Distribution</code>.',
 				typeOptions: {
 					loadOptionsMethod: 'getSharingGroups',
 				},

@@ -38,11 +38,11 @@ export const activityFields: INodeProperties[] = [
 		name: 'workspaceId',
 		type: 'options',
 		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getWorkspaces',
 		},
-		default: '',
+		default: 'Deprecated',
 		required: true,
 		displayOptions: {
 			show: {
@@ -97,9 +97,9 @@ export const activityFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getActivityTypes',
 				},
-				default: '',
+				default: 'Deprecated',
 				description:
-					'A user-defined way to group activities of the same nature. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'A user-defined way to group activities of the same nature. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Description',
@@ -147,11 +147,11 @@ export const activityFields: INodeProperties[] = [
 		name: 'workspaceId',
 		type: 'options',
 		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getWorkspaces',
 		},
-		default: '',
+		default: 'Deprecated',
 		required: true,
 		displayOptions: {
 			show: {

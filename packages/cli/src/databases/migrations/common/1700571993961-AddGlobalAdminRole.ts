@@ -1,5 +1,6 @@
-import type { MigrationContext, ReversibleMigration } from '@db/types';
-import { ApplicationError } from 'n8n-workflow';
+import { UnexpectedError } from 'n8n-workflow';
+
+import type { MigrationContext, ReversibleMigration } from '@/databases/types';
 
 export class AddGlobalAdminRole1700571993961 implements ReversibleMigration {
 	async up({ escape, runQuery }: MigrationContext) {
@@ -40,7 +41,7 @@ export class AddGlobalAdminRole1700571993961 implements ReversibleMigration {
 
 		const memberRoleId = memberRoleIdResult[0]?.id;
 		if (!memberRoleId) {
-			throw new ApplicationError('Could not find global member role!');
+			throw new UnexpectedError('Could not find global member role!');
 		}
 
 		await runQuery(

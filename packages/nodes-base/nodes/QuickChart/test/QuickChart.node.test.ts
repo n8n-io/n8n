@@ -1,21 +1,17 @@
 /* eslint-disable @typescript-eslint/no-loop-func */
+import type { WorkflowTestData } from 'n8n-workflow';
 import nock from 'nock';
-import * as Helpers from '@test/nodes/Helpers';
-import type { WorkflowTestData } from '@test/nodes/types';
+
 import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
+import * as Helpers from '@test/nodes/Helpers';
 
 describe('Test QuickChart Node', () => {
 	beforeEach(async () => {
 		await Helpers.initBinaryDataService();
-		nock.disableNetConnect();
 		nock('https://quickchart.io')
 			.persist()
 			.get(/chart.*/)
 			.reply(200, { success: true });
-	});
-
-	afterEach(() => {
-		nock.restore();
 	});
 
 	const workflow = Helpers.readJsonFileSync('nodes/QuickChart/test/QuickChart.workflow.json');
@@ -93,11 +89,9 @@ describe('Test QuickChart Node', () => {
 		},
 	];
 
-	const nodeTypes = Helpers.setup(tests);
-
 	for (const testData of tests) {
 		test(testData.description, async () => {
-			const { result } = await executeWorkflow(testData, nodeTypes);
+			const { result } = await executeWorkflow(testData);
 
 			const resultNodeData = Helpers.getResultNodeData(result, testData);
 			resultNodeData.forEach(({ nodeName, resultData }) => {

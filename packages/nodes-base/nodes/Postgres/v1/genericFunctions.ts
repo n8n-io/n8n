@@ -2,7 +2,10 @@ import { ApplicationError } from 'n8n-workflow';
 import type { IExecuteFunctions, IDataObject, INodeExecutionData, JsonObject } from 'n8n-workflow';
 import type pgPromise from 'pg-promise';
 import type pg from 'pg-promise/typescript/pg-subset';
+
 import { getResolvables } from '@utils/utilities';
+
+import type { PgpDatabase } from '../v2/helpers/interfaces';
 
 /**
  * Returns of a shallow copy of the items which only contains the json data and
@@ -86,14 +89,14 @@ export function wrapData(data: IDataObject[]): INodeExecutionData[] {
  *
  * @param {Function} getNodeParam The getter for the Node's parameters
  * @param {pgPromise.IMain<{}, pg.IClient>} pgp The pgPromise instance
- * @param {pgPromise.IDatabase<{}, pg.IClient>} db The pgPromise database connection
+ * @param {PgpDatabase} db The pgPromise database connection
  * @param {input[]} input The Node's input data
  */
 export async function pgQuery(
 	// eslint-disable-next-line @typescript-eslint/ban-types
 	getNodeParam: Function,
 	pgp: pgPromise.IMain<{}, pg.IClient>,
-	db: pgPromise.IDatabase<{}, pg.IClient>,
+	db: PgpDatabase,
 	items: INodeExecutionData[],
 	continueOnFail: boolean,
 	overrideMode?: string,
@@ -169,7 +172,7 @@ export async function pgQuery(
 export async function pgQueryV2(
 	this: IExecuteFunctions,
 	pgp: pgPromise.IMain<{}, pg.IClient>,
-	db: pgPromise.IDatabase<{}, pg.IClient>,
+	db: PgpDatabase,
 	items: INodeExecutionData[],
 	continueOnFail: boolean,
 	options?: {
@@ -272,14 +275,14 @@ export async function pgQueryV2(
  *
  * @param {Function} getNodeParam The getter for the Node's parameters
  * @param {pgPromise.IMain<{}, pg.IClient>} pgp The pgPromise instance
- * @param {pgPromise.IDatabase<{}, pg.IClient>} db The pgPromise database connection
+ * @param {PgpDatabase} db The pgPromise database connection
  * @param {INodeExecutionData[]} items The items to be inserted
  */
 export async function pgInsert(
 	// eslint-disable-next-line @typescript-eslint/ban-types
 	getNodeParam: Function,
 	pgp: pgPromise.IMain<{}, pg.IClient>,
-	db: pgPromise.IDatabase<{}, pg.IClient>,
+	db: PgpDatabase,
 	items: INodeExecutionData[],
 	continueOnFail: boolean,
 	overrideMode?: string,
@@ -363,13 +366,13 @@ export async function pgInsert(
  *
  * @param {Function} getNodeParam The getter for the Node's parameters
  * @param {pgPromise.IMain<{}, pg.IClient>} pgp The pgPromise instance
- * @param {pgPromise.IDatabase<{}, pg.IClient>} db`` The pgPromise database connection
+ * @param {PgpDatabase} db`` The pgPromise database connection
  * @param {INodeExecutionData[]} items The items to be inserted
  */
 export async function pgInsertV2(
 	this: IExecuteFunctions,
 	pgp: pgPromise.IMain<{}, pg.IClient>,
-	db: pgPromise.IDatabase<{}, pg.IClient>,
+	db: PgpDatabase,
 	items: INodeExecutionData[],
 	continueOnFail: boolean,
 	overrideMode?: string,
@@ -473,14 +476,14 @@ export async function pgInsertV2(
  *
  * @param {Function} getNodeParam The getter for the Node's parameters
  * @param {pgPromise.IMain<{}, pg.IClient>} pgp The pgPromise instance
- * @param {pgPromise.IDatabase<{}, pg.IClient>} db The pgPromise database connection
+ * @param {PgpDatabase} db The pgPromise database connection
  * @param {INodeExecutionData[]} items The items to be updated
  */
 export async function pgUpdate(
 	// eslint-disable-next-line @typescript-eslint/ban-types
 	getNodeParam: Function,
 	pgp: pgPromise.IMain<{}, pg.IClient>,
-	db: pgPromise.IDatabase<{}, pg.IClient>,
+	db: PgpDatabase,
 	items: INodeExecutionData[],
 	continueOnFail = false,
 ): Promise<IDataObject[]> {
@@ -536,8 +539,10 @@ export async function pgUpdate(
 	} else {
 		const where =
 			' WHERE ' +
-			// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string
-			updateKeys.map((entry) => pgp.as.name(entry.name) + ' = ${' + entry.prop + '}').join(' AND ');
+			updateKeys
+				// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string
+				.map((entry) => pgp.as.name(entry.name) + ' = ${' + entry.prop + '}')
+				.join(' AND ');
 		if (mode === 'transaction') {
 			return await db.tx(async (t) => {
 				const result: IDataObject[] = [];
@@ -601,13 +606,13 @@ export async function pgUpdate(
  *
  * @param {Function} getNodeParam The getter for the Node's parameters
  * @param {pgPromise.IMain<{}, pg.IClient>} pgp The pgPromise instance
- * @param {pgPromise.IDatabase<{}, pg.IClient>} db The pgPromise database connection
+ * @param {PgpDatabase} db The pgPromise database connection
  * @param {INodeExecutionData[]} items The items to be updated
  */
 export async function pgUpdateV2(
 	this: IExecuteFunctions,
 	pgp: pgPromise.IMain<{}, pg.IClient>,
-	db: pgPromise.IDatabase<{}, pg.IClient>,
+	db: PgpDatabase,
 	items: INodeExecutionData[],
 	continueOnFail = false,
 ): Promise<IDataObject[]> {
@@ -664,8 +669,10 @@ export async function pgUpdateV2(
 	} else {
 		const where =
 			' WHERE ' +
-			// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string
-			updateKeys.map((entry) => pgp.as.name(entry.name) + ' = ${' + entry.prop + '}').join(' AND ');
+			updateKeys
+				// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string
+				.map((entry) => pgp.as.name(entry.name) + ' = ${' + entry.prop + '}')
+				.join(' AND ');
 		if (mode === 'transaction') {
 			return await db.tx(async (t) => {
 				const result: IDataObject[] = [];

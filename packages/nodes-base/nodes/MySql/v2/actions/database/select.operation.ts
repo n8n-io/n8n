@@ -5,6 +5,8 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
+import { updateDisplayOptions } from '@utils/utilities';
+
 import type {
 	QueryRunner,
 	QueryValues,
@@ -12,16 +14,13 @@ import type {
 	SortRule,
 	WhereClause,
 } from '../../helpers/interfaces';
-
 import { addSortRules, addWhereClauses, escapeSqlIdentifier } from '../../helpers/utils';
-
 import {
 	optionsCollection,
 	sortFixedCollection,
 	selectRowsFixedCollection,
 	combineConditionsCollection,
 } from '../common.descriptions';
-import { updateDisplayOptions } from '@utils/utilities';
 
 const properties: INodeProperties[] = [
 	{

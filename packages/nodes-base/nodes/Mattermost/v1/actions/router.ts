@@ -1,10 +1,10 @@
 import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
 
 import * as channel from './channel';
+import type { Mattermost } from './Interfaces';
 import * as message from './message';
 import * as reaction from './reaction';
 import * as user from './user';
-import type { Mattermost } from './Interfaces';
 
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	const items = this.getInputData();

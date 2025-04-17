@@ -5,7 +5,9 @@ import {
 	type INodeTypeDescription,
 	type ITriggerFunctions,
 	type ITriggerResponse,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
+
 import {
 	pgTriggerFunction,
 	initDB,
@@ -38,7 +40,7 @@ export class PostgresTrigger implements INodeType {
 				"Once you've finished building your workflow, <a data-key='activate'>activate</a> it to have it also listen continuously (you just won't see those executions here).",
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'postgres',
@@ -213,7 +215,7 @@ export class PostgresTrigger implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				options: [
 					{
@@ -289,7 +291,7 @@ export class PostgresTrigger implements INodeType {
 					await connection.query('SELECT 1');
 				} catch {
 					// connection already closed. Can't perform cleanup
-					// eslint-disable-next-line n8n-nodes-base/node-execute-block-wrong-error-thrown
+
 					throw new TriggerCloseError(this.getNode(), { level: 'warning' });
 				}
 
@@ -315,12 +317,10 @@ export class PostgresTrigger implements INodeType {
 						]);
 					}
 				} catch (error) {
-					// eslint-disable-next-line n8n-nodes-base/node-execute-block-wrong-error-thrown
 					throw new TriggerCloseError(this.getNode(), { cause: error as Error, level: 'error' });
 				}
 			} finally {
 				connection.client.removeListener('notification', onNotification);
-				if (!db.$pool.ending) await db.$pool.end();
 			}
 		};
 

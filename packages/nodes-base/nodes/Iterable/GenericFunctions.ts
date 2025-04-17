@@ -2,8 +2,8 @@ import type {
 	IDataObject,
 	IExecuteFunctions,
 	IHttpRequestMethods,
+	IHttpRequestOptions,
 	ILoadOptionsFunctions,
-	IRequestOptions,
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
@@ -12,7 +12,6 @@ export async function iterableApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
 	resource: string,
-
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
@@ -20,15 +19,14 @@ export async function iterableApiRequest(
 ): Promise<any> {
 	const credentials = await this.getCredentials('iterableApi');
 
-	const options: IRequestOptions = {
+	const options: IHttpRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
-			Api_Key: credentials.apiKey,
 		},
 		method,
 		body,
 		qs,
-		uri: uri || `https://api.iterable.com/api${resource}`,
+		url: uri || `${credentials.region}/api${resource}`,
 		json: true,
 	};
 	try {
@@ -38,8 +36,7 @@ export async function iterableApiRequest(
 		if (Object.keys(body as IDataObject).length === 0) {
 			delete options.body;
 		}
-		//@ts-ignore
-		return await this.helpers.request.call(this, options);
+		return await this.helpers.httpRequestWithAuthentication.call(this, 'iterableApi', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}

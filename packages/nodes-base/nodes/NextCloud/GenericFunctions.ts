@@ -27,9 +27,9 @@ export async function nextCloudApiRequest(
 	let credentials;
 
 	if (authenticationMethod === 'accessToken') {
-		credentials = (await this.getCredentials('nextCloudApi')) as { webDavUrl: string };
+		credentials = await this.getCredentials<{ webDavUrl: string }>('nextCloudApi');
 	} else {
-		credentials = (await this.getCredentials('nextCloudOAuth2Api')) as { webDavUrl: string };
+		credentials = await this.getCredentials<{ webDavUrl: string }>('nextCloudOAuth2Api');
 	}
 
 	const options: IRequestOptions = {

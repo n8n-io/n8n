@@ -1,3 +1,7 @@
+import { mock } from 'jest-mock-extended';
+
+import { NodeConnectionTypes } from '@/Interfaces';
+import type { IConnection } from '@/Interfaces';
 import type {
 	IBinaryKeyData,
 	IConnections,
@@ -20,303 +24,629 @@ interface StubNode {
 }
 
 describe('Workflow', () => {
-	describe('renameNodeInParameterValue for expressions', () => {
-		const tests = [
+	const nodeTypes = Helpers.NodeTypes();
+
+	const SIMPLE_WORKFLOW = new Workflow({
+		nodeTypes,
+		nodes: [
 			{
-				description: 'do nothing if there is no expression',
-				input: {
-					currentName: 'Node1',
-					newName: 'Node1New',
-					parameters: {
+				parameters: {},
+				name: 'Start',
+				type: 'test.set',
+				typeVersion: 1,
+				id: 'uuid-1',
+				position: [240, 300],
+			},
+			{
+				parameters: {
+					options: {},
+				},
+				name: 'Set',
+				type: 'test.set',
+				typeVersion: 1,
+				id: 'uuid-2',
+				position: [460, 300],
+			},
+			{
+				parameters: {
+					options: {},
+				},
+				name: 'Set1',
+				type: 'test.set',
+				typeVersion: 1,
+				id: 'uuid-3',
+				position: [680, 300],
+			},
+		],
+		connections: {
+			Start: {
+				main: [
+					[
+						{
+							node: 'Set',
+							type: NodeConnectionTypes.Main,
+							index: 0,
+						},
+					],
+				],
+			},
+			Set: {
+				main: [
+					[
+						{
+							node: 'Set1',
+							type: NodeConnectionTypes.Main,
+							index: 0,
+						},
+					],
+				],
+			},
+		},
+		active: false,
+	});
+
+	const WORKFLOW_WITH_SWITCH = new Workflow({
+		active: false,
+		nodeTypes,
+		nodes: [
+			{
+				parameters: {},
+				name: 'Switch',
+				type: 'test.switch',
+				typeVersion: 1,
+				id: 'uuid-1',
+				position: [460, 300],
+			},
+			{
+				parameters: {
+					options: {},
+				},
+				name: 'Set',
+				type: 'test.set',
+				typeVersion: 1,
+				id: 'uuid-2',
+				position: [740, 300],
+			},
+			{
+				parameters: {
+					options: {},
+				},
+				name: 'Set1',
+				type: 'test.set',
+				typeVersion: 1,
+				id: 'uuid-3',
+				position: [780, 100],
+			},
+			{
+				parameters: {
+					options: {},
+				},
+				name: 'Set2',
+				type: 'test.set',
+				typeVersion: 1,
+				id: 'uuid-4',
+				position: [1040, 260],
+			},
+		],
+		connections: {
+			Switch: {
+				main: [
+					[
+						{
+							node: 'Set1',
+							type: NodeConnectionTypes.Main,
+							index: 0,
+						},
+					],
+					[
+						{
+							node: 'Set',
+							type: NodeConnectionTypes.Main,
+							index: 0,
+						},
+					],
+					[
+						{
+							node: 'Set',
+							type: NodeConnectionTypes.Main,
+							index: 0,
+						},
+					],
+				],
+			},
+			Set: {
+				main: [
+					[
+						{
+							node: 'Set2',
+							type: NodeConnectionTypes.Main,
+							index: 0,
+						},
+					],
+				],
+			},
+			Set1: {
+				main: [
+					[
+						{
+							node: 'Set2',
+							type: NodeConnectionTypes.Main,
+							index: 0,
+						},
+					],
+				],
+			},
+		},
+	});
+
+	const WORKFLOW_WITH_LOOPS = new Workflow({
+		nodeTypes,
+		active: false,
+		nodes: [
+			{
+				parameters: {},
+				name: 'Switch',
+				type: 'test.switch',
+				typeVersion: 1,
+				id: 'uuid-1',
+				position: [920, 340],
+			},
+			{
+				parameters: {},
+				name: 'Start',
+				type: 'test.set',
+				typeVersion: 1,
+				id: 'uuid-2',
+				position: [240, 300],
+			},
+			{
+				parameters: {
+					options: {},
+				},
+				name: 'Set1',
+				type: 'test.set',
+				typeVersion: 1,
+				id: 'uuid-3',
+				position: [700, 340],
+			},
+			{
+				parameters: {
+					options: {},
+				},
+				name: 'Set',
+				type: 'test.set',
+				typeVersion: 1,
+				id: 'uuid-4',
+				position: [1220, 300],
+			},
+			{
+				parameters: {},
+				name: 'Switch',
+				type: 'test.switch',
+				typeVersion: 1,
+				id: 'uuid-5',
+				position: [920, 340],
+			},
+		],
+		connections: {
+			Switch: {
+				main: [
+					[
+						{
+							node: 'Set',
+							type: NodeConnectionTypes.Main,
+							index: 0,
+						},
+					],
+					[], // todo why is null not accepted
+					[
+						{
+							node: 'Switch',
+							type: NodeConnectionTypes.Main,
+							index: 0,
+						},
+					],
+				],
+			},
+			Start: {
+				main: [
+					[
+						{
+							node: 'Set1',
+							type: NodeConnectionTypes.Main,
+							index: 0,
+						},
+					],
+				],
+			},
+			Set1: {
+				main: [
+					[
+						{
+							node: 'Set1',
+							type: NodeConnectionTypes.Main,
+							index: 0,
+						},
+						{
+							node: 'Switch',
+							type: NodeConnectionTypes.Main,
+							index: 0,
+						},
+					],
+				],
+			},
+			Set: {
+				main: [
+					[
+						{
+							node: 'Set1',
+							type: NodeConnectionTypes.Main,
+							index: 0,
+						},
+					],
+				],
+			},
+		},
+	});
+
+	const WORKFLOW_WITH_MIXED_CONNECTIONS = new Workflow({
+		nodeTypes,
+		nodes: [
+			{
+				parameters: {},
+				name: 'Start',
+				type: 'test.set',
+				typeVersion: 1,
+				id: 'uuid-1',
+				position: [240, 300],
+			},
+			{
+				parameters: {},
+				name: 'AINode',
+				type: 'test.ai',
+				typeVersion: 1,
+				id: 'uuid-2',
+				position: [460, 300],
+			},
+			{
+				parameters: {},
+				name: 'Set1',
+				type: 'test.set',
+				typeVersion: 1,
+				id: 'uuid-3',
+				position: [680, 300],
+			},
+		],
+		connections: {
+			Start: {
+				main: [
+					[
+						{
+							node: 'AINode',
+							type: NodeConnectionTypes.AiAgent,
+							index: 0,
+						},
+					],
+				],
+			},
+			AINode: {
+				ai: [
+					[
+						{
+							node: 'Set1',
+							type: NodeConnectionTypes.Main,
+							index: 0,
+						},
+					],
+				],
+			},
+		},
+		active: false,
+	});
+
+	beforeEach(() => {
+		jest.restoreAllMocks();
+	});
+
+	describe('renameNodeInParameterValue', () => {
+		describe('for expressions', () => {
+			const tests = [
+				{
+					description: 'do nothing if there is no expression',
+					input: {
+						currentName: 'Node1',
+						newName: 'Node1New',
+						parameters: {
+							value1: 'value1Node1',
+							value2: 'value2Node1',
+						},
+					},
+					output: {
 						value1: 'value1Node1',
 						value2: 'value2Node1',
 					},
 				},
-				output: {
-					value1: 'value1Node1',
-					value2: 'value2Node1',
-				},
-			},
-			{
-				description: 'should work with dot notation',
-				input: {
-					currentName: 'Node1',
-					newName: 'NewName',
-					parameters: {
-						value1: "={{$node.Node1.data.value1 + 'Node1'}}",
-						value2: "={{$node.Node1.data.value2 + ' - ' + $node.Node1.data.value2}}",
+				{
+					description: 'should work with dot notation',
+					input: {
+						currentName: 'Node1',
+						newName: 'NewName',
+						parameters: {
+							value1: "={{$node.Node1.data.value1 + 'Node1'}}",
+							value2: "={{$node.Node1.data.value2 + ' - ' + $node.Node1.data.value2}}",
+						},
+					},
+					output: {
+						value1: "={{$node.NewName.data.value1 + 'Node1'}}",
+						value2: "={{$node.NewName.data.value2 + ' - ' + $node.NewName.data.value2}}",
 					},
 				},
-				output: {
-					value1: "={{$node.NewName.data.value1 + 'Node1'}}",
-					value2: "={{$node.NewName.data.value2 + ' - ' + $node.NewName.data.value2}}",
-				},
-			},
-			{
-				description: 'should work with ["nodeName"]',
-				input: {
-					currentName: 'Node1',
-					newName: 'NewName',
-					parameters: {
-						value1: '={{$node["Node1"]["data"]["value1"] + \'Node1\'}}',
+				{
+					description: 'should work with ["nodeName"]',
+					input: {
+						currentName: 'Node1',
+						newName: 'NewName',
+						parameters: {
+							value1: '={{$node["Node1"]["data"]["value1"] + \'Node1\'}}',
+							value2:
+								'={{$node["Node1"]["data"]["value2"] + \' - \' + $node["Node1"]["data"]["value2"]}}',
+						},
+					},
+					output: {
+						value1: '={{$node["NewName"]["data"]["value1"] + \'Node1\'}}',
 						value2:
-							'={{$node["Node1"]["data"]["value2"] + \' - \' + $node["Node1"]["data"]["value2"]}}',
+							'={{$node["NewName"]["data"]["value2"] + \' - \' + $node["NewName"]["data"]["value2"]}}',
 					},
 				},
-				output: {
-					value1: '={{$node["NewName"]["data"]["value1"] + \'Node1\'}}',
-					value2:
-						'={{$node["NewName"]["data"]["value2"] + \' - \' + $node["NewName"]["data"]["value2"]}}',
-				},
-			},
-			{
-				description: 'should work with $("Node1")',
-				input: {
-					currentName: 'Node1',
-					newName: 'NewName',
-					parameters: {
-						value1: '={{$("Node1")["data"]["value1"] + \'Node1\'}}',
-						value2: '={{$("Node1")["data"]["value2"] + \' - \' + $("Node1")["data"]["value2"]}}',
+				{
+					description: 'should work with $("Node1")',
+					input: {
+						currentName: 'Node1',
+						newName: 'NewName',
+						parameters: {
+							value1: '={{$("Node1")["data"]["value1"] + \'Node1\'}}',
+							value2: '={{$("Node1")["data"]["value2"] + \' - \' + $("Node1")["data"]["value2"]}}',
+						},
 					},
-				},
-				output: {
-					value1: '={{$("NewName")["data"]["value1"] + \'Node1\'}}',
-					value2: '={{$("NewName")["data"]["value2"] + \' - \' + $("NewName")["data"]["value2"]}}',
-				},
-			},
-			{
-				description: 'should work with $items("Node1")',
-				input: {
-					currentName: 'Node1',
-					newName: 'NewName',
-					parameters: {
-						value1: '={{$items("Node1")["data"]["value1"] + \'Node1\'}}',
+					output: {
+						value1: '={{$("NewName")["data"]["value1"] + \'Node1\'}}',
 						value2:
-							'={{$items("Node1")["data"]["value2"] + \' - \' + $items("Node1")["data"]["value2"]}}',
+							'={{$("NewName")["data"]["value2"] + \' - \' + $("NewName")["data"]["value2"]}}',
 					},
 				},
-				output: {
-					value1: '={{$items("NewName")["data"]["value1"] + \'Node1\'}}',
-					value2:
-						'={{$items("NewName")["data"]["value2"] + \' - \' + $items("NewName")["data"]["value2"]}}',
-				},
-			},
-			{
-				description: 'should work with $items("Node1", 0, 1)',
-				input: {
-					currentName: 'Node1',
-					newName: 'NewName',
-					parameters: {
-						value1: '={{$items("Node1", 0, 1)["data"]["value1"] + \'Node1\'}}',
+				{
+					description: 'should work with $items("Node1")',
+					input: {
+						currentName: 'Node1',
+						newName: 'NewName',
+						parameters: {
+							value1: '={{$items("Node1")["data"]["value1"] + \'Node1\'}}',
+							value2:
+								'={{$items("Node1")["data"]["value2"] + \' - \' + $items("Node1")["data"]["value2"]}}',
+						},
+					},
+					output: {
+						value1: '={{$items("NewName")["data"]["value1"] + \'Node1\'}}',
 						value2:
-							'={{$items("Node1", 0, 1)["data"]["value2"] + \' - \' + $items("Node1", 0, 1)["data"]["value2"]}}',
+							'={{$items("NewName")["data"]["value2"] + \' - \' + $items("NewName")["data"]["value2"]}}',
 					},
 				},
-				output: {
-					value1: '={{$items("NewName", 0, 1)["data"]["value1"] + \'Node1\'}}',
-					value2:
-						'={{$items("NewName", 0, 1)["data"]["value2"] + \' - \' + $items("NewName", 0, 1)["data"]["value2"]}}',
-				},
-			},
-			{
-				description: 'should work with dot notation that contains space and special character',
-				input: {
-					currentName: 'Node1',
-					newName: 'New $ Name',
-					parameters: {
-						value1: "={{$node.Node1.data.value1 + 'Node1'}}",
-						value2: "={{$node.Node1.data.value2 + ' - ' + $node.Node1.data.value2}}",
+				{
+					description: 'should work with $items("Node1", 0, 1)',
+					input: {
+						currentName: 'Node1',
+						newName: 'NewName',
+						parameters: {
+							value1: '={{$items("Node1", 0, 1)["data"]["value1"] + \'Node1\'}}',
+							value2:
+								'={{$items("Node1", 0, 1)["data"]["value2"] + \' - \' + $items("Node1", 0, 1)["data"]["value2"]}}',
+						},
 					},
-				},
-				output: {
-					value1: '={{$node["New $ Name"].data.value1 + \'Node1\'}}',
-					value2:
-						'={{$node["New $ Name"].data.value2 + \' - \' + $node["New $ Name"].data.value2}}',
-				},
-			},
-			{
-				description: 'should work with dot notation that contains space and trailing $',
-				input: {
-					currentName: 'Node1',
-					newName: 'NewName$',
-					parameters: {
-						value1: "={{$node.Node1.data.value1 + 'Node1'}}",
-						value2: "={{$node.Node1.data.value2 + ' - ' + $node.Node1.data.value2}}",
-					},
-				},
-				output: {
-					value1: '={{$node["NewName$"].data.value1 + \'Node1\'}}',
-					value2: '={{$node["NewName$"].data.value2 + \' - \' + $node["NewName$"].data.value2}}',
-				},
-			},
-			{
-				description: 'should work with dot notation that contains space and special character',
-				input: {
-					currentName: 'Node1',
-					newName: 'NewName $ $& $` $$$',
-					parameters: {
-						value1: "={{$node.Node1.data.value1 + 'Node1'}}",
-						value2: "={{$node.Node1.data.value2 + ' - ' + $node.Node1.data.value2}}",
-					},
-				},
-				output: {
-					value1: '={{$node["NewName $ $& $` $$$"].data.value1 + \'Node1\'}}',
-					value2:
-						'={{$node["NewName $ $& $` $$$"].data.value2 + \' - \' + $node["NewName $ $& $` $$$"].data.value2}}',
-				},
-			},
-			{
-				description: 'should work with dot notation without trailing dot',
-				input: {
-					currentName: 'Node1',
-					newName: 'NewName',
-					parameters: {
-						value1: "={{$node.Node1 + 'Node1'}}",
-						value2: "={{$node.Node1 + ' - ' + $node.Node1}}",
-					},
-				},
-				output: {
-					value1: "={{$node.NewName + 'Node1'}}",
-					value2: "={{$node.NewName + ' - ' + $node.NewName}}",
-				},
-			},
-			{
-				description: "should work with ['nodeName']",
-				input: {
-					currentName: 'Node1',
-					newName: 'NewName',
-					parameters: {
-						value1: "={{$node['Node1']['data']['value1'] + 'Node1'}}",
+					output: {
+						value1: '={{$items("NewName", 0, 1)["data"]["value1"] + \'Node1\'}}',
 						value2:
-							"={{$node['Node1']['data']['value2'] + ' - ' + $node['Node1']['data']['value2']}}",
+							'={{$items("NewName", 0, 1)["data"]["value2"] + \' - \' + $items("NewName", 0, 1)["data"]["value2"]}}',
 					},
 				},
-				output: {
-					value1: "={{$node['NewName']['data']['value1'] + 'Node1'}}",
-					value2:
-						"={{$node['NewName']['data']['value2'] + ' - ' + $node['NewName']['data']['value2']}}",
+				{
+					description: 'should work with dot notation that contains space and special character',
+					input: {
+						currentName: 'Node1',
+						newName: 'New $ Name',
+						parameters: {
+							value1: "={{$node.Node1.data.value1 + 'Node1'}}",
+							value2: "={{$node.Node1.data.value2 + ' - ' + $node.Node1.data.value2}}",
+						},
+					},
+					output: {
+						value1: '={{$node["New $ Name"].data.value1 + \'Node1\'}}',
+						value2:
+							'={{$node["New $ Name"].data.value2 + \' - \' + $node["New $ Name"].data.value2}}',
+					},
 				},
-			},
-			{
-				description: 'should work on lower levels',
-				input: {
-					currentName: 'Node1',
-					newName: 'NewName',
-					parameters: {
-						level1a: "={{$node.Node1.data.value1 + 'Node1'}}",
+				{
+					description: 'should work with dot notation that contains space and trailing $',
+					input: {
+						currentName: 'Node1',
+						newName: 'NewName$',
+						parameters: {
+							value1: "={{$node.Node1.data.value1 + 'Node1'}}",
+							value2: "={{$node.Node1.data.value2 + ' - ' + $node.Node1.data.value2}}",
+						},
+					},
+					output: {
+						value1: '={{$node["NewName$"].data.value1 + \'Node1\'}}',
+						value2: '={{$node["NewName$"].data.value2 + \' - \' + $node["NewName$"].data.value2}}',
+					},
+				},
+				{
+					description: 'should work with dot notation that contains space and special character',
+					input: {
+						currentName: 'Node1',
+						newName: 'NewName $ $& $` $$$',
+						parameters: {
+							value1: "={{$node.Node1.data.value1 + 'Node1'}}",
+							value2: "={{$node.Node1.data.value2 + ' - ' + $node.Node1.data.value2}}",
+						},
+					},
+					output: {
+						value1: '={{$node["NewName $ $& $` $$$"].data.value1 + \'Node1\'}}',
+						value2:
+							'={{$node["NewName $ $& $` $$$"].data.value2 + \' - \' + $node["NewName $ $& $` $$$"].data.value2}}',
+					},
+				},
+				{
+					description: 'should work with dot notation without trailing dot',
+					input: {
+						currentName: 'Node1',
+						newName: 'NewName',
+						parameters: {
+							value1: "={{$node.Node1 + 'Node1'}}",
+							value2: "={{$node.Node1 + ' - ' + $node.Node1}}",
+						},
+					},
+					output: {
+						value1: "={{$node.NewName + 'Node1'}}",
+						value2: "={{$node.NewName + ' - ' + $node.NewName}}",
+					},
+				},
+				{
+					description: "should work with ['nodeName']",
+					input: {
+						currentName: 'Node1',
+						newName: 'NewName',
+						parameters: {
+							value1: "={{$node['Node1']['data']['value1'] + 'Node1'}}",
+							value2:
+								"={{$node['Node1']['data']['value2'] + ' - ' + $node['Node1']['data']['value2']}}",
+						},
+					},
+					output: {
+						value1: "={{$node['NewName']['data']['value1'] + 'Node1'}}",
+						value2:
+							"={{$node['NewName']['data']['value2'] + ' - ' + $node['NewName']['data']['value2']}}",
+					},
+				},
+				{
+					description: 'should work on lower levels',
+					input: {
+						currentName: 'Node1',
+						newName: 'NewName',
+						parameters: {
+							level1a: "={{$node.Node1.data.value1 + 'Node1'}}",
+							level1b: [
+								{
+									value2a: "={{$node.Node1.data.value1 + 'Node1'}}",
+									value2b: "={{$node.Node1.data.value1 + 'Node1'}}",
+								},
+							],
+							level1c: {
+								value2a: {
+									value3a: "={{$node.Node1.data.value1 + 'Node1'}}",
+									value3b: [
+										{
+											value4a: "={{$node.Node1.data.value1 + 'Node1'}}",
+											value4b: {
+												value5a: "={{$node.Node1.data.value1 + 'Node1'}}",
+												value5b: "={{$node.Node1.data.value1 + 'Node1'}}",
+											},
+										},
+									],
+								},
+							},
+						} as INodeParameters,
+					},
+					output: {
+						level1a: "={{$node.NewName.data.value1 + 'Node1'}}",
 						level1b: [
 							{
-								value2a: "={{$node.Node1.data.value1 + 'Node1'}}",
-								value2b: "={{$node.Node1.data.value1 + 'Node1'}}",
+								value2a: "={{$node.NewName.data.value1 + 'Node1'}}",
+								value2b: "={{$node.NewName.data.value1 + 'Node1'}}",
 							},
 						],
 						level1c: {
 							value2a: {
-								value3a: "={{$node.Node1.data.value1 + 'Node1'}}",
+								value3a: "={{$node.NewName.data.value1 + 'Node1'}}",
 								value3b: [
 									{
-										value4a: "={{$node.Node1.data.value1 + 'Node1'}}",
+										value4a: "={{$node.NewName.data.value1 + 'Node1'}}",
 										value4b: {
-											value5a: "={{$node.Node1.data.value1 + 'Node1'}}",
-											value5b: "={{$node.Node1.data.value1 + 'Node1'}}",
+											value5a: "={{$node.NewName.data.value1 + 'Node1'}}",
+											value5b: "={{$node.NewName.data.value1 + 'Node1'}}",
 										},
 									},
 								],
 							},
 						},
-					} as INodeParameters,
-				},
-				output: {
-					level1a: "={{$node.NewName.data.value1 + 'Node1'}}",
-					level1b: [
-						{
-							value2a: "={{$node.NewName.data.value1 + 'Node1'}}",
-							value2b: "={{$node.NewName.data.value1 + 'Node1'}}",
-						},
-					],
-					level1c: {
-						value2a: {
-							value3a: "={{$node.NewName.data.value1 + 'Node1'}}",
-							value3b: [
-								{
-									value4a: "={{$node.NewName.data.value1 + 'Node1'}}",
-									value4b: {
-										value5a: "={{$node.NewName.data.value1 + 'Node1'}}",
-										value5b: "={{$node.NewName.data.value1 + 'Node1'}}",
-									},
-								},
-							],
-						},
 					},
 				},
-			},
-		];
+			];
 
-		const nodeTypes = Helpers.NodeTypes();
-		const workflow = new Workflow({ nodes: [], connections: {}, active: false, nodeTypes });
+			const workflow = new Workflow({ nodes: [], connections: {}, active: false, nodeTypes });
 
-		for (const testData of tests) {
-			test(testData.description, () => {
-				const result = workflow.renameNodeInParameterValue(
-					testData.input.parameters,
-					testData.input.currentName,
-					testData.input.newName,
-				);
-				expect(result).toEqual(testData.output);
-			});
-		}
-	});
-
-	describe('renameNodeInParameterValue for node with renamable content', () => {
-		const tests = [
-			{
-				description: "should work with $('name')",
-				input: {
-					currentName: 'Old',
-					newName: 'New',
-					parameters: { jsCode: "$('Old').first();" },
-				},
-				output: { jsCode: "$('New').first();" },
-			},
-			{
-				description: "should work with $node['name'] and $node.name",
-				input: {
-					currentName: 'Old',
-					newName: 'New',
-					parameters: { jsCode: "$node['Old'].first(); $node.Old.first();" },
-				},
-				output: { jsCode: "$node['New'].first(); $node.New.first();" },
-			},
-			{
-				description: 'should work with $items()',
-				input: {
-					currentName: 'Old',
-					newName: 'New',
-					parameters: { jsCode: "$items('Old').first();" },
-				},
-				output: { jsCode: "$items('New').first();" },
-			},
-		];
-
-		const workflow = new Workflow({
-			nodes: [],
-			connections: {},
-			active: false,
-			nodeTypes: Helpers.NodeTypes(),
+			for (const testData of tests) {
+				test(testData.description, () => {
+					const result = workflow.renameNodeInParameterValue(
+						testData.input.parameters,
+						testData.input.currentName,
+						testData.input.newName,
+					);
+					expect(result).toEqual(testData.output);
+				});
+			}
 		});
 
-		for (const t of tests) {
-			test(t.description, () => {
-				expect(
-					workflow.renameNodeInParameterValue(
-						t.input.parameters,
-						t.input.currentName,
-						t.input.newName,
-						{ hasRenamableContent: true },
-					),
-				).toEqual(t.output);
+		describe('for node with renamable content', () => {
+			const tests = [
+				{
+					description: "should work with $('name')",
+					input: {
+						currentName: 'Old',
+						newName: 'New',
+						parameters: { jsCode: "$('Old').first();" },
+					},
+					output: { jsCode: "$('New').first();" },
+				},
+				{
+					description: "should work with $node['name'] and $node.name",
+					input: {
+						currentName: 'Old',
+						newName: 'New',
+						parameters: { jsCode: "$node['Old'].first(); $node.Old.first();" },
+					},
+					output: { jsCode: "$node['New'].first(); $node.New.first();" },
+				},
+				{
+					description: 'should work with $items()',
+					input: {
+						currentName: 'Old',
+						newName: 'New',
+						parameters: { jsCode: "$items('Old').first();" },
+					},
+					output: { jsCode: "$items('New').first();" },
+				},
+			];
+
+			const workflow = new Workflow({
+				nodes: [],
+				connections: {},
+				active: false,
+				nodeTypes,
 			});
-		}
+
+			for (const t of tests) {
+				test(t.description, () => {
+					expect(
+						workflow.renameNodeInParameterValue(
+							t.input.parameters,
+							t.input.currentName,
+							t.input.newName,
+							{ hasRenamableContent: true },
+						),
+					).toEqual(t.output);
+				});
+			}
+		});
 	});
 
 	describe('renameNode', () => {
@@ -377,7 +707,7 @@ describe('Workflow', () => {
 								[
 									{
 										node: 'Node2',
-										type: 'main',
+										type: NodeConnectionTypes.Main,
 										index: 0,
 									},
 								],
@@ -408,7 +738,7 @@ describe('Workflow', () => {
 								[
 									{
 										node: 'Node2',
-										type: 'main',
+										type: NodeConnectionTypes.Main,
 										index: 0,
 									},
 								],
@@ -444,7 +774,7 @@ describe('Workflow', () => {
 								[
 									{
 										node: 'Node2',
-										type: 'main',
+										type: NodeConnectionTypes.Main,
 										index: 0,
 									},
 								],
@@ -475,7 +805,7 @@ describe('Workflow', () => {
 								[
 									{
 										node: 'Node2New',
-										type: 'main',
+										type: NodeConnectionTypes.Main,
 										index: 0,
 									},
 								],
@@ -532,7 +862,7 @@ describe('Workflow', () => {
 								[
 									{
 										node: 'Node3',
-										type: 'main',
+										type: NodeConnectionTypes.Main,
 										index: 0,
 									},
 								],
@@ -543,12 +873,12 @@ describe('Workflow', () => {
 								[
 									{
 										node: 'Node3',
-										type: 'main',
+										type: NodeConnectionTypes.Main,
 										index: 0,
 									},
 									{
 										node: 'Node5',
-										type: 'main',
+										type: NodeConnectionTypes.Main,
 										index: 0,
 									},
 								],
@@ -559,12 +889,12 @@ describe('Workflow', () => {
 								[
 									{
 										node: 'Node4',
-										type: 'main',
+										type: NodeConnectionTypes.Main,
 										index: 0,
 									},
 									{
 										node: 'Node5',
-										type: 'main',
+										type: NodeConnectionTypes.Main,
 										index: 0,
 									},
 								],
@@ -616,7 +946,7 @@ describe('Workflow', () => {
 								[
 									{
 										node: 'Node3New',
-										type: 'main',
+										type: NodeConnectionTypes.Main,
 										index: 0,
 									},
 								],
@@ -627,12 +957,12 @@ describe('Workflow', () => {
 								[
 									{
 										node: 'Node3New',
-										type: 'main',
+										type: NodeConnectionTypes.Main,
 										index: 0,
 									},
 									{
 										node: 'Node5',
-										type: 'main',
+										type: NodeConnectionTypes.Main,
 										index: 0,
 									},
 								],
@@ -643,12 +973,12 @@ describe('Workflow', () => {
 								[
 									{
 										node: 'Node4',
-										type: 'main',
+										type: NodeConnectionTypes.Main,
 										index: 0,
 									},
 									{
 										node: 'Node5',
-										type: 'main',
+										type: NodeConnectionTypes.Main,
 										index: 0,
 									},
 								],
@@ -705,7 +1035,6 @@ describe('Workflow', () => {
 			},
 		];
 
-		const nodeTypes = Helpers.NodeTypes();
 		let workflow: Workflow;
 
 		function createNodeData(stubData: StubNode): INode {
@@ -1229,7 +1558,7 @@ describe('Workflow', () => {
 							[
 								{
 									node: 'Node2',
-									type: 'main',
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -1240,7 +1569,7 @@ describe('Workflow', () => {
 							[
 								{
 									node: 'Node3',
-									type: 'main',
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -1251,7 +1580,7 @@ describe('Workflow', () => {
 							[
 								{
 									node: 'Node2',
-									type: 'main',
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -1274,6 +1603,7 @@ describe('Workflow', () => {
 									],
 									startTime: 1,
 									executionTime: 1,
+									executionIndex: 0,
 									data: {
 										main: [
 											[
@@ -1316,85 +1646,7 @@ describe('Workflow', () => {
 			});
 		}
 
-		// test('should be able to set and read key data without initial data set', () => {
-
-		//     const nodes: Node[] = [
-		//         {
-		//             "name": "Node1",
-		//             "parameters": {
-		//                 "value": "outputSet1"
-		//             },
-		//             "type": "test.set",
-		//             "typeVersion": 1,
-		//             "position": [
-		//                 100,
-		//                 200
-		//             ]
-		//         },
-		//         {
-		//             "name": "Node2",
-		//             "parameters": {
-		//                 "name": "=[data.propertyName]"
-		//             },
-		//             "type": "test.set",
-		//             "typeVersion": 1,
-		//             "position": [
-		//                 100,
-		//                 300
-		//             ]
-		//         }
-		//     ];
-		//     const connections: Connections = {
-		//         "Node1": {
-		//             "main": [
-		//                 [
-		//                     {
-		//                         "node": "Node2",
-		//                         "type": "main",
-		//                         "index": 0
-		//                     }
-		//                 ]
-		//             ]
-		//         }
-		//     };
-
-		//     const nodeTypes = Helpers.NodeTypes();
-		//     const workflow = new Workflow({ nodes, connections, active: false, nodeTypes });
-		//     const activeNodeName = 'Node2';
-
-		//     const parameterValue = nodes.find((node) => node.name === activeNodeName).parameters.name;
-		//     // const parameterValue = '=[data.propertyName]'; // TODO: Make this dynamic from node-data via "activeNodeName"!
-		//     const runData: RunData = {
-		//         Node1: [
-		//             {
-		//                 startTime: 1,
-		//                 executionTime: 1,
-		//                 data: {
-		//                     main: [
-		//                         [
-		//                             {
-		//                                 json: {
-		//                                     propertyName: 'outputSet1'
-		//                                 }
-		//                             }
-		//                         ]
-		//                     ]
-		//                 }
-		//             }
-		//         ]
-		//     };
-
-		//     const itemIndex = 0;
-		//     const connectionInputData: NodeExecutionData[] = runData!['Node1']![0]!.data!.main[0]!;
-
-		//     const result = workflow.getParameterValue(parameterValue, runData, itemIndex, activeNodeName, connectionInputData);
-
-		//     expect(result).toEqual('outputSet1');
-		// });
-
 		test('should also resolve all child parameters when the parent get requested', () => {
-			const nodeTypes = Helpers.NodeTypes();
-
 			const nodes: INode[] = [
 				{
 					name: 'Node1',
@@ -1430,6 +1682,7 @@ describe('Workflow', () => {
 							{
 								startTime: 1,
 								executionTime: 1,
+								executionIndex: 0,
 								data: {
 									main: [
 										[
@@ -1482,270 +1735,6 @@ describe('Workflow', () => {
 	});
 
 	describe('getParentNodesByDepth', () => {
-		const nodeTypes = Helpers.NodeTypes();
-		const SIMPLE_WORKFLOW = new Workflow({
-			nodeTypes,
-			nodes: [
-				{
-					parameters: {},
-					name: 'Start',
-					type: 'test.set',
-					typeVersion: 1,
-					id: 'uuid-1',
-					position: [240, 300],
-				},
-				{
-					parameters: {
-						options: {},
-					},
-					name: 'Set',
-					type: 'test.set',
-					typeVersion: 1,
-					id: 'uuid-2',
-					position: [460, 300],
-				},
-				{
-					parameters: {
-						options: {},
-					},
-					name: 'Set1',
-					type: 'test.set',
-					typeVersion: 1,
-					id: 'uuid-3',
-					position: [680, 300],
-				},
-			],
-			connections: {
-				Start: {
-					main: [
-						[
-							{
-								node: 'Set',
-								type: 'main',
-								index: 0,
-							},
-						],
-					],
-				},
-				Set: {
-					main: [
-						[
-							{
-								node: 'Set1',
-								type: 'main',
-								index: 0,
-							},
-						],
-					],
-				},
-			},
-			active: false,
-		});
-
-		const WORKFLOW_WITH_SWITCH = new Workflow({
-			active: false,
-			nodeTypes,
-			nodes: [
-				{
-					parameters: {},
-					name: 'Switch',
-					type: 'test.switch',
-					typeVersion: 1,
-					id: 'uuid-1',
-					position: [460, 300],
-				},
-				{
-					parameters: {
-						options: {},
-					},
-					name: 'Set',
-					type: 'test.set',
-					typeVersion: 1,
-					id: 'uuid-2',
-					position: [740, 300],
-				},
-				{
-					parameters: {
-						options: {},
-					},
-					name: 'Set1',
-					type: 'test.set',
-					typeVersion: 1,
-					id: 'uuid-3',
-					position: [780, 100],
-				},
-				{
-					parameters: {
-						options: {},
-					},
-					name: 'Set2',
-					type: 'test.set',
-					typeVersion: 1,
-					id: 'uuid-4',
-					position: [1040, 260],
-				},
-			],
-			connections: {
-				Switch: {
-					main: [
-						[
-							{
-								node: 'Set1',
-								type: 'main',
-								index: 0,
-							},
-						],
-						[
-							{
-								node: 'Set',
-								type: 'main',
-								index: 0,
-							},
-						],
-						[
-							{
-								node: 'Set',
-								type: 'main',
-								index: 0,
-							},
-						],
-					],
-				},
-				Set: {
-					main: [
-						[
-							{
-								node: 'Set2',
-								type: 'main',
-								index: 0,
-							},
-						],
-					],
-				},
-				Set1: {
-					main: [
-						[
-							{
-								node: 'Set2',
-								type: 'main',
-								index: 0,
-							},
-						],
-					],
-				},
-			},
-		});
-
-		const WORKFLOW_WITH_LOOPS = new Workflow({
-			nodeTypes,
-			active: false,
-			nodes: [
-				{
-					parameters: {},
-					name: 'Switch',
-					type: 'test.switch',
-					typeVersion: 1,
-					id: 'uuid-1',
-					position: [920, 340],
-				},
-				{
-					parameters: {},
-					name: 'Start',
-					type: 'test.set',
-					typeVersion: 1,
-					id: 'uuid-2',
-					position: [240, 300],
-				},
-				{
-					parameters: {
-						options: {},
-					},
-					name: 'Set1',
-					type: 'test.set',
-					typeVersion: 1,
-					id: 'uuid-3',
-					position: [700, 340],
-				},
-				{
-					parameters: {
-						options: {},
-					},
-					name: 'Set',
-					type: 'test.set',
-					typeVersion: 1,
-					id: 'uuid-4',
-					position: [1220, 300],
-				},
-				{
-					parameters: {},
-					name: 'Switch',
-					type: 'test.switch',
-					typeVersion: 1,
-					id: 'uuid-5',
-					position: [920, 340],
-				},
-			],
-			connections: {
-				Switch: {
-					main: [
-						[
-							{
-								node: 'Set',
-								type: 'main',
-								index: 0,
-							},
-						],
-						[], // todo why is null not accepted
-						[
-							{
-								node: 'Switch',
-								type: 'main',
-								index: 0,
-							},
-						],
-					],
-				},
-				Start: {
-					main: [
-						[
-							{
-								node: 'Set1',
-								type: 'main',
-								index: 0,
-							},
-						],
-					],
-				},
-				Set1: {
-					main: [
-						[
-							{
-								node: 'Set1',
-								type: 'main',
-								index: 0,
-							},
-							{
-								node: 'Switch',
-								type: 'main',
-								index: 0,
-							},
-						],
-					],
-				},
-				Set: {
-					main: [
-						[
-							{
-								node: 'Set1',
-								type: 'main',
-								index: 0,
-							},
-						],
-					],
-				},
-			},
-		});
-
 		test('Should return parent nodes of nodes', () => {
 			expect(SIMPLE_WORKFLOW.getParentNodesByDepth('Start')).toEqual([]);
 			expect(SIMPLE_WORKFLOW.getParentNodesByDepth('Set')).toEqual([
@@ -1884,6 +1873,549 @@ describe('Workflow', () => {
 					name: 'Switch',
 				},
 			]);
+		});
+	});
+
+	describe('getConnectionsByDestination', () => {
+		it('should return empty object when there are no connections', () => {
+			const result = Workflow.getConnectionsByDestination({});
+
+			expect(result).toEqual({});
+		});
+
+		it('should return connections by destination node', () => {
+			const connections: IConnections = {
+				Node1: {
+					[NodeConnectionTypes.Main]: [
+						[
+							{ node: 'Node2', type: NodeConnectionTypes.Main, index: 0 },
+							{ node: 'Node3', type: NodeConnectionTypes.Main, index: 1 },
+						],
+					],
+				},
+			};
+			const result = Workflow.getConnectionsByDestination(connections);
+			expect(result).toEqual({
+				Node2: {
+					[NodeConnectionTypes.Main]: [
+						[{ node: 'Node1', type: NodeConnectionTypes.Main, index: 0 }],
+					],
+				},
+				Node3: {
+					[NodeConnectionTypes.Main]: [
+						[],
+						[{ node: 'Node1', type: NodeConnectionTypes.Main, index: 0 }],
+					],
+				},
+			});
+		});
+
+		it('should handle multiple connection types', () => {
+			const connections: IConnections = {
+				Node1: {
+					[NodeConnectionTypes.Main]: [
+						[{ node: 'Node2', type: NodeConnectionTypes.Main, index: 0 }],
+					],
+					[NodeConnectionTypes.AiAgent]: [
+						[{ node: 'Node3', type: NodeConnectionTypes.AiAgent, index: 0 }],
+					],
+				},
+			};
+
+			const result = Workflow.getConnectionsByDestination(connections);
+			expect(result).toEqual({
+				Node2: {
+					[NodeConnectionTypes.Main]: [
+						[{ node: 'Node1', type: NodeConnectionTypes.Main, index: 0 }],
+					],
+				},
+				Node3: {
+					[NodeConnectionTypes.AiAgent]: [
+						[{ node: 'Node1', type: NodeConnectionTypes.AiAgent, index: 0 }],
+					],
+				},
+			});
+		});
+
+		it('should handle nodes with no connections', () => {
+			const connections: IConnections = {
+				Node1: {
+					[NodeConnectionTypes.Main]: [[]],
+				},
+			};
+
+			const result = Workflow.getConnectionsByDestination(connections);
+			expect(result).toEqual({});
+		});
+
+		// @issue https://linear.app/n8n/issue/N8N-7880/cannot-load-some-templates
+		it('should handle nodes with null connections', () => {
+			const connections: IConnections = {
+				Node1: {
+					[NodeConnectionTypes.Main]: [
+						null as unknown as IConnection[],
+						[{ node: 'Node2', type: NodeConnectionTypes.Main, index: 0 }],
+					],
+				},
+			};
+
+			const result = Workflow.getConnectionsByDestination(connections);
+			expect(result).toEqual({
+				Node2: {
+					[NodeConnectionTypes.Main]: [
+						[{ node: 'Node1', type: NodeConnectionTypes.Main, index: 1 }],
+					],
+				},
+			});
+		});
+
+		it('should handle nodes with multiple input connections', () => {
+			const connections: IConnections = {
+				Node1: {
+					[NodeConnectionTypes.Main]: [
+						[{ node: 'Node2', type: NodeConnectionTypes.Main, index: 0 }],
+					],
+				},
+				Node3: {
+					[NodeConnectionTypes.Main]: [
+						[{ node: 'Node2', type: NodeConnectionTypes.Main, index: 0 }],
+					],
+				},
+			};
+
+			const result = Workflow.getConnectionsByDestination(connections);
+			expect(result).toEqual({
+				Node2: {
+					[NodeConnectionTypes.Main]: [
+						[
+							{ node: 'Node1', type: NodeConnectionTypes.Main, index: 0 },
+							{ node: 'Node3', type: NodeConnectionTypes.Main, index: 0 },
+						],
+					],
+				},
+			});
+		});
+	});
+
+	describe('getHighestNode', () => {
+		const createNode = (name: string, disabled = false) =>
+			({
+				name,
+				type: 'test.set',
+				typeVersion: 1,
+				disabled,
+				position: [0, 0],
+				parameters: {},
+			}) as INode;
+
+		test('should return node name if node is not disabled', () => {
+			const node = createNode('Node1');
+			const workflow = new Workflow({
+				id: 'test',
+				nodes: [node],
+				connections: {},
+				active: false,
+				nodeTypes,
+			});
+
+			const result = workflow.getHighestNode(node.name);
+			expect(result).toEqual([node.name]);
+		});
+
+		test('should return empty array if node is disabled', () => {
+			const node = createNode('Node1', true);
+			const workflow = new Workflow({
+				id: 'test',
+				nodes: [node],
+				connections: {},
+				active: false,
+				nodeTypes,
+			});
+
+			const result = workflow.getHighestNode(node.name);
+			expect(result).toEqual([]);
+		});
+
+		test('should return highest nodes when multiple parent nodes exist', () => {
+			const node1 = createNode('Node1');
+			const node2 = createNode('Node2');
+			const node3 = createNode('Node3');
+			const targetNode = createNode('TargetNode');
+
+			const connections = {
+				Node1: {
+					main: [[{ node: 'TargetNode', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+				Node2: {
+					main: [[{ node: 'TargetNode', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+			};
+
+			const workflow = new Workflow({
+				id: 'test',
+				nodes: [node1, node2, node3, targetNode],
+				connections,
+				active: false,
+				nodeTypes,
+			});
+
+			const result = workflow.getHighestNode(targetNode.name);
+			expect(result).toEqual([node1.name, node2.name]);
+		});
+
+		test('should ignore disabled parent nodes', () => {
+			const node1 = createNode('Node1', true);
+			const node2 = createNode('Node2');
+			const targetNode = createNode('TargetNode');
+
+			const connections = {
+				Node1: {
+					main: [[{ node: 'TargetNode', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+				Node2: {
+					main: [[{ node: 'TargetNode', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+			};
+
+			const workflow = new Workflow({
+				id: 'test',
+				nodes: [node1, node2, targetNode],
+				connections,
+				active: false,
+				nodeTypes,
+			});
+
+			const result = workflow.getHighestNode(targetNode.name);
+			expect(result).toEqual([node2.name]);
+		});
+
+		test('should handle nested connections', () => {
+			const node1 = createNode('Node1');
+			const node2 = createNode('Node2');
+			const node3 = createNode('Node3');
+			const targetNode = createNode('TargetNode');
+
+			const connections = {
+				Node3: {
+					main: [
+						[{ node: 'Node1', type: NodeConnectionTypes.Main, index: 0 }],
+						[{ node: 'Node2', type: NodeConnectionTypes.Main, index: 0 }],
+					],
+				},
+				TargetNode: {
+					main: [[{ node: 'Node3', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+			};
+
+			const workflow = new Workflow({
+				id: 'test',
+				nodes: [node1, node2, node3, targetNode],
+				connections,
+				active: false,
+				nodeTypes,
+			});
+
+			const result = workflow.getHighestNode(targetNode.name);
+			expect(result).toEqual([targetNode.name]);
+		});
+
+		test('should handle specified connection index', () => {
+			const node1 = createNode('Node1');
+			const node2 = createNode('Node2');
+			const targetNode = createNode('TargetNode');
+
+			const connections = {
+				Node1: {
+					main: [[{ node: 'TargetNode', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+				Node2: {
+					main: [[], [{ node: 'TargetNode', type: NodeConnectionTypes.Main, index: 1 }]],
+				},
+			};
+
+			const workflow = new Workflow({
+				id: 'test',
+				nodes: [node1, node2, targetNode],
+				connections,
+				active: false,
+				nodeTypes,
+			});
+
+			const resultFirstIndex = workflow.getHighestNode(targetNode.name, 0);
+			const resultSecondIndex = workflow.getHighestNode(targetNode.name, 1);
+
+			expect(resultFirstIndex).toEqual([node1.name]);
+			expect(resultSecondIndex).toEqual([node2.name]);
+		});
+
+		test('should prevent infinite loops with cyclic connections', () => {
+			const node1 = createNode('Node1');
+			const node2 = createNode('Node2');
+			const targetNode = createNode('TargetNode');
+
+			const connections = {
+				Node1: {
+					main: [[{ node: 'Node2', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+				Node2: {
+					main: [[{ node: 'Node1', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+				TargetNode: {
+					main: [[{ node: 'Node1', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+			};
+
+			const workflow = new Workflow({
+				id: 'test',
+				nodes: [node1, node2, targetNode],
+				connections,
+				active: false,
+				nodeTypes,
+			});
+
+			const result = workflow.getHighestNode(targetNode.name);
+			expect(result).toEqual([targetNode.name]);
+		});
+
+		test('should handle connections to nodes that are not defined in the workflow', () => {
+			const node1 = createNode('Node1');
+			const targetNode = createNode('TargetNode');
+
+			const connections = {
+				Node1: {
+					main: [[{ node: 'NonExistentNode', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+				TargetNode: {
+					main: [[{ node: 'NonExistentNode', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+			};
+
+			const workflow = new Workflow({
+				id: 'test',
+				nodes: [node1, targetNode],
+				connections,
+				active: false,
+				nodeTypes,
+			});
+
+			const result = workflow.getHighestNode(targetNode.name);
+
+			expect(result).toEqual([targetNode.name]);
+		});
+
+		test('should handle connections from nodes that are not defined in the workflow', () => {
+			const node1 = createNode('Node1');
+			const targetNode = createNode('TargetNode');
+
+			const connections = {
+				Node1: {
+					main: [[{ node: 'TargetNode', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+				NonExistentNode: {
+					main: [[{ node: 'TargetNode', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+			};
+
+			const workflow = new Workflow({
+				id: 'test',
+				nodes: [node1, targetNode],
+				connections,
+				active: false,
+				nodeTypes,
+			});
+
+			const result = workflow.getHighestNode(targetNode.name);
+			expect(result).toEqual([node1.name]);
+		});
+	});
+
+	describe('getParentMainInputNode', () => {
+		test('should return the node itself if no parent connections exist', () => {
+			const startNode = SIMPLE_WORKFLOW.getNode('Start')!;
+			const result = SIMPLE_WORKFLOW.getParentMainInputNode(startNode);
+			expect(result).toBe(startNode);
+		});
+
+		test('should return direct main input parent node', () => {
+			const set1Node = SIMPLE_WORKFLOW.getNode('Set1')!;
+			const result = SIMPLE_WORKFLOW.getParentMainInputNode(set1Node);
+			expect(result).toBe(set1Node);
+		});
+
+		test('should traverse through non-main connections to find main input', () => {
+			const set1Node = WORKFLOW_WITH_MIXED_CONNECTIONS.getNode('Set1')!;
+			const result = WORKFLOW_WITH_MIXED_CONNECTIONS.getParentMainInputNode(set1Node);
+			expect(result).toBe(set1Node);
+		});
+
+		test('should handle nested non-main connections', () => {
+			const set1Node = WORKFLOW_WITH_LOOPS.getNode('Set1')!;
+			const result = WORKFLOW_WITH_LOOPS.getParentMainInputNode(set1Node);
+			expect(result).toBe(set1Node);
+		});
+	});
+
+	describe('getNodeConnectionIndexes', () => {
+		test('should return undefined for non-existent parent node', () => {
+			const result = SIMPLE_WORKFLOW.getNodeConnectionIndexes('Set', 'NonExistentNode');
+			expect(result).toBeUndefined();
+		});
+
+		test('should return undefined for nodes without connections', () => {
+			const result = SIMPLE_WORKFLOW.getNodeConnectionIndexes('Start', 'Set1');
+			expect(result).toBeUndefined();
+		});
+
+		test('should return correct connection indexes for direct connections', () => {
+			const result = SIMPLE_WORKFLOW.getNodeConnectionIndexes('Set', 'Start');
+			expect(result).toEqual({
+				sourceIndex: 0,
+				destinationIndex: 0,
+			});
+		});
+
+		test('should return correct connection indexes for multi-step connections', () => {
+			const result = SIMPLE_WORKFLOW.getNodeConnectionIndexes('Set1', 'Start');
+			expect(result).toEqual({
+				sourceIndex: 0,
+				destinationIndex: 0,
+			});
+		});
+
+		test('should return undefined when depth is 0', () => {
+			const result = SIMPLE_WORKFLOW.getNodeConnectionIndexes(
+				'Set',
+				'Start',
+				NodeConnectionTypes.Main,
+				0,
+			);
+			expect(result).toBeUndefined();
+		});
+
+		test('should handle workflows with multiple connection indexes', () => {
+			const result = WORKFLOW_WITH_SWITCH.getNodeConnectionIndexes('Set', 'Switch');
+			expect(result).toEqual({
+				sourceIndex: 1,
+				destinationIndex: 0,
+			});
+		});
+	});
+
+	describe('getStartNode', () => {
+		const manualTriggerNode = mock<INode>({
+			name: 'ManualTrigger',
+			type: 'n8n-nodes-base.manualTrigger',
+		});
+		const scheduleTriggerNode = mock<INode>({
+			name: 'ScheduleTrigger',
+			type: 'n8n-nodes-base.scheduleTrigger',
+		});
+		const httpRequestNode = mock<INode>({
+			name: 'HTTP Request',
+			type: 'n8n-nodes-base.httpRequest',
+		});
+		const set1Node = mock<INode>({
+			name: 'Set1',
+			type: 'n8n-nodes-base.set',
+		});
+		const disabledSetNode = mock<INode>({
+			name: 'Set Disabled',
+			type: 'n8n-nodes-base.set',
+			disabled: true,
+		});
+
+		test('returns first trigger node when multiple start nodes exist', () => {
+			const workflow = new Workflow({
+				nodes: [manualTriggerNode, scheduleTriggerNode],
+				connections: {},
+				active: false,
+				nodeTypes,
+			});
+
+			expect(workflow.getStartNode()).toBe(scheduleTriggerNode);
+		});
+
+		test('returns first starting node type when no trigger nodes are present', () => {
+			const workflow = new Workflow({
+				nodes: [httpRequestNode, set1Node],
+				connections: {},
+				active: false,
+				nodeTypes,
+			});
+
+			expect(workflow.getStartNode()).toBe(httpRequestNode);
+		});
+
+		test('returns undefined when all nodes are disabled', () => {
+			const workflow = new Workflow({
+				nodes: [disabledSetNode],
+				connections: {},
+				active: false,
+				nodeTypes,
+			});
+
+			expect(workflow.getStartNode()).toBeUndefined();
+		});
+	});
+
+	describe('getNode', () => {
+		test('should return the node with the given name if it exists', () => {
+			const workflow = SIMPLE_WORKFLOW;
+			const node = workflow.getNode('Start');
+			expect(node).not.toBeNull();
+			expect(node?.name).toBe('Start');
+			expect(node?.type).toBe('test.set');
+			expect(node?.id).toBe('uuid-1');
+		});
+
+		test('should return null if the node does not exist', () => {
+			const nonExistentNode = SIMPLE_WORKFLOW.getNode('NonExistentNode');
+			expect(nonExistentNode).toBeNull();
+		});
+	});
+
+	describe('getNodes', () => {
+		test('should return all requested nodes that exist', () => {
+			const nodes = SIMPLE_WORKFLOW.getNodes(['Start', 'Set', 'Set1']);
+			expect(nodes).toHaveLength(3);
+			expect(nodes[0].name).toBe('Start');
+			expect(nodes[1].name).toBe('Set');
+			expect(nodes[2].name).toBe('Set1');
+		});
+
+		test('should return nodes in the order they were requested', () => {
+			const nodes = SIMPLE_WORKFLOW.getNodes(['Set1', 'Start', 'Set']);
+			expect(nodes).toHaveLength(3);
+			expect(nodes[0].name).toBe('Set1');
+			expect(nodes[1].name).toBe('Start');
+			expect(nodes[2].name).toBe('Set');
+		});
+
+		test('should skip nodes that do not exist and log a warning', () => {
+			// Spy on console.warn
+			const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
+
+			const nodes = SIMPLE_WORKFLOW.getNodes(['Start', 'NonExistentNode', 'Set1']);
+			expect(nodes).toHaveLength(2);
+			expect(nodes[0].name).toBe('Start');
+			expect(nodes[1].name).toBe('Set1');
+			expect(consoleWarnSpy).toHaveBeenCalledWith(
+				expect.stringContaining('Could not find a node with the name NonExistentNode'),
+			);
+		});
+
+		test('should return an empty array if none of the requested nodes exist', () => {
+			// Spy on console.warn
+			const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
+
+			const nodes = SIMPLE_WORKFLOW.getNodes(['NonExistentNode1', 'NonExistentNode2']);
+			expect(nodes).toHaveLength(0);
+			expect(consoleWarnSpy).toHaveBeenCalledTimes(2);
+		});
+
+		test('should handle an empty array of node names', () => {
+			const nodes = SIMPLE_WORKFLOW.getNodes([]);
+			expect(nodes).toHaveLength(0);
 		});
 	});
 });

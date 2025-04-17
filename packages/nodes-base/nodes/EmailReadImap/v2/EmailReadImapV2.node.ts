@@ -1,72 +1,31 @@
-/* eslint-disable n8n-nodes-base/node-filename-against-convention */
+import type { ImapSimple, ImapSimpleOptions, Message, MessagePart } from '@n8n/imap';
+import { connect as imapConnect } from '@n8n/imap';
+import isEmpty from 'lodash/isEmpty';
 import type {
 	ITriggerFunctions,
 	IBinaryData,
-	IBinaryKeyData,
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
 	INodeCredentialTestResult,
-	INodeExecutionData,
 	INodeType,
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 	ITriggerResponse,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
-
-import type { ImapSimple, ImapSimpleOptions, Message, MessagePart } from '@n8n/imap';
-import { connect as imapConnect, getParts } from '@n8n/imap';
-import type { Source as ParserSource } from 'mailparser';
-import { simpleParser } from 'mailparser';
+import { NodeConnectionTypes, NodeOperationError, TriggerCloseError } from 'n8n-workflow';
 import rfc2047 from 'rfc2047';
-import isEmpty from 'lodash/isEmpty';
-import find from 'lodash/find';
 
+import { getNewEmails } from './utils';
 import type { ICredentialsDataImap } from '../../../credentials/Imap.credentials';
 import { isCredentialsDataImap } from '../../../credentials/Imap.credentials';
-
-export async function parseRawEmail(
-	this: ITriggerFunctions,
-	messageEncoded: ParserSource,
-	dataPropertyNameDownload: string,
-): Promise<INodeExecutionData> {
-	const responseData = await simpleParser(messageEncoded);
-	const headers: IDataObject = {};
-	const additionalData: IDataObject = {};
-
-	for (const header of responseData.headerLines) {
-		headers[header.key] = header.line;
-	}
-
-	additionalData.headers = headers;
-	additionalData.headerLines = undefined;
-
-	const binaryData: IBinaryKeyData = {};
-	if (responseData.attachments) {
-		for (let i = 0; i < responseData.attachments.length; i++) {
-			const attachment = responseData.attachments[i];
-			binaryData[`${dataPropertyNameDownload}${i}`] = await this.helpers.prepareBinaryData(
-				attachment.content,
-				attachment.filename,
-				attachment.contentType,
-			);
-		}
-
-		additionalData.attachments = undefined;
-	}
-
-	return {
-		json: { ...responseData, ...additionalData },
-		binary: Object.keys(binaryData).length ? binaryData : undefined,
-	} as INodeExecutionData;
-}
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Email Trigger (IMAP)',
 	name: 'emailReadImap',
 	icon: 'fa:inbox',
+	iconColor: 'green',
 	group: ['trigger'],
 	version: 2,
 	description: 'Triggers the workflow when a new email is received',
@@ -86,9 +45,9 @@ const versionDescription: INodeTypeDescription = {
 		activationHint:
 			"Once you’ve finished building your workflow, <a data-key='activate'>activate</a> it to have it also listen continuously (you just won’t see those executions here).",
 	},
-	// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+	usableAsTool: true,
 	inputs: [],
-	outputs: ['main'],
+	outputs: [NodeConnectionTypes.Main],
 	credentials: [
 		{
 			name: 'imap',
@@ -192,7 +151,7 @@ const versionDescription: INodeTypeDescription = {
 			displayName: 'Options',
 			name: 'options',
 			type: 'collection',
-			placeholder: 'Add Option',
+			placeholder: 'Add option',
 			default: {},
 			options: [
 				{
@@ -298,7 +257,11 @@ export class EmailReadImapV2 implements INodeType {
 
 		// Returns the email text
 
-		const getText = async (parts: MessagePart[], message: Message, subtype: string) => {
+		const getText = async (
+			parts: MessagePart[],
+			message: Message,
+			subtype: string,
+		): Promise<string> => {
 			if (!message.attributes.struct) {
 				return '';
 			}
@@ -309,12 +272,14 @@ export class EmailReadImapV2 implements INodeType {
 				);
 			});
 
-			if (textParts.length === 0) {
+			const part = textParts[0];
+			if (!part) {
 				return '';
 			}
 
 			try {
-				return await connection.getPartData(message, textParts[0]);
+				const partData = await connection.getPartData(message, part);
+				return partData.toString();
 			} catch {
 				return '';
 			}
@@ -355,7 +320,7 @@ export class EmailReadImapV2 implements INodeType {
 								?.filename as string,
 						);
 						// Return it in the format n8n expects
-						return await this.helpers.prepareBinaryData(Buffer.from(partData), fileName);
+						return await this.helpers.prepareBinaryData(partData.buffer, fileName);
 					});
 
 				attachmentPromises.push(attachmentPromise);
@@ -364,172 +329,7 @@ export class EmailReadImapV2 implements INodeType {
 			return await Promise.all(attachmentPromises);
 		};
 
-		// Returns all the new unseen messages
-		const getNewEmails = async (
-			imapConnection: ImapSimple,
-			searchCriteria: Array<string | string[]>,
-		): Promise<INodeExecutionData[]> => {
-			const format = this.getNodeParameter('format', 0) as string;
-
-			let fetchOptions = {};
-
-			if (format === 'simple' || format === 'raw') {
-				fetchOptions = {
-					bodies: ['TEXT', 'HEADER'],
-					markSeen: false,
-					struct: true,
-				};
-			} else if (format === 'resolved') {
-				fetchOptions = {
-					bodies: [''],
-					markSeen: false,
-					struct: true,
-				};
-			}
-
-			const results = await imapConnection.search(searchCriteria, fetchOptions);
-
-			const newEmails: INodeExecutionData[] = [];
-			let newEmail: INodeExecutionData;
-			let attachments: IBinaryData[];
-			let propertyName: string;
-
-			// All properties get by default moved to metadata except the ones
-			// which are defined here which get set on the top level.
-			const topLevelProperties = ['cc', 'date', 'from', 'subject', 'to'];
-
-			if (format === 'resolved') {
-				const dataPropertyAttachmentsPrefixName = this.getNodeParameter(
-					'dataPropertyAttachmentsPrefixName',
-				) as string;
-
-				for (const message of results) {
-					if (
-						staticData.lastMessageUid !== undefined &&
-						message.attributes.uid <= (staticData.lastMessageUid as number)
-					) {
-						continue;
-					}
-					if (
-						staticData.lastMessageUid === undefined ||
-						(staticData.lastMessageUid as number) < message.attributes.uid
-					) {
-						staticData.lastMessageUid = message.attributes.uid;
-					}
-					const part = find(message.parts, { which: '' });
-
-					if (part === undefined) {
-						throw new NodeOperationError(this.getNode(), 'Email part could not be parsed.');
-					}
-					const parsedEmail = await parseRawEmail.call(
-						this,
-						part.body as Buffer,
-						dataPropertyAttachmentsPrefixName,
-					);
-
-					newEmails.push(parsedEmail);
-				}
-			} else if (format === 'simple') {
-				const downloadAttachments = this.getNodeParameter('downloadAttachments') as boolean;
-
-				let dataPropertyAttachmentsPrefixName = '';
-				if (downloadAttachments) {
-					dataPropertyAttachmentsPrefixName = this.getNodeParameter(
-						'dataPropertyAttachmentsPrefixName',
-					) as string;
-				}
-
-				for (const message of results) {
-					if (
-						staticData.lastMessageUid !== undefined &&
-						message.attributes.uid <= (staticData.lastMessageUid as number)
-					) {
-						continue;
-					}
-					if (
-						staticData.lastMessageUid === undefined ||
-						(staticData.lastMessageUid as number) < message.attributes.uid
-					) {
-						staticData.lastMessageUid = message.attributes.uid;
-					}
-					const parts = getParts(message.attributes.struct as IDataObject[]);
-
-					newEmail = {
-						json: {
-							textHtml: await getText(parts, message, 'html'),
-							textPlain: await getText(parts, message, 'plain'),
-							metadata: {} as IDataObject,
-						},
-					};
-
-					const messageHeader = message.parts.filter((part) => part.which === 'HEADER');
-
-					const messageBody = messageHeader[0].body as Record<string, string[]>;
-					for (propertyName of Object.keys(messageBody)) {
-						if (messageBody[propertyName].length) {
-							if (topLevelProperties.includes(propertyName)) {
-								newEmail.json[propertyName] = messageBody[propertyName][0];
-							} else {
-								(newEmail.json.metadata as IDataObject)[propertyName] =
-									messageBody[propertyName][0];
-							}
-						}
-					}
-
-					if (downloadAttachments) {
-						// Get attachments and add them if any get found
-						attachments = await getAttachment(imapConnection, parts, message);
-						if (attachments.length) {
-							newEmail.binary = {};
-							for (let i = 0; i < attachments.length; i++) {
-								newEmail.binary[`${dataPropertyAttachmentsPrefixName}${i}`] = attachments[i];
-							}
-						}
-					}
-
-					newEmails.push(newEmail);
-				}
-			} else if (format === 'raw') {
-				for (const message of results) {
-					if (
-						staticData.lastMessageUid !== undefined &&
-						message.attributes.uid <= (staticData.lastMessageUid as number)
-					) {
-						continue;
-					}
-					if (
-						staticData.lastMessageUid === undefined ||
-						(staticData.lastMessageUid as number) < message.attributes.uid
-					) {
-						staticData.lastMessageUid = message.attributes.uid;
-					}
-					const part = find(message.parts, { which: 'TEXT' });
-
-					if (part === undefined) {
-						throw new NodeOperationError(this.getNode(), 'Email part could not be parsed.');
-					}
-					// Return base64 string
-					newEmail = {
-						json: {
-							raw: part.body as string,
-						},
-					};
-
-					newEmails.push(newEmail);
-				}
-			}
-
-			// only mark messages as seen once processing has finished
-			if (postProcessAction === 'read') {
-				const uidList = results.map((e) => e.attributes.uid);
-				if (uidList.length > 0) {
-					await imapConnection.addFlags(uidList, '\\SEEN');
-				}
-			}
-			return newEmails;
-		};
-
-		const returnedPromise = await this.helpers.createDeferredPromise();
+		const returnedPromise = this.helpers.createDeferredPromise();
 
 		const establishConnection = async (): Promise<ImapSimple> => {
 			let searchCriteria = ['UNSEEN'] as Array<string | string[]>;
@@ -574,7 +374,15 @@ export class EmailReadImapV2 implements INodeType {
 						}
 
 						try {
-							const returnData = await getNewEmails(connection, searchCriteria);
+							const returnData = await getNewEmails.call(
+								this,
+								connection,
+								searchCriteria,
+								staticData,
+								postProcessAction,
+								getText,
+								getAttachment,
+							);
 							if (returnData.length) {
 								this.emit([returnData]);
 							}
@@ -584,14 +392,14 @@ export class EmailReadImapV2 implements INodeType {
 							});
 							// Wait with resolving till the returnedPromise got resolved, else n8n will be unhappy
 							// if it receives an error before the workflow got activated
-							await returnedPromise.promise().then(() => {
+							await returnedPromise.promise.then(() => {
 								this.emitError(error as Error);
 							});
 						}
 					}
 				},
 				onUpdate: async (seqNo: number, info) => {
-					this.logger.verbose(`Email Read Imap:update ${seqNo}`, info);
+					this.logger.debug(`Email Read Imap:update ${seqNo}`, info);
 				},
 			};
 
@@ -624,11 +432,9 @@ export class EmailReadImapV2 implements INodeType {
 				});
 				conn.on('error', async (error) => {
 					const errorCode = ((error as JsonObject).code as string).toUpperCase();
-					this.logger.verbose(`IMAP connection experienced an error: (${errorCode})`, {
+					this.logger.debug(`IMAP connection experienced an error: (${errorCode})`, {
 						error: error as Error,
 					});
-					// eslint-disable-next-line @typescript-eslint/no-use-before-define
-					await closeFunction();
 					this.emitError(error as Error);
 				});
 				return conn;
@@ -642,7 +448,7 @@ export class EmailReadImapV2 implements INodeType {
 		let reconnectionInterval: NodeJS.Timeout | undefined;
 
 		const handleReconnect = async () => {
-			this.logger.verbose('Forcing reconnect to IMAP server');
+			this.logger.debug('Forcing reconnect to IMAP server');
 			try {
 				isCurrentlyReconnecting = true;
 				if (connection.closeBox) await connection.closeBox(false);
@@ -664,14 +470,18 @@ export class EmailReadImapV2 implements INodeType {
 		}
 
 		// When workflow and so node gets set to inactive close the connection
-		async function closeFunction() {
+		const closeFunction = async () => {
 			closeFunctionWasCalled = true;
 			if (reconnectionInterval) {
 				clearInterval(reconnectionInterval);
 			}
-			if (connection.closeBox) await connection.closeBox(false);
-			connection.end();
-		}
+			try {
+				if (connection.closeBox) await connection.closeBox(false);
+				connection.end();
+			} catch (error) {
+				throw new TriggerCloseError(this.getNode(), { cause: error as Error, level: 'warning' });
+			}
+		};
 
 		// Resolve returned-promise so that waiting errors can be emitted
 		returnedPromise.resolve();

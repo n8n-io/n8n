@@ -111,7 +111,7 @@ export const issueCommentFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -286,6 +286,23 @@ export const issueCommentFields: INodeProperties[] = [
 				description:
 					'Use expand to include additional information about comments in the response. This parameter accepts Rendered Body, which returns the comment body rendered in HTML.',
 			},
+			{
+				displayName: 'Order By',
+				name: 'orderBy',
+				type: 'options',
+				options: [
+					{
+						name: 'Created Ascending',
+						value: '+created',
+					},
+					{
+						name: 'Created Descending',
+						value: '-created',
+					},
+				],
+				default: '+created',
+				description: 'Order comments by the created date',
+			},
 		],
 	},
 
@@ -397,7 +414,7 @@ export const issueCommentFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {

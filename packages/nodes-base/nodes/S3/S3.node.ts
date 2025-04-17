@@ -1,8 +1,5 @@
-import { createHash } from 'crypto';
 import { paramCase, snakeCase } from 'change-case';
-
-import { Builder } from 'xml2js';
-
+import { createHash } from 'crypto';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -11,15 +8,13 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
-
-import { bucketFields, bucketOperations } from '../Aws/S3/V1/BucketDescription';
-
-import { folderFields, folderOperations } from '../Aws/S3/V1/FolderDescription';
-
-import { fileFields, fileOperations } from '../Aws/S3/V1/FileDescription';
+import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { Builder } from 'xml2js';
 
 import { s3ApiRequestREST, s3ApiRequestSOAP, s3ApiRequestSOAPAllItems } from './GenericFunctions';
+import { bucketFields, bucketOperations } from '../Aws/S3/V1/BucketDescription';
+import { fileFields, fileOperations } from '../Aws/S3/V1/FileDescription';
+import { folderFields, folderOperations } from '../Aws/S3/V1/FolderDescription';
 
 export class S3 implements INodeType {
 	description: INodeTypeDescription = {
@@ -34,8 +29,9 @@ export class S3 implements INodeType {
 		defaults: {
 			name: 'S3',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 's3',
@@ -43,6 +39,13 @@ export class S3 implements INodeType {
 			},
 		],
 		properties: [
+			{
+				displayName:
+					"This node is for services that use the S3 standard, e.g. Minio or Digital Ocean Spaces. For AWS S3 use the 'AWS S3' node.",
+				name: 's3StandardNotice',
+				type: 'notice',
+				default: '',
+			},
 			{
 				displayName: 'Resource',
 				name: 'resource',

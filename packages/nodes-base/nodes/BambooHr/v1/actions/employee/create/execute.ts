@@ -1,8 +1,7 @@
+import { capitalCase } from 'change-case';
+import moment from 'moment-timezone';
 import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
 
-import moment from 'moment-timezone';
-
-import { capitalCase } from 'change-case';
 import { apiRequest } from '../../../transport';
 
 export async function create(

@@ -2,6 +2,9 @@ import type { IDataObject } from './Interfaces';
 
 const defaultPropertyDescriptor = Object.freeze({ enumerable: true, configurable: true });
 
+// eslint-disable-next-line @typescript-eslint/unbound-method
+const { hasOwnProperty } = Object.prototype;
+
 const augmentedObjects = new WeakSet<object>();
 
 function augment<T>(value: T): T {
@@ -29,10 +32,11 @@ export function augmentArray<T>(data: T[]): T[] {
 	}
 
 	const proxy = new Proxy(data, {
-		deleteProperty(target, key: string) {
+		deleteProperty(_target, key: string) {
 			return Reflect.deleteProperty(getData(), key);
 		},
 		get(target, key: string, receiver): unknown {
+			if (key === 'constructor') return Array;
 			const value = Reflect.get(newData ?? target, key, receiver) as unknown;
 			const newValue = augment(value);
 			if (newValue !== value) {
@@ -59,7 +63,7 @@ export function augmentArray<T>(data: T[]): T[] {
 		ownKeys(target) {
 			return Reflect.ownKeys(newData ?? target);
 		},
-		set(target, key: string, newValue: unknown) {
+		set(_target, key: string, newValue: unknown) {
 			// Always proxy all objects. Like that we can check in get simply if it
 			// is a proxy and it does then not matter if it was already there from the
 			// beginning and it got proxied at some point or set later and so theoretically
@@ -80,11 +84,13 @@ export function augmentObject<T extends object>(data: T): T {
 
 	const proxy = new Proxy(data, {
 		get(target, key: string, receiver): unknown {
+			if (key === 'constructor') return Object;
+
 			if (deletedProperties.has(key)) {
 				return undefined;
 			}
 
-			if (newData[key] !== undefined) {
+			if (hasOwnProperty.call(newData, key)) {
 				return newData[key];
 			}
 
@@ -102,11 +108,11 @@ export function augmentObject<T extends object>(data: T): T {
 
 			return value;
 		},
-		deleteProperty(target, key: string) {
-			if (key in newData) {
+		deleteProperty(_target, key: string) {
+			if (hasOwnProperty.call(newData, key)) {
 				delete newData[key];
 			}
-			if (key in target) {
+			if (hasOwnProperty.call(data, key)) {
 				deletedProperties.add(key);
 			}
 
@@ -131,9 +137,10 @@ export function augmentObject<T extends object>(data: T): T {
 
 			return true;
 		},
-		has(target, key) {
+		has(_target, key) {
 			if (deletedProperties.has(key)) return false;
-			return Reflect.has(newData, key) || Reflect.has(target, key);
+			const target = hasOwnProperty.call(newData, key) ? newData : data;
+			return Reflect.has(target, key);
 		},
 		ownKeys(target) {
 			const originalKeys = Reflect.ownKeys(target);
@@ -143,9 +150,10 @@ export function augmentObject<T extends object>(data: T): T {
 			);
 		},
 
-		getOwnPropertyDescriptor(target, key) {
+		getOwnPropertyDescriptor(_target, key) {
 			if (deletedProperties.has(key)) return undefined;
-			return Object.getOwnPropertyDescriptor(key in newData ? newData : data, key);
+			const target = hasOwnProperty.call(newData, key) ? newData : data;
+			return Object.getOwnPropertyDescriptor(target, key);
 		},
 	});
 

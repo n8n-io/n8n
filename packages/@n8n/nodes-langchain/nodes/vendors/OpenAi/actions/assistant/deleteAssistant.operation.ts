@@ -1,5 +1,6 @@
 import type { INodeProperties, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { updateDisplayOptions } from 'n8n-workflow';
+
 import { apiRequest } from '../../transport';
 import { assistantRLC } from '../descriptions';
 
@@ -19,7 +20,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	const response = await apiRequest.call(this, 'DELETE', `/assistants/${assistantId}`, {
 		headers: {
-			'OpenAI-Beta': 'assistants=v1',
+			'OpenAI-Beta': 'assistants=v2',
 		},
 	});
 

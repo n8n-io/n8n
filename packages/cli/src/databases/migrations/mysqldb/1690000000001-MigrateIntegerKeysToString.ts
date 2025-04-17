@@ -1,17 +1,15 @@
-import type { MigrationContext, IrreversibleMigration } from '@db/types';
-import config from '@/config';
+import type { MigrationContext, IrreversibleMigration } from '@/databases/types';
 
 const COLLATION_57 = 'utf8mb4_general_ci';
 const COLLATION_80 = 'utf8mb4_0900_ai_ci';
 
 export class MigrateIntegerKeysToString1690000000001 implements IrreversibleMigration {
-	async up({ queryRunner, tablePrefix }: MigrationContext) {
-		const databaseType = config.get('database.type');
+	async up({ queryRunner, tablePrefix, dbType }: MigrationContext) {
 		let collation: string;
-		if (databaseType === 'mariadb') {
+		if (dbType === 'mariadb') {
 			collation = COLLATION_57;
 		} else {
-			const dbVersionQuery = (await queryRunner.query('SELECT @@version')) as  // eslint-disable-next-line @typescript-eslint/naming-convention
+			const dbVersionQuery = (await queryRunner.query('SELECT @@version')) as
 				| Array<{ '@@version': string }>
 				| undefined;
 			collation = COLLATION_80;
@@ -31,7 +29,7 @@ export class MigrateIntegerKeysToString1690000000001 implements IrreversibleMigr
 		);
 		await queryRunner.query(`UPDATE ${tablePrefix}workflow_entity SET id = CONVERT(tmp_id, CHAR);`);
 		await queryRunner.query(
-			`CREATE INDEX \`TMP_idx_${tablePrefix}workflow_entity_id\` ON ${tablePrefix}workflow_entity (\`id\`);`,
+			`CREATE UNIQUE INDEX \`TMP_idx_${tablePrefix}workflow_entity_id\` ON ${tablePrefix}workflow_entity (\`id\`);`,
 		);
 
 		await queryRunner.query(
@@ -42,7 +40,7 @@ export class MigrateIntegerKeysToString1690000000001 implements IrreversibleMigr
 		);
 		await queryRunner.query(`UPDATE ${tablePrefix}tag_entity SET id = CONVERT(tmp_id, CHAR);`);
 		await queryRunner.query(
-			`CREATE INDEX \`TMP_idx_${tablePrefix}tag_entity_id\` ON ${tablePrefix}tag_entity (\`id\`);`,
+			`CREATE UNIQUE INDEX \`TMP_idx_${tablePrefix}tag_entity_id\` ON ${tablePrefix}tag_entity (\`id\`);`,
 		);
 
 		await queryRunner.query(
@@ -67,7 +65,7 @@ export class MigrateIntegerKeysToString1690000000001 implements IrreversibleMigr
 			`ALTER TABLE ${tablePrefix}workflows_tags DROP PRIMARY KEY, ADD PRIMARY KEY (\`workflowId\`, \`tagId\`);`,
 		);
 		await queryRunner.query(
-			`CREATE INDEX \`idx_${tablePrefix}workflows_tags_workflowid\` ON ${tablePrefix}workflows_tags (\`workflowId\`);`,
+			`CREATE INDEX \`idx_${tablePrefix}workflows_tags_workflow_id\` ON ${tablePrefix}workflows_tags (\`workflowId\`);`,
 		);
 		await queryRunner.query(
 			`ALTER TABLE ${tablePrefix}workflows_tags DROP FOREIGN KEY \`FK_${tablePrefix}54b2f0343d6a2078fa137443869\`;`,
@@ -209,7 +207,7 @@ export class MigrateIntegerKeysToString1690000000001 implements IrreversibleMigr
 			`UPDATE ${tablePrefix}credentials_entity SET id = CONVERT(tmp_id, CHAR);`,
 		);
 		await queryRunner.query(
-			`CREATE INDEX \`TMP_idx_${tablePrefix}credentials_entity_id\` ON ${tablePrefix}credentials_entity (\`id\`);`,
+			`CREATE UNIQUE INDEX \`TMP_idx_${tablePrefix}credentials_entity_id\` ON ${tablePrefix}credentials_entity (\`id\`);`,
 		);
 
 		await queryRunner.query(
@@ -261,7 +259,7 @@ export class MigrateIntegerKeysToString1690000000001 implements IrreversibleMigr
 			`UPDATE ${tablePrefix}variables SET \`id\` = CONVERT(\`tmp_id\`, CHAR);`,
 		);
 		await queryRunner.query(
-			`CREATE INDEX \`TMP_idx_${tablePrefix}variables_id\` ON ${tablePrefix}variables (\`id\`);`,
+			`CREATE UNIQUE INDEX \`TMP_idx_${tablePrefix}variables_id\` ON ${tablePrefix}variables (\`id\`);`,
 		);
 		await queryRunner.query(
 			`ALTER TABLE ${tablePrefix}variables CHANGE \`tmp_id\` \`tmp_id\` int NOT NULL;`,
@@ -270,5 +268,8 @@ export class MigrateIntegerKeysToString1690000000001 implements IrreversibleMigr
 			`ALTER TABLE ${tablePrefix}variables DROP PRIMARY KEY, ADD PRIMARY KEY (\`id\`);`,
 		);
 		await queryRunner.query(`ALTER TABLE ${tablePrefix}variables DROP COLUMN \`tmp_id\`;`);
+		await queryRunner.query(
+			`DROP INDEX \`TMP_idx_${tablePrefix}variables_id\` ON ${tablePrefix}variables;`,
+		);
 	}
 }

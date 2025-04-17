@@ -1,0 +1,208 @@
+{
+    "type": "object",
+    "properties": {
+        "active": {
+            "type": "boolean"
+        },
+        "activities_count": {
+            "type": "integer"
+        },
+        "acv": {
+            "type": "null"
+        },
+        "acv_currency": {
+            "type": "null"
+        },
+        "add_time": {
+            "type": "string"
+        },
+        "arr": {
+            "type": "null"
+        },
+        "arr_currency": {
+            "type": "null"
+        },
+        "cc_email": {
+            "type": "string"
+        },
+        "creator_user_id": {
+            "type": "object",
+            "properties": {
+                "active_flag": {
+                    "type": "boolean"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "has_pic": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "integer"
+                }
+            }
+        },
+        "currency": {
+            "type": "string"
+        },
+        "deleted": {
+            "type": "boolean"
+        },
+        "done_activities_count": {
+            "type": "integer"
+        },
+        "email_messages_count": {
+            "type": "integer"
+        },
+        "expected_close_date": {
+            "type": "null"
+        },
+        "files_count": {
+            "type": "integer"
+        },
+        "followers_count": {
+            "type": "integer"
+        },
+        "formatted_value": {
+            "type": "string"
+        },
+        "formatted_weighted_value": {
+            "type": "string"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "last_activity_date": {
+            "type": "null"
+        },
+        "last_activity_id": {
+            "type": "null"
+        },
+        "last_incoming_mail_time": {
+            "type": "null"
+        },
+        "last_outgoing_mail_time": {
+            "type": "null"
+        },
+        "local_lost_date": {
+            "type": "null"
+        },
+        "lost_reason": {
+            "type": "null"
+        },
+        "lost_time": {
+            "type": "null"
+        },
+        "mrr": {
+            "type": "null"
+        },
+        "mrr_currency": {
+            "type": "null"
+        },
+        "next_activity_date": {
+            "type": "null"
+        },
+        "next_activity_duration": {
+            "type": "null"
+        },
+        "next_activity_id": {
+            "type": "null"
+        },
+        "next_activity_note": {
+            "type": "null"
+        },
+        "next_activity_subject": {
+            "type": "null"
+        },
+        "next_activity_time": {
+            "type": "null"
+        },
+        "next_activity_type": {
+            "type": "null"
+        },
+        "notes_count": {
+            "type": "integer"
+        },
+        "org_hidden": {
+            "type": "boolean"
+        },
+        "origin": {
+            "type": "string"
+        },
+        "owner_name": {
+            "type": "string"
+        },
+        "participants_count": {
+            "type": "integer"
+        },
+        "person_hidden": {
+            "type": "boolean"
+        },
+        "pipeline_id": {
+            "type": "integer"
+        },
+        "probability": {
+            "type": "null"
+        },
+        "products_count": {
+            "type": "integer"
+        },
+        "stage_change_time": {
+            "type": "null"
+        },
+        "stage_id": {
+            "type": "integer"
+        },
+        "stage_order_nr": {
+            "type": "integer"
+        },
+        "status": {
+            "type": "string"
+        },
+        "title": {
+            "type": "string"
+        },
+        "undone_activities_count": {
+            "type": "integer"
+        },
+        "update_time": {
+            "type": "string"
+        },
+        "user_id": {
+            "type": "object",
+            "properties": {
+                "active_flag": {
+                    "type": "boolean"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "has_pic": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "integer"
+                }
+            }
+        },
+        "visible_to": {
+            "type": "string"
+        },
+        "weighted_value_currency": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

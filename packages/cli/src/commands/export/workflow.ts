@@ -1,10 +1,12 @@
+import { Container } from '@n8n/di';
 import { Flags } from '@oclif/core';
 import fs from 'fs';
+import { UserError } from 'n8n-workflow';
 import path from 'path';
-import { BaseCommand } from '../BaseCommand';
-import { WorkflowRepository } from '@db/repositories/workflow.repository';
-import Container from 'typedi';
-import { ApplicationError } from 'n8n-workflow';
+
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+
+import { BaseCommand } from '../base-command';
 
 export class ExportWorkflowsCommand extends BaseCommand {
 	static description = 'Export workflows';
@@ -105,7 +107,7 @@ export class ExportWorkflowsCommand extends BaseCommand {
 		});
 
 		if (workflows.length === 0) {
-			throw new ApplicationError('No workflows found with specified filters');
+			throw new UserError('No workflows found with specified filters');
 		}
 
 		if (flags.separate) {

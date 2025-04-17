@@ -1,17 +1,28 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-import {
-	NodeConnectionType,
-	type IExecuteFunctions,
-	type INodeType,
-	type INodeTypeDescription,
-	type SupplyData,
-} from 'n8n-workflow';
+import type { SafetySetting } from '@google/generative-ai';
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
-import type { HarmBlockThreshold, HarmCategory, SafetySetting } from '@google/generative-ai';
-import { logWrapper } from '../../../utils/logWrapper';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
-import { harmCategories, harmThresholds } from './options';
+import { NodeConnectionTypes } from 'n8n-workflow';
+import type {
+	NodeError,
+	INodeType,
+	INodeTypeDescription,
+	ISupplyDataFunctions,
+	SupplyData,
+} from 'n8n-workflow';
 
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
+
+import { additionalOptions } from '../gemini-common/additional-options';
+import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
+import { N8nLlmTracing } from '../N8nLlmTracing';
+
+function errorDescriptionMapper(error: NodeError) {
+	if (error.description?.includes('properties: should be non-empty for OBJECT type')) {
+		return 'Google Gemini requires at least one <a href="https://docs.n8n.io/advanced-ai/examples/using-the-fromai-function/" target="_blank">dynamic parameter</a> when using tools';
+	}
+
+	return error.description ?? 'Unknown error';
+}
 export class LmChatGoogleGemini implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Google Gemini Chat Model',
@@ -27,7 +38,8 @@ export class LmChatGoogleGemini implements INodeType {
 		codex: {
 			categories: ['AI'],
 			subcategories: {
-				AI: ['Language Models'],
+				AI: ['Language Models', 'Root Nodes'],
+				'Language Models': ['Chat Models (Recommended)'],
 			},
 			resources: {
 				primaryDocumentation: [
@@ -40,7 +52,7 @@ export class LmChatGoogleGemini implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.AiLanguageModel],
+		outputs: [NodeConnectionTypes.AiLanguageModel],
 		outputNames: ['Model'],
 		credentials: [
 			{
@@ -53,7 +65,7 @@ export class LmChatGoogleGemini implements INodeType {
 			baseURL: '={{ $credentials.host }}',
 		},
 		properties: [
-			getConnectionHintNoticeField([NodeConnectionType.AiChain, NodeConnectionType.AiAgent]),
+			getConnectionHintNoticeField([NodeConnectionTypes.AiChain, NodeConnectionTypes.AiAgent]),
 			{
 				displayName: 'Model',
 				name: 'modelName',
@@ -108,93 +120,11 @@ export class LmChatGoogleGemini implements INodeType {
 				},
 				default: 'models/gemini-1.0-pro',
 			},
-			{
-				displayName: 'Options',
-				name: 'options',
-				placeholder: 'Add Option',
-				description: 'Additional options to add',
-				type: 'collection',
-				default: {},
-				options: [
-					{
-						displayName: 'Maximum Number of Tokens',
-						name: 'maxOutputTokens',
-						default: 2048,
-						description: 'The maximum number of tokens to generate in the completion',
-						type: 'number',
-					},
-					{
-						displayName: 'Sampling Temperature',
-						name: 'temperature',
-						default: 0.4,
-						typeOptions: { maxValue: 1, minValue: 0, numberPrecision: 1 },
-						description:
-							'Controls randomness: Lowering results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive.',
-						type: 'number',
-					},
-					{
-						displayName: 'Top K',
-						name: 'topK',
-						default: 32,
-						typeOptions: { maxValue: 40, minValue: -1, numberPrecision: 1 },
-						description:
-							'Used to remove "long tail" low probability responses. Defaults to -1, which disables it.',
-						type: 'number',
-					},
-					{
-						displayName: 'Top P',
-						name: 'topP',
-						default: 1,
-						typeOptions: { maxValue: 1, minValue: 0, numberPrecision: 1 },
-						description:
-							'Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered. We generally recommend altering this or temperature but not both.',
-						type: 'number',
-					},
-
-					// Safety Settings
-					{
-						displayName: 'Safety Settings',
-						name: 'safetySettings',
-						type: 'fixedCollection',
-						typeOptions: { multipleValues: true },
-						default: {
-							values: {
-								category: harmCategories[0].name as HarmCategory,
-								threshold: harmThresholds[0].name as HarmBlockThreshold,
-							},
-						},
-						placeholder: 'Add Option',
-						options: [
-							{
-								name: 'values',
-								displayName: 'Values',
-								values: [
-									{
-										displayName: 'Safety Category',
-										name: 'category',
-										type: 'options',
-										description: 'The category of harmful content to block',
-										default: 'HARM_CATEGORY_UNSPECIFIED',
-										options: harmCategories,
-									},
-									{
-										displayName: 'Safety Threshold',
-										name: 'threshold',
-										type: 'options',
-										description: 'The threshold of harmful content to block',
-										default: 'HARM_BLOCK_THRESHOLD_UNSPECIFIED',
-										options: harmThresholds,
-									},
-								],
-							},
-						],
-					},
-				],
-			},
+			additionalOptions,
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const credentials = await this.getCredentials('googlePalmApi');
 
 		const modelName = this.getNodeParameter('modelName', itemIndex) as string;
@@ -218,16 +148,19 @@ export class LmChatGoogleGemini implements INodeType {
 
 		const model = new ChatGoogleGenerativeAI({
 			apiKey: credentials.apiKey as string,
+			baseUrl: credentials.host as string,
 			modelName,
 			topK: options.topK,
 			topP: options.topP,
 			temperature: options.temperature,
 			maxOutputTokens: options.maxOutputTokens,
 			safetySettings,
+			callbacks: [new N8nLlmTracing(this, { errorDescriptionMapper })],
+			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
 		});
 
 		return {
-			response: logWrapper(model, this),
+			response: model,
 		};
 	}
 }

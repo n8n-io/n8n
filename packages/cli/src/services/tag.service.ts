@@ -1,11 +1,14 @@
-import { TagRepository } from '@db/repositories/tag.repository';
-import { Service } from 'typedi';
-import { validateEntity } from '@/GenericHelpers';
-import type { ITagWithCountDb } from '@/Interfaces';
-import type { TagEntity } from '@db/entities/TagEntity';
-import { ExternalHooks } from '@/ExternalHooks';
+import { Service } from '@n8n/di';
+
+import type { TagEntity } from '@/databases/entities/tag-entity';
+import { TagRepository } from '@/databases/repositories/tag.repository';
+import { ExternalHooks } from '@/external-hooks';
+import { validateEntity } from '@/generic-helpers';
+import type { ITagWithCountDb } from '@/interfaces';
 
 type GetAllResult<T> = T extends { withUsageCount: true } ? ITagWithCountDb[] : TagEntity[];
+
+type Action = 'Create' | 'Update';
 
 @Service()
 export class TagService {
@@ -23,7 +26,7 @@ export class TagService {
 	async save(tag: TagEntity, actionKind: 'create' | 'update') {
 		await validateEntity(tag);
 
-		const action = actionKind[0].toUpperCase() + actionKind.slice(1);
+		const action = (actionKind[0].toUpperCase() + actionKind.slice(1)) as Action;
 
 		await this.externalHooks.run(`tag.before${action}`, [tag]);
 

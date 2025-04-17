@@ -1,4 +1,4 @@
-import type { MigrationContext, ReversibleMigration } from '@db/types';
+import type { MigrationContext, ReversibleMigration } from '@/databases/types';
 
 export class DeleteExecutionsWithWorkflows1673268682475 implements ReversibleMigration {
 	transaction = false as const;

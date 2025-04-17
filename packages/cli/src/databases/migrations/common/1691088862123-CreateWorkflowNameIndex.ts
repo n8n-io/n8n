@@ -1,4 +1,4 @@
-import type { MigrationContext, ReversibleMigration } from '@db/types';
+import type { MigrationContext, ReversibleMigration } from '@/databases/types';
 
 export class CreateWorkflowNameIndex1691088862123 implements ReversibleMigration {
 	async up({ schemaBuilder: { createIndex } }: MigrationContext) {

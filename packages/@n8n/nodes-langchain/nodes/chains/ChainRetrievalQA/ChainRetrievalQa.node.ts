@@ -1,26 +1,54 @@
+import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import {
-	NodeConnectionType,
+	ChatPromptTemplate,
+	SystemMessagePromptTemplate,
+	HumanMessagePromptTemplate,
+	PromptTemplate,
+} from '@langchain/core/prompts';
+import type { BaseRetriever } from '@langchain/core/retrievers';
+import { createStuffDocumentsChain } from 'langchain/chains/combine_documents';
+import { createRetrievalChain } from 'langchain/chains/retrieval';
+import { NodeConnectionTypes, NodeOperationError, parseErrorMetadata } from 'n8n-workflow';
+import {
+	type INodeProperties,
 	type IExecuteFunctions,
 	type INodeExecutionData,
 	type INodeType,
 	type INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
 
-import { RetrievalQAChain } from 'langchain/chains';
-import type { BaseLanguageModel } from '@langchain/core/language_models/base';
-import type { BaseRetriever } from '@langchain/core/retrievers';
-import { getTemplateNoticeField } from '../../../utils/sharedFields';
-import { getPromptInputByType } from '../../../utils/helpers';
-import { getTracingConfig } from '../../../utils/tracing';
+import { promptTypeOptions, textFromPreviousNode } from '@utils/descriptions';
+import { getPromptInputByType, isChatInstance } from '@utils/helpers';
+import { getTemplateNoticeField } from '@utils/sharedFields';
+import { getTracingConfig } from '@utils/tracing';
+
+const SYSTEM_PROMPT_TEMPLATE = `You are an assistant for question-answering tasks. Use the following pieces of retrieved context to answer the question.
+If you don't know the answer, just say that you don't know, don't try to make up an answer.
+----------------
+Context: {context}`;
+
+// Due to the refactoring in version 1.5, the variable name {question} needed to be changed to {input} in the prompt template.
+const LEGACY_INPUT_TEMPLATE_KEY = 'question';
+const INPUT_TEMPLATE_KEY = 'input';
+
+const systemPromptOption: INodeProperties = {
+	displayName: 'System Prompt Template',
+	name: 'systemPromptTemplate',
+	type: 'string',
+	default: SYSTEM_PROMPT_TEMPLATE,
+	typeOptions: {
+		rows: 6,
+	},
+};
 
 export class ChainRetrievalQa implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Question and Answer Chain',
 		name: 'chainRetrievalQa',
 		icon: 'fa:link',
+		iconColor: 'black',
 		group: ['transform'],
-		version: [1, 1.1, 1.2, 1.3],
+		version: [1, 1.1, 1.2, 1.3, 1.4, 1.5],
 		description: 'Answer questions about retrieved documents',
 		defaults: {
 			name: 'Question and Answer Chain',
@@ -30,7 +58,7 @@ export class ChainRetrievalQa implements INodeType {
 			alias: ['LangChain'],
 			categories: ['AI'],
 			subcategories: {
-				AI: ['Chains'],
+				AI: ['Chains', 'Root Nodes'],
 			},
 			resources: {
 				primaryDocumentation: [
@@ -42,21 +70,21 @@ export class ChainRetrievalQa implements INodeType {
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [
-			NodeConnectionType.Main,
+			NodeConnectionTypes.Main,
 			{
 				displayName: 'Model',
 				maxConnections: 1,
-				type: NodeConnectionType.AiLanguageModel,
+				type: NodeConnectionTypes.AiLanguageModel,
 				required: true,
 			},
 			{
 				displayName: 'Retriever',
 				maxConnections: 1,
-				type: NodeConnectionType.AiRetriever,
+				type: NodeConnectionTypes.AiRetriever,
 				required: true,
 			},
 		],
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [],
 		properties: [
 			getTemplateNoticeField(1960),
@@ -97,37 +125,24 @@ export class ChainRetrievalQa implements INodeType {
 				},
 			},
 			{
-				displayName: 'Prompt',
-				name: 'promptType',
-				type: 'options',
-				options: [
-					{
-						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-						name: 'Take from previous node automatically',
-						value: 'auto',
-						description: 'Looks for an input field called chatInput',
-					},
-					{
-						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-						name: 'Define below',
-						value: 'define',
-						description:
-							'Use an expression to reference data in previous nodes or enter static text',
-					},
-				],
+				...promptTypeOptions,
 				displayOptions: {
 					hide: {
 						'@version': [{ _cnd: { lte: 1.2 } }],
 					},
 				},
-				default: 'auto',
 			},
 			{
-				displayName: 'Text',
+				...textFromPreviousNode,
+				displayOptions: { show: { promptType: ['auto'], '@version': [{ _cnd: { gte: 1.4 } }] } },
+			},
+			{
+				displayName: 'Prompt (User Message)',
 				name: 'text',
 				type: 'string',
 				required: true,
 				default: '',
+				placeholder: 'e.g. Hello, how can you help me?',
 				typeOptions: {
 					rows: 2,
 				},
@@ -137,30 +152,55 @@ export class ChainRetrievalQa implements INodeType {
 					},
 				},
 			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				default: {},
+				placeholder: 'Add Option',
+				options: [
+					{
+						...systemPromptOption,
+						description: `Template string used for the system prompt. This should include the variable \`{context}\` for the provided context. For text completion models, you should also include the variable \`{${LEGACY_INPUT_TEMPLATE_KEY}}\` for the user’s query.`,
+						displayOptions: {
+							show: {
+								'@version': [{ _cnd: { lt: 1.5 } }],
+							},
+						},
+					},
+					{
+						...systemPromptOption,
+						description: `Template string used for the system prompt. This should include the variable \`{context}\` for the provided context. For text completion models, you should also include the variable \`{${INPUT_TEMPLATE_KEY}}\` for the user’s query.`,
+						displayOptions: {
+							show: {
+								'@version': [{ _cnd: { gte: 1.5 } }],
+							},
+						},
+					},
+				],
+			},
 		],
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		this.logger.verbose('Executing Retrieval QA Chain');
-
-		const model = (await this.getInputConnectionData(
-			NodeConnectionType.AiLanguageModel,
-			0,
-		)) as BaseLanguageModel;
-
-		const retriever = (await this.getInputConnectionData(
-			NodeConnectionType.AiRetriever,
-			0,
-		)) as BaseRetriever;
+		this.logger.debug('Executing Retrieval QA Chain');
 
 		const items = this.getInputData();
-		const chain = RetrievalQAChain.fromLLM(model, retriever);
-
 		const returnData: INodeExecutionData[] = [];
 
 		// Run for each item
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			try {
+				const model = (await this.getInputConnectionData(
+					NodeConnectionTypes.AiLanguageModel,
+					0,
+				)) as BaseLanguageModel;
+
+				const retriever = (await this.getInputConnectionData(
+					NodeConnectionTypes.AiRetriever,
+					0,
+				)) as BaseRetriever;
+
 				let query;
 
 				if (this.getNode().typeVersion <= 1.2) {
@@ -178,17 +218,80 @@ export class ChainRetrievalQa implements INodeType {
 					throw new NodeOperationError(this.getNode(), 'The ‘query‘ parameter is empty.');
 				}
 
-				const response = await chain.withConfig(getTracingConfig(this)).invoke({ query });
-				returnData.push({ json: { response } });
+				const options = this.getNodeParameter('options', itemIndex, {}) as {
+					systemPromptTemplate?: string;
+				};
+
+				let templateText = options.systemPromptTemplate ?? SYSTEM_PROMPT_TEMPLATE;
+
+				// Replace legacy input template key for versions 1.4 and below
+				if (this.getNode().typeVersion < 1.5) {
+					templateText = templateText.replace(
+						`{${LEGACY_INPUT_TEMPLATE_KEY}}`,
+						`{${INPUT_TEMPLATE_KEY}}`,
+					);
+				}
+
+				// Create prompt template based on model type and user configuration
+				let promptTemplate;
+				if (isChatInstance(model)) {
+					// For chat models, create a chat prompt template with system and human messages
+					const messages = [
+						SystemMessagePromptTemplate.fromTemplate(templateText),
+						HumanMessagePromptTemplate.fromTemplate('{input}'),
+					];
+					promptTemplate = ChatPromptTemplate.fromMessages(messages);
+				} else {
+					// For non-chat models, create a text prompt template with Question/Answer format
+					const questionSuffix =
+						options.systemPromptTemplate === undefined ? '\n\nQuestion: {input}\nAnswer:' : '';
+
+					promptTemplate = new PromptTemplate({
+						template: templateText + questionSuffix,
+						inputVariables: ['context', 'input'],
+					});
+				}
+
+				// Create the document chain that combines the retrieved documents
+				const combineDocsChain = await createStuffDocumentsChain({
+					llm: model,
+					prompt: promptTemplate,
+				});
+
+				// Create the retrieval chain that handles the retrieval and then passes to the combine docs chain
+				const retrievalChain = await createRetrievalChain({
+					combineDocsChain,
+					retriever,
+				});
+
+				// Execute the chain with tracing config
+				const tracingConfig = getTracingConfig(this);
+				const response = await retrievalChain
+					.withConfig(tracingConfig)
+					.invoke({ input: query }, { signal: this.getExecutionCancelSignal() });
+
+				// Get the answer from the response
+				const answer: string = response.answer;
+				if (this.getNode().typeVersion >= 1.5) {
+					returnData.push({ json: { response: answer } });
+				} else {
+					// Legacy format for versions 1.4 and below is { text: string }
+					returnData.push({ json: { response: { text: answer } } });
+				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ json: { error: error.message }, pairedItem: { item: itemIndex } });
+					const metadata = parseErrorMetadata(error);
+					returnData.push({
+						json: { error: error.message },
+						pairedItem: { item: itemIndex },
+						metadata,
+					});
 					continue;
 				}
 
 				throw error;
 			}
 		}
-		return await this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

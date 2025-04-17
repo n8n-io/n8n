@@ -30,3 +30,10 @@ export function errorMapper(
 
 	return new NodeOperationError(this.getNode(), error, { itemIndex, message, description });
 }
+
+export function escapeSpecialCharacters(str: string) {
+	// Escape parentheses
+	str = str.replace(/[()]/g, '\\$&');
+
+	return str;
+}

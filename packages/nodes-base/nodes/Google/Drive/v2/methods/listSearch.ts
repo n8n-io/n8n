@@ -4,10 +4,11 @@ import type {
 	INodeListSearchItems,
 	INodeListSearchResult,
 } from 'n8n-workflow';
-import { googleApiRequest } from '../transport';
+
 import type { SearchFilter } from '../helpers/interfaces';
 import { DRIVE, RLC_DRIVE_DEFAULT, RLC_FOLDER_DEFAULT } from '../helpers/interfaces';
 import { updateDriveScopes } from '../helpers/utils';
+import { googleApiRequest } from '../transport';
 
 interface FilesItem {
 	id: string;

@@ -6,7 +6,7 @@
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/bitbucket"
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/bitbucket/"
 			}
 		],
 		"primaryDocumentation": [

@@ -1,0 +1,9 @@
+{
+    "type": "object",
+    "properties": {
+        "timestamp": {
+            "type": "string"
+        }
+    },
+    "version": 2
+}

@@ -1,13 +1,18 @@
-import { EXTERNAL_SECRETS_DB_KEY } from '@/ExternalSecrets/constants';
-import { Service } from 'typedi';
+import { Service } from '@n8n/di';
 import { DataSource, Repository } from '@n8n/typeorm';
-import { ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
-import { Settings } from '../entities/Settings';
+import { ErrorReporter } from 'n8n-core';
+
 import config from '@/config';
+import { EXTERNAL_SECRETS_DB_KEY } from '@/external-secrets.ee/constants';
+
+import { Settings } from '../entities/settings';
 
 @Service()
 export class SettingsRepository extends Repository<Settings> {
-	constructor(dataSource: DataSource) {
+	constructor(
+		dataSource: DataSource,
+		private readonly errorReporter: ErrorReporter,
+	) {
 		super(Settings, dataSource.manager);
 	}
 
@@ -47,7 +52,7 @@ export class SettingsRepository extends Repository<Settings> {
 			config.set(key, value);
 			return { success: true };
 		} catch (error) {
-			ErrorReporter.error(error);
+			this.errorReporter.error(error);
 		}
 		return { success: false };
 	}

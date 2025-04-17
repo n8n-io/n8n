@@ -1,5 +1,8 @@
 {
-	"extends": ["../../tsconfig.json", "../../tsconfig.backend.json"],
+	"extends": [
+		"@n8n/typescript-config/tsconfig.common.json",
+		"@n8n/typescript-config/tsconfig.backend.json"
+	],
 	"compilerOptions": {
 		"outDir": "dist",
 		"preserveSymlinks": true,

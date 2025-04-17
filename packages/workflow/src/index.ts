@@ -1,12 +1,10 @@
 import * as LoggerProxy from './LoggerProxy';
-export * as ErrorReporterProxy from './ErrorReporterProxy';
 export * as ExpressionEvaluatorProxy from './ExpressionEvaluatorProxy';
 import * as NodeHelpers from './NodeHelpers';
 import * as ObservableObject from './ObservableObject';
 import * as TelemetryHelpers from './TelemetryHelpers';
 
 export * from './errors';
-export * from './Authentication';
 export * from './Constants';
 export * from './Cron';
 export * from './DeferredPromise';
@@ -15,13 +13,15 @@ export * from './Interfaces';
 export * from './MessageEventBus';
 export * from './ExecutionStatus';
 export * from './Expression';
+export * from './FromAIParseUtils';
 export * from './NodeHelpers';
-export * from './RoutingNode';
+export * from './MetadataUtils';
 export * from './Workflow';
 export * from './WorkflowDataProxy';
-export * from './WorkflowHooks';
+export * from './WorkflowDataProxyEnvProvider';
 export * from './VersionedNodeType';
 export * from './TypeValidation';
+export * from './result';
 export { LoggerProxy, NodeHelpers, ObservableObject, TelemetryHelpers };
 export {
 	isObjectEmpty,
@@ -34,6 +34,8 @@ export {
 	assert,
 	removeCircularRefs,
 	updateDisplayOptions,
+	randomInt,
+	randomString,
 } from './utils';
 export {
 	isINodeProperties,
@@ -51,7 +53,13 @@ export * as ExpressionParser from './Extensions/ExpressionParser';
 export { NativeMethods } from './NativeMethods';
 export * from './NodeParameters/FilterParameter';
 
-export type { DocMetadata, NativeDoc } from './Extensions';
+export type {
+	DocMetadata,
+	NativeDoc,
+	DocMetadataArgument,
+	DocMetadataExample,
+	Extension,
+} from './Extensions';
 
 declare module 'http' {
 	export interface IncomingMessage {

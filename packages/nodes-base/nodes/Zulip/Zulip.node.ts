@@ -1,3 +1,4 @@
+import { snakeCase } from 'change-case';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -7,14 +8,14 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
-import { snakeCase } from 'change-case';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+
 import { validateJSON, zulipApiRequest } from './GenericFunctions';
 import { messageFields, messageOperations } from './MessageDescription';
 import type { IMessage } from './MessageInterface';
 import { streamFields, streamOperations } from './StreamDescription';
-import { userFields, userOperations } from './UserDescription';
 import type { IPrincipal, IStream } from './StreamInterface';
+import { userFields, userOperations } from './UserDescription';
 import type { IUser } from './UserInterface';
 
 export class Zulip implements INodeType {
@@ -29,8 +30,9 @@ export class Zulip implements INodeType {
 		defaults: {
 			name: 'Zulip',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'zulipApi',
@@ -167,7 +169,7 @@ export class Zulip implements INodeType {
 							body.content = updateFields.content as string;
 						}
 						if (updateFields.propagateMode) {
-							body.propagat_mode = snakeCase(updateFields.propagateMode as string);
+							body.propagate_mode = snakeCase(updateFields.propagateMode as string);
 						}
 						if (updateFields.topic) {
 							body.topic = updateFields.topic as string;

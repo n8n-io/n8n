@@ -14,13 +14,6 @@ export class ZepApi implements ICredentialType {
 
 	properties: INodeProperties[] = [
 		{
-			displayName: 'API URL',
-			name: 'apiUrl',
-			required: true,
-			type: 'string',
-			default: 'http://localhost:8000',
-		},
-		{
 			displayName: 'API Key',
 			name: 'apiKey',
 			type: 'string',
@@ -28,21 +21,41 @@ export class ZepApi implements ICredentialType {
 			required: false,
 			default: '',
 		},
+		{
+			displayName: 'Cloud',
+			description: 'Whether you are adding credentials for Zep Cloud instead of Zep Open Source',
+			name: 'cloud',
+			type: 'boolean',
+			default: false,
+		},
+		{
+			displayName: 'API URL',
+			name: 'apiUrl',
+			required: false,
+			type: 'string',
+			default: 'http://localhost:8000',
+			displayOptions: {
+				show: {
+					cloud: [false],
+				},
+			},
+		},
 	];
 
 	authenticate: IAuthenticateGeneric = {
 		type: 'generic',
 		properties: {
 			headers: {
-				Authorization: '={{$credentials.apiKey ? "Bearer " + $credentials.apiKey : undefined }}',
+				Authorization:
+					'={{$credentials.apiKey && !$credentials.cloud ? "Bearer " + $credentials.apiKey : "Api-Key " + $credentials.apiKey }}',
 			},
 		},
 	};
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: '={{$credentials.apiUrl}}',
-			url: '/api/v1/collection',
+			baseURL: '={{!$credentials.cloud ? $credentials.apiUrl : "https://api.getzep.com"}}',
+			url: '={{!$credentials.cloud ? "/api/v1/collection" : "/api/v2/collections"}}',
 		},
 	};
 }

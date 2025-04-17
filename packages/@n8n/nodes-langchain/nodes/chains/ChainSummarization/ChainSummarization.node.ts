@@ -10,13 +10,14 @@ export class ChainSummarization extends VersionedNodeType {
 			displayName: 'Summarization Chain',
 			name: 'chainSummarization',
 			icon: 'fa:link',
+			iconColor: 'black',
 			group: ['transform'],
 			description: 'Transforms text into a concise summary',
 			codex: {
 				alias: ['LangChain'],
 				categories: ['AI'],
 				subcategories: {
-					AI: ['Chains'],
+					AI: ['Chains', 'Root Nodes'],
 				},
 				resources: {
 					primaryDocumentation: [

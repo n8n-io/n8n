@@ -5,15 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-
-import {
-	adjustCompanyFields,
-	adjustLeadFields,
-	adjustPersonFields,
-	adjustTaskFields,
-	copperApiRequest,
-	handleListing,
-} from './GenericFunctions';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import {
 	companyFields,
@@ -33,6 +25,14 @@ import {
 	userFields,
 	userOperations,
 } from './descriptions';
+import {
+	adjustCompanyFields,
+	adjustLeadFields,
+	adjustPersonFields,
+	adjustTaskFields,
+	copperApiRequest,
+	handleListing,
+} from './GenericFunctions';
 
 export class Copper implements INodeType {
 	description: INodeTypeDescription = {
@@ -46,8 +46,9 @@ export class Copper implements INodeType {
 		defaults: {
 			name: 'Copper',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'copperApi',

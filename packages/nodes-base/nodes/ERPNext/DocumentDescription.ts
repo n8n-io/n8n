@@ -60,7 +60,7 @@ export const documentFields: INodeProperties[] = [
 		},
 		default: '',
 		description:
-			'DocType whose documents to retrieve. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'DocType whose documents to retrieve. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		placeholder: 'Customer',
 		displayOptions: {
 			show: {
@@ -122,7 +122,7 @@ export const documentFields: INodeProperties[] = [
 				},
 				default: [],
 				description:
-					'Comma-separated list of fields to return. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'Comma-separated list of fields to return. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 				placeholder: 'name,country',
 			},
 			{
@@ -145,7 +145,7 @@ export const documentFields: INodeProperties[] = [
 								name: 'field',
 								type: 'options',
 								description:
-									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 								typeOptions: {
 									loadOptionsMethod: 'getDocFields',
 									loadOptionsDependsOn: ['docType'],
@@ -211,7 +211,7 @@ export const documentFields: INodeProperties[] = [
 		},
 		required: true,
 		description:
-			'DocType you would like to create. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'DocType you would like to create. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		placeholder: 'Customer',
 		displayOptions: {
 			show: {
@@ -247,7 +247,7 @@ export const documentFields: INodeProperties[] = [
 						name: 'field',
 						type: 'options',
 						description:
-							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getDocFields',
 							loadOptionsDependsOn: ['docType'],
@@ -277,7 +277,7 @@ export const documentFields: INodeProperties[] = [
 		},
 		default: '',
 		description:
-			'The type of document you would like to get. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'The type of document you would like to get. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: ['document'],
@@ -313,7 +313,7 @@ export const documentFields: INodeProperties[] = [
 		},
 		default: '',
 		description:
-			'The type of document you would like to delete. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'The type of document you would like to delete. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: ['document'],
@@ -349,7 +349,7 @@ export const documentFields: INodeProperties[] = [
 		},
 		default: '',
 		description:
-			'The type of document you would like to update. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'The type of document you would like to update. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: ['document'],
@@ -398,7 +398,7 @@ export const documentFields: INodeProperties[] = [
 						name: 'field',
 						type: 'options',
 						description:
-							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getDocFields',
 							loadOptionsDependsOn: ['docType'],

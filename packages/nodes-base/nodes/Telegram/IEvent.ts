@@ -7,6 +7,15 @@ interface EventBody {
 	document?: {
 		file_id: string;
 	};
+	video?: {
+		file_id: string;
+	};
+	chat?: {
+		id: number;
+	};
+	from?: {
+		id: number;
+	};
 }
 
 export interface IEvent {

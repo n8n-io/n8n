@@ -1,0 +1,75 @@
+{
+    "type": "object",
+    "properties": {
+        "Active": {
+            "type": "boolean"
+        },
+        "BillWithParent": {
+            "type": "boolean"
+        },
+        "CurrencyRef": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
+        "DefaultTaxCodeRef": {
+            "type": "object",
+            "properties": {
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
+        "DisplayName": {
+            "type": "string"
+        },
+        "domain": {
+            "type": "string"
+        },
+        "FullyQualifiedName": {
+            "type": "string"
+        },
+        "Id": {
+            "type": "string"
+        },
+        "IsProject": {
+            "type": "boolean"
+        },
+        "Job": {
+            "type": "boolean"
+        },
+        "MetaData": {
+            "type": "object",
+            "properties": {
+                "CreateTime": {
+                    "type": "string"
+                },
+                "LastUpdatedTime": {
+                    "type": "string"
+                }
+            }
+        },
+        "PreferredDeliveryMethod": {
+            "type": "string"
+        },
+        "PrintOnCheckName": {
+            "type": "string"
+        },
+        "sparse": {
+            "type": "boolean"
+        },
+        "SyncToken": {
+            "type": "string"
+        },
+        "Taxable": {
+            "type": "boolean"
+        }
+    },
+    "version": 1
+}

@@ -1,0 +1,78 @@
+{
+    "type": "object",
+    "properties": {
+        "isDeleted": {
+            "type": "boolean"
+        },
+        "objectId": {
+            "type": "integer"
+        },
+        "objectType": {
+            "type": "string"
+        },
+        "portalId": {
+            "type": "integer"
+        },
+        "properties": {
+            "type": "object",
+            "properties": {
+                "subject": {
+                    "type": "object",
+                    "properties": {
+                        "persistenceTimestamp": {
+                            "type": "integer"
+                        },
+                        "sensitivityLevel": {
+                            "type": "string"
+                        },
+                        "source": {
+                            "type": "string"
+                        },
+                        "timestamp": {
+                            "type": "integer"
+                        },
+                        "value": {
+                            "type": "string"
+                        },
+                        "versions": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "persistenceTimestamp": {
+                                        "type": "integer"
+                                    },
+                                    "source": {
+                                        "type": "string"
+                                    },
+                                    "sourceId": {
+                                        "type": "string"
+                                    },
+                                    "sourceLabel": {
+                                        "type": "string"
+                                    },
+                                    "sourceVid": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "integer"
+                                        }
+                                    },
+                                    "timestamp": {
+                                        "type": "integer"
+                                    },
+                                    "value": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "version": 2
+}

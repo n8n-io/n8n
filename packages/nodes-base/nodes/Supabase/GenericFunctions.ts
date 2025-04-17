@@ -23,10 +23,19 @@ export async function supabaseApiRequest(
 	uri?: string,
 	headers: IDataObject = {},
 ) {
-	const credentials = (await this.getCredentials('supabaseApi')) as {
+	const credentials = await this.getCredentials<{
 		host: string;
 		serviceRole: string;
-	};
+	}>('supabaseApi');
+
+	if (this.getNodeParameter('useCustomSchema', false)) {
+		const schema = this.getNodeParameter('schema', 'public');
+		if (['POST', 'PATCH', 'PUT', 'DELETE'].includes(method)) {
+			headers['Content-Profile'] = schema;
+		} else if (['GET', 'HEAD'].includes(method)) {
+			headers['Accept-Profile'] = schema;
+		}
+	}
 
 	const options: IRequestOptions = {
 		headers: {
@@ -35,18 +44,20 @@ export async function supabaseApiRequest(
 		method,
 		qs,
 		body,
-		uri: uri || `${credentials.host}/rest/v1${resource}`,
+		uri: uri ?? `${credentials.host}/rest/v1${resource}`,
 		json: true,
 	};
+
 	try {
-		if (Object.keys(headers).length !== 0) {
-			options.headers = Object.assign({}, options.headers, headers);
-		}
+		options.headers = Object.assign({}, options.headers, headers);
 		if (Object.keys(body).length === 0) {
 			delete options.body;
 		}
 		return await this.helpers.requestWithAuthentication.call(this, 'supabaseApi', options);
 	} catch (error) {
+		if (error.description) {
+			error.message = `${error.message}: ${error.description}`;
+		}
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
@@ -66,7 +77,6 @@ export function getFilters(
 		filterTypeDisplayName = 'Filter',
 		filterFixedCollectionDisplayName = 'Filters',
 
-		filterStringDisplayName = 'Filters (String)',
 		mustMatchOptions = [
 			{
 				name: 'Any Filter',
@@ -143,7 +153,7 @@ export function getFilters(
 							name: 'keyName',
 							type: 'options',
 							description:
-								'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+								'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 							typeOptions: {
 								loadOptionsDependsOn: ['tableId'],
 								loadOptionsMethod: 'getTableColumns',
@@ -243,7 +253,7 @@ export function getFilters(
 		},
 		{
 			displayName:
-				'See <a href="https://postgrest.org/en/v9.0/api.html#horizontal-filtering-rows" target="_blank">PostgREST guide</a> to creating filters',
+				'See <a href="https://postgrest.org/en/stable/references/api/tables_views.html#horizontal-filtering" target="_blank">PostgREST guide</a> to creating filters',
 			name: 'jsonNotice',
 			type: 'notice',
 			displayOptions: {

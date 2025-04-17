@@ -1,10 +1,10 @@
-const sharedOptions = require('@n8n_io/eslint-config/shared');
+const sharedOptions = require('@n8n/eslint-config/shared');
 
 /**
  * @type {import('@types/eslint').ESLint.ConfigData}
  */
 module.exports = {
-	extends: ['@n8n_io/eslint-config/node'],
+	extends: ['@n8n/eslint-config/node'],
 
 	...sharedOptions(__dirname),
 
@@ -16,9 +16,9 @@ module.exports = {
 
 	rules: {
 		complexity: 'error',
+		'unicorn/filename-case': ['error', { case: 'kebabCase' }],
 
 		// TODO: Remove this
-		'import/order': 'off',
 		'@typescript-eslint/ban-ts-comment': ['error', { 'ts-ignore': true }],
 	},
 };

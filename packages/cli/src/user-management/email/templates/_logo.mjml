@@ -1,0 +1,5 @@
+<mj-section>
+	<mj-column>
+		<mj-image src="cid:n8n-logo" height="40px" width="70px" />
+	</mj-column>
+</mj-section>

@@ -1,0 +1,37 @@
+get:
+  x-eov-operation-id: getUser
+  x-eov-operation-handler: v1/handlers/users/users.handler.ee
+  tags:
+    - User
+  summary: Get user by ID/Email
+  description: Retrieve a user from your instance. Only available for the instance owner.
+  parameters:
+    - $ref: '../schemas/parameters/userIdentifier.yml'
+    - $ref: '../schemas/parameters/includeRole.yml'
+  responses:
+    '200':
+      description: Operation successful.
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/user.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+delete:
+  x-eov-operation-id: deleteUser
+  x-eov-operation-handler: v1/handlers/users/users.handler.ee
+  tags:
+    - User
+  summary: Delete a user
+  description: Delete a user from your instance.
+  parameters:
+    - $ref: '../schemas/parameters/userIdentifier.yml'
+  responses:
+    '204':
+      description: Operation successful.
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '403':
+      $ref: '../../../../shared/spec/responses/forbidden.yml'
+    '404':
+      $ref: '../../../../shared/spec/responses/notFound.yml'

@@ -1,16 +1,18 @@
-import { Service } from 'typedi';
-import type { NextFunction, Response } from 'express';
+import { GlobalConfig } from '@n8n/config';
+import { Service } from '@n8n/di';
 import { createHash } from 'crypto';
+import type { NextFunction, Response } from 'express';
 import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
+import { Logger } from 'n8n-core';
 
 import config from '@/config';
 import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES, Time } from '@/constants';
-import type { User } from '@db/entities/User';
-import { UserRepository } from '@db/repositories/user.repository';
+import type { User } from '@/databases/entities/user';
+import { InvalidAuthTokenRepository } from '@/databases/repositories/invalid-auth-token.repository';
+import { UserRepository } from '@/databases/repositories/user.repository';
 import { AuthError } from '@/errors/response-errors/auth.error';
-import { UnauthorizedError } from '@/errors/response-errors/unauthorized.error';
-import { License } from '@/License';
-import { Logger } from '@/Logger';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { License } from '@/license';
 import type { AuthenticatedRequest } from '@/requests';
 import { JwtService } from '@/services/jwt.service';
 import { UrlService } from '@/services/url.service';
@@ -33,38 +35,44 @@ interface PasswordResetToken {
 	hash: string;
 }
 
-const restEndpoint = config.get('endpoints.rest');
-// The browser-id check needs to be skipped on these endpoints
-const skipBrowserIdCheckEndpoints = [
-	// we need to exclude push endpoint because we can't send custom header on websocket requests
-	// TODO: Implement a custom handshake for push, to avoid having to send any data on querystring or headers
-	`/${restEndpoint}/push`,
-
-	// We need to exclude binary-data downloading endpoint because we can't send custom headers on `<embed>` tags
-	`/${restEndpoint}/binary-data/`,
-
-	// oAuth callback urls aren't called by the frontend. therefore we can't send custom header on these requests
-	`/${restEndpoint}/oauth1-credential/callback`,
-	`/${restEndpoint}/oauth2-credential/callback`,
-];
-
 @Service()
 export class AuthService {
+	// The browser-id check needs to be skipped on these endpoints
+	private skipBrowserIdCheckEndpoints: string[];
+
 	constructor(
+		private readonly globalConfig: GlobalConfig,
 		private readonly logger: Logger,
 		private readonly license: License,
 		private readonly jwtService: JwtService,
 		private readonly urlService: UrlService,
 		private readonly userRepository: UserRepository,
+		private readonly invalidAuthTokenRepository: InvalidAuthTokenRepository,
 	) {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		this.authMiddleware = this.authMiddleware.bind(this);
+
+		const restEndpoint = globalConfig.endpoints.rest;
+		this.skipBrowserIdCheckEndpoints = [
+			// we need to exclude push endpoint because we can't send custom header on websocket requests
+			// TODO: Implement a custom handshake for push, to avoid having to send any data on querystring or headers
+			`/${restEndpoint}/push`,
+
+			// We need to exclude binary-data downloading endpoint because we can't send custom headers on `<embed>` tags
+			`/${restEndpoint}/binary-data/`,
+
+			// oAuth callback urls aren't called by the frontend. therefore we can't send custom header on these requests
+			`/${restEndpoint}/oauth1-credential/callback`,
+			`/${restEndpoint}/oauth2-credential/callback`,
+		];
 	}
 
 	async authMiddleware(req: AuthenticatedRequest, res: Response, next: NextFunction) {
 		const token = req.cookies[AUTH_COOKIE_NAME];
 		if (token) {
 			try {
+				const isInvalid = await this.invalidAuthTokenRepository.existsBy({ token });
+				if (isInvalid) throw new AuthError('Unauthorized');
 				req.user = await this.resolveJwt(token, req, res);
 			} catch (error) {
 				if (error instanceof JsonWebTokenError || error instanceof AuthError) {
@@ -83,6 +91,22 @@ export class AuthService {
 		res.clearCookie(AUTH_COOKIE_NAME);
 	}
 
+	async invalidateToken(req: AuthenticatedRequest) {
+		const token = req.cookies[AUTH_COOKIE_NAME];
+		if (!token) return;
+		try {
+			const { exp } = this.jwtService.decode(token);
+			if (exp) {
+				await this.invalidAuthTokenRepository.insert({
+					token,
+					expiresAt: new Date(exp * 1000),
+				});
+			}
+		} catch (e) {
+			this.logger.warn('failed to invalidate auth token', { error: (e as Error).message });
+		}
+	}
+
 	issueCookie(res: Response, user: User, browserId?: string) {
 		// TODO: move this check to the login endpoint in AuthController
 		// If the instance has exceeded its user quota, prevent non-owners from logging in
@@ -92,15 +116,16 @@ export class AuthService {
 			!user.isOwner &&
 			!isWithinUsersLimit
 		) {
-			throw new UnauthorizedError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
+			throw new ForbiddenError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
 		}
 
 		const token = this.issueJWT(user, browserId);
+		const { samesite, secure } = this.globalConfig.auth.cookie;
 		res.cookie(AUTH_COOKIE_NAME, token, {
 			maxAge: this.jwtExpiration * Time.seconds.toMilliseconds,
 			httpOnly: true,
-			sameSite: 'lax',
-			secure: config.getEnv('secure_cookie'),
+			sameSite: samesite,
+			secure,
 		});
 	}
 
@@ -138,7 +163,7 @@ export class AuthService {
 
 		// Check if the token was issued for another browser session, ignoring the endpoints that can't send custom headers
 		const endpoint = req.route ? `${req.baseUrl}${req.route.path}` : req.baseUrl;
-		if (req.method === 'GET' && skipBrowserIdCheckEndpoints.includes(endpoint)) {
+		if (req.method === 'GET' && this.skipBrowserIdCheckEndpoints.includes(endpoint)) {
 			this.logger.debug(`Skipped browserId check on ${endpoint}`);
 		} else if (
 			jwtPayload.browserId &&

@@ -1,6 +1,6 @@
-import { isTraversableObject } from '../../utils';
-import type { IDataObject, INode, JsonObject } from '../..';
 import { ExecutionBaseError } from './execution-base.error';
+import type { IDataObject, INode, JsonObject } from '../../Interfaces';
+import { isTraversableObject, jsonParse } from '../../utils';
 
 /**
  * Descriptive messages for common errors.
@@ -9,11 +9,11 @@ const COMMON_ERRORS: IDataObject = {
 	// nodeJS errors
 	ECONNREFUSED: 'The service refused the connection - perhaps it is offline',
 	ECONNRESET:
-		'The connection to the server wes closed unexpectedly, perhaps it is offline. You can retry request immidiately or wait and retry later.',
+		'The connection to the server was closed unexpectedly, perhaps it is offline. You can retry the request immediately or wait and retry later.',
 	ENOTFOUND:
-		'The connection cannot be established, this usually occurs due to an incorrect host(domain) value',
+		'The connection cannot be established, this usually occurs due to an incorrect host (domain) value',
 	ETIMEDOUT:
-		"The connection timed out, consider setting 'Retry on Fail' option in the node settings",
+		"The connection timed out, consider setting the 'Retry on Fail' option in the node settings",
 	ERRADDRINUSE:
 		'The port is already occupied by some other application, if possible change the port or kill the application that is using it',
 	EADDRNOTAVAIL: 'The address is not available, ensure that you have the right IP address',
@@ -21,8 +21,8 @@ const COMMON_ERRORS: IDataObject = {
 	EHOSTUNREACH: 'The host is unreachable, perhaps the server is offline',
 	EAI_AGAIN: 'The DNS server returned an error, perhaps the server is offline',
 	ENOENT: 'The file or directory does not exist',
-	EISDIR: 'The file path expected but a given path is a directory',
-	ENOTDIR: 'The directory path expected but a given path is a file',
+	EISDIR: 'The file path was expected but the given path is a directory',
+	ENOTDIR: 'The directory path was expected but the given path is a file',
 	EACCES: 'Forbidden by access permissions, make sure you have the right permissions',
 	EEXIST: 'The file or directory already exists',
 	EPERM: 'Operation not permitted, make sure you have the right permissions',
@@ -81,9 +81,16 @@ export abstract class NodeError extends ExecutionBaseError {
 		traversalKeys: string[] = [],
 	): string | null {
 		for (const key of potentialKeys) {
-			const value = jsonError[key];
+			let value = jsonError[key];
 			if (value) {
-				if (typeof value === 'string') return value;
+				if (typeof value === 'string') {
+					try {
+						value = jsonParse(value);
+					} catch (error) {
+						return value as string;
+					}
+					if (typeof value === 'string') return value;
+				}
 				if (typeof value === 'number') return value.toString();
 				if (Array.isArray(value)) {
 					const resolvedErrors: string[] = value
@@ -160,7 +167,7 @@ export abstract class NodeError extends ExecutionBaseError {
 		}
 
 		// if code is provided and it is in the list of common errors set the message and return early
-		if (code && COMMON_ERRORS[code.toUpperCase()]) {
+		if (code && typeof code === 'string' && COMMON_ERRORS[code.toUpperCase()]) {
 			newMessage = COMMON_ERRORS[code] as string;
 			messages.push(message);
 			return [newMessage, messages];

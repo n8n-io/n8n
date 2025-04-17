@@ -6,7 +6,7 @@
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/egoi"
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/egoi/"
 			}
 		],
 		"primaryDocumentation": [

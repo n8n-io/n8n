@@ -1,0 +1,96 @@
+{
+    "type": "object",
+    "properties": {
+        "channels": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "comments_count": {
+            "type": "integer"
+        },
+        "created": {
+            "type": "integer"
+        },
+        "display_as_bot": {
+            "type": "boolean"
+        },
+        "editable": {
+            "type": "boolean"
+        },
+        "external_type": {
+            "type": "string"
+        },
+        "filetype": {
+            "type": "string"
+        },
+        "groups": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "id": {
+            "type": "string"
+        },
+        "ims": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "is_external": {
+            "type": "boolean"
+        },
+        "is_public": {
+            "type": "boolean"
+        },
+        "media_display_type": {
+            "type": "string"
+        },
+        "mimetype": {
+            "type": "string"
+        },
+        "mode": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "permalink": {
+            "type": "string"
+        },
+        "pretty_type": {
+            "type": "string"
+        },
+        "public_url_shared": {
+            "type": "boolean"
+        },
+        "size": {
+            "type": "integer"
+        },
+        "timestamp": {
+            "type": "integer"
+        },
+        "title": {
+            "type": "string"
+        },
+        "url_private": {
+            "type": "string"
+        },
+        "url_private_download": {
+            "type": "string"
+        },
+        "user": {
+            "type": "string"
+        },
+        "user_team": {
+            "type": "string"
+        },
+        "username": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

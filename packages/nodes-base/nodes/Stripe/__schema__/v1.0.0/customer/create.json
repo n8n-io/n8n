@@ -1,0 +1,62 @@
+{
+    "type": "object",
+    "properties": {
+        "balance": {
+            "type": "integer"
+        },
+        "created": {
+            "type": "integer"
+        },
+        "currency": {
+            "type": "null"
+        },
+        "default_source": {
+            "type": "null"
+        },
+        "delinquent": {
+            "type": "boolean"
+        },
+        "discount": {
+            "type": "null"
+        },
+        "id": {
+            "type": "string"
+        },
+        "invoice_prefix": {
+            "type": "string"
+        },
+        "invoice_settings": {
+            "type": "object",
+            "properties": {
+                "custom_fields": {
+                    "type": "null"
+                },
+                "default_payment_method": {
+                    "type": "null"
+                },
+                "footer": {
+                    "type": "null"
+                },
+                "rendering_options": {
+                    "type": "null"
+                }
+            }
+        },
+        "livemode": {
+            "type": "boolean"
+        },
+        "next_invoice_sequence": {
+            "type": "integer"
+        },
+        "object": {
+            "type": "string"
+        },
+        "tax_exempt": {
+            "type": "string"
+        },
+        "test_clock": {
+            "type": "null"
+        }
+    },
+    "version": 1
+}

@@ -42,7 +42,7 @@ export const mediaFields: INodeProperties[] = [
 			},
 		},
 		description:
-			'Room ID to post. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'Room ID to post. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		required: true,
 	},
 	{
@@ -80,6 +80,16 @@ export const mediaFields: INodeProperties[] = [
 				name: 'Image',
 				value: 'image',
 				description: 'Image media type',
+			},
+			{
+				name: 'Audio',
+				value: 'audio',
+				description: 'Audio media type',
+			},
+			{
+				name: 'Video',
+				value: 'video',
+				description: 'Video media type',
 			},
 		],
 		description: 'Type of file being uploaded',

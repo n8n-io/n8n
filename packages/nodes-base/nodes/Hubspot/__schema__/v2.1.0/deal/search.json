@@ -1,0 +1,38 @@
+{
+    "type": "object",
+    "properties": {
+        "archived": {
+            "type": "boolean"
+        },
+        "createdAt": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "properties": {
+            "type": "object",
+            "properties": {
+                "createdate": {
+                    "type": "string"
+                },
+                "dealstage": {
+                    "type": "string"
+                },
+                "hs_lastmodifieddate": {
+                    "type": "string"
+                },
+                "hs_object_id": {
+                    "type": "string"
+                },
+                "pipeline": {
+                    "type": "string"
+                }
+            }
+        },
+        "updatedAt": {
+            "type": "string"
+        }
+    },
+    "version": 2
+}

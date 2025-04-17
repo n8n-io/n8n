@@ -4,7 +4,7 @@ const variablesPage = new VariablesPage();
 
 describe('Variables', () => {
 	it('should show the unlicensed action box when the feature is disabled', () => {
-		cy.disableFeature('variables', false);
+		cy.disableFeature('variables');
 		cy.visit(variablesPage.url);
 
 		variablesPage.getters.unavailableResourcesList().should('be.visible');
@@ -18,14 +18,15 @@ describe('Variables', () => {
 
 		beforeEach(() => {
 			cy.intercept('GET', '/rest/variables').as('loadVariables');
+			cy.intercept('GET', '/rest/login').as('login');
 
 			cy.visit(variablesPage.url);
-			cy.wait(['@loadVariables', '@loadSettings']);
+			cy.wait(['@loadVariables', '@loadSettings', '@login']);
 		});
 
 		it('should show the licensed action box when the feature is enabled', () => {
 			variablesPage.getters.emptyResourcesList().should('be.visible');
-			variablesPage.getters.createVariableButton().should('be.visible');
+			variablesPage.getters.emptyResourcesListNewVariableButton().should('be.visible');
 		});
 
 		it('should create a new variable using empty state row', () => {
@@ -64,8 +65,11 @@ describe('Variables', () => {
 			const editingRow = variablesPage.getters.variablesEditableRows().eq(0);
 			variablesPage.actions.setRowValue(editingRow, 'key', key);
 			variablesPage.actions.setRowValue(editingRow, 'value', value);
-			editingRow.should('contain', 'This field may contain only letters');
-			variablesPage.getters.editableRowSaveButton(editingRow).should('be.disabled');
+			variablesPage.actions.saveRowEditing(editingRow);
+			variablesPage.getters
+				.variablesEditableRows()
+				.eq(0)
+				.should('contain', 'This field may contain only letters');
 			variablesPage.actions.cancelRowEditing(editingRow);
 
 			variablesPage.getters.variablesRows().should('have.length', 3);
@@ -97,18 +101,22 @@ describe('Variables', () => {
 			variablesPage.getters.searchBar().type('NEW');
 			variablesPage.getters.variablesRows().should('have.length', 1);
 			variablesPage.getters.variableRow('NEW').should('contain.text', 'ENV_VAR_NEW');
+			cy.url().should('include', 'search=NEW');
 
 			// Multiple Results
 			variablesPage.getters.searchBar().clear().type('ENV_VAR');
 			variablesPage.getters.variablesRows().should('have.length', 2);
+			cy.url().should('include', 'search=ENV_VAR');
 
 			// All Results
 			variablesPage.getters.searchBar().clear().type('ENV');
 			variablesPage.getters.variablesRows().should('have.length', 3);
+			cy.url().should('include', 'search=ENV');
 
 			// No Results
 			variablesPage.getters.searchBar().clear().type('Some non-existent variable');
 			variablesPage.getters.variablesRows().should('not.exist');
+			cy.url().should('include', 'search=Some+non-existent+variable');
 
 			cy.contains('No variables found').should('be.visible');
 		});

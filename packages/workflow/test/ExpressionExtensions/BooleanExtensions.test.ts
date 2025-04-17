@@ -2,7 +2,8 @@
  * @jest-environment jsdom
  */
 
-import { booleanExtensions } from '../../src/Extensions/BooleanExtensions';
+import { booleanExtensions } from '@/Extensions/BooleanExtensions';
+
 import { evaluate } from './Helpers';
 
 describe('Data Transformation Functions', () => {

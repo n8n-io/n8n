@@ -1,16 +1,16 @@
-import { Container } from 'typedi';
+import { Container } from '@n8n/di';
 import { Flags } from '@oclif/core';
-import type { IWorkflowBase } from 'n8n-workflow';
-import { ApplicationError, ExecutionBaseError } from 'n8n-workflow';
+import type { IWorkflowBase, IWorkflowExecutionDataProcess } from 'n8n-workflow';
+import { ExecutionBaseError, UnexpectedError, UserError } from 'n8n-workflow';
 
-import { ActiveExecutions } from '@/ActiveExecutions';
-import { WorkflowRunner } from '@/WorkflowRunner';
-import type { IWorkflowExecutionDataProcess } from '@/Interfaces';
-import { findCliWorkflowStart, isWorkflowIdValid } from '@/utils';
-import { BaseCommand } from './BaseCommand';
-
-import { WorkflowRepository } from '@db/repositories/workflow.repository';
+import { ActiveExecutions } from '@/active-executions';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { OwnershipService } from '@/services/ownership.service';
+import { findCliWorkflowStart, isWorkflowIdValid } from '@/utils';
+import { WorkflowRunner } from '@/workflow-runner';
+
+import { BaseCommand } from './base-command';
+import config from '../config';
 
 export class Execute extends BaseCommand {
 	static description = '\nExecutes a given workflow';
@@ -27,9 +27,12 @@ export class Execute extends BaseCommand {
 		}),
 	};
 
+	override needsCommunityPackages = true;
+
 	async init() {
 		await super.init();
 		await this.initBinaryDataService();
+		await this.initDataDeduplicationService();
 		await this.initExternalHooks();
 	}
 
@@ -42,7 +45,7 @@ export class Execute extends BaseCommand {
 		}
 
 		if (flags.file) {
-			throw new ApplicationError(
+			throw new UserError(
 				'The --file flag is no longer supported. Please first import the workflow and then execute it using the --id flag.',
 				{ level: 'warning' },
 			);
@@ -62,7 +65,7 @@ export class Execute extends BaseCommand {
 		}
 
 		if (!workflowData) {
-			throw new ApplicationError('Failed to retrieve workflow data for requested workflow');
+			throw new UnexpectedError('Failed to retrieve workflow data for requested workflow');
 		}
 
 		if (!isWorkflowIdValid(workflowId)) {
@@ -79,13 +82,22 @@ export class Execute extends BaseCommand {
 			userId: user.id,
 		};
 
-		const executionId = await Container.get(WorkflowRunner).run(runData);
+		const workflowRunner = Container.get(WorkflowRunner);
+
+		if (config.getEnv('executions.mode') === 'queue') {
+			this.logger.warn(
+				'CLI command `execute` does not support queue mode. Falling back to regular mode.',
+			);
+			workflowRunner.setExecutionMode('regular');
+		}
+
+		const executionId = await workflowRunner.run(runData);
 
 		const activeExecutions = Container.get(ActiveExecutions);
 		const data = await activeExecutions.getPostExecutePromise(executionId);
 
 		if (data === undefined) {
-			throw new ApplicationError('Workflow did not return any data');
+			throw new UnexpectedError('Workflow did not return any data');
 		}
 
 		if (data.data.resultData.error) {

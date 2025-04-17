@@ -1,0 +1,112 @@
+{
+  "meta": {
+    "instanceId": "5bd32b91ed2a88e542012920460f736c3687a32fbb953718f6952d182231c0ff"
+  },
+  "nodes": [
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a482f1fd-4815-4da4-a733-7beafb43c500",
+              "name": "static",
+              "value": "={{ $('PinnedSet').first().json.firstName }}\n{{ $('PinnedSet').itemMatching(0).json.firstName }}\n{{ $('PinnedSet').itemMatching(1).json.firstName }}\n{{ $('PinnedSet').last().json.firstName }}\n{{ $('PinnedSet').all()[0].json.firstName }}\n{{ $('PinnedSet').all()[1].json.firstName }}\n\n{{ $input.first().json.firstName }}\n{{ $input.last().json.firstName }}\n\n{{ $items()[0].json.firstName }}",
+              "type": "string"
+            },
+            {
+              "id": "2c973f2a-7ca0-41bc-903c-7174bee251b0",
+              "name": "variable",
+              "value": "={{ $runIndex }},{{ $itemIndex }}\n{{ $node['PinnedSet'].json.firstName }}\n\n{{ $('PinnedSet').item.json.firstName }}\n\n{{ $input.item.json.firstName }}\n\n{{ $json.firstName }}\n{{ $data.firstName }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "ac55ee16-4598-48bf-ace3-a48fed1d4ff3",
+      "name": "NotPinnedWithExpressions",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [
+        1600,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "3058c300-b377-41b7-9c90-a01372f9b581",
+              "name": "firstName",
+              "value": "Joe",
+              "type": "string"
+            },
+            {
+              "id": "bb871662-c23c-4234-ac0c-b78c279bbf34",
+              "name": "lastName",
+              "value": "Smith",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "300a3888-cc2f-4e61-8578-b0adbcf33450",
+      "name": "PinnedSet",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [
+        1340,
+        640
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "426ff39a-3408-48b4-899f-60db732675f8",
+      "name": "Start",
+      "type": "n8n-nodes-base.manualTrigger",
+      "position": [
+        1100,
+        640
+      ],
+      "typeVersion": 1
+    }
+  ],
+  "connections": {
+    "PinnedSet": {
+      "main": [
+        [
+          {
+            "node": "NotPinnedWithExpressions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "PinnedSet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {
+    "PinnedSet": [
+      {
+        "firstName": "Joe",
+        "lastName": "Smith"
+      },
+      {
+        "firstName": "Joan",
+        "lastName": "Summers"
+      }
+    ]
+  }
+}

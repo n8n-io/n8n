@@ -1,6 +1,15 @@
-import { DateTime, Duration, Interval } from 'luxon';
 import * as tmpl from '@n8n_io/riot-tmpl';
+import { DateTime, Duration, Interval } from 'luxon';
 
+import { ApplicationError } from './errors/application.error';
+import { ExpressionExtensionError } from './errors/expression-extension.error';
+import { ExpressionError } from './errors/expression.error';
+import { evaluateExpression, setErrorHandler } from './ExpressionEvaluatorProxy';
+import { sanitizer, sanitizerName } from './ExpressionSandboxing';
+import { extend, extendOptional } from './Extensions';
+import { extendSyntax } from './Extensions/ExpressionExtension';
+import { extendedFunctions } from './Extensions/ExtendedFunctions';
+import { getGlobalState } from './GlobalState';
 import type {
 	IDataObject,
 	IExecuteData,
@@ -15,17 +24,8 @@ import type {
 	NodeParameterValueType,
 	WorkflowExecuteMode,
 } from './Interfaces';
-import { ExpressionError } from './errors/expression.error';
-import { ExpressionExtensionError } from './errors/expression-extension.error';
-import { WorkflowDataProxy } from './WorkflowDataProxy';
 import type { Workflow } from './Workflow';
-
-import { extend, extendOptional } from './Extensions';
-import { extendedFunctions } from './Extensions/ExtendedFunctions';
-import { extendSyntax } from './Extensions/ExpressionExtension';
-import { evaluateExpression, setErrorHandler } from './ExpressionEvaluatorProxy';
-import { getGlobalState } from './GlobalState';
-import { ApplicationError } from './errors/application.error';
+import { WorkflowDataProxy } from './WorkflowDataProxy';
 
 const IS_FRONTEND_IN_DEV_MODE =
 	typeof process === 'object' &&
@@ -49,17 +49,6 @@ setErrorHandler((error: Error) => {
 	if (isExpressionError(error)) throw error;
 });
 
-const AsyncFunction = (async () => {}).constructor as FunctionConstructor;
-
-const fnConstructors = {
-	sync: Function.prototype.constructor,
-
-	async: AsyncFunction.prototype.constructor,
-	mock: () => {
-		throw new ExpressionError('Arbitrary code execution detected');
-	},
-};
-
 export class Expression {
 	constructor(private readonly workflow: Workflow) {}
 
@@ -73,10 +62,17 @@ export class Expression {
 	 *
 	 */
 	convertObjectValueToString(value: object): string {
-		const typeName = Array.isArray(value) ? 'Array' : 'Object';
-
 		if (value instanceof DateTime && value.invalidReason !== null) {
 			throw new ApplicationError('invalid DateTime');
+		}
+
+		if (value === null) {
+			return 'null';
+		}
+
+		let typeName = value.constructor.name ?? 'Object';
+		if (DateTime.isDateTime(value)) {
+			typeName = 'DateTime';
 		}
 
 		let result = '';
@@ -85,6 +81,8 @@ export class Expression {
 			result = DateTime.fromJSDate(value, {
 				zone: this.workflow.settings?.timezone ?? getGlobalState().defaultTimezone,
 			}).toISO();
+		} else if (DateTime.isDateTime(value)) {
+			result = value.toString();
 		} else {
 			result = JSON.stringify(value);
 		}
@@ -208,8 +206,6 @@ export class Expression {
 		data.Reflect = {};
 		data.Proxy = {};
 
-		data.constructor = {};
-
 		// Deprecated
 		data.escape = {};
 		data.unescape = {};
@@ -297,6 +293,8 @@ export class Expression {
 		data.extend = extend;
 		data.extendOptional = extendOptional;
 
+		data[sanitizerName] = sanitizer;
+
 		Object.assign(data, extendedFunctions);
 
 		const constructorValidation = new RegExp(/\.\s*constructor/gm);
@@ -334,9 +332,6 @@ export class Expression {
 		data: IWorkflowDataProxyData,
 	): tmpl.ReturnValue | undefined {
 		try {
-			[Function, AsyncFunction].forEach(({ prototype }) =>
-				Object.defineProperty(prototype, 'constructor', { value: fnConstructors.mock }),
-			);
 			return evaluateExpression(expression, data);
 		} catch (error) {
 			if (isExpressionError(error)) throw error;
@@ -350,11 +345,6 @@ export class Expression {
 
 				throw new ApplicationError(match.groups.msg);
 			}
-		} finally {
-			Object.defineProperty(Function.prototype, 'constructor', { value: fnConstructors.sync });
-			Object.defineProperty(AsyncFunction.prototype, 'constructor', {
-				value: fnConstructors.async,
-			});
 		}
 
 		return null;

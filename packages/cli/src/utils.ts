@@ -1,7 +1,7 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { CliWorkflowOperationError, SubworkflowOperationError } from 'n8n-workflow';
-import type { INode } from 'n8n-workflow';
-import { STARTING_NODES } from './constants';
+import type { INode, INodeType } from 'n8n-workflow';
+
+import { STARTING_NODES } from '@/constants';
 
 /**
  * Returns if the given id is a valid workflow id
@@ -58,10 +58,6 @@ export function isStringArray(value: unknown): value is string[] {
 
 export const isIntegerString = (value: string) => /^\d+$/.test(value);
 
-export function isObjectLiteral(item: unknown): item is { [key: string]: string } {
-	return typeof item === 'object' && item !== null && !Array.isArray(item);
-}
-
 export function removeTrailingSlash(path: string) {
 	return path.endsWith('/') ? path.slice(0, -1) : path;
 }
@@ -85,3 +81,27 @@ export function rightDiff<T1, T2>(
 		return acc;
 	}, []);
 }
+
+/**
+ * Asserts that the passed in type is never.
+ * Can be used to make sure the type is exhausted
+ * in switch statements or if/else chains.
+ */
+export const assertNever = (_value: never) => {};
+
+export const isPositiveInteger = (maybeInt: string) => /^[1-9]\d*$/.test(maybeInt);
+
+/**
+ * Check if a execute method should be assigned to the node
+ */
+export const shouldAssignExecuteMethod = (nodeType: INodeType) => {
+	const isDeclarativeNode = nodeType?.description?.requestDefaults !== undefined;
+
+	return (
+		!nodeType.execute &&
+		!nodeType.poll &&
+		!nodeType.trigger &&
+		(!nodeType.webhook || isDeclarativeNode) &&
+		!nodeType.methods
+	);
+};

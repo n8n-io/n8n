@@ -2,10 +2,10 @@
  * Based on https://github.com/node-cache-manager/node-cache-manager-ioredis-yet
  */
 
+import type { Cache, Store, Config } from 'cache-manager';
 import Redis from 'ioredis';
 import type { Cluster, ClusterNode, ClusterOptions, RedisOptions } from 'ioredis';
-import type { Cache, Store, Config } from 'cache-manager';
-import { ApplicationError, jsonParse } from 'n8n-workflow';
+import { jsonParse, UnexpectedError } from 'n8n-workflow';
 
 export class NoCacheableError implements Error {
 	name = 'NoCacheableError';
@@ -82,7 +82,7 @@ function builder(
 				await redisCache.mset(
 					args.flatMap(([key, value]) => {
 						if (!isCacheable(value))
-							throw new ApplicationError(`"${getVal(value)}" is not a cacheable value`);
+							throw new UnexpectedError(`"${getVal(value)}" is not a cacheable value`);
 						return [key, getVal(value)] as [string, string];
 					}),
 				);

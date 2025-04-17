@@ -4,6 +4,7 @@ import type {
 	INodeListSearchItems,
 	INodeListSearchResult,
 } from 'n8n-workflow';
+
 import { microsoftApiRequest } from '../transport';
 
 export async function searchWorkbooks(

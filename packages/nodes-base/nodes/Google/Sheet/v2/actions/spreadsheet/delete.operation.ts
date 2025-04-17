@@ -1,8 +1,9 @@
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+
+import { wrapData } from '../../../../../../utils/utilities';
+import { GOOGLE_DRIVE_FILE_URL_REGEX } from '../../../../constants';
 import type { SpreadSheetProperties } from '../../helpers/GoogleSheets.types';
 import { apiRequest } from '../../transport';
-import { GOOGLE_DRIVE_FILE_URL_REGEX } from '../../../../constants';
-import { wrapData } from '../../../../../../utils/utilities';
 
 export const description: SpreadSheetProperties = [
 	{
@@ -69,7 +70,6 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 	const returnData: INodeExecutionData[] = [];
 
 	for (let i = 0; i < items.length; i++) {
-		// const spreadsheetId = this.getNodeParameter('spreadsheetId', i) as string;
 		const documentId = this.getNodeParameter('documentId', i, undefined, {
 			extractValue: true,
 		}) as string;

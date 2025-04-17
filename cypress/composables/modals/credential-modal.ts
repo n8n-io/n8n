@@ -2,6 +2,8 @@
  * Getters
  */
 
+import { clearNotifications } from '../../pages/notifications';
+
 export function getCredentialConnectionParameterInputs() {
 	return cy.getByTestId('credential-connection-parameter');
 }
@@ -35,14 +37,19 @@ export function setCredentialConnectionParameterInputByName(name: string, value:
 }
 
 export function saveCredential() {
-	getCredentialSaveButton().click({ force: true });
+	getCredentialSaveButton()
+		.click({ force: true })
+		.within(() => {
+			cy.get('button').should('not.exist');
+		});
+	getCredentialSaveButton().should('have.text', 'Saved');
 }
 
 export function closeCredentialModal() {
 	getCredentialModalCloseButton().click();
 }
 
-export function setCredentialValues(values: Record<string, any>, save = true) {
+export function setCredentialValues(values: Record<string, string>, save = true) {
 	Object.entries(values).forEach(([key, value]) => {
 		setCredentialConnectionParameterInputByName(key, value);
 	});
@@ -50,5 +57,6 @@ export function setCredentialValues(values: Record<string, any>, save = true) {
 	if (save) {
 		saveCredential();
 		closeCredentialModal();
+		clearNotifications();
 	}
 }

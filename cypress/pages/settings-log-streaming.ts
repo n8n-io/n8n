@@ -1,8 +1,17 @@
 import { BasePage } from './base';
 import { getVisibleSelect } from '../utils';
 
+/**
+ * @deprecated Use functional composables from @composables instead.
+ * If a composable doesn't exist for your use case, please create a new one in:
+ * cypress/composables
+ *
+ * This class-based approach is being phased out in favor of more modular functional composables.
+ * Each getter and action in this class should be moved to individual composable functions.
+ */
 export class SettingsLogStreamingPage extends BasePage {
 	url = '/settings/log-streaming';
+
 	getters = {
 		getActionBoxUnlicensed: () => cy.getByTestId('action-box-unlicensed'),
 		getActionBoxLicensed: () => cy.getByTestId('action-box-licensed'),
@@ -17,6 +26,7 @@ export class SettingsLogStreamingPage extends BasePage {
 		getDestinationDeleteButton: () => cy.getByTestId('destination-delete-button'),
 		getDestinationCards: () => cy.getByTestId('destination-card'),
 	};
+
 	actions = {
 		clickContactUs: () => this.getters.getContactUsButton().click(),
 		clickAddFirstDestination: () => this.getters.getAddFirstDestinationButton().click(),

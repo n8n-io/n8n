@@ -94,7 +94,7 @@ export const documentFields: INodeProperties[] = [
 				},
 				default: '',
 				description:
-					'ID of the owner of this document. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'ID of the owner of this document. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 		],
 	},

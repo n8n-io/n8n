@@ -1,7 +1,6 @@
 import type { INodeProperties } from 'n8n-workflow';
 
 import { allCurrencies } from './currencies';
-
 import { activeCampaignDefaultGetAllProperties } from './GenericFunctions';
 
 export const ecomOrderOperations: INodeProperties[] = [

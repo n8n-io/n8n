@@ -79,7 +79,7 @@ export const channelFields: INodeProperties[] = [
 		},
 		required: true,
 		description:
-			'The ID of the workspace. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'The ID of the workspace. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Name',
@@ -197,7 +197,7 @@ export const channelFields: INodeProperties[] = [
 				},
 				default: [],
 				description:
-					'The users that will participate in the channel. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'The users that will participate in the channel. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 		],
 	},
@@ -239,7 +239,7 @@ export const channelFields: INodeProperties[] = [
 		},
 		required: true,
 		description:
-			'The ID of the workspace. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'The ID of the workspace. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Return All',

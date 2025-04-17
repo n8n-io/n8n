@@ -225,7 +225,7 @@ export const contactFields: INodeProperties[] = [
 								},
 								default: [],
 								description:
-									'ID of the field to set. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+									'ID of the field to set. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 							},
 						],
 					},
@@ -255,7 +255,7 @@ export const contactFields: INodeProperties[] = [
 								},
 								default: '',
 								description:
-									'ID of the field. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+									'ID of the field. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Field Value',

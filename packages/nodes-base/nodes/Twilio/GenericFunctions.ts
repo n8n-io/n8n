@@ -19,13 +19,13 @@ export async function twilioApiRequest(
 	body: IDataObject,
 	query?: IDataObject,
 ): Promise<any> {
-	const credentials = (await this.getCredentials('twilioApi')) as {
+	const credentials = await this.getCredentials<{
 		accountSid: string;
 		authType: 'authToken' | 'apiKey';
 		authToken: string;
 		apiKeySid: string;
 		apiKeySecret: string;
-	};
+	}>('twilioApi');
 
 	if (query === undefined) {
 		query = {};

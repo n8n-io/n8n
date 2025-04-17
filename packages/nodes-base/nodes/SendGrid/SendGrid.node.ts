@@ -1,23 +1,21 @@
-import type {
-	IDataObject,
-	IExecuteFunctions,
-	IHttpRequestMethods,
-	ILoadOptionsFunctions,
-	INodeExecutionData,
-	INodePropertyOptions,
-	INodeType,
-	INodeTypeDescription,
+import moment from 'moment-timezone';
+import {
+	NodeConnectionTypes,
+	type IDataObject,
+	type IExecuteFunctions,
+	type IHttpRequestMethods,
+	type ILoadOptionsFunctions,
+	type INodeExecutionData,
+	type INodePropertyOptions,
+	type INodeType,
+	type INodeTypeDescription,
 } from 'n8n-workflow';
 
-import moment from 'moment-timezone';
-import { listFields, listOperations } from './ListDescription';
-
 import { contactFields, contactOperations } from './ContactDescription';
-
+import { sendGridApiRequest, sendGridApiRequestAllItems } from './GenericFunctions';
+import { listFields, listOperations } from './ListDescription';
 import type { SendMailBody } from './MailDescription';
 import { mailFields, mailOperations } from './MailDescription';
-
-import { sendGridApiRequest, sendGridApiRequestAllItems } from './GenericFunctions';
 
 export class SendGrid implements INodeType {
 	description: INodeTypeDescription = {
@@ -31,8 +29,9 @@ export class SendGrid implements INodeType {
 		defaults: {
 			name: 'SendGrid',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'sendGridApi',
@@ -525,6 +524,7 @@ export class SendGrid implements INodeType {
 							attachments,
 							categories,
 							ipPoolName,
+							replyToEmail,
 						} = this.getNodeParameter('additionalFields', i) as {
 							bccEmail: string;
 							ccEmail: string;
@@ -534,6 +534,7 @@ export class SendGrid implements INodeType {
 							attachments: string;
 							categories: string;
 							ipPoolName: string;
+							replyToEmail: string;
 						};
 
 						const body: SendMailBody = {
@@ -629,6 +630,12 @@ export class SendGrid implements INodeType {
 
 						if (sendAt) {
 							body.personalizations[0].send_at = moment.tz(sendAt, timezone).unix();
+						}
+
+						if (replyToEmail) {
+							body.reply_to_list = replyToEmail
+								.split(',')
+								.map((entry) => ({ email: entry.trim() }));
 						}
 
 						const data = await sendGridApiRequest.call(this, '/mail/send', 'POST', body, qs, {

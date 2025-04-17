@@ -9,10 +9,9 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { apiRequest, apiRequestAllItems, downloadRecordAttachments } from './GenericFunctions';
-
 import { operationFields } from './OperationDescription';
 
 export class NocoDB implements INodeType {
@@ -27,8 +26,9 @@ export class NocoDB implements INodeType {
 		defaults: {
 			name: 'NocoDB',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
+		usableAsTool: true,
 		credentials: [
 			{
 				name: 'nocoDb',
@@ -238,6 +238,9 @@ export class NocoDB implements INodeType {
 						new Error(`Error while fetching ${version === 3 ? 'bases' : 'projects'}!`, {
 							cause: e,
 						}),
+						{
+							level: 'warning',
+						},
 					);
 				}
 			},
@@ -258,12 +261,18 @@ export class NocoDB implements INodeType {
 						throw new NodeOperationError(
 							this.getNode(),
 							new Error('Error while fetching tables!', { cause: e }),
+							{
+								level: 'warning',
+							},
 						);
 					}
 				} else {
 					throw new NodeOperationError(
 						this.getNode(),
 						`No  ${version === 3 ? 'base' : 'project'} selected!`,
+						{
+							level: 'warning',
+						},
 					);
 				}
 			},

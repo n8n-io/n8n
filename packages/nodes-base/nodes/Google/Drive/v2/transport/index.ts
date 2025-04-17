@@ -8,6 +8,7 @@ import type {
 	IHttpRequestMethods,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
+
 import { getGoogleAccessToken } from '../../../GenericFunctions';
 
 export async function googleApiRequest(
@@ -57,8 +58,6 @@ export async function googleApiRequest(
 			);
 		}
 	} catch (error) {
-		if (error instanceof NodeApiError) throw error;
-
 		if (error.code === 'ERR_OSSL_PEM_NO_START_LINE') {
 			error.statusCode = '401';
 		}

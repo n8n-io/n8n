@@ -1,3 +1,4 @@
+import { isEqual, isNull, merge, isObject, reduce, get } from 'lodash';
 import type {
 	IDataObject,
 	IDisplayOptions,
@@ -5,10 +6,7 @@ import type {
 	INodeProperties,
 	IPairedItemData,
 } from 'n8n-workflow';
-
-import { ApplicationError, jsonParse } from 'n8n-workflow';
-
-import { isEqual, isNull, merge } from 'lodash';
+import { ApplicationError, jsonParse, randomInt } from 'n8n-workflow';
 
 /**
  * Creates an array of elements split into groups the length of `size`.
@@ -42,6 +40,32 @@ export function chunk<T>(array: T[], size = 1) {
 }
 
 /**
+ * Shuffles an array in place using the Fisher-Yates shuffle algorithm
+ * @param {Array} array The array to shuffle.
+ */
+export const shuffleArray = <T>(array: T[]): void => {
+	for (let i = array.length - 1; i > 0; i--) {
+		const j = randomInt(i + 1);
+		[array[i], array[j]] = [array[j], array[i]];
+	}
+};
+
+/**
+ * Flattens an object with deep data
+ * @param {IDataObject} data The object to flatten
+ * @param {string[]} prefix The prefix to add to each key in the returned flat object
+ */
+export const flattenKeys = (obj: IDataObject, prefix: string[] = []): IDataObject => {
+	return !isObject(obj)
+		? { [prefix.join('.')]: obj }
+		: reduce(
+				obj,
+				(cum, next, key) => merge(cum, flattenKeys(next as IDataObject, [...prefix, key])),
+				{},
+			);
+};
+
+/**
  * Takes a multidimensional array and converts it to a one-dimensional array.
  *
  * @param {Array} nestedArray The array to be flattened.
@@ -69,6 +93,38 @@ export function flatten<T>(nestedArray: T[][]) {
 
 	return result as any;
 }
+
+/**
+ * Compares the values of specified keys in two objects.
+ *
+ * @param {T} obj1 - The first object to compare.
+ * @param {T} obj2 - The second object to compare.
+ * @param {string[]} keys - An array of keys to compare.
+ * @param {boolean} disableDotNotation - Whether to use dot notation to access nested properties.
+ * @returns {boolean} - Whether the values of the specified keys are equal in both objects.
+ */
+export const compareItems = <T extends { json: Record<string, unknown> }>(
+	obj1: T,
+	obj2: T,
+	keys: string[],
+	disableDotNotation: boolean = false,
+): boolean => {
+	let result = true;
+	for (const key of keys) {
+		if (!disableDotNotation) {
+			if (!isEqual(get(obj1.json, key), get(obj2.json, key))) {
+				result = false;
+				break;
+			}
+		} else {
+			if (!isEqual(obj1.json[key], obj2.json[key])) {
+				result = false;
+				break;
+			}
+		}
+	}
+	return result;
+};
 
 export function updateDisplayOptions(
 	displayOptions: IDisplayOptions,
@@ -330,7 +386,7 @@ export function preparePairedItemDataArray(
 	return [pairedItem];
 }
 
-export const sanitazeDataPathKey = (item: IDataObject, key: string) => {
+export const sanitizeDataPathKey = (item: IDataObject, key: string) => {
 	if (item[key] !== undefined) {
 		return key;
 	}
@@ -346,3 +402,68 @@ export const sanitazeDataPathKey = (item: IDataObject, key: string) => {
 	}
 	return key;
 };
+
+/**
+ * Escape HTML
+ *
+ * @param {string} text The text to escape
+ */
+export function escapeHtml(text: string): string {
+	if (!text) return '';
+	return text.replace(/&amp;|&lt;|&gt;|&#39;|&quot;/g, (match) => {
+		switch (match) {
+			case '&amp;':
+				return '&';
+			case '&lt;':
+				return '<';
+			case '&gt;':
+				return '>';
+			case '&#39;':
+				return "'";
+			case '&quot;':
+				return '"';
+			default:
+				return match;
+		}
+	});
+}
+
+/**
+ * Sorts each item json's keys by a priority list
+ *
+ * @param {INodeExecutionData[]} data The array of items which keys will be sorted
+ * @param {string[]} priorityList The priority list, keys of item.json will be sorted in this order first then alphabetically
+ */
+export function sortItemKeysByPriorityList(data: INodeExecutionData[], priorityList: string[]) {
+	return data.map((item) => {
+		const itemKeys = Object.keys(item.json);
+
+		const updatedKeysOrder = itemKeys.sort((a, b) => {
+			const indexA = priorityList.indexOf(a);
+			const indexB = priorityList.indexOf(b);
+
+			if (indexA !== -1 && indexB !== -1) {
+				return indexA - indexB;
+			} else if (indexA !== -1) {
+				return -1;
+			} else if (indexB !== -1) {
+				return 1;
+			}
+			return a.localeCompare(b);
+		});
+
+		const updatedItem: IDataObject = {};
+		for (const key of updatedKeysOrder) {
+			updatedItem[key] = item.json[key];
+		}
+
+		item.json = updatedItem;
+		return item;
+	});
+}
+
+export function createUtmCampaignLink(nodeType: string, instanceId?: string) {
+	return `https://n8n.io/?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=${encodeURIComponent(
+		nodeType,
+	)}${instanceId ? '_' + instanceId : ''}`;
+}

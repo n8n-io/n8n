@@ -1,8 +1,6 @@
+import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
 import type { KafkaConfig, SASLOptions } from 'kafkajs';
 import { Kafka as apacheKafka, logLevel } from 'kafkajs';
-
-import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
-
 import type {
 	ITriggerFunctions,
 	IDataObject,
@@ -11,13 +9,13 @@ import type {
 	ITriggerResponse,
 	IRun,
 } from 'n8n-workflow';
-import { createDeferredPromise, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 export class KafkaTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Kafka Trigger',
 		name: 'kafkaTrigger',
-		icon: 'file:kafka.svg',
+		icon: { light: 'file:kafka.svg', dark: 'file:kafka.dark.svg' },
 		group: ['trigger'],
 		version: [1, 1.1],
 		description: 'Consume messages from a Kafka topic',
@@ -25,7 +23,7 @@ export class KafkaTrigger implements INodeType {
 			name: 'Kafka Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'kafka',
@@ -77,7 +75,7 @@ export class KafkaTrigger implements INodeType {
 				name: 'options',
 				type: 'collection',
 				default: {},
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				options: [
 					{
 						displayName: 'Allow Topic Creation',
@@ -185,7 +183,7 @@ export class KafkaTrigger implements INodeType {
 
 		const credentials = await this.getCredentials('kafka');
 
-		const brokers = ((credentials.brokers as string) || '').split(',').map((item) => item.trim());
+		const brokers = ((credentials.brokers as string) ?? '').split(',').map((item) => item.trim());
 
 		const clientId = credentials.clientId as string;
 
@@ -216,14 +214,19 @@ export class KafkaTrigger implements INodeType {
 			} as SASLOptions;
 		}
 
-		const kafka = new apacheKafka(config);
-
 		const maxInFlightRequests = (
 			this.getNodeParameter('options.maxInFlightRequests', null) === 0
 				? null
 				: this.getNodeParameter('options.maxInFlightRequests', null)
 		) as number;
 
+		const parallelProcessing = options.parallelProcessing as boolean;
+
+		const useSchemaRegistry = this.getNodeParameter('useSchemaRegistry', 0) as boolean;
+
+		const schemaRegistryUrl = this.getNodeParameter('schemaRegistryUrl', 0) as string;
+
+		const kafka = new apacheKafka(config);
 		const consumer = kafka.consumer({
 			groupId,
 			maxInFlightRequests,
@@ -231,17 +234,16 @@ export class KafkaTrigger implements INodeType {
 			heartbeatInterval: this.getNodeParameter('options.heartbeatInterval', 3000) as number,
 		});
 
-		const parallelProcessing = options.parallelProcessing as boolean;
-
-		await consumer.connect();
-
-		await consumer.subscribe({ topic, fromBeginning: options.fromBeginning ? true : false });
-
-		const useSchemaRegistry = this.getNodeParameter('useSchemaRegistry', 0) as boolean;
-
-		const schemaRegistryUrl = this.getNodeParameter('schemaRegistryUrl', 0) as string;
+		// The "closeFunction" function gets called by n8n whenever
+		// the workflow gets deactivated and can so clean up.
+		async function closeFunction() {
+			await consumer.disconnect();
+		}
 
 		const startConsumer = async () => {
+			await consumer.connect();
+
+			await consumer.subscribe({ topic, fromBeginning: options.fromBeginning ? true : false });
 			await consumer.run({
 				autoCommitInterval: (options.autoCommitInterval as number) || null,
 				autoCommitThreshold: (options.autoCommitThreshold as number) || null,
@@ -263,13 +265,12 @@ export class KafkaTrigger implements INodeType {
 					}
 
 					if (options.returnHeaders && message.headers) {
-						const headers: { [key: string]: string } = {};
-						for (const key of Object.keys(message.headers)) {
-							const header = message.headers[key];
-							headers[key] = header?.toString('utf8') || '';
-						}
-
-						data.headers = headers;
+						data.headers = Object.fromEntries(
+							Object.entries(message.headers).map(([headerKey, headerValue]) => [
+								headerKey,
+								headerValue?.toString('utf8') ?? '',
+							]),
+						);
 					}
 
 					data.message = value;
@@ -281,39 +282,36 @@ export class KafkaTrigger implements INodeType {
 					}
 					let responsePromise = undefined;
 					if (!parallelProcessing && (options.nodeVersion as number) > 1) {
-						responsePromise = await createDeferredPromise<IRun>();
+						responsePromise = this.helpers.createDeferredPromise<IRun>();
 						this.emit([this.helpers.returnJsonArray([data])], undefined, responsePromise);
 					} else {
 						this.emit([this.helpers.returnJsonArray([data])]);
 					}
 					if (responsePromise) {
-						await responsePromise.promise();
+						await responsePromise.promise;
 					}
 				},
 			});
 		};
 
-		await startConsumer();
-
-		// The "closeFunction" function gets called by n8n whenever
-		// the workflow gets deactivated and can so clean up.
-		async function closeFunction() {
-			await consumer.disconnect();
-		}
-
-		// The "manualTriggerFunction" function gets called by n8n
-		// when a user is in the workflow editor and starts the
-		// workflow manually. So the function has to make sure that
-		// the emit() gets called with similar data like when it
-		// would trigger by itself so that the user knows what data
-		// to expect.
-		async function manualTriggerFunction() {
+		if (this.getMode() !== 'manual') {
 			await startConsumer();
-		}
+			return { closeFunction };
+		} else {
+			// The "manualTriggerFunction" function gets called by n8n
+			// when a user is in the workflow editor and starts the
+			// workflow manually. So the function has to make sure that
+			// the emit() gets called with similar data like when it
+			// would trigger by itself so that the user knows what data
+			// to expect.
+			async function manualTriggerFunction() {
+				await startConsumer();
+			}
 
-		return {
-			closeFunction,
-			manualTriggerFunction,
-		};
+			return {
+				closeFunction,
+				manualTriggerFunction,
+			};
+		}
 	}
 }

@@ -1,0 +1,17 @@
+{
+    "type": "object",
+    "properties": {
+        "sys_domain": {
+            "type": "object",
+            "properties": {
+                "link": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "version": 1
+}
