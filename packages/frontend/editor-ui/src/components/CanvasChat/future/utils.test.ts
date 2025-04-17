@@ -1,0 +1,398 @@
+import {
+	createTestNode,
+	createTestTaskData,
+	createTestWorkflow,
+	createTestWorkflowExecutionResponse,
+	createTestWorkflowObject,
+} from '@/__tests__/mocks';
+import {
+	findLogEntryToAutoSelect,
+	getTreeNodeData,
+	createLogEntries,
+} from '@/components/CanvasChat/future/utils';
+import { type IExecutionResponse } from '@/Interface';
+import { AGENT_LANGCHAIN_NODE_TYPE, type ExecutionError, NodeConnectionTypes } from 'n8n-workflow';
+
+describe(getTreeNodeData, () => {
+	it('should generate one node per execution', () => {
+		const workflow = createTestWorkflowObject({
+			nodes: [
+				createTestNode({ name: 'A' }),
+				createTestNode({ name: 'B' }),
+				createTestNode({ name: 'C' }),
+			],
+			connections: {
+				B: { ai_tool: [[{ node: 'A', type: NodeConnectionTypes.AiTool, index: 0 }]] },
+				C: {
+					ai_languageModel: [[{ node: 'B', type: NodeConnectionTypes.AiLanguageModel, index: 0 }]],
+				},
+			},
+		});
+
+		const jsonB1 = { tokenUsage: { completionTokens: 1, promptTokens: 2, totalTokens: 3 } };
+		const jsonB2 = { tokenUsage: { completionTokens: 4, promptTokens: 5, totalTokens: 6 } };
+		const jsonC1 = { tokenUsageEstimate: { completionTokens: 7, promptTokens: 8, totalTokens: 9 } };
+
+		expect(
+			getTreeNodeData('A', createTestTaskData({}), workflow, {
+				A: [createTestTaskData({ startTime: Date.parse('2025-02-26T00:00:00.000Z') })],
+				B: [
+					createTestTaskData({
+						startTime: Date.parse('2025-02-26T00:00:01.000Z'),
+						data: { main: [[{ json: jsonB1 }]] },
+					}),
+					createTestTaskData({
+						startTime: Date.parse('2025-02-26T00:00:03.000Z'),
+						data: { main: [[{ json: jsonB2 }]] },
+					}),
+				],
+				C: [
+					createTestTaskData({
+						startTime: Date.parse('2025-02-26T00:00:02.000Z'),
+						data: { main: [[{ json: jsonC1 }]] },
+					}),
+					createTestTaskData({ startTime: Date.parse('2025-02-26T00:00:04.000Z') }),
+				],
+			}),
+		).toEqual([
+			{
+				depth: 0,
+				id: 'A:0',
+				node: expect.objectContaining({ name: 'A' }),
+				runIndex: 0,
+				runData: expect.objectContaining({ startTime: 0 }),
+				parent: undefined,
+				consumedTokens: {
+					completionTokens: 0,
+					promptTokens: 0,
+					totalTokens: 0,
+					isEstimate: false,
+				},
+				children: [
+					{
+						depth: 1,
+						id: 'B:0',
+						node: expect.objectContaining({ name: 'B' }),
+						runIndex: 0,
+						runData: expect.objectContaining({
+							startTime: Date.parse('2025-02-26T00:00:01.000Z'),
+						}),
+						parent: expect.objectContaining({ node: expect.objectContaining({ name: 'A' }) }),
+						consumedTokens: {
+							completionTokens: 1,
+							promptTokens: 2,
+							totalTokens: 3,
+							isEstimate: false,
+						},
+						children: [
+							{
+								children: [],
+								depth: 2,
+								id: 'C:0',
+								node: expect.objectContaining({ name: 'C' }),
+								runIndex: 0,
+								runData: expect.objectContaining({
+									startTime: Date.parse('2025-02-26T00:00:02.000Z'),
+								}),
+								parent: expect.objectContaining({ node: expect.objectContaining({ name: 'B' }) }),
+								consumedTokens: {
+									completionTokens: 7,
+									promptTokens: 8,
+									totalTokens: 9,
+									isEstimate: true,
+								},
+							},
+						],
+					},
+					{
+						depth: 1,
+						id: 'B:1',
+						node: expect.objectContaining({ name: 'B' }),
+						runIndex: 1,
+						runData: expect.objectContaining({
+							startTime: Date.parse('2025-02-26T00:00:03.000Z'),
+						}),
+						parent: expect.objectContaining({ node: expect.objectContaining({ name: 'A' }) }),
+						consumedTokens: {
+							completionTokens: 4,
+							promptTokens: 5,
+							totalTokens: 6,
+							isEstimate: false,
+						},
+						children: [
+							{
+								children: [],
+								depth: 2,
+								id: 'C:1',
+								node: expect.objectContaining({ name: 'C' }),
+								runIndex: 1,
+								runData: expect.objectContaining({
+									startTime: Date.parse('2025-02-26T00:00:04.000Z'),
+								}),
+								parent: expect.objectContaining({ node: expect.objectContaining({ name: 'B' }) }),
+								consumedTokens: {
+									completionTokens: 0,
+									promptTokens: 0,
+									totalTokens: 0,
+									isEstimate: false,
+								},
+							},
+						],
+					},
+				],
+			},
+		]);
+	});
+});
+
+describe(findLogEntryToAutoSelect, () => {
+	function find(response: IExecutionResponse) {
+		return findLogEntryToAutoSelect({
+			...response,
+			tree: createLogEntries(
+				createTestWorkflowObject(response.workflowData),
+				response.data?.resultData.runData ?? {},
+			),
+		});
+	}
+
+	it('should return undefined if no log entry is provided', () => {
+		const response = createTestWorkflowExecutionResponse({
+			workflowData: createTestWorkflow({
+				nodes: [
+					createTestNode({ name: 'A' }),
+					createTestNode({ name: 'B' }),
+					createTestNode({ name: 'C' }),
+				],
+			}),
+		});
+
+		expect(find(response)).toBe(undefined);
+	});
+
+	it('should return first log entry with error', () => {
+		const response = createTestWorkflowExecutionResponse({
+			workflowData: createTestWorkflow({
+				nodes: [
+					createTestNode({ name: 'A' }),
+					createTestNode({ name: 'B' }),
+					createTestNode({ name: 'C' }),
+				],
+			}),
+			data: {
+				resultData: {
+					runData: {
+						A: [createTestTaskData({ executionStatus: 'success' })],
+						B: [createTestTaskData({ executionStatus: 'success' })],
+						C: [
+							createTestTaskData({ executionStatus: 'success' }),
+							createTestTaskData({ error: {} as ExecutionError, executionStatus: 'error' }),
+							createTestTaskData({ error: {} as ExecutionError, executionStatus: 'error' }),
+						],
+					},
+				},
+			},
+		});
+
+		expect(find(response)).toEqual(
+			expect.objectContaining({ node: expect.objectContaining({ name: 'C' }), runIndex: 1 }),
+		);
+	});
+
+	it("should return first log entry with error even if it's on a sub node", () => {
+		const response = createTestWorkflowExecutionResponse({
+			workflowData: createTestWorkflow({
+				nodes: [
+					createTestNode({ name: 'A' }),
+					createTestNode({ name: 'B' }),
+					createTestNode({ name: 'C' }),
+				],
+				connections: {
+					C: {
+						[NodeConnectionTypes.AiLanguageModel]: [
+							[{ node: 'B', type: NodeConnectionTypes.AiLanguageModel, index: 0 }],
+						],
+					},
+				},
+			}),
+			data: {
+				resultData: {
+					runData: {
+						A: [createTestTaskData({ executionStatus: 'success' })],
+						B: [createTestTaskData({ executionStatus: 'success' })],
+						C: [
+							createTestTaskData({ executionStatus: 'success' }),
+							createTestTaskData({ error: {} as ExecutionError, executionStatus: 'error' }),
+							createTestTaskData({ error: {} as ExecutionError, executionStatus: 'error' }),
+						],
+					},
+				},
+			},
+		});
+
+		expect(find(response)).toEqual(
+			expect.objectContaining({ node: expect.objectContaining({ name: 'C' }), runIndex: 1 }),
+		);
+	});
+
+	it('should return first log entry for AI agent node if there is no log entry with error', () => {
+		const response = createTestWorkflowExecutionResponse({
+			workflowData: createTestWorkflow({
+				nodes: [
+					createTestNode({ name: 'A' }),
+					createTestNode({ name: 'B', type: AGENT_LANGCHAIN_NODE_TYPE }),
+					createTestNode({ name: 'C' }),
+				],
+			}),
+			data: {
+				resultData: {
+					runData: {
+						A: [createTestTaskData({ executionStatus: 'success' })],
+						B: [createTestTaskData({ executionStatus: 'success' })],
+						C: [
+							createTestTaskData({ executionStatus: 'success' }),
+							createTestTaskData({ error: {} as ExecutionError, executionStatus: 'error' }),
+							createTestTaskData({ error: {} as ExecutionError, executionStatus: 'error' }),
+						],
+					},
+				},
+			},
+		});
+
+		expect(find(response)).toEqual(
+			expect.objectContaining({ node: expect.objectContaining({ name: 'B' }), runIndex: 0 }),
+		);
+	});
+
+	it('should return first log entry if there is no log entry with error nor executed AI agent node', () => {
+		const response = createTestWorkflowExecutionResponse({
+			workflowData: createTestWorkflow({
+				nodes: [
+					createTestNode({ name: 'A' }),
+					createTestNode({ name: 'B' }),
+					createTestNode({ name: 'C' }),
+				],
+			}),
+			data: {
+				resultData: {
+					runData: {
+						A: [createTestTaskData({ executionStatus: 'success' })],
+						B: [createTestTaskData({ executionStatus: 'success' })],
+						C: [
+							createTestTaskData({ executionStatus: 'success' }),
+							createTestTaskData({ executionStatus: 'success' }),
+							createTestTaskData({ executionStatus: 'success' }),
+						],
+					},
+				},
+			},
+		});
+
+		expect(find(response)).toEqual(
+			expect.objectContaining({ node: expect.objectContaining({ name: 'A' }), runIndex: 0 }),
+		);
+	});
+});
+
+describe(createLogEntries, () => {
+	it('should return root node log entries in ascending order of executionIndex', () => {
+		const workflow = createTestWorkflowObject({
+			nodes: [
+				createTestNode({ name: 'A' }),
+				createTestNode({ name: 'B' }),
+				createTestNode({ name: 'C' }),
+			],
+			connections: {
+				B: { main: [[{ node: 'A', type: NodeConnectionTypes.Main, index: 0 }]] },
+				C: { main: [[{ node: 'B', type: NodeConnectionTypes.Main, index: 0 }]] },
+			},
+		});
+
+		expect(
+			createLogEntries(workflow, {
+				A: [
+					createTestTaskData({
+						startTime: Date.parse('2025-04-04T00:00:00.000Z'),
+						executionIndex: 0,
+					}),
+				],
+				B: [
+					createTestTaskData({
+						startTime: Date.parse('2025-04-04T00:00:01.000Z'),
+						executionIndex: 1,
+					}),
+				],
+				C: [
+					createTestTaskData({
+						startTime: Date.parse('2025-04-04T00:00:02.000Z'),
+						executionIndex: 3,
+					}),
+					createTestTaskData({
+						startTime: Date.parse('2025-04-04T00:00:03.000Z'),
+						executionIndex: 2,
+					}),
+				],
+			}),
+		).toEqual([
+			expect.objectContaining({ node: expect.objectContaining({ name: 'A' }), runIndex: 0 }),
+			expect.objectContaining({ node: expect.objectContaining({ name: 'B' }), runIndex: 0 }),
+			expect.objectContaining({ node: expect.objectContaining({ name: 'C' }), runIndex: 1 }),
+			expect.objectContaining({ node: expect.objectContaining({ name: 'C' }), runIndex: 0 }),
+		]);
+	});
+
+	it('should return sub node log entries in ascending order of executionIndex', () => {
+		const workflow = createTestWorkflowObject({
+			nodes: [
+				createTestNode({ name: 'A' }),
+				createTestNode({ name: 'B' }),
+				createTestNode({ name: 'C' }),
+			],
+			connections: {
+				A: { main: [[{ node: 'B', type: NodeConnectionTypes.Main, index: 0 }]] },
+				C: {
+					[NodeConnectionTypes.AiLanguageModel]: [
+						[{ node: 'B', type: NodeConnectionTypes.AiLanguageModel, index: 0 }],
+					],
+				},
+			},
+		});
+
+		expect(
+			createLogEntries(workflow, {
+				A: [
+					createTestTaskData({
+						startTime: Date.parse('2025-04-04T00:00:00.000Z'),
+						executionIndex: 0,
+					}),
+				],
+				B: [
+					createTestTaskData({
+						startTime: Date.parse('2025-04-04T00:00:01.000Z'),
+						executionIndex: 1,
+					}),
+				],
+				C: [
+					createTestTaskData({
+						startTime: Date.parse('2025-04-04T00:00:02.000Z'),
+						executionIndex: 3,
+					}),
+					createTestTaskData({
+						startTime: Date.parse('2025-04-04T00:00:03.000Z'),
+						executionIndex: 2,
+					}),
+				],
+			}),
+		).toEqual([
+			expect.objectContaining({ node: expect.objectContaining({ name: 'A' }), runIndex: 0 }),
+			expect.objectContaining({
+				node: expect.objectContaining({ name: 'B' }),
+				runIndex: 0,
+				children: [
+					expect.objectContaining({ node: expect.objectContaining({ name: 'C' }), runIndex: 1 }),
+					expect.objectContaining({ node: expect.objectContaining({ name: 'C' }), runIndex: 0 }),
+				],
+			}),
+		]);
+	});
+});

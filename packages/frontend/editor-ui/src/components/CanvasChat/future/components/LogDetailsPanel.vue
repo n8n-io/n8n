@@ -5,21 +5,22 @@ import RunDataView from '@/components/CanvasChat/future/components/RunDataView.v
 import { useResizablePanel } from '@/components/CanvasChat/future/composables/useResizablePanel';
 import { LOG_DETAILS_CONTENT, type LogDetailsContent } from '@/components/CanvasChat/types/logs';
 import NodeIcon from '@/components/NodeIcon.vue';
-import { getSubtreeTotalConsumedTokens, type TreeNode } from '@/components/RunDataAi/utils';
+import { getSubtreeTotalConsumedTokens, type LogEntry } from '@/components/CanvasChat/future/utils';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { type INodeUi } from '@/Interface';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
 import { N8nButton, N8nResizeWrapper, N8nText } from '@n8n/design-system';
-import { type ITaskData } from 'n8n-workflow';
+import { type Workflow } from 'n8n-workflow';
 import { computed, ref, useTemplateRef } from 'vue';
+import { type IExecutionResponse } from '@/Interface';
 
 const MIN_IO_PANEL_WIDTH = 200;
 
-const { isOpen, logEntry, window } = defineProps<{
+const { isOpen, logEntry, workflow, execution, window } = defineProps<{
 	isOpen: boolean;
-	logEntry: TreeNode;
+	logEntry: LogEntry;
+	workflow: Workflow;
+	execution: IExecutionResponse;
 	window?: Window;
 }>();
 
@@ -29,19 +30,10 @@ defineSlots<{ actions: {} }>();
 
 const locale = useI18n();
 const telemetry = useTelemetry();
-const workflowsStore = useWorkflowsStore();
 const nodeTypeStore = useNodeTypesStore();
 
 const content = ref<LogDetailsContent>(LOG_DETAILS_CONTENT.BOTH);
-
-const node = computed<INodeUi | undefined>(() => workflowsStore.nodesByName[logEntry.node]);
-const type = computed(() => (node.value ? nodeTypeStore.getNodeType(node.value.type) : undefined));
-const runData = computed<ITaskData | undefined>(
-	() =>
-		(workflowsStore.workflowExecutionData?.data?.resultData.runData[logEntry.node] ?? [])[
-			logEntry.runIndex
-		],
-);
+const type = computed(() => nodeTypeStore.getNodeType(logEntry.node.type));
 const consumedTokens = computed(() => getSubtreeTotalConsumedTokens(logEntry));
 const isTriggerNode = computed(() => type.value?.group.includes('trigger'));
 const container = useTemplateRef<HTMLElement>('container');
@@ -105,14 +97,14 @@ function handleResizeEnd() {
 				<div :class="$style.title">
 					<NodeIcon :node-type="type" :size="16" :class="$style.icon" />
 					<N8nText tag="div" :bold="true" size="small" :class="$style.name">
-						{{ node?.name }}
+						{{ logEntry.node.name }}
 					</N8nText>
 					<ExecutionSummary
 						v-if="isOpen"
 						:class="$style.executionSummary"
-						:status="runData?.executionStatus ?? 'unknown'"
+						:status="logEntry.runData.executionStatus ?? 'unknown'"
 						:consumed-tokens="consumedTokens"
-						:time-took="runData?.executionTime"
+						:time-took="logEntry.runData.executionTime"
 					/>
 				</div>
 			</template>
@@ -159,6 +151,8 @@ function handleResizeEnd() {
 					pane-type="input"
 					:title="locale.baseText('logs.details.header.actions.input')"
 					:log-entry="logEntry"
+					:workflow="workflow"
+					:execution="execution"
 				/>
 			</N8nResizeWrapper>
 			<RunDataView
@@ -168,6 +162,8 @@ function handleResizeEnd() {
 				:class="$style.outputPanel"
 				:title="locale.baseText('logs.details.header.actions.output')"
 				:log-entry="logEntry"
+				:workflow="workflow"
+				:execution="execution"
 			/>
 		</div>
 	</div>

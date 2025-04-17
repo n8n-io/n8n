@@ -12,7 +12,6 @@ import type {
 	IPinData,
 	Workflow,
 	StartNodeData,
-	IRun,
 	INode,
 	IDataObject,
 	IWorkflowBase,
@@ -439,12 +438,13 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				// execution finished before it could be stopped
 				const executedData = {
 					data: execution.data,
+					workflowData: workflowsStore.workflow,
 					finished: execution.finished,
 					mode: execution.mode,
 					startedAt: execution.startedAt,
 					stoppedAt: execution.stoppedAt,
-				} as IRun;
-				workflowsStore.setWorkflowExecutionData(executedData as IExecutionResponse);
+				} as IExecutionResponse;
+				workflowsStore.setWorkflowExecutionData(executedData);
 				toast.showMessage({
 					title: i18n.baseText('nodeView.showMessage.stopExecutionCatch.title'),
 					message: i18n.baseText('nodeView.showMessage.stopExecutionCatch.message'),

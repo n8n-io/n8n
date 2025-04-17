@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { formatTokenUsageCount } from '@/components/RunDataAi/utils';
+import { formatTokenUsageCount } from '@/components/CanvasChat/future/utils';
 import { useI18n } from '@/composables/useI18n';
 import { type LlmTokenUsageData } from '@/Interface';
 import { N8nTooltip } from '@n8n/design-system';

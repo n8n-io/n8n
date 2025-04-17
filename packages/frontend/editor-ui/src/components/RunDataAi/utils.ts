@@ -1,7 +1,5 @@
-import { type LlmTokenUsageData, type IAiDataContent, type INodeUi } from '@/Interface';
+import { type LlmTokenUsageData, type IAiDataContent } from '@/Interface';
 import {
-	AGENT_LANGCHAIN_NODE_TYPE,
-	type IRunData,
 	type INodeExecutionData,
 	type ITaskData,
 	type ITaskDataConnections,
@@ -202,17 +200,6 @@ export function getConsumedTokens(outputRun: IAiDataContent | undefined): LlmTok
 	return tokenUsage;
 }
 
-export function getTotalConsumedTokens(...usage: LlmTokenUsageData[]): LlmTokenUsageData {
-	return usage.reduce(addTokenUsageData, emptyTokenUsageData);
-}
-
-export function getSubtreeTotalConsumedTokens(treeNode: TreeNode): LlmTokenUsageData {
-	return getTotalConsumedTokens(
-		treeNode.consumedTokens,
-		...treeNode.children.map(getSubtreeTotalConsumedTokens),
-	);
-}
-
 export function formatTokenUsageCount(
 	usage: LlmTokenUsageData,
 	field: 'total' | 'prompt' | 'completion',
@@ -225,85 +212,4 @@ export function formatTokenUsageCount(
 				: usage.promptTokens;
 
 	return usage.isEstimate ? `~${count}` : count.toLocaleString();
-}
-
-export function findLogEntryToAutoSelect(
-	tree: TreeNode[],
-	nodesByName: Record<string, INodeUi>,
-	runData: IRunData,
-): TreeNode | undefined {
-	return findLogEntryToAutoSelectRec(tree, nodesByName, runData, 0);
-}
-
-function findLogEntryToAutoSelectRec(
-	tree: TreeNode[],
-	nodesByName: Record<string, INodeUi>,
-	runData: IRunData,
-	depth: number,
-): TreeNode | undefined {
-	for (const entry of tree) {
-		const taskData = runData[entry.node]?.[entry.runIndex];
-
-		if (taskData?.error) {
-			return entry;
-		}
-
-		const childAutoSelect = findLogEntryToAutoSelectRec(
-			entry.children,
-			nodesByName,
-			runData,
-			depth + 1,
-		);
-
-		if (childAutoSelect) {
-			return childAutoSelect;
-		}
-
-		if (nodesByName[entry.node]?.type === AGENT_LANGCHAIN_NODE_TYPE) {
-			return entry;
-		}
-	}
-
-	return depth === 0 ? tree[0] : undefined;
-}
-
-export function createLogEntries(workflow: Workflow, runData: IRunData) {
-	const runs = Object.entries(runData)
-		.filter(([nodeName]) => workflow.getChildNodes(nodeName, 'ALL_NON_MAIN').length === 0)
-		.flatMap(([nodeName, taskData]) =>
-			taskData.map((task, runIndex) => ({ nodeName, task, runIndex })),
-		)
-		.sort((a, b) => {
-			if (a.task.executionIndex !== undefined && b.task.executionIndex !== undefined) {
-				return a.task.executionIndex - b.task.executionIndex;
-			}
-
-			return a.nodeName === b.nodeName
-				? a.runIndex - b.runIndex
-				: a.task.startTime - b.task.startTime;
-		});
-
-	return runs.flatMap(({ nodeName, runIndex, task }) => {
-		if (workflow.getParentNodes(nodeName, 'ALL_NON_MAIN').length > 0) {
-			return getTreeNodeData(
-				nodeName,
-				workflow,
-				createAiData(nodeName, workflow, (node) => runData[node] ?? []),
-				undefined,
-			);
-		}
-
-		return getTreeNodeData(
-			nodeName,
-			workflow,
-			[
-				{
-					data: getReferencedData(task, false, true)[0],
-					node: nodeName,
-					runIndex,
-				},
-			],
-			runIndex,
-		);
-	});
 }

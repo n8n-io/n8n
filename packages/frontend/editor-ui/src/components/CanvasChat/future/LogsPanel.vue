@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { computed, ref, useTemplateRef } from 'vue';
+import { computed, ref, useTemplateRef, watch } from 'vue';
 import { N8nResizeWrapper } from '@n8n/design-system';
 import { useChatState } from '@/components/CanvasChat/composables/useChatState';
 import LogsOverviewPanel from '@/components/CanvasChat/future/components/LogsOverviewPanel.vue';
@@ -10,14 +10,21 @@ import { type LogEntrySelection } from '@/components/CanvasChat/types/logs';
 import LogsPanelActions from '@/components/CanvasChat/future/components/LogsPanelActions.vue';
 import {
 	createLogEntries,
+	type ExecutionLogViewData,
 	findLogEntryToAutoSelect,
-	type TreeNode,
-} from '@/components/RunDataAi/utils';
+	getSelectedLogEntry,
+	type LogEntry,
+} from '@/components/CanvasChat/future/utils';
 import { isChatNode } from '@/components/CanvasChat/utils';
 import { useLayout } from '@/components/CanvasChat/future/composables/useLayout';
+import { useNodeHelpers } from '@/composables/useNodeHelpers';
+import { deepCopy, Workflow } from 'n8n-workflow';
+import { type IExecutionResponse } from '@/Interface';
+import { IN_PROGRESS_EXECUTION_ID, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
 
 const props = withDefaults(defineProps<{ isReadOnly?: boolean }>(), { isReadOnly: false });
 
+const nodeHelpers = useNodeHelpers();
 const workflowsStore = useWorkflowsStore();
 const container = useTemplateRef('container');
 const logsContainer = useTemplateRef('logsContainer');
@@ -49,33 +56,46 @@ const { currentSessionId, messages, sendMessage, refreshSession, displayExecutio
 	props.isReadOnly,
 );
 
+const mutableExecData = computed(() => workflowsStore.workflowExecutionData);
+const immutableExecData = ref<IExecutionResponse | undefined>(
+	deepCopy(workflowsStore.workflowExecutionData ?? undefined),
+);
+const execData = computed(() =>
+	workflowsStore.workflowExecutionData?.id === IN_PROGRESS_EXECUTION_ID
+		? mutableExecData.value
+		: immutableExecData.value,
+);
+const workflow = computed(() =>
+	execData.value
+		? new Workflow({
+				...execData.value?.workflowData,
+				nodeTypes: workflowsStore.getNodeTypes(),
+			})
+		: undefined,
+);
 const hasChat = computed(
 	() =>
-		workflowsStore.workflowTriggerNodes.some(isChatNode) &&
+		[workflow.value, workflowsStore.getCurrentWorkflow()].some((wf) =>
+			Object.values(wf?.nodes ?? {}).some(isChatNode),
+		) &&
 		(!props.isReadOnly || messages.value.length > 0),
 );
-const workflow = computed(() => workflowsStore.getCurrentWorkflow());
-const executionTree = computed<TreeNode[]>(() =>
-	createLogEntries(
-		workflow.value,
-		workflowsStore.workflowExecutionData?.data?.resultData.runData ?? {},
-	),
-);
+const execution = computed<ExecutionLogViewData | undefined>(() => {
+	if (!execData.value || !workflow.value) {
+		return undefined;
+	}
+
+	return {
+		...execData.value,
+		tree: createLogEntries(workflow.value, execData.value.data?.resultData.runData ?? {}),
+	};
+});
 const manualLogEntrySelection = ref<LogEntrySelection>({ type: 'initial' });
 const autoSelectedLogEntry = computed(() =>
-	findLogEntryToAutoSelect(
-		executionTree.value,
-		workflowsStore.nodesByName,
-		workflowsStore.workflowExecutionData?.data?.resultData.runData ?? {},
-	),
+	execution.value ? findLogEntryToAutoSelect(execution.value) : undefined,
 );
 const selectedLogEntry = computed(() =>
-	manualLogEntrySelection.value.type === 'initial' ||
-	manualLogEntrySelection.value.workflowId !== workflowsStore.workflow.id
-		? autoSelectedLogEntry.value
-		: manualLogEntrySelection.value.type === 'none'
-			? undefined
-			: manualLogEntrySelection.value.data,
+	getSelectedLogEntry(manualLogEntrySelection.value, execution.value, autoSelectedLogEntry.value),
 );
 const isLogDetailsOpen = computed(
 	() => selectedLogEntry.value !== undefined && !isCollapsingDetailsPanel.value,
@@ -89,11 +109,17 @@ const logsPanelActionsProps = computed<InstanceType<typeof LogsPanelActions>['$p
 	onToggleOpen,
 }));
 
-function handleSelectLogEntry(selected: TreeNode | undefined) {
+function handleSelectLogEntry(selected: LogEntry | undefined) {
+	const workflowId = execution.value?.workflowData.id;
+
+	if (!workflowId) {
+		return;
+	}
+
 	manualLogEntrySelection.value =
 		selected === undefined
-			? { type: 'none', workflowId: workflowsStore.workflow.id }
-			: { type: 'selected', workflowId: workflowsStore.workflow.id, data: selected };
+			? { type: 'none', workflowId }
+			: { type: 'selected', workflowId, data: selected };
 }
 
 function handleResizeOverviewPanelEnd() {
@@ -103,6 +129,27 @@ function handleResizeOverviewPanelEnd() {
 
 	onOverviewPanelResizeEnd();
 }
+
+function handleClearExecutionData() {
+	immutableExecData.value = undefined;
+	workflowsStore.setWorkflowExecutionData(null);
+	nodeHelpers.updateNodesExecutionIssues();
+}
+
+watch(mutableExecData, (newData, oldData) => {
+	if (newData?.id !== oldData?.id) {
+		immutableExecData.value = deepCopy(newData ?? undefined);
+	}
+});
+
+watch(
+	() => workflowsStore.workflowId,
+	(id) => {
+		if (id === PLACEHOLDER_EMPTY_WORKFLOW_ID || id !== execData.value?.workflowId) {
+			immutableExecData.value = undefined;
+		}
+	},
+);
 </script>
 
 <template>
@@ -162,9 +209,10 @@ function handleResizeOverviewPanelEnd() {
 								:is-read-only="isReadOnly"
 								:is-compact="isLogDetailsOpen"
 								:selected="selectedLogEntry"
-								:execution-tree="executionTree"
+								:execution="execution"
 								@click-header="onToggleOpen(true)"
 								@select="handleSelectLogEntry"
+								@clear-execution-data="handleClearExecutionData"
 							>
 								<template #actions>
 									<LogsPanelActions v-if="!isLogDetailsOpen" v-bind="logsPanelActionsProps" />
@@ -172,10 +220,12 @@ function handleResizeOverviewPanelEnd() {
 							</LogsOverviewPanel>
 						</N8nResizeWrapper>
 						<LogsDetailsPanel
-							v-if="isLogDetailsOpenOrCollapsing && selectedLogEntry"
+							v-if="isLogDetailsOpenOrCollapsing && selectedLogEntry && execution && workflow"
 							:class="$style.logDetails"
 							:is-open="isOpen"
 							:log-entry="selectedLogEntry"
+							:workflow="workflow"
+							:execution="execution"
 							:window="pipWindow"
 							@click-header="onToggleOpen(true)"
 						>
