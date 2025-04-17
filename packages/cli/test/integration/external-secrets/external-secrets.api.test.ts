@@ -60,6 +60,7 @@ const resetManager = async () => {
 		ExternalSecretsManager,
 		new ExternalSecretsManager(
 			logger,
+			mock(),
 			Container.get(SettingsRepository),
 			Container.get(License),
 			mockProvidersInstance,
@@ -114,6 +115,7 @@ beforeAll(async () => {
 		ExternalSecretsManager,
 		new ExternalSecretsManager(
 			logger,
+			mock(),
 			Container.get(SettingsRepository),
 			Container.get(License),
 			mockProvidersInstance,

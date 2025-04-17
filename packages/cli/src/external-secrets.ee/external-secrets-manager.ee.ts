@@ -13,8 +13,8 @@ import { License } from '@/license';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import { EXTERNAL_SECRETS_INITIAL_BACKOFF, EXTERNAL_SECRETS_MAX_BACKOFF } from './constants';
-import { updateIntervalTime } from './external-secrets-helper.ee';
 import { ExternalSecretsProviders } from './external-secrets-providers.ee';
+import { ExternalSecretsConfig } from './external-secrets.config';
 
 @Service()
 export class ExternalSecretsManager {
@@ -32,6 +32,7 @@ export class ExternalSecretsManager {
 
 	constructor(
 		private readonly logger: Logger,
+		private readonly config: ExternalSecretsConfig,
 		private readonly settingsRepo: SettingsRepository,
 		private readonly license: License,
 		private readonly secretsProviders: ExternalSecretsProviders,
@@ -52,7 +53,7 @@ export class ExternalSecretsManager {
 					this.initializingPromise = undefined;
 					this.updateInterval = setInterval(
 						async () => await this.updateSecrets(),
-						updateIntervalTime(),
+						this.config.updateInterval * 1000,
 					);
 				});
 			}

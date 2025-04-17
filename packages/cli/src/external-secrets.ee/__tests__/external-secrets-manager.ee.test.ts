@@ -50,6 +50,7 @@ describe('External Secrets Manager', () => {
 		settingsRepo.getEncryptedSecretsProviderSettings.mockResolvedValue(settings);
 		manager = new ExternalSecretsManager(
 			mockLogger(),
+			mock(),
 			settingsRepo,
 			license,
 			providersMock,
