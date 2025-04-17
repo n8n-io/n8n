@@ -323,6 +323,7 @@ const activatePane = () => {
 <template>
 	<RunData
 		ref="runDataRef"
+		:class="$style.runData"
 		:node="node"
 		:workflow="workflow"
 		:run-index="runIndex"
@@ -439,6 +440,9 @@ const activatePane = () => {
 :global([data-output-type='logs'] [class*='itemsCount']),
 :global([data-output-type='logs'] [class*='displayModes']) {
 	display: none;
+}
+.runData {
+	background-color: var(--color-run-data-background);
 }
 .outputTypeSelect {
 	margin-bottom: var(--spacing-4xs);

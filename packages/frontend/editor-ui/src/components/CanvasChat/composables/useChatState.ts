@@ -31,7 +31,7 @@ interface ChatState {
 	displayExecution: (executionId: string) => void;
 }
 
-export function useChatState(isReadOnly: boolean, onWindowResize: () => void): ChatState {
+export function useChatState(isReadOnly: boolean, onWindowResize?: () => void): ChatState {
 	const locale = useI18n();
 	const workflowsStore = useWorkflowsStore();
 	const nodeTypesStore = useNodeTypesStore();
@@ -145,7 +145,7 @@ export function useChatState(isReadOnly: boolean, onWindowResize: () => void): C
 				setConnectedNode();
 
 				setTimeout(() => {
-					onWindowResize();
+					onWindowResize?.();
 					chatEventBus.emit('focusInput');
 				}, 0);
 			}
