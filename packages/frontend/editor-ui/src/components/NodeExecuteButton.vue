@@ -6,11 +6,14 @@ import {
 	MODAL_CONFIRM,
 	FORM_TRIGGER_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
+	EXECUTE_STEP_MODAL_KEY,
 } from '@/constants';
 import {
 	AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT,
 	AI_TRANSFORM_JS_CODE,
 	AI_TRANSFORM_NODE_TYPE,
+	type FromAIArgument,
+	traverseNodeParameters,
 	type INodeTypeDescription,
 } from 'n8n-workflow';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -145,6 +148,13 @@ const isListeningForWorkflowEvents = computed(() => {
 const hasIssues = computed(() =>
 	Boolean(node.value?.issues && (node.value.issues.parameters || node.value.issues.credentials)),
 );
+
+const hasFromAiProps = computed(() => {
+	if (!node.value?.parameters) return false;
+	const collectedArgs: FromAIArgument[] = [];
+	traverseNodeParameters(node.value.parameters, collectedArgs);
+	return collectedArgs.length > 0;
+});
 
 const disabledHint = computed(() => {
 	if (isListeningForEvents.value) {
@@ -355,12 +365,21 @@ async function onClick() {
 			telemetry.track('User clicked execute node button', telemetryPayload);
 			await externalHooks.run('nodeExecuteButton.onClick', telemetryPayload);
 
-			await runWorkflow({
-				destinationNode: props.nodeName,
-				source: 'RunData.ExecuteNodeButton',
-			});
+			if (hasFromAiProps.value) {
+				uiStore.openModalWithData({
+					name: EXECUTE_STEP_MODAL_KEY,
+					data: {
+						nodeName: props.nodeName,
+					},
+				});
+			} else {
+				await runWorkflow({
+					destinationNode: props.nodeName,
+					source: 'RunData.ExecuteNodeButton',
+				});
 
-			emit('execute');
+				emit('execute');
+			}
 		}
 	}
 }
