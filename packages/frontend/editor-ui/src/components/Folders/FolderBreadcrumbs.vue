@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useI18n } from '@/composables/useI18n';
 import { useProjectsStore } from '@/stores/projects.store';
-import { ProjectTypes } from '@/types/projects.types';
+import { type ProjectIcon as ProjectIconType, ProjectTypes } from '@/types/projects.types';
 import type { UserAction } from '@n8n/design-system/types';
 import { type PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import { computed } from 'vue';
@@ -30,12 +30,21 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
-const route = useRoute();
 
 const projectsStore = useProjectsStore();
 const foldersStore = useFoldersStore();
 
 const currentProject = computed(() => projectsStore.currentProject);
+
+const projectIcon = computed((): ProjectIconType => {
+	if (projectsStore.currentProject?.type === ProjectTypes.Personal) {
+		return { type: 'icon', value: 'user' };
+	} else if (projectsStore.currentProject?.name) {
+		return projectsStore.currentProject.icon ?? { type: 'icon', value: 'layer-group' };
+	} else {
+		return { type: 'icon', value: 'home' };
+	}
+});
 
 const projectName = computed(() => {
 	if (currentProject.value?.type === ProjectTypes.Personal) {
@@ -58,7 +67,7 @@ const visibleBreadcrumbsItems = computed<FolderPathItem[]>(() => {
 		items.push({
 			id: parent.id,
 			label: parent.name,
-			href: `/projects/${route.params.projectId}/folders/${parent.id}/workflows`,
+			href: `/projects/${projectsStore.currentProjectId}/folders/${parent.id}/workflows`,
 			parentFolder: parent.parentFolder,
 		});
 	}
@@ -81,7 +90,7 @@ const hiddenBreadcrumbsItems = computed<FolderPathItem[]>(() => {
 		items.unshift({
 			id: parent.id,
 			label: parent.name,
-			href: `/projects/${route.params.projectId}/folders/${parent.id}/workflows`,
+			href: `/projects/${projectsStore.currentProjectId}/folders/${parent.id}/workflows`,
 			parentFolder: parent.parentFolder,
 		});
 
@@ -153,6 +162,7 @@ const onItemHover = (item: PathItem) => {
 					@mouseenter="onProjectHover"
 					@mouseup="isDragging ? onProjectMouseUp() : null"
 				>
+					<ProjectIcon :icon="projectIcon" :border-less="true" size="mini" />
 					<n8n-link :to="`/projects/${currentProject.id}`">
 						<N8nText size="medium" color="text-base">{{ projectName }}</N8nText>
 					</n8n-link>
@@ -170,6 +180,7 @@ const onItemHover = (item: PathItem) => {
 			@mouseenter="onProjectHover"
 			@mouseup="isDragging ? onProjectMouseUp() : null"
 		>
+			<ProjectIcon :icon="projectIcon" :border-less="true" size="mini" />
 			<n8n-link :to="`/projects/${currentProject.id}`">
 				<N8nText size="medium" color="text-base">{{ projectName }}</N8nText>
 			</n8n-link>
@@ -201,6 +212,7 @@ const onItemHover = (item: PathItem) => {
 .home-project {
 	display: flex;
 	align-items: center;
+	gap: var(--spacing-4xs);
 	padding: var(--spacing-4xs);
 	border: var(--border-width-base) var(--border-style-base) transparent;
 
