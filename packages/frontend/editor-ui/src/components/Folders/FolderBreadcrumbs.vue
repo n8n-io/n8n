@@ -154,6 +154,9 @@ const onItemHover = (item: PathItem) => {
 					</n8n-link>
 				</div>
 			</template>
+			<template #append>
+				<slot name="append"></slot>
+			</template>
 		</n8n-breadcrumbs>
 		<n8n-action-toggle
 			v-if="visibleBreadcrumbsItems"

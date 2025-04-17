@@ -46,6 +46,7 @@ import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { computed, ref, useCssModule, watch } from 'vue';
 import type {
 	ActionDropdownItem,
+	FolderShortInfo,
 	IWorkflowDataUpdate,
 	IWorkflowDb,
 	IWorkflowToShare,
@@ -65,7 +66,7 @@ const props = defineProps<{
 	meta: IWorkflowDb['meta'];
 	scopes: IWorkflowDb['scopes'];
 	active: IWorkflowDb['active'];
-	currentFolder: IWorkflowDb['parentFolder'];
+	currentFolder?: FolderShortInfo;
 }>();
 
 const $style = useCssModule();
@@ -574,21 +575,26 @@ function showCreateWorkflowSuccessToast(id?: string) {
 	<div :class="$style.container">
 		<BreakpointsObserver :value-x-s="15" :value-s-m="25" :value-m-d="50" class="name-container">
 			<template #default="{ value }">
-				<ShortenName :name="name" :limit="value" :custom="true" test-id="workflow-name-input">
-					<template #default="{ shortenedName }">
-						<InlineTextEdit
-							:model-value="name"
-							:preview-value="shortenedName"
-							:is-edit-enabled="isNameEditEnabled"
-							:max-length="MAX_WORKFLOW_NAME_LENGTH"
-							:disabled="readOnly || (!isNewWorkflow && !workflowPermissions.update)"
-							placeholder="Enter workflow name"
-							class="name"
-							@toggle="onNameToggle"
-							@submit="onNameSubmit"
-						/>
+				<FolderBreadcrumbs v-if="props.currentFolder" :current-folder="props.currentFolder">
+					<template #append>
+						<span :class="$style['path-separator']">/</span>
+						<ShortenName :name="name" :limit="value" :custom="true" test-id="workflow-name-input">
+							<template #default="{ shortenedName }">
+								<InlineTextEdit
+									:model-value="name"
+									:preview-value="shortenedName"
+									:is-edit-enabled="isNameEditEnabled"
+									:max-length="MAX_WORKFLOW_NAME_LENGTH"
+									:disabled="readOnly || (!isNewWorkflow && !workflowPermissions.update)"
+									placeholder="Enter workflow name"
+									class="name"
+									@toggle="onNameToggle"
+									@submit="onNameSubmit"
+								/>
+							</template>
+						</ShortenName>
 					</template>
-				</ShortenName>
+				</FolderBreadcrumbs>
 			</template>
 		</BreakpointsObserver>
 
@@ -724,8 +730,7 @@ $--header-spacing: 20px;
 
 .name {
 	color: $custom-font-dark;
-	font-size: 15px;
-	display: block;
+	font-size: var(--font-size-s);
 }
 
 .activator {
@@ -790,6 +795,12 @@ $--header-spacing: 20px;
 	display: flex;
 	align-items: center;
 	flex-wrap: nowrap;
+}
+
+.path-separator {
+	font-size: var(--font-size-xl);
+	color: var(--color-foreground-base);
+	margin-right: var(--spacing-4xs);
 }
 
 .group {

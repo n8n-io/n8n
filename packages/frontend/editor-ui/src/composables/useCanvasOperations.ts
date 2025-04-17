@@ -1479,6 +1479,10 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 
 		workflowsStore.setNodes(data.nodes);
 		workflowsStore.setConnections(data.connections);
+
+		if (data.parentFolder) {
+			workflowsStore.setParentFolder(data.parentFolder);
+		}
 	}
 
 	/**

@@ -25,6 +25,7 @@ import { useRoute, useRouter } from 'vue-router';
 
 import { useLocalStorage } from '@vueuse/core';
 import GithubButton from 'vue-github-button';
+import { FolderShortInfo } from '@/Interface';
 
 const router = useRouter();
 const route = useRoute();
@@ -93,6 +94,17 @@ const isEnterprise = computed(
 const showGitHubButton = computed(
 	() => !isEnterprise.value && !settingsStore.settings.inE2ETests && !githubButtonHidden.value,
 );
+
+const parentFolderForBreadcrumbs = computed<FolderShortInfo | undefined>(() => {
+	if (!workflow.value.parentFolder) {
+		return undefined;
+	}
+	return {
+		id: workflow.value.parentFolder.id,
+		name: workflow.value.parentFolder.name,
+		parentFolder: workflow.value.parentFolder.parentFolderId ?? undefined,
+	};
+});
 
 watch(route, (to, from) => {
 	syncTabsWithRoute(to, from);
@@ -238,7 +250,7 @@ function hideGithubButton() {
 					:scopes="workflow.scopes"
 					:active="workflow.active"
 					:read-only="readOnly"
-					:current-folder="workflow.parentFolder"
+					:current-folder="parentFolderForBreadcrumbs"
 				/>
 				<div v-if="showGitHubButton" :class="[$style['github-button'], 'hidden-sm-and-down']">
 					<div :class="$style['github-button-container']">
