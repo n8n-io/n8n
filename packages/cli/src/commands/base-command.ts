@@ -286,7 +286,8 @@ export abstract class BaseCommand extends Command {
 	}
 
 	async cleanupTestRunner() {
-		await Container.get(TestRunnerService).cleanupIncompleteRuns();
+		// FIXME: Disabled temporarily to avoid circular dependency issue
+		// await Container.get(TestRunnerService).cleanupIncompleteRuns();
 	}
 
 	async finally(error: Error | undefined) {
