@@ -23,7 +23,7 @@ export class Folder extends WithTimestampsAndStringId {
 	@Column()
 	name: string;
 
-	@Column({ nullable: true, select: false })
+	@Column({ nullable: true })
 	parentFolderId: string | null;
 
 	@ManyToOne(() => Folder, { nullable: true, onDelete: 'CASCADE' })

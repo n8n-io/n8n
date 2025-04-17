@@ -37,6 +37,7 @@ export const defaultSettings: FrontendSettings = {
 		externalSecrets: false,
 		workerView: false,
 		advancedPermissions: false,
+		apiKeyScopes: false,
 		projects: {
 			team: {
 				limit: 1,
