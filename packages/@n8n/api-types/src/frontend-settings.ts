@@ -1,4 +1,4 @@
-import type { ExpressionEvaluatorType, LogLevel, WorkflowSettings } from 'n8n-workflow';
+import type { LogLevel, WorkflowSettings } from 'n8n-workflow';
 
 export interface IVersionNotificationSettings {
 	enabled: boolean;
@@ -151,9 +151,6 @@ export interface FrontendSettings {
 	};
 	variables: {
 		limit: number;
-	};
-	expressions: {
-		evaluator: ExpressionEvaluatorType;
 	};
 	mfa: {
 		enabled: boolean;

@@ -71,6 +71,14 @@ export class DeprecationService {
 			envVar: 'N8N_PARTIAL_EXECUTION_VERSION_DEFAULT',
 			message: 'This environment variable is internal and should not be set.',
 		},
+		{
+			envVar: 'N8N_EXPRESSION_EVALUATOR',
+			message: `n8n has replaced \`tmpl\` with \`tournament\` as expression evaluator. ${SAFE_TO_REMOVE}`,
+		},
+		{
+			envVar: 'N8N_EXPRESSION_REPORT_DIFFERENCE',
+			message: `n8n has replaced \`tmpl\` with \`tournament\` as expression evaluator. ${SAFE_TO_REMOVE}`,
+		},
 	];
 
 	/** Runtime state of deprecation-related env vars. */

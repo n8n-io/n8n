@@ -2846,8 +2846,6 @@ export interface ICheckProcessedContextData {
 	};
 }
 
-export type ExpressionEvaluatorType = 'tmpl' | 'tournament';
-
 export type N8nAIProviderType = 'openai' | 'unknown';
 
 export interface SecretsHelpersBase {
