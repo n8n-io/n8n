@@ -21,6 +21,6 @@ export const n8nTruncate: FunctionDirective<HTMLElement, string> = (
 	binding: DirectiveBinding<string>,
 ) => {
 	if (binding.value !== binding.oldValue) {
-		el.innerHTML = truncate(binding.value ?? '', Number(binding.arg) || undefined);
+		el.textContent = truncate(binding.value ?? '', Number(binding.arg) || undefined);
 	}
 };

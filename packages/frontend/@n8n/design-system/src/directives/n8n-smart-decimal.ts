@@ -13,7 +13,7 @@ import type { DirectiveBinding, FunctionDirective } from 'vue';
  * Compiles to: <p>42.57</p>
  *
  * Example with specified decimal places:
- * <p v-n8n-smart-decimal:4="42.56789" >
+ * <p v-n8n-smart-decimal:4="42.56789" />
  *
  * Compiles to: <p>42.5679</p>
  *
