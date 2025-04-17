@@ -7,19 +7,20 @@ import { type PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Brea
 import { computed } from 'vue';
 import { useFoldersStore } from '@/stores/folders.store';
 import type { FolderPathItem, FolderShortInfo } from '@/Interface';
-import { useRoute } from 'vue-router';
 
 type Props = {
 	// Current folder can be null when showing breadcrumbs for workflows in project root
 	currentFolder?: FolderShortInfo | null;
 	actions?: UserAction[];
 	hiddenItemsTrigger?: 'hover' | 'click';
+	currentFolderAsLink?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
 	currentFolder: null,
 	actions: () => [],
 	hiddenItemsTrigger: 'click',
+	currentFolderAsLink: false,
 });
 
 const emit = defineEmits<{
@@ -75,6 +76,9 @@ const visibleBreadcrumbsItems = computed<FolderPathItem[]>(() => {
 		id: props.currentFolder.id,
 		label: props.currentFolder.name,
 		parentFolder: props.currentFolder.parentFolder,
+		href: props.currentFolderAsLink
+			? `/projects/${projectsStore.currentProjectId}/folders/${props.currentFolder.id}/workflows`
+			: undefined,
 	});
 	return items;
 });

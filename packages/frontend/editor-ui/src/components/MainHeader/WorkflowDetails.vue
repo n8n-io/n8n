@@ -58,6 +58,7 @@ import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { ProjectTypes } from '@/types/projects.types';
 import { useFoldersStore } from '@/stores/folders.store';
+import { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 
 const props = defineProps<{
 	readOnly?: boolean;
@@ -583,13 +584,25 @@ function showCreateWorkflowSuccessToast(id?: string) {
 		});
 	}
 }
+
+const onBreadcrumbsItemSelected = (item: PathItem) => {
+	if (item.href) {
+		void router.push(item.href).catch((error) => {
+			toast.showError(error, i18n.baseText('folders.open.error.title'));
+		});
+	}
+};
 </script>
 
 <template>
 	<div :class="$style.container">
 		<BreakpointsObserver :value-x-s="15" :value-s-m="25" :value-m-d="50" class="name-container">
 			<template #default="{ value }">
-				<FolderBreadcrumbs :current-folder="currentFolderForBreadcrumbs">
+				<FolderBreadcrumbs
+					:current-folder="currentFolderForBreadcrumbs"
+					:current-folder-as-link="true"
+					@item-selected="onBreadcrumbsItemSelected"
+				>
 					<template #append>
 						<span :class="$style['path-separator']">/</span>
 						<ShortenName :name="name" :limit="value" :custom="true" test-id="workflow-name-input">
