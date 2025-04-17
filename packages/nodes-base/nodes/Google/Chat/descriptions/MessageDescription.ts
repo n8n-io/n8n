@@ -216,6 +216,14 @@ export const messageFields: INodeProperties[] = [
 				description:
 					'A unique request ID for this message. If a message has already been created in the space with this request ID, the subsequent request will return the existing message and no new message will be created.',
 			},
+			{
+				displayName: 'Message Reply Option',
+				name: 'messageReplyOption',
+				type: 'string',
+				default: '',
+				description:
+					'Optional. Specifies whether a message starts a thread or replies to one. Only supported in named spaces. When responding to user interactions, this field is ignored. For interactions within a thread, the reply is created in the same thread. Otherwise, the reply is created as a new thread.',
+			},
 		],
 	},
 
