@@ -94,7 +94,6 @@ const {
 	getWorkflowName,
 	populateNextWorkflowsPage,
 	setWorkflowsResources,
-	reloadWorkflow,
 	reloadWorkflows,
 	getWorkflowUrl,
 } = useWorkflowResourcesLocator(router);
