@@ -22,6 +22,12 @@ export interface LogEntry {
 	consumedTokens: LlmTokenUsageData;
 }
 
+export interface LatestNodeInfo {
+	disabled: boolean;
+	deleted: boolean;
+	name: string;
+}
+
 function createNode(
 	parent: LogEntry | undefined,
 	node: INodeUi,

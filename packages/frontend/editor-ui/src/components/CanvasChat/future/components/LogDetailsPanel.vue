@@ -9,19 +9,21 @@ import { getSubtreeTotalConsumedTokens, type LogEntry } from '@/components/Canva
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { N8nButton, N8nResizeWrapper, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nResizeWrapper } from '@n8n/design-system';
 import { type Workflow } from 'n8n-workflow';
 import { computed, ref, useTemplateRef } from 'vue';
 import { type IExecutionResponse } from '@/Interface';
+import NodeName from '@/components/CanvasChat/future/components/NodeName.vue';
 
 const MIN_IO_PANEL_WIDTH = 200;
 
-const { isOpen, logEntry, workflow, execution, window } = defineProps<{
+const { isOpen, logEntry, workflow, execution, window, latestNodeName } = defineProps<{
 	isOpen: boolean;
 	logEntry: LogEntry;
 	workflow: Workflow;
 	execution: IExecutionResponse;
 	window?: Window;
+	latestNodeName: string;
 }>();
 
 const emit = defineEmits<{ clickHeader: [] }>();
@@ -96,9 +98,7 @@ function handleResizeEnd() {
 			<template #title>
 				<div :class="$style.title">
 					<NodeIcon :node-type="type" :size="16" :class="$style.icon" />
-					<N8nText tag="div" :bold="true" size="small" :class="$style.name">
-						{{ logEntry.node.name }}
-					</N8nText>
+					<NodeName :latest-name="latestNodeName" :name="logEntry.node.name" />
 					<ExecutionSummary
 						v-if="isOpen"
 						:class="$style.executionSummary"
@@ -198,12 +198,6 @@ function handleResizeEnd() {
 
 .icon {
 	margin-right: var(--spacing-2xs);
-}
-
-.name {
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
 }
 
 .executionSummary {

@@ -12,6 +12,7 @@ import {
 	createLogEntries,
 	type ExecutionLogViewData,
 	findSelectedLogEntry,
+	type LatestNodeInfo,
 	type LogEntry,
 } from '@/components/CanvasChat/future/utils';
 import { isChatNode } from '@/components/CanvasChat/utils';
@@ -71,6 +72,18 @@ const workflow = computed(() =>
 				nodeTypes: workflowsStore.getNodeTypes(),
 			})
 		: undefined,
+);
+const latestNodeNameById = computed(() =>
+	Object.values(workflow.value?.nodes ?? {}).reduce<Record<string, LatestNodeInfo>>((acc, node) => {
+		const nodeInStore = workflowsStore.getNodeById(node.id);
+
+		acc[node.id] = {
+			deleted: !nodeInStore,
+			disabled: nodeInStore?.disabled ?? false,
+			name: nodeInStore?.name ?? node.name,
+		};
+		return acc;
+	}, {}),
 );
 const hasChat = computed(
 	() =>
@@ -206,6 +219,7 @@ watch(
 								:is-compact="isLogDetailsOpen"
 								:selected="selectedLogEntry"
 								:execution="execution"
+								:latest-node-info="latestNodeNameById"
 								@click-header="onToggleOpen(true)"
 								@select="handleSelectLogEntry"
 								@clear-execution-data="handleClearExecutionData"
@@ -223,6 +237,7 @@ watch(
 							:workflow="workflow"
 							:execution="execution"
 							:window="pipWindow"
+							:latest-node-name="latestNodeNameById[selectedLogEntry.node.id]?.name ?? ''"
 							@click-header="onToggleOpen(true)"
 						>
 							<template #actions>

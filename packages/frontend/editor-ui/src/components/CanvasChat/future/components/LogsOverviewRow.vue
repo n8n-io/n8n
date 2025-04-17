@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { type TreeNode as ElTreeNode } from 'element-plus';
-import { getSubtreeTotalConsumedTokens, type LogEntry } from '@/components/CanvasChat/future/utils';
+import {
+	getSubtreeTotalConsumedTokens,
+	type LatestNodeInfo,
+	type LogEntry,
+} from '@/components/CanvasChat/future/utils';
 import { computed, useTemplateRef, watch } from 'vue';
 import { N8nButton, N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -9,6 +13,7 @@ import { useI18n } from '@/composables/useI18n';
 import ConsumedTokenCountText from '@/components/CanvasChat/future/components/ConsumedTokenCountText.vue';
 import { I18nT } from 'vue-i18n';
 import { toDayMonth, toTime } from '@/utils/formatters/dateFormatter';
+import NodeName from '@/components/CanvasChat/future/components/NodeName.vue';
 
 const props = defineProps<{
 	data: LogEntry;
@@ -17,6 +22,7 @@ const props = defineProps<{
 	isReadOnly: boolean;
 	shouldShowConsumedTokens: boolean;
 	isCompact: boolean;
+	latestInfo: LatestNodeInfo;
 }>();
 
 const emit = defineEmits<{
@@ -101,14 +107,12 @@ watch(
 		</template>
 		<div :class="$style.background" :style="{ '--indent-depth': depth }" />
 		<NodeIcon :node-type="type" :size="16" :class="$style.icon" />
-		<N8nText
-			tag="div"
-			:bold="true"
-			size="small"
+		<NodeName
 			:class="$style.name"
-			:color="isError ? 'danger' : undefined"
-			>{{ props.data.node.name }}
-		</N8nText>
+			:latest-name="latestInfo.name"
+			:name="props.data.node.name"
+			:is-error="isError"
+		/>
 		<N8nText tag="div" color="text-light" size="small" :class="$style.timeTook">
 			<I18nT v-if="isSettled" keypath="logs.overview.body.summaryText">
 				<template #status>
@@ -149,20 +153,25 @@ watch(
 			:class="$style.compactErrorIcon"
 		/>
 		<N8nIconButton
-			v-if="!props.isReadOnly"
+			v-if="
+				!isCompact || (!props.isReadOnly && !props.latestInfo.deleted && !props.latestInfo.disabled)
+			"
 			type="secondary"
 			size="small"
 			icon="play"
 			style="color: var(--color-text-base)"
 			:aria-label="locale.baseText('logs.overview.body.run')"
 			:class="[$style.partialExecutionButton, depth > 0 ? $style.unavailable : '']"
+			:disabled="props.latestInfo.deleted || props.latestInfo.disabled"
 			@click.stop="emit('triggerPartialExecution', props.data)"
 		/>
 		<N8nIconButton
+			v-if="!isCompact || !props.latestInfo.deleted"
 			type="secondary"
 			size="small"
 			icon="external-link-alt"
 			style="color: var(--color-text-base)"
+			:disabled="props.latestInfo.deleted"
 			:class="$style.openNdvButton"
 			:aria-label="locale.baseText('logs.overview.body.open')"
 			@click.stop="emit('openNdv', props.data)"
@@ -360,6 +369,10 @@ watch(
 
 	&:hover {
 		background: transparent;
+	}
+
+	&:disabled {
+		visibility: hidden !important;
 	}
 }
 

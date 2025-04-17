@@ -9,6 +9,7 @@ import {
 	type ExecutionLogViewData,
 	getSubtreeTotalConsumedTokens,
 	getTotalConsumedTokens,
+	type LatestNodeInfo,
 	type LogEntry,
 } from '@/components/CanvasChat/future/utils';
 import { useTelemetry } from '@/composables/useTelemetry';
@@ -18,12 +19,13 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useRouter } from 'vue-router';
 import ExecutionSummary from '@/components/CanvasChat/future/components/ExecutionSummary.vue';
 
-const { isOpen, isReadOnly, selected, isCompact, execution } = defineProps<{
+const { isOpen, isReadOnly, selected, isCompact, execution, latestNodeInfo } = defineProps<{
 	isOpen: boolean;
 	selected?: LogEntry;
 	isReadOnly: boolean;
 	isCompact: boolean;
 	execution?: ExecutionLogViewData;
+	latestNodeInfo: Record<string, LatestNodeInfo>;
 }>();
 
 const emit = defineEmits<{
@@ -76,11 +78,19 @@ function handleToggleExpanded(treeNode: ElTreeNode) {
 }
 
 async function handleOpenNdv(treeNode: LogEntry) {
-	ndvStore.setActiveNodeName(treeNode.node.name);
+	const latestName = latestNodeInfo[treeNode.node.id]?.name;
+
+	if (latestName) {
+		ndvStore.setActiveNodeName(latestName);
+	}
 }
 
 async function handleTriggerPartialExecution(treeNode: LogEntry) {
-	await runWorkflow.runWorkflow({ destinationNode: treeNode.node.name });
+	const latestName = latestNodeInfo[treeNode.node.id]?.name;
+
+	if (latestName) {
+		await runWorkflow.runWorkflow({ destinationNode: latestName });
+	}
 }
 </script>
 
@@ -148,12 +158,16 @@ async function handleTriggerPartialExecution(treeNode: LogEntry) {
 				>
 					<template #default="{ node: elTreeNode, data }">
 						<LogsOverviewRow
+							v-if="!!latestNodeInfo[data.node.id]"
 							:data="data"
 							:node="elTreeNode"
 							:is-read-only="isReadOnly"
-							:is-selected="data.node === selected?.node && data.runIndex === selected?.runIndex"
+							:is-selected="
+								data.node.name === selected?.node.name && data.runIndex === selected?.runIndex
+							"
 							:is-compact="isCompact"
 							:should-show-consumed-tokens="consumedTokens.totalTokens > 0"
+							:latest-info="latestNodeInfo[data.node.id]"
 							@toggle-expanded="handleToggleExpanded"
 							@open-ndv="handleOpenNdv"
 							@trigger-partial-execution="handleTriggerPartialExecution"
