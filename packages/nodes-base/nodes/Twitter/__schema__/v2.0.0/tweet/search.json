@@ -1,56 +1,18 @@
 {
     "type": "object",
     "properties": {
-        "id": {
-            "type": "string"
-        },
         "edit_history_tweet_ids": {
             "type": "array",
             "items": {
                 "type": "string"
             }
         },
-        "text": {
+        "id": {
             "type": "string"
         },
-        "public_metrics": {
-            "type": "object",
-            "properties": {
-                "retweet_count": {
-                    "type": "integer"
-                },
-                "reply_count": {
-                    "type": "integer"
-                },
-                "like_count": {
-                    "type": "integer"
-                },
-                "quote_count": {
-                    "type": "integer"
-                },
-                "bookmark_count": {
-                    "type": "integer"
-                },
-                "impression_count": {
-                    "type": "integer"
-                }
-            },
-            "required": [
-                "retweet_count",
-                "reply_count",
-                "like_count",
-                "quote_count",
-                "bookmark_count",
-                "impression_count"
-            ]
-        },
-        "author_id": {
+        "text": {
             "type": "string"
         }
     },
-    "required": [
-        "id",
-        "edit_history_tweet_ids",
-        "text"
-    ]
+    "version": 2
 }

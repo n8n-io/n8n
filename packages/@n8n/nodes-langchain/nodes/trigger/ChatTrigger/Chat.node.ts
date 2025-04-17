@@ -1,5 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-import { BINARY_ENCODING, NodeConnectionType, WAIT_INDEFINITELY } from 'n8n-workflow';
+import { BINARY_ENCODING, NodeConnectionTypes, WAIT_INDEFINITELY } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
 	INodeExecutionData,
@@ -31,8 +31,8 @@ export class Chat implements INodeType {
 				],
 			},
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
 				displayName: 'Message',

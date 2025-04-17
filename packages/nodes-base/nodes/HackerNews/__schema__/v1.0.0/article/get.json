@@ -23,18 +23,5 @@
             "type": "string"
         }
     },
-    "required": [
-        "author",
-        "created_at",
-        "created_at_i",
-        "id",
-        "options",
-        "parent_id",
-        "points",
-        "story_id",
-        "text",
-        "title",
-        "type",
-        "url"
-    ]
+    "version": 1
 }

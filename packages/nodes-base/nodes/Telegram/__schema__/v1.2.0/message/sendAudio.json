@@ -7,98 +7,71 @@
         "result": {
             "type": "object",
             "properties": {
-                "message_id": {
-                    "type": "integer"
-                },
-                "from": {
-                    "type": "object",
-                    "properties": {
-                        "id": {
-                            "type": "integer"
-                        },
-                        "is_bot": {
-                            "type": "boolean"
-                        },
-                        "first_name": {
-                            "type": "string"
-                        },
-                        "username": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "id",
-                        "is_bot",
-                        "first_name",
-                        "username"
-                    ]
-                },
-                "chat": {
-                    "type": "object",
-                    "properties": {
-                        "id": {
-                            "type": "integer"
-                        },
-                        "first_name": {
-                            "type": "string"
-                        },
-                        "type": {
-                            "type": "string"
-                        },
-                        "last_name": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "id",
-                        "type"
-                    ]
-                },
-                "date": {
-                    "type": "integer"
-                },
                 "audio": {
                     "type": "object",
                     "properties": {
                         "duration": {
                             "type": "integer"
                         },
-                        "file_name": {
-                            "type": "string"
-                        },
-                        "mime_type": {
-                            "type": "string"
-                        },
                         "file_id": {
                             "type": "string"
                         },
-                        "file_unique_id": {
+                        "file_name": {
                             "type": "string"
                         },
                         "file_size": {
                             "type": "integer"
+                        },
+                        "file_unique_id": {
+                            "type": "string"
+                        },
+                        "mime_type": {
+                            "type": "string"
                         }
-                    },
-                    "required": [
-                        "duration",
-                        "file_name",
-                        "mime_type",
-                        "file_id",
-                        "file_unique_id",
-                        "file_size"
-                    ]
+                    }
+                },
+                "chat": {
+                    "type": "object",
+                    "properties": {
+                        "first_name": {
+                            "type": "string"
+                        },
+                        "id": {
+                            "type": "integer"
+                        },
+                        "last_name": {
+                            "type": "string"
+                        },
+                        "type": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "date": {
+                    "type": "integer"
+                },
+                "from": {
+                    "type": "object",
+                    "properties": {
+                        "first_name": {
+                            "type": "string"
+                        },
+                        "id": {
+                            "type": "integer"
+                        },
+                        "is_bot": {
+                            "type": "boolean"
+                        },
+                        "username": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "message_id": {
+                    "type": "integer"
                 }
-            },
-            "required": [
-                "message_id",
-                "from",
-                "chat",
-                "date"
-            ]
+            }
         }
     },
-    "required": [
-        "ok",
-        "result"
-    ]
+    "version": 1
 }

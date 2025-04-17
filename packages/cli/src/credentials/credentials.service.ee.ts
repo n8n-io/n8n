@@ -28,13 +28,13 @@ export class EnterpriseCredentialsService {
 
 	async shareWithProjects(
 		user: User,
-		credential: CredentialsEntity,
+		credentialId: string,
 		shareWithIds: string[],
 		entityManager?: EntityManager,
 	) {
 		const em = entityManager ?? this.sharedCredentialsRepository.manager;
 
-		const projects = await em.find(Project, {
+		let projects = await em.find(Project, {
 			where: [
 				{
 					id: In(shareWithIds),
@@ -55,11 +55,19 @@ export class EnterpriseCredentialsService {
 					type: 'personal',
 				},
 			],
+			relations: { sharedCredentials: true },
 		});
+		// filter out all projects that already own the credential
+		projects = projects.filter(
+			(p) =>
+				!p.sharedCredentials.some(
+					(psc) => psc.credentialsId === credentialId && psc.role === 'credential:owner',
+				),
+		);
 
 		const newSharedCredentials = projects.map((project) =>
 			this.sharedCredentialsRepository.create({
-				credentialsId: credential.id,
+				credentialsId: credentialId,
 				role: 'credential:user',
 				projectId: project.id,
 			}),

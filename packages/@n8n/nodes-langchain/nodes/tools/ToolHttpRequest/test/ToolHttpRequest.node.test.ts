@@ -1,5 +1,5 @@
 import { mock } from 'jest-mock-extended';
-import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
 
 import type { N8nTool } from '@utils/N8nTool';
@@ -8,8 +8,8 @@ import { ToolHttpRequest } from '../ToolHttpRequest.node';
 
 describe('ToolHttpRequest', () => {
 	const httpTool = new ToolHttpRequest();
-	const helpers = mock<IExecuteFunctions['helpers']>();
-	const executeFunctions = mock<IExecuteFunctions>({ helpers });
+	const helpers = mock<ISupplyDataFunctions['helpers']>();
+	const executeFunctions = mock<ISupplyDataFunctions>({ helpers });
 
 	beforeEach(() => {
 		jest.resetAllMocks();

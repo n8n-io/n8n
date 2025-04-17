@@ -25,6 +25,7 @@ describe('UsersController', () => {
 		mock(),
 		projectService,
 		eventService,
+		mock(),
 	);
 
 	beforeEach(() => {

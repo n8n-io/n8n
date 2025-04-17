@@ -7,7 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { wordpressApiRequest, wordpressApiRequestAllItems } from './GenericFunctions';
 import { pageFields, pageOperations } from './PageDescription';
@@ -30,8 +30,8 @@ export class Wordpress implements INodeType {
 			name: 'Wordpress',
 		},
 		usableAsTool: true,
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'wordpressApi',

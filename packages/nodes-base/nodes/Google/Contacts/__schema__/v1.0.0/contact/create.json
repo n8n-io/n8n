@@ -1,180 +1,17 @@
 {
     "type": "object",
     "properties": {
-        "resourceName": {
+        "contactId": {
             "type": "string"
         },
         "etag": {
             "type": "string"
-        },
-        "metadata": {
-            "type": "object",
-            "properties": {
-                "sources": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "type": {
-                                "type": "string"
-                            },
-                            "id": {
-                                "type": "string"
-                            },
-                            "etag": {
-                                "type": "string"
-                            },
-                            "updateTime": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "type",
-                            "id",
-                            "etag",
-                            "updateTime"
-                        ]
-                    }
-                },
-                "objectType": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "sources",
-                "objectType"
-            ]
-        },
-        "names": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "metadata": {
-                        "type": "object",
-                        "properties": {
-                            "primary": {
-                                "type": "boolean"
-                            },
-                            "source": {
-                                "type": "object",
-                                "properties": {
-                                    "type": {
-                                        "type": "string"
-                                    },
-                                    "id": {
-                                        "type": "string"
-                                    }
-                                },
-                                "required": [
-                                    "type",
-                                    "id"
-                                ]
-                            },
-                            "sourcePrimary": {
-                                "type": "boolean"
-                            }
-                        },
-                        "required": [
-                            "source"
-                        ]
-                    },
-                    "displayName": {
-                        "type": "string"
-                    },
-                    "familyName": {
-                        "type": "string"
-                    },
-                    "displayNameLastFirst": {
-                        "type": "string"
-                    },
-                    "unstructuredName": {
-                        "type": "string"
-                    },
-                    "givenName": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "metadata",
-                    "displayName",
-                    "displayNameLastFirst",
-                    "unstructuredName"
-                ]
-            }
-        },
-        "photos": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "metadata": {
-                        "type": "object",
-                        "properties": {
-                            "primary": {
-                                "type": "boolean"
-                            },
-                            "source": {
-                                "type": "object",
-                                "properties": {
-                                    "type": {
-                                        "type": "string"
-                                    },
-                                    "id": {
-                                        "type": "string"
-                                    }
-                                },
-                                "required": [
-                                    "type",
-                                    "id"
-                                ]
-                            }
-                        },
-                        "required": [
-                            "source"
-                        ]
-                    },
-                    "url": {
-                        "type": "string"
-                    },
-                    "default": {
-                        "type": "boolean"
-                    }
-                },
-                "required": [
-                    "metadata",
-                    "url"
-                ]
-            }
         },
         "memberships": {
             "type": "array",
             "items": {
                 "type": "object",
                 "properties": {
-                    "metadata": {
-                        "type": "object",
-                        "properties": {
-                            "source": {
-                                "type": "object",
-                                "properties": {
-                                    "type": {
-                                        "type": "string"
-                                    },
-                                    "id": {
-                                        "type": "string"
-                                    }
-                                },
-                                "required": [
-                                    "type",
-                                    "id"
-                                ]
-                            }
-                        },
-                        "required": [
-                            "source"
-                        ]
-                    },
                     "contactGroupMembership": {
                         "type": "object",
                         "properties": {
@@ -184,26 +21,72 @@
                             "contactGroupResourceName": {
                                 "type": "string"
                             }
-                        },
-                        "required": [
-                            "contactGroupId",
-                            "contactGroupResourceName"
-                        ]
+                        }
+                    },
+                    "metadata": {
+                        "type": "object",
+                        "properties": {
+                            "source": {
+                                "type": "object",
+                                "properties": {
+                                    "id": {
+                                        "type": "string"
+                                    },
+                                    "type": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
                     }
-                },
-                "required": [
-                    "metadata"
-                ]
+                }
             }
         },
-        "contactId": {
-            "type": "string"
+        "metadata": {
+            "type": "object",
+            "properties": {
+                "objectType": {
+                    "type": "string"
+                },
+                "sources": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "etag": {
+                                "type": "string"
+                            },
+                            "id": {
+                                "type": "string"
+                            },
+                            "type": {
+                                "type": "string"
+                            },
+                            "updateTime": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
         },
-        "phoneNumbers": {
+        "names": {
             "type": "array",
             "items": {
                 "type": "object",
                 "properties": {
+                    "displayName": {
+                        "type": "string"
+                    },
+                    "displayNameLastFirst": {
+                        "type": "string"
+                    },
+                    "familyName": {
+                        "type": "string"
+                    },
+                    "givenName": {
+                        "type": "string"
+                    },
                     "metadata": {
                         "type": "object",
                         "properties": {
@@ -213,43 +96,61 @@
                             "source": {
                                 "type": "object",
                                 "properties": {
-                                    "type": {
-                                        "type": "string"
-                                    },
                                     "id": {
                                         "type": "string"
+                                    },
+                                    "type": {
+                                        "type": "string"
                                     }
-                                },
-                                "required": [
-                                    "type",
-                                    "id"
-                                ]
+                                }
+                            },
+                            "sourcePrimary": {
+                                "type": "boolean"
                             }
-                        },
-                        "required": [
-                            "source"
-                        ]
+                        }
                     },
-                    "value": {
-                        "type": "string"
-                    },
-                    "canonicalForm": {
-                        "type": "string"
-                    },
-                    "type": {
-                        "type": "string"
-                    },
-                    "formattedType": {
+                    "unstructuredName": {
                         "type": "string"
                     }
-                },
-                "required": [
-                    "metadata",
-                    "value",
-                    "type",
-                    "formattedType"
-                ]
+                }
             }
+        },
+        "photos": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "default": {
+                        "type": "boolean"
+                    },
+                    "metadata": {
+                        "type": "object",
+                        "properties": {
+                            "primary": {
+                                "type": "boolean"
+                            },
+                            "source": {
+                                "type": "object",
+                                "properties": {
+                                    "id": {
+                                        "type": "string"
+                                    },
+                                    "type": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "url": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "resourceName": {
+            "type": "string"
         }
-    }
+    },
+    "version": 1
 }

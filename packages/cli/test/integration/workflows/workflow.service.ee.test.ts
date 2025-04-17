@@ -7,8 +7,8 @@ import { SharedWorkflowRepository } from '@/databases/repositories/shared-workfl
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { Telemetry } from '@/telemetry';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
+import { mockInstance } from '@test/mocking';
 
-import { mockInstance } from '../../shared/mocking';
 import * as testDb from '../shared/test-db';
 import {
 	FIRST_CREDENTIAL_ID,
@@ -29,6 +29,8 @@ describe('EnterpriseWorkflowService', () => {
 			Container.get(SharedWorkflowRepository),
 			Container.get(WorkflowRepository),
 			Container.get(CredentialsRepository),
+			mock(),
+			mock(),
 			mock(),
 			mock(),
 			mock(),

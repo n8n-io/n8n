@@ -46,7 +46,7 @@ export const formFields: INodeProperties = {
 	name: 'formFields',
 	placeholder: 'Add Form Element',
 	type: 'fixedCollection',
-	default: { values: [{ label: '', fieldType: 'text' }] },
+	default: {},
 	typeOptions: {
 		multipleValues: true,
 		sortable: true,

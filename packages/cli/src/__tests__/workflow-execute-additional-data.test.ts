@@ -17,12 +17,14 @@ import { ExecutionRepository } from '@/databases/repositories/execution.reposito
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { EventService } from '@/events/event.service';
+import {
+	CredentialsPermissionChecker,
+	SubworkflowPolicyChecker,
+} from '@/executions/pre-execution-checks';
 import { ExternalHooks } from '@/external-hooks';
 import { SecretsHelper } from '@/secrets-helpers.ee';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
-import { SubworkflowPolicyChecker } from '@/subworkflows/subworkflow-policy-checker.service';
 import { Telemetry } from '@/telemetry';
-import { PermissionChecker } from '@/user-management/permission-checker';
 import { executeWorkflow, getBase, getRunData } from '@/workflow-execute-additional-data';
 import { mockInstance } from '@test/mocking';
 
@@ -91,7 +93,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 	mockInstance(Telemetry);
 	const workflowRepository = mockInstance(WorkflowRepository);
 	const activeExecutions = mockInstance(ActiveExecutions);
-	mockInstance(PermissionChecker);
+	mockInstance(CredentialsPermissionChecker);
 	mockInstance(SubworkflowPolicyChecker);
 	mockInstance(WorkflowStatisticsService);
 

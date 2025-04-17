@@ -5,7 +5,7 @@ import type { BaseRetriever } from '@langchain/core/retrievers';
 import { ContextualCompressionRetriever } from 'langchain/retrievers/contextual_compression';
 import { LLMChainExtractor } from 'langchain/retrievers/document_compressors/chain_extract';
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
@@ -44,13 +44,13 @@ export class RetrieverContextualCompression implements INodeType {
 			{
 				displayName: 'Model',
 				maxConnections: 1,
-				type: NodeConnectionType.AiLanguageModel,
+				type: NodeConnectionTypes.AiLanguageModel,
 				required: true,
 			},
 			{
 				displayName: 'Retriever',
 				maxConnections: 1,
-				type: NodeConnectionType.AiRetriever,
+				type: NodeConnectionTypes.AiRetriever,
 				required: true,
 			},
 		],
@@ -58,7 +58,7 @@ export class RetrieverContextualCompression implements INodeType {
 			{
 				displayName: 'Retriever',
 				maxConnections: 1,
-				type: NodeConnectionType.AiRetriever,
+				type: NodeConnectionTypes.AiRetriever,
 			},
 		],
 		properties: [],
@@ -68,12 +68,12 @@ export class RetrieverContextualCompression implements INodeType {
 		this.logger.debug('Supplying data for Contextual Compression Retriever');
 
 		const model = (await this.getInputConnectionData(
-			NodeConnectionType.AiLanguageModel,
+			NodeConnectionTypes.AiLanguageModel,
 			itemIndex,
 		)) as BaseLanguageModel;
 
 		const baseRetriever = (await this.getInputConnectionData(
-			NodeConnectionType.AiRetriever,
+			NodeConnectionTypes.AiRetriever,
 			itemIndex,
 		)) as BaseRetriever;
 

@@ -4,23 +4,20 @@
         "cdate": {
             "type": "string"
         },
+        "id": {
+            "type": "string"
+        },
         "links": {
             "type": "object",
             "properties": {
-                "tag": {
-                    "type": "string"
-                },
                 "contact": {
                     "type": "string"
+                },
+                "tag": {
+                    "type": "string"
                 }
-            },
-            "required": [
-                "tag",
-                "contact"
-            ]
-        },
-        "id": {
-            "type": "string"
+            }
         }
-    }
+    },
+    "version": 1
 }

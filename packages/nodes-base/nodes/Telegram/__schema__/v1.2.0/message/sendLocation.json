@@ -1,85 +1,68 @@
 {
-	"type": "object",
-	"properties": {
-		"ok": {
-			"type": "boolean"
-		},
-		"result": {
-			"type": "object",
-			"properties": {
-				"message_id": {
-					"type": "integer"
-				},
-				"from": {
-					"type": "object",
-					"properties": {
-						"id": {
-							"type": "integer"
-						},
-						"is_bot": {
-							"type": "boolean"
-						},
-						"first_name": {
-							"type": "string"
-						},
-						"username": {
-							"type": "string"
-						}
-					},
-					"required": [
-						"id",
-						"is_bot",
-						"first_name",
-						"username"
-					]
-				},
-				"chat": {
-					"type": "object",
-					"properties": {
-						"id": {
-							"type": "integer"
-						},
-						"type": {
-							"type": "string"
-						},
-						"first_name": {
-							"type": "string"
-						}
-					},
-					"required": [
-						"id",
-						"type"
-					]
-				},
-				"date": {
-					"type": "integer"
-				},
-				"location": {
-					"type": "object",
-					"properties": {
-						"latitude": {
-							"type": "number"
-						},
-						"longitude": {
-							"type": "number"
-						}
-					},
-					"required": [
-						"latitude",
-						"longitude"
-					]
-				}
-			},
-			"required": [
-				"message_id",
-				"chat",
-				"date",
-				"location"
-			]
-		}
-	},
-	"required": [
-		"ok",
-		"result"
-	]
+    "type": "object",
+    "properties": {
+        "ok": {
+            "type": "boolean"
+        },
+        "result": {
+            "type": "object",
+            "properties": {
+                "chat": {
+                    "type": "object",
+                    "properties": {
+                        "first_name": {
+                            "type": "string"
+                        },
+                        "id": {
+                            "type": "integer"
+                        },
+                        "last_name": {
+                            "type": "string"
+                        },
+                        "type": {
+                            "type": "string"
+                        },
+                        "username": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "date": {
+                    "type": "integer"
+                },
+                "from": {
+                    "type": "object",
+                    "properties": {
+                        "first_name": {
+                            "type": "string"
+                        },
+                        "id": {
+                            "type": "integer"
+                        },
+                        "is_bot": {
+                            "type": "boolean"
+                        },
+                        "username": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "location": {
+                    "type": "object",
+                    "properties": {
+                        "latitude": {
+                            "type": "number"
+                        },
+                        "longitude": {
+                            "type": "number"
+                        }
+                    }
+                },
+                "message_id": {
+                    "type": "integer"
+                }
+            }
+        }
+    },
+    "version": 1
 }

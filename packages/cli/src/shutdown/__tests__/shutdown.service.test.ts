@@ -1,7 +1,7 @@
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type { ErrorReporter } from 'n8n-core';
-import { ApplicationError } from 'n8n-workflow';
+import { UnexpectedError } from 'n8n-workflow';
 
 import type { ServiceClass } from '@/shutdown/shutdown.service';
 import { ShutdownService } from '@/shutdown/shutdown.service';
@@ -84,8 +84,8 @@ describe('ShutdownService', () => {
 			await shutdownService.waitForShutdown();
 
 			expect(errorReporter.error).toHaveBeenCalledTimes(1);
-			const error = errorReporter.error.mock.calls[0][0] as ApplicationError;
-			expect(error).toBeInstanceOf(ApplicationError);
+			const error = errorReporter.error.mock.calls[0][0] as UnexpectedError;
+			expect(error).toBeInstanceOf(UnexpectedError);
 			expect(error.message).toBe('Failed to shutdown gracefully');
 			expect(error.extra).toEqual({
 				component: 'MockComponent.onShutdown()',

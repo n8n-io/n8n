@@ -100,7 +100,7 @@ export class WorkflowEntity extends WithTimestampsAndStringId implements IWorkfl
 
 	@ManyToOne('Folder', 'workflows', {
 		nullable: true,
-		onDelete: 'SET NULL',
+		onDelete: 'CASCADE',
 	})
 	@JoinColumn({ name: 'parentFolderId' })
 	parentFolder: Folder | null;

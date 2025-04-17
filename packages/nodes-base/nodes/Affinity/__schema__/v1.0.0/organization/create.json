@@ -1,11 +1,8 @@
 {
     "type": "object",
     "properties": {
-        "id": {
-            "type": "integer"
-        },
-        "name": {
-            "type": "string"
+        "crunchbase_uuid": {
+            "type": "null"
         },
         "domain": {
             "type": "string"
@@ -16,11 +13,14 @@
                 "type": "string"
             }
         },
-        "crunchbase_uuid": {
-            "type": "null"
-        },
         "global": {
             "type": "boolean"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "name": {
+            "type": "string"
         },
         "person_ids": {
             "type": "array",
@@ -29,13 +29,5 @@
             }
         }
     },
-    "required": [
-        "id",
-        "name",
-        "domain",
-        "domains",
-        "crunchbase_uuid",
-        "global",
-        "person_ids"
-    ]
+    "version": 1
 }

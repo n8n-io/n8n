@@ -1,6 +1,12 @@
 {
     "type": "object",
     "properties": {
+        "date_created": {
+            "type": "string"
+        },
+        "hide_from_guests": {
+            "type": "boolean"
+        },
         "id": {
             "type": "string"
         },
@@ -9,21 +15,7 @@
         },
         "type": {
             "type": "string"
-        },
-        "date_created": {
-            "type": "string"
-        },
-        "hide_from_guests": {
-            "type": "boolean"
         }
     },
-    "required": [
-        "id",
-        "name",
-        "type",
-        "type_config",
-        "date_created",
-        "hide_from_guests",
-        "required"
-    ]
+    "version": 1
 }
