@@ -75,8 +75,8 @@ const workflow = computed(() =>
 );
 const hasChat = computed(
 	() =>
-		[workflow.value, workflowsStore.getCurrentWorkflow()].some((wf) =>
-			Object.values(wf?.nodes ?? {}).some(isChatNode),
+		[Object.values(workflow.value?.nodes ?? {}), workflowsStore.workflow.nodes].some((nodes) =>
+			nodes.some(isChatNode),
 		) &&
 		(!props.isReadOnly || messages.value.length > 0),
 );
