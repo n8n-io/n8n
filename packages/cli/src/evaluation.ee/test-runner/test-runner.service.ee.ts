@@ -352,7 +352,6 @@ export class TestRunnerService {
 					// If that happens, or if the test case execution produced an error, mark the test case as failed.
 					if (!testCaseExecution || testCaseExecution.data.resultData.error) {
 						await dbManager.transaction(async (trx) => {
-							await this.testRunRepository.incrementFailed(testRun.id, trx);
 							await this.testCaseExecutionRepository.markAsFailed({
 								testRunId: testRun.id,
 								pastExecutionId,
@@ -364,8 +363,6 @@ export class TestRunnerService {
 					}
 
 					await dbManager.transaction(async (trx) => {
-						await this.testRunRepository.incrementPassed(testRun.id, trx);
-
 						await this.testCaseExecutionRepository.markAsCompleted({
 							testRunId: testRun.id,
 							pastExecutionId,
@@ -376,8 +373,6 @@ export class TestRunnerService {
 				} catch (e) {
 					// In case of an unexpected error, increment the failed count and continue with the next test case
 					await dbManager.transaction(async (trx) => {
-						await this.testRunRepository.incrementFailed(testRun.id, trx);
-
 						if (e instanceof TestCaseExecutionError) {
 							await this.testCaseExecutionRepository.markAsFailed({
 								testRunId: testRun.id,
