@@ -121,21 +121,20 @@ export abstract class AbstractOAuthController {
 		);
 	}
 
-	protected applyDefaultsAndOverwrites<T>(
+	protected async applyDefaultsAndOverwrites<T>(
 		credential: ICredentialsDb,
 		decryptedData: ICredentialDataDecryptedObject,
 		additionalData: IWorkflowExecuteAdditionalData,
-		canUseSecrets: boolean = false,
 	) {
-		return this.credentialsHelper.applyDefaultsAndOverwrites(
+		return (await this.credentialsHelper.applyDefaultsAndOverwrites(
 			additionalData,
 			decryptedData,
+			credential,
 			credential.type,
 			'internal',
 			undefined,
 			undefined,
-			canUseSecrets,
-		) as unknown as T;
+		)) as unknown as T;
 	}
 
 	protected async encryptAndSaveData(
@@ -214,12 +213,10 @@ export abstract class AbstractOAuthController {
 			additionalData,
 		);
 
-		const canUseSecrets = await this.credentialsHelper.credentialCanUseExternalSecrets(credential);
-		const oauthCredentials = this.applyDefaultsAndOverwrites<T>(
+		const oauthCredentials = await this.applyDefaultsAndOverwrites<T>(
 			credential,
 			decryptedDataOriginal,
 			additionalData,
-			canUseSecrets,
 		);
 
 		if (!this.verifyCsrfState(decryptedDataOriginal, state)) {

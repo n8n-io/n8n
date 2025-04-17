@@ -64,7 +64,7 @@ describe('OAuth2CredentialController', () => {
 		jest.setSystemTime(new Date(timestamp));
 		jest.clearAllMocks();
 
-		credentialsHelper.applyDefaultsAndOverwrites.mockReturnValue({
+		credentialsHelper.applyDefaultsAndOverwrites.mockResolvedValue({
 			clientId: 'test-client-id',
 			clientSecret: 'oauth-secret',
 			authUrl: 'https://example.domain/o/oauth2/v2/auth',
@@ -356,18 +356,6 @@ describe('OAuth2CredentialController', () => {
 				}),
 			]);
 			const dataCaptor = captor();
-			// check that credentialsHelper.applyDefaultsAndOverwrites is called with the canUseSecrets true
-			expect(credentialsHelper.applyDefaultsAndOverwrites).toHaveBeenCalledWith(
-				additionalData,
-				expect.objectContaining({
-					oauthTokenData: CREDENTIAL_BLANKING_VALUE,
-				}),
-				credential.type,
-				'internal',
-				undefined,
-				undefined,
-				true,
-			);
 			expect(credentialsRepository.update).toHaveBeenCalledWith(
 				'1',
 				expect.objectContaining({
