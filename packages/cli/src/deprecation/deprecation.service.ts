@@ -74,7 +74,7 @@ export class DeprecationService {
 		{
 			envVar: 'EXECUTIONS_PROCESS',
 			message: SAFE_TO_REMOVE,
-			checkValue: (value: string) => value !== 'own',
+			checkValue: (value: string | undefined) => value !== undefined && value !== 'own',
 		},
 		{
 			envVar: 'EXECUTIONS_PROCESS',
