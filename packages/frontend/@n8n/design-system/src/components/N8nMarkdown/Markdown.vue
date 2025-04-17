@@ -289,6 +289,7 @@ input[type='checkbox'] + label {
 
 .sticky {
 	color: var(--color-sticky-font);
+	overflow-wrap: break-word;
 
 	h1,
 	h2,
@@ -360,8 +361,6 @@ input[type='checkbox'] + label {
 	}
 
 	a {
-		word-break: break-word;
-		overflow-wrap: break-word;
 		&:hover {
 			text-decoration: underline;
 		}
