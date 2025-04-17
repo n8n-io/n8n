@@ -29,7 +29,7 @@ export function getParameterInputByName(name: string) {
 }
 
 export function getInputPanel() {
-	return cy.getByTestId('input-panel');
+	return cy.getByTestId('ndv-input-panel');
 }
 
 export function getMainPanel() {
@@ -50,6 +50,10 @@ export function getResourceLocator(paramName: string) {
 
 export function getResourceLocatorInput(paramName: string) {
 	return getResourceLocator(paramName).find('[data-test-id="rlc-input-container"]');
+}
+
+export function getInputPanelDataContainer() {
+	return getInputPanel().getByTestId('ndv-data-container');
 }
 
 export function getOutputPanelDataContainer() {
@@ -271,4 +275,26 @@ export function populateFixedCollection<T extends readonly string[]>(
 
 export function assertInlineExpressionValid() {
 	cy.getByTestId('inline-expression-editor-input').find('.cm-valid-resolvable').should('exist');
+}
+
+export function hoverInputItemByText(text: string) {
+	return getInputPanelDataContainer().contains(text).trigger('mouseover', { force: true });
+}
+
+export function verifyInputHoverState(expectedText: string) {
+	getInputPanelDataContainer()
+		.find('[data-test-id="hovering-item"]')
+		.should('be.visible')
+		.should('have.text', expectedText);
+}
+
+export function verifyOutputHoverState(expectedText: string) {
+	getOutputPanelDataContainer()
+		.find('[data-test-id="hovering-item"]')
+		.should('be.visible')
+		.should('have.text', expectedText);
+}
+
+export function resetHoverState() {
+	getBackToCanvasButton().trigger('mouseover');
 }

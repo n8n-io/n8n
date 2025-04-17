@@ -29,6 +29,8 @@ import {
 } from '@/constants';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
 import { CanvasNodeRenderType } from '@/types';
+import { type TreeNode } from '@/components/RunDataAi/utils';
+import type { FrontendSettings } from '@n8n/api-types';
 
 export const mockNode = ({
 	id = uuid(),
@@ -205,6 +207,35 @@ export function createTestNode(node: Partial<INode> = {}): INode {
 	};
 }
 
+export function createMockEnterpriseSettings(
+	overrides: Partial<FrontendSettings['enterprise']> = {},
+): FrontendSettings['enterprise'] {
+	return {
+		sharing: false,
+		ldap: false,
+		saml: false,
+		logStreaming: false,
+		advancedExecutionFilters: false,
+		variables: false,
+		sourceControl: false,
+		auditLogs: false,
+		externalSecrets: false,
+		showNonProdBanner: false,
+		debugInEditor: false,
+		binaryDataS3: false,
+		workflowHistory: false,
+		workerView: false,
+		advancedPermissions: false,
+		apiKeyScopes: false,
+		projects: {
+			team: {
+				limit: 0,
+			},
+		},
+		...overrides, // Override with any passed properties
+	};
+}
+
 export function createTestTaskData(partialData: Partial<ITaskData>): ITaskData {
 	return {
 		startTime: 0,
@@ -214,5 +245,18 @@ export function createTestTaskData(partialData: Partial<ITaskData>): ITaskData {
 		executionStatus: 'success',
 		data: { main: [[{ json: {} }]] },
 		...partialData,
+	};
+}
+
+export function createTestLogEntry(data: Partial<TreeNode>): TreeNode {
+	return {
+		node: 'test node',
+		runIndex: 0,
+		id: uuid(),
+		children: [],
+		consumedTokens: { completionTokens: 0, totalTokens: 0, promptTokens: 0, isEstimate: false },
+		depth: 0,
+		startTime: 0,
+		...data,
 	};
 }

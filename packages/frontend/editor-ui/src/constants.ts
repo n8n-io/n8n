@@ -634,6 +634,7 @@ export const EnterpriseEditionFeature: Record<
 	WorkflowHistory: 'workflowHistory',
 	WorkerView: 'workerView',
 	AdvancedPermissions: 'advancedPermissions',
+	ApiKeyScopes: 'apiKeyScopes',
 };
 
 export const MAIN_NODE_PANEL_WIDTH = 390;
