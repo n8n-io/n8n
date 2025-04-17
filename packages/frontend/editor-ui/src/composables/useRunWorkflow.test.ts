@@ -27,7 +27,7 @@ import { waitFor } from '@testing-library/vue';
 
 vi.mock('@/stores/workflows.store', () => {
 	const storeState: Partial<ReturnType<typeof useWorkflowsStore>> & {
-		activeExecutionId: string | null;
+		activeExecutionId: string | null | undefined;
 	} = {
 		allNodes: [],
 		runWorkflow: vi.fn(),
@@ -35,7 +35,7 @@ vi.mock('@/stores/workflows.store', () => {
 		getWorkflowRunData: null,
 		workflowExecutionData: null,
 		setWorkflowExecutionData: vi.fn(),
-		activeExecutionId: undefined as string | null | undefined,
+		activeExecutionId: undefined,
 		previousExecutionId: undefined,
 		nodesIssuesExist: false,
 		executionWaitingForWebhook: false,
