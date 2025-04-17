@@ -35,7 +35,7 @@ const onClick = () => {
 	selectedStore.trackUserOpenedAssistant({
 		source: 'canvas',
 		task: 'placeholder',
-		has_existing_session: !selectedStore.isSessionEnded,
+		has_existing_session: assistantStore.isSessionEnded,
 	});
 };
 </script>
@@ -60,7 +60,11 @@ const onClick = () => {
 					<span>{{ i18n.baseText('aiAssistant.name') }}</span>
 				</div>
 			</template>
-			<AskAssistantButton :unread-count="assistantStore.unreadCount" @click="onClick" />
+			<AskAssistantButton
+				:unread-count="assistantStore.unreadCount"
+				:type="builderStore.isAIBuilderEnabled ? 'builder' : 'assistant'"
+				@click="onClick"
+			/>
 		</n8n-tooltip>
 	</div>
 </template>

@@ -165,7 +165,6 @@ const tagsStore = useTagsStore();
 const pushConnectionStore = usePushConnectionStore();
 const ndvStore = useNDVStore();
 const templatesStore = useTemplatesStore();
-const posthogStore = usePostHog();
 const builderStore = useBuilderStore();
 
 const canvasEventBus = createEventBus<CanvasEventBusEvents>();

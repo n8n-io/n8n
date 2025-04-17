@@ -35,6 +35,7 @@ interface Props {
 	sessionId?: string;
 	modes?: string[];
 	mode?: string;
+	placeholder?: string;
 }
 
 const emit = defineEmits<{
@@ -287,8 +288,9 @@ function onSubmitFeedback(feedback: string) {
 					ref="chatInput"
 					v-model="textInputValue"
 					class="ignore-key-press-node-creator ignore-key-press-canvas"
+					:class="{ [$style.disabled]: sessionEnded || streaming }"
 					:disabled="sessionEnded || streaming"
-					:placeholder="t('assistantChat.inputPlaceholder')"
+					:placeholder="placeholder ?? t('assistantChat.inputPlaceholder')"
 					rows="1"
 					wrap="hard"
 					data-test-id="chat-input"
@@ -450,6 +452,11 @@ function onSubmitFeedback(feedback: string) {
 	* {
 		cursor: not-allowed;
 	}
+}
+
+textarea.disabled {
+	background-color: var(--color-foreground-base);
+	cursor: not-allowed;
 }
 
 .inputPlaceholder {

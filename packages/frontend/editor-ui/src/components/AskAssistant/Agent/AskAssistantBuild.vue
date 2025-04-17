@@ -167,6 +167,7 @@ onBeforeUnmount(() => {
 					:loading-message="loadingMessage"
 					:session-id="builderStore.currentSessionId"
 					:mode="i18n.baseText('aiAssistant.builder.mode')"
+					:placeholder="i18n.baseText('aiAssistant.builder.placeholder')"
 					@close="onClose"
 					@message="onUserMessage"
 					@insert-workflow="onInsertWorkflow"
@@ -181,8 +182,8 @@ onBeforeUnmount(() => {
 							<n8n-button
 								type="secondary"
 								size="small"
-								@click="onNewWorkflow"
 								:class="$style.newWorkflowButton"
+								@click="onNewWorkflow"
 							>
 								{{ i18n.baseText('aiAssistant.builder.generateNew') }}
 							</n8n-button>

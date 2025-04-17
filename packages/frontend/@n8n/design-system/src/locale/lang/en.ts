@@ -34,6 +34,7 @@ export default {
 	'assistantChat.errorParsingMarkdown': 'Error parsing markdown content',
 	'assistantChat.aiAssistantLabel': 'AI Assistant',
 	'assistantChat.aiAssistantName': 'Assistant',
+	'assistantChat.builder.name': 'AI Builder',
 	'assistantChat.sessionEndMessage.1':
 		'This Assistant session has ended. To start a new session with the Assistant, click an',
 	'assistantChat.sessionEndMessage.2': 'button in n8n',
