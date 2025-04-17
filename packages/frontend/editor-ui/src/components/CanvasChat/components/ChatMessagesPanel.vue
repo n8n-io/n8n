@@ -10,7 +10,7 @@ import ChatInput from '@n8n/chat/components/Input.vue';
 import { computed, ref } from 'vue';
 import { useClipboard } from '@/composables/useClipboard';
 import { useToast } from '@/composables/useToast';
-import PanelHeader from '@/components/CanvasChat/components/PanelHeader.vue';
+import PanelHeader from '@/components/CanvasChat/future/components/PanelHeader.vue';
 import { N8nButton, N8nIconButton, N8nTooltip } from '@n8n/design-system';
 
 interface Props {
@@ -19,11 +19,13 @@ interface Props {
 	sessionId: string;
 	showCloseButton?: boolean;
 	isOpen?: boolean;
+	isReadOnly?: boolean;
 	isNewLogsEnabled?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
 	isOpen: true,
+	isReadOnly: false,
 	isNewLogsEnabled: false,
 });
 
@@ -140,11 +142,12 @@ async function copySessionId() {
 	<div :class="$style.chat" data-test-id="workflow-lm-chat-dialog">
 		<PanelHeader
 			v-if="isNewLogsEnabled"
+			data-test-id="chat-header"
 			:title="locale.baseText('chat.window.title')"
 			@click="emit('clickHeader')"
 		>
 			<template #actions>
-				<N8nTooltip v-if="clipboard.isSupported.value">
+				<N8nTooltip v-if="clipboard.isSupported.value && !isReadOnly">
 					<template #content>
 						{{ sessionId }}
 						<br />
@@ -159,7 +162,7 @@ async function copySessionId() {
 					>
 				</N8nTooltip>
 				<N8nTooltip
-					v-if="messages.length > 0"
+					v-if="messages.length > 0 && !isReadOnly"
 					:content="locale.baseText('chat.window.session.resetSession')"
 				>
 					<N8nIconButton
@@ -222,7 +225,7 @@ async function copySessionId() {
 			>
 				<template #beforeMessage="{ message }">
 					<MessageOptionTooltip
-						v-if="message.sender === 'bot' && !message.id.includes('preload')"
+						v-if="!isReadOnly && message.sender === 'bot' && !message.id.includes('preload')"
 						placement="right"
 						data-test-id="execution-id-tooltip"
 					>
@@ -231,7 +234,7 @@ async function copySessionId() {
 					</MessageOptionTooltip>
 
 					<MessageOptionAction
-						v-if="isTextMessage(message) && message.sender === 'user'"
+						v-if="!isReadOnly && isTextMessage(message) && message.sender === 'user'"
 						data-test-id="repost-message-button"
 						icon="redo"
 						:label="locale.baseText('chat.window.chat.chatMessageOptions.repostMessage')"
@@ -240,7 +243,7 @@ async function copySessionId() {
 					/>
 
 					<MessageOptionAction
-						v-if="isTextMessage(message) && message.sender === 'user'"
+						v-if="!isReadOnly && isTextMessage(message) && message.sender === 'user'"
 						data-test-id="reuse-message-button"
 						icon="copy"
 						:label="locale.baseText('chat.window.chat.chatMessageOptions.reuseMessage')"
@@ -357,7 +360,7 @@ async function copySessionId() {
 	height: 100%;
 	width: 100%;
 	overflow: auto;
-	padding-top: 1.5em;
+	padding-top: var(--spacing-l);
 
 	&:not(:last-child) {
 		margin-right: 1em;

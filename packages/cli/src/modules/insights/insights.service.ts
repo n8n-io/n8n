@@ -1,5 +1,8 @@
 import type { InsightsSummary } from '@n8n/api-types';
 import { Container, Service } from '@n8n/di';
+import { In } from '@n8n/typeorm';
+import { DateTime } from 'luxon';
+import { Logger } from 'n8n-core';
 import type { ExecutionLifecycleHooks } from 'n8n-core';
 import {
 	UnexpectedError,
@@ -14,7 +17,7 @@ import { OnShutdown } from '@/decorators/on-shutdown';
 import { InsightsMetadata } from '@/modules/insights/database/entities/insights-metadata';
 import { InsightsRaw } from '@/modules/insights/database/entities/insights-raw';
 
-import type { TypeUnit } from './database/entities/insights-shared';
+import type { PeriodUnit, TypeUnit } from './database/entities/insights-shared';
 import { NumberToType } from './database/entities/insights-shared';
 import { InsightsByPeriodRepository } from './database/repositories/insights-by-period.repository';
 import { InsightsRawRepository } from './database/repositories/insights-raw.repository';
@@ -37,36 +40,61 @@ const shouldSkipStatus: Record<ExecutionStatus, boolean> = {
 const shouldSkipMode: Record<WorkflowExecuteMode, boolean> = {
 	cli: false,
 	error: false,
-	integrated: false,
 	retry: false,
 	trigger: false,
 	webhook: false,
 	evaluation: false,
 
+	// sub workflows
+	integrated: true,
+
+	// error workflows
 	internal: true,
+
 	manual: true,
+};
+
+type BufferedInsight = Pick<InsightsRaw, 'type' | 'value' | 'timestamp'> & {
+	workflowId: string;
+	workflowName: string;
 };
 
 @Service()
 export class InsightsService {
-	private readonly maxAgeInDaysForHourlyData = 90;
-
-	private readonly maxAgeInDaysForDailyData = 180;
+	private readonly cachedMetadata: Map<string, InsightsMetadata> = new Map();
 
 	private compactInsightsTimer: NodeJS.Timer | undefined;
+
+	private bufferedInsights: Set<BufferedInsight> = new Set();
+
+	private flushInsightsRawBufferTimer: NodeJS.Timeout | undefined;
+
+	private isAsynchronouslySavingInsights = true;
+
+	private flushesInProgress: Set<Promise<void>> = new Set();
 
 	constructor(
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly insightsByPeriodRepository: InsightsByPeriodRepository,
 		private readonly insightsRawRepository: InsightsRawRepository,
+		private readonly logger: Logger,
 	) {
-		this.initializeCompaction();
+		this.logger = this.logger.scoped('insights');
 	}
 
-	initializeCompaction() {
-		if (this.compactInsightsTimer !== undefined) {
-			clearInterval(this.compactInsightsTimer);
-		}
+	startBackgroundProcess() {
+		this.startCompactionScheduler();
+		this.startFlushingScheduler();
+	}
+
+	stopBackgroundProcess() {
+		this.stopCompactionScheduler();
+		this.stopFlushingScheduler();
+	}
+
+	// Initialize regular compaction of insights data
+	private startCompactionScheduler() {
+		this.stopCompactionScheduler();
 		const intervalMilliseconds = config.compactionIntervalMinutes * 60 * 1000;
 		this.compactInsightsTimer = setInterval(
 			async () => await this.compactInsights(),
@@ -74,12 +102,42 @@ export class InsightsService {
 		);
 	}
 
-	@OnShutdown()
-	shutdown() {
+	// Stop regular compaction of insights data
+	private stopCompactionScheduler() {
 		if (this.compactInsightsTimer !== undefined) {
 			clearInterval(this.compactInsightsTimer);
 			this.compactInsightsTimer = undefined;
 		}
+	}
+
+	private startFlushingScheduler() {
+		this.isAsynchronouslySavingInsights = true;
+		this.stopFlushingScheduler();
+		this.flushInsightsRawBufferTimer = setTimeout(
+			async () => await this.flushEvents(),
+			config.flushIntervalSeconds * 1000,
+		);
+	}
+
+	private stopFlushingScheduler() {
+		if (this.flushInsightsRawBufferTimer !== undefined) {
+			clearTimeout(this.flushInsightsRawBufferTimer);
+			this.flushInsightsRawBufferTimer = undefined;
+		}
+	}
+
+	@OnShutdown()
+	async shutdown() {
+		this.stopCompactionScheduler();
+		this.stopFlushingScheduler();
+
+		// Prevent new insights from being added to the buffer (and never flushed)
+		// when remaining workflows are handled during shutdown
+		this.isAsynchronouslySavingInsights = false;
+
+		// Wait for all in-progress asynchronous flushes
+		// Flush any remaining events
+		await Promise.all([...this.flushesInProgress, this.flushEvents()]);
 	}
 
 	async workflowExecuteAfterHandler(ctx: ExecutionLifecycleHooks, fullRunData: IRun) {
@@ -89,68 +147,149 @@ export class InsightsService {
 
 		const status = fullRunData.status === 'success' ? 'success' : 'failure';
 
+		const commonWorkflowData = {
+			workflowId: ctx.workflowData.id,
+			workflowName: ctx.workflowData.name,
+			timestamp: DateTime.utc().toJSDate(),
+		};
+
+		// success or failure event
+		this.bufferedInsights.add({
+			...commonWorkflowData,
+			type: status,
+			value: 1,
+		});
+
+		// run time event
+		if (fullRunData.stoppedAt) {
+			const value = fullRunData.stoppedAt.getTime() - fullRunData.startedAt.getTime();
+			this.bufferedInsights.add({
+				...commonWorkflowData,
+				type: 'runtime_ms',
+				value,
+			});
+		}
+
+		// time saved event
+		if (status === 'success' && ctx.workflowData.settings?.timeSavedPerExecution) {
+			this.bufferedInsights.add({
+				...commonWorkflowData,
+				type: 'time_saved_min',
+				value: ctx.workflowData.settings.timeSavedPerExecution,
+			});
+		}
+
+		if (!this.isAsynchronouslySavingInsights) {
+			// If we are not asynchronously saving insights, we need to flush the events
+			await this.flushEvents();
+		}
+
+		// If the buffer is full, flush the events asynchronously
+		if (this.bufferedInsights.size >= config.flushBatchSize) {
+			// Fire and forget flush to avoid blocking the workflow execute after handler
+			void this.flushEvents();
+		}
+	}
+
+	async saveInsightsMetadataAndRaw(insightsRawToInsertBuffer: Set<BufferedInsight>) {
+		const workflowIdNames: Map<string, string> = new Map();
+
+		for (const event of insightsRawToInsertBuffer) {
+			workflowIdNames.set(event.workflowId, event.workflowName);
+		}
+
 		await this.sharedWorkflowRepository.manager.transaction(async (trx) => {
-			const sharedWorkflow = await trx.findOne(SharedWorkflow, {
-				where: { workflowId: ctx.workflowData.id, role: 'workflow:owner' },
+			const sharedWorkflows = await trx.find(SharedWorkflow, {
+				where: { workflowId: In([...workflowIdNames.keys()]), role: 'workflow:owner' },
 				relations: { project: true },
 			});
 
-			if (!sharedWorkflow) {
-				throw new UnexpectedError(
-					`Could not find an owner for the workflow with the name '${ctx.workflowData.name}' and the id '${ctx.workflowData.id}'`,
-				);
-			}
+			// Upsert metadata for the workflows that are not already in the cache or have
+			// different project or workflow names
+			const metadataToUpsert = sharedWorkflows.reduce((acc, workflow) => {
+				const cachedMetadata = this.cachedMetadata.get(workflow.workflowId);
+				if (
+					!cachedMetadata ||
+					cachedMetadata.projectId !== workflow.projectId ||
+					cachedMetadata.projectName !== workflow.project.name ||
+					cachedMetadata.workflowName !== workflowIdNames.get(workflow.workflowId)
+				) {
+					const metadata = new InsightsMetadata();
+					metadata.projectId = workflow.projectId;
+					metadata.projectName = workflow.project.name;
+					metadata.workflowId = workflow.workflowId;
+					metadata.workflowName = workflowIdNames.get(workflow.workflowId)!;
 
-			await trx.upsert(
-				InsightsMetadata,
-				{
-					workflowId: ctx.workflowData.id,
-					workflowName: ctx.workflowData.name,
-					projectId: sharedWorkflow.projectId,
-					projectName: sharedWorkflow.project.name,
-				},
-				['workflowId'],
-			);
-			const metadata = await trx.findOneBy(InsightsMetadata, {
-				workflowId: ctx.workflowData.id,
+					acc.push(metadata);
+				}
+				return acc;
+			}, [] as InsightsMetadata[]);
+
+			await trx.upsert(InsightsMetadata, metadataToUpsert, ['workflowId']);
+
+			const upsertMetadata = await trx.findBy(InsightsMetadata, {
+				workflowId: In(metadataToUpsert.map((m) => m.workflowId)),
 			});
-
-			if (!metadata) {
-				// This can't happen, we just wrote the metadata in the same
-				// transaction.
-				throw new UnexpectedError(
-					`Could not find metadata for the workflow with the id '${ctx.workflowData.id}'`,
-				);
+			for (const metadata of upsertMetadata) {
+				this.cachedMetadata.set(metadata.workflowId, metadata);
 			}
 
-			// success or failure event
-			{
-				const event = new InsightsRaw();
-				event.metaId = metadata.metaId;
-				event.type = status;
-				event.value = 1;
-				await trx.insert(InsightsRaw, event);
+			const events: InsightsRaw[] = [];
+			for (const event of insightsRawToInsertBuffer) {
+				const insight = new InsightsRaw();
+				const metadata = this.cachedMetadata.get(event.workflowId);
+				if (!metadata) {
+					// could not find shared workflow for this insight (not supposed to happen)
+					throw new UnexpectedError(
+						`Could not find shared workflow for insight with workflowId ${event.workflowId}`,
+					);
+				}
+				insight.metaId = metadata.metaId;
+				insight.type = event.type;
+				insight.value = event.value;
+				insight.timestamp = event.timestamp;
+
+				events.push(insight);
 			}
 
-			// run time event
-			if (fullRunData.stoppedAt) {
-				const value = fullRunData.stoppedAt.getTime() - fullRunData.startedAt.getTime();
-				const event = new InsightsRaw();
-				event.metaId = metadata.metaId;
-				event.type = 'runtime_ms';
-				event.value = value;
-				await trx.insert(InsightsRaw, event);
-			}
-
-			// time saved event
-			if (status === 'success' && ctx.workflowData.settings?.timeSavedPerExecution) {
-				const event = new InsightsRaw();
-				event.metaId = metadata.metaId;
-				event.type = 'time_saved_min';
-				event.value = ctx.workflowData.settings.timeSavedPerExecution;
-				await trx.insert(InsightsRaw, event);
-			}
+			await trx.insert(InsightsRaw, events);
 		});
+	}
+
+	async flushEvents() {
+		// Prevent flushing if there are no events to flush
+		if (this.bufferedInsights.size === 0) {
+			// reschedule the timer to flush again
+			this.startFlushingScheduler();
+			return;
+		}
+
+		// Stop timer to prevent concurrent flush from timer
+		this.stopFlushingScheduler();
+
+		// Copy the buffer to a new set to avoid concurrent modification
+		// while we are flushing the events
+		const bufferedInsightsToFlush = new Set(this.bufferedInsights);
+		this.bufferedInsights.clear();
+
+		let flushPromise: Promise<void> | undefined = undefined;
+		flushPromise = (async () => {
+			try {
+				await this.saveInsightsMetadataAndRaw(bufferedInsightsToFlush);
+			} catch (e) {
+				this.logger.error('Error while saving insights metadata and raw data', { error: e });
+				for (const event of bufferedInsightsToFlush) {
+					this.bufferedInsights.add(event);
+				}
+			} finally {
+				this.startFlushingScheduler();
+				this.flushesInProgress.delete(flushPromise!);
+			}
+		})();
+
+		// Add the flush promise to the set of flushes in progress for shutdown await
+		this.flushesInProgress.add(flushPromise);
+		await flushPromise;
 	}
 
 	async compactInsights() {
@@ -195,7 +334,7 @@ export class InsightsService {
 		const batchQuery = this.insightsByPeriodRepository.getPeriodInsightsBatchQuery({
 			periodUnitToCompactFrom: 'hour',
 			compactionBatchSize: config.compactionBatchSize,
-			maxAgeInDays: this.maxAgeInDaysForHourlyData,
+			maxAgeInDays: config.compactionHourlyToDailyThresholdDays,
 		});
 
 		return await this.insightsByPeriodRepository.compactSourceDataIntoInsightPeriod({
@@ -210,7 +349,7 @@ export class InsightsService {
 		const batchQuery = this.insightsByPeriodRepository.getPeriodInsightsBatchQuery({
 			periodUnitToCompactFrom: 'day',
 			compactionBatchSize: config.compactionBatchSize,
-			maxAgeInDays: this.maxAgeInDaysForDailyData,
+			maxAgeInDays: config.compactionDailyToWeeklyThresholdDays,
 		});
 
 		return await this.insightsByPeriodRepository.compactSourceDataIntoInsightPeriod({
@@ -219,8 +358,12 @@ export class InsightsService {
 		});
 	}
 
-	async getInsightsSummary(): Promise<InsightsSummary> {
-		const rows = await this.insightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates();
+	async getInsightsSummary({
+		periodLengthInDays,
+	}: { periodLengthInDays: number }): Promise<InsightsSummary> {
+		const rows = await this.insightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates({
+			periodLengthInDays,
+		});
 
 		// Initialize data structures for both periods
 		const data = {
@@ -250,9 +393,9 @@ export class InsightsService {
 		const previousTotal = previousSuccesses + previousFailures;
 
 		const currentFailureRate =
-			currentTotal > 0 ? Math.round((currentFailures / currentTotal) * 100) / 100 : 0;
+			currentTotal > 0 ? Math.round((currentFailures / currentTotal) * 1000) / 1000 : 0;
 		const previousFailureRate =
-			previousTotal > 0 ? Math.round((previousFailures / previousTotal) * 100) / 100 : 0;
+			previousTotal > 0 ? Math.round((previousFailures / previousTotal) * 1000) / 1000 : 0;
 
 		const currentTotalRuntime = getValueByType('current', 'runtime_ms') ?? 0;
 		const previousTotalRuntime = getValueByType('previous', 'runtime_ms') ?? 0;
@@ -273,7 +416,7 @@ export class InsightsService {
 		const result: InsightsSummary = {
 			averageRunTime: {
 				value: currentAvgRuntime,
-				unit: 'time',
+				unit: 'millisecond',
 				deviation: getDeviation(currentAvgRuntime, previousAvgRuntime),
 			},
 			failed: {
@@ -288,7 +431,7 @@ export class InsightsService {
 			},
 			timeSaved: {
 				value: currentTimeSaved,
-				unit: 'time',
+				unit: 'minute',
 				deviation: getDeviation(currentTimeSaved, previousTimeSaved),
 			},
 			total: {
@@ -299,5 +442,54 @@ export class InsightsService {
 		};
 
 		return result;
+	}
+
+	async getInsightsByWorkflow({
+		maxAgeInDays,
+		skip = 0,
+		take = 10,
+		sortBy = 'total:desc',
+	}: {
+		maxAgeInDays: number;
+		skip?: number;
+		take?: number;
+		sortBy?: string;
+	}) {
+		const { count, rows } = await this.insightsByPeriodRepository.getInsightsByWorkflow({
+			maxAgeInDays,
+			skip,
+			take,
+			sortBy,
+		});
+
+		return {
+			count,
+			data: rows,
+		};
+	}
+
+	async getInsightsByTime({
+		maxAgeInDays,
+		periodUnit,
+	}: { maxAgeInDays: number; periodUnit: PeriodUnit }) {
+		const rows = await this.insightsByPeriodRepository.getInsightsByTime({
+			maxAgeInDays,
+			periodUnit,
+		});
+
+		return rows.map((r) => {
+			const total = r.succeeded + r.failed;
+			return {
+				date: r.periodStart,
+				values: {
+					total,
+					succeeded: r.succeeded,
+					failed: r.failed,
+					failureRate: r.failed / total,
+					averageRunTime: r.runTime / total,
+					timeSaved: r.timeSaved,
+				},
+			};
+		});
 	}
 }

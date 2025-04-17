@@ -6,6 +6,7 @@ import type {
 	SimplifiedNodeType,
 } from '@/Interface';
 import {
+	AI_CATEGORY_MCP_NODES,
 	AI_CATEGORY_ROOT_NODES,
 	AI_CATEGORY_TOOLS,
 	AI_CODE_NODE_TYPE,
@@ -222,16 +223,17 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 			const aiSubNodes = difference(aiNodes, aiRootNodes);
 
 			aiSubNodes.forEach((node) => {
-				const section = node.properties.codex?.subcategories?.[AI_SUBCATEGORY]?.[0];
+				const subcategories = node.properties.codex?.subcategories ?? {};
+				const section = subcategories[AI_SUBCATEGORY]?.[0];
 
 				if (section) {
-					const subSection = node.properties.codex?.subcategories?.[section]?.[0];
+					const subSection = subcategories[section]?.[0];
 					const sectionKey = subSection ?? section;
 					const currentItems = sectionsMap.get(sectionKey)?.items ?? [];
-					const isSubnodesSection =
-						!node.properties.codex?.subcategories?.[AI_SUBCATEGORY].includes(
-							AI_CATEGORY_ROOT_NODES,
-						);
+					const isSubnodesSection = !(
+						subcategories[AI_SUBCATEGORY].includes(AI_CATEGORY_ROOT_NODES) ||
+						subcategories[AI_SUBCATEGORY].includes(AI_CATEGORY_MCP_NODES)
+					);
 
 					let title = section;
 					if (isSubnodesSection) {

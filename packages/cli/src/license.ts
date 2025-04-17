@@ -14,6 +14,7 @@ import {
 	LICENSE_QUOTAS,
 	N8N_VERSION,
 	SETTINGS_LICENSE_CERT_KEY,
+	Time,
 	UNLIMITED_LICENSE_QUOTA,
 } from './constants';
 import type { BooleanLicenseFeature, NumericLicenseFeature } from './interfaces';
@@ -60,7 +61,7 @@ export class License {
 		const isMainInstance = instanceType === 'main';
 		const server = this.globalConfig.license.serverUrl;
 		const offlineMode = !isMainInstance;
-		const autoRenewOffset = this.globalConfig.license.autoRenewOffset;
+		const autoRenewOffset = 72 * Time.hours.toSeconds;
 		const saveCertStr = isMainInstance
 			? async (value: TLicenseBlock) => await this.saveCertStr(value)
 			: async () => {};
@@ -92,6 +93,7 @@ export class License {
 				autoRenewEnabled: shouldRenew,
 				renewOnInit: shouldRenew,
 				autoRenewOffset,
+				detachFloatingOnShutdown: this.globalConfig.license.detachFloatingOnShutdown,
 				offlineMode,
 				logger: this.logger,
 				loadCertStr: async () => await this.loadCertStr(),
@@ -194,6 +196,15 @@ export class License {
 		this.logger.debug('License renewed');
 	}
 
+	async clear() {
+		if (!this.manager) {
+			return;
+		}
+
+		await this.manager.clear();
+		this.logger.info('License cleared');
+	}
+
 	@OnShutdown()
 	async shutdown() {
 		// Shut down License manager to unclaim any floating entitlements
@@ -226,6 +237,10 @@ export class License {
 
 	isSamlEnabled() {
 		return this.isFeatureEnabled(LICENSE_FEATURES.SAML);
+	}
+
+	isApiKeyScopesEnabled() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.API_KEY_SCOPES);
 	}
 
 	isAiAssistantEnabled() {
@@ -304,6 +319,18 @@ export class License {
 		return this.isFeatureEnabled(LICENSE_FEATURES.FOLDERS);
 	}
 
+	isInsightsSummaryEnabled() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.INSIGHTS_VIEW_SUMMARY);
+	}
+
+	isInsightsDashboardEnabled() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.INSIGHTS_VIEW_DASHBOARD);
+	}
+
+	isInsightsHourlyDataEnabled() {
+		return this.getFeatureValue(LICENSE_FEATURES.INSIGHTS_VIEW_HOURLY_DATA);
+	}
+
 	getCurrentEntitlements() {
 		return this.manager?.getCurrentEntitlements() ?? [];
 	}
@@ -364,6 +391,18 @@ export class License {
 		return (
 			this.getFeatureValue(LICENSE_QUOTAS.WORKFLOW_HISTORY_PRUNE_LIMIT) ?? UNLIMITED_LICENSE_QUOTA
 		);
+	}
+
+	getInsightsMaxHistory() {
+		return this.getFeatureValue(LICENSE_QUOTAS.INSIGHTS_MAX_HISTORY_DAYS) ?? 7;
+	}
+
+	getInsightsRetentionMaxAge() {
+		return this.getFeatureValue(LICENSE_QUOTAS.INSIGHTS_RETENTION_MAX_AGE_DAYS) ?? 180;
+	}
+
+	getInsightsRetentionPruneInterval() {
+		return this.getFeatureValue(LICENSE_QUOTAS.INSIGHTS_RETENTION_PRUNE_INTERVAL_DAYS) ?? 24;
 	}
 
 	getTeamProjectLimit() {

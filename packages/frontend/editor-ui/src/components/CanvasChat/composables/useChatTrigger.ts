@@ -11,10 +11,9 @@ import {
 	AI_CATEGORY_CHAINS,
 	AI_CODE_NODE_TYPE,
 	AI_SUBCATEGORY,
-	CHAT_TRIGGER_NODE_TYPE,
-	MANUAL_CHAT_TRIGGER_NODE_TYPE,
 } from '@/constants';
 import type { INodeUi } from '@/Interface';
+import { isChatNode } from '@/components/CanvasChat/utils';
 
 export interface ChatTriggerDependencies {
 	getNodeByName: (name: string) => INodeUi | null;
@@ -52,9 +51,7 @@ export function useChatTrigger({
 
 	/** Gets the chat trigger node from the workflow */
 	function setChatTriggerNode() {
-		const triggerNode = unref(canvasNodes).find((node) =>
-			[CHAT_TRIGGER_NODE_TYPE, MANUAL_CHAT_TRIGGER_NODE_TYPE].includes(node.type),
-		);
+		const triggerNode = unref(canvasNodes).find(isChatNode);
 
 		if (!triggerNode) {
 			return;

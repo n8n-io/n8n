@@ -10,6 +10,7 @@ import type {
 	LoadedClass,
 	INodeTypeDescription,
 	INodeIssues,
+	ITaskData,
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeHelpers, Workflow } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
@@ -28,6 +29,7 @@ import {
 } from '@/constants';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
 import { CanvasNodeRenderType } from '@/types';
+import type { FrontendSettings } from '@n8n/api-types';
 
 export const mockNode = ({
 	id = uuid(),
@@ -58,6 +60,7 @@ export const mockNodeTypeDescription = ({
 	outputs = [NodeConnectionTypes.Main],
 	codex = undefined,
 	properties = [],
+	group,
 }: {
 	name?: INodeTypeDescription['name'];
 	icon?: INodeTypeDescription['icon'];
@@ -67,6 +70,7 @@ export const mockNodeTypeDescription = ({
 	outputs?: INodeTypeDescription['outputs'];
 	codex?: INodeTypeDescription['codex'];
 	properties?: INodeTypeDescription['properties'];
+	group?: INodeTypeDescription['group'];
 } = {}) =>
 	mock<INodeTypeDescription>({
 		name,
@@ -80,7 +84,7 @@ export const mockNodeTypeDescription = ({
 		defaultVersion: Array.isArray(version) ? version[version.length - 1] : version,
 		properties: properties as [],
 		maxNodes: Infinity,
-		group: EXECUTABLE_TRIGGER_NODE_TYPES.includes(name) ? ['trigger'] : [],
+		group: (group ?? EXECUTABLE_TRIGGER_NODE_TYPES.includes(name)) ? ['trigger'] : [],
 		inputs,
 		outputs,
 		codex,
@@ -199,5 +203,46 @@ export function createTestNode(node: Partial<INode> = {}): INode {
 		position: [0, 0] as [number, number],
 		parameters: {},
 		...node,
+	};
+}
+
+export function createMockEnterpriseSettings(
+	overrides: Partial<FrontendSettings['enterprise']> = {},
+): FrontendSettings['enterprise'] {
+	return {
+		sharing: false,
+		ldap: false,
+		saml: false,
+		logStreaming: false,
+		advancedExecutionFilters: false,
+		variables: false,
+		sourceControl: false,
+		auditLogs: false,
+		externalSecrets: false,
+		showNonProdBanner: false,
+		debugInEditor: false,
+		binaryDataS3: false,
+		workflowHistory: false,
+		workerView: false,
+		advancedPermissions: false,
+		apiKeyScopes: false,
+		projects: {
+			team: {
+				limit: 0,
+			},
+		},
+		...overrides, // Override with any passed properties
+	};
+}
+
+export function createTestTaskData(partialData: Partial<ITaskData>): ITaskData {
+	return {
+		startTime: 0,
+		executionTime: 1,
+		executionIndex: 0,
+		source: [],
+		executionStatus: 'success',
+		data: { main: [[{ json: {} }]] },
+		...partialData,
 	};
 }

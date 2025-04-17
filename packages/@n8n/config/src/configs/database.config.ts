@@ -1,4 +1,9 @@
+import { z } from 'zod';
+
 import { Config, Env, Nested } from '../decorators';
+
+const dbLoggingOptionsSchema = z.enum(['query', 'error', 'schema', 'warn', 'info', 'log', 'all']);
+type DbLoggingOptions = z.infer<typeof dbLoggingOptionsSchema>;
 
 @Config
 class LoggingConfig {
@@ -9,8 +14,8 @@ class LoggingConfig {
 	/**
 	 * Database logging level. Requires `DB_LOGGING_MAX_EXECUTION_TIME` to be higher than `0`.
 	 */
-	@Env('DB_LOGGING_OPTIONS')
-	options: 'query' | 'error' | 'schema' | 'warn' | 'info' | 'log' | 'all' = 'error';
+	@Env('DB_LOGGING_OPTIONS', dbLoggingOptionsSchema)
+	options: DbLoggingOptions = 'error';
 
 	/**
 	 * Only queries that exceed this time (ms) will be logged. Set `0` to disable.
@@ -131,11 +136,14 @@ export class SqliteConfig {
 	executeVacuumOnStartup: boolean = false;
 }
 
+const dbTypeSchema = z.enum(['sqlite', 'mariadb', 'mysqldb', 'postgresdb']);
+type DbType = z.infer<typeof dbTypeSchema>;
+
 @Config
 export class DatabaseConfig {
 	/** Type of database to use */
-	@Env('DB_TYPE')
-	type: 'sqlite' | 'mariadb' | 'mysqldb' | 'postgresdb' = 'sqlite';
+	@Env('DB_TYPE', dbTypeSchema)
+	type: DbType = 'sqlite';
 
 	/** Prefix for table names */
 	@Env('DB_TABLE_PREFIX')
