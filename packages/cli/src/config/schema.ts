@@ -301,22 +301,6 @@ export const schema = {
 		},
 	},
 
-	workflowHistory: {
-		enabled: {
-			doc: 'Whether to save workflow history versions',
-			format: Boolean,
-			default: true,
-			env: 'N8N_WORKFLOW_HISTORY_ENABLED',
-		},
-
-		pruneTime: {
-			doc: 'Time (in hours) to keep workflow history versions for',
-			format: Number,
-			default: -1,
-			env: 'N8N_WORKFLOW_HISTORY_PRUNE_TIME',
-		},
-	},
-
 	proxy_hops: {
 		format: Number,
 		default: 0,

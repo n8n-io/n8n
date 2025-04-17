@@ -380,7 +380,7 @@ export const useFlattenSchema = () => {
 
 		const expression = `{{ ${expressionPrefix ? expressionPrefix + schema.path : schema.path.slice(1)} }}`;
 
-		const id = expression;
+		const id = `${nodeName}-${expression}`;
 
 		if (Array.isArray(schema.value)) {
 			const items: Renders[] = [];
