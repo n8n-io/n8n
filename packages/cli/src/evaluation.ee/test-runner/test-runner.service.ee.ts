@@ -27,8 +27,7 @@ import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
 
 import { EvaluationMetrics } from './evaluation-metrics.ee';
-import { createPinData, getPastExecutionTriggerNode } from './utils.ee';
-import type { MockedNodeItem } from './utils.ee';
+import { createPinData, getPastExecutionTriggerNode, type MockedNodeItem } from './utils.ee';
 
 export interface TestRunMetadata {
 	testRunId: string;
