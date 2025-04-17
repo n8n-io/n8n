@@ -2820,9 +2820,7 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
               >
                 <!--v-if-->
                 <span>
-                  
                   Execute previous nodes
-                  
                 </span>
               </button>
               <!--teleport start-->
