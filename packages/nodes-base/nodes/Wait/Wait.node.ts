@@ -508,9 +508,9 @@ export class Wait extends Webhook {
 		} else {
 			try {
 				const dateTimeStrRaw = context.getNodeParameter('dateTime', 0);
-				const parsedDateTime = tryToParseDateTime(dateTimeStrRaw);
+				const parsedDateTime = tryToParseDateTime(dateTimeStrRaw, context.getTimezone());
 
-				waitTill = parsedDateTime.setZone(context.getTimezone()).toUTC().toJSDate();
+				waitTill = parsedDateTime.toUTC().toJSDate();
 			} catch (e) {
 				throw new NodeOperationError(
 					context.getNode(),
