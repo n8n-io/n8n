@@ -71,12 +71,8 @@ const classes = computed(() => {
 			<N8nSpinner v-if="loading" :size="iconSize" />
 			<N8nIcon v-else-if="icon" :icon="icon" :size="iconSize" />
 		</span>
-		<span v-if="label">
-			{{ label }}
-		</span>
-		<template v-else-if="$slots.default">
-			<slot />
-		</template>
+		<span v-if="label">{{ label }}</span>
+		<template v-else-if="$slots.default"><slot /></template>
 	</component>
 </template>
 
