@@ -1,6 +1,7 @@
 import type { TaskRunnersConfig } from '@n8n/config';
 import type { RunnerMessage, TaskResultData } from '@n8n/task-runner';
 import { mock } from 'jest-mock-extended';
+import type { Logger } from 'n8n-core';
 import { ApplicationError, type INodeTypeBaseDescription } from 'n8n-workflow';
 
 import { Time } from '@/constants';
@@ -888,8 +889,45 @@ describe('TaskBroker', () => {
 	});
 
 	describe('task runner accept timeout', () => {
-		it('broker should handle timeout when waiting for acknowledgment of offer accept', () => {
-			// @TODO
+		it('broker should handle timeout when waiting for acknowledgment of offer accept', async () => {
+			const runnerId = 'runner1';
+			const runner = mock<TaskRunner>({ id: runnerId });
+			const messageCallback = jest.fn();
+			const loggerMock = mock<Logger>();
+
+			taskBroker = new TaskBroker(loggerMock, mock(), mock());
+			taskBroker.registerRunner(runner, messageCallback);
+
+			const offer: TaskOffer = {
+				offerId: 'offer1',
+				runnerId,
+				taskType: 'taskType1',
+				validFor: 1000,
+				validUntil: createValidUntil(1000),
+			};
+
+			const request: TaskRequest = {
+				requestId: 'request1',
+				requesterId: 'requester1',
+				taskType: 'taskType1',
+			};
+
+			jest.useFakeTimers();
+
+			const acceptPromise = taskBroker.acceptOffer(offer, request);
+
+			jest.advanceTimersByTime(2100);
+
+			await acceptPromise;
+
+			expect(request.acceptInProgress).toBe(false);
+			expect(loggerMock.warn).toHaveBeenCalledWith(
+				expect.stringContaining(
+					`Runner (${runnerId}) took too long to acknowledge acceptance of task`,
+				),
+			);
+
+			jest.useRealTimers();
 		});
 	});
 });
