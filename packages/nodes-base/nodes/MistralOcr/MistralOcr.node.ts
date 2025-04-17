@@ -1,7 +1,7 @@
 import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
-import { mistralOcrOperations, mistralOcrFields } from './descriptions/MistralOcrDescription';
+import { document } from './descriptions';
 
 export class MistralOcr implements INodeType {
 	description: INodeTypeDescription = {
@@ -45,8 +45,7 @@ export class MistralOcr implements INodeType {
 				],
 				default: 'document',
 			},
-			...mistralOcrOperations,
-			...mistralOcrFields,
+			...document.description,
 		],
 	};
 }

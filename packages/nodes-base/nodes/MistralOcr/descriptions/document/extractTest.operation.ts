@@ -1,43 +1,9 @@
 import type { INodeProperties } from 'n8n-workflow';
+import { updateDisplayOptions } from 'n8n-workflow';
 
-import { presendTest, sendErrorPostReceive } from '../GenericFunctions';
+import { presendTest } from '../../GenericFunctions';
 
-export const mistralOcrOperations: INodeProperties[] = [
-	{
-		displayName: 'Operation',
-		name: 'operation',
-		type: 'options',
-		noDataExpression: true,
-		displayOptions: {
-			show: {
-				resource: ['document'],
-			},
-		},
-		options: [
-			{
-				name: 'Extract Text',
-				value: 'extractText',
-				description: 'Extract text from documents using OCR',
-				action: 'Extract text',
-				routing: {
-					request: {
-						method: 'POST',
-						url: '/v1/ocr',
-						headers: {
-							'Content-Type': 'application/json',
-						},
-					},
-					output: {
-						postReceive: [sendErrorPostReceive],
-					},
-				},
-			},
-		],
-		default: 'extractText',
-	},
-];
-
-export const mistralOcrFields: INodeProperties[] = [
+const properties: INodeProperties[] = [
 	{
 		displayName: 'Model',
 		name: 'model',
@@ -91,8 +57,9 @@ export const mistralOcrFields: INodeProperties[] = [
 			send: {
 				type: 'body',
 				property: 'document.data',
-				value:
-					'={{ { data: $input.binary[binaryProperty].data, mime_type: $input.binary[binaryProperty].mimeType } }}',
+				value: 'test',
+				// value:
+				// 	'={{ { data: $input.binary[binaryProperty].data, mime_type: $input.binary[binaryProperty].mimeType } }}',
 			},
 		},
 	},
@@ -154,3 +121,12 @@ export const mistralOcrFields: INodeProperties[] = [
 		},
 	},
 ];
+
+const displayOptions = {
+	show: {
+		resource: ['document'],
+		operation: ['extractText'],
+	},
+};
+
+export const description = updateDisplayOptions(displayOptions, properties);
