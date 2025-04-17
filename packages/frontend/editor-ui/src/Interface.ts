@@ -328,7 +328,13 @@ export interface IWorkflowDb {
 	versionId: string;
 	usedCredentials?: IUsedCredential[];
 	meta?: WorkflowMetadata;
-	parentFolder?: ResourceParentFolder;
+	parentFolder?: {
+		id: string;
+		name: string;
+		parentFolderId: string | null;
+		createdAt: string;
+		updatedAt: string;
+	};
 }
 
 // For workflow list we don't need the full workflow data

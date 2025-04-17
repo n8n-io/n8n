@@ -23,7 +23,6 @@ import type {
 	UserAction,
 	WorkflowListResource,
 	WorkflowListItem,
-	FolderPathItem,
 	FolderListItem,
 } from '@/Interface';
 import { useUIStore } from '@/stores/ui.store';
