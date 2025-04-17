@@ -7,7 +7,7 @@ import { Time } from '@/constants';
 import type { TaskRunnerLifecycleEvents } from '@/task-runners/task-runner-lifecycle-events';
 
 import { TaskRejectError } from '../errors/task-reject.error';
-import { TaskRunnerTimeoutError } from '../errors/task-runner-timeout.error';
+import { TaskRunnerExecutionTimeoutError } from '../errors/task-runner-execution-timeout.error';
 import { TaskBroker } from '../task-broker.service';
 import type { TaskOffer, TaskRequest, TaskRunner } from '../task-broker.service';
 
@@ -715,7 +715,7 @@ describe('TaskBroker', () => {
 		});
 	});
 
-	describe('task timeouts', () => {
+	describe('task execution timeouts', () => {
 		let taskBroker: TaskBroker;
 		let config: TaskRunnersConfig;
 		let runnerLifecycleEvents = mock<TaskRunnerLifecycleEvents>();
@@ -879,11 +879,17 @@ describe('TaskBroker', () => {
 			expect(requesterCallback).toHaveBeenCalledWith({
 				type: 'broker:taskerror',
 				taskId,
-				error: expect.any(TaskRunnerTimeoutError),
+				error: expect.any(TaskRunnerExecutionTimeoutError),
 			});
 
 			expect(clearTimeout).toHaveBeenCalled();
 			expect(taskBroker.getTasks().get(taskId)).toBeUndefined();
+		});
+	});
+
+	describe('task runner accept timeout', () => {
+		it('broker should handle timeout when waiting for acknowledgment of offer accept', () => {
+			// @TODO
 		});
 	});
 });
