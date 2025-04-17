@@ -6,6 +6,8 @@ import {
 	recreateNodeExecutionStack,
 	WorkflowExecute,
 	Logger,
+	isTool,
+	rewireGraph,
 } from 'n8n-core';
 import type {
 	IPinData,
@@ -106,6 +108,18 @@ export class ManualExecutionService {
 			// Execute all nodes
 
 			const startNode = this.getExecutionStartNode(data, workflow);
+
+			if (data.destinationNode) {
+				const destinationNode = workflow.getNode(data.destinationNode);
+
+				a.ok(destinationNode);
+
+				if (isTool(destinationNode, workflow.nodeTypes)) {
+					workflow = rewireGraph(destinationNode, DirectedGraph.fromWorkflow(workflow)).toWorkflow(
+						workflow,
+					);
+				}
+			}
 
 			// Can execute without webhook so go on
 			const workflowExecute = new WorkflowExecute(additionalData, data.executionMode);
