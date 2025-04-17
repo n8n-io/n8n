@@ -94,7 +94,7 @@ import { updateCurrentUserSettings } from '@/api/users';
 import { useExecutingNode } from '@/composables/useExecutingNode';
 import { LOGS_PANEL_STATE } from '@/components/CanvasChat/types/logs';
 import { useLocalStorage } from '@vueuse/core';
-import { NodeExecuteBefore } from '@n8n/api-types/push/execution';
+import type { NodeExecuteBefore } from '@n8n/api-types/push/execution';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
