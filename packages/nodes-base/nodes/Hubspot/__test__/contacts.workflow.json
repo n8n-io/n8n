@@ -26,7 +26,7 @@
 			"typeVersion": 2.1,
 			"position": [0, 400],
 			"id": "c8a9eacd-7b90-4c7e-9a01-6d417c8595de",
-			"name": "HubSpot - Company - Get",
+			"name": "HubSpot - Contact - Get",
 			"credentials": {
 				"hubspotApi": {
 					"id": "EDJsHUkhqof5gr15",
@@ -177,7 +177,7 @@
 		}
 	],
 	"pinData": {
-		"HubSpot - Company - Get": [
+		"HubSpot - Contact - Get": [
 			{
 				"json": {
 					"addedAt": 1390574181854,
@@ -561,7 +561,7 @@
 						"index": 0
 					},
 					{
-						"node": "HubSpot - Company - Get",
+						"node": "HubSpot - Contact - Get",
 						"type": "main",
 						"index": 0
 					},

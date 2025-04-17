@@ -7,6 +7,8 @@ import companies from './fixtures/companies.json';
 import companiesSearchResult from './fixtures/companies_search_result.json';
 import contacts from './fixtures/contacts.json';
 import contactsSearchResult from './fixtures/contacts_search_result.json';
+import deals from './fixtures/deals.json';
+import dealsSearchResult from './fixtures/deals_search_result.json';
 
 describe('Hubspot Node', () => {
 	nock.disableNetConnect();
@@ -209,6 +211,53 @@ describe('Hubspot Node', () => {
 		});
 
 		testWorkflows(['nodes/Hubspot/__test__/contacts.workflow.json']);
+
+		it('should make the correct network calls', () => {
+			hubspotNock.done();
+		});
+	});
+
+	describe('deals', () => {
+		beforeAll(() => {
+			hubspotNock
+				.delete('/deals/v1/deal/123', {})
+				.reply(200, deals.deals[0])
+				.post('/deals/v1/deal', {
+					properties: [
+						{ name: 'dealstage', value: 'test stage name' },
+						{ name: 'dealname', value: 'Test Deal' },
+						{ name: 'closedate', value: 1744848000000 },
+						{ name: 'amount', value: '100' },
+						{ name: 'pipeline', value: 'test pipeline name' },
+						{ name: 'description', value: 'Test Deal Desc' },
+						{ name: 'test_custom_prop_name', value: 'test custom prop value' },
+					],
+					associations: {},
+				})
+				.reply(200, deals.deals[0])
+				.put('/deals/v1/deal/123')
+				.reply(200, deals.deals[0])
+				.get('/deals/v1/deal/paged?includeAssociations=true&limit=2')
+				.reply(200, deals)
+				.get(
+					'/deals/v1/deal/recent/created?since=1745193600000&includePropertyVersions=true&count=2',
+				)
+				.reply(200, { results: deals.deals })
+				.get('/deals/v1/deal/123')
+				.reply(200, deals.deals[0])
+				.post('/crm/v3/objects/deals/search', {
+					sorts: [{ propertyName: 'createdate', direction: 'ASCENDING' }],
+					filterGroups: [
+						{ filters: [{ propertyName: 'name', operator: 'EQ', value: 'Test Deal Name' }] },
+					],
+					direction: 'ASCENDING',
+					sortBy: 'createdate',
+					limit: 2,
+				})
+				.reply(200, dealsSearchResult);
+		});
+
+		testWorkflows(['nodes/Hubspot/__test__/deals.workflow.json']);
 
 		it('should make the correct network calls', () => {
 			hubspotNock.done();
