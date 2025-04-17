@@ -93,6 +93,10 @@ export class DummyProvider extends SecretsProvider {
 	}
 }
 
+export class AnotherDummyProvider extends DummyProvider {
+	name = 'another_dummy';
+}
+
 export class ErrorProvider extends SecretsProvider {
 	secrets: Record<string, string> = {};
 
@@ -112,7 +116,7 @@ export class ErrorProvider extends SecretsProvider {
 	}
 
 	async disconnect(): Promise<void> {
-		throw new Error();
+		// no-op
 	}
 
 	async update(): Promise<void> {
