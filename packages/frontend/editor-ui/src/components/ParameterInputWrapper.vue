@@ -19,6 +19,7 @@ import { isValueExpression, parseResourceMapperFieldName } from '@/utils/nodeTyp
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { computed, useTemplateRef } from 'vue';
+import { getResolvedExpression } from '@/utils/expressions';
 
 type Props = {
 	parameter: INodeProperties;
@@ -122,11 +123,7 @@ const { resolvedExpression, resolvedExpressionString } = useResolvedExpression({
 });
 
 const expressionOutput = computed(() => {
-	if (isExpression.value && resolvedExpressionString.value) {
-		return resolvedExpressionString.value;
-	}
-
-	return null;
+	return getResolvedExpression(isExpression.value, resolvedExpressionString.value);
 });
 
 const parsedParameterName = computed(() => {

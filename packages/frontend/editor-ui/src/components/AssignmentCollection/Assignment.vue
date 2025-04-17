@@ -11,6 +11,7 @@ import type { AssignmentValue, INodeProperties } from 'n8n-workflow';
 import { computed, ref } from 'vue';
 import TypeSelect from './TypeSelect.vue';
 import { N8nIconButton } from '@n8n/design-system';
+import { getResolvedExpression } from '../../utils/expressions';
 
 interface Props {
 	path: string;
@@ -87,11 +88,7 @@ const { resolvedExpressionString, isExpression } = useResolvedExpression({
 });
 
 const expressionOutput = computed(() => {
-	if (isExpression.value && resolvedExpressionString.value) {
-		return resolvedExpressionString.value;
-	}
-
-	return null;
+	return getResolvedExpression(isExpression.value, resolvedExpressionString.value);
 });
 
 const hint = computed(() => resolvedExpressionString.value);
