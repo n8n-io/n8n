@@ -25,6 +25,8 @@ const emit = defineEmits<{
 	'update:modelValue': [value: Value, e: MouseEvent];
 }>();
 
+const slots = defineSlots<{ option?: ((props: RadioOption) => {}) | undefined }>();
+
 const onClick = (
 	option: { label: string; value: Value; disabled?: boolean },
 	event: MouseEvent,
@@ -48,8 +50,11 @@ const onClick = (
 			:active="modelValue === option.value"
 			:size="size"
 			:disabled="disabled || option.disabled"
+			:no-padding="!!slots.option"
 			@click.prevent.stop="onClick(option, $event)"
-		/>
+		>
+			<slot name="option" v-bind="option" />
+		</RadioButton>
 	</div>
 </template>
 

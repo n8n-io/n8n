@@ -14,8 +14,8 @@ import {
 interface UsePiPWindowOptions {
 	initialWidth?: number;
 	initialHeight?: number;
-	container: Readonly<ShallowRef<HTMLDivElement | null>>;
-	content: Readonly<ShallowRef<HTMLDivElement | null>>;
+	container: Readonly<ShallowRef<HTMLElement | null>>;
+	content: Readonly<ShallowRef<HTMLElement | null>>;
 	shouldPopOut: ComputedRef<boolean>;
 	onRequestClose: () => void;
 }
