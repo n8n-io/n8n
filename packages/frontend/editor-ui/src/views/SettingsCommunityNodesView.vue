@@ -141,7 +141,7 @@ onBeforeUnmount(() => {
 			<n8n-heading size="2xlarge">{{ i18n.baseText('settings.communityNodes') }}</n8n-heading>
 			<n8n-button
 				v-if="
-					!useSettingsStore().isNotVettedPackagesBlocked &&
+					useSettingsStore().isUnverifiedPackagesEnabled &&
 					communityNodesStore.getInstalledPackages.length > 0 &&
 					!loading
 				"

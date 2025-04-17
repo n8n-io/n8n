@@ -45,7 +45,7 @@ describe('CommunityPackagesService', () => {
 			communityPackages: {
 				reinstallMissing: false,
 				registry: 'some.random.host',
-				blockNotVetted: false,
+				unverifiedEnabled: true,
 			},
 		},
 	});
@@ -444,7 +444,7 @@ describe('CommunityPackagesService', () => {
 
 	describe('installPackage', () => {
 		test('should throw when installation of not vetted packages is forbidden', async () => {
-			globalConfig.nodes.communityPackages.blockNotVetted = true;
+			globalConfig.nodes.communityPackages.unverifiedEnabled = false;
 			globalConfig.nodes.communityPackages.registry = 'https://registry.npmjs.org';
 			await expect(communityPackagesService.installPackage('package', '0.1.0')).rejects.toThrow(
 				'Installation of non-vetted community packages is forbidden!',

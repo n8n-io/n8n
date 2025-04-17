@@ -343,7 +343,7 @@ export class CommunityPackagesService {
 	private checkInstallPermissions(isUpdate: boolean, isVettedPackageInstall: boolean) {
 		if (isUpdate) return;
 
-		if (this.globalConfig.nodes.communityPackages.blockNotVetted && !isVettedPackageInstall) {
+		if (!this.globalConfig.nodes.communityPackages.unverifiedEnabled && !isVettedPackageInstall) {
 			throw new UnexpectedError('Installation of non-vetted community packages is forbidden!');
 		}
 	}

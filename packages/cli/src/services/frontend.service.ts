@@ -172,7 +172,7 @@ export class FrontendService {
 			executionMode: config.getEnv('executions.mode'),
 			pushBackend: this.pushConfig.backend,
 			communityNodesEnabled: this.globalConfig.nodes.communityPackages.enabled,
-			blockNotVetted: this.globalConfig.nodes.communityPackages.blockNotVetted,
+			unverifiedEnabled: this.globalConfig.nodes.communityPackages.unverifiedEnabled,
 			deployment: {
 				type: config.getEnv('deployment.type'),
 			},

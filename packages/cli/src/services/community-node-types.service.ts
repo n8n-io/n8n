@@ -9,6 +9,7 @@ import { strapiPaginatedRequest, type StrapiData } from '../utils/strapi-utils';
 
 const UPDATE_INTERVAL = 8 * 60 * 60 * 1000;
 
+// const N8N_VETTED_NODE_TYPES_URL = 'http://localhost:5678/webhook/strapi-mock';
 const N8N_VETTED_NODE_TYPES_URL = 'https://alive-direct-hippo.ngrok-free.app/api/community-nodes';
 
 @Service()
@@ -32,7 +33,7 @@ export class CommunityNodeTypesService {
 			let data: StrapiData[] = [];
 			if (
 				this.globalConfig.nodes.communityPackages.enabled &&
-				this.globalConfig.nodes.communityPackages.vettedEnabled
+				this.globalConfig.nodes.communityPackages.verifiedEnabled
 			) {
 				data = await strapiPaginatedRequest(N8N_VETTED_NODE_TYPES_URL);
 			}
