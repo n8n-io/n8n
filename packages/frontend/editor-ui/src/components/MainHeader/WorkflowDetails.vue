@@ -57,6 +57,7 @@ import type { BaseTextKey } from '@/plugins/i18n';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { ProjectTypes } from '@/types/projects.types';
+import { useFoldersStore } from '@/stores/folders.store';
 
 const props = defineProps<{
 	readOnly?: boolean;
@@ -80,6 +81,7 @@ const uiStore = useUIStore();
 const usersStore = useUsersStore();
 const workflowsStore = useWorkflowsStore();
 const projectsStore = useProjectsStore();
+const foldersStore = useFoldersStore();
 const npsSurveyStore = useNpsSurveyStore();
 const i18n = useI18n();
 
@@ -208,6 +210,18 @@ const currentProjectName = computed(() => {
 		return locale.baseText('projects.menu.personal');
 	}
 	return projectsStore.currentProject?.name;
+});
+
+const currentFolderForBreadcrumbs = computed(() => {
+	if (!isNewWorkflow.value && props.currentFolder) {
+		return props.currentFolder;
+	}
+	const folderId = route.query.parentFolderId as string;
+
+	if (folderId) {
+		return foldersStore.getCachedFolder(folderId);
+	}
+	return null;
 });
 
 watch(
@@ -575,7 +589,7 @@ function showCreateWorkflowSuccessToast(id?: string) {
 	<div :class="$style.container">
 		<BreakpointsObserver :value-x-s="15" :value-s-m="25" :value-m-d="50" class="name-container">
 			<template #default="{ value }">
-				<FolderBreadcrumbs :current-folder="props.currentFolder">
+				<FolderBreadcrumbs :current-folder="currentFolderForBreadcrumbs">
 					<template #append>
 						<span :class="$style['path-separator']">/</span>
 						<ShortenName :name="name" :limit="value" :custom="true" test-id="workflow-name-input">

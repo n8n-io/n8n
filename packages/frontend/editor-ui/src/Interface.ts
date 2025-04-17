@@ -332,8 +332,8 @@ export interface IWorkflowDb {
 		id: string;
 		name: string;
 		parentFolderId: string | null;
-		createdAt: string;
-		updatedAt: string;
+		createdAt?: string;
+		updatedAt?: string;
 	};
 }
 

@@ -71,25 +71,24 @@ const visibleBreadcrumbsItems = computed<FolderPathItem[]>(() => {
 });
 
 const hiddenBreadcrumbsItems = computed<FolderPathItem[]>(() => {
-	const lastVisibleParent: FolderPathItem =
-		visibleBreadcrumbsItems.value[visibleBreadcrumbsItems.value.length - 1];
-	if (!lastVisibleParent) return [];
 	const items: FolderPathItem[] = [];
-	// Go through all the parent folders and add them to the hidden items
-	let parentFolder = lastVisibleParent.parentFolder;
+	let parentFolder = visibleBreadcrumbsItems.value.at(-1)?.parentFolder;
+
 	while (parentFolder) {
 		const parent = foldersStore.getCachedFolder(parentFolder);
-
 		if (!parent) break;
+
 		items.unshift({
 			id: parent.id,
 			label: parent.name,
 			href: `/projects/${route.params.projectId}/folders/${parent.id}/workflows`,
 			parentFolder: parent.parentFolder,
 		});
+
 		parentFolder = parent.parentFolder;
 	}
-	return items;
+	// Filter out items that are already in the visible breadcrumbs
+	return items.filter((item) => !visibleBreadcrumbsItems.value.some((i) => i.id === item.id));
 });
 
 const onItemSelect = (item: PathItem) => {

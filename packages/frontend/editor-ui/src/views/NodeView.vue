@@ -114,6 +114,7 @@ import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
 import type { CanvasLayoutEvent } from '@/composables/useCanvasLayout';
 import { useClearExecutionButtonVisible } from '@/composables/useClearExecutionButtonVisible';
 import { LOGS_PANEL_STATE } from '@/components/CanvasChat/types/logs';
+import { useFoldersStore } from '@/stores/folders.store';
 
 defineOptions({
 	name: 'NodeView',
@@ -381,12 +382,32 @@ async function initializeRoute(force = false) {
 async function initializeWorkspaceForNewWorkflow() {
 	resetWorkspace();
 
+	const parentFolderId = route.query.parentFolderId as string | undefined;
+
 	await workflowsStore.getNewWorkflowData(
 		undefined,
 		projectsStore.currentProjectId,
-		route.query.parentFolderId as string | undefined,
+		parentFolderId,
 	);
 	workflowsStore.makeNewWorkflowShareable();
+
+	// Load home project and  parent folder data if they are not already loaded
+	if (projectsStore.currentProjectId && !projectsStore.currentProject) {
+		const project = await projectsStore.fetchProject(projectsStore.currentProjectId);
+		projectsStore.setCurrentProject(project);
+	}
+
+	if (parentFolderId) {
+		let parentFolder = useFoldersStore().getCachedFolder(parentFolderId);
+		if (!parentFolder && projectsStore.currentProjectId) {
+			await useFoldersStore().getFolderPath(projectsStore.currentProjectId, parentFolderId);
+			parentFolder = useFoldersStore().getCachedFolder(parentFolderId);
+		}
+		workflowsStore.setParentFolder({
+			...parentFolder,
+			parentFolderId: parentFolder.parentFolder || null,
+		});
+	}
 
 	uiStore.nodeViewInitialized = true;
 	initializedWorkflowId.value = NEW_WORKFLOW_ID;
