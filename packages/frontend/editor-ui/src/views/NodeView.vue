@@ -404,10 +404,12 @@ async function initializeWorkspaceForNewWorkflow() {
 			await foldersStore.getFolderPath(projectsStore.currentProjectId, parentFolderId);
 			parentFolder = foldersStore.getCachedFolder(parentFolderId);
 		}
-		workflowsStore.setParentFolder({
-			...parentFolder,
-			parentFolderId: parentFolder.parentFolder ?? null,
-		});
+		if (parentFolder) {
+			workflowsStore.setParentFolder({
+				...parentFolder,
+				parentFolderId: parentFolder.parentFolder ?? null,
+			});
+		}
 	}
 
 	uiStore.nodeViewInitialized = true;

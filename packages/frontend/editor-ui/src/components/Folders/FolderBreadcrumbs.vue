@@ -85,9 +85,13 @@ const visibleBreadcrumbsItems = computed<FolderPathItem[]>(() => {
 
 const hiddenBreadcrumbsItems = computed<FolderPathItem[]>(() => {
 	const items: FolderPathItem[] = [];
+	const visitedFolders = new Set<string>();
 	let parentFolder = visibleBreadcrumbsItems.value.at(-1)?.parentFolder;
 
 	while (parentFolder) {
+		if (visitedFolders.has(parentFolder)) break; // Prevent circular reference
+		visitedFolders.add(parentFolder);
+
 		const parent = foldersStore.getCachedFolder(parentFolder);
 		if (!parent) break;
 
