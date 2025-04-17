@@ -2,18 +2,18 @@ import { mock } from 'jest-mock-extended';
 jest.mock('node:fs', () => mock<typeof fs>());
 import * as fs from 'node:fs';
 
-import { InstanceSettings } from '@/instance-settings';
-import { InstanceSettingsConfig } from '@/instance-settings/instance-settings-config';
-import { Logger } from '@/logging/logger';
-import { mockInstance } from '@test/utils';
+import type { Logger } from '@/logging/logger';
+
+import { InstanceSettings } from '../instance-settings';
+import { InstanceSettingsConfig } from '../instance-settings-config';
+import { WorkerMissingEncryptionKey } from '../worker-missing-encryption-key.error';
 
 describe('InstanceSettings', () => {
 	const userFolder = '/test';
-	process.env.N8N_USER_FOLDER = userFolder;
 	const settingsFile = `${userFolder}/.n8n/config`;
 
 	const mockFs = mock(fs);
-	const logger = mockInstance(Logger);
+	const logger = mock<Logger>();
 
 	const createInstanceSettings = (opts?: Partial<InstanceSettingsConfig>) =>
 		new InstanceSettings(
@@ -27,6 +27,9 @@ describe('InstanceSettings', () => {
 	beforeEach(() => {
 		jest.resetAllMocks();
 		mockFs.statSync.mockReturnValue({ mode: 0o600 } as fs.Stats);
+
+		process.argv[2] = 'main';
+		process.env = { N8N_USER_FOLDER: userFolder };
 	});
 
 	describe('If the settings file exists', () => {
@@ -183,6 +186,11 @@ describe('InstanceSettings', () => {
 					mode: undefined,
 				},
 			);
+		});
+
+		it("should throw on a worker process, if encryption key isn't set via env", () => {
+			process.argv[2] = 'worker';
+			expect(() => createInstanceSettings()).toThrowError(WorkerMissingEncryptionKey);
 		});
 	});
 

@@ -337,7 +337,7 @@ const removeMismatchedOptionValues = (
 			);
 		}
 
-		if (!hasValidOptions && displayParameter(nodeParameterValues, prop, node.value)) {
+		if (!hasValidOptions && displayParameter(nodeParameterValues, prop, node.value, nodeType)) {
 			unset(nodeParameterValues as object, prop.name);
 		}
 	});
@@ -395,6 +395,7 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 			false,
 			false,
 			_node,
+			nodeType,
 		);
 
 		const oldNodeParameters = Object.assign({}, nodeParameters);
@@ -453,6 +454,7 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 			true,
 			false,
 			_node,
+			nodeType,
 		);
 
 		for (const key of Object.keys(nodeParameters as object)) {
@@ -487,6 +489,7 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 			false,
 			false,
 			_node,
+			nodeType,
 		);
 		const oldNodeParameters = Object.assign({}, nodeParameters);
 
@@ -535,6 +538,7 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 			true,
 			false,
 			_node,
+			nodeType,
 		);
 
 		for (const key of Object.keys(nodeParameters as object)) {

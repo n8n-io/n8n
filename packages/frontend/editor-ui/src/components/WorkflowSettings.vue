@@ -371,6 +371,9 @@ const saveSettings = async () => {
 	void externalHooks.run('workflowSettings.saveSettings', { oldSettings });
 	telemetry.track('User updated workflow settings', {
 		workflow_id: workflowsStore.workflowId,
+		// null and undefined values are removed from the object, but we need the keys to be there
+		time_saved: workflowSettings.value.timeSavedPerExecution ?? '',
+		error_workflow: workflowSettings.value.errorWorkflow ?? '',
 	});
 };
 
@@ -380,7 +383,11 @@ const toggleTimeout = () => {
 
 const updateTimeSavedPerExecution = (value: string) => {
 	const numValue = parseInt(value, 10);
-	workflowSettings.value.timeSavedPerExecution = isNaN(numValue) ? undefined : numValue;
+	workflowSettings.value.timeSavedPerExecution = isNaN(numValue)
+		? undefined
+		: numValue < 0
+			? 0
+			: numValue;
 };
 
 onMounted(async () => {
@@ -826,6 +833,7 @@ onMounted(async () => {
 								:disabled="readOnlyEnv || !workflowPermissions.update"
 								data-test-id="workflow-settings-time-saved-per-execution"
 								type="number"
+								min="0"
 								@update:model-value="updateTimeSavedPerExecution"
 							/>
 							<span>{{ i18n.baseText('workflowSettings.timeSavedPerExecution.hint') }}</span>

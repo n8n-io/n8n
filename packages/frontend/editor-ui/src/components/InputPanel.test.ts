@@ -128,6 +128,7 @@ describe('InputPanel', () => {
 				{
 					startTime: 0,
 					executionTime: 0,
+					executionIndex: 0,
 					source: [],
 					data: {},
 				},

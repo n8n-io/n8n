@@ -9,7 +9,7 @@ export const insightsSummaryTypeSchema = z.enum([
 ]);
 export type InsightsSummaryType = z.infer<typeof insightsSummaryTypeSchema>;
 
-export const insightsSummaryUnitSchema = z.enum(['count', 'ratio', 'time']);
+export const insightsSummaryUnitSchema = z.enum(['count', 'ratio', 'millisecond', 'minute']);
 export type InsightsSummaryUnit = z.infer<typeof insightsSummaryUnitSchema>;
 
 export const insightsSummaryDataSchemas = {
@@ -31,12 +31,12 @@ export const insightsSummaryDataSchemas = {
 	timeSaved: z.object({
 		value: z.number(),
 		deviation: z.union([z.null(), z.number()]),
-		unit: z.literal('time'),
+		unit: z.literal('minute'),
 	}),
 	averageRunTime: z.object({
 		value: z.number(),
 		deviation: z.union([z.null(), z.number()]),
-		unit: z.literal('time'),
+		unit: z.literal('millisecond'),
 	}),
 } as const;
 
@@ -49,9 +49,9 @@ export const insightsByWorkflowDataSchemas = {
 		z
 			.object({
 				workflowId: z.string(),
-				workflowName: z.string().optional(),
-				projectId: z.string().optional(),
-				projectName: z.string().optional(),
+				workflowName: z.string(),
+				projectId: z.string(),
+				projectName: z.string(),
 				total: z.number(),
 				succeeded: z.number(),
 				failed: z.number(),

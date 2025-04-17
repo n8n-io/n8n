@@ -81,6 +81,7 @@ describe('ParameterInput.vue', () => {
 		};
 		mockNodeTypesState = {
 			allNodeTypes: [],
+			getNodeType: vi.fn().mockReturnValue(null),
 		};
 		createAppModals();
 	});

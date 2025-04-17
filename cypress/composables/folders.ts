@@ -387,6 +387,21 @@ export function moveWorkflowToFolder(workflowName: string, folderName: string) {
 	getMoveToFolderOption(folderName).should('be.visible').click();
 	getMoveFolderConfirmButton().should('be.enabled').click();
 }
+
+export function dragAndDropToFolder(sourceName: string, destinationName: string) {
+	const draggable = `[data-test-id=draggable]:has([data-resourcename="${sourceName}"])`;
+	const droppable = `[data-test-id=draggable]:has([data-resourcename="${destinationName}"])`;
+	cy.get(draggable).trigger('mousedown');
+	cy.draganddrop(draggable, droppable, { position: 'center' });
+}
+
+export function dragAndDropToProjectRoot(sourceName: string) {
+	const draggable = `[data-test-id=draggable]:has([data-resourcename="${sourceName}"])`;
+	const droppable = '[data-test-id="home-project"]';
+	cy.get(draggable).trigger('mousedown');
+	cy.draganddrop(draggable, droppable, { position: 'center' });
+}
+
 /**
  * Utils
  */
@@ -448,9 +463,9 @@ function moveFolder(folderName: string, destinationName: string) {
 	cy.intercept('PATCH', '/rest/projects/**').as('moveFolder');
 	getMoveFolderModal().should('be.visible');
 	getMoveFolderModal().find('h1').first().contains(`Move "${folderName}" to another folder`);
-	getMoveToFolderDropdown().click();
 	// Try to find current folder in the dropdown
-	getMoveToFolderInput().type(folderName, { delay: 50 });
+	// This tests that auto-focus worked as expected
+	cy.focused().type(folderName, { delay: 50 });
 	// Should not be available
 	getEmptyFolderDropdownMessage('No folders found').should('exist');
 	// Select destination folder
