@@ -119,14 +119,38 @@ function getBestQuoteChar(description: string) {
 	return "'";
 }
 
+// Note that this is not *technically* unique, as two lists with the
+// same list name and the same property display name could theoretically
+// exist within one node. However, this is unlikely to happen in practice.
+export function buildUniqueName(props: Pick<OverrideContext, 'parameter' | 'path'>) {
+	const path = props.path.split('.');
+
+	// include any list segments in the path (e.g. .myListName[0].) for uniqueness
+	// but drop brackets to avoid token limits
+	const filteredPaths = path
+		.filter((x) => /\[\d+\]/i.test(x))
+		.map((x) => x.replaceAll(/[\[\]]/gi, ''));
+	let result = [...filteredPaths, props.parameter.displayName].join('_');
+
+	// Langchain requires the name to be <64 characters
+	if (filteredPaths.length > 1) {
+		// Prefer clipping the list names over the display name
+		result = result.slice(-63);
+	} else {
+		result = result.slice(0, 63);
+	}
+
+	return result;
+}
+
 export function buildValueFromOverride(
 	override: FromAIOverride,
-	props: Pick<OverrideContext, 'parameter'>,
+	props: Pick<OverrideContext, 'parameter' | 'path'>,
 	includeMarker: boolean,
 ) {
 	const { extraPropValues, extraProps } = override;
 	const marker = includeMarker ? `${FROM_AI_AUTO_GENERATED_MARKER} ` : '';
-	const key = sanitizeFromAiParameterName(props.parameter.displayName);
+	const key = sanitizeFromAiParameterName(buildUniqueName(props));
 	const description =
 		extraPropValues?.description?.toString() ?? extraProps.description.initialValue;
 
