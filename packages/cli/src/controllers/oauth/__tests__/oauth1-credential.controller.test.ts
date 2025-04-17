@@ -223,7 +223,7 @@ describe('OAuth1CredentialController', () => {
 		it('should exchange the code for a valid token, and save it to DB', async () => {
 			credentialsRepository.findOneBy.mockResolvedValue(credential);
 			credentialsHelper.getDecrypted.mockResolvedValue({ csrfSecret });
-			credentialsHelper.applyDefaultsAndOverwrites.mockResolvedValue({
+			credentialsHelper.applyDefaultsAndOverwrites.mockResolvedValueOnce({
 				requestTokenUrl: 'https://example.domain/oauth/request_token',
 				accessTokenUrl: 'https://example.domain/oauth/access_token',
 				signatureMethod: 'HMAC-SHA1',
