@@ -4,11 +4,10 @@ import axios from 'axios';
 import { Logger } from 'n8n-core';
 import type { IDataObject, INodeProperties } from 'n8n-workflow';
 
-import type { SecretsProviderSettings, SecretsProviderState } from '@/interfaces';
-import { SecretsProvider } from '@/interfaces';
-
 import { DOCS_HELP_NOTICE, EXTERNAL_SECRETS_NAME_REGEX } from '../constants';
 import { ExternalSecretsConfig } from '../external-secrets.config';
+import type { SecretsProviderSettings, SecretsProviderState } from '../types';
+import { SecretsProvider } from '../types';
 
 type VaultAuthMethod = 'token' | 'usernameAndPassword' | 'appRole';
 
