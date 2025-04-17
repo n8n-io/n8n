@@ -160,7 +160,6 @@ describe('useRunWorkflow({ router })', () => {
 
 			const mockResponse = { executionId: '123', waitingForWebhook: false };
 			vi.mocked(workflowsStore).runWorkflow.mockResolvedValue(mockResponse);
-			vi.mocked(workflowsStore).setActiveExecutionId('123');
 
 			const response = await runWorkflowApi({} as IStartRunData);
 
