@@ -102,6 +102,7 @@ import { useUniqueNodeName } from '@/composables/useUniqueNodeName';
 import { isPresent } from '../utils/typesUtils';
 import { useProjectsStore } from '@/stores/projects.store';
 import type { CanvasLayoutEvent } from './useCanvasLayout';
+import { useFoldersStore } from '@/stores/folders.store';
 
 type AddNodeData = Partial<INodeUi> & {
 	type: string;
@@ -142,6 +143,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 	const nodeCreatorStore = useNodeCreatorStore();
 	const executionsStore = useExecutionsStore();
 	const projectsStore = useProjectsStore();
+	const folderStore = useFoldersStore();
 
 	const i18n = useI18n();
 	const toast = useToast();
@@ -1482,6 +1484,10 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 
 		if (data.parentFolder) {
 			workflowsStore.setParentFolder(data.parentFolder);
+			const isParentFolderCached = folderStore.breadcrumbsCache[data.parentFolder.id] !== undefined;
+			if (data.homeProject && !isParentFolderCached) {
+				folderStore.getFolderPath(data.homeProject.id, data.parentFolder.id);
+			}
 		}
 	}
 
