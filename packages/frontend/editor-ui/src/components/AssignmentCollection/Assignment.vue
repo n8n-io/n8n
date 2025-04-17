@@ -86,6 +86,14 @@ const { resolvedExpressionString, isExpression } = useResolvedExpression({
 	additionalData: resolvedAdditionalExpressionData,
 });
 
+const expressionOutput = computed(() => {
+	if (isExpression.value && resolvedExpressionString.value) {
+		return resolvedExpressionString.value;
+	}
+
+	return null;
+});
+
 const hint = computed(() => resolvedExpressionString.value);
 
 const highlightHint = computed(() => Boolean(hint.value && ndvStore.getHoveringItem));
@@ -188,6 +196,7 @@ const onBlur = (): void => {
 							@blur="onBlur"
 						/>
 						<ParameterInputHint
+							v-if="expressionOutput"
 							data-test-id="parameter-expression-preview-value"
 							:class="$style.hint"
 							:highlight="highlightHint"
