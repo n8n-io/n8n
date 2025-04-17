@@ -686,7 +686,7 @@ describe('NDV', () => {
 		ndv.actions.close();
 	});
 
-	it.only('Should render xml and html tags as strings and can search', () => {
+	it('Should render xml and html tags as strings and can search', () => {
 		cy.createFixtureWorkflow('Test_workflow_xml_output.json', 'test');
 
 		workflowPage.actions.executeWorkflow();
