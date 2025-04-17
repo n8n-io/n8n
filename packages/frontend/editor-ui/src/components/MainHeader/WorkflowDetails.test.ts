@@ -6,7 +6,6 @@ import userEvent from '@testing-library/user-event';
 import { useUIStore } from '@/stores/ui.store';
 import { useRoute } from 'vue-router';
 import type { Mock } from 'vitest';
-import FolderBreadcrumbs from '../Folders/FolderBreadcrumbs.vue';
 
 vi.mock('vue-router', async (importOriginal) => ({
 	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
@@ -53,7 +52,7 @@ const renderComponent = createComponentRenderer(WorkflowDetails, {
 		stubs: {
 			RouterLink: true,
 			FolderBreadcrumbs: {
-				template: '<div><slot name="append"></div>',
+				template: '<div><slot name="append" /></div>',
 			},
 		},
 	},

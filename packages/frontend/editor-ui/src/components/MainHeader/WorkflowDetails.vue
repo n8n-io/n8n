@@ -58,7 +58,7 @@ import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { ProjectTypes } from '@/types/projects.types';
 import { useFoldersStore } from '@/stores/folders.store';
-import { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
+import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 
 const props = defineProps<{
 	readOnly?: boolean;
