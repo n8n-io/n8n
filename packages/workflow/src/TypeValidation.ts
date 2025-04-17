@@ -1,5 +1,6 @@
 import isObject from 'lodash/isObject';
-import { DateTime } from 'luxon';
+import type { Zone } from 'luxon';
+import { DateTime, Settings } from 'luxon';
 
 import { ApplicationError } from './errors';
 import type {
@@ -67,7 +68,10 @@ export const tryToParseBoolean = (value: unknown): value is boolean => {
 
 export const tryToParseDateTime = (value: unknown, defaultZone?: string): DateTime => {
 	if (DateTime.isDateTime(value) && value.isValid) {
-		if (defaultZone) return value.setZone(defaultZone);
+		// Heuristic: overwrite the zone only if the value zone if the system default
+		// because we consider it not intentional
+		if (defaultZone && value.zone.equals(Settings.defaultZone as Zone))
+			return value.setZone(defaultZone, { keepLocalTime: true });
 		return value;
 	}
 
