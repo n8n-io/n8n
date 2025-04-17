@@ -112,6 +112,7 @@ watch(
 			:latest-name="latestInfo.name"
 			:name="props.data.node.name"
 			:is-error="isError"
+			:is-deleted="latestInfo.deleted"
 		/>
 		<N8nText tag="div" color="text-light" size="small" :class="$style.timeTook">
 			<I18nT v-if="isSettled" keypath="logs.overview.body.summaryText">

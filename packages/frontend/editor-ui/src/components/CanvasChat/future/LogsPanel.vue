@@ -230,14 +230,20 @@ watch(
 							</LogsOverviewPanel>
 						</N8nResizeWrapper>
 						<LogsDetailsPanel
-							v-if="isLogDetailsOpenOrCollapsing && selectedLogEntry && execution && workflow"
+							v-if="
+								isLogDetailsOpenOrCollapsing &&
+								selectedLogEntry &&
+								execution &&
+								workflow &&
+								latestNodeNameById[selectedLogEntry.node.id]
+							"
 							:class="$style.logDetails"
 							:is-open="isOpen"
 							:log-entry="selectedLogEntry"
 							:workflow="workflow"
 							:execution="execution"
 							:window="pipWindow"
-							:latest-node-name="latestNodeNameById[selectedLogEntry.node.id]?.name ?? ''"
+							:latest-info="latestNodeNameById[selectedLogEntry.node.id]"
 							@click-header="onToggleOpen(true)"
 						>
 							<template #actions>

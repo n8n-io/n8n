@@ -5,7 +5,11 @@ import RunDataView from '@/components/CanvasChat/future/components/RunDataView.v
 import { useResizablePanel } from '@/components/CanvasChat/future/composables/useResizablePanel';
 import { LOG_DETAILS_CONTENT, type LogDetailsContent } from '@/components/CanvasChat/types/logs';
 import NodeIcon from '@/components/NodeIcon.vue';
-import { getSubtreeTotalConsumedTokens, type LogEntry } from '@/components/CanvasChat/future/utils';
+import {
+	getSubtreeTotalConsumedTokens,
+	type LatestNodeInfo,
+	type LogEntry,
+} from '@/components/CanvasChat/future/utils';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -17,13 +21,13 @@ import NodeName from '@/components/CanvasChat/future/components/NodeName.vue';
 
 const MIN_IO_PANEL_WIDTH = 200;
 
-const { isOpen, logEntry, workflow, execution, window, latestNodeName } = defineProps<{
+const { isOpen, logEntry, workflow, execution, window, latestInfo } = defineProps<{
 	isOpen: boolean;
 	logEntry: LogEntry;
 	workflow: Workflow;
 	execution: IExecutionResponse;
 	window?: Window;
-	latestNodeName: string;
+	latestInfo: LatestNodeInfo;
 }>();
 
 const emit = defineEmits<{ clickHeader: [] }>();
@@ -98,7 +102,11 @@ function handleResizeEnd() {
 			<template #title>
 				<div :class="$style.title">
 					<NodeIcon :node-type="type" :size="16" :class="$style.icon" />
-					<NodeName :latest-name="latestNodeName" :name="logEntry.node.name" />
+					<NodeName
+						:latest-name="latestInfo.name"
+						:name="logEntry.node.name"
+						:is-deleted="latestInfo.deleted"
+					/>
 					<ExecutionSummary
 						v-if="isOpen"
 						:class="$style.executionSummary"
