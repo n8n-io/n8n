@@ -1,0 +1,597 @@
+{
+	"name": "Hubspot contacts",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-220, 500],
+			"id": "660a58a4-9e3c-4d66-908c-26f4d99daff1",
+			"name": "When clicking ‘Test workflow’"
+		},
+		{
+			"parameters": {
+				"operation": "get",
+				"contactId": {
+					"__rl": true,
+					"value": "123",
+					"mode": "id"
+				},
+				"additionalFields": {
+					"formSubmissionMode": "newest",
+					"listMemberships": true
+				}
+			},
+			"type": "n8n-nodes-base.hubspot",
+			"typeVersion": 2.1,
+			"position": [0, 400],
+			"id": "c8a9eacd-7b90-4c7e-9a01-6d417c8595de",
+			"name": "HubSpot - Contact - Get",
+			"credentials": {
+				"hubspotApi": {
+					"id": "EDJsHUkhqof5gr15",
+					"name": "HubSpot account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "delete",
+				"contactId": {
+					"__rl": true,
+					"value": "123",
+					"mode": "id"
+				}
+			},
+			"type": "n8n-nodes-base.hubspot",
+			"typeVersion": 2.1,
+			"position": [0, 0],
+			"id": "f580a3eb-ac70-4838-8229-f4b1a9c0fe31",
+			"name": "HubSpot - Contact - Delete",
+			"credentials": {
+				"hubspotApi": {
+					"id": "EDJsHUkhqof5gr15",
+					"name": "HubSpot account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"email": "elias@n8n.io",
+				"additionalFields": {
+					"annualRevenue": 123,
+					"associatedCompanyId": "=123",
+					"city": "Gent",
+					"closeDate": "2025-04-17T00:00:00",
+					"customPropertiesUi": {
+						"customPropertiesValues": [
+							{
+								"property": "=test_custom_prop_name",
+								"value": "test custom prop value"
+							}
+						]
+					},
+					"firstName": "Elias",
+					"postalCode": "9000",
+					"websiteUrl": "example.com",
+					"workEmail": "elias@n8n.io"
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.hubspot",
+			"typeVersion": 2.1,
+			"position": [0, 200],
+			"id": "6d013a2d-284b-44e3-b1ab-6cd980058d78",
+			"name": "HubSpot - Contact - Create",
+			"credentials": {
+				"hubspotApi": {
+					"id": "EDJsHUkhqof5gr15",
+					"name": "HubSpot account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "getAll",
+				"limit": 2,
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.hubspot",
+			"typeVersion": 2.1,
+			"position": [0, 600],
+			"id": "be09f310-c593-41ae-b79c-b44661918e8f",
+			"name": "HubSpot - Contact - Get Many",
+			"credentials": {
+				"hubspotApi": {
+					"id": "EDJsHUkhqof5gr15",
+					"name": "HubSpot account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "getRecentlyCreatedUpdated",
+				"limit": 2,
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.hubspot",
+			"typeVersion": 2.1,
+			"position": [0, 800],
+			"id": "95b4d7da-612b-4159-b283-36d55d0b6cce",
+			"name": "HubSpot - Contact - Get Recently Updated",
+			"credentials": {
+				"hubspotApi": {
+					"id": "EDJsHUkhqof5gr15",
+					"name": "HubSpot account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "search",
+				"limit": 2,
+				"filterGroupsUi": {
+					"filterGroupsValues": [
+						{
+							"filtersUi": {
+								"filterValues": [
+									{
+										"propertyName": "=firstname",
+										"value": "Elias"
+									},
+									{
+										"propertyName": "=lastname",
+										"value": "Meire"
+									}
+								]
+							}
+						},
+						{
+							"filtersUi": {
+								"filterValues": [
+									{
+										"propertyName": "=email",
+										"operator": "CONTAINS_TOKEN",
+										"value": "n8n.io"
+									}
+								]
+							}
+						}
+					]
+				},
+				"additionalFields": {
+					"direction": "ASCENDING"
+				}
+			},
+			"type": "n8n-nodes-base.hubspot",
+			"typeVersion": 2.1,
+			"position": [0, 1000],
+			"id": "68f5e362-b554-48fd-8b1b-982940dd6e7a",
+			"name": "HubSpot - Contact - Search",
+			"credentials": {
+				"hubspotApi": {
+					"id": "EDJsHUkhqof5gr15",
+					"name": "HubSpot account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"HubSpot - Contact - Get": [
+			{
+				"json": {
+					"addedAt": 1390574181854,
+					"canonical-vid": 204727,
+					"form-submissions": [],
+					"identity-profiles": [
+						{
+							"deleted-changed-timestamp": 0,
+							"identities": [
+								{
+									"timestamp": 1390574181878,
+									"type": "LEAD_GUID",
+									"value": "f9d728f1-dff1-49b0-9caa-247dbdf5b8b7"
+								},
+								{
+									"timestamp": 1476768116137,
+									"type": "EMAIL",
+									"value": "mgnew-email@hubspot.com"
+								}
+							],
+							"saved-at-timestamp": 1476768116149,
+							"vid": 204727
+						}
+					],
+					"is-contact": true,
+					"merge-audits": [],
+					"merged-vids": [],
+					"portal-id": 62515,
+					"properties": {
+						"company": {
+							"value": ""
+						},
+						"firstname": {
+							"value": "Bob"
+						},
+						"lastmodifieddate": {
+							"value": "1483461406481"
+						},
+						"lastname": {
+							"value": "Record"
+						}
+					},
+					"vid": 204727
+				}
+			}
+		],
+		"HubSpot - Contact - Delete": [
+			{
+				"json": {
+					"addedAt": 1390574181854,
+					"canonical-vid": 204727,
+					"form-submissions": [],
+					"identity-profiles": [
+						{
+							"deleted-changed-timestamp": 0,
+							"identities": [
+								{
+									"timestamp": 1390574181878,
+									"type": "LEAD_GUID",
+									"value": "f9d728f1-dff1-49b0-9caa-247dbdf5b8b7"
+								},
+								{
+									"timestamp": 1476768116137,
+									"type": "EMAIL",
+									"value": "mgnew-email@hubspot.com"
+								}
+							],
+							"saved-at-timestamp": 1476768116149,
+							"vid": 204727
+						}
+					],
+					"is-contact": true,
+					"merge-audits": [],
+					"merged-vids": [],
+					"portal-id": 62515,
+					"properties": {
+						"company": {
+							"value": ""
+						},
+						"firstname": {
+							"value": "Bob"
+						},
+						"lastmodifieddate": {
+							"value": "1483461406481"
+						},
+						"lastname": {
+							"value": "Record"
+						}
+					},
+					"vid": 204727
+				}
+			}
+		],
+		"HubSpot - Contact - Create": [
+			{
+				"json": {
+					"addedAt": 1390574181854,
+					"canonical-vid": 204727,
+					"form-submissions": [],
+					"identity-profiles": [
+						{
+							"deleted-changed-timestamp": 0,
+							"identities": [
+								{
+									"timestamp": 1390574181878,
+									"type": "LEAD_GUID",
+									"value": "f9d728f1-dff1-49b0-9caa-247dbdf5b8b7"
+								},
+								{
+									"timestamp": 1476768116137,
+									"type": "EMAIL",
+									"value": "mgnew-email@hubspot.com"
+								}
+							],
+							"saved-at-timestamp": 1476768116149,
+							"vid": 204727
+						}
+					],
+					"is-contact": true,
+					"merge-audits": [],
+					"merged-vids": [],
+					"portal-id": 62515,
+					"properties": {
+						"company": {
+							"value": ""
+						},
+						"firstname": {
+							"value": "Bob"
+						},
+						"lastmodifieddate": {
+							"value": "1483461406481"
+						},
+						"lastname": {
+							"value": "Record"
+						}
+					},
+					"vid": 204727
+				}
+			}
+		],
+		"HubSpot - Contact - Get Many": [
+			{
+				"json": {
+					"addedAt": 1390574181854,
+					"canonical-vid": 204727,
+					"form-submissions": [],
+					"identity-profiles": [
+						{
+							"deleted-changed-timestamp": 0,
+							"identities": [
+								{
+									"timestamp": 1390574181878,
+									"type": "LEAD_GUID",
+									"value": "f9d728f1-dff1-49b0-9caa-247dbdf5b8b7"
+								},
+								{
+									"timestamp": 1476768116137,
+									"type": "EMAIL",
+									"value": "mgnew-email@hubspot.com"
+								}
+							],
+							"saved-at-timestamp": 1476768116149,
+							"vid": 204727
+						}
+					],
+					"is-contact": true,
+					"merge-audits": [],
+					"merged-vids": [],
+					"portal-id": 62515,
+					"properties": {
+						"company": {
+							"value": ""
+						},
+						"firstname": {
+							"value": "Bob"
+						},
+						"lastmodifieddate": {
+							"value": "1483461406481"
+						},
+						"lastname": {
+							"value": "Record"
+						}
+					},
+					"vid": 204727
+				}
+			},
+			{
+				"json": {
+					"addedAt": 1392643921079,
+					"canonical-vid": 207303,
+					"form-submissions": [],
+					"identity-profiles": [
+						{
+							"deleted-changed-timestamp": 0,
+							"identities": [
+								{
+									"timestamp": 1392643921079,
+									"type": "EMAIL",
+									"value": "email_0be34aebe5@abctest.com"
+								},
+								{
+									"timestamp": 1392643921082,
+									"type": "LEAD_GUID",
+									"value": "058378c6-9513-43e1-a13a-43a98d47aa22"
+								}
+							],
+							"saved-at-timestamp": 1392643921090,
+							"vid": 207303
+						}
+					],
+					"is-contact": true,
+					"merge-audits": [],
+					"merged-vids": [],
+					"portal-id": 62515,
+					"properties": {
+						"firstname": {
+							"value": "Ff_FirstName_0"
+						},
+						"lastmodifieddate": {
+							"value": "1479148429488"
+						},
+						"lastname": {
+							"value": "Ff_LastName_0"
+						}
+					},
+					"vid": 207303
+				}
+			}
+		],
+		"HubSpot - Contact - Get Recently Updated": [
+			{
+				"json": {
+					"addedAt": 1390574181854,
+					"canonical-vid": 204727,
+					"form-submissions": [],
+					"identity-profiles": [
+						{
+							"deleted-changed-timestamp": 0,
+							"identities": [
+								{
+									"timestamp": 1390574181878,
+									"type": "LEAD_GUID",
+									"value": "f9d728f1-dff1-49b0-9caa-247dbdf5b8b7"
+								},
+								{
+									"timestamp": 1476768116137,
+									"type": "EMAIL",
+									"value": "mgnew-email@hubspot.com"
+								}
+							],
+							"saved-at-timestamp": 1476768116149,
+							"vid": 204727
+						}
+					],
+					"is-contact": true,
+					"merge-audits": [],
+					"merged-vids": [],
+					"portal-id": 62515,
+					"properties": {
+						"company": {
+							"value": ""
+						},
+						"firstname": {
+							"value": "Bob"
+						},
+						"lastmodifieddate": {
+							"value": "1483461406481"
+						},
+						"lastname": {
+							"value": "Record"
+						}
+					},
+					"vid": 204727
+				}
+			},
+			{
+				"json": {
+					"addedAt": 1392643921079,
+					"canonical-vid": 207303,
+					"form-submissions": [],
+					"identity-profiles": [
+						{
+							"deleted-changed-timestamp": 0,
+							"identities": [
+								{
+									"timestamp": 1392643921079,
+									"type": "EMAIL",
+									"value": "email_0be34aebe5@abctest.com"
+								},
+								{
+									"timestamp": 1392643921082,
+									"type": "LEAD_GUID",
+									"value": "058378c6-9513-43e1-a13a-43a98d47aa22"
+								}
+							],
+							"saved-at-timestamp": 1392643921090,
+							"vid": 207303
+						}
+					],
+					"is-contact": true,
+					"merge-audits": [],
+					"merged-vids": [],
+					"portal-id": 62515,
+					"properties": {
+						"firstname": {
+							"value": "Ff_FirstName_0"
+						},
+						"lastmodifieddate": {
+							"value": "1479148429488"
+						},
+						"lastname": {
+							"value": "Ff_LastName_0"
+						}
+					},
+					"vid": 207303
+				}
+			}
+		],
+		"HubSpot - Contact - Search": [
+			{
+				"json": {
+					"archived": false,
+					"archivedAt": "2025-04-16T18:54:48.554Z",
+					"createdAt": "2025-04-16T18:54:48.554Z",
+					"id": "512",
+					"objectWriteTraceId": "string",
+					"properties": {
+						"email": "mark.s@lumon.industries",
+						"firstname": "Mark",
+						"lastname": "S."
+					},
+					"propertiesWithHistory": {
+						"additionalProp1": [
+							{
+								"sourceId": "string",
+								"sourceLabel": "string",
+								"sourceType": "string",
+								"timestamp": "2025-04-16T18:54:48.554Z",
+								"updatedByUserId": 0,
+								"value": "string"
+							}
+						],
+						"additionalProp2": [
+							{
+								"sourceId": "string",
+								"sourceLabel": "string",
+								"sourceType": "string",
+								"timestamp": "2025-04-16T18:54:48.554Z",
+								"updatedByUserId": 0,
+								"value": "string"
+							}
+						],
+						"additionalProp3": [
+							{
+								"sourceId": "string",
+								"sourceLabel": "string",
+								"sourceType": "string",
+								"timestamp": "2025-04-16T18:54:48.554Z",
+								"updatedByUserId": 0,
+								"value": "string"
+							}
+						]
+					},
+					"updatedAt": "2025-04-16T18:54:48.554Z"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Test workflow’": {
+			"main": [
+				[
+					{
+						"node": "HubSpot - Contact - Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "HubSpot - Contact - Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "HubSpot - Contact - Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "HubSpot - Contact - Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "HubSpot - Contact - Get Recently Updated",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "HubSpot - Contact - Search",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "73e9b678-aa88-4d45-9095-285f742173ba",
+	"meta": {
+		"instanceId": "27cc9b56542ad45b38725555722c50a1c3fee1670bbb67980558314ee08517c4"
+	},
+	"id": "0okjdr441aloqrhb",
+	"tags": []
+}
