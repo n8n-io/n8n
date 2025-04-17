@@ -293,7 +293,7 @@ export class UsersController {
 			throw new ForbiddenError(NO_OWNER_ON_OWNER);
 		}
 
-		await this.userService.update(targetUser.id, { role: payload.newRoleName });
+		await this.userService.changeUserRole(req.user, targetUser, payload);
 
 		this.eventService.emit('user-changed-role', {
 			userId: req.user.id,

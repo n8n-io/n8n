@@ -17,19 +17,13 @@ const emit = defineEmits<{ change: [IRunDataDisplayMode] }>();
 const i18n = useI18n();
 const options = computed(() => {
 	const defaults: Array<{ label: string; value: IRunDataDisplayMode }> = [
+		{ label: i18n.baseText('runData.schema'), value: 'schema' },
 		{ label: i18n.baseText('runData.table'), value: 'table' },
 		{ label: i18n.baseText('runData.json'), value: 'json' },
 	];
 
 	if (hasBinaryData) {
 		defaults.push({ label: i18n.baseText('runData.binary'), value: 'binary' });
-	}
-
-	const schemaView = { label: i18n.baseText('runData.schema'), value: 'schema' } as const;
-	if (paneType === 'input') {
-		defaults.unshift(schemaView);
-	} else {
-		defaults.push(schemaView);
 	}
 
 	if (paneType === 'output' && nodeGeneratesHtml) {

@@ -387,6 +387,21 @@ export function moveWorkflowToFolder(workflowName: string, folderName: string) {
 	getMoveToFolderOption(folderName).should('be.visible').click();
 	getMoveFolderConfirmButton().should('be.enabled').click();
 }
+
+export function dragAndDropToFolder(sourceName: string, destinationName: string) {
+	const draggable = `[data-test-id=draggable]:has([data-resourcename="${sourceName}"])`;
+	const droppable = `[data-test-id=draggable]:has([data-resourcename="${destinationName}"])`;
+	cy.get(draggable).trigger('mousedown');
+	cy.draganddrop(draggable, droppable, { position: 'center' });
+}
+
+export function dragAndDropToProjectRoot(sourceName: string) {
+	const draggable = `[data-test-id=draggable]:has([data-resourcename="${sourceName}"])`;
+	const droppable = '[data-test-id="home-project"]';
+	cy.get(draggable).trigger('mousedown');
+	cy.draganddrop(draggable, droppable, { position: 'center' });
+}
+
 /**
  * Utils
  */

@@ -137,6 +137,7 @@ export const EXECUTE_COMMAND_NODE_TYPE = 'n8n-nodes-base.executeCommand';
 export const FORM_TRIGGER_NODE_TYPE = 'n8n-nodes-base.formTrigger';
 export const HTML_NODE_TYPE = 'n8n-nodes-base.html';
 export const HTTP_REQUEST_NODE_TYPE = 'n8n-nodes-base.httpRequest';
+export const HTTP_REQUEST_TOOL_NODE_TYPE = 'n8n-nodes-base.httpRequestTool';
 export const HUBSPOT_TRIGGER_NODE_TYPE = 'n8n-nodes-base.hubspotTrigger';
 export const IF_NODE_TYPE = 'n8n-nodes-base.if';
 export const INTERVAL_NODE_TYPE = 'n8n-nodes-base.interval';
@@ -633,6 +634,7 @@ export const EnterpriseEditionFeature: Record<
 	WorkflowHistory: 'workflowHistory',
 	WorkerView: 'workerView',
 	AdvancedPermissions: 'advancedPermissions',
+	ApiKeyScopes: 'apiKeyScopes',
 };
 
 export const MAIN_NODE_PANEL_WIDTH = 390;
@@ -721,6 +723,7 @@ export const EXPRESSION_EDITOR_PARSER_TIMEOUT = 15_000; // ms
 
 export const KEEP_AUTH_IN_NDV_FOR_NODES = [
 	HTTP_REQUEST_NODE_TYPE,
+	HTTP_REQUEST_TOOL_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
 	WAIT_NODE_TYPE,
 	DISCORD_NODE_TYPE,
