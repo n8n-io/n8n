@@ -29,6 +29,7 @@ export const generateLineChartOptions = (
 		{
 			responsive: true,
 			maintainAspectRatio: false,
+			animation: false,
 			plugins: {
 				legend: {
 					display: false,
@@ -115,6 +116,7 @@ export const generateBarChartOptions = (
 		{
 			responsive: true,
 			maintainAspectRatio: false,
+			animation: false,
 			plugins: {
 				legend: {
 					display: true,
@@ -126,6 +128,7 @@ export const generateBarChartOptions = (
 						boxHeight: 8,
 						borderRadius: 2,
 						useBorderRadius: true,
+						color: colorTextLight.value,
 					},
 				},
 				tooltip: {

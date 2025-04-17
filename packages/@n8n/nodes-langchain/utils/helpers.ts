@@ -8,6 +8,7 @@ import type { BaseChatMemory } from 'langchain/memory';
 import { NodeConnectionTypes, NodeOperationError, jsonStringify } from 'n8n-workflow';
 import type {
 	AiEvent,
+	INode,
 	IDataObject,
 	IExecuteFunctions,
 	ISupplyDataFunctions,
@@ -248,4 +249,8 @@ export function unwrapNestedOutput(output: Record<string, unknown>): Record<stri
 	}
 
 	return output;
+}
+
+export function nodeNameToToolName(node: INode): string {
+	return node.name.replace(/ /g, '_');
 }

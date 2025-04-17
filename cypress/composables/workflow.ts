@@ -188,6 +188,13 @@ export function getZoomToFitButton() {
 	return cy.getByTestId('zoom-to-fit');
 }
 
+export function getNodeIssuesByName(nodeName: string) {
+	return getCanvasNodes()
+		.filter(`:contains(${nodeName})`)
+		.should('have.length.greaterThan', 0)
+		.findChildByTestId('node-issues');
+}
+
 /**
  * Actions
  */

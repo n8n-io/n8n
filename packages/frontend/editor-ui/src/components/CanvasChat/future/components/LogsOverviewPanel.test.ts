@@ -5,10 +5,9 @@ import { createTestingPinia, type TestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createRouter, createWebHistory } from 'vue-router';
-import { h, type ExtractPropTypes } from 'vue';
+import { h } from 'vue';
 import { fireEvent, waitFor, within } from '@testing-library/vue';
 import {
-	aiAgentNode,
 	aiChatExecutionResponse,
 	aiChatWorkflow,
 	aiManualExecutionResponse,
@@ -16,6 +15,7 @@ import {
 } from '../../__test__/data';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { useNDVStore } from '@/stores/ndv.store';
+import { createLogEntries } from '@/components/RunDataAi/utils';
 
 describe('LogsOverviewPanel', () => {
 	let pinia: TestingPinia;
@@ -23,9 +23,20 @@ describe('LogsOverviewPanel', () => {
 	let pushConnectionStore: ReturnType<typeof mockedStore<typeof usePushConnectionStore>>;
 	let ndvStore: ReturnType<typeof mockedStore<typeof useNDVStore>>;
 
-	function render(props: ExtractPropTypes<typeof LogsOverviewPanel>) {
+	function render(props: Partial<InstanceType<typeof LogsOverviewPanel>['$props']>) {
+		const mergedProps: InstanceType<typeof LogsOverviewPanel>['$props'] = {
+			isOpen: false,
+			isReadOnly: false,
+			isCompact: false,
+			executionTree: createLogEntries(
+				workflowsStore.getCurrentWorkflow(),
+				workflowsStore.workflowExecutionData?.data?.resultData.runData ?? {},
+			),
+			...props,
+		};
+
 		return renderComponent(LogsOverviewPanel, {
-			props,
+			props: mergedProps,
 			global: {
 				plugins: [
 					createRouter({
@@ -54,13 +65,13 @@ describe('LogsOverviewPanel', () => {
 	});
 
 	it('should not render body if the panel is not open', () => {
-		const rendered = render({ isOpen: false, node: null });
+		const rendered = render({ isOpen: false });
 
 		expect(rendered.queryByTestId('logs-overview-empty')).not.toBeInTheDocument();
 	});
 
 	it('should render empty text if there is no execution', () => {
-		const rendered = render({ isOpen: true, node: null });
+		const rendered = render({ isOpen: true });
 
 		expect(rendered.queryByTestId('logs-overview-empty')).toBeInTheDocument();
 	});
@@ -68,7 +79,7 @@ describe('LogsOverviewPanel', () => {
 	it('should render summary text and executed nodes if there is an execution', async () => {
 		workflowsStore.setWorkflowExecutionData(aiChatExecutionResponse);
 
-		const rendered = render({ isOpen: true, node: aiAgentNode });
+		const rendered = render({ isOpen: true });
 		const summary = within(rendered.container.querySelector('.summary')!);
 
 		expect(summary.queryByText('Success in 1.999s')).toBeInTheDocument();
@@ -101,7 +112,7 @@ describe('LogsOverviewPanel', () => {
 	it('should open NDV if the button is clicked', async () => {
 		workflowsStore.setWorkflowExecutionData(aiChatExecutionResponse);
 
-		const rendered = render({ isOpen: true, node: aiAgentNode });
+		const rendered = render({ isOpen: true });
 		const aiAgentRow = rendered.getAllByRole('treeitem')[0];
 
 		await fireEvent.click(within(aiAgentRow).getAllByLabelText('Open...')[0]);
@@ -117,7 +128,7 @@ describe('LogsOverviewPanel', () => {
 
 		workflowsStore.setWorkflowExecutionData(aiChatExecutionResponse);
 
-		const rendered = render({ isOpen: true, node: aiAgentNode });
+		const rendered = render({ isOpen: true });
 		const aiAgentRow = rendered.getAllByRole('treeitem')[0];
 		await fireEvent.click(within(aiAgentRow).getAllByLabelText('Test step')[0]);
 		await waitFor(() =>
