@@ -324,18 +324,12 @@ watch(
 	},
 );
 
-// Variables & context items should be collapsed by default
-watch(
-	contextItems,
-	(currentContextItems) => {
-		currentContextItems
-			.filter((item) => item.type === 'header')
-			.forEach((item) => {
-				closedNodes.value.add(item.id);
-			});
-	},
-	{ once: true, immediate: true },
-);
+// Collapse all nodes except the first
+const unwatchItems = watch(items, (newItems) => {
+	if (newItems.length < 2) return;
+	closedNodes.value = new Set(newItems.slice(1).map((item) => item.id));
+	unwatchItems();
+});
 
 const onDragStart = (el: HTMLElement, data?: string) => {
 	ndvStore.draggableStartDragging({
