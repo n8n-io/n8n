@@ -3,11 +3,10 @@ import type { IDataObject } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 
 import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
-import { ExternalSecretsProviderNotFoundError } from '@/errors/external-secrets-provider-not-found.error';
-import type { SecretsProvider } from '@/interfaces';
-import type { ExternalSecretsRequest } from '@/requests';
 
+import { ExternalSecretsProviderNotFoundError } from './errors/external-secrets-provider-not-found.error';
 import { ExternalSecretsManager } from './external-secrets-manager.ee';
+import type { ExternalSecretsRequest, SecretsProvider } from './types';
 
 @Service()
 export class ExternalSecretsService {

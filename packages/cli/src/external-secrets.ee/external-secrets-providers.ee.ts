@@ -1,12 +1,11 @@
 import { Service } from '@n8n/di';
 
-import type { SecretsProvider } from '@/interfaces';
-
 import { AwsSecretsManager } from './providers/aws-secrets/aws-secrets-manager';
 import { AzureKeyVault } from './providers/azure-key-vault/azure-key-vault';
 import { GcpSecretsManager } from './providers/gcp-secrets-manager/gcp-secrets-manager';
 import { InfisicalProvider } from './providers/infisical';
 import { VaultProvider } from './providers/vault';
+import type { SecretsProvider } from './types';
 
 @Service()
 export class ExternalSecretsProviders {

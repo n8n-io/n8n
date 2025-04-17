@@ -9,7 +9,7 @@ import { SettingsRepository } from '@/databases/repositories/settings.repository
 import type { EventService } from '@/events/event.service';
 import { ExternalSecretsManager } from '@/external-secrets.ee/external-secrets-manager.ee';
 import { ExternalSecretsProviders } from '@/external-secrets.ee/external-secrets-providers.ee';
-import type { ExternalSecretsSettings, SecretsProviderState } from '@/interfaces';
+import type { ExternalSecretsSettings, SecretsProviderState } from '@/external-secrets.ee/types';
 import { License } from '@/license';
 
 import {

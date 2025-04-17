@@ -1,8 +1,6 @@
 import { mock } from 'jest-mock-extended';
 
 import type { SettingsRepository } from '@/databases/repositories/settings.repository';
-import { ExternalSecretsManager } from '@/external-secrets.ee/external-secrets-manager.ee';
-import type { ExternalSecretsSettings } from '@/interfaces';
 import type { License } from '@/license';
 import {
 	AnotherDummyProvider,
@@ -12,6 +10,9 @@ import {
 	MockProviders,
 } from '@test/external-secrets/utils';
 import { mockCipher, mockLogger } from '@test/mocking';
+
+import { ExternalSecretsManager } from '../external-secrets-manager.ee';
+import type { ExternalSecretsSettings } from '../types';
 
 describe('External Secrets Manager', () => {
 	jest.useFakeTimers();

@@ -5,17 +5,13 @@ import { jsonParse, type IDataObject, ensureError, UnexpectedError } from 'n8n-w
 import { SettingsRepository } from '@/databases/repositories/settings.repository';
 import { OnShutdown } from '@/decorators/on-shutdown';
 import { EventService } from '@/events/event.service';
-import type {
-	ExternalSecretsSettings,
-	SecretsProvider,
-	SecretsProviderSettings,
-} from '@/interfaces';
 import { License } from '@/license';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import { EXTERNAL_SECRETS_INITIAL_BACKOFF, EXTERNAL_SECRETS_MAX_BACKOFF } from './constants';
 import { ExternalSecretsProviders } from './external-secrets-providers.ee';
 import { ExternalSecretsConfig } from './external-secrets.config';
+import type { ExternalSecretsSettings, SecretsProvider, SecretsProviderSettings } from './types';
 
 @Service()
 export class ExternalSecretsManager {
