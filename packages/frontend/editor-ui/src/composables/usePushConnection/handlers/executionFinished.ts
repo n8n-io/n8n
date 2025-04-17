@@ -11,7 +11,7 @@ import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { parse } from 'flatted';
 import { useToast } from '@/composables/useToast';
-import { useRouter } from 'vue-router';
+import type { useRouter } from 'vue-router';
 import { useI18n } from '@/composables/useI18n';
 import { TelemetryHelpers } from 'n8n-workflow';
 import type {
@@ -39,7 +39,10 @@ export type SimplifiedExecution = Pick<
 /**
  * Handles the 'executionFinished' event, which happens when a workflow execution is finished.
  */
-export async function executionFinished({ data }: ExecutionFinished) {
+export async function executionFinished(
+	{ data }: ExecutionFinished,
+	options: { router: ReturnType<typeof useRouter> },
+) {
 	const workflowsStore = useWorkflowsStore();
 	const uiStore = useUIStore();
 
@@ -90,7 +93,7 @@ export async function executionFinished({ data }: ExecutionFinished) {
 		};
 	} else {
 		if (data.status === 'success') {
-			handleExecutionFinishedSuccessfully(data.workflowId);
+			handleExecutionFinishedSuccessfully(data.workflowId, options);
 			successToastAlreadyShown = true;
 		}
 
@@ -105,11 +108,11 @@ export async function executionFinished({ data }: ExecutionFinished) {
 	uiStore.setProcessingExecutionResults(false);
 
 	if (execution.data?.waitTill !== undefined) {
-		handleExecutionFinishedWithWaitTill();
+		handleExecutionFinishedWithWaitTill(options);
 	} else if (execution.status === 'error' || execution.status === 'canceled') {
-		handleExecutionFinishedWithErrorOrCanceled(execution, runExecutionData);
+		handleExecutionFinishedWithErrorOrCanceled(execution, runExecutionData, options);
 	} else {
-		handleExecutionFinishedWithOther(successToastAlreadyShown);
+		handleExecutionFinishedWithOther(successToastAlreadyShown, options);
 	}
 
 	setRunExecutionData(execution, runExecutionData);
@@ -228,11 +231,12 @@ export function getRunDataExecutedErrorMessage(execution: SimplifiedExecution) {
  * Handle the case when the workflow execution finished with `waitTill`,
  * meaning that it's in a waiting state.
  */
-export function handleExecutionFinishedWithWaitTill() {
-	const router = useRouter();
+export function handleExecutionFinishedWithWaitTill(options: {
+	router: ReturnType<typeof useRouter>;
+}) {
 	const workflowsStore = useWorkflowsStore();
 	const settingsStore = useSettingsStore();
-	const workflowHelpers = useWorkflowHelpers({ router });
+	const workflowHelpers = useWorkflowHelpers(options);
 	const workflowObject = workflowsStore.getCurrentWorkflow();
 
 	const workflowSettings = workflowsStore.workflowSettings;
@@ -261,13 +265,13 @@ export function handleExecutionFinishedWithWaitTill() {
 export function handleExecutionFinishedWithErrorOrCanceled(
 	execution: SimplifiedExecution,
 	runExecutionData: IRunExecutionData,
+	options: { router: ReturnType<typeof useRouter> },
 ) {
 	const toast = useToast();
-	const router = useRouter();
 	const i18n = useI18n();
 	const telemetry = useTelemetry();
 	const workflowsStore = useWorkflowsStore();
-	const workflowHelpers = useWorkflowHelpers({ router });
+	const workflowHelpers = useWorkflowHelpers(options);
 	const workflowObject = workflowsStore.getCurrentWorkflow();
 	const runDataExecutedErrorMessage = getRunDataExecutedErrorMessage(execution);
 
@@ -381,10 +385,12 @@ export function handleExecutionFinishedWithErrorOrCanceled(
  * immediately, even though we still need to fetch and deserialize the
  * full execution data, to minimize perceived latency.
  */
-export function handleExecutionFinishedSuccessfully(workflowId: string) {
-	const router = useRouter();
+export function handleExecutionFinishedSuccessfully(
+	workflowId: string,
+	options: { router: ReturnType<typeof useRouter> },
+) {
 	const workflowsStore = useWorkflowsStore();
-	const workflowHelpers = useWorkflowHelpers({ router });
+	const workflowHelpers = useWorkflowHelpers(options);
 	const toast = useToast();
 	const i18n = useI18n();
 
@@ -399,12 +405,14 @@ export function handleExecutionFinishedSuccessfully(workflowId: string) {
 /**
  * Handle the case when the workflow execution finished successfully.
  */
-export function handleExecutionFinishedWithOther(successToastAlreadyShown: boolean = false) {
+export function handleExecutionFinishedWithOther(
+	successToastAlreadyShown: boolean,
+	options: { router: ReturnType<typeof useRouter> },
+) {
 	const workflowsStore = useWorkflowsStore();
 	const toast = useToast();
 	const i18n = useI18n();
-	const router = useRouter();
-	const workflowHelpers = useWorkflowHelpers({ router });
+	const workflowHelpers = useWorkflowHelpers(options);
 	const nodeTypesStore = useNodeTypesStore();
 	const workflowObject = workflowsStore.getCurrentWorkflow();
 

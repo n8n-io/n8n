@@ -9,8 +9,12 @@ import {
 	setRunExecutionData,
 } from './executionFinished';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import type { useRouter } from 'vue-router';
 
-export async function executionRecovered({ data }: ExecutionRecovered) {
+export async function executionRecovered(
+	{ data }: ExecutionRecovered,
+	options: { router: ReturnType<typeof useRouter> },
+) {
 	const workflowsStore = useWorkflowsStore();
 	const uiStore = useUIStore();
 
@@ -31,11 +35,11 @@ export async function executionRecovered({ data }: ExecutionRecovered) {
 	uiStore.setProcessingExecutionResults(false);
 
 	if (execution.data?.waitTill !== undefined) {
-		handleExecutionFinishedWithWaitTill();
+		handleExecutionFinishedWithWaitTill(options);
 	} else if (execution.status === 'error' || execution.status === 'canceled') {
-		handleExecutionFinishedWithErrorOrCanceled(execution, runExecutionData);
+		handleExecutionFinishedWithErrorOrCanceled(execution, runExecutionData, options);
 	} else {
-		handleExecutionFinishedWithOther();
+		handleExecutionFinishedWithOther(false, options);
 	}
 
 	setRunExecutionData(execution, runExecutionData);

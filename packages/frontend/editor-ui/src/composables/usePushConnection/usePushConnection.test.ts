@@ -1,10 +1,12 @@
 import { usePushConnection } from '@/composables/usePushConnection';
 import { testWebhookReceived } from '@/composables/usePushConnection/handlers';
 import type { TestWebhookReceived } from '@n8n/api-types/push/webhook';
-import type { PushMessage } from '@n8n/api-types';
+import { useRouter } from 'vue-router';
+import type { OnPushMessageHandler } from '@/stores/pushConnection.store';
 
 const removeEventListener = vi.fn();
-const addEventListener = vi.fn((event: PushMessage) => removeEventListener);
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const addEventListener = vi.fn((_handler: OnPushMessageHandler) => removeEventListener);
 
 vi.mock('@/stores/pushConnection.store', () => ({
 	usePushConnectionStore: () => ({
@@ -32,12 +34,22 @@ vi.mock('@/composables/usePushConnection/handlers', () => ({
 	collaboratorsChanged: vi.fn(),
 }));
 
+vi.mock('vue-router', async () => {
+	return {
+		useRouter: vi.fn().mockReturnValue({
+			push: vi.fn(),
+		}),
+	};
+});
+
 describe('usePushConnection composable', () => {
 	let pushConnection: ReturnType<typeof usePushConnection>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		pushConnection = usePushConnection();
+
+		const router = useRouter();
+		pushConnection = usePushConnection({ router });
 	});
 
 	it('should register an event listener on initialize', () => {
@@ -49,7 +61,7 @@ describe('usePushConnection composable', () => {
 		pushConnection.initialize();
 
 		// Get the event callback which was registered via addEventListener.
-		const fn = addEventListener.mock.calls[0][0];
+		const handler = addEventListener.mock.calls[0][0];
 
 		// Create a test event for one of the handled types.
 		// In this test, we simulate the event type 'testWebhookReceived'.
@@ -62,7 +74,7 @@ describe('usePushConnection composable', () => {
 		};
 
 		// Call the event callback with our test event.
-		await fn(testEvent);
+		handler(testEvent);
 
 		// Allow any microtasks to complete.
 		await Promise.resolve();

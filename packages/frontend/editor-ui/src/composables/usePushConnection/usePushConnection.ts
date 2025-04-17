@@ -22,8 +22,9 @@ import {
 	collaboratorsChanged,
 } from '@/composables/usePushConnection/handlers';
 import { createEventQueue } from '@n8n/utils/event-queue';
+import type { useRouter } from 'vue-router';
 
-export function usePushConnection() {
+export function usePushConnection(options: { router: ReturnType<typeof useRouter> }) {
 	const pushStore = usePushConnectionStore();
 
 	const { enqueue } = createEventQueue<PushMessage>(processEvent);
@@ -72,9 +73,9 @@ export function usePushConnection() {
 			case 'workflowFailedToActivate':
 				return await workflowFailedToActivate(event);
 			case 'executionFinished':
-				return await executionFinished(event);
+				return await executionFinished(event, options);
 			case 'executionRecovered':
-				return await executionRecovered(event);
+				return await executionRecovered(event, options);
 			case 'workflowActivated':
 				return await workflowActivated(event);
 			case 'workflowDeactivated':

@@ -82,7 +82,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			workflowsStore.setActiveExecutionId(response.executionId);
 		}
 
-		if (response.waitingForWebhook === true && useWorkflowsStore().nodesIssuesExist) {
+		if (response.waitingForWebhook === true && workflowsStore.nodesIssuesExist) {
 			workflowsStore.setActiveExecutionId(undefined);
 			throw new Error(i18n.baseText('workflowRun.showError.resolveOutstandingIssues'));
 		}
