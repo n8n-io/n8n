@@ -68,6 +68,8 @@ import {
 	recreateNodeExecutionStack,
 	handleCycles,
 	filterDisabledNodes,
+	rewireGraph,
+	isTool,
 } from './partial-execution-utils';
 import { RoutingNode } from './routing-node';
 import { TriggersAndPollers } from './triggers-and-pollers';
@@ -356,10 +358,16 @@ export class WorkflowExecute {
 
 		let graph = DirectedGraph.fromWorkflow(workflow);
 
+		const destinationHasNoParents = graph.getDirectParentConnections(destination).length === 0;
+		// Edge Case 2:
+		// Support partial execution of tools
+		if (isTool(destination, workflow.nodeTypes)) {
+			graph = rewireGraph(destination, graph);
+			workflow = graph.toWorkflow({ ...workflow });
+		}
 		// Edge Case 1:
 		// Support executing a single node that is not connected to a trigger
-		const destinationHasNoParents = graph.getDirectParentConnections(destination).length === 0;
-		if (destinationHasNoParents) {
+		else if (destinationHasNoParents) {
 			// short cut here, only create a subgraph and the stacks
 			graph = findSubgraph({
 				graph: filterDisabledNodes(graph),
@@ -1703,6 +1711,12 @@ export class WorkflowExecute {
 					taskData.data = {
 						main: nodeSuccessData,
 					} as ITaskDataConnections;
+
+					if (executionNode.rewireOutputLogTo) {
+						taskData.data = {
+							[executionNode.rewireOutputLogTo]: nodeSuccessData,
+						} as ITaskDataConnections;
+					}
 
 					this.runExecutionData.resultData.runData[executionNode.name].push(taskData);
 
