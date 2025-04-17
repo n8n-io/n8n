@@ -251,19 +251,13 @@ const canPinData = computed(
 );
 const displayModes = computed(() => {
 	const defaults: Array<{ label: string; value: IRunDataDisplayMode }> = [
+		{ label: i18n.baseText('runData.schema'), value: 'schema' },
 		{ label: i18n.baseText('runData.table'), value: 'table' },
 		{ label: i18n.baseText('runData.json'), value: 'json' },
 	];
 
 	if (binaryData.value.length) {
 		defaults.push({ label: i18n.baseText('runData.binary'), value: 'binary' });
-	}
-
-	const schemaView = { label: i18n.baseText('runData.schema'), value: 'schema' } as const;
-	if (isPaneTypeInput.value) {
-		defaults.unshift(schemaView);
-	} else {
-		defaults.push(schemaView);
 	}
 
 	if (
