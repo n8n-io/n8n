@@ -85,6 +85,10 @@ export class WorkflowDataProxy {
 		Settings.defaultZone = this.timezone;
 	}
 
+	setItemIndex(itemIndex: number) {
+		this.itemIndex = itemIndex;
+	}
+
 	/**
 	 * Returns a proxy which allows to query context data of a given node
 	 *

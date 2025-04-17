@@ -235,7 +235,9 @@ export class JsTaskRunner extends TaskRunner {
 		workflow: Workflow,
 		signal: AbortSignal,
 	): Promise<INodeExecutionData[]> {
-		const dataProxy = this.createDataProxy(data, workflow, data.itemIndex);
+		const workflowDataProxy = this.createWorkflowDataProxy(data, workflow);
+		workflowDataProxy.setItemIndex(data.itemIndex);
+		const dataProxy = workflowDataProxy.getDataProxy({ throwOnMissingExecutionData: false });
 		const inputItems = data.connectionInputData;
 
 		const context = this.buildContext(taskId, workflow, data.node, dataProxy, {
@@ -303,12 +305,14 @@ export class JsTaskRunner extends TaskRunner {
 			? settings.chunk.startIndex + settings.chunk.count
 			: inputItems.length;
 
-		const context = this.buildContext(taskId, workflow, data.node);
+		const workflowDataProxy = this.createWorkflowDataProxy(data, workflow);
+		const dataProxy = workflowDataProxy.getDataProxy({ throwOnMissingExecutionData: false });
+		const context = this.buildContext(taskId, workflow, data.node, dataProxy);
 
 		for (let index = chunkStartIdx; index < chunkEndIdx; index++) {
-			const dataProxy = this.createDataProxy(data, workflow, index);
+			workflowDataProxy.setItemIndex(data.itemIndex);
 
-			Object.assign(context, dataProxy, { item: inputItems[index] });
+			Object.assign(context, { item: inputItems[index] });
 
 			try {
 				let result = await new Promise<INodeExecutionData | undefined>((resolve, reject) => {
@@ -372,12 +376,12 @@ export class JsTaskRunner extends TaskRunner {
 		return returnData;
 	}
 
-	private createDataProxy(data: JsTaskData, workflow: Workflow, itemIndex: number) {
+	private createWorkflowDataProxy(data: JsTaskData, workflow: Workflow) {
 		return new WorkflowDataProxy(
 			workflow,
 			data.runExecutionData,
 			data.runIndex,
-			itemIndex,
+			0,
 			data.activeNodeName,
 			data.connectionInputData,
 			data.siblingParameters,
@@ -402,7 +406,7 @@ export class JsTaskRunner extends TaskRunner {
 			// We assign the available built-ins to the execution context, which
 			// means we run the getter for '$json', and by default $json throws
 			// if there is no data available.
-		).getDataProxy({ throwOnMissingExecutionData: false });
+		);
 	}
 
 	private toExecutionErrorIfNeeded(error: unknown): Error {
@@ -517,7 +521,7 @@ export class JsTaskRunner extends TaskRunner {
 		taskId: string,
 		workflow: Workflow,
 		node: INode,
-		dataProxy?: IWorkflowDataProxyData,
+		dataProxy: IWorkflowDataProxyData,
 		additionalProperties: Record<string, unknown> = {},
 	): Context {
 		return createContext({

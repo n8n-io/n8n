@@ -31,6 +31,7 @@ import {
 } from 'n8n-workflow';
 
 import { BinaryDataService } from '@/binary-data/binary-data.service';
+import { Memoized } from '@/decorators';
 
 import { NodeExecutionContext } from './node-execution-context';
 
@@ -169,18 +170,9 @@ export class BaseExecuteContext extends NodeExecutionContext {
 	}
 
 	getWorkflowDataProxy(itemIndex: number): IWorkflowDataProxyData {
-		return new WorkflowDataProxy(
-			this.workflow,
-			this.runExecutionData,
-			this.runIndex,
-			itemIndex,
-			this.node.name,
-			this.connectionInputData,
-			{},
-			this.mode,
-			this.additionalKeys,
-			this.executeData,
-		).getDataProxy();
+		const { workflowDataProxy } = this;
+		workflowDataProxy.setItemIndex(itemIndex);
+		return workflowDataProxy.getDataProxy();
 	}
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -224,5 +216,21 @@ export class BaseExecuteContext extends NodeExecutionContext {
 			workflowId: this.workflow.id ?? 'unsaved-workflow',
 			msg,
 		});
+	}
+
+	@Memoized
+	private get workflowDataProxy() {
+		return new WorkflowDataProxy(
+			this.workflow,
+			this.runExecutionData,
+			this.runIndex,
+			0,
+			this.node.name,
+			this.connectionInputData,
+			{},
+			this.mode,
+			this.additionalKeys,
+			this.executeData,
+		);
 	}
 }
