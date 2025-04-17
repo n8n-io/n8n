@@ -12,7 +12,7 @@ export const INSIGHTS_UNIT_MAPPING: Record<InsightsSummaryType, (value: number) 
 	total: () => '',
 	failed: () => '',
 	failureRate: () => '%',
-	timeSaved: (value: number) => (Math.abs(value) < 3600 ? 'm' : 'h'),
+	timeSaved: (value: number) => (Math.abs(value) < 60 ? 'm' : 'h'),
 	averageRunTime: () => 's',
 } as const;
 
@@ -23,7 +23,7 @@ export const INSIGHTS_DEVIATION_UNIT_MAPPING: Record<
 	total: () => '%',
 	failed: () => '%',
 	failureRate: () => 'pp',
-	timeSaved: (deviation: number) => (Math.abs(deviation) < 3600 ? 'm' : 'h'),
+	timeSaved: (deviation: number) => (Math.abs(deviation) < 60 ? 'm' : 'h'),
 	averageRunTime: () => 's',
 } as const;
 

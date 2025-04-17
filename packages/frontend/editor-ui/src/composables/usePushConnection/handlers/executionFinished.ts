@@ -1,12 +1,11 @@
 import type { ExecutionFinished } from '@n8n/api-types/push/execution';
 import { useUIStore } from '@/stores/ui.store';
 import type { IExecutionResponse } from '@/Interface';
-import { AI_CREDITS_EXPERIMENT, WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
+import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
 import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
 import { clearPopupWindowState, hasTrimmedData, hasTrimmedItem } from '@/utils/executionUtils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { usePostHog } from '@/stores/posthog.store';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { parse } from 'flatted';
@@ -51,20 +50,13 @@ export async function executionFinished(
 		return;
 	}
 
-	const posthogStore = usePostHog();
-	const settingsStore = useSettingsStore();
 	const telemetry = useTelemetry();
 
 	clearPopupWindowState();
 
 	const workflow = workflowsStore.getWorkflowById(data.workflowId);
 	if (workflow?.meta?.templateId) {
-		const isAiCreditsExperimentEnabled =
-			posthogStore.getVariant(AI_CREDITS_EXPERIMENT.name) === AI_CREDITS_EXPERIMENT.variant;
-		const easyAiWorkflowJson = getEasyAiWorkflowJson({
-			isInstanceInAiFreeCreditsExperiment: isAiCreditsExperimentEnabled,
-			withOpenAiFreeCredits: settingsStore.aiCreditsQuota,
-		});
+		const easyAiWorkflowJson = getEasyAiWorkflowJson();
 		const isEasyAIWorkflow = workflow.meta.templateId === easyAiWorkflowJson.meta.templateId;
 		if (isEasyAIWorkflow) {
 			telemetry.track(

@@ -23,7 +23,11 @@ import { retry } from '@n8n/utils/retry';
 import { useToast } from '@/composables/useToast';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 
-import { CHAT_TRIGGER_NODE_TYPE, SINGLE_WEBHOOK_TRIGGERS } from '@/constants';
+import {
+	CHAT_TRIGGER_NODE_TYPE,
+	IN_PROGRESS_EXECUTION_ID,
+	SINGLE_WEBHOOK_TRIGGERS,
+} from '@/constants';
 
 import { useRootStore } from '@/stores/root.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -289,7 +293,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			// that data which gets reused is already set and data of newly executed
 			// nodes can be added as it gets pushed in
 			const executionData: IExecutionResponse = {
-				id: '__IN_PROGRESS__',
+				id: IN_PROGRESS_EXECUTION_ID,
 				finished: false,
 				mode: 'manual',
 				status: 'running',

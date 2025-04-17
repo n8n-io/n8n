@@ -28,7 +28,7 @@ export class ToolWorkflow extends VersionedNodeType {
 					],
 				},
 			},
-			defaultVersion: 2.1,
+			defaultVersion: 2.2,
 		};
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
@@ -38,6 +38,7 @@ export class ToolWorkflow extends VersionedNodeType {
 			1.3: new ToolWorkflowV1(baseDescription),
 			2: new ToolWorkflowV2(baseDescription),
 			2.1: new ToolWorkflowV2(baseDescription),
+			2.2: new ToolWorkflowV2(baseDescription),
 		};
 		super(nodeVersions, baseDescription);
 	}

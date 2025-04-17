@@ -239,6 +239,10 @@ export class License {
 		return this.isFeatureEnabled(LICENSE_FEATURES.SAML);
 	}
 
+	isApiKeyScopesEnabled() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.API_KEY_SCOPES);
+	}
+
 	isAiAssistantEnabled() {
 		return this.isFeatureEnabled(LICENSE_FEATURES.AI_ASSISTANT);
 	}

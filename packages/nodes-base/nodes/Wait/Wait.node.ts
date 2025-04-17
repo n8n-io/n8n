@@ -256,7 +256,7 @@ export class Wait extends Webhook {
 				path: webhookPath,
 				restartWebhook: true,
 				isFullPath: true,
-				isForm: true,
+				nodeType: 'form',
 			},
 			{
 				name: 'default',
@@ -266,7 +266,7 @@ export class Wait extends Webhook {
 				path: webhookPath,
 				restartWebhook: true,
 				isFullPath: true,
-				isForm: true,
+				nodeType: 'form',
 			},
 		],
 		properties: [

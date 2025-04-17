@@ -63,6 +63,8 @@ export class ToolHttpRequest implements INodeType {
 				],
 			},
 		},
+		// Replaced by a `usableAsTool` version of the standalone HttpRequest node
+		hidden: true,
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
