@@ -70,6 +70,7 @@ describe('OAuth2CredentialController', () => {
 			authUrl: 'https://example.domain/o/oauth2/v2/auth',
 			accessTokenUrl: 'https://example.domain/token',
 		});
+		credentialsHelper.credentialCanUseExternalSecrets.mockResolvedValue(true);
 	});
 
 	describe('getAuthUri', () => {
@@ -355,6 +356,18 @@ describe('OAuth2CredentialController', () => {
 				}),
 			]);
 			const dataCaptor = captor();
+			// check that credentialsHelper.applyDefaultsAndOverwrites is called with the canUseSecrets true
+			expect(credentialsHelper.applyDefaultsAndOverwrites).toHaveBeenCalledWith(
+				additionalData,
+				expect.objectContaining({
+					oauthTokenData: CREDENTIAL_BLANKING_VALUE,
+				}),
+				credential.type,
+				'internal',
+				undefined,
+				undefined,
+				true,
+			);
 			expect(credentialsRepository.update).toHaveBeenCalledWith(
 				'1',
 				expect.objectContaining({

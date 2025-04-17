@@ -125,12 +125,16 @@ export abstract class AbstractOAuthController {
 		credential: ICredentialsDb,
 		decryptedData: ICredentialDataDecryptedObject,
 		additionalData: IWorkflowExecuteAdditionalData,
+		canUseSecrets: boolean = false,
 	) {
 		return this.credentialsHelper.applyDefaultsAndOverwrites(
 			additionalData,
 			decryptedData,
 			credential.type,
 			'internal',
+			undefined,
+			undefined,
+			canUseSecrets,
 		) as unknown as T;
 	}
 
@@ -209,10 +213,13 @@ export abstract class AbstractOAuthController {
 			credential,
 			additionalData,
 		);
+
+		const canUseSecrets = await this.credentialsHelper.credentialCanUseExternalSecrets(credential);
 		const oauthCredentials = this.applyDefaultsAndOverwrites<T>(
 			credential,
 			decryptedDataOriginal,
 			additionalData,
+			canUseSecrets,
 		);
 
 		if (!this.verifyCsrfState(decryptedDataOriginal, state)) {
