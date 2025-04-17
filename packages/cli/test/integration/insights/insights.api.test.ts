@@ -1,4 +1,3 @@
-import type { User } from '@/databases/entities/user';
 import { Telemetry } from '@/telemetry';
 import { mockInstance } from '@test/mocking';
 
@@ -6,44 +5,58 @@ import { createUser } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils';
 
-let authOwnerAgent: SuperAgentTest;
-let owner: User;
-let admin: User;
-let member: User;
 mockInstance(Telemetry);
 
 let agents: Record<string, SuperAgentTest> = {};
-
 const testServer = utils.setupTestServer({
 	endpointGroups: ['insights', 'license', 'auth'],
-	enabledFeatures: [],
+	enabledFeatures: ['feat:insights:viewSummary', 'feat:insights:viewDashboard'],
 });
 
 beforeAll(async () => {
-	owner = await createUser({ role: 'global:owner' });
-	admin = await createUser({ role: 'global:admin' });
-	member = await createUser({ role: 'global:member' });
-	authOwnerAgent = testServer.authAgentFor(owner);
-	agents.owner = authOwnerAgent;
+	const owner = await createUser({ role: 'global:owner' });
+	const admin = await createUser({ role: 'global:admin' });
+	const member = await createUser({ role: 'global:member' });
+	agents.owner = testServer.authAgentFor(owner);
 	agents.admin = testServer.authAgentFor(admin);
 	agents.member = testServer.authAgentFor(member);
 });
 
-describe('GET /insights routes work for owner and admins', () => {
-	test.each(['owner', 'member', 'admin'])(
+describe('GET /insights routes work for owner and admins for server with dashboard license', () => {
+	test.each(['owner', 'admin', 'member'])(
 		'Call should work and return empty summary for user %s',
 		async (agentName: string) => {
 			const authAgent = agents[agentName];
-			await authAgent.get('/insights/summary').expect(agentName === 'member' ? 403 : 200);
-			await authAgent.get('/insights/by-time').expect(agentName === 'member' ? 403 : 200);
-			await authAgent.get('/insights/by-workflow').expect(agentName === 'member' ? 403 : 200);
+			await authAgent.get('/insights/summary').expect(agentName.includes('member') ? 403 : 200);
+			await authAgent.get('/insights/by-time').expect(agentName.includes('member') ? 403 : 200);
+			await authAgent.get('/insights/by-workflow').expect(agentName.includes('member') ? 403 : 200);
 		},
 	);
 });
 
-describe('GET /insights/by-worklow', () => {
+describe('GET /insights routes return 403 for dashboard routes when summary license only', () => {
+	beforeAll(() => {
+		testServer.license.setDefaults({ features: ['feat:insights:viewSummary'] });
+	});
+	test.each(['owner', 'admin', 'member'])(
+		'Call should work and return empty summary for user %s',
+		async (agentName: string) => {
+			const authAgent = agents[agentName];
+			await authAgent.get('/insights/summary').expect(agentName.includes('member') ? 403 : 200);
+			await authAgent.get('/insights/by-time').expect(403);
+			await authAgent.get('/insights/by-workflow').expect(403);
+		},
+	);
+});
+
+describe('GET /insights/by-workflow', () => {
+	beforeAll(() => {
+		testServer.license.setDefaults({
+			features: ['feat:insights:viewSummary', 'feat:insights:viewDashboard'],
+		});
+	});
 	test('Call should work with valid query parameters', async () => {
-		await authOwnerAgent
+		await agents.owner
 			.get('/insights/by-workflow')
 			.query({ skip: '10', take: '20', sortBy: 'total:desc' })
 			.expect(200);
@@ -61,12 +74,12 @@ describe('GET /insights/by-worklow', () => {
 	])(
 		'Call should return internal server error with invalid pagination query parameters',
 		async (queryParams) => {
-			await authOwnerAgent.get('/insights/by-workflow').query(queryParams).expect(500);
+			await agents.owner.get('/insights/by-workflow').query(queryParams).expect(500);
 		},
 	);
 
 	test('Call should return bad request with invalid sortby query parameters', async () => {
-		await authOwnerAgent
+		await agents.owner
 			.get('/insights/by-workflow')
 			.query({
 				skip: '1',

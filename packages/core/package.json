@@ -1,6 +1,6 @@
 {
   "name": "n8n-core",
-  "version": "1.87.0",
+  "version": "1.88.0",
   "description": "Core functionality of n8n",
   "main": "dist/index",
   "types": "dist/index.d.ts",
@@ -31,6 +31,7 @@
     "@types/aws4": "^1.5.1",
     "@types/concat-stream": "^2.0.0",
     "@types/express": "catalog:",
+    "@types/jsonwebtoken": "catalog:",
     "@types/lodash": "catalog:",
     "@types/mime-types": "^2.1.0",
     "@types/uuid": "catalog:",
@@ -52,6 +53,7 @@
     "file-type": "16.5.4",
     "form-data": "catalog:",
     "iconv-lite": "catalog:",
+    "jsonwebtoken": "catalog:",
     "lodash": "catalog:",
     "luxon": "catalog:",
     "mime-types": "2.1.35",

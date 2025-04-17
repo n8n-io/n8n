@@ -1,6 +1,6 @@
 {
   "name": "n8n-monorepo",
-  "version": "1.88.0",
+  "version": "1.89.0",
   "private": true,
   "engines": {
     "node": ">=20.15",
@@ -103,7 +103,8 @@
       "@types/ws@8.5.4": "patches/@types__ws@8.5.4.patch",
       "@types/uuencode@0.0.3": "patches/@types__uuencode@0.0.3.patch",
       "vue-tsc@2.2.8": "patches/vue-tsc@2.2.8.patch",
-      "eslint-plugin-n8n-local-rules": "patches/eslint-plugin-n8n-local-rules.patch"
+      "eslint-plugin-n8n-local-rules": "patches/eslint-plugin-n8n-local-rules.patch",
+      "element-plus@2.4.3": "patches/element-plus@2.4.3.patch"
     }
   }
 }

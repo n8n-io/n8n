@@ -157,7 +157,7 @@ export interface INodeUpdatePropertiesInformation {
 
 export type XYPosition = [number, number];
 
-export type DraggableMode = 'mapping' | 'panel-resize';
+export type DraggableMode = 'mapping' | 'panel-resize' | 'move';
 
 export interface INodeUi extends INode {
 	position: XYPosition;
@@ -1471,7 +1471,8 @@ export type CloudUpdateLinkSourceType =
 	| 'worker-view'
 	| 'external-secrets'
 	| 'rbac'
-	| 'debug';
+	| 'debug'
+	| 'insights';
 
 export type UTMCampaign =
 	| 'upgrade-custom-data-filter'
@@ -1494,7 +1495,8 @@ export type UTMCampaign =
 	| 'upgrade-worker-view'
 	| 'upgrade-external-secrets'
 	| 'upgrade-rbac'
-	| 'upgrade-debug';
+	| 'upgrade-debug'
+	| 'upgrade-insights';
 
 export type N8nBanners = {
 	[key in BannerName]: {
@@ -1542,7 +1544,8 @@ export type EnterpriseEditionFeatureKey =
 	| 'DebugInEditor'
 	| 'WorkflowHistory'
 	| 'WorkerView'
-	| 'AdvancedPermissions';
+	| 'AdvancedPermissions'
+	| 'ApiKeyScopes';
 
 export type EnterpriseEditionFeatureValue = keyof Omit<FrontendSettings['enterprise'], 'projects'>;
 

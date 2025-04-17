@@ -90,21 +90,34 @@ export function sortNodeCreateElements(nodes: INodeCreateElement[]) {
 	});
 }
 
+// We remove `Trigger` from e.g. `Telegram Trigger` to show it as part of the `Telegram` group,
+// but still want to show matching results when the user types `Telegram Tri` or `Telegram Trigger`
+// Ideally this would be handled via metadata, but that is a larger refactor.
+export function removeTrailingTrigger(searchFilter: string) {
+	const parts = searchFilter.split(' ');
+	if (parts.length > 1 && 'trigger'.startsWith(parts.slice(-1)[0].toLowerCase())) {
+		return parts
+			.slice(0, -1)
+			.filter((x) => x)
+			.join(' ')
+			.trimEnd();
+	}
+	return searchFilter;
+}
+
 export function searchNodes(searchFilter: string, items: INodeCreateElement[]) {
 	const askAiEnabled = useSettingsStore().isAskAiEnabled;
 	if (!askAiEnabled) {
 		items = items.filter((item) => item.key !== AI_TRANSFORM_NODE_TYPE);
 	}
 
-	// In order to support the old search we need to remove the 'trigger' part
-	const trimmedFilter = searchFilter.toLowerCase().replace('trigger', '').trimEnd();
+	const trimmedFilter = removeTrailingTrigger(searchFilter).toLowerCase();
 
-	const result = (
-		sublimeSearch<INodeCreateElement>(trimmedFilter, items, [
-			{ key: 'properties.displayName', weight: 1.3 },
-			{ key: 'properties.codex.alias', weight: 1 },
-		]) || []
-	).map(({ item }) => item);
+	// We have a snapshot of this call in sublimeSearch.test.ts to assert practical order for some cases
+	// Please update the snapshots per the README next to the the snapshots if you modify items significantly.
+	const result = (sublimeSearch<INodeCreateElement>(trimmedFilter, items) || []).map(
+		({ item }) => item,
+	);
 
 	return result;
 }

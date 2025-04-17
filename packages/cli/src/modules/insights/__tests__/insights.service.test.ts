@@ -498,7 +498,7 @@ describe('workflowExecuteAfterHandler - flushEvents', () => {
 		// ARRANGE
 		jest.useFakeTimers();
 		trxMock.insert.mockClear();
-		insightsService.scheduleFlushing();
+		insightsService.startBackgroundProcess();
 		const ctx = mock<ExecutionLifecycleHooks>({ workflowData: workflow });
 
 		try {
@@ -523,7 +523,7 @@ describe('workflowExecuteAfterHandler - flushEvents', () => {
 		// ARRANGE
 		jest.useFakeTimers();
 		trxMock.insert.mockClear();
-		insightsService.scheduleFlushing();
+		insightsService.startBackgroundProcess();
 		const ctx = mock<ExecutionLifecycleHooks>({ workflowData: workflow });
 
 		try {
@@ -539,6 +539,29 @@ describe('workflowExecuteAfterHandler - flushEvents', () => {
 			await jest.advanceTimersByTimeAsync(31 * 1000);
 
 			expect(trxMock.insert).toHaveBeenCalledTimes(2);
+		} finally {
+			jest.useRealTimers();
+		}
+	});
+
+	test('reschedule flush on no buffered insights', async () => {
+		// ARRANGE
+		jest.useFakeTimers();
+		trxMock.insert.mockClear();
+		insightsService.startBackgroundProcess();
+		const flushEventsSpy = jest.spyOn(insightsService, 'flushEvents');
+
+		try {
+			// ACT
+			await jest.advanceTimersByTimeAsync(31 * 1000);
+
+			// ASSERT
+			expect(flushEventsSpy).toHaveBeenCalledTimes(1);
+			expect(trxMock.insert).not.toHaveBeenCalled();
+
+			// ACT
+			await jest.advanceTimersByTimeAsync(31 * 1000);
+			expect(flushEventsSpy).toHaveBeenCalledTimes(2);
 		} finally {
 			jest.useRealTimers();
 		}
@@ -566,7 +589,7 @@ describe('workflowExecuteAfterHandler - flushEvents', () => {
 	test('flushes events synchronously while shutting down', async () => {
 		// ARRANGE
 		// reset insights async flushing
-		insightsService.scheduleFlushing();
+		insightsService.startBackgroundProcess();
 		trxMock.insert.mockClear();
 		const ctx = mock<ExecutionLifecycleHooks>({ workflowData: workflow });
 
@@ -599,7 +622,7 @@ describe('workflowExecuteAfterHandler - flushEvents', () => {
 		jest.useFakeTimers();
 		trxMock.insert.mockClear();
 		trxMock.insert.mockRejectedValueOnce(new Error('Test error'));
-		insightsService.scheduleFlushing();
+		insightsService.startBackgroundProcess();
 		const ctx = mock<ExecutionLifecycleHooks>({ workflowData: workflow });
 
 		try {
@@ -628,7 +651,7 @@ describe('workflowExecuteAfterHandler - flushEvents', () => {
 		// ARRANGE
 		const config = Container.get(InsightsConfig);
 		config.flushBatchSize = 10;
-		insightsService.scheduleFlushing();
+		insightsService.startBackgroundProcess();
 		trxMock.insert.mockClear();
 
 		const ctx = mock<ExecutionLifecycleHooks>({ workflowData: workflow });
@@ -944,7 +967,7 @@ describe('compaction', () => {
 			try {
 				// ARRANGE
 				const insightsService = Container.get(InsightsService);
-				insightsService.initializeCompaction();
+				insightsService.startBackgroundProcess();
 
 				// spy on the compactInsights method to check if it's called
 				insightsService.compactInsights = jest.fn();
@@ -1280,10 +1303,10 @@ describe('getInsightsSummary', () => {
 
 		// ASSERT
 		expect(summary).toEqual({
-			averageRunTime: { deviation: -123, unit: 'time', value: 0 },
+			averageRunTime: { deviation: -123, unit: 'millisecond', value: 0 },
 			failed: { deviation: 1, unit: 'count', value: 1 },
 			failureRate: { deviation: 0.333, unit: 'ratio', value: 0.333 },
-			timeSaved: { deviation: 0, unit: 'time', value: 0 },
+			timeSaved: { deviation: 0, unit: 'minute', value: 0 },
 			total: { deviation: 2, unit: 'count', value: 3 },
 		});
 	});
@@ -1343,10 +1366,10 @@ describe('getInsightsSummary', () => {
 
 		// ASSERT
 		expect(summary).toEqual({
-			averageRunTime: { deviation: 0, unit: 'time', value: 0 },
+			averageRunTime: { deviation: 0, unit: 'millisecond', value: 0 },
 			failed: { deviation: 2, unit: 'count', value: 2 },
 			failureRate: { deviation: 0.5, unit: 'ratio', value: 0.5 },
-			timeSaved: { deviation: 0, unit: 'time', value: 0 },
+			timeSaved: { deviation: 0, unit: 'minute', value: 0 },
 			total: { deviation: -1, unit: 'count', value: 4 },
 		});
 	});
