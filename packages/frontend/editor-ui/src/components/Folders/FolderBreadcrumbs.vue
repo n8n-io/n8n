@@ -10,12 +10,14 @@ import type { FolderPathItem, FolderShortInfo } from '@/Interface';
 import { useRoute } from 'vue-router';
 
 type Props = {
-	currentFolder: FolderShortInfo;
+	// Current folder can be null when showing breadcrumbs for workflows in project root
+	currentFolder?: FolderShortInfo | null;
 	actions?: UserAction[];
 	hiddenItemsTrigger?: 'hover' | 'click';
 };
 
 const props = withDefaults(defineProps<Props>(), {
+	currentFolder: null,
 	actions: () => [],
 	hiddenItemsTrigger: 'click',
 });
@@ -47,8 +49,11 @@ const isDragging = computed(() => {
 });
 
 const visibleBreadcrumbsItems = computed<FolderPathItem[]>(() => {
+	if (!props.currentFolder) return [];
+
 	const items: FolderPathItem[] = [];
 	const parent = foldersStore.getCachedFolder(props.currentFolder.parentFolder ?? '');
+
 	if (parent) {
 		items.push({
 			id: parent.id,
@@ -130,7 +135,7 @@ const onItemHover = (item: PathItem) => {
 		data-test-id="folder-breadcrumbs"
 	>
 		<n8n-breadcrumbs
-			v-if="visibleBreadcrumbsItems"
+			v-if="visibleBreadcrumbsItems.length"
 			v-model:drag-active="isDragging"
 			:items="visibleBreadcrumbsItems"
 			:highlight-last-item="false"
@@ -158,6 +163,19 @@ const onItemHover = (item: PathItem) => {
 				<slot name="append"></slot>
 			</template>
 		</n8n-breadcrumbs>
+		<!-- If there is no current folder, just show project badge -->
+		<div
+			v-else-if="currentProject"
+			:class="{ [$style['home-project']]: true, [$style.dragging]: isDragging }"
+			data-test-id="home-project"
+			@mouseenter="onProjectHover"
+			@mouseup="isDragging ? onProjectMouseUp() : null"
+		>
+			<n8n-link :to="`/projects/${currentProject.id}`">
+				<N8nText size="medium" color="text-base">{{ projectName }}</N8nText>
+			</n8n-link>
+			<slot name="append"></slot>
+		</div>
 		<n8n-action-toggle
 			v-if="visibleBreadcrumbsItems"
 			:actions="actions"
@@ -197,7 +215,7 @@ const onItemHover = (item: PathItem) => {
 		}
 	}
 
-	&:hover * {
+	&:hover :global(.n8n-text) {
 		color: var(--color-text-dark);
 	}
 }

@@ -575,7 +575,7 @@ function showCreateWorkflowSuccessToast(id?: string) {
 	<div :class="$style.container">
 		<BreakpointsObserver :value-x-s="15" :value-s-m="25" :value-m-d="50" class="name-container">
 			<template #default="{ value }">
-				<FolderBreadcrumbs v-if="props.currentFolder" :current-folder="props.currentFolder">
+				<FolderBreadcrumbs :current-folder="props.currentFolder">
 					<template #append>
 						<span :class="$style['path-separator']">/</span>
 						<ShortenName :name="name" :limit="value" :custom="true" test-id="workflow-name-input">
@@ -800,7 +800,7 @@ $--header-spacing: 20px;
 .path-separator {
 	font-size: var(--font-size-xl);
 	color: var(--color-foreground-base);
-	margin-right: var(--spacing-4xs);
+	margin: var(--spacing-4xs);
 }
 
 .group {
