@@ -1,23 +1,22 @@
 <script setup lang="ts">
 import { useI18n } from '@/composables/useI18n';
-import type { FolderPathItem } from '@/Interface';
 import { useProjectsStore } from '@/stores/projects.store';
 import { ProjectTypes } from '@/types/projects.types';
 import type { UserAction } from '@n8n/design-system/types';
 import { type PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import { computed } from 'vue';
 import { useFoldersStore } from '@/stores/folders.store';
+import type { FolderPathItem, FolderShortInfo } from '@/Interface';
+import { useRoute } from 'vue-router';
 
 type Props = {
-	actions: UserAction[];
-	breadcrumbs: {
-		visibleItems: FolderPathItem[];
-		hiddenItems: FolderPathItem[];
-	};
+	currentFolder: FolderShortInfo;
+	actions?: UserAction[];
 	hiddenItemsTrigger?: 'hover' | 'click';
 };
 
 const props = withDefaults(defineProps<Props>(), {
+	actions: () => [],
 	hiddenItemsTrigger: 'click',
 });
 
@@ -29,6 +28,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const route = useRoute();
 
 const projectsStore = useProjectsStore();
 const foldersStore = useFoldersStore();
@@ -44,6 +44,47 @@ const projectName = computed(() => {
 
 const isDragging = computed(() => {
 	return foldersStore.draggedElement !== null;
+});
+
+const visibleBreadcrumbsItems = computed<FolderPathItem[]>(() => {
+	const items: FolderPathItem[] = [];
+	const parent = foldersStore.getCachedFolder(props.currentFolder.parentFolder ?? '');
+	if (parent) {
+		items.push({
+			id: parent.id,
+			label: parent.name,
+			href: `/projects/${route.params.projectId}/folders/${parent.id}/workflows`,
+			parentFolder: parent.parentFolder,
+		});
+	}
+	items.push({
+		id: props.currentFolder.id,
+		label: props.currentFolder.name,
+		parentFolder: props.currentFolder.parentFolder,
+	});
+	return items;
+});
+
+const hiddenBreadcrumbsItems = computed<FolderPathItem[]>(() => {
+	const lastVisibleParent: FolderPathItem =
+		visibleBreadcrumbsItems.value[visibleBreadcrumbsItems.value.length - 1];
+	if (!lastVisibleParent) return [];
+	const items: FolderPathItem[] = [];
+	// Go through all the parent folders and add them to the hidden items
+	let parentFolder = lastVisibleParent.parentFolder;
+	while (parentFolder) {
+		const parent = foldersStore.getCachedFolder(parentFolder);
+
+		if (!parent) break;
+		items.unshift({
+			id: parent.id,
+			label: parent.name,
+			href: `/projects/${route.params.projectId}/folders/${parent.id}/workflows`,
+			parentFolder: parent.parentFolder,
+		});
+		parentFolder = parent.parentFolder;
+	}
+	return items;
 });
 
 const onItemSelect = (item: PathItem) => {
@@ -89,12 +130,12 @@ const onItemHover = (item: PathItem) => {
 		data-test-id="folder-breadcrumbs"
 	>
 		<n8n-breadcrumbs
-			v-if="breadcrumbs.visibleItems"
+			v-if="visibleBreadcrumbsItems"
 			v-model:drag-active="isDragging"
-			:items="breadcrumbs.visibleItems"
+			:items="visibleBreadcrumbsItems"
 			:highlight-last-item="false"
-			:path-truncated="breadcrumbs.visibleItems[0].parentFolder"
-			:hidden-items="breadcrumbs.hiddenItems"
+			:path-truncated="visibleBreadcrumbsItems[0]?.parentFolder"
+			:hidden-items="hiddenBreadcrumbsItems"
 			:hidden-items-trigger="props.hiddenItemsTrigger"
 			data-test-id="folder-list-breadcrumbs"
 			@item-selected="onItemSelect"
@@ -115,7 +156,7 @@ const onItemHover = (item: PathItem) => {
 			</template>
 		</n8n-breadcrumbs>
 		<n8n-action-toggle
-			v-if="breadcrumbs.visibleItems"
+			v-if="visibleBreadcrumbsItems"
 			:actions="actions"
 			:class="$style['action-toggle']"
 			theme="dark"

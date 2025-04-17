@@ -238,6 +238,7 @@ function hideGithubButton() {
 					:scopes="workflow.scopes"
 					:active="workflow.active"
 					:read-only="readOnly"
+					:current-folder="workflow.parentFolder"
 				/>
 				<div v-if="showGitHubButton" :class="[$style['github-button'], 'hidden-sm-and-down']">
 					<div :class="$style['github-button-container']">

@@ -857,63 +857,6 @@ const moveResourceOnDrop = async (draggedResource: DragTarget, dropTarget: DropT
 
 // Breadcrumbs methods
 
-/**
- * Breadcrumbs: Calculate visible and hidden items for both main breadcrumbs and card breadcrumbs
- * We do this here and pass to each component to avoid recalculating in each card
- */
-const visibleBreadcrumbsItems = computed<FolderPathItem[]>(() => {
-	if (!currentFolder.value) return [];
-	const items: FolderPathItem[] = [];
-	const parent = foldersStore.getCachedFolder(currentFolder.value.parentFolder ?? '');
-	if (parent) {
-		items.push({
-			id: parent.id,
-			label: parent.name,
-			href: `/projects/${route.params.projectId}/folders/${parent.id}/workflows`,
-			parentFolder: parent.parentFolder,
-		});
-	}
-	items.push({
-		id: currentFolder.value.id,
-		label: currentFolder.value.name,
-		parentFolder: parent?.parentFolder,
-	});
-	return items;
-});
-
-const hiddenBreadcrumbsItems = computed<FolderPathItem[]>(() => {
-	const lastVisibleParent: FolderPathItem =
-		visibleBreadcrumbsItems.value[visibleBreadcrumbsItems.value.length - 1];
-	if (!lastVisibleParent) return [];
-	const items: FolderPathItem[] = [];
-	// Go through all the parent folders and add them to the hidden items
-	let parentFolder = lastVisibleParent.parentFolder;
-	while (parentFolder) {
-		const parent = foldersStore.getCachedFolder(parentFolder);
-
-		if (!parent) break;
-		items.unshift({
-			id: parent.id,
-			label: parent.name,
-			href: `/projects/${route.params.projectId}/folders/${parent.id}/workflows`,
-			parentFolder: parent.parentFolder,
-		});
-		parentFolder = parent.parentFolder;
-	}
-	return items;
-});
-
-/**
- * Main breadcrumbs items that show on top of the list
- * These show path to the current folder with up to 2 parents visible
- */
-const mainBreadcrumbs = computed(() => {
-	return {
-		visibleItems: visibleBreadcrumbsItems.value,
-		hiddenItems: hiddenBreadcrumbsItems.value,
-	};
-});
-
 const onBreadcrumbItemClick = (item: PathItem) => {
 	if (item.href) {
 		loading.value = true;
@@ -1416,7 +1359,7 @@ const onCreateWorkflowClick = () => {
 				data-test-id="main-breadcrumbs"
 			>
 				<FolderBreadcrumbs
-					:breadcrumbs="mainBreadcrumbs"
+					:current-folder="currentFolder"
 					:actions="mainBreadcrumbsActions"
 					:hidden-items-trigger="isDragging ? 'hover' : 'click'"
 					@item-selected="onBreadcrumbItemClick"

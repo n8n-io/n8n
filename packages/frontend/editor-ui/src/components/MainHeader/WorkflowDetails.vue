@@ -65,6 +65,7 @@ const props = defineProps<{
 	meta: IWorkflowDb['meta'];
 	scopes: IWorkflowDb['scopes'];
 	active: IWorkflowDb['active'];
+	currentFolder: IWorkflowDb['parentFolder'];
 }>();
 
 const $style = useCssModule();
@@ -199,19 +200,6 @@ const isWorkflowHistoryFeatureEnabled = computed(() => {
 
 const workflowTagIds = computed(() => {
 	return (props.tags ?? []).map((tag) => (typeof tag === 'string' ? tag : tag.id));
-});
-
-const currentFolder = computed(() => {
-	if (props.id === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
-		return undefined;
-	}
-
-	const workflow = workflowsStore.getWorkflowById(props.id);
-	if (!workflow) {
-		return undefined;
-	}
-
-	return workflow.parentFolder;
 });
 
 const currentProjectName = computed(() => {
@@ -555,11 +543,11 @@ function showCreateWorkflowSuccessToast(id?: string) {
 		let toastText = locale.baseText('workflows.create.personal.toast.text');
 
 		if (projectsStore.currentProject) {
-			if (currentFolder.value) {
+			if (props.currentFolder) {
 				toastTitle = locale.baseText('workflows.create.folder.toast.title', {
 					interpolate: {
 						projectName: currentProjectName.value ?? '',
-						folderName: currentFolder.value.name ?? '',
+						folderName: props.currentFolder.name ?? '',
 					},
 				});
 			} else if (projectsStore.currentProject.id !== projectsStore.personalProject?.id) {
