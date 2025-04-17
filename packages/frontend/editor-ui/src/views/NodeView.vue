@@ -165,6 +165,7 @@ const tagsStore = useTagsStore();
 const pushConnectionStore = usePushConnectionStore();
 const ndvStore = useNDVStore();
 const templatesStore = useTemplatesStore();
+const foldersStore = useFoldersStore();
 
 const canvasEventBus = createEventBus<CanvasEventBusEvents>();
 
@@ -398,14 +399,14 @@ async function initializeWorkspaceForNewWorkflow() {
 	}
 
 	if (parentFolderId) {
-		let parentFolder = useFoldersStore().getCachedFolder(parentFolderId);
+		let parentFolder = foldersStore.getCachedFolder(parentFolderId);
 		if (!parentFolder && projectsStore.currentProjectId) {
-			await useFoldersStore().getFolderPath(projectsStore.currentProjectId, parentFolderId);
-			parentFolder = useFoldersStore().getCachedFolder(parentFolderId);
+			await foldersStore.getFolderPath(projectsStore.currentProjectId, parentFolderId);
+			parentFolder = foldersStore.getCachedFolder(parentFolderId);
 		}
 		workflowsStore.setParentFolder({
 			...parentFolder,
-			parentFolderId: parentFolder.parentFolder || null,
+			parentFolderId: parentFolder.parentFolder ?? null,
 		});
 	}
 
@@ -418,6 +419,15 @@ async function initializeWorkspaceForExistingWorkflow(id: string) {
 		const workflowData = await workflowsStore.fetchWorkflow(id);
 
 		openWorkflow(workflowData);
+
+		if (workflowData.parentFolder) {
+			workflowsStore.setParentFolder(workflowData.parentFolder);
+			const isParentFolderCached =
+				foldersStore.breadcrumbsCache[workflowData.parentFolder.id] !== undefined;
+			if (workflowData.homeProject && !isParentFolderCached) {
+				await foldersStore.getFolderPath(workflowData.homeProject.id, workflowData.parentFolder.id);
+			}
+		}
 
 		if (workflowData.meta?.onboardingId) {
 			trackOpenWorkflowFromOnboardingTemplate();

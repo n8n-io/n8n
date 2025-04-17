@@ -25,7 +25,7 @@ import { useRoute, useRouter } from 'vue-router';
 
 import { useLocalStorage } from '@vueuse/core';
 import GithubButton from 'vue-github-button';
-import { FolderShortInfo } from '@/Interface';
+import type { FolderShortInfo } from '@/Interface';
 
 const router = useRouter();
 const route = useRoute();
