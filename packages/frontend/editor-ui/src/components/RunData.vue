@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ViewableMimeTypes } from '@n8n/api-types';
 import { useStorage } from '@/composables/useStorage';
 import { saveAs } from 'file-saver';
 import type {
@@ -250,19 +251,13 @@ const canPinData = computed(
 );
 const displayModes = computed(() => {
 	const defaults: Array<{ label: string; value: IRunDataDisplayMode }> = [
+		{ label: i18n.baseText('runData.schema'), value: 'schema' },
 		{ label: i18n.baseText('runData.table'), value: 'table' },
 		{ label: i18n.baseText('runData.json'), value: 'json' },
 	];
 
 	if (binaryData.value.length) {
 		defaults.push({ label: i18n.baseText('runData.binary'), value: 'binary' });
-	}
-
-	const schemaView = { label: i18n.baseText('runData.schema'), value: 'schema' } as const;
-	if (isPaneTypeInput.value) {
-		defaults.unshift(schemaView);
-	} else {
-		defaults.push(schemaView);
 	}
 
 	if (
@@ -1182,10 +1177,8 @@ function closeBinaryDataDisplay() {
 }
 
 function isViewable(index: number, key: string | number): boolean {
-	const { fileType } = binaryData.value[index][key];
-	return (
-		!!fileType && ['image', 'audio', 'video', 'text', 'json', 'pdf', 'html'].includes(fileType)
-	);
+	const { mimeType } = binaryData.value[index][key];
+	return ViewableMimeTypes.includes(mimeType);
 }
 
 function isDownloadable(index: number, key: string | number): boolean {
@@ -1905,6 +1898,9 @@ defineExpose({ enterEditMode });
 						</div>
 					</div>
 				</div>
+			</div>
+			<div v-else-if="!hasNodeRun" :class="$style.center">
+				<slot name="node-not-run"></slot>
 			</div>
 		</div>
 		<div

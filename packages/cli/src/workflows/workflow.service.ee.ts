@@ -343,6 +343,9 @@ export class EnterpriseWorkflowService {
 			}
 		});
 
+		// 9. detach workflow from parent folder in source project
+		await this.workflowRepository.update({ id: workflow.id }, { parentFolder: null });
+
 		// 9. try to activate it again if it was active
 		if (wasActive) {
 			try {

@@ -21,7 +21,6 @@ const workflowsStore = useWorkflowsStore();
 const canvasStore = useCanvasStore();
 
 // Component state
-const isDisabled = ref(false);
 const container = ref<HTMLElement>();
 const pipContainer = useTemplateRef('pipContainer');
 const pipContent = useTemplateRef('pipContent');
@@ -29,7 +28,7 @@ const pipContent = useTemplateRef('pipContent');
 // Computed properties
 const workflow = computed(() => workflowsStore.getCurrentWorkflow());
 
-const chatPanelState = computed(() => workflowsStore.chatPanelState);
+const chatPanelState = computed(() => workflowsStore.logsPanelState);
 const previousChatMessages = computed(() => workflowsStore.getPastChatMessages);
 const resultData = computed(() => workflowsStore.getWorkflowRunData);
 
@@ -57,7 +56,7 @@ const { canPopOut, isPoppedOut, pipWindow } = usePiPWindow({
 		}
 
 		telemetry.track('User toggled log view', { new_state: 'attached' });
-		workflowsStore.setPanelState(LOGS_PANEL_STATE.ATTACHED);
+		workflowsStore.setPreferPoppedOutLogsView(false);
 	},
 });
 
@@ -69,23 +68,23 @@ const {
 	sendMessage,
 	refreshSession,
 	displayExecution,
-} = useChatState(isDisabled, onWindowResize);
+} = useChatState(false, onWindowResize);
 
 // Expose internal state for testing
 defineExpose({
 	messages,
 	currentSessionId,
-	isDisabled,
 	workflow,
 });
 
 const closePanel = () => {
-	workflowsStore.setPanelState(LOGS_PANEL_STATE.CLOSED);
+	workflowsStore.toggleLogsPanelOpen(false);
 };
 
 function onPopOut() {
 	telemetry.track('User toggled log view', { new_state: 'floating' });
-	workflowsStore.setPanelState(LOGS_PANEL_STATE.FLOATING);
+	workflowsStore.toggleLogsPanelOpen(true);
+	workflowsStore.setPreferPoppedOutLogsView(true);
 }
 
 // Watchers

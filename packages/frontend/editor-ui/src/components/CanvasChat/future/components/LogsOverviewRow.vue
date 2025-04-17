@@ -2,9 +2,9 @@
 import { type TreeNode as ElTreeNode } from 'element-plus';
 import { getSubtreeTotalConsumedTokens, type TreeNode } from '@/components/RunDataAi/utils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { computed } from 'vue';
+import { computed, useTemplateRef, watch } from 'vue';
 import { type INodeUi } from '@/Interface';
-import { N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system';
 import { type ITaskData } from 'n8n-workflow';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { upperFirst } from 'lodash-es';
@@ -17,13 +17,19 @@ const props = defineProps<{
 	data: TreeNode;
 	node: ElTreeNode;
 	isSelected: boolean;
+	isReadOnly: boolean;
 	shouldShowConsumedTokens: boolean;
 	isCompact: boolean;
 }>();
 
-const emit = defineEmits<{ toggleExpanded: [node: ElTreeNode] }>();
+const emit = defineEmits<{
+	toggleExpanded: [node: ElTreeNode];
+	triggerPartialExecution: [node: TreeNode];
+	openNdv: [node: TreeNode];
+}>();
 
 const locale = useI18n();
+const containerRef = useTemplateRef('containerRef');
 const workflowsStore = useWorkflowsStore();
 const nodeTypeStore = useNodeTypesStore();
 const node = computed<INodeUi | undefined>(() => workflowsStore.nodesByName[props.data.node]);
@@ -66,14 +72,30 @@ function isLastChild(level: number) {
 	}
 
 	const siblings = parent?.children ?? [];
+	const lastSibling = siblings[siblings.length - 1];
 
-	return data === siblings[siblings.length - 1];
+	return (
+		(data === undefined && lastSibling === undefined) ||
+		(data?.node === lastSibling?.node && data?.runIndex === lastSibling?.runIndex)
+	);
 }
+
+// When selected, scroll into view
+watch(
+	[() => props.isSelected, containerRef],
+	([isSelected, ref]) => {
+		if (isSelected && ref) {
+			ref.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+		}
+	},
+	{ immediate: true },
+);
 </script>
 
 <template>
 	<div
 		v-if="node !== undefined"
+		ref="containerRef"
 		:class="{
 			[$style.container]: true,
 			[$style.compact]: props.isCompact,
@@ -98,8 +120,8 @@ function isLastChild(level: number) {
 			size="small"
 			:class="$style.name"
 			:color="isError ? 'danger' : undefined"
-			>{{ node.name }}</N8nText
-		>
+			>{{ node.name }}
+		</N8nText>
 		<N8nText tag="div" color="text-light" size="small" :class="$style.timeTook">
 			<I18nT v-if="isSettled && runData" keypath="logs.overview.body.summaryText">
 				<template #status>
@@ -140,43 +162,68 @@ function isLastChild(level: number) {
 			:class="$style.compactErrorIcon"
 		/>
 		<N8nIconButton
+			v-if="!props.isReadOnly"
+			type="secondary"
+			size="small"
+			icon="play"
+			style="color: var(--color-text-base)"
+			:aria-label="locale.baseText('logs.overview.body.run')"
+			:class="[$style.partialExecutionButton, depth > 0 ? $style.unavailable : '']"
+			@click.stop="emit('triggerPartialExecution', props.data)"
+		/>
+		<N8nIconButton
+			type="secondary"
+			size="small"
+			icon="external-link-alt"
+			style="color: var(--color-text-base)"
+			:class="$style.openNdvButton"
+			:aria-label="locale.baseText('logs.overview.body.open')"
+			@click.stop="emit('openNdv', props.data)"
+		/>
+		<N8nButton
 			v-if="!isCompact || props.data.children.length > 0"
 			type="secondary"
-			size="medium"
-			:icon="props.node.expanded ? 'chevron-down' : 'chevron-up'"
+			size="small"
+			:square="true"
 			:style="{
 				visibility: props.data.children.length === 0 ? 'hidden' : '',
 				color: 'var(--color-text-base)', // give higher specificity than the style from the component itself
 			}"
 			:class="$style.toggleButton"
+			:aria-label="locale.baseText('logs.overview.body.toggleRow')"
 			@click.stop="emit('toggleExpanded', props.node)"
-		/>
+		>
+			<N8nIcon size="medium" :icon="props.node.expanded ? 'chevron-down' : 'chevron-up'" />
+		</N8nButton>
 	</div>
 </template>
 
 <style lang="scss" module>
 .container {
 	display: flex;
-	align-items: stretch;
+	align-items: center;
 	justify-content: stretch;
 	overflow: hidden;
 	position: relative;
 	z-index: 1;
+
+	--row-gap-thickness: 1px;
 
 	& > * {
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
 		padding: var(--spacing-2xs);
+		margin-bottom: var(--row-gap-thickness);
 	}
 }
 
 .background {
 	position: absolute;
-	left: calc(var(--indent-depth) * 32px);
+	left: calc(var(--row-gap-thickness) + var(--indent-depth) * 32px);
 	top: 0;
-	width: calc(100% - var(--indent-depth) * 32px);
-	height: 100%;
+	width: calc(100% - var(--indent-depth) * 32px - var(--row-gap-thickness));
+	height: calc(100% - var(--row-gap-thickness));
 	border-radius: var(--border-radius-base);
 	z-index: -1;
 
@@ -197,6 +244,7 @@ function isLastChild(level: number) {
 	align-self: stretch;
 	position: relative;
 	overflow: hidden;
+	margin-bottom: 0;
 
 	&.connectorCurved:before {
 		content: '';
@@ -220,6 +268,7 @@ function isLastChild(level: number) {
 }
 
 .icon {
+	margin-left: var(--row-gap-thickness);
 	flex-grow: 0;
 	flex-shrink: 0;
 }
@@ -283,6 +332,26 @@ function isLastChild(level: number) {
 	}
 }
 
+.partialExecutionButton,
+.openNdvButton {
+	transition: none;
+
+	/* By default, take space but keep invisible */
+	visibility: hidden;
+
+	.container.compact & {
+		/* When compact, collapse to save space */
+		display: none;
+	}
+
+	.container:hover &:not(.unavailable) {
+		visibility: visible;
+		display: inline-flex;
+	}
+}
+
+.partialExecutionButton,
+.openNdvButton,
 .toggleButton {
 	flex-grow: 0;
 	flex-shrink: 0;
@@ -290,9 +359,15 @@ function isLastChild(level: number) {
 	background: transparent;
 	margin-inline-end: var(--spacing-5xs);
 	color: var(--color-text-base);
+	align-items: center;
+	justify-content: center;
 
 	&:hover {
 		background: transparent;
 	}
+}
+
+.toggleButton {
+	display: inline-flex;
 }
 </style>

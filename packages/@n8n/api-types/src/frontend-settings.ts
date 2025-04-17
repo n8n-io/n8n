@@ -32,6 +32,8 @@ export interface FrontendSettings {
 	endpointForm: string;
 	endpointFormTest: string;
 	endpointFormWaiting: string;
+	endpointMcp: string;
+	endpointMcpTest: string;
 	endpointWebhook: string;
 	endpointWebhookTest: string;
 	endpointWebhookWaiting: string;
@@ -134,6 +136,7 @@ export interface FrontendSettings {
 		workflowHistory: boolean;
 		workerView: boolean;
 		advancedPermissions: boolean;
+		apiKeyScopes: boolean;
 		projects: {
 			team: {
 				limit: number;
@@ -183,5 +186,7 @@ export interface FrontendSettings {
 	};
 	insights: {
 		enabled: boolean;
+		summary: boolean;
+		dashboard: boolean;
 	};
 }

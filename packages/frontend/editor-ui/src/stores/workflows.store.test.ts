@@ -887,6 +887,7 @@ function generateMockExecutionEvents() {
 		data: {
 			hints: [],
 			startTime: 1727867966633,
+			executionIndex: 0,
 			executionTime: 1,
 			source: [],
 			executionStatus: 'success',
@@ -911,6 +912,7 @@ function generateMockExecutionEvents() {
 		data: {
 			hints: [],
 			startTime: 1727869043441,
+			executionIndex: 0,
 			executionTime: 2,
 			source: [
 				{

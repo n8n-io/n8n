@@ -157,6 +157,8 @@ export interface INodeUpdatePropertiesInformation {
 
 export type XYPosition = [number, number];
 
+export type DraggableMode = 'mapping' | 'panel-resize' | 'move';
+
 export interface INodeUi extends INode {
 	position: XYPosition;
 	color?: string;
@@ -346,6 +348,7 @@ export type FolderShortInfo = {
 	id: string;
 	name: string;
 	parentFolder?: string;
+	parentFolderId?: string | null;
 };
 
 export type BaseFolderItem = BaseResource & {
@@ -954,6 +957,8 @@ export interface RootState {
 	endpointForm: string;
 	endpointFormTest: string;
 	endpointFormWaiting: string;
+	endpointMcp: string;
+	endpointMcpTest: string;
 	endpointWebhook: string;
 	endpointWebhookTest: string;
 	endpointWebhookWaiting: string;
@@ -1466,7 +1471,8 @@ export type CloudUpdateLinkSourceType =
 	| 'worker-view'
 	| 'external-secrets'
 	| 'rbac'
-	| 'debug';
+	| 'debug'
+	| 'insights';
 
 export type UTMCampaign =
 	| 'upgrade-custom-data-filter'
@@ -1489,7 +1495,8 @@ export type UTMCampaign =
 	| 'upgrade-worker-view'
 	| 'upgrade-external-secrets'
 	| 'upgrade-rbac'
-	| 'upgrade-debug';
+	| 'upgrade-debug'
+	| 'upgrade-insights';
 
 export type N8nBanners = {
 	[key in BannerName]: {
@@ -1537,7 +1544,8 @@ export type EnterpriseEditionFeatureKey =
 	| 'DebugInEditor'
 	| 'WorkflowHistory'
 	| 'WorkerView'
-	| 'AdvancedPermissions';
+	| 'AdvancedPermissions'
+	| 'ApiKeyScopes';
 
 export type EnterpriseEditionFeatureValue = keyof Omit<FrontendSettings['enterprise'], 'projects'>;
 

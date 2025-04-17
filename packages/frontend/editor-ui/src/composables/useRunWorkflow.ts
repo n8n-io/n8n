@@ -23,7 +23,11 @@ import { NodeConnectionTypes, TelemetryHelpers } from 'n8n-workflow';
 import { useToast } from '@/composables/useToast';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 
-import { CHAT_TRIGGER_NODE_TYPE, SINGLE_WEBHOOK_TRIGGERS } from '@/constants';
+import {
+	CHAT_TRIGGER_NODE_TYPE,
+	IN_PROGRESS_EXECUTION_ID,
+	SINGLE_WEBHOOK_TRIGGERS,
+} from '@/constants';
 
 import { useRootStore } from '@/stores/root.store';
 import { useUIStore } from '@/stores/ui.store';
@@ -40,7 +44,6 @@ import { useTelemetry } from './useTelemetry';
 import { useSettingsStore } from '@/stores/settings.store';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { useNodeDirtiness } from '@/composables/useNodeDirtiness';
-import { LOGS_PANEL_STATE } from '@/components/CanvasChat/types/logs';
 
 export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof useRouter> }) {
 	const nodeHelpers = useNodeHelpers();
@@ -79,8 +82,11 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			throw error;
 		}
 
-		if (response.executionId !== undefined) {
-			workflowsStore.activeExecutionId = response.executionId;
+		if (
+			response.executionId !== undefined &&
+			workflowsStore.previousExecutionId !== response.executionId
+		) {
+			workflowsStore.setActiveExecutionId(response.executionId);
 		}
 
 		if (response.waitingForWebhook === true && useWorkflowsStore().nodesIssuesExist) {
@@ -183,7 +189,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 					// and halt the execution
 					if (!chatHasInputData && !chatHasPinData) {
 						workflowsStore.chatPartialExecutionDestinationNode = options.destinationNode;
-						workflowsStore.setPanelState(LOGS_PANEL_STATE.ATTACHED);
+						workflowsStore.toggleLogsPanelOpen(true);
 						return;
 					}
 				}
@@ -290,7 +296,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			// that data which gets reused is already set and data of newly executed
 			// nodes can be added as it gets pushed in
 			const executionData: IExecutionResponse = {
-				id: '__IN_PROGRESS__',
+				id: IN_PROGRESS_EXECUTION_ID,
 				finished: false,
 				mode: 'manual',
 				status: 'running',

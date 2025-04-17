@@ -8,7 +8,7 @@ import { getPairedItemId } from '@/utils/pairedItemUtils';
 import { shorten } from '@/utils/typesUtils';
 import type { GenericValue, IDataObject, INodeExecutionData } from 'n8n-workflow';
 import { computed, onMounted, ref, watch } from 'vue';
-import Draggable from './Draggable.vue';
+import Draggable from '@/components/Draggable.vue';
 import MappingPill from './MappingPill.vue';
 import TextWithHighlights from './TextWithHighlights.vue';
 import { useI18n } from '@/composables/useI18n';
@@ -71,6 +71,9 @@ const {
 	focusedMappableInput,
 	highlightDraggables: highlight,
 } = storeToRefs(ndvStore);
+
+const canDraggableDrop = computed(() => ndvStore.canDraggableDrop);
+const draggableStickyPosition = computed(() => ndvStore.draggableStickyPos);
 const pairedItemMappings = computed(() => workflowsStore.workflowExecutionPairedItemMappings);
 const tableData = computed(() => convertToTable(props.inputData));
 
@@ -244,17 +247,22 @@ function getValueToRender(value: unknown): string {
 	return JSON.stringify(value);
 }
 
-function onDragStart() {
+function onDragStart(el: HTMLElement, data?: string) {
 	draggedColumn.value = true;
+	ndvStore.draggableStartDragging({
+		type: 'mapping',
+		data: data ?? '',
+		dimensions: el?.getBoundingClientRect() ?? null,
+	});
 	ndvStore.resetMappingTelemetry();
 }
 
-function onCellDragStart(el: HTMLElement) {
+function onCellDragStart(el: HTMLElement, data?: string) {
 	if (el?.dataset.value) {
 		draggingPath.value = el.dataset.value;
 	}
 
-	onDragStart();
+	onDragStart(el, data);
 }
 
 function onCellDragEnd(el: HTMLElement) {
@@ -272,6 +280,7 @@ function isDraggingKey(path: Array<string | number>, colIndex: number) {
 }
 
 function onDragEnd(column: string, src: string, depth = '0') {
+	ndvStore.draggableStopDragging();
 	setTimeout(() => {
 		const mappingTelemetry = ndvStore.mappingTelemetry;
 		const telemetryPayload = {
@@ -492,6 +501,8 @@ watch(focusedMappableInput, (curr) => {
 								type="mapping"
 								:data="getExpression(column)"
 								:disabled="!mappingEnabled"
+								:can-drop="canDraggableDrop"
+								:sticky-position="draggableStickyPosition"
 								@dragstart="onDragStart"
 								@dragend="(column) => onDragEnd(column?.textContent ?? '', 'column')"
 							>
@@ -616,21 +627,22 @@ watch(focusedMappableInput, (curr) => {
 						/>
 						<N8nTree v-else-if="isObject(data)" :node-class="$style.nodeClass" :value="data">
 							<template #label="{ label, path }">
-								<span
+								<TextWithHighlights
+									data-target="mappable"
 									:class="{
 										[$style.hoveringKey]: mappingEnabled && isHovering(path, index2),
 										[$style.draggingKey]: isDraggingKey(path, index2),
 										[$style.dataKey]: true,
 										[$style.mappable]: mappingEnabled,
 									}"
-									data-target="mappable"
+									:content="label || i18n.baseText('runData.unnamedField')"
+									:search="search"
 									:data-name="getCellPathName(path, index2)"
 									:data-value="getCellExpression(path, index2)"
 									:data-depth="path.length"
 									@mouseenter="() => onMouseEnterKey(path, index2)"
 									@mouseleave="onMouseLeaveKey"
-									>{{ label || i18n.baseText('runData.unnamedField') }}</span
-								>
+								/>
 							</template>
 
 							<template #value="{ value }">
