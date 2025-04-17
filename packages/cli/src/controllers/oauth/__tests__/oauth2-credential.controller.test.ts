@@ -70,7 +70,6 @@ describe('OAuth2CredentialController', () => {
 			authUrl: 'https://example.domain/o/oauth2/v2/auth',
 			accessTokenUrl: 'https://example.domain/token',
 		});
-		credentialsHelper.credentialCanUseExternalSecrets.mockResolvedValue(true);
 	});
 
 	describe('getAuthUri', () => {
