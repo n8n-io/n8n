@@ -4,6 +4,11 @@ import { useI18n } from '@/composables/useI18n';
 import { useCanvasNode } from '@/composables/useCanvasNode';
 import { CanvasNodeRenderType } from '@/types';
 import { useCanvas } from '@/composables/useCanvas';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { traverseNodeParameters } from 'n8n-workflow';
+import { useUIStore } from '@/stores/ui.store';
+import { EXECUTE_STEP_MODAL_KEY } from '@/constants';
 
 const emit = defineEmits<{
 	delete: [];
@@ -17,11 +22,16 @@ const props = defineProps<{
 	readOnly?: boolean;
 }>();
 
+const workflowStore = useWorkflowsStore();
+const uiStore = useUIStore();
+
+const nodeTypesStore = useNodeTypesStore();
+
 const $style = useCssModule();
 const i18n = useI18n();
 
 const { isExecuting } = useCanvas();
-const { isDisabled, render } = useCanvasNode();
+const { isDisabled, render, name } = useCanvasNode();
 
 const nodeDisabledTitle = computed(() => {
 	return isDisabled.value ? i18n.baseText('node.enable') : i18n.baseText('node.disable');
@@ -36,13 +46,25 @@ const classes = computed(() => ({
 	[$style.forceVisible]: isHovered.value || isStickyColorSelectorOpen.value,
 }));
 
+const node = computed(() => !!name.value && workflowStore.getNodeByName(name.value));
+
+const isAiToolNode = computed(() => !!node.value && nodeTypesStore.isAiToolNode(node.value.type));
+
 const isExecuteNodeVisible = computed(() => {
 	return (
-		!props.readOnly &&
-		render.value.type === CanvasNodeRenderType.Default &&
-		'configuration' in render.value.options &&
-		!render.value.options.configuration
+		(!props.readOnly &&
+			render.value.type === CanvasNodeRenderType.Default &&
+			'configuration' in render.value.options &&
+			!render.value.options.configuration) ||
+		isAiToolNode.value
 	);
+});
+
+const hasFromAiProps = computed(() => {
+	if (!node.value?.parameters) return false;
+	const collectedArgs: FromAIArgument[] = [];
+	traverseNodeParameters(node.value.parameters, collectedArgs);
+	return collectedArgs.length > 0;
 });
 
 const isDisableNodeVisible = computed(() => {
@@ -56,7 +78,16 @@ const isStickyNoteChangeColorVisible = computed(
 );
 
 function executeNode() {
-	emit('run');
+	if (hasFromAiProps.value) {
+		uiStore.openModalWithData({
+			name: EXECUTE_STEP_MODAL_KEY,
+			data: {
+				nodeName: name.value,
+			},
+		});
+	} else {
+		emit('run');
+	}
 }
 
 function onToggleNode() {
