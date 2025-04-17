@@ -1,43 +1,14 @@
-const { pathsToModuleNameMapper } = require('ts-jest');
-const { compilerOptions } = require('get-tsconfig').getTsconfig().config;
-
-/** @type {import('ts-jest').TsJestGlobalOptions} */
-const tsJestOptions = {
-	isolatedModules: true,
-	tsconfig: {
-		...compilerOptions,
-		declaration: false,
-		sourceMap: true,
-	},
-};
-
-const isCoverageEnabled = process.env.COVERAGE_ENABLED === 'true';
-
-/** @type {import('jest').Config} */
-const config = {
-	verbose: true,
+module.exports = {
+	preset: 'ts-jest',
 	testEnvironment: 'node',
-	testRegex: '\\.(test|spec)\\.(js|ts)$',
-	testPathIgnorePatterns: ['/dist/', '/node_modules/'],
+	testMatch: ['**/__tests__/**/*.test.ts'],
 	transform: {
-		'^.+\\.ts$': ['ts-jest', tsJestOptions],
+		'^.+\\.tsx?$': [
+			'ts-jest',
+			{
+				tsconfig: 'tsconfig.json',
+			},
+		],
 	},
-	// This resolve the path mappings from the tsconfig relative to each jest.config.js
-	moduleNameMapper: compilerOptions?.paths
-		? pathsToModuleNameMapper(compilerOptions.paths, {
-				prefix: `<rootDir>${compilerOptions.baseUrl ? `/${compilerOptions.baseUrl.replace(/^\.\//, '')}` : ''}`,
-			})
-		: {},
-	setupFilesAfterEnv: ['jest-expect-message'],
-	collectCoverage: isCoverageEnabled,
-	coverageReporters: ['text-summary', 'lcov', 'html-spa'],
-	collectCoverageFrom: ['src/**/*.ts'],
-	workerIdleMemoryLimit: '1MB',
+	moduleFileExtensions: ['ts', 'js', 'json'],
 };
-
-if (process.env.CI === 'true') {
-	config.reporters = ['default', 'jest-junit'];
-	config.coverageReporters = ['cobertura'];
-}
-
-module.exports = config;
