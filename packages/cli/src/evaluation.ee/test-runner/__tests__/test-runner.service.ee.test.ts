@@ -257,8 +257,6 @@ describe('TestRunnerService', () => {
 
 	afterEach(() => {
 		jest.resetAllMocks();
-		testRunRepository.incrementFailed.mockClear();
-		testRunRepository.incrementPassed.mockClear();
 	});
 
 	test('should create an instance of TestRunnerService', async () => {
@@ -402,9 +400,6 @@ describe('TestRunnerService', () => {
 		expect(testRunRepository.markAsCompleted).toHaveBeenCalledWith('test-run-id', {
 			metric1: 0.75,
 		});
-
-		expect(testRunRepository.incrementPassed).toHaveBeenCalledTimes(2);
-		expect(testRunRepository.incrementFailed).not.toHaveBeenCalled();
 	});
 
 	test('should properly count passed and failed executions', async () => {
@@ -455,9 +450,6 @@ describe('TestRunnerService', () => {
 			.mockRejectedValue(new Error('Some error'));
 
 		await testRunnerService.runTest(mock<User>(), 'workflow-under-test-id');
-
-		expect(testRunRepository.incrementPassed).toHaveBeenCalledTimes(1);
-		expect(testRunRepository.incrementFailed).toHaveBeenCalledTimes(1);
 	});
 
 	test('should properly count failed test executions', async () => {
@@ -504,9 +496,6 @@ describe('TestRunnerService', () => {
 			.mockResolvedValue(mockEvaluationExecutionData({ metric1: 1, metric2: 0 }));
 
 		await testRunnerService.runTest(mock<User>(), 'workflow-under-test-id');
-
-		expect(testRunRepository.incrementPassed).toHaveBeenCalledTimes(1);
-		expect(testRunRepository.incrementFailed).toHaveBeenCalledTimes(1);
 	});
 
 	test('should properly count failed evaluations', async () => {
@@ -557,9 +546,6 @@ describe('TestRunnerService', () => {
 			.mockResolvedValue(mockErrorExecutionData());
 
 		await testRunnerService.runTest(mock<User>(), 'workflow-under-test-id');
-
-		expect(testRunRepository.incrementPassed).toHaveBeenCalledTimes(1);
-		expect(testRunRepository.incrementFailed).toHaveBeenCalledTimes(1);
 	});
 
 	test('should specify correct start nodes when running workflow under test', async () => {
@@ -953,9 +939,6 @@ describe('TestRunnerService', () => {
 			metric1: 0.75,
 			metric2: 1.5,
 		});
-
-		expect(testRunRepository.incrementPassed).toHaveBeenCalledTimes(2);
-		expect(testRunRepository.incrementFailed).not.toHaveBeenCalled();
 	});
 
 	test('should properly override metrics from earlier nodes with later ones', async () => {
@@ -1054,9 +1037,6 @@ describe('TestRunnerService', () => {
 			metric1: 0.75,
 			metric2: 7.5,
 		});
-
-		expect(testRunRepository.incrementPassed).toHaveBeenCalledTimes(2);
-		expect(testRunRepository.incrementFailed).not.toHaveBeenCalled();
 	});
 
 	describe('Test Run cancellation', () => {

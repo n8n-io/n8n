@@ -23,7 +23,7 @@ export class TestRunRepository extends Repository<TestRun> {
 	}
 
 	// TODO: Use workfloId here.
-	async createTestRun(workflowId: string) {
+	async createTestRun(_workflowId: string) {
 		const testRun = this.create({
 			status: 'new',
 		});
@@ -62,17 +62,7 @@ export class TestRunRepository extends Repository<TestRun> {
 		);
 	}
 
-	async incrementPassed(id: string, trx?: EntityManager) {
-		trx = trx ?? this.manager;
-		return await trx.increment(TestRun, { id }, 'passedCases', 1);
-	}
-
-	async incrementFailed(id: string, trx?: EntityManager) {
-		trx = trx ?? this.manager;
-		return await trx.increment(TestRun, { id }, 'failedCases', 1);
-	}
-
-	async getMany(workflowId: string, options: ListQuery.Options) {
+	async getMany(_workflowId: string, options: ListQuery.Options) {
 		// FIXME: optimize fetching final result of each test run
 		const findManyOptions: FindManyOptions<TestRun> = {
 			// where: { workflow: { id: workflowId } },
