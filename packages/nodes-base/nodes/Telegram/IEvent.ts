@@ -10,6 +10,12 @@ interface EventBody {
 	video?: {
 		file_id: string;
 	};
+	chat?: {
+		id: number;
+	};
+	from?: {
+		id: number;
+	};
 }
 
 export interface IEvent {

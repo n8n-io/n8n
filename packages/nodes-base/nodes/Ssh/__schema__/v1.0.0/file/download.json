@@ -1,0 +1,18 @@
+{
+    "type": "object",
+    "properties": {
+        "code": {
+            "type": "integer"
+        },
+        "signal": {
+            "type": "null"
+        },
+        "stderr": {
+            "type": "string"
+        },
+        "stdout": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

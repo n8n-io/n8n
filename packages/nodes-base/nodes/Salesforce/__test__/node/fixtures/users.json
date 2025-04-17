@@ -1,0 +1,29 @@
+[
+	{
+		"attributes": {
+			"type": "User",
+			"url": "/services/data/v59.0/sobjects/User/id1"
+		},
+		"Id": "id1",
+		"Name": "User 1",
+		"Email": "test1@test.com"
+	},
+	{
+		"attributes": {
+			"type": "User",
+			"url": "/services/data/v59.0/sobjects/User/id2"
+		},
+		"Id": "id2",
+		"Name": "User 2",
+		"Email": "test2@test.com"
+	},
+	{
+		"attributes": {
+			"type": "User",
+			"url": "/services/data/v59.0/sobjects/User/id3"
+		},
+		"Id": "id3",
+		"Name": "User 3",
+		"Email": "test3@test.com"
+	}
+]

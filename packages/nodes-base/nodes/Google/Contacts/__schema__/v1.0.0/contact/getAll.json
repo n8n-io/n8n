@@ -1,7 +1,7 @@
 {
     "type": "object",
     "properties": {
-        "resourceName": {
+        "contactId": {
             "type": "string"
         },
         "etag": {
@@ -13,22 +13,19 @@
                 "displayName": {
                     "type": "string"
                 },
+                "displayNameLastFirst": {
+                    "type": "string"
+                },
                 "familyName": {
                     "type": "string"
                 },
                 "givenName": {
                     "type": "string"
                 },
-                "displayNameLastFirst": {
-                    "type": "string"
-                },
                 "unstructuredName": {
                     "type": "string"
                 }
             }
-        },
-        "contactId": {
-            "type": "string"
         },
         "phoneNumbers": {
             "type": "object",
@@ -40,11 +37,10 @@
                     }
                 }
             }
+        },
+        "resourceName": {
+            "type": "string"
         }
     },
-    "required": [
-        "resourceName",
-        "etag",
-        "contactId"
-    ]
+    "version": 1
 }

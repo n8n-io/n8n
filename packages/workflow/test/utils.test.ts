@@ -8,6 +8,7 @@ import {
 	fileTypeFromMimeType,
 	randomInt,
 	randomString,
+	hasKey,
 } from '@/utils';
 
 describe('isObjectEmpty', () => {
@@ -288,5 +289,80 @@ describe('randomString', () => {
 			const result = randomString(1000);
 			result.split('').every((char) => ALPHABET.includes(char));
 		});
+	});
+});
+
+type Expect<T extends true> = T;
+type Equal<X, Y> = (<T>() => T extends X ? 1 : 2) extends <T>() => T extends Y ? 1 : 2
+	? true
+	: false;
+
+describe('hasKey', () => {
+	it('should return false if the input is null', () => {
+		const x = null;
+		const result = hasKey(x, 'key');
+
+		expect(result).toEqual(false);
+	});
+	it('should return false if the input is undefined', () => {
+		const x = undefined;
+		const result = hasKey(x, 'key');
+
+		expect(result).toEqual(false);
+	});
+	it('should return false if the input is a number', () => {
+		const x = 1;
+		const result = hasKey(x, 'key');
+
+		expect(result).toEqual(false);
+	});
+	it('should return false if the input is an array out of bounds', () => {
+		const x = [1, 2];
+		const result = hasKey(x, 5);
+
+		expect(result).toEqual(false);
+	});
+
+	it('should return true if the input is an array within bounds', () => {
+		const x = [1, 2];
+		const result = hasKey(x, 1);
+
+		expect(result).toEqual(true);
+	});
+	it('should return true if the input is an array with the key `length`', () => {
+		const x = [1, 2];
+		const result = hasKey(x, 'length');
+
+		expect(result).toEqual(true);
+	});
+	it('should return false if the input is an array with the key `toString`', () => {
+		const x = [1, 2];
+		const result = hasKey(x, 'toString');
+
+		expect(result).toEqual(false);
+	});
+	it('should return false if the input is an object without the key', () => {
+		const x = { a: 3 };
+		const result = hasKey(x, 'a');
+
+		expect(result).toEqual(true);
+	});
+
+	it('should return true if the input is an object with the key', () => {
+		const x = { a: 3 };
+		const result = hasKey(x, 'b');
+
+		expect(result).toEqual(false);
+	});
+
+	it('should provide a type guard', () => {
+		const x: unknown = { a: 3 };
+		if (hasKey(x, '0')) {
+			const y: Expect<Equal<typeof x, Record<'0', unknown>>> = true;
+			y;
+		} else {
+			const z: Expect<Equal<typeof x, unknown>> = true;
+			z;
+		}
 	});
 });

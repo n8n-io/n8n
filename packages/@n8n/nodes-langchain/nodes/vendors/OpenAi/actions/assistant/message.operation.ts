@@ -12,7 +12,7 @@ import type {
 } from 'n8n-workflow';
 import {
 	ApplicationError,
-	NodeConnectionType,
+	NodeConnectionTypes,
 	NodeOperationError,
 	updateDisplayOptions,
 } from 'n8n-workflow';
@@ -32,7 +32,7 @@ const properties: INodeProperties[] = [
 		name: 'prompt',
 	},
 	{
-		displayName: 'Text',
+		displayName: 'Prompt (User Message)',
 		name: 'text',
 		type: 'string',
 		default: '',
@@ -235,7 +235,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		nodeVersion >= 1.6 && this.getNodeParameter('memory', i) === 'connector';
 	const memory =
 		useMemoryConnector || nodeVersion < 1.6
-			? ((await this.getInputConnectionData(NodeConnectionType.AiMemory, 0)) as
+			? ((await this.getInputConnectionData(NodeConnectionTypes.AiMemory, 0)) as
 					| BufferWindowMemory
 					| undefined)
 			: undefined;

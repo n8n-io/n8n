@@ -1,4 +1,4 @@
-import type { Scope } from '@n8n/permissions';
+import type { AssignableRole, GlobalRole, Scope } from '@n8n/permissions';
 import type { Application } from 'express';
 import type {
 	ExecutionError,
@@ -30,9 +30,10 @@ import type { AnnotationTagEntity } from '@/databases/entities/annotation-tag-en
 import type { AuthProviderType } from '@/databases/entities/auth-identity';
 import type { SharedCredentials } from '@/databases/entities/shared-credentials';
 import type { TagEntity } from '@/databases/entities/tag-entity';
-import type { AssignableRole, GlobalRole, User } from '@/databases/entities/user';
+import type { User } from '@/databases/entities/user';
 
 import type { LICENSE_FEATURES, LICENSE_QUOTAS } from './constants';
+import type { Folder } from './databases/entities/folder';
 import type { ExternalHooks } from './external-hooks';
 import type { WorkflowWithSharingsAndCredentials } from './workflows/workflows.types';
 
@@ -90,15 +91,22 @@ export type IAnnotationTagWithCountDb = IAnnotationTagDb & UsageCount;
 
 // Almost identical to editor-ui.Interfaces.ts
 export interface IWorkflowDb extends IWorkflowBase {
+	triggerCount: number;
 	tags?: TagEntity[];
-}
-
-export interface IWorkflowToImport extends IWorkflowBase {
-	tags: ITagToImport[];
+	parentFolder?: Folder | null;
 }
 
 export interface IWorkflowResponse extends IWorkflowBase {
 	id: string;
+}
+
+export interface IWorkflowToImport
+	extends Omit<IWorkflowBase, 'staticData' | 'pinData' | 'createdAt' | 'updatedAt'> {
+	owner: {
+		type: 'personal';
+		personalEmail: string;
+	};
+	parentFolderId: string | null;
 }
 
 // ----------------------------------

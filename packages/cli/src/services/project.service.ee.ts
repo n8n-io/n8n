@@ -5,7 +5,7 @@ import { type Scope } from '@n8n/permissions';
 import type { FindOptionsWhere, EntityManager } from '@n8n/typeorm';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In, Not } from '@n8n/typeorm';
-import { ApplicationError } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 
 import { UNLIMITED_LICENSE_QUOTA } from '@/constants';
 import { Project } from '@/databases/entities/project';
@@ -23,7 +23,7 @@ import { License } from '@/license';
 import { CacheService } from './cache/cache.service';
 import { RoleService } from './role.service';
 
-export class TeamProjectOverQuotaError extends ApplicationError {
+export class TeamProjectOverQuotaError extends UserError {
 	constructor(limit: number) {
 		super(
 			`Attempted to create a new project but quota is already exhausted. You may have a maximum of ${limit} team projects.`,
@@ -31,7 +31,7 @@ export class TeamProjectOverQuotaError extends ApplicationError {
 	}
 }
 
-export class UnlicensedProjectRoleError extends ApplicationError {
+export class UnlicensedProjectRoleError extends UserError {
 	constructor(role: ProjectRole) {
 		super(`Your instance is not licensed to use role "${role}".`);
 	}
@@ -58,6 +58,12 @@ export class ProjectService {
 	private get credentialsService() {
 		return import('@/credentials/credentials.service').then(({ CredentialsService }) =>
 			Container.get(CredentialsService),
+		);
+	}
+
+	private get folderService() {
+		return import('@/services/folder.service').then(({ FolderService }) =>
+			Container.get(FolderService),
 		);
 	}
 
@@ -134,16 +140,22 @@ export class ProjectService {
 			}
 		}
 
-		// 3. delete shared credentials into this project
+		// 3. Move folders over to the target project, before deleting the project else cascading will delete workflows
+		if (targetProject) {
+			const folderService = await this.folderService;
+			await folderService.transferAllFoldersToProject(project.id, targetProject.id);
+		}
+
+		// 4. delete shared credentials into this project
 		// Cascading deletes take care of this.
 
-		// 4. delete shared workflows into this project
+		// 5. delete shared workflows into this project
 		// Cascading deletes take care of this.
 
-		// 5. delete project
+		// 6. delete project
 		await this.projectRepository.remove(project);
 
-		// 6. delete project relations
+		// 7. delete project relations
 		// Cascading deletes take care of this.
 	}
 

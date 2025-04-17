@@ -13,18 +13,13 @@
                         "value": {
                             "type": "string"
                         }
-                    },
-                    "required": [
-                        "matchLevel",
-                        "matchedWords",
-                        "value"
-                    ]
+                    }
                 },
                 "title": {
                     "type": "object",
                     "properties": {
-                        "matchLevel": {
-                            "type": "string"
+                        "fullyHighlighted": {
+                            "type": "boolean"
                         },
                         "matchedWords": {
                             "type": "array",
@@ -32,21 +27,19 @@
                                 "type": "string"
                             }
                         },
+                        "matchLevel": {
+                            "type": "string"
+                        },
                         "value": {
                             "type": "string"
                         }
-                    },
-                    "required": [
-                        "matchLevel",
-                        "matchedWords",
-                        "value"
-                    ]
+                    }
                 },
                 "url": {
                     "type": "object",
                     "properties": {
-                        "matchLevel": {
-                            "type": "string"
+                        "fullyHighlighted": {
+                            "type": "boolean"
                         },
                         "matchedWords": {
                             "type": "array",
@@ -54,20 +47,15 @@
                                 "type": "string"
                             }
                         },
+                        "matchLevel": {
+                            "type": "string"
+                        },
                         "value": {
                             "type": "string"
                         }
-                    },
-                    "required": [
-                        "matchLevel",
-                        "matchedWords",
-                        "value"
-                    ]
+                    }
                 }
-            },
-            "required": [
-                "author"
-            ]
+            }
         },
         "_tags": {
             "type": "array",
@@ -109,14 +97,5 @@
             "type": "string"
         }
     },
-    "required": [
-        "_highlightResult",
-        "_tags",
-        "author",
-        "created_at",
-        "created_at_i",
-        "objectID",
-        "story_id",
-        "updated_at"
-    ]
+    "version": 1
 }

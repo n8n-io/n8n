@@ -1,8 +1,14 @@
-import { CredentialsGetManyRequestQuery, CredentialsGetOneRequestQuery } from '@n8n/api-types';
+import {
+	CreateCredentialDto,
+	CredentialsGetManyRequestQuery,
+	CredentialsGetOneRequestQuery,
+	GenerateCredentialNameRequestQuery,
+} from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 import { Logger } from 'n8n-core';
+import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 import { z } from 'zod';
 
@@ -20,14 +26,14 @@ import {
 	RestController,
 	ProjectScope,
 } from '@/decorators';
-import { Param, Query } from '@/decorators/args';
+import { Body, Param, Query } from '@/decorators/args';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { License } from '@/license';
 import { listQueryMiddleware } from '@/middlewares';
-import { CredentialRequest } from '@/requests';
+import { AuthenticatedRequest, CredentialRequest } from '@/requests';
 import { NamingService } from '@/services/naming.service';
 import { UserManagementMailer } from '@/user-management/email';
 import * as utils from '@/utils';
@@ -79,8 +85,12 @@ export class CredentialsController {
 	}
 
 	@Get('/new')
-	async generateUniqueName(req: CredentialRequest.NewName) {
-		const requestedName = req.query.name ?? this.globalConfig.credentials.defaultName;
+	async generateUniqueName(
+		_req: unknown,
+		_res: unknown,
+		@Query query: GenerateCredentialNameRequestQuery,
+	) {
+		const requestedName = query.name ?? this.globalConfig.credentials.defaultName;
 
 		return {
 			name: await this.namingService.getUniqueCredentialName(requestedName),
@@ -130,7 +140,7 @@ export class CredentialsController {
 		}
 
 		const mergedCredentials = deepCopy(credentials);
-		const decryptedData = this.credentialsService.decrypt(storedCredential);
+		const decryptedData = this.credentialsService.decrypt(storedCredential, true);
 
 		// When a sharee (or project viewer) opens a credential, the fields and the
 		// credential data are missing so the payload will be empty
@@ -143,19 +153,26 @@ export class CredentialsController {
 			mergedCredentials,
 		);
 
-		if (mergedCredentials.data && storedCredential) {
+		if (mergedCredentials.data) {
 			mergedCredentials.data = this.credentialsService.unredact(
 				mergedCredentials.data,
 				decryptedData,
 			);
 		}
 
-		return await this.credentialsService.test(req.user, mergedCredentials);
+		return await this.credentialsService.test(req.user.id, mergedCredentials);
 	}
 
 	@Post('/')
-	async createCredentials(req: CredentialRequest.Create) {
-		const newCredential = await this.credentialsService.createCredential(req.body, req.user);
+	async createCredentials(
+		req: AuthenticatedRequest,
+		_: Response,
+		@Body payload: CreateCredentialDto,
+	) {
+		const newCredential = await this.credentialsService.createUnmanagedCredential(
+			payload,
+			req.user,
+		);
 
 		const project = await this.sharedCredentialsRepository.findCredentialOwningProject(
 			newCredential.id,
@@ -176,18 +193,22 @@ export class CredentialsController {
 	@Patch('/:credentialId')
 	@ProjectScope('credential:update')
 	async updateCredentials(req: CredentialRequest.Update) {
-		const { credentialId } = req.params;
+		const {
+			body,
+			user,
+			params: { credentialId },
+		} = req;
 
 		const credential = await this.sharedCredentialsRepository.findCredentialForUser(
 			credentialId,
-			req.user,
+			user,
 			['credential:update'],
 		);
 
 		if (!credential) {
 			this.logger.info('Attempt to update credential blocked due to lack of permissions', {
 				credentialId,
-				userId: req.user.id,
+				userId: user.id,
 			});
 			throw new NotFoundError(
 				'Credential to be updated not found. You can only update credentials owned by you',
@@ -199,14 +220,18 @@ export class CredentialsController {
 		}
 
 		const decryptedData = this.credentialsService.decrypt(credential, true);
+		// We never want to allow users to change the oauthTokenData
+		delete body.data?.oauthTokenData;
 		const preparedCredentialData = await this.credentialsService.prepareUpdateData(
 			req.body,
 			decryptedData,
 		);
-		const newCredentialData = this.credentialsService.createEncryptedData(
-			credentialId,
-			preparedCredentialData,
-		);
+		const newCredentialData = this.credentialsService.createEncryptedData({
+			id: credential.id,
+			name: preparedCredentialData.name,
+			type: preparedCredentialData.type,
+			data: preparedCredentialData.data as unknown as ICredentialDataDecryptedObject,
+		});
 
 		const responseData = await this.credentialsService.update(credentialId, newCredentialData);
 
@@ -305,7 +330,12 @@ export class CredentialsController {
 				credentialsId: credentialId,
 				projectId: In(toUnshare),
 			});
-			await this.enterpriseCredentialsService.shareWithProjects(req.user, credential, toShare, trx);
+			await this.enterpriseCredentialsService.shareWithProjects(
+				req.user,
+				credential.id,
+				toShare,
+				trx,
+			);
 
 			if (deleteResult.affected) {
 				amountRemoved = deleteResult.affected;

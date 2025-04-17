@@ -25,6 +25,11 @@ export class WorkflowFilter extends BaseFilter {
 	@Expose()
 	projectId?: string;
 
+	@IsString()
+	@IsOptional()
+	@Expose()
+	parentFolderId?: string;
+
 	static async fromString(rawFilter: string) {
 		return await this.toFilter(rawFilter, WorkflowFilter);
 	}

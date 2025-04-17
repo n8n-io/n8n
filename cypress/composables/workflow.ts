@@ -25,6 +25,12 @@ export type EndpointType =
  * Getters
  */
 
+export function executeWorkflowAndWait() {
+	cy.get('[data-test-id="execute-workflow-button"]').click();
+	cy.contains('Workflow executed successfully', { timeout: 4000 }).should('be.visible');
+	cy.contains('Workflow executed successfully', { timeout: 10000 }).should('not.exist');
+}
+
 export function getCanvas() {
 	return cy.getByTestId('canvas');
 }
@@ -180,6 +186,13 @@ export function getSaveButton() {
 
 export function getZoomToFitButton() {
 	return cy.getByTestId('zoom-to-fit');
+}
+
+export function getNodeIssuesByName(nodeName: string) {
+	return getCanvasNodes()
+		.filter(`:contains(${nodeName})`)
+		.should('have.length.greaterThan', 0)
+		.findChildByTestId('node-issues');
 }
 
 /**
@@ -356,5 +369,5 @@ export function openContextMenu(
 }
 
 export function clickContextMenuAction(action: string) {
-	getContextMenuAction(action).click();
+	getContextMenuAction(action).click({ force: true });
 }

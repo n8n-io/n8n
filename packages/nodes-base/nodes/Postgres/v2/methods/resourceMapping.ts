@@ -74,7 +74,9 @@ export async function getMappingColumns(
 			const options =
 				type === 'options' ? getEnumValues(enumInfo, col.udt_name as string) : undefined;
 			const hasDefault = Boolean(col.column_default);
-			const isGenerated = col.is_generated === 'ALWAYS' || col.identity_generation === 'ALWAYS';
+			const isGenerated =
+				col.is_generated === 'ALWAYS' ||
+				['ALWAYS', 'BY DEFAULT'].includes(col.identity_generation ?? '');
 			const nullable = col.is_nullable === 'YES';
 			return {
 				id: col.column_name,

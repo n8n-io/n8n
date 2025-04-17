@@ -1,6 +1,7 @@
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
+import type { WorkflowId } from 'n8n-workflow';
 
 import type { Project } from '@/databases/entities/project';
 import { SharedWorkflow, type WorkflowSharingRole } from '@/databases/entities/shared-workflow';
@@ -83,15 +84,15 @@ export async function createWorkflow(
 	});
 }
 
-export async function setWorkflowAsActive(workflow: WorkflowEntity) {
-	await Container.get(WorkflowRepository).update(workflow.id, {
+export async function setWorkflowAsActive(workflowId: WorkflowId) {
+	await Container.get(WorkflowRepository).update(workflowId, {
 		active: true,
 		updatedAt: new Date(),
 	});
 }
 
-export async function setWorkflowAsInactive(workflow: WorkflowEntity) {
-	return await Container.get(WorkflowRepository).update(workflow.id, {
+export async function setWorkflowAsInactive(workflowId: WorkflowId) {
+	return await Container.get(WorkflowRepository).update(workflowId, {
 		active: false,
 		updatedAt: new Date(),
 	});

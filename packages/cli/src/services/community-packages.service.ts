@@ -5,7 +5,7 @@ import { exec } from 'child_process';
 import { access as fsAccess, mkdir as fsMkdir } from 'fs/promises';
 import type { PackageDirectoryLoader } from 'n8n-core';
 import { InstanceSettings, Logger } from 'n8n-core';
-import { ApplicationError, type PublicInstalledPackage } from 'n8n-workflow';
+import { UnexpectedError, UserError, type PublicInstalledPackage } from 'n8n-workflow';
 import { promisify } from 'util';
 
 import {
@@ -102,10 +102,10 @@ export class CommunityPackagesService {
 	}
 
 	parseNpmPackageName(rawString?: string): CommunityPackages.ParsedPackageName {
-		if (!rawString) throw new ApplicationError(PACKAGE_NAME_NOT_PROVIDED);
+		if (!rawString) throw new UnexpectedError(PACKAGE_NAME_NOT_PROVIDED);
 
 		if (INVALID_OR_SUSPICIOUS_PACKAGE_NAME.test(rawString)) {
-			throw new ApplicationError('Package name must be a single word');
+			throw new UnexpectedError('Package name must be a single word');
 		}
 
 		const scope = rawString.includes('/') ? rawString.split('/')[0] : undefined;
@@ -113,7 +113,7 @@ export class CommunityPackagesService {
 		const packageNameWithoutScope = scope ? rawString.replace(`${scope}/`, '') : rawString;
 
 		if (!packageNameWithoutScope.startsWith(NODE_PACKAGE_PREFIX)) {
-			throw new ApplicationError(`Package name must start with ${NODE_PACKAGE_PREFIX}`);
+			throw new UnexpectedError(`Package name must start with ${NODE_PACKAGE_PREFIX}`);
 		}
 
 		const version = packageNameWithoutScope.includes('@')
@@ -164,12 +164,12 @@ export class CommunityPackagesService {
 			};
 
 			Object.entries(map).forEach(([npmMessage, n8nMessage]) => {
-				if (errorMessage.includes(npmMessage)) throw new ApplicationError(n8nMessage);
+				if (errorMessage.includes(npmMessage)) throw new UnexpectedError(n8nMessage);
 			});
 
 			this.logger.warn('npm command failed', { errorMessage });
 
-			throw new ApplicationError(PACKAGE_FAILED_TO_INSTALL);
+			throw new UnexpectedError(PACKAGE_FAILED_TO_INSTALL);
 		}
 	}
 
@@ -346,7 +346,7 @@ export class CommunityPackagesService {
 			await this.executeNpmCommand(command);
 		} catch (error) {
 			if (error instanceof Error && error.message === RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_FOUND) {
-				throw new ApplicationError('npm package not found', { extra: { packageName } });
+				throw new UserError('npm package not found', { extra: { packageName } });
 			}
 			throw error;
 		}
@@ -360,7 +360,7 @@ export class CommunityPackagesService {
 			try {
 				await this.executeNpmCommand(`npm remove ${packageName}`);
 			} catch {}
-			throw new ApplicationError(RESPONSE_ERROR_MESSAGES.PACKAGE_LOADING_FAILED, { cause: error });
+			throw new UnexpectedError(RESPONSE_ERROR_MESSAGES.PACKAGE_LOADING_FAILED, { cause: error });
 		}
 
 		if (loader.loadedNodes.length > 0) {
@@ -378,7 +378,7 @@ export class CommunityPackagesService {
 				this.logger.info(`Community package installed: ${packageName}`);
 				return installedPackage;
 			} catch (error) {
-				throw new ApplicationError('Failed to save installed package', {
+				throw new UnexpectedError('Failed to save installed package', {
 					extra: { packageName },
 					cause: error,
 				});
@@ -388,7 +388,7 @@ export class CommunityPackagesService {
 			try {
 				await this.executeNpmCommand(`npm remove ${packageName}`);
 			} catch {}
-			throw new ApplicationError(RESPONSE_ERROR_MESSAGES.PACKAGE_DOES_NOT_CONTAIN_NODES);
+			throw new UnexpectedError(RESPONSE_ERROR_MESSAGES.PACKAGE_DOES_NOT_CONTAIN_NODES);
 		}
 	}
 

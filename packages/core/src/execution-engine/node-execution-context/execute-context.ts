@@ -20,18 +20,8 @@ import {
 	ApplicationError,
 	createDeferredPromise,
 	createEnvProviderState,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
-
-// eslint-disable-next-line import/no-cycle
-import {
-	returnJsonArray,
-	copyInputItems,
-	normalizeItems,
-	constructExecutionMetaData,
-	getRequestHelperFunctions,
-	getSSHTunnelFunctions,
-} from '@/node-execute-functions';
 
 import { BaseExecuteContext } from './base-execute-context';
 import {
@@ -41,9 +31,15 @@ import {
 	getBinaryHelperFunctions,
 	detectBinaryEncoding,
 } from './utils/binary-helper-functions';
+import { constructExecutionMetaData } from './utils/construct-execution-metadata';
+import { copyInputItems } from './utils/copy-input-items';
 import { getDeduplicationHelperFunctions } from './utils/deduplication-helper-functions';
 import { getFileSystemHelperFunctions } from './utils/file-system-helper-functions';
 import { getInputConnectionData } from './utils/get-input-connection-data';
+import { normalizeItems } from './utils/normalize-items';
+import { getRequestHelperFunctions } from './utils/request-helper-functions';
+import { returnJsonArray } from './utils/return-json-array';
+import { getSSHTunnelFunctions } from './utils/ssh-tunnel-helper-functions';
 
 export class ExecuteContext extends BaseExecuteContext implements IExecuteFunctions {
 	readonly helpers: IExecuteFunctions['helpers'];
@@ -177,7 +173,7 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 		);
 	}
 
-	getInputData(inputIndex = 0, connectionType = NodeConnectionType.Main) {
+	getInputData(inputIndex = 0, connectionType = NodeConnectionTypes.Main) {
 		if (!this.inputData.hasOwnProperty(connectionType)) {
 			// Return empty array because else it would throw error when nothing is connected to input
 			return [];

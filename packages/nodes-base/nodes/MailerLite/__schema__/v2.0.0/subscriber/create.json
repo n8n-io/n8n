@@ -1,0 +1,119 @@
+{
+    "type": "object",
+    "properties": {
+        "clicks_count": {
+            "type": "integer"
+        },
+        "created_at": {
+            "type": "string"
+        },
+        "email": {
+            "type": "string"
+        },
+        "fields": {
+            "type": "object",
+            "properties": {
+                "city": {
+                    "type": "null"
+                },
+                "country": {
+                    "type": "null"
+                },
+                "state": {
+                    "type": "null"
+                },
+                "z_i_p": {
+                    "type": "null"
+                }
+            }
+        },
+        "groups": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "active_count": {
+                        "type": "integer"
+                    },
+                    "bounced_count": {
+                        "type": "integer"
+                    },
+                    "click_rate": {
+                        "type": "object",
+                        "properties": {
+                            "string": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "clicks_count": {
+                        "type": "integer"
+                    },
+                    "created_at": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "junk_count": {
+                        "type": "integer"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "open_rate": {
+                        "type": "object",
+                        "properties": {
+                            "string": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "opens_count": {
+                        "type": "integer"
+                    },
+                    "sent_count": {
+                        "type": "integer"
+                    },
+                    "unconfirmed_count": {
+                        "type": "integer"
+                    },
+                    "unsubscribed_count": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "id": {
+            "type": "string"
+        },
+        "opens_count": {
+            "type": "integer"
+        },
+        "opted_in_at": {
+            "type": "null"
+        },
+        "optin_ip": {
+            "type": "null"
+        },
+        "sent": {
+            "type": "integer"
+        },
+        "source": {
+            "type": "string"
+        },
+        "status": {
+            "type": "string"
+        },
+        "subscribed_at": {
+            "type": "string"
+        },
+        "unsubscribed_at": {
+            "type": "null"
+        },
+        "updated_at": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

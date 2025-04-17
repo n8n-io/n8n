@@ -1,9 +1,9 @@
 import { Container } from '@n8n/di';
 import { mockInstance } from 'n8n-core/test/utils';
+import type { IWorkflowBase } from 'n8n-workflow';
 
 import type { AnnotationTagEntity } from '@/databases/entities/annotation-tag-entity.ee';
 import type { User } from '@/databases/entities/user';
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { TestDefinitionRepository } from '@/databases/repositories/test-definition.repository.ee';
 import { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.service.ee';
 import { createAnnotationTags } from '@test-integration/db/executions';
@@ -17,10 +17,10 @@ import * as utils from './../shared/utils/';
 const testRunner = mockInstance(TestRunnerService);
 
 let authOwnerAgent: SuperAgentTest;
-let workflowUnderTest: WorkflowEntity;
-let workflowUnderTest2: WorkflowEntity;
-let evaluationWorkflow: WorkflowEntity;
-let otherWorkflow: WorkflowEntity;
+let workflowUnderTest: IWorkflowBase;
+let workflowUnderTest2: IWorkflowBase;
+let evaluationWorkflow: IWorkflowBase;
+let otherWorkflow: IWorkflowBase;
 let ownerShell: User;
 let annotationTag: AnnotationTagEntity;
 const testServer = utils.setupTestServer({ endpointGroups: ['evaluation'] });

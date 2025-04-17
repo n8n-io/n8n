@@ -14,7 +14,7 @@ import {
 	NodeOperationError,
 	sleep,
 	removeCircularRefs,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 import type { Readable } from 'stream';
 
@@ -46,8 +46,8 @@ export class HttpRequestV2 implements INodeType {
 				color: '#2200DD',
 			},
 			version: 2,
-			inputs: [NodeConnectionType.Main],
-			outputs: [NodeConnectionType.Main],
+			inputs: [NodeConnectionTypes.Main],
+			outputs: [NodeConnectionTypes.Main],
 			credentials: [
 				{
 					name: 'httpBasicAuth',

@@ -42,6 +42,9 @@ import { AddMissingPrimaryKeyOnAnnotationTagMapping1728659839644 } from './17286
 import { AddProjectIcons1729607673469 } from './1729607673469-AddProjectIcons';
 import { AddDescriptionToTestDefinition1731404028106 } from './1731404028106-AddDescriptionToTestDefinition';
 import { MigrateTestDefinitionKeyToString1731582748663 } from './1731582748663-MigrateTestDefinitionKeyToString';
+import { CreateFolderTable1738709609940 } from './1738709609940-CreateFolderTable';
+import { UpdateParentFolderIdColumn1740445074052 } from './1740445074052-UpdateParentFolderIdColumn';
+import { AddScopesColumnToApiKeys1742918400000 } from './1742918400000-AddScopesColumnToApiKeys';
 import { UniqueWorkflowNames1620821879465 } from '../common/1620821879465-UniqueWorkflowNames';
 import { UpdateWorkflowCredentials1630330987096 } from '../common/1630330987096-UpdateWorkflowCredentials';
 import { AddNodeIds1658930531669 } from '../common/1658930531669-AddNodeIds';
@@ -75,6 +78,9 @@ import { AddMockedNodesColumnToTestDefinition1733133775640 } from '../common/173
 import { AddManagedColumnToCredentialsTable1734479635324 } from '../common/1734479635324-AddManagedColumnToCredentialsTable';
 import { AddStatsColumnsToTestRun1736172058779 } from '../common/1736172058779-AddStatsColumnsToTestRun';
 import { CreateTestCaseExecutionTable1736947513045 } from '../common/1736947513045-CreateTestCaseExecutionTable';
+import { AddErrorColumnsToTestRuns1737715421462 } from '../common/1737715421462-AddErrorColumnsToTestRuns';
+import { CreateAnalyticsTables1739549398681 } from '../common/1739549398681-CreateAnalyticsTables';
+import { RenameAnalyticsToInsights1741167584277 } from '../common/1741167584277-RenameAnalyticsToInsights';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
@@ -152,6 +158,12 @@ const sqliteMigrations: Migration[] = [
 	AddProjectIcons1729607673469,
 	AddStatsColumnsToTestRun1736172058779,
 	CreateTestCaseExecutionTable1736947513045,
+	AddErrorColumnsToTestRuns1737715421462,
+	CreateFolderTable1738709609940,
+	CreateAnalyticsTables1739549398681,
+	UpdateParentFolderIdColumn1740445074052,
+	RenameAnalyticsToInsights1741167584277,
+	AddScopesColumnToApiKeys1742918400000,
 ];
 
 export { sqliteMigrations };

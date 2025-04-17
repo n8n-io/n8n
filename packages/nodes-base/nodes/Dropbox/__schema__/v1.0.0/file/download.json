@@ -1,11 +1,9 @@
 {
     "type": "object",
     "properties": {
-        "name": {
-            "type": "string"
-        },
-        "rev": {
+        "id": {
             "type": "string"
         }
-    }
+    },
+    "version": 2
 }

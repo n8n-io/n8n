@@ -10,7 +10,7 @@ import type {
 	IWebhookResponseData,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeConnectionType, randomString } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes, randomString } from 'n8n-workflow';
 
 import type {
 	ITypeformAnswer,
@@ -32,7 +32,7 @@ export class TypeformTrigger implements INodeType {
 			name: 'Typeform Trigger',
 		},
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'typeformApi',

@@ -1,6 +1,6 @@
 import type * as express from 'express';
 import { mock } from 'jest-mock-extended';
-import type { ITaskData } from 'n8n-workflow';
+import type { ITaskData, IWorkflowBase } from 'n8n-workflow';
 import {
 	type IWebhookData,
 	type IWorkflowExecuteAdditionalData,
@@ -11,7 +11,6 @@ import { v4 as uuid } from 'uuid';
 import { generateNanoId } from '@/databases/utils/generators';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
-import type { IWorkflowDb } from '@/interfaces';
 import type {
 	TestWebhookRegistrationsService,
 	TestWebhookRegistration,
@@ -26,7 +25,7 @@ jest.mock('@/workflow-execute-additional-data');
 
 const mockedAdditionalData = AdditionalData as jest.Mocked<typeof AdditionalData>;
 
-const workflowEntity = mock<IWorkflowDb>({ id: generateNanoId(), nodes: [] });
+const workflowEntity = mock<IWorkflowBase>({ id: generateNanoId(), nodes: [] });
 
 const httpMethod = 'GET';
 const path = uuid();

@@ -6,7 +6,7 @@ import * as member from './member';
 import * as message from './message';
 import type { Discord } from './node.type';
 import * as webhook from './webhook';
-import { configureWaitTillDate } from '../../../../utils/sendAndWait/utils';
+import { configureWaitTillDate } from '../../../../utils/sendAndWait/configureWaitTillDate.util';
 import { checkAccessToGuild } from '../helpers/utils';
 import { discordApiRequest } from '../transport';
 

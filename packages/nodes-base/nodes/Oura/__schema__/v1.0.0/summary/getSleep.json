@@ -1,0 +1,44 @@
+{
+    "type": "object",
+    "properties": {
+        "contributors": {
+            "type": "object",
+            "properties": {
+                "deep_sleep": {
+                    "type": "integer"
+                },
+                "efficiency": {
+                    "type": "integer"
+                },
+                "latency": {
+                    "type": "integer"
+                },
+                "rem_sleep": {
+                    "type": "integer"
+                },
+                "restfulness": {
+                    "type": "integer"
+                },
+                "timing": {
+                    "type": "integer"
+                },
+                "total_sleep": {
+                    "type": "integer"
+                }
+            }
+        },
+        "day": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "score": {
+            "type": "integer"
+        },
+        "timestamp": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

@@ -1,6 +1,6 @@
 import { Service } from '@n8n/di';
 import { Logger } from 'n8n-core';
-import { type INode, type INodeCredentialsDetails } from 'n8n-workflow';
+import { type INode, type INodeCredentialsDetails, type IWorkflowBase } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { Project } from '@/databases/entities/project';
@@ -11,7 +11,7 @@ import { WorkflowTagMapping } from '@/databases/entities/workflow-tag-mapping';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import { TagRepository } from '@/databases/repositories/tag.repository';
 import * as Db from '@/db';
-import type { ICredentialsDb } from '@/interfaces';
+import type { ICredentialsDb, IWorkflowDb } from '@/interfaces';
 import { replaceInvalidCredentials } from '@/workflow-helpers';
 
 @Service()
@@ -31,7 +31,7 @@ export class ImportService {
 		this.dbTags = await this.tagRepository.find();
 	}
 
-	async importWorkflows(workflows: WorkflowEntity[], projectId: string) {
+	async importWorkflows(workflows: IWorkflowDb[], projectId: string) {
 		await this.initRecords();
 
 		for (const workflow of workflows) {
@@ -84,7 +84,7 @@ export class ImportService {
 		});
 	}
 
-	async replaceInvalidCreds(workflow: WorkflowEntity) {
+	async replaceInvalidCreds(workflow: IWorkflowBase) {
 		try {
 			await replaceInvalidCredentials(workflow);
 		} catch (e) {

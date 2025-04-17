@@ -4,5 +4,6 @@
         "deleted": {
             "type": "boolean"
         }
-    }
+    },
+    "version": 1
 }
