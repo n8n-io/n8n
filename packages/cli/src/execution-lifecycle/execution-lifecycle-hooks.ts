@@ -8,9 +8,9 @@ import type {
 } from 'n8n-workflow';
 
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import { ModuleRegistry } from '@/decorators/module';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
+import { ModuleLoader } from '@/modules/module-loader';
 import { Push } from '@/push';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { isWorkflowIdValid } from '@/utils';
@@ -398,7 +398,7 @@ export function getLifecycleHooksForScalingWorker(
 		hookFunctionsPush(hooks, optionalParameters);
 	}
 
-	Container.get(ModuleRegistry).registerLifecycleHooks(hooks);
+	Container.get(ModuleLoader).registerLifecycleHooks(hooks);
 
 	return hooks;
 }
@@ -460,7 +460,7 @@ export function getLifecycleHooksForScalingMain(
 	hooks.handlers.nodeExecuteBefore = [];
 	hooks.handlers.nodeExecuteAfter = [];
 
-	Container.get(ModuleRegistry).registerLifecycleHooks(hooks);
+	Container.get(ModuleLoader).registerLifecycleHooks(hooks);
 
 	return hooks;
 }
@@ -484,6 +484,6 @@ export function getLifecycleHooksForRegularMain(
 	hookFunctionsSaveProgress(hooks, optionalParameters);
 	hookFunctionsStatistics(hooks);
 	hookFunctionsExternalHooks(hooks);
-	Container.get(ModuleRegistry).registerLifecycleHooks(hooks);
+	Container.get(ModuleLoader).registerLifecycleHooks(hooks);
 	return hooks;
 }

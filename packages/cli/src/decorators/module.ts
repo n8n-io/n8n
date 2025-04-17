@@ -1,8 +1,8 @@
-import { Container, Service, type Constructable } from '@n8n/di';
+import { Service, type Constructable } from '@n8n/di';
 import type { ExecutionLifecycleHooks } from 'n8n-core';
 
 export interface BaseN8nModule {
-	initialize?(): void;
+	init(): void;
 	registerLifecycleHooks?(hooks: ExecutionLifecycleHooks): void;
 }
 
@@ -16,24 +16,3 @@ export const N8nModule = (): ClassDecorator => (target) => {
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 	return Service()(target);
 };
-
-@Service()
-export class ModuleRegistry {
-	initializeModules() {
-		for (const ModuleClass of registry.keys()) {
-			const instance = Container.get(ModuleClass);
-			if (instance.initialize) {
-				instance.initialize();
-			}
-		}
-	}
-
-	registerLifecycleHooks(hooks: ExecutionLifecycleHooks) {
-		for (const ModuleClass of registry.keys()) {
-			const instance = Container.get(ModuleClass);
-			if (instance.registerLifecycleHooks) {
-				instance.registerLifecycleHooks(hooks);
-			}
-		}
-	}
-}

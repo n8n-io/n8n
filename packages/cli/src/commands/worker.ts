@@ -6,6 +6,7 @@ import { N8N_VERSION, inTest } from '@/constants';
 import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-message-generic';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
+import { ModuleLoader } from '@/modules/module-loader';
 import { PubSubHandler } from '@/scaling/pubsub/pubsub-handler';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import type { ScalingService } from '@/scaling/scaling.service';
@@ -115,7 +116,7 @@ export class Worker extends BaseCommand {
 			await taskRunnerModule.start();
 		}
 
-		await this.loadModules();
+		await Container.get(ModuleLoader).load();
 	}
 
 	async initEventBus() {

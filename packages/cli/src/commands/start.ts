@@ -20,6 +20,7 @@ import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { EventService } from '@/events/event.service';
 import { ExecutionService } from '@/executions/execution.service';
+import { ModuleLoader } from '@/modules/module-loader';
 import { PubSubHandler } from '@/scaling/pubsub/pubsub-handler';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { Server } from '@/server';
@@ -240,7 +241,7 @@ export class Start extends BaseCommand {
 			await taskRunnerModule.start();
 		}
 
-		await this.loadModules();
+		await Container.get(ModuleLoader).load();
 	}
 
 	async initOrchestration() {

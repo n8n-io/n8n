@@ -1,60 +1,35 @@
-import { CommaSeparatedStringArray, Config, Env } from '@n8n/config';
-import type { DatabaseConfig } from '@n8n/config/src/configs/database.config';
-import type { InstanceSettings } from 'n8n-core';
-import { UnexpectedError } from 'n8n-workflow';
+import { Config, Env } from '@n8n/config';
+import { z } from 'zod';
 
-export type ModulePreInitContext = {
-	instance: InstanceSettings;
-	database: DatabaseConfig;
-};
+import { UnknownModuleError } from './errors/unknown-module.error';
 
-export type ModulePreInit = {
-	shouldLoadModule: (ctx: ModulePreInitContext) => boolean;
-};
+const MODULE_NAMES = ['insights'] as const;
 
-const moduleNames = ['insights'] as const;
-export type ModuleName = (typeof moduleNames)[number];
+export type ModuleName = (typeof MODULE_NAMES)[number];
 
-class Modules extends CommaSeparatedStringArray<ModuleName> {
-	constructor(str: string) {
-		super(str);
+const moduleNameSchema = z.enum(MODULE_NAMES);
 
-		for (const moduleName of this) {
-			if (!moduleNames.includes(moduleName)) {
-				throw new UnexpectedError(`Unknown module name ${moduleName}`, { level: 'fatal' });
+const moduleArraySchema = z
+	.string()
+	.transform((value) => (value ? value.split(',') : []))
+	.pipe(
+		z.array(moduleNameSchema).refine((moduleNames) => {
+			for (const m of moduleNames) {
+				if (!MODULE_NAMES.includes(m)) throw new UnknownModuleError(m);
 			}
-		}
-	}
-}
+			return true;
+		}),
+	);
+
+type ModuleArray = z.infer<typeof moduleArraySchema>;
 
 @Config
 export class ModulesConfig {
-	/** Comma-separated list of all modules enabled */
-	@Env('N8N_ENABLED_MODULES')
-	enabledModules: Modules = [];
+	/** Comma-separated list of enabled modules. */
+	@Env('N8N_ENABLED_MODULES', moduleArraySchema)
+	enabledModules: ModuleArray = [];
 
-	/** Comma-separated list of all disabled modules */
-	@Env('N8N_DISABLED_MODULES')
-	disabledModules: Modules = [];
-
-	// Default modules are always enabled unless explicitly disabled
-	private readonly defaultModules: ModuleName[] = ['insights'];
-
-	// Loaded modules are the ones that have been loaded so far by the instance
-	readonly loadedModules = new Set<ModuleName>();
-
-	// Get all modules by merging default and enabled, and filtering out disabled modules
-	get modules(): ModuleName[] {
-		if (this.enabledModules.some((module) => this.disabledModules.includes(module))) {
-			throw new UnexpectedError('Module cannot be both enabled and disabled', { level: 'fatal' });
-		}
-
-		const enabledModules = Array.from(new Set(this.defaultModules.concat(this.enabledModules)));
-
-		return enabledModules.filter((module) => !this.disabledModules.includes(module));
-	}
-
-	addLoadedModule(module: ModuleName) {
-		this.loadedModules.add(module);
-	}
+	/** Comma-separated list of disabled modules. */
+	@Env('N8N_DISABLED_MODULES', moduleArraySchema)
+	disabledModules: ModuleArray = [];
 }
