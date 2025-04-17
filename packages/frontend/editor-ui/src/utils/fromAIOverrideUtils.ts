@@ -122,7 +122,7 @@ function getBestQuoteChar(description: string) {
 // Note that this is not *technically* unique, as two lists with the
 // same list name and the same property display name could theoretically
 // exist within one node. However, this is unlikely to happen in practice.
-export function buildUniqueName(props: OverrideContext) {
+export function buildUniqueName(props: Pick<OverrideContext, 'parameter' | 'path'>) {
 	const path = props.path.split('.');
 
 	// include any list segments in the path (e.g. .myListName[0].) for uniqueness
@@ -145,7 +145,7 @@ export function buildUniqueName(props: OverrideContext) {
 
 export function buildValueFromOverride(
 	override: FromAIOverride,
-	props: OverrideContext,
+	props: Pick<OverrideContext, 'parameter' | 'path'>,
 	includeMarker: boolean,
 ) {
 	const { extraPropValues, extraProps } = override;
