@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, nextTick, ref, onMounted, watch } from 'vue';
+import { computed, nextTick, ref, onMounted, watch, onBeforeUnmount } from 'vue';
 
 import { type ProjectSharingData } from '@/types/projects.types';
 import PageViewLayout from '@/components/layouts/PageViewLayout.vue';
@@ -301,28 +301,31 @@ watch(
 	},
 );
 
-watch(
-	() => props.resources,
-	async () => {
-		await nextTick();
-		focusSearchInput();
-	},
-);
-
 // Lifecycle hooks
 onMounted(async () => {
 	await loadPaginationFromQueryString();
 	await props.initialize();
 	await nextTick();
 
-	focusSearchInput();
-
 	if (hasAppliedFilters()) {
 		hasFilters.value = true;
 	}
+
+	window.addEventListener('keydown', captureSearchHotKey);
+});
+
+onBeforeUnmount(() => {
+	window.removeEventListener('keydown', captureSearchHotKey);
 });
 
 //methods
+const captureSearchHotKey = (e: KeyboardEvent) => {
+	if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+		e.preventDefault();
+		focusSearchInput();
+	}
+};
+
 const focusSearchInput = () => {
 	if (search.value) {
 		search.value.focus();

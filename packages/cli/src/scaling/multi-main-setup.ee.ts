@@ -108,14 +108,16 @@ export class MultiMainSetup extends TypedEmitter<MultiMainEvents> {
 		const { hostId } = this.instanceSettings;
 
 		// this can only succeed if leadership is currently vacant
-		const keySetSuccessfully = await this.publisher.setIfNotExists(this.leaderKey, hostId);
+		const keySetSuccessfully = await this.publisher.setIfNotExists(
+			this.leaderKey,
+			hostId,
+			this.leaderKeyTtl,
+		);
 
 		if (keySetSuccessfully) {
 			this.logger.debug(`[Instance ID ${hostId}] Leader is now this instance`);
 
 			this.instanceSettings.markAsLeader();
-
-			await this.publisher.setExpiration(this.leaderKey, this.leaderKeyTtl);
 
 			this.emit('leader-takeover');
 		} else {

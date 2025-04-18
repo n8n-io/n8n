@@ -9,9 +9,9 @@ import type {
 } from '@/components/layouts/ResourcesListLayout.vue';
 import WorkflowCard from '@/components/WorkflowCard.vue';
 import WorkflowTagsDropdown from '@/components/WorkflowTagsDropdown.vue';
+import Draggable from '@/components/Draggable.vue';
 import {
 	EASY_AI_WORKFLOW_EXPERIMENT,
-	AI_CREDITS_EXPERIMENT,
 	EnterpriseEditionFeature,
 	VIEWS,
 	DEFAULT_WORKFLOW_PAGE_SIZE,
@@ -59,11 +59,13 @@ import { debounce } from 'lodash-es';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
 import { useFoldersStore } from '@/stores/folders.store';
+import type { DragTarget, DropTarget } from '@/composables/useFolders';
 import { useFolders } from '@/composables/useFolders';
 import { useUsageStore } from '@/stores/usage.store';
 import { useInsightsStore } from '@/features/insights/insights.store';
 import InsightsSummary from '@/features/insights/components/InsightsSummary.vue';
 import { useOverview } from '@/composables/useOverview';
+import { PROJECT_ROOT } from 'n8n-workflow';
 
 const SEARCH_DEBOUNCE_TIME = 300;
 const FILTERS_DEBOUNCE_TIME = 100;
@@ -131,6 +133,8 @@ const pageSize = ref(DEFAULT_WORKFLOW_PAGE_SIZE);
 const currentSort = ref('updatedAt:desc');
 
 const currentFolderId = ref<string | null>(null);
+
+const showCardsBadge = ref(false);
 
 /**
  * Folder actions
@@ -207,6 +211,14 @@ const showFolders = computed(() => {
 
 const currentFolder = computed(() => {
 	return currentFolderId.value ? foldersStore.breadcrumbsCache[currentFolderId.value] : null;
+});
+
+const isDragging = computed(() => {
+	return foldersStore.draggedElement !== null;
+});
+
+const isDragNDropEnabled = computed(() => {
+	return !readOnlyEnv.value && hasPermissionToUpdateFolders.value;
 });
 
 const hasPermissionToCreateFolders = computed(() => {
@@ -327,9 +339,14 @@ const hasFilters = computed(() => {
 	);
 });
 
-const isCommunity = computed(() => usageStore.planName.toLowerCase() === 'community');
+const isSelfHostedDeployment = computed(() => settingsStore.deploymentType === 'default');
+
 const canUserRegisterCommunityPlus = computed(
 	() => getResourcePermissions(usersStore.currentUser?.globalScopes).community.register,
+);
+
+const showRegisteredCommunityCTA = computed(
+	() => isSelfHostedDeployment.value && !foldersEnabled.value && canUserRegisterCommunityPlus.value,
 );
 
 /**
@@ -347,6 +364,7 @@ watch(
 	() => route.params?.folderId,
 	async (newVal) => {
 		currentFolderId.value = newVal as string;
+		filters.value.search = '';
 		await fetchWorkflows();
 	},
 );
@@ -473,7 +491,9 @@ const fetchWorkflows = async () => {
 				name: filters.value.search || undefined,
 				active: activeFilter,
 				tags: tags.length ? tags : undefined,
-				parentFolderId: parentFolder ?? (isOverviewPage.value ? undefined : '0'), // Sending 0 will only show one level of folders
+				parentFolderId:
+					parentFolder ??
+					(isOverviewPage.value ? undefined : filters?.value.search ? undefined : PROJECT_ROOT), // Sending 0 will only show one level of folders
 			},
 			fetchFolders,
 		);
@@ -494,6 +514,10 @@ const fetchWorkflows = async () => {
 		}
 
 		workflowsAndFolders.value = fetchedResources;
+
+		// Toggle ownership cards visibility only after we have fetched the workflows
+		showCardsBadge.value = isOverviewPage.value || filters.value.search !== '';
+
 		return fetchedResources;
 	} catch (error) {
 		toast.showError(error, i18n.baseText('workflows.list.error.fetching'));
@@ -696,13 +720,7 @@ const openAIWorkflow = async (source: string) => {
 		{ withPostHog: true },
 	);
 
-	const isAiCreditsExperimentEnabled =
-		posthogStore.getVariant(AI_CREDITS_EXPERIMENT.name) === AI_CREDITS_EXPERIMENT.variant;
-
-	const easyAiWorkflowJson = getEasyAiWorkflowJson({
-		isInstanceInAiFreeCreditsExperiment: isAiCreditsExperimentEnabled,
-		withOpenAiFreeCredits: settingsStore.aiCreditsQuota,
-	});
+	const easyAiWorkflowJson = getEasyAiWorkflowJson();
 
 	await router.push({
 		name: VIEWS.TEMPLATE_IMPORT,
@@ -749,6 +767,91 @@ const getFolderContent = async (folderId: string) => {
 			type: 'error',
 		});
 		return { workflowCount: 0, subFolderCount: 0 };
+	}
+};
+
+/* Drag and drop methods */
+
+const onFolderCardDrop = async (event: MouseEvent) => {
+	const { draggedResource, dropTarget } = folderHelpers.handleDrop(event);
+	if (!draggedResource || !dropTarget) return;
+	await moveResourceOnDrop(draggedResource, dropTarget);
+};
+
+const onBreadCrumbsItemDrop = async (item: PathItem) => {
+	if (!foldersStore.draggedElement) return;
+	await moveResourceOnDrop(
+		{
+			id: foldersStore.draggedElement.id,
+			type: foldersStore.draggedElement.type,
+			name: foldersStore.draggedElement.name,
+		},
+		{
+			id: item.id,
+			type: 'folder',
+			name: item.label,
+		},
+	);
+	folderHelpers.onDragEnd();
+};
+
+const moveFolderToProjectRoot = async (id: string, name: string) => {
+	if (!foldersStore.draggedElement) return;
+	await moveResourceOnDrop(
+		{
+			id: foldersStore.draggedElement.id,
+			type: foldersStore.draggedElement.type,
+			name: foldersStore.draggedElement.name,
+		},
+		{
+			id,
+			type: 'project',
+			name,
+		},
+	);
+	folderHelpers.onDragEnd();
+};
+
+/**
+ * Perform resource move on drop, also handles toast messages and updating the UI
+ * @param draggedResource
+ * @param dropTarget
+ */
+const moveResourceOnDrop = async (draggedResource: DragTarget, dropTarget: DropTarget) => {
+	if (draggedResource.type === 'folder') {
+		await moveFolder({
+			folder: { id: draggedResource.id, name: draggedResource.name },
+			newParent: { id: dropTarget.id, name: dropTarget.name, type: dropTarget.type },
+			options: { skipFetch: true, skipNavigation: true },
+		});
+		// Remove the dragged folder from the list
+		workflowsAndFolders.value = workflowsAndFolders.value.filter(
+			(folder) => folder.id !== draggedResource.id,
+		);
+		// Increase the count of the target folder
+		const targetFolder = getFolderListItem(dropTarget.id);
+		if (targetFolder) {
+			targetFolder.subFolderCount += 1;
+		}
+	} else if (draggedResource.type === 'workflow') {
+		await onWorkflowMoved({
+			workflow: {
+				id: draggedResource.id,
+				name: draggedResource.name,
+				oldParentId: currentFolderId.value ?? '',
+			},
+			newParent: { id: dropTarget.id, name: dropTarget.name, type: dropTarget.type },
+			options: { skipFetch: true },
+		});
+		// Remove the dragged workflow from the list
+		workflowsAndFolders.value = workflowsAndFolders.value.filter(
+			(workflow) => workflow.id !== draggedResource.id,
+		);
+		// Increase the count of the target folder
+		const targetFolder = getFolderListItem(dropTarget.id);
+		if (targetFolder) {
+			targetFolder.workflowCount += 1;
+		}
 	}
 };
 
@@ -1042,8 +1145,8 @@ const renameFolder = async (folderId: string) => {
 };
 
 const createFolderInCurrent = async () => {
-	// Show the community plus enrollment modal if the user is in a community plan
-	if (isCommunity.value && canUserRegisterCommunityPlus.value) {
+	// Show the community plus enrollment modal if the user is self-hosted, and hasn't enabled folders
+	if (showRegisteredCommunityCTA.value) {
 		uiStore.openModalWithData({
 			name: COMMUNITY_PLUS_ENROLLMENT_MODAL,
 			data: { customHeading: i18n.baseText('folders.registeredCommunity.cta.heading') },
@@ -1079,6 +1182,10 @@ const deleteFolder = async (folderId: string, workflowCount: number, subFolderCo
 const moveFolder = async (payload: {
 	folder: { id: string; name: string };
 	newParent: { id: string; name: string; type: 'folder' | 'project' };
+	options?: {
+		skipFetch?: boolean;
+		skipNavigation?: boolean;
+	};
 }) => {
 	if (!route.params.projectId) return;
 	try {
@@ -1088,6 +1195,7 @@ const moveFolder = async (payload: {
 			payload.newParent.type === 'project' ? '0' : payload.newParent.id,
 		);
 		const isCurrentFolder = currentFolderId.value === payload.folder.id;
+
 		const newFolderURL = router.resolve({
 			name: VIEWS.PROJECTS_FOLDERS,
 			params: {
@@ -1095,7 +1203,7 @@ const moveFolder = async (payload: {
 				folderId: payload.newParent.type === 'project' ? undefined : payload.newParent.id,
 			},
 		}).href;
-		if (isCurrentFolder) {
+		if (isCurrentFolder && !payload.options?.skipNavigation) {
 			// If we just moved the current folder, automatically navigate to the new folder
 			void router.push(newFolderURL);
 		} else {
@@ -1113,7 +1221,9 @@ const moveFolder = async (payload: {
 				},
 				type: 'success',
 			});
-			await fetchWorkflows();
+			if (!payload.options?.skipFetch) {
+				await fetchWorkflows();
+			}
 		}
 	} catch (error) {
 		toast.showError(error, i18n.baseText('folders.move.error.title'));
@@ -1125,7 +1235,7 @@ const moveWorkflowToFolder = async (payload: {
 	name: string;
 	parentFolderId?: string;
 }) => {
-	if (isCommunity.value && canUserRegisterCommunityPlus.value) {
+	if (showRegisteredCommunityCTA.value) {
 		uiStore.openModalWithData({
 			name: COMMUNITY_PLUS_ENROLLMENT_MODAL,
 			data: { customHeading: i18n.baseText('folders.registeredCommunity.cta.heading') },
@@ -1142,6 +1252,9 @@ const moveWorkflowToFolder = async (payload: {
 const onWorkflowMoved = async (payload: {
 	workflow: { id: string; name: string; oldParentId: string };
 	newParent: { id: string; name: string; type: 'folder' | 'project' };
+	options?: {
+		skipFetch?: boolean;
+	};
 }) => {
 	if (!route.params.projectId) return;
 	try {
@@ -1159,7 +1272,9 @@ const onWorkflowMoved = async (payload: {
 			parentFolderId: payload.newParent.type === 'project' ? '0' : payload.newParent.id,
 			versionId: workflowResource?.versionId,
 		});
-		await fetchWorkflows();
+		if (!payload.options?.skipFetch) {
+			await fetchWorkflows();
+		}
 		toast.showToast({
 			title: i18n.baseText('folders.move.workflow.success.title'),
 			message: i18n.baseText('folders.move.workflow.success.message', {
@@ -1216,23 +1331,24 @@ const onCreateWorkflowClick = () => {
 		@update:page-size="setPageSize"
 		@update:filters="onFiltersUpdated"
 		@sort="onSortUpdated"
+		@mouseleave="folderHelpers.resetDropTarget"
 	>
 		<template #header>
-			<ProjectHeader>
+			<ProjectHeader @create-folder="createFolderInCurrent">
 				<InsightsSummary
-					v-if="overview.isOverviewSubPage"
+					v-if="overview.isOverviewSubPage && insightsStore.isSummaryEnabled"
 					:loading="insightsStore.summary.isLoading"
 					:summary="insightsStore.summary.state"
 				/>
 			</ProjectHeader>
 		</template>
-		<template v-if="foldersEnabled" #add-button>
+		<template v-if="foldersEnabled || showRegisteredCommunityCTA" #add-button>
 			<N8nTooltip
 				placement="top"
 				:disabled="!(isOverviewPage || (!readOnlyEnv && hasPermissionToCreateFolders))"
 			>
 				<template #content>
-					<span v-if="isOverviewPage">
+					<span v-if="isOverviewPage && !showRegisteredCommunityCTA">
 						<span v-if="teamProjectsEnabled">
 							{{ i18n.baseText('folders.add.overview.withProjects.message') }}
 						</span>
@@ -1240,7 +1356,7 @@ const onCreateWorkflowClick = () => {
 							{{ i18n.baseText('folders.add.overview.community.message') }}
 						</span>
 					</span>
-					<span v-else-if="!readOnlyEnv && hasPermissionToCreateFolders">
+					<span v-else>
 						{{
 							currentParentName
 								? i18n.baseText('folders.add.to.parent.message', {
@@ -1256,7 +1372,7 @@ const onCreateWorkflowClick = () => {
 					type="tertiary"
 					data-test-id="add-folder-button"
 					:class="$style['add-folder-button']"
-					:disabled="readOnlyEnv || !hasPermissionToCreateFolders"
+					:disabled="!showRegisteredCommunityCTA && (readOnlyEnv || !hasPermissionToCreateFolders)"
 					@click="createFolderInCurrent"
 				/>
 			</N8nTooltip>
@@ -1302,34 +1418,98 @@ const onCreateWorkflowClick = () => {
 				<FolderBreadcrumbs
 					:breadcrumbs="mainBreadcrumbs"
 					:actions="mainBreadcrumbsActions"
+					:hidden-items-trigger="isDragging ? 'hover' : 'click'"
 					@item-selected="onBreadcrumbItemClick"
 					@action="onBreadCrumbsAction"
+					@item-drop="onBreadCrumbsItemDrop"
+					@project-drop="moveFolderToProjectRoot"
 				/>
 			</div>
 		</template>
-		<template #item="{ item: data }">
-			<FolderCard
+		<template #item="{ item: data, index }">
+			<Draggable
 				v-if="(data as FolderResource | WorkflowResource).resourceType === 'folder'"
-				:data="data as FolderResource"
-				:actions="folderCardActions"
-				:read-only="readOnlyEnv || (!hasPermissionToDeleteFolders && !hasPermissionToCreateFolders)"
-				class="mb-2xs"
-				@action="onFolderCardAction"
-			/>
-			<WorkflowCard
+				:key="`folder-${index}`"
+				:disabled="!isDragNDropEnabled"
+				type="move"
+				target-data-key="folder"
+				@dragstart="folderHelpers.onDragStart"
+				@dragend="folderHelpers.onDragEnd"
+			>
+				<template #preview>
+					<N8nCard>
+						<N8nText tag="h2" bold>
+							{{ (data as FolderResource).name }}
+						</N8nText>
+					</N8nCard>
+				</template>
+				<FolderCard
+					:data="data as FolderResource"
+					:actions="folderCardActions"
+					:read-only="
+						readOnlyEnv || (!hasPermissionToDeleteFolders && !hasPermissionToCreateFolders)
+					"
+					:personal-project="projectsStore.personalProject"
+					:data-resourceid="(data as FolderResource).id"
+					:data-resourcename="(data as FolderResource).name"
+					:class="{
+						['mb-2xs']: true,
+						[$style['drag-active']]: isDragging,
+						[$style.dragging]:
+							foldersStore.draggedElement?.type === 'folder' &&
+							foldersStore.draggedElement?.id === (data as FolderResource).id,
+						[$style['drop-active']]:
+							foldersStore.activeDropTarget?.id === (data as FolderResource).id,
+					}"
+					:show-ownership-badge="showCardsBadge"
+					data-target="folder"
+					class="mb-2xs"
+					@action="onFolderCardAction"
+					@mouseenter="folderHelpers.onDragEnter"
+					@mouseup="onFolderCardDrop"
+				/>
+			</Draggable>
+			<Draggable
 				v-else
-				data-test-id="resources-list-item-workflow"
-				class="mb-2xs"
-				:data="data as WorkflowResource"
-				:workflow-list-event-bus="workflowListEventBus"
-				:read-only="readOnlyEnv"
-				@click:tag="onClickTag"
-				@workflow:deleted="onWorkflowDeleted"
-				@workflow:moved="fetchWorkflows"
-				@workflow:duplicated="fetchWorkflows"
-				@workflow:active-toggle="onWorkflowActiveToggle"
-				@action:move-to-folder="moveWorkflowToFolder"
-			/>
+				:key="`workflow-${index}`"
+				:disabled="!isDragNDropEnabled"
+				type="move"
+				target-data-key="workflow"
+				@dragstart="folderHelpers.onDragStart"
+				@dragend="folderHelpers.onDragEnd"
+			>
+				<template #preview>
+					<N8nCard>
+						<N8nText tag="h2" bold>
+							{{ (data as WorkflowResource).name }}
+						</N8nText>
+					</N8nCard>
+				</template>
+				<WorkflowCard
+					data-test-id="resources-list-item-workflow"
+					:class="{
+						['mb-2xs']: true,
+						[$style['drag-active']]: isDragging,
+						[$style.dragging]:
+							foldersStore.draggedElement?.type === 'workflow' &&
+							foldersStore.draggedElement?.id === (data as WorkflowResource).id,
+					}"
+					:data="data as WorkflowResource"
+					:workflow-list-event-bus="workflowListEventBus"
+					:read-only="readOnlyEnv"
+					:data-resourceid="(data as WorkflowResource).id"
+					:data-resourcename="(data as WorkflowResource).name"
+					:show-ownership-badge="showCardsBadge"
+					data-target="workflow"
+					@click:tag="onClickTag"
+					@workflow:deleted="onWorkflowDeleted"
+					@workflow:moved="fetchWorkflows"
+					@workflow:duplicated="fetchWorkflows"
+					@workflow:active-toggle="onWorkflowActiveToggle"
+					@action:move-to-folder="moveWorkflowToFolder"
+					@mouseenter="isDragging ? folderHelpers.resetDropTarget() : {}"
+				/>
+			</Draggable>
 		</template>
 		<template #empty>
 			<div class="text-center mt-s" data-test-id="list-empty-state">
@@ -1514,6 +1694,25 @@ const onCreateWorkflowClick = () => {
 .empty-folder-container {
 	button {
 		margin-top: var(--spacing-2xs);
+	}
+}
+
+.drag-active *,
+.drag-active :global(.action-toggle) {
+	cursor: grabbing !important;
+}
+
+.dragging {
+	transition: opacity 0.3s ease;
+	opacity: 0.3;
+	border-style: dashed;
+	pointer-events: none;
+}
+
+.drop-active {
+	:global(.card) {
+		border-color: var(--color-secondary);
+		background-color: var(--color-callout-secondary-background);
 	}
 }
 </style>

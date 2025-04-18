@@ -21,6 +21,7 @@ import { MarkerType } from '@vue-flow/core';
 import { createTestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
 import { mock } from 'vitest-mock-extended';
+import { useRootStore } from '../stores/root.store';
 
 beforeEach(() => {
 	const pinia = createTestingPinia({
@@ -147,6 +148,10 @@ describe('useCanvasMapping', () => {
 							options: {
 								configurable: false,
 								configuration: false,
+								icon: {
+									src: '/nodes/test-node/icon.svg',
+									type: 'file',
+								},
 								trigger: true,
 								inputs: {
 									labelSize: 'small',
@@ -280,12 +285,19 @@ describe('useCanvasMapping', () => {
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
 				});
 
+				const rootStore = mockedStore(useRootStore);
+				rootStore.baseUrl = 'http://test.local/';
+
 				expect(mappedNodes.value[0]?.data?.render).toEqual({
 					type: CanvasNodeRenderType.Default,
 					options: {
 						configurable: false,
 						configuration: false,
 						trigger: true,
+						icon: {
+							src: 'http://test.local/nodes/test-node/icon.svg',
+							type: 'file',
+						},
 						inputs: {
 							labelSize: 'small',
 						},
@@ -388,6 +400,7 @@ describe('useCanvasMapping', () => {
 						{
 							startTime: 0,
 							executionTime: 0,
+							executionIndex: 0,
 							source: [],
 							data: {
 								[NodeConnectionTypes.Main]: [[{ json: {} }, { json: {} }]],
@@ -431,6 +444,7 @@ describe('useCanvasMapping', () => {
 								{
 									startTime: 0,
 									executionTime: 0,
+									executionIndex: 0,
 									source: [],
 									data: {
 										[NodeConnectionTypes.Main]: [[{ json: {} }]],
@@ -443,6 +457,7 @@ describe('useCanvasMapping', () => {
 								{
 									startTime: 0,
 									executionTime: 0,
+									executionIndex: 0,
 									source: [],
 									data: {
 										[NodeConnectionTypes.Main]: [[{ json: {} }, { json: {} }, { json: {} }]],
@@ -499,6 +514,7 @@ describe('useCanvasMapping', () => {
 						{
 							startTime: 0,
 							executionTime: 0,
+							executionIndex: 0,
 							source: [],
 							data: {
 								[NodeConnectionTypes.Main]: [[{ json: {} }]],
@@ -507,6 +523,7 @@ describe('useCanvasMapping', () => {
 						{
 							startTime: 0,
 							executionTime: 0,
+							executionIndex: 1,
 							source: [],
 							data: {
 								[NodeConnectionTypes.Main]: [[{ json: {} }, { json: {} }, { json: {} }]],
@@ -515,6 +532,7 @@ describe('useCanvasMapping', () => {
 						{
 							startTime: 0,
 							executionTime: 0,
+							executionIndex: 2,
 							source: [],
 							data: {
 								[NodeConnectionTypes.Main]: [[{ json: {} }, { json: {} }]],
@@ -710,6 +728,7 @@ describe('useCanvasMapping', () => {
 						{
 							startTime: 0,
 							executionTime: 0,
+							executionIndex: 0,
 							source: [],
 							error: mock<NodeApiError>({
 								message: errorMessage,
@@ -741,6 +760,7 @@ describe('useCanvasMapping', () => {
 						{
 							startTime: 0,
 							executionTime: 0,
+							executionIndex: 0,
 							source: [],
 							error: mock<NodeApiError>({
 								message: errorMessage,
@@ -771,6 +791,7 @@ describe('useCanvasMapping', () => {
 						{
 							startTime: 0,
 							executionTime: 0,
+							executionIndex: 0,
 							source: [],
 							error: mock<NodeApiError>({
 								message: 'Error 1',
@@ -780,6 +801,7 @@ describe('useCanvasMapping', () => {
 						{
 							startTime: 0,
 							executionTime: 0,
+							executionIndex: 1,
 							source: [],
 							error: mock<NodeApiError>({
 								message: 'Error 2',
@@ -843,6 +865,7 @@ describe('useCanvasMapping', () => {
 						{
 							startTime: 0,
 							executionTime: 0,
+							executionIndex: 0,
 							source: [],
 							error: mock<NodeApiError>({
 								message: 'Execution error',
@@ -882,6 +905,7 @@ describe('useCanvasMapping', () => {
 						{
 							startTime: 0,
 							executionTime: 0,
+							executionIndex: 0,
 							source: [],
 							error: mock<NodeApiError>({
 								message: 'Execution error',
@@ -936,6 +960,7 @@ describe('useCanvasMapping', () => {
 						{
 							startTime: 0,
 							executionTime: 0,
+							executionIndex: 0,
 							source: [],
 							executionStatus: 'crashed',
 						},
@@ -964,6 +989,7 @@ describe('useCanvasMapping', () => {
 						{
 							startTime: 0,
 							executionTime: 0,
+							executionIndex: 0,
 							source: [],
 							executionStatus: 'error',
 						},
@@ -1045,6 +1071,7 @@ describe('useCanvasMapping', () => {
 						{
 							startTime: 0,
 							executionTime: 0,
+							executionIndex: 0,
 							source: [],
 							executionStatus: 'error',
 							error: mock<NodeApiError>({
@@ -1084,6 +1111,7 @@ describe('useCanvasMapping', () => {
 						{
 							startTime: 0,
 							executionTime: 0,
+							executionIndex: 0,
 							source: [],
 							executionStatus: 'error',
 						},
@@ -1092,6 +1120,7 @@ describe('useCanvasMapping', () => {
 						{
 							startTime: 0,
 							executionTime: 0,
+							executionIndex: 0,
 							source: [],
 							executionStatus: 'success',
 						},

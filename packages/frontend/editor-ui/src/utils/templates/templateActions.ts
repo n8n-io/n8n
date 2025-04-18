@@ -5,9 +5,8 @@ import type {
 	IWorkflowTemplate,
 } from '@/Interface';
 import { getNewWorkflow } from '@/api/workflows';
-import { TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT, VIEWS } from '@/constants';
+import { VIEWS } from '@/constants';
 import type { useRootStore } from '@/stores/root.store';
-import type { PosthogStore } from '@/stores/posthog.store';
 import type { useWorkflowsStore } from '@/stores/workflows.store';
 import { getNodesWithNormalizedPosition } from '@/utils/nodeViewUtils';
 import type { NodeTypeProvider } from '@/utils/nodeTypes/nodeTypeTransforms';
@@ -147,7 +146,6 @@ async function getFullTemplate(templatesStore: TemplatesStore, templateId: strin
 export async function useTemplateWorkflow(opts: {
 	externalHooks: ExternalHooks;
 	nodeTypesStore: NodeTypesStore;
-	posthogStore: PosthogStore;
 	templateId: string;
 	templatesStore: TemplatesStore;
 	router: Router;
@@ -155,13 +153,7 @@ export async function useTemplateWorkflow(opts: {
 	telemetry: Telemetry;
 	source: string;
 }) {
-	const { nodeTypesStore, posthogStore, templateId, templatesStore } = opts;
-
-	const openCredentialSetup = posthogStore.isFeatureEnabled(TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT);
-	if (!openCredentialSetup) {
-		await openTemplateWorkflowOnNodeView(opts);
-		return;
-	}
+	const { nodeTypesStore, templateId, templatesStore } = opts;
 
 	const [template] = await Promise.all([
 		getFullTemplate(templatesStore, templateId),

@@ -466,7 +466,13 @@ function getParameterIssues(parameter: INodeProperties): string[] {
 	if (!node.value || !showIssuesInLabelFor.includes(parameter.type)) {
 		return [];
 	}
-	const issues = NodeHelpers.getParameterIssues(parameter, node.value.parameters, '', node.value);
+	const issues = NodeHelpers.getParameterIssues(
+		parameter,
+		node.value.parameters,
+		'',
+		node.value,
+		nodeType.value,
+	);
 
 	return issues.parameters?.[parameter.name] ?? [];
 }
@@ -665,6 +671,8 @@ function getParameterValue<T extends NodeParameterValueType = NodeParameterValue
 				:path="getPath(parameter.name)"
 				:node="node"
 				:is-read-only="isReadOnly"
+				:default-type="parameter.typeOptions?.assignment?.defaultType"
+				:disable-type="parameter.typeOptions?.assignment?.disableType"
 				@value-changed="valueChanged"
 			/>
 			<div v-else-if="credentialsParameterIndex !== index" class="parameter-item">

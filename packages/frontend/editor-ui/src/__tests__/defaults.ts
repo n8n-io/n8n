@@ -15,6 +15,8 @@ export const defaultSettings: FrontendSettings = {
 	endpointForm: '',
 	endpointFormTest: '',
 	endpointFormWaiting: '',
+	endpointMcp: '',
+	endpointMcpTest: '',
 	endpointWebhook: '',
 	endpointWebhookTest: '',
 	endpointWebhookWaiting: '',
@@ -34,6 +36,7 @@ export const defaultSettings: FrontendSettings = {
 		externalSecrets: false,
 		workerView: false,
 		advancedPermissions: false,
+		apiKeyScopes: false,
 		projects: {
 			team: {
 				limit: 1,
@@ -140,5 +143,10 @@ export const defaultSettings: FrontendSettings = {
 	},
 	folders: {
 		enabled: false,
+	},
+	insights: {
+		enabled: false,
+		summary: true,
+		dashboard: false,
 	},
 };

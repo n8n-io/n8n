@@ -105,6 +105,17 @@ const mainMenuItems = computed(() => [
 		route: { to: { name: VIEWS.VARIABLES } },
 	},
 	{
+		id: 'insights',
+		icon: 'chart-bar',
+		label: 'Insights',
+		customIconSize: 'medium',
+		position: 'bottom',
+		route: { to: { name: VIEWS.INSIGHTS } },
+		available:
+			settingsStore.settings.insights.enabled &&
+			hasPermission(['rbac'], { rbac: { scope: 'insights:list' } }),
+	},
+	{
 		id: 'help',
 		icon: 'question',
 		label: i18n.baseText('mainSidebar.help'),
@@ -265,6 +276,8 @@ const handleSelect = (key: string) => {
 			trackHelpItemClick(key);
 			break;
 		}
+		case 'insights':
+			telemetry.track('User clicked insights link from side menu');
 		default:
 			break;
 	}

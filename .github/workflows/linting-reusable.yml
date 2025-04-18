@@ -17,9 +17,7 @@ on:
 jobs:
   lint:
     name: Lint
-    runs-on: blacksmith-2vcpu-ubuntu-2204
-    env:
-      NODE_OPTIONS: '--max-old-space-size=4096'
+    runs-on: blacksmith-4vcpu-ubuntu-2204
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
         with:

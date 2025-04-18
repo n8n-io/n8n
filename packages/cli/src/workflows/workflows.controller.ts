@@ -296,7 +296,7 @@ export class WorkflowsController {
 				workflowId,
 				req.user,
 				['workflow:read'],
-				{ includeTags: !this.globalConfig.tags.disabled },
+				{ includeTags: !this.globalConfig.tags.disabled, includeParentFolder: true },
 			);
 
 			if (!workflow) {

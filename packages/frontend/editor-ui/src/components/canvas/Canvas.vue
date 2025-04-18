@@ -1,10 +1,7 @@
 <script lang="ts" setup>
 import ContextMenu from '@/components/ContextMenu/ContextMenu.vue';
-import {
-	type CanvasLayoutEvent,
-	type CanvasLayoutSource,
-	useCanvasLayout,
-} from '@/composables/useCanvasLayout';
+import type { CanvasLayoutEvent, CanvasLayoutSource } from '@/composables/useCanvasLayout';
+import { useCanvasLayout } from '@/composables/useCanvasLayout';
 import { useCanvasNodeHover } from '@/composables/useCanvasNodeHover';
 import { useCanvasTraversal } from '@/composables/useCanvasTraversal';
 import { type ContextMenuAction, useContextMenu } from '@/composables/useContextMenu';
@@ -12,14 +9,15 @@ import { useKeybindings } from '@/composables/useKeybindings';
 import type { PinDataSource } from '@/composables/usePinnedData';
 import { CanvasKey } from '@/constants';
 import type { NodeCreatorOpenSource } from '@/Interface';
-import {
-	type CanvasConnection,
-	type CanvasEventBusEvents,
-	type CanvasNode,
-	type CanvasNodeMoveEvent,
-	type ConnectStartEvent,
-	CanvasNodeRenderType,
+import type {
+	CanvasConnection,
+	CanvasEventBusEvents,
+	CanvasNode,
+	CanvasNodeMoveEvent,
+	ConnectStartEvent,
+	CanvasNodeData,
 } from '@/types';
+import { CanvasNodeRenderType } from '@/types';
 import { GRID_SIZE } from '@/utils/nodeViewUtils';
 import { isPresent } from '@/utils/typesUtils';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
@@ -142,6 +140,7 @@ const {
 	onNodesInitialized,
 	findNode,
 	viewport,
+	nodesSelectionActive,
 	onEdgeMouseLeave,
 	onEdgeMouseEnter,
 	onEdgeMouseMove,
@@ -358,6 +357,12 @@ function onNodeClick({ event, node }: NodeMouseEvent) {
 
 function onSelectionDragStop(event: NodeDragEvent) {
 	onUpdateNodesPosition(event.nodes.map(({ id, position }) => ({ id, position })));
+}
+
+function onSelectionEnd() {
+	if (selectedNodes.value.length === 1) {
+		nodesSelectionActive.value = false;
+	}
 }
 
 function onSetNodeActivated(id: string) {
@@ -579,6 +584,15 @@ function onPaneMoveEnd() {
 	isPaneMoving.value = false;
 }
 
+// #AI-716: Due to a bug in vue-flow reactivity, the node data is not updated when the node is added
+// resulting in outdated data. We use this computed property as a workaround to get the latest node data.
+const nodeDataById = computed(() => {
+	return props.nodes.reduce<Record<string, CanvasNodeData>>((acc, node) => {
+		acc[node.id] = node.data as CanvasNodeData;
+		return acc;
+	}, {});
+});
+
 /**
  * Context menu
  */
@@ -799,6 +813,7 @@ provide(CanvasKey, {
 		@node-drag-stop="onNodeDragStop"
 		@node-click="onNodeClick"
 		@selection-drag-stop="onSelectionDragStop"
+		@selection-end="onSelectionEnd"
 		@selection-context-menu="onOpenSelectionContextMenu"
 		@dragover="onDragOver"
 		@drop="onDrop"
@@ -807,6 +822,7 @@ provide(CanvasKey, {
 			<slot name="node" v-bind="{ nodeProps }">
 				<Node
 					v-bind="nodeProps"
+					:data="nodeDataById[nodeProps.id]"
 					:read-only="readOnly"
 					:event-bus="eventBus"
 					:hovered="nodesHoveredById[nodeProps.id]"
