@@ -229,4 +229,46 @@ describe('ResourceLocator', () => {
 			expect(queryByTestId('permission-error-link')).not.toBeInTheDocument();
 		});
 	});
+
+	it('switches to expression when user enters "{{ "', async () => {
+		const { getByTestId, emitted } = renderComponent({
+			props: { modelValue: { ...TEST_MODEL_VALUE, value: '', mode: 'id' } },
+		});
+
+		const input = getByTestId('rlc-input');
+		await userEvent.click(input);
+		// '{' is an escape character: '{{{{' === '{{'
+		const expression = new DataTransfer();
+		expression.setData('text', '{{ ');
+		await userEvent.clear(input);
+		await userEvent.paste(expression);
+
+		expect(emitted('update:modelValue')).toEqual([
+			[
+				{
+					__rl: true,
+					mode: 'id',
+					value: '={{  }}',
+				},
+			],
+		]);
+	});
+
+	it('can switch between modes', async () => {
+		const { getByTestId, emitted } = renderComponent({
+			props: { modelValue: { ...TEST_MODEL_VALUE, mode: 'id' } },
+		});
+
+		await userEvent.click(getByTestId('rlc-mode-selector'));
+		await userEvent.click(screen.getByTestId('mode-id'));
+		expect(emitted('update:modelValue')).toEqual([
+			[
+				{
+					__rl: true,
+					mode: 'id',
+					value: '',
+				},
+			],
+		]);
+	});
 });
