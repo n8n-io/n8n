@@ -214,9 +214,63 @@ export type AwsCredentialsType = {
 // Some AWS services are global and don't have a region
 // https://docs.aws.amazon.com/general/latest/gr/rande.html#global-endpoints
 // Example: iam.amazonaws.com (global), s3.us-east-1.amazonaws.com (regional)
+//
+// The region we return will only be used to SigV4-sign the AWS API request
+// with our credentials. If we return one, it will override the default
+// region set in the credentials. It's imperative that we do this if we
+// detect that the endpoint is for a specific region, or a global service, so
+// that the request signature is valid, regardless of the region set in the
+// credentials.
 function parseAwsUrl(url: URL): { region: AWSRegion | null; service: string } {
-	const [service, region] = url.hostname.replace('amazonaws.com', '').split('.');
-	return { service, region: region as AWSRegion };
+	// We are explicitly assuming that the AWS URL Suffix for any supported
+	// AWS partition contains two parts - i.e. amazonaws.com
+	const parts = url.hostname.split('.');
+
+	// ¯\_(ツ)_/¯
+	if (parts.length < 3) {
+		console.error(`Invalid AWS URL: ${url.hostname}`);
+		return { service: url.hostname, region: null };
+	}
+
+	if (parts.length === 3) {
+		// If the URL has three parts, it's a global service
+		// and the region can only be us-east-1
+		return { service: parts.slice(-3)[0], region: 'us-east-1' };
+	}
+
+	// parts.length > 3 && s3
+	// S3 is a special case, as it can be global (bucket.s3.amazonaws.com) or
+	// regional (bucket.s3-{region}.amazonaws.com), which in neither case is
+	// similar to other services.
+	//
+	// Let's get the last URL part before the suffix, and check if it's S3 or
+	// approximately s3-{region}.
+	//
+	// * If it is just S3 we have no way to know the required region. We have to
+	// return a null region so that the region is sourced from the credentials.
+	if (parts.slice(-3)[0] === 's3') {
+		return { service: 's3', region: null };
+	}
+	// * If it is s3-region we can return the region part.
+	if (parts.slice(-3)[0].match(/^s3-[a-z0-9-]+$/)) {
+		return {
+			service: 's3',
+			region: parts.slice(-3)[0].replace('s3-', '') as AWSRegion,
+		};
+	}
+
+	// parts.length > 3 && !s3
+	// The expected case here is for a parts.length of 4, where the URL is
+	// {service}.{region}.amazonaws.com. We'll return the two parts before the
+	// amazonaws.com part as service and region.
+	//
+	// We shouldn't get a length of greater than 4, but if we do, we'll return
+	// the two that precede the amazonaws.com part as service and region.
+	// We're doing a best-effort guess here, and we can't really do anything
+	// else other than throw an error so better to assume
+	// something-odd.service.region.amazonaws.com rather than some other
+	// combination.
+	return { service: parts.slice(-4)[0], region: parts.slice(-3)[0] as AWSRegion };
 }
 
 export class Aws implements ICredentialType {
@@ -438,10 +492,10 @@ export class Aws implements ICredentialType {
 					endpointString = credentials.rekognitionEndpoint;
 				} else if (service === 'sqs' && credentials.sqsEndpoint) {
 					endpointString = credentials.sqsEndpoint;
-				} else if (service) {
-					endpointString = `https://${service}.${region}.amazonaws.com`;
 				} else if (service === 'ssm' && credentials.ssmEndpoint) {
 					endpointString = credentials.ssmEndpoint;
+				} else if (service) {
+					endpointString = `https://${service}.${region}.amazonaws.com`;
 				}
 				endpoint = new URL(endpointString!.replace('{region}', region) + path);
 			} else {
