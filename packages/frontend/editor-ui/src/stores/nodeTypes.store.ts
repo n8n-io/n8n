@@ -25,17 +25,30 @@ import { useRootStore } from './root.store';
 import * as utils from '@/utils/credentialOnlyNodes';
 import { groupNodeTypesByNameAndType } from '@/utils/nodeTypes/nodeTypeTransforms';
 import { computed, ref } from 'vue';
+import { useActionsGenerator } from '../components/Node/NodeCreator/composables/useActionsGeneration';
+import { removePreviewToken } from '../components/Node/NodeCreator/utils';
+import { useSettingsStore } from '@/stores/settings.store';
 
 export type NodeTypesStore = ReturnType<typeof useNodeTypesStore>;
 
 export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 	const nodeTypes = ref<NodeTypesByTypeNameAndVersion>({});
 
+	const communityPreviews = ref<INodeTypeDescription[]>([]);
+
 	const rootStore = useRootStore();
+
+	const actionsGenerator = useActionsGenerator();
+
+	const settingsStore = useSettingsStore();
 
 	// ---------------------------------------------------------------------------
 	// #region Computed
 	// ---------------------------------------------------------------------------
+
+	const communityNodesAndActions = computed(() => {
+		return actionsGenerator.generateMergedNodesAndActions(communityPreviews.value, []);
+	});
 
 	const allNodeTypes = computed(() => {
 		return Object.values(nodeTypes.value).reduce<INodeTypeDescription[]>(
@@ -262,14 +275,33 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		return nodesInformation;
 	};
 
-	const getFullNodesProperties = async (nodesToBeFetched: INodeTypeNameVersion[]) => {
+	const getFullNodesProperties = async (
+		nodesToBeFetched: INodeTypeNameVersion[],
+		replaceNodeTypes = true,
+	) => {
 		const credentialsStore = useCredentialsStore();
 		await credentialsStore.fetchCredentialTypes(true);
-		await getNodesInformation(nodesToBeFetched);
+		if (replaceNodeTypes) {
+			await getNodesInformation(nodesToBeFetched);
+		}
 	};
 
 	const getNodeTypes = async () => {
-		const nodeTypes = await nodeTypesApi.getNodeTypes(rootStore.baseUrl);
+		let nodeTypes = await nodeTypesApi.getNodeTypes(rootStore.baseUrl);
+		let attempts = 5;
+
+		while (typeof nodeTypes !== 'object' && attempts > 0) {
+			console.log('Could not fetch node types, retrying...');
+			nodeTypes = await nodeTypesApi.getNodeTypes(rootStore.baseUrl);
+			attempts--;
+		}
+
+		if (typeof nodeTypes !== 'object') {
+			throw new Error('Could not fetch node types');
+		}
+
+		await fetchCommunityNodePreviews();
+
 		if (nodeTypes.length) {
 			setNodeTypes(nodeTypes);
 		}
@@ -317,6 +349,23 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		return await nodeTypesApi.getNodeParameterActionResult(rootStore.restApiContext, sendData);
 	};
 
+	const fetchCommunityNodePreviews = async () => {
+		if (!settingsStore.isCommunityNodesFeatureEnabled) {
+			return;
+		}
+		communityPreviews.value = await nodeTypesApi.getCommunityNodeTypes(rootStore.restApiContext);
+	};
+
+	const getCommunityNodeAttributes = async (nodeName: string) => {
+		if (!settingsStore.isCommunityNodesFeatureEnabled) {
+			return null;
+		}
+		return await nodeTypesApi.getCommunityNodeAttributes(
+			rootStore.restApiContext,
+			removePreviewToken(nodeName),
+		);
+	};
+
 	// #endregion
 
 	return {
@@ -334,6 +383,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		visibleNodeTypesByOutputConnectionTypeNames,
 		visibleNodeTypesByInputConnectionTypeNames,
 		isConfigurableNode,
+		communityNodesAndActions,
 		getResourceMapperFields,
 		getLocalResourceMapperFields,
 		getNodeParameterActionResult,
@@ -346,5 +396,6 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		getNodeTranslationHeaders,
 		setNodeTypes,
 		removeNodeTypes,
+		getCommunityNodeAttributes,
 	};
 });

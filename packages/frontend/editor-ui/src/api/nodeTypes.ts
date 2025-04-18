@@ -13,12 +13,26 @@ import type {
 	INodeTypeNameVersion,
 	NodeParameterValueType,
 	ResourceMapperFields,
+	CommunityNodeAttributes,
 } from 'n8n-workflow';
 import axios from 'axios';
 
 export async function getNodeTypes(baseUrl: string) {
 	const { data } = await axios.get(baseUrl + 'types/nodes.json', { withCredentials: true });
 	return data;
+}
+
+export async function getCommunityNodeTypes(
+	context: IRestApiContext,
+): Promise<INodeTypeDescription[]> {
+	return await makeRestApiRequest(context, 'GET', '/community-node-types');
+}
+
+export async function getCommunityNodeAttributes(
+	context: IRestApiContext,
+	type: string,
+): Promise<CommunityNodeAttributes | null> {
+	return await makeRestApiRequest(context, 'GET', `/community-node-types/${type}`);
 }
 
 export async function getNodeTranslationHeaders(

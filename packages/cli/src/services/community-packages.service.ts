@@ -25,6 +25,8 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { toError } from '@/utils';
 
+import { verifyIntegrity } from '../utils/npm-utils';
+
 const DEFAULT_REGISTRY = 'https://registry.npmjs.org';
 
 const {
@@ -306,8 +308,12 @@ export class CommunityPackagesService {
 		);
 	}
 
-	async installPackage(packageName: string, version?: string): Promise<InstalledPackages> {
-		return await this.installOrUpdatePackage(packageName, { version });
+	async installPackage(
+		packageName: string,
+		version?: string,
+		checksum?: string,
+	): Promise<InstalledPackages> {
+		return await this.installOrUpdatePackage(packageName, { version, checksum });
 	}
 
 	async updatePackage(
@@ -334,13 +340,28 @@ export class CommunityPackagesService {
 		return registry;
 	}
 
+	private checkInstallPermissions(isUpdate: boolean, isVettedPackageInstall: boolean) {
+		if (isUpdate) return;
+
+		if (!this.globalConfig.nodes.communityPackages.unverifiedEnabled && !isVettedPackageInstall) {
+			throw new UnexpectedError('Installation of non-vetted community packages is forbidden!');
+		}
+	}
+
 	private async installOrUpdatePackage(
 		packageName: string,
-		options: { version?: string } | { installedPackage: InstalledPackages },
+		options: { version?: string; checksum?: string } | { installedPackage: InstalledPackages },
 	) {
 		const isUpdate = 'installedPackage' in options;
 		const packageVersion = isUpdate || !options.version ? 'latest' : options.version;
 		const command = `npm install ${packageName}@${packageVersion} --registry=${this.getNpmRegistry()}`;
+
+		const isVettedPackageInstall = 'checksum' in options && options.checksum ? true : false;
+		this.checkInstallPermissions(isUpdate, isVettedPackageInstall);
+
+		if (!isUpdate && options.checksum) {
+			await verifyIntegrity(packageName, packageVersion, this.getNpmRegistry(), options.checksum);
+		}
 
 		try {
 			await this.executeNpmCommand(command);
