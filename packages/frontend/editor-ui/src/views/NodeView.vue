@@ -114,6 +114,7 @@ import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
 import type { CanvasLayoutEvent } from '@/composables/useCanvasLayout';
 import { useClearExecutionButtonVisible } from '@/composables/useClearExecutionButtonVisible';
 import { LOGS_PANEL_STATE } from '@/components/CanvasChat/types/logs';
+import { useFoldersStore } from '@/stores/folders.store';
 
 defineOptions({
 	name: 'NodeView',
@@ -164,6 +165,7 @@ const tagsStore = useTagsStore();
 const pushConnectionStore = usePushConnectionStore();
 const ndvStore = useNDVStore();
 const templatesStore = useTemplatesStore();
+const foldersStore = useFoldersStore();
 
 const canvasEventBus = createEventBus<CanvasEventBusEvents>();
 
@@ -381,12 +383,34 @@ async function initializeRoute(force = false) {
 async function initializeWorkspaceForNewWorkflow() {
 	resetWorkspace();
 
+	const parentFolderId = route.query.parentFolderId as string | undefined;
+
 	await workflowsStore.getNewWorkflowData(
 		undefined,
 		projectsStore.currentProjectId,
-		route.query.parentFolderId as string | undefined,
+		parentFolderId,
 	);
 	workflowsStore.makeNewWorkflowShareable();
+
+	// Load home project and  parent folder data if they are not already loaded
+	if (projectsStore.currentProjectId && !projectsStore.currentProject) {
+		const project = await projectsStore.fetchProject(projectsStore.currentProjectId);
+		projectsStore.setCurrentProject(project);
+	}
+
+	if (parentFolderId) {
+		let parentFolder = foldersStore.getCachedFolder(parentFolderId);
+		if (!parentFolder && projectsStore.currentProjectId) {
+			await foldersStore.getFolderPath(projectsStore.currentProjectId, parentFolderId);
+			parentFolder = foldersStore.getCachedFolder(parentFolderId);
+		}
+		if (parentFolder) {
+			workflowsStore.setParentFolder({
+				...parentFolder,
+				parentFolderId: parentFolder.parentFolder ?? null,
+			});
+		}
+	}
 
 	uiStore.nodeViewInitialized = true;
 	initializedWorkflowId.value = NEW_WORKFLOW_ID;
@@ -397,6 +421,15 @@ async function initializeWorkspaceForExistingWorkflow(id: string) {
 		const workflowData = await workflowsStore.fetchWorkflow(id);
 
 		openWorkflow(workflowData);
+
+		if (workflowData.parentFolder) {
+			workflowsStore.setParentFolder(workflowData.parentFolder);
+			const isParentFolderCached =
+				foldersStore.breadcrumbsCache[workflowData.parentFolder.id] !== undefined;
+			if (workflowData.homeProject && !isParentFolderCached) {
+				await foldersStore.getFolderPath(workflowData.homeProject.id, workflowData.parentFolder.id);
+			}
+		}
 
 		if (workflowData.meta?.onboardingId) {
 			trackOpenWorkflowFromOnboardingTemplate();

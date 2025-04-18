@@ -1126,6 +1126,13 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}
 	}
 
+	function setParentFolder(folder: IWorkflowDb['parentFolder']) {
+		workflow.value = {
+			...workflow.value,
+			parentFolder: folder,
+		};
+	}
+
 	function setNodes(nodes: INodeUi[]): void {
 		workflow.value.nodes = nodes;
 		nodes.forEach((node) => {
@@ -1831,6 +1838,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setWorkflowSettings,
 		setWorkflowPinData,
 		setWorkflowTagIds,
+		setParentFolder,
 		addWorkflowTagIds,
 		removeWorkflowTagId,
 		setWorkflowScopes,

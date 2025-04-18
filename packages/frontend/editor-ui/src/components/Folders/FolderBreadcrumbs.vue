@@ -1,24 +1,26 @@
 <script setup lang="ts">
 import { useI18n } from '@/composables/useI18n';
-import type { FolderPathItem } from '@/Interface';
 import { useProjectsStore } from '@/stores/projects.store';
-import { ProjectTypes } from '@/types/projects.types';
+import { type ProjectIcon as ProjectIconType, ProjectTypes } from '@/types/projects.types';
 import type { UserAction } from '@n8n/design-system/types';
 import { type PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import { computed } from 'vue';
 import { useFoldersStore } from '@/stores/folders.store';
+import type { FolderPathItem, FolderShortInfo } from '@/Interface';
 
 type Props = {
-	actions: UserAction[];
-	breadcrumbs: {
-		visibleItems: FolderPathItem[];
-		hiddenItems: FolderPathItem[];
-	};
+	// Current folder can be null when showing breadcrumbs for workflows in project root
+	currentFolder?: FolderShortInfo | null;
+	actions?: UserAction[];
 	hiddenItemsTrigger?: 'hover' | 'click';
+	currentFolderAsLink?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
+	currentFolder: null,
+	actions: () => [],
 	hiddenItemsTrigger: 'click',
+	currentFolderAsLink: false,
 });
 
 const emit = defineEmits<{
@@ -35,6 +37,16 @@ const foldersStore = useFoldersStore();
 
 const currentProject = computed(() => projectsStore.currentProject);
 
+const projectIcon = computed((): ProjectIconType => {
+	if (projectsStore.currentProject?.type === ProjectTypes.Personal) {
+		return { type: 'icon', value: 'user' };
+	} else if (projectsStore.currentProject?.name) {
+		return projectsStore.currentProject.icon ?? { type: 'icon', value: 'layer-group' };
+	} else {
+		return { type: 'icon', value: 'home' };
+	}
+});
+
 const projectName = computed(() => {
 	if (currentProject.value?.type === ProjectTypes.Personal) {
 		return i18n.baseText('projects.menu.personal');
@@ -44,6 +56,56 @@ const projectName = computed(() => {
 
 const isDragging = computed(() => {
 	return foldersStore.draggedElement !== null;
+});
+
+const visibleBreadcrumbsItems = computed<FolderPathItem[]>(() => {
+	if (!props.currentFolder) return [];
+
+	const items: FolderPathItem[] = [];
+	const parent = foldersStore.getCachedFolder(props.currentFolder.parentFolder ?? '');
+
+	if (parent) {
+		items.push({
+			id: parent.id,
+			label: parent.name,
+			href: `/projects/${projectsStore.currentProjectId}/folders/${parent.id}/workflows`,
+			parentFolder: parent.parentFolder,
+		});
+	}
+	items.push({
+		id: props.currentFolder.id,
+		label: props.currentFolder.name,
+		parentFolder: props.currentFolder.parentFolder,
+		href: props.currentFolderAsLink
+			? `/projects/${projectsStore.currentProjectId}/folders/${props.currentFolder.id}/workflows`
+			: undefined,
+	});
+	return items;
+});
+
+const hiddenBreadcrumbsItems = computed<FolderPathItem[]>(() => {
+	const items: FolderPathItem[] = [];
+	const visitedFolders = new Set<string>();
+	let parentFolder = visibleBreadcrumbsItems.value.at(-1)?.parentFolder;
+
+	while (parentFolder) {
+		if (visitedFolders.has(parentFolder)) break; // Prevent circular reference
+		visitedFolders.add(parentFolder);
+
+		const parent = foldersStore.getCachedFolder(parentFolder);
+		if (!parent) break;
+
+		items.unshift({
+			id: parent.id,
+			label: parent.name,
+			href: `/projects/${projectsStore.currentProjectId}/folders/${parent.id}/workflows`,
+			parentFolder: parent.parentFolder,
+		});
+
+		parentFolder = parent.parentFolder;
+	}
+	// Filter out items that are already in the visible breadcrumbs
+	return items.filter((item) => !visibleBreadcrumbsItems.value.some((i) => i.id === item.id));
 });
 
 const onItemSelect = (item: PathItem) => {
@@ -89,12 +151,12 @@ const onItemHover = (item: PathItem) => {
 		data-test-id="folder-breadcrumbs"
 	>
 		<n8n-breadcrumbs
-			v-if="breadcrumbs.visibleItems"
+			v-if="visibleBreadcrumbsItems.length"
 			v-model:drag-active="isDragging"
-			:items="breadcrumbs.visibleItems"
+			:items="visibleBreadcrumbsItems"
 			:highlight-last-item="false"
-			:path-truncated="breadcrumbs.visibleItems[0].parentFolder"
-			:hidden-items="breadcrumbs.hiddenItems"
+			:path-truncated="visibleBreadcrumbsItems[0]?.parentFolder"
+			:hidden-items="hiddenBreadcrumbsItems"
 			:hidden-items-trigger="props.hiddenItemsTrigger"
 			data-test-id="folder-list-breadcrumbs"
 			@item-selected="onItemSelect"
@@ -108,14 +170,32 @@ const onItemHover = (item: PathItem) => {
 					@mouseenter="onProjectHover"
 					@mouseup="isDragging ? onProjectMouseUp() : null"
 				>
+					<ProjectIcon :icon="projectIcon" :border-less="true" size="mini" />
 					<n8n-link :to="`/projects/${currentProject.id}`">
 						<N8nText size="medium" color="text-base">{{ projectName }}</N8nText>
 					</n8n-link>
 				</div>
 			</template>
+			<template #append>
+				<slot name="append"></slot>
+			</template>
 		</n8n-breadcrumbs>
+		<!-- If there is no current folder, just show project badge -->
+		<div
+			v-else-if="currentProject"
+			:class="{ [$style['home-project']]: true, [$style.dragging]: isDragging }"
+			data-test-id="home-project"
+			@mouseenter="onProjectHover"
+			@mouseup="isDragging ? onProjectMouseUp() : null"
+		>
+			<ProjectIcon :icon="projectIcon" :border-less="true" size="mini" />
+			<n8n-link :to="`/projects/${currentProject.id}`">
+				<N8nText size="medium" color="text-base">{{ projectName }}</N8nText>
+			</n8n-link>
+			<slot name="append"></slot>
+		</div>
 		<n8n-action-toggle
-			v-if="breadcrumbs.visibleItems"
+			v-if="visibleBreadcrumbsItems && actions?.length"
 			:actions="actions"
 			:class="$style['action-toggle']"
 			theme="dark"
@@ -140,6 +220,7 @@ const onItemHover = (item: PathItem) => {
 .home-project {
 	display: flex;
 	align-items: center;
+	gap: var(--spacing-4xs);
 	padding: var(--spacing-4xs);
 	border: var(--border-width-base) var(--border-style-base) transparent;
 
@@ -153,7 +234,7 @@ const onItemHover = (item: PathItem) => {
 		}
 	}
 
-	&:hover * {
+	&:hover :global(.n8n-text) {
 		color: var(--color-text-dark);
 	}
 }
