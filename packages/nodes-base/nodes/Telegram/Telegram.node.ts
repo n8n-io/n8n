@@ -1515,6 +1515,7 @@ export class Telegram implements INodeType {
 							'editMessageText',
 							'sendAnimation',
 							'sendAudio',
+							'sendChatAction',
 							'sendDocument',
 							'sendLocation',
 							'sendMessage',
@@ -1998,6 +1999,8 @@ export class Telegram implements INodeType {
 
 						body.chat_id = this.getNodeParameter('chatId', i) as string;
 						body.action = this.getNodeParameter('action', i) as string;
+						// Add additional fields and replyMarkup
+						addAdditionalFields.call(this, body, i);
 					} else if (operation === 'sendDocument') {
 						// ----------------------------------
 						//         message:sendDocument
