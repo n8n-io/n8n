@@ -132,6 +132,10 @@ const LazySetupWorkflowCredentialsButton = defineAsyncComponent(
 		await import('@/components/SetupWorkflowCredentialsButton/SetupWorkflowCredentialsButton.vue'),
 );
 
+const props = defineProps<{
+	initialNodeId?: string | undefined;
+}>();
+
 const $style = useCssModule();
 const router = useRouter();
 const route = useRoute();
@@ -1613,6 +1617,34 @@ watch(
 	},
 );
 
+watch(
+	() => route.params.nodeId,
+	async (newId) => {
+		if (typeof newId !== 'string' || newId === '') ndvStore.activeNodeName = null;
+		else {
+			const nodeUi = workflowsStore.findNodeByPartialId(newId);
+			if (nodeUi) setNodeActive(nodeUi?.id);
+		}
+	},
+);
+
+watch(
+	() => ndvStore.activeNode,
+	async (val) => {
+		// This is just out of caution
+		if (!([VIEWS.WORKFLOW] as string[]).includes(String(route.name))) return;
+
+		// Route params default to '' instead of undefined if not present
+		const nodeId = val?.id ? workflowsStore.getPartialIdForNode(val?.id) : '';
+
+		if (nodeId !== route.params.nodeId) {
+			await router.push({
+				name: route.name,
+				params: { name: workflowId.value, nodeId },
+			});
+		}
+	},
+);
 onBeforeRouteLeave(async (to, from, next) => {
 	const toNodeViewTab = getNodeViewTab(to);
 
@@ -1684,6 +1716,14 @@ onMounted(() => {
 				canvasStore.stopLoading();
 
 				void externalHooks.run('nodeView.mount').catch(() => {});
+
+				// A delay here makes opening the NDV a bit less jarring
+				setTimeout(() => {
+					if (props.initialNodeId) {
+						const nodeUi = workflowsStore.findNodeByPartialId(props.initialNodeId);
+						if (nodeUi) setNodeActive(nodeUi.id);
+					}
+				}, 500);
 
 				emitPostMessageReady();
 			});
