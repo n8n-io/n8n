@@ -1,4 +1,4 @@
-import { DateTime, Settings, Zone } from 'luxon';
+import { DateTime, Settings } from 'luxon';
 
 import { getValueDescription, tryToParseDateTime, validateFieldType } from '@/TypeValidation';
 
@@ -299,15 +299,6 @@ describe('Type Validation', () => {
 
 			expect(result.zoneName).toEqual('UTC-4');
 			expect(result.toISO()).toEqual('2025-04-17T06:22:20.000-04:00');
-
-			// if luxon datetime is created with a zone different from settings defaultZone, it should not be changed
-			const resultDatetime = tryToParseDateTime(
-				DateTime.fromObject({ year: 2025, month: 1, day: 1 }, { zone: 'Asia/Tokyo' }),
-				'America/New_York',
-			);
-
-			expect(resultDatetime.zoneName).toEqual('Asia/Tokyo');
-			expect(resultDatetime.toISO()).toEqual('2025-01-01T00:00:00.000+09:00');
 		});
 
 		it('should use defaultZone if timezone is not set', () => {
@@ -315,15 +306,6 @@ describe('Type Validation', () => {
 
 			expect(result.zoneName).toEqual('Europe/Brussels');
 			expect(result.toISO()).toEqual('2025-04-17T06:22:20.000+02:00');
-
-			// if luxon datetime is created with the default settings defaultZone, it should be changed
-			const resultDatetime = tryToParseDateTime(
-				DateTime.fromObject({ year: 2025, month: 1, day: 1 }),
-				'America/New_York',
-			);
-
-			expect(resultDatetime.zoneName).toEqual('America/New_York');
-			expect(resultDatetime.toISO()).toEqual('2025-01-01T00:00:00.000-05:00');
 		});
 
 		it('should use the system timezone when defaultZone arg is not given', () => {
@@ -332,6 +314,17 @@ describe('Type Validation', () => {
 
 			expect(result.zoneName).toEqual('UTC-7');
 			expect(result.toISO()).toEqual('2025-04-17T06:22:20.000-07:00');
+		});
+
+		it('should not impact DateTime zone', () => {
+			const dateTime = DateTime.fromObject(
+				{ year: 2025, month: 1, day: 1 },
+				{ zone: 'Asia/Tokyo' },
+			);
+			const result = tryToParseDateTime(dateTime, 'Europe/Brussels');
+
+			expect(result.zoneName).toEqual('Asia/Tokyo');
+			expect(result.toISO()).toEqual('2025-01-01T00:00:00.000+09:00');
 		});
 	});
 });
