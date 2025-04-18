@@ -59,6 +59,7 @@ export class RespondToWebhook implements INodeType {
 				displayName: 'Respond With',
 				name: 'respondWith',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'All Incoming Items',
