@@ -8,7 +8,7 @@ import {
 export class NetmindApi implements ICredentialType {
 	name = 'netmindApi';
 	displayName = 'Netmind API';
-	documentationUrl = 'https://www.netmind.ai/';
+	documentationUrl = 'https://www.netmind.ai/modelsLibrary';
 
 	properties: INodeProperties[] = [
 		{
