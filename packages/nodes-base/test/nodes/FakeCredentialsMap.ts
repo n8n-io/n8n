@@ -173,7 +173,7 @@ BQIDAQAB
 		clientId: 'CLIENTID',
 		clientSecret: 'CLIENTSECRET',
 		scope:
-			'tweet.read users.read tweet.write tweet.moderate.write users.read follows.read follows.write offline.access like.read like.write dm.write dm.read list.read list.write',
+			'tweet.read users.read tweet.write tweet.moderate.write users.read follows.read follows.write offline.access like.read like.write dm.write dm.read list.read list.write media.write',
 		authQueryParameters: '',
 		authentication: 'header',
 		oauthTokenData: {
