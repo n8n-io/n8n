@@ -73,6 +73,8 @@ export class InsightsService {
 
 	private flushesInProgress: Set<Promise<void>> = new Set();
 
+	private pruneInsightsTimer: NodeJS.Timer | undefined;
+
 	constructor(
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly insightsByPeriodRepository: InsightsByPeriodRepository,
@@ -82,14 +84,20 @@ export class InsightsService {
 		this.logger = this.logger.scoped('insights');
 	}
 
+	get isPruningEnabled() {
+		return config.maxAgeDays > -1;
+	}
+
 	startBackgroundProcess() {
 		this.startCompactionScheduler();
 		this.startFlushingScheduler();
+		this.startPruningScheduling();
 	}
 
 	stopBackgroundProcess() {
 		this.stopCompactionScheduler();
 		this.stopFlushingScheduler();
+		this.stopPruningScheduling();
 	}
 
 	// Initialize regular compaction of insights data
@@ -123,6 +131,26 @@ export class InsightsService {
 		if (this.flushInsightsRawBufferTimer !== undefined) {
 			clearTimeout(this.flushInsightsRawBufferTimer);
 			this.flushInsightsRawBufferTimer = undefined;
+		}
+	}
+
+	startPruningScheduling() {
+		if (!this.isPruningEnabled) {
+			return;
+		}
+
+		this.stopPruningScheduling();
+		this.pruneInsightsTimer = setInterval(
+			async () => await this.pruneInsights(),
+			config.pruneCheckIntervalHours * 60 * 60 * 1000,
+		);
+		this.logger.debug(`Insights pruning every ${config.pruneCheckIntervalHours} hours`);
+	}
+
+	stopPruningScheduling() {
+		if (this.pruneInsightsTimer !== undefined) {
+			clearInterval(this.pruneInsightsTimer);
+			this.pruneInsightsTimer = undefined;
 		}
 	}
 
@@ -290,6 +318,11 @@ export class InsightsService {
 		// Add the flush promise to the set of flushes in progress for shutdown await
 		this.flushesInProgress.add(flushPromise);
 		await flushPromise;
+	}
+
+	async pruneInsights() {
+		const result = await this.insightsByPeriodRepository.pruneOldData(config.maxAgeDays);
+		this.logger.debug('Hard-deleted insights', { count: result.affected });
 	}
 
 	async compactInsights() {

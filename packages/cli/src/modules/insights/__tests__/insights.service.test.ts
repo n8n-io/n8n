@@ -1694,3 +1694,80 @@ describe('getInsightsByTime', () => {
 		});
 	});
 });
+
+describe('pruneOldInsights', () => {
+	test('prune old insights', async () => {
+		// ARRANGE
+		const insightsConfig = Container.get(InsightsConfig);
+		const insightsService = Container.get(InsightsService);
+		const insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
+		insightsConfig.maxAgeDays = 10;
+
+		const project = await createTeamProject();
+		const workflow = await createWorkflow({}, project);
+
+		await createMetadata(workflow);
+
+		const timestamp = DateTime.utc().minus({ days: insightsConfig.maxAgeDays + 1 });
+		await createCompactedInsightsEvent(workflow, {
+			type: 'success',
+			value: 1,
+			periodUnit: 'day',
+			periodStart: timestamp,
+		});
+
+		// ACT
+		await insightsService.pruneInsights();
+
+		// ASSERT
+		expect(await insightsByPeriodRepository.count()).toBe(0);
+	});
+
+	test('prune old insights with recent data', async () => {
+		// ARRANGE
+		const insightsConfig = Container.get(InsightsConfig);
+		const insightsService = Container.get(InsightsService);
+		const insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
+		insightsConfig.maxAgeDays = 10;
+
+		const project = await createTeamProject();
+		const workflow = await createWorkflow({}, project);
+
+		await createMetadata(workflow);
+
+		const timestamp = DateTime.utc().minus({ days: insightsConfig.maxAgeDays - 1 });
+		await createCompactedInsightsEvent(workflow, {
+			type: 'success',
+			value: 1,
+			periodUnit: 'day',
+			periodStart: timestamp,
+		});
+
+		// ACT
+		await insightsService.pruneInsights();
+
+		// ASSERT
+		expect(await insightsByPeriodRepository.count()).toBe(1);
+	});
+
+	test('startBackgroundProcess runs pruning on schedule', async () => {
+		jest.useFakeTimers();
+		try {
+			// ARRANGE
+			const insightsService = Container.get(InsightsService);
+			const insightsConfig = Container.get(InsightsConfig);
+			insightsConfig.pruneCheckIntervalHours = 1; // Set pruning interval to 1 hour
+			insightsService.startBackgroundProcess();
+			const pruneSpy = jest.spyOn(insightsService, 'pruneInsights');
+
+			// ACT
+			// Advance time by 1 hour and 1 minute
+			jest.advanceTimersByTime(1000 * 60 * 61);
+
+			// ASSERT
+			expect(pruneSpy).toHaveBeenCalledTimes(1);
+		} finally {
+			jest.useRealTimers();
+		}
+	});
+});
