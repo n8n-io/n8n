@@ -228,6 +228,7 @@ async function handleTriggerPartialExecution(treeNode: LogEntry) {
 	flex-grow: 1;
 	flex-shrink: 1;
 	overflow: auto;
+	scroll-padding-block: var(--spacing-2xs);
 }
 
 .summary {

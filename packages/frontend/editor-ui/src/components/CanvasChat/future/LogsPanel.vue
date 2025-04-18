@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { computed, ref, useTemplateRef, watch } from 'vue';
+import { computed, ref, useTemplateRef } from 'vue';
 import { N8nResizeWrapper } from '@n8n/design-system';
 import { useChatState } from '@/components/CanvasChat/composables/useChatState';
 import LogsOverviewPanel from '@/components/CanvasChat/future/components/LogsOverviewPanel.vue';
@@ -8,29 +7,16 @@ import ChatMessagesPanel from '@/components/CanvasChat/components/ChatMessagesPa
 import LogsDetailsPanel from '@/components/CanvasChat/future/components/LogDetailsPanel.vue';
 import { type LogEntrySelection } from '@/components/CanvasChat/types/logs';
 import LogsPanelActions from '@/components/CanvasChat/future/components/LogsPanelActions.vue';
-import {
-	createLogEntries,
-	type ExecutionLogViewData,
-	findSelectedLogEntry,
-	type LatestNodeInfo,
-	type LogEntry,
-} from '@/components/CanvasChat/future/utils';
-import { isChatNode } from '@/components/CanvasChat/utils';
+import { findSelectedLogEntry, type LogEntry } from '@/components/CanvasChat/future/utils';
 import { useLayout } from '@/components/CanvasChat/future/composables/useLayout';
-import { useNodeHelpers } from '@/composables/useNodeHelpers';
-import { deepCopy, Workflow } from 'n8n-workflow';
-import { type IExecutionResponse } from '@/Interface';
-import { IN_PROGRESS_EXECUTION_ID, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
+import { useExecutionData } from '@/components/CanvasChat/future/composables/useExecutionData';
 
 const props = withDefaults(defineProps<{ isReadOnly?: boolean }>(), { isReadOnly: false });
 
-const nodeHelpers = useNodeHelpers();
-const workflowsStore = useWorkflowsStore();
 const container = useTemplateRef('container');
 const logsContainer = useTemplateRef('logsContainer');
 const pipContainer = useTemplateRef('pipContainer');
 const pipContent = useTemplateRef('pipContent');
-const previousChatMessages = computed(() => workflowsStore.getPastChatMessages);
 
 const {
 	height,
@@ -52,56 +38,17 @@ const {
 	onOverviewPanelResizeEnd,
 } = useLayout(pipContainer, pipContent, container, logsContainer);
 
-const { currentSessionId, messages, sendMessage, refreshSession, displayExecution } = useChatState(
-	props.isReadOnly,
-);
+const {
+	currentSessionId,
+	messages,
+	previousChatMessages,
+	sendMessage,
+	refreshSession,
+	displayExecution,
+} = useChatState(props.isReadOnly);
 
-const mutableExecData = computed(() => workflowsStore.workflowExecutionData);
-const immutableExecData = ref<IExecutionResponse | undefined>(
-	deepCopy(workflowsStore.workflowExecutionData ?? undefined),
-);
-const execData = computed(() =>
-	workflowsStore.workflowExecutionData?.id === IN_PROGRESS_EXECUTION_ID
-		? mutableExecData.value
-		: immutableExecData.value,
-);
-const workflow = computed(() =>
-	execData.value
-		? new Workflow({
-				...execData.value?.workflowData,
-				nodeTypes: workflowsStore.getNodeTypes(),
-			})
-		: undefined,
-);
-const latestNodeNameById = computed(() =>
-	Object.values(workflow.value?.nodes ?? {}).reduce<Record<string, LatestNodeInfo>>((acc, node) => {
-		const nodeInStore = workflowsStore.getNodeById(node.id);
+const { workflow, execution, hasChat, latestNodeNameById, resetExecutionData } = useExecutionData();
 
-		acc[node.id] = {
-			deleted: !nodeInStore,
-			disabled: nodeInStore?.disabled ?? false,
-			name: nodeInStore?.name ?? node.name,
-		};
-		return acc;
-	}, {}),
-);
-const hasChat = computed(
-	() =>
-		[Object.values(workflow.value?.nodes ?? {}), workflowsStore.workflow.nodes].some((nodes) =>
-			nodes.some(isChatNode),
-		) &&
-		(!props.isReadOnly || messages.value.length > 0),
-);
-const execution = computed<ExecutionLogViewData | undefined>(() => {
-	if (!execData.value || !workflow.value) {
-		return undefined;
-	}
-
-	return {
-		...execData.value,
-		tree: createLogEntries(workflow.value, execData.value.data?.resultData.runData ?? {}),
-	};
-});
 const manualLogEntrySelection = ref<LogEntrySelection>({ type: 'initial' });
 const selectedLogEntry = computed(() =>
 	findSelectedLogEntry(manualLogEntrySelection.value, execution.value),
@@ -138,27 +85,6 @@ function handleResizeOverviewPanelEnd() {
 
 	onOverviewPanelResizeEnd();
 }
-
-function handleClearExecutionData() {
-	immutableExecData.value = undefined;
-	workflowsStore.setWorkflowExecutionData(null);
-	nodeHelpers.updateNodesExecutionIssues();
-}
-
-watch(mutableExecData, (newData, oldData) => {
-	if (newData?.id !== oldData?.id) {
-		immutableExecData.value = deepCopy(newData ?? undefined);
-	}
-});
-
-watch(
-	() => workflowsStore.workflowId,
-	(id) => {
-		if (id === PLACEHOLDER_EMPTY_WORKFLOW_ID || id !== execData.value?.workflowId) {
-			immutableExecData.value = undefined;
-		}
-	},
-);
 </script>
 
 <template>
@@ -175,7 +101,7 @@ watch(
 			>
 				<div ref="container" :class="[$style.container, 'ignore-key-press-canvas']" tabindex="0">
 					<N8nResizeWrapper
-						v-if="hasChat"
+						v-if="hasChat && (!props.isReadOnly || messages.length > 0)"
 						:supported-directions="['right']"
 						:is-resizing-enabled="isOpen"
 						:width="chatPanelWidth"
@@ -222,7 +148,7 @@ watch(
 								:latest-node-info="latestNodeNameById"
 								@click-header="onToggleOpen(true)"
 								@select="handleSelectLogEntry"
-								@clear-execution-data="handleClearExecutionData"
+								@clear-execution-data="resetExecutionData"
 							>
 								<template #actions>
 									<LogsPanelActions v-if="!isLogDetailsOpen" v-bind="logsPanelActionsProps" />
