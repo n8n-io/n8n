@@ -5,11 +5,10 @@ import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRoute } from 'vue-router';
 import LoadingView from '@/views/LoadingView.vue';
 import BannerStack from '@/components/banners/BannerStack.vue';
-import AskAssistantBuild from '@/components/AskAssistant/Agent/AskAssistantBuild.vue';
-import AskAssistantChat from '@/components/AskAssistant/Chat/AskAssistantChat.vue';
 import Modals from '@/components/Modals.vue';
 import Telemetry from '@/components/Telemetry.vue';
 import AskAssistantFloatingButton from '@/components/AskAssistant/Chat/AskAssistantFloatingButton.vue';
+import AssistantsHub from '@/components/AskAssistant/AssistantsHub.vue';
 import { loadLanguage } from '@/plugins/i18n';
 import { APP_MODALS_ELEMENT_ID, HIRING_BANNER, VIEWS } from '@/constants';
 import { useRootStore } from '@/stores/root.store';
@@ -125,8 +124,7 @@ watch(defaultLocale, (newLocale) => {
 			<Telemetry />
 			<AskAssistantFloatingButton v-if="showAssistantButton" />
 		</div>
-		<AskAssistantBuild v-if="builderStore.isAIBuilderEnabled" />
-		<AskAssistantChat v-else />
+		<AssistantsHub />
 	</div>
 </template>
 

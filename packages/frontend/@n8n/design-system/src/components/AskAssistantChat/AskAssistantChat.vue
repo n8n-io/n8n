@@ -33,8 +33,7 @@ interface Props {
 	streaming?: boolean;
 	loadingMessage?: string;
 	sessionId?: string;
-	modes?: string[];
-	mode?: string;
+	title?: string;
 	placeholder?: string;
 }
 
@@ -53,8 +52,7 @@ const emit = defineEmits<{
 const onClose = () => emit('close');
 
 const props = withDefaults(defineProps<Props>(), {
-	modes: () => [useI18n().t('assistantChat.aiAssistantLabel')],
-	mode: () => useI18n().t('assistantChat.aiAssistantLabel'),
+	title: () => useI18n().t('assistantChat.aiAssistantLabel'),
 	user: () => ({
 		firstName: '',
 		lastName: '',
@@ -127,9 +125,10 @@ function onSubmitFeedback(feedback: string) {
 			<div :class="$style.chatTitle">
 				<div :class="$style.headerText">
 					<AssistantIcon size="large" />
-					<AssistantText size="large" :text="mode" />
+					<AssistantText size="large" :text="title" />
 				</div>
 				<BetaTag />
+				<slot name="header" />
 			</div>
 			<div :class="$style.back" data-test-id="close-chat-button" @click="onClose">
 				<n8n-icon icon="arrow-right" color="text-base" />

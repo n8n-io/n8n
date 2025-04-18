@@ -164,6 +164,7 @@
 	"aiAssistant.builder.mode": "AI Builder",
 	"aiAssistant.builder.placeholder": "What would you like to automate?",
 	"aiAssistant.builder.generateNew": "Generate new workflow",
+	"aiAssistant.builder.newWorkflowNotice": "The created workflow will be added to the editor",
 	"aiAssistant.builder.feedbackPrompt": "Is this workflow helpful?",
 	"aiAssistant.assistant": "AI Assistant",
 	"aiAssistant.newSessionModal.title.part1": "Start new",

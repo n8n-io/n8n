@@ -93,7 +93,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 				width: window.innerWidth,
 			};
 			// Always reset the chat when closed
-			resetBuilderChat();
+			// resetBuilderChat();
 		}, 200);
 	}
 

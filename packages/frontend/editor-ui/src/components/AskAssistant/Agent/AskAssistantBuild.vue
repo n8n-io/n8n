@@ -1,9 +1,7 @@
 <script lang="ts" setup>
 import { useBuilderStore } from '@/stores/builder.store';
-import { useDebounce } from '@/composables/useDebounce';
 import { useUsersStore } from '@/stores/users.store';
 import { computed, watch, ref, onBeforeUnmount } from 'vue';
-import SlideTransition from '@/components/transitions/SlideTransition.vue';
 import AskAssistantChat from '@n8n/design-system/components/AskAssistantChat/AskAssistantChat.vue';
 import { useTelemetry } from '@/composables/useTelemetry';
 import type { IWorkflowDataUpdate } from '@/Interface';
@@ -11,6 +9,10 @@ import { nodeViewEventBus } from '@/event-bus';
 import { v4 as uuid } from 'uuid';
 import { useI18n } from '@/composables/useI18n';
 import { STICKY_NODE_TYPE } from '@/constants';
+
+const emit = defineEmits<{
+	close: [];
+}>();
 
 const builderStore = useBuilderStore();
 const usersStore = useUsersStore();
@@ -25,14 +27,6 @@ const user = computed(() => ({
 const workflowGenerated = ref(false);
 const loadingMessage = computed(() => builderStore.assistantThinkingMessage);
 
-function onResize(data: { direction: string; x: number; width: number }) {
-	builderStore.updateWindowWidth(data.width);
-}
-
-function onResizeDebounced(data: { direction: string; x: number; width: number }) {
-	void useDebounce().callDebounced(onResize, { debounceTime: 10, trailing: true }, data);
-}
-
 async function onUserMessage(content: string, quickReplyType?: string, isFeedback = false) {
 	// If there is no current session running, initialize the support chat session
 	await builderStore.initSupportChat(content);
@@ -44,11 +38,6 @@ async function onUserMessage(content: string, quickReplyType?: string, isFeedbac
 			response: content,
 		});
 	}
-}
-
-function onClose() {
-	builderStore.closeChat();
-	telemetry.track('User closed assistant', { source: 'top-toggle' });
 }
 
 function fixWorkflowStickiesPosition(workflowData: IWorkflowDataUpdate): IWorkflowDataUpdate {
@@ -145,62 +134,51 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-	<SlideTransition>
-		<N8nResizeWrapper
-			v-show="builderStore.isAssistantOpen"
-			:supported-directions="['left']"
-			:width="builderStore.chatWidth"
-			data-test-id="ask-assistant-sidebar"
-			@resize="onResizeDebounced"
+	<div data-test-id="ask-assistant-chat" tabindex="0" :class="$style.container" @keydown.stop>
+		<AskAssistantChat
+			:user="user"
+			:messages="builderStore.chatMessages"
+			:streaming="builderStore.streaming"
+			:loading-message="loadingMessage"
+			:session-id="builderStore.currentSessionId"
+			:mode="i18n.baseText('aiAssistant.builder.mode')"
+			:title="'n8n AI'"
+			:placeholder="i18n.baseText('aiAssistant.builder.placeholder')"
+			@close="emit('close')"
+			@message="onUserMessage"
+			@insert-workflow="onInsertWorkflow"
 		>
-			<div
-				:style="{ width: `${builderStore.chatWidth}px` }"
-				:class="$style.wrapper"
-				data-test-id="ask-assistant-chat"
-				tabindex="0"
-				@keydown.stop
-			>
-				<AskAssistantChat
-					:user="user"
-					:messages="builderStore.chatMessages"
-					:streaming="builderStore.streaming"
-					:loading-message="loadingMessage"
-					:session-id="builderStore.currentSessionId"
-					:mode="i18n.baseText('aiAssistant.builder.mode')"
-					:placeholder="i18n.baseText('aiAssistant.builder.placeholder')"
-					@close="onClose"
-					@message="onUserMessage"
-					@insert-workflow="onInsertWorkflow"
-				>
-					<template #placeholder>
-						<n8n-text :class="$style.topText">{{
-							i18n.baseText('aiAssistant.builder.placeholder')
-						}}</n8n-text>
-					</template>
-					<template v-if="workflowGenerated" #inputPlaceholder>
-						<div :class="$style.newWorkflowButtonWrapper">
-							<n8n-button
-								type="secondary"
-								size="small"
-								:class="$style.newWorkflowButton"
-								@click="onNewWorkflow"
-							>
-								{{ i18n.baseText('aiAssistant.builder.generateNew') }}
-							</n8n-button>
-							<n8n-text :class="$style.newWorkflowText"
-								>The created workflow will be added to the editor</n8n-text
-							>
-						</div>
-					</template>
-				</AskAssistantChat>
-			</div>
-		</N8nResizeWrapper>
-	</SlideTransition>
+			<template #header>
+				<slot name="header" />
+			</template>
+			<template #placeholder>
+				<n8n-text :class="$style.topText">{{
+					i18n.baseText('aiAssistant.builder.placeholder')
+				}}</n8n-text>
+			</template>
+			<template v-if="workflowGenerated" #inputPlaceholder>
+				<div :class="$style.newWorkflowButtonWrapper">
+					<n8n-button
+						type="secondary"
+						size="small"
+						:class="$style.newWorkflowButton"
+						@click="onNewWorkflow"
+					>
+						{{ i18n.baseText('aiAssistant.builder.generateNew') }}
+					</n8n-button>
+					<n8n-text :class="$style.newWorkflowText">
+						{{ i18n.baseText('aiAssistant.builder.newWorkflowNotice') }}
+					</n8n-text>
+				</div>
+			</template>
+		</AskAssistantChat>
+	</div>
 </template>
 
-<style module lang="scss">
-.wrapper {
+<style lang="scss" module>
+.container {
 	height: 100%;
+	width: 100%;
 }
 
 .topText {
