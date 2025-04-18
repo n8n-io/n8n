@@ -32,6 +32,7 @@ import type {
 
 import type {
 	ICredentialsResponse,
+	IExecutionResponse,
 	INodeUi,
 	INodeUpdatePropertiesInformation,
 	NodePanelType,
@@ -544,15 +545,17 @@ export function useNodeHelpers() {
 		}
 	}
 
-	function getNodeTaskData(node: INodeUi | null, runIndex = 0) {
+	function getNodeTaskData(node: INodeUi | null, runIndex = 0, execution?: IExecutionResponse) {
 		if (node === null) {
 			return null;
 		}
-		if (workflowsStore.getWorkflowExecution === null) {
+		const theExecution = execution ?? workflowsStore.getWorkflowExecution ?? undefined;
+
+		if (theExecution === undefined) {
 			return null;
 		}
 
-		const executionData = workflowsStore.getWorkflowExecution.data;
+		const executionData = theExecution.data;
 		if (!executionData?.resultData) {
 			// unknown status
 			return null;
@@ -573,6 +576,7 @@ export function useNodeHelpers() {
 		outputIndex = 0,
 		paneType: NodePanelType = 'output',
 		connectionType: NodeConnectionType = NodeConnectionTypes.Main,
+		execution?: IExecutionResponse,
 	): INodeExecutionData[] {
 		//TODO: check if this needs to be fixed in different place
 		if (
@@ -584,7 +588,7 @@ export function useNodeHelpers() {
 			runIndex = runIndex - 1;
 		}
 
-		const taskData = getNodeTaskData(node, runIndex);
+		const taskData = getNodeTaskData(node, runIndex, execution);
 		if (taskData === null) {
 			return [];
 		}
