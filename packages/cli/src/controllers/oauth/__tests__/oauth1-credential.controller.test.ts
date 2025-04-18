@@ -86,7 +86,7 @@ describe('OAuth1CredentialController', () => {
 			jest.spyOn(Csrf.prototype, 'create').mockReturnValueOnce('token');
 			sharedCredentialsRepository.findCredentialForUser.mockResolvedValueOnce(credential);
 			credentialsHelper.getDecrypted.mockResolvedValueOnce({});
-			credentialsHelper.applyDefaultsAndOverwrites.mockResolvedValue({
+			credentialsHelper.applyDefaultsAndOverwrites.mockResolvedValueOnce({
 				requestTokenUrl: 'https://example.domain/oauth/request_token',
 				authUrl: 'https://example.domain/oauth/authorize',
 				accessTokenUrl: 'https://example.domain/oauth/access_token',
