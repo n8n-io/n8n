@@ -6,11 +6,17 @@ import type {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	// For future pull request
+	//NodeApiError,
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
+// For future pull request
+//import { agentFields, agentOperations } from './AgentDescription';
 import { contactFields, contactOperations } from './ContactDescription';
 import type { ICreateContactBody } from './ContactInterface';
+import { conversationFields, conversationOperations } from './ConversationDescription';
+import type { ICreateConversationBody } from './ConversationInterface';
 import {
 	capitalize,
 	freshdeskApiRequest,
@@ -47,6 +53,10 @@ const Sources = {
 } as const;
 
 type Source = (typeof Sources)[keyof typeof Sources];
+
+// For future pull request
+//import { summaryFields, summaryOperations } from './SummaryDescription';
+//import type { IUpdateSummaryBody } from './SummaryInterface';
 
 interface ICreateTicketBody {
 	name?: string;
@@ -112,6 +122,20 @@ export class Freshdesk implements INodeType {
 						name: 'Ticket',
 						value: 'ticket',
 					},
+					{
+						name: 'Conversation',
+						value: 'conversation',
+					},
+					// For future pull request
+					/*
+					{
+						name: 'Summary',
+						value: 'summary',
+					},
+					{
+						name: 'Agent',
+						value: 'agent',
+					}, */
 				],
 				default: 'ticket',
 			},
@@ -1019,6 +1043,18 @@ export class Freshdesk implements INodeType {
 			// CONTACTS
 			...contactOperations,
 			...contactFields,
+			// CONVERSATIONS
+			...conversationOperations,
+			...conversationFields,
+
+			// For future pull request
+			/*
+			// SUMMARY
+			...summaryOperations,
+			...summaryFields,
+			// AGENTS
+			...agentOperations,
+			...agentFields,  */
 		],
 	};
 
@@ -1115,11 +1151,11 @@ export class Freshdesk implements INodeType {
 						//const jsonActive = this.getNodeParameter('jsonParameters') as boolean;
 						const body: ICreateTicketBody = {
 							// @ts-ignore
-							status: Status[capitalize(status)],
+							status: Statuses[capitalize(status)],
 							// @ts-ignore
-							priority: Priority[capitalize(priority)],
+							priority: Priorities[capitalize(priority)],
 							// @ts-ignore
-							source: Source[capitalize(source)],
+							source: Sources[capitalize(source)],
 						};
 
 						if (requester === 'requesterId') {
@@ -1399,7 +1435,125 @@ export class Freshdesk implements INodeType {
 							body,
 						);
 					}
+				} else if (resource === 'conversation') {
+					//https://developers.freshdesk.com/api/#reply_ticket
+					if (operation === 'reply') {
+						const ticketId = this.getNodeParameter('ticketId', i) as string;
+						const additionalFields = this.getNodeParameter('additionalFields', i, {});
+						if (additionalFields.customFields) {
+							const metadata = (additionalFields.customFields as IDataObject)
+								.customField as IDataObject[];
+							additionalFields.custom_fields = {};
+							for (const data of metadata) {
+								//@ts-ignore
+								additionalFields.custom_fields[data.name as IDataObject] = data.value;
+							}
+							delete additionalFields.customFields;
+						}
+						const body: ICreateConversationBody = additionalFields;
+						body.body = this.getNodeParameter('body', i) as string;
+						responseData = await freshdeskApiRequest.call(
+							this,
+							'POST',
+							`/tickets/${ticketId}/reply`,
+							body,
+						);
+						//https://developers.freshdesk.com/api/#add_note_to_a_ticket
+					} else if (operation === 'notes') {
+						const ticketId = this.getNodeParameter('ticketId', i) as string;
+						const additionalFields = this.getNodeParameter('additionalFields', i, {});
+						if (additionalFields.customFields) {
+							const metadata = (additionalFields.customFields as IDataObject)
+								.customField as IDataObject[];
+							additionalFields.custom_fields = {};
+							for (const data of metadata) {
+								//@ts-ignore
+								additionalFields.custom_fields[data.name as string] = data.value;
+							}
+							delete additionalFields.customFields;
+						}
+						const body: ICreateConversationBody = additionalFields;
+						body.body = this.getNodeParameter('body', i) as string;
+						console.log(body);
+						responseData = await freshdeskApiRequest.call(
+							this,
+							'POST',
+							`/tickets/${ticketId}/notes`,
+							body,
+						);
+						//https://developers.freshdesk.com/api/#update_conversation
+					} else if (operation === 'update') {
+						const conversationId = this.getNodeParameter('conversationId', i) as string;
+						const additionalFields = this.getNodeParameter('additionalFields', i, {});
+						if (additionalFields.customFields) {
+							const metadata = (additionalFields.customFields as IDataObject)
+								.customField as IDataObject[];
+							additionalFields.custom_fields = {};
+							for (const data of metadata) {
+								//@ts-ignore
+								additionalFields.custom_fields[data.name as string] = data.value;
+							}
+							delete additionalFields.customFields;
+						}
+						const body: ICreateConversationBody = additionalFields;
+						body.body = this.getNodeParameter('body', i) as string;
+						console.log(body);
+						responseData = await freshdeskApiRequest.call(
+							this,
+							'PUT',
+							`/conversations/${conversationId}`,
+							body,
+						);
+						//https://developers.freshdesk.com/api/#delete_conversation
+					} else if (operation === 'delete') {
+						const conversationId = this.getNodeParameter('conversationId', i) as string;
+						responseData = await freshdeskApiRequest.call(
+							this,
+							'DELETE',
+							`/conversations/${conversationId}`,
+						);
+					}
 				}
+				// For future pull request
+				/* else if (resource === 'summary') {
+					if (operation === 'get') {
+						const ticketId = this.getNodeParameter('ticketId', i) as string;
+						// Check if there is a summary
+						try {
+							responseData = await freshdeskApiRequest.call(
+								this,
+								'GET',
+								`/tickets/${ticketId}/summary`,
+							);
+						} catch (error) {
+							if ((error as NodeApiError).httpCode === '404') {
+								responseData = { body_text: null };
+							}
+						}
+					} else if (operation === 'set') {
+						const ticketId = this.getNodeParameter('ticketId', i) as string;
+						const body: IUpdateSummaryBody = {
+							body: this.getNodeParameter('body', i) as string,
+						};
+						responseData = await freshdeskApiRequest.call(
+							this,
+							'PUT',
+							`/tickets/${ticketId}/summary`,
+							body,
+						);
+					} else if (operation === 'delete') {
+						const ticketId = this.getNodeParameter('ticketId', i) as string;
+						responseData = await freshdeskApiRequest.call(
+							this,
+							'DELETE',
+							`/tickets/${ticketId}/summary`,
+						);
+					}
+				} else if (resource === 'agent') {
+					if (operation === 'getCurrent') {
+						responseData = await freshdeskApiRequest.call(this, 'GET', '/agents/me');
+					}
+				} */
 
 				if (!Array.isArray(responseData) && responseData === undefined) {
 					responseData = {
