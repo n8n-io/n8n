@@ -239,7 +239,7 @@ export class LmChatNetmind implements INodeType {
 			openAIApiKey: credentials.apiKey,
 			modelName,
 			...options,
-			timeout: options.timeout ?? 60000,
+			timeout: options.timeout ?? 360000,
 			maxRetries: options.maxRetries ?? 2,
 			configuration,
 			callbacks: [new N8nLlmTracing(this)],
