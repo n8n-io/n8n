@@ -867,7 +867,13 @@ describe('useFlattenSchema', () => {
 			const { flattenMultipleSchemas } = useFlattenSchema();
 
 			const result = flattenMultipleSchemas(
-				[mock<SchemaNode>({ node: { name: 'Test Node' }, isNodeExecuted: false })],
+				[
+					mock<SchemaNode>({
+						node: { name: 'Test Node' },
+						isNodeExecuted: false,
+						schema: { type: 'object', value: [] },
+					}),
+				],
 				vi.fn(),
 			);
 			expect(result).toHaveLength(2);
