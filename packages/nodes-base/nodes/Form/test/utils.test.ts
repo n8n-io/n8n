@@ -746,7 +746,7 @@ describe('prepareFormReturnItem', () => {
 		expect(result.json.formQueryParameters).toBeUndefined();
 	});
 
-	it.only('should include query parameters if present and is trigger node', async () => {
+	it('should include query parameters if present and is trigger node', async () => {
 		mockContext.getRequestObject.mockReturnValue({
 			method: 'POST',
 			query: { param: 'value' },
@@ -757,7 +757,7 @@ describe('prepareFormReturnItem', () => {
 		expect(result.json.formQueryParameters).toEqual({ param: 'value' });
 	});
 
-	it.only('should not include query parameters if empty', async () => {
+	it('should not include query parameters if empty', async () => {
 		mockContext.getRequestObject.mockReturnValue({
 			method: 'POST',
 			query: {},
