@@ -232,7 +232,7 @@ export class LmChatNetmind implements INodeType {
 		};
 
 		const configuration: ClientOptions = {
-			baseURL: 'https://api.netmind.ai/inference-api/openai/v1',
+			baseURL: credentials.url,
 		};
 
 		const model = new ChatOpenAI({

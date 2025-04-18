@@ -140,7 +140,7 @@ export class EmbeddingsNetmind implements INodeType {
 		}
 
 		const configuration: ClientOptions = {};
-		configuration.baseURL = 'https://api.netmind.ai/inference-api/openai/v1';
+		configuration.baseURL = credentials.url;
 		const embeddings = new OpenAIEmbeddings(
 			{
 				model: modelName,

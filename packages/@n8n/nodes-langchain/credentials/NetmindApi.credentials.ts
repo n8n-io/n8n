@@ -21,6 +21,12 @@ export class NetmindApi implements ICredentialType {
 			required: true,
 			default: '',
 		},
+		{
+			displayName: 'Base URL',
+			name: 'url',
+			type: 'hidden',
+			default: 'https://api.netmind.ai/inference-api/openai/v1',
+		},
 	];
 
 	authenticate: IAuthenticateGeneric = {
