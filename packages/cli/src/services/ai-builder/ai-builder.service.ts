@@ -1,9 +1,11 @@
 import { dispatchCustomEvent } from '@langchain/core/callbacks/dispatch';
+import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { HumanMessage, ToolMessage } from '@langchain/core/messages';
 import type { RunnableConfig } from '@langchain/core/runnables';
 import { StateGraph, END, START } from '@langchain/langgraph';
+import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { ApplicationError, jsonParse } from 'n8n-workflow';
+import { OperationalError, jsonParse } from 'n8n-workflow';
 import type { IUser, INodeTypeDescription, INode } from 'n8n-workflow';
 
 import { NodeTypes } from '@/node-types';
@@ -15,6 +17,7 @@ import {
 	nodesComposerChain,
 	connectionComposerAgent,
 } from './agents';
+import { anthropicClaude37Sonnet, o3mini } from './llm-config';
 import type { SimpleWorkflow, MessageResponse } from './types';
 import { WorkflowState } from './workflow-state';
 
@@ -22,8 +25,24 @@ import { WorkflowState } from './workflow-state';
 export class AiBuilderService {
 	private parsedNodeTypes: INodeTypeDescription[] = [];
 
-	constructor(private readonly nodeTypes: NodeTypes) {
+	private llmSimpleTask: BaseChatModel;
+
+	private llmComplexTask: BaseChatModel;
+
+	constructor(
+		private readonly nodeTypes: NodeTypes,
+		private readonly globalConfig: GlobalConfig,
+	) {
 		this.parsedNodeTypes = this.getNodeTypes();
+		// Api key provided by ai-sdk, but we need to set something here so LangChain doesn't throw an error
+		this.llmSimpleTask = o3mini(
+			this.globalConfig.aiAssistant.baseUrl + '/v1/api-proxy/openai',
+			'_',
+		);
+		this.llmComplexTask = anthropicClaude37Sonnet(
+			this.globalConfig.aiAssistant.baseUrl + '/v1/api-proxy/anthropic',
+			'',
+		);
 	}
 
 	private getNodeTypes(): INodeTypeDescription[] {
@@ -48,13 +67,11 @@ export class AiBuilderService {
 		].includes(eventName);
 	}
 
-	// Helper method to setup and return our full workflow agent graph.
 	private getAgent() {
 		const supervisorChainNode = async (
 			state: typeof WorkflowState.State,
-			config: RunnableConfig,
 		): Promise<Partial<typeof WorkflowState.State>> => {
-			const nextStep = await supervisorChain.invoke({
+			const nextStep = await supervisorChain(this.llmSimpleTask).invoke({
 				user_workflow_prompt: state.prompt,
 				workflow: state.workflowJSON,
 				steps: state.steps.join(', '),
@@ -70,7 +87,7 @@ export class AiBuilderService {
 			state: typeof WorkflowState.State,
 			config: RunnableConfig,
 		): Promise<Partial<typeof WorkflowState.State>> => {
-			const result = await plannerAgent.invoke(
+			const result = await plannerAgent(this.llmComplexTask).invoke(
 				{
 					messages: [new HumanMessage({ content: state.prompt })],
 				},
@@ -80,7 +97,7 @@ export class AiBuilderService {
 				.reverse()
 				.find((message) => message instanceof ToolMessage);
 			if (!lastMessage) {
-				throw new ApplicationError('No ToolMessage found in planner agent');
+				throw new OperationalError('No ToolMessage found in planner agent');
 			}
 			const parsedSteps = jsonParse<{ steps: string[] }>(lastMessage.content as string);
 
@@ -119,7 +136,7 @@ export class AiBuilderService {
 					${this.parsedNodeTypes.map(getNodeMessage).join('')}
 				</allowed_n8n_nodes>
 			`;
-			const result = await nodeSelectionAgent.invoke(
+			const result = await nodeSelectionAgent(this.llmSimpleTask).invoke(
 				{
 					messages: [new HumanMessage({ content: message })],
 				},
@@ -127,7 +144,7 @@ export class AiBuilderService {
 			);
 			const lastMessage = result.messages.reverse().find((m) => m instanceof ToolMessage);
 			if (!lastMessage) {
-				throw new ApplicationError('No ToolMessage found in node selection agent');
+				throw new OperationalError('No ToolMessage found in node selection agent');
 			}
 			const selectedNodes = jsonParse<{
 				steps: Array<{ step: string; recommended_nodes: string[]; reasoning: string }>;
@@ -155,7 +172,7 @@ export class AiBuilderService {
 			const getNodeMessage = (nodeName: string) => {
 				const node = this.parsedNodeTypes.find((n) => n.name === nodeName);
 				if (!node) {
-					throw new ApplicationError(`Node type not found: ${nodeName}`);
+					throw new OperationalError(`Node type not found: ${nodeName}`);
 				}
 				return `
 					<node_name>
@@ -170,7 +187,7 @@ export class AiBuilderService {
 				`;
 			};
 
-			const result = await nodesComposerChain.invoke(
+			const result = await nodesComposerChain(this.llmComplexTask).invoke(
 				{
 					user_workflow_prompt: state.prompt,
 					nodes: state.nodes.map(getNodeMessage).join('\n\n'),
@@ -212,7 +229,7 @@ export class AiBuilderService {
 					</node>
 				`;
 			};
-			const result = await connectionComposerAgent.invoke(
+			const result = await connectionComposerAgent(this.llmComplexTask).invoke(
 				{
 					messages: [
 						new HumanMessage({
@@ -252,14 +269,6 @@ export class AiBuilderService {
 			};
 		};
 
-		///////////////////// User Review /////////////////////
-		// The user review node checks if the workflow is approved. In a real application, you might request manual review.
-		function userReview(state: typeof WorkflowState.State) {
-			// If the user has accepted the workflow, then we proceed to finalize the workflow.
-			// Otherwise, we cycle back to node selection for refinement.
-			return { next: state.userReview ? 'FINALIZE' : 'NODE_SELECTION' };
-		}
-
 		///////////////////// Finalization /////////////////////
 		// Finalize the workflow JSON by combining nodes and their connections.
 		async function generateWorkflowJSON(state: typeof WorkflowState.State) {
@@ -278,8 +287,6 @@ export class AiBuilderService {
 			.addNode('node_selector', nodeSelectionAgentNode)
 			.addNode('nodes_composer', nodesComposerChainNode)
 			.addNode('connection_composer', connectionComposerAgentNode)
-			// .addNode("parameter_prefiller", parameterPrefillerAgentNode)
-			.addNode('user_review', userReview)
 			.addNode('finalize', generateWorkflowJSON);
 
 		// Define the graph edges to set the processing order:
@@ -289,7 +296,6 @@ export class AiBuilderService {
 		workflowGraph.addConditionalEdges('supervisor', (state) => state.next, {
 			PLAN: 'planner',
 			NODE_SELECTION: 'node_selector',
-			USER_REVIEW: 'user_review',
 			FINALIZE: 'finalize',
 			END,
 		});
@@ -299,23 +305,14 @@ export class AiBuilderService {
 		workflowGraph.addEdge('node_selector', 'nodes_composer');
 		// Nodes composer is followed by connection composer:
 		workflowGraph.addEdge('nodes_composer', 'connection_composer');
-		// Connection composer flows to user review:
-		workflowGraph.addEdge('connection_composer', 'user_review');
-		// If user review is positive, then finalize; otherwise allow re-adjustment by re-running node selection.
-		workflowGraph.addConditionalEdges(
-			'user_review',
-			(state) => (state.userReview ? 'true' : 'false'),
-			{
-				true: 'finalize',
-				false: 'node_selector',
-			},
-		);
+		// Connection composer flows to finalization:
+		workflowGraph.addEdge('connection_composer', 'finalize');
+		// Finalization flows to end:
 		workflowGraph.addEdge('finalize', END);
 
 		return workflowGraph;
 	}
 
-	// The chat function simulates the agent streaming events from initial state to final workflow JSON.
 	async *chat(payload: { question: string; currentWorkflow?: SimpleWorkflow }, _user?: IUser) {
 		const agent = this.getAgent().compile();
 
@@ -324,7 +321,6 @@ export class AiBuilderService {
 			prompt: payload.question,
 			steps: [],
 			nodes: [],
-			userReview: true,
 			workflowJSON: payload.currentWorkflow ?? { nodes: [], connections: {} },
 			next: 'PLAN',
 		};

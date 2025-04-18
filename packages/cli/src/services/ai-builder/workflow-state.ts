@@ -13,8 +13,6 @@ export const WorkflowState = Annotation.Root({
 	steps: Annotation<string[]>({ reducer: (x, y) => y ?? x ?? [] }),
 	// The list of candidate or selected n8n node names.
 	nodes: Annotation<string[]>({ reducer: (x, y) => y ?? x ?? [] }),
-	// Boolean flag indicating if the user is satisfied with the current workflow selection.
-	userReview: Annotation<boolean>({ reducer: (x, y) => y ?? x ?? false }),
 	// The JSON representation of the workflow being built.
 	workflowJSON: Annotation<SimpleWorkflow>({
 		reducer: (x, y) => y ?? x ?? { nodes: [], connections: {} },
