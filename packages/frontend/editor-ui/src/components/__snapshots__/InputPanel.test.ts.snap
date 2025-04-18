@@ -137,9 +137,7 @@ exports[`InputPanel > should render 1`] = `
           >
             <!--v-if-->
             <span>
-              
               Cancel
-              
             </span>
           </button>
           <button
@@ -149,9 +147,7 @@ exports[`InputPanel > should render 1`] = `
           >
             <!--v-if-->
             <span>
-              
               Save
-              
             </span>
           </button>
         </div>
