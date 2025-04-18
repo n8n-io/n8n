@@ -42,7 +42,8 @@
       "dist/credentials/WolframAlphaApi.credentials.js",
       "dist/credentials/XAiApi.credentials.js",
       "dist/credentials/XataApi.credentials.js",
-      "dist/credentials/ZepApi.credentials.js"
+      "dist/credentials/ZepApi.credentials.js",
+      "dist/credentials/NetmindApi.credentials.js"
     ],
     "nodes": [
       "dist/nodes/vendors/OpenAi/OpenAi.node.js",
@@ -68,6 +69,7 @@
       "dist/nodes/embeddings/EmbeddingsMistralCloud/EmbeddingsMistralCloud.node.js",
       "dist/nodes/embeddings/EmbeddingsOpenAI/EmbeddingsOpenAi.node.js",
       "dist/nodes/embeddings/EmbeddingsOllama/EmbeddingsOllama.node.js",
+      "dist/nodes/embeddings/EmbeddingsNetmind/EmbeddingsNetmind.node.js",
       "dist/nodes/llms/LMChatAnthropic/LmChatAnthropic.node.js",
       "dist/nodes/llms/LmChatAzureOpenAi/LmChatAzureOpenAi.node.js",
       "dist/nodes/llms/LmChatAwsBedrock/LmChatAwsBedrock.node.js",
@@ -84,6 +86,7 @@
       "dist/nodes/llms/LMCohere/LmCohere.node.js",
       "dist/nodes/llms/LMOllama/LmOllama.node.js",
       "dist/nodes/llms/LMOpenHuggingFaceInference/LmOpenHuggingFaceInference.node.js",
+      "dist/nodes/llms/LMChatNetmind/LmChatNetmind.node.js",
       "dist/nodes/mcp/McpClientTool/McpClientTool.node.js",
       "dist/nodes/mcp/McpTrigger/McpTrigger.node.js",
       "dist/nodes/memory/MemoryBufferWindow/MemoryBufferWindow.node.js",
