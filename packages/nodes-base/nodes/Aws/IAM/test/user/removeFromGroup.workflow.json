@@ -1,0 +1,78 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-40, -120],
+			"id": "7da2ce49-9a9d-4240-b082-ff1b12d101b1",
+			"name": "When clicking ‘Test workflow’"
+		},
+		{
+			"parameters": {
+				"operation": "removeFromGroup",
+				"user": {
+					"__rl": true,
+					"value": "UserTest1",
+					"mode": "list",
+					"cachedResultName": "UserTest1"
+				},
+				"group": {
+					"__rl": true,
+					"value": "GroupCreatedAfter",
+					"mode": "list",
+					"cachedResultName": "GroupCreatedAfter"
+				},
+				"requestOptions": {}
+			},
+			"type": "n8n-nodes-base.awsIam",
+			"typeVersion": 1,
+			"position": [140, -120],
+			"id": "5f05f1ad-aaae-49c1-b03d-c77c1442a0c9",
+			"name": "removeFromGroup",
+			"credentials": {
+				"aws": {
+					"id": "exampleId",
+					"name": "AWS US EAST"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"removeFromGroup": [
+			{
+				"json": {
+					"RemoveUserFromGroupResponse": {
+						"ResponseMetadata": {
+							"RequestId": "48508b51-1506-496c-8455-7135269209f0"
+						}
+					}
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Test workflow’": {
+			"main": [
+				[
+					{
+						"node": "removeFromGroup",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "9cb635bc-9e0f-4903-8705-c0ec4495c39f",
+	"meta": {
+		"templateCredsSetupCompleted": true,
+		"instanceId": "26f38eb23ad84214537831cfef4032299ffac994ff18d5cb72e82d31ac4ceac4"
+	},
+	"id": "0qqycx08fTBpfbC9",
+	"tags": []
+}
