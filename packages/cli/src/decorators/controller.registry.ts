@@ -3,7 +3,7 @@ import { Container, Service } from '@n8n/di';
 import { Router } from 'express';
 import type { Application, Request, Response, RequestHandler } from 'express';
 import { rateLimit as expressRateLimit } from 'express-rate-limit';
-import { ApplicationError } from 'n8n-workflow';
+import { UnexpectedError } from 'n8n-workflow';
 import type { ZodClass } from 'zod-class';
 
 import { AuthService } from '@/auth/auth.service';
@@ -100,7 +100,7 @@ export class ControllerRegistry {
 								return res.status(400).json(output.error.errors[0]);
 							}
 						}
-					} else throw new ApplicationError('Unknown arg type: ' + arg.type);
+					} else throw new UnexpectedError('Unknown arg type: ' + arg.type);
 				}
 				return await controller[handlerName](...args);
 			};
@@ -116,7 +116,13 @@ export class ControllerRegistry {
 				...(route.accessScope ? [this.createScopedMiddleware(route.accessScope)] : []),
 				...controllerMiddlewares,
 				...route.middlewares,
-				route.usesTemplates ? handler : send(handler),
+				route.usesTemplates
+					? async (req, res) => {
+							// When using templates, intentionally drop the return value,
+							// since template rendering writes directly to the response.
+							await handler(req, res);
+						}
+					: send(handler),
 			);
 		}
 	}
@@ -133,11 +139,10 @@ export class ControllerRegistry {
 	private createLicenseMiddleware(feature: BooleanLicenseFeature): RequestHandler {
 		return (_req, res, next) => {
 			if (!this.license.isFeatureEnabled(feature)) {
-				return res
-					.status(403)
-					.json({ status: 'error', message: 'Plan lacks license for this feature' });
+				res.status(403).json({ status: 'error', message: 'Plan lacks license for this feature' });
+				return;
 			}
-			return next();
+			next();
 		};
 	}
 
@@ -152,13 +157,14 @@ export class ControllerRegistry {
 			const { scope, globalOnly } = accessScope;
 
 			if (!(await userHasScopes(req.user, [scope], globalOnly, req.params))) {
-				return res.status(403).json({
+				res.status(403).json({
 					status: 'error',
 					message: RESPONSE_ERROR_MESSAGES.MISSING_SCOPE,
 				});
+				return;
 			}
 
-			return next();
+			next();
 		};
 	}
 }

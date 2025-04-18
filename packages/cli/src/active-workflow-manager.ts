@@ -30,7 +30,7 @@ import {
 	Workflow,
 	WorkflowActivationError,
 	WebhookPathTakenError,
-	ApplicationError,
+	UnexpectedError,
 } from 'n8n-workflow';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
@@ -238,7 +238,7 @@ export class ActiveWorkflowManager {
 		});
 
 		if (workflowData === null) {
-			throw new ApplicationError('Could not find workflow', { extra: { workflowId } });
+			throw new UnexpectedError('Could not find workflow', { extra: { workflowId } });
 		}
 
 		const workflow = new Workflow({
@@ -673,10 +673,23 @@ export class ActiveWorkflowManager {
 		const triggerFilter = (nodeType: INodeType) =>
 			!!nodeType.trigger && !nodeType.description.name.includes('manualTrigger');
 
+		// Retrieve unique webhooks as some nodes have multiple webhooks
+		const workflowWebhooks = WebhookHelpers.getWorkflowWebhooks(
+			workflow,
+			additionalData,
+			undefined,
+			true,
+		);
+
+		const uniqueWebhooks = workflowWebhooks.reduce<Set<string>>((acc, webhook) => {
+			acc.add(webhook.node);
+			return acc;
+		}, new Set());
+
 		return (
 			workflow.queryNodes(triggerFilter).length +
 			workflow.getPollNodes().length +
-			WebhookHelpers.getWorkflowWebhooks(workflow, additionalData, undefined, true).length
+			uniqueWebhooks.size
 		);
 	}
 

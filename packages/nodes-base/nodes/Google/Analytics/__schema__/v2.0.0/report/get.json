@@ -1,14 +1,12 @@
 {
     "type": "object",
     "properties": {
-        "screenPageViews": {
-            "type": "string"
-        },
         "date": {
             "type": "string"
         },
-        "totalUsers": {
+        "sessions": {
             "type": "string"
         }
-    }
+    },
+    "version": 2
 }

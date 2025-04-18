@@ -2,7 +2,7 @@ import { QueryFailedError } from '@n8n/typeorm';
 import type { ErrorEvent } from '@sentry/types';
 import { AxiosError } from 'axios';
 import { mock } from 'jest-mock-extended';
-import { ApplicationError } from 'n8n-workflow';
+import { ApplicationError, BaseError } from 'n8n-workflow';
 
 import type { Logger } from '@/logging/logger';
 
@@ -131,6 +131,43 @@ describe('ErrorReporter', () => {
 
 				expect(result).toEqual(event);
 				expect(beforeSendFilter).toHaveBeenCalledWith(event, hint);
+			});
+		});
+
+		describe('BaseError', () => {
+			class TestError extends BaseError {}
+
+			it('should drop errors with shouldReport false', async () => {
+				const originalException = new TestError('test', { shouldReport: false });
+
+				expect(await errorReporter.beforeSend(event, { originalException })).toEqual(null);
+			});
+
+			it('should keep events with shouldReport true', async () => {
+				const originalException = new TestError('test', { shouldReport: true });
+
+				expect(await errorReporter.beforeSend(event, { originalException })).toEqual(event);
+			});
+
+			it('should set level, extra, and tags from BaseError', async () => {
+				const originalException = new TestError('Test error', {
+					level: 'error',
+					extra: { foo: 'bar' },
+					tags: { tag1: 'value1' },
+				});
+
+				const testEvent = {} as ErrorEvent;
+
+				const result = await errorReporter.beforeSend(testEvent, { originalException });
+
+				expect(result).toEqual({
+					level: 'error',
+					extra: { foo: 'bar' },
+					tags: {
+						packageName: 'core',
+						tag1: 'value1',
+					},
+				});
 			});
 		});
 	});

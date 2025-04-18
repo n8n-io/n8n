@@ -7,14 +7,15 @@ import type {
 	TaskResultData,
 } from '@n8n/task-runner';
 import { Logger } from 'n8n-core';
-import { ApplicationError } from 'n8n-workflow';
+import { UnexpectedError, UserError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
 import config from '@/config';
 import { Time } from '@/constants';
 import { TaskDeferredError } from '@/task-runners/task-broker/errors/task-deferred.error';
 import { TaskRejectError } from '@/task-runners/task-broker/errors/task-reject.error';
-import { TaskRunnerTimeoutError } from '@/task-runners/task-broker/errors/task-runner-timeout.error';
+import { TaskRunnerAcceptTimeoutError } from '@/task-runners/task-broker/errors/task-runner-accept-timeout.error';
+import { TaskRunnerExecutionTimeoutError } from '@/task-runners/task-broker/errors/task-runner-execution-timeout.error';
 import { TaskRunnerLifecycleEvents } from '@/task-runners/task-runner-lifecycle-events';
 
 export interface TaskRunner {
@@ -92,7 +93,7 @@ export class TaskBroker {
 		private readonly taskRunnerLifecycleEvents: TaskRunnerLifecycleEvents,
 	) {
 		if (this.taskRunnersConfig.taskTimeout <= 0) {
-			throw new ApplicationError('Task timeout must be greater than 0');
+			throw new UserError('Task timeout must be greater than 0');
 		}
 	}
 
@@ -420,17 +421,12 @@ export class TaskBroker {
 	private async getRunnerOrFailTask(taskId: Task['id']): Promise<TaskRunner> {
 		const task = this.tasks.get(taskId);
 		if (!task) {
-			throw new ApplicationError(`Cannot find runner, failed to find task (${taskId})`, {
-				level: 'error',
-			});
+			throw new UnexpectedError(`Cannot find runner, failed to find task (${taskId})`);
 		}
 		const runner = this.knownRunners.get(task.runnerId);
 		if (!runner) {
-			const error = new ApplicationError(
+			const error = new UnexpectedError(
 				`Cannot find runner, failed to find runner (${task.runnerId})`,
-				{
-					level: 'error',
-				},
 			);
 			await this.failTask(taskId, error);
 			throw error;
@@ -473,7 +469,7 @@ export class TaskBroker {
 
 		await this.taskErrorHandler(
 			taskId,
-			new TaskRunnerTimeoutError({
+			new TaskRunnerExecutionTimeoutError({
 				taskTimeout,
 				isSelfHosted: config.getEnv('deployment.type') !== 'cloud',
 				mode,
@@ -518,7 +514,7 @@ export class TaskBroker {
 
 				// TODO: customisable timeout
 				setTimeout(() => {
-					reject('Runner timed out');
+					reject(new TaskRunnerAcceptTimeoutError(taskId, offer.runnerId));
 				}, 2000);
 			});
 
@@ -538,6 +534,10 @@ export class TaskBroker {
 			if (e instanceof TaskDeferredError) {
 				this.logger.debug(`Task (${taskId}) deferred until runner is ready`);
 				this.pendingTaskRequests.push(request); // will settle on receiving task offer from runner
+				return;
+			}
+			if (e instanceof TaskRunnerAcceptTimeoutError) {
+				this.logger.warn(e.message);
 				return;
 			}
 			throw e;

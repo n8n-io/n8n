@@ -10,7 +10,7 @@ import * as folderMessage from './folderMessage';
 import * as message from './message';
 import * as messageAttachment from './messageAttachment';
 import type { MicrosoftOutlook } from './node.type';
-import { configureWaitTillDate } from '../../../../../utils/sendAndWait/utils';
+import { configureWaitTillDate } from '../../../../../utils/sendAndWait/configureWaitTillDate.util';
 
 export async function router(this: IExecuteFunctions) {
 	const items = this.getInputData();

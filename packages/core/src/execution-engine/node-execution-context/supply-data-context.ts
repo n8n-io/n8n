@@ -13,11 +13,11 @@ import type {
 	ITaskDataConnections,
 	ITaskMetadata,
 	IWorkflowExecuteAdditionalData,
-	NodeConnectionType,
 	Workflow,
 	WorkflowExecuteMode,
+	NodeConnectionType,
 } from 'n8n-workflow';
-import { createDeferredPromise } from 'n8n-workflow';
+import { createDeferredPromise, NodeConnectionTypes } from 'n8n-workflow';
 
 import { BaseExecuteContext } from './base-execute-context';
 import {
@@ -107,6 +107,28 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 				fallbackValue,
 				options,
 			)) as ISupplyDataFunctions['getNodeParameter'];
+	}
+
+	cloneWith(replacements: {
+		runIndex: number;
+		inputData: INodeExecutionData[][];
+	}): SupplyDataContext {
+		const context = new SupplyDataContext(
+			this.workflow,
+			this.node,
+			this.additionalData,
+			this.mode,
+			this.runExecutionData,
+			replacements.runIndex,
+			this.connectionInputData,
+			{},
+			this.connectionType,
+			this.executeData,
+			this.closeFunctions,
+			this.abortSignal,
+		);
+		context.addInputData(NodeConnectionTypes.AiTool, replacements.inputData);
+		return context;
 	}
 
 	async getInputConnectionData(
@@ -210,8 +232,9 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 		let taskData: ITaskData | undefined;
 		if (type === 'input') {
 			taskData = {
-				startTime: new Date().getTime(),
+				startTime: Date.now(),
 				executionTime: 0,
+				executionIndex: additionalData.currentNodeExecutionIndex++,
 				executionStatus: 'running',
 				source: [null],
 			};
@@ -255,10 +278,10 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 			}
 
 			runExecutionData.resultData.runData[nodeName][currentNodeRunIndex] = taskData;
-			await additionalData.hooks?.runHook('nodeExecuteBefore', [nodeName]);
+			await additionalData.hooks?.runHook('nodeExecuteBefore', [nodeName, taskData]);
 		} else {
 			// Outputs
-			taskData.executionTime = new Date().getTime() - taskData.startTime;
+			taskData.executionTime = Date.now() - taskData.startTime;
 
 			await additionalData.hooks?.runHook('nodeExecuteAfter', [
 				nodeName,

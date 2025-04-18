@@ -1,6 +1,6 @@
 import { Service } from '@n8n/di';
 import { HookContext, WebhookContext, Logger } from 'n8n-core';
-import { ApplicationError, Node, NodeHelpers } from 'n8n-workflow';
+import { Node, NodeHelpers, UnexpectedError } from 'n8n-workflow';
 import type {
 	IHttpRequestMethods,
 	INode,
@@ -321,7 +321,7 @@ export class WebhookService {
 	): Promise<IWebhookResponseData> {
 		const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 		if (nodeType.webhook === undefined) {
-			throw new ApplicationError('Node does not have any webhooks defined', {
+			throw new UnexpectedError('Node does not have any webhooks defined', {
 				extra: { nodeName: node.name },
 			});
 		}

@@ -1,4 +1,5 @@
 import { LoginRequestDto, ResolveSignupTokenQueryDto } from '@n8n/api-types';
+import { isEmail } from 'class-validator';
 import { Response } from 'express';
 import { Logger } from 'n8n-core';
 
@@ -44,14 +45,19 @@ export class AuthController {
 		res: Response,
 		@Body payload: LoginRequestDto,
 	): Promise<PublicUser | undefined> {
-		const { email, password, mfaCode, mfaRecoveryCode } = payload;
+		const { emailOrLdapLoginId, password, mfaCode, mfaRecoveryCode } = payload;
 
 		let user: User | undefined;
 
 		let usedAuthenticationMethod = getCurrentAuthenticationMethod();
+
+		if (usedAuthenticationMethod === 'email' && !isEmail(emailOrLdapLoginId)) {
+			throw new BadRequestError('Invalid email address');
+		}
+
 		if (isSamlCurrentAuthenticationMethod()) {
 			// attempt to fetch user data with the credentials, but don't log in yet
-			const preliminaryUser = await handleEmailLogin(email, password);
+			const preliminaryUser = await handleEmailLogin(emailOrLdapLoginId, password);
 			// if the user is an owner, continue with the login
 			if (
 				preliminaryUser?.role === 'global:owner' ||
@@ -63,15 +69,15 @@ export class AuthController {
 				throw new AuthError('SSO is enabled, please log in with SSO');
 			}
 		} else if (isLdapCurrentAuthenticationMethod()) {
-			const preliminaryUser = await handleEmailLogin(email, password);
+			const preliminaryUser = await handleEmailLogin(emailOrLdapLoginId, password);
 			if (preliminaryUser?.role === 'global:owner') {
 				user = preliminaryUser;
 				usedAuthenticationMethod = 'email';
 			} else {
-				user = await handleLdapLogin(email, password);
+				user = await handleLdapLogin(emailOrLdapLoginId, password);
 			}
 		} else {
-			user = await handleEmailLogin(email, password);
+			user = await handleEmailLogin(emailOrLdapLoginId, password);
 		}
 
 		if (user) {
@@ -101,7 +107,7 @@ export class AuthController {
 		}
 		this.eventService.emit('user-login-failed', {
 			authenticationMethod: usedAuthenticationMethod,
-			userEmail: email,
+			userEmail: emailOrLdapLoginId,
 			reason: 'wrong credentials',
 		});
 		throw new AuthError('Wrong username or password. Do you have caps lock on?');

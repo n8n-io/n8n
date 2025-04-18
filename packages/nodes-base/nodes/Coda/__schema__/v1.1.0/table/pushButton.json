@@ -1,19 +1,15 @@
 {
-	"type": "object",
-	"properties": {
-		"rowId": {
-			"type": "string"
-		},
-		"columnId": {
-			"type": "string"
-		},
-		"requestId": {
-			"type": "string"
-		}
-	},
-	"required": [
-		"rowId",
-		"columnId",
-		"requestId"
-	]
+    "type": "object",
+    "properties": {
+        "columnId": {
+            "type": "string"
+        },
+        "requestId": {
+            "type": "string"
+        },
+        "rowId": {
+            "type": "string"
+        }
+    },
+    "version": 1
 }

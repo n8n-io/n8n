@@ -22,6 +22,7 @@ export declare namespace WorkflowRequest {
 		hash: string;
 		meta: Record<string, unknown>;
 		projectId: string;
+		parentFolderId?: string;
 	}>;
 
 	type ManualRunPayload = {
@@ -40,7 +41,12 @@ export declare namespace WorkflowRequest {
 
 	type Get = AuthenticatedRequest<{ workflowId: string }>;
 
-	type GetMany = AuthenticatedRequest<{}, {}, {}, ListQuery.Params & { includeScopes?: string }> & {
+	type GetMany = AuthenticatedRequest<
+		{},
+		{},
+		{},
+		ListQuery.Params & { includeScopes?: string; includeFolders?: string }
+	> & {
 		listQueryOptions: ListQuery.Options;
 	};
 
@@ -58,10 +64,4 @@ export declare namespace WorkflowRequest {
 	type ManualRun = AuthenticatedRequest<{ workflowId: string }, {}, ManualRunPayload, {}>;
 
 	type Share = AuthenticatedRequest<{ workflowId: string }, {}, { shareWithIds: string[] }>;
-
-	type Transfer = AuthenticatedRequest<
-		{ workflowId: string },
-		{},
-		{ destinationProjectId: string }
-	>;
 }

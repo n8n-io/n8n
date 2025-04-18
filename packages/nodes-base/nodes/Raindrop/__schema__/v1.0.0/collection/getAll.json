@@ -1,128 +1,96 @@
 {
-	"type": "object",
-	"properties": {
-		"_id": {
-			"type": "integer"
-		},
-		"title": {
-			"type": "string"
-		},
-		"description": {
-			"type": "string"
-		},
-		"user": {
-			"type": "object",
-			"properties": {
-				"$ref": {
-					"type": "string"
-				},
-				"$id": {
-					"type": "integer"
-				}
-			},
-			"required": [
-				"$ref",
-				"$id"
-			]
-		},
-		"public": {
-			"type": "boolean"
-		},
-		"view": {
-			"type": "string"
-		},
-		"count": {
-			"type": "integer"
-		},
-		"cover": {
-			"type": "array",
-			"items": {
-				"type": "string"
-			}
-		},
-		"expanded": {
-			"type": "boolean"
-		},
-		"creatorRef": {
-			"type": "object",
-			"properties": {
-				"_id": {
-					"type": "integer"
-				},
-				"name": {
-					"type": "string"
-				},
-				"email": {
-					"type": "string"
-				}
-			},
-			"required": [
-				"_id",
-				"name",
-				"email"
-			]
-		},
-		"lastAction": {
-			"type": "string"
-		},
-		"created": {
-			"type": "string"
-		},
-		"lastUpdate": {
-			"type": "string"
-		},
-		"sort": {
-			"type": "integer"
-		},
-		"slug": {
-			"type": "string"
-		},
-		"color": {
-			"type": "string"
-		},
-		"access": {
-			"type": "object",
-			"properties": {
-				"for": {
-					"type": "integer"
-				},
-				"level": {
-					"type": "integer"
-				},
-				"root": {
-					"type": "boolean"
-				},
-				"draggable": {
-					"type": "boolean"
-				}
-			},
-			"required": [
-				"for",
-				"level",
-				"root",
-				"draggable"
-			]
-		},
-		"author": {
-			"type": "boolean"
-		}
-	},
-	"required": [
-		"_id",
-		"title",
-		"description",
-		"user",
-		"public",
-		"view",
-		"count",
-		"cover",
-		"expanded",
-		"lastAction",
-		"created",
-		"lastUpdate",
-		"sort",
-		"slug",
-		"access",
-		"author"
-	]
+    "type": "object",
+    "properties": {
+        "_id": {
+            "type": "integer"
+        },
+        "access": {
+            "type": "object",
+            "properties": {
+                "draggable": {
+                    "type": "boolean"
+                },
+                "for": {
+                    "type": "integer"
+                },
+                "level": {
+                    "type": "integer"
+                },
+                "root": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "author": {
+            "type": "boolean"
+        },
+        "color": {
+            "type": "string"
+        },
+        "count": {
+            "type": "integer"
+        },
+        "cover": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "created": {
+            "type": "string"
+        },
+        "creatorRef": {
+            "type": "object",
+            "properties": {
+                "_id": {
+                    "type": "integer"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "description": {
+            "type": "string"
+        },
+        "expanded": {
+            "type": "boolean"
+        },
+        "lastAction": {
+            "type": "string"
+        },
+        "lastUpdate": {
+            "type": "string"
+        },
+        "public": {
+            "type": "boolean"
+        },
+        "slug": {
+            "type": "string"
+        },
+        "sort": {
+            "type": "integer"
+        },
+        "title": {
+            "type": "string"
+        },
+        "user": {
+            "type": "object",
+            "properties": {
+                "$id": {
+                    "type": "integer"
+                },
+                "$ref": {
+                    "type": "string"
+                }
+            }
+        },
+        "view": {
+            "type": "string"
+        }
+    },
+    "version": 1
 }

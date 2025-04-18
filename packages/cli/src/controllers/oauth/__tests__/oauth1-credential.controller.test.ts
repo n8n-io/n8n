@@ -86,7 +86,7 @@ describe('OAuth1CredentialController', () => {
 			jest.spyOn(Csrf.prototype, 'create').mockReturnValueOnce('token');
 			sharedCredentialsRepository.findCredentialForUser.mockResolvedValueOnce(credential);
 			credentialsHelper.getDecrypted.mockResolvedValueOnce({});
-			credentialsHelper.applyDefaultsAndOverwrites.mockReturnValueOnce({
+			credentialsHelper.applyDefaultsAndOverwrites.mockResolvedValueOnce({
 				requestTokenUrl: 'https://example.domain/oauth/request_token',
 				authUrl: 'https://example.domain/oauth/authorize',
 				accessTokenUrl: 'https://example.domain/oauth/access_token',
@@ -223,22 +223,18 @@ describe('OAuth1CredentialController', () => {
 		it('should exchange the code for a valid token, and save it to DB', async () => {
 			credentialsRepository.findOneBy.mockResolvedValue(credential);
 			credentialsHelper.getDecrypted.mockResolvedValue({ csrfSecret });
-			credentialsHelper.applyDefaultsAndOverwrites.mockReturnValueOnce({
+			credentialsHelper.applyDefaultsAndOverwrites.mockResolvedValueOnce({
 				requestTokenUrl: 'https://example.domain/oauth/request_token',
 				accessTokenUrl: 'https://example.domain/oauth/access_token',
 				signatureMethod: 'HMAC-SHA1',
 			});
 			jest.spyOn(Csrf.prototype, 'verify').mockReturnValueOnce(true);
 			nock('https://example.domain')
-				.post('/oauth/access_token', {
-					oauth_token: 'token',
-					oauth_verifier: 'verifier',
-				})
+				.post('/oauth/access_token', 'oauth_token=token&oauth_verifier=verifier')
 				.once()
 				.reply(200, 'access_token=new_token');
 
 			await controller.handleCallback(req, res);
-
 			const dataCaptor = captor();
 			expect(credentialsRepository.update).toHaveBeenCalledWith(
 				'1',

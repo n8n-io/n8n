@@ -89,7 +89,7 @@ export async function getColumns(this: ILoadOptionsFunctions): Promise<ResourceM
 		if (field?.options?.choices) {
 			return (field.options.choices as IDataObject[]).map((choice) => ({
 				name: choice.name,
-				value: choice.name,
+				value: choice.id,
 			})) as INodePropertyOptions[];
 		}
 

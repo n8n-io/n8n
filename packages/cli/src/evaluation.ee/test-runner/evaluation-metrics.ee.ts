@@ -1,4 +1,3 @@
-import difference from 'lodash/difference';
 import type { IDataObject } from 'n8n-workflow';
 
 import { TestCaseExecutionError } from '@/evaluation.ee/test-runner/errors.ee';
@@ -41,16 +40,6 @@ export class EvaluationMetrics {
 			} else {
 				addResultsInfo.unknownMetrics.add(metricName);
 			}
-		}
-
-		// Check that result contains all expected metrics
-		if (
-			difference(Array.from(this.metricNames), Object.keys(addResultsInfo.addedMetrics)).length > 0
-		) {
-			throw new TestCaseExecutionError('METRICS_MISSING', {
-				expectedMetrics: Array.from(this.metricNames).sort(),
-				receivedMetrics: Object.keys(addResultsInfo.addedMetrics).sort(),
-			});
 		}
 
 		return addResultsInfo;

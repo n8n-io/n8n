@@ -1,4 +1,4 @@
-import { ApplicationError } from 'n8n-workflow';
+import { UnexpectedError } from 'n8n-workflow';
 
 export type TestCaseExecutionErrorCode =
 	| 'MOCKED_NODE_DOES_NOT_EXIST'
@@ -6,13 +6,11 @@ export type TestCaseExecutionErrorCode =
 	| 'FAILED_TO_EXECUTE_WORKFLOW'
 	| 'EVALUATION_WORKFLOW_DOES_NOT_EXIST'
 	| 'FAILED_TO_EXECUTE_EVALUATION_WORKFLOW'
-	| 'METRICS_MISSING'
-	| 'UNKNOWN_METRICS'
 	| 'INVALID_METRICS'
 	| 'PAYLOAD_LIMIT_EXCEEDED'
 	| 'UNKNOWN_ERROR';
 
-export class TestCaseExecutionError extends ApplicationError {
+export class TestCaseExecutionError extends UnexpectedError {
 	readonly code: TestCaseExecutionErrorCode;
 
 	constructor(code: TestCaseExecutionErrorCode, extra: Record<string, unknown> = {}) {
@@ -28,7 +26,7 @@ export type TestRunErrorCode =
 	| 'INTERRUPTED'
 	| 'UNKNOWN_ERROR';
 
-export class TestRunError extends ApplicationError {
+export class TestRunError extends UnexpectedError {
 	readonly code: TestRunErrorCode;
 
 	constructor(code: TestRunErrorCode, extra: Record<string, unknown> = {}) {

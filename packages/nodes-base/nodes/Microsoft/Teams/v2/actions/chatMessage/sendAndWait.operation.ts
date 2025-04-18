@@ -23,15 +23,18 @@ export async function execute(this: IExecuteFunctions, i: number, instanceId: st
 	const chatId = this.getNodeParameter('chatId', i, '', { extractValue: true }) as string;
 	const config = getSendAndWaitConfig(this);
 
-	const attributionText = 'This message was sent automatically with';
-	const link = createUtmCampaignLink('n8n-nodes-base.microsoftTeams', instanceId);
-	const attribution = `<em>${attributionText} <a href="${link}">n8n</a></em>`;
-
 	const buttons = config.options.map(
 		(option) => `<a href="${config.url}?approved=${option.value}">${option.label}</a>`,
 	);
 
-	const content = `${config.message}<br><br>${buttons.join(' ')}<br><br>${attribution}`;
+	let content = `${config.message}<br><br>${buttons.join(' ')}`;
+
+	if (config.appendAttribution !== false) {
+		const attributionText = 'This message was sent automatically with';
+		const link = createUtmCampaignLink('n8n-nodes-base.microsoftTeams', instanceId);
+		const attribution = `<em>${attributionText} <a href="${link}">n8n</a></em>`;
+		content += `<br><br>${attribution}`;
+	}
 
 	const body = {
 		body: {

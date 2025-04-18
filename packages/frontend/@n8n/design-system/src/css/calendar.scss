@@ -1,0 +1,78 @@
+@use 'mixins/mixins';
+@use './common/var';
+@use 'button-group';
+
+@include mixins.b(calendar) {
+	background-color: var(--color-foreground-xlight);
+
+	@include mixins.e(header) {
+		display: flex;
+		justify-content: space-between;
+		padding: 12px 20px;
+		border-bottom: var.$table-border;
+	}
+
+	@include mixins.e(title) {
+		color: #000000;
+		align-self: center;
+	}
+
+	@include mixins.e(body) {
+		padding: 12px 20px 35px;
+	}
+}
+
+@include mixins.b(calendar-table) {
+	table-layout: fixed;
+	width: 100%;
+
+	thead th {
+		padding: 12px 0;
+		color: var(--color-text-dark);
+		font-weight: var(--font-weight-regular);
+	}
+
+	&:not(.is-range) {
+		td.prev,
+		td.next {
+			color: var(--color-text-lighter);
+		}
+	}
+
+	td {
+		border-bottom: var.$calendar-border;
+		border-right: var.$calendar-border;
+		vertical-align: top;
+		transition: background-color 0.2s ease;
+
+		@include mixins.when(selected) {
+			background-color: var.$calendar-selected-background-color;
+		}
+
+		@include mixins.when(today) {
+			color: var(--color-primary);
+		}
+	}
+
+	tr:first-child td {
+		border-top: var.$calendar-border;
+	}
+
+	tr td:first-child {
+		border-left: var.$calendar-border;
+	}
+
+	tr.el-calendar-table__row--hide-border td {
+		border-top: none;
+	}
+
+	@include mixins.b(calendar-day) {
+		box-sizing: border-box;
+		padding: 8px;
+		height: var.$calendar-cell-width;
+		&:hover {
+			cursor: pointer;
+			background-color: var.$calendar-selected-background-color;
+		}
+	}
+}

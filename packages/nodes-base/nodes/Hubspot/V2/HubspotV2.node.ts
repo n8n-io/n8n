@@ -1,6 +1,6 @@
 import { snakeCase } from 'change-case';
 import set from 'lodash/set';
-import { NodeApiError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
@@ -38,6 +38,7 @@ import {
 	validateCredentials,
 } from './GenericFunctions';
 import { ticketFields, ticketOperations } from './TicketDescription';
+import { generatePairedItemData } from '../../../utils/utilities';
 
 export class HubspotV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -52,8 +53,8 @@ export class HubspotV2 implements INodeType {
 				name: 'HubSpot',
 			},
 			usableAsTool: true,
-			inputs: [NodeConnectionType.Main],
-			outputs: [NodeConnectionType.Main],
+			inputs: [NodeConnectionTypes.Main],
+			outputs: [NodeConnectionTypes.Main],
 			credentials: [
 				{
 					name: 'hubspotApi',
@@ -1184,7 +1185,12 @@ export class HubspotV2 implements INodeType {
 					);
 				}
 
-				const executionData = this.helpers.returnJsonArray(responseData as IDataObject[]);
+				const itemData = generatePairedItemData(items.length);
+
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
+					{ itemData },
+				);
 				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
@@ -1665,7 +1671,11 @@ export class HubspotV2 implements INodeType {
 								}
 								//@ts-ignore
 								if (body.filterGroups.length > 3) {
-									throw new NodeOperationError(this.getNode(), 'You can only have 3 filter groups');
+									throw new NodeOperationError(
+										this.getNode(),
+										'You can only have 3 filter groups',
+										{ itemIndex: i },
+									);
 								}
 							}
 
@@ -2560,7 +2570,11 @@ export class HubspotV2 implements INodeType {
 								}
 								//@ts-ignore
 								if (body.filterGroups.length > 3) {
-									throw new NodeOperationError(this.getNode(), 'You can only have 3 filter groups');
+									throw new NodeOperationError(
+										this.getNode(),
+										'You can only have 3 filter groups',
+										{ itemIndex: i },
+									);
 								}
 							}
 

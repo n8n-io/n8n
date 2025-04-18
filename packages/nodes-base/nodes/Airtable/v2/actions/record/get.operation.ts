@@ -79,11 +79,11 @@ export async function execute(
 			id = this.getNodeParameter('id', i) as string;
 			const options = this.getNodeParameter('options', i, {});
 
-			const query: IDataObject = {
+			const qs: IDataObject = {
 				returnFieldsByFieldId: options.returnFieldsByFieldId ? true : false,
 			};
 
-			const responseData = await apiRequest.call(this, 'GET', `${base}/${table}/${id}`, {}, query);
+			const responseData = await apiRequest.call(this, 'GET', `${base}/${table}/${id}`, {}, qs);
 
 			if (options.downloadFields) {
 				const itemWithAttachments = await downloadRecordAttachments.call(

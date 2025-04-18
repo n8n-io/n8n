@@ -64,7 +64,7 @@ describe('OAuth2CredentialController', () => {
 		jest.setSystemTime(new Date(timestamp));
 		jest.clearAllMocks();
 
-		credentialsHelper.applyDefaultsAndOverwrites.mockReturnValue({
+		credentialsHelper.applyDefaultsAndOverwrites.mockResolvedValue({
 			clientId: 'test-client-id',
 			clientSecret: 'oauth-secret',
 			authUrl: 'https://example.domain/o/oauth2/v2/auth',

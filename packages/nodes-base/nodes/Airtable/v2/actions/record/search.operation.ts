@@ -5,7 +5,7 @@ import type {
 	IExecuteFunctions,
 } from 'n8n-workflow';
 
-import { updateDisplayOptions } from '../../../../../utils/utilities';
+import { generatePairedItemData, updateDisplayOptions } from '../../../../../utils/utilities';
 import type { IRecord } from '../../helpers/interfaces';
 import { flattenOutput } from '../../helpers/utils';
 import { apiRequest, apiRequestAllItems, downloadRecordAttachments } from '../../transport';
@@ -164,9 +164,12 @@ export async function execute(
 	const endpoint = `${base}/${table}`;
 
 	let itemsLength = items.length ? 1 : 0;
+	let fallbackPairedItems;
 
 	if (nodeVersion >= 2.1) {
 		itemsLength = items.length;
+	} else {
+		fallbackPairedItems = generatePairedItemData(items.length);
 	}
 
 	for (let i = 0; i < itemsLength; i++) {
@@ -215,7 +218,7 @@ export async function execute(
 					this,
 					responseData.records as IRecord[],
 					options.downloadFields as string[],
-					nodeVersion >= 2.1 ? [{ item: i }] : undefined,
+					fallbackPairedItems || [{ item: i }],
 				);
 				returnData.push(...itemWithAttachments);
 				continue;
@@ -227,7 +230,7 @@ export async function execute(
 				json: flattenOutput(record),
 			})) as INodeExecutionData[];
 
-			const itemData = nodeVersion >= 2.1 ? [{ item: i }] : [];
+			const itemData = fallbackPairedItems || [{ item: i }];
 
 			const executionData = this.helpers.constructExecutionMetaData(records, {
 				itemData,

@@ -1,7 +1,7 @@
 {
   "name": "@n8n/composables",
   "type": "module",
-  "version": "1.1.0",
+  "version": "1.5.0",
   "files": [
     "dist"
   ],
@@ -25,9 +25,9 @@
     "format:check": "biome ci . && prettier --check . --ignore-path ../../../../.prettierignore"
   },
   "devDependencies": {
-    "@n8n/frontend-eslint-config": "workspace:*",
-    "@n8n/frontend-typescript-config": "workspace:*",
-    "@n8n/frontend-vitest-config": "workspace:*",
+    "@n8n/eslint-config": "workspace:*",
+    "@n8n/typescript-config": "workspace:*",
+    "@n8n/vitest-config": "workspace:*",
     "@testing-library/jest-dom": "catalog:frontend",
     "@testing-library/user-event": "catalog:frontend",
     "@testing-library/vue": "catalog:frontend",
@@ -35,10 +35,9 @@
     "@vue/tsconfig": "catalog:frontend",
     "@vueuse/core": "catalog:frontend",
     "vue": "catalog:frontend",
-    "tsup": "catalog:frontend",
+    "tsup": "catalog:",
     "typescript": "catalog:frontend",
     "vite": "catalog:frontend",
-    "vite-plugin-dts": "catalog:frontend",
     "vitest": "catalog:frontend",
     "vue-tsc": "catalog:frontend"
   },

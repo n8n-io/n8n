@@ -1,33 +1,114 @@
+<!DOCTYPE html>
 <html lang='en'>
 
-	<head>
-		<meta charset='UTF-8' />
-		<meta name='viewport' content='width=device-width, initial-scale=1.0' />
-		<link rel='icon' type='image/png' href='https://n8n.io/favicon.ico' />
-		<link
-			href='https://fonts.googleapis.com/css?family=Open+Sans'
-			rel='stylesheet'
-			type='text/css'
-		/>
+<head>
+	<meta charset='UTF-8' />
+	<meta name='viewport' content='width=device-width, initial-scale=1.0' />
+	<link rel='icon' type='image/png' href='https://n8n.io/favicon.ico' />
+	<link href='https://fonts.googleapis.com/css?family=Open+Sans' rel='stylesheet' type='text/css' />
 
-		<title>{{formTitle}}</title>
+	<title>{{formTitle}}</title>
 
+	<style>
+		:root {
+			/* Fonts */
+			--font-family: 'Open Sans', sans-serif;
+			--font-weight-normal: 400;
+			--font-weight-bold: 600;
+			--font-size-body: 12px;
+			--font-size-link: 12px;
+			--font-size-header: 20px;
+			--font-size-subheader: 14px;
+
+			/* Colors */
+			--color-background: #FBFCFE;
+			--color-card-bg: white;
+			--color-card-border: #DBDFE7;
+			--color-card-shadow: #634DFF0F;
+			--color-link: #7E8186;
+			--color-header: #525356;
+			--color-header-subtext: #7E8186;
+
+			/* Spacing and dimensions */
+			--padding-container-top: 24px;
+			--container-width: 448px;
+			--card-padding: 24px;
+			--card-margin-bottom: 16px;
+			--card-border-radius: 8px;
+		}
+
+		*,
+		::after,
+		::before {
+			box-sizing: border-box;
+			margin: 0;
+			padding: 0;
+		}
+
+		body {
+			font-family: var(--font-family);
+			font-weight: var(--font-weight-normal);
+			font-size: var(--font-size-body);
+			display: flex;
+			flex-direction: column;
+			justify-content: start;
+			background-color: var(--color-background);
+		}
+
+		.container {
+			margin: auto;
+			text-align: center;
+			padding-top: var(--padding-container-top);
+			width: var(--container-width);
+		}
+
+		.card {
+			padding: var(--card-padding);
+			background-color: var(--color-card-bg);
+			border: 1px solid var(--color-card-border);
+			border-radius: var(--card-border-radius);
+			box-shadow: 0px 4px 16px 0px var(--color-card-shadow);
+			margin-bottom: var(--card-margin-bottom);
+		}
+
+		.n8n-link a {
+			color: var(--color-link);
+			font-weight: var(--font-weight-bold);
+			font-size: var(--font-size-link);
+			text-decoration: none;
+		}
+
+		.n8n-link svg {
+			display: inline-block;
+			vertical-align: middle;
+		}
+
+		.header h1 {
+			color: var(--color-header);
+			font-size: var(--font-size-header);
+			font-weight: var(--font-weight-normal);
+			padding-bottom: 8px;
+		}
+
+		.header p {
+			color: var(--color-header-subtext);
+			font-size: var(--font-size-subheader);
+			font-weight: var(--font-weight-normal);
+		}
+	</style>
+
+	{{#if dangerousCustomCss}}
 		<style>
-			*, ::after, ::before { box-sizing: border-box; margin: 0; padding: 0; } body { font-family:
-			Open Sans, sans-serif; font-weight: 400; font-size: 12px; display: flex; flex-direction:
-			column; justify-content: start; background-color: #FBFCFE; } .container { margin: auto;
-			text-align: center; padding-top: 24px; width: 448px; } .card { padding: 24px;
-			background-color: white; border: 1px solid #DBDFE7; border-radius: 8px; box-shadow: 0px 4px
-			16px 0px #634DFF0F; margin-bottom: 16px; } .n8n-link a { color: #7E8186; font-weight: 600;
-			font-size: 12px; text-decoration: none; } .n8n-link svg { display: inline-block;
-			vertical-align: middle; } .header h1 { color: #525356; font-size: 20px; font-weight: 400;
-			padding-bottom: 8px; } .header p { color: #7E8186; font-size: 14px; font-weight: 400; }
+			{{{ dangerousCustomCss }}}
 		</style>
-	</head>
+	{{/if}}
+</head>
 
 	<body>
 		{{#if responseText}}
 			{{{responseText}}}
+		{{else if redirectUrl}}
+			<div>Redirecting to <a href='{{redirectUrl}}'>{{redirectUrl}}</a></div>
 		{{else}}
 			<div class='container'>
 				<section>
@@ -73,9 +154,95 @@
 				</section>
 			</div>
 		{{/if}}
-		<script>
-			fetch('', { method: 'POST', body: {}, }).catch(() => {});
-		</script>
+		{{#if redirectUrl}}
+			<a id='redirectUrl' href='{{redirectUrl}}' style='display: none;'></a>
+		{{/if}}
+	<script>
+		let interval = 1000;
+		let timeoutId;
+		const checkExecutionStatus = async () => {
+			if (!interval) return;
+
+			try {
+				const response = await fetch(`${ window.location.href }/n8n-execution-status`);
+				const text = (await response.text()).trim();
+
+				if (text === "form-waiting") {
+					window.location.replace(window.location.href);
+					return;
+				}
+
+				if(["canceled", "crashed", "error", "success", "null" ].includes(text)) {
+					interval = 0;
+					clearTimeout(timeoutId);
+					return;
+				}
+
+				interval = Math.round(interval * 1.1);
+				timeoutId = setTimeout(checkExecutionStatus, interval);
+			} catch (error) {
+				console.error("Error fetching data:", error);
+			}
+		};
+
+		document.addEventListener('DOMContentLoaded', function () {
+			const binary = "{{{responseBinary}}}"
+				?	JSON.parse(decodeURIComponent("{{{responseBinary}}}"))
+				: '';
+
+			const byteArray = binary.data.type === 'Buffer'
+				? new Uint8Array(binary.data.data)
+				: Uint8Array.from(binary.data, c => c.charCodeAt(0));
+
+			if (binary) {
+				const blob = new Blob(
+					[byteArray],
+					{ type: binary.type }
+				);
+
+				const link = document.createElement("a");
+				link.href = URL.createObjectURL(blob);
+				link.download = binary.fileName;
+				document.body.appendChild(link);
+
+				link.click();
+				document.body.removeChild(link);
+			}
+		});
+
+			fetch('', {
+					method: 'POST',
+					body: {}
+			})
+			.then(async function (response) {
+					if (response.status === 200) {
+						const redirectUrl = document.getElementById("redirectUrl");
+						if (redirectUrl) {
+							window.location.replace(redirectUrl.href);
+						}
+					}
+
+					const text = await response.text();
+					let json;
+
+					try {
+							json = JSON.parse(text);
+					} catch (e) {}
+
+					if (json?.redirectURL) {
+							const url = json.redirectURL.includes("://")
+									? json.redirectURL
+									: "https://" + json.redirectURL;
+							window.location.replace(url);
+					}
+			})
+			.catch(function (error) {
+					console.error('Error:', error);
+			})
+			.finally(() => {
+				timeoutId = setTimeout(checkExecutionStatus, interval);
+			});
+	</script>
 	</body>
 
 </html>

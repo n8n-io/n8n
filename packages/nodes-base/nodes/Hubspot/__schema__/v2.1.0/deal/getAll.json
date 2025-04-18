@@ -1,129 +1,14 @@
 {
     "type": "object",
     "properties": {
-        "portalId": {
-            "type": "integer"
-        },
         "dealId": {
             "type": "integer"
         },
         "isDeleted": {
             "type": "boolean"
         },
-        "properties": {
-            "type": "object",
-            "properties": {
-                "dealname": {
-                    "type": "object",
-                    "properties": {
-                        "value": {
-                            "type": "string"
-                        },
-                        "timestamp": {
-                            "type": "integer"
-                        },
-                        "source": {
-                            "type": "string"
-                        },
-                        "versions": {
-                            "type": "array",
-                            "items": {
-                                "type": "object",
-                                "properties": {
-                                    "name": {
-                                        "type": "string"
-                                    },
-                                    "value": {
-                                        "type": "string"
-                                    },
-                                    "timestamp": {
-                                        "type": "integer"
-                                    },
-                                    "sourceId": {
-                                        "type": "string"
-                                    },
-                                    "source": {
-                                        "type": "string"
-                                    },
-                                    "sourceMetadata": {
-                                        "type": "string"
-                                    }
-                                },
-                                "required": [
-                                    "name",
-                                    "value",
-                                    "timestamp",
-                                    "source",
-                                    "sourceVid"
-                                ]
-                            }
-                        }
-                    },
-                    "required": [
-                        "value",
-                        "timestamp",
-                        "source",
-                        "sourceId",
-                        "updatedByUserId",
-                        "versions"
-                    ]
-                },
-                "dealstage": {
-                    "type": "object",
-                    "properties": {
-                        "value": {
-                            "type": "string"
-                        },
-                        "timestamp": {
-                            "type": "integer"
-                        },
-                        "source": {
-                            "type": "string"
-                        },
-                        "versions": {
-                            "type": "array",
-                            "items": {
-                                "type": "object",
-                                "properties": {
-                                    "name": {
-                                        "type": "string"
-                                    },
-                                    "value": {
-                                        "type": "string"
-                                    },
-                                    "timestamp": {
-                                        "type": "integer"
-                                    },
-                                    "sourceId": {
-                                        "type": "string"
-                                    },
-                                    "source": {
-                                        "type": "string"
-                                    },
-                                    "sourceMetadata": {
-                                        "type": "string"
-                                    }
-                                },
-                                "required": [
-                                    "name",
-                                    "value",
-                                    "timestamp",
-                                    "source",
-                                    "sourceVid"
-                                ]
-                            }
-                        }
-                    },
-                    "required": [
-                        "value",
-                        "timestamp",
-                        "source",
-                        "sourceId",
-                        "updatedByUserId",
-                        "versions"
-                    ]
-                }
-            }
+        "portalId": {
+            "type": "integer"
         },
         "stateChanges": {
             "type": "array",
@@ -136,20 +21,9 @@
                     "timestamp": {
                         "type": "integer"
                     }
-                },
-                "required": [
-                    "changeFlag",
-                    "timestamp"
-                ]
+                }
             }
         }
     },
-    "required": [
-        "portalId",
-        "dealId",
-        "isDeleted",
-        "associations",
-        "properties",
-        "stateChanges"
-    ]
+    "version": 2
 }

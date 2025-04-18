@@ -1,42 +1,30 @@
 {
-	"type": "object",
-	"properties": {
-		"@odata.context": {
-			"type": "string"
-		},
-		"id": {
-			"type": "string"
-		},
-		"createdDateTime": {
-			"type": "string"
-		},
-		"displayName": {
-			"type": "string"
-		},
-		"tenantId": {
-			"type": "string"
-		},
-		"webUrl": {
-			"type": "string"
-		},
-		"membershipType": {
-			"type": "string"
-		},
-		"isArchived": {
-			"type": "boolean"
-		}
-	},
-	"required": [
-		"@odata.context",
-		"id",
-		"createdDateTime",
-		"displayName",
-		"description",
-		"isFavoriteByDefault",
-		"email",
-		"tenantId",
-		"webUrl",
-		"membershipType",
-		"isArchived"
-	]
+    "type": "object",
+    "properties": {
+        "@odata.context": {
+            "type": "string"
+        },
+        "createdDateTime": {
+            "type": "string"
+        },
+        "displayName": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "isArchived": {
+            "type": "boolean"
+        },
+        "membershipType": {
+            "type": "string"
+        },
+        "tenantId": {
+            "type": "string"
+        },
+        "webUrl": {
+            "type": "string"
+        }
+    },
+    "version": 1
 }

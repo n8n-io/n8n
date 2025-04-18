@@ -99,7 +99,11 @@ describe('Test AirtableV2, search operation', () => {
 		expect(result).toHaveLength(2);
 		expect(result[0]).toEqual({
 			json: { id: 'recYYY', foo: 'foo 2', bar: 'bar 2' },
-			pairedItem: [],
+			pairedItem: [
+				{
+					item: 0,
+				},
+			],
 		});
 	});
 
@@ -144,7 +148,11 @@ describe('Test AirtableV2, search operation', () => {
 		expect(result).toHaveLength(1);
 		expect(result[0]).toEqual({
 			json: { id: 'recYYY', foo: 'foo 2', bar: 'bar 2' },
-			pairedItem: [],
+			pairedItem: [
+				{
+					item: 0,
+				},
+			],
 		});
 	});
 });

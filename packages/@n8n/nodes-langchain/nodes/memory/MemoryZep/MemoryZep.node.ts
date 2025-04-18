@@ -5,7 +5,7 @@ import { ZepCloudMemory } from '@langchain/community/memory/zep_cloud';
 import type { InputValues, MemoryVariables } from '@langchain/core/memory';
 import type { BaseMessage } from '@langchain/core/messages';
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type ISupplyDataFunctions,
 	type INodeType,
 	type INodeTypeDescription,
@@ -58,7 +58,7 @@ export class MemoryZep implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.AiMemory],
+		outputs: [NodeConnectionTypes.AiMemory],
 		outputNames: ['Memory'],
 		credentials: [
 			{
@@ -67,7 +67,7 @@ export class MemoryZep implements INodeType {
 			},
 		],
 		properties: [
-			getConnectionHintNoticeField([NodeConnectionType.AiAgent]),
+			getConnectionHintNoticeField([NodeConnectionTypes.AiAgent]),
 			{
 				displayName: 'Only works with Zep Cloud and Community edition <= v0.27.2',
 				name: 'supportedVersions',

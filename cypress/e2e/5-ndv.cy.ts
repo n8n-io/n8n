@@ -1,5 +1,10 @@
 import { setCredentialValues } from '../composables/modals/credential-modal';
-import { clickCreateNewCredential, setParameterSelectByContent } from '../composables/ndv';
+import {
+	clickCreateNewCredential,
+	clickGetBackToCanvas,
+	setParameterSelectByContent,
+} from '../composables/ndv';
+import { openNode } from '../composables/workflow';
 import {
 	EDIT_FIELDS_SET_NODE_NAME,
 	MANUAL_TRIGGER_NODE_DISPLAY_NAME,
@@ -594,7 +599,8 @@ describe('NDV', () => {
 				cy.getByTestId(`add-subnode-${group.id}`).click();
 
 				cy.getByTestId('nodes-list-header').contains(group.title).should('exist');
-				nodeCreator.getters.getNthCreatorItem(1).click();
+				// Add HTTP Request tool
+				nodeCreator.getters.getNthCreatorItem(2).click();
 				getFloatingNodeByPosition('outputSub').should('exist');
 				getFloatingNodeByPosition('outputSub').click({ force: true });
 
@@ -605,7 +611,8 @@ describe('NDV', () => {
 					// Expand the subgroup
 					cy.getByTestId('subnode-connection-group-ai_tool').click();
 					cy.getByTestId(`add-subnode-${group.id}`).click();
-					nodeCreator.getters.getNthCreatorItem(1).click();
+					// Add HTTP Request tool
+					nodeCreator.getters.getNthCreatorItem(2).click();
 					getFloatingNodeByPosition('outputSub').click({ force: true });
 					cy.getByTestId('subnode-connection-group-ai_tool')
 						.findChildByTestId('floating-subnode')
@@ -614,8 +621,44 @@ describe('NDV', () => {
 			});
 
 			// Since language model has no credentials set, it should show an error
-			// Sinse code tool require alphanumeric tool name it would also show an error(2 errors, 1 for each tool node)
+			// Since HTTP Request tool requires URL it would also show an error(2 errors, 1 for each tool node)
 			cy.get('[class*=hasIssues]').should('have.length', 3);
+		});
+
+		it('should have the floating nodes in correct order', () => {
+			cy.createFixtureWorkflow('Floating_Nodes.json', 'Floating Nodes');
+
+			cy.ifCanvasVersion(
+				() => {},
+				() => {
+					// Needed in V2 as all nodes remain selected when clicking on a selected node
+					workflowPage.actions.deselectAll();
+				},
+			);
+
+			// The first merge node has the wires crossed, so `Edit Fields1` is first in the order of connected nodes
+			openNode('Merge');
+			getFloatingNodeByPosition('inputMain').should('exist');
+			getFloatingNodeByPosition('inputMain').should('have.length', 2);
+			getFloatingNodeByPosition('inputMain')
+				.first()
+				.should('have.attr', 'data-node-name', 'Edit Fields1');
+			getFloatingNodeByPosition('inputMain')
+				.last()
+				.should('have.attr', 'data-node-name', 'Edit Fields0');
+
+			clickGetBackToCanvas();
+
+			// The second merge node does not have wires crossed, so `Edit Fields0` is first
+			openNode('Merge1');
+			getFloatingNodeByPosition('inputMain').should('exist');
+			getFloatingNodeByPosition('inputMain').should('have.length', 2);
+			getFloatingNodeByPosition('inputMain')
+				.first()
+				.should('have.attr', 'data-node-name', 'Edit Fields0');
+			getFloatingNodeByPosition('inputMain')
+				.last()
+				.should('have.attr', 'data-node-name', 'Edit Fields1');
 		});
 	});
 
@@ -661,11 +704,11 @@ describe('NDV', () => {
 
 		ndv.getters.outputTableRow(1).find('mark').should('have.text', '<lib');
 
-		ndv.getters.outputDisplayMode().find('label').eq(1).should('include.text', 'JSON');
+		ndv.getters.outputDisplayMode().find('label').eq(2).should('include.text', 'JSON');
 		ndv.getters
 			.outputDisplayMode()
 			.find('label')
-			.eq(1)
+			.eq(2)
 			.scrollIntoView()
 			.should('be.visible')
 			.click();
@@ -679,8 +722,8 @@ describe('NDV', () => {
 			);
 		ndv.getters.outputDataContainer().find('mark').should('have.text', '<lib');
 
-		ndv.getters.outputDisplayMode().find('label').eq(2).should('include.text', 'Schema');
-		ndv.getters.outputDisplayMode().find('label').eq(2).click({ force: true });
+		ndv.getters.outputDisplayMode().find('label').eq(0).should('include.text', 'Schema');
+		ndv.getters.outputDisplayMode().find('label').eq(0).click({ force: true });
 		ndv.getters
 			.outputDataContainer()
 			.findChildByTestId('run-data-schema-item-value')
@@ -911,7 +954,7 @@ describe('NDV', () => {
 		ndv.getters.outputPanel().find('[data-test-id=ndv-search]').click().type('foo');
 		ndv.getters
 			.outputPanel()
-			.contains('To search field contents rather than just names, use Table or JSON view')
+			.contains('To search field values, switch to table or JSON view.')
 			.should('exist');
 	});
 

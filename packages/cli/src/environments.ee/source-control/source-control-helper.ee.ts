@@ -3,7 +3,7 @@ import { Container } from '@n8n/di';
 import { generateKeyPairSync } from 'crypto';
 import { constants as fsConstants, mkdirSync, accessSync } from 'fs';
 import { Logger } from 'n8n-core';
-import { ApplicationError } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 import { ok } from 'node:assert/strict';
 import path from 'path';
 
@@ -11,12 +11,14 @@ import { License } from '@/license';
 import { isContainedWithin } from '@/utils/path-util';
 
 import {
+	SOURCE_CONTROL_FOLDERS_EXPORT_FILE,
 	SOURCE_CONTROL_GIT_KEY_COMMENT,
 	SOURCE_CONTROL_TAGS_EXPORT_FILE,
 	SOURCE_CONTROL_VARIABLES_EXPORT_FILE,
 } from './constants';
 import type { KeyPair } from './types/key-pair';
 import type { KeyPairType } from './types/key-pair-type';
+import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
 
 export function stringContainsExpression(testString: string): boolean {
 	return /^=.*\{\{.*\}\}/.test(testString);
@@ -39,6 +41,10 @@ export function getVariablesPath(gitFolder: string): string {
 
 export function getTagsPath(gitFolder: string): string {
 	return path.join(gitFolder, SOURCE_CONTROL_TAGS_EXPORT_FILE);
+}
+
+export function getFoldersPath(gitFolder: string): string {
+	return path.join(gitFolder, SOURCE_CONTROL_FOLDERS_EXPORT_FILE);
 }
 
 export function sourceControlFoldersExistCheck(
@@ -126,9 +132,13 @@ function filterSourceControlledFilesUniqueIds(files: SourceControlledFile[]) {
 	);
 }
 
-export function getTrackingInformationFromPullResult(result: SourceControlledFile[]) {
+export function getTrackingInformationFromPullResult(
+	userId: string,
+	result: SourceControlledFile[],
+) {
 	const uniques = filterSourceControlledFilesUniqueIds(result);
 	return {
+		userId,
 		credConflicts: uniques.filter(
 			(file) =>
 				file.type === 'credential' && file.status === 'modified' && file.location === 'local',
@@ -140,9 +150,13 @@ export function getTrackingInformationFromPullResult(result: SourceControlledFil
 	};
 }
 
-export function getTrackingInformationFromPrePushResult(result: SourceControlledFile[]) {
+export function getTrackingInformationFromPrePushResult(
+	userId: string,
+	result: SourceControlledFile[],
+) {
 	const uniques = filterSourceControlledFilesUniqueIds(result);
 	return {
+		userId,
 		workflowsEligible: uniques.filter((file) => file.type === 'workflow').length,
 		workflowsEligibleWithConflicts: uniques.filter(
 			(file) => file.type === 'workflow' && file.conflict,
@@ -155,9 +169,13 @@ export function getTrackingInformationFromPrePushResult(result: SourceControlled
 	};
 }
 
-export function getTrackingInformationFromPostPushResult(result: SourceControlledFile[]) {
+export function getTrackingInformationFromPostPushResult(
+	userId: string,
+	result: SourceControlledFile[],
+) {
 	const uniques = filterSourceControlledFilesUniqueIds(result);
 	return {
+		userId,
 		workflowsPushed: uniques.filter((file) => file.pushed && file.type === 'workflow').length ?? 0,
 		workflowsEligible: uniques.filter((file) => file.type === 'workflow').length ?? 0,
 		credsPushed:
@@ -171,7 +189,7 @@ export function getTrackingInformationFromPostPushResult(result: SourceControlle
  * Normalizes and validates the given source controlled file path. Ensures
  * the path is absolute and contained within the git folder.
  *
- * @throws {ApplicationError} If the path is not within the git folder
+ * @throws {UserError} If the path is not within the git folder
  */
 export function normalizeAndValidateSourceControlledFilePath(
 	gitFolderPath: string,
@@ -182,8 +200,22 @@ export function normalizeAndValidateSourceControlledFilePath(
 	const normalizedPath = path.isAbsolute(filePath) ? filePath : path.join(gitFolderPath, filePath);
 
 	if (!isContainedWithin(gitFolderPath, filePath)) {
-		throw new ApplicationError(`File path ${filePath} is invalid`);
+		throw new UserError(`File path ${filePath} is invalid`);
 	}
 
 	return normalizedPath;
+}
+
+/**
+ * Checks if a workflow has been modified by comparing version IDs and parent folder IDs
+ * between local and remote versions
+ */
+export function isWorkflowModified(
+	local: SourceControlWorkflowVersionId,
+	remote: SourceControlWorkflowVersionId,
+): boolean {
+	return (
+		remote.versionId !== local.versionId ||
+		(remote.parentFolderId !== undefined && remote.parentFolderId !== local.parentFolderId)
+	);
 }

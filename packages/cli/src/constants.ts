@@ -1,4 +1,4 @@
-import { readFileSync } from 'fs';
+import { readFileSync, statSync } from 'fs';
 import type { n8n } from 'n8n-core';
 import type { ITaskDataConnections } from 'n8n-workflow';
 import { jsonParse, TRIMMED_TASK_DATA_CONNECTIONS_KEY } from 'n8n-workflow';
@@ -18,9 +18,10 @@ export const TEMPLATES_DIR = join(CLI_DIR, 'templates');
 export const NODES_BASE_DIR = dirname(require.resolve('n8n-nodes-base'));
 export const EDITOR_UI_DIST_DIR = join(dirname(require.resolve('n8n-editor-ui')), 'dist');
 
-export function getN8nPackageJson() {
-	return jsonParse<n8n.PackageJson>(readFileSync(join(CLI_DIR, 'package.json'), 'utf8'));
-}
+const packageJsonPath = join(CLI_DIR, 'package.json');
+const n8nPackageJson = jsonParse<n8n.PackageJson>(readFileSync(packageJsonPath, 'utf8'));
+export const N8N_VERSION = n8nPackageJson.version;
+export const N8N_RELEASE_DATE = statSync(packageJsonPath).mtime;
 
 export const STARTING_NODES = [
 	'@n8n/n8n-nodes-langchain.manualChatTrigger',
@@ -28,7 +29,7 @@ export const STARTING_NODES = [
 	'n8n-nodes-base.manualTrigger',
 ];
 
-export const N8N_VERSION = getN8nPackageJson().version;
+export const MCP_TRIGGER_NODE_TYPE = '@n8n/n8n-nodes-langchain.mcpTrigger';
 
 export const NODE_PACKAGE_PREFIX = 'n8n-nodes-';
 
@@ -95,6 +96,11 @@ export const LICENSE_FEATURES = {
 	ASK_AI: 'feat:askAi',
 	COMMUNITY_NODES_CUSTOM_REGISTRY: 'feat:communityNodes:customRegistry',
 	AI_CREDITS: 'feat:aiCredits',
+	FOLDERS: 'feat:folders',
+	INSIGHTS_VIEW_SUMMARY: 'feat:insights:viewSummary',
+	INSIGHTS_VIEW_DASHBOARD: 'feat:insights:viewDashboard',
+	INSIGHTS_VIEW_HOURLY_DATA: 'feat:insights:viewHourlyData',
+	API_KEY_SCOPES: 'feat:apiKeyScopes',
 } as const;
 
 export const LICENSE_QUOTAS = {
@@ -104,7 +110,9 @@ export const LICENSE_QUOTAS = {
 	WORKFLOW_HISTORY_PRUNE_LIMIT: 'quota:workflowHistoryPrune',
 	TEAM_PROJECT_LIMIT: 'quota:maxTeamProjects',
 	AI_CREDITS: 'quota:aiCredits',
-	API_KEYS_PER_USER_LIMIT: 'quota:apiKeysPerUserLimit',
+	INSIGHTS_MAX_HISTORY_DAYS: 'quota:insights:maxHistoryDays',
+	INSIGHTS_RETENTION_MAX_AGE_DAYS: 'quota:insights:retention:maxAgeDays',
+	INSIGHTS_RETENTION_PRUNE_INTERVAL_DAYS: 'quota:insights:retention:pruneIntervalDays',
 } as const;
 export const UNLIMITED_LICENSE_QUOTA = -1;
 
@@ -196,3 +204,5 @@ export const WsStatusCodes = {
 } as const;
 
 export const FREE_AI_CREDITS_CREDENTIAL_NAME = 'n8n free OpenAI API credits';
+
+export const EVALUATION_METRICS_NODE = `${NODE_PACKAGE_PREFIX}base.evaluationMetrics`;

@@ -443,7 +443,49 @@ describe('findStartNodes', () => {
 		expect(startNodes).toContainEqual(node2);
 	});
 
+	describe('pinData', () => {
+		//               PD              ►►
+		// ┌───────┐1   ┌──────────┐0   ┌───────────┐
+		// │trigger├────►pinnedNode├────►destination│
+		// └───────┘    └──────────┘    └───────────┘
+		test('does not stop recursing when the first node that has no run data has pinned data', () => {
+			// ARRANGE
+			const trigger = createNodeData({ name: 'trigger' });
+			const pinnedNode = createNodeData({ name: 'pinnedNode' });
+			const destination = createNodeData({ name: 'destinationNode' });
+			const graph = new DirectedGraph()
+				.addNodes(trigger, destination, pinnedNode)
+				.addConnections({ from: trigger, to: pinnedNode }, { from: pinnedNode, to: destination });
+			const pinData: IPinData = { [pinnedNode.name]: [{ json: { value: 1 } }] };
+			const runData: IRunData = {
+				[trigger.name]: [toITaskData([{ data: { value: 1 } }])],
+			};
+
+			// ACT
+			const startNodes = findStartNodes({
+				graph,
+				trigger,
+				destination,
+				runData,
+				pinData,
+			});
+
+			// ASSERT
+			expect(startNodes.size).toBe(1);
+			expect(startNodes).toContain(destination);
+		});
+	});
+
 	describe('custom loop logic', () => {
+		//                       ►►
+		//             ┌────┐0  ┌─────────┐
+		// ┌───────┐1  │    ├───►afterLoop│
+		// │trigger├─┬─►loop│1  └─────────┘
+		// └───────┘ │ │    ├─┐ ┌──────┐1
+		//           │ └────┘ └─►inLoop├──┐
+		//           │          └──────┘  │
+		//           └────────────────────┘
+		//
 		test('if the last run of loop node has no data (null) on the done output, then the loop is the start node', () => {
 			// ARRANGE
 			const trigger = createNodeData({ name: 'trigger' });
@@ -482,6 +524,15 @@ describe('findStartNodes', () => {
 			expect(startNodes).toContainEqual(loop);
 		});
 
+		//                       ►►
+		//             ┌────┐0  ┌─────────┐
+		// ┌───────┐1  │    ├───►afterLoop│
+		// │trigger├─┬─►loop│1  └─────────┘
+		// └───────┘ │ │    ├─┐ ┌──────┐1
+		//           │ └────┘ └─►inLoop├──┐
+		//           │          └──────┘  │
+		//           └────────────────────┘
+		//
 		test('if the last run of loop node has no data (empty array) on the done output, then the loop is the start  node', () => {
 			// ARRANGE
 			const trigger = createNodeData({ name: 'trigger' });
@@ -506,6 +557,7 @@ describe('findStartNodes', () => {
 						executionStatus: 'success',
 						executionTime: 0,
 						startTime: 0,
+						executionIndex: 0,
 						source: [],
 						data: { main: [[], [{ json: { name: 'loop' } }]] },
 					},
@@ -527,6 +579,15 @@ describe('findStartNodes', () => {
 			expect(startNodes).toContainEqual(loop);
 		});
 
+		//                       ►►
+		//             ┌────┐1  ┌─────────┐
+		// ┌───────┐1  │    ├───►afterLoop│
+		// │trigger├─┬─►loop│1  └─────────┘
+		// └───────┘ │ │    ├─┐ ┌──────┐1
+		//           │ └────┘ └─►inLoop├──┐
+		//           │          └──────┘  │
+		//           └────────────────────┘
+		//
 		test('if the loop has data on the done output in the last run it does not become a start node', () => {
 			// ARRANGE
 			const trigger = createNodeData({ name: 'trigger' });
