@@ -1,16 +1,12 @@
 <script setup lang="ts">
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { computed, ref, useTemplateRef, watch } from 'vue';
+import { computed, ref, useTemplateRef } from 'vue';
 import { N8nResizeWrapper } from '@n8n/design-system';
 import { useChatState } from '@/components/CanvasChat/composables/useChatState';
-import { useResize } from '@/components/CanvasChat/composables/useResize';
-import { usePiPWindow } from '@/components/CanvasChat/composables/usePiPWindow';
-import { useTelemetry } from '@/composables/useTelemetry';
 import LogsOverviewPanel from '@/components/CanvasChat/future/components/LogsOverviewPanel.vue';
-import { useCanvasStore } from '@/stores/canvas.store';
 import ChatMessagesPanel from '@/components/CanvasChat/components/ChatMessagesPanel.vue';
 import LogsDetailsPanel from '@/components/CanvasChat/future/components/LogDetailsPanel.vue';
-import { LOGS_PANEL_STATE, type LogEntrySelection } from '@/components/CanvasChat/types/logs';
+import { type LogEntrySelection } from '@/components/CanvasChat/types/logs';
 import LogsPanelActions from '@/components/CanvasChat/future/components/LogsPanelActions.vue';
 import {
 	createLogEntries,
@@ -18,24 +14,39 @@ import {
 	type TreeNode,
 } from '@/components/RunDataAi/utils';
 import { isChatNode } from '@/components/CanvasChat/utils';
+import { useLayout } from '@/components/CanvasChat/future/composables/useLayout';
 
 const props = withDefaults(defineProps<{ isReadOnly?: boolean }>(), { isReadOnly: false });
 
 const workflowsStore = useWorkflowsStore();
-const canvasStore = useCanvasStore();
-const panelState = computed(() => workflowsStore.logsPanelState);
-const container = ref<HTMLElement>();
+const container = useTemplateRef('container');
+const logsContainer = useTemplateRef('logsContainer');
 const pipContainer = useTemplateRef('pipContainer');
 const pipContent = useTemplateRef('pipContent');
 const previousChatMessages = computed(() => workflowsStore.getPastChatMessages);
-const telemetry = useTelemetry();
 
-const { rootStyles, height, chatWidth, onWindowResize, onResizeDebounced, onResizeChatDebounced } =
-	useResize(container);
+const {
+	height,
+	chatPanelWidth,
+	overviewPanelWidth,
+	canPopOut,
+	isOpen,
+	isPoppedOut,
+	isCollapsingDetailsPanel,
+	isOverviewPanelFullWidth,
+	pipWindow,
+	onResize,
+	onResizeEnd,
+	onToggleOpen,
+	onPopOut,
+	onChatPanelResize,
+	onChatPanelResizeEnd,
+	onOverviewPanelResize,
+	onOverviewPanelResizeEnd,
+} = useLayout(pipContainer, pipContent, container, logsContainer);
 
 const { currentSessionId, messages, sendMessage, refreshSession, displayExecution } = useChatState(
 	props.isReadOnly,
-	onWindowResize,
 );
 
 const hasChat = computed(
@@ -66,44 +77,17 @@ const selectedLogEntry = computed(() =>
 			? undefined
 			: manualLogEntrySelection.value.data,
 );
-const isLogDetailsOpen = computed(() => selectedLogEntry.value !== undefined);
-
-const { canPopOut, isPoppedOut, pipWindow } = usePiPWindow({
-	initialHeight: 400,
-	initialWidth: window.document.body.offsetWidth * 0.8,
-	container: pipContainer,
-	content: pipContent,
-	shouldPopOut: computed(() => panelState.value === LOGS_PANEL_STATE.FLOATING),
-	onRequestClose: () => {
-		if (panelState.value === LOGS_PANEL_STATE.CLOSED) {
-			return;
-		}
-
-		telemetry.track('User toggled log view', { new_state: 'attached' });
-		workflowsStore.setPreferPoppedOutLogsView(false);
-	},
-});
+const isLogDetailsOpen = computed(
+	() => selectedLogEntry.value !== undefined && !isCollapsingDetailsPanel.value,
+);
+const isLogDetailsOpenOrCollapsing = computed(() => selectedLogEntry.value !== undefined);
 const logsPanelActionsProps = computed<InstanceType<typeof LogsPanelActions>['$props']>(() => ({
-	panelState: panelState.value,
+	isOpen: isOpen.value,
+	showToggleButton: !isPoppedOut.value,
 	showPopOutButton: canPopOut.value && !isPoppedOut.value,
 	onPopOut,
 	onToggleOpen,
 }));
-
-function onToggleOpen() {
-	workflowsStore.toggleLogsPanelOpen();
-
-	telemetry.track('User toggled log view', {
-		new_state: panelState.value === LOGS_PANEL_STATE.CLOSED ? 'attached' : 'collapsed',
-	});
-}
-
-function handleClickHeader() {
-	if (panelState.value === LOGS_PANEL_STATE.CLOSED) {
-		telemetry.track('User toggled log view', { new_state: 'attached' });
-		workflowsStore.toggleLogsPanelOpen(true);
-	}
-}
 
 function handleSelectLogEntry(selected: TreeNode | undefined) {
 	manualLogEntrySelection.value =
@@ -112,21 +96,13 @@ function handleSelectLogEntry(selected: TreeNode | undefined) {
 			: { type: 'selected', workflowId: workflowsStore.workflow.id, data: selected };
 }
 
-function onPopOut() {
-	telemetry.track('User toggled log view', { new_state: 'floating' });
-	workflowsStore.toggleLogsPanelOpen(true);
-	workflowsStore.setPreferPoppedOutLogsView(true);
-}
+function handleResizeOverviewPanelEnd() {
+	if (isOverviewPanelFullWidth.value) {
+		handleSelectLogEntry(undefined);
+	}
 
-watch([panelState, height], ([state, h]) => {
-	canvasStore.setPanelHeight(
-		state === LOGS_PANEL_STATE.FLOATING
-			? 0
-			: state === LOGS_PANEL_STATE.ATTACHED
-				? h
-				: 32 /* collapsed panel height */,
-	);
-});
+	onOverviewPanelResizeEnd();
+}
 </script>
 
 <template>
@@ -135,24 +111,27 @@ watch([panelState, height], ([state, h]) => {
 			<N8nResizeWrapper
 				:height="height"
 				:supported-directions="['top']"
-				:is-resizing-enabled="panelState === LOGS_PANEL_STATE.ATTACHED"
-				:style="rootStyles"
-				:class="[$style.resizeWrapper, panelState === LOGS_PANEL_STATE.CLOSED ? '' : $style.isOpen]"
-				@resize="onResizeDebounced"
+				:is-resizing-enabled="!isPoppedOut"
+				:class="$style.resizeWrapper"
+				:style="{ height: isOpen ? `${height}px` : 'auto' }"
+				@resize="onResize"
+				@resizeend="onResizeEnd"
 			>
 				<div ref="container" :class="[$style.container, 'ignore-key-press-canvas']" tabindex="0">
 					<N8nResizeWrapper
 						v-if="hasChat"
 						:supported-directions="['right']"
-						:is-resizing-enabled="panelState !== LOGS_PANEL_STATE.CLOSED"
-						:width="chatWidth"
+						:is-resizing-enabled="isOpen"
+						:width="chatPanelWidth"
+						:style="{ width: `${chatPanelWidth}px` }"
 						:class="$style.chat"
 						:window="pipWindow"
-						@resize="onResizeChatDebounced"
+						@resize="onChatPanelResize"
+						@resizeend="onChatPanelResizeEnd"
 					>
 						<ChatMessagesPanel
 							data-test-id="canvas-chat"
-							:is-open="panelState !== LOGS_PANEL_STATE.CLOSED"
+							:is-open="isOpen"
 							:is-read-only="isReadOnly"
 							:messages="messages"
 							:session-id="currentSessionId"
@@ -163,32 +142,48 @@ watch([panelState, height], ([state, h]) => {
 							@refresh-session="refreshSession"
 							@display-execution="displayExecution"
 							@send-message="sendMessage"
-							@click-header="handleClickHeader"
+							@click-header="onToggleOpen(true)"
 						/>
 					</N8nResizeWrapper>
-					<LogsOverviewPanel
-						:class="$style.logsOverview"
-						:is-open="panelState !== LOGS_PANEL_STATE.CLOSED"
-						:is-read-only="isReadOnly"
-						:selected="selectedLogEntry"
-						:execution-tree="executionTree"
-						@click-header="handleClickHeader"
-						@select="handleSelectLogEntry"
-					>
-						<template #actions>
-							<LogsPanelActions v-if="!isLogDetailsOpen" v-bind="logsPanelActionsProps" />
-						</template>
-					</LogsOverviewPanel>
-					<LogsDetailsPanel
-						v-if="selectedLogEntry !== undefined"
-						:class="$style.logDetails"
-						:is-open="panelState !== LOGS_PANEL_STATE.CLOSED"
-						@click-header="handleClickHeader"
-					>
-						<template #actions>
-							<LogsPanelActions v-if="isLogDetailsOpen" v-bind="logsPanelActionsProps" />
-						</template>
-					</LogsDetailsPanel>
+					<div ref="logsContainer" :class="$style.logsContainer">
+						<N8nResizeWrapper
+							:class="$style.overviewResizer"
+							:width="overviewPanelWidth"
+							:style="{ width: isLogDetailsOpen ? `${overviewPanelWidth}px` : '' }"
+							:supported-directions="['right']"
+							:is-resizing-enabled="isLogDetailsOpenOrCollapsing"
+							:window="pipWindow"
+							@resize="onOverviewPanelResize"
+							@resizeend="handleResizeOverviewPanelEnd"
+						>
+							<LogsOverviewPanel
+								:class="$style.logsOverview"
+								:is-open="isOpen"
+								:is-read-only="isReadOnly"
+								:is-compact="isLogDetailsOpen"
+								:selected="selectedLogEntry"
+								:execution-tree="executionTree"
+								@click-header="onToggleOpen(true)"
+								@select="handleSelectLogEntry"
+							>
+								<template #actions>
+									<LogsPanelActions v-if="!isLogDetailsOpen" v-bind="logsPanelActionsProps" />
+								</template>
+							</LogsOverviewPanel>
+						</N8nResizeWrapper>
+						<LogsDetailsPanel
+							v-if="isLogDetailsOpenOrCollapsing && selectedLogEntry"
+							:class="$style.logDetails"
+							:is-open="isOpen"
+							:log-entry="selectedLogEntry"
+							:window="pipWindow"
+							@click-header="onToggleOpen(true)"
+						>
+							<template #actions>
+								<LogsPanelActions v-if="isLogDetailsOpen" v-bind="logsPanelActionsProps" />
+							</template>
+						</LogsDetailsPanel>
+					</div>
 				</div>
 			</N8nResizeWrapper>
 		</div>
@@ -215,13 +210,6 @@ watch([panelState, height], ([state, h]) => {
 	flex-basis: 0;
 	border-top: var(--border-base);
 	background-color: var(--color-background-light);
-
-	&.isOpen {
-		height: var(--panel-height);
-		min-height: 4rem;
-		max-height: 90vh;
-		flex-basis: content;
-	}
 }
 
 .container {
@@ -235,21 +223,35 @@ watch([panelState, height], ([state, h]) => {
 }
 
 .chat {
-	width: var(--chat-width);
 	flex-shrink: 0;
-	max-width: 100%;
+}
+
+.logsContainer {
+	width: 0;
+	flex-grow: 1;
+	display: flex;
+	align-items: stretch;
+
+	& > *:not(:last-child) {
+		border-right: var(--border-base);
+	}
+}
+
+.overviewResizer {
+	flex-grow: 0;
+	flex-shrink: 0;
+
+	&:last-child {
+		flex-grow: 1;
+	}
 }
 
 .logsOverview {
-	flex-basis: 20%;
-	flex-grow: 1;
-	flex-shrink: 1;
-	min-width: 360px;
+	height: 100%;
 }
 
-.logDetails {
-	flex-basis: 60%;
+.logsDetails {
+	width: 0;
 	flex-grow: 1;
-	flex-shrink: 1;
 }
 </style>
