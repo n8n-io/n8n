@@ -6,9 +6,8 @@ FROM n8nio/base:${NODE_VERSION} AS builder
 # Build the application from source
 WORKDIR /src
 COPY . /src
-ENV NODE_OPTIONS "--max-old-space-size=4096 --openssl-legacy-provider"
 RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store --mount=type=cache,id=pnpm-metadata,target=/root/.cache/pnpm/metadata DOCKER_BUILD=true pnpm install --frozen-lockfile
-RUN pnpm build
+RUN NODE_OPTIONS="--max-old-space-size=4096" pnpm build
 
 # Delete all dev dependencies
 RUN jq 'del(.pnpm.patchedDependencies)' package.json > package.json.tmp; mv package.json.tmp package.json
@@ -59,6 +58,6 @@ RUN \
   mkdir .n8n && \
   chown node:node .n8n
 
-ENV SHELL /bin/sh
+ENV SHELL=/bin/sh
 USER node
 ENTRYPOINT ["tini", "--", "/docker-entrypoint.sh"]

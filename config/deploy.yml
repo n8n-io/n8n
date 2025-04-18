@@ -10,7 +10,9 @@ servers:
 proxy:
   ssl: true
   forward_headers: true
-  host: <%= ENV["PROXY_HOST"] %>
+  hosts:
+    - <%= ENV["PROXY_HOST"] %>
+    - <%= ENV["PROXY_HOST_2"] %>
   app_port: <%= ENV["N8N_PORT"] %>
   healthcheck:
     path: /
