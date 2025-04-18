@@ -24,5 +24,6 @@ Important in order to close *automatically* and provide context to reviewers.
 - [ ] Tests included. <!--
    A bug is not considered fixed, unless a test is added to prevent it from happening again.
    A feature is not complete without tests.
+- [ ] PR contains `(beta-testing)` in title if it is a beta feature.
 -->
 - [ ] PR Labeled with `release/backport` (if the PR is an urgent fix that needs to be backported)
