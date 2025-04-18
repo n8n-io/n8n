@@ -10,6 +10,7 @@ import { jsonParse } from 'n8n-workflow';
 import { resolve } from 'path';
 
 import { AbstractServer } from '@/abstract-server';
+import { ChatService } from '@/chat/chat-service';
 import config from '@/config';
 import {
 	CLI_DIR,
@@ -445,5 +446,6 @@ export class Server extends AbstractServer {
 	protected setupPushServer(): void {
 		const { restEndpoint, server, app } = this;
 		Container.get(Push).setupPushServer(restEndpoint, server, app);
+		Container.get(ChatService).setup(server, app);
 	}
 }

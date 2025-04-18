@@ -43,6 +43,7 @@ const shouldSkipMode: Record<WorkflowExecuteMode, boolean> = {
 	retry: false,
 	trigger: false,
 	webhook: false,
+	chat: false,
 	evaluation: false,
 
 	// sub workflows
