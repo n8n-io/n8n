@@ -19,7 +19,7 @@ export class InsightsModule implements BaseN8nModule {
 		this.logger = this.logger.scoped('insights');
 	}
 
-	initialize() {
+	init() {
 		// We want to initialize the insights background process (schedulers) for the main leader instance
 		// to have only one main instance saving the insights data
 		if (this.instanceSettings.isLeader) {

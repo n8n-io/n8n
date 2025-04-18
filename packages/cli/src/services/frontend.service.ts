@@ -15,7 +15,7 @@ import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { getLdapLoginLabel } from '@/ldap.ee/helpers.ee';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { ModulesConfig } from '@/modules/modules.config';
+import { ModuleLoader } from '@/modules/module-loader';
 import { isApiEnabled } from '@/public-api';
 import { PushConfig } from '@/push/push.config';
 import type { CommunityPackagesService } from '@/services/community-packages.service';
@@ -46,9 +46,9 @@ export class FrontendService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly urlService: UrlService,
 		private readonly securityConfig: SecurityConfig,
-		private readonly modulesConfig: ModulesConfig,
 		private readonly pushConfig: PushConfig,
 		private readonly binaryDataConfig: BinaryDataConfig,
+		private readonly moduleLoader: ModuleLoader,
 	) {
 		loadNodesAndCredentials.addPostProcessor(async () => await this.generateTypes());
 		void this.generateTypes();
@@ -244,7 +244,7 @@ export class FrontendService {
 				enabled: false,
 			},
 			insights: {
-				enabled: this.modulesConfig.modules.includes('insights'),
+				enabled: this.moduleLoader.loadedModules.includes('insights'),
 				summary: true,
 				dashboard: false,
 			},
@@ -369,7 +369,7 @@ export class FrontendService {
 		}
 
 		Object.assign(this.settings.insights, {
-			enabled: this.modulesConfig.loadedModules.has('insights'),
+			enabled: this.moduleLoader.loadedModules.includes('insights'),
 			summary: this.license.isInsightsSummaryEnabled(),
 			dashboard: this.license.isInsightsDashboardEnabled(),
 		});

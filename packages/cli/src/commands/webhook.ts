@@ -3,6 +3,7 @@ import { Flags } from '@oclif/core';
 
 import { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
+import { ModuleLoader } from '@/modules/module-loader';
 import { PubSubHandler } from '@/scaling/pubsub/pubsub-handler';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { OrchestrationService } from '@/services/orchestration.service';
@@ -80,7 +81,7 @@ export class Webhook extends BaseCommand {
 		await this.initExternalSecrets();
 		this.logger.debug('External secrets init complete');
 
-		await this.loadModules();
+		await Container.get(ModuleLoader).load();
 	}
 
 	async run() {

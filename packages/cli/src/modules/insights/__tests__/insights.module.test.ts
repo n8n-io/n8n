@@ -36,7 +36,7 @@ describe('InsightsModule', () => {
 				instanceSettings,
 				orchestrationService,
 			);
-			insightsModule.initialize();
+			insightsModule.init();
 			expect(insightsService.startBackgroundProcess).toHaveBeenCalled();
 		});
 
@@ -48,7 +48,7 @@ describe('InsightsModule', () => {
 				instanceSettings,
 				orchestrationService,
 			);
-			insightsModule.initialize();
+			insightsModule.init();
 			expect(insightsService.startBackgroundProcess).not.toHaveBeenCalled();
 		});
 
@@ -60,7 +60,7 @@ describe('InsightsModule', () => {
 				instanceSettings,
 				orchestrationService,
 			);
-			insightsModule.initialize();
+			insightsModule.init();
 			expect(insightsService.startBackgroundProcess).not.toHaveBeenCalled();
 			orchestrationService.multiMainSetup.emit('leader-takeover');
 			expect(insightsService.startBackgroundProcess).toHaveBeenCalled();
@@ -74,7 +74,7 @@ describe('InsightsModule', () => {
 				instanceSettings,
 				orchestrationService,
 			);
-			insightsModule.initialize();
+			insightsModule.init();
 			expect(insightsService.stopBackgroundProcess).not.toHaveBeenCalled();
 			orchestrationService.multiMainSetup.emit('leader-stepdown');
 			expect(insightsService.stopBackgroundProcess).toHaveBeenCalled();
