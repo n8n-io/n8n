@@ -345,7 +345,7 @@ watch(
 		if (hasSearch) {
 			closedNodesBeforeSearch.value = new Set(closedNodes.value);
 			closedNodes.value.clear();
-		} else {
+		} else if (closedNodes.value.size === 0) {
 			closedNodes.value = closedNodesBeforeSearch.value;
 		}
 	},

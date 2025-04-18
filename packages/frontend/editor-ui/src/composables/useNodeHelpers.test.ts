@@ -208,6 +208,7 @@ describe('useNodeHelpers()', () => {
 		it.each<{ status?: ExecutionStatus; expected: boolean }>([
 			{ status: undefined, expected: false },
 			{ status: 'waiting', expected: false },
+			{ status: 'running', expected: false },
 			{ status: 'error', expected: true },
 			{ status: 'success', expected: true },
 		])('should return $expected when execution status is $status', ({ status, expected }) => {
