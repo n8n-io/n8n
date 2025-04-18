@@ -11,6 +11,7 @@ const workflows = getWorkflowFilenames(__dirname);
 describe('Execute Wait Node', () => {
 	let timer: NodeJS.Timer;
 	const { clearInterval, setInterval } = global;
+	const nextDay = DateTime.now().startOf('day').plus({ days: 1 });
 
 	beforeAll(() => {
 		timer = setInterval(() => jest.advanceTimersByTime(1000), 10);
@@ -25,24 +26,24 @@ describe('Execute Wait Node', () => {
 	test.each([
 		{ value: 'invalid_date', isValid: false },
 		{
-			value: '2025-04-18T10:50:47.560',
+			value: nextDay.toISO(),
 			isValid: true,
-			expectedWaitTill: new Date('2025-04-18T10:50:47.560Z'),
+			expectedWaitTill: nextDay.toJSDate(),
 		},
 		{
-			value: '2025-04-18T10:50:47.560+02:00',
+			value: nextDay.toISO({ includeOffset: true }),
 			isValid: true,
-			expectedWaitTill: new Date('2025-04-18T08:50:47.560Z'),
+			expectedWaitTill: nextDay.toUTC().toJSDate(),
 		},
 		{
-			value: DateTime.fromISO('2025-04-18T10:50:47.560Z').toJSDate(),
+			value: nextDay.toJSDate(),
 			isValid: true,
-			expectedWaitTill: new Date('2025-04-18T10:50:47.560Z'),
+			expectedWaitTill: nextDay.toJSDate(),
 		},
 		{
-			value: DateTime.fromISO('2025-04-18T10:50:47.560Z'),
+			value: nextDay,
 			isValid: true,
-			expectedWaitTill: new Date('2025-04-18T10:50:47.560Z'),
+			expectedWaitTill: nextDay.toJSDate(),
 		},
 	])(
 		'Test Wait Node with specificTime $value and isValid $isValid',
