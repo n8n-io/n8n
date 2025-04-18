@@ -5,6 +5,7 @@ import {
 	removeExpressionPrefix,
 	stringifyExpressionResult,
 	unwrapExpression,
+	getResolvedExpression,
 } from './expressions';
 import { executionRetryMessage } from './executionUtils';
 
@@ -155,6 +156,36 @@ describe('Utils: Expressions', () => {
 
 		it('returns undefined for an unknown status', () => {
 			expect(executionRetryMessage('unknown')).toBeUndefined();
+		});
+	});
+
+	describe('getExpression', () => {
+		it('should return an expression if a resolved expression string is provided', () => {
+			const expressionValue = true;
+			const resolvedExpressionString = 'resolved expression';
+
+			const result = getResolvedExpression(expressionValue, resolvedExpressionString);
+
+			expect(result).toEqual(resolvedExpressionString);
+		});
+
+		it('should return null if no resolved expression string is provided', () => {
+			const expressionValue = true;
+			const resolvedExpressionString = null;
+
+			// @ts-ignore
+			const result = getResolvedExpression(expressionValue, resolvedExpressionString);
+
+			expect(result).toBeNull();
+		});
+
+		it('should return null if expression value is false', () => {
+			const expressionValue = false;
+			const resolvedExpressionString = 'resolved expression';
+
+			const result = getResolvedExpression(expressionValue, resolvedExpressionString);
+
+			expect(result).toBeNull();
 		});
 	});
 });

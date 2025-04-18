@@ -159,3 +159,14 @@ export const shouldConvertToExpression = <T>(value: T, isSpecializedEditor = fal
 		value.includes('}}')
 	);
 };
+
+export const getResolvedExpression = (
+	expressionValue: boolean,
+	resolvedExpressionString: string,
+) => {
+	if (expressionValue && resolvedExpressionString) {
+		return resolvedExpressionString;
+	}
+
+	return null;
+};
