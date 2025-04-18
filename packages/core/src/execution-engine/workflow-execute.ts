@@ -1517,6 +1517,119 @@ export class WorkflowExecute {
 
 								nodeSuccessData = runNodeData.data;
 
+								// After nodeSuccessData is set from runNodeData.data, add this code
+								if (
+									executionNode.passThrough &&
+									typeof executionNode.passThrough === 'string' &&
+									nodeSuccessData
+								) {
+									const fieldsToCopy = executionNode.passThrough
+										.split(',')
+										.map((field) => field.trim())
+										.filter((field) => field.length > 0);
+
+									if (fieldsToCopy.length > 0 && executionData.source) {
+										// Get previous node information
+										const previousNodeName = executionData.source.main?.[0]?.previousNode;
+										const previousNodeRunIndex =
+											executionData.source.main?.[0]?.previousNodeRun || 0;
+										const previousNodeOutputIndex =
+											executionData.source.main?.[0]?.previousNodeOutput || 0;
+
+										if (
+											previousNodeName &&
+											this.runExecutionData.resultData.runData[previousNodeName]
+										) {
+											try {
+												// Get output data from previous node
+												const previousNodeOutput =
+													this.runExecutionData.resultData.runData[previousNodeName][
+														previousNodeRunIndex
+													]?.data?.main?.[previousNodeOutputIndex];
+
+												// Process only if previousNodeOutput exists and is an array
+												if (previousNodeOutput && Array.isArray(previousNodeOutput)) {
+													// Find the first item in previous output with the fields
+													const sourceItem = previousNodeOutput[0]?.json || {};
+
+													// Add passThrough fields directly to node output results
+													if (nodeSuccessData.length > 0) {
+														for (
+															let outputIndex = 0;
+															outputIndex < nodeSuccessData.length;
+															outputIndex++
+														) {
+															const outputData = nodeSuccessData[outputIndex];
+															if (outputData && Array.isArray(outputData)) {
+																for (
+																	let itemIndex = 0;
+																	itemIndex < outputData.length;
+																	itemIndex++
+																) {
+																	// For each output item, correctly handle each field
+																	for (const field of fieldsToCopy) {
+																		// Handle possible dot notation
+																		try {
+																			if (field.includes('.')) {
+																				const pathParts = field.split('.');
+																				let currentValue: IDataObject | GenericValue | undefined =
+																					sourceItem;
+																				// Manually traverse the path
+																				for (let i = 0; i < pathParts.length - 1; i++) {
+																					if (currentValue === undefined || currentValue === null)
+																						break;
+																					if (typeof currentValue !== 'object') break;
+
+																					// Safely access the property with type checking
+																					const obj = currentValue as IDataObject;
+																					currentValue = obj[pathParts[i]];
+																				}
+
+																				// If we successfully traversed to the parent object
+																				if (
+																					currentValue !== undefined &&
+																					currentValue !== null &&
+																					typeof currentValue === 'object'
+																				) {
+																					const finalKey = pathParts[pathParts.length - 1];
+																					const obj = currentValue as IDataObject;
+																					const fieldValue = obj[finalKey];
+
+																					if (fieldValue !== undefined) {
+																						// Use the last part of the path as the key
+																						const keyToSet = finalKey;
+																						// Set directly on the json object
+																						outputData[itemIndex].json[keyToSet] = fieldValue;
+																					}
+																				}
+																			} else {
+																				// Simple case - no dot notation
+																				if (sourceItem[field] !== undefined) {
+																					outputData[itemIndex].json[field] = sourceItem[field];
+																				}
+																			}
+																		} catch (fieldError) {
+																			// Log field error but continue with other fields
+																			Logger.debug(
+																				`Could not copy field "${field}" for node "${executionNode.name}": ${fieldError.message}`,
+																			);
+																		}
+																	}
+																}
+															}
+														}
+													}
+												}
+											} catch (error) {
+												// Error handling for passThrough data processing - log and continue
+												Logger.warn(
+													`Error processing passThrough data for node "${executionNode.name}": ${error.message}`,
+												);
+											}
+										}
+									}
+								}
+
 								const didContinueOnFail = nodeSuccessData?.[0]?.[0]?.json?.error !== undefined;
 
 								while (didContinueOnFail && tryIndex !== maxTries - 1) {
