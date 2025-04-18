@@ -190,6 +190,7 @@ describe('Data mapping', () => {
 
 		ndv.actions.executePrevious();
 
+		ndv.getters.schemaViewNode().contains('Schedule').click();
 		const dataPill = ndv.getters
 			.inputDataContainer()
 			.findChildByTestId('run-data-schema-item')

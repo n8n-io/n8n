@@ -260,9 +260,8 @@ const nodeType = computed(() => {
 
 const isSchemaView = computed(() => displayMode.value === 'schema');
 const isSearchInSchemaView = computed(() => isSchemaView.value && !!search.value);
-const displaysMultipleNodes = computed(
-	() => isSchemaView.value && props.paneType === 'input' && props.nodes.length > 0,
-);
+const hasMultipleInputNodes = computed(() => props.paneType === 'input' && props.nodes.length > 0);
+const displaysMultipleNodes = computed(() => isSchemaView.value && hasMultipleInputNodes.value);
 
 const isTriggerNode = computed(() => !!node.value && nodeTypesStore.isTriggerNode(node.value.type));
 
@@ -476,7 +475,10 @@ const isPaneTypeOutput = computed(() => props.paneType === 'output');
 
 const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
 const showIOSearch = computed(
-	() => hasNodeRun.value && !hasRunError.value && unfilteredInputData.value.length > 0,
+	() =>
+		hasNodeRun.value &&
+		!hasRunError.value &&
+		(unfilteredInputData.value.length > 0 || displaysMultipleNodes.value),
 );
 const inputSelectLocation = computed(() => {
 	if (isSchemaView.value) return 'none';
@@ -490,7 +492,8 @@ const inputSelectLocation = computed(() => {
 });
 
 const showIoSearchNoMatchContent = computed(
-	() => hasNodeRun.value && !inputData.value.length && !!search.value,
+	() =>
+		hasNodeRun.value && !inputData.value.length && !!search.value && !displaysMultipleNodes.value,
 );
 
 const parentNodeOutputData = computed(() => {
@@ -563,7 +566,7 @@ const hasInputOverwrite = computed((): boolean => {
 	if (!node.value) {
 		return false;
 	}
-	const taskData = nodeHelpers.getNodeTaskData(node.value, props.runIndex);
+	const taskData = nodeHelpers.getNodeTaskData(node.value.name, props.runIndex);
 	return Boolean(taskData?.inputOverride);
 });
 
@@ -1392,7 +1395,9 @@ defineExpose({ enterEditMode });
 				<RunDataDisplayModeSelect
 					v-show="
 						hasPreviewSchema ||
-						(hasNodeRun && (inputData.length || binaryData.length || search) && !editMode.enabled)
+						(hasNodeRun &&
+							(inputData.length || binaryData.length || search || hasMultipleInputNodes) &&
+							!editMode.enabled)
 					"
 					:class="$style.displayModeSelect"
 					:compact="props.compact"
@@ -1676,7 +1681,10 @@ defineExpose({ enterEditMode });
 
 			<div
 				v-else-if="
-					hasNodeRun && (!unfilteredDataCount || (search && !dataCount)) && branches.length > 1
+					hasNodeRun &&
+					(!unfilteredDataCount || (search && !dataCount)) &&
+					!displaysMultipleNodes &&
+					branches.length > 1
 				"
 				:class="$style.center"
 			>
@@ -1697,7 +1705,10 @@ defineExpose({ enterEditMode });
 				</N8nText>
 			</div>
 
-			<div v-else-if="hasNodeRun && !inputData.length && !search" :class="$style.center">
+			<div
+				v-else-if="hasNodeRun && !inputData.length && !displaysMultipleNodes && !search"
+				:class="$style.center"
+			>
 				<slot name="no-output-data">xxx</slot>
 			</div>
 
@@ -1810,9 +1821,7 @@ defineExpose({ enterEditMode });
 					:data="jsonData"
 					:pane-type="paneType"
 					:connection-type="connectionType"
-					:run-index="runIndex"
 					:output-index="currentOutputIndex"
-					:total-runs="maxRunIndex"
 					:search="search"
 					:class="$style.schema"
 					@clear:search="onSearchClear"
