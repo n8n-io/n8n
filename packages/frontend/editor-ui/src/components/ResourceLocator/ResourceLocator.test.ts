@@ -237,8 +237,8 @@ describe('ResourceLocator', () => {
 
 		const input = getByTestId('rlc-input');
 		await userEvent.click(input);
-		// '{' is an escape character: '{{{{' === '{{'
 		const expression = new DataTransfer();
+		// '{' is an escape character: '{{{{' === '{{'
 		expression.setData('text', '{{ ');
 		await userEvent.clear(input);
 		await userEvent.paste(expression);
@@ -255,9 +255,7 @@ describe('ResourceLocator', () => {
 	});
 
 	it('can switch between modes', async () => {
-		const { getByTestId, emitted } = renderComponent({
-			props: { modelValue: { ...TEST_MODEL_VALUE, mode: 'id' } },
-		});
+		const { getByTestId, emitted } = renderComponent();
 
 		await userEvent.click(getByTestId('rlc-mode-selector'));
 		await userEvent.click(screen.getByTestId('mode-id'));
@@ -266,7 +264,7 @@ describe('ResourceLocator', () => {
 				{
 					__rl: true,
 					mode: 'id',
-					value: '',
+					value: 'test',
 				},
 			],
 		]);

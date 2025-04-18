@@ -510,7 +510,6 @@ function getModeLabel(mode: INodePropertyMode): string | null {
 
 function onInputChange(value: NodeParameterValue): void {
 	const params: INodeParameterResourceLocator = { __rl: true, value, mode: selectedMode.value };
-	console.log('===CHANGE===, value');
 	if (isListMode.value) {
 		const resource = currentQueryResults.value.find((result) => result.value === value);
 		if (resource?.name) {
