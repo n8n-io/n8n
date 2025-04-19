@@ -29,6 +29,8 @@ export const STARTING_NODES = [
 	'n8n-nodes-base.manualTrigger',
 ];
 
+export const MCP_TRIGGER_NODE_TYPE = '@n8n/n8n-nodes-langchain.mcpTrigger';
+
 export const NODE_PACKAGE_PREFIX = 'n8n-nodes-';
 
 export const STARTER_TEMPLATE_NAME = `${NODE_PACKAGE_PREFIX}starter`;
@@ -98,6 +100,7 @@ export const LICENSE_FEATURES = {
 	INSIGHTS_VIEW_SUMMARY: 'feat:insights:viewSummary',
 	INSIGHTS_VIEW_DASHBOARD: 'feat:insights:viewDashboard',
 	INSIGHTS_VIEW_HOURLY_DATA: 'feat:insights:viewHourlyData',
+	API_KEY_SCOPES: 'feat:apiKeyScopes',
 } as const;
 
 export const LICENSE_QUOTAS = {

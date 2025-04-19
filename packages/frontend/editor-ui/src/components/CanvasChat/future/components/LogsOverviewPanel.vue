@@ -5,32 +5,29 @@ import { useI18n } from '@/composables/useI18n';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { N8nButton, N8nRadioButtons, N8nText, N8nTooltip } from '@n8n/design-system';
-import { computed, nextTick } from 'vue';
+import { computed } from 'vue';
 import { ElTree, type TreeNode as ElTreeNode } from 'element-plus';
 import {
-	createAiData,
 	getSubtreeTotalConsumedTokens,
 	getTotalConsumedTokens,
-	getTreeNodeData,
 	type TreeNode,
 } from '@/components/RunDataAi/utils';
-import { type INodeUi } from '@/Interface';
-import { upperFirst } from 'lodash-es';
 import { useTelemetry } from '@/composables/useTelemetry';
-import ConsumedTokenCountText from '@/components/CanvasChat/future/components/ConsumedTokenCountText.vue';
-import { type LogEntryIdentity } from '@/components/CanvasChat/types/logs';
 import LogsOverviewRow from '@/components/CanvasChat/future/components/LogsOverviewRow.vue';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useRouter } from 'vue-router';
+import ExecutionSummary from '@/components/CanvasChat/future/components/ExecutionSummary.vue';
 
-const { node, isOpen, selected } = defineProps<{
+const { isOpen, isReadOnly, selected, isCompact, executionTree } = defineProps<{
 	isOpen: boolean;
-	node: INodeUi | null;
-	selected?: LogEntryIdentity;
+	selected?: TreeNode;
+	isReadOnly: boolean;
+	isCompact: boolean;
+	executionTree: TreeNode[];
 }>();
 
-const emit = defineEmits<{ clickHeader: []; select: [LogEntryIdentity | undefined] }>();
+const emit = defineEmits<{ clickHeader: []; select: [TreeNode | undefined] }>();
 
 defineSlots<{ actions: {} }>();
 
@@ -43,43 +40,14 @@ const ndvStore = useNDVStore();
 const nodeHelpers = useNodeHelpers();
 const isClearExecutionButtonVisible = useClearExecutionButtonVisible();
 const workflow = computed(() => workflowsStore.getCurrentWorkflow());
-const executionTree = computed<TreeNode[]>(() =>
-	node
-		? getTreeNodeData(
-				node.name,
-				workflow.value,
-				createAiData(node.name, workflow.value, workflowsStore.getWorkflowResultDataByNodeName),
-			)
-		: [],
-);
 const isEmpty = computed(() => workflowsStore.workflowExecutionData === null);
 const switchViewOptions = computed(() => [
 	{ label: locale.baseText('logs.overview.header.switch.details'), value: 'details' as const },
 	{ label: locale.baseText('logs.overview.header.switch.overview'), value: 'overview' as const },
 ]);
-const executionStatusText = computed(() => {
-	const execution = workflowsStore.workflowExecutionData;
-
-	if (!execution) {
-		return undefined;
-	}
-
-	if (execution.startedAt && execution.stoppedAt) {
-		return locale.baseText('logs.overview.body.summaryText', {
-			interpolate: {
-				status: upperFirst(execution.status),
-				time: locale.displayTimer(
-					+new Date(execution.stoppedAt) - +new Date(execution.startedAt),
-					true,
-				),
-			},
-		});
-	}
-
-	return upperFirst(execution.status);
-});
+const execution = computed(() => workflowsStore.workflowExecutionData);
 const consumedTokens = computed(() =>
-	getTotalConsumedTokens(...executionTree.value.map(getSubtreeTotalConsumedTokens)),
+	getTotalConsumedTokens(...executionTree.map(getSubtreeTotalConsumedTokens)),
 );
 
 function onClearExecutionData() {
@@ -88,12 +56,12 @@ function onClearExecutionData() {
 }
 
 function handleClickNode(clicked: TreeNode) {
-	if (selected?.node === clicked.node && selected.runIndex === clicked.runIndex) {
+	if (selected?.node === clicked.node && selected?.runIndex === clicked.runIndex) {
 		emit('select', undefined);
 		return;
 	}
 
-	emit('select', { node: clicked.node, runIndex: clicked.runIndex });
+	emit('select', clicked);
 	telemetry.track('User selected node in log view', {
 		node_type: workflowsStore.nodesByName[clicked.node].type,
 		node_id: workflowsStore.nodesByName[clicked.node].id,
@@ -103,10 +71,7 @@ function handleClickNode(clicked: TreeNode) {
 }
 
 function handleSwitchView(value: 'overview' | 'details') {
-	emit(
-		'select',
-		value === 'overview' || executionTree.value.length === 0 ? undefined : executionTree.value[0],
-	);
+	emit('select', value === 'overview' || executionTree.length === 0 ? undefined : executionTree[0]);
 }
 
 function handleToggleExpanded(treeNode: ElTreeNode) {
@@ -115,9 +80,6 @@ function handleToggleExpanded(treeNode: ElTreeNode) {
 
 async function handleOpenNdv(treeNode: TreeNode) {
 	ndvStore.setActiveNodeName(treeNode.node);
-
-	// HACK: defer setting the output run index to not be overridden by other effects
-	await nextTick(() => ndvStore.setOutputRunIndex(treeNode.runIndex));
 }
 
 async function handleTriggerPartialExecution(treeNode: TreeNode) {
@@ -142,6 +104,7 @@ async function handleTriggerPartialExecution(treeNode: TreeNode) {
 						type="secondary"
 						icon="trash"
 						icon-size="medium"
+						:class="$style.clearButton"
 						@click.stop="onClearExecutionData"
 						>{{ locale.baseText('logs.overview.header.actions.clearExecution') }}</N8nButton
 					>
@@ -165,19 +128,17 @@ async function handleTriggerPartialExecution(treeNode: TreeNode) {
 				{{ locale.baseText('logs.overview.body.empty.message') }}
 			</N8nText>
 			<div v-else :class="$style.scrollable">
-				<N8nText
-					v-if="executionStatusText !== undefined"
-					tag="div"
-					color="text-light"
-					size="small"
+				<ExecutionSummary
+					v-if="execution"
 					:class="$style.summary"
-				>
-					<span>{{ executionStatusText }}</span>
-					<ConsumedTokenCountText
-						v-if="consumedTokens.totalTokens > 0"
-						:consumed-tokens="consumedTokens"
-					/>
-				</N8nText>
+					:status="execution.status"
+					:consumed-tokens="consumedTokens"
+					:time-took="
+						execution.startedAt && execution.stoppedAt
+							? +new Date(execution.stoppedAt) - +new Date(execution.startedAt)
+							: undefined
+					"
+				/>
 				<ElTree
 					v-if="executionTree.length > 0"
 					node-key="id"
@@ -192,8 +153,9 @@ async function handleTriggerPartialExecution(treeNode: TreeNode) {
 						<LogsOverviewRow
 							:data="data"
 							:node="elTreeNode"
+							:is-read-only="isReadOnly"
 							:is-selected="data.node === selected?.node && data.runIndex === selected?.runIndex"
-							:is-compact="selected !== undefined"
+							:is-compact="isCompact"
 							:should-show-consumed-tokens="consumedTokens.totalTokens > 0"
 							@toggle-expanded="handleToggleExpanded"
 							@open-ndv="handleOpenNdv"
@@ -214,6 +176,8 @@ async function handleTriggerPartialExecution(treeNode: TreeNode) {
 </template>
 
 <style lang="scss" module>
+@import '@/styles/variables';
+
 .container {
 	flex-grow: 1;
 	flex-shrink: 1;
@@ -222,6 +186,11 @@ async function handleTriggerPartialExecution(treeNode: TreeNode) {
 	align-items: stretch;
 	overflow: hidden;
 	background-color: var(--color-foreground-xlight);
+}
+
+.clearButton {
+	border: none;
+	color: var(--color-text-light);
 }
 
 .content {
@@ -245,28 +214,19 @@ async function handleTriggerPartialExecution(treeNode: TreeNode) {
 }
 
 .scrollable {
-	padding: var(--spacing-2xs);
 	flex-grow: 1;
 	flex-shrink: 1;
 	overflow: auto;
 }
 
 .summary {
-	display: flex;
-	align-items: center;
-	padding-block: var(--spacing-2xs);
-
-	& > * {
-		padding-inline: var(--spacing-2xs);
-	}
-
-	& > *:not(:last-child) {
-		border-right: var(--border-base);
-	}
+	margin-bottom: var(--spacing-4xs);
+	padding: var(--spacing-4xs) var(--spacing-2xs) 0 var(--spacing-2xs);
+	min-height: calc(30px + var(--spacing-s));
 }
 
 .tree {
-	margin-top: var(--spacing-2xs);
+	padding: 0 var(--spacing-2xs) var(--spacing-2xs) var(--spacing-2xs);
 
 	& :global(.el-icon) {
 		display: none;
@@ -275,8 +235,17 @@ async function handleTriggerPartialExecution(treeNode: TreeNode) {
 
 .switchViewButtons {
 	position: absolute;
+	z-index: 10; /* higher than log entry rows background */
 	right: 0;
 	top: 0;
 	margin: var(--spacing-2xs);
+	visibility: hidden;
+	opacity: 0;
+	transition: opacity 0.3s $ease-out-expo;
+
+	.content:hover & {
+		visibility: visible;
+		opacity: 1;
+	}
 }
 </style>

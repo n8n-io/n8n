@@ -1,3 +1,4 @@
+import * as ndvComposables from '../composables/ndv';
 import { WorkflowPage, NDV } from '../pages';
 
 const workflowPage = new WorkflowPage();
@@ -59,8 +60,7 @@ describe('NDV', () => {
 		ndv.getters.inputTableRow(4).invoke('attr', 'data-test-id').should('equal', 'hovering-item');
 	});
 
-	// eslint-disable-next-line n8n-local-rules/no-skipped-tests
-	it.skip('maps paired input and output items based on selected input node', () => {
+	it('maps paired input and output items based on selected input node', () => {
 		cy.fixture('Test_workflow_5.json').then((data) => {
 			cy.get('body').paste(JSON.stringify(data));
 		});
@@ -72,39 +72,40 @@ describe('NDV', () => {
 		ndv.getters
 			.outputRunSelector()
 			.find('input')
-			.should('exist')
+			.should('be.visible')
 			.should('have.value', '2 of 2 (6 items)');
 
 		ndv.actions.switchInputMode('Table');
 		ndv.actions.switchOutputMode('Table');
 
-		ndv.getters.backToCanvas().realMouseMove(10, 1); // reset to default hover
-		ndv.getters.outputHoveringItem().should('not.exist');
+		// Default hover state should have first item from input node highlighted
+		ndvComposables.resetHoverState();
+		ndvComposables.verifyInputHoverState('1111');
 		ndv.getters.parameterExpressionPreview('value').should('include.text', '1111');
 
+		// Select different input node and check that the hover state is updated
 		ndv.actions.selectInputNode('Set1');
-		ndv.getters.backToCanvas().realMouseMove(10, 1); // reset to default hover
-
-		ndv.getters.inputTableRow(1).should('have.text', '1000');
-
-		ndv.getters.inputTableRow(1).invoke('attr', 'data-test-id').should('equal', 'hovering-item');
+		ndvComposables.verifyInputHoverState('1000');
 
 		ndv.actions.dragMainPanelToRight();
-		ndv.getters.inputTbodyCell(1, 0).realMouseMove(10, 1);
-		ndv.getters.outputHoveringItem().should('have.text', '1000');
-		ndv.getters.parameterExpressionPreview('value').should('include.text', '1000');
+
+		ndvComposables.resetHoverState();
+		ndvComposables.verifyOutputHoverState('1000');
+		// BUG(ADO-3469): Expression preview is not updated when input node is changed it uses the old value
+		// ndv.getters.parameterExpressionPreview('value').should('include.text', '1000');
 
 		ndv.actions.selectInputNode('Sort');
 		ndv.actions.dragMainPanelToLeft();
 		ndv.actions.changeOutputRunSelector('1 of 2 (6 items)');
-		ndv.getters.backToCanvas().realMouseMove(10, 1); // reset to default hover
 
-		ndv.getters.inputTableRow(1).should('have.text', '1111');
+		ndvComposables.resetHoverState();
+		ndvComposables.verifyInputHoverState('1111');
 
-		ndv.getters.inputTableRow(1).invoke('attr', 'data-test-id').should('equal', 'hovering-item');
 		ndv.actions.dragMainPanelToRight();
-		ndv.getters.inputTbodyCell(1, 0).realMouseMove(10, 1);
-		ndv.getters.outputHoveringItem().should('have.text', '1111');
+
+		ndvComposables.resetHoverState();
+		ndvComposables.verifyOutputHoverState('1111');
+
 		ndv.getters.parameterExpressionPreview('value').should('include.text', '1111');
 	});
 

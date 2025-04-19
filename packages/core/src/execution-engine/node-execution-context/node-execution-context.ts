@@ -28,7 +28,11 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import { HTTP_REQUEST_NODE_TYPE, HTTP_REQUEST_TOOL_NODE_TYPE } from '@/constants';
+import {
+	HTTP_REQUEST_AS_TOOL_NODE_TYPE,
+	HTTP_REQUEST_NODE_TYPE,
+	HTTP_REQUEST_TOOL_NODE_TYPE,
+} from '@/constants';
 import { Memoized } from '@/decorators';
 import { InstanceSettings } from '@/instance-settings';
 import { Logger } from '@/logging/logger';
@@ -190,7 +194,11 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 
 		// Hardcode for now for security reasons that only a single node can access
 		// all credentials
-		const fullAccess = [HTTP_REQUEST_NODE_TYPE, HTTP_REQUEST_TOOL_NODE_TYPE].includes(node.type);
+		const fullAccess = [
+			HTTP_REQUEST_NODE_TYPE,
+			HTTP_REQUEST_TOOL_NODE_TYPE,
+			HTTP_REQUEST_AS_TOOL_NODE_TYPE,
+		].includes(node.type);
 
 		let nodeCredentialDescription: INodeCredentialDescription | undefined;
 		if (!fullAccess) {
@@ -397,6 +405,8 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 				nodeCause: node.name,
 			});
 		}
+
+		if (options?.skipValidation) return returnData;
 
 		// Validate parameter value if it has a schema defined(RMC) or validateType defined
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment

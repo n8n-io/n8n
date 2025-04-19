@@ -111,6 +111,10 @@ function makeDescription(node: INode, nodeType: INodeType): string {
 	return nodeType.description.description;
 }
 
+export function nodeNameToToolName(node: INode): string {
+	return node.name.replace(/ /g, '_');
+}
+
 /**
  * Creates a DynamicStructuredTool from a node.
  * @returns A DynamicStructuredTool instance.
@@ -119,7 +123,7 @@ function createTool(options: CreateNodeAsToolOptions) {
 	const { node, nodeType, handleToolInvocation } = options;
 	const schema = getSchema(node);
 	const description = makeDescription(node, nodeType);
-	const nodeName = node.name.replace(/ /g, '_');
+	const nodeName = nodeNameToToolName(node);
 	const name = nodeName || nodeType.description.name;
 
 	return new DynamicStructuredTool({

@@ -98,3 +98,15 @@ exports[`InsightsSummary > should render the summary correctly 5`] = `
   </ul>
 </div>"
 `;
+
+exports[`InsightsSummary > should render the summary correctly 6`] = `
+"<div class="insights">
+  <ul data-test-id="insights-summary-tabs">
+    <li data-test-id="insights-summary-tab-total"><a to="[object Object]" exact-active-class="activeTab"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Prod. executions</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 7 days</small><span class="noData"><em class="el-tooltip__trigger">Collecting...</em><!--teleport start--><!--teleport end--></span></a></li>
+    <li data-test-id="insights-summary-tab-failed"><a to="[object Object]" exact-active-class="activeTab"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Failed prod. executions</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 7 days</small><span class="noData"><em class="el-tooltip__trigger">Collecting...</em><!--teleport start--><!--teleport end--></span></a></li>
+    <li data-test-id="insights-summary-tab-failureRate"><a to="[object Object]" exact-active-class="activeTab"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Failure rate</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 7 days</small><span class="noData"><em class="el-tooltip__trigger">Collecting...</em><!--teleport start--><!--teleport end--></span></a></li>
+    <li data-test-id="insights-summary-tab-timeSaved"><a to="[object Object]" exact-active-class="activeTab"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Time saved</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 7 days</small><span class="noData"><em class="el-tooltip__trigger">Collecting...</em><!--teleport start--><!--teleport end--></span></a></li>
+    <li data-test-id="insights-summary-tab-averageRunTime"><a to="[object Object]" exact-active-class="activeTab"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Run time (avg.)</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 7 days</small><span class="noData"><em class="el-tooltip__trigger">Collecting...</em><!--teleport start--><!--teleport end--></span></a></li>
+  </ul>
+</div>"
+`;
