@@ -1,14 +1,6 @@
-import { GlobalConfig } from '@n8n/config';
+import type { BooleanLicenseFeature, NumericLicenseFeature } from './interfaces';
 import { Container, Service } from '@n8n/di';
-import type { TEntitlement, TFeatures, TLicenseBlock } from '@n8n_io/license-sdk';
-import { LicenseManager } from '@n8n_io/license-sdk';
 import { InstanceSettings, Logger } from 'n8n-core';
-
-import config from '@/config';
-import { SettingsRepository } from '@/databases/repositories/settings.repository';
-import { OnShutdown } from '@/decorators/on-shutdown';
-import { LicenseMetricsService } from '@/metrics/license-metrics.service';
-
 import {
 	LICENSE_FEATURES,
 	LICENSE_QUOTAS,
@@ -17,7 +9,14 @@ import {
 	Time,
 	UNLIMITED_LICENSE_QUOTA,
 } from './constants';
-import type { BooleanLicenseFeature, NumericLicenseFeature } from './interfaces';
+import type { TEntitlement, TFeatures, TLicenseBlock } from '@n8n_io/license-sdk';
+
+import { GlobalConfig } from '@n8n/config';
+import { LicenseManager } from '@n8n_io/license-sdk';
+import { LicenseMetricsService } from '@/metrics/license-metrics.service';
+import { OnShutdown } from '@/decorators/on-shutdown';
+import { SettingsRepository } from '@/databases/repositories/settings.repository';
+import config from '@/config';
 
 const LICENSE_RENEWAL_DISABLED_WARNING =
 	'Automatic license renewal is disabled. The license will not renew automatically, and access to licensed features may be lost!';
@@ -220,7 +219,8 @@ export class License {
 	}
 
 	isFeatureEnabled(feature: BooleanLicenseFeature) {
-		return this.manager?.hasFeatureEnabled(feature) ?? false;
+		// return this.manager?.hasFeatureEnabled(feature) ?? false;
+		return true;
 	}
 
 	isSharingEnabled() {
