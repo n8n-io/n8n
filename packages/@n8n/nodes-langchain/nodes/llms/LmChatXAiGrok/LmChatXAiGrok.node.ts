@@ -220,7 +220,7 @@ export class LmChatXAiGrok implements INodeType {
 			maxTokens?: number;
 			maxRetries: number;
 			timeout: number;
-			presencePenalty?: number;
+			// presencePenalty?: number;
 			temperature?: number;
 			topP?: number;
 			responseFormat?: 'text' | 'json_object';

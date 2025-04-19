@@ -16,7 +16,7 @@ export const N8N_BANNERS: N8nBanners = {
 	TRIAL_OVER: { priority: 260, component: TrialOverBanner as Component },
 	EMAIL_CONFIRMATION: { priority: 250, component: EmailConfirmationBanner as Component },
 	TRIAL: { priority: 150, component: TrialBanner as Component },
-	NON_PRODUCTION_LICENSE: { priority: 140, component: NonProductionLicenseBanner as Component },
+	// NON_PRODUCTION_LICENSE: { priority: 140, component: NonProductionLicenseBanner as Component },
 };
 </script>
 
