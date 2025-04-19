@@ -19,7 +19,8 @@
 		"incremental": true,
 		"declaration": false,
 		"sourceMap": true,
-		"skipLibCheck": true
+		"skipLibCheck": true,
+		"typeRoots": []
 	},
 	"files": ["../../../node_modules/jest-expect-message/types/index.d.ts"]
 }
