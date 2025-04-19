@@ -25,7 +25,7 @@ const props = withDefaults(
 	defineProps<{
 		node: INodeUi;
 		paneType: string;
-		pushRef: string;
+		pushRef?: string;
 		distanceFromActive: number;
 		selectedJsonPath: string;
 		jsonData: IDataObject[];

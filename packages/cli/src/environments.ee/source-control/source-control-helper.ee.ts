@@ -18,6 +18,7 @@ import {
 } from './constants';
 import type { KeyPair } from './types/key-pair';
 import type { KeyPairType } from './types/key-pair-type';
+import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
 
 export function stringContainsExpression(testString: string): boolean {
 	return /^=.*\{\{.*\}\}/.test(testString);
@@ -203,4 +204,18 @@ export function normalizeAndValidateSourceControlledFilePath(
 	}
 
 	return normalizedPath;
+}
+
+/**
+ * Checks if a workflow has been modified by comparing version IDs and parent folder IDs
+ * between local and remote versions
+ */
+export function isWorkflowModified(
+	local: SourceControlWorkflowVersionId,
+	remote: SourceControlWorkflowVersionId,
+): boolean {
+	return (
+		remote.versionId !== local.versionId ||
+		(remote.parentFolderId !== undefined && remote.parentFolderId !== local.parentFolderId)
+	);
 }

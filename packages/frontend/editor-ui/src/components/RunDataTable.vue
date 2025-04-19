@@ -32,6 +32,7 @@ type Props = {
 	mappingEnabled?: boolean;
 	hasDefaultHoverState?: boolean;
 	search?: string;
+	headerBgColor?: 'base' | 'light';
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -41,6 +42,7 @@ const props = withDefaults(defineProps<Props>(), {
 	mappingEnabled: false,
 	hasDefaultHoverState: false,
 	search: '',
+	headerBgColor: 'base',
 });
 const emit = defineEmits<{
 	activeRowChanged: [row: number | null];
@@ -422,7 +424,12 @@ watch(focusedMappableInput, (curr) => {
 </script>
 
 <template>
-	<div :class="[$style.dataDisplay, { [$style.highlight]: highlight }]">
+	<div
+		:class="[
+			$style.dataDisplay,
+			{ [$style.highlight]: highlight, [$style.lightHeader]: headerBgColor === 'light' },
+		]"
+	>
 		<table v-if="tableData.columns && tableData.columns.length === 0" :class="$style.table">
 			<thead>
 				<tr>
@@ -680,7 +687,8 @@ watch(focusedMappableInput, (curr) => {
 	border-collapse: separate;
 	text-align: left;
 	width: calc(100%);
-	font-size: var(--font-size-s);
+	font-size: var(--font-size-2xs);
+	color: var(--color-text-base);
 
 	th {
 		background-color: var(--color-background-base);
@@ -691,11 +699,19 @@ watch(focusedMappableInput, (curr) => {
 		top: 0;
 		color: var(--color-text-dark);
 		z-index: 1;
+
+		.lightHeader & {
+			background-color: var(--color-background-light);
+		}
+
+		&.tableRightMargin {
+			background-color: transparent;
+		}
 	}
 
 	td {
 		vertical-align: top;
-		padding: var(--spacing-2xs) var(--spacing-2xs) var(--spacing-2xs) var(--spacing-3xs);
+		padding: var(--spacing-4xs) var(--spacing-3xs);
 		border-bottom: var(--border-base);
 		border-left: var(--border-base);
 		overflow-wrap: break-word;
@@ -743,7 +759,7 @@ watch(focusedMappableInput, (curr) => {
 .header {
 	display: flex;
 	align-items: center;
-	padding: var(--spacing-2xs);
+	padding: var(--spacing-4xs) var(--spacing-3xs);
 
 	span {
 		white-space: nowrap;
@@ -828,7 +844,6 @@ watch(focusedMappableInput, (curr) => {
 
 .tableRightMargin {
 	// becomes necessary with large tables
-	background-color: var(--color-background-base) !important;
 	width: var(--spacing-s);
 	border-right: none !important;
 	border-top: none !important;

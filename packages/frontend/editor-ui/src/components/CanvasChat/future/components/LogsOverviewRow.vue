@@ -274,6 +274,7 @@ watch(
 }
 
 .name {
+	flex-basis: 0;
 	flex-grow: 1;
 	padding-inline-start: 0;
 }
@@ -286,6 +287,10 @@ watch(
 	.errorIcon {
 		margin-right: var(--spacing-4xs);
 		vertical-align: text-bottom;
+	}
+
+	.compact & {
+		flex-shrink: 1;
 	}
 
 	.compact:hover & {
@@ -312,6 +317,10 @@ watch(
 	flex-shrink: 0;
 	width: 10%;
 	text-align: right;
+
+	.compact & {
+		flex-shrink: 1;
+	}
 
 	.compact:hover & {
 		width: auto;
