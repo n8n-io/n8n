@@ -22,6 +22,10 @@ export const CHART_TYPE_OPTIONS: INodePropertyOptions[] = [
 		name: 'Polar Chart',
 		value: 'polarArea',
 	},
+	{
+		name: 'Candlestick Chart',
+		value: 'candlestick',
+	},
 ];
 
 export const HORIZONTAL_CHARTS = ['bar', 'boxplot', 'violin'];
