@@ -93,6 +93,7 @@ declare global {
 	function $ifEmpty<V, E>(value: V, valueIfEmpty: E): V | E;
 	function $min(...numbers: number[]): number;
 	function $max(...numbers: number[]): number;
+	function $evaluateExpression(expression: string): any;
 
 	type SomeOtherString = string & NonNullable<unknown>;
 	// @ts-expect-error NodeName is created dynamically

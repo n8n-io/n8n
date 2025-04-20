@@ -12,7 +12,10 @@ import N8nDataTableServer, {
 	type TableHeader,
 } from '@n8n/design-system/components/N8nDataTableServer/N8nDataTableServer.vue';
 import { smartDecimal } from '@n8n/utils/number/smartDecimal';
-import { computed, ref } from 'vue';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { VIEWS } from '@/constants';
+import { computed, ref, watch } from 'vue';
+import { type RouteLocationRaw, type LocationQueryRaw } from 'vue-router';
 
 const props = defineProps<{
 	data: InsightsByWorkflow;
@@ -20,6 +23,7 @@ const props = defineProps<{
 }>();
 
 const i18n = useI18n();
+const telemetry = useTelemetry();
 
 type Item = InsightsByWorkflow['data'][number];
 
@@ -77,7 +81,7 @@ const headers = ref<Array<TableHeader<Item>>>([
 		},
 	},
 	{
-		title: 'Project name',
+		title: i18n.baseText('insights.dashboard.table.projectName'),
 		key: 'projectName',
 		disableSort: true,
 	},
@@ -96,6 +100,29 @@ const emit = defineEmits<{
 		},
 	];
 }>();
+
+const getWorkflowLink = (item: Item, query?: LocationQueryRaw): RouteLocationRaw => ({
+	name: VIEWS.WORKFLOW,
+	params: {
+		name: item.workflowId,
+	},
+	query,
+});
+
+const trackWorkflowClick = (item: Item) => {
+	telemetry.track('User clicked on workflow from insights table', {
+		workflow_id: item.workflowId,
+	});
+};
+
+watch(sortBy, (newValue) => {
+	telemetry.track('User sorted insights table', {
+		sorted_by: (newValue ?? []).map((item) => ({
+			...item,
+			label: headers.value.find((header) => header.key === item.id)?.title,
+		})),
+	});
+});
 </script>
 
 <template>
@@ -112,11 +139,25 @@ const emit = defineEmits<{
 			@update:options="emit('update:options', $event)"
 		>
 			<template #[`item.workflowName`]="{ item }">
-				<N8nTooltip :content="item.workflowName" placement="top">
-					<div class="ellipsis">
-						{{ item.workflowName }}
-					</div>
-				</N8nTooltip>
+				<router-link :to="getWorkflowLink(item)" class="link" @click="trackWorkflowClick(item)">
+					<N8nTooltip :content="item.workflowName" placement="top">
+						<div class="ellipsis">
+							{{ item.workflowName }}
+						</div>
+					</N8nTooltip>
+				</router-link>
+			</template>
+			<template #[`item.timeSaved`]="{ item, value }">
+				<router-link
+					v-if="!item.timeSaved"
+					:to="getWorkflowLink(item, { settings: 'true' })"
+					class="link"
+				>
+					{{ i18n.baseText('insights.dashboard.table.estimate') }}
+				</router-link>
+				<template v-else>
+					{{ value }}
+				</template>
 			</template>
 			<template #[`item.projectName`]="{ item }">
 				<N8nTooltip v-if="item.projectName" :content="item.projectName" placement="top">
@@ -136,5 +177,20 @@ const emit = defineEmits<{
 	overflow: hidden;
 	text-overflow: ellipsis;
 	line-height: 1.2;
+	width: fit-content;
+	max-width: 100%;
+}
+
+.link {
+	display: inline-flex;
+	height: 100%;
+	align-items: center;
+	text-decoration: none;
+	color: var(--color-text-base);
+	text-decoration: underline;
+	max-width: 100%;
+	&:hover {
+		color: var(--color-text-dark);
+	}
 }
 </style>

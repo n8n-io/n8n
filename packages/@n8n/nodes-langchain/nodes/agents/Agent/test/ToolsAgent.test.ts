@@ -6,7 +6,7 @@ import { Buffer } from 'buffer';
 import { mock } from 'jest-mock-extended';
 import type { ToolsAgentAction } from 'langchain/dist/agents/tool_calling/output_parser';
 import type { Tool } from 'langchain/tools';
-import type { IExecuteFunctions } from 'n8n-workflow';
+import type { IExecuteFunctions, INode } from 'n8n-workflow';
 import { NodeOperationError, BINARY_ENCODING, NodeConnectionTypes } from 'n8n-workflow';
 import type { ZodType } from 'zod';
 import { z } from 'zod';
@@ -231,6 +231,75 @@ describe('prepareMessages', () => {
 		});
 		const hasHumanMessage = messages.some((m) => m instanceof HumanMessage);
 		expect(hasHumanMessage).toBe(false);
+	});
+
+	it('should not include system_message in prompt templates if not provided after version 1.9', async () => {
+		const fakeItem = { json: {} };
+		const mockNode = mock<INode>();
+		mockNode.typeVersion = 1.9;
+		mockContext.getInputData.mockReturnValue([fakeItem]);
+		mockContext.getNode.mockReturnValue(mockNode);
+		const messages = await prepareMessages(mockContext, 0, {});
+
+		expect(messages.length).toBe(3);
+		expect(messages).not.toContainEqual(['system', '{system_message}']);
+	});
+
+	it('should include system_message in prompt templates if provided after version 1.9', async () => {
+		const fakeItem = { json: {} };
+		const mockNode = mock<INode>();
+		mockNode.typeVersion = 1.9;
+		mockContext.getInputData.mockReturnValue([fakeItem]);
+		mockContext.getNode.mockReturnValue(mockNode);
+
+		const messages = await prepareMessages(mockContext, 0, { systemMessage: 'Hello' });
+
+		expect(messages.length).toBe(4);
+		expect(messages).toContainEqual(['system', '{system_message}']);
+	});
+
+	it('should include system_message in prompt templates if not provided before version 1.9', async () => {
+		const fakeItem = { json: {} };
+		const mockNode = mock<INode>();
+		mockNode.typeVersion = 1.8;
+		mockContext.getInputData.mockReturnValue([fakeItem]);
+		mockContext.getNode.mockReturnValue(mockNode);
+
+		const messages = await prepareMessages(mockContext, 0, {});
+
+		expect(messages.length).toBe(4);
+		expect(messages).toContainEqual(['system', '{system_message}']);
+	});
+
+	it('should include system_message with formatting_instructions in prompt templates if provided before version 1.9', async () => {
+		const fakeItem = { json: {} };
+		const mockNode = mock<INode>();
+		mockNode.typeVersion = 1.8;
+		mockContext.getInputData.mockReturnValue([fakeItem]);
+		mockContext.getNode.mockReturnValue(mockNode);
+
+		const messages = await prepareMessages(mockContext, 0, {
+			systemMessage: 'Hello',
+			outputParser: mock<N8nOutputParser>(),
+		});
+
+		expect(messages.length).toBe(4);
+		expect(messages).toContainEqual(['system', '{system_message}\n\n{formatting_instructions}']);
+	});
+
+	it('should add formatting instructions when omitting system message after version 1.9', async () => {
+		const fakeItem = { json: {} };
+		const mockNode = mock<INode>();
+		mockNode.typeVersion = 1.9;
+		mockContext.getInputData.mockReturnValue([fakeItem]);
+		mockContext.getNode.mockReturnValue(mockNode);
+
+		const messages = await prepareMessages(mockContext, 0, {
+			outputParser: mock<N8nOutputParser>(),
+		});
+
+		expect(messages.length).toBe(4);
+		expect(messages).toContainEqual(['system', '{formatting_instructions}']);
 	});
 });
 

@@ -1,4 +1,10 @@
+import { z } from 'zod';
+
 import { Config, Env, Nested } from '../decorators';
+
+const protocolSchema = z.enum(['http', 'https']);
+
+export type Protocol = z.infer<typeof protocolSchema>;
 
 @Config
 class S3BucketConfig {
@@ -28,8 +34,8 @@ export class S3Config {
 	@Env('N8N_EXTERNAL_STORAGE_S3_HOST')
 	host: string = '';
 
-	@Env('N8N_EXTERNAL_STORAGE_S3_PROTOCOL')
-	protocol: 'http' | 'https' = 'https';
+	@Env('N8N_EXTERNAL_STORAGE_S3_PROTOCOL', protocolSchema)
+	protocol: Protocol = 'https';
 
 	@Nested
 	bucket: S3BucketConfig;

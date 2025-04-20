@@ -117,10 +117,13 @@ export class JsTaskRunner extends TaskRunner {
 			allowedExternalModules,
 		});
 
-		this.preventPrototypePollution(allowedExternalModules);
+		this.preventPrototypePollution(allowedExternalModules, jsRunnerConfig.allowPrototypeMutation);
 	}
 
-	private preventPrototypePollution(allowedExternalModules: Set<string> | '*') {
+	private preventPrototypePollution(
+		allowedExternalModules: Set<string> | '*',
+		allowPrototypeMutation: boolean,
+	) {
 		if (allowedExternalModules instanceof Set) {
 			// This is a workaround to enable the allowed external libraries to mutate
 			// prototypes directly. For example momentjs overrides .toString() directly
@@ -132,8 +135,8 @@ export class JsTaskRunner extends TaskRunner {
 			}
 		}
 
-		// Freeze globals, except for Jest
-		if (process.env.NODE_ENV !== 'test') {
+		// Freeze globals if needed
+		if (!allowPrototypeMutation) {
 			Object.getOwnPropertyNames(globalThis)
 				// @ts-expect-error globalThis does not have string in index signature
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access
@@ -300,10 +303,12 @@ export class JsTaskRunner extends TaskRunner {
 			? settings.chunk.startIndex + settings.chunk.count
 			: inputItems.length;
 
+		const context = this.buildContext(taskId, workflow, data.node);
+
 		for (let index = chunkStartIdx; index < chunkEndIdx; index++) {
-			const item = inputItems[index];
 			const dataProxy = this.createDataProxy(data, workflow, index);
-			const context = this.buildContext(taskId, workflow, data.node, dataProxy, { item });
+
+			Object.assign(context, dataProxy, { item: inputItems[index] });
 
 			try {
 				let result = await new Promise<INodeExecutionData | undefined>((resolve, reject) => {
@@ -512,7 +517,7 @@ export class JsTaskRunner extends TaskRunner {
 		taskId: string,
 		workflow: Workflow,
 		node: INode,
-		dataProxy: IWorkflowDataProxyData,
+		dataProxy?: IWorkflowDataProxyData,
 		additionalProperties: Record<string, unknown> = {},
 	): Context {
 		return createContext({

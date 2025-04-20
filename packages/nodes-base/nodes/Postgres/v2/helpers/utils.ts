@@ -414,7 +414,10 @@ export function convertValuesToJsonWithPgp(
 	values: IDataObject,
 ) {
 	schema
-		.filter(({ data_type }: { data_type: string }) => data_type === 'json')
+		.filter(
+			({ data_type, column_name }) =>
+				data_type === 'json' && values[column_name] !== null && values[column_name] !== undefined,
+		)
 		.forEach(({ column_name }) => {
 			values[column_name] = pgp.as.json(values[column_name], true);
 		});

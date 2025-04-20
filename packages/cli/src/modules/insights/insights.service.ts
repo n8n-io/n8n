@@ -67,7 +67,7 @@ export class InsightsService {
 
 	private bufferedInsights: Set<BufferedInsight> = new Set();
 
-	private flushInsightsRawBufferTimer: NodeJS.Timer | undefined;
+	private flushInsightsRawBufferTimer: NodeJS.Timeout | undefined;
 
 	private isAsynchronouslySavingInsights = true;
 
@@ -80,14 +80,21 @@ export class InsightsService {
 		private readonly logger: Logger,
 	) {
 		this.logger = this.logger.scoped('insights');
-		this.initializeCompaction();
-		this.scheduleFlushing();
 	}
 
-	initializeCompaction() {
-		if (this.compactInsightsTimer !== undefined) {
-			clearInterval(this.compactInsightsTimer);
-		}
+	startBackgroundProcess() {
+		this.startCompactionScheduler();
+		this.startFlushingScheduler();
+	}
+
+	stopBackgroundProcess() {
+		this.stopCompactionScheduler();
+		this.stopFlushingScheduler();
+	}
+
+	// Initialize regular compaction of insights data
+	private startCompactionScheduler() {
+		this.stopCompactionScheduler();
 		const intervalMilliseconds = config.compactionIntervalMinutes * 60 * 1000;
 		this.compactInsightsTimer = setInterval(
 			async () => await this.compactInsights(),
@@ -95,33 +102,34 @@ export class InsightsService {
 		);
 	}
 
-	scheduleFlushing() {
+	// Stop regular compaction of insights data
+	private stopCompactionScheduler() {
+		if (this.compactInsightsTimer !== undefined) {
+			clearInterval(this.compactInsightsTimer);
+			this.compactInsightsTimer = undefined;
+		}
+	}
+
+	private startFlushingScheduler() {
 		this.isAsynchronouslySavingInsights = true;
-		this.disposeFlushing();
+		this.stopFlushingScheduler();
 		this.flushInsightsRawBufferTimer = setTimeout(
 			async () => await this.flushEvents(),
 			config.flushIntervalSeconds * 1000,
 		);
 	}
 
-	disposeFlushing() {
+	private stopFlushingScheduler() {
 		if (this.flushInsightsRawBufferTimer !== undefined) {
-			clearInterval(this.flushInsightsRawBufferTimer);
+			clearTimeout(this.flushInsightsRawBufferTimer);
 			this.flushInsightsRawBufferTimer = undefined;
 		}
 	}
 
 	@OnShutdown()
 	async shutdown() {
-		if (this.compactInsightsTimer !== undefined) {
-			clearInterval(this.compactInsightsTimer);
-			this.compactInsightsTimer = undefined;
-		}
-
-		if (this.flushInsightsRawBufferTimer !== undefined) {
-			clearInterval(this.flushInsightsRawBufferTimer);
-			this.flushInsightsRawBufferTimer = undefined;
-		}
+		this.stopCompactionScheduler();
+		this.stopFlushingScheduler();
 
 		// Prevent new insights from being added to the buffer (and never flushed)
 		// when remaining workflows are handled during shutdown
@@ -251,11 +259,13 @@ export class InsightsService {
 	async flushEvents() {
 		// Prevent flushing if there are no events to flush
 		if (this.bufferedInsights.size === 0) {
+			// reschedule the timer to flush again
+			this.startFlushingScheduler();
 			return;
 		}
 
 		// Stop timer to prevent concurrent flush from timer
-		this.disposeFlushing();
+		this.stopFlushingScheduler();
 
 		// Copy the buffer to a new set to avoid concurrent modification
 		// while we are flushing the events
@@ -272,7 +282,7 @@ export class InsightsService {
 					this.bufferedInsights.add(event);
 				}
 			} finally {
-				this.scheduleFlushing();
+				this.startFlushingScheduler();
 				this.flushesInProgress.delete(flushPromise!);
 			}
 		})();
@@ -406,7 +416,7 @@ export class InsightsService {
 		const result: InsightsSummary = {
 			averageRunTime: {
 				value: currentAvgRuntime,
-				unit: 'time',
+				unit: 'millisecond',
 				deviation: getDeviation(currentAvgRuntime, previousAvgRuntime),
 			},
 			failed: {
@@ -421,7 +431,7 @@ export class InsightsService {
 			},
 			timeSaved: {
 				value: currentTimeSaved,
-				unit: 'time',
+				unit: 'minute',
 				deviation: getDeviation(currentTimeSaved, previousTimeSaved),
 			},
 			total: {

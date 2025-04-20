@@ -1,8 +1,9 @@
 import { mock } from 'jest-mock-extended';
-import type { IConnections, INode, INodeType, INodeTypes, IPinData } from 'n8n-workflow';
+import type { IConnections, INode, INodeType, INodeTypes, IPinData, IRunData } from 'n8n-workflow';
 import { Workflow } from 'n8n-workflow';
 
-import { toIConnections } from './helpers';
+import { createNodeData, toIConnections, toITaskData } from './helpers';
+import { DirectedGraph } from '../directed-graph';
 import { findTriggerForPartialExecution } from '../find-trigger-for-partial-execution';
 
 describe('findTriggerForPartialExecution', () => {
@@ -188,7 +189,7 @@ describe('findTriggerForPartialExecution', () => {
 				'$description',
 				({ nodes, connections, destinationNodeName, expectedTrigger, pinData }) => {
 					const workflow = createMockWorkflow(nodes, toIConnections(connections), pinData);
-					expect(findTriggerForPartialExecution(workflow, destinationNodeName)).toBe(
+					expect(findTriggerForPartialExecution(workflow, destinationNodeName, {})).toBe(
 						expectedTrigger,
 					);
 				},
@@ -199,19 +200,39 @@ describe('findTriggerForPartialExecution', () => {
 	describe('Error and Edge Case Handling', () => {
 		it('should handle non-existent destination node gracefully', () => {
 			const workflow = createMockWorkflow([], {});
-			expect(findTriggerForPartialExecution(workflow, 'NonExistentNode')).toBeUndefined();
+			expect(findTriggerForPartialExecution(workflow, 'NonExistentNode', {})).toBeUndefined();
 		});
 
 		it('should handle empty workflow', () => {
 			const workflow = createMockWorkflow([], {});
-			expect(findTriggerForPartialExecution(workflow, '')).toBeUndefined();
+			expect(findTriggerForPartialExecution(workflow, '', {})).toBeUndefined();
 		});
 
 		it('should handle workflow with no connections', () => {
 			const workflow = createMockWorkflow([manualTriggerNode], {});
-			expect(findTriggerForPartialExecution(workflow, manualTriggerNode.name)).toBe(
+			expect(findTriggerForPartialExecution(workflow, manualTriggerNode.name, {})).toBe(
 				manualTriggerNode,
 			);
+		});
+
+		it('should prefer triggers that have run data', () => {
+			// ARRANGE
+			const trigger1 = createNodeData({ name: 'trigger1', type: 'n8n-nodes-base.manualTrigger' });
+			const trigger2 = createNodeData({ name: 'trigger2', type: 'n8n-nodes-base.manualTrigger' });
+			const node = createNodeData({ name: 'node' });
+			const workflow = new DirectedGraph()
+				.addNodes(trigger1, trigger2, node)
+				.addConnections({ from: trigger1, to: node }, { from: trigger2, to: node })
+				.toWorkflow({ name: '', active: false, nodeTypes });
+			const runData: IRunData = {
+				[trigger1.name]: [toITaskData([{ data: { nodeName: 'trigger1' } }])],
+			};
+
+			// ACT
+			const chosenTrigger = findTriggerForPartialExecution(workflow, node.name, runData);
+
+			// ASSERT
+			expect(chosenTrigger).toBe(trigger1);
 		});
 	});
 });
