@@ -1,4 +1,3 @@
-/* eslint-disable import/order */
 import type { ProjectRole } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
