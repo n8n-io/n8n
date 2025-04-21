@@ -9,6 +9,12 @@ import type { User } from '@/databases/entities/user';
 import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { RoleService } from '@/services/role.service';
+import { ProjectService } from '@/services/project.service.ee';
+import { ProjectRepository } from '@/databases/repositories/project.repository';
+
+export type ShareWorkflowOptions =
+	| { scopes: Scope[]; projectId?: string }
+	| { projectRoles: ProjectRole[]; workflowRoles: WorkflowSharingRole[]; projectId?: string };
 
 @Service()
 export class WorkflowSharingService {
@@ -16,6 +22,7 @@ export class WorkflowSharingService {
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly roleService: RoleService,
 		private readonly projectRelationRepository: ProjectRelationRepository,
+		private readonly projectRepository: ProjectRepository,
 	) {}
 
 	/**
@@ -26,18 +33,16 @@ export class WorkflowSharingService {
 	 *
 	 * Returns all IDs if user has the 'workflow:read' global scope.
 	 */
-	async getSharedWorkflowIds(
-		user: User,
-		options:
-			| { scopes: Scope[]; projectId?: string }
-			| { projectRoles: ProjectRole[]; workflowRoles: WorkflowSharingRole[]; projectId?: string },
-	): Promise<string[]> {
+
+	async getSharedWorkflowIds(user: User, options: ShareWorkflowOptions): Promise<string[]> {
 		const { projectId } = options;
 
 		if (user.hasGlobalScope('workflow:read')) {
 			const sharedWorkflows = await this.sharedWorkflowRepository.find({
 				select: ['workflowId'],
-				...(projectId && { where: { projectId } }),
+				where: {
+					...(projectId && { projectId, role: 'workflow:owner' }),
+				},
 			});
 			return sharedWorkflows.map(({ workflowId }) => workflowId);
 		}
@@ -53,7 +58,7 @@ export class WorkflowSharingService {
 
 		const sharedWorkflows = await this.sharedWorkflowRepository.find({
 			where: {
-				role: In(workflowRoles),
+				role: projectId ? 'workflow:owner' : In(workflowRoles),
 				project: {
 					projectRelations: {
 						userId: user.id,

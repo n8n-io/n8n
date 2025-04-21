@@ -37,6 +37,7 @@ import { TagService } from '@/services/tag.service';
 import * as WorkflowHelpers from '@/workflow-helpers';
 
 import { WorkflowHistoryService } from './workflow-history.ee/workflow-history.service.ee';
+import type { ShareWorkflowOptions } from './workflow-sharing.service';
 import { WorkflowSharingService } from './workflow-sharing.service';
 
 @Service()
@@ -72,9 +73,18 @@ export class WorkflowService {
 		let workflows;
 		let workflowsAndFolders: WorkflowFolderUnionFull[] = [];
 
-		const sharedWorkflowIds = await this.workflowSharingService.getSharedWorkflowIds(user, {
+		const sharedWorkflowsOptions: ShareWorkflowOptions = {
 			scopes: ['workflow:read'],
-		});
+		};
+
+		if (typeof options?.filter?.projectId === 'string') {
+			sharedWorkflowsOptions.projectId = options.filter.projectId;
+		}
+
+		const sharedWorkflowIds = await this.workflowSharingService.getSharedWorkflowIds(
+			user,
+			sharedWorkflowsOptions,
+		);
 
 		if (includeFolders) {
 			[workflowsAndFolders, count] = await this.workflowRepository.getWorkflowsAndFoldersWithCount(
