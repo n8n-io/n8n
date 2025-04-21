@@ -1,4 +1,10 @@
+import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import type { AIMessageChunk } from '@langchain/core/messages';
 import { SystemMessage } from '@langchain/core/messages';
+import { ChatPromptTemplate, HumanMessagePromptTemplate } from '@langchain/core/prompts';
+import { DynamicStructuredTool } from '@langchain/core/tools';
+import { OperationalError } from 'n8n-workflow';
+import { z } from 'zod';
 
 export const nodeSelectorPrompt = new SystemMessage(
 	`You are an expert in n8n workflows who selects the optimal n8n nodes to implement workflow steps.
@@ -23,26 +29,83 @@ For each workflow step, recommend the most appropriate n8n nodes from the allowe
 3. Efficiency - Prefer nodes that accomplish the task with minimal configuration
 
 ## Output Requirements
-For each workflow step, provide:
-1. 1-3 recommended nodes in order of preference
+For the planned workflow steps, provider:
+1. List of all possibly useful nodes in order of preference
 2. Concise reasoning for why each node is suitable
 3. Use EXACT, FULL node names from <node_name> tags
 4. Pay attention to case sensitivity, e.g. "n8n-nodes-base.msql" is NOT "n8n-nodes-base.mySql"!
 
-## Output Format
-Return ONLY a structured JSON response:
-\`\`\`json
-{
-  "steps": [
-    {
-      "step": "Step description from input",
-      "recommended_nodes": ["ExactFullNodeName1", "ExactFullNodeName2"],
-      "reasoning": "Brief explanation of why these nodes are appropriate"
-    },
-    ...
-  ]
-}
-\`\`\`
-
 Remember: ONLY use nodes from the <allowed_n8n_nodes> list and ALWAYS use their FULL names exactly as provided.`,
 );
+
+const nodeSelectorTool = new DynamicStructuredTool({
+	name: 'select_n8n_nodes',
+	description:
+		'Match each workflow step with the most appropriate n8n nodes from the allowed list, ensuring they can implement the required functionality.',
+	schema: z.object({
+		recommended_nodes: z
+			.array(
+				z.object({
+					score: z.number().describe('Matching score of the node for all the workflows steps'),
+					node: z
+						.string()
+						.describe(
+							'The full node type identifier (e.g., "n8n-nodes-base.if") from <allowed_n8n_nodes> list',
+						),
+					reasoning: z
+						.string()
+						.describe(
+							'Very short explanation of why this node might be used to implement the workflow step',
+						),
+				}),
+			)
+			.min(1)
+			.max(20)
+			.describe(
+				'Recommended n8n nodes for implementing any of the workflow steps, in order of descending preference. ONLY use nodes from the <allowed_n8n_nodes> list with EXACT full names from <node_name> tags.',
+			),
+	}),
+	func: async (input: {
+		recommended_nodes: Array<{ score: number; node: string; reasoning: string }>;
+	}) => {
+		return { recommended_nodes: input.recommended_nodes };
+	},
+});
+
+const humanTemplate = `
+<user_request>
+	{prompt}
+</user_request>
+<steps>
+	{steps}
+</steps>
+<allowed_n8n_nodes>
+	{allowedNodes}
+</allowed_n8n_nodes>
+`;
+
+const chatPrompt = ChatPromptTemplate.fromMessages([
+	nodeSelectorPrompt,
+	HumanMessagePromptTemplate.fromTemplate(humanTemplate),
+]);
+
+export const nodesSelectionChain = (llm: BaseChatModel) => {
+	if (!llm.bindTools) {
+		throw new OperationalError("LLM doesn't support binding tools");
+	}
+
+	return chatPrompt
+		.pipe(
+			llm.bindTools([nodeSelectorTool], {
+				tool_choice: nodeSelectorTool.name,
+			}),
+		)
+		.pipe((x: AIMessageChunk) => {
+			const toolCall = x.tool_calls?.[0];
+			return toolCall?.args.recommended_nodes as Array<{
+				score: number;
+				node: string;
+				reasoning: string;
+			}>;
+		});
+};

@@ -1,5 +1,11 @@
-import { SystemMessage, HumanMessage } from '@langchain/core/messages';
+import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import type { AIMessageChunk } from '@langchain/core/messages';
+import { SystemMessage } from '@langchain/core/messages';
 import { ChatPromptTemplate, HumanMessagePromptTemplate } from '@langchain/core/prompts';
+import { DynamicStructuredTool } from '@langchain/core/tools';
+import type { INode } from 'n8n-workflow';
+import { OperationalError } from 'n8n-workflow';
+import { z } from 'zod';
 
 // Using SystemMessage directly instead of escapeSingleCurlyBrackets to avoid
 // issues with double curly braces in n8n expressions
@@ -14,13 +20,12 @@ You will receive:
 2. A list of selected n8n nodes with their descriptions and parameters
 
 ## Node Configuration Guidelines
-For each node:
 1. CREATE PROPER STRUCTURE: Include all required fields (parameters, name, type)
 2. USE DESCRIPTIVE NAMES: Each node name should clearly describe its function
 3. POPULATE KEY PARAMETERS: Set values for essential parameters based on node type
 4. MAINTAIN LOGICAL FLOW: Node parameters should enable proper data flow
-5. ADD DOCUMENTATION: Include sticky notes for complex parts of the workflow
-6. FOLLOW NODE PATTERNS: Use the correct structure for each node type
+5. FOLLOW NODE PATTERNS: Use the correct structure for each node type
+6. ADD DOCUMENTATION: Include at least one sticky note, explaining the workflow. Include additional sticky notes for complex parts of the workflow.
 
 ## CRITICAL: Correctly Formatting n8n Expressions
 When using expressions to reference data from other nodes:
@@ -61,7 +66,6 @@ The IF node allows conditional branching based on comparing values. It has two o
    - When using expressions for the right value, include the proper format: "={{ expression }}"
 
 ### IF Node Examples
-
 #### Example 1: Check if a number is greater than 5
 \`\`\`json
 {
@@ -407,3 +411,55 @@ export const nodesComposerPrompt = ChatPromptTemplate.fromMessages([
 	systemPrompt,
 	HumanMessagePromptTemplate.fromTemplate(humanTemplate),
 ]);
+
+const generateNodeConfigTool = new DynamicStructuredTool({
+	name: 'generate_n8n_nodes',
+	description:
+		'Generate fully configured n8n nodes with appropriate parameters based on the workflow requirements and selected node types.',
+	schema: z.object({
+		nodes: z
+			.array(
+				z
+					.object({
+						parameters: z
+							.record(z.string(), z.any())
+							.describe(
+								"The node's configuration parameters. Must include all required parameters for the node type to function properly. For expressions referencing other nodes, use the format: \"={{ $('Node Name').item.json.field }}\"",
+							)
+							.refine((data) => Object.keys(data).length > 0, {
+								message: 'Parameters cannot be empty',
+							}),
+						type: z
+							.string()
+							.describe('The full node type identifier (e.g., "n8n-nodes-base.httpRequest")'),
+						name: z
+							.string()
+							.describe(
+								'A descriptive name for the node that clearly indicates its purpose in the workflow',
+							),
+					})
+					.describe('A complete n8n node configuration'),
+			)
+			.describe('Array of all nodes for the workflow with their complete configurations'),
+	}),
+	func: async (input) => {
+		return { nodes: input.nodes };
+	},
+});
+
+export const nodesComposerChain = (llm: BaseChatModel) => {
+	if (!llm.bindTools) {
+		throw new OperationalError("LLM doesn't support binding tools");
+	}
+
+	return nodesComposerPrompt
+		.pipe(
+			llm.bindTools([generateNodeConfigTool], {
+				tool_choice: generateNodeConfigTool.name,
+			}),
+		)
+		.pipe((x: AIMessageChunk) => {
+			const toolCall = x.tool_calls?.[0];
+			return toolCall?.args.nodes as INode[];
+		});
+};

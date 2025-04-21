@@ -1,4 +1,10 @@
+import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import type { AIMessageChunk } from '@langchain/core/messages';
 import { SystemMessage } from '@langchain/core/messages';
+import { ChatPromptTemplate, HumanMessagePromptTemplate } from '@langchain/core/prompts';
+import { DynamicStructuredTool } from '@langchain/core/tools';
+import { OperationalError } from 'n8n-workflow';
+import { z } from 'zod';
 
 export const plannerPrompt = new SystemMessage(
 	`You are a Workflow Planner for n8n, a platform that helps users automate processes across different services and APIs.
@@ -14,6 +20,7 @@ Convert user requests into clear, sequential workflow steps that can be implemen
 5. Order steps sequentially from trigger to final action
 6. Be specific about data transformations needed
 7. Include error handling steps when appropriate
+8. Only recommend raw HTTP requests if you think there isn't a suitable n8n node
 
 ## Output Format
 Return ONLY a JSON object with this structure:
@@ -35,5 +42,51 @@ Return ONLY a JSON object with this structure:
 - "Send HTTP request to external API with extracted data"
 - "Post success message to Slack channel"
 
-Do not include HTML tags, markdown formatting, or explanations outside the JSON.`,
+IMPORTANT: Do not include HTML tags, markdown formatting, or explanations outside the JSON.`,
 );
+
+const generatePlanTool = new DynamicStructuredTool({
+	name: 'generate_plan',
+	description:
+		'Convert a user workflow request into a logical sequence of clear, achievable steps that can be implemented with n8n nodes.',
+	schema: z.object({
+		steps: z
+			.array(
+				z
+					.string()
+					.describe(
+						'A clear, action-oriented description of a single workflow step. Do not include "Step N" or similar, just the action',
+					),
+			)
+			.min(1)
+			.describe(
+				'An ordered list of workflow steps that, when implemented, will fulfill the user request. Each step should be concise, action-oriented, and implementable with n8n nodes.',
+			),
+	}),
+	func: async (input) => {
+		return { steps: input.steps };
+	},
+});
+
+const humanTemplate = '{prompt}';
+const chatPrompt = ChatPromptTemplate.fromMessages([
+	plannerPrompt,
+	HumanMessagePromptTemplate.fromTemplate(humanTemplate),
+]);
+
+export const plannerChain = (llm: BaseChatModel) => {
+	if (!llm.bindTools) {
+		throw new OperationalError("LLM doesn't support binding tools");
+	}
+
+	return chatPrompt
+		.pipe(
+			llm.bindTools([generatePlanTool], {
+				tool_choice: generatePlanTool.name,
+			}),
+		)
+		.pipe((x: AIMessageChunk) => {
+			const toolCall = x.tool_calls?.[0];
+			return toolCall?.args.steps as string[];
+		});
+};

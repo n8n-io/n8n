@@ -1,4 +1,10 @@
+import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import type { AIMessageChunk } from '@langchain/core/messages';
 import { SystemMessage } from '@langchain/core/messages';
+import { ChatPromptTemplate, HumanMessagePromptTemplate } from '@langchain/core/prompts';
+import { DynamicStructuredTool } from '@langchain/core/tools';
+import { OperationalError } from 'n8n-workflow';
+import { z } from 'zod';
 
 export const connectionComposerPrompt = new SystemMessage(
 	`You are an expert in creating n8n workflow connections. Your job is to create a valid n8n workflow by connecting nodes in a logical sequence.
@@ -80,3 +86,79 @@ Return ONLY a valid JSON object with the "connections" property following the st
 }
 \`\`\``,
 );
+
+const connectionComposerTool = new DynamicStructuredTool({
+	name: 'compose_connections',
+	description:
+		"Create valid connections between n8n nodes to form a coherent, executable workflow that implements the user's request.",
+	schema: z.object({
+		connections: z
+			.record(
+				z
+					.string()
+					.describe(
+						'The source node\'s display name exactly as specified in the node\'s "name" field',
+					),
+				z
+					.object({
+						main: z.array(
+							z.array(
+								z.object({
+									node: z
+										.string()
+										.describe(
+											'The target node\'s display name exactly as specified in the node\'s "name" field',
+										),
+									type: z
+										.literal('main')
+										.describe(
+											'The connection type, always use "main" for standard n8n connections',
+										),
+									index: z
+										.number()
+										.describe(
+											'Output index from the source node, typically 0 for single-output nodes, 0=true/1=false for IF nodes',
+										),
+								}),
+							),
+						),
+					})
+					.describe('The connection configuration for a single source node'),
+			)
+			.describe(
+				'A mapping of all connections in the workflow, where each key is a source node name',
+			),
+	}),
+	func: async (input) => {
+		return { connections: input.connections };
+	},
+});
+
+const humanTemplate = '{workflowJSON}';
+const chatPrompt = ChatPromptTemplate.fromMessages([
+	connectionComposerPrompt,
+	HumanMessagePromptTemplate.fromTemplate(humanTemplate),
+]);
+
+export const connectionComposerChain = (llm: BaseChatModel) => {
+	if (!llm.bindTools) {
+		throw new OperationalError("LLM doesn't support binding tools");
+	}
+
+	return chatPrompt
+		.pipe(
+			llm.bindTools([connectionComposerTool], {
+				tool_choice: connectionComposerTool.name,
+			}),
+		)
+		.pipe((x: AIMessageChunk) => {
+			const toolCall = x.tool_calls?.[0];
+			return toolCall?.args.connections as Array<
+				Array<{
+					node: string;
+					type: string;
+					index: number;
+				}>
+			>;
+		});
+};
