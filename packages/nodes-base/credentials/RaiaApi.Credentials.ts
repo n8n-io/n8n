@@ -12,7 +12,7 @@ export class RaiaApi implements ICredentialType {
 
 	documentationUrl = 'https://api.raia2.com/api/external/docs';
 
-	icon = 'file:icons/raia.svg' as const;
+	icon = 'file:raia.svg' as const;
 
 	properties: INodeProperties[] = [
 		{
@@ -37,15 +37,12 @@ export class RaiaApi implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: 'https://api.raia2.com/api/external',
-			url: '/',
-			method: 'GET',
+			method: 'POST',
+			url: 'https://api.raia2.com/external/prompts',
 			body: {
-				url: 'https://api.raia2.com',
-				scrapeOptions: {
-					formats: ['markdown'],
-				},
+				prompt: 'Test prompt to validate API key',
 			},
+			json: true,
 		},
 	};
 }
