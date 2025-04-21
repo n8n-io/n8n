@@ -924,14 +924,14 @@ describe('GET /workflows', () => {
 			expect(response1.body.data).toHaveLength(1);
 			expect(response1.body.data[0].id).toBe(workflow.id);
 
-			const response2 = await authOwnerAgent
+			const response2 = await authMemberAgent
 				.get('/workflows')
 				.query('filter={ "projectId": "Non-Existing Project ID" }')
 				.expect(200);
 
 			expect(response2.body.data).toHaveLength(0);
 
-			const response3 = await authOwnerAgent.get('/workflows').query('filter={}').expect(200);
+			const response3 = await authMemberAgent.get('/workflows').query('filter={}').expect(200);
 			expect(response3.body.data).toHaveLength(2);
 		});
 
