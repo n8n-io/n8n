@@ -1,3 +1,4 @@
+/* eslint-disable import/order */
 import type { ProjectRole } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
@@ -9,8 +10,6 @@ import type { User } from '@/databases/entities/user';
 import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { RoleService } from '@/services/role.service';
-import { ProjectService } from '@/services/project.service.ee';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
 
 export type ShareWorkflowOptions =
 	| { scopes: Scope[]; projectId?: string }
@@ -22,7 +21,6 @@ export class WorkflowSharingService {
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly roleService: RoleService,
 		private readonly projectRelationRepository: ProjectRelationRepository,
-		private readonly projectRepository: ProjectRepository,
 	) {}
 
 	/**
