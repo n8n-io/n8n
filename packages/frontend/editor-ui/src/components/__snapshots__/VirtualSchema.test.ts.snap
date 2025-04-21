@@ -9,6 +9,7 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
     <!--v-if-->
     <div
       class="full-height"
+      data-test-id="draggable"
       data-v-d00cba9a=""
     >
       
@@ -919,6 +920,7 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
     <!--v-if-->
     <div
       class="full-height"
+      data-test-id="draggable"
       data-v-d00cba9a=""
     >
       
@@ -1708,6 +1710,7 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
     <!--v-if-->
     <div
       class="full-height"
+      data-test-id="draggable"
       data-v-d00cba9a=""
     >
       
@@ -2142,6 +2145,7 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
     <!--v-if-->
     <div
       class="full-height"
+      data-test-id="draggable"
       data-v-d00cba9a=""
     >
       
@@ -2816,9 +2820,7 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
               >
                 <!--v-if-->
                 <span>
-                  
                   Execute previous nodes
-                  
                 </span>
               </button>
               <!--teleport start-->
@@ -2907,6 +2909,7 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
     <!--v-if-->
     <div
       class="full-height"
+      data-test-id="draggable"
       data-v-d00cba9a=""
     >
       

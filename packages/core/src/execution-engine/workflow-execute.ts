@@ -394,7 +394,7 @@ export class WorkflowExecute {
 		}
 
 		// 1. Find the Trigger
-		const trigger = findTriggerForPartialExecution(workflow, destinationNodeName);
+		const trigger = findTriggerForPartialExecution(workflow, destinationNodeName, runData);
 		if (trigger === undefined) {
 			throw new UserError('Connect a trigger to run this node');
 		}

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from '@/composables/useI18n';
+import { useTelemetry } from '@/composables/useTelemetry';
 import { VIEWS } from '@/constants';
 import {
 	INSIGHT_IMPACT_TYPES,
@@ -19,6 +20,7 @@ const props = defineProps<{
 const i18n = useI18n();
 const route = useRoute();
 const $style = useCssModule();
+const telemetry = useTelemetry();
 
 const lastNDays = ref(7);
 
@@ -29,6 +31,11 @@ const summaryTitles = computed<Record<keyof InsightsSummary, string>>(() => ({
 	timeSaved: i18n.baseText('insights.banner.title.timeSaved'),
 	averageRunTime: i18n.baseText('insights.banner.title.averageRunTime'),
 }));
+
+const summaryHasNoData = computed(() => {
+	const summaryValues = Object.values(props.summary);
+	return summaryValues.length > 0 && summaryValues.every((summary) => !summary.value);
+});
 
 const summaryWithRouteLocations = computed(() =>
 	props.summary.map((s) => ({
@@ -50,65 +57,83 @@ const getImpactStyle = (id: keyof InsightsSummary, value: number) => {
 	}
 	return $style.neutral;
 };
+
+const trackTabClick = (insightType: keyof InsightsSummary) => {
+	telemetry.track(`User clicked ${summaryTitles.value[insightType]}`, {
+		referrer: route.name === VIEWS.INSIGHTS ? 'Dashboard' : 'Overview',
+	});
+};
 </script>
 
 <template>
 	<div :class="$style.insights">
-		<N8nLoading v-if="loading" :class="$style.loading" :cols="5" />
-		<ul v-else data-test-id="insights-summary-tabs">
-			<li
-				v-for="{ id, value, deviation, deviationUnit, unit, to } in summaryWithRouteLocations"
-				:key="id"
-				:data-test-id="`insights-summary-tab-${id}`"
-			>
-				<router-link :to="to" :exact-active-class="$style.activeTab">
-					<strong>
-						<N8nTooltip placement="bottom" :disabled="id !== 'timeSaved'">
-							<template #content>
-								{{ i18n.baseText('insights.banner.title.timeSaved.tooltip') }}
-							</template>
-							{{ summaryTitles[id] }}
-						</N8nTooltip>
-					</strong>
-					<small :class="$style.days">{{
-						i18n.baseText('insights.lastNDays', { interpolate: { count: lastNDays } })
-					}}</small>
-					<span v-if="value === 0 && id === 'timeSaved'" :class="$style.empty">
-						<em>--</em>
-						<small>
+		<ul data-test-id="insights-summary-tabs">
+			<N8nLoading v-if="loading" :class="$style.loading" :cols="5" />
+			<template v-else>
+				<li
+					v-for="{ id, value, deviation, deviationUnit, unit, to } in summaryWithRouteLocations"
+					:key="id"
+					:data-test-id="`insights-summary-tab-${id}`"
+				>
+					<router-link :to="to" :exact-active-class="$style.activeTab" @click="trackTabClick(id)">
+						<strong>
+							<N8nTooltip placement="bottom" :disabled="id !== 'timeSaved'">
+								<template #content>
+									{{ i18n.baseText('insights.banner.title.timeSaved.tooltip') }}
+								</template>
+								{{ summaryTitles[id] }}
+							</N8nTooltip>
+						</strong>
+						<small :class="$style.days">{{
+							i18n.baseText('insights.lastNDays', { interpolate: { count: lastNDays } })
+						}}</small>
+						<span v-if="summaryHasNoData" :class="$style.noData">
 							<N8nTooltip placement="bottom">
 								<template #content>
-									<i18n-t keypath="insights.banner.timeSaved.tooltip">
-										<template #link>
-											<a href="#">{{
-												i18n.baseText('insights.banner.timeSaved.tooltip.link.text')
-											}}</a>
-										</template>
-									</i18n-t>
+									{{ i18n.baseText('insights.banner.noData.tooltip') }}
 								</template>
-								<N8nIcon :class="$style.icon" icon="info-circle" />
+								<em>{{ i18n.baseText('insights.banner.noData') }}</em>
 							</N8nTooltip>
-						</small>
-					</span>
-					<span v-else>
-						<em
-							>{{ smartDecimal(value).toLocaleString('en-US') }} <i>{{ unit }}</i></em
-						>
-						<small v-if="deviation !== null" :class="getImpactStyle(id, deviation)">
-							<N8nIcon
-								:class="[$style.icon, getImpactStyle(id, deviation)]"
-								:icon="deviation === 0 ? 'caret-right' : deviation > 0 ? 'caret-up' : 'caret-down'"
-							/>
-							<N8nTooltip placement="bottom" :disabled="id !== 'failureRate'">
-								<template #content>
-									{{ i18n.baseText('insights.banner.failureRate.deviation.tooltip') }}
-								</template>
-								{{ smartDecimal(Math.abs(deviation)).toLocaleString('en-US') }}{{ deviationUnit }}
-							</N8nTooltip>
-						</small>
-					</span>
-				</router-link>
-			</li>
+						</span>
+						<span v-else-if="value === 0 && id === 'timeSaved'" :class="$style.empty">
+							<em>--</em>
+							<small>
+								<N8nTooltip placement="bottom">
+									<template #content>
+										<i18n-t keypath="insights.banner.timeSaved.tooltip">
+											<template #link>
+												<a href="#">{{
+													i18n.baseText('insights.banner.timeSaved.tooltip.link.text')
+												}}</a>
+											</template>
+										</i18n-t>
+									</template>
+									<N8nIcon :class="$style.icon" icon="info-circle" />
+								</N8nTooltip>
+							</small>
+						</span>
+						<span v-else>
+							<em
+								>{{ smartDecimal(value).toLocaleString('en-US') }} <i>{{ unit }}</i></em
+							>
+							<small v-if="deviation !== null" :class="getImpactStyle(id, deviation)">
+								<N8nIcon
+									:class="[$style.icon, getImpactStyle(id, deviation)]"
+									:icon="
+										deviation === 0 ? 'caret-right' : deviation > 0 ? 'caret-up' : 'caret-down'
+									"
+								/>
+								<N8nTooltip placement="bottom" :disabled="id !== 'failureRate'">
+									<template #content>
+										{{ i18n.baseText('insights.banner.failureRate.deviation.tooltip') }}
+									</template>
+									{{ smartDecimal(Math.abs(deviation)).toLocaleString('en-US') }}{{ deviationUnit }}
+								</N8nTooltip>
+							</small>
+						</span>
+					</router-link>
+				</li>
+			</template>
 		</ul>
 	</div>
 </template>
@@ -214,7 +239,6 @@ const getImpactStyle = (id: keyof InsightsSummary, value: number) => {
 				gap: var(--spacing-5xs);
 
 				i {
-					color: var(--color-text-light);
 					font-size: 22px;
 					font-style: normal;
 				}
@@ -230,6 +254,13 @@ const getImpactStyle = (id: keyof InsightsSummary, value: number) => {
 				font-weight: var(--font-weight-bold);
 				white-space: nowrap;
 			}
+		}
+	}
+
+	.noData {
+		em {
+			color: var(--color-text-light);
+			font-size: var(--font-size-m);
 		}
 	}
 }
@@ -260,13 +291,13 @@ const getImpactStyle = (id: keyof InsightsSummary, value: number) => {
 
 .loading {
 	display: flex;
-	min-height: 91px;
 	align-self: stretch;
 	align-items: stretch;
 
 	> div {
 		margin: 0;
 		height: auto;
+		border-radius: inherit;
 	}
 }
 </style>

@@ -213,6 +213,25 @@ BQIDAQAB
 			expires_in: 86400,
 		},
 	},
+	youTubeOAuth2Api: {
+		grantType: 'authorizationCode',
+		authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
+		accessTokenUrl: 'https://oauth2.googleapis.com/token',
+		clientId: 'CLIENTID',
+		clientSecret: 'CLIENTSECRET',
+		scope:
+			'https://www.googleapis.com/auth/youtube https://www.googleapis.com/auth/youtubepartner https://www.googleapis.com/auth/youtube.force-ssl https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtubepartner-channel-audit',
+		authQueryParameters: 'access_type=offline&prompt=consent',
+		authentication: 'body',
+		oauthTokenData: {
+			access_token: 'ACCESSTOKEN',
+			refresh_token: 'REFRESHTOKEN',
+			scope:
+				'https://www.googleapis.com/auth/youtube https://www.googleapis.com/auth/youtubepartner https://www.googleapis.com/auth/youtube.force-ssl https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtubepartner-channel-audit',
+			token_type: 'bearer',
+			expires_in: 86400,
+		},
+	},
 	notionApi: {
 		apiKey: 'key123',
 	},
@@ -265,5 +284,18 @@ BQIDAQAB
 	},
 	discordWebhookApi: {
 		webhookUri: 'https://discord.com/webhook',
+	},
+	salesforceOAuth2Api: {
+		grantType: 'pkce',
+		environment: 'production',
+		authUrl: 'https://login.salesforce.com/services/oauth2/authorize',
+		accessTokenUrl: 'https://login.salesforce.com/services/oauth2/token',
+		scope: 'full refresh_token',
+		authQueryParameters: '',
+		authentication: 'header',
+		oauthTokenData: {
+			access_token: 'ACCESSTOKEN',
+			instance_url: 'https://salesforce.instance',
+		},
 	},
 } as const;
