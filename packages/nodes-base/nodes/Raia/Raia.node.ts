@@ -35,7 +35,7 @@ export class Raia implements INodeType {
 
         },
 				icon: 'file:raia.svg',
-        displayName: 'Raia',
+        displayName: 'raia',
         name: 'raia',
         group: ['trigger'],
         description: 'Raia Chat Agency'
