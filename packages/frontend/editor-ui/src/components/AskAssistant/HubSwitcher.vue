@@ -1,4 +1,7 @@
 <script lang="ts" setup>
+import { useI18n } from '@/composables/useI18n';
+import { computed } from 'vue';
+
 defineProps<{
 	isBuildMode: boolean;
 }>();
@@ -6,6 +9,13 @@ defineProps<{
 const emit = defineEmits<{
 	toggle: [value: boolean];
 }>();
+
+const i18n = useI18n();
+
+const options = computed(() => [
+	{ label: i18n.baseText('aiAssistant.assistant'), value: false },
+	{ label: i18n.baseText('aiAssistant.builder.name'), value: true },
+]);
 
 function toggle(value: boolean) {
 	emit('toggle', value);
@@ -16,10 +26,7 @@ function toggle(value: boolean) {
 	<n8n-radio-buttons
 		size="small"
 		:model-value="isBuildMode"
-		:options="[
-			{ label: 'Assistant', value: false },
-			{ label: 'Builder', value: true },
-		]"
+		:options="options"
 		@update:model-value="toggle"
 	/>
 </template>
