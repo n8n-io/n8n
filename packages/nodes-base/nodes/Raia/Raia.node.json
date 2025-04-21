@@ -1,0 +1,18 @@
+{
+	"node": "n8n-nodes-base.raia",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Development"],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://api.raia2.com/api/external/docs"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://api.raia2.com/api/external/docs"
+			}
+		]
+	}
+}
