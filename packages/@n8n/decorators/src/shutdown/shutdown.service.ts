@@ -3,7 +3,7 @@ import { type Class, ErrorReporter } from 'n8n-core';
 import { Logger } from 'n8n-core';
 import { assert, UnexpectedError, UserError } from 'n8n-workflow';
 
-import { LOWEST_SHUTDOWN_PRIORITY, HIGHEST_SHUTDOWN_PRIORITY } from '@/constants';
+import { HIGHEST_SHUTDOWN_PRIORITY, LOWEST_SHUTDOWN_PRIORITY } from './constants';
 
 type HandlerFn = () => Promise<void> | void;
 export type ServiceClass = Class<Record<string, HandlerFn>>;

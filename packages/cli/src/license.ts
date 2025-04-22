@@ -6,7 +6,7 @@ import { InstanceSettings, Logger } from 'n8n-core';
 
 import config from '@/config';
 import { SettingsRepository } from '@/databases/repositories/settings.repository';
-import { OnShutdown } from '@/decorators/on-shutdown';
+import { OnShutdown } from '@n8n/decorators';
 import { LicenseMetricsService } from '@/metrics/license-metrics.service';
 
 import {

@@ -12,7 +12,7 @@ import { ControllerRegistry, Get, Licensed, RestController } from '@/decorators'
 import type { License } from '@/license';
 import type { SuperAgentTest } from '@test-integration/types';
 
-import { Param } from '../args';
+import { Param } from '../decorators/args';
 
 describe('ControllerRegistry', () => {
 	const license = mock<License>();

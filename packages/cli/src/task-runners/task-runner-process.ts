@@ -5,7 +5,7 @@ import * as a from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import * as process from 'node:process';
 
-import { OnShutdown } from '@/decorators/on-shutdown';
+import { OnShutdown } from '@n8n/decorators';
 
 import { forwardToLogger } from './forward-to-logger';
 import { NodeProcessOomDetector } from './node-process-oom-detector';

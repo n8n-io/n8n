@@ -11,7 +11,7 @@ import { Server as WSServer } from 'ws';
 import { AuthService } from '@/auth/auth.service';
 import { inProduction, TRIMMED_TASK_DATA_CONNECTIONS } from '@/constants';
 import type { User } from '@/databases/entities/user';
-import { OnShutdown } from '@/decorators/on-shutdown';
+import { OnShutdown } from '@n8n/decorators';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { TypedEmitter } from '@/typed-emitter';

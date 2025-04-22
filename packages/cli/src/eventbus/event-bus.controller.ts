@@ -5,7 +5,7 @@ import type {
 } from 'n8n-workflow';
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 
-import { RestController, Get, Post, Delete, GlobalScope, Licensed } from '@/decorators';
+import { RestController, Get, Post, Delete, GlobalScope, Licensed } from '@n8n/decorators';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { AuthenticatedRequest } from '@/requests';
 

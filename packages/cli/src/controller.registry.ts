@@ -1,4 +1,6 @@
 import { GlobalConfig } from '@n8n/config';
+import { MetadataState } from '@n8n/decorators';
+import type { AccessScope, Controller, RateLimit } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { Router } from 'express';
 import type { Application, Request, Response, RequestHandler } from 'express';
@@ -15,57 +17,23 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 import type { AuthenticatedRequest } from '@/requests';
 import { send } from '@/response-helper'; // TODO: move `ResponseHelper.send` to this file
 
-import type {
-	AccessScope,
-	Controller,
-	ControllerMetadata,
-	HandlerName,
-	RateLimit,
-	RouteMetadata,
-} from './types';
-
-const registry = new Map<Controller, ControllerMetadata>();
-
-export const getControllerMetadata = (controllerClass: Controller) => {
-	let metadata = registry.get(controllerClass);
-	if (!metadata) {
-		metadata = {
-			basePath: '/',
-			middlewares: [],
-			routes: new Map(),
-		};
-		registry.set(controllerClass, metadata);
-	}
-	return metadata;
-};
-
-export const getRouteMetadata = (controllerClass: Controller, handlerName: HandlerName) => {
-	const metadata = getControllerMetadata(controllerClass);
-	let route = metadata.routes.get(handlerName);
-	if (!route) {
-		route = {} as RouteMetadata;
-		route.args = [];
-		metadata.routes.set(handlerName, route);
-	}
-	return route;
-};
-
 @Service()
 export class ControllerRegistry {
 	constructor(
 		private readonly license: License,
 		private readonly authService: AuthService,
 		private readonly globalConfig: GlobalConfig,
+		private readonly state: MetadataState,
 	) {}
 
 	activate(app: Application) {
-		for (const controllerClass of registry.keys()) {
+		for (const controllerClass of this.state.controllerClasses) {
 			this.activateController(app, controllerClass);
 		}
 	}
 
 	private activateController(app: Application, controllerClass: Controller) {
-		const metadata = registry.get(controllerClass)!;
+		const metadata = this.state.getControllerMetadata(controllerClass);
 
 		const router = Router({ mergeParams: true });
 		const prefix = `/${this.globalConfig.endpoints.rest}/${metadata.basePath}`
@@ -73,7 +41,7 @@ export class ControllerRegistry {
 			.replace(/\/$/, '');
 		app.use(prefix, router);
 
-		const controller = Container.get(controllerClass) as Controller;
+		const controller = Container.get(controllerClass);
 		const controllerMiddlewares = metadata.middlewares.map(
 			(handlerName) => controller[handlerName].bind(controller) as RequestHandler,
 		);

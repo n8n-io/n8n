@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 import { GlobalConfig } from '@n8n/config';
+import { ModuleRegistry, ShutdownService } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { Command, Errors } from '@oclif/core';
 import {
@@ -24,7 +25,6 @@ import {
 } from '@/constants';
 import * as CrashJournal from '@/crash-journal';
 import * as Db from '@/db';
-import { ModuleRegistry } from '@/decorators/module';
 import { getDataDeduplicationService } from '@/deduplication';
 import { DeprecationService } from '@/deprecation/deprecation.service';
 import { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.service.ee';
@@ -40,7 +40,6 @@ import { ModulesConfig } from '@/modules/modules.config';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
-import { ShutdownService } from '@/shutdown/shutdown.service';
 import { WorkflowHistoryManager } from '@/workflows/workflow-history.ee/workflow-history-manager.ee';
 
 export abstract class BaseCommand extends Command {

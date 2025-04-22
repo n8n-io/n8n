@@ -6,7 +6,7 @@ import { ensureError, jsonStringify } from 'n8n-workflow';
 import type { RequestOptions } from 'oauth-1.0a';
 import clientOAuth1 from 'oauth-1.0a';
 
-import { Get, RestController } from '@/decorators';
+import { Get, RestController } from '@n8n/decorators';
 import { OAuthRequest } from '@/requests';
 
 import { AbstractOAuthController, skipAuthOnOAuthCallback } from './abstract-oauth.controller';

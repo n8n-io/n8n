@@ -5,7 +5,7 @@ import type { PostBindingContext } from 'samlify/types/src/entity';
 import url from 'url';
 
 import { AuthService } from '@/auth/auth.service';
-import { Get, Post, RestController, GlobalScope, Body } from '@/decorators';
+import { Get, Post, RestController, GlobalScope, Body } from '@n8n/decorators';
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { EventService } from '@/events/event.service';
 import { AuthenticatedRequest, AuthlessRequest } from '@/requests';

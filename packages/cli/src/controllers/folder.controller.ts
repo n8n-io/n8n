@@ -7,7 +7,16 @@ import {
 import { Response } from 'express';
 import { UserError } from 'n8n-workflow';
 
-import { Post, RestController, ProjectScope, Body, Get, Patch, Delete, Query } from '@/decorators';
+import {
+	Post,
+	RestController,
+	ProjectScope,
+	Body,
+	Get,
+	Patch,
+	Delete,
+	Query,
+} from '@n8n/decorators';
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';

@@ -1,8 +1,8 @@
 import { Container } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
 
-import { DEFAULT_SHUTDOWN_PRIORITY } from '@/constants';
-import { type ServiceClass, ShutdownService } from '@/shutdown/shutdown.service';
+import { DEFAULT_SHUTDOWN_PRIORITY } from './shutdown/constants';
+import { type ServiceClass, ShutdownService } from './shutdown/shutdown.service';
 
 /**
  * Decorator that registers a method as a shutdown hook. The method will

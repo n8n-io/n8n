@@ -9,7 +9,7 @@ import pkceChallenge from 'pkce-challenge';
 import * as qs from 'querystring';
 
 import { GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE as GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE } from '@/constants';
-import { Get, RestController } from '@/decorators';
+import { Get, RestController } from '@n8n/decorators';
 import { OAuthRequest } from '@/requests';
 
 import { AbstractOAuthController, skipAuthOnOAuthCallback } from './abstract-oauth.controller';

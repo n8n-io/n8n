@@ -4,7 +4,7 @@ import get from 'lodash/get';
 import type { INodeTypeDescription, INodeTypeNameVersion } from 'n8n-workflow';
 
 import config from '@/config';
-import { Post, RestController } from '@/decorators';
+import { Post, RestController } from '@n8n/decorators';
 import { NodeTypes } from '@/node-types';
 
 @RestController('/node-types')

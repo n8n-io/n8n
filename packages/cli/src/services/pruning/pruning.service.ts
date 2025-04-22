@@ -7,7 +7,7 @@ import { strict } from 'node:assert';
 import { Time } from '@/constants';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { connectionState as dbConnectionState } from '@/db';
-import { OnShutdown } from '@/decorators/on-shutdown';
+import { OnShutdown } from '@n8n/decorators';
 
 import { OrchestrationService } from '../orchestration.service';
 

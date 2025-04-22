@@ -13,7 +13,7 @@ import {
 
 import { SharedWorkflow } from '@/databases/entities/shared-workflow';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
-import { OnShutdown } from '@/decorators/on-shutdown';
+import { OnShutdown } from '@n8n/decorators';
 import { InsightsMetadata } from '@/modules/insights/database/entities/insights-metadata';
 import { InsightsRaw } from '@/modules/insights/database/entities/insights-raw';
 

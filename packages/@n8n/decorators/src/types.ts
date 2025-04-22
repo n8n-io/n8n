@@ -1,8 +1,45 @@
 import type { Constructable } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 import type { RequestHandler } from 'express';
+import type EventEmitter from 'node:events';
 
-import type { BooleanLicenseFeature } from '@/interfaces';
+/**
+ * @TODO Temporary dummy type until `MultiMainSetup` is moved out of `cli`
+ */
+export type MultiMainSetup = EventEmitter;
+
+/**
+ * @TODO Temporary duplicated type until `LICENSE_FEATURES` is moved out of `cli`
+ */
+export type BooleanLicenseFeature =
+	| 'feat:sharing'
+	| 'feat:ldap'
+	| 'feat:saml'
+	| 'feat:logStreaming'
+	| 'feat:advancedExecutionFilters'
+	| 'feat:variables'
+	| 'feat:sourceControl'
+	| 'feat:apiDisabled'
+	| 'feat:externalSecrets'
+	| 'feat:showNonProdBanner'
+	| 'feat:workflowHistory'
+	| 'feat:debugInEditor'
+	| 'feat:binaryDataS3'
+	| 'feat:multipleMainInstances'
+	| 'feat:workerView'
+	| 'feat:advancedPermissions'
+	| 'feat:projectRole:admin'
+	| 'feat:projectRole:editor'
+	| 'feat:projectRole:viewer'
+	| 'feat:aiAssistant'
+	| 'feat:askAi'
+	| 'feat:communityNodes:customRegistry'
+	| 'feat:aiCredits'
+	| 'feat:folders'
+	| 'feat:insights:viewSummary'
+	| 'feat:insights:viewDashboard'
+	| 'feat:insights:viewHourlyData'
+	| 'feat:apiKeyScopes';
 
 export type Method = 'get' | 'post' | 'put' | 'patch' | 'delete';
 

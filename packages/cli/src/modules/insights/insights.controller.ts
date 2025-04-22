@@ -1,7 +1,7 @@
 import { ListInsightsWorkflowQueryDto } from '@n8n/api-types';
 import type { InsightsSummary, InsightsByTime, InsightsByWorkflow } from '@n8n/api-types';
 
-import { Get, GlobalScope, Licensed, Query, RestController } from '@/decorators';
+import { Get, GlobalScope, Licensed, Query, RestController } from '@n8n/decorators';
 import { paginationListQueryMiddleware } from '@/middlewares/list-query/pagination';
 import { sortByQueryMiddleware } from '@/middlewares/list-query/sort-by';
 import { AuthenticatedRequest } from '@/requests';

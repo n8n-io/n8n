@@ -25,7 +25,7 @@ import {
 	Put,
 	RestController,
 	ProjectScope,
-} from '@/decorators';
+} from '@n8n/decorators';
 import { Body, Param, Query } from '@/decorators/args';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';

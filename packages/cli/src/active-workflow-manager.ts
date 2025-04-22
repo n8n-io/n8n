@@ -42,7 +42,7 @@ import {
 } from '@/constants';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import { OnShutdown } from '@/decorators/on-shutdown';
+import { OnShutdown } from '@n8n/decorators';
 import { executeErrorWorkflow } from '@/execution-lifecycle/execute-error-workflow';
 import { ExecutionService } from '@/executions/execution.service';
 import { ExternalHooks } from '@/external-hooks';

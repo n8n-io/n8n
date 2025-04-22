@@ -5,7 +5,7 @@ import type { WorkflowStatistics } from '@/databases/entities/workflow-statistic
 import { StatisticsNames } from '@/databases/entities/workflow-statistics';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { WorkflowStatisticsRepository } from '@/databases/repositories/workflow-statistics.repository';
-import { Get, Middleware, RestController } from '@/decorators';
+import { Get, Middleware, RestController } from '@n8n/decorators';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { IWorkflowStatisticsDataLoaded } from '@/interfaces';
 

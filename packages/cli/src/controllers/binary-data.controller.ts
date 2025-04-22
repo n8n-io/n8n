@@ -3,7 +3,7 @@ import { Request, Response } from 'express';
 import { JsonWebTokenError } from 'jsonwebtoken';
 import { BinaryDataService, FileNotFoundError, isValidNonDefaultMode } from 'n8n-core';
 
-import { Get, Query, RestController } from '@/decorators';
+import { Get, Query, RestController } from '@n8n/decorators';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 @RestController('/binary-data')

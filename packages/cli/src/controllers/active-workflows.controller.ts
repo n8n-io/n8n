@@ -1,4 +1,4 @@
-import { Get, RestController } from '@/decorators';
+import { Get, RestController } from '@n8n/decorators';
 import { ActiveWorkflowRequest } from '@/requests';
 import { ActiveWorkflowsService } from '@/services/active-workflows.service';
 

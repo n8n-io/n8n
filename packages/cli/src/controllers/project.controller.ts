@@ -19,7 +19,7 @@ import {
 	Body,
 	Param,
 	Query,
-} from '@/decorators';
+} from '@n8n/decorators';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';

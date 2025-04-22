@@ -33,7 +33,7 @@ import {
 	Put,
 	Query,
 	RestController,
-} from '@/decorators';
+} from '@n8n/decorators';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';

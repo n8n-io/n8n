@@ -5,7 +5,7 @@ import { join } from 'path';
 import config from '@/config';
 import { NODES_BASE_DIR } from '@/constants';
 import { CredentialTypes } from '@/credential-types';
-import { Get, RestController } from '@/decorators';
+import { Get, RestController } from '@n8n/decorators';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 

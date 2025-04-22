@@ -10,7 +10,7 @@ import { ProjectRelationRepository } from '@/databases/repositories/project-rela
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import { OnShutdown } from '@/decorators/on-shutdown';
+import { OnShutdown } from '@n8n/decorators';
 import type { IExecutionTrackProperties } from '@/interfaces';
 import { License } from '@/license';
 import { PostHogClient } from '@/posthog';

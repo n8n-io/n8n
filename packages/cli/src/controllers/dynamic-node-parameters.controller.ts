@@ -6,7 +6,7 @@ import {
 } from '@n8n/api-types';
 import type { INodePropertyOptions, NodeParameterValueType } from 'n8n-workflow';
 
-import { Post, RestController, Body } from '@/decorators';
+import { Post, RestController, Body } from '@n8n/decorators';
 import { AuthenticatedRequest } from '@/requests';
 import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import { getBase } from '@/workflow-execute-additional-data';

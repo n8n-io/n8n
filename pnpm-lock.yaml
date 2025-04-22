@@ -416,6 +416,34 @@ importers:
         specifier: workspace:*
         version: link:../typescript-config
 
+  packages/@n8n/decorators:
+    dependencies:
+      '@n8n/di':
+        specifier: workspace:^
+        version: link:../di
+      '@n8n/permissions':
+        specifier: workspace:^
+        version: link:../permissions
+      express:
+        specifier: 5.1.0
+        version: 5.1.0
+      lodash:
+        specifier: 'catalog:'
+        version: 4.17.21
+      n8n-core:
+        specifier: workspace:^
+        version: link:../../core
+      n8n-workflow:
+        specifier: workspace:^
+        version: link:../../workflow
+    devDependencies:
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+      '@types/lodash':
+        specifier: 'catalog:'
+        version: 4.14.195
+
   packages/@n8n/di:
     dependencies:
       reflect-metadata:
@@ -926,6 +954,9 @@ importers:
       '@n8n/config':
         specifier: workspace:*
         version: link:../@n8n/config
+      '@n8n/decorators':
+        specifier: workspace:*
+        version: link:../@n8n/decorators
       '@n8n/di':
         specifier: workspace:*
         version: link:../@n8n/di
@@ -10873,10 +10904,6 @@ packages:
 
   natural-compare@1.4.0:
     resolution: {integrity: sha512-OWND8ei3VtNC9h7V60qff3SVobHr996CTwgxubgyQYEpg290h9J0buyECNNJexkFm5sOajh5G116RYA1c8ZMSw==}
-
-  negotiator@0.6.3:
-    resolution: {integrity: sha512-+EUsqGPLsM+j/zdChZjsnX51g4XrHFOIXwfnCVPGlQk/k5giakcKsuxCObBRu6DSm9opw/O6slWbJdghQM4bBg==}
-    engines: {node: '>= 0.6'}
 
   negotiator@0.6.4:
     resolution: {integrity: sha512-myRT3DiWPHqho5PrJaIRyaMv2kgYf0mUVgBNOYMuCH5Ki1yEiQaf/ZJuQ62nvpc44wL5WDbTX7yGJi1Neevw8w==}
@@ -23018,7 +23045,7 @@ snapshots:
     dependencies:
       es-errors: 1.3.0
       hasown: 2.0.2
-      side-channel: 1.0.6
+      side-channel: 1.1.0
 
   interpret@1.4.0: {}
 
@@ -24266,7 +24293,7 @@ snapshots:
       minipass-fetch: 1.4.1
       minipass-flush: 1.0.5
       minipass-pipeline: 1.2.4
-      negotiator: 0.6.3
+      negotiator: 0.6.4
       promise-retry: 2.0.1
       socks-proxy-agent: 6.2.1
       ssri: 8.0.1
@@ -24950,9 +24977,6 @@ snapshots:
   native-duplexpair@1.0.0: {}
 
   natural-compare@1.4.0: {}
-
-  negotiator@0.6.3:
-    optional: true
 
   negotiator@0.6.4: {}
 
@@ -25946,7 +25970,7 @@ snapshots:
 
   qs@6.10.4:
     dependencies:
-      side-channel: 1.0.6
+      side-channel: 1.1.0
 
   qs@6.11.0:
     dependencies:

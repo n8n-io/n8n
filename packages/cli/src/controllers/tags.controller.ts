@@ -11,7 +11,7 @@ import {
 	Body,
 	Param,
 	Query,
-} from '@/decorators';
+} from '@n8n/decorators';
 import { AuthenticatedRequest } from '@/requests';
 import { TagService } from '@/services/tag.service';
 

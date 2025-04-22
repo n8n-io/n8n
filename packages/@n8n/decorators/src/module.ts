@@ -1,7 +1,7 @@
 import { Container, Service, type Constructable } from '@n8n/di';
 import type { ExecutionLifecycleHooks } from 'n8n-core';
 
-import type { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
+import type { MultiMainSetup } from './types';
 
 export interface BaseN8nModule {
 	initialize?(): void;

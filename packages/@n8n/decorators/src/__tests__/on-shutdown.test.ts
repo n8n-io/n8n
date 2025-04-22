@@ -1,8 +1,8 @@
 import { Container, Service } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 
-import { OnShutdown } from '@/decorators/on-shutdown';
-import { ShutdownService } from '@/shutdown/shutdown.service';
+import { OnShutdown } from '../on-shutdown';
+import { ShutdownService } from '../shutdown.service';
 
 describe('OnShutdown', () => {
 	let shutdownService: ShutdownService;

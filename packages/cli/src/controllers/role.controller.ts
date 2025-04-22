@@ -1,4 +1,4 @@
-import { Get, RestController } from '@/decorators';
+import { Get, RestController } from '@n8n/decorators';
 import { type AllRoleTypes, RoleService } from '@/services/role.service';
 
 @RestController('/roles')

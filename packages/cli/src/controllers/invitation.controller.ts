@@ -7,7 +7,7 @@ import config from '@/config';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import type { User } from '@/databases/entities/user';
 import { UserRepository } from '@/databases/repositories/user.repository';
-import { Post, GlobalScope, RestController, Body, Param } from '@/decorators';
+import { Post, GlobalScope, RestController, Body, Param } from '@n8n/decorators';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';

@@ -9,7 +9,7 @@ import { Logger } from 'n8n-core';
 import { AuthService } from '@/auth/auth.service';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { UserRepository } from '@/databases/repositories/user.repository';
-import { Body, Get, Post, Query, RestController } from '@/decorators';
+import { Body, Get, Post, Query, RestController } from '@n8n/decorators';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';

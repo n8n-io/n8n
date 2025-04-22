@@ -13,7 +13,7 @@ import { WritableStream } from 'node:stream/web';
 
 import { FREE_AI_CREDITS_CREDENTIAL_NAME } from '@/constants';
 import { CredentialsService } from '@/credentials/credentials.service';
-import { Body, Post, RestController } from '@/decorators';
+import { Body, Post, RestController } from '@n8n/decorators';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { AuthenticatedRequest } from '@/requests';
 import { AiService } from '@/services/ai.service';

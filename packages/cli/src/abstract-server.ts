@@ -11,7 +11,7 @@ import { Logger } from 'n8n-core';
 import config from '@/config';
 import { N8N_VERSION, TEMPLATES_DIR, inDevelopment, inTest } from '@/constants';
 import * as Db from '@/db';
-import { OnShutdown } from '@/decorators/on-shutdown';
+import { OnShutdown } from '@n8n/decorators';
 import { ExternalHooks } from '@/external-hooks';
 import { rawBodyReader, bodyParser, corsMiddleware } from '@/middlewares';
 import { send, sendErrorResponse } from '@/response-helper';

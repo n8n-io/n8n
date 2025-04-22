@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 
-import { RestController, Get, Middleware } from '@/decorators';
+import { RestController, Get, Middleware } from '@n8n/decorators';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';

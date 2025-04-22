@@ -4,7 +4,7 @@ import { ErrorReporter, Logger } from 'n8n-core';
 import { sleep } from 'n8n-workflow';
 import * as a from 'node:assert/strict';
 
-import { OnShutdown } from '@/decorators/on-shutdown';
+import { OnShutdown } from '@n8n/decorators';
 import type { TaskRunnerRestartLoopError } from '@/task-runners/errors/task-runner-restart-loop-error';
 import { TaskBrokerWsServer } from '@/task-runners/task-broker/task-broker-ws-server';
 import type { TaskRunnerProcess } from '@/task-runners/task-runner-process';
