@@ -122,7 +122,7 @@ watch(
 			:color="isError ? 'danger' : undefined"
 			>{{ node.name }}
 		</N8nText>
-		<N8nText tag="div" color="text-light" size="small" :class="$style.timeTook">
+		<N8nText v-if="!isCompact" tag="div" color="text-light" size="small" :class="$style.timeTook">
 			<I18nT v-if="isSettled && runData" keypath="logs.overview.body.summaryText">
 				<template #status>
 					<N8nText v-if="isError" color="danger" :bold="true" size="small">
@@ -140,7 +140,7 @@ watch(
 			startedAtText
 		}}</N8nText>
 		<N8nText
-			v-if="subtreeConsumedTokens !== undefined"
+			v-if="!isCompact && subtreeConsumedTokens !== undefined"
 			tag="div"
 			color="text-light"
 			size="small"
@@ -288,18 +288,6 @@ watch(
 		margin-right: var(--spacing-4xs);
 		vertical-align: text-bottom;
 	}
-
-	.compact & {
-		flex-shrink: 1;
-	}
-
-	.compact:hover & {
-		width: auto;
-	}
-
-	.compact:not(:hover) & {
-		display: none;
-	}
 }
 
 .startedAt {
@@ -317,19 +305,6 @@ watch(
 	flex-shrink: 0;
 	width: 10%;
 	text-align: right;
-
-	.compact & {
-		flex-shrink: 1;
-	}
-
-	.compact:hover & {
-		width: auto;
-	}
-
-	.compact &:empty,
-	.compact:not(:hover) & {
-		display: none;
-	}
 }
 
 .compactErrorIcon {
