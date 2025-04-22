@@ -5,7 +5,7 @@ import { useI18n } from '@/composables/useI18n';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { N8nButton, N8nRadioButtons, N8nText, N8nTooltip } from '@n8n/design-system';
-import { computed } from 'vue';
+import { computed, nextTick } from 'vue';
 import { ElTree, type TreeNode as ElTreeNode } from 'element-plus';
 import {
 	getSubtreeTotalConsumedTokens,
@@ -80,6 +80,8 @@ function handleToggleExpanded(treeNode: ElTreeNode) {
 
 async function handleOpenNdv(treeNode: TreeNode) {
 	ndvStore.setActiveNodeName(treeNode.node);
+
+	await nextTick(() => ndvStore.setOutputRunIndex(treeNode.runIndex));
 }
 
 async function handleTriggerPartialExecution(treeNode: TreeNode) {
