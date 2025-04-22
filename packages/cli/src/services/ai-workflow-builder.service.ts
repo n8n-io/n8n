@@ -1,4 +1,3 @@
-import type { SimpleWorkflow } from '@n8n/ai-workflow-builder';
 import { AiWorkflowBuilderService } from '@n8n/ai-workflow-builder';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
@@ -34,7 +33,7 @@ export class WorkflowBuilderService {
 		return this.service;
 	}
 
-	async *chat(payload: { question: string; currentWorkflow?: SimpleWorkflow }, user: IUser) {
+	async *chat(payload: { question: string }, user: IUser) {
 		const service = this.getService();
 		yield* service.chat(payload, user);
 	}

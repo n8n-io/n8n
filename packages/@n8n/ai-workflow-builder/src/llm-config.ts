@@ -1,42 +1,41 @@
 import { ChatAnthropic } from '@langchain/anthropic';
 import { ChatOpenAI } from '@langchain/openai';
 
-const envOpenAIKey = process.env.N8N_AI_OPENAI_API_KEY;
-const envAnthropicApiKey = process.env.N8N_AI_ANTHROPIC_KEY;
+type LLMConfig = {
+	apiKey: string;
+	baseUrl?: string;
+	headers?: Record<string, string>;
+};
 
-export const o4mini = (baseUrl?: string, apiKey?: string, headers?: Record<string, string>) =>
+export const o4mini = (config: LLMConfig) =>
 	new ChatOpenAI({
 		modelName: 'o4-mini-2025-04-16',
-		apiKey: apiKey ?? envOpenAIKey,
+		apiKey: config.apiKey,
 		configuration: {
-			baseURL: baseUrl,
-			defaultHeaders: headers,
+			baseURL: config.baseUrl,
+			defaultHeaders: config.headers,
 		},
 	});
 
-export const gpt41mini = (baseUrl?: string, apiKey?: string, headers?: Record<string, string>) =>
+export const gpt41mini = (config: LLMConfig) =>
 	new ChatOpenAI({
 		modelName: 'gpt-4.1-mini-2025-04-14',
-		apiKey: apiKey ?? envOpenAIKey,
+		apiKey: config.apiKey,
 		temperature: 0,
 		configuration: {
-			baseURL: baseUrl,
-			defaultHeaders: headers,
+			baseURL: config.baseUrl,
+			defaultHeaders: config.headers,
 		},
 	});
 
-export const anthropicClaude37Sonnet = (
-	baseUrl?: string,
-	apiKey?: string,
-	headers?: Record<string, string>,
-) =>
+export const anthropicClaude37Sonnet = (config: LLMConfig) =>
 	new ChatAnthropic({
 		modelName: 'claude-3-7-sonnet-20250219',
-		apiKey: apiKey ?? envAnthropicApiKey,
+		apiKey: config.apiKey,
 		temperature: 0,
 		maxTokens: 16000,
-		anthropicApiUrl: baseUrl,
+		anthropicApiUrl: config.baseUrl,
 		clientOptions: {
-			defaultHeaders: headers,
+			defaultHeaders: config.headers,
 		},
 	});

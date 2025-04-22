@@ -6,10 +6,12 @@ import CodeDiffMessage from './messages/CodeDiffMessage.vue';
 import ErrorMessage from './messages/ErrorMessage.vue';
 import EventMessage from './messages/EventMessage.vue';
 import TextMessage from './messages/TextMessage.vue';
-import WorkflowStepsMessage from './messages/workflow/WorkflowStepsMessage.vue';
-import WorkflowNodesMessage from './messages/workflow/WorkflowNodesMessage.vue';
-import ComposedNodesMessage from './messages/workflow/ComposedNodesMessage.vue';
 import ComposedConnectionsMessage from './messages/workflow/ComposedConnectionsMessage.vue';
+import ComposedNodesMessage from './messages/workflow/ComposedNodesMessage.vue';
+import RateWorkflowMessage from './messages/workflow/RateWorkflowMessage.vue';
+import WorkflowGeneratedMessage from './messages/workflow/WorkflowGeneratedMessage.vue';
+import WorkflowNodesMessage from './messages/workflow/WorkflowNodesMessage.vue';
+import WorkflowStepsMessage from './messages/workflow/WorkflowStepsMessage.vue';
 import { useI18n } from '../../composables/useI18n';
 import type { ChatUI } from '../../types/assistant';
 import AssistantIcon from '../AskAssistantIcon/AssistantIcon.vue';
@@ -17,8 +19,6 @@ import AssistantLoadingMessage from '../AskAssistantLoadingMessage/AssistantLoad
 import AssistantText from '../AskAssistantText/AssistantText.vue';
 import BetaTag from '../BetaTag/BetaTag.vue';
 import InlineAskAssistantButton from '../InlineAskAssistantButton/InlineAskAssistantButton.vue';
-import WorkflowGeneratedMessage from './messages/workflow/WorkflowGeneratedMessage.vue';
-import RateWorkflowMessage from './messages/workflow/RateWorkflowMessage.vue';
 
 const { t } = useI18n();
 

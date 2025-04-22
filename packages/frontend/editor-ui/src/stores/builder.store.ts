@@ -10,11 +10,9 @@ import { useUsersStore } from './users.store';
 import { useRoute } from 'vue-router';
 import { useSettingsStore } from './settings.store';
 import { assert } from '@n8n/utils/assert';
-import { useWorkflowsStore } from './workflows.store';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useUIStore } from './ui.store';
-import { useAIAssistantHelpers } from '@/composables/useAIAssistantHelpers';
 import { usePostHog } from './posthog.store';
 import { useNodeTypesStore } from './nodeTypes.store';
 
@@ -37,17 +35,22 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const rootStore = useRootStore();
 	const usersStore = useUsersStore();
 	const uiStore = useUIStore();
-	const workflowsStore = useWorkflowsStore();
 	const route = useRoute();
 	const locale = useI18n();
 	const telemetry = useTelemetry();
-	const assistantHelpers = useAIAssistantHelpers();
 	const posthogStore = usePostHog();
 	const nodeTypesStore = useNodeTypesStore();
 
 	// Computed properties
 	const isAssistantEnabled = computed(() => settings.isAiAssistantEnabled);
 
+	const workflowPrompt = computed(() => {
+		const firstUserMessage = chatMessages.value.find(
+			(msg) => msg.role === 'user' && msg.type === 'text',
+		) as ChatUI.TextMessage;
+
+		return firstUserMessage?.content;
+	});
 	const canShowAssistant = computed(
 		() => isAssistantEnabled.value && ENABLED_VIEWS.includes(route.name as VIEWS),
 	);
@@ -241,6 +244,10 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			id,
 			retry,
 		);
+		telemetry.track('Workflow generation errored', {
+			error: e.message,
+			prompt: workflowPrompt.value,
+		});
 	}
 
 	// API interaction
@@ -270,36 +277,30 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		stopStreaming();
 	}
 
-	// Get current workflow context for the AI
-	function getWorkflowContext(): ChatRequest.AssistantContext | undefined {
-		const currentView = route.name as VIEWS;
-		return {
-			currentView: {
-				name: currentView,
-				description: assistantHelpers.getCurrentViewDescription(currentView),
-			},
-			currentWorkflow: assistantHelpers.simplifyWorkflowForAssistant(workflowsStore.workflow),
-		};
-	}
-
 	// Core API functions
-	async function initSupportChat(userMessage: string) {
+	async function initBuilderChat(userMessage: string, source: 'chat' | 'canvas') {
+		telemetry.track(
+			'User submitted workflow prompt',
+			{
+				source,
+				prompt: userMessage,
+			},
+			{ withPostHog: true },
+		);
 		resetBuilderChat();
 		const id = getRandomId();
-		const visualContext = getWorkflowContext();
 
 		addUserMessage(userMessage, id);
 		addLoadingAssistantMessage(locale.baseText('aiAssistant.thinkingSteps.thinking'));
 		openChat();
 		streaming.value = true;
 
-		const payload: ChatRequest.InitSupportChat = {
+		const payload: ChatRequest.InitBuilderChat = {
 			role: 'user',
-			type: 'init-support-chat',
+			type: 'init-builder-chat',
 			user: {
 				firstName: usersStore.currentUser?.firstName ?? '',
 			},
-			context: visualContext,
 			question: userMessage,
 		};
 
@@ -310,7 +311,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			},
 			(msg) => onEachStreamingMessage(msg, id),
 			() => onDoneStreaming(),
-			(e) => handleServiceError(e, id, async () => await initSupportChat(userMessage)),
+			(e) => handleServiceError(e, id, async () => await initBuilderChat(userMessage, 'chat')),
 		);
 	}
 
@@ -334,7 +335,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 			streaming.value = true;
 			assert(currentSessionId.value);
-			const userContext = getWorkflowContext();
 
 			chatWithBuilder(
 				rootStore.restApiContext,
@@ -344,7 +344,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 						type: 'message',
 						text: chatMessage.text,
 						quickReplyType: chatMessage.quickReplyType,
-						context: userContext,
 					},
 					sessionId: currentSessionId.value,
 				},
@@ -352,28 +351,10 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 				() => onDoneStreaming(),
 				(e) => handleServiceError(e, id, retry),
 			);
-
-			// Track user messages for analytics
-			telemetry.track('User sent message in Builder', {
-				message: chatMessage.text,
-				is_quick_reply: !!chatMessage.quickReplyType,
-				chat_session_id: currentSessionId.value,
-				task: 'workflow-generation',
-			});
 		} catch (e: unknown) {
 			// in case of assert
 			handleServiceError(e, id, retry);
 		}
-	}
-
-	function trackUserOpenedAssistant({ source }: { source: string }) {
-		telemetry.track('User opened assistant', {
-			source,
-			task: 'support',
-			has_existing_session: !!currentSessionId.value,
-			workflow_id: workflowsStore.workflowId,
-			chat_session_id: currentSessionId.value,
-		});
 	}
 	// Reset on route change
 	watch(route, () => {
@@ -395,16 +376,16 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		assistantThinkingMessage,
 		chatWindowOpen,
 		isAIBuilderEnabled,
+		workflowPrompt,
 
 		// Methods
 		updateWindowWidth,
 		closeChat,
 		openChat,
 		resetBuilderChat,
-		initSupportChat,
+		initBuilderChat,
 		sendMessage,
 		addAssistantMessages,
 		handleServiceError,
-		trackUserOpenedAssistant,
 	};
 });

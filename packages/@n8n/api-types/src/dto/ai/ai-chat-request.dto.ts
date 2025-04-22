@@ -8,12 +8,3 @@ export class AiChatRequestDto
 		sessionId: z.string().optional(),
 	})
 	implements AiAssistantSDK.ChatRequestPayload {}
-
-export class AiBuilderChatRequestDto extends Z.class({
-	payload: z.object({
-		question: z.string(),
-		context: z.object({
-			currentWorkflow: z.object({}).passthrough(),
-		}),
-	}),
-}) {}

@@ -9,6 +9,7 @@ import { nodeViewEventBus } from '@/event-bus';
 import { v4 as uuid } from 'uuid';
 import { useI18n } from '@/composables/useI18n';
 import { STICKY_NODE_TYPE } from '@/constants';
+import type { ChatUI } from '@n8n/design-system/types/assistant';
 
 const emit = defineEmits<{
 	close: [];
@@ -18,6 +19,8 @@ const builderStore = useBuilderStore();
 const usersStore = useUsersStore();
 const telemetry = useTelemetry();
 const i18n = useI18n();
+const helpful = ref(false);
+const generationStartTime = ref(0);
 
 const user = computed(() => ({
 	firstName: usersStore.currentUser?.firstName ?? '',
@@ -27,17 +30,9 @@ const user = computed(() => ({
 const workflowGenerated = ref(false);
 const loadingMessage = computed(() => builderStore.assistantThinkingMessage);
 
-async function onUserMessage(content: string, quickReplyType?: string, isFeedback = false) {
+async function onUserMessage(content: string) {
 	// If there is no current session running, initialize the support chat session
-	await builderStore.initSupportChat(content);
-	if (isFeedback) {
-		telemetry.track('User gave feedback', {
-			chat_session_id: builderStore.currentSessionId,
-			is_quick_reply: !!quickReplyType,
-			is_positive: quickReplyType === 'all-good',
-			response: content,
-		});
-	}
+	await builderStore.initBuilderChat(content, 'chat');
 }
 
 function fixWorkflowStickiesPosition(workflowData: IWorkflowDataUpdate): IWorkflowDataUpdate {
@@ -79,7 +74,6 @@ function fixWorkflowStickiesPosition(workflowData: IWorkflowDataUpdate): IWorkfl
 }
 
 function onInsertWorkflow(code: string) {
-	// TODO: Tracking
 	let workflowData: IWorkflowDataUpdate;
 	try {
 		workflowData = JSON.parse(code);
@@ -87,6 +81,13 @@ function onInsertWorkflow(code: string) {
 		console.error('Error parsing workflow data', error);
 		return;
 	}
+
+	telemetry.track('Workflow generated from prompt', {
+		prompt: builderStore.workflowPrompt,
+		latency: new Date().getTime() - generationStartTime.value,
+		workflow_json: code,
+	});
+
 	nodeViewEventBus.emit('importWorkflowData', {
 		data: fixWorkflowStickiesPosition(workflowData),
 		tidyUp: true,
@@ -107,6 +108,32 @@ function onInsertWorkflow(code: string) {
 function onNewWorkflow() {
 	builderStore.resetBuilderChat();
 	workflowGenerated.value = false;
+	helpful.value = false;
+	generationStartTime.value = new Date().getTime();
+}
+
+function onThumbsUp() {
+	helpful.value = true;
+	telemetry.track('User rated workflow generation', {
+		chat_session_id: builderStore.currentSessionId,
+		helpful: helpful.value,
+	});
+}
+
+function onThumbsDown() {
+	helpful.value = false;
+	telemetry.track('User rated workflow generation', {
+		chat_session_id: builderStore.currentSessionId,
+		helpful: helpful.value,
+	});
+}
+
+function onSubmitFeedback(feedback: string) {
+	telemetry.track('User submitted workflow generation feedback', {
+		chat_session_id: builderStore.currentSessionId,
+		helpful: helpful.value,
+		feedback,
+	});
 }
 
 watch(
@@ -123,7 +150,7 @@ watch(
 );
 
 const unsubscribe = builderStore.$onAction(({ name }) => {
-	if (name === 'initSupportChat') {
+	if (name === 'initBuilderChat') {
 		onNewWorkflow();
 	}
 });
@@ -146,6 +173,9 @@ onBeforeUnmount(() => {
 			:placeholder="i18n.baseText('aiAssistant.builder.placeholder')"
 			@close="emit('close')"
 			@message="onUserMessage"
+			@thumbs-up="onThumbsUp"
+			@thumbs-down="onThumbsDown"
+			@submit-feedback="onSubmitFeedback"
 			@insert-workflow="onInsertWorkflow"
 		>
 			<template #header>

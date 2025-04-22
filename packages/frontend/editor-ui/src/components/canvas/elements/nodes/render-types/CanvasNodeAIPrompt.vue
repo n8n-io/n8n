@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { useI18n } from '@/composables/useI18n';
 import { useCanvasNode } from '@/composables/useCanvasNode';
 import { useBuilderStore } from '@/stores/builder.store';
@@ -11,10 +10,8 @@ const emit = defineEmits<{
 const i18n = useI18n();
 
 const { id } = useCanvasNode();
-const nodeCreatorStore = useNodeCreatorStore();
 const builderStore = useBuilderStore();
 
-const isTooltipVisible = ref(false);
 const isPromptVisible = ref(true);
 const isFocused = ref(false);
 
@@ -25,7 +22,7 @@ const hasContent = computed(() => prompt.value.trim().length > 0);
 async function onSubmit() {
 	builderStore.openChat();
 	emit('delete', id.value);
-	await builderStore.initSupportChat(prompt.value);
+	await builderStore.initBuilderChat(prompt.value, 'canvas');
 	isPromptVisible.value = false;
 }
 </script>
@@ -33,37 +30,28 @@ async function onSubmit() {
 <template>
 	<div v-if="isPromptVisible" :class="$style.container" data-test-id="canvas-ai-prompt">
 		<div :class="[$style.promptContainer, { [$style.focused]: isFocused }]">
-			<N8nTooltip
-				placement="top"
-				:visible="isTooltipVisible"
-				:disabled="nodeCreatorStore.showScrim"
-				:popper-class="$style.tooltip"
-				:show-after="700"
-			>
-				<form :class="$style.form" @submit.prevent="onSubmit">
-					<n8n-input
-						v-model="prompt"
-						:class="$style.form_textarea"
-						type="textarea"
-						:disabled="builderStore.streaming"
-						placeholder="What would you like to automate?"
-						:read-only="false"
-						:rows="15"
-						@focus="isFocused = true"
-						@blur="isFocused = false"
-						@keydown.meta.enter.stop="onSubmit"
-					/>
-					<div :class="$style.form_footer">
-						<n8n-button
-							native-type="submit"
-							:disabled="!hasContent || builderStore.streaming"
-							@keydown.enter="onSubmit"
-							>Build workflow</n8n-button
-						>
-					</div>
-				</form>
-				<template #content> Type your prompt here </template>
-			</N8nTooltip>
+			<form :class="$style.form" @submit.prevent="onSubmit">
+				<n8n-input
+					v-model="prompt"
+					:class="$style.form_textarea"
+					type="textarea"
+					:disabled="builderStore.streaming"
+					:placeholder="i18n.baseText('aiAssistant.builder.placeholder')"
+					:read-only="false"
+					:rows="15"
+					@focus="isFocused = true"
+					@blur="isFocused = false"
+					@keydown.meta.enter.stop="onSubmit"
+				/>
+				<div :class="$style.form_footer">
+					<n8n-button
+						native-type="submit"
+						:disabled="!hasContent || builderStore.streaming"
+						@keydown.enter="onSubmit"
+						>{{ i18n.baseText('aiAssistant.builder.buildWorkflow') }}</n8n-button
+					>
+				</div>
+			</form>
 		</div>
 		<div :class="$style.or">
 			<p :class="$style.or_text">or</p>

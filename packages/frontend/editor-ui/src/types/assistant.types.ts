@@ -63,6 +63,17 @@ export namespace ChatRequest {
 		question: string;
 	}
 
+	export interface InitBuilderChat {
+		role: 'user';
+		type: 'init-builder-chat';
+		user: {
+			firstName: string;
+		};
+		context?: UserContext & WorkflowContext;
+		workflowContext?: WorkflowContext;
+		question: string;
+	}
+
 	export interface InitCredHelp {
 		role: 'user';
 		type: 'init-cred-help';
@@ -116,7 +127,7 @@ export namespace ChatRequest {
 
 	export type RequestPayload =
 		| {
-				payload: InitErrorHelper | InitSupportChat | InitCredHelp;
+				payload: InitErrorHelper | InitSupportChat | InitCredHelp | InitBuilderChat;
 		  }
 		| {
 				payload: EventRequestPayload | UserChatMessage;

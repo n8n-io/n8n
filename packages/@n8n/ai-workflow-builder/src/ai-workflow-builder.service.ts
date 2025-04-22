@@ -13,7 +13,7 @@ import { connectionComposerChain } from './chains/connection-composer';
 import { nodesSelectionChain } from './chains/node-selector';
 import { nodesComposerChain } from './chains/nodes-composer';
 import { plannerChain } from './chains/planner';
-import type { SimpleWorkflow, MessageResponse } from './types';
+import type { MessageResponse } from './types';
 import { WorkflowState } from './workflow-state';
 
 import { ILicenseService } from './interfaces';
@@ -38,28 +38,48 @@ export class AiWorkflowBuilderService {
 	}
 
 	private async setupModels(user: IUser) {
-		const baseUrl = this.globalConfig.aiAssistant.baseUrl;
-		if (!this.client) {
-			const licenseCert = await this.licenseService.loadCertStr();
-			const consumerId = this.licenseService.getConsumerId();
-
-			this.client = new AiAssistantClient({
-				licenseCert,
-				consumerId,
-				baseUrl,
-				n8nVersion: this.n8nVersion,
-			});
+		if (this.llmSimpleTask && this.llmComplexTask) {
+			return;
 		}
 
-		assert(this.client, 'Client not setup');
+		const baseUrl = this.globalConfig.aiAssistant.baseUrl;
+		// If base URL is set, use api-proxy to access LLMs
+		if (baseUrl) {
+			if (!this.client) {
+				const licenseCert = await this.licenseService.loadCertStr();
+				const consumerId = this.licenseService.getConsumerId();
 
-		const authHeaders = await this.client.getProxyHeaders(user);
-		this.llmSimpleTask = gpt41mini(baseUrl + '/v1/api-proxy/openai', '_', authHeaders);
-		this.llmComplexTask = anthropicClaude37Sonnet(
-			baseUrl + '/v1/api-proxy/anthropic',
-			'_',
-			authHeaders,
-		);
+				this.client = new AiAssistantClient({
+					licenseCert,
+					consumerId,
+					baseUrl,
+					n8nVersion: this.n8nVersion,
+				});
+			}
+
+			assert(this.client, 'Client not setup');
+
+			const authHeaders = await this.client.getProxyHeaders(user);
+			this.llmSimpleTask = gpt41mini({
+				baseUrl: baseUrl + '/v1/api-proxy/openai',
+				// When using api-proxy the key will be populated automatically, we just need to pass a placeholder
+				apiKey: '_',
+				headers: authHeaders,
+			});
+			this.llmComplexTask = anthropicClaude37Sonnet({
+				baseUrl: baseUrl + '/v1/api-proxy/anthropic',
+				apiKey: '_',
+				headers: authHeaders,
+			});
+			return;
+		}
+		// If base URL is not set, use environment variables
+		this.llmSimpleTask = gpt41mini({
+			apiKey: process.env.N8N_AI_OPENAI_API_KEY ?? '',
+		});
+		this.llmComplexTask = anthropicClaude37Sonnet({
+			apiKey: process.env.N8N_AI_ANTHROPIC_KEY ?? '',
+		});
 	}
 
 	private getNodeTypes(): INodeTypeDescription[] {
@@ -294,7 +314,7 @@ export class AiWorkflowBuilderService {
 		return workflowGraph;
 	}
 
-	async *chat(payload: { question: string; currentWorkflow?: SimpleWorkflow }, user: IUser) {
+	async *chat(payload: { question: string }, user: IUser) {
 		if (!this.llmComplexTask || !this.llmSimpleTask) {
 			await this.setupModels(user);
 		}
@@ -306,7 +326,7 @@ export class AiWorkflowBuilderService {
 			prompt: payload.question,
 			steps: [],
 			nodes: [],
-			workflowJSON: payload.currentWorkflow ?? { nodes: [], connections: {} },
+			workflowJSON: { nodes: [], connections: {} },
 			next: 'PLAN',
 		};
 

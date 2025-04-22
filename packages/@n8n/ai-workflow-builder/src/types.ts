@@ -1,7 +1,6 @@
 import type { IWorkflowBase } from 'n8n-workflow';
 
 export type SimpleWorkflow = Pick<IWorkflowBase, 'nodes' | 'connections'>;
-
 export interface CodeDiffMessage {
 	role: 'assistant';
 	type: 'code-diff';
