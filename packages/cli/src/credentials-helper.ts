@@ -331,31 +331,29 @@ export class CredentialsHelper extends ICredentialsHelper {
 
 		await additionalData?.secretsHelpers?.waitForInit();
 
-		const canUseSecrets = await this.credentialCanUseExternalSecrets(nodeCredentials);
-
-		return this.applyDefaultsAndOverwrites(
+		return await this.applyDefaultsAndOverwrites(
 			additionalData,
 			decryptedDataOriginal,
+			nodeCredentials,
 			type,
 			mode,
 			executeData,
 			expressionResolveValues,
-			canUseSecrets,
 		);
 	}
 
 	/**
 	 * Applies credential default data and overwrites
 	 */
-	applyDefaultsAndOverwrites(
+	async applyDefaultsAndOverwrites(
 		additionalData: IWorkflowExecuteAdditionalData,
 		decryptedDataOriginal: ICredentialDataDecryptedObject,
+		credential: INodeCredentialsDetails,
 		type: string,
 		mode: WorkflowExecuteMode,
 		executeData?: IExecuteData,
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
-		canUseSecrets?: boolean,
-	): ICredentialDataDecryptedObject {
+	): Promise<ICredentialDataDecryptedObject> {
 		const credentialsProperties = this.getCredentialsProperties(type);
 
 		// Load and apply the credentials overwrites if any exist
@@ -380,8 +378,9 @@ export class CredentialsHelper extends ICredentialsHelper {
 			decryptedData.oauthTokenData = decryptedDataOriginal.oauthTokenData;
 		}
 
+		const canUseExternalSecrets = await this.credentialCanUseExternalSecrets(credential);
 		const additionalKeys = getAdditionalKeys(additionalData, mode, null, {
-			secretsEnabled: canUseSecrets,
+			secretsEnabled: canUseExternalSecrets,
 		});
 
 		if (expressionResolveValues) {

@@ -9,7 +9,7 @@ export class JsRunnerConfig {
 	allowedExternalModules: string = '';
 
 	/**
-	 * Whether to allow prototype mutation for external libraries. Set to `false`
+	 * Whether to allow prototype mutation for external libraries. Set to `true`
 	 * to allow modules that rely on runtime prototype mutation, e.g. `puppeteer`,
 	 * at the cost of security.
 	 *
