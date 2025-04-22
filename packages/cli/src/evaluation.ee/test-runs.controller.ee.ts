@@ -1,6 +1,7 @@
 import express from 'express';
 import { InstanceSettings } from 'n8n-core';
 
+import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { TestCaseExecutionRepository } from '@/databases/repositories/test-case-execution.repository.ee';
 import { TestRunRepository } from '@/databases/repositories/test-run.repository.ee';
 import { Delete, Get, Post, RestController } from '@/decorators';
@@ -16,6 +17,7 @@ import { Telemetry } from '@/telemetry';
 export class TestRunsController {
 	constructor(
 		private readonly testRunRepository: TestRunRepository,
+		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly testCaseExecutionRepository: TestCaseExecutionRepository,
 		private readonly testRunnerService: TestRunnerService,
 		private readonly instanceSettings: InstanceSettings,
@@ -95,5 +97,26 @@ export class TestRunsController {
 		await this.testRunnerService.cancelTestRun(testRunId);
 
 		res.status(202).json({ success: true });
+	}
+
+	@Post('/:workflowId/test-runs/new')
+	async create(req: TestRunsRequest.Create, res: express.Response) {
+		const { workflowId } = req.params;
+
+		const workflow = await this.sharedWorkflowRepository.findWorkflowForUser(workflowId, req.user, [
+			'workflow:read',
+		]);
+
+		if (!workflow) {
+			// user trying to access a workflow they do not own
+			// and was not shared to them
+			// Or does not exist.
+			return res.status(404).json({ message: 'Not Found' });
+		}
+
+		// We do not await for the test run to complete
+		void this.testRunnerService.runTest(req.user, workflow.id);
+
+		return res.status(202).json({ success: true });
 	}
 }

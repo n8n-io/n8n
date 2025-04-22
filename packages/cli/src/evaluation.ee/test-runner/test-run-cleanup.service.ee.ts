@@ -4,7 +4,7 @@ import { Logger } from 'n8n-core';
 import { TestRunRepository } from '@/databases/repositories/test-run.repository.ee';
 
 /**
- * This service is responsible for cleaning up pending test runs on application startup.
+ * This service is responsible for cleaning up pending Test Runs on application startup.
  */
 @Service()
 export class TestRunCleanupService {

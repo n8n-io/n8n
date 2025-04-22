@@ -1,4 +1,4 @@
-import { Column, Entity, OneToMany } from '@n8n/typeorm';
+import { Column, Entity, OneToMany, ManyToOne } from '@n8n/typeorm';
 import type { IDataObject } from 'n8n-workflow';
 
 import {
@@ -7,6 +7,7 @@ import {
 	WithTimestampsAndStringId,
 } from '@/databases/entities/abstract-entity';
 import type { TestCaseExecution } from '@/databases/entities/test-case-execution.ee';
+import { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import type { TestRunFinalResult } from '@/databases/repositories/test-run.repository.ee';
 import type { TestRunErrorCode } from '@/evaluation.ee/test-runner/errors.ee';
 
@@ -47,6 +48,9 @@ export class TestRun extends WithTimestampsAndStringId {
 
 	@OneToMany('TestCaseExecution', 'testRun')
 	testCaseExecutions: TestCaseExecution[];
+
+	@ManyToOne('WorkflowEntity')
+	workflow: WorkflowEntity;
 
 	/**
 	 * Calculated property to determine the final result of the test run
