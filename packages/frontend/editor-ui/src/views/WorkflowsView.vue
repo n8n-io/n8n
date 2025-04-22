@@ -503,6 +503,7 @@ const fetchWorkflows = async () => {
 				.map((r) => ({ id: r.id, name: r.name, parentFolder: r.parentFolder?.id })),
 		);
 
+		// This is for the case when user lands straight on a folder page
 		const isCurrentFolderCached = foldersStore.breadcrumbsCache[parentFolder ?? ''] !== undefined;
 		const needToFetchFolderPath = parentFolder && !isCurrentFolderCached && routeProjectId;
 

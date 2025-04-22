@@ -182,6 +182,9 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 	async function getHiddenBreadcrumbsItems(
 		project: { id: string; name: string },
 		folderId: string,
+		options?: {
+			addLinks?: boolean;
+		},
 	) {
 		const startTime = Date.now();
 		const path = await getFolderPath(project.id, folderId);
@@ -189,11 +192,14 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 		// Process a folder and all its nested children recursively
 		const processFolderWithChildren = (
 			folder: FolderTreeResponseItem,
-		): Array<{ id: string; label: string }> => {
-			const result = [
+		): Array<{ id: string; label: string; href?: string }> => {
+			const result: Array<{ id: string; label: string; href?: string }> = [
 				{
 					id: folder.id,
 					label: folder.name,
+					href: options?.addLinks
+						? `/projects/${project.id}/folders/${folder.id}/workflows`
+						: undefined,
 				},
 			];
 
@@ -201,10 +207,13 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 			if (folder.children?.length) {
 				const childItems = folder.children.flatMap((child) => {
 					// Add this child
-					const childResult = [
+					const childResult: Array<{ id: string; label: string; href?: string }> = [
 						{
 							id: child.id,
 							label: child.name,
+							href: options?.addLinks
+								? `/projects/${project.id}/folders/${child.id}/workflows`
+								: undefined,
 						},
 					];
 

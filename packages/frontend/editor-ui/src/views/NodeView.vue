@@ -392,17 +392,25 @@ async function initializeWorkspaceForNewWorkflow() {
 	);
 	workflowsStore.makeNewWorkflowShareable();
 
-	// Load home project and  parent folder data if they are not already loaded
+	await fetchAndSetParentFolder(parentFolderId);
+
+	uiStore.nodeViewInitialized = true;
+	initializedWorkflowId.value = NEW_WORKFLOW_ID;
+}
+
+// Load home project and  parent folder data if they are not already loaded
+// This happens when user lands straight on the new workflow page and we have nothing in the store
+async function fetchAndSetParentFolder(folderId?: string) {
 	if (projectsStore.currentProjectId && !projectsStore.currentProject) {
 		const project = await projectsStore.fetchProject(projectsStore.currentProjectId);
 		projectsStore.setCurrentProject(project);
 	}
 
-	if (parentFolderId) {
-		let parentFolder = foldersStore.getCachedFolder(parentFolderId);
+	if (folderId) {
+		let parentFolder = foldersStore.getCachedFolder(folderId);
 		if (!parentFolder && projectsStore.currentProjectId) {
-			await foldersStore.getFolderPath(projectsStore.currentProjectId, parentFolderId);
-			parentFolder = foldersStore.getCachedFolder(parentFolderId);
+			await foldersStore.getFolderPath(projectsStore.currentProjectId, folderId);
+			parentFolder = foldersStore.getCachedFolder(folderId);
 		}
 		if (parentFolder) {
 			workflowsStore.setParentFolder({
@@ -411,9 +419,6 @@ async function initializeWorkspaceForNewWorkflow() {
 			});
 		}
 	}
-
-	uiStore.nodeViewInitialized = true;
-	initializedWorkflowId.value = NEW_WORKFLOW_ID;
 }
 
 async function initializeWorkspaceForExistingWorkflow(id: string) {
@@ -424,11 +429,6 @@ async function initializeWorkspaceForExistingWorkflow(id: string) {
 
 		if (workflowData.parentFolder) {
 			workflowsStore.setParentFolder(workflowData.parentFolder);
-			const isParentFolderCached =
-				foldersStore.breadcrumbsCache[workflowData.parentFolder.id] !== undefined;
-			if (workflowData.homeProject && !isParentFolderCached) {
-				await foldersStore.getFolderPath(workflowData.homeProject.id, workflowData.parentFolder.id);
-			}
 		}
 
 		if (workflowData.meta?.onboardingId) {
