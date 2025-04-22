@@ -215,14 +215,6 @@ describe('External Secrets Manager', () => {
 				}),
 			});
 		});
-
-		test('should return undefined for non-existent provider', async () => {
-			await manager.init();
-
-			const result = manager.getProviderWithSettings('nonexistent');
-
-			expect(result).toBeUndefined();
-		});
 	});
 
 	describe('getProvidersWithSettings', () => {

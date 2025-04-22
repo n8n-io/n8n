@@ -239,16 +239,11 @@ export class ExternalSecretsManager {
 		}));
 	}
 
-	getProviderWithSettings(provider: string):
-		| {
-				provider: SecretsProvider;
-				settings: SecretsProviderSettings;
-		  }
-		| undefined {
+	getProviderWithSettings(provider: string): {
+		provider: SecretsProvider;
+		settings: SecretsProviderSettings;
+	} {
 		const providerConstructor = this.secretsProviders.getProvider(provider);
-		if (!providerConstructor) {
-			return undefined;
-		}
 		return {
 			provider: this.getProvider(provider) ?? new providerConstructor(),
 			settings: this.cachedSettings[provider] ?? {},
