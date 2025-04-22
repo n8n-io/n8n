@@ -10,6 +10,7 @@ import { NotImplementedError } from '@/errors/response-errors/not-implemented.er
 import { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.service.ee';
 import { TestRunsRequest } from '@/evaluation.ee/test-runs.types.ee';
 import { listQueryMiddleware } from '@/middlewares';
+import { getSharedWorkflow } from '@/public-api/v1/handlers/workflows/workflows.service';
 import { Telemetry } from '@/telemetry';
 
 @RestController('/workflows')
@@ -100,5 +101,24 @@ export class TestRunsController {
 		await this.testRunnerService.cancelTestRun(testRunId);
 
 		res.status(202).json({ success: true });
+	}
+
+	@Post('/:workflowId/test-runs/new')
+	async create(req: TestRunsRequest.Create, res: express.Response) {
+		const { workflowId } = req.params;
+
+		const workflow = await getSharedWorkflow(req.user, workflowId);
+
+		if (!workflow) {
+			// user trying to access a workflow they do not own
+			// and was not shared to them
+			// Or does not exist.
+			return res.status(404).json({ message: 'Not Found' });
+		}
+
+		// We do not await for the test run to complete
+		void this.testRunnerService.runTest(req.user, workflowId);
+
+		return res.status(202).json({ success: true });
 	}
 }
