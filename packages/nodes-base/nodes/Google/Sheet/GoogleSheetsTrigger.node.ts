@@ -534,11 +534,11 @@ export class GoogleSheetsTrigger implements INodeType {
 				);
 
 				if (Array.isArray(sheetData) && sheetData.length !== 0) {
-					sheetData.splice(0, 1); // Remove key row
+					sheetData.splice(0, 1); // Remove header row
 				}
 
 				let dataStartIndex = 0;
-				if (rangeDefinition !== 'specifyRangeA1' && keyRow < startIndex) {
+				if (rangeDefinition === 'specifyRange' && keyRow < startIndex) {
 					dataStartIndex = startIndex - keyRow - 1;
 				}
 
