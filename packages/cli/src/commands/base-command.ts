@@ -39,6 +39,7 @@ import type { ModulePreInit } from '@/modules/modules.config';
 import { ModulesConfig } from '@/modules/modules.config';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
+import { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { WorkflowHistoryManager } from '@/workflows/workflow-history.ee/workflow-history-manager.ee';
 
@@ -97,6 +98,7 @@ export abstract class BaseCommand extends Command {
 		}
 
 		Container.get(ModuleRegistry).initializeModules();
+		Container.get(ModuleRegistry).registerMultiMainListeners(Container.get(MultiMainSetup));
 	}
 
 	async init(): Promise<void> {
