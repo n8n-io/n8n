@@ -27,7 +27,7 @@ const { isOpen, logEntry, workflow, execution, window, latestInfo } = defineProp
 	workflow: Workflow;
 	execution: IExecutionResponse;
 	window?: Window;
-	latestInfo: LatestNodeInfo;
+	latestInfo?: LatestNodeInfo;
 }>();
 
 const emit = defineEmits<{ clickHeader: [] }>();
@@ -103,9 +103,9 @@ function handleResizeEnd() {
 				<div :class="$style.title">
 					<NodeIcon :node-type="type" :size="16" :class="$style.icon" />
 					<NodeName
-						:latest-name="latestInfo.name"
+						:latest-name="latestInfo?.name ?? logEntry.node.name"
 						:name="logEntry.node.name"
-						:is-deleted="latestInfo.deleted"
+						:is-deleted="latestInfo?.deleted ?? false"
 					/>
 					<ExecutionSummary
 						v-if="isOpen"

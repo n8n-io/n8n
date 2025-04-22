@@ -78,15 +78,13 @@ function handleToggleExpanded(treeNode: ElTreeNode) {
 }
 
 async function handleOpenNdv(treeNode: LogEntry) {
-	const latestName = latestNodeInfo[treeNode.node.id]?.name;
+	const latestName = latestNodeInfo[treeNode.node.id]?.name ?? treeNode.node.name;
 
-	if (latestName) {
-		ndvStore.setActiveNodeName(latestName);
-	}
+	ndvStore.setActiveNodeName(latestName);
 }
 
 async function handleTriggerPartialExecution(treeNode: LogEntry) {
-	const latestName = latestNodeInfo[treeNode.node.id]?.name;
+	const latestName = latestNodeInfo[treeNode.node.id]?.name ?? treeNode.node.name;
 
 	if (latestName) {
 		await runWorkflow.runWorkflow({ destinationNode: latestName });
@@ -158,7 +156,6 @@ async function handleTriggerPartialExecution(treeNode: LogEntry) {
 				>
 					<template #default="{ node: elTreeNode, data }">
 						<LogsOverviewRow
-							v-if="!!latestNodeInfo[data.node.id]"
 							:data="data"
 							:node="elTreeNode"
 							:is-read-only="isReadOnly"

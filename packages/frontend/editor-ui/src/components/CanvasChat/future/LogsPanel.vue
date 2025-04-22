@@ -156,13 +156,7 @@ function handleResizeOverviewPanelEnd() {
 							</LogsOverviewPanel>
 						</N8nResizeWrapper>
 						<LogsDetailsPanel
-							v-if="
-								isLogDetailsOpenOrCollapsing &&
-								selectedLogEntry &&
-								execution &&
-								workflow &&
-								latestNodeNameById[selectedLogEntry.node.id]
-							"
+							v-if="isLogDetailsOpenOrCollapsing && selectedLogEntry && execution && workflow"
 							:class="$style.logDetails"
 							:is-open="isOpen"
 							:log-entry="selectedLogEntry"

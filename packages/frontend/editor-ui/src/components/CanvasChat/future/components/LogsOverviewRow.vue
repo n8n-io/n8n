@@ -22,7 +22,7 @@ const props = defineProps<{
 	isReadOnly: boolean;
 	shouldShowConsumedTokens: boolean;
 	isCompact: boolean;
-	latestInfo: LatestNodeInfo;
+	latestInfo?: LatestNodeInfo;
 }>();
 
 const emit = defineEmits<{
@@ -109,10 +109,10 @@ watch(
 		<NodeIcon :node-type="type" :size="16" :class="$style.icon" />
 		<NodeName
 			:class="$style.name"
-			:latest-name="latestInfo.name"
+			:latest-name="latestInfo?.name ?? props.data.node.name"
 			:name="props.data.node.name"
 			:is-error="isError"
-			:is-deleted="latestInfo.deleted"
+			:is-deleted="latestInfo?.deleted ?? false"
 		/>
 		<N8nText tag="div" color="text-light" size="small" :class="$style.timeTook">
 			<I18nT v-if="isSettled" keypath="logs.overview.body.summaryText">
@@ -155,7 +155,8 @@ watch(
 		/>
 		<N8nIconButton
 			v-if="
-				!isCompact || (!props.isReadOnly && !props.latestInfo.deleted && !props.latestInfo.disabled)
+				!isCompact ||
+				(!props.isReadOnly && !props.latestInfo?.deleted && !props.latestInfo?.disabled)
 			"
 			type="secondary"
 			size="small"
@@ -163,16 +164,16 @@ watch(
 			style="color: var(--color-text-base)"
 			:aria-label="locale.baseText('logs.overview.body.run')"
 			:class="[$style.partialExecutionButton, depth > 0 ? $style.unavailable : '']"
-			:disabled="props.latestInfo.deleted || props.latestInfo.disabled"
+			:disabled="props.latestInfo?.deleted || props.latestInfo?.disabled"
 			@click.stop="emit('triggerPartialExecution', props.data)"
 		/>
 		<N8nIconButton
-			v-if="!isCompact || !props.latestInfo.deleted"
+			v-if="!isCompact || !props.latestInfo?.deleted"
 			type="secondary"
 			size="small"
 			icon="external-link-alt"
 			style="color: var(--color-text-base)"
-			:disabled="props.latestInfo.deleted"
+			:disabled="props.latestInfo?.deleted"
 			:class="$style.openNdvButton"
 			:aria-label="locale.baseText('logs.overview.body.open')"
 			@click.stop="emit('openNdv', props.data)"

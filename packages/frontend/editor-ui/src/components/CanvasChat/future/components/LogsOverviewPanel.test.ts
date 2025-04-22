@@ -36,6 +36,7 @@ describe('LogsOverviewPanel', () => {
 					aiChatExecutionResponse.data?.resultData.runData ?? {},
 				),
 			},
+			latestNodeInfo: {},
 			...props,
 		};
 
