@@ -10,7 +10,7 @@ describe('InsightsModulePreInit', () => {
 	it('should return false if instance type is not "main"', () => {
 		const ctx: ModulePreInitContext = {
 			instance: mock<InstanceSettings>({ instanceType: 'worker' }),
-			database: mock<DatabaseConfig>({ type: 'sqlite', sqlite: { poolSize: 10 } }),
+			database: mock<DatabaseConfig>({ type: 'sqlite' }),
 		};
 		expect(shouldLoadModule(ctx)).toBe(false);
 	});
