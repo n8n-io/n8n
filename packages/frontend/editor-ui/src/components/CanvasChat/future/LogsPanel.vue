@@ -78,7 +78,7 @@ const selectedLogEntry = computed(() =>
 			: manualLogEntrySelection.value.data,
 );
 const isLogDetailsOpen = computed(
-	() => selectedLogEntry.value !== undefined && !isCollapsingDetailsPanel.value,
+	() => isOpen.value && selectedLogEntry.value !== undefined && !isCollapsingDetailsPanel.value,
 );
 const isLogDetailsOpenOrCollapsing = computed(() => selectedLogEntry.value !== undefined);
 const logsPanelActionsProps = computed<InstanceType<typeof LogsPanelActions>['$props']>(() => ({
