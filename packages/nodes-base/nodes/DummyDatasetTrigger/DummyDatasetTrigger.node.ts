@@ -1,12 +1,13 @@
 import type {
-	ITriggerFunctions,
 	INodeType,
 	INodeTypeDescription,
-	ITriggerResponse,
-	IDeferredPromise,
-	IRun,
+	IExecuteFunctions,
+	INodeExecutionData,
 } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
+
+// Global variable to track current index between executions
+let currentDatasetIndex = 0;
 
 const mockDataset = [
 	'Can you explain how machine learning algorithms work in simple terms?',
@@ -49,31 +50,18 @@ export class DummyDatasetTrigger implements INodeType {
 		],
 	};
 
-	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
-		const manualTriggerFunction = async () => {
-			void (async () => {
-				for (const testCase of mockDataset) {
-					const responsePromise: IDeferredPromise<IRun> = this.helpers.createDeferredPromise();
+	async execute(this: IExecuteFunctions) {
+		// If we've reached the end of the dataset, start over
+		if (currentDatasetIndex >= mockDataset.length) {
+			currentDatasetIndex = 0;
+		}
 
-					this.emit(
-						[this.helpers.returnJsonArray([{ text: testCase }])],
-						undefined,
-						responsePromise,
-					);
+		// Get the current item
+		const currentItem = mockDataset[currentDatasetIndex];
 
-					console.log(await responsePromise.promise);
-				}
-			})();
+		// Increment the index for next execution
+		currentDatasetIndex++;
 
-			// setTimeout(() => {
-			// 	this.emit([this.helpers.returnJsonArray([{ text: mockDataset[1] }])]);
-			// }, 3000);
-		};
-
-		return {
-			manualTriggerFunction,
-		};
+		return [[{ json: { input: currentItem } } as INodeExecutionData]];
 	}
-
-	getDataset(): {};
 }
