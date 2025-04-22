@@ -53,6 +53,13 @@ export function useExecutionData() {
 		};
 	});
 	const updateInterval = computed(() => ((execution.value?.tree.length ?? 0) > 10 ? 300 : 0));
+	const runStatusList = computed(() =>
+		workflowsStore.workflowExecutionData?.id === IN_PROGRESS_EXECUTION_ID
+			? Object.values(workflowsStore.workflowExecutionData?.data?.resultData.runData ?? {})
+					.flatMap((tasks) => tasks.map((task) => task.executionStatus ?? ''))
+					.join('|')
+			: '',
+	);
 
 	function resetExecutionData() {
 		execData.value = undefined;
@@ -66,12 +73,7 @@ export function useExecutionData() {
 			() => workflowsStore.workflowExecutionData?.id,
 			() => workflowsStore.workflowExecutionData?.workflowData.id,
 			() => workflowsStore.workflowExecutionData?.status,
-			() =>
-				workflowsStore.workflowExecutionData?.id === IN_PROGRESS_EXECUTION_ID
-					? Object.values(workflowsStore.workflowExecutionData?.data?.resultData.runData ?? {})
-							.flatMap((tasks) => tasks.map((task) => task.executionStatus ?? ''))
-							.join('|')
-					: '',
+			runStatusList,
 		],
 		useThrottleFn(
 			() => {
