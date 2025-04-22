@@ -10,10 +10,11 @@ export {
 	DEFAULT_SHUTDOWN_PRIORITY,
 	LOWEST_SHUTDOWN_PRIORITY,
 } from './shutdown/constants';
-export { ShutdownService } from './shutdown/shutdown.service';
+export { ShutdownRegistryMetadata } from './shutdown-registry-metadata';
 export { ModuleRegistry } from './module';
 export { OnShutdown } from './on-shutdown';
 export { Redactable } from './redactable';
 export { BaseN8nModule, N8nModule } from './module';
 export { Debounce } from './debounce';
 export type { AccessScope, Controller, RateLimit } from './types';
+export type { ShutdownHandler } from './types';

@@ -1,6 +1,7 @@
 import type { Constructable } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 import type { RequestHandler } from 'express';
+import type { Class } from 'n8n-core';
 import type EventEmitter from 'node:events';
 
 /**
@@ -85,3 +86,12 @@ export interface ControllerMetadata {
 
 export type Controller = Constructable<object> &
 	Record<HandlerName, (...args: unknown[]) => Promise<unknown>>;
+
+type HandlerFn = () => Promise<void> | void;
+
+export type ServiceClass = Class<Record<string, HandlerFn>>;
+
+export interface ShutdownHandler {
+	serviceClass: ServiceClass;
+	methodName: string;
+}
