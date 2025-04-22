@@ -1,4 +1,4 @@
-import { type LogEntry } from '@/components/CanvasChat/future/utils';
+import { type LogEntry } from '@/components/RunDataAi/utils';
 
 export type LogEntrySelection =
 	| { type: 'initial' }

@@ -30,7 +30,7 @@ import {
 import type { IExecutionResponse, INodeUi, IWorkflowDb } from '@/Interface';
 import { CanvasNodeRenderType } from '@/types';
 import type { FrontendSettings } from '@n8n/api-types';
-import { type LogEntry } from '@/components/CanvasChat/future/utils';
+import { type LogEntry } from '@/components/RunDataAi/utils';
 
 export const mockNode = ({
 	id = uuid(),
