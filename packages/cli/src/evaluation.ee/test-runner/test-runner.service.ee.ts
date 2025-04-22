@@ -164,6 +164,20 @@ export class TestRunnerService {
 	}
 
 	/**
+	 * Evaluation result is collected from all Evaluation Metrics nodes
+	 */
+	private extractEvaluationResult(execution: IRun, workflow: IWorkflowBase): IDataObject {
+		const metricsNodes = TestRunnerService.getEvaluationMetricsNodes(workflow);
+		const metricsRunData = metricsNodes.flatMap(
+			(node) => execution.data.resultData.runData[node.name],
+		);
+		const metricsData = metricsRunData.reverse().map((data) => data.data?.main?.[0]?.[0]?.json);
+		const metricsResult = metricsData.reduce((acc, curr) => ({ ...acc, ...curr }), {}) ?? {};
+
+		return metricsResult;
+	}
+
+	/**
 	 * Creates a new test run for the given test definition.
 	 */
 	async runTest(user: User, workflowId: string): Promise<void> {
@@ -215,11 +229,7 @@ export class TestRunnerService {
 			// 	testCases.map((e) => e.id),
 			// );
 
-			// TODO: Collect metric names from evaluation nodes of the workflow
-			const testMetricNames = new Set<string>();
-
 			// 2. Run over all the test cases
-			// const pastExecutionIds = pastExecutions.map((e) => e.id);
 
 			// Update test run status
 			// TODO: mark test run as running
@@ -256,8 +266,15 @@ export class TestRunnerService {
 
 					// Run the test case and wait for it to finish
 					const testCaseExecution = await this.runTestCase(workflow, testCaseMetadata, abortSignal);
+					assert(testCaseExecution);
 
 					this.logger.debug('Test case execution finished');
+
+					const { addedMetrics } = metrics.addResults(
+						this.extractEvaluationResult(testCaseExecution, workflow),
+					);
+
+					this.logger.debug('Test case metrics extracted', addedMetrics);
 
 					// In case of a permission check issue, the test case execution will be undefined.
 					// If that happens, or if the test case execution produced an error, mark the test case as failed.
@@ -332,6 +349,8 @@ export class TestRunnerService {
 				});
 			} else {
 				const aggregatedMetrics = metrics.getAggregatedMetrics();
+
+				this.logger.debug('Aggregated metrics', aggregatedMetrics);
 
 				// TODO: mark test run as completed
 				// await this.testRunRepository.markAsCompleted(testRun.id, aggregatedMetrics);
