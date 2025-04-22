@@ -1,3 +1,12 @@
+## [1.90.1](https://github.com/n8n-io/n8n/compare/n8n@1.90.0...n8n@1.90.1) (2025-04-22)
+
+
+### Bug Fixes
+
+* **core:** ID quoting in add scopes migration ([#14788](https://github.com/n8n-io/n8n/issues/14788)) ([5f2c7fc](https://github.com/n8n-io/n8n/commit/5f2c7fc85d7b04f0a5ed311443e2a42e76db171d))
+
+
+
 # [1.90.0](https://github.com/n8n-io/n8n/compare/n8n@1.89.0...n8n@1.90.0) (2025-04-21)
 
 
