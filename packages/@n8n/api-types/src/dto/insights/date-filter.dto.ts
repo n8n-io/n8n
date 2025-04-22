@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { Z } from 'zod-class';
 
-import { insightsDateRangeSchema } from 'schemas/insights.schema';
+import { insightsDateRangeSchema } from '../../schemas/insights.schema';
 
 const VALID_DATE_RANGE_OPTIONS = insightsDateRangeSchema.shape.key.options;
 
