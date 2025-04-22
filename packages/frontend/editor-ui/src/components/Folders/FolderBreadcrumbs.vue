@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useI18n } from '@/composables/useI18n';
 import { useProjectsStore } from '@/stores/projects.store';
-import { type ProjectIcon as ProjectIconType, ProjectTypes } from '@/types/projects.types';
+import { ProjectTypes } from '@/types/projects.types';
 import type { UserAction } from '@n8n/design-system/types';
 import { type PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import { computed, ref, watch } from 'vue';
@@ -44,16 +44,6 @@ const visibleIds = ref<Set<string>>(new Set());
 
 const currentProject = computed(() => projectsStore.currentProject);
 
-const projectIcon = computed((): ProjectIconType => {
-	if (projectsStore.currentProject?.type === ProjectTypes.Personal) {
-		return { type: 'icon', value: 'user' };
-	} else if (projectsStore.currentProject?.name) {
-		return projectsStore.currentProject.icon ?? { type: 'icon', value: 'layer-group' };
-	} else {
-		return { type: 'icon', value: 'home' };
-	}
-});
-
 const projectName = computed(() => {
 	if (currentProject.value?.type === ProjectTypes.Personal) {
 		return i18n.baseText('projects.menu.personal');
@@ -74,6 +64,7 @@ const visibleBreadcrumbsItems = computed<FolderPathItem[]>(() => {
 	if (!props.currentFolder) return [];
 
 	const items: FolderPathItem[] = [];
+	// Only show parent folder if we are showing 2 levels of visible breadcrumbs
 	const parent =
 		props.visibleLevels === 2
 			? foldersStore.getCachedFolder(props.currentFolder.parentFolder ?? '')
@@ -126,8 +117,8 @@ const onAction = (action: string) => {
 	emit('action', action);
 };
 
-const onProjectMouseUp = () => {
-	if (!isDragging.value || !currentProject.value?.name) {
+const onProjectDrop = () => {
+	if (!currentProject.value?.name) {
 		return;
 	}
 	emit('projectDrop', currentProject.value.id, currentProject.value.name);
@@ -185,35 +176,25 @@ watch(
 			@item-drop="emit('itemDrop', $event)"
 		>
 			<template v-if="currentProject" #prepend>
-				<div
-					:class="{ [$style['home-project']]: true, [$style.dragging]: isDragging }"
-					data-test-id="home-project"
-					@mouseenter="onProjectHover"
-					@mouseup="isDragging ? onProjectMouseUp() : null"
-				>
-					<ProjectIcon :icon="projectIcon" :border-less="true" size="mini" />
-					<n8n-link :to="`/projects/${currentProject.id}`">
-						<N8nText size="medium" color="text-base">{{ projectName }}</N8nText>
-					</n8n-link>
-				</div>
+				<ProjectBreadcrumb
+					:current-project="currentProject"
+					:is-dragging="isDragging"
+					@project-drop="onProjectDrop"
+					@project-hover="onProjectHover"
+				/>
 			</template>
 			<template #append>
 				<slot name="append"></slot>
 			</template>
 		</n8n-breadcrumbs>
 		<!-- If there is no current folder, just show project badge -->
-		<!-- TODO: Extract project badge to a component -->
-		<div
-			v-else-if="currentProject"
-			:class="{ [$style['home-project']]: true, [$style.dragging]: isDragging }"
-			data-test-id="home-project"
-			@mouseenter="onProjectHover"
-			@mouseup="isDragging ? onProjectMouseUp() : null"
-		>
-			<ProjectIcon :icon="projectIcon" :border-less="true" size="mini" />
-			<n8n-link :to="`/projects/${currentProject.id}`">
-				<N8nText size="medium" color="text-base">{{ projectName }}</N8nText>
-			</n8n-link>
+		<div v-else-if="currentProject" :class="$style['home-project']" data-test-id="home-project">
+			<ProjectBreadcrumb
+				:current-project="currentProject"
+				:is-dragging="isDragging"
+				@project-drop="onProjectDrop"
+				@project-hover="onProjectHover"
+			/>
 			<slot name="append"></slot>
 		</div>
 		<n8n-action-toggle
@@ -233,31 +214,14 @@ watch(
 	align-items: center;
 }
 
-.action-toggle {
-	span[role='button'] {
-		color: var(--color-text-base);
-	}
-}
-
 .home-project {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-4xs);
-	padding: var(--spacing-4xs);
-	border: var(--border-width-base) var(--border-style-base) transparent;
+}
 
-	&.dragging:hover {
-		border: var(--border-width-base) var(--border-style-base) var(--color-secondary);
-		border-radius: var(--border-radius-base);
-		background-color: var(--color-callout-secondary-background);
-		* {
-			cursor: grabbing;
-			color: var(--color-text-base);
-		}
-	}
-
-	&:hover :global(.n8n-text) {
-		color: var(--color-text-dark);
+.action-toggle {
+	span[role='button'] {
+		color: var(--color-text-base);
 	}
 }
 </style>
