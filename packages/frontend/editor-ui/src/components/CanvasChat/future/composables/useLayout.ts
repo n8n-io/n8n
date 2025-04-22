@@ -103,15 +103,19 @@ export function useLayout(
 		resizer.onResizeEnd();
 	}
 
-	watch([panelState, resizer.size], ([state, height]) => {
-		canvasStore.setPanelHeight(
-			state === LOGS_PANEL_STATE.FLOATING
-				? 0
-				: state === LOGS_PANEL_STATE.ATTACHED
-					? height
-					: 32 /* collapsed panel height */,
-		);
-	});
+	watch(
+		[panelState, resizer.size],
+		([state, height]) => {
+			canvasStore.setPanelHeight(
+				state === LOGS_PANEL_STATE.FLOATING
+					? 0
+					: state === LOGS_PANEL_STATE.ATTACHED
+						? height
+						: 32 /* collapsed panel height */,
+			);
+		},
+		{ immediate: true },
+	);
 
 	return {
 		height: resizer.size,
