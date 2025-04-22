@@ -4,6 +4,8 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 	IHttpRequestMethods,
+	IExecuteFunctions,
+	INodeExecutionData,
 } from 'n8n-workflow';
 import { ApplicationError, NodeApiError } from 'n8n-workflow';
 
@@ -160,6 +162,18 @@ export class Raia implements INodeType {
 				},
 			},
 			{
+				displayName: 'User Message',
+				name: 'userMessage',
+				type: 'string',
+				default: '',
+				description: 'Message to send to the AI Agent',
+				displayOptions: {
+					show: {
+						conversationType: ['raiaManaged', 'customerManaged'],
+					},
+				},
+			},
+			{
 				displayName: 'Prompt',
 				name: 'prompt',
 				type: 'string',
@@ -173,26 +187,15 @@ export class Raia implements INodeType {
 		],
 	};
 
-	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse | undefined> {
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const returnItems = [];
 		const conversationType = this.getNodeParameter('conversationType', 0) as string;
 		const credentials = (await this.getCredentials('raiaApi')) as { apiKey: string };
 
-		const options: {
-			method: string;
-			url: string;
-			headers: { [key: string]: string };
-			body: any;
-			json: boolean;
-		} = {
-			method: 'POST' as IHttpRequestMethods,
-			url: '',
-			headers: {
-				Accept: 'application/json',
-				'Content-Type': 'application/json',
-				'Agent-Secret-Key': String(credentials.apiKey),
-			},
-			body: {},
-			json: true,
+		const headers = {
+			Accept: 'application/json',
+			'Content-Type': 'application/json',
+			'Agent-Secret-Key': credentials.apiKey,
 		};
 
 		try {
@@ -200,50 +203,46 @@ export class Raia implements INodeType {
 				let conversationId: string;
 
 				if (conversationType === 'raiaManaged') {
-					// Validate phone number
 					const phoneNumber = this.getNodeParameter('phoneNumber', 0);
 					if (!(phoneNumber as string).startsWith('+')) {
 						throw new ApplicationError('Phone number must start with a "+" (e.g., +1234567890).');
 					}
-
-					// Raia-Managed Conversation: Start the conversation directly
-					options.url = 'https://api.raia2.com/external/conversations/start';
-					options.body = {
+					console.log({
 						firstName: this.getNodeParameter('firstName', 0),
 						lastName: this.getNodeParameter('lastName', 0),
 						context: this.getNodeParameter('context', 0),
 						source: this.getNodeParameter('source', 0),
 						channel: this.getNodeParameter('channel', 0),
-						phoneNumber, // Validated phone number
+						phoneNumber,
 						email: this.getNodeParameter('email', 0),
 						emailSubject: this.getNodeParameter('emailSubject', 0),
 						emailIntroduction: this.getNodeParameter('emailIntroduction', 0),
 						includeSignatureInEmail: this.getNodeParameter('includeSignatureInEmail', 0),
-					};
-
-					console.log('Payload for /conversations/start:', options.body);
-
-					const responseData = await this.helpers.httpRequest({
-						...options,
-						method: options.method as IHttpRequestMethods,
 					});
-					conversationId = responseData.conversationId;
-					if (!conversationId) {
-						throw new ApplicationError(
-							'conversationId is missing in the response from /conversations/start.',
-						);
-					}
-					console.log(
-						`Raia-Managed Conversation started successfully! Conversation ID: ${conversationId}`,
-					);
-				} else if (conversationType === 'customerManaged') {
-					// Customer-Managed Conversation: Create user and conversation
-
-					// Step 1: Create a User
-					const createUserOptions = {
-						method: 'POST' as IHttpRequestMethods,
+					const response = await this.helpers.httpRequest({
+						method: 'POST',
+						url: 'https://api.raia2.com/external/conversations/start',
+						headers,
+						body: {
+							firstName: this.getNodeParameter('firstName', 0),
+							lastName: this.getNodeParameter('lastName', 0),
+							context: this.getNodeParameter('context', 0),
+							source: this.getNodeParameter('source', 0),
+							channel: this.getNodeParameter('channel', 0),
+							phoneNumber,
+							email: this.getNodeParameter('email', 0),
+							emailSubject: this.getNodeParameter('emailSubject', 0),
+							emailIntroduction: this.getNodeParameter('emailIntroduction', 0),
+							includeSignatureInEmail: this.getNodeParameter('includeSignatureInEmail', 0),
+						},
+						json: true,
+					});
+					conversationId = response.conversationId;
+				} else {
+					const userResponse = await this.helpers.httpRequest({
+						method: 'POST',
 						url: 'https://api.raia2.com/external/users',
-						headers: options.headers,
+						headers,
 						body: {
 							firstName: this.getNodeParameter('firstName', 0),
 							lastName: this.getNodeParameter('lastName', 0),
@@ -251,108 +250,68 @@ export class Raia implements INodeType {
 							email: this.getNodeParameter('email', 0),
 						},
 						json: true,
-					};
-
-					console.log('Payload for /users:', createUserOptions.body);
-
-					const userResponse = await this.helpers.httpRequest(createUserOptions);
+					});
 					const conversationUserId = userResponse.id;
-					if (!conversationUserId) {
-						throw new ApplicationError(
-							'conversationUserId is missing in the response from /users.',
-						);
-					}
-					console.log(`User created successfully! Conversation User ID: ${conversationUserId}`);
 
-					// Step 2: Create a Conversation
-					const createConversationOptions = {
-						method: 'POST' as IHttpRequestMethods,
+					const conversationResponse = await this.helpers.httpRequest({
+						method: 'POST',
 						url: 'https://api.raia2.com/external/conversations',
-						headers: options.headers,
+						headers,
 						body: {
 							conversationUserId,
 							title: 'New Conversation Title',
 						},
 						json: true,
-					};
-
-					console.log('Payload for /conversations:', createConversationOptions.body);
-
-					const conversationResponse = await this.helpers.httpRequest(createConversationOptions);
+					});
 					conversationId = conversationResponse.id;
-					if (!conversationId) {
-						throw new ApplicationError(
-							'conversationId is missing in the response from /conversations.',
-						);
-					}
-					console.log(`Conversation created successfully! Conversation ID: ${conversationId}`);
 				}
 
-				// Continuous conversation logic
-				while (true) {
-					const message = this.getNodeParameter('prompt', 'Hello');
-					const addMessageOptions = {
-						method: 'POST' as IHttpRequestMethods,
-						url: `https://api.raia2.com/external/conversations/${conversationId}/messages`,
-						headers: options.headers,
-						body: {
-							message,
-						},
-						json: true,
-					};
-
-					console.log(
-						'Payload for /conversations/{conversationId}/messages:',
-						addMessageOptions.body,
-					);
-
-					const messageResponse = await this.helpers.httpRequest(addMessageOptions);
-					console.log('Message sent successfully! Agent Response:', messageResponse);
-
-					// Log the Agent's reply
-					const agentReply = messageResponse.message;
-					console.log(`Agent Reply: ${agentReply}`);
-
-					// Break the loop if no further messages are required
-					const continueConversation = this.getNodeParameter('continueConversation', 0);
-					if (!continueConversation) {
-						break;
-					}
-				}
-
-				return {
-					manualTriggerFunction: async () => {
-						console.log('Conversation completed successfully! ✅');
+				const userMessage = this.getNodeParameter('userMessage', 0);
+				const messageResponse = await this.helpers.httpRequest({
+					method: 'POST',
+					url: `https://api.raia2.com/external/conversations/${conversationId}/messages`,
+					headers,
+					body: {
+						message: userMessage,
 					},
-				};
-			} else if (conversationType === 'oneOffMessage') {
-				options.url = 'https://api.raia2.com/external/prompts';
-				options.body = {
-					prompt: this.getNodeParameter('prompt', 0),
-				};
-
-				console.log('Payload for /prompts:', options.body);
-
-				const responseData = await this.helpers.httpRequest({
-					...options,
-					method: options.method as IHttpRequestMethods,
+					json: true,
 				});
-				console.log('One-Off Message sent successfully!', responseData);
 
-				return {
-					manualTriggerFunction: async () => {
-						console.log('One-Off Message completed successfully! ✅');
-						console.log(responseData);
+				return [
+					[
+						{
+							json: {
+								conversationId,
+								userMessage,
+								agentReply: messageResponse.message,
+							},
+						},
+					],
+				];
+			} else if (conversationType === 'oneOffMessage') {
+				const responseData = await this.helpers.httpRequest({
+					method: 'POST',
+					url: 'https://api.raia2.com/external/prompts',
+					headers,
+					body: {
+						prompt: this.getNodeParameter('prompt', 0),
 					},
-				};
+					json: true,
+				});
+
+				return [
+					[
+						{
+							json: responseData,
+						},
+					],
+				];
 			} else {
 				throw new ApplicationError('Invalid conversation type selected');
 			}
 		} catch (error) {
-			console.error('Error occurred during API request:', error);
-			throw new NodeApiError(this.getNode(), error, {
-				message: 'An error occurred while processing the request.',
-			});
+			console.log(error);
+			throw new NodeApiError(this.getNode(), error);
 		}
 	}
 }
