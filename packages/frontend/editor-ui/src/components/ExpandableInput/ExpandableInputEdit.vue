@@ -37,6 +37,7 @@ onBeforeUnmount(() => {
 function focus() {
 	if (inputRef.value) {
 		inputRef.value.focus();
+		inputRef.value.select();
 	}
 }
 
