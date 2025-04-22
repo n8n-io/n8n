@@ -1,4 +1,5 @@
 import type { PushMessage } from '@n8n/api-types';
+import { Patch, Post, RestController } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { Request } from 'express';
 import { Logger } from 'n8n-core';
@@ -10,7 +11,6 @@ import { LICENSE_FEATURES, LICENSE_QUOTAS, UNLIMITED_LICENSE_QUOTA, inE2ETests }
 import { AuthUserRepository } from '@/databases/repositories/auth-user.repository';
 import { SettingsRepository } from '@/databases/repositories/settings.repository';
 import { UserRepository } from '@/databases/repositories/user.repository';
-import { Patch, Post, RestController } from '@n8n/decorators';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import type { BooleanLicenseFeature, NumericLicenseFeature } from '@/interfaces';
 import type { FeatureReturnType } from '@/license';

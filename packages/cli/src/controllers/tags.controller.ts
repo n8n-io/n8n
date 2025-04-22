@@ -1,6 +1,4 @@
 import { CreateOrUpdateTagRequestDto, RetrieveTagQueryDto } from '@n8n/api-types';
-import { Response } from 'express';
-
 import {
 	Delete,
 	Get,
@@ -12,6 +10,8 @@ import {
 	Param,
 	Query,
 } from '@n8n/decorators';
+import { Response } from 'express';
+
 import { AuthenticatedRequest } from '@/requests';
 import { TagService } from '@/services/tag.service';
 

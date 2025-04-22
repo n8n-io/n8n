@@ -4,9 +4,6 @@ import {
 	ListFolderQueryDto,
 	UpdateFolderDto,
 } from '@n8n/api-types';
-import { Response } from 'express';
-import { UserError } from 'n8n-workflow';
-
 import {
 	Post,
 	RestController,
@@ -17,6 +14,9 @@ import {
 	Delete,
 	Query,
 } from '@n8n/decorators';
+import { Response } from 'express';
+import { UserError } from 'n8n-workflow';
+
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';

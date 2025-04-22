@@ -8,11 +8,12 @@ import { mock } from 'jest-mock-extended';
 import { agent as testAgent } from 'supertest';
 
 import type { AuthService } from '@/auth/auth.service';
-import { ControllerRegistry, Get, Licensed, RestController } from '@/decorators';
 import type { License } from '@/license';
 import type { SuperAgentTest } from '@test-integration/types';
 
 import { Param } from '../decorators/args';
+
+import { ControllerRegistry, Get, Licensed, RestController } from '@/decorators';
 
 describe('ControllerRegistry', () => {
 	const license = mock<License>();

@@ -1,6 +1,6 @@
+import { Get, Post, RestController, GlobalScope } from '@n8n/decorators';
 import { Response } from 'express';
 
-import { Get, Post, RestController, GlobalScope } from '@n8n/decorators';
 import { ExternalSecretsProviderNotFoundError } from '@/errors/external-secrets-provider-not-found.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ExternalSecretsRequest } from '@/requests';

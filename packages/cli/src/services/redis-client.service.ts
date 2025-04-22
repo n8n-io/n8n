@@ -4,10 +4,11 @@ import ioRedis from 'ioredis';
 import type { Cluster, RedisOptions } from 'ioredis';
 import { Logger } from 'n8n-core';
 
-import { Debounce } from '@/decorators/debounce';
 import { TypedEmitter } from '@/typed-emitter';
 
 import type { RedisClientType } from '../scaling/redis/redis.types';
+
+import { Debounce } from '@/decorators/debounce';
 
 type RedisEventMap = {
 	'connection-lost': number;
