@@ -12,7 +12,7 @@ export class RaiaApi implements ICredentialType {
 
 	documentationUrl = 'https://api.raia2.com/api/external/docs';
 
-	icon = 'file:raia.svg' as const;
+	icon = 'file:icons/raia.svg' as const;
 
 	properties: INodeProperties[] = [
 		{
