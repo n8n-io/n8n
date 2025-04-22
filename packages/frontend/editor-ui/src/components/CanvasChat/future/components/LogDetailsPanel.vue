@@ -32,7 +32,7 @@ const telemetry = useTelemetry();
 const workflowsStore = useWorkflowsStore();
 const nodeTypeStore = useNodeTypesStore();
 
-const content = ref<LogDetailsContent>(LOG_DETAILS_CONTENT.BOTH);
+const content = ref<LogDetailsContent>(LOG_DETAILS_CONTENT.OUTPUT);
 
 const node = computed<INodeUi | undefined>(() => workflowsStore.nodesByName[logEntry.node]);
 const type = computed(() => (node.value ? nodeTypeStore.getNodeType(node.value.type) : undefined));
