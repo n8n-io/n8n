@@ -174,6 +174,18 @@ export class Raia implements INodeType {
 				},
 			},
 			{
+				displayName: 'Continue Conversation',
+				name: 'continueConversation',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to continue the conversation after receiving a reply',
+				displayOptions: {
+					show: {
+						conversationType: ['raiaManaged', 'customerManaged'],
+					},
+				},
+			},
+			{
 				displayName: 'Prompt',
 				name: 'prompt',
 				type: 'string',
@@ -266,28 +278,46 @@ export class Raia implements INodeType {
 					conversationId = conversationResponse.id;
 				}
 
-				const userMessage = this.getNodeParameter('userMessage', 0);
-				const messageResponse = await this.helpers.httpRequest({
-					method: 'POST',
-					url: `https://api.raia2.com/external/conversations/${conversationId}/messages`,
-					headers,
-					body: {
-						message: userMessage,
-					},
-					json: true,
-				});
+				let continueConversation = true; // Flag to control the loop
 
-				return [
-					[
-						{
-							json: {
-								conversationId,
-								userMessage,
-								agentReply: messageResponse.message,
-							},
+				while (continueConversation) {
+					const userMessage = this.getNodeParameter('userMessage', 0);
+					console.log(`Sending message: ${userMessage}`);
+
+					// Send the user's message to the conversation
+					const messageResponse = await this.helpers.httpRequest({
+						method: 'POST',
+						url: `https://api.raia2.com/external/conversations/${conversationId}/messages`,
+						headers,
+						body: {
+							message: userMessage,
 						},
-					],
-				];
+						json: true,
+					});
+
+					console.log(`Agent Reply: ${messageResponse.message}`);
+
+					// Return the conversationId, userMessage, and agentReply
+					returnItems.push({
+						json: {
+							conversationId,
+							userMessage,
+							agentReply: messageResponse.message,
+						},
+					});
+
+					// Check if the user wants to continue the conversation
+					continueConversation = !!this.getNodeParameter('continueConversation', 0, false);
+					if (!continueConversation) {
+						console.log('Ending conversation as per user request.');
+						break;
+					}
+
+					// Optional: Add a delay between messages to avoid overwhelming the API
+					await new Promise((resolve) => setTimeout(resolve, 1000)); // 1-second delay
+				}
+
+				return [returnItems];
 			} else if (conversationType === 'oneOffMessage') {
 				const responseData = await this.helpers.httpRequest({
 					method: 'POST',
