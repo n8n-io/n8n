@@ -273,7 +273,7 @@ describe('useWorkflowsStore', () => {
 			expect(hasIssues).toBe(true);
 		});
 
-		it('should return false node has issues but it is not connected', () => {
+		it('should return false when node has issues but it is not connected', () => {
 			workflowsStore.workflow.nodes = [
 				{ name: 'Node1', issues: { error: ['Error message'] } },
 				{ name: 'Node2' },
