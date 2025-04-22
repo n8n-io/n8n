@@ -207,29 +207,29 @@ watch(
 	position: relative;
 	z-index: 1;
 
-	--row-gap-thickness: 1px;
-
 	& > * {
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
 		padding: var(--spacing-2xs);
-		margin-bottom: var(--row-gap-thickness);
 	}
 }
 
 .background {
 	position: absolute;
-	left: calc(var(--row-gap-thickness) + var(--indent-depth) * 32px);
+	left: calc(var(--indent-depth) * 32px);
 	top: 0;
-	width: calc(100% - var(--indent-depth) * 32px - var(--row-gap-thickness));
-	height: calc(100% - var(--row-gap-thickness));
+	width: calc(100% - var(--indent-depth) * 32px);
+	height: 100%;
 	border-radius: var(--border-radius-base);
 	z-index: -1;
 
-	.selected &,
-	.container:hover & {
+	.selected & {
 		background-color: var(--color-foreground-base);
+	}
+
+	.container:hover:not(.selected) & {
+		background-color: var(--color-background-light-base);
 	}
 
 	.selected:not(:hover).error & {
