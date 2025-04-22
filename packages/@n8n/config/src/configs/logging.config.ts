@@ -66,6 +66,9 @@ export class LoggingConfig {
 	@Env('N8N_LOG_OUTPUT')
 	outputs: CommaSeparatedStringArray<'console' | 'file'> = ['console'];
 
+	@Env('N8N_LOG_FORMAT')
+	format: 'default' | 'json';
+
 	@Nested
 	file: FileLoggingConfig;
 
