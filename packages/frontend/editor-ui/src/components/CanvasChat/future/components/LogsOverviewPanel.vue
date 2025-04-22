@@ -3,7 +3,7 @@ import PanelHeader from '@/components/CanvasChat/future/components/PanelHeader.v
 import { useClearExecutionButtonVisible } from '@/composables/useClearExecutionButtonVisible';
 import { useI18n } from '@/composables/useI18n';
 import { N8nButton, N8nRadioButtons, N8nText, N8nTooltip } from '@n8n/design-system';
-import { computed } from 'vue';
+import { computed, nextTick } from 'vue';
 import { ElTree, type TreeNode as ElTreeNode } from 'element-plus';
 import {
 	type ExecutionLogViewData,
@@ -78,9 +78,9 @@ function handleToggleExpanded(treeNode: ElTreeNode) {
 }
 
 async function handleOpenNdv(treeNode: LogEntry) {
-	const latestName = latestNodeInfo[treeNode.node.id]?.name ?? treeNode.node.name;
+	ndvStore.setActiveNodeName(treeNode.node.name);
 
-	ndvStore.setActiveNodeName(latestName);
+	await nextTick(() => ndvStore.setOutputRunIndex(treeNode.runIndex));
 }
 
 async function handleTriggerPartialExecution(treeNode: LogEntry) {
