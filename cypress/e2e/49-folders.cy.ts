@@ -16,6 +16,8 @@ import {
 	deleteFolderWithContentsFromListDropdown,
 	dragAndDropToFolder,
 	dragAndDropToProjectRoot,
+	duplicateWorkflowFromCardActions,
+	duplicateWorkflowFromWorkflowPage,
 	getAddResourceDropdown,
 	getCurrentBreadcrumb,
 	getFolderCard,
@@ -535,6 +537,72 @@ describe('Folders', () => {
 			// Card badges with breadcrumbs should be shown
 			getFolderCard('Child Folder').findChildByTestId('card-badge').should('exist');
 			getWorkflowCard('Child - Workflow').findChildByTestId('card-badge').should('exist');
+		});
+	});
+
+	describe('Duplicate workflows', () => {
+		beforeEach(() => {
+			// Prevent the duplicated workflow from opening in a new tab
+			cy.window().then((win) => {
+				cy.stub(win, 'open').as('open');
+			});
+		});
+
+		it('should duplicate workflow within root folder from personal projects', () => {
+			goToPersonalProject();
+			createWorkflowFromProjectHeader(undefined, 'Duplicate Me From Root');
+			goToPersonalProject();
+			duplicateWorkflowFromCardActions('Duplicate Me From Root', 'Duplicate Me From Root (Copy)');
+			getWorkflowCard('Duplicate Me From Root (Copy)').should('exist');
+		});
+
+		it('should duplicate workflow within a folder from personal projects', () => {
+			goToPersonalProject();
+			createFolderFromProjectHeader('Parent folder for duplication');
+			getFolderCard('Parent folder for duplication').click();
+			createWorkflowFromProjectHeader(
+				'Parent folder for duplication',
+				'Duplicate Me From Personal',
+			);
+			goToPersonalProject();
+			getFolderCard('Parent folder for duplication').click();
+			duplicateWorkflowFromCardActions(
+				'Duplicate Me From Personal',
+				'Duplicate Me From Personal (Copy)',
+			);
+			getWorkflowCard('Duplicate Me From Personal (Copy)').should('exist');
+		});
+
+		it('should duplicate workflow within a folder from overview', () => {
+			goToPersonalProject();
+			getFolderCard('Parent folder for duplication').click();
+			createWorkflowFromProjectHeader(
+				'Parent folder for duplication',
+				'Duplicate Me From Overview',
+			);
+			getOverviewMenuItem().click();
+			duplicateWorkflowFromCardActions(
+				'Duplicate Me From Overview',
+				'Duplicate Me From Overview (Copy)',
+			);
+			getWorkflowCard('Duplicate Me From Overview (Copy)').should('exist');
+			goToPersonalProject();
+			getFolderCard('Parent folder for duplication').click();
+			getWorkflowCard('Duplicate Me From Overview (Copy)').should('exist');
+		});
+
+		it('should duplicate workflow within a folder from workflow', () => {
+			goToPersonalProject();
+			createFolderFromProjectHeader('Parent folder for duplication');
+			getFolderCard('Parent folder for duplication').click();
+			createWorkflowFromProjectHeader(
+				'Parent folder for duplication',
+				'Duplicate Me From Workflow',
+			);
+			duplicateWorkflowFromWorkflowPage('Duplicate Me From Workflow (Copy)');
+			goToPersonalProject();
+			getFolderCard('Parent folder for duplication').click();
+			getWorkflowCard('Duplicate Me From Workflow (Copy)').should('exist');
 		});
 	});
 

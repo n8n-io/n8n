@@ -408,6 +408,7 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 					id: props.id,
 					name: props.name,
 					tags: props.tags,
+					parentFolderId: currentFolder?.value?.id,
 				},
 			});
 			break;

@@ -1,4 +1,4 @@
-import { successToast } from '../pages/notifications';
+import { errorToast, successToast } from '../pages/notifications';
 
 /**
  * Getters
@@ -45,6 +45,14 @@ export function getWorkflowCardActionItem(workflowName: string, actionName: stri
 		.then((popperId) => {
 			return cy.get(`#${popperId}`).find(`[data-test-id="action-${actionName}"]`);
 		});
+}
+
+export function getDuplicateWorkflowModal() {
+	return cy.getByTestId('duplicate-modal');
+}
+
+export function getWorkflowMenu() {
+	return cy.getByTestId('workflow-menu');
 }
 
 export function getAddFolderButton() {
@@ -302,6 +310,24 @@ export function renameFolderFromCardActions(folderName: string, newName: string)
 	getFolderCardActionToggle(folderName).click();
 	getFolderCardActionItem(folderName, 'rename').click();
 	renameFolder(newName);
+}
+
+export function duplicateWorkflowFromCardActions(workflowName: string, duplicateName: string) {
+	getWorkflowCardActions(workflowName).click();
+	getWorkflowCardActionItem(workflowName, 'duplicate').click();
+	getDuplicateWorkflowModal().find('input').first().type('{selectall}');
+	getDuplicateWorkflowModal().find('input').first().type(duplicateName);
+	getDuplicateWorkflowModal().find('button').contains('Duplicate').click();
+	errorToast().should('not.exist');
+}
+
+export function duplicateWorkflowFromWorkflowPage(duplicateName: string) {
+	getWorkflowMenu().click();
+	cy.getByTestId('workflow-menu-item-duplicate').click();
+	getDuplicateWorkflowModal().find('input').first().type('{selectall}');
+	getDuplicateWorkflowModal().find('input').first().type(duplicateName);
+	getDuplicateWorkflowModal().find('button').contains('Duplicate').click();
+	errorToast().should('not.exist');
 }
 
 export function deleteEmptyFolderFromCardDropdown(folderName: string) {
