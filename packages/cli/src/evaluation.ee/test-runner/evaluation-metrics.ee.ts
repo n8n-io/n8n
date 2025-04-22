@@ -10,8 +10,6 @@ export interface EvaluationMetricsAddResultsInfo {
 export class EvaluationMetrics {
 	private readonly rawMetricsByName = new Map<string, number[]>();
 
-	constructor() {}
-
 	addResults(result: IDataObject): EvaluationMetricsAddResultsInfo {
 		const addResultsInfo: EvaluationMetricsAddResultsInfo = {
 			addedMetrics: {},
