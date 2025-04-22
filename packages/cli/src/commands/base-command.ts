@@ -97,8 +97,11 @@ export abstract class BaseCommand extends Command {
 			}
 		}
 
-		Container.get(ModuleRegistry).initializeModules();
-		Container.get(ModuleRegistry).registerMultiMainListeners(Container.get(MultiMainSetup));
+		const moduleRegistry = Container.get(ModuleRegistry);
+
+		moduleRegistry.initializeModules();
+
+		moduleRegistry.registerMultiMainListeners(Container.get(MultiMainSetup));
 	}
 
 	async init(): Promise<void> {
