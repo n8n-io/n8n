@@ -2220,6 +2220,9 @@ importers:
       xml2js:
         specifier: 'catalog:'
         version: 0.6.2
+      xmlhttprequest-ssl:
+        specifier: 3.1.0
+        version: 3.1.0
     devDependencies:
       '@n8n/typescript-config':
         specifier: workspace:*
@@ -10914,6 +10917,7 @@ packages:
   node-domexception@1.0.0:
     resolution: {integrity: sha512-/jKZoMpw0F8GRwl4/eLROPA3cfcXtLApP0QzLmUT/HuPCZWyB7IY9ZrMeKw2O/nFIqPQB3PVM9aYm0F312AXDQ==}
     engines: {node: '>=10.5.0'}
+    deprecated: Use your platform's native DOMException instead
 
   node-ensure@0.0.0:
     resolution: {integrity: sha512-DRI60hzo2oKN1ma0ckc6nQWlHU69RH6xN0sjQTjMpChPfTYvKZdcQFfdYK2RWbJcKyUizSIy/l8OTGxMAM1QDw==}
@@ -13851,6 +13855,10 @@ packages:
 
   xmlchars@2.2.0:
     resolution: {integrity: sha512-JZnDKK8B0RCDw84FNdDAIpZK+JuJw+s7Lz8nksI7SIuU3UXJJslUthsi+uWBUYOwPFwW7W7PRLRfUKpxjtjFCw==}
+
+  xmlhttprequest-ssl@3.1.0:
+    resolution: {integrity: sha512-UsofFE/khRRAcM9c3FGDEUSwupaQQC3Kme1brtz+B3N+RZHXGbD6AG6QzgWcunHzszqtOSMiZoPNrmHEBB2DjA==}
+    engines: {node: '>=12.0.0'}
 
   xmllint-wasm@3.0.1:
     resolution: {integrity: sha512-t+aKQXJQNAt9/qLgCjhHUmCnPXAyqBKiyh8oV0ZwBMar/uB+5F40tqOJZ97JwLADcqQr5WB2bjCxLKrm+DHz1g==}
@@ -28310,6 +28318,8 @@ snapshots:
   xmlbuilder@11.0.1: {}
 
   xmlchars@2.2.0: {}
+
+  xmlhttprequest-ssl@3.1.0: {}
 
   xmllint-wasm@3.0.1: {}
 
