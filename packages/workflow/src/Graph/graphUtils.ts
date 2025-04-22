@@ -147,7 +147,7 @@ export type ExtractableSubgraphData = {
  * input or output nodes
  *
  * @returns An object containing optional start and end nodeIds
- * 						indicating which nodes have outside connections, OR
+ *            indicating which nodes have outside connections, OR
  *          An array of errors if the selection is not valid.
  */
 export function parseExtractableSubgraphSelection(

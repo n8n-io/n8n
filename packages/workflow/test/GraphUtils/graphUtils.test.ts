@@ -4,7 +4,7 @@ import {
 	getRootNodes,
 	getLeafNodes,
 	parseExtractableSubgraphSelection,
-} from './graphUtils';
+} from '../../src/Graph/graphUtils';
 
 describe('graphUtils', () => {
 	describe('getInputEdges', () => {
