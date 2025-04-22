@@ -302,6 +302,7 @@ function hideGithubButton() {
 	position: relative;
 	display: flex;
 	align-items: center;
+	margin-top: var(--spacing-5xs);
 	font-size: 0.9em;
 	font-weight: var(--font-weight-regular);
 	overflow: auto;

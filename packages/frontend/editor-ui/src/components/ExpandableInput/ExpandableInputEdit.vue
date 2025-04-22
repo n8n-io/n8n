@@ -67,7 +67,7 @@ function onEscape() {
 	<ExpandableInputBase :model-value="modelValue" :placeholder="placeholder">
 		<input
 			ref="inputRef"
-			class="el-input__inner"
+			:class="['el-input__inner', $style.input]"
 			:value="modelValue"
 			:placeholder="placeholder"
 			:maxlength="maxlength"
@@ -78,3 +78,11 @@ function onEscape() {
 		/>
 	</ExpandableInputBase>
 </template>
+
+<style module lang="scss">
+.input {
+	height: 26px;
+	min-height: 26px;
+	padding: var(--spacing-4xs);
+}
+</style>

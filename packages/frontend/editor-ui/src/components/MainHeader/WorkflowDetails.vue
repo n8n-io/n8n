@@ -748,7 +748,7 @@ $--text-line-height: 24px;
 $--header-spacing: 20px;
 
 .name-container {
-	margin-right: $--header-spacing;
+	margin-right: var(--spacing-s);
 
 	:deep(.el-input) {
 		padding: 0;
