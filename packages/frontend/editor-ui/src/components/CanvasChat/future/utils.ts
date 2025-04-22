@@ -119,7 +119,7 @@ function addTokenUsageData(one: LlmTokenUsageData, another: LlmTokenUsageData): 
 	};
 }
 
-export function getConsumedTokens(task: ITaskData): LlmTokenUsageData {
+function getConsumedTokens(task: ITaskData): LlmTokenUsageData {
 	if (!task.data) {
 		return emptyTokenUsageData;
 	}
@@ -150,20 +150,6 @@ export function getSubtreeTotalConsumedTokens(treeNode: LogEntry): LlmTokenUsage
 		treeNode.consumedTokens,
 		...treeNode.children.map(getSubtreeTotalConsumedTokens),
 	);
-}
-
-export function formatTokenUsageCount(
-	usage: LlmTokenUsageData,
-	field: 'total' | 'prompt' | 'completion',
-) {
-	const count =
-		field === 'total'
-			? usage.totalTokens
-			: field === 'completion'
-				? usage.completionTokens
-				: usage.promptTokens;
-
-	return usage.isEstimate ? `~${count}` : count.toLocaleString();
 }
 
 function findLogEntryToAutoSelectRec(
