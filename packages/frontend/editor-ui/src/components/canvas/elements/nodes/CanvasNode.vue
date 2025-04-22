@@ -289,7 +289,7 @@ provide(CanvasNodeKey, {
 });
 
 const hasToolbar = computed(
-	() => ![CanvasNodeRenderType.AddNodes, CanvasNodeRenderType.AIPrompt].includes(props.data.type),
+	() => ![CanvasNodeRenderType.AddNodes, CanvasNodeRenderType.AIPrompt].includes(renderType.value),
 );
 
 const showToolbar = computed(() => {

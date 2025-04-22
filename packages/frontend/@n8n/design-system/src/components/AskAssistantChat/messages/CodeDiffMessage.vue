@@ -29,8 +29,8 @@ interface Props {
 defineProps<Props>();
 
 const emit = defineEmits<{
-	codeReplace: [string];
-	codeUndo: [string];
+	codeReplace: [];
+	codeUndo: [];
 }>();
 </script>
 
@@ -43,8 +43,8 @@ const emit = defineEmits<{
 			:replaced="message.replaced"
 			:error="message.error"
 			:streaming="streaming && isLastMessage"
-			@replace="() => emit('codeReplace', message.suggestionId)"
-			@undo="() => emit('codeUndo', message.suggestionId)"
+			@replace="emit('codeReplace')"
+			@undo="emit('codeUndo')"
 		/>
 	</BaseMessage>
 </template>

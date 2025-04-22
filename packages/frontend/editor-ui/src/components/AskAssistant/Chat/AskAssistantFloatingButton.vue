@@ -32,7 +32,7 @@ const onClick = () => {
 	const selectedStore = builderStore.isAIBuilderEnabled ? builderStore : assistantStore;
 
 	selectedStore.openChat();
-	selectedStore.trackUserOpenedAssistant({
+	assistantStore.trackUserOpenedAssistant({
 		source: 'canvas',
 		task: 'placeholder',
 		has_existing_session: assistantStore.isSessionEnded,

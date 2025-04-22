@@ -294,7 +294,7 @@ const keyMap = computed(() => {
 		ctrl_alt_n: () => emit('create:workflow'),
 		ctrl_enter: () => emit('run:workflow'),
 		ctrl_s: () => emit('save:workflow'),
-		shift_alt_t: async () => await onTidyUp('keyboard-shortcut'),
+		shift_alt_t: async () => await onTidyUp({ source: 'keyboard-shortcut' }),
 	};
 	return fullKeymap;
 });
@@ -654,16 +654,16 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[])
 		case 'change_color':
 			return props.eventBus.emit('nodes:action', { ids: nodeIds, action: 'update:sticky:color' });
 		case 'tidy_up':
-			return await onTidyUp('context-menu');
+			return await onTidyUp({ source: 'context-menu' });
 	}
 }
 
-async function onTidyUp(source: CanvasLayoutSource) {
+async function onTidyUp(payload: { source: CanvasLayoutSource }) {
 	const applyOnSelection = selectedNodes.value.length > 1;
 	const target = applyOnSelection ? 'selection' : 'all';
 	const result = layout(target);
 
-	emit('tidy-up', { result, target, source });
+	emit('tidy-up', { result, target, source: payload.source });
 
 	if (!applyOnSelection) {
 		await nextTick();
@@ -896,7 +896,7 @@ provide(CanvasKey, {
 			@zoom-in="onZoomIn"
 			@zoom-out="onZoomOut"
 			@reset-zoom="onResetZoom"
-			@tidy-up="onTidyUp('canvas-button')"
+			@tidy-up="onTidyUp({ source: 'canvas-button' })"
 		/>
 
 		<Suspense>

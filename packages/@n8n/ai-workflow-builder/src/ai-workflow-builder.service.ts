@@ -8,15 +8,14 @@ import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
 import { OperationalError, assert, INodeTypes } from 'n8n-workflow';
 import type { IUser, INodeTypeDescription, INode } from 'n8n-workflow';
 
-import { anthropicClaude37Sonnet, gpt41mini } from './llm-config';
 import { connectionComposerChain } from './chains/connection-composer';
 import { nodesSelectionChain } from './chains/node-selector';
 import { nodesComposerChain } from './chains/nodes-composer';
 import { plannerChain } from './chains/planner';
+import { ILicenseService } from './interfaces';
+import { anthropicClaude37Sonnet, gpt41mini } from './llm-config';
 import type { MessageResponse } from './types';
 import { WorkflowState } from './workflow-state';
-
-import { ILicenseService } from './interfaces';
 
 @Service()
 export class AiWorkflowBuilderService {
@@ -59,7 +58,9 @@ export class AiWorkflowBuilderService {
 
 			assert(this.client, 'Client not setup');
 
-			const authHeaders = await this.client.getProxyHeaders(user);
+			// @ts-expect-error getProxyHeaders will only be available after `@n8n_io/ai-assistant-sdk` v1.14.0 is released
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+			const authHeaders = (await this.client?.getProxyHeaders(user)) as Record<string, string>;
 			this.llmSimpleTask = gpt41mini({
 				baseUrl: baseUrl + '/v1/api-proxy/openai',
 				// When using api-proxy the key will be populated automatically, we just need to pass a placeholder

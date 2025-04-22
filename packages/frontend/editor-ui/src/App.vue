@@ -19,7 +19,6 @@ import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useHistoryHelper } from '@/composables/useHistoryHelper';
 import { useStyles } from './composables/useStyles';
-import { usePostHog } from '@/stores/posthog.store';
 
 const route = useRoute();
 const rootStore = useRootStore();

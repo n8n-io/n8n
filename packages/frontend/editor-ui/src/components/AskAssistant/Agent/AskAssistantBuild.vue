@@ -9,7 +9,6 @@ import { nodeViewEventBus } from '@/event-bus';
 import { v4 as uuid } from 'uuid';
 import { useI18n } from '@/composables/useI18n';
 import { STICKY_NODE_TYPE } from '@/constants';
-import type { ChatUI } from '@n8n/design-system/types/assistant';
 
 const emit = defineEmits<{
 	close: [];

@@ -264,7 +264,7 @@ describe('AI Builder store', () => {
 			onDone();
 		});
 
-		await builderStore.initSupportChat('I want to build a workflow');
+		await builderStore.initBuilderChat('I want to build a workflow', 'chat');
 
 		expect(apiSpy).toHaveBeenCalled();
 		expect(builderStore.currentSessionId).toEqual(mockSessionId);
@@ -307,7 +307,7 @@ describe('AI Builder store', () => {
 			onDone();
 		});
 
-		await builderStore.initSupportChat('I want to build a workflow');
+		await builderStore.initBuilderChat('I want to build a workflow', 'chat');
 
 		// Should be 2 messages now (user question + assistant response)
 		expect(builderStore.chatMessages.length).toBe(2);
@@ -315,12 +315,16 @@ describe('AI Builder store', () => {
 		// Send a follow-up message
 		await builderStore.sendMessage({ text: 'Generate a workflow for me' });
 
+		const thirdMessage = builderStore.chatMessages[2] as ChatUI.TextMessage;
+		const fourthMessage = builderStore.chatMessages[3] as ChatUI.TextMessage;
 		// Should be 4 messages now (2 initial + user follow-up + assistant response)
 		expect(builderStore.chatMessages.length).toBe(4);
-		expect(builderStore.chatMessages[2].role).toBe('user');
-		expect(builderStore.chatMessages[2].content).toBe('Generate a workflow for me');
-		expect(builderStore.chatMessages[3].role).toBe('assistant');
-		expect(builderStore.chatMessages[3].content).toBe('Here are some workflow ideas');
+		expect(thirdMessage.role).toBe('user');
+		expect(thirdMessage.type).toBe('text');
+		expect(thirdMessage.content).toBe('Generate a workflow for me');
+		expect(fourthMessage.role).toBe('assistant');
+		expect(fourthMessage.type).toBe('text');
+		expect(fourthMessage.content).toBe('Here are some workflow ideas');
 	});
 
 	it('should properly handle errors in chat session', async () => {
@@ -331,7 +335,7 @@ describe('AI Builder store', () => {
 			onError(new Error('An API error occurred'));
 		});
 
-		await builderStore.initSupportChat('I want to build a workflow');
+		await builderStore.initBuilderChat('I want to build a workflow', 'chat');
 
 		// Should have user message + error message
 		expect(builderStore.chatMessages.length).toBe(2);

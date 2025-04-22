@@ -40,10 +40,8 @@ interface Props {
 const emit = defineEmits<{
 	close: [];
 	message: [string, string?, boolean?];
-	codeReplace: [string];
-	codeUndo: [string];
-	modeChange: [string];
-	insertWorkflow: [string];
+	codeReplace: [number];
+	codeUndo: [number];
 	thumbsUp: [];
 	thumbsDown: [];
 	submitFeedback: [string];
@@ -100,10 +98,6 @@ function growInput() {
 	chatInput.value.style.height = 'auto';
 	const scrollHeight = chatInput.value.scrollHeight;
 	chatInput.value.style.height = `${Math.min(scrollHeight, MAX_CHAT_INPUT_HEIGHT)}px`;
-}
-
-function onInsertWorkflow(code: string) {
-	emit('insertWorkflow', code);
 }
 
 function onThumbsUp() {
@@ -173,8 +167,8 @@ function onSubmitFeedback(feedback: string) {
 							:user="user"
 							:streaming="streaming"
 							:is-last-message="i === messages.length - 1"
-							@code-replace="(id) => emit('codeReplace', id)"
-							@code-undo="(id) => emit('codeUndo', id)"
+							@code-replace="() => emit('codeReplace', i)"
+							@code-undo="() => emit('codeUndo', i)"
 						/>
 						<WorkflowStepsMessage
 							v-else-if="message.type === 'workflow-step'"
@@ -205,7 +199,6 @@ function onSubmitFeedback(feedback: string) {
 							:message="message"
 							:is-first-of-role="i === 0 || message.role !== messages[i - 1].role"
 							:user="user"
-							@insert-workflow="onInsertWorkflow"
 						/>
 						<RateWorkflowMessage
 							v-else-if="message.type === 'rate-workflow'"
