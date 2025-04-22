@@ -127,7 +127,7 @@ export function hasPath(start: string, end: string, adjacencyList: AdjacencyList
 		if (next === undefined) return false;
 		seen.add(next);
 
-		paths.push(...(adjacencyList.get(next) ?? []));
+		paths.push(...difference(adjacencyList.get(next) ?? new Set<string>(), seen));
 	}
 }
 
