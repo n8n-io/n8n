@@ -220,6 +220,7 @@ async function onAction(action: string) {
 						typeof tag !== 'string' && 'id' in tag ? tag.id : tag,
 					),
 					externalEventBus: props.workflowListEventBus,
+					parentFolderId: props.data.parentFolder?.id,
 				},
 			});
 			break;
