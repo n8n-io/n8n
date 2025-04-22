@@ -4,6 +4,7 @@ import {
 	getRootNodes,
 	getLeafNodes,
 	parseExtractableSubgraphSelection,
+	hasPath,
 } from '../../src/Graph/graphUtils';
 
 describe('graphUtils', () => {
@@ -236,6 +237,87 @@ describe('graphUtils', () => {
 					end: 'A',
 				},
 			]);
+		});
+	});
+	describe('hasPath', () => {
+		it('should return true for a direct path between start and end', () => {
+			const adjacencyList = new Map<string, Set<string>>([
+				['A', new Set(['B'])],
+				['B', new Set(['C'])],
+			]);
+
+			const result = hasPath('A', 'C', adjacencyList);
+			expect(result).toBe(true);
+		});
+
+		it('should return false if there is no path between start and end', () => {
+			const adjacencyList = new Map<string, Set<string>>([
+				['A', new Set(['B'])],
+				['C', new Set(['D'])],
+			]);
+
+			const result = hasPath('A', 'D', adjacencyList);
+			expect(result).toBe(false);
+		});
+
+		it('should return true for a path with multiple intermediate nodes', () => {
+			const adjacencyList = new Map<string, Set<string>>([
+				['A', new Set(['B'])],
+				['B', new Set(['C'])],
+				['C', new Set(['D'])],
+			]);
+
+			const result = hasPath('A', 'D', adjacencyList);
+			expect(result).toBe(true);
+		});
+
+		it('should return false if the start node is not in the adjacency list', () => {
+			const adjacencyList = new Map<string, Set<string>>([
+				['B', new Set(['C'])],
+				['C', new Set(['D'])],
+			]);
+
+			const result = hasPath('A', 'D', adjacencyList);
+			expect(result).toBe(false);
+		});
+
+		it('should return false if the end node is not in the adjacency list', () => {
+			const adjacencyList = new Map<string, Set<string>>([
+				['A', new Set(['B'])],
+				['B', new Set(['C'])],
+			]);
+
+			const result = hasPath('A', 'D', adjacencyList);
+			expect(result).toBe(false);
+		});
+
+		it('should return true for a cyclic graph where a path exists', () => {
+			const adjacencyList = new Map<string, Set<string>>([
+				['A', new Set(['B'])],
+				['B', new Set(['C'])],
+				['C', new Set(['A'])],
+			]);
+
+			const result = hasPath('A', 'C', adjacencyList);
+			expect(result).toBe(true);
+		});
+
+		it('should return false for a cyclic graph where no path exists', () => {
+			const adjacencyList = new Map<string, Set<string>>([
+				['A', new Set(['B'])],
+				['B', new Set(['A'])],
+				['C', new Set(['D'])],
+			]);
+
+			const result = hasPath('A', 'D', adjacencyList);
+			expect(result).toBe(false);
+		});
+
+		it('should return true for a self-loop', () => {
+			const adjacencyList = new Map<string, Set<string>>([['A', new Set(['A'])]]);
+
+			const result = hasPath('A', 'A', adjacencyList);
+			expect(result).toBe(true);
 		});
 	});
 });
