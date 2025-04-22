@@ -26,6 +26,10 @@ class S3CredentialsConfig {
 	/** Access secret in S3-compatible external storage */
 	@Env('N8N_EXTERNAL_STORAGE_S3_ACCESS_SECRET')
 	accessSecret: string = '';
+
+	/** Use Instance role to authenticate S3 calls for external storage */
+	@Env('N8N_EXTERNAL_STORAGE_S3_USE_INSTANCE_ROLE')
+	useInstanceRole: boolean = false;
 }
 
 @Config

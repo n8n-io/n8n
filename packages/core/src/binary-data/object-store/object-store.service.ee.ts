@@ -2,6 +2,7 @@ import type {
 	PutObjectCommandInput,
 	DeleteObjectsCommandInput,
 	ListObjectsV2CommandInput,
+	S3ClientConfig,
 } from '@aws-sdk/client-s3';
 import {
 	S3Client,
@@ -53,16 +54,18 @@ export class ObjectStoreService {
 
 		this.bucket = bucket.name;
 
-		// Configure S3 client
-		this.s3Client = new S3Client({
+		const clientConfig: S3ClientConfig = {
 			region: bucket.region,
 			endpoint: `${protocol}://${host}`,
-			credentials: {
+			forcePathStyle: true, // Needed for non-AWS S3 compatible services
+		};
+		if (!credentials.useInstanceRole) {
+			clientConfig.credentials = {
 				accessKeyId: credentials.accessKey,
 				secretAccessKey: credentials.accessSecret,
-			},
-			forcePathStyle: true, // Needed for non-AWS S3 compatible services
-		});
+			};
+		}
+		this.s3Client = new S3Client(clientConfig);
 	}
 
 	async init() {

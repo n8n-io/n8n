@@ -154,6 +154,7 @@ describe('GlobalConfig', () => {
 				credentials: {
 					accessKey: '',
 					accessSecret: '',
+					useInstanceRole: false,
 				},
 			},
 		},
