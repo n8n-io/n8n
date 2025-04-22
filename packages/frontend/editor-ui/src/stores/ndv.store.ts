@@ -59,6 +59,7 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 		'schema',
 	);
 	const output = ref<OutputPanel>({
+		run: undefined,
 		branch: undefined,
 		data: {
 			isEmpty: true,
@@ -222,6 +223,10 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 
 	const setInputRunIndex = (run?: number): void => {
 		input.value.run = run;
+	};
+
+	const setOutputRunIndex = (run?: number): void => {
+		output.value.run = run;
 	};
 
 	const setMainPanelDimensions = (params: {
@@ -407,6 +412,7 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 		setActiveNodeName,
 		setInputNodeName,
 		setInputRunIndex,
+		setOutputRunIndex,
 		setMainPanelDimensions,
 		setNDVPushRef,
 		resetNDVPushRef,
