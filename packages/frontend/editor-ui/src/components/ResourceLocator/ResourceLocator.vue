@@ -54,6 +54,7 @@ import {
 	type FromAIOverride,
 } from '../../utils/fromAIOverrideUtils';
 import { N8nNotice } from '@n8n/design-system';
+import { completeExpressionSyntax } from '@/utils/expressions';
 
 /**
  * Regular expression to check if the error message contains credential-related phrases.
@@ -355,10 +356,12 @@ watch(currentQueryError, (curr, prev) => {
 
 watch(
 	() => props.isValueExpression,
-	(newValue) => {
+	async (newValue) => {
 		if (newValue) {
 			switchFromListMode();
 		}
+		await nextTick();
+		inputRef.value?.focus();
 	},
 );
 
@@ -516,6 +519,8 @@ function onInputChange(value: NodeParameterValue): void {
 		if (resource?.url) {
 			params.cachedResultUrl = resource.url;
 		}
+	} else {
+		params.value = completeExpressionSyntax(value);
 	}
 	emit('update:modelValue', params);
 }
