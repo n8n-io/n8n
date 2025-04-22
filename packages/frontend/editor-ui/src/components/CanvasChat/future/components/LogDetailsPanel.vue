@@ -100,7 +100,11 @@ function handleResizeEnd() {
 
 <template>
 	<div ref="container" :class="$style.container" data-test-id="log-details">
-		<PanelHeader data-test-id="log-details-header" @click="emit('clickHeader')">
+		<PanelHeader
+			data-test-id="log-details-header"
+			:class="$style.header"
+			@click="emit('clickHeader')"
+		>
 			<template #title>
 				<div :class="$style.title">
 					<NodeIcon :node-type="type" :size="16" :class="$style.icon" />
@@ -181,6 +185,10 @@ function handleResizeEnd() {
 	flex-direction: column;
 	align-items: stretch;
 	overflow: hidden;
+}
+
+.header {
+	padding: var(--spacing-2xs);
 }
 
 .actions {

@@ -33,6 +33,7 @@ type Props = {
 	hasDefaultHoverState?: boolean;
 	search?: string;
 	headerBgColor?: 'base' | 'light';
+	compact?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -427,7 +428,11 @@ watch(focusedMappableInput, (curr) => {
 	<div
 		:class="[
 			$style.dataDisplay,
-			{ [$style.highlight]: highlight, [$style.lightHeader]: headerBgColor === 'light' },
+			{
+				[$style.highlight]: highlight,
+				[$style.lightHeader]: headerBgColor === 'light',
+				[$style.compact]: props.compact,
+			},
 		]"
 	>
 		<table v-if="tableData.columns && tableData.columns.length === 0" :class="$style.table">
@@ -681,6 +686,10 @@ watch(focusedMappableInput, (curr) => {
 	word-break: normal;
 	height: 100%;
 	padding-bottom: var(--spacing-3xl);
+
+	&.compact {
+		padding-left: var(--spacing-2xs);
+	}
 }
 
 .table {
@@ -848,6 +857,12 @@ watch(focusedMappableInput, (curr) => {
 	border-right: none !important;
 	border-top: none !important;
 	border-bottom: none !important;
+
+	.compact & {
+		padding: 0;
+		min-width: var(--spacing-2xs);
+		max-width: var(--spacing-2xs);
+	}
 }
 
 .hoveringRow {
