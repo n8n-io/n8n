@@ -87,6 +87,7 @@ import { AddWorkflowArchivedColumn1745934666076 } from '../common/1745934666076-
 import { DropRoleTable1745934666077 } from '../common/1745934666077-DropRoleTable';
 import type { Migration } from '../migration-types';
 import { UpdateParentFolderIdColumn1740445074052 } from '../mysqldb/1740445074052-UpdateParentFolderIdColumn';
+import { ClearEvaluation1745322634000 } from '../common/1745322634000-CleanEvaluations';
 
 export const mysqlMigrations: Migration[] = [
 	InitialMigration1588157391238,
