@@ -2,12 +2,11 @@ import { Container } from '@n8n/di';
 import { Logger } from 'n8n-core';
 import type { INodeProperties } from 'n8n-workflow';
 
-import { UnknownAuthTypeError } from '@/errors/unknown-auth-type.error';
-import { DOCS_HELP_NOTICE, EXTERNAL_SECRETS_NAME_REGEX } from '@/external-secrets.ee/constants';
-import type { SecretsProvider, SecretsProviderState } from '@/interfaces';
-
 import { AwsSecretsClient } from './aws-secrets-client';
 import type { AwsSecretsManagerContext } from './types';
+import { DOCS_HELP_NOTICE, EXTERNAL_SECRETS_NAME_REGEX } from '../../constants';
+import { UnknownAuthTypeError } from '../../errors/unknown-auth-type.error';
+import type { SecretsProvider, SecretsProviderState } from '../../types';
 
 export class AwsSecretsManager implements SecretsProvider {
 	name = 'awsSecretsManager';
