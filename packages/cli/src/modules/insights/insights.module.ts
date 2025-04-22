@@ -1,12 +1,11 @@
+import type { BaseN8nModule } from '@n8n/decorators';
+import { N8nModule } from '@n8n/decorators';
 import type { ExecutionLifecycleHooks } from 'n8n-core';
 import { InstanceSettings, Logger } from 'n8n-core';
 
 import type { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
 
 import { InsightsService } from './insights.service';
-
-import type { BaseN8nModule } from '@/decorators/module';
-import { N8nModule } from '@/decorators/module';
 
 import './insights.controller';
 

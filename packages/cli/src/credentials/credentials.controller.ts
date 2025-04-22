@@ -5,7 +5,6 @@ import {
 	GenerateCredentialNameRequestQuery,
 } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import {
 	Delete,
 	Get,
@@ -15,7 +14,11 @@ import {
 	Put,
 	RestController,
 	ProjectScope,
+	Body,
+	Param,
+	Query,
 } from '@n8n/decorators';
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 import { Logger } from 'n8n-core';
 import { deepCopy } from 'n8n-workflow';
@@ -39,8 +42,6 @@ import * as utils from '@/utils';
 
 import { CredentialsService } from './credentials.service';
 import { EnterpriseCredentialsService } from './credentials.service.ee';
-
-import { Body, Param, Query } from '@/decorators/args';
 
 @RestController('/credentials')
 export class CredentialsController {

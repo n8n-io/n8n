@@ -12,4 +12,8 @@ export {
 } from './shutdown/constants';
 export { ShutdownService } from './shutdown/shutdown.service';
 export { ModuleRegistry } from './module';
+export { OnShutdown } from './on-shutdown';
+export { Redactable } from './redactable';
+export { BaseN8nModule, N8nModule } from './module';
+export { Debounce } from './debounce';
 export type { AccessScope, Controller, RateLimit } from './types';

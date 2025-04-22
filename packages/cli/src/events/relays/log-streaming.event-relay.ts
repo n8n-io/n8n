@@ -1,3 +1,4 @@
+import { Redactable } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type { IWorkflowBase } from 'n8n-workflow';
 
@@ -5,8 +6,6 @@ import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus'
 import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { EventRelay } from '@/events/relays/event-relay';
-
-import { Redactable } from '@/decorators/redactable';
 
 @Service()
 export class LogStreamingEventRelay extends EventRelay {
