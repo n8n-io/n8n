@@ -1,43 +1,27 @@
-import type { User, ExecutionEntity, TestRun } from '@n8n/db';
+import type { User, TestRun } from '@n8n/db';
 import {
-	ExecutionRepository,
 	TestCaseExecutionRepository,
 	TestRunRepository,
 	WorkflowRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { parse } from 'flatted';
 import { ErrorReporter, Logger } from 'n8n-core';
-import { ExecutionCancelledError, NodeConnectionTypes, Workflow } from 'n8n-workflow';
-import type {
-	IDataObject,
-	IRun,
-	IRunExecutionData,
-	IWorkflowBase,
-	IWorkflowExecutionDataProcess,
-} from 'n8n-workflow';
+import { ExecutionCancelledError } from 'n8n-workflow';
+import type { IDataObject, IRun, IWorkflowBase, IWorkflowExecutionDataProcess } from 'n8n-workflow';
 import assert from 'node:assert';
 
 import { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
 import { EVALUATION_METRICS_NODE } from '@/constants';
 import { TestCaseExecutionError, TestRunError } from '@/evaluation.ee/test-runner/errors.ee';
-import { NodeTypes } from '@/node-types';
 import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
 
 import { EvaluationMetrics } from './evaluation-metrics.ee';
-import { createPinData, getPastExecutionTriggerNode, type MockedNodeItem } from './utils.ee';
 
 export interface TestRunMetadata {
 	testRunId: string;
 	userId: string;
-}
-
-export interface TestCaseRunMetadata extends TestRunMetadata {
-	pastExecutionId: string;
-	annotation: ExecutionEntity['annotation'];
-	highlightedData: ExecutionEntity['metadata'];
 }
 
 /**
@@ -57,11 +41,9 @@ export class TestRunnerService {
 		private readonly telemetry: Telemetry,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly workflowRunner: WorkflowRunner,
-		private readonly executionRepository: ExecutionRepository,
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly testRunRepository: TestRunRepository,
 		private readonly testCaseExecutionRepository: TestCaseExecutionRepository,
-		private readonly nodeTypes: NodeTypes,
 		private readonly errorReporter: ErrorReporter,
 	) {}
 
@@ -70,56 +52,28 @@ export class TestRunnerService {
 	 */
 	private getStartNodesData(
 		workflow: IWorkflowBase,
-		pastExecutionData: IRunExecutionData,
-		pastExecutionWorkflowData: IWorkflowBase,
-	): Pick<IWorkflowExecutionDataProcess, 'startNodes' | 'triggerToStartFrom'> {
-		// Create a new workflow instance to use the helper functions (getChildNodes)
-		const workflowInstance = new Workflow({
-			nodes: workflow.nodes,
-			connections: workflow.connections,
-			active: false,
-			nodeTypes: this.nodeTypes,
-		});
-
-		// Create a map between node IDs and node names for the past workflow
-		const pastWorkflowNodeIdByName = new Map(
-			pastExecutionWorkflowData.nodes.map((node) => [node.name, node.id]),
+	): Pick<IWorkflowExecutionDataProcess, 'triggerToStartFrom'> {
+		// Find the dataset trigger node
+		// TODO: replace with dataset trigger node
+		const triggerNode = workflow.nodes.find(
+			(node) => node.type === 'n8n-nodes-base.executeWorkflowTrigger',
 		);
-
-		// Create a map between node names and IDs for the up-to-date workflow
-		const workflowNodeNameById = new Map(workflow.nodes.map((node) => [node.id, node.name]));
-
-		// Determine the trigger node of the past execution
-		const pastExecutionTriggerNode = getPastExecutionTriggerNode(pastExecutionData);
-		assert(pastExecutionTriggerNode, 'Could not find the trigger node of the past execution');
-
-		const pastExecutionTriggerNodeId = pastWorkflowNodeIdByName.get(pastExecutionTriggerNode);
-		assert(pastExecutionTriggerNodeId, 'Could not find the trigger node ID of the past execution');
-
-		// Check the trigger is still present in the workflow
-		const triggerNode = workflowNodeNameById.get(pastExecutionTriggerNodeId);
 		if (!triggerNode) {
+			// TODO: Change error
 			throw new TestCaseExecutionError('TRIGGER_NO_LONGER_EXISTS');
 		}
 
-		const triggerNodeData = pastExecutionData.resultData.runData[pastExecutionTriggerNode][0];
-		assert(triggerNodeData, 'Trigger node data not found');
-
 		const triggerToStartFrom = {
-			name: triggerNode,
-			data: triggerNodeData,
+			name: triggerNode.name,
 		};
 
-		// Start nodes are the nodes that are connected to the trigger node
-		const startNodes = workflowInstance
-			.getChildNodes(triggerNode, NodeConnectionTypes.Main, 1)
-			.map((nodeName) => ({
-				name: nodeName,
-				sourceData: { previousNode: pastExecutionTriggerNode },
-			}));
-
 		return {
-			startNodes,
+			// startNodes: [
+			// 	{
+			// 		name: triggerNode.name,
+			// 		sourceData: { previousNode: },
+			// 	},
+			// ],
 			triggerToStartFrom,
 		};
 	}
@@ -130,10 +84,7 @@ export class TestRunnerService {
 	 */
 	private async runTestCase(
 		workflow: IWorkflowBase,
-		pastExecutionData: IRunExecutionData,
-		pastExecutionWorkflowData: IWorkflowBase,
-		mockedNodes: MockedNodeItem[],
-		metadata: TestCaseRunMetadata,
+		metadata: TestRunMetadata,
 		abortSignal: AbortSignal,
 	): Promise<IRun | undefined> {
 		// Do not run if the test run is cancelled
@@ -142,18 +93,14 @@ export class TestRunnerService {
 		}
 
 		// Create pin data from the past execution data
-		const pinData = createPinData(
-			workflow,
-			mockedNodes,
-			pastExecutionData,
-			pastExecutionWorkflowData,
-		);
+		// const pinData = createPinData(
+		// 	workflow,
+		// 	mockedNodes,
+		// 	pastExecutionData,
+		// 	pastExecutionWorkflowData,
+		// );
 
-		const startNodesData = this.getStartNodesData(
-			workflow,
-			pastExecutionData,
-			pastExecutionWorkflowData,
-		);
+		const startNodesData = this.getStartNodesData(workflow);
 
 		// Prepare the data to run the workflow
 		// Evaluation executions should run the same way as manual,
@@ -162,8 +109,8 @@ export class TestRunnerService {
 			...startNodesData,
 			executionMode: 'evaluation',
 			runData: {},
-			pinData,
-			workflowData: { ...workflow, pinData },
+			// pinData,
+			workflowData: workflow,
 			userId: metadata.userId,
 			partialExecutionVersion: 2,
 		};
@@ -173,10 +120,10 @@ export class TestRunnerService {
 		if (config.getEnv('executions.mode') === 'queue') {
 			data.executionData = {
 				startData: {
-					startNodes: startNodesData.startNodes,
+					// startNodes: startNodesData.startNodes,
 				},
 				resultData: {
-					pinData,
+					// pinData,
 					runData: {},
 				},
 				manualData: {
@@ -197,11 +144,11 @@ export class TestRunnerService {
 		});
 
 		// Update status of the test run execution mapping
-		await this.testCaseExecutionRepository.markAsRunning({
-			testRunId: metadata.testRunId,
-			pastExecutionId: metadata.pastExecutionId,
-			executionId,
-		});
+		// await this.testCaseExecutionRepository.markAsRunning({
+		// 	testRunId: metadata.testRunId,
+		// 	pastExecutionId: metadata.pastExecutionId,
+		// 	executionId,
+		// });
 
 		// Wait for the execution to finish
 		const executePromise = this.activeExecutions.getPostExecutePromise(executionId);
@@ -244,50 +191,43 @@ export class TestRunnerService {
 		let testRunEndStatusForTelemetry;
 
 		const abortSignal = abortController.signal;
-		const { manager: dbManager } = this.executionRepository;
+		const { manager: dbManager } = this.testRunRepository;
 
 		try {
 			///
-			// 1. Make test cases from previous executions
+			// 1. Make test cases list
 			///
 
-			// Select executions with the annotation tag and workflow ID of the test.
-			// Fetch only ids to reduce the data transfer.
-			const pastExecutions: ReadonlyArray<Pick<ExecutionEntity, 'id'>> =
-				await this.executionRepository
-					.createQueryBuilder('execution')
-					.select('execution.id')
-					.leftJoin('execution.annotation', 'annotation')
-					.leftJoin('annotation.tags', 'annotationTag')
-					.andWhere('execution.workflowId = :workflowId', { workflowId })
-					.getMany();
+			// TODO: Get the test cases from the dataset trigger node
+			const testCases = [{ id: 1 }];
 
-			this.logger.debug('Found past executions', { count: pastExecutions.length });
+			this.logger.debug('Found test cases', { count: testCases.length });
 
-			if (pastExecutions.length === 0) {
+			if (testCases.length === 0) {
+				// TODO: Change error
 				throw new TestRunError('PAST_EXECUTIONS_NOT_FOUND');
 			}
 
 			// Add all past executions mappings to the test run.
 			// This will be used to track the status of each test case and keep the connection between test run and all related executions (past, current, and evaluation).
-			await this.testCaseExecutionRepository.createBatch(
-				testRun.id,
-				pastExecutions.map((e) => e.id),
-			);
+			// await this.testCaseExecutionRepository.createBatch(
+			// 	testRun.id,
+			// 	testCases.map((e) => e.id),
+			// );
 
-			// Sync the metrics of the test definition with the evaluation workflow
+			// TODO: Collect metric names from evaluation nodes of the workflow
 			const testMetricNames = new Set<string>();
 
 			// 2. Run over all the test cases
-			const pastExecutionIds = pastExecutions.map((e) => e.id);
+			// const pastExecutionIds = pastExecutions.map((e) => e.id);
 
 			// Update test run status
-			await this.testRunRepository.markAsRunning(testRun.id);
+			// TODO: mark test run as running
+			// await this.testRunRepository.markAsRunning(testRun.id);
 
 			this.telemetry.track('User ran test', {
 				user_id: user.id,
 				run_id: testRun.id,
-				executions_ids: pastExecutionIds,
 				workflow_id: workflowId,
 			});
 
@@ -298,98 +238,94 @@ export class TestRunnerService {
 			// 2. Run over all the test cases
 			///
 
-			for (const pastExecutionId of pastExecutionIds) {
+			for (const testCase of testCases) {
 				if (abortSignal.aborted) {
 					this.logger.debug('Test run was cancelled', {
 						workflowId,
-						stoppedOn: pastExecutionId,
+						// stoppedOn: pastExecutionId,
 					});
 					break;
 				}
 
-				this.logger.debug('Running test case', { pastExecutionId });
+				this.logger.debug('Running test case');
 
 				try {
-					// Fetch past execution with data
-					const pastExecution = await this.executionRepository.findOne({
-						where: { id: pastExecutionId },
-						relations: ['executionData', 'metadata', 'annotation', 'annotation.tags'],
-					});
-					assert(pastExecution, 'Execution not found');
-
-					const executionData = parse(pastExecution.executionData.data) as IRunExecutionData;
-
 					const testCaseMetadata = {
 						...testRunMetadata,
-						pastExecutionId,
-						highlightedData: pastExecution.metadata,
-						annotation: pastExecution.annotation,
 					};
 
 					// Run the test case and wait for it to finish
-					const testCaseExecution = await this.runTestCase(
-						workflow,
-						executionData,
-						pastExecution.executionData.workflowData,
-						[], // TODO: should be the array of mocked nodes
-						testCaseMetadata,
-						abortSignal,
-					);
+					const testCaseExecution = await this.runTestCase(workflow, testCaseMetadata, abortSignal);
 
-					this.logger.debug('Test case execution finished', { pastExecutionId });
+					this.logger.debug('Test case execution finished');
 
 					// In case of a permission check issue, the test case execution will be undefined.
 					// If that happens, or if the test case execution produced an error, mark the test case as failed.
 					if (!testCaseExecution || testCaseExecution.data.resultData.error) {
-						await dbManager.transaction(async (trx) => {
-							await this.testCaseExecutionRepository.markAsFailed({
-								testRunId: testRun.id,
-								pastExecutionId,
-								errorCode: 'FAILED_TO_EXECUTE_WORKFLOW',
-								trx,
-							});
-						});
+						// Save the failed test case execution in DB
+						// TODO: add failed test case execution to DB
+						// await this.testCaseExecutionRepository.insert({
+						// 	testRun: {
+						// 		id: testRun.id,
+						// 	},
+						// 	status: 'error',
+						// 	errorCode: 'FAILED_TO_EXECUTE_WORKFLOW',
+						// 	metrics: {},
+						// });
 						continue;
 					}
 
-					await dbManager.transaction(async (trx) => {
-						await this.testCaseExecutionRepository.markAsCompleted({
-							testRunId: testRun.id,
-							pastExecutionId,
-							metrics: {},
-							trx,
-						});
-					});
-				} catch (e) {
-					// In case of an unexpected error, increment the failed count and continue with the next test case
-					await dbManager.transaction(async (trx) => {
-						if (e instanceof TestCaseExecutionError) {
-							await this.testCaseExecutionRepository.markAsFailed({
-								testRunId: testRun.id,
-								pastExecutionId,
-								errorCode: e.code,
-								errorDetails: e.extra as IDataObject,
-								trx,
-							});
-						} else {
-							await this.testCaseExecutionRepository.markAsFailed({
-								testRunId: testRun.id,
-								pastExecutionId,
-								errorCode: 'UNKNOWN_ERROR',
-								trx,
-							});
+					// TODO: extract metrics
 
-							// Report unexpected errors
-							this.errorReporter.error(e);
-						}
+					// Create a new test case execution in DB
+					// TODO: add successful test case execution to DB
+					// await this.testCaseExecutionRepository.insert({
+					// 	testRun: {
+					// 		id: testRun.id,
+					// 	},
+					// 	status: 'success',
+					// 	metrics: {},
+					// });
+				} catch (e) {
+					// FIXME: this is a temporary log
+					this.logger.error('Test case execution failed', {
+						workflowId,
+						testRunId: testRun.id,
+						error: e,
 					});
+
+					// In case of an unexpected error save it as failed test case execution and continue with the next test case
+					if (e instanceof TestCaseExecutionError) {
+						// TODO: add failed test case execution to DB
+						// await this.testCaseExecutionRepository.insert({
+						// 	testRun: {
+						// 		id: testRun.id,
+						// 	},
+						// 	status: 'error',
+						// 	errorCode: e.code,
+						// 	errorDetails: e.extra as IDataObject,
+						// });
+					} else {
+						// TODO: add failed test case execution to DB
+						// await this.testCaseExecutionRepository.insert({
+						// 	testRun: {
+						// 		id: testRun.id,
+						// 	},
+						// 	status: 'error',
+						// 	errorCode: 'UNKNOWN_ERROR',
+						// });
+
+						// Report unexpected errors
+						this.errorReporter.error(e);
+					}
 				}
 			}
 
 			// Mark the test run as completed or cancelled
 			if (abortSignal.aborted) {
 				await dbManager.transaction(async (trx) => {
-					await this.testRunRepository.markAsCancelled(testRun.id, trx);
+					// TODO: mark test run as cancelled
+					// await this.testRunRepository.markAsCancelled(testRun.id, trx);
 					await this.testCaseExecutionRepository.markAllPendingAsCancelled(testRun.id, trx);
 
 					testRunEndStatusForTelemetry = 'cancelled';
@@ -397,7 +333,8 @@ export class TestRunnerService {
 			} else {
 				const aggregatedMetrics = metrics.getAggregatedMetrics();
 
-				await this.testRunRepository.markAsCompleted(testRun.id, aggregatedMetrics);
+				// TODO: mark test run as completed
+				// await this.testRunRepository.markAsCompleted(testRun.id, aggregatedMetrics);
 
 				this.logger.debug('Test run finished', { workflowId, testRunId: testRun.id });
 
@@ -411,16 +348,19 @@ export class TestRunnerService {
 				});
 
 				await dbManager.transaction(async (trx) => {
-					await this.testRunRepository.markAsCancelled(testRun.id, trx);
+					// TODO: mark test run as cancelled
+					// await this.testRunRepository.markAsCancelled(testRun.id, trx);
 					await this.testCaseExecutionRepository.markAllPendingAsCancelled(testRun.id, trx);
 				});
 
 				testRunEndStatusForTelemetry = 'cancelled';
 			} else if (e instanceof TestRunError) {
-				await this.testRunRepository.markAsError(testRun.id, e.code, e.extra as IDataObject);
+				// TODO: mark test run as error
+				// await this.testRunRepository.markAsError(testRun.id, e.code, e.extra as IDataObject);
 				testRunEndStatusForTelemetry = 'error';
 			} else {
-				await this.testRunRepository.markAsError(testRun.id, 'UNKNOWN_ERROR');
+				// TODO: mark test run as error
+				// await this.testRunRepository.markAsError(testRun.id, 'UNKNOWN_ERROR');
 				testRunEndStatusForTelemetry = 'error';
 				throw e;
 			}
@@ -454,10 +394,11 @@ export class TestRunnerService {
 			abortController.abort();
 			this.abortControllers.delete(testRunId);
 		} else {
-			const { manager: dbManager } = this.executionRepository;
+			const { manager: dbManager } = this.testRunRepository;
 			// If there is no abort controller - just mark the test run and all its' pending test case executions as cancelled
 			await dbManager.transaction(async (trx) => {
-				await this.testRunRepository.markAsCancelled(testRunId, trx);
+				// TODO: mark test run as cancelled
+				// await this.testRunRepository.markAsCancelled(testRunId, trx);
 				await this.testCaseExecutionRepository.markAllPendingAsCancelled(testRunId, trx);
 			});
 		}

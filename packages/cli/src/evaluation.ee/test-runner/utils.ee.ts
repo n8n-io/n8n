@@ -1,5 +1,5 @@
 import assert from 'assert';
-import { mapValues, pick } from 'lodash';
+import { mapValues } from 'lodash';
 import type {
 	IRunExecutionData,
 	IPinData,
@@ -10,7 +10,6 @@ import type {
 } from 'n8n-workflow';
 
 import { TestCaseExecutionError } from '@/evaluation.ee/test-runner/errors.ee';
-import type { TestCaseRunMetadata } from '@/evaluation.ee/test-runner/test-runner.service.ee';
 
 // Entity representing a node in a workflow under test, for which data should be mocked during test execution
 export type MockedNodeItem = {
@@ -113,33 +112,4 @@ function formatExecutionData(data: IRunData, workflow: IWorkflowBase) {
 	}
 
 	return formattedData;
-}
-
-/**
- * Prepare the evaluation wf input data.
- * Provide both the expected data (past execution) and the actual data (new execution),
- * as well as any annotations or highlighted data associated with the past execution
- */
-export function formatTestCaseExecutionInputData(
-	originalExecutionData: IRunData,
-	_originalWorkflowData: IWorkflowBase,
-	newExecutionData: IRunData,
-	_newWorkflowData: IWorkflowBase,
-	metadata: TestCaseRunMetadata,
-) {
-	const annotations = {
-		vote: metadata.annotation?.vote,
-		tags: metadata.annotation?.tags?.map((tag) => pick(tag, ['id', 'name'])),
-		highlightedData: Object.fromEntries(
-			metadata.highlightedData?.map(({ key, value }) => [key, value]),
-		),
-	};
-
-	return {
-		json: {
-			annotations,
-			originalExecution: formatExecutionData(originalExecutionData, _originalWorkflowData),
-			newExecution: formatExecutionData(newExecutionData, _newWorkflowData),
-		},
-	};
 }
