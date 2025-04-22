@@ -14,9 +14,9 @@
     "test": "jest",
     "test:dev": "jest --watch"
   },
-  "main": "dist/di.js",
-  "module": "src/di.ts",
-  "types": "dist/di.d.ts",
+  "main": "dist/index.js",
+  "module": "src/index.ts",
+  "types": "dist/index.d.ts",
   "files": [
     "dist/**/*"
   ],
