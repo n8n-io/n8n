@@ -505,6 +505,22 @@ describe('getAvailableDateRanges', () => {
 		);
 	});
 
+	test('returns correct ranges when hourly data is enabled and max history is unlimited', () => {
+		licenseMock.getInsightsMaxHistory.mockReturnValue(-1);
+		licenseMock.isInsightsHourlyDataEnabled.mockReturnValue(true);
+
+		const result = insightsService.getAvailableDateRanges();
+
+		expect(result).toEqual([
+			{ key: 'day', licensed: true, granularity: 'hour' },
+			{ key: 'week', licensed: true, granularity: 'day' },
+			{ key: '2weeks', licensed: true, granularity: 'day' },
+			{ key: 'month', licensed: true, granularity: 'day' },
+			{ key: 'quarter', licensed: true, granularity: 'week' },
+			{ key: 'year', licensed: true, granularity: 'week' },
+		]);
+	});
+
 	test('returns correct ranges when hourly data is enabled and max history is 365 days', () => {
 		licenseMock.getInsightsMaxHistory.mockReturnValue(365);
 		licenseMock.isInsightsHourlyDataEnabled.mockReturnValue(true);

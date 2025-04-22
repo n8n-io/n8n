@@ -182,7 +182,10 @@ export class InsightsService {
 	}
 
 	getAvailableDateRanges(): InsightsDateRange[] {
-		const maxHistoryInDays = this.license.getInsightsMaxHistory();
+		const maxHistoryInDays =
+			this.license.getInsightsMaxHistory() === -1
+				? Number.MAX_SAFE_INTEGER
+				: this.license.getInsightsMaxHistory();
 		const isHourlyDateEnabled = this.license.isInsightsHourlyDataEnabled();
 
 		return [
