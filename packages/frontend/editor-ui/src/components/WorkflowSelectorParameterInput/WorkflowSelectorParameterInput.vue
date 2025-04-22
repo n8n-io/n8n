@@ -25,7 +25,7 @@ import { SAMPLE_SUBWORKFLOW_WORKFLOW } from '@/constants.workflows';
 import type { IWorkflowDataCreate } from '@/Interface';
 import { useDocumentVisibility } from '@/composables/useDocumentVisibility';
 
-interface Props {
+export interface Props {
 	modelValue: INodeParameterResourceLocator;
 	eventBus?: EventBus;
 	inputSize?: 'small' | 'mini' | 'medium' | 'large' | 'xlarge';
@@ -207,8 +207,12 @@ async function refreshCachedWorkflow() {
 	if (workflowId === true) {
 		return;
 	}
-	await workflowsStore.fetchWorkflow(`${workflowId}`);
-	onInputChange(workflowId);
+	try {
+		await workflowsStore.fetchWorkflow(`${workflowId}`);
+		onInputChange(workflowId);
+	} catch (e) {
+		// keep old cached value
+	}
 }
 
 onDocumentVisible(refreshCachedWorkflow);
