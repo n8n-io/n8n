@@ -19,12 +19,12 @@ export class MicrosoftTeamsOAuth2Api implements ICredentialType {
 		},
 		{
 			displayName: `
-      Microsoft Teams Trigger requires these Microsoft Graph permissions:
+      Microsoft Teams Trigger requires the following permissions:
       <br><code>ChannelMessage.Read.All</code>
       <br><code>Chat.Read.All</code>
       <br><code>Team.ReadBasic.All</code>
       <br><code>Subscription.ReadWrite.All</code>
-      <br>Configure in <a href="https://portal.azure.com">Azure AD</a>
+      <br>Configure these permissions in <a href="https://portal.azure.com">Microsoft Entra</a>
     `,
 			name: 'notice',
 			type: 'notice',
