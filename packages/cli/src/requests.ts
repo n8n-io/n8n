@@ -3,7 +3,6 @@ import type { AssignableRole, GlobalRole, Scope } from '@n8n/permissions';
 import type express from 'express';
 import type {
 	ICredentialDataDecryptedObject,
-	IDataObject,
 	INodeCredentialTestRequest,
 	IPersonalizationSurveyAnswersV4,
 	IUser,
@@ -15,9 +14,7 @@ import type { User } from '@/databases/entities/user';
 import type { Variables } from '@/databases/entities/variables';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import type { WorkflowHistory } from '@/databases/entities/workflow-history';
-import type { SecretsProvider, SecretsProviderState } from '@/interfaces';
-
-import type { ScopesField } from './services/role.service';
+import type { ScopesField } from '@/services/role.service';
 
 export type APIRequest<
 	RouteParams = {},
@@ -308,28 +305,6 @@ export declare namespace VariablesRequest {
 	type Create = AuthenticatedRequest<{}, {}, CreateUpdatePayload, {}>;
 	type Update = AuthenticatedRequest<{ id: string }, {}, CreateUpdatePayload, {}>;
 	type Delete = Get;
-}
-
-export declare namespace ExternalSecretsRequest {
-	type GetProviderResponse = Pick<SecretsProvider, 'displayName' | 'name' | 'properties'> & {
-		icon: string;
-		connected: boolean;
-		connectedAt: Date | null;
-		state: SecretsProviderState;
-		data: IDataObject;
-	};
-
-	type GetProviders = AuthenticatedRequest;
-	type GetProvider = AuthenticatedRequest<{ provider: string }, GetProviderResponse>;
-	type SetProviderSettings = AuthenticatedRequest<{ provider: string }, {}, IDataObject>;
-	type TestProviderSettings = SetProviderSettings;
-	type SetProviderConnected = AuthenticatedRequest<
-		{ provider: string },
-		{},
-		{ connected: boolean }
-	>;
-
-	type UpdateProvider = AuthenticatedRequest<{ provider: string }>;
 }
 
 // ----------------------------------
