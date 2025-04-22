@@ -17,8 +17,8 @@ export class ExternalSecretsProviders {
 		gcpSecretsManager: GcpSecretsManager,
 	};
 
-	getProvider(name: string): { new (): SecretsProvider } | null {
-		return this.providers[name] ?? null;
+	getProvider(name: string): { new (): SecretsProvider } {
+		return this.providers[name];
 	}
 
 	hasProvider(name: string) {
