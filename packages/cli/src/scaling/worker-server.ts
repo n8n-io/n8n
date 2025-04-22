@@ -130,9 +130,11 @@ export class WorkerServer {
 			connectionState.migrated &&
 			this.redisClientService.isConnected();
 
+		const status = !Db.connectionState.connected ? 503 : !Db.connectionState.migrated ? 504 : 505;
+
 		return isReady
 			? res.status(200).send({ status: 'ok' })
-			: res.status(503).send({ status: 'error' });
+			: res.status(status).send({ status: 'error' });
 	}
 
 	private handleOverwrites(
