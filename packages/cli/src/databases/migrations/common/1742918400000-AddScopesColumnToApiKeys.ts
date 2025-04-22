@@ -24,7 +24,7 @@ export class AddScopesColumnToApiKeys1742918400000 implements ReversibleMigratio
 			const scopes = JSON.stringify(getApiKeyScopesForRole(role));
 
 			await runQuery(
-				`UPDATE ${userApiKeysTable} SET ${scopesColumn} = '${scopes}' WHERE ${idColumn} = "${id}"`,
+				`UPDATE ${userApiKeysTable} SET ${scopesColumn} = '${scopes}' WHERE ${idColumn} = '${id}'`,
 			);
 		}
 	}
