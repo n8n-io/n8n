@@ -7,7 +7,7 @@ import type {
 	IExecuteFunctions,
 	INodeExecutionData,
 } from 'n8n-workflow';
-import { ApplicationError, NodeApiError } from 'n8n-workflow';
+import { ApplicationError, NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
 
 export class Raia implements INodeType {
 	description: INodeTypeDescription = {
@@ -20,8 +20,8 @@ export class Raia implements INodeType {
 		defaults: {
 			name: 'raia',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'raiaApi',
