@@ -4,7 +4,6 @@ import {
 	TransferWorkflowBodyDto,
 } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import {
 	Body,
 	Delete,
@@ -18,6 +17,7 @@ import {
 	Query,
 	RestController,
 } from '@n8n/decorators';
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In, type FindOptionsRelations } from '@n8n/typeorm';
 import axios from 'axios';
 import express from 'express';
