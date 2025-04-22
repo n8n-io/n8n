@@ -2,12 +2,12 @@
 import { useI18n } from '@/composables/useI18n';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { EXECUTE_STEP_MODAL_KEY } from '@/constants';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useParameterOverridesStore } from '@/stores/parameterOverrides.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createEventBus } from '@n8n/utils/event-bus';
 import {
 	type FromAIArgument,
+	nodeConnectionTypes,
 	NodeConnectionTypes,
 	traverseNodeParametersWithParamNames,
 } from 'n8n-workflow';
@@ -26,7 +26,6 @@ const inputs = ref(null);
 const i18n = useI18n();
 const modalBus = createEventBus();
 const workflowsStore = useWorkflowsStore();
-const nodeTypesStore = useNodeTypesStore();
 const router = useRouter();
 const { runWorkflow } = useRunWorkflow({ router });
 const parameterOverridesStore = useParameterOverridesStore();
@@ -43,8 +42,6 @@ const parentNode = computed(() => {
 	return workflowsStore.getNodeByName(parentNodes[0]);
 });
 
-const nodeType = computed(() => nodeTypesStore.getNodeType(node.value?.type ?? ''));
-
 const runData = computed(() => {
 	if (!node.value) return undefined;
 
@@ -55,10 +52,22 @@ const runData = computed(() => {
 });
 
 const mapTypes = {
-	['string']: 'text',
-	['boolean']: 'checkbox',
-	['number']: 'number',
-	['json']: 'text',
+	['string']: {
+		inputType: 'text',
+		defaultValue: '',
+	},
+	['boolean']: {
+		inputType: 'checkbox',
+		defaultValue: true,
+	},
+	['number']: {
+		inputType: 'number',
+		defautValue: '',
+	},
+	['json']: {
+		inputType: 'text',
+		defaultValue: '',
+	},
 };
 
 const parameters = computed(() => {
@@ -70,21 +79,23 @@ const parameters = computed(() => {
 	traverseNodeParametersWithParamNames(params, collectedArgs);
 	const inputOverrides = runData.value?.inputOverride?.[NodeConnectionTypes.AiTool]?.[0]?.[0].json;
 
-	collectedArgs.forEach((value, paramName, _) => {
+	collectedArgs.forEach((value, paramName) => {
 		const initialValue = inputOverrides?.[value.key]
 			? inputOverrides[value.key]
 			: (parameterOverridesStore.getParameterOverride(
 					currentWorkflow.id,
-					node.value!.name,
+					node.value.name,
 					paramName,
-				) ?? '');
+				) ??
+				mapTypes[value.type]?.defaultValue ??
+				'');
 
 		result.push({
 			name: paramName,
-			initialValue,
+			initialValue: initialValue as string | number | boolean | null | undefined,
 			properties: {
 				label: value.key,
-				type: mapTypes[value.type] ?? 'text',
+				type: mapTypes[value.type].inputType ?? 'text',
 				required: true,
 			},
 		});
@@ -100,12 +111,10 @@ const onExecute = async () => {
 	if (!node.value) return;
 	const currentWorkflow = workflowsStore.getCurrentWorkflow();
 
+	const inputValues = inputs.value?.getValues();
+
 	parameterOverridesStore.clearParameterOverrides(currentWorkflow.id, node.value.name);
-	parameterOverridesStore.addParameterOverrides(
-		currentWorkflow.id,
-		node.value.name,
-		inputs.value?.getValues(),
-	);
+	parameterOverridesStore.addParameterOverrides(currentWorkflow.id, node.value.name, inputValues);
 
 	await runWorkflow({
 		destinationNode: node.value.name,
@@ -130,10 +139,10 @@ const onExecute = async () => {
 		<template #content>
 			<el-col>
 				<el-row :class="$style.row">
-					<n8n-text>
+					<n8n-text data-testid="execute-step-modal-description">
 						{{
 							i18n.baseText('executeStepModal.description', {
-								interpolate: { parentNodeName: parentNode?.name },
+								interpolate: { parentNodeName: parentNode?.name || '' },
 							})
 						}}
 					</n8n-text>
@@ -145,6 +154,7 @@ const onExecute = async () => {
 						ref="inputs"
 						:inputs="parameters"
 						:column-view="true"
+						data-test-id="execute-step-modal-inputs"
 						@submit="onExecute"
 					></N8nFormInputs>
 				</el-row>
@@ -154,6 +164,7 @@ const onExecute = async () => {
 			<el-row justify="end">
 				<el-col :span="5" :offset="19">
 					<n8n-button
+						data-test-id="execute-workflow-button"
 						icon="flask"
 						:label="i18n.baseText('executeStepModal.execute')"
 						@click="onExecute"
@@ -164,7 +175,7 @@ const onExecute = async () => {
 	</Modal>
 </template>
 
-<style lang="scss" scoped>
+<style lang="scss" module>
 .row {
 	margin-bottom: 10px;
 }
