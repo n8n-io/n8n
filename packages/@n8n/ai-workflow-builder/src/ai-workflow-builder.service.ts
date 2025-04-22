@@ -5,35 +5,34 @@ import { StateGraph, END, START } from '@langchain/langgraph';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
-import { OperationalError, assert } from 'n8n-workflow';
+import { OperationalError, assert, INodeTypes } from 'n8n-workflow';
 import type { IUser, INodeTypeDescription, INode } from 'n8n-workflow';
 
-import { N8N_VERSION } from '@/constants';
-import { License } from '@/license';
-import { NodeTypes } from '@/node-types';
-
 import { anthropicClaude37Sonnet, gpt41mini } from './llm-config';
-import { connectionComposerChain } from './prompts/connection-composer';
-import { nodesSelectionChain } from './prompts/node-selector';
-import { nodesComposerChain } from './prompts/nodes-composer';
-import { plannerChain } from './prompts/planner';
+import { connectionComposerChain } from './chains/connection-composer';
+import { nodesSelectionChain } from './chains/node-selector';
+import { nodesComposerChain } from './chains/nodes-composer';
+import { plannerChain } from './chains/planner';
 import type { SimpleWorkflow, MessageResponse } from './types';
 import { WorkflowState } from './workflow-state';
 
+import { ILicenseService } from './interfaces';
+
 @Service()
-export class AiBuilderService {
+export class AiWorkflowBuilderService {
 	private parsedNodeTypes: INodeTypeDescription[] = [];
 
-	private llmSimpleTask: BaseChatModel;
+	private llmSimpleTask: BaseChatModel | undefined;
 
-	private llmComplexTask: BaseChatModel;
+	private llmComplexTask: BaseChatModel | undefined;
 
 	private client: AiAssistantClient | undefined;
 
 	constructor(
-		private readonly licenseService: License,
-		private readonly nodeTypes: NodeTypes,
+		private readonly licenseService: ILicenseService,
+		private readonly nodeTypes: INodeTypes,
 		private readonly globalConfig: GlobalConfig,
+		private readonly n8nVersion: string,
 	) {
 		this.parsedNodeTypes = this.getNodeTypes();
 	}
@@ -48,7 +47,7 @@ export class AiBuilderService {
 				licenseCert,
 				consumerId,
 				baseUrl,
-				n8nVersion: N8N_VERSION,
+				n8nVersion: this.n8nVersion,
 			});
 		}
 
@@ -90,6 +89,8 @@ export class AiBuilderService {
 			state: typeof WorkflowState.State,
 			config: RunnableConfig,
 		): Promise<Partial<typeof WorkflowState.State>> => {
+			assert(this.llmComplexTask, 'LLM not setup');
+
 			const steps = await plannerChain(this.llmComplexTask).invoke(
 				{
 					prompt: state.prompt,
@@ -114,6 +115,8 @@ export class AiBuilderService {
 			state: typeof WorkflowState.State,
 			config: RunnableConfig,
 		) => {
+			assert(this.llmSimpleTask, 'LLM not setup');
+
 			const getNodeMessage = (node: INodeTypeDescription) => {
 				return `
 					<node_name>${node.name}</node_name>
@@ -150,6 +153,7 @@ export class AiBuilderService {
 			state: typeof WorkflowState.State,
 			config: RunnableConfig,
 		) => {
+			assert(this.llmComplexTask, 'LLM not setup');
 			const getLatestVersion = (nodeType: string) => {
 				const node = this.parsedNodeTypes.find((n) => n.name === nodeType);
 				if (!node) {
@@ -219,6 +223,7 @@ export class AiBuilderService {
 			state: typeof WorkflowState.State,
 			config: RunnableConfig,
 		) => {
+			assert(this.llmComplexTask, 'LLM not setup');
 			// Pass the selected nodes as input to create connections.
 			const getNodeMessage = (node: INode) => {
 				return `
@@ -289,11 +294,7 @@ export class AiBuilderService {
 		return workflowGraph;
 	}
 
-	async *chat(payload: { question: string; currentWorkflow?: SimpleWorkflow }, user?: IUser) {
-		if (!user) {
-			throw new OperationalError('User is required');
-		}
-
+	async *chat(payload: { question: string; currentWorkflow?: SimpleWorkflow }, user: IUser) {
 		if (!this.llmComplexTask || !this.llmSimpleTask) {
 			await this.setupModels(user);
 		}

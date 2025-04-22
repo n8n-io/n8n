@@ -86,12 +86,6 @@
     "ts-essentials": "^7.0.3"
   },
   "dependencies": {
-    "@langchain/anthropic": "catalog:",
-    "@langchain/community": "catalog:",
-    "@langchain/core": "catalog:",
-    "@langchain/langgraph": "catalog:",
-    "@langchain/openai": "catalog:",
-    "langchain": "catalog:",
     "@azure/identity": "^4.3.0",
     "@azure/keyvault-secrets": "^4.8.0",
     "@google-cloud/secret-manager": "^5.6.0",
@@ -103,6 +97,7 @@
     "@n8n/n8n-nodes-langchain": "workspace:*",
     "@n8n/permissions": "workspace:*",
     "@n8n/task-runner": "workspace:*",
+    "@n8n/ai-workflow-builder": "workspace:*",
     "@n8n/typeorm": "0.3.20-12",
     "@n8n_io/ai-assistant-sdk": "file:/Users/oleg/Projects/ai-assistant-service/sdk",
     "@n8n_io/license-sdk": "2.20.0",

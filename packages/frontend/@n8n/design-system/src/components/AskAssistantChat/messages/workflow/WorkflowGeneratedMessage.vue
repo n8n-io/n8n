@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import BaseWorkflowMessage from './BaseWorkflowMessage.vue';
 import type { ChatUI } from '../../../../types/assistant';
-import TextMessage from '../TextMessage.vue';
 
 interface Props {
 	message: ChatUI.WorkflowGeneratedMessage & { id: string; read: boolean };
@@ -12,15 +11,7 @@ interface Props {
 	};
 }
 
-const props = defineProps<Props>();
-
-const emit = defineEmits<{
-	insertWorkflow: [string];
-}>();
-
-const onInsertWorkflow = () => {
-	emit('insertWorkflow', props.message.codeSnippet);
-};
+defineProps<Props>();
 </script>
 
 <template>

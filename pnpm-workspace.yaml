@@ -39,8 +39,6 @@ catalog:
   '@langchain/openai': 0.3.17
   '@langchain/anthropic': 0.3.11
   '@langchain/community': 0.3.24
-  '@langchain/langgraph': 0.2.45
-  'langchain': 0.3.11
 
 catalogs:
   frontend:

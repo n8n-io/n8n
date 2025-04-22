@@ -18,7 +18,7 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { Body, Post, RestController } from '@/decorators';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { AuthenticatedRequest } from '@/requests';
-import { AiBuilderService } from '@/services/ai-builder/ai-builder.service';
+import { WorkflowBuilderService } from '@/services/ai-workflow-builder.service';
 import { AiService } from '@/services/ai.service';
 import { UserService } from '@/services/user.service';
 
@@ -28,7 +28,7 @@ export type FlushableResponse = Response & { flush: () => void };
 export class AiController {
 	constructor(
 		private readonly aiService: AiService,
-		private readonly aiBuilderService: AiBuilderService,
+		private readonly workflowBuilderService: WorkflowBuilderService,
 		private readonly credentialsService: CredentialsService,
 		private readonly userService: UserService,
 	) {}
@@ -40,11 +40,9 @@ export class AiController {
 		@Body payload: AiBuilderChatRequestDto,
 	) {
 		try {
-			const aiResponse = this.aiBuilderService.chat(
+			const aiResponse = this.workflowBuilderService.chat(
 				{
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
 					question: payload.payload.question ?? '',
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 					currentWorkflow: payload.payload.context.currentWorkflow as IWorkflowBase,
 				},
 				req.user,
@@ -58,8 +56,6 @@ export class AiController {
 				res.write(JSON.stringify(chunk) + '⧉⇋⇋➽⌑⧉§§\n');
 			}
 
-			// Send end event
-			// res.write(JSON.stringify({ type: 'done' }) + '⧉⇋⇋➽⌑⧉§§\n');
 			res.end();
 		} catch (e) {
 			console.error('Stream error:', e);
