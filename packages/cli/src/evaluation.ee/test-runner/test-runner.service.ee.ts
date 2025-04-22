@@ -66,14 +66,6 @@ export class TestRunnerService {
 	) {}
 
 	/**
-	 * As Test Runner does not have a recovery mechanism, it can not resume Test Runs interrupted by the server restart.
-	 * All Test Runs in incomplete state will be marked as cancelled.
-	 */
-	async cleanupIncompleteRuns() {
-		await this.testRunRepository.markAllIncompleteAsFailed();
-	}
-
-	/**
 	 * Prepares the start nodes and trigger node data props for the `workflowRunner.run` method input.
 	 */
 	private getStartNodesData(
@@ -234,7 +226,7 @@ export class TestRunnerService {
 		assert(workflow, 'Workflow not found');
 
 		// 0. Create new Test Run
-		// TODO: Check that cresteTestRun takes workflowId as an argument
+		// TODO: Check that createTestRun takes workflowId as an argument
 		const testRun = await this.testRunRepository.createTestRun(workflowId);
 		assert(testRun, 'Unable to create a test run');
 
