@@ -81,6 +81,7 @@ import { CreateTestCaseExecutionTable1736947513045 } from '../common/17369475130
 import { AddErrorColumnsToTestRuns1737715421462 } from '../common/1737715421462-AddErrorColumnsToTestRuns';
 import { CreateAnalyticsTables1739549398681 } from '../common/1739549398681-CreateAnalyticsTables';
 import { RenameAnalyticsToInsights1741167584277 } from '../common/1741167584277-RenameAnalyticsToInsights';
+import { AddWorkflowArchivedColumn1745329094929 } from '../common/1745329094929-AddWorkflowArchivedColumn';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
@@ -164,6 +165,7 @@ const sqliteMigrations: Migration[] = [
 	UpdateParentFolderIdColumn1740445074052,
 	RenameAnalyticsToInsights1741167584277,
 	AddScopesColumnToApiKeys1742918400000,
+	AddWorkflowArchivedColumn1745329094929,
 ];
 
 export { sqliteMigrations };
