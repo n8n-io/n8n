@@ -313,6 +313,7 @@ describe('LoadNodesAndCredentials', () => {
 					subcategories: { AI: ['Tools'], Tools: ['Other Tools'] },
 				},
 				description: 'A test node',
+				usableAsTool: true,
 				name: 'testNodeTool',
 				displayName: 'Test Node Tool',
 				group: ['input'],
@@ -370,6 +371,7 @@ describe('LoadNodesAndCredentials', () => {
 				inputs: [],
 				outputs: ['ai_tool'],
 				description: 'A test node',
+				usableAsTool: true,
 				properties: [
 					{
 						displayName: 'Description',
