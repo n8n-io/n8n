@@ -85,6 +85,7 @@ import { CreateAnalyticsTables1739549398681 } from '../common/1739549398681-Crea
 import { RenameAnalyticsToInsights1741167584277 } from '../common/1741167584277-RenameAnalyticsToInsights';
 import { AddScopesColumnToApiKeys1742918400000 } from '../common/1742918400000-AddScopesColumnToApiKeys';
 import { UpdateParentFolderIdColumn1740445074052 } from '../mysqldb/1740445074052-UpdateParentFolderIdColumn';
+import { ClearEvaluation1745322634000 } from '../common/1745322634000-CleanEvaluations';
 
 export const mysqlMigrations: Migration[] = [
 	InitialMigration1588157391238,
@@ -172,4 +173,5 @@ export const mysqlMigrations: Migration[] = [
 	UpdateParentFolderIdColumn1740445074052,
 	RenameAnalyticsToInsights1741167584277,
 	AddScopesColumnToApiKeys1742918400000,
+	ClearEvaluation1745322634000,
 ];
