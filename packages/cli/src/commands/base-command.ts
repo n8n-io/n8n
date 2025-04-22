@@ -27,7 +27,7 @@ import * as Db from '@/db';
 import { ModuleRegistry } from '@/decorators/module';
 import { getDataDeduplicationService } from '@/deduplication';
 import { DeprecationService } from '@/deprecation/deprecation.service';
-import { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.service.ee';
+import { TestRunCleanupService } from '@/evaluation.ee/test-runner/test-run-cleanup.service.ee';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { initExpressionEvaluator } from '@/expression-evaluator';
@@ -269,8 +269,7 @@ export abstract class BaseCommand extends Command {
 	}
 
 	async cleanupTestRunner() {
-		// FIXME: Disabled temporarily to avoid circular dependency issue
-		// await Container.get(TestRunnerService).cleanupIncompleteRuns();
+		await Container.get(TestRunCleanupService).cleanupIncompleteRuns();
 	}
 
 	async finally(error: Error | undefined) {
