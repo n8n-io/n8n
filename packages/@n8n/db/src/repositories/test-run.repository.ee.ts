@@ -22,13 +22,17 @@ export class TestRunRepository extends Repository<TestRun> {
 		super(TestRun, dataSource.manager);
 	}
 
-	// TODO: Use workfloId here.
-	async createTestRun(_workflowId: string) {
+	// TODO: Use workflowId here.
+	async createTestRun(workflowId: string) {
 		const testRun = this.create({
 			status: 'new',
+			workflow: {
+				id: workflowId,
+			},
 		});
 
-		return await this.save(testRun);
+		return testRun;
+		// return await this.save(testRun);
 	}
 
 	async markAsRunning(id: string) {

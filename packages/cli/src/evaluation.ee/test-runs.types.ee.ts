@@ -11,6 +11,8 @@ export declare namespace TestRunsRequest {
 		};
 	}
 
+	type Create = AuthenticatedRequest<RouteParams.WorkflowId>;
+
 	type GetMany = AuthenticatedRequest<RouteParams.WorkflowId, {}, {}, ListQuery.Params> & {
 		listQueryOptions: ListQuery.Options;
 	};

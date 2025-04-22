@@ -11,11 +11,13 @@ import { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.servi
 import { TestRunsRequest } from '@/evaluation.ee/test-runs.types.ee';
 import { listQueryMiddleware } from '@/middlewares';
 import { Telemetry } from '@/telemetry';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 @RestController('/workflows')
 export class TestRunsController {
 	constructor(
 		private readonly testRunRepository: TestRunRepository,
+		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly testCaseExecutionRepository: TestCaseExecutionRepository,
 		private readonly testRunnerService: TestRunnerService,
 		private readonly instanceSettings: InstanceSettings,
@@ -100,5 +102,26 @@ export class TestRunsController {
 		await this.testRunnerService.cancelTestRun(testRunId);
 
 		res.status(202).json({ success: true });
+	}
+
+	@Post('/:workflowId/test-runs/new')
+	async create(req: TestRunsRequest.Create, res: express.Response) {
+		const { workflowId } = req.params;
+
+		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, req.user, [
+			'workflow:read',
+		]);
+
+		if (!workflow) {
+			// user trying to access a workflow they do not own
+			// and was not shared to them
+			// Or does not exist.
+			return res.status(404).json({ message: 'Not Found' });
+		}
+
+		// We do not await for the test run to complete
+		void this.testRunnerService.runTest(req.user, workflow.id);
+
+		return res.status(202).json({ success: true });
 	}
 }
