@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import RunData from '@/components/RunData.vue';
-import { LogEntry } from '@/components/RunDataAi/utils';
+import { type LogEntry } from '@/components/RunDataAi/utils';
 import { useI18n } from '@/composables/useI18n';
 import { type IExecutionResponse, type NodePanelType } from '@/Interface';
 import { useNDVStore } from '@/stores/ndv.store';
