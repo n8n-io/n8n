@@ -142,6 +142,7 @@ type Props = {
 	disablePin?: boolean;
 	compact?: boolean;
 	tableHeaderBgColor?: 'base' | 'light';
+	disableHoverHighlight?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -159,6 +160,7 @@ const props = withDefaults(defineProps<Props>(), {
 	disableRunIndexSelection: false,
 	disableEdit: false,
 	disablePin: false,
+	disableHoverHighlight: false,
 	compact: false,
 	tableHeaderBgColor: 'base',
 });
@@ -1778,6 +1780,7 @@ defineExpose({ enterEditMode });
 					:search="search"
 					:header-bg-color="tableHeaderBgColor"
 					:compact="props.compact"
+					:disable-hover-highlight="props.disableHoverHighlight"
 					@mounted="emit('tableMounted', $event)"
 					@active-row-changed="onItemHover"
 					@display-mode-change="onDisplayModeChange"

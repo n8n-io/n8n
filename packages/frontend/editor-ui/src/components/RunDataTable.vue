@@ -34,6 +34,7 @@ type Props = {
 	search?: string;
 	headerBgColor?: 'base' | 'light';
 	compact?: boolean;
+	disableHoverHighlight?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -44,6 +45,7 @@ const props = withDefaults(defineProps<Props>(), {
 	hasDefaultHoverState: false,
 	search: '',
 	headerBgColor: 'base',
+	disableHoverHighlight: false,
 });
 const emit = defineEmits<{
 	activeRowChanged: [row: number | null];
@@ -92,6 +94,10 @@ onMounted(() => {
 });
 
 function isHoveringRow(row: number): boolean {
+	if (props.disableHoverHighlight) {
+		return false;
+	}
+
 	if (row === activeRow.value) {
 		return true;
 	}
