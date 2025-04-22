@@ -1,6 +1,7 @@
 import {
 	insightsByTimeSchema,
 	insightsByWorkflowSchema,
+	insightsDateRangeSchema,
 	insightsSummarySchema,
 } from '../insights.schema';
 
@@ -230,6 +231,76 @@ describe('insightsByTimeSchema', () => {
 		},
 	])('should validate $name', ({ value, expected }) => {
 		const result = insightsByTimeSchema.safeParse(value);
+		expect(result.success).toBe(expected);
+	});
+});
+
+describe('insightsDateRangeSchema', () => {
+	test.each([
+		{
+			name: 'valid date range',
+			value: {
+				key: 'day',
+				licensed: true,
+				granularity: 'hour',
+			},
+			expected: true,
+		},
+		{
+			name: 'missing required key',
+			value: {
+				licensed: true,
+				granularity: 'hour',
+			},
+			expected: false,
+		},
+		{
+			name: 'invalid key value',
+			value: {
+				key: 'invalid',
+				licensed: true,
+				granularity: 'hour',
+			},
+			expected: false,
+		},
+		{
+			name: 'missing licensed field',
+			value: {
+				key: 'day',
+				granularity: 'hour',
+			},
+			expected: false,
+		},
+		{
+			name: 'invalid licensed type',
+			value: {
+				key: 'day',
+				licensed: 'true', // Should be a boolean
+				granularity: 'hour',
+			},
+			expected: false,
+		},
+		{
+			name: 'invalid granularity value',
+			value: {
+				key: 'day',
+				licensed: true,
+				granularity: 'invalid',
+			},
+			expected: false,
+		},
+		{
+			name: 'unexpected additional key',
+			value: {
+				key: 'day',
+				licensed: true,
+				granularity: 'hour',
+				extraKey: 'value', // Extra key not allowed
+			},
+			expected: false,
+		},
+	])('should validate $name', ({ value, expected }) => {
+		const result = insightsDateRangeSchema.safeParse(value);
 		expect(result.success).toBe(expected);
 	});
 });
