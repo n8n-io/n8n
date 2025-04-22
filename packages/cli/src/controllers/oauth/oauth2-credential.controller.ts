@@ -37,7 +37,7 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 			delete decryptedDataOriginal.scope;
 		}
 
-		const oauthCredentials = this.applyDefaultsAndOverwrites<OAuth2CredentialData>(
+		const oauthCredentials = await this.applyDefaultsAndOverwrites<OAuth2CredentialData>(
 			credential,
 			decryptedDataOriginal,
 			additionalData,
