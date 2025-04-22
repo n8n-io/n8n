@@ -144,6 +144,11 @@ const workflowMenuItems = computed<ActionDropdownItem[]>(() => {
 			label: locale.baseText('menuActions.download'),
 			disabled: !onWorkflowPage.value,
 		},
+		{
+			id: WORKFLOW_MENU_ACTIONS.RENAME,
+			label: locale.baseText('generic.rename'),
+			disabled: !onWorkflowPage.value || workflowPermissions.value.update !== true,
+		},
 	];
 
 	if ((workflowPermissions.value.delete && !props.readOnly) || isNewWorkflow.value) {
@@ -414,6 +419,10 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 					tags: props.tags,
 				},
 			});
+			break;
+		}
+		case WORKFLOW_MENU_ACTIONS.RENAME: {
+			onNameToggle();
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.DOWNLOAD: {
