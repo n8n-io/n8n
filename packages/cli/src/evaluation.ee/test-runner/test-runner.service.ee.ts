@@ -232,7 +232,7 @@ export class TestRunnerService {
 			});
 
 			// Initialize object to collect the results of the evaluation workflow executions
-			const metrics = new EvaluationMetrics(testMetricNames);
+			const metrics = new EvaluationMetrics();
 
 			///
 			// 2. Run over all the test cases
