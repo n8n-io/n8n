@@ -18,6 +18,9 @@ catalogs:
     '@types/express':
       specifier: ^5.0.1
       version: 5.0.1
+    '@types/jsonwebtoken':
+      specifier: ^9.0.9
+      version: 9.0.9
     '@types/lodash':
       specifier: ^4.14.195
       version: 4.14.195
@@ -48,6 +51,9 @@ catalogs:
     iconv-lite:
       specifier: 0.6.3
       version: 0.6.3
+    jsonwebtoken:
+      specifier: 9.0.2
+      version: 9.0.2
     lodash:
       specifier: 4.17.21
       version: 4.17.21
@@ -167,6 +173,9 @@ patchedDependencies:
   bull@4.12.1:
     hash: 4b8aae78debc54697a9106a44b1a949089d4facfeee057883e32116ab8c80f68
     path: patches/bull@4.12.1.patch
+  element-plus@2.4.3:
+    hash: fe650d17e32d13a07f54411f2ee552a8faeae20d92ef5e5a23424d590ba4a382
+    path: patches/element-plus@2.4.3.patch
   eslint-plugin-n8n-local-rules:
     hash: e0fd59254ab02473c6940fa25fcc8102ebc7d371c015ec53333a43f48af33cc2
     path: patches/eslint-plugin-n8n-local-rules.patch
@@ -311,6 +320,9 @@ importers:
 
   packages/@n8n/api-types:
     dependencies:
+      '@n8n/permissions':
+        specifier: workspace:*
+        version: link:../permissions
       n8n-workflow:
         specifier: workspace:*
         version: link:../../workflow
@@ -1035,7 +1047,7 @@ importers:
         specifier: 1.4.1
         version: 1.4.1
       jsonwebtoken:
-        specifier: 9.0.2
+        specifier: 'catalog:'
         version: 9.0.2
       ldapts:
         specifier: 4.2.6
@@ -1195,8 +1207,8 @@ importers:
         specifier: ^1.0.0
         version: 1.0.0
       '@types/jsonwebtoken':
-        specifier: ^9.0.6
-        version: 9.0.6
+        specifier: 'catalog:'
+        version: 9.0.9
       '@types/lodash':
         specifier: 'catalog:'
         version: 4.14.195
@@ -1302,6 +1314,9 @@ importers:
       iconv-lite:
         specifier: 'catalog:'
         version: 0.6.3
+      jsonwebtoken:
+        specifier: 'catalog:'
+        version: 9.0.2
       lodash:
         specifier: 'catalog:'
         version: 4.17.21
@@ -1360,6 +1375,9 @@ importers:
       '@types/express':
         specifier: 'catalog:'
         version: 5.0.1
+      '@types/jsonwebtoken':
+        specifier: 'catalog:'
+        version: 9.0.9
       '@types/lodash':
         specifier: 'catalog:'
         version: 4.14.195
@@ -1535,7 +1553,7 @@ importers:
         version: 10.11.0(vue@3.5.13(typescript@5.8.2))
       element-plus:
         specifier: catalog:frontend
-        version: 2.4.3(vue@3.5.13(typescript@5.8.2))
+        version: 2.4.3(patch_hash=fe650d17e32d13a07f54411f2ee552a8faeae20d92ef5e5a23424d590ba4a382)(vue@3.5.13(typescript@5.8.2))
       is-emoji-supported:
         specifier: ^0.0.5
         version: 0.0.5
@@ -1779,7 +1797,7 @@ importers:
         version: 3.0.3
       element-plus:
         specifier: catalog:frontend
-        version: 2.4.3(vue@3.5.13(typescript@5.8.2))
+        version: 2.4.3(patch_hash=fe650d17e32d13a07f54411f2ee552a8faeae20d92ef5e5a23424d590ba4a382)(vue@3.5.13(typescript@5.8.2))
       email-providers:
         specifier: ^2.0.1
         version: 2.0.1
@@ -2004,6 +2022,9 @@ importers:
       '@kafkajs/confluent-schema-registry':
         specifier: 3.8.0
         version: 3.8.0
+      '@mozilla/readability':
+        specifier: 0.6.0
+        version: 0.6.0
       '@n8n/config':
         specifier: workspace:*
         version: link:../@n8n/config
@@ -2082,8 +2103,11 @@ importers:
       js-nacl:
         specifier: 1.4.0
         version: 1.4.0
+      jsdom:
+        specifier: 23.0.1
+        version: 23.0.1
       jsonwebtoken:
-        specifier: 9.0.2
+        specifier: 'catalog:'
         version: 9.0.2
       kafkajs:
         specifier: 2.2.4
@@ -2231,8 +2255,8 @@ importers:
         specifier: ^1.3.0
         version: 1.3.0
       '@types/jsonwebtoken':
-        specifier: ^9.0.6
-        version: 9.0.6
+        specifier: 'catalog:'
+        version: 9.0.9
       '@types/lodash':
         specifier: 'catalog:'
         version: 4.14.195
@@ -6066,8 +6090,8 @@ packages:
   '@types/jsonpath@0.2.0':
     resolution: {integrity: sha512-v7qlPA0VpKUlEdhghbDqRoKMxFB3h3Ch688TApBJ6v+XLDdvWCGLJIYiPKGZnS6MAOie+IorCfNYVHOPIHSWwQ==}
 
-  '@types/jsonwebtoken@9.0.6':
-    resolution: {integrity: sha512-/5hndP5dCjloafCXns6SZyESp3Ldq7YjH3zwzwczYnjxIT0Fqzk5ROSYVGfFyczIue7IUEj8hkvLbPoLQ18vQw==}
+  '@types/jsonwebtoken@9.0.9':
+    resolution: {integrity: sha512-uoe+GxEuHbvy12OUQct2X9JenKM3qAscquYymuQN4fMWG9DBQtykrQEFcAbVACF7qaLw9BePSodUL0kquqBJpQ==}
 
   '@types/k6@0.52.0':
     resolution: {integrity: sha512-yaw2wg61nKQtToDML+nngzgXVjZ6wNA4R0Q3jKDTeadG5EqfZgis5a1Q2hwY7kjuGuXmu8eM6gHg3tgnOj4vNw==}
@@ -18933,8 +18957,9 @@ snapshots:
 
   '@types/jsonpath@0.2.0': {}
 
-  '@types/jsonwebtoken@9.0.6':
+  '@types/jsonwebtoken@9.0.9':
     dependencies:
+      '@types/ms': 0.7.34
       '@types/node': 18.16.16
 
   '@types/k6@0.52.0': {}
@@ -21385,7 +21410,7 @@ snapshots:
 
   electron-to-chromium@1.5.114: {}
 
-  element-plus@2.4.3(vue@3.5.13(typescript@5.8.2)):
+  element-plus@2.4.3(patch_hash=fe650d17e32d13a07f54411f2ee552a8faeae20d92ef5e5a23424d590ba4a382)(vue@3.5.13(typescript@5.8.2)):
     dependencies:
       '@ctrl/tinycolor': 3.6.0
       '@element-plus/icons-vue': 2.3.1(vue@3.5.13(typescript@5.8.2))

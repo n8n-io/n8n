@@ -11,7 +11,7 @@ import type { AuthenticatedRequest, UserRequest } from '@/requests';
 
 import { clean, getAllUsersAndCount, getUser } from './users.service.ee';
 import {
-	globalScope,
+	apiKeyHasScopeWithGlobalScopeFallback,
 	isLicensed,
 	validCursor,
 	validLicenseWithUserQuota,
@@ -25,7 +25,7 @@ type ChangeRole = AuthenticatedRequest<{ id: string }, {}, RoleChangeRequestDto,
 export = {
 	getUser: [
 		validLicenseWithUserQuota,
-		globalScope('user:read'),
+		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'user:read' }),
 		async (req: UserRequest.Get, res: express.Response) => {
 			const { includeRole = false } = req.query;
 			const { id } = req.params;
@@ -47,9 +47,9 @@ export = {
 		},
 	],
 	getUsers: [
+		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'user:list' }),
 		validLicenseWithUserQuota,
 		validCursor,
-		globalScope(['user:list', 'user:read']),
 		async (req: UserRequest.Get, res: express.Response) => {
 			const { offset = 0, limit = 100, includeRole = false, projectId } = req.query;
 
@@ -80,7 +80,7 @@ export = {
 		},
 	],
 	createUser: [
-		globalScope('user:create'),
+		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'user:create' }),
 		async (req: Create, res: Response) => {
 			const { data, error } = InviteUsersRequestDto.safeParse(req.body);
 			if (error) {
@@ -96,7 +96,7 @@ export = {
 		},
 	],
 	deleteUser: [
-		globalScope('user:delete'),
+		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'user:delete' }),
 		async (req: Delete, res: Response) => {
 			await Container.get(UsersController).deleteUser(req);
 
@@ -105,7 +105,7 @@ export = {
 	],
 	changeRole: [
 		isLicensed('feat:advancedPermissions'),
-		globalScope('user:changeRole'),
+		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'user:changeRole' }),
 		async (req: ChangeRole, res: Response) => {
 			const validation = RoleChangeRequestDto.safeParse(req.body);
 			if (validation.error) {

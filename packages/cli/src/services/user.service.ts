@@ -1,9 +1,11 @@
+import type { RoleChangeRequestDto } from '@n8n/api-types';
 import { Service } from '@n8n/di';
+import type { AssignableRole } from '@n8n/permissions';
 import { Logger } from 'n8n-core';
 import type { IUserSettings } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
 
-import type { User, AssignableRole } from '@/databases/entities/user';
+import { User } from '@/databases/entities/user';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { EventService } from '@/events/event.service';
@@ -13,6 +15,8 @@ import type { UserRequest } from '@/requests';
 import { UrlService } from '@/services/url.service';
 import { UserManagementMailer } from '@/user-management/email';
 
+import { PublicApiKeyService } from './public-api-key.service';
+
 @Service()
 export class UserService {
 	constructor(
@@ -21,6 +25,7 @@ export class UserService {
 		private readonly mailer: UserManagementMailer,
 		private readonly urlService: UrlService,
 		private readonly eventService: EventService,
+		private readonly publicApiKeyService: PublicApiKeyService,
 	) {}
 
 	async update(userId: string, data: Partial<User>) {
@@ -226,5 +231,20 @@ export class UserService {
 		);
 
 		return { usersInvited, usersCreated: toCreateUsers.map(({ email }) => email) };
+	}
+
+	async changeUserRole(user: User, targetUser: User, newRole: RoleChangeRequestDto) {
+		return await this.userRepository.manager.transaction(async (trx) => {
+			await trx.update(User, { id: targetUser.id }, { role: newRole.newRoleName });
+
+			const adminDowngradedToMember =
+				user.role === 'global:owner' &&
+				targetUser.role === 'global:admin' &&
+				newRole.newRoleName === 'global:member';
+
+			if (adminDowngradedToMember) {
+				await this.publicApiKeyService.removeOwnerOnlyScopesFromApiKeys(targetUser, trx);
+			}
+		});
 	}
 }

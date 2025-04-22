@@ -6,6 +6,7 @@ import {
 	InstanceSettings,
 	Logger,
 	ExecutionLifecycleHooks,
+	BinaryDataConfig,
 } from 'n8n-core';
 import { ExpressionError } from 'n8n-workflow';
 import type {
@@ -20,7 +21,6 @@ import type {
 	ITaskStartedData,
 } from 'n8n-workflow';
 
-import config from '@/config';
 import type { Project } from '@/databases/entities/project';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { EventService } from '@/events/event.service';
@@ -467,7 +467,7 @@ describe('Execution Lifecycle Hooks', () => {
 			});
 
 			it('should restore binary data IDs after workflow execution for webhooks', async () => {
-				config.set('binaryDataManager.mode', 'filesystem');
+				mockInstance(BinaryDataConfig, { mode: 'filesystem' });
 				lifecycleHooks = createHooks('webhook');
 
 				(successfulRun.data.resultData.runData = {

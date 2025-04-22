@@ -21,7 +21,6 @@ const workflowsStore = useWorkflowsStore();
 const canvasStore = useCanvasStore();
 
 // Component state
-const isDisabled = ref(false);
 const container = ref<HTMLElement>();
 const pipContainer = useTemplateRef('pipContainer');
 const pipContent = useTemplateRef('pipContent');
@@ -69,13 +68,12 @@ const {
 	sendMessage,
 	refreshSession,
 	displayExecution,
-} = useChatState(isDisabled, onWindowResize);
+} = useChatState(false, onWindowResize);
 
 // Expose internal state for testing
 defineExpose({
 	messages,
 	currentSessionId,
-	isDisabled,
 	workflow,
 });
 

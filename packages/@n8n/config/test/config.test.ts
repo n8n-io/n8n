@@ -315,6 +315,10 @@ describe('GlobalConfig', () => {
 		partialExecutions: {
 			version: 2,
 		},
+		workflowHistory: {
+			enabled: true,
+			pruneTime: -1,
+		},
 	};
 
 	it('should use all default values when no env variables are defined', () => {
