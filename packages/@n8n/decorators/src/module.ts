@@ -9,7 +9,7 @@ type MultiMainSetup = EventEmitter;
 /**
  * @TODO Temporary dummy type until `ExecutionLifecycleHooks` registers hooks via decorators.
  */
-type ExecutionLifecycleHooks = object;
+export type ExecutionLifecycleHooks = object;
 
 export interface BaseN8nModule {
 	initialize?(): void;
