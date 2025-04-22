@@ -58,7 +58,13 @@ describe('searchModels', () => {
 			baseURL: 'https://api.openai.com/v1',
 			apiKey: 'test-api-key',
 		});
-		expect(result.results).toHaveLength(5);
+		expect(result.results).toEqual([
+			{ name: 'ft:gpt-3.5-turbo', value: 'ft:gpt-3.5-turbo' },
+			{ name: 'gpt-3.5-turbo', value: 'gpt-3.5-turbo' },
+			{ name: 'gpt-4', value: 'gpt-4' },
+			{ name: 'o1-model', value: 'o1-model' },
+			{ name: 'other-model', value: 'other-model' },
+		]);
 	});
 
 	it('should initialize OpenAI with correct credentials', async () => {
@@ -91,7 +97,19 @@ describe('searchModels', () => {
 		mockContext.getNodeParameter = jest.fn().mockReturnValue('https://custom-api.com');
 
 		const result = await searchModels.call(mockContext);
-
+		expect(result.results).toEqual([
+			{ name: 'computer-use-preview', value: 'computer-use-preview' },
+			{ name: 'davinci-instruct-beta', value: 'davinci-instruct-beta' },
+			{ name: 'ft:gpt-3.5-turbo', value: 'ft:gpt-3.5-turbo' },
+			{ name: 'gpt-3.5-turbo', value: 'gpt-3.5-turbo' },
+			{ name: 'gpt-3.5-turbo-instruct', value: 'gpt-3.5-turbo-instruct' },
+			{ name: 'gpt-4', value: 'gpt-4' },
+			{ name: 'o1-model', value: 'o1-model' },
+			{ name: 'other-model', value: 'other-model' },
+			{ name: 'tts-model', value: 'tts-model' },
+			{ name: 'whisper-1', value: 'whisper-1' },
+			{ name: 'whisper-1-preview', value: 'whisper-1-preview' },
+		]);
 		expect(result.results).toHaveLength(11);
 	});
 
