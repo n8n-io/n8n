@@ -10,21 +10,13 @@ describe('InsightsModulePreInit', () => {
 	it('should return false if instance type is not "main"', () => {
 		const ctx: ModulePreInitContext = {
 			instance: mock<InstanceSettings>({ instanceType: 'worker' }),
-			database: mock<DatabaseConfig>({ type: 'sqlite', sqlite: { poolSize: 10 } }),
+			database: mock<DatabaseConfig>({ type: 'sqlite' }),
 		};
 		expect(shouldLoadModule(ctx)).toBe(false);
 	});
 
-	it('should return false if database type is "sqlite" and poolSize is < 1', () => {
-		const ctx: ModulePreInitContext = {
-			instance: mock<InstanceSettings>({ instanceType: 'main' }),
-			database: mock<DatabaseConfig>({ type: 'sqlite', sqlite: { poolSize: 0 } }),
-		};
-		expect(shouldLoadModule(ctx)).toBe(false);
-	});
-
-	it.each(['postgresdb', 'mariadb', 'mysqldb'])(
-		'should return true if instance type is "main" and database is not sqlite',
+	it.each(['postgresdb', 'mariadb', 'mysqldb', 'sqlite'])(
+		'should return true if instance type is "main"',
 		(dbType: 'postgresdb' | 'mysqldb' | 'sqlite' | 'mariadb') => {
 			const ctx: ModulePreInitContext = {
 				instance: mock<InstanceSettings>({ instanceType: 'main' }),
@@ -33,12 +25,4 @@ describe('InsightsModulePreInit', () => {
 			expect(shouldLoadModule(ctx)).toBe(true);
 		},
 	);
-
-	it('should return true if instance type is "main" and sqlite poolSize is >= 1', () => {
-		const ctx: ModulePreInitContext = {
-			instance: mock<InstanceSettings>({ instanceType: 'main' }),
-			database: mock<DatabaseConfig>({ type: 'sqlite', sqlite: { poolSize: 1 } }),
-		};
-		expect(shouldLoadModule(ctx)).toBe(true);
-	});
 });
