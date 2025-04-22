@@ -57,6 +57,9 @@ export function useResizablePanel(
 	const containerSize = ref(0);
 	const persistedSize = useLocalStorage(localStorageKey, -1, { writeDefaults: false });
 	const isResizing = ref(false);
+	const sizeOnResizeStart = ref<number>();
+	const minSizeValue = computed(() => resolveSize(minSize, containerSize.value));
+	const maxSizeValue = computed(() => resolveSize(maxSize, containerSize.value));
 	const constrainedSize = computed(() => {
 		const sizeInPixels =
 			persistedSize.value > 0 && persistedSize.value < 1
@@ -77,14 +80,11 @@ export function useResizablePanel(
 			return defaultSizeValue;
 		}
 
-		const minSizeValue = resolveSize(minSize, containerSize.value);
-		const maxSizeValue = resolveSize(maxSize, containerSize.value);
-
 		return Math.max(
-			minSizeValue,
+			minSizeValue.value,
 			Math.min(
 				snap && Math.abs(defaultSizeValue - sizeInPixels) < 30 ? defaultSizeValue : sizeInPixels,
-				maxSizeValue,
+				maxSizeValue.value,
 			),
 		);
 	});
@@ -116,9 +116,22 @@ export function useResizablePanel(
 
 		isResizing.value = true;
 		persistedSize.value = newSizeInPixels / containerSize.value;
+
+		if (sizeOnResizeStart.value === undefined) {
+			sizeOnResizeStart.value = persistedSize.value;
+		}
 	}
 
 	function onResizeEnd() {
+		// If resizing ends with either collapsing or maximizing the panel, restore size at the start of dragging
+		if (
+			(minSizeValue.value > 0 && constrainedSize.value <= 0) ||
+			(maxSizeValue.value < containerSize.value && constrainedSize.value >= containerSize.value)
+		) {
+			persistedSize.value = sizeOnResizeStart.value;
+		}
+
+		sizeOnResizeStart.value = undefined;
 		isResizing.value = false;
 	}
 
