@@ -22,14 +22,13 @@
   ],
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
-    "@types/lodash": "catalog:",
-    "@types/express": "catalog:"
+    "@types/express": "catalog:",
+    "@types/lodash": "catalog:"
   },
   "dependencies": {
     "@n8n/di": "workspace:^",
     "@n8n/permissions": "workspace:^",
     "lodash": "catalog:",
-    "n8n-core": "workspace:^",
     "n8n-workflow": "workspace:^"
   }
 }

@@ -1,12 +1,6 @@
 import type { Constructable } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 import type { RequestHandler } from 'express';
-import type EventEmitter from 'node:events';
-
-/**
- * @TODO Temporary dummy type until `MultiMainSetup` is moved out of `cli`
- */
-export type MultiMainSetup = EventEmitter;
 
 /**
  * @TODO Temporary duplicated type until `LICENSE_FEATURES` is moved out of `cli`
