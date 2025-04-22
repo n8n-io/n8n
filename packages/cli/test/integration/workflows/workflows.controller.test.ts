@@ -513,6 +513,55 @@ describe('GET /workflows/:workflowId', () => {
 			tags: [expect.objectContaining({ id: tag.id, name: tag.name })],
 		});
 	});
+
+	test('should return parent folder', async () => {
+		const personalProject = await projectRepository.getPersonalProjectForUserOrFail(owner.id);
+
+		const folder1 = await createFolder(personalProject, { name: 'Folder 1' });
+
+		const folder2 = await createFolder(personalProject, {
+			name: 'Folder 2',
+			parentFolder: folder1,
+		});
+
+		const workflow1 = await createWorkflow({ parentFolder: folder2 }, owner);
+
+		const workflow2 = await createWorkflow({}, owner);
+
+		const workflow3 = await createWorkflow({ parentFolder: folder1 }, owner);
+
+		const workflowInNestedFolderWithGrantParent = await authOwnerAgent
+			.get(`/workflows/${workflow1.id}`)
+			.expect(200);
+
+		expect(workflowInNestedFolderWithGrantParent.body.data).toMatchObject({
+			parentFolder: expect.objectContaining({
+				id: folder2.id,
+				name: folder2.name,
+				parentFolderId: folder1.id,
+			}),
+		});
+
+		const workflowInProjectRoot = await authOwnerAgent
+			.get(`/workflows/${workflow2.id}`)
+			.expect(200);
+
+		expect(workflowInProjectRoot.body.data).toMatchObject({
+			parentFolder: null,
+		});
+
+		const workflowInNestedFolder = await authOwnerAgent
+			.get(`/workflows/${workflow3.id}`)
+			.expect(200);
+
+		expect(workflowInNestedFolder.body.data).toMatchObject({
+			parentFolder: expect.objectContaining({
+				id: folder1.id,
+				name: folder1.name,
+				parentFolderId: null,
+			}),
+		});
+	});
 });
 
 describe('GET /workflows', () => {

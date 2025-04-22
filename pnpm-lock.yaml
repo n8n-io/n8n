@@ -173,6 +173,9 @@ patchedDependencies:
   bull@4.12.1:
     hash: 4b8aae78debc54697a9106a44b1a949089d4facfeee057883e32116ab8c80f68
     path: patches/bull@4.12.1.patch
+  element-plus@2.4.3:
+    hash: fe650d17e32d13a07f54411f2ee552a8faeae20d92ef5e5a23424d590ba4a382
+    path: patches/element-plus@2.4.3.patch
   eslint-plugin-n8n-local-rules:
     hash: e0fd59254ab02473c6940fa25fcc8102ebc7d371c015ec53333a43f48af33cc2
     path: patches/eslint-plugin-n8n-local-rules.patch
@@ -317,6 +320,9 @@ importers:
 
   packages/@n8n/api-types:
     dependencies:
+      '@n8n/permissions':
+        specifier: workspace:*
+        version: link:../permissions
       n8n-workflow:
         specifier: workspace:*
         version: link:../../workflow
@@ -558,7 +564,7 @@ importers:
         version: 3.666.0(@aws-sdk/client-sts@3.666.0)
       '@getzep/zep-cloud':
         specifier: 1.0.12
-        version: 1.0.12(@langchain/core@0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)(langchain@0.3.11(d1e86e144e3517fab3dbb7a92ab7f45a))
+        version: 1.0.12(@langchain/core@0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)(langchain@0.3.11(fd386e1130022c8548c06dd951c5cbf0))
       '@getzep/zep-js':
         specifier: 0.9.0
         version: 0.9.0
@@ -585,7 +591,7 @@ importers:
         version: 0.3.2(@aws-sdk/client-sso-oidc@3.666.0(@aws-sdk/client-sts@3.666.0))(@langchain/core@0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)
       '@langchain/community':
         specifier: 0.3.24
-        version: 0.3.24(bae0580ee8bea2ce19e4657a460c92d0)
+        version: 0.3.24(c5fc7e11d6e6167a46cb8d3fd9b490a5)
       '@langchain/core':
         specifier: 'catalog:'
         version: 0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1))
@@ -684,7 +690,7 @@ importers:
         version: 23.0.1
       langchain:
         specifier: 0.3.11
-        version: 0.3.11(d1e86e144e3517fab3dbb7a92ab7f45a)
+        version: 0.3.11(fd386e1130022c8548c06dd951c5cbf0)
       lodash:
         specifier: 'catalog:'
         version: 4.17.21
@@ -1547,7 +1553,7 @@ importers:
         version: 10.11.0(vue@3.5.13(typescript@5.8.2))
       element-plus:
         specifier: catalog:frontend
-        version: 2.4.3(vue@3.5.13(typescript@5.8.2))
+        version: 2.4.3(patch_hash=fe650d17e32d13a07f54411f2ee552a8faeae20d92ef5e5a23424d590ba4a382)(vue@3.5.13(typescript@5.8.2))
       is-emoji-supported:
         specifier: ^0.0.5
         version: 0.0.5
@@ -1791,7 +1797,7 @@ importers:
         version: 3.0.3
       element-plus:
         specifier: catalog:frontend
-        version: 2.4.3(vue@3.5.13(typescript@5.8.2))
+        version: 2.4.3(patch_hash=fe650d17e32d13a07f54411f2ee552a8faeae20d92ef5e5a23424d590ba4a382)(vue@3.5.13(typescript@5.8.2))
       email-providers:
         specifier: ^2.0.1
         version: 2.0.1
@@ -2016,6 +2022,9 @@ importers:
       '@kafkajs/confluent-schema-registry':
         specifier: 3.8.0
         version: 3.8.0
+      '@mozilla/readability':
+        specifier: 0.6.0
+        version: 0.6.0
       '@n8n/config':
         specifier: workspace:*
         version: link:../@n8n/config
@@ -2094,6 +2103,9 @@ importers:
       js-nacl:
         specifier: 1.4.0
         version: 1.4.0
+      jsdom:
+        specifier: 23.0.1
+        version: 23.0.1
       jsonwebtoken:
         specifier: 'catalog:'
         version: 9.0.2
@@ -16149,7 +16161,7 @@ snapshots:
   '@gar/promisify@1.1.3':
     optional: true
 
-  '@getzep/zep-cloud@1.0.12(@langchain/core@0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)(langchain@0.3.11(d1e86e144e3517fab3dbb7a92ab7f45a))':
+  '@getzep/zep-cloud@1.0.12(@langchain/core@0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)(langchain@0.3.11(fd386e1130022c8548c06dd951c5cbf0))':
     dependencies:
       form-data: 4.0.0
       node-fetch: 2.7.0(encoding@0.1.13)
@@ -16158,7 +16170,7 @@ snapshots:
       zod: 3.24.1
     optionalDependencies:
       '@langchain/core': 0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1))
-      langchain: 0.3.11(d1e86e144e3517fab3dbb7a92ab7f45a)
+      langchain: 0.3.11(fd386e1130022c8548c06dd951c5cbf0)
     transitivePeerDependencies:
       - encoding
 
@@ -16673,7 +16685,7 @@ snapshots:
       - aws-crt
       - encoding
 
-  '@langchain/community@0.3.24(bae0580ee8bea2ce19e4657a460c92d0)':
+  '@langchain/community@0.3.24(c5fc7e11d6e6167a46cb8d3fd9b490a5)':
     dependencies:
       '@browserbasehq/stagehand': 1.9.0(@playwright/test@1.49.1)(deepmerge@4.3.1)(dotenv@16.4.5)(encoding@0.1.13)(openai@4.78.1(encoding@0.1.13)(zod@3.24.1))(zod@3.24.1)
       '@ibm-cloud/watsonx-ai': 1.1.2
@@ -16684,7 +16696,7 @@ snapshots:
       flat: 5.0.2
       ibm-cloud-sdk-core: 5.1.0
       js-yaml: 4.1.0
-      langchain: 0.3.11(d1e86e144e3517fab3dbb7a92ab7f45a)
+      langchain: 0.3.11(fd386e1130022c8548c06dd951c5cbf0)
       langsmith: 0.2.15(openai@4.78.1(encoding@0.1.13)(zod@3.24.1))
       openai: 4.78.1(encoding@0.1.13)(zod@3.24.1)
       uuid: 10.0.0
@@ -16699,7 +16711,7 @@ snapshots:
       '@aws-sdk/credential-provider-node': 3.666.0(@aws-sdk/client-sso-oidc@3.666.0(@aws-sdk/client-sts@3.666.0))(@aws-sdk/client-sts@3.666.0)
       '@azure/storage-blob': 12.18.0(encoding@0.1.13)
       '@browserbasehq/sdk': 2.0.0(encoding@0.1.13)
-      '@getzep/zep-cloud': 1.0.12(@langchain/core@0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)(langchain@0.3.11(d1e86e144e3517fab3dbb7a92ab7f45a))
+      '@getzep/zep-cloud': 1.0.12(@langchain/core@0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)(langchain@0.3.11(fd386e1130022c8548c06dd951c5cbf0))
       '@getzep/zep-js': 0.9.0
       '@google-ai/generativelanguage': 2.6.0(encoding@0.1.13)
       '@google-cloud/storage': 7.12.1(encoding@0.1.13)
@@ -21398,7 +21410,7 @@ snapshots:
 
   electron-to-chromium@1.5.114: {}
 
-  element-plus@2.4.3(vue@3.5.13(typescript@5.8.2)):
+  element-plus@2.4.3(patch_hash=fe650d17e32d13a07f54411f2ee552a8faeae20d92ef5e5a23424d590ba4a382)(vue@3.5.13(typescript@5.8.2)):
     dependencies:
       '@ctrl/tinycolor': 3.6.0
       '@element-plus/icons-vue': 2.3.1(vue@3.5.13(typescript@5.8.2))
@@ -22891,7 +22903,7 @@ snapshots:
       '@types/debug': 4.1.12
       '@types/node': 18.16.16
       '@types/tough-cookie': 4.0.2
-      axios: 1.8.2
+      axios: 1.8.2(debug@4.4.0)
       camelcase: 6.3.0
       debug: 4.4.0(supports-color@8.1.1)
       dotenv: 16.4.5
@@ -22901,7 +22913,7 @@ snapshots:
       isstream: 0.1.2
       jsonwebtoken: 9.0.2
       mime-types: 2.1.35
-      retry-axios: 2.6.0(axios@1.8.2(debug@4.4.0))
+      retry-axios: 2.6.0(axios@1.8.2)
       tough-cookie: 4.1.3
     transitivePeerDependencies:
       - supports-color
@@ -23895,7 +23907,7 @@ snapshots:
 
   kuler@2.0.0: {}
 
-  langchain@0.3.11(d1e86e144e3517fab3dbb7a92ab7f45a):
+  langchain@0.3.11(fd386e1130022c8548c06dd951c5cbf0):
     dependencies:
       '@langchain/core': 0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1))
       '@langchain/openai': 0.3.17(@langchain/core@0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)
@@ -26277,7 +26289,7 @@ snapshots:
       onetime: 5.1.2
       signal-exit: 3.0.7
 
-  retry-axios@2.6.0(axios@1.8.2(debug@4.4.0)):
+  retry-axios@2.6.0(axios@1.8.2):
     dependencies:
       axios: 1.8.2
 

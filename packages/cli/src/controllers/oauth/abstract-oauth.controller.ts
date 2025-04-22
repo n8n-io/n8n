@@ -121,17 +121,20 @@ export abstract class AbstractOAuthController {
 		);
 	}
 
-	protected applyDefaultsAndOverwrites<T>(
+	protected async applyDefaultsAndOverwrites<T>(
 		credential: ICredentialsDb,
 		decryptedData: ICredentialDataDecryptedObject,
 		additionalData: IWorkflowExecuteAdditionalData,
 	) {
-		return this.credentialsHelper.applyDefaultsAndOverwrites(
+		return (await this.credentialsHelper.applyDefaultsAndOverwrites(
 			additionalData,
 			decryptedData,
+			credential,
 			credential.type,
 			'internal',
-		) as unknown as T;
+			undefined,
+			undefined,
+		)) as unknown as T;
 	}
 
 	protected async encryptAndSaveData(
@@ -209,7 +212,8 @@ export abstract class AbstractOAuthController {
 			credential,
 			additionalData,
 		);
-		const oauthCredentials = this.applyDefaultsAndOverwrites<T>(
+
+		const oauthCredentials = await this.applyDefaultsAndOverwrites<T>(
 			credential,
 			decryptedDataOriginal,
 			additionalData,

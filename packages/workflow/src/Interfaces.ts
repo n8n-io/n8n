@@ -571,6 +571,8 @@ export interface IGetNodeParameterOptions {
 	extractValue?: boolean;
 	// get raw value of parameter with unresolved expressions
 	rawExpressions?: boolean;
+	// skip validation of parameter
+	skipValidation?: boolean;
 }
 
 namespace ExecuteFunctions {
@@ -1377,7 +1379,7 @@ export interface IDisplayOptions {
 	};
 	show?: {
 		'@version'?: Array<number | DisplayCondition>;
-		'@tool'?: [boolean];
+		'@tool'?: boolean[];
 		[key: string]: Array<NodeParameterValue | DisplayCondition> | undefined;
 	};
 

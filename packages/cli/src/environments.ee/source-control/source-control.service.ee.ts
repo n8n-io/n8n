@@ -32,6 +32,7 @@ import {
 	getTrackingInformationFromPrePushResult,
 	getTrackingInformationFromPullResult,
 	getVariablesPath,
+	isWorkflowModified,
 	normalizeAndValidateSourceControlledFilePath,
 	sourceControlFoldersExistCheck,
 } from './source-control-helper.ee';
@@ -571,25 +572,37 @@ export class SourceControlService {
 		);
 
 		const wfModifiedInEither: SourceControlWorkflowVersionId[] = [];
-		wfLocalVersionIds.forEach((local) => {
-			const mismatchingIds = wfRemoteVersionIds.find(
-				(remote) =>
-					remote.id === local.id &&
-					(remote.versionId !== local.versionId || remote.parentFolderId !== local.parentFolderId),
+
+		wfLocalVersionIds.forEach((localWorkflow) => {
+			const remoteWorkflowWithSameId = wfRemoteVersionIds.find(
+				(removeWorkflow) => removeWorkflow.id === localWorkflow.id,
 			);
-			let name = (options?.preferLocalVersion ? local?.name : mismatchingIds?.name) ?? 'Workflow';
-			if (local.name && mismatchingIds?.name && local.name !== mismatchingIds.name) {
-				name = options?.preferLocalVersion
-					? `${local.name} (Remote: ${mismatchingIds.name})`
-					: (name = `${mismatchingIds.name} (Local: ${local.name})`);
+
+			if (!remoteWorkflowWithSameId) {
+				return;
 			}
-			if (mismatchingIds) {
+
+			if (isWorkflowModified(localWorkflow, remoteWorkflowWithSameId)) {
+				let name =
+					(options?.preferLocalVersion ? localWorkflow?.name : remoteWorkflowWithSameId?.name) ??
+					'Workflow';
+				if (
+					localWorkflow.name &&
+					remoteWorkflowWithSameId?.name &&
+					localWorkflow.name !== remoteWorkflowWithSameId.name
+				) {
+					name = options?.preferLocalVersion
+						? `${localWorkflow.name} (Remote: ${remoteWorkflowWithSameId.name})`
+						: (name = `${remoteWorkflowWithSameId.name} (Local: ${localWorkflow.name})`);
+				}
 				wfModifiedInEither.push({
-					...local,
+					...localWorkflow,
 					name,
-					versionId: options.preferLocalVersion ? local.versionId : mismatchingIds.versionId,
-					localId: local.versionId,
-					remoteId: mismatchingIds.versionId,
+					versionId: options.preferLocalVersion
+						? localWorkflow.versionId
+						: remoteWorkflowWithSameId.versionId,
+					localId: localWorkflow.versionId,
+					remoteId: remoteWorkflowWithSameId.versionId,
 				});
 			}
 		});

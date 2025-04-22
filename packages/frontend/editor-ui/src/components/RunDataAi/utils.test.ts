@@ -1,18 +1,21 @@
-import { createTestNode, createTestWorkflowObject } from '@/__tests__/mocks';
-import { createAiData, createLogEntries, getTreeNodeData } from '@/components/RunDataAi/utils';
-import { type ITaskData, NodeConnectionTypes } from 'n8n-workflow';
-
-function createTaskData(partialData: Partial<ITaskData>): ITaskData {
-	return {
-		startTime: 0,
-		executionIndex: 0,
-		executionTime: 1,
-		source: [],
-		executionStatus: 'success',
-		data: { main: [[{ json: {} }]] },
-		...partialData,
-	};
-}
+import {
+	createTestLogEntry,
+	createTestNode,
+	createTestTaskData,
+	createTestWorkflowObject,
+} from '@/__tests__/mocks';
+import {
+	createAiData,
+	findLogEntryToAutoSelect,
+	getTreeNodeData,
+	createLogEntries,
+} from '@/components/RunDataAi/utils';
+import {
+	AGENT_LANGCHAIN_NODE_TYPE,
+	type ExecutionError,
+	type ITaskData,
+	NodeConnectionTypes,
+} from 'n8n-workflow';
 
 describe(getTreeNodeData, () => {
 	it('should generate one node per execution', () => {
@@ -30,9 +33,9 @@ describe(getTreeNodeData, () => {
 			},
 		});
 		const taskDataByNodeName: Record<string, ITaskData[]> = {
-			A: [createTaskData({ startTime: Date.parse('2025-02-26T00:00:00.000Z') })],
+			A: [createTestTaskData({ startTime: Date.parse('2025-02-26T00:00:00.000Z') })],
 			B: [
-				createTaskData({
+				createTestTaskData({
 					startTime: Date.parse('2025-02-26T00:00:01.000Z'),
 					data: {
 						main: [
@@ -50,7 +53,7 @@ describe(getTreeNodeData, () => {
 						],
 					},
 				}),
-				createTaskData({
+				createTestTaskData({
 					startTime: Date.parse('2025-02-26T00:00:03.000Z'),
 					data: {
 						main: [
@@ -70,7 +73,7 @@ describe(getTreeNodeData, () => {
 				}),
 			],
 			C: [
-				createTaskData({
+				createTestTaskData({
 					startTime: Date.parse('2025-02-26T00:00:02.000Z'),
 					data: {
 						main: [
@@ -88,7 +91,7 @@ describe(getTreeNodeData, () => {
 						],
 					},
 				}),
-				createTaskData({ startTime: Date.parse('2025-02-26T00:00:04.000Z') }),
+				createTestTaskData({ startTime: Date.parse('2025-02-26T00:00:04.000Z') }),
 			],
 		};
 
@@ -181,6 +184,143 @@ describe(getTreeNodeData, () => {
 	});
 });
 
+describe(findLogEntryToAutoSelect, () => {
+	it('should return undefined if no log entry is provided', () => {
+		expect(
+			findLogEntryToAutoSelect(
+				[],
+				{
+					A: createTestNode({ name: 'A' }),
+					B: createTestNode({ name: 'B' }),
+					C: createTestNode({ name: 'C' }),
+				},
+				{
+					A: [],
+					B: [],
+					C: [],
+				},
+			),
+		).toBe(undefined);
+	});
+
+	it('should return first log entry with error', () => {
+		expect(
+			findLogEntryToAutoSelect(
+				[
+					createTestLogEntry({ node: 'A', runIndex: 0 }),
+					createTestLogEntry({ node: 'B', runIndex: 0 }),
+					createTestLogEntry({ node: 'C', runIndex: 0 }),
+					createTestLogEntry({ node: 'C', runIndex: 1 }),
+					createTestLogEntry({ node: 'C', runIndex: 2 }),
+				],
+				{
+					A: createTestNode({ name: 'A' }),
+					B: createTestNode({ name: 'B' }),
+					C: createTestNode({ name: 'C' }),
+				},
+				{
+					A: [createTestTaskData({ executionStatus: 'success' })],
+					B: [createTestTaskData({ executionStatus: 'success' })],
+					C: [
+						createTestTaskData({ executionStatus: 'success' }),
+						createTestTaskData({ error: {} as ExecutionError, executionStatus: 'error' }),
+						createTestTaskData({ error: {} as ExecutionError, executionStatus: 'error' }),
+					],
+				},
+			),
+		).toEqual(expect.objectContaining({ node: 'C', runIndex: 1 }));
+	});
+
+	it("should return first log entry with error even if it's on a sub node", () => {
+		expect(
+			findLogEntryToAutoSelect(
+				[
+					createTestLogEntry({ node: 'A', runIndex: 0 }),
+					createTestLogEntry({
+						node: 'B',
+						runIndex: 0,
+						children: [
+							createTestLogEntry({ node: 'C', runIndex: 0 }),
+							createTestLogEntry({ node: 'C', runIndex: 1 }),
+							createTestLogEntry({ node: 'C', runIndex: 2 }),
+						],
+					}),
+				],
+				{
+					A: createTestNode({ name: 'A' }),
+					B: createTestNode({ name: 'B' }),
+					C: createTestNode({ name: 'C' }),
+				},
+				{
+					A: [createTestTaskData({ executionStatus: 'success' })],
+					B: [createTestTaskData({ executionStatus: 'success' })],
+					C: [
+						createTestTaskData({ executionStatus: 'success' }),
+						createTestTaskData({ error: {} as ExecutionError, executionStatus: 'error' }),
+						createTestTaskData({ error: {} as ExecutionError, executionStatus: 'error' }),
+					],
+				},
+			),
+		).toEqual(expect.objectContaining({ node: 'C', runIndex: 1 }));
+	});
+
+	it('should return first log entry for AI agent node if there is no log entry with error', () => {
+		expect(
+			findLogEntryToAutoSelect(
+				[
+					createTestLogEntry({ node: 'A', runIndex: 0 }),
+					createTestLogEntry({ node: 'B', runIndex: 0 }),
+					createTestLogEntry({ node: 'C', runIndex: 0 }),
+					createTestLogEntry({ node: 'C', runIndex: 1 }),
+					createTestLogEntry({ node: 'C', runIndex: 2 }),
+				],
+				{
+					A: createTestNode({ name: 'A' }),
+					B: createTestNode({ name: 'B', type: AGENT_LANGCHAIN_NODE_TYPE }),
+					C: createTestNode({ name: 'C' }),
+				},
+				{
+					A: [createTestTaskData({ executionStatus: 'success' })],
+					B: [createTestTaskData({ executionStatus: 'success' })],
+					C: [
+						createTestTaskData({ executionStatus: 'success' }),
+						createTestTaskData({ executionStatus: 'success' }),
+						createTestTaskData({ executionStatus: 'success' }),
+					],
+				},
+			),
+		).toEqual(expect.objectContaining({ node: 'B', runIndex: 0 }));
+	});
+
+	it('should return first log entry if there is no log entry with error nor executed AI agent node', () => {
+		expect(
+			findLogEntryToAutoSelect(
+				[
+					createTestLogEntry({ node: 'A', runIndex: 0 }),
+					createTestLogEntry({ node: 'B', runIndex: 0 }),
+					createTestLogEntry({ node: 'C', runIndex: 0 }),
+					createTestLogEntry({ node: 'C', runIndex: 1 }),
+					createTestLogEntry({ node: 'C', runIndex: 2 }),
+				],
+				{
+					A: createTestNode({ name: 'A' }),
+					B: createTestNode({ name: 'B' }),
+					C: createTestNode({ name: 'C' }),
+				},
+				{
+					A: [createTestTaskData({ executionStatus: 'success' })],
+					B: [createTestTaskData({ executionStatus: 'success' })],
+					C: [
+						createTestTaskData({ executionStatus: 'success' }),
+						createTestTaskData({ executionStatus: 'success' }),
+						createTestTaskData({ executionStatus: 'success' }),
+					],
+				},
+			),
+		).toEqual(expect.objectContaining({ node: 'A', runIndex: 0 }));
+	});
+});
+
 describe(createLogEntries, () => {
 	it('should return root node log entries in ascending order of executionIndex', () => {
 		const workflow = createTestWorkflowObject({
@@ -198,14 +338,26 @@ describe(createLogEntries, () => {
 		expect(
 			createLogEntries(workflow, {
 				A: [
-					createTaskData({ startTime: Date.parse('2025-04-04T00:00:00.000Z'), executionIndex: 0 }),
+					createTestTaskData({
+						startTime: Date.parse('2025-04-04T00:00:00.000Z'),
+						executionIndex: 0,
+					}),
 				],
 				B: [
-					createTaskData({ startTime: Date.parse('2025-04-04T00:00:01.000Z'), executionIndex: 1 }),
+					createTestTaskData({
+						startTime: Date.parse('2025-04-04T00:00:01.000Z'),
+						executionIndex: 1,
+					}),
 				],
 				C: [
-					createTaskData({ startTime: Date.parse('2025-04-04T00:00:02.000Z'), executionIndex: 3 }),
-					createTaskData({ startTime: Date.parse('2025-04-04T00:00:03.000Z'), executionIndex: 2 }),
+					createTestTaskData({
+						startTime: Date.parse('2025-04-04T00:00:02.000Z'),
+						executionIndex: 3,
+					}),
+					createTestTaskData({
+						startTime: Date.parse('2025-04-04T00:00:03.000Z'),
+						executionIndex: 2,
+					}),
 				],
 			}),
 		).toEqual([
@@ -236,14 +388,26 @@ describe(createLogEntries, () => {
 		expect(
 			createLogEntries(workflow, {
 				A: [
-					createTaskData({ startTime: Date.parse('2025-04-04T00:00:00.000Z'), executionIndex: 0 }),
+					createTestTaskData({
+						startTime: Date.parse('2025-04-04T00:00:00.000Z'),
+						executionIndex: 0,
+					}),
 				],
 				B: [
-					createTaskData({ startTime: Date.parse('2025-04-04T00:00:01.000Z'), executionIndex: 1 }),
+					createTestTaskData({
+						startTime: Date.parse('2025-04-04T00:00:01.000Z'),
+						executionIndex: 1,
+					}),
 				],
 				C: [
-					createTaskData({ startTime: Date.parse('2025-04-04T00:00:02.000Z'), executionIndex: 3 }),
-					createTaskData({ startTime: Date.parse('2025-04-04T00:00:03.000Z'), executionIndex: 2 }),
+					createTestTaskData({
+						startTime: Date.parse('2025-04-04T00:00:02.000Z'),
+						executionIndex: 3,
+					}),
+					createTestTaskData({
+						startTime: Date.parse('2025-04-04T00:00:03.000Z'),
+						executionIndex: 2,
+					}),
 				],
 			}),
 		).toEqual([

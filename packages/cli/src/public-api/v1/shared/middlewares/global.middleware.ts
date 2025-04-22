@@ -1,13 +1,15 @@
 /* eslint-disable @typescript-eslint/no-invalid-void-type */
 import { Container } from '@n8n/di';
-import type { Scope } from '@n8n/permissions';
+import type { ApiKeyScope, Scope } from '@n8n/permissions';
 import type express from 'express';
+import type { NextFunction } from 'express';
 
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import type { BooleanLicenseFeature } from '@/interfaces';
 import { License } from '@/license';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import type { AuthenticatedRequest } from '@/requests';
+import { PublicApiKeyService } from '@/services/public-api-key.service';
 
 import type { PaginatedRequest } from '../../../types';
 import { decodeCursor } from '../services/pagination.service';
@@ -72,6 +74,27 @@ export const validCursor = (
 	}
 
 	return next();
+};
+
+const emptyMiddleware = (_req: Request, _res: Response, next: NextFunction) => next();
+export const apiKeyHasScope = (apiKeyScope: ApiKeyScope) => {
+	return Container.get(License).isApiKeyScopesEnabled()
+		? Container.get(PublicApiKeyService).getApiKeyScopeMiddleware(apiKeyScope)
+		: emptyMiddleware;
+};
+
+export const apiKeyHasScopeWithGlobalScopeFallback = (
+	config: { scope: ApiKeyScope & Scope } | { apiKeyScope: ApiKeyScope; globalScope: Scope },
+) => {
+	if ('scope' in config) {
+		return Container.get(License).isApiKeyScopesEnabled()
+			? Container.get(PublicApiKeyService).getApiKeyScopeMiddleware(config.scope)
+			: globalScope(config.scope);
+	} else {
+		return Container.get(License).isApiKeyScopesEnabled()
+			? Container.get(PublicApiKeyService).getApiKeyScopeMiddleware(config.apiKeyScope)
+			: globalScope(config.globalScope);
+	}
 };
 
 export const validLicenseWithUserQuota = (
