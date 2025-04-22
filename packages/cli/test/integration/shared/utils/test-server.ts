@@ -1,7 +1,6 @@
 import { Container } from '@n8n/di';
 import cookieParser from 'cookie-parser';
 import express from 'express';
-import { Logger } from 'n8n-core';
 import type superagent from 'superagent';
 import request from 'supertest';
 import { URL } from 'url';
@@ -18,7 +17,7 @@ import { Push } from '@/push';
 import type { APIRequest } from '@/requests';
 import { Telemetry } from '@/telemetry';
 
-import { mockInstance } from '../../../shared/mocking';
+import { mockInstance, mockLogger } from '../../../shared/mocking';
 import { PUBLIC_API_REST_PATH_SEGMENT, REST_PATH_SEGMENT } from '../constants';
 import { LicenseMocker } from '../license';
 import * as testDb from '../test-db';
@@ -101,7 +100,7 @@ export const setupTestServer = ({
 	});
 
 	// Mock all telemetry and logging
-	mockInstance(Logger);
+	mockLogger();
 	mockInstance(PostHogClient);
 	mockInstance(Push);
 	mockInstance(Telemetry);

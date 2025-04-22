@@ -5,7 +5,6 @@ import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
 	ICredentialsEncrypted,
-	IDataObject,
 	IDeferredPromise,
 	IExecuteResponsePromiseData,
 	IRun,
@@ -17,7 +16,6 @@ import type {
 	ExecutionStatus,
 	ExecutionSummary,
 	FeatureFlags,
-	INodeProperties,
 	IUserSettings,
 	IWorkflowExecutionDataProcess,
 	DeduplicationMode,
@@ -364,34 +362,3 @@ export interface N8nApp {
 }
 
 export type UserSettings = Pick<User, 'id' | 'settings'>;
-
-export interface SecretsProviderSettings<T = IDataObject> {
-	connected: boolean;
-	connectedAt: Date | null;
-	settings: T;
-}
-
-export interface ExternalSecretsSettings {
-	[key: string]: SecretsProviderSettings;
-}
-
-export type SecretsProviderState = 'initializing' | 'connected' | 'error';
-
-export abstract class SecretsProvider {
-	displayName: string;
-
-	name: string;
-
-	properties: INodeProperties[];
-
-	state: SecretsProviderState;
-
-	abstract init(settings: SecretsProviderSettings): Promise<void>;
-	abstract connect(): Promise<void>;
-	abstract disconnect(): Promise<void>;
-	abstract update(): Promise<void>;
-	abstract test(): Promise<[boolean] | [boolean, string]>;
-	abstract getSecret(name: string): unknown;
-	abstract hasSecret(name: string): boolean;
-	abstract getSecretNames(): string[];
-}
