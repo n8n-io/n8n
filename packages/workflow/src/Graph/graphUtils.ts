@@ -140,11 +140,11 @@ export type ExtractableSubgraphData = {
  * A subgraph is considered extractable if the following properties hold:
  * - 0-1 input nodes from outside the subgraph, to a root node
  * - 0-1 output nodes to outside the subgraph, from a leaf node
- * - if input and output nodes exist, there is a continuous path between them
+ * - continuous path between input and output nodes if they exist
  *
- * This also covers the requirement that all nodes between any root nodes
- * and the output edge are selected, since this would otherwise create extra
- * input or output nodes
+ * This also covers the requirement that all "inner" nodes between the root node
+ * and the output node are selected, since this would otherwise create extra
+ * input or output nodes.
  *
  * @returns An object containing optional start and end nodeIds
  *            indicating which nodes have outside connections, OR

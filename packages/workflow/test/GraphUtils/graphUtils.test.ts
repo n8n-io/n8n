@@ -220,7 +220,6 @@ describe('graphUtils', () => {
 			]);
 		});
 
-		// todo
 		it('should return an error for a non-continuous selection', () => {
 			const graphIds = new Set(['A', 'D']);
 			const adjacencyList = new Map<string, Set<string>>([
