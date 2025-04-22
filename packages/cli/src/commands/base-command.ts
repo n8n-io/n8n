@@ -101,7 +101,9 @@ export abstract class BaseCommand extends Command {
 
 		moduleRegistry.initializeModules();
 
-		moduleRegistry.registerMultiMainListeners(Container.get(MultiMainSetup));
+		if (this.instanceSettings.isMultiMain) {
+			moduleRegistry.registerMultiMainListeners(Container.get(MultiMainSetup));
+		}
 	}
 
 	async init(): Promise<void> {
