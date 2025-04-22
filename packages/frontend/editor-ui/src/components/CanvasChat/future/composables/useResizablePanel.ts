@@ -9,8 +9,17 @@ interface UseResizerV2Options {
 	 * Container element, to which relative size is calculated (doesn't necessarily have to be DOM parent node)
 	 */
 	container: MaybeRef<HTMLElement | null>;
+	/**
+	 * Default size in pixels
+	 */
 	defaultSize: GetSize;
+	/**
+	 * Minimum size in pixels
+	 */
 	minSize?: GetSize;
+	/**
+	 * Maximum size in pixels
+	 */
 	maxSize?: GetSize;
 	/**
 	 * Which end of the container the resizable element itself is located
@@ -46,20 +55,25 @@ export function useResizablePanel(
 	}: UseResizerV2Options,
 ) {
 	const containerSize = ref(0);
-	const size = useLocalStorage(localStorageKey, -1, { writeDefaults: false });
+	const persistedSize = useLocalStorage(localStorageKey, -1, { writeDefaults: false });
 	const isResizing = ref(false);
 	const constrainedSize = computed(() => {
-		if (isResizing.value && allowCollapse && size.value < 30) {
+		const sizeInPixels =
+			persistedSize.value > 0 && persistedSize.value < 1
+				? containerSize.value * persistedSize.value
+				: -1;
+
+		if (isResizing.value && allowCollapse && sizeInPixels < 30) {
 			return 0;
 		}
 
-		if (isResizing.value && allowFullSize && size.value > containerSize.value - 30) {
+		if (isResizing.value && allowFullSize && sizeInPixels > containerSize.value - 30) {
 			return containerSize.value;
 		}
 
 		const defaultSizeValue = resolveSize(defaultSize, containerSize.value);
 
-		if (Number.isNaN(size.value) || size.value < 0) {
+		if (Number.isNaN(sizeInPixels) || !Number.isFinite(sizeInPixels) || sizeInPixels < 0) {
 			return defaultSizeValue;
 		}
 
@@ -69,7 +83,7 @@ export function useResizablePanel(
 		return Math.max(
 			minSizeValue,
 			Math.min(
-				snap && Math.abs(defaultSizeValue - size.value) < 30 ? defaultSizeValue : size.value,
+				snap && Math.abs(defaultSizeValue - sizeInPixels) < 30 ? defaultSizeValue : sizeInPixels,
 				maxSizeValue,
 			),
 		);
@@ -93,14 +107,15 @@ export function useResizablePanel(
 
 	function onResize(data: ResizeData) {
 		const containerRect = unref(container)?.getBoundingClientRect();
-
-		isResizing.value = true;
-		size.value = Math.max(
+		const newSizeInPixels = Math.max(
 			0,
 			position === 'bottom'
 				? (containerRect ? getSize(containerRect) : 0) - getValue(data)
 				: getValue(data) - (containerRect ? getValue(containerRect) : 0),
 		);
+
+		isResizing.value = true;
+		persistedSize.value = newSizeInPixels / containerSize.value;
 	}
 
 	function onResizeEnd() {
@@ -126,15 +141,6 @@ export function useResizablePanel(
 		},
 		{ immediate: true },
 	);
-
-	watch(containerSize, (newValue, oldValue) => {
-		if (size.value > 0 && oldValue > 0) {
-			// Update size to maintain proportion
-			const ratio = size.value / oldValue;
-
-			size.value = Math.round(newValue * ratio);
-		}
-	});
 
 	return {
 		isResizing: computed(() => isResizing.value),
