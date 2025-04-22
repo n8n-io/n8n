@@ -31,6 +31,11 @@ describe('searchModels', () => {
 						{ id: 'gpt-3.5-turbo-instruct' },
 						{ id: 'ft:gpt-3.5-turbo' },
 						{ id: 'o1-model' },
+						{ id: 'whisper-1' },
+						{ id: 'davinci-instruct-beta' },
+						{ id: 'computer-use-preview' },
+						{ id: 'whisper-1-preview' },
+						{ id: 'tts-model' },
 						{ id: 'other-model' },
 					],
 				}),
@@ -53,7 +58,7 @@ describe('searchModels', () => {
 			baseURL: 'https://api.openai.com/v1',
 			apiKey: 'test-api-key',
 		});
-		expect(result.results).toHaveLength(4);
+		expect(result.results).toHaveLength(5);
 	});
 
 	it('should initialize OpenAI with correct credentials', async () => {
@@ -87,7 +92,7 @@ describe('searchModels', () => {
 
 		const result = await searchModels.call(mockContext);
 
-		expect(result.results).toHaveLength(6);
+		expect(result.results).toHaveLength(11);
 	});
 
 	it('should filter models based on search term', async () => {
