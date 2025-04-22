@@ -11,13 +11,11 @@ import { createTeamProject } from '@test-integration/db/projects';
 import { createWorkflow } from '@test-integration/db/workflows';
 import * as testDb from '@test-integration/test-db';
 
-import {
-	createCompactedInsightsEvent,
-	createMetadata,
-} from '../database/entities/__tests__/db-utils';
-import { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository';
-import type { InsightsCollectionService } from '../insights-collection.service';
-import type { InsightsCompactionService } from '../insights-compaction.service';
+import { createCompactedInsightsEvent } from '../database/entities/__tests__/db-utils';
+import type { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository';
+import { InsightsCollectionService } from '../insights-collection.service';
+import { InsightsCompactionService } from '../insights-compaction.service';
+import { InsightsPruningService } from '../insights-pruning.service';
 import { InsightsService } from '../insights.service';
 import { InsightsConfig } from '../insights.config';
 
@@ -504,6 +502,7 @@ describe('getAvailableDateRanges', () => {
 			mock<InsightsByPeriodRepository>(),
 			mock<InsightsCompactionService>(),
 			mock<InsightsCollectionService>(),
+			mock<InsightsPruningService>(),
 			licenseMock,
 		);
 	});
@@ -669,79 +668,81 @@ describe('getMaxAgeInDaysAndGranularity', () => {
 	});
 });
 
-describe('pruneOldInsights', () => {
-	test('prune old insights', async () => {
-		// ARRANGE
-		const insightsConfig = Container.get(InsightsConfig);
-		const insightsService = Container.get(InsightsService);
-		const insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
-		insightsConfig.maxAgeDays = 10;
+describe('shutdown', () => {
+	let insightsService: InsightsService;
 
-		const project = await createTeamProject();
-		const workflow = await createWorkflow({}, project);
-
-		await createMetadata(workflow);
-
-		const timestamp = DateTime.utc().minus({ days: insightsConfig.maxAgeDays + 1 });
-		await createCompactedInsightsEvent(workflow, {
-			type: 'success',
-			value: 1,
-			periodUnit: 'day',
-			periodStart: timestamp,
-		});
-
-		// ACT
-		await insightsService.pruneInsights();
-
-		// ASSERT
-		expect(await insightsByPeriodRepository.count()).toBe(0);
+	beforeAll(() => {
+		insightsService = Container.get(InsightsService);
 	});
 
-	test('prune old insights with recent data', async () => {
-		// ARRANGE
-		const insightsConfig = Container.get(InsightsConfig);
-		const insightsService = Container.get(InsightsService);
-		const insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
-		insightsConfig.maxAgeDays = 10;
-
-		const project = await createTeamProject();
-		const workflow = await createWorkflow({}, project);
-
-		await createMetadata(workflow);
-
-		const timestamp = DateTime.utc().minus({ days: insightsConfig.maxAgeDays - 1 });
-		await createCompactedInsightsEvent(workflow, {
-			type: 'success',
-			value: 1,
-			periodUnit: 'day',
-			periodStart: timestamp,
-		});
+	test('shutdown stops timers and shuts down services', async () => {
+		// Mock services
+		const collectionServiceShutdownSpy = jest
+			.spyOn(Container.get(InsightsCollectionService), 'shutdown')
+			.mockResolvedValue();
+		const stopCompactionTimerSpy = jest
+			.spyOn(Container.get(InsightsCompactionService), 'stopCompactionTimer')
+			.mockImplementation();
+		const stopPruningTimerSpy = jest
+			.spyOn(Container.get(InsightsPruningService), 'stopPruningTimer')
+			.mockImplementation();
 
 		// ACT
-		await insightsService.pruneInsights();
+		await insightsService.shutdown();
 
 		// ASSERT
-		expect(await insightsByPeriodRepository.count()).toBe(1);
+		expect(collectionServiceShutdownSpy).toHaveBeenCalled();
+		expect(stopCompactionTimerSpy).toHaveBeenCalled();
+		expect(stopPruningTimerSpy).toHaveBeenCalled();
+	});
+});
+
+describe('backgroundProcess', () => {
+	let insightsService: InsightsService;
+
+	beforeAll(() => {
+		insightsService = Container.get(InsightsService);
 	});
 
-	test('startBackgroundProcess runs pruning on schedule', async () => {
-		jest.useFakeTimers();
-		try {
-			// ARRANGE
-			const insightsService = Container.get(InsightsService);
-			const insightsConfig = Container.get(InsightsConfig);
-			insightsConfig.pruneCheckIntervalHours = 1; // Set pruning interval to 1 hour
-			insightsService.startBackgroundProcess();
-			const pruneSpy = jest.spyOn(insightsService, 'pruneInsights');
+	test('startBackgroundProcess starts timers and logs message', () => {
+		// Mock services
+		const startFlushingTimerSpy = jest
+			.spyOn(Container.get(InsightsCollectionService), 'startFlushingTimer')
+			.mockImplementation();
+		const startCompactionTimerSpy = jest
+			.spyOn(Container.get(InsightsCompactionService), 'startCompactionTimer')
+			.mockImplementation();
+		const startPruningTimerSpy = jest
+			.spyOn(Container.get(InsightsPruningService), 'startPruningTimer')
+			.mockImplementation();
 
-			// ACT
-			// Advance time by 1 hour and 1 minute
-			jest.advanceTimersByTime(1000 * 60 * 61);
+		// ACT
+		insightsService.startBackgroundProcess();
 
-			// ASSERT
-			expect(pruneSpy).toHaveBeenCalledTimes(1);
-		} finally {
-			jest.useRealTimers();
-		}
+		// ASSERT
+		expect(startCompactionTimerSpy).toHaveBeenCalled();
+		expect(startFlushingTimerSpy).toHaveBeenCalled();
+		expect(startPruningTimerSpy).toHaveBeenCalled();
+	});
+
+	test('stopBackgroundProcess stops timers and logs message', () => {
+		// Mock services
+		const stopFlushingTimerSpy = jest
+			.spyOn(Container.get(InsightsCollectionService), 'stopFlushingTimer')
+			.mockImplementation();
+		const stopCompactionTimerSpy = jest
+			.spyOn(Container.get(InsightsCompactionService), 'stopCompactionTimer')
+			.mockImplementation();
+		const stopPruningTimerSpy = jest
+			.spyOn(Container.get(InsightsPruningService), 'stopPruningTimer')
+			.mockImplementation();
+
+		// ACT
+		insightsService.stopBackgroundProcess();
+
+		// ASSERT
+		expect(stopCompactionTimerSpy).toHaveBeenCalled();
+		expect(stopFlushingTimerSpy).toHaveBeenCalled();
+		expect(stopPruningTimerSpy).toHaveBeenCalled();
 	});
 });
