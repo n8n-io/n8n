@@ -8,13 +8,13 @@ import { computed, ref, watch } from 'vue';
 import { useFoldersStore } from '@/stores/folders.store';
 import type { FolderPathItem, FolderShortInfo } from '@/Interface';
 
-// TODO: Make visible levels configurable
 type Props = {
 	// Current folder can be null when showing breadcrumbs for workflows in project root
 	currentFolder?: FolderShortInfo | null;
 	actions?: UserAction[];
 	hiddenItemsTrigger?: 'hover' | 'click';
 	currentFolderAsLink?: boolean;
+	visibleLevels?: 1 | 2;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -22,6 +22,7 @@ const props = withDefaults(defineProps<Props>(), {
 	actions: () => [],
 	hiddenItemsTrigger: 'click',
 	currentFolderAsLink: false,
+	visibleLevels: 1,
 });
 
 const emit = defineEmits<{
@@ -73,7 +74,10 @@ const visibleBreadcrumbsItems = computed<FolderPathItem[]>(() => {
 	if (!props.currentFolder) return [];
 
 	const items: FolderPathItem[] = [];
-	const parent = foldersStore.getCachedFolder(props.currentFolder.parentFolder ?? '');
+	const parent =
+		props.visibleLevels === 2
+			? foldersStore.getCachedFolder(props.currentFolder.parentFolder ?? '')
+			: null;
 
 	if (parent) {
 		items.push({

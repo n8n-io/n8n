@@ -1362,6 +1362,7 @@ const onCreateWorkflowClick = () => {
 					:current-folder="currentFolder"
 					:actions="mainBreadcrumbsActions"
 					:hidden-items-trigger="isDragging ? 'hover' : 'click'"
+					:visible-levels="2"
 					@item-selected="onBreadcrumbItemClick"
 					@action="onBreadCrumbsAction"
 					@item-drop="onBreadCrumbsItemDrop"
