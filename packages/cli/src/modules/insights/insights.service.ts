@@ -85,11 +85,15 @@ export class InsightsService {
 	startBackgroundProcess() {
 		this.startCompactionScheduler();
 		this.startFlushingScheduler();
+
+		this.logger.debug('Started compaction and flushing schedulers');
 	}
 
 	stopBackgroundProcess() {
 		this.stopCompactionScheduler();
 		this.stopFlushingScheduler();
+
+		this.logger.debug('Stopped compaction and flushing schedulers');
 	}
 
 	// Initialize regular compaction of insights data
