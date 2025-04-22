@@ -1,10 +1,5 @@
 <script setup lang="ts">
 import { type TreeNode as ElTreeNode } from 'element-plus';
-import {
-	getSubtreeTotalConsumedTokens,
-	type LatestNodeInfo,
-	type LogEntry,
-} from '@/components/CanvasChat/future/utils';
 import { computed, useTemplateRef, watch } from 'vue';
 import { N8nButton, N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -14,6 +9,11 @@ import ConsumedTokenCountText from '@/components/CanvasChat/future/components/Co
 import { I18nT } from 'vue-i18n';
 import { toDayMonth, toTime } from '@/utils/formatters/dateFormatter';
 import NodeName from '@/components/CanvasChat/future/components/NodeName.vue';
+import {
+	getSubtreeTotalConsumedTokens,
+	type LatestNodeInfo,
+	type LogEntry,
+} from '@/components/RunDataAi/utils';
 
 const props = defineProps<{
 	data: LogEntry;

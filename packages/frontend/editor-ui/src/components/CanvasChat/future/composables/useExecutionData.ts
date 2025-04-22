@@ -1,5 +1,4 @@
 import { watch, computed, ref } from 'vue';
-import { createLogEntries, type ExecutionLogViewData, type LatestNodeInfo } from '../utils';
 import { isChatNode } from '../../utils';
 import { type IExecutionResponse } from '@/Interface';
 import { deepCopy, Workflow } from 'n8n-workflow';
@@ -7,6 +6,11 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useThrottleFn } from '@vueuse/core';
 import { IN_PROGRESS_EXECUTION_ID } from '@/constants';
+import {
+	createLogEntries,
+	type ExecutionLogViewData,
+	type LatestNodeInfo,
+} from '@/components/RunDataAi/utils';
 
 export function useExecutionData() {
 	const nodeHelpers = useNodeHelpers();

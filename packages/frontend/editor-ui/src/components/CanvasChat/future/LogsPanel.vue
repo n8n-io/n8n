@@ -7,9 +7,9 @@ import ChatMessagesPanel from '@/components/CanvasChat/components/ChatMessagesPa
 import LogsDetailsPanel from '@/components/CanvasChat/future/components/LogDetailsPanel.vue';
 import { type LogEntrySelection } from '@/components/CanvasChat/types/logs';
 import LogsPanelActions from '@/components/CanvasChat/future/components/LogsPanelActions.vue';
-import { findSelectedLogEntry, type LogEntry } from '@/components/CanvasChat/future/utils';
 import { useLayout } from '@/components/CanvasChat/future/composables/useLayout';
 import { useExecutionData } from '@/components/CanvasChat/future/composables/useExecutionData';
+import { findSelectedLogEntry, type LogEntry } from '@/components/RunDataAi/utils';
 
 const props = withDefaults(defineProps<{ isReadOnly?: boolean }>(), { isReadOnly: false });
 

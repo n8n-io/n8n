@@ -5,19 +5,19 @@ import { useI18n } from '@/composables/useI18n';
 import { N8nButton, N8nRadioButtons, N8nText, N8nTooltip } from '@n8n/design-system';
 import { computed, nextTick } from 'vue';
 import { ElTree, type TreeNode as ElTreeNode } from 'element-plus';
-import {
-	type ExecutionLogViewData,
-	getSubtreeTotalConsumedTokens,
-	getTotalConsumedTokens,
-	type LatestNodeInfo,
-	type LogEntry,
-} from '@/components/CanvasChat/future/utils';
 import { useTelemetry } from '@/composables/useTelemetry';
 import LogsOverviewRow from '@/components/CanvasChat/future/components/LogsOverviewRow.vue';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useRouter } from 'vue-router';
 import ExecutionSummary from '@/components/CanvasChat/future/components/ExecutionSummary.vue';
+import {
+	type ExecutionLogViewData,
+	getSubtreeTotalConsumedTokens,
+	getTotalConsumedTokens,
+	type LatestNodeInfo,
+	type LogEntry,
+} from '@/components/RunDataAi/utils';
 
 const { isOpen, isReadOnly, selected, isCompact, execution, latestNodeInfo } = defineProps<{
 	isOpen: boolean;

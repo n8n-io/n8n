@@ -5,11 +5,6 @@ import RunDataView from '@/components/CanvasChat/future/components/RunDataView.v
 import { useResizablePanel } from '@/components/CanvasChat/future/composables/useResizablePanel';
 import { LOG_DETAILS_CONTENT, type LogDetailsContent } from '@/components/CanvasChat/types/logs';
 import NodeIcon from '@/components/NodeIcon.vue';
-import {
-	getSubtreeTotalConsumedTokens,
-	type LatestNodeInfo,
-	type LogEntry,
-} from '@/components/CanvasChat/future/utils';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -18,6 +13,11 @@ import { type Workflow } from 'n8n-workflow';
 import { computed, ref, useTemplateRef } from 'vue';
 import { type IExecutionResponse } from '@/Interface';
 import NodeName from '@/components/CanvasChat/future/components/NodeName.vue';
+import {
+	getSubtreeTotalConsumedTokens,
+	type LatestNodeInfo,
+	type LogEntry,
+} from '@/components/RunDataAi/utils';
 
 const MIN_IO_PANEL_WIDTH = 200;
 

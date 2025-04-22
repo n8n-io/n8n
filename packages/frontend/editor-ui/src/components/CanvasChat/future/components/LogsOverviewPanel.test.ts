@@ -15,8 +15,8 @@ import {
 } from '../../__test__/data';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { useNDVStore } from '@/stores/ndv.store';
-import { createLogEntries } from '@/components/CanvasChat/future/utils';
 import { createTestWorkflowObject } from '@/__tests__/mocks';
+import { createLogEntries } from '@/components/RunDataAi/utils';
 
 describe('LogsOverviewPanel', () => {
 	let pinia: TestingPinia;
