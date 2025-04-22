@@ -1,12 +1,12 @@
 import { Container } from '@n8n/di';
 
-import { MetadataState } from './metadata-state';
+import { ControllerRegistryMetadata } from './controller-registry-metadata';
 import type { Arg, Controller } from './types';
 
 const ArgDecorator =
 	(arg: Arg): ParameterDecorator =>
 	(target, handlerName, parameterIndex) => {
-		const routeMetadata = Container.get(MetadataState).getRouteMetadata(
+		const routeMetadata = Container.get(ControllerRegistryMetadata).getRouteMetadata(
 			target.constructor as Controller,
 			String(handlerName),
 		);

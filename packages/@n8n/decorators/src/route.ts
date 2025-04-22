@@ -1,7 +1,7 @@
 import { Container } from '@n8n/di';
 import type { RequestHandler } from 'express';
 
-import { MetadataState } from './metadata-state';
+import { ControllerRegistryMetadata } from './controller-registry-metadata';
 import type { Controller, Method, RateLimit } from './types';
 
 interface RouteOptions {
@@ -17,7 +17,7 @@ const RouteFactory =
 	(method: Method) =>
 	(path: `/${string}`, options: RouteOptions = {}): MethodDecorator =>
 	(target, handlerName) => {
-		const routeMetadata = Container.get(MetadataState).getRouteMetadata(
+		const routeMetadata = Container.get(ControllerRegistryMetadata).getRouteMetadata(
 			target.constructor as Controller,
 			String(handlerName),
 		);

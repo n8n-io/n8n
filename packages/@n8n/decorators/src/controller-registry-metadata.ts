@@ -3,7 +3,7 @@ import { Service } from '@n8n/di';
 import type { Controller, ControllerMetadata, HandlerName, RouteMetadata } from './types';
 
 @Service()
-export class MetadataState {
+export class ControllerRegistryMetadata {
 	private registry = new Map<Controller, ControllerMetadata>();
 
 	getControllerMetadata(controllerClass: Controller) {

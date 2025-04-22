@@ -1,10 +1,10 @@
 import { Container } from '@n8n/di';
 
-import { MetadataState } from './metadata-state';
+import { ControllerRegistryMetadata } from './controller-registry-metadata';
 import type { Controller } from './types';
 
 export const Middleware = (): MethodDecorator => (target, handlerName) => {
-	const metadata = Container.get(MetadataState).getControllerMetadata(
+	const metadata = Container.get(ControllerRegistryMetadata).getControllerMetadata(
 		target.constructor as Controller,
 	);
 	metadata.middlewares.push(String(handlerName));

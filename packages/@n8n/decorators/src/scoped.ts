@@ -1,13 +1,13 @@
 import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 
-import { MetadataState } from './metadata-state';
+import { ControllerRegistryMetadata } from './controller-registry-metadata';
 import type { Controller } from './types';
 
 const Scoped =
 	(scope: Scope, { globalOnly } = { globalOnly: false }): MethodDecorator =>
 	(target, handlerName) => {
-		const routeMetadata = Container.get(MetadataState).getRouteMetadata(
+		const routeMetadata = Container.get(ControllerRegistryMetadata).getRouteMetadata(
 			target.constructor as Controller,
 			String(handlerName),
 		);
