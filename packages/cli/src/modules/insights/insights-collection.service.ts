@@ -51,6 +51,10 @@ type BufferedInsight = Pick<InsightsRaw, 'type' | 'value' | 'timestamp'> & {
 	workflowName: string;
 };
 
+/**
+ * This service is responsible for collecting insights event, store them in a buffer,
+ * and flushing this buffer to the database
+ */
 @Service()
 export class InsightsCollectionService {
 	private readonly cachedMetadata: Map<string, InsightsMetadata> = new Map();

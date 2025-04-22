@@ -13,7 +13,7 @@ import {
 	createRawInsightsEvents,
 } from '../database/entities/__tests__/db-utils';
 import { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository';
-import { InsightsCompactionService } from '../insights.compaction.service';
+import { InsightsCompactionService } from '../insights-compaction.service';
 import { InsightsConfig } from '../insights.config';
 
 // Initialize DB once for all tests

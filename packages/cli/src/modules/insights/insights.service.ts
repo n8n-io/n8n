@@ -9,38 +9,38 @@ import { OnShutdown } from '@/decorators/on-shutdown';
 import type { PeriodUnit, TypeUnit } from './database/entities/insights-shared';
 import { NumberToType } from './database/entities/insights-shared';
 import { InsightsByPeriodRepository } from './database/repositories/insights-by-period.repository';
-import { InsightsCollectionService } from './insights.collection.service';
-import { InsightsCompactionService } from './insights.compaction.service';
+import { InsightsCollectionService } from './insights-collection.service';
+import { InsightsCompactionService } from './insights-compaction.service';
 
 @Service()
 export class InsightsService {
 	constructor(
 		private readonly insightsByPeriodRepository: InsightsByPeriodRepository,
-		private readonly insightsCompactionService: InsightsCompactionService,
-		private readonly insightsCollectionService: InsightsCollectionService,
+		private readonly compactionService: InsightsCompactionService,
+		private readonly collectionService: InsightsCollectionService,
 		private readonly logger: Logger, // Assuming a logger is injected
 	) {}
 
 	startBackgroundProcess() {
-		this.insightsCompactionService.startCompactionTimer();
-		this.insightsCollectionService.startFlushingTimer();
+		this.compactionService.startCompactionTimer();
+		this.collectionService.startFlushingTimer();
 		this.logger.debug('Started compaction and flushing schedulers');
 	}
 
 	stopBackgroundProcess() {
-		this.insightsCompactionService.stopCompactionTimer();
-		this.insightsCollectionService.stopFlushingTimer();
+		this.compactionService.stopCompactionTimer();
+		this.collectionService.stopFlushingTimer();
 		this.logger.debug('Stopped compaction and flushing schedulers');
 	}
 
 	@OnShutdown()
 	async shutdown() {
-		await this.insightsCollectionService.shutdown();
-		this.insightsCompactionService.stopCompactionTimer();
+		await this.collectionService.shutdown();
+		this.compactionService.stopCompactionTimer();
 	}
 
 	async workflowExecuteAfterHandler(ctx: ExecutionLifecycleHooks, fullRunData: IRun) {
-		await this.insightsCollectionService.workflowExecuteAfterHandler(ctx, fullRunData);
+		await this.collectionService.workflowExecuteAfterHandler(ctx, fullRunData);
 	}
 
 	async getInsightsSummary({

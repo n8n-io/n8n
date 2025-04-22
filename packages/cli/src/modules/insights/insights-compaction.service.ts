@@ -4,6 +4,10 @@ import { InsightsByPeriodRepository } from './database/repositories/insights-by-
 import { InsightsRawRepository } from './database/repositories/insights-raw.repository';
 import { InsightsConfig } from './insights.config';
 
+/**
+ * This service is responsible for compacting lower granularity insights data
+ * into higher granularity to control the size of the insights data.
+ */
 @Service()
 export class InsightsCompactionService {
 	private compactInsightsTimer: NodeJS.Timer | undefined;
@@ -51,7 +55,9 @@ export class InsightsCompactionService {
 		} while (numberOfCompactedDayData > 0);
 	}
 
-	// Compacts raw data to hourly aggregates
+	/**
+	 * Compacts raw data to hourly aggregates
+	 */
 	async compactRawToHour() {
 		// Build the query to gather raw insights data for the batch
 		const batchQuery = this.insightsRawRepository.getRawInsightsBatchQuery(
@@ -65,7 +71,9 @@ export class InsightsCompactionService {
 		});
 	}
 
-	// Compacts hourly data to daily aggregates
+	/**
+	 * Compacts hourly data to daily aggregates
+	 */
 	async compactHourToDay() {
 		// get hour data query for batching
 		const batchQuery = this.insightsByPeriodRepository.getPeriodInsightsBatchQuery({
@@ -80,7 +88,9 @@ export class InsightsCompactionService {
 		});
 	}
 
-	// Compacts daily data to weekly aggregates
+	/**
+	 * Compacts daily data to weekly aggregates
+	 */
 	async compactDayToWeek() {
 		// get daily data query for batching
 		const batchQuery = this.insightsByPeriodRepository.getPeriodInsightsBatchQuery({
