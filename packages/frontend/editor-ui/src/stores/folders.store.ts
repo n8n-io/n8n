@@ -11,6 +11,7 @@ import { useRootStore } from './root.store';
 import { ref } from 'vue';
 import { useI18n } from '@/composables/useI18n';
 import type { DragTarget, DropTarget } from '@/composables/useFolders';
+import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 
 const BREADCRUMBS_MIN_LOADING_TIME = 300;
 
@@ -190,10 +191,8 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 		const path = await getFolderPath(project.id, folderId);
 
 		// Process a folder and all its nested children recursively
-		const processFolderWithChildren = (
-			folder: FolderTreeResponseItem,
-		): Array<{ id: string; label: string; href?: string }> => {
-			const result: Array<{ id: string; label: string; href?: string }> = [
+		const processFolderWithChildren = (folder: FolderTreeResponseItem): PathItem[] => {
+			const result: PathItem[] = [
 				{
 					id: folder.id,
 					label: folder.name,
@@ -207,7 +206,7 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 			if (folder.children?.length) {
 				const childItems = folder.children.flatMap((child) => {
 					// Add this child
-					const childResult: Array<{ id: string; label: string; href?: string }> = [
+					const childResult: PathItem[] = [
 						{
 							id: child.id,
 							label: child.name,
