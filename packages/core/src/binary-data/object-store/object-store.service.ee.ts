@@ -48,11 +48,15 @@ export class ObjectStoreService {
 
 		this.bucket = bucket.name;
 
-		const clientConfig: S3ClientConfig = {
-			region: bucket.region,
-			endpoint: host ? `${protocol}://${host}` : undefined,
-			forcePathStyle: true, // Needed for non-AWS S3 compatible services
-		};
+		const clientConfig: S3ClientConfig = {};
+		const endpoint = host ? `${protocol}://${host}` : undefined;
+		if (endpoint) {
+			clientConfig.endpoint = endpoint;
+			clientConfig.forcePathStyle = true; // Needed for non-AWS S3 compatible services
+		}
+		if (bucket.region.length) {
+			clientConfig.region = bucket.region;
+		}
 		if (!credentials.authAutoDetect) {
 			clientConfig.credentials = {
 				accessKeyId: credentials.accessKey,
