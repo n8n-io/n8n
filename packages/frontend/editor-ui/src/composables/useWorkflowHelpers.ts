@@ -1168,7 +1168,11 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 
 				uiStore.stateIsDirty = false;
 				next();
-			} else if (confirmModal === MODAL_CLOSE) {
+			} else if (
+				confirmModal === MODAL_CLOSE &&
+				// for new workflows that are not saved yet, don't do anything, only close modal
+				workflowsStore.workflow.id !== PLACEHOLDER_EMPTY_WORKFLOW_ID
+			) {
 				// The route may have already changed due to the browser back button, so let's restore it
 				next(
 					router.resolve({
