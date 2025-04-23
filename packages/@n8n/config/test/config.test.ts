@@ -115,10 +115,6 @@ describe('GlobalConfig', () => {
 		externalHooks: {
 			files: [],
 		},
-		externalSecrets: {
-			preferGet: false,
-			updateInterval: 300,
-		},
 		nodes: {
 			communityPackages: {
 				enabled: true,

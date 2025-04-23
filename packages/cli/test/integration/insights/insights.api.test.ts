@@ -72,9 +72,9 @@ describe('GET /insights/by-workflow', () => {
 			take: 'not_a_number',
 		},
 	])(
-		'Call should return internal server error with invalid pagination query parameters',
+		'Call should return bad request with invalid pagination query parameters',
 		async (queryParams) => {
-			await agents.owner.get('/insights/by-workflow').query(queryParams).expect(500);
+			await agents.owner.get('/insights/by-workflow').query(queryParams).expect(400);
 		},
 	);
 
