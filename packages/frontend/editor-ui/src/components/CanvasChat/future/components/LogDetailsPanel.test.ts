@@ -92,9 +92,13 @@ describe('LogDetailsPanel', () => {
 			createdAt: '2025-04-16T00:00:00.000Z',
 			startedAt: '2025-04-16T00:00:01.000Z',
 		});
+
+		localStorage.clear();
 	});
 
 	it('should show name, run status, input, and output of the node', async () => {
+		localStorage.setItem('N8N_LOGS_DETAIL_PANEL_CONTENT', 'both');
+
 		const rendered = render({
 			isOpen: true,
 			logEntry: createTestLogEntry({ node: 'AI Agent', runIndex: 0 }),
@@ -118,12 +122,12 @@ describe('LogDetailsPanel', () => {
 
 		const header = within(rendered.getByTestId('log-details-header'));
 
-		expect(rendered.queryByTestId('log-details-input')).toBeInTheDocument();
+		expect(rendered.queryByTestId('log-details-input')).not.toBeInTheDocument();
 		expect(rendered.queryByTestId('log-details-output')).toBeInTheDocument();
 
 		await fireEvent.click(header.getByText('Input'));
 
-		expect(rendered.queryByTestId('log-details-input')).not.toBeInTheDocument();
+		expect(rendered.queryByTestId('log-details-input')).toBeInTheDocument();
 		expect(rendered.queryByTestId('log-details-output')).toBeInTheDocument();
 
 		await fireEvent.click(header.getByText('Output'));
@@ -133,6 +137,8 @@ describe('LogDetailsPanel', () => {
 	});
 
 	it('should close input panel by dragging the divider to the left end', async () => {
+		localStorage.setItem('N8N_LOGS_DETAIL_PANEL_CONTENT', 'both');
+
 		const rendered = render({
 			isOpen: true,
 			logEntry: createTestLogEntry({ node: 'AI Agent', runIndex: 0 }),
@@ -150,6 +156,8 @@ describe('LogDetailsPanel', () => {
 	});
 
 	it('should close output panel by dragging the divider to the right end', async () => {
+		localStorage.setItem('N8N_LOGS_DETAIL_PANEL_CONTENT', 'both');
+
 		const rendered = render({
 			isOpen: true,
 			logEntry: createTestLogEntry({ node: 'AI Agent', runIndex: 0 }),

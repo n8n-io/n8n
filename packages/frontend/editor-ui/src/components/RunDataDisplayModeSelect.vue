@@ -39,6 +39,7 @@ const options = computed(() => {
 		:model-value="value"
 		:options="options"
 		data-test-id="ndv-run-data-display-mode"
+		:size="compact ? 'small' : 'medium'"
 		@update:model-value="(selected) => emit('change', selected)"
 	>
 		<template v-if="compact" #option="option">
@@ -64,6 +65,6 @@ const options = computed(() => {
 
 <style lang="scss" module>
 .icon {
-	padding-inline: var(--spacing-2xs);
+	padding-inline: var(--spacing-4xs);
 }
 </style>
