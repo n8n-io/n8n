@@ -1,3 +1,4 @@
+import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { Logger } from 'n8n-core';
 
@@ -20,6 +21,9 @@ type Deprecation = {
 
 	/** Whether a config value is required to trigger a deprecation warning. */
 	matchConfig?: boolean;
+
+	/** Function to run to check whether to disable this deprecation warning. */
+	disableIf?: () => boolean;
 };
 
 const SAFE_TO_REMOVE = 'Remove this environment variable; it is no longer needed.';
@@ -52,6 +56,7 @@ export class DeprecationService {
 				'Running n8n without task runners is deprecated. Task runners will be turned on by default in a future version. Please set `N8N_RUNNERS_ENABLED=true` to enable task runners now and avoid potential issues in the future. Learn more: https://docs.n8n.io/hosting/configuration/task-runners/',
 			checkValue: (value?: string) => value?.toLowerCase() !== 'true' && value !== '1',
 			warnIfMissing: true,
+			disableIf: () => this.globalConfig.nodes.exclude.includes('n8n-nodes-base.code'),
 		},
 		{
 			envVar: 'OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS',
@@ -76,10 +81,18 @@ export class DeprecationService {
 	/** Runtime state of deprecation-related env vars. */
 	private readonly state: Map<Deprecation, { mustWarn: boolean }> = new Map();
 
-	constructor(private readonly logger: Logger) {}
+	constructor(
+		private readonly logger: Logger,
+		private readonly globalConfig: GlobalConfig,
+	) {}
 
 	warn() {
 		this.deprecations.forEach((d) => {
+			if (d.disableIf?.()) {
+				this.state.set(d, { mustWarn: false });
+				return;
+			}
+
 			const envValue = process.env[d.envVar];
 
 			const matchConfig = d.matchConfig === true || d.matchConfig === undefined;
