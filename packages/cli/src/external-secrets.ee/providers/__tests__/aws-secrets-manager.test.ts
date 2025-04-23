@@ -14,10 +14,12 @@ describe('AwsSecretsManager', () => {
 	const listSecretsSpy = jest.spyOn(SecretsManager.prototype, 'listSecrets');
 	const batchGetSpy = jest.spyOn(SecretsManager.prototype, 'batchGetSecretValue');
 
-	const awsSecretsManager = new AwsSecretsManager();
+	let awsSecretsManager: AwsSecretsManager;
 
-	afterEach(() => {
+	beforeEach(() => {
 		jest.resetAllMocks();
+
+		awsSecretsManager = new AwsSecretsManager();
 	});
 
 	describe('IAM User authentication', () => {

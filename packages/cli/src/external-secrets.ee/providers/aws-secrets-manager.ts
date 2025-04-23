@@ -21,7 +21,7 @@ export type AwsSecretsManagerContext = SecretsProviderSettings<
 				accessKeyId: string;
 				secretAccessKey: string;
 		  }
-		| { authMethod: 'instanceRole' }
+		| { authMethod: 'autoDetect' }
 	)
 >;
 
@@ -55,10 +55,10 @@ export class AwsSecretsManager implements SecretsProvider {
 						'Credentials for IAM user having <code>secretsmanager:ListSecrets</code> and <code>secretsmanager:BatchGetSecretValue</code> permissions. <a href="https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html" target="_blank">Learn more</a>',
 				},
 				{
-					name: 'Instance Role',
-					value: 'instanceRole',
+					name: 'Auto Detect',
+					value: 'autoDetect',
 					description:
-						'Use IAM role attached to the underlying compute instance (EC2, EKS). <a href="https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/iam-roles-for-amazon-ec2.html" target="_blank">Learn more</a>',
+						'Use automatic credential detection to authenticate AWS calls for external secrets<a href="https://docs.aws.amazon.com/sdk-for-javascript/v3/developer-guide/setting-credentials-node.html#credchain" target="_blank">Learn more</a>.',
 				},
 			],
 			default: 'iamUser',
@@ -172,7 +172,7 @@ export class AwsSecretsManager implements SecretsProvider {
 
 	private assertAuthType(context: AwsSecretsManagerContext) {
 		const { authMethod } = context.settings;
-		if (authMethod === 'iamUser' || authMethod === 'instanceRole') return;
+		if (authMethod === 'iamUser' || authMethod === 'autoDetect') return;
 		throw new UnknownAuthTypeError(authMethod);
 	}
 
