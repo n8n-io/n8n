@@ -30,32 +30,28 @@ export function useViewportAutoAdjust(
 					}
 				});
 
-				resizeObserver.observe(vp);
 				canvasRect.value = {
 					x: vp.offsetLeft,
 					y: vp.offsetTop,
 					width: vp.offsetWidth,
 					height: vp.offsetHeight,
 				};
+				resizeObserver.observe(vp);
 				onCleanUp(() => resizeObserver.disconnect());
 			},
 			{ immediate: true },
 		);
 
-		watch(
-			canvasRect,
-			async (newRect, oldRect) => {
-				if (!newRect || !oldRect) {
-					return;
-				}
+		watch(canvasRect, async (newRect, oldRect) => {
+			if (!newRect || !oldRect) {
+				return;
+			}
 
-				await setViewport({
-					x: viewport.value.x + (newRect.width - oldRect.width) / 2,
-					y: viewport.value.y + (newRect.height - oldRect.height) / 2,
-					zoom: viewport.value.zoom,
-				});
-			},
-			{ immediate: true },
-		);
+			await setViewport({
+				x: viewport.value.x + (newRect.width - oldRect.width) / 2,
+				y: viewport.value.y + (newRect.height - oldRect.height) / 2,
+				zoom: viewport.value.zoom,
+			});
+		});
 	}
 }

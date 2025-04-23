@@ -46,6 +46,7 @@ const props = withDefaults(defineProps<Props>(), {
 	search: '',
 	headerBgColor: 'base',
 	disableHoverHighlight: false,
+	compact: false,
 });
 const emit = defineEmits<{
 	activeRowChanged: [row: number | null];

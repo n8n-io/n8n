@@ -7,6 +7,10 @@ vi.mock('@/stores/settings.store', () => ({
 }));
 
 describe(useViewportAutoAdjust, () => {
+	afterAll(() => {
+		vi.clearAllMocks();
+	});
+
 	it('should set viewport when canvas is resized', async () => {
 		let resizeHandler: ResizeObserverCallback = () => {};
 

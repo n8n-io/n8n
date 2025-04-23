@@ -62,7 +62,7 @@ export function useResizablePanel(
 	const maxSizeValue = computed(() => resolveSize(maxSize, containerSize.value));
 	const constrainedSize = computed(() => {
 		const sizeInPixels =
-			persistedSize.value > 0 && persistedSize.value < 1
+			persistedSize.value >= 0 && persistedSize.value <= 1
 				? containerSize.value * persistedSize.value
 				: -1;
 

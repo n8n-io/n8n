@@ -48,7 +48,6 @@ const pageSizes = [1, 10, 25, 50, 100];
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
-	bottom: 0;
 	padding: 5px;
 	overflow-y: hidden;
 	flex-shrink: 0;
