@@ -8,7 +8,7 @@ import {
 } from '@n8n/api-types';
 import type { AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';
 import { Response } from 'express';
-import { OPEN_AI_API_CREDENTIAL_TYPE, OperationalError } from 'n8n-workflow';
+import { OPEN_AI_API_CREDENTIAL_TYPE } from 'n8n-workflow';
 import { strict as assert } from 'node:assert';
 import { WritableStream } from 'node:stream/web';
 
