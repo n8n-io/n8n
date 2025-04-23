@@ -1,5 +1,5 @@
 import { defineComponent, h, nextTick, ref, toValue } from 'vue';
-import { useResolvedExpression } from './useResolvedExpression';
+import { getResolvedExpression, useResolvedExpression } from './useResolvedExpression';
 import * as workflowHelpers from '@/composables/useWorkflowHelpers';
 import { renderComponent } from '../__tests__/render';
 import { useRouter } from 'vue-router';
@@ -98,5 +98,34 @@ describe('useResolvedExpression', () => {
 		expect(resolveExpressionSpy).toHaveBeenCalledTimes(1);
 		vi.advanceTimersByTime(200);
 		expect(resolveExpressionSpy).toHaveBeenCalledTimes(2);
+	});
+});
+
+describe('getResolvedExpression', () => {
+	it('should return an expression if a resolved expression string is provided', () => {
+		const expressionValue = true;
+		const resolvedExpressionString = 'resolved expression';
+
+		const result = getResolvedExpression(expressionValue, resolvedExpressionString);
+
+		expect(result).toEqual(resolvedExpressionString);
+	});
+
+	it('should return an empty string if no resolved expression string is provided', () => {
+		const expressionValue = true;
+		const resolvedExpressionString = '';
+
+		const result = getResolvedExpression(expressionValue, resolvedExpressionString);
+
+		expect(result).toEqual('');
+	});
+
+	it('should return null if expression value is false', () => {
+		const expressionValue = false;
+		const resolvedExpressionString = 'resolved expression';
+
+		const result = getResolvedExpression(expressionValue, resolvedExpressionString);
+
+		expect(result).toEqual('');
 	});
 });

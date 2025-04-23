@@ -19,7 +19,6 @@ import { isValueExpression, parseResourceMapperFieldName } from '@/utils/nodeTyp
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { computed, useTemplateRef } from 'vue';
-import { getResolvedExpression } from '@/utils/expressions';
 
 type Props = {
 	parameter: INodeProperties;
@@ -115,15 +114,11 @@ const resolvedAdditionalExpressionData = computed(() => {
 	};
 });
 
-const { resolvedExpression, resolvedExpressionString } = useResolvedExpression({
+const { resolvedExpression } = useResolvedExpression({
 	expression,
 	additionalData: resolvedAdditionalExpressionData,
 	isForCredential: props.isForCredential,
 	stringifyObject: props.parameter.type !== 'multiOptions',
-});
-
-const expressionOutput = computed(() => {
-	return getResolvedExpression(isExpression.value, resolvedExpressionString.value);
 });
 
 const parsedParameterName = computed(() => {
