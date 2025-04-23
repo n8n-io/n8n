@@ -5,13 +5,11 @@ import {
 	type INode,
 	type INodeParameters,
 	type INodeProperties,
-	type INodeType,
 	type INodeTypeDescription,
 } from '@/Interfaces';
 import {
 	getNodeParameters,
 	isSubNodeType,
-	applyDeclarativeNodeOptionParameters,
 	getParameterIssues,
 	isTriggerNode,
 	isExecutable,
@@ -3471,60 +3469,6 @@ describe('NodeHelpers', () => {
 		];
 		test.each(tests)('should return %p for %o', (expected, nodeType) => {
 			expect(isSubNodeType(nodeType)).toBe(expected);
-		});
-	});
-
-	describe('applyDeclarativeNodeOptionParameters', () => {
-		test.each([
-			[
-				'node with execute method',
-				{
-					execute: jest.fn(),
-					description: {
-						properties: [],
-					},
-				},
-			],
-			[
-				'node with trigger method',
-				{
-					trigger: jest.fn(),
-					description: {
-						properties: [],
-					},
-				},
-			],
-			[
-				'node with webhook method',
-				{
-					webhook: jest.fn(),
-					description: {
-						properties: [],
-					},
-				},
-			],
-			[
-				'a polling node-type',
-				{
-					description: {
-						polling: true,
-						properties: [],
-					},
-				},
-			],
-			[
-				'a node-type with a non-main output',
-				{
-					description: {
-						outputs: ['main', 'ai_agent'],
-						properties: [],
-					},
-				},
-			],
-		])('should not modify properties on node with %s method', (_, nodeTypeName) => {
-			const nodeType = nodeTypeName as unknown as INodeType;
-			applyDeclarativeNodeOptionParameters(nodeType);
-			expect(nodeType.description.properties).toEqual([]);
 		});
 	});
 
