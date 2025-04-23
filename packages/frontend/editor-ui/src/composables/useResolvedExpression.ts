@@ -1,6 +1,10 @@
 import { useNDVStore } from '@/stores/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { isExpression as isExpressionUtil, stringifyExpressionResult } from '@/utils/expressions';
+import {
+	getResolvedExpression,
+	isExpression as isExpressionUtil,
+	stringifyExpressionResult,
+} from '@/utils/expressions';
 
 import { debounce } from 'lodash-es';
 import { createResultError, createResultOk, type IDataObject, type Result } from 'n8n-workflow';
@@ -75,10 +79,12 @@ export function useResolvedExpression({
 
 	const debouncedUpdateExpression = debounce(updateExpression, 200);
 
-	function updateExpression() {
+	function updateExpression(exp, str) {
 		const resolved = resolve();
 		resolvedExpression.value = resolved.ok ? resolved.result : null;
 		resolvedExpressionString.value = stringifyExpressionResult(resolved, hasRunData.value);
+
+		resolvedExpressionString.value = exp && str ? resolvedExpressionString.value : '';
 	}
 
 	watch(
@@ -91,7 +97,11 @@ export function useResolvedExpression({
 		debouncedUpdateExpression,
 	);
 
-	onMounted(updateExpression);
+	onMounted(() => {
+		updateExpression(isExpression.value, resolvedExpressionString.value);
+	});
+
+	// resolvedExpressionString.value = isExpression.value && resolvedExpressionString.value ? resolvedExpressionString.value : '';
 
 	return { resolvedExpression, resolvedExpressionString, isExpression };
 }
