@@ -1574,6 +1574,7 @@ export type InputPanel = {
 };
 
 export type OutputPanel = {
+	run?: number;
 	branch?: number;
 	data: {
 		isEmpty: boolean;
