@@ -373,9 +373,16 @@ export async function execute(
 						key === 'row_number' &&
 						(mappingValues[key] === null || mappingValues[key] === undefined)
 					) {
-						throw new UserError('row_number is null', {
+						throw new UserError(`${key} is null`, {
 							description:
 								"Since it's being used to determine the row to update, it cannot be null",
+						});
+					}
+
+					if (mappingValues[key] === null || mappingValues[key] === undefined) {
+						this.addExecutionHints({
+							message: 'Warning: The value of column to match is null or undefined',
+							location: 'outputPane',
 						});
 					}
 
