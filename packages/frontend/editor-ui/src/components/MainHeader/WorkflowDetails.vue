@@ -354,8 +354,8 @@ async function onNameSubmit({
 	const newName = name.trim();
 	if (!newName) {
 		toast.showMessage({
-			title: locale.baseText('workflowDetails.showMessage.title'),
-			message: locale.baseText('workflowDetails.showMessage.message'),
+			title: locale.baseText('renameAction.emptyName..title'),
+			message: locale.baseText('renameAction.emptyName.message'),
 			type: 'error',
 		});
 
@@ -417,7 +417,7 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 					id: props.id,
 					name: props.name,
 					tags: props.tags,
-					parentFolderId: currentFolder?.value?.id,
+					parentFolderId: props.currentFolder?.id,
 				},
 			});
 			break;

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue';
+import { ref, watch } from 'vue';
 import ExpandableInputEdit from '@/components/ExpandableInput/ExpandableInputEdit.vue';
 import ExpandableInputPreview from '@/components/ExpandableInput/ExpandableInputPreview.vue';
 import { createEventBus } from '@n8n/utils/event-bus';
@@ -40,6 +40,15 @@ watch(
 	},
 );
 
+watch(
+	() => props.modelValue,
+	(value) => {
+		if (isDisabled.value) return;
+		newValue.value = value;
+	},
+	{ immediate: true },
+);
+
 function onInput(val: string) {
 	if (isDisabled.value) return;
 	newValue.value = val;
@@ -76,10 +85,6 @@ function onEscape() {
 	escPressed.value = true;
 	emit('toggle');
 }
-
-onMounted(() => {
-	newValue.value = props.modelValue;
-});
 </script>
 
 <template>

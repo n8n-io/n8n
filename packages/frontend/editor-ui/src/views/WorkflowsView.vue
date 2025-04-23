@@ -135,6 +135,8 @@ const currentFolderId = ref<string | null>(null);
 
 const showCardsBadge = ref(false);
 
+const isNameEditEnabled = ref(false);
+
 /**
  * Folder actions
  * These can appear on the list header, and then they are applied to current folder
@@ -210,6 +212,12 @@ const showFolders = computed(() => {
 
 const currentFolder = computed(() => {
 	return currentFolderId.value ? foldersStore.breadcrumbsCache[currentFolderId.value] : null;
+});
+
+const currentFolderParent = computed(() => {
+	return currentFolder.value?.parentFolder
+		? foldersStore.breadcrumbsCache[currentFolder.value.parentFolder]
+		: null;
 });
 
 const isDragging = computed(() => {
@@ -901,8 +909,7 @@ const onBreadCrumbsAction = async (action: string) => {
 			);
 			break;
 		case FOLDER_LIST_ITEM_ACTIONS.RENAME:
-			if (!route.params.folderId) return;
-			await renameFolder(route.params.folderId as string);
+			onNameToggle();
 			break;
 		case FOLDER_LIST_ITEM_ACTIONS.MOVE:
 			if (!currentFolder.value) return;
@@ -1250,6 +1257,69 @@ const onCreateWorkflowClick = () => {
 		},
 	});
 };
+
+const onNameToggle = () => {
+	isNameEditEnabled.value = !isNameEditEnabled.value;
+};
+
+const onNameSubmit = async ({
+	name,
+	onSubmit,
+}: {
+	name: string;
+	onSubmit: (saved: boolean) => void;
+}) => {
+	if (!currentFolder.value || !currentProject.value) return;
+
+	const newName = name.trim();
+	if (!newName) {
+		toast.showMessage({
+			title: i18n.baseText('renameAction.emptyName..title'),
+			message: i18n.baseText('renameAction.emptyName.message'),
+			type: 'error',
+		});
+
+		onSubmit(false);
+		return;
+	}
+
+	if (newName === currentFolder.value.name) {
+		isNameEditEnabled.value = false;
+
+		onSubmit(true);
+		return;
+	}
+
+	const validationResult = folderHelpers.validateFolderName(newName);
+	if (typeof validationResult === 'string') {
+		toast.showMessage({
+			title: i18n.baseText('renameAction.invalidName.title'),
+			message: validationResult,
+			type: 'error',
+		});
+		onSubmit(false);
+		return;
+	} else {
+		try {
+			await foldersStore.renameFolder(currentProject.value?.id, currentFolder.value.id, newName);
+			foldersStore.breadcrumbsCache[currentFolder.value.id].name = newName;
+			toast.showMessage({
+				title: i18n.baseText('folders.rename.success.message', {
+					interpolate: { folderName: newName },
+				}),
+				type: 'success',
+			});
+			telemetry.track('User renamed folder', {
+				folder_id: currentFolder.value.id,
+			});
+			isNameEditEnabled.value = false;
+			onSubmit(true);
+		} catch (error) {
+			toast.showError(error, i18n.baseText('folders.rename.error.title'));
+			onSubmit(false);
+		}
+	}
+};
 </script>
 
 <template>
@@ -1359,15 +1429,31 @@ const onCreateWorkflowClick = () => {
 				data-test-id="main-breadcrumbs"
 			>
 				<FolderBreadcrumbs
-					:current-folder="currentFolder"
+					:current-folder="currentFolderParent"
 					:actions="mainBreadcrumbsActions"
 					:hidden-items-trigger="isDragging ? 'hover' : 'click'"
 					:visible-levels="2"
+					:current-folder-as-link="true"
 					@item-selected="onBreadcrumbItemClick"
 					@action="onBreadCrumbsAction"
 					@item-drop="onBreadCrumbsItemDrop"
 					@project-drop="moveFolderToProjectRoot"
-				/>
+				>
+					<template #append>
+						<span :class="$style['path-separator']">/</span>
+						<InlineTextEdit
+							:model-value="currentFolder.name"
+							:preview-value="currentFolder.name"
+							:is-edit-enabled="isNameEditEnabled"
+							:max-length="30"
+							:disabled="readOnlyEnv || !hasPermissionToUpdateFolders"
+							:class="{ [$style.name]: true, [$style['pointer-disabled']]: isDragging }"
+							:placeholder="i18n.baseText('folders.rename.placeholder')"
+							@toggle="onNameToggle"
+							@submit="onNameSubmit"
+						/>
+					</template>
+				</FolderBreadcrumbs>
 			</div>
 		</template>
 		<template #item="{ item: data, index }">
@@ -1658,6 +1744,21 @@ const onCreateWorkflowClick = () => {
 		border-color: var(--color-secondary);
 		background-color: var(--color-callout-secondary-background);
 	}
+}
+
+.path-separator {
+	font-size: var(--font-size-xl);
+	color: var(--color-foreground-base);
+	margin: var(--spacing-4xs);
+}
+
+.name {
+	color: $custom-font-dark;
+	font-size: var(--font-size-s);
+}
+
+.pointer-disabled {
+	pointer-events: none;
 }
 </style>
 

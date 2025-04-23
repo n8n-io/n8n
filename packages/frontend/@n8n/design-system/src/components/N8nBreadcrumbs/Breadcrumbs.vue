@@ -235,7 +235,7 @@ const handleTooltipClose = () => {
 					:class="{
 						[$style.item]: true,
 						[$style.current]: props.highlightLastItem && index === items.length - 1,
-						[$style.dragging]: props.dragActive && index !== items.length - 1,
+						[$style.dragging]: props.dragActive,
 					}"
 					:title="item.label"
 					:data-test-id="
@@ -245,7 +245,7 @@ const handleTooltipClose = () => {
 					data-target="folder-breadcrumb-item"
 					@click.prevent="emitItemSelected(item.id)"
 					@mouseenter="emitItemHover(item.id)"
-					@mouseup="index !== items.length - 1 ? onItemMouseUp(item) : {}"
+					@mouseup="onItemMouseUp(item)"
 				>
 					<n8n-link v-if="item.href" :href="item.href" theme="text">{{ item.label }}</n8n-link>
 					<n8n-text v-else>{{ item.label }}</n8n-text>
@@ -434,6 +434,7 @@ const handleTooltipClose = () => {
 	.item * {
 		color: var(--color-text-base);
 		font-size: var(--font-size-s);
+		line-height: var(--font-line-heigh-xsmall);
 	}
 
 	.item {
