@@ -1,9 +1,12 @@
 import { Container, Service, type Constructable } from '@n8n/di';
 import type { ExecutionLifecycleHooks } from 'n8n-core';
 
+import type { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
+
 export interface BaseN8nModule {
 	initialize?(): void;
 	registerLifecycleHooks?(hooks: ExecutionLifecycleHooks): void;
+	registerMultiMainListeners?(multiMainSetup: MultiMainSetup): void;
 }
 
 type Module = Constructable<BaseN8nModule>;
@@ -34,6 +37,12 @@ export class ModuleRegistry {
 			if (instance.registerLifecycleHooks) {
 				instance.registerLifecycleHooks(hooks);
 			}
+		}
+	}
+
+	registerMultiMainListeners(multiMainSetup: MultiMainSetup) {
+		for (const ModuleClass of registry.keys()) {
+			Container.get(ModuleClass).registerMultiMainListeners?.(multiMainSetup);
 		}
 	}
 }

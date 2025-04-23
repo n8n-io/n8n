@@ -369,12 +369,11 @@ export async function prepareFormReturnItem(
 
 	returnItem.json.formMode = mode;
 
-	const workflowStaticData = context.getWorkflowStaticData('node');
 	if (
-		Object.keys(workflowStaticData || {}).length &&
-		context.getNode().type === FORM_TRIGGER_NODE_TYPE
+		context.getNode().type === FORM_TRIGGER_NODE_TYPE &&
+		Object.keys(context.getRequestObject().query || {}).length
 	) {
-		returnItem.json.formQueryParameters = workflowStaticData;
+		returnItem.json.formQueryParameters = context.getRequestObject().query;
 	}
 
 	return returnItem;
@@ -416,10 +415,6 @@ export function renderForm({
 
 	if (context.getNode().type === FORM_TRIGGER_NODE_TYPE) {
 		query = context.getRequestObject().query as IDataObject;
-		const workflowStaticData = context.getWorkflowStaticData('node');
-		for (const key of Object.keys(query)) {
-			workflowStaticData[key] = query[key];
-		}
 	} else if (context.getNode().type === FORM_NODE_TYPE) {
 		const parentNodes = context.getParentNodes(context.getNode().name);
 		const trigger = parentNodes.find(
