@@ -27,9 +27,13 @@ class S3CredentialsConfig {
 	@Env('N8N_EXTERNAL_STORAGE_S3_ACCESS_SECRET')
 	accessSecret: string = '';
 
-	/** Use Instance role to authenticate S3 calls for external storage */
-	@Env('N8N_EXTERNAL_STORAGE_S3_USE_INSTANCE_ROLE')
-	useInstanceRole: boolean = false;
+	/**
+	 * Use automatic credential detection to authenticate S3 calls for external storage
+	 * This will ignore accessKey/accessSecret and use the default credential provider chain
+	 * https://docs.aws.amazon.com/sdk-for-javascript/v3/developer-guide/setting-credentials-node.html#credchain
+	 */
+	@Env('N8N_EXTERNAL_STORAGE_S3_AUTH_AUTO_DETECT')
+	authAutoDetect: boolean = false;
 }
 
 @Config

@@ -53,7 +53,7 @@ export class ObjectStoreService {
 			endpoint: host ? `${protocol}://${host}` : undefined,
 			forcePathStyle: true, // Needed for non-AWS S3 compatible services
 		};
-		if (!credentials.useInstanceRole) {
+		if (!credentials.authAutoDetect) {
 			clientConfig.credentials = {
 				accessKeyId: credentials.accessKey,
 				secretAccessKey: credentials.accessSecret,
