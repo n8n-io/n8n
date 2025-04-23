@@ -30,7 +30,6 @@ import type { SharedCredentials } from '@/databases/entities/shared-credentials'
 import type { TagEntity } from '@/databases/entities/tag-entity';
 import type { User } from '@/databases/entities/user';
 
-import type { LICENSE_FEATURES, LICENSE_QUOTAS } from './constants';
 import type { Folder } from './databases/entities/folder';
 import type { ExternalHooks } from './external-hooks';
 import type { WorkflowWithSharingsAndCredentials } from './workflows/workflows.types';
@@ -305,11 +304,6 @@ export interface IExecutionTrackProperties extends ITelemetryTrackProperties {
 // ----------------------------------
 //               license
 // ----------------------------------
-
-type ValuesOf<T> = T[keyof T];
-
-export type BooleanLicenseFeature = ValuesOf<typeof LICENSE_FEATURES>;
-export type NumericLicenseFeature = ValuesOf<typeof LICENSE_QUOTAS>;
 
 export interface ILicenseReadResponse {
 	usage: {
