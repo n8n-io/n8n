@@ -1,3 +1,5 @@
+import { INode } from '.';
+
 export function hasDotNotationBannedChar(nodeName: string) {
 	const DOT_NOTATION_BANNED_CHARS = /^(\d)|[\\ `!@#$%^&*()_+\-=[\]{};':"\\|,.<>?~]/g;
 
@@ -68,4 +70,67 @@ export function applyAccessPatterns(expression: string, previousName: string, ne
 		}
 	}
 	return expression;
+}
+
+type ReferenceReplacementResult = {
+	expression: string; // generated expression
+	replacedReferenceMatches: Map<string, number[]>; // Map from nodeName to index one past the replacement
+};
+
+/**
+1. Detect usages and note down the whole expression to be replaced
+		$('abc').first().def.ghi['mno'] =>
+			type ExtractWorkflowExpressionData = {
+				toBeReplaced: "$('abc').first().def.ghi",
+				expression: "$('abc').first().def.ghi['mno']",
+				nodeName: 'abc',
+				replacementPrefix: "$('Start').first()",
+				replacementName: "def_ghi"
+			}
+2. Ensure all replacementNames are unique, modify by combining with nodeName if needed
+3. Create ExecuteWorkflow and Trigger with a variable for each replacementName, setting `toBeReplaced` as their expression
+4. Replace `toBeReplaced` with `${replacementPrefix}.${replacementName}`
+
+
+
+1. Create Map (toBeReplaced => ExtractWorkflowExpressionData)
+2. Create inverse Map (replacementName => ExtractWorkflowExpressionData) while ensuring uniqueness
+*/
+
+type ExtractWorkflowExpressionData = {
+	replacementOfOriginalExpression: string; // "$('abc').first().def.ghi";
+	originalExpression: string; // "$('abc').first().def.ghi['mno']";
+	previousNodeName: string; // 'abc';
+	replacementPrefix: string; //  "$('Start').first()";
+	replacementName: string; // "def_ghi";
+};
+
+const ITEM_ACCESSORS = ['first()', 'item'];
+
+const DATA_ACCESSORS = ['json', 'binary'];
+
+export function impl_buildExtractWorkflowExpressionDataMap(
+	expression: string,
+	nodeRegexps: ReadonlyArray<[AccessPattern, RegExp]>,
+	nodeNames: string[],
+	newName: string,
+): Map<string, ExtractWorkflowExpressionData> {
+	const result = new Map<string, ExtractWorkflowExpressionData>();
+
+	return result;
+}
+
+export function buildExtractWorkflowExpressionDataMap(
+	selectedNode: INode[],
+	nodeNames: string[],
+	newName: string = 'Start',
+) {
+	// Compile all candidate regexp patterns
+	// Note that this also matches `$('NodeName1') + $('NodeName2')` with node name 'NodeName1') + $('NodeName2'
+	// which needs to be filtered out later
+	const nodeRegexps = ACCESS_PATTERNS.map(
+		(pattern) => [pattern, new RegExp(pattern.replacePattern('w+'))] as const,
+	);
+
+	return result;
 }
