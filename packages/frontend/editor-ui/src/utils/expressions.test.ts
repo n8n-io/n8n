@@ -159,7 +159,7 @@ describe('Utils: Expressions', () => {
 		});
 	});
 
-	describe('getExpression', () => {
+	describe('getResolvedExpression', () => {
 		it('should return an expression if a resolved expression string is provided', () => {
 			const expressionValue = true;
 			const resolvedExpressionString = 'resolved expression';
