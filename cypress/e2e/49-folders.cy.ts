@@ -19,6 +19,7 @@ import {
 	duplicateWorkflowFromCardActions,
 	duplicateWorkflowFromWorkflowPage,
 	getAddResourceDropdown,
+	getCanvasBreadcrumbs,
 	getCurrentBreadcrumbText,
 	getFolderCard,
 	getFolderCardActionItem,
@@ -289,6 +290,24 @@ describe('Folders', () => {
 			goToPersonalProject();
 			getFolderCard('Workflows go here').click();
 			getWorkflowCard('Created from list breadcrumbs').should('exist');
+		});
+
+		it('should show new workflow breadcrumbs correctly', () => {
+			goToPersonalProject();
+			createFolderFromProjectHeader('Workflow breadcrumbs test');
+			getFolderCard('Workflow breadcrumbs test').should('exist').click();
+			getFolderEmptyState().find('button').contains('Create Workflow').click();
+			// Should show breadcrumbs before and after saving new workflow
+			getCanvasBreadcrumbs().should('exist');
+			getCanvasBreadcrumbs().findChildByTestId('home-project').should('contain.text', 'Personal');
+			getCanvasBreadcrumbs().find('li[data-test-id="breadcrumbs-item"]').should('have.length', 1);
+			// Save workflow and reload
+			cy.getByTestId('workflow-save-button').click();
+			cy.reload();
+			// Should still show the same breadcrumbs
+			getCanvasBreadcrumbs().should('exist');
+			getCanvasBreadcrumbs().findChildByTestId('home-project').should('contain.text', 'Personal');
+			getCanvasBreadcrumbs().find('li[data-test-id="breadcrumbs-item"]').should('have.length', 1);
 		});
 	});
 

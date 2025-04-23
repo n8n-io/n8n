@@ -169,7 +169,6 @@ watch(
 			:path-truncated="hasMoreItems"
 			:hidden-items="hasMoreItems ? hiddenBreadcrumbsItemsAsync : undefined"
 			:hidden-items-trigger="props.hiddenItemsTrigger"
-			data-test-id="folder-list-breadcrumbs"
 			@tooltip-opened="fetchHiddenBreadCrumbsItems"
 			@item-selected="onItemSelect"
 			@item-hover="onItemHover"

@@ -606,7 +606,13 @@ const onBreadcrumbsItemSelected = (item: PathItem) => {
 
 <template>
 	<div :class="$style.container">
-		<BreakpointsObserver :value-x-s="15" :value-s-m="25" :value-m-d="50" class="name-container">
+		<BreakpointsObserver
+			:value-x-s="15"
+			:value-s-m="25"
+			:value-m-d="50"
+			class="name-container"
+			data-test-id="canvas-breadcrumbs"
+		>
 			<template #default="{ value }">
 				<FolderBreadcrumbs
 					:current-folder="currentFolderForBreadcrumbs"

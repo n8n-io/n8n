@@ -121,6 +121,11 @@ export function getListActionsToggle() {
 	return cy.getByTestId('folder-breadcrumbs-actions');
 }
 
+export function getCanvasBreadcrumbs() {
+	cy.getByTestId('canvas-breadcrumbs').should('exist');
+	return cy.getByTestId('canvas-breadcrumbs').findChildByTestId('folder-breadcrumbs');
+}
+
 export function getListActionItem(name: string) {
 	return cy
 		.getByTestId('folder-breadcrumbs-actions')
