@@ -127,13 +127,16 @@ const actions = computed(() => {
 			label: locale.baseText('workflows.item.open'),
 			value: WORKFLOW_LIST_ITEM_ACTIONS.OPEN,
 		},
-		{
-			label: locale.baseText('workflows.item.share'),
-			value: WORKFLOW_LIST_ITEM_ACTIONS.SHARE,
-		},
 	];
 
-	if (workflowPermissions.value.create && !props.readOnly) {
+	if (!props.data.isArchived) {
+		items.push({
+			label: locale.baseText('workflows.item.share'),
+			value: WORKFLOW_LIST_ITEM_ACTIONS.SHARE,
+		});
+	}
+
+	if (workflowPermissions.value.create && !props.readOnly && !props.data.isArchived) {
 		items.push({
 			label: locale.baseText('workflows.item.duplicate'),
 			value: WORKFLOW_LIST_ITEM_ACTIONS.DUPLICATE,
@@ -159,22 +162,22 @@ const actions = computed(() => {
 		});
 	}
 
-	if (workflowPermissions.value.delete && !props.readOnly && !props.data.isArchived) {
-		items.push({
-			label: locale.baseText('workflows.item.archive'),
-			value: WORKFLOW_LIST_ITEM_ACTIONS.ARCHIVE,
-		});
-	}
-
-	if (workflowPermissions.value.delete && !props.readOnly && props.data.isArchived) {
-		items.push({
-			label: locale.baseText('workflows.item.delete'),
-			value: WORKFLOW_LIST_ITEM_ACTIONS.DELETE,
-		});
-		items.push({
-			label: locale.baseText('workflows.item.unarchive'),
-			value: WORKFLOW_LIST_ITEM_ACTIONS.UNARCHIVE,
-		});
+	if (workflowPermissions.value.delete && !props.readOnly) {
+		if (!props.data.isArchived) {
+			items.push({
+				label: locale.baseText('workflows.item.archive'),
+				value: WORKFLOW_LIST_ITEM_ACTIONS.ARCHIVE,
+			});
+		} else {
+			items.push({
+				label: locale.baseText('workflows.item.delete'),
+				value: WORKFLOW_LIST_ITEM_ACTIONS.DELETE,
+			});
+			items.push({
+				label: locale.baseText('workflows.item.unarchive'),
+				value: WORKFLOW_LIST_ITEM_ACTIONS.UNARCHIVE,
+			});
+		}
 	}
 
 	return items;

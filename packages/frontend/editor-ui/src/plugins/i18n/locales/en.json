@@ -1045,6 +1045,8 @@
 	"menuActions.importFromUrl": "Import from URL...",
 	"menuActions.importFromFile": "Import from File...",
 	"menuActions.delete": "Delete",
+	"menuActions.archive": "Archive",
+	"menuActions.unarchive": "Unarchive",
 	"multipleParameter.addItem": "Add item",
 	"multipleParameter.currentlyNoItemsExist": "Currently no items exist",
 	"multipleParameter.deleteItem": "Delete item",

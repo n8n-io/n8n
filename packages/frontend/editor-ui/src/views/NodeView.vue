@@ -247,7 +247,8 @@ const isCanvasReadOnly = computed(() => {
 	return (
 		isDemoRoute.value ||
 		isReadOnlyEnvironment.value ||
-		!(workflowPermissions.value.update ?? projectPermissions.value.workflow.update)
+		!(workflowPermissions.value.update ?? projectPermissions.value.workflow.update) ||
+		editableWorkflow.value.isArchived
 	);
 });
 
