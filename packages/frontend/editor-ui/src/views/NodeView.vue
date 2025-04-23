@@ -132,10 +132,6 @@ const LazySetupWorkflowCredentialsButton = defineAsyncComponent(
 		await import('@/components/SetupWorkflowCredentialsButton/SetupWorkflowCredentialsButton.vue'),
 );
 
-const props = defineProps<{
-	initialNodeId?: string | undefined;
-}>();
-
 const $style = useCssModule();
 const router = useRouter();
 const route = useRoute();
@@ -238,6 +234,7 @@ const workflowId = computed(() => {
 		? undefined
 		: workflowIdParam;
 });
+const routeNodeId = computed(() => route.params.nodeId as string | undefined);
 
 const isNewWorkflowRoute = computed(() => route.name === VIEWS.NEW_WORKFLOW || !workflowId.value);
 const isWorkflowRoute = computed(() => !!route?.meta?.nodeView || isDemoRoute.value);
@@ -1719,8 +1716,8 @@ onMounted(() => {
 
 				// A delay here makes opening the NDV a bit less jarring
 				setTimeout(() => {
-					if (props.initialNodeId) {
-						const nodeUi = workflowsStore.findNodeByPartialId(props.initialNodeId);
+					if (routeNodeId.value) {
+						const nodeUi = workflowsStore.findNodeByPartialId(routeNodeId.value);
 						if (nodeUi) setNodeActive(nodeUi.id);
 					}
 				}, 500);
