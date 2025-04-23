@@ -174,8 +174,6 @@
     "xmllint-wasm": "3.0.1",
     "xss": "catalog:",
     "yamljs": "0.3.0",
-    "zod": "catalog:",
-    "zod-to-json-schema": "3.23.3",
-    "openai": "4.78.1"
+    "zod": "catalog:"
   }
 }
