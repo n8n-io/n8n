@@ -82,25 +82,33 @@ export async function jiraSoftwareCloudApiRequestAllItems(
 	method: IHttpRequestMethods,
 	body: any = {},
 	query: IDataObject = {},
+	paginationType: 'offset' | 'token' = 'offset',
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
 
-	query.startAt = 0;
-	body.startAt = 0;
-	query.maxResults = 100;
-	body.maxResults = 100;
+	if (paginationType === 'offset') {
+		query.startAt = 0;
+		query.maxResults = 100;
+	} else {
+		body.maxResults = 100;
+	}
 
+	let hasNextPage: boolean;
 	do {
 		responseData = await jiraSoftwareCloudApiRequest.call(this, endpoint, method, body, query);
 		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
-		query.startAt = (responseData.startAt as number) + (responseData.maxResults as number);
-		body.startAt = (responseData.startAt as number) + (responseData.maxResults as number);
-	} while (
-		(responseData.startAt as number) + (responseData.maxResults as number) <
-		responseData.total
-	);
+
+		if (paginationType === 'offset') {
+			const nextStartAt = (responseData.startAt as number) + (responseData.maxResults as number);
+			query.startAt = nextStartAt;
+			hasNextPage = nextStartAt < responseData.total;
+		} else {
+			body.nextPageToken = responseData.nextPageToken as string;
+			hasNextPage = !!responseData.nextPageToken;
+		}
+	} while (hasNextPage);
 
 	return returnData;
 }

@@ -822,16 +822,18 @@ export class Jira implements INodeType {
 						responseData = await jiraSoftwareCloudApiRequestAllItems.call(
 							this,
 							'issues',
-							'/api/2/search',
+							'/api/2/search/jql',
 							'POST',
 							body,
+							{},
+							'token',
 						);
 					} else {
 						const limit = this.getNodeParameter('limit', i);
 						body.maxResults = limit;
 						responseData = await jiraSoftwareCloudApiRequest.call(
 							this,
-							'/api/2/search',
+							'/api/2/search/jql',
 							'POST',
 							body,
 						);
