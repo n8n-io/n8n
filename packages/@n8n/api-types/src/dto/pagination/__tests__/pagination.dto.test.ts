@@ -97,18 +97,18 @@ describe('PaginationDto', () => {
 		test('should reject negative take', () => {
 			const result = PaginationDto.safeParse({ take: '-5' });
 
-			expect(result.success).toBe(true);
-			if (result.success) {
-				expect(result.data.take).toBe(-5);
+			expect(result.success).toBe(false);
+			if (!result.success) {
+				expect(result.error.issues[0].path).toContain('take');
 			}
 		});
 
 		test('should reject negative skip', () => {
 			const result = PaginationDto.safeParse({ take: '10', skip: '-5' });
 
-			expect(result.success).toBe(true);
-			if (result.success) {
-				expect(result.data.skip).toBe(-5);
+			expect(result.success).toBe(false);
+			if (!result.success) {
+				expect(result.error.issues[0].path).toContain('skip');
 			}
 		});
 	});

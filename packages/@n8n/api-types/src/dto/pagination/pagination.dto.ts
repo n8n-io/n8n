@@ -9,6 +9,9 @@ const skipValidator = z
 	.transform((val) => (val ? parseInt(val, 10) : 0))
 	.refine((val) => !isNaN(val) && Number.isInteger(val), {
 		message: 'Param `skip` must be a valid integer',
+	})
+	.refine((val) => val >= 0, {
+		message: 'Param `skip` must be a non-negative integer',
 	});
 
 const takeValidator = z
@@ -17,6 +20,9 @@ const takeValidator = z
 	.transform((val) => (val ? parseInt(val, 10) : 10))
 	.refine((val) => !isNaN(val) && Number.isInteger(val), {
 		message: 'Param `take` must be a valid integer',
+	})
+	.refine((val) => val >= 0, {
+		message: 'Param `take` must be a non-negative integer',
 	})
 	.transform((val) => Math.min(val, MAX_ITEMS_PER_PAGE));
 
