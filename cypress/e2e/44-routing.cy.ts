@@ -3,6 +3,7 @@ import {
 	getCloseSaveChangesButton,
 	getSaveChangesModal,
 } from '../composables/modals/save-changes-modal';
+import { getNdvContainer } from '../composables/ndv';
 import { getHomeButton } from '../composables/projects';
 import { addNodeToCanvas, saveWorkflowOnButtonClick } from '../composables/workflow';
 import {
@@ -92,6 +93,23 @@ describe('Workflows', () => {
 			cy.get('body').type('{esc}');
 
 			cy.url().should('equal', startUrl);
+		});
+	});
+
+	it('should open ndv via URL', () => {
+		getCreateWorkflowButton().click();
+		saveWorkflowOnButtonClick();
+		cy.createFixtureWorkflow('Test_workflow_1.json', 'Empty State Card Workflow');
+
+		addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME, true, true);
+		cy.url().then((ndvUrl) => {
+			cy.get('body').type('{esc}');
+
+			getNdvContainer().should('not.be.visible');
+
+			cy.visit(ndvUrl);
+
+			getNdvContainer().should('be.visible');
 		});
 	});
 });
