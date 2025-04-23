@@ -406,6 +406,8 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 			});
 		}
 
+		if (options?.skipValidation) return returnData;
+
 		// Validate parameter value if it has a schema defined(RMC) or validateType defined
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		returnData = validateValueAgainstSchema(

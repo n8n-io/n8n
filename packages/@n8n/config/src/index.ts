@@ -10,7 +10,6 @@ import { EndpointsConfig } from './configs/endpoints.config';
 import { EventBusConfig } from './configs/event-bus.config';
 import { ExecutionsConfig } from './configs/executions.config';
 import { ExternalHooksConfig } from './configs/external-hooks.config';
-import { ExternalSecretsConfig } from './configs/external-secrets.config';
 import { ExternalStorageConfig } from './configs/external-storage.config';
 import { GenericConfig } from './configs/generic.config';
 import { LicenseConfig } from './configs/license.config';
@@ -67,9 +66,6 @@ export class GlobalConfig {
 
 	@Nested
 	externalHooks: ExternalHooksConfig;
-
-	@Nested
-	externalSecrets: ExternalSecretsConfig;
 
 	@Nested
 	templates: TemplatesConfig;
