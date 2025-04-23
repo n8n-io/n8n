@@ -81,6 +81,19 @@ export class Logger implements LoggerType {
 		return scopedLogger;
 	}
 
+	private detailedErrorStringify(
+		error: unknown,
+	): { name: string; message: string; stack?: string; cause: unknown } | string {
+		if (!(error instanceof Error)) return String(error);
+
+		return {
+			name: error.name,
+			message: error.message,
+			stack: error.stack,
+			cause: error.cause ? this.detailedErrorStringify(error.cause) : undefined,
+		};
+	}
+
 	private log(level: LogLevel, message: string, metadata: LogMetadata) {
 		const location: LogLocationMetadata = {};
 
@@ -90,6 +103,13 @@ export class Logger implements LoggerType {
 			location.file = basename(caller.getFileName() ?? '');
 			const fnName = caller.getFunctionName();
 			if (fnName) location.function = fnName;
+		}
+
+		for (const key of Object.keys(metadata)) {
+			const value = metadata[key];
+			if (value instanceof Error) {
+				metadata[key] = this.detailedErrorStringify(value);
+			}
 		}
 
 		this.internalLogger.log(level, message, { ...metadata, ...location });
