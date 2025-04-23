@@ -319,7 +319,9 @@ describe('VirtualSchema.vue', () => {
 
 		const { getAllByText } = renderComponent({ props: { paneType: 'output' } });
 		await waitFor(() =>
-			expect(getAllByText('No fields - node executed, but no items were sent').length).toBe(1),
+			expect(
+				getAllByText('No fields - node executed, but no items were sent on this branch').length,
+			).toBe(1),
 		);
 	});
 
