@@ -1,4 +1,5 @@
 import { GlobalConfig } from '@n8n/config';
+import { OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import compression from 'compression';
 import express from 'express';
@@ -11,7 +12,6 @@ import { Logger } from 'n8n-core';
 import config from '@/config';
 import { N8N_VERSION, TEMPLATES_DIR, inDevelopment, inTest } from '@/constants';
 import * as Db from '@/db';
-import { OnShutdown } from '@/decorators/on-shutdown';
 import { ExternalHooks } from '@/external-hooks';
 import { rawBodyReader, bodyParser, corsMiddleware } from '@/middlewares';
 import { send, sendErrorResponse } from '@/response-helper';

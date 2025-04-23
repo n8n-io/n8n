@@ -1,8 +1,7 @@
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
-import type { ExecutionLifecycleHooks } from 'n8n-core';
 
-import type { BaseN8nModule } from '../module';
+import type { BaseN8nModule, ExecutionLifecycleHooks } from '../module';
 import { ModuleRegistry, N8nModule } from '../module';
 
 let moduleRegistry: ModuleRegistry;
