@@ -67,7 +67,7 @@ exports[`viewsData > AIView > should return ai view with ai transform node 1`] =
       "type": "view",
     },
   ],
-  "subtitle": "Select an Al Node to add to your workflow",
+  "subtitle": "Select an AI Node to add to your workflow",
   "title": "AI Nodes",
   "value": "AI",
 }
@@ -127,7 +127,7 @@ exports[`viewsData > AIView > should return ai view without ai transform node if
       "type": "view",
     },
   ],
-  "subtitle": "Select an Al Node to add to your workflow",
+  "subtitle": "Select an AI Node to add to your workflow",
   "title": "AI Nodes",
   "value": "AI",
 }
