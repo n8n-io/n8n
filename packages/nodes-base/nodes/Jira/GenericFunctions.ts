@@ -88,15 +88,19 @@ export async function jiraSoftwareCloudApiRequestAllItems(
 	let responseData;
 
 	query.startAt = 0;
-	body.startAt = 0;
 	query.maxResults = 100;
-	body.maxResults = 100;
+	if (method !== 'GET') {
+		body.startAt = 0;
+		body.maxResults = 100;
+	}
 
 	do {
 		responseData = await jiraSoftwareCloudApiRequest.call(this, endpoint, method, body, query);
 		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 		query.startAt = (responseData.startAt as number) + (responseData.maxResults as number);
-		body.startAt = (responseData.startAt as number) + (responseData.maxResults as number);
+		if (method !== 'GET') {
+			body.startAt = (responseData.startAt as number) + (responseData.maxResults as number);
+		}
 	} while (
 		(responseData.startAt as number) + (responseData.maxResults as number) <
 		responseData.total
