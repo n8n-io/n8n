@@ -37,6 +37,8 @@ component_management:
         - packages/@n8n/api-types/**
         - packages/@n8n/config/**
         - packages/@n8n/client-oauth2/**
+        - packages/@n8n/decorators/**
+        - packages/@n8n/constants/**
         - packages/@n8n/di/**
         - packages/@n8n/imap/**
         - packages/@n8n/permissions/**
