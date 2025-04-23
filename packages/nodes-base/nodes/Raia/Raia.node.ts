@@ -215,10 +215,6 @@ export class Raia implements INodeType {
 				let conversationId: string;
 
 				if (conversationType === 'raiaManaged') {
-					const phoneNumber = this.getNodeParameter('phoneNumber', 0);
-					if (!(phoneNumber as string).startsWith('+')) {
-						throw new ApplicationError('Phone number must start with a "+" (e.g., +1234567890).');
-					}
 					const response = await this.helpers.httpRequest({
 						method: 'POST',
 						url: 'https://api.raia2.com/external/conversations/start',
@@ -229,7 +225,7 @@ export class Raia implements INodeType {
 							context: this.getNodeParameter('context', 0),
 							source: this.getNodeParameter('source', 0),
 							channel: this.getNodeParameter('channel', 0),
-							phoneNumber,
+							phoneNumber: this.getNodeParameter('phoneNumber', 0),
 							email: this.getNodeParameter('email', 0),
 							emailSubject: this.getNodeParameter('emailSubject', 0),
 							emailIntroduction: this.getNodeParameter('emailIntroduction', 0),
