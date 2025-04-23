@@ -59,6 +59,8 @@ exports[`AskAssistantChat > does not render retry button if no error is present 
         >
           beta
         </div>
+        
+        
       </div>
       <div
         class="back"
@@ -78,12 +80,12 @@ exports[`AskAssistantChat > does not render retry button if no error is present 
       >
         <div>
           
+          
           <div
             class="message"
-            data-test-id="chat-message-assistant"
           >
             <div
-              class="roleName"
+              class="roleName userSection"
             >
               <div
                 class="container small"
@@ -127,6 +129,7 @@ exports[`AskAssistantChat > does not render retry button if no error is present 
                 Assistant
               </span>
             </div>
+            
             <div
               class="textMessage"
             >
@@ -146,8 +149,10 @@ exports[`AskAssistantChat > does not render retry button if no error is present 
               <!--v-if-->
               <!--v-if-->
             </div>
-            <!--v-if-->
+            
           </div>
+          <!--v-if-->
+          
           
         </div>
         <!--v-if-->
@@ -157,6 +162,7 @@ exports[`AskAssistantChat > does not render retry button if no error is present 
       class="inputWrapper"
       data-test-id="chat-input-wrapper"
     >
+      
       <textarea
         class="ignore-key-press-node-creator ignore-key-press-canvas"
         data-test-id="chat-input"
@@ -172,6 +178,7 @@ exports[`AskAssistantChat > does not render retry button if no error is present 
         size="large"
         type="text"
       />
+      
     </div>
   </div>
 </div>
@@ -236,6 +243,8 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
         >
           beta
         </div>
+        
+        
       </div>
       <div
         class="back"
@@ -255,12 +264,12 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
       >
         <div>
           
+          
           <div
             class="message"
-            data-test-id="chat-message-assistant"
           >
             <div
-              class="roleName"
+              class="roleName userSection"
             >
               <div
                 class="container small"
@@ -304,6 +313,7 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
                 Assistant
               </span>
             </div>
+            
             <div
               class="textMessage"
             >
@@ -323,280 +333,283 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
               <!--v-if-->
               <!--v-if-->
             </div>
-            <!--v-if-->
+            
           </div>
+          <!--v-if-->
+          
+          
           <div
             class="message"
-            data-test-id="chat-message-assistant"
           >
             <!--v-if-->
-            <div>
+            
+            <div
+              class="container"
+              data-test-id="code-diff-suggestion"
+            >
               <div
-                class="container"
-                data-test-id="code-diff-suggestion"
+                class="title"
               >
+                Short solution description here that can spill over to two lines
+              </div>
+              <div
+                class="diffSection"
+              >
+                
                 <div
-                  class="title"
+                  class="diff"
                 >
-                  Short solution description here that can spill over to two lines
+                  <div
+                    class="lineNumber"
+                  >
+                    <!-- ln1 is line number in original text -->
+                    <!-- ln2 is line number in updated text -->
+                     
+                  </div>
+                  <div
+                    class="del diffContent"
+                  >
+                    <span>
+                       - 
+                    </span>
+                    <span>
+                      The Way that can be told of is not the eternal Way;
+                    </span>
+                  </div>
                 </div>
                 <div
-                  class="diffSection"
+                  class="diff"
                 >
-                  
                   <div
-                    class="diff"
+                    class="lineNumber"
                   >
-                    <div
-                      class="lineNumber"
-                    >
-                      <!-- ln1 is line number in original text -->
-                      <!-- ln2 is line number in updated text -->
-                       
-                    </div>
-                    <div
-                      class="del diffContent"
-                    >
-                      <span>
-                         - 
-                      </span>
-                      <span>
-                        The Way that can be told of is not the eternal Way;
-                      </span>
-                    </div>
+                    <!-- ln1 is line number in original text -->
+                    <!-- ln2 is line number in updated text -->
+                     
                   </div>
                   <div
-                    class="diff"
+                    class="del diffContent"
                   >
-                    <div
-                      class="lineNumber"
-                    >
-                      <!-- ln1 is line number in original text -->
-                      <!-- ln2 is line number in updated text -->
-                       
-                    </div>
-                    <div
-                      class="del diffContent"
-                    >
-                      <span>
-                         - 
-                      </span>
-                      <span>
-                        The name that can be named is not the eternal name.
-                      </span>
-                    </div>
+                    <span>
+                       - 
+                    </span>
+                    <span>
+                      The name that can be named is not the eternal name.
+                    </span>
                   </div>
-                  <div
-                    class="diff"
-                  >
-                    <div
-                      class="lineNumber"
-                    >
-                      <!-- ln1 is line number in original text -->
-                      <!-- ln2 is line number in updated text -->
-                       
-                    </div>
-                    <div
-                      class="del diffContent"
-                    >
-                      <span>
-                         - 
-                      </span>
-                      <span>
-                        The Named is the mother of all things.
-                      </span>
-                    </div>
-                  </div>
-                  <div
-                    class="diff"
-                  >
-                    <div
-                      class="lineNumber"
-                    >
-                      <!-- ln1 is line number in original text -->
-                      <!-- ln2 is line number in updated text -->
-                       1
-                    </div>
-                    <div
-                      class="add diffContent"
-                    >
-                      <span>
-                         + 
-                      </span>
-                      <span>
-                        The named is the mother of all things.
-                      </span>
-                    </div>
-                  </div>
-                  <div
-                    class="diff"
-                  >
-                    <div
-                      class="lineNumber"
-                    >
-                      <!-- ln1 is line number in original text -->
-                      <!-- ln2 is line number in updated text -->
-                       2
-                    </div>
-                    <div
-                      class="add diffContent"
-                    >
-                      <span>
-                         + 
-                      </span>
-                      <span />
-                    </div>
-                  </div>
-                  <div
-                    class="diff"
-                  >
-                    <div
-                      class="lineNumber"
-                    >
-                      <!-- ln1 is line number in original text -->
-                      <!-- ln2 is line number in updated text -->
-                       3
-                    </div>
-                    <div
-                      class="normal diffContent"
-                    >
-                      <span>
-                           
-                      </span>
-                      <span>
-                         The two are the same,
-                      </span>
-                    </div>
-                  </div>
-                  <div
-                    class="diff"
-                  >
-                    <div
-                      class="lineNumber"
-                    >
-                      <!-- ln1 is line number in original text -->
-                      <!-- ln2 is line number in updated text -->
-                       4
-                    </div>
-                    <div
-                      class="normal diffContent"
-                    >
-                      <span>
-                           
-                      </span>
-                      <span>
-                         But after they are produced,
-                      </span>
-                    </div>
-                  </div>
-                  <div
-                    class="diff"
-                  >
-                    <div
-                      class="lineNumber"
-                    >
-                      <!-- ln1 is line number in original text -->
-                      <!-- ln2 is line number in updated text -->
-                       5
-                    </div>
-                    <div
-                      class="normal diffContent"
-                    >
-                      <span>
-                           
-                      </span>
-                      <span>
-                         they have different names.
-                      </span>
-                    </div>
-                  </div>
-                  <div
-                    class="diff"
-                  >
-                    <div
-                      class="lineNumber"
-                    >
-                      <!-- ln1 is line number in original text -->
-                      <!-- ln2 is line number in updated text -->
-                       6
-                    </div>
-                    <div
-                      class="add diffContent"
-                    >
-                      <span>
-                         + 
-                      </span>
-                      <span>
-                        They both may be called deep and profound.
-                      </span>
-                    </div>
-                  </div>
-                  <div
-                    class="diff"
-                  >
-                    <div
-                      class="lineNumber"
-                    >
-                      <!-- ln1 is line number in original text -->
-                      <!-- ln2 is line number in updated text -->
-                       7
-                    </div>
-                    <div
-                      class="add diffContent"
-                    >
-                      <span>
-                         + 
-                      </span>
-                      <span>
-                        Deeper and more profound,
-                      </span>
-                    </div>
-                  </div>
-                  <div
-                    class="diff"
-                  >
-                    <div
-                      class="lineNumber"
-                    >
-                      <!-- ln1 is line number in original text -->
-                      <!-- ln2 is line number in updated text -->
-                       8
-                    </div>
-                    <div
-                      class="add diffContent"
-                    >
-                      <span>
-                         + 
-                      </span>
-                      <span>
-                        The door of all subtleties!
-                      </span>
-                    </div>
-                  </div>
-                  
                 </div>
                 <div
-                  class="actions"
+                  class="diff"
                 >
-                  <n8n-button-stub
-                    data-test-id="replace-code-button"
-                    disabled="false"
-                    icon="refresh"
-                    loading="false"
-                    size="mini"
-                    type="primary"
-                  />
+                  <div
+                    class="lineNumber"
+                  >
+                    <!-- ln1 is line number in original text -->
+                    <!-- ln2 is line number in updated text -->
+                     
+                  </div>
+                  <div
+                    class="del diffContent"
+                  >
+                    <span>
+                       - 
+                    </span>
+                    <span>
+                      The Named is the mother of all things.
+                    </span>
+                  </div>
                 </div>
+                <div
+                  class="diff"
+                >
+                  <div
+                    class="lineNumber"
+                  >
+                    <!-- ln1 is line number in original text -->
+                    <!-- ln2 is line number in updated text -->
+                     1
+                  </div>
+                  <div
+                    class="add diffContent"
+                  >
+                    <span>
+                       + 
+                    </span>
+                    <span>
+                      The named is the mother of all things.
+                    </span>
+                  </div>
+                </div>
+                <div
+                  class="diff"
+                >
+                  <div
+                    class="lineNumber"
+                  >
+                    <!-- ln1 is line number in original text -->
+                    <!-- ln2 is line number in updated text -->
+                     2
+                  </div>
+                  <div
+                    class="add diffContent"
+                  >
+                    <span>
+                       + 
+                    </span>
+                    <span />
+                  </div>
+                </div>
+                <div
+                  class="diff"
+                >
+                  <div
+                    class="lineNumber"
+                  >
+                    <!-- ln1 is line number in original text -->
+                    <!-- ln2 is line number in updated text -->
+                     3
+                  </div>
+                  <div
+                    class="normal diffContent"
+                  >
+                    <span>
+                         
+                    </span>
+                    <span>
+                       The two are the same,
+                    </span>
+                  </div>
+                </div>
+                <div
+                  class="diff"
+                >
+                  <div
+                    class="lineNumber"
+                  >
+                    <!-- ln1 is line number in original text -->
+                    <!-- ln2 is line number in updated text -->
+                     4
+                  </div>
+                  <div
+                    class="normal diffContent"
+                  >
+                    <span>
+                         
+                    </span>
+                    <span>
+                       But after they are produced,
+                    </span>
+                  </div>
+                </div>
+                <div
+                  class="diff"
+                >
+                  <div
+                    class="lineNumber"
+                  >
+                    <!-- ln1 is line number in original text -->
+                    <!-- ln2 is line number in updated text -->
+                     5
+                  </div>
+                  <div
+                    class="normal diffContent"
+                  >
+                    <span>
+                         
+                    </span>
+                    <span>
+                       they have different names.
+                    </span>
+                  </div>
+                </div>
+                <div
+                  class="diff"
+                >
+                  <div
+                    class="lineNumber"
+                  >
+                    <!-- ln1 is line number in original text -->
+                    <!-- ln2 is line number in updated text -->
+                     6
+                  </div>
+                  <div
+                    class="add diffContent"
+                  >
+                    <span>
+                       + 
+                    </span>
+                    <span>
+                      They both may be called deep and profound.
+                    </span>
+                  </div>
+                </div>
+                <div
+                  class="diff"
+                >
+                  <div
+                    class="lineNumber"
+                  >
+                    <!-- ln1 is line number in original text -->
+                    <!-- ln2 is line number in updated text -->
+                     7
+                  </div>
+                  <div
+                    class="add diffContent"
+                  >
+                    <span>
+                       + 
+                    </span>
+                    <span>
+                      Deeper and more profound,
+                    </span>
+                  </div>
+                </div>
+                <div
+                  class="diff"
+                >
+                  <div
+                    class="lineNumber"
+                  >
+                    <!-- ln1 is line number in original text -->
+                    <!-- ln2 is line number in updated text -->
+                     8
+                  </div>
+                  <div
+                    class="add diffContent"
+                  >
+                    <span>
+                       + 
+                    </span>
+                    <span>
+                      The door of all subtleties!
+                    </span>
+                  </div>
+                </div>
+                
+              </div>
+              <div
+                class="actions"
+              >
+                <n8n-button-stub
+                  data-test-id="replace-code-button"
+                  disabled="false"
+                  icon="refresh"
+                  loading="false"
+                  size="mini"
+                  type="primary"
+                />
               </div>
             </div>
-            <!--v-if-->
+            
           </div>
+          <!--v-if-->
+          
+          
           <div
             class="message"
-            data-test-id="chat-message-user"
           >
             <div
-              class="roleName userSection"
+              class="roleName"
             >
               <n8n-avatar-stub
                 first-name="Kobi"
@@ -607,6 +620,7 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
                 You
               </span>
             </div>
+            
             <div
               class="textMessage"
             >
@@ -625,11 +639,13 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
               <!--v-if-->
               <!--v-if-->
             </div>
-            <!--v-if-->
+            
           </div>
+          <!--v-if-->
+          
+          
           <div
             class="message"
-            data-test-id="chat-message-assistant"
           >
             <div
               class="roleName userSection"
@@ -676,228 +692,230 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
                 Assistant
               </span>
             </div>
-            <div>
-              <div
-                class="block"
-              >
-                <div
-                  class="blockTitle"
-                >
-                  Credential doesn’t have correct permissions to send a message 
-                  <!--v-if-->
-                </div>
-                <div
-                  class="blockBody"
-                >
-                  <span
-                    class="rendered-content"
-                  >
-                    <p>
-                      Solution steps:
-                    </p>
-                    
-
-                    <ol>
-                      
-
-                      <li>
-                        Lorem ipsum dolor sit amet, consectetur 
-                        <strong>
-                          adipiscing
-                        </strong>
-                         elit. Proin id nulla placerat, tristique ex at, euismod dui.
-                      </li>
-                      
-
-                      <li>
-                        Copy this into somewhere
-                      </li>
-                      
-
-                      <li>
-                        Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin id nulla placerat, tristique ex at, euismod dui.
-                      </li>
-                      
-
-                      <li>
-                        Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin id nulla placerat, tristique ex at, euismod dui.
-                        <br />
-                        
-Testing more code
-                      </li>
-                      
-
-                    </ol>
-                    
-
-                    <ul>
-                      
-
-                      <li>
-                        Unordered item 1
-                      </li>
-                      
-
-                      <li>
-                        Unordered item 2
-                      </li>
-                      
-
-                    </ul>
-                    
-
-                  </span>
-                  <!--v-if-->
-                </div>
-              </div>
-            </div>
-            <!--v-if-->
-          </div>
-          <div
-            class="message"
-            data-test-id="chat-message-assistant"
-          >
-            <!--v-if-->
-            <div>
-              <div
-                class="container"
-                data-test-id="code-diff-suggestion"
-              >
-                <div
-                  class="title"
-                >
-                  Short solution with min height
-                </div>
-                <div
-                  class="diffSection"
-                >
-                  
-                  <div
-                    class="diff"
-                  >
-                    <div
-                      class="lineNumber"
-                    >
-                      <!-- ln1 is line number in original text -->
-                      <!-- ln2 is line number in updated text -->
-                       
-                    </div>
-                    <div
-                      class="del diffContent"
-                    >
-                      <span>
-                         - 
-                      </span>
-                      <span>
-                        The Way that can be told of is not the eternal Way;
-                      </span>
-                    </div>
-                  </div>
-                  <div
-                    class="diff"
-                  >
-                    <div
-                      class="lineNumber"
-                    >
-                      <!-- ln1 is line number in original text -->
-                      <!-- ln2 is line number in updated text -->
-                       
-                    </div>
-                    <div
-                      class="del diffContent"
-                    >
-                      <span>
-                         - 
-                      </span>
-                      <span>
-                        The name that can be named is not the eternal name.
-                      </span>
-                    </div>
-                  </div>
-                  <div
-                    class="diff"
-                  >
-                    <div
-                      class="lineNumber"
-                    >
-                      <!-- ln1 is line number in original text -->
-                      <!-- ln2 is line number in updated text -->
-                       1
-                    </div>
-                    <div
-                      class="add diffContent"
-                    >
-                      <span>
-                         + 
-                      </span>
-                      <span>
-                        The door of all subtleties!
-                      </span>
-                    </div>
-                  </div>
-                  <div
-                    class="diff"
-                  >
-                    <div
-                      class="lineNumber"
-                    >
-                      <!-- ln1 is line number in original text -->
-                      <!-- ln2 is line number in updated text -->
-                       
-                    </div>
-                    <div
-                      class="filler diffContent"
-                    >
-                      <span>
-                           
-                      </span>
-                      <span />
-                    </div>
-                  </div>
-                  
-                </div>
-                <div
-                  class="actions"
-                >
-                  <n8n-button-stub
-                    data-test-id="replace-code-button"
-                    disabled="false"
-                    icon="refresh"
-                    loading="false"
-                    size="mini"
-                    type="primary"
-                  />
-                </div>
-              </div>
-            </div>
+            
             <div
-              class="quickReplies"
+              class="block"
             >
               <div
-                class="quickRepliesTitle"
+                class="blockTitle"
               >
-                Quick reply 👇
-              </div>
-              
-              <div
-                data-test-id="quick-replies"
-              >
-                <n8n-button-stub
-                  size="mini"
-                  type="secondary"
-                />
+                Credential doesn’t have correct permissions to send a message 
+                <!--v-if-->
               </div>
               <div
-                data-test-id="quick-replies"
+                class="blockBody"
               >
-                <n8n-button-stub
-                  size="mini"
-                  type="secondary"
-                />
+                <span
+                  class="rendered-content"
+                >
+                  <p>
+                    Solution steps:
+                  </p>
+                  
+
+                  <ol>
+                    
+
+                    <li>
+                      Lorem ipsum dolor sit amet, consectetur 
+                      <strong>
+                        adipiscing
+                      </strong>
+                       elit. Proin id nulla placerat, tristique ex at, euismod dui.
+                    </li>
+                    
+
+                    <li>
+                      Copy this into somewhere
+                    </li>
+                    
+
+                    <li>
+                      Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin id nulla placerat, tristique ex at, euismod dui.
+                    </li>
+                    
+
+                    <li>
+                      Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin id nulla placerat, tristique ex at, euismod dui.
+                      <br />
+                      
+Testing more code
+                    </li>
+                    
+
+                  </ol>
+                  
+
+                  <ul>
+                    
+
+                    <li>
+                      Unordered item 1
+                    </li>
+                    
+
+                    <li>
+                      Unordered item 2
+                    </li>
+                    
+
+                  </ul>
+                  
+
+                </span>
+                <!--v-if-->
               </div>
-              
             </div>
+            
           </div>
+          <!--v-if-->
+          
+          
+          <div
+            class="message"
+          >
+            <!--v-if-->
+            
+            <div
+              class="container"
+              data-test-id="code-diff-suggestion"
+            >
+              <div
+                class="title"
+              >
+                Short solution with min height
+              </div>
+              <div
+                class="diffSection"
+              >
+                
+                <div
+                  class="diff"
+                >
+                  <div
+                    class="lineNumber"
+                  >
+                    <!-- ln1 is line number in original text -->
+                    <!-- ln2 is line number in updated text -->
+                     
+                  </div>
+                  <div
+                    class="del diffContent"
+                  >
+                    <span>
+                       - 
+                    </span>
+                    <span>
+                      The Way that can be told of is not the eternal Way;
+                    </span>
+                  </div>
+                </div>
+                <div
+                  class="diff"
+                >
+                  <div
+                    class="lineNumber"
+                  >
+                    <!-- ln1 is line number in original text -->
+                    <!-- ln2 is line number in updated text -->
+                     
+                  </div>
+                  <div
+                    class="del diffContent"
+                  >
+                    <span>
+                       - 
+                    </span>
+                    <span>
+                      The name that can be named is not the eternal name.
+                    </span>
+                  </div>
+                </div>
+                <div
+                  class="diff"
+                >
+                  <div
+                    class="lineNumber"
+                  >
+                    <!-- ln1 is line number in original text -->
+                    <!-- ln2 is line number in updated text -->
+                     1
+                  </div>
+                  <div
+                    class="add diffContent"
+                  >
+                    <span>
+                       + 
+                    </span>
+                    <span>
+                      The door of all subtleties!
+                    </span>
+                  </div>
+                </div>
+                <div
+                  class="diff"
+                >
+                  <div
+                    class="lineNumber"
+                  >
+                    <!-- ln1 is line number in original text -->
+                    <!-- ln2 is line number in updated text -->
+                     
+                  </div>
+                  <div
+                    class="filler diffContent"
+                  >
+                    <span>
+                         
+                    </span>
+                    <span />
+                  </div>
+                </div>
+                
+              </div>
+              <div
+                class="actions"
+              >
+                <n8n-button-stub
+                  data-test-id="replace-code-button"
+                  disabled="false"
+                  icon="refresh"
+                  loading="false"
+                  size="mini"
+                  type="primary"
+                />
+              </div>
+            </div>
+            
+          </div>
+          <div
+            class="quickReplies"
+          >
+            <div
+              class="quickRepliesTitle"
+            >
+              Quick reply 👇
+            </div>
+            
+            <div
+              data-test-id="quick-replies"
+            >
+              <n8n-button-stub
+                size="mini"
+                type="secondary"
+              />
+            </div>
+            <div
+              data-test-id="quick-replies"
+            >
+              <n8n-button-stub
+                size="mini"
+                type="secondary"
+              />
+            </div>
+            
+          </div>
+          
           
         </div>
         <!--v-if-->
@@ -907,6 +925,7 @@ Testing more code
       class="inputWrapper"
       data-test-id="chat-input-wrapper"
     >
+      
       <textarea
         class="ignore-key-press-node-creator ignore-key-press-canvas"
         data-test-id="chat-input"
@@ -922,6 +941,7 @@ Testing more code
         size="large"
         type="text"
       />
+      
     </div>
   </div>
 </div>
@@ -986,6 +1006,8 @@ exports[`AskAssistantChat > renders default placeholder chat correctly 1`] = `
         >
           beta
         </div>
+        
+        
       </div>
       <div
         class="back"
@@ -1004,6 +1026,7 @@ exports[`AskAssistantChat > renders default placeholder chat correctly 1`] = `
         class="placeholder"
         data-test-id="placeholder-message"
       >
+        
         <div
           class="greeting"
         >
@@ -1076,12 +1099,14 @@ exports[`AskAssistantChat > renders default placeholder chat correctly 1`] = `
             How can I help?
           </p>
         </div>
+        
       </div>
     </div>
     <div
       class="inputWrapper"
       data-test-id="chat-input-wrapper"
     >
+      
       <textarea
         class="ignore-key-press-node-creator ignore-key-press-canvas"
         data-test-id="chat-input"
@@ -1097,6 +1122,7 @@ exports[`AskAssistantChat > renders default placeholder chat correctly 1`] = `
         size="large"
         type="text"
       />
+      
     </div>
   </div>
 </div>
@@ -1161,6 +1187,8 @@ exports[`AskAssistantChat > renders end of session chat correctly 1`] = `
         >
           beta
         </div>
+        
+        
       </div>
       <div
         class="back"
@@ -1180,12 +1208,12 @@ exports[`AskAssistantChat > renders end of session chat correctly 1`] = `
       >
         <div>
           
+          
           <div
             class="message"
-            data-test-id="chat-message-assistant"
           >
             <div
-              class="roleName"
+              class="roleName userSection"
             >
               <div
                 class="container small"
@@ -1229,6 +1257,7 @@ exports[`AskAssistantChat > renders end of session chat correctly 1`] = `
                 Assistant
               </span>
             </div>
+            
             <div
               class="textMessage"
             >
@@ -1248,15 +1277,18 @@ exports[`AskAssistantChat > renders end of session chat correctly 1`] = `
               <!--v-if-->
               <!--v-if-->
             </div>
-            <!--v-if-->
+            
           </div>
+          <!--v-if-->
+          
+          
           <div
             class="message"
-            data-test-id="chat-message-assistant"
           >
             <!--v-if-->
+            
             <div
-              class="endOfSessionText"
+              class="eventText"
               data-test-id="chat-message-system"
             >
               <span>
@@ -1319,8 +1351,10 @@ exports[`AskAssistantChat > renders end of session chat correctly 1`] = `
                 button in n8n
               </span>
             </div>
-            <!--v-if-->
+            
           </div>
+          <!--v-if-->
+          
           
         </div>
         <!--v-if-->
@@ -1330,8 +1364,9 @@ exports[`AskAssistantChat > renders end of session chat correctly 1`] = `
       class="inputWrapper disabledInput"
       data-test-id="chat-input-wrapper"
     >
+      
       <textarea
-        class="ignore-key-press-node-creator ignore-key-press-canvas"
+        class="ignore-key-press-node-creator ignore-key-press-canvas disabled"
         data-test-id="chat-input"
         disabled=""
         placeholder="Enter your response..."
@@ -1346,6 +1381,7 @@ exports[`AskAssistantChat > renders end of session chat correctly 1`] = `
         size="large"
         type="text"
       />
+      
     </div>
   </div>
 </div>
@@ -1410,6 +1446,8 @@ exports[`AskAssistantChat > renders error message correctly with retry button 1`
         >
           beta
         </div>
+        
+        
       </div>
       <div
         class="back"
@@ -1429,12 +1467,12 @@ exports[`AskAssistantChat > renders error message correctly with retry button 1`
       >
         <div>
           
+          
           <div
             class="message"
-            data-test-id="chat-message-assistant"
           >
             <div
-              class="roleName"
+              class="roleName userSection"
             >
               <div
                 class="container small"
@@ -1478,13 +1516,21 @@ exports[`AskAssistantChat > renders error message correctly with retry button 1`
                 Assistant
               </span>
             </div>
+            
             <div
               class="error"
               data-test-id="chat-message-system"
             >
-              <span>
-                ⚠️ This is an error message.
-              </span>
+              <p
+                class="errorText"
+              >
+                <n8n-icon-stub
+                  class="errorIcon"
+                  icon="exclamation-triangle"
+                  size="small"
+                />
+                 This is an error message.
+              </p>
               <n8n-button-stub
                 class="retryButton"
                 data-test-id="error-retry-button"
@@ -1492,8 +1538,10 @@ exports[`AskAssistantChat > renders error message correctly with retry button 1`
                 type="secondary"
               />
             </div>
-            <!--v-if-->
+            
           </div>
+          <!--v-if-->
+          
           
         </div>
         <!--v-if-->
@@ -1503,6 +1551,7 @@ exports[`AskAssistantChat > renders error message correctly with retry button 1`
       class="inputWrapper"
       data-test-id="chat-input-wrapper"
     >
+      
       <textarea
         class="ignore-key-press-node-creator ignore-key-press-canvas"
         data-test-id="chat-input"
@@ -1518,6 +1567,7 @@ exports[`AskAssistantChat > renders error message correctly with retry button 1`
         size="large"
         type="text"
       />
+      
     </div>
   </div>
 </div>
@@ -1582,6 +1632,8 @@ exports[`AskAssistantChat > renders message with code snippet 1`] = `
         >
           beta
         </div>
+        
+        
       </div>
       <div
         class="back"
@@ -1601,12 +1653,12 @@ exports[`AskAssistantChat > renders message with code snippet 1`] = `
       >
         <div>
           
+          
           <div
             class="message"
-            data-test-id="chat-message-assistant"
           >
             <div
-              class="roleName"
+              class="roleName userSection"
             >
               <div
                 class="container small"
@@ -1650,6 +1702,7 @@ exports[`AskAssistantChat > renders message with code snippet 1`] = `
                 Assistant
               </span>
             </div>
+            
             <div
               class="textMessage"
             >
@@ -1739,8 +1792,10 @@ catch(e) {
               </div>
               <!--v-if-->
             </div>
-            <!--v-if-->
+            
           </div>
+          <!--v-if-->
+          
           
         </div>
         <!--v-if-->
@@ -1750,6 +1805,7 @@ catch(e) {
       class="inputWrapper"
       data-test-id="chat-input-wrapper"
     >
+      
       <textarea
         class="ignore-key-press-node-creator ignore-key-press-canvas"
         data-test-id="chat-input"
@@ -1765,6 +1821,7 @@ catch(e) {
         size="large"
         type="text"
       />
+      
     </div>
   </div>
 </div>
@@ -1829,6 +1886,8 @@ exports[`AskAssistantChat > renders streaming chat correctly 1`] = `
         >
           beta
         </div>
+        
+        
       </div>
       <div
         class="back"
@@ -1848,12 +1907,12 @@ exports[`AskAssistantChat > renders streaming chat correctly 1`] = `
       >
         <div>
           
+          
           <div
             class="message"
-            data-test-id="chat-message-assistant"
           >
             <div
-              class="roleName"
+              class="roleName userSection"
             >
               <div
                 class="container small"
@@ -1897,6 +1956,7 @@ exports[`AskAssistantChat > renders streaming chat correctly 1`] = `
                 Assistant
               </span>
             </div>
+            
             <div
               class="textMessage"
             >
@@ -1918,8 +1978,10 @@ exports[`AskAssistantChat > renders streaming chat correctly 1`] = `
                 class="blinking-cursor"
               />
             </div>
-            <!--v-if-->
+            
           </div>
+          <!--v-if-->
+          
           
         </div>
         <!--v-if-->
@@ -1929,9 +1991,11 @@ exports[`AskAssistantChat > renders streaming chat correctly 1`] = `
       class="inputWrapper"
       data-test-id="chat-input-wrapper"
     >
+      
       <textarea
-        class="ignore-key-press-node-creator ignore-key-press-canvas"
+        class="ignore-key-press-node-creator ignore-key-press-canvas disabled"
         data-test-id="chat-input"
+        disabled=""
         placeholder="Enter your response..."
         rows="1"
         wrap="hard"
@@ -1944,6 +2008,7 @@ exports[`AskAssistantChat > renders streaming chat correctly 1`] = `
         size="large"
         type="text"
       />
+      
     </div>
   </div>
 </div>

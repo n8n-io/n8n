@@ -44,7 +44,7 @@ function onMouseLeave() {
 					:text="
 						type === 'builder'
 							? t('assistantChat.builder.name')
-							: t('assistantChat.aiAssistantName')
+							: t('askAssistantButton.askAssistant')
 					"
 				/>
 			</div>
