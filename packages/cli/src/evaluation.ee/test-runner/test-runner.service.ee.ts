@@ -76,7 +76,7 @@ export class TestRunnerService {
 		workflow: IWorkflowBase,
 		metadata: TestRunMetadata,
 		abortSignal: AbortSignal,
-	): Promise<IRun | undefined> {
+	): Promise<[string, IRun | undefined] | undefined> {
 		// Do not run if the test run is cancelled
 		if (abortSignal.aborted) {
 			return;
@@ -157,12 +157,10 @@ export class TestRunnerService {
 			this.activeExecutions.stopExecution(executionId);
 		});
 
-		// TODO: Update status of the test run execution
-
 		// Wait for the execution to finish
 		const executePromise = this.activeExecutions.getPostExecutePromise(executionId);
 
-		return await executePromise;
+		return [executionId, await executePromise];
 	}
 
 	/**
@@ -272,8 +270,13 @@ export class TestRunnerService {
 					};
 
 					// Run the test case and wait for it to finish
-					const testCaseExecution = await this.runTestCase(workflow, testCaseMetadata, abortSignal);
+					const [testCaseExecutionId, testCaseExecution] = (await this.runTestCase(
+						workflow,
+						testCaseMetadata,
+						abortSignal,
+					)) ?? [undefined, undefined];
 					assert(testCaseExecution);
+					assert(testCaseExecutionId);
 
 					this.logger.debug('Test case execution finished');
 
@@ -287,7 +290,8 @@ export class TestRunnerService {
 					// If that happens, or if the test case execution produced an error, mark the test case as failed.
 					if (!testCaseExecution || testCaseExecution.data.resultData.error) {
 						// Save the failed test case execution in DB
-						await this.testCaseExecutionRepository.insert({
+						await this.testCaseExecutionRepository.createTestCaseExecution({
+							executionId: testCaseExecutionId,
 							testRun: {
 								id: testRun.id,
 							},
@@ -299,7 +303,8 @@ export class TestRunnerService {
 					}
 
 					// Create a new test case execution in DB
-					await this.testCaseExecutionRepository.insert({
+					await this.testCaseExecutionRepository.createTestCaseExecution({
+						executionId: testCaseExecutionId,
 						testRun: {
 							id: testRun.id,
 						},
@@ -316,7 +321,7 @@ export class TestRunnerService {
 
 					// In case of an unexpected error save it as failed test case execution and continue with the next test case
 					if (e instanceof TestCaseExecutionError) {
-						await this.testCaseExecutionRepository.insert({
+						await this.testCaseExecutionRepository.createTestCaseExecution({
 							testRun: {
 								id: testRun.id,
 							},
@@ -325,7 +330,7 @@ export class TestRunnerService {
 							errorDetails: e.extra as IDataObject,
 						});
 					} else {
-						await this.testCaseExecutionRepository.insert({
+						await this.testCaseExecutionRepository.createTestCaseExecution({
 							testRun: {
 								id: testRun.id,
 							},
