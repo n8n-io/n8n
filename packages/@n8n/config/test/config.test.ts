@@ -148,8 +148,8 @@ describe('GlobalConfig', () => {
 					region: '',
 				},
 				credentials: {
-					accessKey: '',
-					accessSecret: '',
+					accessKeyId: '',
+					secretAccessKey: '',
 					authAutoDetect: false,
 				},
 			},

@@ -27,7 +27,6 @@ jest.mock('@aws-sdk/client-s3', () => ({
 
 const mockBucket = { region: 'us-east-1', name: 'test-bucket' };
 const mockHost = `s3.${mockBucket.region}.amazonaws.com`;
-const mockCredentials = { accessKey: 'mock-access-key', accessSecret: 'mock-secret-key' };
 const FAILED_REQUEST_ERROR_MESSAGE = 'Request to S3 failed';
 const mockError = new Error('Something went wrong!');
 const workflowId = 'workflow-id';
@@ -38,7 +37,11 @@ const mockBuffer = Buffer.from('Test data');
 const s3Config = mock<S3Config>({
 	host: mockHost,
 	bucket: mockBucket,
-	credentials: mockCredentials,
+	credentials: {
+		accessKeyId: 'mock-access-key',
+		secretAccessKey: 'mock-secret-key',
+		authAutoDetect: false,
+	},
 	protocol: 'https',
 });
 
@@ -379,5 +382,43 @@ describe('getListPage()', () => {
 		const promise = objectStoreService.getListPage('test-dir/');
 
 		await expect(promise).rejects.toThrowError(FAILED_REQUEST_ERROR_MESSAGE);
+	});
+});
+
+describe('getClientConfig', () => {
+	const { accessKeyId, secretAccessKey } = s3Config.credentials;
+
+	it('should return client config with endpoint and forcePathStyle when custom host is provided', () => {
+		s3Config.host = 'example.com';
+
+		const clientConfig = objectStoreService.getClientConfig();
+
+		expect(clientConfig).toEqual({
+			endpoint: 'https://example.com',
+			forcePathStyle: true,
+			region: mockBucket.region,
+			credentials: { accessKeyId, secretAccessKey },
+		});
+	});
+
+	it('should return client config without endpoint when host is not provided', () => {
+		s3Config.host = '';
+
+		const clientConfig = objectStoreService.getClientConfig();
+
+		expect(clientConfig).toEqual({
+			region: mockBucket.region,
+			credentials: { accessKeyId, secretAccessKey },
+		});
+	});
+
+	it('should return client config without credentials when authAutoDetect is true', () => {
+		s3Config.credentials.authAutoDetect = true;
+
+		const clientConfig = objectStoreService.getClientConfig();
+
+		expect(clientConfig).toEqual({
+			region: mockBucket.region,
+		});
 	});
 });

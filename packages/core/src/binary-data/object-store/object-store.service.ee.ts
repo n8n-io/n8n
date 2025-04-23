@@ -36,10 +36,9 @@ export class ObjectStoreService {
 
 	constructor(
 		private readonly logger: Logger,
-		s3Config: S3Config,
+		private readonly s3Config: S3Config,
 	) {
-		const { host, bucket, protocol, credentials } = s3Config;
-
+		const { bucket } = s3Config;
 		if (bucket.name === '') {
 			throw new UnexpectedError(
 				'External storage bucket name not configured. Please set `N8N_EXTERNAL_STORAGE_S3_BUCKET_NAME`.',
@@ -47,7 +46,11 @@ export class ObjectStoreService {
 		}
 
 		this.bucket = bucket.name;
+		this.s3Client = new S3Client(this.getClientConfig());
+	}
 
+	getClientConfig() {
+		const { host, bucket, protocol, credentials } = this.s3Config;
 		const clientConfig: S3ClientConfig = {};
 		const endpoint = host ? `${protocol}://${host}` : undefined;
 		if (endpoint) {
@@ -59,11 +62,11 @@ export class ObjectStoreService {
 		}
 		if (!credentials.authAutoDetect) {
 			clientConfig.credentials = {
-				accessKeyId: credentials.accessKey,
-				secretAccessKey: credentials.accessSecret,
+				accessKeyId: credentials.accessKeyId,
+				secretAccessKey: credentials.secretAccessKey,
 			};
 		}
-		this.s3Client = new S3Client(clientConfig);
+		return clientConfig;
 	}
 
 	async init() {
