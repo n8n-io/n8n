@@ -1,4 +1,5 @@
 import type { CreateProjectDto, ProjectRole, ProjectType, UpdateProjectDto } from '@n8n/api-types';
+import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import { Container, Service } from '@n8n/di';
 import { type Scope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
@@ -7,7 +8,6 @@ import type { FindOptionsWhere, EntityManager } from '@n8n/typeorm';
 import { In, Not } from '@n8n/typeorm';
 import { UserError } from 'n8n-workflow';
 
-import { UNLIMITED_LICENSE_QUOTA } from '@/constants';
 import { Project } from '@/databases/entities/project';
 import { ProjectRelation } from '@/databases/entities/project-relation';
 import type { User } from '@/databases/entities/user';
