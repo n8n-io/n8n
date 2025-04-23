@@ -21,6 +21,7 @@ const emit = defineEmits<{
 			@click="emit('click')"
 		>
 			<span>
+				<!-- The span wrapping the icon centers it due to reliance on legacy behavior -->
 				<AiStarsIcon size="large" />
 			</span>
 		</N8nButton>
