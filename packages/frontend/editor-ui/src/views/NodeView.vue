@@ -392,20 +392,18 @@ async function initializeWorkspaceForNewWorkflow() {
 	);
 	workflowsStore.makeNewWorkflowShareable();
 
+	if (projectsStore.currentProjectId) {
+		await fetchAndSetProject(projectsStore.currentProjectId);
+	}
 	await fetchAndSetParentFolder(parentFolderId);
 
 	uiStore.nodeViewInitialized = true;
 	initializedWorkflowId.value = NEW_WORKFLOW_ID;
 }
 
-// Load home project and  parent folder data if they are not already loaded
+// These two methods load home project and parent folder data if they are not already loaded
 // This happens when user lands straight on the new workflow page and we have nothing in the store
 async function fetchAndSetParentFolder(folderId?: string) {
-	if (projectsStore.currentProjectId && !projectsStore.currentProject) {
-		const project = await projectsStore.fetchProject(projectsStore.currentProjectId);
-		projectsStore.setCurrentProject(project);
-	}
-
 	if (folderId) {
 		let parentFolder = foldersStore.getCachedFolder(folderId);
 		if (!parentFolder && projectsStore.currentProjectId) {
@@ -421,9 +419,20 @@ async function fetchAndSetParentFolder(folderId?: string) {
 	}
 }
 
+async function fetchAndSetProject(projectId: string) {
+	if (!projectsStore.currentProject) {
+		const project = await projectsStore.fetchProject(projectId);
+		projectsStore.setCurrentProject(project);
+	}
+}
+
 async function initializeWorkspaceForExistingWorkflow(id: string) {
 	try {
 		const workflowData = await workflowsStore.fetchWorkflow(id);
+
+		if (workflowData.homeProject?.id) {
+			await fetchAndSetProject(workflowData.homeProject.id);
+		}
 
 		openWorkflow(workflowData);
 
