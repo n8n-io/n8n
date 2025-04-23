@@ -75,9 +75,11 @@ interface Filters extends BaseFilters {
 }
 
 const StatusFilter = {
+	DEFAULT: '',
 	ACTIVE: 'active',
 	DEACTIVATED: 'deactivated',
-	ALL: '',
+	ARCHIVED: 'archived',
+	ALL: 'all',
 };
 
 /** Maps sort values from the ResourcesListLayout component to values expected by workflows endpoint */
@@ -117,7 +119,7 @@ const breadcrumbsLoading = ref(false);
 const filters = ref<Filters>({
 	search: '',
 	homeProject: '',
-	status: StatusFilter.ALL,
+	status: StatusFilter.DEFAULT,
 	tags: [],
 });
 
@@ -302,6 +304,10 @@ const workflowListResources = computed<Resource[]>(() => {
 
 const statusFilterOptions = computed(() => [
 	{
+		label: i18n.baseText('workflows.filters.status.default'),
+		value: StatusFilter.DEFAULT,
+	},
+	{
 		label: i18n.baseText('workflows.filters.status.all'),
 		value: StatusFilter.ALL,
 	},
@@ -312,6 +318,10 @@ const statusFilterOptions = computed(() => [
 	{
 		label: i18n.baseText('workflows.filters.status.deactivated'),
 		value: StatusFilter.DEACTIVATED,
+	},
+	{
+		label: i18n.baseText('workflows.filters.status.archived'),
+		value: StatusFilter.ARCHIVED,
 	},
 ]);
 
@@ -342,7 +352,7 @@ const emptyListDescription = computed(() => {
 const hasFilters = computed(() => {
 	return !!(
 		filters.value.search ||
-		filters.value.status !== StatusFilter.ALL ||
+		filters.value.status !== StatusFilter.DEFAULT ||
 		filters.value.tags.length
 	);
 });
@@ -496,10 +506,18 @@ const fetchWorkflows = async () => {
 	const tags = filters.value.tags.length
 		? filters.value.tags.map((tagId) => tagsStore.tagsById[tagId]?.name)
 		: [];
+
 	const activeFilter =
-		filters.value.status === StatusFilter.ALL
+		filters.value.status === StatusFilter.ALL || filters.value.status === StatusFilter.DEFAULT
 			? undefined
 			: filters.value.status === StatusFilter.ACTIVE;
+
+	const archivedFilter =
+		filters.value.status === StatusFilter.ARCHIVED
+			? true
+			: filters.value.status === StatusFilter.DEFAULT
+				? false
+				: undefined;
 
 	// Only fetch folders if showFolders is enabled and there are not tags or active filter applied
 	const fetchFolders = showFolders.value && !tags.length && activeFilter === undefined;
@@ -513,6 +531,7 @@ const fetchWorkflows = async () => {
 			{
 				name: filters.value.search || undefined,
 				active: activeFilter,
+				isArchived: archivedFilter,
 				tags: tags.length ? tags : undefined,
 				parentFolderId:
 					parentFolder ??
@@ -619,8 +638,21 @@ const saveFiltersOnQueryString = () => {
 		delete currentQuery.search;
 	}
 
-	if (filters.value.status !== StatusFilter.ALL) {
-		currentQuery.status = (filters.value.status === StatusFilter.ACTIVE).toString();
+	if (filters.value.status !== StatusFilter.DEFAULT) {
+		switch (filters.value.status) {
+			case StatusFilter.ALL:
+				currentQuery.status = 'all';
+				break;
+			case StatusFilter.ACTIVE:
+				currentQuery.status = 'true';
+				break;
+			case StatusFilter.DEACTIVATED:
+				currentQuery.status = 'false';
+				break;
+			case StatusFilter.ARCHIVED:
+				currentQuery.status = 'archived';
+				break;
+		}
 	} else {
 		delete currentQuery.status;
 	}
@@ -689,10 +721,25 @@ const setFiltersFromQueryString = async () => {
 	}
 
 	// Handle status
-	const validStatusValues = ['true', 'false'];
-	if (isValidString(status) && validStatusValues.includes(status)) {
+	if (isValidString(status)) {
 		newQuery.status = status;
-		filters.value.status = status === 'true' ? StatusFilter.ACTIVE : StatusFilter.DEACTIVATED;
+		switch (status) {
+			case 'true':
+				filters.value.status = StatusFilter.ACTIVE;
+				break;
+			case 'false':
+				filters.value.status = StatusFilter.DEACTIVATED;
+				break;
+			case 'archived':
+				filters.value.status = StatusFilter.ARCHIVED;
+				break;
+			case 'all':
+				filters.value.status = StatusFilter.ALL;
+				break;
+			default:
+				delete newQuery.status;
+				break;
+		}
 	} else {
 		delete newQuery.status;
 	}
