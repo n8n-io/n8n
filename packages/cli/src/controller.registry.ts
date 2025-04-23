@@ -1,4 +1,5 @@
 import { GlobalConfig } from '@n8n/config';
+import type { BooleanLicenseFeature } from '@n8n/constants';
 import { MetadataState } from '@n8n/decorators';
 import type { AccessScope, Controller, RateLimit } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
@@ -11,7 +12,6 @@ import type { ZodClass } from 'zod-class';
 import { AuthService } from '@/auth/auth.service';
 import { inProduction, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error';
-import type { BooleanLicenseFeature } from '@/interfaces';
 import { License } from '@/license';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import type { AuthenticatedRequest } from '@/requests';
@@ -41,7 +41,7 @@ export class ControllerRegistry {
 			.replace(/\/$/, '');
 		app.use(prefix, router);
 
-		const controller = Container.get(controllerClass) as Controller;
+		const controller = Container.get(controllerClass);
 		const controllerMiddlewares = metadata.middlewares.map(
 			(handlerName) => controller[handlerName].bind(controller) as RequestHandler,
 		);

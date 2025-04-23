@@ -289,30 +289,11 @@ importers:
         specifier: workspace:*
         version: link:../typescript-config
 
-  packages/@n8n/decorators:
-    dependencies:
-      '@n8n/di':
-        specifier: workspace:^
-        version: link:../di
-      '@n8n/permissions':
-        specifier: workspace:^
-        version: link:../permissions
-      lodash:
-        specifier: 'catalog:'
-        version: 4.17.21
-      n8n-workflow:
-        specifier: workspace:^
-        version: link:../../workflow
+  packages/@n8n/constants:
     devDependencies:
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
-      '@types/express':
-        specifier: 'catalog:'
-        version: 5.0.1
-      '@types/lodash':
-        specifier: 'catalog:'
-        version: 4.14.195
 
   packages/@n8n/di:
     dependencies:
@@ -321,15 +302,6 @@ importers:
         version: 0.2.2
     devDependencies:
       '@n8n/typescript-config':
-        specifier: workspace:*
-        version: link:../typescript-config
-
-  packages/@n8n/eslint-config:
-    devDependencies:
-      '@types/eslint':
-        specifier: ^8.56.5
-        version: 8.56.5
-      '@typescript-eslint/eslint-plugin':
         specifier: ^7.2.0
         version: 7.2.0(@typescript-eslint/parser@7.2.0(eslint@8.57.0)(typescript@5.8.2))(eslint@8.57.0)(typescript@5.8.2)
       '@typescript-eslint/parser':
@@ -824,9 +796,9 @@ importers:
       '@n8n/config':
         specifier: workspace:*
         version: link:../@n8n/config
-      '@n8n/decorators':
-        specifier: workspace:*
-        version: link:../@n8n/decorators
+      '@n8n/constants':
+        specifier: workspace:^
+        version: link:../@n8n/constants
       '@n8n/di':
         specifier: workspace:*
         version: link:../@n8n/di
@@ -13449,8 +13421,8 @@ packages:
   vue-component-type-helpers@2.1.10:
     resolution: {integrity: sha512-lfgdSLQKrUmADiSV6PbBvYgQ33KF3Ztv6gP85MfGaGaSGMTXORVaHT1EHfsqCgzRNBstPKYDmvAV9Do5CmJ07A==}
 
-  vue-component-type-helpers@2.2.8:
-    resolution: {integrity: sha512-4bjIsC284coDO9om4HPA62M7wfsTvcmZyzdfR0aUlFXqq4tXxM1APyXpNVxPC8QazKw9OhmZNHBVDA6ODaZsrA==}
+  vue-component-type-helpers@2.2.10:
+    resolution: {integrity: sha512-iDUO7uQK+Sab2tYuiP9D1oLujCWlhHELHMgV/cB13cuGbG4qwkLHvtfWb6FzvxrIOPDnU0oHsz2MlQjhYDeaHA==}
 
   vue-demi@0.14.10:
     resolution: {integrity: sha512-nMZBOwuzabUO0nLgIcc6rycZEebF6eeUfaiQx9+WSk8e29IbLvPU9feI6tqW4kTo3hvoYAJkMh8n8D0fuISphg==}
@@ -18509,7 +18481,7 @@ snapshots:
       ts-dedent: 2.2.0
       type-fest: 2.19.0
       vue: 3.5.13(typescript@5.8.2)
-      vue-component-type-helpers: 2.2.8
+      vue-component-type-helpers: 2.2.10
 
   '@supabase/auth-js@2.65.0':
     dependencies:
@@ -19558,7 +19530,7 @@ snapshots:
   '@vue/test-utils@2.4.6':
     dependencies:
       js-beautify: 1.14.9
-      vue-component-type-helpers: 2.2.8
+      vue-component-type-helpers: 2.2.10
 
   '@vue/tsconfig@0.7.0(typescript@5.8.2)(vue@3.5.13(typescript@5.8.2))':
     optionalDependencies:
@@ -27884,7 +27856,7 @@ snapshots:
 
   vue-component-type-helpers@2.1.10: {}
 
-  vue-component-type-helpers@2.2.8: {}
+  vue-component-type-helpers@2.2.10: {}
 
   vue-demi@0.14.10(vue@3.5.13(typescript@5.8.2)):
     dependencies:
