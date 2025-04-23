@@ -86,14 +86,6 @@ export class CredentialsService {
 				? listQueryOptions.filter.projectId
 				: undefined;
 
-		let project: Project | undefined;
-
-		if (projectId) {
-			try {
-				project = await this.projectService.getProject(projectId);
-			} catch {}
-		}
-
 		if (includeData) {
 			// We need the scopes to check if we're allowed to include the decrypted
 			// data.
@@ -104,6 +96,14 @@ export class CredentialsService {
 		}
 
 		if (returnAll) {
+			let project: Project | undefined;
+
+			if (projectId) {
+				try {
+					project = await this.projectService.getProject(projectId);
+				} catch {}
+			}
+
 			if (project?.type === 'personal') {
 				listQueryOptions.filter = {
 					...listQueryOptions.filter,
@@ -156,7 +156,6 @@ export class CredentialsService {
 
 		const ids = await this.sharedCredentialsRepository.getCredentialIdsByUserAndRole([user.id], {
 			scopes: ['credential:read'],
-			projectId: project?.type === 'personal' ? project.id : undefined,
 		});
 
 		let credentials = await this.credentialsRepository.findMany(
