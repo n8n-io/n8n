@@ -72,7 +72,7 @@ const onProjectMouseUp = () => {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing-4xs);
-	padding: var(--spacing-4xs);
+	padding: var(--spacing-3xs) var(--spacing-4xs) var(--spacing-4xs);
 	border: var(--border-width-base) var(--border-style-base) transparent;
 
 	&.dragging:hover {

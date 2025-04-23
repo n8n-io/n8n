@@ -427,7 +427,7 @@ const handleTooltipClose = () => {
 // Medium theme overrides
 .medium {
 	li {
-		padding: var(--spacing-4xs);
+		padding: var(--spacing-3xs) var(--spacing-4xs) var(--spacing-4xs);
 	}
 
 	.item,
