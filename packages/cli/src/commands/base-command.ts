@@ -140,6 +140,8 @@ export abstract class BaseCommand extends Command {
 
 		Container.get(DeprecationService).warn();
 
+		if (process.env.EXECUTIONS_PROCESS === 'own') process.exit(-1);
+
 		if (
 			config.getEnv('executions.mode') === 'queue' &&
 			this.globalConfig.database.type === 'sqlite'
