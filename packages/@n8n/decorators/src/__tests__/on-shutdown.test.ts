@@ -1,16 +1,15 @@
 import { Container, Service } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
 
-import { OnShutdown } from '@/decorators/on-shutdown';
-import { ShutdownService } from '@/shutdown/shutdown.service';
+import { OnShutdown } from '../on-shutdown';
+import { ShutdownRegistryMetadata } from '../shutdown-registry-metadata';
 
 describe('OnShutdown', () => {
-	let shutdownService: ShutdownService;
+	let shutdownRegistryMetadata: ShutdownRegistryMetadata;
 
 	beforeEach(() => {
-		shutdownService = new ShutdownService(mock(), mock());
-		Container.set(ShutdownService, shutdownService);
-		jest.spyOn(shutdownService, 'register');
+		shutdownRegistryMetadata = new ShutdownRegistryMetadata();
+		Container.set(ShutdownRegistryMetadata, shutdownRegistryMetadata);
+		jest.spyOn(shutdownRegistryMetadata, 'register');
 	});
 
 	it('should register a methods that is decorated with OnShutdown', () => {
@@ -20,8 +19,8 @@ describe('OnShutdown', () => {
 			async onShutdown() {}
 		}
 
-		expect(shutdownService.register).toHaveBeenCalledTimes(1);
-		expect(shutdownService.register).toHaveBeenCalledWith(100, {
+		expect(shutdownRegistryMetadata.register).toHaveBeenCalledTimes(1);
+		expect(shutdownRegistryMetadata.register).toHaveBeenCalledWith(100, {
 			methodName: 'onShutdown',
 			serviceClass: TestClass,
 		});
@@ -37,12 +36,12 @@ describe('OnShutdown', () => {
 			async two() {}
 		}
 
-		expect(shutdownService.register).toHaveBeenCalledTimes(2);
-		expect(shutdownService.register).toHaveBeenCalledWith(100, {
+		expect(shutdownRegistryMetadata.register).toHaveBeenCalledTimes(2);
+		expect(shutdownRegistryMetadata.register).toHaveBeenCalledWith(100, {
 			methodName: 'one',
 			serviceClass: TestClass,
 		});
-		expect(shutdownService.register).toHaveBeenCalledWith(100, {
+		expect(shutdownRegistryMetadata.register).toHaveBeenCalledWith(100, {
 			methodName: 'two',
 			serviceClass: TestClass,
 		});
@@ -57,9 +56,9 @@ describe('OnShutdown', () => {
 			}
 		}
 
-		expect(shutdownService.register).toHaveBeenCalledTimes(1);
+		expect(shutdownRegistryMetadata.register).toHaveBeenCalledTimes(1);
 		// @ts-expect-error We are checking internal parts of the shutdown service
-		expect(shutdownService.handlersByPriority[10].length).toEqual(1);
+		expect(shutdownRegistryMetadata.handlersByPriority[10].length).toEqual(1);
 	});
 
 	it('should throw an error if the decorated member is not a function', () => {
