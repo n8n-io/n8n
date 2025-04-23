@@ -169,14 +169,13 @@ describe('Utils: Expressions', () => {
 			expect(result).toEqual(resolvedExpressionString);
 		});
 
-		it('should return null if no resolved expression string is provided', () => {
+		it('should return an empty string if no resolved expression string is provided', () => {
 			const expressionValue = true;
-			const resolvedExpressionString = null;
+			const resolvedExpressionString = '';
 
-			// @ts-ignore
 			const result = getResolvedExpression(expressionValue, resolvedExpressionString);
 
-			expect(result).toBeNull();
+			expect(result).toEqual('');
 		});
 
 		it('should return null if expression value is false', () => {
@@ -185,7 +184,7 @@ describe('Utils: Expressions', () => {
 
 			const result = getResolvedExpression(expressionValue, resolvedExpressionString);
 
-			expect(result).toBeNull();
+			expect(result).toEqual('');
 		});
 	});
 });
