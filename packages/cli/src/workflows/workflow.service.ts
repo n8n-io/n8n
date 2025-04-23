@@ -68,10 +68,12 @@ export class WorkflowService {
 		options?: ListQuery.Options,
 		includeScopes?: boolean,
 		includeFolders?: boolean,
+		onlySharedWithMe?: boolean,
 	) {
 		let count;
 		let workflows;
 		let workflowsAndFolders: WorkflowFolderUnionFull[] = [];
+		let sharedWorkflowIds: string[] = [];
 
 		const sharedWorkflowsOptions: ShareWorkflowOptions = {
 			scopes: ['workflow:read'],
@@ -81,10 +83,14 @@ export class WorkflowService {
 			sharedWorkflowsOptions.projectId = options.filter.projectId;
 		}
 
-		const sharedWorkflowIds = await this.workflowSharingService.getSharedWorkflowIds(
-			user,
-			sharedWorkflowsOptions,
-		);
+		if (onlySharedWithMe) {
+			sharedWorkflowIds = await this.workflowSharingService.getSharedWithMeIds(user);
+		} else {
+			sharedWorkflowIds = await this.workflowSharingService.getSharedWorkflowIds(
+				user,
+				sharedWorkflowsOptions,
+			);
+		}
 
 		if (includeFolders) {
 			[workflowsAndFolders, count] = await this.workflowRepository.getWorkflowsAndFoldersWithCount(

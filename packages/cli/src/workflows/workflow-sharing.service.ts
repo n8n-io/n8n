@@ -69,6 +69,23 @@ export class WorkflowSharingService {
 		return sharedWorkflows.map(({ workflowId }) => workflowId);
 	}
 
+	async getSharedWithMeIds(user: User) {
+		const sharedWithMeWorkflows = await this.sharedWorkflowRepository.find({
+			select: ['workflowId'],
+			where: {
+				role: 'workflow:editor',
+				project: {
+					projectRelations: {
+						userId: user.id,
+						role: 'project:personalOwner',
+					},
+				},
+			},
+		});
+
+		return sharedWithMeWorkflows.map(({ workflowId }) => workflowId);
+	}
+
 	async getSharedWorkflowScopes(
 		workflowIds: string[],
 		user: User,
