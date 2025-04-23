@@ -117,6 +117,12 @@ describe('NodeReferenceParserUtils', () => {
 				newName: 'newName',
 				expected: 'someRandomExpression("oldName")',
 			},
+			{
+				expression: '$("old\\"Name")',
+				previousName: 'old\\"Name',
+				newName: 'n\\\'ew\\"Name',
+				expected: '$("n\\\'ew\\"Name")',
+			},
 		])(
 			'should correctly transform expression "$expression" with previousName "$previousName" and newName "$newName"',
 			({ expression, previousName, newName, expected }) => {
