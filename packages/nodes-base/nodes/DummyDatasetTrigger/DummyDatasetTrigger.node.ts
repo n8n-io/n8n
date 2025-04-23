@@ -51,6 +51,10 @@ export class DummyDatasetTrigger implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions) {
+		const inputData = this.getInputData();
+
+		console.log('Dummy Dataset trigger input', inputData);
+
 		// If we've reached the end of the dataset, start over
 		if (currentDatasetIndex >= mockDataset.length) {
 			currentDatasetIndex = 0;
