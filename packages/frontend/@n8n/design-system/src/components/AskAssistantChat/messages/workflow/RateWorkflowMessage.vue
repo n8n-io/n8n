@@ -49,12 +49,14 @@ function onSubmitFeedback() {
 					type="secondary"
 					size="small"
 					:label="'Helpful'"
+					data-test-id="message-thumbs-up-button"
 					icon="thumbs-up"
 					@click="onRateButton('thumbsUp')"
 				/>
 				<n8n-button
 					type="secondary"
 					size="small"
+					data-test-id="message-thumbs-down-button"
 					:label="'Not helpful'"
 					icon="thumbs-down"
 					@click="onRateButton('thumbsDown')"
@@ -66,12 +68,19 @@ function onSubmitFeedback() {
 					:class="$style.feedbackInput"
 					type="textarea"
 					placeholder="Tell us about your experience"
+					data-test-id="message-feedback-input"
 					:read-only="false"
 					:resize="'none'"
 					:rows="5"
 				/>
 				<div :class="$style.feedbackTextArea__footer">
-					<n8n-button native-type="submit" type="secondary" size="small" @click="onSubmitFeedback">
+					<n8n-button
+						native-type="submit"
+						type="secondary"
+						size="small"
+						@click="onSubmitFeedback"
+						data-test-id="message-submit-feedback-button"
+					>
 						Submit feedback
 					</n8n-button>
 				</div>
