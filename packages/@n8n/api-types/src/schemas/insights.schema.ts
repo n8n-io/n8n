@@ -88,7 +88,7 @@ export type InsightsByTime = z.infer<typeof insightsByTimeSchema>;
 
 export const insightsDateRangeSchema = z
 	.object({
-		key: z.enum(['day', 'week', '2weeks', 'month', 'quarter', 'year']),
+		key: z.enum(['day', 'week', '2weeks', 'month', 'quarter', '6months', 'year']),
 		licensed: z.boolean(),
 		granularity: z.enum(['hour', 'day', 'week']),
 	})
