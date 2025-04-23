@@ -1,3 +1,4 @@
+import { Get, RestController } from '@n8n/decorators';
 import type { AxiosRequestConfig } from 'axios';
 import axios from 'axios';
 import { createHmac } from 'crypto';
@@ -6,7 +7,6 @@ import { ensureError, jsonStringify } from 'n8n-workflow';
 import type { RequestOptions } from 'oauth-1.0a';
 import clientOAuth1 from 'oauth-1.0a';
 
-import { Get, RestController } from '@/decorators';
 import { OAuthRequest } from '@/requests';
 
 import { AbstractOAuthController, skipAuthOnOAuthCallback } from './abstract-oauth.controller';

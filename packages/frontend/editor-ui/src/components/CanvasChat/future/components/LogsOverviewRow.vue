@@ -114,7 +114,7 @@ watch(
 			:is-error="isError"
 			:is-deleted="latestInfo?.deleted ?? false"
 		/>
-		<N8nText tag="div" color="text-light" size="small" :class="$style.timeTook">
+		<N8nText v-if="!isCompact" tag="div" color="text-light" size="small" :class="$style.timeTook">
 			<I18nT v-if="isSettled" keypath="logs.overview.body.summaryText">
 				<template #status>
 					<N8nText v-if="isError" color="danger" :bold="true" size="small">
@@ -132,7 +132,7 @@ watch(
 			startedAtText
 		}}</N8nText>
 		<N8nText
-			v-if="subtreeConsumedTokens !== undefined"
+			v-if="!isCompact && subtreeConsumedTokens !== undefined"
 			tag="div"
 			color="text-light"
 			size="small"
@@ -205,29 +205,29 @@ watch(
 	position: relative;
 	z-index: 1;
 
-	--row-gap-thickness: 1px;
-
 	& > * {
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
 		padding: var(--spacing-2xs);
-		margin-bottom: var(--row-gap-thickness);
 	}
 }
 
 .background {
 	position: absolute;
-	left: calc(var(--row-gap-thickness) + var(--indent-depth) * 32px);
+	left: calc(var(--indent-depth) * 32px);
 	top: 0;
-	width: calc(100% - var(--indent-depth) * 32px - var(--row-gap-thickness));
-	height: calc(100% - var(--row-gap-thickness));
+	width: calc(100% - var(--indent-depth) * 32px);
+	height: 100%;
 	border-radius: var(--border-radius-base);
 	z-index: -1;
 
-	.selected &,
-	.container:hover & {
+	.selected & {
 		background-color: var(--color-foreground-base);
+	}
+
+	.container:hover:not(.selected) & {
+		background-color: var(--color-background-light-base);
 	}
 
 	.selected:not(:hover).error & {
@@ -286,24 +286,12 @@ watch(
 		margin-right: var(--spacing-4xs);
 		vertical-align: text-bottom;
 	}
-
-	.compact & {
-		flex-shrink: 1;
-	}
-
-	.compact:hover & {
-		width: auto;
-	}
-
-	.compact:not(:hover) & {
-		display: none;
-	}
 }
 
 .startedAt {
 	flex-grow: 0;
 	flex-shrink: 0;
-	width: 30%;
+	width: 25%;
 
 	.compact & {
 		display: none;
@@ -313,21 +301,8 @@ watch(
 .consumedTokens {
 	flex-grow: 0;
 	flex-shrink: 0;
-	width: 10%;
+	width: 15%;
 	text-align: right;
-
-	.compact & {
-		flex-shrink: 1;
-	}
-
-	.compact:hover & {
-		width: auto;
-	}
-
-	.compact &:empty,
-	.compact:not(:hover) & {
-		display: none;
-	}
 }
 
 .compactErrorIcon {

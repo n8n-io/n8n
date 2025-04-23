@@ -44,8 +44,8 @@ const ndvStore = useNDVStore();
 const isClearExecutionButtonVisible = useClearExecutionButtonVisible();
 const isEmpty = computed(() => execution === undefined);
 const switchViewOptions = computed(() => [
-	{ label: locale.baseText('logs.overview.header.switch.details'), value: 'details' as const },
 	{ label: locale.baseText('logs.overview.header.switch.overview'), value: 'overview' as const },
+	{ label: locale.baseText('logs.overview.header.switch.details'), value: 'details' as const },
 ]);
 const consumedTokens = computed(() =>
 	getTotalConsumedTokens(...(execution?.tree ?? []).map(getSubtreeTotalConsumedTokens)),
@@ -172,7 +172,7 @@ async function handleTriggerPartialExecution(treeNode: LogEntry) {
 					</template>
 				</ElTree>
 				<N8nRadioButtons
-					size="medium"
+					size="small"
 					:class="$style.switchViewButtons"
 					:model-value="selected ? 'details' : 'overview'"
 					:options="switchViewOptions"
@@ -199,6 +199,7 @@ async function handleTriggerPartialExecution(treeNode: LogEntry) {
 .clearButton {
 	border: none;
 	color: var(--color-text-light);
+	gap: var(--spacing-5xs);
 }
 
 .content {
@@ -229,9 +230,7 @@ async function handleTriggerPartialExecution(treeNode: LogEntry) {
 }
 
 .summary {
-	margin-bottom: var(--spacing-4xs);
-	padding: var(--spacing-4xs) var(--spacing-2xs) 0 var(--spacing-2xs);
-	min-height: calc(30px + var(--spacing-s));
+	padding: var(--spacing-2xs);
 }
 
 .tree {

@@ -53,10 +53,10 @@ const manualLogEntrySelection = ref<LogEntrySelection>({ type: 'initial' });
 const selectedLogEntry = computed(() =>
 	findSelectedLogEntry(manualLogEntrySelection.value, execution.value),
 );
-const isLogDetailsOpen = computed(
-	() => selectedLogEntry.value !== undefined && !isCollapsingDetailsPanel.value,
+const isLogDetailsOpen = computed(() => isOpen.value && selectedLogEntry.value !== undefined);
+const isLogDetailsVisuallyOpen = computed(
+	() => isLogDetailsOpen.value && !isCollapsingDetailsPanel.value,
 );
-const isLogDetailsOpenOrCollapsing = computed(() => selectedLogEntry.value !== undefined);
 const logsPanelActionsProps = computed<InstanceType<typeof LogsPanelActions>['$props']>(() => ({
 	isOpen: isOpen.value,
 	showToggleButton: !isPoppedOut.value,
@@ -131,9 +131,9 @@ function handleResizeOverviewPanelEnd() {
 						<N8nResizeWrapper
 							:class="$style.overviewResizer"
 							:width="overviewPanelWidth"
-							:style="{ width: isLogDetailsOpen ? `${overviewPanelWidth}px` : '' }"
+							:style="{ width: isLogDetailsVisuallyOpen ? `${overviewPanelWidth}px` : '' }"
 							:supported-directions="['right']"
-							:is-resizing-enabled="isLogDetailsOpenOrCollapsing"
+							:is-resizing-enabled="isLogDetailsOpen"
 							:window="pipWindow"
 							@resize="onOverviewPanelResize"
 							@resizeend="handleResizeOverviewPanelEnd"
@@ -142,7 +142,7 @@ function handleResizeOverviewPanelEnd() {
 								:class="$style.logsOverview"
 								:is-open="isOpen"
 								:is-read-only="isReadOnly"
-								:is-compact="isLogDetailsOpen"
+								:is-compact="isLogDetailsVisuallyOpen"
 								:selected="selectedLogEntry"
 								:execution="execution"
 								:latest-node-info="latestNodeNameById"
@@ -151,12 +151,15 @@ function handleResizeOverviewPanelEnd() {
 								@clear-execution-data="resetExecutionData"
 							>
 								<template #actions>
-									<LogsPanelActions v-if="!isLogDetailsOpen" v-bind="logsPanelActionsProps" />
+									<LogsPanelActions
+										v-if="!isLogDetailsVisuallyOpen"
+										v-bind="logsPanelActionsProps"
+									/>
 								</template>
 							</LogsOverviewPanel>
 						</N8nResizeWrapper>
 						<LogsDetailsPanel
-							v-if="isLogDetailsOpenOrCollapsing && selectedLogEntry && execution && workflow"
+							v-if="isLogDetailsVisuallyOpen && selectedLogEntry && workflow && execution"
 							:class="$style.logDetails"
 							:is-open="isOpen"
 							:log-entry="selectedLogEntry"
@@ -167,7 +170,7 @@ function handleResizeOverviewPanelEnd() {
 							@click-header="onToggleOpen(true)"
 						>
 							<template #actions>
-								<LogsPanelActions v-if="isLogDetailsOpen" v-bind="logsPanelActionsProps" />
+								<LogsPanelActions v-if="isLogDetailsVisuallyOpen" v-bind="logsPanelActionsProps" />
 							</template>
 						</LogsDetailsPanel>
 					</div>

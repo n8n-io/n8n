@@ -5,17 +5,6 @@ import {
 	GenerateCredentialNameRequestQuery,
 } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import { In } from '@n8n/typeorm';
-import { Logger } from 'n8n-core';
-import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
-import { deepCopy } from 'n8n-workflow';
-import { z } from 'zod';
-
-import { SharedCredentials } from '@/databases/entities/shared-credentials';
-import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
-import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
-import * as Db from '@/db';
 import {
 	Delete,
 	Get,
@@ -25,8 +14,21 @@ import {
 	Put,
 	RestController,
 	ProjectScope,
-} from '@/decorators';
-import { Body, Param, Query } from '@/decorators/args';
+	Body,
+	Param,
+	Query,
+} from '@n8n/decorators';
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
+import { In } from '@n8n/typeorm';
+import { Logger } from 'n8n-core';
+import { deepCopy } from 'n8n-workflow';
+import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
+import { z } from 'zod';
+
+import { SharedCredentials } from '@/databases/entities/shared-credentials';
+import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
+import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
+import * as Db from '@/db';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';

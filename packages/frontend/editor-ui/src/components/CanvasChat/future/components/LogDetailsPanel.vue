@@ -8,9 +8,7 @@ import NodeIcon from '@/components/NodeIcon.vue';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { N8nButton, N8nResizeWrapper } from '@n8n/design-system';
 import { type Workflow } from 'n8n-workflow';
-import { computed, ref, useTemplateRef } from 'vue';
 import { type IExecutionResponse } from '@/Interface';
 import NodeName from '@/components/CanvasChat/future/components/NodeName.vue';
 import {
@@ -18,6 +16,9 @@ import {
 	type LatestNodeInfo,
 	type LogEntry,
 } from '@/components/RunDataAi/utils';
+import { N8nButton, N8nResizeWrapper } from '@n8n/design-system';
+import { useLocalStorage } from '@vueuse/core';
+import { computed, useTemplateRef } from 'vue';
 
 const MIN_IO_PANEL_WIDTH = 200;
 
@@ -38,7 +39,12 @@ const locale = useI18n();
 const telemetry = useTelemetry();
 const nodeTypeStore = useNodeTypesStore();
 
-const content = ref<LogDetailsContent>(LOG_DETAILS_CONTENT.BOTH);
+const content = useLocalStorage<LogDetailsContent>(
+	'N8N_LOGS_DETAIL_PANEL_CONTENT',
+	LOG_DETAILS_CONTENT.OUTPUT,
+	{ writeDefaults: false },
+);
+
 const type = computed(() => nodeTypeStore.getNodeType(logEntry.node.type));
 const consumedTokens = computed(() => getSubtreeTotalConsumedTokens(logEntry));
 const isTriggerNode = computed(() => type.value?.group.includes('trigger'));
@@ -98,7 +104,11 @@ function handleResizeEnd() {
 
 <template>
 	<div ref="container" :class="$style.container" data-test-id="log-details">
-		<PanelHeader data-test-id="log-details-header" @click="emit('clickHeader')">
+		<PanelHeader
+			data-test-id="log-details-header"
+			:class="$style.header"
+			@click="emit('clickHeader')"
+		>
 			<template #title>
 				<div :class="$style.title">
 					<NodeIcon :node-type="type" :size="16" :class="$style.icon" />
@@ -185,6 +195,10 @@ function handleResizeEnd() {
 	flex-direction: column;
 	align-items: stretch;
 	overflow: hidden;
+}
+
+.header {
+	padding: var(--spacing-2xs);
 }
 
 .actions {

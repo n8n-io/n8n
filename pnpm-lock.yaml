@@ -182,9 +182,6 @@ patchedDependencies:
   pkce-challenge@5.0.0:
     hash: 651e785d0b7bbf5be9210e1e895c39a16dc3ce8a5a3843b4819565fb6e175b90
     path: patches/pkce-challenge@5.0.0.patch
-  pyodide@0.23.4:
-    hash: c1002dacf7f6d0827d23aaf6cf2845e1b0c351339306c4ad660b8cd72077976c
-    path: patches/pyodide@0.23.4.patch
   vue-tsc@2.2.8:
     hash: e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f
     path: patches/vue-tsc@2.2.8.patch
@@ -415,6 +412,40 @@ importers:
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
+
+  packages/@n8n/constants:
+    devDependencies:
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+
+  packages/@n8n/decorators:
+    dependencies:
+      '@n8n/constants':
+        specifier: workspace:^
+        version: link:../constants
+      '@n8n/di':
+        specifier: workspace:^
+        version: link:../di
+      '@n8n/permissions':
+        specifier: workspace:^
+        version: link:../permissions
+      lodash:
+        specifier: 'catalog:'
+        version: 4.17.21
+      n8n-workflow:
+        specifier: workspace:^
+        version: link:../../workflow
+    devDependencies:
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+      '@types/express':
+        specifier: 'catalog:'
+        version: 5.0.1
+      '@types/lodash':
+        specifier: 'catalog:'
+        version: 4.14.195
 
   packages/@n8n/di:
     dependencies:
@@ -926,6 +957,12 @@ importers:
       '@n8n/config':
         specifier: workspace:*
         version: link:../@n8n/config
+      '@n8n/constants':
+        specifier: workspace:^
+        version: link:../@n8n/constants
+      '@n8n/decorators':
+        specifier: workspace:*
+        version: link:../@n8n/decorators
       '@n8n/di':
         specifier: workspace:*
         version: link:../@n8n/di
@@ -1269,6 +1306,9 @@ importers:
 
   packages/core:
     dependencies:
+      '@aws-sdk/client-s3':
+        specifier: 3.666.0
+        version: 3.666.0
       '@langchain/core':
         specifier: 'catalog:'
         version: 0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1))
@@ -1284,9 +1324,6 @@ importers:
       '@sentry/node':
         specifier: 'catalog:'
         version: 8.52.1
-      aws4:
-        specifier: 1.11.0
-        version: 1.11.0
       axios:
         specifier: 'catalog:'
         version: 1.8.2(debug@4.3.6)
@@ -1294,9 +1331,6 @@ importers:
         specifier: 'catalog:'
         version: 3.1.0
       chardet:
-        specifier: 2.0.0
-        version: 2.0.0
-      concat-stream:
         specifier: 2.0.0
         version: 2.0.0
       cron:
@@ -1366,12 +1400,6 @@ importers:
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../@n8n/typescript-config
-      '@types/aws4':
-        specifier: ^1.5.1
-        version: 1.11.2
-      '@types/concat-stream':
-        specifier: ^2.0.0
-        version: 2.0.0
       '@types/express':
         specifier: 'catalog:'
         version: 5.0.1
@@ -2173,8 +2201,8 @@ importers:
         specifier: 1.3.5
         version: 1.3.5(promise-ftp-common@1.1.5)
       pyodide:
-        specifier: 0.23.4
-        version: 0.23.4(patch_hash=c1002dacf7f6d0827d23aaf6cf2845e1b0c351339306c4ad660b8cd72077976c)(encoding@0.1.13)
+        specifier: 0.27.5
+        version: 0.27.5
       redis:
         specifier: 4.6.14
         version: 4.6.14
@@ -2223,6 +2251,9 @@ importers:
       xml2js:
         specifier: 'catalog:'
         version: 0.6.2
+      xmlhttprequest-ssl:
+        specifier: 3.1.0
+        version: 3.1.0
     devDependencies:
       '@n8n/typescript-config':
         specifier: workspace:*
@@ -5974,9 +6005,6 @@ packages:
   '@types/compression@1.7.5':
     resolution: {integrity: sha512-AAQvK5pxMpaT+nDvhHrsBhLSYG5yQdtkaJE1WYieSNY2mVFKAgmU4ks65rkZD5oqnGCFLyQpUr1CqI4DmUMyDg==}
 
-  '@types/concat-stream@2.0.0':
-    resolution: {integrity: sha512-t3YCerNM7NTVjLuICZo5gYAXYoDvpuuTceCcFQWcDQz26kxUR5uIWolxbIR5jRNIXpMqhOpW/b8imCR1LEmuJw==}
-
   '@types/connect@3.4.36':
     resolution: {integrity: sha512-P63Zd/JUGq+PdrM1lv0Wv5SBYeA2+CORvbrXbngriYY0jzLUWfQMQQxOhjONEz/wlHOAxOdY7CY65rgQdTjq2w==}
 
@@ -7078,9 +7106,6 @@ packages:
 
   balanced-match@1.0.2:
     resolution: {integrity: sha512-3oSeUO0TMV67hN1AmbXsK4yaqU7tjiHlbxRDZOpH0KW9+CeX4bRAaX0Anxt0tx2MrpRpWwQaPwIlISEJhYU5Pw==}
-
-  base-64@1.0.0:
-    resolution: {integrity: sha512-kwDPIFCGx0NZHog36dj+tHiwP4QMzsZ3AgMViUBKI0+V5n4U0ufTCUMhnQ04diaRI8EX/QcPfql7zlhZ7j4zgg==}
 
   base64-js@1.5.1:
     resolution: {integrity: sha512-AKpaYlHn8t4SVbOHCy+b5+KKgvR4vrsD8vbvrbiQJps7fKDTkjkDry6ji0rUJjC0kzbNePLwzxq8iypo41qeWA==}
@@ -10920,6 +10945,7 @@ packages:
   node-domexception@1.0.0:
     resolution: {integrity: sha512-/jKZoMpw0F8GRwl4/eLROPA3cfcXtLApP0QzLmUT/HuPCZWyB7IY9ZrMeKw2O/nFIqPQB3PVM9aYm0F312AXDQ==}
     engines: {node: '>=10.5.0'}
+    deprecated: Use your platform's native DOMException instead
 
   node-ensure@0.0.0:
     resolution: {integrity: sha512-DRI60hzo2oKN1ma0ckc6nQWlHU69RH6xN0sjQTjMpChPfTYvKZdcQFfdYK2RWbJcKyUizSIy/l8OTGxMAM1QDw==}
@@ -10927,15 +10953,6 @@ packages:
   node-fetch-h2@2.3.0:
     resolution: {integrity: sha512-ofRW94Ab0T4AOh5Fk8t0h8OBWrmjb0SSB20xh1H8YnPV9EJ+f5AMoYSUQ2zgJ4Iq2HAK0I2l5/Nequ8YzFS3Hg==}
     engines: {node: 4.x || >=6.0.0}
-
-  node-fetch@2.6.8:
-    resolution: {integrity: sha512-RZ6dBYuj8dRSfxpUSu+NsdF1dpPpluJxwOp+6IoDp/sH2QNDSvurYsAa+F1WxY2RjA1iP93xhcsUoYbF2XBqVg==}
-    engines: {node: 4.x || >=6.0.0}
-    peerDependencies:
-      encoding: ^0.1.0
-    peerDependenciesMeta:
-      encoding:
-        optional: true
 
   node-fetch@2.7.0:
     resolution: {integrity: sha512-c4FRfUm/dbcWZ7U+1Wq0AwCyFL+3nt2bEw05wfxSz+DWpWsitgmSgYmy2dQdWyKC1694ELPqMs/YzUSNozLt8A==}
@@ -11795,8 +11812,9 @@ packages:
   pure-rand@6.0.1:
     resolution: {integrity: sha512-t+x1zEHDjBwkDGY5v5ApnZ/utcd4XYDiJsaQQoptTXgUXX95sDg1elCdJghzicm7n2mbCBJ3uYWr6M22SO19rg==}
 
-  pyodide@0.23.4:
-    resolution: {integrity: sha512-WpQUHaIXQ1xede5BMqPAjBcmopxN22s5hEsYOR8T7/UW/fkNLFUn07SaemUgthbtvedD5JGymMMj4VpD9sGMTg==}
+  pyodide@0.27.5:
+    resolution: {integrity: sha512-nXErpLzEdtQolt+sNQ/5mKuN9XTUwhxR2MRhRhZ6oDRGpYLXrOp5+kkTPGEwK+wn1ZA8+poNmoxKTj2sq/p9og==}
+    engines: {node: '>=18.0.0'}
 
   python-struct@1.1.3:
     resolution: {integrity: sha512-UsI/mNvk25jRpGKYI38Nfbv84z48oiIWwG67DLVvjRhy8B/0aIK+5Ju5WOHgw/o9rnEmbAS00v4rgKFQeC332Q==}
@@ -13552,8 +13570,8 @@ packages:
   vue-component-type-helpers@2.1.10:
     resolution: {integrity: sha512-lfgdSLQKrUmADiSV6PbBvYgQ33KF3Ztv6gP85MfGaGaSGMTXORVaHT1EHfsqCgzRNBstPKYDmvAV9Do5CmJ07A==}
 
-  vue-component-type-helpers@2.2.8:
-    resolution: {integrity: sha512-4bjIsC284coDO9om4HPA62M7wfsTvcmZyzdfR0aUlFXqq4tXxM1APyXpNVxPC8QazKw9OhmZNHBVDA6ODaZsrA==}
+  vue-component-type-helpers@2.2.10:
+    resolution: {integrity: sha512-iDUO7uQK+Sab2tYuiP9D1oLujCWlhHELHMgV/cB13cuGbG4qwkLHvtfWb6FzvxrIOPDnU0oHsz2MlQjhYDeaHA==}
 
   vue-demi@0.14.10:
     resolution: {integrity: sha512-nMZBOwuzabUO0nLgIcc6rycZEebF6eeUfaiQx9+WSk8e29IbLvPU9feI6tqW4kTo3hvoYAJkMh8n8D0fuISphg==}
@@ -13865,6 +13883,10 @@ packages:
 
   xmlchars@2.2.0:
     resolution: {integrity: sha512-JZnDKK8B0RCDw84FNdDAIpZK+JuJw+s7Lz8nksI7SIuU3UXJJslUthsi+uWBUYOwPFwW7W7PRLRfUKpxjtjFCw==}
+
+  xmlhttprequest-ssl@3.1.0:
+    resolution: {integrity: sha512-UsofFE/khRRAcM9c3FGDEUSwupaQQC3Kme1brtz+B3N+RZHXGbD6AG6QzgWcunHzszqtOSMiZoPNrmHEBB2DjA==}
+    engines: {node: '>=12.0.0'}
 
   xmllint-wasm@3.0.1:
     resolution: {integrity: sha512-t+aKQXJQNAt9/qLgCjhHUmCnPXAyqBKiyh8oV0ZwBMar/uB+5F40tqOJZ97JwLADcqQr5WB2bjCxLKrm+DHz1g==}
@@ -18612,7 +18634,7 @@ snapshots:
       ts-dedent: 2.2.0
       type-fest: 2.19.0
       vue: 3.5.13(typescript@5.8.2)
-      vue-component-type-helpers: 2.2.8
+      vue-component-type-helpers: 2.2.10
 
   '@supabase/auth-js@2.65.0':
     dependencies:
@@ -18820,10 +18842,6 @@ snapshots:
   '@types/compression@1.7.5':
     dependencies:
       '@types/express': 5.0.1
-
-  '@types/concat-stream@2.0.0':
-    dependencies:
-      '@types/node': 18.16.16
 
   '@types/connect@3.4.36':
     dependencies:
@@ -19661,7 +19679,7 @@ snapshots:
   '@vue/test-utils@2.4.6':
     dependencies:
       js-beautify: 1.14.9
-      vue-component-type-helpers: 2.2.8
+      vue-component-type-helpers: 2.2.10
 
   '@vue/tsconfig@0.7.0(typescript@5.8.2)(vue@3.5.13(typescript@5.8.2))':
     optionalDependencies:
@@ -20197,8 +20215,6 @@ snapshots:
       '@babel/types': 7.26.10
 
   balanced-match@1.0.2: {}
-
-  base-64@1.0.0: {}
 
   base64-js@1.5.1: {}
 
@@ -24995,12 +25011,6 @@ snapshots:
     dependencies:
       http2-client: 1.3.5
 
-  node-fetch@2.6.8(encoding@0.1.13):
-    dependencies:
-      whatwg-url: 5.0.0
-    optionalDependencies:
-      encoding: 0.1.13
-
   node-fetch@2.7.0(encoding@0.1.13):
     dependencies:
       whatwg-url: 5.0.0
@@ -25926,14 +25936,11 @@ snapshots:
 
   pure-rand@6.0.1: {}
 
-  pyodide@0.23.4(patch_hash=c1002dacf7f6d0827d23aaf6cf2845e1b0c351339306c4ad660b8cd72077976c)(encoding@0.1.13):
+  pyodide@0.27.5:
     dependencies:
-      base-64: 1.0.0
-      node-fetch: 2.6.8(encoding@0.1.13)
       ws: 8.17.1
     transitivePeerDependencies:
       - bufferutil
-      - encoding
       - utf-8-validate
 
   python-struct@1.1.3:
@@ -27990,7 +27997,7 @@ snapshots:
 
   vue-component-type-helpers@2.1.10: {}
 
-  vue-component-type-helpers@2.2.8: {}
+  vue-component-type-helpers@2.2.10: {}
 
   vue-demi@0.14.10(vue@3.5.13(typescript@5.8.2)):
     dependencies:
@@ -28335,6 +28342,8 @@ snapshots:
   xmlbuilder@11.0.1: {}
 
   xmlchars@2.2.0: {}
+
+  xmlhttprequest-ssl@3.1.0: {}
 
   xmllint-wasm@3.0.1: {}
 
