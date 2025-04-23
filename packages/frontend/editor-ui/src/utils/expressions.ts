@@ -168,5 +168,5 @@ export const getResolvedExpression = (
 		return resolvedExpressionString;
 	}
 
-	return null;
+	return '';
 };
