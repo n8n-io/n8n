@@ -20,7 +20,9 @@ const emit = defineEmits<{
 			data-test-id="from-ai-override-button"
 			@click="emit('click')"
 		>
-			<AiStarsIcon size="large" />
+			<span>
+				<AiStarsIcon size="large" />
+			</span>
 		</N8nButton>
 	</N8nTooltip>
 </template>
@@ -34,8 +36,6 @@ const emit = defineEmits<{
 	width: 30px;
 	background-color: var(--color-foreground-base);
 	color: var(--color-foreground-xdark);
-	padding-left: 0;
-	padding-right: 0;
 
 	&:hover {
 		color: var(--color-foreground-xdark);
