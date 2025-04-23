@@ -40,6 +40,7 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 		return await this.find(findManyOptions);
 	}
 
+	// eslint-disable-next-line complexity
 	private toFindManyOptions(
 		listQueryOptions?: ListQuery.Options & {
 			includeData?: boolean;
@@ -70,6 +71,13 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 				role: filter.withRole,
 			};
 			delete filter.projectId;
+		}
+
+		if (typeof filter?.withRole === 'string' && filter.withRole !== '') {
+			filter.shared = {
+				...(filter?.shared ? filter.shared : {}),
+				role: filter.withRole,
+			};
 			delete filter.withRole;
 		}
 
