@@ -16,7 +16,7 @@ import {
 } from '@aws-sdk/client-s3';
 import { S3Config } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { UnexpectedError, UserError } from 'n8n-workflow';
+import { UnexpectedError } from 'n8n-workflow';
 import { createHash } from 'node:crypto';
 import { Readable } from 'node:stream';
 
@@ -40,14 +40,8 @@ export class ObjectStoreService {
 	) {
 		const { host, bucket, protocol, credentials } = s3Config;
 
-		if (host === '') {
-			throw new UserError(
-				'External storage host not configured. Please set `N8N_EXTERNAL_STORAGE_S3_HOST`.',
-			);
-		}
-
 		if (bucket.name === '') {
-			throw new UserError(
+			throw new UnexpectedError(
 				'External storage bucket name not configured. Please set `N8N_EXTERNAL_STORAGE_S3_BUCKET_NAME`.',
 			);
 		}
@@ -56,7 +50,7 @@ export class ObjectStoreService {
 
 		const clientConfig: S3ClientConfig = {
 			region: bucket.region,
-			endpoint: `${protocol}://${host}`,
+			endpoint: host ? `${protocol}://${host}` : undefined,
 			forcePathStyle: true, // Needed for non-AWS S3 compatible services
 		};
 		if (!credentials.useInstanceRole) {
