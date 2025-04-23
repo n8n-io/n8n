@@ -929,7 +929,7 @@ async function onImportWorkflowDataEvent(data: IDataObject) {
 	if (data.tidyUp) {
 		setTimeout(() => {
 			canvasEventBus.emit('tidyUp', { source: 'import-workflow-data' });
-		}, 100);
+		}, 0);
 	}
 }
 

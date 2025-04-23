@@ -15,7 +15,6 @@ const builderStore = useBuilderStore();
 const isPromptVisible = ref(true);
 const isFocused = ref(false);
 
-// const prompt = ref('Every morning at 9 am get current weather in Prague and send me an email if it's going to rain');
 const prompt = ref('');
 const hasContent = computed(() => prompt.value.trim().length > 0);
 
