@@ -8,14 +8,15 @@ import { mock } from 'jest-mock-extended';
 
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import type { AuthenticatedRequest } from '@/requests';
+import type { WorkflowBuilderService } from '@/services/ai-workflow-builder.service';
 import type { AiService } from '@/services/ai.service';
 
 import { AiController, type FlushableResponse } from '../ai.controller';
 
 describe('AiController', () => {
 	const aiService = mock<AiService>();
-
-	const controller = new AiController(aiService, mock(), mock());
+	const workflowBuilderService = mock<WorkflowBuilderService>();
+	const controller = new AiController(aiService, workflowBuilderService, mock(), mock());
 
 	const request = mock<AuthenticatedRequest>({
 		user: { id: 'user123' },
