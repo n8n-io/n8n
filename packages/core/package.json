@@ -28,8 +28,6 @@
   ],
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
-    "@types/aws4": "^1.5.1",
-    "@types/concat-stream": "^2.0.0",
     "@types/express": "catalog:",
     "@types/jsonwebtoken": "catalog:",
     "@types/lodash": "catalog:",
@@ -38,16 +36,15 @@
     "@types/xml2js": "catalog:"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "3.666.0",
     "@langchain/core": "catalog:",
     "@n8n/client-oauth2": "workspace:*",
     "@n8n/config": "workspace:*",
     "@n8n/di": "workspace:*",
     "@sentry/node": "catalog:",
-    "aws4": "1.11.0",
     "axios": "catalog:",
     "callsites": "catalog:",
     "chardet": "2.0.0",
-    "concat-stream": "2.0.0",
     "cron": "3.1.7",
     "fast-glob": "catalog:",
     "file-type": "16.5.4",
