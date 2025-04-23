@@ -34,6 +34,8 @@ const emit = defineEmits<{
 	width: 30px;
 	background-color: var(--color-foreground-base);
 	color: var(--color-foreground-xdark);
+	padding-left: 0;
+	padding-right: 0;
 
 	&:hover {
 		color: var(--color-foreground-xdark);
