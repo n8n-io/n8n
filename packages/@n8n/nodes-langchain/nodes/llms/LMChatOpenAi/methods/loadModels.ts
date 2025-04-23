@@ -16,11 +16,10 @@ export async function searchModels(
 
 	const filteredModels = models.filter((model: { id: string }) => {
 		const url = baseURL && new URL(baseURL);
-
+		const isCustomAPI = url && url.hostname !== 'api.openai.com';
 		// Filter out TTS, embedding, image generation, and other models
 		const isInvalidModel =
-			url &&
-			url.hostname === 'api.openai.com' &&
+			!isCustomAPI &&
 			(model.id.startsWith('babbage') ||
 				model.id.startsWith('davinci') ||
 				model.id.startsWith('computer-use') ||
