@@ -1,5 +1,5 @@
 import { PaginationDto } from '@n8n/api-types';
-import { RestController, Get, Middleware } from '@n8n/decorators';
+import { RestController, Get, Middleware, Query } from '@n8n/decorators';
 import { Request, Response, NextFunction } from 'express';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
