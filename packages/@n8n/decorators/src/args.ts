@@ -1,10 +1,15 @@
-import { getRouteMetadata } from './controller.registry';
+import { Container } from '@n8n/di';
+
+import { ControllerRegistryMetadata } from './controller-registry-metadata';
 import type { Arg, Controller } from './types';
 
 const ArgDecorator =
 	(arg: Arg): ParameterDecorator =>
 	(target, handlerName, parameterIndex) => {
-		const routeMetadata = getRouteMetadata(target.constructor as Controller, String(handlerName));
+		const routeMetadata = Container.get(ControllerRegistryMetadata).getRouteMetadata(
+			target.constructor as Controller,
+			String(handlerName),
+		);
 		routeMetadata.args[parameterIndex] = arg;
 	};
 

@@ -6,6 +6,7 @@ import {
 	type BooleanLicenseFeature,
 	type NumericLicenseFeature,
 } from '@n8n/constants';
+import { OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import type { TEntitlement, TFeatures, TLicenseBlock } from '@n8n_io/license-sdk';
 import { LicenseManager } from '@n8n_io/license-sdk';
@@ -13,7 +14,6 @@ import { InstanceSettings, Logger } from 'n8n-core';
 
 import config from '@/config';
 import { SettingsRepository } from '@/databases/repositories/settings.repository';
-import { OnShutdown } from '@/decorators/on-shutdown';
 import { LicenseMetricsService } from '@/metrics/license-metrics.service';
 
 import { N8N_VERSION, SETTINGS_LICENSE_CERT_KEY, Time } from './constants';
