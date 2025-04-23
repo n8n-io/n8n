@@ -1,10 +1,12 @@
 import type { InsightsSummary } from '@n8n/api-types';
+import type { InsightsDateRange } from '@n8n/api-types/src/schemas/insights.schema';
 import { Service } from '@n8n/di';
 import { Logger } from 'n8n-core';
 import type { ExecutionLifecycleHooks } from 'n8n-core';
 import type { IRun } from 'n8n-workflow';
 
 import { OnShutdown } from '@/decorators/on-shutdown';
+import { License } from '@/license';
 
 import type { PeriodUnit, TypeUnit } from './database/entities/insights-shared';
 import { NumberToType } from './database/entities/insights-shared';
@@ -18,7 +20,8 @@ export class InsightsService {
 		private readonly insightsByPeriodRepository: InsightsByPeriodRepository,
 		private readonly compactionService: InsightsCompactionService,
 		private readonly collectionService: InsightsCollectionService,
-		private readonly logger: Logger, // Assuming a logger is injected
+		private readonly license: License,
+		private readonly logger: Logger,
 	) {}
 
 	startBackgroundProcess() {
@@ -176,5 +179,22 @@ export class InsightsService {
 				},
 			};
 		});
+	}
+
+	getAvailableDateRanges(): InsightsDateRange[] {
+		const maxHistoryInDays =
+			this.license.getInsightsMaxHistory() === -1
+				? Number.MAX_SAFE_INTEGER
+				: this.license.getInsightsMaxHistory();
+		const isHourlyDateEnabled = this.license.isInsightsHourlyDataEnabled();
+
+		return [
+			{ key: 'day', licensed: isHourlyDateEnabled ?? false, granularity: 'hour' },
+			{ key: 'week', licensed: maxHistoryInDays >= 7, granularity: 'day' },
+			{ key: '2weeks', licensed: maxHistoryInDays >= 14, granularity: 'day' },
+			{ key: 'month', licensed: maxHistoryInDays >= 30, granularity: 'day' },
+			{ key: 'quarter', licensed: maxHistoryInDays >= 90, granularity: 'week' },
+			{ key: 'year', licensed: maxHistoryInDays >= 365, granularity: 'week' },
+		];
 	}
 }
