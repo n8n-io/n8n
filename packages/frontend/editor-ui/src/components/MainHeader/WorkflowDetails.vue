@@ -639,38 +639,45 @@ function showCreateWorkflowSuccessToast(id?: string) {
 			</template>
 		</BreakpointsObserver>
 
-		<span v-if="settingsStore.areTagsEnabled" class="tags" data-test-id="workflow-tags-container">
-			<WorkflowTagsDropdown
-				v-if="isTagsEditEnabled && !readOnly && (isNewWorkflow || workflowPermissions.update)"
-				ref="dropdown"
-				v-model="appliedTagIds"
-				:event-bus="tagsEventBus"
-				:placeholder="i18n.baseText('workflowDetails.chooseOrCreateATag')"
-				class="tags-edit"
-				data-test-id="workflow-tags-dropdown"
-				@blur="onTagsBlur"
-				@esc="onTagsEditEsc"
-			/>
-			<div
-				v-else-if="
-					(tags ?? []).length === 0 && !readOnly && (isNewWorkflow || workflowPermissions.update)
-				"
-			>
-				<span class="add-tag clickable" data-test-id="new-tag-link" @click="onTagsEditEnable">
-					+ {{ i18n.baseText('workflowDetails.addTag') }}
-				</span>
-			</div>
-			<WorkflowTagsContainer
-				v-else
-				:key="id"
-				:tag-ids="workflowTagIds"
-				:clickable="true"
-				:responsive="true"
-				data-test-id="workflow-tags"
-				@click="onTagsEditEnable"
-			/>
+		<span class="tags" data-test-id="workflow-tags-container">
+			<template v-if="settingsStore.areTagsEnabled">
+				<WorkflowTagsDropdown
+					v-if="isTagsEditEnabled && !readOnly && (isNewWorkflow || workflowPermissions.update)"
+					ref="dropdown"
+					v-model="appliedTagIds"
+					:event-bus="tagsEventBus"
+					:placeholder="i18n.baseText('workflowDetails.chooseOrCreateATag')"
+					class="tags-edit"
+					data-test-id="workflow-tags-dropdown"
+					@blur="onTagsBlur"
+					@esc="onTagsEditEsc"
+				/>
+				<div
+					v-else-if="
+						(tags ?? []).length === 0 && !readOnly && (isNewWorkflow || workflowPermissions.update)
+					"
+				>
+					<span class="add-tag clickable" data-test-id="new-tag-link" @click="onTagsEditEnable">
+						+ {{ i18n.baseText('workflowDetails.addTag') }}
+					</span>
+				</div>
+				<WorkflowTagsContainer
+					v-else
+					:key="id"
+					:tag-ids="workflowTagIds"
+					:clickable="true"
+					:responsive="true"
+					data-test-id="workflow-tags"
+					@click="onTagsEditEnable"
+				/>
+			</template>
+
+			<span class="archived">
+				<N8nBadge v-if="isArchived" class="ml-3xs" theme="tertiary" bold>
+					{{ locale.baseText('workflows.item.archived') }}
+				</N8nBadge>
+			</span>
 		</span>
-		<span v-else class="tags"></span>
 
 		<PushConnectionTracker class="actions">
 			<span :class="`activator ${$style.group}`">
@@ -812,6 +819,14 @@ $--header-spacing: 20px;
 	min-width: 100px;
 	width: 100%;
 	max-width: 460px;
+}
+
+.archived {
+	display: flex;
+	align-items: center;
+	width: 100%;
+	flex: 1;
+	margin-right: $--header-spacing;
 }
 
 .actions {

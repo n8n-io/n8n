@@ -389,6 +389,9 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 				<N8nBadge v-if="!workflowPermissions.update" class="ml-3xs" theme="tertiary" bold>
 					{{ locale.baseText('workflows.item.readonly') }}
 				</N8nBadge>
+				<N8nBadge v-if="data.isArchived" class="ml-3xs" theme="tertiary" bold>
+					{{ locale.baseText('workflows.item.archived') }}
+				</N8nBadge>
 			</n8n-text>
 		</template>
 		<div :class="$style.cardDescription">
