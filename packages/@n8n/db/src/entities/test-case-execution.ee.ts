@@ -37,9 +37,6 @@ export class TestCaseExecution extends WithStringId {
 	@Column({ type: 'varchar', nullable: true })
 	executionId: string | null;
 
-	@Column({ type: 'varchar', nullable: true })
-	evaluationExecutionId: string | null;
-
 	@Column()
 	status: TestCaseExecutionStatus;
 
