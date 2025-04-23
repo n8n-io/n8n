@@ -4,7 +4,7 @@ import { useProjectsStore } from '@/stores/projects.store';
 import { ProjectTypes } from '@/types/projects.types';
 import type { UserAction } from '@n8n/design-system/types';
 import { type PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
-import { computed, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useFoldersStore } from '@/stores/folders.store';
 import type { FolderPathItem, FolderShortInfo } from '@/Interface';
 
@@ -99,13 +99,17 @@ const fetchHiddenBreadCrumbsItems = async () => {
 	if (!projectName.value || !props.currentFolder?.parentFolder || !projectsStore.currentProjectId) {
 		hiddenBreadcrumbsItemsAsync.value = Promise.resolve([]);
 	} else {
-		const loadedItems = foldersStore.getHiddenBreadcrumbsItems(
-			{ id: projectsStore.currentProjectId, name: projectName.value },
-			props.currentFolder.parentFolder,
-			{ addLinks: true },
-		);
-		const filtered = (await loadedItems).filter((item) => !visibleIds.value.has(item.id));
-		hiddenBreadcrumbsItemsAsync.value = Promise.resolve(filtered);
+		try {
+			const loadedItems = foldersStore.getHiddenBreadcrumbsItems(
+				{ id: projectsStore.currentProjectId, name: projectName.value },
+				props.currentFolder.parentFolder,
+				{ addLinks: true },
+			);
+			const filtered = (await loadedItems).filter((item) => !visibleIds.value.has(item.id));
+			hiddenBreadcrumbsItemsAsync.value = Promise.resolve(filtered);
+		} catch (error) {
+			hiddenBreadcrumbsItemsAsync.value = Promise.resolve([]);
+		}
 	}
 };
 
@@ -155,6 +159,12 @@ watch(
 	},
 	{ immediate: true },
 );
+
+// Resolve the promise to an empty array when the component is unmounted
+// to avoid having dangling promises
+onBeforeUnmount(() => {
+	hiddenBreadcrumbsItemsAsync.value = Promise.resolve([]);
+});
 </script>
 <template>
 	<div
