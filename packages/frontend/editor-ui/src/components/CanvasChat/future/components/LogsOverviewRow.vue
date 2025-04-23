@@ -293,7 +293,7 @@ watch(
 .startedAt {
 	flex-grow: 0;
 	flex-shrink: 0;
-	width: 30%;
+	width: 25%;
 
 	.compact & {
 		display: none;
@@ -303,7 +303,7 @@ watch(
 .consumedTokens {
 	flex-grow: 0;
 	flex-shrink: 0;
-	width: 10%;
+	width: 15%;
 	text-align: right;
 }
 

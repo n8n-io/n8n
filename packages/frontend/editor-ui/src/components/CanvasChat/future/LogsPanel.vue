@@ -80,7 +80,9 @@ const selectedLogEntry = computed(() =>
 const isLogDetailsOpen = computed(
 	() => isOpen.value && selectedLogEntry.value !== undefined && !isCollapsingDetailsPanel.value,
 );
-const isLogDetailsOpenOrCollapsing = computed(() => selectedLogEntry.value !== undefined);
+const isLogDetailsOpenOrCollapsing = computed(
+	() => isOpen.value && selectedLogEntry.value !== undefined,
+);
 const logsPanelActionsProps = computed<InstanceType<typeof LogsPanelActions>['$props']>(() => ({
 	isOpen: isOpen.value,
 	showToggleButton: !isPoppedOut.value,
@@ -172,7 +174,7 @@ function handleResizeOverviewPanelEnd() {
 							</LogsOverviewPanel>
 						</N8nResizeWrapper>
 						<LogsDetailsPanel
-							v-if="isLogDetailsOpenOrCollapsing && selectedLogEntry"
+							v-if="isLogDetailsOpen && selectedLogEntry"
 							:class="$style.logDetails"
 							:is-open="isOpen"
 							:log-entry="selectedLogEntry"
