@@ -62,6 +62,7 @@ type Props = {
 	paneType: 'input' | 'output';
 	connectionType?: NodeConnectionType;
 	search?: string;
+	compact?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -75,6 +76,7 @@ const props = withDefaults(defineProps<Props>(), {
 	connectionType: NodeConnectionTypes.Main,
 	search: '',
 	mappingEnabled: false,
+	compact: false,
 });
 
 const telemetry = useTelemetry();
@@ -377,7 +379,7 @@ const onDragEnd = (el: HTMLElement) => {
 </script>
 
 <template>
-	<div class="run-data-schema full-height">
+	<div :class="['run-data-schema', 'full-height', props.compact ? 'compact' : '']">
 		<div v-if="noSearchResults" class="no-results">
 			<N8nText tag="h3" size="large">{{ i18n.baseText('ndv.search.noNodeMatch.title') }}</N8nText>
 			<N8nText>
@@ -491,6 +493,10 @@ const onDragEnd = (el: HTMLElement) => {
 .scroller {
 	padding: 0 var(--spacing-s);
 	padding-bottom: var(--spacing-2xl);
+
+	.compact & {
+		padding: 0 var(--spacing-2xs);
+	}
 }
 
 .no-results {
