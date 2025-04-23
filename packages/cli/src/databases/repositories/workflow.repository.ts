@@ -393,6 +393,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 	): void {
 		this.applyNameFilter(qb, filter);
 		this.applyActiveFilter(qb, filter);
+		this.applyIsArchivedFilter(qb, filter);
 		this.applyTagsFilter(qb, filter);
 		this.applyProjectFilter(qb, filter);
 		this.applyParentFolderFilter(qb, filter);
@@ -436,6 +437,15 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 	): void {
 		if (typeof filter?.active === 'boolean') {
 			qb.andWhere('workflow.active = :active', { active: filter.active });
+		}
+	}
+
+	private applyIsArchivedFilter(
+		qb: SelectQueryBuilder<WorkflowEntity>,
+		filter: ListQuery.Options['filter'],
+	): void {
+		if (typeof filter?.isArchived === 'boolean') {
+			qb.andWhere('workflow.isArchived = :isArchived', { isArchived: filter.isArchived });
 		}
 	}
 
