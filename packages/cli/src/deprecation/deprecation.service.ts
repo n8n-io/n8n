@@ -76,6 +76,17 @@ export class DeprecationService {
 			envVar: 'N8N_PARTIAL_EXECUTION_VERSION_DEFAULT',
 			message: 'This environment variable is internal and should not be set.',
 		},
+		{
+			envVar: 'EXECUTIONS_PROCESS',
+			message: SAFE_TO_REMOVE,
+			checkValue: (value: string | undefined) => value !== undefined && value !== 'own',
+		},
+		{
+			envVar: 'EXECUTIONS_PROCESS',
+			message:
+				'n8n does not support `own` mode since May 2023. Please remove this environment variable to allow n8n to start. If you need the isolation and performance gains, please consider queue mode: https://docs.n8n.io/hosting/scaling/queue-mode/',
+			checkValue: (value: string) => value === 'own',
+		},
 	];
 
 	/** Runtime state of deprecation-related env vars. */
