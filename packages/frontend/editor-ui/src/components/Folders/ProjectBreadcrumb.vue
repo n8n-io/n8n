@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useI18n } from '@/composables/useI18n';
-import { useProjectsStore } from '@/stores/projects.store';
 import {
 	type Project,
 	type ProjectIcon as ProjectIconType,
@@ -24,13 +23,11 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 
-const projectsStore = useProjectsStore();
-
 const projectIcon = computed((): ProjectIconType => {
-	if (projectsStore.currentProject?.type === ProjectTypes.Personal) {
+	if (props.currentProject?.type === ProjectTypes.Personal) {
 		return { type: 'icon', value: 'user' };
-	} else if (projectsStore.currentProject?.name) {
-		return projectsStore.currentProject.icon ?? { type: 'icon', value: 'layer-group' };
+	} else if (props.currentProject?.name) {
+		return props.currentProject.icon ?? { type: 'icon', value: 'layer-group' };
 	} else {
 		return { type: 'icon', value: 'home' };
 	}
