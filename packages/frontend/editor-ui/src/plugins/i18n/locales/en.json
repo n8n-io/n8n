@@ -1989,7 +1989,6 @@
 	"settings.api.view.modal.title.create": "Create API Key",
 	"settings.api.view.modal.title.edit": "Edit API Key",
 	"settings.api.view.modal.done.button": "Done",
-	"settings.api.view.modal.edit.button": "Edit",
 	"settings.api.view.modal.save.button": "Save",
 	"settings.api.scopes.placeholder": "Select",
 	"settings.api.scopes.selectAll": "Select All",

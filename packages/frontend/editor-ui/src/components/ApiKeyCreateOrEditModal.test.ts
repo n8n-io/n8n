@@ -329,11 +329,11 @@ describe('ApiKeyCreateOrEditModal', () => {
 
 		await fireEvent.update(labelInput, 'updated api key');
 
-		const editButton = getByText('Edit');
+		const saveButton = getByText('Save');
 
-		expect(editButton).toBeInTheDocument();
+		expect(saveButton).toBeInTheDocument();
 
-		await fireEvent.click(editButton);
+		await fireEvent.click(saveButton);
 
 		expect(apiKeysStore.updateApiKey).toHaveBeenCalledWith('123', {
 			label: 'updated api key',
