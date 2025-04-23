@@ -3,7 +3,6 @@ import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 export class MomentumApi implements ICredentialType {
 	name = 'momentumApi';
 	displayName = 'Momentum API';
-	documentationUrl = ''; // Add if you have one
 
 	properties: INodeProperties[] = [
 		{

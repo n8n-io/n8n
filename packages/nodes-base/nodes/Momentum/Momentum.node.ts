@@ -81,7 +81,7 @@ export class Momentum implements INodeType {
 					},
 				},
 				default: '',
-			},			
+			},
 		],
 	};
 
@@ -106,7 +106,7 @@ export class Momentum implements INodeType {
 				headers: {
 					'Content-Type': 'application/x-www-form-urlencoded',
 				},
-				body: {
+				form: {
 					grant_type: 'password',
 					username: credentials.username,
 					password: credentials.password,
@@ -124,90 +124,63 @@ export class Momentum implements INodeType {
 			throw new NodeOperationError(this.getNode(), 'Authentication failed. Please check your credentials.');
 		}
 
+		// Reusable request function
+		const makeApiRequest = async (endpoint: string, data: any) => {
+			return this.helpers.request({
+				method: 'POST',
+				url: `${credentials.baseUrl}${endpoint}`,
+				headers: {
+					Authorization: `Bearer ${authToken}`,
+					'Content-Type': 'application/json',
+				},
+				body: data,
+				json: true,
+			});
+		};
+
 		for (let i = 0; i < items.length; i++) {
 			const operation = this.getNodeParameter('operation', i) as string;
 
-			let responseData;
-
 			try {
+				let endpoint = '';
+				let rawData = '';
+				let data: any;
+
 				switch (operation) {
-					case 'createProspect': {
-						const rawData = this.getNodeParameter('prospectData', i) as string;
-						const prospectData = typeof rawData === 'string' ? JSON.parse(rawData) : rawData;
-						
-						responseData = await this.helpers.request({
-							method: 'POST',
-							url: `${credentials.baseUrl}/Zapier/InsertProspect`,
-							headers: {
-								'Authorization': `Bearer ${authToken}`,
-								'Content-Type': 'application/json',
-							},
-							body: prospectData,
-							json: true,
-						});
+					case 'createProspect':
+						endpoint = '/Zapier/InsertProspect';
+						rawData = this.getNodeParameter('prospectData', i) as string;
 						break;
-					}
-
-					case 'createInsured': {
-						const rawData = this.getNodeParameter('insuredData', i) as string;
-						const insuredData = typeof rawData === 'string' ? JSON.parse(rawData) : rawData;
-						
-						responseData = await this.helpers.request({
-							method: 'POST',
-							url: `${credentials.baseUrl}/Zapier/InsertInsured`,
-							headers: {
-								'Authorization': `Bearer ${authToken}`,
-								'Content-Type': 'application/json',
-							},
-							body: insuredData,
-							json: true,
-						});
+					case 'createInsured':
+						endpoint = '/Zapier/InsertInsured';
+						rawData = this.getNodeParameter('insuredData', i) as string;
 						break;
-					}
-	
-					case 'createPolicy': {
-						const rawData = this.getNodeParameter('policyData', i) as string;
-						const policyData = typeof rawData === 'string' ? JSON.parse(rawData) : rawData;
-						
-						responseData = await this.helpers.request({
-							method: 'POST',
-							url: `${credentials.baseUrl}/Zapier/InsertPolicy`,
-							headers: {
-								'Authorization': `Bearer ${authToken}`,
-								'Content-Type': 'application/json',
-							},
-							body: policyData,
-							json: true,
-						});
+					case 'createPolicy':
+						endpoint = '/Zapier/InsertPolicy';
+						rawData = this.getNodeParameter('policyData', i) as string;
 						break;
-					}
-
-					case 'createTask': {
-						const rawData = this.getNodeParameter('taskData', i) as string;
-						const taskData = typeof rawData === 'string' ? JSON.parse(rawData) : rawData;
-					
-						responseData = await this.helpers.request({
-							method: 'POST',
-							url: `${credentials.baseUrl}/Zapier/InsertTask`, // Adjust if your actual endpoint differs
-							headers: {
-								'Authorization': `Bearer ${authToken}`,
-								'Content-Type': 'application/json',
-							},
-							body: taskData,
-							json: true,
-						});
+					case 'createTask':
+						endpoint = '/Zapier/InsertTask';
+						rawData = this.getNodeParameter('taskData', i) as string;
 						break;
-					}					
-
 					default:
 						throw new NodeOperationError(this.getNode(), `Operation "${operation}" is not supported`);
 				}
+
+				// Safely parse JSON
+				try {
+					data = typeof rawData === 'string' ? JSON.parse(rawData) : rawData;
+				} catch (parseError) {
+					throw new NodeOperationError(this.getNode(), 'Invalid JSON input provided.');
+				}
+
+				const responseData = await makeApiRequest(endpoint, data);
 
 				if (responseData) {
 					returnData.push({ json: responseData });
 				}
 			} catch (error) {
-				if (error.response && error.response.body) {
+				if (error.response?.body) {
 					throw new NodeOperationError(this.getNode(), error.response.body);
 				}
 				throw new NodeOperationError(this.getNode(), error);
