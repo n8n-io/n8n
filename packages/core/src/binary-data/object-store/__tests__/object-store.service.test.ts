@@ -8,11 +8,11 @@ import {
 	PutObjectCommand,
 	type S3Client,
 } from '@aws-sdk/client-s3';
-import type { S3Config } from '@n8n/config';
 import { captor, mock } from 'jest-mock-extended';
 import { Readable } from 'stream';
 
-import { ObjectStoreService } from '@/binary-data/object-store/object-store.service.ee';
+import type { ObjectStoreConfig } from '../object-store.config';
+import { ObjectStoreService } from '../object-store.service.ee';
 
 const mockS3Send = jest.fn();
 const s3Client = mock<S3Client>({ send: mockS3Send });
@@ -35,7 +35,7 @@ describe('ObjectStoreService', () => {
 	const binaryDataId = '71f6209b-5d48-41a2-a224-80d529d8bb32';
 	const fileId = `workflows/${workflowId}/executions/${executionId}/binary_data/${binaryDataId}`;
 	const mockBuffer = Buffer.from('Test data');
-	const s3Config = mock<S3Config>({
+	const s3Config = mock<ObjectStoreConfig>({
 		host: mockHost,
 		bucket: mockBucket,
 		credentials: {

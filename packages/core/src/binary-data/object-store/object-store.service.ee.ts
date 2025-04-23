@@ -14,7 +14,6 @@ import {
 	DeleteObjectsCommand,
 	ListObjectsV2Command,
 } from '@aws-sdk/client-s3';
-import { S3Config } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
 import { createHash } from 'node:crypto';
@@ -22,6 +21,7 @@ import { Readable } from 'node:stream';
 
 import { Logger } from '@/logging/logger';
 
+import { ObjectStoreConfig } from './object-store.config';
 import type { MetadataResponseHeaders } from './types';
 import type { BinaryData } from '../types';
 import { streamToBuffer } from '../utils';
@@ -36,7 +36,7 @@ export class ObjectStoreService {
 
 	constructor(
 		private readonly logger: Logger,
-		private readonly s3Config: S3Config,
+		private readonly s3Config: ObjectStoreConfig,
 	) {
 		const { bucket } = s3Config;
 		if (bucket.name === '') {
