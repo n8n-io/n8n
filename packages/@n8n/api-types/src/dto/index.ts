@@ -64,3 +64,4 @@ export { DeleteFolderDto } from './folders/delete-folder.dto';
 export { ListFolderQueryDto } from './folders/list-folder-query.dto';
 
 export { ListInsightsWorkflowQueryDto } from './insights/list-workflow-query.dto';
+export { PaginationDto } from './pagination/pagination.dto';
