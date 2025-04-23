@@ -1627,7 +1627,7 @@ onBeforeRouteLeave(async (to, from, next) => {
 		return;
 	}
 
-	await useWorkflowSaving().promptSaveUnsavedWorkflowChanges(next, {
+	await useWorkflowSaving({ router }).promptSaveUnsavedWorkflowChanges(next, {
 		async confirm() {
 			if (from.name === VIEWS.NEW_WORKFLOW) {
 				// Replace the current route with the new workflow route

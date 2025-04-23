@@ -35,7 +35,7 @@ const emit = defineEmits<{
 }>();
 
 const workflowHelpers = useWorkflowHelpers({ router: useRouter() });
-const { promptSaveUnsavedWorkflowChanges } = useWorkflowSaving();
+const { promptSaveUnsavedWorkflowChanges } = useWorkflowSaving({ router });
 
 const temporaryExecution = computed<ExecutionSummary | undefined>(() =>
 	props.executions.find((execution) => execution.id === props.execution?.id)
