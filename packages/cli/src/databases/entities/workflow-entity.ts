@@ -35,6 +35,9 @@ export class WorkflowEntity extends WithTimestampsAndStringId implements IWorkfl
 	@Column()
 	active: boolean;
 
+	@Column()
+	isArchived: boolean;
+
 	@Column(jsonColumnType)
 	nodes: INode[];
 

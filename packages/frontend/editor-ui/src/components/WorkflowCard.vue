@@ -35,6 +35,8 @@ const WORKFLOW_LIST_ITEM_ACTIONS = {
 	SHARE: 'share',
 	DUPLICATE: 'duplicate',
 	DELETE: 'delete',
+	ARCHIVE: 'archive',
+	UNARCHIVE: 'unarchive',
 	MOVE: 'move',
 	MOVE_TO_FOLDER: 'moveToFolder',
 };
@@ -57,6 +59,8 @@ const emit = defineEmits<{
 	'expand:tags': [];
 	'click:tag': [tagId: string, e: PointerEvent];
 	'workflow:deleted': [];
+	'workflow:archived': [workflowId: string];
+	'workflow:unarchived': [workflowId: string];
 	'workflow:active-toggle': [value: { id: string; active: boolean }];
 	'action:move-to-folder': [value: { id: string; name: string; parentFolderId?: string }];
 }>();
@@ -155,10 +159,21 @@ const actions = computed(() => {
 		});
 	}
 
-	if (workflowPermissions.value.delete && !props.readOnly) {
+	if (workflowPermissions.value.delete && !props.readOnly && !props.data.isArchived) {
+		items.push({
+			label: locale.baseText('workflows.item.archive'),
+			value: WORKFLOW_LIST_ITEM_ACTIONS.ARCHIVE,
+		});
+	}
+
+	if (workflowPermissions.value.delete && !props.readOnly && props.data.isArchived) {
 		items.push({
 			label: locale.baseText('workflows.item.delete'),
 			value: WORKFLOW_LIST_ITEM_ACTIONS.DELETE,
+		});
+		items.push({
+			label: locale.baseText('workflows.item.unarchive'),
+			value: WORKFLOW_LIST_ITEM_ACTIONS.UNARCHIVE,
 		});
 	}
 
@@ -239,6 +254,12 @@ async function onAction(action: string) {
 		case WORKFLOW_LIST_ITEM_ACTIONS.DELETE:
 			await deleteWorkflow();
 			break;
+		case WORKFLOW_LIST_ITEM_ACTIONS.ARCHIVE:
+			await archiveWorkflow();
+			break;
+		case WORKFLOW_LIST_ITEM_ACTIONS.UNARCHIVE:
+			await unarchiveWorkflow();
+			break;
 		case WORKFLOW_LIST_ITEM_ACTIONS.MOVE:
 			moveResource();
 			break;
@@ -286,6 +307,36 @@ async function deleteWorkflow() {
 		type: 'success',
 	});
 	emit('workflow:deleted');
+}
+
+async function archiveWorkflow() {
+	try {
+		await workflowsStore.archiveWorkflow(props.data.id);
+	} catch (error) {
+		toast.showError(error, locale.baseText('generic.archiveWorkflowError'));
+		return;
+	}
+
+	toast.showMessage({
+		title: locale.baseText('mainSidebar.showMessage.handleArchive.title'),
+		type: 'success',
+	});
+	emit('workflow:archived', props.data.id);
+}
+
+async function unarchiveWorkflow() {
+	try {
+		await workflowsStore.unarchiveWorkflow(props.data.id);
+	} catch (error) {
+		toast.showError(error, locale.baseText('generic.unarchiveWorkflowError'));
+		return;
+	}
+
+	toast.showMessage({
+		title: locale.baseText('mainSidebar.showMessage.handleUnarchive.title'),
+		type: 'success',
+	});
+	emit('workflow:unarchived', props.data.id);
 }
 
 const fetchHiddenBreadCrumbsItems = async () => {
@@ -393,6 +444,7 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 				</ProjectCardBadge>
 				<WorkflowActivator
 					class="mr-s"
+					:is-archived="data.isArchived"
 					:workflow-active="data.active"
 					:workflow-id="data.id"
 					:workflow-permissions="workflowPermissions"

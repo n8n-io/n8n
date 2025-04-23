@@ -377,6 +377,10 @@ export class WorkflowService {
 			return;
 		}
 
+		if (!workflow.isArchived) {
+			throw new BadRequestError('Workflow must be archived before it can be deleted.');
+		}
+
 		if (workflow.active) {
 			// deactivate before deleting
 			await this.activeWorkflowManager.remove(workflowId);
@@ -394,6 +398,52 @@ export class WorkflowService {
 
 		this.eventService.emit('workflow-deleted', { user, workflowId, publicApi: false });
 		await this.externalHooks.run('workflow.afterDelete', [workflowId]);
+
+		return workflow;
+	}
+
+	async archive(user: User, workflowId: string): Promise<WorkflowEntity | undefined> {
+		const workflow = await this.sharedWorkflowRepository.findWorkflowForUser(workflowId, user, [
+			'workflow:delete',
+		]);
+
+		if (!workflow) {
+			return;
+		}
+
+		if (workflow.isArchived) {
+			throw new BadRequestError('Workflow is already archived.');
+		}
+
+		if (workflow.active) {
+			await this.activeWorkflowManager.remove(workflowId);
+		}
+
+		await this.workflowRepository.update(workflowId, { isArchived: true, active: false });
+
+		this.eventService.emit('workflow-archived', { user, workflowId, publicApi: false });
+		await this.externalHooks.run('workflow.afterArchive', [workflowId]);
+
+		return workflow;
+	}
+
+	async unarchive(user: User, workflowId: string): Promise<WorkflowEntity | undefined> {
+		const workflow = await this.sharedWorkflowRepository.findWorkflowForUser(workflowId, user, [
+			'workflow:delete',
+		]);
+
+		if (!workflow) {
+			return;
+		}
+
+		if (!workflow.isArchived) {
+			throw new BadRequestError('Workflow is not archived.');
+		}
+
+		await this.workflowRepository.update(workflowId, { isArchived: false });
+
+		this.eventService.emit('workflow-unarchived', { user, workflowId, publicApi: false });
+		await this.externalHooks.run('workflow.afterUnarchive', [workflowId]);
 
 		return workflow;
 	}

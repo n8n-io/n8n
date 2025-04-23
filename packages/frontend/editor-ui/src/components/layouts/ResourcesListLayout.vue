@@ -29,6 +29,7 @@ export type WorkflowResource = BaseResource & {
 	updatedAt: string;
 	createdAt: string;
 	active: boolean;
+	isArchived: boolean;
 	homeProject?: ProjectSharingData;
 	scopes?: Scope[];
 	tags?: ITag[] | string[];

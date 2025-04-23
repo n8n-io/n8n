@@ -22,6 +22,7 @@ import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useRouter } from 'vue-router';
 
 const props = defineProps<{
+	isArchived: boolean;
 	workflowActive: boolean;
 	workflowId: string;
 	workflowPermissions: PermissionsRecord['workflow'];
@@ -88,10 +89,10 @@ const isNewWorkflow = computed(
 
 const disabled = computed((): boolean => {
 	if (isNewWorkflow.value || isCurrentWorkflow.value) {
-		return !props.workflowActive && !containsTrigger.value;
+		return (!props.workflowActive && !containsTrigger.value) || props.isArchived;
 	}
 
-	return false;
+	return props.isArchived;
 });
 
 function findManagedOpenAiCredentialId(
@@ -221,9 +222,11 @@ watch(
 				<div>
 					{{
 						i18n.baseText(
-							containsOnlyExecuteWorkflowTrigger
-								? 'workflowActivator.thisWorkflowHasOnlyOneExecuteWorkflowTriggerNode'
-								: 'workflowActivator.thisWorkflowHasNoTriggerNodes',
+							isArchived
+								? 'workflowActivator.thisWorkflowIsArchived'
+								: containsOnlyExecuteWorkflowTrigger
+									? 'workflowActivator.thisWorkflowHasOnlyOneExecuteWorkflowTriggerNode'
+									: 'workflowActivator.thisWorkflowHasNoTriggerNodes',
 						)
 					}}
 				</div>

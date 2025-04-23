@@ -507,6 +507,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 				'workflow.id',
 				'workflow.name',
 				'workflow.active',
+				'workflow.isArchived',
 				'workflow.createdAt',
 				'workflow.updatedAt',
 				'workflow.versionId',

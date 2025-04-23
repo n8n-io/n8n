@@ -98,6 +98,7 @@ import { useLocalStorage } from '@vueuse/core';
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
 	active: false,
+	isArchived: false,
 	createdAt: -1,
 	updatedAt: -1,
 	connections: {},
@@ -718,6 +719,17 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		await makeRestApiRequest(rootStore.restApiContext, 'DELETE', `/workflows/${id}`);
 		const { [id]: deletedWorkflow, ...workflows } = workflowsById.value;
 		workflowsById.value = workflows;
+	}
+
+	async function archiveWorkflow(id: string) {
+		await makeRestApiRequest(rootStore.restApiContext, 'POST', `/workflows/${id}/archive`);
+		workflowsById.value[id].isArchived = true;
+		workflowsById.value[id].active = false;
+	}
+
+	async function unarchiveWorkflow(id: string) {
+		await makeRestApiRequest(rootStore.restApiContext, 'POST', `/workflows/${id}/unarchive`);
+		workflowsById.value[id].isArchived = false;
 	}
 
 	function addWorkflow(workflow: IWorkflowDb) {
@@ -1839,6 +1851,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		replaceInvalidWorkflowCredentials,
 		setWorkflows,
 		deleteWorkflow,
+		archiveWorkflow,
+		unarchiveWorkflow,
 		addWorkflow,
 		setWorkflowActive,
 		setWorkflowInactive,
