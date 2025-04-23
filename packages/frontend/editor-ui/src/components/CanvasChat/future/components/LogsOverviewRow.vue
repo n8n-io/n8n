@@ -128,9 +128,14 @@ watch(
 			</I18nT>
 			<template v-else>{{ upperFirst(props.data.runData.executionStatus) }}</template></N8nText
 		>
-		<N8nText tag="div" color="text-light" size="small" :class="$style.startedAt">{{
-			startedAtText
-		}}</N8nText>
+		<N8nText
+			v-if="!isCompact"
+			tag="div"
+			color="text-light"
+			size="small"
+			:class="$style.startedAt"
+			>{{ startedAtText }}</N8nText
+		>
 		<N8nText
 			v-if="!isCompact && subtreeConsumedTokens !== undefined"
 			tag="div"
@@ -292,10 +297,6 @@ watch(
 	flex-grow: 0;
 	flex-shrink: 0;
 	width: 25%;
-
-	.compact & {
-		display: none;
-	}
 }
 
 .consumedTokens {

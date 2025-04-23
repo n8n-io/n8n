@@ -216,6 +216,8 @@ describe('LogsPanel', () => {
 
 		const rendered = render();
 
+		await fireEvent.click(rendered.getByText('Overview'));
+
 		expect(rendered.getByText('Running')).toBeInTheDocument();
 		expect(rendered.queryByText('AI Agent')).not.toBeInTheDocument();
 
