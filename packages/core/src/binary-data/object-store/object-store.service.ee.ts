@@ -16,7 +16,7 @@ import {
 } from '@aws-sdk/client-s3';
 import { S3Config } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { ApplicationError, UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError, UserError } from 'n8n-workflow';
 import { createHash } from 'node:crypto';
 import { Readable } from 'node:stream';
 
@@ -41,13 +41,13 @@ export class ObjectStoreService {
 		const { host, bucket, protocol, credentials } = s3Config;
 
 		if (host === '') {
-			throw new ApplicationError(
+			throw new UserError(
 				'External storage host not configured. Please set `N8N_EXTERNAL_STORAGE_S3_HOST`.',
 			);
 		}
 
 		if (bucket.name === '') {
-			throw new ApplicationError(
+			throw new UserError(
 				'External storage bucket name not configured. Please set `N8N_EXTERNAL_STORAGE_S3_BUCKET_NAME`.',
 			);
 		}
@@ -87,12 +87,8 @@ export class ObjectStoreService {
 			this.logger.debug('Checking connection to S3 bucket', { bucket: this.bucket });
 			const command = new HeadBucketCommand({ Bucket: this.bucket });
 			await this.s3Client.send(command);
-			return;
 		} catch (e) {
-			const error = e instanceof Error ? e : new Error(`${e}`);
-			const message = `Request to S3 failed: ${error.message}`;
-			this.logger.error(message);
-			throw new ApplicationError(message, { cause: error });
+			throw new UnexpectedError('Request to S3 failed', { cause: e });
 		}
 	}
 
@@ -121,10 +117,7 @@ export class ObjectStoreService {
 			const command = new PutObjectCommand(params);
 			return await this.s3Client.send(command);
 		} catch (e) {
-			const error = e instanceof Error ? e : new Error(`${e}`);
-			const message = `Request to S3 failed: ${error.message}`;
-			this.logger.error(message);
-			throw new ApplicationError(message, { cause: error });
+			throw new UnexpectedError('Request to S3 failed', { cause: e });
 		}
 	}
 
@@ -152,10 +145,7 @@ export class ObjectStoreService {
 
 			return await streamToBuffer(body as Readable);
 		} catch (e) {
-			const error = e instanceof Error ? e : new Error(`${e}`);
-			const message = `Request to S3 failed: ${error.message}`;
-			this.logger.error(message);
-			throw new UnexpectedError(message, { cause: error });
+			throw new UnexpectedError('Request to S3 failed', { cause: e });
 		}
 	}
 
@@ -189,10 +179,7 @@ export class ObjectStoreService {
 
 			return headers;
 		} catch (e) {
-			const error = e instanceof Error ? e : new Error(`${e}`);
-			const message = `Request to S3 failed: ${error.message}`;
-			this.logger.error(message);
-			throw new ApplicationError(message, { cause: error });
+			throw new UnexpectedError('Request to S3 failed', { cause: e });
 		}
 	}
 
@@ -209,10 +196,7 @@ export class ObjectStoreService {
 			this.logger.debug('Sending DELETE request to S3', { bucket: this.bucket, key: fileId });
 			return await this.s3Client.send(command);
 		} catch (e) {
-			const error = e instanceof Error ? e : new Error(`${e}`);
-			const message = `Request to S3 failed: ${error.message}`;
-			this.logger.error(message);
-			throw new ApplicationError(message, { cause: error });
+			throw new UnexpectedError('Request to S3 failed', { cause: e });
 		}
 	}
 
@@ -240,10 +224,7 @@ export class ObjectStoreService {
 			const command = new DeleteObjectsCommand(params);
 			return await this.s3Client.send(command);
 		} catch (e) {
-			const error = e instanceof Error ? e : new Error(`${e}`);
-			const message = `Request to S3 failed: ${error.message}`;
-			this.logger.error(message);
-			throw new ApplicationError(message, { cause: error });
+			throw new UnexpectedError('Request to S3 failed', { cause: e });
 		}
 	}
 
@@ -269,10 +250,7 @@ export class ObjectStoreService {
 
 			return items;
 		} catch (e) {
-			const error = e instanceof Error ? e : new Error(`${e}`);
-			const message = `Request to S3 failed: ${error.message}`;
-			this.logger.error(message);
-			throw new ApplicationError(message, { cause: error });
+			throw new UnexpectedError('Request to S3 failed', { cause: e });
 		}
 	}
 
@@ -310,10 +288,7 @@ export class ObjectStoreService {
 				nextContinuationToken: response.NextContinuationToken,
 			};
 		} catch (e) {
-			const error = e instanceof Error ? e : new Error(`${e}`);
-			const message = `Request to S3 failed: ${error.message}`;
-			this.logger.error(message);
-			throw new ApplicationError(message, { cause: error });
+			throw new UnexpectedError('Request to S3 failed', { cause: e });
 		}
 	}
 }
