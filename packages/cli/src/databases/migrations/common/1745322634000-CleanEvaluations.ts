@@ -24,7 +24,7 @@ export class ClearEvaluation1745322634000 implements IrreversibleMigration {
 					'test_run`',
 			);
 		}
-		await dropColumns('test_run', ['testDefinitionId']);
+		await dropColumns('test_run', ['testDefinitionId', 'totalCases', 'passedCases', 'failedCases']);
 
 		// Drop test_metric, test_definition
 		await dropTable('test_metric');
