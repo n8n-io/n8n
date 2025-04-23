@@ -724,12 +724,18 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	async function archiveWorkflow(id: string) {
 		await makeRestApiRequest(rootStore.restApiContext, 'POST', `/workflows/${id}/archive`);
 		workflowsById.value[id].isArchived = true;
-		workflowsById.value[id].active = false;
+		setWorkflowInactive(id);
+		if (id === workflow.value.id) {
+			setIsArchived(true);
+		}
 	}
 
 	async function unarchiveWorkflow(id: string) {
 		await makeRestApiRequest(rootStore.restApiContext, 'POST', `/workflows/${id}/unarchive`);
 		workflowsById.value[id].isArchived = false;
+		if (id === workflow.value.id) {
+			setIsArchived(false);
+		}
 	}
 
 	function addWorkflow(workflow: IWorkflowDb) {
@@ -777,6 +783,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	function setActive(active: boolean) {
 		workflow.value.active = active;
+	}
+
+	function setIsArchived(isArchived: boolean) {
+		workflow.value.isArchived = isArchived;
 	}
 
 	async function getDuplicateCurrentWorkflowName(currentWorkflowName: string): Promise<string> {
@@ -1858,6 +1868,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setWorkflowInactive,
 		fetchActiveWorkflows,
 		setActive,
+		setIsArchived,
 		getDuplicateCurrentWorkflowName,
 		setWorkflowExecutionData,
 		setWorkflowExecutionRunData,

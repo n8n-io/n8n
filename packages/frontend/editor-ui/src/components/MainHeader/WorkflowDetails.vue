@@ -69,6 +69,7 @@ const props = defineProps<{
 	scopes: IWorkflowDb['scopes'];
 	active: IWorkflowDb['active'];
 	currentFolder?: FolderShortInfo;
+	isArchived: IWorkflowDb['isArchived'];
 }>();
 
 const $style = useCssModule();
@@ -190,14 +191,32 @@ const workflowMenuItems = computed<ActionDropdownItem[]>(() => {
 		disabled: !onWorkflowPage.value || isNewWorkflow.value,
 	});
 
-	if ((workflowPermissions.value.delete && !props.readOnly) || isNewWorkflow.value) {
-		actions.push({
-			id: WORKFLOW_MENU_ACTIONS.DELETE,
-			label: locale.baseText('menuActions.delete'),
-			disabled: !onWorkflowPage.value || isNewWorkflow.value,
-			customClass: $style.deleteItem,
-			divided: true,
-		});
+	if (
+		isNewWorkflow.value ||
+		(workflowPermissions.value.delete && (!props.readOnly || props.isArchived))
+	) {
+		if (props.isArchived) {
+			actions.push({
+				id: WORKFLOW_MENU_ACTIONS.UNARCHIVE,
+				label: locale.baseText('menuActions.unarchive'),
+				disabled: !onWorkflowPage.value || isNewWorkflow.value,
+			});
+			actions.push({
+				id: WORKFLOW_MENU_ACTIONS.DELETE,
+				label: locale.baseText('menuActions.delete'),
+				disabled: !onWorkflowPage.value || isNewWorkflow.value || !props.isArchived,
+				customClass: $style.deleteItem,
+				divided: true,
+			});
+		} else {
+			actions.push({
+				id: WORKFLOW_MENU_ACTIONS.ARCHIVE,
+				label: locale.baseText('menuActions.archive'),
+				disabled: !onWorkflowPage.value || isNewWorkflow.value,
+				customClass: $style.deleteItem,
+				divided: true,
+			});
+		}
 	}
 
 	return actions;
@@ -512,6 +531,22 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 			uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
 			break;
 		}
+		case WORKFLOW_MENU_ACTIONS.ARCHIVE: {
+			await workflowsStore.archiveWorkflow(props.id);
+			toast.showMessage({
+				title: locale.baseText('mainSidebar.showMessage.handleArchive.title'),
+				type: 'success',
+			});
+			break;
+		}
+		case WORKFLOW_MENU_ACTIONS.UNARCHIVE: {
+			await workflowsStore.unarchiveWorkflow(props.id);
+			toast.showMessage({
+				title: locale.baseText('mainSidebar.showMessage.handleUnarchive.title'),
+				type: 'success',
+			});
+			break;
+		}
 		case WORKFLOW_MENU_ACTIONS.DELETE: {
 			const deleteConfirmed = await message.confirm(
 				locale.baseText('mainSidebar.confirmMessage.workflowDelete.message', {
@@ -677,6 +712,7 @@ const onBreadcrumbsItemSelected = (item: PathItem) => {
 		<PushConnectionTracker class="actions">
 			<span :class="`activator ${$style.group}`">
 				<WorkflowActivator
+					:is-archived="isArchived"
 					:workflow-active="active"
 					:workflow-id="id"
 					:workflow-permissions="workflowPermissions"
