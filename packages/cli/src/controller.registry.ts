@@ -1,6 +1,6 @@
 import { GlobalConfig } from '@n8n/config';
 import type { BooleanLicenseFeature } from '@n8n/constants';
-import { MetadataState } from '@n8n/decorators';
+import { ControllerRegistryMetadata } from '@n8n/decorators';
 import type { AccessScope, Controller, RateLimit } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { Router } from 'express';
@@ -23,17 +23,17 @@ export class ControllerRegistry {
 		private readonly license: License,
 		private readonly authService: AuthService,
 		private readonly globalConfig: GlobalConfig,
-		private readonly state: MetadataState,
+		private readonly metadata: ControllerRegistryMetadata,
 	) {}
 
 	activate(app: Application) {
-		for (const controllerClass of this.state.controllerClasses) {
+		for (const controllerClass of this.metadata.controllerClasses) {
 			this.activateController(app, controllerClass);
 		}
 	}
 
 	private activateController(app: Application, controllerClass: Controller) {
-		const metadata = this.state.getControllerMetadata(controllerClass);
+		const metadata = this.metadata.getControllerMetadata(controllerClass);
 
 		const router = Router({ mergeParams: true });
 		const prefix = `/${this.globalConfig.endpoints.rest}/${metadata.basePath}`

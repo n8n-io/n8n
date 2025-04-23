@@ -3,7 +3,7 @@ jest.mock('@/constants', () => ({
 }));
 
 import type { GlobalConfig } from '@n8n/config';
-import { MetadataState } from '@n8n/decorators';
+import { ControllerRegistryMetadata } from '@n8n/decorators';
 import { Param } from '@n8n/decorators';
 import { Get, Licensed, RestController } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -20,7 +20,7 @@ describe('ControllerRegistry', () => {
 	const license = mock<License>();
 	const authService = mock<AuthService>();
 	const globalConfig = mock<GlobalConfig>({ endpoints: { rest: 'rest' } });
-	const metadataState = Container.get(MetadataState);
+	const metadataState = Container.get(ControllerRegistryMetadata);
 	let agent: SuperAgentTest;
 
 	beforeEach(() => {

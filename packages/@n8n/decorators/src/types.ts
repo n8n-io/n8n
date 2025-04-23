@@ -48,11 +48,11 @@ export interface ControllerMetadata {
 export type Controller = Constructable<object> &
 	Record<HandlerName, (...args: unknown[]) => Promise<unknown>>;
 
-type HandlerFn = () => Promise<void> | void;
+type RouteHandlerFn = () => Promise<void> | void;
 
 type Class<T = object, A extends unknown[] = unknown[]> = new (...args: A) => T;
 
-export type ServiceClass = Class<Record<string, HandlerFn>>;
+export type ServiceClass = Class<Record<string, RouteHandlerFn>>;
 
 export interface ShutdownHandler {
 	serviceClass: ServiceClass;
