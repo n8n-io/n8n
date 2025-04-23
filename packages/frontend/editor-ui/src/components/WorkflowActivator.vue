@@ -15,10 +15,11 @@ import {
 import WorkflowActivationErrorMessage from './WorkflowActivationErrorMessage.vue';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import type { INodeUi, IUsedCredential } from '@/Interface';
-import { OPEN_AI_API_CREDENTIAL_TYPE, WEBHOOK_NODE_TYPE } from 'n8n-workflow';
+import { OPEN_AI_API_CREDENTIAL_TYPE } from 'n8n-workflow';
 import { useUIStore } from '@/stores/ui.store';
-import { findWebhook } from '@/api/webhooks';
-import { useRootStore } from '@/stores/root.store';
+
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { useRouter } from 'vue-router';
 
 const props = defineProps<{
 	workflowActive: boolean;
@@ -34,7 +35,9 @@ const { showMessage } = useToast();
 const workflowActivate = useWorkflowActivate();
 
 const uiStore = useUIStore();
-const rootStore = useRootStore();
+
+const router = useRouter();
+const workflowHelpers = useWorkflowHelpers({ router });
 
 const i18n = useI18n();
 const workflowsStore = useWorkflowsStore();
@@ -126,40 +129,21 @@ const shouldShowFreeAiCreditsWarning = computed((): boolean => {
 	return hasActiveNodeUsingCredential(workflowsStore.allNodes, managedOpenAiCredentialId);
 });
 
-async function webhookPreventingActivation() {
-	const nodes = isNewWorkflow.value
-		? foundTriggers.value
-		: (await workflowsStore.fetchWorkflow(props.workflowId)).nodes;
-
-	const webhookTriggers = nodes.filter((node) => !node.disabled && node.type === WEBHOOK_NODE_TYPE);
-
-	for (const trigger of webhookTriggers) {
-		const method = (trigger.parameters.method as string) ?? 'GET';
-
-		const path = trigger.parameters.path as string;
-
-		const conflict = await findWebhook(rootStore.restApiContext, {
-			path,
-			method,
-		});
-
-		if (conflict) {
-			const conflictingWorkflow = await workflowsStore.fetchWorkflow(conflict.workflowId);
-			return { triggerName: trigger.name, workflowName: conflictingWorkflow.name, ...conflict };
-		}
-	}
-
-	return null;
-}
-
 async function activeChanged(newActiveState: boolean) {
 	if (!isWorkflowActive.value) {
-		const conflictData = await webhookPreventingActivation();
+		const conflictData = await workflowHelpers.checkConflictingWebhooks(props.workflowId);
 
 		if (conflictData) {
+			const { trigger, conflict } = conflictData;
+			const conflictingWorkflow = await workflowsStore.fetchWorkflow(conflict.workflowId);
+
 			uiStore.openModalWithData({
 				name: WORKFLOW_ACTIVATION_CONFIRM_MODAL_KEY,
-				data: conflictData,
+				data: {
+					triggerName: trigger.name,
+					workflowName: conflictingWorkflow.name,
+					...conflict,
+				},
 			});
 
 			return;
