@@ -21,6 +21,7 @@ import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
 import { CredentialTypes } from '@/credential-types';
 import { createCredentialsFromCredentialsEntity } from '@/credentials-helper';
 import { CredentialsEntity } from '@/databases/entities/credentials-entity';
+import type { Project } from '@/databases/entities/project';
 import { SharedCredentials } from '@/databases/entities/shared-credentials';
 import type { User } from '@/databases/entities/user';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
@@ -80,6 +81,18 @@ export class CredentialsService {
 	) {
 		const returnAll = user.hasGlobalScope('credential:list');
 		const isDefaultSelect = !listQueryOptions.select;
+		const projectId =
+			typeof listQueryOptions.filter?.projectId === 'string'
+				? listQueryOptions.filter.projectId
+				: undefined;
+
+		let project: Project | undefined;
+
+		if (projectId) {
+			try {
+				project = await this.projectService.getProject(projectId);
+			} catch {}
+		}
 
 		if (includeData) {
 			// We need the scopes to check if we're allowed to include the decrypted
@@ -91,6 +104,13 @@ export class CredentialsService {
 		}
 
 		if (returnAll) {
+			if (project?.type === 'personal') {
+				listQueryOptions.filter = {
+					...listQueryOptions.filter,
+					withRole: 'credential:owner',
+				};
+			}
+
 			let credentials = await this.credentialsRepository.findMany(listQueryOptions);
 
 			if (isDefaultSelect) {
@@ -134,19 +154,9 @@ export class CredentialsService {
 			return credentials;
 		}
 
-		// If the workflow is part of a personal project we want to show the
-		// credentials the user making the request has access to, not the
-		// credentials the user owning the workflow has access to.
-		if (typeof listQueryOptions.filter?.projectId === 'string') {
-			const project = await this.projectService.getProject(listQueryOptions.filter.projectId);
-			if (project?.type === 'personal') {
-				const currentUsersPersonalProject = await this.projectService.getPersonalProject(user);
-				listQueryOptions.filter.projectId = currentUsersPersonalProject?.id;
-			}
-		}
-
 		const ids = await this.sharedCredentialsRepository.getCredentialIdsByUserAndRole([user.id], {
 			scopes: ['credential:read'],
+			projectId: project?.type === 'personal' ? project.id : undefined,
 		});
 
 		let credentials = await this.credentialsRepository.findMany(

@@ -26,7 +26,9 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 	}
 
 	async findMany(
-		listQueryOptions?: ListQuery.Options & { includeData?: boolean },
+		listQueryOptions?: ListQuery.Options & {
+			includeData?: boolean;
+		},
 		credentialIds?: string[],
 	) {
 		const findManyOptions = this.toFindManyOptions(listQueryOptions);
@@ -38,7 +40,11 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 		return await this.find(findManyOptions);
 	}
 
-	private toFindManyOptions(listQueryOptions?: ListQuery.Options & { includeData?: boolean }) {
+	private toFindManyOptions(
+		listQueryOptions?: ListQuery.Options & {
+			includeData?: boolean;
+		},
+	) {
 		const findManyOptions: FindManyOptions<CredentialsEntity> = {};
 
 		type Select = Array<keyof CredentialsEntity>;
@@ -59,8 +65,12 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 		}
 
 		if (typeof filter?.projectId === 'string' && filter.projectId !== '') {
-			filter.shared = { projectId: filter.projectId };
+			filter.shared = {
+				projectId: filter.projectId,
+				role: filter.withRole,
+			};
 			delete filter.projectId;
+			delete filter.withRole;
 		}
 
 		if (filter) findManyOptions.where = filter;

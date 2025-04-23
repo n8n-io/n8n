@@ -618,29 +618,29 @@ describe('GET /credentials', () => {
 			expect(response.body.data).toHaveLength(0);
 		});
 
-		test('should return only owned and explicitly shared credentials when filtering by any personal project id', async () => {
+		test('should return only owned credentials when filtering by any personal project id', async () => {
 			// Create credential owned by `owner` and share it to `member`
 			const ownerCredential = await saveCredential(payload(), {
 				user: owner,
 				role: 'credential:owner',
 			});
-			await shareCredentialWithUsers(ownerCredential, [member]);
 			// Create credential owned by `member`
 			const memberCredential = await saveCredential(payload(), {
 				user: member,
 				role: 'credential:owner',
 			});
 
+			await shareCredentialWithUsers(memberCredential, [owner]);
+
 			// Simulate editing a workflow owned by `owner` so request credentials to their personal project
 			const response: GetAllResponse = await testServer
-				.authAgentFor(member)
+				.authAgentFor(owner)
 				.get('/credentials')
 				.query(`filter={ "projectId": "${ownerPersonalProject.id}" }`)
 				.expect(200);
 
-			expect(response.body.data).toHaveLength(2);
+			expect(response.body.data).toHaveLength(1);
 			expect(response.body.data.map((credential) => credential.id)).toContain(ownerCredential.id);
-			expect(response.body.data.map((credential) => credential.id)).toContain(memberCredential.id);
 		});
 
 		test('should not ignore the project filter when the request is done by an owner and also includes the scopes', async () => {

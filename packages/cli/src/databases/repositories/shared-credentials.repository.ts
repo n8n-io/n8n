@@ -128,8 +128,12 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 	async getCredentialIdsByUserAndRole(
 		userIds: string[],
 		options:
-			| { scopes: Scope[] }
-			| { projectRoles: ProjectRole[]; credentialRoles: CredentialSharingRole[] },
+			| { scopes: Scope[]; projectId?: string }
+			| {
+					projectRoles: ProjectRole[];
+					credentialRoles: CredentialSharingRole[];
+					projectId?: string;
+			  },
 		trx?: EntityManager,
 	) {
 		trx = trx ?? this.manager;
@@ -145,7 +149,7 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 
 		const sharings = await trx.find(SharedCredentials, {
 			where: {
-				role: In(credentialRoles),
+				role: options?.projectId ? 'credential:owner' : In(credentialRoles),
 				project: {
 					projectRelations: {
 						userId: In(userIds),
