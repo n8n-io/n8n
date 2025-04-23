@@ -1,7 +1,7 @@
-import { PaginationDto } from '@n8n/api-types/src/dto/pagination/pagination.dto';
+import { PaginationDto } from '@n8n/api-types';
 import { Request, Response, NextFunction } from 'express';
 
-import { RestController, Get, Middleware } from '@/decorators';
+import { RestController, Get, Middleware, Query } from '@/decorators';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
