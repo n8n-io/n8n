@@ -6,9 +6,6 @@ import { CanvasNodeRenderType } from '@/types';
 import { useCanvas } from '@/composables/useCanvas';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { traverseNodeParameters } from 'n8n-workflow';
-import { useUIStore } from '@/stores/ui.store';
-import { EXECUTE_STEP_MODAL_KEY } from '@/constants';
 
 const emit = defineEmits<{
 	delete: [];
@@ -23,7 +20,6 @@ const props = defineProps<{
 }>();
 
 const workflowStore = useWorkflowsStore();
-const uiStore = useUIStore();
 
 const nodeTypesStore = useNodeTypesStore();
 
@@ -60,13 +56,6 @@ const isExecuteNodeVisible = computed(() => {
 	);
 });
 
-const hasFromAiProps = computed(() => {
-	if (!node.value?.parameters) return false;
-	const collectedArgs: FromAIArgument[] = [];
-	traverseNodeParameters(node.value.parameters, collectedArgs);
-	return collectedArgs.length > 0;
-});
-
 const isDisableNodeVisible = computed(() => {
 	return !props.readOnly && render.value.type === CanvasNodeRenderType.Default;
 });
@@ -78,16 +67,7 @@ const isStickyNoteChangeColorVisible = computed(
 );
 
 function executeNode() {
-	if (hasFromAiProps.value) {
-		uiStore.openModalWithData({
-			name: EXECUTE_STEP_MODAL_KEY,
-			data: {
-				nodeName: name.value,
-			},
-		});
-	} else {
-		emit('run');
-	}
+	emit('run');
 }
 
 function onToggleNode() {

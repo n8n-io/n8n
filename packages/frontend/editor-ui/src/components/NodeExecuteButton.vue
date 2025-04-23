@@ -31,6 +31,8 @@ import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { type IUpdateInformation } from '@/Interface';
 import { generateCodeForAiTransform } from '@/components/ButtonParameter/utils';
+import { doesNodeHaveAnyFromAiExpressions } from '@/utils/nodes/nodeTransforms';
+import { useParameterOverridesStore } from '@/stores/parameterOverrides.store';
 
 const NODE_TEST_STEP_POPUP_COUNT_KEY = 'N8N_NODE_TEST_STEP_POPUP_COUNT';
 const MAX_POPUP_COUNT = 10;
@@ -79,6 +81,7 @@ const uiStore = useUIStore();
 const i18n = useI18n();
 const message = useMessage();
 const telemetry = useTelemetry();
+const parameterOverridesStore = useParameterOverridesStore();
 
 const node = computed(() => workflowsStore.getNodeByName(props.nodeName));
 const pinnedData = usePinnedData(node);
@@ -148,13 +151,6 @@ const isListeningForWorkflowEvents = computed(() => {
 const hasIssues = computed(() =>
 	Boolean(node.value?.issues && (node.value.issues.parameters || node.value.issues.credentials)),
 );
-
-const hasFromAiProps = computed(() => {
-	if (!node.value?.parameters) return false;
-	const collectedArgs: FromAIArgument[] = [];
-	traverseNodeParameters(node.value.parameters, collectedArgs);
-	return collectedArgs.length > 0;
-});
 
 const disabledHint = computed(() => {
 	if (isListeningForEvents.value) {
@@ -365,7 +361,7 @@ async function onClick() {
 			telemetry.track('User clicked execute node button', telemetryPayload);
 			await externalHooks.run('nodeExecuteButton.onClick', telemetryPayload);
 
-			if (hasFromAiProps.value) {
+			if (node.value && doesNodeHaveAnyFromAiExpressions(node.value)) {
 				uiStore.openModalWithData({
 					name: EXECUTE_STEP_MODAL_KEY,
 					data: {
@@ -373,6 +369,8 @@ async function onClick() {
 					},
 				});
 			} else {
+				parameterOverridesStore.clearParameterOverrides(workflowsStore.workflowId, props.nodeName);
+
 				await runWorkflow({
 					destinationNode: props.nodeName,
 					source: 'RunData.ExecuteNodeButton',

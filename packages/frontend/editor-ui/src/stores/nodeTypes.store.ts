@@ -125,10 +125,12 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 	const isAiToolNode = computed(() => {
 		return (nodeTypeName: string) => {
 			const nodeType = getNodeType.value(nodeTypeName);
+			console.log(nodeType);
 			return !!(
 				nodeType &&
 				nodeType.group.includes('transform') &&
-				nodeType.outputs.includes(NodeConnectionTypes.AiTool)
+				nodeType.outputs.includes(NodeConnectionTypes.AiTool) &&
+				nodeType.usableAsTool
 			);
 		};
 	});

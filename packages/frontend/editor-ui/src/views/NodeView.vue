@@ -64,6 +64,7 @@ import {
 	VALID_WORKFLOW_IMPORT_URL_REGEX,
 	VIEWS,
 	WORKFLOW_SETTINGS_MODAL_KEY,
+	EXECUTE_STEP_MODAL_KEY,
 } from '@/constants';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
@@ -114,6 +115,8 @@ import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
 import type { CanvasLayoutEvent } from '@/composables/useCanvasLayout';
 import { useClearExecutionButtonVisible } from '@/composables/useClearExecutionButtonVisible';
 import { LOGS_PANEL_STATE } from '@/components/CanvasChat/types/logs';
+import { doesNodeHaveAnyFromAiExpressions } from '@/utils/nodes/nodeTransforms';
+import { useParameterOverridesStore } from '@/stores/parameterOverrides.store';
 
 defineOptions({
 	name: 'NodeView',
@@ -164,6 +167,7 @@ const tagsStore = useTagsStore();
 const pushConnectionStore = usePushConnectionStore();
 const ndvStore = useNDVStore();
 const templatesStore = useTemplatesStore();
+const parameterOverridesStore = useParameterOverridesStore();
 
 const canvasEventBus = createEventBus<CanvasEventBusEvents>();
 
@@ -1124,9 +1128,18 @@ async function onRunWorkflowToNode(id: string) {
 	const node = workflowsStore.getNodeById(id);
 	if (!node) return;
 
-	trackRunWorkflowToNode(node);
-
-	void runWorkflow({ destinationNode: node.name, source: 'Node.executeNode' });
+	if (doesNodeHaveAnyFromAiExpressions(node) && nodeTypesStore.isAiToolNode(node.type)) {
+		uiStore.openModalWithData({
+			name: EXECUTE_STEP_MODAL_KEY,
+			data: {
+				nodeName: node.name,
+			},
+		});
+	} else {
+		parameterOverridesStore.clearParameterOverrides(workflowsStore.workflowId, node.name);
+		trackRunWorkflowToNode(node);
+		void runWorkflow({ destinationNode: node.name, source: 'Node.executeNode' });
+	}
 }
 
 function trackRunWorkflowToNode(node: INodeUi) {
