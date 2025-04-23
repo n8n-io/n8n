@@ -30,10 +30,8 @@ export async function getNewWorkflow(context: IRestApiContext, data?: IDataObjec
 	};
 }
 
-export async function getWorkflow(context: IRestApiContext, id: string, filter?: object) {
-	const sendData = filter ? { filter } : undefined;
-
-	return await makeRestApiRequest<IWorkflowDb>(context, 'GET', `/workflows/${id}`, sendData);
+export async function getWorkflow(context: IRestApiContext, id: string) {
+	return await makeRestApiRequest<IWorkflowDb>(context, 'GET', `/workflows/${id}`);
 }
 
 export async function getWorkflows(context: IRestApiContext, filter?: object, options?: object) {

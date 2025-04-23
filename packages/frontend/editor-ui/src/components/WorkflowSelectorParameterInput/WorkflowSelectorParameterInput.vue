@@ -23,8 +23,9 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { VIEWS } from '@/constants';
 import { SAMPLE_SUBWORKFLOW_WORKFLOW } from '@/constants.workflows';
 import type { IWorkflowDataCreate } from '@/Interface';
+import { useDocumentVisibility } from '@/composables/useDocumentVisibility';
 
-interface Props {
+export interface Props {
 	modelValue: INodeParameterResourceLocator;
 	eventBus?: EventBus;
 	inputSize?: 'small' | 'mini' | 'medium' | 'large' | 'xlarge';
@@ -81,6 +82,8 @@ const { hideDropdown, isDropdownVisible, showDropdown } = useWorkflowResourceLoc
 	isListMode,
 	inputRef,
 );
+
+const { onDocumentVisible } = useDocumentVisibility();
 
 const {
 	hasMoreWorkflowsToLoad,
@@ -146,14 +149,18 @@ function setWidth() {
 	}
 }
 
-function onInputChange(value: NodeParameterValue): void {
-	if (typeof value !== 'string') return;
+function onInputChange(workflowId: NodeParameterValue): void {
+	if (typeof workflowId !== 'string') return;
 
-	const params: INodeParameterResourceLocator = { __rl: true, value, mode: selectedMode.value };
+	const params: INodeParameterResourceLocator = {
+		__rl: true,
+		value: workflowId,
+		mode: selectedMode.value,
+	};
 	if (isListMode.value) {
-		const resource = workflowsStore.getWorkflowById(value);
+		const resource = workflowsStore.getWorkflowById(workflowId);
 		if (resource?.name) {
-			params.cachedResultName = getWorkflowName(value);
+			params.cachedResultName = getWorkflowName(workflowId);
 		}
 	}
 	emit('update:modelValue', params);
@@ -191,7 +198,27 @@ function openWorkflow() {
 	window.open(getWorkflowUrl(props.modelValue.value?.toString() ?? ''), '_blank');
 }
 
+async function refreshCachedWorkflow() {
+	if (!props.modelValue || props.modelValue.mode !== 'list' || !props.modelValue.value) {
+		return;
+	}
+
+	const workflowId = props.modelValue.value;
+	if (workflowId === true) {
+		return;
+	}
+	try {
+		await workflowsStore.fetchWorkflow(`${workflowId}`);
+		onInputChange(workflowId);
+	} catch (e) {
+		// keep old cached value
+	}
+}
+
+onDocumentVisible(refreshCachedWorkflow);
+
 onMounted(() => {
+	void refreshCachedWorkflow();
 	window.addEventListener('resize', setWidth);
 	setWidth();
 	void setWorkflowsResources();
