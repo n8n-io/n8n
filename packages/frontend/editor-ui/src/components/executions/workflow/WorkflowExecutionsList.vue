@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import WorkflowExecutionsSidebar from '@/components/executions/workflow/WorkflowExecutionsSidebar.vue';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
 import { MAIN_HEADER_TABS } from '@/constants';
 import type { ExecutionFilterType, IWorkflowDb } from '@/Interface';
 import { getNodeViewTab } from '@/utils/nodeViewUtils';
@@ -34,6 +35,7 @@ const emit = defineEmits<{
 }>();
 
 const workflowHelpers = useWorkflowHelpers({ router: useRouter() });
+const { promptSaveUnsavedWorkflowChanges } = useWorkflowSaving();
 
 const temporaryExecution = computed<ExecutionSummary | undefined>(() =>
 	props.executions.find((execution) => execution.id === props.execution?.id)
@@ -72,7 +74,7 @@ onBeforeRouteLeave(async (to, _, next) => {
 		return;
 	}
 
-	await workflowHelpers.promptSaveUnsavedWorkflowChanges(next);
+	await promptSaveUnsavedWorkflowChanges(next);
 });
 </script>
 
