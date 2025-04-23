@@ -35,7 +35,7 @@ export class WorkflowEntity extends WithTimestampsAndStringId implements IWorkfl
 	@Column()
 	active: boolean;
 
-	@Column()
+	@Column({ default: false })
 	isArchived: boolean;
 
 	@Column(jsonColumnType)
