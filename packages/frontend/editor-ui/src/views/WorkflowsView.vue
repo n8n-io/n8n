@@ -278,6 +278,7 @@ const workflowListResources = computed<Resource[]>(() => {
 				id: resource.id,
 				name: resource.name,
 				active: resource.active ?? false,
+				isArchived: resource.isArchived,
 				updatedAt: resource.updatedAt.toString(),
 				createdAt: resource.createdAt.toString(),
 				homeProject: resource.homeProject,
@@ -379,6 +380,21 @@ const onWorkflowDeleted = async () => {
 		fetchWorkflows(),
 		foldersStore.fetchTotalWorkflowsAndFoldersCount(route.params.projectId as string | undefined),
 	]);
+};
+
+const onWorkflowArchived = async (workflowId: string) => {
+	const archived = workflowsAndFolders.value.find((w) => w.id === workflowId);
+	if (archived && archived.resource !== 'folder') {
+		archived.isArchived = true;
+		archived.active = false;
+	}
+};
+
+const onWorkflowUnarchived = async (workflowId: string) => {
+	const archived = workflowsAndFolders.value.find((w) => w.id === workflowId);
+	if (archived && archived.resource !== 'folder') {
+		archived.isArchived = false;
+	}
 };
 
 const onFolderDeleted = async (payload: {
@@ -1503,6 +1519,8 @@ const onCreateWorkflowClick = () => {
 					data-target="workflow"
 					@click:tag="onClickTag"
 					@workflow:deleted="onWorkflowDeleted"
+					@workflow:archived="onWorkflowArchived"
+					@workflow:unarchived="onWorkflowUnarchived"
 					@workflow:moved="fetchWorkflows"
 					@workflow:duplicated="fetchWorkflows"
 					@workflow:active-toggle="onWorkflowActiveToggle"

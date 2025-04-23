@@ -394,6 +394,42 @@ export class WorkflowsController {
 		return true;
 	}
 
+	@Post('/:workflowId/archive')
+	@ProjectScope('workflow:delete')
+	async archive(req: WorkflowRequest.Delete) {
+		const { workflowId } = req.params;
+
+		const workflow = await this.workflowService.archive(req.user, workflowId);
+		if (!workflow) {
+			this.logger.warn('User attempted to archive a workflow without permissions', {
+				workflowId,
+				userId: req.user.id,
+			});
+			throw new BadRequestError(
+				'Could not archive the workflow - you can only archive workflows owned by you',
+			);
+		}
+
+		return true;
+	}
+
+	@Post('/:workflowId/unarchive')
+	@ProjectScope('workflow:delete')
+	async unarchive(req: WorkflowRequest.Delete) {
+		const { workflowId } = req.params;
+
+		const workflow = await this.workflowService.unarchive(req.user, workflowId);
+		if (!workflow) {
+			this.logger.warn('User attempted to unarchive a workflow without permissions', {
+				workflowId,
+				userId: req.user.id,
+			});
+			throw new BadRequestError(
+				'Could not unarchive the workflow - you can only unarchive workflows owned by you',
+			);
+		}
+	}
+
 	@Post('/:workflowId/run')
 	@ProjectScope('workflow:execute')
 	async runManually(
