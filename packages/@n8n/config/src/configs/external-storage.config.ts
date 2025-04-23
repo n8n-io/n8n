@@ -21,15 +21,15 @@ class S3BucketConfig {
 class S3CredentialsConfig {
 	/** Access key in S3-compatible external storage */
 	@Env('N8N_EXTERNAL_STORAGE_S3_ACCESS_KEY')
-	accessKeyId: string = '';
+	accessKey: string = '';
 
 	/** Access secret in S3-compatible external storage */
 	@Env('N8N_EXTERNAL_STORAGE_S3_ACCESS_SECRET')
-	secretAccessKey: string = '';
+	accessSecret: string = '';
 
 	/**
 	 * Use automatic credential detection to authenticate S3 calls for external storage
-	 * This will ignore accessKeyId/secretAccessKey and use the default credential provider chain
+	 * This will ignore accessKey/accessSecret and use the default credential provider chain
 	 * https://docs.aws.amazon.com/sdk-for-javascript/v3/developer-guide/setting-credentials-node.html#credchain
 	 */
 	@Env('N8N_EXTERNAL_STORAGE_S3_AUTH_AUTO_DETECT')

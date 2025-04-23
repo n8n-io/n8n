@@ -39,8 +39,8 @@ describe('ObjectStoreService', () => {
 		host: mockHost,
 		bucket: mockBucket,
 		credentials: {
-			accessKeyId: 'mock-access-key',
-			secretAccessKey: 'mock-secret-key',
+			accessKey: 'mock-access-key',
+			accessSecret: 'mock-secret-key',
 			authAutoDetect: false,
 		},
 		protocol: 'https',
@@ -58,7 +58,10 @@ describe('ObjectStoreService', () => {
 	});
 
 	describe('getClientConfig()', () => {
-		const { accessKeyId, secretAccessKey } = s3Config.credentials;
+		const credentials = {
+			accessKeyId: s3Config.credentials.accessKey,
+			secretAccessKey: s3Config.credentials.accessSecret,
+		};
 
 		it('should return client config with endpoint and forcePathStyle when custom host is provided', () => {
 			s3Config.host = 'example.com';
@@ -69,7 +72,7 @@ describe('ObjectStoreService', () => {
 				endpoint: 'https://example.com',
 				forcePathStyle: true,
 				region: mockBucket.region,
-				credentials: { accessKeyId, secretAccessKey },
+				credentials,
 			});
 		});
 
@@ -80,7 +83,7 @@ describe('ObjectStoreService', () => {
 
 			expect(clientConfig).toEqual({
 				region: mockBucket.region,
-				credentials: { accessKeyId, secretAccessKey },
+				credentials,
 			});
 		});
 

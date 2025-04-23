@@ -62,8 +62,10 @@ export class ObjectStoreService {
 			clientConfig.region = bucket.region;
 		}
 		if (!credentials.authAutoDetect) {
-			const { accessKeyId, secretAccessKey } = credentials;
-			clientConfig.credentials = { accessKeyId, secretAccessKey };
+			clientConfig.credentials = {
+				accessKeyId: credentials.accessKey,
+				secretAccessKey: credentials.accessSecret,
+			};
 		}
 		return clientConfig;
 	}
