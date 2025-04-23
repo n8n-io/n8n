@@ -9,6 +9,7 @@ export class ClearEvaluation1745322634000 implements IrreversibleMigration {
 	}: MigrationContext) {
 		// Delete all existing test data
 		await queryRunner.query('DELETE FROM test_run');
+		await queryRunner.query('DELETE FROM test_case_execution');
 
 		// Update test_run
 		if (isMysql) {
