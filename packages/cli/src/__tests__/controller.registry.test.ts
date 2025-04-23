@@ -20,13 +20,13 @@ describe('ControllerRegistry', () => {
 	const license = mock<License>();
 	const authService = mock<AuthService>();
 	const globalConfig = mock<GlobalConfig>({ endpoints: { rest: 'rest' } });
-	const metadataState = Container.get(ControllerRegistryMetadata);
+	const metadata = Container.get(ControllerRegistryMetadata);
 	let agent: SuperAgentTest;
 
 	beforeEach(() => {
 		jest.resetAllMocks();
 		const app = express();
-		new ControllerRegistry(license, authService, globalConfig, metadataState).activate(app);
+		new ControllerRegistry(license, authService, globalConfig, metadata).activate(app);
 		agent = testAgent(app);
 	});
 
