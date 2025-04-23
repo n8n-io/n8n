@@ -3,27 +3,30 @@ jest.mock('@/constants', () => ({
 }));
 
 import type { GlobalConfig } from '@n8n/config';
+import { ControllerRegistryMetadata } from '@n8n/decorators';
+import { Param } from '@n8n/decorators';
+import { Get, Licensed, RestController } from '@n8n/decorators';
+import { Container } from '@n8n/di';
 import express from 'express';
 import { mock } from 'jest-mock-extended';
 import { agent as testAgent } from 'supertest';
 
 import type { AuthService } from '@/auth/auth.service';
-import { ControllerRegistry, Get, Licensed, RestController } from '@/decorators';
+import { ControllerRegistry } from '@/controller.registry';
 import type { License } from '@/license';
 import type { SuperAgentTest } from '@test-integration/types';
-
-import { Param } from '../args';
 
 describe('ControllerRegistry', () => {
 	const license = mock<License>();
 	const authService = mock<AuthService>();
 	const globalConfig = mock<GlobalConfig>({ endpoints: { rest: 'rest' } });
+	const metadata = Container.get(ControllerRegistryMetadata);
 	let agent: SuperAgentTest;
 
 	beforeEach(() => {
 		jest.resetAllMocks();
 		const app = express();
-		new ControllerRegistry(license, authService, globalConfig).activate(app);
+		new ControllerRegistry(license, authService, globalConfig, metadata).activate(app);
 		agent = testAgent(app);
 	});
 

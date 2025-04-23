@@ -1,3 +1,4 @@
+import { ModuleRegistry } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { stringify } from 'flatted';
 import { ErrorReporter, Logger, InstanceSettings, ExecutionLifecycleHooks } from 'n8n-core';
@@ -8,7 +9,6 @@ import type {
 } from 'n8n-workflow';
 
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import { ModuleRegistry } from '@/decorators/module';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { Push } from '@/push';

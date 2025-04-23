@@ -1,7 +1,15 @@
 import { Container, Service, type Constructable } from '@n8n/di';
-import type { ExecutionLifecycleHooks } from 'n8n-core';
+import type EventEmitter from 'node:events';
 
-import type { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
+/**
+ * @TODO Temporary dummy type until `MultiMainSetup` registers listeners via decorators.
+ */
+type MultiMainSetup = EventEmitter;
+
+/**
+ * @TODO Temporary dummy type until `ExecutionLifecycleHooks` registers hooks via decorators.
+ */
+export type ExecutionLifecycleHooks = object;
 
 export interface BaseN8nModule {
 	initialize?(): void;

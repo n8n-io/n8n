@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { WorkflowsConfig } from '@n8n/config';
+import { OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { chunk } from 'lodash';
 import {
@@ -42,7 +43,6 @@ import {
 } from '@/constants';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import { OnShutdown } from '@/decorators/on-shutdown';
 import { executeErrorWorkflow } from '@/execution-lifecycle/execute-error-workflow';
 import { ExecutionService } from '@/executions/execution.service';
 import { ExternalHooks } from '@/external-hooks';

@@ -1,11 +1,11 @@
 import type { InsightsSummary } from '@n8n/api-types';
 import type { InsightsDateRange } from '@n8n/api-types/src/schemas/insights.schema';
+import { OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { Logger } from 'n8n-core';
 import type { ExecutionLifecycleHooks } from 'n8n-core';
 import type { IRun } from 'n8n-workflow';
 
-import { OnShutdown } from '@/decorators/on-shutdown';
 import { License } from '@/license';
 
 import type { PeriodUnit, TypeUnit } from './database/entities/insights-shared';

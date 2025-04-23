@@ -1,4 +1,5 @@
 import { DismissBannerRequestDto, OwnerSetupRequestDto } from '@n8n/api-types';
+import { Body, GlobalScope, Post, RestController } from '@n8n/decorators';
 import { Response } from 'express';
 import { Logger } from 'n8n-core';
 
@@ -6,7 +7,6 @@ import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
 import { SettingsRepository } from '@/databases/repositories/settings.repository';
 import { UserRepository } from '@/databases/repositories/user.repository';
-import { Body, GlobalScope, Post, RestController } from '@/decorators';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { EventService } from '@/events/event.service';
 import { validateEntity } from '@/generic-helpers';

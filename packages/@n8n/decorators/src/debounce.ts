@@ -19,7 +19,7 @@ export const Debounce =
 	(waitMs: number): MethodDecorator =>
 	<T>(
 		_: object,
-		methodName: string,
+		methodName: string | symbol,
 		originalDescriptor: PropertyDescriptor,
 	): TypedPropertyDescriptor<T> => ({
 		configurable: true,

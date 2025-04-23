@@ -1,5 +1,20 @@
-import { RedactableError } from '@/errors/redactable.error';
-import type { UserLike } from '@/events/maps/relay.event-map';
+import { UnexpectedError } from 'n8n-workflow';
+
+type UserLike = {
+	id: string;
+	email?: string;
+	firstName?: string;
+	lastName?: string;
+	role: string;
+};
+
+export class RedactableError extends UnexpectedError {
+	constructor(fieldName: string, args: string) {
+		super(
+			`Failed to find "${fieldName}" property in argument "${args.toString()}". Please set the decorator \`@Redactable()\` only on \`LogStreamingEventRelay\` methods where the argument contains a "${fieldName}" property.`,
+		);
+	}
+}
 
 function toRedactable(userLike: UserLike) {
 	return {
@@ -28,6 +43,7 @@ type FieldName = 'user' | 'inviter' | 'invitee';
 export const Redactable =
 	(fieldName: FieldName = 'user'): MethodDecorator =>
 	(_target, _propertyName, propertyDescriptor: PropertyDescriptor) => {
+		// eslint-disable-next-line @typescript-eslint/ban-types
 		const originalMethod = propertyDescriptor.value as Function;
 
 		type MethodArgs = Array<{ [fieldName: string]: UserLike }>;
