@@ -35,4 +35,5 @@ export type {
 	InsightsSummary,
 	InsightsByWorkflow,
 	InsightsByTime,
+	InsightsDateRange,
 } from './schemas/insights.schema';
