@@ -1306,6 +1306,9 @@ importers:
 
   packages/core:
     dependencies:
+      '@aws-sdk/client-s3':
+        specifier: 3.666.0
+        version: 3.666.0
       '@langchain/core':
         specifier: 'catalog:'
         version: 0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1))
@@ -1321,9 +1324,6 @@ importers:
       '@sentry/node':
         specifier: 'catalog:'
         version: 8.52.1
-      aws4:
-        specifier: 1.11.0
-        version: 1.11.0
       axios:
         specifier: 'catalog:'
         version: 1.8.2(debug@4.3.6)
@@ -1331,9 +1331,6 @@ importers:
         specifier: 'catalog:'
         version: 3.1.0
       chardet:
-        specifier: 2.0.0
-        version: 2.0.0
-      concat-stream:
         specifier: 2.0.0
         version: 2.0.0
       cron:
@@ -1403,12 +1400,6 @@ importers:
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../@n8n/typescript-config
-      '@types/aws4':
-        specifier: ^1.5.1
-        version: 1.11.2
-      '@types/concat-stream':
-        specifier: ^2.0.0
-        version: 2.0.0
       '@types/express':
         specifier: 'catalog:'
         version: 5.0.1
@@ -6013,9 +6004,6 @@ packages:
 
   '@types/compression@1.7.5':
     resolution: {integrity: sha512-AAQvK5pxMpaT+nDvhHrsBhLSYG5yQdtkaJE1WYieSNY2mVFKAgmU4ks65rkZD5oqnGCFLyQpUr1CqI4DmUMyDg==}
-
-  '@types/concat-stream@2.0.0':
-    resolution: {integrity: sha512-t3YCerNM7NTVjLuICZo5gYAXYoDvpuuTceCcFQWcDQz26kxUR5uIWolxbIR5jRNIXpMqhOpW/b8imCR1LEmuJw==}
 
   '@types/connect@3.4.36':
     resolution: {integrity: sha512-P63Zd/JUGq+PdrM1lv0Wv5SBYeA2+CORvbrXbngriYY0jzLUWfQMQQxOhjONEz/wlHOAxOdY7CY65rgQdTjq2w==}
@@ -18854,10 +18842,6 @@ snapshots:
   '@types/compression@1.7.5':
     dependencies:
       '@types/express': 5.0.1
-
-  '@types/concat-stream@2.0.0':
-    dependencies:
-      '@types/node': 18.16.16
 
   '@types/connect@3.4.36':
     dependencies:
