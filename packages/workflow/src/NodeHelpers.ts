@@ -34,8 +34,6 @@ import type {
 	INodeInputConfiguration,
 	GenericValue,
 	DisplayCondition,
-	NodeHint,
-	INodeExecutionData,
 	NodeConnectionType,
 } from './Interfaces';
 import { validateFilterParameter } from './NodeParameters/FilterParameter';
@@ -660,7 +658,7 @@ function getParameterDependencies(nodePropertiesArray: INodeProperties[]): IPara
  * Returns in which order the parameters should be resolved
  * to have the parameters available they depend on
  */
-export function getParameterResolveOrder(
+function getParameterResolveOrder(
 	nodePropertiesArray: INodeProperties[],
 	parameterDependencies: IParameterDependencies,
 ): number[] {
@@ -722,7 +720,7 @@ export function getParameterResolveOrder(
 	return executionOrder;
 }
 
-export type GetNodeParametersOptions = {
+type GetNodeParametersOptions = {
 	onlySimpleTypes?: boolean;
 	dataIsResolved?: boolean; // If nodeValues are already fully resolved (so that all default values got added already)
 	nodeValuesRoot?: INodeParameters;
@@ -1162,75 +1160,6 @@ export function getNodeInputs(
 		console.warn('Could not calculate inputs dynamically for node: ', node.name);
 		return [];
 	}
-}
-
-export function getNodeHints(
-	workflow: Workflow,
-	node: INode,
-	nodeTypeData: INodeTypeDescription,
-	nodeInputData?: {
-		runExecutionData: IRunExecutionData | null;
-		runIndex: number;
-		connectionInputData: INodeExecutionData[];
-	},
-): NodeHint[] {
-	const hints: NodeHint[] = [];
-
-	if (nodeTypeData?.hints?.length) {
-		for (const hint of nodeTypeData.hints) {
-			if (hint.displayCondition) {
-				try {
-					let display;
-
-					if (nodeInputData === undefined) {
-						display = (workflow.expression.getSimpleParameterValue(
-							node,
-							hint.displayCondition,
-							'internal',
-							{},
-						) || false) as boolean;
-					} else {
-						const { runExecutionData, runIndex, connectionInputData } = nodeInputData;
-						display = workflow.expression.getParameterValue(
-							hint.displayCondition,
-							runExecutionData ?? null,
-							runIndex,
-							0,
-							node.name,
-							connectionInputData,
-							'manual',
-							{},
-						);
-					}
-
-					if (typeof display === 'string' && display.trim() === 'true') {
-						display = true;
-					}
-
-					if (typeof display !== 'boolean') {
-						console.warn(
-							`Condition was not resolved as boolean in '${node.name}' node for hint: `,
-							hint.message,
-						);
-						continue;
-					}
-
-					if (display) {
-						hints.push(hint);
-					}
-				} catch (e) {
-					console.warn(
-						`Could not calculate display condition in '${node.name}' node for hint: `,
-						hint.message,
-					);
-				}
-			} else {
-				hints.push(hint);
-			}
-		}
-	}
-
-	return hints;
 }
 
 export function getNodeOutputs(
