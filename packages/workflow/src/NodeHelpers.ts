@@ -1249,44 +1249,6 @@ export function getNodeParametersIssues(
 	return foundIssues;
 }
 
-/**
- * Returns the issues of the node as string
- *
- * @param {INodeIssues} issues The issues of the node
- * @param {INode} node The node
- */
-export function nodeIssuesToString(issues: INodeIssues, node?: INode): string[] {
-	const nodeIssues = [];
-
-	if (issues.execution !== undefined) {
-		nodeIssues.push('Execution Error.');
-	}
-
-	const objectProperties = ['parameters', 'credentials', 'input'];
-
-	let issueText: string;
-	let parameterName: string;
-	for (const propertyName of objectProperties) {
-		if (issues[propertyName] !== undefined) {
-			for (parameterName of Object.keys(issues[propertyName] as object)) {
-				for (issueText of (issues[propertyName] as INodeIssueObjectProperty)[parameterName]) {
-					nodeIssues.push(issueText);
-				}
-			}
-		}
-	}
-
-	if (issues.typeUnknown !== undefined) {
-		if (node !== undefined) {
-			nodeIssues.push(`Node Type "${node.type}" is not known.`);
-		} else {
-			nodeIssues.push('Node Type is not known.');
-		}
-	}
-
-	return nodeIssues;
-}
-
 /*
  * Validates resource locator node parameters based on validation ruled defined in each parameter mode
  */
