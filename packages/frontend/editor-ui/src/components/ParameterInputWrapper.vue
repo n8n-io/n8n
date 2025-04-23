@@ -114,7 +114,7 @@ const resolvedAdditionalExpressionData = computed(() => {
 	};
 });
 
-const { resolvedExpression } = useResolvedExpression({
+const { resolvedExpression, resolvedExpressionString } = useResolvedExpression({
 	expression,
 	additionalData: resolvedAdditionalExpressionData,
 	isForCredential: props.isForCredential,
@@ -191,14 +191,14 @@ defineExpose({
 				<slot v-if="$slots.overrideButton" name="overrideButton" />
 			</template>
 		</ParameterInput>
-		<div v-if="!hideHint && (expressionOutput || parameterHint)" :class="$style.hint">
+		<div v-if="!hideHint && (resolvedExpressionString || parameterHint)" :class="$style.hint">
 			<div>
 				<InputHint
-					v-if="expressionOutput"
+					v-if="resolvedExpressionString"
 					:class="{ [$style.hint]: true, 'ph-no-capture': isForCredential }"
 					:data-test-id="`parameter-expression-preview-${parsedParameterName}`"
-					:highlight="!!(expressionOutput && targetItem) && isInputParentOfActiveNode"
-					:hint="expressionOutput"
+					:highlight="!!(resolvedExpressionString && targetItem) && isInputParentOfActiveNode"
+					:hint="resolvedExpressionString"
 					:single-line="true"
 				/>
 				<InputHint v-else-if="parameterHint" :render-h-t-m-l="true" :hint="parameterHint" />

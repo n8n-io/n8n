@@ -8,17 +8,6 @@ import { computed, onMounted, ref, toRef, toValue, watch, type MaybeRefOrGetter 
 import { useRouter } from 'vue-router';
 import { useWorkflowHelpers, type ResolveParameterOptions } from './useWorkflowHelpers';
 
-export const getResolvedExpression = (
-	expressionValue: boolean,
-	resolvedExpressionString: string,
-) => {
-	if (expressionValue && resolvedExpressionString) {
-		return resolvedExpressionString;
-	}
-
-	return '';
-};
-
 export function useResolvedExpression({
 	expression,
 	additionalData,
@@ -36,7 +25,7 @@ export function useResolvedExpression({
 	const router = useRouter();
 	const { resolveExpression } = useWorkflowHelpers({ router });
 
-	const resolvedExpression = ref<unknown>();
+	const resolvedExpression = ref<unknown>(null);
 	const resolvedExpressionString = ref('');
 
 	const targetItem = computed(() => ndvStore.expressionTargetItem ?? undefined);
@@ -87,9 +76,14 @@ export function useResolvedExpression({
 	const debouncedUpdateExpression = debounce(updateExpression, 200);
 
 	function updateExpression() {
-		const resolved = resolve();
-		resolvedExpression.value = resolved.ok ? resolved.result : null;
-		resolvedExpressionString.value = stringifyExpressionResult(resolved, hasRunData.value);
+		if (isExpression.value) {
+			const resolved = resolve();
+			resolvedExpression.value = resolved.ok ? resolved.result : null;
+			resolvedExpressionString.value = stringifyExpressionResult(resolved, hasRunData.value);
+		} else {
+			resolvedExpression.value = null;
+			resolvedExpressionString.value = '';
+		}
 	}
 
 	watch(
@@ -103,9 +97,6 @@ export function useResolvedExpression({
 	);
 
 	onMounted(updateExpression);
-
-	resolvedExpressionString.value =
-		isExpression.value && resolvedExpressionString.value ? resolvedExpressionString.value : '';
 
 	return { resolvedExpression, resolvedExpressionString, isExpression };
 }

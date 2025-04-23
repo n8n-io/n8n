@@ -1,5 +1,5 @@
 import { defineComponent, h, nextTick, ref, toValue } from 'vue';
-import { getResolvedExpression, useResolvedExpression } from './useResolvedExpression';
+import { useResolvedExpression } from './useResolvedExpression';
 import * as workflowHelpers from '@/composables/useWorkflowHelpers';
 import { renderComponent } from '../__tests__/render';
 import { useRouter } from 'vue-router';
@@ -63,8 +63,8 @@ describe('useResolvedExpression', () => {
 			});
 
 		expect(toValue(isExpression)).toBe(false);
-		expect(toValue(resolvedExpression)).toBe('');
-		expect(toValue(resolvedExpressionString)).toBe('[empty]');
+		expect(toValue(resolvedExpression)).toBe(null);
+		expect(toValue(resolvedExpressionString)).toBe('');
 	});
 
 	it('should handle errors', async () => {
@@ -98,34 +98,5 @@ describe('useResolvedExpression', () => {
 		expect(resolveExpressionSpy).toHaveBeenCalledTimes(1);
 		vi.advanceTimersByTime(200);
 		expect(resolveExpressionSpy).toHaveBeenCalledTimes(2);
-	});
-});
-
-describe('getResolvedExpression', () => {
-	it('should return an expression if a resolved expression string is provided', () => {
-		const expressionValue = true;
-		const resolvedExpressionString = 'resolved expression';
-
-		const result = getResolvedExpression(expressionValue, resolvedExpressionString);
-
-		expect(result).toEqual(resolvedExpressionString);
-	});
-
-	it('should return an empty string if no resolved expression string is provided', () => {
-		const expressionValue = true;
-		const resolvedExpressionString = '';
-
-		const result = getResolvedExpression(expressionValue, resolvedExpressionString);
-
-		expect(result).toEqual('');
-	});
-
-	it('should return null if expression value is false', () => {
-		const expressionValue = false;
-		const resolvedExpressionString = 'resolved expression';
-
-		const result = getResolvedExpression(expressionValue, resolvedExpressionString);
-
-		expect(result).toEqual('');
 	});
 });
