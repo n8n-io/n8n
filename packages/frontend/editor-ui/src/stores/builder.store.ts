@@ -184,14 +184,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 					codeSnippet: msg.codeSnippet,
 					read,
 				});
-			} else if (msg.type === 'workflow-connections' && 'workflowJSON' in msg) {
-				messages.push({
-					id,
-					type: 'workflow-connections',
-					role: 'assistant',
-					workflowJSON: msg.workflowJSON,
-					read,
-				});
 			} else if (msg.type === 'rate-workflow') {
 				messages.push({
 					id,

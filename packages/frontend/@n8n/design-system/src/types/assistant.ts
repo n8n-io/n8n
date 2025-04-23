@@ -65,31 +65,6 @@ export namespace ChatUI {
 		}>;
 	}
 
-	export interface ComposedConnectionsMessage {
-		role: 'assistant';
-		type: 'workflow-connections';
-		workflowJSON: {
-			nodes: Array<{
-				parameters: Record<string, unknown>;
-				type: string;
-				name: string;
-				position: [number, number];
-			}>;
-			connections: Record<
-				string,
-				{
-					main: Array<
-						Array<{
-							node: string;
-							type: string;
-							index: number;
-						}>
-					>;
-				}
-			>;
-		};
-	}
-
 	export interface QuickReply {
 		type: string;
 		text: string;
@@ -144,31 +119,6 @@ export namespace ChatUI {
 		content: string;
 	}
 
-	export interface WorkflowConnectionsMessage {
-		role: 'assistant';
-		type: 'workflow-connections';
-		workflowJSON: {
-			nodes: Array<{
-				parameters: Record<string, unknown>;
-				type: string;
-				name: string;
-				position: [number, number];
-			}>;
-			connections: Record<
-				string,
-				{
-					main: Array<
-						Array<{
-							node: string;
-							type: string;
-							index: number;
-						}>
-					>;
-				}
-			>;
-		};
-	}
-
 	type MessagesWithReplies = (
 		| TextMessage
 		| CodeDiffMessage
@@ -177,7 +127,6 @@ export namespace ChatUI {
 		| GeneratedStepsMessage
 		| GeneratedNodesMessage
 		| ComposedNodesMessage
-		| ComposedConnectionsMessage
 	) & {
 		quickReplies?: QuickReply[];
 	};
@@ -192,7 +141,6 @@ export namespace ChatUI {
 		| WorkflowStepMessage
 		| WorkflowNodeMessage
 		| WorkflowComposedMessage
-		| WorkflowConnectionsMessage
 		| WorkflowGeneratedMessage
 		| RateWorkflowMessage
 	) & {

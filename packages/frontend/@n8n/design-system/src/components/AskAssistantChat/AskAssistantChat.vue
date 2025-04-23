@@ -188,12 +188,6 @@ function onSubmitFeedback(feedback: string) {
 							:is-first-of-role="i === 0 || message.role !== messages[i - 1].role"
 							:user="user"
 						/>
-						<ComposedConnectionsMessage
-							v-else-if="message.type === 'workflow-connections'"
-							:message="message"
-							:is-first-of-role="i === 0 || message.role !== messages[i - 1].role"
-							:user="user"
-						/>
 						<WorkflowGeneratedMessage
 							v-else-if="message.type === 'workflow-generated'"
 							:message="message"

@@ -206,32 +206,6 @@ export namespace ChatRequest {
 			position: [number, number];
 		}>;
 	}
-
-	interface WorkflowConnectionsMessage {
-		role: 'assistant';
-		type: 'workflow-connections';
-		workflowJSON: {
-			nodes: Array<{
-				parameters: Record<string, unknown>;
-				type: string;
-				name: string;
-				position: [number, number];
-			}>;
-			connections: Record<
-				string,
-				{
-					main: Array<
-						Array<{
-							node: string;
-							type: string;
-							index: number;
-						}>
-					>;
-				}
-			>;
-		};
-	}
-
 	interface WorkflowGeneratedMessage {
 		role: 'assistant';
 		type: 'workflow-generated';
@@ -253,7 +227,6 @@ export namespace ChatRequest {
 				| WorkflowStepMessage
 				| WorkflowNodeMessage
 				| WorkflowComposedMessage
-				| WorkflowConnectionsMessage
 				| WorkflowGeneratedMessage
 				| RateWorkflowMessage
 		  ) & {

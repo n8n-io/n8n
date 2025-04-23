@@ -473,48 +473,6 @@ ComposedNodesChat.args = {
 	]),
 };
 
-export const ComposedConnectionsChat = Template.bind({});
-ComposedConnectionsChat.args = {
-	user: {
-		firstName: 'Max',
-		lastName: 'Test',
-	},
-	messages: getMessages([
-		{
-			id: '126',
-			type: 'workflow-connections',
-			role: 'assistant',
-			workflowJSON: {
-				nodes: [
-					{
-						name: 'HTTP Trigger',
-						type: 'n8n-nodes-base.httpTrigger',
-						parameters: {
-							path: '/webhook',
-							authentication: 'none',
-						},
-						position: [100, 100],
-					},
-					{
-						name: 'Transform',
-						type: 'n8n-nodes-base.set',
-						parameters: {
-							values: { field: 'value' },
-						},
-						position: [300, 100],
-					},
-				],
-				connections: {
-					'HTTP Trigger': {
-						main: [[{ node: 'Transform', type: 'main', index: 0 }]],
-					},
-				},
-			},
-			read: false,
-		},
-	]),
-};
-
 export const RateWorkflowMessage = Template.bind({});
 RateWorkflowMessage.args = {
 	user: {

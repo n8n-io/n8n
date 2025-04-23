@@ -4,7 +4,7 @@ import { useAssistantStore } from '@/stores/assistant.store';
 import { useDebounce } from '@/composables/useDebounce';
 import { computed, onBeforeUnmount, ref } from 'vue';
 import SlideTransition from '@/components/transitions/SlideTransition.vue';
-import AskAssistantBuild from './Builder/AskAssistantBuild.vue';
+import AskAssistantBuild from './Agent/AskAssistantBuild.vue';
 import AskAssistantChat from './Chat/AskAssistantChat.vue';
 
 const builderStore = useBuilderStore();
