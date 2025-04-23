@@ -1432,7 +1432,6 @@ const onNameSubmit = async ({
 					:current-folder="currentFolderParent"
 					:actions="mainBreadcrumbsActions"
 					:hidden-items-trigger="isDragging ? 'hover' : 'click'"
-					:visible-levels="2"
 					:current-folder-as-link="true"
 					@item-selected="onBreadcrumbItemClick"
 					@action="onBreadCrumbsAction"
@@ -1442,6 +1441,7 @@ const onNameSubmit = async ({
 					<template #append>
 						<span :class="$style['path-separator']">/</span>
 						<InlineTextEdit
+							data-test-id="breadcrumbs-item-current"
 							:model-value="currentFolder.name"
 							:preview-value="currentFolder.name"
 							:is-edit-enabled="isNameEditEnabled"

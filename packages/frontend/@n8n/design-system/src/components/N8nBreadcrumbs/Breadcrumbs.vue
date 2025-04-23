@@ -238,10 +238,8 @@ const handleTooltipClose = () => {
 						[$style.dragging]: props.dragActive,
 					}"
 					:title="item.label"
-					:data-test-id="
-						index === items.length - 1 ? 'breadcrumbs-item-current' : 'breadcrumbs-item'
-					"
 					:data-resourceid="item.id"
+					data-test-id="breadcrumbs-item"
 					data-target="folder-breadcrumb-item"
 					@click.prevent="emitItemSelected(item.id)"
 					@mouseenter="emitItemHover(item.id)"

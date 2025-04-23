@@ -96,6 +96,7 @@ function onEscape() {
 				:maxlength="maxLength"
 				:autofocus="true"
 				:event-bus="inputBus"
+				data-test-id="inline-edit-input"
 				@update:model-value="onInput"
 				@esc="onEscape"
 				@blur="onBlur"

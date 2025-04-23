@@ -188,7 +188,7 @@ watch(
 			</template>
 		</n8n-breadcrumbs>
 		<!-- If there is no current folder, just show project badge -->
-		<div v-else-if="currentProject" :class="$style['home-project']" data-test-id="home-project">
+		<div v-else-if="currentProject" :class="$style['home-project']">
 			<ProjectBreadcrumb
 				:current-project="currentProject"
 				:is-dragging="isDragging"

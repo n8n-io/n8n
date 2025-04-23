@@ -76,7 +76,11 @@ export function getVisibleListBreadcrumbs() {
 }
 
 export function getCurrentBreadcrumb() {
-	return getListBreadcrumbs().findChildByTestId('breadcrumbs-item-current');
+	return getListBreadcrumbs().findChildByTestId('breadcrumbs-item-current').find('input');
+}
+
+export function getCurrentBreadcrumbText() {
+	return getCurrentBreadcrumb().invoke('val');
 }
 
 export function getMainBreadcrumbsEllipsis() {
@@ -125,6 +129,10 @@ export function getListActionItem(name: string) {
 		.then((popperId) => {
 			return cy.get(`#${popperId}`).find(`[data-test-id="action-${name}"]`);
 		});
+}
+
+export function getInlineEditInput() {
+	return cy.getByTestId('inline-edit-input');
 }
 
 export function getFolderCardActionToggle(folderName: string) {
@@ -303,7 +311,9 @@ export function renameFolderFromListActions(folderName: string, newName: string)
 	getFolderCard(folderName).click();
 	getListActionsToggle().click();
 	getListActionItem('rename').click();
-	renameFolder(newName);
+	getInlineEditInput().should('be.visible');
+	getInlineEditInput().type(newName, { delay: 50 });
+	successToast().should('exist');
 }
 
 export function renameFolderFromCardActions(folderName: string, newName: string) {
@@ -372,12 +382,9 @@ export function deleteAndTransferFolderContentsFromCardDropdown(
 export function deleteAndTransferFolderContentsFromListDropdown(destinationName: string) {
 	getListActionsToggle().click();
 	getListActionItem('delete').click();
-	getCurrentBreadcrumb()
-		.find('span')
-		.invoke('text')
-		.then((currentFolderName) => {
-			deleteFolderAndMoveContents(currentFolderName, destinationName);
-		});
+	getCurrentBreadcrumbText().then((currentFolderName) => {
+		deleteFolderAndMoveContents(String(currentFolderName), destinationName);
+	});
 }
 
 export function createNewProject(projectName: string, options: { openAfterCreate?: boolean } = {}) {
