@@ -1,4 +1,5 @@
 import { setActivePinia } from 'pinia';
+import type { INode, INodeTypeDescription, Workflow } from 'n8n-workflow';
 import { createTestingPinia } from '@pinia/testing';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { createTestNode } from '@/__tests__/mocks';
@@ -265,6 +266,100 @@ describe('useNodeHelpers()', () => {
 			expect(isSingleExecution('n8n-nodes-base.mongoDb', { operation: 'insert' })).toEqual(true);
 			expect(isSingleExecution('n8n-nodes-base.mongoDb', { operation: 'update' })).toEqual(true);
 			expect(isSingleExecution('n8n-nodes-base.redis', {})).toEqual(true);
+		});
+	});
+
+	describe('getNodeHints', () => {
+		let getNodeHints: ReturnType<typeof useNodeHelpers>['getNodeHints'];
+		beforeEach(() => {
+			getNodeHints = useNodeHelpers().getNodeHints;
+		});
+
+		//TODO: Add more tests here when hints are added to some node types
+		test('should return node hints if present in node type', () => {
+			const testType = {
+				hints: [
+					{
+						message: 'TEST HINT',
+					},
+				],
+			} as INodeTypeDescription;
+
+			const workflow = {} as unknown as Workflow;
+
+			const node: INode = {
+				name: 'Test Node Hints',
+			} as INode;
+			const nodeType = testType;
+
+			const hints = getNodeHints(workflow, node, nodeType);
+
+			expect(hints).toHaveLength(1);
+			expect(hints[0].message).toEqual('TEST HINT');
+		});
+		test('should not include hint if displayCondition is false', () => {
+			const testType = {
+				hints: [
+					{
+						message: 'TEST HINT',
+						displayCondition: 'FALSE DISPLAY CONDITION EXPESSION',
+					},
+				],
+			} as INodeTypeDescription;
+
+			const workflow = {
+				expression: {
+					getSimpleParameterValue(
+						_node: string,
+						_parameter: string,
+						_mode: string,
+						_additionalData = {},
+					) {
+						return false;
+					},
+				},
+			} as unknown as Workflow;
+
+			const node: INode = {
+				name: 'Test Node Hints',
+			} as INode;
+			const nodeType = testType;
+
+			const hints = getNodeHints(workflow, node, nodeType);
+
+			expect(hints).toHaveLength(0);
+		});
+		test('should include hint if displayCondition is true', () => {
+			const testType = {
+				hints: [
+					{
+						message: 'TEST HINT',
+						displayCondition: 'TRUE DISPLAY CONDITION EXPESSION',
+					},
+				],
+			} as INodeTypeDescription;
+
+			const workflow = {
+				expression: {
+					getSimpleParameterValue(
+						_node: string,
+						_parameter: string,
+						_mode: string,
+						_additionalData = {},
+					) {
+						return true;
+					},
+				},
+			} as unknown as Workflow;
+
+			const node: INode = {
+				name: 'Test Node Hints',
+			} as INode;
+			const nodeType = testType;
+
+			const hints = getNodeHints(workflow, node, nodeType);
+
+			expect(hints).toHaveLength(1);
 		});
 	});
 });

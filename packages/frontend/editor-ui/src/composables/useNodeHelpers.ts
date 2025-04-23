@@ -28,6 +28,8 @@ import type {
 	INodeTypeNameVersion,
 	NodeParameterValue,
 	NodeConnectionType,
+	IRunExecutionData,
+	NodeHint,
 } from 'n8n-workflow';
 
 import type {
@@ -885,6 +887,113 @@ export function useNodeHelpers() {
 		return false;
 	}
 
+	function getNodeHints(
+		workflow: Workflow,
+		node: INode,
+		nodeTypeData: INodeTypeDescription,
+		nodeInputData?: {
+			runExecutionData: IRunExecutionData | null;
+			runIndex: number;
+			connectionInputData: INodeExecutionData[];
+		},
+	): NodeHint[] {
+		const hints: NodeHint[] = [];
+
+		if (nodeTypeData?.hints?.length) {
+			for (const hint of nodeTypeData.hints) {
+				if (hint.displayCondition) {
+					try {
+						let display;
+
+						if (nodeInputData === undefined) {
+							display = (workflow.expression.getSimpleParameterValue(
+								node,
+								hint.displayCondition,
+								'internal',
+								{},
+							) || false) as boolean;
+						} else {
+							const { runExecutionData, runIndex, connectionInputData } = nodeInputData;
+							display = workflow.expression.getParameterValue(
+								hint.displayCondition,
+								runExecutionData ?? null,
+								runIndex,
+								0,
+								node.name,
+								connectionInputData,
+								'manual',
+								{},
+							);
+						}
+
+						if (typeof display === 'string' && display.trim() === 'true') {
+							display = true;
+						}
+
+						if (typeof display !== 'boolean') {
+							console.warn(
+								`Condition was not resolved as boolean in '${node.name}' node for hint: `,
+								hint.message,
+							);
+							continue;
+						}
+
+						if (display) {
+							hints.push(hint);
+						}
+					} catch (e) {
+						console.warn(
+							`Could not calculate display condition in '${node.name}' node for hint: `,
+							hint.message,
+						);
+					}
+				} else {
+					hints.push(hint);
+				}
+			}
+		}
+
+		return hints;
+	}
+
+	/**
+	 * Returns the issues of the node as string
+	 *
+	 * @param {INodeIssues} issues The issues of the node
+	 * @param {INode} node The node
+	 */
+	function nodeIssuesToString(issues: INodeIssues, node?: INode): string[] {
+		const nodeIssues = [];
+
+		if (issues.execution !== undefined) {
+			nodeIssues.push('Execution Error.');
+		}
+
+		const objectProperties = ['parameters', 'credentials', 'input'];
+
+		let issueText: string;
+		let parameterName: string;
+		for (const propertyName of objectProperties) {
+			if (issues[propertyName] !== undefined) {
+				for (parameterName of Object.keys(issues[propertyName] as object)) {
+					for (issueText of (issues[propertyName] as INodeIssueObjectProperty)[parameterName]) {
+						nodeIssues.push(issueText);
+					}
+				}
+			}
+		}
+
+		if (issues.typeUnknown !== undefined) {
+			if (node !== undefined) {
+				nodeIssues.push(`Node Type "${node.type}" is not known.`);
+			} else {
+				nodeIssues.push('Node Type is not known.');
+			}
+		}
+
+		return nodeIssues;
+	}
+
 	return {
 		hasProxyAuth,
 		isCustomApiCallSelected,
@@ -914,5 +1023,7 @@ export function useNodeHelpers() {
 		assignNodeId,
 		assignWebhookId,
 		isSingleExecution,
+		getNodeHints,
+		nodeIssuesToString,
 	};
 }
