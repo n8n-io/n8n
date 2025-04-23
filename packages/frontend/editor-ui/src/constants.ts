@@ -734,12 +734,6 @@ export const KEEP_AUTH_IN_NDV_FOR_NODES = [
 export const MAIN_AUTH_FIELD_NAME = 'authentication';
 export const NODE_RESOURCE_FIELD_NAME = 'resource';
 
-export const CANVAS_AUTO_ADD_MANUAL_TRIGGER_EXPERIMENT = {
-	name: '20_canvas_auto_add_manual_trigger',
-	control: 'control',
-	variant: 'variant',
-};
-
 export const CREDENTIAL_DOCS_EXPERIMENT = {
 	name: '024_credential_docs',
 	control: 'control',
@@ -771,7 +765,6 @@ export const WORKFLOW_BUILDER_EXPERIMENT = {
 };
 
 export const EXPERIMENTS_TO_TRACK = [
-	CANVAS_AUTO_ADD_MANUAL_TRIGGER_EXPERIMENT.name,
 	CREDENTIAL_DOCS_EXPERIMENT.name,
 	EASY_AI_WORKFLOW_EXPERIMENT.name,
 	AI_CREDITS_EXPERIMENT.name,

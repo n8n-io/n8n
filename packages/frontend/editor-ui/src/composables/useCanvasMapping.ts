@@ -391,7 +391,7 @@ export function useCanvasMapping({
 			}
 
 			if (node?.issues !== undefined) {
-				issues.push(...NodeHelpers.nodeIssuesToString(node.issues, node));
+				issues.push(...nodeHelpers.nodeIssuesToString(node.issues, node));
 			}
 
 			acc[node.id] = issues;
