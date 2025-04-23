@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { createEventBus } from '@n8n/utils/event-bus';
 import Modal from '@/components/Modal.vue';
-import { WORKFLOW_ACTIVATION_CONFIRM_MODAL_KEY } from '@/constants';
+import { WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY } from '@/constants';
 import { useUIStore } from '@/stores/ui.store';
 
 import type { IHttpRequestMethods } from 'n8n-workflow';
@@ -34,14 +34,14 @@ const workflowUrl = computed(() => {
 });
 
 const onClick = async () => {
-	uiStore.closeModal(WORKFLOW_ACTIVATION_CONFIRM_MODAL_KEY);
+	uiStore.closeModal(WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY);
 };
 </script>
 
 <template>
 	<Modal
 		width="540px"
-		:name="WORKFLOW_ACTIVATION_CONFIRM_MODAL_KEY"
+		:name="WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY"
 		title="Conflicting Webhook URL"
 		:event-bus="modalBus"
 		:center="true"

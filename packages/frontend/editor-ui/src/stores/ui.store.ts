@@ -39,7 +39,7 @@ import {
 	API_KEY_CREATE_OR_EDIT_MODAL_KEY,
 	DELETE_FOLDER_MODAL_KEY,
 	MOVE_FOLDER_MODAL_KEY,
-	WORKFLOW_ACTIVATION_CONFIRM_MODAL_KEY,
+	WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY,
 } from '@/constants';
 import type {
 	INodeUi,
@@ -183,7 +183,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 				customHeading: undefined,
 			},
 		},
-		[WORKFLOW_ACTIVATION_CONFIRM_MODAL_KEY]: {
+		[WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY]: {
 			open: false,
 			data: {
 				triggerName: '',

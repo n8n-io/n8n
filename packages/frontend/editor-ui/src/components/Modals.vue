@@ -35,7 +35,7 @@ import {
 	COMMUNITY_PLUS_ENROLLMENT_MODAL,
 	DELETE_FOLDER_MODAL_KEY,
 	MOVE_FOLDER_MODAL_KEY,
-	WORKFLOW_ACTIVATION_CONFIRM_MODAL_KEY,
+	WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY,
 } from '@/constants';
 
 import AboutModal from '@/components/AboutModal.vue';
@@ -72,7 +72,7 @@ import ProjectMoveResourceModal from '@/components/Projects/ProjectMoveResourceM
 import NewAssistantSessionModal from '@/components/AskAssistant/NewAssistantSessionModal.vue';
 import PromptMfaCodeModal from './PromptMfaCodeModal/PromptMfaCodeModal.vue';
 import CommunityPlusEnrollmentModal from '@/components/CommunityPlusEnrollmentModal.vue';
-import WorkflowActivationConfirmModal from '@/components/WorkflowActivationConfirmModal.vue';
+import WorkflowActivationConflictingWebhookModal from '@/components/WorkflowActivationConflictingWebhookModal.vue';
 import type { EventBus } from '@n8n/utils/event-bus';
 </script>
 
@@ -297,9 +297,9 @@ import type { EventBus } from '@n8n/utils/event-bus';
 			</template>
 		</ModalRoot>
 
-		<ModalRoot :name="WORKFLOW_ACTIVATION_CONFIRM_MODAL_KEY">
+		<ModalRoot :name="WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY">
 			<template #default="{ modalName, data }">
-				<WorkflowActivationConfirmModal :data="data" :modal-name="modalName" />
+				<WorkflowActivationConflictingWebhookModal :data="data" :modal-name="modalName" />
 			</template>
 		</ModalRoot>
 	</div>

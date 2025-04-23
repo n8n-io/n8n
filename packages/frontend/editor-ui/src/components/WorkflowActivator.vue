@@ -8,7 +8,7 @@ import { computed, h, watch } from 'vue';
 import { useI18n } from '@/composables/useI18n';
 import type { PermissionsRecord } from '@/permissions';
 import {
-	WORKFLOW_ACTIVATION_CONFIRM_MODAL_KEY,
+	WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY,
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 } from '@/constants';
@@ -138,7 +138,7 @@ async function activeChanged(newActiveState: boolean) {
 			const conflictingWorkflow = await workflowsStore.fetchWorkflow(conflict.workflowId);
 
 			uiStore.openModalWithData({
-				name: WORKFLOW_ACTIVATION_CONFIRM_MODAL_KEY,
+				name: WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY,
 				data: {
 					triggerName: trigger.name,
 					workflowName: conflictingWorkflow.name,
