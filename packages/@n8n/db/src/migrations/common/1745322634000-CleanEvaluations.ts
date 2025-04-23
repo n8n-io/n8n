@@ -5,8 +5,11 @@ export class ClearEvaluation1745322634000 implements IrreversibleMigration {
 		isMysql,
 		queryRunner,
 		tablePrefix,
-		schemaBuilder: { dropColumns, dropTable },
+		schemaBuilder: { dropColumns, dropTable, addColumns, column, createIndex, addForeignKey },
 	}: MigrationContext) {
+		// Delete all existing test data
+		await queryRunner.query('DELETE FROM test_run');
+
 		// Update test_run
 		if (isMysql) {
 			await queryRunner.query(
@@ -25,6 +28,11 @@ export class ClearEvaluation1745322634000 implements IrreversibleMigration {
 			);
 		}
 		await dropColumns('test_run', ['testDefinitionId', 'totalCases', 'passedCases', 'failedCases']);
+
+		// Add workflowId column & foreign key to test_run
+		await addColumns('test_run', [column('workflowId').varchar().notNull]);
+		await addForeignKey('test_run', 'workflowId', ['workflow_entity', 'id']);
+		await createIndex('test_run', ['workflowId']);
 
 		// Drop test_metric, test_definition
 		await dropTable('test_metric');
