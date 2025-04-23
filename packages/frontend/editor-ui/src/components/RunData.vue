@@ -746,7 +746,7 @@ function getNodeHints(): NodeHint[] {
 			const workflowNode = props.workflow.getNode(node.value.name);
 
 			if (workflowNode) {
-				const nodeHints = NodeHelpers.getNodeHints(props.workflow, workflowNode, nodeType.value, {
+				const nodeHints = nodeHelpers.getNodeHints(props.workflow, workflowNode, nodeType.value, {
 					runExecutionData: workflowExecution.value?.data ?? null,
 					runIndex: props.runIndex,
 					connectionInputData: parentNodeOutputData.value,
