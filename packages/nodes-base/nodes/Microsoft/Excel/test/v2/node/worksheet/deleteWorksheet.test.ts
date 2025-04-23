@@ -2,6 +2,8 @@ import nock from 'nock';
 
 import { testWorkflows } from '@test/nodes/Helpers';
 
+import { credentials } from '../../../credentials';
+
 describe('Test MicrosoftExcelV2, worksheet => deleteWorksheet', () => {
 	nock('https://graph.microsoft.com/v1.0/me')
 		.delete(
@@ -12,5 +14,5 @@ describe('Test MicrosoftExcelV2, worksheet => deleteWorksheet', () => {
 		});
 
 	const workflows = ['nodes/Microsoft/Excel/test/v2/node/worksheet/deleteWorksheet.workflow.json'];
-	testWorkflows(workflows);
+	testWorkflows(workflows, credentials);
 });
