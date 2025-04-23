@@ -128,7 +128,7 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 	async getCredentialIdsByUserAndRole(
 		userIds: string[],
 		options:
-			| { scopes: Scope[]; projectId?: string }
+			| { scopes: Scope[] }
 			| {
 					projectRoles: ProjectRole[];
 					credentialRoles: CredentialSharingRole[];
