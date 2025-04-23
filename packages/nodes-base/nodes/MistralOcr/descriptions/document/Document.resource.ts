@@ -1,6 +1,6 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-import * as extractedText from './extractTest.operation';
+import * as extractedText from './extractText.operation';
 import { sendErrorPostReceive } from '../../GenericFunctions';
 
 export const description: INodeProperties[] = [
