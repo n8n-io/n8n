@@ -49,6 +49,7 @@ export class ObjectStoreService {
 		this.s3Client = new S3Client(this.getClientConfig());
 	}
 
+	/** This generates the config for the S3Client to make it work in all various auth configurations */
 	getClientConfig() {
 		const { host, bucket, protocol, credentials } = this.s3Config;
 		const clientConfig: S3ClientConfig = {};
@@ -61,10 +62,8 @@ export class ObjectStoreService {
 			clientConfig.region = bucket.region;
 		}
 		if (!credentials.authAutoDetect) {
-			clientConfig.credentials = {
-				accessKeyId: credentials.accessKeyId,
-				secretAccessKey: credentials.secretAccessKey,
-			};
+			const { accessKeyId, secretAccessKey } = credentials;
+			clientConfig.credentials = { accessKeyId, secretAccessKey };
 		}
 		return clientConfig;
 	}
