@@ -2466,6 +2466,7 @@
 	"workflows.item.updated": "Last updated",
 	"workflows.item.created": "Created",
 	"workflows.item.readonly": "Read only",
+	"workflows.item.archived": "Archived",
 	"workflows.search.placeholder": "Search",
 	"workflows.filters": "Filters",
 	"workflows.filters.tags": "Tags",
