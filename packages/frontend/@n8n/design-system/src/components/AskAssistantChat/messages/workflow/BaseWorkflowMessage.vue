@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import AssistantLoadingMessage from '@n8n/design-system/components/AskAssistantLoadingMessage/AssistantLoadingMessage.vue';
+
 import type { ChatUI } from '../../../../types/assistant';
 import BaseMessage from '../BaseMessage.vue';
 

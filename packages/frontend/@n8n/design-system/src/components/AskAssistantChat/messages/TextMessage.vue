@@ -3,9 +3,9 @@ import Markdown from 'markdown-it';
 import markdownLink from 'markdown-it-link-attributes';
 import { computed } from 'vue';
 
+import BaseMessage from './BaseMessage.vue';
 import { useI18n } from '../../../composables/useI18n';
 import type { ChatUI } from '../../../types/assistant';
-import BaseMessage from './BaseMessage.vue';
 import BlinkingCursor from '../../BlinkingCursor/BlinkingCursor.vue';
 
 interface Props {
