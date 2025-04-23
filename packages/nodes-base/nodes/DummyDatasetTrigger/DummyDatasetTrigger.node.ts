@@ -55,18 +55,18 @@ export class DummyDatasetTrigger implements INodeType {
 
 		console.log('Dummy Dataset trigger input', inputData);
 
-		// if (inputData[0].json.giveMeDataset) {
-		// 	return [
-		// 		mockDataset.map(
-		// 			(testCase) =>
-		// 				({
-		// 					json: {
-		// 						input: testCase,
-		// 					},
-		// 				}) as INodeExecutionData,
-		// 		),
-		// 	];
-		// }
+		if (inputData[0].json.requestDataset) {
+			return [
+				mockDataset.map(
+					(testCase) =>
+						({
+							json: {
+								input: testCase,
+							},
+						}) as INodeExecutionData,
+				),
+			];
+		}
 
 		// If we've reached the end of the dataset, start over
 		if (currentDatasetIndex >= mockDataset.length) {
