@@ -409,7 +409,7 @@ const handleTooltipClose = () => {
 	.item * {
 		color: var(--color-text-base);
 		font-size: var(--font-size-2xs);
-		line-height: var(--font-line-heigh-xsmall);
+		line-height: var(--font-line-height-xsmall);
 	}
 
 	.item a:hover * {
@@ -432,7 +432,7 @@ const handleTooltipClose = () => {
 	.item * {
 		color: var(--color-text-base);
 		font-size: var(--font-size-s);
-		line-height: var(--font-line-heigh-xsmall);
+		line-height: var(--font-line-height-xsmall);
 	}
 
 	.item {

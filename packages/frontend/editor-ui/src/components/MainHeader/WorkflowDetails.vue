@@ -354,7 +354,7 @@ async function onNameSubmit({
 	const newName = name.trim();
 	if (!newName) {
 		toast.showMessage({
-			title: locale.baseText('renameAction.emptyName..title'),
+			title: locale.baseText('renameAction.emptyName.title'),
 			message: locale.baseText('renameAction.emptyName.message'),
 			type: 'error',
 		});

@@ -1678,7 +1678,7 @@
 	"prompts.npsSurvey.reviewUs": "If you’d like to help even more, leave us a <a target=\"_blank\" href=\"https://www.g2.com/products/n8n/reviews/start\">review on G2</a>.",
 	"prompts.npsSurvey.thanks": "Thanks for your feedback",
 	"renameAction.emptyName.message": "Please enter a name, or press 'esc' to go back to the old one",
-	"renameAction.emptyName..title": "Name missing",
+	"renameAction.emptyName.title": "Name missing",
 	"renameAction.invalidName.title": "Invalid name",
 	"resourceLocator.id.placeholder": "Enter ID...",
 	"resourceLocator.mode.id": "By ID",

@@ -1274,7 +1274,7 @@ const onNameSubmit = async ({
 	const newName = name.trim();
 	if (!newName) {
 		toast.showMessage({
-			title: i18n.baseText('renameAction.emptyName..title'),
+			title: i18n.baseText('renameAction.emptyName.title'),
 			message: i18n.baseText('renameAction.emptyName.message'),
 			type: 'error',
 		});
