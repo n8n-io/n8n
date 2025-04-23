@@ -207,6 +207,10 @@ export function useChatState(isReadOnly: boolean, onWindowResize?: () => void): 
 		nodeHelpers.updateNodesExecutionIssues();
 		messages.value = [];
 		currentSessionId.value = uuid().replace(/-/g, '');
+
+		if (logsPanelState.value !== LOGS_PANEL_STATE.CLOSED) {
+			chatEventBus.emit('focusInput');
+		}
 	}
 
 	function displayExecution(executionId: string) {

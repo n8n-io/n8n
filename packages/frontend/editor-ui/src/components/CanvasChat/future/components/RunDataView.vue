@@ -61,6 +61,7 @@ function handleClickOpenNdv() {
 		:compact="true"
 		:disable-pin="true"
 		:disable-edit="true"
+		:disable-hover-highlight="true"
 		table-header-bg-color="light"
 	>
 		<template #header>

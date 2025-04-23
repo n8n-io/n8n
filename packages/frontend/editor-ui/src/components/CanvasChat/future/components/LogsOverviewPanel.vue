@@ -42,8 +42,8 @@ const isClearExecutionButtonVisible = useClearExecutionButtonVisible();
 const workflow = computed(() => workflowsStore.getCurrentWorkflow());
 const isEmpty = computed(() => workflowsStore.workflowExecutionData === null);
 const switchViewOptions = computed(() => [
-	{ label: locale.baseText('logs.overview.header.switch.details'), value: 'details' as const },
 	{ label: locale.baseText('logs.overview.header.switch.overview'), value: 'overview' as const },
+	{ label: locale.baseText('logs.overview.header.switch.details'), value: 'details' as const },
 ]);
 const execution = computed(() => workflowsStore.workflowExecutionData);
 const consumedTokens = computed(() =>
@@ -166,7 +166,7 @@ async function handleTriggerPartialExecution(treeNode: TreeNode) {
 					</template>
 				</ElTree>
 				<N8nRadioButtons
-					size="medium"
+					size="small"
 					:class="$style.switchViewButtons"
 					:model-value="selected ? 'details' : 'overview'"
 					:options="switchViewOptions"
@@ -193,6 +193,7 @@ async function handleTriggerPartialExecution(treeNode: TreeNode) {
 .clearButton {
 	border: none;
 	color: var(--color-text-light);
+	gap: var(--spacing-5xs);
 }
 
 .content {
@@ -222,9 +223,7 @@ async function handleTriggerPartialExecution(treeNode: TreeNode) {
 }
 
 .summary {
-	margin-bottom: var(--spacing-4xs);
-	padding: var(--spacing-4xs) var(--spacing-2xs) 0 var(--spacing-2xs);
-	min-height: calc(30px + var(--spacing-s));
+	padding: var(--spacing-2xs);
 }
 
 .tree {

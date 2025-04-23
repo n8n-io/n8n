@@ -24,7 +24,7 @@ const emit = defineEmits<{ click: [] }>();
 	font-size: var(--font-size-2xs);
 	text-align: left;
 	padding-inline-start: var(--spacing-s);
-	padding-inline-end: var(--spacing-xs);
+	padding-inline-end: var(--spacing-2xs);
 	padding-block: var(--spacing-2xs);
 	background-color: var(--color-foreground-xlight);
 	display: flex;

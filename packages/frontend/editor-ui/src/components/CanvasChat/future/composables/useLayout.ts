@@ -35,14 +35,14 @@ export function useLayout(
 
 	const chatPanelResizer = useResizablePanel(LOCAL_STORAGE_PANEL_WIDTH, {
 		container,
-		defaultSize: (size) => size * 0.3,
-		minSize: 300,
+		defaultSize: (size) => Math.min(800, size * 0.3),
+		minSize: 240,
 		maxSize: (size) => size * 0.8,
 	});
 
 	const overviewPanelResizer = useResizablePanel(LOCAL_STORAGE_OVERVIEW_PANEL_WIDTH, {
 		container: logsContainer,
-		defaultSize: (size) => size * 0.3,
+		defaultSize: (size) => Math.min(240, size * 0.2),
 		minSize: 80,
 		maxSize: 500,
 		allowFullSize: true,
@@ -103,15 +103,19 @@ export function useLayout(
 		resizer.onResizeEnd();
 	}
 
-	watch([panelState, resizer.size], ([state, height]) => {
-		canvasStore.setPanelHeight(
-			state === LOGS_PANEL_STATE.FLOATING
-				? 0
-				: state === LOGS_PANEL_STATE.ATTACHED
-					? height
-					: 32 /* collapsed panel height */,
-		);
-	});
+	watch(
+		[panelState, resizer.size],
+		([state, height]) => {
+			canvasStore.setPanelHeight(
+				state === LOGS_PANEL_STATE.FLOATING
+					? 0
+					: state === LOGS_PANEL_STATE.ATTACHED
+						? height
+						: 32 /* collapsed panel height */,
+			);
+		},
+		{ immediate: true },
+	);
 
 	return {
 		height: resizer.size,

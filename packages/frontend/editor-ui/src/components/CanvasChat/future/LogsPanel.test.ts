@@ -141,15 +141,17 @@ describe('LogsPanel', () => {
 		await fireEvent.click(await rendered.findByTestId('logs-overview-header'));
 		await fireEvent.click(await rendered.findByText('AI Agent'));
 
-		const detailsPanel = rendered.getByTestId('log-details');
-
 		// Click the toggle button to close the panel
-		await fireEvent.click(within(detailsPanel).getByLabelText('Collapse panel'));
+		await fireEvent.click(
+			within(rendered.getByTestId('log-details')).getByLabelText('Collapse panel'),
+		);
 		expect(rendered.queryByTestId('chat-messages-empty')).not.toBeInTheDocument();
 		expect(rendered.queryByTestId('logs-overview-body')).not.toBeInTheDocument();
 
 		// Click again to open the panel
-		await fireEvent.click(within(detailsPanel).getByLabelText('Open panel'));
+		await fireEvent.click(
+			within(rendered.getByTestId('logs-overview')).getByLabelText('Open panel'),
+		);
 		expect(await rendered.findByTestId('chat-messages-empty')).toBeInTheDocument();
 		expect(await rendered.findByTestId('logs-overview-body')).toBeInTheDocument();
 	});
