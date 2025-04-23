@@ -25,6 +25,10 @@ const props = defineProps<{
 
 const { data } = props;
 
+const webhookUrl = computed(() => {
+	return rootStore.webhookUrl;
+});
+
 const workflowUrl = computed(() => {
 	return rootStore.urlBaseEditor + 'workflow/' + data.workflowId;
 });
@@ -38,31 +42,35 @@ const onClick = async () => {
 	<Modal
 		width="540px"
 		:name="WORKFLOW_ACTIVATION_CONFIRM_MODAL_KEY"
-		title="Conflicting Webhook Path"
+		title="Conflicting Webhook URL"
 		:event-bus="modalBus"
 		:center="true"
 	>
 		<template #content>
-			<div :class="[$style.descriptionContainer, 'p-s']">
+			<n8n-callout theme="danger">
+				A webhook trigger '{{ data.triggerName }}' in the workflow '{{ data.workflowName }}' uses a
+				conflicting URL path, so this workflow cannot be activated
+			</n8n-callout>
+			<div :class="$style.container">
 				<div>
-					<n8n-text>
-						Node <strong>{{ data.node }}</strong> in the workflow
-					</n8n-text>
-					<n8n-link :to="workflowUrl">
-						<strong>{{ data.workflowName }} </strong>
-					</n8n-link>
-					<n8n-text>
-						shares the same path <code>'{{ data.webhookPath }}'</code> as
-						<strong>{{ data.triggerName }} </strong> node in this workflow. Please update the path
-						to be unique or deactivate the conflicting workflow.
+					<n8n-text color="text-base"> You can deactivate </n8n-text>
+					<n8n-link :to="workflowUrl" underline="true"> '{{ data.workflowName }}' </n8n-link>
+					<n8n-text color="text-base">
+						and activate this one, or adjust the following URL path in either workflow:
 					</n8n-text>
 				</div>
+			</div>
+			<div>
+				<n8n-text color="text-light"> {{ webhookUrl }}/</n8n-text>
+				<n8n-text color="text-dark" bold>
+					{{ data.webhookPath }}
+				</n8n-text>
 			</div>
 		</template>
 		<template #footer>
 			<n8n-button
-				label="Close"
-				size="large"
+				label="Done"
+				size="medium"
 				float="right"
 				data-test-id="close-button"
 				@click="onClick"
@@ -72,56 +80,8 @@ const onClick = async () => {
 </template>
 
 <style module lang="scss">
-.descriptionContainer {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	border: var(--border-width-base) var(--border-style-base) var(--color-info-tint-1);
-	border-radius: var(--border-radius-base);
-	background-color: var(--color-background-light);
-
-	button {
-		& > span {
-			flex-direction: row-reverse;
-			& > span {
-				margin-left: var(--spacing-3xs);
-			}
-		}
-	}
-}
-
-.formContainer {
-	font-size: var(--font-size-2xs);
-	font-weight: var(--font-weight-regular);
-	color: var(--color-text-base);
-}
-
-.checkbox {
-	span:nth-child(2) {
-		vertical-align: text-top;
-	}
-}
-
-.error {
-	color: var(--color-danger);
-
-	span {
-		border-color: var(--color-danger);
-	}
-}
-</style>
-
-<style lang="scss">
-.el-tooltip__popper {
-	max-width: 240px;
-	img {
-		width: 100%;
-	}
-	p {
-		line-height: 1.2;
-	}
-	p + p {
-		margin-top: var(--spacing-2xs);
-	}
+.container {
+	margin-top: var(--spacing-m);
+	margin-bottom: var(--spacing-s);
 }
 </style>

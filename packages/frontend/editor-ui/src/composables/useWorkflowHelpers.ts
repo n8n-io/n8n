@@ -861,13 +861,16 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 			const conflict = await checkConflictingWebhooks(currentWorkflow);
 			if (conflict) {
 				workflowDataRequest.active = false;
-				workflowsStore.setWorkflowInactive(currentWorkflow);
 
-				toast.showMessage({
-					title: 'Conflicting Webhook Path',
-					message: `Workflow was set to inactive because there is a live webhook with same path as in node: ${conflict.trigger.name}.`,
-					type: 'info',
-				});
+				if (workflowsStore.isWorkflowActive) {
+					toast.showMessage({
+						title: 'Conflicting Webhook Path',
+						message: `Workflow was set to inactive because there is a live webhook with same path as in node: ${conflict.trigger.name}.`,
+						type: 'info',
+					});
+
+					workflowsStore.setWorkflowInactive(currentWorkflow);
+				}
 			}
 
 			const workflowData = await workflowsStore.updateWorkflow(
