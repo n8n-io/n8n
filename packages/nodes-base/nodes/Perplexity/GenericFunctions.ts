@@ -33,19 +33,11 @@ export async function sendErrorPostReceive(
 			});
 		}
 
-		if (errorType === 'invalid_parameter') {
-			throw new NodeApiError(this.getNode(), errorBody, {
-				message: `${errorType} ${errorMessage}`,
-				description:
-					'Please check all input parameters and ensure they are correctly formatted. Valid values can be found in the documentation at https://docs.perplexity.ai/api-reference/chat-completions.',
-			});
-		}
-
 		// Fallback for other errors
 		throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
 			message: `${errorMessage} ${itemIndex}.`,
 			description:
-				'Please check the request parameters and ensure they are correct.For more details, refer to the API documentation: https://docs.perplexity.ai/api-reference/chat-completions.',
+				'Any optional system messages must be sent first, followed by alternating user and assistant messages. For more details, refer to the API documentation: https://docs.perplexity.ai/api-reference/chat-completions',
 		});
 	}
 	return data;

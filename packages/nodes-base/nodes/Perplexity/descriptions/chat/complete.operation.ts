@@ -40,9 +40,12 @@ const properties: INodeProperties[] = [
 		displayName: 'Messages',
 		name: 'messages',
 		type: 'fixedCollection',
+		description:
+			'Any optional system messages must be sent first, followed by alternating user and assistant messages',
 		required: true,
 		typeOptions: {
 			multipleValues: true,
+			sortable: true,
 		},
 		placeholder: 'Add Message',
 		default: {
@@ -61,7 +64,6 @@ const properties: INodeProperties[] = [
 					{
 						displayName: 'Text',
 						name: 'content',
-						required: true,
 						type: 'string',
 						default: '',
 						description: 'The content of the message to be sent',
@@ -78,14 +80,19 @@ const properties: INodeProperties[] = [
 							{
 								name: 'Assistant',
 								value: 'assistant',
+								description:
+									'Tell the model to adopt a specific tone or personality. Must alternate with user messages.',
 							},
 							{
 								name: 'System',
 								value: 'system',
+								description:
+									'Set the models behavior or context. Must come before user and assistant messages.',
 							},
 							{
 								name: 'User',
 								value: 'user',
+								description: 'Send a message as a user and get a response from the model',
 							},
 						],
 						default: 'user',
@@ -104,7 +111,7 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Simplify',
+		displayName: 'Simplify Output',
 		name: 'simplify',
 		type: 'boolean',
 		default: false,
