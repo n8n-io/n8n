@@ -419,6 +419,34 @@ importers:
         specifier: workspace:*
         version: link:../typescript-config
 
+  packages/@n8n/decorators:
+    dependencies:
+      '@n8n/constants':
+        specifier: workspace:^
+        version: link:../constants
+      '@n8n/di':
+        specifier: workspace:^
+        version: link:../di
+      '@n8n/permissions':
+        specifier: workspace:^
+        version: link:../permissions
+      lodash:
+        specifier: 'catalog:'
+        version: 4.17.21
+      n8n-workflow:
+        specifier: workspace:^
+        version: link:../../workflow
+    devDependencies:
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+      '@types/express':
+        specifier: 'catalog:'
+        version: 5.0.1
+      '@types/lodash':
+        specifier: 'catalog:'
+        version: 4.14.195
+
   packages/@n8n/di:
     dependencies:
       reflect-metadata:
@@ -932,6 +960,9 @@ importers:
       '@n8n/constants':
         specifier: workspace:^
         version: link:../@n8n/constants
+      '@n8n/decorators':
+        specifier: workspace:*
+        version: link:../@n8n/decorators
       '@n8n/di':
         specifier: workspace:*
         version: link:../@n8n/di

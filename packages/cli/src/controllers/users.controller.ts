@@ -1,4 +1,14 @@
 import { RoleChangeRequestDto, SettingsUpdateRequestDto } from '@n8n/api-types';
+import {
+	GlobalScope,
+	Delete,
+	Get,
+	RestController,
+	Patch,
+	Licensed,
+	Body,
+	Param,
+} from '@n8n/decorators';
 import { Response } from 'express';
 import { Logger } from 'n8n-core';
 
@@ -11,16 +21,6 @@ import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { UserRepository } from '@/databases/repositories/user.repository';
-import {
-	GlobalScope,
-	Delete,
-	Get,
-	RestController,
-	Patch,
-	Licensed,
-	Body,
-	Param,
-} from '@/decorators';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
