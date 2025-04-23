@@ -116,7 +116,7 @@ export class PrometheusMetricsService {
 	private initDefaultMetrics() {
 		if (!this.includes.metrics.default) return;
 
-		promClient.collectDefaultMetrics();
+		promClient.collectDefaultMetrics({ prefix: this.globalConfig.endpoints.metrics.prefix });
 	}
 
 	/**
@@ -165,23 +165,9 @@ export class PrometheusMetricsService {
 	private mountMetricsEndpoint(app: express.Application) {
 		app.get('/metrics', async (_req: express.Request, res: express.Response) => {
 			const metrics = await promClient.register.metrics();
-			const prefixedMetrics = this.addPrefixToMetrics(metrics);
 			res.setHeader('Content-Type', promClient.register.contentType);
-			res.send(prefixedMetrics).end();
+			res.send(metrics).end();
 		});
-	}
-
-	private addPrefixToMetrics(metrics: string) {
-		return metrics
-			.split('\n')
-			.map((rawLine) => {
-				const line = rawLine.trim();
-
-				if (!line || line.startsWith('#') || line.startsWith(this.prefix)) return rawLine;
-
-				return this.prefix + line;
-			})
-			.join('\n');
 	}
 
 	/**
