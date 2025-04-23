@@ -101,11 +101,9 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 								<N8nTooltip placement="bottom">
 									<template #content>
 										<i18n-t keypath="insights.banner.timeSaved.tooltip">
-											<template #link>
-												<a href="#">{{
-													i18n.baseText('insights.banner.timeSaved.tooltip.link.text')
-												}}</a>
-											</template>
+											<template #link>{{
+												i18n.baseText('insights.banner.timeSaved.tooltip.link.text')
+											}}</template>
 										</i18n-t>
 									</template>
 									<N8nIcon :class="$style.icon" icon="info-circle" />
@@ -219,7 +217,7 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 						.icon {
 							height: 20px;
 							width: 8px;
-							top: -3px;
+							top: 5px;
 							transform: translateY(0);
 							color: var(--color-text-light);
 						}
