@@ -87,48 +87,46 @@ Return ONLY a valid JSON object with the "connections" property following the st
 \`\`\``,
 );
 
+const connectionsSchema = z.object({
+	connections: z
+		.record(
+			z
+				.string()
+				.describe(
+					'The source node\'s display name exactly as specified in the node\'s "name" field',
+				),
+			z
+				.object({
+					main: z.array(
+						z.array(
+							z.object({
+								node: z
+									.string()
+									.describe(
+										'The target node\'s display name exactly as specified in the node\'s "name" field',
+									),
+								type: z
+									.literal('main')
+									.describe('The connection type, always use "main" for standard n8n connections'),
+								index: z
+									.number()
+									.describe(
+										'Output index from the source node, typically 0 for single-output nodes, 0=true/1=false for IF nodes',
+									),
+							}),
+						),
+					),
+				})
+				.describe('The connection configuration for a single source node'),
+		)
+		.describe('A mapping of all connections in the workflow, where each key is a source node name'),
+});
+
 const connectionComposerTool = new DynamicStructuredTool({
 	name: 'compose_connections',
 	description:
 		"Create valid connections between n8n nodes to form a coherent, executable workflow that implements the user's request.",
-	schema: z.object({
-		connections: z
-			.record(
-				z
-					.string()
-					.describe(
-						'The source node\'s display name exactly as specified in the node\'s "name" field',
-					),
-				z
-					.object({
-						main: z.array(
-							z.array(
-								z.object({
-									node: z
-										.string()
-										.describe(
-											'The target node\'s display name exactly as specified in the node\'s "name" field',
-										),
-									type: z
-										.literal('main')
-										.describe(
-											'The connection type, always use "main" for standard n8n connections',
-										),
-									index: z
-										.number()
-										.describe(
-											'Output index from the source node, typically 0 for single-output nodes, 0=true/1=false for IF nodes',
-										),
-								}),
-							),
-						),
-					})
-					.describe('The connection configuration for a single source node'),
-			)
-			.describe(
-				'A mapping of all connections in the workflow, where each key is a source node name',
-			),
-	}),
+	schema: connectionsSchema,
 	func: async (input) => {
 		return { connections: input.connections };
 	},
@@ -153,12 +151,6 @@ export const connectionComposerChain = (llm: BaseChatModel) => {
 		)
 		.pipe((x: AIMessageChunk) => {
 			const toolCall = x.tool_calls?.[0];
-			return toolCall?.args.connections as Array<
-				Array<{
-					node: string;
-					type: string;
-					index: number;
-				}>
-			>;
+			return (toolCall?.args as z.infer<typeof connectionsSchema>).connections;
 		});
 };

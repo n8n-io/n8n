@@ -216,7 +216,7 @@ export class AiWorkflowBuilderService {
 			);
 
 			const composedNodes = result.map((node, index) => {
-				const version = node.typeVersion ?? getLatestVersion(node.type);
+				const version = getLatestVersion(node.type);
 				return {
 					...node,
 					position: [index * 150, 0],
@@ -253,13 +253,12 @@ export class AiWorkflowBuilderService {
 					</node>
 				`;
 			};
-			const result = await connectionComposerChain(this.llmComplexTask).invoke(
+			const connections = await connectionComposerChain(this.llmComplexTask).invoke(
 				{
 					workflowJSON: state.workflowJSON.nodes.map(getNodeMessage).join('\n\n'),
 				},
 				config,
 			);
-			const connections = result;
 			const workflowJSON = {
 				...state.workflowJSON,
 				connections,

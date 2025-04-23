@@ -56,9 +56,8 @@ export class AiController {
 
 			res.end();
 		} catch (e) {
-			console.error('Stream error:', e);
 			assert(e instanceof Error);
-			throw new OperationalError(e.message, e);
+			throw new InternalServerError(e.message, e);
 		}
 	}
 

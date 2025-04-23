@@ -45,24 +45,26 @@ Return ONLY a JSON object with this structure:
 IMPORTANT: Do not include HTML tags, markdown formatting, or explanations outside the JSON.`,
 );
 
+const planSchema = z.object({
+	steps: z
+		.array(
+			z
+				.string()
+				.describe(
+					'A clear, action-oriented description of a single workflow step. Do not include "Step N" or similar, just the action',
+				),
+		)
+		.min(1)
+		.describe(
+			'An ordered list of workflow steps that, when implemented, will fulfill the user request. Each step should be concise, action-oriented, and implementable with n8n nodes.',
+		),
+});
+
 const generatePlanTool = new DynamicStructuredTool({
 	name: 'generate_plan',
 	description:
 		'Convert a user workflow request into a logical sequence of clear, achievable steps that can be implemented with n8n nodes.',
-	schema: z.object({
-		steps: z
-			.array(
-				z
-					.string()
-					.describe(
-						'A clear, action-oriented description of a single workflow step. Do not include "Step N" or similar, just the action',
-					),
-			)
-			.min(1)
-			.describe(
-				'An ordered list of workflow steps that, when implemented, will fulfill the user request. Each step should be concise, action-oriented, and implementable with n8n nodes.',
-			),
-	}),
+	schema: planSchema,
 	func: async (input) => {
 		return { steps: input.steps };
 	},
@@ -87,6 +89,6 @@ export const plannerChain = (llm: BaseChatModel) => {
 		)
 		.pipe((x: AIMessageChunk) => {
 			const toolCall = x.tool_calls?.[0];
-			return toolCall?.args.steps as string[];
+			return (toolCall?.args as z.infer<typeof planSchema>).steps;
 		});
 };
