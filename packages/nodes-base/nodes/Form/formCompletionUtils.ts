@@ -26,19 +26,19 @@ export const binaryResponse = (
 	if (!binaryNode) {
 		throw new OperationalError(`No binary data with field ${inputDataFieldName} found.`);
 	}
-	const binaryDataFromNode = getBinaryDataFromNode(context, binaryNode?.name)[
+	const binaryData = getBinaryDataFromNode(context, binaryNode?.name)[
 		inputDataFieldName
 	] as IBinaryData;
 
 	return {
 		// If a binaryDataFromNode has an id, the following field is set:
 		// N8N_DEFAULT_BINARY_DATA_MODE=filesystem
-		binaryData: binaryDataFromNode.id ? '' : binaryDataFromNode.data,
-		binaryUrl: binaryDataFromNode.id
-			? `${req.protocol}://${req.get('host')}${context.helpers.getBinarySignedUrl(binaryDataFromNode.id)}`
+		binaryData: binaryData.id ? '' : binaryData.data,
+		binaryUrl: binaryData.id
+			? `${req.protocol}://${req.get('host')}${context.helpers.createBinarySignedUrl(binaryData)}`
 			: '',
-		fileName: binaryDataFromNode.fileName ?? 'file',
-		type: binaryDataFromNode.mimeType,
+		fileName: binaryData.fileName ?? 'file',
+		type: binaryData.mimeType,
 	};
 };
 

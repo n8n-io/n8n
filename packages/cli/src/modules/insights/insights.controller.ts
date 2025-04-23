@@ -1,27 +1,28 @@
 import { ListInsightsWorkflowQueryDto } from '@n8n/api-types';
 import type { InsightsSummary, InsightsByTime, InsightsByWorkflow } from '@n8n/api-types';
 
-import { Get, GlobalScope, Query, RestController } from '@/decorators';
-import { paginationListQueryMiddleware } from '@/middlewares/list-query/pagination';
-import { sortByQueryMiddleware } from '@/middlewares/list-query/sort-by';
+import { Get, GlobalScope, Licensed, Query, RestController } from '@/decorators';
 import { AuthenticatedRequest } from '@/requests';
 
 import { InsightsService } from './insights.service';
 
 @RestController('/insights')
 export class InsightsController {
-	private readonly maxAgeInDaysFilteredInsights = 14;
+	private readonly maxAgeInDaysFilteredInsights = 7;
 
 	constructor(private readonly insightsService: InsightsService) {}
 
 	@Get('/summary')
 	@GlobalScope('insights:list')
 	async getInsightsSummary(): Promise<InsightsSummary> {
-		return await this.insightsService.getInsightsSummary();
+		return await this.insightsService.getInsightsSummary({
+			periodLengthInDays: this.maxAgeInDaysFilteredInsights,
+		});
 	}
 
-	@Get('/by-workflow', { middlewares: [paginationListQueryMiddleware, sortByQueryMiddleware] })
+	@Get('/by-workflow')
 	@GlobalScope('insights:list')
+	@Licensed('feat:insights:viewDashboard')
 	async getInsightsByWorkflow(
 		_req: AuthenticatedRequest,
 		_res: Response,
@@ -37,6 +38,7 @@ export class InsightsController {
 
 	@Get('/by-time')
 	@GlobalScope('insights:list')
+	@Licensed('feat:insights:viewDashboard')
 	async getInsightsByTime(): Promise<InsightsByTime[]> {
 		return await this.insightsService.getInsightsByTime({
 			maxAgeInDays: this.maxAgeInDaysFilteredInsights,

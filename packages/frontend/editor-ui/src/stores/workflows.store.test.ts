@@ -259,14 +259,28 @@ describe('useWorkflowsStore', () => {
 	});
 
 	describe('nodesIssuesExist', () => {
-		it('should return true when a node has issues', () => {
+		it('should return true when a node has issues and connected', () => {
+			workflowsStore.workflow.nodes = [
+				{ name: 'Node1', issues: { error: ['Error message'] } },
+				{ name: 'Node2' },
+			] as unknown as IWorkflowDb['nodes'];
+
+			workflowsStore.workflow.connections = {
+				Node1: { main: [[{ node: 'Node2' } as IConnection]] },
+			};
+
+			const hasIssues = workflowsStore.nodesIssuesExist;
+			expect(hasIssues).toBe(true);
+		});
+
+		it('should return false when node has issues but it is not connected', () => {
 			workflowsStore.workflow.nodes = [
 				{ name: 'Node1', issues: { error: ['Error message'] } },
 				{ name: 'Node2' },
 			] as unknown as IWorkflowDb['nodes'];
 
 			const hasIssues = workflowsStore.nodesIssuesExist;
-			expect(hasIssues).toBe(true);
+			expect(hasIssues).toBe(false);
 		});
 
 		it('should return false when no nodes have issues', () => {
@@ -274,6 +288,10 @@ describe('useWorkflowsStore', () => {
 				{ name: 'Node1' },
 				{ name: 'Node2' },
 			] as unknown as IWorkflowDb['nodes'];
+
+			workflowsStore.workflow.connections = {
+				Node1: { main: [[{ node: 'Node2' } as IConnection]] },
+			};
 
 			const hasIssues = workflowsStore.nodesIssuesExist;
 			expect(hasIssues).toBe(false);
@@ -849,6 +867,7 @@ function generateMockExecutionEvents() {
 		data: {
 			hints: [],
 			startTime: 1727867966633,
+			executionIndex: 0,
 			executionTime: 1,
 			source: [],
 			executionStatus: 'success',
@@ -873,6 +892,7 @@ function generateMockExecutionEvents() {
 		data: {
 			hints: [],
 			startTime: 1727869043441,
+			executionIndex: 0,
 			executionTime: 2,
 			source: [
 				{

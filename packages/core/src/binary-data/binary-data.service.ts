@@ -1,14 +1,12 @@
-import { BinaryDataConfig } from '@n8n/config';
 import { Container, Service } from '@n8n/di';
 import jwt from 'jsonwebtoken';
-import { BINARY_ENCODING } from 'n8n-workflow';
+import { BINARY_ENCODING, UnexpectedError } from 'n8n-workflow';
 import type { INodeExecutionData, IBinaryData } from 'n8n-workflow';
 import { readFile, stat } from 'node:fs/promises';
 import prettyBytes from 'pretty-bytes';
 import type { Readable } from 'stream';
 
-import { InstanceSettings } from '@/instance-settings';
-
+import { BinaryDataConfig } from './binary-data.config';
 import type { BinaryData } from './types';
 import { areConfigModes, binaryToBuffer } from './utils';
 import { InvalidManagerError } from '../errors/invalid-manager.error';
@@ -20,16 +18,10 @@ export class BinaryDataService {
 
 	private managers: Record<string, BinaryData.Manager> = {};
 
-	constructor(
-		{ signingSecret }: InstanceSettings,
-		private readonly binaryDataConfig: BinaryDataConfig,
-	) {
-		if (!binaryDataConfig.signingSecret) {
-			binaryDataConfig.signingSecret = signingSecret;
-		}
-	}
+	constructor(private readonly config: BinaryDataConfig) {}
 
-	async init(config: BinaryData.Config) {
+	async init() {
+		const { config } = this;
 		if (!areConfigModes(config.availableModes)) throw new InvalidModeError();
 
 		this.mode = config.mode === 'filesystem' ? 'filesystem-v2' : config.mode;
@@ -53,18 +45,23 @@ export class BinaryDataService {
 		}
 	}
 
-	createSignedUrl(binaryDataId: string) {
-		const token = jwt.sign({ binaryDataId }, this.binaryDataConfig.signingSecret);
+	createSignedToken(binaryData: IBinaryData, expiresIn = '1 day') {
+		if (!binaryData.id) {
+			throw new UnexpectedError('URL signing is not available in memory mode');
+		}
 
-		return `/rest/binary-data/signed?token=${token}`;
+		const signingPayload: BinaryData.SigningPayload = {
+			id: binaryData.id,
+		};
+
+		const { signingSecret } = this.config;
+		return jwt.sign(signingPayload, signingSecret, { expiresIn });
 	}
 
 	validateSignedToken(token: string) {
-		const { binaryDataId } = jwt.verify(token, this.binaryDataConfig.signingSecret) as unknown as {
-			binaryDataId: string;
-		};
-
-		return binaryDataId;
+		const { signingSecret } = this.config;
+		const signedPayload = jwt.verify(token, signingSecret) as BinaryData.SigningPayload;
+		return signedPayload.id;
 	}
 
 	async copyBinaryFile(

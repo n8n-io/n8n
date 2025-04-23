@@ -10,12 +10,6 @@
                 "accent_color_id": {
                     "type": "integer"
                 },
-                "active_usernames": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
                 "can_send_gift": {
                     "type": "boolean"
                 },
@@ -30,12 +24,9 @@
                 },
                 "type": {
                     "type": "string"
-                },
-                "username": {
-                    "type": "string"
                 }
             }
         }
     },
-    "version": 1
+    "version": 2
 }

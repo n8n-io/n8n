@@ -9,10 +9,17 @@ import config from '@/config';
 export class JwtService {
 	readonly jwtSecret = config.getEnv('userManagement.jwtSecret');
 
-	constructor({ signingSecret }: InstanceSettings) {
+	constructor({ encryptionKey }: InstanceSettings) {
 		this.jwtSecret = config.getEnv('userManagement.jwtSecret');
 		if (!this.jwtSecret) {
-			this.jwtSecret = createHash('sha256').update(signingSecret).digest('hex');
+			// If we don't have a JWT secret set, generate one based on encryption key.
+			// For a key off every other letter from encryption key
+			// CAREFUL: do not change this or it breaks all existing tokens.
+			let baseKey = '';
+			for (let i = 0; i < encryptionKey.length; i += 2) {
+				baseKey += encryptionKey[i];
+			}
+			this.jwtSecret = createHash('sha256').update(baseKey).digest('hex');
 			config.set('userManagement.jwtSecret', this.jwtSecret);
 		}
 	}

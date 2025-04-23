@@ -9,7 +9,7 @@ export const insightsSummaryTypeSchema = z.enum([
 ]);
 export type InsightsSummaryType = z.infer<typeof insightsSummaryTypeSchema>;
 
-export const insightsSummaryUnitSchema = z.enum(['count', 'ratio', 'time']);
+export const insightsSummaryUnitSchema = z.enum(['count', 'ratio', 'millisecond', 'minute']);
 export type InsightsSummaryUnit = z.infer<typeof insightsSummaryUnitSchema>;
 
 export const insightsSummaryDataSchemas = {
@@ -31,12 +31,12 @@ export const insightsSummaryDataSchemas = {
 	timeSaved: z.object({
 		value: z.number(),
 		deviation: z.union([z.null(), z.number()]),
-		unit: z.literal('time'),
+		unit: z.literal('minute'),
 	}),
 	averageRunTime: z.object({
 		value: z.number(),
 		deviation: z.union([z.null(), z.number()]),
-		unit: z.literal('time'),
+		unit: z.literal('millisecond'),
 	}),
 } as const;
 
@@ -85,3 +85,12 @@ export const insightsByTimeDataSchemas = {
 
 export const insightsByTimeSchema = z.object(insightsByTimeDataSchemas).strict();
 export type InsightsByTime = z.infer<typeof insightsByTimeSchema>;
+
+export const insightsDateRangeSchema = z
+	.object({
+		key: z.enum(['day', 'week', '2weeks', 'month', 'quarter', 'year']),
+		licensed: z.boolean(),
+		granularity: z.enum(['hour', 'day', 'week']),
+	})
+	.strict();
+export type InsightsDateRange = z.infer<typeof insightsDateRangeSchema>;

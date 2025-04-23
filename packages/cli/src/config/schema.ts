@@ -1,16 +1,5 @@
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
-import convict from 'convict';
-import { InstanceSettings } from 'n8n-core';
-import path from 'path';
-
-import { ensureStringArray } from './utils';
-
-convict.addFormat({
-	name: 'comma-separated-list',
-	coerce: (rawStr: string) => rawStr.split(','),
-	validate: ensureStringArray,
-});
 
 export const schema = {
 	executions: {
@@ -183,27 +172,6 @@ export const schema = {
 		env: 'EXTERNAL_FRONTEND_HOOKS_URLS',
 	},
 
-	binaryDataManager: {
-		availableModes: {
-			format: 'comma-separated-list',
-			default: 'filesystem',
-			env: 'N8N_AVAILABLE_BINARY_DATA_MODES',
-			doc: 'Available modes of binary data storage, as comma separated strings',
-		},
-		mode: {
-			format: ['default', 'filesystem', 's3'] as const,
-			default: 'default',
-			env: 'N8N_DEFAULT_BINARY_DATA_MODE',
-			doc: 'Storage mode for binary data',
-		},
-		localStoragePath: {
-			format: String,
-			default: path.join(Container.get(InstanceSettings).n8nFolder, 'binaryData'),
-			env: 'N8N_BINARY_DATA_STORAGE_PATH',
-			doc: 'Path for binary data storage in "filesystem" mode',
-		},
-	},
-
 	deployment: {
 		type: {
 			format: String,
@@ -330,22 +298,6 @@ export const schema = {
 			format: Boolean,
 			default: false,
 			env: 'N8N_EXPRESSION_REPORT_DIFFERENCE',
-		},
-	},
-
-	workflowHistory: {
-		enabled: {
-			doc: 'Whether to save workflow history versions',
-			format: Boolean,
-			default: true,
-			env: 'N8N_WORKFLOW_HISTORY_ENABLED',
-		},
-
-		pruneTime: {
-			doc: 'Time (in hours) to keep workflow history versions for',
-			format: Number,
-			default: -1,
-			env: 'N8N_WORKFLOW_HISTORY_PRUNE_TIME',
 		},
 	},
 

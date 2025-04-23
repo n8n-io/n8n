@@ -571,6 +571,8 @@ export interface IGetNodeParameterOptions {
 	extractValue?: boolean;
 	// get raw value of parameter with unresolved expressions
 	rawExpressions?: boolean;
+	// skip validation of parameter
+	skipValidation?: boolean;
 }
 
 namespace ExecuteFunctions {
@@ -690,7 +692,7 @@ export interface BinaryHelperFunctions {
 	binaryToString(body: Buffer | Readable, encoding?: BufferEncoding): Promise<string>;
 	getBinaryPath(binaryDataId: string): string;
 	getBinaryStream(binaryDataId: string, chunkSize?: number): Promise<Readable>;
-	getBinarySignedUrl(binaryDataId: string): string;
+	createBinarySignedUrl(binaryData: IBinaryData, expiresIn?: string): string;
 	getBinaryMetadata(binaryDataId: string): Promise<{
 		fileName?: string;
 		mimeType?: string;
@@ -1377,7 +1379,7 @@ export interface IDisplayOptions {
 	};
 	show?: {
 		'@version'?: Array<number | DisplayCondition>;
-		'@tool'?: [boolean];
+		'@tool'?: boolean[];
 		[key: string]: Array<NodeParameterValue | DisplayCondition> | undefined;
 	};
 
@@ -1989,7 +1991,7 @@ export interface IWebhookDescription {
 	responseMode?: WebhookResponseMode | string;
 	responseData?: WebhookResponseData | string;
 	restartWebhook?: boolean;
-	isForm?: boolean;
+	nodeType?: 'webhook' | 'form' | 'mcp';
 	ndvHideUrl?: string | boolean; // If true the webhook will not be displayed in the editor
 	ndvHideMethod?: string | boolean; // If true the method will not be displayed in the editor
 }
@@ -2181,16 +2183,22 @@ export interface ITaskMetadata {
 	subExecutionsCount?: number;
 }
 
-// The data that gets returned when a node runs
-export interface ITaskData {
+/** The data that gets returned when a node execution starts */
+export interface ITaskStartedData {
 	startTime: number;
+	/** This index tracks the order in which nodes are executed */
+	executionIndex: number;
+	source: Array<ISourceData | null>; // Is an array as nodes have multiple inputs
+	hints?: NodeExecutionHint[];
+}
+
+/** The data that gets returned when a node execution ends */
+export interface ITaskData extends ITaskStartedData {
 	executionTime: number;
 	executionStatus?: ExecutionStatus;
 	data?: ITaskDataConnections;
 	inputOverride?: ITaskDataConnections;
 	error?: ExecutionError;
-	hints?: NodeExecutionHint[];
-	source: Array<ISourceData | null>; // Is an array as nodes have multiple inputs
 	metadata?: ITaskMetadata;
 }
 
@@ -2337,6 +2345,7 @@ export interface IWorkflowExecuteAdditionalData {
 	) => Promise<ExecuteWorkflowData>;
 	executionId?: string;
 	restartExecutionId?: string;
+	currentNodeExecutionIndex: number;
 	httpResponse?: express.Response;
 	httpRequest?: express.Request;
 	restApiUrl: string;
