@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 import { GlobalConfig } from '@n8n/config';
+import { LICENSE_FEATURES } from '@n8n/constants';
 import { Container } from '@n8n/di';
 import { Command, Errors } from '@oclif/core';
 import {
@@ -15,13 +16,7 @@ import { ensureError, sleep, UserError } from 'n8n-workflow';
 
 import type { AbstractServer } from '@/abstract-server';
 import config from '@/config';
-import {
-	LICENSE_FEATURES,
-	N8N_VERSION,
-	N8N_RELEASE_DATE,
-	inDevelopment,
-	inTest,
-} from '@/constants';
+import { N8N_VERSION, N8N_RELEASE_DATE, inDevelopment, inTest } from '@/constants';
 import * as CrashJournal from '@/crash-journal';
 import * as Db from '@/db';
 import { ModuleRegistry } from '@/decorators/module';

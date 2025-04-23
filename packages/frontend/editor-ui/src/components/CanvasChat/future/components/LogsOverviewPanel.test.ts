@@ -115,9 +115,15 @@ describe('LogsOverviewPanel', () => {
 		const rendered = render({ isOpen: true });
 		const aiAgentRow = rendered.getAllByRole('treeitem')[0];
 
+		expect(ndvStore.activeNodeName).toBe(null);
+		expect(ndvStore.output.run).toBe(undefined);
+
 		await fireEvent.click(within(aiAgentRow).getAllByLabelText('Open...')[0]);
 
-		await waitFor(() => expect(ndvStore.activeNodeName).toBe('AI Agent'));
+		await waitFor(() => {
+			expect(ndvStore.activeNodeName).toBe('AI Agent');
+			expect(ndvStore.output.run).toBe(0);
+		});
 	});
 
 	it('should trigger partial execution if the button is clicked', async () => {
