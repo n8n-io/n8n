@@ -24,6 +24,10 @@ const properties: INodeProperties[] = [
 				name: 'DALL-E-3',
 				value: 'dall-e-3',
 			},
+			{
+				name: 'gpt-image-1',
+				value: 'gpt-image-1',
+			},
 		],
 	},
 	{
@@ -210,12 +214,11 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const body: IDataObject = {
 		prompt,
 		model,
-		response_format,
+		response_format: model !== 'gpt-image-1' ? response_format : undefined, // gpt-image-1 does not support response_format
 		...options,
 	};
 
 	const { data } = await apiRequest.call(this, 'POST', '/images/generations', { body });
-
 	if (response_format === 'url') {
 		return ((data as IDataObject[]) || []).map((entry) => ({
 			json: entry,
