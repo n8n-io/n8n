@@ -73,10 +73,12 @@ export class CredentialsService {
 			listQueryOptions = {},
 			includeScopes = false,
 			includeData = false,
+			onlySharedWithMe = false,
 		}: {
 			listQueryOptions?: ListQuery.Options & { includeData?: boolean };
 			includeScopes?: boolean;
 			includeData?: boolean;
+			onlySharedWithMe?: boolean;
 		} = {},
 	) {
 		const returnAll = user.hasGlobalScope('credential:list');
@@ -108,6 +110,13 @@ export class CredentialsService {
 				listQueryOptions.filter = {
 					...listQueryOptions.filter,
 					withRole: 'credential:owner',
+				};
+			}
+
+			if (onlySharedWithMe) {
+				listQueryOptions.filter = {
+					...listQueryOptions.filter,
+					withRole: 'credential:user',
 				};
 			}
 
@@ -157,6 +166,13 @@ export class CredentialsService {
 		const ids = await this.sharedCredentialsRepository.getCredentialIdsByUserAndRole([user.id], {
 			scopes: ['credential:read'],
 		});
+
+		if (onlySharedWithMe) {
+			listQueryOptions.filter = {
+				...listQueryOptions.filter,
+				withRole: 'credential:user',
+			};
+		}
 
 		let credentials = await this.credentialsRepository.findMany(
 			listQueryOptions,
