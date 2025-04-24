@@ -6,6 +6,7 @@ import {
 	DUPLICATE_POSTFFIX,
 	ERROR_TRIGGER_NODE_TYPE,
 	FORM_NODE_TYPE,
+	LOCAL_STORAGE_LOGS_PANEL_OPEN,
 	MAX_WORKFLOW_NAME_LENGTH,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	START_NODE_TYPE,
@@ -92,6 +93,7 @@ import { useUsersStore } from '@/stores/users.store';
 import { updateCurrentUserSettings } from '@/api/users';
 import { useExecutingNode } from '@/composables/useExecutingNode';
 import { LOGS_PANEL_STATE } from '@/components/CanvasChat/types/logs';
+import { useLocalStorage } from '@vueuse/core';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
@@ -147,7 +149,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const isInDebugMode = ref(false);
 	const chatMessages = ref<string[]>([]);
 	const chatPartialExecutionDestinationNode = ref<string | null>(null);
-	const isLogsPanelOpen = ref(false);
+	const isLogsPanelOpen = useLocalStorage(LOCAL_STORAGE_LOGS_PANEL_OPEN, false);
 	const preferPopOutLogsView = ref(false);
 	const logsPanelState = computed(() =>
 		isLogsPanelOpen.value
@@ -254,19 +256,15 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}, {});
 	});
 
-	const nodesIssuesExist = computed(() => {
-		for (const node of workflow.value.nodes) {
-			const isNodeDisabled = node.disabled === true;
-			const noNodeIssues = node.issues === undefined || Object.keys(node.issues).length === 0;
-			if (isNodeDisabled || noNodeIssues) {
-				continue;
-			}
-
-			return true;
-		}
-
-		return false;
-	});
+	const nodesIssuesExist = computed(() =>
+		workflow.value.nodes.some((node) => {
+			const nodeHasIssues = !!Object.keys(node.issues ?? {}).length;
+			const isConnected =
+				Object.keys(outgoingConnectionsByNodeName(node.name)).length > 0 ||
+				Object.keys(incomingConnectionsByNodeName(node.name)).length > 0;
+			return !node.disabled && isConnected && nodeHasIssues;
+		}),
+	);
 
 	const pinnedWorkflowData = computed(() => workflow.value.pinData);
 

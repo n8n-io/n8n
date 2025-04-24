@@ -1,11 +1,10 @@
 import { TaskRunnersConfig } from '@n8n/config';
+import { OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { Logger } from 'n8n-core';
 import * as a from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import * as process from 'node:process';
-
-import { OnShutdown } from '@/decorators/on-shutdown';
 
 import { forwardToLogger } from './forward-to-logger';
 import { NodeProcessOomDetector } from './node-process-oom-detector';
@@ -59,6 +58,7 @@ export class TaskRunnerProcess extends TypedEmitter<TaskRunnerProcessEventMap> {
 		'NODE_FUNCTION_ALLOW_BUILTIN',
 		'NODE_FUNCTION_ALLOW_EXTERNAL',
 		'N8N_SENTRY_DSN',
+		'N8N_RUNNERS_ALLOW_PROTOTYPE_MUTATION',
 		// Metadata about the environment
 		'N8N_VERSION',
 		'ENVIRONMENT',

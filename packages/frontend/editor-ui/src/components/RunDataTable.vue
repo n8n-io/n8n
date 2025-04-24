@@ -32,6 +32,9 @@ type Props = {
 	mappingEnabled?: boolean;
 	hasDefaultHoverState?: boolean;
 	search?: string;
+	headerBgColor?: 'base' | 'light';
+	compact?: boolean;
+	disableHoverHighlight?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -41,6 +44,9 @@ const props = withDefaults(defineProps<Props>(), {
 	mappingEnabled: false,
 	hasDefaultHoverState: false,
 	search: '',
+	headerBgColor: 'base',
+	disableHoverHighlight: false,
+	compact: false,
 });
 const emit = defineEmits<{
 	activeRowChanged: [row: number | null];
@@ -89,6 +95,10 @@ onMounted(() => {
 });
 
 function isHoveringRow(row: number): boolean {
+	if (props.disableHoverHighlight) {
+		return false;
+	}
+
 	if (row === activeRow.value) {
 		return true;
 	}
@@ -422,7 +432,16 @@ watch(focusedMappableInput, (curr) => {
 </script>
 
 <template>
-	<div :class="[$style.dataDisplay, { [$style.highlight]: highlight }]">
+	<div
+		:class="[
+			$style.dataDisplay,
+			{
+				[$style.highlight]: highlight,
+				[$style.lightHeader]: headerBgColor === 'light',
+				[$style.compact]: props.compact,
+			},
+		]"
+	>
 		<table v-if="tableData.columns && tableData.columns.length === 0" :class="$style.table">
 			<thead>
 				<tr>
@@ -674,13 +693,18 @@ watch(focusedMappableInput, (curr) => {
 	word-break: normal;
 	height: 100%;
 	padding-bottom: var(--spacing-3xl);
+
+	&.compact {
+		padding-left: var(--spacing-2xs);
+	}
 }
 
 .table {
 	border-collapse: separate;
 	text-align: left;
 	width: calc(100%);
-	font-size: var(--font-size-s);
+	font-size: var(--font-size-2xs);
+	color: var(--color-text-base);
 
 	th {
 		background-color: var(--color-background-base);
@@ -691,11 +715,19 @@ watch(focusedMappableInput, (curr) => {
 		top: 0;
 		color: var(--color-text-dark);
 		z-index: 1;
+
+		.lightHeader & {
+			background-color: var(--color-background-light);
+		}
+
+		&.tableRightMargin {
+			background-color: transparent;
+		}
 	}
 
 	td {
 		vertical-align: top;
-		padding: var(--spacing-2xs) var(--spacing-2xs) var(--spacing-2xs) var(--spacing-3xs);
+		padding: var(--spacing-4xs) var(--spacing-3xs);
 		border-bottom: var(--border-base);
 		border-left: var(--border-base);
 		overflow-wrap: break-word;
@@ -743,7 +775,7 @@ watch(focusedMappableInput, (curr) => {
 .header {
 	display: flex;
 	align-items: center;
-	padding: var(--spacing-2xs);
+	padding: var(--spacing-4xs) var(--spacing-3xs);
 
 	span {
 		white-space: nowrap;
@@ -828,11 +860,16 @@ watch(focusedMappableInput, (curr) => {
 
 .tableRightMargin {
 	// becomes necessary with large tables
-	background-color: var(--color-background-base) !important;
 	width: var(--spacing-s);
 	border-right: none !important;
 	border-top: none !important;
 	border-bottom: none !important;
+
+	.compact & {
+		padding: 0;
+		min-width: var(--spacing-2xs);
+		max-width: var(--spacing-2xs);
+	}
 }
 
 .hoveringRow {

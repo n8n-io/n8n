@@ -12,7 +12,6 @@ import type {
 	IPinData,
 	Workflow,
 	StartNodeData,
-	IRun,
 	INode,
 	IDataObject,
 	IWorkflowBase,
@@ -23,7 +22,11 @@ import { NodeConnectionTypes, TelemetryHelpers } from 'n8n-workflow';
 import { useToast } from '@/composables/useToast';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 
-import { CHAT_TRIGGER_NODE_TYPE, SINGLE_WEBHOOK_TRIGGERS } from '@/constants';
+import {
+	CHAT_TRIGGER_NODE_TYPE,
+	IN_PROGRESS_EXECUTION_ID,
+	SINGLE_WEBHOOK_TRIGGERS,
+} from '@/constants';
 
 import { useRootStore } from '@/stores/root.store';
 import { useUIStore } from '@/stores/ui.store';
@@ -292,7 +295,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			// that data which gets reused is already set and data of newly executed
 			// nodes can be added as it gets pushed in
 			const executionData: IExecutionResponse = {
-				id: '__IN_PROGRESS__',
+				id: IN_PROGRESS_EXECUTION_ID,
 				finished: false,
 				mode: 'manual',
 				status: 'running',
@@ -435,12 +438,13 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				// execution finished before it could be stopped
 				const executedData = {
 					data: execution.data,
+					workflowData: workflowsStore.workflow,
 					finished: execution.finished,
 					mode: execution.mode,
 					startedAt: execution.startedAt,
 					stoppedAt: execution.stoppedAt,
-				} as IRun;
-				workflowsStore.setWorkflowExecutionData(executedData as IExecutionResponse);
+				} as IExecutionResponse;
+				workflowsStore.setWorkflowExecutionData(executedData);
 				toast.showMessage({
 					title: i18n.baseText('nodeView.showMessage.stopExecutionCatch.title'),
 					message: i18n.baseText('nodeView.showMessage.stopExecutionCatch.message'),

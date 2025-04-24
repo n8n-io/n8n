@@ -32,6 +32,11 @@ const summaryTitles = computed<Record<keyof InsightsSummary, string>>(() => ({
 	averageRunTime: i18n.baseText('insights.banner.title.averageRunTime'),
 }));
 
+const summaryHasNoData = computed(() => {
+	const summaryValues = Object.values(props.summary);
+	return summaryValues.length > 0 && summaryValues.every((summary) => !summary.value);
+});
+
 const summaryWithRouteLocations = computed(() =>
 	props.summary.map((s) => ({
 		...s,
@@ -82,17 +87,23 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 						<small :class="$style.days">{{
 							i18n.baseText('insights.lastNDays', { interpolate: { count: lastNDays } })
 						}}</small>
-						<span v-if="value === 0 && id === 'timeSaved'" :class="$style.empty">
+						<span v-if="summaryHasNoData" :class="$style.noData">
+							<N8nTooltip placement="bottom">
+								<template #content>
+									{{ i18n.baseText('insights.banner.noData.tooltip') }}
+								</template>
+								<em>{{ i18n.baseText('insights.banner.noData') }}</em>
+							</N8nTooltip>
+						</span>
+						<span v-else-if="value === 0 && id === 'timeSaved'" :class="$style.empty">
 							<em>--</em>
 							<small>
 								<N8nTooltip placement="bottom">
 									<template #content>
 										<i18n-t keypath="insights.banner.timeSaved.tooltip">
-											<template #link>
-												<a href="#">{{
-													i18n.baseText('insights.banner.timeSaved.tooltip.link.text')
-												}}</a>
-											</template>
+											<template #link>{{
+												i18n.baseText('insights.banner.timeSaved.tooltip.link.text')
+											}}</template>
 										</i18n-t>
 									</template>
 									<N8nIcon :class="$style.icon" icon="info-circle" />
@@ -206,7 +217,7 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 						.icon {
 							height: 20px;
 							width: 8px;
-							top: -3px;
+							top: 5px;
 							transform: translateY(0);
 							color: var(--color-text-light);
 						}
@@ -241,6 +252,13 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 				font-weight: var(--font-weight-bold);
 				white-space: nowrap;
 			}
+		}
+	}
+
+	.noData {
+		em {
+			color: var(--color-text-light);
+			font-size: var(--font-size-m);
 		}
 	}
 }
