@@ -1603,6 +1603,23 @@ function showAddFirstStepIfEnabled() {
  * Routing
  */
 
+function updateNodeRoute(nodeId: string) {
+	const nodeUi = workflowsStore.findNodeByPartialId(nodeId);
+	if (nodeUi) {
+		setNodeActive(nodeUi.id);
+	} else {
+		toast.showToast({
+			title: i18n.baseText('nodeView.showMessage.ndvUrl.missingNodes.title'),
+			message: i18n.baseText('nodeView.showMessage.ndvUrl.missingNodes.content'),
+			type: 'warning',
+		});
+		void router.replace({
+			name: route.name,
+			params: { name: workflowId.value },
+		});
+	}
+}
+
 watch(
 	() => route.name,
 	async (newRouteName, oldRouteName) => {
@@ -1614,17 +1631,18 @@ watch(
 	},
 );
 
+// This keeps the selected node in sync if the URL is updated
 watch(
 	() => route.params.nodeId,
 	async (newId) => {
 		if (typeof newId !== 'string' || newId === '') ndvStore.activeNodeName = null;
 		else {
-			const nodeUi = workflowsStore.findNodeByPartialId(newId);
-			if (nodeUi) setNodeActive(nodeUi?.id);
+			updateNodeRoute(newId);
 		}
 	},
 );
 
+// This keeps URL in sync if the activeNode is changed
 watch(
 	() => ndvStore.activeNode,
 	async (val) => {
@@ -1717,20 +1735,7 @@ onMounted(() => {
 				// A delay here makes opening the NDV a bit less jarring
 				setTimeout(() => {
 					if (routeNodeId.value) {
-						const nodeUi = workflowsStore.findNodeByPartialId(routeNodeId.value);
-						if (nodeUi) {
-							setNodeActive(nodeUi.id);
-						} else {
-							toast.showToast({
-								title: i18n.baseText('nodeView.showMessage.ndvUrl.missingNodes.title'),
-								message: i18n.baseText('nodeView.showMessage.ndvUrl.missingNodes.content'),
-								type: 'warning',
-							});
-							void router.replace({
-								name: route.name,
-								params: { name: workflowId.value },
-							});
-						}
+						updateNodeRoute(routeNodeId.value);
 					}
 				}, 500);
 
