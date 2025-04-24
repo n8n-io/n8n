@@ -3,7 +3,7 @@ import PanelHeader from '@/components/CanvasChat/future/components/PanelHeader.v
 import { useClearExecutionButtonVisible } from '@/composables/useClearExecutionButtonVisible';
 import { useI18n } from '@/composables/useI18n';
 import { N8nButton, N8nRadioButtons, N8nText, N8nTooltip } from '@n8n/design-system';
-import { ref, computed, nextTick } from 'vue';
+import { ref, computed, nextTick, watch } from 'vue';
 import { useTelemetry } from '@/composables/useTelemetry';
 import LogsOverviewRow from '@/components/CanvasChat/future/components/LogsOverviewRow.vue';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
@@ -20,14 +20,16 @@ import {
 } from '@/components/RunDataAi/utils';
 import { useVirtualList } from '@vueuse/core';
 
-const { isOpen, isReadOnly, selected, isCompact, execution, latestNodeInfo } = defineProps<{
-	isOpen: boolean;
-	selected?: LogEntry;
-	isReadOnly: boolean;
-	isCompact: boolean;
-	execution?: ExecutionLogViewData;
-	latestNodeInfo: Record<string, LatestNodeInfo>;
-}>();
+const { isOpen, isReadOnly, selected, isCompact, execution, latestNodeInfo, scrollToSelection } =
+	defineProps<{
+		isOpen: boolean;
+		selected?: LogEntry;
+		isReadOnly: boolean;
+		isCompact: boolean;
+		execution?: ExecutionLogViewData;
+		latestNodeInfo: Record<string, LatestNodeInfo>;
+		scrollToSelection: boolean;
+	}>();
 
 const emit = defineEmits<{
 	clickHeader: [];
@@ -96,6 +98,22 @@ async function handleTriggerPartialExecution(treeNode: LogEntry) {
 		await runWorkflow.runWorkflow({ destinationNode: latestName });
 	}
 }
+
+// Scroll selected row into view
+watch(
+	() => (scrollToSelection ? selected : undefined),
+	async (entry) => {
+		if (entry) {
+			const index = flatLogEntries.value.findIndex((e) => e.id === entry.id);
+
+			if (index >= 0) {
+				// Wait for the node to be added to the list, and then scroll
+				await nextTick(() => virtualList.scrollTo(index));
+			}
+		}
+	},
+	{ immediate: true },
+);
 </script>
 
 <template>

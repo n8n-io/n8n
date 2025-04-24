@@ -29,6 +29,7 @@ describe('LogsOverviewPanel', () => {
 			isOpen: false,
 			isReadOnly: false,
 			isCompact: false,
+			scrollToSelection: false,
 			execution: {
 				...aiChatExecutionResponse,
 				tree: createLogEntries(

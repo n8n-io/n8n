@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, useTemplateRef, watch } from 'vue';
+import { computed } from 'vue';
 import { N8nButton, N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { upperFirst } from 'lodash-es';
@@ -31,7 +31,6 @@ const emit = defineEmits<{
 }>();
 
 const locale = useI18n();
-const containerRef = useTemplateRef('containerRef');
 const nodeTypeStore = useNodeTypesStore();
 const type = computed(() => nodeTypeStore.getNodeType(props.data.node.type));
 const isSettled = computed(
@@ -71,22 +70,10 @@ function isLastChild(level: number) {
 		(data?.node === lastSibling?.node && data?.runIndex === lastSibling?.runIndex)
 	);
 }
-
-// When selected, scroll into view
-watch(
-	[() => props.isSelected, containerRef],
-	([isSelected, ref]) => {
-		if (isSelected && ref) {
-			ref.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-		}
-	},
-	{ immediate: true },
-);
 </script>
 
 <template>
 	<div
-		ref="containerRef"
 		role="treeitem"
 		tabindex="0"
 		:aria-expanded="props.data.children.length > 0 && props.expanded"
