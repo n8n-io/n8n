@@ -17,9 +17,10 @@ import type {
 import { NodeConnectionTypes, NodeOperationError, TriggerCloseError } from 'n8n-workflow';
 import rfc2047 from 'rfc2047';
 
+import type { ICredentialsDataImap } from '@credentials/Imap.credentials';
+import { isCredentialsDataImap } from '@credentials/Imap.credentials';
+
 import { getNewEmails } from './utils';
-import type { ICredentialsDataImap } from '../../../credentials/Imap.credentials';
-import { isCredentialsDataImap } from '../../../credentials/Imap.credentials';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Email Trigger (IMAP)',

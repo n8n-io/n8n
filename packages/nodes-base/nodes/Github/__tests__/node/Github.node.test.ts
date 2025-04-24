@@ -1,7 +1,7 @@
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 import nock from 'nock';
 
-import { getWorkflowFilenames, initBinaryDataService, testWorkflows } from '@test/nodes/Helpers';
+import { getWorkflowFilenames, testWorkflows } from '@test/nodes/Helpers';
 
 import { Github } from '../../Github.node';
 
@@ -65,7 +65,6 @@ describe('Test Github Node', () => {
 
 		beforeAll(async () => {
 			jest.useFakeTimers({ doNotFake: ['nextTick'], now });
-			await initBinaryDataService();
 		});
 
 		beforeEach(async () => {

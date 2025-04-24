@@ -2,6 +2,8 @@ import nock from 'nock';
 
 import { getWorkflowFilenames, testWorkflows } from '@test/nodes/Helpers';
 
+import { credentials } from '../../__tests__/credentials';
+
 const responseLabels = [
 	{
 		LabelModelVersion: '3.0',
@@ -298,6 +300,6 @@ describe('Test AWS Rekogntion Node', () => {
 			mock.post('/').reply(200, responseLabels);
 		});
 
-		testWorkflows(workflows);
+		testWorkflows(workflows, credentials);
 	});
 });

@@ -25,6 +25,12 @@ describe('Execute TOTP node', () => {
 					TOTP: [[{ json: { token: '123456' } }]], // ignore secondsRemaining to prevent flakiness
 				},
 			},
+			credentials: {
+				totpApi: {
+					label: 'GitHub:john-doe',
+					secret: 'BVDRSBXQB2ZEL5HE',
+				},
+			},
 		},
 	];
 

@@ -72,6 +72,15 @@ const meResult = {
 };
 
 describe('Test Twitter Request Node', () => {
+	const credentials = {
+		twitterOAuth2Api: {
+			scope: '',
+			oauthTokenData: {
+				access_token: 'ACCESSTOKEN',
+			},
+		},
+	};
+
 	beforeAll(() => {
 		const baseUrl = 'https://api.twitter.com/2';
 		//GET
@@ -83,7 +92,7 @@ describe('Test Twitter Request Node', () => {
 	});
 
 	const workflows = getWorkflowFilenames(__dirname);
-	testWorkflows(workflows);
+	testWorkflows(workflows, credentials);
 });
 
 describe('X / Twitter Node unit tests', () => {

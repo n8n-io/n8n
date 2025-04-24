@@ -7,7 +7,6 @@ import * as Helpers from '@test/nodes/Helpers';
 
 describe('Test QuickChart Node', () => {
 	beforeEach(async () => {
-		await Helpers.initBinaryDataService();
 		nock('https://quickchart.io')
 			.persist()
 			.get(/chart.*/)

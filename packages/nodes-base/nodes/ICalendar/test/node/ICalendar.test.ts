@@ -2,12 +2,9 @@
 import type { WorkflowTestData } from 'n8n-workflow';
 
 import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
-import { getResultNodeData, readJsonFileSync, initBinaryDataService } from '@test/nodes/Helpers';
+import { getResultNodeData, readJsonFileSync } from '@test/nodes/Helpers';
 
-describe('Execute iCalendar Node', () => {
-	beforeEach(async () => {
-		await initBinaryDataService();
-	});
+describe('iCalendar Node', () => {
 	const workflowData = readJsonFileSync('nodes/ICalendar/test/node/workflow.iCalendar.json');
 
 	const tests: WorkflowTestData[] = [

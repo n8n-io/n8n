@@ -3,8 +3,14 @@ import nock from 'nock';
 import { testWorkflows } from '@test/nodes/Helpers';
 
 describe('Test DiscordV2, webhook => sendLegacy', () => {
-	nock('https://discord.com')
-		.post('/webhook?wait=true')
+	const credentials = {
+		discordWebhookApi: {
+			webhookUri: 'https://discord.com/webhook',
+		},
+	};
+
+	nock(credentials.discordWebhookApi.webhookUri)
+		.post('?wait=true')
 		.reply(200, {
 			id: '1168768986385747999',
 			type: 0,
@@ -45,5 +51,5 @@ describe('Test DiscordV2, webhook => sendLegacy', () => {
 		});
 
 	const workflows = ['nodes/Discord/test/v2/node/webhook/sendLegacy.workflow.json'];
-	testWorkflows(workflows);
+	testWorkflows(workflows, credentials);
 });

@@ -8,6 +8,15 @@ import playlistItems from './fixtures/playlistItems.json';
 import playlists from './fixtures/playlists.json';
 
 describe('Test YouTube Node', () => {
+	const credentials = {
+		youTubeOAuth2Api: {
+			scope: '',
+			oauthTokenData: {
+				access_token: 'ACCESSTOKEN',
+			},
+		},
+	};
+
 	const youtubeNock = nock('https://www.googleapis.com/youtube');
 	beforeAll(() => {
 		jest
@@ -51,16 +60,11 @@ describe('Test YouTube Node', () => {
 						image: {},
 					},
 				});
-			nock.emitter.on('no match', (req) => {
-				console.error('Unmatched request:', req);
-			});
 		});
 
-		testWorkflows(['nodes/Google/YouTube/__test__/node/channels.workflow.json']);
+		afterAll(() => youtubeNock.done());
 
-		it('should make the correct network calls', () => {
-			youtubeNock.done();
-		});
+		testWorkflows(['nodes/Google/YouTube/__test__/node/channels.workflow.json'], credentials);
 	});
 
 	describe('Playlist', () => {
@@ -107,16 +111,11 @@ describe('Test YouTube Node', () => {
 				})
 				.reply(200, { items: playlists });
 			youtubeNock.delete('/v3/playlists', { id: 'playlist_id_1' }).reply(200, { success: true });
-			nock.emitter.on('no match', (req) => {
-				console.error('Unmatched request:', req);
-			});
 		});
 
-		testWorkflows(['nodes/Google/YouTube/__test__/node/playlists.workflow.json']);
+		afterAll(() => youtubeNock.done());
 
-		it('should make the correct network calls', () => {
-			youtubeNock.done();
-		});
+		testWorkflows(['nodes/Google/YouTube/__test__/node/playlists.workflow.json'], credentials);
 	});
 
 	describe('Video Categories', () => {
@@ -128,17 +127,16 @@ describe('Test YouTube Node', () => {
 					regionCode: 'GB',
 				})
 				.reply(200, { items: categories });
-			nock.emitter.on('no match', (req) => {
-				console.error('Unmatched request:', req);
-			});
 		});
 
-		testWorkflows(['nodes/Google/YouTube/__test__/node/videoCategories.workflow.json']);
+		afterAll(() => youtubeNock.done());
 
-		it('should make the correct network calls', () => {
-			youtubeNock.done();
-		});
+		testWorkflows(
+			['nodes/Google/YouTube/__test__/node/videoCategories.workflow.json'],
+			credentials,
+		);
 	});
+
 	describe('Playlist Item', () => {
 		beforeAll(() => {
 			youtubeNock
@@ -171,15 +169,10 @@ describe('Test YouTube Node', () => {
 					return body.id === 'UExWUDRtV2RxbGFhNWlwZEJRWXZVaFgyNk9RTENJRlV2cS41NkI0NEY2RDEwNTU3Q0M2';
 				})
 				.reply(200, {});
-			nock.emitter.on('no match', (req) => {
-				console.error('Unmatched request:', req);
-			});
 		});
 
-		testWorkflows(['nodes/Google/YouTube/__test__/node/playlistItems.workflow.json']);
+		afterAll(() => youtubeNock.done());
 
-		// it('should make the correct network calls', () => {
-		// 	youtubeNock.done();
-		// });
+		testWorkflows(['nodes/Google/YouTube/__test__/node/playlistItems.workflow.json'], credentials);
 	});
 });

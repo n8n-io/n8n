@@ -6,10 +6,6 @@ import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
 import * as Helpers from '@test/nodes/Helpers';
 
 describe('Test Move Binary Data Node', () => {
-	beforeEach(async () => {
-		await Helpers.initBinaryDataService();
-	});
-
 	const workflow = Helpers.readJsonFileSync(
 		'nodes/MoveBinaryData/test/MoveBinaryData.workflow.json',
 	);

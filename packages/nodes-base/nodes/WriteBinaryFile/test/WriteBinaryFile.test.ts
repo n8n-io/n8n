@@ -6,10 +6,6 @@ import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
 import * as Helpers from '@test/nodes/Helpers';
 
 describe('Test Write Binary File Node', () => {
-	beforeEach(async () => {
-		await Helpers.initBinaryDataService();
-	});
-
 	const temporaryDir = Helpers.createTemporaryDir();
 	const workflow = Helpers.readJsonFileSync(
 		'nodes/WriteBinaryFile/test/WriteBinaryFile.workflow.json',

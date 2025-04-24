@@ -1,13 +1,6 @@
-import type {
-	ICredentialDataDecryptedObject,
-	IDataObject,
-	IHttpRequestOptions,
-	ILoadOptionsFunctions,
-	WorkflowTestData,
-} from 'n8n-workflow';
+import type { ILoadOptionsFunctions, WorkflowTestData } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
-import { CredentialsHelper } from '@test/nodes/credentials-helper';
 import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
 import * as Helpers from '@test/nodes/Helpers';
 
@@ -18,6 +11,15 @@ describe('Microsoft Entra Node', () => {
 	const baseUrl = 'https://graph.microsoft.com/v1.0';
 
 	describe('Credentials', () => {
+		const credentials = {
+			microsoftEntraOAuth2Api: {
+				scope: '',
+				oauthTokenData: {
+					access_token: 'ACCESSTOKEN',
+				},
+			},
+		};
+
 		const tests: WorkflowTestData[] = [
 			{
 				description: 'should use correct credentials',
@@ -92,32 +94,9 @@ describe('Microsoft Entra Node', () => {
 						},
 					],
 				},
+				credentials,
 			},
 		];
-
-		beforeAll(() => {
-			jest
-				.spyOn(CredentialsHelper.prototype, 'authenticate')
-				.mockImplementation(
-					async (
-						credentials: ICredentialDataDecryptedObject,
-						typeName: string,
-						requestParams: IHttpRequestOptions,
-					): Promise<IHttpRequestOptions> => {
-						if (typeName === 'microsoftEntraOAuth2Api') {
-							return {
-								...requestParams,
-								headers: {
-									authorization:
-										'bearer ' + (credentials.oauthTokenData as IDataObject).access_token,
-								},
-							};
-						} else {
-							return requestParams;
-						}
-					},
-				);
-		});
 
 		test.each(tests)('$description', async (testData) => {
 			const { result } = await executeWorkflow(testData);

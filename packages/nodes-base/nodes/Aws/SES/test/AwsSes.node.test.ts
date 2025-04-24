@@ -5,6 +5,8 @@ import qs from 'node:querystring';
 import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
 import * as Helpers from '@test/nodes/Helpers';
 
+import { credentials } from '../../__tests__/credentials';
+
 describe('AwsSes Node', () => {
 	const email = 'test+user@example.com';
 	const templateData = {
@@ -170,6 +172,7 @@ describe('AwsSes Node', () => {
 	];
 
 	test.each(tests)('$description', async (testData) => {
+		testData.credentials = credentials;
 		const { result } = await executeWorkflow(testData);
 		const resultNodeData = Helpers.getResultNodeData(result, testData);
 		resultNodeData.forEach(({ nodeName, resultData }) =>

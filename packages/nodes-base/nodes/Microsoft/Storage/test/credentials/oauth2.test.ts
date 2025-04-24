@@ -1,43 +1,13 @@
-import type {
-	ICredentialDataDecryptedObject,
-	IDataObject,
-	IHttpRequestOptions,
-} from 'n8n-workflow';
-
-import { CredentialsHelper } from '@test/nodes/credentials-helper';
 import { equalityTest, workflowToTests } from '@test/nodes/Helpers';
+
+import { credentials } from '../credentials';
 
 describe('Azure Storage Node', () => {
 	const workflows = ['nodes/Microsoft/Storage/test/workflows/credentials_oauth2.workflow.json'];
 	const workflowTests = workflowToTests(workflows);
 
 	describe('should use correct oauth2 credentials', () => {
-		beforeAll(() => {
-			jest
-				.spyOn(CredentialsHelper.prototype, 'authenticate')
-				.mockImplementation(
-					async (
-						credentials: ICredentialDataDecryptedObject,
-						typeName: string,
-						requestParams: IHttpRequestOptions,
-					): Promise<IHttpRequestOptions> => {
-						if (typeName === 'azureStorageOAuth2Api') {
-							return {
-								...requestParams,
-								headers: {
-									authorization: `bearer ${(credentials.oauthTokenData as IDataObject).access_token as string}`,
-								},
-							};
-						} else {
-							return requestParams;
-						}
-					},
-				);
-		});
-
-		afterAll(() => {
-			jest.restoreAllMocks();
-		});
+		beforeEach(() => jest.restoreAllMocks());
 
 		for (const workflow of workflowTests) {
 			workflow.nock = {
@@ -67,6 +37,7 @@ describe('Azure Storage Node', () => {
 					},
 				],
 			};
+			workflow.credentials = credentials;
 			test(workflow.description, async () => await equalityTest(workflow));
 		}
 	});

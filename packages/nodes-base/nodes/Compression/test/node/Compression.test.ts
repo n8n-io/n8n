@@ -4,14 +4,10 @@ import os from 'node:os';
 import path from 'path';
 
 import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
-import { getResultNodeData, initBinaryDataService, readJsonFileSync } from '@test/nodes/Helpers';
+import { getResultNodeData, readJsonFileSync } from '@test/nodes/Helpers';
 
 if (os.platform() !== 'win32') {
 	describe('Execute Compression Node', () => {
-		beforeEach(async () => {
-			await initBinaryDataService();
-		});
-
 		const workflowData = readJsonFileSync('nodes/Compression/test/node/workflow.compression.json');
 
 		const node = workflowData.nodes.find((n: IDataObject) => n.name === 'Read Binary File');

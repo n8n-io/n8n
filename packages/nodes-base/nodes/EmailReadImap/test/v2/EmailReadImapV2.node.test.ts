@@ -2,7 +2,8 @@
 import { mock } from 'jest-mock-extended';
 import { type INodeTypeBaseDescription, type ITriggerFunctions } from 'n8n-workflow';
 
-import { type ICredentialsDataImap } from '../../../../credentials/Imap.credentials';
+import { type ICredentialsDataImap } from '@credentials/Imap.credentials';
+
 import { EmailReadImapV2 } from '../../v2/EmailReadImapV2.node';
 
 jest.mock('@n8n/imap', () => {
