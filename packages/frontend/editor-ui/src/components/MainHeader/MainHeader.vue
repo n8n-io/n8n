@@ -301,18 +301,19 @@ function hideGithubButton() {
 .top-menu {
 	position: relative;
 	display: flex;
+	height: var(--navbar--height);
 	align-items: center;
-	margin-top: var(--spacing-5xs);
 	font-size: 0.9em;
 	font-weight: var(--font-weight-regular);
-	overflow: auto;
+	overflow-x: auto;
+	overflow-y: hidden;
 }
 
 .github-button {
 	display: flex;
 	align-items: center;
 	align-self: stretch;
-	padding: var(--spacing-5xs) var(--spacing-m) 0;
+	padding: var(--spacing-5xs) var(--spacing-m);
 	background-color: var(--color-background-xlight);
 	border-left: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
 }
