@@ -13,9 +13,9 @@ import * as testDb from '@test-integration/test-db';
 
 import { createCompactedInsightsEvent } from '../database/entities/__tests__/db-utils';
 import type { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository';
-import { InsightsCollectionService } from '../insights-collection.service';
-import { InsightsCompactionService } from '../insights-compaction.service';
-import { InsightsPruningService } from '../insights-pruning.service';
+import type { InsightsCollectionService } from '../insights-collection.service';
+import type { InsightsCompactionService } from '../insights-compaction.service';
+import type { InsightsPruningService } from '../insights-pruning.service';
 import { InsightsService } from '../insights.service';
 import { InsightsConfig } from '../insights.config';
 
@@ -671,78 +671,87 @@ describe('getMaxAgeInDaysAndGranularity', () => {
 describe('shutdown', () => {
 	let insightsService: InsightsService;
 
+	const mockCollectionService = {
+		shutdown: jest.fn().mockResolvedValue(undefined),
+		stopFlushingTimer: jest.fn(),
+	} as unknown as InsightsCollectionService;
+
+	const mockCompactionService = {
+		stopCompactionTimer: jest.fn(),
+	} as unknown as InsightsCompactionService;
+
+	const mockPruningService = {
+		stopPruningTimer: jest.fn(),
+	} as unknown as InsightsPruningService;
+
 	beforeAll(() => {
-		insightsService = Container.get(InsightsService);
+		insightsService = new InsightsService(
+			mock<InsightsByPeriodRepository>(),
+			mockCompactionService,
+			mockCollectionService,
+			mockPruningService,
+			mock<License>(),
+			mock<Logger>(),
+		);
 	});
 
 	test('shutdown stops timers and shuts down services', async () => {
-		// Mock services
-		const collectionServiceShutdownSpy = jest
-			.spyOn(Container.get(InsightsCollectionService), 'shutdown')
-			.mockResolvedValue();
-		const stopCompactionTimerSpy = jest
-			.spyOn(Container.get(InsightsCompactionService), 'stopCompactionTimer')
-			.mockImplementation();
-		const stopPruningTimerSpy = jest
-			.spyOn(Container.get(InsightsPruningService), 'stopPruningTimer')
-			.mockImplementation();
-
 		// ACT
 		await insightsService.shutdown();
 
 		// ASSERT
-		expect(collectionServiceShutdownSpy).toHaveBeenCalled();
-		expect(stopCompactionTimerSpy).toHaveBeenCalled();
-		expect(stopPruningTimerSpy).toHaveBeenCalled();
+		expect(mockCollectionService.shutdown).toHaveBeenCalled();
+		expect(mockCompactionService.stopCompactionTimer).toHaveBeenCalled();
+		expect(mockPruningService.stopPruningTimer).toHaveBeenCalled();
 	});
 });
 
 describe('backgroundProcess', () => {
 	let insightsService: InsightsService;
 
+	const mockCollectionService = {
+		startFlushingTimer: jest.fn(),
+		stopFlushingTimer: jest.fn(),
+	} as unknown as InsightsCollectionService;
+
+	const mockCompactionService = {
+		startCompactionTimer: jest.fn(),
+		stopCompactionTimer: jest.fn(),
+	} as unknown as InsightsCompactionService;
+
+	const mockPruningService = {
+		startPruningTimer: jest.fn(),
+		stopPruningTimer: jest.fn(),
+	} as unknown as InsightsPruningService;
+
 	beforeAll(() => {
-		insightsService = Container.get(InsightsService);
+		insightsService = new InsightsService(
+			mock<InsightsByPeriodRepository>(),
+			mockCompactionService,
+			mockCollectionService,
+			mockPruningService,
+			mock<License>(),
+			mock<Logger>(),
+		);
 	});
 
 	test('startBackgroundProcess starts timers and logs message', () => {
-		// Mock services
-		const startFlushingTimerSpy = jest
-			.spyOn(Container.get(InsightsCollectionService), 'startFlushingTimer')
-			.mockImplementation();
-		const startCompactionTimerSpy = jest
-			.spyOn(Container.get(InsightsCompactionService), 'startCompactionTimer')
-			.mockImplementation();
-		const startPruningTimerSpy = jest
-			.spyOn(Container.get(InsightsPruningService), 'startPruningTimer')
-			.mockImplementation();
-
 		// ACT
 		insightsService.startBackgroundProcess();
 
 		// ASSERT
-		expect(startCompactionTimerSpy).toHaveBeenCalled();
-		expect(startFlushingTimerSpy).toHaveBeenCalled();
-		expect(startPruningTimerSpy).toHaveBeenCalled();
+		expect(mockCompactionService.startCompactionTimer).toHaveBeenCalled();
+		expect(mockCollectionService.startFlushingTimer).toHaveBeenCalled();
+		expect(mockPruningService.startPruningTimer).toHaveBeenCalled();
 	});
 
 	test('stopBackgroundProcess stops timers and logs message', () => {
-		// Mock services
-		const stopFlushingTimerSpy = jest
-			.spyOn(Container.get(InsightsCollectionService), 'stopFlushingTimer')
-			.mockImplementation();
-		const stopCompactionTimerSpy = jest
-			.spyOn(Container.get(InsightsCompactionService), 'stopCompactionTimer')
-			.mockImplementation();
-		const stopPruningTimerSpy = jest
-			.spyOn(Container.get(InsightsPruningService), 'stopPruningTimer')
-			.mockImplementation();
-
 		// ACT
 		insightsService.stopBackgroundProcess();
 
 		// ASSERT
-		expect(stopCompactionTimerSpy).toHaveBeenCalled();
-		expect(stopFlushingTimerSpy).toHaveBeenCalled();
-		expect(stopPruningTimerSpy).toHaveBeenCalled();
+		expect(mockCompactionService.stopCompactionTimer).toHaveBeenCalled();
+		expect(mockCollectionService.stopFlushingTimer).toHaveBeenCalled();
+		expect(mockPruningService.stopPruningTimer).toHaveBeenCalled();
 	});
 });
