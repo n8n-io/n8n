@@ -45,10 +45,10 @@ const isLoading = ref(true);
 const testCases = ref<TestCaseExecutionRecord[]>([]);
 
 const runId = computed(() => router.currentRoute.value.params.runId as string);
-const testId = computed(() => router.currentRoute.value.params.testId as string);
+const workflowId = computed(() => router.currentRoute.value.params.workflowId as string);
 
 const run = computed(() => testDefinitionStore.testRunsById[runId.value]);
-const test = computed(() => testDefinitionStore.testDefinitionsById[testId.value]);
+
 const filteredTestCases = computed(() => {
 	return testCases.value;
 });
@@ -62,19 +62,9 @@ type Action = { label: string; value: string; disabled: boolean };
 const rowActions = (row: TestCaseExecutionRecord): Action[] => {
 	return [
 		{
-			label: 'Original execution',
-			value: row.pastExecutionId,
-			disabled: !Boolean(row.pastExecutionId),
-		},
-		{
 			label: 'New Execution',
 			value: row.executionId,
 			disabled: !Boolean(row.executionId),
-		},
-		{
-			label: 'Evaluation Execution',
-			value: row.evaluationExecutionId,
-			disabled: !Boolean(row.evaluationExecutionId),
 		},
 	];
 };
@@ -83,7 +73,7 @@ const gotToExecution = (executionId: string) => {
 	const { href } = router.resolve({
 		name: VIEWS.EXECUTION_PREVIEW,
 		params: {
-			name: test.value?.workflowId,
+			name: workflowId.value,
 			executionId,
 		},
 	});
@@ -109,46 +99,38 @@ const getErrorBaseKey = (errorCode?: string): string =>
 	'';
 
 const getErrorTooltipLinkRoute = (row: TestCaseExecutionRecord) => {
-	if (row.errorCode === TEST_CASE_EXECUTION_ERROR_CODE.FAILED_TO_EXECUTE_EVALUATION_WORKFLOW) {
-		return {
-			name: VIEWS.EXECUTION_PREVIEW,
-			params: {
-				name: test.value?.evaluationWorkflowId,
-				executionId: row.evaluationExecutionId,
-			},
-		};
-	} else if (row.errorCode === TEST_CASE_EXECUTION_ERROR_CODE.MOCKED_NODE_DOES_NOT_EXIST) {
-		return {
-			name: VIEWS.TEST_DEFINITION_EDIT,
-			params: {
-				testId: testId.value,
-			},
-		};
-	} else if (row.errorCode === TEST_CASE_EXECUTION_ERROR_CODE.FAILED_TO_EXECUTE_WORKFLOW) {
-		return {
-			name: VIEWS.EXECUTION_PREVIEW,
-			params: {
-				name: test.value?.workflowId,
-				executionId: row.executionId,
-			},
-		};
-	} else if (row.errorCode === TEST_CASE_EXECUTION_ERROR_CODE.TRIGGER_NO_LONGER_EXISTS) {
-		return {
-			name: VIEWS.EXECUTION_PREVIEW,
-			params: {
-				name: test.value?.workflowId,
-				executionId: row.pastExecutionId,
-			},
-		};
-	} else if (row.errorCode === TEST_CASE_EXECUTION_ERROR_CODE.INVALID_METRICS) {
-		return {
-			name: VIEWS.EXECUTION_PREVIEW,
-			params: {
-				name: test.value?.evaluationWorkflowId,
-				executionId: row.evaluationExecutionId,
-			},
-		};
-	}
+	// if (row.errorCode === TEST_CASE_EXECUTION_ERROR_CODE.MOCKED_NODE_DOES_NOT_EXIST) {
+	// 	return {
+	// 		name: VIEWS.TEST_DEFINITION_EDIT,
+	// 		params: {
+	// 			testId: testId.value,
+	// 		},
+	// 	};
+	// } else if (row.errorCode === TEST_CASE_EXECUTION_ERROR_CODE.FAILED_TO_EXECUTE_WORKFLOW) {
+	// 	return {
+	// 		name: VIEWS.EXECUTION_PREVIEW,
+	// 		params: {
+	// 			name: test.value?.workflowId,
+	// 			executionId: row.executionId,
+	// 		},
+	// 	};
+	// } else if (row.errorCode === TEST_CASE_EXECUTION_ERROR_CODE.TRIGGER_NO_LONGER_EXISTS) {
+	// 	return {
+	// 		name: VIEWS.EXECUTION_PREVIEW,
+	// 		params: {
+	// 			name: test.value?.workflowId,
+	// 			executionId: row.pastExecutionId,
+	// 		},
+	// 	};
+	// } else if (row.errorCode === TEST_CASE_EXECUTION_ERROR_CODE.INVALID_METRICS) {
+	// 	return {
+	// 		name: VIEWS.EXECUTION_PREVIEW,
+	// 		params: {
+	// 			name: test.value?.evaluationWorkflowId,
+	// 			executionId: row.evaluationExecutionId,
+	// 		},
+	// 	};
+	// }
 
 	return undefined;
 };
@@ -181,19 +163,17 @@ const metrics = computed(() => run.value?.metrics ?? {});
 
 // Temporary workaround to fetch test cases by manually getting workflow executions
 const fetchExecutionTestCases = async () => {
-	if (!runId.value || !testId.value) return;
+	if (!runId.value || !workflowId.value) return;
 
 	isLoading.value = true;
 	try {
-		await testDefinitionStore.fetchTestDefinition(testId.value);
-
 		const testRun = await testDefinitionStore.getTestRun({
-			testDefinitionId: testId.value,
+			workflowId: workflowId.value,
 			runId: runId.value,
 		});
 
 		const testCaseEvaluationExecutions = await testDefinitionStore.fetchTestCaseExecutions({
-			testDefinitionId: testId.value,
+			workflowId: workflowId.value,
 			runId: testRun.id,
 		});
 
@@ -215,7 +195,7 @@ onMounted(async () => {
 		<div :class="$style.header">
 			<button :class="$style.backButton" @click="router.back()">
 				<i class="mr-xs"><font-awesome-icon icon="arrow-left" /></i>
-				<n8n-heading size="large" :bold="true">{{ test?.name }}</n8n-heading>
+				<n8n-heading size="large" :bold="true">TODO: Change title</n8n-heading>
 				<i class="ml-xs mr-xs"><font-awesome-icon icon="chevron-right" /></i>
 				<n8n-heading size="large" :bold="true">
 					{{ locale.baseText('testDefinition.listRuns.runNumber') }}{{ run?.id }}
