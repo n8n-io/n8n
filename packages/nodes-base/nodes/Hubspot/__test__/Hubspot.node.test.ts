@@ -112,11 +112,9 @@ describe('Hubspot Node', () => {
 				.reply(200, companies.companies[0]);
 		});
 
-		testWorkflows(['nodes/Hubspot/__test__/companies.workflow.json']);
+		afterAll(() => hubspotNock.done());
 
-		it('should make the correct network calls', () => {
-			hubspotNock.done();
-		});
+		testWorkflows(['nodes/Hubspot/__test__/companies.workflow.json']);
 	});
 
 	describe('contacts', () => {
@@ -210,11 +208,9 @@ describe('Hubspot Node', () => {
 				.reply(200, contacts.contacts[0]);
 		});
 
-		testWorkflows(['nodes/Hubspot/__test__/contacts.workflow.json']);
+		afterAll(() => hubspotNock.done());
 
-		it('should make the correct network calls', () => {
-			hubspotNock.done();
-		});
+		testWorkflows(['nodes/Hubspot/__test__/contacts.workflow.json']);
 	});
 
 	describe('deals', () => {
@@ -257,10 +253,8 @@ describe('Hubspot Node', () => {
 				.reply(200, dealsSearchResult);
 		});
 
-		testWorkflows(['nodes/Hubspot/__test__/deals.workflow.json']);
+		afterAll(() => hubspotNock.done());
 
-		it('should make the correct network calls', () => {
-			hubspotNock.done();
-		});
+		testWorkflows(['nodes/Hubspot/__test__/deals.workflow.json']);
 	});
 });

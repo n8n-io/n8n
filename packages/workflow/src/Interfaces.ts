@@ -2457,6 +2457,7 @@ export interface WorkflowTestData {
 		mode: WorkflowExecuteMode;
 		input: INodeExecutionData;
 	};
+	credentials?: Record<string, ICredentialDataDecryptedObject>;
 }
 
 export type LogLevel = (typeof LOG_LEVELS)[number];
