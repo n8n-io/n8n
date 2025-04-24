@@ -1,48 +1,9 @@
 import type { IRestApiContext } from '@/Interface';
 import { makeRestApiRequest, request } from '@/utils/apiUtils';
 
-export interface TestDefinitionRecord {
-	id: string;
-	name: string;
-	workflowId: string;
-	evaluationWorkflowId?: string | null;
-	annotationTagId?: string | null;
-	description?: string | null;
-	updatedAt?: string;
-	createdAt: string;
-	annotationTag?: string | null;
-	mockedNodes?: Array<{ name: string; id: string }>;
-}
-
-interface CreateTestDefinitionParams {
-	name: string;
-	workflowId: string;
-	evaluationWorkflowId?: string | null;
-}
-
-export interface UpdateTestDefinitionParams {
-	name?: string;
-	evaluationWorkflowId?: string | null;
-	annotationTagId?: string | null;
-	description?: string | null;
-	mockedNodes?: Array<{ name: string; id: string }>;
-}
-
-export interface UpdateTestResponse {
-	createdAt: string;
-	updatedAt: string;
-	id: string;
-	name: string;
-	workflowId: string;
-	description?: string | null;
-	annotationTag?: string | null;
-	evaluationWorkflowId?: string | null;
-	annotationTagId?: string | null;
-}
-
 export interface TestRunRecord {
 	id: string;
-	testDefinitionId: string;
+	workflowId: string;
 	status: 'new' | 'running' | 'completed' | 'error' | 'cancelled' | 'warning' | 'success';
 	metrics?: Record<string, number>;
 	createdAt: string;
@@ -55,12 +16,12 @@ export interface TestRunRecord {
 }
 
 interface GetTestRunParams {
-	testDefinitionId: string;
+	workflowId: string;
 	runId: string;
 }
 
 interface DeleteTestRunParams {
-	testDefinitionId: string;
+	workflowId: string;
 	runId: string;
 }
 
@@ -68,8 +29,6 @@ export interface TestCaseExecutionRecord {
 	id: string;
 	testRunId: string;
 	executionId: string;
-	pastExecutionId: string;
-	evaluationExecutionId: string;
 	status: 'running' | 'completed' | 'error';
 	createdAt: string;
 	updatedAt: string;
@@ -79,73 +38,12 @@ export interface TestCaseExecutionRecord {
 	errorDetails?: Record<string, unknown>;
 }
 
-const endpoint = '/evaluation/test-definitions';
-
-export async function getTestDefinitions(
-	context: IRestApiContext,
-	params?: { workflowId?: string },
-) {
-	let url = endpoint;
-	if (params?.workflowId) {
-		url += `?filter=${JSON.stringify({ workflowId: params.workflowId })}`;
-	}
-	return await makeRestApiRequest<{ count: number; testDefinitions: TestDefinitionRecord[] }>(
-		context,
-		'GET',
-		url,
-	);
-}
-
-export async function getTestDefinition(context: IRestApiContext, id: string) {
-	return await makeRestApiRequest<TestDefinitionRecord>(context, 'GET', `${endpoint}/${id}`);
-}
-
-export async function createTestDefinition(
-	context: IRestApiContext,
-	params: CreateTestDefinitionParams,
-) {
-	return await makeRestApiRequest<TestDefinitionRecord>(context, 'POST', endpoint, params);
-}
-
-export async function updateTestDefinition(
-	context: IRestApiContext,
-	id: string,
-	params: UpdateTestDefinitionParams,
-) {
-	return await makeRestApiRequest<UpdateTestResponse>(
-		context,
-		'PATCH',
-		`${endpoint}/${id}`,
-		params,
-	);
-}
-
-export async function deleteTestDefinition(context: IRestApiContext, id: string) {
-	return await makeRestApiRequest<{ success: boolean }>(context, 'DELETE', `${endpoint}/${id}`);
-}
-
-export async function getExampleEvaluationInput(
-	context: IRestApiContext,
-	testDefinitionId: string,
-	annotationTagId: string,
-) {
-	return await makeRestApiRequest<Record<string, unknown> | null>(
-		context,
-		'GET',
-		`${endpoint}/${testDefinitionId}/example-evaluation-input?annotationTagId=${annotationTagId}`,
-	);
-}
-
-const getRunsEndpoint = (testDefinitionId: string, runId?: string) =>
-	`${endpoint}/${testDefinitionId}/runs${runId ? `/${runId}` : ''}`;
+const getTestRunsEndpoint = (workflowId: string, runId?: string) =>
+	`/workflows/${workflowId}/test-runs${runId ? `/${runId}` : ''}`;
 
 // Get all test runs for a test definition
-export const getTestRuns = async (context: IRestApiContext, testDefinitionId: string) => {
-	return await makeRestApiRequest<TestRunRecord[]>(
-		context,
-		'GET',
-		getRunsEndpoint(testDefinitionId),
-	);
+export const getTestRuns = async (context: IRestApiContext, workflowId: string) => {
+	return await makeRestApiRequest<TestRunRecord[]>(context, 'GET', getTestRunsEndpoint(workflowId));
 };
 
 // Get specific test run
@@ -153,16 +51,16 @@ export const getTestRun = async (context: IRestApiContext, params: GetTestRunPar
 	return await makeRestApiRequest<TestRunRecord>(
 		context,
 		'GET',
-		getRunsEndpoint(params.testDefinitionId, params.runId),
+		getTestRunsEndpoint(params.workflowId, params.runId),
 	);
 };
 
 // Start a new test run
-export const startTestRun = async (context: IRestApiContext, testDefinitionId: string) => {
+export const startTestRun = async (context: IRestApiContext, workflowId: string) => {
 	const response = await request({
 		method: 'POST',
 		baseURL: context.baseUrl,
-		endpoint: `${endpoint}/${testDefinitionId}/run`,
+		endpoint: `/workflows/${workflowId}/test-runs/new`,
 		headers: { 'push-ref': context.pushRef },
 	});
 	// CLI is returning the response without wrapping it in `data` key
@@ -171,13 +69,13 @@ export const startTestRun = async (context: IRestApiContext, testDefinitionId: s
 
 export const cancelTestRun = async (
 	context: IRestApiContext,
-	testDefinitionId: string,
+	workflowId: string,
 	testRunId: string,
 ) => {
 	const response = await request({
 		method: 'POST',
 		baseURL: context.baseUrl,
-		endpoint: `${endpoint}/${testDefinitionId}/runs/${testRunId}/cancel`,
+		endpoint: `/workflows/${workflowId}/test-runs/${testRunId}/cancel`,
 		headers: { 'push-ref': context.pushRef },
 	});
 	// CLI is returning the response without wrapping it in `data` key
@@ -189,22 +87,22 @@ export const deleteTestRun = async (context: IRestApiContext, params: DeleteTest
 	return await makeRestApiRequest<{ success: boolean }>(
 		context,
 		'DELETE',
-		getRunsEndpoint(params.testDefinitionId, params.runId),
+		getTestRunsEndpoint(params.workflowId, params.runId),
 	);
 };
 
-const getRunExecutionsEndpoint = (testDefinitionId: string, runId: string) =>
-	`${endpoint}/${testDefinitionId}/runs/${runId}/cases`;
+const getRunExecutionsEndpoint = (workflowId: string, runId: string) =>
+	`/workflows/${workflowId}/test-runs/${runId}/test-cases`;
 
 // Get all test cases of a test run
 export const getTestCaseExecutions = async (
 	context: IRestApiContext,
-	testDefinitionId: string,
+	workflowId: string,
 	runId: string,
 ) => {
 	return await makeRestApiRequest<TestCaseExecutionRecord[]>(
 		context,
 		'GET',
-		getRunExecutionsEndpoint(testDefinitionId, runId),
+		getRunExecutionsEndpoint(workflowId, runId),
 	);
 };
