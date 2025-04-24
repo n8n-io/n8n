@@ -4,6 +4,7 @@ import {
 	AiApplySuggestionRequestDto,
 	AiAskRequestDto,
 	AiFreeCreditsRequestDto,
+	AiBuilderChatRequestDto,
 } from '@n8n/api-types';
 import { Body, Post, RestController } from '@n8n/decorators';
 import type { AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';
@@ -16,6 +17,7 @@ import { FREE_AI_CREDITS_CREDENTIAL_NAME } from '@/constants';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { AuthenticatedRequest } from '@/requests';
+import { WorkflowBuilderService } from '@/services/ai-workflow-builder.service';
 import { AiService } from '@/services/ai.service';
 import { UserService } from '@/services/user.service';
 
@@ -25,9 +27,39 @@ export type FlushableResponse = Response & { flush: () => void };
 export class AiController {
 	constructor(
 		private readonly aiService: AiService,
+		private readonly workflowBuilderService: WorkflowBuilderService,
 		private readonly credentialsService: CredentialsService,
 		private readonly userService: UserService,
 	) {}
+
+	@Post('/build', { rateLimit: { limit: 100 } })
+	async build(
+		req: AuthenticatedRequest,
+		res: FlushableResponse,
+		@Body payload: AiBuilderChatRequestDto,
+	) {
+		try {
+			const aiResponse = this.workflowBuilderService.chat(
+				{
+					question: payload.payload.question ?? '',
+				},
+				req.user,
+			);
+
+			res.header('Content-type', 'application/json-lines').flush();
+
+			// Handle the stream
+			for await (const chunk of aiResponse) {
+				res.flush();
+				res.write(JSON.stringify(chunk) + '⧉⇋⇋➽⌑⧉§§\n');
+			}
+
+			res.end();
+		} catch (e) {
+			assert(e instanceof Error);
+			throw new InternalServerError(e.message, e);
+		}
+	}
 
 	@Post('/chat', { rateLimit: { limit: 100 } })
 	async chat(req: AuthenticatedRequest, res: FlushableResponse, @Body payload: AiChatRequestDto) {
