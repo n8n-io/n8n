@@ -89,6 +89,34 @@ const properties: INodeProperties[] = [
 				default: 'standard',
 			},
 			{
+				displayName: 'Quality',
+				name: 'quality',
+				type: 'options',
+				description:
+					'The quality of the image that will be generated, High creates images with finer details and greater consistency across the image',
+				options: [
+					{
+						name: 'High',
+						value: 'high',
+					},
+					{
+						name: 'Medium',
+						value: 'medium',
+					},
+					{
+						name: 'Low',
+						value: 'low',
+					},
+				],
+				displayOptions: {
+					show: {
+						'/model': ['gpt-image-1'],
+					},
+				},
+				default: 'medium',
+			},
+
+			{
 				displayName: 'Resolution',
 				name: 'size',
 				type: 'options',
@@ -138,6 +166,32 @@ const properties: INodeProperties[] = [
 				},
 				default: '1024x1024',
 			},
+			{
+				displayName: 'Resolution',
+				name: 'size',
+				type: 'options',
+				options: [
+					{
+						name: '1024x1024',
+						value: '1024x1024',
+					},
+					{
+						name: '1024x1536',
+						value: '1024x1536',
+					},
+					{
+						name: '1536x1024',
+						value: '1536x1024',
+					},
+				],
+				displayOptions: {
+					show: {
+						'/model': ['gpt-image-1'],
+					},
+				},
+				default: '1024x1024',
+			},
+
 			{
 				displayName: 'Style',
 				name: 'style',
