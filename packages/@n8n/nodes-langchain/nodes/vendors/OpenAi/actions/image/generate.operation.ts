@@ -17,15 +17,15 @@ const properties: INodeProperties[] = [
 		description: 'The model to use for image generation',
 		options: [
 			{
-				name: 'DALL-E-2',
+				name: 'DALL·E 2',
 				value: 'dall-e-2',
 			},
 			{
-				name: 'DALL-E-3',
+				name: 'DALL·E 3',
 				value: 'dall-e-3',
 			},
 			{
-				name: 'gpt-image-1',
+				name: 'GPT Image 1',
 				value: 'gpt-image-1',
 			},
 		],
@@ -67,7 +67,7 @@ const properties: INodeProperties[] = [
 			},
 			{
 				displayName: 'Quality',
-				name: 'quality',
+				name: 'dalleQuality',
 				type: 'options',
 				description:
 					'The quality of the image that will be generated, HD creates images with finer details and greater consistency across the image',
@@ -263,8 +263,12 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		delete options.binaryPropertyOutput;
 	}
 
-	delete options.returnImageUrls;
+	if (options.dalleQuality) {
+		options.quality = options.dalleQuality;
+		delete options.dalleQuality;
+	}
 
+	delete options.returnImageUrls;
 	const body: IDataObject = {
 		prompt,
 		model,
