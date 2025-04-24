@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 import { GlobalConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
+import { ModuleRegistry } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { Command, Errors } from '@oclif/core';
 import {
@@ -19,7 +20,6 @@ import config from '@/config';
 import { N8N_VERSION, N8N_RELEASE_DATE, inDevelopment, inTest } from '@/constants';
 import * as CrashJournal from '@/crash-journal';
 import * as Db from '@/db';
-import { ModuleRegistry } from '@/decorators/module';
 import { getDataDeduplicationService } from '@/deduplication';
 import { DeprecationService } from '@/deprecation/deprecation.service';
 import { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.service.ee';
@@ -139,6 +139,8 @@ export abstract class BaseCommand extends Command {
 		);
 
 		Container.get(DeprecationService).warn();
+
+		if (process.env.EXECUTIONS_PROCESS === 'own') process.exit(-1);
 
 		if (
 			config.getEnv('executions.mode') === 'queue' &&
