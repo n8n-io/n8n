@@ -1,8 +1,8 @@
-import type { InsightsSummary } from '@n8n/api-types';
 import {
-	insightsDateRangeSchema,
+	type InsightsSummary,
 	type InsightsDateRange,
-} from '@n8n/api-types/src/schemas/insights.schema';
+	INSIGHTS_DATE_RANGE_KEYS,
+} from '@n8n/api-types';
 import { OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { Logger } from 'n8n-core';
@@ -205,7 +205,7 @@ export class InsightsService {
 				: this.license.getInsightsMaxHistory();
 		const isHourlyDateEnabled = this.license.isInsightsHourlyDataEnabled();
 
-		return insightsDateRangeSchema.shape.key.options.map((key) => ({
+		return INSIGHTS_DATE_RANGE_KEYS.map((key) => ({
 			key,
 			licensed:
 				key === 'day' ? (isHourlyDateEnabled ?? false) : maxHistoryInDays >= keyRangeToDays[key],
