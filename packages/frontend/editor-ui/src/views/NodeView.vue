@@ -1726,7 +1726,7 @@ onMounted(() => {
 								message: i18n.baseText('nodeView.showMessage.ndvUrl.missingNodes.content'),
 								type: 'warning',
 							});
-							router.replace({
+							void router.replace({
 								name: route.name,
 								params: { name: workflowId.value },
 							});
