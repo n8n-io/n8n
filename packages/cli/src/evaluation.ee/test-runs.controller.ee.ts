@@ -65,7 +65,7 @@ export class TestRunsController {
 		}
 	}
 
-	@Get('/:workflowId/test-runs/:id/cases')
+	@Get('/:workflowId/test-runs/:id/test-cases')
 	async getTestCases(req: TestRunsRequest.GetCases) {
 		await this.getTestRun(req.params.id, req.params.workflowId, req.user);
 
