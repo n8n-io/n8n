@@ -858,15 +858,15 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 			workflowDataRequest.versionId = workflowsStore.workflowVersionId;
 
 			// workflow should not be active if there is live webhook with the same path
-			const conflict = await checkConflictingWebhooks(currentWorkflow);
-			if (conflict) {
+			const conflictData = await checkConflictingWebhooks(currentWorkflow);
+			if (conflictData) {
 				workflowDataRequest.active = false;
 
 				if (workflowsStore.isWorkflowActive) {
 					toast.showMessage({
 						title: 'Conflicting Webhook Path',
-						message: `Workflow was set to inactive because there is a live webhook with same path as in node: ${conflict.trigger.name}.`,
-						type: 'info',
+						message: `Workflow set to inactive: Live webhook in another workflow uses same path as node '${conflictData.trigger.name}'.`,
+						type: 'error',
 					});
 
 					workflowsStore.setWorkflowInactive(currentWorkflow);
@@ -1023,8 +1023,8 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 
 					toast.showMessage({
 						title: 'Conflicting Webhook Path',
-						message: `Workflow was set to inactive because there is a live webhook with same path as in node ${conflict.trigger.name}.`,
-						type: 'info',
+						message: `Workflow set to inactive: Live webhook in another workflow uses same path as node '${conflict.trigger.name}'.`,
+						type: 'error',
 					});
 				}
 			}

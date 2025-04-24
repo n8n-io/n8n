@@ -42,7 +42,7 @@ const onClick = async () => {
 	<Modal
 		width="540px"
 		:name="WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY"
-		title="Conflicting Webhook URL"
+		title="Conflicting Webhook Path"
 		:event-bus="modalBus"
 		:center="true"
 	>
