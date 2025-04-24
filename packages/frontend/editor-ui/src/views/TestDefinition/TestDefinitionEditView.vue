@@ -107,17 +107,7 @@ const isRunTestEnabled = computed(() => !isRunning.value);
 					:cancel-editing="() => {}"
 					:is-loading="isLoading"
 					:get-field-issues="getFieldIssues"
-					:start-editing="startEditing"
-					:save-changes="saveChanges"
 					:has-runs="hasRuns"
-					:example-pinned-data="examplePinnedData"
-					:sample-workflow-name="workflowName"
-					@rename-tag="renameTag"
-					@update:evaluation-workflow="handleUpdateTestDebounced"
-					@update:mocked-nodes="handleUpdateTestDebounced"
-					@open-pinning-modal="openPinningModal"
-					@open-executions-view-for-tag="openExecutionsViewForTag"
-					@evaluation-workflow-created="onEvaluationWorkflowCreated($event)"
 				/>
 			</div>
 		</div>
