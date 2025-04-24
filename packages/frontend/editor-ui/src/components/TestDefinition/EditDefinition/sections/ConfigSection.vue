@@ -1,16 +1,12 @@
 <script setup lang="ts">
 import BlockArrow from '@/components/TestDefinition/EditDefinition/BlockArrow.vue';
-import type { EditableFormState } from '@/components/TestDefinition/types';
 import { useI18n } from '@/composables/useI18n';
 import { N8nText } from '@n8n/design-system';
 
-const props = defineProps<{
+defineProps<{
 	isLoading: boolean;
 	hasRuns: boolean;
 	getFieldIssues: (key: string) => Array<{ field: string; message: string }>;
-	startEditing: (field: keyof EditableFormState) => void;
-	saveChanges: (field: keyof EditableFormState) => void;
-	cancelEditing: (field: keyof EditableFormState) => void;
 }>();
 
 const locale = useI18n();
