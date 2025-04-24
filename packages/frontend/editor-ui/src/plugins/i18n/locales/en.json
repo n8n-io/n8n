@@ -1281,7 +1281,7 @@
 	"nodeCreator.aiPanel.aiNodes": "AI Nodes",
 	"nodeCreator.aiPanel.aiOtherNodes": "Other AI Nodes",
 	"nodeCreator.aiPanel.aiOtherNodesDescription": "Embeddings, Vector Stores, LLMs and other AI nodes",
-	"nodeCreator.aiPanel.selectAiNode": "Select an Al Node to add to your workflow",
+	"nodeCreator.aiPanel.selectAiNode": "Select an AI Node to add to your workflow",
 	"nodeCreator.aiPanel.nodesForAi": "Build autonomous agents, summarize or search documents, etc.",
 	"nodeCreator.aiPanel.newTag": "New",
 	"nodeCreator.aiPanel.langchainAiNodes": "AI",
