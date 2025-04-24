@@ -46,6 +46,9 @@ export class TestRun extends WithTimestampsAndStringId {
 	@ManyToOne('WorkflowEntity')
 	workflow: WorkflowEntity;
 
+	@Column('varchar', { length: 255 })
+	workflowId: string;
+
 	/**
 	 * Calculated property to determine the final result of the test run
 	 * depending on the statuses of test case executions

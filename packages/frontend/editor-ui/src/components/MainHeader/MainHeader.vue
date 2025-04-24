@@ -50,10 +50,9 @@ const githubButtonHidden = useLocalStorage(LOCAL_STORAGE_HIDE_GITHUB_STAR_BUTTON
 // TODO: It might be easier to manage this in the router config, by passing meta information to the routes
 // This would allow us to specify it just once on the root route, and then have the tabs be determined for children
 const testDefinitionRoutes: VIEWS[] = [
-	VIEWS.TEST_DEFINITION,
 	VIEWS.TEST_DEFINITION_EDIT,
 	VIEWS.TEST_DEFINITION_RUNS_DETAIL,
-	VIEWS.TEST_DEFINITION_RUNS_COMPARE,
+	// VIEWS.TEST_DEFINITION_RUNS_COMPARE,
 ];
 
 const workflowRoutes: VIEWS[] = [VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW, VIEWS.EXECUTION_DEBUG];
@@ -174,7 +173,7 @@ function onTabSelected(tab: MAIN_HEADER_TABS, event: MouseEvent) {
 
 		case MAIN_HEADER_TABS.TEST_DEFINITION:
 			activeHeaderTab.value = MAIN_HEADER_TABS.TEST_DEFINITION;
-			void router.push({ name: VIEWS.TEST_DEFINITION });
+			void router.push({ name: VIEWS.TEST_DEFINITION_EDIT });
 			break;
 
 		default:

@@ -1,101 +1,55 @@
 <script setup lang="ts">
-import { useTestDefinitionForm } from '@/components/TestDefinition/composables/useTestDefinitionForm';
-import { useDebounce } from '@/composables/useDebounce';
 import { useI18n } from '@/composables/useI18n';
-import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
-import { NODE_PINNING_MODAL_KEY, VIEWS } from '@/constants';
-import { useAnnotationTagsStore } from '@/stores/tags.store';
-import { computed, ref, watch } from 'vue';
+import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
-import InlineNameEdit from '@/components/InlineNameEdit.vue';
-import ConfigSection from '@/components/TestDefinition/EditDefinition/sections/ConfigSection.vue';
 import RunsSection from '@/components/TestDefinition/EditDefinition/sections/RunsSection.vue';
 import { useTestDefinitionStore } from '@/stores/testDefinition.store.ee';
-import { useUIStore } from '@/stores/ui.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { N8nButton, N8nIconButton, N8nText } from '@n8n/design-system';
-import { useDocumentVisibility } from '@vueuse/core';
+import { N8nButton, N8nText } from '@n8n/design-system';
+import { useAsyncState } from '@vueuse/core';
 import { orderBy } from 'lodash-es';
-import type { IDataObject, IPinData } from 'n8n-workflow';
 
 const props = defineProps<{
-	testId: string;
-	name: string;
+	workflowId: string;
 }>();
 
 const router = useRouter();
 const locale = useI18n();
-const { debounce } = useDebounce();
 const toast = useToast();
 const testDefinitionStore = useTestDefinitionStore();
-const tagsStore = useAnnotationTagsStore();
-const uiStore = useUIStore();
-const workflowStore = useWorkflowsStore();
-const telemetry = useTelemetry();
+// const telemetry = useTelemetry();
 
-const visibility = useDocumentVisibility();
-watch(visibility, async () => {
-	if (visibility.value !== 'visible') return;
+const { isLoading } = useAsyncState(
+	async () => {
+		await testDefinitionStore.fetchTestRuns(props.workflowId);
 
-	await tagsStore.fetchAll({ force: true, withUsageCount: true });
-	await getExamplePinnedDataForTags();
-	testDefinitionStore.updateRunFieldIssues(props.testId);
-});
+		return [];
+	},
+	[],
+	{
+		onError: (error) => toast.showError(error, locale.baseText('testDefinition.list.loadError')),
+		shallow: false,
+	},
+);
 
-const { state, isSaving, cancelEditing, loadTestData, updateTest, startEditing, saveChanges } =
-	useTestDefinitionForm();
-
-const isLoading = computed(() => tagsStore.isLoading);
-const tagsById = computed(() => tagsStore.tagsById);
-const currentWorkflowId = computed(() => props.name);
-const workflowName = computed(() => workflowStore.workflow.name);
 const hasRuns = computed(() => runs.value.length > 0);
-const fieldsIssues = computed(() => testDefinitionStore.getFieldIssues(props.testId) ?? []);
 
-const showConfig = ref(true);
+// const showConfig = ref(true);
 const selectedMetric = ref<string>('');
-const examplePinnedData = ref<IPinData>({});
 
-void loadTestData(props.testId, props.name);
-
-const handleUpdateTest = async () => {
-	try {
-		await updateTest(props.testId);
-	} catch (e: unknown) {
-		toast.showError(e, locale.baseText('testDefinition.edit.testSaveFailed'));
-	}
-};
-
-const handleUpdateTestDebounced = debounce(handleUpdateTest, { debounceTime: 400, trailing: true });
-
-function getFieldIssues(key: string) {
-	return fieldsIssues.value.filter((issue) => issue.field === key);
-}
-
-async function openPinningModal() {
-	uiStore.openModal(NODE_PINNING_MODAL_KEY);
-}
+// function getFieldIssues(key: string) {
+// 	return fieldsIssues.value.filter((issue) => issue.field === key);
+// }
 
 async function runTest() {
-	await testDefinitionStore.startTestRun(props.testId);
-	await testDefinitionStore.fetchTestRuns(props.testId);
-}
-
-async function openExecutionsViewForTag() {
-	const executionsRoute = router.resolve({
-		name: VIEWS.WORKFLOW_EXECUTIONS,
-		params: { name: currentWorkflowId.value },
-		query: { tag: state.value.tags.value[0], testId: props.testId },
-	});
-
-	window.open(executionsRoute.href, '_blank');
+	await testDefinitionStore.startTestRun(props.workflowId);
+	await testDefinitionStore.fetchTestRuns(props.workflowId);
 }
 
 const runs = computed(() => {
 	const testRuns = Object.values(testDefinitionStore.testRunsById ?? {}).filter(
-		({ testDefinitionId }) => testDefinitionId === props.testId,
+		({ workflowId }) => workflowId === props.workflowId,
 	);
 
 	return orderBy(testRuns, (record) => new Date(record.runAt), ['asc']).map((record, index) =>
@@ -104,76 +58,16 @@ const runs = computed(() => {
 });
 
 const isRunning = computed(() => runs.value.some((run) => run.status === 'running'));
-const isRunTestEnabled = computed(() => fieldsIssues.value.length === 0 && !isRunning.value);
-
-async function renameTag(newName: string) {
-	await tagsStore.rename({ id: state.value.tags.value[0], name: newName });
-}
-
-async function getExamplePinnedDataForTags() {
-	const exampleInput = await testDefinitionStore.fetchExampleEvaluationInput(
-		props.testId,
-		state.value.tags.value[0],
-	);
-
-	if (exampleInput !== null) {
-		examplePinnedData.value = {
-			'When called by a test run': [
-				{
-					json: exampleInput as IDataObject,
-				},
-			],
-		};
-	}
-}
-
-watch(() => state.value.tags, getExamplePinnedDataForTags);
-
-const updateName = (value: string) => {
-	state.value.name.value = value;
-	void handleUpdateTestDebounced();
-};
-
-const updateDescription = (value: string) => {
-	state.value.description.value = value;
-	void handleUpdateTestDebounced();
-};
-
-function onEvaluationWorkflowCreated(workflowId: string) {
-	telemetry.track('User created evaluation workflow from test', {
-		test_id: props.testId,
-		subworkflow_id: workflowId,
-	});
-}
+const isRunTestEnabled = computed(() => !isRunning.value);
 </script>
 
 <template>
 	<div v-if="!isLoading" :class="[$style.container]">
 		<div :class="$style.header">
 			<div style="display: flex; align-items: center">
-				<N8nIconButton
-					icon="arrow-left"
-					type="tertiary"
-					text
-					@click="router.push({ name: VIEWS.TEST_DEFINITION, params: { testId } })"
-				></N8nIconButton>
-				<InlineNameEdit
-					:model-value="state.name.value"
-					max-height="none"
-					type="Test name"
-					@update:model-value="updateName"
-				>
-					<N8nText bold size="xlarge" color="text-dark">{{ state.name.value }}</N8nText>
-				</InlineNameEdit>
+				<N8nText bold size="xlarge" color="text-dark">TODO: Replace Caption</N8nText>
 			</div>
 			<div style="display: flex; align-items: center; gap: 10px">
-				<N8nText v-if="hasRuns" color="text-light" size="small">
-					{{
-						isSaving
-							? locale.baseText('testDefinition.edit.saving')
-							: locale.baseText('testDefinition.edit.saved')
-					}}
-				</N8nText>
 				<N8nTooltip :disabled="isRunTestEnabled" :placement="'left'">
 					<N8nButton
 						:disabled="!isRunTestEnabled"
@@ -185,10 +79,10 @@ function onEvaluationWorkflowCreated(workflowId: string) {
 						@click="runTest"
 					/>
 					<template #content>
-						<template v-if="fieldsIssues.length > 0">
+						<!-- <template v-if="fieldsIssues.length > 0">
 							<div>{{ locale.baseText('testDefinition.completeConfig') }}</div>
 							<div v-for="issue in fieldsIssues" :key="issue.field">- {{ issue.message }}</div>
-						</template>
+						</template> -->
 						<template v-if="isRunning">
 							{{ locale.baseText('testDefinition.testIsRunning') }}
 						</template>
@@ -197,32 +91,16 @@ function onEvaluationWorkflowCreated(workflowId: string) {
 			</div>
 		</div>
 		<div :class="$style.wrapper">
-			<div :class="$style.description">
-				<InlineNameEdit
-					:model-value="state.description.value"
-					placeholder="Add a description..."
-					:required="false"
-					:autosize="{ minRows: 1, maxRows: 3 }"
-					input-type="textarea"
-					:maxlength="260"
-					max-height="none"
-					type="Test description"
-					@update:model-value="updateDescription"
-				>
-					<N8nText size="medium" color="text-base">{{ state.description.value }}</N8nText>
-				</InlineNameEdit>
-			</div>
-
 			<div :class="{ [$style.content]: true, [$style.contentWithRuns]: hasRuns }">
 				<RunsSection
 					v-if="hasRuns"
 					v-model:selectedMetric="selectedMetric"
 					:class="$style.runs"
 					:runs="runs"
-					:test-id="testId"
+					:workflow-id="props.workflowId"
 				/>
 
-				<ConfigSection
+				<!-- <ConfigSection
 					v-if="showConfig"
 					v-model:tags="state.tags"
 					v-model:evaluationWorkflow="state.evaluationWorkflow"
@@ -243,7 +121,7 @@ function onEvaluationWorkflowCreated(workflowId: string) {
 					@open-pinning-modal="openPinningModal"
 					@open-executions-view-for-tag="openExecutionsViewForTag"
 					@evaluation-workflow-created="onEvaluationWorkflowCreated($event)"
-				/>
+				/> -->
 			</div>
 		</div>
 	</div>
