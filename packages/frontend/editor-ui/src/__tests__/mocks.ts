@@ -62,6 +62,8 @@ export const mockNodeTypeDescription = ({
 	codex = undefined,
 	properties = [],
 	group,
+	hidden,
+	description,
 }: {
 	name?: INodeTypeDescription['name'];
 	icon?: INodeTypeDescription['icon'];
@@ -72,12 +74,14 @@ export const mockNodeTypeDescription = ({
 	codex?: INodeTypeDescription['codex'];
 	properties?: INodeTypeDescription['properties'];
 	group?: INodeTypeDescription['group'];
+	hidden?: INodeTypeDescription['hidden'];
+	description?: INodeTypeDescription['description'];
 } = {}) =>
 	mock<INodeTypeDescription>({
 		name,
 		icon,
 		displayName: name,
-		description: '',
+		description: description ?? '',
 		version,
 		defaults: {
 			name,
@@ -93,6 +97,7 @@ export const mockNodeTypeDescription = ({
 		documentationUrl: 'https://docs',
 		iconUrl: 'nodes/test-node/icon.svg',
 		webhooks: undefined,
+		hidden,
 	});
 
 export const mockLoadedNodeType = (name: string) =>
