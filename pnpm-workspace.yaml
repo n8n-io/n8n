@@ -36,6 +36,9 @@ catalog:
   zod: 3.24.1
   'zod-to-json-schema': 3.23.3
   '@langchain/core': 0.3.30
+  '@langchain/openai': 0.3.17
+  '@langchain/anthropic': 0.3.11
+  '@langchain/community': 0.3.24
 
 catalogs:
   frontend:
