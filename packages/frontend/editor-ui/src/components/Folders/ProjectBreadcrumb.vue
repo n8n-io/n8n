@@ -57,9 +57,11 @@ const onProjectMouseUp = () => {
 		@mouseenter="onHover"
 		@mouseup="isDragging ? onProjectMouseUp() : null"
 	>
-		<ProjectIcon :icon="projectIcon" :border-less="true" size="mini" />
-		<n8n-link :to="`/projects/${currentProject.id}`">
-			<N8nText size="medium" color="text-base">{{ projectName }}</N8nText>
+		<n8n-link :to="`/projects/${currentProject.id}`" :class="[$style['project-link']]">
+			<ProjectIcon :icon="projectIcon" :border-less="true" size="mini" :title="projectName" />
+			<N8nText size="medium" color="text-base" :class="$style['project-label']">
+				{{ projectName }}
+			</N8nText>
 		</n8n-link>
 	</div>
 </template>
@@ -67,8 +69,6 @@ const onProjectMouseUp = () => {
 <style module lang="scss">
 .home-project {
 	display: flex;
-	align-items: center;
-	gap: var(--spacing-4xs);
 	padding: var(--spacing-3xs) var(--spacing-4xs) var(--spacing-4xs);
 	border: var(--border-width-base) var(--border-style-base) transparent;
 
@@ -84,6 +84,18 @@ const onProjectMouseUp = () => {
 
 	&:hover :global(.n8n-text) {
 		color: var(--color-text-dark);
+	}
+}
+
+.project-link :global(.n8n-text) {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-4xs);
+}
+
+:global(.n8n-text).project-label {
+	@media (max-width: $breakpoint-sm) {
+		display: none;
 	}
 }
 </style>
