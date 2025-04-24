@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { useI18n } from '@n8n/design-system/composables/useI18n';
+
 import BaseWorkflowMessage from './BaseWorkflowMessage.vue';
 import type { ChatUI } from '../../../../types/assistant';
 
@@ -12,12 +14,13 @@ interface Props {
 }
 
 defineProps<Props>();
+const { t } = useI18n();
 </script>
 
 <template>
 	<BaseWorkflowMessage :message="message" :is-first-of-role="isFirstOfRole" :user="user">
-		<p>Your workflow was created successfully!</p>
-		<p>Fix any missing credential before testing it.</p>
+		<p>{{ t('assistantChat.builder.workflowGenerated1') }}</p>
+		<p>{{ t('assistantChat.builder.workflowGenerated2') }}</p>
 	</BaseWorkflowMessage>
 </template>
 

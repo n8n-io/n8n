@@ -127,28 +127,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 					codeSnippet: msg.codeSnippet,
 					read,
 				});
-			} else if (msg.type === 'summary') {
-				messages.push({
-					id,
-					type: 'block',
-					role: 'assistant',
-					title: msg.title,
-					content: msg.content,
-					quickReplies: msg.quickReplies,
-					read,
-				});
-			} else if (msg.type === 'agent-suggestion') {
-				messages.push({
-					id,
-					type: 'block',
-					role: 'assistant',
-					title: msg.title,
-					content: msg.text,
-					quickReplies: msg.quickReplies,
-					read,
-				});
-			} else if (msg.type === 'intermediate-step') {
-				assistantThinkingMessage.value = msg.text;
 			} else if (msg.type === 'workflow-step' && 'steps' in msg) {
 				messages.push({
 					id,

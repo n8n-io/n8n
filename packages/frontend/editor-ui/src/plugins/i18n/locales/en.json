@@ -160,6 +160,7 @@
 	"auth.signup.setupYourAccountError": "Problem setting up your account",
 	"auth.signup.tokenValidationError": "Issue validating invite token",
 	"aiAssistant.name": "Assistant",
+	"aiAssistant.n8nAi": "n8n AI",
 	"aiAssistant.builder.name": "Builder",
 	"aiAssistant.builder.mode": "AI Builder",
 	"aiAssistant.builder.placeholder": "What would you like to automate?",

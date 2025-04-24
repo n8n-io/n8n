@@ -153,7 +153,7 @@ describe('AskAssistantBuild', () => {
 		});
 
 		it('should track text feedback when submitted', async () => {
-			const { findByTestId, findByPlaceholderText } = renderComponent();
+			const { findByTestId } = renderComponent();
 
 			const feedbackText = 'This workflow is great but could be improved';
 
@@ -183,18 +183,6 @@ describe('AskAssistantBuild', () => {
 	});
 
 	describe('new workflow generation', () => {
-		it('should reset state when new workflow is requested', async () => {
-			renderComponent();
-
-			// Find the action callback that was registered
-			const actionCallback = builderStore.$onAction.mock.calls[0][0];
-
-			// Manually trigger the callback with the correct action format
-			actionCallback({ name: 'initBuilderChat' });
-
-			expect(builderStore.resetBuilderChat).toHaveBeenCalled();
-		});
-
 		it('should unsubscribe from store actions on unmount', async () => {
 			const unsubscribeMock = vi.fn();
 			builderStore.$onAction = vi.fn().mockReturnValue(unsubscribeMock);

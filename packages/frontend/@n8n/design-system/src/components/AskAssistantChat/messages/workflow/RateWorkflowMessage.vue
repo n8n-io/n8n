@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 
+import { useI18n } from '@n8n/design-system/composables/useI18n';
+
 import BaseWorkflowMessage from './BaseWorkflowMessage.vue';
 import type { ChatUI } from '../../../../types/assistant';
 
@@ -13,6 +15,7 @@ interface Props {
 	};
 }
 
+const { t } = useI18n();
 const emit = defineEmits<{
 	thumbsUp: [];
 	thumbsDown: [];
@@ -48,7 +51,7 @@ function onSubmitFeedback() {
 				<n8n-button
 					type="secondary"
 					size="small"
-					:label="'Helpful'"
+					:label="t('assistantChat.builder.thumbsUp')"
 					data-test-id="message-thumbs-up-button"
 					icon="thumbs-up"
 					@click="onRateButton('thumbsUp')"
@@ -57,7 +60,7 @@ function onSubmitFeedback() {
 					type="secondary"
 					size="small"
 					data-test-id="message-thumbs-down-button"
-					:label="'Not helpful'"
+					:label="t('assistantChat.builder.thumbsDown')"
 					icon="thumbs-down"
 					@click="onRateButton('thumbsDown')"
 				/>
@@ -67,10 +70,10 @@ function onSubmitFeedback() {
 					v-model="feedback"
 					:class="$style.feedbackInput"
 					type="textarea"
-					placeholder="Tell us about your experience"
+					:placeholder="t('assistantChat.builder.feedbackPlaceholder')"
 					data-test-id="message-feedback-input"
 					:read-only="false"
-					:resize="'none'"
+					resize="none"
 					:rows="5"
 				/>
 				<div :class="$style.feedbackTextArea__footer">
@@ -78,15 +81,15 @@ function onSubmitFeedback() {
 						native-type="submit"
 						type="secondary"
 						size="small"
-						@click="onSubmitFeedback"
 						data-test-id="message-submit-feedback-button"
+						@click="onSubmitFeedback"
 					>
-						Submit feedback
+						{{ t('assistantChat.builder.submit') }}
 					</n8n-button>
 				</div>
 			</div>
 
-			<p v-if="showSuccess" :class="$style.success">Thank you for your feedback!</p>
+			<p v-if="showSuccess" :class="$style.success">{{ t('assistantChat.builder.success') }}</p>
 		</div>
 	</BaseWorkflowMessage>
 </template>

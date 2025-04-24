@@ -5,6 +5,7 @@ import { computed } from 'vue';
 import AskAssistantChat from '@n8n/design-system/components/AskAssistantChat/AskAssistantChat.vue';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useBuilderStore } from '@/stores/builder.store';
+import { useI18n } from '@/composables/useI18n';
 
 const emit = defineEmits<{
 	close: [];
@@ -14,6 +15,7 @@ const assistantStore = useAssistantStore();
 const usersStore = useUsersStore();
 const telemetry = useTelemetry();
 const builderStore = useBuilderStore();
+const i18n = useI18n();
 
 const user = computed(() => ({
 	firstName: usersStore.currentUser?.firstName ?? '',
@@ -68,7 +70,11 @@ async function undoCodeDiff(index: number) {
 			:streaming="assistantStore.streaming"
 			:loading-message="loadingMessage"
 			:session-id="assistantStore.currentSessionId"
-			:title="builderStore.isAIBuilderEnabled ? 'n8n AI' : 'Assistant'"
+			:title="
+				builderStore.isAIBuilderEnabled
+					? i18n.baseText('aiAssistant.n8nAi')
+					: i18n.baseText('aiAssistant.assistant')
+			"
 			@close="emit('close')"
 			@message="onUserMessage"
 			@code-replace="onCodeReplace"

@@ -6,7 +6,6 @@ import CodeDiffMessage from './messages/CodeDiffMessage.vue';
 import ErrorMessage from './messages/ErrorMessage.vue';
 import EventMessage from './messages/EventMessage.vue';
 import TextMessage from './messages/TextMessage.vue';
-import ComposedConnectionsMessage from './messages/workflow/ComposedConnectionsMessage.vue';
 import ComposedNodesMessage from './messages/workflow/ComposedNodesMessage.vue';
 import RateWorkflowMessage from './messages/workflow/RateWorkflowMessage.vue';
 import WorkflowGeneratedMessage from './messages/workflow/WorkflowGeneratedMessage.vue';

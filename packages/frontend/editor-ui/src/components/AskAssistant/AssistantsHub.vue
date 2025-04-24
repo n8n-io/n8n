@@ -72,7 +72,8 @@ onBeforeUnmount(() => {
 						</template>
 					</AskAssistantBuild>
 					<AskAssistantChat v-else @close="onClose">
-						<template #header>
+						<!-- Header switcher is only visible when AIBuilder is enabled -->
+						<template v-if="builderStore.isAIBuilderEnabled" #header>
 							<HubSwitcher :is-build-mode="isBuildMode" @toggle="toggleAssistantMode" />
 						</template>
 					</AskAssistantChat>

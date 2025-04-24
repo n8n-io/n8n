@@ -1,16 +1,18 @@
 <script setup lang="ts">
+import { useI18n } from '@n8n/design-system/composables/useI18n';
+
 import BaseWorkflowMessage from './BaseWorkflowMessage.vue';
 import type { ChatUI } from '../../../../types/assistant';
 
 interface Props {
-	message: ChatUI.ComposedNodesMessage & { id: string; read: boolean };
+	message: ChatUI.WorkflowComposedMessage & { id: string; read: boolean };
 	isFirstOfRole: boolean;
 	user?: {
 		firstName: string;
 		lastName: string;
 	};
 }
-
+const { t } = useI18n();
 defineProps<Props>();
 </script>
 
@@ -19,9 +21,9 @@ defineProps<Props>();
 		:message="message"
 		:is-first-of-role="isFirstOfRole"
 		:user="user"
-		next-step="Generating final workflow..."
+		:next-step="t('assistantChat.builder.generatingFinalWorkflow')"
 	>
-		<template #title>Configured nodes</template>
+		<template #title>{{ t('assistantChat.builder.configuredNodes') }}</template>
 		<ol :class="$style.nodesList">
 			<li v-for="node in message.nodes" :key="node.name" :class="$style.node">
 				<div :class="$style.nodeName">{{ node.name }}</div>
