@@ -67,6 +67,7 @@ import type { NodeConnectionType } from 'n8n-workflow';
 import { useTemplatesStore } from '@/stores/templates.store';
 import type { BaseTextKey } from '@/plugins/i18n';
 import { camelCase } from 'lodash-es';
+import { useSettingsStore } from '@/stores/settings.store';
 
 export interface NodeViewItemSection {
 	key: string;
@@ -149,8 +150,9 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 	const websiteCategoryURL =
 		templatesStore.constructTemplateRepositoryURL(websiteCategoryURLParams);
 
+	const askAiEnabled = useSettingsStore().isAskAiEnabled;
 	const aiTransformNode = nodeTypesStore.getNodeType(AI_TRANSFORM_NODE_TYPE);
-	const transformNode = aiTransformNode ? [getNodeView(aiTransformNode)] : [];
+	const transformNode = askAiEnabled && aiTransformNode ? [getNodeView(aiTransformNode)] : [];
 
 	return {
 		value: AI_NODE_CREATOR_VIEW,
