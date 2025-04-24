@@ -206,6 +206,9 @@ onBeforeUnmount(() => {
 			/>
 			<slot name="append"></slot>
 		</div>
+		<div v-else>
+			<slot name="append"></slot>
+		</div>
 		<n8n-action-toggle
 			v-if="visibleBreadcrumbsItems && actions?.length"
 			:actions="actions"

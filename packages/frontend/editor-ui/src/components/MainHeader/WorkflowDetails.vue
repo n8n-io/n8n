@@ -620,7 +620,7 @@ const onBreadcrumbsItemSelected = (item: PathItem) => {
 					@item-selected="onBreadcrumbsItemSelected"
 				>
 					<template #append>
-						<span :class="$style['path-separator']">/</span>
+						<span v-if="projectsStore.currentProject" :class="$style['path-separator']">/</span>
 						<ShortenName :name="name" :limit="value" :custom="true" test-id="workflow-name-input">
 							<template #default="{ shortenedName }">
 								<InlineTextEdit
