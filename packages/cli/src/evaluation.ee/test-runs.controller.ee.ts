@@ -55,7 +55,7 @@ export class TestRunsController {
 		return await this.testRunRepository.getTestRunSummaryById(id);
 	}
 
-	@Get('/:workflowId/test-runs/:id/cases')
+	@Get('/:workflowId/test-runs/:id/test-cases')
 	async getTestCases(req: TestRunsRequest.GetCases) {
 		await this.getTestRun(req);
 
