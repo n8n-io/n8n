@@ -8,8 +8,10 @@ export async function loadSubWorkflowInputs(
 	const { fields, dataMode, subworkflowInfo } = await loadWorkflowInputMappings.bind(this)();
 	let emptyFieldsNotice: string | undefined;
 	if (fields.length === 0) {
-		const subworkflowLink = subworkflowInfo?.id
-			? `<a href="/workflow/${subworkflowInfo?.id}" target="_blank">sub-workflow’s trigger</a>`
+		const { triggerId, workflowId } = subworkflowInfo ?? {};
+		const path = (workflowId ?? '') + (triggerId ? `/${triggerId.slice(0, 6)}` : '');
+		const subworkflowLink = workflowId
+			? `<a href="/workflow/${path}" target="_blank">sub-workflow’s trigger</a>`
 			: 'sub-workflow’s trigger';
 
 		switch (dataMode) {
