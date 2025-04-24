@@ -204,7 +204,6 @@ const connectionType = ref<NodeConnectionType>(NodeConnectionTypes.Main);
 const dataSize = ref(0);
 const showData = ref(false);
 const userEnabledShowData = ref(false);
-const outputIndex = ref(0);
 const binaryDataDisplayVisible = ref(false);
 const binaryDataDisplayData = ref<IBinaryData | null>(null);
 const currentPage = ref(1);
@@ -243,6 +242,11 @@ const { isSubNodeType } = useNodeType({
 	node,
 });
 
+const outputIndex = computed(
+	() =>
+		(props.paneType === 'input' ? ndvStore.ndvInputBranchIndex : ndvStore.ndvOutputBranchIndex) ??
+		0,
+);
 const displayMode = computed(() =>
 	props.paneType === 'input' ? ndvStore.inputPanelDisplayMode : ndvStore.outputPanelDisplayMode,
 );
@@ -626,7 +630,7 @@ watch(hasNodeRun, () => {
 	if (props.paneType === 'output') setDisplayMode();
 	else {
 		// InputPanel relies on the outputIndex to check if we have data
-		outputIndex.value = determineInitialOutputIndex();
+		setBranchIndex(determineInitialOutputIndex());
 	}
 });
 
@@ -658,13 +662,6 @@ watch(binaryData, (newData, prevData) => {
 	} else if (!newData.length && displayMode.value === 'binary') {
 		onDisplayModeChange('table');
 	}
-});
-
-watch(currentOutputIndex, (branchIndex: number) => {
-	ndvStore.setNDVBranchIndex({
-		pane: props.paneType,
-		branchIndex,
-	});
 });
 
 watch(search, (newSearch) => {
@@ -960,8 +957,12 @@ function switchToBinary() {
 	onDisplayModeChange('binary');
 }
 
+function setBranchIndex(value: number) {
+	ndvStore.setNDVBranchIndex({ pane: props.paneType, branchIndex: value });
+}
+
 function onBranchChange(value: number) {
-	outputIndex.value = value;
+	setBranchIndex(value);
 
 	telemetry.track('User changed ndv branch', {
 		push_ref: props.pushRef,
@@ -1174,7 +1175,7 @@ function determineInitialOutputIndex() {
 
 function init() {
 	// Reset the selected output index every time another node gets selected
-	outputIndex.value = determineInitialOutputIndex();
+	setBranchIndex(determineInitialOutputIndex());
 	refreshDataSize();
 	closeBinaryDataDisplay();
 	let outputTypes: NodeConnectionType[] = [];

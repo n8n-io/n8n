@@ -88,7 +88,14 @@ function handleToggleExpanded(treeNode: LogEntry) {
 async function handleOpenNdv(treeNode: LogEntry) {
 	ndvStore.setActiveNodeName(treeNode.node.name);
 
-	await nextTick(() => ndvStore.setOutputRunIndex(treeNode.runIndex));
+	await nextTick(() => {
+		const source = treeNode.runData.source[0];
+		const inputBranch = source?.previousNodeOutput ?? 0;
+
+		ndvStore.setInputNodeName(source?.previousNode);
+		ndvStore.setNDVBranchIndex({ pane: 'input', branchIndex: inputBranch });
+		ndvStore.setOutputRunIndex(treeNode.runIndex);
+	});
 }
 
 async function handleTriggerPartialExecution(treeNode: LogEntry) {

@@ -81,7 +81,7 @@ const redrawRequired = ref(false);
 const runInputIndex = ref(-1);
 const runOutputIndex = computed(() => ndvStore.output.run ?? -1);
 const isLinkingEnabled = ref(true);
-const selectedInput = ref<string | undefined>();
+const selectedInput = computed(() => ndvStore.input.nodeName);
 const triggerWaitingWarningEnabled = ref(false);
 const isDragging = ref(false);
 const mainPanelPosition = ref(0);
@@ -578,7 +578,7 @@ const onOutputTableMounted = (e: { avgRowHeight: number }) => {
 const onInputNodeChange = (value: string, index: number) => {
 	runInputIndex.value = -1;
 	isLinkingEnabled.value = true;
-	selectedInput.value = value;
+	ndvStore.setInputNodeName(value);
 
 	telemetry.track('User changed ndv input dropdown', {
 		node_type: activeNode.value ? activeNode.value.type : '',
@@ -630,7 +630,7 @@ watch(
 			runInputIndex.value = -1;
 			ndvStore.setOutputRunIndex(-1);
 			isLinkingEnabled.value = true;
-			selectedInput.value = undefined;
+			ndvStore.setInputNodeName(undefined);
 			triggerWaitingWarningEnabled.value = false;
 			avgOutputRowHeight.value = 0;
 			avgInputRowHeight.value = 0;
@@ -686,12 +686,6 @@ watch(maxOutputRun, () => {
 
 watch(maxInputRun, () => {
 	runInputIndex.value = -1;
-});
-
-watch(inputNodeName, (nodeName) => {
-	setTimeout(() => {
-		ndvStore.setInputNodeName(nodeName);
-	}, 0);
 });
 
 watch(inputRun, (inputRun) => {

@@ -12,6 +12,8 @@ import {
 	aiChatWorkflow,
 	aiManualExecutionResponse,
 	aiManualWorkflow,
+	ifWorkflow,
+	ifWorkflowExecutionResponse,
 } from '../../__test__/data';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -115,17 +117,62 @@ describe('LogsOverviewPanel', () => {
 	it('should open NDV if the button is clicked', async () => {
 		const rendered = render({
 			isOpen: true,
+			execution: {
+				...ifWorkflowExecutionResponse,
+				tree: createLogEntries(
+					ifWorkflow,
+					ifWorkflowExecutionResponse.data?.resultData.runData ?? {},
+				),
+			},
 		});
-		const aiAgentRow = (await rendered.findAllByRole('treeitem'))[0];
+
+		await waitFor(() => expect(rendered.getAllByRole('treeitem')).toHaveLength(5));
+
+		const rows = rendered.getAllByRole('treeitem');
 
 		expect(ndvStore.activeNodeName).toBe(null);
+		expect(ndvStore.input.nodeName).toBe(undefined);
+		expect(ndvStore.input.branch).toBe(undefined);
 		expect(ndvStore.output.run).toBe(undefined);
 
-		await fireEvent.click(within(aiAgentRow).getAllByLabelText('Open...')[0]);
-
+		await fireEvent.click(within(rows[0]).getAllByLabelText('Open...')[0]);
 		await waitFor(() => {
-			expect(ndvStore.activeNodeName).toBe('AI Agent');
+			expect(ndvStore.activeNodeName).toBe('A');
+			expect(ndvStore.input.nodeName).toBe(undefined);
+			expect(ndvStore.input.branch).toBe(0);
 			expect(ndvStore.output.run).toBe(0);
+		});
+
+		await fireEvent.click(within(rows[1]).getAllByLabelText('Open...')[0]);
+		await waitFor(() => {
+			expect(ndvStore.activeNodeName).toBe('C');
+			expect(ndvStore.input.nodeName).toBe('A');
+			expect(ndvStore.input.branch).toBe(0);
+			expect(ndvStore.output.run).toBe(0);
+		});
+
+		await fireEvent.click(within(rows[2]).getAllByLabelText('Open...')[0]);
+		await waitFor(() => {
+			expect(ndvStore.activeNodeName).toBe('B');
+			expect(ndvStore.input.nodeName).toBe('A');
+			expect(ndvStore.input.branch).toBe(0);
+			expect(ndvStore.output.run).toBe(0);
+		});
+
+		await fireEvent.click(within(rows[3]).getAllByLabelText('Open...')[0]);
+		await waitFor(() => {
+			expect(ndvStore.activeNodeName).toBe('C');
+			expect(ndvStore.input.nodeName).toBe('B');
+			expect(ndvStore.input.branch).toBe(0);
+			expect(ndvStore.output.run).toBe(1);
+		});
+
+		await fireEvent.click(within(rows[4]).getAllByLabelText('Open...')[0]);
+		await waitFor(() => {
+			expect(ndvStore.activeNodeName).toBe('C');
+			expect(ndvStore.input.nodeName).toBe('B');
+			expect(ndvStore.input.branch).toBe(1);
+			expect(ndvStore.output.run).toBe(2);
 		});
 	});
 
