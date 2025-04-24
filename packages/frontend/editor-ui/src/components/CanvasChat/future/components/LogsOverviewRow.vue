@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { type TreeNode as ElTreeNode } from 'element-plus';
 import { computed, useTemplateRef, watch } from 'vue';
 import { N8nButton, N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -17,16 +16,16 @@ import {
 
 const props = defineProps<{
 	data: LogEntry;
-	node: ElTreeNode;
 	isSelected: boolean;
 	isReadOnly: boolean;
 	shouldShowConsumedTokens: boolean;
 	isCompact: boolean;
 	latestInfo?: LatestNodeInfo;
+	expanded: boolean;
 }>();
 
 const emit = defineEmits<{
-	toggleExpanded: [node: ElTreeNode];
+	toggleExpanded: [node: LogEntry];
 	triggerPartialExecution: [node: LogEntry];
 	openNdv: [node: LogEntry];
 }>();
@@ -35,7 +34,6 @@ const locale = useI18n();
 const containerRef = useTemplateRef('containerRef');
 const nodeTypeStore = useNodeTypesStore();
 const type = computed(() => nodeTypeStore.getNodeType(props.data.node.type));
-const depth = computed(() => (props.node.level ?? 1) - 1);
 const isSettled = computed(
 	() =>
 		props.data.runData.executionStatus &&
@@ -60,7 +58,7 @@ function isLastChild(level: number) {
 	let parent = props.data.parent;
 	let data: LogEntry | undefined = props.data;
 
-	for (let i = 0; i < depth.value - level; i++) {
+	for (let i = 0; i < props.data.depth - level; i++) {
 		data = parent;
 		parent = parent?.parent;
 	}
@@ -89,6 +87,9 @@ watch(
 <template>
 	<div
 		ref="containerRef"
+		role="treeitem"
+		tabindex="0"
+		:aria-expanded="props.data.children.length > 0 && props.expanded"
 		:class="{
 			[$style.container]: true,
 			[$style.compact]: props.isCompact,
@@ -96,16 +97,16 @@ watch(
 			[$style.selected]: props.isSelected,
 		}"
 	>
-		<template v-for="level in depth" :key="level">
+		<template v-for="level in props.data.depth" :key="level">
 			<div
 				:class="{
 					[$style.indent]: true,
-					[$style.connectorCurved]: level === depth,
+					[$style.connectorCurved]: level === props.data.depth,
 					[$style.connectorStraight]: !isLastChild(level),
 				}"
 			/>
 		</template>
-		<div :class="$style.background" :style="{ '--indent-depth': depth }" />
+		<div :class="$style.background" :style="{ '--indent-depth': props.data.depth }" />
 		<NodeIcon :node-type="type" :size="16" :class="$style.icon" />
 		<NodeName
 			:class="$style.name"
@@ -146,7 +147,7 @@ watch(
 			<ConsumedTokenCountText
 				v-if="
 					subtreeConsumedTokens.totalTokens > 0 &&
-					(props.data.children.length === 0 || !props.node.expanded)
+					(props.data.children.length === 0 || !props.expanded)
 				"
 				:consumed-tokens="subtreeConsumedTokens"
 			/>
@@ -168,7 +169,7 @@ watch(
 			icon="play"
 			style="color: var(--color-text-base)"
 			:aria-label="locale.baseText('logs.overview.body.run')"
-			:class="[$style.partialExecutionButton, depth > 0 ? $style.unavailable : '']"
+			:class="[$style.partialExecutionButton, props.data.depth > 0 ? $style.unavailable : '']"
 			:disabled="props.latestInfo?.deleted || props.latestInfo?.disabled"
 			@click.stop="emit('triggerPartialExecution', props.data)"
 		/>
@@ -194,9 +195,9 @@ watch(
 			}"
 			:class="$style.toggleButton"
 			:aria-label="locale.baseText('logs.overview.body.toggleRow')"
-			@click.stop="emit('toggleExpanded', props.node)"
+			@click.stop="emit('toggleExpanded', props.data)"
 		>
-			<N8nIcon size="medium" :icon="props.node.expanded ? 'chevron-down' : 'chevron-up'" />
+			<N8nIcon size="medium" :icon="props.expanded ? 'chevron-down' : 'chevron-up'" />
 		</N8nButton>
 	</div>
 </template>

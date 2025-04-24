@@ -139,6 +139,7 @@ function handleResizeOverviewPanelEnd() {
 							@resizeend="handleResizeOverviewPanelEnd"
 						>
 							<LogsOverviewPanel
+								:key="execution?.id ?? ''"
 								:class="$style.logsOverview"
 								:is-open="isOpen"
 								:is-read-only="isReadOnly"
