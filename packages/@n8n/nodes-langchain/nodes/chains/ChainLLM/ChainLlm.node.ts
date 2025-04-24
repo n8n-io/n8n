@@ -67,6 +67,10 @@ export class ChainLlm implements INodeType {
 		this.logger.debug('Executing Basic LLM Chain');
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
+		const promises = [];
+
+		// Get output parser if configured
+		const outputParser = await getOptionalOutputParser(this);
 
 		// Process each input item
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
@@ -76,9 +80,6 @@ export class ChainLlm implements INodeType {
 					NodeConnectionTypes.AiLanguageModel,
 					0,
 				)) as BaseLanguageModel;
-
-				// Get output parser if configured
-				const outputParser = await getOptionalOutputParser(this);
 
 				// Get user prompt based on node version
 				let prompt: string;
@@ -107,36 +108,17 @@ export class ChainLlm implements INodeType {
 				) as MessageTemplate[];
 
 				// Execute the chain
-				const responses = await executeChain({
-					context: this,
-					itemIndex,
-					query: prompt,
-					llm,
-					outputParser,
-					messages,
-				});
-
-				// If the node version is 1.6(and LLM is using `response_format: json_object`) or higher or an output parser is configured,
-				//  we unwrap the response and return the object directly as JSON
-				const shouldUnwrapObjects = this.getNode().typeVersion >= 1.6 || !!outputParser;
-				// Process each response and add to return data
-				responses.forEach((response) => {
-					returnData.push({
-						json: formatResponse(response, shouldUnwrapObjects),
-					});
-				});
+				promises.push(
+					executeChain({
+						context: this,
+						itemIndex,
+						query: prompt,
+						llm,
+						outputParser,
+						messages,
+					}),
+				);
 			} catch (error) {
-				// Handle OpenAI specific rate limit errors
-				if (error instanceof NodeApiError && isOpenAiError(error.cause)) {
-					const openAiErrorCode: string | undefined = (error.cause as any).error?.code;
-					if (openAiErrorCode) {
-						const customMessage = getCustomOpenAiErrorMessage(openAiErrorCode);
-						if (customMessage) {
-							error.message = customMessage;
-						}
-					}
-				}
-
 				// Continue on failure if configured
 				if (this.continueOnFail()) {
 					returnData.push({ json: { error: error.message }, pairedItem: { item: itemIndex } });
@@ -146,6 +128,41 @@ export class ChainLlm implements INodeType {
 				throw error;
 			}
 		}
+
+		// If the node version is 1.6(and LLM is using `response_format: json_object`) or higher or an output parser is configured,
+		//  we unwrap the response and return the object directly as JSON
+		const shouldUnwrapObjects = this.getNode().typeVersion >= 1.6 || !!outputParser;
+
+		(await Promise.allSettled(promises)).forEach(
+			(result: PromiseSettledResult<object>, index: number) => {
+				if (result.status === 'rejected') {
+					const error = result.reason;
+					// Handle OpenAI specific rate limit errors
+					if (error instanceof NodeApiError && isOpenAiError(error.cause)) {
+						const openAiErrorCode: string | undefined = (error.cause as any).error?.code;
+						if (openAiErrorCode) {
+							const customMessage = getCustomOpenAiErrorMessage(openAiErrorCode);
+							if (customMessage) {
+								error.message = customMessage;
+							}
+						}
+					}
+
+					if (this.continueOnFail()) {
+						returnData.push({ json: { error: error.message }, pairedItem: { item: index } });
+						return;
+					}
+					throw new NodeOperationError(this.getNode(), result.reason);
+				}
+				const responses = result.value as object[];
+
+				responses.forEach((response: object) => {
+					returnData.push({
+						json: formatResponse(response, shouldUnwrapObjects),
+					});
+				});
+			},
+		);
 
 		return [returnData];
 	}

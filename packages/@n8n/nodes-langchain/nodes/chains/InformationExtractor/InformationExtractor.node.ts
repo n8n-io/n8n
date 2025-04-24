@@ -220,6 +220,7 @@ export class InformationExtractor implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
+		const promises = [];
 
 		const llm = (await this.getInputConnectionData(
 			NodeConnectionTypes.AiLanguageModel,
@@ -288,8 +289,7 @@ export class InformationExtractor implements INodeType {
 			const chain = prompt.pipe(llm).pipe(parser).withConfig(getTracingConfig(this));
 
 			try {
-				const output = await chain.invoke(messages);
-				resultData.push({ json: { output } });
+				promises.push(chain.invoke(messages));
 			} catch (error) {
 				if (this.continueOnFail()) {
 					resultData.push({ json: { error: error.message }, pairedItem: { item: itemIndex } });
@@ -299,6 +299,20 @@ export class InformationExtractor implements INodeType {
 				throw error;
 			}
 		}
+		(await Promise.allSettled(promises)).forEach((response, index) => {
+			if (response.status === 'rejected') {
+				if (this.continueOnFail()) {
+					resultData.push({
+						json: { error: response.reason as string },
+						pairedItem: { item: index },
+					});
+				} else {
+					throw new NodeOperationError(this.getNode(), response.reason);
+				}
+			}
+			const output = response.value;
+			resultData.push({ json: { output } });
+		});
 
 		return [resultData];
 	}

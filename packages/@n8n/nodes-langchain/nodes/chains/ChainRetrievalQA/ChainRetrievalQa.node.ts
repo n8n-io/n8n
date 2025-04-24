@@ -186,6 +186,7 @@ export class ChainRetrievalQa implements INodeType {
 		this.logger.debug('Executing Retrieval QA Chain');
 
 		const items = this.getInputData();
+		const promises = [];
 		const returnData: INodeExecutionData[] = [];
 
 		// Run for each item
@@ -266,18 +267,13 @@ export class ChainRetrievalQa implements INodeType {
 
 				// Execute the chain with tracing config
 				const tracingConfig = getTracingConfig(this);
-				const response = await retrievalChain
-					.withConfig(tracingConfig)
-					.invoke({ input: query }, { signal: this.getExecutionCancelSignal() });
+				promises.push(
+					retrievalChain
+						.withConfig(tracingConfig)
+						.invoke({ input: query }, { signal: this.getExecutionCancelSignal() }),
+				);
 
 				// Get the answer from the response
-				const answer: string = response.answer;
-				if (this.getNode().typeVersion >= 1.5) {
-					returnData.push({ json: { response: answer } });
-				} else {
-					// Legacy format for versions 1.4 and below is { text: string }
-					returnData.push({ json: { response: { text: answer } } });
-				}
 			} catch (error) {
 				if (this.continueOnFail()) {
 					const metadata = parseErrorMetadata(error);
@@ -292,6 +288,30 @@ export class ChainRetrievalQa implements INodeType {
 				throw error;
 			}
 		}
+		(await Promise.allSettled(promises)).forEach((response, index) => {
+			if (response.status === 'rejected') {
+				if (this.continueOnFail()) {
+					const metadata = parseErrorMetadata(response.reason);
+					returnData.push({
+						json: { error: response.reason.message },
+						pairedItem: { item: index },
+						metadata,
+					});
+					return;
+				} else {
+					throw new NodeOperationError(this.getNode(), response.reason);
+				}
+			}
+			const output = response.value;
+			const answer: string = output.answer;
+			if (this.getNode().typeVersion >= 1.5) {
+				returnData.push({ json: { response: answer } });
+			} else {
+				// Legacy format for versions 1.4 and below is { text: string }
+				returnData.push({ json: { response: { text: answer } } });
+			}
+		});
+
 		return [returnData];
 	}
 }

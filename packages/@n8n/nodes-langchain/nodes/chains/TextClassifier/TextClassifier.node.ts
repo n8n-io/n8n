@@ -165,6 +165,7 @@ export class TextClassifier implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
+		const promises: Array<Promise<any>> = [];
 
 		const llm = (await this.getInputConnectionData(
 			NodeConnectionTypes.AiLanguageModel,
@@ -268,12 +269,7 @@ ${fallbackPrompt}`,
 			const chain = prompt.pipe(llm).pipe(parser).withConfig(getTracingConfig(this));
 
 			try {
-				const output = await chain.invoke(messages);
-
-				categories.forEach((cat, idx) => {
-					if (output[cat.category]) returnData[idx].push(item);
-				});
-				if (fallback === 'other' && output.fallback) returnData[returnData.length - 1].push(item);
+				promises.push(chain.invoke(messages));
 			} catch (error) {
 				if (this.continueOnFail()) {
 					returnData[0].push({
@@ -287,6 +283,29 @@ ${fallbackPrompt}`,
 				throw error;
 			}
 		}
+
+		(await Promise.allSettled(promises)).forEach((response, index) => {
+			if (response.status === 'rejected') {
+				if (this.continueOnFail()) {
+					returnData[0].push({
+						json: { error: response.reason.message },
+						pairedItem: { item: index },
+					});
+					return;
+				} else {
+					throw new NodeOperationError(this.getNode(), response.reason.message);
+				}
+			} else {
+				const output = response.value;
+				const item = items[index];
+
+				categories.forEach((cat, idx) => {
+					if (output[cat.category]) returnData[idx].push(item);
+				});
+
+				if (fallback === 'other' && output.fallback) returnData[returnData.length - 1].push(item);
+			}
+		});
 
 		return returnData;
 	}
