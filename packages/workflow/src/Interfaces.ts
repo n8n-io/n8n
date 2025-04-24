@@ -2436,11 +2436,12 @@ export interface WorkflowTestData {
 		};
 	};
 	output: {
+		assertBinaryData?: boolean;
 		nodeExecutionOrder?: string[];
+		nodeExecutionStack?: IExecuteData[];
 		testAllOutputs?: boolean;
-		nodeData: {
-			[key: string]: any[][];
-		};
+		nodeData: Record<string, INodeExecutionData[][]>;
+		error?: string;
 	};
 	nock?: {
 		baseUrl: string;
