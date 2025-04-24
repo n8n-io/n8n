@@ -34,13 +34,14 @@ const { isLoading } = useAsyncState(
 );
 
 const hasRuns = computed(() => runs.value.length > 0);
+const fieldsIssues = computed(() => testDefinitionStore.getFieldIssues(props.workflowId) ?? []);
 
-// const showConfig = ref(true);
+const showConfig = ref(true);
 const selectedMetric = ref<string>('');
 
-// function getFieldIssues(key: string) {
-// 	return fieldsIssues.value.filter((issue) => issue.field === key);
-// }
+function getFieldIssues(key: string) {
+	return fieldsIssues.value.filter((issue) => issue.field === key);
+}
 
 async function runTest() {
 	await testDefinitionStore.startTestRun(props.workflowId);
@@ -100,14 +101,10 @@ const isRunTestEnabled = computed(() => !isRunning.value);
 					:workflow-id="props.workflowId"
 				/>
 
-				<!-- <ConfigSection
+				<ConfigSection
 					v-if="showConfig"
-					v-model:tags="state.tags"
-					v-model:evaluationWorkflow="state.evaluationWorkflow"
-					v-model:mockedNodes="state.mockedNodes"
 					:class="$style.config"
-					:cancel-editing="cancelEditing"
-					:tags-by-id="tagsById"
+					:cancel-editing="() => {}"
 					:is-loading="isLoading"
 					:get-field-issues="getFieldIssues"
 					:start-editing="startEditing"
@@ -121,7 +118,7 @@ const isRunTestEnabled = computed(() => !isRunning.value);
 					@open-pinning-modal="openPinningModal"
 					@open-executions-view-for-tag="openExecutionsViewForTag"
 					@evaluation-workflow-created="onEvaluationWorkflowCreated($event)"
-				/> -->
+				/>
 			</div>
 		</div>
 	</div>

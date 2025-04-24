@@ -284,20 +284,6 @@ export const routes: RouteRecordRaw[] = [
 				component: TestDefinitionEditView,
 				props: true,
 			},
-			// {
-			// 	path: 'new',
-			// 	name: VIEWS.NEW_TEST_DEFINITION,
-			// 	component: TestDefinitionNewView,
-			// 	props: true,
-			// },
-			// {
-			// 	path: ':testId',
-			// 	name: VIEWS.TEST_DEFINITION_EDIT,
-			// 	props: true,
-			// 	components: {
-			// 		default: TestDefinitionEditView,
-			// 	},
-			// },
 			{
 				path: 'test-runs/:runId',
 				name: VIEWS.TEST_DEFINITION_RUNS_DETAIL,
