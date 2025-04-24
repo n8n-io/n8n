@@ -1,14 +1,20 @@
 import { Container } from '@n8n/di';
+import { mock } from 'jest-mock-extended';
 import { DateTime } from 'luxon';
+import type { Logger } from 'n8n-core';
 
 import type { Project } from '@/databases/entities/project';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import type { IWorkflowDb } from '@/interfaces';
+import type { License } from '@/license';
 import { createTeamProject } from '@test-integration/db/projects';
 import { createWorkflow } from '@test-integration/db/workflows';
 import * as testDb from '@test-integration/test-db';
 
 import { createCompactedInsightsEvent } from '../database/entities/__tests__/db-utils';
+import type { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository';
+import type { InsightsCollectionService } from '../insights-collection.service';
+import type { InsightsCompactionService } from '../insights-compaction.service';
 import { InsightsService } from '../insights.service';
 
 // Initialize DB once for all tests
@@ -481,5 +487,101 @@ describe('getInsightsByTime', () => {
 			averageRunTime: 0,
 			timeSaved: 0,
 		});
+	});
+});
+
+describe('getAvailableDateRanges', () => {
+	let insightsService: InsightsService;
+	let licenseMock: jest.Mocked<License>;
+
+	beforeAll(() => {
+		licenseMock = mock<License>();
+		insightsService = new InsightsService(
+			mock<InsightsByPeriodRepository>(),
+			mock<InsightsCompactionService>(),
+			mock<InsightsCollectionService>(),
+			licenseMock,
+			mock<Logger>(),
+		);
+	});
+
+	test('returns correct ranges when hourly data is enabled and max history is unlimited', () => {
+		licenseMock.getInsightsMaxHistory.mockReturnValue(-1);
+		licenseMock.isInsightsHourlyDataEnabled.mockReturnValue(true);
+
+		const result = insightsService.getAvailableDateRanges();
+
+		expect(result).toEqual([
+			{ key: 'day', licensed: true, granularity: 'hour' },
+			{ key: 'week', licensed: true, granularity: 'day' },
+			{ key: '2weeks', licensed: true, granularity: 'day' },
+			{ key: 'month', licensed: true, granularity: 'day' },
+			{ key: 'quarter', licensed: true, granularity: 'week' },
+			{ key: 'year', licensed: true, granularity: 'week' },
+		]);
+	});
+
+	test('returns correct ranges when hourly data is enabled and max history is 365 days', () => {
+		licenseMock.getInsightsMaxHistory.mockReturnValue(365);
+		licenseMock.isInsightsHourlyDataEnabled.mockReturnValue(true);
+
+		const result = insightsService.getAvailableDateRanges();
+
+		expect(result).toEqual([
+			{ key: 'day', licensed: true, granularity: 'hour' },
+			{ key: 'week', licensed: true, granularity: 'day' },
+			{ key: '2weeks', licensed: true, granularity: 'day' },
+			{ key: 'month', licensed: true, granularity: 'day' },
+			{ key: 'quarter', licensed: true, granularity: 'week' },
+			{ key: 'year', licensed: true, granularity: 'week' },
+		]);
+	});
+
+	test('returns correct ranges when hourly data is disabled and max history is 30 days', () => {
+		licenseMock.getInsightsMaxHistory.mockReturnValue(30);
+		licenseMock.isInsightsHourlyDataEnabled.mockReturnValue(false);
+
+		const result = insightsService.getAvailableDateRanges();
+
+		expect(result).toEqual([
+			{ key: 'day', licensed: false, granularity: 'hour' },
+			{ key: 'week', licensed: true, granularity: 'day' },
+			{ key: '2weeks', licensed: true, granularity: 'day' },
+			{ key: 'month', licensed: true, granularity: 'day' },
+			{ key: 'quarter', licensed: false, granularity: 'week' },
+			{ key: 'year', licensed: false, granularity: 'week' },
+		]);
+	});
+
+	test('returns correct ranges when max history is less than 7 days', () => {
+		licenseMock.getInsightsMaxHistory.mockReturnValue(5);
+		licenseMock.isInsightsHourlyDataEnabled.mockReturnValue(false);
+
+		const result = insightsService.getAvailableDateRanges();
+
+		expect(result).toEqual([
+			{ key: 'day', licensed: false, granularity: 'hour' },
+			{ key: 'week', licensed: false, granularity: 'day' },
+			{ key: '2weeks', licensed: false, granularity: 'day' },
+			{ key: 'month', licensed: false, granularity: 'day' },
+			{ key: 'quarter', licensed: false, granularity: 'week' },
+			{ key: 'year', licensed: false, granularity: 'week' },
+		]);
+	});
+
+	test('returns correct ranges when max history is 90 days and hourly data is enabled', () => {
+		licenseMock.getInsightsMaxHistory.mockReturnValue(90);
+		licenseMock.isInsightsHourlyDataEnabled.mockReturnValue(true);
+
+		const result = insightsService.getAvailableDateRanges();
+
+		expect(result).toEqual([
+			{ key: 'day', licensed: true, granularity: 'hour' },
+			{ key: 'week', licensed: true, granularity: 'day' },
+			{ key: '2weeks', licensed: true, granularity: 'day' },
+			{ key: 'month', licensed: true, granularity: 'day' },
+			{ key: 'quarter', licensed: true, granularity: 'week' },
+			{ key: 'year', licensed: false, granularity: 'week' },
+		]);
 	});
 });

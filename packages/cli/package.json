@@ -86,12 +86,15 @@
     "ts-essentials": "^7.0.3"
   },
   "dependencies": {
-    "@azure/identity": "^4.3.0",
-    "@azure/keyvault-secrets": "^4.8.0",
-    "@google-cloud/secret-manager": "^5.6.0",
+    "@aws-sdk/client-secrets-manager": "3.666.0",
+    "@azure/identity": "4.3.0",
+    "@azure/keyvault-secrets": "4.8.0",
+    "@google-cloud/secret-manager": "5.6.0",
     "@n8n/api-types": "workspace:*",
     "@n8n/client-oauth2": "workspace:*",
     "@n8n/config": "workspace:*",
+    "@n8n/constants": "workspace:^",
+    "@n8n/decorators": "workspace:*",
     "@n8n/di": "workspace:*",
     "@n8n/localtunnel": "3.0.0",
     "@n8n/n8n-nodes-langchain": "workspace:*",

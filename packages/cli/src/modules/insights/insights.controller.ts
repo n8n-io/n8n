@@ -1,9 +1,7 @@
 import { ListInsightsWorkflowQueryDto } from '@n8n/api-types';
 import type { InsightsSummary, InsightsByTime, InsightsByWorkflow } from '@n8n/api-types';
+import { Get, GlobalScope, Licensed, Query, RestController } from '@n8n/decorators';
 
-import { Get, GlobalScope, Licensed, Query, RestController } from '@/decorators';
-import { paginationListQueryMiddleware } from '@/middlewares/list-query/pagination';
-import { sortByQueryMiddleware } from '@/middlewares/list-query/sort-by';
 import { AuthenticatedRequest } from '@/requests';
 
 import { InsightsService } from './insights.service';
@@ -22,7 +20,7 @@ export class InsightsController {
 		});
 	}
 
-	@Get('/by-workflow', { middlewares: [paginationListQueryMiddleware, sortByQueryMiddleware] })
+	@Get('/by-workflow')
 	@GlobalScope('insights:list')
 	@Licensed('feat:insights:viewDashboard')
 	async getInsightsByWorkflow(

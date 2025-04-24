@@ -12,7 +12,7 @@ import type { ApplicationError } from 'n8n-workflow';
 import { useStyles } from './useStyles';
 import { useCanvasStore } from '@/stores/canvas.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { LOGS_PANEL_STATE } from '@/components/CanvasChat/types/logs';
+import { useNDVStore } from '@/stores/ndv.store';
 
 export interface NotificationErrorWithNodeAndDescription extends ApplicationError {
 	node: {
@@ -32,25 +32,21 @@ export function useToast() {
 	const settingsStore = useSettingsStore();
 	const { APP_Z_INDEXES } = useStyles();
 	const canvasStore = useCanvasStore();
-
-	const messageDefaults: Partial<Omit<NotificationOptions, 'message'>> = {
-		dangerouslyUseHTMLString: true,
-		position: 'bottom-right',
-		zIndex: APP_Z_INDEXES.TOASTS, // above NDV and modal overlays
-		offset:
-			settingsStore.isAiAssistantEnabled ||
-			workflowsStore.logsPanelState === LOGS_PANEL_STATE.ATTACHED
-				? 64
-				: 0,
-		appendTo: '#app-grid',
-		customClass: 'content-toast',
-	};
+	const ndvStore = useNDVStore();
 
 	function showMessage(messageData: Partial<NotificationOptions>, track = true) {
+		const messageDefaults: Partial<Omit<NotificationOptions, 'message'>> = {
+			dangerouslyUseHTMLString: true,
+			position: 'bottom-right',
+			zIndex: APP_Z_INDEXES.TOASTS, // above NDV and modal overlays
+			offset:
+				(settingsStore.isAiAssistantEnabled ? 64 : 0) +
+				(ndvStore.activeNode === null ? canvasStore.panelHeight : 0),
+			appendTo: '#app-grid',
+			customClass: 'content-toast',
+		};
 		const { message, title } = messageData;
 		const params = { ...messageDefaults, ...messageData };
-
-		params.offset = +canvasStore.panelHeight;
 
 		if (typeof message === 'string') {
 			params.message = sanitizeHtml(message);
