@@ -34,6 +34,7 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 	) {
 		if (!uiStore.stateIsDirty) {
 			next();
+
 			return;
 		}
 
@@ -48,39 +49,44 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 			},
 		);
 
-		if (response === MODAL_CONFIRM) {
-			const saved = await saveCurrentWorkflow({}, false);
-			if (saved) {
-				await npsSurveyStore.fetchPromptsData();
-				uiStore.stateIsDirty = false;
-				const goToNext = await confirm();
-				next(goToNext);
-			} else {
-				next(
-					router.resolve({
-						name: VIEWS.WORKFLOW,
-						params: { name: workflowsStore.workflow.id },
-					}),
-				);
-			}
-		} else if (response === MODAL_CANCEL) {
-			await cancel();
+		switch (response) {
+			case MODAL_CONFIRM:
+				const saved = await saveCurrentWorkflow({}, false);
+				if (saved) {
+					await npsSurveyStore.fetchPromptsData();
+					uiStore.stateIsDirty = false;
+					const goToNext = await confirm();
+					next(goToNext);
+				} else {
+					stayOnCurrentWorkflow(next);
+				}
 
-			uiStore.stateIsDirty = false;
-			next();
-		} else if (
-			response === MODAL_CLOSE &&
-			// for new workflows that are not saved yet, don't do anything, only close modal
-			workflowsStore.workflow.id !== PLACEHOLDER_EMPTY_WORKFLOW_ID
-		) {
-			// The route may have already changed due to the browser back button, so let's restore it
-			next(
-				router.resolve({
-					name: VIEWS.WORKFLOW,
-					params: { name: workflowsStore.workflow.id },
-				}),
-			);
+				return;
+			case MODAL_CANCEL:
+				await cancel();
+
+				uiStore.stateIsDirty = false;
+				next();
+
+				return;
+			case MODAL_CLOSE:
+				// for new workflows that are not saved yet, don't do anything, only close modal
+				if (workflowsStore.workflow.id !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+					stayOnCurrentWorkflow(next);
+				}
+
+				return;
 		}
+	}
+
+	function stayOnCurrentWorkflow(next: NavigationGuardNext) {
+		// The route may have already changed due to the browser back button, so let's restore it
+		next(
+			router.resolve({
+				name: VIEWS.WORKFLOW,
+				params: { name: workflowsStore.workflow.id },
+			}),
+		);
 	}
 
 	return {
