@@ -1636,9 +1636,10 @@ onBeforeRouteLeave(async (to, from, next) => {
 			if (from.name === VIEWS.NEW_WORKFLOW) {
 				// Replace the current route with the new workflow route
 				// before navigating to the new route when saving new workflow.
+				const savedWorkflowId = workflowsStore.workflowId;
 				await router.replace({
 					name: VIEWS.WORKFLOW,
-					params: { name: workflowId.value },
+					params: { name: savedWorkflowId },
 				});
 
 				await router.push(to);
