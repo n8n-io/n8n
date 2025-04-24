@@ -299,7 +299,7 @@ export const routes: RouteRecordRaw[] = [
 			// 	},
 			// },
 			{
-				path: ':testId/runs/:runId',
+				path: 'test-runs/:runId',
 				name: VIEWS.TEST_DEFINITION_RUNS_DETAIL,
 				props: true,
 				components: {
