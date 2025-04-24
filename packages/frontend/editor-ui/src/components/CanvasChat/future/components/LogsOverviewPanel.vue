@@ -190,7 +190,7 @@ watch(
 					</div>
 				</div>
 				<N8nRadioButtons
-					size="small"
+					size="small-medium"
 					:class="$style.switchViewButtons"
 					:model-value="selected ? 'details' : 'overview'"
 					:options="switchViewOptions"
@@ -257,7 +257,7 @@ watch(
 	z-index: 10; /* higher than log entry rows background */
 	right: 0;
 	top: 0;
-	margin: var(--spacing-2xs);
+	margin: var(--spacing-4xs) var(--spacing-2xs);
 	visibility: hidden;
 	opacity: 0;
 	transition: opacity 0.3s $ease-out-expo;

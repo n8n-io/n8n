@@ -1551,6 +1551,7 @@ defineExpose({ enterEditMode });
 
 			<div :class="$style.tabs">
 				<N8nTabs
+					size="small"
 					:model-value="currentOutputIndex"
 					:options="branches"
 					@update:model-value="onBranchChange"
@@ -2049,6 +2050,13 @@ defineExpose({ enterEditMode });
 	padding-left: var(--spacing-s);
 	padding-right: var(--spacing-s);
 	padding-bottom: var(--spacing-s);
+
+	.compact & {
+		padding-left: var(--spacing-2xs);
+		padding-right: var(--spacing-2xs);
+		padding-bottom: var(--spacing-2xs);
+		font-size: var(--font-size-2xs);
+	}
 }
 
 .tabs {
