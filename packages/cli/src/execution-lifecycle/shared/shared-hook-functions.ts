@@ -37,6 +37,7 @@ export function prepareExecutionDataForDbUpdate(parameters: {
 		'id',
 		'name',
 		'active',
+		'isArchived',
 		'createdAt',
 		'updatedAt',
 		'nodes',
