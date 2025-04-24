@@ -173,7 +173,10 @@ function onTabSelected(tab: MAIN_HEADER_TABS, event: MouseEvent) {
 
 		case MAIN_HEADER_TABS.TEST_DEFINITION:
 			activeHeaderTab.value = MAIN_HEADER_TABS.TEST_DEFINITION;
-			void router.push({ name: VIEWS.TEST_DEFINITION_EDIT });
+			void router.push({
+				name: VIEWS.TEST_DEFINITION_EDIT,
+				params: { workflowId: workflowId.value },
+			});
 			break;
 
 		default:

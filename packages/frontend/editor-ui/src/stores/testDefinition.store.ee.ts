@@ -72,7 +72,7 @@ export const useTestDefinitionStore = defineStore(
 			);
 		});
 
-		const getFieldIssues = (testId: string) => fieldsIssues.value[testId] || [];
+		const getFieldIssues = (workflowId: string) => fieldsIssues.value[workflowId] || [];
 
 		// Methods
 
