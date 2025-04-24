@@ -1,13 +1,14 @@
 import { watch, computed, ref } from 'vue';
 import { isChatNode } from '../../utils';
 import { type IExecutionResponse } from '@/Interface';
-import { deepCopy, Workflow } from 'n8n-workflow';
+import { Workflow } from 'n8n-workflow';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useThrottleFn } from '@vueuse/core';
 import { IN_PROGRESS_EXECUTION_ID } from '@/constants';
 import {
 	createLogEntries,
+	deepToRaw,
 	type ExecutionLogViewData,
 	type LatestNodeInfo,
 } from '@/components/RunDataAi/utils';
@@ -82,7 +83,7 @@ export function useExecutionData() {
 		useThrottleFn(
 			() => {
 				// Create deep copy to disable reactivity
-				execData.value = deepCopy(workflowsStore.workflowExecutionData ?? undefined);
+				execData.value = deepToRaw(workflowsStore.workflowExecutionData ?? undefined);
 			},
 			updateInterval,
 			true,

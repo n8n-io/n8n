@@ -14,6 +14,7 @@ import {
 	type Workflow,
 } from 'n8n-workflow';
 import { type LogEntrySelection } from '../CanvasChat/types/logs';
+import { isProxy, isReactive, isRef, toRaw } from 'vue';
 
 export interface AIResult {
 	node: string;
@@ -426,4 +427,33 @@ export function findSelectedLogEntry(
 		: state.type === 'none'
 			? undefined
 			: state.data;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function deepToRaw<T>(sourceObj: T): T {
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	const objectIterator = (input: any): any => {
+		if (Array.isArray(input)) {
+			return input.map((item) => objectIterator(item));
+		}
+
+		if (isRef(input) || isReactive(input) || isProxy(input)) {
+			return objectIterator(toRaw(input));
+		}
+
+		if (
+			input !== null &&
+			typeof input === 'object' &&
+			Object.getPrototypeOf(input) === Object.prototype
+		) {
+			return Object.keys(input).reduce((acc, key) => {
+				acc[key as keyof typeof acc] = objectIterator(input[key]);
+				return acc;
+			}, {} as T);
+		}
+
+		return input;
+	};
+
+	return objectIterator(sourceObj);
 }
