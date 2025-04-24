@@ -1,6 +1,6 @@
+import { Get, Post, RestController, GlobalScope, Middleware } from '@n8n/decorators';
 import { Request, Response, NextFunction } from 'express';
 
-import { Get, Post, RestController, GlobalScope, Middleware } from '@/decorators';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { ExternalSecretsProviders } from './external-secrets-providers.ee';
