@@ -58,6 +58,7 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 					const goToNext = await confirm();
 					next(goToNext);
 				} else {
+					// if new workflow and did not save, modal reopens again to force user to try to save again
 					stayOnCurrentWorkflow(next);
 				}
 
