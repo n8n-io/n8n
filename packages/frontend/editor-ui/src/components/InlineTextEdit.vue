@@ -88,7 +88,7 @@ function onEscape() {
 </script>
 
 <template>
-	<span class="inline-edit" @keydown.stop>
+	<span :class="$style['inline-edit']" @keydown.stop>
 		<span v-if="isEditEnabled && !isDisabled">
 			<ExpandableInputEdit
 				v-model="newValue"
@@ -104,13 +104,25 @@ function onEscape() {
 			/>
 		</span>
 
-		<span v-else class="preview" @click="onClick">
+		<span v-else :class="$style.preview" @click="onClick">
 			<ExpandableInputPreview :model-value="previewValue || modelValue" />
 		</span>
 	</span>
 </template>
 
-<style lang="scss" scoped>
+<style lang="scss" module>
+/* Magic numbers here but this keeps preview and this input vertically aligned  */
+.inline-edit {
+	display: block;
+	height: 26px;
+
+	input {
+		display: block;
+		height: 27px;
+		min-height: 27px;
+	}
+}
+
 .preview {
 	cursor: pointer;
 }

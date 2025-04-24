@@ -82,8 +82,7 @@ function onEscape() {
 
 <style module lang="scss">
 .input {
-	height: 26px;
-	min-height: 26px;
 	padding: var(--spacing-4xs);
+	font-size: var(--font-size-s);
 }
 </style>
