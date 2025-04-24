@@ -455,8 +455,13 @@ export function getContext(
 	node?: INode,
 ): IContextObject {
 	if (runExecutionData.executionData === undefined) {
-		// TODO: Should not happen leave it for test now
-		throw new ApplicationError('`executionData` is not initialized');
+		// Improved error handling: log error and return empty context instead of throwing
+		console.error(
+			'`executionData` is not initialized in runExecutionData. This usually indicates a problem in workflow execution or data passing. Returning empty context to avoid breaking execution.',
+			{ runExecutionData, type, nodeName: node?.name },
+		);
+		// Return empty context object to avoid breaking the workflow
+		return {};
 	}
 
 	let key: string;
@@ -464,7 +469,6 @@ export function getContext(
 		key = 'flow';
 	} else if (type === 'node') {
 		if (node === undefined) {
-			// @TODO: What does this mean?
 			throw new ApplicationError(
 				'The request data of context type "node" the node parameter has to be set!',
 			);
