@@ -42,12 +42,6 @@ export namespace ChatUI {
 		eventName: 'session-error';
 	}
 
-	export interface GeneratedStepsMessage {
-		role: 'assistant';
-		type: 'workflow-step';
-		steps: string[];
-	}
-
 	export interface GeneratedNodesMessage {
 		role: 'assistant';
 		type: 'workflow-node';
@@ -124,9 +118,6 @@ export namespace ChatUI {
 		| CodeDiffMessage
 		| SummaryBlock
 		| AgentSuggestionMessage
-		| GeneratedStepsMessage
-		| GeneratedNodesMessage
-		| ComposedNodesMessage
 	) & {
 		quickReplies?: QuickReply[];
 	};

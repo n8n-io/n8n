@@ -35,7 +35,7 @@ const onClick = () => {
 	assistantStore.trackUserOpenedAssistant({
 		source: 'canvas',
 		task: 'placeholder',
-		has_existing_session: assistantStore.isSessionEnded,
+		has_existing_session: !assistantStore.isSessionEnded,
 	});
 };
 </script>

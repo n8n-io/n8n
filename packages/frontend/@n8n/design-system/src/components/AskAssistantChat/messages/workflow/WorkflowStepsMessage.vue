@@ -5,7 +5,7 @@ import BaseWorkflowMessage from './BaseWorkflowMessage.vue';
 import type { ChatUI } from '../../../../types/assistant';
 
 interface Props {
-	message: ChatUI.GeneratedStepsMessage & { id: string; read: boolean };
+	message: ChatUI.WorkflowStepMessage & { id: string; read: boolean };
 	isFirstOfRole: boolean;
 	user?: {
 		firstName: string;

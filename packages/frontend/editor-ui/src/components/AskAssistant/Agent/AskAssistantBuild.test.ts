@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createComponentRenderer } from '@/__tests__/render';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
@@ -61,10 +61,6 @@ describe('AskAssistantBuild', () => {
 		builderStore.resetBuilderChat = vi.fn();
 		builderStore.addAssistantMessages = vi.fn();
 		builderStore.$onAction = vi.fn().mockReturnValue(vi.fn());
-	});
-
-	afterEach(() => {
-		vi.clearAllMocks();
 	});
 
 	describe('rendering', () => {

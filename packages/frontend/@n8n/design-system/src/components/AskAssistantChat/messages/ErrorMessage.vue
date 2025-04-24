@@ -58,4 +58,8 @@ const { t } = useI18n();
 	font-weight: var(--font-weight-regular);
 	line-height: var(--font-line-height-tight);
 }
+
+.retryButton {
+	margin-top: var(--spacing-3xs);
+}
 </style>
