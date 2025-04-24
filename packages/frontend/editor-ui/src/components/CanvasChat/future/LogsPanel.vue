@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { useWorkflowsStore } from '@/stores/workflows.store';
 import { computed, ref, useTemplateRef } from 'vue';
 import { N8nResizeWrapper } from '@n8n/design-system';
 import { useChatState } from '@/components/CanvasChat/composables/useChatState';
@@ -8,22 +7,16 @@ import ChatMessagesPanel from '@/components/CanvasChat/components/ChatMessagesPa
 import LogsDetailsPanel from '@/components/CanvasChat/future/components/LogDetailsPanel.vue';
 import { type LogEntrySelection } from '@/components/CanvasChat/types/logs';
 import LogsPanelActions from '@/components/CanvasChat/future/components/LogsPanelActions.vue';
-import {
-	createLogEntries,
-	findLogEntryToAutoSelect,
-	type TreeNode,
-} from '@/components/RunDataAi/utils';
-import { isChatNode } from '@/components/CanvasChat/utils';
 import { useLayout } from '@/components/CanvasChat/future/composables/useLayout';
+import { useExecutionData } from '@/components/CanvasChat/future/composables/useExecutionData';
+import { findSelectedLogEntry, type LogEntry } from '@/components/RunDataAi/utils';
 
 const props = withDefaults(defineProps<{ isReadOnly?: boolean }>(), { isReadOnly: false });
 
-const workflowsStore = useWorkflowsStore();
 const container = useTemplateRef('container');
 const logsContainer = useTemplateRef('logsContainer');
 const pipContainer = useTemplateRef('pipContainer');
 const pipContent = useTemplateRef('pipContent');
-const previousChatMessages = computed(() => workflowsStore.getPastChatMessages);
 
 const {
 	height,
@@ -45,37 +38,20 @@ const {
 	onOverviewPanelResizeEnd,
 } = useLayout(pipContainer, pipContent, container, logsContainer);
 
-const { currentSessionId, messages, sendMessage, refreshSession, displayExecution } = useChatState(
-	props.isReadOnly,
-);
+const {
+	currentSessionId,
+	messages,
+	previousChatMessages,
+	sendMessage,
+	refreshSession,
+	displayExecution,
+} = useChatState(props.isReadOnly);
 
-const hasChat = computed(
-	() =>
-		workflowsStore.workflowTriggerNodes.some(isChatNode) &&
-		(!props.isReadOnly || messages.value.length > 0),
-);
-const workflow = computed(() => workflowsStore.getCurrentWorkflow());
-const executionTree = computed<TreeNode[]>(() =>
-	createLogEntries(
-		workflow.value,
-		workflowsStore.workflowExecutionData?.data?.resultData.runData ?? {},
-	),
-);
+const { workflow, execution, hasChat, latestNodeNameById, resetExecutionData } = useExecutionData();
+
 const manualLogEntrySelection = ref<LogEntrySelection>({ type: 'initial' });
-const autoSelectedLogEntry = computed(() =>
-	findLogEntryToAutoSelect(
-		executionTree.value,
-		workflowsStore.nodesByName,
-		workflowsStore.workflowExecutionData?.data?.resultData.runData ?? {},
-	),
-);
 const selectedLogEntry = computed(() =>
-	manualLogEntrySelection.value.type === 'initial' ||
-	manualLogEntrySelection.value.workflowId !== workflowsStore.workflow.id
-		? autoSelectedLogEntry.value
-		: manualLogEntrySelection.value.type === 'none'
-			? undefined
-			: manualLogEntrySelection.value.data,
+	findSelectedLogEntry(manualLogEntrySelection.value, execution.value),
 );
 const isLogDetailsOpen = computed(() => isOpen.value && selectedLogEntry.value !== undefined);
 const isLogDetailsVisuallyOpen = computed(
@@ -89,11 +65,17 @@ const logsPanelActionsProps = computed<InstanceType<typeof LogsPanelActions>['$p
 	onToggleOpen,
 }));
 
-function handleSelectLogEntry(selected: TreeNode | undefined) {
+function handleSelectLogEntry(selected: LogEntry | undefined) {
+	const workflowId = execution.value?.workflowData.id;
+
+	if (!workflowId) {
+		return;
+	}
+
 	manualLogEntrySelection.value =
 		selected === undefined
-			? { type: 'none', workflowId: workflowsStore.workflow.id }
-			: { type: 'selected', workflowId: workflowsStore.workflow.id, data: selected };
+			? { type: 'none', workflowId }
+			: { type: 'selected', workflowId, data: selected };
 }
 
 function handleResizeOverviewPanelEnd() {
@@ -119,7 +101,7 @@ function handleResizeOverviewPanelEnd() {
 			>
 				<div ref="container" :class="[$style.container, 'ignore-key-press-canvas']" tabindex="0">
 					<N8nResizeWrapper
-						v-if="hasChat"
+						v-if="hasChat && (!props.isReadOnly || messages.length > 0)"
 						:supported-directions="['right']"
 						:is-resizing-enabled="isOpen"
 						:width="chatPanelWidth"
@@ -162,9 +144,11 @@ function handleResizeOverviewPanelEnd() {
 								:is-read-only="isReadOnly"
 								:is-compact="isLogDetailsVisuallyOpen"
 								:selected="selectedLogEntry"
-								:execution-tree="executionTree"
+								:execution="execution"
+								:latest-node-info="latestNodeNameById"
 								@click-header="onToggleOpen(true)"
 								@select="handleSelectLogEntry"
+								@clear-execution-data="resetExecutionData"
 							>
 								<template #actions>
 									<LogsPanelActions
@@ -175,11 +159,14 @@ function handleResizeOverviewPanelEnd() {
 							</LogsOverviewPanel>
 						</N8nResizeWrapper>
 						<LogsDetailsPanel
-							v-if="isLogDetailsVisuallyOpen && selectedLogEntry"
+							v-if="isLogDetailsVisuallyOpen && selectedLogEntry && workflow && execution"
 							:class="$style.logDetails"
 							:is-open="isOpen"
 							:log-entry="selectedLogEntry"
+							:workflow="workflow"
+							:execution="execution"
 							:window="pipWindow"
+							:latest-info="latestNodeNameById[selectedLogEntry.node.id]"
 							@click-header="onToggleOpen(true)"
 						>
 							<template #actions>

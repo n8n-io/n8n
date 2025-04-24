@@ -2,60 +2,56 @@
 import PanelHeader from '@/components/CanvasChat/future/components/PanelHeader.vue';
 import { useClearExecutionButtonVisible } from '@/composables/useClearExecutionButtonVisible';
 import { useI18n } from '@/composables/useI18n';
-import { useNodeHelpers } from '@/composables/useNodeHelpers';
-import { useWorkflowsStore } from '@/stores/workflows.store';
 import { N8nButton, N8nRadioButtons, N8nText, N8nTooltip } from '@n8n/design-system';
 import { computed, nextTick } from 'vue';
 import { ElTree, type TreeNode as ElTreeNode } from 'element-plus';
-import {
-	getSubtreeTotalConsumedTokens,
-	getTotalConsumedTokens,
-	type TreeNode,
-} from '@/components/RunDataAi/utils';
 import { useTelemetry } from '@/composables/useTelemetry';
 import LogsOverviewRow from '@/components/CanvasChat/future/components/LogsOverviewRow.vue';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useRouter } from 'vue-router';
 import ExecutionSummary from '@/components/CanvasChat/future/components/ExecutionSummary.vue';
+import {
+	type ExecutionLogViewData,
+	getSubtreeTotalConsumedTokens,
+	getTotalConsumedTokens,
+	type LatestNodeInfo,
+	type LogEntry,
+} from '@/components/RunDataAi/utils';
 
-const { isOpen, isReadOnly, selected, isCompact, executionTree } = defineProps<{
+const { isOpen, isReadOnly, selected, isCompact, execution, latestNodeInfo } = defineProps<{
 	isOpen: boolean;
-	selected?: TreeNode;
+	selected?: LogEntry;
 	isReadOnly: boolean;
 	isCompact: boolean;
-	executionTree: TreeNode[];
+	execution?: ExecutionLogViewData;
+	latestNodeInfo: Record<string, LatestNodeInfo>;
 }>();
 
-const emit = defineEmits<{ clickHeader: []; select: [TreeNode | undefined] }>();
+const emit = defineEmits<{
+	clickHeader: [];
+	select: [LogEntry | undefined];
+	clearExecutionData: [];
+}>();
 
 defineSlots<{ actions: {} }>();
 
 const locale = useI18n();
 const telemetry = useTelemetry();
-const workflowsStore = useWorkflowsStore();
 const router = useRouter();
 const runWorkflow = useRunWorkflow({ router });
 const ndvStore = useNDVStore();
-const nodeHelpers = useNodeHelpers();
 const isClearExecutionButtonVisible = useClearExecutionButtonVisible();
-const workflow = computed(() => workflowsStore.getCurrentWorkflow());
-const isEmpty = computed(() => workflowsStore.workflowExecutionData === null);
+const isEmpty = computed(() => execution === undefined);
 const switchViewOptions = computed(() => [
 	{ label: locale.baseText('logs.overview.header.switch.overview'), value: 'overview' as const },
 	{ label: locale.baseText('logs.overview.header.switch.details'), value: 'details' as const },
 ]);
-const execution = computed(() => workflowsStore.workflowExecutionData);
 const consumedTokens = computed(() =>
-	getTotalConsumedTokens(...executionTree.map(getSubtreeTotalConsumedTokens)),
+	getTotalConsumedTokens(...(execution?.tree ?? []).map(getSubtreeTotalConsumedTokens)),
 );
 
-function onClearExecutionData() {
-	workflowsStore.setWorkflowExecutionData(null);
-	nodeHelpers.updateNodesExecutionIssues();
-}
-
-function handleClickNode(clicked: TreeNode) {
+function handleClickNode(clicked: LogEntry) {
 	if (selected?.node === clicked.node && selected?.runIndex === clicked.runIndex) {
 		emit('select', undefined);
 		return;
@@ -63,29 +59,36 @@ function handleClickNode(clicked: TreeNode) {
 
 	emit('select', clicked);
 	telemetry.track('User selected node in log view', {
-		node_type: workflowsStore.nodesByName[clicked.node].type,
-		node_id: workflowsStore.nodesByName[clicked.node].id,
-		execution_id: workflowsStore.workflowExecutionData?.id,
-		workflow_id: workflow.value.id,
+		node_type: clicked.node.type,
+		node_id: clicked.node.id,
+		execution_id: execution?.id,
+		workflow_id: execution?.workflowData.id,
 	});
 }
 
 function handleSwitchView(value: 'overview' | 'details') {
-	emit('select', value === 'overview' || executionTree.length === 0 ? undefined : executionTree[0]);
+	emit(
+		'select',
+		value === 'overview' || (execution?.tree ?? []).length === 0 ? undefined : execution?.tree[0],
+	);
 }
 
 function handleToggleExpanded(treeNode: ElTreeNode) {
 	treeNode.expanded = !treeNode.expanded;
 }
 
-async function handleOpenNdv(treeNode: TreeNode) {
-	ndvStore.setActiveNodeName(treeNode.node);
+async function handleOpenNdv(treeNode: LogEntry) {
+	ndvStore.setActiveNodeName(treeNode.node.name);
 
 	await nextTick(() => ndvStore.setOutputRunIndex(treeNode.runIndex));
 }
 
-async function handleTriggerPartialExecution(treeNode: TreeNode) {
-	await runWorkflow.runWorkflow({ destinationNode: treeNode.node });
+async function handleTriggerPartialExecution(treeNode: LogEntry) {
+	const latestName = latestNodeInfo[treeNode.node.id]?.name ?? treeNode.node.name;
+
+	if (latestName) {
+		await runWorkflow.runWorkflow({ destinationNode: latestName });
+	}
 }
 </script>
 
@@ -107,7 +110,7 @@ async function handleTriggerPartialExecution(treeNode: TreeNode) {
 						icon="trash"
 						icon-size="medium"
 						:class="$style.clearButton"
-						@click.stop="onClearExecutionData"
+						@click.stop="emit('clearExecutionData')"
 						>{{ locale.baseText('logs.overview.header.actions.clearExecution') }}</N8nButton
 					>
 				</N8nTooltip>
@@ -142,11 +145,11 @@ async function handleTriggerPartialExecution(treeNode: TreeNode) {
 					"
 				/>
 				<ElTree
-					v-if="executionTree.length > 0"
+					v-if="(execution?.tree ?? []).length > 0"
 					node-key="id"
 					:class="$style.tree"
 					:indent="0"
-					:data="executionTree"
+					:data="execution?.tree ?? []"
 					:expand-on-click-node="false"
 					:default-expand-all="true"
 					@node-click="handleClickNode"
@@ -156,9 +159,12 @@ async function handleTriggerPartialExecution(treeNode: TreeNode) {
 							:data="data"
 							:node="elTreeNode"
 							:is-read-only="isReadOnly"
-							:is-selected="data.node === selected?.node && data.runIndex === selected?.runIndex"
+							:is-selected="
+								data.node.name === selected?.node.name && data.runIndex === selected?.runIndex
+							"
 							:is-compact="isCompact"
 							:should-show-consumed-tokens="consumedTokens.totalTokens > 0"
+							:latest-info="latestNodeInfo[data.node.id]"
 							@toggle-expanded="handleToggleExpanded"
 							@open-ndv="handleOpenNdv"
 							@trigger-partial-execution="handleTriggerPartialExecution"
@@ -220,6 +226,7 @@ async function handleTriggerPartialExecution(treeNode: TreeNode) {
 	flex-grow: 1;
 	flex-shrink: 1;
 	overflow: auto;
+	scroll-padding-block: var(--spacing-2xs);
 }
 
 .summary {

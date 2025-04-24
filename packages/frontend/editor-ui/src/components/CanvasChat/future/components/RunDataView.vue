@@ -1,49 +1,39 @@
 <script setup lang="ts">
 import RunData from '@/components/RunData.vue';
-import { type TreeNode } from '@/components/RunDataAi/utils';
+import { type LogEntry } from '@/components/RunDataAi/utils';
 import { useI18n } from '@/composables/useI18n';
-import { type NodePanelType } from '@/Interface';
+import { type IExecutionResponse, type NodePanelType } from '@/Interface';
 import { useNDVStore } from '@/stores/ndv.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
 import { N8nLink, N8nText } from '@n8n/design-system';
-import { uniqBy } from 'lodash-es';
+import { uniq } from 'lodash-es';
+import { type Workflow } from 'n8n-workflow';
 import { computed } from 'vue';
 import { I18nT } from 'vue-i18n';
 
-const { title, logEntry, paneType } = defineProps<{
+const { title, logEntry, paneType, workflow, execution } = defineProps<{
 	title: string;
 	paneType: NodePanelType;
-	logEntry: TreeNode;
+	logEntry: LogEntry;
+	workflow: Workflow;
+	execution: IExecutionResponse;
 }>();
 
 const locale = useI18n();
-const workflowsStore = useWorkflowsStore();
 const ndvStore = useNDVStore();
-const workflow = computed(() => workflowsStore.getCurrentWorkflow());
+const parentNodeNames = computed(() =>
+	uniq(workflow.getParentNodesByDepth(logEntry.node.name, 1)).map((c) => c.name),
+);
 const node = computed(() => {
 	if (logEntry.depth > 0 || paneType === 'output') {
-		return workflowsStore.nodesByName[logEntry.node];
+		return logEntry.node;
 	}
 
-	const parent = workflow.value.getParentNodesByDepth(logEntry.node)[0];
-
-	if (!parent) {
-		return undefined;
-	}
-
-	return workflowsStore.nodesByName[parent.name];
+	return parentNodeNames.value.length > 0 ? workflow.getNode(parentNodeNames.value[0]) : undefined;
 });
-const isMultipleInput = computed(
-	() =>
-		paneType === 'input' &&
-		uniqBy(
-			workflow.value.getParentNodesByDepth(logEntry.node).filter((n) => n.name !== logEntry.node),
-			(n) => n.name,
-		).length > 1,
-);
+const isMultipleInput = computed(() => paneType === 'input' && parentNodeNames.value.length > 1);
 
 function handleClickOpenNdv() {
-	ndvStore.setActiveNodeName(logEntry.node);
+	ndvStore.setActiveNodeName(logEntry.node.name);
 }
 </script>
 
@@ -52,6 +42,7 @@ function handleClickOpenNdv() {
 		v-if="node"
 		:node="node"
 		:workflow="workflow"
+		:workflow-execution="execution"
 		:run-index="logEntry.runIndex"
 		:too-much-data-title="locale.baseText('ndv.output.tooMuchData.title')"
 		:no-data-in-branch-message="locale.baseText('ndv.output.noOutputDataInBranch')"

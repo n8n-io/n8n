@@ -29,7 +29,6 @@ const pipContent = useTemplateRef('pipContent');
 const workflow = computed(() => workflowsStore.getCurrentWorkflow());
 
 const chatPanelState = computed(() => workflowsStore.logsPanelState);
-const previousChatMessages = computed(() => workflowsStore.getPastChatMessages);
 const resultData = computed(() => workflowsStore.getWorkflowRunData);
 
 const telemetry = useTelemetry();
@@ -65,6 +64,7 @@ const {
 	messages,
 	chatTriggerNode,
 	connectedNode,
+	previousChatMessages,
 	sendMessage,
 	refreshSession,
 	displayExecution,

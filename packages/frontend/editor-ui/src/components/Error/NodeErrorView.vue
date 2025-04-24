@@ -24,6 +24,7 @@ import InlineAskAssistantButton from '@n8n/design-system/components/InlineAskAss
 import { useUIStore } from '@/stores/ui.store';
 import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
 import { useAIAssistantHelpers } from '@/composables/useAIAssistantHelpers';
+import { N8nIconButton } from '@n8n/design-system';
 
 type Props = {
 	// TODO: .node can be undefined
@@ -459,11 +460,11 @@ async function onAskAssistantClick() {
 					placement="left"
 				>
 					<div class="copy-button">
-						<n8n-icon-button
+						<N8nIconButton
 							icon="copy"
 							type="secondary"
 							size="mini"
-							text="true"
+							:text="true"
 							transparent-background="transparent"
 							@click="copyErrorDetails"
 						/>

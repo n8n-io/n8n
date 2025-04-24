@@ -23,6 +23,7 @@ import { restoreChatHistory } from '@/components/CanvasChat/utils';
 interface ChatState {
 	currentSessionId: Ref<string>;
 	messages: Ref<ChatMessage[]>;
+	previousChatMessages: Ref<string[]>;
 	chatTriggerNode: Ref<INodeUi | null>;
 	connectedNode: Ref<INode | null>;
 	sendMessage: (message: string, files?: File[]) => Promise<void>;
@@ -42,6 +43,7 @@ export function useChatState(isReadOnly: boolean, onWindowResize?: () => void): 
 	const messages = ref<ChatMessage[]>([]);
 	const currentSessionId = ref<string>(uuid().replace(/-/g, ''));
 
+	const previousChatMessages = computed(() => workflowsStore.getPastChatMessages);
 	const canvasNodes = computed(() => workflowsStore.allNodes);
 	const allConnections = computed(() => workflowsStore.allConnections);
 	const logsPanelState = computed(() => workflowsStore.logsPanelState);
@@ -224,6 +226,7 @@ export function useChatState(isReadOnly: boolean, onWindowResize?: () => void): 
 	return {
 		currentSessionId,
 		messages: computed(() => (isReadOnly ? restoredChatMessages.value : messages.value)),
+		previousChatMessages,
 		chatTriggerNode,
 		connectedNode,
 		sendMessage,

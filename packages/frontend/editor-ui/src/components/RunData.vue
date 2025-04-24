@@ -25,6 +25,7 @@ import {
 import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, toRef, watch } from 'vue';
 
 import type {
+	IExecutionResponse,
 	INodeUi,
 	INodeUpdatePropertiesInformation,
 	IRunDataDisplayMode,
@@ -118,6 +119,7 @@ export type EnterEditModeArgs = {
 
 type Props = {
 	workflow: Workflow;
+	workflowExecution?: IExecutionResponse;
 	runIndex: number;
 	tooMuchDataTitle: string;
 	executingMessage: string;
@@ -163,6 +165,7 @@ const props = withDefaults(defineProps<Props>(), {
 	disableHoverHighlight: false,
 	compact: false,
 	tableHeaderBgColor: 'base',
+	workflowExecution: undefined,
 });
 
 defineSlots<{
@@ -334,12 +337,14 @@ const executionHints = computed(() => {
 	return [];
 });
 
-const workflowExecution = computed(() => workflowsStore.getWorkflowExecution);
+const workflowExecution = computed(
+	() => props.workflowExecution ?? workflowsStore.getWorkflowExecution ?? undefined,
+);
 const workflowRunData = computed(() => {
-	if (workflowExecution.value === null) {
+	if (workflowExecution.value === undefined) {
 		return null;
 	}
-	const executionData: IRunExecutionData | undefined = workflowExecution.value.data;
+	const executionData: IRunExecutionData | undefined = workflowExecution.value?.data;
 	if (executionData?.resultData) {
 		return executionData.resultData.runData;
 	}
@@ -1104,6 +1109,7 @@ function getRawInputData(
 			outputIndex,
 			props.paneType,
 			connectionType,
+			workflowExecution.value,
 		);
 	}
 
