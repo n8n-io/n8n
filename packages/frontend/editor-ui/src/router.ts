@@ -263,7 +263,7 @@ export const routes: RouteRecordRaw[] = [
 		],
 	},
 	{
-		path: '/workflow/:name/evaluation',
+		path: '/workflow/:workflowId/evaluation',
 		components: {
 			default: TestDefinitionRootView,
 			header: MainHeader,
@@ -280,24 +280,24 @@ export const routes: RouteRecordRaw[] = [
 		children: [
 			{
 				path: '',
-				name: VIEWS.TEST_DEFINITION,
-				component: TestDefinitionListView,
-				props: true,
-			},
-			{
-				path: 'new',
-				name: VIEWS.NEW_TEST_DEFINITION,
-				component: TestDefinitionNewView,
-				props: true,
-			},
-			{
-				path: ':testId',
 				name: VIEWS.TEST_DEFINITION_EDIT,
+				component: TestDefinitionEditView,
 				props: true,
-				components: {
-					default: TestDefinitionEditView,
-				},
 			},
+			// {
+			// 	path: 'new',
+			// 	name: VIEWS.NEW_TEST_DEFINITION,
+			// 	component: TestDefinitionNewView,
+			// 	props: true,
+			// },
+			// {
+			// 	path: ':testId',
+			// 	name: VIEWS.TEST_DEFINITION_EDIT,
+			// 	props: true,
+			// 	components: {
+			// 		default: TestDefinitionEditView,
+			// 	},
+			// },
 			{
 				path: ':testId/runs/:runId',
 				name: VIEWS.TEST_DEFINITION_RUNS_DETAIL,
