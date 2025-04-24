@@ -39,7 +39,11 @@ export class InsightsPruningService {
 	}
 
 	async pruneInsights() {
-		const result = await this.insightsByPeriodRepository.pruneOldData(this.config.maxAgeDays);
-		this.logger.debug('Hard-deleted insights', { count: result.affected });
+		try {
+			const result = await this.insightsByPeriodRepository.pruneOldData(this.config.maxAgeDays);
+			this.logger.debug('Hard-deleted insights', { count: result.affected });
+		} catch (error: unknown) {
+			this.logger.error('Error while pruning insights', { error });
+		}
 	}
 }

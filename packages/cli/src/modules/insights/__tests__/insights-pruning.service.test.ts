@@ -92,6 +92,7 @@ describe('InsightsPrunningService', () => {
 			expect(pruneSpy).toHaveBeenCalledTimes(1);
 		} finally {
 			jest.useRealTimers();
+			insightsPruningService.stopPruningTimer();
 		}
 	});
 });
