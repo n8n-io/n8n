@@ -242,8 +242,53 @@ describe('Google Sheet - Update', () => {
 
 				await expect(execute.call(mockExecuteFunctions, mockGoogleSheet, 'Sheet1')).rejects.toEqual(
 					expect.objectContaining({
-						message: 'row_number is null',
-						description: "Since it's being used to determine the row to update, it cannot be null",
+						message: `row_number is ${rowNumber}`,
+						description: `Since it's being used to determine the row to update, it cannot be ${rowNumber}`,
+					}),
+				);
+			},
+		);
+	});
+
+	describe('non-row_number input error', () => {
+		it.each([{ nonRowNumber: undefined }, { nonRowNumber: null }])(
+			'displays a helpful error message when row_number is $rowNumber',
+			async ({ nonRowNumber }) => {
+				mockExecuteFunctions.getInputData.mockReturnValueOnce([
+					{
+						json: {
+							row_number: 2,
+							nonRowNumber: 'name',
+							text: 'txt',
+						},
+						pairedItem: {
+							item: 0,
+							input: undefined,
+						},
+					},
+				]);
+
+				mockExecuteFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
+					const params: { [key: string]: string | object } = {
+						options: {},
+						'options.cellFormat': 'USER_ENTERED',
+						'columns.matchingColumns': ['nonRowNumber'],
+						'columns.value': {
+							row_number: nonRowNumber, // TODO: Test for undefined
+						},
+						dataMode: 'defineBelow',
+					};
+					return params[parameterName];
+				});
+
+				mockGoogleSheet.getData.mockResolvedValueOnce([['macarena'], ['boomboom']]);
+
+				mockGoogleSheet.getColumnValues.mockResolvedValueOnce([]);
+
+				await expect(execute.call(mockExecuteFunctions, mockGoogleSheet, 'Sheet1')).rejects.toEqual(
+					expect.objectContaining({
+						message: `row_number is ${nonRowNumber}`,
+						description: `Since it's being used to determine the row to update, it cannot be ${nonRowNumber}`,
 					}),
 				);
 			},

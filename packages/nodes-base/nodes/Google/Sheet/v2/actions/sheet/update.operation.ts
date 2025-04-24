@@ -369,17 +369,25 @@ export async function execute(
 				}
 				// Setting empty values to empty string so that they are not ignored by the API
 				Object.keys(mappingValues).forEach((key) => {
+					// if (mappingValues[key] === undefined && nodeVersion >= 4.6) {
+					// 	throw new UserError(`${key} is undefined`, {
+					// 		description:
+					// 			"Since it's being used to determine the row to update, it cannot be undefined",
+					// 	});
+					// }
+
 					if (
 						key === 'row_number' &&
-						(mappingValues[key] === null || mappingValues[key] === undefined)
+						(mappingValues[key] === null || mappingValues[key] === undefined) &&
+						nodeVersion >= 4.6
 					) {
-						throw new UserError(`${key} is null`, {
+						throw new UserError(`${key} is null or undefined`, {
 							description:
-								"Since it's being used to determine the row to update, it cannot be null",
+								"Since it's being used to determine the row to update, it cannot be null or undefined",
 						});
 					}
 
-					if (mappingValues[key] === null || mappingValues[key] === undefined) {
+					if (mappingValues[key] === null) {
 						this.addExecutionHints({
 							message: 'Warning: The value of column to match is null or undefined',
 							location: 'outputPane',
