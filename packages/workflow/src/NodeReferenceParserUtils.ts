@@ -1,6 +1,6 @@
 import { escapeRegExp } from 'lodash';
 
-import type { INode } from './Interfaces';
+import type { INode, INodeParameters } from './Interfaces';
 
 export function hasDotNotationBannedChar(nodeName: string) {
 	const DOT_NOTATION_BANNED_CHARS = /^(\d)|[\\ `!@#$%^&*()_+\-=[\]{};':"\\|,.<>?~]/g;
@@ -111,9 +111,10 @@ const ITEM_ACCESSORS = ['first()', 'item'];
 
 const DATA_ACCESSORS = ['json', 'binary'];
 
+// Map from `statementToBeReplaced` -> ExtractWorkflowExpressionData
 export function impl_buildExtractWorkflowExpressionDataMap(
 	expression: string,
-	nodeRegexps: ReadonlyArray<[AccessPattern, RegExp]>,
+	nodeRegexps: Array<readonly [AccessPattern, LazyRegExp]>,
 	nodeNames: string[],
 	newName: string,
 ): Map<string, ExtractWorkflowExpressionData> {
@@ -137,8 +138,16 @@ class LazyRegExp {
 	}
 }
 
+function isSpecialExpression(key: string, value: unknown): value is string {
+	return key === 'jsCode' && typeof value === 'string';
+}
+
+type ParameterMapping = { [key: string]: ExtractWorkflowExpressionData | ParameterMapping };
+
+function rec_applyParameterMapping(parameters: INodeParameters): ParameterMapping {}
+
 export function buildExtractWorkflowExpressionDataMap(
-	selectedNode: INode[],
+	nodes: INode[],
 	nodeNames: string[],
 	newName: string = 'Start',
 ) {
@@ -153,4 +162,18 @@ export function buildExtractWorkflowExpressionDataMap(
 	const nodeRegexps = ACCESS_PATTERNS.map(
 		(pattern) => [pattern, new LazyRegExp(() => pattern.replacePattern(namesRegexp), 'g')] as const,
 	);
+
+	for (const node of nodes) {
+		for (const [key, value] of Object.entries(node.parameters)) {
+			if (!isSpecialExpression(key, value) || typeof value !== 'string' || value[0] !== '=')
+				continue;
+
+			const map = impl_buildExtractWorkflowExpressionDataMap(
+				value,
+				nodeRegexps,
+				nodeNames,
+				newName,
+			);
+		}
+	}
 }
