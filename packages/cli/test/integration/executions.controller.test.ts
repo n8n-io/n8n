@@ -1,5 +1,5 @@
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
-import type { User } from '@/databases/entities/user';
+import type { User } from '@n8n/db';
 import { WaitTracker } from '@/wait-tracker';
 
 import { createSuccessfulExecution, getAllExecutions } from './shared/db/executions';

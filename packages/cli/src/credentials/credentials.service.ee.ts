@@ -3,11 +3,11 @@ import { Service } from '@n8n/di';
 import { In, type EntityManager } from '@n8n/typeorm';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
-import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
-import { Project } from '@/databases/entities/project';
-import { SharedCredentials } from '@/databases/entities/shared-credentials';
-import type { User } from '@/databases/entities/user';
-import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
+import type { CredentialsEntity } from '@n8n/db';
+import { Project } from '@n8n/db';
+import { SharedCredentials } from '@n8n/db';
+import type { User } from '@n8n/db';
+import { SharedCredentialsRepository } from '@/legacy-repository/shared-credentials.repository';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { TransferCredentialError } from '@/errors/response-errors/transfer-credential.error';
 import { OwnershipService } from '@/services/ownership.service';

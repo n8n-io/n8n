@@ -11,10 +11,10 @@ import {
 	type WorkflowExecuteMode,
 } from 'n8n-workflow';
 
-import type { Project } from '@/databases/entities/project';
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
-import type { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
-import type { IWorkflowDb } from '@/interfaces';
+import type { Project } from '@n8n/db';
+import type { WorkflowEntity } from '@n8n/db';
+import type { SharedWorkflowRepository } from '@/legacy-repository/shared-workflow.repository';
+import type { IWorkflowDb } from '@n8n/db';
 import type { TypeUnit } from '@/modules/insights/database/entities/insights-shared';
 import { InsightsMetadataRepository } from '@/modules/insights/database/repositories/insights-metadata.repository';
 import { InsightsRawRepository } from '@/modules/insights/database/repositories/insights-raw.repository';

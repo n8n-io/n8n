@@ -1,9 +1,9 @@
+import { ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { InstanceSettings, Logger } from 'n8n-core';
 import { UnexpectedError, type IWorkflowExecutionDataProcess } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { OrchestrationService } from '@/services/orchestration.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowRunner } from '@/workflow-runner';

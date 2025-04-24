@@ -1,7 +1,7 @@
 import { Service } from '@n8n/di';
 
-import type { User } from '@/databases/entities/user';
-import { WorkflowStatisticsRepository } from '@/databases/repositories/workflow-statistics.repository';
+import type { User } from '@n8n/db';
+import { WorkflowStatisticsRepository } from '@n8n/db';
 
 @Service()
 export class CtaService {

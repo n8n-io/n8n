@@ -5,8 +5,8 @@ import { Logger } from 'n8n-core';
 import type { IUserSettings } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
 
-import { User } from '@/databases/entities/user';
-import { UserRepository } from '@/databases/repositories/user.repository';
+import { User } from '@n8n/db';
+import { UserRepository } from '@n8n/db';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { EventService } from '@/events/event.service';
 import type { Invitation, PublicUser } from '@/interfaces';

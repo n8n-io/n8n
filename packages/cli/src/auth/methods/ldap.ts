@@ -1,6 +1,6 @@
 import { Container } from '@n8n/di';
 
-import type { User } from '@/databases/entities/user';
+import type { User } from '@n8n/db';
 import { EventService } from '@/events/event.service';
 import {
 	createLdapUserOnLocalDb,

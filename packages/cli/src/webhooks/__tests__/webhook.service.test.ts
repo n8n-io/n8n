@@ -4,8 +4,8 @@ import { Workflow } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import config from '@/config';
-import { WebhookEntity } from '@/databases/entities/webhook-entity';
-import type { WebhookRepository } from '@/databases/repositories/webhook.repository';
+import { WebhookEntity } from '@n8n/db';
+import type { WebhookRepository } from '@n8n/db';
 import type { NodeTypes } from '@/node-types';
 import type { CacheService } from '@/services/cache/cache.service';
 import { WebhookService } from '@/webhooks/webhook.service';

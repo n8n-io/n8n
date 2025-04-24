@@ -3,10 +3,10 @@ import { Logger } from 'n8n-core';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { ensureError } from 'n8n-workflow';
 
-import type { User } from '@/databases/entities/user';
-import type { WorkflowHistory } from '@/databases/entities/workflow-history';
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
-import { WorkflowHistoryRepository } from '@/databases/repositories/workflow-history.repository';
+import type { User } from '@n8n/db';
+import type { WorkflowHistory } from '@n8n/db';
+import { SharedWorkflowRepository } from '@/legacy-repository/shared-workflow.repository';
+import { WorkflowHistoryRepository } from '@n8n/db';
 import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
 

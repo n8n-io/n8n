@@ -1,7 +1,7 @@
 import { WorkflowOperationError } from 'n8n-workflow';
 import type { INode } from 'n8n-workflow';
 
-import type { Project } from '@/databases/entities/project';
+import type { Project } from '@n8n/db';
 
 type Options = {
 	/** ID of the subworkflow whose execution was denied. */

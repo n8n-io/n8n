@@ -5,8 +5,8 @@ import { parse as parseQs } from 'querystring';
 
 import { OAuth2CredentialController } from '@/controllers/oauth/oauth2-credential.controller';
 import { CredentialsHelper } from '@/credentials-helper';
-import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
-import type { User } from '@/databases/entities/user';
+import type { CredentialsEntity } from '@/legacy-repository/credentials-entity';
+import type { User } from '@n8n/db';
 import { saveCredential } from '@test-integration/db/credentials';
 import { createMember, createOwner } from '@test-integration/db/users';
 import * as testDb from '@test-integration/test-db';

@@ -5,8 +5,8 @@ import { Logger } from 'n8n-core';
 
 import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
-import { SettingsRepository } from '@/databases/repositories/settings.repository';
-import { UserRepository } from '@/databases/repositories/user.repository';
+import { SettingsRepository } from '@/legacy-repository/settings.repository';
+import { UserRepository } from '@n8n/db';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { EventService } from '@/events/event.service';
 import { validateEntity } from '@/generic-helpers';

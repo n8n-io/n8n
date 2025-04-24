@@ -1,7 +1,7 @@
 import { Container } from '@n8n/di';
 
 import config from '@/config';
-import { UserRepository } from '@/databases/repositories/user.repository';
+import { UserRepository } from '@n8n/db';
 
 import { MFA_FEATURE_ENABLED } from './constants';
 

@@ -18,8 +18,8 @@ import type { Scope } from '@n8n/permissions';
 import { In, Not } from '@n8n/typeorm';
 import { Response } from 'express';
 
-import type { Project } from '@/databases/entities/project';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
+import type { Project } from '@n8n/db';
+import { ProjectRepository } from '@n8n/db';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';

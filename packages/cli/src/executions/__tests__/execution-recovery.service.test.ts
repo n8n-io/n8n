@@ -6,7 +6,7 @@ import { randomInt } from 'n8n-workflow';
 import assert from 'node:assert';
 
 import { ARTIFICIAL_TASK_DATA } from '@/constants';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
+import { ExecutionRepository } from '@n8n/db';
 import { NodeCrashedError } from '@/errors/node-crashed.error';
 import { WorkflowCrashedError } from '@/errors/workflow-crashed.error';
 import type { EventMessageTypes as EventMessage } from '@/eventbus/event-message-classes';

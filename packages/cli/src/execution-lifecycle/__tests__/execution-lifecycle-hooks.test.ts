@@ -21,8 +21,8 @@ import type {
 	ITaskStartedData,
 } from 'n8n-workflow';
 
-import type { Project } from '@/databases/entities/project';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
+import type { Project } from '@n8n/db';
+import { ExecutionRepository } from '@n8n/db';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { Push } from '@/push';

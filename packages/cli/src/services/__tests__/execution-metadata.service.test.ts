@@ -1,6 +1,6 @@
 import { Container } from '@n8n/di';
 
-import { ExecutionMetadataRepository } from '@/databases/repositories/execution-metadata.repository';
+import { ExecutionMetadataRepository } from '@n8n/db';
 import { ExecutionMetadataService } from '@/services/execution-metadata.service';
 import { mockInstance } from '@test/mocking';
 

@@ -4,7 +4,7 @@ import { EventEmitter } from 'events';
 import { Logger } from 'n8n-core';
 import type WebSocket from 'ws';
 
-import type { User } from '@/databases/entities/user';
+import type { User } from '@n8n/db';
 import { WebSocketPush } from '@/push/websocket.push';
 import { mockInstance } from '@test/mocking';
 

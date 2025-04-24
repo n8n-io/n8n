@@ -4,7 +4,7 @@ import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import promClient from 'prom-client';
 
-import type { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import type { WorkflowRepository } from '@n8n/db';
 import { EventMessageWorkflow } from '@/eventbus/event-message-classes/event-message-workflow';
 import type { EventService } from '@/events/event.service';
 import type { CacheService } from '@/services/cache/cache.service';

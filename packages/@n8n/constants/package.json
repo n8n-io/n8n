@@ -20,5 +20,8 @@
   ],
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*"
+  },
+  "dependencies": {
+    "@n8n/permissions": "workspace:^"
   }
 }

@@ -35,7 +35,7 @@ import type {
 import { VersionedNodeType, NodeHelpers, Workflow, UnexpectedError } from 'n8n-workflow';
 
 import { CredentialTypes } from '@/credential-types';
-import type { User } from '@/databases/entities/user';
+import type { User } from '@n8n/db';
 import { NodeTypes } from '@/node-types';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 

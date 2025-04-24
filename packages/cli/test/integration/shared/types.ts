@@ -4,10 +4,10 @@ import type { Server } from 'http';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import type TestAgent from 'supertest/lib/agent';
 
-import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
-import type { Project } from '@/databases/entities/project';
-import type { User } from '@/databases/entities/user';
-import type { ICredentialsDb } from '@/interfaces';
+import type { CredentialsEntity } from '@/legacy-repository/credentials-entity';
+import type { Project } from '@n8n/db';
+import type { User } from '@n8n/db';
+import type { ICredentialsDb } from '@n8n/db';
 
 import type { LicenseMocker } from './license';
 

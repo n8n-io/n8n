@@ -12,9 +12,9 @@ import type PCancelable from 'p-cancelable';
 
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsHelper } from '@/credentials-helper';
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import type { WorkflowEntity } from '@n8n/db';
+import { ExecutionRepository } from '@n8n/db';
+import { WorkflowRepository } from '@n8n/db';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { EventService } from '@/events/event.service';
 import {

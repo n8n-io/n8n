@@ -2,8 +2,8 @@ import type { ProjectRole } from '@n8n/api-types';
 import { Container } from '@n8n/di';
 import type { GlobalRole, Scope } from '@n8n/permissions';
 
-import type { CredentialSharingRole } from '@/databases/entities/shared-credentials';
-import type { WorkflowSharingRole } from '@/databases/entities/shared-workflow';
+import type { CredentialSharingRole } from '@n8n/db';
+import type { WorkflowSharingRole } from '@n8n/db';
 import { RoleService } from '@/services/role.service';
 
 import { createMember } from './shared/db/users';

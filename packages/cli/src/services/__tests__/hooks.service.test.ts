@@ -3,12 +3,12 @@ import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
 
 import type { AuthService } from '@/auth/auth.service';
-import type { AuthUser } from '@/databases/entities/auth-user';
-import type { AuthUserRepository } from '@/databases/repositories/auth-user.repository';
-import type { CredentialsRepository } from '@/databases/repositories/credentials.repository';
-import type { SettingsRepository } from '@/databases/repositories/settings.repository';
-import type { UserRepository } from '@/databases/repositories/user.repository';
-import type { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import type { AuthUser } from '@n8n/db';
+import type { AuthUserRepository } from '@n8n/db';
+import type { CredentialsRepository } from '@/legacy-repository/credentials.repository';
+import type { SettingsRepository } from '@/legacy-repository/settings.repository';
+import type { UserRepository } from '@n8n/db';
+import type { WorkflowRepository } from '@n8n/db';
 import type { Invitation } from '@/interfaces';
 import type { AuthenticatedRequest } from '@/requests';
 import { HooksService } from '@/services/hooks.service';

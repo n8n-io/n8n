@@ -11,10 +11,10 @@ import { mock } from 'jest-mock-extended';
 import type { INode, IRun, WorkflowExecuteMode } from 'n8n-workflow';
 
 import config from '@/config';
-import type { Project } from '@/databases/entities/project';
-import type { User } from '@/databases/entities/user';
-import type { WorkflowStatistics } from '@/databases/entities/workflow-statistics';
-import { WorkflowStatisticsRepository } from '@/databases/repositories/workflow-statistics.repository';
+import type { Project } from '@n8n/db';
+import type { User } from '@n8n/db';
+import type { WorkflowStatistics } from '@n8n/db';
+import { WorkflowStatisticsRepository } from '@n8n/db';
 import type { EventService } from '@/events/event.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { UserService } from '@/services/user.service';

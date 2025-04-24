@@ -10,8 +10,8 @@ import { Response } from 'express';
 import { Logger } from 'n8n-core';
 
 import { AuthService } from '@/auth/auth.service';
-import type { User } from '@/databases/entities/user';
-import { UserRepository } from '@/databases/repositories/user.repository';
+import type { User } from '@n8n/db';
+import { UserRepository } from '@n8n/db';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InvalidMfaCodeError } from '@/errors/response-errors/invalid-mfa-code.error';
 import { EventService } from '@/events/event.service';

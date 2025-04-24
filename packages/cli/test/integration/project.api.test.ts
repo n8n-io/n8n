@@ -4,12 +4,12 @@ import type { GlobalRole, Scope } from '@n8n/permissions';
 import { EntityNotFoundError } from '@n8n/typeorm';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import type { Project } from '@/databases/entities/project';
-import { FolderRepository } from '@/databases/repositories/folder.repository';
-import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
+import type { Project } from '@n8n/db';
+import { FolderRepository } from '@n8n/db';
+import { ProjectRelationRepository } from '@n8n/db';
+import { ProjectRepository } from '@n8n/db';
+import { SharedCredentialsRepository } from '@n8n/db';
+import { SharedWorkflowRepository } from '@n8n/db';
 import { getWorkflowById } from '@/public-api/v1/handlers/workflows/workflows.service';
 import { CacheService } from '@/services/cache/cache.service';
 import { RoleService } from '@/services/role.service';

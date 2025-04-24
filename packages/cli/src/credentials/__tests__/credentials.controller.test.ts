@@ -1,7 +1,7 @@
 import { mock } from 'jest-mock-extended';
 
 import { createRawProjectData } from '@/__tests__/project.test-data';
-import type { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
+import type { SharedCredentialsRepository } from '@/legacy-repository/shared-credentials.repository';
 import type { EventService } from '@/events/event.service';
 import type { AuthenticatedRequest } from '@/requests';
 

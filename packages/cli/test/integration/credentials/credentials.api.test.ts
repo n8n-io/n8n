@@ -1,4 +1,8 @@
 import { GlobalConfig } from '@n8n/config';
+import { ProjectRepository } from '@n8n/db';
+import type { ListQueryCredentials } from '@n8n/db';
+import type { Project } from '@n8n/db';
+import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Scope } from '@sentry/node';
 import * as a from 'assert';
@@ -9,12 +13,8 @@ import { randomString } from 'n8n-workflow';
 
 import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
 import { CredentialsService } from '@/credentials/credentials.service';
-import type { Project } from '@/databases/entities/project';
-import type { User } from '@/databases/entities/user';
-import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
-import type { ListQuery } from '@/requests';
+import { CredentialsRepository } from '@/legacy-repository/credentials.repository';
+import { SharedCredentialsRepository } from '@/legacy-repository/shared-credentials.repository';
 import { CredentialsTester } from '@/services/credentials-tester.service';
 
 import {
@@ -74,7 +74,7 @@ beforeEach(async () => {
 	sharedCredentialsRepository = Container.get(SharedCredentialsRepository);
 });
 
-type GetAllResponse = { body: { data: ListQuery.Credentials.WithOwnedByAndSharedWith[] } };
+type GetAllResponse = { body: { data: ListQueryCredentials.WithOwnedByAndSharedWith[] } };
 
 // ----------------------------------------
 // GET /credentials - fetch all credentials
@@ -92,7 +92,7 @@ describe('GET /credentials', () => {
 		expect(response.body.data.length).toBe(2); // owner retrieved owner cred and member cred
 
 		const savedCredentialsIds = [savedOwnerCredentialId, savedMemberCredentialId];
-		response.body.data.forEach((credential: ListQuery.Credentials.WithOwnedByAndSharedWith) => {
+		response.body.data.forEach((credential: ListQueryCredentials.WithOwnedByAndSharedWith) => {
 			validateMainCredentialData(credential);
 			expect('data' in credential).toBe(false);
 			expect(savedCredentialsIds).toContain(credential.id);
@@ -1205,7 +1205,7 @@ describe('PATCH /credentials/:id', () => {
 		expect(data.accessToken).toBe(patchPayload.data.accessToken);
 		// was not overwritten
 		const dbCredential = await getCredentialById(savedCredential.id);
-		const unencryptedData = Container.get(CredentialsService).decrypt(dbCredential!);
+		const unencryptedData = Container.get(CredentialsService).decrypt(dbCredential);
 		expect(unencryptedData.oauthTokenData).toEqual(credential.data.oauthTokenData);
 	});
 
@@ -1502,7 +1502,7 @@ const INVALID_PAYLOADS = [
 	undefined,
 ];
 
-function validateMainCredentialData(credential: ListQuery.Credentials.WithOwnedByAndSharedWith) {
+function validateMainCredentialData(credential: ListQueryCredentials.WithOwnedByAndSharedWith) {
 	const { name, type, sharedWithProjects, homeProject, isManaged } = credential;
 
 	expect(typeof name).toBe('string');
@@ -1522,7 +1522,7 @@ function validateMainCredentialData(credential: ListQuery.Credentials.WithOwnedB
 	}
 }
 
-function validateCredentialWithNoData(credential: ListQuery.Credentials.WithOwnedByAndSharedWith) {
+function validateCredentialWithNoData(credential: ListQueryCredentials.WithOwnedByAndSharedWith) {
 	validateMainCredentialData(credential);
 
 	expect('data' in credential).toBe(false);

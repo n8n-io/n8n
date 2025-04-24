@@ -4,8 +4,8 @@ import { In } from '@n8n/typeorm';
 import pick from 'lodash/pick';
 import { validate as uuidValidate } from 'uuid';
 
-import type { User } from '@/databases/entities/user';
-import { UserRepository } from '@/databases/repositories/user.repository';
+import type { User } from '@n8n/db';
+import { UserRepository } from '@n8n/db';
 
 export async function getUser(data: {
 	withIdentifier: string;

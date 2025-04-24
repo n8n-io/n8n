@@ -10,9 +10,9 @@ import { Logger } from 'n8n-core';
 import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
 
 import config from '@/config';
-import { EventDestinationsRepository } from '@/databases/repositories/event-destinations.repository';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { EventDestinationsRepository } from '@n8n/db';
+import { ExecutionRepository } from '@n8n/db';
+import { WorkflowRepository } from '@n8n/db';
 import { License } from '@/license';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 

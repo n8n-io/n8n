@@ -4,9 +4,9 @@ import type { IRun, IWorkflowBase } from 'n8n-workflow';
 import { createDeferredPromise } from 'n8n-workflow';
 
 import type { ActiveExecutions } from '@/active-executions';
-import type { Project } from '@/databases/entities/project';
-import type { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import type { IExecutionResponse } from '@/interfaces';
+import type { Project } from '@n8n/db';
+import type { ExecutionRepository } from '@n8n/db';
+import type { IExecutionResponse } from '@n8n/db';
 import type { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
 import { OrchestrationService } from '@/services/orchestration.service';
 import type { OwnershipService } from '@/services/ownership.service';

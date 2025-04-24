@@ -3,7 +3,7 @@ import { Container } from '@n8n/di';
 import type { Response } from 'express';
 
 import { ProjectController } from '@/controllers/project.controller';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
+import { ProjectRepository } from '@n8n/db';
 import type { PaginatedRequest } from '@/public-api/types';
 import type { AuthenticatedRequest } from '@/requests';
 

@@ -12,7 +12,7 @@ import { v4 as uuid } from 'uuid';
 import { ActiveExecutions } from '@/active-executions';
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import config from '@/config';
-import type { ExecutionRepository } from '@/databases/repositories/execution.repository';
+import type { ExecutionRepository } from '@n8n/db';
 import { mockInstance } from '@test/mocking';
 
 jest.mock('n8n-workflow', () => ({

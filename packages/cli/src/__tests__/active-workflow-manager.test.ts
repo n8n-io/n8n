@@ -10,8 +10,8 @@ import type {
 import { Workflow } from 'n8n-workflow';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
-import type { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import type { WorkflowEntity } from '@n8n/db';
+import type { WorkflowRepository } from '@n8n/db';
 import type { NodeTypes } from '@/node-types';
 
 describe('ActiveWorkflowManager', () => {

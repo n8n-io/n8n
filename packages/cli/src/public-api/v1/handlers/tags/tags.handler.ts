@@ -3,8 +3,8 @@ import { Container } from '@n8n/di';
 import type { FindManyOptions } from '@n8n/typeorm';
 import type express from 'express';
 
-import type { TagEntity } from '@/databases/entities/tag-entity';
-import { TagRepository } from '@/databases/repositories/tag.repository';
+import type { TagEntity } from '@n8n/db';
+import { TagRepository } from '@n8n/db';
 import { TagService } from '@/services/tag.service';
 
 import type { TagRequest } from '../../../types';

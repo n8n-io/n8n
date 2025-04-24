@@ -7,6 +7,7 @@ import type { ListQuery } from '@/requests';
 import * as ResponseHelper from '@/response-helper';
 
 import { sortByQueryMiddleware } from '../sort-by';
+import { ListQueryWorkflow } from '@n8n/db';
 
 describe('List query middleware', () => {
 	let mockReq: ListQuery.Request;
@@ -177,7 +178,7 @@ describe('List query middleware', () => {
 	});
 
 	describe('Query sort by', () => {
-		const validCases: Array<{ name: string; value: ListQuery.Workflow.SortOrder }> = [
+		const validCases: Array<{ name: string; value: ListQueryWorkflow.SortOrder }> = [
 			{
 				name: 'sorting by name asc',
 				value: 'name:asc',
@@ -236,7 +237,7 @@ describe('List query middleware', () => {
 
 		test.each(invalidCases)('should fail validation when $name', async ({ value }) => {
 			mockReq.query = {
-				sortBy: value as ListQuery.Workflow.SortOrder,
+				sortBy: value as ListQueryWorkflow.SortOrder,
 			};
 
 			await sortByQueryMiddleware(...args);

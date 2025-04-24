@@ -6,12 +6,12 @@ import type { IWorkflowBase, WorkflowId } from 'n8n-workflow';
 import { jsonParse, UserError } from 'n8n-workflow';
 
 import { UM_FIX_INSTRUCTION } from '@/constants';
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
-import { UserRepository } from '@/databases/repositories/user.repository';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import { generateNanoId } from '@/databases/utils/generators';
+import type { WorkflowEntity } from '@n8n/db';
+import { ProjectRepository } from '@n8n/db';
+import { SharedWorkflowRepository } from '@/legacy-repository/shared-workflow.repository';
+import { UserRepository } from '@n8n/db';
+import { WorkflowRepository } from '@n8n/db';
+import { generateNanoId } from '@n8n/db';
 import type { IWorkflowToImport } from '@/interfaces';
 import { ImportService } from '@/services/import.service';
 

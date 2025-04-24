@@ -1,6 +1,6 @@
 import { Container } from '@n8n/di';
 
-import type { User } from '@/databases/entities/user';
+import type { User } from '@n8n/db';
 import { License } from '@/license';
 import { ProjectService } from '@/services/project.service.ee';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';

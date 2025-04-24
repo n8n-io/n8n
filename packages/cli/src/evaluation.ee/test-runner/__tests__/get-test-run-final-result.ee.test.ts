@@ -1,6 +1,6 @@
 import { mock } from 'jest-mock-extended';
 
-import type { TestCaseExecution } from '@/databases/entities/test-case-execution.ee';
+import type { TestCaseExecution } from '@n8n/db';
 import { getTestRunFinalResult } from '@/evaluation.ee/test-runner/utils.ee';
 
 function mockTestCaseExecutions(statuses: Array<TestCaseExecution['status']>) {

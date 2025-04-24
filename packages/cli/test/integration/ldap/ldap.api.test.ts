@@ -4,9 +4,9 @@ import type { Entry as LdapUser } from 'ldapts';
 import { Cipher } from 'n8n-core';
 
 import config from '@/config';
-import type { User } from '@/databases/entities/user';
-import { AuthProviderSyncHistoryRepository } from '@/databases/repositories/auth-provider-sync-history.repository';
-import { UserRepository } from '@/databases/repositories/user.repository';
+import type { User } from '@n8n/db';
+import { AuthProviderSyncHistoryRepository } from '@n8n/db';
+import { UserRepository } from '@n8n/db';
 import { LDAP_DEFAULT_CONFIGURATION } from '@/ldap.ee/constants';
 import { saveLdapSynchronization } from '@/ldap.ee/helpers.ee';
 import { LdapService } from '@/ldap.ee/ldap.service.ee';

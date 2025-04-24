@@ -8,10 +8,10 @@ import { jsonParse, UnexpectedError } from 'n8n-workflow';
 import type { IdentityProviderInstance, ServiceProviderInstance } from 'samlify';
 import type { BindingContext, PostBindingContext } from 'samlify/types/src/entity';
 
-import type { Settings } from '@/databases/entities/settings';
-import type { User } from '@/databases/entities/user';
-import { SettingsRepository } from '@/databases/repositories/settings.repository';
-import { UserRepository } from '@/databases/repositories/user.repository';
+import type { Settings } from '@n8n/db';
+import type { User } from '@n8n/db';
+import { SettingsRepository } from '@/legacy-repository/settings.repository';
+import { UserRepository } from '@n8n/db';
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { UrlService } from '@/services/url.service';

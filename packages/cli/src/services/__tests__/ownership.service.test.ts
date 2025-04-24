@@ -1,15 +1,15 @@
 import { mock } from 'jest-mock-extended';
 import { v4 as uuid } from 'uuid';
 
-import { Project } from '@/databases/entities/project';
-import { ProjectRelation } from '@/databases/entities/project-relation';
-import type { SharedCredentials } from '@/databases/entities/shared-credentials';
-import { SharedWorkflow } from '@/databases/entities/shared-workflow';
-import { User } from '@/databases/entities/user';
-import { WorkflowEntity } from '@/databases/entities/workflow-entity';
-import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
-import { UserRepository } from '@/databases/repositories/user.repository';
+import { Project } from '@n8n/db';
+import { ProjectRelation } from '@n8n/db';
+import type { SharedCredentials } from '@n8n/db';
+import { SharedWorkflow } from '@n8n/db';
+import { User } from '@n8n/db';
+import { WorkflowEntity } from '@n8n/db';
+import { ProjectRelationRepository } from '@n8n/db';
+import { SharedWorkflowRepository } from '@/legacy-repository/shared-workflow.repository';
+import { UserRepository } from '@n8n/db';
 import { OwnershipService } from '@/services/ownership.service';
 import { mockCredential, mockProject } from '@test/mock-objects';
 import { mockInstance } from '@test/mocking';

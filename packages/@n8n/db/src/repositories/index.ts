@@ -1,0 +1,67 @@
+export { AnnotationTagMappingRepository } from './annotation-tag-mapping.repository.ee';
+export { AnnotationTagRepository } from './annotation-tag.repository.ee';
+export { ApiKeyRepository } from './api-key.repository';
+export { AuthIdentityRepository } from './auth-identity.repository';
+export { AuthProviderSyncHistoryRepository } from './auth-provider-sync-history.repository';
+export { AuthUserRepository } from './auth-user.repository';
+export { EventDestinationsRepository } from './event-destinations.repository';
+export { ExecutionAnnotationRepository } from './execution-annotation.repository';
+export { ExecutionDataRepository } from './execution-data.repository';
+export { ExecutionMetadataRepository } from './execution-metadata.repository';
+export { ExecutionRepository } from './execution.repository';
+export { FolderTagMappingRepository } from './folder-tag-mapping.repository';
+export { FolderRepository } from './folder.repository';
+export { InstalledNodesRepository } from './installed-nodes.repository';
+export { InstalledPackagesRepository } from './installed-packages.repository';
+export { InvalidAuthTokenRepository } from './invalid-auth-token.repository';
+export { LicenseMetricsRepository } from './license-metrics.repository';
+export { ProcessedDataRepository } from './processed-data.repository';
+export { ProjectRelationRepository } from './project-relation.repository';
+export { ProjectRepository } from './project.repository';
+export { TagRepository } from './tag.repository';
+export { TestCaseExecutionRepository } from './test-case-execution.repository.ee';
+export { TestDefinitionRepository } from './test-definition.repository.ee';
+export { TestMetricRepository } from './test-metric.repository.ee';
+export { TestRunRepository } from './test-run.repository.ee';
+export { UserRepository } from './user.repository';
+export { VariablesRepository } from './variables.repository';
+export { WebhookRepository } from './webhook.repository';
+export { WorkflowHistoryRepository } from './workflow-history.repository';
+export { WorkflowStatisticsRepository } from './workflow-statistics.repository';
+export { WorkflowTagMappingRepository } from './workflow-tag-mapping.repository';
+export { WorkflowRepository } from './workflow.repository';
+
+// export const repositories = {
+//   AnnotationTagMappingRepository,
+//   AnnotationTagRepository,
+//   ApiKeyRepository,
+//   AuthIdentityRepository,
+//   AuthProviderSyncHistoryRepository,
+//   AuthUserRepository,
+//   EventDestinationsRepository,
+//   ExecutionAnnotationRepository,
+//   ExecutionDataRepository,
+//   ExecutionMetadataRepository,
+//   ExecutionRepository,
+//   FolderTagMappingRepository,
+//   FolderRepository,
+//   InstalledNodesRepository,
+//   InstalledPackagesRepository,
+//   InvalidAuthTokenRepository,
+//   LicenseMetricsRepository,
+//   ProcessedDataRepository,
+//   ProjectRelationRepository,
+//   ProjectRepository,
+//   TagRepository,
+//   TestCaseExecutionRepository,
+//   TestDefinitionRepository,
+//   TestMetricRepository,
+//   TestRunRepository,
+//   UserRepository,
+//   VariablesRepository,
+//   WebhookRepository,
+//   WorkflowHistoryRepository,
+//   WorkflowStatisticsRepository,
+//   WorkflowTagMappingRepository,
+//   WorkflowRepository,
+// };

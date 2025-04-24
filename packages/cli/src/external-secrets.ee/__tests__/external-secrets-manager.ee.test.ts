@@ -1,6 +1,6 @@
 import { mock } from 'jest-mock-extended';
 
-import type { SettingsRepository } from '@/databases/repositories/settings.repository';
+import type { SettingsRepository } from '@/legacy-repository/settings.repository';
 import type { License } from '@/license';
 import {
 	AnotherDummyProvider,

@@ -20,8 +20,8 @@ import { v4 as uuid } from 'uuid';
 
 import config from '@/config';
 import { AUTH_COOKIE_NAME } from '@/constants';
-import { WorkflowEntity } from '@/databases/entities/workflow-entity';
-import { SettingsRepository } from '@/databases/repositories/settings.repository';
+import { WorkflowEntity } from '@n8n/db';
+import { SettingsRepository } from '@n8n/db';
 import { ExecutionService } from '@/executions/execution.service';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { Push } from '@/push';

@@ -4,7 +4,7 @@ import { Logger } from 'n8n-core';
 import type { WorkflowExecuteMode as ExecutionMode } from 'n8n-workflow';
 
 import config from '@/config';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
+import { ExecutionRepository } from '@n8n/db';
 import { InvalidConcurrencyLimitError } from '@/errors/invalid-concurrency-limit.error';
 import { UnknownExecutionModeError } from '@/errors/unknown-execution-mode.error';
 import { EventService } from '@/events/event.service';

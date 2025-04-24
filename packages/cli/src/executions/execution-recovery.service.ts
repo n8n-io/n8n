@@ -5,11 +5,11 @@ import { sleep } from 'n8n-workflow';
 import type { IRun, ITaskData } from 'n8n-workflow';
 
 import { ARTIFICIAL_TASK_DATA } from '@/constants';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
+import { ExecutionRepository } from '@n8n/db';
 import { NodeCrashedError } from '@/errors/node-crashed.error';
 import { WorkflowCrashedError } from '@/errors/workflow-crashed.error';
 import { getLifecycleHooksForRegularMain } from '@/execution-lifecycle/execution-lifecycle-hooks';
-import type { IExecutionResponse } from '@/interfaces';
+import type { IExecutionResponse } from '@n8n/db';
 import { Push } from '@/push';
 
 import type { EventMessageTypes } from '../eventbus/event-message-classes';

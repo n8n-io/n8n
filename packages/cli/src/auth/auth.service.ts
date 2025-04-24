@@ -7,9 +7,9 @@ import { Logger } from 'n8n-core';
 
 import config from '@/config';
 import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES, Time } from '@/constants';
-import type { User } from '@/databases/entities/user';
-import { InvalidAuthTokenRepository } from '@/databases/repositories/invalid-auth-token.repository';
-import { UserRepository } from '@/databases/repositories/user.repository';
+import type { User } from '@n8n/db';
+import { InvalidAuthTokenRepository } from '@n8n/db';
+import { UserRepository } from '@n8n/db';
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { License } from '@/license';

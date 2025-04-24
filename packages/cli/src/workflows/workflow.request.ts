@@ -9,6 +9,7 @@ import type {
 } from 'n8n-workflow';
 
 import type { AuthenticatedRequest, ListQuery } from '@/requests';
+import { ListQueryOptions } from '@n8n/api-types';
 
 export declare namespace WorkflowRequest {
 	type CreateUpdatePayload = Partial<{
@@ -47,7 +48,7 @@ export declare namespace WorkflowRequest {
 		{},
 		ListQuery.Params & { includeScopes?: string; includeFolders?: string }
 	> & {
-		listQueryOptions: ListQuery.Options;
+		listQueryOptions: ListQueryOptions;
 	};
 
 	type Delete = Get;

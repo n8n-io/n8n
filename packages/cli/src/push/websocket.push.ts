@@ -3,7 +3,7 @@ import { Service } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
 import type WebSocket from 'ws';
 
-import type { User } from '@/databases/entities/user';
+import type { User } from '@n8n/db';
 
 import { AbstractPush } from './abstract.push';
 

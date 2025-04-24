@@ -14,7 +14,7 @@ import type {
 	StatusResult,
 } from 'simple-git';
 
-import type { User } from '@/databases/entities/user';
+import type { User } from '@n8n/db';
 import { OwnershipService } from '@/services/ownership.service';
 
 import {

@@ -9,11 +9,11 @@ import type { ICredentialsEncrypted } from 'n8n-workflow';
 import { jsonParse, UserError } from 'n8n-workflow';
 
 import { UM_FIX_INSTRUCTION } from '@/constants';
-import { CredentialsEntity } from '@/databases/entities/credentials-entity';
-import { Project } from '@/databases/entities/project';
-import { SharedCredentials } from '@/databases/entities/shared-credentials';
-import { User } from '@/databases/entities/user';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
+import { CredentialsEntity } from '@n8n/db';
+import { Project } from '@n8n/db';
+import { SharedCredentials } from '@n8n/db';
+import { User } from '@n8n/db';
+import { ProjectRepository } from '@n8n/db';
 import * as Db from '@/db';
 
 import { BaseCommand } from '../base-command';

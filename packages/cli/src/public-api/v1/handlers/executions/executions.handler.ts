@@ -4,7 +4,7 @@ import { replaceCircularReferences } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
+import { ExecutionRepository } from '@n8n/db';
 import { EventService } from '@/events/event.service';
 
 import type { ExecutionRequest } from '../../../types';

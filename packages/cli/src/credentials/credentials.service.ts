@@ -1,4 +1,4 @@
-import type { CreateCredentialDto } from '@n8n/api-types';
+import type { CreateCredentialDto, ListQueryOptions } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
@@ -20,19 +20,19 @@ import { CREDENTIAL_EMPTY_VALUE, deepCopy, NodeHelpers, UnexpectedError } from '
 import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
 import { CredentialTypes } from '@/credential-types';
 import { createCredentialsFromCredentialsEntity } from '@/credentials-helper';
-import { CredentialsEntity } from '@/databases/entities/credentials-entity';
-import { SharedCredentials } from '@/databases/entities/shared-credentials';
-import type { User } from '@/databases/entities/user';
-import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
-import { UserRepository } from '@/databases/repositories/user.repository';
+import { CredentialsEntity } from '@n8n/db';
+import { SharedCredentials } from '@n8n/db';
+import type { User } from '@n8n/db';
+import { CredentialsRepository } from '@/legacy-repository/credentials.repository';
+import { ProjectRepository } from '@n8n/db';
+import { SharedCredentialsRepository } from '@/legacy-repository/shared-credentials.repository';
+import { UserRepository } from '@n8n/db';
 import * as Db from '@/db';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
-import type { ICredentialsDb } from '@/interfaces';
+import type { ICredentialsDb } from '@n8n/db';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import type { CredentialRequest, ListQuery } from '@/requests';
 import { CredentialsTester } from '@/services/credentials-tester.service';
@@ -73,7 +73,7 @@ export class CredentialsService {
 			includeScopes = false,
 			includeData = false,
 		}: {
-			listQueryOptions?: ListQuery.Options & { includeData?: boolean };
+			listQueryOptions?: ListQueryOptions & { includeData?: boolean };
 			includeScopes?: boolean;
 			includeData?: boolean;
 		} = {},

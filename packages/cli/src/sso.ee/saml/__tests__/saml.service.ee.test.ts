@@ -2,7 +2,7 @@ import type express from 'express';
 import { mock } from 'jest-mock-extended';
 import type { IdentityProviderInstance, ServiceProviderInstance } from 'samlify';
 
-import { SettingsRepository } from '@/databases/repositories/settings.repository';
+import { SettingsRepository } from '@/legacy-repository/settings.repository';
 import * as samlHelpers from '@/sso.ee/saml/saml-helpers';
 import { SamlService } from '@/sso.ee/saml/saml.service.ee';
 import { mockInstance } from '@test/mocking';

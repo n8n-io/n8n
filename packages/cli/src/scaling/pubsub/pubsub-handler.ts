@@ -3,7 +3,7 @@ import { InstanceSettings } from 'n8n-core';
 import { ensureError } from 'n8n-workflow';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { WorkflowRepository } from '@n8n/db';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { EventService } from '@/events/event.service';
 import type { PubSubEventMap } from '@/events/maps/pub-sub.event-map';

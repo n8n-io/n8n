@@ -1,12 +1,8 @@
+import type { ListQueryCredentials, ListQueryWorkflow, Project, User } from '@n8n/db';
+import { ProjectRelationRepository, ProjectRepository, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import type { Project } from '@/databases/entities/project';
-import type { User } from '@/databases/entities/user';
-import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
-import { UserRepository } from '@/databases/repositories/user.repository';
-import type { ListQuery } from '@/requests';
+import { SharedWorkflowRepository } from '@/legacy-repository/shared-workflow.repository';
 import { CacheService } from '@/services/cache/cache.service';
 
 @Service()
@@ -57,18 +53,18 @@ export class OwnershipService {
 	}
 
 	addOwnedByAndSharedWith(
-		rawWorkflow: ListQuery.Workflow.WithSharing,
-	): ListQuery.Workflow.WithOwnedByAndSharedWith;
+		rawWorkflow: ListQueryWorkflow.WithSharing,
+	): ListQueryWorkflow.WithOwnedByAndSharedWith;
 	addOwnedByAndSharedWith(
-		rawCredential: ListQuery.Credentials.WithSharing,
-	): ListQuery.Credentials.WithOwnedByAndSharedWith;
+		rawCredential: ListQueryCredentials.WithSharing,
+	): ListQueryCredentials.WithOwnedByAndSharedWith;
 	addOwnedByAndSharedWith(
-		rawEntity: ListQuery.Workflow.WithSharing | ListQuery.Credentials.WithSharing,
-	): ListQuery.Workflow.WithOwnedByAndSharedWith | ListQuery.Credentials.WithOwnedByAndSharedWith {
+		rawEntity: ListQueryWorkflow.WithSharing | ListQueryCredentials.WithSharing,
+	): ListQueryWorkflow.WithOwnedByAndSharedWith | ListQueryCredentials.WithOwnedByAndSharedWith {
 		const shared = rawEntity.shared;
 		const entity = rawEntity as
-			| ListQuery.Workflow.WithOwnedByAndSharedWith
-			| ListQuery.Credentials.WithOwnedByAndSharedWith;
+			| ListQueryWorkflow.WithOwnedByAndSharedWith
+			| ListQueryCredentials.WithOwnedByAndSharedWith;
 
 		Object.assign(entity, {
 			homeProject: null,

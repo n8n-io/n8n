@@ -18,8 +18,8 @@ import PCancelable from 'p-cancelable';
 
 import { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
-import type { ExecutionEntity } from '@/databases/entities/execution-entity';
-import type { User } from '@/databases/entities/user';
+import type { ExecutionEntity } from '@n8n/db';
+import type { User } from '@n8n/db';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import { Telemetry } from '@/telemetry';

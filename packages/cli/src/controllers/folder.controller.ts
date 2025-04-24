@@ -2,6 +2,7 @@ import {
 	CreateFolderDto,
 	DeleteFolderDto,
 	ListFolderQueryDto,
+	ListQueryOptions,
 	UpdateFolderDto,
 } from '@n8n/api-types';
 import {
@@ -119,7 +120,7 @@ export class ProjectController {
 
 		const [data, count] = await this.folderService.getManyAndCount(
 			projectId,
-			payload as ListQuery.Options,
+			payload as ListQueryOptions,
 		);
 
 		res.json({ count, data });

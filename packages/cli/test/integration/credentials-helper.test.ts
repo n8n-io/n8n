@@ -1,7 +1,7 @@
 import { Container } from '@n8n/di';
 
 import { CredentialsHelper } from '@/credentials-helper';
-import type { User } from '@/databases/entities/user';
+import type { User } from '@n8n/db';
 
 import { saveCredential } from './shared/db/credentials';
 import { createTeamProject, linkUserToProject } from './shared/db/projects';

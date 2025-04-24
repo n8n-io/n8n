@@ -5,8 +5,8 @@ import type { Workflow } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
 
 import { CollaborationState } from '@/collaboration/collaboration.state';
-import type { User } from '@/databases/entities/user';
-import { UserRepository } from '@/databases/repositories/user.repository';
+import type { User } from '@n8n/db';
+import { UserRepository } from '@n8n/db';
 import { Push } from '@/push';
 import type { OnPushMessage } from '@/push/types';
 import { AccessService } from '@/services/access.service';

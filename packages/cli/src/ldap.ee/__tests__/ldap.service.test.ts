@@ -5,9 +5,9 @@ import type { Cipher } from 'n8n-core';
 import { randomString } from 'n8n-workflow';
 
 import config from '@/config';
-import type { Settings } from '@/databases/entities/settings';
-import { AuthIdentityRepository } from '@/databases/repositories/auth-identity.repository';
-import { SettingsRepository } from '@/databases/repositories/settings.repository';
+import type { Settings } from '@n8n/db';
+import { AuthIdentityRepository } from '@n8n/db';
+import { SettingsRepository } from '@/legacy-repository/settings.repository';
 import type { EventService } from '@/events/event.service';
 import { mockInstance, mockLogger } from '@test/mocking';
 

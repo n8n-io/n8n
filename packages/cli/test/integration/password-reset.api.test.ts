@@ -6,8 +6,8 @@ import { v4 as uuid } from 'uuid';
 
 import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
-import type { User } from '@/databases/entities/user';
-import { UserRepository } from '@/databases/repositories/user.repository';
+import type { User } from '@n8n/db';
+import { UserRepository } from '@n8n/db';
 import { ExternalHooks } from '@/external-hooks';
 import { License } from '@/license';
 import { JwtService } from '@/services/jwt.service';

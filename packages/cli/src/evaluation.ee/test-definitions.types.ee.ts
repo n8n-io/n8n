@@ -1,4 +1,6 @@
-import type { MockedNodeItem } from '@/databases/entities/test-definition.ee';
+import type { ListQueryOptions } from '@n8n/api-types';
+import type { MockedNodeItem } from '@n8n/db';
+
 import type { AuthenticatedRequest, ListQuery } from '@/requests';
 
 // ----------------------------------
@@ -15,7 +17,7 @@ export declare namespace TestDefinitionsRequest {
 	type GetOne = AuthenticatedRequest<RouteParams.TestId>;
 
 	type GetMany = AuthenticatedRequest<{}, {}, {}, ListQuery.Params> & {
-		listQueryOptions: ListQuery.Options;
+		listQueryOptions: ListQueryOptions;
 	};
 
 	type Create = AuthenticatedRequest<
@@ -63,7 +65,7 @@ export declare namespace TestRunsRequest {
 	}
 
 	type GetMany = AuthenticatedRequest<RouteParams.TestId, {}, {}, ListQuery.Params> & {
-		listQueryOptions: ListQuery.Options;
+		listQueryOptions: ListQueryOptions;
 	};
 
 	type GetOne = AuthenticatedRequest<RouteParams.TestId & RouteParams.TestRunId>;

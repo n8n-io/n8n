@@ -4,7 +4,7 @@ import fs from 'fs';
 import { UserError } from 'n8n-workflow';
 import path from 'path';
 
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { WorkflowRepository } from '@n8n/db';
 
 import { BaseCommand } from '../base-command';
 

@@ -1,7 +1,7 @@
 import { Service } from '@n8n/di';
 
-import { LicenseMetricsRepository } from '@/databases/repositories/license-metrics.repository';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { LicenseMetricsRepository } from '@n8n/db';
+import { WorkflowRepository } from '@n8n/db';
 
 @Service()
 export class LicenseMetricsService {

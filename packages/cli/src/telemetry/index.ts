@@ -7,10 +7,10 @@ import { InstanceSettings, Logger } from 'n8n-core';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
 
 import { LOWEST_SHUTDOWN_PRIORITY, N8N_VERSION } from '@/constants';
-import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { UserRepository } from '@/databases/repositories/user.repository';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { ProjectRelationRepository } from '@n8n/db';
+import { ProjectRepository } from '@n8n/db';
+import { UserRepository } from '@n8n/db';
+import { WorkflowRepository } from '@n8n/db';
 import type { IExecutionTrackProperties } from '@/interfaces';
 import { License } from '@/license';
 import { PostHogClient } from '@/posthog';

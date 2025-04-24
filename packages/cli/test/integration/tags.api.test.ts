@@ -1,6 +1,6 @@
 import { Container } from '@n8n/di';
 
-import { TagRepository } from '@/databases/repositories/tag.repository';
+import { TagRepository } from '@n8n/db';
 
 import { createUserShell } from './shared/db/users';
 import * as testDb from './shared/test-db';

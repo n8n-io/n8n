@@ -1,6 +1,6 @@
 import type { ActiveWorkflowManager } from '@/active-workflow-manager';
-import type { ExecutionEntity } from '@/databases/entities/execution-entity';
-import type { User } from '@/databases/entities/user';
+import type { ExecutionEntity } from '@n8n/db';
+import type { User } from '@n8n/db';
 import { Telemetry } from '@/telemetry';
 import { mockInstance } from '@test/mocking';
 import { createTeamProject } from '@test-integration/db/projects';

@@ -7,7 +7,7 @@ import { jsonParse, UnexpectedError } from 'n8n-workflow';
 import { writeFile, chmod, readFile } from 'node:fs/promises';
 import path from 'path';
 
-import { SettingsRepository } from '@/databases/repositories/settings.repository';
+import { SettingsRepository } from '@/legacy-repository/settings.repository';
 
 import {
 	SOURCE_CONTROL_SSH_FOLDER,

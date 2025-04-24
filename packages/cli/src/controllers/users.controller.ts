@@ -1,4 +1,4 @@
-import { RoleChangeRequestDto, SettingsUpdateRequestDto } from '@n8n/api-types';
+import { ListQueryOptions, RoleChangeRequestDto, SettingsUpdateRequestDto } from '@n8n/api-types';
 import {
 	GlobalScope,
 	Delete,
@@ -14,13 +14,13 @@ import { Logger } from 'n8n-core';
 
 import { AuthService } from '@/auth/auth.service';
 import { CredentialsService } from '@/credentials/credentials.service';
-import { AuthIdentity } from '@/databases/entities/auth-identity';
-import { Project } from '@/databases/entities/project';
-import { User } from '@/databases/entities/user';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
-import { UserRepository } from '@/databases/repositories/user.repository';
+import { AuthIdentity } from '@n8n/db';
+import { Project } from '@n8n/db';
+import { User } from '@n8n/db';
+import { ProjectRepository } from '@n8n/db';
+import { SharedCredentialsRepository } from '@/legacy-repository/shared-credentials.repository';
+import { SharedWorkflowRepository } from '@/legacy-repository/shared-workflow.repository';
+import { UserRepository } from '@n8n/db';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -62,7 +62,7 @@ export class UsersController {
 
 	private removeSupplementaryFields(
 		publicUsers: Array<Partial<PublicUser>>,
-		listQueryOptions: ListQuery.Options,
+		listQueryOptions: ListQueryOptions,
 	) {
 		const { take, select, filter } = listQueryOptions;
 

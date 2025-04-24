@@ -9,7 +9,7 @@ import semverParse from 'semver/functions/parse';
 
 import config from '@/config';
 import { N8N_VERSION, Time } from '@/constants';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { WorkflowRepository } from '@n8n/db';
 import type { EventMessageTypes } from '@/eventbus';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { EventService } from '@/events/event.service';

@@ -4,10 +4,10 @@ import type { Scope } from '@n8n/permissions';
 import { In } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
 
-import type { User } from '@/databases/entities/user';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
+import type { User } from '@n8n/db';
+import { ProjectRepository } from '@n8n/db';
+import { SharedCredentialsRepository } from '@/legacy-repository/shared-credentials.repository';
+import { SharedWorkflowRepository } from '@/legacy-repository/shared-workflow.repository';
 import { RoleService } from '@/services/role.service';
 
 /**

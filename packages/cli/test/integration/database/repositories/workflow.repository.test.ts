@@ -1,6 +1,6 @@
 import { Container } from '@n8n/di';
 
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { WorkflowRepository } from '@n8n/db';
 
 import {
 	createWorkflowWithTrigger,

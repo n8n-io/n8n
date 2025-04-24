@@ -4,8 +4,8 @@ import { Container } from '@n8n/di';
 import type { ApiKeyScope } from '@n8n/permissions';
 import { mock } from 'jest-mock-extended';
 
-import type { User } from '@/databases/entities/user';
-import { ApiKeyRepository } from '@/databases/repositories/api-key.repository';
+import type { User } from '@n8n/db';
+import { ApiKeyRepository } from '@n8n/db';
 import type { License } from '@/license';
 import { getApiKeyScopesForRole, getOwnerOnlyApiKeyScopes } from '@/public-api/permissions.ee';
 import { PublicApiKeyService } from '@/services/public-api-key.service';

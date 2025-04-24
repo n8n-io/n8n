@@ -1,9 +1,9 @@
 import { type Config } from '@oclif/core';
 import { mock } from 'jest-mock-extended';
 
-import { type CredentialsEntity } from '@/databases/entities/credentials-entity';
-import { type InstalledNodes } from '@/databases/entities/installed-nodes';
-import { type User } from '@/databases/entities/user';
+import { type CredentialsEntity } from '@n8n/db';
+import { type InstalledNodes } from '@n8n/db';
+import { type User } from '@n8n/db';
 
 import { CommunityNode } from '../community-node';
 

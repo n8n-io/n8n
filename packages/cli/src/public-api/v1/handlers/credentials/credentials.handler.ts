@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { CredentialTypes } from '@/credential-types';
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
 import { CredentialsHelper } from '@/credentials-helper';
-import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
+import type { CredentialsEntity } from '@n8n/db';
 
 import { validCredentialsProperties, validCredentialType } from './credentials.middleware';
 import {

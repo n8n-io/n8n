@@ -1,7 +1,7 @@
 import { Container } from '@n8n/di';
 
-import type { User } from '@/databases/entities/user';
-import { TagRepository } from '@/databases/repositories/tag.repository';
+import type { User } from '@n8n/db';
+import { TagRepository } from '@n8n/db';
 
 import { createTag } from '../shared/db/tags';
 import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';

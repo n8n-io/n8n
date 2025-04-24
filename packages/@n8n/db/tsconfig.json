@@ -6,7 +6,10 @@
 		"baseUrl": "src",
 		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
 		"experimentalDecorators": true,
-		"emitDecoratorMetadata": true
+		"emitDecoratorMetadata": true,
+
+		// @TODO: Remove all options below this line
+		"strictPropertyInitialization": false
 	},
 	"include": ["src/**/*.ts"]
 }

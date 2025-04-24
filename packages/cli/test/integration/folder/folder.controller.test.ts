@@ -2,11 +2,11 @@ import { Container } from '@n8n/di';
 import { DateTime } from 'luxon';
 import { PROJECT_ROOT } from 'n8n-workflow';
 
-import type { Project } from '@/databases/entities/project';
-import type { User } from '@/databases/entities/user';
-import { FolderRepository } from '@/databases/repositories/folder.repository';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import type { Project } from '@n8n/db';
+import type { User } from '@n8n/db';
+import { FolderRepository } from '@n8n/db';
+import { ProjectRepository } from '@n8n/db';
+import { WorkflowRepository } from '@n8n/db';
 import { createFolder } from '@test-integration/db/folders';
 import { createTag } from '@test-integration/db/tags';
 import { createWorkflow } from '@test-integration/db/workflows';

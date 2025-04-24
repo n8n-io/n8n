@@ -1,50 +1,45 @@
+import type { CreateExecutionPayload, RangeQuery } from '@n8n/api-types';
+import type { ExecutionSummaryWithScopes } from '@n8n/api-types/src/execution-summaries';
 import { GlobalConfig } from '@n8n/config';
+import type { ExecutionStatus } from '@n8n/constants';
+import { ExecutionStatusList } from '@n8n/constants';
+import {
+	AnnotationTagMappingRepository,
+	ExecutionAnnotationRepository,
+	ExecutionRepository,
+	WorkflowRepository,
+} from '@n8n/db';
+import type { User, IExecutionResponse } from '@n8n/db';
+import type { IGetExecutionsQueryFilter } from '@n8n/db/src/repositories/execution.repository';
 import { Service } from '@n8n/di';
 import { validate as jsonSchemaValidate } from 'jsonschema';
 import { Logger } from 'n8n-core';
 import type {
 	ExecutionError,
-	ExecutionStatus,
 	INode,
 	IRunExecutionData,
 	IWorkflowBase,
 	WorkflowExecuteMode,
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
-import {
-	ExecutionStatusList,
-	UnexpectedError,
-	UserError,
-	Workflow,
-	WorkflowOperationError,
-} from 'n8n-workflow';
+import { UnexpectedError, UserError, Workflow, WorkflowOperationError } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import config from '@/config';
-import type { User } from '@/databases/entities/user';
-import { AnnotationTagMappingRepository } from '@/databases/repositories/annotation-tag-mapping.repository.ee';
-import { ExecutionAnnotationRepository } from '@/databases/repositories/execution-annotation.repository';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import type { IGetExecutionsQueryFilter } from '@/databases/repositories/execution.repository';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
 import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error';
 import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import type {
-	CreateExecutionPayload,
-	IExecutionFlattedResponse,
-	IExecutionResponse,
-} from '@/interfaces';
+import type { IExecutionFlattedResponse } from '@/interfaces';
 import { License } from '@/license';
 import { NodeTypes } from '@/node-types';
 import { WaitTracker } from '@/wait-tracker';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
-import type { ExecutionRequest, ExecutionSummaries, StopResult } from './execution.types';
+import type { ExecutionRequest, StopResult } from './execution.types';
 
 export const schemaGetExecutionsQueryFilter = {
 	$id: '/IGetExecutionsQueryFilter',
@@ -346,7 +341,7 @@ export class ExecutionService {
 	 * Return also the total count of all executions that satisfy the query,
 	 * and whether the total is an estimate or not.
 	 */
-	async findRangeWithCount(query: ExecutionSummaries.RangeQuery) {
+	async findRangeWithCount(query: RangeQuery) {
 		const results = await this.executionRepository.findManyByRangeQuery(query);
 
 		if (this.globalConfig.database.type === 'postgresdb') {
@@ -377,7 +372,7 @@ export class ExecutionService {
 	 * By default, "current" means executions starting and running. With concurrency
 	 * control, "current" means executions enqueued to start and running.
 	 */
-	async findLatestCurrentAndCompleted(query: ExecutionSummaries.RangeQuery) {
+	async findLatestCurrentAndCompleted(query: RangeQuery) {
 		const currentStatuses: ExecutionStatus[] = ['new', 'running'];
 
 		const completedStatuses = ExecutionStatusList.filter((s) => !currentStatuses.includes(s));
@@ -476,7 +471,7 @@ export class ExecutionService {
 		return await this.executionRepository.stopDuringRun(execution);
 	}
 
-	async addScopes(user: User, summaries: ExecutionSummaries.ExecutionSummaryWithScopes[]) {
+	async addScopes(user: User, summaries: ExecutionSummaryWithScopes[]) {
 		const workflowIds = [...new Set(summaries.map((s) => s.workflowId))];
 
 		const scopes = Object.fromEntries(

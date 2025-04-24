@@ -4,10 +4,10 @@ import { mockInstance } from 'n8n-core/test/utils';
 import type { IRunExecutionData, WorkflowExecuteMode } from 'n8n-workflow/src';
 
 import { CredentialsHelper } from '@/credentials-helper';
-import type { ExecutionRepository } from '@/databases/repositories/execution.repository';
+import type { ExecutionRepository } from '@n8n/db';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { ExternalHooks } from '@/external-hooks';
-import type { IExecutionResponse } from '@/interfaces';
+import type { IExecutionResponse } from '@n8n/db';
 import type { ManualExecutionService } from '@/manual-execution.service';
 import { SecretsHelper } from '@/secrets-helpers.ee';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';

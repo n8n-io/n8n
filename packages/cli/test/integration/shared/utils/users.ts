@@ -1,4 +1,4 @@
-import type { User } from '@/databases/entities/user';
+import type { User } from '@n8n/db';
 import type { PublicUser } from '@/interfaces';
 
 export const validateUser = (user: PublicUser) => {

@@ -8,10 +8,10 @@ import type { NextFunction, Request, Response } from 'express';
 import { TokenExpiredError } from 'jsonwebtoken';
 import type { OpenAPIV3 } from 'openapi-types';
 
-import { ApiKey } from '@/databases/entities/api-key';
-import type { User } from '@/databases/entities/user';
-import { ApiKeyRepository } from '@/databases/repositories/api-key.repository';
-import { UserRepository } from '@/databases/repositories/user.repository';
+import { ApiKey } from '@n8n/db';
+import type { User } from '@n8n/db';
+import { ApiKeyRepository } from '@n8n/db';
+import { UserRepository } from '@n8n/db';
 import { EventService } from '@/events/event.service';
 import { getApiKeyScopesForRole, getOwnerOnlyApiKeyScopes } from '@/public-api/permissions.ee';
 import type { AuthenticatedRequest } from '@/requests';

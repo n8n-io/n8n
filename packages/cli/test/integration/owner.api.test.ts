@@ -2,8 +2,8 @@ import { Container } from '@n8n/di';
 import validator from 'validator';
 
 import config from '@/config';
-import type { User } from '@/databases/entities/user';
-import { UserRepository } from '@/databases/repositories/user.repository';
+import type { User } from '@n8n/db';
+import { UserRepository } from '@n8n/db';
 
 import { createUserShell } from './shared/db/users';
 import {

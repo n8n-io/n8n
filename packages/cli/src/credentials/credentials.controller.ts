@@ -25,9 +25,9 @@ import { deepCopy } from 'n8n-workflow';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { SharedCredentials } from '@/databases/entities/shared-credentials';
-import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
-import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
+import { SharedCredentials } from '@n8n/db';
+import { ProjectRelationRepository } from '@n8n/db';
+import { SharedCredentialsRepository } from '@/legacy-repository/shared-credentials.repository';
 import * as Db from '@/db';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';

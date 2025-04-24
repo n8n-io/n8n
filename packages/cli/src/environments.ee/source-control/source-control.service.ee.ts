@@ -10,11 +10,11 @@ import { UnexpectedError, UserError } from 'n8n-workflow';
 import path from 'path';
 import type { PushResult } from 'simple-git';
 
-import type { TagEntity } from '@/databases/entities/tag-entity';
-import type { User } from '@/databases/entities/user';
-import type { Variables } from '@/databases/entities/variables';
-import { FolderRepository } from '@/databases/repositories/folder.repository';
-import { TagRepository } from '@/databases/repositories/tag.repository';
+import type { TagEntity } from '@n8n/db';
+import type { User } from '@n8n/db';
+import type { Variables } from '@n8n/db';
+import { FolderRepository } from '@n8n/db';
+import { TagRepository } from '@n8n/db';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { EventService } from '@/events/event.service';
 

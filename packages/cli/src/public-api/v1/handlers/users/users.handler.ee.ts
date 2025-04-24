@@ -5,7 +5,7 @@ import type { Response } from 'express';
 
 import { InvitationController } from '@/controllers/invitation.controller';
 import { UsersController } from '@/controllers/users.controller';
-import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
+import { ProjectRelationRepository } from '@n8n/db';
 import { EventService } from '@/events/event.service';
 import type { AuthenticatedRequest, UserRequest } from '@/requests';
 

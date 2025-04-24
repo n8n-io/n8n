@@ -1,22 +1,22 @@
 import { GlobalConfig } from '@n8n/config';
+import type { ExecutionStatus } from '@n8n/constants';
+import { ProjectRelationRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { snakeCase } from 'change-case';
 import { BinaryDataConfig, InstanceSettings } from 'n8n-core';
-import type { ExecutionStatus, INodesGraphResult, ITelemetryTrackProperties } from 'n8n-workflow';
+import type { INodesGraphResult, ITelemetryTrackProperties } from 'n8n-workflow';
 import { TelemetryHelpers } from 'n8n-workflow';
 import os from 'node:os';
 import { get as pslGet } from 'psl';
 
 import config from '@/config';
 import { N8N_VERSION } from '@/constants';
-import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
-import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { determineFinalExecutionStatus } from '@/execution-lifecycle/shared/shared-hook-functions';
 import type { IExecutionTrackProperties } from '@/interfaces';
+import { CredentialsRepository } from '@/legacy-repository/credentials.repository';
+import { SharedWorkflowRepository } from '@/legacy-repository/shared-workflow.repository';
 import { License } from '@/license';
 import { NodeTypes } from '@/node-types';
 

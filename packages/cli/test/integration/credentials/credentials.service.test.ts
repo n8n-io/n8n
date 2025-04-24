@@ -1,9 +1,9 @@
 import { Container } from '@n8n/di';
 
 import { CredentialsService } from '@/credentials/credentials.service';
-import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
-import type { User } from '@/databases/entities/user';
-import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
+import type { CredentialsEntity } from '@/legacy-repository/credentials-entity';
+import type { User } from '@n8n/db';
+import { SharedCredentialsRepository } from '@n8n/db';
 import { createTeamProject, linkUserToProject } from '@test-integration/db/projects';
 
 import { saveCredential, shareCredentialWithUsers } from '../shared/db/credentials';

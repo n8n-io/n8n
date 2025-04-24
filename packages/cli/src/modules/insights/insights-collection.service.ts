@@ -1,17 +1,13 @@
+import { type ExecutionStatus } from '@n8n/constants';
+import { SharedWorkflow } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { In } from '@n8n/typeorm';
 import { DateTime } from 'luxon';
 import { Logger } from 'n8n-core';
 import type { ExecutionLifecycleHooks } from 'n8n-core';
-import {
-	UnexpectedError,
-	type ExecutionStatus,
-	type IRun,
-	type WorkflowExecuteMode,
-} from 'n8n-workflow';
+import { UnexpectedError, type IRun, type WorkflowExecuteMode } from 'n8n-workflow';
 
-import { SharedWorkflow } from '@/databases/entities/shared-workflow';
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
+import { SharedWorkflowRepository } from '@/legacy-repository/shared-workflow.repository';
 import { InsightsMetadata } from '@/modules/insights/database/entities/insights-metadata';
 import { InsightsRaw } from '@/modules/insights/database/entities/insights-raw';
 

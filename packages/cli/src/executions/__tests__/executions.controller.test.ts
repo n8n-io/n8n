@@ -1,9 +1,10 @@
+import type { RangeQuery } from '@n8n/api-types';
 import { mock } from 'jest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { ExecutionService } from '@/executions/execution.service';
-import type { ExecutionRequest, ExecutionSummaries } from '@/executions/execution.types';
+import type { ExecutionRequest } from '@/executions/execution.types';
 import { ExecutionsController } from '@/executions/executions.controller';
 import type { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
@@ -33,7 +34,7 @@ describe('ExecutionsController', () => {
 	describe('getMany', () => {
 		const NO_EXECUTIONS = { count: 0, estimated: false, results: [] };
 
-		const QUERIES_WITH_EITHER_STATUS_OR_RANGE: ExecutionSummaries.RangeQuery[] = [
+		const QUERIES_WITH_EITHER_STATUS_OR_RANGE: RangeQuery[] = [
 			{
 				kind: 'range',
 				workflowId: undefined,
@@ -60,7 +61,7 @@ describe('ExecutionsController', () => {
 			},
 		];
 
-		const QUERIES_NEITHER_STATUS_NOR_RANGE_PROVIDED: ExecutionSummaries.RangeQuery[] = [
+		const QUERIES_NEITHER_STATUS_NOR_RANGE_PROVIDED: RangeQuery[] = [
 			{
 				kind: 'range',
 				workflowId: undefined,
@@ -116,7 +117,7 @@ describe('ExecutionsController', () => {
 				workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['123']);
 				executionService.findLatestCurrentAndCompleted.mockResolvedValue(NO_EXECUTIONS);
 
-				const rangeQuery: ExecutionSummaries.RangeQuery = {
+				const rangeQuery: RangeQuery = {
 					kind: 'range',
 					workflowId: undefined,
 					status: ['success'],

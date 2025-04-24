@@ -2,8 +2,8 @@ import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { v4 as uuid } from 'uuid';
 
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import { generateNanoId } from '@/databases/utils/generators';
+import { WorkflowRepository } from '@n8n/db';
+import { generateNanoId } from '@n8n/db';
 import {
 	DATABASE_REPORT,
 	SQL_NODE_TYPES,

@@ -16,8 +16,8 @@ import {
 	RESPONSE_ERROR_MESSAGES,
 	UNKNOWN_FAILURE_REASON,
 } from '@/constants';
-import type { InstalledPackages } from '@/databases/entities/installed-packages';
-import { InstalledPackagesRepository } from '@/databases/repositories/installed-packages.repository';
+import type { InstalledPackages } from '@n8n/db';
+import { InstalledPackagesRepository } from '@n8n/db';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import type { CommunityPackages } from '@/interfaces';
 import { License } from '@/license';

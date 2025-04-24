@@ -1,8 +1,17 @@
+import type { ExecutionEntity, MockedNodeItem, TestDefinition, TestRun, User } from '@n8n/db';
+import {
+	ExecutionRepository,
+	TestCaseExecutionRepository,
+	TestMetricRepository,
+	TestRunRepository,
+	WorkflowRepository,
+	TestCaseExecutionError,
+	TestRunError,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import { parse } from 'flatted';
 import difference from 'lodash/difference';
 import { ErrorReporter, Logger } from 'n8n-core';
-import { ExecutionCancelledError, NodeConnectionTypes, Workflow } from 'n8n-workflow';
 import type {
 	AssignmentCollectionValue,
 	IDataObject,
@@ -11,22 +20,13 @@ import type {
 	IWorkflowBase,
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
+import { ExecutionCancelledError, NodeConnectionTypes, Workflow } from 'n8n-workflow';
 import assert from 'node:assert';
 
 import { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
 import { EVALUATION_METRICS_NODE } from '@/constants';
-import type { ExecutionEntity } from '@/databases/entities/execution-entity';
-import type { MockedNodeItem, TestDefinition } from '@/databases/entities/test-definition.ee';
-import type { TestRun } from '@/databases/entities/test-run.ee';
-import type { User } from '@/databases/entities/user';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import { TestCaseExecutionRepository } from '@/databases/repositories/test-case-execution.repository.ee';
-import { TestMetricRepository } from '@/databases/repositories/test-metric.repository.ee';
-import { TestRunRepository } from '@/databases/repositories/test-run.repository.ee';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import * as Db from '@/db';
-import { TestCaseExecutionError, TestRunError } from '@/evaluation.ee/test-runner/errors.ee';
 import { NodeTypes } from '@/node-types';
 import { Telemetry } from '@/telemetry';
 import { getRunData } from '@/workflow-execute-additional-data';

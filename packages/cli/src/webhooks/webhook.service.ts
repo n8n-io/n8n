@@ -14,8 +14,8 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
-import type { WebhookEntity } from '@/databases/entities/webhook-entity';
-import { WebhookRepository } from '@/databases/repositories/webhook.repository';
+import type { WebhookEntity } from '@n8n/db';
+import { WebhookRepository } from '@n8n/db';
 import { NodeTypes } from '@/node-types';
 import { CacheService } from '@/services/cache/cache.service';
 

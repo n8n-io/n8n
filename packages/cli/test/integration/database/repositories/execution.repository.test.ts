@@ -1,8 +1,8 @@
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 
-import { ExecutionDataRepository } from '@/databases/repositories/execution-data.repository';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
+import { ExecutionDataRepository } from '@n8n/db';
+import { ExecutionRepository } from '@n8n/db';
 
 import { createWorkflow } from '../../shared/db/workflows';
 import * as testDb from '../../shared/test-db';

@@ -4,10 +4,10 @@ import type { ErrorReporter, Logger } from 'n8n-core';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
 
-import type { CredentialsRepository } from '@/databases/repositories/credentials.repository';
-import type { SettingsRepository } from '@/databases/repositories/settings.repository';
-import type { UserRepository } from '@/databases/repositories/user.repository';
-import type { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import type { CredentialsRepository } from '@/legacy-repository/credentials.repository';
+import type { SettingsRepository } from '@/legacy-repository/settings.repository';
+import type { UserRepository } from '@n8n/db';
+import type { WorkflowRepository } from '@n8n/db';
 import { ExternalHooks } from '@/external-hooks';
 
 describe('ExternalHooks', () => {

@@ -3,7 +3,7 @@ import { Service } from '@n8n/di';
 import { ErrorReporter, Logger } from 'n8n-core';
 import type { IDataObject, Workflow } from 'n8n-workflow';
 
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { WorkflowRepository } from '@n8n/db';
 import { isWorkflowIdValid } from '@/utils';
 
 @Service()

@@ -1,8 +1,8 @@
 import { Container } from '@n8n/di';
 
-import { StatisticsNames } from '@/databases/entities/workflow-statistics';
-import { LicenseMetricsRepository } from '@/databases/repositories/license-metrics.repository';
-import { WorkflowStatisticsRepository } from '@/databases/repositories/workflow-statistics.repository';
+import { StatisticsNames } from '@n8n/db';
+import { LicenseMetricsRepository } from '@n8n/db';
+import { WorkflowStatisticsRepository } from '@n8n/db';
 
 import { createManyCredentials } from './shared/db/credentials';
 import { createAdmin, createMember, createOwner, createUser } from './shared/db/users';

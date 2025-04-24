@@ -1,7 +1,7 @@
 import { Container } from '@n8n/di';
 
-import { TagRepository } from '@/databases/repositories/tag.repository';
-import { WorkflowTagMappingRepository } from '@/databases/repositories/workflow-tag-mapping.repository';
+import { TagRepository } from '@n8n/db';
+import { WorkflowTagMappingRepository } from '@n8n/db';
 
 import { createWorkflow } from './shared/db/workflows';
 import * as testDb from './shared/test-db';

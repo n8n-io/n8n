@@ -1,7 +1,7 @@
 import { Service } from '@n8n/di';
 
-import type { TagEntity } from '@/databases/entities/tag-entity';
-import { TagRepository } from '@/databases/repositories/tag.repository';
+import type { TagEntity } from '@n8n/db';
+import { TagRepository } from '@n8n/db';
 import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
 import type { ITagWithCountDb } from '@/interfaces';

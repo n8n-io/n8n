@@ -5,7 +5,7 @@ import request, { type Response } from 'supertest';
 
 import config from '@/config';
 import { N8N_VERSION } from '@/constants';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { WorkflowRepository } from '@n8n/db';
 import { EventService } from '@/events/event.service';
 import { PrometheusMetricsService } from '@/metrics/prometheus-metrics.service';
 import { CacheService } from '@/services/cache/cache.service';

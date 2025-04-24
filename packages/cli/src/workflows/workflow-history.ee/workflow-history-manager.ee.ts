@@ -2,7 +2,7 @@ import { Service } from '@n8n/di';
 import { DateTime } from 'luxon';
 
 import { Time } from '@/constants';
-import { WorkflowHistoryRepository } from '@/databases/repositories/workflow-history.repository';
+import { WorkflowHistoryRepository } from '@n8n/db';
 
 import {
 	getWorkflowHistoryPruneTime,

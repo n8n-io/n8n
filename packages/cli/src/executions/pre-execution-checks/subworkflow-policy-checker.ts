@@ -3,7 +3,7 @@ import { Service } from '@n8n/di';
 import { Logger } from 'n8n-core';
 import { type Workflow, type INode, type WorkflowSettings } from 'n8n-workflow';
 
-import type { Project } from '@/databases/entities/project';
+import type { Project } from '@n8n/db';
 import { SubworkflowPolicyDenialError } from '@/errors/subworkflow-policy-denial.error';
 import { AccessService } from '@/services/access.service';
 import { OwnershipService } from '@/services/ownership.service';

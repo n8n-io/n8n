@@ -3,7 +3,7 @@ import { Service } from '@n8n/di';
 import { ErrorReporter, Logger } from 'n8n-core';
 import { assert, jsonStringify } from 'n8n-workflow';
 
-import type { User } from '@/databases/entities/user';
+import type { User } from '@n8n/db';
 import type { OnPushMessage } from '@/push/types';
 import { TypedEmitter } from '@/typed-emitter';
 

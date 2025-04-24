@@ -1,13 +1,18 @@
-import type { CreateFolderDto, DeleteFolderDto, UpdateFolderDto } from '@n8n/api-types';
+import type {
+	CreateFolderDto,
+	DeleteFolderDto,
+	ListQueryOptions,
+	UpdateFolderDto,
+} from '@n8n/api-types';
 import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { EntityManager } from '@n8n/typeorm';
 import { UserError, PROJECT_ROOT } from 'n8n-workflow';
 
-import { Folder } from '@/databases/entities/folder';
-import { FolderTagMappingRepository } from '@/databases/repositories/folder-tag-mapping.repository';
-import { FolderRepository } from '@/databases/repositories/folder.repository';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { Folder } from '@n8n/db';
+import { FolderTagMappingRepository } from '@n8n/db';
+import { FolderRepository } from '@n8n/db';
+import { WorkflowRepository } from '@n8n/db';
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import type { ListQuery } from '@/requests';
 
@@ -253,7 +258,7 @@ export class FolderService {
 		};
 	}
 
-	async getManyAndCount(projectId: string, options: ListQuery.Options) {
+	async getManyAndCount(projectId: string, options: ListQueryOptions) {
 		options.filter = { ...options.filter, projectId };
 		return await this.folderRepository.getManyAndCount(options);
 	}

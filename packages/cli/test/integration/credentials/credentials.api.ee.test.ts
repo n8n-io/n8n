@@ -1,14 +1,14 @@
 import type { ProjectRole } from '@n8n/api-types';
+import type { ListQueryCredentials } from '@n8n/db';
+import type { Project } from '@n8n/db';
+import type { User } from '@n8n/db';
+import { ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { In } from '@n8n/typeorm';
 
 import config from '@/config';
 import { CredentialsService } from '@/credentials/credentials.service';
-import type { Project } from '@/databases/entities/project';
-import type { User } from '@/databases/entities/user';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
-import type { ListQuery } from '@/requests';
+import { SharedCredentialsRepository } from '@/legacy-repository/shared-credentials.repository';
 import { ProjectService } from '@/services/project.service.ee';
 import { UserManagementMailer } from '@/user-management/email';
 import { createWorkflow, shareWorkflowWithUsers } from '@test-integration/db/workflows';
@@ -134,15 +134,14 @@ describe('GET /credentials', () => {
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data).toHaveLength(2); // owner retrieved owner cred and member cred
-		const ownerCredential: ListQuery.Credentials.WithOwnedByAndSharedWith = response.body.data.find(
-			(e: ListQuery.Credentials.WithOwnedByAndSharedWith) =>
+		const ownerCredential: ListQueryCredentials.WithOwnedByAndSharedWith = response.body.data.find(
+			(e: ListQueryCredentials.WithOwnedByAndSharedWith) =>
 				e.homeProject?.id === ownerPersonalProject.id,
 		);
-		const memberCredential: ListQuery.Credentials.WithOwnedByAndSharedWith =
-			response.body.data.find(
-				(e: ListQuery.Credentials.WithOwnedByAndSharedWith) =>
-					e.homeProject?.id === member1PersonalProject.id,
-			);
+		const memberCredential: ListQueryCredentials.WithOwnedByAndSharedWith = response.body.data.find(
+			(e: ListQueryCredentials.WithOwnedByAndSharedWith) =>
+				e.homeProject?.id === member1PersonalProject.id,
+		);
 
 		validateMainCredentialData(ownerCredential);
 		expect(ownerCredential.data).toBeUndefined();
@@ -205,8 +204,7 @@ describe('GET /credentials', () => {
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data).toHaveLength(1); // member retrieved only member cred
 
-		const [member1Credential]: [ListQuery.Credentials.WithOwnedByAndSharedWith] =
-			response.body.data;
+		const [member1Credential]: [ListQueryCredentials.WithOwnedByAndSharedWith] = response.body.data;
 
 		validateMainCredentialData(member1Credential);
 		expect(member1Credential.data).toBeUndefined();
@@ -536,7 +534,7 @@ describe('GET /credentials/:id', () => {
 
 		expect(firstResponse.statusCode).toBe(200);
 
-		const firstCredential: ListQuery.Credentials.WithOwnedByAndSharedWith = firstResponse.body.data;
+		const firstCredential: ListQueryCredentials.WithOwnedByAndSharedWith = firstResponse.body.data;
 		validateMainCredentialData(firstCredential);
 		expect(firstCredential.data).toBeUndefined();
 
@@ -593,7 +591,7 @@ describe('GET /credentials/:id', () => {
 
 		const response1 = await authOwnerAgent.get(`/credentials/${savedCredential.id}`).expect(200);
 
-		const credential: ListQuery.Credentials.WithOwnedByAndSharedWith = response1.body.data;
+		const credential: ListQueryCredentials.WithOwnedByAndSharedWith = response1.body.data;
 
 		validateMainCredentialData(credential);
 		expect(credential.data).toBeUndefined();
@@ -617,7 +615,7 @@ describe('GET /credentials/:id', () => {
 			.query({ includeData: true })
 			.expect(200);
 
-		const credential2: ListQuery.Credentials.WithOwnedByAndSharedWith = response2.body.data;
+		const credential2: ListQueryCredentials.WithOwnedByAndSharedWith = response2.body.data;
 
 		validateMainCredentialData(credential);
 		expect(credential2.data).toBeDefined(); // Instance owners should be capable of editing all credentials
@@ -645,7 +643,7 @@ describe('GET /credentials/:id', () => {
 			.get(`/credentials/${savedCredential.id}`)
 			.expect(200);
 
-		const firstCredential: ListQuery.Credentials.WithOwnedByAndSharedWith = firstResponse.body.data;
+		const firstCredential: ListQueryCredentials.WithOwnedByAndSharedWith = firstResponse.body.data;
 		validateMainCredentialData(firstCredential);
 		expect(firstCredential.data).toBeUndefined();
 		expect(firstCredential).toMatchObject({
@@ -676,7 +674,7 @@ describe('GET /credentials/:id', () => {
 			.query({ includeData: true })
 			.expect(200);
 
-		const secondCredential: ListQuery.Credentials.WithOwnedByAndSharedWith =
+		const secondCredential: ListQueryCredentials.WithOwnedByAndSharedWith =
 			secondResponse.body.data;
 		validateMainCredentialData(secondCredential);
 		expect(secondCredential.data).toBeDefined();
@@ -1359,7 +1357,7 @@ describe('PUT /:credentialId/transfer', () => {
 	);
 });
 
-function validateMainCredentialData(credential: ListQuery.Credentials.WithOwnedByAndSharedWith) {
+function validateMainCredentialData(credential: ListQueryCredentials.WithOwnedByAndSharedWith) {
 	expect(typeof credential.name).toBe('string');
 	expect(typeof credential.type).toBe('string');
 	expect(credential.homeProject).toBeDefined();

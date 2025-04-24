@@ -8,7 +8,7 @@ import {
 	ConcurrencyControlService,
 } from '@/concurrency/concurrency-control.service';
 import config from '@/config';
-import type { ExecutionRepository } from '@/databases/repositories/execution.repository';
+import type { ExecutionRepository } from '@n8n/db';
 import { InvalidConcurrencyLimitError } from '@/errors/invalid-concurrency-limit.error';
 import type { EventService } from '@/events/event.service';
 import type { Telemetry } from '@/telemetry';

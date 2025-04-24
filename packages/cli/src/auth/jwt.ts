@@ -1,7 +1,7 @@
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
 
-import type { User } from '@/databases/entities/user';
+import type { User } from '@n8n/db';
 
 import { AuthService } from './auth.service';
 

@@ -36,3 +36,18 @@ export type {
 	InsightsByWorkflow,
 	InsightsByTime,
 } from './schemas/insights.schema';
+
+export {
+	ListQueryOptions,
+	Query,
+	CountQuery,
+	RangeQuery,
+	ExecutionSummaryWithScopes,
+} from './execution-summaries';
+export {
+	ITagBase,
+	IExecutionBase,
+	IExecutionFlattedDb,
+	CreateExecutionPayload,
+	IExecutionDb,
+} from './execution';

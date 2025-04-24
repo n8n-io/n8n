@@ -13,7 +13,7 @@ import {
 import syslog from 'syslog-client';
 import { v4 as uuid } from 'uuid';
 
-import type { User } from '@/databases/entities/user';
+import type { User } from '@n8n/db';
 import type { EventNamesTypes } from '@/eventbus/event-message-classes';
 import { EventMessageAudit } from '@/eventbus/event-message-classes/event-message-audit';
 import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-message-generic';

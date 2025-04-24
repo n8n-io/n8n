@@ -1,7 +1,7 @@
 import { Service } from '@n8n/di';
 
-import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { CredentialsRepository } from '@/legacy-repository/credentials.repository';
+import { WorkflowRepository } from '@n8n/db';
 
 @Service()
 export class NamingService {

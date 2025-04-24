@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { CallbackManager as CallbackManagerLC } from '@langchain/core/callbacks/manager';
 import type { LogScope } from '@n8n/config';
+import type { ExecutionStatus } from '@n8n/constants';
 import type { AxiosProxyConfig, GenericAbortSignal } from 'axios';
 import type * as express from 'express';
 import type FormData from 'form-data';
@@ -20,10 +21,19 @@ import type { NodeApiError } from './errors/node-api.error';
 import type { NodeOperationError } from './errors/node-operation.error';
 import type { WorkflowActivationError } from './errors/workflow-activation.error';
 import type { WorkflowOperationError } from './errors/workflow-operation.error';
-import type { ExecutionStatus } from './ExecutionStatus';
 import type { Result } from './result';
 import type { Workflow } from './Workflow';
 import type { EnvProviderState } from './WorkflowDataProxyEnvProvider';
+
+/**
+ * @TODO Duplicate
+ */
+export interface ICredentialsEncrypted {
+	id?: string;
+	name: string;
+	type: string;
+	data?: string;
+}
 
 export interface IAdditionalCredentialOptions {
 	oauth2?: IOAuth2Options;
@@ -137,13 +147,6 @@ export interface ICredentialsDecrypted<T extends object = ICredentialDataDecrypt
 	data?: T;
 	homeProject?: ProjectSharingData;
 	sharedWithProjects?: ProjectSharingData[];
-}
-
-export interface ICredentialsEncrypted {
-	id?: string;
-	name: string;
-	type: string;
-	data?: string;
 }
 
 export interface ICredentialsExpressionResolveValues {

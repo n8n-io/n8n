@@ -4,6 +4,15 @@ import {
 	TransferWorkflowBodyDto,
 } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
+import type { Project } from '@n8n/db';
+import {
+	SharedWorkflow,
+	WorkflowEntity,
+	ProjectRelationRepository,
+	ProjectRepository,
+	TagRepository,
+	WorkflowRepository,
+} from '@n8n/db';
 import {
 	Body,
 	Delete,
@@ -25,14 +34,6 @@ import { Logger } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import type { Project } from '@/databases/entities/project';
-import { SharedWorkflow } from '@/databases/entities/shared-workflow';
-import { WorkflowEntity } from '@/databases/entities/workflow-entity';
-import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
-import { TagRepository } from '@/databases/repositories/tag.repository';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import * as Db from '@/db';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
@@ -42,6 +43,7 @@ import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
 import type { IWorkflowResponse } from '@/interfaces';
+import { SharedWorkflowRepository } from '@/legacy-repository/shared-workflow.repository';
 import { License } from '@/license';
 import { listQueryMiddleware } from '@/middlewares';
 import { AuthenticatedRequest } from '@/requests';

@@ -4,12 +4,12 @@ import { mock } from 'jest-mock-extended';
 import { OPEN_AI_API_CREDENTIAL_TYPE } from 'n8n-workflow';
 
 import { FREE_AI_CREDITS_CREDENTIAL_NAME } from '@/constants';
-import type { Project } from '@/databases/entities/project';
-import type { User } from '@/databases/entities/user';
-import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
-import { UserRepository } from '@/databases/repositories/user.repository';
+import type { Project } from '@n8n/db';
+import type { User } from '@n8n/db';
+import { CredentialsRepository } from '@n8n/db';
+import { ProjectRepository } from '@n8n/db';
+import { SharedCredentialsRepository } from '@n8n/db';
+import { UserRepository } from '@n8n/db';
 import { AiService } from '@/services/ai.service';
 
 import { createOwner } from '../shared/db/users';

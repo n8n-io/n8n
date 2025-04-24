@@ -8,8 +8,8 @@ import type {
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
+import { CredentialsRepository } from '@/legacy-repository/credentials.repository';
 
 /**
  * Returns the data of the last executed node

@@ -1,4 +1,12 @@
+import type { ListQueryOptions } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
+import type { ListQueryWorkflow, User, WorkflowEntity, WorkflowFolderUnionFull } from '@n8n/db';
+import {
+	SharedWorkflow,
+	ExecutionRepository,
+	WorkflowTagMappingRepository,
+	WorkflowRepository,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
@@ -14,19 +22,12 @@ import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import config from '@/config';
-import { SharedWorkflow } from '@/databases/entities/shared-workflow';
-import type { User } from '@/databases/entities/user';
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
-import { WorkflowTagMappingRepository } from '@/databases/repositories/workflow-tag-mapping.repository';
-import type { WorkflowFolderUnionFull } from '@/databases/repositories/workflow.repository';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
+import { SharedWorkflowRepository } from '@/legacy-repository/shared-workflow.repository';
 import { hasSharing, type ListQuery } from '@/requests';
 import { FolderService } from '@/services/folder.service';
 import { OrchestrationService } from '@/services/orchestration.service';
@@ -64,7 +65,7 @@ export class WorkflowService {
 
 	async getMany(
 		user: User,
-		options?: ListQuery.Options,
+		options?: ListQueryOptions,
 		includeScopes?: boolean,
 		includeFolders?: boolean,
 	) {
@@ -118,8 +119,8 @@ export class WorkflowService {
 	}
 
 	private async processSharedWorkflows(
-		workflows: ListQuery.Workflow.WithSharing[],
-		options?: ListQuery.Options,
+		workflows: ListQueryWorkflow.WithSharing[],
+		options?: ListQueryOptions,
 	) {
 		const projectId = options?.filter?.projectId;
 
@@ -132,7 +133,7 @@ export class WorkflowService {
 		return workflows.map((workflow) => this.ownershipService.addOwnedByAndSharedWith(workflow));
 	}
 
-	private async addSharedRelation(workflows: ListQuery.Workflow.WithSharing[]): Promise<void> {
+	private async addSharedRelation(workflows: ListQueryWorkflow.WithSharing[]): Promise<void> {
 		const workflowIds = workflows.map((workflow) => workflow.id);
 		const relations = await this.sharedWorkflowRepository.getAllRelationsForWorkflows(workflowIds);
 
@@ -142,7 +143,7 @@ export class WorkflowService {
 	}
 
 	private async addUserScopes(
-		workflows: ListQuery.Workflow.Plain[] | ListQuery.Workflow.WithSharing[],
+		workflows: ListQueryWorkflow.Plain[] | ListQueryWorkflow.WithSharing[],
 		user: User,
 	) {
 		const projectRelations = await this.projectService.getProjectRelationsForUser(user);
@@ -153,7 +154,7 @@ export class WorkflowService {
 	}
 
 	private cleanupSharedField(
-		workflows: ListQuery.Workflow.Plain[] | ListQuery.Workflow.WithSharing[],
+		workflows: ListQueryWorkflow.Plain[] | ListQueryWorkflow.WithSharing[],
 	): void {
 		/*
 			This is to emulate the old behavior of removing the shared field as
@@ -167,7 +168,7 @@ export class WorkflowService {
 
 	private mergeProcessedWorkflows(
 		workflowsAndFolders: WorkflowFolderUnionFull[],
-		processedWorkflows: ListQuery.Workflow.Plain[] | ListQuery.Workflow.WithSharing[],
+		processedWorkflows: ListQueryWorkflow.Plain[] | ListQueryWorkflow.WithSharing[],
 	) {
 		const workflowMap = new Map(processedWorkflows.map((workflow) => [workflow.id, workflow]));
 

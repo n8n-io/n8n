@@ -1,5 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { WorkflowsConfig } from '@n8n/config';
+import { WorkflowRepository } from '@n8n/db';
+import type { WorkflowEntity, IWorkflowDb } from '@n8n/db';
 import { OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { chunk } from 'lodash';
@@ -13,6 +15,12 @@ import {
 	type IGetExecutePollFunctions,
 	type IGetExecuteTriggerFunctions,
 } from 'n8n-core';
+import {
+	Workflow,
+	WorkflowActivationError,
+	WebhookPathTakenError,
+	UnexpectedError,
+} from 'n8n-workflow';
 import type {
 	ExecutionError,
 	IDeferredPromise,
@@ -27,12 +35,6 @@ import type {
 	INodeType,
 	WorkflowId,
 } from 'n8n-workflow';
-import {
-	Workflow,
-	WorkflowActivationError,
-	WebhookPathTakenError,
-	UnexpectedError,
-} from 'n8n-workflow';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
 import { ActiveExecutions } from '@/active-executions';
@@ -41,12 +43,9 @@ import {
 	WORKFLOW_REACTIVATE_INITIAL_TIMEOUT,
 	WORKFLOW_REACTIVATE_MAX_TIMEOUT,
 } from '@/constants';
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { executeErrorWorkflow } from '@/execution-lifecycle/execute-error-workflow';
 import { ExecutionService } from '@/executions/execution.service';
 import { ExternalHooks } from '@/external-hooks';
-import type { IWorkflowDb } from '@/interfaces';
 import { NodeTypes } from '@/node-types';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { ActiveWorkflowsService } from '@/services/active-workflows.service';

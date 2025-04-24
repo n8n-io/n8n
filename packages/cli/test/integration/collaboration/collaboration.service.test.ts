@@ -7,7 +7,7 @@ import type {
 	WorkflowOpenedMessage,
 } from '@/collaboration/collaboration.message';
 import { CollaborationService } from '@/collaboration/collaboration.service';
-import type { User } from '@/databases/entities/user';
+import type { User } from '@n8n/db';
 import { Push } from '@/push';
 import { CacheService } from '@/services/cache/cache.service';
 import { mockInstance } from '@test/mocking';

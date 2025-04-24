@@ -2,7 +2,7 @@ import type { TEntitlement } from '@n8n_io/license-sdk';
 import axios, { AxiosError } from 'axios';
 import { mock } from 'jest-mock-extended';
 
-import type { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import type { WorkflowRepository } from '@n8n/db';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import type { EventService } from '@/events/event.service';
 import type { License } from '@/license';

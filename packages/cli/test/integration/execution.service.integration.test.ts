@@ -1,11 +1,11 @@
+import type { RangeQuery } from '@n8n/api-types';
+import { ExecutionMetadataRepository } from '@n8n/db';
+import { ExecutionRepository } from '@n8n/db';
+import { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 
-import { ExecutionMetadataRepository } from '@/databases/repositories/execution-metadata.repository';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { ExecutionService } from '@/executions/execution.service';
-import type { ExecutionSummaries } from '@/executions/execution.types';
 import { createTeamProject } from '@test-integration/db/projects';
 
 import { annotateExecution, createAnnotationTags, createExecution } from './shared/db/executions';
@@ -55,7 +55,7 @@ describe('ExecutionService', () => {
 				createExecution({ status: 'success' }, workflow),
 			]);
 
-			const query: ExecutionSummaries.RangeQuery = {
+			const query: RangeQuery = {
 				kind: 'range',
 				status: ['success'],
 				range: { limit: 20 },
@@ -96,7 +96,7 @@ describe('ExecutionService', () => {
 				createExecution({ status: 'success' }, workflow),
 			]);
 
-			const query: ExecutionSummaries.RangeQuery = {
+			const query: RangeQuery = {
 				kind: 'range',
 				status: ['success'],
 				range: { limit: 2 },
@@ -122,7 +122,7 @@ describe('ExecutionService', () => {
 
 			const [firstId, secondId] = await executionRepository.getAllIds();
 
-			const query: ExecutionSummaries.RangeQuery = {
+			const query: RangeQuery = {
 				kind: 'range',
 				range: { limit: 20, lastId: secondId },
 				accessibleWorkflowIds: [workflow.id],
@@ -149,7 +149,7 @@ describe('ExecutionService', () => {
 
 			const [firstId, secondId, thirdId, fourthId] = await executionRepository.getAllIds();
 
-			const query: ExecutionSummaries.RangeQuery = {
+			const query: RangeQuery = {
 				kind: 'range',
 				range: { limit: 20, firstId },
 				accessibleWorkflowIds: [workflow.id],
@@ -178,7 +178,7 @@ describe('ExecutionService', () => {
 				createExecution({ status: 'waiting' }, workflow),
 			]);
 
-			const query: ExecutionSummaries.RangeQuery = {
+			const query: RangeQuery = {
 				kind: 'range',
 				status: ['success'],
 				range: { limit: 20 },
@@ -206,7 +206,7 @@ describe('ExecutionService', () => {
 				createExecution({ status: 'success' }, secondWorkflow),
 			]);
 
-			const query: ExecutionSummaries.RangeQuery = {
+			const query: RangeQuery = {
 				kind: 'range',
 				range: { limit: 20 },
 				workflowId: firstWorkflow.id,
@@ -230,7 +230,7 @@ describe('ExecutionService', () => {
 				createExecution({ startedAt: new Date('2020-12-31') }, workflow),
 			]);
 
-			const query: ExecutionSummaries.RangeQuery = {
+			const query: RangeQuery = {
 				kind: 'range',
 				range: { limit: 20 },
 				startedBefore: '2020-07-01',
@@ -254,7 +254,7 @@ describe('ExecutionService', () => {
 				createExecution({ startedAt: new Date('2020-12-31') }, workflow),
 			]);
 
-			const query: ExecutionSummaries.RangeQuery = {
+			const query: RangeQuery = {
 				kind: 'range',
 				range: { limit: 20 },
 				startedAfter: '2020-07-01',
@@ -280,7 +280,7 @@ describe('ExecutionService', () => {
 				createExecution({ status: 'error' }, workflow),
 			]);
 
-			const query: ExecutionSummaries.RangeQuery = {
+			const query: RangeQuery = {
 				kind: 'range',
 				range: { limit: 20 },
 				accessibleWorkflowIds: [workflow.id],
@@ -307,7 +307,7 @@ describe('ExecutionService', () => {
 			await createExecution({ status: 'success' }, firstWorkflow);
 			await createExecution({ status: 'success' }, secondWorkflow); // to filter out
 
-			const query: ExecutionSummaries.RangeQuery = {
+			const query: RangeQuery = {
 				kind: 'range',
 				range: { limit: 20 },
 				accessibleWorkflowIds: [firstWorkflow.id],
@@ -338,7 +338,7 @@ describe('ExecutionService', () => {
 			await createExecution({ status: 'error' }, firstWorkflow);
 			await createExecution({ status: 'success' }, secondWorkflow);
 
-			const query: ExecutionSummaries.RangeQuery = {
+			const query: RangeQuery = {
 				kind: 'range',
 				range: { limit: 20 },
 				accessibleWorkflowIds: [firstWorkflow.id],
@@ -396,7 +396,7 @@ describe('ExecutionService', () => {
 					createExecution(nonMatchingParams, secondWorkflow),
 				]);
 
-				const query: ExecutionSummaries.RangeQuery = {
+				const query: RangeQuery = {
 					kind: 'range',
 					range: { limit: 20 },
 					accessibleWorkflowIds: [firstWorkflow.id],
@@ -427,7 +427,7 @@ describe('ExecutionService', () => {
 				createExecution({ status: 'success' }, inaccessibleWorkflow),
 			]);
 
-			const query: ExecutionSummaries.RangeQuery = {
+			const query: RangeQuery = {
 				kind: 'range',
 				range: { limit: 20 },
 				workflowId: inaccessibleWorkflow.id,
@@ -462,7 +462,7 @@ describe('ExecutionService', () => {
 				execution: { id: secondId },
 			});
 
-			const query: ExecutionSummaries.RangeQuery = {
+			const query: RangeQuery = {
 				kind: 'range',
 				range: { limit: 20 },
 				metadata: [{ key: 'key1', value: 'value1' }],
@@ -492,7 +492,7 @@ describe('ExecutionService', () => {
 					.map(async () => await createExecution({ status: 'success' }, workflow)),
 			]);
 
-			const query: ExecutionSummaries.RangeQuery = {
+			const query: RangeQuery = {
 				kind: 'range',
 				range: { limit: 20 },
 				accessibleWorkflowIds: [workflow.id],
@@ -516,7 +516,7 @@ describe('ExecutionService', () => {
 					.map(async () => await createExecution({ status: 'success' }, workflow)),
 			);
 
-			const query: ExecutionSummaries.RangeQuery = {
+			const query: RangeQuery = {
 				kind: 'range',
 				range: { limit: 20 },
 				accessibleWorkflowIds: [workflow.id],
@@ -538,7 +538,7 @@ describe('ExecutionService', () => {
 				createExecution({ status: 'running' }, workflow),
 			]);
 
-			const query: ExecutionSummaries.RangeQuery = {
+			const query: RangeQuery = {
 				kind: 'range',
 				range: { limit: 20 },
 				accessibleWorkflowIds: [workflow.id],
@@ -554,7 +554,7 @@ describe('ExecutionService', () => {
 		test('should handle zero executions', async () => {
 			const workflow = await createWorkflow();
 
-			const query: ExecutionSummaries.RangeQuery = {
+			const query: RangeQuery = {
 				kind: 'range',
 				range: { limit: 20 },
 				accessibleWorkflowIds: [workflow.id],
@@ -579,7 +579,7 @@ describe('ExecutionService', () => {
 				createExecution({ status: 'new' }, workflow),
 			]);
 
-			const query: ExecutionSummaries.RangeQuery = {
+			const query: RangeQuery = {
 				kind: 'range',
 				range: { limit: 2 },
 				accessibleWorkflowIds: [workflow.id],
@@ -629,7 +629,7 @@ describe('ExecutionService', () => {
 				workflow.id,
 			]);
 
-			const query: ExecutionSummaries.RangeQuery = {
+			const query: RangeQuery = {
 				kind: 'range',
 				status: ['success'],
 				range: { limit: 20 },
@@ -678,7 +678,7 @@ describe('ExecutionService', () => {
 				workflow.id,
 			]);
 
-			const query: ExecutionSummaries.RangeQuery = {
+			const query: RangeQuery = {
 				kind: 'range',
 				status: ['success'],
 				range: { limit: 20 },
@@ -719,7 +719,7 @@ describe('ExecutionService', () => {
 				workflow.id,
 			]);
 
-			const query: ExecutionSummaries.RangeQuery = {
+			const query: RangeQuery = {
 				kind: 'range',
 				status: ['success'],
 				range: { limit: 20 },
@@ -764,7 +764,7 @@ describe('ExecutionService', () => {
 				workflow.id,
 			]);
 
-			const query: ExecutionSummaries.RangeQuery = {
+			const query: RangeQuery = {
 				kind: 'range',
 				status: ['success'],
 				range: { limit: 20 },

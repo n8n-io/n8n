@@ -1,9 +1,9 @@
 import { mock } from 'jest-mock-extended';
 import type { INode } from 'n8n-workflow';
 
-import type { Project } from '@/databases/entities/project';
-import type { User } from '@/databases/entities/user';
-import type { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
+import type { Project } from '@n8n/db';
+import type { User } from '@n8n/db';
+import type { SharedCredentialsRepository } from '@/legacy-repository/shared-credentials.repository';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { ProjectService } from '@/services/project.service.ee';
 

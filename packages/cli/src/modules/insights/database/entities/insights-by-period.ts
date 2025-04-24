@@ -1,3 +1,4 @@
+import { datetimeColumnType } from '@n8n/db';
 import {
 	BaseEntity,
 	Column,
@@ -18,7 +19,6 @@ import {
 	PeriodUnitToNumber,
 	TypeToNumber,
 } from './insights-shared';
-import { datetimeColumnType } from '../../../../databases/entities/abstract-entity';
 
 @Entity()
 export class InsightsByPeriod extends BaseEntity {

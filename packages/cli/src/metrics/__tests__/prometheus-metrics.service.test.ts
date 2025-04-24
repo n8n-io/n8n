@@ -6,7 +6,7 @@ import type { InstanceSettings } from 'n8n-core';
 import promClient from 'prom-client';
 
 import config from '@/config';
-import type { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import type { WorkflowRepository } from '@n8n/db';
 import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import type { EventService } from '@/events/event.service';
 import { mockInstance } from '@test/mocking';

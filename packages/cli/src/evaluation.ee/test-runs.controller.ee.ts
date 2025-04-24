@@ -2,8 +2,8 @@ import { Delete, Get, Post, RestController } from '@n8n/decorators';
 import express from 'express';
 import { InstanceSettings } from 'n8n-core';
 
-import { TestCaseExecutionRepository } from '@/databases/repositories/test-case-execution.repository.ee';
-import { TestRunRepository } from '@/databases/repositories/test-run.repository.ee';
+import { TestCaseExecutionRepository } from '@n8n/db';
+import { TestRunRepository } from '@n8n/db';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { NotImplementedError } from '@/errors/response-errors/not-implemented.error';

@@ -6,7 +6,7 @@ import { ensureError } from 'n8n-workflow';
 import { strict } from 'node:assert';
 
 import { Time } from '@/constants';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
+import { ExecutionRepository } from '@n8n/db';
 import { connectionState as dbConnectionState } from '@/db';
 
 import { OrchestrationService } from '../orchestration.service';

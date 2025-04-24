@@ -49,7 +49,7 @@ import { finished } from 'stream/promises';
 import { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
 import { MCP_TRIGGER_NODE_TYPE } from '@/constants';
-import type { Project } from '@/databases/entities/project';
+import type { Project } from '@n8n/db';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';

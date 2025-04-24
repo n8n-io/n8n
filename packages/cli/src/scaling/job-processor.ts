@@ -1,4 +1,6 @@
 import type { RunningJobSummary } from '@n8n/api-types';
+import type { ExecutionStatus } from '@n8n/constants';
+import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
 	WorkflowHasIssuesError,
@@ -8,7 +10,6 @@ import {
 	Logger,
 } from 'n8n-core';
 import type {
-	ExecutionStatus,
 	IExecuteResponsePromiseData,
 	IRun,
 	IWorkflowExecutionDataProcess,
@@ -17,8 +18,6 @@ import { BINARY_ENCODING, Workflow, UnexpectedError } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
 
 import config from '@/config';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { getLifecycleHooksForScalingWorker } from '@/execution-lifecycle/execution-lifecycle-hooks';
 import { ManualExecutionService } from '@/manual-execution.service';
 import { NodeTypes } from '@/node-types';

@@ -5,8 +5,8 @@ import { CREDENTIAL_EMPTY_VALUE, type ICredentialType } from 'n8n-workflow';
 import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
 import type { CredentialTypes } from '@/credential-types';
 import { CredentialsService } from '@/credentials/credentials.service';
-import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
-import type { CredentialsRepository } from '@/databases/repositories/credentials.repository';
+import type { CredentialsEntity } from '@n8n/db';
+import type { CredentialsRepository } from '@/legacy-repository/credentials.repository';
 
 describe('CredentialsService', () => {
 	const credType = mock<ICredentialType>({

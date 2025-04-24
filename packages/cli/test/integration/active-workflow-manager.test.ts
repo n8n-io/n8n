@@ -13,8 +13,8 @@ import type {
 
 import { ActiveExecutions } from '@/active-executions';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import type { WebhookEntity } from '@/databases/entities/webhook-entity';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import type { WebhookEntity } from '@n8n/db';
+import { WorkflowRepository } from '@n8n/db';
 import { ExecutionService } from '@/executions/execution.service';
 import { ExternalHooks } from '@/external-hooks';
 import { NodeTypes } from '@/node-types';

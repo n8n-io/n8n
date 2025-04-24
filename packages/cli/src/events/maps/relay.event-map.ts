@@ -8,9 +8,9 @@ import type {
 } from 'n8n-workflow';
 
 import type { ConcurrencyQueueType } from '@/concurrency/concurrency-control.service';
-import type { AuthProviderType } from '@/databases/entities/auth-identity';
-import type { User } from '@/databases/entities/user';
-import type { IWorkflowDb } from '@/interfaces';
+import type { AuthProviderType } from '@n8n/db';
+import type { User } from '@n8n/db';
+import type { IWorkflowDb } from '@n8n/db';
 
 import type { AiEventMap } from './ai.event-map';
 

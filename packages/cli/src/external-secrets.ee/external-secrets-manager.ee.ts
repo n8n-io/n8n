@@ -3,7 +3,7 @@ import { Service } from '@n8n/di';
 import { Cipher, Logger } from 'n8n-core';
 import { jsonParse, type IDataObject, ensureError, UnexpectedError } from 'n8n-workflow';
 
-import { SettingsRepository } from '@/databases/repositories/settings.repository';
+import { SettingsRepository } from '@/legacy-repository/settings.repository';
 import { EventService } from '@/events/event.service';
 import { License } from '@/license';
 import { Publisher } from '@/scaling/pubsub/publisher.service';

@@ -6,16 +6,16 @@ import RudderStack, { type constructorOptions } from '@rudderstack/rudder-sdk-no
 import type { NextFunction, Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
-import type { AuthUser } from '@/databases/entities/auth-user';
-import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
-import type { Settings } from '@/databases/entities/settings';
-import type { User } from '@/databases/entities/user';
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
-import { AuthUserRepository } from '@/databases/repositories/auth-user.repository';
-import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
-import { SettingsRepository } from '@/databases/repositories/settings.repository';
-import { UserRepository } from '@/databases/repositories/user.repository';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import type { AuthUser } from '@n8n/db';
+import type { CredentialsEntity } from '@n8n/db';
+import type { Settings } from '@n8n/db';
+import type { User } from '@n8n/db';
+import type { WorkflowEntity } from '@n8n/db';
+import { AuthUserRepository } from '@n8n/db';
+import { CredentialsRepository } from '@/legacy-repository/credentials.repository';
+import { SettingsRepository } from '@/legacy-repository/settings.repository';
+import { UserRepository } from '@n8n/db';
+import { WorkflowRepository } from '@n8n/db';
 import type { Invitation } from '@/interfaces';
 import type { AuthenticatedRequest } from '@/requests';
 import { UserService } from '@/services/user.service';

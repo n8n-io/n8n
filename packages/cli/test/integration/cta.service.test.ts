@@ -1,7 +1,7 @@
 import { Container } from '@n8n/di';
 
-import type { User } from '@/databases/entities/user';
-import { StatisticsNames } from '@/databases/entities/workflow-statistics';
+import type { User } from '@n8n/db';
+import { StatisticsNames } from '@n8n/db';
 import { CtaService } from '@/services/cta.service';
 
 import { createUser } from './shared/db/users';

@@ -6,10 +6,10 @@ import jwt from 'jsonwebtoken';
 
 import { AUTH_COOKIE_NAME } from '@/constants';
 import { MeController } from '@/controllers/me.controller';
-import type { User } from '@/databases/entities/user';
-import { AuthUserRepository } from '@/databases/repositories/auth-user.repository';
-import { InvalidAuthTokenRepository } from '@/databases/repositories/invalid-auth-token.repository';
-import { UserRepository } from '@/databases/repositories/user.repository';
+import type { User } from '@n8n/db';
+import { AuthUserRepository } from '@n8n/db';
+import { InvalidAuthTokenRepository } from '@n8n/db';
+import { UserRepository } from '@n8n/db';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InvalidMfaCodeError } from '@/errors/response-errors/invalid-mfa-code.error';
 import { EventService } from '@/events/event.service';
