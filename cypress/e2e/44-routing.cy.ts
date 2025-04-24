@@ -13,6 +13,7 @@ import {
 	visitWorkflowsPage,
 } from '../composables/workflowsPage';
 import { EDIT_FIELDS_SET_NODE_NAME } from '../constants';
+import { warningToast } from '../pages/notifications';
 
 describe('Workflows', () => {
 	beforeEach(() => {
@@ -104,12 +105,32 @@ describe('Workflows', () => {
 		addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME, true, true);
 		cy.url().then((ndvUrl) => {
 			cy.get('body').type('{esc}');
+			saveWorkflowOnButtonClick();
 
 			getNdvContainer().should('not.be.visible');
 
 			cy.visit(ndvUrl);
 
 			getNdvContainer().should('be.visible');
+		});
+	});
+
+	it('should open show warning and drop nodeId from URL if it contained an unknown nodeId', () => {
+		getCreateWorkflowButton().click();
+		saveWorkflowOnButtonClick();
+		cy.createFixtureWorkflow('Test_workflow_1.json', 'Empty State Card Workflow');
+
+		addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME, true, true);
+		cy.url().then((ndvUrl) => {
+			cy.get('body').type('{esc}');
+			saveWorkflowOnButtonClick();
+
+			getNdvContainer().should('not.be.visible');
+
+			cy.visit(ndvUrl + 'thisMessesUpTheNodeId');
+
+			warningToast().should('be.visible');
+			cy.url().should('equal', ndvUrl.split('/').slice(0, -1).join('/'));
 		});
 	});
 });

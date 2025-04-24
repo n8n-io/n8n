@@ -1718,7 +1718,19 @@ onMounted(() => {
 				setTimeout(() => {
 					if (routeNodeId.value) {
 						const nodeUi = workflowsStore.findNodeByPartialId(routeNodeId.value);
-						if (nodeUi) setNodeActive(nodeUi.id);
+						if (nodeUi) {
+							setNodeActive(nodeUi.id);
+						} else {
+							toast.showToast({
+								title: i18n.baseText('nodeView.showMessage.ndvUrl.missingNodes.title'),
+								message: i18n.baseText('nodeView.showMessage.ndvUrl.missingNodes.content'),
+								type: 'warning',
+							});
+							router.replace({
+								name: route.name,
+								params: { name: workflowId.value },
+							});
+						}
 					}
 				}, 500);
 
