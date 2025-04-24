@@ -1,7 +1,7 @@
 import { CreateApiKeyRequestDto, UpdateApiKeyRequestDto } from '@n8n/api-types';
+import { Body, Delete, Get, Param, Patch, Post, RestController } from '@n8n/decorators';
 import type { RequestHandler } from 'express';
 
-import { Body, Delete, Get, Param, Patch, Post, RestController } from '@/decorators';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { EventService } from '@/events/event.service';
 import { isApiEnabled } from '@/public-api';

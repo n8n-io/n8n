@@ -83,26 +83,7 @@ export interface WorkflowComposedMessage {
 export interface WorkflowConnectionsMessage {
 	role: 'assistant';
 	type: 'workflow-connections';
-	workflowJSON: {
-		nodes: Array<{
-			parameters: Record<string, unknown>;
-			type: string;
-			name: string;
-			position: [number, number];
-		}>;
-		connections: Record<
-			string,
-			{
-				main: Array<
-					Array<{
-						node: string;
-						type: string;
-						index: number;
-					}>
-				>;
-			}
-		>;
-	};
+	workflowJSON: SimpleWorkflow;
 	id: string;
 	read: boolean;
 }

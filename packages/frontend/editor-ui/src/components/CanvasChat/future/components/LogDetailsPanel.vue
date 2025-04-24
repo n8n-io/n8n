@@ -12,8 +12,9 @@ import { type INodeUi } from '@/Interface';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { N8nButton, N8nResizeWrapper, N8nText } from '@n8n/design-system';
+import { useLocalStorage } from '@vueuse/core';
 import { type ITaskData } from 'n8n-workflow';
-import { computed, ref, useTemplateRef } from 'vue';
+import { computed, useTemplateRef } from 'vue';
 
 const MIN_IO_PANEL_WIDTH = 200;
 
@@ -32,7 +33,11 @@ const telemetry = useTelemetry();
 const workflowsStore = useWorkflowsStore();
 const nodeTypeStore = useNodeTypesStore();
 
-const content = ref<LogDetailsContent>(LOG_DETAILS_CONTENT.BOTH);
+const content = useLocalStorage<LogDetailsContent>(
+	'N8N_LOGS_DETAIL_PANEL_CONTENT',
+	LOG_DETAILS_CONTENT.OUTPUT,
+	{ writeDefaults: false },
+);
 
 const node = computed<INodeUi | undefined>(() => workflowsStore.nodesByName[logEntry.node]);
 const type = computed(() => (node.value ? nodeTypeStore.getNodeType(node.value.type) : undefined));
@@ -100,7 +105,11 @@ function handleResizeEnd() {
 
 <template>
 	<div ref="container" :class="$style.container" data-test-id="log-details">
-		<PanelHeader data-test-id="log-details-header" @click="emit('clickHeader')">
+		<PanelHeader
+			data-test-id="log-details-header"
+			:class="$style.header"
+			@click="emit('clickHeader')"
+		>
 			<template #title>
 				<div :class="$style.title">
 					<NodeIcon :node-type="type" :size="16" :class="$style.icon" />
@@ -181,6 +190,10 @@ function handleResizeEnd() {
 	flex-direction: column;
 	align-items: stretch;
 	overflow: hidden;
+}
+
+.header {
+	padding: var(--spacing-2xs);
 }
 
 .actions {

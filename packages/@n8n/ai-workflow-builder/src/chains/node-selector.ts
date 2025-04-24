@@ -37,38 +37,37 @@ For the planned workflow steps, provider:
 
 Remember: ONLY use nodes from the <allowed_n8n_nodes> list and ALWAYS use their FULL names exactly as provided.`,
 );
+const nodeSelectorSchema = z.object({
+	recommended_nodes: z
+		.array(
+			z.object({
+				score: z.number().describe('Matching score of the node for all the workflows steps'),
+				node: z
+					.string()
+					.describe(
+						'The full node type identifier (e.g., "n8n-nodes-base.if") from <allowed_n8n_nodes> list',
+					),
+				reasoning: z
+					.string()
+					.describe(
+						'Very short explanation of why this node might be used to implement the workflow step',
+					),
+			}),
+		)
+		.min(1)
+		.max(20)
+		.describe(
+			'Recommended n8n nodes for implementing any of the workflow steps, in order of descending preference. ONLY use nodes from the <allowed_n8n_nodes> list with EXACT full names from <node_name> tags.',
+		),
+});
 
 const nodeSelectorTool = new DynamicStructuredTool({
 	name: 'select_n8n_nodes',
 	description:
 		'Match each workflow step with the most appropriate n8n nodes from the allowed list, ensuring they can implement the required functionality.',
-	schema: z.object({
-		recommended_nodes: z
-			.array(
-				z.object({
-					score: z.number().describe('Matching score of the node for all the workflows steps'),
-					node: z
-						.string()
-						.describe(
-							'The full node type identifier (e.g., "n8n-nodes-base.if") from <allowed_n8n_nodes> list',
-						),
-					reasoning: z
-						.string()
-						.describe(
-							'Very short explanation of why this node might be used to implement the workflow step',
-						),
-				}),
-			)
-			.min(1)
-			.max(20)
-			.describe(
-				'Recommended n8n nodes for implementing any of the workflow steps, in order of descending preference. ONLY use nodes from the <allowed_n8n_nodes> list with EXACT full names from <node_name> tags.',
-			),
-	}),
-	func: async (input: {
-		recommended_nodes: Array<{ score: number; node: string; reasoning: string }>;
-	}) => {
-		return { recommended_nodes: input.recommended_nodes };
+	schema: nodeSelectorSchema,
+	func: async ({ recommended_nodes }) => {
+		return { recommended_nodes };
 	},
 });
 
@@ -102,10 +101,6 @@ export const nodesSelectionChain = (llm: BaseChatModel) => {
 		)
 		.pipe((x: AIMessageChunk) => {
 			const toolCall = x.tool_calls?.[0];
-			return toolCall?.args.recommended_nodes as Array<{
-				score: number;
-				node: string;
-				reasoning: string;
-			}>;
+			return (toolCall?.args as z.infer<typeof nodeSelectorSchema>).recommended_nodes;
 		});
 };

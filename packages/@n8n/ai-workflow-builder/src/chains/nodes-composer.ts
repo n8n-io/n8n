@@ -3,7 +3,6 @@ import type { AIMessageChunk } from '@langchain/core/messages';
 import { SystemMessage } from '@langchain/core/messages';
 import { ChatPromptTemplate, HumanMessagePromptTemplate } from '@langchain/core/prompts';
 import { DynamicStructuredTool } from '@langchain/core/tools';
-import type { INode } from 'n8n-workflow';
 import { OperationalError } from 'n8n-workflow';
 import { z } from 'zod';
 
@@ -412,36 +411,38 @@ export const nodesComposerPrompt = ChatPromptTemplate.fromMessages([
 	HumanMessagePromptTemplate.fromTemplate(humanTemplate),
 ]);
 
+const nodeConfigSchema = z.object({
+	nodes: z
+		.array(
+			z
+				.object({
+					parameters: z
+						.record(z.string(), z.any())
+						.describe(
+							"The node's configuration parameters. Must include all required parameters for the node type to function properly. For expressions referencing other nodes, use the format: \"={{ $('Node Name').item.json.field }}\"",
+						)
+						.refine((data) => Object.keys(data).length > 0, {
+							message: 'Parameters cannot be empty',
+						}),
+					type: z
+						.string()
+						.describe('The full node type identifier (e.g., "n8n-nodes-base.httpRequest")'),
+					name: z
+						.string()
+						.describe(
+							'A descriptive name for the node that clearly indicates its purpose in the workflow',
+						),
+				})
+				.describe('A complete n8n node configuration'),
+		)
+		.describe('Array of all nodes for the workflow with their complete configurations'),
+});
+
 const generateNodeConfigTool = new DynamicStructuredTool({
 	name: 'generate_n8n_nodes',
 	description:
 		'Generate fully configured n8n nodes with appropriate parameters based on the workflow requirements and selected node types.',
-	schema: z.object({
-		nodes: z
-			.array(
-				z
-					.object({
-						parameters: z
-							.record(z.string(), z.any())
-							.describe(
-								"The node's configuration parameters. Must include all required parameters for the node type to function properly. For expressions referencing other nodes, use the format: \"={{ $('Node Name').item.json.field }}\"",
-							)
-							.refine((data) => Object.keys(data).length > 0, {
-								message: 'Parameters cannot be empty',
-							}),
-						type: z
-							.string()
-							.describe('The full node type identifier (e.g., "n8n-nodes-base.httpRequest")'),
-						name: z
-							.string()
-							.describe(
-								'A descriptive name for the node that clearly indicates its purpose in the workflow',
-							),
-					})
-					.describe('A complete n8n node configuration'),
-			)
-			.describe('Array of all nodes for the workflow with their complete configurations'),
-	}),
+	schema: nodeConfigSchema,
 	func: async (input) => {
 		return { nodes: input.nodes };
 	},
@@ -460,6 +461,6 @@ export const nodesComposerChain = (llm: BaseChatModel) => {
 		)
 		.pipe((x: AIMessageChunk) => {
 			const toolCall = x.tool_calls?.[0];
-			return toolCall?.args.nodes as INode[];
+			return (toolCall?.args as z.infer<typeof nodeConfigSchema>).nodes;
 		});
 };

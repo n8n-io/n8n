@@ -6,6 +6,7 @@ import {
 	AiFreeCreditsRequestDto,
 	AiBuilderChatRequestDto,
 } from '@n8n/api-types';
+import { Body, Post, RestController } from '@n8n/decorators';
 import type { AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';
 import { Response } from 'express';
 import { OPEN_AI_API_CREDENTIAL_TYPE, OperationalError } from 'n8n-workflow';
@@ -14,7 +15,6 @@ import { WritableStream } from 'node:stream/web';
 
 import { FREE_AI_CREDITS_CREDENTIAL_NAME } from '@/constants';
 import { CredentialsService } from '@/credentials/credentials.service';
-import { Body, Post, RestController } from '@/decorators';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { AuthenticatedRequest } from '@/requests';
 import { WorkflowBuilderService } from '@/services/ai-workflow-builder.service';
@@ -56,9 +56,8 @@ export class AiController {
 
 			res.end();
 		} catch (e) {
-			console.error('Stream error:', e);
 			assert(e instanceof Error);
-			throw new OperationalError(e.message, e);
+			throw new InternalServerError(e.message, e);
 		}
 	}
 
