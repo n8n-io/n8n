@@ -1,4 +1,6 @@
-import { INode } from '.';
+import { escapeRegExp } from 'lodash';
+
+import type { INode } from './Interfaces';
 
 export function hasDotNotationBannedChar(nodeName: string) {
 	const DOT_NOTATION_BANNED_CHARS = /^(\d)|[\\ `!@#$%^&*()_+\-=[\]{};':"\\|,.<>?~]/g;
@@ -120,17 +122,35 @@ export function impl_buildExtractWorkflowExpressionDataMap(
 	return result;
 }
 
+class LazyRegExp {
+	private regExp?: RegExp;
+
+	constructor(
+		private pattern: () => string,
+		private flags?: string,
+	) {}
+
+	get(): RegExp {
+		if (!this.regExp) this.regExp = new RegExp(this.pattern(), this.flags);
+
+		return this.regExp;
+	}
+}
+
 export function buildExtractWorkflowExpressionDataMap(
 	selectedNode: INode[],
 	nodeNames: string[],
 	newName: string = 'Start',
 ) {
 	// Compile all candidate regexp patterns
-	// Note that this also matches `$('NodeName1') + $('NodeName2')` with node name 'NodeName1') + $('NodeName2'
-	// which needs to be filtered out later
+	//
+	// This looks scary for large workflows, but RegExp should support >1 million characters and
+	// it's a very linear pattern.
+	// The alternative is to match `\w+`, which also matches `$('NodeName1') + $('NodeName2')` with
+	// node name 'NodeName1') + $('NodeName2' which would need to be filtered out later
+	// That approach also risks being computationally expensive relative to expression length, rather than node count
+	const namesRegexp = nodeNames.map(escapeRegExp).join('|');
 	const nodeRegexps = ACCESS_PATTERNS.map(
-		(pattern) => [pattern, new RegExp(pattern.replacePattern('w+'))] as const,
+		(pattern) => [pattern, new LazyRegExp(() => pattern.replacePattern(namesRegexp), 'g')] as const,
 	);
-
-	return result;
 }
