@@ -1,10 +1,6 @@
 import { ref } from 'vue';
 import { useHistoryStore } from '@/stores/history.store';
-import {
-	CUSTOM_API_CALL_KEY,
-	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
-	SPLIT_IN_BATCHES_NODE_TYPE,
-} from '@/constants';
+import { CUSTOM_API_CALL_KEY, PLACEHOLDER_FILLED_AT_EXECUTION_TIME } from '@/constants';
 
 import { NodeHelpers, ExpressionEvaluatorProxy, NodeConnectionTypes } from 'n8n-workflow';
 import type {
@@ -546,27 +542,33 @@ export function useNodeHelpers() {
 		}
 	}
 
-	function getNodeTaskData(node: INodeUi | null, runIndex = 0) {
-		if (node === null) {
-			return null;
-		}
-		if (workflowsStore.getWorkflowExecution === null) {
-			return null;
-		}
+	function getNodeTaskData(nodeName: string, runIndex = 0) {
+		return getAllNodeTaskData(nodeName)?.[runIndex] ?? null;
+	}
 
-		const executionData = workflowsStore.getWorkflowExecution.data;
-		if (!executionData?.resultData) {
-			// unknown status
-			return null;
-		}
-		const runData = executionData.resultData.runData;
+	function getAllNodeTaskData(nodeName: string) {
+		return workflowsStore.getWorkflowRunData?.[nodeName] ?? null;
+	}
 
-		const taskData = get(runData, [node.name, runIndex]);
-		if (!taskData) {
-			return null;
-		}
+	function hasNodeExecuted(nodeName: string) {
+		return (
+			getAllNodeTaskData(nodeName)?.some(
+				({ executionStatus }) => executionStatus && ['success', 'error'].includes(executionStatus),
+			) ?? false
+		);
+	}
 
-		return taskData;
+	function getLastRunIndexWithData(
+		nodeName: string,
+		outputIndex = 0,
+		connectionType: NodeConnectionType = NodeConnectionTypes.Main,
+	) {
+		const allTaskData = getAllNodeTaskData(nodeName) ?? [];
+
+		return allTaskData.findLastIndex(
+			(taskData) =>
+				taskData.data && getInputData(taskData.data, outputIndex, connectionType).length > 0,
+		);
 	}
 
 	function getNodeInputData(
@@ -576,17 +578,8 @@ export function useNodeHelpers() {
 		paneType: NodePanelType = 'output',
 		connectionType: NodeConnectionType = NodeConnectionTypes.Main,
 	): INodeExecutionData[] {
-		//TODO: check if this needs to be fixed in different place
-		if (
-			node?.type === SPLIT_IN_BATCHES_NODE_TYPE &&
-			paneType === 'input' &&
-			runIndex !== 0 &&
-			outputIndex !== 0
-		) {
-			runIndex = runIndex - 1;
-		}
-
-		const taskData = getNodeTaskData(node, runIndex);
+		if (!node) return [];
+		const taskData = getNodeTaskData(node.name, runIndex);
 		if (taskData === null) {
 			return [];
 		}
@@ -1012,6 +1005,8 @@ export function useNodeHelpers() {
 		disableNodes,
 		getNodeSubtitle,
 		updateNodesCredentialsIssues,
+		getLastRunIndexWithData,
+		hasNodeExecuted,
 		getNodeInputData,
 		matchCredentials,
 		isInsertingNodes,
