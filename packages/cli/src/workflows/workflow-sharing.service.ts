@@ -27,6 +27,7 @@ export class WorkflowSharingService {
 	 * scope or roles.
 	 * If `scopes` is passed the roles are inferred. Alternatively `projectRoles`
 	 * and `workflowRoles` can be passed specifically.
+	 * if `projectId` is passed, only workflows where the user is the owner are returned.
 	 *
 	 * Returns all IDs if user has the 'workflow:read' global scope.
 	 */

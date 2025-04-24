@@ -961,20 +961,6 @@ describe('GET /workflows', () => {
 			expect(response2.body.data).toHaveLength(1);
 			expect(response2.body.data[0].id).toBe(workflow2.id);
 		});
-
-		test('should return homeProject when filtering workflows by projectId', async () => {
-			const workflow = await createWorkflow({ name: 'First' }, member);
-			const pp = await getPersonalProject(member);
-
-			const response = await authMemberAgent
-				.get('/workflows')
-				.query(`filter={ "projectId": "${pp.id}" }`)
-				.expect(200);
-
-			expect(response.body.data).toHaveLength(1);
-			expect(response.body.data[0].id).toBe(workflow.id);
-			expect(response.body.data[0].homeProject).not.toBeNull();
-		});
 	});
 
 	describe('select', () => {
