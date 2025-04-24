@@ -312,7 +312,9 @@ export class SourceControlImportService {
 				continue;
 			}
 			const existingWorkflow = existingWorkflows.find((e) => e.id === importedWorkflow.id);
-			importedWorkflow.active = existingWorkflow?.active ?? false;
+			importedWorkflow.active = existingWorkflow
+				? existingWorkflow.active && !importedWorkflow.isArchived
+				: false;
 
 			const parentFolderId = importedWorkflow.parentFolderId ?? '';
 
@@ -355,14 +357,17 @@ export class SourceControlImportService {
 					// remove active pre-import workflow
 					this.logger.debug(`Deactivating workflow id ${existingWorkflow.id}`);
 					await workflowManager.remove(existingWorkflow.id);
-					// try activating the imported workflow
-					this.logger.debug(`Reactivating workflow id ${existingWorkflow.id}`);
-					await workflowManager.add(existingWorkflow.id, 'activate');
-					// update the versionId of the workflow to match the imported workflow
+
+					if (importedWorkflow.active) {
+						// try activating the imported workflow
+						this.logger.debug(`Reactivating workflow id ${existingWorkflow.id}`);
+						await workflowManager.add(existingWorkflow.id, 'activate');
+					}
 				} catch (e) {
 					const error = ensureError(e);
 					this.logger.error(`Failed to activate workflow ${existingWorkflow.id}`, { error });
 				} finally {
+					// update the versionId of the workflow to match the imported workflow
 					await this.workflowRepository.update(
 						{ id: existingWorkflow.id },
 						{ versionId: importedWorkflow.versionId },

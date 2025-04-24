@@ -428,6 +428,8 @@ export class WorkflowsController {
 				'Could not unarchive the workflow - you can only unarchive workflows owned by you',
 			);
 		}
+
+		return true;
 	}
 
 	@Post('/:workflowId/run')
