@@ -2,10 +2,15 @@ name: Run Nightly Benchmark
 run-name: Benchmark ${{ inputs.n8n_tag || 'nightly' }}
 
 on:
-  schedule:
-    - cron: '30 1,2,3 * * *'
+  # schedule:
+  #   - cron: '30 1,2,3 * * *'
   workflow_dispatch:
     inputs:
+      enabled:
+        description: 'Enable the workflow'
+        required: true
+        type: boolean
+        default: false
       debug:
         description: 'Use debug logging'
         required: true

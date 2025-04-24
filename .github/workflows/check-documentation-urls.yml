@@ -3,9 +3,15 @@ name: Check Documentation URLs
 on:
   release:
     types: [published]
-  schedule:
-    - cron: '0 0 * * *'
+  # schedule:
+  #   - cron: '0 0 * * *'
   workflow_dispatch:
+    inputs:
+      enabled:
+        description: 'Enable the workflow'
+        required: true
+        type: boolean
+        default: false
 
 jobs:
   check-docs-urls:

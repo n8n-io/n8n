@@ -1,9 +1,9 @@
-name: Test Master
+name: Test Dev
 
 on:
   push:
     branches:
-      - master
+      - dev
 
 jobs:
   install-and-build:
@@ -40,27 +40,6 @@ jobs:
 
       - name: Build
         run: pnpm build
-
-  unit-test:
-    name: Unit tests
-    uses: ./.github/workflows/units-tests-reusable.yml
-    needs: install-and-build
-    strategy:
-      matrix:
-        node-version: [18.x, 20.x]
-    with:
-      ref: ${{ inputs.branch }}
-      nodeVersion: ${{ matrix.node-version }}
-      collectCoverage: ${{ matrix.node-version == '20.x' }}
-      ignoreTurboCache: ${{ matrix.node-version == '20.x' }}
-      skipFrontendTests: ${{ matrix.node-version != '20.x' }}
-
-  lint:
-    name: Lint
-    uses: ./.github/workflows/linting-reusable.yml
-    needs: install-and-build
-    with:
-      ref: ${{ inputs.branch }}
 
   notify-on-failure:
     name: Notify Feishu

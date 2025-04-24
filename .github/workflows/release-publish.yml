@@ -69,8 +69,8 @@ jobs:
       - id: set-release
         run: echo "release=${{ env.RELEASE }}" >> $GITHUB_OUTPUT
 
-  publish-to-docker-hub:
-    name: Publish to DockerHub
+  publish-to-gcp-artifacts:
+    name: Publish to GCP Artifacts
     needs: [publish-to-npm]
     runs-on: ubuntu-latest
     if: github.event.pull_request.merged == true
@@ -88,20 +88,16 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@6524bf65af31da8d45b59e8c27de4bd072b392f5 # v3.8.0
 
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-      - name: Login to DockerHub
-        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
+      - name: Configure Docker for Google Cloud
+        run: |
+          gcloud auth configure-docker ${{ secrets.GCP_REGION }}-docker.pkg.dev --quiet
 
-      - name: Build
+      - name: Build and push image
         uses: docker/build-push-action@b32b51a8eda65d6793cd0494a773d4f6bcef32dc # v6.11.0
         env:
           DOCKER_BUILD_SUMMARY: false
@@ -117,8 +113,8 @@ jobs:
           provenance: false
           push: true
           tags: |
-            ${{ secrets.DOCKER_USERNAME }}/n8n:${{ needs.publish-to-npm.outputs.release }}
-            ghcr.io/${{ github.repository_owner }}/n8n:${{ needs.publish-to-npm.outputs.release }}
+            ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_REPOSITORY }}/n8n:${{ needs.publish-to-npm.outputs.release }}
+            ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_REPOSITORY }}/n8n:latest
 
   security-scan:
     name: Security Scan Release Image
@@ -131,7 +127,7 @@ jobs:
 
   create-github-release:
     name: Create a GitHub Release
-    needs: [publish-to-npm, publish-to-docker-hub]
+    needs: [publish-to-npm, publish-to-gcp-artifacts]
     runs-on: ubuntu-latest
     if: github.event.pull_request.merged == true
     timeout-minutes: 5
@@ -152,7 +148,7 @@ jobs:
 
   create-sentry-release:
     name: Create a Sentry Release
-    needs: [publish-to-npm, publish-to-docker-hub]
+    needs: [publish-to-npm, publish-to-gcp-artifacts]
     runs-on: ubuntu-latest
     if: github.event.pull_request.merged == true
     timeout-minutes: 5
@@ -201,19 +197,3 @@ jobs:
       - name: Trigger a release note
         run: curl -u docsWorkflows:${{ secrets.N8N_WEBHOOK_DOCS_PASSWORD }} --request GET 'https://internal.users.n8n.cloud/webhook/trigger-release-note' --header 'Content-Type:application/json' --data '{"version":"${{ needs.publish-to-npm.outputs.release }}"}'
 
-  # merge-back-into-master:
-  #   name: Merge back into master
-  #   needs: [publish-to-npm, create-github-release]
-  #   if: ${{ github.event.pull_request.merged == true && !contains(github.event.pull_request.labels.*.name, 'release:patch') }}
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
-  # v4.1.1
-  #         fetch-depth: 0
-  #     - run: |
-  #         git checkout --track origin/master
-  #         git config user.name "github-actions[bot]"
-  #         git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-  #         git merge --ff n8n@${{ needs.publish-to-npm.outputs.release }}
-  #         git push origin master
-  #         git push origin :${{github.event.pull_request.base.ref}}

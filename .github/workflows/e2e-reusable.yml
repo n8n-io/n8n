@@ -68,7 +68,7 @@ jobs:
             echo "value=${{ inputs.branch }}" >> $GITHUB_OUTPUT
           fi
   install:
-    runs-on: blacksmith-4vcpu-ubuntu-2204
+    runs-on: ubuntu-latest
     needs: ['prepare']
 
     steps:
@@ -78,23 +78,25 @@ jobs:
 
       - uses: pnpm/action-setup@fe02b34f77f8bc703788d5817da081398fad5dd2 # v4.0.0
 
-      - name: Cache build artifacts
-        id: cache-build-artifacts
-        uses: useblacksmith/cache@c5fe29eb0efdf1cf4186b9f7fcbbcbc0cf025662 # v5
+      - name: Cache Cypress
+        uses: actions/cache@v4
+        id: cache-cypress
         with:
           path: |
-            /home/runner/.cache/Cypress
-            /github/home/.pnpm-store
+            ~/.cache/Cypress
+            ~/.pnpm-store
             ./packages/**/dist
-          key: ${{ github.sha }}-ui
+          key: ${{ runner.os }}-cypress-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-cypress-
 
       - name: Install dependencies
-        if: steps.cache-build-artifacts.outputs.cache-hit != 'true'
+        if: steps.cache-cypress.outputs.cache-hit != 'true'
         run: pnpm install --frozen-lockfile
 
       - name: Cypress build
-        if: steps.cache-build-artifacts.outputs.cache-hit != 'true'
-        uses: cypress-io/github-action@0ee1130f05f69098ab5c560bd198fecf5a14d75b # v6.9.0
+        if: steps.cache-cypress.outputs.cache-hit != 'true'
+        uses: cypress-io/github-action@1b70233146622b69e789ccdd4f9452adc638d25a # v6.6.1
         with:
           # Disable running of tests within install job
           runTests: false
@@ -102,12 +104,12 @@ jobs:
           build: pnpm build
 
       - name: Cypress install
-        if: steps.cache-build-artifacts.outputs.cache-hit != 'true'
+        if: steps.cache-cypress.outputs.cache-hit != 'true'
         working-directory: cypress
         run: pnpm cypress:install
 
   testing:
-    runs-on: blacksmith-2vcpu-ubuntu-2204
+    runs-on: ubuntu-latest
     needs: ['prepare', 'install']
     strategy:
       fail-fast: false
@@ -122,15 +124,16 @@ jobs:
 
       - uses: pnpm/action-setup@fe02b34f77f8bc703788d5817da081398fad5dd2 # v4.0.0
 
-      - name: Restore cached pnpm modules
-        id: cache-build-artifacts
-        uses: useblacksmith/cache@c5fe29eb0efdf1cf4186b9f7fcbbcbc0cf025662 # v5
+      - name: Cache Cypress
+        uses: actions/cache@v4
         with:
           path: |
-            /home/runner/.cache/Cypress
-            /github/home/.pnpm-store
+            ~/.cache/Cypress
+            ~/.pnpm-store
             ./packages/**/dist
-          key: ${{ github.sha }}-ui
+          key: ${{ runner.os }}-cypress-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-cypress-
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile

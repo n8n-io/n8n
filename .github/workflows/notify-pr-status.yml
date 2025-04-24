@@ -15,13 +15,14 @@ jobs:
       (github.event_name == 'pull_request' && github.event.pull_request.merged == true) ||
       (github.event_name == 'pull_request' && github.event.pull_request.merged == false && github.event.action == 'closed')
     steps:
-      - uses: fjogeleit/http-request-action@bf78da14118941f7e940279dd58f67e863cbeff6 # v1
+      - name: Notify Feishu
         if: ${{!contains(github.event.pull_request.labels.*.name, 'community')}}
-        name: Notify
-        env:
-          PR_URL: ${{ github.event.pull_request.html_url }}
-        with:
-          url: ${{ secrets.N8N_NOTIFY_PR_STATUS_CHANGED_URL }}
-          method: 'POST'
-          customHeaders: '{ "x-api-token": "${{ secrets.N8N_NOTIFY_PR_STATUS_CHANGED_TOKEN }}" }'
-          data: '{ "event_name": "${{ github.event_name }}", "pr_url": "${{ env.PR_URL }}",  "event": ${{ toJSON(github.event) }} }'
+        run: |
+          curl -X POST -H "Content-Type: application/json" \
+          -d '{
+            "msg_type": "text",
+            "content": {
+              "text": "PR 状态变更通知\nPR标题: ${{ github.event.pull_request.title }}\nPR链接: ${{ github.event.pull_request.html_url }}\n状态: ${{ github.event.review.state || 'closed' }}\n操作人: ${{ github.actor }}\n仓库: ${{ github.repository }}"
+            }
+          }' \
+          ${{ secrets.FEISHU_WEBHOOK_URL }}

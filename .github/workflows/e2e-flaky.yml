@@ -19,7 +19,7 @@ on:
 
 jobs:
   debug-test:
-    runs-on: blacksmith-4vcpu-ubuntu-2204
+    runs-on: ubuntu-latest
     timeout-minutes: 60
 
     steps:
@@ -37,26 +37,25 @@ jobs:
           node-version: '18'
           cache: 'pnpm'
 
-      - name: Cache build artifacts
-        id: cache-build-artifacts
-        uses: useblacksmith/cache@c5fe29eb0efdf1cf4186b9f7fcbbcbc0cf025662 # v5.0.2
+      - name: Cache Cypress
+        uses: actions/cache@v4
         with:
           path: |
-            /home/runner/.cache/Cypress
+            ~/.cache/Cypress
             ./packages/**/dist
-          key: ${{ github.ref }}-${{ github.sha }}-debug-build
+          key: ${{ runner.os }}-cypress-${{ github.sha }}
           restore-keys: |
-            ${{ github.ref }}-debug-build-
+            ${{ runner.os }}-cypress-
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
       - name: Build application
-        if: steps.cache-build-artifacts.outputs.cache-hit != 'true'
+        if: steps.cache-cypress.outputs.cache-hit != 'true'
         run: pnpm build
 
       - name: Cypress install
-        if: steps.cache-build-artifacts.outputs.cache-hit != 'true'
+        if: steps.cache-cypress.outputs.cache-hit != 'true'
         working-directory: cypress
         run: pnpm cypress:install
 

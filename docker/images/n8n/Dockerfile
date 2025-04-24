@@ -65,6 +65,8 @@ RUN \
 	mkdir .n8n && \
 	chown node:node .n8n
 
+RUN apk add --no-cache ffmpeg
+
 ENV SHELL /bin/sh
 USER node
 ENTRYPOINT ["tini", "--", "/docker-entrypoint.sh"]

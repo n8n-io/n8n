@@ -8,6 +8,11 @@ on:
         required: false
         type: string
         default: master
+      nodeVersion:
+        description: Version of node to use.
+        required: false
+        type: string
+        default: 20.x
       cacheKey:
         description: Cache key for modules and build artifacts.
         required: false
@@ -17,38 +22,58 @@ on:
 jobs:
   lint:
     name: Lint
-    runs-on: blacksmith-4vcpu-ubuntu-2204
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
         with:
           ref: ${{ inputs.ref }}
+          fetch-depth: 0
 
-      - uses: useblacksmith/setup-node@65c6ca86fdeb0ab3d85e78f57e4f6a7e4780b391 # v5
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 20.x
+          check-latest: true
 
-      - name: Setup corepack and pnpm
+      - name: Check pnpm
+        id: check-pnpm
         run: |
-          npm i -g corepack@0.31
-          corepack enable
+          echo "Installing pnpm..."
+          npm install -g pnpm@10.2.1
+          pnpm --version
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ${{ env.STORE_PATH }}
+            .pnpm-store
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Setup build cache
-        uses: useblacksmith/caching-for-turbo@bafb57e7ebdbf1185762286ec94d24648cd3938a # v1
+      - name: Cache build artifacts
+        uses: actions/cache@v3
+        id: cache-build
+        with:
+          path: |
+            packages/**/dist
+            packages/**/build
+          key: ${{ runner.os }}-build-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-build-
 
       - name: Build
-        if: ${{ inputs.cacheKey == '' }}
+        if: steps.cache-build.outputs.cache-hit != 'true'
         run: pnpm build
-
-      - name: Restore cached build artifacts
-        if: ${{ inputs.cacheKey != '' }}
-        uses: useblacksmith/cache/restore@c5fe29eb0efdf1cf4186b9f7fcbbcbc0cf025662 # v5
-        with:
-          path: ./packages/**/dist
-          key: ${{ inputs.cacheKey }}
-          fail-on-cache-miss: true
 
       - name: Lint Backend
         run: pnpm lint:backend
