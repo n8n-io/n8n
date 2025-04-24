@@ -10,7 +10,7 @@ import { useRouter } from 'vue-router';
 
 const props = defineProps<{
 	runs: Array<TestRunRecord & { index: number }>;
-	testId: string;
+	workflowId: string;
 }>();
 
 const locale = useI18n();
