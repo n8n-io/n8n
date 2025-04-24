@@ -1,4 +1,5 @@
 import type { InsightsSummaryType } from '@n8n/api-types';
+import { useI18n } from '@/composables/useI18n';
 
 export const INSIGHTS_SUMMARY_ORDER: InsightsSummaryType[] = [
 	'total',
@@ -45,3 +46,19 @@ export const INSIGHTS_UNIT_IMPACT_MAPPING: Record<
 } as const;
 
 export const DATE_FORMAT_MASK = 'mmm d';
+
+export const GRANULARITY_DATE_FORMAT_MASK = {
+	hour: 'HH:mm',
+	day: 'mmm d',
+	week: 'MMM d-d',
+};
+
+export const TIME_RANGE_LABELS = {
+	day: useI18n().baseText('insights.lastNHours', { interpolate: { count: 24 } }),
+	week: useI18n().baseText('insights.lastNDays', { interpolate: { count: 7 } }),
+	'2weeks': useI18n().baseText('insights.lastNDays', { interpolate: { count: 14 } }),
+	month: useI18n().baseText('insights.lastNDays', { interpolate: { count: 30 } }),
+	quarter: useI18n().baseText('insights.lastNDays', { interpolate: { count: 90 } }),
+	'6months': '6 months',
+	year: useI18n().baseText('insights.oneYear', { interpolate: { count: 90 } }),
+};

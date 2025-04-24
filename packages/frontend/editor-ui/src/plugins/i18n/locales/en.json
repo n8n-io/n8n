@@ -3089,6 +3089,8 @@
 	"freeAi.credits.showWarning.workflow.activation.title": "You're using free OpenAI API credits",
 	"freeAi.credits.showWarning.workflow.activation.description": "To make sure your workflow runs smoothly in the future, replace the free OpenAI API credits with your own API key.",
 	"insights.lastNDays": "Last {count} days",
+	"insights.lastNHours": "Last {count} hours",
+	"insights.oneYear": "One year",
 	"insights.banner.timeSaved.tooltip": "No estimate available yet. To see potential time savings, {link} to each workflow from workflow settings.",
 	"insights.banner.timeSaved.tooltip.link.text": "add time estimates",
 	"insights.banner.noData": "Collecting...",

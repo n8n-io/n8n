@@ -1,9 +1,13 @@
 <script setup lang="ts">
 import { useI18n } from '@/composables/useI18n';
+import { useTelemetry } from '@/composables/useTelemetry';
 import InsightsSummary from '@/features/insights/components/InsightsSummary.vue';
 import { useInsightsStore } from '@/features/insights/insights.store';
-import type { InsightsSummaryType } from '@n8n/api-types';
+import type { InsightsDateRange, InsightsSummaryType } from '@n8n/api-types';
+import { N8nButton, N8nOption, N8nSelect } from '@n8n/design-system';
+import { ElDialog } from 'element-plus';
 import { computed, defineAsyncComponent, ref, watch } from 'vue';
+import { TIME_RANGE_LABELS } from '../insights.constants';
 
 const InsightsPaywall = defineAsyncComponent(
 	async () => await import('@/features/insights/components/InsightsPaywall.vue'),
@@ -32,6 +36,10 @@ const props = defineProps<{
 }>();
 
 const i18n = useI18n();
+const telemetry = useTelemetry();
+
+const trackUpdateTimeRange = (range: InsightsDateRange['key']) =>
+	telemetry.track(`User updated insights time range: ${range}`);
 
 const insightsStore = useInsightsStore();
 
@@ -53,10 +61,12 @@ const fetchPaginatedTableData = ({
 	page = 0,
 	itemsPerPage = 20,
 	sortBy,
+	dateRange,
 }: {
 	page?: number;
 	itemsPerPage?: number;
 	sortBy: Array<{ id: string; desc: boolean }>;
+	dateRange?: InsightsDateRange['key'];
 }) => {
 	const skip = page * itemsPerPage;
 	const take = itemsPerPage;
@@ -67,22 +77,55 @@ const fetchPaginatedTableData = ({
 		skip,
 		take,
 		sortBy: sortKey,
+		dateRange,
 	});
 };
 
 const sortTableBy = ref([{ id: props.insightType, desc: true }]);
+
+const selectedDateRange = ref<InsightsDateRange['key']>('week');
+const granularity = computed(
+	() =>
+		insightsStore.dateRanges.find((item) => item.key === selectedDateRange.value)?.granularity ??
+		'day',
+);
+const UNLICENSED = 'non-licensed';
+
+const timeOptions = ref(
+	insightsStore.dateRanges.map((option) => {
+		return {
+			key: option.key,
+			label: TIME_RANGE_LABELS[option.key],
+			value: option.licensed ? option.key : UNLICENSED,
+			licensed: option.licensed,
+		};
+	}),
+);
+
+const dialogVisible = ref(false);
+
+function handleTimeChange(value: InsightsDateRange['key'] | typeof UNLICENSED) {
+	if (value === UNLICENSED) {
+		dialogVisible.value = true;
+		return;
+	}
+
+	selectedDateRange.value = value;
+	trackUpdateTimeRange(value);
+}
+
 watch(
-	() => props.insightType,
+	() => [props.insightType, selectedDateRange.value],
 	() => {
 		sortTableBy.value = [{ id: props.insightType, desc: true }];
 
 		if (insightsStore.isSummaryEnabled) {
-			void insightsStore.summary.execute();
+			void insightsStore.summary.execute(0, { dateRange: selectedDateRange.value });
 		}
 
 		if (insightsStore.isDashboardEnabled) {
-			void insightsStore.charts.execute();
-			fetchPaginatedTableData({ sortBy: sortTableBy.value });
+			void insightsStore.charts.execute(0, { dateRange: selectedDateRange.value });
+			fetchPaginatedTableData({ sortBy: sortTableBy.value, dateRange: selectedDateRange.value });
 		}
 	},
 	{
@@ -97,51 +140,115 @@ watch(
 			<N8nHeading bold tag="h2" size="xlarge">
 				{{ i18n.baseText('insights.dashboard.title') }}
 			</N8nHeading>
-			<div>
-				<InsightsSummary
-					v-if="insightsStore.isSummaryEnabled"
-					:summary="insightsStore.summary.state"
-					:loading="insightsStore.summary.isLoading"
-					:class="$style.insightsBanner"
+
+			<div class="mt-s">
+				<N8nSelect
+					:model-value="selectedDateRange"
+					size="small"
+					style="width: 173px"
+					@update:model-value="handleTimeChange"
+				>
+					<N8nOption
+						v-for="item in timeOptions"
+						:key="item.key"
+						:value="item.value"
+						:label="item.label"
+						style="display: flex"
+					>
+						{{ item.label }}
+						<svg
+							v-if="!item.licensed"
+							width="16"
+							height="17"
+							viewBox="0 0 16 17"
+							fill="none"
+							xmlns="http://www.w3.org/2000/svg"
+							style="margin-left: auto"
+						>
+							<path
+								d="M12.6667 7.83337H3.33333C2.59695 7.83337 2 8.43033 2 9.16671V13.8334C2 14.5698 2.59695 15.1667 3.33333 15.1667H12.6667C13.403 15.1667 14 14.5698 14 13.8334V9.16671C14 8.43033 13.403 7.83337 12.6667 7.83337Z"
+								stroke="#9A9A9A"
+								stroke-width="1.33333"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							/>
+							<path
+								d="M4.66681 7.83337V5.16671C4.66681 4.28265 5.018 3.43481 5.64312 2.80968C6.26824 2.18456 7.11609 1.83337 8.00014 1.83337C8.8842 1.83337 9.73204 2.18456 10.3572 2.80968C10.9823 3.43481 11.3335 4.28265 11.3335 5.16671V7.83337"
+								stroke="#9A9A9A"
+								stroke-width="1.33333"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							/>
+						</svg>
+					</N8nOption>
+				</N8nSelect>
+
+				<ElDialog v-model="dialogVisible" title="Upgrade to Enterprise" width="500">
+					<div>
+						<p>
+							Viewing this time period requires an enterprise plan. Upgrade to Enterprise to unlock
+							advanced features.
+						</p>
+						<ul>
+							<li>View up to one year of data</li>
+							<li>Access to last 24 hour visualization</li>
+							<li>Custom time range selection</li>
+						</ul>
+					</div>
+					<template #footer>
+						<div>
+							<N8nButton type="secondary" @click="dialogVisible = false">Dismiss</N8nButton>
+							<N8nButton type="primary" @click="dialogVisible = false"> Upgrade </N8nButton>
+						</div>
+					</template>
+				</ElDialog>
+			</div>
+
+			<InsightsSummary
+				v-if="insightsStore.isSummaryEnabled"
+				:summary="insightsStore.summary.state"
+				:loading="insightsStore.summary.isLoading"
+				:time-range="selectedDateRange"
+				:class="$style.insightsBanner"
+			/>
+			<div :class="$style.insightsContent">
+				<InsightsPaywall
+					v-if="!insightsStore.isDashboardEnabled"
+					data-test-id="insights-dashboard-unlicensed"
 				/>
-				<div :class="$style.insightsContent">
-					<InsightsPaywall
-						v-if="!insightsStore.isDashboardEnabled"
-						data-test-id="insights-dashboard-unlicensed"
-					/>
-					<div v-else>
-						<div :class="$style.insightsChartWrapper">
-							<div v-if="insightsStore.charts.isLoading" :class="$style.chartLoader">
-								<svg
-									width="22"
-									height="22"
-									viewBox="0 0 22 22"
-									fill="none"
-									xmlns="http://www.w3.org/2000/svg"
-								>
-									<path
-										d="M21 11C21 16.5228 16.5228 21 11 21C5.47715 21 1 16.5228 1 11C1 5.47715 5.47715 1 11 1C11.6293 1 12.245 1.05813 12.8421 1.16931"
-										stroke="currentColor"
-										stroke-width="2"
-									/>
-								</svg>
-								{{ i18n.baseText('insights.chart.loading') }}
-							</div>
-							<component
-								:is="chartComponents[props.insightType]"
-								v-else
-								:type="props.insightType"
-								:data="insightsStore.charts.state"
-							/>
+				<div v-else>
+					<div :class="$style.insightsChartWrapper">
+						<div v-if="insightsStore.charts.isLoading" :class="$style.chartLoader">
+							<svg
+								width="22"
+								height="22"
+								viewBox="0 0 22 22"
+								fill="none"
+								xmlns="http://www.w3.org/2000/svg"
+							>
+								<path
+									d="M21 11C21 16.5228 16.5228 21 11 21C5.47715 21 1 16.5228 1 11C1 5.47715 5.47715 1 11 1C11.6293 1 12.245 1.05813 12.8421 1.16931"
+									stroke="currentColor"
+									stroke-width="2"
+								/>
+							</svg>
+							{{ i18n.baseText('insights.chart.loading') }}
 						</div>
-						<div :class="$style.insightsTableWrapper">
-							<InsightsTableWorkflows
-								v-model:sort-by="sortTableBy"
-								:data="insightsStore.table.state"
-								:loading="insightsStore.table.isLoading"
-								@update:options="fetchPaginatedTableData"
-							/>
-						</div>
+						<component
+							:is="chartComponents[props.insightType]"
+							v-else
+							:type="props.insightType"
+							:data="insightsStore.charts.state"
+							:granularity
+						/>
+					</div>
+					<div :class="$style.insightsTableWrapper">
+						<InsightsTableWorkflows
+							v-model:sort-by="sortTableBy"
+							:data="insightsStore.table.state"
+							:loading="insightsStore.table.isLoading"
+							@update:options="fetchPaginatedTableData"
+						/>
 					</div>
 				</div>
 			</div>
