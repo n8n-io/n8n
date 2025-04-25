@@ -21,7 +21,7 @@ import { useWorkflowResourcesLocator } from './useWorkflowResourcesLocator';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { VIEWS } from '@/constants';
-import { SAMPLE_SUBWORKFLOW_WORKFLOW } from '@/constants.workflows';
+import { SAMPLE_SUBWORKFLOW_TRIGGER_ID, SAMPLE_SUBWORKFLOW_WORKFLOW } from '@/constants.workflows';
 import type { IWorkflowDataCreate } from '@/Interface';
 import { useDocumentVisibility } from '@/composables/useDocumentVisibility';
 
@@ -260,7 +260,10 @@ const onAddResourceClicked = async () => {
 	telemetry.track('User clicked create new sub-workflow button', {}, { withPostHog: true });
 
 	const newWorkflow = await workflowsStore.createNewWorkflow(workflow);
-	const { href } = router.resolve({ name: VIEWS.WORKFLOW, params: { name: newWorkflow.id } });
+	const { href } = router.resolve({
+		name: VIEWS.WORKFLOW,
+		params: { name: newWorkflow.id, nodeId: SAMPLE_SUBWORKFLOW_TRIGGER_ID },
+	});
 	await reloadWorkflows();
 	onInputChange(newWorkflow.id);
 	hideDropdown();
