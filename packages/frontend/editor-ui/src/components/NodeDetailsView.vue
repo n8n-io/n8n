@@ -81,7 +81,6 @@ const redrawRequired = ref(false);
 const runInputIndex = ref(-1);
 const runOutputIndex = computed(() => ndvStore.output.run ?? -1);
 const isLinkingEnabled = ref(true);
-const selectedInput = computed(() => ndvStore.input.nodeName);
 const triggerWaitingWarningEnabled = ref(false);
 const isDragging = ref(false);
 const mainPanelPosition = ref(0);
@@ -172,7 +171,7 @@ const inputNodeName = computed<string | undefined>(() => {
 		)?.[0];
 		return connectedOutputNode;
 	}
-	return selectedInput.value ?? parentNode.value?.name;
+	return ndvStore.input.nodeName ?? parentNode.value?.name;
 });
 
 const inputNode = computed(() => {
@@ -686,6 +685,12 @@ watch(maxOutputRun, () => {
 
 watch(maxInputRun, () => {
 	runInputIndex.value = -1;
+});
+
+watch(inputNodeName, (nodeName) => {
+	setTimeout(() => {
+		ndvStore.setInputNodeName(nodeName);
+	}, 0);
 });
 
 watch(inputRun, (inputRun) => {
