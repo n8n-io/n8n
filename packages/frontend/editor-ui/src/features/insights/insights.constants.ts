@@ -47,7 +47,7 @@ export const INSIGHTS_UNIT_IMPACT_MAPPING: Record<
 } as const;
 
 export const GRANULARITY_DATE_FORMAT_MASK = {
-	hour: (date: string) => dateformat(date, 'HH:mm'),
+	hour: (date: string) => dateformat(date, 'HH:MM'),
 	day: (date: string) => dateformat(date, 'mmm d'),
 	week: (date: string) => {
 		const startDate = new Date(date);
