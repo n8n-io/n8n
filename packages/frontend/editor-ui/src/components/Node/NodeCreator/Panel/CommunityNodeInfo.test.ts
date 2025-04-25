@@ -87,7 +87,7 @@ describe('CommunityNodeInfo', () => {
 		expect(wrapper.container.querySelector('.description')?.textContent).toEqual(
 			'Other node description',
 		);
-		expect(wrapper.getByTestId('verified-tag').textContent).toEqual(' Verified ');
+		expect(wrapper.getByTestId('verified-tag').textContent).toEqual('Verified');
 		expect(wrapper.getByTestId('number-of-downloads').textContent).toEqual('9,999 Downloads ');
 		expect(wrapper.getByTestId('publisher-name').textContent).toEqual(' Published by contributor');
 	});
@@ -139,7 +139,7 @@ describe('CommunityNodeInfo', () => {
 			'Other node description',
 		);
 
-		expect(wrapper.getByTestId('number-of-downloads').textContent).toEqual('60 Downloads ');
+		expect(wrapper.getByTestId('number-of-downloads').textContent).toEqual('60 Downloads');
 		expect(wrapper.getByTestId('publisher-name').textContent).toEqual(' Published by testAuthor');
 	});
 });
