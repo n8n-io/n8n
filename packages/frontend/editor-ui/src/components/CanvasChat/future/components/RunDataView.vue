@@ -19,7 +19,7 @@ const { title, logEntry, paneType, workflow, execution } = defineProps<{
 
 const locale = useI18n();
 const ndvStore = useNDVStore();
-const isMultipleInput = computed(() => logEntry.runData.source.length > 1);
+const isMultipleInput = computed(() => paneType === 'input' && logEntry.runData.source.length > 1);
 const runDataProps = computed<
 	Pick<InstanceType<typeof RunData>['$props'], 'node' | 'runIndex' | 'overrideOutputs'> | undefined
 >(() => {
