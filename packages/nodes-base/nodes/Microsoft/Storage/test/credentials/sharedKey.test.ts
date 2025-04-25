@@ -1,44 +1,17 @@
 import type { ICredentialDataDecryptedObject, IHttpRequestOptions } from 'n8n-workflow';
 
-import { CredentialsHelper } from '@test/nodes/credentials-helper';
-import { FAKE_CREDENTIALS_DATA } from '@test/nodes/FakeCredentialsMap';
+import { AzureStorageSharedKeyApi } from '@credentials/AzureStorageSharedKeyApi.credentials';
 import { equalityTest, workflowToTests } from '@test/nodes/Helpers';
 
-import { AzureStorageSharedKeyApi } from '../../../../../credentials/AzureStorageSharedKeyApi.credentials';
+import { credentials } from '../credentials';
 
 describe('Azure Storage Node', () => {
-	const { account, baseUrl, key } = FAKE_CREDENTIALS_DATA.azureStorageSharedKeyApi;
+	const { account, baseUrl, key } = credentials.azureStorageSharedKeyApi;
 	const workflows = ['nodes/Microsoft/Storage/test/workflows/credentials_sharedKey.workflow.json'];
 	const workflowTests = workflowToTests(workflows);
 
 	describe('should use correct shared key credentials', () => {
-		beforeAll(() => {
-			jest
-				.spyOn(CredentialsHelper.prototype, 'authenticate')
-				.mockImplementation(
-					async (
-						_credentials: ICredentialDataDecryptedObject,
-						typeName: string,
-						requestParams: IHttpRequestOptions,
-					): Promise<IHttpRequestOptions> => {
-						if (typeName === 'azureStorageSharedKeyApi') {
-							return {
-								...requestParams,
-								headers: {
-									authorization:
-										'SharedKey Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==',
-								},
-							};
-						} else {
-							return requestParams;
-						}
-					},
-				);
-		});
-
-		afterAll(() => {
-			jest.restoreAllMocks();
-		});
+		beforeEach(() => jest.restoreAllMocks());
 
 		for (const workflow of workflowTests) {
 			workflow.nock = {
@@ -68,6 +41,7 @@ describe('Azure Storage Node', () => {
 					},
 				],
 			};
+			workflow.credentials = credentials;
 			test(workflow.description, async () => await equalityTest(workflow));
 		}
 	});
@@ -76,7 +50,7 @@ describe('Azure Storage Node', () => {
 		const azureStorageSharedKeyApi = new AzureStorageSharedKeyApi();
 
 		it('should remove undefined query parameters and headers', async () => {
-			const credentials: ICredentialDataDecryptedObject = {
+			const authCredentials: ICredentialDataDecryptedObject = {
 				account,
 				key,
 			};
@@ -89,14 +63,14 @@ describe('Azure Storage Node', () => {
 				method: 'GET',
 			};
 
-			const result = await azureStorageSharedKeyApi.authenticate(credentials, requestOptions);
+			const result = await azureStorageSharedKeyApi.authenticate(authCredentials, requestOptions);
 
 			expect(result.qs).toEqual({ restype: 'container' });
 			expect(result.headers).not.toHaveProperty('Content-Length');
 		});
 
 		it('should default method to GET if not provided', async () => {
-			const credentials: ICredentialDataDecryptedObject = {
+			const authCredentials: ICredentialDataDecryptedObject = {
 				account,
 				key,
 			};
@@ -108,12 +82,12 @@ describe('Azure Storage Node', () => {
 				},
 			};
 
-			const result = await azureStorageSharedKeyApi.authenticate(credentials, requestOptions);
+			const result = await azureStorageSharedKeyApi.authenticate(authCredentials, requestOptions);
 			expect(result.method).toBe('GET');
 		});
 
 		it('should generate a valid authorization header', async () => {
-			const credentials: ICredentialDataDecryptedObject = {
+			const authCredentials: ICredentialDataDecryptedObject = {
 				account,
 				key,
 			};
@@ -133,7 +107,7 @@ describe('Azure Storage Node', () => {
 				},
 				method: 'PUT',
 			};
-			const result = await azureStorageSharedKeyApi.authenticate(credentials, requestOptions);
+			const result = await azureStorageSharedKeyApi.authenticate(authCredentials, requestOptions);
 
 			expect(result.headers?.authorization).toBe(
 				'SharedKey devstoreaccount1:6sSQ3N4yNFQynBs/iLptIRPS5DQeaFBocW+dyYbAdOI=',

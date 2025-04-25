@@ -27,10 +27,10 @@ import {
 	SIMULATE_NODE_TYPE,
 	STICKY_NODE_TYPE,
 } from '@/constants';
-import type { INodeUi, IWorkflowDb } from '@/Interface';
+import type { IExecutionResponse, INodeUi, IWorkflowDb } from '@/Interface';
 import { CanvasNodeRenderType } from '@/types';
-import { type TreeNode } from '@/components/RunDataAi/utils';
 import type { FrontendSettings } from '@n8n/api-types';
+import { type LogEntry } from '@/components/RunDataAi/utils';
 
 export const mockNode = ({
 	id = uuid(),
@@ -62,6 +62,8 @@ export const mockNodeTypeDescription = ({
 	codex = undefined,
 	properties = [],
 	group,
+	hidden,
+	description,
 }: {
 	name?: INodeTypeDescription['name'];
 	icon?: INodeTypeDescription['icon'];
@@ -72,12 +74,14 @@ export const mockNodeTypeDescription = ({
 	codex?: INodeTypeDescription['codex'];
 	properties?: INodeTypeDescription['properties'];
 	group?: INodeTypeDescription['group'];
+	hidden?: INodeTypeDescription['hidden'];
+	description?: INodeTypeDescription['description'];
 } = {}) =>
 	mock<INodeTypeDescription>({
 		name,
 		icon,
 		displayName: name,
-		description: '',
+		description: description ?? '',
 		version,
 		defaults: {
 			name,
@@ -93,6 +97,7 @@ export const mockNodeTypeDescription = ({
 		documentationUrl: 'https://docs',
 		iconUrl: 'nodes/test-node/icon.svg',
 		webhooks: undefined,
+		hidden,
 	});
 
 export const mockLoadedNodeType = (name: string) =>
@@ -236,7 +241,7 @@ export function createMockEnterpriseSettings(
 	};
 }
 
-export function createTestTaskData(partialData: Partial<ITaskData>): ITaskData {
+export function createTestTaskData(partialData: Partial<ITaskData> = {}): ITaskData {
 	return {
 		startTime: 0,
 		executionTime: 1,
@@ -248,15 +253,35 @@ export function createTestTaskData(partialData: Partial<ITaskData>): ITaskData {
 	};
 }
 
-export function createTestLogEntry(data: Partial<TreeNode>): TreeNode {
+export function createTestLogEntry(data: Partial<LogEntry> = {}): LogEntry {
 	return {
-		node: 'test node',
+		node: createTestNode(),
 		runIndex: 0,
+		runData: createTestTaskData({}),
 		id: uuid(),
 		children: [],
 		consumedTokens: { completionTokens: 0, totalTokens: 0, promptTokens: 0, isEstimate: false },
 		depth: 0,
-		startTime: 0,
+		...data,
+	};
+}
+
+export function createTestWorkflowExecutionResponse(
+	data: Partial<IExecutionResponse> = {},
+): IExecutionResponse {
+	return {
+		id: 'test-exec-id',
+		finished: true,
+		mode: 'manual',
+		status: 'error',
+		workflowData: createTestWorkflow(),
+		data: {
+			resultData: {
+				runData: {},
+			},
+		},
+		createdAt: '2025-04-16T00:00:00.000Z',
+		startedAt: '2025-04-16T00:00:01.000Z',
 		...data,
 	};
 }

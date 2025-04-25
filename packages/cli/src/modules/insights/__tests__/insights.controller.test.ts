@@ -1,5 +1,7 @@
 import { Container } from '@n8n/di';
+import { mock } from 'jest-mock-extended';
 
+import type { AuthenticatedRequest } from '@/requests';
 import { mockInstance } from '@test/mocking';
 import * as testDb from '@test-integration/test-db';
 
@@ -30,7 +32,10 @@ describe('InsightsController', () => {
 			insightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue([]);
 
 			// ACT
-			const response = await controller.getInsightsSummary();
+			const response = await controller.getInsightsSummary(
+				mock<AuthenticatedRequest>(),
+				mock<Response>(),
+			);
 
 			// ASSERT
 			expect(response).toEqual({
@@ -52,7 +57,10 @@ describe('InsightsController', () => {
 			]);
 
 			// ACT
-			const response = await controller.getInsightsSummary();
+			const response = await controller.getInsightsSummary(
+				mock<AuthenticatedRequest>(),
+				mock<Response>(),
+			);
 
 			// ASSERT
 			expect(response).toEqual({
@@ -78,7 +86,10 @@ describe('InsightsController', () => {
 			]);
 
 			// ACT
-			const response = await controller.getInsightsSummary();
+			const response = await controller.getInsightsSummary(
+				mock<AuthenticatedRequest>(),
+				mock<Response>(),
+			);
 
 			// ASSERT
 			expect(response).toEqual({
