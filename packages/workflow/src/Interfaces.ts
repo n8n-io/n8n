@@ -2623,7 +2623,7 @@ export interface ExecutionSummary {
 	retrySuccessId?: string | null;
 	waitTill?: Date;
 	createdAt: Date;
-	startedAt: Date;
+	startedAt?: Date;
 	stoppedAt?: Date;
 	workflowId: string;
 	workflowName?: string;

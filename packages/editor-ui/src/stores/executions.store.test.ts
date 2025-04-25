@@ -63,6 +63,8 @@ describe('executions.store', () => {
 
 			expect(executionsStore.executions.length).toBe(2);
 			executionsStore.executions.forEach(({ startedAt }) =>
+				// TODO: fix this
+				// @ts-expect-error
 				expect(startedAt.getTime()).toBeGreaterThanOrEqual(deleteBefore.getTime()),
 			);
 		});

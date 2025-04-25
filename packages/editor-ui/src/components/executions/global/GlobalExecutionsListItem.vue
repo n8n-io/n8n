@@ -81,7 +81,7 @@ const formattedStoppedAtDate = computed(() => {
 	return props.execution.stoppedAt
 		? i18n.displayTimer(
 				new Date(props.execution.stoppedAt).getTime() -
-					new Date(props.execution.startedAt).getTime(),
+					new Date(props.execution.startedAt ?? props.execution.createdAt).getTime(),
 				true,
 			)
 		: '';
@@ -194,7 +194,7 @@ async function handleActionItemClick(commandData: Command) {
 						</span>
 						<ExecutionsTime
 							v-else-if="execution.status !== 'new'"
-							:start-time="execution.startedAt"
+							:start-time="execution.startedAt ?? execution.createdAt"
 						/>
 					</template>
 				</i18n-t>
