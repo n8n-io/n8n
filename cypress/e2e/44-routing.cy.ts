@@ -5,7 +5,7 @@ import {
 } from '../composables/modals/save-changes-modal';
 import { getNdvContainer } from '../composables/ndv';
 import { getHomeButton } from '../composables/projects';
-import { addNodeToCanvas, getCanvas, saveWorkflowOnButtonClick } from '../composables/workflow';
+import { addNodeToCanvas, saveWorkflowOnButtonClick } from '../composables/workflow';
 import {
 	getCreateWorkflowButton,
 	getNewWorkflowCardButton,
