@@ -11,15 +11,15 @@ let currentDatasetIndex = 0;
 
 const mockDataset = [
 	'Can you explain how machine learning algorithms work in simple terms?',
-	'Write a short story about a robot who discovers emotions.',
-	'What are three strategies to improve productivity when working from home?',
 	'I need help planning a week-long trip to Japan. Where should I visit?',
-	'Analyze the pros and cons of electric vehicles versus traditional gasoline cars.',
-	'What would be a good workout routine for someone just starting to exercise?',
-	'Can you help me draft an email to request time off from work?',
-	"Explain quantum computing as if I'm a 10-year-old.",
-	'What are some creative ways to repurpose old furniture?',
-	"I'm learning to code. What programming language should I start with and why?",
+	'Write a short story about a robot who discovers emotions.',
+	// 'What are three strategies to improve productivity when working from home?',
+	// 'Analyze the pros and cons of electric vehicles versus traditional gasoline cars.',
+	// 'What would be a good workout routine for someone just starting to exercise?',
+	// 'Can you help me draft an email to request time off from work?',
+	// "Explain quantum computing as if I'm a 10-year-old.",
+	// 'What are some creative ways to repurpose old furniture?',
+	// "I'm learning to code. What programming language should I start with and why?",
 ];
 
 export class DummyDatasetTrigger implements INodeType {
@@ -55,7 +55,7 @@ export class DummyDatasetTrigger implements INodeType {
 
 		console.log('Dummy Dataset trigger input', inputData);
 
-		if (inputData[0].json.requestDataset) {
+		if (inputData?.[0].json.requestDataset) {
 			return [
 				mockDataset.map(
 					(testCase) =>

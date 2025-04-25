@@ -1,4 +1,4 @@
-import type { MigrationContext, IrreversibleMigration } from '@/databases/types';
+import type { MigrationContext, IrreversibleMigration } from '../migration-types';
 
 export class ClearEvaluation1745322634000 implements IrreversibleMigration {
 	async up({
