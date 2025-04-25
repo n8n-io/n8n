@@ -4,10 +4,10 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import InsightsSummary from '@/features/insights/components/InsightsSummary.vue';
 import { useInsightsStore } from '@/features/insights/insights.store';
 import type { InsightsDateRange, InsightsSummaryType } from '@n8n/api-types';
-import { N8nButton, N8nOption, N8nSelect } from '@n8n/design-system';
-import { ElDialog } from 'element-plus';
+import { N8nOption, N8nSelect } from '@n8n/design-system';
 import { computed, defineAsyncComponent, ref, watch } from 'vue';
 import { TIME_RANGE_LABELS } from '../insights.constants';
+import InsightsUpgradeModal from './InsightsUpgradeModal.vue';
 
 const InsightsPaywall = defineAsyncComponent(
 	async () => await import('@/features/insights/components/InsightsPaywall.vue'),
@@ -38,9 +38,6 @@ const props = defineProps<{
 const i18n = useI18n();
 const telemetry = useTelemetry();
 
-const trackUpdateTimeRange = (range: InsightsDateRange['key']) =>
-	telemetry.track(`User updated insights time range: ${range}`);
-
 const insightsStore = useInsightsStore();
 
 const chartComponents = computed(() => ({
@@ -61,7 +58,7 @@ const fetchPaginatedTableData = ({
 	page = 0,
 	itemsPerPage = 20,
 	sortBy,
-	dateRange,
+	dateRange = selectedDateRange.value,
 }: {
 	page?: number;
 	itemsPerPage?: number;
@@ -102,16 +99,16 @@ const timeOptions = ref(
 	}),
 );
 
-const dialogVisible = ref(false);
+const upgradeModalVisible = ref(false);
 
 function handleTimeChange(value: InsightsDateRange['key'] | typeof UNLICENSED) {
 	if (value === UNLICENSED) {
-		dialogVisible.value = true;
+		upgradeModalVisible.value = true;
 		return;
 	}
 
 	selectedDateRange.value = value;
-	trackUpdateTimeRange(value);
+	telemetry.track('User updated insights time range', { range: value });
 }
 
 watch(
@@ -183,25 +180,7 @@ watch(
 					</N8nOption>
 				</N8nSelect>
 
-				<ElDialog v-model="dialogVisible" title="Upgrade to Enterprise" width="500">
-					<div>
-						<p>
-							Viewing this time period requires an enterprise plan. Upgrade to Enterprise to unlock
-							advanced features.
-						</p>
-						<ul>
-							<li>View up to one year of data</li>
-							<li>Access to last 24 hour visualization</li>
-							<li>Custom time range selection</li>
-						</ul>
-					</div>
-					<template #footer>
-						<div>
-							<N8nButton type="secondary" @click="dialogVisible = false">Dismiss</N8nButton>
-							<N8nButton type="primary" @click="dialogVisible = false"> Upgrade </N8nButton>
-						</div>
-					</template>
-				</ElDialog>
+				<InsightsUpgradeModal v-model="upgradeModalVisible" />
 			</div>
 
 			<InsightsSummary
