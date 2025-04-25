@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import BlockArrow from '@/components/TestDefinition/EditDefinition/BlockArrow.vue';
+import BlockArrow from '@/components/Evaluations/EditDefinition/BlockArrow.vue';
 import { useI18n } from '@/composables/useI18n';
 import { N8nText } from '@n8n/design-system';
 

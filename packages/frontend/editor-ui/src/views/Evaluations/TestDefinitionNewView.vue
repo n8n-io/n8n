@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { useTestDefinitionForm } from '@/components/TestDefinition/composables/useTestDefinitionForm';
+import { useTestDefinitionForm } from '@/components/Evaluations/composables/useTestDefinitionForm';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
 import { VIEWS } from '@/constants';
