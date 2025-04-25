@@ -1,9 +1,19 @@
+import { mock } from 'jest-mock-extended';
+
+import type { INode } from '../src/Interfaces';
 import {
 	hasDotNotationBannedChar,
 	backslashEscape,
 	dollarEscape,
 	applyAccessPatterns,
+	extractReferencesInNodeExpressions,
 } from '../src/NodeReferenceParserUtils';
+
+const mockNode = (name: string, expressions?: string[]) =>
+	mock<INode>({
+		parameters: Object.fromEntries(expressions?.map((x, i) => [`p${i}`, `={{ ${x} }}`]) ?? []),
+		name,
+	});
 
 describe('NodeReferenceParserUtils', () => {
 	describe('hasDotNotationBannedChar', () => {
@@ -130,5 +140,43 @@ describe('NodeReferenceParserUtils', () => {
 				expect(result).toBe(expected);
 			},
 		);
+	});
+
+	describe('extractReferencesInNodeExpressions', () => {
+		let nodes: INode[] = [];
+		let nodeNames: string[] = [];
+		let startNodeName = 'Start';
+		beforeEach(() => {
+			nodes = [
+				mockNode('B', ['$("A").item.json.myField']),
+				mockNode('C', ['$("B").first().json.myField.anotherField']),
+			];
+			nodeNames = ['A', 'B', 'C'];
+			startNodeName = 'Start';
+		});
+
+		it('should extract used expressions', () => {
+			const result = extractReferencesInNodeExpressions(nodes, nodeNames, startNodeName);
+			expect(result.nodes).toEqual(
+				expect.arrayContaining(
+					[
+						{
+							name: 'B',
+							parameters: { p0: "$('Start').item.json.myField" },
+						},
+						{
+							name: 'C',
+							parameters: { p0: "$('Start').item.json.myField_anotherField" },
+						},
+					].map(expect.objectContaining),
+				),
+			);
+			expect([...result.variables.entries()]).toEqual(
+				expect.arrayContaining([
+					['myField', '$("A").item.json.myField'],
+					['myField_anotherField', '$("B").first().json.myField.anotherField'],
+				]),
+			);
+		});
 	});
 });

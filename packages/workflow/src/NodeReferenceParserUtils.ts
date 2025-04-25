@@ -1,5 +1,6 @@
 import { escapeRegExp } from 'lodash';
 
+import { OperationalError } from './errors';
 import type { INode, INodeParameters, NodeParameterValueType } from './Interfaces';
 
 export function hasDotNotationBannedChar(nodeName: string) {
@@ -136,6 +137,7 @@ export function parseExtractWorkflowExpressionData(
 	startIndex: number,
 	nodeNameInExpression: string,
 	nodeNamePlainJs: string,
+	startNodeName: string,
 ): null | ExtractWorkflowExpressionData {
 	const exprStart = expression.slice(0, startIndex);
 	const exprWithoutNode = expression.slice(startIndex);
@@ -156,7 +158,7 @@ export function parseExtractWorkflowExpressionData(
 				nodeNameInExpression,
 				originalExpression: `${exprStart}.${parts[0]}`, // $('abc').first()
 				originalName, // first()
-				replacementPrefix: `$('Start').${parts[0]}`, //  $('Start').first()
+				replacementPrefix: `$('${startNodeName}').${parts[0]}`, //  $('Start').first()
 				replacementName: `${nodeNamePlainJs}_${originalName.split('(')[0]}`, // nodeName_first
 			};
 		} else {
@@ -169,7 +171,7 @@ export function parseExtractWorkflowExpressionData(
 					nodeNameInExpression,
 					originalExpression: `${exprStart}.${parts.slice(0, partsIdx + 1).join('.')}`, // $('abc').item.json.valid.until  and not ['x'] after
 					originalName: parts.slice(2, partsIdx).join('.'), // valid.until
-					replacementPrefix: `$('Start').${parts[0]}.${parts[1]}`, // $('Start').item.json
+					replacementPrefix: `$('${startNodeName}').${parts[0]}.${parts[1]}`, // $('Start').item.json
 					replacementName: parts.slice(2, partsIdx).join('_'), // valid_until
 				};
 			} else {
@@ -180,7 +182,7 @@ export function parseExtractWorkflowExpressionData(
 					nodeNameInExpression,
 					originalExpression: `${exprStart}.${parts[0]}`, // $('abc').first()
 					originalName, // first()
-					replacementPrefix: `$('Start').${parts[0]}`, //  $('Start').first()
+					replacementPrefix: `$('${startNodeName}').${parts[0]}`, //  $('Start').first()
 					replacementName: `${nodeNamePlainJs}_${parts[0].split('(')[0]}`, // nodeName_first
 				};
 			}
@@ -193,7 +195,7 @@ export function parseExtractWorkflowExpressionData(
 			nodeNameInExpression,
 			originalExpression: `${exprStart}.${parts[0]}`, // $('abc').isExecuted
 			originalName: parts[0],
-			replacementPrefix: `$('Start').${parts[0]}`, //  $('Start').isExecuted
+			replacementPrefix: `$('${startNodeName}').${parts[0]}`, //  $('Start').isExecuted
 			replacementName: `${nodeNamePlainJs}_${parts[0]}`, // nodeName_isExecuted
 		};
 	}
@@ -210,32 +212,34 @@ export function parseExtractWorkflowExpressionData(
 // Map from `statementToBeReplaced` -> ExtractWorkflowExpressionData
 export function impl_buildExtractWorkflowExpressionDataMap(
 	expression: string,
-	nodeRegexps: Array<readonly [RegExp, LazyRegExp]>,
+	nodeRegexps: Array<readonly [string, LazyRegExp]>,
 	nodeNames: string[],
+	startNodeName: string,
 ): ExtractWorkflowExpressionData[] {
 	const result: ExtractWorkflowExpressionData[] = [];
 
 	for (const [pattern, regexp] of nodeRegexps) {
-		if (pattern.test(expression)) {
-			const res = expression.matchAll(regexp.get());
-			for (const match of res) {
-				const startIndex = match.index;
-				const endIndex = startIndex + match[0].length;
-				// this works because all access patterns define match groups left and right of the name
-				const nodeNameInExpression = match[0][1];
+		if (!expression.includes(pattern)) continue;
 
-				if (!nodeNames.includes(nodeNameInExpression)) continue;
+		const res = [...expression.matchAll(regexp.get())];
+		for (const match of res) {
+			const startIndex = match.index;
+			const endIndex = startIndex + match[0].length;
+			// this works because all access patterns define match groups left and right of the name
+			const nodeNameInExpression = match[0][1];
 
-				const firstImpossibleIdx = INVALID_JS_DOT_REFERENCE.exec(expression)?.index;
-				const candidate = expression.slice(endIndex + 1, firstImpossibleIdx);
-				const data = parseExtractWorkflowExpressionData(
-					candidate,
-					endIndex + 1, // skip the dot
-					nodeNameInExpression,
-					jsifyNodeName(nodeNameInExpression, nodeNames),
-				);
-				if (data !== null) result.push({ ...data, nodeNameInExpression });
-			}
+			if (!nodeNames.includes(nodeNameInExpression)) continue;
+
+			const firstImpossibleIdx = INVALID_JS_DOT_REFERENCE.exec(expression)?.index;
+			const candidate = expression.slice(endIndex + 1, firstImpossibleIdx);
+			const data = parseExtractWorkflowExpressionData(
+				candidate,
+				endIndex + 1, // skip the dot
+				nodeNameInExpression,
+				jsifyNodeName(nodeNameInExpression, nodeNames),
+				startNodeName,
+			);
+			if (data !== null) result.push({ ...data, nodeNameInExpression });
 		}
 	}
 
@@ -390,7 +394,17 @@ function applyExtractMappingToNode(node: INode, parameterExtractMapping: Paramet
 	- inner nodes (no changes for other inner nodes, replace for previous nodes)
 	- following nodes after output nodes -> error unless it's only output node of selection
 */
-export function buildExtractWorkflowExpressionDataMap(nodes: INode[], nodeNames: string[]) {
+export function extractReferencesInNodeExpressions(
+	// export function buildExtractWorkflowExpressionDataMap(
+	nodes: INode[],
+	nodeNames: string[],
+	startNodeName: string,
+) {
+	if (nodeNames.includes(startNodeName))
+		throw new OperationalError(
+			`StartNodeName ${startNodeName} already exists in nodeNames: ${JSON.stringify(nodeNames)}`,
+		);
+
 	// Compile all candidate regexp patterns
 	//
 	// This looks scary for large workflows, but RegExp should support >1 million characters and
@@ -399,7 +413,7 @@ export function buildExtractWorkflowExpressionDataMap(nodes: INode[], nodeNames:
 	const nodeRegexps = ACCESS_PATTERNS.map(
 		(pattern) =>
 			[
-				new RegExp(pattern.checkPattern),
+				pattern.checkPattern,
 				// avoid compiling the expensive regex for rare legacy ways of accessing nodes
 				new LazyRegExp(() => pattern.replacePattern(namesRegexp), 'g'),
 			] as const,
@@ -411,7 +425,7 @@ export function buildExtractWorkflowExpressionDataMap(nodes: INode[], nodeNames:
 	const allData = [];
 	for (const node of nodes) {
 		const [parameterMapping, allMappings] = rec_applyParameterMapping(node.parameters, (s) =>
-			impl_buildExtractWorkflowExpressionDataMap(s, nodeRegexps, nodeNames),
+			impl_buildExtractWorkflowExpressionDataMap(s, nodeRegexps, nodeNames, startNodeName),
 		);
 		recMapByNode.set(node.name, parameterMapping);
 		allData.push(...allMappings);
@@ -455,5 +469,5 @@ export function buildExtractWorkflowExpressionDataMap(nodes: INode[], nodeNames:
 		output.push(result);
 	}
 	const variables = new Map(allUsedMappings.map((m) => [m.replacementName, m.originalExpression]));
-	return { nodes, variables };
+	return { nodes: output, variables };
 }
