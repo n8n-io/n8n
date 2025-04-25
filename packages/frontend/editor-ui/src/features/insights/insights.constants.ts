@@ -70,3 +70,5 @@ export const TIME_RANGE_LABELS = {
 	'6months': '6 months',
 	year: useI18n().baseText('insights.oneYear', { interpolate: { count: 90 } }),
 };
+
+export const UNLICENSED_TIME_RANGE = 'UNLICENSED_TIME_RANGE' as const;
