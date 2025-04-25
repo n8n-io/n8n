@@ -4,6 +4,7 @@ import { useViewStacks } from '../composables/useViewStacks';
 import { useUsersStore } from '@/stores/users.store';
 import { i18n } from '@/plugins/i18n';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useCommunityNodesStore } from '@/stores/communityNodes.store';
 
 const { activeViewStack } = useViewStacks();
 
@@ -16,6 +17,8 @@ interface DownloadData {
 const publisherName = ref<string | undefined>(undefined);
 const downloads = ref<string | null>(null);
 const verified = ref(false);
+const communityNodesStore = useCommunityNodesStore();
+const nodeTypesStore = useNodeTypesStore();
 
 const isOwner = computed(() => useUsersStore().isInstanceOwner);
 
@@ -31,14 +34,22 @@ const formatNumber = (number: number) => {
 };
 
 async function fetchPackageInfo(packageName: string) {
-	const communityNodeAttributes = await useNodeTypesStore().getCommunityNodeAttributes(
+	const communityNodeAttributes = await nodeTypesStore.getCommunityNodeAttributes(
 		activeViewStack.communityNodeDetails?.key || '',
 	);
 
 	if (communityNodeAttributes) {
 		publisherName.value = communityNodeAttributes.authorName;
 		downloads.value = formatNumber(communityNodeAttributes.numberOfDownloads);
-		verified.value = true;
+		const packageInfo = communityNodesStore.getInstalledPackages.find(
+			(p) => p.packageName === communityNodeAttributes.packageName,
+		);
+		if (!packageInfo) {
+			verified.value = true;
+		} else {
+			verified.value = packageInfo.installedVersion === communityNodeAttributes.npmVersion;
+		}
+
 		return;
 	}
 

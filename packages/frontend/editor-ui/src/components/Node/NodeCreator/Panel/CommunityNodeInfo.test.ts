@@ -2,9 +2,13 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { type TestingPinia, createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import CommunityNodeInfo from './CommunityNodeInfo.vue';
+import type { PublicInstalledPackage } from 'n8n-workflow';
 import { sleep } from 'n8n-workflow';
 
 const getCommunityNodeAttributes = vi.fn();
+const communityNodesStore: { getInstalledPackages: PublicInstalledPackage[] } = {
+	getInstalledPackages: [],
+};
 
 vi.mock('@/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: vi.fn(() => ({
@@ -16,6 +20,10 @@ vi.mock('@/stores/users.store', () => ({
 	useUsersStore: vi.fn(() => ({
 		isInstanceOwner: true,
 	})),
+}));
+
+vi.mock('@/stores/communityNodes.store', () => ({
+	useCommunityNodesStore: vi.fn(() => communityNodesStore),
 }));
 
 vi.mock('../composables/useViewStacks', () => ({
@@ -80,6 +88,12 @@ describe('CommunityNodeInfo', () => {
 			authorName: 'contributor',
 			numberOfDownloads: 9999,
 		});
+		communityNodesStore.getInstalledPackages = [
+			{
+				installedVersion: '1.0.0',
+				packageName: 'n8n-nodes-test',
+			} as PublicInstalledPackage,
+		];
 		const wrapper = renderComponent({ pinia });
 
 		await sleep(500);
@@ -88,8 +102,8 @@ describe('CommunityNodeInfo', () => {
 			'Other node description',
 		);
 		expect(wrapper.getByTestId('verified-tag').textContent).toEqual('Verified');
-		expect(wrapper.getByTestId('number-of-downloads').textContent).toEqual('9,999 Downloads ');
-		expect(wrapper.getByTestId('publisher-name').textContent).toEqual(' Published by contributor');
+		expect(wrapper.getByTestId('number-of-downloads').textContent).toEqual('9,999 Downloads');
+		expect(wrapper.getByTestId('publisher-name').textContent).toEqual('Published by contributor');
 	});
 
 	it('should render correctly with fetched info', async () => {
@@ -131,6 +145,7 @@ describe('CommunityNodeInfo', () => {
 		);
 
 		getCommunityNodeAttributes.mockResolvedValue(null);
+
 		const wrapper = renderComponent({ pinia });
 
 		await sleep(500);
@@ -140,6 +155,6 @@ describe('CommunityNodeInfo', () => {
 		);
 
 		expect(wrapper.getByTestId('number-of-downloads').textContent).toEqual('60 Downloads');
-		expect(wrapper.getByTestId('publisher-name').textContent).toEqual(' Published by testAuthor');
+		expect(wrapper.getByTestId('publisher-name').textContent).toEqual('Published by testAuthor');
 	});
 });
