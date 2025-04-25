@@ -423,14 +423,19 @@ export class WorkflowService {
 			await this.activeWorkflowManager.remove(workflowId);
 		}
 
+		const versionId = uuid();
 		await this.workflowRepository.update(workflowId, {
 			isArchived: true,
 			active: false,
-			versionId: uuid(),
+			versionId,
 		});
 
 		this.eventService.emit('workflow-archived', { user, workflowId, publicApi: false });
 		await this.externalHooks.run('workflow.afterArchive', [workflowId]);
+
+		workflow.isArchived = true;
+		workflow.active = false;
+		workflow.versionId = versionId;
 
 		return workflow;
 	}
@@ -448,10 +453,14 @@ export class WorkflowService {
 			throw new BadRequestError('Workflow is not archived.');
 		}
 
-		await this.workflowRepository.update(workflowId, { isArchived: false, versionId: uuid() });
+		const versionId = uuid();
+		await this.workflowRepository.update(workflowId, { isArchived: false, versionId });
 
 		this.eventService.emit('workflow-unarchived', { user, workflowId, publicApi: false });
 		await this.externalHooks.run('workflow.afterUnarchive', [workflowId]);
+
+		workflow.isArchived = false;
+		workflow.versionId = versionId;
 
 		return workflow;
 	}

@@ -2249,7 +2249,37 @@ describe('POST /workflows/:workflowId/run', () => {
 describe('POST /workflows/:workflowId/archive', () => {
 	test('should archive workflow', async () => {
 		const workflow = await createWorkflow({}, owner);
-		await authOwnerAgent.post(`/workflows/${workflow.id}/archive`).send().expect(200);
+		const response = await authOwnerAgent
+			.post(`/workflows/${workflow.id}/archive`)
+			.send()
+			.expect(200);
+
+		const {
+			data: { isArchived, versionId },
+		} = response.body;
+
+		expect(isArchived).toBe(true);
+		expect(versionId).not.toBe(workflow.versionId);
+
+		const updatedWorkflow = await Container.get(WorkflowRepository).findById(workflow.id);
+		expect(updatedWorkflow).not.toBeNull();
+		expect(updatedWorkflow!.isArchived).toBe(true);
+	});
+
+	test('should deactivate active workflow on archive', async () => {
+		const workflow = await createWorkflow({ active: true }, owner);
+		const response = await authOwnerAgent
+			.post(`/workflows/${workflow.id}/archive`)
+			.send()
+			.expect(200);
+
+		const {
+			data: { isArchived, versionId, active },
+		} = response.body;
+
+		expect(isArchived).toBe(true);
+		expect(active).toBe(false);
+		expect(versionId).not.toBe(workflow.versionId);
 
 		const updatedWorkflow = await Container.get(WorkflowRepository).findById(workflow.id);
 		expect(updatedWorkflow).not.toBeNull();
@@ -2287,7 +2317,17 @@ describe('POST /workflows/:workflowId/archive', () => {
 	test("should allow the owner to archive workflows they don't own", async () => {
 		const workflow = await createWorkflow({ isArchived: false }, member);
 
-		await authOwnerAgent.post(`/workflows/${workflow.id}/archive`).send().expect(200);
+		const response = await authOwnerAgent
+			.post(`/workflows/${workflow.id}/archive`)
+			.send()
+			.expect(200);
+
+		const {
+			data: { isArchived, versionId },
+		} = response.body;
+
+		expect(isArchived).toBe(true);
+		expect(versionId).not.toBe(workflow.versionId);
 
 		const workflowsInDb = await Container.get(WorkflowRepository).findById(workflow.id);
 		const sharedWorkflowsInDb = await Container.get(SharedWorkflowRepository).findBy({
@@ -2303,7 +2343,17 @@ describe('POST /workflows/:workflowId/archive', () => {
 describe('POST /workflows/:workflowId/unarchive', () => {
 	test('should unarchive workflow', async () => {
 		const workflow = await createWorkflow({ isArchived: true }, owner);
-		await authOwnerAgent.post(`/workflows/${workflow.id}/unarchive`).send().expect(200);
+		const response = await authOwnerAgent
+			.post(`/workflows/${workflow.id}/unarchive`)
+			.send()
+			.expect(200);
+
+		const {
+			data: { isArchived, versionId },
+		} = response.body;
+
+		expect(isArchived).toBe(false);
+		expect(versionId).not.toBe(workflow.versionId);
 
 		const updatedWorkflow = await Container.get(WorkflowRepository).findById(workflow.id);
 		expect(updatedWorkflow).not.toBeNull();
@@ -2341,7 +2391,17 @@ describe('POST /workflows/:workflowId/unarchive', () => {
 	test("should allow the owner to unarchive workflows they don't own", async () => {
 		const workflow = await createWorkflow({ isArchived: true }, member);
 
-		await authOwnerAgent.post(`/workflows/${workflow.id}/unarchive`).send().expect(200);
+		const response = await authOwnerAgent
+			.post(`/workflows/${workflow.id}/unarchive`)
+			.send()
+			.expect(200);
+
+		const {
+			data: { isArchived, versionId },
+		} = response.body;
+
+		expect(isArchived).toBe(false);
+		expect(versionId).not.toBe(workflow.versionId);
 
 		const workflowsInDb = await Container.get(WorkflowRepository).findById(workflow.id);
 		const sharedWorkflowsInDb = await Container.get(SharedWorkflowRepository).findBy({

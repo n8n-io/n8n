@@ -728,19 +728,34 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	async function archiveWorkflow(id: string) {
-		await makeRestApiRequest(rootStore.restApiContext, 'POST', `/workflows/${id}/archive`);
+		const updatedWorkflow = await makeRestApiRequest<IWorkflowDb>(
+			rootStore.restApiContext,
+			'POST',
+			`/workflows/${id}/archive`,
+		);
 		workflowsById.value[id].isArchived = true;
+		workflowsById.value[id].versionId = updatedWorkflow.versionId;
+
 		setWorkflowInactive(id);
+
 		if (id === workflow.value.id) {
 			setIsArchived(true);
+			setWorkflowVersionId(updatedWorkflow.versionId);
 		}
 	}
 
 	async function unarchiveWorkflow(id: string) {
-		await makeRestApiRequest(rootStore.restApiContext, 'POST', `/workflows/${id}/unarchive`);
+		const updatedWorkflow = await makeRestApiRequest<IWorkflowDb>(
+			rootStore.restApiContext,
+			'POST',
+			`/workflows/${id}/unarchive`,
+		);
 		workflowsById.value[id].isArchived = false;
+		workflowsById.value[id].versionId = updatedWorkflow.versionId;
+
 		if (id === workflow.value.id) {
 			setIsArchived(false);
+			setWorkflowVersionId(updatedWorkflow.versionId);
 		}
 	}
 

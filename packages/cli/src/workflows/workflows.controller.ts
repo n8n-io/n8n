@@ -412,7 +412,7 @@ export class WorkflowsController {
 			);
 		}
 
-		return true;
+		return workflow;
 	}
 
 	@Post('/:workflowId/unarchive')
@@ -431,7 +431,7 @@ export class WorkflowsController {
 			);
 		}
 
-		return true;
+		return workflow;
 	}
 
 	@Post('/:workflowId/run')
