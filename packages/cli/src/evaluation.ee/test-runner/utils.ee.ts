@@ -1,13 +1,5 @@
 import assert from 'assert';
-import { mapValues } from 'lodash';
-import type {
-	IRunExecutionData,
-	IPinData,
-	IWorkflowBase,
-	IRunData,
-	ITaskData,
-	INode,
-} from 'n8n-workflow';
+import type { IRunExecutionData, IPinData, IWorkflowBase } from 'n8n-workflow';
 
 import type { TestCaseExecution } from '@/databases/entities/test-case-execution.ee';
 import type { TestRunFinalResult } from '@/databases/repositories/test-run.repository.ee';
@@ -57,7 +49,7 @@ export function createPinData(
 			if (nodeData?.[0]?.data?.main?.[0]) {
 				pinData[nodeName] = nodeData[0]?.data?.main?.[0];
 			} else {
-				throw new TestCaseExecutionError('MOCKED_NODE_DOES_NOT_EXIST');
+				throw new TestCaseExecutionError('MOCKED_NODE_NOT_FOUND');
 			}
 		}
 	}
@@ -102,44 +94,4 @@ export function getTestRunFinalResult(testCaseExecutions: TestCaseExecution[]): 
 	}
 
 	return finalResult;
-}
-
-/**
- * Function to check if the node is root node or sub-node.
- * Sub-node is a node which does not have the main output (the only exception is Stop and Error node)
- */
-function isSubNode(node: INode, nodeData: ITaskData[]) {
-	return (
-		!node.type.endsWith('stopAndError') &&
-		nodeData.some((nodeRunData) => !(nodeRunData.data && 'main' in nodeRunData.data))
-	);
-}
-
-/**
- * Transform execution data and workflow data into a more user-friendly format to supply to evaluation workflow
- */
-function formatExecutionData(data: IRunData, workflow: IWorkflowBase) {
-	const formattedData = {} as Record<string, any>;
-
-	for (const [nodeName, nodeData] of Object.entries(data)) {
-		const node = workflow.nodes.find((n) => n.name === nodeName);
-
-		assert(node, `Node "${nodeName}" not found in the workflow`);
-
-		const rootNode = !isSubNode(node, nodeData);
-
-		const runs = nodeData.map((nodeRunData) => ({
-			executionTime: nodeRunData.executionTime,
-			rootNode,
-			output: nodeRunData.data
-				? mapValues(nodeRunData.data, (connections) =>
-						connections.map((singleOutputData) => singleOutputData?.map((item) => item.json) ?? []),
-					)
-				: null,
-		}));
-
-		formattedData[node.id] = { nodeName, runs };
-	}
-
-	return formattedData;
 }
