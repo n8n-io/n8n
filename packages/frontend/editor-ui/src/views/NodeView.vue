@@ -1657,21 +1657,10 @@ watch(
 		const nodeId = val?.id ? workflowsStore.getPartialIdForNode(val?.id) : '';
 
 		if (nodeId !== route.params.nodeId) {
-			if (nodeId && !route.params.nodeId) {
-				// Push a new entry only when a NDV is first opened
-				await router.push({
-					name: route.name,
-					params: { name: workflowId.value, nodeId },
-				});
-			} else {
-				// Stay on same history entry if switching between nodes
-				// This means that closing the NDV erases the NDV history entries
-				// Which makes the back operation go back to the page before the workflow
-				await router.replace({
-					name: route.name,
-					params: { name: workflowId.value, nodeId },
-				});
-			}
+			await router.replace({
+				name: route.name,
+				params: { name: workflowId.value, nodeId },
+			});
 		}
 	},
 );

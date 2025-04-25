@@ -37,6 +37,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useI18n } from '@/composables/useI18n';
 import { storeToRefs } from 'pinia';
 import { useStyles } from '@/composables/useStyles';
+import { onBeforeRouteLeave } from 'vue-router';
 
 const emit = defineEmits<{
 	saveKeyboardShortcut: [event: KeyboardEvent];
