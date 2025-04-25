@@ -20,7 +20,7 @@ import { initializeAuthenticatedFeatures, initializeCore } from '@/init';
 import { tryToParseNumber } from '@/utils/typesUtils';
 import { projectsRoutes } from '@/routes/projects.routes';
 import { insightsRoutes } from '@/features/insights/insights.router';
-import TestDefinitionRunDetailView from './views/Evaluations/TestDefinitionRunDetailView.vue';
+import TestRunDetailView from './views/Evaluations/TestRunDetailView.vue';
 
 const ChangePasswordView = async () => await import('./views/ChangePasswordView.vue');
 const ErrorView = async () => await import('./views/ErrorView.vue');
@@ -62,13 +62,9 @@ const SettingsExternalSecrets = async () => await import('./views/SettingsExtern
 const WorkerView = async () => await import('./views/WorkerView.vue');
 const WorkflowHistory = async () => await import('@/views/WorkflowHistory.vue');
 const WorkflowOnboardingView = async () => await import('@/views/WorkflowOnboardingView.vue');
-const TestDefinitionListView = async () =>
-	await import('./views/Evaluations/TestDefinitionListView.vue');
-const TestDefinitionNewView = async () =>
-	await import('./views/Evaluations/TestDefinitionNewView.vue');
 const EvaluationsView = async () => await import('./views/Evaluations/EvaluationsView.vue');
 const TestDefinitionRootView = async () =>
-	await import('./views/Evaluations/TestDefinitionRootView.vue');
+	await import('./views/Evaluations/EvaluationsRootVIew.vue');
 
 function getTemplatesRedirect(defaultRedirect: VIEWS[keyof VIEWS]): { name: string } | false {
 	const settingsStore = useSettingsStore();
@@ -288,7 +284,7 @@ export const routes: RouteRecordRaw[] = [
 				name: VIEWS.TEST_DEFINITION_RUNS_DETAIL,
 				props: true,
 				components: {
-					default: TestDefinitionRunDetailView,
+					default: TestRunDetailView,
 				},
 			},
 		],
