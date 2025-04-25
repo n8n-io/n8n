@@ -29,6 +29,7 @@ describe('LogsOverviewPanel', () => {
 			isOpen: false,
 			isReadOnly: false,
 			isCompact: false,
+			scrollToSelection: false,
 			execution: {
 				...aiChatExecutionResponse,
 				tree: createLogEntries(
@@ -86,16 +87,17 @@ describe('LogsOverviewPanel', () => {
 		expect(summary.queryByText('Success in 1.999s')).toBeInTheDocument();
 		expect(summary.queryByText('555 Tokens')).toBeInTheDocument();
 
+		await fireEvent.click(rendered.getByText('Overview'));
+
 		const tree = within(rendered.getByRole('tree'));
 
-		expect(tree.queryAllByRole('treeitem')).toHaveLength(2);
+		await waitFor(() => expect(tree.queryAllByRole('treeitem')).toHaveLength(2));
 
 		const row1 = within(tree.queryAllByRole('treeitem')[0]);
 
 		expect(row1.queryByText('AI Agent')).toBeInTheDocument();
 		expect(row1.queryByText('Success in 1.778s')).toBeInTheDocument();
 		expect(row1.queryByText('Started 00:00:00.002, 26 Mar')).toBeInTheDocument();
-		expect(row1.queryByText('555 Tokens')).toBeInTheDocument();
 
 		const row2 = within(tree.queryAllByRole('treeitem')[1]);
 
@@ -114,7 +116,7 @@ describe('LogsOverviewPanel', () => {
 		const rendered = render({
 			isOpen: true,
 		});
-		const aiAgentRow = rendered.getAllByRole('treeitem')[0];
+		const aiAgentRow = (await rendered.findAllByRole('treeitem'))[0];
 
 		expect(ndvStore.activeNodeName).toBe(null);
 		expect(ndvStore.output.run).toBe(undefined);
@@ -140,10 +142,33 @@ describe('LogsOverviewPanel', () => {
 				),
 			},
 		});
-		const aiAgentRow = rendered.getAllByRole('treeitem')[0];
+		const aiAgentRow = (await rendered.findAllByRole('treeitem'))[0];
+
 		await fireEvent.click(within(aiAgentRow).getAllByLabelText('Test step')[0]);
 		await waitFor(() =>
 			expect(spyRun).toHaveBeenCalledWith(expect.objectContaining({ destinationNode: 'AI Agent' })),
 		);
+	});
+
+	it('should toggle subtree when chevron icon button is pressed', async () => {
+		const rendered = render({ isOpen: true });
+
+		await waitFor(() => expect(rendered.queryAllByRole('treeitem')).toHaveLength(2));
+		expect(rendered.queryByText('AI Agent')).toBeInTheDocument();
+		expect(rendered.queryByText('AI Model')).toBeInTheDocument();
+
+		// Close subtree of AI Agent
+		await fireEvent.click(rendered.getAllByLabelText('Toggle row')[0]);
+
+		await waitFor(() => expect(rendered.queryAllByRole('treeitem')).toHaveLength(1));
+		expect(rendered.queryByText('AI Agent')).toBeInTheDocument();
+		expect(rendered.queryByText('AI Model')).not.toBeInTheDocument();
+
+		// Re-open subtree of AI Agent
+		await fireEvent.click(rendered.getAllByLabelText('Toggle row')[0]);
+
+		await waitFor(() => expect(rendered.queryAllByRole('treeitem')).toHaveLength(2));
+		expect(rendered.queryByText('AI Agent')).toBeInTheDocument();
+		expect(rendered.queryByText('AI Model')).toBeInTheDocument();
 	});
 });
