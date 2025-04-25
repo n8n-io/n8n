@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
-import TestDefinitionNewView from '@/views/TestDefinition/TestDefinitionNewView.vue';
+import TestDefinitionNewView from '@/views/Evaluations/TestDefinitionNewView.vue';
 import { ref } from 'vue';
 import { mockedStore } from '@/__tests__/utils';
 import { useTestDefinitionStore } from '@/stores/testDefinition.store.ee';
@@ -23,7 +23,7 @@ const mockedForm = {
 	}),
 	updateTest: vi.fn().mockResolvedValue({}),
 };
-vi.mock('@/components/TestDefinition/composables/useTestDefinitionForm', () => ({
+vi.mock('@/components/Evaluations/composables/useTestDefinitionForm', () => ({
 	useTestDefinitionForm: vi.fn().mockImplementation(() => mockedForm),
 }));
 
