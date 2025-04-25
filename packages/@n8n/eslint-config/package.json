@@ -6,35 +6,26 @@
   "exports": {
     "./base": {
       "types": "./dist/configs/base.d.js",
-      "require": "./dist/configs/base.js",
-      "import": "./dist/configs/base.js"
+      "default": "./dist/configs/base.js"
     },
     "./frontend": {
       "types": "./dist/configs/frontend.d.js",
-      "require": "./dist/configs/frontend.js",
-      "import": "./dist/configs/frontend.js"
+      "default": "./dist/configs/frontend.js"
     },
     "./node": {
       "types": "./dist/configs/node.d.js",
-      "require": "./dist/configs/node.js",
-      "import": "./dist/configs/node.js"
+      "default": "./dist/configs/node.js"
     },
     "./shared": {
       "types": "./dist/configs/shared.d.js",
-      "require": "./dist/configs/shared.js",
-      "import": "./dist/configs/shared.js"
+      "default": "./dist/configs/shared.js"
     }
   },
-  "devDependencies": {
-    "@n8n/typescript-config": "workspace:*",
-    "@n8n/vitest-config": "workspace:*",
-    "@types/eslint": "^9.6.1",
+  "dependencies": {
+    "@stylistic/eslint-plugin-ts": "^4.2.0",
     "@typescript-eslint/eslint-plugin": "^8.31.0",
     "@typescript-eslint/parser": "^8.31.0",
-    "@typescript-eslint/rule-tester": "^8.31.0",
-    "@typescript-eslint/utils": "^8.31.0",
     "@vue/eslint-config-typescript": "^14.5.0",
-    "eslint-config-airbnb-typescript": "^18.0.0",
     "eslint-config-prettier": "^10.1.2",
     "eslint-import-resolver-typescript": "^4.3.4",
     "eslint-plugin-import": "^2.31.0",
@@ -42,19 +33,29 @@
     "eslint-plugin-unicorn": "^58.0.0",
     "eslint-plugin-unused-imports": "^4.1.4",
     "eslint-plugin-vue": "^10.0.0",
-    "vue-eslint-parser": "^10.1.3",
     "globals": "^16.0.0",
+    "vue-eslint-parser": "^10.1.3"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.25.1",
+    "@n8n/typescript-config": "workspace:*",
+    "@n8n/vitest-config": "workspace:*",
+    "@types/eslint": "^9.6.1",
+    "@typescript-eslint/rule-tester": "^8.31.0",
+    "@typescript-eslint/utils": "^8.31.0",
+    "tsup": "catalog:",
     "typescript": "catalog:",
+    "typescript-eslint": "^8.31.0",
     "vitest": "catalog:"
   },
   "peerDependencies": {
-    "eslint": ">=9"
+    "eslint": ">= 9"
   },
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
     "typecheck": "tsc --noEmit",
-    "build": "tsc -p tsconfig.build.json",
+    "build": "tsc",
     "format": "biome format --write .",
     "format:check": "biome ci .",
     "watch": "tsc --watch",

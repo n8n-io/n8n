@@ -6,7 +6,7 @@
 		"lib": ["esnext", "dom"],
 		"types": ["cypress", "node", "cypress-real-events"]
 	},
-	"include": ["**/*.ts"],
+	"include": ["**/*.ts", "eslint.config.js"],
 	"exclude": ["**/dist/**/*", "**/node_modules/**/*"],
 	"references": [{ "path": "../packages/workflow/tsconfig.build.json" }]
 }

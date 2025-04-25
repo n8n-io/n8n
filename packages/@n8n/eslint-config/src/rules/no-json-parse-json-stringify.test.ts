@@ -1,5 +1,5 @@
 import { RuleTester } from '@typescript-eslint/rule-tester';
-import { NoJsonParseJsonStringifyRule } from './no-json-parse-json-stringify';
+import { NoJsonParseJsonStringifyRule } from './no-json-parse-json-stringify.js';
 
 const ruleTester = new RuleTester();
 

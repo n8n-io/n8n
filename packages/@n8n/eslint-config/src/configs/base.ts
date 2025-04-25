@@ -1,12 +1,17 @@
-import { defineConfig, globalIgnores } from 'eslint/config';
+import { globalIgnores } from 'eslint/config';
+import eslint from '@eslint/js';
 import importPlugin from 'eslint-plugin-import';
 import typescriptPlugin from '@typescript-eslint/eslint-plugin';
-import { localRulesPlugin } from '../rules/index';
+// import { localRulesPlugin } from '../plugin.js';
 import unusedImportsPlugin from 'eslint-plugin-unused-imports';
+import stylisticTs from '@stylistic/eslint-plugin-ts';
 import unicornPlugin from 'eslint-plugin-unicorn';
 import lodashPlugin from 'eslint-plugin-lodash';
+import { localRulesPlugin } from '../plugin.js';
+import tseslint from 'typescript-eslint';
+import eslintConfigPrettier from 'eslint-config-prettier/flat';
 
-export const baseConfig = defineConfig(
+export const baseConfig = tseslint.config(
 	globalIgnores([
 		'node_modules/**',
 		'dist/**',
@@ -14,63 +19,33 @@ export const baseConfig = defineConfig(
 		// TODO: remove these
 		'*.js',
 	]),
+	eslint.configs.recommended,
+	tseslint.configs.recommended,
+	tseslint.configs.recommendedTypeChecked,
+	importPlugin.flatConfigs.recommended,
+	importPlugin.flatConfigs.typescript,
+	eslintConfigPrettier,
+	localRulesPlugin.configs.recommended,
 	{
 		plugins: {
-			/**
-			 * Plugin with lint rules for import/export syntax
-			 * https://github.com/import-js/eslint-plugin-import
-			 */
-			import: importPlugin,
-			/**
-			 * @typescript-eslint/eslint-plugin is required by eslint-config-airbnb-typescript
-			 * See step 2: https://github.com/iamturns/eslint-config-airbnb-typescript#2-install-eslint-plugins
-			 */
-			// @ts-expect-error @typescript-eslint types do not match eslint
-			'@typescript-eslint': typescriptPlugin,
-			/*
-			 * Plugin to allow specifying local ESLint rules.
-			 * https://github.com/ivov/eslint-plugin-n8n-local-rules
-			 */
-			'n8n-local-rules': localRulesPlugin,
 			'unused-imports': unusedImportsPlugin,
-			unicorn: unicornPlugin,
+			'@stylistic/ts': stylisticTs,
 			lodash: lodashPlugin,
+			unicorn: unicornPlugin,
+			'@typescript-eslint': typescriptPlugin,
 		},
-
-		extends: [
-			/**
-			 * Config for typescript-eslint recommended ruleset (without type checking)
-			 *
-			 * https://github.com/typescript-eslint/typescript-eslint/blob/1c1b572c3000d72cfe665b7afbada0ec415e7855/packages/eslint-plugin/src/configs/recommended.ts
-			 */
-			'plugin:@typescript-eslint/recommended',
-
-			/**
-			 * Config for typescript-eslint recommended ruleset (with type checking)
-			 *
-			 * https://github.com/typescript-eslint/typescript-eslint/blob/1c1b572c3000d72cfe665b7afbada0ec415e7855/packages/eslint-plugin/src/configs/recommended-requiring-type-checking.ts
-			 */
-			'plugin:@typescript-eslint/recommended-requiring-type-checking',
-
-			/**
-			 * Config for Airbnb style guide for TS, /base to remove React rules
-			 *
-			 * https://github.com/iamturns/eslint-config-airbnb-typescript
-			 * https://github.com/airbnb/javascript/tree/master/packages/eslint-config-airbnb-base/rules
-			 */
-			'eslint-config-airbnb-typescript/base',
-
-			/**
-			 * Config to disable ESLint rules covered by Prettier
-			 *
-			 * https://github.com/prettier/eslint-config-prettier
-			 */
-			'eslint-config-prettier',
-
-			'plugin:import/recommended',
-			'plugin:import/typescript',
-		],
-
+		languageOptions: {
+			parserOptions: {
+				projectService: true,
+				// @ts-expect-error import.meta.dirname only exists in ES module context
+				tsconfigRootDir: import.meta?.dirname ?? __dirname,
+			},
+		},
+		settings: {
+			'import/resolver': {
+				typescript: {}, // this loads <rootdir>/tsconfig.json to eslint
+			},
+		},
 		rules: {
 			// ******************************************************************
 			//                     additions to base ruleset
@@ -139,9 +114,9 @@ export const baseConfig = defineConfig(
 			'@typescript-eslint/ban-ts-comment': ['error', { 'ts-ignore': true }],
 
 			/**
-			 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/ban-types.md
+			 * https://typescript-eslint.io/rules/no-restricted-types
 			 */
-			'@typescript-eslint/ban-types': [
+			'@typescript-eslint/no-restricted-types': [
 				'error',
 				{
 					types: {
@@ -174,7 +149,6 @@ export const baseConfig = defineConfig(
 							].join('\n'),
 						},
 					},
-					extendDefaults: false,
 				},
 			],
 
@@ -191,7 +165,7 @@ export const baseConfig = defineConfig(
 			/**
 			 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/member-delimiter-style.md
 			 */
-			'@typescript-eslint/member-delimiter-style': [
+			'@stylistic/ts/member-delimiter-style': [
 				'error',
 				{
 					multiline: {
@@ -267,9 +241,9 @@ export const baseConfig = defineConfig(
 			'@typescript-eslint/no-namespace': 'off',
 
 			/**
-			 * https://eslint.org/docs/1.0.0/rules/no-throw-literal
+			 * https://typescript-eslint.io/rules/only-throw-error/
 			 */
-			'@typescript-eslint/no-throw-literal': 'error',
+			'@typescript-eslint/only-throw-error': 'error',
 
 			/**
 			 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/no-unnecessary-boolean-literal-compare.md
@@ -349,24 +323,6 @@ export const baseConfig = defineConfig(
 					'newlines-between': 'always',
 				},
 			],
-
-			// ----------------------------------
-			//   eslint-plugin-n8n-local-rules
-			// ----------------------------------
-
-			'n8n-local-rules/no-uncaught-json-parse': 'error',
-
-			'n8n-local-rules/no-json-parse-json-stringify': 'error',
-
-			'n8n-local-rules/no-unneeded-backticks': 'error',
-
-			'n8n-local-rules/no-interpolation-in-regular-string': 'error',
-
-			'n8n-local-rules/no-unused-param-in-catch-clause': 'error',
-
-			'n8n-local-rules/no-useless-catch-throw': 'error',
-
-			'n8n-local-rules/no-plain-errors': 'error',
 
 			// ******************************************************************
 			//                    overrides to base ruleset
@@ -449,8 +405,8 @@ export const baseConfig = defineConfig(
 			'lodash/path-style': ['error', 'as-needed'],
 		},
 	},
-
 	{
+		// Rules for unit tests
 		files: ['test/**/*.ts', '**/__tests__/*.ts', '**/*.cy.ts'],
 		rules: {
 			'n8n-local-rules/no-plain-errors': 'off',
@@ -464,7 +420,7 @@ export const baseConfig = defineConfig(
 			'@typescript-eslint/no-loop-func': 'off',
 			'@typescript-eslint/no-non-null-assertion': 'off',
 			'@typescript-eslint/no-shadow': 'off',
-			'@typescript-eslint/no-throw-literal': 'off',
+			'@typescript-eslint/only-throw-error': 'off',
 			'@typescript-eslint/no-unsafe-argument': 'off',
 			'@typescript-eslint/no-unsafe-assignment': 'off',
 			'@typescript-eslint/no-unsafe-call': 'off',
@@ -478,6 +434,8 @@ export const baseConfig = defineConfig(
 			'@typescript-eslint/restrict-plus-operands': 'off',
 			'@typescript-eslint/restrict-template-expressions': 'off',
 			'@typescript-eslint/unbound-method': 'off',
+			'@typescript-eslint/no-prototype-builtins': 'off',
+			'@typescript-eslint/array-type': 'off',
 			'id-denylist': 'off',
 			'import/no-cycle': 'off',
 			'import/no-default-export': 'off',

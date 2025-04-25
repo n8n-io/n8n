@@ -1,5 +1,5 @@
 import { RuleTester } from '@typescript-eslint/rule-tester';
-import { NoUselessCatchThrowRule } from './no-useless-catch-throw';
+import { NoUselessCatchThrowRule } from './no-useless-catch-throw.js';
 
 const ruleTester = new RuleTester();
 

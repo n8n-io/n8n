@@ -1,4 +1,4 @@
-import { isJsonParseCall, isJsonStringifyCall } from '../utils/json';
+import { isJsonParseCall, isJsonStringifyCall } from '../utils/json.js';
 import { ESLintUtils, TSESTree } from '@typescript-eslint/utils';
 
 export const NoJsonParseJsonStringifyRule = ESLintUtils.RuleCreator.withoutDocs({

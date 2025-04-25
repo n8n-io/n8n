@@ -3,7 +3,7 @@ import { Container, Service } from '@n8n/di';
 import { readFileSync } from 'fs';
 import { z } from 'zod';
 
-// eslint-disable-next-line @typescript-eslint/ban-types
+// eslint-disable-next-line @typescript-eslint/no-restricted-types
 type Class = Function;
 type Constructable<T = unknown> = new (rawValue: string) => T;
 type PropertyKey = string | symbol;

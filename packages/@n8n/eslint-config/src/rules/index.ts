@@ -1,20 +1,19 @@
-import { NoJsonParseJsonStringifyRule } from './no-json-parse-json-stringify';
-import { NoUncaughtJsonParseRule } from './no-uncaught-json-parse';
-import { NoUnneededBackticksRule } from './no-unneeded-backticks';
-import { NoUnusedParamInCatchClauseRule } from './no-unused-param-catch-clause';
-import { NoUselessCatchThrowRule } from './no-useless-catch-throw';
-import { NoSkippedTestsRule } from './no-skipped-tests';
-import { NoInterpolationInRegularStringRule } from './no-interpolation-in-regular-string';
-import { DangerouslyUseHtmlStringMissingRule } from './dangerously-use-html-string-missing';
-import { NoPlainErrorsRule } from './no-plain-errors';
-import { NoDynamicImportTemplateRule } from './no-dynamic-import-template';
-import { MisplacedN8nTypeormImportRule } from './misplaced-n8n-typeorm-import';
-import { NoTypeUnsafeEventEmitterRule } from './no-type-unsafe-event-emitter';
-import { NoUntypedConfigClassFieldRule } from './no-untyped-config-class-field';
-import type { ESLint } from 'eslint';
+import { NoJsonParseJsonStringifyRule } from './no-json-parse-json-stringify.js';
+import { NoUncaughtJsonParseRule } from './no-uncaught-json-parse.js';
+import { NoUnneededBackticksRule } from './no-unneeded-backticks.js';
+import { NoUnusedParamInCatchClauseRule } from './no-unused-param-catch-clause.js';
+import { NoUselessCatchThrowRule } from './no-useless-catch-throw.js';
+import { NoSkippedTestsRule } from './no-skipped-tests.js';
+import { NoInterpolationInRegularStringRule } from './no-interpolation-in-regular-string.js';
+import { DangerouslyUseHtmlStringMissingRule } from './dangerously-use-html-string-missing.js';
+import { NoPlainErrorsRule } from './no-plain-errors.js';
+import { NoDynamicImportTemplateRule } from './no-dynamic-import-template.js';
+import { MisplacedN8nTypeormImportRule } from './misplaced-n8n-typeorm-import.js';
+import { NoTypeUnsafeEventEmitterRule } from './no-type-unsafe-event-emitter.js';
+import { NoUntypedConfigClassFieldRule } from './no-untyped-config-class-field.js';
 import type { AnyRuleModule } from '@typescript-eslint/utils/ts-eslint';
 
-const rules = {
+export const rules = {
 	'no-uncaught-json-parse': NoUncaughtJsonParseRule,
 	'no-json-parse-json-stringify': NoJsonParseJsonStringifyRule,
 	'no-unneeded-backticks': NoUnneededBackticksRule,
@@ -29,11 +28,3 @@ const rules = {
 	'no-type-unsafe-event-emitter': NoTypeUnsafeEventEmitterRule,
 	'no-untyped-config-class-field': NoUntypedConfigClassFieldRule,
 } satisfies Record<string, AnyRuleModule>;
-
-export const localRulesPlugin: ESLint.Plugin = {
-	meta: {
-		name: 'n8n-local-rules',
-	},
-	// @ts-expect-error Rule type is different between ESLint and typescript-eslint
-	rules,
-};

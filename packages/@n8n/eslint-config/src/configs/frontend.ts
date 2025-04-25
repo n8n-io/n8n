@@ -1,19 +1,18 @@
-import { defineConfig, globalIgnores } from 'eslint/config';
+import { globalIgnores } from 'eslint/config';
+import tseslint from 'typescript-eslint';
 import VuePlugin from 'eslint-plugin-vue';
 import VueEslintParser from 'vue-eslint-parser';
 import TypescriptEslintParser from '@typescript-eslint/parser';
 import globals from 'globals';
-import { baseConfig } from './base';
+import { baseConfig } from './base.js';
 
 const isCI = process.env.CI === 'true';
 
-export const frontendConfig = defineConfig(
+export const frontendConfig = tseslint.config(
 	globalIgnores(['**/*.js', '**/*.d.ts', 'vite.config.ts', '**/*.ts.snap']),
+	baseConfig,
+	VuePlugin.configs['flat/recommended'],
 	{
-		plugins: { vue: VuePlugin },
-
-		extends: ['plugin:vue/vue3-recommended', '@vue/typescript', baseConfig],
-
 		languageOptions: {
 			ecmaVersion: 2024,
 			globals: globals.browser,

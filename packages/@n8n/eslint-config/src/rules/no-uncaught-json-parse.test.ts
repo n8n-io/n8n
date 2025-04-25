@@ -1,5 +1,5 @@
 import { RuleTester } from '@typescript-eslint/rule-tester';
-import { NoUncaughtJsonParseRule } from './no-uncaught-json-parse';
+import { NoUncaughtJsonParseRule } from './no-uncaught-json-parse.js';
 
 const ruleTester = new RuleTester();
 

@@ -1,4 +1,9 @@
 import { defineConfig } from 'eslint/config';
-import { baseConfig } from '@n8n/eslint-config/base';
+import { nodeConfig } from '@n8n/eslint-config/node';
 
-export default defineConfig(baseConfig);
+export default defineConfig(nodeConfig, {
+	rules: {
+		// TODO: Remove this
+		'no-prototype-builtins': 'off',
+	},
+});

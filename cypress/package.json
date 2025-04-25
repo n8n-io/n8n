@@ -1,6 +1,7 @@
 {
   "name": "n8n-cypress",
   "private": true,
+  "type": "module",
   "scripts": {
     "typecheck": "tsc --noEmit",
     "cypress:install": "cypress install",
@@ -20,7 +21,7 @@
     "@cypress/grep": "^4.1.0",
     "@n8n/api-types": "workspace:*",
     "@types/lodash": "catalog:",
-    "eslint-plugin-cypress": "^3.5.0",
+    "eslint-plugin-cypress": "^4.3.0",
     "n8n-workflow": "workspace:*"
   },
   "dependencies": {

@@ -1,5 +1,5 @@
 import { ESLintUtils } from '@typescript-eslint/utils';
-import { isJsonParseCall, isJsonStringifyCall } from '../utils/json';
+import { isJsonParseCall, isJsonStringifyCall } from '../utils/json.js';
 
 export const NoUncaughtJsonParseRule = ESLintUtils.RuleCreator.withoutDocs({
 	meta: {
