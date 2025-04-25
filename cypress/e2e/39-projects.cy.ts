@@ -288,7 +288,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			ndv.getters.credentialInput().find('input').should('be.enabled');
 		});
 
-		it.only('should create sub-workflow and credential in the sub-workflow in the same project', () => {
+		it('should create sub-workflow and credential in the sub-workflow in the same project', () => {
 			cy.signinAsOwner();
 			cy.visit(workflowsPage.url);
 
