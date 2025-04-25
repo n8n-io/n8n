@@ -1638,9 +1638,13 @@ watch(
 // This keeps the selected node in sync if the URL is updated
 watch(
 	() => route.params.nodeId,
-	async (newId) => {
-		if (typeof newId !== 'string' || newId === '') ndvStore.activeNodeName = null;
-		else {
+	async (newId, previousId) => {
+		if (typeof newId !== 'string' || newId === '') {
+			ndvStore.activeNodeName = null;
+			if (typeof previousId === 'string' && previousId !== '') {
+				// router.
+			}
+		} else {
 			updateNodeRoute(newId);
 		}
 	},
@@ -1657,10 +1661,21 @@ watch(
 		const nodeId = val?.id ? workflowsStore.getPartialIdForNode(val?.id) : '';
 
 		if (nodeId !== route.params.nodeId) {
-			await router.push({
-				name: route.name,
-				params: { name: workflowId.value, nodeId },
-			});
+			if (nodeId && !route.params.nodeId) {
+				// Push a new entry only when a NDV is first opened
+				await router.push({
+					name: route.name,
+					params: { name: workflowId.value, nodeId },
+				});
+			} else {
+				// Keep history entry if switching between nodes
+				// This means that closing the NDV erases the NDV history entries
+				// Which makes the back operation go back to the page before the workflow
+				await router.replace({
+					name: route.name,
+					params: { name: workflowId.value, nodeId },
+				});
+			}
 		}
 	},
 );
