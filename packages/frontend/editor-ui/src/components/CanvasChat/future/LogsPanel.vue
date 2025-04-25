@@ -139,12 +139,17 @@ function handleResizeOverviewPanelEnd() {
 							@resizeend="handleResizeOverviewPanelEnd"
 						>
 							<LogsOverviewPanel
+								:key="execution?.id ?? ''"
 								:class="$style.logsOverview"
 								:is-open="isOpen"
 								:is-read-only="isReadOnly"
 								:is-compact="isLogDetailsVisuallyOpen"
 								:selected="selectedLogEntry"
 								:execution="execution"
+								:scroll-to-selection="
+									manualLogEntrySelection.type !== 'selected' ||
+									manualLogEntrySelection.data.id !== selectedLogEntry?.id
+								"
 								:latest-node-info="latestNodeNameById"
 								@click-header="onToggleOpen(true)"
 								@select="handleSelectLogEntry"

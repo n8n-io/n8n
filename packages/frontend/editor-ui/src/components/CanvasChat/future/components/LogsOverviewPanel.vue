@@ -3,8 +3,7 @@ import PanelHeader from '@/components/CanvasChat/future/components/PanelHeader.v
 import { useClearExecutionButtonVisible } from '@/composables/useClearExecutionButtonVisible';
 import { useI18n } from '@/composables/useI18n';
 import { N8nButton, N8nRadioButtons, N8nText, N8nTooltip } from '@n8n/design-system';
-import { computed, nextTick } from 'vue';
-import { ElTree, type TreeNode as ElTreeNode } from 'element-plus';
+import { ref, computed, nextTick, watch } from 'vue';
 import { useTelemetry } from '@/composables/useTelemetry';
 import LogsOverviewRow from '@/components/CanvasChat/future/components/LogsOverviewRow.vue';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
@@ -13,20 +12,24 @@ import { useRouter } from 'vue-router';
 import ExecutionSummary from '@/components/CanvasChat/future/components/ExecutionSummary.vue';
 import {
 	type ExecutionLogViewData,
+	flattenLogEntries,
 	getSubtreeTotalConsumedTokens,
 	getTotalConsumedTokens,
 	type LatestNodeInfo,
 	type LogEntry,
 } from '@/components/RunDataAi/utils';
+import { useVirtualList } from '@vueuse/core';
 
-const { isOpen, isReadOnly, selected, isCompact, execution, latestNodeInfo } = defineProps<{
-	isOpen: boolean;
-	selected?: LogEntry;
-	isReadOnly: boolean;
-	isCompact: boolean;
-	execution?: ExecutionLogViewData;
-	latestNodeInfo: Record<string, LatestNodeInfo>;
-}>();
+const { isOpen, isReadOnly, selected, isCompact, execution, latestNodeInfo, scrollToSelection } =
+	defineProps<{
+		isOpen: boolean;
+		selected?: LogEntry;
+		isReadOnly: boolean;
+		isCompact: boolean;
+		execution?: ExecutionLogViewData;
+		latestNodeInfo: Record<string, LatestNodeInfo>;
+		scrollToSelection: boolean;
+	}>();
 
 const emit = defineEmits<{
 	clickHeader: [];
@@ -50,6 +53,11 @@ const switchViewOptions = computed(() => [
 const consumedTokens = computed(() =>
 	getTotalConsumedTokens(...(execution?.tree ?? []).map(getSubtreeTotalConsumedTokens)),
 );
+const collapsedEntries = ref<Record<string, boolean>>({});
+const flatLogEntries = computed(() =>
+	flattenLogEntries(execution?.tree ?? [], collapsedEntries.value),
+);
+const virtualList = useVirtualList(flatLogEntries, { itemHeight: 32 });
 
 function handleClickNode(clicked: LogEntry) {
 	if (selected?.node === clicked.node && selected?.runIndex === clicked.runIndex) {
@@ -73,8 +81,8 @@ function handleSwitchView(value: 'overview' | 'details') {
 	);
 }
 
-function handleToggleExpanded(treeNode: ElTreeNode) {
-	treeNode.expanded = !treeNode.expanded;
+function handleToggleExpanded(treeNode: LogEntry) {
+	collapsedEntries.value[treeNode.id] = !collapsedEntries.value[treeNode.id];
 }
 
 async function handleOpenNdv(treeNode: LogEntry) {
@@ -90,6 +98,22 @@ async function handleTriggerPartialExecution(treeNode: LogEntry) {
 		await runWorkflow.runWorkflow({ destinationNode: latestName });
 	}
 }
+
+// Scroll selected row into view
+watch(
+	() => (scrollToSelection ? selected : undefined),
+	async (entry) => {
+		if (entry) {
+			const index = flatLogEntries.value.findIndex((e) => e.id === entry.id);
+
+			if (index >= 0) {
+				// Wait for the node to be added to the list, and then scroll
+				await nextTick(() => virtualList.scrollTo(index));
+			}
+		}
+	},
+	{ immediate: true },
+);
 </script>
 
 <template>
@@ -132,7 +156,7 @@ async function handleTriggerPartialExecution(treeNode: LogEntry) {
 			>
 				{{ locale.baseText('logs.overview.body.empty.message') }}
 			</N8nText>
-			<div v-else :class="$style.scrollable">
+			<template v-else>
 				<ExecutionSummary
 					v-if="execution"
 					:class="$style.summary"
@@ -144,20 +168,12 @@ async function handleTriggerPartialExecution(treeNode: LogEntry) {
 							: undefined
 					"
 				/>
-				<ElTree
-					v-if="(execution?.tree ?? []).length > 0"
-					node-key="id"
-					:class="$style.tree"
-					:indent="0"
-					:data="execution?.tree ?? []"
-					:expand-on-click-node="false"
-					:default-expand-all="true"
-					@node-click="handleClickNode"
-				>
-					<template #default="{ node: elTreeNode, data }">
+				<div :class="$style.tree" v-bind="virtualList.containerProps">
+					<div v-bind="virtualList.wrapperProps.value" role="tree">
 						<LogsOverviewRow
+							v-for="{ data } of virtualList.list.value"
+							:key="data.id"
 							:data="data"
-							:node="elTreeNode"
 							:is-read-only="isReadOnly"
 							:is-selected="
 								data.node.name === selected?.node.name && data.runIndex === selected?.runIndex
@@ -165,12 +181,14 @@ async function handleTriggerPartialExecution(treeNode: LogEntry) {
 							:is-compact="isCompact"
 							:should-show-consumed-tokens="consumedTokens.totalTokens > 0"
 							:latest-info="latestNodeInfo[data.node.id]"
+							:expanded="!collapsedEntries[data.id]"
+							@click.stop="handleClickNode(data)"
 							@toggle-expanded="handleToggleExpanded"
 							@open-ndv="handleOpenNdv"
 							@trigger-partial-execution="handleTriggerPartialExecution"
 						/>
-					</template>
-				</ElTree>
+					</div>
+				</div>
 				<N8nRadioButtons
 					size="small"
 					:class="$style.switchViewButtons"
@@ -178,7 +196,7 @@ async function handleTriggerPartialExecution(treeNode: LogEntry) {
 					:options="switchViewOptions"
 					@update:model-value="handleSwitchView"
 				/>
-			</div>
+			</template>
 		</div>
 	</div>
 </template>
@@ -220,13 +238,6 @@ async function handleTriggerPartialExecution(treeNode: LogEntry) {
 .emptyText {
 	max-width: 20em;
 	text-align: center;
-}
-
-.scrollable {
-	flex-grow: 1;
-	flex-shrink: 1;
-	overflow: auto;
-	scroll-padding-block: var(--spacing-2xs);
 }
 
 .summary {
