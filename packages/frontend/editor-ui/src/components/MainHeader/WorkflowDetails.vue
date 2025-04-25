@@ -532,11 +532,45 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.ARCHIVE: {
-			await workflowsStore.archiveWorkflow(props.id);
+			const archiveConfirmed = await message.confirm(
+				locale.baseText('mainSidebar.confirmMessage.workflowArchive.message', {
+					interpolate: { workflowName: props.name },
+				}),
+				locale.baseText('mainSidebar.confirmMessage.workflowArchive.headline'),
+				{
+					type: 'warning',
+					confirmButtonText: locale.baseText(
+						'mainSidebar.confirmMessage.workflowArchive.confirmButtonText',
+					),
+					cancelButtonText: locale.baseText(
+						'mainSidebar.confirmMessage.workflowArchive.cancelButtonText',
+					),
+				},
+			);
+
+			if (archiveConfirmed !== MODAL_CONFIRM) {
+				return;
+			}
+
+			try {
+				await workflowsStore.archiveWorkflow(props.id);
+				toast.showMessage({
+					title: locale.baseText('mainSidebar.showMessage.handleArchive.title'),
+					type: 'success',
+				});
+			} catch (error) {
+				toast.showError(error, locale.baseText('generic.archiveWorkflowError'));
+				return;
+			}
+
+			uiStore.stateIsDirty = false;
 			toast.showMessage({
-				title: locale.baseText('mainSidebar.showMessage.handleArchive.title'),
+				title: locale.baseText('mainSidebar.showMessage.handleSelect1.title'),
 				type: 'success',
 			});
+
+			await router.push({ name: VIEWS.WORKFLOWS });
+
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.UNARCHIVE: {
