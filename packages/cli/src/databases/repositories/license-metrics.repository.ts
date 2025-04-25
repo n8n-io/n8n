@@ -19,6 +19,10 @@ export class LicenseMetricsRepository extends Repository<LicenseMetrics> {
 		return this.manager.connection.driver.escape(`${tablePrefix}${name}`);
 	}
 
+	toColumnName(name: string) {
+		return this.manager.connection.driver.escape(name);
+	}
+
 	async getLicenseRenewalMetrics() {
 		type Row = {
 			enabled_user_count: string | number;
@@ -55,7 +59,7 @@ export class LicenseMetricsRepository extends Repository<LicenseMetrics> {
 				(SELECT COUNT(*) FROM ${workflowTable}) AS total_workflow_count,
 				(SELECT COUNT(*) FROM ${credentialTable}) AS total_credentials_count,
 				(SELECT SUM(count) FROM ${workflowStatsTable} WHERE name IN ('production_success', 'production_error')) AS production_executions_count,
-				(SELECT SUM(billableCount) FROM ${workflowStatsTable} WHERE name IN ('production_success', 'production_error')) AS billable_production_executions_count,
+				(SELECT SUM(${this.toColumnName('billableCount')}) FROM ${workflowStatsTable} WHERE name IN ('production_success', 'production_error')) AS billable_production_executions_count,
 				(SELECT SUM(count) FROM ${workflowStatsTable} WHERE name IN ('manual_success', 'manual_error')) AS manual_executions_count;
 		`)) as Row[];
 
