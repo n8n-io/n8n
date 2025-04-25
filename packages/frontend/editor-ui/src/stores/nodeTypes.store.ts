@@ -290,6 +290,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		let nodeTypes = await nodeTypesApi.getNodeTypes(rootStore.baseUrl);
 		let attempts = 5;
 
+		// TODO: check why in some cases getNodeTypes returns a string
 		while (typeof nodeTypes !== 'object' && attempts > 0) {
 			console.log('Could not fetch node types, retrying...');
 			await sleep(1000);
@@ -354,14 +355,20 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		if (!settingsStore.isCommunityNodesFeatureEnabled) {
 			return;
 		}
-		communityPreviews.value = await nodeTypesApi.getCommunityNodeTypes(rootStore.restApiContext);
+		try {
+			communityPreviews.value = await nodeTypesApi.fetchCommunityNodeTypes(
+				rootStore.restApiContext,
+			);
+		} catch (error) {
+			communityPreviews.value = [];
+		}
 	};
 
 	const getCommunityNodeAttributes = async (nodeName: string) => {
 		if (!settingsStore.isCommunityNodesFeatureEnabled) {
 			return null;
 		}
-		return await nodeTypesApi.getCommunityNodeAttributes(
+		return await nodeTypesApi.fetchCommunityNodeAttributes(
 			rootStore.restApiContext,
 			removePreviewToken(nodeName),
 		);

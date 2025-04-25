@@ -2,7 +2,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { useViewStacks } from '../composables/useViewStacks';
 import { useUsersStore } from '@/stores/users.store';
-
+import { i18n } from '@/plugins/i18n';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 const { activeViewStack } = useViewStacks();
@@ -92,36 +92,36 @@ onMounted(async () => {
 		<div :class="$style.separator"></div>
 		<div :class="$style.info">
 			<n8n-tooltip placement="top" v-if="verified">
-				<template #content>This community node has been reviewed and approved by n8n</template>
+				<template #content>{{ i18n.baseText('communityNodeInfo.approved') }}</template>
 				<div>
 					<FontAwesomeIcon :class="$style.tooltipIcon" icon="check-circle" />
 					<n8n-text color="text-light" size="xsmall" bold data-test-id="verified-tag">
-						Verified
+						{{ i18n.baseText('communityNodeInfo.approved.label') }}
 					</n8n-text>
 				</div>
 			</n8n-tooltip>
 
 			<n8n-tooltip placement="top" v-else>
-				<template #content
-					>This community node was added via npm and has not been verified by n8n</template
-				>
+				<template #content>{{ i18n.baseText('communityNodeInfo.unverified') }}</template>
 				<div>
 					<FontAwesomeIcon :class="$style.tooltipIcon" icon="cube" />
-					<n8n-text color="text-light" size="xsmall" bold> Via npm </n8n-text>
+					<n8n-text color="text-light" size="xsmall" bold>
+						{{ i18n.baseText('communityNodeInfo.unverified.label') }}
+					</n8n-text>
 				</div>
 			</n8n-tooltip>
 
 			<div v-if="downloads">
 				<FontAwesomeIcon :class="$style.tooltipIcon" icon="download" />
 				<n8n-text color="text-light" size="xsmall" bold data-test-id="number-of-downloads">
-					{{ downloads }} Downloads
+					{{ i18n.baseText('communityNodeInfo.downloads', { interpolate: { downloads } }) }}
 				</n8n-text>
 			</div>
 
 			<div v-if="publisherName">
 				<FontAwesomeIcon :class="$style.tooltipIcon" icon="user" />
 				<n8n-text color="text-light" size="xsmall" bold data-test-id="publisher-name">
-					Published by {{ publisherName }}
+					{{ i18n.baseText('communityNodeInfo.publishedBy', { interpolate: { publisherName } }) }}
 				</n8n-text>
 			</div>
 		</div>
@@ -129,7 +129,7 @@ onMounted(async () => {
 			<n8n-icon color="text-light" icon="info-circle" size="large" />
 			<n8n-text color="text-base" size="medium">
 				<div style="padding-bottom: 8px">
-					Please contact an administrator to install this community node:
+					{{ i18n.baseText('communityNodeInfo.contact.admin') }}
 				</div>
 				<n8n-text bold v-if="ownerEmailList.length">
 					{{ ownerEmailList.join(', ') }}

@@ -340,10 +340,10 @@ export class CommunityPackagesService {
 		return registry;
 	}
 
-	private checkInstallPermissions(isUpdate: boolean, isVettedPackageInstall: boolean) {
+	private checkInstallPermissions(isUpdate: boolean, checksumProvided: boolean) {
 		if (isUpdate) return;
 
-		if (!this.globalConfig.nodes.communityPackages.unverifiedEnabled && !isVettedPackageInstall) {
+		if (!this.globalConfig.nodes.communityPackages.unverifiedEnabled && !checksumProvided) {
 			throw new UnexpectedError('Installation of non-vetted community packages is forbidden!');
 		}
 	}
@@ -356,8 +356,8 @@ export class CommunityPackagesService {
 		const packageVersion = isUpdate || !options.version ? 'latest' : options.version;
 		const command = `npm install ${packageName}@${packageVersion} --registry=${this.getNpmRegistry()}`;
 
-		const isVettedPackageInstall = 'checksum' in options && Boolean(options.checksum);
-		this.checkInstallPermissions(isUpdate, isVettedPackageInstall);
+		const shouldValidateChecksum = 'checksum' in options && Boolean(options.checksum);
+		this.checkInstallPermissions(isUpdate, shouldValidateChecksum);
 
 		if (!isUpdate && options.checksum) {
 			await verifyIntegrity(packageName, packageVersion, this.getNpmRegistry(), options.checksum);

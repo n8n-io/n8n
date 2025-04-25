@@ -65,9 +65,11 @@ const description = computed<string>(() => {
 	});
 });
 const showActionArrow = computed(() => {
+	// show action arrow if it's a community node and the community node details are not opened
 	if (isCommunityNode.value && !activeViewStack.communityNodeDetails) {
 		return true;
 	}
+
 	return hasActions.value && !isSendAndWaitCategory.value;
 });
 const isSendAndWaitCategory = computed(() => activeViewStack.subcategory === HITL_SUBCATEGORY);

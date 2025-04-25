@@ -3117,5 +3117,12 @@
 	"communityNodeItem.node.hint": "Install this node to start using it",
 	"communityNodeItem.actions.hint": "Install this node to start using actions",
 	"communityNodeItem.label": "Add to workflow",
-	"communityNodeDetails.installed": "Installed"
+	"communityNodeDetails.installed": "Installed",
+	"communityNodeInfo.approved": "This community node has been reviewed and approved by n8n",
+	"communityNodeInfo.approved.label": "Verified",
+	"communityNodeInfo.unverified": "This community node was added via npm and has not been verified by n8n",
+	"communityNodeInfo.unverified.label": "Via npm",
+	"communityNodeInfo.downloads": "{downloads} Downloads",
+	"communityNodeInfo.publishedBy": "Published by {publisherName}",
+	"communityNodeInfo.contact.admin": "Please contact an administrator to install this community node:"
 }

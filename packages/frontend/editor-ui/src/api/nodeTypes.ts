@@ -22,13 +22,13 @@ export async function getNodeTypes(baseUrl: string) {
 	return data;
 }
 
-export async function getCommunityNodeTypes(
+export async function fetchCommunityNodeTypes(
 	context: IRestApiContext,
 ): Promise<INodeTypeDescription[]> {
 	return await makeRestApiRequest(context, 'GET', '/community-node-types');
 }
 
-export async function getCommunityNodeAttributes(
+export async function fetchCommunityNodeAttributes(
 	context: IRestApiContext,
 	type: string,
 ): Promise<CommunityNodeAttributes | null> {

@@ -51,7 +51,9 @@ export class CommunityPackagesController {
 			throw new BadRequestError(PACKAGE_NAME_NOT_PROVIDED);
 		}
 
-		let checksum: string | undefined;
+		let checksum: string | undefined = undefined;
+
+		// Get the checksum for the package if flagged to verify
 		if (verify) {
 			checksum = this.communityNodeTypesService.findVetted(name)?.checksum;
 			if (!checksum) {
@@ -102,7 +104,7 @@ export class CommunityPackagesController {
 			installedPackage = await this.communityPackagesService.installPackage(
 				parsed.packageName,
 				packageVersion,
-				verify ? checksum : undefined,
+				checksum,
 			);
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : UNKNOWN_FAILURE_REASON;
