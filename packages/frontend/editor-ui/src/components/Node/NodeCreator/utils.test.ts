@@ -6,7 +6,7 @@ import type {
 } from '@/Interface';
 import {
 	formatTriggerActionName,
-	getMoreFromCommunity,
+	filterAndSearchNodes,
 	groupItemsInSections,
 	prepareCommunityNodeDetailsViewStack,
 	removeTrailingTrigger,
@@ -94,7 +94,7 @@ describe('NodeCreator - utils', () => {
 		});
 	});
 
-	describe('getMoreFromCommunity', () => {
+	describe('filterAndSearchNodes', () => {
 		const mergedNodes: SimplifiedNodeType[] = [
 			{
 				displayName: 'Sample Node',
@@ -119,14 +119,14 @@ describe('NodeCreator - utils', () => {
 		];
 
 		test('should return only one node', () => {
-			const result = getMoreFromCommunity(mergedNodes, 'sample', false);
+			const result = filterAndSearchNodes(mergedNodes, 'sample', false);
 
 			expect(result.length).toEqual(1);
 			expect(result[0].key).toEqual('n8n-nodes-preview-test.SampleNode');
 		});
 
 		test('should return two nodes', () => {
-			const result = getMoreFromCommunity(mergedNodes, 'node', false);
+			const result = filterAndSearchNodes(mergedNodes, 'node', false);
 
 			expect(result.length).toEqual(2);
 			expect(result[1].key).toEqual('n8n-nodes-preview-test.SampleNode');

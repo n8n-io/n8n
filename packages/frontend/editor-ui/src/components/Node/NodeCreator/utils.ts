@@ -240,7 +240,7 @@ export function extendItemsWithUUID(items: INodeCreateElement[]) {
 	}));
 }
 
-export const getMoreFromCommunity = (
+export const filterAndSearchNodes = (
 	mergedNodes: SimplifiedNodeType[],
 	search: string,
 	isAgentSubcategory: boolean,

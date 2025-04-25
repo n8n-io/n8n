@@ -23,7 +23,7 @@ import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { TriggerView, RegularView, AIView, AINodesView } from '../viewsData';
 import {
 	flattenCreateElements,
-	getMoreFromCommunity,
+	filterAndSearchNodes,
 	prepareCommunityNodeDetailsViewStack,
 	transformNodeType,
 } from '../utils';
@@ -65,7 +65,7 @@ const globalSearchItemsDiff = computed(() => useViewStacks().globalSearchItemsDi
 const communityNodesAndActions = computed(() => useNodeTypesStore().communityNodesAndActions);
 
 const moreFromCommunity = computed(() => {
-	return getMoreFromCommunity(
+	return filterAndSearchNodes(
 		communityNodesAndActions.value.mergedNodes,
 		activeViewStack.value.search ?? '',
 		isAiSubcategoryView(activeViewStack.value),
