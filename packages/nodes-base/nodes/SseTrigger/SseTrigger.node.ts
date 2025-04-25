@@ -105,6 +105,13 @@ export class SseTrigger implements INodeType {
 			this.emit([this.helpers.returnJsonArray([eventData])]);
 		};
 
+		eventSource.onerror = (event) => {
+			const eventData = jsonParse<IDataObject>(event.data as string, {
+				errorMessage: 'A connection error has occured, please try again',
+			});
+			this.emit([this.helpers.returnJsonArray([eventData])]);
+		};
+
 		async function closeFunction() {
 			eventSource.close();
 		}
