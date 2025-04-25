@@ -1463,6 +1463,8 @@
 	"nodeView.showMessage.debug.content": "You can make edits and re-execute. Once you're done, unpin the the first node.",
 	"nodeView.showMessage.debug.missingNodes.title": "Some execution data wasn't imported",
 	"nodeView.showMessage.debug.missingNodes.content": "Some nodes have been deleted or renamed or added to the workflow since the execution ran.",
+	"nodeView.showMessage.ndvUrl.missingNodes.title": "Node not found",
+	"nodeView.showMessage.ndvUrl.missingNodes.content": "URL contained a reference to an unknown node. Maybe the node was deleted?",
 	"nodeView.stopCurrentExecution": "Stop current execution",
 	"nodeView.stopWaitingForWebhookCall": "Stop waiting for webhook call",
 	"nodeView.stoppingCurrentExecution": "Stopping current execution",
