@@ -164,6 +164,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	const allowedModules = computed(() => settings.value.allowedModules);
 
 	const isQueueModeEnabled = computed(() => settings.value.executionMode === 'queue');
+	const isMultiMain = computed(() => settings.value.isMultiMain);
 
 	const isWorkerViewAvailable = computed(() => !!settings.value.enterprise?.workerView);
 
@@ -432,6 +433,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isUnverifiedPackagesEnabled,
 		allowedModules,
 		isQueueModeEnabled,
+		isMultiMain,
 		isWorkerViewAvailable,
 		isDefaultAuthenticationSaml,
 		workflowCallerPolicyDefaultOption,
