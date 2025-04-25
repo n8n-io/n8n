@@ -75,11 +75,9 @@ interface Filters extends BaseFilters {
 }
 
 const StatusFilter = {
-	DEFAULT: '',
+	ALL: '',
 	ACTIVE: 'active',
 	DEACTIVATED: 'deactivated',
-	ARCHIVED: 'archived',
-	ALL: 'all',
 };
 
 /** Maps sort values from the ResourcesListLayout component to values expected by workflows endpoint */
@@ -119,7 +117,8 @@ const breadcrumbsLoading = ref(false);
 const filters = ref<Filters>({
 	search: '',
 	homeProject: '',
-	status: StatusFilter.DEFAULT,
+	status: StatusFilter.ALL,
+	showArchived: false,
 	tags: [],
 });
 
@@ -304,10 +303,6 @@ const workflowListResources = computed<Resource[]>(() => {
 
 const statusFilterOptions = computed(() => [
 	{
-		label: i18n.baseText('workflows.filters.status.default'),
-		value: StatusFilter.DEFAULT,
-	},
-	{
 		label: i18n.baseText('workflows.filters.status.all'),
 		value: StatusFilter.ALL,
 	},
@@ -318,10 +313,6 @@ const statusFilterOptions = computed(() => [
 	{
 		label: i18n.baseText('workflows.filters.status.deactivated'),
 		value: StatusFilter.DEACTIVATED,
-	},
-	{
-		label: i18n.baseText('workflows.filters.status.archived'),
-		value: StatusFilter.ARCHIVED,
 	},
 ]);
 
@@ -352,7 +343,8 @@ const emptyListDescription = computed(() => {
 const hasFilters = computed(() => {
 	return !!(
 		filters.value.search ||
-		filters.value.status !== StatusFilter.DEFAULT ||
+		filters.value.status !== StatusFilter.ALL ||
+		!filters.value.showArchived ||
 		filters.value.tags.length
 	);
 });
@@ -508,16 +500,11 @@ const fetchWorkflows = async () => {
 		: [];
 
 	const activeFilter =
-		filters.value.status === StatusFilter.ALL || filters.value.status === StatusFilter.DEFAULT
+		filters.value.status === StatusFilter.ALL
 			? undefined
 			: filters.value.status === StatusFilter.ACTIVE;
 
-	const archivedFilter =
-		filters.value.status === StatusFilter.ARCHIVED
-			? true
-			: filters.value.status === StatusFilter.DEFAULT
-				? false
-				: undefined;
+	const archivedFilter = filters.value.showArchived ? undefined : false;
 
 	// Only fetch folders if showFolders is enabled and there are not tags or active filter applied
 	const fetchFolders = showFolders.value && !tags.length && activeFilter === undefined;
@@ -638,23 +625,16 @@ const saveFiltersOnQueryString = () => {
 		delete currentQuery.search;
 	}
 
-	if (filters.value.status !== StatusFilter.DEFAULT) {
-		switch (filters.value.status) {
-			case StatusFilter.ALL:
-				currentQuery.status = 'all';
-				break;
-			case StatusFilter.ACTIVE:
-				currentQuery.status = 'true';
-				break;
-			case StatusFilter.DEACTIVATED:
-				currentQuery.status = 'false';
-				break;
-			case StatusFilter.ARCHIVED:
-				currentQuery.status = 'archived';
-				break;
-		}
+	if (filters.value.status !== StatusFilter.ALL) {
+		currentQuery.status = (filters.value.status === StatusFilter.ACTIVE).toString();
 	} else {
 		delete currentQuery.status;
+	}
+
+	if (filters.value.showArchived) {
+		currentQuery.showArchived = 'true';
+	} else {
+		delete currentQuery.showArchived;
 	}
 
 	if (filters.value.tags.length) {
@@ -676,7 +656,7 @@ const saveFiltersOnQueryString = () => {
 
 const setFiltersFromQueryString = async () => {
 	const newQuery: LocationQueryRaw = { ...route.query };
-	const { tags, status, search, homeProject, sort } = route.query ?? {};
+	const { tags, status, search, homeProject, sort, showArchived } = route.query ?? {};
 
 	// Helper to check if string value is not empty
 	const isValidString = (value: unknown): value is string =>
@@ -723,23 +703,7 @@ const setFiltersFromQueryString = async () => {
 	// Handle status
 	if (isValidString(status)) {
 		newQuery.status = status;
-		switch (status) {
-			case 'true':
-				filters.value.status = StatusFilter.ACTIVE;
-				break;
-			case 'false':
-				filters.value.status = StatusFilter.DEACTIVATED;
-				break;
-			case 'archived':
-				filters.value.status = StatusFilter.ARCHIVED;
-				break;
-			case 'all':
-				filters.value.status = StatusFilter.ALL;
-				break;
-			default:
-				delete newQuery.status;
-				break;
-		}
+		filters.value.status = status === 'true' ? StatusFilter.ACTIVE : StatusFilter.DEACTIVATED;
 	} else {
 		delete newQuery.status;
 	}
@@ -751,6 +715,13 @@ const setFiltersFromQueryString = async () => {
 		currentSort.value = newSort;
 	} else {
 		delete newQuery.sort;
+	}
+
+	if (isValidString(showArchived)) {
+		newQuery.showArchived = showArchived;
+		filters.value.showArchived = showArchived === 'true';
+	} else {
+		delete newQuery.showArchived;
 	}
 
 	void router.replace({ query: newQuery });
@@ -951,7 +922,7 @@ const onBreadCrumbsAction = async (action: string) => {
 	switch (action) {
 		case FOLDER_LIST_ITEM_ACTIONS.CREATE:
 			if (!route.params.projectId) return;
-			const currentParent = currentFolder.value?.name || projectName.value;
+			const currentParent = currentFolder.value?.name ?? projectName.value;
 			if (!currentParent) return;
 			await createFolder({
 				id: (route.params.folderId as string) ?? '-1',
@@ -1167,7 +1138,7 @@ const createFolderInCurrent = async () => {
 		return;
 	}
 	if (!route.params.projectId) return;
-	const currentParent = currentFolder.value?.name || projectName.value;
+	const currentParent = currentFolder.value?.name ?? projectName.value;
 	if (!currentParent) return;
 	await createFolder({
 		id: (route.params.folderId as string) ?? '-1',
@@ -1689,6 +1660,14 @@ const onNameSubmit = async ({
 					>
 					</N8nOption>
 				</N8nSelect>
+			</div>
+			<div class="mb-s">
+				<N8nCheckbox
+					ref="inputRef"
+					:label="i18n.baseText('workflows.filters.archived')"
+					:model-value="filters.showArchived"
+					@update:model-value="setKeyValue('showArchived', $event)"
+				/>
 			</div>
 		</template>
 		<template #postamble>
