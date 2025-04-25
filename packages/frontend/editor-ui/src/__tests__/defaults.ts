@@ -150,4 +150,7 @@ export const defaultSettings: FrontendSettings = {
 		summary: true,
 		dashboard: false,
 	},
+	logsView: {
+		enabled: false,
+	},
 };
