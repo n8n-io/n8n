@@ -149,6 +149,14 @@ const extractQueries = (queries: JSONOutput['queries'] = {}): HttpNodeQueries =>
 };
 
 const jsonBodyToNodeParameters = (body: JSONOutput['data'] = {}): Parameter[] | [] => {
+	if (typeof body === 'string') {
+		const parameters = body.split('&');
+
+		return parameters.map((parameter) => {
+			const [key, value] = parameter.split('=');
+			return toKeyValueArray([key, value]);
+		});
+	}
 	return Object.entries(body).map(toKeyValueArray);
 };
 
@@ -220,7 +228,6 @@ export const flattenObject = <T extends Record<string, unknown>>(obj: T, prefix 
 
 export const toHttpNodeParameters = (curlCommand: string): HttpNodeParameters => {
 	const curlJson = curlToJson(curlCommand);
-
 	const headers = curlJson.headers ?? {};
 
 	lowerCaseContentTypeKey(headers);

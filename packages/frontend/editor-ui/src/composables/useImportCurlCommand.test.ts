@@ -292,5 +292,45 @@ describe('useImportCurlCommand', () => {
 			expect(parameters.sendBody).toBe(false);
 			expect(parameters.options.allowUnauthorizedCerts).toBe(true);
 		});
+
+		test('Should parse json body data', () => {
+			const curl =
+				'curl -X POST https://reqbin.com/echo \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "grant_type=authorization_code" \
+  -d "code=abc" \
+  -d "redirect_uri=https://test.app.n8n.cloud/webhook-test/12345" \
+  -d "client_id=app-4343434" \
+  -d "client_secret=secret"';
+			const parameters = toHttpNodeParameters(curl);
+
+			expect(parameters.url).toBe('https://reqbin.com/echo');
+			expect(parameters.method).toBe('POST');
+			expect(parameters.sendBody).toBe(true);
+			expect(parameters.bodyParameters).toEqual({
+				parameters: [
+					{
+						name: 'grant_type',
+						value: 'authorization_code',
+					},
+					{
+						name: 'code',
+						value: 'abc',
+					},
+					{
+						name: 'redirect_uri',
+						value: 'https://test.app.n8n.cloud/webhook-test/12345',
+					},
+					{
+						name: 'client_id',
+						value: 'app-4343434',
+					},
+					{
+						name: 'client_secret',
+						value: 'secret',
+					},
+				],
+			});
+		});
 	});
 });
