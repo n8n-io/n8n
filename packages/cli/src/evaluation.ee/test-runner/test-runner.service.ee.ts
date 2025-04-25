@@ -108,29 +108,6 @@ export class TestRunnerService {
 			workflowData: workflow,
 			userId: metadata.userId,
 			partialExecutionVersion: 2,
-			executionData: {
-				startData: {
-					// startNodes: startNodesData.startNodes,
-				},
-				resultData: {
-					// pinData,
-					runData: {},
-				},
-				executionData: {
-					contextData: {},
-					metadata: {},
-					nodeExecutionStack: [],
-					waitingExecution: {},
-					waitingExecutionSource: {},
-				},
-				manualData: {
-					userId: metadata.userId,
-					partialExecutionVersion: 2,
-					triggerToStartFrom: {
-						name: triggerNode.name,
-					},
-				},
-			},
 			triggerToStartFrom: {
 				name: triggerNode.name,
 			},
