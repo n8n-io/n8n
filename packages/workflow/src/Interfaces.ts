@@ -2658,7 +2658,7 @@ export interface ResourceMapperFields {
 export interface WorkflowInputsData {
 	fields: ResourceMapperField[];
 	dataMode: string;
-	subworkflowInfo?: { id?: string };
+	subworkflowInfo?: { workflowId?: string; triggerId?: string };
 }
 
 export interface ResourceMapperField {
