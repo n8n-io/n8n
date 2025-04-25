@@ -87,7 +87,7 @@
       "semver": "^7.5.4",
       "tslib": "^2.6.2",
       "tsconfig-paths": "^4.2.0",
-      "typescript": "^5.8.2",
+      "typescript": "catalog:",
       "vue-tsc": "^2.2.8",
       "ws": ">=8.17.1"
     },
@@ -98,7 +98,6 @@
       "@types/ws@8.5.4": "patches/@types__ws@8.5.4.patch",
       "@types/uuencode@0.0.3": "patches/@types__uuencode@0.0.3.patch",
       "vue-tsc@2.2.8": "patches/vue-tsc@2.2.8.patch",
-      "eslint-plugin-n8n-local-rules": "patches/eslint-plugin-n8n-local-rules.patch",
       "element-plus@2.4.3": "patches/element-plus@2.4.3.patch"
     }
   }

@@ -48,7 +48,7 @@
     "@vitejs/plugin-vue": "catalog:frontend",
     "@vue/tsconfig": "catalog:frontend",
     "rimraf": "catalog:",
-    "vite": "catalog:frontend",
+    "vite": "catalog:",
     "vue": "catalog:frontend",
     "vue-router": "catalog:frontend",
     "vue-tsc": "catalog:frontend"

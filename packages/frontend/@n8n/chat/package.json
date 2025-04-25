@@ -1,6 +1,7 @@
 {
   "name": "@n8n/chat",
   "version": "0.40.0",
+  "type": "module",
   "scripts": {
     "dev": "pnpm run storybook",
     "build": "pnpm build:vite && pnpm build:bundle",
@@ -50,10 +51,10 @@
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@vitejs/plugin-vue": "catalog:frontend",
-    "@vitest/coverage-v8": "catalog:frontend",
+    "@vitest/coverage-v8": "catalog:",
     "unplugin-icons": "^0.19.0",
-    "vite": "catalog:frontend",
-    "vitest": "catalog:frontend",
+    "vite": "catalog:",
+    "vitest": "catalog:",
     "vite-plugin-dts": "^4.5.3",
     "vue-tsc": "catalog:frontend"
   },

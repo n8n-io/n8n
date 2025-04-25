@@ -15,6 +15,7 @@ catalog:
   '@types/uuid': ^10.0.0
   '@types/xml2js': ^0.4.14
   axios: 1.8.3
+  '@vitest/coverage-v8': ^3.0.7
   basic-auth: 2.0.1
   callsites: 3.1.0
   chokidar: 4.0.1
@@ -41,6 +42,10 @@ catalog:
   '@langchain/anthropic': 0.3.11
   '@langchain/community': 0.3.24
   '@n8n_io/ai-assistant-sdk': 1.14.0
+  typescript: ^5.8.2
+  vite: ^6.2.0
+  vitest: ^3.0.7
+  vitest-mock-extended: ^3.0.1
 
 catalogs:
   frontend:
@@ -49,13 +54,8 @@ catalogs:
     '@testing-library/vue': ^8.1.0
     '@vue/tsconfig': ^0.7.0
     '@vueuse/core': ^10.11.0
-    '@vitest/coverage-v8': ^3.0.7
     '@vitejs/plugin-vue': ^5.2.1
     '@sentry/vue': ^8.33.1
-    typescript: ^5.8.2
-    vite: ^6.2.0
-    vitest: ^3.0.7
-    vitest-mock-extended: ^3.0.1
     vue: ^3.5.13
     vue-router: ^4.5.0
     vue-tsc: ^2.2.8

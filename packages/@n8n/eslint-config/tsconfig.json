@@ -1,0 +1,13 @@
+{
+	"extends": "@n8n/typescript-config/tsconfig.common.json",
+	"compilerOptions": {
+		"baseUrl": ".",
+		"rootDir": ".",
+		"outDir": "dist",
+		"types": ["vitest/globals"],
+		"esModuleInterop": true,
+		"module": "ESNext",
+		"moduleResolution": "bundler"
+	},
+	"include": ["src/**/*.ts"]
+}

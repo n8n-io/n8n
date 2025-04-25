@@ -1,11 +1,6 @@
-import { defineConfig as defineVitestConfig } from 'vitest/config';
+import { defineConfig } from 'vitest/config';
 
-/**
- * Define a Vitest configuration
- *
- * @returns {import('vitest/node').UserConfig}
- */
-export const vitestConfig = defineVitestConfig({
+export const vitestConfig = defineConfig({
 	test: {
 		silent: true,
 		globals: true,
