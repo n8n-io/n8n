@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { i18n } from '@/plugins/i18n';
+
 export interface Props {
 	packageName: string;
 }
