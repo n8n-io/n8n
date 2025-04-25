@@ -1,11 +1,15 @@
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { Logger } from 'n8n-core';
-import type { CommunityNodeAttributes, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	CommunityNodeAttributes,
+	CommunityNodeData,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 import { ensureError } from 'n8n-workflow';
 
 import { CommunityPackagesService } from './community-packages.service';
-import { strapiPaginatedRequest, type StrapiData } from '../utils/strapi-utils';
+import { strapiPaginatedRequest } from '../utils/strapi-utils';
 
 const UPDATE_INTERVAL = 8 * 60 * 60 * 1000;
 
@@ -30,7 +34,7 @@ export class CommunityNodeTypesService {
 
 	private async fetchNodeTypes() {
 		try {
-			let data: StrapiData[] = [];
+			let data: CommunityNodeData[] = [];
 			if (
 				this.globalConfig.nodes.communityPackages.enabled &&
 				this.globalConfig.nodes.communityPackages.verifiedEnabled
@@ -44,7 +48,7 @@ export class CommunityNodeTypesService {
 		}
 	}
 
-	private updateData(data: StrapiData[]) {
+	private updateData(data: CommunityNodeData[]) {
 		if (!data?.length) return;
 
 		this.resetData();

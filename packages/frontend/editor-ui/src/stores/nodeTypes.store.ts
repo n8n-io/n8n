@@ -368,10 +368,15 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		if (!settingsStore.isCommunityNodesFeatureEnabled) {
 			return null;
 		}
-		return await nodeTypesApi.fetchCommunityNodeAttributes(
-			rootStore.restApiContext,
-			removePreviewToken(nodeName),
-		);
+
+		try {
+			return await nodeTypesApi.fetchCommunityNodeAttributes(
+				rootStore.restApiContext,
+				removePreviewToken(nodeName),
+			);
+		} catch (error) {
+			return null;
+		}
 	};
 
 	// #endregion

@@ -30,7 +30,13 @@ const getAllNodeCreateElements = vi.fn(() => [
 const popViewStack = vi.fn();
 const pushViewStack = vi.fn();
 
+const showError = vi.fn();
+
 const removeNodeFromMergedNodes = vi.fn();
+
+const usersStore = {
+	isInstanceOwner: true,
+};
 
 vi.mock('@/stores/credentials.store', () => ({
 	useCredentialsStore: vi.fn(() => ({
@@ -59,15 +65,13 @@ vi.mock('@/stores/communityNodes.store', () => ({
 }));
 
 vi.mock('@/stores/users.store', () => ({
-	useUsersStore: vi.fn(() => ({
-		isInstanceOwner: true,
-	})),
+	useUsersStore: vi.fn(() => usersStore),
 }));
 
 vi.mock('@/composables/useToast', () => ({
 	useToast: vi.fn(() => ({
 		showMessage: vi.fn(),
-		showError: vi.fn(),
+		showError,
 	})),
 }));
 
@@ -181,5 +185,29 @@ describe('CommunityNodeDetails', () => {
 			},
 		);
 		expect(removeNodeFromMergedNodes).toHaveBeenCalled();
+	});
+
+	it('should handle errors during node installation', async () => {
+		installPackage.mockImplementation(() => {
+			throw new Error('Installation failed');
+		});
+
+		const wrapper = renderComponent({ pinia });
+
+		const installButton = wrapper.getByTestId('install-community-node-button');
+
+		await fireEvent.click(installButton);
+
+		expect(showError).toHaveBeenCalledWith(expect.any(Error), 'Error installing new package');
+		expect(pushViewStack).not.toHaveBeenCalled();
+		expect(popViewStack).not.toHaveBeenCalled();
+	});
+
+	it('should not render install button if not instance owner', async () => {
+		usersStore.isInstanceOwner = false;
+
+		const wrapper = renderComponent({ pinia });
+
+		expect(wrapper.queryByTestId('install-community-node-button')).not.toBeInTheDocument();
 	});
 });

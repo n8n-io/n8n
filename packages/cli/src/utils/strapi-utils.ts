@@ -1,10 +1,10 @@
 import { Container } from '@n8n/di';
 import axios from 'axios';
 import { ErrorReporter, Logger } from 'n8n-core';
-import type { CommunityNodeAttributes, INodeTypeDescription } from 'n8n-workflow';
+import type { CommunityNodeData } from 'n8n-workflow';
 
 interface StrapiResponseData {
-	data: StrapiData[];
+	data: CommunityNodeData[];
 	meta: Meta;
 }
 
@@ -19,16 +19,9 @@ interface Pagination {
 	total: number;
 }
 
-export interface StrapiData {
-	id: number;
-	attributes: CommunityNodeAttributes & {
-		nodeDescription: INodeTypeDescription;
-	};
-}
-
-export async function strapiPaginatedRequest(url: string): Promise<StrapiData[]> {
-	let returnData: StrapiData[] = [];
-	let responseData: StrapiData[] | undefined = [];
+export async function strapiPaginatedRequest(url: string): Promise<CommunityNodeData[]> {
+	let returnData: CommunityNodeData[] = [];
+	let responseData: CommunityNodeData[] | undefined = [];
 
 	const params = {
 		pagination: {

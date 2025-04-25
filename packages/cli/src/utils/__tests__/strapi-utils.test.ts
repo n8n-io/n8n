@@ -1,6 +1,6 @@
+import type { CommunityNodeData } from 'n8n-workflow';
 import nock from 'nock';
 
-import type { StrapiData } from '../strapi-utils';
 import { strapiPaginatedRequest } from '../strapi-utils';
 
 describe('strapiPaginatedRequest', () => {
@@ -83,7 +83,7 @@ describe('strapiPaginatedRequest', () => {
 	});
 
 	it('should return single page data', async () => {
-		const singlePage: StrapiData[] = [
+		const singlePage: CommunityNodeData[] = [
 			{
 				id: 1,
 				attributes: {

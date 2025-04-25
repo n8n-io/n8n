@@ -2902,3 +2902,10 @@ export interface CommunityNodeAttributes {
 	updatedAt: string;
 	npmVersion: string;
 }
+
+export interface CommunityNodeData {
+	id: number;
+	attributes: CommunityNodeAttributes & {
+		nodeDescription: INodeTypeDescription;
+	};
+}

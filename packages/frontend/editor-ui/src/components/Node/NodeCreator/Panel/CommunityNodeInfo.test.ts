@@ -3,7 +3,7 @@ import { type TestingPinia, createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import CommunityNodeInfo from './CommunityNodeInfo.vue';
 import type { PublicInstalledPackage } from 'n8n-workflow';
-import { sleep } from 'n8n-workflow';
+import { waitFor } from '@testing-library/vue';
 
 const getCommunityNodeAttributes = vi.fn();
 const communityNodesStore: { getInstalledPackages: PublicInstalledPackage[] } = {
@@ -96,7 +96,7 @@ describe('CommunityNodeInfo', () => {
 		];
 		const wrapper = renderComponent({ pinia });
 
-		await sleep(500);
+		await waitFor(() => expect(wrapper.queryByTestId('number-of-downloads')).toBeInTheDocument());
 
 		expect(wrapper.container.querySelector('.description')?.textContent).toEqual(
 			'Other node description',
@@ -148,7 +148,7 @@ describe('CommunityNodeInfo', () => {
 
 		const wrapper = renderComponent({ pinia });
 
-		await sleep(500);
+		await waitFor(() => expect(wrapper.queryByTestId('number-of-downloads')).toBeInTheDocument());
 
 		expect(wrapper.container.querySelector('.description')?.textContent).toEqual(
 			'Other node description',
