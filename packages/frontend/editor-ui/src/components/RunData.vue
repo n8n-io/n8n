@@ -664,6 +664,8 @@ watch(binaryData, (newData, prevData) => {
 	}
 });
 
+watch(currentOutputIndex, setBranchIndex);
+
 watch(search, (newSearch) => {
 	emit('search', newSearch);
 });
