@@ -1,6 +1,12 @@
 import { Service } from '@n8n/di';
 import { Logger } from 'n8n-core';
-import type { INode, IRun, IWorkflowBase } from 'n8n-workflow';
+import type {
+	ExecutionStatus,
+	INode,
+	IRun,
+	IWorkflowBase,
+	WorkflowExecuteMode,
+} from 'n8n-workflow';
 
 import { StatisticsNames } from '@/databases/entities/workflow-statistics';
 import { WorkflowStatisticsRepository } from '@/databases/repositories/workflow-statistics.repository';
@@ -9,6 +15,35 @@ import { UserService } from '@/services/user.service';
 import { TypedEmitter } from '@/typed-emitter';
 
 import { OwnershipService } from './ownership.service';
+
+const isStatusBillable: Record<ExecutionStatus, boolean> = {
+	success: true,
+	crashed: true,
+	error: true,
+
+	canceled: false,
+	new: false,
+	running: false,
+	unknown: false,
+	waiting: false,
+};
+
+const isModeBillable: Record<WorkflowExecuteMode, boolean> = {
+	cli: true,
+	error: true,
+	retry: true,
+	trigger: true,
+	webhook: true,
+	evaluation: true,
+
+	// sub workflows
+	integrated: false,
+
+	// error workflows
+	internal: false,
+
+	manual: false,
+};
 
 type WorkflowStatisticsEvents = {
 	nodeFetchedData: { workflowId: string; node: INode };
@@ -55,6 +90,7 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 		const finished = runData.finished ? runData.finished : false;
 		const manual = runData.mode === 'manual';
 		let name: StatisticsNames;
+		const isBillable = isModeBillable[runData.mode] && isStatusBillable[runData.status];
 
 		if (finished) {
 			if (manual) name = StatisticsNames.manualSuccess;
@@ -69,7 +105,11 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 		if (!workflowId) return;
 
 		try {
-			const upsertResult = await this.repository.upsertWorkflowStatistics(name, workflowId);
+			const upsertResult = await this.repository.upsertWorkflowStatistics(
+				name,
+				workflowId,
+				isBillable,
+			);
 
 			if (name === StatisticsNames.productionSuccess && upsertResult === 'insert') {
 				const project = await this.ownershipService.getWorkflowProjectCached(workflowId);

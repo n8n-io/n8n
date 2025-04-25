@@ -27,6 +27,7 @@ export class LicenseMetricsRepository extends Repository<LicenseMetrics> {
 			total_workflow_count: string | number;
 			total_credentials_count: string | number;
 			production_executions_count: string | number;
+			billable_production_executions_count: string | number;
 			manual_executions_count: string | number;
 		};
 
@@ -43,6 +44,7 @@ export class LicenseMetricsRepository extends Repository<LicenseMetrics> {
 				total_workflow_count: totalWorkflows,
 				total_credentials_count: totalCredentials,
 				production_executions_count: productionExecutions,
+				billable_production_executions_count: billableProductionExecutions,
 				manual_executions_count: manualExecutions,
 			},
 		] = (await this.query(`
@@ -53,6 +55,7 @@ export class LicenseMetricsRepository extends Repository<LicenseMetrics> {
 				(SELECT COUNT(*) FROM ${workflowTable}) AS total_workflow_count,
 				(SELECT COUNT(*) FROM ${credentialTable}) AS total_credentials_count,
 				(SELECT SUM(count) FROM ${workflowStatsTable} WHERE name IN ('production_success', 'production_error')) AS production_executions_count,
+				(SELECT SUM(billableCount) FROM ${workflowStatsTable} WHERE name IN ('production_success', 'production_error')) AS billable_production_executions_count,
 				(SELECT SUM(count) FROM ${workflowStatsTable} WHERE name IN ('manual_success', 'manual_error')) AS manual_executions_count;
 		`)) as Row[];
 
@@ -66,6 +69,7 @@ export class LicenseMetricsRepository extends Repository<LicenseMetrics> {
 			totalWorkflows: toNumber(totalWorkflows),
 			totalCredentials: toNumber(totalCredentials),
 			productionExecutions: toNumber(productionExecutions),
+			billableProductionExecutions: toNumber(billableProductionExecutions),
 			manualExecutions: toNumber(manualExecutions),
 		};
 	}

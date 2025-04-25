@@ -46,6 +46,7 @@ describe('LicenseMetricsService', () => {
 				totalUsers: 400,
 				totalCredentials: 500,
 				productionExecutions: 600,
+				billableProductionExecutions: 550,
 				manualExecutions: 700,
 			};
 
@@ -60,6 +61,10 @@ describe('LicenseMetricsService', () => {
 				{ name: 'totalUsers', value: mockRenewalMetrics.totalUsers },
 				{ name: 'totalCredentials', value: mockRenewalMetrics.totalCredentials },
 				{ name: 'productionExecutions', value: mockRenewalMetrics.productionExecutions },
+				{
+					name: 'billableProductionExecutions',
+					value: mockRenewalMetrics.billableProductionExecutions,
+				},
 				{ name: 'manualExecutions', value: mockRenewalMetrics.manualExecutions },
 				{ name: 'activeWorkflowTriggers', value: mockActiveTriggerCount },
 			]);

@@ -35,6 +35,7 @@ export class WorkflowStatisticsRepository extends Repository<WorkflowStatistics>
 				workflowId,
 				name: eventName,
 				count: 1,
+				billableCount: 1,
 				latestEvent: new Date(),
 			});
 			return 'insert';
@@ -51,16 +52,20 @@ export class WorkflowStatisticsRepository extends Repository<WorkflowStatistics>
 	async upsertWorkflowStatistics(
 		eventName: StatisticsNames,
 		workflowId: string,
+		isBillable: boolean,
 	): Promise<StatisticsUpsertResult> {
 		const dbType = this.globalConfig.database.type;
 		const { tableName } = this.metadata;
 		try {
 			if (dbType === 'sqlite') {
 				await this.query(
-					`INSERT INTO "${tableName}" ("count", "name", "workflowId", "latestEvent")
-					VALUES (1, "${eventName}", "${workflowId}", CURRENT_TIMESTAMP)
+					`INSERT INTO "${tableName}" ("count", "billableCount", "name", "workflowId", "latestEvent")
+					VALUES (1, ${isBillable ? '1' : '0'}, "${eventName}", "${workflowId}", CURRENT_TIMESTAMP)
 					ON CONFLICT (workflowId, name)
-					DO UPDATE SET count = count + 1, latestEvent = CURRENT_TIMESTAMP`,
+					DO UPDATE SET
+						count = count + 1,
+						billableCount = ${isBillable ? 'billableCount + 1' : 'billableCount'},
+						latestEvent = CURRENT_TIMESTAMP`,
 				);
 				// SQLite does not offer a reliable way to know whether or not an insert or update happened.
 				// We'll use a naive approach in this case. Query again after and it might cause us to miss the
@@ -75,11 +80,17 @@ export class WorkflowStatisticsRepository extends Repository<WorkflowStatistics>
 
 				return counter?.count === 1 ? 'insert' : 'failed';
 			} else if (dbType === 'postgresdb') {
+				const upsertBillableCount = isBillable
+					? `"${tableName}"."billableCount" + 1`
+					: `"${tableName}"."billableCount"`;
 				const queryResult = (await this.query(
-					`INSERT INTO "${tableName}" ("count", "name", "workflowId", "latestEvent")
-					VALUES (1, '${eventName}', '${workflowId}', CURRENT_TIMESTAMP)
+					`INSERT INTO "${tableName}" ("count", "billableCount", "name", "workflowId", "latestEvent")
+					VALUES (1, ${isBillable ? '1' : '0'}, '${eventName}', '${workflowId}', CURRENT_TIMESTAMP)
 					ON CONFLICT ("name", "workflowId")
-					DO UPDATE SET "count" = "${tableName}"."count" + 1, "latestEvent" = CURRENT_TIMESTAMP
+					DO UPDATE SET
+						"count" = "${tableName}"."count" + 1,
+						billableCount = ${upsertBillableCount},
+						"latestEvent" = CURRENT_TIMESTAMP
 					RETURNING *;`,
 				)) as Array<{
 					count: number;
@@ -88,9 +99,12 @@ export class WorkflowStatisticsRepository extends Repository<WorkflowStatistics>
 			} else {
 				const queryResult = (await this.query(
 					`INSERT INTO \`${tableName}\` (count, name, workflowId, latestEvent)
-					VALUES (1, "${eventName}", "${workflowId}", NOW())
+					VALUES (1, ${isBillable ? '1' : '0'}, "${eventName}", "${workflowId}", NOW())
 					ON DUPLICATE KEY
-					UPDATE count = count + 1, latestEvent = NOW();`,
+					UPDATE
+						count = count + 1,
+						billableCount = ${isBillable ? 'billableCount + 1' : 'billableCount'},
+						latestEvent = NOW();`,
 				)) as {
 					affectedRows: number;
 				};
