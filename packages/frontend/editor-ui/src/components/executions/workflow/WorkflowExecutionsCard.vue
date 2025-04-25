@@ -110,7 +110,7 @@ function onRetryMenuItemSelect(action: string): void {
 						size="small"
 					>
 						{{ locale.baseText('executionDetails.runningTimeRunning') }}
-						<ExecutionsTime :start-time="execution.startedAt" />
+						<ExecutionsTime :start-time="execution.startedAt ?? execution.createdAt" />
 					</N8nText>
 					<N8nText
 						v-if="executionUIDetails.name === 'new' && execution.createdAt"
