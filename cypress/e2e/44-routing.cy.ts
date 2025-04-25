@@ -48,7 +48,7 @@ describe('Workflows', () => {
 
 		// Here we go back via browser rather than the home button
 		// As this already updates the route
-		cy.go(-2);
+		cy.go(-1);
 
 		cy.url().should('include', getWorkflowsPageUrl());
 
@@ -59,27 +59,7 @@ describe('Workflows', () => {
 		cy.url().should('include', '/workflow/');
 	});
 
-	it('should correct route when opening and closing NDV via browser button', () => {
-		getCreateWorkflowButton().click();
-		saveWorkflowOnButtonClick();
-		cy.url().then((startUrl) => {
-			cy.createFixtureWorkflow('Test_workflow_1.json', 'Empty State Card Workflow');
-			cy.url().should('equal', startUrl);
-
-			addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME, true, true);
-
-			// Getting the generated nodeId is awkward, so we just ensure the URL changed
-			cy.url().should('not.equal', startUrl);
-
-			// Here we go back via browser rather than the home button
-			// As this already updates the route
-			cy.go(-1);
-
-			cy.url().should('equal', startUrl);
-		});
-	});
-
-	it('should correct route when opening and closing NDV via browser button', () => {
+	it('should correct route when opening and closing NDV', () => {
 		getCreateWorkflowButton().click();
 		saveWorkflowOnButtonClick();
 		cy.url().then((startUrl) => {

@@ -1657,7 +1657,7 @@ watch(
 		const nodeId = val?.id ? workflowsStore.getPartialIdForNode(val?.id) : '';
 
 		if (nodeId !== route.params.nodeId) {
-			await router.push({
+			await router.replace({
 				name: route.name,
 				params: { name: workflowId.value, nodeId },
 			});
