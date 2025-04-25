@@ -646,7 +646,7 @@ export class SourceControlImportService {
 
 	async deleteWorkflowsNotInWorkfolder(user: User, candidates: SourceControlledFile[]) {
 		for (const candidate of candidates) {
-			await this.workflowService.delete(user, candidate.id);
+			await this.workflowService.delete(user, candidate.id, true);
 		}
 	}
 
