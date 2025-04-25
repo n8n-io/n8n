@@ -9,20 +9,53 @@ import {
 	createTestNode,
 	createTestTaskData,
 	createTestWorkflow,
+	createTestWorkflowExecutionResponse,
+	createTestWorkflowObject,
 } from '@/__tests__/mocks';
 import { mockedStore } from '@/__tests__/utils';
-import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { type FrontendSettings } from '@n8n/api-types';
 
 describe('LogDetailsPanel', () => {
 	let pinia: TestingPinia;
-	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
 	let settingsStore: ReturnType<typeof mockedStore<typeof useSettingsStore>>;
 
-	function render(props: InstanceType<typeof LogDetailsPanel>['$props']) {
+	const aiNode = createTestNode({ name: 'AI Agent' });
+	const workflowData = createTestWorkflow({
+		nodes: [createTestNode({ name: 'Chat Trigger' }), aiNode],
+		connections: { 'Chat Trigger': { main: [[{ node: 'AI Agent', type: 'main', index: 0 }]] } },
+	});
+	const chatNodeRunData = createTestTaskData({
+		executionStatus: 'success',
+		executionTime: 0,
+		data: { main: [[{ json: { response: 'hey' } }]] },
+	});
+	const aiNodeRunData = createTestTaskData({
+		executionStatus: 'success',
+		executionTime: 10,
+		data: { main: [[{ json: { response: 'Hello!' } }]] },
+	});
+
+	function render(props: Partial<InstanceType<typeof LogDetailsPanel>['$props']>) {
+		const mergedProps: InstanceType<typeof LogDetailsPanel>['$props'] = {
+			...props,
+			logEntry: props.logEntry ?? createTestLogEntry(),
+			workflow: props.workflow ?? createTestWorkflowObject(workflowData),
+			execution:
+				props.execution ??
+				createTestWorkflowExecutionResponse({
+					workflowData,
+					data: {
+						resultData: {
+							runData: { 'Chat Trigger': [chatNodeRunData], 'AI Agent': [aiNodeRunData] },
+						},
+					},
+				}),
+			isOpen: props.isOpen ?? true,
+		};
+
 		const rendered = renderComponent(LogDetailsPanel, {
-			props,
+			props: mergedProps,
 			global: {
 				plugins: [
 					createRouter({
@@ -55,44 +88,6 @@ describe('LogDetailsPanel', () => {
 		settingsStore = mockedStore(useSettingsStore);
 		settingsStore.isEnterpriseFeatureEnabled = {} as FrontendSettings['enterprise'];
 
-		const workflowData = createTestWorkflow({
-			nodes: [createTestNode({ name: 'Chat Trigger' }), createTestNode({ name: 'AI Agent' })],
-			connections: { 'Chat Trigger': { main: [[{ node: 'AI Agent', type: 'main', index: 0 }]] } },
-		});
-
-		workflowsStore = mockedStore(useWorkflowsStore);
-		workflowsStore.setNodes(workflowData.nodes);
-		workflowsStore.setConnections(workflowData.connections);
-		workflowsStore.setWorkflowExecutionData({
-			id: 'test-exec-id',
-			finished: true,
-			mode: 'manual',
-			status: 'error',
-			workflowData,
-			data: {
-				resultData: {
-					runData: {
-						'Chat Trigger': [
-							createTestTaskData({
-								executionStatus: 'success',
-								executionTime: 0,
-								data: { main: [[{ json: { chatInput: 'hey' } }]] },
-							}),
-						],
-						'AI Agent': [
-							createTestTaskData({
-								executionStatus: 'success',
-								executionTime: 10,
-								data: { main: [[{ json: { response: 'Hello!' } }]] },
-							}),
-						],
-					},
-				},
-			},
-			createdAt: '2025-04-16T00:00:00.000Z',
-			startedAt: '2025-04-16T00:00:01.000Z',
-		});
-
 		localStorage.clear();
 	});
 
@@ -101,7 +96,11 @@ describe('LogDetailsPanel', () => {
 
 		const rendered = render({
 			isOpen: true,
-			logEntry: createTestLogEntry({ node: 'AI Agent', runIndex: 0 }),
+			logEntry: createTestLogEntry({
+				node: aiNode,
+				runIndex: 0,
+				runData: aiNodeRunData,
+			}),
 		});
 
 		const header = within(rendered.getByTestId('log-details-header'));
@@ -117,7 +116,7 @@ describe('LogDetailsPanel', () => {
 	it('should toggle input and output panel when the button is clicked', async () => {
 		const rendered = render({
 			isOpen: true,
-			logEntry: createTestLogEntry({ node: 'AI Agent', runIndex: 0 }),
+			logEntry: createTestLogEntry({ node: aiNode, runIndex: 0 }),
 		});
 
 		const header = within(rendered.getByTestId('log-details-header'));
@@ -141,7 +140,7 @@ describe('LogDetailsPanel', () => {
 
 		const rendered = render({
 			isOpen: true,
-			logEntry: createTestLogEntry({ node: 'AI Agent', runIndex: 0 }),
+			logEntry: createTestLogEntry({ node: aiNode, runIndex: 0 }),
 		});
 
 		await fireEvent.mouseDown(rendered.getByTestId('resize-handle'));
@@ -160,7 +159,7 @@ describe('LogDetailsPanel', () => {
 
 		const rendered = render({
 			isOpen: true,
-			logEntry: createTestLogEntry({ node: 'AI Agent', runIndex: 0 }),
+			logEntry: createTestLogEntry({ node: aiNode, runIndex: 0 }),
 		});
 
 		await fireEvent.mouseDown(rendered.getByTestId('resize-handle'));

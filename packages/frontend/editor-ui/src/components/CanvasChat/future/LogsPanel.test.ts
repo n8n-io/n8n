@@ -5,10 +5,11 @@ import LogsPanel from '@/components/CanvasChat/future/LogsPanel.vue';
 import { useSettingsStore } from '@/stores/settings.store';
 import { createTestingPinia, type TestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
-import { createRouter, createWebHistory } from 'vue-router';
+import { createRouter, createWebHistory, useRouter } from 'vue-router';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { h } from 'vue';
+import { h, nextTick } from 'vue';
 import {
+	aiAgentNode,
 	aiChatExecutionResponse,
 	aiChatWorkflow,
 	aiManualWorkflow,
@@ -16,6 +17,8 @@ import {
 } from '../__test__/data';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { LOGS_PANEL_STATE } from '../types/logs';
+import { IN_PROGRESS_EXECUTION_ID } from '@/constants';
+import { useCanvasOperations } from '@/composables/useCanvasOperations';
 
 describe('LogsPanel', () => {
 	const VIEWPORT_HEIGHT = 800;
@@ -196,5 +199,91 @@ describe('LogsPanel', () => {
 			expect(workflowsStore.logsPanelState).toBe(LOGS_PANEL_STATE.CLOSED);
 			expect(rendered.queryByTestId('logs-overview-body')).not.toBeInTheDocument();
 		});
+	});
+
+	it('should reflect changes to execution data in workflow store if execution is in progress', async () => {
+		workflowsStore.toggleLogsPanelOpen(true);
+		workflowsStore.setWorkflow(aiChatWorkflow);
+		workflowsStore.setWorkflowExecutionData({
+			...aiChatExecutionResponse,
+			id: IN_PROGRESS_EXECUTION_ID,
+			status: 'running',
+			finished: false,
+			startedAt: new Date('2025-04-20T12:34:50.000Z'),
+			stoppedAt: undefined,
+			data: { resultData: { runData: {} } },
+		});
+
+		const rendered = render();
+
+		await fireEvent.click(rendered.getByText('Overview'));
+
+		expect(rendered.getByText('Running')).toBeInTheDocument();
+		expect(rendered.queryByText('AI Agent')).not.toBeInTheDocument();
+
+		workflowsStore.setNodeExecuting({
+			nodeName: 'AI Agent',
+			executionId: '567',
+			data: { executionIndex: 0, startTime: Date.parse('2025-04-20T12:34:51.000Z'), source: [] },
+		});
+
+		const treeItem = within(await rendered.findByRole('treeitem'));
+
+		expect(treeItem.getByText('AI Agent')).toBeInTheDocument();
+		expect(treeItem.getByText('Running')).toBeInTheDocument();
+
+		workflowsStore.updateNodeExecutionData({
+			nodeName: 'AI Agent',
+			executionId: '567',
+			data: {
+				executionIndex: 0,
+				startTime: Date.parse('2025-04-20T12:34:51.000Z'),
+				source: [],
+				executionTime: 33,
+				executionStatus: 'success',
+			},
+		});
+
+		expect(await treeItem.findByText('AI Agent')).toBeInTheDocument();
+		expect(treeItem.getByText('Success in 33ms')).toBeInTheDocument();
+
+		workflowsStore.setWorkflowExecutionData({
+			...aiChatExecutionResponse,
+			id: '1234',
+			status: 'success',
+			finished: true,
+			startedAt: new Date('2025-04-20T12:34:50.000Z'),
+			stoppedAt: new Date('2025-04-20T12:34:56.000Z'),
+		});
+
+		expect(await rendered.findByText('Success in 6s')).toBeInTheDocument();
+		expect(rendered.queryByText('AI Agent')).toBeInTheDocument();
+	});
+
+	it('should still show logs for a removed node', async () => {
+		const router = useRouter();
+		const operations = useCanvasOperations({ router });
+
+		workflowsStore.toggleLogsPanelOpen(true);
+		workflowsStore.setWorkflow(aiChatWorkflow);
+		workflowsStore.setWorkflowExecutionData({
+			...aiChatExecutionResponse,
+			id: '2345',
+			status: 'success',
+			finished: true,
+			startedAt: new Date('2025-04-20T12:34:50.000Z'),
+			stoppedAt: new Date('2025-04-20T12:34:56.000Z'),
+		});
+
+		const rendered = render();
+
+		expect(rendered.getByText('AI Agent')).toBeInTheDocument();
+
+		operations.deleteNode(aiAgentNode.id);
+
+		await nextTick();
+
+		expect(workflowsStore.nodesByName['AI Agent']).toBeUndefined();
+		expect(rendered.queryByText('AI Agent')).toBeInTheDocument();
 	});
 });
