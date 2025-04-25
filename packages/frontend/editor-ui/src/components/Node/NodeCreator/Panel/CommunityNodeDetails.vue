@@ -19,61 +19,65 @@ const { communityNodeDetails } = activeViewStack;
 
 const loading = ref(false);
 
-const npmVersion = ref<string | undefined>(undefined);
-
 const communityNodesStore = useCommunityNodesStore();
 const nodeCreatorStore = useNodeCreatorStore();
 const toast = useToast();
 
 const isOwner = computed(() => useUsersStore().isInstanceOwner);
 
+const updateViewStack = (key: string) => {
+	const installedNodeKey = removePreviewToken(key);
+	const installedNode = getAllNodeCreateElements().find((node) => node.key === installedNodeKey);
+
+	if (installedNode) {
+		const nodeActions = nodeCreatorStore.actions?.[installedNode.key] || [];
+
+		popViewStack();
+
+		const viewStack = prepareCommunityNodeDetailsViewStack(
+			installedNode,
+			getNodeIconSource(installedNode.properties),
+			activeViewStack.rootView,
+			nodeActions,
+		);
+
+		pushViewStack(viewStack, {
+			transitionDirection: 'none',
+		});
+	} else {
+		const viewStack = { ...activeViewStack };
+		viewStack.communityNodeDetails!.installed = true;
+
+		pushViewStack(activeViewStack, { resetStacks: true });
+	}
+};
+
+const updateStoresAndViewStack = async (key: string) => {
+	await useNodeTypesStore().getNodeTypes();
+	await useCredentialsStore().fetchCredentialTypes(true);
+	updateViewStack(key);
+	nodeCreatorStore.removeNodeFromMergedNodes(key);
+};
+
+const getNpmVersion = async (key: string) => {
+	const communityNodeAttributes = await useNodeTypesStore().getCommunityNodeAttributes(key);
+
+	if (communityNodeAttributes) {
+		return communityNodeAttributes.npmVersion;
+	}
+
+	return undefined;
+};
+
 const onInstall = async () => {
 	if (isOwner.value && activeViewStack.communityNodeDetails && !communityNodeDetails?.installed) {
 		const { key, packageName } = activeViewStack.communityNodeDetails;
-		const communityNodeAttributes = await useNodeTypesStore().getCommunityNodeAttributes(key);
-
-		if (communityNodeAttributes) {
-			npmVersion.value = communityNodeAttributes.npmVersion;
-		}
 
 		try {
 			loading.value = true;
-			await communityNodesStore.installPackage(packageName, true, npmVersion.value);
 
-			await useNodeTypesStore().getNodeTypes();
-
-			await useCredentialsStore().fetchCredentialTypes(true);
-
-			const installedNodeKey = removePreviewToken(key);
-			const installedNode = getAllNodeCreateElements().find(
-				(node) => node.key === installedNodeKey,
-			);
-
-			if (installedNode) {
-				const nodeActions = nodeCreatorStore.actions?.[installedNode.key] || [];
-
-				popViewStack();
-
-				const viewStack = prepareCommunityNodeDetailsViewStack(
-					installedNode,
-					getNodeIconSource(installedNode.properties),
-					activeViewStack.rootView,
-					nodeActions,
-				);
-
-				pushViewStack(viewStack, {
-					transitionDirection: 'none',
-				});
-			} else {
-				const viewStack = { ...activeViewStack };
-				viewStack.communityNodeDetails!.installed = true;
-
-				pushViewStack(activeViewStack, { resetStacks: true });
-			}
-
-			nodeCreatorStore.removeNodeFromMergedNodes(key);
-
-			loading.value = false;
+			await communityNodesStore.installPackage(packageName, true, await getNpmVersion(key));
+			await updateStoresAndViewStack(key);
 
 			toast.showMessage({
 				title: i18n.baseText('settings.communityNodes.messages.install.success'),
