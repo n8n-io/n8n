@@ -1,0 +1,18 @@
+{
+	"node": "n8n-nodes-base.ThePDFMaker",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["pdf", "document", "pdf generator", "pdf maker", "pdf template"],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/thepdfmaker/"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/nodes/n8n-nodes-base.thepdfmaker/"
+			}
+		]
+	}
+}
