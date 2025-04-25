@@ -23,6 +23,7 @@ import { restoreChatHistory } from '@/components/CanvasChat/utils';
 interface ChatState {
 	currentSessionId: Ref<string>;
 	messages: Ref<ChatMessage[]>;
+	previousChatMessages: Ref<string[]>;
 	chatTriggerNode: Ref<INodeUi | null>;
 	connectedNode: Ref<INode | null>;
 	sendMessage: (message: string, files?: File[]) => Promise<void>;
@@ -30,7 +31,7 @@ interface ChatState {
 	displayExecution: (executionId: string) => void;
 }
 
-export function useChatState(isReadOnly: boolean, onWindowResize: () => void): ChatState {
+export function useChatState(isReadOnly: boolean, onWindowResize?: () => void): ChatState {
 	const locale = useI18n();
 	const workflowsStore = useWorkflowsStore();
 	const nodeTypesStore = useNodeTypesStore();
@@ -42,6 +43,7 @@ export function useChatState(isReadOnly: boolean, onWindowResize: () => void): C
 	const messages = ref<ChatMessage[]>([]);
 	const currentSessionId = ref<string>(uuid().replace(/-/g, ''));
 
+	const previousChatMessages = computed(() => workflowsStore.getPastChatMessages);
 	const canvasNodes = computed(() => workflowsStore.allNodes);
 	const allConnections = computed(() => workflowsStore.allConnections);
 	const logsPanelState = computed(() => workflowsStore.logsPanelState);
@@ -141,7 +143,7 @@ export function useChatState(isReadOnly: boolean, onWindowResize: () => void): C
 				setConnectedNode();
 
 				setTimeout(() => {
-					onWindowResize();
+					onWindowResize?.();
 					chatEventBus.emit('focusInput');
 				}, 0);
 			}
@@ -207,6 +209,10 @@ export function useChatState(isReadOnly: boolean, onWindowResize: () => void): C
 		nodeHelpers.updateNodesExecutionIssues();
 		messages.value = [];
 		currentSessionId.value = uuid().replace(/-/g, '');
+
+		if (logsPanelState.value !== LOGS_PANEL_STATE.CLOSED) {
+			chatEventBus.emit('focusInput');
+		}
 	}
 
 	function displayExecution(executionId: string) {
@@ -220,6 +226,7 @@ export function useChatState(isReadOnly: boolean, onWindowResize: () => void): C
 	return {
 		currentSessionId,
 		messages: computed(() => (isReadOnly ? restoredChatMessages.value : messages.value)),
+		previousChatMessages,
 		chatTriggerNode,
 		connectedNode,
 		sendMessage,

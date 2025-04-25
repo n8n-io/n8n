@@ -3,13 +3,6 @@ import { Container } from '@n8n/di';
 
 export const schema = {
 	executions: {
-		// TODO: remove this and all usage of `executions.process` when we're sure that nobody has this in their config file anymore.
-		process: {
-			doc: 'Deprecated key, that will be removed in the future. Please remove it from your configuration and environment variables to prevent issues in the future.',
-			format: String,
-			default: '',
-			env: 'EXECUTIONS_PROCESS',
-		},
 		mode: {
 			doc: 'If it should run executions directly or via queue',
 			format: ['regular', 'queue'] as const,
@@ -298,22 +291,6 @@ export const schema = {
 			format: Boolean,
 			default: false,
 			env: 'N8N_EXPRESSION_REPORT_DIFFERENCE',
-		},
-	},
-
-	workflowHistory: {
-		enabled: {
-			doc: 'Whether to save workflow history versions',
-			format: Boolean,
-			default: true,
-			env: 'N8N_WORKFLOW_HISTORY_ENABLED',
-		},
-
-		pruneTime: {
-			doc: 'Time (in hours) to keep workflow history versions for',
-			format: Number,
-			default: -1,
-			env: 'N8N_WORKFLOW_HISTORY_PRUNE_TIME',
 		},
 	},
 

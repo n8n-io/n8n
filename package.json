@@ -1,6 +1,6 @@
 {
   "name": "n8n-monorepo",
-  "version": "1.89.0",
+  "version": "1.90.0",
   "private": true,
   "engines": {
     "node": ">=20.15",
@@ -98,7 +98,6 @@
     "patchedDependencies": {
       "bull@4.12.1": "patches/bull@4.12.1.patch",
       "pkce-challenge@5.0.0": "patches/pkce-challenge@5.0.0.patch",
-      "pyodide@0.23.4": "patches/pyodide@0.23.4.patch",
       "@types/express-serve-static-core@5.0.6": "patches/@types__express-serve-static-core@5.0.6.patch",
       "@types/ws@8.5.4": "patches/@types__ws@8.5.4.patch",
       "@types/uuencode@0.0.3": "patches/@types__uuencode@0.0.3.patch",

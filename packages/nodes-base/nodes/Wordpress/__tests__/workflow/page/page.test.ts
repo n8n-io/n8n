@@ -3,12 +3,13 @@ import nock from 'nock';
 import { getWorkflowFilenames, testWorkflows } from '@test/nodes/Helpers';
 
 import { pageCreate, pageGet, pageGetMany, pageUpdate } from '../apiResponses';
+import { credentials } from '../credentials';
 
 describe('Wordpress > Page Workflows', () => {
 	const workflows = getWorkflowFilenames(__dirname);
 
 	beforeAll(() => {
-		const mock = nock('https://myblog.com');
+		const mock = nock(credentials.wordpressApi.url);
 		mock
 			.post('/wp-json/wp/v2/pages', {
 				title: 'A new page',
@@ -31,5 +32,5 @@ describe('Wordpress > Page Workflows', () => {
 			.reply(200, pageUpdate);
 	});
 
-	testWorkflows(workflows);
+	testWorkflows(workflows, credentials);
 });
