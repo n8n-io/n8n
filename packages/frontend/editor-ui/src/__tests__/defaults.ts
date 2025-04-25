@@ -148,5 +148,6 @@ export const defaultSettings: FrontendSettings = {
 		enabled: false,
 		summary: true,
 		dashboard: false,
+		dateRanges: [],
 	},
 };
