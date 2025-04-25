@@ -4,7 +4,6 @@ import { generateBarChartOptions } from '@/features/insights/chartjs.utils';
 import { GRANULARITY_DATE_FORMAT_MASK } from '@/features/insights/insights.constants';
 import { useCssVar } from '@vueuse/core';
 import type { ChartData } from 'chart.js';
-import dateformat from 'dateformat';
 import { computed } from 'vue';
 import { Bar } from 'vue-chartjs';
 import type { ChartProps } from './insightChartProps';
@@ -30,7 +29,7 @@ const chartData = computed<ChartData<'bar'>>(() => {
 	const failedData: number[] = [];
 
 	for (const entry of props.data) {
-		labels.push(dateformat(entry.date, GRANULARITY_DATE_FORMAT_MASK[props.granularity]));
+		labels.push(GRANULARITY_DATE_FORMAT_MASK[props.granularity](entry.date));
 		succeededData.push(entry.values.succeeded);
 		failedData.push(entry.values.failed);
 	}

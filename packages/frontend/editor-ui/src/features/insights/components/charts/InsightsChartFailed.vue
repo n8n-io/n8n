@@ -5,7 +5,6 @@ import { GRANULARITY_DATE_FORMAT_MASK } from '@/features/insights/insights.const
 import { smartDecimal } from '@n8n/utils/number/smartDecimal';
 import { useCssVar } from '@vueuse/core';
 import type { ChartData } from 'chart.js';
-import dateformat from 'dateformat';
 import { computed } from 'vue';
 import { Bar } from 'vue-chartjs';
 
@@ -36,7 +35,7 @@ const chartData = computed<ChartData<'bar'>>(() => {
 	const data: number[] = [];
 
 	for (const entry of props.data) {
-		labels.push(dateformat(entry.date, GRANULARITY_DATE_FORMAT_MASK[props.granularity]));
+		labels.push(GRANULARITY_DATE_FORMAT_MASK[props.granularity](entry.date));
 		data.push(entry.values.failed);
 	}
 
