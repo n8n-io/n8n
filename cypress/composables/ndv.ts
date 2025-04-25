@@ -290,7 +290,7 @@ export function assertInlineExpressionValid() {
 }
 
 export function hoverInputItemByText(text: string) {
-	return getInputPanelDataContainer().contains(text).trigger('mouseover', { force: true });
+	return getInputPanelDataContainer().contains(text).realHover();
 }
 
 export function verifyInputHoverState(expectedText: string) {
@@ -308,5 +308,5 @@ export function verifyOutputHoverState(expectedText: string) {
 }
 
 export function resetHoverState() {
-	getBackToCanvasButton().trigger('mouseover');
+	getBackToCanvasButton().realHover();
 }
