@@ -52,7 +52,7 @@ describe('GET /insights routes return 403 for dashboard routes when summary lice
 	);
 });
 
-describe('GET /insights routes return 403 for insights route with date range outside license limits', () => {
+describe('GET /insights routes return 403 if date range outside license limits', () => {
 	beforeAll(() => {
 		testServer.license.setDefaults({ quotas: { 'quota:insights:maxHistoryDays': 3 } });
 	});
@@ -72,7 +72,7 @@ describe('GET /insights routes return 403 for insights route with date range out
 	});
 });
 
-describe('GET /insights routes return 200 for insights route with date range inside license limits', () => {
+describe('GET /insights routes return 200 if date range inside license limits', () => {
 	beforeAll(() => {
 		testServer.license.setDefaults({
 			features: [
