@@ -14,13 +14,12 @@ import { useRouter } from 'vue-router';
 
 // TODO: replace with n8n-api type
 const TEST_CASE_EXECUTION_ERROR_CODE = {
-	MOCKED_NODE_DOES_NOT_EXIST: 'MOCKED_NODE_DOES_NOT_EXIST',
+	MOCKED_NODE_NOT_FOUND: 'MOCKED_NODE_NOT_FOUND',
 	TRIGGER_NO_LONGER_EXISTS: 'TRIGGER_NO_LONGER_EXISTS',
 	FAILED_TO_EXECUTE_WORKFLOW: 'FAILED_TO_EXECUTE_WORKFLOW',
 	EVALUATION_WORKFLOW_DOES_NOT_EXIST: 'EVALUATION_WORKFLOW_DOES_NOT_EXIST',
 	FAILED_TO_EXECUTE_EVALUATION_WORKFLOW: 'FAILED_TO_EXECUTE_EVALUATION_WORKFLOW',
 	INVALID_METRICS: 'INVALID_METRICS',
-	PAYLOAD_LIMIT_EXCEEDED: 'PAYLOAD_LIMIT_EXCEEDED',
 	UNKNOWN_ERROR: 'UNKNOWN_ERROR',
 } as const;
 
@@ -81,7 +80,7 @@ const gotToExecution = (executionId: string) => {
 };
 
 const testCaseErrorDictionary: Partial<Record<TestCaseExecutionErrorCodes, BaseTextKey>> = {
-	MOCKED_NODE_DOES_NOT_EXIST: 'testDefinition.runDetail.error.mockedNodeMissing',
+	MOCKED_NODE_NOT_FOUND: 'testDefinition.runDetail.error.mockedNodeMissing',
 	FAILED_TO_EXECUTE_EVALUATION_WORKFLOW: 'testDefinition.runDetail.error.evaluationFailed',
 	FAILED_TO_EXECUTE_WORKFLOW: 'testDefinition.runDetail.error.executionFailed',
 	TRIGGER_NO_LONGER_EXISTS: 'testDefinition.runDetail.error.triggerNoLongerExists',
@@ -99,7 +98,7 @@ const getErrorBaseKey = (errorCode?: string): string =>
 	'';
 
 const getErrorTooltipLinkRoute = (row: TestCaseExecutionRecord) => {
-	// if (row.errorCode === TEST_CASE_EXECUTION_ERROR_CODE.MOCKED_NODE_DOES_NOT_EXIST) {
+	// if (row.errorCode === TEST_CASE_EXECUTION_ERROR_CODE.MOCKED_NODE_NOT_FOUND) {
 	// 	return {
 	// 		name: VIEWS.TEST_DEFINITION_EDIT,
 	// 		params: {
