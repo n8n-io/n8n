@@ -30,6 +30,7 @@ import type {
 
 import type {
 	ICredentialsResponse,
+	IExecutionResponse,
 	INodeUi,
 	INodeUpdatePropertiesInformation,
 	NodePanelType,
@@ -542,12 +543,14 @@ export function useNodeHelpers() {
 		}
 	}
 
-	function getNodeTaskData(nodeName: string, runIndex = 0) {
-		return getAllNodeTaskData(nodeName)?.[runIndex] ?? null;
+	function getNodeTaskData(nodeName: string, runIndex = 0, execution?: IExecutionResponse) {
+		return getAllNodeTaskData(nodeName, execution)?.[runIndex] ?? null;
 	}
 
-	function getAllNodeTaskData(nodeName: string) {
-		return workflowsStore.getWorkflowRunData?.[nodeName] ?? null;
+	function getAllNodeTaskData(nodeName: string, execution?: IExecutionResponse) {
+		const runData = execution?.data?.resultData.runData ?? workflowsStore.getWorkflowRunData;
+
+		return runData?.[nodeName] ?? null;
 	}
 
 	function hasNodeExecuted(nodeName: string) {
@@ -577,9 +580,10 @@ export function useNodeHelpers() {
 		outputIndex = 0,
 		paneType: NodePanelType = 'output',
 		connectionType: NodeConnectionType = NodeConnectionTypes.Main,
+		execution?: IExecutionResponse,
 	): INodeExecutionData[] {
 		if (!node) return [];
-		const taskData = getNodeTaskData(node.name, runIndex);
+		const taskData = getNodeTaskData(node.name, runIndex, execution);
 		if (taskData === null) {
 			return [];
 		}

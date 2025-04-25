@@ -1,12 +1,6 @@
-import type {
-	ICredentialDataDecryptedObject,
-	IDataObject,
-	IHttpRequestOptions,
-	WorkflowTestData,
-} from 'n8n-workflow';
+import type { WorkflowTestData } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
-import { CredentialsHelper } from '@test/nodes/credentials-helper';
 import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
 import * as Helpers from '@test/nodes/Helpers';
 
@@ -14,6 +8,10 @@ import { gongApiResponse, gongNodeResponse } from './mocks';
 
 describe('Gong Node', () => {
 	const baseUrl = 'https://api.gong.io';
+	const credentials = {
+		gongApi: { baseUrl },
+		gongOAuth2Api: { baseUrl },
+	};
 
 	describe('Credentials', () => {
 		const tests: WorkflowTestData[] = [
@@ -143,42 +141,8 @@ describe('Gong Node', () => {
 			},
 		];
 
-		beforeAll(() => {
-			jest
-				.spyOn(CredentialsHelper.prototype, 'authenticate')
-				.mockImplementation(
-					async (
-						credentials: ICredentialDataDecryptedObject,
-						typeName: string,
-						requestParams: IHttpRequestOptions,
-					): Promise<IHttpRequestOptions> => {
-						if (typeName === 'gongApi') {
-							return {
-								...requestParams,
-								headers: {
-									authorization:
-										'basic ' +
-										Buffer.from(`${credentials.accessKey}:${credentials.accessKeySecret}`).toString(
-											'base64',
-										),
-								},
-							};
-						} else if (typeName === 'gongOAuth2Api') {
-							return {
-								...requestParams,
-								headers: {
-									authorization:
-										'bearer ' + (credentials.oauthTokenData as IDataObject).access_token,
-								},
-							};
-						} else {
-							return requestParams;
-						}
-					},
-				);
-		});
-
 		test.each(tests)('$description', async (testData) => {
+			testData.credentials = credentials;
 			const { result } = await executeWorkflow(testData);
 			const resultNodeData = Helpers.getResultNodeData(result, testData);
 			resultNodeData.forEach(({ nodeName, resultData }) =>
@@ -773,6 +737,7 @@ describe('Gong Node', () => {
 		];
 
 		test.each(tests)('$description', async (testData) => {
+			testData.credentials = credentials;
 			const { result } = await executeWorkflow(testData);
 
 			if (testData.description === 'should handle error response') {
@@ -1042,6 +1007,7 @@ describe('Gong Node', () => {
 		];
 
 		test.each(tests)('$description', async (testData) => {
+			testData.credentials = credentials;
 			const { result } = await executeWorkflow(testData);
 
 			if (testData.description === 'should handle error response') {

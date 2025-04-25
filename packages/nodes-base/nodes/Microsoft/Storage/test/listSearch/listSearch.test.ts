@@ -1,9 +1,8 @@
 import type { ILoadOptionsFunctions, INodeParameterResourceLocator } from 'n8n-workflow';
 
-import { FAKE_CREDENTIALS_DATA } from '@test/nodes/FakeCredentialsMap';
-
 import { AzureStorage } from '../../AzureStorage.node';
 import { XMsVersion } from '../../GenericFunctions';
+import { credentials } from '../credentials';
 
 describe('Azure Storage Node', () => {
 	describe('List search', () => {
@@ -25,7 +24,7 @@ describe('Azure Storage Node', () => {
 			});
 			const mockGetCredentials = jest.fn(async (type: string, _itemIndex?: number) => {
 				if (type === 'azureStorageSharedKeyApi') {
-					return FAKE_CREDENTIALS_DATA.azureStorageSharedKeyApi;
+					return credentials.azureStorageSharedKeyApi;
 				}
 				// eslint-disable-next-line n8n-local-rules/no-plain-errors
 				throw new Error('Unknown credentials');
@@ -76,7 +75,7 @@ describe('Azure Storage Node', () => {
 			});
 			const mockGetCredentials = jest.fn(async (type: string, _itemIndex?: number) => {
 				if (type === 'azureStorageSharedKeyApi') {
-					return FAKE_CREDENTIALS_DATA.azureStorageSharedKeyApi;
+					return credentials.azureStorageSharedKeyApi;
 				}
 				// eslint-disable-next-line n8n-local-rules/no-plain-errors
 				throw new Error('Unknown credentials');
