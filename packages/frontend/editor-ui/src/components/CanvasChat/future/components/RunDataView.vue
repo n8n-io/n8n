@@ -27,13 +27,7 @@ const runDataProps = computed<
 		return { node: logEntry.node, runIndex: logEntry.runIndex };
 	}
 
-	const sources = logEntry.runData.source;
-
-	if (sources.length > 1) {
-		return { node: logEntry.node, runIndex: logEntry.runIndex };
-	}
-
-	const source = sources[0];
+	const source = logEntry.runData.source[0];
 	const node = source && workflow.getNode(source.previousNode);
 
 	if (!source || !node) {
