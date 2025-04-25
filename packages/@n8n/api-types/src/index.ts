@@ -29,11 +29,12 @@ export {
 	SOURCE_CONTROL_FILE_TYPE,
 } from './schemas/source-controlled-file.schema';
 
-export type {
-	InsightsSummaryType,
-	InsightsSummaryUnit,
-	InsightsSummary,
-	InsightsByWorkflow,
-	InsightsByTime,
-	InsightsDateRange,
+export {
+	type InsightsSummaryType,
+	type InsightsSummaryUnit,
+	type InsightsSummary,
+	type InsightsByWorkflow,
+	type InsightsByTime,
+	type InsightsDateRange,
+	INSIGHTS_DATE_RANGE_KEYS,
 } from './schemas/insights.schema';

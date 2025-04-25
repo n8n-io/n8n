@@ -82,13 +82,21 @@ export const insightsByTimeDataSchemas = {
 		})
 		.strict(),
 } as const;
-
 export const insightsByTimeSchema = z.object(insightsByTimeDataSchemas).strict();
 export type InsightsByTime = z.infer<typeof insightsByTimeSchema>;
 
+export const INSIGHTS_DATE_RANGE_KEYS = [
+	'day',
+	'week',
+	'2weeks',
+	'month',
+	'quarter',
+	'6months',
+	'year',
+] as const;
 export const insightsDateRangeSchema = z
 	.object({
-		key: z.enum(['day', 'week', '2weeks', 'month', 'quarter', '6months', 'year']),
+		key: z.enum(INSIGHTS_DATE_RANGE_KEYS),
 		licensed: z.boolean(),
 		granularity: z.enum(['hour', 'day', 'week']),
 	})

@@ -1,10 +1,13 @@
-import type { InsightsSummary } from '@n8n/api-types';
-import type { InsightsDateRange } from '@n8n/api-types/src/schemas/insights.schema';
+import {
+	type InsightsSummary,
+	type InsightsDateRange,
+	INSIGHTS_DATE_RANGE_KEYS,
+} from '@n8n/api-types';
 import { OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { Logger } from 'n8n-core';
 import type { ExecutionLifecycleHooks } from 'n8n-core';
-import type { IRun } from 'n8n-workflow';
+import { UserError, type IRun } from 'n8n-workflow';
 
 import { License } from '@/license';
 
@@ -13,6 +16,16 @@ import { NumberToType } from './database/entities/insights-shared';
 import { InsightsByPeriodRepository } from './database/repositories/insights-by-period.repository';
 import { InsightsCollectionService } from './insights-collection.service';
 import { InsightsCompactionService } from './insights-compaction.service';
+
+const keyRangeToDays: Record<InsightsDateRange['key'], number> = {
+	day: 1,
+	week: 7,
+	'2weeks': 14,
+	month: 30,
+	quarter: 90,
+	'6months': 180,
+	year: 365,
+};
 
 @Service()
 export class InsightsService {
@@ -181,6 +194,10 @@ export class InsightsService {
 		});
 	}
 
+	/**
+	 * Returns the available date ranges with their license authorization and time granularity
+	 * when grouped by time.
+	 */
 	getAvailableDateRanges(): InsightsDateRange[] {
 		const maxHistoryInDays =
 			this.license.getInsightsMaxHistory() === -1
@@ -188,13 +205,31 @@ export class InsightsService {
 				: this.license.getInsightsMaxHistory();
 		const isHourlyDateEnabled = this.license.isInsightsHourlyDataEnabled();
 
-		return [
-			{ key: 'day', licensed: isHourlyDateEnabled ?? false, granularity: 'hour' },
-			{ key: 'week', licensed: maxHistoryInDays >= 7, granularity: 'day' },
-			{ key: '2weeks', licensed: maxHistoryInDays >= 14, granularity: 'day' },
-			{ key: 'month', licensed: maxHistoryInDays >= 30, granularity: 'day' },
-			{ key: 'quarter', licensed: maxHistoryInDays >= 90, granularity: 'week' },
-			{ key: 'year', licensed: maxHistoryInDays >= 365, granularity: 'week' },
-		];
+		return INSIGHTS_DATE_RANGE_KEYS.map((key) => ({
+			key,
+			licensed:
+				key === 'day' ? (isHourlyDateEnabled ?? false) : maxHistoryInDays >= keyRangeToDays[key],
+			granularity: key === 'day' ? 'hour' : keyRangeToDays[key] <= 30 ? 'day' : 'week',
+		}));
+	}
+
+	getMaxAgeInDaysAndGranularity(
+		dateRangeKey: InsightsDateRange['key'],
+	): InsightsDateRange & { maxAgeInDays: number } {
+		const availableDateRanges = this.getAvailableDateRanges();
+
+		const dateRange = availableDateRanges.find((range) => range.key === dateRangeKey);
+		if (!dateRange) {
+			// Not supposed to happen if we trust the dateRangeKey type
+			throw new UserError('The selected date range is not available');
+		}
+
+		if (!dateRange.licensed) {
+			throw new UserError(
+				'The selected date range exceeds the maximum history allowed by your license.',
+			);
+		}
+
+		return { ...dateRange, maxAgeInDays: keyRangeToDays[dateRangeKey] };
 	}
 }

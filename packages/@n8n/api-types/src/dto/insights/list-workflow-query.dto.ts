@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { Z } from 'zod-class';
 
+import { InsightsDateFilterDto } from './date-filter.dto';
 import { paginationSchema } from '../pagination/pagination.dto';
 
 const VALID_SORT_OPTIONS = [
@@ -30,5 +31,6 @@ const sortByValidator = z
 
 export class ListInsightsWorkflowQueryDto extends Z.class({
 	...paginationSchema,
+	dateRange: InsightsDateFilterDto.shape.dateRange,
 	sortBy: sortByValidator,
 }) {}
