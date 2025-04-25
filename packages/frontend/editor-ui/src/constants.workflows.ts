@@ -1,11 +1,12 @@
 import { NodeConnectionTypes } from 'n8n-workflow';
 import type { INodeUi, IWorkflowDataCreate } from './Interface';
 
+export const SAMPLE_SUBWORKFLOW_TRIGGER_ID = 'c055762a-8fe7-4141-a639-df2372f30060';
 export const SAMPLE_SUBWORKFLOW_WORKFLOW: IWorkflowDataCreate = {
 	name: 'My Sub-Workflow',
 	nodes: [
 		{
-			id: 'c055762a-8fe7-4141-a639-df2372f30060',
+			id: SAMPLE_SUBWORKFLOW_TRIGGER_ID,
 			typeVersion: 1.1,
 			name: 'When Executed by Another Workflow',
 			type: 'n8n-nodes-base.executeWorkflowTrigger',
