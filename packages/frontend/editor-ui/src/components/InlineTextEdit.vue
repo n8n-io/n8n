@@ -114,7 +114,7 @@ function onEscape() {
 /* Magic numbers here but this keeps preview and this input vertically aligned  */
 .inline-edit {
 	display: block;
-	height: 26px;
+	height: 25px;
 
 	input {
 		display: block;

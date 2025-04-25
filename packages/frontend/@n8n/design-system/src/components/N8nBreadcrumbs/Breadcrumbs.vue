@@ -328,8 +328,6 @@ const handleTooltipClose = () => {
 
 .hidden-items-menu {
 	display: flex;
-	position: relative;
-	top: var(--spacing-5xs);
 	color: var(--color-text-base);
 }
 
