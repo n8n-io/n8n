@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
-import TestDefinitionRootView from '../TestDefinitionRootView.vue';
+import TestDefinitionRootView from '../EvaluationsRootVIew.vue';
 
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { mockedStore } from '@/__tests__/utils';
