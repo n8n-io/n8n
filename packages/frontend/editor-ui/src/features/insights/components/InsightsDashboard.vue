@@ -89,7 +89,6 @@ const granularity = computed(
 );
 
 function handleTimeChange(value: InsightsDateRange['key'] | typeof UNLICENSED_TIME_RANGE) {
-	console.log(value);
 	if (value === UNLICENSED_TIME_RANGE) {
 		upgradeModalVisible.value = true;
 		return;
