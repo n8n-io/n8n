@@ -15,6 +15,7 @@ const scopes = [
 	'dm.read',
 	'list.read',
 	'list.write',
+	'media.write',
 ];
 export class TwitterOAuth2Api implements ICredentialType {
 	name = 'twitterOAuth2Api';
