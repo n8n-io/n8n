@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
-import TestDefinitionEditView from '@/views/TestDefinition/TestDefinitionEditView.vue';
-import type { useTestDefinitionForm } from '@/components/TestDefinition/composables/useTestDefinitionForm';
+import EvaluationsView from '@/views/Evaluations/EvaluationsView.vue';
+import type { useTestDefinitionForm } from '@/components/Evaluations/composables/useTestDefinitionForm';
+
 import { ref } from 'vue';
 import { cleanupAppModals, createAppModals, mockedStore } from '@/__tests__/utils';
 import { useTestDefinitionStore } from '@/stores/testDefinition.store.ee';
@@ -23,15 +24,15 @@ const form: Partial<ReturnType<typeof useTestDefinitionForm>> = {
 	saveChanges: vi.fn(),
 	createTest: vi.fn(),
 };
-vi.mock('@/components/TestDefinition/composables/useTestDefinitionForm', () => ({
+vi.mock('@/components/Evaluations/composables/useTestDefinitionForm', () => ({
 	useTestDefinitionForm: () => form,
 }));
 
-const renderComponent = createComponentRenderer(TestDefinitionEditView, {
+const renderComponent = createComponentRenderer(EvaluationsView, {
 	props: { testId: '1', name: 'workflow-name' },
 });
 
-describe('TestDefinitionEditView', () => {
+describe('EvaluationsView', () => {
 	beforeEach(() => {
 		createTestingPinia();
 		createAppModals();

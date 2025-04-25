@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { TestCaseExecutionRecord } from '@/api/testDefinition.ee';
-import type { TestTableColumn } from '@/components/TestDefinition/shared/TestTableBase.vue';
-import TestTableBase from '@/components/TestDefinition/shared/TestTableBase.vue';
+import type { TestTableColumn } from '@/components/Evaluations/shared/TestTableBase.vue';
+import TestTableBase from '@/components/Evaluations/shared/TestTableBase.vue';
 import { useI18n } from '@/composables/useI18n';
 import { useToast } from '@/composables/useToast';
 import { VIEWS } from '@/constants';

@@ -4,7 +4,7 @@ import { useToast } from '@/composables/useToast';
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
-import RunsSection from '@/components/TestDefinition/EditDefinition/sections/RunsSection.vue';
+import RunsSection from '@/components/Evaluations/EditDefinition/sections/RunsSection.vue';
 import { useTestDefinitionStore } from '@/stores/testDefinition.store.ee';
 import { N8nButton, N8nText } from '@n8n/design-system';
 import { useAsyncState } from '@vueuse/core';

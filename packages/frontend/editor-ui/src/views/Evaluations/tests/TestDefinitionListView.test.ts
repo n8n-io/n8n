@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
-import TestDefinitionListView from '@/views/TestDefinition/TestDefinitionListView.vue';
+import TestDefinitionListView from '@/views/Evaluations/TestDefinitionListView.vue';
 import type { useToast } from '@/composables/useToast';
 import type { useMessage } from '@/composables/useMessage';
 import { useTestDefinitionStore } from '@/stores/testDefinition.store.ee';
