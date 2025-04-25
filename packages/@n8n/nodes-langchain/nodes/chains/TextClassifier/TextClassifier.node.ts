@@ -2,7 +2,7 @@ import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import { HumanMessage } from '@langchain/core/messages';
 import { SystemMessagePromptTemplate, ChatPromptTemplate } from '@langchain/core/prompts';
 import { OutputFixingParser, StructuredOutputParser } from 'langchain/output_parsers';
-import { NodeOperationError, NodeConnectionTypes } from 'n8n-workflow';
+import { NodeOperationError, NodeConnectionTypes, sleep } from 'n8n-workflow';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -158,6 +158,31 @@ export class TextClassifier implements INodeType {
 						description:
 							'Whether to enable auto-fixing (may trigger an additional LLM call if output is broken)',
 					},
+					{
+						displayName: 'Batch Processing',
+						name: 'batching',
+						type: 'collection',
+						description: 'Batch processing options for rate limiting',
+						default: {},
+						options: [
+							{
+								displayName: 'Batch Size',
+								name: 'batchSize',
+								default: 20,
+								type: 'number',
+								description:
+									'How many items to process in parallel. This is useful for rate limiting.',
+							},
+							{
+								displayName: 'Delay Between Batches',
+								name: 'delayBetweenBatches',
+								default: 1000,
+								type: 'number',
+								description:
+									'Delay in milliseconds between batches. This is useful for rate limiting.',
+							},
+						],
+					},
 				],
 			},
 		],
@@ -165,6 +190,14 @@ export class TextClassifier implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
+		const { batchSize, delayBetweenBatches } = this.getNodeParameter('options.batching', 0, {
+			batchSize: 20,
+			delayBetweenBatches: 1000,
+		}) as {
+			batchSize: number;
+			delayBetweenBatches: number;
+		};
+
 		const promises: Array<Promise<any>> = [];
 
 		const llm = (await this.getInputConnectionData(
@@ -268,19 +301,10 @@ ${fallbackPrompt}`,
 			const prompt = ChatPromptTemplate.fromMessages(messages);
 			const chain = prompt.pipe(llm).pipe(parser).withConfig(getTracingConfig(this));
 
-			try {
-				promises.push(chain.invoke(messages));
-			} catch (error) {
-				if (this.continueOnFail()) {
-					returnData[0].push({
-						json: { error: error.message },
-						pairedItem: { item: itemIdx },
-					});
-
-					continue;
-				}
-
-				throw error;
+			promises.push(chain.invoke(messages));
+			if (batchSize && itemIdx % batchSize === 0) {
+				console.log('Sleeping');
+				await sleep(delayBetweenBatches);
 			}
 		}
 

@@ -12,7 +12,7 @@ import type {
 	IDataObject,
 	INodeInputConfiguration,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, sleep } from 'n8n-workflow';
 
 import { N8nBinaryLoader } from '@utils/N8nBinaryLoader';
 import { N8nJsonLoader } from '@utils/N8nJsonLoader';
@@ -306,6 +306,31 @@ export class ChainSummarizationV2 implements INodeType {
 								},
 							],
 						},
+						{
+							displayName: 'Batch Processing',
+							name: 'batching',
+							type: 'collection',
+							description: 'Batch processing options for rate limiting',
+							default: {},
+							options: [
+								{
+									displayName: 'Batch Size',
+									name: 'batchSize',
+									default: 20,
+									type: 'number',
+									description:
+										'How many items to process in parallel. This is useful for rate limiting.',
+								},
+								{
+									displayName: 'Delay Between Batches',
+									name: 'delayBetweenBatches',
+									default: 1000,
+									type: 'number',
+									description:
+										'Delay in milliseconds between batches. This is useful for rate limiting.',
+								},
+							],
+						},
 					],
 				},
 			],
@@ -324,6 +349,11 @@ export class ChainSummarizationV2 implements INodeType {
 
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
+		const promises = [];
+		const { batchSize, delayBetweenBatches } = this.getNodeParameter('options.batching', 0, {}) as {
+			batchSize: number;
+			delayBetweenBatches: number;
+		};
 
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			try {
@@ -411,14 +441,24 @@ export class ChainSummarizationV2 implements INodeType {
 						processor = new N8nJsonLoader(this, 'options.', textSplitter);
 					}
 
-					const processedItem = await processor.processItem(item, itemIndex);
-					const response = await chain.invoke(
-						{
-							input_documents: processedItem,
-						},
-						{ signal: this.getExecutionCancelSignal() },
+					promises.push(
+						new Promise<void>(async (resolve) => {
+							const processedItem = await processor.processItem(item, itemIndex);
+							const response = await chain.invoke(
+								{
+									input_documents: processedItem,
+								},
+								{ signal: this.getExecutionCancelSignal() },
+							);
+
+							returnData.push({ json: { response } });
+							resolve();
+						}),
 					);
-					returnData.push({ json: { response } });
+
+					if (itemIndex % batchSize === 0) {
+						await sleep(delayBetweenBatches);
+					}
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
@@ -429,6 +469,8 @@ export class ChainSummarizationV2 implements INodeType {
 				throw error;
 			}
 		}
+
+		await Promise.allSettled(promises);
 
 		return [returnData];
 	}

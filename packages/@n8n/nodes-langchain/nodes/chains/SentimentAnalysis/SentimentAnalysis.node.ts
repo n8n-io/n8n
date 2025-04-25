@@ -2,7 +2,7 @@ import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import { HumanMessage } from '@langchain/core/messages';
 import { SystemMessagePromptTemplate, ChatPromptTemplate } from '@langchain/core/prompts';
 import { OutputFixingParser, StructuredOutputParser } from 'langchain/output_parsers';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, sleep } from 'n8n-workflow';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -133,6 +133,29 @@ export class SentimentAnalysis implements INodeType {
 					},
 				],
 			},
+			{
+				displayName: 'Batch Processing',
+				name: 'batching',
+				type: 'collection',
+				description: 'Batch processing options for rate limiting',
+				default: {},
+				options: [
+					{
+						displayName: 'Batch Size',
+						name: 'batchSize',
+						default: 20,
+						type: 'number',
+						description: 'How many items to process in parallel. This is useful for rate limiting.',
+					},
+					{
+						displayName: 'Delay Between Batches',
+						name: 'delayBetweenBatches',
+						default: 1000,
+						type: 'number',
+						description: 'Delay in milliseconds between batches. This is useful for rate limiting.',
+					},
+				],
+			},
 		],
 	};
 
@@ -145,6 +168,11 @@ export class SentimentAnalysis implements INodeType {
 		)) as BaseLanguageModel;
 
 		const returnData: INodeExecutionData[][] = [];
+		const promises = [];
+		const { batchSize, delayBetweenBatches } = this.getNodeParameter('options.batching', 0, {}) as {
+			batchSize: number;
+			delayBetweenBatches: number;
+		};
 
 		for (let i = 0; i < items.length; i++) {
 			try {
@@ -211,25 +239,36 @@ export class SentimentAnalysis implements INodeType {
 				const chain = prompt.pipe(llm).pipe(parser).withConfig(getTracingConfig(this));
 
 				try {
-					const output = await chain.invoke(messages);
-					const sentimentIndex = categories.findIndex(
-						(s) => s.toLowerCase() === output.sentiment.toLowerCase(),
-					);
+					promises.push(
+						new Promise((resolve, reject) => {
+							chain
+								.invoke(messages)
+								.then((output) => {
+									const sentimentIndex = categories.findIndex(
+										(s) => s.toLowerCase() === output.sentiment.toLowerCase(),
+									);
 
-					if (sentimentIndex !== -1) {
-						const resultItem = { ...items[i] };
-						const sentimentAnalysis: IDataObject = {
-							category: output.sentiment,
-						};
-						if (options.includeDetailedResults) {
-							sentimentAnalysis.strength = output.strength;
-							sentimentAnalysis.confidence = output.confidence;
-						}
-						resultItem.json = {
-							...resultItem.json,
-							sentimentAnalysis,
-						};
-						returnData[sentimentIndex].push(resultItem);
+									if (sentimentIndex !== -1) {
+										const resultItem = { ...items[i] };
+										const sentimentAnalysis: IDataObject = {
+											category: output.sentiment,
+										};
+										if (options.includeDetailedResults) {
+											sentimentAnalysis.strength = output.strength;
+											sentimentAnalysis.confidence = output.confidence;
+										}
+										resultItem.json = {
+											...resultItem.json,
+											sentimentAnalysis,
+										};
+										resolve({ sentimentIndex, resultItem });
+									}
+								})
+								.catch((error) => reject(error));
+						}),
+					);
+					if (i % batchSize === 0) {
+						await sleep(delayBetweenBatches);
 					}
 				} catch (error) {
 					throw new NodeOperationError(
@@ -252,6 +291,30 @@ export class SentimentAnalysis implements INodeType {
 				throw error;
 			}
 		}
+
+		(await Promise.allSettled(promises)).forEach((response, index) => {
+			if (response.status === 'rejected') {
+				if (this.continueOnFail()) {
+					const error = response.reason;
+					const executionErrorData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: index } },
+					);
+
+					returnData[0].push(...executionErrorData);
+					return;
+				} else {
+					throw new NodeOperationError(this.getNode(), response.reason);
+				}
+			} else {
+				const output = response.value;
+				const sentimentIndex = output.sentimentIndex;
+				const resultItem = output.resultItem;
+				returnData[sentimentIndex].push(resultItem);
+			}
+			const result = response.value;
+			returnData[result.sentimentIndex].push(result.resultItem);
+		});
 		return returnData;
 	}
 }

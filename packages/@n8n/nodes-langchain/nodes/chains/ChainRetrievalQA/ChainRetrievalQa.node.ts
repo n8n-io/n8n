@@ -8,7 +8,7 @@ import {
 import type { BaseRetriever } from '@langchain/core/retrievers';
 import { createStuffDocumentsChain } from 'langchain/chains/combine_documents';
 import { createRetrievalChain } from 'langchain/chains/retrieval';
-import { NodeConnectionTypes, NodeOperationError, parseErrorMetadata } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, parseErrorMetadata, sleep } from 'n8n-workflow';
 import {
 	type INodeProperties,
 	type IExecuteFunctions,
@@ -177,6 +177,31 @@ export class ChainRetrievalQa implements INodeType {
 							},
 						},
 					},
+					{
+						displayName: 'Batch Processing',
+						name: 'batching',
+						type: 'collection',
+						description: 'Batch processing options for rate limiting',
+						default: {},
+						options: [
+							{
+								displayName: 'Batch Size',
+								name: 'batchSize',
+								default: 20,
+								type: 'number',
+								description:
+									'How many items to process in parallel. This is useful for rate limiting.',
+							},
+							{
+								displayName: 'Delay Between Batches',
+								name: 'delayBetweenBatches',
+								default: 1000,
+								type: 'number',
+								description:
+									'Delay in milliseconds between batches. This is useful for rate limiting.',
+							},
+						],
+					},
 				],
 			},
 		],
@@ -187,6 +212,10 @@ export class ChainRetrievalQa implements INodeType {
 
 		const items = this.getInputData();
 		const promises = [];
+		const { batchSize, delayBetweenBatches } = this.getNodeParameter('options.batching', 0, {}) as {
+			batchSize: number;
+			delayBetweenBatches: number;
+		};
 		const returnData: INodeExecutionData[] = [];
 
 		// Run for each item
@@ -267,11 +296,16 @@ export class ChainRetrievalQa implements INodeType {
 
 				// Execute the chain with tracing config
 				const tracingConfig = getTracingConfig(this);
+
 				promises.push(
 					retrievalChain
 						.withConfig(tracingConfig)
 						.invoke({ input: query }, { signal: this.getExecutionCancelSignal() }),
 				);
+
+				if (itemIndex % batchSize === 0) {
+					await sleep(delayBetweenBatches);
+				}
 
 				// Get the answer from the response
 			} catch (error) {

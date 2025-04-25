@@ -3,7 +3,7 @@ import { HumanMessage } from '@langchain/core/messages';
 import { ChatPromptTemplate, SystemMessagePromptTemplate } from '@langchain/core/prompts';
 import type { JSONSchema7 } from 'json-schema';
 import { OutputFixingParser, StructuredOutputParser } from 'langchain/output_parsers';
-import { jsonParse, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { jsonParse, NodeConnectionTypes, NodeOperationError, sleep } from 'n8n-workflow';
 import type {
 	INodeType,
 	INodeTypeDescription,
@@ -213,6 +213,31 @@ export class InformationExtractor implements INodeType {
 							rows: 6,
 						},
 					},
+					{
+						displayName: 'Batch Processing',
+						name: 'batching',
+						type: 'collection',
+						description: 'Batch processing options for rate limiting',
+						default: {},
+						options: [
+							{
+								displayName: 'Batch Size',
+								name: 'batchSize',
+								default: 1,
+								type: 'number',
+								description:
+									'How many items to process in parallel. This is useful for rate limiting, but will impact the agents log output.',
+							},
+							{
+								displayName: 'Delay Between Batches',
+								name: 'delayBetweenBatches',
+								default: 1000,
+								type: 'number',
+								description:
+									'Delay in milliseconds between batches. This is useful for rate limiting.',
+							},
+						],
+					},
 				],
 			},
 		],
@@ -221,6 +246,10 @@ export class InformationExtractor implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const promises = [];
+		const { batchSize, delayBetweenBatches } = this.getNodeParameter('options.batching', 0, {}) as {
+			batchSize: number;
+			delayBetweenBatches: number;
+		};
 
 		const llm = (await this.getInputConnectionData(
 			NodeConnectionTypes.AiLanguageModel,
@@ -288,17 +317,12 @@ export class InformationExtractor implements INodeType {
 			const prompt = ChatPromptTemplate.fromMessages(messages);
 			const chain = prompt.pipe(llm).pipe(parser).withConfig(getTracingConfig(this));
 
-			try {
-				promises.push(chain.invoke(messages));
-			} catch (error) {
-				if (this.continueOnFail()) {
-					resultData.push({ json: { error: error.message }, pairedItem: { item: itemIndex } });
-					continue;
-				}
-
-				throw error;
+			promises.push(chain.invoke(messages));
+			if (itemIndex % batchSize === 0) {
+				await sleep(delayBetweenBatches);
 			}
 		}
+
 		(await Promise.allSettled(promises)).forEach((response, index) => {
 			if (response.status === 'rejected') {
 				if (this.continueOnFail()) {

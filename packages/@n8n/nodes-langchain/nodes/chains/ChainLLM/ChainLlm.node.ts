@@ -5,7 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes, NodeOperationError, sleep } from 'n8n-workflow';
 
 import { getPromptInputByType } from '@utils/helpers';
 import { getOptionalOutputParser } from '@utils/output_parsers/N8nOutputParser';
@@ -68,6 +68,12 @@ export class ChainLlm implements INodeType {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 		const promises = [];
+		const batchSize = this.getNodeParameter('batching.batchSize', 0, 1) as number;
+		const delayBetweenBatches = this.getNodeParameter(
+			'batching.delayBetweenBatches',
+			0,
+			1000,
+		) as number;
 
 		// Get output parser if configured
 		const outputParser = await getOptionalOutputParser(this);
@@ -118,6 +124,11 @@ export class ChainLlm implements INodeType {
 						messages,
 					}),
 				);
+				console.log(`BatchSize: ${batchSize}`);
+				if (itemIndex % batchSize === 0) {
+					console.log('Waiting for batch to finish');
+					await sleep(delayBetweenBatches);
+				}
 			} catch (error) {
 				// Continue on failure if configured
 				if (this.continueOnFail()) {
