@@ -13,7 +13,7 @@ import type { TypeUnit } from '../insights-shared';
 let insightsRawRepository: InsightsRawRepository;
 
 beforeAll(async () => {
-	await testDb.init();
+	await testDb.init(['insights']);
 	insightsRawRepository = Container.get(InsightsRawRepository);
 });
 
