@@ -163,6 +163,9 @@ export interface FrontendSettings {
 	folders: {
 		enabled: boolean;
 	};
+	logsView: {
+		enabled: boolean;
+	};
 	banners: {
 		dismissed: string[];
 	};
