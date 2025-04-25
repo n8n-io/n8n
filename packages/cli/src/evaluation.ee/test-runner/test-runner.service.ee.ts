@@ -243,7 +243,7 @@ export class TestRunnerService {
 		const triggerOutputData = execution.data.resultData.runData[triggerNode.name][0];
 		const triggerOutput = triggerOutputData?.data?.main?.[0];
 
-		if (!triggerOutput) {
+		if (!triggerOutput || triggerOutput.length === 0) {
 			throw new TestRunError('TEST_CASES_NOT_FOUND');
 		}
 
