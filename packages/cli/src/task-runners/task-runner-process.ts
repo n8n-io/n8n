@@ -51,6 +51,7 @@ export class TaskRunnerProcess extends TypedEmitter<TaskRunnerProcessEventMap> {
 
 	private logger: Logger;
 
+	/** Environment variables inherited by the child process from the current environment. */
 	private readonly passthroughEnvVars = [
 		'PATH',
 		'HOME', // So home directory can be resolved correctly
@@ -171,6 +172,8 @@ export class TaskRunnerProcess extends TypedEmitter<TaskRunnerProcessEventMap> {
 			N8N_RUNNERS_TASK_BROKER_URI: taskBrokerUri,
 			N8N_RUNNERS_MAX_PAYLOAD: this.runnerConfig.maxPayload.toString(),
 			N8N_RUNNERS_MAX_CONCURRENCY: this.runnerConfig.maxConcurrency.toString(),
+			N8N_RUNNERS_TASK_TIMEOUT: this.runnerConfig.taskTimeout.toString(),
+			N8N_RUNNERS_HEARTBEAT_INTERVAL: this.runnerConfig.heartbeatInterval.toString(),
 			...this.getPassthroughEnvVars(),
 		};
 
