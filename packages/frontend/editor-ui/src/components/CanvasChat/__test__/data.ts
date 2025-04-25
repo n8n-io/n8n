@@ -1,19 +1,10 @@
-import {
-	createTestNode,
-	createTestTaskData,
-	createTestWorkflow,
-	createTestWorkflowExecutionResponse,
-	createTestWorkflowObject,
-	mockNodeTypeDescription,
-} from '@/__tests__/mocks';
+import { createTestNode, createTestWorkflow, mockNodeTypeDescription } from '@/__tests__/mocks';
 import {
 	AGENT_NODE_TYPE,
 	AI_CATEGORY_AGENTS,
 	AI_SUBCATEGORY,
 	CHAT_TRIGGER_NODE_TYPE,
-	IF_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
-	SET_NODE_TYPE,
 } from '@/constants';
 import { type IExecutionResponse } from '@/Interface';
 import { WorkflowOperationError } from 'n8n-workflow';
@@ -171,51 +162,3 @@ export const aiManualExecutionResponse: IExecutionResponse = {
 	startedAt: new Date('2025-03-30T00:00:00.001Z'),
 	stoppedAt: new Date('2025-03-30T00:00:02.000Z'),
 };
-
-export const ifWorkflowData = createTestWorkflow({
-	nodes: [
-		createTestNode({ name: 'A', type: SET_NODE_TYPE }),
-		createTestNode({ name: 'B', type: IF_NODE_TYPE }),
-		createTestNode({ name: 'C', type: SET_NODE_TYPE }),
-	],
-	connections: {
-		A: {
-			main: [
-				[
-					{ node: 'B', index: 0, type: 'main' },
-					{ node: 'C', index: 0, type: 'main' },
-				],
-			],
-		},
-		B: {
-			main: [
-				[
-					{ node: 'C', index: 0, type: 'main' },
-					{ node: 'C', index: 0, type: 'main' },
-				],
-			],
-		},
-	},
-});
-
-export const ifWorkflow = createTestWorkflowObject(ifWorkflowData);
-
-export const ifWorkflowExecutionResponse = createTestWorkflowExecutionResponse({
-	workflowData: ifWorkflowData,
-	data: {
-		resultData: {
-			runData: {
-				A: [createTestTaskData({ executionIndex: 0 })],
-				B: [createTestTaskData({ executionIndex: 2, source: [{ previousNode: 'A' }] })],
-				C: [
-					createTestTaskData({ executionIndex: 1, source: [{ previousNode: 'A' }] }),
-					createTestTaskData({ executionIndex: 3, source: [{ previousNode: 'B' }] }),
-					createTestTaskData({
-						executionIndex: 4,
-						source: [{ previousNode: 'B', previousNodeOutput: 1 }],
-					}),
-				],
-			},
-		},
-	},
-});
