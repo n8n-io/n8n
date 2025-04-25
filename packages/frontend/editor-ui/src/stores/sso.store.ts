@@ -59,7 +59,7 @@ export const useSSOStore = defineStore('sso', () => {
 	const getSSORedirectUrl = async () =>
 		await ssoApi.initSSO(
 			rootStore.restApiContext,
-			typeof route.query?.redirect === 'string' ? decodeURIComponent(route.query.redirect) : '',
+			typeof route.query?.redirect === 'string' ? route.query.redirect : '',
 		);
 
 	const toggleLoginEnabled = async (enabled: boolean) =>
