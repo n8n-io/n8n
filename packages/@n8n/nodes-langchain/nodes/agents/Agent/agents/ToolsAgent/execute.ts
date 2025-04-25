@@ -11,7 +11,13 @@ import type { AgentAction, AgentFinish } from 'langchain/agents';
 import { AgentExecutor, createToolCallingAgent } from 'langchain/agents';
 import type { ToolsAgentAction } from 'langchain/dist/agents/tool_calling/output_parser';
 import { omit } from 'lodash';
-import { BINARY_ENCODING, jsonParse, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import {
+	BINARY_ENCODING,
+	jsonParse,
+	NodeConnectionTypes,
+	NodeOperationError,
+	sleep,
+} from 'n8n-workflow';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import type { ZodObject } from 'zod';
 import { z } from 'zod';
@@ -402,12 +408,18 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 	const returnData: INodeExecutionData[] = [];
 	const items = this.getInputData();
 	const outputParser = await getOptionalOutputParser(this);
+	const memory = await getOptionalMemory(this);
 	const tools = await getTools(this, outputParser);
+	const { batchSize, delayBetweenBatches } = this.getNodeParameter('options.batching', 0, {}) as {
+		batchSize: number;
+		delayBetweenBatches: number;
+	};
+
+	const promises = [];
 
 	for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 		try {
 			const model = await getChatModel(this);
-			const memory = await getOptionalMemory(this);
 
 			const input = getPromptInputByType({
 				ctx: this,
@@ -457,37 +469,21 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 			});
 
 			// Invoke the executor with the given input and system message.
-			const response = await executor.invoke(
-				{
-					input,
-					system_message: options.systemMessage ?? SYSTEM_MESSAGE,
-					formatting_instructions:
-						'IMPORTANT: For your response to user, you MUST use the `format_final_json_response` tool with your complete answer formatted according to the required schema. Do not attempt to format the JSON manually - always use this tool. Your response will be rejected if it is not properly formatted through this tool. Only use this tool once you are ready to provide your final answer.',
-				},
-				{ signal: this.getExecutionCancelSignal() },
-			);
-
-			// If memory and outputParser are connected, parse the output.
-			if (memory && outputParser) {
-				const parsedOutput = jsonParse<{ output: Record<string, unknown> }>(
-					response.output as string,
-				);
-				response.output = parsedOutput?.output ?? parsedOutput;
-			}
-
-			// Omit internal keys before returning the result.
-			const itemResult = {
-				json: omit(
-					response,
-					'system_message',
-					'formatting_instructions',
-					'input',
-					'chat_history',
-					'agent_scratchpad',
+			promises.push(
+				executor.invoke(
+					{
+						input,
+						system_message: options.systemMessage ?? SYSTEM_MESSAGE,
+						formatting_instructions:
+							'IMPORTANT: For your response to user, you MUST use the `format_final_json_response` tool with your complete answer formatted according to the required schema. Do not attempt to format the JSON manually - always use this tool. Your response will be rejected if it is not properly formatted through this tool. Only use this tool once you are ready to provide your final answer.',
+					},
+					{ signal: this.getExecutionCancelSignal() },
 				),
-			};
-
-			returnData.push(itemResult);
+			);
+			if (batchSize && itemIndex % batchSize === 0) {
+				this.logger.debug('Sleeping');
+				await sleep(delayBetweenBatches);
+			}
 		} catch (error) {
 			if (this.continueOnFail()) {
 				returnData.push({
@@ -499,6 +495,30 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 			throw error;
 		}
 	}
+	(await Promise.allSettled(promises)).forEach((result, index) => {
+		const response = result.value;
+		// If memory and outputParser are connected, parse the output.
+		if (memory && outputParser) {
+			const parsedOutput = jsonParse<{ output: Record<string, unknown> }>(
+				response.output as string,
+			);
+			response.output = parsedOutput?.output ?? parsedOutput;
+		}
+
+		// Omit internal keys before returning the result.
+		const itemResult = {
+			json: omit(
+				response,
+				'system_message',
+				'formatting_instructions',
+				'input',
+				'chat_history',
+				'agent_scratchpad',
+			),
+		};
+
+		returnData.push(itemResult);
+	});
 
 	return [returnData];
 }
