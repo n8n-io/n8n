@@ -430,10 +430,6 @@ async function initializeWorkspaceForExistingWorkflow(id: string) {
 	try {
 		const workflowData = await workflowsStore.fetchWorkflow(id);
 
-		if (workflowData.homeProject?.id) {
-			await fetchAndSetProject(workflowData.homeProject.id);
-		}
-
 		openWorkflow(workflowData);
 
 		if (workflowData.parentFolder) {
