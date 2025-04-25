@@ -94,7 +94,7 @@ const subcategory = computed(() => useViewStacks().activeViewStack.subcategory);
 
 const rootView = computed(() => useViewStacks().activeViewStack.rootView);
 
-const communityNodeDetails = computed(() => useViewStacks().activeViewStack.communityNodeDetails);
+const communityNodeDetails = computed(() => useViewStacks().activeViewStack?.communityNodeDetails);
 
 const placeholderTriggerActions = getPlaceholderTriggerActions(subcategory.value || '');
 

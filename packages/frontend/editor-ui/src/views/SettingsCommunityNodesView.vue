@@ -34,6 +34,7 @@ const documentTitle = useDocumentTitle();
 
 const communityNodesStore = useCommunityNodesStore();
 const uiStore = useUIStore();
+const settingsStore = useSettingsStore();
 
 const getEmptyStateDescription = computed(() => {
 	const packageCount = communityNodesStore.availablePackageCount;
@@ -141,7 +142,7 @@ onBeforeUnmount(() => {
 			<n8n-heading size="2xlarge">{{ i18n.baseText('settings.communityNodes') }}</n8n-heading>
 			<n8n-button
 				v-if="
-					useSettingsStore().isUnverifiedPackagesEnabled &&
+					settingsStore.isUnverifiedPackagesEnabled &&
 					communityNodesStore.getInstalledPackages.length > 0 &&
 					!loading
 				"

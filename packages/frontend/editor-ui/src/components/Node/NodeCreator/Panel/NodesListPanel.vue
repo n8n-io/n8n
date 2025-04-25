@@ -43,7 +43,7 @@ const viewStacks = computed(() => useViewStacks().viewStacks);
 const isActionsMode = computed(() => useViewStacks().activeViewStackMode === 'actions');
 
 const searchPlaceholder = computed(() => {
-	let node = activeViewStack.value.title as string;
+	let node = activeViewStack.value?.title as string;
 
 	if (communityNodeDetails.value) {
 		node = communityNodeDetails.value.title;
@@ -56,6 +56,11 @@ const searchPlaceholder = computed(() => {
 	}
 
 	return i18n.baseText('nodeCreator.searchBar.searchNodes');
+});
+
+const showSearchBar = computed(() => {
+	if (activeViewStack.value.communityNodeDetails) return false;
+	return activeViewStack.value.hasSearch;
 });
 
 const nodeCreatorView = computed(() => useNodeCreatorStore().selectedView);
@@ -199,7 +204,7 @@ function onBackButton() {
 			</header>
 
 			<SearchBar
-				v-if="activeViewStack.hasSearch && !activeViewStack.communityNodeDetails"
+				v-if="showSearchBar"
 				:class="$style.searchBar"
 				:placeholder="
 					searchPlaceholder ? searchPlaceholder : i18n.baseText('nodeCreator.searchBar.searchNodes')
@@ -227,7 +232,7 @@ function onBackButton() {
 
 			<CommunityNodeFooter
 				v-if="communityNodeDetails && !isCommunityNodeActionsMode"
-				:package-name="communityNodeDetails?.packageName as string"
+				:package-name="communityNodeDetails.packageName"
 			/>
 		</aside>
 	</transition>

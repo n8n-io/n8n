@@ -22,6 +22,8 @@ export interface Props {
 	expanded?: boolean;
 }
 
+import { useI18n } from '@/composables/useI18n';
+
 const props = withDefaults(defineProps<Props>(), {
 	elements: () => [],
 });
@@ -30,6 +32,7 @@ const { popViewStack, activeViewStack } = useViewStacks();
 const { registerKeyHook } = useKeyboardNavigation();
 const { workflowId } = useWorkflowsStore();
 const nodeCreatorStore = useNodeCreatorStore();
+const i18n = useI18n();
 
 const activeItemId = computed(() => useKeyboardNavigation()?.activeItemId);
 const actionCount = computed(() => props.elements.filter(({ type }) => type === 'action').length);
@@ -120,7 +123,10 @@ registerKeyHook(`CategoryLeft_${props.category}`, {
 		<div v-if="expanded && actionCount > 0 && $slots.default" :class="$style.contentSlot">
 			<slot />
 		</div>
-		<CommunityNodeInstallHint v-if="isPreview" hint="Install this node to start using actions" />
+		<CommunityNodeInstallHint
+			v-if="isPreview"
+			:hint="i18n.baseText('communityNodeItem.actions.hint')"
+		/>
 
 		<!-- Pass through listeners & empty slot to ItemsRenderer -->
 		<ItemsRenderer

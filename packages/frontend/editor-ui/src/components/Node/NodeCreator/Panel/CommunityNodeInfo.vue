@@ -67,6 +67,8 @@ async function fetchPackageInfo(packageName: string) {
 		}
 
 		const downloadsData: DownloadData = await downloadsResponse.json();
+		if (!downloadsData.downloads || !downloadsData.downloads.length) return;
+
 		const total = downloadsData.downloads.reduce((sum, day) => sum + day.downloads, 0);
 
 		downloads.value = formatNumber(total);

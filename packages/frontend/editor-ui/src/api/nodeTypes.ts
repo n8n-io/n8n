@@ -32,7 +32,11 @@ export async function getCommunityNodeAttributes(
 	context: IRestApiContext,
 	type: string,
 ): Promise<CommunityNodeAttributes | null> {
-	return await makeRestApiRequest(context, 'GET', `/community-node-types/${type}`);
+	return await makeRestApiRequest(
+		context,
+		'GET',
+		`/community-node-types/${encodeURIComponent(type)}`,
+	);
 }
 
 export async function getNodeTranslationHeaders(

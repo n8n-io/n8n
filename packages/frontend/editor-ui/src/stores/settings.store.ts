@@ -157,7 +157,9 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isCommunityNodesFeatureEnabled = computed(() => settings.value.communityNodesEnabled);
 
-	const isUnverifiedPackagesEnabled = computed(() => settings.value.unverifiedEnabled);
+	const isUnverifiedPackagesEnabled = computed(
+		() => settings.value.unverifiedCommunityNodesEnabled,
+	);
 
 	const allowedModules = computed(() => settings.value.allowedModules);
 
@@ -259,7 +261,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		const fetchedSettings = await settingsApi.getSettings(rootStore.restApiContext);
 		setSettings(fetchedSettings);
 		settings.value.communityNodesEnabled = fetchedSettings.communityNodesEnabled;
-		settings.value.unverifiedEnabled = fetchedSettings.unverifiedEnabled;
+		settings.value.unverifiedCommunityNodesEnabled =
+			fetchedSettings.unverifiedCommunityNodesEnabled;
 		setAllowedModules(fetchedSettings.allowedModules);
 		setSaveDataErrorExecution(fetchedSettings.saveDataErrorExecution);
 		setSaveDataSuccessExecution(fetchedSettings.saveDataSuccessExecution);

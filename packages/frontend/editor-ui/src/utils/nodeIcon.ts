@@ -74,6 +74,7 @@ export function getNodeIconSource(nodeType?: IconNodeType | null): NodeIconSourc
 	}
 
 	if (nodeType.name && isNodePreviewKey(nodeType.name) && typeof nodeType.iconUrl === 'string') {
+		// If node type is a node preview it would have full icon url
 		return {
 			type: 'file',
 			src: nodeType.iconUrl,

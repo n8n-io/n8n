@@ -59,14 +59,18 @@ vi.mock('../composables/useViewStacks', () => ({
 describe('CommunityNodeInfo', () => {
 	const renderComponent = createComponentRenderer(CommunityNodeInfo);
 	let pinia: TestingPinia;
+	let originalFetch: typeof global.fetch;
 
 	beforeEach(() => {
 		pinia = createTestingPinia();
 		setActivePinia(pinia);
+
+		originalFetch = global.fetch;
 		global.fetch = vi.fn();
 	});
 
 	afterEach(() => {
+		global.fetch = originalFetch;
 		vi.resetAllMocks();
 	});
 

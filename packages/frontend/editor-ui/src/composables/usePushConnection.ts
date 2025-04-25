@@ -586,10 +586,7 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 		} else if (receivedData.type === 'reloadNodeType') {
 			await nodeTypesStore.getNodeTypes();
 			const isCommunityNode = isCommunityPackageName(receivedData.data.name);
-			await nodeTypesStore.getFullNodesProperties(
-				[receivedData.data],
-				isCommunityNode ? false : true,
-			);
+			await nodeTypesStore.getFullNodesProperties([receivedData.data], !isCommunityNode);
 		} else if (receivedData.type === 'removeNodeType') {
 			const pushData = receivedData.data;
 

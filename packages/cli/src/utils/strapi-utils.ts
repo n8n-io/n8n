@@ -1,4 +1,6 @@
+import { Container } from '@n8n/di';
 import axios from 'axios';
+import { ErrorReporter, Logger } from 'n8n-core';
 import type { CommunityNodeAttributes, INodeTypeDescription } from 'n8n-workflow';
 
 interface StrapiResponseData {
@@ -42,7 +44,13 @@ export async function strapiPaginatedRequest(url: string): Promise<StrapiData[]>
 				headers: { 'Content-Type': 'application/json' },
 				params,
 			});
-		} catch (error) {}
+		} catch (error) {
+			Container.get(ErrorReporter).error(error, { tags: { source: 'strapiPaginatedRequest' } });
+			Container.get(Logger).error(
+				`Error while fetching community nodes from Strapi: ${(error as Error).message}`,
+			);
+			break;
+		}
 
 		responseData = response?.data?.data;
 

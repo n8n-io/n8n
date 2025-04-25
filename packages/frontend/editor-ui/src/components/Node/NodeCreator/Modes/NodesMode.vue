@@ -319,7 +319,7 @@ registerKeyHook('MainViewArrowLeft', {
 		<CategorizedItemsRenderer
 			v-if="moreFromCommunity.length > 0"
 			:elements="moreFromCommunity"
-			category="More from the community"
+			:category="i18n.baseText('nodeCreator.categoryNames.moreFromCommunity')"
 			@selected="onSelected"
 			:expanded="true"
 		>

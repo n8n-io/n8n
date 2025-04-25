@@ -16,9 +16,11 @@ const openCommunityNodeDocsPage = () => {
 		theme="text"
 		@click="openCommunityNodeDocsPage"
 		:class="$style.container"
-		:title="'Open community node docs'"
+		:title="i18n.baseText('communityNodesDocsLink.link.title')"
 	>
-		<n8n-text size="small" bold style="margin-right: 5px"> Docs </n8n-text>
+		<n8n-text size="small" bold style="margin-right: 5px">
+			{{ i18n.baseText('communityNodesDocsLink.title') }}
+		</n8n-text>
 		<font-awesome-icon icon="external-link-alt" />
 	</n8n-link>
 </template>

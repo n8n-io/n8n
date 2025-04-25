@@ -104,7 +104,9 @@ const onInstall = async () => {
 			<div>
 				<div v-if="communityNodeDetails?.installed" :class="$style.installed">
 					<n8n-icon :class="$style.installedIcon" icon="cube" />
-					<n8n-text color="text-light" size="small" bold> Installed </n8n-text>
+					<n8n-text color="text-light" size="small" bold>
+						{{ i18n.baseText('communityNodeDetails.installed') }}
+					</n8n-text>
 				</div>
 				<N8nButton
 					v-else-if="isOwner"

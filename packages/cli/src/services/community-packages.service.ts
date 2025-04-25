@@ -356,7 +356,7 @@ export class CommunityPackagesService {
 		const packageVersion = isUpdate || !options.version ? 'latest' : options.version;
 		const command = `npm install ${packageName}@${packageVersion} --registry=${this.getNpmRegistry()}`;
 
-		const isVettedPackageInstall = 'checksum' in options && options.checksum ? true : false;
+		const isVettedPackageInstall = 'checksum' in options && Boolean(options.checksum);
 		this.checkInstallPermissions(isUpdate, isVettedPackageInstall);
 
 		if (!isUpdate && options.checksum) {

@@ -20,6 +20,7 @@ const { openCommunityPackageUpdateConfirmModal, openCommunityPackageUninstallCon
 	useUIStore();
 const i18n = useI18n();
 const telemetry = useTelemetry();
+const settingsStore = useSettingsStore();
 
 const packageActions = [
 	{
@@ -97,9 +98,7 @@ function onUpdateClick() {
 					<n8n-icon icon="exclamation-triangle" color="danger" size="large" />
 				</n8n-tooltip>
 				<n8n-tooltip
-					v-else-if="
-						useSettingsStore().isUnverifiedPackagesEnabled && communityPackage.updateAvailable
-					"
+					v-else-if="settingsStore.isUnverifiedPackagesEnabled && communityPackage.updateAvailable"
 					placement="top"
 				>
 					<template #content>

@@ -10,7 +10,7 @@ const props = defineProps<Props>();
 
 const router = useRouter();
 
-const bugsUrl = ref<string>();
+const bugsUrl = ref<string>(`https://registry.npmjs.org/${props.packageName}`);
 
 async function openSettingsPage() {
 	await router.push({ name: VIEWS.COMMUNITY_NODES });
@@ -34,7 +34,9 @@ async function getBugsUrl(packageName: string) {
 
 		const data = await response.json();
 
-		bugsUrl.value = data.bugs?.url ?? url;
+		if (data.bugs?.url) {
+			bugsUrl.value = data.bugs.url;
+		}
 	} catch (error) {
 		console.error(error);
 	}

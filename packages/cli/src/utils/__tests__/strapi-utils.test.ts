@@ -114,7 +114,6 @@ describe('strapiPaginatedRequest', () => {
 	});
 
 	it('should return an empty array if the request fails', async () => {
-		const baseUrl = 'https://strapi.test';
 		const endpoint = '/nodes';
 
 		nock(baseUrl).get(endpoint).query(true).replyWithError('Request failed');
