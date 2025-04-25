@@ -24,14 +24,12 @@ function hasError(row: unknown): row is WithError {
 const errorTooltipMap: Record<string, BaseTextKey> = {
 	// Test case errors
 	MOCKED_NODE_NOT_FOUND: 'testDefinition.runDetail.error.mockedNodeMissing',
-	FAILED_TO_EXECUTE_EVALUATION_WORKFLOW: 'testDefinition.runDetail.error.evaluationFailed',
 	FAILED_TO_EXECUTE_WORKFLOW: 'testDefinition.runDetail.error.executionFailed',
-	TRIGGER_NO_LONGER_EXISTS: 'testDefinition.runDetail.error.triggerNoLongerExists',
 	INVALID_METRICS: 'testDefinition.runDetail.error.invalidMetrics',
 
 	// Test run errors
-	PAST_EXECUTIONS_NOT_FOUND: 'testDefinition.listRuns.error.noPastExecutions',
-	EVALUATION_WORKFLOW_NOT_FOUND: 'testDefinition.listRuns.error.evaluationWorkflowNotFound',
+	TEST_CASES_NOT_FOUND: 'testDefinition.listRuns.error.testCasesNotFound',
+	EVALUATION_TRIGGER_NOT_FOUND: 'testDefinition.listRuns.error.evaluationTriggerNotFound',
 };
 
 // FIXME: move status logic to a parent component

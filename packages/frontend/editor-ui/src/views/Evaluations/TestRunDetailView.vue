@@ -15,10 +15,7 @@ import { useRouter } from 'vue-router';
 // TODO: replace with n8n-api type
 const TEST_CASE_EXECUTION_ERROR_CODE = {
 	MOCKED_NODE_NOT_FOUND: 'MOCKED_NODE_NOT_FOUND',
-	TRIGGER_NO_LONGER_EXISTS: 'TRIGGER_NO_LONGER_EXISTS',
 	FAILED_TO_EXECUTE_WORKFLOW: 'FAILED_TO_EXECUTE_WORKFLOW',
-	EVALUATION_WORKFLOW_DOES_NOT_EXIST: 'EVALUATION_WORKFLOW_DOES_NOT_EXIST',
-	FAILED_TO_EXECUTE_EVALUATION_WORKFLOW: 'FAILED_TO_EXECUTE_EVALUATION_WORKFLOW',
 	INVALID_METRICS: 'INVALID_METRICS',
 	UNKNOWN_ERROR: 'UNKNOWN_ERROR',
 } as const;
@@ -27,10 +24,10 @@ type TestCaseExecutionErrorCodes =
 	(typeof TEST_CASE_EXECUTION_ERROR_CODE)[keyof typeof TEST_CASE_EXECUTION_ERROR_CODE];
 
 const TEST_RUN_ERROR_CODES = {
-	PAST_EXECUTIONS_NOT_FOUND: 'PAST_EXECUTIONS_NOT_FOUND',
-	EVALUATION_WORKFLOW_NOT_FOUND: 'EVALUATION_WORKFLOW_NOT_FOUND',
+	TEST_CASE_NOT_FOUND: 'TEST_CASES_NOT_FOUND',
 	INTERRUPTED: 'INTERRUPTED',
 	UNKNOWN_ERROR: 'UNKNOWN_ERROR',
+	EVALUATION_TRIGGER_NOT_FOUND: 'EVALUATION_TRIGGER_NOT_FOUND',
 } as const;
 
 type TestRunErrorCode = (typeof TEST_RUN_ERROR_CODES)[keyof typeof TEST_RUN_ERROR_CODES];
@@ -81,15 +78,16 @@ const gotToExecution = (executionId: string) => {
 
 const testCaseErrorDictionary: Partial<Record<TestCaseExecutionErrorCodes, BaseTextKey>> = {
 	MOCKED_NODE_NOT_FOUND: 'testDefinition.runDetail.error.mockedNodeMissing',
-	FAILED_TO_EXECUTE_EVALUATION_WORKFLOW: 'testDefinition.runDetail.error.evaluationFailed',
 	FAILED_TO_EXECUTE_WORKFLOW: 'testDefinition.runDetail.error.executionFailed',
-	TRIGGER_NO_LONGER_EXISTS: 'testDefinition.runDetail.error.triggerNoLongerExists',
 	INVALID_METRICS: 'testDefinition.runDetail.error.invalidMetrics',
+	UNKNOWN_ERROR: 'testDefinition.runDetail.error.unknownError',
 } as const;
 
 const testRunErrorDictionary: Partial<Record<TestRunErrorCode, BaseTextKey>> = {
-	PAST_EXECUTIONS_NOT_FOUND: 'testDefinition.listRuns.error.noPastExecutions',
-	EVALUATION_WORKFLOW_NOT_FOUND: 'testDefinition.listRuns.error.evaluationWorkflowNotFound',
+	TEST_CASES_NOT_FOUND: 'testDefinition.listRuns.error.testCasesNotFound',
+	INTERRUPTED: 'testDefinition.listRuns.error.executionInterrupted',
+	UNKNOWN_ERROR: 'testDefinition.listRuns.error.unknownError',
+	EVALUATION_TRIGGER_NOT_FOUND: 'testDefinition.listRuns.error.evaluationTriggerNotFound',
 } as const;
 
 const getErrorBaseKey = (errorCode?: string): string =>
@@ -113,7 +111,7 @@ const getErrorTooltipLinkRoute = (row: TestCaseExecutionRecord) => {
 	// 			executionId: row.executionId,
 	// 		},
 	// 	};
-	// } else if (row.errorCode === TEST_CASE_EXECUTION_ERROR_CODE.TRIGGER_NO_LONGER_EXISTS) {
+	// } else if (row.errorCode === TEST_CASE_EXECUTION_ERROR_CODE.EVALUATION_TRIGGER_NOT_FOUND) {
 	// 	return {
 	// 		name: VIEWS.EXECUTION_PREVIEW,
 	// 		params: {
