@@ -1,3 +1,12 @@
+## [1.90.2](https://github.com/n8n-io/n8n/compare/n8n@1.90.1...n8n@1.90.2) (2025-04-25)
+
+
+### Bug Fixes
+
+* Bring back TidyUp button's icon and fix Easy AI button size ([#14818](https://github.com/n8n-io/n8n/issues/14818)) ([b2e2e60](https://github.com/n8n-io/n8n/commit/b2e2e60f9c50b5cce6bafd8972e81c5db88cbce7))
+
+
+
 ## [1.90.1](https://github.com/n8n-io/n8n/compare/n8n@1.90.0...n8n@1.90.1) (2025-04-22)
 
 
