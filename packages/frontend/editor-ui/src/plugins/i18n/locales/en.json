@@ -3111,5 +3111,12 @@
 	"insights.banner.failureRate.deviation.tooltip": "Percentage point change from previous period",
 	"insights.chart.failed": "Failed",
 	"insights.chart.succeeded": "Successful",
-	"insights.chart.loading": "Loading data..."
+	"insights.chart.loading": "Loading data...",
+	"insights.upgradeModal.button.dismiss": "Dismiss",
+	"insights.upgradeModal.button.upgrade": "Upgrade",
+	"insights.upgradeModal.content": "Viewing this time period requires an enterprise plan. Upgrade to Enterprise to unlock advanced features.",
+	"insights.upgradeModal.perks.0": "View up to one year of insights history",
+	"insights.upgradeModal.perks.1": "Zoom into last 24 hours with hourly granularity",
+	"insights.upgradeModal.perks.2": "Gain deeper visibility into workflow trends over time",
+	"insights.upgradeModal.title": "Upgrade to Enterprise"
 }
