@@ -36,10 +36,37 @@ jobs:
           npm install -g pnpm@10.2.1
           pnpm --version
 
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ${{ env.STORE_PATH }}
+            .pnpm-store
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Cache build artifacts
+        uses: actions/cache@v3
+        id: cache-build
+        with:
+          path: |
+            packages/**/dist
+            packages/**/build
+          key: ${{ runner.os }}-build-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-build-
+
       - name: Build
+        if: steps.cache-build.outputs.cache-hit != 'true'
         run: pnpm build
 
       - name: Run formatcheck

@@ -42,29 +42,47 @@ jobs:
       - uses: actions/checkout@v4.1.1
         with:
           ref: ${{ inputs.ref }}
+          fetch-depth: 0
 
       - name: Use Node.js ${{ inputs.nodeVersion }}
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ inputs.nodeVersion }}
-          cache: 'pnpm'
+          node-version: 20.x
+          check-latest: true
 
-      - name: Setup corepack and pnpm
+      - name: Check pnpm
+        id: check-pnpm
         run: |
-          npm i -g corepack@0.31
-          corepack enable
+          echo "Installing pnpm..."
+          npm install -g pnpm@10.2.1
+          pnpm --version
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ${{ env.STORE_PATH }}
+            .pnpm-store
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
       - name: Cache build artifacts
-        uses: actions/cache@v4
+        uses: actions/cache@v3
         id: cache-build
         with:
           path: |
-            ./packages/**/dist
-            ~/.pnpm-store
-          key: ${{ runner.os }}-build-${{ inputs.cacheKey || github.sha }}
+            packages/**/dist
+            packages/**/build
+          key: ${{ runner.os }}-build-${{ github.sha }}
           restore-keys: |
             ${{ runner.os }}-build-
 
