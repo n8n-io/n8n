@@ -187,7 +187,7 @@ export class ChainRetrievalQa implements INodeType {
 							{
 								displayName: 'Batch Size',
 								name: 'batchSize',
-								default: 20,
+								default: 100,
 								type: 'number',
 								description:
 									'How many items to process in parallel. This is useful for rate limiting.',

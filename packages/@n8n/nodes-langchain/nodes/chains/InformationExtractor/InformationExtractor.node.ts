@@ -223,7 +223,7 @@ export class InformationExtractor implements INodeType {
 							{
 								displayName: 'Batch Size',
 								name: 'batchSize',
-								default: 1,
+								default: 100,
 								type: 'number',
 								description:
 									'How many items to process in parallel. This is useful for rate limiting, but will impact the agents log output.',
