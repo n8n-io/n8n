@@ -1,13 +1,6 @@
+import type { TestRunFinalResult, TestCaseExecution } from '@n8n/db';
 import assert from 'assert';
-import { mapValues } from 'lodash';
-import type {
-	IRunExecutionData,
-	IPinData,
-	IWorkflowBase,
-	IRunData,
-	ITaskData,
-	INode,
-} from 'n8n-workflow';
+import type { IRunExecutionData, IPinData, IWorkflowBase } from 'n8n-workflow';
 
 import { TestCaseExecutionError } from '@/evaluation.ee/test-runner/errors.ee';
 
@@ -55,7 +48,7 @@ export function createPinData(
 			if (nodeData?.[0]?.data?.main?.[0]) {
 				pinData[nodeName] = nodeData[0]?.data?.main?.[0];
 			} else {
-				throw new TestCaseExecutionError('MOCKED_NODE_DOES_NOT_EXIST');
+				throw new TestCaseExecutionError('MOCKED_NODE_NOT_FOUND');
 			}
 		}
 	}
@@ -75,41 +68,29 @@ export function getPastExecutionTriggerNode(executionData: IRunExecutionData) {
 }
 
 /**
- * Function to check if the node is root node or sub-node.
- * Sub-node is a node which does not have the main output (the only exception is Stop and Error node)
+ * Returns the final result of the test run based on the test case executions.
+ * The final result is the most severe status among all test case executions' statuses.
  */
-function isSubNode(node: INode, nodeData: ITaskData[]) {
-	return (
-		!node.type.endsWith('stopAndError') &&
-		nodeData.some((nodeRunData) => !(nodeRunData.data && 'main' in nodeRunData.data))
-	);
-}
+export function getTestRunFinalResult(testCaseExecutions: TestCaseExecution[]): TestRunFinalResult {
+	// Priority of statuses: error > warning > success
+	const severityMap: Record<TestRunFinalResult, number> = {
+		error: 3,
+		warning: 2,
+		success: 1,
+	};
 
-/**
- * Transform execution data and workflow data into a more user-friendly format to supply to evaluation workflow
- */
-function formatExecutionData(data: IRunData, workflow: IWorkflowBase) {
-	const formattedData = {} as Record<string, any>;
+	let finalResult: TestRunFinalResult = 'success';
 
-	for (const [nodeName, nodeData] of Object.entries(data)) {
-		const node = workflow.nodes.find((n) => n.name === nodeName);
-
-		assert(node, `Node "${nodeName}" not found in the workflow`);
-
-		const rootNode = !isSubNode(node, nodeData);
-
-		const runs = nodeData.map((nodeRunData) => ({
-			executionTime: nodeRunData.executionTime,
-			rootNode,
-			output: nodeRunData.data
-				? mapValues(nodeRunData.data, (connections) =>
-						connections.map((singleOutputData) => singleOutputData?.map((item) => item.json) ?? []),
-					)
-				: null,
-		}));
-
-		formattedData[node.id] = { nodeName, runs };
+	for (const testCaseExecution of testCaseExecutions) {
+		if (['error', 'warning'].includes(testCaseExecution.status)) {
+			if (
+				testCaseExecution.status in severityMap &&
+				severityMap[testCaseExecution.status as TestRunFinalResult] > severityMap[finalResult]
+			) {
+				finalResult = testCaseExecution.status as TestRunFinalResult;
+			}
+		}
 	}
 
-	return formattedData;
+	return finalResult;
 }
