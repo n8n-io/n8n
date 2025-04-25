@@ -47,6 +47,7 @@ export const defaultSettings: FrontendSettings = {
 		evaluator: 'tournament',
 	},
 	executionMode: 'regular',
+	isMultiMain: false,
 	executionTimeout: 0,
 	hideUsagePage: false,
 	hiringBannerEnabled: false,
