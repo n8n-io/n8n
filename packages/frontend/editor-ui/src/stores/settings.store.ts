@@ -184,7 +184,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isDevRelease = computed(() => settings.value.releaseChannel === 'dev');
 
-	const isNewLogsEnabled = computed(() => settings.value.logsView.enabled);
+	const isNewLogsEnabled = computed(() => !!settings.value.logsView?.enabled);
 
 	const setSettings = (newSettings: FrontendSettings) => {
 		settings.value = newSettings;
