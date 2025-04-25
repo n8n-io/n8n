@@ -127,14 +127,11 @@ const actions = computed(() => {
 			label: locale.baseText('workflows.item.open'),
 			value: WORKFLOW_LIST_ITEM_ACTIONS.OPEN,
 		},
-	];
-
-	if (!props.data.isArchived) {
-		items.push({
+		{
 			label: locale.baseText('workflows.item.share'),
 			value: WORKFLOW_LIST_ITEM_ACTIONS.SHARE,
-		});
-	}
+		},
+	];
 
 	if (workflowPermissions.value.create && !props.readOnly && !props.data.isArchived) {
 		items.push({
