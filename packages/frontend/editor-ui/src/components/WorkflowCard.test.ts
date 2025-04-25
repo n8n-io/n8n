@@ -32,6 +32,7 @@ const createWorkflow = (overrides = {}): IWorkflowDb => ({
 	nodes: [],
 	connections: {},
 	active: true,
+	isArchived: false,
 	versionId: '1',
 	...overrides,
 });

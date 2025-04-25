@@ -192,6 +192,7 @@ export function createTestWorkflow({
 		nodes,
 		connections,
 		active,
+		isArchived: false,
 		settings,
 		versionId: '1',
 		meta: {},

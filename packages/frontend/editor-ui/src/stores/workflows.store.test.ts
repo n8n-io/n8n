@@ -886,6 +886,7 @@ function generateMockExecutionEvents() {
 			nodes: [],
 			connections: {},
 			active: false,
+			isArchived: false,
 			versionId: '1',
 		},
 		finished: false,
