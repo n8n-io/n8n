@@ -96,7 +96,8 @@ jobs:
   notify-on-failure:
     name: Notify Feishu
     runs-on: ubuntu-latest
-    needs: [install-and-build, unit-test, lint]
+    # needs: [install-and-build, unit-test, lint]
+    needs: install-and-build
     if: always()
     steps:
       - name: Notify Feishu

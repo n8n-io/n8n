@@ -1,52 +1,18 @@
 name: Docker Custom Image CI
-run-name: Build ${{ inputs.branch }} - ${{ inputs.user }}
+run-name: Build ${{ github.ref_name }} - ${{ github.actor }}
 
 on:
   workflow_dispatch:
-    inputs:
-      branch:
-        description: 'GitHub branch to create image off.'
-        required: true
-      tag:
-        description: 'Name of the docker tag to create.'
-        required: true
-      merge-master:
-        description: 'Merge with master.'
-        type: boolean
-        required: true
-        default: false
-      user:
-        description: ''
-        required: false
-        default: 'none'
-      start-url:
-        description: 'URL to call after workflow is kicked off.'
-        required: false
-        default: ''
-      success-url:
-        description: 'URL to call after Docker Image got built successfully.'
-        required: false
-        default: ''
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Call Start URL - optionally
-        if: ${{ github.event.inputs.start-url != '' }}
-        run: curl -v -X POST -d 'url=${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}' ${{github.event.inputs.start-url}} || echo ""
-        shell: bash
-
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.branch }}
-
-      - name: Merge Master - optionally
-        if: github.event.inputs.merge-master
-        run: git remote add upstream https://github.com/n8n-io/n8n.git -f; git merge upstream/master --allow-unrelated-histories || echo ""
-        shell: bash
+          ref: ${{ github.ref_name }}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -63,6 +29,10 @@ jobs:
         run: |
           gcloud auth configure-docker ${{ secrets.GCP_REGION }}-docker.pkg.dev --quiet
 
+      - name: Set short SHA
+        id: short-sha
+        run: echo "SHORT_SHA=${GITHUB_SHA::7}" >> $GITHUB_ENV
+
       - name: Build and push image
         uses: docker/build-push-action@v5
         env:
@@ -78,22 +48,18 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           tags: |
-            ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_REPOSITORY }}/n8n:${{ inputs.tag }}
-            ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_REPOSITORY }}/n8n:latest
-
-      - name: Call Success URL - optionally
-        if: ${{ github.event.inputs.success-url != '' }}
-        run: curl -v ${{github.event.inputs.success-url}} || echo ""
-        shell: bash
+            ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_REPOSITORY }}/agentflow:${{ env.SHORT_SHA }}
+            ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_REPOSITORY }}/agentflow:latest
 
       - name: Notify Feishu
         if: always()
         run: |
+          SHORT_SHA=${GITHUB_SHA::7}
           curl -X POST -H "Content-Type: application/json" \
-          -d '{
-            "msg_type": "text",
-            "content": {
-              "text": "Docker 镜像构建通知\n仓库: ${{ github.repository }}\n分支: ${{ github.event.inputs.branch }}\n标签: ${{ github.event.inputs.tag }}\n状态: ${{ job.status }}\n构建链接: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\n镜像地址: ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_REPOSITORY }}/n8n:${{ inputs.tag }}"
+          -d "{
+            \"msg_type\": \"text\",
+            \"content\": {
+              \"text\": \"Docker 镜像构建通知\n仓库: ${{ github.repository }}\n分支: ${{ github.ref_name }}\n标签: agentflow:${SHORT_SHA}\n状态: ${{ job.status }}\n构建链接: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\n镜像地址: ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_REPOSITORY }}/agentflow:${SHORT_SHA}\"
             }
-          }' \
+          }" \
           ${{ secrets.FEISHU_WEBHOOK_URL }}

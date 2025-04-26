@@ -2,8 +2,8 @@ name: Chromatic
 # ui check
 
 on:
-  schedule:
-    - cron: '0 0 * * *'
+  # schedule:
+  #   - cron: '0 0 * * *'
   workflow_dispatch:
     inputs:
       enabled:
