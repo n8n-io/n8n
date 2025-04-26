@@ -1,8 +1,8 @@
 name: Docker Nightly Image CI
 
 on:
-  schedule:
-    - cron: '0 0 * * *'  # 每天 UTC 0 点运行
+  # schedule:
+  #   - cron: '0 0 * * *'  # 每天 UTC 0 点运行
   workflow_dispatch:  # 允许手动触发
 
 jobs:

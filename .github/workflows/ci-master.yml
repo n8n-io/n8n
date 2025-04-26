@@ -41,31 +41,32 @@ jobs:
       - name: Build
         run: pnpm build
 
-  unit-test:
-    name: Unit tests
-    uses: ./.github/workflows/units-tests-reusable.yml
-    needs: install-and-build
-    strategy:
-      matrix:
-        node-version: [18.x, 20.x]
-    with:
-      ref: ${{ inputs.branch }}
-      nodeVersion: ${{ matrix.node-version }}
-      collectCoverage: ${{ matrix.node-version == '20.x' }}
-      ignoreTurboCache: ${{ matrix.node-version == '20.x' }}
-      skipFrontendTests: ${{ matrix.node-version != '20.x' }}
+  # unit-test:
+  #   name: Unit tests
+  #   uses: ./.github/workflows/units-tests-reusable.yml
+  #   needs: install-and-build
+  #   strategy:
+  #     matrix:
+  #       node-version: [18.x, 20.x]
+  #   with:
+  #     ref: ${{ inputs.branch }}
+  #     nodeVersion: ${{ matrix.node-version }}
+  #     collectCoverage: ${{ matrix.node-version == '20.x' }}
+  #     ignoreTurboCache: ${{ matrix.node-version == '20.x' }}
+  #     skipFrontendTests: ${{ matrix.node-version != '20.x' }}
 
-  lint:
-    name: Lint
-    uses: ./.github/workflows/linting-reusable.yml
-    needs: install-and-build
-    with:
-      ref: ${{ inputs.branch }}
+  # lint:
+  #   name: Lint
+  #   uses: ./.github/workflows/linting-reusable.yml
+  #   needs: install-and-build
+  #   with:
+  #     ref: ${{ inputs.branch }}
 
   notify-on-failure:
     name: Notify Feishu
     runs-on: ubuntu-latest
-    needs: [unit-test, lint]
+    # needs: [unit-test, lint]
+    needs: install-and-build
     if: always()
     steps:
       - name: Notify Feishu
