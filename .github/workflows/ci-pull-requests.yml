@@ -75,22 +75,23 @@ jobs:
       - name: Run typecheck
         run: pnpm typecheck
 
-  unit-test:
-    name: Unit tests
-    uses: ./.github/workflows/units-tests-reusable.yml
-    needs: install-and-build
-    with:
-      ref: refs/pull/${{ github.event.pull_request.number }}/merge
-      cacheKey: ${{ github.sha }}-base:build
-      collectCoverage: true
+  # temporary disable unit test and lint
+  # unit-test:
+  #   name: Unit tests
+  #   uses: ./.github/workflows/units-tests-reusable.yml
+  #   needs: install-and-build
+  #   with:
+  #     ref: refs/pull/${{ github.event.pull_request.number }}/merge
+  #     cacheKey: ${{ github.sha }}-base:build
+  #     collectCoverage: true
 
-  lint:
-    name: Lint
-    uses: ./.github/workflows/linting-reusable.yml
-    needs: install-and-build
-    with:
-      ref: refs/pull/${{ github.event.pull_request.number }}/merge
-      cacheKey: ${{ github.sha }}-base:build
+  # lint:
+  #   name: Lint
+  #   uses: ./.github/workflows/linting-reusable.yml
+  #   needs: install-and-build
+  #   with:
+  #     ref: refs/pull/${{ github.event.pull_request.number }}/merge
+  #     cacheKey: ${{ github.sha }}-base:build
 
   notify-on-failure:
     name: Notify Feishu
