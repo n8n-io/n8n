@@ -10,6 +10,7 @@ import { OrchestrationService } from '@/services/orchestration.service';
 import { WebhookServer } from '@/webhooks/webhook-server';
 
 import { BaseCommand } from './base-command';
+import { WorkerServerEndpointsConfig } from '@/scaling/worker-server';
 
 export class Webhook extends BaseCommand {
 	static description = 'Starts n8n webhook process. Intercepts only production URLs.';
@@ -87,6 +88,17 @@ export class Webhook extends BaseCommand {
 			throw new ApplicationError(
 				'Webhook process cannot be started when multi-main setup is enabled.',
 			);
+		}
+
+		const endpointsConfig: WorkerServerEndpointsConfig = {
+			health: this.globalConfig.queue.health.active,
+			overwrites: false,
+			metrics: this.globalConfig.endpoints.metrics.enable,
+		};
+
+		if (Object.values(endpointsConfig).some((e) => e)) {
+			const { WorkerServer } = await import('@/scaling/worker-server');
+			await Container.get(WorkerServer).init(endpointsConfig);
 		}
 
 		const { ScalingService } = await import('@/scaling/scaling.service');

@@ -55,7 +55,10 @@ export class WorkerServer {
 		private readonly prometheusMetricsService: PrometheusMetricsService,
 		private readonly redisClientService: RedisClientService,
 	) {
-		assert(this.instanceSettings.instanceType === 'worker');
+		assert(
+			this.instanceSettings.instanceType === 'worker' ||
+				this.instanceSettings.instanceType === 'webhook',
+		);
 
 		this.logger = this.logger.scoped('scaling');
 
