@@ -277,7 +277,7 @@ describe('LogsPanel', () => {
 
 		const rendered = render();
 
-		expect(rendered.getByText('AI Agent')).toBeInTheDocument();
+		expect(await rendered.findByText('AI Agent')).toBeInTheDocument();
 
 		operations.deleteNode(aiAgentNode.id);
 
