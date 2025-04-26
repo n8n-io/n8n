@@ -513,12 +513,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 		align-items: center;
 		padding: var(--spacing-xs);
 		justify-content: space-between;
-
-		img {
-			position: relative;
-			left: 1px;
-			height: 20px;
-		}
+		width: 100%;
 	}
 
 	&.sideMenuCollapsed {
@@ -528,6 +523,12 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 		.logo {
 			flex-direction: column;
 			gap: 12px;
+			width: $sidebar-width;
+			min-width: $sidebar-width;
+			max-width: $sidebar-width;
+			padding: 0;
+			margin: 0;
+			box-sizing: border-box;
 		}
 	}
 }

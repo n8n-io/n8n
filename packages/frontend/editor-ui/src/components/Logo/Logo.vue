@@ -6,25 +6,18 @@ import { useFavicon } from '@vueuse/core';
 import LogoIcon from './logo-icon.svg';
 import LogoText from './logo-text.svg';
 
-const props = defineProps<
-	(
-		| {
-				location: 'authView';
-		  }
-		| {
-				location: 'sidebar';
-				collapsed: boolean;
-		  }
-	) & {
-		releaseChannel: FrontendSettings['releaseChannel'];
-	}
->();
+const props = defineProps<{
+	location: 'authView' | 'sidebar';
+	collapsed?: boolean;
+	releaseChannel: FrontendSettings['releaseChannel'];
+}>();
 
 const { location, releaseChannel } = props;
 
 const showLogoText = computed(() => {
 	if (location === 'authView') return true;
-	return !props.collapsed;
+	if (location === 'sidebar') return !props.collapsed;
+	return false;
 });
 
 const $style = useCssModule();
@@ -32,11 +25,14 @@ const containerClasses = computed(() => {
 	if (location === 'authView') {
 		return [$style.logoContainer, $style.authView];
 	}
-	return [
-		$style.logoContainer,
-		$style.sidebar,
-		props.collapsed ? $style.sidebarCollapsed : $style.sidebarExpanded,
-	];
+	if (location === 'sidebar') {
+		return [
+			$style.logoContainer,
+			$style.sidebar,
+			props.collapsed ? $style.sidebarCollapsed : $style.sidebarExpanded,
+		];
+	}
+	return [$style.logoContainer];
 });
 
 const svg = useTemplateRef<{ $el: Element }>('logo');
@@ -57,16 +53,45 @@ onMounted(() => {
 
 <template>
 	<div :class="containerClasses" data-test-id="n8n-logo">
-		<LogoIcon ref="logo" :class="$style.logo" />
-		<LogoText v-if="showLogoText" :class="$style.logoText" />
+		<!-- 展开时显示两个logo -->
+		<template v-if="location === 'sidebar' && !props.collapsed">
+			<div :class="$style.logoGroup">
+				<LogoIcon ref="logo" :class="$style.logo" />
+				<LogoText v-if="showLogoText" :class="$style.logoText" />
+			</div>
+			<div :class="$style.logoGroup">
+				<img src="/static/inmo-logo.png" :alt="'inmo logo'" :class="$style.secondLogo" />
+			</div>
+		</template>
+		<!-- 收缩时只显示INMO -->
+		<template v-else-if="location === 'sidebar'">
+			<div :class="$style.logoGroup">
+				<img src="/static/inmo-logo.png" :alt="'inmo logo'" :class="$style.secondLogo" />
+			</div>
+		</template>
+		<template v-else>
+			<div :class="$style.logoGroup">
+				<LogoIcon ref="logo" :class="$style.logo" />
+				<LogoText v-if="showLogoText" :class="$style.logoText" />
+			</div>
+		</template>
 		<slot />
 	</div>
 </template>
 
 <style lang="scss" module>
+@import '@/n8n-theme-variables.scss';
+
 .logoContainer {
 	display: flex;
 	justify-content: center;
+	align-items: center;
+	gap: var(--spacing-l);
+	width: 100%;
+}
+
+.logoGroup {
+	display: flex;
 	align-items: center;
 }
 
@@ -100,5 +125,39 @@ onMounted(() => {
 	width: 40px;
 	height: 30px;
 	padding: 0 var(--spacing-4xs);
+}
+
+.secondLogo {
+	height: 30px;
+	width: auto;
+}
+
+.sidebarCollapsed .secondLogo {
+	display: none;
+}
+
+.logoContainer.sidebarCollapsed {
+	width: $sidebar-width !important;
+	min-width: $sidebar-width !important;
+	max-width: $sidebar-width !important;
+	padding: 0;
+	margin: 0;
+	overflow: hidden;
+}
+
+.sidebarCollapsed .logoGroup {
+	width: 100%;
+	justify-content: center;
+}
+
+.sidebarCollapsed .secondLogo {
+	display: block;
+	margin: 0 auto;
+	max-width: 48px;
+}
+
+.sidebarCollapsed .logo,
+.sidebarCollapsed .logoText {
+	display: none;
 }
 </style>
