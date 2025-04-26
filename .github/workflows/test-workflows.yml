@@ -99,7 +99,7 @@ jobs:
 
       - name: Copy static assets
         run: |
-          cp assets/n8n-logo.png /tmp/n8n-logo.png
+          cp assets/inmo-logo.png /tmp/inmo-logo.png
           cp assets/n8n-screenshot.png /tmp/n8n-screenshot.png
           cp test-workflows/testData/pdfs/*.pdf /tmp/
 

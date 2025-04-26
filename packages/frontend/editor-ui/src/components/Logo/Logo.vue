@@ -53,12 +53,13 @@ onMounted(() => {
 	const blob = new Blob([logoEl.outerHTML], { type: 'image/svg+xml' });
 	useFavicon(URL.createObjectURL(blob));
 });
+
+const logoUrl = '/static/inmo-logo.png';
 </script>
 
 <template>
-	<div :class="containerClasses" data-test-id="n8n-logo">
-		<LogoIcon ref="logo" :class="$style.logo" />
-		<LogoText v-if="showLogoText" :class="$style.logoText" />
+	<div :class="containerClasses" data-test-id="inmo-logo">
+		<img :src="logoUrl" :alt="'logo'" :class="$style.logo" />
 		<slot />
 	</div>
 </template>
