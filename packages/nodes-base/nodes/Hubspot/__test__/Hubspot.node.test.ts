@@ -9,6 +9,8 @@ import contacts from './fixtures/contacts.json';
 import contactsSearchResult from './fixtures/contacts_search_result.json';
 import deals from './fixtures/deals.json';
 import dealsSearchResult from './fixtures/deals_search_result.json';
+import tickets from './fixtures/tickets.json';
+import ticketsSearchResult from './fixtures/tickets_search_result.json';
 
 describe('Hubspot Node', () => {
 	nock.disableNetConnect();
@@ -256,5 +258,69 @@ describe('Hubspot Node', () => {
 		afterAll(() => hubspotNock.done());
 
 		testWorkflows(['nodes/Hubspot/__test__/deals.workflow.json']);
+	});
+
+	describe('tickets', () => {
+		beforeAll(() => {
+			hubspotNock
+				.delete('/crm/v3/objects/tickets/123', {})
+				.reply(200, tickets.tickets[0])
+				.post('/crm/v3/objects/tickets', {
+					properties: {
+						subject: 'Test Ticket',
+						content: 'Test Ticket Content',
+						hs_pipeline: 'test pipeline name',
+						hs_pipeline_stage: 'test stage name',
+						hs_ticket_priority: 'HIGH',
+						hubspot_owner_id: '123',
+						test_custom_prop_name: 'test custom prop value',
+					},
+				})
+				.reply(200, tickets.tickets[0])
+				.patch('/crm/v3/objects/tickets/123', {
+					properties: {
+						subject: 'Updated Ticket',
+						content: 'Updated Ticket Content',
+					},
+				})
+				.reply(200, tickets.tickets[0])
+				.post('/crm/v3/objects/tickets/search', {
+					sorts: [
+						{
+							propertyName: 'createdate',
+							direction: 'ASCENDING',
+						},
+					],
+					filterGroups: [
+						{
+							filters: [
+								{
+									propertyName: 'subject',
+									operator: 'EQ',
+									value: 'Test Ticket',
+								},
+							],
+						},
+					],
+					direction: 'ASCENDING',
+					limit: 2,
+				})
+				.reply(200, ticketsSearchResult)
+				.get('/crm/v3/objects/tickets')
+				.query({
+					limit: '2',
+					properties: 'subject,content,hs_pipeline,hs_pipeline_stage',
+				})
+				.reply(200, tickets)
+				.get('/crm/v3/objects/tickets/123')
+				.query({
+					properties: 'subject,content,hs_pipeline,hs_pipeline_stage',
+				})
+				.reply(200, tickets.tickets[0]);
+		});
+
+		afterAll(() => hubspotNock.done());
+
+		testWorkflows(['nodes/Hubspot/__test__/tickets.workflow.json']);
 	});
 });

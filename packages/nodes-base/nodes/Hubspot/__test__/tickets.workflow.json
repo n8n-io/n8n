@@ -1,0 +1,353 @@
+{
+	"name": "Hubspot Tickets",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-400, 480],
+			"id": "b126b31f-c64f-472f-98ed-6ab9f0eb4e52",
+			"name": "When clicking 'Test workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "ticket",
+				"operation": "delete",
+				"ticketId": {
+					"__rl": true,
+					"value": "123",
+					"mode": "id"
+				}
+			},
+			"type": "n8n-nodes-base.hubspot",
+			"typeVersion": 2.1,
+			"position": [-180, -120],
+			"id": "7262d6df-23f4-425e-94c2-6ce67d1bc138",
+			"name": "HubSpot - Ticket - Delete",
+			"credentials": {
+				"hubspotApi": {
+					"id": "EDJsHUkhqof5gr15",
+					"name": "HubSpot account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "ticket",
+				"subject": "Test Ticket",
+				"additionalFields": {
+					"content": "Test Ticket Content",
+					"pipeline": "test pipeline name",
+					"stage": "test stage name",
+					"ticketOwner": "=123",
+					"priority": "HIGH",
+					"customPropertiesUi": {
+						"customPropertiesValues": [
+							{
+								"property": "=test_custom_prop_name",
+								"value": "test custom prop value"
+							}
+						]
+					}
+				}
+			},
+			"type": "n8n-nodes-base.hubspot",
+			"typeVersion": 2.1,
+			"position": [-180, 80],
+			"id": "2827f172-451b-4bab-bd91-36a2d0bc7013",
+			"name": "HubSpot - Ticket - Create",
+			"credentials": {
+				"hubspotApi": {
+					"id": "EDJsHUkhqof5gr15",
+					"name": "HubSpot account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "ticket",
+				"operation": "get",
+				"ticketId": {
+					"__rl": true,
+					"value": "123",
+					"mode": "id"
+				},
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.hubspot",
+			"typeVersion": 2.1,
+			"position": [-180, 480],
+			"id": "efbb6c5a-5061-4c6f-82a3-ae388f9e7690",
+			"name": "HubSpot - Ticket - Get",
+			"credentials": {
+				"hubspotApi": {
+					"id": "EDJsHUkhqof5gr15",
+					"name": "HubSpot account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "ticket",
+				"operation": "getAll",
+				"limit": 2,
+				"options": {
+					"propertiesCollection": {
+						"propertiesValues": {
+							"properties": "={{ ['subject', 'content', 'hs_pipeline', 'hs_pipeline_stage'] }}"
+						}
+					}
+				}
+			},
+			"type": "n8n-nodes-base.hubspot",
+			"typeVersion": 2.1,
+			"position": [-180, 680],
+			"id": "dc51cf19-947d-41d6-b2d2-908796039dc6",
+			"name": "HubSpot - Ticket - Get Many",
+			"credentials": {
+				"hubspotApi": {
+					"id": "EDJsHUkhqof5gr15",
+					"name": "HubSpot account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "ticket",
+				"operation": "search",
+				"filterType": "propertyName",
+				"propertyName": "subject",
+				"propertyValue": "Test Ticket",
+				"options": {
+					"limit": 2,
+					"direction": "ASCENDING"
+				}
+			},
+			"type": "n8n-nodes-base.hubspot",
+			"typeVersion": 2.1,
+			"position": [-180, 880],
+			"id": "43db81bf-9f5f-4458-bd8f-c36c7162e53b",
+			"name": "HubSpot - Ticket - Search",
+			"credentials": {
+				"hubspotApi": {
+					"id": "EDJsHUkhqof5gr15",
+					"name": "HubSpot account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "ticket",
+				"operation": "update",
+				"ticketId": {
+					"__rl": true,
+					"value": "=123",
+					"mode": "id"
+				},
+				"updateFields": {
+					"subject": "Updated Ticket",
+					"content": "Updated Ticket Content"
+				}
+			},
+			"type": "n8n-nodes-base.hubspot",
+			"typeVersion": 2.1,
+			"position": [-180, 280],
+			"id": "6c5c0be3-53ad-4eae-a535-6b19448fefb6",
+			"name": "HubSpot - Ticket - Update",
+			"credentials": {
+				"hubspotApi": {
+					"id": "EDJsHUkhqof5gr15",
+					"name": "HubSpot account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"HubSpot - Ticket - Create": [
+			{
+				"json": {
+					"id": "123",
+					"properties": {
+						"subject": "Test Ticket",
+						"content": "Test Ticket Content",
+						"hs_pipeline": "test pipeline name",
+						"hs_pipeline_stage": "test stage name",
+						"hs_ticket_priority": "HIGH",
+						"hubspot_owner_id": "123",
+						"createdate": "2023-01-01T00:00:00.000Z",
+						"test_custom_prop_name": "test custom prop value"
+					},
+					"createdAt": "2023-01-01T00:00:00.000Z",
+					"updatedAt": "2023-01-01T00:00:00.000Z",
+					"archived": false
+				}
+			}
+		],
+		"HubSpot - Ticket - Delete": [
+			{
+				"json": {
+					"id": "123",
+					"properties": {
+						"subject": "Test Ticket",
+						"content": "Test Ticket Content",
+						"hs_pipeline": "test pipeline name",
+						"hs_pipeline_stage": "test stage name",
+						"hs_ticket_priority": "HIGH",
+						"hubspot_owner_id": "123",
+						"createdate": "2023-01-01T00:00:00.000Z",
+						"test_custom_prop_name": "test custom prop value"
+					},
+					"createdAt": "2023-01-01T00:00:00.000Z",
+					"updatedAt": "2023-01-01T00:00:00.000Z",
+					"archived": false
+				}
+			}
+		],
+		"HubSpot - Ticket - Update": [
+			{
+				"json": {
+					"id": "123",
+					"properties": {
+						"subject": "Test Ticket",
+						"content": "Test Ticket Content",
+						"hs_pipeline": "test pipeline name",
+						"hs_pipeline_stage": "test stage name",
+						"hs_ticket_priority": "HIGH",
+						"hubspot_owner_id": "123",
+						"createdate": "2023-01-01T00:00:00.000Z",
+						"test_custom_prop_name": "test custom prop value"
+					},
+					"createdAt": "2023-01-01T00:00:00.000Z",
+					"updatedAt": "2023-01-01T00:00:00.000Z",
+					"archived": false
+				}
+			}
+		],
+		"HubSpot - Ticket - Get": [
+			{
+				"json": {
+					"id": "123",
+					"properties": {
+						"subject": "Test Ticket",
+						"content": "Test Ticket Content",
+						"hs_pipeline": "test pipeline name",
+						"hs_pipeline_stage": "test stage name",
+						"hs_ticket_priority": "HIGH",
+						"hubspot_owner_id": "123",
+						"createdate": "2023-01-01T00:00:00.000Z",
+						"test_custom_prop_name": "test custom prop value"
+					},
+					"createdAt": "2023-01-01T00:00:00.000Z",
+					"updatedAt": "2023-01-01T00:00:00.000Z",
+					"archived": false
+				}
+			}
+		],
+		"HubSpot - Ticket - Get Many": [
+			{
+				"json": {
+					"id": "123",
+					"properties": {
+						"subject": "Test Ticket",
+						"content": "Test Ticket Content",
+						"hs_pipeline": "test pipeline name",
+						"hs_pipeline_stage": "test stage name",
+						"hs_ticket_priority": "HIGH",
+						"hubspot_owner_id": "123",
+						"createdate": "2023-01-01T00:00:00.000Z",
+						"test_custom_prop_name": "test custom prop value"
+					},
+					"createdAt": "2023-01-01T00:00:00.000Z",
+					"updatedAt": "2023-01-01T00:00:00.000Z",
+					"archived": false
+				}
+			},
+			{
+				"json": {
+					"id": "456",
+					"properties": {
+						"subject": "Another Ticket",
+						"content": "Another Ticket Content",
+						"hs_pipeline": "test pipeline name",
+						"hs_pipeline_stage": "test stage name",
+						"hs_ticket_priority": "MEDIUM",
+						"hubspot_owner_id": "456",
+						"createdate": "2023-01-02T00:00:00.000Z"
+					},
+					"createdAt": "2023-01-02T00:00:00.000Z",
+					"updatedAt": "2023-01-02T00:00:00.000Z",
+					"archived": false
+				}
+			}
+		],
+		"HubSpot - Ticket - Search": [
+			{
+				"json": {
+					"id": "123",
+					"properties": {
+						"subject": "Test Ticket",
+						"content": "Test Ticket Content",
+						"hs_pipeline": "test pipeline name",
+						"hs_pipeline_stage": "test stage name",
+						"hs_ticket_priority": "HIGH",
+						"hubspot_owner_id": "123",
+						"createdate": "2023-01-01T00:00:00.000Z",
+						"test_custom_prop_name": "test custom prop value"
+					},
+					"createdAt": "2023-01-01T00:00:00.000Z",
+					"updatedAt": "2023-01-01T00:00:00.000Z",
+					"archived": false
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Test workflow'": {
+			"main": [
+				[
+					{
+						"node": "HubSpot - Ticket - Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "HubSpot - Ticket - Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "HubSpot - Ticket - Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "HubSpot - Ticket - Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "HubSpot - Ticket - Search",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "HubSpot - Ticket - Update",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "9acf7d60-9b18-46f4-8a3e-6edd75806535",
+	"meta": {
+		"templateCredsSetupCompleted": true,
+		"instanceId": "27cc9b56542ad45b38725555722c50a1c3fee1670bbb67980558314ee08517c4"
+	},
+	"id": "CYeIbFIs8qLoLvBe",
+	"tags": []
+}

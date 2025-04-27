@@ -1,0 +1,74 @@
+{
+	"results": [
+		{
+			"id": "123",
+			"properties": {
+				"subject": "Test Ticket",
+				"content": "Test Ticket Content",
+				"hs_pipeline": "test pipeline name",
+				"hs_pipeline_stage": "test stage name",
+				"hs_ticket_priority": "HIGH",
+				"hubspot_owner_id": "123",
+				"createdate": "2023-01-01T00:00:00.000Z",
+				"test_custom_prop_name": "test custom prop value"
+			},
+			"createdAt": "2023-01-01T00:00:00.000Z",
+			"updatedAt": "2023-01-01T00:00:00.000Z",
+			"archived": false
+		},
+		{
+			"id": "456",
+			"properties": {
+				"subject": "Another Ticket",
+				"content": "Another Ticket Content",
+				"hs_pipeline": "test pipeline name",
+				"hs_pipeline_stage": "test stage name",
+				"hs_ticket_priority": "MEDIUM",
+				"hubspot_owner_id": "456",
+				"createdate": "2023-01-02T00:00:00.000Z"
+			},
+			"createdAt": "2023-01-02T00:00:00.000Z",
+			"updatedAt": "2023-01-02T00:00:00.000Z",
+			"archived": false
+		}
+	],
+	"paging": {
+		"next": {
+			"after": "456",
+			"link": "https://api.hubapi.com/crm/v3/objects/tickets?after=456&limit=2"
+		}
+	},
+	"tickets": [
+		{
+			"id": "123",
+			"properties": {
+				"subject": "Test Ticket",
+				"content": "Test Ticket Content",
+				"hs_pipeline": "test pipeline name",
+				"hs_pipeline_stage": "test stage name",
+				"hs_ticket_priority": "HIGH",
+				"hubspot_owner_id": "123",
+				"createdate": "2023-01-01T00:00:00.000Z",
+				"test_custom_prop_name": "test custom prop value"
+			},
+			"createdAt": "2023-01-01T00:00:00.000Z",
+			"updatedAt": "2023-01-01T00:00:00.000Z",
+			"archived": false
+		},
+		{
+			"id": "456",
+			"properties": {
+				"subject": "Another Ticket",
+				"content": "Another Ticket Content",
+				"hs_pipeline": "test pipeline name",
+				"hs_pipeline_stage": "test stage name",
+				"hs_ticket_priority": "MEDIUM",
+				"hubspot_owner_id": "456",
+				"createdate": "2023-01-02T00:00:00.000Z"
+			},
+			"createdAt": "2023-01-02T00:00:00.000Z",
+			"updatedAt": "2023-01-02T00:00:00.000Z",
+			"archived": false
+		}
+	]
+}
