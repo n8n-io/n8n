@@ -286,7 +286,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				startRunData.destinationNode = options.destinationNode;
 				parameterOverridesStore.substituteParameters(
 					workflow.id,
-					options.destinationNode as string,
+					workflowsStore.getNodeByName(options.destinationNode as string)?.id,
 					workflowData,
 				);
 			}

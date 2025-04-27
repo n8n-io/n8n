@@ -6,15 +6,12 @@ import {
 	MODAL_CONFIRM,
 	FORM_TRIGGER_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
-	EXECUTE_STEP_MODAL_KEY,
+	FROM_AI_PARAMETERS_MODAL_KEY,
 } from '@/constants';
 import {
 	AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT,
 	AI_TRANSFORM_JS_CODE,
 	AI_TRANSFORM_NODE_TYPE,
-	type FromAIArgument,
-	traverseNodeParameters,
-	type INodeTypeDescription,
 } from 'n8n-workflow';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -351,25 +348,25 @@ async function onClick() {
 		}
 
 		if (!pinnedData.hasData.value || shouldUnpinAndExecute) {
-			const telemetryPayload = {
-				node_type: nodeType.value ? nodeType.value.name : null,
-				workflow_id: workflowsStore.workflowId,
-				source: props.telemetrySource,
-				push_ref: ndvStore.pushRef,
-			};
-
-			telemetry.track('User clicked execute node button', telemetryPayload);
-			await externalHooks.run('nodeExecuteButton.onClick', telemetryPayload);
-
 			if (node.value && doesNodeHaveAnyFromAiExpressions(node.value)) {
 				uiStore.openModalWithData({
-					name: EXECUTE_STEP_MODAL_KEY,
+					name: FROM_AI_PARAMETERS_MODAL_KEY,
 					data: {
 						nodeName: props.nodeName,
 					},
 				});
 			} else {
-				parameterOverridesStore.clearParameterOverrides(workflowsStore.workflowId, props.nodeName);
+				const telemetryPayload = {
+					node_type: nodeType.value ? nodeType.value.name : null,
+					workflow_id: workflowsStore.workflowId,
+					source: props.telemetrySource,
+					push_ref: ndvStore.pushRef,
+				};
+
+				telemetry.track('User clicked execute node button', telemetryPayload);
+				await externalHooks.run('nodeExecuteButton.onClick', telemetryPayload);
+
+				parameterOverridesStore.clearParameterOverrides(workflowsStore.workflowId, node.value.id);
 
 				await runWorkflow({
 					destinationNode: props.nodeName,

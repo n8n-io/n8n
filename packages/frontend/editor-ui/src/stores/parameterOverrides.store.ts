@@ -21,7 +21,6 @@ export const useParameterOverridesStore = defineStore('parameterOverrides', () =
 			const storedData = localStorage.getItem(STORAGE_KEY);
 			return storedData ? JSON.parse(storedData) : {};
 		} catch (error) {
-			console.error('Failed to load parameter overrides from localStorage:', error);
 			return {};
 		}
 	}
@@ -40,13 +39,13 @@ export const useParameterOverridesStore = defineStore('parameterOverrides', () =
 	);
 
 	// Helper function to ensure workflow and node entries exist
-	const ensureWorkflowAndNodeExist = (workflowId: string, nodeName: string): void => {
+	const ensureWorkflowAndNodeExist = (workflowId: string, nodeId: string): void => {
 		if (!parameterOverrides.value[workflowId]) {
 			parameterOverrides.value[workflowId] = {};
 		}
 
-		if (!parameterOverrides.value[workflowId][nodeName]) {
-			parameterOverrides.value[workflowId][nodeName] = {};
+		if (!parameterOverrides.value[workflowId][nodeId]) {
+			parameterOverrides.value[workflowId][nodeId] = {};
 		}
 	};
 
@@ -77,51 +76,51 @@ export const useParameterOverridesStore = defineStore('parameterOverrides', () =
 	}
 
 	// Getters
-	const getParameterOverrides = (workflowId: string, nodeName: string): INodeParameters => {
-		return parameterOverrides.value[workflowId]?.[nodeName] || {};
+	const getParameterOverrides = (workflowId: string, nodeId: string): INodeParameters => {
+		return parameterOverrides.value[workflowId]?.[nodeId] || {};
 	};
 
 	const getParameterOverride = (
 		workflowId: string,
-		nodeName: string,
+		nodeId: string,
 		paramName: string,
 	): NodeParameterValueType | undefined => {
-		return parameterOverrides.value[workflowId]?.[nodeName]?.[paramName];
+		return parameterOverrides.value[workflowId]?.[nodeId]?.[paramName];
 	};
 
 	// Actions
 	const addParameterOverride = (
 		workflowId: string,
-		nodeName: string,
+		nodeId: string,
 		paramName: string,
 		paramValues: NodeParameterValueType,
 	): INodeParameters => {
-		ensureWorkflowAndNodeExist(workflowId, nodeName);
+		ensureWorkflowAndNodeExist(workflowId, nodeId);
 
-		parameterOverrides.value[workflowId][nodeName] = {
-			...parameterOverrides.value[workflowId][nodeName],
+		parameterOverrides.value[workflowId][nodeId] = {
+			...parameterOverrides.value[workflowId][nodeId],
 			[paramName]: paramValues,
 		};
 
-		return parameterOverrides.value[workflowId][nodeName];
+		return parameterOverrides.value[workflowId][nodeId];
 	};
 
 	const addParameterOverrides = (
 		workflowId: string,
-		nodeName: string,
+		nodeId: string,
 		params: INodeParameters,
 	): void => {
-		ensureWorkflowAndNodeExist(workflowId, nodeName);
+		ensureWorkflowAndNodeExist(workflowId, nodeId);
 
-		parameterOverrides.value[workflowId][nodeName] = {
-			...parameterOverrides.value[workflowId][nodeName],
+		parameterOverrides.value[workflowId][nodeId] = {
+			...parameterOverrides.value[workflowId][nodeId],
 			...params,
 		};
 	};
 
-	const clearParameterOverrides = (workflowId: string, nodeName: string): void => {
+	const clearParameterOverrides = (workflowId: string, nodeId: string): void => {
 		if (parameterOverrides.value[workflowId]) {
-			parameterOverrides.value[workflowId][nodeName] = {};
+			parameterOverrides.value[workflowId][nodeId] = {};
 		}
 	};
 
@@ -137,13 +136,13 @@ export const useParameterOverridesStore = defineStore('parameterOverrides', () =
 
 	const substituteParameters = (
 		workflowId: string,
-		nodeName: string,
+		nodeId: string,
 		workflowData: IWorkflowData,
 	): void => {
-		const node = workflowData.nodes.find((n: INode) => n.name === nodeName);
+		const node = workflowData.nodes.find((n: INode) => n.id === nodeId);
 		if (!node) return;
 
-		const nodeOverrides = parameterOverrides.value[workflowId]?.[nodeName] || {};
+		const nodeOverrides = parameterOverrides.value[workflowId]?.[nodeId] || {};
 		const expandedParameterOverrides = expandDottedKeys(nodeOverrides);
 
 		node.parameters = {

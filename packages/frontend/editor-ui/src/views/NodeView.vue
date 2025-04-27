@@ -64,7 +64,7 @@ import {
 	VALID_WORKFLOW_IMPORT_URL_REGEX,
 	VIEWS,
 	WORKFLOW_SETTINGS_MODAL_KEY,
-	EXECUTE_STEP_MODAL_KEY,
+	FROM_AI_PARAMETERS_MODAL_KEY,
 } from '@/constants';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
@@ -1130,7 +1130,7 @@ async function onRunWorkflowToNode(id: string) {
 
 	if (doesNodeHaveAnyFromAiExpressions(node) && nodeTypesStore.isAiToolNode(node.type)) {
 		uiStore.openModalWithData({
-			name: EXECUTE_STEP_MODAL_KEY,
+			name: FROM_AI_PARAMETERS_MODAL_KEY,
 			data: {
 				nodeName: node.name,
 			},

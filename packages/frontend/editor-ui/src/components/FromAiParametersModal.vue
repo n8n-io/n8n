@@ -1,19 +1,20 @@
 <script setup lang="ts">
 import { useI18n } from '@/composables/useI18n';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
-import { EXECUTE_STEP_MODAL_KEY } from '@/constants';
+import { FROM_AI_PARAMETERS_MODAL_KEY } from '@/constants';
 import { useParameterOverridesStore } from '@/stores/parameterOverrides.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createEventBus } from '@n8n/utils/event-bus';
 import {
 	type FromAIArgument,
-	nodeConnectionTypes,
 	NodeConnectionTypes,
 	traverseNodeParametersWithParamNames,
 } from 'n8n-workflow';
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { type IFormInput } from '@n8n/design-system';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { useNDVStore } from '@/stores/ndv.store';
 
 const props = defineProps<{
 	modalName: string;
@@ -24,6 +25,8 @@ const props = defineProps<{
 
 const inputs = ref(null);
 const i18n = useI18n();
+const telemetry = useTelemetry();
+const ndvStore = useNDVStore();
 const modalBus = createEventBus();
 const workflowsStore = useWorkflowsStore();
 const router = useRouter();
@@ -62,7 +65,7 @@ const mapTypes = {
 	},
 	['number']: {
 		inputType: 'number',
-		defautValue: '',
+		defaultValue: '',
 	},
 	['json']: {
 		inputType: 'text',
@@ -72,30 +75,28 @@ const mapTypes = {
 
 const parameters = computed(() => {
 	if (!node.value) return [];
-	const currentWorkflow = workflowsStore.getCurrentWorkflow();
+
 	const result: IFormInput[] = [];
 	const params = node.value.parameters;
 	const collectedArgs: Map<string, FromAIArgument> = new Map();
 	traverseNodeParametersWithParamNames(params, collectedArgs);
 	const inputOverrides = runData.value?.inputOverride?.[NodeConnectionTypes.AiTool]?.[0]?.[0].json;
 
-	collectedArgs.forEach((value, paramName) => {
+	collectedArgs.forEach((value: FromAIArgument, paramName) => {
 		const initialValue = inputOverrides?.[value.key]
 			? inputOverrides[value.key]
 			: (parameterOverridesStore.getParameterOverride(
-					currentWorkflow.id,
-					node.value.name,
+					workflowsStore.workflowId,
+					node.value.id,
 					paramName,
-				) ??
-				mapTypes[value.type]?.defaultValue ??
-				'');
+				) ?? mapTypes[value.type ?? 'string']?.defaultValue);
 
 		result.push({
 			name: paramName,
 			initialValue: initialValue as string | number | boolean | null | undefined,
 			properties: {
 				label: value.key,
-				type: mapTypes[value.type].inputType ?? 'text',
+				type: mapTypes[value.type ?? 'string'].inputType,
 				required: true,
 			},
 		});
@@ -109,12 +110,23 @@ const onClose = () => {
 
 const onExecute = async () => {
 	if (!node.value) return;
-	const currentWorkflow = workflowsStore.getCurrentWorkflow();
-
 	const inputValues = inputs.value?.getValues();
 
-	parameterOverridesStore.clearParameterOverrides(currentWorkflow.id, node.value.name);
-	parameterOverridesStore.addParameterOverrides(currentWorkflow.id, node.value.name, inputValues);
+	parameterOverridesStore.clearParameterOverrides(workflowsStore.workflowId, node.value.id);
+	parameterOverridesStore.addParameterOverrides(
+		workflowsStore.workflowId,
+		node.value.id,
+		inputValues,
+	);
+
+	const telemetryPayload = {
+		node_type: node.value.type,
+		workflow_id: workflowsStore.workflowId,
+		source: 'from-ai-parameters-modal',
+		push_ref: ndvStore.pushRef,
+	};
+
+	telemetry.track('User clicked execute node button in modal', telemetryPayload);
 
 	await runWorkflow({
 		destinationNode: node.value.name,
@@ -129,19 +141,19 @@ const onExecute = async () => {
 	<Modal
 		max-width="540px"
 		:title="
-			i18n.baseText('executeStepModal.title', { interpolate: { nodeName: node?.name || '' } })
+			i18n.baseText('fromAiParametersModal.title', { interpolate: { nodeName: node?.name || '' } })
 		"
 		:event-bus="modalBus"
-		:name="EXECUTE_STEP_MODAL_KEY"
+		:name="FROM_AI_PARAMETERS_MODAL_KEY"
 		:center="true"
 		:close-on-click-modal="false"
 	>
 		<template #content>
 			<el-col>
 				<el-row :class="$style.row">
-					<n8n-text data-testid="execute-step-modal-description">
+					<n8n-text data-testid="from-ai-parameters-modal-description">
 						{{
-							i18n.baseText('executeStepModal.description', {
+							i18n.baseText('fromAiParametersModal.description', {
 								interpolate: { parentNodeName: parentNode?.name || '' },
 							})
 						}}
@@ -154,7 +166,7 @@ const onExecute = async () => {
 						ref="inputs"
 						:inputs="parameters"
 						:column-view="true"
-						data-test-id="execute-step-modal-inputs"
+						data-test-id="from-ai-parameters-modal-inputs"
 						@submit="onExecute"
 					></N8nFormInputs>
 				</el-row>
@@ -166,7 +178,7 @@ const onExecute = async () => {
 					<n8n-button
 						data-test-id="execute-workflow-button"
 						icon="flask"
-						:label="i18n.baseText('executeStepModal.execute')"
+						:label="i18n.baseText('fromAiParametersModal.execute')"
 						@click="onExecute"
 					/>
 				</el-col>

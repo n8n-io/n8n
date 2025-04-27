@@ -1,7 +1,7 @@
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
 import ExecuteStepModal from '@/components/ExecuteStepModal.vue';
-import { EXECUTE_STEP_MODAL_KEY, STORES } from '@/constants';
+import { FROM_AI_PARAMETERS_MODAL_KEY, STORES } from '@/constants';
 import userEvent from '@testing-library/user-event';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useParameterOverridesStore } from '@/stores/parameterOverrides.store';
@@ -67,14 +67,14 @@ describe('ExecuteStepModal', () => {
 			initialState: {
 				[STORES.UI]: {
 					modalsById: {
-						[EXECUTE_STEP_MODAL_KEY]: {
+						[FROM_AI_PARAMETERS_MODAL_KEY]: {
 							open: true,
 							data: {
 								nodeName: 'Test Node',
 							},
 						},
 					},
-					modalStack: [EXECUTE_STEP_MODAL_KEY],
+					modalStack: [FROM_AI_PARAMETERS_MODAL_KEY],
 				},
 				[STORES.WORKFLOWS]: {
 					workflowExecutionData: mockRunData,
@@ -96,7 +96,7 @@ describe('ExecuteStepModal', () => {
 	it('renders correctly with node data', () => {
 		const { getByTitle } = renderModal({
 			props: {
-				modalName: EXECUTE_STEP_MODAL_KEY,
+				modalName: FROM_AI_PARAMETERS_MODAL_KEY,
 				data: {
 					nodeName: 'Test Node',
 				},
@@ -115,7 +115,7 @@ describe('ExecuteStepModal', () => {
 	it('uses run data when available as initial values', async () => {
 		const { getByTestId } = renderModal({
 			props: {
-				modalName: EXECUTE_STEP_MODAL_KEY,
+				modalName: FROM_AI_PARAMETERS_MODAL_KEY,
 				data: {
 					nodeName: 'Test Node',
 				},
@@ -143,7 +143,7 @@ describe('ExecuteStepModal', () => {
 	it('clears parameter overrides when modal is executed', async () => {
 		const { getByTestId } = renderModal({
 			props: {
-				modalName: EXECUTE_STEP_MODAL_KEY,
+				modalName: FROM_AI_PARAMETERS_MODAL_KEY,
 				data: {
 					nodeName: 'Test Node',
 				},
@@ -167,7 +167,7 @@ describe('ExecuteStepModal', () => {
 	it('substitutes parameters when modal is closed', async () => {
 		const { getByTestId } = renderModal({
 			props: {
-				modalName: EXECUTE_STEP_MODAL_KEY,
+				modalName: FROM_AI_PARAMETERS_MODAL_KEY,
 				data: {
 					nodeName: 'Test Node',
 				},
