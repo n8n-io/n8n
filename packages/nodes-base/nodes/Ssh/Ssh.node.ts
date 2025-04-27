@@ -371,8 +371,21 @@ export class Ssh implements INodeType {
 								ssh,
 								i,
 							);
+							const result = await ssh.execCommand(command, { cwd });
+
+							if (result.code !== 0) {
+								throw new NodeOperationError(
+									this.getNode(),
+									`Command failed with exit code ${result.code}. stderr: ${result.stderr || 'N/A'}. stdout: ${result.stdout || 'N/A'}`,
+									{
+										itemIndex: i,
+										description: `Exit Code: ${result.code}\nstderr: ${result.stderr}\nstdout: ${result.stdout}`,
+									},
+								);
+							}
+
 							returnItems.push({
-								json: (await ssh.execCommand(command, { cwd })) as unknown as IDataObject,
+								json: result as unknown as IDataObject,
 								pairedItem: {
 									item: i,
 								},
