@@ -4,6 +4,8 @@ import { Container } from '@n8n/di';
 import { BaseEntity, Column, Entity, PrimaryGeneratedColumn } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
 
+import { datetimeColumnType } from '@/databases/entities/abstract-entity';
+
 import { isValidTypeNumber, NumberToType, TypeToNumber } from './insights-shared';
 
 export const { type: dbType } = Container.get(GlobalConfig).database;

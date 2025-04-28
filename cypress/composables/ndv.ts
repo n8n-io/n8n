@@ -32,6 +32,10 @@ export function getInputPanel() {
 	return cy.getByTestId('ndv-input-panel');
 }
 
+export function getInputSelect() {
+	return cy.getByTestId('ndv-input-select').find('input');
+}
+
 export function getMainPanel() {
 	return cy.getByTestId('node-parameters');
 }
@@ -53,11 +57,19 @@ export function getResourceLocatorInput(paramName: string) {
 }
 
 export function getInputPanelDataContainer() {
-	return getInputPanel().getByTestId('ndv-data-container');
+	return getInputPanel().findChildByTestId('ndv-data-container');
+}
+
+export function getInputTableRows() {
+	return getInputPanelDataContainer().find('table tr');
+}
+
+export function getInputTbodyCell(row: number, col: number) {
+	return getInputTableRows().eq(row).find('td').eq(col);
 }
 
 export function getOutputPanelDataContainer() {
-	return getOutputPanel().getByTestId('ndv-data-container');
+	return getOutputPanel().findChildByTestId('ndv-data-container');
 }
 
 export function getOutputTableRows() {
@@ -278,7 +290,7 @@ export function assertInlineExpressionValid() {
 }
 
 export function hoverInputItemByText(text: string) {
-	return getInputPanelDataContainer().contains(text).trigger('mouseover', { force: true });
+	return getInputPanelDataContainer().contains(text).realHover();
 }
 
 export function verifyInputHoverState(expectedText: string) {
@@ -296,5 +308,5 @@ export function verifyOutputHoverState(expectedText: string) {
 }
 
 export function resetHoverState() {
-	getBackToCanvasButton().trigger('mouseover');
+	getBackToCanvasButton().realHover();
 }

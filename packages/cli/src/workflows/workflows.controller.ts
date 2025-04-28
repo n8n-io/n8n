@@ -510,6 +510,7 @@ export class WorkflowsController {
 			workflowId,
 			body.destinationProjectId,
 			body.shareCredentials,
+			body.destinationParentFolderId,
 		);
 	}
 }

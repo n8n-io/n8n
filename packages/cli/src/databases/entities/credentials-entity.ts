@@ -2,7 +2,7 @@ import { WithTimestampsAndStringId } from '@n8n/db';
 import { Column, Entity, Index, OneToMany } from '@n8n/typeorm';
 import { IsObject, IsString, Length } from 'class-validator';
 
-import type { ICredentialsDb } from '@/interfaces';
+import type { ICredentialsDb } from '@/types-db';
 
 import type { SharedCredentials } from './shared-credentials';
 

@@ -10,7 +10,7 @@ import { nanoid } from 'nanoid';
 
 import { ExecutionEntity } from '@/databases/entities/execution-entity';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import type { IExecutionResponse } from '@/interfaces';
+import type { IExecutionResponse } from '@/types-db';
 import { mockInstance, mockEntityManager } from '@test/mocking';
 
 describe('ExecutionRepository', () => {

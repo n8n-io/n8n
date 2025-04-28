@@ -13,7 +13,7 @@ import { Length } from 'class-validator';
 import { IConnections, IDataObject, IWorkflowSettings, WorkflowFEMeta } from 'n8n-workflow';
 import type { IBinaryKeyData, INode, IPairedItemData } from 'n8n-workflow';
 
-import type { IWorkflowDb } from '@/interfaces';
+import type { IWorkflowDb } from '@/types-db';
 
 import { type Folder } from './folder';
 import type { SharedWorkflow } from './shared-workflow';
