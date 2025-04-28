@@ -39,6 +39,7 @@ catalog:
   '@langchain/openai': 0.3.17
   '@langchain/anthropic': 0.3.11
   '@langchain/community': 0.3.24
+  '@n8n_io/ai-assistant-sdk': 1.14.0
 
 catalogs:
   frontend:

@@ -3,7 +3,6 @@ import { useI18n } from '@/composables/useI18n';
 import { useStyles } from '@/composables/useStyles';
 import { useAssistantStore } from '@/stores/assistant.store';
 import { useCanvasStore } from '@/stores/canvas.store';
-import { useNDVStore } from '@/stores/ndv.store';
 import AssistantAvatar from '@n8n/design-system/components/AskAssistantAvatar/AssistantAvatar.vue';
 import AskAssistantButton from '@n8n/design-system/components/AskAssistantButton/AskAssistantButton.vue';
 import { computed } from 'vue';
@@ -12,8 +11,6 @@ const assistantStore = useAssistantStore();
 const i18n = useI18n();
 const { APP_Z_INDEXES } = useStyles();
 const canvasStore = useCanvasStore();
-const ndvStore = useNDVStore();
-const bottom = computed(() => (ndvStore.activeNode === null ? canvasStore.panelHeight : 0));
 
 const lastUnread = computed(() => {
 	const msg = assistantStore.lastUnread;
@@ -44,7 +41,7 @@ const onClick = () => {
 		v-if="assistantStore.canShowAssistantButtonsOnCanvas && !assistantStore.isAssistantOpen"
 		:class="$style.container"
 		data-test-id="ask-assistant-floating-button"
-		:style="{ bottom: `${bottom}px` }"
+		:style="{ '--canvas-panel-height-offset': `${canvasStore.panelHeight}px` }"
 	>
 		<n8n-tooltip
 			:z-index="APP_Z_INDEXES.ASK_ASSISTANT_FLOATING_BUTTON_TOOLTIP"
@@ -67,8 +64,8 @@ const onClick = () => {
 <style lang="scss" module>
 .container {
 	position: absolute;
-	margin: var(--spacing-s);
-	right: 0;
+	bottom: calc(var(--canvas-panel-height-offset, 0px) + var(--spacing-s));
+	right: var(--spacing-s);
 	z-index: var(--z-index-ask-assistant-floating-button);
 }
 

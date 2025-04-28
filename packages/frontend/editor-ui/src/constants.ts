@@ -705,6 +705,7 @@ export const enum STORES {
 	PUSH = 'push',
 	COLLABORATION = 'collaboration',
 	ASSISTANT = 'assistant',
+	BUILDER = 'builder',
 	BECOME_TEMPLATE_CREATOR = 'becomeTemplateCreator',
 	PROJECTS = 'projects',
 	API_KEYS = 'apiKeys',
@@ -759,11 +760,18 @@ export const SCHEMA_PREVIEW_EXPERIMENT = {
 	variant: 'variant',
 };
 
+export const WORKFLOW_BUILDER_EXPERIMENT = {
+	name: '30_workflow_builder',
+	control: 'control',
+	variant: 'variant',
+};
+
 export const EXPERIMENTS_TO_TRACK = [
 	CREDENTIAL_DOCS_EXPERIMENT.name,
 	EASY_AI_WORKFLOW_EXPERIMENT.name,
 	AI_CREDITS_EXPERIMENT.name,
 	SCHEMA_PREVIEW_EXPERIMENT.name,
+	WORKFLOW_BUILDER_EXPERIMENT.name,
 ];
 
 export const WORKFLOW_EVALUATION_EXPERIMENT = '025_workflow_evaluation';

@@ -288,7 +288,9 @@ provide(CanvasNodeKey, {
 	eventBus: canvasNodeEventBus,
 });
 
-const hasToolbar = computed(() => props.data.type !== CanvasNodeRenderType.AddNodes);
+const hasToolbar = computed(
+	() => ![CanvasNodeRenderType.AddNodes, CanvasNodeRenderType.AIPrompt].includes(renderType.value),
+);
 
 const showToolbar = computed(() => {
 	const target = contextMenu.target.value;
@@ -392,6 +394,7 @@ onBeforeUnmount(() => {
 			@move="onMove"
 			@update="onUpdate"
 			@open:contextmenu="onOpenContextMenuFromNode"
+			@delete="onDelete"
 		/>
 
 		<CanvasNodeTrigger
