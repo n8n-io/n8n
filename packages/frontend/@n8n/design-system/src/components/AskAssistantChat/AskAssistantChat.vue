@@ -130,7 +130,13 @@ function onSubmitFeedback(feedback: string) {
 		<div :class="$style.body">
 			<div v-if="messages?.length || loadingMessage" :class="$style.messages">
 				<div v-if="messages?.length">
-					<template v-for="(message, i) in messages" :key="i">
+					<data
+						v-for="(message, i) in messages"
+						:key="i"
+						:data-test-id="
+							message.role === 'assistant' ? 'chat-message-assistant' : 'chat-message-user'
+						"
+					>
 						<TextMessage
 							v-if="message.type === 'text'"
 							:message="message"
@@ -226,7 +232,7 @@ function onSubmitFeedback(feedback: string) {
 								</n8n-button>
 							</div>
 						</div>
-					</template>
+					</data>
 				</div>
 				<div
 					v-if="loadingMessage"

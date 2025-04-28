@@ -1649,7 +1649,7 @@ watch(
 			},
 		];
 
-		if (builderStore.isAIBuilderEnabled) {
+		if (builderStore.isAIBuilderEnabled && builderStore.isAssistantEnabled) {
 			defaultFallbackNodes.unshift({
 				id: CanvasNodeRenderType.AIPrompt,
 				name: CanvasNodeRenderType.AIPrompt,
