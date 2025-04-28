@@ -16,6 +16,8 @@ import { type IFormInput } from '@n8n/design-system';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useNDVStore } from '@/stores/ndv.store';
 
+type Value = string | number | boolean | null | undefined;
+
 const props = defineProps<{
 	modalName: string;
 	data: {
@@ -23,7 +25,7 @@ const props = defineProps<{
 	};
 }>();
 
-const inputs = ref<{ getValues: () => Record<string, any> }>();
+const inputs = ref<{ getValues: () => Record<string, Value> }>();
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const ndvStore = useNDVStore();
