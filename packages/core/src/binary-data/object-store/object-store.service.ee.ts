@@ -82,7 +82,7 @@ export class ObjectStoreService {
 	/**
 	 * Confirm that the configured bucket exists and the caller has permission to access it.
 	 */
-	async checkConnection(): Promise<unknown> {
+	async checkConnection() {
 		if (this.isReady) return;
 
 		try {
