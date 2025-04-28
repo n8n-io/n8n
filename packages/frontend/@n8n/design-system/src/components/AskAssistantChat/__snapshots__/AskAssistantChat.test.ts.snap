@@ -87,6 +87,7 @@ exports[`AskAssistantChat > does not render retry button if no error is present 
             <div
               class="roleName userSection"
             >
+              
               <div
                 class="container small"
               >
@@ -128,6 +129,7 @@ exports[`AskAssistantChat > does not render retry button if no error is present 
               <span>
                 Assistant
               </span>
+              
             </div>
             
             <div
@@ -271,6 +273,7 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
             <div
               class="roleName userSection"
             >
+              
               <div
                 class="container small"
               >
@@ -312,6 +315,7 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
               <span>
                 Assistant
               </span>
+              
             </div>
             
             <div
@@ -611,6 +615,7 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
             <div
               class="roleName"
             >
+              
               <n8n-avatar-stub
                 first-name="Kobi"
                 last-name="Dog"
@@ -619,6 +624,7 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
               <span>
                 You
               </span>
+              
             </div>
             
             <div
@@ -650,6 +656,7 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
             <div
               class="roleName userSection"
             >
+              
               <div
                 class="container small"
               >
@@ -691,6 +698,7 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
               <span>
                 Assistant
               </span>
+              
             </div>
             
             <div
@@ -1215,6 +1223,7 @@ exports[`AskAssistantChat > renders end of session chat correctly 1`] = `
             <div
               class="roleName userSection"
             >
+              
               <div
                 class="container small"
               >
@@ -1256,6 +1265,7 @@ exports[`AskAssistantChat > renders end of session chat correctly 1`] = `
               <span>
                 Assistant
               </span>
+              
             </div>
             
             <div
@@ -1474,6 +1484,7 @@ exports[`AskAssistantChat > renders error message correctly with retry button 1`
             <div
               class="roleName userSection"
             >
+              
               <div
                 class="container small"
               >
@@ -1515,6 +1526,7 @@ exports[`AskAssistantChat > renders error message correctly with retry button 1`
               <span>
                 Assistant
               </span>
+              
             </div>
             
             <div
@@ -1660,6 +1672,7 @@ exports[`AskAssistantChat > renders message with code snippet 1`] = `
             <div
               class="roleName userSection"
             >
+              
               <div
                 class="container small"
               >
@@ -1701,6 +1714,7 @@ exports[`AskAssistantChat > renders message with code snippet 1`] = `
               <span>
                 Assistant
               </span>
+              
             </div>
             
             <div
@@ -1914,6 +1928,7 @@ exports[`AskAssistantChat > renders streaming chat correctly 1`] = `
             <div
               class="roleName userSection"
             >
+              
               <div
                 class="container small"
               >
@@ -1955,6 +1970,7 @@ exports[`AskAssistantChat > renders streaming chat correctly 1`] = `
               <span>
                 Assistant
               </span>
+              
             </div>
             
             <div
