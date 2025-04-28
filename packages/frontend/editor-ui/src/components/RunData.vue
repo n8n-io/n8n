@@ -60,7 +60,7 @@ import type { PinDataSource, UnpinDataSource } from '@/composables/usePinnedData
 import { usePinnedData } from '@/composables/usePinnedData';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
-import { dataPinningEventBus } from '@/event-bus';
+import { dataPinningEventBus, ndvEventBus } from '@/event-bus';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useRootStore } from '@/stores/root.store';
@@ -204,6 +204,7 @@ const connectionType = ref<NodeConnectionType>(NodeConnectionTypes.Main);
 const dataSize = ref(0);
 const showData = ref(false);
 const userEnabledShowData = ref(false);
+const outputIndex = ref(0);
 const binaryDataDisplayVisible = ref(false);
 const binaryDataDisplayData = ref<IBinaryData | null>(null);
 const currentPage = ref(1);
@@ -242,11 +243,6 @@ const { isSubNodeType } = useNodeType({
 	node,
 });
 
-const outputIndex = computed(
-	() =>
-		(props.paneType === 'input' ? ndvStore.ndvInputBranchIndex : ndvStore.ndvOutputBranchIndex) ??
-		0,
-);
 const displayMode = computed(() =>
 	props.paneType === 'input' ? ndvStore.inputPanelDisplayMode : ndvStore.outputPanelDisplayMode,
 );
@@ -621,6 +617,12 @@ const itemsCountProps = computed<InstanceType<typeof RunDataItemCount>['$props']
 	subExecutionsCount: activeTaskMetadata.value?.subExecutionsCount,
 }));
 
+function setInputBranchIndex(value: number) {
+	if (props.paneType === 'input') {
+		outputIndex.value = value;
+	}
+}
+
 watch(node, (newNode, prevNode) => {
 	if (newNode?.id === prevNode?.id) return;
 	init();
@@ -630,7 +632,7 @@ watch(hasNodeRun, () => {
 	if (props.paneType === 'output') setDisplayMode();
 	else {
 		// InputPanel relies on the outputIndex to check if we have data
-		setBranchIndex(determineInitialOutputIndex());
+		outputIndex.value = determineInitialOutputIndex();
 	}
 });
 
@@ -664,7 +666,12 @@ watch(binaryData, (newData, prevData) => {
 	}
 });
 
-watch(currentOutputIndex, setBranchIndex);
+watch(currentOutputIndex, (branchIndex: number) => {
+	ndvStore.setNDVBranchIndex({
+		pane: props.paneType,
+		branchIndex,
+	});
+});
 
 watch(search, (newSearch) => {
 	emit('search', newSearch);
@@ -672,6 +679,8 @@ watch(search, (newSearch) => {
 
 onMounted(() => {
 	init();
+
+	ndvEventBus.on('setInputBranchIndex', setInputBranchIndex);
 
 	if (!isPaneTypeInput.value) {
 		showPinDataDiscoveryTooltip(jsonData.value);
@@ -709,6 +718,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
 	hidePinDataDiscoveryTooltip();
+	ndvEventBus.off('setInputBranchIndex', setInputBranchIndex);
 });
 
 function getResolvedNodeOutputs() {
@@ -959,12 +969,8 @@ function switchToBinary() {
 	onDisplayModeChange('binary');
 }
 
-function setBranchIndex(value: number) {
-	ndvStore.setNDVBranchIndex({ pane: props.paneType, branchIndex: value });
-}
-
 function onBranchChange(value: number) {
-	setBranchIndex(value);
+	outputIndex.value = value;
 
 	telemetry.track('User changed ndv branch', {
 		push_ref: props.pushRef,
@@ -1177,7 +1183,7 @@ function determineInitialOutputIndex() {
 
 function init() {
 	// Reset the selected output index every time another node gets selected
-	setBranchIndex(determineInitialOutputIndex());
+	outputIndex.value = determineInitialOutputIndex();
 	refreshDataSize();
 	closeBinaryDataDisplay();
 	let outputTypes: NodeConnectionType[] = [];

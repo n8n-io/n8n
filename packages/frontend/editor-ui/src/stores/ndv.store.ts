@@ -172,8 +172,6 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 
 	const ndvInputBranchIndex = computed(() => input.value.branch);
 
-	const ndvOutputBranchIndex = computed(() => output.value.branch);
-
 	const isInputPanelEmpty = computed(() => input.value.data.isEmpty);
 
 	const isOutputPanelEmpty = computed(() => output.value.data.isEmpty);
@@ -390,7 +388,6 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 		ndvNodeInputNumber,
 		ndvInputRunIndex,
 		ndvInputBranchIndex,
-		ndvOutputBranchIndex,
 		isInputParentOfActiveNode,
 		getHoveringItem,
 		expressionTargetItem,

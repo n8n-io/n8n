@@ -19,6 +19,7 @@ import {
 	type LogEntry,
 } from '@/components/RunDataAi/utils';
 import { useVirtualList } from '@vueuse/core';
+import { ndvEventBus } from '@/event-bus';
 
 const { isOpen, isReadOnly, selected, isCompact, execution, latestNodeInfo, scrollToSelection } =
 	defineProps<{
@@ -92,8 +93,8 @@ async function handleOpenNdv(treeNode: LogEntry) {
 		const source = treeNode.runData.source[0];
 		const inputBranch = source?.previousNodeOutput ?? 0;
 
-		ndvStore.setInputNodeName(source?.previousNode);
-		ndvStore.setNDVBranchIndex({ pane: 'input', branchIndex: inputBranch });
+		ndvEventBus.emit('updateInputNodeName', source?.previousNode);
+		ndvEventBus.emit('setInputBranchIndex', inputBranch);
 		ndvStore.setOutputRunIndex(treeNode.runIndex);
 	});
 }

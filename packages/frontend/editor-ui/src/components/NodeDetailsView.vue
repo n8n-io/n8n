@@ -22,7 +22,7 @@ import {
 } from '@/constants';
 import { useWorkflowActivate } from '@/composables/useWorkflowActivate';
 import type { DataPinningDiscoveryEvent } from '@/event-bus';
-import { dataPinningEventBus } from '@/event-bus';
+import { dataPinningEventBus, ndvEventBus } from '@/event-bus';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -80,6 +80,7 @@ const settingsEventBus = createEventBus();
 const redrawRequired = ref(false);
 const runInputIndex = ref(-1);
 const runOutputIndex = computed(() => ndvStore.output.run ?? -1);
+const selectedInput = ref<string | undefined>();
 const isLinkingEnabled = ref(true);
 const triggerWaitingWarningEnabled = ref(false);
 const isDragging = ref(false);
@@ -171,7 +172,7 @@ const inputNodeName = computed<string | undefined>(() => {
 		)?.[0];
 		return connectedOutputNode;
 	}
-	return ndvStore.input.nodeName ?? parentNode.value?.name;
+	return selectedInput.value ?? parentNode.value?.name;
 });
 
 const inputNode = computed(() => {
@@ -577,7 +578,7 @@ const onOutputTableMounted = (e: { avgRowHeight: number }) => {
 const onInputNodeChange = (value: string, index: number) => {
 	runInputIndex.value = -1;
 	isLinkingEnabled.value = true;
-	ndvStore.setInputNodeName(value);
+	selectedInput.value = value;
 
 	telemetry.track('User changed ndv input dropdown', {
 		node_type: activeNode.value ? activeNode.value.type : '',
@@ -614,6 +615,10 @@ const unregisterKeyboardListener = () => {
 	document.removeEventListener('keydown', onKeyDown, true);
 };
 
+const setSelectedInput = (value: string | undefined) => {
+	selectedInput.value = value;
+};
+
 //watchers
 
 watch(
@@ -629,7 +634,7 @@ watch(
 			runInputIndex.value = -1;
 			ndvStore.setOutputRunIndex(-1);
 			isLinkingEnabled.value = true;
-			ndvStore.setInputNodeName(undefined);
+			selectedInput.value = undefined;
 			triggerWaitingWarningEnabled.value = false;
 			avgOutputRowHeight.value = 0;
 			avgInputRowHeight.value = 0;
@@ -701,10 +706,12 @@ watch(inputRun, (inputRun) => {
 
 onMounted(() => {
 	dataPinningEventBus.on('data-pinning-discovery', setIsTooltipVisible);
+	ndvEventBus.on('updateInputNodeName', setSelectedInput);
 });
 
 onBeforeUnmount(() => {
 	dataPinningEventBus.off('data-pinning-discovery', setIsTooltipVisible);
+	ndvEventBus.off('updateInputNodeName', setSelectedInput);
 	unregisterKeyboardListener();
 });
 </script>

@@ -119,8 +119,6 @@ describe('LogsOverviewPanel', () => {
 		const aiAgentRow = (await rendered.findAllByRole('treeitem'))[0];
 
 		expect(ndvStore.activeNodeName).toBe(null);
-		expect(ndvStore.input.nodeName).toBe(undefined);
-		expect(ndvStore.input.branch).toBe(undefined);
 		expect(ndvStore.output.run).toBe(undefined);
 
 		await fireEvent.click(within(aiAgentRow).getAllByLabelText('Open...')[0]);
