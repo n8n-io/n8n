@@ -92,12 +92,10 @@ export abstract class BaseCommand extends Command {
 			}
 		}
 
-		const moduleRegistry = Container.get(ModuleRegistry);
-
-		moduleRegistry.initializeModules();
+		Container.get(ModuleRegistry).initializeModules();
 
 		if (this.instanceSettings.isMultiMain) {
-			moduleRegistry.registerMultiMainListeners(Container.get(MultiMainSetup));
+			Container.get(MultiMainSetup).registerEventHandlers();
 		}
 	}
 
