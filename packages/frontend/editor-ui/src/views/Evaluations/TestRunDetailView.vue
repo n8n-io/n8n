@@ -12,6 +12,7 @@ import { convertToDisplayDate } from '@/utils/typesUtils';
 import { N8nText, N8nTooltip } from '@n8n/design-system';
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
+import { orderBy } from 'lodash-es';
 
 // TODO: replace with n8n-api type
 const TEST_CASE_EXECUTION_ERROR_CODE = {
@@ -49,7 +50,9 @@ const workflowName = computed(() => workflowsStore.getWorkflowById(workflowId.va
 const run = computed(() => evaluationStore.testRunsById[runId.value]);
 
 const filteredTestCases = computed(() => {
-	return testCases.value;
+	return orderBy(testCases.value, (record) => record.id, ['asc']).map((record, index) =>
+		Object.assign(record, { id: `#${index + 1}` }),
+	);
 });
 
 const formattedTime = computed(() =>
