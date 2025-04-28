@@ -8,7 +8,13 @@ import {
 } from '@n8n/typeorm';
 import { mocked } from 'jest-mock';
 import { mock } from 'jest-mock-extended';
-import type { ExecutionStatus, INode, IRun, WorkflowExecuteMode } from 'n8n-workflow';
+import type { IWorkflowBase } from 'n8n-workflow';
+import {
+	type ExecutionStatus,
+	type INode,
+	type IRun,
+	type WorkflowExecuteMode,
+} from 'n8n-workflow';
 
 import config from '@/config';
 import type { Project } from '@/databases/entities/project';
@@ -24,6 +30,7 @@ import { mockInstance } from '@test/mocking';
 describe('WorkflowStatisticsService', () => {
 	const fakeUser = mock<User>({ id: 'abcde-fghij' });
 	const fakeProject = mock<Project>({ id: '12345-67890', type: 'personal' });
+	const fakeWorkflow = mock<IWorkflowBase>({ id: '1' });
 	const ownershipService = mockInstance(OwnershipService);
 	const userService = mockInstance(UserService);
 	const globalConfig = Container.get(GlobalConfig);
@@ -71,18 +78,30 @@ describe('WorkflowStatisticsService', () => {
 
 	describe('workflowExecutionCompleted', () => {
 		const rootCountRegex = /"?rootCount"?\s*=\s*(?:"?\w+"?\.)?"?rootCount"?\s*\+\s*1/;
-		test.each<[WorkflowExecuteMode, boolean]>([
-			['cli', true],
-			['error', true],
-			['retry', true],
-			['trigger', true],
-			['webhook', true],
-			['evaluation', true],
-			['integrated', false],
-			['internal', false],
-		])(
-			'should upsert with root executions %s for execution mode %s',
-			async (mode, isRootExecution) => {
+
+		test.each<WorkflowExecuteMode>(['cli', 'error', 'retry', 'trigger', 'webhook', 'evaluation'])(
+			'should upsert with root executions for execution mode %s',
+			async (mode) => {
+				// Call the function with a production success result, ensure metrics hook gets called
+				const runData: IRun = {
+					finished: true,
+					status: 'success',
+					data: { resultData: { runData: {} } },
+					mode,
+					startedAt: new Date(),
+				};
+
+				await workflowStatisticsService.workflowExecutionCompleted(fakeWorkflow, runData);
+				expect(entityManager.query).toHaveBeenCalledWith(
+					expect.stringMatching(rootCountRegex),
+					undefined,
+				);
+			},
+		);
+
+		test.each<WorkflowExecuteMode>(['manual', 'integrated', 'internal'])(
+			'should upsert without root executions for execution mode %s',
+			async (mode) => {
 				// Call the function with a production success result, ensure metrics hook gets called
 				const workflow = {
 					id: '1',
@@ -102,33 +121,16 @@ describe('WorkflowStatisticsService', () => {
 				};
 
 				await workflowStatisticsService.workflowExecutionCompleted(workflow, runData);
-				if (isRootExecution) {
-					expect(entityManager.query).toHaveBeenCalledWith(
-						expect.stringMatching(rootCountRegex),
-						undefined,
-					);
-				} else {
-					expect(entityManager.query).toHaveBeenCalledWith(
-						expect.not.stringMatching(rootCountRegex),
-						undefined,
-					);
-				}
+				expect(entityManager.query).toHaveBeenCalledWith(
+					expect.not.stringMatching(rootCountRegex),
+					undefined,
+				);
 			},
 		);
 
-		test.each<[ExecutionStatus, boolean]>([
-			['success', true],
-			['crashed', true],
-			['error', true],
-
-			['canceled', false],
-			['new', false],
-			['running', false],
-			['unknown', false],
-			['waiting', false],
-		])(
-			'should upsert with root executions %s for execution status %s',
-			async (status, isRootExecution) => {
+		test.each<ExecutionStatus>(['success', 'crashed', 'error'])(
+			'should upsert with root executions for execution status %s',
+			async (status) => {
 				// Call the function with a production success result, ensure metrics hook gets called
 				const workflow = {
 					id: '1',
@@ -148,17 +150,39 @@ describe('WorkflowStatisticsService', () => {
 				};
 
 				await workflowStatisticsService.workflowExecutionCompleted(workflow, runData);
-				if (isRootExecution) {
-					expect(entityManager.query).toHaveBeenCalledWith(
-						expect.stringMatching(rootCountRegex),
-						undefined,
-					);
-				} else {
-					expect(entityManager.query).toHaveBeenCalledWith(
-						expect.not.stringMatching(rootCountRegex),
-						undefined,
-					);
-				}
+				expect(entityManager.query).toHaveBeenCalledWith(
+					expect.stringMatching(rootCountRegex),
+					undefined,
+				);
+			},
+		);
+
+		test.each<ExecutionStatus>(['canceled', 'new', 'running', 'unknown', 'waiting'])(
+			'should upsert without root executions for execution status %s',
+			async (status) => {
+				// Call the function with a production success result, ensure metrics hook gets called
+				const workflow = {
+					id: '1',
+					name: '',
+					active: false,
+					createdAt: new Date(),
+					updatedAt: new Date(),
+					nodes: [],
+					connections: {},
+				};
+				const runData: IRun = {
+					finished: true,
+					status,
+					data: { resultData: { runData: {} } },
+					mode: 'trigger',
+					startedAt: new Date(),
+				};
+
+				await workflowStatisticsService.workflowExecutionCompleted(workflow, runData);
+				expect(entityManager.query).toHaveBeenCalledWith(
+					expect.not.stringMatching(rootCountRegex),
+					undefined,
+				);
 			},
 		);
 

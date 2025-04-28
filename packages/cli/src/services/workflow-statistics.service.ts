@@ -16,7 +16,7 @@ import { TypedEmitter } from '@/typed-emitter';
 
 import { OwnershipService } from './ownership.service';
 
-const isStatusBillable = {
+const isStatusRootExecution = {
 	success: true,
 	crashed: true,
 	error: true,
@@ -28,7 +28,7 @@ const isStatusBillable = {
 	waiting: false,
 } satisfies Record<ExecutionStatus, boolean>;
 
-const isModeBillable = {
+const isModeRootExecution = {
 	cli: true,
 	error: true,
 	retry: true,
@@ -90,7 +90,8 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 		const isSuccess = runData.status === 'success';
 		const manual = runData.mode === 'manual';
 		let name: StatisticsNames;
-		const isRootExecution = isModeBillable[runData.mode] && isStatusBillable[runData.status];
+		const isRootExecution =
+			isModeRootExecution[runData.mode] && isStatusRootExecution[runData.status];
 
 		if (isSuccess) {
 			if (manual) name = StatisticsNames.manualSuccess;
