@@ -142,7 +142,7 @@ const isExecutable = computed(() => {
 		);
 		const inputNames = NodeHelpers.getConnectionTypes(inputs);
 
-		if (!inputNames.includes(NodeConnectionTypes.Main) && !isAiTool && !isTriggerNode.value) {
+		if (!inputNames.includes(NodeConnectionTypes.Main) && !isAiTool.value && !isTriggerNode.value) {
 			return false;
 		}
 	}
