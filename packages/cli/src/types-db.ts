@@ -7,6 +7,8 @@ import type {
 	ExecutionStatus,
 	FeatureFlags,
 	IUserSettings,
+	DeduplicationMode,
+	DeduplicationItemTypes,
 } from 'n8n-workflow';
 
 import type { AnnotationTagEntity } from '@/databases/entities/annotation-tag-entity.ee';
@@ -139,4 +141,30 @@ export interface WorkflowWithSharingsMetaDataAndCredentials extends Omit<Workflo
 	homeProject?: SlimProject | null;
 	sharedWithProjects: SlimProject[];
 	usedCredentials?: CredentialUsedByWorkflow[];
+}
+
+export interface IProcessedDataLatest {
+	mode: DeduplicationMode;
+	data: DeduplicationItemTypes;
+}
+
+export interface IProcessedDataEntries {
+	mode: DeduplicationMode;
+	data: DeduplicationItemTypes[];
+}
+
+/** Payload for creating an execution. */
+export type CreateExecutionPayload = Omit<IExecutionDb, 'id' | 'createdAt' | 'startedAt'>;
+
+// Data in regular format with references
+export interface IExecutionDb extends IExecutionBase {
+	data: IRunExecutionData;
+	workflowData: IWorkflowBase;
+}
+
+export interface IExecutionFlattedDb extends IExecutionBase {
+	id: string;
+	data: string;
+	workflowData: Omit<IWorkflowBase, 'pinData'>;
+	customData: Record<string, string>;
 }
