@@ -172,11 +172,97 @@ describe('WorkflowCard', () => {
 		expect(actions).toHaveTextContent('Change owner');
 	});
 
+	it('should show Archive action on non archived workflows', async () => {
+		const data = createWorkflow({
+			isArchived: false,
+			scopes: ['workflow:delete'],
+		});
+
+		const onAction = vi.fn();
+		const { getByTestId } = renderComponent({
+			props: { data },
+			global: {
+				mocks: {
+					onAction,
+				},
+			},
+		});
+		const cardActions = getByTestId('workflow-card-actions');
+		expect(cardActions).toBeInTheDocument();
+
+		const cardActionsOpener = within(cardActions).getByRole('button');
+		expect(cardActionsOpener).toBeInTheDocument();
+
+		const controllingId = cardActionsOpener.getAttribute('aria-controls');
+		await userEvent.click(cardActions);
+		const actions = document.querySelector(`#${controllingId}`);
+		if (!actions) {
+			throw new Error('Actions menu not found');
+		}
+		expect(actions).toHaveTextContent('Archive');
+		expect(actions).not.toHaveTextContent('Unarchive');
+		expect(actions).not.toHaveTextContent('Delete');
+
+		await userEvent.click(getByTestId('action-archive'));
+		expect(onAction).toHaveBeenCalledWith('archive');
+	});
+
+	it('should show Unarchive and Delete action on archived workflows', async () => {
+		const data = createWorkflow({
+			isArchived: true,
+			scopes: ['workflow:delete'],
+		});
+
+		const onAction = vi.fn();
+		const { getByTestId } = renderComponent({
+			props: { data },
+			global: {
+				mocks: {
+					onAction,
+				},
+			},
+		});
+		const cardActions = getByTestId('workflow-card-actions');
+		expect(cardActions).toBeInTheDocument();
+
+		const cardActionsOpener = within(cardActions).getByRole('button');
+		expect(cardActionsOpener).toBeInTheDocument();
+
+		const controllingId = cardActionsOpener.getAttribute('aria-controls');
+		await userEvent.click(cardActions);
+		const actions = document.querySelector(`#${controllingId}`);
+		if (!actions) {
+			throw new Error('Actions menu not found');
+		}
+		expect(actions).not.toHaveTextContent('Archive');
+		expect(actions).toHaveTextContent('Unarchive');
+		expect(actions).toHaveTextContent('Delete');
+
+		await userEvent.click(getByTestId('action-unarchive'));
+		expect(onAction).toHaveBeenCalledWith('unarchive');
+		await userEvent.click(getByTestId('action-delete'));
+		expect(onAction).toHaveBeenCalledWith('delete');
+	});
+
 	it('should show Read only mode', async () => {
 		const data = createWorkflow();
 		const { getByRole } = renderComponent({ props: { data } });
 
 		const heading = getByRole('heading');
 		expect(heading).toHaveTextContent('Read only');
+	});
+
+	it('should show Archived badge on archived workflows', async () => {
+		const data = createWorkflow({ isArchived: true });
+		const { getByTestId } = renderComponent({ props: { data } });
+
+		expect(getByTestId('workflow-archived-tag')).toBeInTheDocument();
+	});
+
+	it('should not show Archived badge on non archived workflows', async () => {
+		const data = createWorkflow({ isArchived: false });
+		const { queryByTestId } = renderComponent({ props: { data } });
+
+		expect(queryByTestId('workflow-archived-tag')).not.toBeInTheDocument();
 	});
 });
