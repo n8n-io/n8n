@@ -462,6 +462,16 @@ importers:
         specifier: workspace:*
         version: link:../typescript-config
 
+  packages/@n8n/db:
+    dependencies:
+      reflect-metadata:
+        specifier: 'catalog:'
+        version: 0.2.2
+    devDependencies:
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+
   packages/@n8n/decorators:
     dependencies:
       '@n8n/constants':
@@ -1009,6 +1019,9 @@ importers:
       '@n8n/constants':
         specifier: workspace:^
         version: link:../@n8n/constants
+      '@n8n/db':
+        specifier: workspace:^
+        version: link:../@n8n/db
       '@n8n/decorators':
         specifier: workspace:*
         version: link:../@n8n/decorators
@@ -1367,6 +1380,9 @@ importers:
       '@n8n/config':
         specifier: workspace:*
         version: link:../@n8n/config
+      '@n8n/decorators':
+        specifier: workspace:*
+        version: link:../@n8n/decorators
       '@n8n/di':
         specifier: workspace:*
         version: link:../@n8n/di

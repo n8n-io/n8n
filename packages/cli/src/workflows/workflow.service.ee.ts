@@ -7,6 +7,7 @@ import type { IWorkflowBase, WorkflowId } from 'n8n-workflow';
 import { NodeOperationError, UserError, WorkflowActivationError } from 'n8n-workflow';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
 import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
@@ -14,7 +15,6 @@ import { Project } from '@/databases/entities/project';
 import { SharedWorkflow } from '@/databases/entities/shared-workflow';
 import type { User } from '@/databases/entities/user';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
-import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -24,6 +24,7 @@ import { FolderService } from '@/services/folder.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 
+import { WorkflowFinderService } from './workflow-finder.service';
 import type {
 	WorkflowWithSharingsAndCredentials,
 	WorkflowWithSharingsMetaDataAndCredentials,
@@ -40,8 +41,9 @@ export class EnterpriseWorkflowService {
 		private readonly ownershipService: OwnershipService,
 		private readonly projectService: ProjectService,
 		private readonly activeWorkflowManager: ActiveWorkflowManager,
-		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
+		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly enterpriseCredentialsService: EnterpriseCredentialsService,
+		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly folderService: FolderService,
 	) {}
 
@@ -268,7 +270,7 @@ export class EnterpriseWorkflowService {
 		destinationParentFolderId?: string,
 	) {
 		// 1. get workflow
-		const workflow = await this.sharedWorkflowRepository.findWorkflowForUser(workflowId, user, [
+		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:move',
 		]);
 		NotFoundError.isDefinedAndNotNull(
@@ -342,7 +344,7 @@ export class EnterpriseWorkflowService {
 
 		// 8. share credentials into the destination project
 		await this.workflowRepository.manager.transaction(async (trx) => {
-			const allCredentials = await this.sharedCredentialsRepository.findAllCredentialsForUser(
+			const allCredentials = await this.credentialsFinderService.findAllCredentialsForUser(
 				user,
 				['credential:share'],
 				trx,
