@@ -77,8 +77,8 @@ export const TIME_RANGE_LABELS = {
 	'2weeks': useI18n().baseText('insights.lastNDays', { interpolate: { count: 14 } }),
 	month: useI18n().baseText('insights.lastNDays', { interpolate: { count: 30 } }),
 	quarter: useI18n().baseText('insights.lastNDays', { interpolate: { count: 90 } }),
-	'6months': '6 months',
-	year: useI18n().baseText('insights.oneYear', { interpolate: { count: 90 } }),
+	'6months': useI18n().baseText('insights.months', { interpolate: { count: 6 } }),
+	year: useI18n().baseText('insights.oneYear'),
 };
 
 export const UNLICENSED_TIME_RANGE = 'UNLICENSED_TIME_RANGE' as const;
