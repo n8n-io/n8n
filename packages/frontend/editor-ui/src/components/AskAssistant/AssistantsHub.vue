@@ -16,12 +16,9 @@ const chatWidth = computed(() => {
 	return isBuildMode.value ? builderStore.chatWidth : assistantStore.chatWidth;
 });
 
-const currentStore = computed(() => {
-	return isBuildMode.value ? builderStore : assistantStore;
-});
-
 function onResize(data: { direction: string; x: number; width: number }) {
-	currentStore.value.updateWindowWidth(data.width);
+	builderStore.updateWindowWidth(data.width);
+	assistantStore.updateWindowWidth(data.width);
 }
 
 function onResizeDebounced(data: { direction: string; x: number; width: number }) {
