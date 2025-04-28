@@ -1,11 +1,11 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+import { Mem0Memory } from '@langchain/community/memory/mem0';
+import { InputValues, MemoryVariables } from '@langchain/core/memory';
 import { getSessionId } from '@utils/helpers';
 import { logWrapper } from '@utils/logWrapper';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 import type { BufferWindowMemoryInput } from 'langchain/memory';
 import { BufferWindowMemory } from 'langchain/memory';
-import { MemoryClient } from 'mem0ai';
-import type { SearchOptions, MemoryOptions } from 'mem0ai';
 import {
 	NodeConnectionTypes,
 	type INodeType,
@@ -25,12 +25,17 @@ interface Mem0ClientOptions {
 	apiKey: string;
 	organizationId?: string;
 	projectId?: string;
+	userId?: string;
+	runId?: string;
+	agentId?: string;
+	appId?: string;
+	[key: string]: string | undefined;
 }
 
 class MemoryMem0Singleton {
 	private static instance: MemoryMem0Singleton;
 
-	private mem0Client!: InstanceType<typeof MemoryClient>;
+	private mem0Client!: InstanceType<typeof Mem0Memory>;
 
 	private memoryBuffer: Map<
 		string,
@@ -43,10 +48,19 @@ class MemoryMem0Singleton {
 	}
 
 	private initializeClient(options?: Mem0ClientOptions) {
-		this.mem0Client = new MemoryClient({
+		const mem0Options: Mem0ClientOptions = {
 			apiKey: options?.apiKey ?? '',
 			organizationId: options?.organizationId,
 			projectId: options?.projectId,
+			...options,
+		};
+
+		console.log(mem0Options, 'mem0Options');
+
+		this.mem0Client = new Mem0Memory({
+			apiKey: options?.apiKey ?? '',
+			sessionId: options?.userId ?? 'default-session',
+			mem0Options,
 		});
 	}
 
@@ -94,26 +108,13 @@ class MemoryMem0Singleton {
 		}
 	}
 
-	async addMessage(inputMessage: string, options: MemoryOptions = {}): Promise<void> {
-		await this.mem0Client.add(
-			[
-				{
-					role: 'user',
-					content: inputMessage,
-				},
-			],
-			options,
-		);
+	async addMessage(inputValues: InputValues): Promise<void> {
+		await this.mem0Client.saveContext(inputValues, { assistant: 'Thanks for your message' });
 	}
 
-	async getMessages(inputMessage: string, options: SearchOptions = {}): Promise<string> {
-		const messages = await this.mem0Client.search(inputMessage, options);
-		let outputMessage =
-			'THESE ARE THE MEMORY RELATED TO THE USER, YOU HAVE ANSWER THE QUERY BASED ON THESE MEMORIES: \n';
-		for (const message of messages) {
-			outputMessage += message.memory + '\n';
-		}
-		return outputMessage;
+	async getMessages(inputValues: InputValues): Promise<string> {
+		const messages: MemoryVariables = await this.mem0Client.loadMemoryVariables(inputValues);
+		return (messages.history as string) || '';
 	}
 }
 
@@ -258,6 +259,10 @@ export class MemoryMem0 implements INodeType {
 			apiKey: mem0ApiKey ?? '',
 			organizationId: orgId,
 			projectId,
+			userId,
+			runId,
+			agentId,
+			appId,
 		});
 
 		const nodeVersion = this.getNode().typeVersion;
@@ -281,17 +286,13 @@ export class MemoryMem0 implements INodeType {
 		// @ts-ignore
 		const inputMessage = (this?.inputData?.main[0][0]?.json?.chatInput as string) || '';
 
-		const memoryOptions = {
-			user_id: userId,
-			run_id: runId,
-			agent_id: agentId,
-			app_id: appId,
+		const inputValues: InputValues = {
+			input: inputMessage,
 		};
 
-		if (!searchOnly) {
-			await memoryInstance.addMessage(inputMessage, memoryOptions);
-		}
-		const memoryMessages = await memoryInstance.getMessages(inputMessage, memoryOptions);
+		if (!searchOnly) await memoryInstance.addMessage(inputValues);
+
+		const memoryMessages = await memoryInstance.getMessages(inputValues);
 
 		await memory.chatHistory.addUserMessage(memoryMessages);
 
