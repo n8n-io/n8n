@@ -14,6 +14,7 @@ import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
 
+import { CredentialsFinderService } from './credentials-finder.service';
 import { CredentialsService } from './credentials.service';
 
 @Service()
@@ -24,6 +25,7 @@ export class EnterpriseCredentialsService {
 		private readonly credentialsService: CredentialsService,
 		private readonly projectService: ProjectService,
 		private readonly roleService: RoleService,
+		private readonly credentialsFinderService: CredentialsFinderService,
 	) {}
 
 	async shareWithProjects(
@@ -83,7 +85,7 @@ export class EnterpriseCredentialsService {
 		credential = includeDecryptedData
 			? // Try to get the credential with `credential:update` scope, which
 				// are required for decrypting the data.
-				await this.sharedCredentialsRepository.findCredentialForUser(
+				await this.credentialsFinderService.findCredentialForUser(
 					credentialId,
 					user,
 					// TODO: replace credential:update with credential:decrypt once it lands
@@ -99,11 +101,9 @@ export class EnterpriseCredentialsService {
 		} else {
 			// Otherwise try to find them with only the `credential:read` scope. In
 			// that case we return them without the decrypted data.
-			credential = await this.sharedCredentialsRepository.findCredentialForUser(
-				credentialId,
-				user,
-				['credential:read'],
-			);
+			credential = await this.credentialsFinderService.findCredentialForUser(credentialId, user, [
+				'credential:read',
+			]);
 		}
 
 		if (!credential) {
@@ -130,7 +130,7 @@ export class EnterpriseCredentialsService {
 
 	async transferOne(user: User, credentialId: string, destinationProjectId: string) {
 		// 1. get credential
-		const credential = await this.sharedCredentialsRepository.findCredentialForUser(
+		const credential = await this.credentialsFinderService.findCredentialForUser(
 			credentialId,
 			user,
 			['credential:move'],
