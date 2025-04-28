@@ -5,7 +5,7 @@ import InsightsSummary from '@/features/insights/components/InsightsSummary.vue'
 import { useInsightsStore } from '@/features/insights/insights.store';
 import type { InsightsDateRange, InsightsSummaryType } from '@n8n/api-types';
 import { computed, defineAsyncComponent, ref, watch } from 'vue';
-import { UNLICENSED_TIME_RANGE } from '../insights.constants';
+import { TELEMETRY_TIME_RANGE, UNLICENSED_TIME_RANGE } from '../insights.constants';
 import InsightsDateRangeSelect from './InsightsDateRangeSelect.vue';
 import InsightsUpgradeModal from './InsightsUpgradeModal.vue';
 
@@ -95,7 +95,7 @@ function handleTimeChange(value: InsightsDateRange['key'] | typeof UNLICENSED_TI
 	}
 
 	selectedDateRange.value = value;
-	telemetry.track('User updated insights time range', { range: value });
+	telemetry.track('User updated insights time range', { range: TELEMETRY_TIME_RANGE[value] });
 }
 
 watch(

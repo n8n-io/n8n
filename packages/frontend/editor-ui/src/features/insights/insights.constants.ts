@@ -61,6 +61,16 @@ export const GRANULARITY_DATE_FORMAT_MASK = {
 	},
 };
 
+export const TELEMETRY_TIME_RANGE = {
+	day: 1,
+	week: 7,
+	'2weeks': 14,
+	month: 30,
+	quarter: 90,
+	'6months': 180,
+	year: 365,
+};
+
 export const TIME_RANGE_LABELS = {
 	day: useI18n().baseText('insights.lastNHours', { interpolate: { count: 24 } }),
 	week: useI18n().baseText('insights.lastNDays', { interpolate: { count: 7 } }),
