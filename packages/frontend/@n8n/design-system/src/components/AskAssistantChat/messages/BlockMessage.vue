@@ -1,9 +1,6 @@
 <script setup lang="ts">
-import Markdown from 'markdown-it';
-import markdownLink from 'markdown-it-link-attributes';
-
 import BaseMessage from './BaseMessage.vue';
-import { useI18n } from '../../../composables/useI18n';
+import { useMarkdown } from './useMarkdown';
 import type { ChatUI } from '../../../types/assistant';
 import BlinkingCursor from '../../BlinkingCursor/BlinkingCursor.vue';
 
@@ -19,27 +16,7 @@ interface Props {
 }
 
 defineProps<Props>();
-const { t } = useI18n();
-
-const md = new Markdown({
-	breaks: true,
-});
-
-md.use(markdownLink, {
-	attrs: {
-		target: '_blank',
-		rel: 'noopener',
-	},
-});
-
-function renderMarkdown(content: string) {
-	try {
-		return md.render(content);
-	} catch (e) {
-		console.error(`Error parsing markdown content ${content}`);
-		return `<p>${t('assistantChat.errorParsingMarkdown')}</p>`;
-	}
-}
+const { renderMarkdown } = useMarkdown();
 </script>
 
 <template>

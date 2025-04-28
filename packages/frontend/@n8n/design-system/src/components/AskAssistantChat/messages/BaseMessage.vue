@@ -26,10 +26,14 @@ const isUserMessage = computed(() => props.message.role === 'user');
 			v-if="isFirstOfRole"
 			:class="{ [$style.roleName]: true, [$style.userSection]: !isUserMessage }"
 		>
-			<AssistantAvatar v-if="!isUserMessage" />
-			<n8n-avatar v-else :first-name="user?.firstName" :last-name="user?.lastName" size="xsmall" />
-			<span v-if="!isUserMessage">{{ t('assistantChat.aiAssistantName') }}</span>
-			<span v-else>{{ t('assistantChat.you') }}</span>
+			<template v-if="isUserMessage">
+				<n8n-avatar :first-name="user?.firstName" :last-name="user?.lastName" size="xsmall" />
+				<span>{{ t('assistantChat.you') }}</span>
+			</template>
+			<template v-else>
+				<AssistantAvatar />
+				<span>{{ t('assistantChat.aiAssistantName') }}</span>
+			</template>
 		</div>
 		<slot></slot>
 	</div>

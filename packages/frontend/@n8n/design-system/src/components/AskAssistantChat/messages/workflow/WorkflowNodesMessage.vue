@@ -38,7 +38,7 @@ defineProps<Props>();
 	gap: var(--spacing-3xs);
 	list-style-position: outside;
 	margin: 0;
-	padding: 0 0 0 var(--spacing-s);
+	padding-left: var(--spacing-s);
 
 	li {
 		color: var(--color-text-base);

@@ -1,9 +1,8 @@
 <script setup lang="ts">
-import Markdown from 'markdown-it';
-import markdownLink from 'markdown-it-link-attributes';
 import { computed } from 'vue';
 
 import BaseMessage from './BaseMessage.vue';
+import { useMarkdown } from './useMarkdown';
 import { useI18n } from '../../../composables/useI18n';
 import type { ChatUI } from '../../../types/assistant';
 import BlinkingCursor from '../../BlinkingCursor/BlinkingCursor.vue';
@@ -20,18 +19,8 @@ interface Props {
 }
 
 defineProps<Props>();
+const { renderMarkdown } = useMarkdown();
 const { t } = useI18n();
-
-const md = new Markdown({
-	breaks: true,
-});
-
-md.use(markdownLink, {
-	attrs: {
-		target: '_blank',
-		rel: 'noopener',
-	},
-});
 
 const isClipboardSupported = computed(() => {
 	return navigator.clipboard?.writeText;
@@ -44,15 +33,6 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 	setTimeout(() => {
 		button.innerText = t('assistantChat.copy');
 	}, 2000);
-}
-
-function renderMarkdown(content: string) {
-	try {
-		return md.render(content);
-	} catch (e) {
-		console.error(`Error parsing markdown content ${content}`);
-		return `<p>${t('assistantChat.errorParsingMarkdown')}</p>`;
-	}
 }
 </script>
 

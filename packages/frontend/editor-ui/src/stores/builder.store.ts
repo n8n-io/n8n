@@ -95,8 +95,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 				...uiStore.appGridDimensions,
 				width: window.innerWidth,
 			};
-			// Always reset the chat when closed
-			// resetBuilderChat();
 		}, 200);
 	}
 
