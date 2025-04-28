@@ -5,7 +5,7 @@ import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 import RunsSection from '@/components/Evaluations/EditDefinition/sections/RunsSection.vue';
-import { useTestDefinitionStore } from '@/stores/testDefinition.store.ee';
+import { useEvaluationStore } from '@/stores/evaluation.store.ee';
 import { N8nButton, N8nText } from '@n8n/design-system';
 import { useAsyncState } from '@vueuse/core';
 import { orderBy } from 'lodash-es';
@@ -17,7 +17,7 @@ const props = defineProps<{
 const router = useRouter();
 const locale = useI18n();
 const toast = useToast();
-const testDefinitionStore = useTestDefinitionStore();
+const testDefinitionStore = useEvaluationStore();
 // const telemetry = useTelemetry();
 
 const { isLoading } = useAsyncState(
