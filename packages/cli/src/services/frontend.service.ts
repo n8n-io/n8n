@@ -173,6 +173,7 @@ export class FrontendService {
 				host: this.globalConfig.templates.host,
 			},
 			executionMode: config.getEnv('executions.mode'),
+			isMultiMain: this.instanceSettings.isMultiMain,
 			pushBackend: this.pushConfig.backend,
 			communityNodesEnabled: this.globalConfig.nodes.communityPackages.enabled,
 			deployment: {
@@ -250,6 +251,9 @@ export class FrontendService {
 				enabled: this.modulesConfig.modules.includes('insights'),
 				summary: true,
 				dashboard: false,
+			},
+			logsView: {
+				enabled: false,
 			},
 		};
 	}
@@ -387,6 +391,8 @@ export class FrontendService {
 		this.settings.enterprise.projects.team.limit = this.license.getTeamProjectLimit();
 
 		this.settings.folders.enabled = this.license.isFoldersEnabled();
+
+		this.settings.logsView.enabled = config.get('logs_view.enabled');
 
 		return this.settings;
 	}

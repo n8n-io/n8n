@@ -47,6 +47,7 @@ export const defaultSettings: FrontendSettings = {
 		evaluator: 'tournament',
 	},
 	executionMode: 'regular',
+	isMultiMain: false,
 	executionTimeout: 0,
 	hideUsagePage: false,
 	hiringBannerEnabled: false,
@@ -148,5 +149,8 @@ export const defaultSettings: FrontendSettings = {
 		enabled: false,
 		summary: true,
 		dashboard: false,
+	},
+	logsView: {
+		enabled: false,
 	},
 };

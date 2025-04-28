@@ -1,5 +1,15 @@
-import type { IDataObject, IHttpRequestOptions, INodeExecutionData } from 'n8n-workflow';
+import { mock } from 'jest-mock-extended';
+import type {
+	IDataObject,
+	IExecuteSingleFunctions,
+	IHttpRequestOptions,
+	INode,
+	INodeExecutionData,
+} from 'n8n-workflow';
 import { NodeApiError, NodeOperationError, OperationalError } from 'n8n-workflow';
+
+const azureCosmosDbApiRequest = jest.fn();
+jest.mock('../../transport', () => ({ azureCosmosDbApiRequest }));
 
 import { ErrorMap } from '../../helpers/errorHandler';
 import {
@@ -10,31 +20,19 @@ import {
 	validatePartitionKey,
 	validateCustomProperties,
 } from '../../helpers/utils';
-import { azureCosmosDbApiRequest } from '../../transport';
 
 interface RequestBodyWithParameters extends IDataObject {
 	parameters: Array<{ name: string; value: string }>;
 }
 
-jest.mock('n8n-workflow', () => ({
-	...jest.requireActual('n8n-workflow'),
-	azureCosmosDbApiRequest: jest.fn(),
-}));
+const mockExecuteSingleFunctions = mock<IExecuteSingleFunctions>();
+beforeEach(() => {
+	jest.resetAllMocks();
 
-jest.mock('../../transport', () => ({
-	azureCosmosDbApiRequest: jest.fn(),
-}));
+	mockExecuteSingleFunctions.getNode.mockReturnValue({ name: 'MockNode' } as INode);
+});
 
 describe('getPartitionKey', () => {
-	let mockExecuteSingleFunctions: any;
-
-	beforeEach(() => {
-		mockExecuteSingleFunctions = {
-			getNodeParameter: jest.fn(),
-			getNode: jest.fn(() => ({ name: 'MockNode' })),
-		};
-	});
-
 	test('should return partition key when found', async () => {
 		mockExecuteSingleFunctions.getNodeParameter.mockReturnValue('containerName');
 		const mockApiResponse = {
@@ -42,7 +40,7 @@ describe('getPartitionKey', () => {
 				paths: ['/partitionKeyPath'],
 			},
 		};
-		(azureCosmosDbApiRequest as jest.Mock).mockResolvedValue(mockApiResponse);
+		azureCosmosDbApiRequest.mockResolvedValue(mockApiResponse);
 
 		const result = await getPartitionKey.call(mockExecuteSingleFunctions);
 
@@ -52,7 +50,7 @@ describe('getPartitionKey', () => {
 	test('should throw NodeOperationError if partition key is not found', async () => {
 		mockExecuteSingleFunctions.getNodeParameter.mockReturnValue('containerName');
 		const mockApiResponse = {};
-		(azureCosmosDbApiRequest as jest.Mock).mockResolvedValue(mockApiResponse);
+		azureCosmosDbApiRequest.mockResolvedValue(mockApiResponse);
 
 		await expect(getPartitionKey.call(mockExecuteSingleFunctions)).rejects.toThrowError(
 			new NodeOperationError(mockExecuteSingleFunctions.getNode(), 'Partition key not found', {
@@ -77,7 +75,7 @@ describe('getPartitionKey', () => {
 			},
 		);
 
-		(azureCosmosDbApiRequest as jest.Mock).mockRejectedValue(mockError);
+		azureCosmosDbApiRequest.mockRejectedValue(mockError);
 
 		await expect(getPartitionKey.call(mockExecuteSingleFunctions)).rejects.toThrowError(
 			new NodeApiError(
@@ -93,17 +91,12 @@ describe('getPartitionKey', () => {
 });
 
 describe('validatePartitionKey', () => {
-	let mockExecuteSingleFunctions: any;
 	let requestOptions: any;
 
 	beforeEach(() => {
-		mockExecuteSingleFunctions = {
-			getNodeParameter: jest.fn(),
-			getNode: jest.fn(() => ({ name: 'MockNode' })),
-		};
 		requestOptions = { body: {}, headers: {} };
 
-		(azureCosmosDbApiRequest as jest.Mock).mockClear();
+		azureCosmosDbApiRequest.mockClear();
 	});
 
 	test('should throw NodeOperationError when partition key is missing for "create" operation', async () => {
@@ -115,7 +108,7 @@ describe('validatePartitionKey', () => {
 				paths: ['/partitionKeyPath'],
 			},
 		};
-		(azureCosmosDbApiRequest as jest.Mock).mockResolvedValue(mockApiResponse);
+		azureCosmosDbApiRequest.mockResolvedValue(mockApiResponse);
 
 		await expect(
 			validatePartitionKey.call(mockExecuteSingleFunctions, requestOptions),
@@ -140,7 +133,7 @@ describe('validatePartitionKey', () => {
 				paths: ['/partitionKeyPath'],
 			},
 		};
-		(azureCosmosDbApiRequest as jest.Mock).mockResolvedValue(mockApiResponse);
+		azureCosmosDbApiRequest.mockResolvedValue(mockApiResponse);
 
 		await expect(
 			validatePartitionKey.call(mockExecuteSingleFunctions, requestOptions),
@@ -164,7 +157,7 @@ describe('validatePartitionKey', () => {
 				paths: ['/partitionKeyPath'],
 			},
 		};
-		(azureCosmosDbApiRequest as jest.Mock).mockResolvedValue(mockApiResponse);
+		azureCosmosDbApiRequest.mockResolvedValue(mockApiResponse);
 
 		await expect(
 			validatePartitionKey.call(mockExecuteSingleFunctions, requestOptions),
@@ -188,7 +181,7 @@ describe('validatePartitionKey', () => {
 				paths: ['/partitionKeyPath'],
 			},
 		};
-		(azureCosmosDbApiRequest as jest.Mock).mockResolvedValue(mockApiResponse);
+		azureCosmosDbApiRequest.mockResolvedValue(mockApiResponse);
 
 		await expect(
 			validatePartitionKey.call(mockExecuteSingleFunctions, requestOptions),
@@ -205,15 +198,6 @@ describe('validatePartitionKey', () => {
 });
 
 describe('simplifyData', () => {
-	let mockExecuteSingleFunctions: any;
-
-	beforeEach(() => {
-		mockExecuteSingleFunctions = {
-			getNodeParameter: jest.fn(),
-			getNode: jest.fn(() => ({ name: 'MockNode' })),
-		};
-	});
-
 	test('should return the same data when "simple" parameter is false', async () => {
 		mockExecuteSingleFunctions.getNodeParameter.mockReturnValue(false);
 		const items = [{ json: { foo: 'bar' } }] as INodeExecutionData[];
@@ -234,14 +218,9 @@ describe('simplifyData', () => {
 });
 
 describe('validateQueryParameters', () => {
-	let mockExecuteSingleFunctions: any;
 	let requestOptions: IHttpRequestOptions;
 
 	beforeEach(() => {
-		mockExecuteSingleFunctions = {
-			getNodeParameter: jest.fn(),
-			getNode: jest.fn(() => ({ name: 'MockNode' })),
-		};
 		requestOptions = { body: {}, headers: {} } as IHttpRequestOptions;
 	});
 
@@ -340,19 +319,10 @@ describe('processJsonInput', () => {
 });
 
 describe('validateCustomProperties', () => {
-	let mockExecuteSingleFunctions: any;
 	let requestOptions: any;
 
 	beforeEach(() => {
-		mockExecuteSingleFunctions = {
-			getNodeParameter: jest.fn(),
-			getNode: jest.fn(() => ({ name: 'MockNode' })),
-		};
 		requestOptions = { body: {}, headers: {}, url: 'http://mock.url' };
-	});
-
-	afterEach(() => {
-		jest.resetAllMocks();
 	});
 
 	test('should merge custom properties into requestOptions.body for valid input', async () => {
