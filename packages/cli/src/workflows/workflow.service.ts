@@ -69,6 +69,7 @@ export class WorkflowService {
 		options?: ListQuery.Options,
 		includeScopes?: boolean,
 		includeFolders?: boolean,
+		onlySharedWithMe?: boolean,
 	) {
 		let count;
 		let workflows;
@@ -86,6 +87,8 @@ export class WorkflowService {
 		if (isPersonalProject) {
 			sharedWorkflowIds =
 				await this.workflowSharingService.getOwnedWorkflowsInPersonalProject(user);
+		} else if (onlySharedWithMe) {
+			sharedWorkflowIds = await this.workflowSharingService.getSharedWithMeIds(user);
 		} else {
 			sharedWorkflowIds = await this.workflowSharingService.getSharedWorkflowIds(user, {
 				scopes: ['workflow:read'],

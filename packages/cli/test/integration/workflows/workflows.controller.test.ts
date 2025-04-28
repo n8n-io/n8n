@@ -1313,6 +1313,54 @@ describe('GET /workflows', () => {
 	});
 });
 
+describe('GET /workflows?onlySharedWithMe=true', () => {
+	test('should return only workflows shared with me', async () => {
+		const memberPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(
+			member.id,
+		);
+
+		const ownerPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(owner.id);
+
+		await createWorkflow({ name: 'First' }, owner);
+		await createWorkflow({ name: 'Second' }, member);
+		const workflow3 = await createWorkflow({ name: 'Third' }, member);
+
+		await shareWorkflowWithUsers(workflow3, [owner]);
+
+		const response = await authOwnerAgent.get('/workflows').query({ onlySharedWithMe: true });
+		expect(200);
+
+		expect(response.body).toEqual({
+			count: 1,
+			data: arrayContaining([
+				objectContaining({
+					id: any(String),
+					name: 'Third',
+					active: any(Boolean),
+					createdAt: any(String),
+					updatedAt: any(String),
+					versionId: any(String),
+					parentFolder: null,
+					homeProject: {
+						id: memberPersonalProject.id,
+						name: member.createPersonalProjectName(),
+						icon: null,
+						type: memberPersonalProject.type,
+					},
+					sharedWithProjects: [
+						objectContaining({
+							id: any(String),
+							name: ownerPersonalProject.name,
+							icon: null,
+							type: ownerPersonalProject.type,
+						}),
+					],
+				}),
+			]),
+		});
+	});
+});
+
 describe('GET /workflows?includeFolders=true', () => {
 	test('should return zero workflows and folders if none exist', async () => {
 		const response = await authOwnerAgent.get('/workflows').query({ includeFolders: true });
