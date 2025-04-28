@@ -20,3 +20,4 @@ export type { AccessScope, Controller, RateLimit } from './types';
 export type { ShutdownHandler } from './types';
 export { MultiMainMetadata } from './multi-main-metadata';
 export { OnLeaderTakeover, OnLeaderStepdown } from './on-multi-main-event';
+export { Memoized } from './memoized';

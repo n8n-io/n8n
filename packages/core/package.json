@@ -40,6 +40,7 @@
     "@langchain/core": "catalog:",
     "@n8n/client-oauth2": "workspace:*",
     "@n8n/config": "workspace:*",
+    "@n8n/decorators": "workspace:*",
     "@n8n/di": "workspace:*",
     "@sentry/node": "catalog:",
     "axios": "catalog:",
