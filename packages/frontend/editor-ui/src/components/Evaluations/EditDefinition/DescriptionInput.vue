@@ -43,7 +43,7 @@ const locale = useI18n();
 			data-test-id="evaluation-description-input"
 			:model-value="modelValue.tempValue"
 			type="textarea"
-			:placeholder="locale.baseText('testDefinition.edit.descriptionPlaceholder')"
+			:placeholder="locale.baseText('evaluation.edit.descriptionPlaceholder')"
 			@update:model-value="$emit('update:modelValue', { ...modelValue, tempValue: $event })"
 			@blur="() => saveChanges('description')"
 			@keydown="(e: KeyboardEvent) => handleKeydown(e, 'description')"

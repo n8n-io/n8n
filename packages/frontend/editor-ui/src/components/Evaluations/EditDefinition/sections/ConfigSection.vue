@@ -17,7 +17,7 @@ const locale = useI18n();
 		<div :class="$style.editForm">
 			<template v-if="!hasRuns">
 				<N8nText tag="div" color="text-dark" size="large" class="text-center">
-					{{ locale.baseText('testDefinition.edit.step.intro') }}
+					{{ locale.baseText('evaluation.edit.step.intro') }}
 				</N8nText>
 				<BlockArrow class="mt-5xs mb-5xs" />
 			</template>
@@ -34,19 +34,19 @@ const locale = useI18n();
 			<!-- Select Executions -->
 			<!-- <EvaluationStep
 				:issues="getFieldIssues('tags')"
-				:tooltip="locale.baseText('testDefinition.edit.step.executions.tooltip')"
+				:tooltip="locale.baseText('evaluation.edit.step.executions.tooltip')"
 				:external-tooltip="!hasRuns"
 			>
 				<template #title>
 					{{
-						locale.baseText('testDefinition.edit.step.executions', {
+						locale.baseText('evaluation.edit.step.executions', {
 							adjustToNumber: selectedTag?.usageCount ?? 0,
 						})
 					}}
 				</template>
 				<template #cardContent>
 					<div :class="$style.tagInputTag">
-						<i18n-t keypath="testDefinition.edit.step.tag">
+						<i18n-t keypath="evaluation.edit.step.tag">
 							<template #tag>
 								<N8nTag :text="selectedTag.name" :clickable="true" @click="renameTag">
 									<template #tag>

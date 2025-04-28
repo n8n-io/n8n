@@ -116,8 +116,8 @@ const popperModifiers = [
 						>
 							{{
 								isExpanded
-									? locale.baseText('testDefinition.edit.step.collapse')
-									: locale.baseText('testDefinition.edit.step.configure')
+									? locale.baseText('evaluation.edit.step.collapse')
+									: locale.baseText('evaluation.edit.step.configure')
 							}}
 							<font-awesome-icon :icon="isExpanded ? 'angle-up' : 'angle-down'" size="lg" />
 						</N8nText>
