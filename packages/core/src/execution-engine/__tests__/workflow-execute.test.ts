@@ -631,6 +631,64 @@ describe('WorkflowExecute', () => {
 				new DirectedGraph().addNode(orphan).toWorkflow({ ...workflow }),
 			);
 		});
+
+		//  ┌───────┐     ┌───────────┐
+		//  │trigger├────►│agentNode  │
+		//  └───────┘     └───────────┘
+		//                       │ ┌──────┐
+		//                       └─│ Tool │
+		//                         └──────┘
+		it('rewires graph for partial execution of tools', async () => {
+			// ARRANGE
+			const waitPromise = createDeferredPromise<IRun>();
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
+			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
+			const nodeTypes = Helpers.NodeTypes();
+
+			const trigger = createNodeData({ name: 'trigger', type: 'n8n-nodes-base.manualTrigger' });
+			const tool = createNodeData({ name: 'tool', type: 'n8n-nodes-base.toolTest' });
+			const agentNode = createNodeData({ name: 'agent' });
+
+			const workflow = new DirectedGraph()
+				.addNodes(trigger, tool, agentNode)
+				.addConnections(
+					{ from: trigger, to: agentNode },
+					{ from: tool, to: agentNode, type: NodeConnectionTypes.AiTool },
+				)
+				.toWorkflow({ name: '', active: false, nodeTypes });
+			const pinData: IPinData = {};
+			const runData: IRunData = {
+				[trigger.name]: [toITaskData([{ data: { value: 1 } }])],
+			};
+			const dirtyNodeNames: string[] = [];
+
+			const processRunExecutionDataSpy = jest
+				.spyOn(workflowExecute, 'processRunExecutionData')
+				.mockImplementationOnce(jest.fn());
+
+			const expectedTool = {
+				...tool,
+				rewireOutputLogTo: NodeConnectionTypes.AiTool,
+			};
+
+			const expectedGraph = new DirectedGraph()
+				.addNodes(trigger, expectedTool)
+				.addConnections({ from: trigger, to: expectedTool })
+				.toWorkflow({ ...workflow });
+
+			// ACT
+			await workflowExecute.runPartialWorkflow2(
+				workflow,
+				runData,
+				pinData,
+				dirtyNodeNames,
+				tool.name,
+			);
+
+			// ASSERT
+			expect(processRunExecutionDataSpy).toHaveBeenCalledTimes(1);
+			expect(processRunExecutionDataSpy).toHaveBeenCalledWith(expectedGraph);
+		});
 	});
 
 	describe('checkReadyForExecution', () => {

@@ -43,6 +43,25 @@ export const predefinedNodesTypes: INodeTypeData = {
 		type: new SplitInBatches(),
 		sourcePath: '',
 	},
+	'n8n-nodes-base.toolTest': {
+		sourcePath: '',
+		type: {
+			description: {
+				displayName: 'Test tool',
+				name: 'toolTest',
+				group: ['transform'],
+				version: 1,
+				description: 'Test tool',
+				inputs: [],
+				defaults: {
+					name: 'Test Tool',
+					color: '#0000FF',
+				},
+				outputs: [NodeConnectionTypes.AiTool],
+				properties: [],
+			},
+		},
+	},
 	'n8n-nodes-base.versionTest': {
 		sourcePath: '',
 		type: {
