@@ -1,4 +1,4 @@
-import { datetimeColumnType } from '@n8n/db';
+import { DateTimeColumn } from '@n8n/db';
 import { Column, Entity, ManyToOne, PrimaryColumn } from '@n8n/typeorm';
 
 import { WorkflowEntity } from './workflow-entity';
@@ -16,7 +16,7 @@ export class WorkflowStatistics {
 	@Column()
 	count: number;
 
-	@Column(datetimeColumnType)
+	@DateTimeColumn()
 	latestEvent: Date;
 
 	@PrimaryColumn({ length: 128 })

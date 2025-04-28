@@ -1,4 +1,4 @@
-import { datetimeColumnType } from '@n8n/db';
+import { DateTimeColumn } from '@n8n/db';
 import { Column, Entity, PrimaryGeneratedColumn } from '@n8n/typeorm';
 
 import { AuthProviderType } from './auth-identity';
@@ -20,10 +20,10 @@ export class AuthProviderSyncHistory {
 	@Column('text')
 	status: SyncStatus;
 
-	@Column(datetimeColumnType)
+	@DateTimeColumn()
 	startedAt: Date;
 
-	@Column(datetimeColumnType)
+	@DateTimeColumn()
 	endedAt: Date;
 
 	@Column()

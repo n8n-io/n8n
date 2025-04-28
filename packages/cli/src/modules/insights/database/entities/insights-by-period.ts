@@ -1,4 +1,4 @@
-import { datetimeColumnType } from '@n8n/db';
+import { DateTimeColumn } from '@n8n/db';
 import {
 	BaseEntity,
 	Column,
@@ -7,7 +7,6 @@ import {
 	ManyToOne,
 	PrimaryGeneratedColumn,
 } from '@n8n/typeorm';
-import type { SimpleColumnType } from '@n8n/typeorm/driver/types/ColumnTypes';
 import { UnexpectedError } from 'n8n-workflow';
 
 import { InsightsMetadata } from './insights-metadata';
@@ -70,6 +69,6 @@ export class InsightsByPeriod extends BaseEntity {
 		this.periodUnit_ = PeriodUnitToNumber[value];
 	}
 
-	@Column({ type: datetimeColumnType as SimpleColumnType })
+	@DateTimeColumn()
 	periodStart: Date;
 }
