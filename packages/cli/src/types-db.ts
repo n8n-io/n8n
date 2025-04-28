@@ -9,6 +9,8 @@ import type {
 	IUserSettings,
 	DeduplicationMode,
 	DeduplicationItemTypes,
+	AnnotationVote,
+	ExecutionSummary,
 } from 'n8n-workflow';
 
 import type { AnnotationTagEntity } from '@/databases/entities/annotation-tag-entity.ee';
@@ -167,4 +169,53 @@ export interface IExecutionFlattedDb extends IExecutionBase {
 	data: string;
 	workflowData: Omit<IWorkflowBase, 'pinData'>;
 	customData: Record<string, string>;
+}
+
+export namespace ExecutionSummaries {
+	export type Query = RangeQuery | CountQuery;
+
+	export type RangeQuery = { kind: 'range' } & FilterFields &
+		AccessFields &
+		RangeFields &
+		OrderFields;
+
+	export type CountQuery = { kind: 'count' } & FilterFields & AccessFields;
+
+	type FilterFields = Partial<{
+		id: string;
+		finished: boolean;
+		mode: string;
+		retryOf: string;
+		retrySuccessId: string;
+		status: ExecutionStatus[];
+		workflowId: string;
+		waitTill: boolean;
+		metadata: Array<{ key: string; value: string }>;
+		startedAfter: string;
+		startedBefore: string;
+		annotationTags: string[]; // tag IDs
+		vote: AnnotationVote;
+		projectId: string;
+	}>;
+
+	type AccessFields = {
+		accessibleWorkflowIds?: string[];
+	};
+
+	type RangeFields = {
+		range: {
+			limit: number;
+			firstId?: string;
+			lastId?: string;
+		};
+	};
+
+	type OrderFields = {
+		order?: {
+			top?: ExecutionStatus;
+			startedAt?: 'DESC';
+		};
+	};
+
+	export type ExecutionSummaryWithScopes = ExecutionSummary & { scopes: Scope[] };
 }

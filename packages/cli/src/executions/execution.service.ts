@@ -36,12 +36,12 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { IExecutionFlattedResponse } from '@/interfaces';
 import { License } from '@/license';
 import { NodeTypes } from '@/node-types';
-import type { CreateExecutionPayload, IExecutionResponse } from '@/types-db';
+import type { CreateExecutionPayload, ExecutionSummaries, IExecutionResponse } from '@/types-db';
 import { WaitTracker } from '@/wait-tracker';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
-import type { ExecutionRequest, ExecutionSummaries, StopResult } from './execution.types';
+import type { ExecutionRequest, StopResult } from './execution.types';
 
 export const schemaGetExecutionsQueryFilter = {
 	$id: '/IGetExecutionsQueryFilter',

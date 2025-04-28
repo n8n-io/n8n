@@ -35,12 +35,12 @@ import { AnnotationTagEntity } from '@/databases/entities/annotation-tag-entity.
 import { AnnotationTagMapping } from '@/databases/entities/annotation-tag-mapping.ee';
 import { ExecutionAnnotation } from '@/databases/entities/execution-annotation.ee';
 import { PostgresLiveRowsRetrievalError } from '@/errors/postgres-live-rows-retrieval.error';
-import type { ExecutionSummaries } from '@/executions/execution.types';
 import type {
 	CreateExecutionPayload,
 	IExecutionFlattedDb,
 	IExecutionBase,
 	IExecutionResponse,
+	ExecutionSummaries,
 } from '@/types-db';
 import { separate } from '@/utils';
 
