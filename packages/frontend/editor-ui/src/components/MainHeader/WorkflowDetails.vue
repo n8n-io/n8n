@@ -46,6 +46,7 @@ import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { computed, ref, useCssModule, watch } from 'vue';
 import type {
 	ActionDropdownItem,
+	FolderShortInfo,
 	IWorkflowDataUpdate,
 	IWorkflowDb,
 	IWorkflowToShare,
@@ -56,6 +57,8 @@ import type { BaseTextKey } from '@/plugins/i18n';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { ProjectTypes } from '@/types/projects.types';
+import { useFoldersStore } from '@/stores/folders.store';
+import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 
 const props = defineProps<{
 	readOnly?: boolean;
@@ -65,6 +68,7 @@ const props = defineProps<{
 	meta: IWorkflowDb['meta'];
 	scopes: IWorkflowDb['scopes'];
 	active: IWorkflowDb['active'];
+	currentFolder?: FolderShortInfo;
 }>();
 
 const $style = useCssModule();
@@ -78,6 +82,7 @@ const uiStore = useUIStore();
 const usersStore = useUsersStore();
 const workflowsStore = useWorkflowsStore();
 const projectsStore = useProjectsStore();
+const foldersStore = useFoldersStore();
 const npsSurveyStore = useNpsSurveyStore();
 const i18n = useI18n();
 
@@ -138,6 +143,11 @@ const workflowMenuItems = computed<ActionDropdownItem[]>(() => {
 			id: WORKFLOW_MENU_ACTIONS.DOWNLOAD,
 			label: locale.baseText('menuActions.download'),
 			disabled: !onWorkflowPage.value,
+		},
+		{
+			id: WORKFLOW_MENU_ACTIONS.RENAME,
+			label: locale.baseText('generic.rename'),
+			disabled: !onWorkflowPage.value || workflowPermissions.value.update !== true,
 		},
 	];
 
@@ -201,24 +211,23 @@ const workflowTagIds = computed(() => {
 	return (props.tags ?? []).map((tag) => (typeof tag === 'string' ? tag : tag.id));
 });
 
-const currentFolder = computed(() => {
-	if (props.id === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
-		return undefined;
-	}
-
-	const workflow = workflowsStore.getWorkflowById(props.id);
-	if (!workflow) {
-		return undefined;
-	}
-
-	return workflow.parentFolder;
-});
-
 const currentProjectName = computed(() => {
 	if (projectsStore.currentProject?.type === ProjectTypes.Personal) {
 		return locale.baseText('projects.menu.personal');
 	}
 	return projectsStore.currentProject?.name;
+});
+
+const currentFolderForBreadcrumbs = computed(() => {
+	if (!isNewWorkflow.value && props.currentFolder) {
+		return props.currentFolder;
+	}
+	const folderId = route.query.parentFolderId as string;
+
+	if (folderId) {
+		return foldersStore.getCachedFolder(folderId);
+	}
+	return null;
 });
 
 watch(
@@ -345,8 +354,8 @@ async function onNameSubmit({
 	const newName = name.trim();
 	if (!newName) {
 		toast.showMessage({
-			title: locale.baseText('workflowDetails.showMessage.title'),
-			message: locale.baseText('workflowDetails.showMessage.message'),
+			title: locale.baseText('renameAction.emptyName.title'),
+			message: locale.baseText('renameAction.emptyName.message'),
 			type: 'error',
 		});
 
@@ -408,9 +417,13 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 					id: props.id,
 					name: props.name,
 					tags: props.tags,
-					parentFolderId: currentFolder?.value?.id,
+					parentFolderId: props.currentFolder?.id,
 				},
 			});
+			break;
+		}
+		case WORKFLOW_MENU_ACTIONS.RENAME: {
+			onNameToggle();
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.DOWNLOAD: {
@@ -556,11 +569,11 @@ function showCreateWorkflowSuccessToast(id?: string) {
 		let toastText = locale.baseText('workflows.create.personal.toast.text');
 
 		if (projectsStore.currentProject) {
-			if (currentFolder.value) {
+			if (props.currentFolder) {
 				toastTitle = locale.baseText('workflows.create.folder.toast.title', {
 					interpolate: {
 						projectName: currentProjectName.value ?? '',
-						folderName: currentFolder.value.name ?? '',
+						folderName: props.currentFolder.name ?? '',
 					},
 				});
 			} else if (projectsStore.currentProject.id !== projectsStore.personalProject?.id) {
@@ -581,27 +594,50 @@ function showCreateWorkflowSuccessToast(id?: string) {
 		});
 	}
 }
+
+const onBreadcrumbsItemSelected = (item: PathItem) => {
+	if (item.href) {
+		void router.push(item.href).catch((error) => {
+			toast.showError(error, i18n.baseText('folders.open.error.title'));
+		});
+	}
+};
 </script>
 
 <template>
 	<div :class="$style.container">
-		<BreakpointsObserver :value-x-s="15" :value-s-m="25" :value-m-d="50" class="name-container">
+		<BreakpointsObserver
+			:value-x-s="15"
+			:value-s-m="25"
+			:value-m-d="50"
+			class="name-container"
+			data-test-id="canvas-breadcrumbs"
+		>
 			<template #default="{ value }">
-				<ShortenName :name="name" :limit="value" :custom="true" test-id="workflow-name-input">
-					<template #default="{ shortenedName }">
-						<InlineTextEdit
-							:model-value="name"
-							:preview-value="shortenedName"
-							:is-edit-enabled="isNameEditEnabled"
-							:max-length="MAX_WORKFLOW_NAME_LENGTH"
-							:disabled="readOnly || (!isNewWorkflow && !workflowPermissions.update)"
-							placeholder="Enter workflow name"
-							class="name"
-							@toggle="onNameToggle"
-							@submit="onNameSubmit"
-						/>
+				<FolderBreadcrumbs
+					:current-folder="currentFolderForBreadcrumbs"
+					:current-folder-as-link="true"
+					@item-selected="onBreadcrumbsItemSelected"
+				>
+					<template #append>
+						<span v-if="projectsStore.currentProject" :class="$style['path-separator']">/</span>
+						<ShortenName :name="name" :limit="value" :custom="true" test-id="workflow-name-input">
+							<template #default="{ shortenedName }">
+								<InlineTextEdit
+									:model-value="name"
+									:preview-value="shortenedName"
+									:is-edit-enabled="isNameEditEnabled"
+									:max-length="MAX_WORKFLOW_NAME_LENGTH"
+									:disabled="readOnly || (!isNewWorkflow && !workflowPermissions.update)"
+									placeholder="Enter workflow name"
+									class="name"
+									@toggle="onNameToggle"
+									@submit="onNameSubmit"
+								/>
+							</template>
+						</ShortenName>
 					</template>
-				</ShortenName>
+				</FolderBreadcrumbs>
 			</template>
 		</BreakpointsObserver>
 
@@ -728,7 +764,7 @@ $--text-line-height: 24px;
 $--header-spacing: 20px;
 
 .name-container {
-	margin-right: $--header-spacing;
+	margin-right: var(--spacing-s);
 
 	:deep(.el-input) {
 		padding: 0;
@@ -737,8 +773,7 @@ $--header-spacing: 20px;
 
 .name {
 	color: $custom-font-dark;
-	font-size: 15px;
-	display: block;
+	font-size: var(--font-size-s);
 }
 
 .activator {
@@ -803,6 +838,12 @@ $--header-spacing: 20px;
 	display: flex;
 	align-items: center;
 	flex-wrap: nowrap;
+}
+
+.path-separator {
+	font-size: var(--font-size-xl);
+	color: var(--color-foreground-base);
+	margin: var(--spacing-4xs);
 }
 
 .group {
