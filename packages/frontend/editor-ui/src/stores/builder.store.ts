@@ -133,6 +133,14 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 					steps: msg.steps,
 					read,
 				});
+			} else if (msg.type === 'prompt-validation' && !msg.isWorkflowPrompt) {
+				messages.push({
+					id,
+					role: 'assistant',
+					type: 'error',
+					content: locale.baseText('aiAssistant.builder.invalidPrompt'),
+					read: true,
+				});
 			} else if (msg.type === 'workflow-node' && 'nodes' in msg) {
 				const mappedNodes = msg.nodes.map(
 					(node) => nodeTypesStore.getNodeType(node)?.displayName ?? node,

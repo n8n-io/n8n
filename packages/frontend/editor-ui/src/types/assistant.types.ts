@@ -196,6 +196,11 @@ export namespace ChatRequest {
 		nodes: string[];
 	}
 
+	interface WorkflowPromptValidationMessage {
+		role: 'assistant';
+		type: 'prompt-validation';
+		isWorkflowPrompt: boolean;
+	}
 	interface WorkflowComposedMessage {
 		role: 'assistant';
 		type: 'workflow-composed';
@@ -227,6 +232,7 @@ export namespace ChatRequest {
 				| WorkflowStepMessage
 				| WorkflowNodeMessage
 				| WorkflowComposedMessage
+				| WorkflowPromptValidationMessage
 				| WorkflowGeneratedMessage
 				| RateWorkflowMessage
 		  ) & {

@@ -12,6 +12,7 @@ import { connectionComposerChain } from './chains/connection-composer';
 import { nodesSelectionChain } from './chains/node-selector';
 import { nodesComposerChain } from './chains/nodes-composer';
 import { plannerChain } from './chains/planner';
+import { validatorChain } from './chains/validator';
 import { ILicenseService } from './interfaces';
 import { anthropicClaude37Sonnet, gpt41mini } from './llm-config';
 import type { MessageResponse } from './types';
@@ -58,8 +59,6 @@ export class AiWorkflowBuilderService {
 
 			assert(this.client, 'Client not setup');
 
-			// @ts-expect-error getProxyHeaders will only be available after `@n8n_io/ai-assistant-sdk` v1.14.0 is released
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 			const authHeaders = (await this.client.generateApiProxyCredentials(user)) as {
 				apiKey: string;
 			};
@@ -103,6 +102,7 @@ export class AiWorkflowBuilderService {
 
 	private isWorkflowEvent(eventName: string): boolean {
 		return [
+			'prompt_validation',
 			'generated_steps',
 			'generated_nodes',
 			'composed_nodes',
@@ -112,6 +112,33 @@ export class AiWorkflowBuilderService {
 	}
 
 	private getAgent() {
+		const validatorChainNode = async (
+			state: typeof WorkflowState.State,
+			config: RunnableConfig,
+		): Promise<Partial<typeof WorkflowState.State>> => {
+			assert(this.llmSimpleTask, 'LLM not setup');
+
+			const isWorkflowPrompt = await validatorChain(this.llmSimpleTask).invoke(
+				{
+					prompt: state.prompt,
+				},
+				config,
+			);
+
+			if (!isWorkflowPrompt) {
+				await dispatchCustomEvent('prompt_validation', {
+					role: 'assistant',
+					type: 'prompt-validation',
+					isWorkflowPrompt,
+					id: Date.now().toString(),
+				});
+			}
+
+			return {
+				isWorkflowPrompt,
+			};
+		};
+
 		const plannerChainNode = async (
 			state: typeof WorkflowState.State,
 			config: RunnableConfig,
@@ -296,7 +323,7 @@ export class AiWorkflowBuilderService {
 
 		///////////////////// Workflow Graph Definition /////////////////////
 		const workflowGraph = new StateGraph(WorkflowState)
-			// .addNode('supervisor', supervisorChainNode)
+			.addNode('validator', validatorChainNode)
 			.addNode('planner', plannerChainNode)
 			.addNode('node_selector', nodeSelectionChainNode)
 			.addNode('nodes_composer', nodesComposerChainNode)
@@ -304,8 +331,12 @@ export class AiWorkflowBuilderService {
 			.addNode('finalize', generateWorkflowJSON);
 
 		// Define the graph edges to set the processing order:
-		// Start with the planner.
-		workflowGraph.addEdge(START, 'planner');
+		// Start with the validator
+		workflowGraph.addEdge(START, 'validator');
+		// If validated, continue to planner
+		workflowGraph.addConditionalEdges('validator', (state) => {
+			return state.isWorkflowPrompt ? 'planner' : END;
+		});
 		// Planner node flows into node selector:
 		workflowGraph.addEdge('planner', 'node_selector');
 		// Node selector is followed by nodes composer:
@@ -333,6 +364,7 @@ export class AiWorkflowBuilderService {
 			steps: [],
 			nodes: [],
 			workflowJSON: { nodes: [], connections: {} },
+			isWorkflowPrompt: false,
 			next: 'PLAN',
 		};
 

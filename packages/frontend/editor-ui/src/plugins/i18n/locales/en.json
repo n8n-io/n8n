@@ -168,6 +168,7 @@
 	"aiAssistant.builder.buildWorkflow": "Build workflow",
 	"aiAssistant.builder.newWorkflowNotice": "The created workflow will be added to the editor",
 	"aiAssistant.builder.feedbackPrompt": "Is this workflow helpful?",
+	"aiAssistant.builder.invalidPrompt": "Prompt validation failed. Please try again with a clearer description of your workflow requirements and supported integrations.",
 	"aiAssistant.assistant": "AI Assistant",
 	"aiAssistant.newSessionModal.title.part1": "Start new",
 	"aiAssistant.newSessionModal.title.part2": "session",
