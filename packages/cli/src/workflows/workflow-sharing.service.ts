@@ -9,10 +9,9 @@ import type { User } from '@/databases/entities/user';
 import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { RoleService } from '@/services/role.service';
-import { Project } from '@/databases/entities/project';
 
 export type ShareWorkflowOptions =
-	| { scopes: Scope[]; projectId?: string; workflowRoles?: WorkflowSharingRole[] }
+	| { scopes: Scope[]; projectId?: string }
 	| { projectRoles: ProjectRole[]; workflowRoles: WorkflowSharingRole[]; projectId?: string };
 
 @Service()
