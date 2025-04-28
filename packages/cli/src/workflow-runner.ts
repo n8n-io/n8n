@@ -235,10 +235,17 @@ export class WorkflowRunner {
 			settings: workflowSettings,
 			pinData,
 		});
+
+		const maxExecutionIndex = Math.max(
+			...Object.values(data.executionData?.resultData?.runData ?? {})
+				.flat()
+				.map((taskData) => taskData.executionIndex),
+		);
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(
 			data.userId,
 			undefined,
 			workflowTimeout <= 0 ? undefined : Date.now() + workflowTimeout * 1000,
+			maxExecutionIndex,
 		);
 		// TODO: set this in queue mode as well
 		additionalData.restartExecutionId = restartExecutionId;

@@ -363,6 +363,7 @@ export async function getBase(
 	userId?: string,
 	currentNodeParameters?: INodeParameters,
 	executionTimeoutTimestamp?: number,
+	maxExecutionIndex?: number,
 ): Promise<IWorkflowExecuteAdditionalData> {
 	const urlBaseWebhook = Container.get(UrlService).getWebhookBaseUrl();
 
@@ -373,7 +374,7 @@ export async function getBase(
 	const eventService = Container.get(EventService);
 
 	return {
-		currentNodeExecutionIndex: 0,
+		currentNodeExecutionIndex: maxExecutionIndex ?? 0,
 		credentialsHelper: Container.get(CredentialsHelper),
 		executeWorkflow,
 		restApiUrl: urlBaseWebhook + globalConfig.endpoints.rest,
