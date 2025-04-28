@@ -11,7 +11,7 @@ import { useI18n } from '@/composables/useI18n';
 
 type FieldIssue = { field: string; message: string };
 
-export const useTestDefinitionStore = defineStore(
+export const useEvaluationStore = defineStore(
 	STORES.EVALUATION,
 	() => {
 		// State

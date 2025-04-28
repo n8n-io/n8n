@@ -1,6 +1,6 @@
 import { ref, computed } from 'vue';
 import type { ComponentPublicInstance, ComputedRef } from 'vue';
-import { useTestDefinitionStore } from '@/stores/testDefinition.store.ee';
+import { useEvaluationStore } from '@/stores/evaluation.store.ee';
 import type AnnotationTagsDropdownEe from '@/components/AnnotationTagsDropdown.ee.vue';
 import type { N8nInput } from '@n8n/design-system';
 import type { UpdateTestDefinitionParams } from '@/api/testDefinition.ee';
@@ -12,7 +12,7 @@ type FormRefs = {
 };
 
 export function useTestDefinitionForm() {
-	const evaluationsStore = useTestDefinitionStore();
+	const evaluationsStore = useEvaluationStore();
 
 	// State initialization
 	const state = ref<EvaluationFormState>({
