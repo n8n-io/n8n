@@ -49,10 +49,10 @@ class MemoryMem0Singleton {
 
 	private initializeClient(options?: Mem0ClientOptions) {
 		const mem0Options: Mem0ClientOptions = {
+			...options,
 			apiKey: options?.apiKey ?? '',
 			organizationId: options?.organizationId,
 			projectId: options?.projectId,
-			...options,
 		};
 
 		this.mem0Client = new Mem0Memory({
