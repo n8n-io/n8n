@@ -33,7 +33,7 @@
     "@langchain/openai": "catalog:",
     "@n8n/config": "workspace:*",
     "@n8n/di": "workspace:*",
-    "@n8n_io/ai-assistant-sdk": "1.13.0",
+    "@n8n_io/ai-assistant-sdk": "catalog:",
     "n8n-workflow": "workspace:*",
     "zod": "catalog:"
   },

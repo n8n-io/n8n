@@ -59,11 +59,7 @@ export class AiWorkflowBuilderService {
 
 			assert(this.client, 'Client not setup');
 
-			// @ts-expect-error getProxyHeaders will only be available after `@n8n_io/ai-assistant-sdk` v1.14.0 is released
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-call
-			const authHeaders = (await this.client.generateApiProxyCredentials(user)) as {
-				apiKey: string;
-			};
+			const authHeaders = await this.client.generateApiProxyCredentials(user);
 			this.llmSimpleTask = gpt41mini({
 				baseUrl: baseUrl + '/v1/api-proxy/openai',
 				// When using api-proxy the key will be populated automatically, we just need to pass a placeholder
