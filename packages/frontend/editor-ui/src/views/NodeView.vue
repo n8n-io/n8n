@@ -1644,7 +1644,7 @@ watch(
 				name: CanvasNodeRenderType.AddNodes,
 				type: CanvasNodeRenderType.AddNodes,
 				typeVersion: 1,
-				position: [400, 0],
+				position: [0, 0],
 				parameters: {},
 			},
 		];
@@ -1655,7 +1655,7 @@ watch(
 				name: CanvasNodeRenderType.AIPrompt,
 				type: CanvasNodeRenderType.AIPrompt,
 				typeVersion: 1,
-				position: [-290, -15],
+				position: [-690, -15],
 				parameters: {},
 			});
 		}
