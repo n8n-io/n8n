@@ -22,11 +22,10 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { TransferWorkflowError } from '@/errors/response-errors/transfer-workflow.error';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
-
 import type {
 	WorkflowWithSharingsAndCredentials,
 	WorkflowWithSharingsMetaDataAndCredentials,
-} from './workflows.types';
+} from '@/types-db';
 
 @Service()
 export class EnterpriseWorkflowService {
