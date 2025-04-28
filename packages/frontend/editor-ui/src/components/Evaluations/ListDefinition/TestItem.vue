@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { TestRunRecord } from '@/api/testDefinition.ee';
+import type { TestRunRecord } from '@/api/evaluation.ee';
 import TimeAgo from '@/components/TimeAgo.vue';
 import { useI18n } from '@/composables/useI18n';
 import { N8nIcon, N8nText } from '@n8n/design-system';

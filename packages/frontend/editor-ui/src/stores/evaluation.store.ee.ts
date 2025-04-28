@@ -1,8 +1,8 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { useRootStore } from './root.store';
-import * as testDefinitionsApi from '@/api/testDefinition.ee';
-import type { TestCaseExecutionRecord, TestRunRecord } from '@/api/testDefinition.ee';
+import * as testDefinitionsApi from '@/api/evaluation.ee';
+import type { TestCaseExecutionRecord, TestRunRecord } from '@/api/evaluation.ee';
 import { usePostHog } from './posthog.store';
 import { STORES, WORKFLOW_EVALUATION_EXPERIMENT } from '@/constants';
 import { useI18n } from '@/composables/useI18n';
