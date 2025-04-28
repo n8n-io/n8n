@@ -16,6 +16,8 @@ describe('Kafka Node', () => {
 	let mockProducerDisconnect: jest.Mock;
 	let mockRegistryEncode: jest.Mock;
 
+	let schemaRegistryConstructorArgs: any[] = [];
+
 	beforeAll(() => {
 		mockProducerConnect = jest.fn();
 		mockProducerSend = jest.fn().mockImplementation(async () => []);
@@ -38,7 +40,15 @@ describe('Kafka Node', () => {
 		});
 
 		(apacheKafka as jest.Mock).mockReturnValue(mockKafka);
-		(SchemaRegistry as jest.Mock).mockReturnValue(mockRegistry);
+
+		(SchemaRegistry as jest.Mock).mockImplementation((...args: any[]) => {
+			schemaRegistryConstructorArgs.push(args[0]);
+			return mockRegistry;
+		});
+	});
+
+	afterEach(() => {
+		schemaRegistryConstructorArgs = [];
 	});
 
 	new NodeTestHarness().setupTests();
@@ -98,5 +108,66 @@ describe('Kafka Node', () => {
 				},
 			],
 		});
+	});
+
+	test('should instantiate SchemaRegistry with auth when username and password are provided', async () => {
+		const params = {
+			useSchemaRegistry: true,
+			schemaRegistryUrl: 'https://registry-url',
+			schemaRegistryUsername: 'user',
+			schemaRegistryPassword: 'pass',
+			eventName: 'namespace.name',
+		};
+		new SchemaRegistry({
+			host: params.schemaRegistryUrl,
+			auth: {
+				username: params.schemaRegistryUsername,
+				password: params.schemaRegistryPassword,
+			},
+		});
+		expect(
+			schemaRegistryConstructorArgs.some(
+				(arg) =>
+					arg.host === params.schemaRegistryUrl &&
+					arg.auth &&
+					arg.auth.username === params.schemaRegistryUsername &&
+					arg.auth.password === params.schemaRegistryPassword,
+			),
+		).toBe(true);
+	});
+
+	test('should instantiate SchemaRegistry without auth when username or password is missing', async () => {
+		const params = {
+			useSchemaRegistry: true,
+			schemaRegistryUrl: 'https://registry-url',
+			schemaRegistryUsername: '',
+			schemaRegistryPassword: '',
+			eventName: 'namespace.name',
+		};
+		new SchemaRegistry({
+			host: params.schemaRegistryUrl,
+		});
+		expect(
+			schemaRegistryConstructorArgs.some(
+				(arg) => arg.host === params.schemaRegistryUrl && !arg.auth,
+			),
+		).toBe(true);
+	});
+
+	test('should instantiate SchemaRegistry without auth when username and password are not provided', async () => {
+		const params = {
+			useSchemaRegistry: true,
+			schemaRegistryUrl: 'https://registry-url',
+			// username and password not set
+			eventName: 'namespace.name',
+		};
+		new SchemaRegistry({
+			host: params.schemaRegistryUrl,
+		});
+		expect(
+			schemaRegistryConstructorArgs.some(
+				(arg) => arg.host === params.schemaRegistryUrl && !arg.auth,
+			),
+		).toBe(true);
 	});
 });

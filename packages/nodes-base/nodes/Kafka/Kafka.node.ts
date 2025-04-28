@@ -93,6 +93,35 @@ export class Kafka implements INodeType {
 				description: 'URL of the schema registry',
 			},
 			{
+				displayName: 'Schema Registry Auth Username',
+				name: 'schemaRegistryUsername',
+				type: 'string',
+				default: '',
+				placeholder: 'username',
+				description: 'Username for HTTP Basic Auth to access the Schema Registry (optional)',
+				displayOptions: {
+					show: {
+						useSchemaRegistry: [true],
+					},
+				},
+			},
+			{
+				displayName: 'Schema Registry Auth Password',
+				name: 'schemaRegistryPassword',
+				type: 'string',
+				typeOptions: {
+					password: true,
+				},
+				default: '',
+				placeholder: 'password',
+				description: 'Password for HTTP Basic Auth to access the Schema Registry (optional)',
+				displayOptions: {
+					show: {
+						useSchemaRegistry: [true],
+					},
+				},
+			},
+			{
 				displayName: 'Use Key',
 				name: 'useKey',
 				type: 'boolean',
@@ -330,9 +359,28 @@ export class Kafka implements INodeType {
 				if (useSchemaRegistry) {
 					try {
 						const schemaRegistryUrl = this.getNodeParameter('schemaRegistryUrl', 0) as string;
+						const schemaRegistryUsername = this.getNodeParameter(
+							'schemaRegistryUsername',
+							0,
+						) as string;
+						const schemaRegistryPassword = this.getNodeParameter(
+							'schemaRegistryPassword',
+							0,
+						) as string;
 						const eventName = this.getNodeParameter('eventName', 0) as string;
 
-						const registry = new SchemaRegistry({ host: schemaRegistryUrl });
+						let registry: SchemaRegistry;
+						if (schemaRegistryUsername && schemaRegistryPassword) {
+							registry = new SchemaRegistry({
+								host: schemaRegistryUrl,
+								auth: {
+									username: schemaRegistryUsername,
+									password: schemaRegistryPassword,
+								},
+							});
+						} else {
+							registry = new SchemaRegistry({ host: schemaRegistryUrl });
+						}
 						const id = await registry.getLatestSchemaId(eventName);
 
 						message = await registry.encode(id, JSON.parse(message));
