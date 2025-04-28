@@ -103,7 +103,6 @@ const ITEM_TO_DATA_ACCESSORS = [
 // These we can convert to an argument
 const ITEM_ACCESSORS = ['params', 'isExecuted'];
 
-// $('nodeName'). is equivalent to $ for previous node
 const DATA_ACCESSORS = ['json', 'binary'];
 
 function jsifyNodeName(nodeName: string, allNodeNames: string[]) {
