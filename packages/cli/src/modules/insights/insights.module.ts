@@ -1,9 +1,7 @@
 import type { BaseN8nModule } from '@n8n/decorators';
-import { N8nModule } from '@n8n/decorators';
+import { N8nModule, OnLeaderStepdown, OnLeaderTakeover } from '@n8n/decorators';
 import type { ExecutionLifecycleHooks } from 'n8n-core';
 import { InstanceSettings, Logger } from 'n8n-core';
-
-import type { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
 
 import { InsightsService } from './insights.service';
 
@@ -35,8 +33,13 @@ export class InsightsModule implements BaseN8nModule {
 		});
 	}
 
-	registerMultiMainListeners(multiMainSetup: MultiMainSetup) {
-		multiMainSetup.on('leader-takeover', () => this.insightsService.startBackgroundProcess());
-		multiMainSetup.on('leader-stepdown', () => this.insightsService.stopBackgroundProcess());
+	@OnLeaderTakeover()
+	startBackgroundProcess() {
+		this.insightsService.startBackgroundProcess();
+	}
+
+	@OnLeaderStepdown()
+	stopBackgroundProcess() {
+		this.insightsService.stopBackgroundProcess();
 	}
 }

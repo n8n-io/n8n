@@ -5,7 +5,6 @@ import { useI18n } from '@/composables/useI18n';
 import { type IExecutionResponse, type NodePanelType } from '@/Interface';
 import { useNDVStore } from '@/stores/ndv.store';
 import { N8nLink, N8nText } from '@n8n/design-system';
-import { uniq } from 'lodash-es';
 import { type Workflow } from 'n8n-workflow';
 import { computed } from 'vue';
 import { I18nT } from 'vue-i18n';
@@ -20,17 +19,27 @@ const { title, logEntry, paneType, workflow, execution } = defineProps<{
 
 const locale = useI18n();
 const ndvStore = useNDVStore();
-const parentNodeNames = computed(() =>
-	uniq(workflow.getParentNodesByDepth(logEntry.node.name, 1)).map((c) => c.name),
-);
-const node = computed(() => {
+const isMultipleInput = computed(() => paneType === 'input' && logEntry.runData.source.length > 1);
+const runDataProps = computed<
+	Pick<InstanceType<typeof RunData>['$props'], 'node' | 'runIndex' | 'overrideOutputs'> | undefined
+>(() => {
 	if (logEntry.depth > 0 || paneType === 'output') {
-		return logEntry.node;
+		return { node: logEntry.node, runIndex: logEntry.runIndex };
 	}
 
-	return parentNodeNames.value.length > 0 ? workflow.getNode(parentNodeNames.value[0]) : undefined;
+	const source = logEntry.runData.source[0];
+	const node = source && workflow.getNode(source.previousNode);
+
+	if (!source || !node) {
+		return undefined;
+	}
+
+	return {
+		node,
+		runIndex: source.previousNodeRun ?? 0,
+		overrideOutputs: [source.previousNodeOutput ?? 0],
+	};
 });
-const isMultipleInput = computed(() => paneType === 'input' && parentNodeNames.value.length > 1);
 
 function handleClickOpenNdv() {
 	ndvStore.setActiveNodeName(logEntry.node.name);
@@ -39,11 +48,10 @@ function handleClickOpenNdv() {
 
 <template>
 	<RunData
-		v-if="node"
-		:node="node"
+		v-if="runDataProps"
+		v-bind="runDataProps"
 		:workflow="workflow"
 		:workflow-execution="execution"
-		:run-index="logEntry.runIndex"
 		:too-much-data-title="locale.baseText('ndv.output.tooMuchData.title')"
 		:no-data-in-branch-message="locale.baseText('ndv.output.noOutputDataInBranch')"
 		:executing-message="locale.baseText('ndv.output.executing')"

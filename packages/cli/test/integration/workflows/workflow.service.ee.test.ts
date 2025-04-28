@@ -35,6 +35,8 @@ describe('EnterpriseWorkflowService', () => {
 			mock(),
 			mock(),
 			mock(),
+			mock(),
+			mock(),
 		);
 	});
 
