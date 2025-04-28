@@ -3,16 +3,16 @@ import { hasScope } from '@n8n/permissions';
 import { In } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 
+import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
 import { SharedCredentials } from '@/databases/entities/shared-credentials';
 import type { User } from '@/databases/entities/user';
-import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import { GLOBAL_MEMBER_SCOPES, GLOBAL_OWNER_SCOPES } from '@/permissions.ee/global-roles';
 import { mockEntityManager } from '@test/mocking';
 
-describe('SharedCredentialsRepository', () => {
+describe('CredentialsFinderService', () => {
 	const entityManager = mockEntityManager(SharedCredentials);
-	const repository = Container.get(SharedCredentialsRepository);
+	const credentialsFinderService = Container.get(CredentialsFinderService);
 
 	describe('findCredentialForUser', () => {
 		const credentialsId = 'cred_123';
@@ -40,9 +40,11 @@ describe('SharedCredentialsRepository', () => {
 
 		test('should allow instance owner access to all credentials', async () => {
 			entityManager.findOne.mockResolvedValueOnce(sharedCredential);
-			const credential = await repository.findCredentialForUser(credentialsId, owner, [
-				'credential:read',
-			]);
+			const credential = await credentialsFinderService.findCredentialForUser(
+				credentialsId,
+				owner,
+				['credential:read'],
+			);
 			expect(entityManager.findOne).toHaveBeenCalledWith(SharedCredentials, {
 				relations: { credentials: { shared: { project: { projectRelations: { user: true } } } } },
 				where: { credentialsId },
@@ -52,9 +54,11 @@ describe('SharedCredentialsRepository', () => {
 
 		test('should allow members', async () => {
 			entityManager.findOne.mockResolvedValueOnce(sharedCredential);
-			const credential = await repository.findCredentialForUser(credentialsId, member, [
-				'credential:read',
-			]);
+			const credential = await credentialsFinderService.findCredentialForUser(
+				credentialsId,
+				member,
+				['credential:read'],
+			);
 			expect(entityManager.findOne).toHaveBeenCalledWith(SharedCredentials, {
 				relations: { credentials: { shared: { project: { projectRelations: { user: true } } } } },
 				where: {
@@ -78,9 +82,11 @@ describe('SharedCredentialsRepository', () => {
 
 		test('should return null when no shared credential is found', async () => {
 			entityManager.findOne.mockResolvedValueOnce(null);
-			const credential = await repository.findCredentialForUser(credentialsId, member, [
-				'credential:read',
-			]);
+			const credential = await credentialsFinderService.findCredentialForUser(
+				credentialsId,
+				member,
+				['credential:read'],
+			);
 			expect(entityManager.findOne).toHaveBeenCalledWith(SharedCredentials, {
 				relations: { credentials: { shared: { project: { projectRelations: { user: true } } } } },
 				where: {

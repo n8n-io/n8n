@@ -5,19 +5,19 @@ import { ensureError } from 'n8n-workflow';
 
 import type { User } from '@/databases/entities/user';
 import type { WorkflowHistory } from '@/databases/entities/workflow-history';
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { WorkflowHistoryRepository } from '@/databases/repositories/workflow-history.repository';
 import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
 
 import { isWorkflowHistoryEnabled } from './workflow-history-helper.ee';
+import { WorkflowFinderService } from '../workflow-finder.service';
 
 @Service()
 export class WorkflowHistoryService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly workflowHistoryRepository: WorkflowHistoryRepository,
-		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
+		private readonly workflowFinderService: WorkflowFinderService,
 	) {}
 
 	async getList(
@@ -26,7 +26,7 @@ export class WorkflowHistoryService {
 		take: number,
 		skip: number,
 	): Promise<Array<Omit<WorkflowHistory, 'nodes' | 'connections'>>> {
-		const workflow = await this.sharedWorkflowRepository.findWorkflowForUser(workflowId, user, [
+		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:read',
 		]);
 
@@ -46,7 +46,7 @@ export class WorkflowHistoryService {
 	}
 
 	async getVersion(user: User, workflowId: string, versionId: string): Promise<WorkflowHistory> {
-		const workflow = await this.sharedWorkflowRepository.findWorkflowForUser(workflowId, user, [
+		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:read',
 		]);
 
