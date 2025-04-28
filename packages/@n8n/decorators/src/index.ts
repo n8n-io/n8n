@@ -18,3 +18,5 @@ export { BaseN8nModule, N8nModule } from './module';
 export { Debounce } from './debounce';
 export type { AccessScope, Controller, RateLimit } from './types';
 export type { ShutdownHandler } from './types';
+export { MultiMainMetadata } from './multi-main-metadata';
+export { OnLeaderTakeover, OnLeaderStepdown } from './on-multi-main-event';
