@@ -98,7 +98,7 @@ const getErrorBaseKey = (errorCode?: string): string =>
 const getErrorTooltipLinkRoute = (row: TestCaseExecutionRecord) => {
 	// if (row.errorCode === TEST_CASE_EXECUTION_ERROR_CODE.MOCKED_NODE_NOT_FOUND) {
 	// 	return {
-	// 		name: VIEWS.TEST_DEFINITION_EDIT,
+	// 		name: VIEWS.EVALUATION_EDIT,
 	// 		params: {
 	// 			testId: testId.value,
 	// 		},

@@ -12,7 +12,7 @@ import { useI18n } from '@/composables/useI18n';
 type FieldIssue = { field: string; message: string };
 
 export const useTestDefinitionStore = defineStore(
-	STORES.TEST_DEFINITION,
+	STORES.EVALUATION,
 	() => {
 		// State
 		const loading = ref(false);
