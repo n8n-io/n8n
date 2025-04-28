@@ -34,7 +34,7 @@ const locale = useI18n();
 			data-test-id="evaluation-name-input"
 			:model-value="modelValue.tempValue"
 			type="text"
-			:placeholder="locale.baseText('testDefinition.edit.namePlaceholder')"
+			:placeholder="locale.baseText('evaluation.edit.namePlaceholder')"
 			@update:model-value="$emit('update:modelValue', { ...modelValue, tempValue: $event })"
 			@blur="() => saveChanges('name')"
 			@keydown="(e: KeyboardEvent) => handleKeydown(e, 'name')"

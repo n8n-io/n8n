@@ -77,17 +77,17 @@ const gotToExecution = (executionId: string) => {
 };
 
 const testCaseErrorDictionary: Partial<Record<TestCaseExecutionErrorCodes, BaseTextKey>> = {
-	MOCKED_NODE_NOT_FOUND: 'testDefinition.runDetail.error.mockedNodeMissing',
-	FAILED_TO_EXECUTE_WORKFLOW: 'testDefinition.runDetail.error.executionFailed',
-	INVALID_METRICS: 'testDefinition.runDetail.error.invalidMetrics',
-	UNKNOWN_ERROR: 'testDefinition.runDetail.error.unknownError',
+	MOCKED_NODE_NOT_FOUND: 'evaluation.runDetail.error.mockedNodeMissing',
+	FAILED_TO_EXECUTE_WORKFLOW: 'evaluation.runDetail.error.executionFailed',
+	INVALID_METRICS: 'evaluation.runDetail.error.invalidMetrics',
+	UNKNOWN_ERROR: 'evaluation.runDetail.error.unknownError',
 } as const;
 
 const testRunErrorDictionary: Partial<Record<TestRunErrorCode, BaseTextKey>> = {
-	TEST_CASES_NOT_FOUND: 'testDefinition.listRuns.error.testCasesNotFound',
-	INTERRUPTED: 'testDefinition.listRuns.error.executionInterrupted',
-	UNKNOWN_ERROR: 'testDefinition.listRuns.error.unknownError',
-	EVALUATION_TRIGGER_NOT_FOUND: 'testDefinition.listRuns.error.evaluationTriggerNotFound',
+	TEST_CASES_NOT_FOUND: 'evaluation.listRuns.error.testCasesNotFound',
+	INTERRUPTED: 'evaluation.listRuns.error.executionInterrupted',
+	UNKNOWN_ERROR: 'evaluation.listRuns.error.unknownError',
+	EVALUATION_TRIGGER_NOT_FOUND: 'evaluation.listRuns.error.evaluationTriggerNotFound',
 } as const;
 
 const getErrorBaseKey = (errorCode?: string): string =>
@@ -137,13 +137,13 @@ const columns = computed(
 		{
 			prop: 'id',
 			width: 250,
-			label: locale.baseText('testDefinition.runDetail.testCase'),
+			label: locale.baseText('evaluation.runDetail.testCase'),
 			sortable: true,
 			formatter: (row: TestCaseExecutionRecord) => `${row.id}`,
 		},
 		{
 			prop: 'status',
-			label: locale.baseText('testDefinition.listRuns.status'),
+			label: locale.baseText('evaluation.listRuns.status'),
 		},
 		...Object.keys(run.value?.metrics ?? {}).map((metric) => ({
 			prop: `metrics.${metric}`,
@@ -195,7 +195,7 @@ onMounted(async () => {
 				<n8n-heading size="large" :bold="true">TODO: Change title</n8n-heading>
 				<i class="ml-xs mr-xs"><font-awesome-icon icon="chevron-right" /></i>
 				<n8n-heading size="large" :bold="true">
-					{{ locale.baseText('testDefinition.listRuns.runNumber') }}{{ run?.id }}
+					{{ locale.baseText('evaluation.listRuns.runNumber') }}{{ run?.id }}
 				</n8n-heading>
 			</button>
 		</div>
@@ -203,14 +203,14 @@ onMounted(async () => {
 			<div style="display: flex">
 				<div :class="$style.summaryCard">
 					<N8nText size="small">
-						{{ locale.baseText('testDefinition.runDetail.totalCases') }}
+						{{ locale.baseText('evaluation.runDetail.totalCases') }}
 					</N8nText>
 					<N8nText size="xlarge" style="font-size: 32px" bold>{{ testCases.length }}</N8nText>
 				</div>
 
 				<div :class="$style.summaryCard">
 					<N8nText size="small">
-						{{ locale.baseText('testDefinition.runDetail.ranAt') }}
+						{{ locale.baseText('evaluation.runDetail.ranAt') }}
 					</N8nText>
 					<div>
 						<N8nText v-for="item in formattedTime" :key="item" size="medium" tag="div">
@@ -221,7 +221,7 @@ onMounted(async () => {
 
 				<div :class="$style.summaryCard">
 					<N8nText size="small">
-						{{ locale.baseText('testDefinition.listRuns.status') }}
+						{{ locale.baseText('evaluation.listRuns.status') }}
 					</N8nText>
 					<N8nText size="large" :class="run?.status.toLowerCase()">
 						{{ run?.status }}

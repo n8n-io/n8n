@@ -80,7 +80,7 @@ const statusRender = computed<IconDefinition & { label: string }>(() => {
 				<N8nText bold tag="div" :class="$style.name">{{ name }}</N8nText>
 				<N8nText tag="div" color="text-base" size="small">
 					{{
-						locale.baseText('testDefinition.list.item.tests', {
+						locale.baseText('evaluation.list.item.tests', {
 							adjustToNumber: testCases,
 						})
 					}}
@@ -96,7 +96,7 @@ const statusRender = computed<IconDefinition & { label: string }>(() => {
 
 				<N8nText v-if="errors?.length" tag="div" color="text-base" size="small" class="ml-m">
 					{{
-						locale.baseText('testDefinition.list.item.missingFields', {
+						locale.baseText('evaluation.list.item.missingFields', {
 							adjustToNumber: errors.length,
 						})
 					}}

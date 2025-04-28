@@ -93,7 +93,7 @@ function handleNodeClick(data: CanvasNodeData) {
 
 function tooltipContent(data: CanvasNodeData) {
 	if (nodeTypesStore.isTriggerNode(data.type)) {
-		return locale.baseText('testDefinition.edit.nodesPinning.triggerTooltip');
+		return locale.baseText('evaluation.edit.nodesPinning.triggerTooltip');
 	}
 
 	if (!canBeMocked(data.outputs, data.inputs)) {
@@ -101,9 +101,9 @@ function tooltipContent(data: CanvasNodeData) {
 	}
 
 	if (isMocked(data)) {
-		return locale.baseText('testDefinition.edit.nodesPinning.pinButtonTooltip.pinned');
+		return locale.baseText('evaluation.edit.nodesPinning.pinButtonTooltip.pinned');
 	} else {
-		return locale.baseText('testDefinition.edit.nodesPinning.pinButtonTooltip');
+		return locale.baseText('evaluation.edit.nodesPinning.pinButtonTooltip');
 	}
 }
 
@@ -137,9 +137,9 @@ onMounted(loadData);
 <template>
 	<div v-if="mappedNodes.length === 0" :class="$style.noNodes">
 		<N8nHeading size="large" :bold="true" :class="$style.noNodesTitle">
-			{{ locale.baseText('testDefinition.edit.pinNodes.noNodes.title') }}
+			{{ locale.baseText('evaluation.edit.pinNodes.noNodes.title') }}
 		</N8nHeading>
-		<N8nText>{{ locale.baseText('testDefinition.edit.pinNodes.noNodes.description') }}</N8nText>
+		<N8nText>{{ locale.baseText('evaluation.edit.pinNodes.noNodes.description') }}</N8nText>
 	</div>
 	<div v-else :class="$style.container">
 		<N8nSpinner v-if="isLoading" size="large" type="dots" :class="$style.spinner" />

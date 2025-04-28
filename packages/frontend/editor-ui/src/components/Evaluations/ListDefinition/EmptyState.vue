@@ -22,37 +22,37 @@ const hasReachedLimit = computed(() => false);
 			<N8nBadge theme="warning" size="small">New</N8nBadge>
 			<div :class="$style.cardContent">
 				<N8nText tag="h2" size="xlarge" color="text-base" class="mb-2xs">
-					{{ locale.baseText('testDefinition.list.evaluations') }}
+					{{ locale.baseText('evaluation.list.evaluations') }}
 				</N8nText>
 				<N8nText tag="div" color="text-base" class="mb-s ml-s mr-s">
-					{{ locale.baseText('testDefinition.list.actionDescription') }}
+					{{ locale.baseText('evaluation.list.actionDescription') }}
 				</N8nText>
 				<template v-if="canCreateEvaluations">
 					<N8nButton @click="$emit('create-test')">
-						{{ locale.baseText('testDefinition.list.actionButton') }}
+						{{ locale.baseText('evaluation.list.actionButton') }}
 					</N8nButton>
 				</template>
 				<template v-else-if="isRegisteredCommunity">
 					<N8nButton @click="$emit('create-test')">
-						{{ locale.baseText('testDefinition.list.actionButton') }}
+						{{ locale.baseText('evaluation.list.actionButton') }}
 					</N8nButton>
 					<N8nText tag="div" color="text-light" size="small" class="mt-2xs">
-						{{ locale.baseText('testDefinition.list.actionDescription.registered') }}
+						{{ locale.baseText('evaluation.list.actionDescription.registered') }}
 					</N8nText>
 				</template>
 				<template v-else-if="isNotRegisteredCommunity">
 					<div :class="$style.divider" class="mb-s"></div>
 					<N8nText tag="div" color="text-light" size="small" class="mb-s">
-						{{ locale.baseText('testDefinition.list.actionDescription.unregistered') }}
+						{{ locale.baseText('evaluation.list.actionDescription.unregistered') }}
 					</N8nText>
 					<N8nButton>
-						{{ locale.baseText('testDefinition.list.actionButton.unregistered') }}
+						{{ locale.baseText('evaluation.list.actionButton.unregistered') }}
 					</N8nButton>
 				</template>
 				<template v-else-if="hasReachedLimit">
 					<div :class="$style.divider" class="mb-s"></div>
 					<N8nText tag="div" color="text-light" size="small" class="mb-s">
-						{{ locale.baseText('testDefinition.list.actionDescription.atLimit') }}
+						{{ locale.baseText('evaluation.list.actionDescription.atLimit') }}
 					</N8nText>
 					<N8nButton>
 						{{ locale.baseText('generic.upgrade') }}
@@ -62,17 +62,17 @@ const hasReachedLimit = computed(() => false);
 		</div>
 		<div :class="{ [$style.card]: true, [$style.cardInActive]: true }">
 			<N8nBadge>
-				{{ locale.baseText('testDefinition.list.unitTests.badge') }}
+				{{ locale.baseText('evaluation.list.unitTests.badge') }}
 			</N8nBadge>
 			<div :class="$style.cardContent">
 				<N8nText tag="h2" size="xlarge" color="text-base" class="mb-2xs">
-					{{ locale.baseText('testDefinition.list.unitTests.title') }}
+					{{ locale.baseText('evaluation.list.unitTests.title') }}
 				</N8nText>
 				<N8nText tag="div" color="text-base" class="mb-s">
-					{{ locale.baseText('testDefinition.list.unitTests.description') }}
+					{{ locale.baseText('evaluation.list.unitTests.description') }}
 				</N8nText>
 				<N8nButton type="secondary">
-					{{ locale.baseText('testDefinition.list.unitTests.cta') }}
+					{{ locale.baseText('evaluation.list.unitTests.cta') }}
 				</N8nButton>
 			</div>
 		</div>

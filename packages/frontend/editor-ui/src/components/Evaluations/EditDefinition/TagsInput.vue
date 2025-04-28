@@ -51,15 +51,11 @@ function updateTags(tags: string[]) {
 
 <template>
 	<div data-test-id="workflow-tags-field">
-		<n8n-input-label
-			:label="locale.baseText('testDefinition.edit.tagName')"
-			:bold="false"
-			size="small"
-		>
+		<n8n-input-label :label="locale.baseText('evaluation.edit.tagName')" :bold="false" size="small">
 			<!-- Read-only view -->
 			<div v-if="!modelValue.isEditing" :class="$style.tagsRead" @click="startEditing('tags')">
 				<n8n-text v-if="modelValue.value.length === 0" size="small">
-					{{ locale.baseText('testDefinition.edit.selectTag') }}
+					{{ locale.baseText('evaluation.edit.selectTag') }}
 				</n8n-text>
 				<n8n-tag
 					v-for="tagId in modelValue.value"
