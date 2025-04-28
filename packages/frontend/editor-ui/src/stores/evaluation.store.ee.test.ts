@@ -3,7 +3,7 @@ import { useEvaluationStore } from '@/stores/evaluation.store.ee'; // Adjust the
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { usePostHog } from '@/stores/posthog.store';
 import { useAnnotationTagsStore } from '@/stores/tags.store';
-import type { TestDefinitionRecord, TestRunRecord } from '@/api/testDefinition.ee';
+import type { TestDefinitionRecord, TestRunRecord } from '@/api/evaluation.ee';
 import { mockedStore } from '@/__tests__/utils';
 
 const {
