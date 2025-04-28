@@ -81,7 +81,7 @@ export function doesNodeHaveAllCredentialsFilled(
 /**
  * Checks if the given node has any fromAi expressions in its parameters.
  */
-export function doesNodeHaveAnyFromAiExpressions(node: Pick<INodeUi, 'parameters'>) {
+export function hasFromAiExpressions(node: Pick<INodeUi, 'parameters'>) {
 	const collectedArgs: FromAIArgument[] = [];
 	traverseNodeParameters(node.parameters, collectedArgs);
 	return collectedArgs.length > 0;

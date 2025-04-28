@@ -29,7 +29,7 @@ import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { type IUpdateInformation } from '@/Interface';
 import { generateCodeForAiTransform } from '@/components/ButtonParameter/utils';
-import { doesNodeHaveAnyFromAiExpressions } from '@/utils/nodes/nodeTransforms';
+import { hasFromAiExpressions } from '@/utils/nodes/nodeTransforms';
 
 const NODE_TEST_STEP_POPUP_COUNT_KEY = 'N8N_NODE_TEST_STEP_POPUP_COUNT';
 const MAX_POPUP_COUNT = 10;
@@ -347,7 +347,7 @@ async function onClick() {
 		}
 
 		if (!pinnedData.hasData.value || shouldUnpinAndExecute) {
-			if (node.value && doesNodeHaveAnyFromAiExpressions(node.value)) {
+			if (node.value && hasFromAiExpressions(node.value)) {
 				uiStore.openModalWithData({
 					name: FROM_AI_PARAMETERS_MODAL_KEY,
 					data: {

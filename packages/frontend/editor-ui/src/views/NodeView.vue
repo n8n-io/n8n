@@ -118,7 +118,7 @@ import { LOGS_PANEL_STATE } from '@/components/CanvasChat/types/logs';
 import { useBuilderStore } from '@/stores/builder.store';
 import { useFoldersStore } from '@/stores/folders.store';
 import { useParameterOverridesStore } from '@/stores/parameterOverrides.store';
-import { doesNodeHaveAnyFromAiExpressions } from '@/utils/nodes/nodeTransforms';
+import { hasFromAiExpressions } from '@/utils/nodes/nodeTransforms';
 
 defineOptions({
 	name: 'NodeView',
@@ -1164,7 +1164,7 @@ async function onRunWorkflowToNode(id: string) {
 	const node = workflowsStore.getNodeById(id);
 	if (!node) return;
 
-	if (doesNodeHaveAnyFromAiExpressions(node) && nodeTypesStore.isAiToolNode(node.type)) {
+	if (hasFromAiExpressions(node) && nodeTypesStore.isAiToolNode(node.type)) {
 		uiStore.openModalWithData({
 			name: FROM_AI_PARAMETERS_MODAL_KEY,
 			data: {
