@@ -3069,6 +3069,8 @@
 	"evaluation.listRuns.status.warning": "Warning",
 	"evaluation.listRuns.metricsOverTime": "Metrics over time",
 	"evaluation.listRuns.status": "Status",
+	"evaluation.listRuns.runListHeader": "Evaluation runs for {name}",
+	"evaluation.listRuns.testCasesListHeader": "Test cases",
 	"evaluation.listRuns.runNumber": "Run",
 	"evaluation.listRuns.runDate": "Run date",
 	"evaluation.listRuns.runStatus": "Run status",
