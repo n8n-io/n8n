@@ -263,10 +263,10 @@ describe('RespondToWebhook Node', () => {
 			expect(mockExecuteFunctions.sendResponse).not.toHaveBeenCalled();
 		});
 
-		it('should have two outputs in version 1.2', async () => {
+		it('should have two outputs in version 1.3', async () => {
 			const inputItems = [{ json: { index: 0, input: true } }, { json: { index: 1, input: true } }];
 			mockExecuteFunctions.getInputData.mockReturnValue(inputItems);
-			mockExecuteFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: 1.2 }));
+			mockExecuteFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: 1.3 }));
 			mockExecuteFunctions.getParentNodes.mockReturnValue([
 				mock<NodeTypeAndVersion>({ type: WAIT_NODE_TYPE }),
 			]);
