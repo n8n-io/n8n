@@ -41,6 +41,8 @@ import { ProjectService } from '@/services/project.service.ee';
 import type { ScopesField } from '@/services/role.service';
 import { RoleService } from '@/services/role.service';
 
+import { CredentialsFinderService } from './credentials-finder.service';
+
 export type CredentialsGetSharedOptions =
 	| { allowGlobalScope: true; globalScope: Scope }
 	| { allowGlobalScope: false };
@@ -64,6 +66,7 @@ export class CredentialsService {
 		private readonly projectService: ProjectService,
 		private readonly roleService: RoleService,
 		private readonly userRepository: UserRepository,
+		private readonly credentialsFinderService: CredentialsFinderService,
 	) {}
 
 	async getMany(
@@ -145,7 +148,7 @@ export class CredentialsService {
 			}
 		}
 
-		const ids = await this.sharedCredentialsRepository.getCredentialIdsByUserAndRole([user.id], {
+		const ids = await this.credentialsFinderService.getCredentialIdsByUserAndRole([user.id], {
 			scopes: ['credential:read'],
 		});
 
@@ -203,7 +206,7 @@ export class CredentialsService {
 		const projectRelations = await this.projectService.getProjectRelationsForUser(user);
 
 		// get all credentials the user has access to
-		const allCredentials = await this.credentialsRepository.findCredentialsForUser(user, [
+		const allCredentials = await this.credentialsFinderService.findCredentialsForUser(user, [
 			'credential:read',
 		]);
 
@@ -434,7 +437,7 @@ export class CredentialsService {
 	async delete(user: User, credentialId: string) {
 		await this.externalHooks.run('credentials.delete', [credentialId]);
 
-		const credential = await this.sharedCredentialsRepository.findCredentialForUser(
+		const credential = await this.credentialsFinderService.findCredentialForUser(
 			credentialId,
 			user,
 			['credential:delete'],

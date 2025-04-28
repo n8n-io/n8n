@@ -25,6 +25,7 @@ describe('CredentialsController', () => {
 		sharedCredentialsRepository,
 		mock(),
 		eventService,
+		mock(),
 	);
 
 	let req: AuthenticatedRequest;

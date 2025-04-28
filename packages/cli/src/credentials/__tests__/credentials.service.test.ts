@@ -43,6 +43,7 @@ describe('CredentialsService', () => {
 		mock(),
 		mock(),
 		mock(),
+		mock(),
 	);
 
 	beforeEach(() => jest.resetAllMocks());
