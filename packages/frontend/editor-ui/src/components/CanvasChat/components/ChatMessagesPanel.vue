@@ -7,7 +7,7 @@ import MessageOptionAction from './MessageOptionAction.vue';
 import { chatEventBus } from '@n8n/chat/event-buses';
 import type { ArrowKeyDownPayload } from '@n8n/chat/components/Input.vue';
 import ChatInput from '@n8n/chat/components/Input.vue';
-import { computed, ref } from 'vue';
+import { watch, computed, nextTick, ref } from 'vue';
 import { useClipboard } from '@/composables/useClipboard';
 import { useToast } from '@/composables/useToast';
 import PanelHeader from '@/components/CanvasChat/future/components/PanelHeader.vue';
@@ -136,6 +136,16 @@ async function copySessionId() {
 		type: 'success',
 	});
 }
+
+watch(
+	() => props.isOpen,
+	(isOpen) => {
+		if (isOpen) {
+			void nextTick(() => chatEventBus.emit('focusInput'));
+		}
+	},
+	{ immediate: true },
+);
 </script>
 
 <template>
