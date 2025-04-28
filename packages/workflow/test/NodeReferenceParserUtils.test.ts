@@ -147,7 +147,7 @@ describe('NodeReferenceParserUtils', () => {
 		beforeEach(() => {
 			nodes = [
 				makeNode('B', ['$("A").item.json.myField']),
-				makeNode('C', ['$("B").first().json.myField.anotherField']),
+				makeNode('C', ['$("A").first().json.myField.anotherField']),
 			];
 			nodeNames = ['A', 'B', 'C'];
 			startNodeName = 'Start';
@@ -158,7 +158,7 @@ describe('NodeReferenceParserUtils', () => {
 			expect([...result.variables.entries()]).toEqual(
 				expect.arrayContaining([
 					['myField', '$("A").item.json.myField'],
-					['myField_anotherField', '$("B").first().json.myField.anotherField'],
+					['myField_anotherField', '$("A").first().json.myField.anotherField'],
 				]),
 			);
 			expect(result.nodes).toEqual(
@@ -239,6 +239,31 @@ describe('NodeReferenceParserUtils', () => {
 								jsCode:
 									"for (const item of $input.all()) {\n  item.json.myNewField = $('Start').first().json.uid;\n}\n\nreturn $input.all();",
 							},
+						},
+					].map(expect.objectContaining),
+				),
+			);
+		});
+		it('should not extract expression referencing node in subGraph', () => {
+			nodes = [
+				makeNode('B', ['$("A").item.json.myField']),
+				makeNode('C', ['$("B").first().json.myField.anotherField']),
+			];
+			nodeNames = ['A', 'B', 'C'];
+			const result = extractReferencesInNodeExpressions(nodes, nodeNames, startNodeName);
+			expect([...result.variables.entries()]).toEqual(
+				expect.arrayContaining([['myField', '$("A").item.json.myField']]),
+			);
+			expect(result.nodes).toEqual(
+				expect.arrayContaining(
+					[
+						{
+							name: 'B',
+							parameters: { p0: "={{ $('Start').item.json.myField }}" },
+						},
+						{
+							name: 'C',
+							parameters: { p0: '={{ $("B").first().json.myField.anotherField }}' },
 						},
 					].map(expect.objectContaining),
 				),

@@ -393,10 +393,10 @@ function applyExtractMappingToNode(node: INode, parameterExtractMapping: Paramet
 }
 
 /**
- * Extracts references to nodes in `nodeNames` from those nodes in `subGraph`.
+ * Extracts references to nodes in `nodeNames` from the nodes in `subGraph`.
  *
  * @returns an object with two keys:
- * 		- nodes: The transformed nodes, ready for use in a sub-workflow
+ * 		- nodes: Transformed copies of nodes in `subGraph`, ready for use in a sub-workflow
  *    - variables: A map from variable name in the sub-workflow to the replaced expression
  */
 export function extractReferencesInNodeExpressions(
@@ -437,8 +437,14 @@ export function extractReferencesInNodeExpressions(
 	}
 
 	// Todo(perf): filter/rebuild oldData for only the relevant nodes
-
-	const { originalExpressionMap, triggerArgumentMap } = resolveDuplicates(allData, nodeNames);
+	const subGraphNodeNames = new Set(subGraph.map((x) => x.name));
+	const dataFromOutsideSubgraph = allData.filter(
+		(x) => !subGraphNodeNames.has(x.nodeNameInExpression),
+	);
+	const { originalExpressionMap, triggerArgumentMap } = resolveDuplicates(
+		dataFromOutsideSubgraph,
+		nodeNames,
+	);
 
 	// triggerArgumentMap[originalExpressionMap[originalExpression]] gets you the canonical object
 	// This should never be undefined, unless something went wrong
