@@ -1,4 +1,4 @@
-import { type IWorkflowData } from '@/Interfaces';
+import { type IWorkflowData } from '@/Interface';
 import { type INode, type INodeParameters, type NodeParameterValueType } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { ref, watch } from 'vue';
