@@ -511,7 +511,7 @@ describe('useRunWorkflow({ router })', () => {
 			});
 		});
 
-		it('does substituteParameters on partial execution if `partialExecutionVersion` is set to ', async () => {
+		it('does substituteParameters on partial execution if `partialExecutionVersion` is set to 2', async () => {
 			// ARRANGE
 			const mockExecutionResponse = { executionId: '123' };
 			const mockRunData = { nodeName: [] };

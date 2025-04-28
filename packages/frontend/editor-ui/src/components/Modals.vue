@@ -74,6 +74,7 @@ import NewAssistantSessionModal from '@/components/AskAssistant/Chat/NewAssistan
 import PromptMfaCodeModal from './PromptMfaCodeModal/PromptMfaCodeModal.vue';
 import CommunityPlusEnrollmentModal from '@/components/CommunityPlusEnrollmentModal.vue';
 import WorkflowActivationConflictingWebhookModal from '@/components/WorkflowActivationConflictingWebhookModal.vue';
+import FromAiParametersModal from '@/components/FromAiParametersModal.vue';
 import type { EventBus } from '@n8n/utils/event-bus';
 </script>
 
@@ -301,6 +302,7 @@ import type { EventBus } from '@n8n/utils/event-bus';
 		<ModalRoot :name="WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY">
 			<template #default="{ modalName, data }">
 				<WorkflowActivationConflictingWebhookModal :data="data" :modal-name="modalName" />
+			</template>
 		</ModalRoot>
 
 		<ModalRoot :name="FROM_AI_PARAMETERS_MODAL_KEY">
