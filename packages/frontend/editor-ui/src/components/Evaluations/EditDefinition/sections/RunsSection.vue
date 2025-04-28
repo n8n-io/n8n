@@ -42,7 +42,7 @@ const metricColumns = computed(() =>
 const columns = computed(() => [
 	{
 		prop: 'id',
-		label: locale.baseText('testDefinition.listRuns.runNumber'),
+		label: locale.baseText('evaluation.listRuns.runNumber'),
 		showOverflowTooltip: true,
 	},
 	{
@@ -59,7 +59,7 @@ const columns = computed(() => [
 	},
 	{
 		prop: 'status',
-		label: locale.baseText('testDefinition.listRuns.status'),
+		label: locale.baseText('evaluation.listRuns.status'),
 		sortable: true,
 	},
 	...metricColumns.value,

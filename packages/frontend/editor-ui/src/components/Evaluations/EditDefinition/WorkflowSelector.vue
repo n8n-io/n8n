@@ -38,11 +38,11 @@ const router = useRouter();
 
 const subworkflowName = computed(() => {
 	if (props.sampleWorkflowName) {
-		return locale.baseText('testDefinition.workflowInput.subworkflowName', {
+		return locale.baseText('evaluation.workflowInput.subworkflowName', {
 			interpolate: { name: props.sampleWorkflowName },
 		});
 	}
-	return locale.baseText('testDefinition.workflowInput.subworkflowName.default');
+	return locale.baseText('evaluation.workflowInput.subworkflowName.default');
 });
 
 const sampleWorkflow = computed<IWorkflowDataCreate>(() => {
@@ -92,29 +92,29 @@ const handleDefineEvaluation = async () => {
 	<div class="mt-xs">
 		<template v-if="!modelValue.value">
 			<N8nButton type="secondary" class="mb-xs" @click="handleDefineEvaluation">
-				{{ locale.baseText('testDefinition.workflow.createNew') }}
+				{{ locale.baseText('evaluation.workflow.createNew') }}
 			</N8nButton>
 			<N8nLink class="mb-xs" style="display: block" @click="selectorVisible = !selectorVisible">
-				{{ locale.baseText('testDefinition.workflow.createNew.or') }}
+				{{ locale.baseText('evaluation.workflow.createNew.or') }}
 			</N8nLink>
 		</template>
 
 		<WorkflowSelectorParameterInput
 			v-if="modelValue.value || selectorVisible"
 			:parameter="{
-				displayName: locale.baseText('testDefinition.edit.workflowSelectorDisplayName'),
+				displayName: locale.baseText('evaluation.edit.workflowSelectorDisplayName'),
 				name: 'workflowId',
 				type: 'workflowSelector',
 				default: '',
 			}"
 			:model-value="modelValue"
-			:display-title="locale.baseText('testDefinition.edit.workflowSelectorTitle')"
+			:display-title="locale.baseText('evaluation.edit.workflowSelectorTitle')"
 			:is-value-expression="false"
 			:expression-edit-dialog-visible="false"
 			:path="'workflows'"
 			:allow-new="false"
 			:sample-workflow="sampleWorkflow"
-			:new-resource-label="locale.baseText('testDefinition.workflow.createNew')"
+			:new-resource-label="locale.baseText('evaluation.workflow.createNew')"
 			@update:model-value="updateModelValue"
 			@workflow-created="emit('workflowCreated', $event)"
 		/>

@@ -23,13 +23,13 @@ function hasError(row: unknown): row is WithError {
 
 const errorTooltipMap: Record<string, BaseTextKey> = {
 	// Test case errors
-	MOCKED_NODE_NOT_FOUND: 'testDefinition.runDetail.error.mockedNodeMissing',
-	FAILED_TO_EXECUTE_WORKFLOW: 'testDefinition.runDetail.error.executionFailed',
-	INVALID_METRICS: 'testDefinition.runDetail.error.invalidMetrics',
+	MOCKED_NODE_NOT_FOUND: 'evaluation.runDetail.error.mockedNodeMissing',
+	FAILED_TO_EXECUTE_WORKFLOW: 'evaluation.runDetail.error.executionFailed',
+	INVALID_METRICS: 'evaluation.runDetail.error.invalidMetrics',
 
 	// Test run errors
-	TEST_CASES_NOT_FOUND: 'testDefinition.listRuns.error.testCasesNotFound',
-	EVALUATION_TRIGGER_NOT_FOUND: 'testDefinition.listRuns.error.evaluationTriggerNotFound',
+	TEST_CASES_NOT_FOUND: 'evaluation.listRuns.error.testCasesNotFound',
+	EVALUATION_TRIGGER_NOT_FOUND: 'evaluation.listRuns.error.evaluationTriggerNotFound',
 };
 
 // FIXME: move status logic to a parent component
@@ -45,14 +45,14 @@ const statusThemeMap: Record<string, string> = {
 };
 
 const statusLabelMap: Record<string, string> = {
-	new: locale.baseText('testDefinition.listRuns.status.new'),
-	running: locale.baseText('testDefinition.listRuns.status.running'),
-	evaluation_running: locale.baseText('testDefinition.listRuns.status.evaluating'),
-	completed: locale.baseText('testDefinition.listRuns.status.completed'),
-	error: locale.baseText('testDefinition.listRuns.status.error'),
-	success: locale.baseText('testDefinition.listRuns.status.success'),
-	warning: locale.baseText('testDefinition.listRuns.status.warning'),
-	cancelled: locale.baseText('testDefinition.listRuns.status.cancelled'),
+	new: locale.baseText('evaluation.listRuns.status.new'),
+	running: locale.baseText('evaluation.listRuns.status.running'),
+	evaluation_running: locale.baseText('evaluation.listRuns.status.evaluating'),
+	completed: locale.baseText('evaluation.listRuns.status.completed'),
+	error: locale.baseText('evaluation.listRuns.status.error'),
+	success: locale.baseText('evaluation.listRuns.status.success'),
+	warning: locale.baseText('evaluation.listRuns.status.warning'),
+	cancelled: locale.baseText('evaluation.listRuns.status.cancelled'),
 };
 
 function getErrorTooltip(column: TestTableColumn<T>, row: T): string | undefined {
