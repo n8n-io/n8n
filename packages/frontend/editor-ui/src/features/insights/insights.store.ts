@@ -64,6 +64,8 @@ export const useInsightsStore = defineStore('insights', () => {
 		{ resetOnExecute: false, immediate: false },
 	);
 
+	const dateRanges = computed(() => settingsStore.settings.insights.dateRanges);
+
 	return {
 		globalInsightsPermissions,
 		isInsightsEnabled,
@@ -73,6 +75,6 @@ export const useInsightsStore = defineStore('insights', () => {
 		summary,
 		charts,
 		table,
-		dateRanges: settingsStore.settings.insights.dateRanges,
+		dateRanges,
 	};
 });

@@ -9,7 +9,6 @@ import { setActivePinia } from 'pinia';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useVersionsStore } from '@/stores/versions.store';
 import { AxiosError } from 'axios';
-import { defaultSettings } from './__tests__/defaults';
 
 const showMessage = vi.fn();
 
@@ -70,7 +69,6 @@ describe('Init', () => {
 		beforeEach(() => {
 			vi.spyOn(settingsStore, 'isCloudDeployment', 'get').mockReturnValue(true);
 			vi.spyOn(settingsStore, 'isTemplatesEnabled', 'get').mockReturnValue(true);
-			vi.spyOn(settingsStore, 'settings', 'get').mockReturnValue(defaultSettings);
 			vi.spyOn(sourceControlStore, 'isEnterpriseSourceControlEnabled', 'get').mockReturnValue(true);
 			vi.mocked(useRootStore).mockReturnValue({ defaultLocale: 'es' } as ReturnType<
 				typeof useRootStore

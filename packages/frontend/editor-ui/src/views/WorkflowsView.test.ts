@@ -56,11 +56,7 @@ const renderComponent = createComponentRenderer(WorkflowsView, {
 
 const initialState = {
 	[STORES.SETTINGS]: {
-		settings: {
-			enterprise: { sharing: false },
-			folders: { enabled: false },
-			insights: { dateRanges: [] },
-		},
+		settings: { enterprise: { sharing: false }, folders: { enabled: false } },
 	},
 };
 
