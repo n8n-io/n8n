@@ -344,7 +344,7 @@ const hasFilters = computed(() => {
 	return !!(
 		filters.value.search ||
 		filters.value.status !== StatusFilter.ALL ||
-		!filters.value.showArchived ||
+		filters.value.showArchived ||
 		filters.value.tags.length
 	);
 });
