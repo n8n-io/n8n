@@ -302,6 +302,11 @@ import type { EventBus } from '@n8n/utils/event-bus';
 		<ModalRoot :name="WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY">
 			<template #default="{ modalName, data }">
 				<WorkflowActivationConflictingWebhookModal :data="data" :modal-name="modalName" />
+		</ModalRoot>
+
+		<ModalRoot :name="FROM_AI_PARAMETERS_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<FromAiParametersModal :modal-name="modalName" :data="data" />
 			</template>
 		</ModalRoot>
 

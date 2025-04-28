@@ -1,0 +1,17 @@
+{
+	"node": "n8n-nodes-base.virtualAgent",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"details": "The is a test node for tool testing.",
+	"categories": ["Core Nodes"],
+	"resources": {
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.editimage/"
+			}
+		]
+	},
+	"subcategories": {
+		"Core Nodes": ["Helpers"]
+	}
+}
