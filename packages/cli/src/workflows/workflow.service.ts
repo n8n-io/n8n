@@ -37,7 +37,6 @@ import { TagService } from '@/services/tag.service';
 import * as WorkflowHelpers from '@/workflow-helpers';
 
 import { WorkflowHistoryService } from './workflow-history.ee/workflow-history.service.ee';
-import type { ShareWorkflowOptions } from './workflow-sharing.service';
 import { WorkflowSharingService } from './workflow-sharing.service';
 
 @Service()
@@ -74,22 +73,24 @@ export class WorkflowService {
 		let workflows;
 		let workflowsAndFolders: WorkflowFolderUnionFull[] = [];
 		let sharedWorkflowIds: string[] = [];
+		let isPersonalProject = false;
 
-		const sharedWorkflowsOptions: ShareWorkflowOptions = {
-			scopes: ['workflow:read'],
-		};
-
-		if (typeof options?.filter?.projectId === 'string') {
-			sharedWorkflowsOptions.projectId = options.filter.projectId;
+		if (options?.filter?.projectId) {
+			const projects = await this.projectService.getProjectRelationsForUser(user);
+			isPersonalProject = !!projects.find(
+				(p) => p.project.id === options.filter?.projectId && p.project.type === 'personal',
+			);
 		}
 
-		if (onlySharedWithMe) {
+		if (isPersonalProject) {
+			sharedWorkflowIds =
+				await this.workflowSharingService.getOwnedWorkflowsInPersonalProject(user);
+		} else if (onlySharedWithMe) {
 			sharedWorkflowIds = await this.workflowSharingService.getSharedWithMeIds(user);
 		} else {
-			sharedWorkflowIds = await this.workflowSharingService.getSharedWorkflowIds(
-				user,
-				sharedWorkflowsOptions,
-			);
+			sharedWorkflowIds = await this.workflowSharingService.getSharedWorkflowIds(user, {
+				scopes: ['workflow:read'],
+			});
 		}
 
 		if (includeFolders) {
