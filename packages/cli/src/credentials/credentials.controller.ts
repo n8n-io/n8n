@@ -40,6 +40,7 @@ import { NamingService } from '@/services/naming.service';
 import { UserManagementMailer } from '@/user-management/email';
 import * as utils from '@/utils';
 
+import { CredentialsFinderService } from './credentials-finder.service';
 import { CredentialsService } from './credentials.service';
 import { EnterpriseCredentialsService } from './credentials.service.ee';
 
@@ -56,6 +57,7 @@ export class CredentialsController {
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly eventService: EventService,
+		private readonly credentialsFinderService: CredentialsFinderService,
 	) {}
 
 	@Get('/', { middlewares: listQueryMiddleware })
@@ -131,7 +133,7 @@ export class CredentialsController {
 	async testCredentials(req: CredentialRequest.Test) {
 		const { credentials } = req.body;
 
-		const storedCredential = await this.sharedCredentialsRepository.findCredentialForUser(
+		const storedCredential = await this.credentialsFinderService.findCredentialForUser(
 			credentials.id,
 			req.user,
 			['credential:read'],
@@ -201,7 +203,7 @@ export class CredentialsController {
 			params: { credentialId },
 		} = req;
 
-		const credential = await this.sharedCredentialsRepository.findCredentialForUser(
+		const credential = await this.credentialsFinderService.findCredentialForUser(
 			credentialId,
 			user,
 			['credential:update'],
@@ -262,7 +264,7 @@ export class CredentialsController {
 	async deleteCredentials(req: CredentialRequest.Delete) {
 		const { credentialId } = req.params;
 
-		const credential = await this.sharedCredentialsRepository.findCredentialForUser(
+		const credential = await this.credentialsFinderService.findCredentialForUser(
 			credentialId,
 			req.user,
 			['credential:delete'],
@@ -303,7 +305,7 @@ export class CredentialsController {
 			throw new BadRequestError('Bad request');
 		}
 
-		const credential = await this.sharedCredentialsRepository.findCredentialForUser(
+		const credential = await this.credentialsFinderService.findCredentialForUser(
 			credentialId,
 			req.user,
 			['credential:share'],
