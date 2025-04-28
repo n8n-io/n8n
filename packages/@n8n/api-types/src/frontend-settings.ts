@@ -1,5 +1,7 @@
 import type { ExpressionEvaluatorType, LogLevel, WorkflowSettings } from 'n8n-workflow';
 
+import { type InsightsDateRange } from './schemas/insights.schema';
+
 export interface IVersionNotificationSettings {
 	enabled: boolean;
 	endpoint: string;
@@ -164,6 +166,9 @@ export interface FrontendSettings {
 	folders: {
 		enabled: boolean;
 	};
+	logsView: {
+		enabled: boolean;
+	};
 	banners: {
 		dismissed: string[];
 	};
@@ -191,5 +196,6 @@ export interface FrontendSettings {
 		enabled: boolean;
 		summary: boolean;
 		dashboard: boolean;
+		dateRanges: InsightsDateRange[];
 	};
 }
