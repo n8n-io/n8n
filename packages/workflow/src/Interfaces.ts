@@ -2440,7 +2440,9 @@ export interface WorkflowTestData {
 		nodeExecutionOrder?: string[];
 		nodeExecutionStack?: IExecuteData[];
 		testAllOutputs?: boolean;
-		nodeData: Record<string, INodeExecutionData[][]>;
+		nodeData: {
+			[key: string]: any[][];
+		};
 		error?: string;
 	};
 	nock?: {
