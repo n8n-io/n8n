@@ -67,9 +67,13 @@ const showWizard = computed(() => {
 	<div v-if="!isLoading" :class="[$style.container]">
 		<div :class="$style.header" v-if="!showWizard">
 			<div style="display: flex; align-items: center">
-				<N8nText bold size="xlarge" color="text-dark"
-					>Evaluation runs for: {{ workflowName }}</N8nText
-				>
+				<N8nText bold size="xlarge" color="text-dark">{{
+					locale.baseText('evaluation.listRuns.runListHeader', {
+						interpolate: {
+							name: workflowName,
+						},
+					})
+				}}</N8nText>
 			</div>
 			<div style="display: flex; align-items: center; gap: 10px">
 				<N8nTooltip v-if="!showWizard" :disabled="isRunTestEnabled" :placement="'left'">
