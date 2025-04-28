@@ -1,7 +1,8 @@
 import { NodeConnectionTypes } from 'n8n-workflow';
-import { rewireGraph } from '../rewire-graph';
-import { DirectedGraph } from '../directed-graph';
+
 import { createNodeData } from './helpers';
+import { DirectedGraph } from '../directed-graph';
+import { rewireGraph } from '../rewire-graph';
 
 describe('rewireGraph()', () => {
 	it('rewires a simple graph with a tool node', () => {

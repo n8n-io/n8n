@@ -1,6 +1,7 @@
-import { type INode, type INodeTypes, NodeConnectionTypes } from 'n8n-workflow';
-import { isTool } from '../is-tool';
 import { mock } from 'jest-mock-extended';
+import { type INode, type INodeTypes, NodeConnectionTypes } from 'n8n-workflow';
+
+import { isTool } from '../is-tool';
 
 const mockNode = mock<INode>({ id: '1', type: 'n8n-nodes-base.openAi', typeVersion: 1 });
 const mockNodeTypes = mock<INodeTypes>();
