@@ -9,7 +9,7 @@ import type { BaseTextKey } from '@/plugins/i18n';
 import { useEvaluationStore } from '@/stores/evaluation.store.ee';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { convertToDisplayDate } from '@/utils/typesUtils';
-import { N8nActionToggle, N8nButton, N8nText, N8nTooltip } from '@n8n/design-system';
+import { N8nText, N8nTooltip } from '@n8n/design-system';
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
@@ -56,27 +56,19 @@ const formattedTime = computed(() =>
 	convertToDisplayDate(new Date(run.value?.runAt).getTime()).split(' ').reverse(),
 );
 
-type Action = { label: string; value: string; disabled: boolean };
-
-const rowActions = (row: TestCaseExecutionRecord): Action[] => {
-	return [
-		{
-			label: 'New Execution',
-			value: row.executionId,
-			disabled: !Boolean(row.executionId),
-		},
-	];
-};
-
-const gotToExecution = (executionId: string) => {
-	const { href } = router.resolve({
-		name: VIEWS.EXECUTION_PREVIEW,
-		params: {
-			name: workflowId.value,
-			executionId,
-		},
-	});
-	window.open(href, '_blank');
+const handleRowClick = (row: TestCaseExecutionRecord) => {
+	const executionId = row.executionId;
+	if (executionId) {
+		// gotToExecution(row.executionId);
+		const { href } = router.resolve({
+			name: VIEWS.EXECUTION_PREVIEW,
+			params: {
+				name: workflowId.value,
+				executionId,
+			},
+		});
+		window.open(href, '_blank');
+	}
 };
 
 const testCaseErrorDictionary: Partial<Record<TestCaseExecutionErrorCodes, BaseTextKey>> = {
@@ -255,19 +247,13 @@ onMounted(async () => {
 		<TestTableBase
 			v-else
 			:data="filteredTestCases"
+			@row-click="handleRowClick"
 			:columns="columns"
 			:default-sort="{ prop: 'id', order: 'descending' }"
 		>
 			<template #id="{ row }">
 				<div style="display: flex; justify-content: space-between; gap: 10px">
 					{{ row.id }}
-					<N8nActionToggle
-						:actions="rowActions(row)"
-						icon-orientation="horizontal"
-						@action="gotToExecution"
-					>
-						<N8nButton type="secondary">View</N8nButton>
-					</N8nActionToggle>
 				</div>
 			</template>
 			<template #status="{ row }">
