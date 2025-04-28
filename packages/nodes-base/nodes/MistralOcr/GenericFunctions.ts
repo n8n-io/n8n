@@ -13,10 +13,6 @@ export async function processResponseData(
 	data: INodeExecutionData[],
 	response: IN8nHttpFullResponse,
 ): Promise<INodeExecutionData[]> {
-	//TODO Remove before send the PR
-	console.log('Mistral OCR Response:', JSON.stringify(response.body, null, 2));
-	console.log('Response Status Code:', response.statusCode);
-
 	if (!response.body) {
 		console.log('No response body found');
 		return data;
@@ -45,33 +41,20 @@ export async function processResponseData(
 				'pages',
 			);
 			const pages = responseData.pages as IDataObject[];
-
-			const extractedText = pages
-				.map((page) => {
-					if (page.markdown) {
-						console.log(`Found markdown content in page ${page.index}: ${page.markdown}`);
-						return page.markdown as string;
-					} else if (page.text) {
-						console.log(`Found text content in page ${page.index}: ${page.text}`);
-						return page.text as string;
-					}
-					return '';
-				})
-				.filter((text) => text !== '')
+			newItem.json.extractedText = pages
+				.map((page) => page.markdown || page.text || '')
 				.join('\n\n');
-
-			newItem.json.extractedText = extractedText;
 			newItem.json.pageCount = pages.length;
-
-			newItem.json.pages = pages;
-		} else {
-			console.log('No text or pages property found in response');
-			Object.entries(responseData).forEach(([key, value]) => {
-				if (typeof value === 'string' && value.length > 0) {
-					console.log(`Found potential text in property: ${key}`);
-					newItem.json[`found_${key}`] = value;
-				}
-			});
+		}
+		if (responseData.processed_file) {
+			newItem.binary = {
+				...newItem.binary,
+				processedDocument: {
+					data: responseData.processed_file as string,
+					fileName: `processed-${Date.now()}.pdf`,
+					mimeType: 'application/pdf',
+				},
+			};
 		}
 
 		return newItem;
@@ -87,13 +70,10 @@ export async function sendErrorPostReceive(
 		const errorBody = response.body as JsonObject;
 
 		let parameterName = '';
+		let inputType = '';
 		try {
-			const inputType = this.getNodeParameter('inputType', null) as string;
-			if (inputType === 'url') {
-				parameterName = 'Document URL';
-			} else if (inputType === 'binary') {
-				parameterName = 'Binary Property';
-			}
+			inputType = this.getNodeParameter('inputType', null) as string;
+			parameterName = inputType === 'url' ? 'Document URL' : 'Binary Property';
 		} catch {}
 
 		if (response.statusCode === 422) {
@@ -130,15 +110,36 @@ export async function sendErrorPostReceive(
 		});
 	}
 
-	// ✅ Success: just return the original items
 	return _data;
 }
 
-// ToDo: Remove before completing the pull request
-export async function presendTest(
+export async function handleBinaryData(
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
 ): Promise<IHttpRequestOptions> {
-	console.log('requestOptions', requestOptions);
+	const propName = this.getNodeParameter('binaryProperty') as string;
+	const binary = this.helpers.assertBinaryData(propName);
+	const buffer = await this.helpers.getBinaryDataBuffer(propName);
+
+	const model = this.getNodeParameter('model') as string;
+
+	const base64Data = buffer.toString('base64');
+	const dataURL = `data:${binary.mimeType};base64,${base64Data}`;
+
+	const jsonBody: IDataObject = {
+		model,
+		document: {
+			type: 'document_url',
+			document_url: dataURL,
+		},
+	};
+
+	requestOptions.headers = {
+		...requestOptions.headers,
+		'Content-Type': 'application/json',
+	};
+
+	requestOptions.body = jsonBody;
+
 	return requestOptions;
 }

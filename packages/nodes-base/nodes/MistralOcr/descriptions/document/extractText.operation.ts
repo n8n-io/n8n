@@ -1,7 +1,7 @@
 import type { INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions } from 'n8n-workflow';
 
-import { presendTest } from '../../GenericFunctions';
+import { handleBinaryData } from '../../GenericFunctions';
 
 const properties: INodeProperties[] = [
 	{
@@ -16,7 +16,6 @@ const properties: INodeProperties[] = [
 			send: {
 				type: 'body',
 				property: 'model',
-				preSend: [presendTest],
 			},
 		},
 	},
@@ -25,8 +24,14 @@ const properties: INodeProperties[] = [
 		name: 'inputType',
 		type: 'options',
 		options: [
-			{ name: 'Binary Data', value: 'binary' },
-			{ name: 'URL', value: 'url' },
+			{
+				name: 'Binary Data',
+				value: 'binary',
+			},
+			{
+				name: 'URL',
+				value: 'url',
+			},
 		],
 		description: 'How the document will be provided',
 		required: true,
@@ -55,11 +60,7 @@ const properties: INodeProperties[] = [
 		},
 		routing: {
 			send: {
-				type: 'body',
-				property: 'document.data',
-				value: 'test',
-				// value:
-				// 	'={{ { data: $input.binary[binaryProperty].data, mime_type: $input.binary[binaryProperty].mimeType } }}',
+				preSend: [handleBinaryData],
 			},
 		},
 	},
