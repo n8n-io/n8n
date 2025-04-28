@@ -23,12 +23,12 @@ import { TransferWorkflowError } from '@/errors/response-errors/transfer-workflo
 import { FolderService } from '@/services/folder.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
-
-import { WorkflowFinderService } from './workflow-finder.service';
 import type {
 	WorkflowWithSharingsAndCredentials,
 	WorkflowWithSharingsMetaDataAndCredentials,
-} from './workflows.types';
+} from '@/types-db';
+
+import { WorkflowFinderService } from './workflow-finder.service';
 
 @Service()
 export class EnterpriseWorkflowService {
