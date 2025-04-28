@@ -1,6 +1,6 @@
 import { Container } from '@n8n/di';
 import { Service } from '@n8n/di';
-import { EventEmitter } from 'stream';
+import { EventEmitter } from 'node:events';
 
 import { MultiMainMetadata } from '../multi-main-metadata';
 import { LEADER_TAKEOVER_EVENT_NAME, LEADER_STEPDOWN_EVENT_NAME } from '../multi-main-metadata';
@@ -64,7 +64,7 @@ it('should register methods decorated with @OnLeaderStepdown', () => {
 	});
 });
 
-it('should throw an error if the decoratd target is not a method', () => {
+it('should throw an error if the decorated target is not a method', () => {
 	expect(() => {
 		@Service()
 		class TestService {
@@ -101,8 +101,8 @@ it('should call decorated methods when events are emitted', async () => {
 
 	multiMainSetup.registerEventHandlers();
 
-	multiMainSetup.emit('leader-takeover');
-	multiMainSetup.emit('leader-stepdown');
+	multiMainSetup.emit(LEADER_TAKEOVER_EVENT_NAME);
+	multiMainSetup.emit(LEADER_STEPDOWN_EVENT_NAME);
 
 	expect(testService.handleLeaderTakeover).toHaveBeenCalledTimes(1);
 	expect(testService.handleLeaderStepdown).toHaveBeenCalledTimes(1);
@@ -132,7 +132,7 @@ it('should register multiple handlers for the same event', async () => {
 
 	multiMainSetup.registerEventHandlers();
 
-	multiMainSetup.emit('leader-takeover');
+	multiMainSetup.emit(LEADER_TAKEOVER_EVENT_NAME);
 
 	expect(testService.firstHandlerCalled).toBe(true);
 	expect(testService.secondHandlerCalled).toBe(true);
@@ -164,7 +164,7 @@ it('should register handlers from multiple service classes', async () => {
 
 	multiMainSetup.registerEventHandlers();
 
-	multiMainSetup.emit('leader-takeover');
+	multiMainSetup.emit(LEADER_TAKEOVER_EVENT_NAME);
 
 	expect(firstService.handlerCalled).toBe(true);
 	expect(secondService.handlerCalled).toBe(true);
@@ -185,7 +185,7 @@ it('should handle async methods correctly', async () => {
 	const testService = Container.get(TestService);
 
 	multiMainSetup.registerEventHandlers();
-	multiMainSetup.emit('leader-takeover');
+	multiMainSetup.emit(LEADER_TAKEOVER_EVENT_NAME);
 
 	await new Promise((resolve) => setTimeout(resolve, 20));
 
