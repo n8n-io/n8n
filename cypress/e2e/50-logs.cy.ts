@@ -4,10 +4,11 @@ import * as workflow from '../composables/workflow';
 import Workflow from '../fixtures/Workflow_if.json';
 
 describe('Logs', () => {
+	beforeEach(() => {
+		cy.overrideSettings({ logsView: { enabled: true } });
+	});
+
 	it('should show input and output data of correct run index and branch', () => {
-		cy.window().then((win) => {
-			win.localStorage.setItem('N8N_LOGS_2025_SPRING', 'true');
-		});
 		workflow.navigateToNewWorkflowPage();
 		workflow.pasteWorkflow(Workflow);
 		workflow.clickZoomToFit();
