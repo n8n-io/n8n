@@ -6,6 +6,7 @@ import { computed, ref } from 'vue';
 
 import RunsSection from '@/components/Evaluations/EditDefinition/sections/RunsSection.vue';
 import { useEvaluationStore } from '@/stores/evaluation.store.ee';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import { N8nButton, N8nText } from '@n8n/design-system';
 import { useAsyncState } from '@vueuse/core';
 import { orderBy } from 'lodash-es';
@@ -17,12 +18,13 @@ const props = defineProps<{
 // const router = useRouter();
 const locale = useI18n();
 const toast = useToast();
-const testDefinitionStore = useEvaluationStore();
+const evaluationsStore = useEvaluationStore();
+const workflowsStore = useWorkflowsStore();
 // const telemetry = useTelemetry();
 
 const { isLoading } = useAsyncState(
 	async () => {
-		await testDefinitionStore.fetchTestRuns(props.name);
+		await evaluationsStore.fetchTestRuns(props.name);
 
 		return [];
 	},
@@ -34,16 +36,17 @@ const { isLoading } = useAsyncState(
 );
 
 const hasRuns = computed(() => runs.value.length > 0);
+const workflowName = computed(() => workflowsStore.getWorkflowById(props.name)?.name ?? '');
 
 const selectedMetric = ref<string>('');
 
 async function runTest() {
-	await testDefinitionStore.startTestRun(props.name);
-	await testDefinitionStore.fetchTestRuns(props.name);
+	await evaluationsStore.startTestRun(props.name);
+	await evaluationsStore.fetchTestRuns(props.name);
 }
 
 const runs = computed(() => {
-	const testRuns = Object.values(testDefinitionStore.testRunsById ?? {}).filter(
+	const testRuns = Object.values(evaluationsStore.testRunsById ?? {}).filter(
 		({ workflowId }) => workflowId === props.name,
 	);
 
@@ -64,7 +67,9 @@ const showWizard = computed(() => {
 	<div v-if="!isLoading" :class="[$style.container]">
 		<div :class="$style.header" v-if="!showWizard">
 			<div style="display: flex; align-items: center">
-				<N8nText bold size="xlarge" color="text-dark">TODO: Replace Caption</N8nText>
+				<N8nText bold size="xlarge" color="text-dark"
+					>Evaluation runs for: {{ workflowName }}</N8nText
+				>
 			</div>
 			<div style="display: flex; align-items: center; gap: 10px">
 				<N8nTooltip v-if="!showWizard" :disabled="isRunTestEnabled" :placement="'left'">
