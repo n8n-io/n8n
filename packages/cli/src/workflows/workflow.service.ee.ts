@@ -20,6 +20,7 @@ import { WorkflowRepository } from '@/databases/repositories/workflow.repository
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { TransferWorkflowError } from '@/errors/response-errors/transfer-workflow.error';
+import { FolderService } from '@/services/folder.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 
@@ -43,6 +44,7 @@ export class EnterpriseWorkflowService {
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly enterpriseCredentialsService: EnterpriseCredentialsService,
 		private readonly workflowFinderService: WorkflowFinderService,
+		private readonly folderService: FolderService,
 	) {}
 
 	async shareWithProjects(
@@ -265,6 +267,7 @@ export class EnterpriseWorkflowService {
 		workflowId: string,
 		destinationProjectId: string,
 		shareCredentials: string[] = [],
+		destinationParentFolderId?: string,
 	) {
 		// 1. get workflow
 		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
@@ -301,6 +304,21 @@ export class EnterpriseWorkflowService {
 			throw new TransferWorkflowError(
 				"You can't transfer a workflow into the project that's already owning it.",
 			);
+		}
+
+		let parentFolder = null;
+
+		if (destinationParentFolderId) {
+			try {
+				parentFolder = await this.folderService.findFolderInProjectOrFail(
+					destinationParentFolderId,
+					destinationProjectId,
+				);
+			} catch {
+				throw new TransferWorkflowError(
+					`The destination folder with id "${destinationParentFolderId}" does not exist in the project "${destinationProject.name}".`,
+				);
+			}
 		}
 
 		// 6. deactivate workflow if necessary
@@ -345,10 +363,10 @@ export class EnterpriseWorkflowService {
 			}
 		});
 
-		// 9. detach workflow from parent folder in source project
-		await this.workflowRepository.update({ id: workflow.id }, { parentFolder: null });
+		// 9. Move workflow to the right folder if any
+		await this.workflowRepository.update({ id: workflow.id }, { parentFolder });
 
-		// 9. try to activate it again if it was active
+		// 10. try to activate it again if it was active
 		if (wasActive) {
 			try {
 				await this.activeWorkflowManager.add(workflowId, 'update');
