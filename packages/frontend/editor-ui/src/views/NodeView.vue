@@ -114,6 +114,7 @@ import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
 import type { CanvasLayoutEvent } from '@/composables/useCanvasLayout';
 import { useClearExecutionButtonVisible } from '@/composables/useClearExecutionButtonVisible';
 import { LOGS_PANEL_STATE } from '@/components/CanvasChat/types/logs';
+import { useFoldersStore } from '@/stores/folders.store';
 
 defineOptions({
 	name: 'NodeView',
@@ -164,6 +165,7 @@ const tagsStore = useTagsStore();
 const pushConnectionStore = usePushConnectionStore();
 const ndvStore = useNDVStore();
 const templatesStore = useTemplatesStore();
+const foldersStore = useFoldersStore();
 
 const canvasEventBus = createEventBus<CanvasEventBusEvents>();
 
@@ -382,15 +384,47 @@ async function initializeRoute(force = false) {
 async function initializeWorkspaceForNewWorkflow() {
 	resetWorkspace();
 
+	const parentFolderId = route.query.parentFolderId as string | undefined;
+
 	await workflowsStore.getNewWorkflowData(
 		undefined,
 		projectsStore.currentProjectId,
-		route.query.parentFolderId as string | undefined,
+		parentFolderId,
 	);
 	workflowsStore.makeNewWorkflowShareable();
 
+	if (projectsStore.currentProjectId) {
+		await fetchAndSetProject(projectsStore.currentProjectId);
+	}
+	await fetchAndSetParentFolder(parentFolderId);
+
 	uiStore.nodeViewInitialized = true;
 	initializedWorkflowId.value = NEW_WORKFLOW_ID;
+}
+
+// These two methods load home project and parent folder data if they are not already loaded
+// This happens when user lands straight on the new workflow page and we have nothing in the store
+async function fetchAndSetParentFolder(folderId?: string) {
+	if (folderId) {
+		let parentFolder = foldersStore.getCachedFolder(folderId);
+		if (!parentFolder && projectsStore.currentProjectId) {
+			await foldersStore.getFolderPath(projectsStore.currentProjectId, folderId);
+			parentFolder = foldersStore.getCachedFolder(folderId);
+		}
+		if (parentFolder) {
+			workflowsStore.setParentFolder({
+				...parentFolder,
+				parentFolderId: parentFolder.parentFolder ?? null,
+			});
+		}
+	}
+}
+
+async function fetchAndSetProject(projectId: string) {
+	if (!projectsStore.currentProject) {
+		const project = await projectsStore.fetchProject(projectId);
+		projectsStore.setCurrentProject(project);
+	}
 }
 
 async function initializeWorkspaceForExistingWorkflow(id: string) {
@@ -398,6 +432,10 @@ async function initializeWorkspaceForExistingWorkflow(id: string) {
 		const workflowData = await workflowsStore.fetchWorkflow(id);
 
 		openWorkflow(workflowData);
+
+		if (workflowData.parentFolder) {
+			workflowsStore.setParentFolder(workflowData.parentFolder);
+		}
 
 		if (workflowData.meta?.onboardingId) {
 			trackOpenWorkflowFromOnboardingTemplate();

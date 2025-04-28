@@ -900,7 +900,7 @@ export class WorkflowDataProxy {
 								return null;
 							}
 						})
-						.filter((result) => result !== null);
+						.filter((result) => result !== null && result !== undefined);
 
 					if (results.length !== 1) {
 						// Check if the results are all the same

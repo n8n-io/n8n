@@ -164,7 +164,7 @@ export class SamlController {
 	 * This endpoint is available if SAML is licensed and enabled
 	 */
 	@Get('/initsso', { middlewares: [samlLicensedAndEnabledMiddleware], skipAuth: true })
-	async initSsoGet(req: AuthlessRequest, res: Response) {
+	async initSsoGet(req: AuthlessRequest<{}, {}, {}, { redirect?: string }>, res: Response) {
 		let redirectUrl = '';
 		try {
 			const refererUrl = req.headers.referer;
@@ -180,7 +180,7 @@ export class SamlController {
 		} catch {
 			// ignore
 		}
-		return await this.handleInitSSO(res, redirectUrl);
+		return await this.handleInitSSO(res, redirectUrl || (req.query.redirect ?? ''));
 	}
 
 	/**
