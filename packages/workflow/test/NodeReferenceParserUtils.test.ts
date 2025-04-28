@@ -211,5 +211,38 @@ describe('NodeReferenceParserUtils', () => {
 				),
 			);
 		});
+		it('should handle code node', () => {
+			nodes = [
+				{
+					parameters: {
+						jsCode:
+							"for (const item of $input.all()) {\n  item.json.myNewField = $('DebugHelper').first().json.uid;\n}\n\nreturn $input.all();",
+					},
+					type: 'n8n-nodes-base.code',
+					typeVersion: 2,
+					position: [660, 0],
+					id: 'c9de02d0-982a-4f8c-9af7-93f63795aa9b',
+					name: 'Code',
+				},
+			];
+			nodeNames = ['DebugHelper', 'Code'];
+			const result = extractReferencesInNodeExpressions(nodes, nodeNames, startNodeName);
+			expect([...result.variables.entries()]).toEqual(
+				expect.arrayContaining([['uid', "$('DebugHelper').first().json.uid"]]),
+			);
+			expect(result.nodes).toEqual(
+				expect.arrayContaining(
+					[
+						{
+							name: 'Code',
+							parameters: {
+								jsCode:
+									"for (const item of $input.all()) {\n  item.json.myNewField = $('Start').first().json.uid;\n}\n\nreturn $input.all();",
+							},
+						},
+					].map(expect.objectContaining),
+				),
+			);
+		});
 	});
 });

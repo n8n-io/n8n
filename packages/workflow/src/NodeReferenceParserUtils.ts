@@ -1,4 +1,4 @@
-import { escapeRegExp } from 'lodash';
+import { escapeRegExp, mapValues } from 'lodash';
 
 import { OperationalError } from './errors';
 import type { INode, INodeParameters, NodeParameterValueType } from './Interfaces';
@@ -241,8 +241,7 @@ export function parseMatch(
 	else return null;
 }
 
-// Map from `statementToBeReplaced` -> ExtractWorkflowExpressionData
-export function impl_buildExtractWorkflowExpressionDataMap(
+export function buildExtractWorkflowExpressionDataMap(
 	expression: string,
 	nodeRegexps: Array<readonly [string, LazyRegExp]>,
 	nodeNames: string[],
@@ -283,15 +282,18 @@ type ParameterMapping<T> = undefined | T[] | { [key: PropertyKey]: ParameterMapp
 
 type ParameterExtractMapping = ParameterMapping<ExtractWorkflowExpressionData>;
 
-// Note that this returns a Record<number, X> for arrays, to allow sparse mapping
-function rec_applyParameterMapping(
+function applyParameterMapping(
 	parameterValue: NodeParameterValueType,
 	mapper: (s: string) => ExtractWorkflowExpressionData[],
+	keyOfValue?: string,
 ): [ParameterExtractMapping, ExtractWorkflowExpressionData[]] {
 	const result: ParameterExtractMapping = {};
 
 	if (typeof parameterValue !== 'object' || parameterValue === null) {
-		if (typeof parameterValue === 'string' && parameterValue.charAt(0) === '=') {
+		if (
+			typeof parameterValue === 'string' &&
+			(parameterValue.charAt(0) === '=' || keyOfValue === 'jsCode')
+		) {
 			const mapping = mapper(parameterValue);
 			return [mapping, mapping];
 		}
@@ -300,8 +302,7 @@ function rec_applyParameterMapping(
 
 	const allMappings = [];
 	for (const [key, value] of Object.entries(parameterValue)) {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-		const [mapping, all] = rec_applyParameterMapping(value, mapper);
+		const [mapping, all] = applyParameterMapping(value as NodeParameterValueType, mapper, key);
 		result[key] = mapping;
 		allMappings.push(...all);
 	}
@@ -310,18 +311,6 @@ function rec_applyParameterMapping(
 }
 
 function resolveDuplicates(data: ExtractWorkflowExpressionData[], allNodeNames: string[]) {
-	/**
-	 * 		$('abc').first().def.ghi['mno'] =>
-			type ExtractWorkflowExpressionData = {
-				originalExpression: "$('abc').first().json.def.ghi",
-				nodeNameInExpression: 'abc',
-				originalName: 'def.ghi',
-				replacementPrefix: "$('Start').first().json",
-				replacementName: "def_ghi"
-			}
-	 *
-	 */
-
 	// Map from variableName -> its expression
 	const triggerArgumentMap = new Map<string, ExtractWorkflowExpressionData>();
 	const originalExpressionMap = new Map<string, string>();
@@ -331,12 +320,11 @@ function resolveDuplicates(data: ExtractWorkflowExpressionData[], allNodeNames: 
 		const hasKeyAndCollides = (key: string) => {
 			const value = triggerArgumentMap.get(key);
 			if (!value) return false;
-			// We particularly do not care about the input node name here
-			// Because we're building this map for usage with the $('Start') node
-			// So we only care about creating unique variables for the new sub-workflow
+			// We only care about creating unique variables for the new sub-workflow here
 			return value.originalName === originalName;
 		};
-		// We need both parts in the key as we may need to pass `.first()` and `.item` separately
+
+		// We need both parts in the key as we may need to pass e.g. `.first()` and `.item` separately
 		// Since we cannot pass the node itself as its proxy reduces it to an empty object
 		const key = () => `${replacementPrefix}.${replacementName}`;
 		// This covers a realistic case where two nodes have the same path, e.g.
@@ -364,8 +352,10 @@ function resolveDuplicates(data: ExtractWorkflowExpressionData[], allNodeNames: 
 	};
 }
 
+// Recursively loop through the nodeProperties and apply `parameterExtractMapping` where applicable
 function applyExtractMappingToNode(node: INode, parameterExtractMapping: ParameterExtractMapping) {
 	const usedMappings: ExtractWorkflowExpressionData[] = [];
+
 	const applyMapping = (
 		parameters: NodeParameterValueType,
 		mapping: ParameterExtractMapping,
@@ -394,12 +384,7 @@ function applyExtractMappingToNode(node: INode, parameterExtractMapping: Paramet
 			return parameters.map((x, i) => applyMapping(x, mapping[i]) as INodeParameters);
 		}
 
-		return Object.fromEntries(
-			Object.entries(parameters).map(([k, v]) => [
-				k,
-				applyMapping(v as NodeParameterValueType, mapping[k]),
-			]),
-		);
+		return mapValues(parameters, (v, k) => applyMapping(v, mapping[k])) as NodeParameterValueType;
 	};
 
 	const parameters = applyMapping(node.parameters, parameterExtractMapping);
@@ -408,14 +393,14 @@ function applyExtractMappingToNode(node: INode, parameterExtractMapping: Paramet
 }
 
 /**
-1.5 [TODO] Filter for:
-	- previous nodes before input node (which go into ExecuteWorkflow)
-	- inner nodes (no changes for other inner nodes, replace for previous nodes)
-	- following nodes after output nodes -> error unless it's only output node of selection
-*/
+ * Extracts references to nodes in `nodeNames` from those nodes in `subGraph`.
+ *
+ * @returns an object with two keys:
+ * 		- nodes: The transformed nodes, ready for use in a sub-workflow
+ *    - variables: A map from variable name in the sub-workflow to the replaced expression
+ */
 export function extractReferencesInNodeExpressions(
-	// export function buildExtractWorkflowExpressionDataMap(
-	nodes: INode[],
+	subGraph: INode[],
 	nodeNames: string[],
 	startNodeName: string,
 ) {
@@ -442,9 +427,10 @@ export function extractReferencesInNodeExpressions(
 	const recMapByNode = new Map<string, ParameterExtractMapping>();
 	// This is used to track all candidates for change, necessary for deduplication
 	const allData = [];
-	for (const node of nodes) {
-		const [parameterMapping, allMappings] = rec_applyParameterMapping(node.parameters, (s) =>
-			impl_buildExtractWorkflowExpressionDataMap(s, nodeRegexps, nodeNames, startNodeName),
+
+	for (const node of subGraph) {
+		const [parameterMapping, allMappings] = applyParameterMapping(node.parameters, (s) =>
+			buildExtractWorkflowExpressionDataMap(s, nodeRegexps, nodeNames, startNodeName),
 		);
 		recMapByNode.set(node.name, parameterMapping);
 		allData.push(...allMappings);
@@ -482,7 +468,7 @@ export function extractReferencesInNodeExpressions(
 
 	const allUsedMappings = [];
 	const output = [];
-	for (const node of nodes) {
+	for (const node of subGraph) {
 		const { result, usedMappings } = applyExtractMappingToNode(node, recMapByNode.get(node.name));
 		allUsedMappings.push(...usedMappings);
 		output.push(result);
