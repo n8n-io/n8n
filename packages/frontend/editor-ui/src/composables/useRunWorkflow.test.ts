@@ -24,6 +24,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
 import { waitFor } from '@testing-library/vue';
+import { useParameterOverridesStore } from '@/stores/parameterOverrides.store';
 
 vi.mock('@/stores/workflows.store', async () => {
 	const storeState: Partial<ReturnType<typeof useWorkflowsStore>> & {
@@ -40,7 +41,11 @@ vi.mock('@/stores/workflows.store', async () => {
 		nodesIssuesExist: false,
 		executionWaitingForWebhook: false,
 		getCurrentWorkflow: vi.fn().mockReturnValue({ id: '123' }),
-		getNodeByName: vi.fn(),
+		getNodeByName: vi
+			.fn()
+			.mockImplementation((name) =>
+				name === 'Test node' ? { name: 'Test node', id: 'Test id' } : undefined,
+			),
 		getExecution: vi.fn(),
 		checkIfNodeHasChatParent: vi.fn(),
 		getParametersLastUpdate: vi.fn(),
@@ -56,6 +61,16 @@ vi.mock('@/stores/workflows.store', async () => {
 
 	return {
 		useWorkflowsStore: vi.fn().mockReturnValue(storeState),
+	};
+});
+
+vi.mock('@/stores/parameterOverrides.store', () => {
+	const storeState: Partial<ReturnType<typeof useParameterOverridesStore>> & {} = {
+		parameterOverrides: {},
+		substituteParameters: vi.fn(),
+	};
+	return {
+		useParameterOverridesStore: vi.fn().mockReturnValue(storeState),
 	};
 });
 
@@ -122,6 +137,7 @@ describe('useRunWorkflow({ router })', () => {
 	let router: ReturnType<typeof useRouter>;
 	let workflowHelpers: ReturnType<typeof useWorkflowHelpers>;
 	let settingsStore: ReturnType<typeof useSettingsStore>;
+	let parameterOverridesStore: ReturnType<typeof useParameterOverridesStore>;
 
 	beforeAll(() => {
 		const pinia = createTestingPinia({ stubActions: false });
@@ -132,6 +148,7 @@ describe('useRunWorkflow({ router })', () => {
 		uiStore = useUIStore();
 		workflowsStore = useWorkflowsStore();
 		settingsStore = useSettingsStore();
+		parameterOverridesStore = useParameterOverridesStore();
 
 		router = useRouter();
 		workflowHelpers = useWorkflowHelpers({ router });
@@ -492,6 +509,39 @@ describe('useRunWorkflow({ router })', () => {
 			expect(dataCaptor.value).toMatchObject({
 				data: { resultData: { runData: {} } },
 			});
+		});
+
+		it('does substituteParameters on partial execution if `partialExecutionVersion` is set to ', async () => {
+			// ARRANGE
+			const mockExecutionResponse = { executionId: '123' };
+			const mockRunData = { nodeName: [] };
+			const { runWorkflow } = useRunWorkflow({ router });
+			const dataCaptor = captor();
+			const workflow = mock<Workflow>({ name: 'Test Workflow', id: 'WorkflowId' });
+			const workflowData = mock<IWorkflowData>({ id: 'workflowId', nodes: [] });
+			workflow.getParentNodes.mockReturnValue([]);
+
+			vi.mocked(settingsStore).partialExecutionVersion = 2;
+			vi.mocked(pushConnectionStore).isConnected = true;
+			vi.mocked(workflowsStore).runWorkflow.mockResolvedValue(mockExecutionResponse);
+			vi.mocked(workflowsStore).nodesIssuesExist = false;
+			vi.mocked(workflowHelpers).getCurrentWorkflow.mockReturnValue(workflow);
+			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue(workflowData);
+			vi.mocked(workflowsStore).getWorkflowRunData = mockRunData;
+
+			// ACT
+			const result = await runWorkflow({ destinationNode: 'Test node' });
+
+			// ASSERT
+			expect(result).toEqual(mockExecutionResponse);
+			expect(workflowsStore.setWorkflowExecutionData).toHaveBeenCalledTimes(1);
+			expect(workflowsStore.setWorkflowExecutionData).toHaveBeenCalledWith(dataCaptor);
+			expect(dataCaptor.value).toMatchObject({ data: { resultData: { runData: mockRunData } } });
+			expect(parameterOverridesStore.substituteParameters).toHaveBeenCalledWith(
+				'WorkflowId',
+				'Test id',
+				workflowData,
+			);
 		});
 
 		it('retains the original run data if `partialExecutionVersion` is set to 2', async () => {

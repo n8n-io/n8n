@@ -53,6 +53,7 @@ import {
 	CHAT_TRIGGER_NODE_TYPE,
 	DRAG_EVENT_DATA_KEY,
 	EnterpriseEditionFeature,
+	FROM_AI_PARAMETERS_MODAL_KEY,
 	MAIN_HEADER_TABS,
 	MANUAL_CHAT_TRIGGER_NODE_TYPE,
 	MODAL_CONFIRM,
@@ -116,6 +117,8 @@ import { useClearExecutionButtonVisible } from '@/composables/useClearExecutionB
 import { LOGS_PANEL_STATE } from '@/components/CanvasChat/types/logs';
 import { useBuilderStore } from '@/stores/builder.store';
 import { useFoldersStore } from '@/stores/folders.store';
+import { useParameterOverridesStore } from '@/stores/parameterOverrides.store';
+import { doesNodeHaveAnyFromAiExpressions } from '@/utils/nodes/nodeTransforms';
 
 defineOptions({
 	name: 'NodeView',
@@ -168,6 +171,7 @@ const ndvStore = useNDVStore();
 const templatesStore = useTemplatesStore();
 const builderStore = useBuilderStore();
 const foldersStore = useFoldersStore();
+const parameterOverridesStore = useParameterOverridesStore();
 
 const canvasEventBus = createEventBus<CanvasEventBusEvents>();
 
@@ -1160,9 +1164,19 @@ async function onRunWorkflowToNode(id: string) {
 	const node = workflowsStore.getNodeById(id);
 	if (!node) return;
 
-	trackRunWorkflowToNode(node);
+	if (doesNodeHaveAnyFromAiExpressions(node) && nodeTypesStore.isAiToolNode(node.type)) {
+		uiStore.openModalWithData({
+			name: FROM_AI_PARAMETERS_MODAL_KEY,
+			data: {
+				nodeName: node.name,
+			},
+		});
+	} else {
+		trackRunWorkflowToNode(node);
+		parameterOverridesStore.clearParameterOverrides(workflowsStore.workflowId, node.id);
 
-	void runWorkflow({ destinationNode: node.name, source: 'Node.executeNode' });
+		void runWorkflow({ destinationNode: node.name, source: 'Node.executeNode' });
+	}
 }
 
 function trackRunWorkflowToNode(node: INodeUi) {

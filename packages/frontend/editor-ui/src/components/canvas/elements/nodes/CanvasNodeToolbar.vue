@@ -4,6 +4,8 @@ import { useI18n } from '@/composables/useI18n';
 import { useCanvasNode } from '@/composables/useCanvasNode';
 import { CanvasNodeRenderType } from '@/types';
 import { useCanvas } from '@/composables/useCanvas';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 
 const emit = defineEmits<{
 	delete: [];
@@ -21,7 +23,13 @@ const $style = useCssModule();
 const i18n = useI18n();
 
 const { isExecuting } = useCanvas();
-const { isDisabled, render } = useCanvasNode();
+const { isDisabled, render, name } = useCanvasNode();
+
+const workflowsStore = useWorkflowsStore();
+const nodeTypesStore = useNodeTypesStore();
+
+const node = computed(() => !!name.value && workflowsStore.getNodeByName(name.value));
+const isAiToolNode = computed(() => !!node.value && nodeTypesStore.isAiToolNode(node.value.type));
 
 const nodeDisabledTitle = computed(() => {
 	return isDisabled.value ? i18n.baseText('node.enable') : i18n.baseText('node.disable');
@@ -38,10 +46,11 @@ const classes = computed(() => ({
 
 const isExecuteNodeVisible = computed(() => {
 	return (
-		!props.readOnly &&
-		render.value.type === CanvasNodeRenderType.Default &&
-		'configuration' in render.value.options &&
-		!render.value.options.configuration
+		(!props.readOnly &&
+			render.value.type === CanvasNodeRenderType.Default &&
+			'configuration' in render.value.options &&
+			!render.value.options.configuration) ||
+		isAiToolNode.value
 	);
 });
 

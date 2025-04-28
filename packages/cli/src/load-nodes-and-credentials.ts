@@ -317,6 +317,7 @@ export class LoadNodesAndCredentials {
 						} as INodeTypeBaseDescription)
 					: deepCopy(usableNode);
 			const wrapped = this.convertNodeToAiTool({ description }).description;
+			wrapped.usableAsTool = true;
 
 			this.types.nodes.push(wrapped);
 			this.known.nodes[wrapped.name] = { ...this.known.nodes[usableNode.name] };
