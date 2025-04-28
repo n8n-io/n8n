@@ -4,7 +4,6 @@ import Modal from '@/components/Modal.vue';
 import { WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY } from '@/constants';
 import { useUIStore } from '@/stores/ui.store';
 
-import type { IHttpRequestMethods } from 'n8n-workflow';
 import { useRootStore } from '@/stores/root.store';
 import { computed } from 'vue';
 
@@ -14,11 +13,9 @@ const rootStore = useRootStore();
 
 const props = defineProps<{
 	data: {
-		triggerName: string;
 		workflowName: string;
 		workflowId: string;
 		webhookPath: string;
-		method: IHttpRequestMethods;
 		node: string;
 	};
 }>();
