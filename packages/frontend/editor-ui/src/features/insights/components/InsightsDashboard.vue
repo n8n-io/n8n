@@ -129,6 +129,7 @@ watch(
 				<InsightsDateRangeSelect
 					:model-value="selectedDateRange"
 					style="width: 173px"
+					data-test-id="range-select"
 					@update:model-value="handleTimeChange"
 				/>
 
