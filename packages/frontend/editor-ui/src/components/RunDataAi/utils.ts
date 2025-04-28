@@ -457,3 +457,19 @@ export function deepToRaw<T>(sourceObj: T): T {
 
 	return objectIterator(sourceObj);
 }
+
+export function flattenLogEntries(
+	entries: LogEntry[],
+	collapsedEntryIds: Record<string, boolean>,
+	ret: LogEntry[] = [],
+): LogEntry[] {
+	for (const entry of entries) {
+		ret.push(entry);
+
+		if (!collapsedEntryIds[entry.id]) {
+			flattenLogEntries(entry.children, collapsedEntryIds, ret);
+		}
+	}
+
+	return ret;
+}

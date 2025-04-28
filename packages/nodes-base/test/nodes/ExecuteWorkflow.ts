@@ -13,11 +13,11 @@ import nock from 'nock';
 import { CredentialsHelper } from './credentials-helper';
 import { NodeTypes } from './node-types';
 
-// This is (temporarily) needed to setup LoadNodesAndCredentials
-import './Helpers';
-
 export async function executeWorkflow(testData: WorkflowTestData) {
 	const nodeTypes = Container.get(NodeTypes);
+
+	const credentialsHelper = Container.get(CredentialsHelper);
+	credentialsHelper.setCredentials(testData.credentials ?? {});
 
 	if (testData.nock) {
 		const { baseUrl, mocks } = testData.nock;
@@ -47,6 +47,7 @@ export async function executeWorkflow(testData: WorkflowTestData) {
 			},
 		);
 	}
+
 	const executionMode = testData.trigger?.mode ?? 'manual';
 	const workflowInstance = new Workflow({
 		id: 'test',
@@ -64,12 +65,13 @@ export async function executeWorkflow(testData: WorkflowTestData) {
 		nodeExecutionOrder.push(nodeName);
 	});
 	hooks.addHandler('workflowExecuteAfter', (fullRunData) => waitPromise.resolve(fullRunData));
+
 	const additionalData = mock<IWorkflowExecuteAdditionalData>({
-		credentialsHelper: Container.get(CredentialsHelper),
 		hooks,
 		// Get from node.parameters
 		currentNodeParameters: undefined,
 	});
+	additionalData.credentialsHelper = credentialsHelper;
 
 	let executionData: IRun;
 	const runExecutionData: IRunExecutionData = {

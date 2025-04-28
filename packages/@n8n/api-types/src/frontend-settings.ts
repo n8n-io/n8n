@@ -105,6 +105,8 @@ export interface FrontendSettings {
 	};
 	missingPackages?: boolean;
 	executionMode: 'regular' | 'queue';
+	/** Whether multi-main mode is enabled and licensed for this main instance. */
+	isMultiMain: boolean;
 	pushBackend: 'sse' | 'websocket';
 	communityNodesEnabled: boolean;
 	aiAssistant: {
@@ -159,6 +161,9 @@ export interface FrontendSettings {
 		enabled: boolean;
 	};
 	folders: {
+		enabled: boolean;
+	};
+	logsView: {
 		enabled: boolean;
 	};
 	banners: {
