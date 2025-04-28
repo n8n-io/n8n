@@ -257,7 +257,7 @@ describe('Workflow Actions', () => {
 		}).as('loadWorkflows');
 	});
 
-	it('should not be able to archive or unsaved workflow', () => {
+	it('should not be able to archive or delete unsaved workflow', () => {
 		WorkflowPage.getters.workflowMenu().should('be.visible');
 		WorkflowPage.getters.workflowMenu().click();
 		WorkflowPage.getters.workflowMenuItemDelete().should('not.exist');

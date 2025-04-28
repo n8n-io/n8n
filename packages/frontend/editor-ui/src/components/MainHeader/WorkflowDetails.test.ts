@@ -1,6 +1,11 @@
 import WorkflowDetails from '@/components/MainHeader/WorkflowDetails.vue';
 import { createComponentRenderer } from '@/__tests__/render';
-import { EnterpriseEditionFeature, STORES, WORKFLOW_SHARE_MODAL_KEY } from '@/constants';
+import {
+	EnterpriseEditionFeature,
+	STORES,
+	WORKFLOW_MENU_ACTIONS,
+	WORKFLOW_SHARE_MODAL_KEY,
+} from '@/constants';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { useUIStore } from '@/stores/ui.store';
@@ -64,6 +69,7 @@ const workflow = {
 	name: 'Test Workflow',
 	tags: ['1', '2'],
 	active: false,
+	isArchived: false,
 };
 
 describe('WorkflowDetails', () => {
@@ -121,6 +127,197 @@ describe('WorkflowDetails', () => {
 		expect(openModalSpy).toHaveBeenCalledWith({
 			name: WORKFLOW_SHARE_MODAL_KEY,
 			data: { id: '1' },
+		});
+	});
+
+	describe('Workflow Menu', () => {
+		beforeEach(() => {
+			(useRoute as Mock).mockReturnValue({
+				meta: {
+					nodeView: true,
+				},
+				query: { parentFolderId: '1' },
+			});
+		});
+
+		it("should have disabled 'Archive' option on new workflow", async () => {
+			const { getByTestId, queryByTestId } = renderComponent({
+				props: {
+					...workflow,
+					id: 'new',
+					readOnly: false,
+					isArchived: false,
+					scopes: ['workflow:delete'],
+				},
+			});
+
+			await userEvent.click(getByTestId('workflow-menu'));
+			expect(queryByTestId('workflow-menu-item-delete')).not.toBeInTheDocument();
+			expect(queryByTestId('workflow-menu-item-unarchive')).not.toBeInTheDocument();
+			expect(getByTestId('workflow-menu-item-archive')).toBeInTheDocument();
+			expect(getByTestId('workflow-menu-item-archive')).toHaveClass('disabled');
+		});
+
+		it("should have 'Archive' option on non archived workflow", async () => {
+			const { getByTestId, queryByTestId } = renderComponent({
+				props: {
+					...workflow,
+					readOnly: false,
+					isArchived: false,
+					scopes: ['workflow:delete'],
+				},
+			});
+
+			await userEvent.click(getByTestId('workflow-menu'));
+			expect(queryByTestId('workflow-menu-item-delete')).not.toBeInTheDocument();
+			expect(queryByTestId('workflow-menu-item-unarchive')).not.toBeInTheDocument();
+			expect(getByTestId('workflow-menu-item-archive')).toBeInTheDocument();
+			expect(getByTestId('workflow-menu-item-archive')).not.toHaveClass('disabled');
+		});
+
+		it("should not have 'Archive' option on non archived readonly workflow", async () => {
+			const { getByTestId, queryByTestId } = renderComponent({
+				props: {
+					...workflow,
+					readOnly: true,
+					isArchived: false,
+					scopes: ['workflow:delete'],
+				},
+			});
+
+			await userEvent.click(getByTestId('workflow-menu'));
+			expect(queryByTestId('workflow-menu-item-delete')).not.toBeInTheDocument();
+			expect(queryByTestId('workflow-menu-item-unarchive')).not.toBeInTheDocument();
+			expect(queryByTestId('workflow-menu-item-archive')).not.toBeInTheDocument();
+		});
+
+		it("should not have 'Archive' option on non archived workflow without permission", async () => {
+			const { getByTestId, queryByTestId } = renderComponent({
+				props: {
+					...workflow,
+					readOnly: false,
+					isArchived: false,
+					scopes: ['workflow:update'],
+				},
+			});
+
+			await userEvent.click(getByTestId('workflow-menu'));
+			expect(queryByTestId('workflow-menu-item-delete')).not.toBeInTheDocument();
+			expect(queryByTestId('workflow-menu-item-unarchive')).not.toBeInTheDocument();
+			expect(queryByTestId('workflow-menu-item-archive')).not.toBeInTheDocument();
+		});
+
+		it("should have 'Unarchive' and 'Delete' options on archived workflow", async () => {
+			const { getByTestId, queryByTestId } = renderComponent({
+				props: {
+					...workflow,
+					isArchived: true,
+					readOnly: false,
+					scopes: ['workflow:delete'],
+				},
+			});
+
+			await userEvent.click(getByTestId('workflow-menu'));
+			expect(queryByTestId('workflow-menu-item-archive')).not.toBeInTheDocument();
+			expect(getByTestId('workflow-menu-item-delete')).toBeInTheDocument();
+			expect(getByTestId('workflow-menu-item-delete')).not.toHaveClass('disabled');
+			expect(getByTestId('workflow-menu-item-unarchive')).toBeInTheDocument();
+			expect(getByTestId('workflow-menu-item-unarchive')).not.toHaveClass('disabled');
+		});
+
+		it("should not have 'Unarchive' or 'Delete' options on archived readonly workflow", async () => {
+			const { getByTestId, queryByTestId } = renderComponent({
+				props: {
+					...workflow,
+					isArchived: true,
+					readOnly: true,
+					scopes: ['workflow:delete'],
+				},
+			});
+
+			await userEvent.click(getByTestId('workflow-menu'));
+			expect(queryByTestId('workflow-menu-item-archive')).not.toBeInTheDocument();
+			expect(queryByTestId('workflow-menu-item-delete')).not.toBeInTheDocument();
+			expect(queryByTestId('workflow-menu-item-unarchive')).not.toBeInTheDocument();
+		});
+
+		it("should not have 'Unarchive' or 'Delete' options on archived workflow without permission", async () => {
+			const { getByTestId, queryByTestId } = renderComponent({
+				props: {
+					...workflow,
+					isArchived: true,
+					readOnly: false,
+					scopes: ['workflow:update'],
+				},
+			});
+
+			await userEvent.click(getByTestId('workflow-menu'));
+			expect(queryByTestId('workflow-menu-item-archive')).not.toBeInTheDocument();
+			expect(queryByTestId('workflow-menu-item-delete')).not.toBeInTheDocument();
+			expect(queryByTestId('workflow-menu-item-unarchive')).not.toBeInTheDocument();
+		});
+
+		it("should call onWorkflowMenuSelect on 'Archive' option click", async () => {
+			const onWorkflowMenuSelect = vi.fn();
+			const { getByTestId } = renderComponent({
+				props: {
+					...workflow,
+					readOnly: false,
+					isArchived: false,
+					scopes: ['workflow:delete'],
+				},
+				global: {
+					mocks: {
+						onWorkflowMenuSelect,
+					},
+				},
+			});
+
+			await userEvent.click(getByTestId('workflow-menu'));
+			await userEvent.click(getByTestId('workflow-menu-item-archive'));
+			expect(onWorkflowMenuSelect).toHaveBeenCalledWith(WORKFLOW_MENU_ACTIONS.ARCHIVE);
+		});
+
+		it("should call onWorkflowMenuSelect on 'Unarchive' option click", async () => {
+			const onWorkflowMenuSelect = vi.fn();
+			const { getByTestId } = renderComponent({
+				props: {
+					...workflow,
+					readOnly: false,
+					isArchived: true,
+					scopes: ['workflow:delete'],
+				},
+				global: {
+					mocks: {
+						onWorkflowMenuSelect,
+					},
+				},
+			});
+
+			await userEvent.click(getByTestId('workflow-menu'));
+			await userEvent.click(getByTestId('workflow-menu-item-unarchive'));
+			expect(onWorkflowMenuSelect).toHaveBeenCalledWith(WORKFLOW_MENU_ACTIONS.UNARCHIVE);
+		});
+
+		it("should call onWorkflowMenuSelect on 'Delete' option click", async () => {
+			const onWorkflowMenuSelect = vi.fn();
+			const { getByTestId } = renderComponent({
+				props: {
+					...workflow,
+					readOnly: false,
+					isArchived: true,
+					scopes: ['workflow:delete'],
+				},
+				global: {
+					mocks: {
+						onWorkflowMenuSelect,
+					},
+				},
+			});
+
+			await userEvent.click(getByTestId('workflow-menu'));
+			await userEvent.click(getByTestId('workflow-menu-item-delete'));
+			expect(onWorkflowMenuSelect).toHaveBeenCalledWith(WORKFLOW_MENU_ACTIONS.DELETE);
 		});
 	});
 });
