@@ -2,7 +2,7 @@
 import { useI18n } from '@/composables/useI18n';
 import { useToast } from '@/composables/useToast';
 import { computed, ref } from 'vue';
-import { useRouter } from 'vue-router';
+// import { useRouter } from 'vue-router';
 
 import RunsSection from '@/components/Evaluations/EditDefinition/sections/RunsSection.vue';
 import { useEvaluationStore } from '@/stores/evaluation.store.ee';
@@ -14,7 +14,7 @@ const props = defineProps<{
 	workflowId: string;
 }>();
 
-const router = useRouter();
+// const router = useRouter();
 const locale = useI18n();
 const toast = useToast();
 const testDefinitionStore = useEvaluationStore();
@@ -34,14 +34,8 @@ const { isLoading } = useAsyncState(
 );
 
 const hasRuns = computed(() => runs.value.length > 0);
-const fieldsIssues = computed(() => testDefinitionStore.getFieldIssues(props.workflowId) ?? []);
 
-const showConfig = ref(true);
 const selectedMetric = ref<string>('');
-
-function getFieldIssues(key: string) {
-	return fieldsIssues.value.filter((issue) => issue.field === key);
-}
 
 async function runTest() {
 	await testDefinitionStore.startTestRun(props.workflowId);
@@ -60,16 +54,20 @@ const runs = computed(() => {
 
 const isRunning = computed(() => runs.value.some((run) => run.status === 'running'));
 const isRunTestEnabled = computed(() => !isRunning.value);
+
+const showWizard = computed(() => {
+	return !hasRuns.value;
+});
 </script>
 
 <template>
 	<div v-if="!isLoading" :class="[$style.container]">
-		<div :class="$style.header">
+		<div :class="$style.header" v-if="!showWizard">
 			<div style="display: flex; align-items: center">
 				<N8nText bold size="xlarge" color="text-dark">TODO: Replace Caption</N8nText>
 			</div>
 			<div style="display: flex; align-items: center; gap: 10px">
-				<N8nTooltip :disabled="isRunTestEnabled" :placement="'left'">
+				<N8nTooltip v-if="!showWizard" :disabled="isRunTestEnabled" :placement="'left'">
 					<N8nButton
 						:disabled="!isRunTestEnabled"
 						:class="$style.runTestButton"
@@ -80,10 +78,6 @@ const isRunTestEnabled = computed(() => !isRunning.value);
 						@click="runTest"
 					/>
 					<template #content>
-						<!-- <template v-if="fieldsIssues.length > 0">
-							<div>{{ locale.baseText('testDefinition.completeConfig') }}</div>
-							<div v-for="issue in fieldsIssues" :key="issue.field">- {{ issue.message }}</div>
-						</template> -->
 						<template v-if="isRunning">
 							{{ locale.baseText('testDefinition.testIsRunning') }}
 						</template>
@@ -101,14 +95,7 @@ const isRunTestEnabled = computed(() => !isRunning.value);
 					:workflow-id="props.workflowId"
 				/>
 
-				<ConfigSection
-					v-if="showConfig"
-					:class="$style.config"
-					:cancel-editing="() => {}"
-					:is-loading="isLoading"
-					:get-field-issues="getFieldIssues"
-					:has-runs="hasRuns"
-				/>
+				<SetupWizard v-if="showWizard" :class="$style.config" :is-loading="isLoading" />
 			</div>
 		</div>
 	</div>
@@ -123,11 +110,8 @@ const isRunTestEnabled = computed(() => !isRunning.value);
 }
 
 .config {
-	width: 480px;
-
-	.contentWithRuns & {
-		width: 400px;
-	}
+	width: 640px;
+	margin-top: var(--spacing-xl);
 }
 
 .header {
