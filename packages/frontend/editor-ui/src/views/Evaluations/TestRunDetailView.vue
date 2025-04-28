@@ -7,6 +7,7 @@ import { useToast } from '@/composables/useToast';
 import { VIEWS } from '@/constants';
 import type { BaseTextKey } from '@/plugins/i18n';
 import { useEvaluationStore } from '@/stores/evaluation.store.ee';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import { convertToDisplayDate } from '@/utils/typesUtils';
 import { N8nActionToggle, N8nButton, N8nText, N8nTooltip } from '@n8n/design-system';
 import { computed, onMounted, ref } from 'vue';
@@ -34,7 +35,8 @@ type TestRunErrorCode = (typeof TEST_RUN_ERROR_CODES)[keyof typeof TEST_RUN_ERRO
 
 const router = useRouter();
 const toast = useToast();
-const testDefinitionStore = useEvaluationStore();
+const evaluationStore = useEvaluationStore();
+const workflowsStore = useWorkflowsStore();
 const locale = useI18n();
 
 const isLoading = ref(true);
@@ -42,8 +44,9 @@ const testCases = ref<TestCaseExecutionRecord[]>([]);
 
 const runId = computed(() => router.currentRoute.value.params.runId as string);
 const workflowId = computed(() => router.currentRoute.value.params.name as string);
+const workflowName = computed(() => workflowsStore.getWorkflowById(workflowId.value)?.name ?? '');
 
-const run = computed(() => testDefinitionStore.testRunsById[runId.value]);
+const run = computed(() => evaluationStore.testRunsById[runId.value]);
 
 const filteredTestCases = computed(() => {
 	return testCases.value;
@@ -164,12 +167,12 @@ const fetchExecutionTestCases = async () => {
 
 	isLoading.value = true;
 	try {
-		const testRun = await testDefinitionStore.getTestRun({
+		const testRun = await evaluationStore.getTestRun({
 			workflowId: workflowId.value,
 			runId: runId.value,
 		});
 
-		const testCaseEvaluationExecutions = await testDefinitionStore.fetchTestCaseExecutions({
+		const testCaseEvaluationExecutions = await evaluationStore.fetchTestCaseExecutions({
 			workflowId: workflowId.value,
 			runId: testRun.id,
 		});
@@ -192,10 +195,16 @@ onMounted(async () => {
 		<div :class="$style.header">
 			<button :class="$style.backButton" @click="router.back()">
 				<i class="mr-xs"><font-awesome-icon icon="arrow-left" /></i>
-				<n8n-heading size="large" :bold="true">TODO: Change title</n8n-heading>
+				<n8n-heading size="large" :bold="true">{{
+					locale.baseText('evaluation.listRuns.runListHeader', {
+						interpolate: {
+							name: workflowName,
+						},
+					})
+				}}</n8n-heading>
 				<i class="ml-xs mr-xs"><font-awesome-icon icon="chevron-right" /></i>
 				<n8n-heading size="large" :bold="true">
-					{{ locale.baseText('evaluation.listRuns.runNumber') }}{{ run?.id }}
+					{{ locale.baseText('evaluation.listRuns.testCasesListHeader') }}
 				</n8n-heading>
 			</button>
 		</div>
