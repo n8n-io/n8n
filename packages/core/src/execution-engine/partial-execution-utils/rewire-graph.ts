@@ -6,6 +6,9 @@ import { type DirectedGraph } from './directed-graph';
 export function rewireGraph(tool: INode, graph: DirectedGraph): DirectedGraph {
 	graph = graph.clone();
 	const children = graph.getChildren(tool);
+
+	a.ok(children.size > 0, 'Tool must be connected to a root node');
+
 	const rootNode = [...children][0];
 
 	a.ok(rootNode);
