@@ -269,5 +269,29 @@ describe('NodeReferenceParserUtils', () => {
 				),
 			);
 		});
+		it('should throw if node name clashes with start name', () => {
+			nodes = [makeNode('Start', ['$("A").item.json.myField'])];
+			nodeNames = ['A', 'Start'];
+			expect(() => extractReferencesInNodeExpressions(nodes, nodeNames, startNodeName)).toThrow();
+		});
+		it('should support custom Start node name', () => {
+			nodes = [makeNode('Start', ['$("A").item.json.myField'])];
+			nodeNames = ['A', 'Start'];
+			startNodeName = 'A different start name';
+			const result = extractReferencesInNodeExpressions(nodes, nodeNames, startNodeName);
+			expect([...result.variables.entries()]).toEqual(
+				expect.arrayContaining([['myField', '$("A").item.json.myField']]),
+			);
+			expect(result.nodes).toEqual(
+				expect.arrayContaining(
+					[
+						{
+							name: 'Start',
+							parameters: { p0: "={{ $('A different start name').item.json.myField }}" },
+						},
+					].map(expect.objectContaining),
+				),
+			);
+		});
 	});
 });
