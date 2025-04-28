@@ -3,7 +3,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { useTestDefinitionForm } from '../composables/useTestDefinitionForm';
 import { useEvaluationStore } from '@/stores/evaluation.store.ee';
 import { mockedStore } from '@/__tests__/utils';
-import type { TestDefinitionRecord } from '@/api/testDefinition.ee';
+import type { TestDefinitionRecord } from '@/api/evaluation.ee';
 
 const TEST_DEF_A: TestDefinitionRecord = {
 	id: '1',
