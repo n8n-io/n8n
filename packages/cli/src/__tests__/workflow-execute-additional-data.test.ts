@@ -1,3 +1,4 @@
+import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type { IWorkflowBase } from 'n8n-workflow';
@@ -23,13 +24,12 @@ import {
 } from '@/executions/pre-execution-checks';
 import { ExternalHooks } from '@/external-hooks';
 import { SecretsHelper } from '@/secrets-helpers.ee';
+import { UrlService } from '@/services/url.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { Telemetry } from '@/telemetry';
 import { executeWorkflow, getBase, getRunData } from '@/workflow-execute-additional-data';
-import { mockInstance } from '@test/mocking';
-import { UrlService } from '@/services/url.service';
-import { GlobalConfig } from '@n8n/config';
 import * as WorkflowHelpers from '@/workflow-helpers';
+import { mockInstance } from '@test/mocking';
 
 const EXECUTION_ID = '123';
 const LAST_NODE_EXECUTED = 'Last node executed';
