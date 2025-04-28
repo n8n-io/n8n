@@ -5,15 +5,17 @@ import { VIEWS } from '@/constants';
 import {
 	INSIGHT_IMPACT_TYPES,
 	INSIGHTS_UNIT_IMPACT_MAPPING,
+	TIME_RANGE_LABELS,
 } from '@/features/insights/insights.constants';
 import type { InsightsSummaryDisplay } from '@/features/insights/insights.types';
-import type { InsightsSummary } from '@n8n/api-types';
+import type { InsightsDateRange, InsightsSummary } from '@n8n/api-types';
 import { smartDecimal } from '@n8n/utils/number/smartDecimal';
-import { computed, ref, useCssModule } from 'vue';
+import { computed, useCssModule } from 'vue';
 import { useRoute } from 'vue-router';
 
 const props = defineProps<{
 	summary: InsightsSummaryDisplay;
+	timeRange: InsightsDateRange['key'];
 	loading?: boolean;
 }>();
 
@@ -21,8 +23,6 @@ const i18n = useI18n();
 const route = useRoute();
 const $style = useCssModule();
 const telemetry = useTelemetry();
-
-const lastNDays = ref(7);
 
 const summaryTitles = computed<Record<keyof InsightsSummary, string>>(() => ({
 	total: i18n.baseText('insights.banner.title.total'),
@@ -84,9 +84,9 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 								{{ summaryTitles[id] }}
 							</N8nTooltip>
 						</strong>
-						<small :class="$style.days">{{
-							i18n.baseText('insights.lastNDays', { interpolate: { count: lastNDays } })
-						}}</small>
+						<small :class="$style.days">
+							{{ TIME_RANGE_LABELS[timeRange] }}
+						</small>
 						<span v-if="summaryHasNoData" :class="$style.noData">
 							<N8nTooltip placement="bottom">
 								<template #content>

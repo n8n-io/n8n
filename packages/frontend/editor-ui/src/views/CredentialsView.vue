@@ -1,40 +1,40 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue';
-import { useRoute, useRouter, type LocationQueryRaw } from 'vue-router';
-import type { ICredentialTypeMap } from '@/Interface';
-import type { ICredentialType, ICredentialsDecrypted } from 'n8n-workflow';
-import ResourcesListLayout, {
-	type Resource,
-	type BaseFilters,
-} from '@/components/layouts/ResourcesListLayout.vue';
 import CredentialCard from '@/components/CredentialCard.vue';
+import ResourcesListLayout, {
+	type BaseFilters,
+	type Resource,
+} from '@/components/layouts/ResourcesListLayout.vue';
+import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
+import { useDocumentTitle } from '@/composables/useDocumentTitle';
+import { useI18n } from '@/composables/useI18n';
+import { useOverview } from '@/composables/useOverview';
+import { useTelemetry } from '@/composables/useTelemetry';
 import {
-	CREDENTIAL_SELECT_MODAL_KEY,
 	CREDENTIAL_EDIT_MODAL_KEY,
+	CREDENTIAL_SELECT_MODAL_KEY,
 	EnterpriseEditionFeature,
 	VIEWS,
 } from '@/constants';
-import { useUIStore, listenForModalChanges } from '@/stores/ui.store';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useCredentialsStore } from '@/stores/credentials.store';
-import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
-import { useSourceControlStore } from '@/stores/sourceControl.store';
-import { useProjectsStore } from '@/stores/projects.store';
-import useEnvironmentsStore from '@/stores/environments.ee.store';
-import { useSettingsStore } from '@/stores/settings.store';
-import { useUsersStore } from '@/stores/users.store';
+import InsightsSummary from '@/features/insights/components/InsightsSummary.vue';
+import { useInsightsStore } from '@/features/insights/insights.store';
+import type { ICredentialTypeMap } from '@/Interface';
 import { getResourcePermissions } from '@/permissions';
-import { useDocumentTitle } from '@/composables/useDocumentTitle';
-import { useTelemetry } from '@/composables/useTelemetry';
-import { useI18n } from '@/composables/useI18n';
-import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
+import { useCredentialsStore } from '@/stores/credentials.store';
+import useEnvironmentsStore from '@/stores/environments.ee.store';
+import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useProjectsStore } from '@/stores/projects.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { listenForModalChanges, useUIStore } from '@/stores/ui.store';
+import { useUsersStore } from '@/stores/users.store';
+import { isCredentialsResource } from '@/utils/typeGuards';
 import { N8nCheckbox } from '@n8n/design-system';
 import { pickBy } from 'lodash-es';
+import type { ICredentialType, ICredentialsDecrypted } from 'n8n-workflow';
 import { CREDENTIAL_EMPTY_VALUE } from 'n8n-workflow';
-import { isCredentialsResource } from '@/utils/typeGuards';
-import { useInsightsStore } from '@/features/insights/insights.store';
-import InsightsSummary from '@/features/insights/components/InsightsSummary.vue';
-import { useOverview } from '@/composables/useOverview';
+import { computed, onMounted, ref, watch } from 'vue';
+import { useRoute, useRouter, type LocationQueryRaw } from 'vue-router';
 
 const props = defineProps<{
 	credentialId?: string;
@@ -243,8 +243,9 @@ onMounted(() => {
 			<ProjectHeader>
 				<InsightsSummary
 					v-if="overview.isOverviewSubPage && insightsStore.isSummaryEnabled"
-					:loading="insightsStore.summary.isLoading"
-					:summary="insightsStore.summary.state"
+					:loading="insightsStore.weeklySummary.isLoading"
+					:summary="insightsStore.weeklySummary.state"
+					time-range="week"
 				/>
 			</ProjectHeader>
 		</template>

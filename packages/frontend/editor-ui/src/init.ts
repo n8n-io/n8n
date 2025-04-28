@@ -102,7 +102,7 @@ export async function initializeAuthenticatedFeatures(
 	}
 
 	if (insightsStore.isSummaryEnabled) {
-		void insightsStore.summary.execute();
+		void insightsStore.weeklySummary.execute();
 	}
 
 	await Promise.all([
