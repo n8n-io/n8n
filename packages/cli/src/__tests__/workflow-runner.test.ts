@@ -12,8 +12,9 @@ import type {
 	IWorkflowBase,
 	IWorkflowExecutionDataProcess,
 	StartNodeData,
+	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
-import { IWorkflowExecuteAdditionalData, Workflow, type ExecutionError } from 'n8n-workflow';
+import { Workflow, type ExecutionError } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -22,7 +23,9 @@ import type { ExecutionEntity } from '@/databases/entities/execution-entity';
 import type { User } from '@/databases/entities/user';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
+import { ManualExecutionService } from '@/manual-execution.service';
 import { Telemetry } from '@/telemetry';
+import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowRunner } from '@/workflow-runner';
 import { mockInstance } from '@test/mocking';
 import { createExecution } from '@test-integration/db/executions';
@@ -30,8 +33,6 @@ import { createUser } from '@test-integration/db/users';
 import { createWorkflow } from '@test-integration/db/workflows';
 import * as testDb from '@test-integration/test-db';
 import { setupTestServer } from '@test-integration/utils';
-import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-import { ManualExecutionService } from '@/manual-execution.service';
 
 let owner: User;
 let runner: WorkflowRunner;
