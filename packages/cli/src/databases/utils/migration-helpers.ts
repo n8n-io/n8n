@@ -9,7 +9,7 @@ import { jsonParse, UnexpectedError } from 'n8n-workflow';
 import { inTest } from '@/constants';
 import { createSchemaBuilder } from '@/databases/dsl';
 import type { BaseMigration, Migration, MigrationContext, MigrationFn } from '@/databases/types';
-import { NodeTypes } from '@/node-types';
+import { NodeTypesMinimal } from '@/node-types-minimal';
 
 const PERSONALIZATION_SURVEY_FILENAME = 'personalizationSurvey.json';
 
@@ -108,7 +108,7 @@ const createContext = (queryRunner: QueryRunner, migration: Migration): Migratio
 	migrationName: migration.name,
 	queryRunner,
 	schemaBuilder: createSchemaBuilder(tablePrefix, queryRunner),
-	nodeTypes: Container.get(NodeTypes),
+	nodeTypes: Container.get(NodeTypesMinimal),
 	loadSurveyFromDisk,
 	parseJson,
 	escape: {
