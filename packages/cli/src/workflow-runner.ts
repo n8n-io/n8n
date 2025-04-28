@@ -36,6 +36,8 @@ import type { Job, JobData } from '@/scaling/scaling.types';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
+import { getNextExecutionIndex } from './utils';
+
 @Service()
 export class WorkflowRunner {
 	private scalingService: ScalingService;
@@ -236,15 +238,11 @@ export class WorkflowRunner {
 			pinData,
 		});
 
-		const previousRuns = Object.values(data.runData ?? {}).flat();
-		const maxExecutionIndex = previousRuns.length
-			? Math.max(...previousRuns.map((taskData) => taskData.executionIndex)) + 1
-			: undefined;
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(
 			data.userId,
 			undefined,
 			workflowTimeout <= 0 ? undefined : Date.now() + workflowTimeout * 1000,
-			maxExecutionIndex,
+			getNextExecutionIndex(data.runData),
 		);
 		// TODO: set this in queue mode as well
 		additionalData.restartExecutionId = restartExecutionId;

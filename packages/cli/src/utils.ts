@@ -1,5 +1,5 @@
 import { CliWorkflowOperationError, SubworkflowOperationError } from 'n8n-workflow';
-import type { INode, INodeType } from 'n8n-workflow';
+import type { INode, INodeType, IRunData } from 'n8n-workflow';
 
 import { STARTING_NODES } from '@/constants';
 
@@ -104,4 +104,13 @@ export const shouldAssignExecuteMethod = (nodeType: INodeType) => {
 		(!nodeType.webhook || isDeclarativeNode) &&
 		!nodeType.methods
 	);
+};
+
+export const getNextExecutionIndex = (runData: IRunData | undefined) => {
+	const previousRuns = Object.values(runData ?? {}).flat();
+	const maxExecutionIndex = previousRuns.length
+		? Math.max(...previousRuns.map((taskData) => taskData.executionIndex))
+		: undefined;
+
+	return maxExecutionIndex ? maxExecutionIndex + 1 : undefined;
 };
