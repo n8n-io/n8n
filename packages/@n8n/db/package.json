@@ -23,7 +23,7 @@
   "dependencies": {
     "@n8n/config": "workspace:^",
     "@n8n/di": "workspace:^",
-    "@n8n/typeorm": "0.3.20-12",
+    "@n8n/typeorm": "workspace:*",
     "n8n-core": "workspace:^",
     "n8n-workflow": "workspace:^",
     "nanoid": "catalog:",
