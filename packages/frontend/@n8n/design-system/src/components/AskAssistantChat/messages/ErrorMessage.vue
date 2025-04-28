@@ -57,6 +57,7 @@ const { t } = useI18n();
 	color: var(--color-danger);
 	font-weight: var(--font-weight-regular);
 	line-height: var(--font-line-height-tight);
+	word-break: break-word;
 }
 
 .retryButton {
