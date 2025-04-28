@@ -2,14 +2,14 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
 import EvaluationsView from '@/views/Evaluations/EvaluationsView.vue';
-import type { useTestDefinitionForm } from '@/components/Evaluations/composables/useTestDefinitionForm';
+import type { useEvaluationForm } from '@/components/Evaluations/composables/useEvaluationForm';
 
 import { ref } from 'vue';
 import { cleanupAppModals, createAppModals, mockedStore } from '@/__tests__/utils';
 import { useEvaluationStore } from '@/stores/evaluation.store.ee';
 import userEvent from '@testing-library/user-event';
 
-const form: Partial<ReturnType<typeof useTestDefinitionForm>> = {
+const form: Partial<ReturnType<typeof useEvaluationForm>> = {
 	state: ref({
 		name: { value: '', isEditing: false, tempValue: '' },
 		description: { value: '', isEditing: false, tempValue: '' },
@@ -24,8 +24,8 @@ const form: Partial<ReturnType<typeof useTestDefinitionForm>> = {
 	saveChanges: vi.fn(),
 	createTest: vi.fn(),
 };
-vi.mock('@/components/Evaluations/composables/useTestDefinitionForm', () => ({
-	useTestDefinitionForm: () => form,
+vi.mock('@/components/Evaluations/composables/useEvaluationForm', () => ({
+	useEvaluationForm: () => form,
 }));
 
 const renderComponent = createComponentRenderer(EvaluationsView, {

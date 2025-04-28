@@ -1,6 +1,6 @@
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
-import { useTestDefinitionForm } from '../composables/useTestDefinitionForm';
+import { useEvaluationForm } from '../composables/useEvaluationForm';
 import { useEvaluationStore } from '@/stores/evaluation.store.ee';
 import { mockedStore } from '@/__tests__/utils';
 import type { TestDefinitionRecord } from '@/api/evaluation.ee';
@@ -43,7 +43,7 @@ afterEach(() => {
 
 describe('useTestDefinitionForm', () => {
 	it('should initialize with default props', () => {
-		const { state } = useTestDefinitionForm();
+		const { state } = useEvaluationForm();
 
 		expect(state.value.description.value).toBe('');
 		expect(state.value.name.value).toContain('My Test');
@@ -52,7 +52,7 @@ describe('useTestDefinitionForm', () => {
 	});
 
 	it('should load test data', async () => {
-		const { loadTestData, state } = useTestDefinitionForm();
+		const { loadTestData, state } = useEvaluationForm();
 		const fetchSpy = vi.spyOn(useEvaluationStore(), 'fetchAll');
 		const evaluationsStore = mockedStore(useEvaluationStore);
 
@@ -70,7 +70,7 @@ describe('useTestDefinitionForm', () => {
 	});
 
 	it('should gracefully handle loadTestData when no test definition found', async () => {
-		const { loadTestData, state } = useTestDefinitionForm();
+		const { loadTestData, state } = useEvaluationForm();
 		const fetchSpy = vi.spyOn(useEvaluationStore(), 'fetchAll');
 		const evaluationsStore = mockedStore(useEvaluationStore);
 
@@ -85,7 +85,7 @@ describe('useTestDefinitionForm', () => {
 	});
 
 	it('should handle errors while loading test data', async () => {
-		const { loadTestData } = useTestDefinitionForm();
+		const { loadTestData } = useEvaluationForm();
 		const fetchSpy = vi
 			.spyOn(useEvaluationStore(), 'fetchAll')
 			.mockRejectedValue(new Error('Fetch Failed'));
@@ -98,7 +98,7 @@ describe('useTestDefinitionForm', () => {
 	});
 
 	it('should save a new test', async () => {
-		const { createTest, state } = useTestDefinitionForm();
+		const { createTest, state } = useEvaluationForm();
 		const createSpy = vi.spyOn(useEvaluationStore(), 'create').mockResolvedValue(TEST_DEF_NEW);
 
 		state.value.name.value = TEST_DEF_NEW.name;
@@ -114,7 +114,7 @@ describe('useTestDefinitionForm', () => {
 	});
 
 	it('should handle errors when creating a new test', async () => {
-		const { createTest } = useTestDefinitionForm();
+		const { createTest } = useEvaluationForm();
 		const createSpy = vi
 			.spyOn(useEvaluationStore(), 'create')
 			.mockRejectedValue(new Error('Create Failed'));
@@ -124,7 +124,7 @@ describe('useTestDefinitionForm', () => {
 	});
 
 	it('should update an existing test', async () => {
-		const { updateTest, state } = useTestDefinitionForm();
+		const { updateTest, state } = useEvaluationForm();
 		const updatedBTest = {
 			...TEST_DEF_B,
 			updatedAt: '2022-01-01T00:00:00.000Z',
@@ -146,12 +146,12 @@ describe('useTestDefinitionForm', () => {
 	});
 
 	it('should throw an error if no testId is provided when updating a test', async () => {
-		const { updateTest } = useTestDefinitionForm();
+		const { updateTest } = useEvaluationForm();
 		await expect(updateTest('')).rejects.toThrow('Test ID is required for updating a test');
 	});
 
 	it('should handle errors when updating a test', async () => {
-		const { updateTest, state } = useTestDefinitionForm();
+		const { updateTest, state } = useEvaluationForm();
 		const updateSpy = vi
 			.spyOn(useEvaluationStore(), 'update')
 			.mockRejectedValue(new Error('Update Failed'));
@@ -164,7 +164,7 @@ describe('useTestDefinitionForm', () => {
 	});
 
 	it('should start editing a field', () => {
-		const { state, startEditing } = useTestDefinitionForm();
+		const { state, startEditing } = useEvaluationForm();
 
 		startEditing('name');
 		expect(state.value.name.isEditing).toBe(true);
@@ -176,7 +176,7 @@ describe('useTestDefinitionForm', () => {
 	});
 
 	it('should do nothing if startEditing is called while already editing', () => {
-		const { state, startEditing } = useTestDefinitionForm();
+		const { state, startEditing } = useEvaluationForm();
 		state.value.name.isEditing = true;
 		state.value.name.tempValue = 'Original Name';
 
@@ -187,7 +187,7 @@ describe('useTestDefinitionForm', () => {
 	});
 
 	it('should save changes to a field', () => {
-		const { state, startEditing, saveChanges } = useTestDefinitionForm();
+		const { state, startEditing, saveChanges } = useEvaluationForm();
 
 		// Name
 		startEditing('name');
@@ -205,7 +205,7 @@ describe('useTestDefinitionForm', () => {
 	});
 
 	it('should cancel editing a field', () => {
-		const { state, startEditing, cancelEditing } = useTestDefinitionForm();
+		const { state, startEditing, cancelEditing } = useEvaluationForm();
 
 		const originalName = state.value.name.value;
 		startEditing('name');
@@ -223,7 +223,7 @@ describe('useTestDefinitionForm', () => {
 	});
 
 	it('should handle keydown - Escape', () => {
-		const { state, startEditing, handleKeydown } = useTestDefinitionForm();
+		const { state, startEditing, handleKeydown } = useEvaluationForm();
 
 		startEditing('name');
 		handleKeydown(new KeyboardEvent('keydown', { key: 'Escape' }), 'name');
@@ -235,7 +235,7 @@ describe('useTestDefinitionForm', () => {
 	});
 
 	it('should handle keydown - Enter', () => {
-		const { state, startEditing, handleKeydown } = useTestDefinitionForm();
+		const { state, startEditing, handleKeydown } = useEvaluationForm();
 
 		startEditing('name');
 		state.value.name.tempValue = 'New Name';
@@ -251,7 +251,7 @@ describe('useTestDefinitionForm', () => {
 	});
 
 	it('should not save changes when shift+Enter is pressed', () => {
-		const { state, startEditing, handleKeydown } = useTestDefinitionForm();
+		const { state, startEditing, handleKeydown } = useEvaluationForm();
 
 		startEditing('name');
 		state.value.name.tempValue = 'New Name With Shift';
