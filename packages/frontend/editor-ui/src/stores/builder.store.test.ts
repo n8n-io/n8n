@@ -1,12 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
-import {
-	DEFAULT_CHAT_WIDTH,
-	ENABLED_VIEWS,
-	MAX_CHAT_WIDTH,
-	MIN_CHAT_WIDTH,
-	useBuilderStore,
-} from '@/stores/builder.store';
+import { ENABLED_VIEWS, useBuilderStore } from '@/stores/builder.store';
 import type { ChatRequest } from '@/types/assistant.types';
 import { usePostHog } from './posthog.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -19,6 +13,7 @@ import * as chatAPI from '@/api/ai';
 import * as telemetryModule from '@/composables/useTelemetry';
 import type { Telemetry } from '@/plugins/telemetry';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
+import { DEFAULT_CHAT_WIDTH, MAX_CHAT_WIDTH, MIN_CHAT_WIDTH } from './assistant.store';
 
 let settingsStore: ReturnType<typeof useSettingsStore>;
 let posthogStore: ReturnType<typeof usePostHog>;
