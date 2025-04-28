@@ -121,6 +121,7 @@ async function onSubmit() {
 	align-items: center;
 	width: 60px;
 	height: 100px;
+	cursor: auto;
 }
 
 .or_text {
