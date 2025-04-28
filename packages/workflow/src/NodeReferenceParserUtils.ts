@@ -1,4 +1,4 @@
-import { escapeRegExp, mapValues } from 'lodash';
+import { escapeRegExp, mapValues, isEqual } from 'lodash';
 
 import { OperationalError } from './errors';
 import type { INode, INodeParameters, NodeParameterValueType } from './Interfaces';
@@ -78,13 +78,13 @@ export function applyAccessPatterns(expression: string, previousName: string, ne
 type ExtractWorkflowExpressionData = {
 	nodeNameInExpression: string; // 'abc';
 	originalExpression: string; // "$('abc').first().def.ghi";
-	originalName: string; // def.ghi
 	replacementPrefix: string; //  "$('Start').first()";
 	replacementName: string; // "def_ghi";
 };
 
 const DOT_REFERENCEABLE_JS_VARIABLE = /\w[\w\d_\$]*/;
-const INVALID_JS_DOT_REFERENCE = /[^\.\w\d_\$]/;
+const INVALID_JS_DOT_PATH = /[^\.\w\d_\$]/;
+const INVALID_JS_DOT_NAME = /[^\w\d_\$]/;
 
 /**
  *  We want to try and extract these if possible, so that we turn
@@ -96,13 +96,12 @@ const ITEM_TO_DATA_ACCESSORS = [
 	/^first\(\)/,
 	/^last\(\)/,
 	/^all/,
+	// The order here is relevant because `item` would match occurrences of `itemMatching`
+	/^itemMatching\(\d+\)/, // We only support trivial itemMatching - this could in theory hold an entirely new expression
 	/^item/,
-	/^itemMatching(\d+)/, // We only support trivial itemMatching - this could in theory hold an entirely new expression
 ];
 // These we can convert to an argument
 const ITEM_ACCESSORS = ['params', 'isExecuted'];
-// These we'll just need to carry over into the workflow, pasting the whole node
-const NODE_ACCESSORS_STARTS = ['itemMatching'];
 
 // $('nodeName'). is equivalent to $ for previous node
 const DATA_ACCESSORS = ['json', 'binary'];
@@ -111,7 +110,7 @@ function jsifyNodeName(nodeName: string, allNodeNames: string[]) {
 	let jsLegal = nodeName
 		.replaceAll(' ', '_')
 		.split('')
-		.filter((x) => !INVALID_JS_DOT_REFERENCE.test(x))
+		.filter((x) => !INVALID_JS_DOT_NAME.test(x))
 		.join('');
 
 	if (nodeName === jsLegal) return jsLegal;
@@ -126,10 +125,17 @@ function jsifyNodeName(nodeName: string, allNodeNames: string[]) {
 	return jsLegal;
 }
 
+function mapDataAccessorName(name: string): string {
+	const [fnName, maybeDigits] = name.split('(');
+	if (fnName !== 'itemMatching') return fnName;
+
+	// use the digits without the )
+	return `${fnName}_${maybeDigits?.slice(0, -1) ?? 'invalid'}`;
+}
+
 // Grow the selection as long as we follow a simple path structure:
 // - $('myName').a.b.c => from first dot to full expression
 // - $('myName').a.b['c'] => from first dot to b
-// - $('myName').itemMatching(0) => node itself only
 //
 // Note that we start after the . after the nodeName reference
 export function parseExtractWorkflowExpressionData(
@@ -137,8 +143,13 @@ export function parseExtractWorkflowExpressionData(
 	nodeNameInExpression: string,
 	nodeNamePlainJs: string,
 	startNodeName: string,
-): null | ExtractWorkflowExpressionData {
-	const [exprStart, ...parts] = isolatedExpression.split('.');
+): ExtractWorkflowExpressionData | null {
+	const splitExpr = isolatedExpression.split('.');
+
+	const dotsInName = nodeNameInExpression.split('').filter((x) => x === '.').length;
+	const exprStart = splitExpr.slice(0, dotsInName + 1).join('.');
+	const parts = splitExpr.slice(dotsInName + 1);
+
 	if (parts.length === 0) {
 		// If a node is referenced by name without any accessor we return a proxy that stringifies as an empty object
 		// But it can still be validly passed to other functions
@@ -148,14 +159,15 @@ export function parseExtractWorkflowExpressionData(
 	}
 	if (ITEM_TO_DATA_ACCESSORS.some((x) => parts[0].match(x))) {
 		if (parts.length === 1) {
-			// this is a weird, but valid case
+			// this case is a literal use of the return of `$('nodeName').first()`
+			// Note that it's safe to rename to first, even if there is a variable of the same name
+			// since we resolve duplicate names later in the process
 			const originalName = parts[0];
 			return {
 				nodeNameInExpression,
 				originalExpression: `${exprStart}.${parts[0]}`, // $('abc').first()
-				originalName, // first()
 				replacementPrefix: `$('${startNodeName}').${parts[0]}`, //  $('Start').first()
-				replacementName: `${nodeNamePlainJs}_${originalName.split('(')[0]}`, // nodeName_first
+				replacementName: `${nodeNamePlainJs}_${mapDataAccessorName(originalName)}`, // nodeName_first, nodeName_itemMatching_20
 			};
 		} else {
 			if (DATA_ACCESSORS.some((x) => parts[1] === x)) {
@@ -163,21 +175,19 @@ export function parseExtractWorkflowExpressionData(
 				for (; partsIdx < parts.length; ++partsIdx) {
 					if (!DOT_REFERENCEABLE_JS_VARIABLE.test(parts[partsIdx])) break;
 				}
+				const replacementPostfix = parts[0] === 'item' ? '' : `_${mapDataAccessorName(parts[0])}`;
 				return {
 					nodeNameInExpression,
 					originalExpression: `${exprStart}.${parts.slice(0, partsIdx + 1).join('.')}`, // $('abc').item.json.valid.until  and not ['x'] after
-					originalName: parts.slice(2, partsIdx).join('.'), // valid.until
 					replacementPrefix: `$('${startNodeName}').${parts[0]}.${parts[1]}`, // $('Start').item.json
-					replacementName: parts.slice(2, partsIdx).join('_'), // valid_until
+					replacementName: parts.slice(2, partsIdx).join('_') + replacementPostfix, // valid_until, valid_until_first
 				};
 			} else {
 				// this case covers any normal ObjectExtensions functions called on the ITEM_TO_DATA_ACCESSORS
 				// e.g. $('nodeName').first().toJsonObject().randomJSFunction()
-				const originalName = parts[0];
 				return {
 					nodeNameInExpression,
 					originalExpression: `${exprStart}.${parts[0]}`, // $('abc').first()
-					originalName, // first()
 					replacementPrefix: `$('${startNodeName}').${parts[0]}`, //  $('Start').first()
 					replacementName: `${nodeNamePlainJs}_${parts[0].split('(')[0]}`, // nodeName_first
 				};
@@ -190,7 +200,6 @@ export function parseExtractWorkflowExpressionData(
 		return {
 			nodeNameInExpression,
 			originalExpression: `${exprStart}.${parts[0]}`, // $('abc').isExecuted
-			originalName: parts[0],
 			replacementPrefix: `$('${startNodeName}').${parts[0]}`, //  $('Start').isExecuted
 			replacementName: `${nodeNamePlainJs}_${parts[0]}`, // nodeName_isExecuted
 		};
@@ -223,9 +232,10 @@ export function parseMatch(
 		x.exec(expression.slice(endIndex)),
 	).filter((x) => x !== null);
 
+	// Note that by choosing match 0 we prefer `itemMatching` over `item` for occurrences of itemMatching
 	const after_accessor_idx = endIndex + (firstPartException[0]?.[0].length ?? -1) + 1;
 	const after_accessor = expression.slice(after_accessor_idx);
-	const firstInvalidCharMatch = INVALID_JS_DOT_REFERENCE.exec(after_accessor);
+	const firstInvalidCharMatch = INVALID_JS_DOT_PATH.exec(after_accessor);
 	// we should always find the }} closing the JS expressions, if nothing else
 	if (!firstInvalidCharMatch) return null;
 
@@ -311,17 +321,16 @@ function applyParameterMapping(
 }
 
 function resolveDuplicates(data: ExtractWorkflowExpressionData[], allNodeNames: string[]) {
-	// Map from variableName -> its expression
+	// Map from resulting variableName to the expressionData
 	const triggerArgumentMap = new Map<string, ExtractWorkflowExpressionData>();
 	const originalExpressionMap = new Map<string, string>();
 	for (const mapping of data) {
-		const { nodeNameInExpression, originalExpression, replacementPrefix, originalName } = mapping;
+		const { nodeNameInExpression, originalExpression, replacementPrefix } = mapping;
 		let { replacementName } = mapping;
 		const hasKeyAndCollides = (key: string) => {
 			const value = triggerArgumentMap.get(key);
 			if (!value) return false;
-			// We only care about creating unique variables for the new sub-workflow here
-			return value.replacementName === replacementName;
+			return !isEqual(value, mapping);
 		};
 
 		// We need both parts in the key as we may need to pass e.g. `.first()` and `.item` separately
@@ -333,11 +342,10 @@ function resolveDuplicates(data: ExtractWorkflowExpressionData[], allNodeNames: 
 		if (hasKeyAndCollides(key())) {
 			replacementName = `${jsifyNodeName(nodeNameInExpression, allNodeNames)}_${replacementName}`;
 		}
-		// This covers theoretical cases, where a node might be named Start or other edge cases
+		// This covers all other theoretical cases, like where `${node}_${variable}` might clash with another variable name
 		while (hasKeyAndCollides(key())) replacementName += '_1';
 
 		triggerArgumentMap.set(key(), {
-			originalName,
 			originalExpression,
 			nodeNameInExpression,
 			replacementName,
@@ -398,6 +406,9 @@ function applyExtractMappingToNode(node: INode, parameterExtractMapping: Paramet
  * @returns an object with two keys:
  * 		- nodes: Transformed copies of nodes in `subGraph`, ready for use in a sub-workflow
  *    - variables: A map from variable name in the sub-workflow to the replaced expression
+ *
+ * @throws if the startNodeName already exists in `nodeNames`
+ * @throws if `nodeNames` does not include all node names in `subGraph`
  */
 export function extractReferencesInNodeExpressions(
 	subGraph: INode[],
@@ -408,6 +419,14 @@ export function extractReferencesInNodeExpressions(
 		throw new OperationalError(
 			`StartNodeName ${startNodeName} already exists in nodeNames: ${JSON.stringify(nodeNames)}`,
 		);
+
+	const subGraphNames = subGraph.map((x) => x.name);
+
+	if (subGraphNames.some((x) => !nodeNames.includes(x))) {
+		throw new OperationalError(
+			`extractReferencesInNodeExpressions called with node in subGraph ${JSON.stringify(subGraphNames)} whose name is not in provided 'nodeNames' list ${JSON.stringify(nodeNames)}.`,
+		);
+	}
 
 	// Compile all candidate regexp patterns
 	//
@@ -436,8 +455,7 @@ export function extractReferencesInNodeExpressions(
 		allData.push(...allMappings);
 	}
 
-	// Todo(perf): filter/rebuild oldData for only the relevant nodes
-	const subGraphNodeNames = new Set(subGraph.map((x) => x.name));
+	const subGraphNodeNames = new Set(subGraphNames);
 	const dataFromOutsideSubgraph = allData.filter(
 		(x) => !subGraphNodeNames.has(x.nodeNameInExpression),
 	);
@@ -455,6 +473,7 @@ export function extractReferencesInNodeExpressions(
 		return triggerArgumentMap.get(key);
 	};
 
+	// Todo: Describe this
 	const walkRecMap = (mapping: ParameterExtractMapping): ParameterExtractMapping => {
 		if (!mapping) return;
 		if (Array.isArray(mapping)) {
@@ -465,7 +484,7 @@ export function extractReferencesInNodeExpressions(
 				.filter((x) => x !== undefined)
 				.sort((a, b) => b.originalExpression.length - a.originalExpression.length);
 		}
-		return Object.fromEntries(Object.entries(mapping).map(([k, v]) => [k, walkRecMap(v)]));
+		return mapValues(mapping, (v) => walkRecMap(v));
 	};
 
 	for (const [key, value] of recMapByNode.entries()) {

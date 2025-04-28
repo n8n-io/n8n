@@ -157,7 +157,7 @@ describe('NodeReferenceParserUtils', () => {
 			expect([...result.variables.entries()]).toEqual(
 				expect.arrayContaining([
 					['myField', '$("A").item.json.myField'],
-					['myField_anotherField', '$("A").first().json.myField.anotherField'],
+					['myField_anotherField_first', '$("A").first().json.myField.anotherField'],
 				]),
 			);
 			expect(result.nodes).toEqual(
@@ -169,7 +169,7 @@ describe('NodeReferenceParserUtils', () => {
 						},
 						{
 							name: 'C',
-							parameters: { p0: "={{ $('Start').first().json.myField_anotherField }}" },
+							parameters: { p0: "={{ $('Start').first().json.myField_anotherField_first }}" },
 						},
 					].map(expect.objectContaining),
 				),
@@ -218,7 +218,7 @@ describe('NodeReferenceParserUtils', () => {
 				makeNode('C', ['$("D").item.json.Node_Name_With_Gap_myField']),
 				makeNode('E', ['$("Node_Name_With_Gap").item.json.myField']),
 			];
-			nodeNames = ['A', 'B', 'C', 'D', 'E', 'Node_Name_With_Gap'];
+			nodeNames = ['A', 'B', 'C', 'D', 'E', 'F', 'Node_Name_With_Gap'];
 			const result = extractReferencesInNodeExpressions(nodes, nodeNames, startNodeName);
 			expect([...result.variables.entries()]).toEqual(
 				expect.arrayContaining([
@@ -234,17 +234,18 @@ describe('NodeReferenceParserUtils', () => {
 			expect(result.nodes).toEqual(
 				expect.arrayContaining(
 					[
+						{ name: 'F', parameters: { p0: "={{ $('Start').item.json.myField }}" } },
 						{
 							name: 'B',
-							parameters: { p0: "={{ $('Start').item.json.myField }}" },
+							parameters: { p0: "={{ $('Start').item.json.Node_Name_With_Gap_myField }}" },
 						},
 						{
 							name: 'C',
-							parameters: { p0: "={{ $('Start').item.json.D_myField }}" },
+							parameters: { p0: "={{ $('Start').item.json.D_Node_Name_With_Gap_myField }}" },
 						},
 						{
 							name: 'E',
-							parameters: { p0: "={{ $('Start').item.json.F_myField }}" },
+							parameters: { p0: "={{ $('Start').item.json.Node_Name_With_Gap_myField_1 }}" },
 						},
 					].map(expect.objectContaining),
 				),
@@ -268,7 +269,7 @@ describe('NodeReferenceParserUtils', () => {
 			nodeNames = ['DebugHelper', 'Code'];
 			const result = extractReferencesInNodeExpressions(nodes, nodeNames, startNodeName);
 			expect([...result.variables.entries()]).toEqual(
-				expect.arrayContaining([['uid', "$('DebugHelper').first().json.uid"]]),
+				expect.arrayContaining([['uid_first', "$('DebugHelper').first().json.uid"]]),
 			);
 			expect(result.nodes).toEqual(
 				expect.arrayContaining(
@@ -277,7 +278,7 @@ describe('NodeReferenceParserUtils', () => {
 							name: 'Code',
 							parameters: {
 								jsCode:
-									"for (const item of $input.all()) {\n  item.json.myNewField = $('Start').first().json.uid;\n}\n\nreturn $input.all();",
+									"for (const item of $input.all()) {\n  item.json.myNewField = $('Start').first().json.uid_first;\n}\n\nreturn $input.all();",
 							},
 						},
 					].map(expect.objectContaining),
@@ -314,6 +315,7 @@ describe('NodeReferenceParserUtils', () => {
 			nodeNames = ['A', 'Start'];
 			expect(() => extractReferencesInNodeExpressions(nodes, nodeNames, startNodeName)).toThrow();
 		});
+
 		it('should support custom Start node name', () => {
 			nodes = [makeNode('Start', ['$("A").item.json.myField'])];
 			nodeNames = ['A', 'Start'];
@@ -328,6 +330,134 @@ describe('NodeReferenceParserUtils', () => {
 						{
 							name: 'Start',
 							parameters: { p0: "={{ $('A different start name').item.json.myField }}" },
+						},
+					].map(expect.objectContaining),
+				),
+			);
+		});
+		it('should throw if called with node in subgraph whose name is not in nodeNames list', () => {
+			nodes = [makeNode('B', ['$("A").item.json.myField'])];
+			nodeNames = ['A'];
+			expect(() => extractReferencesInNodeExpressions(nodes, nodeNames, startNodeName)).toThrow();
+		});
+		// it('handles multiple expressions referencing different nodes in the same string')
+		// it('handles multiple expressions referencing different nested bits of the same field')
+		// it('handles first(), last(), all() and items at the same time')
+		it('handles supported itemMatching examples', () => {
+			nodes = [
+				makeNode('B', [
+					'$("A").itemMatching(0).json.myField',
+					'$("A").itemMatching(1).json.myField',
+					'$("C").itemMatching(1).json.myField',
+					'$("A").itemMatching(20).json.myField',
+				]),
+			];
+			nodeNames = ['A', 'B', 'C'];
+			const result = extractReferencesInNodeExpressions(nodes, nodeNames, startNodeName);
+			expect([...result.variables.entries()]).toEqual(
+				expect.arrayContaining([
+					['myField_itemMatching_0', '$("A").itemMatching(0).json.myField'],
+					['myField_itemMatching_1', '$("A").itemMatching(1).json.myField'],
+					['C_myField_itemMatching_1', '$("C").itemMatching(1).json.myField'],
+					['myField_itemMatching_20', '$("A").itemMatching(20).json.myField'],
+				]),
+			);
+			expect(result.nodes).toEqual(
+				expect.arrayContaining(
+					[
+						{
+							name: 'B',
+							parameters: {
+								p0: "={{ $('Start').itemMatching(0).json.myField_itemMatching_0 }}",
+								p1: "={{ $('Start').itemMatching(1).json.myField_itemMatching_1 }}",
+								p2: "={{ $('Start').itemMatching(1).json.C_myField_itemMatching_1 }}",
+								p3: "={{ $('Start').itemMatching(20).json.myField_itemMatching_20 }}",
+							},
+						},
+					].map(expect.objectContaining),
+				),
+			);
+		});
+		it('does not throw for complex itemMatching example', () => {
+			nodes = [
+				makeNode('B', [
+					'$("A").itemMatching(Math.PI).json.myField',
+					'$("A").itemMatching(eval("const fib = (n) => n < 2 ? 1 : (fib(n - 1) + fib(n-2)); fib(15)")).json.anotherField',
+					'$("A").itemMatching($("A").itemMatch(1).json.myField).json.myField',
+				]),
+			];
+			nodeNames = ['A', 'B'];
+			expect(() =>
+				extractReferencesInNodeExpressions(nodes, nodeNames, startNodeName),
+			).not.toThrow();
+		});
+		it('should handle multiple expressions', () => {
+			nodes = [
+				makeNode('B', ['$("A").item.json.myField', '$("C").item.json.anotherField']),
+				makeNode('D', ['$("A").item.json.myField', '$("B").item.json.someField']),
+			];
+			nodeNames = ['A', 'B', 'C', 'D'];
+			const result = extractReferencesInNodeExpressions(nodes, nodeNames, startNodeName);
+			expect([...result.variables.entries()]).toEqual(
+				expect.arrayContaining([
+					['myField', '$("A").item.json.myField'],
+					['anotherField', '$("C").item.json.anotherField'],
+				]),
+			);
+			expect(result.nodes).toEqual(
+				expect.arrayContaining(
+					[
+						{
+							name: 'B',
+							parameters: {
+								p0: "={{ $('Start').item.json.myField }}",
+								p1: "={{ $('Start').item.json.anotherField }}",
+							},
+						},
+						{
+							name: 'D',
+							parameters: {
+								p0: "={{ $('Start').item.json.myField }}",
+								p1: '={{ $("B").item.json.someField }}',
+							},
+						},
+					].map(expect.objectContaining),
+				),
+			);
+		});
+		it('should support handle spaces and special characters in nodeNames', () => {
+			nodes = [
+				makeNode('a_=-9-0!@#!%^$%&*(', ['$("A").item.json.myField']),
+				makeNode('A node with spaces', [
+					'$("A \\" |[w.e,i,r$d]| `\' Ñode  \\$\\( Name \\)").item.json.myField',
+				]),
+			];
+			nodeNames = [
+				'A',
+				'A node with spaces',
+				'A \\" |[w.e,i,r$d]| `\' Ñode  \\$\\( Name \\)',
+				'a_=-9-0!@#!%^$%&*(',
+			];
+			const result = extractReferencesInNodeExpressions(nodes, nodeNames, startNodeName);
+			expect([...result.variables.entries()]).toEqual(
+				expect.arrayContaining([
+					['myField', '$("A").item.json.myField'],
+					[
+						'A__weir$d__ode__$_Name__myField',
+						'$("A \\" |[w.e,i,r$d]| `\' Ñode  \\$\\( Name \\)").item.json.myField',
+					],
+				]),
+			);
+			expect(result.nodes).toEqual(
+				expect.arrayContaining(
+					[
+						{
+							name: 'a_=-9-0!@#!%^$%&*(',
+							parameters: { p0: "={{ $('Start').item.json.myField }}" },
+						},
+						{
+							name: 'A node with spaces',
+							parameters: { p0: "={{ $('Start').item.json.A__weir$d__ode__$_Name__myField }}" },
 						},
 					].map(expect.objectContaining),
 				),
