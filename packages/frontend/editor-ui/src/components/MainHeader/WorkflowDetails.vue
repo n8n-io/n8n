@@ -744,7 +744,13 @@ const onBreadcrumbsItemSelected = (item: PathItem) => {
 			</template>
 
 			<span class="archived">
-				<N8nBadge v-if="isArchived" class="ml-3xs" theme="tertiary" bold>
+				<N8nBadge
+					v-if="isArchived"
+					class="ml-3xs"
+					theme="tertiary"
+					bold
+					data-test-id="workflow-archived-tag"
+				>
 					{{ locale.baseText('workflows.item.archived') }}
 				</N8nBadge>
 			</span>

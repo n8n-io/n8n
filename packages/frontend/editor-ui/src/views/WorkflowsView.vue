@@ -384,26 +384,11 @@ sourceControlStore.$onAction(({ name, after }) => {
 	after(async () => await initialize());
 });
 
-const onWorkflowDeleted = async () => {
+const refreshWorkflows = async () => {
 	await Promise.all([
 		fetchWorkflows(),
 		foldersStore.fetchTotalWorkflowsAndFoldersCount(route.params.projectId as string | undefined),
 	]);
-};
-
-const onWorkflowArchived = async (workflowId: string) => {
-	const archived = workflowsAndFolders.value.find((w) => w.id === workflowId);
-	if (archived && archived.resource !== 'folder') {
-		archived.isArchived = true;
-		archived.active = false;
-	}
-};
-
-const onWorkflowUnarchived = async (workflowId: string) => {
-	const archived = workflowsAndFolders.value.find((w) => w.id === workflowId);
-	if (archived && archived.resource !== 'folder') {
-		archived.isArchived = false;
-	}
 };
 
 const onFolderDeleted = async (payload: {
@@ -1567,9 +1552,9 @@ const onNameSubmit = async ({
 					:show-ownership-badge="showCardsBadge"
 					data-target="workflow"
 					@click:tag="onClickTag"
-					@workflow:deleted="onWorkflowDeleted"
-					@workflow:archived="onWorkflowArchived"
-					@workflow:unarchived="onWorkflowUnarchived"
+					@workflow:deleted="refreshWorkflows"
+					@workflow:archived="refreshWorkflows"
+					@workflow:unarchived="refreshWorkflows"
 					@workflow:moved="fetchWorkflows"
 					@workflow:duplicated="fetchWorkflows"
 					@workflow:active-toggle="onWorkflowActiveToggle"
@@ -1666,6 +1651,7 @@ const onNameSubmit = async ({
 					ref="inputRef"
 					:label="i18n.baseText('workflows.filters.archived')"
 					:model-value="filters.showArchived"
+					data-test-id="show-archived-checkbox"
 					@update:model-value="setKeyValue('showArchived', $event)"
 				/>
 			</div>

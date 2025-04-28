@@ -84,6 +84,8 @@ export class WorkflowPage extends BasePage {
 		firstStepButton: () => cy.getByTestId('canvas-add-button'),
 		isWorkflowSaved: () => this.getters.saveButton().should('match', 'span'), // In Element UI, disabled button turn into spans 🤷‍♂️
 		isWorkflowActivated: () => this.getters.activatorSwitch().should('have.class', 'is-checked'),
+		isWorkflowDeactivated: () =>
+			this.getters.activatorSwitch().should('not.have.class', 'is-checked'),
 		expressionModalInput: () => cy.getByTestId('expression-modal-input').find('[role=textbox]'),
 		expressionModalOutput: () => cy.getByTestId('expression-modal-output'),
 
@@ -117,6 +119,8 @@ export class WorkflowPage extends BasePage {
 		workflowMenuItemImportFromFile: () => cy.getByTestId('workflow-menu-item-import-from-file'),
 		workflowMenuItemSettings: () => cy.getByTestId('workflow-menu-item-settings'),
 		workflowMenuItemDelete: () => cy.getByTestId('workflow-menu-item-delete'),
+		workflowMenuItemArchive: () => cy.getByTestId('workflow-menu-item-archive'),
+		workflowMenuItemUnarchive: () => cy.getByTestId('workflow-menu-item-unarchive'),
 		workflowMenuItemGitPush: () => cy.getByTestId('workflow-menu-item-push'),
 		// Workflow settings dialog elements
 		workflowSettingsModal: () => cy.getByTestId('workflow-settings-dialog'),
@@ -136,6 +140,7 @@ export class WorkflowPage extends BasePage {
 		workflowSettingsSaveButton: () =>
 			cy.getByTestId('workflow-settings-save-button').find('button'),
 
+		archivedTag: () => cy.getByTestId('workflow-archived-tag'),
 		shareButton: () => cy.getByTestId('workflow-share-button'),
 
 		duplicateWorkflowModal: () => cy.getByTestId('duplicate-modal'),

@@ -59,8 +59,8 @@ const emit = defineEmits<{
 	'expand:tags': [];
 	'click:tag': [tagId: string, e: PointerEvent];
 	'workflow:deleted': [];
-	'workflow:archived': [workflowId: string];
-	'workflow:unarchived': [workflowId: string];
+	'workflow:archived': [];
+	'workflow:unarchived': [];
 	'workflow:active-toggle': [value: { id: string; active: boolean }];
 	'action:move-to-folder': [value: { id: string; name: string; parentFolderId?: string }];
 }>();
@@ -341,7 +341,7 @@ async function archiveWorkflow() {
 		title: locale.baseText('mainSidebar.showMessage.handleArchive.title'),
 		type: 'success',
 	});
-	emit('workflow:archived', props.data.id);
+	emit('workflow:archived');
 }
 
 async function unarchiveWorkflow() {
@@ -356,7 +356,7 @@ async function unarchiveWorkflow() {
 		title: locale.baseText('mainSidebar.showMessage.handleUnarchive.title'),
 		type: 'success',
 	});
-	emit('workflow:unarchived', props.data.id);
+	emit('workflow:unarchived');
 }
 
 const fetchHiddenBreadCrumbsItems = async () => {
