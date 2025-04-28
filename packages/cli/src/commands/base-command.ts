@@ -33,7 +33,6 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { ModulePreInit } from '@/modules/modules.config';
 import { ModulesConfig } from '@/modules/modules.config';
 import { NodeTypes } from '@/node-types';
-import { NodeTypesMinimal } from '@/node-types-minimal';
 import { PostHogClient } from '@/posthog';
 import { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
 import { ShutdownService } from '@/shutdown/shutdown.service';
@@ -118,11 +117,7 @@ export abstract class BaseCommand extends Command {
 		process.once('SIGINT', this.onTerminationSignal('SIGINT'));
 
 		this.nodeTypes = Container.get(NodeTypes);
-		const loadNodesAndCredentials = Container.get(LoadNodesAndCredentials);
-		await loadNodesAndCredentials.init();
-
-		// set up a minimal version of NodeTypes for migration `PurgeInvalidWorkflowConnections`
-		Container.get(NodeTypesMinimal).setLoadNodesAndCredentials(loadNodesAndCredentials);
+		await Container.get(LoadNodesAndCredentials).init();
 
 		await Db.init().catch(
 			async (error: Error) => await this.exitWithCrash('There was an error initializing DB', error),
