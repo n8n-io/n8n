@@ -1,6 +1,7 @@
 import { setActivePinia, createPinia } from 'pinia';
 import { useParameterOverridesStore } from './parameterOverrides.store';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { nextTick } from 'vue';
 
 // Mock localStorage
 const localStorageMock = {
@@ -195,8 +196,12 @@ describe('parameterOverrides.store', () => {
 								child: 'original2',
 							},
 						},
+						type: 'n8n-nodes-base.node1',
+						typeVersion: 1,
+						position: [0, 0] as [number, number],
 					},
 				],
+				connections: {},
 			};
 
 			store.substituteParameters('workflow-1', 'id1', workflowData);
@@ -226,8 +231,12 @@ describe('parameterOverrides.store', () => {
 						parameters: {
 							param1: 'original1',
 						},
+						type: 'n8n-nodes-base.node1',
+						typeVersion: 1,
+						position: [0, 0] as [number, number],
 					},
 				],
+				connections: {},
 			};
 
 			// Call the substituteParameters function
@@ -249,7 +258,7 @@ describe('parameterOverrides.store', () => {
 			store.addParameterOverride('workflow-1', 'node-1', 'param1', 'value1');
 
 			// Wait for the next tick to allow the watch to execute
-			await new Promise((resolve) => setTimeout(resolve, 0));
+			await nextTick();
 
 			expect(localStorageMock.setItem).toHaveBeenCalledWith(
 				'n8n-parameter-overrides',
@@ -272,7 +281,7 @@ describe('parameterOverrides.store', () => {
 
 			store.addParameterOverride('workflow-1', 'node-1', 'param1', 'value1');
 
-			await new Promise((resolve) => setTimeout(resolve, 0));
+			await nextTick();
 
 			expect(store.parameterOverrides['workflow-1']['node-1'].param1).toBe('value1');
 		});

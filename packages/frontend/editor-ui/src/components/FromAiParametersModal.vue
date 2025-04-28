@@ -87,7 +87,7 @@ const parameters = computed(() => {
 	traverseNodeParametersWithParamNames(params, collectedArgs);
 	const inputOverrides = runData.value?.inputOverride?.[NodeConnectionTypes.AiTool]?.[0]?.[0].json;
 
-	collectedArgs.forEach((value: FromAIArgument, paramName) => {
+	collectedArgs.forEach((value: FromAIArgument, paramName: string) => {
 		const type = value.type ?? 'string';
 		const initialValue = inputOverrides?.[value.key]
 			? inputOverrides[value.key]

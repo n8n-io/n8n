@@ -127,7 +127,6 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 			const nodeType = getNodeType.value(nodeTypeName);
 			return !!(
 				nodeType &&
-				nodeType.group.includes('transform') &&
 				nodeType.outputs.includes(NodeConnectionTypes.AiTool) &&
 				nodeType.usableAsTool
 			);
