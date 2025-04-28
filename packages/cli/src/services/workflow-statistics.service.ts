@@ -16,7 +16,7 @@ import { TypedEmitter } from '@/typed-emitter';
 
 import { OwnershipService } from './ownership.service';
 
-const isStatusBillable: Record<ExecutionStatus, boolean> = {
+const isStatusBillable = {
 	success: true,
 	crashed: true,
 	error: true,
@@ -26,9 +26,9 @@ const isStatusBillable: Record<ExecutionStatus, boolean> = {
 	running: false,
 	unknown: false,
 	waiting: false,
-};
+} satisfies Record<ExecutionStatus, boolean>;
 
-const isModeBillable: Record<WorkflowExecuteMode, boolean> = {
+const isModeBillable = {
 	cli: true,
 	error: true,
 	retry: true,
@@ -43,7 +43,7 @@ const isModeBillable: Record<WorkflowExecuteMode, boolean> = {
 	internal: false,
 
 	manual: false,
-};
+} satisfies Record<WorkflowExecuteMode, boolean>;
 
 type WorkflowStatisticsEvents = {
 	nodeFetchedData: { workflowId: string; node: INode };
@@ -87,12 +87,12 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 
 	async workflowExecutionCompleted(workflowData: IWorkflowBase, runData: IRun): Promise<void> {
 		// Determine the name of the statistic
-		const finished = runData.finished ? runData.finished : false;
+		const isSuccess = runData.status === 'success';
 		const manual = runData.mode === 'manual';
 		let name: StatisticsNames;
-		const isBillable = isModeBillable[runData.mode] && isStatusBillable[runData.status];
+		const isRootExecution = isModeBillable[runData.mode] && isStatusBillable[runData.status];
 
-		if (finished) {
+		if (isSuccess) {
 			if (manual) name = StatisticsNames.manualSuccess;
 			else name = StatisticsNames.productionSuccess;
 		} else {
@@ -108,7 +108,7 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 			const upsertResult = await this.repository.upsertWorkflowStatistics(
 				name,
 				workflowId,
-				isBillable,
+				isRootExecution,
 			);
 
 			if (name === StatisticsNames.productionSuccess && upsertResult === 'insert') {

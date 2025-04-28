@@ -17,7 +17,7 @@ export class WorkflowStatistics {
 	count: number;
 
 	@Column()
-	billableCount: number;
+	rootCount: number;
 
 	@Column(datetimeColumnType)
 	latestEvent: Date;

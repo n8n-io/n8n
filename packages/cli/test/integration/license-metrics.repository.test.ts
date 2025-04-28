@@ -71,7 +71,7 @@ describe('LicenseMetricsRepository', () => {
 				totalWorkflows: 5,
 				activeWorkflows: 3,
 				productionExecutions: 2,
-				billableProductionExecutions: 2,
+				productionRootExecutions: 2,
 				manualExecutions: 2,
 			});
 		});
@@ -88,7 +88,7 @@ describe('LicenseMetricsRepository', () => {
 				totalWorkflows: 3,
 				activeWorkflows: 3,
 				productionExecutions: 0, // not NaN
-				billableProductionExecutions: 0, // not NaN
+				productionRootExecutions: 0, // not NaN
 				manualExecutions: 0, // not NaN
 			});
 		});

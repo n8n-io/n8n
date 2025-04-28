@@ -1,9 +1,9 @@
 import type { ReversibleMigration, MigrationContext } from '@/databases/types';
 
-const columnName = 'billableCount';
+const columnName = 'rootCount';
 const tableName = 'workflow_statistics';
 
-export class AddWorkflowStatisticsBillableCount1745587087521 implements ReversibleMigration {
+export class AddWorkflowStatisticsRootCount1745587087521 implements ReversibleMigration {
 	async up({ escape, runQuery }: MigrationContext) {
 		const escapedTableName = escape.tableName(tableName);
 		const escapedColumnName = escape.columnName(columnName);
