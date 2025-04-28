@@ -1,44 +1,56 @@
 <script lang="ts" setup>
-import { computed, onMounted, watch, ref, onBeforeUnmount } from 'vue';
-import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
+import Draggable from '@/components/Draggable.vue';
+import { FOLDER_LIST_ITEM_ACTIONS } from '@/components/Folders/constants';
 import type {
-	Resource,
 	BaseFilters,
 	FolderResource,
+	Resource,
 	WorkflowResource,
 } from '@/components/layouts/ResourcesListLayout.vue';
+import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
+import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
 import WorkflowCard from '@/components/WorkflowCard.vue';
 import WorkflowTagsDropdown from '@/components/WorkflowTagsDropdown.vue';
-import Draggable from '@/components/Draggable.vue';
+import { useDebounce } from '@/composables/useDebounce';
+import { useDocumentTitle } from '@/composables/useDocumentTitle';
+import type { DragTarget, DropTarget } from '@/composables/useFolders';
+import { useFolders } from '@/composables/useFolders';
+import { useI18n } from '@/composables/useI18n';
+import { useMessage } from '@/composables/useMessage';
+import { useOverview } from '@/composables/useOverview';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { useToast } from '@/composables/useToast';
 import {
+	COMMUNITY_PLUS_ENROLLMENT_MODAL,
+	DEFAULT_WORKFLOW_PAGE_SIZE,
 	EASY_AI_WORKFLOW_EXPERIMENT,
 	EnterpriseEditionFeature,
-	VIEWS,
-	DEFAULT_WORKFLOW_PAGE_SIZE,
 	MODAL_CONFIRM,
-	COMMUNITY_PLUS_ENROLLMENT_MODAL,
+	VIEWS,
 } from '@/constants';
+import InsightsSummary from '@/features/insights/components/InsightsSummary.vue';
+import { useInsightsStore } from '@/features/insights/insights.store';
 import type {
+	FolderListItem,
+	FolderPathItem,
 	IUser,
 	UserAction,
-	WorkflowListResource,
 	WorkflowListItem,
-	FolderPathItem,
-	FolderListItem,
+	WorkflowListResource,
 } from '@/Interface';
-import { useUIStore } from '@/stores/ui.store';
+import { getResourcePermissions } from '@/permissions';
+import { useFoldersStore } from '@/stores/folders.store';
+import { usePostHog } from '@/stores/posthog.store';
+import { useProjectsStore } from '@/stores/projects.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useUsersStore } from '@/stores/users.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useTagsStore } from '@/stores/tags.store';
-import { useProjectsStore } from '@/stores/projects.store';
-import { getResourcePermissions } from '@/permissions';
-import { usePostHog } from '@/stores/posthog.store';
-import { useDocumentTitle } from '@/composables/useDocumentTitle';
-import { useI18n } from '@/composables/useI18n';
-import { type LocationQueryRaw, useRoute, useRouter } from 'vue-router';
-import { useTelemetry } from '@/composables/useTelemetry';
+import { useUIStore } from '@/stores/ui.store';
+import { useUsageStore } from '@/stores/usage.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { type ProjectSharingData, ProjectTypes } from '@/types/projects.types';
+import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
 import {
 	N8nCard,
 	N8nHeading,
@@ -48,24 +60,12 @@ import {
 	N8nSelect,
 	N8nText,
 } from '@n8n/design-system';
-import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
-import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
-import { useDebounce } from '@/composables/useDebounce';
-import { createEventBus } from '@n8n/utils/event-bus';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
-import { type ProjectSharingData, ProjectTypes } from '@/types/projects.types';
-import { FOLDER_LIST_ITEM_ACTIONS } from '@/components/Folders/constants';
+import { createEventBus } from '@n8n/utils/event-bus';
 import { debounce } from 'lodash-es';
-import { useMessage } from '@/composables/useMessage';
-import { useToast } from '@/composables/useToast';
-import { useFoldersStore } from '@/stores/folders.store';
-import type { DragTarget, DropTarget } from '@/composables/useFolders';
-import { useFolders } from '@/composables/useFolders';
-import { useUsageStore } from '@/stores/usage.store';
-import { useInsightsStore } from '@/features/insights/insights.store';
-import InsightsSummary from '@/features/insights/components/InsightsSummary.vue';
-import { useOverview } from '@/composables/useOverview';
 import { PROJECT_ROOT } from 'n8n-workflow';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { type LocationQueryRaw, useRoute, useRouter } from 'vue-router';
 
 const SEARCH_DEBOUNCE_TIME = 300;
 const FILTERS_DEBOUNCE_TIME = 100;
@@ -1337,8 +1337,9 @@ const onCreateWorkflowClick = () => {
 			<ProjectHeader @create-folder="createFolderInCurrent">
 				<InsightsSummary
 					v-if="overview.isOverviewSubPage && insightsStore.isSummaryEnabled"
-					:loading="insightsStore.summary.isLoading"
-					:summary="insightsStore.summary.state"
+					:loading="insightsStore.weeklySummary.isLoading"
+					:summary="insightsStore.weeklySummary.state"
+					time-range="week"
 				/>
 			</ProjectHeader>
 		</template>
