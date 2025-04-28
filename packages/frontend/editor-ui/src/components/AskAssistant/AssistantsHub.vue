@@ -42,16 +42,25 @@ function onClose() {
 	assistantStore.closeChat();
 }
 
-const unsubscribe = assistantStore.$onAction(({ name }) => {
+const unsubscribeAssistantStore = assistantStore.$onAction(({ name }) => {
 	// When assistant is opened from error or credentials help
 	// switch from build mode to chat mode
-	if (['initErrorHelper', 'initCredHelp'].includes(name)) {
+	if (['initErrorHelper', 'initCredHelp', 'openChat'].includes(name)) {
 		isBuildMode.value = false;
 	}
 });
 
+const unsubscribeBuilderStore = builderStore.$onAction(({ name }) => {
+	// When assistant is opened from error or credentials help
+	// switch from build mode to chat mode
+	if (name === 'initBuilderChat') {
+		isBuildMode.value = true;
+	}
+});
+
 onBeforeUnmount(() => {
-	unsubscribe();
+	unsubscribeAssistantStore();
+	unsubscribeBuilderStore();
 });
 </script>
 
