@@ -2,7 +2,7 @@
 import { useI18n } from '@/composables/useI18n';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import type { BaseTextKey } from '@/plugins/i18n';
-import { N8nText } from '@n8n/design-system';
+import { N8nButton, N8nText } from '@n8n/design-system';
 import { ElDialog } from 'element-plus';
 import { computed } from 'vue';
 
