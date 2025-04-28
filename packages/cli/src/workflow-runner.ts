@@ -236,11 +236,10 @@ export class WorkflowRunner {
 			pinData,
 		});
 
-		const maxExecutionIndex = Math.max(
-			...Object.values(data.executionData?.resultData?.runData ?? {})
-				.flat()
-				.map((taskData) => taskData.executionIndex),
-		);
+		const previousRuns = Object.values(data.runData ?? {}).flat();
+		const maxExecutionIndex = previousRuns.length
+			? Math.max(...previousRuns.map((taskData) => taskData.executionIndex)) + 1
+			: undefined;
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(
 			data.userId,
 			undefined,
