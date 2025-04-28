@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
-import TestDefinitionRootView from '../EvaluationsRootVIew.vue';
+import EvaluationRootView from '../EvaluationsRootVIew.vue';
 
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { mockedStore } from '@/__tests__/utils';
@@ -10,7 +10,7 @@ import type { IWorkflowDb } from '@/Interface';
 import { waitFor } from '@testing-library/vue';
 
 describe('TestDefinitionRootView', () => {
-	const renderComponent = createComponentRenderer(TestDefinitionRootView);
+	const renderComponent = createComponentRenderer(EvaluationRootView);
 
 	const mockWorkflow: IWorkflowDb = {
 		id: 'different-id',
