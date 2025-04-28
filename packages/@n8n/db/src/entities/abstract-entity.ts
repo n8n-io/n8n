@@ -9,7 +9,6 @@ import {
 	PrimaryColumn,
 	UpdateDateColumn,
 } from '@n8n/typeorm';
-import type { SimpleColumnType } from '@n8n/typeorm/driver/types/ColumnTypes';
 import type { Class } from 'n8n-core';
 
 import { generateNanoId } from '../utils/generators';
@@ -23,7 +22,7 @@ const timestampSyntax = {
 	mariadb: 'CURRENT_TIMESTAMP(3)',
 }[dbType];
 
-export const jsonColumnType: SimpleColumnType = dbType === 'sqlite' ? 'simple-json' : 'json';
+export const jsonColumnType = dbType === 'sqlite' ? 'simple-json' : 'json';
 export const datetimeColumnType = dbType === 'postgresdb' ? 'timestamptz' : 'datetime';
 
 export function JsonColumn(options?: Omit<ColumnOptions, 'type'>) {
