@@ -152,7 +152,6 @@ describe('NodeReferenceParserUtils', () => {
 			nodeNames = ['A', 'B', 'C'];
 			startNodeName = 'Start';
 		});
-
 		it('should extract used expressions', () => {
 			const result = extractReferencesInNodeExpressions(nodes, nodeNames, startNodeName);
 			expect([...result.variables.entries()]).toEqual(
@@ -177,7 +176,7 @@ describe('NodeReferenceParserUtils', () => {
 			);
 		});
 
-		it('should handle name clashes', () => {
+		it('should handle simple name clashes', () => {
 			nodes = [
 				makeNode('B', ['$("A").item.json.myField']),
 				makeNode('C', ['$("D").item.json.myField']),
@@ -211,6 +210,47 @@ describe('NodeReferenceParserUtils', () => {
 				),
 			);
 		});
+
+		it('should handle complex name clashes', () => {
+			nodes = [
+				makeNode('F', ['$("A").item.json.myField']),
+				makeNode('B', ['$("A").item.json.Node_Name_With_Gap_myField']),
+				makeNode('C', ['$("D").item.json.Node_Name_With_Gap_myField']),
+				makeNode('E', ['$("Node_Name_With_Gap").item.json.myField']),
+			];
+			nodeNames = ['A', 'B', 'C', 'D', 'E', 'Node_Name_With_Gap'];
+			const result = extractReferencesInNodeExpressions(nodes, nodeNames, startNodeName);
+			expect([...result.variables.entries()]).toEqual(
+				expect.arrayContaining([
+					['myField', '$("A").item.json.myField'],
+					['Node_Name_With_Gap_myField', '$("A").item.json.Node_Name_With_Gap_myField'],
+					['D_Node_Name_With_Gap_myField', '$("D").item.json.Node_Name_With_Gap_myField'],
+					// This is the `myField` variable from node 'E', referencing $("Node_Name_With_Gap").item.json.myField
+					// It first has a clash with A.myField, requiring its node name to come attached
+					// And then has _1 because it clashes B.Node_Name_With_Gap_myField
+					['Node_Name_With_Gap_myField_1', '$("Node_Name_With_Gap").item.json.myField'],
+				]),
+			);
+			expect(result.nodes).toEqual(
+				expect.arrayContaining(
+					[
+						{
+							name: 'B',
+							parameters: { p0: "={{ $('Start').item.json.myField }}" },
+						},
+						{
+							name: 'C',
+							parameters: { p0: "={{ $('Start').item.json.D_myField }}" },
+						},
+						{
+							name: 'E',
+							parameters: { p0: "={{ $('Start').item.json.F_myField }}" },
+						},
+					].map(expect.objectContaining),
+				),
+			);
+		});
+
 		it('should handle code node', () => {
 			nodes = [
 				{

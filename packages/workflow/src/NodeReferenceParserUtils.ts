@@ -321,7 +321,7 @@ function resolveDuplicates(data: ExtractWorkflowExpressionData[], allNodeNames: 
 			const value = triggerArgumentMap.get(key);
 			if (!value) return false;
 			// We only care about creating unique variables for the new sub-workflow here
-			return value.originalName === originalName;
+			return value.replacementName === replacementName;
 		};
 
 		// We need both parts in the key as we may need to pass e.g. `.first()` and `.item` separately
