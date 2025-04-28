@@ -10,7 +10,7 @@ import type { User } from '@/databases/entities/user';
 import { GLOBAL_MEMBER_SCOPES, GLOBAL_OWNER_SCOPES } from '@/permissions.ee/global-roles';
 import { mockEntityManager } from '@test/mocking';
 
-describe('CredentialsService', () => {
+describe('CredentialsFinderService', () => {
 	const entityManager = mockEntityManager(SharedCredentials);
 	const credentialsFinderService = Container.get(CredentialsFinderService);
 
