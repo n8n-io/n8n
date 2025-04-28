@@ -37,9 +37,7 @@ export class WorkflowSharingService {
 		if (user.hasGlobalScope('workflow:read')) {
 			const sharedWorkflows = await this.sharedWorkflowRepository.find({
 				select: ['workflowId'],
-				where: {
-					...(projectId && { projectId }),
-				},
+				...(projectId && { where: { projectId } }),
 			});
 			return sharedWorkflows.map(({ workflowId }) => workflowId);
 		}
