@@ -1,5 +1,5 @@
 import { createPinia, setActivePinia } from 'pinia';
-import { useTestDefinitionStore } from '@/stores/testDefinition.store.ee'; // Adjust the import path as necessary
+import { useEvaluationStore } from '@/stores/evaluation.store.ee'; // Adjust the import path as necessary
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { usePostHog } from '@/stores/posthog.store';
 import { useAnnotationTagsStore } from '@/stores/tags.store';
@@ -77,14 +77,14 @@ const TEST_RUN: TestRunRecord = {
 };
 
 describe('testDefinition.store.ee', () => {
-	let store: ReturnType<typeof useTestDefinitionStore>;
+	let store: ReturnType<typeof useEvaluationStore>;
 	let rootStoreMock: ReturnType<typeof useRootStore>;
 	let posthogStoreMock: ReturnType<typeof usePostHog>;
 
 	beforeEach(() => {
 		vi.restoreAllMocks();
 		setActivePinia(createPinia());
-		store = useTestDefinitionStore();
+		store = useEvaluationStore();
 		rootStoreMock = useRootStore();
 		posthogStoreMock = usePostHog();
 

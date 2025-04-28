@@ -6,7 +6,7 @@ import type { useTestDefinitionForm } from '@/components/Evaluations/composables
 
 import { ref } from 'vue';
 import { cleanupAppModals, createAppModals, mockedStore } from '@/__tests__/utils';
-import { useTestDefinitionStore } from '@/stores/testDefinition.store.ee';
+import { useEvaluationStore } from '@/stores/evaluation.store.ee';
 import userEvent from '@testing-library/user-event';
 
 const form: Partial<ReturnType<typeof useTestDefinitionForm>> = {
@@ -49,7 +49,7 @@ describe('EvaluationsView', () => {
 	});
 
 	it('should display disabled "run test" button when editing test without tags', async () => {
-		const testDefinitionStore = mockedStore(useTestDefinitionStore);
+		const testDefinitionStore = mockedStore(useEvaluationStore);
 
 		testDefinitionStore.getFieldIssues.mockReturnValueOnce([
 			{ field: 'tags', message: 'Tag is required' },
@@ -63,7 +63,7 @@ describe('EvaluationsView', () => {
 	});
 
 	it('should apply "has-issues" class to inputs with issues', async () => {
-		const testDefinitionStore = mockedStore(useTestDefinitionStore);
+		const testDefinitionStore = mockedStore(useEvaluationStore);
 
 		testDefinitionStore.getFieldIssues.mockReturnValueOnce([
 			{ field: 'evaluationWorkflow', message: 'No evaluation workflow set' },
@@ -76,7 +76,7 @@ describe('EvaluationsView', () => {
 
 	describe('Test Runs functionality', () => {
 		it('should display test runs table when runs exist', async () => {
-			const testDefinitionStore = mockedStore(useTestDefinitionStore);
+			const testDefinitionStore = mockedStore(useEvaluationStore);
 			testDefinitionStore.testRunsById = {
 				run1: {
 					id: 'run1',
@@ -99,7 +99,7 @@ describe('EvaluationsView', () => {
 		});
 
 		it('should start a test run when run test button is clicked', async () => {
-			const testDefinitionStore = mockedStore(useTestDefinitionStore);
+			const testDefinitionStore = mockedStore(useEvaluationStore);
 			const { getByTestId } = renderComponent();
 
 			await userEvent.click(getByTestId('run-test-button'));
