@@ -54,9 +54,3 @@ const timeOptions = ref(
 		</N8nOption>
 	</N8nSelect>
 </template>
-
-<style scoped>
-.date-range-item {
-	display: flex;
-}
-</style>
