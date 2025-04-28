@@ -407,7 +407,7 @@ export class WorkflowService {
 	}
 
 	async archive(user: User, workflowId: string): Promise<WorkflowEntity | undefined> {
-		const workflow = await this.sharedWorkflowRepository.findWorkflowForUser(workflowId, user, [
+		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:delete',
 		]);
 
@@ -441,7 +441,7 @@ export class WorkflowService {
 	}
 
 	async unarchive(user: User, workflowId: string): Promise<WorkflowEntity | undefined> {
-		const workflow = await this.sharedWorkflowRepository.findWorkflowForUser(workflowId, user, [
+		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:delete',
 		]);
 
