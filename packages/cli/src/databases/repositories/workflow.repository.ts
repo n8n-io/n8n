@@ -13,7 +13,7 @@ import type {
 } from '@n8n/typeorm';
 import { PROJECT_ROOT } from 'n8n-workflow';
 
-import type { ListQuery } from '@/requests';
+import type { ListQuery } from '@/types-db';
 
 import { FolderRepository } from './folder.repository';
 import type { Folder, FolderWithWorkflowAndSubFolderCount } from '../entities/folder';

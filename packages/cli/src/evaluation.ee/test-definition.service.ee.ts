@@ -6,8 +6,8 @@ import { TestDefinitionRepository } from '@/databases/repositories/test-definiti
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { validateEntity } from '@/generic-helpers';
-import type { ListQuery } from '@/requests';
 import { Telemetry } from '@/telemetry';
+import type { ListQuery } from '@/types-db';
 
 type TestDefinitionLike = Omit<
 	Partial<TestDefinition>,
