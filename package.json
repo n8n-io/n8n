@@ -93,7 +93,8 @@
       "@rudderstack/rudder-sdk-node>axios": "1.8.3",
       "ibm-cloud-sdk-core>axios": "1.8.3",
       "langchain>axios": "1.8.3",
-      "snowflake-sdk>axios": "1.8.3"
+      "snowflake-sdk>axios": "1.8.3",
+      "wait-on>axios": "1.8.3"
     },
     "patchedDependencies": {
       "bull@4.12.1": "patches/bull@4.12.1.patch",

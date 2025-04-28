@@ -171,6 +171,7 @@ overrides:
   ibm-cloud-sdk-core>axios: 1.8.3
   langchain>axios: 1.8.3
   snowflake-sdk>axios: 1.8.3
+  wait-on>axios: 1.8.3
 
 patchedDependencies:
   '@types/express-serve-static-core@5.0.6':
@@ -7151,9 +7152,6 @@ packages:
 
   axios-retry@3.7.0:
     resolution: {integrity: sha512-ZTnCkJbRtfScvwiRnoVskFAfvU0UG3xNcsjwTR0mawSbIJoothxn67gKsMaNAFHRXJ1RmuLhmZBzvyXi3+9WyQ==}
-
-  axios@1.8.2:
-    resolution: {integrity: sha512-ls4GYBm5aig9vWx8AWDSGLpnpDQRtWAfrjU+EuytuODrFBkqesN2RkOQCBzrA1RQNHw1SmRMSDDDSwzNAYQ6Rg==}
 
   axios@1.8.3:
     resolution: {integrity: sha512-iP4DebzoNlP/YN2dpwCgb8zoCmhtkajzS48JvwmkSkXvPI3DHc7m+XYL5tGnSlJtR6nImXZmdCuN5aP8dh1d8A==}
@@ -20280,14 +20278,6 @@ snapshots:
       '@babel/runtime': 7.26.10
       is-retry-allowed: 2.2.0
 
-  axios@1.8.2(debug@4.4.0):
-    dependencies:
-      follow-redirects: 1.15.6(debug@4.4.0)
-      form-data: 4.0.0
-      proxy-from-env: 1.1.0
-    transitivePeerDependencies:
-      - debug
-
   axios@1.8.3:
     dependencies:
       follow-redirects: 1.15.6(debug@4.3.6)
@@ -28289,7 +28279,7 @@ snapshots:
 
   wait-on@8.0.2(debug@4.4.0):
     dependencies:
-      axios: 1.8.2(debug@4.4.0)
+      axios: 1.8.3(debug@4.4.0)
       joi: 17.13.3
       lodash: 4.17.21
       minimist: 1.2.8
