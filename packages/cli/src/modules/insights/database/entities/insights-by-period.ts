@@ -9,8 +9,6 @@ import {
 } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
 
-import { datetimeColumnType } from '@/databases/entities/abstract-entity';
-
 import { InsightsMetadata } from './insights-metadata';
 import type { PeriodUnit } from './insights-shared';
 import {
