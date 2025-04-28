@@ -130,7 +130,7 @@ describe('WorkflowDetails', () => {
 		});
 	});
 
-	describe('Workflow Menu', () => {
+	describe('Workflow menu', () => {
 		beforeEach(() => {
 			(useRoute as Mock).mockReturnValue({
 				meta: {
@@ -318,6 +318,34 @@ describe('WorkflowDetails', () => {
 			await userEvent.click(getByTestId('workflow-menu'));
 			await userEvent.click(getByTestId('workflow-menu-item-delete'));
 			expect(onWorkflowMenuSelect).toHaveBeenCalledWith(WORKFLOW_MENU_ACTIONS.DELETE);
+		});
+	});
+
+	describe('Archived badge', () => {
+		it('should show badge on archived workflow', async () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					...workflow,
+					readOnly: false,
+					isArchived: true,
+					scopes: ['workflow:delete'],
+				},
+			});
+
+			expect(getByTestId('workflow-archived-tag')).toBeVisible();
+		});
+
+		it('should not show badge on non archived workflow', async () => {
+			const { queryByTestId } = renderComponent({
+				props: {
+					...workflow,
+					readOnly: false,
+					isArchived: false,
+					scopes: ['workflow:delete'],
+				},
+			});
+
+			expect(queryByTestId('workflow-archived-tag')).not.toBeInTheDocument();
 		});
 	});
 });
