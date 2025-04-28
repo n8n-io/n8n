@@ -11,7 +11,7 @@ type FormRefs = {
 	tagsInput: ComponentPublicInstance<typeof AnnotationTagsDropdownEe>;
 };
 
-export function useTestDefinitionForm() {
+export function useEvaluationForm() {
 	const evaluationsStore = useEvaluationStore();
 
 	// State initialization
