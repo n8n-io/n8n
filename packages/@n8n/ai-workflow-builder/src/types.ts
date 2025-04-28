@@ -88,6 +88,13 @@ export interface WorkflowConnectionsMessage {
 	read: boolean;
 }
 
+export interface PromptValidationMessage {
+	role: 'assistant';
+	type: 'prompt-validation';
+	isWorkflowPrompt: boolean;
+	id: string;
+}
+
 export type MessageResponse =
 	| ((
 			| AssistantChatMessage
@@ -99,6 +106,7 @@ export type MessageResponse =
 			| WorkflowNodeMessage
 			| WorkflowComposedMessage
 			| WorkflowConnectionsMessage
+			| PromptValidationMessage
 	  ) & {
 			quickReplies?: QuickReplyOption[];
 	  })

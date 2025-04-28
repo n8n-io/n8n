@@ -55,6 +55,7 @@ import * as utils from '@/utils';
 import * as WorkflowHelpers from '@/workflow-helpers';
 
 import { WorkflowExecutionService } from './workflow-execution.service';
+import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowHistoryService } from './workflow-history.ee/workflow-history.service.ee';
 import { WorkflowRequest } from './workflow.request';
 import { WorkflowService } from './workflow.service';
@@ -84,6 +85,7 @@ export class WorkflowsController {
 		private readonly eventService: EventService,
 		private readonly globalConfig: GlobalConfig,
 		private readonly folderService: FolderService,
+		private readonly workflowFinderService: WorkflowFinderService,
 	) {}
 
 	@Post('/')
@@ -176,7 +178,7 @@ export class WorkflowsController {
 
 			await transactionManager.save<SharedWorkflow>(newSharedWorkflow);
 
-			return await this.sharedWorkflowRepository.findWorkflowForUser(
+			return await this.workflowFinderService.findWorkflowForUser(
 				workflow.id,
 				req.user,
 				['workflow:read'],
@@ -292,7 +294,7 @@ export class WorkflowsController {
 				relations.tags = true;
 			}
 
-			const workflow = await this.sharedWorkflowRepository.findWorkflowForUser(
+			const workflow = await this.workflowFinderService.findWorkflowForUser(
 				workflowId,
 				req.user,
 				['workflow:read'],
@@ -320,7 +322,7 @@ export class WorkflowsController {
 
 		// sharing disabled
 
-		const workflow = await this.sharedWorkflowRepository.findWorkflowForUser(
+		const workflow = await this.workflowFinderService.findWorkflowForUser(
 			workflowId,
 			req.user,
 			['workflow:read'],
@@ -442,7 +444,7 @@ export class WorkflowsController {
 			throw new BadRequestError('Bad request');
 		}
 
-		const workflow = await this.sharedWorkflowRepository.findWorkflowForUser(workflowId, req.user, [
+		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, req.user, [
 			'workflow:share',
 		]);
 
@@ -508,6 +510,7 @@ export class WorkflowsController {
 			workflowId,
 			body.destinationProjectId,
 			body.shareCredentials,
+			body.destinationParentFolderId,
 		);
 	}
 }
