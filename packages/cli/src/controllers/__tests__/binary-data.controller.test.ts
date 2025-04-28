@@ -39,7 +39,11 @@ describe('BinaryDataController', () => {
 		});
 
 		it('should return 404 if file is not found', async () => {
-			const query = { id: 'filesystem:123', action: 'view' } as BinaryDataQueryDto;
+			const query = {
+				id: 'filesystem:123',
+				action: 'view',
+				mimeType: 'image/jpeg',
+			} as BinaryDataQueryDto;
 			binaryDataService.getAsStream.mockRejectedValue(new FileNotFoundError('File not found'));
 
 			await controller.get(request, response, query);
@@ -60,7 +64,7 @@ describe('BinaryDataController', () => {
 
 			await controller.get(request, response, query);
 
-			expect(binaryDataService.getMetadata).not.toHaveBeenCalled();
+			expect(binaryDataService.getMetadata).toHaveBeenCalledWith(query.id);
 			expect(response.setHeader).toHaveBeenCalledWith('Content-Type', 'text/plain');
 			expect(response.setHeader).not.toHaveBeenCalledWith('Content-Length');
 			expect(response.setHeader).not.toHaveBeenCalledWith('Content-Disposition');
@@ -101,7 +105,7 @@ describe('BinaryDataController', () => {
 			);
 		});
 
-		it('should set Content-Security-Policy for HTML in view mode', async () => {
+		it('should not allow viewing of html files', async () => {
 			const query = {
 				id: 'filesystem:123',
 				action: 'view',
@@ -113,26 +117,32 @@ describe('BinaryDataController', () => {
 
 			await controller.get(request, response, query);
 
-			expect(response.header).toHaveBeenCalledWith('Content-Security-Policy', 'sandbox');
+			expect(response.status).toHaveBeenCalledWith(400);
+			expect(response.setHeader).not.toHaveBeenCalled();
 		});
 
-		it('should not set Content-Security-Policy for HTML in download mode', async () => {
+		it('should allow viewing of jpeg files, and handle mime-type casing', async () => {
 			const query = {
 				id: 'filesystem:123',
-				action: 'download',
-				fileName: 'test.html',
-				mimeType: 'text/html',
+				action: 'view',
+				fileName: 'test.jpg',
+				mimeType: 'image/Jpeg',
 			} as BinaryDataQueryDto;
 
 			binaryDataService.getAsStream.mockResolvedValue(mock());
 
 			await controller.get(request, response, query);
 
-			expect(response.header).not.toHaveBeenCalledWith('Content-Security-Policy', 'sandbox');
+			expect(response.status).not.toHaveBeenCalledWith(400);
+			expect(response.setHeader).toHaveBeenCalledWith('Content-Type', query.mimeType);
 		});
 
 		it('should return the file stream on success', async () => {
-			const query = { id: 'filesystem:123', action: 'view' } as BinaryDataQueryDto;
+			const query = {
+				id: 'filesystem:123',
+				action: 'view',
+				mimeType: 'image/jpeg',
+			} as BinaryDataQueryDto;
 
 			const stream = mock<Readable>();
 			binaryDataService.getAsStream.mockResolvedValue(stream);
