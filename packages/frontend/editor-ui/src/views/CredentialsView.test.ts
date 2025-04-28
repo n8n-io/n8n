@@ -36,9 +36,7 @@ const router = createRouter({
 
 const initialState = {
 	[STORES.SETTINGS]: {
-		settings: {
-			enterprise: { variables: true, projects: { team: { limit: -1 } } },
-		},
+		settings: { enterprise: { variables: true, projects: { team: { limit: -1 } } } },
 	},
 };
 
