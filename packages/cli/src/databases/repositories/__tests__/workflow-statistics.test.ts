@@ -62,6 +62,10 @@ describe('upsertWorkflowStatistics', () => {
 		repository = Container.get(WorkflowStatisticsRepository);
 	});
 
+	afterAll(async () => {
+		await testDb.terminate();
+	});
+
 	beforeEach(async () => {
 		await testDb.truncate(['WorkflowStatistics']);
 	});

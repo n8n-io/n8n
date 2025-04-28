@@ -102,16 +102,6 @@ describe('WorkflowStatisticsService', () => {
 		test.each<WorkflowExecuteMode>(['manual', 'integrated', 'internal'])(
 			'should upsert without root executions for execution mode %s',
 			async (mode) => {
-				// Call the function with a production success result, ensure metrics hook gets called
-				const workflow = {
-					id: '1',
-					name: '',
-					active: false,
-					createdAt: new Date(),
-					updatedAt: new Date(),
-					nodes: [],
-					connections: {},
-				};
 				const runData: IRun = {
 					finished: true,
 					status: 'success',
@@ -120,7 +110,7 @@ describe('WorkflowStatisticsService', () => {
 					startedAt: new Date(),
 				};
 
-				await workflowStatisticsService.workflowExecutionCompleted(workflow, runData);
+				await workflowStatisticsService.workflowExecutionCompleted(fakeWorkflow, runData);
 				expect(entityManager.query).toHaveBeenCalledWith(
 					expect.not.stringMatching(rootCountRegex),
 					undefined,
@@ -131,16 +121,6 @@ describe('WorkflowStatisticsService', () => {
 		test.each<ExecutionStatus>(['success', 'crashed', 'error'])(
 			'should upsert with root executions for execution status %s',
 			async (status) => {
-				// Call the function with a production success result, ensure metrics hook gets called
-				const workflow = {
-					id: '1',
-					name: '',
-					active: false,
-					createdAt: new Date(),
-					updatedAt: new Date(),
-					nodes: [],
-					connections: {},
-				};
 				const runData: IRun = {
 					finished: true,
 					status,
@@ -149,7 +129,7 @@ describe('WorkflowStatisticsService', () => {
 					startedAt: new Date(),
 				};
 
-				await workflowStatisticsService.workflowExecutionCompleted(workflow, runData);
+				await workflowStatisticsService.workflowExecutionCompleted(fakeWorkflow, runData);
 				expect(entityManager.query).toHaveBeenCalledWith(
 					expect.stringMatching(rootCountRegex),
 					undefined,
@@ -160,16 +140,6 @@ describe('WorkflowStatisticsService', () => {
 		test.each<ExecutionStatus>(['canceled', 'new', 'running', 'unknown', 'waiting'])(
 			'should upsert without root executions for execution status %s',
 			async (status) => {
-				// Call the function with a production success result, ensure metrics hook gets called
-				const workflow = {
-					id: '1',
-					name: '',
-					active: false,
-					createdAt: new Date(),
-					updatedAt: new Date(),
-					nodes: [],
-					connections: {},
-				};
 				const runData: IRun = {
 					finished: true,
 					status,
@@ -178,7 +148,7 @@ describe('WorkflowStatisticsService', () => {
 					startedAt: new Date(),
 				};
 
-				await workflowStatisticsService.workflowExecutionCompleted(workflow, runData);
+				await workflowStatisticsService.workflowExecutionCompleted(fakeWorkflow, runData);
 				expect(entityManager.query).toHaveBeenCalledWith(
 					expect.not.stringMatching(rootCountRegex),
 					undefined,
