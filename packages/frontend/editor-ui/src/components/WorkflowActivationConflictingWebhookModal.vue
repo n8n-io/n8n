@@ -47,7 +47,7 @@ const onClick = async () => {
 		:center="true"
 	>
 		<template #content>
-			<n8n-callout theme="danger">
+			<n8n-callout theme="danger" data-test-id="conflicting-webhook-callout">
 				A webhook trigger '{{ data.node }}' in the workflow '{{ data.workflowName }}' uses a
 				conflicting URL path, so this workflow cannot be activated
 			</n8n-callout>
@@ -60,7 +60,7 @@ const onClick = async () => {
 					</n8n-text>
 				</div>
 			</div>
-			<div>
+			<div data-test-id="conflicting-webhook-path">
 				<n8n-text color="text-light"> {{ webhookUrl }}/</n8n-text>
 				<n8n-text color="text-dark" bold>
 					{{ data.webhookPath }}
