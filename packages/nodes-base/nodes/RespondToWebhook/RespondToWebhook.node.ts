@@ -6,6 +6,7 @@ import type {
 	IN8nHttpFullResponse,
 	IN8nHttpResponse,
 	INodeExecutionData,
+	INodeProperties,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
@@ -24,7 +25,7 @@ import type { Readable } from 'stream';
 import { formatPrivateKey, generatePairedItemData } from '../../utils/utilities';
 
 const configuredOutputs = (version: number) => {
-	if (version >= 1.2) {
+	if (version >= 1.3) {
 		return [
 			{
 				type: 'main',
@@ -40,13 +41,63 @@ const configuredOutputs = (version: number) => {
 	return ['main'];
 };
 
+const respondWithProperty: INodeProperties = {
+	displayName: 'Respond With',
+	name: 'respondWith',
+	type: 'options',
+	options: [
+		{
+			name: 'All Incoming Items',
+			value: 'allIncomingItems',
+			description: 'Respond with all input JSON items',
+		},
+		{
+			name: 'Binary File',
+			value: 'binary',
+			description: 'Respond with incoming file binary data',
+		},
+		{
+			name: 'First Incoming Item',
+			value: 'firstIncomingItem',
+			description: 'Respond with the first input JSON item',
+		},
+		{
+			name: 'JSON',
+			value: 'json',
+			description: 'Respond with a custom JSON body',
+		},
+		{
+			name: 'JWT Token',
+			value: 'jwt',
+			description: 'Respond with a JWT token',
+		},
+		{
+			name: 'No Data',
+			value: 'noData',
+			description: 'Respond with an empty body',
+		},
+		{
+			name: 'Redirect',
+			value: 'redirect',
+			description: 'Respond with a redirect to a given URL',
+		},
+		{
+			name: 'Text',
+			value: 'text',
+			description: 'Respond with a simple text message body',
+		},
+	],
+	default: 'firstIncomingItem',
+	description: 'The data that should be returned',
+};
+
 export class RespondToWebhook implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Respond to Webhook',
 		icon: { light: 'file:webhook.svg', dark: 'file:webhook.dark.svg' },
 		name: 'respondToWebhook',
 		group: ['transform'],
-		version: [1, 1.1, 1.2],
+		version: [1, 1.1, 1.2, 1.3],
 		description: 'Returns data for Webhook',
 		defaults: {
 			name: 'Respond to Webhook',
@@ -73,53 +124,13 @@ export class RespondToWebhook implements INodeType {
 				default: '',
 			},
 			{
-				displayName: 'Respond With',
-				name: 'respondWith',
-				type: 'options',
-				options: [
-					{
-						name: 'All Incoming Items',
-						value: 'allIncomingItems',
-						description: 'Respond with all input JSON items',
-					},
-					{
-						name: 'Binary File',
-						value: 'binary',
-						description: 'Respond with incoming file binary data',
-					},
-					{
-						name: 'First Incoming Item',
-						value: 'firstIncomingItem',
-						description: 'Respond with the first input JSON item',
-					},
-					{
-						name: 'JSON',
-						value: 'json',
-						description: 'Respond with a custom JSON body',
-					},
-					{
-						name: 'JWT Token',
-						value: 'jwt',
-						description: 'Respond with a JWT token',
-					},
-					{
-						name: 'No Data',
-						value: 'noData',
-						description: 'Respond with an empty body',
-					},
-					{
-						name: 'Redirect',
-						value: 'redirect',
-						description: 'Respond with a redirect to a given URL',
-					},
-					{
-						name: 'Text',
-						value: 'text',
-						description: 'Respond with a simple text message body',
-					},
-				],
-				default: 'firstIncomingItem',
-				description: 'The data that should be returned',
+				...respondWithProperty,
+				displayOptions: { show: { '@version': [1, 1.1] } },
+			},
+			{
+				...respondWithProperty,
+				noDataExpression: true,
+				displayOptions: { show: { '@version': [{ _cnd: { gte: 1.2 } }] } },
 			},
 			{
 				displayName: 'Credentials',
@@ -473,7 +484,7 @@ export class RespondToWebhook implements INodeType {
 			throw error;
 		}
 
-		if (nodeVersion >= 1.2) {
+		if (nodeVersion >= 1.3) {
 			return [items, [{ json: { response } }]];
 		}
 

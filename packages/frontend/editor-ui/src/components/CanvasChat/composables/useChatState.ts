@@ -18,10 +18,12 @@ import type { Ref } from 'vue';
 import { computed, provide, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { LOGS_PANEL_STATE } from '../types/logs';
+import { restoreChatHistory } from '@/components/CanvasChat/utils';
 
 interface ChatState {
 	currentSessionId: Ref<string>;
 	messages: Ref<ChatMessage[]>;
+	previousChatMessages: Ref<string[]>;
 	chatTriggerNode: Ref<INodeUi | null>;
 	connectedNode: Ref<INode | null>;
 	sendMessage: (message: string, files?: File[]) => Promise<void>;
@@ -29,7 +31,8 @@ interface ChatState {
 	displayExecution: (executionId: string) => void;
 }
 
-export function useChatState(isDisabled: Ref<boolean>, onWindowResize: () => void): ChatState {
+export function useChatState(isReadOnly: boolean, onWindowResize?: () => void): ChatState {
+	const locale = useI18n();
 	const workflowsStore = useWorkflowsStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const canvasStore = useCanvasStore();
@@ -40,6 +43,7 @@ export function useChatState(isDisabled: Ref<boolean>, onWindowResize: () => voi
 	const messages = ref<ChatMessage[]>([]);
 	const currentSessionId = ref<string>(uuid().replace(/-/g, ''));
 
+	const previousChatMessages = computed(() => workflowsStore.getPastChatMessages);
 	const canvasNodes = computed(() => workflowsStore.allNodes);
 	const allConnections = computed(() => workflowsStore.allConnections);
 	const logsPanelState = computed(() => workflowsStore.logsPanelState);
@@ -114,10 +118,17 @@ export function useChatState(isDisabled: Ref<boolean>, onWindowResize: () => voi
 		sendMessage,
 		currentSessionId,
 		isLoading,
-		isDisabled,
+		isDisabled: computed(() => isReadOnly),
 		allowFileUploads,
-		locale: useI18n(),
+		locale,
 	});
+
+	const restoredChatMessages = computed(() =>
+		restoreChatHistory(
+			workflowsStore.workflowExecutionData,
+			locale.baseText('chat.window.chat.response.empty'),
+		),
+	);
 
 	// Provide chat context
 	provide(ChatSymbol, chatConfig);
@@ -132,7 +143,7 @@ export function useChatState(isDisabled: Ref<boolean>, onWindowResize: () => voi
 				setConnectedNode();
 
 				setTimeout(() => {
-					onWindowResize();
+					onWindowResize?.();
 					chatEventBus.emit('focusInput');
 				}, 0);
 			}
@@ -198,6 +209,10 @@ export function useChatState(isDisabled: Ref<boolean>, onWindowResize: () => voi
 		nodeHelpers.updateNodesExecutionIssues();
 		messages.value = [];
 		currentSessionId.value = uuid().replace(/-/g, '');
+
+		if (logsPanelState.value !== LOGS_PANEL_STATE.CLOSED) {
+			chatEventBus.emit('focusInput');
+		}
 	}
 
 	function displayExecution(executionId: string) {
@@ -210,7 +225,8 @@ export function useChatState(isDisabled: Ref<boolean>, onWindowResize: () => voi
 
 	return {
 		currentSessionId,
-		messages,
+		messages: computed(() => (isReadOnly ? restoredChatMessages.value : messages.value)),
+		previousChatMessages,
 		chatTriggerNode,
 		connectedNode,
 		sendMessage,

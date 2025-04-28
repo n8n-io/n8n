@@ -1,11 +1,10 @@
-import type { Scope } from '@n8n/permissions';
+import type { AssignableRole, GlobalRole, Scope } from '@n8n/permissions';
 import type { Application } from 'express';
 import type {
 	ExecutionError,
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
 	ICredentialsEncrypted,
-	IDataObject,
 	IDeferredPromise,
 	IExecuteResponsePromiseData,
 	IRun,
@@ -17,7 +16,6 @@ import type {
 	ExecutionStatus,
 	ExecutionSummary,
 	FeatureFlags,
-	INodeProperties,
 	IUserSettings,
 	IWorkflowExecutionDataProcess,
 	DeduplicationMode,
@@ -30,9 +28,8 @@ import type { AnnotationTagEntity } from '@/databases/entities/annotation-tag-en
 import type { AuthProviderType } from '@/databases/entities/auth-identity';
 import type { SharedCredentials } from '@/databases/entities/shared-credentials';
 import type { TagEntity } from '@/databases/entities/tag-entity';
-import type { AssignableRole, GlobalRole, User } from '@/databases/entities/user';
+import type { User } from '@/databases/entities/user';
 
-import type { LICENSE_FEATURES, LICENSE_QUOTAS } from './constants';
 import type { Folder } from './databases/entities/folder';
 import type { ExternalHooks } from './external-hooks';
 import type { WorkflowWithSharingsAndCredentials } from './workflows/workflows.types';
@@ -308,11 +305,6 @@ export interface IExecutionTrackProperties extends ITelemetryTrackProperties {
 //               license
 // ----------------------------------
 
-type ValuesOf<T> = T[keyof T];
-
-export type BooleanLicenseFeature = ValuesOf<typeof LICENSE_FEATURES>;
-export type NumericLicenseFeature = ValuesOf<typeof LICENSE_QUOTAS>;
-
 export interface ILicenseReadResponse {
 	usage: {
 		activeWorkflowTriggers: {
@@ -364,34 +356,3 @@ export interface N8nApp {
 }
 
 export type UserSettings = Pick<User, 'id' | 'settings'>;
-
-export interface SecretsProviderSettings<T = IDataObject> {
-	connected: boolean;
-	connectedAt: Date | null;
-	settings: T;
-}
-
-export interface ExternalSecretsSettings {
-	[key: string]: SecretsProviderSettings;
-}
-
-export type SecretsProviderState = 'initializing' | 'connected' | 'error';
-
-export abstract class SecretsProvider {
-	displayName: string;
-
-	name: string;
-
-	properties: INodeProperties[];
-
-	state: SecretsProviderState;
-
-	abstract init(settings: SecretsProviderSettings): Promise<void>;
-	abstract connect(): Promise<void>;
-	abstract disconnect(): Promise<void>;
-	abstract update(): Promise<void>;
-	abstract test(): Promise<[boolean] | [boolean, string]>;
-	abstract getSecret(name: string): unknown;
-	abstract hasSecret(name: string): boolean;
-	abstract getSecretNames(): string[];
-}

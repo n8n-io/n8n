@@ -2,8 +2,9 @@ import { Container } from '@n8n/di';
 import { readFileSync, readdirSync, mkdtempSync } from 'fs';
 import { get } from 'lodash';
 import { isEmpty } from 'lodash';
-import { BinaryDataService, constructExecutionMetaData } from 'n8n-core';
+import { constructExecutionMetaData } from 'n8n-core';
 import type {
+	ICredentialDataDecryptedObject,
 	IDataObject,
 	IExecuteFunctions,
 	IGetNodeParameterOptions,
@@ -33,16 +34,6 @@ beforeEach(() => nock.disableNetConnect());
 
 export function createTemporaryDir(prefix = 'n8n') {
 	return mkdtempSync(path.join(tmpdir(), prefix));
-}
-
-export async function initBinaryDataService() {
-	const binaryDataService = new BinaryDataService();
-	await binaryDataService.init({
-		mode: 'default',
-		availableModes: ['default'],
-		localStoragePath: createTemporaryDir(),
-	});
-	Container.set(BinaryDataService, binaryDataService);
 }
 
 export function getResultNodeData(result: IRun, testData: WorkflowTestData) {
@@ -125,7 +116,10 @@ const preparePinData = (pinData: IDataObject) => {
 	return returnData;
 };
 
-export const workflowToTests = (workflowFiles: string[]) => {
+export const workflowToTests = (
+	workflowFiles: string[],
+	credentials?: Record<string, ICredentialDataDecryptedObject>,
+) => {
 	const testCases: WorkflowTestData[] = [];
 	for (const filePath of workflowFiles) {
 		const description = filePath.replace('.json', '');
@@ -153,13 +147,16 @@ export const workflowToTests = (workflowFiles: string[]) => {
 		const input = { workflowData };
 		const output = { nodeData };
 
-		testCases.push({ description, input, output, trigger });
+		testCases.push({ description, input, output, trigger, credentials });
 	}
 	return testCases;
 };
 
-export const testWorkflows = (workflows: string[]) => {
-	const tests = workflowToTests(workflows);
+export const testWorkflows = (
+	workflows: string[],
+	credentials?: Record<string, ICredentialDataDecryptedObject>,
+) => {
+	const tests = workflowToTests(workflows, credentials);
 
 	for (const testData of tests) {
 		test(testData.description, async () => await equalityTest(testData));

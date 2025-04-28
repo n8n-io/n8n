@@ -852,11 +852,14 @@
 					document.querySelector('#submit-btn').style.cursor = 'not-allowed';
 					document.querySelector('#submit-btn span').style.display = 'inline-block';
 
+					let postUrl = '';
 					if (window.location.href.includes('form-waiting')) {
 						intervalId = setTimeout(checkExecutionStatus, interval);
+					} else {
+						postUrl = window.location.search;
 					}
 
-					fetch('', {
+					fetch(postUrl, {
 						method: 'POST',
 						body: formData,
 					})

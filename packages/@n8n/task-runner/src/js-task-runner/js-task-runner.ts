@@ -303,10 +303,12 @@ export class JsTaskRunner extends TaskRunner {
 			? settings.chunk.startIndex + settings.chunk.count
 			: inputItems.length;
 
+		const context = this.buildContext(taskId, workflow, data.node);
+
 		for (let index = chunkStartIdx; index < chunkEndIdx; index++) {
-			const item = inputItems[index];
 			const dataProxy = this.createDataProxy(data, workflow, index);
-			const context = this.buildContext(taskId, workflow, data.node, dataProxy, { item });
+
+			Object.assign(context, dataProxy, { item: inputItems[index] });
 
 			try {
 				let result = await new Promise<INodeExecutionData | undefined>((resolve, reject) => {
@@ -515,7 +517,7 @@ export class JsTaskRunner extends TaskRunner {
 		taskId: string,
 		workflow: Workflow,
 		node: INode,
-		dataProxy: IWorkflowDataProxyData,
+		dataProxy?: IWorkflowDataProxyData,
 		additionalProperties: Record<string, unknown> = {},
 	): Context {
 		return createContext({

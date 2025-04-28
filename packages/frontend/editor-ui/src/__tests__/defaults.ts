@@ -36,6 +36,7 @@ export const defaultSettings: FrontendSettings = {
 		externalSecrets: false,
 		workerView: false,
 		advancedPermissions: false,
+		apiKeyScopes: false,
 		projects: {
 			team: {
 				limit: 1,
@@ -46,6 +47,7 @@ export const defaultSettings: FrontendSettings = {
 		evaluator: 'tournament',
 	},
 	executionMode: 'regular',
+	isMultiMain: false,
 	executionTimeout: 0,
 	hideUsagePage: false,
 	hiringBannerEnabled: false,
@@ -147,5 +149,8 @@ export const defaultSettings: FrontendSettings = {
 		enabled: false,
 		summary: true,
 		dashboard: false,
+	},
+	logsView: {
+		enabled: false,
 	},
 };

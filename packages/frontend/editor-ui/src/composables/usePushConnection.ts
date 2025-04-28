@@ -240,12 +240,13 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 
 			let executionData: Pick<
 				IExecutionResponse,
-				'workflowId' | 'data' | 'status' | 'startedAt' | 'stoppedAt'
+				'workflowId' | 'data' | 'status' | 'startedAt' | 'stoppedAt' | 'workflowData'
 			>;
 			if (receivedData.type === 'executionFinished' && receivedData.data.rawData) {
 				const { workflowId, status, rawData } = receivedData.data;
 				executionData = {
 					workflowId,
+					workflowData: workflowsStore.workflow,
 					data: parse(rawData),
 					status,
 					startedAt: workflowsStore.workflowExecutionData?.startedAt ?? new Date(),
@@ -283,6 +284,7 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 
 					executionData = {
 						workflowId: execution.workflowId,
+						workflowData: workflowsStore.workflow,
 						data: parse(execution.data as unknown as string),
 						status: execution.status,
 						startedAt: workflowsStore.workflowExecutionData?.startedAt as Date,
