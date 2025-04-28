@@ -84,7 +84,7 @@ type ExtractWorkflowExpressionData = {
 };
 
 const DOT_REFERENCEABLE_JS_VARIABLE = /\w[\w\d_\$]*/;
-const INVALID_JS_DOT_REFERENCE = /[^.\w\d_\$]/;
+const INVALID_JS_DOT_REFERENCE = /[^\.\w\d_\$]/;
 
 /**
  *  We want to try and extract these if possible, so that we turn
@@ -93,11 +93,11 @@ const INVALID_JS_DOT_REFERENCE = /[^.\w\d_\$]/;
 
 // These allow one of the DATA_ACCESSORS
 const ITEM_TO_DATA_ACCESSORS = [
-	/^first\(\)$/,
-	/^last\(\)$/,
-	/^all$/,
-	/^item$/,
-	/^itemMatching(\d+)$/, // We only support trivial itemMatching - this could in theory hold an entirely new expression
+	/^first\(\)/,
+	/^last\(\)/,
+	/^all/,
+	/^item/,
+	/^itemMatching(\d+)/, // We only support trivial itemMatching - this could in theory hold an entirely new expression
 ];
 // These we can convert to an argument
 const ITEM_ACCESSORS = ['params', 'isExecuted'];
@@ -133,16 +133,12 @@ function jsifyNodeName(nodeName: string, allNodeNames: string[]) {
 //
 // Note that we start after the . after the nodeName reference
 export function parseExtractWorkflowExpressionData(
-	expression: string,
-	startIndex: number,
+	isolatedExpression: string,
 	nodeNameInExpression: string,
 	nodeNamePlainJs: string,
 	startNodeName: string,
 ): null | ExtractWorkflowExpressionData {
-	const exprStart = expression.slice(0, startIndex);
-	const exprWithoutNode = expression.slice(startIndex);
-	const parts = exprWithoutNode.split('.');
-
+	const [exprStart, ...parts] = isolatedExpression.split('.');
 	if (parts.length === 0) {
 		// If a node is referenced by name without any accessor we return a proxy that stringifies as an empty object
 		// But it can still be validly passed to other functions
@@ -209,6 +205,42 @@ export function parseExtractWorkflowExpressionData(
 	return null;
 }
 
+export function parseMatch(
+	match: RegExpExecArray,
+	expression: string,
+	nodeNames: string[],
+	startNodeName: string,
+): ExtractWorkflowExpressionData | null {
+	const startIndex = match.index;
+	const endIndex = startIndex + match[0].length + 1;
+	// this works because all access patterns define match groups left and right of the name
+	// [fullMatch, group1, group2, group3]
+	const nodeNameInExpression = match[2];
+
+	if (!nodeNames.includes(nodeNameInExpression)) return null;
+
+	const firstPartException = ITEM_TO_DATA_ACCESSORS.map((x) =>
+		x.exec(expression.slice(endIndex)),
+	).filter((x) => x !== null);
+
+	const after_accessor_idx = endIndex + (firstPartException[0]?.[0].length ?? -1) + 1;
+	const after_accessor = expression.slice(after_accessor_idx);
+	const firstInvalidCharMatch = INVALID_JS_DOT_REFERENCE.exec(after_accessor);
+	// we should always find the }} closing the JS expressions, if nothing else
+	if (!firstInvalidCharMatch) return null;
+
+	const candidate = expression.slice(startIndex, after_accessor_idx + firstInvalidCharMatch.index);
+	const data = parseExtractWorkflowExpressionData(
+		candidate,
+		nodeNameInExpression,
+		jsifyNodeName(nodeNameInExpression, nodeNames),
+		startNodeName,
+	);
+
+	if (data !== null) return { ...data, nodeNameInExpression };
+	else return null;
+}
+
 // Map from `statementToBeReplaced` -> ExtractWorkflowExpressionData
 export function impl_buildExtractWorkflowExpressionDataMap(
 	expression: string,
@@ -221,26 +253,12 @@ export function impl_buildExtractWorkflowExpressionDataMap(
 	for (const [pattern, regexp] of nodeRegexps) {
 		if (!expression.includes(pattern)) continue;
 
-		const res = [...expression.matchAll(regexp.get())];
-		for (const match of res) {
-			const startIndex = match.index;
-			const endIndex = startIndex + match[0].length;
-			// this works because all access patterns define match groups left and right of the name
-			const nodeNameInExpression = match[0][1];
-
-			if (!nodeNames.includes(nodeNameInExpression)) continue;
-
-			const firstImpossibleIdx = INVALID_JS_DOT_REFERENCE.exec(expression)?.index;
-			const candidate = expression.slice(endIndex + 1, firstImpossibleIdx);
-			const data = parseExtractWorkflowExpressionData(
-				candidate,
-				endIndex + 1, // skip the dot
-				nodeNameInExpression,
-				jsifyNodeName(nodeNameInExpression, nodeNames),
-				startNodeName,
-			);
-			if (data !== null) result.push({ ...data, nodeNameInExpression });
-		}
+		const matches = [...expression.matchAll(regexp.get())];
+		result.push(
+			...matches
+				.map((x) => parseMatch(x, expression, nodeNames, startNodeName))
+				.filter((x) => x !== null),
+		);
 	}
 
 	return result;
@@ -310,12 +328,13 @@ function resolveDuplicates(data: ExtractWorkflowExpressionData[], allNodeNames: 
 	for (const mapping of data) {
 		const { nodeNameInExpression, originalExpression, replacementPrefix, originalName } = mapping;
 		let { replacementName } = mapping;
-		const hasKeyAndDiffers = (key: string) => {
+		const hasKeyAndCollides = (key: string) => {
 			const value = triggerArgumentMap.get(key);
 			if (!value) return false;
 			// We particularly do not care about the input node name here
 			// Because we're building this map for usage with the $('Start') node
-			return value.originalName !== originalName;
+			// So we only care about creating unique variables for the new sub-workflow
+			return value.originalName === originalName;
 		};
 		// We need both parts in the key as we may need to pass `.first()` and `.item` separately
 		// Since we cannot pass the node itself as its proxy reduces it to an empty object
@@ -323,11 +342,11 @@ function resolveDuplicates(data: ExtractWorkflowExpressionData[], allNodeNames: 
 		// This covers a realistic case where two nodes have the same path, e.g.
 		//    $('original input').item.json.path.to.url
 		//    $('some time later in the workflow').item.json.path.to.url
-		if (hasKeyAndDiffers(key())) {
+		if (hasKeyAndCollides(key())) {
 			replacementName = `${jsifyNodeName(nodeNameInExpression, allNodeNames)}_${replacementName}`;
 		}
 		// This covers theoretical cases, where a node might be named Start or other edge cases
-		while (hasKeyAndDiffers(key())) replacementName += '_1';
+		while (hasKeyAndCollides(key())) replacementName += '_1';
 
 		triggerArgumentMap.set(key(), {
 			originalName,
@@ -409,7 +428,7 @@ export function extractReferencesInNodeExpressions(
 	//
 	// This looks scary for large workflows, but RegExp should support >1 million characters and
 	// it's a very linear pattern.
-	const namesRegexp = nodeNames.map(escapeRegExp).join('|');
+	const namesRegexp = '(' + nodeNames.map(escapeRegExp).join('|') + ')';
 	const nodeRegexps = ACCESS_PATTERNS.map(
 		(pattern) =>
 			[
