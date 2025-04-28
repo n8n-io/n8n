@@ -1,4 +1,5 @@
 import { GlobalConfig } from '@n8n/config';
+import { separate } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type {
 	FindManyOptions,
@@ -42,7 +43,6 @@ import type {
 	IExecutionResponse,
 	ExecutionSummaries,
 } from '@/types-db';
-import { separate } from '@/utils';
 
 import { ExecutionDataRepository } from './execution-data.repository';
 import { ExecutionData } from '../entities/execution-data';
