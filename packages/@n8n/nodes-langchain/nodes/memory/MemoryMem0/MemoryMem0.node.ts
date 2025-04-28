@@ -55,8 +55,6 @@ class MemoryMem0Singleton {
 			...options,
 		};
 
-		console.log(mem0Options, 'mem0Options');
-
 		this.mem0Client = new Mem0Memory({
 			apiKey: options?.apiKey ?? '',
 			sessionId: options?.userId ?? 'default-session',
@@ -162,7 +160,7 @@ export class MemoryMem0 implements INodeType {
 			},
 			{
 				displayName: 'Session ID',
-				name: 'sessionKey',
+				name: 'sessionId',
 				type: 'string',
 				default: '={{ $json.sessionId }}',
 				description: 'The key to use to store the memory',
@@ -177,7 +175,7 @@ export class MemoryMem0 implements INodeType {
 				name: 'mem0ApiKey',
 				type: 'string',
 				typeOptions: { password: true },
-				default: 'm0-S9JiOagPF4TYyl0diZMlj8TtkQNbQmRd5s3FYo5Y',
+				default: 'your-mem0-api-key',
 				description: 'The API key to use to connect to Mem0',
 			},
 			{
