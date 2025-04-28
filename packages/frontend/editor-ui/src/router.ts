@@ -275,13 +275,13 @@ export const routes: RouteRecordRaw[] = [
 		children: [
 			{
 				path: '',
-				name: VIEWS.TEST_DEFINITION_EDIT,
+				name: VIEWS.EVALUATION_EDIT,
 				component: EvaluationsView,
 				props: true,
 			},
 			{
 				path: 'test-runs/:runId',
-				name: VIEWS.TEST_DEFINITION_RUNS_DETAIL,
+				name: VIEWS.EVALUATION_RUNS_DETAIL,
 				props: true,
 				components: {
 					default: TestRunDetailView,
