@@ -62,4 +62,11 @@ describe('Assignment.vue', () => {
 
 		expect(emitted('remove')).toEqual([[]]);
 	});
+
+	it('should not display parameter input hint if expressionOutput is not set', () => {
+		const { getByTestId } = renderComponent();
+
+		// Check if the parameter input hint is not displayed
+		expect(() => getByTestId('parameter-input-hint')).toThrow();
+	});
 });

@@ -2,9 +2,9 @@ import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { Readable } from 'node:stream';
 
 import { FileSystemManager } from '@/binary-data/file-system.manager';
-import { isStream } from '@/binary-data/object-store/utils';
 import { toFileId, toStream } from '@test/utils';
 
 jest.mock('fs');
@@ -70,7 +70,7 @@ describe('getAsStream()', () => {
 
 		const stream = await fsManager.getAsStream(fileId);
 
-		expect(isStream(stream)).toBe(true);
+		expect(stream).toBeInstanceOf(Readable);
 		expect(fs.createReadStream).toHaveBeenCalledWith(toFullFilePath(fileId), {
 			highWaterMark: undefined,
 		});
