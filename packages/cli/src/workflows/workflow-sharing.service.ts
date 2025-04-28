@@ -10,6 +10,10 @@ import { ProjectRelationRepository } from '@/databases/repositories/project-rela
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { RoleService } from '@/services/role.service';
 
+export type ShareWorkflowOptions =
+	| { scopes: Scope[]; projectId?: string }
+	| { projectRoles: ProjectRole[]; workflowRoles: WorkflowSharingRole[]; projectId?: string };
+
 @Service()
 export class WorkflowSharingService {
 	constructor(
@@ -26,12 +30,8 @@ export class WorkflowSharingService {
 	 *
 	 * Returns all IDs if user has the 'workflow:read' global scope.
 	 */
-	async getSharedWorkflowIds(
-		user: User,
-		options:
-			| { scopes: Scope[]; projectId?: string }
-			| { projectRoles: ProjectRole[]; workflowRoles: WorkflowSharingRole[]; projectId?: string },
-	): Promise<string[]> {
+
+	async getSharedWorkflowIds(user: User, options: ShareWorkflowOptions): Promise<string[]> {
 		const { projectId } = options;
 
 		if (user.hasGlobalScope('workflow:read')) {
@@ -89,5 +89,21 @@ export class WorkflowSharingService {
 				),
 			];
 		});
+	}
+
+	async getOwnedWorkflowsInPersonalProject(user: User): Promise<string[]> {
+		const sharedWorkflows = await this.sharedWorkflowRepository.find({
+			select: ['workflowId'],
+			where: {
+				role: 'workflow:owner',
+				project: {
+					projectRelations: {
+						userId: user.id,
+						role: 'project:personalOwner',
+					},
+				},
+			},
+		});
+		return sharedWorkflows.map(({ workflowId }) => workflowId);
 	}
 }

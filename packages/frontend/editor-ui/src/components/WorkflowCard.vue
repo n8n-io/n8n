@@ -136,12 +136,7 @@ const actions = computed(() => {
 		});
 	}
 
-	if (
-		workflowPermissions.value.update &&
-		showFolders.value &&
-		!props.readOnly &&
-		!isSomeoneElsesWorkflow.value
-	) {
+	if (workflowPermissions.value.update && showFolders.value && !props.readOnly) {
 		items.push({
 			label: locale.baseText('folders.actions.moveToFolder'),
 			value: WORKFLOW_LIST_ITEM_ACTIONS.MOVE_TO_FOLDER,
