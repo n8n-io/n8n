@@ -152,7 +152,10 @@ const workflowMenuItems = computed<ActionDropdownItem[]>(() => {
 		},
 	];
 
-	if ((workflowPermissions.value.delete && !props.readOnly) || isNewWorkflow.value) {
+	if (
+		(workflowPermissions.value.delete && !props.readOnly && !props.isArchived) ??
+		isNewWorkflow.value
+	) {
 		actions.unshift({
 			id: WORKFLOW_MENU_ACTIONS.DUPLICATE,
 			label: locale.baseText('menuActions.duplicate'),
@@ -191,10 +194,7 @@ const workflowMenuItems = computed<ActionDropdownItem[]>(() => {
 		disabled: !onWorkflowPage.value || isNewWorkflow.value,
 	});
 
-	if (
-		isNewWorkflow.value ||
-		(workflowPermissions.value.delete && (!props.readOnly || props.isArchived))
-	) {
+	if ((workflowPermissions.value.delete && !props.readOnly) ?? isNewWorkflow.value) {
 		if (props.isArchived) {
 			actions.push({
 				id: WORKFLOW_MENU_ACTIONS.UNARCHIVE,
@@ -204,7 +204,7 @@ const workflowMenuItems = computed<ActionDropdownItem[]>(() => {
 			actions.push({
 				id: WORKFLOW_MENU_ACTIONS.DELETE,
 				label: locale.baseText('menuActions.delete'),
-				disabled: !onWorkflowPage.value || isNewWorkflow.value || !props.isArchived,
+				disabled: !onWorkflowPage.value || isNewWorkflow.value,
 				customClass: $style.deleteItem,
 				divided: true,
 			});
@@ -697,7 +697,9 @@ const onBreadcrumbsItemSelected = (item: PathItem) => {
 									:preview-value="shortenedName"
 									:is-edit-enabled="isNameEditEnabled"
 									:max-length="MAX_WORKFLOW_NAME_LENGTH"
-									:disabled="readOnly || (!isNewWorkflow && !workflowPermissions.update)"
+									:disabled="
+										readOnly || isArchived || (!isNewWorkflow && !workflowPermissions.update)
+									"
 									placeholder="Enter workflow name"
 									class="name"
 									@toggle="onNameToggle"
@@ -713,7 +715,11 @@ const onBreadcrumbsItemSelected = (item: PathItem) => {
 		<span class="tags" data-test-id="workflow-tags-container">
 			<template v-if="settingsStore.areTagsEnabled">
 				<WorkflowTagsDropdown
-					v-if="isTagsEditEnabled && !readOnly && (isNewWorkflow || workflowPermissions.update)"
+					v-if="
+						isTagsEditEnabled &&
+						!(readOnly || isArchived) &&
+						(isNewWorkflow || workflowPermissions.update)
+					"
 					ref="dropdown"
 					v-model="appliedTagIds"
 					:event-bus="tagsEventBus"
@@ -725,7 +731,9 @@ const onBreadcrumbsItemSelected = (item: PathItem) => {
 				/>
 				<div
 					v-else-if="
-						(tags ?? []).length === 0 && !readOnly && (isNewWorkflow || workflowPermissions.update)
+						(tags ?? []).length === 0 &&
+						!(readOnly || isArchived) &&
+						(isNewWorkflow || workflowPermissions.update)
 					"
 				>
 					<span class="add-tag clickable" data-test-id="new-tag-link" @click="onTagsEditEnable">
@@ -809,10 +817,13 @@ const onBreadcrumbsItemSelected = (item: PathItem) => {
 					type="primary"
 					:saved="!uiStore.stateIsDirty && !isNewWorkflow"
 					:disabled="
-						isWorkflowSaving || readOnly || (!isNewWorkflow && !workflowPermissions.update)
+						isWorkflowSaving ||
+						readOnly ||
+						isArchived ||
+						(!isNewWorkflow && !workflowPermissions.update)
 					"
 					:is-saving="isWorkflowSaving"
-					:with-shortcut="!readOnly && workflowPermissions.update"
+					:with-shortcut="!(readOnly && isArchived) && workflowPermissions.update"
 					:shortcut-tooltip="i18n.baseText('saveWorkflowButton.hint')"
 					data-test-id="workflow-save-button"
 					@click="onSaveButtonClick"

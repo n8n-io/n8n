@@ -208,7 +208,7 @@ async function navigateToWorkflowView(openInNewTab: boolean) {
 async function navigateToExecutionsView(openInNewTab: boolean) {
 	const routeWorkflowId =
 		workflowId.value === PLACEHOLDER_EMPTY_WORKFLOW_ID ? 'new' : workflowId.value;
-	const executionToReturnToValue = executionsStore.activeExecution?.id || executionToReturnTo.value;
+	const executionToReturnToValue = executionsStore.activeExecution?.id ?? executionToReturnTo.value;
 	const routeToNavigateTo: RouteLocationRaw = executionToReturnToValue
 		? {
 				name: VIEWS.EXECUTION_PREVIEW,
@@ -249,7 +249,7 @@ function hideGithubButton() {
 					:meta="workflow.meta"
 					:scopes="workflow.scopes"
 					:active="workflow.active"
-					:read-only="readOnly || workflow.isArchived"
+					:read-only="readOnly"
 					:current-folder="parentFolderForBreadcrumbs"
 					:is-archived="workflow.isArchived"
 				/>
