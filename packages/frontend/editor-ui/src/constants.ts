@@ -538,11 +538,10 @@ export const enum VIEWS {
 	COMMUNITY_NODES = 'CommunityNodes',
 	WORKFLOWS = 'WorkflowsView',
 	WORKFLOW_EXECUTIONS = 'WorkflowExecutions',
-	TEST_DEFINITION = 'TestDefinition',
-	TEST_DEFINITION_EDIT = 'TestDefinitionEdit',
-	TEST_DEFINITION_RUNS_COMPARE = 'TestDefinitionRunsCompare',
-	TEST_DEFINITION_RUNS_DETAIL = 'TestDefinitionRunsDetail',
-	NEW_TEST_DEFINITION = 'NewTestDefinition',
+	EVALUATION = 'Evaluation',
+	EVALUATION_EDIT = 'EvaluationEdit',
+	EVALUATION_RUNS_COMPARE = 'EvaluationRunsCompare',
+	EVALUATION_RUNS_DETAIL = 'EvaluationRunsDetail',
 	USAGE = 'Usage',
 	LOG_STREAMING_SETTINGS = 'LogStreamingSettingsView',
 	SSO_SETTINGS = 'SSoSettings',
@@ -643,7 +642,7 @@ export const enum MAIN_HEADER_TABS {
 	WORKFLOW = 'workflow',
 	EXECUTIONS = 'executions',
 	SETTINGS = 'settings',
-	TEST_DEFINITION = 'testDefinition',
+	EVALUATION = 'evaluation',
 }
 export const CURL_IMPORT_NOT_SUPPORTED_PROTOCOLS = [
 	'ftp',
@@ -706,7 +705,7 @@ export const enum STORES {
 	BECOME_TEMPLATE_CREATOR = 'becomeTemplateCreator',
 	PROJECTS = 'projects',
 	API_KEYS = 'apiKeys',
-	TEST_DEFINITION = 'testDefinition',
+	EVALUATION = 'evaluation',
 	FOLDERS = 'folders',
 }
 

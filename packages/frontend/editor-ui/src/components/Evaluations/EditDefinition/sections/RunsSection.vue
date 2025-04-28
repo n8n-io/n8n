@@ -67,7 +67,7 @@ const columns = computed(() => [
 
 const handleRowClick = (row: TestRunRecord) => {
 	void router.push({
-		name: VIEWS.TEST_DEFINITION_RUNS_DETAIL,
+		name: VIEWS.EVALUATION_RUNS_DETAIL,
 		params: { testId: row.testDefinitionId, runId: row.id },
 	});
 };
