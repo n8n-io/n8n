@@ -1,10 +1,11 @@
 import { GlobalConfig } from '@n8n/config';
+import { datetimeColumnType } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { BaseEntity, Column, Entity, PrimaryGeneratedColumn } from '@n8n/typeorm';
+import type { SimpleColumnType } from '@n8n/typeorm/driver/types/ColumnTypes';
 import { UnexpectedError } from 'n8n-workflow';
 
 import { isValidTypeNumber, NumberToType, TypeToNumber } from './insights-shared';
-import { datetimeColumnType } from '../../../../databases/entities/abstract-entity';
 
 export const { type: dbType } = Container.get(GlobalConfig).database;
 
@@ -43,7 +44,7 @@ export class InsightsRaw extends BaseEntity {
 
 	@Column({
 		name: 'timestamp',
-		type: datetimeColumnType,
+		type: datetimeColumnType as SimpleColumnType,
 	})
 	timestamp: Date;
 }

@@ -1,6 +1,6 @@
+import { datetimeColumnType } from '@n8n/db';
 import { Column, Entity, ManyToOne, PrimaryColumn } from '@n8n/typeorm';
 
-import { datetimeColumnType } from './abstract-entity';
 import { WorkflowEntity } from './workflow-entity';
 
 export const enum StatisticsNames {

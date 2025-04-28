@@ -49,6 +49,7 @@ describe('CredentialsController', () => {
 				id: newCredentialsPayload.projectId,
 			});
 
+			// @ts-ignore
 			credentialsService.createUnmanagedCredential.mockResolvedValue(createdCredentials);
 
 			sharedCredentialsRepository.findCredentialOwningProject.mockResolvedValue(

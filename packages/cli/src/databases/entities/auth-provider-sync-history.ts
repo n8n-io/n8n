@@ -1,6 +1,6 @@
+import { datetimeColumnType } from '@n8n/db';
 import { Column, Entity, PrimaryGeneratedColumn } from '@n8n/typeorm';
 
-import { datetimeColumnType } from './abstract-entity';
 import { AuthProviderType } from './auth-identity';
 
 export type RunningMode = 'dry' | 'live';
