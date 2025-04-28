@@ -164,7 +164,7 @@ describe('FromAiParametersModal', () => {
 		);
 	});
 
-	it('substitutes parameters when modal is closed', async () => {
+	it('adds substitutes for parameters when executed', async () => {
 		const { getByTestId } = renderModal({
 			props: {
 				modalName: FROM_AI_PARAMETERS_MODAL_KEY,
