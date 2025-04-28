@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { useMetricsChart } from '../composables/useMetricsChart';
-import type { TestRunRecord as Record } from '@/api/testDefinition.ee';
+import type { TestRunRecord as Record } from '@/api/evaluation.ee';
 
 type TestRunRecord = Record & { index: number };
 describe('useMetricsChart', () => {

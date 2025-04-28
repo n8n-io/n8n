@@ -3,7 +3,7 @@ import type { ComponentPublicInstance, ComputedRef } from 'vue';
 import { useEvaluationStore } from '@/stores/evaluation.store.ee';
 import type AnnotationTagsDropdownEe from '@/components/AnnotationTagsDropdown.ee.vue';
 import type { N8nInput } from '@n8n/design-system';
-import type { UpdateTestDefinitionParams } from '@/api/testDefinition.ee';
+import type { UpdateTestDefinitionParams } from '@/api/evaluation.ee';
 import type { EditableField, EditableFormState, EvaluationFormState } from '../types';
 
 type FormRefs = {
