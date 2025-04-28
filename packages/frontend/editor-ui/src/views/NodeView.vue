@@ -237,6 +237,7 @@ const workflowId = computed(() => {
 		? undefined
 		: workflowIdParam;
 });
+const routeNodeId = computed(() => route.params.nodeId as string | undefined);
 
 const isNewWorkflowRoute = computed(() => route.name === VIEWS.NEW_WORKFLOW || !workflowId.value);
 const isWorkflowRoute = computed(() => !!route?.meta?.nodeView || isDemoRoute.value);
@@ -1604,6 +1605,23 @@ function showAddFirstStepIfEnabled() {
  * Routing
  */
 
+function updateNodeRoute(nodeId: string) {
+	const nodeUi = workflowsStore.findNodeByPartialId(nodeId);
+	if (nodeUi) {
+		setNodeActive(nodeUi.id);
+	} else {
+		toast.showToast({
+			title: i18n.baseText('nodeView.showMessage.ndvUrl.missingNodes.title'),
+			message: i18n.baseText('nodeView.showMessage.ndvUrl.missingNodes.content'),
+			type: 'warning',
+		});
+		void router.replace({
+			name: route.name,
+			params: { name: workflowId.value },
+		});
+	}
+}
+
 watch(
 	() => route.name,
 	async (newRouteName, oldRouteName) => {
@@ -1646,6 +1664,35 @@ watch(
 	},
 );
 
+// This keeps the selected node in sync if the URL is updated
+watch(
+	() => route.params.nodeId,
+	async (newId) => {
+		if (typeof newId !== 'string' || newId === '') ndvStore.activeNodeName = null;
+		else {
+			updateNodeRoute(newId);
+		}
+	},
+);
+
+// This keeps URL in sync if the activeNode is changed
+watch(
+	() => ndvStore.activeNode,
+	async (val) => {
+		// This is just out of caution
+		if (!([VIEWS.WORKFLOW] as string[]).includes(String(route.name))) return;
+
+		// Route params default to '' instead of undefined if not present
+		const nodeId = val?.id ? workflowsStore.getPartialIdForNode(val?.id) : '';
+
+		if (nodeId !== route.params.nodeId) {
+			await router.replace({
+				name: route.name,
+				params: { name: workflowId.value, nodeId },
+			});
+		}
+	},
+);
 onBeforeRouteLeave(async (to, from, next) => {
 	const toNodeViewTab = getNodeViewTab(to);
 
@@ -1717,6 +1764,13 @@ onMounted(() => {
 				canvasStore.stopLoading();
 
 				void externalHooks.run('nodeView.mount').catch(() => {});
+
+				// A delay here makes opening the NDV a bit less jarring
+				setTimeout(() => {
+					if (routeNodeId.value) {
+						updateNodeRoute(routeNodeId.value);
+					}
+				}, 500);
 
 				emitPostMessageReady();
 			});

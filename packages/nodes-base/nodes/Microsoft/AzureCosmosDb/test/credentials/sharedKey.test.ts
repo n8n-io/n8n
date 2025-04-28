@@ -1,12 +1,9 @@
 import { OperationalError } from 'n8n-workflow';
-import type {
-	ICredentialDataDecryptedObject,
-	IHttpRequestOptions,
-	IRequestOptions,
-} from 'n8n-workflow';
+import type { IHttpRequestOptions, IRequestOptions } from 'n8n-workflow';
 
-import { MicrosoftAzureCosmosDbSharedKeyApi } from '../../../../../credentials/MicrosoftAzureCosmosDbSharedKeyApi.credentials';
-import { FAKE_CREDENTIALS_DATA } from '../../../../../test/nodes/FakeCredentialsMap';
+import { MicrosoftAzureCosmosDbSharedKeyApi } from '@credentials/MicrosoftAzureCosmosDbSharedKeyApi.credentials';
+
+import { credentials } from '../credentials';
 
 jest.mock('crypto', () => ({
 	createHmac: jest.fn(() => ({
@@ -17,20 +14,18 @@ jest.mock('crypto', () => ({
 }));
 
 describe('Azure Cosmos DB', () => {
+	const { account, key, baseUrl } = credentials.microsoftAzureCosmosDbSharedKeyApi;
+
 	describe('authenticate', () => {
 		const azureCosmosDbSharedKeyApi = new MicrosoftAzureCosmosDbSharedKeyApi();
 
 		it('should generate a valid authorization header', async () => {
 			jest.useFakeTimers().setSystemTime(new Date('2025-01-01T00:00:00Z'));
-			const credentials: ICredentialDataDecryptedObject = {
-				account: FAKE_CREDENTIALS_DATA.microsoftAzureCosmosDbSharedKeyApi.account,
-				key: FAKE_CREDENTIALS_DATA.microsoftAzureCosmosDbSharedKeyApi.key,
-			};
 			const requestOptions: IHttpRequestOptions = {
-				url: `${FAKE_CREDENTIALS_DATA.microsoftAzureCosmosDbSharedKeyApi.baseUrl}/colls/container1/docs/item1`,
+				url: `${baseUrl}/colls/container1/docs/item1`,
 				method: 'GET',
 			};
-			const result = await azureCosmosDbSharedKeyApi.authenticate(credentials, requestOptions);
+			const result = await azureCosmosDbSharedKeyApi.authenticate({ account, key }, requestOptions);
 
 			expect(result.headers?.authorization).toBe(
 				'type%3Dmaster%26ver%3D1.0%26sig%3Dfake-signature',
@@ -114,15 +109,11 @@ describe('Azure Cosmos DB', () => {
 
 		it('should properly construct the resourceId and payload', async () => {
 			jest.useFakeTimers().setSystemTime(new Date('2025-01-01T00:00:00Z'));
-			const credentials: ICredentialDataDecryptedObject = {
-				account: FAKE_CREDENTIALS_DATA.microsoftAzureCosmosDbSharedKeyApi.account,
-				key: FAKE_CREDENTIALS_DATA.microsoftAzureCosmosDbSharedKeyApi.key,
-			};
 			const requestOptions: IHttpRequestOptions = {
 				url: 'https://example.com/dbs/mydb/colls/mycoll/docs/mydoc',
 				method: 'GET',
 			};
-			const result = await azureCosmosDbSharedKeyApi.authenticate(credentials, requestOptions);
+			const result = await azureCosmosDbSharedKeyApi.authenticate({ account, key }, requestOptions);
 
 			expect(result.headers?.authorization).toBe(
 				'type%3Dmaster%26ver%3D1.0%26sig%3Dfake-signature',
