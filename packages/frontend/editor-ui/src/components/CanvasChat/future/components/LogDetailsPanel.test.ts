@@ -34,6 +34,7 @@ describe('LogDetailsPanel', () => {
 		executionStatus: 'success',
 		executionTime: 10,
 		data: { main: [[{ json: { response: 'Hello!' } }]] },
+		source: [{ previousNode: 'Chat Trigger' }],
 	});
 
 	function render(props: Partial<InstanceType<typeof LogDetailsPanel>['$props']>) {
@@ -116,7 +117,7 @@ describe('LogDetailsPanel', () => {
 	it('should toggle input and output panel when the button is clicked', async () => {
 		const rendered = render({
 			isOpen: true,
-			logEntry: createTestLogEntry({ node: aiNode, runIndex: 0 }),
+			logEntry: createTestLogEntry({ node: aiNode, runIndex: 0, runData: aiNodeRunData }),
 		});
 
 		const header = within(rendered.getByTestId('log-details-header'));
@@ -140,7 +141,7 @@ describe('LogDetailsPanel', () => {
 
 		const rendered = render({
 			isOpen: true,
-			logEntry: createTestLogEntry({ node: aiNode, runIndex: 0 }),
+			logEntry: createTestLogEntry({ node: aiNode, runIndex: 0, runData: aiNodeRunData }),
 		});
 
 		await fireEvent.mouseDown(rendered.getByTestId('resize-handle'));
@@ -159,7 +160,7 @@ describe('LogDetailsPanel', () => {
 
 		const rendered = render({
 			isOpen: true,
-			logEntry: createTestLogEntry({ node: aiNode, runIndex: 0 }),
+			logEntry: createTestLogEntry({ node: aiNode, runIndex: 0, runData: aiNodeRunData }),
 		});
 
 		await fireEvent.mouseDown(rendered.getByTestId('resize-handle'));

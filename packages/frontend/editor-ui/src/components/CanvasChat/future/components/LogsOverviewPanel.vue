@@ -19,6 +19,7 @@ import {
 	type LogEntry,
 } from '@/components/RunDataAi/utils';
 import { useVirtualList } from '@vueuse/core';
+import { ndvEventBus } from '@/event-bus';
 
 const { isOpen, isReadOnly, selected, isCompact, execution, latestNodeInfo, scrollToSelection } =
 	defineProps<{
@@ -88,7 +89,14 @@ function handleToggleExpanded(treeNode: LogEntry) {
 async function handleOpenNdv(treeNode: LogEntry) {
 	ndvStore.setActiveNodeName(treeNode.node.name);
 
-	await nextTick(() => ndvStore.setOutputRunIndex(treeNode.runIndex));
+	await nextTick(() => {
+		const source = treeNode.runData.source[0];
+		const inputBranch = source?.previousNodeOutput ?? 0;
+
+		ndvEventBus.emit('updateInputNodeName', source?.previousNode);
+		ndvEventBus.emit('setInputBranchIndex', inputBranch);
+		ndvStore.setOutputRunIndex(treeNode.runIndex);
+	});
 }
 
 async function handleTriggerPartialExecution(treeNode: LogEntry) {
@@ -190,7 +198,7 @@ watch(
 					</div>
 				</div>
 				<N8nRadioButtons
-					size="small"
+					size="small-medium"
 					:class="$style.switchViewButtons"
 					:model-value="selected ? 'details' : 'overview'"
 					:options="switchViewOptions"
@@ -257,7 +265,7 @@ watch(
 	z-index: 10; /* higher than log entry rows background */
 	right: 0;
 	top: 0;
-	margin: var(--spacing-2xs);
+	margin: var(--spacing-4xs) var(--spacing-2xs);
 	visibility: hidden;
 	opacity: 0;
 	transition: opacity 0.3s $ease-out-expo;

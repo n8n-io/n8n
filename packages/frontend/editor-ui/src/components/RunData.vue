@@ -60,7 +60,7 @@ import type { PinDataSource, UnpinDataSource } from '@/composables/usePinnedData
 import { usePinnedData } from '@/composables/usePinnedData';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
-import { dataPinningEventBus } from '@/event-bus';
+import { dataPinningEventBus, ndvEventBus } from '@/event-bus';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useRootStore } from '@/stores/root.store';
@@ -617,6 +617,12 @@ const itemsCountProps = computed<InstanceType<typeof RunDataItemCount>['$props']
 	subExecutionsCount: activeTaskMetadata.value?.subExecutionsCount,
 }));
 
+function setInputBranchIndex(value: number) {
+	if (props.paneType === 'input') {
+		outputIndex.value = value;
+	}
+}
+
 watch(node, (newNode, prevNode) => {
 	if (newNode?.id === prevNode?.id) return;
 	init();
@@ -674,6 +680,8 @@ watch(search, (newSearch) => {
 onMounted(() => {
 	init();
 
+	ndvEventBus.on('setInputBranchIndex', setInputBranchIndex);
+
 	if (!isPaneTypeInput.value) {
 		showPinDataDiscoveryTooltip(jsonData.value);
 	}
@@ -710,6 +718,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
 	hidePinDataDiscoveryTooltip();
+	ndvEventBus.off('setInputBranchIndex', setInputBranchIndex);
 });
 
 function getResolvedNodeOutputs() {
@@ -1551,6 +1560,7 @@ defineExpose({ enterEditMode });
 
 			<div :class="$style.tabs">
 				<N8nTabs
+					size="small"
 					:model-value="currentOutputIndex"
 					:options="branches"
 					@update:model-value="onBranchChange"
@@ -2049,6 +2059,13 @@ defineExpose({ enterEditMode });
 	padding-left: var(--spacing-s);
 	padding-right: var(--spacing-s);
 	padding-bottom: var(--spacing-s);
+
+	.compact & {
+		padding-left: var(--spacing-2xs);
+		padding-right: var(--spacing-2xs);
+		padding-bottom: var(--spacing-2xs);
+		font-size: var(--font-size-2xs);
+	}
 }
 
 .tabs {
