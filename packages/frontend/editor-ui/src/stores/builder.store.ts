@@ -15,10 +15,8 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useUIStore } from './ui.store';
 import { usePostHog } from './posthog.store';
 import { useNodeTypesStore } from './nodeTypes.store';
+import { DEFAULT_CHAT_WIDTH, MAX_CHAT_WIDTH, MIN_CHAT_WIDTH } from './assistant.store';
 
-export const MAX_CHAT_WIDTH = 425;
-export const MIN_CHAT_WIDTH = 250;
-export const DEFAULT_CHAT_WIDTH = 330;
 export const ENABLED_VIEWS = [...EDITABLE_CANVAS_VIEWS];
 
 export const useBuilderStore = defineStore(STORES.BUILDER, () => {
