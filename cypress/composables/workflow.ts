@@ -25,10 +25,12 @@ export type EndpointType =
  * Getters
  */
 
-export function executeWorkflowAndWait() {
+export function executeWorkflowAndWait(waitForSuccessBannerToDisappear = true) {
 	cy.get('[data-test-id="execute-workflow-button"]').click();
 	cy.contains('Workflow executed successfully', { timeout: 4000 }).should('be.visible');
-	cy.contains('Workflow executed successfully', { timeout: 10000 }).should('not.exist');
+	if (waitForSuccessBannerToDisappear) {
+		cy.contains('Workflow executed successfully', { timeout: 10000 }).should('not.exist');
+	}
 }
 
 export function getCanvas() {
