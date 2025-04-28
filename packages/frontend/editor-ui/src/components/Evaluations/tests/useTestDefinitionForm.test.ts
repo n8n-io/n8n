@@ -1,7 +1,7 @@
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { useTestDefinitionForm } from '../composables/useTestDefinitionForm';
-import { useTestDefinitionStore } from '@/stores/testDefinition.store.ee';
+import { useEvaluationStore } from '@/stores/evaluation.store.ee';
 import { mockedStore } from '@/__tests__/utils';
 import type { TestDefinitionRecord } from '@/api/testDefinition.ee';
 
@@ -53,8 +53,8 @@ describe('useTestDefinitionForm', () => {
 
 	it('should load test data', async () => {
 		const { loadTestData, state } = useTestDefinitionForm();
-		const fetchSpy = vi.spyOn(useTestDefinitionStore(), 'fetchAll');
-		const evaluationsStore = mockedStore(useTestDefinitionStore);
+		const fetchSpy = vi.spyOn(useEvaluationStore(), 'fetchAll');
+		const evaluationsStore = mockedStore(useEvaluationStore);
 
 		evaluationsStore.testDefinitionsById = {
 			[TEST_DEF_A.id]: TEST_DEF_A,
@@ -71,8 +71,8 @@ describe('useTestDefinitionForm', () => {
 
 	it('should gracefully handle loadTestData when no test definition found', async () => {
 		const { loadTestData, state } = useTestDefinitionForm();
-		const fetchSpy = vi.spyOn(useTestDefinitionStore(), 'fetchAll');
-		const evaluationsStore = mockedStore(useTestDefinitionStore);
+		const fetchSpy = vi.spyOn(useEvaluationStore(), 'fetchAll');
+		const evaluationsStore = mockedStore(useEvaluationStore);
 
 		evaluationsStore.testDefinitionsById = {};
 
@@ -87,7 +87,7 @@ describe('useTestDefinitionForm', () => {
 	it('should handle errors while loading test data', async () => {
 		const { loadTestData } = useTestDefinitionForm();
 		const fetchSpy = vi
-			.spyOn(useTestDefinitionStore(), 'fetchAll')
+			.spyOn(useEvaluationStore(), 'fetchAll')
 			.mockRejectedValue(new Error('Fetch Failed'));
 		const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
@@ -99,7 +99,7 @@ describe('useTestDefinitionForm', () => {
 
 	it('should save a new test', async () => {
 		const { createTest, state } = useTestDefinitionForm();
-		const createSpy = vi.spyOn(useTestDefinitionStore(), 'create').mockResolvedValue(TEST_DEF_NEW);
+		const createSpy = vi.spyOn(useEvaluationStore(), 'create').mockResolvedValue(TEST_DEF_NEW);
 
 		state.value.name.value = TEST_DEF_NEW.name;
 		state.value.description.value = TEST_DEF_NEW.description ?? '';
@@ -116,7 +116,7 @@ describe('useTestDefinitionForm', () => {
 	it('should handle errors when creating a new test', async () => {
 		const { createTest } = useTestDefinitionForm();
 		const createSpy = vi
-			.spyOn(useTestDefinitionStore(), 'create')
+			.spyOn(useEvaluationStore(), 'create')
 			.mockRejectedValue(new Error('Create Failed'));
 
 		await expect(createTest('123')).rejects.toThrow('Create Failed');
@@ -130,7 +130,7 @@ describe('useTestDefinitionForm', () => {
 			updatedAt: '2022-01-01T00:00:00.000Z',
 			createdAt: '2022-01-01T00:00:00.000Z',
 		};
-		const updateSpy = vi.spyOn(useTestDefinitionStore(), 'update').mockResolvedValue(updatedBTest);
+		const updateSpy = vi.spyOn(useEvaluationStore(), 'update').mockResolvedValue(updatedBTest);
 
 		state.value.name.value = TEST_DEF_B.name;
 		state.value.description.value = TEST_DEF_B.description ?? '';
@@ -153,7 +153,7 @@ describe('useTestDefinitionForm', () => {
 	it('should handle errors when updating a test', async () => {
 		const { updateTest, state } = useTestDefinitionForm();
 		const updateSpy = vi
-			.spyOn(useTestDefinitionStore(), 'update')
+			.spyOn(useEvaluationStore(), 'update')
 			.mockRejectedValue(new Error('Update Failed'));
 
 		state.value.name.value = 'Test';
