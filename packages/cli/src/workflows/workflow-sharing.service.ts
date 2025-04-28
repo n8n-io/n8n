@@ -9,9 +9,10 @@ import type { User } from '@/databases/entities/user';
 import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { RoleService } from '@/services/role.service';
+import { Project } from '@/databases/entities/project';
 
 export type ShareWorkflowOptions =
-	| { scopes: Scope[]; projectId?: string }
+	| { scopes: Scope[]; projectId?: string; workflowRoles?: WorkflowSharingRole[] }
 	| { projectRoles: ProjectRole[]; workflowRoles: WorkflowSharingRole[]; projectId?: string };
 
 @Service()
@@ -27,7 +28,6 @@ export class WorkflowSharingService {
 	 * scope or roles.
 	 * If `scopes` is passed the roles are inferred. Alternatively `projectRoles`
 	 * and `workflowRoles` can be passed specifically.
-	 * if `projectId` is passed, only workflows where the user is the owner are returned.
 	 *
 	 * Returns all IDs if user has the 'workflow:read' global scope.
 	 */
@@ -39,7 +39,7 @@ export class WorkflowSharingService {
 			const sharedWorkflows = await this.sharedWorkflowRepository.find({
 				select: ['workflowId'],
 				where: {
-					...(projectId && { projectId, role: 'workflow:owner' }),
+					...(projectId && { projectId }),
 				},
 			});
 			return sharedWorkflows.map(({ workflowId }) => workflowId);
@@ -56,7 +56,7 @@ export class WorkflowSharingService {
 
 		const sharedWorkflows = await this.sharedWorkflowRepository.find({
 			where: {
-				role: projectId ? 'workflow:owner' : In(workflowRoles),
+				role: In(workflowRoles),
 				project: {
 					projectRelations: {
 						userId: user.id,
@@ -92,5 +92,21 @@ export class WorkflowSharingService {
 				),
 			];
 		});
+	}
+
+	async getOwnedWorkflowsInPersonalProject(user: User): Promise<string[]> {
+		const sharedWorkflows = await this.sharedWorkflowRepository.find({
+			select: ['workflowId'],
+			where: {
+				role: 'workflow:owner',
+				project: {
+					projectRelations: {
+						userId: user.id,
+						role: 'project:personalOwner',
+					},
+				},
+			},
+		});
+		return sharedWorkflows.map(({ workflowId }) => workflowId);
 	}
 }
