@@ -1,6 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import { Mem0Memory } from '@langchain/community/memory/mem0';
-import { InputValues, MemoryVariables } from '@langchain/core/memory';
+import { InputValues } from '@langchain/core/memory';
 import { getSessionId } from '@utils/helpers';
 import { logWrapper } from '@utils/logWrapper';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
@@ -111,7 +111,7 @@ class MemoryMem0Singleton {
 	}
 
 	async getMessages(inputValues: InputValues): Promise<string> {
-		const messages: MemoryVariables = await this.mem0Client.loadMemoryVariables(inputValues);
+		const messages = await this.mem0Client.loadMemoryVariables(inputValues);
 		return (messages.history as string) || '';
 	}
 }
