@@ -1,7 +1,7 @@
 import { type DeepMockProxy, mockDeep } from 'jest-mock-extended';
-import type { IExecuteFunctions } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
 
-import { jiraSoftwareCloudApiRequestAllItems } from '../GenericFunctions';
+import { handlePagination, jiraSoftwareCloudApiRequestAllItems } from '../GenericFunctions';
 
 describe('Jira -> GenericFunctions', () => {
 	describe('jiraSoftwareCloudApiRequestAllItems', () => {
@@ -52,6 +52,91 @@ describe('Jira -> GenericFunctions', () => {
 					body: expect.anything(),
 				}),
 			);
+		});
+	});
+
+	describe('handlePagination', () => {
+		it('should initialize offset pagination parameters when responseData is not provided', () => {
+			const body = {};
+			const query: IDataObject = {};
+
+			const result = handlePagination(body, query, 'offset');
+
+			expect(result).toBe(true);
+			expect(query.startAt).toBe(0);
+			expect(query.maxResults).toBe(100);
+			expect(body).toEqual({});
+		});
+
+		it('should initialize token pagination parameters when responseData is not provided', () => {
+			const body: IDataObject = {};
+			const query: IDataObject = {};
+
+			const result = handlePagination(body, query, 'token');
+
+			expect(result).toBe(true);
+			expect(query).toEqual({});
+			expect(body.maxResults).toBe(100);
+		});
+
+		it('should handle offset pagination with more pages available', () => {
+			const body: IDataObject = {};
+			const query: IDataObject = {};
+			const responseData = {
+				startAt: 0,
+				maxResults: 100,
+				total: 250,
+			};
+
+			const result = handlePagination(body, query, 'offset', responseData);
+
+			expect(result).toBe(true);
+			expect(query.startAt).toBe(100);
+			expect(body).toEqual({});
+		});
+
+		it('should handle offset pagination with no more pages available', () => {
+			const body: IDataObject = {};
+			const query: IDataObject = {};
+			const responseData = {
+				startAt: 200,
+				maxResults: 100,
+				total: 250,
+			};
+
+			const result = handlePagination(body, query, 'offset', responseData);
+
+			expect(result).toBe(false);
+			expect(query.startAt).toBe(300);
+			expect(body).toEqual({});
+		});
+
+		it('should handle token pagination with more pages available', () => {
+			const body: IDataObject = {};
+			const query: IDataObject = {};
+			const responseData = {
+				nextPageToken: 'someToken123',
+			};
+
+			const result = handlePagination(body, query, 'token', responseData);
+
+			expect(result).toBe(true);
+			expect(body.nextPageToken).toBe('someToken123');
+			expect(query).toEqual({});
+		});
+
+		it('should handle token pagination with no more pages available', () => {
+			const body: IDataObject = {};
+			const query: IDataObject = {};
+			const responseData = {
+				nextPageToken: '',
+			};
+
+			const result = handlePagination(body, query, 'token', responseData);
+
+			expect(result).toBe(false);
+			expect(body.nextPageToken).toBe('');
+			expect(query).toEqual({});
 		});
 	});
 });
