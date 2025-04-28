@@ -176,21 +176,24 @@ async function handleActionItemClick(commandData: Command) {
 				:model-value="selected"
 				data-test-id="select-execution-checkbox"
 				:disabled="!Boolean(execution.id && execution.stoppedAt)"
+				class="mb-0"
+				:style="{ marginTop: '-3px' }"
 				@update:model-value="onSelect"
 			/>
 		</td>
 		<td>
-			<RouterLink
-				:to="{
-					name: VIEWS.EXECUTION_PREVIEW,
-					params: { name: execution.workflowId, executionId: execution.id },
-				}"
-				target="_blank"
-			>
-				<N8nText color="text-dark">
+			<N8nTooltip :content="execution.workflowName || workflowName" placement="top">
+				<RouterLink
+					:to="{
+						name: VIEWS.EXECUTION_PREVIEW,
+						params: { name: execution.workflowId, executionId: execution.id },
+					}"
+					:class="$style.workflowName"
+					target="_blank"
+				>
 					{{ execution.workflowName || workflowName }}
-				</N8nText>
-			</RouterLink>
+				</RouterLink>
+			</N8nTooltip>
 		</td>
 		<td data-test-id="execution-status">
 			<GlobalExecutionsListItemQueuedTooltip
@@ -250,12 +253,13 @@ async function handleActionItemClick(commandData: Command) {
 			</span>
 		</td>
 		<td>
-			<span :class="$style.capitalize">{{ execution.mode }}</span>
+			<FontAwesomeIcon v-if="execution.mode === 'manual'" icon="flask" />
 		</td>
 		<td>
 			<N8nButton
 				v-if="!execution.stoppedAt || execution.waitTill"
 				data-test-id="stop-execution-button"
+				type="secondary"
 				:loading="isStopping"
 				:disabled="isStopping"
 				@click.stop="onStopExecution"
@@ -311,7 +315,15 @@ tr.dangerBg {
 	background-color: rgba(215, 56, 58, 0.1);
 }
 
-.capitalize {
-	text-transform: capitalize;
+.workflowName {
+	display: inline-block;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	line-height: 1.2;
+	max-width: 100%;
+	color: var(--color-text-dark);
+	font-size: var(--font-size-s);
+	line-height: var(--font-line-height-loose);
+	max-width: 450px;
 }
 </style>

@@ -1,17 +1,10 @@
 /* eslint-disable @typescript-eslint/no-loop-func */
-import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
-import {
-	getResultNodeData,
-	setup,
-	readJsonFileSync,
-	initBinaryDataService,
-} from '@test/nodes/Helpers';
-import type { WorkflowTestData } from '@test/nodes/types';
+import type { WorkflowTestData } from 'n8n-workflow';
 
-describe('Execute iCalendar Node', () => {
-	beforeEach(async () => {
-		await initBinaryDataService();
-	});
+import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
+import { getResultNodeData, readJsonFileSync } from '@test/nodes/Helpers';
+
+describe('iCalendar Node', () => {
 	const workflowData = readJsonFileSync('nodes/ICalendar/test/node/workflow.iCalendar.json');
 
 	const tests: WorkflowTestData[] = [
@@ -43,11 +36,10 @@ describe('Execute iCalendar Node', () => {
 			},
 		},
 	];
-	const nodeTypes = setup(tests);
 
 	for (const testData of tests) {
 		test(testData.description, async () => {
-			const { result } = await executeWorkflow(testData, nodeTypes);
+			const { result } = await executeWorkflow(testData);
 
 			const resultNodeData = getResultNodeData(result, testData);
 			resultNodeData.forEach(({ nodeName, resultData }) => {

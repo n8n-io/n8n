@@ -118,7 +118,9 @@ describe('WorkflowCard', () => {
 				name: projectName,
 			},
 		});
-		const { getByRole, getByTestId } = renderComponent({ props: { data } });
+		const { getByRole, getByTestId } = renderComponent({
+			props: { data, showOwnershipBadge: true },
+		});
 
 		const heading = getByRole('heading');
 		const badge = getByTestId('card-badge');
@@ -134,7 +136,9 @@ describe('WorkflowCard', () => {
 				name: projectName,
 			},
 		});
-		const { getByRole, getByTestId } = renderComponent({ props: { data } });
+		const { getByRole, getByTestId } = renderComponent({
+			props: { data, showOwnershipBadge: true },
+		});
 
 		const heading = getByRole('heading');
 		const badge = getByTestId('card-badge');

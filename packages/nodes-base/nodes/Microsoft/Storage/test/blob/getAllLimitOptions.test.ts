@@ -1,6 +1,6 @@
-import nock from 'nock';
+import { equalityTest, workflowToTests } from '@test/nodes/Helpers';
 
-import { equalityTest, setup, workflowToTests } from '@test/nodes/Helpers';
+import { credentials } from '../credentials';
 
 describe('Azure Storage Node', () => {
 	const workflows = [
@@ -8,16 +8,7 @@ describe('Azure Storage Node', () => {
 	];
 	const workflowTests = workflowToTests(workflows);
 
-	beforeEach(() => {
-		// https://github.com/nock/nock/issues/2057#issuecomment-663665683
-		if (!nock.isActive()) {
-			nock.activate();
-		}
-	});
-
 	describe('should get all blobs with limit and options', () => {
-		const nodeTypes = setup(workflowTests);
-
 		for (const workflow of workflowTests) {
 			workflow.nock = {
 				baseUrl: 'https://myaccount.blob.core.windows.net',
@@ -31,7 +22,8 @@ describe('Azure Storage Node', () => {
 					},
 				],
 			};
-			test(workflow.description, async () => await equalityTest(workflow, nodeTypes));
+			workflow.credentials = credentials;
+			test(workflow.description, async () => await equalityTest(workflow));
 		}
 	});
 });

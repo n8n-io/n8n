@@ -1,7 +1,7 @@
 {
   "name": "@n8n/utils",
   "type": "module",
-  "version": "1.4.0",
+  "version": "1.8.0",
   "files": [
     "dist"
   ],
@@ -30,7 +30,7 @@
     "@n8n/vitest-config": "workspace:*",
     "@testing-library/jest-dom": "catalog:frontend",
     "@testing-library/user-event": "catalog:frontend",
-    "tsup": "catalog:frontend",
+    "tsup": "catalog:",
     "typescript": "catalog:frontend",
     "vite": "catalog:frontend",
     "vitest": "catalog:frontend"

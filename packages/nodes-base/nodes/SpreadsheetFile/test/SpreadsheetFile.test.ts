@@ -1,16 +1,11 @@
 import { readFileSync } from 'fs';
-import type { IWorkflowBase } from 'n8n-workflow';
+import type { IWorkflowBase, WorkflowTestData } from 'n8n-workflow';
 import path from 'path';
 
 import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
 import * as Helpers from '@test/nodes/Helpers';
-import type { WorkflowTestData } from '@test/nodes/types';
 
 describe('Execute Spreadsheet File Node', () => {
-	beforeEach(async () => {
-		await Helpers.initBinaryDataService();
-	});
-
 	const readBinaryFile = (fileName: string) =>
 		readFileSync(path.resolve(__dirname, fileName), 'base64');
 
@@ -201,13 +196,11 @@ describe('Execute Spreadsheet File Node', () => {
 		},
 	];
 
-	const nodeTypes = Helpers.setup(tests);
-
 	for (const testData of tests) {
 		// eslint-disable-next-line @typescript-eslint/no-loop-func
 		test(testData.description, async () => {
 			// execute workflow
-			const { result } = await executeWorkflow(testData, nodeTypes);
+			const { result } = await executeWorkflow(testData);
 
 			// check if result node data matches expected test data
 			const resultNodeData = Helpers.getResultNodeData(result, testData);

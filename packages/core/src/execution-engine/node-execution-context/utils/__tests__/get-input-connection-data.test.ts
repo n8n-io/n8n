@@ -10,10 +10,12 @@ import type {
 	Workflow,
 	INodeType,
 	INodeTypes,
+	IExecuteFunctions,
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { ExecuteContext } from '../../execute-context';
+import { makeHandleToolInvocation } from '../get-input-connection-data';
 
 describe('getInputConnectionData', () => {
 	const agentNode = mock<INode>({
@@ -362,5 +364,143 @@ describe('getInputConnectionData', () => {
 			expect(result).toEqual([mockTool]);
 			expect(supplyData).toHaveBeenCalled();
 		});
+	});
+});
+
+describe('makeHandleToolInvocation', () => {
+	const connectedNode = mock<INode>({
+		name: 'Test Tool Node',
+		type: 'test.tool',
+	});
+	const execute = jest.fn();
+	const connectedNodeType = mock<INodeType>({
+		execute,
+	});
+	const contextFactory = jest.fn();
+	const toolArgs = { key: 'value' };
+
+	beforeEach(() => {
+		jest.clearAllMocks();
+	});
+	it('should return stringified results when execution is successful', async () => {
+		const mockContext = mock<IExecuteFunctions>();
+		contextFactory.mockReturnValue(mockContext);
+
+		const mockResult = [[{ json: { result: 'success' } }]];
+		execute.mockResolvedValueOnce(mockResult);
+
+		const handleToolInvocation = makeHandleToolInvocation(
+			contextFactory,
+			connectedNode,
+			connectedNodeType,
+		);
+		const result = await handleToolInvocation(toolArgs);
+
+		expect(result).toBe(JSON.stringify([{ result: 'success' }]));
+		expect(mockContext.addOutputData).toHaveBeenCalledWith(NodeConnectionTypes.AiTool, 0, [
+			[{ json: { response: [{ result: 'success' }] } }],
+		]);
+	});
+
+	it('should handle binary data and return a warning message', async () => {
+		const mockContext = mock<IExecuteFunctions>();
+		contextFactory.mockReturnValue(mockContext);
+
+		const mockResult = [[{ json: {}, binary: { file: 'data' } }]];
+		execute.mockResolvedValueOnce(mockResult);
+
+		const handleToolInvocation = makeHandleToolInvocation(
+			contextFactory,
+			connectedNode,
+			connectedNodeType,
+		);
+		const result = await handleToolInvocation(toolArgs);
+
+		expect(result).toBe(
+			'"Error: The Tool attempted to return binary data, which is not supported in Agents"',
+		);
+		expect(mockContext.addOutputData).toHaveBeenCalledWith(NodeConnectionTypes.AiTool, 0, [
+			[
+				{
+					json: {
+						response:
+							'Error: The Tool attempted to return binary data, which is not supported in Agents',
+					},
+				},
+			],
+		]);
+	});
+
+	it('should continue if json and binary data exist', async () => {
+		const warnFn = jest.fn();
+		const mockContext = mock<IExecuteFunctions>({
+			logger: {
+				warn: warnFn,
+			},
+		});
+		contextFactory.mockReturnValue(mockContext);
+
+		const mockResult = [[{ json: { a: 3 }, binary: { file: 'data' } }]];
+		execute.mockResolvedValueOnce(mockResult);
+
+		const handleToolInvocation = makeHandleToolInvocation(
+			contextFactory,
+			connectedNode,
+			connectedNodeType,
+		);
+		const result = await handleToolInvocation(toolArgs);
+
+		expect(result).toBe('[{"a":3}]');
+		expect(mockContext.addOutputData).toHaveBeenCalledWith(NodeConnectionTypes.AiTool, 0, [
+			[
+				{
+					json: {
+						response: [{ a: 3 }],
+					},
+				},
+			],
+		]);
+		expect(warnFn).toHaveBeenCalled();
+	});
+
+	it('should handle execution errors and return an error message', async () => {
+		const mockContext = mock<IExecuteFunctions>();
+		contextFactory.mockReturnValue(mockContext);
+
+		const error = new Error('Execution failed');
+		execute.mockRejectedValueOnce(error);
+
+		const handleToolInvocation = makeHandleToolInvocation(
+			contextFactory,
+			connectedNode,
+			connectedNodeType,
+		);
+		const result = await handleToolInvocation(toolArgs);
+
+		expect(result).toBe('Error during node execution: Execution failed');
+		expect(mockContext.addOutputData).toHaveBeenCalledWith(
+			NodeConnectionTypes.AiTool,
+			0,
+			expect.any(NodeOperationError),
+		);
+	});
+
+	it('should increment the toolRunIndex for each invocation', async () => {
+		const mockContext = mock<IExecuteFunctions>();
+		contextFactory.mockReturnValue(mockContext);
+
+		const handleToolInvocation = makeHandleToolInvocation(
+			contextFactory,
+			connectedNode,
+			connectedNodeType,
+		);
+
+		await handleToolInvocation(toolArgs);
+		await handleToolInvocation(toolArgs);
+		await handleToolInvocation(toolArgs);
+
+		expect(contextFactory).toHaveBeenCalledWith(0);
+		expect(contextFactory).toHaveBeenCalledWith(1);
+		expect(contextFactory).toHaveBeenCalledWith(2);
 	});
 });

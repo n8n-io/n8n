@@ -6,6 +6,7 @@ import {
 	DUPLICATE_POSTFFIX,
 	ERROR_TRIGGER_NODE_TYPE,
 	FORM_NODE_TYPE,
+	LOCAL_STORAGE_LOGS_PANEL_OPEN,
 	MAX_WORKFLOW_NAME_LENGTH,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	START_NODE_TYPE,
@@ -91,6 +92,8 @@ import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useUsersStore } from '@/stores/users.store';
 import { updateCurrentUserSettings } from '@/api/users';
 import { useExecutingNode } from '@/composables/useExecutingNode';
+import { LOGS_PANEL_STATE } from '@/components/CanvasChat/types/logs';
+import { useLocalStorage } from '@vueuse/core';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
@@ -116,8 +119,6 @@ const createEmptyWorkflow = (): IWorkflowDb => ({
 let cachedWorkflowKey: string | null = '';
 let cachedWorkflow: Workflow | null = null;
 
-type ChatPanelState = 'closed' | 'attached' | 'floating';
-
 export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const uiStore = useUIStore();
 	const telemetry = useTelemetry();
@@ -140,6 +141,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const workflowExecutionData = ref<IExecutionResponse | null>(null);
 	const workflowExecutionPairedItemMappings = ref<Record<string, Set<string>>>({});
 	const activeExecutionId = ref<string | null>(null);
+	const previousExecutionId = ref<string | null>(null);
 	const subWorkflowExecutionError = ref<Error | null>(null);
 	const executionWaitingForWebhook = ref(false);
 	const workflowsById = ref<Record<string, IWorkflowDb>>({});
@@ -147,7 +149,15 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const isInDebugMode = ref(false);
 	const chatMessages = ref<string[]>([]);
 	const chatPartialExecutionDestinationNode = ref<string | null>(null);
-	const chatPanelState = ref<ChatPanelState>('closed');
+	const isLogsPanelOpen = useLocalStorage(LOCAL_STORAGE_LOGS_PANEL_OPEN, false);
+	const preferPopOutLogsView = ref(false);
+	const logsPanelState = computed(() =>
+		isLogsPanelOpen.value
+			? preferPopOutLogsView.value
+				? LOGS_PANEL_STATE.FLOATING
+				: LOGS_PANEL_STATE.ATTACHED
+			: LOGS_PANEL_STATE.CLOSED,
+	);
 
 	const { executingNode, addExecutingNode, removeExecutingNode, clearNodeExecutionQueue } =
 		useExecutingNode();
@@ -246,19 +256,15 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}, {});
 	});
 
-	const nodesIssuesExist = computed(() => {
-		for (const node of workflow.value.nodes) {
-			const isNodeDisabled = node.disabled === true;
-			const noNodeIssues = node.issues === undefined || Object.keys(node.issues).length === 0;
-			if (isNodeDisabled || noNodeIssues) {
-				continue;
-			}
-
-			return true;
-		}
-
-		return false;
-	});
+	const nodesIssuesExist = computed(() =>
+		workflow.value.nodes.some((node) => {
+			const nodeHasIssues = !!Object.keys(node.issues ?? {}).length;
+			const isConnected =
+				Object.keys(outgoingConnectionsByNodeName(node.name)).length > 0 ||
+				Object.keys(incomingConnectionsByNodeName(node.name)).length > 0;
+			return !node.disabled && isConnected && nodeHasIssues;
+		}),
+	);
 
 	const pinnedWorkflowData = computed(() => workflow.value.pinData);
 
@@ -281,6 +287,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const connectionsByDestinationNode = computed(() =>
 		Workflow.getConnectionsByDestination(workflow.value.connections),
 	);
+
+	function setActiveExecutionId(id: string | null) {
+		previousExecutionId.value = activeExecutionId.value;
+		activeExecutionId.value = id;
+	}
 
 	function getWorkflowResultDataByNodeName(nodeName: string): ITaskData[] | null {
 		if (getWorkflowRunData.value === null) {
@@ -330,6 +341,22 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	function getNodeById(nodeId: string): INodeUi | undefined {
 		return workflow.value.nodes.find((node) => node.id === nodeId);
+	}
+
+	// Finds the full id for a given partial id for a node, relying on order for uniqueness in edge cases
+	function findNodeByPartialId(partialId: string): INodeUi | undefined {
+		return workflow.value.nodes.find((node) => node.id.startsWith(partialId));
+	}
+
+	// Finds a uniquely identifying partial id for a node, relying on order for uniqueness in edge cases
+	function getPartialIdForNode(fullId: string): string {
+		for (let length = 6; length < fullId.length; ++length) {
+			const partialId = fullId.slice(0, length);
+			if (workflow.value.nodes.filter((x) => x.id.startsWith(partialId)).length === 1) {
+				return partialId;
+			}
+		}
+		return fullId;
 	}
 
 	function getNodesByIds(nodeIds: string[]): INodeUi[] {
@@ -608,7 +635,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setWorkflowSettings({ ...defaults.settings });
 		setWorkflowTagIds([]);
 
-		activeExecutionId.value = null;
+		setActiveExecutionId(null);
 		executingNode.value.length = 0;
 		executionWaitingForWebhook.value = false;
 	}
@@ -1111,6 +1138,13 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}
 	}
 
+	function setParentFolder(folder: IWorkflowDb['parentFolder']) {
+		workflow.value = {
+			...workflow.value,
+			parentFolder: folder,
+		};
+	}
+
 	function setNodes(nodes: INodeUi[]): void {
 		workflow.value.nodes = nodes;
 		nodes.forEach((node) => {
@@ -1208,7 +1242,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 		// If chat trigger node is removed, close chat
 		if (node.type === CHAT_TRIGGER_NODE_TYPE && !settingsStore.isNewLogsEnabled) {
-			setPanelState('closed');
+			toggleLogsPanelOpen(false);
 		}
 
 		if (workflow.value.pinData && workflow.value.pinData.hasOwnProperty(node.name)) {
@@ -1332,6 +1366,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			true,
 			false,
 			latestNode,
+			nodeType,
 		);
 
 		if (latestNode) {
@@ -1373,6 +1408,28 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return testUrl;
 	}
 
+	function setNodeExecuting(pushData: PushPayload<'nodeExecuteBefore'>): void {
+		addExecutingNode(pushData.nodeName);
+
+		if (settingsStore.isNewLogsEnabled) {
+			const node = getNodeByName(pushData.nodeName);
+
+			if (!node || !workflowExecutionData.value?.data) {
+				return;
+			}
+
+			if (workflowExecutionData.value.data.resultData.runData[pushData.nodeName] === undefined) {
+				workflowExecutionData.value.data.resultData.runData[pushData.nodeName] = [];
+			}
+
+			workflowExecutionData.value.data.resultData.runData[pushData.nodeName].push({
+				executionStatus: 'running',
+				executionTime: 0,
+				...pushData.data,
+			});
+		}
+	}
+
 	function updateNodeExecutionData(pushData: PushPayload<'nodeExecuteAfter'>): void {
 		if (!workflowExecutionData.value?.data) {
 			throw new Error('The "workflowExecutionData" is not initialized!');
@@ -1410,7 +1467,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 				openFormPopupWindow(testUrl);
 			}
 		} else {
-			if (tasksData.length && tasksData[tasksData.length - 1].executionStatus === 'waiting') {
+			const status = tasksData[tasksData.length - 1]?.executionStatus ?? 'unknown';
+
+			if ('waiting' === status || (settingsStore.isNewLogsEnabled && 'running' === status)) {
 				tasksData.splice(tasksData.length - 1, 1, data);
 			} else {
 				tasksData.push(data);
@@ -1670,12 +1729,16 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	// End Canvas V2 Functions
 	//
 
-	function setPanelState(state: ChatPanelState) {
-		chatPanelState.value = state;
+	function toggleLogsPanelOpen(isOpen?: boolean) {
+		isLogsPanelOpen.value = isOpen ?? !isLogsPanelOpen.value;
+	}
+
+	function setPreferPoppedOutLogsView(value: boolean) {
+		preferPopOutLogsView.value = value;
 	}
 
 	function markExecutionAsStopped() {
-		activeExecutionId.value = null;
+		setActiveExecutionId(null);
 		clearNodeExecutionQueue();
 		executionWaitingForWebhook.value = false;
 		uiStore.removeActiveAction('workflowRunning');
@@ -1699,7 +1762,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		currentWorkflowExecutions,
 		workflowExecutionData,
 		workflowExecutionPairedItemMappings,
-		activeExecutionId,
+		activeExecutionId: computed(() => activeExecutionId.value),
+		previousExecutionId: computed(() => previousExecutionId.value),
+		setActiveExecutionId,
 		subWorkflowExecutionError,
 		executionWaitingForWebhook,
 		executingNode,
@@ -1733,8 +1798,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		getAllLoadedFinishedExecutions,
 		getWorkflowExecution,
 		getPastChatMessages,
-		chatPanelState: computed(() => chatPanelState.value),
-		setPanelState,
+		logsPanelState: computed(() => logsPanelState.value),
+		toggleLogsPanelOpen,
+		setPreferPoppedOutLogsView,
 		outgoingConnectionsByNodeName,
 		incomingConnectionsByNodeName,
 		nodeHasOutputConnection,
@@ -1764,7 +1830,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		makeNewWorkflowShareable,
 		resetWorkflow,
 		resetState,
-		addExecutingNode,
+		setNodeExecuting,
 		removeExecutingNode,
 		setWorkflowId,
 		setUsedCredentials,
@@ -1784,6 +1850,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setWorkflowSettings,
 		setWorkflowPinData,
 		setWorkflowTagIds,
+		setParentFolder,
 		addWorkflowTagIds,
 		removeWorkflowTagId,
 		setWorkflowScopes,
@@ -1832,6 +1899,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setNodes,
 		setConnections,
 		markExecutionAsStopped,
+		findNodeByPartialId,
+		getPartialIdForNode,
 		totalWorkflowCount,
 	};
 });

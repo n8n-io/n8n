@@ -15,12 +15,12 @@ import { usePiPWindow } from '@/components/CanvasChat/composables/usePiPWindow';
 import { N8nResizeWrapper } from '@n8n/design-system';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useChatState } from '@/components/CanvasChat/composables/useChatState';
+import { LOGS_PANEL_STATE } from '@/components/CanvasChat/types/logs';
 
 const workflowsStore = useWorkflowsStore();
 const canvasStore = useCanvasStore();
 
 // Component state
-const isDisabled = ref(false);
 const container = ref<HTMLElement>();
 const pipContainer = useTemplateRef('pipContainer');
 const pipContent = useTemplateRef('pipContent');
@@ -28,8 +28,7 @@ const pipContent = useTemplateRef('pipContent');
 // Computed properties
 const workflow = computed(() => workflowsStore.getCurrentWorkflow());
 
-const chatPanelState = computed(() => workflowsStore.chatPanelState);
-const previousChatMessages = computed(() => workflowsStore.getPastChatMessages);
+const chatPanelState = computed(() => workflowsStore.logsPanelState);
 const resultData = computed(() => workflowsStore.getWorkflowRunData);
 
 const telemetry = useTelemetry();
@@ -49,14 +48,14 @@ const { canPopOut, isPoppedOut, pipWindow } = usePiPWindow({
 	initialWidth: window.document.body.offsetWidth * 0.8,
 	container: pipContainer,
 	content: pipContent,
-	shouldPopOut: computed(() => chatPanelState.value === 'floating'),
+	shouldPopOut: computed(() => chatPanelState.value === LOGS_PANEL_STATE.FLOATING),
 	onRequestClose: () => {
-		if (chatPanelState.value === 'closed') {
+		if (chatPanelState.value === LOGS_PANEL_STATE.CLOSED) {
 			return;
 		}
 
 		telemetry.track('User toggled log view', { new_state: 'attached' });
-		workflowsStore.setPanelState('attached');
+		workflowsStore.setPreferPoppedOutLogsView(false);
 	},
 });
 
@@ -65,31 +64,32 @@ const {
 	messages,
 	chatTriggerNode,
 	connectedNode,
+	previousChatMessages,
 	sendMessage,
 	refreshSession,
 	displayExecution,
-} = useChatState(isDisabled, onWindowResize);
+} = useChatState(false, onWindowResize);
 
 // Expose internal state for testing
 defineExpose({
 	messages,
 	currentSessionId,
-	isDisabled,
 	workflow,
 });
 
 const closePanel = () => {
-	workflowsStore.setPanelState('closed');
+	workflowsStore.toggleLogsPanelOpen(false);
 };
 
 function onPopOut() {
 	telemetry.track('User toggled log view', { new_state: 'floating' });
-	workflowsStore.setPanelState('floating');
+	workflowsStore.toggleLogsPanelOpen(true);
+	workflowsStore.setPreferPoppedOutLogsView(true);
 }
 
 // Watchers
 watchEffect(() => {
-	canvasStore.setPanelHeight(chatPanelState.value === 'attached' ? height.value : 0);
+	canvasStore.setPanelHeight(chatPanelState.value === LOGS_PANEL_STATE.ATTACHED ? height.value : 0);
 });
 </script>
 
@@ -98,15 +98,15 @@ watchEffect(() => {
 		<div ref="pipContent" :class="$style.pipContent">
 			<N8nResizeWrapper
 				v-if="chatTriggerNode"
-				:is-resizing-enabled="!isPoppedOut && chatPanelState === 'attached'"
+				:is-resizing-enabled="!isPoppedOut && chatPanelState === LOGS_PANEL_STATE.ATTACHED"
 				:supported-directions="['top']"
-				:class="[$style.resizeWrapper, chatPanelState === 'closed' && $style.empty]"
+				:class="[$style.resizeWrapper, chatPanelState === LOGS_PANEL_STATE.CLOSED && $style.empty]"
 				:height="height"
 				:style="rootStyles"
 				@resize="onResizeDebounced"
 			>
 				<div ref="container" :class="[$style.container, 'ignore-key-press-canvas']" tabindex="0">
-					<div v-if="chatPanelState !== 'closed'" :class="$style.chatResizer">
+					<div v-if="chatPanelState !== LOGS_PANEL_STATE.CLOSED" :class="$style.chatResizer">
 						<N8nResizeWrapper
 							:supported-directions="['right']"
 							:width="chatWidth"

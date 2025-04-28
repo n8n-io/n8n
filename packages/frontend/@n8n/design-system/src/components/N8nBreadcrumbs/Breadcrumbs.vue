@@ -22,6 +22,7 @@ type Props = {
 	hiddenItemsTrigger?: 'hover' | 'click';
 	// Setting this to true will show the ellipsis even if there are no hidden items
 	pathTruncated?: boolean;
+	dragActive?: boolean;
 };
 
 defineOptions({ name: 'N8nBreadcrumbs' });
@@ -31,6 +32,8 @@ const emit = defineEmits<{
 	tooltipClosed: [];
 	hiddenItemsLoadingError: [error: unknown];
 	itemSelected: [item: PathItem];
+	itemHover: [item: PathItem];
+	itemDrop: [item: PathItem];
 }>();
 
 const props = withDefaults(defineProps<Props>(), {
@@ -40,8 +43,9 @@ const props = withDefaults(defineProps<Props>(), {
 	loadingSkeletonRows: 3,
 	separator: '/',
 	highlightLastItem: true,
-	isPathTruncated: false,
+	pathTruncated: false,
 	hiddenItemsTrigger: 'click',
+	dragActive: false,
 });
 
 const loadedHiddenItems = ref<PathItem[]>([]);
@@ -113,11 +117,34 @@ const onHiddenMenuVisibleChange = async (visible: boolean) => {
 };
 
 const emitItemSelected = (id: string) => {
-	const item = [...loadedHiddenItems.value, ...props.items].find((i) => i.id === id);
+	const item = [...props.items, ...loadedHiddenItems.value].find((i) => i.id === id);
 	if (!item) {
 		return;
 	}
 	emit('itemSelected', item);
+};
+
+const emitItemHover = (id: string) => {
+	const item = [...props.items, ...loadedHiddenItems.value].find((i) => i.id === id);
+	if (!item) {
+		return;
+	}
+	emit('itemHover', item);
+};
+
+const onHiddenItemMouseUp = (item: UserAction) => {
+	const pathItem = [...props.items, ...loadedHiddenItems.value].find((i) => i.id === item.value);
+	if (!pathItem || !props.dragActive) {
+		return;
+	}
+	emit('itemDrop', pathItem);
+};
+
+const onItemMouseUp = (item: PathItem) => {
+	if (!props.dragActive) {
+		return;
+	}
+	emit('itemDrop', item);
 };
 
 const handleTooltipShow = async () => {
@@ -135,6 +162,7 @@ const handleTooltipClose = () => {
 			[$style.container]: true,
 			[$style.border]: props.showBorder,
 			[$style[props.theme]]: true,
+			['n8n-breadcrumbs']: true,
 		}"
 	>
 		<slot name="prepend"></slot>
@@ -155,7 +183,11 @@ const handleTooltipClose = () => {
 						:loading-row-count="loadingSkeletonRows"
 						:disabled="dropdownDisabled"
 						:class="$style['action-toggle']"
-						:popper-class="$style['hidden-items-menu-popper']"
+						:popper-class="{
+							[$style['hidden-items-menu-popper']]: true,
+							[$style.dragging]: dragActive,
+						}"
+						:trigger="hiddenItemsTrigger"
 						theme="dark"
 						placement="bottom"
 						size="small"
@@ -163,6 +195,7 @@ const handleTooltipClose = () => {
 						data-test-id="hidden-items-menu"
 						@visible-change="onHiddenMenuVisibleChange"
 						@action="emitItemSelected"
+						@item-mouseup="onHiddenItemMouseUp"
 					>
 						<n8n-text :bold="true" :class="$style.dots">...</n8n-text>
 					</n8n-action-toggle>
@@ -202,12 +235,15 @@ const handleTooltipClose = () => {
 					:class="{
 						[$style.item]: true,
 						[$style.current]: props.highlightLastItem && index === items.length - 1,
+						[$style.dragging]: props.dragActive,
 					}"
 					:title="item.label"
-					:data-test-id="
-						index === items.length - 1 ? 'breadcrumbs-item-current' : 'breadcrumbs-item'
-					"
+					:data-resourceid="item.id"
+					data-test-id="breadcrumbs-item"
+					data-target="folder-breadcrumb-item"
 					@click.prevent="emitItemSelected(item.id)"
+					@mouseenter="emitItemHover(item.id)"
+					@mouseup="onItemMouseUp(item)"
 				>
 					<n8n-link v-if="item.href" :href="item.href" theme="text">{{ item.label }}</n8n-link>
 					<n8n-text v-else>{{ item.label }}</n8n-text>
@@ -224,7 +260,6 @@ const handleTooltipClose = () => {
 .container {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-5xs);
 
 	&.small {
 		display: inline-flex;
@@ -241,6 +276,20 @@ const handleTooltipClose = () => {
 	display: flex;
 	list-style: none;
 	align-items: center;
+}
+
+.item {
+	border: var(--border-width-base) var(--border-style-base) transparent;
+}
+
+.item.dragging:hover {
+	border: var(--border-width-base) var(--border-style-base) var(--color-secondary);
+	border-radius: var(--border-radius-base);
+	background-color: var(--color-callout-secondary-background);
+
+	& a {
+		cursor: grabbing;
+	}
 }
 
 .item * {
@@ -279,8 +328,6 @@ const handleTooltipClose = () => {
 
 .hidden-items-menu {
 	display: flex;
-	position: relative;
-	top: var(--spacing-5xs);
 	color: var(--color-text-base);
 }
 
@@ -288,6 +335,11 @@ const handleTooltipClose = () => {
 	& > div ul {
 		max-height: 250px;
 		overflow: auto;
+	}
+
+	&.dragging li:hover {
+		cursor: grabbing;
+		background-color: var(--color-callout-secondary-background);
 	}
 
 	li {
@@ -355,8 +407,7 @@ const handleTooltipClose = () => {
 	.item * {
 		color: var(--color-text-base);
 		font-size: var(--font-size-2xs);
-		font-weight: var(--font-weight-bold);
-		line-height: var(--font-line-heigh-xsmall);
+		line-height: var(--font-line-height-xsmall);
 	}
 
 	.item a:hover * {
@@ -372,20 +423,21 @@ const handleTooltipClose = () => {
 // Medium theme overrides
 .medium {
 	li {
-		padding: var(--spacing-4xs);
+		padding: var(--spacing-3xs) var(--spacing-4xs) var(--spacing-4xs);
 	}
 
 	.item,
 	.item * {
 		color: var(--color-text-base);
 		font-size: var(--font-size-s);
+		line-height: var(--font-line-height-xsmall);
 	}
 
 	.item {
 		max-width: var(--spacing-5xl);
 	}
 
-	.item a:hover * {
+	.item:not(.dragging) a:hover * {
 		color: var(--color-text-dark);
 	}
 

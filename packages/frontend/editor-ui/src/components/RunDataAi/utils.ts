@@ -1,10 +1,20 @@
-import { type IAiDataContent } from '@/Interface';
 import {
+	type LlmTokenUsageData,
+	type IAiDataContent,
+	type INodeUi,
+	type IExecutionResponse,
+} from '@/Interface';
+import {
+	AGENT_LANGCHAIN_NODE_TYPE,
+	type IRunData,
+	type INodeExecutionData,
 	type ITaskData,
 	type ITaskDataConnections,
 	type NodeConnectionType,
 	type Workflow,
 } from 'n8n-workflow';
+import { type LogEntrySelection } from '../CanvasChat/types/logs';
+import { isProxy, isReactive, isRef, toRaw } from 'vue';
 
 export interface AIResult {
 	node: string;
@@ -13,27 +23,33 @@ export interface AIResult {
 }
 
 export interface TreeNode {
+	parent?: TreeNode;
 	node: string;
 	id: string;
 	children: TreeNode[];
 	depth: number;
 	startTime: number;
 	runIndex: number;
+	consumedTokens: LlmTokenUsageData;
 }
 
 function createNode(
+	parent: TreeNode | undefined,
 	nodeName: string,
 	currentDepth: number,
+	runIndex: number,
 	r?: AIResult,
 	children: TreeNode[] = [],
 ): TreeNode {
 	return {
+		parent,
 		node: nodeName,
-		id: nodeName,
+		id: `${nodeName}:${runIndex}`,
 		depth: currentDepth,
 		startTime: r?.data?.metadata?.startTime ?? 0,
-		runIndex: r?.runIndex ?? 0,
+		runIndex,
 		children,
+		consumedTokens: getConsumedTokens(r?.data),
 	};
 }
 
@@ -41,11 +57,13 @@ export function getTreeNodeData(
 	nodeName: string,
 	workflow: Workflow,
 	aiData: AIResult[] | undefined,
+	runIndex?: number,
 ): TreeNode[] {
-	return getTreeNodeDataRec(nodeName, 0, workflow, aiData, undefined);
+	return getTreeNodeDataRec(undefined, nodeName, 0, workflow, aiData, runIndex);
 }
 
 function getTreeNodeDataRec(
+	parent: TreeNode | undefined,
 	nodeName: string,
 	currentDepth: number,
 	workflow: Workflow,
@@ -59,32 +77,30 @@ function getTreeNodeDataRec(
 		) ?? [];
 
 	if (!connections) {
-		return resultData.map((d) => createNode(nodeName, currentDepth, d));
+		return resultData.map((d) => createNode(parent, nodeName, currentDepth, d.runIndex, d));
 	}
 
 	// Get the first level of children
 	const connectedSubNodes = workflow.getParentNodes(nodeName, 'ALL_NON_MAIN', 1);
 
-	const children = connectedSubNodes.flatMap((name) => {
-		// Only include sub-nodes which have data
-		return (
-			aiData
-				?.filter(
-					(data) => data.node === name && (runIndex === undefined || data.runIndex === runIndex),
-				)
-				.flatMap((data) =>
-					getTreeNodeDataRec(name, currentDepth + 1, workflow, aiData, data.runIndex),
-				) ?? []
-		);
-	});
+	const treeNode = createNode(parent, nodeName, currentDepth, runIndex ?? 0);
 
-	children.sort((a, b) => a.startTime - b.startTime);
+	// Only include sub-nodes which have data
+	const children = (aiData ?? []).flatMap((data) =>
+		connectedSubNodes.includes(data.node) && (runIndex === undefined || data.runIndex === runIndex)
+			? getTreeNodeDataRec(treeNode, data.node, currentDepth + 1, workflow, aiData, data.runIndex)
+			: [],
+	);
+
+	treeNode.children = children;
 
 	if (resultData.length) {
-		return resultData.map((r) => createNode(nodeName, currentDepth, r, children));
+		return resultData.map((r) =>
+			createNode(parent, nodeName, currentDepth, r.runIndex, r, children),
+		);
 	}
 
-	return [createNode(nodeName, currentDepth, undefined, children)];
+	return [treeNode];
 }
 
 export function createAiData(
@@ -92,31 +108,27 @@ export function createAiData(
 	workflow: Workflow,
 	getWorkflowResultDataByNodeName: (nodeName: string) => ITaskData[] | null,
 ): AIResult[] {
-	const result: AIResult[] = [];
-	const connectedSubNodes = workflow.getParentNodes(nodeName, 'ALL_NON_MAIN');
+	return workflow
+		.getParentNodes(nodeName, 'ALL_NON_MAIN')
+		.flatMap((node) =>
+			(getWorkflowResultDataByNodeName(node) ?? []).map((task, index) => ({ node, task, index })),
+		)
+		.sort((a, b) => {
+			// Sort the data by execution index or start time
+			if (a.task.executionIndex !== undefined && b.task.executionIndex !== undefined) {
+				return a.task.executionIndex - b.task.executionIndex;
+			}
 
-	connectedSubNodes.forEach((node) => {
-		const nodeRunData = getWorkflowResultDataByNodeName(node) ?? [];
+			const aTime = a.task.startTime ?? 0;
+			const bTime = b.task.startTime ?? 0;
 
-		nodeRunData.forEach((run, runIndex) => {
-			const referenceData = {
-				data: getReferencedData(run, false, true)[0],
-				node,
-				runIndex,
-			};
-
-			result.push(referenceData);
-		});
-	});
-
-	// Sort the data by start time
-	result.sort((a, b) => {
-		const aTime = a.data?.metadata?.startTime ?? 0;
-		const bTime = b.data?.metadata?.startTime ?? 0;
-		return aTime - bTime;
-	});
-
-	return result;
+			return aTime - bTime;
+		})
+		.map(({ node, task, index }) => ({
+			data: getReferencedData(task, false, true)[0],
+			node,
+			runIndex: index,
+		}));
 }
 
 export function getReferencedData(
@@ -157,4 +169,307 @@ export function getReferencedData(
 	}
 
 	return returnData;
+}
+
+const emptyTokenUsageData: LlmTokenUsageData = {
+	completionTokens: 0,
+	promptTokens: 0,
+	totalTokens: 0,
+	isEstimate: false,
+};
+
+function addTokenUsageData(one: LlmTokenUsageData, another: LlmTokenUsageData): LlmTokenUsageData {
+	return {
+		completionTokens: one.completionTokens + another.completionTokens,
+		promptTokens: one.promptTokens + another.promptTokens,
+		totalTokens: one.totalTokens + another.totalTokens,
+		isEstimate: one.isEstimate || another.isEstimate,
+	};
+}
+
+export function getConsumedTokens(outputRun: IAiDataContent | undefined): LlmTokenUsageData {
+	if (!outputRun?.data) {
+		return emptyTokenUsageData;
+	}
+
+	const tokenUsage = outputRun.data.reduce<LlmTokenUsageData>(
+		(acc: LlmTokenUsageData, curr: INodeExecutionData) => {
+			const tokenUsageData = curr.json?.tokenUsage ?? curr.json?.tokenUsageEstimate;
+
+			if (!tokenUsageData) return acc;
+
+			return addTokenUsageData(acc, {
+				...(tokenUsageData as Omit<LlmTokenUsageData, 'isEstimate'>),
+				isEstimate: !!curr.json.tokenUsageEstimate,
+			});
+		},
+		emptyTokenUsageData,
+	);
+
+	return tokenUsage;
+}
+
+export function formatTokenUsageCount(
+	usage: LlmTokenUsageData,
+	field: 'total' | 'prompt' | 'completion',
+) {
+	const count =
+		field === 'total'
+			? usage.totalTokens
+			: field === 'completion'
+				? usage.completionTokens
+				: usage.promptTokens;
+
+	return usage.isEstimate ? `~${count}` : count.toLocaleString();
+}
+
+export interface ExecutionLogViewData extends IExecutionResponse {
+	tree: LogEntry[];
+}
+
+export interface LogEntry {
+	parent?: LogEntry;
+	node: INodeUi;
+	id: string;
+	children: LogEntry[];
+	depth: number;
+	runIndex: number;
+	runData: ITaskData;
+	consumedTokens: LlmTokenUsageData;
+}
+
+export interface LatestNodeInfo {
+	disabled: boolean;
+	deleted: boolean;
+	name: string;
+}
+
+function getConsumedTokensV2(task: ITaskData): LlmTokenUsageData {
+	if (!task.data) {
+		return emptyTokenUsageData;
+	}
+
+	const tokenUsage = Object.values(task.data)
+		.flat()
+		.flat()
+		.reduce<LlmTokenUsageData>((acc, curr) => {
+			const tokenUsageData = curr?.json?.tokenUsage ?? curr?.json?.tokenUsageEstimate;
+
+			if (!tokenUsageData) return acc;
+
+			return addTokenUsageData(acc, {
+				...(tokenUsageData as Omit<LlmTokenUsageData, 'isEstimate'>),
+				isEstimate: !!curr?.json.tokenUsageEstimate,
+			});
+		}, emptyTokenUsageData);
+
+	return tokenUsage;
+}
+
+function createNodeV2(
+	parent: LogEntry | undefined,
+	node: INodeUi,
+	currentDepth: number,
+	runIndex: number,
+	runData: ITaskData,
+	children: LogEntry[] = [],
+): LogEntry {
+	return {
+		parent,
+		node,
+		id: `${node.name}:${runIndex}`,
+		depth: currentDepth,
+		runIndex,
+		runData,
+		children,
+		consumedTokens: getConsumedTokensV2(runData),
+	};
+}
+
+export function getTreeNodeDataV2(
+	nodeName: string,
+	runData: ITaskData,
+	workflow: Workflow,
+	data: IRunData,
+	runIndex?: number,
+): LogEntry[] {
+	const node = workflow.getNode(nodeName);
+
+	return node ? getTreeNodeDataRecV2(undefined, node, runData, 0, workflow, data, runIndex) : [];
+}
+
+function getTreeNodeDataRecV2(
+	parent: LogEntry | undefined,
+	node: INodeUi,
+	runData: ITaskData,
+	currentDepth: number,
+	workflow: Workflow,
+	data: IRunData,
+	runIndex: number | undefined,
+): LogEntry[] {
+	// Get the first level of children
+	const connectedSubNodes = workflow.getParentNodes(node.name, 'ALL_NON_MAIN', 1);
+	const treeNode = createNodeV2(parent, node, currentDepth, runIndex ?? 0, runData);
+	const children = connectedSubNodes
+		.flatMap((subNodeName) =>
+			(data[subNodeName] ?? []).flatMap((t, index) => {
+				if (runIndex !== undefined && index !== runIndex) {
+					return [];
+				}
+
+				const subNode = workflow.getNode(subNodeName);
+
+				return subNode
+					? getTreeNodeDataRecV2(treeNode, subNode, t, currentDepth + 1, workflow, data, index)
+					: [];
+			}),
+		)
+		.sort((a, b) => {
+			// Sort the data by execution index or start time
+			if (a.runData.executionIndex !== undefined && b.runData.executionIndex !== undefined) {
+				return a.runData.executionIndex - b.runData.executionIndex;
+			}
+
+			const aTime = a.runData.startTime ?? 0;
+			const bTime = b.runData.startTime ?? 0;
+
+			return aTime - bTime;
+		});
+
+	treeNode.children = children;
+
+	return [treeNode];
+}
+
+export function getTotalConsumedTokens(...usage: LlmTokenUsageData[]): LlmTokenUsageData {
+	return usage.reduce(addTokenUsageData, emptyTokenUsageData);
+}
+
+export function getSubtreeTotalConsumedTokens(treeNode: LogEntry): LlmTokenUsageData {
+	return getTotalConsumedTokens(
+		treeNode.consumedTokens,
+		...treeNode.children.map(getSubtreeTotalConsumedTokens),
+	);
+}
+
+function findLogEntryToAutoSelectRec(
+	data: ExecutionLogViewData,
+	subTree: LogEntry[],
+	depth: number,
+): LogEntry | undefined {
+	for (const entry of subTree) {
+		const taskData = data.data?.resultData.runData[entry.node.name]?.[entry.runIndex];
+
+		if (taskData?.error) {
+			return entry;
+		}
+
+		const childAutoSelect = findLogEntryToAutoSelectRec(data, entry.children, depth + 1);
+
+		if (childAutoSelect) {
+			return childAutoSelect;
+		}
+
+		if (
+			data.workflowData.nodes.find((n) => n.name === entry.node.name)?.type ===
+			AGENT_LANGCHAIN_NODE_TYPE
+		) {
+			return entry;
+		}
+	}
+
+	return depth === 0 ? subTree[0] : undefined;
+}
+
+export function createLogEntries(workflow: Workflow, runData: IRunData) {
+	const runs = Object.entries(runData)
+		.filter(([nodeName]) => workflow.getChildNodes(nodeName, 'ALL_NON_MAIN').length === 0)
+		.flatMap(([nodeName, taskData]) =>
+			taskData.map((task, runIndex) => ({ nodeName, task, runIndex })),
+		)
+		.sort((a, b) => {
+			if (a.task.executionIndex !== undefined && b.task.executionIndex !== undefined) {
+				return a.task.executionIndex - b.task.executionIndex;
+			}
+
+			return a.nodeName === b.nodeName
+				? a.runIndex - b.runIndex
+				: a.task.startTime - b.task.startTime;
+		});
+
+	return runs.flatMap(({ nodeName, runIndex, task }) => {
+		if (workflow.getParentNodes(nodeName, 'ALL_NON_MAIN').length > 0) {
+			return getTreeNodeDataV2(nodeName, task, workflow, runData, undefined);
+		}
+
+		return getTreeNodeDataV2(nodeName, task, workflow, runData, runIndex);
+	});
+}
+
+export function includesLogEntry(log: LogEntry, logs: LogEntry[]): boolean {
+	return logs.some(
+		(l) =>
+			(l.node.name === log.node.name && log.runIndex === l.runIndex) ||
+			includesLogEntry(log, l.children),
+	);
+}
+
+export function findSelectedLogEntry(
+	state: LogEntrySelection,
+	execution?: ExecutionLogViewData,
+): LogEntry | undefined {
+	return state.type === 'initial' ||
+		state.workflowId !== execution?.workflowData.id ||
+		(state.type === 'selected' && !includesLogEntry(state.data, execution.tree))
+		? execution
+			? findLogEntryToAutoSelectRec(execution, execution.tree, 0)
+			: undefined
+		: state.type === 'none'
+			? undefined
+			: state.data;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function deepToRaw<T>(sourceObj: T): T {
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	const objectIterator = (input: any): any => {
+		if (Array.isArray(input)) {
+			return input.map((item) => objectIterator(item));
+		}
+
+		if (isRef(input) || isReactive(input) || isProxy(input)) {
+			return objectIterator(toRaw(input));
+		}
+
+		if (
+			input !== null &&
+			typeof input === 'object' &&
+			Object.getPrototypeOf(input) === Object.prototype
+		) {
+			return Object.keys(input).reduce((acc, key) => {
+				acc[key as keyof typeof acc] = objectIterator(input[key]);
+				return acc;
+			}, {} as T);
+		}
+
+		return input;
+	};
+
+	return objectIterator(sourceObj);
+}
+
+export function flattenLogEntries(
+	entries: LogEntry[],
+	collapsedEntryIds: Record<string, boolean>,
+	ret: LogEntry[] = [],
+): LogEntry[] {
+	for (const entry of entries) {
+		ret.push(entry);
+
+		if (!collapsedEntryIds[entry.id]) {
+			flattenLogEntries(entry.children, collapsedEntryIds, ret);
+		}
+	}
+
+	return ret;
 }

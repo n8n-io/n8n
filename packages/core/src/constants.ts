@@ -1,11 +1,13 @@
 const { NODE_ENV } = process.env;
 export const inProduction = NODE_ENV === 'production';
 export const inDevelopment = !NODE_ENV || NODE_ENV === 'development';
+export const inTest = NODE_ENV === 'test';
 
 export const CUSTOM_EXTENSION_ENV = 'N8N_CUSTOM_EXTENSIONS';
 export const PLACEHOLDER_EMPTY_EXECUTION_ID = '__UNKNOWN__';
 export const PLACEHOLDER_EMPTY_WORKFLOW_ID = '__EMPTY__';
 export const HTTP_REQUEST_NODE_TYPE = 'n8n-nodes-base.httpRequest';
+export const HTTP_REQUEST_AS_TOOL_NODE_TYPE = 'n8n-nodes-base.httpRequestTool';
 export const HTTP_REQUEST_TOOL_NODE_TYPE = '@n8n/n8n-nodes-langchain.toolHttpRequest';
 
 export const RESTRICT_FILE_ACCESS_TO = 'N8N_RESTRICT_FILE_ACCESS_TO';

@@ -14,8 +14,6 @@ describe('Test Gmail Node v2', () => {
 		jest
 			.useFakeTimers({ doNotFake: ['setImmediate', 'nextTick'] })
 			.setSystemTime(new Date('2024-12-16 12:34:56.789Z'));
-
-		nock.disableNetConnect();
 	});
 
 	describe('Messages', () => {
@@ -131,11 +129,9 @@ describe('Test Gmail Node v2', () => {
 				.reply(200, messages[0]);
 		});
 
-		testWorkflows(['nodes/Google/Gmail/test/v2/messages.workflow.json']);
+		afterAll(() => gmailNock.done());
 
-		it('should make the correct network calls', () => {
-			gmailNock.done();
-		});
+		testWorkflows(['nodes/Google/Gmail/test/v2/messages.workflow.json']);
 	});
 
 	describe('Labels', () => {
@@ -156,11 +152,9 @@ describe('Test Gmail Node v2', () => {
 			});
 		});
 
-		testWorkflows(['nodes/Google/Gmail/test/v2/labels.workflow.json']);
+		afterAll(() => gmailNock.done());
 
-		it('should make the correct network calls', () => {
-			gmailNock.done();
-		});
+		testWorkflows(['nodes/Google/Gmail/test/v2/labels.workflow.json']);
 	});
 
 	describe('Drafts', () => {
@@ -246,11 +240,9 @@ describe('Test Gmail Node v2', () => {
 				});
 		});
 
-		testWorkflows(['nodes/Google/Gmail/test/v2/drafts.workflow.json']);
+		afterAll(() => gmailNock.done());
 
-		it('should make the correct network calls', () => {
-			gmailNock.done();
-		});
+		testWorkflows(['nodes/Google/Gmail/test/v2/drafts.workflow.json']);
 	});
 
 	describe('Threads', () => {
@@ -309,11 +301,9 @@ describe('Test Gmail Node v2', () => {
 				.reply(200, messages[0]);
 		});
 
-		testWorkflows(['nodes/Google/Gmail/test/v2/threads.workflow.json']);
+		afterAll(() => gmailNock.done());
 
-		it('should make the correct network calls', () => {
-			gmailNock.done();
-		});
+		testWorkflows(['nodes/Google/Gmail/test/v2/threads.workflow.json']);
 	});
 
 	describe('loadOptions', () => {

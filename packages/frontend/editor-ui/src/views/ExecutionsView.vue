@@ -1,16 +1,20 @@
 <script lang="ts" setup>
+import type { ExecutionFilterType } from '@/Interface';
+import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
+import GlobalExecutionsList from '@/components/executions/global/GlobalExecutionsList.vue';
+import { useDocumentTitle } from '@/composables/useDocumentTitle';
+import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useI18n } from '@/composables/useI18n';
+import { useOverview } from '@/composables/useOverview';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { useToast } from '@/composables/useToast';
+import InsightsSummary from '@/features/insights/components/InsightsSummary.vue';
+import { useInsightsStore } from '@/features/insights/insights.store';
+import { useExecutionsStore } from '@/stores/executions.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { storeToRefs } from 'pinia';
 import { onBeforeMount, onBeforeUnmount, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
-import GlobalExecutionsList from '@/components/executions/global/GlobalExecutionsList.vue';
-import { useI18n } from '@/composables/useI18n';
-import { useTelemetry } from '@/composables/useTelemetry';
-import { useExternalHooks } from '@/composables/useExternalHooks';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useExecutionsStore } from '@/stores/executions.store';
-import { useToast } from '@/composables/useToast';
-import { useDocumentTitle } from '@/composables/useDocumentTitle';
-import { storeToRefs } from 'pinia';
-import type { ExecutionFilterType } from '@/Interface';
 
 const route = useRoute();
 const i18n = useI18n();
@@ -18,8 +22,10 @@ const telemetry = useTelemetry();
 const externalHooks = useExternalHooks();
 const workflowsStore = useWorkflowsStore();
 const executionsStore = useExecutionsStore();
+const insightsStore = useInsightsStore();
 const documentTitle = useDocumentTitle();
 const toast = useToast();
+const overview = useOverview();
 
 const { executionsCount, executionsCountEstimated, filters, allExecutions } =
 	storeToRefs(executionsStore);
@@ -87,5 +93,14 @@ async function onExecutionStop() {
 		:estimated-total="executionsCountEstimated"
 		@execution:stop="onExecutionStop"
 		@update:filters="onUpdateFilters"
-	/>
+	>
+		<ProjectHeader>
+			<InsightsSummary
+				v-if="overview.isOverviewSubPage && insightsStore.isSummaryEnabled"
+				:loading="insightsStore.weeklySummary.isLoading"
+				:summary="insightsStore.weeklySummary.state"
+				time-range="week"
+			/>
+		</ProjectHeader>
+	</GlobalExecutionsList>
 </template>

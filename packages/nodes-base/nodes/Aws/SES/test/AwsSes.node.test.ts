@@ -1,10 +1,11 @@
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, type WorkflowTestData } from 'n8n-workflow';
 import assert from 'node:assert';
 import qs from 'node:querystring';
 
 import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
 import * as Helpers from '@test/nodes/Helpers';
-import type { WorkflowTestData } from '@test/nodes/types';
+
+import { credentials } from '../../__tests__/credentials';
 
 describe('AwsSes Node', () => {
 	const email = 'test+user@example.com';
@@ -170,10 +171,9 @@ describe('AwsSes Node', () => {
 		},
 	];
 
-	const nodeTypes = Helpers.setup(tests);
-
 	test.each(tests)('$description', async (testData) => {
-		const { result } = await executeWorkflow(testData, nodeTypes);
+		testData.credentials = credentials;
+		const { result } = await executeWorkflow(testData);
 		const resultNodeData = Helpers.getResultNodeData(result, testData);
 		resultNodeData.forEach(({ nodeName, resultData }) =>
 			expect(resultData).toEqual(testData.output.nodeData[nodeName]),

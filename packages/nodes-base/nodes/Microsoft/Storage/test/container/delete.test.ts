@@ -1,21 +1,12 @@
-import nock from 'nock';
+import { equalityTest, workflowToTests } from '@test/nodes/Helpers';
 
-import { equalityTest, setup, workflowToTests } from '@test/nodes/Helpers';
+import { credentials } from '../credentials';
 
 describe('Azure Storage Node', () => {
 	const workflows = ['nodes/Microsoft/Storage/test/workflows/container_delete.workflow.json'];
 	const workflowTests = workflowToTests(workflows);
 
-	beforeEach(() => {
-		// https://github.com/nock/nock/issues/2057#issuecomment-663665683
-		if (!nock.isActive()) {
-			nock.activate();
-		}
-	});
-
 	describe('should delete container', () => {
-		const nodeTypes = setup(workflowTests);
-
 		for (const workflow of workflowTests) {
 			workflow.nock = {
 				baseUrl: 'https://myaccount.blob.core.windows.net',
@@ -35,7 +26,8 @@ describe('Azure Storage Node', () => {
 					},
 				],
 			};
-			test(workflow.description, async () => await equalityTest(workflow, nodeTypes));
+			workflow.credentials = credentials;
+			test(workflow.description, async () => await equalityTest(workflow));
 		}
 	});
 });

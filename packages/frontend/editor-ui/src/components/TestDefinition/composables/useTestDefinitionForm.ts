@@ -36,7 +36,6 @@ export function useTestDefinitionForm() {
 			value: '',
 			__rl: true,
 		},
-		metrics: [],
 		mockedNodes: [],
 	});
 
@@ -62,8 +61,6 @@ export function useTestDefinitionForm() {
 			const testDefinition = evaluationsStore.testDefinitionsById[testId];
 
 			if (testDefinition) {
-				const metrics = await evaluationsStore.fetchMetrics(testId);
-
 				state.value.description = {
 					value: testDefinition.description ?? '',
 					isEditing: false,
@@ -84,7 +81,6 @@ export function useTestDefinitionForm() {
 					value: testDefinition.evaluationWorkflowId ?? '',
 					__rl: true,
 				};
-				state.value.metrics = metrics;
 				state.value.mockedNodes = testDefinition.mockedNodes ?? [];
 				evaluationsStore.updateRunFieldIssues(testDefinition.id);
 			}
@@ -108,37 +104,6 @@ export function useTestDefinitionForm() {
 		} finally {
 			isSaving.value = false;
 		}
-	};
-
-	const deleteMetric = async (metricId: string, testId: string) => {
-		await evaluationsStore.deleteMetric({ id: metricId, testDefinitionId: testId });
-		state.value.metrics = state.value.metrics.filter((metric) => metric.id !== metricId);
-	};
-
-	/**
-	 * This method would perform unnecessary updates on the BE
-	 * it's a performance degradation candidate if metrics reach certain amount
-	 */
-	const updateMetrics = async (testId: string) => {
-		const promises = state.value.metrics.map(async (metric) => {
-			if (!metric.name) return;
-			if (!metric.id) {
-				const createdMetric = await evaluationsStore.createMetric({
-					name: metric.name,
-					testDefinitionId: testId,
-				});
-				metric.id = createdMetric.id;
-			} else {
-				await evaluationsStore.updateMetric({
-					name: metric.name,
-					id: metric.id,
-					testDefinitionId: testId,
-				});
-			}
-		});
-		isSaving.value = true;
-		await Promise.all(promises);
-		isSaving.value = false;
 	};
 
 	const updateTest = async (testId: string) => {
@@ -230,8 +195,6 @@ export function useTestDefinitionForm() {
 		state,
 		fields,
 		isSaving: computed(() => isSaving.value),
-		deleteMetric,
-		updateMetrics,
 		loadTestData,
 		createTest,
 		updateTest,

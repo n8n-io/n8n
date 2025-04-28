@@ -5,17 +5,15 @@ import {
 	type INode,
 	type INodeParameters,
 	type INodeProperties,
-	type INodeType,
 	type INodeTypeDescription,
 } from '@/Interfaces';
 import {
 	getNodeParameters,
-	getNodeHints,
 	isSubNodeType,
-	applyDeclarativeNodeOptionParameters,
 	getParameterIssues,
 	isTriggerNode,
 	isExecutable,
+	displayParameter,
 } from '@/NodeHelpers';
 import type { Workflow } from '@/Workflow';
 
@@ -3420,6 +3418,7 @@ describe('NodeHelpers', () => {
 					false,
 					false,
 					null,
+					null,
 				);
 				expect(result).toEqual(testData.output.noneDisplayedFalse.defaultsFalse);
 
@@ -3429,6 +3428,7 @@ describe('NodeHelpers', () => {
 					testData.input.nodeValues,
 					true,
 					false,
+					null,
 					null,
 				);
 				expect(result).toEqual(testData.output.noneDisplayedFalse.defaultsTrue);
@@ -3440,6 +3440,7 @@ describe('NodeHelpers', () => {
 					false,
 					true,
 					null,
+					null,
 				);
 				expect(result).toEqual(testData.output.noneDisplayedTrue.defaultsFalse);
 
@@ -3450,99 +3451,11 @@ describe('NodeHelpers', () => {
 					true,
 					true,
 					null,
+					null,
 				);
 				expect(result).toEqual(testData.output.noneDisplayedTrue.defaultsTrue);
 			});
 		}
-	});
-
-	describe('getNodeHints', () => {
-		//TODO: Add more tests here when hints are added to some node types
-		test('should return node hints if present in node type', () => {
-			const testType = {
-				hints: [
-					{
-						message: 'TEST HINT',
-					},
-				],
-			} as INodeTypeDescription;
-
-			const workflow = {} as unknown as Workflow;
-
-			const node: INode = {
-				name: 'Test Node Hints',
-			} as INode;
-			const nodeType = testType;
-
-			const hints = getNodeHints(workflow, node, nodeType);
-
-			expect(hints).toHaveLength(1);
-			expect(hints[0].message).toEqual('TEST HINT');
-		});
-		test('should not include hint if displayCondition is false', () => {
-			const testType = {
-				hints: [
-					{
-						message: 'TEST HINT',
-						displayCondition: 'FALSE DISPLAY CONDITION EXPESSION',
-					},
-				],
-			} as INodeTypeDescription;
-
-			const workflow = {
-				expression: {
-					getSimpleParameterValue(
-						_node: string,
-						_parameter: string,
-						_mode: string,
-						_additionalData = {},
-					) {
-						return false;
-					},
-				},
-			} as unknown as Workflow;
-
-			const node: INode = {
-				name: 'Test Node Hints',
-			} as INode;
-			const nodeType = testType;
-
-			const hints = getNodeHints(workflow, node, nodeType);
-
-			expect(hints).toHaveLength(0);
-		});
-		test('should include hint if displayCondition is true', () => {
-			const testType = {
-				hints: [
-					{
-						message: 'TEST HINT',
-						displayCondition: 'TRUE DISPLAY CONDITION EXPESSION',
-					},
-				],
-			} as INodeTypeDescription;
-
-			const workflow = {
-				expression: {
-					getSimpleParameterValue(
-						_node: string,
-						_parameter: string,
-						_mode: string,
-						_additionalData = {},
-					) {
-						return true;
-					},
-				},
-			} as unknown as Workflow;
-
-			const node: INode = {
-				name: 'Test Node Hints',
-			} as INode;
-			const nodeType = testType;
-
-			const hints = getNodeHints(workflow, node, nodeType);
-
-			expect(hints).toHaveLength(1);
-		});
 	});
 
 	describe('isSubNodeType', () => {
@@ -3556,60 +3469,6 @@ describe('NodeHelpers', () => {
 		];
 		test.each(tests)('should return %p for %o', (expected, nodeType) => {
 			expect(isSubNodeType(nodeType)).toBe(expected);
-		});
-	});
-
-	describe('applyDeclarativeNodeOptionParameters', () => {
-		test.each([
-			[
-				'node with execute method',
-				{
-					execute: jest.fn(),
-					description: {
-						properties: [],
-					},
-				},
-			],
-			[
-				'node with trigger method',
-				{
-					trigger: jest.fn(),
-					description: {
-						properties: [],
-					},
-				},
-			],
-			[
-				'node with webhook method',
-				{
-					webhook: jest.fn(),
-					description: {
-						properties: [],
-					},
-				},
-			],
-			[
-				'a polling node-type',
-				{
-					description: {
-						polling: true,
-						properties: [],
-					},
-				},
-			],
-			[
-				'a node-type with a non-main output',
-				{
-					description: {
-						outputs: ['main', 'ai_agent'],
-						properties: [],
-					},
-				},
-			],
-		])('should not modify properties on node with %s method', (_, nodeTypeName) => {
-			const nodeType = nodeTypeName as unknown as INodeType;
-			applyDeclarativeNodeOptionParameters(nodeType);
-			expect(nodeType.description.properties).toEqual([]);
 		});
 	});
 
@@ -4193,6 +4052,7 @@ describe('NodeHelpers', () => {
 					testData.input.nodeValues,
 					testData.input.path,
 					testData.input.node,
+					null,
 				);
 				expect(result).toEqual(testData.output);
 			});
@@ -4209,6 +4069,18 @@ describe('NodeHelpers', () => {
 			parameters: {},
 		};
 
+		const testNodeType: INodeTypeDescription = {
+			name: 'Test Node',
+			version: 0,
+			defaults: {},
+			inputs: [],
+			outputs: [],
+			properties: [],
+			displayName: '',
+			group: [],
+			description: '',
+		};
+
 		it('Should validate required dateTime parameters if empty string', () => {
 			const nodeProperties: INodeProperties = {
 				displayName: 'Date Time',
@@ -4221,7 +4093,7 @@ describe('NodeHelpers', () => {
 				testDateTime: '',
 			};
 
-			const result = getParameterIssues(nodeProperties, nodeValues, '', testNode);
+			const result = getParameterIssues(nodeProperties, nodeValues, '', testNode, null);
 
 			expect(result).toEqual({
 				parameters: {
@@ -4242,7 +4114,7 @@ describe('NodeHelpers', () => {
 				testDateTime: undefined,
 			};
 
-			const result = getParameterIssues(nodeProperties, nodeValues, '', testNode);
+			const result = getParameterIssues(nodeProperties, nodeValues, '', testNode, testNodeType);
 
 			expect(result).toEqual({
 				parameters: {
@@ -4510,6 +4382,395 @@ describe('NodeHelpers', () => {
 
 				const result = isExecutable(workflowMock, testData.node, testData.nodeTypeData);
 				expect(result).toEqual(testData.expected);
+			});
+		}
+	});
+	describe('displayParameter', () => {
+		const testNode: INode = {
+			id: '12345',
+			name: 'Test Node',
+			typeVersion: 1,
+			type: 'n8n-nodes-base.testNode',
+			position: [1, 1],
+			parameters: {},
+		};
+
+		const testNodeType: INodeTypeDescription = {
+			name: 'Test Node',
+			version: 0,
+			defaults: {},
+			inputs: [],
+			outputs: [],
+			properties: [],
+			displayName: '',
+			group: [],
+			description: '',
+		};
+
+		const defaultTestInput = {
+			nodeValues: {},
+			parameter: {
+				displayName: 'Test Parameter',
+				name: 'testParameter',
+				type: 'string',
+				default: '',
+			} as INodeProperties,
+			node: testNode,
+			nodeTypeDescription: testNodeType,
+			nodeValuesRoot: undefined as undefined | INodeParameters,
+			displayKey: 'displayOptions' as 'displayOptions' | 'disabledOptions',
+		};
+
+		const tests: Array<[string, typeof defaultTestInput, boolean]> = [
+			['Should return true if no displayOptions are defined', { ...defaultTestInput }, true],
+			[
+				'Should return true if displayOptions.show conditions are met',
+				{
+					...defaultTestInput,
+					nodeValues: { condition: 'value1' },
+					parameter: {
+						...defaultTestInput.parameter,
+						displayOptions: {
+							show: {
+								condition: ['value1'],
+							},
+						},
+					},
+				},
+				true,
+			],
+			[
+				'Should return false if displayOptions.show conditions are not met',
+				{
+					...defaultTestInput,
+					nodeValues: { condition: 'value2' },
+					parameter: {
+						...defaultTestInput.parameter,
+						displayOptions: {
+							show: {
+								condition: ['value1'],
+							},
+						},
+					},
+				},
+				false,
+			],
+			[
+				'Should return false if displayOptions.hide conditions are met',
+				{
+					...defaultTestInput,
+					nodeValues: { condition: 'value1' },
+					parameter: {
+						...defaultTestInput.parameter,
+						displayOptions: {
+							hide: {
+								condition: ['value1'],
+							},
+						},
+					},
+				},
+				false,
+			],
+			[
+				'Should return true if displayOptions.hide conditions are not met',
+				{
+					...defaultTestInput,
+					nodeValues: { condition: 'value2' },
+					parameter: {
+						...defaultTestInput.parameter,
+						displayOptions: {
+							hide: {
+								condition: ['value1'],
+							},
+						},
+					},
+				},
+				true,
+			],
+			[
+				'Should return true if displayOptions.show and hide conditions are both met',
+				{
+					...defaultTestInput,
+					nodeValues: { condition: 'value1' },
+					parameter: {
+						...defaultTestInput.parameter,
+						displayOptions: {
+							show: {
+								condition: ['value1'],
+							},
+							hide: {
+								condition: ['value1'],
+							},
+						},
+					},
+				},
+				false, // Hide takes precedence over show
+			],
+			[
+				'Should return true if displayOptions.show conditions are met with multiple values',
+				{
+					...defaultTestInput,
+					nodeValues: { condition: 'value2' },
+					parameter: {
+						...defaultTestInput.parameter,
+						displayOptions: {
+							show: {
+								condition: ['value1', 'value2'],
+							},
+						},
+					},
+				},
+				true,
+			],
+			[
+				'Should return false if displayOptions.hide conditions are met with multiple values',
+				{
+					...defaultTestInput,
+					nodeValues: { condition: 'value2' },
+					parameter: {
+						...defaultTestInput.parameter,
+						displayOptions: {
+							hide: {
+								condition: ['value1', 'value2'],
+							},
+						},
+					},
+				},
+				false,
+			],
+			[
+				'Should return true if @tool is true in nodeTypeDescription of tool',
+				{
+					...defaultTestInput,
+					nodeTypeDescription: {
+						...testNodeType,
+						name: testNodeType.name + 'Tool',
+					},
+					parameter: {
+						...defaultTestInput.parameter,
+						displayOptions: {
+							show: {
+								'@tool': [true],
+							},
+						},
+					},
+				},
+				true,
+			],
+			[
+				'Should return false if @tool is true in nodeTypeDescription of non-tool',
+				{
+					...defaultTestInput,
+					parameter: {
+						...defaultTestInput.parameter,
+						displayOptions: {
+							show: {
+								'@tool': [true],
+							},
+						},
+					},
+				},
+				false,
+			],
+			[
+				'Should return true if @version condition is met',
+				{
+					...defaultTestInput,
+					node: {
+						...testNode,
+						typeVersion: 2,
+					},
+					parameter: {
+						...defaultTestInput.parameter,
+						displayOptions: {
+							show: {
+								'@version': [
+									{
+										_cnd: {
+											gte: 2,
+										},
+									},
+								],
+							},
+						},
+					},
+				},
+				true,
+			],
+			[
+				'Should return false if @version condition is not met',
+				{
+					...defaultTestInput,
+					node: {
+						...testNode,
+						typeVersion: 1,
+					},
+					parameter: {
+						...defaultTestInput.parameter,
+						displayOptions: {
+							show: {
+								'@version': [
+									{
+										_cnd: {
+											gte: 2,
+										},
+									},
+								],
+							},
+						},
+					},
+				},
+				false,
+			],
+			[
+				'Should return true if @tool and @version conditions are both met',
+				{
+					...defaultTestInput,
+					node: {
+						...testNode,
+						typeVersion: 2,
+					},
+					nodeTypeDescription: {
+						...testNodeType,
+						name: testNodeType.name + 'Tool',
+					},
+					parameter: {
+						...defaultTestInput.parameter,
+						displayOptions: {
+							show: {
+								'@tool': [true],
+								'@version': [
+									{
+										_cnd: {
+											gte: 2,
+										},
+									},
+								],
+							},
+						},
+					},
+				},
+				true,
+			],
+			[
+				'Should return false if @tool is true but @version condition is not met',
+				{
+					...defaultTestInput,
+					node: {
+						...testNode,
+						typeVersion: 1,
+					},
+					nodeTypeDescription: {
+						...testNodeType,
+						name: testNodeType.name + 'Tool',
+					},
+					parameter: {
+						...defaultTestInput.parameter,
+						displayOptions: {
+							show: {
+								'@tool': [true],
+								'@version': [
+									{
+										_cnd: {
+											gte: 2,
+										},
+									},
+								],
+							},
+						},
+					},
+				},
+				false,
+			],
+			[
+				'Should return true if no disabledOptions are defined',
+				{
+					...defaultTestInput,
+					displayKey: 'disabledOptions',
+				},
+				true,
+			],
+			[
+				'Should return false if disabledOptions.hide conditions are met',
+				{
+					...defaultTestInput,
+					nodeValues: { condition: 'value1' },
+					parameter: {
+						...defaultTestInput.parameter,
+						disabledOptions: {
+							hide: {
+								condition: ['value1'],
+							},
+						},
+					},
+					displayKey: 'disabledOptions',
+				},
+				false,
+			],
+			[
+				'Should return true if disabledOptions.hide conditions are not met',
+				{
+					...defaultTestInput,
+					nodeValues: { condition: 'value2' },
+					parameter: {
+						...defaultTestInput.parameter,
+						disabledOptions: {
+							hide: {
+								condition: ['value1'],
+							},
+						},
+					},
+					displayKey: 'disabledOptions',
+				},
+				true,
+			],
+			[
+				'Should return true if nodeValuesRoot contains a matching value for displayOptions.show',
+				{
+					...defaultTestInput,
+					nodeValues: {},
+					nodeValuesRoot: { condition: 'value1' },
+					parameter: {
+						...defaultTestInput.parameter,
+						displayOptions: {
+							show: {
+								'/condition': ['value1'],
+							},
+						},
+					},
+				},
+				true,
+			],
+			[
+				'Should return false if nodeValuesRoot does not contain a matching value for displayOptions.show',
+				{
+					...defaultTestInput,
+					nodeValues: { condition: 'value1' },
+					nodeValuesRoot: { anotherKey: 'value1' },
+					parameter: {
+						...defaultTestInput.parameter,
+						displayOptions: {
+							show: {
+								'/condition': ['value1'],
+							},
+						},
+					},
+				},
+				false,
+			],
+		];
+
+		for (const [description, input, expected] of tests) {
+			test(description, () => {
+				const result = displayParameter(
+					input.nodeValues,
+					input.parameter,
+					input.node,
+					input.nodeTypeDescription,
+					input.nodeValuesRoot,
+					input.displayKey,
+				);
+				expect(result).toEqual(expected);
 			});
 		}
 	});

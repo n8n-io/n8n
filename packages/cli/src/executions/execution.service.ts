@@ -33,13 +33,10 @@ import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error
 import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import type {
-	CreateExecutionPayload,
-	IExecutionFlattedResponse,
-	IExecutionResponse,
-} from '@/interfaces';
+import type { CreateExecutionPayload, IExecutionFlattedResponse } from '@/interfaces';
 import { License } from '@/license';
 import { NodeTypes } from '@/node-types';
+import type { IExecutionResponse } from '@/types-db';
 import { WaitTracker } from '@/wait-tracker';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
@@ -236,7 +233,7 @@ export class ExecutionService {
 			throw new UnexpectedError('The retry did not start for an unknown reason.');
 		}
 
-		return !!executionData.finished;
+		return executionData.status;
 	}
 
 	async delete(req: ExecutionRequest.Delete, sharedWorkflowIds: string[]) {
@@ -311,6 +308,7 @@ export class ExecutionService {
 					[node.name]: [
 						{
 							startTime: 0,
+							executionIndex: 0,
 							executionTime: 0,
 							error,
 							source: [],

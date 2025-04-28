@@ -1,23 +1,12 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import nock from 'nock';
 
-import {
-	equalityTest,
-	getWorkflowFilenames,
-	initBinaryDataService,
-	setup,
-	workflowToTests,
-} from '@test/nodes/Helpers';
+import { getWorkflowFilenames, testWorkflows } from '@test/nodes/Helpers';
 
 describe('GraphQL Node', () => {
-	const workflows = getWorkflowFilenames(__dirname);
-	const workflowTests = workflowToTests(workflows);
-
 	const baseUrl = 'https://api.n8n.io/';
 
 	beforeAll(async () => {
-		await initBinaryDataService();
-
 		nock(baseUrl)
 			.matchHeader('accept', 'application/json')
 			.matchHeader('content-type', 'application/json')
@@ -69,9 +58,6 @@ describe('GraphQL Node', () => {
 			});
 	});
 
-	const nodeTypes = setup(workflowTests);
-
-	for (const workflow of workflowTests) {
-		test(workflow.description, async () => await equalityTest(workflow, nodeTypes));
-	}
+	const workflows = getWorkflowFilenames(__dirname);
+	testWorkflows(workflows);
 });

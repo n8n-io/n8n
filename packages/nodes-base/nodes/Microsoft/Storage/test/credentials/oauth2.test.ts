@@ -1,55 +1,13 @@
-import type {
-	ICredentialDataDecryptedObject,
-	IDataObject,
-	IHttpRequestOptions,
-} from 'n8n-workflow';
-import nock from 'nock';
+import { equalityTest, workflowToTests } from '@test/nodes/Helpers';
 
-import { CredentialsHelper, equalityTest, setup, workflowToTests } from '@test/nodes/Helpers';
+import { credentials } from '../credentials';
 
 describe('Azure Storage Node', () => {
 	const workflows = ['nodes/Microsoft/Storage/test/workflows/credentials_oauth2.workflow.json'];
 	const workflowTests = workflowToTests(workflows);
 
-	beforeEach(() => {
-		// https://github.com/nock/nock/issues/2057#issuecomment-663665683
-		if (!nock.isActive()) {
-			nock.activate();
-		}
-	});
-
 	describe('should use correct oauth2 credentials', () => {
-		beforeAll(() => {
-			nock.disableNetConnect();
-
-			jest
-				.spyOn(CredentialsHelper.prototype, 'authenticate')
-				.mockImplementation(
-					async (
-						credentials: ICredentialDataDecryptedObject,
-						typeName: string,
-						requestParams: IHttpRequestOptions,
-					): Promise<IHttpRequestOptions> => {
-						if (typeName === 'azureStorageOAuth2Api') {
-							return {
-								...requestParams,
-								headers: {
-									authorization: `bearer ${(credentials.oauthTokenData as IDataObject).access_token as string}`,
-								},
-							};
-						} else {
-							return requestParams;
-						}
-					},
-				);
-		});
-
-		afterAll(() => {
-			nock.restore();
-			jest.restoreAllMocks();
-		});
-
-		const nodeTypes = setup(workflowTests);
+		beforeEach(() => jest.restoreAllMocks());
 
 		for (const workflow of workflowTests) {
 			workflow.nock = {
@@ -59,7 +17,6 @@ describe('Azure Storage Node', () => {
 						method: 'get',
 						path: '/mycontainer?restype=container',
 						statusCode: 200,
-						requestHeaders: { authorization: 'bearer ACCESSTOKEN' },
 						responseBody: '',
 						responseHeaders: {
 							'content-length': '0',
@@ -80,7 +37,8 @@ describe('Azure Storage Node', () => {
 					},
 				],
 			};
-			test(workflow.description, async () => await equalityTest(workflow, nodeTypes));
+			workflow.credentials = credentials;
+			test(workflow.description, async () => await equalityTest(workflow));
 		}
 	});
 });

@@ -1,6 +1,7 @@
+import type { WorkflowTestData } from 'n8n-workflow';
+
 import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
 import * as Helpers from '@test/nodes/Helpers';
-import type { WorkflowTestData } from '@test/nodes/types';
 
 jest.mock('otpauth', () => {
 	return {
@@ -24,15 +25,19 @@ describe('Execute TOTP node', () => {
 					TOTP: [[{ json: { token: '123456' } }]], // ignore secondsRemaining to prevent flakiness
 				},
 			},
+			credentials: {
+				totpApi: {
+					label: 'GitHub:john-doe',
+					secret: 'BVDRSBXQB2ZEL5HE',
+				},
+			},
 		},
 	];
-
-	const nodeTypes = Helpers.setup(tests);
 
 	for (const testData of tests) {
 		// eslint-disable-next-line @typescript-eslint/no-loop-func
 		test(testData.description, async () => {
-			const { result } = await executeWorkflow(testData, nodeTypes);
+			const { result } = await executeWorkflow(testData);
 
 			Helpers.getResultNodeData(result, testData).forEach(({ nodeName, resultData }) => {
 				const expected = testData.output.nodeData[nodeName][0][0].json;

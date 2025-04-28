@@ -1,10 +1,7 @@
 <script lang="ts" setup>
 import ContextMenu from '@/components/ContextMenu/ContextMenu.vue';
-import {
-	type CanvasLayoutEvent,
-	type CanvasLayoutSource,
-	useCanvasLayout,
-} from '@/composables/useCanvasLayout';
+import type { CanvasLayoutEvent, CanvasLayoutSource } from '@/composables/useCanvasLayout';
+import { useCanvasLayout } from '@/composables/useCanvasLayout';
 import { useCanvasNodeHover } from '@/composables/useCanvasNodeHover';
 import { useCanvasTraversal } from '@/composables/useCanvasTraversal';
 import { type ContextMenuAction, useContextMenu } from '@/composables/useContextMenu';
@@ -12,14 +9,15 @@ import { useKeybindings } from '@/composables/useKeybindings';
 import type { PinDataSource } from '@/composables/usePinnedData';
 import { CanvasKey } from '@/constants';
 import type { NodeCreatorOpenSource } from '@/Interface';
-import {
-	type CanvasConnection,
-	type CanvasEventBusEvents,
-	type CanvasNode,
-	type CanvasNodeMoveEvent,
-	type ConnectStartEvent,
-	CanvasNodeRenderType,
+import type {
+	CanvasConnection,
+	CanvasEventBusEvents,
+	CanvasNode,
+	CanvasNodeMoveEvent,
+	ConnectStartEvent,
+	CanvasNodeData,
 } from '@/types';
+import { CanvasNodeRenderType } from '@/types';
 import { GRID_SIZE } from '@/utils/nodeViewUtils';
 import { isPresent } from '@/utils/typesUtils';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
@@ -52,6 +50,7 @@ import CanvasBackground from './elements/background/CanvasBackground.vue';
 import CanvasArrowHeadMarker from './elements/edges/CanvasArrowHeadMarker.vue';
 import Edge from './elements/edges/CanvasEdge.vue';
 import Node from './elements/nodes/CanvasNode.vue';
+import { useViewportAutoAdjust } from '@/components/canvas/composables/useViewportAutoAdjust';
 
 const $style = useCssModule();
 
@@ -142,6 +141,8 @@ const {
 	onNodesInitialized,
 	findNode,
 	viewport,
+	nodesSelectionActive,
+	setViewport,
 	onEdgeMouseLeave,
 	onEdgeMouseEnter,
 	onEdgeMouseMove,
@@ -199,7 +200,7 @@ const renameKeyCode = ' ';
 useShortKeyPress(
 	renameKeyCode,
 	() => {
-		if (lastSelectedNode.value) {
+		if (lastSelectedNode.value && lastSelectedNode.value.id !== CanvasNodeRenderType.AIPrompt) {
 			emit('update:node:name', lastSelectedNode.value.id);
 		}
 	},
@@ -295,7 +296,7 @@ const keyMap = computed(() => {
 		ctrl_alt_n: () => emit('create:workflow'),
 		ctrl_enter: () => emit('run:workflow'),
 		ctrl_s: () => emit('save:workflow'),
-		shift_alt_t: async () => await onTidyUp('keyboard-shortcut'),
+		shift_alt_t: async () => await onTidyUp({ source: 'keyboard-shortcut' }),
 	};
 	return fullKeymap;
 });
@@ -358,6 +359,12 @@ function onNodeClick({ event, node }: NodeMouseEvent) {
 
 function onSelectionDragStop(event: NodeDragEvent) {
 	onUpdateNodesPosition(event.nodes.map(({ id, position }) => ({ id, position })));
+}
+
+function onSelectionEnd() {
+	if (selectedNodes.value.length === 1) {
+		nodesSelectionActive.value = false;
+	}
 }
 
 function onSetNodeActivated(id: string) {
@@ -531,6 +538,8 @@ function emitWithLastSelectedNode(emitFn: (id: string) => void) {
 const defaultZoom = 1;
 const isPaneMoving = ref(false);
 
+useViewportAutoAdjust(viewportRef, viewport, setViewport);
+
 function getProjectedPosition(event?: Pick<MouseEvent, 'clientX' | 'clientY'>) {
 	const bounds = viewportRef.value?.getBoundingClientRect() ?? { left: 0, top: 0 };
 	const offsetX = event?.clientX ?? 0;
@@ -578,6 +587,15 @@ function onPaneMoveStart() {
 function onPaneMoveEnd() {
 	isPaneMoving.value = false;
 }
+
+// #AI-716: Due to a bug in vue-flow reactivity, the node data is not updated when the node is added
+// resulting in outdated data. We use this computed property as a workaround to get the latest node data.
+const nodeDataById = computed(() => {
+	return props.nodes.reduce<Record<string, CanvasNodeData>>((acc, node) => {
+		acc[node.id] = node.data as CanvasNodeData;
+		return acc;
+	}, {});
+});
 
 /**
  * Context menu
@@ -640,16 +658,16 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[])
 		case 'change_color':
 			return props.eventBus.emit('nodes:action', { ids: nodeIds, action: 'update:sticky:color' });
 		case 'tidy_up':
-			return await onTidyUp('context-menu');
+			return await onTidyUp({ source: 'context-menu' });
 	}
 }
 
-async function onTidyUp(source: CanvasLayoutSource) {
+async function onTidyUp(payload: { source: CanvasLayoutSource }) {
 	const applyOnSelection = selectedNodes.value.length > 1;
 	const target = applyOnSelection ? 'selection' : 'all';
 	const result = layout(target);
 
-	emit('tidy-up', { result, target, source });
+	emit('tidy-up', { result, target, source: payload.source });
 
 	if (!applyOnSelection) {
 		await nextTick();
@@ -731,14 +749,14 @@ const initialized = ref(false);
 onMounted(() => {
 	props.eventBus.on('fitView', onFitView);
 	props.eventBus.on('nodes:select', onSelectNodes);
-
+	props.eventBus.on('tidyUp', onTidyUp);
 	window.addEventListener('blur', onWindowBlur);
 });
 
 onUnmounted(() => {
 	props.eventBus.off('fitView', onFitView);
 	props.eventBus.off('nodes:select', onSelectNodes);
-
+	props.eventBus.off('tidyUp', onTidyUp);
 	window.removeEventListener('blur', onWindowBlur);
 });
 
@@ -799,6 +817,7 @@ provide(CanvasKey, {
 		@node-drag-stop="onNodeDragStop"
 		@node-click="onNodeClick"
 		@selection-drag-stop="onSelectionDragStop"
+		@selection-end="onSelectionEnd"
 		@selection-context-menu="onOpenSelectionContextMenu"
 		@dragover="onDragOver"
 		@drop="onDrop"
@@ -807,6 +826,7 @@ provide(CanvasKey, {
 			<slot name="node" v-bind="{ nodeProps }">
 				<Node
 					v-bind="nodeProps"
+					:data="nodeDataById[nodeProps.id]"
 					:read-only="readOnly"
 					:event-bus="eventBus"
 					:hovered="nodesHoveredById[nodeProps.id]"
@@ -880,7 +900,7 @@ provide(CanvasKey, {
 			@zoom-in="onZoomIn"
 			@zoom-out="onZoomOut"
 			@reset-zoom="onResetZoom"
-			@tidy-up="onTidyUp('canvas-button')"
+			@tidy-up="onTidyUp({ source: 'canvas-button' })"
 		/>
 
 		<Suspense>

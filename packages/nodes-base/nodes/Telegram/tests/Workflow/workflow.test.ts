@@ -1,5 +1,7 @@
 import nock from 'nock';
 
+import { getWorkflowFilenames, testWorkflows } from '@test/nodes/Helpers';
+
 import {
 	getChatResponse,
 	sendMediaGroupResponse,
@@ -13,14 +15,18 @@ import {
 	sendAudioResponse,
 	getMemberResponse,
 } from './apiResponses';
-import { FAKE_CREDENTIALS_DATA } from '../../../../test/nodes/FakeCredentialsMap';
-import { getWorkflowFilenames, testWorkflows } from '../../../../test/nodes/Helpers';
 
 describe('Telegram', () => {
+	const credentials = {
+		telegramApi: {
+			accessToken: 'testToken',
+			baseUrl: 'https://api.telegram.org',
+		},
+	};
+
 	describe('Run Telegram workflow', () => {
 		beforeAll(() => {
-			const { baseUrl } = FAKE_CREDENTIALS_DATA.telegramApi;
-			const mock = nock(baseUrl);
+			const mock = nock(credentials.telegramApi.baseUrl);
 
 			mock.post('/bottestToken/getChat').reply(200, getChatResponse);
 			mock.post('/bottestToken/sendMessage').reply(200, sendMessageResponse);
@@ -42,6 +48,6 @@ describe('Telegram', () => {
 		});
 
 		const workflows = getWorkflowFilenames(__dirname);
-		testWorkflows(workflows);
+		testWorkflows(workflows, credentials);
 	});
 });

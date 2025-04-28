@@ -22,9 +22,9 @@ const configuredOutputs = (parameters: INodeParameters) => {
 	const categories = ((parameters.categories as IDataObject)?.categories as IDataObject[]) ?? [];
 	const fallback = (parameters.options as IDataObject)?.fallback as string;
 	const ret = categories.map((cat) => {
-		return { type: NodeConnectionTypes.Main, displayName: cat.category };
+		return { type: 'main', displayName: cat.category };
 	});
-	if (fallback === 'other') ret.push({ type: NodeConnectionTypes.Main, displayName: 'Other' });
+	if (fallback === 'other') ret.push({ type: 'main', displayName: 'Other' });
 	return ret;
 };
 
@@ -227,6 +227,22 @@ export class TextClassifier implements INodeType {
 			const item = items[itemIdx];
 			item.pairedItem = { item: itemIdx };
 			const input = this.getNodeParameter('inputText', itemIdx) as string;
+
+			if (input === undefined || input === null) {
+				if (this.continueOnFail()) {
+					returnData[0].push({
+						json: { error: 'Text to classify is not defined' },
+						pairedItem: { item: itemIdx },
+					});
+					continue;
+				} else {
+					throw new NodeOperationError(
+						this.getNode(),
+						`Text to classify for item ${itemIdx} is not defined`,
+					);
+				}
+			}
+
 			const inputPrompt = new HumanMessage(input);
 
 			const systemPromptTemplateOpt = this.getNodeParameter(

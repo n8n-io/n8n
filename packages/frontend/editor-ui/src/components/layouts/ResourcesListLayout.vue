@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, nextTick, ref, onMounted, watch } from 'vue';
+import { computed, nextTick, ref, onMounted, watch, onBeforeUnmount } from 'vue';
 
 import { type ProjectSharingData } from '@/types/projects.types';
 import PageViewLayout from '@/components/layouts/PageViewLayout.vue';
@@ -14,7 +14,7 @@ import { useRoute, useRouter } from 'vue-router';
 
 import type { BaseTextKey } from '@/plugins/i18n';
 import type { Scope } from '@n8n/permissions';
-import type { BaseFolderItem, BaseResource, FolderShortInfo, ITag } from '@/Interface';
+import type { BaseFolderItem, BaseResource, ITag, ResourceParentFolder } from '@/Interface';
 import { isSharedResource, isResourceSortableByDate } from '@/utils/typeGuards';
 
 type ResourceKeyType = 'credentials' | 'workflows' | 'variables' | 'folders';
@@ -34,7 +34,7 @@ export type WorkflowResource = BaseResource & {
 	tags?: ITag[] | string[];
 	sharedWithProjects?: ProjectSharingData[];
 	readOnly: boolean;
-	parentFolder?: FolderShortInfo;
+	parentFolder?: ResourceParentFolder;
 };
 
 export type VariableResource = BaseResource & {
@@ -301,28 +301,31 @@ watch(
 	},
 );
 
-watch(
-	() => props.resources,
-	async () => {
-		await nextTick();
-		focusSearchInput();
-	},
-);
-
 // Lifecycle hooks
 onMounted(async () => {
 	await loadPaginationFromQueryString();
 	await props.initialize();
 	await nextTick();
 
-	focusSearchInput();
-
 	if (hasAppliedFilters()) {
 		hasFilters.value = true;
 	}
+
+	window.addEventListener('keydown', captureSearchHotKey);
+});
+
+onBeforeUnmount(() => {
+	window.removeEventListener('keydown', captureSearchHotKey);
 });
 
 //methods
+const captureSearchHotKey = (e: KeyboardEvent) => {
+	if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+		e.preventDefault();
+		focusSearchInput();
+	}
+};
+
 const focusSearchInput = () => {
 	if (search.value) {
 		search.value.focus();

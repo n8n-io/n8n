@@ -1,5 +1,4 @@
 import { VariableListRequestDto } from '@n8n/api-types';
-
 import {
 	Delete,
 	Get,
@@ -9,7 +8,8 @@ import {
 	Post,
 	Query,
 	RestController,
-} from '@/decorators';
+} from '@n8n/decorators';
+
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { VariableCountLimitReachedError } from '@/errors/variable-count-limit-reached.error';
@@ -76,7 +76,7 @@ export class VariablesController {
 		}
 	}
 
-	@Delete('/:id(\\w+)')
+	@Delete('/:id')
 	@GlobalScope('variable:delete')
 	async deleteVariable(req: VariablesRequest.Delete) {
 		const id = req.params.id;
