@@ -9,8 +9,8 @@ import { ExecutionRepository } from '@/databases/repositories/execution.reposito
 import { NodeCrashedError } from '@/errors/node-crashed.error';
 import { WorkflowCrashedError } from '@/errors/workflow-crashed.error';
 import { getLifecycleHooksForRegularMain } from '@/execution-lifecycle/execution-lifecycle-hooks';
-import type { IExecutionResponse } from '@/interfaces';
 import { Push } from '@/push';
+import type { IExecutionResponse } from '@/types-db';
 
 import type { EventMessageTypes } from '../eventbus/event-message-classes';
 

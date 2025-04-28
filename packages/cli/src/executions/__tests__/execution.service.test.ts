@@ -9,9 +9,9 @@ import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.err
 import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error';
 import { ExecutionService } from '@/executions/execution.service';
 import type { ExecutionRequest } from '@/executions/execution.types';
-import type { IExecutionResponse } from '@/interfaces';
 import { ScalingService } from '@/scaling/scaling.service';
 import type { Job } from '@/scaling/scaling.types';
+import type { IExecutionResponse } from '@/types-db';
 import type { WaitTracker } from '@/wait-tracker';
 import { mockInstance } from '@test/mocking';
 

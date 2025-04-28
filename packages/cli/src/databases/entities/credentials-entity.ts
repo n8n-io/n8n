@@ -1,7 +1,7 @@
 import { Column, Entity, Index, OneToMany } from '@n8n/typeorm';
 import { IsObject, IsString, Length } from 'class-validator';
 
-import type { ICredentialsDb } from '@/interfaces';
+import type { ICredentialsDb } from '@/types-db';
 
 import { WithTimestampsAndStringId } from './abstract-entity';
 import type { SharedCredentials } from './shared-credentials';

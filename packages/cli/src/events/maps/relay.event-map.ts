@@ -10,7 +10,7 @@ import type {
 import type { ConcurrencyQueueType } from '@/concurrency/concurrency-control.service';
 import type { AuthProviderType } from '@/databases/entities/auth-identity';
 import type { User } from '@/databases/entities/user';
-import type { IWorkflowDb } from '@/interfaces';
+import type { IWorkflowDb } from '@/types-db';
 
 import type { AiEventMap } from './ai.event-map';
 

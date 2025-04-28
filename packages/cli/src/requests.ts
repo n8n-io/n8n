@@ -15,6 +15,7 @@ import type { Variables } from '@/databases/entities/variables';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import type { WorkflowHistory } from '@/databases/entities/workflow-history';
 import type { ScopesField } from '@/services/role.service';
+import type { SlimProject } from '@/types-db';
 
 export type APIRequest<
 	RouteParams = {},
@@ -122,7 +123,6 @@ export namespace ListQuery {
 }
 
 type SlimUser = Pick<IUser, 'id' | 'email' | 'firstName' | 'lastName'>;
-export type SlimProject = Pick<Project, 'id' | 'type' | 'name' | 'icon'>;
 
 export function hasSharing(
 	workflows: ListQuery.Workflow.Plain[] | ListQuery.Workflow.WithSharing[],

@@ -10,7 +10,7 @@ import {
 
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import type { IExecutionResponse } from '@/interfaces';
+import type { IExecutionResponse } from '@/types-db';
 import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
 
 import type { IWebhookResponseCallbackData, WaitingWebhookRequest } from './webhook.types';

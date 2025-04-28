@@ -11,8 +11,8 @@ import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { WorkflowHistoryRepository } from '@/databases/repositories/workflow-history.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import type { WorkflowWithSharingsMetaDataAndCredentials } from '@/types-db';
 import { UserManagementMailer } from '@/user-management/email';
-import type { WorkflowWithSharingsMetaDataAndCredentials } from '@/workflows/workflows.types';
 import { mockInstance } from '@test/mocking';
 import { createFolder } from '@test-integration/db/folders';
 

@@ -1,8 +1,8 @@
 import { Service } from '@n8n/di';
 
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import type { IExecutionResponse, IExecutionFlattedResponse } from '@/interfaces';
-import type { WorkflowWithSharingsAndCredentials } from '@/workflows/workflows.types';
+import type { IExecutionFlattedResponse } from '@/interfaces';
+import type { WorkflowWithSharingsAndCredentials, IExecutionResponse } from '@/types-db';
 
 import { ExecutionService } from './execution.service';
 import type { ExecutionRequest } from './execution.types';

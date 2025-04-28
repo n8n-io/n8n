@@ -13,12 +13,12 @@ import {
 import { IsEmail, IsString, Length } from 'class-validator';
 import type { IUser, IUserSettings } from 'n8n-workflow';
 
-import type { IPersonalizationSurveyAnswers } from '@/interfaces';
 import {
 	GLOBAL_OWNER_SCOPES,
 	GLOBAL_MEMBER_SCOPES,
 	GLOBAL_ADMIN_SCOPES,
 } from '@/permissions.ee/global-roles';
+import type { IPersonalizationSurveyAnswers } from '@/types-db';
 import { NoUrl } from '@/validators/no-url.validator';
 import { NoXss } from '@/validators/no-xss.validator';
 

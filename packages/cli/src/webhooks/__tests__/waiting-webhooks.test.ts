@@ -4,7 +4,7 @@ import { mock } from 'jest-mock-extended';
 import type { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import type { IExecutionResponse } from '@/interfaces';
+import type { IExecutionResponse } from '@/types-db';
 import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
 import type { IWebhookResponseCallbackData, WaitingWebhookRequest } from '@/webhooks/webhook.types';
 

@@ -14,10 +14,10 @@ import {
 import type { Project } from '@/databases/entities/project';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import type { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
-import type { IWorkflowDb } from '@/interfaces';
 import type { TypeUnit } from '@/modules/insights/database/entities/insights-shared';
 import { InsightsMetadataRepository } from '@/modules/insights/database/repositories/insights-metadata.repository';
 import { InsightsRawRepository } from '@/modules/insights/database/repositories/insights-raw.repository';
+import type { IWorkflowDb } from '@/types-db';
 import { createTeamProject } from '@test-integration/db/projects';
 import { createWorkflow } from '@test-integration/db/workflows';
 import * as testDb from '@test-integration/test-db';

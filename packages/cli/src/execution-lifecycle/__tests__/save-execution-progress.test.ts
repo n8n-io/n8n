@@ -4,7 +4,7 @@ import { Logger } from 'n8n-core';
 import type { IRunExecutionData, ITaskData } from 'n8n-workflow';
 
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import type { IExecutionResponse } from '@/interfaces';
+import type { IExecutionResponse } from '@/types-db';
 import { mockInstance } from '@test/mocking';
 
 import { saveExecutionProgress } from '../save-execution-progress';

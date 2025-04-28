@@ -6,8 +6,8 @@ import type { Logger } from 'n8n-core';
 
 import type { Project } from '@/databases/entities/project';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
-import type { IWorkflowDb } from '@/interfaces';
 import type { License } from '@/license';
+import type { IWorkflowDb } from '@/types-db';
 import { createTeamProject } from '@test-integration/db/projects';
 import { createWorkflow } from '@test-integration/db/workflows';
 import * as testDb from '@test-integration/test-db';

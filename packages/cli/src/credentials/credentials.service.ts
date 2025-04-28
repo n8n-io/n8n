@@ -32,7 +32,6 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
-import type { ICredentialsDb } from '@/interfaces';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import type { CredentialRequest, ListQuery } from '@/requests';
 import { CredentialsTester } from '@/services/credentials-tester.service';
@@ -40,6 +39,7 @@ import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 import type { ScopesField } from '@/services/role.service';
 import { RoleService } from '@/services/role.service';
+import type { ICredentialsDb } from '@/types-db';
 
 import { CredentialsFinderService } from './credentials-finder.service';
 

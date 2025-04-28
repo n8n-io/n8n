@@ -33,7 +33,7 @@ import { CredentialsOverwrites } from '@/credentials-overwrites';
 import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
-import type { ICredentialsDb } from '@/interfaces';
+import type { ICredentialsDb } from '@/types-db';
 
 import { RESPONSE_ERROR_MESSAGES } from './constants';
 import { CredentialNotFoundError } from './errors/credential-not-found.error';

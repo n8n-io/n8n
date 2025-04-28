@@ -36,12 +36,8 @@ import { AnnotationTagMapping } from '@/databases/entities/annotation-tag-mappin
 import { ExecutionAnnotation } from '@/databases/entities/execution-annotation.ee';
 import { PostgresLiveRowsRetrievalError } from '@/errors/postgres-live-rows-retrieval.error';
 import type { ExecutionSummaries } from '@/executions/execution.types';
-import type {
-	CreateExecutionPayload,
-	IExecutionBase,
-	IExecutionFlattedDb,
-	IExecutionResponse,
-} from '@/interfaces';
+import type { CreateExecutionPayload, IExecutionFlattedDb } from '@/interfaces';
+import type { IExecutionBase, IExecutionResponse } from '@/types-db';
 import { separate } from '@/utils';
 
 import { ExecutionDataRepository } from './execution-data.repository';
