@@ -63,8 +63,7 @@ const WorkerView = async () => await import('./views/WorkerView.vue');
 const WorkflowHistory = async () => await import('@/views/WorkflowHistory.vue');
 const WorkflowOnboardingView = async () => await import('@/views/WorkflowOnboardingView.vue');
 const EvaluationsView = async () => await import('./views/Evaluations/EvaluationsView.vue');
-const TestDefinitionRootView = async () =>
-	await import('./views/Evaluations/EvaluationsRootVIew.vue');
+const EvaluationRootView = async () => await import('./views/Evaluations/EvaluationsRootVIew.vue');
 
 function getTemplatesRedirect(defaultRedirect: VIEWS[keyof VIEWS]): { name: string } | false {
 	const settingsStore = useSettingsStore();
@@ -260,7 +259,7 @@ export const routes: RouteRecordRaw[] = [
 	{
 		path: '/workflow/:workflowId/evaluation',
 		components: {
-			default: TestDefinitionRootView,
+			default: EvaluationRootView,
 			header: MainHeader,
 			sidebar: MainSidebar,
 		},
