@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watchEffect, useTemplateRef } from 'vue';
+import { computed, ref, watchEffect, useTemplateRef, watch } from 'vue';
 
 // Components
 import ChatMessagesPanel from './components/ChatMessagesPanel.vue';
@@ -68,7 +68,7 @@ const {
 	sendMessage,
 	refreshSession,
 	displayExecution,
-} = useChatState(false, onWindowResize);
+} = useChatState(false);
 
 // Expose internal state for testing
 defineExpose({
@@ -91,6 +91,18 @@ function onPopOut() {
 watchEffect(() => {
 	canvasStore.setPanelHeight(chatPanelState.value === LOGS_PANEL_STATE.ATTACHED ? height.value : 0);
 });
+
+watch(
+	() => workflowsStore.logsPanelState,
+	(state) => {
+		if (state !== LOGS_PANEL_STATE.CLOSED) {
+			setTimeout(() => {
+				onWindowResize?.();
+			}, 0);
+		}
+	},
+	{ immediate: true },
+);
 </script>
 
 <template>

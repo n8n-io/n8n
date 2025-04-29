@@ -431,8 +431,18 @@ export function findSelectedLogEntry(
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function deepToRaw<T>(sourceObj: T): T {
+	const seen = new WeakMap();
+
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const objectIterator = (input: any): any => {
+		if (seen.has(input)) {
+			return input;
+		}
+
+		if (input !== null && typeof input === 'object') {
+			seen.set(input, true);
+		}
+
 		if (Array.isArray(input)) {
 			return input.map((item) => objectIterator(item));
 		}

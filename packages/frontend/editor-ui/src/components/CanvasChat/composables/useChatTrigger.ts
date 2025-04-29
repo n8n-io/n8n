@@ -1,11 +1,11 @@
-import type { ComputedRef, MaybeRef } from 'vue';
-import { ref, computed, unref } from 'vue';
+import type { ComputedRef } from 'vue';
+import { computed } from 'vue';
 import {
 	CHAIN_SUMMARIZATION_LANGCHAIN_NODE_TYPE,
 	NodeConnectionTypes,
 	NodeHelpers,
 } from 'n8n-workflow';
-import type { INodeTypeDescription, Workflow, INode, INodeParameters } from 'n8n-workflow';
+import type { INodeTypeDescription, Workflow, INodeParameters } from 'n8n-workflow';
 import {
 	AI_CATEGORY_AGENTS,
 	AI_CATEGORY_CHAINS,
@@ -18,21 +18,12 @@ import { isChatNode } from '@/components/CanvasChat/utils';
 export interface ChatTriggerDependencies {
 	getNodeByName: (name: string) => INodeUi | null;
 	getNodeType: (type: string, version: number) => INodeTypeDescription | null;
-	canvasNodes: MaybeRef<INodeUi[]>;
 	workflow: ComputedRef<Workflow>;
 }
 
-export function useChatTrigger({
-	getNodeByName,
-	getNodeType,
-	canvasNodes,
-	workflow,
-}: ChatTriggerDependencies) {
-	const chatTriggerName = ref<string | null>(null);
-	const connectedNode = ref<INode | null>(null);
-
-	const chatTriggerNode = computed(() =>
-		chatTriggerName.value ? getNodeByName(chatTriggerName.value) : null,
+export function useChatTrigger({ getNodeByName, getNodeType, workflow }: ChatTriggerDependencies) {
+	const chatTriggerNode = computed(
+		() => Object.values(workflow.value.nodes).find(isChatNode) ?? null,
 	);
 
 	const allowFileUploads = computed(() => {
@@ -49,22 +40,12 @@ export function useChatTrigger({
 		);
 	});
 
-	/** Gets the chat trigger node from the workflow */
-	function setChatTriggerNode() {
-		const triggerNode = unref(canvasNodes).find(isChatNode);
-
-		if (!triggerNode) {
-			return;
-		}
-		chatTriggerName.value = triggerNode.name;
-	}
-
 	/** Sets the connected node after finding the trigger */
-	function setConnectedNode() {
+	const connectedNode = computed(() => {
 		const triggerNode = chatTriggerNode.value;
 
 		if (!triggerNode) {
-			return;
+			return null;
 		}
 
 		const chatChildren = workflow.value.getChildNodes(triggerNode.name);
@@ -121,15 +102,14 @@ export function useChatTrigger({
 				const result = Boolean(isChatChild && (isAgent || isChain || isCustomChainOrAgent));
 				return result;
 			});
-		connectedNode.value = chatRootNode ?? null;
-	}
+
+		return chatRootNode ?? null;
+	});
 
 	return {
 		allowFileUploads,
 		allowedFilesMimeTypes,
 		chatTriggerNode,
-		connectedNode: computed(() => connectedNode.value),
-		setChatTriggerNode,
-		setConnectedNode,
+		connectedNode,
 	};
 }
