@@ -50,7 +50,7 @@ const workflowName = computed(() => workflowsStore.getWorkflowById(workflowId.va
 const run = computed(() => evaluationStore.testRunsById[runId.value]);
 
 const filteredTestCases = computed(() => {
-	return orderBy(testCases.value, (record) => record.id, ['asc']).map((record, index) =>
+	return orderBy(testCases.value, (record) => record.runAt, ['asc']).map((record, index) =>
 		Object.assign(record, { id: `#${index + 1}` }),
 	);
 });
