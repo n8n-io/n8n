@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { useI18n } from '@/composables/useI18n';
 import CommunityNodeInstallHint from '../Panel/CommunityNodeInstallHint.vue';
+import { N8nButton } from '@n8n/design-system';
+
 export interface Props {
 	isPreview: boolean;
 }
@@ -18,7 +20,7 @@ const i18n = useI18n();
 		/>
 
 		<div v-else :class="$style.marginLeft">
-			<n8n-button
+			<N8nButton
 				size="medium"
 				type="secondary"
 				icon="plus"

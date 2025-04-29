@@ -2,6 +2,9 @@
 import { VIEWS } from '@/constants';
 import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
+import { captureException } from '@sentry/vue';
+
+import { N8nText, N8nLink } from '@n8n/design-system';
 
 export interface Props {
 	packageName: string;
@@ -38,7 +41,7 @@ async function getBugsUrl(packageName: string) {
 			bugsUrl.value = data.bugs.url;
 		}
 	} catch (error) {
-		console.error(error);
+		captureException(error);
 	}
 }
 
@@ -51,13 +54,13 @@ onMounted(async () => {
 
 <template>
 	<div :class="$style.container">
-		<n8n-link theme="text" @click="openSettingsPage">
-			<n8n-text size="small" color="primary" bold> Manage </n8n-text>
-		</n8n-link>
-		<n8n-text size="small" color="primary" bold>|</n8n-text>
-		<n8n-link theme="text" @click="openIssuesPage">
-			<n8n-text size="small" color="primary" bold> Report issue </n8n-text>
-		</n8n-link>
+		<N8nLink theme="text" @click="openSettingsPage">
+			<N8nText size="small" color="primary" bold> Manage </N8nText>
+		</N8nLink>
+		<N8nText size="small" color="primary" bold>|</N8nText>
+		<N8nLink theme="text" @click="openIssuesPage">
+			<N8nText size="small" color="primary" bold> Report issue </N8nText>
+		</N8nLink>
 	</div>
 </template>
 

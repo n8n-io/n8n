@@ -5,6 +5,8 @@ import { useUsersStore } from '@/stores/users.store';
 import { i18n } from '@/plugins/i18n';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCommunityNodesStore } from '@/stores/communityNodes.store';
+import { captureException } from '@sentry/vue';
+import { N8nText, N8nTooltip, N8nIcon } from '@n8n/design-system';
 
 const { activeViewStack } = useViewStacks();
 
@@ -59,7 +61,7 @@ async function fetchPackageInfo(packageName: string) {
 		const response = await fetch(url);
 
 		if (!response.ok) {
-			console.log('Could not get metadata for package', packageName);
+			captureException(new Error('Could not get metadata for package'), { extra: { packageName } });
 			return;
 		}
 
@@ -73,7 +75,9 @@ async function fetchPackageInfo(packageName: string) {
 		const downloadsResponse = await fetch(downloadsUrl);
 
 		if (!downloadsResponse.ok) {
-			console.log('Could not get downloads for package', packageName);
+			captureException(new Error('Could not get downloads for package'), {
+				extra: { packageName },
+			});
 			return;
 		}
 
@@ -84,7 +88,7 @@ async function fetchPackageInfo(packageName: string) {
 
 		downloads.value = formatNumber(total);
 	} catch (error) {
-		console.error(error);
+		captureException(error, { extra: { packageName } });
 	}
 }
 
@@ -97,55 +101,55 @@ onMounted(async () => {
 
 <template>
 	<div :class="$style.container">
-		<n8n-text :class="$style.description" color="text-base" size="medium">
+		<N8nText :class="$style.description" color="text-base" size="medium">
 			{{ communityNodeDetails?.description }}
-		</n8n-text>
+		</N8nText>
 		<div :class="$style.separator"></div>
 		<div :class="$style.info">
-			<n8n-tooltip placement="top" v-if="verified">
+			<N8nTooltip placement="top" v-if="verified">
 				<template #content>{{ i18n.baseText('communityNodeInfo.approved') }}</template>
 				<div>
 					<FontAwesomeIcon :class="$style.tooltipIcon" icon="check-circle" />
-					<n8n-text color="text-light" size="xsmall" bold data-test-id="verified-tag">
+					<N8nText color="text-light" size="xsmall" bold data-test-id="verified-tag">
 						{{ i18n.baseText('communityNodeInfo.approved.label') }}
-					</n8n-text>
+					</N8nText>
 				</div>
-			</n8n-tooltip>
+			</N8nTooltip>
 
-			<n8n-tooltip placement="top" v-else>
+			<N8nTooltip placement="top" v-else>
 				<template #content>{{ i18n.baseText('communityNodeInfo.unverified') }}</template>
 				<div>
 					<FontAwesomeIcon :class="$style.tooltipIcon" icon="cube" />
-					<n8n-text color="text-light" size="xsmall" bold>
+					<N8nText color="text-light" size="xsmall" bold>
 						{{ i18n.baseText('communityNodeInfo.unverified.label') }}
-					</n8n-text>
+					</N8nText>
 				</div>
-			</n8n-tooltip>
+			</N8nTooltip>
 
 			<div v-if="downloads">
 				<FontAwesomeIcon :class="$style.tooltipIcon" icon="download" />
-				<n8n-text color="text-light" size="xsmall" bold data-test-id="number-of-downloads">
+				<N8nText color="text-light" size="xsmall" bold data-test-id="number-of-downloads">
 					{{ i18n.baseText('communityNodeInfo.downloads', { interpolate: { downloads } }) }}
-				</n8n-text>
+				</N8nText>
 			</div>
 
 			<div v-if="publisherName">
 				<FontAwesomeIcon :class="$style.tooltipIcon" icon="user" />
-				<n8n-text color="text-light" size="xsmall" bold data-test-id="publisher-name">
+				<N8nText color="text-light" size="xsmall" bold data-test-id="publisher-name">
 					{{ i18n.baseText('communityNodeInfo.publishedBy', { interpolate: { publisherName } }) }}
-				</n8n-text>
+				</N8nText>
 			</div>
 		</div>
 		<div v-if="!isOwner && !communityNodeDetails?.installed" :class="$style.contactOwnerHint">
-			<n8n-icon color="text-light" icon="info-circle" size="large" />
-			<n8n-text color="text-base" size="medium">
+			<N8nIcon color="text-light" icon="info-circle" size="large" />
+			<nN8nText color="text-base" size="medium">
 				<div style="padding-bottom: 8px">
 					{{ i18n.baseText('communityNodeInfo.contact.admin') }}
 				</div>
-				<n8n-text bold v-if="ownerEmailList.length">
+				<N8nText bold v-if="ownerEmailList.length">
 					{{ ownerEmailList.join(', ') }}
-				</n8n-text>
-			</n8n-text>
+				</N8nText>
+			</nN8nText>
 		</div>
 	</div>
 </template>

@@ -2,6 +2,8 @@
 import { useUsersStore } from '@/stores/users.store';
 import { computed } from 'vue';
 
+import { N8nText, N8nIcon } from '@n8n/design-system';
+
 export interface Props {
 	hint: string;
 }
@@ -13,8 +15,8 @@ defineProps<Props>();
 
 <template>
 	<div v-if="isOwner" :class="$style.container">
-		<n8n-icon color="text-light" icon="info-circle" size="large" />
-		<n8n-text color="text-base" size="medium"> {{ hint }} </n8n-text>
+		<N8nIcon color="text-light" icon="info-circle" size="large" />
+		<N8nText color="text-base" size="medium"> {{ hint }} </N8nText>
 	</div>
 </template>
 

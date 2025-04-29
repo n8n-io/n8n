@@ -13,6 +13,8 @@ import { getNodeIconSource } from '@/utils/nodeIcon';
 
 import { prepareCommunityNodeDetailsViewStack, removePreviewToken } from '../utils';
 
+import { N8nText } from '@n8n/design-system';
+
 const { activeViewStack, pushViewStack, popViewStack, getAllNodeCreateElements } = useViewStacks();
 
 const { communityNodeDetails } = activeViewStack;
@@ -107,10 +109,10 @@ const onInstall = async () => {
 			</div>
 			<div>
 				<div v-if="communityNodeDetails?.installed" :class="$style.installed">
-					<n8n-icon :class="$style.installedIcon" icon="cube" />
-					<n8n-text color="text-light" size="small" bold>
+					<FontAwesomeIcon :class="$style.installedIcon" icon="cube" />
+					<N8nText color="text-light" size="small" bold>
 						{{ i18n.baseText('communityNodeDetails.installed') }}
-					</n8n-text>
+					</N8nText>
 				</div>
 				<N8nButton
 					v-else-if="isOwner"
