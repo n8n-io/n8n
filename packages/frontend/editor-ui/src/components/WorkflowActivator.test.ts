@@ -287,7 +287,7 @@ describe('WorkflowActivator', () => {
 		await userEvent.hover(getByRole('switch'));
 		expect(getByRole('tooltip')).toBeInTheDocument();
 		expect(getByRole('tooltip')).toHaveTextContent(
-			'This workflow is archived and cannot be activated',
+			'This workflow is archived so it cannot be activated',
 		);
 		expect(getByTestId('workflow-activator-status')).toHaveTextContent('Inactive');
 	});

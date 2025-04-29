@@ -2330,7 +2330,7 @@
 	"workflowActivator.showMessage.displayActivationError.title": "Problem activating workflow",
 	"workflowActivator.theWorkflowIsSetToBeActiveBut": "The workflow is activated but could not be started.<br />Click to display error message.",
 	"workflowActivator.thisWorkflowHasNoTriggerNodes": "This workflow has no trigger nodes that require activation",
-	"workflowActivator.thisWorkflowIsArchived": "This workflow is archived and cannot be activated",
+	"workflowActivator.thisWorkflowIsArchived": "This workflow is archived so it cannot be activated",
 	"workflowActivator.thisWorkflowHasOnlyOneExecuteWorkflowTriggerNode": "'Execute Workflow Trigger' doesn't require activation as it is triggered by another workflow",
 	"workflowDetails.share": "Share",
 	"workflowDetails.active": "Active",
