@@ -456,10 +456,10 @@ export function getContext(
 ): IContextObject {
 	if (runExecutionData.executionData === undefined) {
 		// Improved error handling: log error and return empty context instead of throwing
-		console.error(
-			'`executionData` is not initialized in runExecutionData. This usually indicates a problem in workflow execution or data passing. Returning empty context to avoid breaking execution.',
-			{ runExecutionData, type, nodeName: node?.name },
-		);
+		console.error('Missing executionData. Context:', {
+			type,
+			nodeName: node?.name,
+		});
 		// Return empty context object to avoid breaking the workflow
 		return {};
 	}
@@ -1244,7 +1244,7 @@ function addToIssuesIfMissing(
             `Parameter "${nodeProperties.displayName}" is required.`,
         );
     }
-}
+}	
 
 /**
  * Returns the parameter value
