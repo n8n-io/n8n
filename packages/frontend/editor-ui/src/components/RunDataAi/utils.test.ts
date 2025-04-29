@@ -621,9 +621,17 @@ describe(deepToRaw, () => {
 		data.foo.bar = data;
 		data.bazz = data;
 
+		const raw = deepToRaw(data);
+
 		expect(isReactive(data)).toBe(true);
 		expect(isReactive(data.foo)).toBe(true);
-		expect(isReactive(deepToRaw(data))).toBe(false);
-		expect(isReactive(deepToRaw(data.foo))).toBe(false);
+		expect(isReactive(data.foo.bar)).toBe(true);
+		expect(isReactive(data.bazz)).toBe(true);
+		expect(isReactive(raw)).toBe(false);
+		expect(isReactive(raw.foo)).toBe(false);
+		expect(isReactive(raw.foo.bar)).toBe(false);
+		expect(isReactive(raw.bazz)).toBe(false);
+
+		console.log(raw.foo.bar);
 	});
 });
