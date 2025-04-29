@@ -131,28 +131,30 @@ export class SentimentAnalysis implements INodeType {
 						description:
 							'Whether to enable auto-fixing (may trigger an additional LLM call if output is broken)',
 					},
-				],
-			},
-			{
-				displayName: 'Batch Processing',
-				name: 'batching',
-				type: 'collection',
-				description: 'Batch processing options for rate limiting',
-				default: {},
-				options: [
 					{
-						displayName: 'Batch Size',
-						name: 'batchSize',
-						default: 100,
-						type: 'number',
-						description: 'How many items to process in parallel. This is useful for rate limiting.',
-					},
-					{
-						displayName: 'Delay Between Batches',
-						name: 'delayBetweenBatches',
-						default: 1000,
-						type: 'number',
-						description: 'Delay in milliseconds between batches. This is useful for rate limiting.',
+						displayName: 'Batch Processing',
+						name: 'batching',
+						type: 'collection',
+						description: 'Batch processing options for rate limiting',
+						default: {},
+						options: [
+							{
+								displayName: 'Batch Size',
+								name: 'batchSize',
+								default: 100,
+								type: 'number',
+								description:
+									'How many items to process in parallel. This is useful for rate limiting.',
+							},
+							{
+								displayName: 'Delay Between Batches',
+								name: 'delayBetweenBatches',
+								default: 1000,
+								type: 'number',
+								description:
+									'Delay in milliseconds between batches. This is useful for rate limiting.',
+							},
+						],
 					},
 				],
 			},
@@ -168,17 +170,17 @@ export class SentimentAnalysis implements INodeType {
 		)) as BaseLanguageModel;
 
 		const returnData: INodeExecutionData[][] = [];
-		const promises: Array<Promise<{ sentimentIndex: number; resultItem: INodeExecutionData }>> = [];
 		const { batchSize, delayBetweenBatches } = this.getNodeParameter('options.batching', 0, {}) as {
 			batchSize: number;
 			delayBetweenBatches: number;
 		};
 
-		for (let i = 0; i < items.length; i++) {
-			try {
+		for (let i = 0; i < items.length; i += batchSize) {
+			const batch = items.slice(i, i + batchSize);
+			const batchPromises = batch.map(async (_item, itemIndex) => {
 				const sentimentCategories = this.getNodeParameter(
 					'options.categories',
-					i,
+					itemIndex,
 					DEFAULT_CATEGORIES,
 				) as string;
 
@@ -188,9 +190,13 @@ export class SentimentAnalysis implements INodeType {
 					.filter(Boolean);
 
 				if (categories.length === 0) {
-					throw new NodeOperationError(this.getNode(), 'No sentiment categories provided', {
-						itemIndex: i,
-					});
+					return {
+						result: null,
+						itemIndex,
+						error: new NodeOperationError(this.getNode(), 'No sentiment categories provided', {
+							itemIndex,
+						}),
+					};
 				}
 
 				// Initialize returnData with empty arrays for each category
@@ -198,7 +204,7 @@ export class SentimentAnalysis implements INodeType {
 					returnData.push(...Array.from({ length: categories.length }, () => []));
 				}
 
-				const options = this.getNodeParameter('options', i, {}) as {
+				const options = this.getNodeParameter('options', itemIndex, {}) as {
 					systemPromptTemplate?: string;
 					includeDetailedResults?: boolean;
 					enableAutoFixing?: boolean;
@@ -222,10 +228,10 @@ export class SentimentAnalysis implements INodeType {
 
 				const systemPromptTemplate = SystemMessagePromptTemplate.fromTemplate(
 					`${options.systemPromptTemplate ?? DEFAULT_SYSTEM_PROMPT_TEMPLATE}
-		{format_instructions}`,
+			{format_instructions}`,
 				);
 
-				const input = this.getNodeParameter('inputText', i) as string;
+				const input = this.getNodeParameter('inputText', itemIndex) as string;
 				const inputPrompt = new HumanMessage(input);
 				const messages = [
 					await systemPromptTemplate.format({
@@ -239,82 +245,79 @@ export class SentimentAnalysis implements INodeType {
 				const chain = prompt.pipe(llm).pipe(parser).withConfig(getTracingConfig(this));
 
 				try {
-					promises.push(
-						new Promise((resolve, reject) => {
-							chain
-								.invoke(messages)
-								.then((output) => {
-									const sentimentIndex = categories.findIndex(
-										(s) => s.toLowerCase() === output.sentiment.toLowerCase(),
-									);
+					const output = await chain.invoke(messages);
+					const sentimentIndex = categories.findIndex(
+						(s) => s.toLowerCase() === output.sentiment.toLowerCase(),
+					);
 
-									if (sentimentIndex !== -1) {
-										const resultItem = { ...items[i] };
-										const sentimentAnalysis: IDataObject = {
-											category: output.sentiment,
-										};
-										if (options.includeDetailedResults) {
-											sentimentAnalysis.strength = output.strength;
-											sentimentAnalysis.confidence = output.confidence;
-										}
-										resultItem.json = {
-											...resultItem.json,
-											sentimentAnalysis,
-										};
-										resolve({ sentimentIndex, resultItem });
-									}
-								})
-								.catch((error) => reject(error));
-						}),
-					);
-					if (i % batchSize === 0) {
-						await sleep(delayBetweenBatches);
+					if (sentimentIndex !== -1) {
+						const resultItem = { ...items[itemIndex] };
+						const sentimentAnalysis: IDataObject = {
+							category: output.sentiment,
+						};
+						if (options.includeDetailedResults) {
+							sentimentAnalysis.strength = output.strength;
+							sentimentAnalysis.confidence = output.confidence;
+						}
+						resultItem.json = {
+							...resultItem.json,
+							sentimentAnalysis,
+						};
+
+						return {
+							result: {
+								resultItem,
+								sentimentIndex,
+							},
+							itemIndex,
+						};
 					}
+
+					return {
+						result: {},
+						itemIndex,
+					};
 				} catch (error) {
-					throw new NodeOperationError(
-						this.getNode(),
-						'Error during parsing of LLM output, please check your LLM model and configuration',
-						{
-							itemIndex: i,
-						},
-					);
+					return {
+						result: null,
+						itemIndex,
+						error: new NodeOperationError(
+							this.getNode(),
+							'Error during parsing of LLM output, please check your LLM model and configuration',
+							{
+								itemIndex,
+							},
+						),
+					};
 				}
-			} catch (error) {
-				if (this.continueOnFail()) {
-					const executionErrorData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray({ error: error.message }),
-						{ itemData: { item: i } },
-					);
-					returnData[0].push(...executionErrorData);
-					continue;
+			});
+			const batchResults = await Promise.all(batchPromises);
+
+			batchResults.forEach(({ result, itemIndex, error }) => {
+				if (error) {
+					if (this.continueOnFail()) {
+						const executionErrorData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({ error: error.message }),
+							{ itemData: { item: itemIndex } },
+						);
+
+						returnData[0].push(...executionErrorData);
+						return;
+					} else {
+						throw error;
+					}
+				} else if (result.resultItem && result.sentimentIndex) {
+					const sentimentIndex = result.sentimentIndex;
+					const resultItem = result.resultItem;
+					returnData[sentimentIndex].push(resultItem);
 				}
-				throw error;
+			});
+
+			// Add delay between batches if not the last batch
+			if (i + batchSize < items.length && delayBetweenBatches > 0) {
+				await sleep(delayBetweenBatches);
 			}
 		}
-
-		(await Promise.allSettled(promises)).forEach((response, index) => {
-			if (response.status === 'rejected') {
-				if (this.continueOnFail()) {
-					const error = response.reason;
-					const executionErrorData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray({ error: error.message }),
-						{ itemData: { item: index } },
-					);
-
-					returnData[0].push(...executionErrorData);
-					return;
-				} else {
-					throw new NodeOperationError(this.getNode(), response.reason);
-				}
-			} else {
-				const output = response.value;
-				const sentimentIndex = output.sentimentIndex;
-				const resultItem = output.resultItem;
-				returnData[sentimentIndex].push(resultItem);
-			}
-			const result = response.value;
-			returnData[result.sentimentIndex].push(result.resultItem);
-		});
 		return returnData;
 	}
 }

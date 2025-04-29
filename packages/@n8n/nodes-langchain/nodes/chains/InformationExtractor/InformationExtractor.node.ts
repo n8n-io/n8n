@@ -295,50 +295,58 @@ export class InformationExtractor implements INodeType {
 
 		const resultData: INodeExecutionData[] = [];
 
-		const promises = items.map(async (_item, itemIndex) => {
-			const input = this.getNodeParameter('text', itemIndex) as string;
-			const inputPrompt = new HumanMessage(input);
+		for (let i = 0; i < items.length; i += batchSize) {
+			const batch = items.slice(i, i + batchSize);
 
-			const options = this.getNodeParameter('options', itemIndex, {}) as {
-				systemPromptTemplate?: string;
-			};
+			const batchPromises = batch.map(async (_item, batchItemIndex) => {
+				const itemIndex = i + batchItemIndex;
 
-			const systemPromptTemplate = SystemMessagePromptTemplate.fromTemplate(
-				`${options.systemPromptTemplate ?? SYSTEM_PROMPT_TEMPLATE}
-{format_instructions}`,
-			);
+				const input = this.getNodeParameter('text', itemIndex) as string;
+				const inputPrompt = new HumanMessage(input);
 
-			const messages = [
-				await systemPromptTemplate.format({
-					format_instructions: parser.getFormatInstructions(),
-				}),
-				inputPrompt,
-			];
-			const prompt = ChatPromptTemplate.fromMessages(messages);
-			const chain = prompt.pipe(llm).pipe(parser).withConfig(getTracingConfig(this));
+				const options = this.getNodeParameter('options', itemIndex, {}) as {
+					systemPromptTemplate?: string;
+				};
 
-			const result = await chain.invoke(messages);
-			if (itemIndex % batchSize === 0) {
+				const systemPromptTemplate = SystemMessagePromptTemplate.fromTemplate(
+					`${options.systemPromptTemplate ?? SYSTEM_PROMPT_TEMPLATE}
+	{format_instructions}`,
+				);
+
+				const messages = [
+					await systemPromptTemplate.format({
+						format_instructions: parser.getFormatInstructions(),
+					}),
+					inputPrompt,
+				];
+				const prompt = ChatPromptTemplate.fromMessages(messages);
+				const chain = prompt.pipe(llm).pipe(parser).withConfig(getTracingConfig(this));
+
+				return await chain.invoke(messages);
+			});
+			const batchResults = await Promise.allSettled(batchPromises);
+
+			batchResults.forEach((response, index) => {
+				if (response.status === 'rejected') {
+					if (this.continueOnFail()) {
+						resultData.push({
+							json: { error: response.reason as string },
+							pairedItem: { item: index },
+						});
+						return;
+					} else {
+						throw new NodeOperationError(this.getNode(), response.reason);
+					}
+				}
+				const output = response.value;
+				resultData.push({ json: { output } });
+			});
+
+			// Add delay between batches if not the last batch
+			if (i + batchSize < items.length && delayBetweenBatches > 0) {
 				await sleep(delayBetweenBatches);
 			}
-			return result;
-		});
-
-		(await Promise.allSettled(promises)).forEach((response, index) => {
-			if (response.status === 'rejected') {
-				if (this.continueOnFail()) {
-					resultData.push({
-						json: { error: response.reason as string },
-						pairedItem: { item: index },
-					});
-					return;
-				} else {
-					throw new NodeOperationError(this.getNode(), response.reason);
-				}
-			}
-			const output = response.value;
-			resultData.push({ json: { output } });
-		});
+		}
 
 		return [resultData];
 	}

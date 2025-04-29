@@ -21,6 +21,7 @@ import { getTracingConfig } from '@utils/tracing';
 
 import { getChainPromptsArgs } from '../helpers';
 import { REFINE_PROMPT_TEMPLATE, DEFAULT_PROMPT_TEMPLATE } from '../prompt';
+import { ChainValues } from '@langchain/core/utils/types';
 
 function getInputs(parameters: IDataObject) {
 	const chunkingMode = parameters?.chunkingMode;
@@ -349,14 +350,16 @@ export class ChainSummarizationV2 implements INodeType {
 
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
-		const promises = [];
 		const { batchSize, delayBetweenBatches } = this.getNodeParameter('options.batching', 0, {}) as {
 			batchSize: number;
 			delayBetweenBatches: number;
 		};
 
-		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-			try {
+		for (let i = 0; i < items.length; i += batchSize) {
+			const batch = items.slice(i, i + batchSize);
+			const batchPromises = batch.map(async (_item, batchIndex) => {
+				const itemIndex = i + batchIndex;
+
 				const model = (await this.getInputConnectionData(
 					NodeConnectionTypes.AiLanguageModel,
 					0,
@@ -383,6 +386,7 @@ export class ChainSummarizationV2 implements INodeType {
 				const item = items[itemIndex];
 
 				let processedDocuments: Document[];
+				let output: ChainValues = {};
 
 				// Use dedicated document loader input to load documents
 				if (operationMode === 'documentLoader') {
@@ -398,11 +402,9 @@ export class ChainSummarizationV2 implements INodeType {
 						? await documentInput.processItem(item, itemIndex)
 						: documentInput;
 
-					const response = await chain.withConfig(getTracingConfig(this)).invoke({
+					output = await chain.withConfig(getTracingConfig(this)).invoke({
 						input_documents: processedDocuments,
 					});
-
-					returnData.push({ json: { response } });
 				}
 
 				// Take the input and use binary or json loader
@@ -441,36 +443,40 @@ export class ChainSummarizationV2 implements INodeType {
 						processor = new N8nJsonLoader(this, 'options.', textSplitter);
 					}
 
-					promises.push(
-						new Promise<void>(async (resolve) => {
-							const processedItem = await processor.processItem(item, itemIndex);
-							const response = await chain.invoke(
-								{
-									input_documents: processedItem,
-								},
-								{ signal: this.getExecutionCancelSignal() },
-							);
-
-							returnData.push({ json: { response } });
-							resolve();
-						}),
+					const processedItem = await processor.processItem(item, itemIndex);
+					output = await chain.invoke(
+						{
+							input_documents: processedItem,
+						},
+						{ signal: this.getExecutionCancelSignal() },
 					);
+				}
+				return output;
+			});
 
-					if (itemIndex % batchSize === 0) {
-						await sleep(delayBetweenBatches);
+			const batchResults = await Promise.allSettled(batchPromises);
+			batchResults.forEach((response, index) => {
+				if (response.status === 'rejected') {
+					const error = response.reason as Error;
+					if (this.continueOnFail()) {
+						returnData.push({
+							json: { error: error.message },
+							pairedItem: { item: i + index },
+						});
+					} else {
+						throw error;
 					}
+				} else {
+					const output = response.value;
+					returnData.push({ json: { output } });
 				}
-			} catch (error) {
-				if (this.continueOnFail()) {
-					returnData.push({ json: { error: error.message }, pairedItem: { item: itemIndex } });
-					continue;
-				}
+			});
 
-				throw error;
+			// Add delay between batches if not the last batch
+			if (i + batchSize < items.length && delayBetweenBatches > 0) {
+				await sleep(delayBetweenBatches);
 			}
 		}
-
-		await Promise.allSettled(promises);
 
 		return [returnData];
 	}

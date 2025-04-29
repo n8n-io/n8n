@@ -217,118 +217,126 @@ export class ChainRetrievalQa implements INodeType {
 		};
 		const returnData: INodeExecutionData[] = [];
 
-		const promises = items.map(async (_item, itemIndex) => {
-			const model = (await this.getInputConnectionData(
-				NodeConnectionTypes.AiLanguageModel,
-				0,
-			)) as BaseLanguageModel;
+		for (let i = 0; i < items.length; i += batchSize) {
+			const batch = items.slice(i, i + batchSize);
+			const batchPromises = batch.map(async (_item, batchIndex) => {
+				const itemIndex = i + batchIndex;
 
-			const retriever = (await this.getInputConnectionData(
-				NodeConnectionTypes.AiRetriever,
-				0,
-			)) as BaseRetriever;
+				const model = (await this.getInputConnectionData(
+					NodeConnectionTypes.AiLanguageModel,
+					0,
+				)) as BaseLanguageModel;
 
-			let query;
+				const retriever = (await this.getInputConnectionData(
+					NodeConnectionTypes.AiRetriever,
+					0,
+				)) as BaseRetriever;
 
-			if (this.getNode().typeVersion <= 1.2) {
-				query = this.getNodeParameter('query', itemIndex) as string;
-			} else {
-				query = getPromptInputByType({
-					ctx: this,
-					i: itemIndex,
-					inputKey: 'text',
-					promptTypeKey: 'promptType',
+				let query;
+
+				if (this.getNode().typeVersion <= 1.2) {
+					query = this.getNodeParameter('query', itemIndex) as string;
+				} else {
+					query = getPromptInputByType({
+						ctx: this,
+						i: itemIndex,
+						inputKey: 'text',
+						promptTypeKey: 'promptType',
+					});
+				}
+
+				if (query === undefined) {
+					throw new NodeOperationError(this.getNode(), 'The ‘query‘ parameter is empty.');
+				}
+
+				const options = this.getNodeParameter('options', itemIndex, {}) as {
+					systemPromptTemplate?: string;
+				};
+
+				let templateText = options.systemPromptTemplate ?? SYSTEM_PROMPT_TEMPLATE;
+
+				// Replace legacy input template key for versions 1.4 and below
+				if (this.getNode().typeVersion < 1.5) {
+					templateText = templateText.replace(
+						`{${LEGACY_INPUT_TEMPLATE_KEY}}`,
+						`{${INPUT_TEMPLATE_KEY}}`,
+					);
+				}
+
+				// Create prompt template based on model type and user configuration
+				let promptTemplate;
+				if (isChatInstance(model)) {
+					// For chat models, create a chat prompt template with system and human messages
+					const messages = [
+						SystemMessagePromptTemplate.fromTemplate(templateText),
+						HumanMessagePromptTemplate.fromTemplate('{input}'),
+					];
+					promptTemplate = ChatPromptTemplate.fromMessages(messages);
+				} else {
+					// For non-chat models, create a text prompt template with Question/Answer format
+					const questionSuffix =
+						options.systemPromptTemplate === undefined ? '\n\nQuestion: {input}\nAnswer:' : '';
+
+					promptTemplate = new PromptTemplate({
+						template: templateText + questionSuffix,
+						inputVariables: ['context', 'input'],
+					});
+				}
+
+				// Create the document chain that combines the retrieved documents
+				const combineDocsChain = await createStuffDocumentsChain({
+					llm: model,
+					prompt: promptTemplate,
 				});
-			}
 
-			if (query === undefined) {
-				throw new NodeOperationError(this.getNode(), 'The ‘query‘ parameter is empty.');
-			}
-
-			const options = this.getNodeParameter('options', itemIndex, {}) as {
-				systemPromptTemplate?: string;
-			};
-
-			let templateText = options.systemPromptTemplate ?? SYSTEM_PROMPT_TEMPLATE;
-
-			// Replace legacy input template key for versions 1.4 and below
-			if (this.getNode().typeVersion < 1.5) {
-				templateText = templateText.replace(
-					`{${LEGACY_INPUT_TEMPLATE_KEY}}`,
-					`{${INPUT_TEMPLATE_KEY}}`,
-				);
-			}
-
-			// Create prompt template based on model type and user configuration
-			let promptTemplate;
-			if (isChatInstance(model)) {
-				// For chat models, create a chat prompt template with system and human messages
-				const messages = [
-					SystemMessagePromptTemplate.fromTemplate(templateText),
-					HumanMessagePromptTemplate.fromTemplate('{input}'),
-				];
-				promptTemplate = ChatPromptTemplate.fromMessages(messages);
-			} else {
-				// For non-chat models, create a text prompt template with Question/Answer format
-				const questionSuffix =
-					options.systemPromptTemplate === undefined ? '\n\nQuestion: {input}\nAnswer:' : '';
-
-				promptTemplate = new PromptTemplate({
-					template: templateText + questionSuffix,
-					inputVariables: ['context', 'input'],
+				// Create the retrieval chain that handles the retrieval and then passes to the combine docs chain
+				const retrievalChain = await createRetrievalChain({
+					combineDocsChain,
+					retriever,
 				});
-			}
 
-			// Create the document chain that combines the retrieved documents
-			const combineDocsChain = await createStuffDocumentsChain({
-				llm: model,
-				prompt: promptTemplate,
+				// Execute the chain with tracing config
+				const tracingConfig = getTracingConfig(this);
+
+				const result = await retrievalChain
+					.withConfig(tracingConfig)
+					.invoke({ input: query }, { signal: this.getExecutionCancelSignal() });
+
+				return result;
 			});
 
-			// Create the retrieval chain that handles the retrieval and then passes to the combine docs chain
-			const retrievalChain = await createRetrievalChain({
-				combineDocsChain,
-				retriever,
+			const batchResults = await Promise.allSettled(batchPromises);
+
+			batchResults.forEach((response, index) => {
+				if (response.status === 'rejected') {
+					const error = response.reason;
+					if (this.continueOnFail()) {
+						const metadata = parseErrorMetadata(error);
+						returnData.push({
+							json: { error: error.message },
+							pairedItem: { item: index },
+							metadata,
+						});
+						return;
+					} else {
+						throw error;
+					}
+				}
+				const output = response.value;
+				const answer: string = output.answer;
+				if (this.getNode().typeVersion >= 1.5) {
+					returnData.push({ json: { response: answer } });
+				} else {
+					// Legacy format for versions 1.4 and below is { text: string }
+					returnData.push({ json: { response: { text: answer } } });
+				}
 			});
 
-			// Execute the chain with tracing config
-			const tracingConfig = getTracingConfig(this);
-
-			const result = await retrievalChain
-				.withConfig(tracingConfig)
-				.invoke({ input: query }, { signal: this.getExecutionCancelSignal() });
-
-			if (itemIndex % batchSize === 0) {
+			// Add delay between batches if not the last batch
+			if (i + batchSize < items.length && delayBetweenBatches > 0) {
 				await sleep(delayBetweenBatches);
 			}
-
-			return result;
-		});
-
-		(await Promise.allSettled(promises)).forEach((response, index) => {
-			if (response.status === 'rejected') {
-				const error = response.reason;
-				if (this.continueOnFail()) {
-					const metadata = parseErrorMetadata(error);
-					returnData.push({
-						json: { error: error.message },
-						pairedItem: { item: index },
-						metadata,
-					});
-					return;
-				} else {
-					throw error;
-				}
-			}
-			const output = response.value;
-			const answer: string = output.answer;
-			if (this.getNode().typeVersion >= 1.5) {
-				returnData.push({ json: { response: answer } });
-			} else {
-				// Legacy format for versions 1.4 and below is { text: string }
-				returnData.push({ json: { response: { text: answer } } });
-			}
-		});
+		}
 
 		return [returnData];
 	}
