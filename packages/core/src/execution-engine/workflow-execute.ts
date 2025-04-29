@@ -1425,11 +1425,6 @@ export class WorkflowExecute {
 					}
 					executionData.data = newTaskDataConnections;
 
-					Logger.debug(`Start processing node "${executionNode.name}"`, {
-						node: executionNode.name,
-						workflowId: workflow.id,
-					});
-
 					// Get the index of the current run
 					runIndex = 0;
 					if (this.runExecutionData.resultData.runData.hasOwnProperty(executionNode.name)) {
@@ -1458,6 +1453,10 @@ export class WorkflowExecute {
 						continue executionLoop;
 					}
 
+					Logger.debug(`Start executing node "${executionNode.name}"`, {
+						node: executionNode.name,
+						workflowId: workflow.id,
+					});
 					await hooks.runHook('nodeExecuteBefore', [executionNode.name, taskStartedData]);
 					let maxTries = 1;
 					if (executionData.node.retryOnFail === true) {
