@@ -324,16 +324,17 @@ export class ChainRetrievalQa implements INodeType {
 		}
 		(await Promise.allSettled(promises)).forEach((response, index) => {
 			if (response.status === 'rejected') {
+				const error = response.reason;
 				if (this.continueOnFail()) {
-					const metadata = parseErrorMetadata(response.reason);
+					const metadata = parseErrorMetadata(error);
 					returnData.push({
-						json: { error: response.reason.message },
+						json: { error: error.message },
 						pairedItem: { item: index },
 						metadata,
 					});
 					return;
 				} else {
-					throw new NodeOperationError(this.getNode(), response.reason);
+					throw error;
 				}
 			}
 			const output = response.value;

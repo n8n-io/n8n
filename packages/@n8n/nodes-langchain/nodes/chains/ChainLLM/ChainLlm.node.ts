@@ -124,9 +124,8 @@ export class ChainLlm implements INodeType {
 						messages,
 					}),
 				);
-				console.log(`BatchSize: ${batchSize}`);
+
 				if (itemIndex % batchSize === 0) {
-					console.log('Waiting for batch to finish');
 					await sleep(delayBetweenBatches);
 				}
 			} catch (error) {
@@ -145,35 +144,40 @@ export class ChainLlm implements INodeType {
 		const shouldUnwrapObjects = this.getNode().typeVersion >= 1.6 || !!outputParser;
 
 		(await Promise.allSettled(promises)).forEach(
-			(result: PromiseSettledResult<object>, index: number) => {
-				if (result.status === 'rejected') {
-					const error = result.reason;
-					// Handle OpenAI specific rate limit errors
-					if (error instanceof NodeApiError && isOpenAiError(error.cause)) {
-						const openAiErrorCode: string | undefined = (error.cause as any).error?.code;
-						if (openAiErrorCode) {
-							const customMessage = getCustomOpenAiErrorMessage(openAiErrorCode);
-							if (customMessage) {
-								error.message = customMessage;
+			(result: PromiseSettledResult<unknown>, index: number) => {
+				try {
+					if (result.status === 'rejected') {
+						const error = result.reason;
+						// Handle OpenAI specific rate limit errors
+						if (error instanceof NodeApiError && isOpenAiError(error.cause)) {
+							const openAiErrorCode: string | undefined = (error.cause as any).error?.code;
+							if (openAiErrorCode) {
+								const customMessage = getCustomOpenAiErrorMessage(openAiErrorCode);
+								if (customMessage) {
+									error.message = customMessage;
+								}
 							}
 						}
-					}
 
-					if (this.continueOnFail()) {
-						returnData.push({ json: { error: error.message }, pairedItem: { item: index } });
-						return;
+						if (this.continueOnFail()) {
+							console.log('Here');
+							returnData.push({ json: { error: error.message }, pairedItem: { item: index } });
+							return;
+						}
+						console.log('After');
+						throw new NodeOperationError(this.getNode(), result.reason);
 					}
-					throw new NodeOperationError(this.getNode(), result.reason);
-				}
-				const responses = result.value as object[];
+					const responses = result.value as object[];
 
-				responses.forEach((response: object) => {
-					returnData.push({
-						json: formatResponse(response, shouldUnwrapObjects),
+					responses.forEach((response: object) => {
+						returnData.push({
+							json: formatResponse(response, shouldUnwrapObjects),
+						});
 					});
-				});
+				} catch (error) {}
 			},
 		);
+		console.log('Return Data', returnData);
 
 		return [returnData];
 	}

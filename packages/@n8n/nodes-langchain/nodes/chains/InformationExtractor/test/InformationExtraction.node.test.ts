@@ -91,7 +91,12 @@ describe('InformationExtractor', () => {
 						attributes: {
 							attributes: mockPersonAttributes,
 						},
-						options: {},
+						options: {
+							batching: {
+								batchSize: 1,
+								delayBetweenBatches: 100,
+							},
+						},
 						schemaType: 'fromAttributes',
 					},
 					new FakeLLM({ response: formatFakeLlmResponse({ name: 'John', age: 30 }) }),
@@ -111,7 +116,12 @@ describe('InformationExtractor', () => {
 						attributes: {
 							attributes: mockPersonAttributes,
 						},
-						options: {},
+						options: {
+							batching: {
+								batchSize: 1,
+								delayBetweenBatches: 100,
+							},
+						},
 						schemaType: 'fromAttributes',
 					},
 					new FakeLLM({ response: formatFakeLlmResponse({ name: 'John' }) }),
@@ -132,7 +142,12 @@ describe('InformationExtractor', () => {
 							attributes: {
 								attributes: mockPersonAttributesRequired,
 							},
-							options: {},
+							options: {
+								batching: {
+									batchSize: 1,
+									delayBetweenBatches: 100,
+								},
+							},
 							schemaType: 'fromAttributes',
 						},
 						new FakeLLM({ response: formatFakeLlmResponse({ name: 'John' }) }),
@@ -154,7 +169,12 @@ describe('InformationExtractor', () => {
 							attributes: {
 								attributes: mockPersonAttributes,
 							},
-							options: {},
+							options: {
+								batching: {
+									batchSize: 1,
+									delayBetweenBatches: 100,
+								},
+							},
 							schemaType: 'fromAttributes',
 						},
 						new FakeLLM({ response: formatFakeLlmResponse({ name: 'John', age: '30' }) }),
@@ -175,7 +195,12 @@ describe('InformationExtractor', () => {
 						attributes: {
 							attributes: mockPersonAttributesRequired,
 						},
-						options: {},
+						options: {
+							batching: {
+								batchSize: 1,
+								delayBetweenBatches: 100,
+							},
+						},
 						schemaType: 'fromAttributes',
 					},
 					new FakeListChatModel({
@@ -200,7 +225,12 @@ describe('InformationExtractor', () => {
 						attributes: {
 							attributes: mockPersonAttributesRequired,
 						},
-						options: {},
+						options: {
+							batching: {
+								batchSize: 1,
+								delayBetweenBatches: 100,
+							},
+						},
 						schemaType: 'fromAttributes',
 					},
 					new FakeListChatModel({

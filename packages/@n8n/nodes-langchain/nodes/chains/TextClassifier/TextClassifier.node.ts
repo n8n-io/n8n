@@ -303,7 +303,6 @@ ${fallbackPrompt}`,
 
 			promises.push(chain.invoke(messages));
 			if (batchSize && itemIdx % batchSize === 0) {
-				console.log('Sleeping');
 				await sleep(delayBetweenBatches);
 			}
 		}
