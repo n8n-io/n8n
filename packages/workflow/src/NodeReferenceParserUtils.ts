@@ -75,7 +75,7 @@ export function applyAccessPatterns(expression: string, previousName: string, ne
 	return expression;
 }
 
-type ExtractWorkflowExpressionData = {
+type ExpressionMapping = {
 	nodeNameInExpression: string; // 'abc';
 	originalExpression: string; // "$('abc').first().def.ghi";
 	replacementPrefix: string; //  "$('Start').first()";
@@ -86,26 +86,22 @@ const DOT_REFERENCEABLE_JS_VARIABLE = /\w[\w\d_\$]*/;
 const INVALID_JS_DOT_PATH = /[^\.\w\d_\$]/;
 const INVALID_JS_DOT_NAME = /[^\w\d_\$]/;
 
-/**
- *  We want to try and extract these if possible, so that we turn
- * 	$('myNode').ITEM_ACCESSOR.DATA_ACCESSOR.a.b['c'] => [$('myNode').ITEM_ACCESSOR.DATA_ACCESSOR.a.b, a_b['c']]
- */
-
-// These allow one of the DATA_ACCESSORS
+// These are the keys that are followed by one of DATA_ACCESSORS
 const ITEM_TO_DATA_ACCESSORS = [
 	/^first\(\)/,
 	/^last\(\)/,
 	/^all/,
 	// The order here is relevant because `item` would match occurrences of `itemMatching`
-	/^itemMatching\(\d+\)/, // We only support trivial itemMatching - this could in theory hold an entirely new expression
+	/^itemMatching\(\d+\)/, // We only support trivial itemMatching arguments
 	/^item/,
 ];
-// These we can convert to an argument
+
+// These we safely can convert to a normal argument
 const ITEM_ACCESSORS = ['params', 'isExecuted'];
 
 const DATA_ACCESSORS = ['json', 'binary'];
 
-function jsifyNodeName(nodeName: string, allNodeNames: string[]) {
+function convertToUniqueJsDotName(nodeName: string, allNodeNames: string[]) {
 	let jsLegal = nodeName
 		.replaceAll(' ', '_')
 		.split('')
@@ -119,12 +115,12 @@ function jsifyNodeName(nodeName: string, allNodeNames: string[]) {
 	// where a node with the name 'ourName_27' exists for our reduced name 'ourName'
 	// because we must have a different index, so therefore only one of us can be `ourName_27_27`
 	//
-	// The underscore prevents confusing e.g. index 1 with 11
+	// The underscore prevents colliding e.g. index 1 with 11
 	while (allNodeNames.includes(jsLegal)) jsLegal += `_${allNodeNames.indexOf(nodeName)}`;
 	return jsLegal;
 }
 
-function mapDataAccessorName(name: string): string {
+function convertDataAccessorName(name: string): string {
 	const [fnName, maybeDigits] = name.split('(');
 	if (fnName !== 'itemMatching') return fnName;
 
@@ -133,18 +129,17 @@ function mapDataAccessorName(name: string): string {
 }
 
 // Grow the selection as long as we follow a simple path structure:
-// - $('myName').a.b.c => from first dot to full expression
+// - $('myName').a.b.c => from first dot to entire expression
 // - $('myName').a.b['c'] => from first dot to b
-//
-// Note that we start after the . after the nodeName reference
-export function parseExtractWorkflowExpressionData(
+export function parseExpressionMapping(
 	isolatedExpression: string,
 	nodeNameInExpression: string,
 	nodeNamePlainJs: string,
 	startNodeName: string,
-): ExtractWorkflowExpressionData | null {
+): ExpressionMapping | null {
 	const splitExpr = isolatedExpression.split('.');
 
+	// This supports . used in the node name
 	const dotsInName = nodeNameInExpression.split('').filter((x) => x === '.').length;
 	const exprStart = splitExpr.slice(0, dotsInName + 1).join('.');
 	const parts = splitExpr.slice(dotsInName + 1);
@@ -152,13 +147,14 @@ export function parseExtractWorkflowExpressionData(
 	if (parts.length === 0) {
 		// If a node is referenced by name without any accessor we return a proxy that stringifies as an empty object
 		// But it can still be validly passed to other functions
-		// However when passed to a sub-workflow it "collapses" into a true empty object
+		// However when passed to a sub-workflow it collapses into a true empty object
 		// So lets just abort porting this and don't touch it
 		return null;
 	}
+
 	if (ITEM_TO_DATA_ACCESSORS.some((x) => parts[0].match(x))) {
 		if (parts.length === 1) {
-			// this case is a literal use of the return of `$('nodeName').first()`
+			// this case is a literal use of the return value of `$('nodeName').first()`
 			// Note that it's safe to rename to first, even if there is a variable of the same name
 			// since we resolve duplicate names later in the process
 			const originalName = parts[0];
@@ -166,7 +162,7 @@ export function parseExtractWorkflowExpressionData(
 				nodeNameInExpression,
 				originalExpression: `${exprStart}.${parts[0]}`, // $('abc').first()
 				replacementPrefix: `$('${startNodeName}').${parts[0]}`, //  $('Start').first()
-				replacementName: `${nodeNamePlainJs}_${mapDataAccessorName(originalName)}`, // nodeName_first, nodeName_itemMatching_20
+				replacementName: `${nodeNamePlainJs}_${convertDataAccessorName(originalName)}`, // nodeName_first, nodeName_itemMatching_20
 			};
 		} else {
 			if (DATA_ACCESSORS.some((x) => parts[1] === x)) {
@@ -174,20 +170,24 @@ export function parseExtractWorkflowExpressionData(
 				for (; partsIdx < parts.length; ++partsIdx) {
 					if (!DOT_REFERENCEABLE_JS_VARIABLE.test(parts[partsIdx])) break;
 				}
-				const replacementPostfix = parts[0] === 'item' ? '' : `_${mapDataAccessorName(parts[0])}`;
+				// Use a separate name for anything except item
+				// The alternative is to differentiate accessors later on to deduplicate names
+				// Which would first add the nodeName and then `_1` until unique
+				const replacementPostfix =
+					parts[0] === 'item' ? '' : `_${convertDataAccessorName(parts[0])}`;
 				return {
 					nodeNameInExpression,
-					originalExpression: `${exprStart}.${parts.slice(0, partsIdx + 1).join('.')}`, // $('abc').item.json.valid.until  and not ['x'] after
+					originalExpression: `${exprStart}.${parts.slice(0, partsIdx + 1).join('.')}`, // $('abc').item.json.valid.until, but not ['x'] after
 					replacementPrefix: `$('${startNodeName}').${parts[0]}.${parts[1]}`, // $('Start').item.json
-					replacementName: parts.slice(2, partsIdx).join('_') + replacementPostfix, // valid_until, valid_until_first
+					replacementName: parts.slice(2, partsIdx).join('_') + replacementPostfix, // valid_until, or valid_until_first
 				};
 			} else {
-				// this case covers any normal ObjectExtensions functions called on the ITEM_TO_DATA_ACCESSORS
+				// this case covers any normal ObjectExtensions functions called on the ITEM_TO_DATA_ACCESSORS entry
 				// e.g. $('nodeName').first().toJsonObject().randomJSFunction()
 				return {
 					nodeNameInExpression,
 					originalExpression: `${exprStart}.${parts[0]}`, // $('abc').first()
-					replacementPrefix: `$('${startNodeName}').${parts[0]}`, //  $('Start').first()
+					replacementPrefix: `$('${startNodeName}').${parts[0]}.json`, //  $('Start').first().json.
 					replacementName: `${nodeNamePlainJs}_${parts[0].split('(')[0]}`, // nodeName_first
 				};
 			}
@@ -218,7 +218,7 @@ export function parseMatch(
 	expression: string,
 	nodeNames: string[],
 	startNodeName: string,
-): ExtractWorkflowExpressionData | null {
+): ExpressionMapping | null {
 	const startIndex = match.index;
 	const endIndex = startIndex + match[0].length + 1;
 	// this works because all access patterns define match groups left and right of the name
@@ -239,10 +239,10 @@ export function parseMatch(
 	if (!firstInvalidCharMatch) return null;
 
 	const candidate = expression.slice(startIndex, after_accessor_idx + firstInvalidCharMatch.index);
-	const data = parseExtractWorkflowExpressionData(
+	const data = parseExpressionMapping(
 		candidate,
 		nodeNameInExpression,
-		jsifyNodeName(nodeNameInExpression, nodeNames),
+		convertToUniqueJsDotName(nodeNameInExpression, nodeNames),
 		startNodeName,
 	);
 
@@ -255,8 +255,8 @@ export function buildExtractWorkflowExpressionDataMap(
 	nodeRegexps: Array<readonly [string, LazyRegExp]>,
 	nodeNames: string[],
 	startNodeName: string,
-): ExtractWorkflowExpressionData[] {
-	const result: ExtractWorkflowExpressionData[] = [];
+): ExpressionMapping[] {
+	const result: ExpressionMapping[] = [];
 
 	for (const [pattern, regexp] of nodeRegexps) {
 		if (!expression.includes(pattern)) continue;
@@ -289,13 +289,13 @@ class LazyRegExp {
 
 type ParameterMapping<T> = undefined | T[] | { [key: PropertyKey]: ParameterMapping<T> };
 
-type ParameterExtractMapping = ParameterMapping<ExtractWorkflowExpressionData>;
+type ParameterExtractMapping = ParameterMapping<ExpressionMapping>;
 
 function applyParameterMapping(
 	parameterValue: NodeParameterValueType,
-	mapper: (s: string) => ExtractWorkflowExpressionData[],
+	mapper: (s: string) => ExpressionMapping[],
 	keyOfValue?: string,
-): [ParameterExtractMapping, ExtractWorkflowExpressionData[]] {
+): [ParameterExtractMapping, ExpressionMapping[]] {
 	const result: ParameterExtractMapping = {};
 
 	if (typeof parameterValue !== 'object' || parameterValue === null) {
@@ -319,9 +319,9 @@ function applyParameterMapping(
 	return [result, allMappings];
 }
 
-function resolveDuplicates(data: ExtractWorkflowExpressionData[], allNodeNames: string[]) {
+function resolveDuplicates(data: ExpressionMapping[], allNodeNames: string[]) {
 	// Map from resulting variableName to the expressionData
-	const triggerArgumentMap = new Map<string, ExtractWorkflowExpressionData>();
+	const triggerArgumentMap = new Map<string, ExpressionMapping>();
 	const originalExpressionMap = new Map<string, string>();
 	for (const mapping of data) {
 		const { nodeNameInExpression, originalExpression, replacementPrefix } = mapping;
@@ -339,7 +339,7 @@ function resolveDuplicates(data: ExtractWorkflowExpressionData[], allNodeNames: 
 		//    $('original input').item.json.path.to.url
 		//    $('some time later in the workflow').item.json.path.to.url
 		if (hasKeyAndCollides(key())) {
-			replacementName = `${jsifyNodeName(nodeNameInExpression, allNodeNames)}_${replacementName}`;
+			replacementName = `${convertToUniqueJsDotName(nodeNameInExpression, allNodeNames)}_${replacementName}`;
 		}
 		// This covers all other theoretical cases, like where `${node}_${variable}` might clash with another variable name
 		while (hasKeyAndCollides(key())) replacementName += '_1';
@@ -361,7 +361,7 @@ function resolveDuplicates(data: ExtractWorkflowExpressionData[], allNodeNames: 
 
 // Recursively loop through the nodeProperties and apply `parameterExtractMapping` where applicable
 function applyExtractMappingToNode(node: INode, parameterExtractMapping: ParameterExtractMapping) {
-	const usedMappings: ExtractWorkflowExpressionData[] = [];
+	const usedMappings: ExpressionMapping[] = [];
 
 	const applyMapping = (
 		parameters: NodeParameterValueType,
@@ -466,7 +466,7 @@ export function extractReferencesInNodeExpressions(
 	// triggerArgumentMap[originalExpressionMap[originalExpression]] gets you the canonical object
 	// This should never be undefined, unless something went wrong
 	// Would rather skip it if something does go wrong, lest we create a conflict
-	const getCanonicalData = (e: ExtractWorkflowExpressionData) => {
+	const getCanonicalData = (e: ExpressionMapping) => {
 		const key = originalExpressionMap.get(e.originalExpression);
 		if (!key) return undefined;
 		return triggerArgumentMap.get(key);

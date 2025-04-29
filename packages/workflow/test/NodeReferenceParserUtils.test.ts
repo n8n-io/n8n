@@ -154,26 +154,20 @@ describe('NodeReferenceParserUtils', () => {
 		});
 		it('should extract used expressions', () => {
 			const result = extractReferencesInNodeExpressions(nodes, nodeNames, startNodeName);
-			expect([...result.variables.entries()]).toEqual(
-				expect.arrayContaining([
-					['myField', '$("A").item.json.myField'],
-					['myField_anotherField_first', '$("A").first().json.myField.anotherField'],
-				]),
-			);
-			expect(result.nodes).toEqual(
-				expect.arrayContaining(
-					[
-						{
-							name: 'B',
-							parameters: { p0: "={{ $('Start').item.json.myField }}" },
-						},
-						{
-							name: 'C',
-							parameters: { p0: "={{ $('Start').first().json.myField_anotherField_first }}" },
-						},
-					].map(expect.objectContaining),
-				),
-			);
+			expect([...result.variables.entries()]).toEqual([
+				['myField', '$("A").item.json.myField'],
+				['myField_anotherField_first', '$("A").first().json.myField.anotherField'],
+			]);
+			expect(result.nodes).toEqual([
+				{
+					name: 'B',
+					parameters: { p0: "={{ $('Start').item.json.myField }}" },
+				},
+				{
+					name: 'C',
+					parameters: { p0: "={{ $('Start').first().json.myField_anotherField_first }}" },
+				},
+			]);
 		});
 
 		it('should handle simple name clashes', () => {
@@ -184,31 +178,25 @@ describe('NodeReferenceParserUtils', () => {
 			];
 			nodeNames = ['A', 'B', 'C', 'D', 'E', 'F'];
 			const result = extractReferencesInNodeExpressions(nodes, nodeNames, startNodeName);
-			expect([...result.variables.entries()]).toEqual(
-				expect.arrayContaining([
-					['myField', '$("A").item.json.myField'],
-					['D_myField', '$("D").item.json.myField'],
-					['F_myField', '$("F").item.json.myField'],
-				]),
-			);
-			expect(result.nodes).toEqual(
-				expect.arrayContaining(
-					[
-						{
-							name: 'B',
-							parameters: { p0: "={{ $('Start').item.json.myField }}" },
-						},
-						{
-							name: 'C',
-							parameters: { p0: "={{ $('Start').item.json.D_myField }}" },
-						},
-						{
-							name: 'E',
-							parameters: { p0: "={{ $('Start').item.json.F_myField }}" },
-						},
-					].map(expect.objectContaining),
-				),
-			);
+			expect([...result.variables.entries()]).toEqual([
+				['myField', '$("A").item.json.myField'],
+				['D_myField', '$("D").item.json.myField'],
+				['F_myField', '$("F").item.json.myField'],
+			]);
+			expect(result.nodes).toEqual([
+				{
+					name: 'B',
+					parameters: { p0: "={{ $('Start').item.json.myField }}" },
+				},
+				{
+					name: 'C',
+					parameters: { p0: "={{ $('Start').item.json.D_myField }}" },
+				},
+				{
+					name: 'E',
+					parameters: { p0: "={{ $('Start').item.json.F_myField }}" },
+				},
+			]);
 		});
 
 		it('should handle complex name clashes', () => {
@@ -220,36 +208,30 @@ describe('NodeReferenceParserUtils', () => {
 			];
 			nodeNames = ['A', 'B', 'C', 'D', 'E', 'F', 'Node_Name_With_Gap'];
 			const result = extractReferencesInNodeExpressions(nodes, nodeNames, startNodeName);
-			expect([...result.variables.entries()]).toEqual(
-				expect.arrayContaining([
-					['myField', '$("A").item.json.myField'],
-					['Node_Name_With_Gap_myField', '$("A").item.json.Node_Name_With_Gap_myField'],
-					['D_Node_Name_With_Gap_myField', '$("D").item.json.Node_Name_With_Gap_myField'],
-					// This is the `myField` variable from node 'E', referencing $("Node_Name_With_Gap").item.json.myField
-					// It first has a clash with A.myField, requiring its node name to come attached
-					// And then has _1 because it clashes B.Node_Name_With_Gap_myField
-					['Node_Name_With_Gap_myField_1', '$("Node_Name_With_Gap").item.json.myField'],
-				]),
-			);
-			expect(result.nodes).toEqual(
-				expect.arrayContaining(
-					[
-						{ name: 'F', parameters: { p0: "={{ $('Start').item.json.myField }}" } },
-						{
-							name: 'B',
-							parameters: { p0: "={{ $('Start').item.json.Node_Name_With_Gap_myField }}" },
-						},
-						{
-							name: 'C',
-							parameters: { p0: "={{ $('Start').item.json.D_Node_Name_With_Gap_myField }}" },
-						},
-						{
-							name: 'E',
-							parameters: { p0: "={{ $('Start').item.json.Node_Name_With_Gap_myField_1 }}" },
-						},
-					].map(expect.objectContaining),
-				),
-			);
+			expect([...result.variables.entries()]).toEqual([
+				['myField', '$("A").item.json.myField'],
+				['Node_Name_With_Gap_myField', '$("A").item.json.Node_Name_With_Gap_myField'],
+				['D_Node_Name_With_Gap_myField', '$("D").item.json.Node_Name_With_Gap_myField'],
+				// This is the `myField` variable from node 'E', referencing $("Node_Name_With_Gap").item.json.myField
+				// It first has a clash with A.myField, requiring its node name to come attached
+				// And then has _1 because it clashes B.Node_Name_With_Gap_myField
+				['Node_Name_With_Gap_myField_1', '$("Node_Name_With_Gap").item.json.myField'],
+			]);
+			expect(result.nodes).toEqual([
+				{ name: 'F', parameters: { p0: "={{ $('Start').item.json.myField }}" } },
+				{
+					name: 'B',
+					parameters: { p0: "={{ $('Start').item.json.Node_Name_With_Gap_myField }}" },
+				},
+				{
+					name: 'C',
+					parameters: { p0: "={{ $('Start').item.json.D_Node_Name_With_Gap_myField }}" },
+				},
+				{
+					name: 'E',
+					parameters: { p0: "={{ $('Start').item.json.Node_Name_With_Gap_myField_1 }}" },
+				},
+			]);
 		});
 
 		it('should handle code node', () => {
@@ -268,22 +250,22 @@ describe('NodeReferenceParserUtils', () => {
 			];
 			nodeNames = ['DebugHelper', 'Code'];
 			const result = extractReferencesInNodeExpressions(nodes, nodeNames, startNodeName);
-			expect([...result.variables.entries()]).toEqual(
-				expect.arrayContaining([['uid_first', "$('DebugHelper').first().json.uid"]]),
-			);
-			expect(result.nodes).toEqual(
-				expect.arrayContaining(
-					[
-						{
-							name: 'Code',
-							parameters: {
-								jsCode:
-									"for (const item of $input.all()) {\n  item.json.myNewField = $('Start').first().json.uid_first;\n}\n\nreturn $input.all();",
-							},
-						},
-					].map(expect.objectContaining),
-				),
-			);
+			expect([...result.variables.entries()]).toEqual([
+				['uid_first', "$('DebugHelper').first().json.uid"],
+			]);
+			expect(result.nodes).toEqual([
+				{
+					parameters: {
+						jsCode:
+							"for (const item of $input.all()) {\n  item.json.myNewField = $('Start').first().json.uid_first;\n}\n\nreturn $input.all();",
+					},
+					type: 'n8n-nodes-base.code',
+					typeVersion: 2,
+					position: [660, 0],
+					id: 'c9de02d0-982a-4f8c-9af7-93f63795aa9b',
+					name: 'Code',
+				},
+			]);
 		});
 		it('should not extract expression referencing node in subGraph', () => {
 			nodes = [
@@ -292,23 +274,17 @@ describe('NodeReferenceParserUtils', () => {
 			];
 			nodeNames = ['A', 'B', 'C'];
 			const result = extractReferencesInNodeExpressions(nodes, nodeNames, startNodeName);
-			expect([...result.variables.entries()]).toEqual(
-				expect.arrayContaining([['myField', '$("A").item.json.myField']]),
-			);
-			expect(result.nodes).toEqual(
-				expect.arrayContaining(
-					[
-						{
-							name: 'B',
-							parameters: { p0: "={{ $('Start').item.json.myField }}" },
-						},
-						{
-							name: 'C',
-							parameters: { p0: '={{ $("B").first().json.myField.anotherField }}' },
-						},
-					].map(expect.objectContaining),
-				),
-			);
+			expect([...result.variables.entries()]).toEqual([['myField', '$("A").item.json.myField']]);
+			expect(result.nodes).toEqual([
+				{
+					name: 'B',
+					parameters: { p0: "={{ $('Start').item.json.myField }}" },
+				},
+				{
+					name: 'C',
+					parameters: { p0: '={{ $("B").first().json.myField.anotherField }}' },
+				},
+			]);
 		});
 		it('should throw if node name clashes with start name', () => {
 			nodes = [makeNode('Start', ['$("A").item.json.myField'])];
@@ -321,19 +297,13 @@ describe('NodeReferenceParserUtils', () => {
 			nodeNames = ['A', 'Start'];
 			startNodeName = 'A different start name';
 			const result = extractReferencesInNodeExpressions(nodes, nodeNames, startNodeName);
-			expect([...result.variables.entries()]).toEqual(
-				expect.arrayContaining([['myField', '$("A").item.json.myField']]),
-			);
-			expect(result.nodes).toEqual(
-				expect.arrayContaining(
-					[
-						{
-							name: 'Start',
-							parameters: { p0: "={{ $('A different start name').item.json.myField }}" },
-						},
-					].map(expect.objectContaining),
-				),
-			);
+			expect([...result.variables.entries()]).toEqual([['myField', '$("A").item.json.myField']]);
+			expect(result.nodes).toEqual([
+				{
+					name: 'Start',
+					parameters: { p0: "={{ $('A different start name').item.json.myField }}" },
+				},
+			]);
 		});
 		it('should throw if called with node in subgraph whose name is not in nodeNames list', () => {
 			nodes = [makeNode('B', ['$("A").item.json.myField'])];
@@ -354,29 +324,23 @@ describe('NodeReferenceParserUtils', () => {
 			];
 			nodeNames = ['A', 'B', 'C'];
 			const result = extractReferencesInNodeExpressions(nodes, nodeNames, startNodeName);
-			expect([...result.variables.entries()]).toEqual(
-				expect.arrayContaining([
-					['myField_itemMatching_0', '$("A").itemMatching(0).json.myField'],
-					['myField_itemMatching_1', '$("A").itemMatching(1).json.myField'],
-					['C_myField_itemMatching_1', '$("C").itemMatching(1).json.myField'],
-					['myField_itemMatching_20', '$("A").itemMatching(20).json.myField'],
-				]),
-			);
-			expect(result.nodes).toEqual(
-				expect.arrayContaining(
-					[
-						{
-							name: 'B',
-							parameters: {
-								p0: "={{ $('Start').itemMatching(0).json.myField_itemMatching_0 }}",
-								p1: "={{ $('Start').itemMatching(1).json.myField_itemMatching_1 }}",
-								p2: "={{ $('Start').itemMatching(1).json.C_myField_itemMatching_1 }}",
-								p3: "={{ $('Start').itemMatching(20).json.myField_itemMatching_20 }}",
-							},
-						},
-					].map(expect.objectContaining),
-				),
-			);
+			expect([...result.variables.entries()]).toEqual([
+				['myField_itemMatching_0', '$("A").itemMatching(0).json.myField'],
+				['myField_itemMatching_1', '$("A").itemMatching(1).json.myField'],
+				['C_myField_itemMatching_1', '$("C").itemMatching(1).json.myField'],
+				['myField_itemMatching_20', '$("A").itemMatching(20).json.myField'],
+			]);
+			expect(result.nodes).toEqual([
+				{
+					name: 'B',
+					parameters: {
+						p0: "={{ $('Start').itemMatching(0).json.myField_itemMatching_0 }}",
+						p1: "={{ $('Start').itemMatching(1).json.myField_itemMatching_1 }}",
+						p2: "={{ $('Start').itemMatching(1).json.C_myField_itemMatching_1 }}",
+						p3: "={{ $('Start').itemMatching(20).json.myField_itemMatching_20 }}",
+					},
+				},
+			]);
 		});
 		it('does not throw for complex itemMatching example', () => {
 			nodes = [
@@ -398,32 +362,40 @@ describe('NodeReferenceParserUtils', () => {
 			];
 			nodeNames = ['A', 'B', 'C', 'D'];
 			const result = extractReferencesInNodeExpressions(nodes, nodeNames, startNodeName);
-			expect([...result.variables.entries()]).toEqual(
-				expect.arrayContaining([
-					['myField', '$("A").item.json.myField'],
-					['anotherField', '$("C").item.json.anotherField'],
-				]),
-			);
-			expect(result.nodes).toEqual(
-				expect.arrayContaining(
-					[
-						{
-							name: 'B',
-							parameters: {
-								p0: "={{ $('Start').item.json.myField }}",
-								p1: "={{ $('Start').item.json.anotherField }}",
-							},
-						},
-						{
-							name: 'D',
-							parameters: {
-								p0: "={{ $('Start').item.json.myField }}",
-								p1: '={{ $("B").item.json.someField }}',
-							},
-						},
-					].map(expect.objectContaining),
-				),
-			);
+			expect([...result.variables.entries()]).toEqual([
+				['myField', '$("A").item.json.myField'],
+				['anotherField', '$("C").item.json.anotherField'],
+			]);
+			expect(result.nodes).toEqual([
+				{
+					name: 'B',
+					parameters: {
+						p0: "={{ $('Start').item.json.myField }}",
+						p1: "={{ $('Start').item.json.anotherField }}",
+					},
+				},
+				{
+					name: 'D',
+					parameters: {
+						p0: "={{ $('Start').item.json.myField }}",
+						p1: '={{ $("B").item.json.someField }}',
+					},
+				},
+			]);
+		});
+		it('should support handle calls to normal js functions on the data accessor', () => {
+			nodes = [makeNode('A', ['$("B B").first().toJsonObject().randomJSFunction()'])];
+			nodeNames = ['A', 'B B'];
+			const result = extractReferencesInNodeExpressions(nodes, nodeNames, startNodeName);
+			expect([...result.variables.entries()]).toEqual([['B_B_first', '$("B B").first()']]);
+			expect(result.nodes).toEqual([
+				{
+					name: 'A',
+					parameters: {
+						p0: "={{ $('Start').first().json.B_B_first.toJsonObject().randomJSFunction() }}",
+					},
+				},
+			]);
 		});
 		it('should support handle spaces and special characters in nodeNames', () => {
 			nodes = [
@@ -439,29 +411,23 @@ describe('NodeReferenceParserUtils', () => {
 				'a_=-9-0!@#!%^$%&*(',
 			];
 			const result = extractReferencesInNodeExpressions(nodes, nodeNames, startNodeName);
-			expect([...result.variables.entries()]).toEqual(
-				expect.arrayContaining([
-					['myField', '$("A").item.json.myField'],
-					[
-						'A__weir$d__ode__$_Name__myField',
-						'$("A \\" |[w.e,i,r$d]| `\' Ñode  \\$\\( Name \\)").item.json.myField',
-					],
-				]),
-			);
-			expect(result.nodes).toEqual(
-				expect.arrayContaining(
-					[
-						{
-							name: 'a_=-9-0!@#!%^$%&*(',
-							parameters: { p0: "={{ $('Start').item.json.myField }}" },
-						},
-						{
-							name: 'A node with spaces',
-							parameters: { p0: "={{ $('Start').item.json.A__weir$d__ode__$_Name__myField }}" },
-						},
-					].map(expect.objectContaining),
-				),
-			);
+			expect([...result.variables.entries()]).toEqual([
+				['myField', '$("A").item.json.myField'],
+				[
+					'A__weir$d__ode__$_Name__myField',
+					'$("A \\" |[w.e,i,r$d]| `\' Ñode  \\$\\( Name \\)").item.json.myField',
+				],
+			]);
+			expect(result.nodes).toEqual([
+				{
+					name: 'a_=-9-0!@#!%^$%&*(',
+					parameters: { p0: "={{ $('Start').item.json.myField }}" },
+				},
+				{
+					name: 'A node with spaces',
+					parameters: { p0: "={{ $('Start').item.json.A__weir$d__ode__$_Name__myField }}" },
+				},
+			]);
 		});
 	});
 });
