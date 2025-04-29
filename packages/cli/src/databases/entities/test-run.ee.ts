@@ -1,11 +1,7 @@
+import { WithTimestampsAndStringId, JsonColumn, DateTimeColumn } from '@n8n/db';
 import { Column, Entity, Index, ManyToOne, OneToMany, RelationId } from '@n8n/typeorm';
 import type { IDataObject } from 'n8n-workflow';
 
-import {
-	datetimeColumnType,
-	jsonColumnType,
-	WithTimestampsAndStringId,
-} from '@/databases/entities/abstract-entity';
 import type { TestCaseExecution } from '@/databases/entities/test-case-execution.ee';
 import { TestDefinition } from '@/databases/entities/test-definition.ee';
 import type { TestRunFinalResult } from '@/databases/repositories/test-run.repository.ee';
@@ -31,13 +27,13 @@ export class TestRun extends WithTimestampsAndStringId {
 	@Column('varchar')
 	status: TestRunStatus;
 
-	@Column({ type: datetimeColumnType, nullable: true })
+	@DateTimeColumn({ nullable: true })
 	runAt: Date | null;
 
-	@Column({ type: datetimeColumnType, nullable: true })
+	@DateTimeColumn({ nullable: true })
 	completedAt: Date | null;
 
-	@Column(jsonColumnType, { nullable: true })
+	@JsonColumn({ nullable: true })
 	metrics: AggregatedTestRunMetrics;
 
 	/**
@@ -69,7 +65,7 @@ export class TestRun extends WithTimestampsAndStringId {
 	/**
 	 * Optional details about the error that happened during the test run
 	 */
-	@Column(jsonColumnType, { nullable: true })
+	@JsonColumn({ nullable: true })
 	errorDetails: IDataObject | null;
 
 	@OneToMany('TestCaseExecution', 'testRun')

@@ -30,7 +30,7 @@ import {
 	WORKFLOW_SHARING_EDITOR_SCOPES,
 	WORKFLOW_SHARING_OWNER_SCOPES,
 } from '@/permissions.ee/resource-roles';
-import type { ListQuery } from '@/requests';
+import type { ListQuery, ScopesField } from '@/types-db';
 
 export type RoleNamespace = 'global' | 'project' | 'credential' | 'workflow';
 
@@ -100,7 +100,7 @@ const ROLE_NAMES: Record<
 	'workflow:editor': 'Workflow Editor',
 };
 
-export type ScopesField = { scopes: Scope[] };
+// export type ScopesField = { scopes: Scope[] };
 
 @Service()
 export class RoleService {
@@ -189,7 +189,10 @@ export class RoleService {
 		| ListQuery.Workflow.WithScopes
 		| ListQuery.Credentials.WithScopes {
 		const shared = rawEntity.shared;
-		const entity = rawEntity as ListQuery.Workflow.WithScopes | ListQuery.Credentials.WithScopes;
+		const entity = rawEntity as
+			| (CredentialsEntity & ScopesField)
+			| ListQuery.Workflow.WithScopes
+			| ListQuery.Credentials.WithScopes;
 
 		Object.assign(entity, {
 			scopes: [],

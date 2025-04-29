@@ -1,4 +1,5 @@
 import { GlobalConfig } from '@n8n/config';
+import { separate } from '@n8n/db';
 import { Service } from '@n8n/di';
 import axios from 'axios';
 import { InstanceSettings, Logger } from 'n8n-core';
@@ -15,7 +16,6 @@ import {
 } from '@/security-audit/constants';
 import type { RiskReporter, Risk, n8n } from '@/security-audit/types';
 import { toFlaggedNode } from '@/security-audit/utils';
-import { separate } from '@/utils';
 
 @Service()
 export class InstanceRiskReporter implements RiskReporter {
