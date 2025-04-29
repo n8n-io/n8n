@@ -1403,7 +1403,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return testUrl;
 	}
 
-	function updateNodeExecutionDataForLogsPanel(data: NodeExecuteBefore['data']): void {
+	function addNodeExecutionData(data: NodeExecuteBefore['data']): void {
 		if (settingsStore.isNewLogsEnabled) {
 			const node = getNodeByName(data.nodeName);
 			if (!node || !workflowExecutionData.value?.data) {
@@ -1820,7 +1820,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		makeNewWorkflowShareable,
 		resetWorkflow,
 		resetState,
-		updateNodeExecutionDataForLogsPanel,
+		addNodeExecutionData,
 		addExecutingNode,
 		removeExecutingNode,
 		setWorkflowId,
