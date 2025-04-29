@@ -1,0 +1,76 @@
+{
+	"name": "Straico Node Tests",
+	"nodes": [
+		{
+			"parameters": {
+				"resource": "user",
+				"operation": "getInfo"
+			},
+			"id": "test-user-info",
+			"name": "Straico",
+			"type": "n8n-nodes-base.straico",
+			"typeVersion": 1,
+			"position": [
+				100,
+				300
+			],
+			"credentials": {
+				"straicoApi": {
+					"id": "test-creds",
+					"name": "Straico API"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "model",
+				"operation": "getListV0"
+			},
+			"id": "test-models-v0",
+			"name": "Straico",
+			"type": "n8n-nodes-base.straico",
+			"typeVersion": 1,
+			"position": [
+				300,
+				300
+			],
+			"credentials": {
+				"straicoApi": {
+					"id": "test-creds",
+					"name": "Straico API"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "prompt",
+				"operation": "completeV0",
+				"model": "gpt-4",
+				"message": "Hello, how are you?",
+				"additionalFields": {
+					"temperature": 0.7,
+					"max_tokens": 100
+				}
+			},
+			"id": "test-prompt-v0",
+			"name": "Straico",
+			"type": "n8n-nodes-base.straico",
+			"typeVersion": 1,
+			"position": [
+				500,
+				300
+			],
+			"credentials": {
+				"straicoApi": {
+					"id": "test-creds",
+					"name": "Straico API"
+				}
+			}
+		}
+	],
+	"connections": {},
+	"active": false,
+	"settings": {},
+	"version": 1,
+	"triggerCount": 0
+}

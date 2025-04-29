@@ -15,59 +15,46 @@ export const ragOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create a new RAG base',
-				action: 'Create a new RAG base',
+				description: 'Create a new RAG instance',
+				action: 'Create a new RAG instance',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: 'Delete a RAG base',
-				action: 'Delete a RAG base',
+				description: 'Delete a RAG instance',
+				action: 'Delete a RAG instance',
 			},
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get RAG base details',
-				action: 'Get RAG base details',
+				description: 'Get RAG details',
+				action: 'Get RAG details',
 			},
 			{
-				name: 'List',
-				value: 'list',
-				description: 'List all RAG bases',
-				action: 'List all RAG bases',
+				name: 'Get All',
+				value: 'getAll',
+				description: 'Get all RAG instances',
+				action: 'Get all RAG instances',
 			},
 			{
-				name: 'Prompt',
-				value: 'prompt',
-				description: 'Send a prompt to a RAG base',
-				action: 'Send a prompt to a RAG base',
+				name: 'Query',
+				value: 'query',
+				description: 'Query a RAG instance',
+				action: 'Query a RAG instance',
 			},
 			{
 				name: 'Update',
 				value: 'update',
-				description: 'Update a RAG base',
-				action: 'Update a RAG base',
+				description: 'Update a RAG instance',
+				action: 'Update a RAG instance',
 			},
 		],
-		default: 'list',
+		default: 'create',
 	},
 ];
 
 export const ragFields: INodeProperties[] = [
-	{
-		displayName: 'RAG ID',
-		name: 'ragId',
-		type: 'string',
-		required: true,
-		displayOptions: {
-			show: {
-				operation: ['delete', 'get', 'prompt', 'update'],
-				resource: ['rag'],
-			},
-		},
-		default: '',
-		description: 'The unique identifier of the RAG base',
-	},
+	// Fields for Create operation
 	{
 		displayName: 'Name',
 		name: 'name',
@@ -75,12 +62,12 @@ export const ragFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: ['create'],
 				resource: ['rag'],
+				operation: ['create'],
 			},
 		},
 		default: '',
-		description: 'Name of the RAG base',
+		description: 'Name of the RAG instance',
 	},
 	{
 		displayName: 'Description',
@@ -89,12 +76,12 @@ export const ragFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: ['create'],
 				resource: ['rag'],
+				operation: ['create'],
 			},
 		},
 		default: '',
-		description: 'Description of the RAG base',
+		description: 'Description of the RAG instance',
 	},
 	{
 		displayName: 'Files',
@@ -103,175 +90,181 @@ export const ragFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: ['create', 'update'],
 				resource: ['rag'],
+				operation: ['create', 'update'],
 			},
 		},
 		default: '',
-		description: 'Files to process (up to 4 files). Supported types: pdf, docx, csv, txt, xlsx, py',
+		description: 'Files to process (max 4 files, max 25MB each). Supported formats: pdf, docx, pptx, txt, xlsx, mp3, mp4, html, csv, json, py, php, js, css, cs, swift, kt, xml, ts',
 	},
 	{
-		displayName: 'Chunking Method',
-		name: 'chunking_method',
-		type: 'options',
-		required: false,
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
 		displayOptions: {
 			show: {
-				operation: ['create'],
 				resource: ['rag'],
+				operation: ['create'],
 			},
 		},
 		options: [
 			{
-				name: 'Fixed Size',
-				value: 'fixed_size',
-				description: 'Good for not so elaborated text',
+				displayName: 'Chunking Method',
+				name: 'chunking_method',
+				type: 'options',
+				options: [
+					{
+						name: 'Fixed Size',
+						value: 'fixed_size',
+						description: 'Good for not so elaborated text',
+					},
+					{
+						name: 'Recursive',
+						value: 'recursive',
+						description: 'Good for not so elaborated text',
+					},
+					{
+						name: 'Markdown',
+						value: 'markdown',
+						description: 'Only suitable for files with Markdown',
+					},
+					{
+						name: 'Python',
+						value: 'python',
+						description: 'Only suitable for Python files',
+					},
+					{
+						name: 'Semantic',
+						value: 'semantic',
+						description: 'Very slow but good for significantly elaborated texts',
+					},
+				],
+				default: 'fixed_size',
+				description: 'Method to use for chunking the text',
 			},
 			{
-				name: 'Recursive',
-				value: 'recursive',
-				description: 'Good for not so elaborated text',
+				displayName: 'Chunk Size',
+				name: 'chunk_size',
+				type: 'number',
+				displayOptions: {
+					show: {
+						'/additionalFields.chunking_method': ['fixed_size', 'recursive', 'markdown', 'python'],
+					},
+				},
+				default: 1000,
+				description: 'Size of each chunk',
 			},
 			{
-				name: 'Markdown',
-				value: 'markdown',
-				description: 'Only suitable for files with Markdown',
+				displayName: 'Chunk Overlap',
+				name: 'chunk_overlap',
+				type: 'number',
+				displayOptions: {
+					show: {
+						'/additionalFields.chunking_method': ['fixed_size', 'recursive', 'markdown', 'python'],
+					},
+				},
+				default: 50,
+				description: 'Number of overlapping tokens between chunks',
 			},
 			{
-				name: 'Python',
-				value: 'python',
-				description: 'Only suitable for Python files',
+				displayName: 'Separator',
+				name: 'separator',
+				type: 'string',
+				displayOptions: {
+					show: {
+						'/additionalFields.chunking_method': ['fixed_size'],
+					},
+				},
+				default: '\\n',
+				description: 'Separator to use for fixed size chunking',
 			},
 			{
-				name: 'Semantic',
-				value: 'semantic',
-				description: 'Very slow but good for significantly elaborated texts',
+				displayName: 'Separators',
+				name: 'separators',
+				type: 'string',
+				displayOptions: {
+					show: {
+						'/additionalFields.chunking_method': ['recursive'],
+					},
+				},
+				default: '["\\n\\n", "\\n", " ", ""]',
+				description: 'JSON array of separators to use for recursive chunking',
+			},
+			{
+				displayName: 'Breakpoint Threshold Type',
+				name: 'breakpoint_threshold_type',
+				type: 'options',
+				displayOptions: {
+					show: {
+						'/additionalFields.chunking_method': ['semantic'],
+					},
+				},
+				options: [
+					{
+						name: 'Percentile',
+						value: 'percentile',
+					},
+					{
+						name: 'Interquartile',
+						value: 'interquartile',
+					},
+					{
+						name: 'Standard Deviation',
+						value: 'standard_deviation',
+					},
+					{
+						name: 'Gradient',
+						value: 'gradient',
+					},
+				],
+				default: 'percentile',
+				description: 'Type of threshold to use for semantic chunking',
+			},
+			{
+				displayName: 'Buffer Size',
+				name: 'buffer_size',
+				type: 'number',
+				displayOptions: {
+					show: {
+						'/additionalFields.chunking_method': ['semantic'],
+					},
+				},
+				default: 100,
+				description: 'Buffer size for semantic chunking',
 			},
 		],
-		default: 'fixed_size',
-		description: 'Method to use for chunking the text',
 	},
+	// Fields for Delete, Get, Update, Query operations
 	{
-		displayName: 'Chunk Size',
-		name: 'chunk_size',
-		type: 'number',
-		required: false,
-		displayOptions: {
-			show: {
-				operation: ['create'],
-				resource: ['rag'],
-				chunking_method: ['fixed_size', 'recursive', 'markdown', 'python'],
-			},
-		},
-		default: 1000,
-		description: 'Size of each chunk',
-	},
-	{
-		displayName: 'Chunk Overlap',
-		name: 'chunk_overlap',
-		type: 'number',
-		required: false,
-		displayOptions: {
-			show: {
-				operation: ['create'],
-				resource: ['rag'],
-				chunking_method: ['fixed_size', 'recursive', 'markdown', 'python'],
-			},
-		},
-		default: 50,
-		description: 'Number of overlapping tokens between chunks',
-	},
-	{
-		displayName: 'Separator',
-		name: 'separator',
-		type: 'string',
-		required: false,
-		displayOptions: {
-			show: {
-				operation: ['create'],
-				resource: ['rag'],
-				chunking_method: ['fixed_size'],
-			},
-		},
-		default: '\\n',
-		description: 'Separator to use for fixed size chunking',
-	},
-	{
-		displayName: 'Separators',
-		name: 'separators',
-		type: 'string',
-		required: false,
-		displayOptions: {
-			show: {
-				operation: ['create'],
-				resource: ['rag'],
-				chunking_method: ['recursive'],
-			},
-		},
-		default: '["\\n\\n", "\\n", " ", ""]',
-		description: 'JSON array of separators to use for recursive chunking',
-	},
-	{
-		displayName: 'Breakpoint Threshold Type',
-		name: 'breakpoint_threshold_type',
-		type: 'options',
-		required: false,
-		displayOptions: {
-			show: {
-				operation: ['create'],
-				resource: ['rag'],
-				chunking_method: ['semantic'],
-			},
-		},
-		options: [
-			{
-				name: 'Percentile',
-				value: 'percentile',
-			},
-			{
-				name: 'Interquartile',
-				value: 'interquartile',
-			},
-			{
-				name: 'Standard Deviation',
-				value: 'standard_deviation',
-			},
-			{
-				name: 'Gradient',
-				value: 'gradient',
-			},
-		],
-		default: 'percentile',
-		description: 'Type of threshold to use for semantic chunking',
-	},
-	{
-		displayName: 'Buffer Size',
-		name: 'buffer_size',
-		type: 'number',
-		required: false,
-		displayOptions: {
-			show: {
-				operation: ['create'],
-				resource: ['rag'],
-				chunking_method: ['semantic'],
-			},
-		},
-		default: 100,
-		description: 'Buffer size for semantic chunking',
-	},
-	{
-		displayName: 'Prompt',
-		name: 'prompt',
+		displayName: 'RAG ID',
+		name: 'ragId',
 		type: 'string',
 		required: true,
 		displayOptions: {
 			show: {
-				operation: ['prompt'],
 				resource: ['rag'],
+				operation: ['delete', 'get', 'update', 'query'],
 			},
 		},
 		default: '',
-		description: 'The prompt text for the RAG model',
+		description: 'ID of the RAG instance',
+	},
+	// Fields for Query operation
+	{
+		displayName: 'Message',
+		name: 'message',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['rag'],
+				operation: ['query'],
+			},
+		},
+		default: '',
+		description: 'Message to query the RAG instance',
 	},
 	{
 		displayName: 'Model',
@@ -280,102 +273,75 @@ export const ragFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: ['prompt'],
 				resource: ['rag'],
+				operation: ['query'],
 			},
 		},
 		default: '',
-		description: 'The specific LLM to be used',
+		description: 'Model to use for the query',
 	},
 	{
-		displayName: 'Search Type',
-		name: 'search_type',
-		type: 'options',
-		required: false,
+		displayName: 'Query Parameters',
+		name: 'queryParameters',
+		type: 'collection',
+		placeholder: 'Add Parameter',
+		default: {},
 		displayOptions: {
 			show: {
-				operation: ['prompt'],
 				resource: ['rag'],
+				operation: ['query'],
 			},
 		},
 		options: [
 			{
-				name: 'Similarity',
-				value: 'similarity',
+				displayName: 'Search Type',
+				name: 'search_type',
+				type: 'options',
+				options: [
+					{
+						name: 'Similarity',
+						value: 'similarity',
+					},
+					{
+						name: 'MMR',
+						value: 'mmr',
+					},
+					{
+						name: 'Similarity Score Threshold',
+						value: 'similarity_score_threshold',
+					},
+				],
+				default: 'similarity',
+				description: 'Type of search to perform',
 			},
 			{
-				name: 'MMR',
-				value: 'mmr',
+				displayName: 'Number of Documents (K)',
+				name: 'k',
+				type: 'number',
+				default: 4,
+				description: 'Number of documents to return',
 			},
 			{
-				name: 'Similarity Score Threshold',
-				value: 'similarity_score_threshold',
+				displayName: 'Fetch K (MMR)',
+				name: 'fetch_k',
+				type: 'number',
+				default: 20,
+				description: 'Amount of documents to pass to MMR algorithm',
+			},
+			{
+				displayName: 'Lambda Mult (MMR)',
+				name: 'lambda_mult',
+				type: 'number',
+				default: 0.5,
+				description: 'Diversity of results (1 for minimum, 0 for maximum)',
+			},
+			{
+				displayName: 'Score Threshold',
+				name: 'score_threshold',
+				type: 'number',
+				default: 0.8,
+				description: 'Minimum relevance threshold for similarity_score_threshold',
 			},
 		],
-		default: 'similarity',
-		description: 'Type of search to perform',
-	},
-	{
-		displayName: 'Number of Documents',
-		name: 'k',
-		type: 'number',
-		required: false,
-		displayOptions: {
-			show: {
-				operation: ['prompt'],
-				resource: ['rag'],
-			},
-		},
-		default: 4,
-		description: 'Number of documents to return',
-	},
-	{
-		displayName: 'Fetch K',
-		name: 'fetch_k',
-		type: 'number',
-		required: false,
-		displayOptions: {
-			show: {
-				operation: ['prompt'],
-				resource: ['rag'],
-				search_type: ['mmr'],
-			},
-		},
-		default: 20,
-		description: 'Amount of documents to pass to MMR algorithm',
-	},
-	{
-		displayName: 'Lambda Mult',
-		name: 'lambda_mult',
-		type: 'number',
-		required: false,
-		displayOptions: {
-			show: {
-				operation: ['prompt'],
-				resource: ['rag'],
-				search_type: ['mmr'],
-			},
-		},
-		typeOptions: {
-			minValue: 0,
-			maxValue: 1,
-		},
-		default: 0.5,
-		description: 'Diversity of results (0 for maximum diversity, 1 for minimum)',
-	},
-	{
-		displayName: 'Score Threshold',
-		name: 'score_threshold',
-		type: 'number',
-		required: false,
-		displayOptions: {
-			show: {
-				operation: ['prompt'],
-				resource: ['rag'],
-				search_type: ['similarity_score_threshold'],
-			},
-		},
-		default: 0.8,
-		description: 'Minimum relevance threshold',
 	},
 ];

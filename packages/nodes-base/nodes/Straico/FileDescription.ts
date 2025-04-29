@@ -15,8 +15,14 @@ export const fileOperations: INodeProperties[] = [
 			{
 				name: 'Upload',
 				value: 'upload',
-				description: 'Upload a file to Straico',
+				description: 'Upload a file',
 				action: 'Upload a file',
+			},
+			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a file',
+				action: 'Delete a file',
 			},
 		],
 		default: 'upload',
@@ -25,17 +31,45 @@ export const fileOperations: INodeProperties[] = [
 
 export const fileFields: INodeProperties[] = [
 	{
-		displayName: 'File',
-		name: 'file',
+		displayName: 'Binary Property',
+		name: 'binaryPropertyName',
 		type: 'string',
 		required: true,
 		displayOptions: {
 			show: {
-				operation: ['upload'],
 				resource: ['file'],
+				operation: ['upload'],
+			},
+		},
+		default: 'data',
+		description: 'Name of the binary property containing the file to upload',
+	},
+	{
+		displayName: 'File Name',
+		name: 'fileName',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['file'],
+				operation: ['upload'],
 			},
 		},
 		default: '',
-		description: 'The file to upload (max 25MB). Supported types: pdf, docx, pptx, txt, xlsx, mp3, mp4, html, csv, json, py, php, js, css, cs, swift, kt, xml, ts, png, jpg, jpeg, webp, gif',
+		description: 'Name of the file to upload',
+	},
+	{
+		displayName: 'File ID',
+		name: 'fileId',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['file'],
+				operation: ['delete'],
+			},
+		},
+		default: '',
+		description: 'ID of the file to delete',
 	},
 ];

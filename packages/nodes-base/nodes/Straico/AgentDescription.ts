@@ -1,3 +1,4 @@
+// @ts-ignore
 import type { INodeProperties } from 'n8n-workflow';
 
 export const agentOperations: INodeProperties[] = [
@@ -21,8 +22,14 @@ export const agentOperations: INodeProperties[] = [
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: 'Delete an existing agent',
+				description: 'Delete an agent',
 				action: 'Delete an agent',
+			},
+			{
+				name: 'Execute',
+				value: 'execute',
+				description: 'Execute an agent',
+				action: 'Execute an agent',
 			},
 			{
 				name: 'Get',
@@ -31,37 +38,30 @@ export const agentOperations: INodeProperties[] = [
 				action: 'Get agent details',
 			},
 			{
-				name: 'List',
-				value: 'list',
-				description: 'List all agents',
-				action: 'List all agents',
+				name: 'Get All',
+				value: 'getAll',
+				description: 'Get all agents',
+				action: 'Get all agents',
 			},
 			{
 				name: 'Update',
 				value: 'update',
-				description: 'Update an existing agent',
+				description: 'Update an agent',
 				action: 'Update an agent',
 			},
+			{
+				name: 'Add RAG',
+				value: 'addRag',
+				description: 'Add RAG to agent',
+				action: 'Add RAG to agent',
+			},
 		],
-		default: 'list',
+		default: 'create',
 	},
 ];
 
 export const agentFields: INodeProperties[] = [
-	{
-		displayName: 'Agent ID',
-		name: 'agentId',
-		type: 'string',
-		required: true,
-		displayOptions: {
-			show: {
-				operation: ['delete', 'get', 'update'],
-				resource: ['agent'],
-			},
-		},
-		default: '',
-		description: 'The unique identifier of the agent',
-	},
+	// Fields for Create operation
 	{
 		displayName: 'Name',
 		name: 'name',
@@ -69,12 +69,12 @@ export const agentFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: ['create', 'update'],
 				resource: ['agent'],
+				operation: ['create', 'update'],
 			},
 		},
 		default: '',
-		description: 'The name of the agent',
+		description: 'Name of the agent',
 	},
 	{
 		displayName: 'Description',
@@ -83,101 +83,188 @@ export const agentFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: ['create', 'update'],
 				resource: ['agent'],
+				operation: ['create', 'update'],
 			},
 		},
 		default: '',
-		description: 'A description of the agent\'s purpose and capabilities',
+		description: 'Description of the agent',
 	},
 	{
-		displayName: 'Model',
-		name: 'model',
+		displayName: 'Default LLM',
+		name: 'default_llm',
 		type: 'string',
 		required: true,
 		displayOptions: {
 			show: {
-				operation: ['create', 'update'],
 				resource: ['agent'],
-			},
-		},
-		default: 'gpt-4',
-		description: 'The AI model to be used by the agent',
-	},
-	{
-		displayName: 'Instructions',
-		name: 'instructions',
-		type: 'string',
-		typeOptions: {
-			rows: 4,
-		},
-		required: true,
-		displayOptions: {
-			show: {
 				operation: ['create', 'update'],
-				resource: ['agent'],
 			},
 		},
 		default: '',
-		description: 'System instructions that define the agent\'s behavior and capabilities',
+		description: 'Default LLM to use for the agent',
 	},
 	{
-		displayName: 'Tools',
-		name: 'tools',
-		type: 'multiOptions',
+		displayName: 'Custom Prompt',
+		name: 'custom_prompt',
+		type: 'string',
 		required: true,
 		displayOptions: {
 			show: {
-				operation: ['create', 'update'],
 				resource: ['agent'],
+				operation: ['create', 'update'],
+			},
+		},
+		default: '',
+		description: 'Custom prompt for the agent',
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: ['agent'],
+				operation: ['create', 'update'],
 			},
 		},
 		options: [
 			{
-				name: 'Web Search',
-				value: 'web_search',
+				displayName: 'Tags',
+				name: 'tags',
+				type: 'string',
+				default: '',
+				description: 'Comma-separated list of tags',
 			},
 			{
-				name: 'Code Interpreter',
-				value: 'code_interpreter',
-			},
-			{
-				name: 'File Management',
-				value: 'file_management',
+				displayName: 'Visibility',
+				name: 'visibility',
+				type: 'options',
+				options: [
+					{
+						name: 'Private',
+						value: 'private',
+					},
+					{
+						name: 'Public',
+						value: 'public',
+					},
+				],
+				default: 'private',
+				description: 'Visibility of the agent',
 			},
 		],
-		default: [],
-		description: 'The tools that the agent has access to',
 	},
+	// Fields for Delete, Get, Update operations
 	{
-		displayName: 'Return All',
-		name: 'returnAll',
-		type: 'boolean',
+		displayName: 'Agent ID',
+		name: 'agentId',
+		type: 'string',
+		required: true,
 		displayOptions: {
 			show: {
-				operation: ['list'],
 				resource: ['agent'],
+				operation: ['delete', 'get', 'update', 'execute', 'addRag'],
 			},
 		},
-		default: false,
-		description: 'Whether to return all results or only up to a given limit',
+		default: '',
+		description: 'ID of the agent',
 	},
+	// Fields for Execute operation
 	{
-		displayName: 'Limit',
-		name: 'limit',
-		type: 'number',
+		displayName: 'Message',
+		name: 'message',
+		type: 'string',
+		required: true,
 		displayOptions: {
 			show: {
-				operation: ['list'],
 				resource: ['agent'],
-				returnAll: [false],
+				operation: ['execute'],
 			},
 		},
-		typeOptions: {
-			minValue: 1,
-			maxValue: 100,
+		default: '',
+		description: 'Message for the agent',
+	},
+	{
+		displayName: 'Query Parameters',
+		name: 'queryParameters',
+		type: 'collection',
+		placeholder: 'Add Parameter',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: ['agent'],
+				operation: ['execute'],
+			},
 		},
-		default: 50,
-		description: 'Max number of results to return',
+		options: [
+			{
+				displayName: 'Search Type',
+				name: 'search_type',
+				type: 'options',
+				options: [
+					{
+						name: 'Similarity',
+						value: 'similarity',
+					},
+					{
+						name: 'MMR',
+						value: 'mmr',
+					},
+					{
+						name: 'Similarity Score Threshold',
+						value: 'similarity_score_threshold',
+					},
+				],
+				default: 'similarity',
+				description: 'Type of search to perform',
+			},
+			{
+				displayName: 'Number of Documents (K)',
+				name: 'k',
+				type: 'number',
+				default: 4,
+				description: 'Number of documents to return',
+			},
+			{
+				displayName: 'Fetch K (MMR)',
+				name: 'fetch_k',
+				type: 'number',
+				default: 20,
+				description: 'Amount of documents to pass to MMR algorithm',
+			},
+			{
+				displayName: 'Lambda Mult (MMR)',
+				name: 'lambda_mult',
+				type: 'number',
+				default: 0.5,
+				description: 'Diversity of results (1 for minimum, 0 for maximum)',
+			},
+			{
+				displayName: 'Score Threshold',
+				name: 'score_threshold',
+				type: 'number',
+				default: 0.8,
+				description: 'Minimum relevance threshold for similarity_score_threshold',
+			},
+		],
+	},
+	// Fields for Add RAG operation
+	{
+		displayName: 'RAG ID',
+		name: 'ragId',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['agent'],
+				operation: ['addRag'],
+			},
+		},
+		default: '',
+		description: 'ID of the RAG to add',
 	},
 ];
+
