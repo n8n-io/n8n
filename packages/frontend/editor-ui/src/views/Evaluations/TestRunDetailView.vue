@@ -101,7 +101,7 @@ const getErrorBaseKey = (errorCode?: string): string =>
 	testRunErrorDictionary[errorCode as TestRunErrorCode] ??
 	'';
 
-const getErrorTooltipLinkRoute = (row: TestCaseExecutionRecord) => {
+const getErrorTooltipLinkRoute = (_row: TestCaseExecutionRecord) => {
 	// if (row.errorCode === TEST_CASE_EXECUTION_ERROR_CODE.MOCKED_NODE_NOT_FOUND) {
 	// 	return {
 	// 		name: VIEWS.EVALUATION_EDIT,
