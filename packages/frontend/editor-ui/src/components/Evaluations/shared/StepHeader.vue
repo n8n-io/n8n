@@ -2,7 +2,7 @@
 import { N8nText, N8nBadge } from '@n8n/design-system';
 import StepIndicator from './StepIndicator.vue';
 
-const props = defineProps<{
+defineProps<{
 	stepNumber: number;
 	title: string;
 	isCompleted: boolean;
