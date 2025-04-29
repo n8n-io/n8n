@@ -1,15 +1,21 @@
 <script lang="ts" setup>
 import { useAssistantStore } from '@/stores/assistant.store';
-import { useDebounce } from '@/composables/useDebounce';
 import { useUsersStore } from '@/stores/users.store';
 import { computed } from 'vue';
-import SlideTransition from '@/components/transitions/SlideTransition.vue';
 import AskAssistantChat from '@n8n/design-system/components/AskAssistantChat/AskAssistantChat.vue';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { useBuilderStore } from '@/stores/builder.store';
+import { useI18n } from '@/composables/useI18n';
+
+const emit = defineEmits<{
+	close: [];
+}>();
 
 const assistantStore = useAssistantStore();
 const usersStore = useUsersStore();
 const telemetry = useTelemetry();
+const builderStore = useBuilderStore();
+const i18n = useI18n();
 
 const user = computed(() => ({
 	firstName: usersStore.currentUser?.firstName ?? '',
@@ -17,14 +23,6 @@ const user = computed(() => ({
 }));
 
 const loadingMessage = computed(() => assistantStore.assistantThinkingMessage);
-
-function onResize(data: { direction: string; x: number; width: number }) {
-	assistantStore.updateWindowWidth(data.width);
-}
-
-function onResizeDebounced(data: { direction: string; x: number; width: number }) {
-	void useDebounce().callDebounced(onResize, { debounceTime: 10, trailing: true }, data);
-}
 
 async function onUserMessage(content: string, quickReplyType?: string, isFeedback = false) {
 	// If there is no current session running, initialize the support chat session
@@ -62,47 +60,36 @@ async function undoCodeDiff(index: number) {
 		action: 'undo_code_replace',
 	});
 }
-
-function onClose() {
-	assistantStore.closeChat();
-	telemetry.track('User closed assistant', { source: 'top-toggle' });
-}
 </script>
 
 <template>
-	<SlideTransition>
-		<N8nResizeWrapper
-			v-show="assistantStore.isAssistantOpen"
-			:supported-directions="['left']"
-			:width="assistantStore.chatWidth"
-			data-test-id="ask-assistant-sidebar"
-			@resize="onResizeDebounced"
+	<div data-test-id="ask-assistant-chat" tabindex="0" class="wrapper" @keydown.stop>
+		<AskAssistantChat
+			:user="user"
+			:messages="assistantStore.chatMessages"
+			:streaming="assistantStore.streaming"
+			:loading-message="loadingMessage"
+			:session-id="assistantStore.currentSessionId"
+			:title="
+				builderStore.isAIBuilderEnabled
+					? i18n.baseText('aiAssistant.n8nAi')
+					: i18n.baseText('aiAssistant.assistant')
+			"
+			@close="emit('close')"
+			@message="onUserMessage"
+			@code-replace="onCodeReplace"
+			@code-undo="undoCodeDiff"
 		>
-			<div
-				:style="{ width: `${assistantStore.chatWidth}px` }"
-				:class="$style.wrapper"
-				data-test-id="ask-assistant-chat"
-				tabindex="0"
-				@keydown.stop
-			>
-				<AskAssistantChat
-					:user="user"
-					:messages="assistantStore.chatMessages"
-					:streaming="assistantStore.streaming"
-					:loading-message="loadingMessage"
-					:session-id="assistantStore.currentSessionId"
-					@close="onClose"
-					@message="onUserMessage"
-					@code-replace="onCodeReplace"
-					@code-undo="undoCodeDiff"
-				/>
-			</div>
-		</N8nResizeWrapper>
-	</SlideTransition>
+			<template #header>
+				<slot name="header" />
+			</template>
+		</AskAssistantChat>
+	</div>
 </template>
 
-<style module>
+<style scoped>
 .wrapper {
 	height: 100%;
+	width: 100%;
 }
 </style>

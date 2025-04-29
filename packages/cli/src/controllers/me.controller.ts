@@ -17,12 +17,12 @@ import { InvalidMfaCodeError } from '@/errors/response-errors/invalid-mfa-code.e
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
-import type { PublicUser } from '@/interfaces';
 import { MfaService } from '@/mfa/mfa.service';
 import { AuthenticatedRequest, MeRequest } from '@/requests';
 import { PasswordUtility } from '@/services/password.utility';
 import { UserService } from '@/services/user.service';
 import { isSamlLicensedAndEnabled } from '@/sso.ee/saml/saml-helpers';
+import type { PublicUser } from '@/types-db';
 
 import { PersonalizationSurveyAnswersV4 } from './survey-answers.dto';
 @RestController('/me')

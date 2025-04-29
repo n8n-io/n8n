@@ -33,7 +33,6 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
-import type { ICredentialsDb } from '@/interfaces';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import type { CredentialRequest, ListQuery } from '@/requests';
 import { CredentialsTester } from '@/services/credentials-tester.service';
@@ -41,6 +40,9 @@ import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 import type { ScopesField } from '@/services/role.service';
 import { RoleService } from '@/services/role.service';
+import type { ICredentialsDb } from '@/types-db';
+
+import { CredentialsFinderService } from './credentials-finder.service';
 
 export type CredentialsGetSharedOptions =
 	| { allowGlobalScope: true; globalScope: Scope }
@@ -65,6 +67,7 @@ export class CredentialsService {
 		private readonly projectService: ProjectService,
 		private readonly roleService: RoleService,
 		private readonly userRepository: UserRepository,
+		private readonly credentialsFinderService: CredentialsFinderService,
 	) {}
 
 	async getMany(
@@ -166,7 +169,7 @@ export class CredentialsService {
 			return credentials;
 		}
 
-		const ids = await this.sharedCredentialsRepository.getCredentialIdsByUserAndRole([user.id], {
+		const ids = await this.credentialsFinderService.getCredentialIdsByUserAndRole([user.id], {
 			scopes: ['credential:read'],
 		});
 
@@ -234,7 +237,7 @@ export class CredentialsService {
 		const projectRelations = await this.projectService.getProjectRelationsForUser(user);
 
 		// get all credentials the user has access to
-		const allCredentials = await this.credentialsRepository.findCredentialsForUser(user, [
+		const allCredentials = await this.credentialsFinderService.findCredentialsForUser(user, [
 			'credential:read',
 		]);
 
@@ -465,7 +468,7 @@ export class CredentialsService {
 	async delete(user: User, credentialId: string) {
 		await this.externalHooks.run('credentials.delete', [credentialId]);
 
-		const credential = await this.sharedCredentialsRepository.findCredentialForUser(
+		const credential = await this.credentialsFinderService.findCredentialForUser(
 			credentialId,
 			user,
 			['credential:delete'],
