@@ -93,11 +93,6 @@ export class EvaluationTrigger implements INodeType {
 
 		const MAX_ROWS = 1000;
 
-		// const workflowId = this.getWorkflow().id;
-
-		// const workflowInfo: IExecuteWorkflowInfo = {};
-		// workflowInfo.id = workflowId as string;
-
 		const maxRows = this.getNodeParameter('limitRows', 0)
 			? (this.getNodeParameter('maxRows', 0) as number)
 			: MAX_ROWS;
@@ -133,7 +128,7 @@ export class EvaluationTrigger implements INodeType {
 			`${googleSheet.title}!${startingRow}:${maxRows}`,
 		);
 
-		// for test runner
+		// This is for test runner which requires a different return format
 		const inputData = this.getInputData();
 
 		if (inputData[0].json.requestDataset) {
@@ -155,7 +150,7 @@ export class EvaluationTrigger implements INodeType {
 
 		operationResult.push({
 			json: {
-				_rowsLeft: rowsLeft, // minus startingRow
+				_rowsLeft: rowsLeft,
 			},
 			pairedItems: [{ item: 0 }],
 		});
