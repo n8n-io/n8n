@@ -25,38 +25,28 @@ describe('Evaluation Trigger Node', () => {
 			getNode: jest.fn().mockReturnValue({ typeVersion: 4.6 }),
 		});
 
-		jest
-			.spyOn(GoogleSheet.prototype, 'spreadsheetGetSheet')
-			.mockImplementation(async (node: INode, mode: ResourceLocator, value: string) => {
-				return { sheetId: 1, title: sheetName };
-			});
+		jest.spyOn(GoogleSheet.prototype, 'spreadsheetGetSheet').mockImplementation(async () => {
+			return { sheetId: 1, title: sheetName };
+		});
 
-		jest
-			.spyOn(GoogleSheet.prototype, 'getData')
-			.mockImplementation(
-				async (
-					range: string,
-					valueRenderMode: ValueRenderOption,
-					dateTimeRenderOption?: string,
-				) => {
-					if (range === `${sheetName}!1:1`) {
-						return [['Header1', 'Header2']];
-					} else if (range === `${sheetName}!1:1000`) {
-						return [
-							['Header1', 'Header2'],
-							['Value1', 'Value2'],
-							['Value3', 'Value4'],
-						];
-					} else if (range === `${sheetName}!1:2`) {
-						return [
-							['Header1', 'Header2'],
-							['Value1', 'Value2'],
-						];
-					} else {
-						return [];
-					}
-				},
-			);
+		jest.spyOn(GoogleSheet.prototype, 'getData').mockImplementation(async (range: string) => {
+			if (range === `${sheetName}!1:1`) {
+				return [['Header1', 'Header2']];
+			} else if (range === `${sheetName}!1:1000`) {
+				return [
+					['Header1', 'Header2'],
+					['Value1', 'Value2'],
+					['Value3', 'Value4'],
+				];
+			} else if (range === `${sheetName}!1:2`) {
+				return [
+					['Header1', 'Header2'],
+					['Value1', 'Value2'],
+				];
+			} else {
+				return [];
+			}
+		});
 	});
 
 	test('should return a single row from google sheet', async () => {
