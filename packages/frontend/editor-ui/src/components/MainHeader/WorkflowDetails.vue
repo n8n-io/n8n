@@ -819,7 +819,7 @@ const onBreadcrumbsItemSelected = (item: PathItem) => {
 						(!isNewWorkflow && !workflowPermissions.update)
 					"
 					:is-saving="isWorkflowSaving"
-					:with-shortcut="!(readOnly && isArchived) && workflowPermissions.update"
+					:with-shortcut="!readOnly && !isArchived && workflowPermissions.update"
 					:shortcut-tooltip="i18n.baseText('saveWorkflowButton.hint')"
 					data-test-id="workflow-save-button"
 					@click="onSaveButtonClick"

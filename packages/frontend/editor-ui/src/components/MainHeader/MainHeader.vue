@@ -208,7 +208,7 @@ async function navigateToWorkflowView(openInNewTab: boolean) {
 async function navigateToExecutionsView(openInNewTab: boolean) {
 	const routeWorkflowId =
 		workflowId.value === PLACEHOLDER_EMPTY_WORKFLOW_ID ? 'new' : workflowId.value;
-	const executionToReturnToValue = executionsStore.activeExecution?.id ?? executionToReturnTo.value;
+	const executionToReturnToValue = executionsStore.activeExecution?.id || executionToReturnTo.value;
 	const routeToNavigateTo: RouteLocationRaw = executionToReturnToValue
 		? {
 				name: VIEWS.EXECUTION_PREVIEW,

@@ -907,7 +907,7 @@ const onBreadCrumbsAction = async (action: string) => {
 	switch (action) {
 		case FOLDER_LIST_ITEM_ACTIONS.CREATE:
 			if (!route.params.projectId) return;
-			const currentParent = currentFolder.value?.name ?? projectName.value;
+			const currentParent = currentFolder.value?.name || projectName.value;
 			if (!currentParent) return;
 			await createFolder({
 				id: (route.params.folderId as string) ?? '-1',
@@ -1123,7 +1123,7 @@ const createFolderInCurrent = async () => {
 		return;
 	}
 	if (!route.params.projectId) return;
-	const currentParent = currentFolder.value?.name ?? projectName.value;
+	const currentParent = currentFolder.value?.name || projectName.value;
 	if (!currentParent) return;
 	await createFolder({
 		id: (route.params.folderId as string) ?? '-1',

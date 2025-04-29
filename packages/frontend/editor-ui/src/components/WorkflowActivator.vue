@@ -88,11 +88,15 @@ const isNewWorkflow = computed(
 );
 
 const disabled = computed((): boolean => {
-	if (isNewWorkflow.value || isCurrentWorkflow.value) {
-		return (!props.workflowActive && !containsTrigger.value) || props.isArchived;
+	if (props.isArchived) {
+		return true;
 	}
 
-	return props.isArchived;
+	if (isNewWorkflow.value || isCurrentWorkflow.value) {
+		return !props.workflowActive && !containsTrigger.value;
+	}
+
+	return false;
 });
 
 function findManagedOpenAiCredentialId(
