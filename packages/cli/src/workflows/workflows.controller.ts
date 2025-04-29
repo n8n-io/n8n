@@ -379,9 +379,7 @@ export class WorkflowsController {
 
 	@Delete('/:workflowId')
 	@ProjectScope('workflow:delete')
-	async delete(req: WorkflowRequest.Delete) {
-		const { workflowId } = req.params;
-
+	async delete(req: AuthenticatedRequest, _res: Response, @Param('workflowId') workflowId: string) {
 		const workflow = await this.workflowService.delete(req.user, workflowId);
 		if (!workflow) {
 			this.logger.warn('User attempted to delete a workflow without permissions', {
@@ -398,9 +396,11 @@ export class WorkflowsController {
 
 	@Post('/:workflowId/archive')
 	@ProjectScope('workflow:delete')
-	async archive(req: WorkflowRequest.Archive) {
-		const { workflowId } = req.params;
-
+	async archive(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('workflowId') workflowId: string,
+	) {
 		const workflow = await this.workflowService.archive(req.user, workflowId);
 		if (!workflow) {
 			this.logger.warn('User attempted to archive a workflow without permissions', {
@@ -417,9 +417,11 @@ export class WorkflowsController {
 
 	@Post('/:workflowId/unarchive')
 	@ProjectScope('workflow:delete')
-	async unarchive(req: WorkflowRequest.Unarchive) {
-		const { workflowId } = req.params;
-
+	async unarchive(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('workflowId') workflowId: string,
+	) {
 		const workflow = await this.workflowService.unarchive(req.user, workflowId);
 		if (!workflow) {
 			this.logger.warn('User attempted to unarchive a workflow without permissions', {
