@@ -1,5 +1,5 @@
 import { CliWorkflowOperationError, SubworkflowOperationError } from 'n8n-workflow';
-import type { INode, INodeType, IRunData } from 'n8n-workflow';
+import type { INode, INodeType } from 'n8n-workflow';
 
 import { STARTING_NODES } from '@/constants';
 
