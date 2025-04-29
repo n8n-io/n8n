@@ -366,11 +366,7 @@ export class WorkflowService {
 	 * If the user does not have the permissions to delete the workflow this does
 	 * nothing and returns void.
 	 */
-	async delete(
-		user: User,
-		workflowId: string,
-		force: boolean = false,
-	): Promise<WorkflowEntity | undefined> {
+	async delete(user: User, workflowId: string, force = false): Promise<WorkflowEntity | undefined> {
 		await this.externalHooks.run('workflow.delete', [workflowId]);
 
 		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
