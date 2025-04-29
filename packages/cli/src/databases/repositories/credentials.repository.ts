@@ -26,9 +26,7 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 	}
 
 	async findMany(
-		listQueryOptions?: ListQuery.Options & {
-			includeData?: boolean;
-		},
+		listQueryOptions?: ListQuery.Options & { includeData?: boolean },
 		credentialIds?: string[],
 	) {
 		const findManyOptions = this.toFindManyOptions(listQueryOptions);
@@ -41,11 +39,7 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 	}
 
 	// eslint-disable-next-line complexity
-	private toFindManyOptions(
-		listQueryOptions?: ListQuery.Options & {
-			includeData?: boolean;
-		},
-	) {
+	private toFindManyOptions(listQueryOptions?: ListQuery.Options & { includeData?: boolean }) {
 		const findManyOptions: FindManyOptions<CredentialsEntity> = {};
 
 		type Select = Array<keyof CredentialsEntity>;
