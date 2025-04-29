@@ -67,7 +67,6 @@ export class ChainLlm implements INodeType {
 		this.logger.debug('Executing Basic LLM Chain');
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
-		const promises = [];
 		const batchSize = this.getNodeParameter('batching.batchSize', 0, 1) as number;
 		const delayBetweenBatches = this.getNodeParameter(
 			'batching.delayBetweenBatches',
@@ -78,106 +77,87 @@ export class ChainLlm implements INodeType {
 		// Get output parser if configured
 		const outputParser = await getOptionalOutputParser(this);
 
-		// Process each input item
-		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-			try {
-				// Get the language model
-				const llm = (await this.getInputConnectionData(
-					NodeConnectionTypes.AiLanguageModel,
-					0,
-				)) as BaseLanguageModel;
+		const promises = items.map(async (_item, itemIndex) => {
+			// Get the language model
+			const llm = (await this.getInputConnectionData(
+				NodeConnectionTypes.AiLanguageModel,
+				0,
+			)) as BaseLanguageModel;
 
-				// Get user prompt based on node version
-				let prompt: string;
+			// Get user prompt based on node version
+			let prompt: string;
 
-				if (this.getNode().typeVersion <= 1.3) {
-					prompt = this.getNodeParameter('prompt', itemIndex) as string;
-				} else {
-					prompt = getPromptInputByType({
-						ctx: this,
-						i: itemIndex,
-						inputKey: 'text',
-						promptTypeKey: 'promptType',
-					});
-				}
-
-				// Validate prompt
-				if (prompt === undefined) {
-					throw new NodeOperationError(this.getNode(), "The 'prompt' parameter is empty.");
-				}
-
-				// Get chat messages if configured
-				const messages = this.getNodeParameter(
-					'messages.messageValues',
-					itemIndex,
-					[],
-				) as MessageTemplate[];
-
-				// Execute the chain
-				promises.push(
-					executeChain({
-						context: this,
-						itemIndex,
-						query: prompt,
-						llm,
-						outputParser,
-						messages,
-					}),
-				);
-
-				if (itemIndex % batchSize === 0) {
-					await sleep(delayBetweenBatches);
-				}
-			} catch (error) {
-				// Continue on failure if configured
-				if (this.continueOnFail()) {
-					returnData.push({ json: { error: error.message }, pairedItem: { item: itemIndex } });
-					continue;
-				}
-
-				throw error;
+			if (this.getNode().typeVersion <= 1.3) {
+				prompt = this.getNodeParameter('prompt', itemIndex) as string;
+			} else {
+				prompt = getPromptInputByType({
+					ctx: this,
+					i: itemIndex,
+					inputKey: 'text',
+					promptTypeKey: 'promptType',
+				});
 			}
-		}
+
+			// Validate prompt
+			if (prompt === undefined) {
+				throw new NodeOperationError(this.getNode(), "The 'prompt' parameter is empty.");
+			}
+
+			// Get chat messages if configured
+			const messages = this.getNodeParameter(
+				'messages.messageValues',
+				itemIndex,
+				[],
+			) as MessageTemplate[];
+
+			const result = await executeChain({
+				context: this,
+				itemIndex,
+				query: prompt,
+				llm,
+				outputParser,
+				messages,
+			});
+
+			if (itemIndex % batchSize === 0) {
+				await sleep(delayBetweenBatches);
+			}
+			return result;
+		});
 
 		// If the node version is 1.6(and LLM is using `response_format: json_object`) or higher or an output parser is configured,
 		//  we unwrap the response and return the object directly as JSON
 		const shouldUnwrapObjects = this.getNode().typeVersion >= 1.6 || !!outputParser;
+		const continueOnFail = this.continueOnFail();
 
-		(await Promise.allSettled(promises)).forEach(
-			(result: PromiseSettledResult<unknown>, index: number) => {
-				try {
-					if (result.status === 'rejected') {
-						const error = result.reason;
-						// Handle OpenAI specific rate limit errors
-						if (error instanceof NodeApiError && isOpenAiError(error.cause)) {
-							const openAiErrorCode: string | undefined = (error.cause as any).error?.code;
-							if (openAiErrorCode) {
-								const customMessage = getCustomOpenAiErrorMessage(openAiErrorCode);
-								if (customMessage) {
-									error.message = customMessage;
-								}
-							}
+		(await Promise.allSettled(promises)).forEach((promise, index) => {
+			if (promise.status === 'rejected') {
+				const error = promise.reason;
+				// Handle OpenAI specific rate limit errors
+				if (error instanceof NodeApiError && isOpenAiError(error.cause)) {
+					const openAiErrorCode: string | undefined = (error.cause as any).error?.code;
+					if (openAiErrorCode) {
+						const customMessage = getCustomOpenAiErrorMessage(openAiErrorCode);
+						if (customMessage) {
+							error.message = customMessage;
 						}
-
-						if (this.continueOnFail()) {
-							console.log('Here');
-							returnData.push({ json: { error: error.message }, pairedItem: { item: index } });
-							return;
-						}
-						console.log('After');
-						throw new NodeOperationError(this.getNode(), result.reason);
 					}
-					const responses = result.value as object[];
+				}
 
-					responses.forEach((response: object) => {
-						returnData.push({
-							json: formatResponse(response, shouldUnwrapObjects),
-						});
-					});
-				} catch (error) {}
-			},
-		);
-		console.log('Return Data', returnData);
+				if (continueOnFail) {
+					returnData.push({ json: { error: error.message }, pairedItem: { item: index } });
+					return;
+				}
+				throw new NodeOperationError(this.getNode(), promise.reason);
+			}
+
+			const responses = promise.value as object[];
+			responses.forEach((response: object) => {
+				returnData.push({
+					json: formatResponse(response, shouldUnwrapObjects),
+				});
+			});
+		});
 
 		return [returnData];
 	}
