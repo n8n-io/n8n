@@ -128,7 +128,10 @@ export class CredentialsService {
 				// it's shared to a project, it won't be able to find the home project.
 				// To solve this, we have to get all the relation now, even though
 				// we're deleting them later.
-				if ((listQueryOptions.filter?.shared as { projectId?: string })?.projectId) {
+				if (
+					(listQueryOptions.filter?.shared as { projectId?: string })?.projectId ??
+					onlySharedWithMe
+				) {
 					const relations = await this.sharedCredentialsRepository.getAllRelationsForCredentials(
 						credentials.map((c) => c.id),
 					);
@@ -185,7 +188,10 @@ export class CredentialsService {
 			// it's shared to a project, it won't be able to find the home project.
 			// To solve this, we have to get all the relation now, even though
 			// we're deleting them later.
-			if ((listQueryOptions.filter?.shared as { projectId?: string })?.projectId) {
+			if (
+				(listQueryOptions.filter?.shared as { projectId?: string })?.projectId ??
+				onlySharedWithMe
+			) {
 				const relations = await this.sharedCredentialsRepository.getAllRelationsForCredentials(
 					credentials.map((c) => c.id),
 				);
