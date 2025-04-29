@@ -1,13 +1,12 @@
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import { NodeConnectionTypes, type WorkflowTestData } from 'n8n-workflow';
 import assert from 'node:assert';
 import qs from 'node:querystring';
 
-import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
-import * as Helpers from '@test/nodes/Helpers';
-
 import { credentials } from '../../__tests__/credentials';
 
 describe('AwsSes Node', () => {
+	const testHarness = new NodeTestHarness();
 	const email = 'test+user@example.com';
 	const templateData = {
 		Name: 'Special. Characters @#$%^&*()_-',
@@ -65,7 +64,6 @@ describe('AwsSes Node', () => {
 				},
 			},
 			output: {
-				nodeExecutionOrder: ['Start'],
 				nodeData: {
 					'AWS SES': [[{ json: { success: 'true' } }]],
 				},
@@ -153,7 +151,6 @@ describe('AwsSes Node', () => {
 				},
 			},
 			output: {
-				nodeExecutionOrder: ['Start'],
 				nodeData: { 'AWS SES': [[{ json: { success: 'true' } }]] },
 			},
 			nock: {
@@ -171,13 +168,7 @@ describe('AwsSes Node', () => {
 		},
 	];
 
-	test.each(tests)('$description', async (testData) => {
-		testData.credentials = credentials;
-		const { result } = await executeWorkflow(testData);
-		const resultNodeData = Helpers.getResultNodeData(result, testData);
-		resultNodeData.forEach(({ nodeName, resultData }) =>
-			expect(resultData).toEqual(testData.output.nodeData[nodeName]),
-		);
-		expect(result.finished).toEqual(true);
-	});
+	for (const testData of tests) {
+		testHarness.setupTest(testData, { credentials });
+	}
 });
