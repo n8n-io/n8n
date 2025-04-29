@@ -11,7 +11,7 @@ import { useAsyncState } from '@vueuse/core';
 import { orderBy } from 'lodash-es';
 
 const props = defineProps<{
-	workflowId: string;
+	name: string;
 }>();
 
 // const router = useRouter();
@@ -22,7 +22,7 @@ const testDefinitionStore = useEvaluationStore();
 
 const { isLoading } = useAsyncState(
 	async () => {
-		await testDefinitionStore.fetchTestRuns(props.workflowId);
+		await testDefinitionStore.fetchTestRuns(props.name);
 
 		return [];
 	},
@@ -38,13 +38,13 @@ const hasRuns = computed(() => runs.value.length > 0);
 const selectedMetric = ref<string>('');
 
 async function runTest() {
-	await testDefinitionStore.startTestRun(props.workflowId);
-	await testDefinitionStore.fetchTestRuns(props.workflowId);
+	await testDefinitionStore.startTestRun(props.name);
+	await testDefinitionStore.fetchTestRuns(props.name);
 }
 
 const runs = computed(() => {
 	const testRuns = Object.values(testDefinitionStore.testRunsById ?? {}).filter(
-		({ workflowId }) => workflowId === props.workflowId,
+		({ workflowId }) => workflowId === props.name,
 	);
 
 	return orderBy(testRuns, (record) => new Date(record.runAt), ['asc']).map((record, index) =>
@@ -92,7 +92,7 @@ const showWizard = computed(() => {
 					v-model:selectedMetric="selectedMetric"
 					:class="$style.runs"
 					:runs="runs"
-					:workflow-id="props.workflowId"
+					:workflow-id="props.name"
 				/>
 
 				<SetupWizard
