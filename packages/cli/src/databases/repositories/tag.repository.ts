@@ -3,7 +3,7 @@ import type { EntityManager } from '@n8n/typeorm';
 import { DataSource, In, Repository } from '@n8n/typeorm';
 import intersection from 'lodash/intersection';
 
-import type { IWorkflowDb } from '@/interfaces';
+import type { IWorkflowDb } from '@/types-db';
 
 import { TagEntity } from '../entities/tag-entity';
 
