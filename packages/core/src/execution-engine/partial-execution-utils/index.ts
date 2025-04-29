@@ -17,5 +17,5 @@ export function getNextExecutionIndex(runData: IRunData | undefined) {
 		? Math.max(...previousRuns.map((taskData) => taskData.executionIndex))
 		: undefined;
 
-	return maxExecutionIndex ? maxExecutionIndex + 1 : undefined;
+	return typeof maxExecutionIndex === 'number' ? maxExecutionIndex + 1 : undefined;
 }
