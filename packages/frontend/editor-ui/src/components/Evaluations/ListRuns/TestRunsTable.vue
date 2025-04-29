@@ -2,11 +2,10 @@
 import type { TestRunRecord } from '@/api/evaluation.ee';
 import { useI18n } from '@/composables/useI18n';
 import { N8nIcon, N8nText } from '@n8n/design-system';
-import type { IconColor } from '@n8n/design-system/types/icon';
 import { computed } from 'vue';
 import type { TestTableColumn } from '../shared/TestTableBase.vue';
 import TestTableBase from '../shared/TestTableBase.vue';
-
+import { statusDictionary } from '../shared/statusDictionary';
 const emit = defineEmits<{
 	rowClick: [run: TestRunRecord & { index: number }];
 }>();
@@ -15,37 +14,6 @@ const props = defineProps<{
 	runs: Array<TestRunRecord & { index: number }>;
 	columns: Array<TestTableColumn<TestRunRecord & { index: number }>>;
 }>();
-
-const statusDictionary: Record<TestRunRecord['status'], { icon: string; color: IconColor }> = {
-	new: {
-		icon: 'status-new',
-		color: 'foreground-xdark',
-	},
-	running: {
-		icon: 'spinner',
-		color: 'secondary',
-	},
-	completed: {
-		icon: 'status-completed',
-		color: 'success',
-	},
-	error: {
-		icon: 'status-error',
-		color: 'danger',
-	},
-	cancelled: {
-		icon: 'status-canceled',
-		color: 'foreground-xdark',
-	},
-	warning: {
-		icon: 'status-warning',
-		color: 'warning',
-	},
-	success: {
-		icon: 'status-completed',
-		color: 'success',
-	},
-};
 
 const locale = useI18n();
 
