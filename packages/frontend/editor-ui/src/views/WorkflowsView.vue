@@ -71,6 +71,7 @@ const FILTERS_DEBOUNCE_TIME = 100;
 
 interface Filters extends BaseFilters {
 	status: string | boolean;
+	showArchived: boolean;
 	tags: string[];
 }
 
@@ -279,7 +280,7 @@ const workflowListResources = computed<Resource[]>(() => {
 				workflowCount: resource.workflowCount,
 				subFolderCount: resource.subFolderCount,
 				parentFolder: resource.parentFolder,
-			} as FolderResource;
+			} satisfies FolderResource;
 		} else {
 			return {
 				resourceType: 'workflow',
@@ -295,7 +296,7 @@ const workflowListResources = computed<Resource[]>(() => {
 				readOnly: !getResourcePermissions(resource.scopes).workflow.update,
 				tags: resource.tags,
 				parentFolder: resource.parentFolder,
-			} as WorkflowResource;
+			} satisfies WorkflowResource;
 		}
 	});
 	return resources;

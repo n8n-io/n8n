@@ -21,7 +21,6 @@ type ResourceKeyType = 'credentials' | 'workflows' | 'variables' | 'folders';
 
 export type FolderResource = BaseFolderItem & {
 	resourceType: 'folder';
-	readOnly: boolean;
 };
 
 export type WorkflowResource = BaseResource & {
