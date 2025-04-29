@@ -2,11 +2,11 @@
 import { useClipboard } from '@/composables/useClipboard';
 import { useI18n } from '@/composables/useI18n';
 import { useToast } from '@/composables/useToast';
-import { type ParsedAiContent, type JsonMarkdown } from '@/utils/aiUtils';
-import { jsonToMarkdown, markdownOptions } from '@/utils/aiUtils';
+import { type ParsedAiContent } from '@/utils/aiUtils';
 import { N8nIconButton } from '@n8n/design-system';
 import { type IDataObject } from 'n8n-workflow';
 import VueMarkdown from 'vue-markdown-render';
+import hljs from 'highlight.js/lib/core';
 
 const {
 	content,
@@ -22,6 +22,67 @@ const i18n = useI18n();
 const clipboard = useClipboard();
 const { showMessage } = useToast();
 
+function isJsonString(text: string) {
+	try {
+		JSON.parse(text);
+		return true;
+	} catch (e) {
+		return false;
+	}
+}
+
+const markdownOptions = {
+	highlight(str: string, lang: string) {
+		if (lang && hljs.getLanguage(lang)) {
+			try {
+				return hljs.highlight(str, { language: lang }).value;
+			} catch {}
+		}
+
+		return ''; // use external default escaping
+	},
+};
+
+function isMarkdown(jsonMarkdown: JsonMarkdown): boolean {
+	if (typeof jsonMarkdown !== 'string') return false;
+	const markdownPatterns = [
+		/^# .+/gm, // headers
+		/\*{1,2}.+\*{1,2}/g, // emphasis and strong
+		/\[.+\]\(.+\)/g, // links
+		/```[\s\S]+```/g, // code blocks
+	];
+
+	return markdownPatterns.some((pattern) => pattern.test(jsonMarkdown));
+}
+
+function formatToJsonMarkdown(data: string): string {
+	return '```json\n' + data + '\n```';
+}
+
+type JsonMarkdown = string | object | Array<string | object>;
+
+function jsonToMarkdown(data: JsonMarkdown): string {
+	if (isMarkdown(data)) return data as string;
+
+	if (Array.isArray(data) && data.length && typeof data[0] !== 'number') {
+		const markdownArray = data.map((item: JsonMarkdown) => jsonToMarkdown(item));
+
+		return markdownArray.join('\n\n').trim();
+	}
+
+	if (typeof data === 'string') {
+		// If data is a valid JSON string – format it as JSON markdown
+		if (isJsonString(data)) {
+			return formatToJsonMarkdown(data);
+		}
+
+		// Return original string otherwise
+		return data;
+	}
+
+	return formatToJsonMarkdown(JSON.stringify(data, null, 2));
+}
+
 function onCopyToClipboard(object: IDataObject | IDataObject[]) {
 	try {
 		void clipboard.copy(JSON.stringify(object, undefined, 2));
@@ -29,7 +90,7 @@ function onCopyToClipboard(object: IDataObject | IDataObject[]) {
 			title: i18n.baseText('generic.copiedToClipboard'),
 			type: 'success',
 		});
-	} catch (err) {}
+	} catch {}
 }
 </script>
 

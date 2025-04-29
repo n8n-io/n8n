@@ -1,67 +1,5 @@
 import type { IDataObject, INodeExecutionData, NodeConnectionType } from 'n8n-workflow';
 import { isObjectEmpty, NodeConnectionTypes } from 'n8n-workflow';
-import hljs from 'highlight.js/lib/core';
-
-export type JsonMarkdown = string | object | Array<string | object>;
-
-export const markdownOptions = {
-	highlight(str: string, lang: string) {
-		if (lang && hljs.getLanguage(lang)) {
-			try {
-				return hljs.highlight(str, { language: lang }).value;
-			} catch {}
-		}
-
-		return ''; // use external default escaping
-	},
-};
-
-function isJsonString(text: string) {
-	try {
-		JSON.parse(text);
-		return true;
-	} catch (e) {
-		return false;
-	}
-}
-
-function isMarkdown(content: JsonMarkdown): boolean {
-	if (typeof content !== 'string') return false;
-	const markdownPatterns = [
-		/^# .+/gm, // headers
-		/\*{1,2}.+\*{1,2}/g, // emphasis and strong
-		/\[.+\]\(.+\)/g, // links
-		/```[\s\S]+```/g, // code blocks
-	];
-
-	return markdownPatterns.some((pattern) => pattern.test(content));
-}
-
-function formatToJsonMarkdown(data: string): string {
-	return '```json\n' + data + '\n```';
-}
-
-export function jsonToMarkdown(data: JsonMarkdown): string {
-	if (isMarkdown(data)) return data as string;
-
-	if (Array.isArray(data) && data.length && typeof data[0] !== 'number') {
-		const markdownArray = data.map((item: JsonMarkdown) => jsonToMarkdown(item));
-
-		return markdownArray.join('\n\n').trim();
-	}
-
-	if (typeof data === 'string') {
-		// If data is a valid JSON string – format it as JSON markdown
-		if (isJsonString(data)) {
-			return formatToJsonMarkdown(data);
-		}
-
-		// Return original string otherwise
-		return data;
-	}
-
-	return formatToJsonMarkdown(JSON.stringify(data, null, 2));
-}
 
 interface MemoryMessage {
 	lc: number;
@@ -168,7 +106,7 @@ const outputTypeParsers: {
 								  }
 								| string;
 						}
-						let message = content.kwargs.content;
+						let message = String(content.kwargs.content);
 						if (Array.isArray(message)) {
 							message = (message as MessageContent[])
 								.map((item) => {
