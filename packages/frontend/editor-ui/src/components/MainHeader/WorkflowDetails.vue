@@ -153,7 +153,7 @@ const workflowMenuItems = computed<ActionDropdownItem[]>(() => {
 	];
 
 	if (
-		(workflowPermissions.value.delete && !props.readOnly && !props.isArchived) ??
+		(workflowPermissions.value.delete === true && !props.readOnly && !props.isArchived) ||
 		isNewWorkflow.value
 	) {
 		actions.unshift({
@@ -194,7 +194,7 @@ const workflowMenuItems = computed<ActionDropdownItem[]>(() => {
 		disabled: !onWorkflowPage.value || isNewWorkflow.value,
 	});
 
-	if ((workflowPermissions.value.delete && !props.readOnly) ?? isNewWorkflow.value) {
+	if ((workflowPermissions.value.delete === true && !props.readOnly) || isNewWorkflow.value) {
 		if (props.isArchived) {
 			actions.push({
 				id: WORKFLOW_MENU_ACTIONS.UNARCHIVE,
