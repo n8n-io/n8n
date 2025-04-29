@@ -49,11 +49,11 @@ const workflowName = computed(() => workflowsStore.getWorkflowById(workflowId.va
 
 const run = computed(() => evaluationStore.testRunsById[runId.value]);
 
-const filteredTestCases = computed(() => {
-	return orderBy(testCases.value, (record) => record.runAt, ['asc']).map((record, index) =>
-		Object.assign(record, { id: `#${index + 1}` }),
-	);
-});
+const filteredTestCases = computed(() =>
+	orderBy(testCases.value, (record) => record.runAt, ['asc']).map((record, index) =>
+		Object.assign(record, { index: index + 1 }),
+	),
+);
 
 const formattedTime = computed(() =>
 	convertToDisplayDate(new Date(run.value?.runAt).getTime()).split(' ').reverse(),
@@ -131,13 +131,13 @@ const getErrorTooltipLinkRoute = (row: TestCaseExecutionRecord) => {
 };
 
 const columns = computed(
-	(): Array<TestTableColumn<TestCaseExecutionRecord>> => [
+	(): Array<TestTableColumn<TestCaseExecutionRecord & { index: number }>> => [
 		{
-			prop: 'id',
+			prop: 'index',
 			width: 250,
 			label: locale.baseText('evaluation.runDetail.testCase'),
 			sortable: true,
-			formatter: (row: TestCaseExecutionRecord) => `${row.id}`,
+			formatter: (row: TestCaseExecutionRecord & { index: number }) => `${row.index}`,
 		},
 		{
 			prop: 'status',
