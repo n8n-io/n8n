@@ -505,6 +505,13 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 			}
 
 			workflowsStore.executingNode.length = 0;
+
+			if (receivedData.type === 'executionFinished') {
+				// As a temporary workaround for https://linear.app/n8n/issue/PAY-2762,
+				// remove runs that is still 'running' status when execution is finished
+				executionData = removeRunningTaskData(executionData as IExecutionResponse);
+			}
+
 			workflowsStore.setWorkflowExecutionData(executionData as IExecutionResponse);
 			uiStore.removeActiveAction('workflowRunning');
 
@@ -645,5 +652,29 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 		processWaitingPushMessages,
 		pushMessageQueue,
 		retryTimeout,
+	};
+}
+
+function removeRunningTaskData(execution: IExecutionResponse): IExecutionResponse {
+	if (!execution.data) {
+		return execution;
+	}
+
+	return {
+		...execution,
+		data: {
+			...execution.data,
+			resultData: {
+				...execution.data.resultData,
+				runData: Object.fromEntries(
+					Object.entries(execution.data.resultData.runData)
+						.map(([nodeName, runs]) => [
+							nodeName,
+							runs.filter((run) => run.executionStatus !== 'running'),
+						])
+						.filter(([, runs]) => runs.length > 0),
+				),
+			},
+		},
 	};
 }
