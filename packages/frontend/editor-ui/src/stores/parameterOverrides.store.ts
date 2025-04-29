@@ -60,7 +60,8 @@ export const useParameterOverridesStore = defineStore('parameterOverrides', () =
 
 			for (let i = 0; i < parts.length; i++) {
 				const part = parts[i];
-				const isArrayIndex = !isNaN(Number(parts[i + 1]));
+				const nextPart = parts[i + 1];
+				const isArrayIndex = nextPart && !isNaN(Number(nextPart));
 
 				if (i === parts.length - 1) {
 					current[part] = value;
@@ -135,6 +136,91 @@ export const useParameterOverridesStore = defineStore('parameterOverrides', () =
 		}
 	};
 
+	function parsePath(path: string): string[] {
+		return path.split('.').reduce((acc: string[], part) => {
+			if (part.includes('[')) {
+				const [arrayName, index] = part.split('[');
+				if (arrayName) acc.push(arrayName);
+				if (index) acc.push(index.replace(']', ''));
+			} else {
+				acc.push(part);
+			}
+			return acc;
+		}, []);
+	}
+
+	function buildOverrideObject(path: string[], value: NodeParameterValueType): INodeParameters {
+		const result: INodeParameters = {};
+		let current = result;
+
+		for (let i = 0; i < path.length - 1; i++) {
+			const part = path[i];
+			const nextPart = path[i + 1];
+			const isArrayIndex = nextPart && !isNaN(Number(nextPart));
+
+			if (isArrayIndex) {
+				if (!current[part]) {
+					current[part] = [];
+				}
+				while ((current[part] as NodeParameterValueType[]).length <= Number(nextPart)) {
+					(current[part] as NodeParameterValueType[]).push({});
+				}
+			} else if (!current[part]) {
+				current[part] = {};
+			}
+
+			current = current[part] as INodeParameters;
+		}
+
+		current[path[path.length - 1]] = value;
+		return result;
+	}
+
+	// Helper function to deep merge objects
+	function deepMerge(target: INodeParameters, source: INodeParameters): INodeParameters {
+		const result = { ...target };
+
+		for (const key in source) {
+			if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
+				// Recursively merge nested objects
+				result[key] = deepMerge(
+					(result[key] as INodeParameters) || {},
+					source[key] as INodeParameters,
+				);
+			} else if (Array.isArray(source[key])) {
+				// For arrays, merge by index
+				if (Array.isArray(result[key])) {
+					const targetArray = result[key] as NodeParameterValueType[];
+					const sourceArray = source[key] as NodeParameterValueType[];
+
+					// Ensure target array has enough elements
+					while (targetArray.length < sourceArray.length) {
+						targetArray.push({});
+					}
+
+					// Merge each array item
+					sourceArray.forEach((item, index) => {
+						if (item && typeof item === 'object') {
+							targetArray[index] = deepMerge(
+								(targetArray[index] as INodeParameters) || {},
+								item as INodeParameters,
+							) as NodeParameterValueType;
+						} else {
+							targetArray[index] = item;
+						}
+					});
+				} else {
+					result[key] = source[key];
+				}
+			} else {
+				// For primitive values, use source value
+				result[key] = source[key];
+			}
+		}
+
+		return result;
+	}
+
 	const substituteParameters = (
 		workflowId: string,
 		nodeId: string,
@@ -144,12 +230,13 @@ export const useParameterOverridesStore = defineStore('parameterOverrides', () =
 		if (!node) return;
 
 		const nodeOverrides = parameterOverrides.value[workflowId]?.[nodeId] || {};
-		const expandedParameterOverrides = expandDottedKeys(nodeOverrides);
 
-		node.parameters = {
-			...node.parameters,
-			...expandedParameterOverrides,
-		};
+		const overrideParams = Object.entries(nodeOverrides).reduce(
+			(acc, [path, value]) => deepMerge(acc, buildOverrideObject(parsePath(path), value)),
+			{} as INodeParameters,
+		);
+
+		node.parameters = deepMerge(node.parameters, overrideParams);
 	};
 
 	return {

@@ -183,6 +183,8 @@ describe('parameterOverrides.store', () => {
 			store.addParameterOverrides('workflow-1', 'id1', {
 				param1: 'override1',
 				'parent.child': 'override2',
+				'parent.array[0].value': 'overrideArray1',
+				'parent.array[1].value': 'overrideArray2',
 			});
 
 			const workflowData = {
@@ -194,6 +196,16 @@ describe('parameterOverrides.store', () => {
 							param1: 'original1',
 							parent: {
 								child: 'original2',
+								array: [
+									{
+										name: 'name',
+										value: 'original1',
+									},
+									{
+										name: 'name2',
+										value: 'original2',
+									},
+								],
 							},
 						},
 						type: 'n8n-nodes-base.node1',
@@ -210,6 +222,16 @@ describe('parameterOverrides.store', () => {
 				param1: 'override1',
 				parent: {
 					child: 'override2',
+					array: [
+						{
+							name: 'name',
+							value: 'overrideArray1',
+						},
+						{
+							name: 'name2',
+							value: 'overrideArray2',
+						},
+					],
 				},
 			});
 		});
