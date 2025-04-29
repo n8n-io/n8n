@@ -41,7 +41,7 @@ const isLoading = ref(true);
 const testCases = ref<TestCaseExecutionRecord[]>([]);
 
 const runId = computed(() => router.currentRoute.value.params.runId as string);
-const workflowId = computed(() => router.currentRoute.value.params.workflowId as string);
+const workflowId = computed(() => router.currentRoute.value.params.name as string);
 
 const run = computed(() => testDefinitionStore.testRunsById[runId.value]);
 

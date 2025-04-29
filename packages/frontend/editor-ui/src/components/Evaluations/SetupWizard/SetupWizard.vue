@@ -4,7 +4,7 @@ import { N8nText, N8nButton } from '@n8n/design-system';
 import N8nLink from '@n8n/design-system/components/N8nLink';
 import { ref, computed, watch } from 'vue';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { EVALUATION_DATASET_TRIGGER_NODE, VIEWS } from '@/constants';
+import { EVALUATION_DATASET_TRIGGER_NODE, PLACEHOLDER_EMPTY_WORKFLOW_ID, VIEWS } from '@/constants';
 import StepHeader from '../shared/StepHeader.vue';
 import { useRouter } from 'vue-router';
 
@@ -73,9 +73,12 @@ const toggleStep = (index: number) => {
 };
 
 function navigateToWorkflow() {
+	const routeWorkflowId =
+		workflowStore.workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID ? 'new' : workflowStore.workflow.id;
+
 	void router.push({
 		name: VIEWS.WORKFLOW,
-		params: { name: workflowStore.workflow.id },
+		params: { name: routeWorkflowId },
 	});
 }
 </script>
