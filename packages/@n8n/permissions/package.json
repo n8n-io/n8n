@@ -20,6 +20,9 @@
   "files": [
     "dist/**/*"
   ],
+  "dependencies": {
+    "zod": "catalog:"
+  },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*"
   }
