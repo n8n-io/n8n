@@ -8,10 +8,6 @@ import { EVALUATION_DATASET_TRIGGER_NODE, PLACEHOLDER_EMPTY_WORKFLOW_ID, VIEWS }
 import StepHeader from '../shared/StepHeader.vue';
 import { useRouter } from 'vue-router';
 
-defineProps<{
-	isLoading: boolean;
-}>();
-
 defineEmits<{
 	runTest: [];
 }>();
@@ -84,7 +80,7 @@ function navigateToWorkflow() {
 </script>
 
 <template>
-	<div :class="$style.container">
+	<div :class="$style.container" data-test-id="evaluation-setup-wizard">
 		<div :class="$style.header">
 			<N8nText size="large" color="text-dark" tag="h3" bold>
 				{{ locale.baseText('evaluations.setupWizard.title') }}
