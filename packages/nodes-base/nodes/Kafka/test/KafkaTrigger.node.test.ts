@@ -14,7 +14,7 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import { testTriggerNode } from '@test/nodes/TriggerHelpers';
 
-import { KafkaTrigger } from './KafkaTrigger.node';
+import { KafkaTrigger } from '../KafkaTrigger.node';
 
 jest.mock('kafkajs');
 jest.mock('@kafkajs/confluent-schema-registry');

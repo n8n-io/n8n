@@ -8,7 +8,7 @@ import type {
 
 import { testWebhookTriggerNode } from '@test/nodes/TriggerHelpers';
 
-import { JiraTrigger } from './JiraTrigger.node';
+import { JiraTrigger } from '../JiraTrigger.node';
 
 describe('JiraTrigger', () => {
 	describe('Webhook lifecycle', () => {

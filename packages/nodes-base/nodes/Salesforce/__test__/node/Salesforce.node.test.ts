@@ -1,6 +1,5 @@
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import nock from 'nock';
-
-import { testWorkflows } from '@test/nodes/Helpers';
 
 import accountDetails from './fixtures/account-details.json';
 import accounts from './fixtures/accounts.json';
@@ -40,7 +39,10 @@ describe('Salesforce Node', () => {
 
 		afterAll(() => salesforceNock.done());
 
-		testWorkflows(['nodes/Salesforce/__test__/node/users.workflow.json'], credentials);
+		new NodeTestHarness().setupTests({
+			credentials,
+			workflowFiles: ['users.workflow.json'],
+		});
 	});
 
 	describe('tasks', () => {
@@ -69,7 +71,10 @@ describe('Salesforce Node', () => {
 
 		afterAll(() => salesforceNock.done());
 
-		testWorkflows(['nodes/Salesforce/__test__/node/tasks.workflow.json'], credentials);
+		new NodeTestHarness().setupTests({
+			credentials,
+			workflowFiles: ['tasks.workflow.json'],
+		});
 	});
 
 	describe('accounts', () => {
@@ -100,7 +105,10 @@ describe('Salesforce Node', () => {
 
 		afterAll(() => salesforceNock.done());
 
-		testWorkflows(['nodes/Salesforce/__test__/node/accounts.workflow.json'], credentials);
+		new NodeTestHarness().setupTests({
+			credentials,
+			workflowFiles: ['accounts.workflow.json'],
+		});
 	});
 
 	describe('search', () => {
@@ -115,7 +123,10 @@ describe('Salesforce Node', () => {
 
 		afterAll(() => salesforceNock.done());
 
-		testWorkflows(['nodes/Salesforce/__test__/node/search.workflow.json'], credentials);
+		new NodeTestHarness().setupTests({
+			credentials,
+			workflowFiles: ['search.workflow.json'],
+		});
 	});
 
 	describe('opportunities', () => {
@@ -156,6 +167,9 @@ describe('Salesforce Node', () => {
 
 		afterAll(() => salesforceNock.done());
 
-		testWorkflows(['nodes/Salesforce/__test__/node/opportunities.workflow.json'], credentials);
+		new NodeTestHarness().setupTests({
+			credentials,
+			workflowFiles: ['opportunities.workflow.json'],
+		});
 	});
 });

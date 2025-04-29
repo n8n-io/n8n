@@ -1,7 +1,6 @@
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import nock from 'nock';
 import { parse as parseUrl } from 'url';
-
-import { getWorkflowFilenames, testWorkflows } from '@test/nodes/Helpers';
 
 describe('Test HTTP Request Node', () => {
 	const baseUrl = 'https://dummyjson.com';
@@ -181,6 +180,5 @@ describe('Test HTTP Request Node', () => {
 			});
 	});
 
-	const workflows = getWorkflowFilenames(__dirname);
-	testWorkflows(workflows);
+	new NodeTestHarness().setupTests();
 });

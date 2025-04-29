@@ -1,6 +1,5 @@
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import nock from 'nock';
-
-import { testWorkflows } from '@test/nodes/Helpers';
 
 describe('Test DiscordV2, webhook => sendLegacy', () => {
 	const credentials = {
@@ -50,6 +49,8 @@ describe('Test DiscordV2, webhook => sendLegacy', () => {
 			webhook_id: '1153265494955135077',
 		});
 
-	const workflows = ['nodes/Discord/test/v2/node/webhook/sendLegacy.workflow.json'];
-	testWorkflows(workflows, credentials);
+	new NodeTestHarness().setupTests({
+		credentials,
+		workflowFiles: ['sendLegacy.workflow.json'],
+	});
 });

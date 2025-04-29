@@ -2,7 +2,7 @@ import { mock } from 'jest-mock-extended';
 import type { INodeTypes, IExecuteFunctions, AssignmentCollectionValue } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { EvaluationMetrics } from './EvaluationMetrics.node';
+import { EvaluationMetrics } from '../EvaluationMetrics.node';
 
 describe('EvaluationMetrics Node', () => {
 	const nodeTypes = mock<INodeTypes>();

@@ -1,6 +1,5 @@
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import nock from 'nock';
-
-import { testWorkflows, getWorkflowFilenames } from '@test/nodes/Helpers';
 
 describe('Test npm Node', () => {
 	const credentials = {
@@ -34,6 +33,5 @@ describe('Test npm Node', () => {
 		});
 	});
 
-	const workflows = getWorkflowFilenames(__dirname);
-	testWorkflows(workflows, credentials);
+	new NodeTestHarness().setupTests({ credentials });
 });

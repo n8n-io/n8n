@@ -1,6 +1,5 @@
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import nock from 'nock';
-
-import { testWorkflows } from '@test/nodes/Helpers';
 
 import { credentials } from '../../../credentials';
 
@@ -20,6 +19,8 @@ describe('Test MicrosoftExcelV2, table => convertToRange', () => {
 			],
 		});
 
-	const workflows = ['nodes/Microsoft/Excel/test/v2/node/table/convertToRange.workflow.json'];
-	testWorkflows(workflows, credentials);
+	new NodeTestHarness().setupTests({
+		credentials,
+		workflowFiles: ['convertToRange.workflow.json'],
+	});
 });

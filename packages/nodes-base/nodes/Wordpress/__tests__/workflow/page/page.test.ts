@@ -1,13 +1,10 @@
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import nock from 'nock';
-
-import { getWorkflowFilenames, testWorkflows } from '@test/nodes/Helpers';
 
 import { pageCreate, pageGet, pageGetMany, pageUpdate } from '../apiResponses';
 import { credentials } from '../credentials';
 
 describe('Wordpress > Page Workflows', () => {
-	const workflows = getWorkflowFilenames(__dirname);
-
 	beforeAll(() => {
 		const mock = nock(credentials.wordpressApi.url);
 		mock
@@ -32,5 +29,5 @@ describe('Wordpress > Page Workflows', () => {
 			.reply(200, pageUpdate);
 	});
 
-	testWorkflows(workflows, credentials);
+	new NodeTestHarness().setupTests({ credentials });
 });

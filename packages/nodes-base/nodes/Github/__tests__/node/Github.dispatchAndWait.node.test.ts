@@ -1,10 +1,5 @@
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import nock from 'nock';
-
-import { getWorkflowFilenames, testWorkflows } from '@test/nodes/Helpers';
-
-const workflows = getWorkflowFilenames(__dirname).filter((filename) =>
-	filename.includes('GithubDispatchAndWaitWorkflow.json'),
-);
 
 describe('Test Github Node - Dispatch and Wait', () => {
 	describe('Workflow Dispatch and Wait', () => {
@@ -77,7 +72,7 @@ describe('Test Github Node - Dispatch and Wait', () => {
 				.post(
 					`/repos/${owner}/${repository}/actions/workflows/${workflowId}/dispatches`,
 					(body) => {
-						return body.ref === ref && body.inputs && body.inputs.resumeUrl;
+						return body.ref === ref && body.inputs?.resumeUrl;
 					},
 				)
 				.reply(200, {});
@@ -87,6 +82,8 @@ describe('Test Github Node - Dispatch and Wait', () => {
 			nock.cleanAll();
 		});
 
-		testWorkflows(workflows);
+		new NodeTestHarness().setupTests({
+			workflowFiles: ['GithubDispatchAndWaitWorkflow.json'],
+		});
 	});
 });

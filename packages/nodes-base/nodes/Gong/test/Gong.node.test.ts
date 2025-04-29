@@ -1,12 +1,11 @@
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import type { WorkflowTestData } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
-
-import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
-import * as Helpers from '@test/nodes/Helpers';
 
 import { gongApiResponse, gongNodeResponse } from './mocks';
 
 describe('Gong Node', () => {
+	const testHarness = new NodeTestHarness();
 	const baseUrl = 'https://api.gong.io';
 	const credentials = {
 		gongApi: { baseUrl },
@@ -103,7 +102,6 @@ describe('Gong Node', () => {
 					},
 				},
 				output: {
-					nodeExecutionOrder: ['Start'],
 					nodeData: {
 						'Gong gongApi': [[{ json: { metaData: gongNodeResponse.getCall[0].json.metaData } }]],
 						'Gong gongOAuth2Api': [
@@ -141,15 +139,9 @@ describe('Gong Node', () => {
 			},
 		];
 
-		test.each(tests)('$description', async (testData) => {
-			testData.credentials = credentials;
-			const { result } = await executeWorkflow(testData);
-			const resultNodeData = Helpers.getResultNodeData(result, testData);
-			resultNodeData.forEach(({ nodeName, resultData }) =>
-				expect(resultData).toEqual(testData.output.nodeData[nodeName]),
-			);
-			expect(result.finished).toEqual(true);
-		});
+		for (const testData of tests) {
+			testHarness.setupTest(testData, { credentials });
+		}
 	});
 
 	describe('Call description', () => {
@@ -207,7 +199,6 @@ describe('Gong Node', () => {
 					},
 				},
 				output: {
-					nodeExecutionOrder: ['Start'],
 					nodeData: {
 						Gong: [[{ json: { metaData: gongNodeResponse.getCall[0].json.metaData } }]],
 					},
@@ -298,7 +289,6 @@ describe('Gong Node', () => {
 					},
 				},
 				output: {
-					nodeExecutionOrder: ['Start'],
 					nodeData: {
 						Gong: [gongNodeResponse.getCall],
 					},
@@ -415,7 +405,6 @@ describe('Gong Node', () => {
 					},
 				},
 				output: {
-					nodeExecutionOrder: ['Start'],
 					nodeData: {
 						Gong: [gongNodeResponse.getAllCall],
 					},
@@ -552,7 +541,6 @@ describe('Gong Node', () => {
 					},
 				},
 				output: {
-					nodeExecutionOrder: ['Start'],
 					nodeData: {
 						Gong: [
 							Array.from({ length: 50 }, () => ({ ...gongNodeResponse.getAllCallNoOptions[0] })),
@@ -633,7 +621,6 @@ describe('Gong Node', () => {
 					},
 				},
 				output: {
-					nodeExecutionOrder: ['Start'],
 					nodeData: {
 						Gong: [[{ json: {} }]],
 					},
@@ -709,10 +696,10 @@ describe('Gong Node', () => {
 					},
 				},
 				output: {
-					nodeExecutionOrder: ['Start'],
 					nodeData: {
 						Gong: [],
 					},
+					error: 'The resource you are requesting could not be found',
 				},
 				nock: {
 					baseUrl,
@@ -736,24 +723,9 @@ describe('Gong Node', () => {
 			},
 		];
 
-		test.each(tests)('$description', async (testData) => {
-			testData.credentials = credentials;
-			const { result } = await executeWorkflow(testData);
-
-			if (testData.description === 'should handle error response') {
-				// Only matches error message
-				expect(() => Helpers.getResultNodeData(result, testData)).toThrowError(
-					'The resource you are requesting could not be found',
-				);
-				return;
-			}
-
-			const resultNodeData = Helpers.getResultNodeData(result, testData);
-			resultNodeData.forEach(({ nodeName, resultData }) =>
-				expect(resultData).toEqual(testData.output.nodeData[nodeName]),
-			);
-			expect(result.finished).toEqual(true);
-		});
+		for (const testData of tests) {
+			testHarness.setupTest(testData, { credentials });
+		}
 	});
 
 	describe('User description', () => {
@@ -810,7 +782,6 @@ describe('Gong Node', () => {
 					},
 				},
 				output: {
-					nodeExecutionOrder: ['Start'],
 					nodeData: {
 						Gong: [gongNodeResponse.getUser],
 					},
@@ -885,7 +856,6 @@ describe('Gong Node', () => {
 					},
 				},
 				output: {
-					nodeExecutionOrder: ['Start'],
 					nodeData: {
 						Gong: [gongNodeResponse.getAllUser],
 					},
@@ -979,10 +949,10 @@ describe('Gong Node', () => {
 					},
 				},
 				output: {
-					nodeExecutionOrder: ['Start'],
 					nodeData: {
 						Gong: [],
 					},
+					error: "The Users IDs don't match any existing user",
 				},
 				nock: {
 					baseUrl,
@@ -1006,22 +976,8 @@ describe('Gong Node', () => {
 			},
 		];
 
-		test.each(tests)('$description', async (testData) => {
-			testData.credentials = credentials;
-			const { result } = await executeWorkflow(testData);
-
-			if (testData.description === 'should handle error response') {
-				expect(() => Helpers.getResultNodeData(result, testData)).toThrow(
-					"The Users IDs don't match any existing user",
-				);
-				return;
-			}
-
-			const resultNodeData = Helpers.getResultNodeData(result, testData);
-			resultNodeData.forEach(({ nodeName, resultData }) =>
-				expect(resultData).toEqual(testData.output.nodeData[nodeName]),
-			);
-			expect(result.finished).toEqual(true);
-		});
+		for (const testData of tests) {
+			testHarness.setupTest(testData, { credentials });
+		}
 	});
 });

@@ -1,7 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-param-display-name-miscased */
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import nock from 'nock';
-
-import { testWorkflows } from '@test/nodes/Helpers';
 
 import companies from './fixtures/companies.json';
 import companiesSearchResult from './fixtures/companies_search_result.json';
@@ -114,7 +113,9 @@ describe('Hubspot Node', () => {
 
 		afterAll(() => hubspotNock.done());
 
-		testWorkflows(['nodes/Hubspot/__test__/companies.workflow.json']);
+		new NodeTestHarness().setupTests({
+			workflowFiles: ['companies.workflow.json'],
+		});
 	});
 
 	describe('contacts', () => {
@@ -210,7 +211,9 @@ describe('Hubspot Node', () => {
 
 		afterAll(() => hubspotNock.done());
 
-		testWorkflows(['nodes/Hubspot/__test__/contacts.workflow.json']);
+		new NodeTestHarness().setupTests({
+			workflowFiles: ['contacts.workflow.json'],
+		});
 	});
 
 	describe('deals', () => {
@@ -255,6 +258,8 @@ describe('Hubspot Node', () => {
 
 		afterAll(() => hubspotNock.done());
 
-		testWorkflows(['nodes/Hubspot/__test__/deals.workflow.json']);
+		new NodeTestHarness().setupTests({
+			workflowFiles: ['deals.workflow.json'],
+		});
 	});
 });

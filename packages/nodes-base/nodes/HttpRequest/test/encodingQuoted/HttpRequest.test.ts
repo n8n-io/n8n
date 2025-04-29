@@ -1,6 +1,5 @@
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import nock from 'nock';
-
-import { getWorkflowFilenames, testWorkflows } from '@test/nodes/Helpers';
 
 describe('Test Quoted Response Encoding', () => {
 	const baseUrl = 'https://dummy.domain';
@@ -16,6 +15,5 @@ describe('Test Quoted Response Encoding', () => {
 			.reply(200, payload, { 'content-type': 'text/plain; charset="latin1"' });
 	});
 
-	const workflows = getWorkflowFilenames(__dirname);
-	testWorkflows(workflows);
+	new NodeTestHarness().setupTests();
 });
