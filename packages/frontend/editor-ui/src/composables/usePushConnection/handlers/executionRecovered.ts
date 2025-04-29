@@ -1,7 +1,7 @@
 import type { ExecutionRecovered } from '@n8n/api-types/push/execution';
 import { useUIStore } from '@/stores/ui.store';
 import {
-	getExecutionData,
+	fetchExecutionData,
 	getRunExecutionData,
 	handleExecutionFinishedWithOther,
 	handleExecutionFinishedWithErrorOrCanceled,
@@ -25,7 +25,7 @@ export async function executionRecovered(
 
 	uiStore.setProcessingExecutionResults(true);
 
-	const execution = await getExecutionData(data.executionId);
+	const execution = await fetchExecutionData(data.executionId);
 	if (!execution) {
 		uiStore.setProcessingExecutionResults(false);
 		return;

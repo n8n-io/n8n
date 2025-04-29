@@ -90,7 +90,7 @@ export async function executionFinished(
 			successToastAlreadyShown = true;
 		}
 
-		execution = await getExecutionData(data.executionId);
+		execution = await fetchExecutionData(data.executionId);
 		if (!execution) {
 			uiStore.setProcessingExecutionResults(false);
 			return;
@@ -114,7 +114,7 @@ export async function executionFinished(
 /**
  * Fetches the execution data from the server and returns a simplified execution object
  */
-export async function getExecutionData(
+export async function fetchExecutionData(
 	executionId: string,
 ): Promise<SimplifiedExecution | undefined> {
 	const workflowsStore = useWorkflowsStore();
@@ -474,13 +474,13 @@ export function setRunExecutionData(
 	}
 
 	workflowsStore.setWorkflowExecutionData(workflowExecution as IExecutionResponse);
+	workflowsStore.setWorkflowExecutionRunData(runExecutionData);
 	workflowsStore.setActiveExecutionId(undefined);
 
 	// Set the node execution issues on all the nodes which produced an error so that
 	// it can be displayed in the node-view
 	nodeHelpers.updateNodesExecutionIssues();
 
-	const lastNodeExecuted: string | undefined = runExecutionData.resultData.lastNodeExecuted;
 	let itemsCount = 0;
 	if (
 		lastNodeExecuted &&

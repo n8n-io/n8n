@@ -1,5 +1,5 @@
 import { stringify } from 'flatted';
-import type { IDataObject, ITaskData, ITaskDataConnections } from 'n8n-workflow';
+import type { IDataObject, IRunExecutionData, ITaskData, ITaskDataConnections } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
 import { clickExecuteWorkflowButton } from '../composables/workflow';
@@ -52,6 +52,21 @@ export function runMockWorkflowExecution({
 }) {
 	const workflowId = nanoid();
 	const executionId = Math.floor(Math.random() * 1_000_000).toString();
+	const executionData = {
+		startData: {},
+		resultData: {
+			runData,
+			pinData: {},
+			lastNodeExecuted,
+		},
+		executionData: {
+			contextData: {},
+			nodeExecutionStack: [],
+			metadata: {},
+			waitingExecution: {},
+			waitingExecutionSource: {},
+		},
+	};
 
 	cy.intercept('POST', '/rest/workflows/**/run?**', {
 		statusCode: 201,
@@ -70,7 +85,15 @@ export function runMockWorkflowExecution({
 
 	cy.wait('@runWorkflow');
 
-	const resolvedRunData: Record<string, ITaskData> = {};
+	cy.push('executionStarted', {
+		workflowId,
+		executionId,
+		mode: 'manual',
+		startedAt: new Date(),
+		workflowName: '',
+		flattedRunData: '',
+	});
+
 	runData.forEach((nodeExecution) => {
 		const nodeName = Object.keys(nodeExecution)[0];
 		const nodeRunData = nodeExecution[nodeName];
@@ -85,28 +108,12 @@ export function runMockWorkflowExecution({
 			nodeName,
 			data: nodeRunData,
 		});
-
-		resolvedRunData[nodeName] = nodeExecution[nodeName];
 	});
 
 	cy.push('executionFinished', {
 		executionId,
 		workflowId,
 		status: 'success',
-		rawData: stringify({
-			startData: {},
-			resultData: {
-				runData,
-				pinData: {},
-				lastNodeExecuted,
-			},
-			executionData: {
-				contextData: {},
-				nodeExecutionStack: [],
-				metadata: {},
-				waitingExecution: {},
-				waitingExecutionSource: {},
-			},
-		}),
+		rawData: stringify(executionData),
 	});
 }
