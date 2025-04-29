@@ -8,6 +8,11 @@ import { NodeConnectionTypes, NodeOperationError, UnexpectedError } from 'n8n-wo
 
 import { ChainRetrievalQa } from '../ChainRetrievalQa.node';
 
+jest.mock('n8n-workflow', () => ({
+	...jest.requireActual('n8n-workflow'),
+	sleep: jest.fn(),
+}));
+
 const createExecuteFunctionsMock = (
 	parameters: IDataObject,
 	fakeLlm: BaseLanguageModel,

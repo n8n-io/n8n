@@ -211,117 +211,100 @@ export class ChainRetrievalQa implements INodeType {
 		this.logger.debug('Executing Retrieval QA Chain');
 
 		const items = this.getInputData();
-		const promises = [];
 		const { batchSize, delayBetweenBatches } = this.getNodeParameter('options.batching', 0, {}) as {
 			batchSize: number;
 			delayBetweenBatches: number;
 		};
 		const returnData: INodeExecutionData[] = [];
 
-		// Run for each item
-		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-			try {
-				const model = (await this.getInputConnectionData(
-					NodeConnectionTypes.AiLanguageModel,
-					0,
-				)) as BaseLanguageModel;
+		const promises = items.map(async (_item, itemIndex) => {
+			const model = (await this.getInputConnectionData(
+				NodeConnectionTypes.AiLanguageModel,
+				0,
+			)) as BaseLanguageModel;
 
-				const retriever = (await this.getInputConnectionData(
-					NodeConnectionTypes.AiRetriever,
-					0,
-				)) as BaseRetriever;
+			const retriever = (await this.getInputConnectionData(
+				NodeConnectionTypes.AiRetriever,
+				0,
+			)) as BaseRetriever;
 
-				let query;
+			let query;
 
-				if (this.getNode().typeVersion <= 1.2) {
-					query = this.getNodeParameter('query', itemIndex) as string;
-				} else {
-					query = getPromptInputByType({
-						ctx: this,
-						i: itemIndex,
-						inputKey: 'text',
-						promptTypeKey: 'promptType',
-					});
-				}
-
-				if (query === undefined) {
-					throw new NodeOperationError(this.getNode(), 'The ‘query‘ parameter is empty.');
-				}
-
-				const options = this.getNodeParameter('options', itemIndex, {}) as {
-					systemPromptTemplate?: string;
-				};
-
-				let templateText = options.systemPromptTemplate ?? SYSTEM_PROMPT_TEMPLATE;
-
-				// Replace legacy input template key for versions 1.4 and below
-				if (this.getNode().typeVersion < 1.5) {
-					templateText = templateText.replace(
-						`{${LEGACY_INPUT_TEMPLATE_KEY}}`,
-						`{${INPUT_TEMPLATE_KEY}}`,
-					);
-				}
-
-				// Create prompt template based on model type and user configuration
-				let promptTemplate;
-				if (isChatInstance(model)) {
-					// For chat models, create a chat prompt template with system and human messages
-					const messages = [
-						SystemMessagePromptTemplate.fromTemplate(templateText),
-						HumanMessagePromptTemplate.fromTemplate('{input}'),
-					];
-					promptTemplate = ChatPromptTemplate.fromMessages(messages);
-				} else {
-					// For non-chat models, create a text prompt template with Question/Answer format
-					const questionSuffix =
-						options.systemPromptTemplate === undefined ? '\n\nQuestion: {input}\nAnswer:' : '';
-
-					promptTemplate = new PromptTemplate({
-						template: templateText + questionSuffix,
-						inputVariables: ['context', 'input'],
-					});
-				}
-
-				// Create the document chain that combines the retrieved documents
-				const combineDocsChain = await createStuffDocumentsChain({
-					llm: model,
-					prompt: promptTemplate,
+			if (this.getNode().typeVersion <= 1.2) {
+				query = this.getNodeParameter('query', itemIndex) as string;
+			} else {
+				query = getPromptInputByType({
+					ctx: this,
+					i: itemIndex,
+					inputKey: 'text',
+					promptTypeKey: 'promptType',
 				});
-
-				// Create the retrieval chain that handles the retrieval and then passes to the combine docs chain
-				const retrievalChain = await createRetrievalChain({
-					combineDocsChain,
-					retriever,
-				});
-
-				// Execute the chain with tracing config
-				const tracingConfig = getTracingConfig(this);
-
-				promises.push(
-					retrievalChain
-						.withConfig(tracingConfig)
-						.invoke({ input: query }, { signal: this.getExecutionCancelSignal() }),
-				);
-
-				if (itemIndex % batchSize === 0) {
-					await sleep(delayBetweenBatches);
-				}
-
-				// Get the answer from the response
-			} catch (error) {
-				if (this.continueOnFail()) {
-					const metadata = parseErrorMetadata(error);
-					returnData.push({
-						json: { error: error.message },
-						pairedItem: { item: itemIndex },
-						metadata,
-					});
-					continue;
-				}
-
-				throw error;
 			}
-		}
+
+			if (query === undefined) {
+				throw new NodeOperationError(this.getNode(), 'The ‘query‘ parameter is empty.');
+			}
+
+			const options = this.getNodeParameter('options', itemIndex, {}) as {
+				systemPromptTemplate?: string;
+			};
+
+			let templateText = options.systemPromptTemplate ?? SYSTEM_PROMPT_TEMPLATE;
+
+			// Replace legacy input template key for versions 1.4 and below
+			if (this.getNode().typeVersion < 1.5) {
+				templateText = templateText.replace(
+					`{${LEGACY_INPUT_TEMPLATE_KEY}}`,
+					`{${INPUT_TEMPLATE_KEY}}`,
+				);
+			}
+
+			// Create prompt template based on model type and user configuration
+			let promptTemplate;
+			if (isChatInstance(model)) {
+				// For chat models, create a chat prompt template with system and human messages
+				const messages = [
+					SystemMessagePromptTemplate.fromTemplate(templateText),
+					HumanMessagePromptTemplate.fromTemplate('{input}'),
+				];
+				promptTemplate = ChatPromptTemplate.fromMessages(messages);
+			} else {
+				// For non-chat models, create a text prompt template with Question/Answer format
+				const questionSuffix =
+					options.systemPromptTemplate === undefined ? '\n\nQuestion: {input}\nAnswer:' : '';
+
+				promptTemplate = new PromptTemplate({
+					template: templateText + questionSuffix,
+					inputVariables: ['context', 'input'],
+				});
+			}
+
+			// Create the document chain that combines the retrieved documents
+			const combineDocsChain = await createStuffDocumentsChain({
+				llm: model,
+				prompt: promptTemplate,
+			});
+
+			// Create the retrieval chain that handles the retrieval and then passes to the combine docs chain
+			const retrievalChain = await createRetrievalChain({
+				combineDocsChain,
+				retriever,
+			});
+
+			// Execute the chain with tracing config
+			const tracingConfig = getTracingConfig(this);
+
+			const result = await retrievalChain
+				.withConfig(tracingConfig)
+				.invoke({ input: query }, { signal: this.getExecutionCancelSignal() });
+
+			if (itemIndex % batchSize === 0) {
+				await sleep(delayBetweenBatches);
+			}
+
+			return result;
+		});
+
 		(await Promise.allSettled(promises)).forEach((response, index) => {
 			if (response.status === 'rejected') {
 				const error = response.reason;
