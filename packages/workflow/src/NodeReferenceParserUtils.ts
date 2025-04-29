@@ -147,7 +147,7 @@ function convertDataAccessorName(name: string): string {
 	return `${fnName}_${maybeDigits?.slice(0, -1) ?? 'invalid'}`;
 }
 
-export function parseExpressionMapping(
+function parseExpressionMapping(
 	isolatedExpression: string,
 	nodeNameInExpression: string,
 	nodeNamePlainJs: string,
@@ -229,7 +229,7 @@ export function parseExpressionMapping(
 	return null;
 }
 
-export function parseCandidateMatch(
+function parseCandidateMatch(
 	match: RegExpExecArray,
 	expression: string,
 	nodeNames: string[],
@@ -268,7 +268,7 @@ export function parseCandidateMatch(
 	else return null;
 }
 
-export function parseReferencingExpressions(
+function parseReferencingExpressions(
 	expression: string,
 	nodeRegexps: Array<readonly [string, LazyRegExp]>,
 	nodeNames: string[],
