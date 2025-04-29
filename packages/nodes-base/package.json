@@ -403,7 +403,8 @@
       "dist/credentials/ZoomApi.credentials.js",
       "dist/credentials/ZoomOAuth2Api.credentials.js",
       "dist/credentials/ZscalerZiaApi.credentials.js",
-      "dist/credentials/ZulipApi.credentials.js"
+      "dist/credentials/ZulipApi.credentials.js",
+      "dist/credentials/LEDGERSApi.credentials.js"
     ],
     "nodes": [
       "dist/nodes/ActionNetwork/ActionNetwork.node.js",
@@ -834,7 +835,8 @@
       "dist/nodes/Transform/RemoveDuplicates/RemoveDuplicates.node.js",
       "dist/nodes/Transform/SplitOut/SplitOut.node.js",
       "dist/nodes/Transform/Sort/Sort.node.js",
-      "dist/nodes/Transform/Summarize/Summarize.node.js"
+      "dist/nodes/Transform/Summarize/Summarize.node.js",
+      "dist/nodes/LEDGERS/LEDGERS.node.js"
     ]
   },
   "devDependencies": {
