@@ -89,14 +89,10 @@
       "tsconfig-paths": "^4.2.0",
       "typescript": "^5.8.2",
       "vue-tsc": "^2.2.8",
-      "ws": ">=8.17.1",
-      "@rudderstack/rudder-sdk-node>axios": "1.8.2",
-      "ibm-cloud-sdk-core>axios": "1.8.2",
-      "langchain>axios": "1.8.2",
-      "snowflake-sdk>axios": "1.8.2"
+      "ws": ">=8.17.1"
     },
     "patchedDependencies": {
-      "bull@4.12.1": "patches/bull@4.12.1.patch",
+      "bull@4.16.4": "patches/bull@4.16.4.patch",
       "pkce-challenge@5.0.0": "patches/pkce-challenge@5.0.0.patch",
       "@types/express-serve-static-core@5.0.6": "patches/@types__express-serve-static-core@5.0.6.patch",
       "@types/ws@8.5.4": "patches/@types__ws@8.5.4.patch",
