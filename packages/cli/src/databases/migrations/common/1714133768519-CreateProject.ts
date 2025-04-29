@@ -1,5 +1,5 @@
-import type { ProjectRole } from '@n8n/api-types';
 import { generateNanoId } from '@n8n/db';
+import type { ProjectRole } from '@n8n/permissions';
 import { UserError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 

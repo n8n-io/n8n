@@ -1,5 +1,5 @@
-import type { ProjectRole } from '@n8n/api-types';
 import { Container } from '@n8n/di';
+import type { ProjectRole } from '@n8n/permissions';
 import { ApplicationError, WorkflowActivationError, type INode } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 

@@ -1,5 +1,5 @@
-import type { ProjectRole } from '@n8n/api-types';
 import { Container } from '@n8n/di';
+import type { ProjectRole } from '@n8n/permissions';
 
 import type { Project } from '@/databases/entities/project';
 import type { ProjectRelation } from '@/databases/entities/project-relation';

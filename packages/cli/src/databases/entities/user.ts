@@ -1,5 +1,6 @@
 import { JsonColumn, WithTimestamps, objectRetriever, lowerCaser } from '@n8n/db';
-import { hasScope, type ScopeOptions, type Scope, GlobalRole } from '@n8n/permissions';
+import { GlobalRole } from '@n8n/permissions';
+import type { AuthPrincipal } from '@n8n/permissions';
 import {
 	AfterLoad,
 	AfterUpdate,
@@ -14,11 +15,6 @@ import {
 import { IsEmail, IsString, Length } from 'class-validator';
 import type { IUser, IUserSettings } from 'n8n-workflow';
 
-import {
-	GLOBAL_OWNER_SCOPES,
-	GLOBAL_MEMBER_SCOPES,
-	GLOBAL_ADMIN_SCOPES,
-} from '@/permissions.ee/global-roles';
 import type { IPersonalizationSurveyAnswers } from '@/types-db';
 import { NoUrl } from '@/validators/no-url.validator';
 import { NoXss } from '@/validators/no-xss.validator';
@@ -29,14 +25,8 @@ import type { ProjectRelation } from './project-relation';
 import type { SharedCredentials } from './shared-credentials';
 import type { SharedWorkflow } from './shared-workflow';
 
-const STATIC_SCOPE_MAP: Record<GlobalRole, Scope[]> = {
-	'global:owner': GLOBAL_OWNER_SCOPES,
-	'global:member': GLOBAL_MEMBER_SCOPES,
-	'global:admin': GLOBAL_ADMIN_SCOPES,
-};
-
 @Entity()
-export class User extends WithTimestamps implements IUser {
+export class User extends WithTimestamps implements IUser, AuthPrincipal {
 	@PrimaryGeneratedColumn('uuid')
 	id: string;
 
@@ -115,31 +105,6 @@ export class User extends WithTimestamps implements IUser {
 	@AfterUpdate()
 	computeIsPending(): void {
 		this.isPending = this.password === null && this.role !== 'global:owner';
-	}
-
-	/**
-	 * Whether the user is instance owner
-	 */
-	isOwner: boolean;
-
-	@AfterLoad()
-	computeIsOwner(): void {
-		this.isOwner = this.role === 'global:owner';
-	}
-
-	get globalScopes() {
-		return STATIC_SCOPE_MAP[this.role] ?? [];
-	}
-
-	hasGlobalScope(scope: Scope | Scope[], scopeOptions?: ScopeOptions): boolean {
-		return hasScope(
-			scope,
-			{
-				global: this.globalScopes,
-			},
-			undefined,
-			scopeOptions,
-		);
 	}
 
 	toJSON() {

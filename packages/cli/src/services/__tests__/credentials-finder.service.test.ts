@@ -1,5 +1,4 @@
 import { Container } from '@n8n/di';
-import { hasScope } from '@n8n/permissions';
 import { In } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 
@@ -7,7 +6,6 @@ import { CredentialsFinderService } from '@/credentials/credentials-finder.servi
 import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
 import { SharedCredentials } from '@/databases/entities/shared-credentials';
 import type { User } from '@/databases/entities/user';
-import { GLOBAL_MEMBER_SCOPES, GLOBAL_OWNER_SCOPES } from '@/permissions.ee/global-roles';
 import { mockEntityManager } from '@test/mocking';
 
 describe('CredentialsFinderService', () => {
@@ -19,19 +17,10 @@ describe('CredentialsFinderService', () => {
 		const sharedCredential = mock<SharedCredentials>();
 		sharedCredential.credentials = mock<CredentialsEntity>({ id: credentialsId });
 		const owner = mock<User>({
-			isOwner: true,
-			hasGlobalScope: (scope) =>
-				hasScope(scope, {
-					global: GLOBAL_OWNER_SCOPES,
-				}),
+			role: 'global:owner',
 		});
 		const member = mock<User>({
-			isOwner: false,
-			id: 'test',
-			hasGlobalScope: (scope) =>
-				hasScope(scope, {
-					global: GLOBAL_MEMBER_SCOPES,
-				}),
+			role: 'global:member',
 		});
 
 		beforeEach(() => {

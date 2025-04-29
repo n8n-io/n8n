@@ -1,5 +1,5 @@
-import { hasScope } from '@/hasScope.ee';
-import type { Scope } from '@/types.ee';
+import type { MaskLevels, Scope, ScopeLevels } from '../../types.ee';
+import { hasScope } from '../hasScope.ee';
 
 const ownerPermissions: Scope[] = [
 	'workflow:create',
@@ -137,6 +137,34 @@ describe('hasScope', () => {
 			),
 		).toBe(false);
 	});
+
+	test('should work with default options', () => {
+		expect(
+			hasScope(['workflow:create', 'user:list'], {
+				global: memberPermissions,
+			}),
+		).toBe(true);
+
+		expect(
+			hasScope(['workflow:create', 'workflow:read'], {
+				global: memberPermissions,
+			}),
+		).toBe(false);
+	});
+
+	test('should handle mixed resource/scope combinations', () => {
+		const mixedScopes: ScopeLevels = {
+			global: ['user:list'],
+			project: ['workflow:read', 'variable:read'],
+			resource: ['credential:read'],
+		};
+
+		expect(hasScope('user:list', mixedScopes)).toBe(true);
+		expect(hasScope('workflow:read', mixedScopes)).toBe(true);
+		expect(hasScope('credential:read', mixedScopes)).toBe(true);
+		expect(hasScope('variable:read', mixedScopes)).toBe(true);
+		expect(hasScope('workflow:update', mixedScopes)).toBe(false);
+	});
 });
 
 describe('hasScope masking', () => {
@@ -253,6 +281,76 @@ describe('hasScope masking', () => {
 					sharing: ['workflow:read', 'workflow:update'],
 				},
 			),
+		).toBe(false);
+	});
+
+	test('should handle masks with oneOf and allOf modes correctly', () => {
+		const userScopes: ScopeLevels = {
+			global: [],
+			project: ['workflow:read', 'workflow:update', 'workflow:delete'],
+			resource: [],
+		};
+
+		const masks: MaskLevels = {
+			sharing: ['workflow:read', 'workflow:update'],
+		};
+
+		// oneOf mode - one of the scopes should be in both mask and user scopes
+		expect(
+			hasScope(['workflow:read', 'workflow:delete'], userScopes, masks, { mode: 'oneOf' }),
+		).toBe(true);
+
+		// allOf mode - all scopes should be in both mask and user scopes
+		expect(
+			hasScope(['workflow:read', 'workflow:delete'], userScopes, masks, { mode: 'allOf' }),
+		).toBe(false);
+
+		expect(
+			hasScope(['workflow:read', 'workflow:update'], userScopes, masks, { mode: 'allOf' }),
+		).toBe(true);
+	});
+
+	test('should handle multiple mask levels if provided', () => {
+		const userScopes: ScopeLevels = {
+			global: [],
+			project: ['workflow:read', 'workflow:update', 'credential:read'],
+			resource: [],
+		};
+
+		const masks: MaskLevels = {
+			sharing: ['workflow:read', 'workflow:update', 'credential:read'],
+		};
+
+		expect(
+			hasScope(['workflow:read', 'credential:read'], userScopes, masks, { mode: 'allOf' }),
+		).toBe(true);
+	});
+});
+
+describe('hasScope edge cases', () => {
+	test('should handle empty scopes correctly', () => {
+		const userScopes = {
+			global: ownerPermissions,
+			project: [],
+			resource: [],
+		};
+
+		expect(hasScope([], userScopes)).toBe(false);
+		expect(hasScope([], userScopes, undefined, { mode: 'allOf' })).toBe(false);
+	});
+
+	test('should handle empty user scopes correctly', () => {
+		const emptyUserScopes = {
+			global: [],
+			project: [],
+			resource: [],
+		};
+
+		expect(hasScope('workflow:read', emptyUserScopes)).toBe(false);
+		expect(
+			hasScope(['workflow:read', 'workflow:update'], emptyUserScopes, undefined, {
+				mode: 'allOf',
+			}),
 		).toBe(false);
 	});
 });

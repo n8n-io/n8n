@@ -1,10 +1,10 @@
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
-import type { Scope } from '@n8n/permissions';
+import type { Scope, WorkflowSharingRole } from '@n8n/permissions';
 import type { WorkflowId } from 'n8n-workflow';
 
 import type { Project } from '@/databases/entities/project';
-import { SharedWorkflow, type WorkflowSharingRole } from '@/databases/entities/shared-workflow';
+import { SharedWorkflow } from '@/databases/entities/shared-workflow';
 import type { User } from '@/databases/entities/user';
 import { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { WorkflowTagMapping } from '@/databases/entities/workflow-tag-mapping';

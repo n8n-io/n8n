@@ -1,8 +1,8 @@
 import { Container } from '@n8n/di';
+import type { CredentialSharingRole } from '@n8n/permissions';
 
 import { CredentialsEntity } from '@/databases/entities/credentials-entity';
 import type { Project } from '@/databases/entities/project';
-import type { CredentialSharingRole } from '@/databases/entities/shared-credentials';
 import type { User } from '@/databases/entities/user';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import { ProjectRepository } from '@/databases/repositories/project.repository';

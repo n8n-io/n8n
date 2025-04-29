@@ -1,6 +1,6 @@
-import type { ProjectIcon, ProjectRole, ProjectType } from '@n8n/api-types';
+import type { ProjectIcon, ProjectType } from '@n8n/api-types';
 import type { Variables } from '@n8n/db';
-import type { AssignableRole, GlobalRole, Scope } from '@n8n/permissions';
+import type { AssignableGlobalRole, GlobalRole, ProjectRole, Scope } from '@n8n/permissions';
 import type express from 'express';
 import type {
 	ICredentialDataDecryptedObject,
@@ -143,7 +143,7 @@ export declare namespace UserRequest {
 			email: string;
 			inviteAcceptUrl?: string;
 			emailSent: boolean;
-			role: AssignableRole;
+			role: AssignableGlobalRole;
 		};
 		error?: string;
 	};
