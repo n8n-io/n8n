@@ -39,32 +39,17 @@ const options = computed(() => {
 		:model-value="value"
 		:options="options"
 		data-test-id="ndv-run-data-display-mode"
-		:size="compact ? 'small' : 'medium'"
+		:size="compact ? 'small-medium' : 'medium'"
+		:square-buttons="compact"
 		@update:model-value="(selected) => emit('change', selected)"
 	>
 		<template v-if="compact" #option="option">
-			<N8nIcon v-if="option.value === 'table'" icon="table" size="small" :class="$style.icon" />
-			<N8nIcon v-else-if="option.value === 'json'" icon="json" size="small" :class="$style.icon" />
-			<N8nIcon
-				v-else-if="option.value === 'binary'"
-				icon="binary"
-				size="small"
-				:class="$style.icon"
-			/>
-			<N8nIcon
-				v-else-if="option.value === 'schema'"
-				icon="schema"
-				size="small"
-				:class="$style.icon"
-			/>
-			<N8nIcon v-else-if="option.value === 'html'" icon="html" size="small" :class="$style.icon" />
+			<N8nIcon v-if="option.value === 'table'" icon="table" size="small" />
+			<N8nIcon v-else-if="option.value === 'json'" icon="json" size="small" />
+			<N8nIcon v-else-if="option.value === 'binary'" icon="binary" size="small" />
+			<N8nIcon v-else-if="option.value === 'schema'" icon="schema" size="small" />
+			<N8nIcon v-else-if="option.value === 'html'" icon="html" size="small" />
 			<span v-else>{{ option.label }}</span>
 		</template>
 	</N8nRadioButtons>
 </template>
-
-<style lang="scss" module>
-.icon {
-	padding-inline: var(--spacing-4xs);
-}
-</style>

@@ -7,6 +7,7 @@ import { WorkflowRepository } from '@/databases/repositories/workflow.repository
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { OrchestrationService } from '@/services/orchestration.service';
 import { Telemetry } from '@/telemetry';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import { mockInstance } from '../../shared/mocking';
@@ -42,6 +43,7 @@ beforeAll(async () => {
 		mock(),
 		mock(),
 		mock(),
+		Container.get(WorkflowFinderService),
 	);
 });
 
