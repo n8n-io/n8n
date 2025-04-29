@@ -55,17 +55,18 @@ export const useParameterOverridesStore = defineStore('parameterOverrides', () =
 
 		for (const key in obj) {
 			const value = obj[key];
-			const parts = key.split('.');
+			const parts = key.split(/[.\[\]]/g).filter(Boolean); // Split on dots and brackets
 			let current: INodeParameters = result;
 
 			for (let i = 0; i < parts.length; i++) {
 				const part = parts[i];
+				const isArrayIndex = !isNaN(Number(parts[i + 1]));
 
 				if (i === parts.length - 1) {
 					current[part] = value;
 				} else {
-					if (!current[part] || typeof current[part] !== 'object') {
-						current[part] = {};
+					if (!current[part]) {
+						current[part] = isArrayIndex ? [] : {};
 					}
 					current = current[part] as INodeParameters;
 				}

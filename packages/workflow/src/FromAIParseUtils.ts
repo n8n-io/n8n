@@ -325,8 +325,8 @@ export function traverseNodeParametersWithParamNames(
 		const fromAICalls = extractFromAICalls(payload);
 		fromAICalls.forEach((call) => collectedArgs.set(name as string, call));
 	} else if (Array.isArray(payload)) {
-		payload.forEach((item: unknown) =>
-			traverseNodeParametersWithParamNames(item, collectedArgs, name),
+		payload.forEach((item: unknown, index: number) =>
+			traverseNodeParametersWithParamNames(item, collectedArgs, name + `[${index}]`),
 		);
 	} else if (typeof payload === 'object' && payload !== null) {
 		for (const [key, value] of Object.entries(payload)) {
