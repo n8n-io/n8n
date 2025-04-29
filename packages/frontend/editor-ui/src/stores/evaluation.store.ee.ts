@@ -6,8 +6,6 @@ import type { TestCaseExecutionRecord, TestRunRecord } from '@/api/evaluation.ee
 import { usePostHog } from './posthog.store';
 import { STORES, WORKFLOW_EVALUATION_EXPERIMENT } from '@/constants';
 
-type FieldIssue = { field: string; message: string };
-
 export const useEvaluationStore = defineStore(
 	STORES.EVALUATION,
 	() => {
@@ -17,7 +15,6 @@ export const useEvaluationStore = defineStore(
 		const testRunsById = ref<Record<string, TestRunRecord>>({});
 		const testCaseExecutionsById = ref<Record<string, TestCaseExecutionRecord>>({});
 		const pollingTimeouts = ref<Record<string, NodeJS.Timeout>>({});
-		const fieldsIssues = ref<Record<string, FieldIssue[]>>({});
 
 		// Store instances
 		const posthogStore = usePostHog();
@@ -44,32 +41,6 @@ export const useEvaluationStore = defineStore(
 				{},
 			);
 		});
-
-		const lastRunByWorkflowId = computed(() => {
-			const grouped = Object.values(testRunsById.value).reduce(
-				(acc: Record<string, TestRunRecord[]>, run) => {
-					if (!acc[run.workflowId]) {
-						acc[run.workflowId] = [];
-					}
-					acc[run.workflowId].push(run);
-					return acc;
-				},
-				{},
-			);
-
-			return Object.entries(grouped).reduce(
-				(acc: Record<string, TestRunRecord | null>, [testId, runs]) => {
-					acc[testId] =
-						runs.sort(
-							(a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
-						)[0] || null;
-					return acc;
-				},
-				{},
-			);
-		});
-
-		const getFieldIssues = (workflowId: string) => fieldsIssues.value[workflowId] || [];
 
 		// Methods
 
@@ -164,7 +135,6 @@ export const useEvaluationStore = defineStore(
 			isLoading,
 			isFeatureEnabled,
 			testRunsByTestId: testRunsByWorkflowId,
-			lastRunByTestId: lastRunByWorkflowId,
 
 			// Methods
 			fetchTestCaseExecutions,
@@ -174,7 +144,6 @@ export const useEvaluationStore = defineStore(
 			cancelTestRun,
 			deleteTestRun,
 			cleanupPolling,
-			getFieldIssues,
 		};
 	},
 	{},
