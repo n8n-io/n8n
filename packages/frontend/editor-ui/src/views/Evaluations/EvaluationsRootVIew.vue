@@ -5,7 +5,7 @@ import { useAsyncState } from '@vueuse/core';
 import { useRouter } from 'vue-router';
 
 const props = defineProps<{
-	workflowId: string;
+	name: string;
 }>();
 
 const router = useRouter();
@@ -13,7 +13,7 @@ const workflowHelpers = useWorkflowHelpers({ router });
 const workflowStore = useWorkflowsStore();
 
 const { isReady } = useAsyncState(async () => {
-	const workflowId = props.workflowId;
+	const workflowId = props.name;
 	const isAlreadyInitialized = workflowStore.workflow.id === workflowId;
 
 	if (isAlreadyInitialized) return;
