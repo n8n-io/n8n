@@ -1,24 +1,30 @@
 import WorkflowDetails from '@/components/MainHeader/WorkflowDetails.vue';
 import { createComponentRenderer } from '@/__tests__/render';
+import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import {
 	EnterpriseEditionFeature,
+	MODAL_CONFIRM,
 	STORES,
-	WORKFLOW_MENU_ACTIONS,
+	VIEWS,
 	WORKFLOW_SHARE_MODAL_KEY,
 } from '@/constants';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { useUIStore } from '@/stores/ui.store';
-import { useRoute } from 'vue-router';
 import type { Mock } from 'vitest';
+import { useRoute, useRouter } from 'vue-router';
+import { useMessage } from '@/composables/useMessage';
+import { useToast } from '@/composables/useToast';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 
 vi.mock('vue-router', async (importOriginal) => ({
 	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
 	...(await importOriginal<typeof import('vue-router')>()),
 	useRoute: vi.fn().mockReturnValue({}),
-	useRouter: vi.fn(() => ({
+	useRouter: vi.fn().mockReturnValue({
 		replace: vi.fn(),
-	})),
+		push: vi.fn().mockResolvedValue(undefined),
+	}),
 }));
 
 vi.mock('@/stores/pushConnection.store', () => ({
@@ -26,6 +32,26 @@ vi.mock('@/stores/pushConnection.store', () => ({
 		isConnected: true,
 	}),
 }));
+
+vi.mock('@/composables/useToast', () => {
+	const showError = vi.fn();
+	const showMessage = vi.fn();
+	return {
+		useToast: () => ({
+			showError,
+			showMessage,
+		}),
+	};
+});
+
+vi.mock('@/composables/useMessage', () => {
+	const confirm = vi.fn(async () => MODAL_CONFIRM);
+	return {
+		useMessage: () => ({
+			confirm,
+		}),
+	};
+});
 
 const initialState = {
 	[STORES.SETTINGS]: {
@@ -64,6 +90,11 @@ const renderComponent = createComponentRenderer(WorkflowDetails, {
 });
 
 let uiStore: ReturnType<typeof useUIStore>;
+let workflowsStore: MockedStore<typeof useWorkflowsStore>;
+let message: ReturnType<typeof useMessage>;
+let toast: ReturnType<typeof useToast>;
+let router: ReturnType<typeof useRouter>;
+
 const workflow = {
 	id: '1',
 	name: 'Test Workflow',
@@ -75,7 +106,17 @@ const workflow = {
 describe('WorkflowDetails', () => {
 	beforeEach(() => {
 		uiStore = useUIStore();
+		workflowsStore = mockedStore(useWorkflowsStore);
+
+		message = useMessage();
+		toast = useToast();
+		router = useRouter();
 	});
+
+	afterEach(() => {
+		vi.clearAllMocks();
+	});
+
 	it('renders workflow name and tags', async () => {
 		(useRoute as Mock).mockReturnValue({
 			query: { parentFolderId: '1' },
@@ -258,7 +299,6 @@ describe('WorkflowDetails', () => {
 		});
 
 		it("should call onWorkflowMenuSelect on 'Archive' option click", async () => {
-			const onWorkflowMenuSelect = vi.fn();
 			const { getByTestId } = renderComponent({
 				props: {
 					...workflow,
@@ -266,41 +306,44 @@ describe('WorkflowDetails', () => {
 					isArchived: false,
 					scopes: ['workflow:delete'],
 				},
-				global: {
-					mocks: {
-						onWorkflowMenuSelect,
-					},
-				},
 			});
+
+			workflowsStore.archiveWorkflow.mockResolvedValue(undefined);
 
 			await userEvent.click(getByTestId('workflow-menu'));
 			await userEvent.click(getByTestId('workflow-menu-item-archive'));
-			expect(onWorkflowMenuSelect).toHaveBeenCalledWith(WORKFLOW_MENU_ACTIONS.ARCHIVE);
+
+			expect(message.confirm).toHaveBeenCalledTimes(1);
+			expect(toast.showError).toHaveBeenCalledTimes(0);
+			expect(toast.showMessage).toHaveBeenCalledTimes(1);
+			expect(workflowsStore.archiveWorkflow).toHaveBeenCalledTimes(1);
+			expect(workflowsStore.archiveWorkflow).toHaveBeenCalledWith(workflow.id);
+			expect(router.push).toHaveBeenCalledTimes(1);
+			expect(router.push).toHaveBeenCalledWith({
+				name: VIEWS.WORKFLOWS,
+			});
 		});
 
 		it("should call onWorkflowMenuSelect on 'Unarchive' option click", async () => {
-			const onWorkflowMenuSelect = vi.fn();
 			const { getByTestId } = renderComponent({
 				props: {
 					...workflow,
 					readOnly: false,
 					isArchived: true,
 					scopes: ['workflow:delete'],
-				},
-				global: {
-					mocks: {
-						onWorkflowMenuSelect,
-					},
 				},
 			});
 
 			await userEvent.click(getByTestId('workflow-menu'));
 			await userEvent.click(getByTestId('workflow-menu-item-unarchive'));
-			expect(onWorkflowMenuSelect).toHaveBeenCalledWith(WORKFLOW_MENU_ACTIONS.UNARCHIVE);
+
+			expect(toast.showError).toHaveBeenCalledTimes(0);
+			expect(toast.showMessage).toHaveBeenCalledTimes(1);
+			expect(workflowsStore.unarchiveWorkflow).toHaveBeenCalledTimes(1);
+			expect(workflowsStore.unarchiveWorkflow).toHaveBeenCalledWith(workflow.id);
 		});
 
 		it("should call onWorkflowMenuSelect on 'Delete' option click", async () => {
-			const onWorkflowMenuSelect = vi.fn();
 			const { getByTestId } = renderComponent({
 				props: {
 					...workflow,
@@ -308,16 +351,20 @@ describe('WorkflowDetails', () => {
 					isArchived: true,
 					scopes: ['workflow:delete'],
 				},
-				global: {
-					mocks: {
-						onWorkflowMenuSelect,
-					},
-				},
 			});
 
 			await userEvent.click(getByTestId('workflow-menu'));
 			await userEvent.click(getByTestId('workflow-menu-item-delete'));
-			expect(onWorkflowMenuSelect).toHaveBeenCalledWith(WORKFLOW_MENU_ACTIONS.DELETE);
+
+			expect(message.confirm).toHaveBeenCalledTimes(1);
+			expect(toast.showError).toHaveBeenCalledTimes(0);
+			expect(toast.showMessage).toHaveBeenCalledTimes(1);
+			expect(workflowsStore.deleteWorkflow).toHaveBeenCalledTimes(1);
+			expect(workflowsStore.deleteWorkflow).toHaveBeenCalledWith(workflow.id);
+			expect(router.push).toHaveBeenCalledTimes(1);
+			expect(router.push).toHaveBeenCalledWith({
+				name: VIEWS.WORKFLOWS,
+			});
 		});
 	});
 

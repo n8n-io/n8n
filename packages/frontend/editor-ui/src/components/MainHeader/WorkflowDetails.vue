@@ -554,10 +554,6 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 
 			try {
 				await workflowsStore.archiveWorkflow(props.id);
-				toast.showMessage({
-					title: locale.baseText('mainSidebar.showMessage.handleArchive.title'),
-					type: 'success',
-				});
 			} catch (error) {
 				toast.showError(error, locale.baseText('generic.archiveWorkflowError'));
 				return;
@@ -565,7 +561,7 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 
 			uiStore.stateIsDirty = false;
 			toast.showMessage({
-				title: locale.baseText('mainSidebar.showMessage.handleSelect1.title'),
+				title: locale.baseText('mainSidebar.showMessage.handleArchive.title'),
 				type: 'success',
 			});
 

@@ -1,13 +1,17 @@
 import type { MockInstance } from 'vitest';
-import { setActivePinia, createPinia } from 'pinia';
 import { waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
-import { VIEWS } from '@/constants';
+import { type MockedStore, mockedStore } from '@/__tests__/utils';
+import { MODAL_CONFIRM, VIEWS } from '@/constants';
 import WorkflowCard from '@/components/WorkflowCard.vue';
 import type { IWorkflowDb } from '@/Interface';
 import { useRouter } from 'vue-router';
 import { useProjectsStore } from '@/stores/projects.store';
+import { useMessage } from '@/composables/useMessage';
+import { useToast } from '@/composables/useToast';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { createTestingPinia } from '@pinia/testing';
 
 vi.mock('vue-router', () => {
 	const push = vi.fn();
@@ -22,7 +26,29 @@ vi.mock('vue-router', () => {
 	};
 });
 
-const renderComponent = createComponentRenderer(WorkflowCard);
+vi.mock('@/composables/useToast', () => {
+	const showError = vi.fn();
+	const showMessage = vi.fn();
+	return {
+		useToast: () => ({
+			showError,
+			showMessage,
+		}),
+	};
+});
+
+vi.mock('@/composables/useMessage', () => {
+	const confirm = vi.fn(async () => MODAL_CONFIRM);
+	return {
+		useMessage: () => ({
+			confirm,
+		}),
+	};
+});
+
+const renderComponent = createComponentRenderer(WorkflowCard, {
+	pinia: createTestingPinia({}),
+});
 
 const createWorkflow = (overrides = {}): IWorkflowDb => ({
 	id: '1',
@@ -38,16 +64,20 @@ const createWorkflow = (overrides = {}): IWorkflowDb => ({
 });
 
 describe('WorkflowCard', () => {
-	let pinia: ReturnType<typeof createPinia>;
 	let windowOpenSpy: MockInstance;
 	let router: ReturnType<typeof useRouter>;
-	let projectsStore: ReturnType<typeof useProjectsStore>;
+	let projectsStore: MockedStore<typeof useProjectsStore>;
+	let workflowsStore: MockedStore<typeof useWorkflowsStore>;
+	let message: ReturnType<typeof useMessage>;
+	let toast: ReturnType<typeof useToast>;
 
 	beforeEach(async () => {
-		pinia = createPinia();
-		setActivePinia(pinia);
 		router = useRouter();
-		projectsStore = useProjectsStore();
+		projectsStore = mockedStore(useProjectsStore);
+		workflowsStore = mockedStore(useWorkflowsStore);
+		message = useMessage();
+		toast = useToast();
+
 		windowOpenSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
 	});
 
@@ -172,20 +202,14 @@ describe('WorkflowCard', () => {
 		expect(actions).toHaveTextContent('Change owner');
 	});
 
-	it('should show Archive action on non archived workflows', async () => {
+	it("should have 'Archive' action on non archived workflows", async () => {
 		const data = createWorkflow({
 			isArchived: false,
 			scopes: ['workflow:delete'],
 		});
 
-		const onAction = vi.fn();
-		const { getByTestId } = renderComponent({
+		const { getByTestId, emitted } = renderComponent({
 			props: { data },
-			global: {
-				mocks: {
-					onAction,
-				},
-			},
 		});
 		const cardActions = getByTestId('workflow-card-actions');
 		expect(cardActions).toBeInTheDocument();
@@ -204,23 +228,23 @@ describe('WorkflowCard', () => {
 		expect(actions).not.toHaveTextContent('Delete');
 
 		await userEvent.click(getByTestId('action-archive'));
-		expect(onAction).toHaveBeenCalledWith('archive');
+
+		expect(message.confirm).toHaveBeenCalledTimes(1);
+		expect(workflowsStore.archiveWorkflow).toHaveBeenCalledTimes(1);
+		expect(workflowsStore.archiveWorkflow).toHaveBeenCalledWith(data.id);
+		expect(toast.showError).toHaveBeenCalledTimes(0);
+		expect(toast.showMessage).toHaveBeenCalledTimes(1);
+		expect(emitted()['workflow:archived']).toHaveLength(1);
 	});
 
-	it('should show Unarchive and Delete action on archived workflows', async () => {
+	it("should have 'Unarchive' action on archived workflows", async () => {
 		const data = createWorkflow({
 			isArchived: true,
 			scopes: ['workflow:delete'],
 		});
 
-		const onAction = vi.fn();
-		const { getByTestId } = renderComponent({
+		const { getByTestId, emitted } = renderComponent({
 			props: { data },
-			global: {
-				mocks: {
-					onAction,
-				},
-			},
 		});
 		const cardActions = getByTestId('workflow-card-actions');
 		expect(cardActions).toBeInTheDocument();
@@ -239,9 +263,47 @@ describe('WorkflowCard', () => {
 		expect(actions).toHaveTextContent('Delete');
 
 		await userEvent.click(getByTestId('action-unarchive'));
-		expect(onAction).toHaveBeenCalledWith('unarchive');
+
+		expect(workflowsStore.unarchiveWorkflow).toHaveBeenCalledTimes(1);
+		expect(workflowsStore.unarchiveWorkflow).toHaveBeenCalledWith(data.id);
+		expect(toast.showError).toHaveBeenCalledTimes(0);
+		expect(toast.showMessage).toHaveBeenCalledTimes(1);
+		expect(emitted()['workflow:unarchived']).toHaveLength(1);
+	});
+
+	it("should show 'Delete' action on archived workflows", async () => {
+		const data = createWorkflow({
+			isArchived: true,
+			scopes: ['workflow:delete'],
+		});
+
+		const { getByTestId, emitted } = renderComponent({
+			props: { data },
+		});
+		const cardActions = getByTestId('workflow-card-actions');
+		expect(cardActions).toBeInTheDocument();
+
+		const cardActionsOpener = within(cardActions).getByRole('button');
+		expect(cardActionsOpener).toBeInTheDocument();
+
+		const controllingId = cardActionsOpener.getAttribute('aria-controls');
+		await userEvent.click(cardActions);
+		const actions = document.querySelector(`#${controllingId}`);
+		if (!actions) {
+			throw new Error('Actions menu not found');
+		}
+		expect(actions).not.toHaveTextContent('Archive');
+		expect(actions).toHaveTextContent('Unarchive');
+		expect(actions).toHaveTextContent('Delete');
+
 		await userEvent.click(getByTestId('action-delete'));
-		expect(onAction).toHaveBeenCalledWith('delete');
+
+		expect(message.confirm).toHaveBeenCalledTimes(1);
+		expect(workflowsStore.deleteWorkflow).toHaveBeenCalledTimes(1);
+		expect(workflowsStore.deleteWorkflow).toHaveBeenCalledWith(data.id);
+		expect(toast.showError).toHaveBeenCalledTimes(0);
+		expect(toast.showMessage).toHaveBeenCalledTimes(1);
+		expect(emitted()['workflow:deleted']).toHaveLength(1);
 	});
 
 	it('should show Read only mode', async () => {
