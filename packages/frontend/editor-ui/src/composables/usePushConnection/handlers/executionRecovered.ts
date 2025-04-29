@@ -42,5 +42,5 @@ export async function executionRecovered(
 		handleExecutionFinishedWithOther(false, options);
 	}
 
-	setRunExecutionData(execution, runExecutionData);
+	setRunExecutionData(execution, runExecutionData, false);
 }

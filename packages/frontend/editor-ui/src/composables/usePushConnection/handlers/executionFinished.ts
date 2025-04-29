@@ -450,6 +450,7 @@ export function handleExecutionFinishedWithOther(
 export function setRunExecutionData(
 	execution: SimplifiedExecution,
 	runExecutionData: IRunExecutionData,
+	normalize = true,
 ) {
 	const workflowsStore = useWorkflowsStore();
 	const nodeHelpers = useNodeHelpers();
@@ -465,6 +466,13 @@ export function setRunExecutionData(
 	}
 
 	workflowsStore.executingNode.length = 0;
+
+	if (normalize) {
+		// As a temporary workaround for https://linear.app/n8n/issue/PAY-2762,
+		// remove runs that is still 'running' status when execution is finished
+		removeRunningTaskData(execution as IExecutionResponse);
+	}
+
 	workflowsStore.setWorkflowExecutionData(workflowExecution as IExecutionResponse);
 	workflowsStore.setActiveExecutionId(undefined);
 
@@ -495,4 +503,23 @@ export function setRunExecutionData(
 
 	const lineNumber = runExecutionData.resultData?.error?.lineNumber;
 	codeNodeEditorEventBus.emit('highlightLine', lineNumber ?? 'last');
+}
+
+function removeRunningTaskData(execution: IExecutionResponse): void {
+	if (execution.data) {
+		execution.data = {
+			...execution.data,
+			resultData: {
+				...execution.data.resultData,
+				runData: Object.fromEntries(
+					Object.entries(execution.data.resultData.runData)
+						.map(([nodeName, runs]) => [
+							nodeName,
+							runs.filter((run) => run.executionStatus !== 'running'),
+						])
+						.filter(([, runs]) => runs.length > 0),
+				),
+			},
+		};
+	}
 }
