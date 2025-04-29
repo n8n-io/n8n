@@ -4,7 +4,7 @@ import { In, type EntityManager } from '@n8n/typeorm';
 import omit from 'lodash/omit';
 import { Logger } from 'n8n-core';
 import type { IWorkflowBase, WorkflowId } from 'n8n-workflow';
-import { NodeOperationError, UserError, WorkflowActivationError } from 'n8n-workflow';
+import { NodeOperationError, PROJECT_ROOT, UserError, WorkflowActivationError } from 'n8n-workflow';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
@@ -15,6 +15,7 @@ import { Project } from '@/databases/entities/project';
 import { SharedWorkflow } from '@/databases/entities/shared-workflow';
 import type { User } from '@/databases/entities/user';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
+import { FolderRepository } from '@/databases/repositories/folder.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -29,6 +30,7 @@ import type {
 } from '@/types-db';
 
 import { WorkflowFinderService } from './workflow-finder.service';
+import { Folder } from '@/databases/entities/folder';
 
 @Service()
 export class EnterpriseWorkflowService {
@@ -45,6 +47,7 @@ export class EnterpriseWorkflowService {
 		private readonly enterpriseCredentialsService: EnterpriseCredentialsService,
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly folderService: FolderService,
+		private readonly folderRepository: FolderRepository,
 	) {}
 
 	async shareWithProjects(
@@ -262,7 +265,7 @@ export class EnterpriseWorkflowService {
 		});
 	}
 
-	async transferOne(
+	async transferWorkflow(
 		user: User,
 		workflowId: string,
 		destinationProjectId: string,
@@ -368,6 +371,166 @@ export class EnterpriseWorkflowService {
 
 		// 10. try to activate it again if it was active
 		if (wasActive) {
+			try {
+				await this.activeWorkflowManager.add(workflowId, 'update');
+
+				return;
+			} catch (error) {
+				await this.workflowRepository.updateActiveState(workflowId, false);
+
+				// Since the transfer worked we return a 200 but also return the
+				// activation error as data.
+				if (error instanceof WorkflowActivationError) {
+					return {
+						error: error.toJSON
+							? error.toJSON()
+							: {
+									name: error.name,
+									message: error.message,
+								},
+					};
+				}
+
+				throw error;
+			}
+		}
+
+		return;
+	}
+
+	async transferFolder(
+		user: User,
+		sourceProjectId: string,
+		sourceFolderId: string,
+		destinationProjectId: string,
+		destinationParentFolderId: string,
+		shareCredentials: string[] = [],
+	) {
+		// 1. Get all children folders
+
+		const childrenFolderIds = await this.folderRepository.getAllFolderIdsInHierarchy(
+			sourceFolderId,
+			sourceProjectId,
+		);
+
+		// 2. Get all workflows in the nested folders
+
+		const workflows = await this.workflowRepository.find({
+			select: ['id', 'active', 'shared'],
+			relations: ['shared', 'shared.project'],
+			where: {
+				parentFolder: { id: In([...childrenFolderIds, sourceFolderId]) },
+			},
+		});
+
+		const activeWorkflows = workflows.filter((w) => w.active).map((w) => w.id);
+
+		// 3. get destination project
+		const destinationProject = await this.projectService.getProjectWithScope(
+			user,
+			destinationProjectId,
+			['workflow:create'],
+		);
+		NotFoundError.isDefinedAndNotNull(
+			destinationProject,
+			`Could not find project with the id "${destinationProjectId}". Make sure you have the permission to create workflows in it.`,
+		);
+
+		// 4. checks
+
+		if (destinationParentFolderId !== PROJECT_ROOT) {
+			await this.folderRepository.findOneOrFailFolderInProject(
+				destinationParentFolderId,
+				destinationProjectId,
+			);
+		}
+
+		await this.folderRepository.findOneOrFailFolderInProject(sourceFolderId, sourceProjectId);
+
+		for (const workflow of workflows) {
+			const ownerSharing = workflow.shared.find((s) => s.role === 'workflow:owner')!;
+			NotFoundError.isDefinedAndNotNull(
+				ownerSharing,
+				`Could not find owner for workflow "${workflow.id}"`,
+			);
+			const sourceProject = ownerSharing.project;
+			if (sourceProject.id === destinationProject.id) {
+				throw new TransferWorkflowError(
+					"You can't transfer a workflow into the project that's already owning it.",
+				);
+			}
+		}
+
+		// 5. deactivate all workflows if necessary
+
+		const deactivateWorkflowsPromises = activeWorkflows.map(
+			async (workflowId) => await this.activeWorkflowManager.remove(workflowId),
+		);
+
+		await Promise.all(deactivateWorkflowsPromises);
+
+		// 6. transfer the workflows
+		await this.workflowRepository.manager.transaction(async (trx) => {
+			for (const workflow of workflows) {
+				// remove all sharings
+				await trx.remove(workflow.shared);
+
+				// create new owner-sharing
+				await trx.save(
+					trx.create(SharedWorkflow, {
+						workflowId: workflow.id,
+						projectId: destinationProject.id,
+						role: 'workflow:owner',
+					}),
+				);
+			}
+		});
+
+		// 7. share credentials into the destination project
+		await this.workflowRepository.manager.transaction(async (trx) => {
+			const allCredentials = await this.credentialsFinderService.findAllCredentialsForUser(
+				user,
+				['credential:share'],
+				trx,
+			);
+			const credentialsAllowedToShare = allCredentials.filter((c) =>
+				shareCredentials.includes(c.id),
+			);
+
+			for (const credential of credentialsAllowedToShare) {
+				await this.enterpriseCredentialsService.shareWithProjects(
+					user,
+					credential.id,
+					[destinationProject.id],
+					trx,
+				);
+			}
+		});
+
+		await this.folderRepository.manager.transaction(async (trx) => {
+			// 8. Move all children folder to the destination project
+			await trx.update(
+				Folder,
+				{ id: In(childrenFolderIds) },
+				{ homeProject: { id: destinationProjectId } },
+			);
+
+			// Move the source folder to the destination project and under the destination folder if any
+
+			await trx.update(
+				Folder,
+				{ id: sourceFolderId },
+				{
+					homeProject: { id: destinationProjectId },
+					parentFolder:
+						destinationParentFolderId === PROJECT_ROOT ? null : { id: destinationParentFolderId },
+				},
+			);
+		});
+
+		// 9. try to activate workflows again if they were active
+
+		for (const workflowId of activeWorkflows) {
 			try {
 				await this.activeWorkflowManager.add(workflowId, 'update');
 
