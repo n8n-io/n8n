@@ -10,8 +10,8 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { setupApiKeyAuthentication } from './handlers/api-key.handler';
-import { setupOAuth2Authentication } from './handlers/oauth2.handler';
+import { setupApiKeyAuthentication } from './credentials/api-key';
+import { setupOAuth2Authentication } from './credentials/oauth2';
 import { properties } from './properties';
 import { AuthenticationType } from './types';
 import type {
@@ -29,8 +29,8 @@ export class LmChatAzureOpenAi implements INodeType {
 		name: 'lmChatAzureOpenAi',
 		icon: 'file:azure.svg',
 		group: ['transform'],
-		version: 1.1, // Increment version due to significant auth change
-		description: 'Connects to Azure OpenAI using API Key or Microsoft Entra ID (OAuth2)',
+		version: 1,
+		description: 'For advanced usage with an AI chain',
 		defaults: {
 			name: 'Azure OpenAI Chat Model',
 		},

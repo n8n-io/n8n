@@ -3,7 +3,7 @@ import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { setupOAuth2Authentication } from '../handlers/oauth2.handler';
+import { setupOAuth2Authentication } from '../credentials/oauth2';
 import type { AzureEntraCognitiveServicesOAuth2ApiCredential } from '../types';
 
 // Mock the N8nOAuth2TokenCredential

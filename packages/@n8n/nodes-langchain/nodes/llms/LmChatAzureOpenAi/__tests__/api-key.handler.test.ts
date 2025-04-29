@@ -3,7 +3,7 @@ import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { setupApiKeyAuthentication } from '../handlers/api-key.handler';
+import { setupApiKeyAuthentication } from '../credentials/api-key';
 
 describe('setupApiKeyAuthentication', () => {
 	let ctx: ISupplyDataFunctions;
