@@ -1701,7 +1701,7 @@ defineExpose({ enterEditMode });
 						v-if="workflowRunErrorAsNodeError"
 						:error="workflowRunErrorAsNodeError"
 						:class="$style.inlineError"
-						compact
+						:compact="compact"
 					/>
 					<slot name="content"></slot>
 				</div>
@@ -1709,6 +1709,8 @@ defineExpose({ enterEditMode });
 					v-else-if="workflowRunErrorAsNodeError"
 					:error="workflowRunErrorAsNodeError"
 					:class="$style.dataDisplay"
+					:compact="compact"
+					show-details
 				/>
 			</div>
 
