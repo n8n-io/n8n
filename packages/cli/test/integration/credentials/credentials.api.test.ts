@@ -25,7 +25,13 @@ import {
 	shareCredentialWithUsers,
 } from '../shared/db/credentials';
 import { createTeamProject, linkUserToProject } from '../shared/db/projects';
-import { createManyUsers, createMember, createOwner } from '../shared/db/users';
+import {
+	createAdmin,
+	createManyUsers,
+	createMember,
+	createOwner,
+	createUser,
+} from '../shared/db/users';
 import {
 	randomCredentialPayload as payload,
 	randomCredentialPayload,
@@ -42,6 +48,7 @@ const testServer = setupTestServer({ endpointGroups: ['credentials'] });
 
 let owner: User;
 let member: User;
+let admin: User;
 let secondMember: User;
 
 let ownerPersonalProject: Project;
@@ -49,6 +56,7 @@ let memberPersonalProject: Project;
 
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
+let authAdminAgent: SuperAgentTest;
 
 let projectRepository: ProjectRepository;
 let sharedCredentialsRepository: SharedCredentialsRepository;
@@ -58,6 +66,7 @@ beforeEach(async () => {
 
 	owner = await createOwner();
 	member = await createMember();
+	admin = await createAdmin();
 	secondMember = await createMember();
 
 	ownerPersonalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
@@ -69,6 +78,7 @@ beforeEach(async () => {
 
 	authOwnerAgent = testServer.authAgentFor(owner);
 	authMemberAgent = testServer.authAgentFor(member);
+	authAdminAgent = testServer.authAgentFor(admin);
 
 	projectRepository = Container.get(ProjectRepository);
 	sharedCredentialsRepository = Container.get(SharedCredentialsRepository);
@@ -1534,6 +1544,36 @@ describe('POST /credentials/test', () => {
 
 		expect(response.body.data).toHaveLength(1);
 		expect(response.body.data[0].id).toBe(memberCredential.id);
+		expect(response.body.data[0].homeProject).not.toBeNull();
+	});
+
+	test('should return only credentials shared with me when ?onlySharedWithMe=true (admin)', async () => {
+		const admin = await createUser({ role: 'global:admin' });
+
+		await saveCredential(randomCredentialPayload(), {
+			user: admin,
+			role: 'credential:owner',
+		});
+
+		await saveCredential(randomCredentialPayload(), {
+			user: admin,
+			role: 'credential:owner',
+		});
+
+		const memberCredential = await saveCredential(randomCredentialPayload(), {
+			user: member,
+			role: 'credential:owner',
+		});
+
+		await shareCredentialWithUsers(memberCredential, [admin]);
+
+		const response = await authAdminAgent.get('/credentials').query({ onlySharedWithMe: true });
+
+		expect(response.statusCode).toBe(200);
+
+		expect(response.body.data).toHaveLength(1);
+		expect(response.body.data[0].id).toBe(memberCredential.id);
+		expect(response.body.data[0].homeProject).not.toBeNull();
 	});
 
 	test('should return only credentials shared with me when ?onlySharedWithMe=true (member)', async () => {
@@ -1560,6 +1600,7 @@ describe('POST /credentials/test', () => {
 
 		expect(response.body.data).toHaveLength(1);
 		expect(response.body.data[0].id).toBe(ownerCredential.id);
+		expect(response.body.data[0].homeProject).not.toBeNull();
 	});
 });
 
