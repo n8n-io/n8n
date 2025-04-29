@@ -1,7 +1,5 @@
 import {
 	HTTP_REQUEST_NODE_TYPE,
-	MODAL_CANCEL,
-	MODAL_CLOSE,
 	MODAL_CONFIRM,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
@@ -70,12 +68,11 @@ import { useCanvasStore } from '@/stores/canvas.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { tryToParseNumber } from '@/utils/typesUtils';
 import { useI18n } from '@/composables/useI18n';
-import type { useRouter, NavigationGuardNext } from 'vue-router';
+import type { useRouter } from 'vue-router';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useTagsStore } from '@/stores/tags.store';
 import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
-import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 import { findWebhook } from '../api/webhooks';
 
 export type ResolveParameterOptions = {
@@ -1161,63 +1158,6 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 		}
 	}
 
-	async function promptSaveUnsavedWorkflowChanges(
-		next: NavigationGuardNext,
-		{
-			confirm = async () => true,
-			cancel = async () => {},
-		}: {
-			confirm?: () => Promise<boolean>;
-			cancel?: () => Promise<void>;
-		} = {},
-	) {
-		if (uiStore.stateIsDirty) {
-			const npsSurveyStore = useNpsSurveyStore();
-
-			const confirmModal = await message.confirm(
-				i18n.baseText('generic.unsavedWork.confirmMessage.message'),
-				{
-					title: i18n.baseText('generic.unsavedWork.confirmMessage.headline'),
-					type: 'warning',
-					confirmButtonText: i18n.baseText('generic.unsavedWork.confirmMessage.confirmButtonText'),
-					cancelButtonText: i18n.baseText('generic.unsavedWork.confirmMessage.cancelButtonText'),
-					showClose: true,
-				},
-			);
-			if (confirmModal === MODAL_CONFIRM) {
-				const saved = await saveCurrentWorkflow({}, false);
-				if (saved) {
-					await npsSurveyStore.fetchPromptsData();
-					uiStore.stateIsDirty = false;
-					const goToNext = await confirm();
-					next(goToNext);
-				} else {
-					next(
-						router.resolve({
-							name: VIEWS.WORKFLOW,
-							params: { name: workflowsStore.workflow.id },
-						}),
-					);
-				}
-			} else if (confirmModal === MODAL_CANCEL) {
-				await cancel();
-
-				uiStore.stateIsDirty = false;
-				next();
-			} else if (confirmModal === MODAL_CLOSE) {
-				// The route may have already changed due to the browser back button, so let's restore it
-				next(
-					router.resolve({
-						name: VIEWS.WORKFLOW,
-						params: { name: workflowsStore.workflow.id },
-					}),
-				);
-			}
-		} else {
-			next();
-		}
-	}
-
 	function initState(workflowData: IWorkflowDb) {
 		workflowsStore.addWorkflow(workflowData);
 		workflowsStore.setActive(workflowData.active || false);
@@ -1310,7 +1250,6 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 		updateNodePositions,
 		removeForeignCredentialsFromWorkflow,
 		getWorkflowProjectRole,
-		promptSaveUnsavedWorkflowChanges,
 		initState,
 		getNodeParametersWithResolvedExpressions,
 		containsNodeFromPackage,

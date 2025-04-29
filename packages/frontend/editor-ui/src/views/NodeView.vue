@@ -114,6 +114,7 @@ import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
 import type { CanvasLayoutEvent } from '@/composables/useCanvasLayout';
 import { useClearExecutionButtonVisible } from '@/composables/useClearExecutionButtonVisible';
 import { LOGS_PANEL_STATE } from '@/components/CanvasChat/types/logs';
+import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
 import { useBuilderStore } from '@/stores/builder.store';
 import { useFoldersStore } from '@/stores/folders.store';
 
@@ -1744,14 +1745,15 @@ onBeforeRouteLeave(async (to, from, next) => {
 		return;
 	}
 
-	await workflowHelpers.promptSaveUnsavedWorkflowChanges(next, {
+	await useWorkflowSaving({ router }).promptSaveUnsavedWorkflowChanges(next, {
 		async confirm() {
 			if (from.name === VIEWS.NEW_WORKFLOW) {
 				// Replace the current route with the new workflow route
 				// before navigating to the new route when saving new workflow.
+				const savedWorkflowId = workflowsStore.workflowId;
 				await router.replace({
 					name: VIEWS.WORKFLOW,
-					params: { name: workflowId.value },
+					params: { name: savedWorkflowId },
 				});
 
 				await router.push(to);
