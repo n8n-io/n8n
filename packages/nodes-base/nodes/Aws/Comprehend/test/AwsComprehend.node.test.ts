@@ -1,10 +1,7 @@
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import nock from 'nock';
 
-import { getWorkflowFilenames, testWorkflows } from '@test/nodes/Helpers';
-
 import { credentials } from '../../__tests__/credentials';
-
-const workflows = getWorkflowFilenames(__dirname);
 
 describe('Test AWS Comprehend Node', () => {
 	describe('Detect Language', () => {
@@ -35,6 +32,6 @@ describe('Test AWS Comprehend Node', () => {
 			mock.post('/').reply(200, response);
 		});
 
-		testWorkflows(workflows, credentials);
+		new NodeTestHarness().setupTests({ credentials });
 	});
 });
