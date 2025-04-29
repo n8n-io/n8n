@@ -496,6 +496,17 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 		}
 	}
 	(await Promise.allSettled(promises)).forEach((result, index) => {
+		if (result.status === 'rejected') {
+			if (this.continueOnFail()) {
+				returnData.push({
+					json: { error: result.reason as string },
+					pairedItem: { item: index },
+				});
+				return;
+			} else {
+				throw new NodeOperationError(this.getNode(), result.reason);
+			}
+		}
 		const response = result.value;
 		// If memory and outputParser are connected, parse the output.
 		if (memory && outputParser) {

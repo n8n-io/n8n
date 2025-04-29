@@ -168,7 +168,7 @@ export class SentimentAnalysis implements INodeType {
 		)) as BaseLanguageModel;
 
 		const returnData: INodeExecutionData[][] = [];
-		const promises = [];
+		const promises: Array<Promise<{ sentimentIndex: number; resultItem: INodeExecutionData }>> = [];
 		const { batchSize, delayBetweenBatches } = this.getNodeParameter('options.batching', 0, {}) as {
 			batchSize: number;
 			delayBetweenBatches: number;

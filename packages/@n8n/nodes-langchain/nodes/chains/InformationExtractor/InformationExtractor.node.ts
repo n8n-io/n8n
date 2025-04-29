@@ -330,6 +330,7 @@ export class InformationExtractor implements INodeType {
 						json: { error: response.reason as string },
 						pairedItem: { item: index },
 					});
+					return;
 				} else {
 					throw new NodeOperationError(this.getNode(), response.reason);
 				}
