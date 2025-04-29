@@ -398,7 +398,7 @@ export class WorkflowsController {
 
 	@Post('/:workflowId/archive')
 	@ProjectScope('workflow:delete')
-	async archive(req: WorkflowRequest.Delete) {
+	async archive(req: WorkflowRequest.Archive) {
 		const { workflowId } = req.params;
 
 		const workflow = await this.workflowService.archive(req.user, workflowId);
@@ -417,7 +417,7 @@ export class WorkflowsController {
 
 	@Post('/:workflowId/unarchive')
 	@ProjectScope('workflow:delete')
-	async unarchive(req: WorkflowRequest.Delete) {
+	async unarchive(req: WorkflowRequest.Unarchive) {
 		const { workflowId } = req.params;
 
 		const workflow = await this.workflowService.unarchive(req.user, workflowId);

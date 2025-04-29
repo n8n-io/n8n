@@ -50,6 +50,8 @@ export declare namespace WorkflowRequest {
 		listQueryOptions: ListQuery.Options;
 	};
 
+	type Archive = Get;
+	type Unarchive = Get;
 	type Delete = Get;
 
 	type Update = AuthenticatedRequest<
