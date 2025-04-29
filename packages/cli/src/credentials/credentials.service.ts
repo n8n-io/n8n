@@ -157,7 +157,7 @@ export class CredentialsService {
 			return credentials;
 		}
 
-		const ids = await this.sharedCredentialsRepository.getCredentialIdsByUserAndRole([user.id], {
+		const ids = await this.credentialsFinderService.getCredentialIdsByUserAndRole([user.id], {
 			scopes: ['credential:read'],
 		});
 
