@@ -15,6 +15,7 @@ export * from './ExecutionStatus';
 export * from './Expression';
 export * from './FromAIParseUtils';
 export * from './NodeHelpers';
+export * from './NodeReferenceParserUtils';
 export * from './MetadataUtils';
 export * from './Workflow';
 export * from './WorkflowDataProxy';
@@ -50,6 +51,7 @@ export {
 
 export { ExpressionExtensions } from './Extensions';
 export * as ExpressionParser from './Extensions/ExpressionParser';
+export { parseExtractableSubgraphSelection, buildAdjacencyList } from './Graph/graphUtils';
 export { NativeMethods } from './NativeMethods';
 export * from './NodeParameters/FilterParameter';
 

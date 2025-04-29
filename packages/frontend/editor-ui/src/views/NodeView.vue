@@ -181,6 +181,7 @@ const {
 	updateNodePosition,
 	updateNodesPosition,
 	tidyUp,
+	extractWorkflow,
 	revertUpdateNodePosition,
 	renameNode,
 	revertRenameNode,
@@ -605,6 +606,11 @@ const allTriggerNodesDisabled = computed(() => {
 
 function onTidyUp(event: CanvasLayoutEvent) {
 	tidyUp(event);
+}
+
+function onExtractWorkflow(nodeIds: string[]) {
+	console.log('c');
+	void extractWorkflow(nodeIds);
 }
 
 function onUpdateNodesPosition(events: CanvasNodeMoveEvent[]) {
@@ -1894,6 +1900,7 @@ onBeforeUnmount(() => {
 		@viewport-change="onViewportChange"
 		@drag-and-drop="onDragAndDrop"
 		@tidy-up="onTidyUp"
+		@extract-workflow="onExtractWorkflow"
 	>
 		<Suspense>
 			<LazySetupWorkflowCredentialsButton :class="$style.setupCredentialsButtonWrapper" />

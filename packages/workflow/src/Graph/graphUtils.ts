@@ -1,3 +1,5 @@
+import type { IConnections } from '../Interfaces';
+
 type MultipleInputNodesError = {
 	errorCode: 'Multiple Input Nodes';
 	nodes: Set<string>;
@@ -136,6 +138,29 @@ export type ExtractableSubgraphData = {
 	end?: string;
 };
 
+export function buildAdjacencyList(connectionsBySourceNode: IConnections) {
+	const result = new Map<string, Set<string>>();
+	const addOrCreate = (k: string, v: string) =>
+		result.set(k, union(result.get(k) ?? new Set(), new Set([v])));
+
+	for (const sourceNode of Object.keys(connectionsBySourceNode)) {
+		for (const type of Object.keys(connectionsBySourceNode[sourceNode])) {
+			for (const sourceIndex of Object.keys(connectionsBySourceNode[sourceNode][type])) {
+				for (const connectionIndex of Object.keys(
+					connectionsBySourceNode[sourceNode][type][parseInt(sourceIndex, 10)] ?? [],
+				)) {
+					const nodeName =
+						connectionsBySourceNode[sourceNode][type][parseInt(sourceIndex, 10)]?.[
+							parseInt(connectionIndex, 10)
+						]?.node;
+					if (nodeName) addOrCreate(sourceNode, nodeName);
+				}
+			}
+		}
+	}
+	return result;
+}
+
 /**
  * A subgraph is considered extractable if the following properties hold:
  * - 0-1 input nodes from outside the subgraph, to a root node
@@ -203,6 +228,6 @@ export function parseExtractableSubgraphSelection(
 			end,
 		});
 	}
-
+	console.log(errors, start, end);
 	return errors.length > 0 ? errors : { start, end };
 }

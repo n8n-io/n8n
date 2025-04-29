@@ -12,6 +12,7 @@ import { useI18n } from './useI18n';
 import { usePinnedData } from './usePinnedData';
 import { isPresent } from '../utils/typesUtils';
 import { getResourcePermissions } from '@/permissions';
+import { useWorkflowExtraction } from './useWorkflowExtraction';
 
 export type ContextMenuTarget =
 	| { source: 'canvas'; nodeIds: string[] }
@@ -33,7 +34,8 @@ export type ContextMenuAction =
 	| 'add_node'
 	| 'add_sticky'
 	| 'change_color'
-	| 'tidy_up';
+	| 'tidy_up'
+	| 'extract_subWorkflow';
 
 const position = ref<XYPosition>([0, 0]);
 const isOpen = ref(false);
@@ -46,6 +48,7 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 	const nodeTypesStore = useNodeTypesStore();
 	const workflowsStore = useWorkflowsStore();
 	const sourceControlStore = useSourceControlStore();
+	const workflowExtraction = useWorkflowExtraction();
 
 	const i18n = useI18n();
 
@@ -69,6 +72,10 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 
 	const targetNodes = computed(() =>
 		targetNodeIds.value.map((nodeId) => workflowsStore.getNodeById(nodeId)).filter(isPresent),
+	);
+
+	const extractableSelectionResult = computed(() =>
+		workflowExtraction.getExtractableSelection(new Set(targetNodes.value.map((x) => x.name))),
 	);
 
 	const canAddNodeOfType = (nodeType: INodeTypeDescription) => {
@@ -147,6 +154,16 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 			},
 		];
 
+		const extractionActions: ActionDropdownItem[] = [
+			{
+				id: 'extract_subworkflow',
+				divided: true,
+				label: JSON.stringify(extractableSelectionResult.value), // i18n.baseText('contextMenu.extract', i18nOptions)
+				shortcut: { metaKey: true, keys: ['G'] },
+				disabled: Array.isArray(extractableSelectionResult.value),
+			},
+		];
+
 		const layoutActions: ActionDropdownItem[] = [
 			{
 				id: 'tidy_up',
@@ -174,6 +191,7 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 				},
 				...layoutActions,
 				...selectionActions,
+				...extractionActions,
 			];
 		} else {
 			const menuActions: ActionDropdownItem[] = [
@@ -206,6 +224,7 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 				},
 				...layoutActions,
 				...selectionActions,
+				...extractionActions,
 				{
 					id: 'delete',
 					divided: true,

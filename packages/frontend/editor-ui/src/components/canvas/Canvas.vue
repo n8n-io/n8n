@@ -94,6 +94,7 @@ const emit = defineEmits<{
 	'create:workflow': [];
 	'drag-and-drop': [position: XYPosition, event: DragEvent];
 	'tidy-up': [CanvasLayoutEvent];
+	'extract-workflow': [ids: string[]];
 }>();
 
 const props = withDefaults(
@@ -659,6 +660,9 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[])
 			return props.eventBus.emit('nodes:action', { ids: nodeIds, action: 'update:sticky:color' });
 		case 'tidy_up':
 			return await onTidyUp({ source: 'context-menu' });
+		case 'extract_subWorkflow':
+			console.log('f');
+			return emit('extract-workflow', nodeIds);
 	}
 }
 

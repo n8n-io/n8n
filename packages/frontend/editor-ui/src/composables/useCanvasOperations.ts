@@ -102,6 +102,7 @@ import { useUniqueNodeName } from '@/composables/useUniqueNodeName';
 import { isPresent } from '../utils/typesUtils';
 import { useProjectsStore } from '@/stores/projects.store';
 import type { CanvasLayoutEvent } from './useCanvasLayout';
+import { useWorkflowExtraction } from './useWorkflowExtraction';
 
 type AddNodeData = Partial<INodeUi> & {
 	type: string;
@@ -151,6 +152,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 	const externalHooks = useExternalHooks();
 	const clipboard = useClipboard();
 	const { uniqueNodeName } = useUniqueNodeName();
+	const { tryExtractNodesIntoSubworkflow } = useWorkflowExtraction();
 
 	const lastClickPosition = ref<XYPosition>([0, 0]);
 
@@ -185,6 +187,25 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 			},
 			{ withPostHog: true },
 		);
+	}
+
+	async function extractWorkflow(nodeIds: string[]) {
+		console.log('b');
+		const success = tryExtractNodesIntoSubworkflow(nodeIds);
+		console.log('success', success);
+		trackExtractWorkflow();
+	}
+
+	function trackExtractWorkflow() {
+		// telemetry.track(
+		// 	'User tidied up canvas',
+		// 	{
+		// 		source,
+		// 		target,
+		// 		nodes_count: result.nodes.length,
+		// 	},
+		// 	{ withPostHog: true },
+		// );
 	}
 
 	function updateNodesPosition(
@@ -2020,6 +2041,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		updateNodesPosition,
 		updateNodePosition,
 		tidyUp,
+		extractWorkflow,
 		revertUpdateNodePosition,
 		setNodeActive,
 		setNodeActiveByName,
