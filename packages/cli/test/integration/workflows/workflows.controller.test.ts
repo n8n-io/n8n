@@ -2301,6 +2301,13 @@ describe('POST /workflows/:workflowId/archive', () => {
 		expect(updatedWorkflow!.isArchived).toBe(true);
 	});
 
+	test('should not archive missing workflow', async () => {
+		const response = await authOwnerAgent.post('/workflows/404/archive').send().expect(403);
+		expect(response.body.message).toBe(
+			"Could not archive the workflow - workflow wasn't found from your projects",
+		);
+	});
+
 	test('should not archive a workflow that is not owned by the user', async () => {
 		const workflow = await createWorkflow({ isArchived: false }, member);
 
@@ -2375,6 +2382,13 @@ describe('POST /workflows/:workflowId/unarchive', () => {
 		expect(updatedWorkflow!.isArchived).toBe(false);
 	});
 
+	test('should not unarchive missing workflow', async () => {
+		const response = await authOwnerAgent.post('/workflows/404/unarchive').send().expect(403);
+		expect(response.body.message).toBe(
+			"Could not unarchive the workflow - workflow wasn't found from your projects",
+		);
+	});
+
 	test('should not unarchive a workflow that is not owned by the user', async () => {
 		const workflow = await createWorkflow({ isArchived: true }, member);
 
@@ -2433,6 +2447,13 @@ describe('DELETE /workflows/:workflowId', () => {
 
 		expect(workflowInDb).toBeNull();
 		expect(sharedWorkflowsInDb).toHaveLength(0);
+	});
+
+	test('should not delete missing workflow', async () => {
+		const response = await authOwnerAgent.delete('/workflows/404').send().expect(403);
+		expect(response.body.message).toBe(
+			"Could not delete the workflow - workflow wasn't found from your projects",
+		);
 	});
 
 	test('deletes an archived workflow owned by the user, even if the user is just a member', async () => {

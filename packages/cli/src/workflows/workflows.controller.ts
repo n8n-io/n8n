@@ -388,8 +388,8 @@ export class WorkflowsController {
 				workflowId,
 				userId: req.user.id,
 			});
-			throw new BadRequestError(
-				'Could not delete the workflow - you can only remove workflows owned by you',
+			throw new ForbiddenError(
+				"Could not delete the workflow - workflow wasn't found from your projects",
 			);
 		}
 
@@ -408,7 +408,7 @@ export class WorkflowsController {
 				userId: req.user.id,
 			});
 			throw new ForbiddenError(
-				'Could not archive the workflow - you can only archive workflows owned by you',
+				"Could not archive the workflow - workflow wasn't found from your projects",
 			);
 		}
 
@@ -426,8 +426,8 @@ export class WorkflowsController {
 				workflowId,
 				userId: req.user.id,
 			});
-			throw new BadRequestError(
-				'Could not unarchive the workflow - you can only unarchive workflows owned by you',
+			throw new ForbiddenError(
+				"Could not unarchive the workflow - workflow wasn't found from your projects",
 			);
 		}
 
