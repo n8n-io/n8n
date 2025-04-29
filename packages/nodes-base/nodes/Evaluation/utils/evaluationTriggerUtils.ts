@@ -31,6 +31,63 @@ export function getGoogleSheet(this: IExecuteFunctions) {
 	return googleSheet;
 }
 
+export async function getFilteredResults(
+	this: IExecuteFunctions,
+	operationResult: INodeExecutionData[],
+	googleSheet: GoogleSheet,
+	result: { title: string; sheetId: number },
+	startingRow: number,
+	endingRow: number,
+): Promise<INodeExecutionData[]> {
+	const sheetName = result.title;
+
+	operationResult = await readSheet.call(
+		this,
+		googleSheet,
+		sheetName,
+		0,
+		operationResult,
+		this.getNode().typeVersion,
+		[],
+		undefined,
+		true,
+		{
+			rangeDefinition: 'specifyRange',
+			headerRow: 1,
+			firstDataRow: startingRow,
+		},
+	);
+
+	return operationResult.filter((row) => (row?.json?.row_number as number) <= endingRow);
+}
+
+export async function getRowsLeftFilteredResults(
+	this: IExecuteFunctions,
+	googleSheet: GoogleSheet,
+	sheetName: string,
+	startingRow: number,
+	endingRow: number,
+) {
+	const remainderSheet: INodeExecutionData[] = await readSheet.call(
+		this,
+		googleSheet,
+		sheetName,
+		0,
+		[],
+		this.getNode().typeVersion,
+		[],
+		undefined,
+		true,
+		{
+			rangeDefinition: 'specifyRange',
+			headerRow: 1,
+			firstDataRow: startingRow,
+		},
+	);
+
+	return remainderSheet.filter((row) => (row?.json?.row_number as number) <= endingRow).length;
+}
+
 export async function getResults(
 	this: IExecuteFunctions,
 	operationResult: INodeExecutionData[],
