@@ -711,6 +711,9 @@ importers:
       '@mozilla/readability':
         specifier: 0.6.0
         version: 0.6.0
+      '@n8n/client-oauth2':
+        specifier: workspace:*
+        version: link:../client-oauth2
       '@n8n/json-schema-to-zod':
         specifier: workspace:*
         version: link:../json-schema-to-zod

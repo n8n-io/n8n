@@ -175,6 +175,7 @@
     "@langchain/textsplitters": "0.1.0",
     "@modelcontextprotocol/sdk": "1.9.0",
     "@mozilla/readability": "0.6.0",
+    "@n8n/client-oauth2": "workspace:*",
     "@n8n/json-schema-to-zod": "workspace:*",
     "@n8n/typeorm": "0.3.20-12",
     "@n8n/typescript-config": "workspace:*",
