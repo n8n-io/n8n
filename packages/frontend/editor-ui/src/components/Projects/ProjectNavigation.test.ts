@@ -213,4 +213,17 @@ describe('ProjectsNavigation', () => {
 		expect(addFirstProjectButton).toBeVisible();
 		expect(addFirstProjectButton).toBeDisabled();
 	});
+
+	it('should show add first project button without text when the menu is collapsed', async () => {
+		projectsStore.teamProjectsLimit = -1;
+
+		const { getByTestId } = renderComponent({
+			props: {
+				collapsed: true,
+			},
+		});
+
+		expect(getByTestId('add-first-project-button')).toBeVisible();
+		expect(getByTestId('add-first-project-button').classList.contains('collapsed')).toBe(true);
+	});
 });
