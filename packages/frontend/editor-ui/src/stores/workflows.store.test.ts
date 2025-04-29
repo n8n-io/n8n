@@ -861,7 +861,7 @@ describe('useWorkflowsStore', () => {
 			const updatedVersionId = '11111111-1111-1111-1111-111111111111';
 
 			workflowsStore.workflowsById = {
-				'1': { active: true, isArchived: true, versionId } as IWorkflowDb,
+				'1': { active: true, isArchived: false, versionId } as IWorkflowDb,
 			};
 			workflowsStore.workflow.active = true;
 			workflowsStore.workflow.isArchived = false;
