@@ -49,34 +49,6 @@ export const useParameterOverridesStore = defineStore('parameterOverrides', () =
 		}
 	};
 
-	// Helper function to expand dotted keys into nested objects
-	function expandDottedKeys(obj: INodeParameters): INodeParameters {
-		const result: INodeParameters = {};
-
-		for (const key in obj) {
-			const value = obj[key];
-			const parts = key.split(/[.\[\]]/g).filter(Boolean); // Split on dots and brackets
-			let current: INodeParameters = result;
-
-			for (let i = 0; i < parts.length; i++) {
-				const part = parts[i];
-				const nextPart = parts[i + 1];
-				const isArrayIndex = nextPart && !isNaN(Number(nextPart));
-
-				if (i === parts.length - 1) {
-					current[part] = value;
-				} else {
-					if (!current[part]) {
-						current[part] = isArrayIndex ? [] : {};
-					}
-					current = current[part] as INodeParameters;
-				}
-			}
-		}
-
-		return result;
-	}
-
 	// Getters
 	const getParameterOverrides = (workflowId: string, nodeId: string): INodeParameters => {
 		return parameterOverrides.value[workflowId]?.[nodeId] || {};
