@@ -1,31 +1,30 @@
-import { updateDisplayOptions, type INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
+import { updateDisplayOptions } from 'n8n-workflow';
 
-import { groupResourceLocator } from '../../helpers/resourceLocators';
 import { validatePath } from '../../helpers/utils';
+import { groupLocator, groupNameParameter, pathParameter } from '../common';
 
 const properties: INodeProperties[] = [
-	...groupResourceLocator,
 	{
-		displayName: 'New Name',
-		name: 'newGroupName',
-		default: '',
-		required: true,
-		placeholder: 'e.g. GroupName',
+		...groupLocator,
+		description: 'Select the group you want to update',
+	},
+	{
+		...groupNameParameter,
 		description: 'The new name of the group',
-		type: 'string',
+		placeholder: 'e.g. GroupName',
 	},
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Option',
 		default: {},
 		options: [
 			{
-				displayName: 'New Path',
-				name: 'newPath',
-				type: 'string',
-				default: '',
+				...pathParameter,
 				placeholder: 'e.g. /division_abc/engineering/',
-				description: 'The path to the group, if it is not included, it defaults to a slash (/)',
+				description: 'The new path to the group, if it is not included, it defaults to a slash (/)',
 				routing: {
 					send: {
 						preSend: [validatePath],
@@ -35,8 +34,6 @@ const properties: INodeProperties[] = [
 				},
 			},
 		],
-		placeholder: 'Add Option',
-		type: 'collection',
 	},
 ];
 

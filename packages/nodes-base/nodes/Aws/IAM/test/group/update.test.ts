@@ -5,7 +5,7 @@ import {
 	initBinaryDataService,
 	testWorkflows,
 } from '../../../../../test/nodes/Helpers';
-import { CURRENT_VERSION } from '../../helpers/constants';
+import { BASE_URL, CURRENT_VERSION } from '../../helpers/constants';
 
 describe('AWS IAM -  Update Group', () => {
 	const workflows = getWorkflowFilenames(__dirname).filter((filename) =>
@@ -21,14 +21,16 @@ describe('AWS IAM -  Update Group', () => {
 			nock.activate();
 		}
 
-		const baseUrl = 'https://iam.amazonaws.com/';
 		nock.cleanAll();
-		nock(baseUrl)
+		nock(BASE_URL)
 			.persist()
 			.defaultReplyHeaders({ 'Content-Type': 'application/x-amz-json-1.1' })
-			.post(
-				`/?Action=UpdateGroup&Version=${CURRENT_VERSION}&GroupName=GroupNameUpdated&NewGroupName=GroupNameUpdated2`,
-			)
+			.post('/', {
+				Action: 'UpdateGroup',
+				Version: CURRENT_VERSION,
+				GroupName: 'GroupNameUpdated',
+				NewGroupName: 'GroupNameUpdated2',
+			})
 			.reply(200, {
 				UpdateGroupResponse: {
 					ResponseMetadata: {

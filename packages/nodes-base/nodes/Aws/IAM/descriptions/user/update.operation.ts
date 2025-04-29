@@ -1,21 +1,17 @@
-import { updateDisplayOptions, type INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
+import { updateDisplayOptions } from 'n8n-workflow';
 
-import { userResourceLocator } from '../../helpers/resourceLocators';
 import { validatePath } from '../../helpers/utils';
+import { pathParameter, userLocator, userNameParameter } from '../common';
 
 const properties: INodeProperties[] = [
-	...userResourceLocator,
 	{
-		displayName: 'New User Name',
-		name: 'newUserName',
-		default: '',
-		placeholder: 'e.g. JohnSmith',
-		type: 'string',
-		validateType: 'string',
-		required: true,
-		typeOptions: {
-			regex: '^[a-zA-Z0-9+=,.@_-]+$',
-		},
+		...userLocator,
+		description: 'Select the user you want to update',
+	},
+	{
+		...userNameParameter,
+		description: 'The new name of the user',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -25,17 +21,13 @@ const properties: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'New Path',
-				name: 'newPath',
-				type: 'string',
-				validateType: 'string',
-				default: '/',
+				...pathParameter,
 				placeholder: 'e.g. /division_abc/subdivision_xyz/',
 				routing: {
 					send: {
 						preSend: [validatePath],
-						property: 'newPath',
-						value: '={{ $value }}',
+						property: 'NewPath',
+						type: 'query',
 					},
 				},
 			},

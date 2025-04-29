@@ -1,8 +1,14 @@
-import { updateDisplayOptions, type INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
+import { updateDisplayOptions } from 'n8n-workflow';
 
-import { groupResourceLocator } from '../../helpers/resourceLocators';
+import { groupLocator } from '../common';
 
-const properties: INodeProperties[] = [...groupResourceLocator];
+const properties: INodeProperties[] = [
+	{
+		...groupLocator,
+		description: 'Select the group you want to delete',
+	},
+];
 
 const displayOptions = {
 	show: {

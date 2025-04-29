@@ -5,7 +5,7 @@ import {
 	initBinaryDataService,
 	testWorkflows,
 } from '../../../../../test/nodes/Helpers';
-import { CURRENT_VERSION } from '../../helpers/constants';
+import { BASE_URL, CURRENT_VERSION } from '../../helpers/constants';
 
 describe('AWS IAM - Get User', () => {
 	const workflows = getWorkflowFilenames(__dirname).filter((filename) =>
@@ -21,12 +21,15 @@ describe('AWS IAM - Get User', () => {
 			nock.activate();
 		}
 
-		const baseUrl = 'https://iam.amazonaws.com/';
 		nock.cleanAll();
-		nock(baseUrl)
+		nock(BASE_URL)
 			.persist()
 			.defaultReplyHeaders({ 'Content-Type': 'application/x-amz-json-1.1' })
-			.post(`/?Action=GetUser&Version=${CURRENT_VERSION}&UserName=accounts@this.de`)
+			.post('/', {
+				Action: 'GetUser',
+				Version: CURRENT_VERSION,
+				UserName: 'accounts@this.de',
+			})
 			.reply(200, {
 				GetUserResponse: {
 					GetUserResult: {

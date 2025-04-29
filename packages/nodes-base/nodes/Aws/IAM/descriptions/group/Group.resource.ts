@@ -7,7 +7,11 @@ import * as getAll from './getAll.operation';
 import * as update from './update.operation';
 import { CURRENT_VERSION } from '../../helpers/constants';
 import { handleError } from '../../helpers/errorHandler';
-import { deleteGroupMembers, processGroupsResponse } from '../../helpers/utils';
+import {
+	deleteGroupMembers,
+	simplifyGetAllGroupsResponse,
+	simplifyGetGroupsResponse,
+} from '../../helpers/utils';
 
 export const description: INodeProperties[] = [
 	{
@@ -25,22 +29,28 @@ export const description: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create group',
 				description: 'Create a new group',
 				routing: {
 					request: {
 						method: 'POST',
-						url: `=/?Action=CreateGroup&Version=${CURRENT_VERSION}&GroupName={{ $parameter["newGroupName"] }}`,
+						url: '',
+						body: {
+							Action: 'CreateGroup',
+							Version: CURRENT_VERSION,
+							GroupName: '={{ $parameter["groupName"] }}',
+						},
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
 						postReceive: [handleError],
 					},
 				},
-				action: 'Create group',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete group',
 				description: 'Delete an existing group',
 				routing: {
 					send: {
@@ -48,62 +58,81 @@ export const description: INodeProperties[] = [
 					},
 					request: {
 						method: 'POST',
-						url: `=/?Action=DeleteGroup&Version=${CURRENT_VERSION}&GroupName={{ $parameter["group"] }}`,
+						url: '',
+						body: {
+							Action: 'DeleteGroup',
+							Version: CURRENT_VERSION,
+							GroupName: '={{ $parameter["group"] }}',
+						},
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
 						postReceive: [handleError],
 					},
 				},
-				action: 'Delete group',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get group',
 				description: 'Retrieve details of an existing group',
 				routing: {
 					request: {
 						method: 'POST',
-						url: `=/?Action=GetGroup&Version=${CURRENT_VERSION}&GroupName={{ $parameter["group"] }}`,
+						url: '',
+						body: {
+							Action: 'GetGroup',
+							Version: CURRENT_VERSION,
+							GroupName: '={{ $parameter["group"] }}',
+						},
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
-						postReceive: [handleError, processGroupsResponse],
+						postReceive: [handleError, simplifyGetGroupsResponse],
 					},
 				},
-				action: 'Get group',
 			},
 			{
 				name: 'Get Many',
 				value: 'getAll',
+				action: 'Get many groups',
 				description: 'Retrieve a list of groups',
 				routing: {
 					request: {
 						method: 'POST',
-						url: `/?Action=ListGroups&Version=${CURRENT_VERSION}`,
+						url: '',
+						body: {
+							Action: 'ListGroups',
+							Version: CURRENT_VERSION,
+						},
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
-						postReceive: [handleError, processGroupsResponse],
+						postReceive: [handleError, simplifyGetAllGroupsResponse],
 					},
 				},
-				action: 'Get many groups',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update group',
 				description: 'Update an existing group',
 				routing: {
 					request: {
 						method: 'POST',
-						url: `=/?Action=UpdateGroup&Version=${CURRENT_VERSION}&GroupName={{ $parameter["group"] }}&NewGroupName={{ $parameter["newGroupName"] }}`,
+						url: '',
+						body: {
+							Action: 'UpdateGroup',
+							Version: CURRENT_VERSION,
+							GroupName: '={{ $parameter["group"] }}',
+							NewGroupName: '={{ $parameter["groupName"] }}',
+						},
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
 						postReceive: [handleError],
 					},
 				},
-				action: 'Update group',
 			},
 		],
 	},

@@ -26,9 +26,12 @@ describe('AWS IAM - Add User to Group', () => {
 		nock(baseUrl)
 			.persist()
 			.defaultReplyHeaders({ 'Content-Type': 'application/x-amz-json-1.1' })
-			.post(
-				`/?Action=AddUserToGroup&Version=${CURRENT_VERSION}&UserName=Jonas&GroupName=GroupNameUpdated2`,
-			)
+			.post('/', {
+				Action: 'AddUserToGroup',
+				Version: CURRENT_VERSION,
+				UserName: 'Jonas',
+				GroupName: 'GroupNameUpdated2',
+			})
 			.reply(200, {
 				AddUserToGroupResponse: {
 					ResponseMetadata: {

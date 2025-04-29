@@ -5,7 +5,7 @@ import {
 	initBinaryDataService,
 	testWorkflows,
 } from '../../../../../test/nodes/Helpers';
-import { CURRENT_VERSION } from '../../helpers/constants';
+import { BASE_URL, CURRENT_VERSION } from '../../helpers/constants';
 
 describe('AWS IAM -  Get All Groups', () => {
 	const workflows = getWorkflowFilenames(__dirname).filter((filename) =>
@@ -21,12 +21,15 @@ describe('AWS IAM -  Get All Groups', () => {
 			nock.activate();
 		}
 
-		const baseUrl = 'https://iam.amazonaws.com/';
 		nock.cleanAll();
-		nock(baseUrl)
+		nock(BASE_URL)
 			.persist()
 			.defaultReplyHeaders({ 'Content-Type': 'application/x-amz-json-1.1' })
-			.post(`/?Action=ListGroups&Version=${CURRENT_VERSION}&MaxItems=50`)
+			.post('/', {
+				Action: 'ListGroups',
+				Version: CURRENT_VERSION,
+				MaxItems: 100,
+			})
 			.reply(200, {
 				ListGroupsResponse: {
 					ListGroupsResult: {

@@ -12,7 +12,7 @@
 			"parameters": {
 				"resource": "group",
 				"operation": "create",
-				"newGroupName": "NewGroupTest",
+				"groupName": "NewGroupTest",
 				"additionalFields": {},
 				"requestOptions": {}
 			},

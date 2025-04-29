@@ -1,59 +1,54 @@
-import {
-	ApplicationError,
-	type IExecuteSingleFunctions,
-	type IDataObject,
-	type IHttpRequestOptions,
-	type ILoadOptionsFunctions,
-	type IPollFunctions,
+import type {
+	IExecuteSingleFunctions,
+	IDataObject,
+	IHttpRequestOptions,
+	ILoadOptionsFunctions,
+	IPollFunctions,
+	JsonObject,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-export async function makeAwsRequest(
+import { BASE_URL } from '../helpers/constants';
+
+const errorMapping: IDataObject = {
+	403: 'The AWS credentials are not valid!',
+};
+
+export async function awsApiRequest(
 	this: ILoadOptionsFunctions | IPollFunctions | IExecuteSingleFunctions,
 	opts: IHttpRequestOptions,
 ): Promise<IDataObject> {
 	const requestOptions: IHttpRequestOptions = {
-		...opts,
-		baseURL: 'https://iam.amazonaws.com',
+		baseURL: BASE_URL,
 		json: true,
+		...opts,
 		headers: {
 			'Content-Type': 'application/x-www-form-urlencoded',
+			...(opts.headers ?? {}),
 		},
 	};
 
-	const errorMapping: IDataObject = {
-		403: 'The AWS credentials are not valid!',
-	};
+	if (opts.body) {
+		requestOptions.body = new URLSearchParams(opts.body as Record<string, string>).toString();
+	}
 
 	try {
-		return (await this.helpers.requestWithAuthentication.call(
+		const response = (await this.helpers.requestWithAuthentication.call(
 			this,
 			'aws',
 			requestOptions,
 		)) as IDataObject;
+
+		return response;
 	} catch (error) {
-		const statusCode = error.statusCode || error.cause?.statusCode;
-		let errorMessage =
-			error.response?.body?.message || error.response?.body?.Message || error.message;
+		const statusCode = (error?.statusCode || error?.cause?.statusCode) as string;
 
 		if (statusCode && errorMapping[statusCode]) {
-			throw new ApplicationError(errorMapping[statusCode] as string, { level: 'error' });
+			throw new NodeApiError(this.getNode(), {
+				message: `AWS error response [${statusCode}]: ${errorMapping[statusCode] as string}`,
+			});
+		} else {
+			throw new NodeApiError(this.getNode(), error as JsonObject);
 		}
-
-		if (error.cause?.error) {
-			try {
-				errorMessage = error.cause.error.message || errorMessage;
-			} catch (ex) {
-				throw new ApplicationError(
-					`Failed to extract error details: ${ex instanceof Error ? ex.message : 'Unknown error'}`,
-					{
-						level: 'error',
-					},
-				);
-			}
-		}
-
-		throw new ApplicationError(`AWS error response [${statusCode}]: ${errorMessage}`, {
-			level: 'error',
-		});
 	}
 }

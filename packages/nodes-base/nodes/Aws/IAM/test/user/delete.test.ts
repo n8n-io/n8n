@@ -5,7 +5,7 @@ import {
 	initBinaryDataService,
 	testWorkflows,
 } from '../../../../../test/nodes/Helpers';
-import { CURRENT_VERSION } from '../../helpers/constants';
+import { BASE_URL, CURRENT_VERSION } from '../../helpers/constants';
 
 describe('AWS IAM - Delete user', () => {
 	const workflows = getWorkflowFilenames(__dirname).filter((filename) =>
@@ -21,12 +21,15 @@ describe('AWS IAM - Delete user', () => {
 			nock.activate();
 		}
 
-		const baseUrl = 'https://iam.amazonaws.com/';
 		nock.cleanAll();
-		nock(baseUrl)
+		nock(BASE_URL)
 			.persist()
 			.defaultReplyHeaders({ 'Content-Type': 'application/x-amz-json-1.1' })
-			.post(`/?Action=GetUser&Version=${CURRENT_VERSION}&UserName=JohnThis10`)
+			.post('/', {
+				Action: 'GetUser',
+				Version: CURRENT_VERSION,
+				UserName: 'JohnThis10',
+			})
 			.reply(200, {
 				GetUserResponse: {
 					GetUserResult: {
@@ -36,10 +39,13 @@ describe('AWS IAM - Delete user', () => {
 					},
 				},
 			});
-		nock(baseUrl)
+		nock(BASE_URL)
 			.persist()
 			.defaultReplyHeaders({ 'Content-Type': 'application/x-amz-json-1.1' })
-			.post(`/?Action=ListGroups&Version=${CURRENT_VERSION}`)
+			.post('/', {
+				Action: 'ListGroups',
+				Version: CURRENT_VERSION,
+			})
 			.reply(200, {
 				ListGroupsResponse: {
 					ListGroupsResult: {
@@ -47,10 +53,14 @@ describe('AWS IAM - Delete user', () => {
 					},
 				},
 			});
-		nock(baseUrl)
+		nock(BASE_URL)
 			.persist()
 			.defaultReplyHeaders({ 'Content-Type': 'application/x-amz-json-1.1' })
-			.post(`/?Action=GetGroup&Version=${CURRENT_VERSION}&GroupName=GroupA`)
+			.post('/', {
+				Action: 'GetGroup',
+				Version: CURRENT_VERSION,
+				GroupName: 'GroupA',
+			})
 			.reply(200, {
 				GetGroupResponse: {
 					GetGroupResult: {
@@ -58,21 +68,28 @@ describe('AWS IAM - Delete user', () => {
 					},
 				},
 			});
-		nock(baseUrl)
+		nock(BASE_URL)
 			.persist()
 			.defaultReplyHeaders({ 'Content-Type': 'application/x-amz-json-1.1' })
-			.post(
-				`/?Action=RemoveUserFromGroup&Version=${CURRENT_VERSION}&GroupName=GroupA&UserName=JohnThis10`,
-			)
+			.post('/', {
+				Action: 'RemoveUserFromGroup',
+				Version: CURRENT_VERSION,
+				GroupName: 'GroupA',
+				UserName: 'JohnThis10',
+			})
 			.reply(200, {
 				ResponseMetadata: {
 					RequestId: 'remove-groupA-id',
 				},
 			});
-		nock(baseUrl)
+		nock(BASE_URL)
 			.persist()
 			.defaultReplyHeaders({ 'Content-Type': 'application/x-amz-json-1.1' })
-			.post(`/?Action=DeleteUser&Version=${CURRENT_VERSION}&UserName=JohnThis10`)
+			.post('/', {
+				Action: 'DeleteUser',
+				Version: CURRENT_VERSION,
+				UserName: 'JohnThis10',
+			})
 			.reply(200, {
 				DeleteUserResponse: {
 					ResponseMetadata: {

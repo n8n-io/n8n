@@ -5,7 +5,7 @@ import {
 	initBinaryDataService,
 	testWorkflows,
 } from '../../../../../test/nodes/Helpers';
-import { CURRENT_VERSION } from '../../helpers/constants';
+import { BASE_URL, CURRENT_VERSION } from '../../helpers/constants';
 
 describe('AWS IAM - Create user', () => {
 	const workflows = getWorkflowFilenames(__dirname).filter((filename) =>
@@ -21,35 +21,30 @@ describe('AWS IAM - Create user', () => {
 			nock.activate();
 		}
 
-		const baseUrl = 'https://iam.amazonaws.com/';
 		nock.cleanAll();
-		nock(baseUrl)
+		nock(BASE_URL)
 			.persist()
 			.defaultReplyHeaders({ 'Content-Type': 'application/x-amz-json-1.1' })
-			.post(
-				`/?Action=CreateUser&Version=${CURRENT_VERSION}&UserName=JohnThis101&Tags.member.1.Key=Department&Tags.member.1.Value=Engineeering`,
-			)
+			.post('/', {
+				Action: 'CreateUser',
+				Version: CURRENT_VERSION,
+				UserName: 'UserTest1',
+			})
 			.reply(200, {
 				CreateUserResponse: {
 					CreateUserResult: {
 						User: {
-							Arn: 'arn:aws:iam::130450532146:user/JohnThis101',
-							CreateDate: 1743425541,
+							Arn: 'arn:aws:iam::130450532146:user/UserTest1',
+							CreateDate: 1744115235,
 							PasswordLastUsed: null,
 							Path: '/',
 							PermissionsBoundary: null,
-							Tags: [
-								{
-									Key: 'Department',
-									Value: 'Engineeering',
-								},
-							],
-							UserId: 'AIDAR4X3VE4ZFWNR5KDFE',
-							UserName: 'JohnThis101',
+							UserId: 'AIDAR4X3VE4ZHHMNF7NBB',
+							UserName: 'UserTest1',
 						},
 					},
 					ResponseMetadata: {
-						RequestId: 'b5e15ba7-230a-4297-becf-0a3cfe5129ae',
+						RequestId: 'ce14481c-5629-4ae4-9eae-3722f48bb3e0',
 					},
 				},
 			});
