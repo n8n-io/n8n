@@ -55,6 +55,14 @@ const filteredTestCases = computed(() =>
 	),
 );
 
+const testRunIndex = computed(() => {
+	return (
+		Object.values(evaluationStore.testRunsById ?? {})
+			.reverse()
+			.findIndex(({ id }) => id === runId.value) - 2
+	);
+});
+
 const formattedTime = computed(() =>
 	convertToDisplayDate(new Date(run.value?.runAt).getTime()).split(' ').reverse(),
 );
@@ -173,6 +181,7 @@ const fetchExecutionTestCases = async () => {
 		});
 
 		testCases.value = testCaseEvaluationExecutions ?? [];
+		await evaluationStore.fetchTestRuns(run.value.workflowId);
 	} catch (error) {
 		toast.showError(error, 'Failed to load run details');
 	} finally {
@@ -199,7 +208,13 @@ onMounted(async () => {
 				}}</n8n-heading>
 				<i class="ml-xs mr-xs"><font-awesome-icon icon="chevron-right" /></i>
 				<n8n-heading size="large" :bold="true">
-					{{ locale.baseText('evaluation.listRuns.testCasesListHeader') }}
+					{{
+						locale.baseText('evaluation.listRuns.testCasesListHeader', {
+							interpolate: {
+								index: testRunIndex + 1,
+							},
+						})
+					}}
 				</n8n-heading>
 			</button>
 		</div>
