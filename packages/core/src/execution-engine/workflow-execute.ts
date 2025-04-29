@@ -74,6 +74,15 @@ import {
 import { RoutingNode } from './routing-node';
 import { TriggersAndPollers } from './triggers-and-pollers';
 
+export const getNextExecutionIndex = (runData: IRunData | undefined) => {
+	const previousRuns = Object.values(runData ?? {}).flat();
+	const maxExecutionIndex = previousRuns.length
+		? Math.max(...previousRuns.map((taskData) => taskData.executionIndex))
+		: undefined;
+
+	return maxExecutionIndex ? maxExecutionIndex + 1 : undefined;
+};
+
 export class WorkflowExecute {
 	private status: ExecutionStatus = 'new';
 
@@ -428,6 +437,7 @@ export class WorkflowExecute {
 			recreateNodeExecutionStack(graph, startNodes, runData, pinData ?? {});
 
 		// 8. Execute
+		this.additionalData.currentNodeExecutionIndex = getNextExecutionIndex(runData) ?? 0;
 		this.status = 'running';
 		this.runExecutionData = {
 			startData: {
