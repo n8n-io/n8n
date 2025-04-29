@@ -1,6 +1,8 @@
 import nock from 'nock';
 
-import { getWorkflowFilenames, initBinaryDataService, testWorkflows } from '@test/nodes/Helpers';
+import { getWorkflowFilenames, testWorkflows } from '@test/nodes/Helpers';
+
+import { credentials } from '../../__tests__/credentials';
 
 const workflows = getWorkflowFilenames(__dirname);
 
@@ -20,10 +22,9 @@ describe('Test AWS Comprehend Node', () => {
 				},
 			],
 		};
+
 		beforeAll(async () => {
 			jest.useFakeTimers({ doNotFake: ['nextTick'], now });
-
-			await initBinaryDataService();
 
 			const baseUrl = 'https://comprehend.eu-central-1.amazonaws.com';
 
@@ -34,6 +35,6 @@ describe('Test AWS Comprehend Node', () => {
 			mock.post('/').reply(200, response);
 		});
 
-		testWorkflows(workflows);
+		testWorkflows(workflows, credentials);
 	});
 });

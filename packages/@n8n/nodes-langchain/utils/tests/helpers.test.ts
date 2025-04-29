@@ -1,4 +1,5 @@
 import { DynamicTool, type Tool } from '@langchain/core/tools';
+import { Toolkit } from 'langchain/agents';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import { NodeOperationError } from 'n8n-workflow';
 import type { ISupplyDataFunctions, IExecuteFunctions, INode } from 'n8n-workflow';
@@ -241,6 +242,34 @@ describe('getConnectedTools', () => {
 
 		const tools = await getConnectedTools(mockExecuteFunctions, true, false);
 		expect(tools[0]).toBe(mockN8nTool);
+	});
+
+	it('should flatten tools from a toolkit', async () => {
+		class MockToolkit extends Toolkit {
+			tools: Tool[];
+
+			constructor(tools: unknown[]) {
+				super();
+				this.tools = tools as Tool[];
+			}
+		}
+		const mockTools = [
+			{ name: 'tool1', description: 'desc1' },
+
+			new MockToolkit([
+				{ name: 'toolkitTool1', description: 'toolkitToolDesc1' },
+				{ name: 'toolkitTool2', description: 'toolkitToolDesc2' },
+			]),
+		];
+
+		mockExecuteFunctions.getInputConnectionData = jest.fn().mockResolvedValue(mockTools);
+
+		const tools = await getConnectedTools(mockExecuteFunctions, false);
+		expect(tools).toEqual([
+			{ name: 'tool1', description: 'desc1' },
+			{ name: 'toolkitTool1', description: 'toolkitToolDesc1' },
+			{ name: 'toolkitTool2', description: 'toolkitToolDesc2' },
+		]);
 	});
 });
 

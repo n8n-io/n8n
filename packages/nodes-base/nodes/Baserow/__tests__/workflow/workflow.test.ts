@@ -11,6 +11,14 @@ import {
 } from './apiResponses';
 
 describe('Baserow > Workflows', () => {
+	const credentials = {
+		baserowApi: {
+			host: 'https://api.baserow.io',
+			username: 'nathan@n8n.io',
+			password: 'fake-password',
+		},
+	};
+
 	describe('Run workflow', () => {
 		beforeAll(() => {
 			const mock = nock('https://api.baserow.io');
@@ -48,6 +56,6 @@ describe('Baserow > Workflows', () => {
 		});
 
 		const workflows = getWorkflowFilenames(__dirname);
-		testWorkflows(workflows);
+		testWorkflows(workflows, credentials);
 	});
 });

@@ -28,7 +28,7 @@ const telemetry = useTelemetry();
 
 const loading = ref(false);
 const apiKeysStore = useApiKeysStore();
-const { getAndCacheApiKeys, deleteApiKey } = apiKeysStore;
+const { getAndCacheApiKeys, deleteApiKey, getApiKeyAvailableScopes } = apiKeysStore;
 const { apiKeysSortByCreationDate } = storeToRefs(apiKeysStore);
 const { isSwaggerUIEnabled, publicApiPath, publicApiLatestVersion } = settingsStore;
 const { baseUrl } = useRootStore();
@@ -55,17 +55,17 @@ onMounted(async () => {
 
 	if (!isPublicApiEnabled) return;
 
-	await getApiKeys();
+	await getApiKeysAndScopes();
 });
 
 function onUpgrade() {
 	void goToUpgrade('settings-n8n-api', 'upgrade-api', 'redirect');
 }
 
-async function getApiKeys() {
+async function getApiKeysAndScopes() {
 	try {
 		loading.value = true;
-		await getAndCacheApiKeys();
+		await Promise.all([getAndCacheApiKeys(), getApiKeyAvailableScopes()]);
 	} catch (error) {
 		showError(error, i18n.baseText('settings.api.view.error'));
 	} finally {

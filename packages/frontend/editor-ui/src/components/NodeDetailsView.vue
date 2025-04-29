@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue';
 import { createEventBus } from '@n8n/utils/event-bus';
-import type { IRunData, Workflow, NodeConnectionType } from 'n8n-workflow';
+import type { IRunData, Workflow, NodeConnectionType, IConnectedNode } from 'n8n-workflow';
 import { jsonParse, NodeHelpers, NodeConnectionTypes } from 'n8n-workflow';
 import type { IUpdateInformation, TargetItem } from '@/Interface';
 
@@ -22,7 +22,7 @@ import {
 } from '@/constants';
 import { useWorkflowActivate } from '@/composables/useWorkflowActivate';
 import type { DataPinningDiscoveryEvent } from '@/event-bus';
-import { dataPinningEventBus } from '@/event-bus';
+import { dataPinningEventBus, ndvEventBus } from '@/event-bus';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -78,7 +78,10 @@ const { APP_Z_INDEXES } = useStyles();
 
 const settingsEventBus = createEventBus();
 const redrawRequired = ref(false);
+const runInputIndex = ref(-1);
+const runOutputIndex = computed(() => ndvStore.output.run ?? -1);
 const selectedInput = ref<string | undefined>();
+const isLinkingEnabled = ref(true);
 const triggerWaitingWarningEnabled = ref(false);
 const isDragging = ref(false);
 const mainPanelPosition = ref(0);
@@ -127,24 +130,19 @@ const workflowRunData = computed(() => {
 
 const parentNodes = computed(() => {
 	if (activeNode.value) {
-		return (
-			props.workflowObject
-				.getParentNodesByDepth(activeNode.value.name, 1)
-				.map(({ name }) => name) || []
-		);
-	} else {
-		return [];
+		return props.workflowObject.getParentNodesByDepth(activeNode.value.name, 1);
 	}
+	return [];
 });
 
-const parentNode = computed(() => {
-	for (const parentNodeName of parentNodes.value) {
-		if (workflowsStore?.pinnedWorkflowData?.[parentNodeName]) {
-			return parentNodeName;
+const parentNode = computed<IConnectedNode | undefined>(() => {
+	for (const parent of parentNodes.value) {
+		if (workflowsStore?.pinnedWorkflowData?.[parent.name]) {
+			return parent;
 		}
 
-		if (workflowRunData.value?.[parentNodeName]) {
-			return parentNodeName;
+		if (workflowRunData.value?.[parent.name]) {
+			return parent;
 		}
 	}
 	return parentNodes.value[0];
@@ -174,7 +172,7 @@ const inputNodeName = computed<string | undefined>(() => {
 		)?.[0];
 		return connectedOutputNode;
 	}
-	return selectedInput.value || parentNode.value;
+	return selectedInput.value ?? parentNode.value?.name;
 });
 
 const inputNode = computed(() => {
@@ -245,6 +243,12 @@ const maxOutputRun = computed(() => {
 	return 0;
 });
 
+const outputRun = computed(() =>
+	runOutputIndex.value === -1
+		? maxOutputRun.value
+		: Math.min(runOutputIndex.value, maxOutputRun.value),
+);
+
 const maxInputRun = computed(() => {
 	if (inputNode.value === null || activeNode.value === null) {
 		return 0;
@@ -281,23 +285,26 @@ const maxInputRun = computed(() => {
 	return 0;
 });
 
-const isLinkingEnabled = computed(() => ndvStore.isRunIndexLinkingEnabled);
-
-const outputRun = computed(() =>
-	ndvStore.output.run === -1
-		? maxOutputRun.value
-		: Math.min(ndvStore.output.run, maxOutputRun.value),
-);
+const connectedCurrentNodeOutputs = computed(() => {
+	return parentNodes.value.find(({ name }) => name === inputNodeName.value)?.indicies;
+});
 
 const inputRun = computed(() => {
 	if (isLinkingEnabled.value && maxOutputRun.value === maxInputRun.value) {
 		return outputRun.value;
 	}
-	if (ndvStore.input.run === -1) {
-		return maxInputRun.value;
+	const currentInputNodeName = inputNodeName.value;
+	if (runInputIndex.value === -1 && currentInputNodeName) {
+		return (
+			connectedCurrentNodeOutputs.value
+				?.map((outputIndex) =>
+					nodeHelpers.getLastRunIndexWithData(currentInputNodeName, outputIndex),
+				)
+				.find((runIndex) => runIndex !== -1) ?? maxInputRun.value
+		);
 	}
 
-	return Math.min(ndvStore.input.run, maxInputRun.value);
+	return Math.min(runInputIndex.value, maxInputRun.value);
 });
 
 const canLinkRuns = computed(
@@ -442,13 +449,13 @@ const onPanelsInit = (e: { position: number }) => {
 };
 
 const onLinkRunToOutput = () => {
-	ndvStore.setRunIndexLinkingEnabled(true);
+	isLinkingEnabled.value = true;
 	trackLinking('output');
 };
 
 const onUnlinkRun = (pane: string) => {
-	ndvStore.setInputRunIndex(outputRun.value);
-	ndvStore.setRunIndexLinkingEnabled(false);
+	runInputIndex.value = runOutputIndex.value;
+	isLinkingEnabled.value = false;
 	trackLinking(pane);
 };
 
@@ -475,8 +482,8 @@ const trackLinking = (pane: string) => {
 };
 
 const onLinkRunToInput = () => {
-	ndvStore.setOutputRunIndex(inputRun.value);
-	ndvStore.setRunIndexLinkingEnabled(true);
+	ndvStore.setOutputRunIndex(runInputIndex.value);
+	isLinkingEnabled.value = true;
 	trackLinking('input');
 };
 
@@ -557,7 +564,10 @@ const onRunOutputIndexChange = (run: number) => {
 };
 
 const onRunInputIndexChange = (run: number) => {
-	ndvStore.setInputRunIndex(run);
+	runInputIndex.value = run;
+	if (linked.value) {
+		ndvStore.setOutputRunIndex(run);
+	}
 	trackRunChange(run, 'input');
 };
 
@@ -566,8 +576,8 @@ const onOutputTableMounted = (e: { avgRowHeight: number }) => {
 };
 
 const onInputNodeChange = (value: string, index: number) => {
-	ndvStore.setInputRunIndex(-1);
-	ndvStore.setRunIndexLinkingEnabled(true);
+	runInputIndex.value = -1;
+	isLinkingEnabled.value = true;
 	selectedInput.value = value;
 
 	telemetry.track('User changed ndv input dropdown', {
@@ -605,6 +615,10 @@ const unregisterKeyboardListener = () => {
 	document.removeEventListener('keydown', onKeyDown, true);
 };
 
+const setSelectedInput = (value: string | undefined) => {
+	selectedInput.value = value;
+};
+
 //watchers
 
 watch(
@@ -617,6 +631,9 @@ watch(
 		}
 
 		if (node && node.name !== oldNode?.name && !isActiveStickyNode.value) {
+			runInputIndex.value = -1;
+			ndvStore.setOutputRunIndex(-1);
+			isLinkingEnabled.value = true;
 			selectedInput.value = undefined;
 			triggerWaitingWarningEnabled.value = false;
 			avgOutputRowHeight.value = 0;
@@ -667,18 +684,34 @@ watch(
 	{ immediate: true },
 );
 
+watch(maxOutputRun, () => {
+	ndvStore.setOutputRunIndex(-1);
+});
+
+watch(maxInputRun, () => {
+	runInputIndex.value = -1;
+});
+
 watch(inputNodeName, (nodeName) => {
 	setTimeout(() => {
 		ndvStore.setInputNodeName(nodeName);
 	}, 0);
 });
 
+watch(inputRun, (inputRun) => {
+	setTimeout(() => {
+		ndvStore.setInputRunIndex(inputRun);
+	}, 0);
+});
+
 onMounted(() => {
 	dataPinningEventBus.on('data-pinning-discovery', setIsTooltipVisible);
+	ndvEventBus.on('updateInputNodeName', setSelectedInput);
 });
 
 onBeforeUnmount(() => {
 	dataPinningEventBus.off('data-pinning-discovery', setIsTooltipVisible);
+	ndvEventBus.off('updateInputNodeName', setSelectedInput);
 	unregisterKeyboardListener();
 });
 </script>

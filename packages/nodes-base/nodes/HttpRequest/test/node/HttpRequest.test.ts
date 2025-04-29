@@ -1,14 +1,12 @@
 import nock from 'nock';
 import { parse as parseUrl } from 'url';
 
-import { initBinaryDataService, getWorkflowFilenames, testWorkflows } from '@test/nodes/Helpers';
+import { getWorkflowFilenames, testWorkflows } from '@test/nodes/Helpers';
 
 describe('Test HTTP Request Node', () => {
 	const baseUrl = 'https://dummyjson.com';
 
 	beforeAll(async () => {
-		await initBinaryDataService();
-
 		function getPaginationReturnData(this: nock.ReplyFnContext, limit = 10, skip = 0) {
 			const nextUrl = `${baseUrl}/users?skip=${skip + limit}&limit=${limit}`;
 

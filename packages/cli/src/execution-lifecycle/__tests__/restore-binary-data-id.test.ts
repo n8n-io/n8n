@@ -1,7 +1,7 @@
-import { BinaryDataService } from 'n8n-core';
+import { Container } from '@n8n/di';
+import { BinaryDataConfig, BinaryDataService } from 'n8n-core';
 import type { IRun } from 'n8n-workflow';
 
-import config from '@/config';
 import { restoreBinaryDataId } from '@/execution-lifecycle/restore-binary-data-id';
 import { mockInstance } from '@test/mocking';
 
@@ -30,10 +30,10 @@ function getDataId(run: IRun, kind: 'binary' | 'json') {
 
 const binaryDataService = mockInstance(BinaryDataService);
 
-for (const mode of ['filesystem-v2', 's3'] as const) {
+for (const mode of ['filesystem', 's3'] as const) {
 	describe(`on ${mode} mode`, () => {
 		beforeAll(() => {
-			config.set('binaryDataManager.mode', mode);
+			Container.get(BinaryDataConfig).mode = mode;
 		});
 
 		afterEach(() => {
@@ -168,12 +168,8 @@ for (const mode of ['filesystem-v2', 's3'] as const) {
 }
 
 describe('on default mode', () => {
-	afterEach(() => {
-		config.load(config.default);
-	});
-
 	it('should do nothing', async () => {
-		config.set('binaryDataManager.mode', 'default');
+		Container.get(BinaryDataConfig).mode = 'default';
 
 		const executionId = '999';
 

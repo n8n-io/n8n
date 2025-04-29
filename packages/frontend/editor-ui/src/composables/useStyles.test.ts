@@ -9,7 +9,7 @@ describe('useStyles', () => {
 		setAppZIndexes();
 
 		expect(global.document.documentElement.style.setProperty).toHaveBeenNthCalledWith(
-			1,
+			2,
 			'--z-index-app-header',
 			'99',
 		);

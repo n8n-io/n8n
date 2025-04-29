@@ -1,0 +1,104 @@
+[
+	{
+		"kind": "youtube#playlistItem",
+		"etag": "etag1",
+		"id": "fakePlaylistItemId1",
+		"snippet": {
+			"publishedAt": "2023-02-12T11:15:49Z",
+			"channelId": "UCXXXXCHANNELID01",
+			"title": "Video Title 1",
+			"description": "This is a fake video description for testing.",
+			"thumbnails": {
+				"default": { "url": "https://example.com/thumb1.jpg", "width": 120, "height": 90 },
+				"medium": { "url": "https://example.com/thumb1.jpg", "width": 320, "height": 180 },
+				"high": { "url": "https://example.com/thumb1.jpg", "width": 480, "height": 360 },
+				"standard": { "url": "https://example.com/thumb1.jpg", "width": 640, "height": 480 },
+				"maxres": { "url": "https://example.com/thumb1.jpg", "width": 1280, "height": 720 }
+			},
+			"channelTitle": "Fake Channel 1",
+			"playlistId": "PLXXXXFAKEPLAYLISTID01",
+			"position": 0,
+			"resourceId": {
+				"kind": "youtube#video",
+				"videoId": "FAKEVIDID1"
+			},
+			"videoOwnerChannelTitle": "FakeOwner1",
+			"videoOwnerChannelId": "UCOWNERCHANNELID01"
+		},
+		"contentDetails": {
+			"videoId": "FAKEVIDID1",
+			"videoPublishedAt": "2023-01-13T00:00:09Z"
+		},
+		"status": {
+			"privacyStatus": "public"
+		}
+	},
+	{
+		"kind": "youtube#playlistItem",
+		"etag": "etag2",
+		"id": "fakePlaylistItemId2",
+		"snippet": {
+			"publishedAt": "2023-02-12T11:16:16Z",
+			"channelId": "UCXXXXCHANNELID02",
+			"title": "Video Title 2",
+			"description": "Another test video description.",
+			"thumbnails": {
+				"default": { "url": "https://example.com/thumb2.jpg", "width": 120, "height": 90 },
+				"medium": { "url": "https://example.com/thumb2.jpg", "width": 320, "height": 180 },
+				"high": { "url": "https://example.com/thumb2.jpg", "width": 480, "height": 360 },
+				"standard": { "url": "https://example.com/thumb2.jpg", "width": 640, "height": 480 },
+				"maxres": { "url": "https://example.com/thumb2.jpg", "width": 1280, "height": 720 }
+			},
+			"channelTitle": "Fake Channel 2",
+			"playlistId": "PLXXXXFAKEPLAYLISTID02",
+			"position": 1,
+			"resourceId": {
+				"kind": "youtube#video",
+				"videoId": "FAKEVIDID2"
+			},
+			"videoOwnerChannelTitle": "FakeOwner2",
+			"videoOwnerChannelId": "UCOWNERCHANNELID02"
+		},
+		"contentDetails": {
+			"videoId": "FAKEVIDID2",
+			"videoPublishedAt": "2016-06-23T11:41:12Z"
+		},
+		"status": {
+			"privacyStatus": "public"
+		}
+	},
+	{
+		"kind": "youtube#playlistItem",
+		"etag": "etag3",
+		"id": "fakePlaylistItemId3",
+		"snippet": {
+			"publishedAt": "2023-02-12T11:18:13Z",
+			"channelId": "UCXXXXCHANNELID03",
+			"title": "Video Title 3",
+			"description": "Yet another placeholder video description.",
+			"thumbnails": {
+				"default": { "url": "https://example.com/thumb3.jpg", "width": 120, "height": 90 },
+				"medium": { "url": "https://example.com/thumb3.jpg", "width": 320, "height": 180 },
+				"high": { "url": "https://example.com/thumb3.jpg", "width": 480, "height": 360 },
+				"standard": { "url": "https://example.com/thumb3.jpg", "width": 640, "height": 480 },
+				"maxres": { "url": "https://example.com/thumb3.jpg", "width": 1280, "height": 720 }
+			},
+			"channelTitle": "Fake Channel 3",
+			"playlistId": "PLXXXXFAKEPLAYLISTID03",
+			"position": 2,
+			"resourceId": {
+				"kind": "youtube#video",
+				"videoId": "FAKEVIDID3"
+			},
+			"videoOwnerChannelTitle": "FakeOwner3",
+			"videoOwnerChannelId": "UCOWNERCHANNELID03"
+		},
+		"contentDetails": {
+			"videoId": "FAKEVIDID3",
+			"videoPublishedAt": "2017-02-18T17:18:00Z"
+		},
+		"status": {
+			"privacyStatus": "public"
+		}
+	}
+]

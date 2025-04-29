@@ -68,3 +68,26 @@ export const qdrantCollectionRLC: INodeProperties = {
 		},
 	],
 };
+
+export const milvusCollectionRLC: INodeProperties = {
+	displayName: 'Milvus Collection',
+	name: 'milvusCollection',
+	type: 'resourceLocator',
+	default: { mode: 'list', value: '' },
+	required: true,
+	modes: [
+		{
+			displayName: 'From List',
+			name: 'list',
+			type: 'list',
+			typeOptions: {
+				searchListMethod: 'milvusCollectionsSearch',
+			},
+		},
+		{
+			displayName: 'ID',
+			name: 'id',
+			type: 'string',
+		},
+	],
+};

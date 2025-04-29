@@ -1,5 +1,7 @@
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import type { ApiKeyScope } from '@n8n/permissions';
+import type { Response, NextFunction } from 'express';
+import { mock, mockDeep } from 'jest-mock-extended';
 import { DateTime } from 'luxon';
 import type { InstanceSettings } from 'n8n-core';
 import { randomString } from 'n8n-workflow';
@@ -9,8 +11,9 @@ import { ApiKeyRepository } from '@/databases/repositories/api-key.repository';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import { getConnection } from '@/db';
 import type { EventService } from '@/events/event.service';
+import { getOwnerOnlyApiKeyScopes } from '@/public-api/permissions.ee';
 import type { AuthenticatedRequest } from '@/requests';
-import { createOwnerWithApiKey } from '@test-integration/db/users';
+import { createAdminWithApiKey, createOwnerWithApiKey } from '@test-integration/db/users';
 import * as testDb from '@test-integration/test-db';
 
 import { JwtService } from '../jwt.service';
@@ -248,6 +251,270 @@ describe('PublicApiKeyService', () => {
 			//Assert
 
 			expect(redactedApiKey).toBe('******4kZo');
+		});
+	});
+
+	describe('removeOwnerOnlyScopesFromApiKeys', () => {
+		it("it should remove all owner only scopes from user's API keys", async () => {
+			// Arrange
+
+			const adminUser = await createAdminWithApiKey();
+			const apiKeyId = adminUser.apiKeys[0].id;
+			const ownerOnlyScopes = getOwnerOnlyApiKeyScopes();
+
+			const publicApiKeyService = new PublicApiKeyService(
+				apiKeyRepository,
+				userRepository,
+				jwtService,
+				eventService,
+			);
+
+			// Act
+
+			await publicApiKeyService.removeOwnerOnlyScopesFromApiKeys(adminUser);
+
+			// Assert
+
+			const apiKeyOnDb = await apiKeyRepository.findOneByOrFail({ id: apiKeyId });
+
+			expect(ownerOnlyScopes.some((ownerScope) => apiKeyOnDb.scopes.includes(ownerScope))).toBe(
+				false,
+			);
+		});
+	});
+
+	describe('getApiKeyScopedMiddleware', () => {
+		it('should allow access when API key has required scope', async () => {
+			// Arrange
+			const owner = await createOwnerWithApiKey({
+				scopes: ['workflow:read', 'user:read'],
+			});
+			const [{ apiKey }] = owner.apiKeys;
+
+			const requiredScope = 'workflow:read' as ApiKeyScope;
+
+			const req = mockReqWith(apiKey, '/test', 'GET');
+
+			const res = mockDeep<Response>();
+
+			res.status.mockReturnThis();
+			res.json.mockReturnThis();
+
+			const next = jest.fn() as NextFunction;
+
+			const publicApiKeyService = new PublicApiKeyService(
+				apiKeyRepository,
+				userRepository,
+				jwtService,
+				eventService,
+			);
+
+			// Act
+			const middleware = publicApiKeyService.getApiKeyScopeMiddleware(requiredScope);
+			await middleware(req, res, next);
+
+			// Assert
+			expect(next).toHaveBeenCalled();
+			expect(res.status).not.toHaveBeenCalled();
+			expect(res.json).not.toHaveBeenCalled();
+		});
+
+		it('should deny access when API key does not have required scope', async () => {
+			// Arrange
+			const owner = await createOwnerWithApiKey({
+				scopes: ['user:read'],
+			});
+			const [{ apiKey }] = owner.apiKeys;
+
+			const requiredScope = 'workflow:read' as ApiKeyScope;
+
+			const req = mockReqWith(apiKey, '/test', 'GET');
+
+			const res = mockDeep<Response>();
+
+			res.status.mockReturnThis();
+			res.json.mockReturnThis();
+
+			const next = jest.fn() as NextFunction;
+
+			const publicApiKeyService = new PublicApiKeyService(
+				apiKeyRepository,
+				userRepository,
+				jwtService,
+				eventService,
+			);
+
+			// Act
+			const middleware = publicApiKeyService.getApiKeyScopeMiddleware(requiredScope);
+			await middleware(req, res, next);
+
+			// Assert
+			expect(next).not.toHaveBeenCalled();
+			expect(res.status).toHaveBeenCalledWith(403);
+			expect(res.json).toHaveBeenCalledWith({ message: 'Forbidden' });
+		});
+
+		it('should deny access when API key is invalid', async () => {
+			// Arrange
+			const invalidApiKey = 'invalid-api-key';
+			const requiredScope = 'workflow:read' as ApiKeyScope;
+
+			const req = mockReqWith(invalidApiKey, '/test', 'GET');
+
+			const res = mockDeep<Response>();
+
+			res.status.mockReturnThis();
+			res.json.mockReturnThis();
+
+			const next = jest.fn() as NextFunction;
+
+			const publicApiKeyService = new PublicApiKeyService(
+				apiKeyRepository,
+				userRepository,
+				jwtService,
+				eventService,
+			);
+
+			// Act
+			const middleware = publicApiKeyService.getApiKeyScopeMiddleware(requiredScope);
+			await middleware(req, res, next);
+
+			// Assert
+			expect(next).not.toHaveBeenCalled();
+			expect(res.status).toHaveBeenCalledWith(403);
+			expect(res.json).toHaveBeenCalledWith({ message: 'Forbidden' });
+		});
+
+		it('should deny access when header x-n8n-api-key is not present', async () => {
+			// Arrange
+
+			const requiredScope = 'workflow:read' as ApiKeyScope;
+
+			const req = mock<AuthenticatedRequest>({
+				path: '/test',
+				method: 'GET',
+			});
+
+			const res = mockDeep<Response>();
+
+			res.status.mockReturnThis();
+			res.json.mockReturnThis();
+
+			const next = jest.fn() as NextFunction;
+
+			const publicApiKeyService = new PublicApiKeyService(
+				apiKeyRepository,
+				userRepository,
+				jwtService,
+				eventService,
+			);
+
+			// Act
+			const middleware = publicApiKeyService.getApiKeyScopeMiddleware(requiredScope);
+			await middleware(req, res, next);
+
+			// Assert
+			expect(next).not.toHaveBeenCalled();
+			expect(res.status).toHaveBeenCalledWith(401);
+			expect(res.json).toHaveBeenCalled();
+		});
+	});
+
+	describe('apiKeyHasValidScopes', () => {
+		it('should return true if API key has the required scope', async () => {
+			// Arrange
+
+			const owner = await createOwnerWithApiKey({
+				scopes: ['workflow:read', 'user:read'],
+			});
+
+			const apiKey = owner.apiKeys[0].apiKey;
+			const requiredScope = 'workflow:read' as ApiKeyScope;
+
+			const publicApiKeyService = new PublicApiKeyService(
+				apiKeyRepository,
+				userRepository,
+				jwtService,
+				eventService,
+			);
+
+			// Act
+			const result = await publicApiKeyService.apiKeyHasValidScopes(apiKey, requiredScope);
+
+			// Assert
+			expect(result).toBe(true);
+		});
+
+		it('should return false if API key does not have the required scope', async () => {
+			// Arrange
+
+			const owner = await createOwnerWithApiKey({
+				scopes: ['user:read'],
+			});
+
+			const apiKey = owner.apiKeys[0].apiKey;
+			const requiredScope = 'workflow:read' as ApiKeyScope;
+
+			const publicApiKeyService = new PublicApiKeyService(
+				apiKeyRepository,
+				userRepository,
+				jwtService,
+				eventService,
+			);
+
+			// Act
+			const result = await publicApiKeyService.apiKeyHasValidScopes(apiKey, requiredScope);
+
+			// Assert
+			expect(result).toBe(false);
+		});
+	});
+
+	describe('apiKeyHasValidScopesForRole', () => {
+		it('should return true if API key has the required scope for the role', async () => {
+			// Arrange
+			const publicApiKeyService = new PublicApiKeyService(
+				apiKeyRepository,
+				userRepository,
+				jwtService,
+				eventService,
+			);
+
+			const ownerOnlyScopes = getOwnerOnlyApiKeyScopes();
+
+			// Act
+
+			const result = publicApiKeyService.apiKeyHasValidScopesForRole(
+				'global:owner',
+				ownerOnlyScopes,
+			);
+
+			// Assert
+
+			expect(result).toBe(true);
+		});
+
+		it('should return false if API key does not have the required scope for the role', async () => {
+			// Arrange
+			const publicApiKeyService = new PublicApiKeyService(
+				apiKeyRepository,
+				userRepository,
+				jwtService,
+				eventService,
+			);
+
+			const ownerOnlyScopes = getOwnerOnlyApiKeyScopes();
+
+			// Act
+
+			const result = publicApiKeyService.apiKeyHasValidScopesForRole(
+				'global:member',
+				ownerOnlyScopes,
+			);
+
+			// Assert
+
+			expect(result).toBe(false);
 		});
 	});
 });

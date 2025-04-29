@@ -18,6 +18,7 @@ import { ApplicationError, ExpressionError, NodeConnectionTypes } from 'n8n-work
 
 import { describeCommonTests } from './shared-tests';
 import { ExecuteContext } from '../execute-context';
+import * as validateUtil from '../utils/validate-value-against-schema';
 
 describe('ExecuteContext', () => {
 	const testCredentialType = 'testCredential';
@@ -176,6 +177,18 @@ describe('ExecuteContext', () => {
 
 			const parameter = executeContext.getNodeParameter('testParameter', 0);
 			expect(parameter).toEqual([{ name: undefined, value: undefined }]);
+		});
+
+		it('should not validate parameter if skipValidation in options', () => {
+			const validateSpy = jest.spyOn(validateUtil, 'validateValueAgainstSchema');
+
+			executeContext.getNodeParameter('testParameter', 0, '', {
+				skipValidation: true,
+			});
+
+			expect(validateSpy).not.toHaveBeenCalled();
+
+			validateSpy.mockRestore();
 		});
 	});
 

@@ -460,6 +460,7 @@ const testExecutionData: IRunExecutionData['resultData'] = {
 			{
 				hints: [],
 				startTime: 1732882780588,
+				executionIndex: 0,
 				executionTime: 4,
 				source: [],
 				executionStatus: 'success',
@@ -481,6 +482,7 @@ const testExecutionData: IRunExecutionData['resultData'] = {
 			{
 				hints: [],
 				startTime: 1732882780593,
+				executionIndex: 1,
 				executionTime: 0,
 				source: [
 					{

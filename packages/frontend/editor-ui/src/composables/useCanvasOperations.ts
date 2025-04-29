@@ -27,6 +27,7 @@ import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import {
 	EnterpriseEditionFeature,
 	FORM_TRIGGER_NODE_TYPE,
+	MCP_TRIGGER_NODE_TYPE,
 	STICKY_NODE_TYPE,
 	UPDATE_WEBHOOK_ID_NODE_TYPES,
 	WEBHOOK_NODE_TYPE,
@@ -1071,7 +1072,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 
 		// if it's a webhook and the path is empty set the UUID as the default path
 		if (
-			[WEBHOOK_NODE_TYPE, FORM_TRIGGER_NODE_TYPE].includes(node.type) &&
+			[WEBHOOK_NODE_TYPE, FORM_TRIGGER_NODE_TYPE, MCP_TRIGGER_NODE_TYPE].includes(node.type) &&
 			node.parameters.path === ''
 		) {
 			node.parameters.path = node.webhookId as string;

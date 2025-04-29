@@ -1,5 +1,5 @@
 import * as assert from 'assert/strict';
-import type { INode, INodeType, Workflow } from 'n8n-workflow';
+import type { INode, INodeType, IRunData, Workflow } from 'n8n-workflow';
 
 const isTriggerNode = (nodeType: INodeType) => nodeType.description.group.includes('trigger');
 
@@ -29,6 +29,7 @@ function findAllParentTriggers(workflow: Workflow, destinationNodeName: string) 
 export function findTriggerForPartialExecution(
 	workflow: Workflow,
 	destinationNodeName: string,
+	runData: IRunData,
 ): INode | undefined {
 	// First, check if the destination node itself is a trigger
 	const destinationNode = workflow.getNode(destinationNodeName);
@@ -47,6 +48,13 @@ export function findTriggerForPartialExecution(
 	const parentTriggers = findAllParentTriggers(workflow, destinationNodeName).filter(
 		(trigger) => !trigger.disabled,
 	);
+
+	// prefer triggers that have run data
+	for (const trigger of parentTriggers) {
+		if (runData[trigger.name]) {
+			return trigger;
+		}
+	}
 
 	// Prioritize webhook triggers with pinned-data
 	const pinnedTriggers = parentTriggers

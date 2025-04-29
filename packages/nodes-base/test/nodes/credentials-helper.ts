@@ -3,7 +3,6 @@ import { Credentials } from 'n8n-core';
 import { ICredentialsHelper } from 'n8n-workflow';
 import type {
 	ICredentialDataDecryptedObject,
-	IDataObject,
 	IHttpRequestHelper,
 	IHttpRequestOptions,
 	INode,
@@ -12,10 +11,15 @@ import type {
 } from 'n8n-workflow';
 
 import { CredentialTypes } from './credential-types';
-import { FAKE_CREDENTIALS_DATA } from './FakeCredentialsMap';
 
 @Service()
 export class CredentialsHelper extends ICredentialsHelper {
+	private credentialsMap: Record<string, ICredentialDataDecryptedObject> = {};
+
+	setCredentials(credentialsMap: Record<string, ICredentialDataDecryptedObject>) {
+		this.credentialsMap = credentialsMap;
+	}
+
 	getCredentialsProperties() {
 		return [];
 	}
@@ -48,10 +52,10 @@ export class CredentialsHelper extends ICredentialsHelper {
 
 	async getDecrypted(
 		_additionalData: IWorkflowExecuteAdditionalData,
-		nodeCredentials: INodeCredentialsDetails,
+		_nodeCredentials: INodeCredentialsDetails,
 		type: string,
 	): Promise<ICredentialDataDecryptedObject> {
-		return this.getFakeDecryptedCredentials(nodeCredentials, type);
+		return this.credentialsMap[type] ?? {};
 	}
 
 	async getCredentials(
@@ -66,17 +70,4 @@ export class CredentialsHelper extends ICredentialsHelper {
 		_type: string,
 		_data: ICredentialDataDecryptedObject,
 	): Promise<void> {}
-
-	private getFakeDecryptedCredentials(nodeCredentials: INodeCredentialsDetails, type: string) {
-		const credentialsMap = FAKE_CREDENTIALS_DATA as IDataObject;
-		if (nodeCredentials && credentialsMap[JSON.stringify(nodeCredentials)]) {
-			return credentialsMap[JSON.stringify(nodeCredentials)] as ICredentialDataDecryptedObject;
-		}
-
-		if (type && credentialsMap[type]) {
-			return credentialsMap[type] as ICredentialDataDecryptedObject;
-		}
-
-		return {};
-	}
 }

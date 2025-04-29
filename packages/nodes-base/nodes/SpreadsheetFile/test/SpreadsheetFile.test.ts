@@ -6,10 +6,6 @@ import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
 import * as Helpers from '@test/nodes/Helpers';
 
 describe('Execute Spreadsheet File Node', () => {
-	beforeEach(async () => {
-		await Helpers.initBinaryDataService();
-	});
-
 	const readBinaryFile = (fileName: string) =>
 		readFileSync(path.resolve(__dirname, fileName), 'base64');
 

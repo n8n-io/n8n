@@ -37,6 +37,12 @@ export class NodeTypes implements INodeTypes {
 
 		const toolRequested = nodeType.endsWith('Tool');
 
+		// If an existing node name ends in `Tool`, then return that node, instead of creating a fake Tool node
+		if (toolRequested && this.loadNodesAndCredentials.recognizesNode(nodeType)) {
+			const node = this.loadNodesAndCredentials.getNode(nodeType);
+			return NodeHelpers.getVersionedNodeType(node.type, version);
+		}
+
 		// Make sure the nodeType to actually get from disk is the un-wrapped type
 		if (toolRequested) {
 			nodeType = nodeType.replace(/Tool$/, '');

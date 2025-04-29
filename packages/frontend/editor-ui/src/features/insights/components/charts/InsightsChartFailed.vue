@@ -1,19 +1,16 @@
 <script lang="ts" setup>
+import { useI18n } from '@/composables/useI18n';
+import { generateBarChartOptions } from '@/features/insights/chartjs.utils';
+import { GRANULARITY_DATE_FORMAT_MASK } from '@/features/insights/insights.constants';
+import { smartDecimal } from '@n8n/utils/number/smartDecimal';
+import { useCssVar } from '@vueuse/core';
+import type { ChartData } from 'chart.js';
 import { computed } from 'vue';
 import { Bar } from 'vue-chartjs';
-import type { ChartData } from 'chart.js';
-import { useCssVar } from '@vueuse/core';
-import dateformat from 'dateformat';
-import type { InsightsByTime, InsightsSummaryType } from '@n8n/api-types';
-import { generateBarChartOptions } from '@/features/insights/chartjs.utils';
-import { useI18n } from '@/composables/useI18n';
-import { smartDecimal } from '@n8n/utils/number/smartDecimal';
-import { DATE_FORMAT_MASK } from '@/features/insights/insights.constants';
 
-const props = defineProps<{
-	data: InsightsByTime[];
-	type: InsightsSummaryType;
-}>();
+import type { ChartProps } from './insightChartProps';
+
+const props = defineProps<ChartProps>();
 
 const i18n = useI18n();
 
@@ -38,7 +35,7 @@ const chartData = computed<ChartData<'bar'>>(() => {
 	const data: number[] = [];
 
 	for (const entry of props.data) {
-		labels.push(dateformat(entry.date, DATE_FORMAT_MASK));
+		labels.push(GRANULARITY_DATE_FORMAT_MASK[props.granularity](entry.date));
 		data.push(entry.values.failed);
 	}
 
@@ -46,7 +43,7 @@ const chartData = computed<ChartData<'bar'>>(() => {
 		labels,
 		datasets: [
 			{
-				label: i18n.baseText('insights.banner.title.failed'),
+				label: i18n.baseText('insights.chart.failed'),
 				data,
 				backgroundColor: colorPrimary.value,
 			},

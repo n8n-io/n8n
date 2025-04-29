@@ -227,6 +227,22 @@ export class TextClassifier implements INodeType {
 			const item = items[itemIdx];
 			item.pairedItem = { item: itemIdx };
 			const input = this.getNodeParameter('inputText', itemIdx) as string;
+
+			if (input === undefined || input === null) {
+				if (this.continueOnFail()) {
+					returnData[0].push({
+						json: { error: 'Text to classify is not defined' },
+						pairedItem: { item: itemIdx },
+					});
+					continue;
+				} else {
+					throw new NodeOperationError(
+						this.getNode(),
+						`Text to classify for item ${itemIdx} is not defined`,
+					);
+				}
+			}
+
 			const inputPrompt = new HumanMessage(input);
 
 			const systemPromptTemplateOpt = this.getNodeParameter(

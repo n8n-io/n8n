@@ -108,6 +108,7 @@ describe('JS TaskRunner execution on internal mode', () => {
 					ManualTrigger: [
 						{
 							startTime: Date.now(),
+							executionIndex: 0,
 							executionTime: 0,
 							executionStatus: 'success',
 							source: [],

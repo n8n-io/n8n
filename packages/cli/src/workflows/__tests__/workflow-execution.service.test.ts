@@ -411,5 +411,45 @@ describe('WorkflowExecutionService', () => {
 
 			expect(node).toEqual(webhookNode);
 		});
+
+		describe('offloading manual executions to workers', () => {
+			test('when receiving no `runData`, should set `runData` to undefined in `executionData`', async () => {
+				const originalEnv = process.env;
+				process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = 'true';
+
+				const configMock = { getEnv: jest.fn() };
+				configMock.getEnv.mockReturnValue('queue');
+
+				const workflowRunnerMock = mock<WorkflowRunner>();
+				workflowRunnerMock.run.mockResolvedValue('fake-execution-id');
+
+				const service = new WorkflowExecutionService(
+					mock(),
+					mock(),
+					mock(),
+					mock(),
+					nodeTypes,
+					mock(),
+					workflowRunnerMock,
+					mock(),
+					mock(),
+					mock(),
+				);
+
+				await service.executeManually(
+					{
+						workflowData: mock<IWorkflowBase>({ nodes: [] }),
+						startNodes: [],
+						runData: undefined,
+					},
+					mock<User>({ id: 'user-id' }),
+				);
+
+				const callArgs = workflowRunnerMock.run.mock.calls[0][0];
+				expect(callArgs.executionData?.resultData?.runData).toBeUndefined();
+
+				process.env = originalEnv;
+			});
+		});
 	});
 });

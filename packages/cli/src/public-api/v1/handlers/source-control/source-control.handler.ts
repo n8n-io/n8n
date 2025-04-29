@@ -13,11 +13,11 @@ import type { ImportResult } from '@/environments.ee/source-control/types/import
 import { EventService } from '@/events/event.service';
 import type { AuthenticatedRequest } from '@/requests';
 
-import { globalScope } from '../../shared/middlewares/global.middleware';
+import { apiKeyHasScopeWithGlobalScopeFallback } from '../../shared/middlewares/global.middleware';
 
 export = {
 	pull: [
-		globalScope('sourceControl:pull'),
+		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'sourceControl:pull' }),
 		async (
 			req: AuthenticatedRequest,
 			res: express.Response,
@@ -40,7 +40,7 @@ export = {
 
 				if (result.statusCode === 200) {
 					Container.get(EventService).emit('source-control-user-pulled-api', {
-						...getTrackingInformationFromPullResult(result.statusResult),
+						...getTrackingInformationFromPullResult(req.user.id, result.statusResult),
 						forced: payload.force ?? false,
 					});
 					return res.status(200).send(result.statusResult);

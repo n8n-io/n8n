@@ -77,11 +77,7 @@ describe('WorkflowExecute', () => {
 				});
 
 				const waitPromise = createDeferredPromise<IRun>();
-				const nodeExecutionOrder: string[] = [];
-				const additionalData = Helpers.WorkflowExecuteAdditionalData(
-					waitPromise,
-					nodeExecutionOrder,
-				);
+				const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
 
 				const workflowExecute = new WorkflowExecute(additionalData, executionMode);
 
@@ -110,6 +106,12 @@ describe('WorkflowExecute', () => {
 				}
 
 				// Check if the nodes did execute in the correct order
+				const nodeExecutionOrder: string[] = [];
+				Object.entries(result.data.resultData.runData).forEach(([nodeName, taskDataArr]) => {
+					taskDataArr.forEach((taskData) => {
+						nodeExecutionOrder[taskData.executionIndex] = nodeName;
+					});
+				});
 				expect(nodeExecutionOrder).toEqual(testData.output.nodeExecutionOrder);
 
 				// Check if other data has correct value
@@ -140,11 +142,7 @@ describe('WorkflowExecute', () => {
 				});
 
 				const waitPromise = createDeferredPromise<IRun>();
-				const nodeExecutionOrder: string[] = [];
-				const additionalData = Helpers.WorkflowExecuteAdditionalData(
-					waitPromise,
-					nodeExecutionOrder,
-				);
+				const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
 
 				const workflowExecute = new WorkflowExecute(additionalData, executionMode);
 
@@ -177,6 +175,12 @@ describe('WorkflowExecute', () => {
 				}
 
 				// Check if the nodes did execute in the correct order
+				const nodeExecutionOrder: string[] = [];
+				Object.entries(result.data.resultData.runData).forEach(([nodeName, taskDataArr]) => {
+					taskDataArr.forEach((taskData) => {
+						nodeExecutionOrder[taskData.executionIndex] = nodeName;
+					});
+				});
 				expect(nodeExecutionOrder).toEqual(testData.output.nodeExecutionOrder);
 
 				// Check if other data has correct value
@@ -207,11 +211,7 @@ describe('WorkflowExecute', () => {
 				});
 
 				const waitPromise = createDeferredPromise<IRun>();
-				const nodeExecutionOrder: string[] = [];
-				const additionalData = Helpers.WorkflowExecuteAdditionalData(
-					waitPromise,
-					nodeExecutionOrder,
-				);
+				const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
 
 				const workflowExecute = new WorkflowExecute(additionalData, executionMode);
 
@@ -259,8 +259,7 @@ describe('WorkflowExecute', () => {
 		test("deletes dirty nodes' run data", async () => {
 			// ARRANGE
 			const waitPromise = createDeferredPromise<IRun>();
-			const nodeExecutionOrder: string[] = [];
-			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise, nodeExecutionOrder);
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
 			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
 
 			const trigger = createNodeData({ name: 'trigger', type: 'n8n-nodes-base.manualTrigger' });
@@ -307,8 +306,7 @@ describe('WorkflowExecute', () => {
 		test('deletes run data of children of dirty nodes as well', async () => {
 			// ARRANGE
 			const waitPromise = createDeferredPromise<IRun>();
-			const nodeExecutionOrder: string[] = [];
-			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise, nodeExecutionOrder);
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
 			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
 			jest.spyOn(workflowExecute, 'processRunExecutionData').mockImplementationOnce(jest.fn());
 
@@ -369,8 +367,7 @@ describe('WorkflowExecute', () => {
 		test('removes disabled nodes from the workflow', async () => {
 			// ARRANGE
 			const waitPromise = createDeferredPromise<IRun>();
-			const nodeExecutionOrder: string[] = [];
-			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise, nodeExecutionOrder);
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
 			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
 
 			const trigger = createNodeData({ name: 'trigger', type: 'n8n-nodes-base.manualTrigger' });
@@ -423,8 +420,7 @@ describe('WorkflowExecute', () => {
 		test('passes filtered run data to `recreateNodeExecutionStack`', async () => {
 			// ARRANGE
 			const waitPromise = createDeferredPromise<IRun>();
-			const nodeExecutionOrder: string[] = [];
-			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise, nodeExecutionOrder);
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
 			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
 
 			const trigger = createNodeData({ name: 'trigger', type: 'n8n-nodes-base.manualTrigger' });
@@ -486,8 +482,7 @@ describe('WorkflowExecute', () => {
 		test('passes subgraph to `cleanRunData`', async () => {
 			// ARRANGE
 			const waitPromise = createDeferredPromise<IRun>();
-			const nodeExecutionOrder: string[] = [];
-			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise, nodeExecutionOrder);
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
 			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
 
 			const trigger = createNodeData({ name: 'trigger', type: 'n8n-nodes-base.manualTrigger' });
@@ -547,8 +542,7 @@ describe('WorkflowExecute', () => {
 		test('passes pruned dirty nodes to `cleanRunData`', async () => {
 			// ARRANGE
 			const waitPromise = createDeferredPromise<IRun>();
-			const nodeExecutionOrder: string[] = [];
-			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise, nodeExecutionOrder);
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
 			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
 
 			const trigger = createNodeData({ name: 'trigger', type: 'n8n-nodes-base.manualTrigger' });
@@ -599,8 +593,7 @@ describe('WorkflowExecute', () => {
 		test('works with a single node', async () => {
 			// ARRANGE
 			const waitPromise = createDeferredPromise<IRun>();
-			const nodeExecutionOrder: string[] = [];
-			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise, nodeExecutionOrder);
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
 			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
 
 			const trigger = createNodeData({ name: 'trigger' });
@@ -637,6 +630,64 @@ describe('WorkflowExecute', () => {
 			expect(processRunExecutionDataSpy).toHaveBeenCalledWith(
 				new DirectedGraph().addNode(orphan).toWorkflow({ ...workflow }),
 			);
+		});
+
+		//  ┌───────┐     ┌───────────┐
+		//  │trigger├────►│agentNode  │
+		//  └───────┘     └───────────┘
+		//                       │ ┌──────┐
+		//                       └─│ Tool │
+		//                         └──────┘
+		it('rewires graph for partial execution of tools', async () => {
+			// ARRANGE
+			const waitPromise = createDeferredPromise<IRun>();
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
+			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
+			const nodeTypes = Helpers.NodeTypes();
+
+			const trigger = createNodeData({ name: 'trigger', type: 'n8n-nodes-base.manualTrigger' });
+			const tool = createNodeData({ name: 'tool', type: 'n8n-nodes-base.toolTest' });
+			const agentNode = createNodeData({ name: 'agent' });
+
+			const workflow = new DirectedGraph()
+				.addNodes(trigger, tool, agentNode)
+				.addConnections(
+					{ from: trigger, to: agentNode },
+					{ from: tool, to: agentNode, type: NodeConnectionTypes.AiTool },
+				)
+				.toWorkflow({ name: '', active: false, nodeTypes });
+			const pinData: IPinData = {};
+			const runData: IRunData = {
+				[trigger.name]: [toITaskData([{ data: { value: 1 } }])],
+			};
+			const dirtyNodeNames: string[] = [];
+
+			const processRunExecutionDataSpy = jest
+				.spyOn(workflowExecute, 'processRunExecutionData')
+				.mockImplementationOnce(jest.fn());
+
+			const expectedTool = {
+				...tool,
+				rewireOutputLogTo: NodeConnectionTypes.AiTool,
+			};
+
+			const expectedGraph = new DirectedGraph()
+				.addNodes(trigger, expectedTool)
+				.addConnections({ from: trigger, to: expectedTool })
+				.toWorkflow({ ...workflow });
+
+			// ACT
+			await workflowExecute.runPartialWorkflow2(
+				workflow,
+				runData,
+				pinData,
+				dirtyNodeNames,
+				tool.name,
+			);
+
+			// ASSERT
+			expect(processRunExecutionDataSpy).toHaveBeenCalledTimes(1);
+			expect(processRunExecutionDataSpy).toHaveBeenCalledWith(expectedGraph);
 		});
 	});
 
@@ -856,6 +907,7 @@ describe('WorkflowExecute', () => {
 							},
 							source: [],
 							startTime: 0,
+							executionIndex: 0,
 							executionTime: 0,
 						},
 					],
@@ -1132,6 +1184,7 @@ describe('WorkflowExecute', () => {
 						source: [],
 						data: { main: [[], []] },
 						startTime: 0,
+						executionIndex: 0,
 						executionTime: 0,
 					},
 				],
@@ -1165,6 +1218,7 @@ describe('WorkflowExecute', () => {
 							main: [[{ json: { data: 'test' } }], []],
 						},
 						startTime: 0,
+						executionIndex: 0,
 						executionTime: 0,
 					},
 				],
@@ -1188,6 +1242,7 @@ describe('WorkflowExecute', () => {
 							main: [[]],
 						},
 						startTime: 0,
+						executionIndex: 0,
 						executionTime: 0,
 					},
 					{
@@ -1196,6 +1251,7 @@ describe('WorkflowExecute', () => {
 							main: [[{ json: { data: 'test' } }]],
 						},
 						startTime: 0,
+						executionIndex: 1,
 						executionTime: 0,
 					},
 				],
@@ -1215,6 +1271,7 @@ describe('WorkflowExecute', () => {
 					{
 						source: [],
 						startTime: 0,
+						executionIndex: 0,
 						executionTime: 0,
 					},
 				],
@@ -1254,7 +1311,7 @@ describe('WorkflowExecute', () => {
 
 		test('should do nothing when there is no metadata', () => {
 			runExecutionData.resultData.runData = {
-				node1: [{ startTime: 0, executionTime: 0, source: [] }],
+				node1: [{ startTime: 0, executionTime: 0, source: [], executionIndex: 0 }],
 			};
 
 			workflowExecute.moveNodeMetadata();
@@ -1264,7 +1321,7 @@ describe('WorkflowExecute', () => {
 
 		test('should merge metadata into runData for single node', () => {
 			runExecutionData.resultData.runData = {
-				node1: [{ startTime: 0, executionTime: 0, source: [] }],
+				node1: [{ startTime: 0, executionTime: 0, source: [], executionIndex: 0 }],
 			};
 			runExecutionData.executionData!.metadata = {
 				node1: [{ parentExecution }],
@@ -1277,8 +1334,8 @@ describe('WorkflowExecute', () => {
 
 		test('should merge metadata into runData for multiple nodes', () => {
 			runExecutionData.resultData.runData = {
-				node1: [{ startTime: 0, executionTime: 0, source: [] }],
-				node2: [{ startTime: 0, executionTime: 0, source: [] }],
+				node1: [{ startTime: 0, executionTime: 0, source: [], executionIndex: 0 }],
+				node2: [{ startTime: 0, executionTime: 0, source: [], executionIndex: 1 }],
 			};
 			runExecutionData.executionData!.metadata = {
 				node1: [{ parentExecution }],
@@ -1297,6 +1354,7 @@ describe('WorkflowExecute', () => {
 				node1: [
 					{
 						startTime: 0,
+						executionIndex: 0,
 						executionTime: 0,
 						source: [],
 						metadata: { subExecutionsCount: 4 },
@@ -1318,8 +1376,8 @@ describe('WorkflowExecute', () => {
 		test('should handle multiple run indices', () => {
 			runExecutionData.resultData.runData = {
 				node1: [
-					{ startTime: 0, executionTime: 0, source: [] },
-					{ startTime: 0, executionTime: 0, source: [] },
+					{ startTime: 0, executionTime: 0, source: [], executionIndex: 0 },
+					{ startTime: 0, executionTime: 0, source: [], executionIndex: 1 },
 				],
 			};
 			runExecutionData.executionData!.metadata = {

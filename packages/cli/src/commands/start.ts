@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
+import { LICENSE_FEATURES } from '@n8n/constants';
 import { Container } from '@n8n/di';
 import { Flags } from '@oclif/core';
 import glob from 'fast-glob';
@@ -13,7 +14,7 @@ import { pipeline } from 'stream/promises';
 import { ActiveExecutions } from '@/active-executions';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import config from '@/config';
-import { EDITOR_UI_DIST_DIR, LICENSE_FEATURES } from '@/constants';
+import { EDITOR_UI_DIST_DIR } from '@/constants';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { SettingsRepository } from '@/databases/repositories/settings.repository';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';

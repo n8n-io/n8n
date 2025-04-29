@@ -1,5 +1,6 @@
 import type { ClientOAuth2Options, OAuth2CredentialData } from '@n8n/client-oauth2';
 import { ClientOAuth2 } from '@n8n/client-oauth2';
+import { Get, RestController } from '@n8n/decorators';
 import { Response } from 'express';
 import omit from 'lodash/omit';
 import set from 'lodash/set';
@@ -9,7 +10,6 @@ import pkceChallenge from 'pkce-challenge';
 import * as qs from 'querystring';
 
 import { GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE as GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE } from '@/constants';
-import { Get, RestController } from '@/decorators';
 import { OAuthRequest } from '@/requests';
 
 import { AbstractOAuthController, skipAuthOnOAuthCallback } from './abstract-oauth.controller';
@@ -37,7 +37,7 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 			delete decryptedDataOriginal.scope;
 		}
 
-		const oauthCredentials = this.applyDefaultsAndOverwrites<OAuth2CredentialData>(
+		const oauthCredentials = await this.applyDefaultsAndOverwrites<OAuth2CredentialData>(
 			credential,
 			decryptedDataOriginal,
 			additionalData,
@@ -62,7 +62,7 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 
 		const toUpdate: ICredentialDataDecryptedObject = { csrfSecret };
 		if (oauthCredentials.grantType === 'pkce') {
-			const { code_verifier, code_challenge } = pkceChallenge();
+			const { code_verifier, code_challenge } = await pkceChallenge();
 			oAuthOptions.query = {
 				...oAuthOptions.query,
 				code_challenge,

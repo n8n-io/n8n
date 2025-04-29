@@ -51,14 +51,10 @@ export function NodeTypes(nodeTypes: INodeTypeData = predefinedNodesTypes): INod
 
 export function WorkflowExecuteAdditionalData(
 	waitPromise: IDeferredPromise<IRun>,
-	nodeExecutionOrder: string[],
 ): IWorkflowExecuteAdditionalData {
 	const hooks = new ExecutionLifecycleHooks('trigger', '1', mock());
-	hooks.addHandler('nodeExecuteAfter', (nodeName) => {
-		nodeExecutionOrder.push(nodeName);
-	});
 	hooks.addHandler('workflowExecuteAfter', (fullRunData) => waitPromise.resolve(fullRunData));
-	return mock<IWorkflowExecuteAdditionalData>({ hooks });
+	return mock<IWorkflowExecuteAdditionalData>({ hooks, currentNodeExecutionIndex: 0 });
 }
 
 const preparePinData = (pinData: IDataObject) => {

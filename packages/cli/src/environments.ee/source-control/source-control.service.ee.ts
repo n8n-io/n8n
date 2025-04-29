@@ -32,6 +32,7 @@ import {
 	getTrackingInformationFromPrePushResult,
 	getTrackingInformationFromPullResult,
 	getVariablesPath,
+	isWorkflowModified,
 	normalizeAndValidateSourceControlledFilePath,
 	sourceControlFoldersExistCheck,
 } from './source-control-helper.ee';
@@ -213,7 +214,10 @@ export class SourceControlService {
 		return;
 	}
 
-	async pushWorkfolder(options: PushWorkFolderRequestDto): Promise<{
+	async pushWorkfolder(
+		user: User,
+		options: PushWorkFolderRequestDto,
+	): Promise<{
 		statusCode: number;
 		pushResult: PushResult | undefined;
 		statusResult: SourceControlledFile[];
@@ -239,7 +243,7 @@ export class SourceControlService {
 		// only determine file status if not provided by the frontend
 		let statusResult: SourceControlledFile[] = filesToPush;
 		if (statusResult.length === 0) {
-			statusResult = (await this.getStatus({
+			statusResult = (await this.getStatus(user, {
 				direction: 'push',
 				verbose: false,
 				preferLocalVersion: true,
@@ -332,7 +336,7 @@ export class SourceControlService {
 		// #region Tracking Information
 		this.eventService.emit(
 			'source-control-user-finished-push-ui',
-			getTrackingInformationFromPostPushResult(statusResult),
+			getTrackingInformationFromPostPushResult(user.id, statusResult),
 		);
 		// #endregion
 
@@ -393,7 +397,7 @@ export class SourceControlService {
 	): Promise<{ statusCode: number; statusResult: SourceControlledFile[] }> {
 		await this.sanityCheck();
 
-		const statusResult = (await this.getStatus({
+		const statusResult = (await this.getStatus(user, {
 			direction: 'pull',
 			verbose: false,
 			preferLocalVersion: false,
@@ -457,7 +461,7 @@ export class SourceControlService {
 		// #region Tracking Information
 		this.eventService.emit(
 			'source-control-user-finished-pull-ui',
-			getTrackingInformationFromPullResult(statusResult),
+			getTrackingInformationFromPullResult(user.id, statusResult),
 		);
 		// #endregion
 
@@ -477,7 +481,7 @@ export class SourceControlService {
 	 * @returns either SourceControlledFile[] if verbose is false,
 	 * or multiple SourceControlledFile[] with all determined differences for debugging purposes
 	 */
-	async getStatus(options: SourceControlGetStatus) {
+	async getStatus(user: User, options: SourceControlGetStatus) {
 		await this.sanityCheck();
 
 		const sourceControlledFiles: SourceControlledFile[] = [];
@@ -514,12 +518,12 @@ export class SourceControlService {
 		if (options.direction === 'push') {
 			this.eventService.emit(
 				'source-control-user-started-push-ui',
-				getTrackingInformationFromPrePushResult(sourceControlledFiles),
+				getTrackingInformationFromPrePushResult(user.id, sourceControlledFiles),
 			);
 		} else if (options.direction === 'pull') {
 			this.eventService.emit(
 				'source-control-user-started-pull-ui',
-				getTrackingInformationFromPullResult(sourceControlledFiles),
+				getTrackingInformationFromPullResult(user.id, sourceControlledFiles),
 			);
 		}
 		// #endregion
@@ -568,25 +572,37 @@ export class SourceControlService {
 		);
 
 		const wfModifiedInEither: SourceControlWorkflowVersionId[] = [];
-		wfLocalVersionIds.forEach((local) => {
-			const mismatchingIds = wfRemoteVersionIds.find(
-				(remote) =>
-					remote.id === local.id &&
-					(remote.versionId !== local.versionId || remote.parentFolderId !== local.parentFolderId),
+
+		wfLocalVersionIds.forEach((localWorkflow) => {
+			const remoteWorkflowWithSameId = wfRemoteVersionIds.find(
+				(removeWorkflow) => removeWorkflow.id === localWorkflow.id,
 			);
-			let name = (options?.preferLocalVersion ? local?.name : mismatchingIds?.name) ?? 'Workflow';
-			if (local.name && mismatchingIds?.name && local.name !== mismatchingIds.name) {
-				name = options?.preferLocalVersion
-					? `${local.name} (Remote: ${mismatchingIds.name})`
-					: (name = `${mismatchingIds.name} (Local: ${local.name})`);
+
+			if (!remoteWorkflowWithSameId) {
+				return;
 			}
-			if (mismatchingIds) {
+
+			if (isWorkflowModified(localWorkflow, remoteWorkflowWithSameId)) {
+				let name =
+					(options?.preferLocalVersion ? localWorkflow?.name : remoteWorkflowWithSameId?.name) ??
+					'Workflow';
+				if (
+					localWorkflow.name &&
+					remoteWorkflowWithSameId?.name &&
+					localWorkflow.name !== remoteWorkflowWithSameId.name
+				) {
+					name = options?.preferLocalVersion
+						? `${localWorkflow.name} (Remote: ${remoteWorkflowWithSameId.name})`
+						: (name = `${remoteWorkflowWithSameId.name} (Local: ${localWorkflow.name})`);
+				}
 				wfModifiedInEither.push({
-					...local,
+					...localWorkflow,
 					name,
-					versionId: options.preferLocalVersion ? local.versionId : mismatchingIds.versionId,
-					localId: local.versionId,
-					remoteId: mismatchingIds.versionId,
+					versionId: options.preferLocalVersion
+						? localWorkflow.versionId
+						: remoteWorkflowWithSameId.versionId,
+					localId: localWorkflow.versionId,
+					remoteId: remoteWorkflowWithSameId.versionId,
 				});
 			}
 		});

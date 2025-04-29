@@ -1,5 +1,10 @@
 import type { SectionCreateElement } from '@/Interface';
-import { formatTriggerActionName, groupItemsInSections, sortNodeCreateElements } from './utils';
+import {
+	formatTriggerActionName,
+	groupItemsInSections,
+	removeTrailingTrigger,
+	sortNodeCreateElements,
+} from './utils';
 import {
 	mockActionCreateElement,
 	mockNodeCreateElement,
@@ -75,6 +80,27 @@ describe('NodeCreator - utils', () => {
 			['attendee.checked_in', 'attendee checked in'],
 		])('Action name %i should become as %i', (actionName, expected) => {
 			expect(formatTriggerActionName(actionName)).toEqual(expected);
+		});
+	});
+	describe('removeTrailingTrigger', () => {
+		test.each([
+			['Telegram Trigger', 'Telegram'],
+			['Trigger Telegram', 'Trigger Telegram'],
+			['Telegram Tri', 'Telegram'],
+			['Telegram Bot', 'Telegram Bot'],
+			['Tri', 'Tri'],
+			['Trigger', 'Trigger'],
+			['Telegram', 'Telegram'],
+			['Telegram Trigger Bot', 'Telegram Trigger Bot'],
+			['Telegram Trig', 'Telegram'],
+			['Telegram Bot trigger', 'Telegram Bot'],
+			['Telegram TRIGGER', 'Telegram'],
+			['', ''],
+			['Telegram　Trigger', 'Telegram　Trigger'], // full-width space,
+			['Telegram Trigger  ', 'Telegram Trigger'],
+			['Telegram   Trigger', 'Telegram'],
+		])('should transform "%s" to "%s"', (input, expected) => {
+			expect(removeTrailingTrigger(input)).toEqual(expected);
 		});
 	});
 });

@@ -71,7 +71,8 @@ export const aiChatExecutionResponse: IExecutionResponse = {
 				'AI Agent': [
 					{
 						executionStatus: 'success',
-						startTime: +new Date('2025-03-26T00:00:00.002Z'),
+						startTime: Date.parse('2025-03-26T00:00:00.002Z'),
+						executionIndex: 0,
 						executionTime: 1778,
 						source: [],
 						data: {},
@@ -80,7 +81,8 @@ export const aiChatExecutionResponse: IExecutionResponse = {
 				'AI Model': [
 					{
 						executionStatus: 'error',
-						startTime: +new Date('2025-03-26T00:00:00.003Z'),
+						startTime: Date.parse('2025-03-26T00:00:00.003Z'),
+						executionIndex: 1,
 						executionTime: 1777,
 						source: [],
 						error: new WorkflowOperationError('Test error', aiModelNode, 'Test error description'),
@@ -121,7 +123,8 @@ export const aiManualExecutionResponse: IExecutionResponse = {
 				'AI Agent': [
 					{
 						executionStatus: 'success',
-						startTime: +new Date('2025-03-30T00:00:00.002Z'),
+						startTime: Date.parse('2025-03-30T00:00:00.002Z'),
+						executionIndex: 0,
 						executionTime: 12,
 						source: [],
 						data: {},
@@ -130,7 +133,8 @@ export const aiManualExecutionResponse: IExecutionResponse = {
 				'AI Model': [
 					{
 						executionStatus: 'success',
-						startTime: +new Date('2025-03-30T00:00:00.003Z'),
+						startTime: Date.parse('2025-03-30T00:00:00.003Z'),
+						executionIndex: 1,
 						executionTime: 3456,
 						source: [],
 						data: {

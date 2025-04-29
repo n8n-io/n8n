@@ -28,7 +28,7 @@ describe('OAuth2 API', () => {
 		authQueryParameters: 'access_type=offline',
 	};
 
-	CredentialsHelper.prototype.applyDefaultsAndOverwrites = (_, decryptedDataOriginal) =>
+	CredentialsHelper.prototype.applyDefaultsAndOverwrites = async (_, decryptedDataOriginal) =>
 		decryptedDataOriginal;
 
 	beforeAll(async () => {

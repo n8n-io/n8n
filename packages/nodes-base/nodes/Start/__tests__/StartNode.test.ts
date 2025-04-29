@@ -1,5 +1,7 @@
 import type { WorkflowTestData } from 'n8n-workflow';
 
+// This is (temporarily) needed to setup LoadNodesAndCredentials first
+import '@test/nodes/Helpers';
 import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
 
 describe('Execute Start Node', () => {

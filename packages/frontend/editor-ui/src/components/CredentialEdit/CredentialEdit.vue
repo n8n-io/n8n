@@ -170,11 +170,10 @@ const isCredentialTestable = computed(() => {
 		return false;
 	}
 
-	const hasUntestableExpressions = Object.values(credentialData.value).reduce(
-		(accu: boolean, value: CredentialInformation) =>
-			accu || (typeof value === 'string' && isExpression(value) && !isTestableExpression(value)),
-		false,
-	);
+	const hasUntestableExpressions = credentialProperties.value.some((prop) => {
+		const value = credentialData.value[prop.name];
+		return typeof value === 'string' && isExpression(value) && !isTestableExpression(value);
+	});
 	if (hasUntestableExpressions) {
 		return false;
 	}

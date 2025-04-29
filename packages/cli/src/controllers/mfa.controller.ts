@@ -1,4 +1,5 @@
-import { Get, Post, RestController } from '@/decorators';
+import { Get, Post, RestController } from '@n8n/decorators';
+
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ExternalHooks } from '@/external-hooks';
 import { MfaService } from '@/mfa/mfa.service';

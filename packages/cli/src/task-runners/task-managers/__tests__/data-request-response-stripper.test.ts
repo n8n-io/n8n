@@ -110,6 +110,7 @@ const taskData: DataRequestResponse = {
 					{
 						hints: [],
 						startTime: 1730313407328,
+						executionIndex: 0,
 						executionTime: 1,
 						source: [],
 						executionStatus: 'success',
@@ -122,6 +123,7 @@ const taskData: DataRequestResponse = {
 					{
 						hints: [],
 						startTime: 1730313407330,
+						executionIndex: 1,
 						executionTime: 1,
 						source: [
 							{

@@ -26,7 +26,12 @@ import type {
 	NodeParameterValue,
 	Workflow,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, ExpressionEvaluatorProxy, NodeHelpers } from 'n8n-workflow';
+import {
+	NodeConnectionTypes,
+	ExpressionEvaluatorProxy,
+	NodeHelpers,
+	WEBHOOK_NODE_TYPE,
+} from 'n8n-workflow';
 
 import type {
 	ICredentialsResponse,
@@ -71,6 +76,7 @@ import { useProjectsStore } from '@/stores/projects.store';
 import { useTagsStore } from '@/stores/tags.store';
 import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
+import { findWebhook } from '../api/webhooks';
 
 export type ResolveParameterOptions = {
 	targetItem?: TargetItem;
@@ -679,20 +685,26 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 	function getWebhookUrl(
 		webhookData: IWebhookDescription,
 		node: INode,
-		showUrlFor?: string,
+		showUrlFor: 'test' | 'production',
 	): string {
-		const { isForm, restartWebhook } = webhookData;
+		const { nodeType, restartWebhook } = webhookData;
 		if (restartWebhook === true) {
-			return isForm ? '$execution.resumeFormUrl' : '$execution.resumeUrl';
+			return nodeType === 'form' ? '$execution.resumeFormUrl' : '$execution.resumeUrl';
 		}
 
-		let baseUrl;
-		if (showUrlFor === 'test') {
-			baseUrl = isForm ? rootStore.formTestUrl : rootStore.webhookTestUrl;
-		} else {
-			baseUrl = isForm ? rootStore.formUrl : rootStore.webhookUrl;
-		}
-
+		const baseUrls = {
+			test: {
+				form: rootStore.formTestUrl,
+				mcp: rootStore.mcpTestUrl,
+				webhook: rootStore.webhookTestUrl,
+			},
+			production: {
+				form: rootStore.formUrl,
+				mcp: rootStore.mcpUrl,
+				webhook: rootStore.webhookUrl,
+			},
+		} as const;
+		const baseUrl = baseUrls[showUrlFor][nodeType ?? 'webhook'];
 		const workflowId = workflowsStore.workflowId;
 		const path = getWebhookExpressionValue(webhookData, 'path', true, node.name) ?? '';
 		const isFullPath =
@@ -845,6 +857,22 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 
 			workflowDataRequest.versionId = workflowsStore.workflowVersionId;
 
+			// workflow should not be active if there is live webhook with the same path
+			const conflictData = await checkConflictingWebhooks(currentWorkflow);
+			if (conflictData) {
+				workflowDataRequest.active = false;
+
+				if (workflowsStore.isWorkflowActive) {
+					toast.showMessage({
+						title: 'Conflicting Webhook Path',
+						message: `Workflow set to inactive: Live webhook in another workflow uses same path as node '${conflictData.trigger.name}'.`,
+						type: 'error',
+					});
+
+					workflowsStore.setWorkflowInactive(currentWorkflow);
+				}
+			}
+
 			const workflowData = await workflowsStore.updateWorkflow(
 				currentWorkflow,
 				workflowDataRequest,
@@ -985,6 +1013,20 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 				window.open(routeData.href, '_blank');
 				uiStore.removeActiveAction('workflowSaving');
 				return true;
+			}
+
+			// workflow should not be active if there is live webhook with the same path
+			if (workflowData.active) {
+				const conflict = await checkConflictingWebhooks(workflowData.id);
+				if (conflict) {
+					workflowData.active = false;
+
+					toast.showMessage({
+						title: 'Conflicting Webhook Path',
+						message: `Workflow set to inactive: Live webhook in another workflow uses same path as node '${conflict.trigger.name}'.`,
+						type: 'error',
+					});
+				}
 			}
 
 			workflowsStore.setActive(workflowData.active || false);
@@ -1215,6 +1257,36 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 		return workflow.nodes.some((node) => node.type.startsWith(packageName));
 	};
 
+	async function checkConflictingWebhooks(workflowId: string) {
+		let data;
+		if (uiStore.stateIsDirty) {
+			data = await getWorkflowDataToSave();
+		} else {
+			data = await workflowsStore.fetchWorkflow(workflowId);
+		}
+
+		const webhookTriggers = data.nodes.filter(
+			(node) => node.disabled !== true && node.type === WEBHOOK_NODE_TYPE,
+		);
+
+		for (const trigger of webhookTriggers) {
+			const method = (trigger.parameters.method as string) ?? 'GET';
+
+			const path = trigger.parameters.path as string;
+
+			const conflict = await findWebhook(rootStore.restApiContext, {
+				path,
+				method,
+			});
+
+			if (conflict && conflict.workflowId !== workflowId) {
+				return { trigger, conflict };
+			}
+		}
+
+		return null;
+	}
+
 	return {
 		setDocumentTitle,
 		resolveParameter,
@@ -1242,5 +1314,6 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 		initState,
 		getNodeParametersWithResolvedExpressions,
 		containsNodeFromPackage,
+		checkConflictingWebhooks,
 	};
 }

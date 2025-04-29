@@ -15,6 +15,9 @@
                 }
             }
         },
+        "description": {
+            "type": "string"
+        },
         "end": {
             "type": "object",
             "properties": {
@@ -42,6 +45,9 @@
             "type": "string"
         },
         "kind": {
+            "type": "string"
+        },
+        "location": {
             "type": "string"
         },
         "organizer": {
@@ -87,5 +93,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

@@ -373,6 +373,7 @@ export async function getBase(
 	const eventService = Container.get(EventService);
 
 	return {
+		currentNodeExecutionIndex: 0,
 		credentialsHelper: Container.get(CredentialsHelper),
 		executeWorkflow,
 		restApiUrl: urlBaseWebhook + globalConfig.endpoints.rest,

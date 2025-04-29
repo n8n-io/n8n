@@ -1,6 +1,6 @@
 import type { GlobalConfig } from '@n8n/config';
 import { mock } from 'jest-mock-extended';
-import { InstanceSettings } from 'n8n-core';
+import { type BinaryDataConfig, InstanceSettings } from 'n8n-core';
 import type { INode, INodesGraphResult } from 'n8n-workflow';
 import { NodeApiError, TelemetryHelpers, type IRun, type IWorkflowBase } from 'n8n-workflow';
 
@@ -14,10 +14,10 @@ import type { WorkflowRepository } from '@/databases/repositories/workflow.repos
 import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
-import type { IWorkflowDb } from '@/interfaces';
 import type { License } from '@/license';
 import type { NodeTypes } from '@/node-types';
 import type { Telemetry } from '@/telemetry';
+import type { IWorkflowDb } from '@/types-db';
 import { mockInstance } from '@test/mocking';
 
 const flushPromises = async () => await new Promise((resolve) => setImmediate(resolve));
@@ -49,6 +49,10 @@ describe('TelemetryEventRelay', () => {
 			outputs: ['console'],
 		},
 	});
+	const binaryDataConfig = mock<BinaryDataConfig>({
+		mode: 'default',
+		availableModes: ['default', 'filesystem', 's3'],
+	});
 	const instanceSettings = mockInstance(InstanceSettings, { isDocker: false, n8nFolder: '/test' });
 	const workflowRepository = mock<WorkflowRepository>();
 	const nodeTypes = mock<NodeTypes>();
@@ -66,6 +70,7 @@ describe('TelemetryEventRelay', () => {
 			license,
 			globalConfig,
 			instanceSettings,
+			binaryDataConfig,
 			workflowRepository,
 			nodeTypes,
 			sharedWorkflowRepository,
@@ -90,6 +95,7 @@ describe('TelemetryEventRelay', () => {
 				license,
 				globalConfig,
 				instanceSettings,
+				binaryDataConfig,
 				workflowRepository,
 				nodeTypes,
 				sharedWorkflowRepository,
@@ -113,6 +119,7 @@ describe('TelemetryEventRelay', () => {
 				license,
 				globalConfig,
 				instanceSettings,
+				binaryDataConfig,
 				workflowRepository,
 				nodeTypes,
 				sharedWorkflowRepository,
@@ -225,12 +232,14 @@ describe('TelemetryEventRelay', () => {
 
 		it('should track on `source-control-user-finished-pull-ui` event', () => {
 			const event: RelayEventMap['source-control-user-finished-pull-ui'] = {
+				userId: 'userId',
 				workflowUpdates: 3,
 			};
 
 			eventService.emit('source-control-user-finished-pull-ui', event);
 
 			expect(telemetry.track).toHaveBeenCalledWith('User finished pull via UI', {
+				user_id: 'userId',
 				workflow_updates: 3,
 			});
 		});
@@ -251,6 +260,7 @@ describe('TelemetryEventRelay', () => {
 
 		it('should track on `source-control-user-started-push-ui` event', () => {
 			const event: RelayEventMap['source-control-user-started-push-ui'] = {
+				userId: 'userId',
 				workflowsEligible: 10,
 				workflowsEligibleWithConflicts: 2,
 				credsEligible: 5,
@@ -261,6 +271,7 @@ describe('TelemetryEventRelay', () => {
 			eventService.emit('source-control-user-started-push-ui', event);
 
 			expect(telemetry.track).toHaveBeenCalledWith('User started push via UI', {
+				user_id: 'userId',
 				workflows_eligible: 10,
 				workflows_eligible_with_conflicts: 2,
 				creds_eligible: 5,
@@ -271,6 +282,7 @@ describe('TelemetryEventRelay', () => {
 
 		it('should track on `source-control-user-finished-push-ui` event', () => {
 			const event: RelayEventMap['source-control-user-finished-push-ui'] = {
+				userId: 'userId',
 				workflowsEligible: 10,
 				workflowsPushed: 8,
 				credsPushed: 5,
@@ -280,6 +292,7 @@ describe('TelemetryEventRelay', () => {
 			eventService.emit('source-control-user-finished-push-ui', event);
 
 			expect(telemetry.track).toHaveBeenCalledWith('User finished push via UI', {
+				user_id: 'userId',
 				workflows_eligible: 10,
 				workflows_pushed: 8,
 				creds_pushed: 5,

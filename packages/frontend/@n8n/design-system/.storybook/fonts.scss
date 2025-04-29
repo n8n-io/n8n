@@ -1,1 +1,26 @@
-@import url('https://fonts.googleapis.com/css?family=Open+Sans&display=swap');
+/* Storybook-specific font paths */
+@font-face {
+	font-family: InterVariable;
+	font-style: normal;
+	font-weight: 100 900;
+	font-display: swap;
+	src: url('../src/css/fonts/InterVariable.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: InterVariable;
+	font-style: italic;
+	font-weight: 100 900;
+	font-display: swap;
+	src: url('../src/css/fonts/InterVariable-Italic.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: CommitMono;
+	font-style: italic;
+	font-weight: 100 900;
+	font-display: swap;
+	src: url('../src/css/fonts/CommitMonoVariable.woff2') format('woff2');
+}
+
+@import '../src/css/_tokens.scss';

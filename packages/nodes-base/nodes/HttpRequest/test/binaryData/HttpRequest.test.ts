@@ -1,13 +1,11 @@
 import nock from 'nock';
 
-import { getWorkflowFilenames, initBinaryDataService, testWorkflows } from '@test/nodes/Helpers';
+import { getWorkflowFilenames, testWorkflows } from '@test/nodes/Helpers';
 
 describe('Test Binary Data Download', () => {
 	const baseUrl = 'https://dummy.domain';
 
 	beforeAll(async () => {
-		await initBinaryDataService();
-
 		nock(baseUrl)
 			.persist()
 			.get('/path/to/image.png')

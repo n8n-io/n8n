@@ -429,36 +429,47 @@ describe('Test PostgresV2, hasJsonDataType', () => {
 });
 
 describe('Test PostgresV2, convertValuesToJsonWithPgp', () => {
-	it('should use pgp to properly convert values to JSON', () => {
-		const pgp = pgPromise();
-		const pgpJsonSpy = jest.spyOn(pgp.as, 'json');
+	const pgp = pgPromise();
+	const pgpJsonSpy = jest.spyOn(pgp.as, 'json');
+	const schema: ColumnInfo[] = [
+		{ column_name: 'data', data_type: 'json', is_nullable: 'YES' },
+		{ column_name: 'id', data_type: 'integer', is_nullable: 'NO' },
+	];
 
-		const schema: ColumnInfo[] = [
-			{ column_name: 'data', data_type: 'json', is_nullable: 'YES' },
-			{ column_name: 'id', data_type: 'integer', is_nullable: 'NO' },
-		];
-		const values = [
-			{
-				value: { data: [], id: 1 },
-				expected: { data: '[]', id: 1 },
-			},
-			{
-				value: { data: [0], id: 1 },
-				expected: { data: '[0]', id: 1 },
-			},
-			{
-				value: { data: { key: 2 }, id: 1 },
-				expected: { data: '{"key":2}', id: 1 },
-			},
-		];
+	beforeEach(() => {
+		pgpJsonSpy.mockClear();
+	});
 
-		values.forEach((value) => {
-			const data = value.value.data;
-
-			expect(convertValuesToJsonWithPgp(pgp, schema, value.value)).toEqual(value.expected);
-			expect(value.value).toEqual(value.expected);
+	it.each([
+		{
+			value: { data: [], id: 1 },
+			expected: { data: '[]', id: 1 },
+		},
+		{
+			value: { data: [0], id: 1 },
+			expected: { data: '[0]', id: 1 },
+		},
+		{
+			value: { data: { key: 2 }, id: 1 },
+			expected: { data: '{"key":2}', id: 1 },
+		},
+		{
+			value: { data: null, id: 1 },
+			expected: { data: null, id: 1 },
+			shouldSkipPgp: true,
+		},
+		{
+			value: { data: undefined, id: 1 },
+			expected: { data: undefined, id: 1 },
+			shouldSkipPgp: true,
+		},
+	])('should convert $value.data to json correctly', ({ value, expected, shouldSkipPgp }) => {
+		const data = value.data;
+		expect(convertValuesToJsonWithPgp(pgp, schema, value)).toEqual(expected);
+		expect(value).toEqual(expected);
+		if (!shouldSkipPgp) {
 			expect(pgpJsonSpy).toHaveBeenCalledWith(data, true);
-		});
+		}
 	});
 });
 

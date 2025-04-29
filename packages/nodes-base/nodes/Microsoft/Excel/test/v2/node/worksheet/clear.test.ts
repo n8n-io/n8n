@@ -2,6 +2,8 @@ import nock from 'nock';
 
 import { testWorkflows } from '@test/nodes/Helpers';
 
+import { credentials } from '../../../credentials';
+
 describe('Test MicrosoftExcelV2, worksheet => clear', () => {
 	nock('https://graph.microsoft.com/v1.0/me')
 		.post(
@@ -13,5 +15,5 @@ describe('Test MicrosoftExcelV2, worksheet => clear', () => {
 		});
 
 	const workflows = ['nodes/Microsoft/Excel/test/v2/node/worksheet/clear.workflow.json'];
-	testWorkflows(workflows);
+	testWorkflows(workflows, credentials);
 });

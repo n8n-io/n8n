@@ -2,6 +2,8 @@ import nock from 'nock';
 
 import { testWorkflows } from '@test/nodes/Helpers';
 
+import { credentials } from '../../../credentials';
+
 describe('Test MicrosoftTeamsV2, channel => getAll', () => {
 	nock('https://graph.microsoft.com')
 		.get('/v1.0/teams/1111-2222-3333/channels')
@@ -47,5 +49,5 @@ describe('Test MicrosoftTeamsV2, channel => getAll', () => {
 		});
 
 	const workflows = ['nodes/Microsoft/Teams/test/v2/node/channel/getAll.workflow.json'];
-	testWorkflows(workflows);
+	testWorkflows(workflows, credentials);
 });

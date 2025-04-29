@@ -165,15 +165,6 @@ for (const evaluator of ['tmpl', 'tournament'] as const) {
 				expect(evaluate('={{Boolean(1)}}')).toEqual(Boolean(1));
 				expect(evaluate('={{Symbol(1).toString()}}')).toEqual(Symbol(1).toString());
 			});
-
-			it('should not able to do arbitrary code execution', () => {
-				const testFn = jest.fn();
-				Object.assign(global, { testFn });
-				expect(() => evaluate("={{ Date['constructor']('testFn()')()}}")).toThrowError(
-					new ExpressionError('Cannot access "constructor" due to security concerns'),
-				);
-				expect(testFn).not.toHaveBeenCalled();
-			});
 		});
 
 		describe('Test all expression value fixtures', () => {

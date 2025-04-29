@@ -289,6 +289,7 @@ input[type='checkbox'] + label {
 
 .sticky {
 	color: var(--color-sticky-font);
+	overflow-wrap: break-word;
 
 	h1,
 	h2,

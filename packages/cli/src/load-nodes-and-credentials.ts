@@ -400,6 +400,13 @@ export class LoadNodesAndCredentials {
 		}
 	}
 
+	recognizesNode(fullNodeType: string): boolean {
+		const [packageName, nodeType] = fullNodeType.split('.');
+		const { loaders } = this;
+		const loader = loaders[packageName];
+		return !!loader && nodeType in loader.known.nodes;
+	}
+
 	getNode(fullNodeType: string): LoadedClass<INodeType | IVersionedNodeType> {
 		const [packageName, nodeType] = fullNodeType.split('.');
 		const { loaders } = this;

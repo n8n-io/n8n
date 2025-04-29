@@ -7,12 +7,9 @@
         "name": {
             "type": "string"
         },
-        "property_name": {
-            "type": "string"
-        },
         "url": {
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

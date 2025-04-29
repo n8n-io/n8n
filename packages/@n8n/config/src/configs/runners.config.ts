@@ -1,18 +1,21 @@
+import { z } from 'zod';
+
 import { Config, Env } from '../decorators';
 
-/**
- * Whether to enable task runners and how to run them
- * - internal: Task runners are run as a child process and launched by n8n
- * - external: Task runners are run as a separate program not launched by n8n
- */
-export type TaskRunnerMode = 'internal' | 'external';
+const runnerModeSchema = z.enum(['internal', 'external']);
+
+export type TaskRunnerMode = z.infer<typeof runnerModeSchema>;
 
 @Config
 export class TaskRunnersConfig {
 	@Env('N8N_RUNNERS_ENABLED')
 	enabled: boolean = false;
 
-	@Env('N8N_RUNNERS_MODE')
+	/**
+	 * Whether the task runner should run as a child process spawned by n8n (internal mode)
+	 * or as a separate process launched outside n8n (external mode).
+	 */
+	@Env('N8N_RUNNERS_MODE', runnerModeSchema)
 	mode: TaskRunnerMode = 'internal';
 
 	/** Endpoint which task runners connect to */

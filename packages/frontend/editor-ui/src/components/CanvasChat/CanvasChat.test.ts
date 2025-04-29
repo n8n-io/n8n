@@ -256,6 +256,7 @@ describe('CanvasChat', () => {
 									],
 								],
 							},
+							executionIndex: 0,
 							executionStatus: 'success',
 							executionTime: 0,
 							source: [null],
@@ -310,7 +311,6 @@ describe('CanvasChat', () => {
 				id: '1',
 				text: 'Existing message',
 				sender: 'user',
-				createdAt: new Date().toISOString(),
 			},
 		];
 
@@ -320,7 +320,6 @@ describe('CanvasChat', () => {
 
 				return {
 					sendMessage: vi.fn(),
-					extractResponseMessage: vi.fn(),
 					previousMessageIndex: ref(0),
 					isLoading: computed(() => false),
 				};
@@ -385,7 +384,6 @@ describe('CanvasChat', () => {
 		beforeEach(() => {
 			vi.spyOn(useChatMessaging, 'useChatMessaging').mockReturnValue({
 				sendMessage: vi.fn(),
-				extractResponseMessage: vi.fn(),
 				previousMessageIndex: ref(0),
 				isLoading: computed(() => false),
 			});
@@ -471,13 +469,11 @@ describe('CanvasChat', () => {
 					id: '1',
 					text: 'Original message',
 					sender: 'user',
-					createdAt: new Date().toISOString(),
 				},
 				{
 					id: '2',
 					text: 'AI response',
 					sender: 'bot',
-					createdAt: new Date().toISOString(),
 				},
 			];
 			vi.spyOn(useChatMessaging, 'useChatMessaging').mockImplementation(({ messages }) => {
@@ -485,7 +481,6 @@ describe('CanvasChat', () => {
 
 				return {
 					sendMessage: sendMessageSpy,
-					extractResponseMessage: vi.fn(),
 					previousMessageIndex: ref(0),
 					isLoading: computed(() => false),
 				};

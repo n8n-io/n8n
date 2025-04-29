@@ -1,0 +1,446 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [320, 1980],
+			"id": "ca093a4e-81cb-445a-980c-dcdacbb1cc36",
+			"name": "When clicking ‘Test workflow’"
+		},
+		{
+			"parameters": {
+				"filters": {},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.youTube",
+			"typeVersion": 1,
+			"position": [540, 1780],
+			"id": "a36477d2-f98b-48b9-a392-0f615527a7e6",
+			"name": "YouTube",
+			"credentials": {
+				"youTubeOAuth2Api": {
+					"id": "62",
+					"name": "YouTube OAuth2 creds"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "get",
+				"channelId": "UCabc123def456ghi789jkl"
+			},
+			"type": "n8n-nodes-base.youTube",
+			"typeVersion": 1,
+			"position": [540, 1980],
+			"id": "afcfc3bb-a16a-4890-a4b3-692f843b9103",
+			"name": "YouTube1",
+			"credentials": {
+				"youTubeOAuth2Api": {
+					"id": "62",
+					"name": "YouTube OAuth2 creds"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "update",
+				"channelId": "UCabc123def456ghi789jkl",
+				"updateFields": {
+					"brandingSettingsUi": {
+						"channelSettingsValues": {
+							"channel": {
+								"description": "Test"
+							}
+						}
+					}
+				}
+			},
+			"type": "n8n-nodes-base.youTube",
+			"typeVersion": 1,
+			"position": [540, 2180],
+			"id": "3a5f1c72-7dd1-4a76-958f-b9ecf7f8afbe",
+			"name": "YouTube2",
+			"credentials": {
+				"youTubeOAuth2Api": {
+					"id": "62",
+					"name": "YouTube OAuth2 creds"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [760, 1780],
+			"id": "0ef3bfeb-6772-4eae-b4f6-5a8a05678861",
+			"name": "Channel Get All"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [760, 1980],
+			"id": "9af6133d-2a77-4245-83a7-1fb137997f3a",
+			"name": "Channel Get"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [760, 2180],
+			"id": "0d316d95-7e49-4497-a31c-9e56b1a7fda3",
+			"name": "Channel Update"
+		}
+	],
+	"connections": {
+		"When clicking ‘Test workflow’": {
+			"main": [
+				[
+					{
+						"node": "YouTube",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "YouTube2",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "YouTube1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"YouTube": {
+			"main": [
+				[
+					{
+						"node": "Channel Get All",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"YouTube1": {
+			"main": [
+				[
+					{
+						"node": "Channel Get",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"YouTube2": {
+			"main": [
+				[
+					{
+						"node": "Channel Update",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Channel Get All": [
+			{
+				"json": {
+					"kind": "youtube#channel",
+					"etag": "etag_123456",
+					"id": "UCabc123def456ghi789jkl",
+					"snippet": {
+						"title": "Tech Insights",
+						"description": "Latest tech reviews and industry insights.",
+						"customUrl": "@techinsights",
+						"publishedAt": "2015-06-15T09:30:00Z",
+						"thumbnails": {
+							"default": {
+								"url": "https://yt3.ggpht.com/ytc/AIdro_tech1=s88-c-k-c0x00ffffff-no-rj",
+								"width": 88,
+								"height": 88
+							},
+							"medium": {
+								"url": "https://yt3.ggpht.com/ytc/AIdro_tech1=s240-c-k-c0x00ffffff-no-rj",
+								"width": 240,
+								"height": 240
+							},
+							"high": {
+								"url": "https://yt3.ggpht.com/ytc/AIdro_tech1=s800-c-k-c0x00ffffff-no-rj",
+								"width": 800,
+								"height": 800
+							}
+						},
+						"localized": {
+							"title": "Tech Insights",
+							"description": "Latest tech reviews and industry insights."
+						}
+					},
+					"statistics": {
+						"viewCount": "1250000",
+						"subscriberCount": "45000",
+						"hiddenSubscriberCount": false,
+						"videoCount": "320"
+					},
+					"status": {
+						"privacyStatus": "public",
+						"isLinked": true,
+						"longUploadsStatus": "eligible"
+					}
+				}
+			},
+			{
+				"json": {
+					"kind": "youtube#channel",
+					"etag": "etag_654321",
+					"id": "UCxyz987uvw654rst321mno",
+					"snippet": {
+						"title": "Daily Vlogs",
+						"description": "Sharing daily experiences and adventures.",
+						"customUrl": "@dailyvlogs",
+						"publishedAt": "2018-03-10T14:20:00Z",
+						"thumbnails": {
+							"default": {
+								"url": "https://yt3.ggpht.com/ytc/AIdro_vlog1=s88-c-k-c0x00ffffff-no-rj",
+								"width": 88,
+								"height": 88
+							},
+							"medium": {
+								"url": "https://yt3.ggpht.com/ytc/AIdro_vlog1=s240-c-k-c0x00ffffff-no-rj",
+								"width": 240,
+								"height": 240
+							},
+							"high": {
+								"url": "https://yt3.ggpht.com/ytc/AIdro_vlog1=s800-c-k-c0x00ffffff-no-rj",
+								"width": 800,
+								"height": 800
+							}
+						},
+						"localized": {
+							"title": "Daily Vlogs",
+							"description": "Sharing daily experiences and adventures."
+						}
+					},
+					"statistics": {
+						"viewCount": "530000",
+						"subscriberCount": "12000",
+						"hiddenSubscriberCount": false,
+						"videoCount": "540"
+					},
+					"status": {
+						"privacyStatus": "public",
+						"isLinked": true,
+						"longUploadsStatus": "eligible"
+					}
+				}
+			},
+			{
+				"json": {
+					"kind": "youtube#channel",
+					"etag": "etag_987654",
+					"id": "UCopq135stu864vwx579yzb",
+					"snippet": {
+						"title": "Fitness Pro",
+						"description": "Workout tips and health advice.",
+						"customUrl": "@fitnesspro",
+						"publishedAt": "2017-08-22T07:45:00Z",
+						"thumbnails": {
+							"default": {
+								"url": "https://yt3.ggpht.com/ytc/AIdro_fitness1=s88-c-k-c0x00ffffff-no-rj",
+								"width": 88,
+								"height": 88
+							},
+							"medium": {
+								"url": "https://yt3.ggpht.com/ytc/AIdro_fitness1=s240-c-k-c0x00ffffff-no-rj",
+								"width": 240,
+								"height": 240
+							},
+							"high": {
+								"url": "https://yt3.ggpht.com/ytc/AIdro_fitness1=s800-c-k-c0x00ffffff-no-rj",
+								"width": 800,
+								"height": 800
+							}
+						},
+						"localized": {
+							"title": "Fitness Pro",
+							"description": "Workout tips and health advice."
+						}
+					},
+					"statistics": {
+						"viewCount": "850000",
+						"subscriberCount": "30000",
+						"hiddenSubscriberCount": false,
+						"videoCount": "215"
+					},
+					"status": {
+						"privacyStatus": "public",
+						"isLinked": true,
+						"longUploadsStatus": "eligible"
+					}
+				}
+			},
+			{
+				"json": {
+					"kind": "youtube#channel",
+					"etag": "etag_246810",
+					"id": "UCghi123stu456vwx789yzc",
+					"snippet": {
+						"title": "Gamer's Den",
+						"description": "Game walkthroughs, reviews, and tips.",
+						"customUrl": "@gamersden",
+						"publishedAt": "2016-12-05T12:10:00Z",
+						"thumbnails": {
+							"default": {
+								"url": "https://yt3.ggpht.com/ytc/AIdro_gamer1=s88-c-k-c0x00ffffff-no-rj",
+								"width": 88,
+								"height": 88
+							},
+							"medium": {
+								"url": "https://yt3.ggpht.com/ytc/AIdro_gamer1=s240-c-k-c0x00ffffff-no-rj",
+								"width": 240,
+								"height": 240
+							},
+							"high": {
+								"url": "https://yt3.ggpht.com/ytc/AIdro_gamer1=s800-c-k-c0x00ffffff-no-rj",
+								"width": 800,
+								"height": 800
+							}
+						},
+						"localized": {
+							"title": "Gamer's Den",
+							"description": "Game walkthroughs, reviews, and tips."
+						}
+					},
+					"statistics": {
+						"viewCount": "1950000",
+						"subscriberCount": "80000",
+						"hiddenSubscriberCount": false,
+						"videoCount": "640"
+					},
+					"status": {
+						"privacyStatus": "public",
+						"isLinked": true,
+						"longUploadsStatus": "eligible"
+					}
+				}
+			},
+			{
+				"json": {
+					"kind": "youtube#channel",
+					"etag": "etag_135790",
+					"id": "UCjkl987stu654vwx321mno",
+					"snippet": {
+						"title": "Cooking Mastery",
+						"description": "Delicious recipes and cooking tips.",
+						"customUrl": "@cookingmastery",
+						"publishedAt": "2019-04-17T16:55:00Z",
+						"thumbnails": {
+							"default": {
+								"url": "https://yt3.ggpht.com/ytc/AIdro_cooking1=s88-c-k-c0x00ffffff-no-rj",
+								"width": 88,
+								"height": 88
+							},
+							"medium": {
+								"url": "https://yt3.ggpht.com/ytc/AIdro_cooking1=s240-c-k-c0x00ffffff-no-rj",
+								"width": 240,
+								"height": 240
+							},
+							"high": {
+								"url": "https://yt3.ggpht.com/ytc/AIdro_cooking1=s800-c-k-c0x00ffffff-no-rj",
+								"width": 800,
+								"height": 800
+							}
+						},
+						"localized": {
+							"title": "Cooking Mastery",
+							"description": "Delicious recipes and cooking tips."
+						}
+					},
+					"statistics": {
+						"viewCount": "650000",
+						"subscriberCount": "25000",
+						"hiddenSubscriberCount": false,
+						"videoCount": "190"
+					},
+					"status": {
+						"privacyStatus": "public",
+						"isLinked": true,
+						"longUploadsStatus": "eligible"
+					}
+				}
+			}
+		],
+		"Channel Get": [
+			{
+				"json": {
+					"kind": "youtube#channel",
+					"etag": "etag_123456",
+					"id": "UCabc123def456ghi789jkl",
+					"snippet": {
+						"title": "Tech Insights",
+						"description": "Latest tech reviews and industry insights.",
+						"customUrl": "@techinsights",
+						"publishedAt": "2015-06-15T09:30:00Z",
+						"thumbnails": {
+							"default": {
+								"url": "https://yt3.ggpht.com/ytc/AIdro_tech1=s88-c-k-c0x00ffffff-no-rj",
+								"width": 88,
+								"height": 88
+							},
+							"medium": {
+								"url": "https://yt3.ggpht.com/ytc/AIdro_tech1=s240-c-k-c0x00ffffff-no-rj",
+								"width": 240,
+								"height": 240
+							},
+							"high": {
+								"url": "https://yt3.ggpht.com/ytc/AIdro_tech1=s800-c-k-c0x00ffffff-no-rj",
+								"width": 800,
+								"height": 800
+							}
+						},
+						"localized": {
+							"title": "Tech Insights",
+							"description": "Latest tech reviews and industry insights."
+						}
+					},
+					"statistics": {
+						"viewCount": "1250000",
+						"subscriberCount": "45000",
+						"hiddenSubscriberCount": false,
+						"videoCount": "320"
+					},
+					"status": {
+						"privacyStatus": "public",
+						"isLinked": true,
+						"longUploadsStatus": "eligible"
+					}
+				}
+			}
+		],
+		"Channel Update": [
+			{
+				"json": {
+					"kind": "youtube#channel",
+					"etag": "someEtag",
+					"id": "UCabc123def456ghi789jkl",
+					"brandingSettings": {
+						"channel": {
+							"description": "Test"
+						},
+						"image": {}
+					}
+				}
+			}
+		]
+	},
+	"meta": {
+		"instanceId": "27cc9b56542ad45b38725555722c50a1c3fee1670bbb67980558314ee08517c4"
+	}
+}

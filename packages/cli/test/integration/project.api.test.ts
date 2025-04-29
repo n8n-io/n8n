@@ -1,11 +1,10 @@
 import type { ProjectRole } from '@n8n/api-types';
 import { Container } from '@n8n/di';
-import type { Scope } from '@n8n/permissions';
+import type { GlobalRole, Scope } from '@n8n/permissions';
 import { EntityNotFoundError } from '@n8n/typeorm';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import type { Project } from '@/databases/entities/project';
-import type { GlobalRole } from '@/databases/entities/user';
 import { FolderRepository } from '@/databases/repositories/folder.repository';
 import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
 import { ProjectRepository } from '@/databases/repositories/project.repository';

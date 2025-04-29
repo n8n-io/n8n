@@ -14,7 +14,8 @@ import config from '@/config';
 import { Time } from '@/constants';
 import { TaskDeferredError } from '@/task-runners/task-broker/errors/task-deferred.error';
 import { TaskRejectError } from '@/task-runners/task-broker/errors/task-reject.error';
-import { TaskRunnerTimeoutError } from '@/task-runners/task-broker/errors/task-runner-timeout.error';
+import { TaskRunnerAcceptTimeoutError } from '@/task-runners/task-broker/errors/task-runner-accept-timeout.error';
+import { TaskRunnerExecutionTimeoutError } from '@/task-runners/task-broker/errors/task-runner-execution-timeout.error';
 import { TaskRunnerLifecycleEvents } from '@/task-runners/task-runner-lifecycle-events';
 
 export interface TaskRunner {
@@ -468,7 +469,7 @@ export class TaskBroker {
 
 		await this.taskErrorHandler(
 			taskId,
-			new TaskRunnerTimeoutError({
+			new TaskRunnerExecutionTimeoutError({
 				taskTimeout,
 				isSelfHosted: config.getEnv('deployment.type') !== 'cloud',
 				mode,
@@ -513,7 +514,7 @@ export class TaskBroker {
 
 				// TODO: customisable timeout
 				setTimeout(() => {
-					reject('Runner timed out');
+					reject(new TaskRunnerAcceptTimeoutError(taskId, offer.runnerId));
 				}, 2000);
 			});
 
@@ -533,6 +534,10 @@ export class TaskBroker {
 			if (e instanceof TaskDeferredError) {
 				this.logger.debug(`Task (${taskId}) deferred until runner is ready`);
 				this.pendingTaskRequests.push(request); // will settle on receiving task offer from runner
+				return;
+			}
+			if (e instanceof TaskRunnerAcceptTimeoutError) {
+				this.logger.warn(e.message);
 				return;
 			}
 			throw e;

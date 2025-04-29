@@ -1,0 +1,25 @@
+diff --git a/dist/index.node.js b/dist/index.node.js
+index 9a56dcef7f312d2061975dc496281b1673a229c4..8b86b4a7f07656d6711e54cb699d0dc79b08a8d3 100644
+--- a/dist/index.node.js
++++ b/dist/index.node.js
+@@ -16,7 +16,7 @@ async function getRandomValues(size) {
+  * @returns The random string
+  */
+ async function random(size) {
+-    const mask = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._~";
++    const mask = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._";
+     let result = "";
+     const randomUints = await getRandomValues(size);
+     for (let i = 0; i < size; i++) {
+diff --git a/package.json b/package.json
+index a51ede0564b61a237e35e8c5e718251c666ccaa5..9a015872b2f8f45dc5306843599304ef9a3a83c1 100644
+--- a/package.json
++++ b/package.json
+@@ -4,6 +4,7 @@
+   "description": "Generate or verify a Proof Key for Code Exchange (PKCE) challenge pair",
+   "browser": "dist/index.browser.js",
+   "type": "module",
++  "types": "./dist/index.node.d.ts",
+   "exports": {
+     ".": {
+       "types": {

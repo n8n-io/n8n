@@ -23,7 +23,7 @@ const LazyRunDataJsonActions = defineAsyncComponent(
 const props = withDefaults(
 	defineProps<{
 		editMode: { enabled?: boolean; value?: string };
-		pushRef: string;
+		pushRef?: string;
 		paneType: string;
 		node: INodeUi;
 		inputData: INodeExecutionData[];
@@ -33,6 +33,7 @@ const props = withDefaults(
 		runIndex: number | undefined;
 		totalRuns: number | undefined;
 		search: string | undefined;
+		compact?: boolean;
 	}>(),
 	{
 		editMode: () => ({}),
@@ -72,15 +73,24 @@ const getJsonParameterPath = (path: string) => {
 	});
 };
 
-const onDragStart = (el: HTMLElement) => {
+const canDraggableDrop = computed(() => ndvStore.canDraggableDrop);
+const draggableStickyPosition = computed(() => ndvStore.draggableStickyPos);
+
+const onDragStart = (el: HTMLElement, data?: string) => {
 	if (el?.dataset.path) {
 		draggingPath.value = el.dataset.path;
 	}
 
+	ndvStore.draggableStartDragging({
+		type: 'mapping',
+		data: data ?? '',
+		dimensions: el?.getBoundingClientRect() ?? null,
+	});
 	ndvStore.resetMappingTelemetry();
 };
 
 const onDragEnd = (el: HTMLElement) => {
+	ndvStore.draggableStopDragging();
 	draggingPath.value = null;
 	const mappingTelemetry = ndvStore.mappingTelemetry;
 	const telemetryPayload = {
@@ -114,7 +124,13 @@ const getListItemName = (path: string) => {
 </script>
 
 <template>
-	<div ref="jsonDataContainer" :class="[$style.jsonDisplay, { [$style.highlight]: highlight }]">
+	<div
+		ref="jsonDataContainer"
+		:class="[
+			$style.jsonDisplay,
+			{ [$style.highlight]: highlight, [$style.compact]: props.compact },
+		]"
+	>
 		<Suspense>
 			<LazyRunDataJsonActions
 				v-if="!editMode.enabled"
@@ -132,6 +148,8 @@ const getListItemName = (path: string) => {
 			type="mapping"
 			target-data-key="mappable"
 			:disabled="!mappingEnabled"
+			:can-drop="canDraggableDrop"
+			:sticky-position="draggableStickyPosition"
 			@dragstart="onDragStart"
 			@dragend="onDragEnd"
 		>
@@ -227,6 +245,10 @@ const getListItemName = (path: string) => {
 			color: var(--color-primary);
 		}
 	}
+
+	&.compact {
+		padding-left: var(--spacing-2xs);
+	}
 }
 </style>
 
@@ -234,6 +256,7 @@ const getListItemName = (path: string) => {
 .vjs-tree {
 	color: var(--color-json-default);
 	--color-line-break: var(--color-code-line-break);
+	font-size: var(--font-size-2xs);
 }
 
 .vjs-tree-node {

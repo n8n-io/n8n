@@ -56,7 +56,7 @@ function isEmpty<T>(value: T) {
 }
 
 function normalizeFieldName(fieldName: string) {
-	return fieldName.replace(/[\]\["]/g, '').replace(/[ .]/g, '');
+	return fieldName.replace(/[\]\["]/g, '').replace(/[ .]/g, '_');
 }
 
 export const fieldValueGetter = (disableDotNotation?: boolean) => {

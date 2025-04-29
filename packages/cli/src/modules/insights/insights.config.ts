@@ -29,4 +29,18 @@ export class InsightsConfig {
 	 */
 	@Env('N8N_INSIGHTS_COMPACTION_DAILY_TO_WEEKLY_THRESHOLD_DAYS')
 	compactionDailyToWeeklyThresholdDays: number = 180;
+
+	/**
+	 * The maximum number of insights data to keep in the buffer before flushing.
+	 * Default: 1000
+	 */
+	@Env('N8N_INSIGHTS_FLUSH_BATCH_SIZE')
+	flushBatchSize: number = 1000;
+
+	/**
+	 * The interval in seconds at which the insights data should be flushed to the database.
+	 * Default: 30
+	 */
+	@Env('N8N_INSIGHTS_FLUSH_INTERVAL_SECONDS')
+	flushIntervalSeconds: number = 30;
 }

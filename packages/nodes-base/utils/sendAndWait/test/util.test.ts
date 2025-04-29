@@ -341,6 +341,7 @@ describe('Send and Wait utils tests', () => {
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
 				method: 'POST',
 			} as any);
+			mockWebhookFunctions.getNode.mockReturnValue({} as any);
 
 			mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
 				const params: { [key: string]: any } = {

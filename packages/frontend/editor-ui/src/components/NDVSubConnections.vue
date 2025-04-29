@@ -106,7 +106,7 @@ function getINodesFromNames(names: string[]): NodeConfig[] {
 				const matchedNodeType = nodeTypesStore.getNodeType(node.type);
 				if (matchedNodeType) {
 					const issues = nodeHelpers.getNodeIssues(matchedNodeType, node, workflow.value);
-					const stringifiedIssues = issues ? NodeHelpers.nodeIssuesToString(issues, node) : '';
+					const stringifiedIssues = issues ? nodeHelpers.nodeIssuesToString(issues, node) : '';
 					return { node, nodeType: matchedNodeType, issues: stringifiedIssues };
 				}
 			}

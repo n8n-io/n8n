@@ -6,6 +6,7 @@ import type {
 	IRun,
 	IRunExecutionData,
 	ITaskData,
+	ITaskStartedData,
 	IWorkflowBase,
 	Workflow,
 } from 'n8n-workflow';
@@ -52,7 +53,7 @@ describe('ExecutionLifecycleHooks', () => {
 			hook: ExecutionLifecycleHookName;
 			args: Parameters<ExecutionLifecyleHookHandlers[keyof ExecutionLifecyleHookHandlers][number]>;
 		}> = [
-			{ hook: 'nodeExecuteBefore', args: ['testNode'] },
+			{ hook: 'nodeExecuteBefore', args: ['testNode', mock<ITaskStartedData>()] },
 			{
 				hook: 'nodeExecuteAfter',
 				args: ['testNode', mock<ITaskData>(), mock<IRunExecutionData>()],
@@ -84,7 +85,7 @@ describe('ExecutionLifecycleHooks', () => {
 			});
 
 			hooks.addHandler('nodeExecuteBefore', hook1, hook2);
-			await hooks.runHook('nodeExecuteBefore', ['testNode']);
+			await hooks.runHook('nodeExecuteBefore', ['testNode', mock()]);
 
 			expect(executionOrder).toEqual(['hook1', 'hook2']);
 			expect(hook1).toHaveBeenCalled();
@@ -98,7 +99,7 @@ describe('ExecutionLifecycleHooks', () => {
 			});
 
 			hooks.addHandler('nodeExecuteBefore', hook);
-			await hooks.runHook('nodeExecuteBefore', ['testNode']);
+			await hooks.runHook('nodeExecuteBefore', ['testNode', mock()]);
 
 			expect(hook).toHaveBeenCalled();
 		});
@@ -107,7 +108,9 @@ describe('ExecutionLifecycleHooks', () => {
 			const errorHook = jest.fn().mockRejectedValue(new Error('Hook failed'));
 			hooks.addHandler('nodeExecuteBefore', errorHook);
 
-			await expect(hooks.runHook('nodeExecuteBefore', ['testNode'])).rejects.toThrow('Hook failed');
+			await expect(hooks.runHook('nodeExecuteBefore', ['testNode', mock()])).rejects.toThrow(
+				'Hook failed',
+			);
 		});
 	});
 });

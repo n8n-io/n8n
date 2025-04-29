@@ -5,10 +5,6 @@ import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
 import * as Helpers from '@test/nodes/Helpers';
 
 describe('Test ReadWriteFile Node', () => {
-	beforeEach(async () => {
-		await Helpers.initBinaryDataService();
-	});
-
 	const temporaryDir = Helpers.createTemporaryDir();
 	const directory = __dirname.replace(/\\/gi, '/');
 

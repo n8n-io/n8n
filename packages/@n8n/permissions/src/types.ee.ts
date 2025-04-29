@@ -1,4 +1,4 @@
-import type { RESOURCES } from './constants.ee';
+import type { RESOURCES, API_KEY_RESOURCES } from './constants.ee';
 
 export type Resource = keyof typeof RESOURCES;
 
@@ -16,7 +16,7 @@ type AllScopesObject = {
 	[R in Resource]: ResourceScope<R>;
 };
 
-export type Scope<K extends Resource = Resource> = AllScopesObject[K];
+export type Scope = AllScopesObject[Resource];
 
 export type ScopeLevel = 'global' | 'project' | 'resource';
 export type GetScopeLevel<T extends ScopeLevel> = Record<T, Scope[]>;
@@ -32,3 +32,22 @@ export type MaskLevels = SharingMasks;
 
 export type ScopeMode = 'oneOf' | 'allOf';
 export type ScopeOptions = { mode: ScopeMode };
+
+export type PublicApiKeyResources = keyof typeof API_KEY_RESOURCES;
+
+export type ApiKeyResourceScope<
+	R extends PublicApiKeyResources,
+	Operation extends (typeof API_KEY_RESOURCES)[R][number] = (typeof API_KEY_RESOURCES)[R][number],
+> = `${R}:${Operation}`;
+
+// This is purely an intermediary type.
+// If we tried to do use `ResourceScope<Resource>` directly we'd end
+// up with all resources having all scopes.
+type AllApiKeyScopesObject = {
+	[R in PublicApiKeyResources]: ApiKeyResourceScope<R>;
+};
+
+export type ApiKeyScope = AllApiKeyScopesObject[PublicApiKeyResources];
+
+export type GlobalRole = 'global:owner' | 'global:admin' | 'global:member';
+export type AssignableRole = Exclude<GlobalRole, 'global:owner'>;

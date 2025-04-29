@@ -5,10 +5,9 @@ import { createTestingPinia, type TestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createRouter, createWebHistory } from 'vue-router';
-import { h, type ExtractPropTypes } from 'vue';
+import { h } from 'vue';
 import { fireEvent, waitFor, within } from '@testing-library/vue';
 import {
-	aiAgentNode,
 	aiChatExecutionResponse,
 	aiChatWorkflow,
 	aiManualExecutionResponse,
@@ -16,6 +15,8 @@ import {
 } from '../../__test__/data';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { useNDVStore } from '@/stores/ndv.store';
+import { createTestWorkflowObject } from '@/__tests__/mocks';
+import { createLogEntries } from '@/components/RunDataAi/utils';
 
 describe('LogsOverviewPanel', () => {
 	let pinia: TestingPinia;
@@ -23,9 +24,25 @@ describe('LogsOverviewPanel', () => {
 	let pushConnectionStore: ReturnType<typeof mockedStore<typeof usePushConnectionStore>>;
 	let ndvStore: ReturnType<typeof mockedStore<typeof useNDVStore>>;
 
-	function render(props: ExtractPropTypes<typeof LogsOverviewPanel>) {
+	function render(props: Partial<InstanceType<typeof LogsOverviewPanel>['$props']>) {
+		const mergedProps: InstanceType<typeof LogsOverviewPanel>['$props'] = {
+			isOpen: false,
+			isReadOnly: false,
+			isCompact: false,
+			scrollToSelection: false,
+			execution: {
+				...aiChatExecutionResponse,
+				tree: createLogEntries(
+					createTestWorkflowObject(aiChatWorkflow),
+					aiChatExecutionResponse.data?.resultData.runData ?? {},
+				),
+			},
+			latestNodeInfo: {},
+			...props,
+		};
+
 		return renderComponent(LogsOverviewPanel, {
-			props,
+			props: mergedProps,
 			global: {
 				plugins: [
 					createRouter({
@@ -44,8 +61,6 @@ describe('LogsOverviewPanel', () => {
 		setActivePinia(pinia);
 
 		workflowsStore = mockedStore(useWorkflowsStore);
-		workflowsStore.setWorkflow(aiChatWorkflow);
-		workflowsStore.setWorkflowExecutionData(null);
 
 		pushConnectionStore = mockedStore(usePushConnectionStore);
 		pushConnectionStore.isConnected = true;
@@ -54,36 +69,35 @@ describe('LogsOverviewPanel', () => {
 	});
 
 	it('should not render body if the panel is not open', () => {
-		const rendered = render({ isOpen: false, node: null });
+		const rendered = render({ isOpen: false });
 
 		expect(rendered.queryByTestId('logs-overview-empty')).not.toBeInTheDocument();
 	});
 
 	it('should render empty text if there is no execution', () => {
-		const rendered = render({ isOpen: true, node: null });
+		const rendered = render({ isOpen: true, execution: undefined });
 
 		expect(rendered.queryByTestId('logs-overview-empty')).toBeInTheDocument();
 	});
 
 	it('should render summary text and executed nodes if there is an execution', async () => {
-		workflowsStore.setWorkflowExecutionData(aiChatExecutionResponse);
-
-		const rendered = render({ isOpen: true, node: aiAgentNode });
+		const rendered = render({ isOpen: true });
 		const summary = within(rendered.container.querySelector('.summary')!);
 
 		expect(summary.queryByText('Success in 1.999s')).toBeInTheDocument();
 		expect(summary.queryByText('555 Tokens')).toBeInTheDocument();
 
+		await fireEvent.click(rendered.getByText('Overview'));
+
 		const tree = within(rendered.getByRole('tree'));
 
-		expect(tree.queryAllByRole('treeitem')).toHaveLength(2);
+		await waitFor(() => expect(tree.queryAllByRole('treeitem')).toHaveLength(2));
 
 		const row1 = within(tree.queryAllByRole('treeitem')[0]);
 
 		expect(row1.queryByText('AI Agent')).toBeInTheDocument();
 		expect(row1.queryByText('Success in 1.778s')).toBeInTheDocument();
 		expect(row1.queryByText('Started 00:00:00.002, 26 Mar')).toBeInTheDocument();
-		expect(row1.queryByText('555 Tokens')).toBeInTheDocument();
 
 		const row2 = within(tree.queryAllByRole('treeitem')[1]);
 
@@ -99,29 +113,62 @@ describe('LogsOverviewPanel', () => {
 	});
 
 	it('should open NDV if the button is clicked', async () => {
-		workflowsStore.setWorkflowExecutionData(aiChatExecutionResponse);
+		const rendered = render({
+			isOpen: true,
+		});
+		const aiAgentRow = (await rendered.findAllByRole('treeitem'))[0];
 
-		const rendered = render({ isOpen: true, node: aiAgentNode });
-		const aiAgentRow = rendered.getAllByRole('treeitem')[0];
+		expect(ndvStore.activeNodeName).toBe(null);
+		expect(ndvStore.output.run).toBe(undefined);
 
 		await fireEvent.click(within(aiAgentRow).getAllByLabelText('Open...')[0]);
 
-		await waitFor(() => expect(ndvStore.activeNodeName).toBe('AI Agent'));
+		await waitFor(() => {
+			expect(ndvStore.activeNodeName).toBe('AI Agent');
+			expect(ndvStore.output.run).toBe(0);
+		});
 	});
 
 	it('should trigger partial execution if the button is clicked', async () => {
-		workflowsStore.setWorkflow(aiManualWorkflow);
-		workflowsStore.setWorkflowExecutionData(aiManualExecutionResponse);
-
 		const spyRun = vi.spyOn(workflowsStore, 'runWorkflow');
 
-		workflowsStore.setWorkflowExecutionData(aiChatExecutionResponse);
+		const rendered = render({
+			isOpen: true,
+			execution: {
+				...aiManualExecutionResponse,
+				tree: createLogEntries(
+					createTestWorkflowObject(aiManualWorkflow),
+					aiManualExecutionResponse.data?.resultData.runData ?? {},
+				),
+			},
+		});
+		const aiAgentRow = (await rendered.findAllByRole('treeitem'))[0];
 
-		const rendered = render({ isOpen: true, node: aiAgentNode });
-		const aiAgentRow = rendered.getAllByRole('treeitem')[0];
 		await fireEvent.click(within(aiAgentRow).getAllByLabelText('Test step')[0]);
 		await waitFor(() =>
 			expect(spyRun).toHaveBeenCalledWith(expect.objectContaining({ destinationNode: 'AI Agent' })),
 		);
+	});
+
+	it('should toggle subtree when chevron icon button is pressed', async () => {
+		const rendered = render({ isOpen: true });
+
+		await waitFor(() => expect(rendered.queryAllByRole('treeitem')).toHaveLength(2));
+		expect(rendered.queryByText('AI Agent')).toBeInTheDocument();
+		expect(rendered.queryByText('AI Model')).toBeInTheDocument();
+
+		// Close subtree of AI Agent
+		await fireEvent.click(rendered.getAllByLabelText('Toggle row')[0]);
+
+		await waitFor(() => expect(rendered.queryAllByRole('treeitem')).toHaveLength(1));
+		expect(rendered.queryByText('AI Agent')).toBeInTheDocument();
+		expect(rendered.queryByText('AI Model')).not.toBeInTheDocument();
+
+		// Re-open subtree of AI Agent
+		await fireEvent.click(rendered.getAllByLabelText('Toggle row')[0]);
+
+		await waitFor(() => expect(rendered.queryAllByRole('treeitem')).toHaveLength(2));
+		expect(rendered.queryByText('AI Agent')).toBeInTheDocument();
+		expect(rendered.queryByText('AI Model')).toBeInTheDocument();
 	});
 });

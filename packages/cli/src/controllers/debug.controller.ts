@@ -1,8 +1,8 @@
+import { Get, RestController } from '@n8n/decorators';
 import { InstanceSettings } from 'n8n-core';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import { Get, RestController } from '@/decorators';
 import { OrchestrationService } from '@/services/orchestration.service';
 
 @RestController('/debug')

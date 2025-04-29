@@ -31,6 +31,7 @@ import type {
 } from './Interfaces';
 import { NodeConnectionTypes } from './Interfaces';
 import * as NodeHelpers from './NodeHelpers';
+import { applyAccessPatterns } from './NodeReferenceParserUtils';
 import * as ObservableObject from './ObservableObject';
 
 function dedupe<T>(arr: T[]): T[] {
@@ -333,43 +334,7 @@ export class Workflow {
 				typeof parameterValue === 'string' &&
 				(parameterValue.charAt(0) === '=' || hasRenamableContent)
 			) {
-				// Is expression so has to be rewritten
-				// To not run the "expensive" regex stuff when it is not needed
-				// make a simple check first if it really contains the node-name
-				if (parameterValue.includes(currentName)) {
-					// Really contains node-name (even though we do not know yet if really as $node-expression)
-
-					const escapedOldName = backslashEscape(currentName); // for match
-					const escapedNewName = dollarEscape(newName); // for replacement
-
-					const setNewName = (expression: string, oldPattern: string) =>
-						expression.replace(new RegExp(oldPattern, 'g'), `$1${escapedNewName}$2`);
-
-					if (parameterValue.includes('$(')) {
-						const oldPattern = String.raw`(\$\(['"])${escapedOldName}(['"]\))`;
-						parameterValue = setNewName(parameterValue, oldPattern);
-					}
-
-					if (parameterValue.includes('$node[')) {
-						const oldPattern = String.raw`(\$node\[['"])${escapedOldName}(['"]\])`;
-						parameterValue = setNewName(parameterValue, oldPattern);
-					}
-
-					if (parameterValue.includes('$node.')) {
-						const oldPattern = String.raw`(\$node\.)${escapedOldName}(\.?)`;
-						parameterValue = setNewName(parameterValue, oldPattern);
-
-						if (hasDotNotationBannedChar(newName)) {
-							const regex = new RegExp(`.${backslashEscape(newName)}( |\\.)`, 'g');
-							parameterValue = parameterValue.replace(regex, `["${escapedNewName}"]$1`);
-						}
-					}
-
-					if (parameterValue.includes('$items(')) {
-						const oldPattern = String.raw`(\$items\(['"])${escapedOldName}(['"],|['"]\))`;
-						parameterValue = setNewName(parameterValue, oldPattern);
-					}
-				}
+				parameterValue = applyAccessPatterns(parameterValue, currentName, newName);
 			}
 
 			return parameterValue;
@@ -962,20 +927,4 @@ export class Workflow {
 
 		return this.__getStartNode(Object.keys(this.nodes));
 	}
-}
-
-function hasDotNotationBannedChar(nodeName: string) {
-	const DOT_NOTATION_BANNED_CHARS = /^(\d)|[\\ `!@#$%^&*()_+\-=[\]{};':"\\|,.<>?~]/g;
-
-	return DOT_NOTATION_BANNED_CHARS.test(nodeName);
-}
-
-function backslashEscape(nodeName: string) {
-	const BACKSLASH_ESCAPABLE_CHARS = /[.*+?^${}()|[\]\\]/g;
-
-	return nodeName.replace(BACKSLASH_ESCAPABLE_CHARS, (char) => `\\${char}`);
-}
-
-function dollarEscape(nodeName: string) {
-	return nodeName.replace(new RegExp('\\$', 'g'), '$$$$');
 }

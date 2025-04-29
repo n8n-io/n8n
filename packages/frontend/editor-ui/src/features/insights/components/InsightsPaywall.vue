@@ -1,14 +1,27 @@
-<script lang="ts" setup></script>
+<script lang="ts" setup>
+import { useI18n } from '@/composables/useI18n';
+import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
+
+const pageRedirectionHelper = usePageRedirectionHelper();
+const i18n = useI18n();
+
+const goToUpgrade = async () => {
+	await pageRedirectionHelper.goToUpgrade('insights', 'upgrade-insights');
+};
+</script>
 
 <template>
 	<div :class="$style.callout">
-		<N8nIcon icon="lock" size="size"></N8nIcon>
-		<N8nText bold tag="h3" size="large">Upgrade to Pro or Enterprise to see full data</N8nText>
-		<N8nText
-			>Gain access to detailed execution data with one year data retention.
-			<N8nLink to="/">Learn more</N8nLink>
+		<N8nIcon icon="lock" size="xlarge"></N8nIcon>
+		<N8nText bold tag="h3" size="large">
+			{{ i18n.baseText('insights.dashboard.paywall.title') }}
 		</N8nText>
-		<N8nButton type="primary" size="large">Upgrade</N8nButton>
+		<N8nText>
+			{{ i18n.baseText('insights.dashboard.paywall.description') }}
+		</N8nText>
+		<N8nButton type="primary" native-type="button" size="large" @click="goToUpgrade">
+			{{ i18n.baseText('insights.dashboard.paywall.cta') }}
+		</N8nButton>
 	</div>
 </template>
 
@@ -17,6 +30,7 @@
 	display: flex;
 	flex-direction: column;
 	height: 100%;
+	padding: 6rem 0;
 	align-items: center;
 	max-width: 360px;
 	margin: 0 auto;

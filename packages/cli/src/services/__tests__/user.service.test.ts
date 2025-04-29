@@ -18,7 +18,7 @@ describe('UserService', () => {
 	});
 	const urlService = new UrlService(globalConfig);
 	const userRepository = mockInstance(UserRepository);
-	const userService = new UserService(mock(), userRepository, mock(), urlService, mock());
+	const userService = new UserService(mock(), userRepository, mock(), urlService, mock(), mock());
 
 	const commonMockUser = Object.assign(new User(), {
 		id: uuid(),

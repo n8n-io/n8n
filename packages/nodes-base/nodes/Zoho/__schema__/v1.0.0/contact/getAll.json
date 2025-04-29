@@ -154,20 +154,6 @@
                 }
             }
         },
-        "Tag": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "string"
-                    },
-                    "name": {
-                        "type": "string"
-                    }
-                }
-            }
-        },
         "Unsubscribed_Mode": {
             "type": "null"
         },
@@ -175,5 +161,5 @@
             "type": "null"
         }
     },
-    "version": 1
+    "version": 2
 }

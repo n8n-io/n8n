@@ -232,8 +232,9 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 		let taskData: ITaskData | undefined;
 		if (type === 'input') {
 			taskData = {
-				startTime: new Date().getTime(),
+				startTime: Date.now(),
 				executionTime: 0,
+				executionIndex: additionalData.currentNodeExecutionIndex++,
 				executionStatus: 'running',
 				source: [null],
 			};
@@ -277,10 +278,10 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 			}
 
 			runExecutionData.resultData.runData[nodeName][currentNodeRunIndex] = taskData;
-			await additionalData.hooks?.runHook('nodeExecuteBefore', [nodeName]);
+			await additionalData.hooks?.runHook('nodeExecuteBefore', [nodeName, taskData]);
 		} else {
 			// Outputs
-			taskData.executionTime = new Date().getTime() - taskData.startTime;
+			taskData.executionTime = Date.now() - taskData.startTime;
 
 			await additionalData.hooks?.runHook('nodeExecuteAfter', [
 				nodeName,

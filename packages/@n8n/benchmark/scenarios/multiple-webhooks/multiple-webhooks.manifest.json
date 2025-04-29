@@ -1,0 +1,20 @@
+{
+	"$schema": "../scenario.schema.json",
+	"name": "MultipleWebhooks",
+	"description": "10 simple webhooks that respond with a 200 status code",
+	"scenarioData": {
+		"workflowFiles": [
+			"multiple-webhooks1.json",
+			"multiple-webhooks2.json",
+			"multiple-webhooks3.json",
+			"multiple-webhooks4.json",
+			"multiple-webhooks5.json",
+			"multiple-webhooks6.json",
+			"multiple-webhooks7.json",
+			"multiple-webhooks8.json",
+			"multiple-webhooks9.json",
+			"multiple-webhooks10.json"
+		]
+	},
+	"scriptPath": "multiple-webhooks.script.js"
+}

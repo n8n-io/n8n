@@ -36,6 +36,7 @@ import { RoleService } from '@/services/role.service';
 import { TagService } from '@/services/tag.service';
 import * as WorkflowHelpers from '@/workflow-helpers';
 
+import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowHistoryService } from './workflow-history.ee/workflow-history.service.ee';
 import { WorkflowSharingService } from './workflow-sharing.service';
 
@@ -60,6 +61,7 @@ export class WorkflowService {
 		private readonly eventService: EventService,
 		private readonly globalConfig: GlobalConfig,
 		private readonly folderService: FolderService,
+		private readonly workflowFinderService: WorkflowFinderService,
 	) {}
 
 	async getMany(
@@ -67,14 +69,31 @@ export class WorkflowService {
 		options?: ListQuery.Options,
 		includeScopes?: boolean,
 		includeFolders?: boolean,
+		onlySharedWithMe?: boolean,
 	) {
 		let count;
 		let workflows;
 		let workflowsAndFolders: WorkflowFolderUnionFull[] = [];
+		let sharedWorkflowIds: string[] = [];
+		let isPersonalProject = false;
 
-		const sharedWorkflowIds = await this.workflowSharingService.getSharedWorkflowIds(user, {
-			scopes: ['workflow:read'],
-		});
+		if (options?.filter?.projectId) {
+			const projects = await this.projectService.getProjectRelationsForUser(user);
+			isPersonalProject = !!projects.find(
+				(p) => p.project.id === options.filter?.projectId && p.project.type === 'personal',
+			);
+		}
+
+		if (isPersonalProject) {
+			sharedWorkflowIds =
+				await this.workflowSharingService.getOwnedWorkflowsInPersonalProject(user);
+		} else if (onlySharedWithMe) {
+			sharedWorkflowIds = await this.workflowSharingService.getSharedWithMeIds(user);
+		} else {
+			sharedWorkflowIds = await this.workflowSharingService.getSharedWorkflowIds(user, {
+				scopes: ['workflow:read'],
+			});
+		}
 
 		if (includeFolders) {
 			[workflowsAndFolders, count] = await this.workflowRepository.getWorkflowsAndFoldersWithCount(
@@ -185,7 +204,7 @@ export class WorkflowService {
 		parentFolderId?: string,
 		forceSave?: boolean,
 	): Promise<WorkflowEntity> {
-		const workflow = await this.sharedWorkflowRepository.findWorkflowForUser(workflowId, user, [
+		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:update',
 		]);
 
@@ -367,7 +386,7 @@ export class WorkflowService {
 	async delete(user: User, workflowId: string): Promise<WorkflowEntity | undefined> {
 		await this.externalHooks.run('workflow.delete', [workflowId]);
 
-		const workflow = await this.sharedWorkflowRepository.findWorkflowForUser(workflowId, user, [
+		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:delete',
 		]);
 

@@ -7,10 +7,10 @@ import { CredentialsHelper } from '@/credentials-helper';
 import type { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { ExternalHooks } from '@/external-hooks';
-import type { IExecutionResponse } from '@/interfaces';
 import type { ManualExecutionService } from '@/manual-execution.service';
 import { SecretsHelper } from '@/secrets-helpers.ee';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
+import type { IExecutionResponse } from '@/types-db';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 import { JobProcessor } from '../job-processor';

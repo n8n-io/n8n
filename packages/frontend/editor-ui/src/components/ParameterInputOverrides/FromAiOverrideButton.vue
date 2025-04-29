@@ -20,7 +20,10 @@ const emit = defineEmits<{
 			data-test-id="from-ai-override-button"
 			@click="emit('click')"
 		>
-			<AiStarsIcon size="large" />
+			<span>
+				<!-- The span wrapping the icon centers it due to reliance on legacy behavior -->
+				<AiStarsIcon size="large" />
+			</span>
 		</N8nButton>
 	</N8nTooltip>
 </template>

@@ -20,6 +20,7 @@ import {
 	buildJsonSchemaExampleField,
 	schemaTypeField,
 } from '@utils/descriptions';
+import { nodeNameToToolName } from '@utils/helpers';
 import { convertJsonSchemaToZod, generateSchema } from '@utils/schemaParsing';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
@@ -32,7 +33,7 @@ export class ToolCode implements INodeType {
 		icon: 'fa:code',
 		iconColor: 'black',
 		group: ['transform'],
-		version: [1, 1.1],
+		version: [1, 1.1, 1.2],
 		description: 'Write a tool in JS or Python',
 		defaults: {
 			name: 'Code Tool',
@@ -88,7 +89,7 @@ export class ToolCode implements INodeType {
 					'The name of the function to be called, could contain letters, numbers, and underscores only',
 				displayOptions: {
 					show: {
-						'@version': [{ _cnd: { gte: 1.1 } }],
+						'@version': [1.1],
 					},
 				},
 			},
@@ -181,7 +182,12 @@ export class ToolCode implements INodeType {
 		const node = this.getNode();
 		const workflowMode = this.getMode();
 
-		const name = this.getNodeParameter('name', itemIndex) as string;
+		const { typeVersion } = node;
+		const name =
+			typeVersion <= 1.1
+				? (this.getNodeParameter('name', itemIndex) as string)
+				: nodeNameToToolName(node);
+
 		const description = this.getNodeParameter('description', itemIndex) as string;
 
 		const useSchema = this.getNodeParameter('specifyInputSchema', itemIndex) as boolean;

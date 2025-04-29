@@ -64,20 +64,22 @@ jobs:
         # "sha-5d3fe...35d3-time-1620841214"
         run: echo "value=sha-$GITHUB_SHA-time-$(date +"%s")" >> $GITHUB_OUTPUT
 
+      - name: Calculate Git Ref 🤔
+        id: calculate_ref
+        run: |
+          if [ -n "${{ inputs.pr_number }}" ]; then
+            echo "value=refs/pull/${{ inputs.pr_number }}/head" >> $GITHUB_OUTPUT
+          else
+            echo "value=${{ inputs.branch }}" >> $GITHUB_OUTPUT
+          fi
   install:
     runs-on: blacksmith-4vcpu-ubuntu-2204
     needs: ['prepare']
 
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          ref: ${{ inputs.branch }}
-
-      - name: Checkout PR
-        if: ${{ inputs.pr_number }}
-        run: |
-          git fetch origin pull/${{ inputs.pr_number }}/head
-          git checkout FETCH_HEAD
+          ref: ${{ steps.calculate_ref.outputs.value }}
 
       - uses: pnpm/action-setup@fe02b34f77f8bc703788d5817da081398fad5dd2 # v4.0.0
 
@@ -119,15 +121,9 @@ jobs:
         # running the same tests multiple times
         containers: ${{ fromJSON( inputs.spec == 'e2e/*' && inputs.containers || '[1]' ) }}
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          ref: ${{ inputs.branch }}
-
-      - name: Checkout PR
-        if: ${{ inputs.pr_number }}
-        run: |
-          git fetch origin pull/${{ inputs.pr_number }}/head
-          git checkout FETCH_HEAD
+          ref: ${{ steps.calculate_ref.outputs.value }}
 
       - uses: pnpm/action-setup@fe02b34f77f8bc703788d5817da081398fad5dd2 # v4.0.0
 

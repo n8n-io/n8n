@@ -2,7 +2,7 @@ import fs from 'fs';
 import fsPromises from 'fs/promises';
 import { Readable } from 'stream';
 
-import { testWorkflows, getWorkflowFilenames, initBinaryDataService } from '@test/nodes/Helpers';
+import { testWorkflows, getWorkflowFilenames } from '@test/nodes/Helpers';
 
 const workflows = getWorkflowFilenames(__dirname);
 
@@ -12,10 +12,6 @@ describe('Test Crypto Node', () => {
 	fsPromises.access = async () => {};
 	jest.mock('fs');
 	fs.createReadStream = () => Readable.from(Buffer.from('test')) as fs.ReadStream;
-
-	beforeEach(async () => {
-		await initBinaryDataService();
-	});
 
 	testWorkflows(workflows);
 });

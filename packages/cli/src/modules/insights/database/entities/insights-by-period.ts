@@ -8,6 +8,8 @@ import {
 } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
 
+import { datetimeColumnType } from '@/databases/entities/abstract-entity';
+
 import { InsightsMetadata } from './insights-metadata';
 import type { PeriodUnit } from './insights-shared';
 import {
@@ -18,7 +20,6 @@ import {
 	PeriodUnitToNumber,
 	TypeToNumber,
 } from './insights-shared';
-import { datetimeColumnType } from '../../../../databases/entities/abstract-entity';
 
 @Entity()
 export class InsightsByPeriod extends BaseEntity {

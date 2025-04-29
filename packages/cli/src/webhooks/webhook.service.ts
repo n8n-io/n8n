@@ -19,7 +19,7 @@ import { WebhookRepository } from '@/databases/repositories/webhook.repository';
 import { NodeTypes } from '@/node-types';
 import { CacheService } from '@/services/cache/cache.service';
 
-type Method = NonNullable<IHttpRequestMethods>;
+import type { Method } from './webhook.types';
 
 @Service()
 export class WebhookService {

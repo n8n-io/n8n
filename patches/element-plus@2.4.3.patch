@@ -1,0 +1,26 @@
+diff --git a/es/hooks/use-lockscreen/index.mjs b/es/hooks/use-lockscreen/index.mjs
+index 482516a6c59f8dcf0caba62b7482f63f126c2280..ad3a62f956fe5672c318273aa69dfcf2576b3783 100644
+--- a/es/hooks/use-lockscreen/index.mjs
++++ b/es/hooks/use-lockscreen/index.mjs
+@@ -20,6 +20,8 @@ const useLockscreen = (trigger, options = {}) => {
+   let withoutHiddenClass = false;
+   let bodyWidth = "0";
+   const cleanup = () => {
++		// Cherry-pick from https://github.com/element-plus/element-plus/pull/18445
++    if (typeof document === 'undefined') return
+     setTimeout(() => {
+       removeClass(document == null ? void 0 : document.body, hiddenCls.value);
+       if (withoutHiddenClass && document) {
+diff --git a/lib/hooks/use-lockscreen/index.js b/lib/hooks/use-lockscreen/index.js
+index ce7bd581a57cd0d7e834c42a954b48d148578ef5..42fcc50bc15a12ab8466a1294c5af2e65384d5ac 100644
+--- a/lib/hooks/use-lockscreen/index.js
++++ b/lib/hooks/use-lockscreen/index.js
+@@ -24,6 +24,8 @@ const useLockscreen = (trigger, options = {}) => {
+   let withoutHiddenClass = false;
+   let bodyWidth = "0";
+   const cleanup = () => {
++		// Cherry-pick from https://github.com/element-plus/element-plus/pull/18445
++    if (typeof document === 'undefined') return
+     setTimeout(() => {
+       style.removeClass(document == null ? void 0 : document.body, hiddenCls.value);
+       if (withoutHiddenClass && document) {

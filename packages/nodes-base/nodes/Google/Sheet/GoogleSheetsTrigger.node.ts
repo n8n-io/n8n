@@ -534,13 +534,18 @@ export class GoogleSheetsTrigger implements INodeType {
 				);
 
 				if (Array.isArray(sheetData) && sheetData.length !== 0) {
-					const zeroBasedKeyRow = keyRow - 1;
-					sheetData.splice(zeroBasedKeyRow, 1); // Remove key row
+					sheetData.splice(0, 1); // Remove header row
+				}
+
+				let dataStartIndex = 0;
+				if (rangeDefinition === 'specifyRange' && keyRow < startIndex) {
+					dataStartIndex = startIndex - keyRow - 1;
 				}
 
 				if (this.getMode() === 'manual') {
 					if (Array.isArray(sheetData)) {
-						const returnData = arrayOfArraysToJson(sheetData, columns);
+						const sheetDataFromStartIndex = sheetData.slice(dataStartIndex);
+						const returnData = arrayOfArraysToJson(sheetDataFromStartIndex, columns);
 
 						if (Array.isArray(returnData) && returnData.length !== 0) {
 							return [this.helpers.returnJsonArray(returnData)];
@@ -554,7 +559,11 @@ export class GoogleSheetsTrigger implements INodeType {
 						return null;
 					}
 
-					const addedRows = sheetData?.slice(workflowStaticData.lastIndexChecked as number) || [];
+					const rowsStartIndex = Math.max(
+						workflowStaticData.lastIndexChecked as number,
+						dataStartIndex,
+					);
+					const addedRows = sheetData?.slice(rowsStartIndex) || [];
 					const returnData = arrayOfArraysToJson(addedRows, columns);
 
 					workflowStaticData.lastIndexChecked = sheetData.length;

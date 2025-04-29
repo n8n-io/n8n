@@ -400,6 +400,7 @@ describe('useCanvasMapping', () => {
 						{
 							startTime: 0,
 							executionTime: 0,
+							executionIndex: 0,
 							source: [],
 							data: {
 								[NodeConnectionTypes.Main]: [[{ json: {} }, { json: {} }]],
@@ -443,6 +444,7 @@ describe('useCanvasMapping', () => {
 								{
 									startTime: 0,
 									executionTime: 0,
+									executionIndex: 0,
 									source: [],
 									data: {
 										[NodeConnectionTypes.Main]: [[{ json: {} }]],
@@ -455,6 +457,7 @@ describe('useCanvasMapping', () => {
 								{
 									startTime: 0,
 									executionTime: 0,
+									executionIndex: 0,
 									source: [],
 									data: {
 										[NodeConnectionTypes.Main]: [[{ json: {} }, { json: {} }, { json: {} }]],
@@ -511,6 +514,7 @@ describe('useCanvasMapping', () => {
 						{
 							startTime: 0,
 							executionTime: 0,
+							executionIndex: 0,
 							source: [],
 							data: {
 								[NodeConnectionTypes.Main]: [[{ json: {} }]],
@@ -519,6 +523,7 @@ describe('useCanvasMapping', () => {
 						{
 							startTime: 0,
 							executionTime: 0,
+							executionIndex: 1,
 							source: [],
 							data: {
 								[NodeConnectionTypes.Main]: [[{ json: {} }, { json: {} }, { json: {} }]],
@@ -527,6 +532,7 @@ describe('useCanvasMapping', () => {
 						{
 							startTime: 0,
 							executionTime: 0,
+							executionIndex: 2,
 							source: [],
 							data: {
 								[NodeConnectionTypes.Main]: [[{ json: {} }, { json: {} }]],
@@ -722,6 +728,7 @@ describe('useCanvasMapping', () => {
 						{
 							startTime: 0,
 							executionTime: 0,
+							executionIndex: 0,
 							source: [],
 							error: mock<NodeApiError>({
 								message: errorMessage,
@@ -753,6 +760,7 @@ describe('useCanvasMapping', () => {
 						{
 							startTime: 0,
 							executionTime: 0,
+							executionIndex: 0,
 							source: [],
 							error: mock<NodeApiError>({
 								message: errorMessage,
@@ -783,6 +791,7 @@ describe('useCanvasMapping', () => {
 						{
 							startTime: 0,
 							executionTime: 0,
+							executionIndex: 0,
 							source: [],
 							error: mock<NodeApiError>({
 								message: 'Error 1',
@@ -792,6 +801,7 @@ describe('useCanvasMapping', () => {
 						{
 							startTime: 0,
 							executionTime: 0,
+							executionIndex: 1,
 							source: [],
 							error: mock<NodeApiError>({
 								message: 'Error 2',
@@ -855,6 +865,7 @@ describe('useCanvasMapping', () => {
 						{
 							startTime: 0,
 							executionTime: 0,
+							executionIndex: 0,
 							source: [],
 							error: mock<NodeApiError>({
 								message: 'Execution error',
@@ -894,6 +905,7 @@ describe('useCanvasMapping', () => {
 						{
 							startTime: 0,
 							executionTime: 0,
+							executionIndex: 0,
 							source: [],
 							error: mock<NodeApiError>({
 								message: 'Execution error',
@@ -948,6 +960,7 @@ describe('useCanvasMapping', () => {
 						{
 							startTime: 0,
 							executionTime: 0,
+							executionIndex: 0,
 							source: [],
 							executionStatus: 'crashed',
 						},
@@ -976,6 +989,7 @@ describe('useCanvasMapping', () => {
 						{
 							startTime: 0,
 							executionTime: 0,
+							executionIndex: 0,
 							source: [],
 							executionStatus: 'error',
 						},
@@ -1057,6 +1071,7 @@ describe('useCanvasMapping', () => {
 						{
 							startTime: 0,
 							executionTime: 0,
+							executionIndex: 0,
 							source: [],
 							executionStatus: 'error',
 							error: mock<NodeApiError>({
@@ -1096,6 +1111,7 @@ describe('useCanvasMapping', () => {
 						{
 							startTime: 0,
 							executionTime: 0,
+							executionIndex: 0,
 							source: [],
 							executionStatus: 'error',
 						},
@@ -1104,6 +1120,7 @@ describe('useCanvasMapping', () => {
 						{
 							startTime: 0,
 							executionTime: 0,
+							executionIndex: 0,
 							source: [],
 							executionStatus: 'success',
 						},

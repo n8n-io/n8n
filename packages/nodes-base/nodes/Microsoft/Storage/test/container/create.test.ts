@@ -1,5 +1,7 @@
 import { equalityTest, workflowToTests } from '@test/nodes/Helpers';
 
+import { credentials } from '../credentials';
+
 describe('Azure Storage Node', () => {
 	const workflows = ['nodes/Microsoft/Storage/test/workflows/container_create.workflow.json'];
 	const workflowTests = workflowToTests(workflows);
@@ -27,6 +29,7 @@ describe('Azure Storage Node', () => {
 					},
 				],
 			};
+			workflow.credentials = credentials;
 			test(workflow.description, async () => await equalityTest(workflow));
 		}
 	});

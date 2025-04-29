@@ -1,3 +1,5 @@
+import { z } from 'zod';
+
 import { Config, Env, Nested } from '../decorators';
 
 @Config
@@ -64,11 +66,14 @@ export class TemplateConfig {
 	'credentials-shared': string = '';
 }
 
+const emailModeSchema = z.enum(['', 'smtp']);
+type EmailMode = z.infer<typeof emailModeSchema>;
+
 @Config
 class EmailConfig {
 	/** How to send emails */
-	@Env('N8N_EMAIL_MODE')
-	mode: '' | 'smtp' = 'smtp';
+	@Env('N8N_EMAIL_MODE', emailModeSchema)
+	mode: EmailMode = 'smtp';
 
 	@Nested
 	smtp: SmtpConfig;

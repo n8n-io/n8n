@@ -1,8 +1,25 @@
 import { describe, it, expect } from 'vitest';
 import { useFolders } from './useFolders';
 import { FOLDER_NAME_MAX_LENGTH } from '@/constants';
+import { createTestingPinia } from '@pinia/testing';
+import { setActivePinia } from 'pinia';
+
+vi.mock('@/stores/folders.store', () => ({
+	useFoldersStore: vi.fn(() => ({
+		draggedElement: null,
+		activeDropTarget: null,
+	})),
+}));
 
 describe('useFolders', () => {
+	beforeEach(() => {
+		setActivePinia(createTestingPinia());
+	});
+
+	afterEach(() => {
+		vi.clearAllMocks();
+	});
+
 	const { validateFolderName } = useFolders();
 
 	describe('validateFolderName', () => {

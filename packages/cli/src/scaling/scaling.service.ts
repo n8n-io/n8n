@@ -1,4 +1,5 @@
 import { GlobalConfig } from '@n8n/config';
+import { OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { ErrorReporter, InstanceSettings, isObjectLiteral, Logger } from 'n8n-core';
 import {
@@ -16,7 +17,6 @@ import { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
 import { HIGHEST_SHUTDOWN_PRIORITY, Time } from '@/constants';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import { OnShutdown } from '@/decorators/on-shutdown';
 import { EventService } from '@/events/event.service';
 import { OrchestrationService } from '@/services/orchestration.service';
 import { assertNever } from '@/utils';

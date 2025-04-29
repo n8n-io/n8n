@@ -1,4 +1,10 @@
+import { z } from 'zod';
+
 import { Config, Env, Nested } from '../decorators';
+
+const samesiteSchema = z.enum(['strict', 'lax', 'none']);
+
+type Samesite = z.infer<typeof samesiteSchema>;
 
 @Config
 class CookieConfig {
@@ -7,8 +13,8 @@ class CookieConfig {
 	secure: boolean = true;
 
 	/** This sets the `Samesite` flag on n8n auth cookie */
-	@Env('N8N_SAMESITE_COOKIE')
-	samesite: 'strict' | 'lax' | 'none' = 'lax';
+	@Env('N8N_SAMESITE_COOKIE', samesiteSchema)
+	samesite: Samesite = 'lax';
 }
 
 @Config

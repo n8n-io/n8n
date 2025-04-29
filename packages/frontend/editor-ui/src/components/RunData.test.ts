@@ -117,8 +117,8 @@ describe('RunData', () => {
 		expect(getByText('Json data 1')).toBeInTheDocument();
 	});
 
-	it('should render view and download buttons for PDFs', async () => {
-		const { getByTestId } = render({
+	it('should render only download buttons for PDFs', async () => {
+		const { getByTestId, queryByTestId } = render({
 			defaultRunItems: [
 				{
 					json: {},
@@ -127,6 +127,31 @@ describe('RunData', () => {
 							fileName: 'test.pdf',
 							fileType: 'pdf',
 							mimeType: 'application/pdf',
+							data: '',
+						},
+					},
+				},
+			],
+			displayMode: 'binary',
+		});
+
+		await waitFor(() => {
+			expect(queryByTestId('ndv-view-binary-data')).not.toBeInTheDocument();
+			expect(getByTestId('ndv-download-binary-data')).toBeInTheDocument();
+			expect(getByTestId('ndv-binary-data_0')).toBeInTheDocument();
+		});
+	});
+
+	it('should render view and download buttons for JPEGs', async () => {
+		const { getByTestId } = render({
+			defaultRunItems: [
+				{
+					json: {},
+					binary: {
+						data: {
+							fileName: 'test.jpg',
+							fileType: 'image',
+							mimeType: 'image/jpeg',
 							data: '',
 						},
 					},
@@ -359,8 +384,9 @@ describe('RunData', () => {
 		const { getByTestId, queryByTestId } = render({
 			runs: [
 				{
-					startTime: new Date().getTime(),
-					executionTime: new Date().getTime(),
+					startTime: Date.now(),
+					executionIndex: 0,
+					executionTime: 1,
 					data: {
 						main: [[{ json: {} }]],
 					},
@@ -368,8 +394,9 @@ describe('RunData', () => {
 					metadata,
 				},
 				{
-					startTime: new Date().getTime(),
-					executionTime: new Date().getTime(),
+					startTime: Date.now(),
+					executionIndex: 1,
+					executionTime: 1,
 					data: {
 						main: [[{ json: {} }]],
 					},
@@ -413,6 +440,7 @@ describe('RunData', () => {
 				{
 					hints: [],
 					startTime: 1737643696893,
+					executionIndex: 0,
 					executionTime: 2,
 					source: [
 						{
@@ -598,8 +626,9 @@ describe('RunData', () => {
 		runs?: ITaskData[];
 	}) => {
 		const defaultRun: ITaskData = {
-			startTime: new Date().getTime(),
-			executionTime: new Date().getTime(),
+			startTime: Date.now(),
+			executionIndex: 0,
+			executionTime: 1,
 			data: {
 				main: [defaultRunItems ?? [{ json: {} }]],
 			},

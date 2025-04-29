@@ -1,6 +1,6 @@
 import nock from 'nock';
 
-import { getWorkflowFilenames, initBinaryDataService, testWorkflows } from '@test/nodes/Helpers';
+import { getWorkflowFilenames, testWorkflows } from '@test/nodes/Helpers';
 
 describe('Test Response Encoding', () => {
 	const baseUrl = 'https://dummy.domain';
@@ -10,8 +10,6 @@ describe('Test Response Encoding', () => {
 	);
 
 	beforeAll(async () => {
-		await initBinaryDataService();
-
 		nock(baseUrl)
 			.persist()
 			.get('/index.html')

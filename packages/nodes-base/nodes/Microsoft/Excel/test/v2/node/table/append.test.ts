@@ -2,6 +2,8 @@ import nock from 'nock';
 
 import { testWorkflows } from '@test/nodes/Helpers';
 
+import { credentials } from '../../../credentials';
+
 describe('Test MicrosoftExcelV2, table => append', () => {
 	nock('https://graph.microsoft.com/v1.0/me')
 		.get(
@@ -24,5 +26,5 @@ describe('Test MicrosoftExcelV2, table => append', () => {
 		.reply(200);
 
 	const workflows = ['nodes/Microsoft/Excel/test/v2/node/table/append.workflow.json'];
-	testWorkflows(workflows);
+	testWorkflows(workflows, credentials);
 });

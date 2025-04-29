@@ -1,14 +1,6 @@
 {
     "type": "object",
     "properties": {
-        "attributes": {
-            "type": "object",
-            "properties": {
-                "SMS": {
-                    "type": "string"
-                }
-            }
-        },
         "createdAt": {
             "type": "string"
         },
@@ -37,5 +29,5 @@
             "type": "boolean"
         }
     },
-    "version": 1
+    "version": 2
 }

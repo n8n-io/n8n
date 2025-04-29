@@ -10,7 +10,7 @@ const { t } = useI18n();
 
 const hovering = ref(false);
 
-const props = defineProps<{ unreadCount?: number }>();
+const props = defineProps<{ unreadCount?: number; type?: 'assistant' | 'builder' }>();
 
 const emit = defineEmits<{
 	click: [e: MouseEvent];
@@ -40,7 +40,13 @@ function onMouseLeave() {
 		<AssistantIcon v-else size="large" :theme="hovering ? 'blank' : 'default'" />
 		<div v-show="hovering" :class="$style.text">
 			<div>
-				<AssistantText :text="t('askAssistantButton.askAssistant')" />
+				<AssistantText
+					:text="
+						type === 'builder'
+							? t('assistantChat.builder.name')
+							: t('askAssistantButton.askAssistant')
+					"
+				/>
 			</div>
 			<div>
 				<BetaTag />

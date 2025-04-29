@@ -1,14 +1,12 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import nock from 'nock';
 
-import { getWorkflowFilenames, initBinaryDataService, testWorkflows } from '@test/nodes/Helpers';
+import { getWorkflowFilenames, testWorkflows } from '@test/nodes/Helpers';
 
 describe('GraphQL Node', () => {
 	const baseUrl = 'https://api.n8n.io/';
 
 	beforeAll(async () => {
-		await initBinaryDataService();
-
 		nock(baseUrl)
 			.matchHeader('accept', 'application/json')
 			.matchHeader('content-type', 'application/json')

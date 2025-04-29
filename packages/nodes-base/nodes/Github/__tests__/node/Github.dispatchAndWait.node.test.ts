@@ -1,6 +1,6 @@
 import nock from 'nock';
 
-import { getWorkflowFilenames, initBinaryDataService, testWorkflows } from '@test/nodes/Helpers';
+import { getWorkflowFilenames, testWorkflows } from '@test/nodes/Helpers';
 
 const workflows = getWorkflowFilenames(__dirname).filter((filename) =>
 	filename.includes('GithubDispatchAndWaitWorkflow.json'),
@@ -56,7 +56,6 @@ describe('Test Github Node - Dispatch and Wait', () => {
 
 		beforeAll(async () => {
 			jest.useFakeTimers({ doNotFake: ['nextTick'], now });
-			await initBinaryDataService();
 		});
 
 		beforeEach(async () => {

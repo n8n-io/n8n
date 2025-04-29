@@ -11,7 +11,7 @@ import { WorkflowTagMapping } from '@/databases/entities/workflow-tag-mapping';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import { TagRepository } from '@/databases/repositories/tag.repository';
 import * as Db from '@/db';
-import type { ICredentialsDb, IWorkflowDb } from '@/interfaces';
+import type { ICredentialsDb, IWorkflowDb } from '@/types-db';
 import { replaceInvalidCredentials } from '@/workflow-helpers';
 
 @Service()

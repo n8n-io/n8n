@@ -156,6 +156,7 @@ describe(useNodeDirtiness, () => {
 								{
 									startTime: +runAt,
 									executionTime: 0,
+									executionIndex: 0,
 									executionStatus: 'success',
 									source: [],
 								},
@@ -423,6 +424,7 @@ describe(useNodeDirtiness, () => {
 						{
 							startTime: +NODE_RUN_AT,
 							executionTime: 0,
+							executionIndex: 0,
 							executionStatus: 'success',
 							source: [],
 						},
