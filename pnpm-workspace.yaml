@@ -6,6 +6,7 @@ packages:
   - cypress
 
 catalog:
+  '@n8n/typeorm': 0.3.20-12
   '@sentry/node': 8.52.1
   '@types/basic-auth': ^1.1.3
   '@types/express': ^5.0.1

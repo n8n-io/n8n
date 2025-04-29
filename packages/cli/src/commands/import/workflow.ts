@@ -1,3 +1,4 @@
+import { generateNanoId } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { Flags } from '@oclif/core';
 import glob from 'fast-glob';
@@ -11,7 +12,6 @@ import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import { generateNanoId } from '@/databases/utils/generators';
 import type { IWorkflowToImport } from '@/interfaces';
 import { ImportService } from '@/services/import.service';
 

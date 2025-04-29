@@ -2,7 +2,7 @@ import { Service } from '@n8n/di';
 import { DataSource, In, Repository, Like } from '@n8n/typeorm';
 import type { FindManyOptions } from '@n8n/typeorm';
 
-import type { ListQuery } from '@/requests';
+import type { ListQuery } from '@/types-db';
 
 import { CredentialsEntity } from '../entities/credentials-entity';
 

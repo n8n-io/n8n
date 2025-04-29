@@ -1,8 +1,8 @@
-import { Column, Entity, PrimaryColumn } from '@n8n/typeorm';
+import { JsonColumn, WithTimestamps } from '@n8n/db';
+import { Entity, PrimaryColumn } from '@n8n/typeorm';
 
-import type { IProcessedDataEntries, IProcessedDataLatest } from '@/interfaces';
+import type { IProcessedDataEntries, IProcessedDataLatest } from '@/types-db';
 
-import { jsonColumnType, WithTimestamps } from './abstract-entity';
 import { objectRetriever } from '../utils/transformers';
 
 @Entity()
@@ -13,8 +13,7 @@ export class ProcessedData extends WithTimestamps {
 	@PrimaryColumn()
 	workflowId: string;
 
-	@Column({
-		type: jsonColumnType,
+	@JsonColumn({
 		nullable: true,
 		transformer: objectRetriever,
 	})
