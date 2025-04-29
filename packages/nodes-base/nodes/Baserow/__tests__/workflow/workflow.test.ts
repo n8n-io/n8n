@@ -1,6 +1,5 @@
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import nock from 'nock';
-
-import { getWorkflowFilenames, testWorkflows } from '@test/nodes/Helpers';
 
 import {
 	createResponse,
@@ -55,7 +54,6 @@ describe('Baserow > Workflows', () => {
 			mock.delete('/api/database/rows/table/482710/3/').reply(200, {});
 		});
 
-		const workflows = getWorkflowFilenames(__dirname);
-		testWorkflows(workflows, credentials);
+		new NodeTestHarness().setupTests({ credentials });
 	});
 });
