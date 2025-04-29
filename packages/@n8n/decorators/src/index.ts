@@ -21,3 +21,10 @@ export type { ShutdownHandler } from './types';
 export { MultiMainMetadata } from './multi-main-metadata';
 export { OnLeaderTakeover, OnLeaderStepdown } from './on-multi-main-event';
 export { Memoized } from './memoized';
+export { OnLifecycleEvent } from './on-lifecycle-event';
+export type {
+	NodeExecuteBeforeContext,
+	NodeExecuteAfterContext,
+	WorkflowExecuteBeforeContext,
+	WorkflowExecuteAfterContext,
+} from './lifecycle-metadata';

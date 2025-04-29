@@ -4,10 +4,10 @@ import {
 	INSIGHTS_DATE_RANGE_KEYS,
 } from '@n8n/api-types';
 import { OnShutdown } from '@n8n/decorators';
+import type { WorkflowExecuteAfterContext } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { Logger } from 'n8n-core';
-import type { ExecutionLifecycleHooks } from 'n8n-core';
-import { UserError, type IRun } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 
 import { License } from '@/license';
 
@@ -55,8 +55,8 @@ export class InsightsService {
 		this.compactionService.stopCompactionTimer();
 	}
 
-	async workflowExecuteAfterHandler(ctx: ExecutionLifecycleHooks, fullRunData: IRun) {
-		await this.collectionService.workflowExecuteAfterHandler(ctx, fullRunData);
+	async handleWorkflowExecuteAfter(ctx: WorkflowExecuteAfterContext) {
+		await this.collectionService.handleWorkflowExecuteAfter(ctx);
 	}
 
 	async getInsightsSummary({
