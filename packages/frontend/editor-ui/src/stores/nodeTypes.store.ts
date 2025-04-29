@@ -122,7 +122,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		};
 	});
 
-	const isAiToolNode = computed(() => {
+	const isNodesAsToolNode = computed(() => {
 		return (nodeTypeName: string) => {
 			const nodeType = getNodeType.value(nodeTypeName);
 			return !!(
@@ -339,7 +339,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		getCredentialOnlyNodeType,
 		isConfigNode,
 		isTriggerNode,
-		isAiToolNode,
+		isNodesAsToolNode,
 		isCoreNodeType,
 		visibleNodeTypes,
 		nativelyNumberSuffixedDefaults,

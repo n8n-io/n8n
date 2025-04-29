@@ -1164,7 +1164,7 @@ async function onRunWorkflowToNode(id: string) {
 	const node = workflowsStore.getNodeById(id);
 	if (!node) return;
 
-	if (hasFromAiExpressions(node) && nodeTypesStore.isAiToolNode(node.type)) {
+	if (hasFromAiExpressions(node) && nodeTypesStore.isNodesAsToolNode(node.type)) {
 		uiStore.openModalWithData({
 			name: FROM_AI_PARAMETERS_MODAL_KEY,
 			data: {

@@ -130,7 +130,9 @@ const node = computed(() => ndvStore.activeNode);
 
 const isTriggerNode = computed(() => !!node.value && nodeTypesStore.isTriggerNode(node.value.type));
 
-const isAiTool = computed(() => !!node.value && nodeTypesStore.isAiToolNode(node.value.type));
+const isNodesAsToolNode = computed(
+	() => !!node.value && nodeTypesStore.isNodesAsToolNode(node.value.type),
+);
 
 const isExecutable = computed(() => {
 	if (props.nodeType && node.value) {
@@ -142,7 +144,11 @@ const isExecutable = computed(() => {
 		);
 		const inputNames = NodeHelpers.getConnectionTypes(inputs);
 
-		if (!inputNames.includes(NodeConnectionTypes.Main) && !isAiTool.value && !isTriggerNode.value) {
+		if (
+			!inputNames.includes(NodeConnectionTypes.Main) &&
+			!isNodesAsToolNode.value &&
+			!isTriggerNode.value
+		) {
 			return false;
 		}
 	}
