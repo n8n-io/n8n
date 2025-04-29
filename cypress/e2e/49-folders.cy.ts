@@ -19,7 +19,8 @@ import {
 	duplicateWorkflowFromCardActions,
 	duplicateWorkflowFromWorkflowPage,
 	getAddResourceDropdown,
-	getCurrentBreadcrumb,
+	getCanvasBreadcrumbs,
+	getCurrentBreadcrumbText,
 	getFolderCard,
 	getFolderCardActionItem,
 	getFolderCardActionToggle,
@@ -75,7 +76,7 @@ describe('Folders', () => {
 			getFolderCards().should('have.length.greaterThan', 0);
 			// Clicking on the success toast should navigate to the folder
 			successToast().find('a').click();
-			getCurrentBreadcrumb().should('contain.text', 'My Folder');
+			getCurrentBreadcrumbText().should('equal', 'My Folder');
 			// 2. In a folder
 			createFolderFromListHeaderButton('My Folder 2');
 			getFolderCard('My Folder 2').should('exist');
@@ -116,7 +117,7 @@ describe('Folders', () => {
 			getFolderCards().should('have.length.greaterThan', 0);
 			// Clicking on the success toast should navigate to the folder
 			successToast().contains('My Folder 2').find('a').contains('Open folder').click();
-			getCurrentBreadcrumb().should('contain.text', 'My Folder 2');
+			getCurrentBreadcrumbText().should('equal', 'My Folder 2');
 		});
 
 		it('should create folder from the list header dropdown', () => {
@@ -137,7 +138,7 @@ describe('Folders', () => {
 			successToast().should('exist');
 			// Should be automatically navigated to the new folder
 			getFolderCard('Child Folder').should('exist');
-			getCurrentBreadcrumb().should('contain.text', 'Created from card dropdown');
+			getCurrentBreadcrumbText().should('equal', 'Created from card dropdown');
 		});
 
 		it('should navigate folders using breadcrumbs and dropdown menu', () => {
@@ -146,15 +147,15 @@ describe('Folders', () => {
 			// Open folder using menu item
 			getFolderCardActionToggle('Navigate Test').click();
 			getFolderCardActionItem('Navigate Test', 'open').click();
-			getCurrentBreadcrumb().should('contain.text', 'Navigate Test');
+			getCurrentBreadcrumbText().should('equal', 'Navigate Test');
 			// Create new child folder and navigate to it
 			createFolderFromListHeaderButton('Child Folder');
 			getFolderCard('Child Folder').should('exist');
 			getFolderCard('Child Folder').click();
-			getCurrentBreadcrumb().should('contain.text', 'Child Folder');
+			getCurrentBreadcrumbText().should('equal', 'Child Folder');
 			// Navigate back to parent folder using breadcrumbs
 			getVisibleListBreadcrumbs().contains('Navigate Test').click();
-			getCurrentBreadcrumb().should('contain.text', 'Navigate Test');
+			getCurrentBreadcrumbText().should('equal', 'Navigate Test');
 			// Go back to home project using breadcrumbs
 			getHomeProjectBreadcrumb().click();
 			getListBreadcrumbs().should('not.exist');
@@ -168,14 +169,14 @@ describe('Folders', () => {
 			// One level deep:
 			// - Breadcrumbs should only show home project and current folder
 			getHomeProjectBreadcrumb().should('exist');
-			getCurrentBreadcrumb().should('contain.text', 'Multi-level Test');
+			getCurrentBreadcrumbText().should('equal', 'Multi-level Test');
 			getFolderCard('Child Folder').should('exist');
 
 			createFolderInsideFolder('Child Folder 2', 'Child Folder');
 			// Two levels deep:
 			// - Breadcrumbs should also show parent folder, without hidden ellipsis
 			getHomeProjectBreadcrumb().should('exist');
-			getCurrentBreadcrumb().should('contain.text', 'Child Folder');
+			getCurrentBreadcrumbText().should('equal', 'Child Folder');
 			getVisibleListBreadcrumbs().should('have.length', 1);
 			getMainBreadcrumbsEllipsis().should('not.exist');
 
@@ -202,7 +203,7 @@ describe('Folders', () => {
 			cy.reload();
 			// Main list breadcrumbs should show home project, parent, grandparent, with one hidden element
 			getHomeProjectBreadcrumb().should('exist');
-			getCurrentBreadcrumb().should('contain.text', 'Child Folder 2');
+			getCurrentBreadcrumbText().should('equal', 'Child Folder 2');
 			getVisibleListBreadcrumbs().should('have.length', 1);
 			getVisibleListBreadcrumbs().first().should('contain.text', 'Child Folder');
 			getMainBreadcrumbsEllipsis().should('exist');
@@ -290,6 +291,24 @@ describe('Folders', () => {
 			getFolderCard('Workflows go here').click();
 			getWorkflowCard('Created from list breadcrumbs').should('exist');
 		});
+
+		it('should show new workflow breadcrumbs correctly', () => {
+			goToPersonalProject();
+			createFolderFromProjectHeader('Workflow breadcrumbs test');
+			getFolderCard('Workflow breadcrumbs test').should('exist').click();
+			getFolderEmptyState().find('button').contains('Create Workflow').click();
+			// Should show breadcrumbs before and after saving new workflow
+			getCanvasBreadcrumbs().should('exist');
+			getCanvasBreadcrumbs().findChildByTestId('home-project').should('contain.text', 'Personal');
+			getCanvasBreadcrumbs().find('li[data-test-id="breadcrumbs-item"]').should('have.length', 1);
+			// Save workflow and reload
+			cy.getByTestId('workflow-save-button').click();
+			cy.reload();
+			// Should still show the same breadcrumbs
+			getCanvasBreadcrumbs().should('exist');
+			getCanvasBreadcrumbs().findChildByTestId('home-project').should('contain.text', 'Personal');
+			getCanvasBreadcrumbs().find('li[data-test-id="breadcrumbs-item"]').should('have.length', 1);
+		});
 	});
 
 	describe('Rename and delete folders', () => {
@@ -298,7 +317,7 @@ describe('Folders', () => {
 			createFolderFromProjectHeader('Rename Me');
 			getFolderCard('Rename Me').should('exist');
 			renameFolderFromListActions('Rename Me', 'Renamed');
-			getCurrentBreadcrumb().should('contain.text', 'Renamed');
+			getCurrentBreadcrumbText().should('equal', 'Renamed');
 		});
 
 		it('should rename folder from card dropdown', () => {
@@ -416,7 +435,7 @@ describe('Folders', () => {
 			createFolderFromProjectHeader('Destination 5');
 			moveFolderFromListActions('Move me too - I am empty', 'Destination 5');
 			// Since we moved the current folder, we should be in the destination folder
-			getCurrentBreadcrumb().should('contain.text', 'Destination 5');
+			getCurrentBreadcrumbText().should('equal', 'Destination 5');
 		});
 
 		it('should move folder with contents to another folder - from list dropdown', () => {
@@ -432,7 +451,7 @@ describe('Folders', () => {
 			// Move the folder
 			moveFolderFromListActions('Move me - I have family 2', 'Destination 6');
 			// Since we moved the current folder, we should be in the destination folder
-			getCurrentBreadcrumb().should('contain.text', 'Destination 6');
+			getCurrentBreadcrumbText().should('equal', 'Destination 6');
 			// Moved folder should be there
 			getFolderCard('Move me - I have family 2').should('exist').click();
 			// After navigating to the moved folder, both the workflow and the folder should be there
@@ -456,7 +475,7 @@ describe('Folders', () => {
 			getFolderCard('Move me to root').click();
 			getHomeProjectBreadcrumb().should('contain.text', 'Personal');
 			getListBreadcrumbs().findChildByTestId('breadcrumbs-item').should('not.exist');
-			getCurrentBreadcrumb().should('contain.text', 'Move me to root');
+			getCurrentBreadcrumbText().should('equal', 'Move me to root');
 		});
 
 		it('should move workflow from project root to folder', () => {

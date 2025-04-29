@@ -1,38 +1,25 @@
 <script setup lang="ts">
-import Markdown from 'markdown-it';
-import markdownLink from 'markdown-it-link-attributes';
 import { computed, ref } from 'vue';
 
+import BlockMessage from './messages/BlockMessage.vue';
+import CodeDiffMessage from './messages/CodeDiffMessage.vue';
+import ErrorMessage from './messages/ErrorMessage.vue';
+import EventMessage from './messages/EventMessage.vue';
+import TextMessage from './messages/TextMessage.vue';
+import ComposedNodesMessage from './messages/workflow/ComposedNodesMessage.vue';
+import RateWorkflowMessage from './messages/workflow/RateWorkflowMessage.vue';
+import WorkflowGeneratedMessage from './messages/workflow/WorkflowGeneratedMessage.vue';
+import WorkflowNodesMessage from './messages/workflow/WorkflowNodesMessage.vue';
+import WorkflowStepsMessage from './messages/workflow/WorkflowStepsMessage.vue';
 import { useI18n } from '../../composables/useI18n';
 import type { ChatUI } from '../../types/assistant';
-import AssistantAvatar from '../AskAssistantAvatar/AssistantAvatar.vue';
 import AssistantIcon from '../AskAssistantIcon/AssistantIcon.vue';
 import AssistantLoadingMessage from '../AskAssistantLoadingMessage/AssistantLoadingMessage.vue';
 import AssistantText from '../AskAssistantText/AssistantText.vue';
 import BetaTag from '../BetaTag/BetaTag.vue';
-import BlinkingCursor from '../BlinkingCursor/BlinkingCursor.vue';
-import CodeDiff from '../CodeDiff/CodeDiff.vue';
 import InlineAskAssistantButton from '../InlineAskAssistantButton/InlineAskAssistantButton.vue';
 
 const { t } = useI18n();
-
-const md = new Markdown({
-	breaks: true,
-});
-md.use(markdownLink, {
-	attrs: {
-		target: '_blank',
-		rel: 'noopener',
-	},
-});
-// Wrap tables in div
-md.renderer.rules.table_open = function () {
-	return '<div class="table-wrapper"><table>';
-};
-
-md.renderer.rules.table_close = function () {
-	return '</table></div>';
-};
 
 const MAX_CHAT_INPUT_HEIGHT = 100;
 
@@ -45,6 +32,8 @@ interface Props {
 	streaming?: boolean;
 	loadingMessage?: string;
 	sessionId?: string;
+	title?: string;
+	placeholder?: string;
 }
 
 const emit = defineEmits<{
@@ -52,11 +41,23 @@ const emit = defineEmits<{
 	message: [string, string?, boolean?];
 	codeReplace: [number];
 	codeUndo: [number];
+	thumbsUp: [];
+	thumbsDown: [];
+	submitFeedback: [string];
 }>();
 
 const onClose = () => emit('close');
 
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), {
+	title: () => useI18n().t('assistantChat.aiAssistantLabel'),
+	user: () => ({
+		firstName: '',
+		lastName: '',
+	}),
+	messages: () => [],
+	loadingMessage: undefined,
+	sessionId: undefined,
+});
 
 const textInputValue = ref<string>('');
 
@@ -72,10 +73,6 @@ const sendDisabled = computed(() => {
 
 const showPlaceholder = computed(() => {
 	return !props.messages?.length && !props.loadingMessage && !props.sessionId;
-});
-
-const isClipboardSupported = computed(() => {
-	return navigator.clipboard?.writeText;
 });
 
 function isEndOfSessionEvent(event?: ChatUI.AssistantMessage) {
@@ -95,15 +92,6 @@ function onSendMessage() {
 	}
 }
 
-function renderMarkdown(content: string) {
-	try {
-		return md.render(content);
-	} catch (e) {
-		console.error(`Error parsing markdown content ${content}`);
-		return `<p>${t('assistantChat.errorParsingMarkdown')}</p>`;
-	}
-}
-
 function growInput() {
 	if (!chatInput.value) return;
 	chatInput.value.style.height = 'auto';
@@ -111,13 +99,16 @@ function growInput() {
 	chatInput.value.style.height = `${Math.min(scrollHeight, MAX_CHAT_INPUT_HEIGHT)}px`;
 }
 
-async function onCopyButtonClick(content: string, e: MouseEvent) {
-	const button = e.target as HTMLButtonElement;
-	await navigator.clipboard.writeText(content);
-	button.innerText = t('assistantChat.copied');
-	setTimeout(() => {
-		button.innerText = t('assistantChat.copy');
-	}, 2000);
+function onThumbsUp() {
+	emit('thumbsUp');
+}
+
+function onThumbsDown() {
+	emit('thumbsDown');
+}
+
+function onSubmitFeedback(feedback: string) {
+	emit('submitFeedback', feedback);
 }
 </script>
 
@@ -127,9 +118,10 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 			<div :class="$style.chatTitle">
 				<div :class="$style.headerText">
 					<AssistantIcon size="large" />
-					<AssistantText size="large" :text="t('assistantChat.aiAssistantLabel')" />
+					<AssistantText size="large" :text="title" />
 				</div>
 				<BetaTag />
+				<slot name="header" />
 			</div>
 			<div :class="$style.back" data-test-id="close-chat-button" @click="onClose">
 				<n8n-icon icon="arrow-right" color="text-base" />
@@ -138,140 +130,91 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 		<div :class="$style.body">
 			<div v-if="messages?.length || loadingMessage" :class="$style.messages">
 				<div v-if="messages?.length">
-					<div
+					<data
 						v-for="(message, i) in messages"
 						:key="i"
-						:class="$style.message"
 						:data-test-id="
 							message.role === 'assistant' ? 'chat-message-assistant' : 'chat-message-user'
 						"
 					>
-						<div
-							v-if="
-								!isEndOfSessionEvent(message) && (i === 0 || message.role !== messages[i - 1].role)
-							"
-							:class="{ [$style.roleName]: true, [$style.userSection]: i > 0 }"
-						>
-							<AssistantAvatar v-if="message.role === 'assistant'" />
-							<n8n-avatar
-								v-else
-								:first-name="user?.firstName"
-								:last-name="user?.lastName"
-								size="xsmall"
-							/>
-
-							<span v-if="message.role === 'assistant'">{{
-								t('assistantChat.aiAssistantName')
-							}}</span>
-							<span v-else>{{ t('assistantChat.you') }}</span>
-						</div>
-						<div v-if="message.type === 'block'">
-							<div :class="$style.block">
-								<div :class="$style.blockTitle">
-									{{ message.title }}
-									<BlinkingCursor
-										v-if="streaming && i === messages?.length - 1 && !message.content"
-									/>
-								</div>
-								<div :class="$style.blockBody">
-									<span
-										v-n8n-html="renderMarkdown(message.content)"
-										:class="$style['rendered-content']"
-									></span>
-									<BlinkingCursor
-										v-if="
-											streaming && i === messages?.length - 1 && message.title && message.content
-										"
-									/>
-								</div>
-							</div>
-						</div>
-						<div v-else-if="message.type === 'text'" :class="$style.textMessage">
-							<span
-								v-if="message.role === 'user'"
-								v-n8n-html="renderMarkdown(message.content)"
-								:class="$style['rendered-content']"
-							></span>
-							<div
-								v-else
-								v-n8n-html="renderMarkdown(message.content)"
-								:class="[$style.assistantText, $style['rendered-content']]"
-							></div>
-							<div
-								v-if="message?.codeSnippet"
-								:class="$style['code-snippet']"
-								data-test-id="assistant-code-snippet"
-							>
-								<header v-if="isClipboardSupported">
-									<n8n-button
-										type="tertiary"
-										text="true"
-										size="mini"
-										data-test-id="assistant-copy-snippet-button"
-										@click="onCopyButtonClick(message.codeSnippet, $event)"
-									>
-										{{ t('assistantChat.copy') }}
-									</n8n-button>
-								</header>
-								<div
-									v-n8n-html="renderMarkdown(message.codeSnippet).trim()"
-									data-test-id="assistant-code-snippet-content"
-									:class="[$style['snippet-content'], $style['rendered-content']]"
-								></div>
-							</div>
-							<BlinkingCursor
-								v-if="streaming && i === messages?.length - 1 && message.role === 'assistant'"
-							/>
-						</div>
-						<div
+						<TextMessage
+							v-if="message.type === 'text'"
+							:message="message"
+							:is-first-of-role="i === 0 || message.role !== messages[i - 1].role"
+							:user="user"
+							:streaming="streaming"
+							:is-last-message="i === messages.length - 1"
+						/>
+						<BlockMessage
+							v-else-if="message.type === 'block'"
+							:message="message"
+							:is-first-of-role="i === 0 || message.role !== messages[i - 1].role"
+							:user="user"
+							:streaming="streaming"
+							:is-last-message="i === messages.length - 1"
+						/>
+						<ErrorMessage
 							v-else-if="message.type === 'error'"
-							:class="$style.error"
-							data-test-id="chat-message-system"
-						>
-							<span>⚠️ {{ message.content }}</span>
-							<n8n-button
-								v-if="message.retry"
-								type="secondary"
-								size="mini"
-								:class="$style.retryButton"
-								data-test-id="error-retry-button"
-								@click="() => message.retry?.()"
-							>
-								{{ t('generic.retry') }}
-							</n8n-button>
-						</div>
-						<div v-else-if="message.type === 'code-diff'">
-							<CodeDiff
-								:title="message.description"
-								:content="message.codeDiff"
-								:replacing="message.replacing"
-								:replaced="message.replaced"
-								:error="message.error"
-								:streaming="streaming && i === messages?.length - 1"
-								@replace="() => emit('codeReplace', i)"
-								@undo="() => emit('codeUndo', i)"
-							/>
-						</div>
-						<div
-							v-else-if="isEndOfSessionEvent(message)"
-							:class="$style.endOfSessionText"
-							data-test-id="chat-message-system"
-						>
-							<span>
-								{{ t('assistantChat.sessionEndMessage.1') }}
-							</span>
-							<InlineAskAssistantButton size="small" :static="true" />
-							<span>
-								{{ t('assistantChat.sessionEndMessage.2') }}
-							</span>
-						</div>
+							:message="message"
+							:is-first-of-role="i === 0 || message.role !== messages[i - 1].role"
+							:user="user"
+						/>
+						<EventMessage
+							v-else-if="message.type === 'event'"
+							:message="message"
+							:is-first-of-role="i === 0 || message.role !== messages[i - 1].role"
+							:user="user"
+						/>
+						<CodeDiffMessage
+							v-else-if="message.type === 'code-diff'"
+							:message="message"
+							:is-first-of-role="i === 0 || message.role !== messages[i - 1].role"
+							:user="user"
+							:streaming="streaming"
+							:is-last-message="i === messages.length - 1"
+							@code-replace="() => emit('codeReplace', i)"
+							@code-undo="() => emit('codeUndo', i)"
+						/>
+						<WorkflowStepsMessage
+							v-else-if="message.type === 'workflow-step'"
+							:message="message"
+							:is-first-of-role="i === 0 || message.role !== messages[i - 1].role"
+							:user="user"
+						/>
+						<WorkflowNodesMessage
+							v-else-if="message.type === 'workflow-node'"
+							:message="message"
+							:is-first-of-role="i === 0 || message.role !== messages[i - 1].role"
+							:user="user"
+						/>
+						<ComposedNodesMessage
+							v-else-if="message.type === 'workflow-composed'"
+							:message="message"
+							:is-first-of-role="i === 0 || message.role !== messages[i - 1].role"
+							:user="user"
+						/>
+						<WorkflowGeneratedMessage
+							v-else-if="message.type === 'workflow-generated'"
+							:message="message"
+							:is-first-of-role="i === 0 || message.role !== messages[i - 1].role"
+							:user="user"
+						/>
+						<RateWorkflowMessage
+							v-else-if="message.type === 'rate-workflow'"
+							:message="message"
+							:is-first-of-role="i === 0 || message.role !== messages[i - 1].role"
+							:user="user"
+							@thumbs-up="onThumbsUp"
+							@thumbs-down="onThumbsDown"
+							@submit-feedback="onSubmitFeedback"
+						/>
 
 						<div
 							v-if="
 								!streaming &&
 								'quickReplies' in message &&
 								message.quickReplies?.length &&
-								i === messages?.length - 1
+								i === messages.length - 1
 							"
 							:class="$style.quickReplies"
 						>
@@ -289,7 +232,7 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 								</n8n-button>
 							</div>
 						</div>
-					</div>
+					</data>
 				</div>
 				<div
 					v-if="loadingMessage"
@@ -303,48 +246,59 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 				:class="$style.placeholder"
 				data-test-id="placeholder-message"
 			>
-				<div :class="$style.greeting">Hi {{ user?.firstName }} 👋</div>
-				<div :class="$style.info">
-					<p>
-						{{ t('assistantChat.placeholder.1') }}
-					</p>
-					<p>
-						{{ t('assistantChat.placeholder.2') }}
-						<InlineAskAssistantButton size="small" :static="true" />
-						{{ t('assistantChat.placeholder.3') }}
-					</p>
-					<p>
-						{{ t('assistantChat.placeholder.4') }}
-					</p>
+				<div v-if="$slots.placeholder" :class="$style.info">
+					<slot name="placeholder" />
 				</div>
+				<template v-else>
+					<div :class="$style.greeting">Hi {{ user?.firstName }} 👋</div>
+					<div :class="$style.info">
+						<p>
+							{{ t('assistantChat.placeholder.1') }}
+						</p>
+						<p>
+							{{ t('assistantChat.placeholder.2') }}
+							<InlineAskAssistantButton size="small" :static="true" />
+							{{ t('assistantChat.placeholder.3') }}
+						</p>
+						<p>
+							{{ t('assistantChat.placeholder.4') }}
+						</p>
+					</div>
+				</template>
 			</div>
 		</div>
 		<div
 			:class="{ [$style.inputWrapper]: true, [$style.disabledInput]: sessionEnded }"
 			data-test-id="chat-input-wrapper"
 		>
-			<textarea
-				ref="chatInput"
-				v-model="textInputValue"
-				class="ignore-key-press-node-creator ignore-key-press-canvas"
-				:disabled="sessionEnded"
-				:placeholder="t('assistantChat.inputPlaceholder')"
-				rows="1"
-				wrap="hard"
-				data-test-id="chat-input"
-				@keydown.enter.exact.prevent="onSendMessage"
-				@input.prevent="growInput"
-				@keydown.stop
-			/>
-			<n8n-icon-button
-				:class="{ [$style.sendButton]: true }"
-				icon="paper-plane"
-				type="text"
-				size="large"
-				data-test-id="send-message-button"
-				:disabled="sendDisabled"
-				@click="onSendMessage"
-			/>
+			<div v-if="$slots.inputPlaceholder" :class="$style.inputPlaceholder">
+				<slot name="inputPlaceholder" />
+			</div>
+			<template v-else>
+				<textarea
+					ref="chatInput"
+					v-model="textInputValue"
+					class="ignore-key-press-node-creator ignore-key-press-canvas"
+					:class="{ [$style.disabled]: sessionEnded || streaming }"
+					:disabled="sessionEnded || streaming"
+					:placeholder="placeholder ?? t('assistantChat.inputPlaceholder')"
+					rows="1"
+					wrap="hard"
+					data-test-id="chat-input"
+					@keydown.enter.exact.prevent="onSendMessage"
+					@input.prevent="growInput"
+					@keydown.stop
+				/>
+				<n8n-icon-button
+					:class="{ [$style.sendButton]: true }"
+					icon="paper-plane"
+					type="text"
+					size="large"
+					data-test-id="send-message-button"
+					:disabled="sendDisabled"
+					@click="onSendMessage"
+				/>
+			</template>
 		</div>
 	</div>
 </template>
@@ -355,11 +309,6 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 	position: relative;
 	display: grid;
 	grid-template-rows: auto 1fr auto;
-}
-
-p {
-	line-height: var(--font-line-height-xloose);
-	margin: var(--spacing-2xs) 0;
 }
 
 .header {
@@ -420,23 +369,6 @@ p {
 	}
 }
 
-.roleName {
-	display: flex;
-	align-items: center;
-	margin-bottom: var(--spacing-3xs);
-
-	font-weight: var(--font-weight-bold);
-	font-size: var(--font-size-2xs);
-
-	> * {
-		margin-right: var(--spacing-3xs);
-	}
-}
-
-.userSection {
-	margin-top: var(--spacing-l);
-}
-
 .chatTitle {
 	display: flex;
 	gap: var(--spacing-3xs);
@@ -477,78 +409,6 @@ p {
 	color: var(--color-text-base);
 }
 
-.textMessage {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing-xs);
-	font-size: var(--font-size-2xs);
-	word-break: break-word;
-}
-
-code[class^='language-'] {
-	display: block;
-	padding: var(--spacing-4xs);
-}
-
-.code-snippet {
-	position: relative;
-	border: var(--border-base);
-	background-color: var(--color-foreground-xlight);
-	border-radius: var(--border-radius-base);
-	font-family: var(--font-family-monospace);
-	font-size: var(--font-size-3xs);
-	max-height: 218px; // 12 lines
-	overflow: auto;
-	margin: var(--spacing-4s) 0;
-
-	header {
-		display: flex;
-		justify-content: flex-end;
-		padding: var(--spacing-4xs);
-		border-bottom: var(--border-base);
-
-		button:active,
-		button:focus {
-			outline: none !important;
-		}
-	}
-
-	.snippet-content {
-		padding: var(--spacing-2xs);
-	}
-
-	pre {
-		white-space-collapse: collapse;
-	}
-
-	code {
-		background-color: transparent;
-		font-size: var(--font-size-3xs);
-	}
-}
-
-.block {
-	font-size: var(--font-size-2xs);
-	background-color: var(--color-foreground-xlight);
-	border: var(--border-base);
-	border-radius: var(--border-radius-base);
-	word-break: break-word;
-
-	li {
-		margin-left: var(--spacing-xs);
-	}
-}
-
-.blockTitle {
-	border-bottom: var(--border-base);
-	padding: var(--spacing-2xs);
-	font-weight: var(--font-weight-bold);
-}
-
-.blockBody {
-	padding: var(--spacing-xs);
-}
-
 .inputWrapper {
 	display: flex;
 	background-color: var(--color-foreground-xlight);
@@ -577,96 +437,20 @@ code[class^='language-'] {
 	}
 }
 
-.error {
-	color: var(--color-danger);
-	display: flex;
-	flex-direction: column;
-	align-items: start;
-}
-
-.retryButton {
-	margin-top: var(--spacing-3xs);
-}
-
-.assistantText {
-	display: inline-flex;
-	flex-direction: column;
-}
-
-.rendered-content {
-	p {
-		margin: 0;
-		margin: var(--spacing-4xs) 0;
-	}
-
-	h1,
-	h2,
-	h3 {
-		font-weight: var(--font-weight-bold);
-		font-size: var(--font-size-xs);
-		margin: var(--spacing-xs) 0 var(--spacing-4xs);
-	}
-
-	h4,
-	h5,
-	h6 {
-		font-weight: var(--font-weight-bold);
-		font-size: var(--font-size-2xs);
-	}
-
-	ul,
-	ol {
-		margin: var(--spacing-4xs) 0 var(--spacing-4xs) var(--spacing-l);
-
-		ul,
-		ol {
-			margin-left: var(--spacing-xs);
-			margin-top: var(--spacing-4xs);
-		}
-	}
-
-	:global(.table-wrapper) {
-		overflow-x: auto;
-	}
-
-	table {
-		margin: var(--spacing-4xs) 0;
-
-		th {
-			white-space: nowrap;
-			min-width: 120px;
-			width: auto;
-		}
-
-		th,
-		td {
-			border: var(--border-base);
-			padding: var(--spacing-4xs);
-		}
-	}
-}
-
-.endOfSessionText {
-	margin-top: var(--spacing-l);
-	padding-top: var(--spacing-3xs);
-	border-top: var(--border-base);
-	color: var(--color-text-base);
-
-	> button,
-	> span {
-		margin-right: var(--spacing-3xs);
-	}
-
-	button {
-		display: inline-flex;
-	}
-}
-
 .disabledInput {
 	cursor: not-allowed;
 
 	* {
 		cursor: not-allowed;
 	}
+}
+
+textarea.disabled {
+	background-color: var(--color-foreground-base);
+	cursor: not-allowed;
+}
+
+.inputPlaceholder {
+	width: 100%;
 }
 </style>
