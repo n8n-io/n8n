@@ -57,6 +57,8 @@ const aggregatedInsightsByTimeParser = z
 
 @Service()
 export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
+	private isRunningCompaction = false;
+
 	constructor(dataSource: DataSource) {
 		super(InsightsByPeriod, dataSource.manager);
 	}
@@ -171,6 +173,12 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		 */
 		periodUnitToCompactInto: PeriodUnit;
 	}): Promise<number> {
+		// Skip compaction if the process is already running
+		if (this.isRunningCompaction) {
+			return 0;
+		}
+		this.isRunningCompaction = true;
+
 		// Create temp table that only exists in this transaction for rows to compact
 		const getBatchAndStoreInTemporaryTable = sql`
 			CREATE TEMPORARY TABLE rows_to_compact AS
@@ -223,21 +231,23 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		const dropTemporaryTable = sql`
 			DROP TABLE rows_to_compact;
 		`;
+		try {
+			const result = await this.manager.transaction(async (trx) => {
+				await trx.query(getBatchAndStoreInTemporaryTable);
 
-		const result = await this.manager.transaction(async (trx) => {
-			await trx.query(getBatchAndStoreInTemporaryTable);
+				await trx.query<Array<{ type: any; value: number }>>(upsertEvents);
 
-			await trx.query<Array<{ type: any; value: number }>>(upsertEvents);
+				const rowsInBatch = await trx.query<[{ rowsInBatch: number | string }]>(countBatch);
 
-			const rowsInBatch = await trx.query<[{ rowsInBatch: number | string }]>(countBatch);
+				await trx.query(deleteBatch);
+				await trx.query(dropTemporaryTable);
 
-			await trx.query(deleteBatch);
-			await trx.query(dropTemporaryTable);
-
-			return Number(rowsInBatch[0].rowsInBatch);
-		});
-
-		return result;
+				return Number(rowsInBatch[0].rowsInBatch);
+			});
+			return result;
+		} finally {
+			this.isRunningCompaction = false;
+		}
 	}
 
 	private getAgeLimitQuery(maxAgeInDays: number) {

@@ -1,5 +1,6 @@
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
+import { mock } from 'jest-mock-extended';
 import { DateTime } from 'luxon';
 
 import { InsightsRawRepository } from '@/modules/insights/database/repositories/insights-raw.repository';
@@ -45,6 +46,7 @@ if (dbType === 'sqlite' && !globalConfig.database.sqlite.poolSize) {
 	afterAll(async () => {
 		await testDb.terminate();
 	});
+
 	describe('compaction', () => {
 		describe('compactRawToHour', () => {
 			type TestData = {
@@ -320,7 +322,13 @@ if (dbType === 'sqlite' && !globalConfig.database.sqlite.poolSize) {
 				jest.useFakeTimers();
 				try {
 					// ARRANGE
-					const insightsCompactionService = Container.get(InsightsCompactionService);
+					const insightsCompactionService = new InsightsCompactionService(
+						mock<InsightsByPeriodRepository>(),
+						mock<InsightsRawRepository>(),
+						mock<InsightsConfig>({
+							compactionIntervalMinutes: 60,
+						}),
+					);
 					insightsCompactionService.startCompactionTimer();
 
 					// spy on the compactInsights method to check if it's called
@@ -592,6 +600,55 @@ if (dbType === 'sqlite' && !globalConfig.database.sqlite.poolSize) {
 				expect(weeklyInsights[0].periodStart.toISOString()).toEqual(
 					beyondThresholdTimestamp.startOf('week').toISO(),
 				);
+			});
+		});
+
+		describe('Avoid deadlock error', () => {
+			let defaultBatchSize: number;
+			beforeAll(() => {
+				// Store the original config value
+				const insightsConfig = Container.get(InsightsConfig);
+				defaultBatchSize = insightsConfig.compactionBatchSize;
+
+				// Set a smaller batch size to trigger the deadlock error
+				insightsConfig.compactionBatchSize = 3;
+			});
+
+			afterAll(() => {
+				// Reset the config to its original state
+				const insightsConfig = Container.get(InsightsConfig);
+				insightsConfig.compactionBatchSize = defaultBatchSize;
+			});
+
+			test('should not throw deadlock error on concurrent compaction', async () => {
+				// ARRANGE
+				const insightsCompactionService = Container.get(InsightsCompactionService);
+				const insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
+				const transactionSpy = jest.spyOn(insightsByPeriodRepository.manager, 'transaction');
+				const project = await createTeamProject();
+				const workflow = await createWorkflow({}, project);
+				await createMetadata(workflow);
+
+				// Create test data
+				const promises = [];
+				for (let i = 0; i < 100; i++) {
+					await createCompactedInsightsEvent(workflow, {
+						type: 'success',
+						value: 1,
+						periodUnit: 'hour',
+						periodStart: DateTime.now().minus({ day: 91, hour: i + 1 }),
+					});
+				}
+
+				// ACT
+				for (let i = 0; i < 10; i++) {
+					promises.push(insightsCompactionService.compactHourToDay());
+				}
+
+				// ASSERT
+				// await all promises concurrently
+				await expect(Promise.all(promises)).resolves.toBeDefined();
+				expect(transactionSpy).toHaveBeenCalledTimes(1);
 			});
 		});
 	});
