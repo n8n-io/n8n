@@ -2,11 +2,8 @@ import { mock } from 'jest-mock-extended';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
 
 import { EvaluationTrigger, startingRow } from './EvaluationTrigger.node';
+import * as utils from './utils/evaluationTriggerUtils';
 import { GoogleSheet } from '../Google/Sheet/v2/helpers/GoogleSheet';
-import type {
-	ResourceLocator,
-	ValueRenderOption,
-} from '../Google/Sheet/v2/helpers/GoogleSheets.types';
 
 describe('Evaluation Trigger Node', () => {
 	const sheetName = 'Sheet5';
@@ -39,6 +36,11 @@ describe('Evaluation Trigger Node', () => {
 					['Value3', 'Value4'],
 				];
 			} else if (range === `${sheetName}!1:2`) {
+				return [
+					['Header1', 'Header2'],
+					['Value1', 'Value2'],
+				];
+			} else if (range === sheetName) {
 				return [
 					['Header1', 'Header2'],
 					['Value1', 'Value2'],
@@ -263,5 +265,55 @@ describe('Evaluation Trigger Node', () => {
 		expect(startingRow).toBe(1);
 	});
 
-	test('should return a single row from google sheet with filter', async () => {});
+	test('should return a single row from google sheet using filter', async () => {
+		mockExecuteFunctions.getNodeParameter.mockImplementation(
+			(key: string, _: number, fallbackValue?: string | number | boolean | object) => {
+				const mockParams: { [key: string]: unknown } = {
+					limitRows: true,
+					maxRows: 2,
+					'filtersUI.values': [{ lookupColumn: 'Header1', lookupValue: 'Value1' }],
+					options: {},
+					combineFilters: 'AND',
+					documentId: {
+						mode: 'id',
+						value: spreadsheetId,
+					},
+					sheetName,
+					sheetMode: 'id',
+				};
+				return mockParams[key] ?? fallbackValue;
+			},
+		);
+
+		jest.spyOn(utils, 'getRowsLeft').mockResolvedValue(0);
+
+		const evaluationTrigger = new EvaluationTrigger();
+
+		const result = await evaluationTrigger.execute.call(mockExecuteFunctions, 1);
+
+		expect(result).toEqual([
+			[
+				{
+					json: {
+						row_number: 2,
+						Header1: 'Value1',
+						Header2: 'Value2',
+					},
+					pairedItem: {
+						item: 0,
+					},
+				},
+				{
+					json: {
+						_rowsLeft: 0,
+					},
+					pairedItems: [
+						{
+							item: 0,
+						},
+					],
+				},
+			],
+		]);
+	});
 });
