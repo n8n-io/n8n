@@ -52,7 +52,7 @@ export function runMockWorkflowExecution({
 }) {
 	const workflowId = nanoid();
 	const executionId = Math.floor(Math.random() * 1_000_000).toString();
-	const executionData = {
+	const executionData: IRunExecutionData = {
 		startData: {},
 		resultData: {
 			runData,
