@@ -13,7 +13,7 @@ import { N8nText, N8nTooltip } from '@n8n/design-system';
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { orderBy } from 'lodash-es';
-
+import { statusDictionary } from '@/components/Evaluations/shared/statusDictionary';
 // TODO: replace with n8n-api type
 const TEST_CASE_EXECUTION_ERROR_CODE = {
 	MOCKED_NODE_NOT_FOUND: 'MOCKED_NODE_NOT_FOUND',
@@ -137,7 +137,7 @@ const columns = computed(
 			width: 250,
 			label: locale.baseText('evaluation.runDetail.testCase'),
 			sortable: true,
-			formatter: (row: TestCaseExecutionRecord & { index: number }) => `${row.index}`,
+			formatter: (row: TestCaseExecutionRecord & { index: number }) => `#${row.index}`,
 		},
 		{
 			prop: 'status',
@@ -260,30 +260,45 @@ onMounted(async () => {
 				</div>
 			</template>
 			<template #status="{ row }">
-				<template v-if="row.status === 'error'">
-					<N8nTooltip placement="right" :show-after="300">
-						<template #content>
-							<template v-if="getErrorBaseKey(row.errorCode)">
-								<i18n-t :keypath="getErrorBaseKey(row.errorCode)">
-									<template #link>
-										<RouterLink :to="getErrorTooltipLinkRoute(row) ?? ''" target="_blank">
-											{{
-												locale.baseText(`${getErrorBaseKey(row.errorCode)}.solution` as BaseTextKey)
-											}}
-										</RouterLink>
-									</template>
-								</i18n-t>
+				<div
+					style="display: inline-flex; gap: 8px; text-transform: capitalize; align-items: center"
+				>
+					<N8nIcon
+						:icon="statusDictionary[row.status].icon"
+						:color="statusDictionary[row.status].color"
+						class="mr-2xs"
+					/>
+
+					<template v-if="row.status === 'error'">
+						<N8nTooltip placement="right" :show-after="300">
+							<template #content>
+								<template v-if="getErrorBaseKey(row.errorCode)">
+									<i18n-t :keypath="getErrorBaseKey(row.errorCode)">
+										<template #link>
+											<RouterLink :to="getErrorTooltipLinkRoute(row) ?? ''" target="_blank">
+												{{
+													locale.baseText(
+														`${getErrorBaseKey(row.errorCode)}.solution` as BaseTextKey,
+													)
+												}}
+											</RouterLink>
+										</template>
+									</i18n-t>
+								</template>
+								<template v-else> UNKNOWN_ERROR </template>
 							</template>
-							<template v-else> UNKNOWN_ERROR </template>
-						</template>
-						<div style="display: inline-flex; gap: 8px; text-transform: capitalize">
-							<N8nIcon icon="exclamation-triangle" color="danger"></N8nIcon>
-							<N8nText size="small" color="danger">
-								{{ row.status }}
-							</N8nText>
-						</div>
-					</N8nTooltip>
-				</template>
+							<div style="display: inline-flex; gap: 8px; text-transform: capitalize">
+								<N8nIcon icon="exclamation-triangle" color="danger"></N8nIcon>
+								<N8nText size="small" color="danger">
+									{{ row.status }}
+								</N8nText>
+							</div>
+						</N8nTooltip>
+					</template>
+					<template v-else>
+						{{ row.status }}
+					</template>
+				</div>
 			</template>
 		</TestTableBase>
 	</div>
