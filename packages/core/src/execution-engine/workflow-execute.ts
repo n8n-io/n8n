@@ -429,7 +429,10 @@ export class WorkflowExecute {
 			recreateNodeExecutionStack(graph, startNodes, runData, pinData ?? {});
 
 		// 8. Execute
+
+		// Increment currentExecutionIndex based on previous run
 		this.additionalData.currentNodeExecutionIndex = getNextExecutionIndex(runData) ?? 0;
+
 		this.status = 'running';
 		this.runExecutionData = {
 			startData: {
