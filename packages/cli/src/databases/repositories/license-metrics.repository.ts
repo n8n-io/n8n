@@ -19,6 +19,10 @@ export class LicenseMetricsRepository extends Repository<LicenseMetrics> {
 		return this.manager.connection.driver.escape(`${tablePrefix}${name}`);
 	}
 
+	toColumnName(name: string) {
+		return this.manager.connection.driver.escape(name);
+	}
+
 	async getLicenseRenewalMetrics() {
 		type Row = {
 			enabled_user_count: string | number;
@@ -27,6 +31,7 @@ export class LicenseMetricsRepository extends Repository<LicenseMetrics> {
 			total_workflow_count: string | number;
 			total_credentials_count: string | number;
 			production_executions_count: string | number;
+			production_root_executions_count: string | number;
 			manual_executions_count: string | number;
 		};
 
@@ -43,6 +48,7 @@ export class LicenseMetricsRepository extends Repository<LicenseMetrics> {
 				total_workflow_count: totalWorkflows,
 				total_credentials_count: totalCredentials,
 				production_executions_count: productionExecutions,
+				production_root_executions_count: productionRootExecutions,
 				manual_executions_count: manualExecutions,
 			},
 		] = (await this.query(`
@@ -53,6 +59,7 @@ export class LicenseMetricsRepository extends Repository<LicenseMetrics> {
 				(SELECT COUNT(*) FROM ${workflowTable}) AS total_workflow_count,
 				(SELECT COUNT(*) FROM ${credentialTable}) AS total_credentials_count,
 				(SELECT SUM(count) FROM ${workflowStatsTable} WHERE name IN ('production_success', 'production_error')) AS production_executions_count,
+				(SELECT SUM(${this.toColumnName('rootCount')}) FROM ${workflowStatsTable} WHERE name IN ('production_success', 'production_error')) AS production_root_executions_count,
 				(SELECT SUM(count) FROM ${workflowStatsTable} WHERE name IN ('manual_success', 'manual_error')) AS manual_executions_count;
 		`)) as Row[];
 
@@ -66,6 +73,7 @@ export class LicenseMetricsRepository extends Repository<LicenseMetrics> {
 			totalWorkflows: toNumber(totalWorkflows),
 			totalCredentials: toNumber(totalCredentials),
 			productionExecutions: toNumber(productionExecutions),
+			productionRootExecutions: toNumber(productionRootExecutions),
 			manualExecutions: toNumber(manualExecutions),
 		};
 	}
