@@ -504,6 +504,7 @@
       "dist/nodes/Emelia/EmeliaTrigger.node.js",
       "dist/nodes/ERPNext/ERPNext.node.js",
       "dist/nodes/ErrorTrigger/ErrorTrigger.node.js",
+      "dist/nodes/Evaluation/EvaluationTrigger.node.js",
       "dist/nodes/Eventbrite/EventbriteTrigger.node.js",
       "dist/nodes/ExecuteCommand/ExecuteCommand.node.js",
       "dist/nodes/ExecuteWorkflow/ExecuteWorkflow/ExecuteWorkflow.node.js",
