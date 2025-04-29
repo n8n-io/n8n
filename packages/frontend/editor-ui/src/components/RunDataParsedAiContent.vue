@@ -8,9 +8,14 @@ import { N8nIconButton } from '@n8n/design-system';
 import { type IDataObject } from 'n8n-workflow';
 import VueMarkdown from 'vue-markdown-render';
 
-const { content, compact = false } = defineProps<{
+const {
+	content,
+	compact = false,
+	renderType,
+} = defineProps<{
 	content: ParsedAiContent;
 	compact?: boolean;
+	renderType: 'rendered' | 'json';
 }>();
 
 const i18n = useI18n();
@@ -29,30 +34,32 @@ function onCopyToClipboard(object: IDataObject | IDataObject[]) {
 </script>
 
 <template>
-	<div :class="compact ? $style.compact : ''">
+	<div :class="[$style.component, compact ? $style.compact : '']">
 		<div
 			v-for="({ parsedContent, raw }, index) in content"
 			:key="index"
 			:class="$style.contentText"
 			:data-content-type="parsedContent?.type"
 		>
-			<VueMarkdown
-				v-if="parsedContent?.type === 'json'"
-				:source="jsonToMarkdown(parsedContent.data as JsonMarkdown)"
-				:class="$style.markdown"
-				:options="markdownOptions"
-			/>
-			<VueMarkdown
-				v-else-if="parsedContent?.type === 'markdown'"
-				:source="parsedContent.data"
-				:class="$style.markdown"
-				:options="markdownOptions"
-			/>
-			<p
-				v-else-if="parsedContent?.type === 'text'"
-				:class="$style.runText"
-				v-text="parsedContent.data"
-			/>
+			<template v-if="parsedContent && renderType === 'rendered'">
+				<VueMarkdown
+					v-if="parsedContent.type === 'json'"
+					:source="jsonToMarkdown(parsedContent.data as JsonMarkdown)"
+					:class="$style.markdown"
+					:options="markdownOptions"
+				/>
+				<VueMarkdown
+					v-else-if="parsedContent.type === 'markdown'"
+					:source="parsedContent.data"
+					:class="$style.markdown"
+					:options="markdownOptions"
+				/>
+				<p
+					v-else-if="parsedContent.type === 'text'"
+					:class="$style.runText"
+					v-text="parsedContent.data"
+				/>
+			</template>
 			<!-- We weren't able to parse text or raw switch -->
 			<div v-else :class="$style.rawContent">
 				<N8nIconButton
@@ -114,6 +121,11 @@ function onCopyToClipboard(object: IDataObject | IDataObject[]) {
 	position: absolute;
 	right: var(--spacing-s);
 	top: var(--spacing-s);
+
+	.compact & {
+		right: var(--spacing-2xs);
+		top: var(--spacing-2xs);
+	}
 }
 
 .rawContent {

@@ -1639,7 +1639,12 @@ defineExpose({ enterEditMode });
 				"
 				:class="$style.stretchVertically"
 			>
-				<NodeErrorView :error="subworkflowExecutionError" :class="$style.errorDisplay" />
+				<NodeErrorView
+					:compact="compact"
+					:error="subworkflowExecutionError"
+					:class="$style.errorDisplay"
+					show-details
+				/>
 			</div>
 
 			<div v-else-if="isWaitNodeWaiting" :class="$style.center">
@@ -1852,7 +1857,7 @@ defineExpose({ enterEditMode });
 			</Suspense>
 
 			<Suspense v-else-if="hasNodeRun && displayMode === 'ai'">
-				<LazyRunDataAi :compact="compact" :content="parsedAiContent" />
+				<LazyRunDataAi render-type="rendered" :compact="compact" :content="parsedAiContent" />
 			</Suspense>
 
 			<Suspense v-else-if="(hasNodeRun || hasPreviewSchema) && isSchemaView">

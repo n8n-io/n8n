@@ -6,6 +6,8 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 import type { NodeConnectionType, NodeError } from 'n8n-workflow';
 import RunDataAi from '@/components/RunDataParsedAiContent.vue';
 import { parseAiContent } from '@/utils/aiUtils';
+import { N8nRadioButtons } from '@n8n/design-system';
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 
 const props = defineProps<{
 	runData: IAiDataContent;
@@ -50,10 +52,10 @@ function onRenderTypeChange(value: 'rendered' | 'json') {
 	<div :class="$style.block">
 		<header :class="$style.blockHeader" @click="onBlockHeaderClick">
 			<button :class="$style.blockToggle">
-				<font-awesome-icon :icon="isExpanded ? 'angle-down' : 'angle-right'" size="lg" />
+				<FontAwesomeIcon :icon="isExpanded ? 'angle-down' : 'angle-right'" size="lg" />
 			</button>
 			<p :class="$style.blockTitle">{{ capitalize(runData.inOut) }}</p>
-			<n8n-radio-buttons
+			<N8nRadioButtons
 				v-if="contentParsed && !error && isExpanded"
 				size="small"
 				:model-value="renderType"
@@ -71,8 +73,14 @@ function onRenderTypeChange(value: 'rendered' | 'json') {
 				[$style.blockContentExpanded]: isExpanded,
 			}"
 		>
-			<NodeErrorView v-if="error" :error="error" :class="$style.error" />
-			<RunDataAi :data="runData.data" :type="runData.type" :content="parsedRun" />
+			<NodeErrorView v-if="error" :error="error" :class="$style.error" show-details />
+			<RunDataAi
+				v-else
+				:data="runData.data"
+				:type="runData.type"
+				:content="parsedRun"
+				:render-type="renderType"
+			/>
 		</main>
 	</div>
 </template>
