@@ -37,7 +37,7 @@ const INVALID_JS_DOT_NAME = /[^\w\d_\$]/;
 const ITEM_TO_DATA_ACCESSORS = [
 	/^first\(\)/,
 	/^last\(\)/,
-	/^all/,
+	/^all\(\)/,
 	// The order here is relevant because `item` would match occurrences of `itemMatching`
 	/^itemMatching\(\d+\)/, // We only support trivial itemMatching arguments
 	/^item/,

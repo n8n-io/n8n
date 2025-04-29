@@ -310,9 +310,98 @@ describe('NodeReferenceParserUtils', () => {
 			nodeNames = ['A'];
 			expect(() => extractReferencesInNodeExpressions(nodes, nodeNames, startNodeName)).toThrow();
 		});
-		// it('handles multiple expressions referencing different nodes in the same string')
-		// it('handles multiple expressions referencing different nested bits of the same field')
-		// it('handles first(), last(), all() and items at the same time')
+		it('handles multiple expressions referencing different nodes in the same string', () => {
+			nodes = [makeNode('B', ['$("A").item.json.myField + $("C").item.json.anotherField'])];
+			nodeNames = ['A', 'B', 'C'];
+			const result = extractReferencesInNodeExpressions(nodes, nodeNames, startNodeName);
+			expect([...result.variables.entries()]).toEqual(
+				expect.arrayContaining([
+					['myField', '$("A").item.json.myField'],
+					['anotherField', '$("C").item.json.anotherField'],
+				]),
+			);
+			expect(result.nodes).toEqual(
+				expect.arrayContaining(
+					[
+						{
+							name: 'B',
+							parameters: {
+								p0: "={{ $('Start').item.json.myField + $('Start').item.json.anotherField }}",
+							},
+						},
+					].map(expect.objectContaining),
+				),
+			);
+		});
+
+		it('handles multiple expressions referencing different nested bits of the same field', () => {
+			nodes = [
+				makeNode('B', [
+					'$("A").item.json.myField.nestedField',
+					'$("A").item.json.myField.anotherNestedField',
+					'$("A").item.json.myField.anotherNestedField.x.y.z',
+				]),
+			];
+			nodeNames = ['A', 'B'];
+			const result = extractReferencesInNodeExpressions(nodes, nodeNames, startNodeName);
+			expect([...result.variables.entries()]).toEqual(
+				expect.arrayContaining([
+					['myField_nestedField', '$("A").item.json.myField.nestedField'],
+					['myField_anotherNestedField', '$("A").item.json.myField.anotherNestedField'],
+					['myField_anotherNestedField_x_y_z', '$("A").item.json.myField.anotherNestedField.x.y.z'],
+				]),
+			);
+			expect(result.nodes).toEqual(
+				expect.arrayContaining(
+					[
+						{
+							name: 'B',
+							parameters: {
+								p0: "={{ $('Start').item.json.myField_nestedField }}",
+								p1: "={{ $('Start').item.json.myField_anotherNestedField }}",
+								p2: "={{ $('Start').item.json.myField_anotherNestedField_x_y_z }}",
+							},
+						},
+					].map(expect.objectContaining),
+				),
+			);
+		});
+
+		it('handles first(), last(), all() and items at the same time', () => {
+			nodes = [
+				makeNode('B', [
+					'$("A").first().json.myField',
+					'$("A").last().json.myField',
+					'$("A").all().json.myField',
+					'$("A").item.json.myField',
+				]),
+			];
+			nodeNames = ['A', 'B'];
+			const result = extractReferencesInNodeExpressions(nodes, nodeNames, startNodeName);
+			expect([...result.variables.entries()]).toEqual(
+				expect.arrayContaining([
+					['myField_first', '$("A").first().json.myField'],
+					['myField_last', '$("A").last().json.myField'],
+					['myField_all', '$("A").all().json.myField'],
+					['myField', '$("A").item.json.myField'],
+				]),
+			);
+			expect(result.nodes).toEqual(
+				expect.arrayContaining(
+					[
+						{
+							name: 'B',
+							parameters: {
+								p0: "={{ $('Start').first().json.myField_first }}",
+								p1: "={{ $('Start').last().json.myField_last }}",
+								p2: "={{ $('Start').all().json.myField_all }}",
+								p3: "={{ $('Start').item.json.myField }}",
+							},
+						},
+					].map(expect.objectContaining),
+				),
+			);
+		});
 		it('handles supported itemMatching examples', () => {
 			nodes = [
 				makeNode('B', [
