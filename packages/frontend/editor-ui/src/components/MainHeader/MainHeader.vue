@@ -172,11 +172,7 @@ function onTabSelected(tab: MAIN_HEADER_TABS, event: MouseEvent) {
 			break;
 
 		case MAIN_HEADER_TABS.EVALUATION:
-			activeHeaderTab.value = MAIN_HEADER_TABS.EVALUATION;
-			void router.push({
-				name: VIEWS.EVALUATION_EDIT,
-				params: { workflowId: workflowId.value },
-			});
+			void navigateToEvaluationsView(openInNewTab);
 			break;
 
 		default:
@@ -220,6 +216,25 @@ async function navigateToExecutionsView(openInNewTab: boolean) {
 				name: VIEWS.EXECUTION_HOME,
 				params: { name: routeWorkflowId },
 			};
+
+	if (openInNewTab) {
+		const { href } = router.resolve(routeToNavigateTo);
+		window.open(href, '_blank');
+	} else if (route.name !== routeToNavigateTo.name) {
+		dirtyState.value = uiStore.stateIsDirty;
+		workflowToReturnTo.value = workflowId.value;
+		activeHeaderTab.value = MAIN_HEADER_TABS.EXECUTIONS;
+		await router.push(routeToNavigateTo);
+	}
+}
+
+async function navigateToEvaluationsView(openInNewTab: boolean) {
+	const routeWorkflowId =
+		workflowId.value === PLACEHOLDER_EMPTY_WORKFLOW_ID ? 'new' : workflowId.value;
+	const routeToNavigateTo: RouteLocationRaw = {
+		name: VIEWS.EVALUATION_EDIT,
+		params: { name: routeWorkflowId },
+	};
 
 	if (openInNewTab) {
 		const { href } = router.resolve(routeToNavigateTo);

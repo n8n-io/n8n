@@ -257,7 +257,7 @@ export const routes: RouteRecordRaw[] = [
 		],
 	},
 	{
-		path: '/workflow/:workflowId/evaluation',
+		path: '/workflow/:name/evaluation',
 		components: {
 			default: EvaluationRootView,
 			header: MainHeader,
