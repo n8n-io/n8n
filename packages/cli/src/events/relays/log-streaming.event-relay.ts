@@ -88,6 +88,7 @@ export class LogStreamingEventRelay extends EventRelay {
 		});
 	}
 
+	@Redactable()
 	private workflowArchived({ user, workflowId }: RelayEventMap['workflow-archived']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.workflow.archived',
@@ -95,6 +96,7 @@ export class LogStreamingEventRelay extends EventRelay {
 		});
 	}
 
+	@Redactable()
 	private workflowUnarchived({ user, workflowId }: RelayEventMap['workflow-unarchived']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.workflow.unarchived',
