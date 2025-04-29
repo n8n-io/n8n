@@ -5,7 +5,6 @@ import * as testDefinitionsApi from '@/api/evaluation.ee';
 import type { TestCaseExecutionRecord, TestRunRecord } from '@/api/evaluation.ee';
 import { usePostHog } from './posthog.store';
 import { STORES, WORKFLOW_EVALUATION_EXPERIMENT } from '@/constants';
-import { useI18n } from '@/composables/useI18n';
 
 type FieldIssue = { field: string; message: string };
 
@@ -23,7 +22,7 @@ export const useEvaluationStore = defineStore(
 		// Store instances
 		const posthogStore = usePostHog();
 		const rootStore = useRootStore();
-		const locale = useI18n();
+
 		// Computed
 
 		// Enable with `window.featureFlags.override('025_workflow_evaluation', true)`

@@ -95,7 +95,12 @@ const showWizard = computed(() => {
 					:workflow-id="props.workflowId"
 				/>
 
-				<SetupWizard v-if="showWizard" :class="$style.config" :is-loading="isLoading" />
+				<SetupWizard
+					v-if="showWizard"
+					:class="$style.config"
+					:is-loading="isLoading"
+					@run-test="runTest"
+				/>
 			</div>
 		</div>
 	</div>
