@@ -18,7 +18,7 @@
 					"mode": "list",
 					"cachedResultName": "GroupNameUpdated"
 				},
-				"newGroupName": "GroupNameUpdated2",
+				"groupName": "GroupNameUpdated2",
 				"requestOptions": {}
 			},
 			"type": "n8n-nodes-base.awsIam",

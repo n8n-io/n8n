@@ -5,7 +5,7 @@ import {
 	initBinaryDataService,
 	testWorkflows,
 } from '../../../../../test/nodes/Helpers';
-import { CURRENT_VERSION } from '../../helpers/constants';
+import { BASE_URL, CURRENT_VERSION } from '../../helpers/constants';
 
 describe('AWS IAM - Update User', () => {
 	const workflows = getWorkflowFilenames(__dirname).filter((filename) =>
@@ -21,18 +21,20 @@ describe('AWS IAM - Update User', () => {
 			nock.activate();
 		}
 
-		const baseUrl = 'https://iam.amazonaws.com/';
 		nock.cleanAll();
-		nock(baseUrl)
+		nock(BASE_URL)
 			.persist()
 			.defaultReplyHeaders({ 'Content-Type': 'application/x-amz-json-1.1' })
-			.post(
-				`/?Action=UpdateUser&Version=${CURRENT_VERSION}&NewUserName=NewName&UserName=UserTest101`,
-			)
+			.post('/', {
+				Action: 'UpdateUser',
+				Version: CURRENT_VERSION,
+				UserName: 'NewUser',
+				NewUserName: 'UserTest',
+			})
 			.reply(200, {
 				UpdateUserResponse: {
 					ResponseMetadata: {
-						RequestId: '3fee55bf-1157-4db2-a63c-eab6b6ec1b3b',
+						RequestId: 'bdb4a8b5-627a-41a7-aba9-5733b7869c16',
 					},
 				},
 			});

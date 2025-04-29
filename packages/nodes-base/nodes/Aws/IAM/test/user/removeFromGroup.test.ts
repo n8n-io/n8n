@@ -5,7 +5,7 @@ import {
 	initBinaryDataService,
 	testWorkflows,
 } from '../../../../../test/nodes/Helpers';
-import { CURRENT_VERSION } from '../../helpers/constants';
+import { BASE_URL, CURRENT_VERSION } from '../../helpers/constants';
 
 describe('AWS IAM - Remove User From Group', () => {
 	const workflows = getWorkflowFilenames(__dirname).filter((filename) =>
@@ -21,14 +21,16 @@ describe('AWS IAM - Remove User From Group', () => {
 			nock.activate();
 		}
 
-		const baseUrl = 'https://iam.amazonaws.com/';
 		nock.cleanAll();
-		nock(baseUrl)
+		nock(BASE_URL)
 			.persist()
 			.defaultReplyHeaders({ 'Content-Type': 'application/x-amz-json-1.1' })
-			.post(
-				`/?Action=RemoveUserFromGroup&Version=${CURRENT_VERSION}&UserName=UserTest1&GroupName=GroupCreatedAfter`,
-			)
+			.post('/', {
+				Action: 'RemoveUserFromGroup',
+				Version: CURRENT_VERSION,
+				UserName: 'UserTest1',
+				GroupName: 'GroupCreatedAfter',
+			})
 			.reply(200, {
 				RemoveUserFromGroupResponse: {
 					ResponseMetadata: {

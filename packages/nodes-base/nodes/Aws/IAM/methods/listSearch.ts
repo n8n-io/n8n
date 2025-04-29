@@ -1,10 +1,13 @@
-import {
-	type IDataObject,
-	type IExecuteSingleFunctions,
-	type ILoadOptionsFunctions,
-	type INodeListSearchItems,
-	type INodeListSearchResult,
+import type {
+	IDataObject,
+	IExecuteSingleFunctions,
+	IHttpRequestOptions,
+	ILoadOptionsFunctions,
+	INodeListSearchItems,
+	INodeListSearchResult,
+	JsonObject,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import { CURRENT_VERSION } from '../helpers/constants';
 import type {
@@ -12,13 +15,17 @@ import type {
 	GetAllUsersResponseBody,
 	GetGroupResponseBody,
 } from '../helpers/types';
-import { makeAwsRequest } from '../transport';
+import { awsApiRequest } from '../transport';
 
-function formatResults(items: IDataObject[], filter?: string): INodeListSearchItems[] {
+function formatSearchResults(
+	items: IDataObject[],
+	propertyName: string,
+	filter?: string,
+): INodeListSearchItems[] {
 	return items
 		.map((item) => ({
-			name: String(item.GroupName ?? item.UserName ?? ''),
-			value: String(item.GroupName ?? item.UserName ?? ''),
+			name: String(item[propertyName] ?? ''),
+			value: String(item[propertyName] ?? ''),
 		}))
 		.filter(({ name }) => !filter || name.includes(filter))
 		.sort((a, b) => a.name.localeCompare(b.name));
@@ -29,21 +36,24 @@ export async function searchUsers(
 	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
-	const requestParams = paginationToken ? `&Marker=${paginationToken}` : '';
-
-	const responseData = (await makeAwsRequest.call(this, {
+	const options: IHttpRequestOptions = {
 		method: 'POST',
-		url: `/?Action=ListUsers&Version=${CURRENT_VERSION}${requestParams}`,
-	})) as GetAllUsersResponseBody;
+		url: '',
+		body: {
+			Action: 'ListUsers',
+			Version: CURRENT_VERSION,
+			...(paginationToken ? { Marker: paginationToken } : {}),
+		},
+	};
+	const responseData = (await awsApiRequest.call(this, options)) as GetAllUsersResponseBody;
 
 	const users = responseData.ListUsersResponse.ListUsersResult.Users || [];
-
 	const nextMarker = responseData.ListUsersResponse.ListUsersResult.IsTruncated
 		? responseData.ListUsersResponse.ListUsersResult.Marker
 		: undefined;
 
 	return {
-		results: formatResults(users, filter),
+		results: formatSearchResults(users, 'UserName', filter),
 		paginationToken: nextMarker,
 	};
 }
@@ -53,21 +63,25 @@ export async function searchGroups(
 	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
-	const requestParams = paginationToken ? `&Marker=${paginationToken}` : '';
-
-	const responseData = (await makeAwsRequest.call(this, {
+	const options: IHttpRequestOptions = {
 		method: 'POST',
-		url: `/?Action=ListGroups&Version=${CURRENT_VERSION}${requestParams}`,
-	})) as GetAllGroupsResponseBody;
+		url: '',
+		body: {
+			Action: 'ListGroups',
+			Version: CURRENT_VERSION,
+			...(paginationToken ? { Marker: paginationToken } : {}),
+		},
+	};
+
+	const responseData = (await awsApiRequest.call(this, options)) as GetAllGroupsResponseBody;
 
 	const groups = responseData.ListGroupsResponse.ListGroupsResult.Groups || [];
-
 	const nextMarker = responseData.ListGroupsResponse.ListGroupsResult.IsTruncated
 		? responseData.ListGroupsResponse.ListGroupsResult.Marker
 		: undefined;
 
 	return {
-		results: formatResults(groups, filter),
+		results: formatSearchResults(groups, 'GroupName', filter),
 		paginationToken: nextMarker,
 	};
 }
@@ -75,28 +89,30 @@ export async function searchGroups(
 export async function searchGroupsForUser(
 	this: ILoadOptionsFunctions | IExecuteSingleFunctions,
 	filter?: string,
-	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
-	const userName = (this.getNodeParameter('user') as IDataObject).value as string;
-	let requestParams = paginationToken ? `&Marker=${paginationToken}` : '';
+	const userName = this.getNodeParameter('user', undefined, { extractValue: true });
 	let allGroups: IDataObject[] = [];
-	let nextMarker: string | undefined;
-
+	let nextMarkerGroups: string | undefined;
 	do {
-		const groupsData = (await makeAwsRequest.call(this, {
+		const options: IHttpRequestOptions = {
 			method: 'POST',
-			url: `/?Action=ListGroups&Version=${CURRENT_VERSION}${requestParams}`,
-		})) as GetAllGroupsResponseBody;
+			url: '',
+			body: {
+				Action: 'ListGroups',
+				Version: CURRENT_VERSION,
+				...(nextMarkerGroups ? { Marker: nextMarkerGroups } : {}),
+			},
+		};
+
+		const groupsData = (await awsApiRequest.call(this, options)) as GetAllGroupsResponseBody;
 
 		const groups = groupsData.ListGroupsResponse?.ListGroupsResult?.Groups || [];
-		nextMarker = groupsData.ListGroupsResponse?.ListGroupsResult?.IsTruncated
+		nextMarkerGroups = groupsData.ListGroupsResponse?.ListGroupsResult?.IsTruncated
 			? groupsData.ListGroupsResponse?.ListGroupsResult?.Marker
 			: undefined;
 
 		allGroups = [...allGroups, ...groups];
-
-		requestParams = nextMarker ? `&Marker=${nextMarker}` : '';
-	} while (nextMarker);
+	} while (nextMarkerGroups);
 
 	if (allGroups.length === 0) {
 		return { results: [] };
@@ -104,19 +120,33 @@ export async function searchGroupsForUser(
 
 	const groupCheckPromises = allGroups.map(async (group) => {
 		const groupName = group.GroupName as string;
-		if (!groupName) return null;
+		if (!groupName) {
+			return null;
+		}
 
 		try {
-			const getGroupResponse = (await makeAwsRequest.call(this, {
+			const options: IHttpRequestOptions = {
 				method: 'POST',
-				url: `/?Action=GetGroup&Version=${CURRENT_VERSION}&GroupName=${groupName}`,
-			})) as GetGroupResponseBody;
+				url: '',
+				body: {
+					Action: 'GetGroup',
+					Version: CURRENT_VERSION,
+					GroupName: groupName,
+				},
+			};
 
-			const groupResult = getGroupResponse.GetGroupResponse?.GetGroupResult;
-			if (groupResult?.Users?.some((user) => user.UserName === userName)) {
+			const getGroupResponse = (await awsApiRequest.call(this, options)) as GetGroupResponseBody;
+			const groupResult = getGroupResponse?.GetGroupResponse?.GetGroupResult;
+			const userExists = groupResult?.Users?.some((user) => user.UserName === userName);
+
+			if (userExists) {
 				return { UserName: userName, GroupName: groupName };
 			}
-		} catch (error) {}
+		} catch (error) {
+			throw new NodeApiError(this.getNode(), error as JsonObject, {
+				message: `Failed to get group ${groupName}: ${error?.message ?? 'Unknown error'}`,
+			});
+		}
 
 		return null;
 	});
@@ -124,7 +154,6 @@ export async function searchGroupsForUser(
 	const validUserGroups = (await Promise.all(groupCheckPromises)).filter(Boolean) as IDataObject[];
 
 	return {
-		results: formatResults(validUserGroups, filter),
-		paginationToken: nextMarker,
+		results: formatSearchResults(validUserGroups, 'GroupName', filter),
 	};
 }

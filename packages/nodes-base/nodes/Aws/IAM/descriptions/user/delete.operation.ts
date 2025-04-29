@@ -1,8 +1,14 @@
-import { updateDisplayOptions, type INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
+import { updateDisplayOptions } from 'n8n-workflow';
 
-import { userResourceLocator } from '../../helpers/resourceLocators';
+import { userLocator } from '../common';
 
-const properties: INodeProperties[] = [...userResourceLocator];
+const properties: INodeProperties[] = [
+	{
+		...userLocator,
+		description: 'Select the user you want to delete',
+	},
+];
 
 const displayOptions = {
 	show: {

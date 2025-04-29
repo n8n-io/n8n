@@ -1,4 +1,10 @@
-import type { IDataObject } from 'n8n-workflow';
+export type Group = {
+	Arn: string;
+	CreateDate: number;
+	GroupId: string;
+	GroupName: string;
+	Path?: string;
+};
 
 export type User = {
 	Arn: string;
@@ -11,10 +17,14 @@ export type User = {
 	UserName: string;
 };
 
+export type Tags = {
+	tags: Array<{ key: string; value: string }>;
+};
+
 export type GetUserResponseBody = {
 	GetUserResponse: {
 		GetUserResult: {
-			User: IDataObject;
+			User: User;
 		};
 	};
 };
@@ -22,8 +32,8 @@ export type GetUserResponseBody = {
 export type GetGroupResponseBody = {
 	GetGroupResponse: {
 		GetGroupResult: {
-			Group: IDataObject;
-			Users?: IDataObject[];
+			Group: Group;
+			Users?: User[];
 		};
 	};
 };
@@ -31,7 +41,7 @@ export type GetGroupResponseBody = {
 export type GetAllUsersResponseBody = {
 	ListUsersResponse: {
 		ListUsersResult: {
-			Users: IDataObject[];
+			Users: User[];
 			IsTruncated: boolean;
 			Marker: string;
 		};
@@ -41,13 +51,26 @@ export type GetAllUsersResponseBody = {
 export type GetAllGroupsResponseBody = {
 	ListGroupsResponse: {
 		ListGroupsResult: {
-			Groups: IDataObject[];
+			Groups: Group[];
 			IsTruncated: boolean;
 			Marker: string;
 		};
 	};
 };
 
-export type Tags = {
-	tags: IDataObject[];
+export type AwsError = {
+	Code: string;
+	Message: string;
+};
+
+export type ErrorResponse = {
+	Error: {
+		Code: string;
+		Message: string;
+	};
+};
+
+export type ErrorMessage = {
+	message: string;
+	description: string;
 };

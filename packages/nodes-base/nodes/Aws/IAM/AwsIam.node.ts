@@ -2,13 +2,15 @@ import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { user, group } from './descriptions';
+import { BASE_URL } from './helpers/constants';
+import { encodeBodyAsFormUrlEncoded } from './helpers/utils';
 import { searchGroups, searchUsers, searchGroupsForUser } from './methods/listSearch';
 
 export class AwsIam implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'AWS IAM',
 		name: 'awsIam',
-		icon: 'file:iam.svg',
+		icon: 'file:AwsIam.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -23,8 +25,7 @@ export class AwsIam implements INodeType {
 			},
 		],
 		requestDefaults: {
-			baseURL: '=https://iam.amazonaws.com',
-			url: '',
+			baseURL: BASE_URL,
 			json: true,
 			headers: {
 				'Content-Type': 'application/x-www-form-urlencoded',
@@ -47,6 +48,11 @@ export class AwsIam implements INodeType {
 						value: 'group',
 					},
 				],
+				routing: {
+					send: {
+						preSend: [encodeBodyAsFormUrlEncoded],
+					},
+				},
 			},
 			...user.description,
 			...group.description,
