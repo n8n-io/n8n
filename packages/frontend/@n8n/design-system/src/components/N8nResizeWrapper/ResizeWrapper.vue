@@ -164,6 +164,7 @@ const resizerMove = (event: MouseEvent) => {
 			:key="direction"
 			:data-dir="direction"
 			:class="{ [$style.resizer]: true, [$style[direction]]: true }"
+			data-test-id="resize-handle"
 			@mousedown="resizerMove"
 		/>
 		<slot></slot>

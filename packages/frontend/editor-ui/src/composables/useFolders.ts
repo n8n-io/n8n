@@ -133,12 +133,8 @@ export function useFolders() {
 	}
 
 	/**
-	 * Get the drag or drop target element from the event target and store
+	 * Handle the drop event by getting the dragged resource and drop target
 	 * @param event
-	 * @returns {
-	 * 	draggedResource: DragTarget | undefined;
-	 * 	dropTarget: DropTarget | undefined;
-	 * }
 	 */
 	function handleDrop(event: MouseEvent): {
 		draggedResource?: DragTarget;

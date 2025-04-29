@@ -32,7 +32,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 export type SimplifiedExecution = Pick<
 	IExecutionResponse,
-	'workflowId' | 'data' | 'status' | 'startedAt' | 'stoppedAt'
+	'workflowId' | 'workflowData' | 'data' | 'status' | 'startedAt' | 'stoppedAt'
 >;
 
 /**
@@ -78,6 +78,7 @@ export async function executionFinished(
 
 		execution = {
 			workflowId,
+			workflowData: workflowsStore.workflow,
 			data: parse(rawData),
 			status,
 			startedAt: workflowsStore.workflowExecutionData?.startedAt ?? new Date(),
@@ -125,6 +126,7 @@ export async function getExecutionData(
 
 		return {
 			workflowId: executionResponse.workflowId,
+			workflowData: workflowsStore.workflow,
 			data: parse(executionResponse.data as unknown as string),
 			status: executionResponse.status,
 			startedAt: workflowsStore.workflowExecutionData?.startedAt as Date,

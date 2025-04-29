@@ -5,6 +5,7 @@
 	],
 	"compilerOptions": {
 		"paths": {
+			"@credentials/*": ["./credentials/*"],
 			"@test/*": ["./test/*"],
 			"@utils/*": ["./utils/*"]
 		},
