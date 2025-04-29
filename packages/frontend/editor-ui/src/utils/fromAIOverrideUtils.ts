@@ -47,10 +47,10 @@ function sanitizeFromAiParameterName(s: string) {
 
 // nodeName | [nodeName, highestUnsupportedVersion]
 const NODE_DENYLIST = [
-	'toolCode',
-	'toolHttpRequest',
-	'mcpClientTool',
-	['toolWorkflow', 1.2],
+	'n8n/n8n-nodes-langchain.toolCode',
+	'@n8n/n8n-nodes-langchain.toolHttpRequest',
+	'@n8n/n8n-nodes-langchain.mcpClientTool',
+	['n8n/n8n-nodes-langchain.toolWorkflow', 1.2],
 ] as const;
 
 const PATH_DENYLIST = [
