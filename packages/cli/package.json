@@ -102,7 +102,7 @@
     "@n8n/permissions": "workspace:*",
     "@n8n/task-runner": "workspace:*",
     "@n8n/ai-workflow-builder": "workspace:*",
-    "@n8n/typeorm": "0.3.20-12",
+    "@n8n/typeorm": "catalog:",
     "@n8n_io/ai-assistant-sdk": "catalog:",
     "@n8n_io/license-sdk": "2.20.0",
     "@oclif/core": "4.0.7",

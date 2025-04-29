@@ -6,8 +6,8 @@ import { ProjectRelationRepository } from '@/databases/repositories/project-rela
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { UserRepository } from '@/databases/repositories/user.repository';
-import type { ListQuery } from '@/requests';
 import { CacheService } from '@/services/cache/cache.service';
+import type { ListQuery } from '@/types-db';
 
 @Service()
 export class OwnershipService {
