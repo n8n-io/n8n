@@ -3,34 +3,17 @@ import { useEvaluationStore } from '@/stores/evaluation.store.ee'; // Adjust the
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { usePostHog } from '@/stores/posthog.store';
 import { useAnnotationTagsStore } from '@/stores/tags.store';
-import type { TestDefinitionRecord, TestRunRecord } from '@/api/evaluation.ee';
+import type { TestRunRecord } from '@/api/evaluation.ee';
 import { mockedStore } from '@/__tests__/utils';
 
-const {
-	createTestDefinition,
-	deleteTestDefinition,
-	getTestDefinitions,
-	updateTestDefinition,
-	getTestRuns,
-	getTestRun,
-	startTestRun,
-	deleteTestRun,
-} = vi.hoisted(() => ({
-	getTestDefinitions: vi.fn(),
-	createTestDefinition: vi.fn(),
-	updateTestDefinition: vi.fn(),
-	deleteTestDefinition: vi.fn(),
+const { getTestRuns, getTestRun, startTestRun, deleteTestRun } = vi.hoisted(() => ({
 	getTestRuns: vi.fn(),
 	getTestRun: vi.fn(),
 	startTestRun: vi.fn(),
 	deleteTestRun: vi.fn(),
 }));
 
-vi.mock('@/api/testDefinition.ee', () => ({
-	createTestDefinition,
-	deleteTestDefinition,
-	getTestDefinitions,
-	updateTestDefinition,
+vi.mock('@/api/evaluation.ee', () => ({
 	getTestRuns,
 	getTestRun,
 	startTestRun,
@@ -43,31 +26,9 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 	})),
 }));
 
-const TEST_DEF_A: TestDefinitionRecord = {
-	id: '1',
-	name: 'Test Definition A',
-	workflowId: '123',
-	description: 'Description A',
-	createdAt: '2023-01-01T00:00:00.000Z',
-};
-const TEST_DEF_B: TestDefinitionRecord = {
-	id: '2',
-	name: 'Test Definition B',
-	workflowId: '123',
-	description: 'Description B',
-	createdAt: '2023-01-01T00:00:00.000Z',
-};
-const TEST_DEF_NEW: TestDefinitionRecord = {
-	id: '3',
-	name: 'New Test Definition',
-	workflowId: '123',
-	description: 'New Description',
-	createdAt: '2023-01-01T00:00:00.000Z',
-};
-
 const TEST_RUN: TestRunRecord = {
 	id: 'run1',
-	testDefinitionId: '1',
+	workflowId: '1',
 	status: 'completed',
 	metrics: { metric1: 0.75 },
 	createdAt: '2024-01-01',
@@ -76,7 +37,7 @@ const TEST_RUN: TestRunRecord = {
 	completedAt: '2024-01-01',
 };
 
-describe('testDefinition.store.ee', () => {
+describe('evaluation.store.ee', () => {
 	let store: ReturnType<typeof useEvaluationStore>;
 	let rootStoreMock: ReturnType<typeof useRootStore>;
 	let posthogStoreMock: ReturnType<typeof usePostHog>;
@@ -89,14 +50,6 @@ describe('testDefinition.store.ee', () => {
 		posthogStoreMock = usePostHog();
 
 		mockedStore(useAnnotationTagsStore).fetchAll = vi.fn().mockResolvedValue([]);
-		getTestDefinitions.mockResolvedValue({
-			count: 2,
-			testDefinitions: [TEST_DEF_A, TEST_DEF_B],
-		});
-
-		createTestDefinition.mockResolvedValue(TEST_DEF_NEW);
-
-		deleteTestDefinition.mockResolvedValue({ success: true });
 
 		getTestRuns.mockResolvedValue([TEST_RUN]);
 		getTestRun.mockResolvedValue(TEST_RUN);
@@ -105,170 +58,11 @@ describe('testDefinition.store.ee', () => {
 	});
 
 	test('Initialization', () => {
-		expect(store.testDefinitionsById).toEqual({});
+		expect(store.testRunsById).toEqual({});
 		expect(store.isLoading).toBe(false);
-		expect(store.hasTestDefinitions).toBe(false);
-	});
-
-	describe('Test Definitions', () => {
-		test('Fetching Test Definitions', async () => {
-			expect(store.isLoading).toBe(false);
-
-			const result = await store.fetchAll({ workflowId: '123' });
-
-			expect(getTestDefinitions).toHaveBeenCalledWith(rootStoreMock.restApiContext, {
-				workflowId: '123',
-			});
-			expect(store.testDefinitionsById).toEqual({
-				'1': TEST_DEF_A,
-				'2': TEST_DEF_B,
-			});
-			expect(store.isLoading).toBe(false);
-			expect(result).toEqual([TEST_DEF_A, TEST_DEF_B]);
-		});
-
-		test('Fetching Test Definitions with force flag', async () => {
-			expect(store.isLoading).toBe(false);
-
-			const result = await store.fetchAll({ force: true, workflowId: '123' });
-
-			expect(getTestDefinitions).toHaveBeenCalledWith(rootStoreMock.restApiContext, {
-				workflowId: '123',
-			});
-			expect(store.testDefinitionsById).toEqual({
-				'1': TEST_DEF_A,
-				'2': TEST_DEF_B,
-			});
-			expect(store.isLoading).toBe(false);
-			expect(result).toEqual([TEST_DEF_A, TEST_DEF_B]);
-		});
-
-		test('Fetching Test Definitions when already fetched', async () => {
-			store.fetchedAll = true;
-
-			const result = await store.fetchAll();
-
-			expect(getTestDefinitions).not.toHaveBeenCalled();
-			expect(store.testDefinitionsById).toEqual({});
-			expect(result).toEqual({
-				count: 0,
-				testDefinitions: [],
-			});
-		});
-
-		test('Upserting Test Definitions - New Definition', () => {
-			const newDefinition = TEST_DEF_NEW;
-
-			store.upsertTestDefinitions([newDefinition]);
-
-			expect(store.testDefinitionsById).toEqual({
-				'3': TEST_DEF_NEW,
-			});
-		});
-
-		test('Upserting Test Definitions - Existing Definition', () => {
-			store.testDefinitionsById = {
-				'1': TEST_DEF_A,
-			};
-
-			const updatedDefinition = {
-				id: '1',
-				name: 'Updated Test Definition A',
-				description: 'Updated Description A',
-				workflowId: '123',
-				createdAt: '2023-01-01T00:00:00.000Z',
-			};
-
-			store.upsertTestDefinitions([updatedDefinition]);
-
-			expect(store.testDefinitionsById).toEqual({
-				1: updatedDefinition,
-			});
-		});
-
-		test('Creating a Test Definition', async () => {
-			const params = {
-				name: 'New Test Definition',
-				workflowId: 'test-workflow-id',
-				evaluationWorkflowId: 'test-evaluation-workflow-id',
-				description: 'New Description',
-			};
-
-			const result = await store.create(params);
-
-			expect(createTestDefinition).toHaveBeenCalledWith(rootStoreMock.restApiContext, params);
-			expect(store.testDefinitionsById).toEqual({
-				'3': TEST_DEF_NEW,
-			});
-			expect(result).toEqual(TEST_DEF_NEW);
-		});
-
-		test('Updating a Test Definition', async () => {
-			store.testDefinitionsById = {
-				'1': TEST_DEF_A,
-				'2': TEST_DEF_B,
-			};
-
-			const params = {
-				id: '1',
-				name: 'Updated Test Definition A',
-				description: 'Updated Description A',
-				workflowId: '123',
-			};
-			updateTestDefinition.mockResolvedValue(params);
-
-			const result = await store.update(params);
-
-			expect(updateTestDefinition).toHaveBeenCalledWith(rootStoreMock.restApiContext, '1', {
-				name: 'Updated Test Definition A',
-				description: 'Updated Description A',
-				workflowId: '123',
-			});
-			expect(store.testDefinitionsById).toEqual({
-				'1': { ...TEST_DEF_A, ...params },
-				'2': TEST_DEF_B,
-			});
-			expect(result).toEqual(params);
-		});
-
-		test('Deleting a Test Definition', () => {
-			store.testDefinitionsById = {
-				'1': TEST_DEF_A,
-				'2': TEST_DEF_B,
-			};
-
-			store.deleteTestDefinition('1');
-
-			expect(store.testDefinitionsById).toEqual({
-				'2': TEST_DEF_B,
-			});
-		});
-
-		test('Deleting a Test Definition by ID', async () => {
-			store.testDefinitionsById = {
-				'1': TEST_DEF_A,
-			};
-
-			const result = await store.deleteById('1');
-
-			expect(deleteTestDefinition).toHaveBeenCalledWith(rootStoreMock.restApiContext, '1');
-			expect(store.testDefinitionsById).toEqual({});
-			expect(result).toBe(true);
-		});
 	});
 
 	describe('Computed Properties', () => {
-		test('hasTestDefinitions', () => {
-			store.testDefinitionsById = {};
-
-			expect(store.hasTestDefinitions).toBe(false);
-			store.testDefinitionsById = {
-				'1': TEST_DEF_A,
-			};
-
-			expect(store.hasTestDefinitions).toBe(true);
-		});
-
 		test('isFeatureEnabled', () => {
 			posthogStoreMock.isFeatureEnabled = vi.fn().mockReturnValue(false);
 
@@ -276,80 +70,6 @@ describe('testDefinition.store.ee', () => {
 			posthogStoreMock.isFeatureEnabled = vi.fn().mockReturnValue(true);
 
 			expect(store.isFeatureEnabled).toBe(true);
-		});
-
-		test('allTestDefinitionsByWorkflowId', () => {
-			store.testDefinitionsById = {
-				'1': { ...TEST_DEF_A, workflowId: 'workflow1' },
-				'2': { ...TEST_DEF_B, workflowId: 'workflow1' },
-				'3': { ...TEST_DEF_NEW, workflowId: 'workflow2' },
-			};
-
-			expect(store.allTestDefinitionsByWorkflowId).toEqual({
-				workflow1: [
-					{ ...TEST_DEF_A, workflowId: 'workflow1' },
-					{ ...TEST_DEF_B, workflowId: 'workflow1' },
-				],
-				workflow2: [{ ...TEST_DEF_NEW, workflowId: 'workflow2' }],
-			});
-		});
-
-		test('lastRunByTestId', () => {
-			const olderRun = {
-				...TEST_RUN,
-				id: 'run2',
-				testDefinitionId: '1',
-				updatedAt: '2023-12-31',
-			};
-
-			const newerRun = {
-				...TEST_RUN,
-				id: 'run3',
-				testDefinitionId: '2',
-				updatedAt: '2024-01-02',
-			};
-
-			store.testRunsById = {
-				run1: { ...TEST_RUN, testDefinitionId: '1' },
-				run2: olderRun,
-				run3: newerRun,
-			};
-
-			expect(store.lastRunByTestId).toEqual({
-				'1': TEST_RUN,
-				'2': newerRun,
-			});
-		});
-
-		test('lastRunByTestId with no runs', () => {
-			store.testRunsById = {};
-			expect(store.lastRunByTestId).toEqual({});
-		});
-	});
-
-	describe('Error Handling', () => {
-		test('create', async () => {
-			createTestDefinition.mockRejectedValue(new Error('Create failed'));
-
-			await expect(
-				store.create({ name: 'New Test Definition', workflowId: 'test-workflow-id' }),
-			).rejects.toThrow('Create failed');
-		});
-
-		test('update', async () => {
-			updateTestDefinition.mockRejectedValue(new Error('Update failed'));
-
-			await expect(store.update({ id: '1', name: 'Updated Test Definition A' })).rejects.toThrow(
-				'Update failed',
-			);
-		});
-
-		test('deleteById', async () => {
-			deleteTestDefinition.mockResolvedValue({ success: false });
-
-			const result = await store.deleteById('1');
-
-			expect(result).toBe(false);
 		});
 	});
 
@@ -365,7 +85,7 @@ describe('testDefinition.store.ee', () => {
 		});
 
 		test('Getting specific Test Run', async () => {
-			const params = { testDefinitionId: '1', runId: 'run1' };
+			const params = { workflowId: '1', runId: 'run1' };
 			const result = await store.getTestRun(params);
 
 			expect(getTestRun).toHaveBeenCalledWith(rootStoreMock.restApiContext, params);
@@ -384,7 +104,7 @@ describe('testDefinition.store.ee', () => {
 
 		test('Deleting Test Run', async () => {
 			store.testRunsById = { run1: TEST_RUN };
-			const params = { testDefinitionId: '1', runId: 'run1' };
+			const params = { workflowId: '1', runId: 'run1' };
 
 			const result = await store.deleteTestRun(params);
 
@@ -396,7 +116,7 @@ describe('testDefinition.store.ee', () => {
 		test('Getting Test Runs by Test ID', () => {
 			store.testRunsById = {
 				run1: TEST_RUN,
-				run2: { ...TEST_RUN, id: 'run2', testDefinitionId: '2' },
+				run2: { ...TEST_RUN, id: 'run2', workflowId: '2' },
 			};
 
 			const runs = store.testRunsByTestId['1'];
@@ -445,7 +165,7 @@ describe('testDefinition.store.ee', () => {
 
 			// Verify first poll happened
 			expect(getTestRun).toHaveBeenCalledWith(rootStoreMock.restApiContext, {
-				testDefinitionId: '1',
+				workflowId: '1',
 				runId: 'run1',
 			});
 
