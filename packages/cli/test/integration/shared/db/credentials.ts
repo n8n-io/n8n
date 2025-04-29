@@ -7,7 +7,7 @@ import type { User } from '@/databases/entities/user';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
-import type { ICredentialsDb } from '@/interfaces';
+import type { ICredentialsDb } from '@/types-db';
 
 import type { CredentialPayload } from '../types';
 

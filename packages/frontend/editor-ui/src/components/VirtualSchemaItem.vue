@@ -22,6 +22,7 @@ type Props = {
 	preview?: boolean;
 	locked?: boolean;
 	lockedTooltip?: string;
+	runIndex?: number;
 };
 
 const props = defineProps<Props>();
@@ -48,6 +49,7 @@ const emit = defineEmits<{
 			:data-node-type="nodeType"
 			:data-target="!locked && 'mappable'"
 			:data-node-name="nodeName"
+			:data-run-index="runIndex"
 			class="pill"
 			:class="{
 				'pill--highlight': highlight,

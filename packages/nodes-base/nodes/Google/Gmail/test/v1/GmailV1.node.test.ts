@@ -69,11 +69,9 @@ describe('Test Gmail Node v1', () => {
 				.reply(200, messages[0]);
 		});
 
-		testWorkflows(['nodes/Google/Gmail/test/v1/messages.workflow.json']);
+		afterAll(() => gmailNock.done());
 
-		it('should make the correct network calls', () => {
-			gmailNock.done();
-		});
+		testWorkflows(['nodes/Google/Gmail/test/v1/messages.workflow.json']);
 	});
 
 	describe('Labels', () => {
@@ -94,11 +92,9 @@ describe('Test Gmail Node v1', () => {
 			});
 		});
 
-		testWorkflows(['nodes/Google/Gmail/test/v1/labels.workflow.json']);
+		afterAll(() => gmailNock.done());
 
-		it('should make the correct network calls', () => {
-			gmailNock.done();
-		});
+		testWorkflows(['nodes/Google/Gmail/test/v1/labels.workflow.json']);
 	});
 
 	describe('Message Labels', () => {
@@ -113,11 +109,9 @@ describe('Test Gmail Node v1', () => {
 				.reply(200, messages[0]);
 		});
 
-		testWorkflows(['nodes/Google/Gmail/test/v1/message-labels.workflow.json']);
+		afterAll(() => gmailNock.done());
 
-		it('should make the correct network calls', () => {
-			gmailNock.done();
-		});
+		testWorkflows(['nodes/Google/Gmail/test/v1/message-labels.workflow.json']);
 	});
 
 	describe('Drafts', () => {
@@ -193,10 +187,8 @@ describe('Test Gmail Node v1', () => {
 				});
 		});
 
-		testWorkflows(['nodes/Google/Gmail/test/v1/drafts.workflow.json']);
+		afterAll(() => gmailNock.done());
 
-		it('should make the correct network calls', () => {
-			gmailNock.done();
-		});
+		testWorkflows(['nodes/Google/Gmail/test/v1/drafts.workflow.json']);
 	});
 });
