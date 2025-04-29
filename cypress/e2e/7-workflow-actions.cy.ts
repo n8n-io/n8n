@@ -275,8 +275,8 @@ describe('Workflow Actions', () => {
 		WorkflowPage.getters.workflowMenu().should('be.visible');
 		WorkflowPage.getters.workflowMenu().click();
 		WorkflowPage.getters.workflowMenuItemArchive().click();
-		cy.get('div[role=dialog][aria-modal=true]').should('be.visible');
-		cy.get('button.btn--confirm').should('be.visible').click();
+		WorkflowPage.actions.acceptConfirmModal();
+
 		successToast().should('exist');
 		cy.url().should('include', WorkflowPages.url);
 
@@ -290,8 +290,7 @@ describe('Workflow Actions', () => {
 		WorkflowPage.getters.workflowMenu().should('be.visible');
 		WorkflowPage.getters.workflowMenu().click();
 		WorkflowPage.getters.workflowMenuItemDelete().click();
-		cy.get('div[role=dialog][aria-modal=true]').should('be.visible');
-		cy.get('button.btn--confirm').should('be.visible').click();
+		WorkflowPage.actions.acceptConfirmModal();
 		successToast().should('exist');
 		cy.url().should('include', WorkflowPages.url);
 	});
@@ -304,8 +303,7 @@ describe('Workflow Actions', () => {
 		WorkflowPage.getters.workflowMenu().should('be.visible');
 		WorkflowPage.getters.workflowMenu().click();
 		WorkflowPage.getters.workflowMenuItemArchive().click();
-		cy.get('div[role=dialog][aria-modal=true]').should('be.visible');
-		cy.get('button.btn--confirm').should('be.visible').click();
+		WorkflowPage.actions.acceptConfirmModal();
 		successToast().should('exist');
 		cy.url().should('include', WorkflowPages.url);
 
@@ -333,8 +331,7 @@ describe('Workflow Actions', () => {
 		// Archive the workflow
 		WorkflowPage.getters.workflowMenu().click();
 		WorkflowPage.getters.workflowMenuItemArchive().click();
-		cy.get('div[role=dialog][aria-modal=true]').should('be.visible');
-		cy.get('button.btn--confirm').should('be.visible').click();
+		WorkflowPage.actions.acceptConfirmModal();
 		successToast().should('exist');
 		cy.url().should('include', WorkflowPages.url);
 

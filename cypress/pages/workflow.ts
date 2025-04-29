@@ -219,6 +219,7 @@ export class WorkflowPage extends BasePage {
 			}
 			return parseFloat(element.css('top'));
 		},
+		confirmModal: () => cy.get('div[role=dialog][aria-modal=true]'),
 	};
 
 	actions = {
@@ -555,6 +556,10 @@ export class WorkflowPage extends BasePage {
 				left: +$el[0].style.left.replace('px', ''),
 				top: +$el[0].style.top.replace('px', ''),
 			}));
+		},
+		acceptConfirmModal: () => {
+			this.getters.confirmModal().should('be.visible');
+			cy.get('button.btn--confirm').should('be.visible').click();
 		},
 	};
 }
