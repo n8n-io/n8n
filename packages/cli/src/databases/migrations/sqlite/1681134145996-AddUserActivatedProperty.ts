@@ -1,5 +1,5 @@
 import type { MigrationContext, ReversibleMigration } from '@/databases/types';
-import type { UserSettings } from '@/interfaces';
+import type { UserSettings } from '@/types-db';
 
 export class AddUserActivatedProperty1681134145996 implements ReversibleMigration {
 	async up({ queryRunner, tablePrefix }: MigrationContext) {

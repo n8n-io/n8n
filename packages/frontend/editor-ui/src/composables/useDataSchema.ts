@@ -235,6 +235,8 @@ export type SchemaNode = {
 	preview: boolean;
 	isNodeExecuted: boolean;
 	hasBinary: boolean;
+	runIndex: number;
+	isDataEmpty: boolean;
 };
 
 export type RenderItem = {
@@ -285,7 +287,7 @@ export type RenderEmpty = {
 	type: 'empty';
 	level: number;
 	nodeName: string;
-	key: 'emptyData' | 'emptyDataWithBinary' | 'executeSchema';
+	key: 'emptyData' | 'emptySchema' | 'emptySchemaWithBinary' | 'executeSchema';
 };
 
 export type Renders = RenderHeader | RenderItem | RenderIcon | RenderNotice | RenderEmpty;
@@ -323,7 +325,7 @@ const moreFieldsItem = (): RenderIcon => ({
 	tooltip: useI18n().baseText('dataMapping.schemaView.previewExtraFields'),
 });
 
-const isDataEmpty = (schema: Schema) => {
+const isEmptySchema = (schema: Schema) => {
 	// Utilize the generated schema instead of looping over the entire data again
 	// The schema for empty data is { type: 'object', value: [] }
 	const isObjectOrArray = schema.type === 'object';
@@ -336,18 +338,8 @@ const prefixTitle = (title: string, prefix?: string) => (prefix ? `${prefix}[${t
 
 export const useFlattenSchema = () => {
 	const closedNodes = ref<Set<string>>(new Set());
-	const headerIds = ref<Set<string>>(new Set());
-	const toggleLeaf = (id: string) => {
-		if (closedNodes.value.has(id)) {
-			closedNodes.value.delete(id);
-		} else {
-			closedNodes.value.add(id);
-		}
-	};
-
 	const toggleNode = (id: string) => {
 		if (closedNodes.value.has(id)) {
-			closedNodes.value = new Set(headerIds.value);
 			closedNodes.value.delete(id);
 		} else {
 			closedNodes.value.add(id);
@@ -374,7 +366,7 @@ export const useFlattenSchema = () => {
 		preview?: boolean;
 	}): Renders[] => {
 		// only show empty item for the first level
-		if (isDataEmpty(schema) && level < 0) {
+		if (isEmptySchema(schema) && level < 0) {
 			return [emptyItem('emptyData')];
 		}
 
@@ -450,8 +442,6 @@ export const useFlattenSchema = () => {
 		nodes: SchemaNode[],
 		additionalInfo: (node: INodeUi) => string,
 	) => {
-		headerIds.value.clear();
-
 		return nodes.reduce<Renders[]>((acc, item) => {
 			acc.push({
 				title: item.node.name,
@@ -464,20 +454,21 @@ export const useFlattenSchema = () => {
 				preview: item.preview,
 			});
 
-			headerIds.value.add(item.node.name);
-
 			if (closedNodes.value.has(item.node.name)) {
 				return acc;
 			}
 
-			if (isDataEmpty(item.schema) && !item.isNodeExecuted && !item.hasBinary) {
-				acc.push(emptyItem('executeSchema', { nodeName: item.node.name, level: 1 }));
-				return acc;
-			}
+			if (isEmptySchema(item.schema)) {
+				if (!item.isNodeExecuted) {
+					acc.push(emptyItem('executeSchema', { level: 1 }));
+					return acc;
+				}
 
-			if (isDataEmpty(item.schema)) {
-				const key = item.hasBinary ? 'emptyDataWithBinary' : 'emptyData';
-				acc.push(emptyItem(key, { level: 1 }));
+				if (item.isDataEmpty) {
+					acc.push(emptyItem('emptyData', { level: 1 }));
+					return acc;
+				}
+				acc.push(emptyItem(item.hasBinary ? 'emptySchemaWithBinary' : 'emptySchema', { level: 1 }));
 				return acc;
 			}
 
@@ -505,7 +496,6 @@ export const useFlattenSchema = () => {
 
 	return {
 		closedNodes,
-		toggleLeaf,
 		toggleNode,
 		flattenSchema,
 		flattenMultipleSchemas,
