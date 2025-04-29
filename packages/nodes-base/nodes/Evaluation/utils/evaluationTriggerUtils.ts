@@ -91,6 +91,7 @@ export async function getResults(
 	operationResult: INodeExecutionData[],
 	googleSheet: GoogleSheet,
 	result: { title: string; sheetId: number },
+	rangeString: string,
 	rangeOptions: IDataObject,
 ): Promise<INodeExecutionData[]> {
 	const sheetName = result.title;
