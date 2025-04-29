@@ -2478,7 +2478,7 @@
 	"workflows.filters.status.all": "All",
 	"workflows.filters.status.active": "Active",
 	"workflows.filters.status.deactivated": "Deactivated",
-	"workflows.filters.archived": "Show archived workflows",
+	"workflows.filters.showArchived": "Show archived workflows",
 	"workflows.filters.ownedBy": "Owned by",
 	"workflows.filters.sharedWith": "Shared with",
 	"workflows.filters.apply": "Apply filters",

@@ -733,8 +733,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			'POST',
 			`/workflows/${id}/archive`,
 		);
-		workflowsById.value[id].isArchived = true;
-		workflowsById.value[id].versionId = updatedWorkflow.versionId;
+		if (workflowsById.value[id]) {
+			workflowsById.value[id].isArchived = true;
+			workflowsById.value[id].versionId = updatedWorkflow.versionId;
+		}
 
 		setWorkflowInactive(id);
 
@@ -750,8 +752,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			'POST',
 			`/workflows/${id}/unarchive`,
 		);
-		workflowsById.value[id].isArchived = false;
-		workflowsById.value[id].versionId = updatedWorkflow.versionId;
+		if (workflowsById.value[id]) {
+			workflowsById.value[id].isArchived = false;
+			workflowsById.value[id].versionId = updatedWorkflow.versionId;
+		}
 
 		if (id === workflow.value.id) {
 			setIsArchived(false);

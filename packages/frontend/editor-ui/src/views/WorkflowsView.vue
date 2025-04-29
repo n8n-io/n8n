@@ -1649,7 +1649,7 @@ const onNameSubmit = async ({
 			<div class="mb-s">
 				<N8nCheckbox
 					ref="inputRef"
-					:label="i18n.baseText('workflows.filters.archived')"
+					:label="i18n.baseText('workflows.filters.showArchived')"
 					:model-value="filters.showArchived"
 					data-test-id="show-archived-checkbox"
 					@update:model-value="setKeyValue('showArchived', $event)"

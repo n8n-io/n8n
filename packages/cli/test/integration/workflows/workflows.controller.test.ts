@@ -2280,6 +2280,7 @@ describe('POST /workflows/:workflowId/archive', () => {
 		expect(isArchived).toBe(true);
 		expect(active).toBe(false);
 		expect(versionId).not.toBe(workflow.versionId);
+		expect(activeWorkflowManagerLike.remove).toBeCalledWith(workflow.id);
 
 		const updatedWorkflow = await Container.get(WorkflowRepository).findById(workflow.id);
 		expect(updatedWorkflow).not.toBeNull();
@@ -2288,7 +2289,12 @@ describe('POST /workflows/:workflowId/archive', () => {
 
 	test('should not archive workflow that is already archived', async () => {
 		const workflow = await createWorkflow({ isArchived: true }, owner);
-		await authOwnerAgent.post(`/workflows/${workflow.id}/archive`).send().expect(400);
+		const response = await authOwnerAgent
+			.post(`/workflows/${workflow.id}/archive`)
+			.send()
+			.expect(400);
+
+		expect(response.body.message).toBe('Workflow is already archived.');
 
 		const updatedWorkflow = await Container.get(WorkflowRepository).findById(workflow.id);
 		expect(updatedWorkflow).not.toBeNull();
@@ -2446,7 +2452,8 @@ describe('DELETE /workflows/:workflowId', () => {
 	test('does not delete a workflow that is not archived', async () => {
 		const workflow = await createWorkflow({}, owner);
 
-		await authOwnerAgent.delete(`/workflows/${workflow.id}`).send().expect(400);
+		const response = await authOwnerAgent.delete(`/workflows/${workflow.id}`).send().expect(400);
+		expect(response.body.message).toBe('Workflow must be archived before it can be deleted.');
 
 		const workflowInDb = await Container.get(WorkflowRepository).findById(workflow.id);
 		const sharedWorkflowsInDb = await Container.get(SharedWorkflowRepository).findBy({

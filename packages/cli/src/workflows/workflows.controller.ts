@@ -407,7 +407,7 @@ export class WorkflowsController {
 				workflowId,
 				userId: req.user.id,
 			});
-			throw new BadRequestError(
+			throw new ForbiddenError(
 				'Could not archive the workflow - you can only archive workflows owned by you',
 			);
 		}
