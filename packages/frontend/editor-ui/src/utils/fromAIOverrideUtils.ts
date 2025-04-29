@@ -194,8 +194,8 @@ function isDeniedNode(nodeDenyData: string | readonly [string, number], node: IN
 	if (typeof nodeDenyData === 'string') {
 		return node.type === nodeDenyData;
 	} else {
-		const [name, version] = nodeDenyData;
-		return node.type === name && node.typeVersion <= version;
+		const [typeName, version] = nodeDenyData;
+		return node.type === typeName && node.typeVersion <= version;
 	}
 }
 
