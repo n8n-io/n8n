@@ -31,7 +31,7 @@ import { useCredentialsStore } from './credentials.store';
 import { useAIAssistantHelpers } from '@/composables/useAIAssistantHelpers';
 
 export const MAX_CHAT_WIDTH = 425;
-export const MIN_CHAT_WIDTH = 250;
+export const MIN_CHAT_WIDTH = 300;
 export const DEFAULT_CHAT_WIDTH = 330;
 export const ENABLED_VIEWS = [
 	...EDITABLE_CANVAS_VIEWS,

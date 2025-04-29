@@ -15,7 +15,7 @@ import { CredentialsRepository } from '@/databases/repositories/credentials.repo
 import { SettingsRepository } from '@/databases/repositories/settings.repository';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import type { ICredentialsDb, PublicUser } from '@/interfaces';
+import type { ICredentialsDb, PublicUser } from '@/types-db';
 
 type Repositories = {
 	User: UserRepository;

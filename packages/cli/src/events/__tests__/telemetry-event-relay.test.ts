@@ -14,10 +14,10 @@ import type { WorkflowRepository } from '@/databases/repositories/workflow.repos
 import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
-import type { IWorkflowDb } from '@/interfaces';
 import type { License } from '@/license';
 import type { NodeTypes } from '@/node-types';
 import type { Telemetry } from '@/telemetry';
+import type { IWorkflowDb } from '@/types-db';
 import { mockInstance } from '@test/mocking';
 
 const flushPromises = async () => await new Promise((resolve) => setImmediate(resolve));

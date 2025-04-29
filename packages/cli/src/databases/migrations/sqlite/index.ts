@@ -45,7 +45,6 @@ import { MigrateTestDefinitionKeyToString1731582748663 } from './1731582748663-M
 import { CreateFolderTable1738709609940 } from './1738709609940-CreateFolderTable';
 import { UpdateParentFolderIdColumn1740445074052 } from './1740445074052-UpdateParentFolderIdColumn';
 import { AddScopesColumnToApiKeys1742918400000 } from './1742918400000-AddScopesColumnToApiKeys';
-import { AddWorkflowArchivedColumn1745329094929 } from './1745329094929-AddWorkflowArchivedColumn';
 import { UniqueWorkflowNames1620821879465 } from '../common/1620821879465-UniqueWorkflowNames';
 import { UpdateWorkflowCredentials1630330987096 } from '../common/1630330987096-UpdateWorkflowCredentials';
 import { AddNodeIds1658930531669 } from '../common/1658930531669-AddNodeIds';
@@ -82,6 +81,8 @@ import { CreateTestCaseExecutionTable1736947513045 } from '../common/17369475130
 import { AddErrorColumnsToTestRuns1737715421462 } from '../common/1737715421462-AddErrorColumnsToTestRuns';
 import { CreateAnalyticsTables1739549398681 } from '../common/1739549398681-CreateAnalyticsTables';
 import { RenameAnalyticsToInsights1741167584277 } from '../common/1741167584277-RenameAnalyticsToInsights';
+import { AddWorkflowStatisticsRootCount1745587087521 } from '../common/1745587087521-AddWorkflowStatisticsRootCount';
+import { AddWorkflowArchivedColumn1745934666076 } from '../common/1745934666076-AddWorkflowArchivedColumn';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
@@ -165,7 +166,8 @@ const sqliteMigrations: Migration[] = [
 	UpdateParentFolderIdColumn1740445074052,
 	RenameAnalyticsToInsights1741167584277,
 	AddScopesColumnToApiKeys1742918400000,
-	AddWorkflowArchivedColumn1745329094929,
+	AddWorkflowStatisticsRootCount1745587087521,
+	AddWorkflowArchivedColumn1745934666076,
 ];
 
 export { sqliteMigrations };
