@@ -58,6 +58,12 @@ RUN \
 	mkdir .n8n && \
 	chown node:node .n8n
 
+# Install ffmpeg
+RUN apt-get update && \
+	apt-get install -y ffmpeg && \
+	apt-get clean && \
+	rm -rf /var/lib/apt/lists/*
+
 ENV SHELL /bin/sh
 USER node
 ENTRYPOINT ["tini", "--", "/docker-entrypoint.sh"]
