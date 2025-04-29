@@ -201,7 +201,7 @@ describe('run', () => {
 		expect(recreateNodeExecutionStackSpy).not.toHaveBeenCalled();
 	});
 
-	it('create partial execution starting at previous execution index', async () => {
+	it('run partial execution with additional data', async () => {
 		// ARRANGE
 		const activeExecutions = Container.get(ActiveExecutions);
 		jest.spyOn(activeExecutions, 'add').mockResolvedValue('1');
@@ -248,7 +248,6 @@ describe('run', () => {
 			data.userId,
 			undefined,
 			undefined,
-			10,
 		);
 		expect(ManualExecutionService.prototype.runManually).toHaveBeenCalledWith(
 			data,

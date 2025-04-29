@@ -105,12 +105,3 @@ export const shouldAssignExecuteMethod = (nodeType: INodeType) => {
 		!nodeType.methods
 	);
 };
-
-export const getNextExecutionIndex = (runData: IRunData | undefined) => {
-	const previousRuns = Object.values(runData ?? {}).flat();
-	const maxExecutionIndex = previousRuns.length
-		? Math.max(...previousRuns.map((taskData) => taskData.executionIndex))
-		: undefined;
-
-	return maxExecutionIndex ? maxExecutionIndex + 1 : undefined;
-};

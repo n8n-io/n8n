@@ -22,7 +22,6 @@ import { WorkflowRepository } from '@/databases/repositories/workflow.repository
 import { getLifecycleHooksForScalingWorker } from '@/execution-lifecycle/execution-lifecycle-hooks';
 import { ManualExecutionService } from '@/manual-execution.service';
 import { NodeTypes } from '@/node-types';
-import { getNextExecutionIndex } from '@/utils';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 
 import type {
@@ -126,7 +125,6 @@ export class JobProcessor {
 			undefined,
 			undefined,
 			executionTimeoutTimestamp,
-			getNextExecutionIndex(execution.data.resultData.runData),
 		);
 
 		const { pushRef } = job.data;

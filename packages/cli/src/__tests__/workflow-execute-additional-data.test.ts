@@ -332,12 +332,5 @@ describe('WorkflowExecuteAdditionalData', () => {
 
 			expect(additionalData.executionTimeoutTimestamp).toBe(executionTimeoutTimestamp);
 		});
-
-		it('should include initialExecutionIndex when provided', async () => {
-			const initialExecutionIndex = 5;
-			const additionalData = await getBase(undefined, undefined, undefined, initialExecutionIndex);
-
-			expect(additionalData.currentNodeExecutionIndex).toBe(initialExecutionIndex);
-		});
 	});
 });

@@ -70,6 +70,7 @@ import {
 	filterDisabledNodes,
 	rewireGraph,
 	isTool,
+	getNextExecutionIndex,
 } from './partial-execution-utils';
 import { RoutingNode } from './routing-node';
 import { TriggersAndPollers } from './triggers-and-pollers';
@@ -428,6 +429,7 @@ export class WorkflowExecute {
 			recreateNodeExecutionStack(graph, startNodes, runData, pinData ?? {});
 
 		// 8. Execute
+		this.additionalData.currentNodeExecutionIndex = getNextExecutionIndex(runData) ?? 0;
 		this.status = 'running';
 		this.runExecutionData = {
 			startData: {
