@@ -1,3 +1,4 @@
+import { DateTimeColumn, datetimeColumnType } from '@n8n/db';
 import {
 	Column,
 	Entity,
@@ -10,11 +11,11 @@ import {
 	Relation,
 	DeleteDateColumn,
 } from '@n8n/typeorm';
+import type { SimpleColumnType } from '@n8n/typeorm/driver/types/ColumnTypes';
 import { ExecutionStatus, WorkflowExecuteMode } from 'n8n-workflow';
 
 import type { ExecutionAnnotation } from '@/databases/entities/execution-annotation.ee';
 
-import { datetimeColumnType } from './abstract-entity';
 import type { ExecutionData } from './execution-data';
 import type { ExecutionMetadata } from './execution-metadata';
 import { WorkflowEntity } from './workflow-entity';
@@ -58,20 +59,23 @@ export class ExecutionEntity {
 	 * Time when the processing of the execution actually started. This column
 	 * is `null` when an execution is enqueued but has not started yet.
 	 */
-	@Column({ type: datetimeColumnType, nullable: true })
+	@Column({
+		type: datetimeColumnType as SimpleColumnType,
+		nullable: true,
+	})
 	startedAt: Date | null;
 
 	@Index()
-	@Column({ type: datetimeColumnType, nullable: true })
+	@DateTimeColumn({ nullable: true })
 	stoppedAt: Date;
 
-	@DeleteDateColumn({ type: datetimeColumnType, nullable: true })
+	@DeleteDateColumn({ type: datetimeColumnType as SimpleColumnType, nullable: true })
 	deletedAt: Date;
 
 	@Column({ nullable: true })
 	workflowId: string;
 
-	@Column({ type: datetimeColumnType, nullable: true })
+	@DateTimeColumn({ nullable: true })
 	waitTill: Date | null;
 
 	@OneToMany('ExecutionMetadata', 'execution')

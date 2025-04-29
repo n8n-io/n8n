@@ -3,8 +3,8 @@ import type { Response, NextFunction } from 'express';
 import { filterListQueryMiddleware } from '@/middlewares/list-query/filter';
 import { paginationListQueryMiddleware } from '@/middlewares/list-query/pagination';
 import { selectListQueryMiddleware } from '@/middlewares/list-query/select';
-import type { ListQuery } from '@/requests';
 import * as ResponseHelper from '@/response-helper';
+import type { ListQuery } from '@/types-db';
 
 import { sortByQueryMiddleware } from '../sort-by';
 

@@ -1,9 +1,8 @@
 import { GlobalConfig } from '@n8n/config';
+import { DateTimeColumn } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { BaseEntity, Column, Entity, PrimaryGeneratedColumn } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
-
-import { datetimeColumnType } from '@/databases/entities/abstract-entity';
 
 import { isValidTypeNumber, NumberToType, TypeToNumber } from './insights-shared';
 
@@ -42,9 +41,6 @@ export class InsightsRaw extends BaseEntity {
 	@Column()
 	value: number;
 
-	@Column({
-		name: 'timestamp',
-		type: datetimeColumnType,
-	})
+	@DateTimeColumn({ name: 'timestamp' })
 	timestamp: Date;
 }

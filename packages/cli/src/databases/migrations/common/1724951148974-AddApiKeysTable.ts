@@ -1,6 +1,7 @@
+import { generateNanoId } from '@n8n/db';
+
 import type { ApiKey } from '@/databases/entities/api-key';
 import type { MigrationContext, ReversibleMigration } from '@/databases/types';
-import { generateNanoId } from '@/databases/utils/generators';
 
 export class AddApiKeysTable1724951148974 implements ReversibleMigration {
 	async up({

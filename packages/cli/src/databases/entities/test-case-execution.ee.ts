@@ -1,11 +1,7 @@
+import { DateTimeColumn, JsonColumn, WithStringId } from '@n8n/db';
 import { Column, Entity, ManyToOne, OneToOne } from '@n8n/typeorm';
 import type { IDataObject } from 'n8n-workflow';
 
-import {
-	datetimeColumnType,
-	jsonColumnType,
-	WithStringId,
-} from '@/databases/entities/abstract-entity';
 import type { ExecutionEntity } from '@/databases/entities/execution-entity';
 import { TestRun } from '@/databases/entities/test-run.ee';
 import type { TestCaseExecutionErrorCode } from '@/evaluation.ee/test-runner/errors.ee';
@@ -62,18 +58,18 @@ export class TestCaseExecution extends WithStringId {
 	@Column()
 	status: TestCaseExecutionStatus;
 
-	@Column({ type: datetimeColumnType, nullable: true })
+	@DateTimeColumn({ nullable: true })
 	runAt: Date | null;
 
-	@Column({ type: datetimeColumnType, nullable: true })
+	@DateTimeColumn({ nullable: true })
 	completedAt: Date | null;
 
 	@Column('varchar', { nullable: true })
 	errorCode: TestCaseExecutionErrorCode | null;
 
-	@Column(jsonColumnType, { nullable: true })
+	@JsonColumn({ nullable: true })
 	errorDetails: IDataObject | null;
 
-	@Column(jsonColumnType, { nullable: true })
+	@JsonColumn({ nullable: true })
 	metrics: TestCaseRunMetrics;
 }

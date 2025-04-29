@@ -1,8 +1,8 @@
+import { generateNanoId } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import type { Variables } from '@/databases/entities/variables';
 import { VariablesRepository } from '@/databases/repositories/variables.repository';
-import { generateNanoId } from '@/databases/utils/generators';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { CacheService } from '@/services/cache/cache.service';
 

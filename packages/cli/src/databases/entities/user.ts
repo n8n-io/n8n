@@ -1,3 +1,4 @@
+import { JsonColumn, WithTimestamps } from '@n8n/db';
 import { hasScope, type ScopeOptions, type Scope, GlobalRole } from '@n8n/permissions';
 import {
 	AfterLoad,
@@ -22,7 +23,6 @@ import type { IPersonalizationSurveyAnswers } from '@/types-db';
 import { NoUrl } from '@/validators/no-url.validator';
 import { NoXss } from '@/validators/no-xss.validator';
 
-import { WithTimestamps, jsonColumnType } from './abstract-entity';
 import type { ApiKey } from './api-key';
 import type { AuthIdentity } from './auth-identity';
 import type { ProjectRelation } from './project-relation';
@@ -68,17 +68,13 @@ export class User extends WithTimestamps implements IUser {
 	@IsString({ message: 'Password must be of type string.' })
 	password: string;
 
-	@Column({
-		type: jsonColumnType,
+	@JsonColumn({
 		nullable: true,
 		transformer: objectRetriever,
 	})
 	personalizationAnswers: IPersonalizationSurveyAnswers | null;
 
-	@Column({
-		type: jsonColumnType,
-		nullable: true,
-	})
+	@JsonColumn({ nullable: true })
 	settings: IUserSettings | null;
 
 	@Column({ type: String })

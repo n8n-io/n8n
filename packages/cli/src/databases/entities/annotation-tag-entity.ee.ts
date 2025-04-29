@@ -1,10 +1,9 @@
+import { WithTimestampsAndStringId } from '@n8n/db';
 import { Column, Entity, Index, ManyToMany, OneToMany } from '@n8n/typeorm';
 import { IsString, Length } from 'class-validator';
 
 import type { AnnotationTagMapping } from '@/databases/entities/annotation-tag-mapping.ee';
 import type { ExecutionAnnotation } from '@/databases/entities/execution-annotation.ee';
-
-import { WithTimestampsAndStringId } from './abstract-entity';
 
 @Entity()
 export class AnnotationTagEntity extends WithTimestampsAndStringId {

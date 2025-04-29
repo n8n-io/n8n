@@ -1,6 +1,6 @@
+import { WithTimestamps } from '@n8n/db';
 import { Column, Entity, ManyToOne, PrimaryColumn } from '@n8n/typeorm';
 
-import { WithTimestamps } from './abstract-entity';
 import { CredentialsEntity } from './credentials-entity';
 import { Project } from './project';
 

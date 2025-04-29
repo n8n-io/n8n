@@ -8,7 +8,7 @@ import { TestRun } from '@/databases/entities/test-run.ee';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { TestRunErrorCode } from '@/evaluation.ee/test-runner/errors.ee';
 import { getTestRunFinalResult } from '@/evaluation.ee/test-runner/utils.ee';
-import type { ListQuery } from '@/requests';
+import type { ListQuery } from '@/types-db';
 
 export type TestRunFinalResult = 'success' | 'error' | 'warning';
 

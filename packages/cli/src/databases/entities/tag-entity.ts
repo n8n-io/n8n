@@ -1,7 +1,7 @@
+import { WithTimestampsAndStringId } from '@n8n/db';
 import { Column, Entity, Index, ManyToMany, OneToMany } from '@n8n/typeorm';
 import { IsString, Length } from 'class-validator';
 
-import { WithTimestampsAndStringId } from './abstract-entity';
 import type { FolderTagMapping } from './folder-tag-mapping';
 import type { WorkflowEntity } from './workflow-entity';
 import type { WorkflowTagMapping } from './workflow-tag-mapping';

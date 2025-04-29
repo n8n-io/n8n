@@ -7,7 +7,6 @@ import type {
 	IDeferredPromise,
 	IExecuteResponsePromiseData,
 	IRun,
-	IRunExecutionData,
 	ITelemetryTrackProperties,
 	IWorkflowBase,
 	CredentialLoadingDetails,
@@ -15,14 +14,12 @@ import type {
 	ExecutionStatus,
 	ExecutionSummary,
 	IWorkflowExecutionDataProcess,
-	DeduplicationMode,
-	DeduplicationItemTypes,
 } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
 
 import type { ActiveWorkflowManager } from '@/active-workflow-manager';
 import type { ExternalHooks } from '@/external-hooks';
-import type { ICredentialsBase, IExecutionBase, ITagBase } from '@/types-db';
+import type { ICredentialsBase, IExecutionBase, IExecutionDb, ITagBase } from '@/types-db';
 
 export interface ICredentialsTypeData {
 	[key: string]: CredentialLoadingDetails;
@@ -30,20 +27,6 @@ export interface ICredentialsTypeData {
 
 export interface ICredentialsOverwrite {
 	[key: string]: ICredentialDataDecryptedObject;
-}
-
-// ----------------------------------
-//               ProcessedData
-// ----------------------------------
-
-export interface IProcessedDataLatest {
-	mode: DeduplicationMode;
-	data: DeduplicationItemTypes;
-}
-
-export interface IProcessedDataEntries {
-	mode: DeduplicationMode;
-	data: DeduplicationItemTypes[];
 }
 
 // ----------------------------------
@@ -82,15 +65,6 @@ export type ICredentialsDecryptedResponse = ICredentialsDecryptedDb;
 
 export type SaveExecutionDataType = 'all' | 'none';
 
-// Data in regular format with references
-export interface IExecutionDb extends IExecutionBase {
-	data: IRunExecutionData;
-	workflowData: IWorkflowBase;
-}
-
-/** Payload for creating an execution. */
-export type CreateExecutionPayload = Omit<IExecutionDb, 'id' | 'createdAt' | 'startedAt'>;
-
 /** Payload for updating an execution. */
 export type UpdateExecutionPayload = Omit<IExecutionDb, 'id' | 'createdAt'>;
 
@@ -99,13 +73,6 @@ export type UpdateExecutionPayload = Omit<IExecutionDb, 'id' | 'createdAt'>;
 export interface IExecutionFlatted extends IExecutionBase {
 	data: string;
 	workflowData: IWorkflowBase;
-}
-
-export interface IExecutionFlattedDb extends IExecutionBase {
-	id: string;
-	data: string;
-	workflowData: Omit<IWorkflowBase, 'pinData'>;
-	customData: Record<string, string>;
 }
 
 export interface IExecutionFlattedResponse extends IExecutionFlatted {

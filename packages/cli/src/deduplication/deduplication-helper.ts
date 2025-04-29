@@ -15,7 +15,7 @@ import * as assert from 'node:assert/strict';
 import type { ProcessedData } from '@/databases/entities/processed-data';
 import { ProcessedDataRepository } from '@/databases/repositories/processed-data.repository';
 import { DeduplicationError } from '@/errors/deduplication.error';
-import type { IProcessedDataEntries, IProcessedDataLatest } from '@/interfaces';
+import type { IProcessedDataEntries, IProcessedDataLatest } from '@/types-db';
 
 export class DeduplicationHelper implements IDataDeduplicator {
 	private static sortEntries(
