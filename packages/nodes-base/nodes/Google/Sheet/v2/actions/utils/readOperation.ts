@@ -67,7 +67,8 @@ export async function readSheet(
 		if (nodeVersion < 4.5) {
 			returnAllMatches = options.returnAllMatches === 'returnAllMatches' ? true : false;
 		} else {
-			returnAllMatches = options.returnFirstMatch ? false : true;
+			returnAllMatches =
+				(additionalOptions?.returnFirstMatch ?? options.returnFirstMatch) ? false : true;
 		}
 
 		if (nodeVersion <= 4.1) {
