@@ -281,7 +281,7 @@ export class CommunityPackagesController {
 				this.push.broadcast({
 					type: 'reloadNodeType',
 					data: {
-						name: node.name,
+						name: node.type,
 						version: node.latestVersion,
 					},
 				});

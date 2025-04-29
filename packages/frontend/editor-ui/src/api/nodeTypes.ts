@@ -6,20 +6,34 @@ import type {
 } from '@n8n/api-types';
 import { makeRestApiRequest } from '@/utils/apiUtils';
 import type { INodeTranslationHeaders, IRestApiContext } from '@/Interface';
-import type {
-	INodeListSearchResult,
-	INodePropertyOptions,
-	INodeTypeDescription,
-	INodeTypeNameVersion,
-	NodeParameterValueType,
-	ResourceMapperFields,
-	CommunityNodeAttributes,
+import {
+	type INodeListSearchResult,
+	type INodePropertyOptions,
+	type INodeTypeDescription,
+	type INodeTypeNameVersion,
+	type NodeParameterValueType,
+	type ResourceMapperFields,
+	type CommunityNodeAttributes,
+	sleep,
 } from 'n8n-workflow';
 import axios from 'axios';
 
+async function fetchNodeTypesJsonWithRetry(url: string, retries = 5, delay = 500) {
+	for (let attempt = 0; attempt < retries; attempt++) {
+		const response = await axios.get(url, { withCredentials: true });
+
+		if (typeof response.data === 'object' && response.data !== null) {
+			return response.data;
+		}
+
+		await sleep(delay * attempt);
+	}
+
+	throw new Error('Could not fetch node types');
+}
+
 export async function getNodeTypes(baseUrl: string) {
-	const { data } = await axios.get(baseUrl + 'types/nodes.json', { withCredentials: true });
-	return data;
+	return await fetchNodeTypesJsonWithRetry(baseUrl + 'types/nodes.json');
 }
 
 export async function fetchCommunityNodeTypes(

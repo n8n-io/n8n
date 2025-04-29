@@ -18,7 +18,7 @@ import type {
 	Workflow,
 	NodeConnectionType,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeHelpers, sleep } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { useCredentialsStore } from './credentials.store';
 import { useRootStore } from './root.store';
@@ -287,20 +287,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 	};
 
 	const getNodeTypes = async () => {
-		let nodeTypes = await nodeTypesApi.getNodeTypes(rootStore.baseUrl);
-		let attempts = 5;
-
-		// TODO: check why in some cases getNodeTypes returns a string
-		while (typeof nodeTypes !== 'object' && attempts > 0) {
-			console.log('Could not fetch node types, retrying...');
-			await sleep(1000);
-			nodeTypes = await nodeTypesApi.getNodeTypes(rootStore.baseUrl);
-			attempts--;
-		}
-
-		if (!nodeTypes || typeof nodeTypes !== 'object') {
-			throw new Error('Could not fetch node types');
-		}
+		const nodeTypes = await nodeTypesApi.getNodeTypes(rootStore.baseUrl);
 
 		await fetchCommunityNodePreviews();
 
