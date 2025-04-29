@@ -7,7 +7,7 @@ describe('useMetricsChart', () => {
 	const mockRuns: TestRunRecord[] = [
 		{
 			id: '1',
-			testDefinitionId: 'test1',
+			workflowId: 'workflow1',
 			status: 'completed',
 			createdAt: '2025-01-06T10:00:00Z',
 			updatedAt: '2025-01-06T10:00:00Z',
@@ -18,7 +18,7 @@ describe('useMetricsChart', () => {
 		},
 		{
 			id: '2',
-			testDefinitionId: 'test1',
+			workflowId: 'workflow1',
 			status: 'completed',
 			createdAt: '2025-01-06T10:00:00Z',
 			updatedAt: '2025-01-06T10:00:00Z',

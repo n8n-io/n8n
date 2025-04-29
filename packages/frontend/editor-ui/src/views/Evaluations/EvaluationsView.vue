@@ -2,7 +2,6 @@
 import { useI18n } from '@/composables/useI18n';
 import { useToast } from '@/composables/useToast';
 import { computed, ref } from 'vue';
-// import { useRouter } from 'vue-router';
 
 import RunsSection from '@/components/Evaluations/EditDefinition/sections/RunsSection.vue';
 import { useEvaluationStore } from '@/stores/evaluation.store.ee';
@@ -15,14 +14,13 @@ const props = defineProps<{
 	name: string;
 }>();
 
-// const router = useRouter();
 const locale = useI18n();
 const toast = useToast();
 const evaluationsStore = useEvaluationStore();
 const workflowsStore = useWorkflowsStore();
 // const telemetry = useTelemetry();
 
-const { isLoading } = useAsyncState(
+const { isReady } = useAsyncState(
 	async () => {
 		await evaluationsStore.fetchTestRuns(props.name);
 
@@ -64,7 +62,7 @@ const showWizard = computed(() => {
 </script>
 
 <template>
-	<div v-if="!isLoading" :class="[$style.container]">
+	<div v-if="isReady" :class="[$style.container]">
 		<div :class="$style.header" v-if="!showWizard">
 			<div style="display: flex; align-items: center">
 				<N8nText bold size="xlarge" color="text-dark">{{
@@ -104,15 +102,11 @@ const showWizard = computed(() => {
 					:workflow-id="props.name"
 				/>
 
-				<SetupWizard
-					v-if="showWizard"
-					:class="$style.config"
-					:is-loading="isLoading"
-					@run-test="runTest"
-				/>
+				<SetupWizard v-if="showWizard" :class="$style.config" @run-test="runTest" />
 			</div>
 		</div>
 	</div>
+	<div v-else>TESTTESTTEST</div>
 </template>
 
 <style module lang="scss">
