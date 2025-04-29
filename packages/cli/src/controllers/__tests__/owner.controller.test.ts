@@ -11,10 +11,10 @@ import type { SettingsRepository } from '@/databases/repositories/settings.repos
 import type { UserRepository } from '@/databases/repositories/user.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import type { EventService } from '@/events/event.service';
-import type { PublicUser } from '@/interfaces';
 import type { AuthenticatedRequest } from '@/requests';
 import type { PasswordUtility } from '@/services/password.utility';
 import type { UserService } from '@/services/user.service';
+import type { PublicUser } from '@/types-db';
 
 describe('OwnerController', () => {
 	const configGetSpy = jest.spyOn(config, 'getEnv');

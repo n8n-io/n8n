@@ -228,6 +228,7 @@ export class WorkflowsController {
 				req.listQueryOptions,
 				!!req.query.includeScopes,
 				!!req.query.includeFolders,
+				!!req.query.onlySharedWithMe,
 			);
 
 			res.json({ count, data });
@@ -510,6 +511,7 @@ export class WorkflowsController {
 			workflowId,
 			body.destinationProjectId,
 			body.shareCredentials,
+			body.destinationParentFolderId,
 		);
 	}
 }

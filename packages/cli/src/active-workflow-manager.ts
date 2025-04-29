@@ -46,11 +46,11 @@ import { WorkflowRepository } from '@/databases/repositories/workflow.repository
 import { executeErrorWorkflow } from '@/execution-lifecycle/execute-error-workflow';
 import { ExecutionService } from '@/executions/execution.service';
 import { ExternalHooks } from '@/external-hooks';
-import type { IWorkflowDb } from '@/interfaces';
 import { NodeTypes } from '@/node-types';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { ActiveWorkflowsService } from '@/services/active-workflows.service';
 import { OrchestrationService } from '@/services/orchestration.service';
+import type { IWorkflowDb } from '@/types-db';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import { WebhookService } from '@/webhooks/webhook.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
