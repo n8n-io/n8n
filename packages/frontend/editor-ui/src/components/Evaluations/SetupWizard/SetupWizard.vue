@@ -1,69 +1,287 @@
 <script setup lang="ts">
 import { useI18n } from '@/composables/useI18n';
-import { N8nText } from '@n8n/design-system';
+import { N8nText, N8nButton } from '@n8n/design-system';
 import N8nLink from '@n8n/design-system/components/N8nLink';
+import { ref, computed, watch } from 'vue';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { EVALUATION_DATASET_TRIGGER_NODE, VIEWS } from '@/constants';
+import StepHeader from '../shared/StepHeader.vue';
+import { useRouter } from 'vue-router';
 
 defineProps<{
 	isLoading: boolean;
 }>();
 
+defineEmits<{
+	runTest: [];
+}>();
+
+const router = useRouter();
 const locale = useI18n();
+const workflowStore = useWorkflowsStore();
+
+const datasetTriggerExist = computed(() => {
+	return workflowStore.workflow.nodes.some((node) => node.type === EVALUATION_DATASET_TRIGGER_NODE);
+});
+
+const evaluationMetricNodeExist = computed(() => {
+	return workflowStore.workflow.nodes.some(
+		(node) => node.type === 'n8n-nodes-base.evaluationMetrics',
+	);
+});
+
+const activeStepIndex = ref(0);
+
+// Calculate the initial active step based on the workflow state
+const initializeActiveStep = () => {
+	if (evaluationMetricNodeExist.value) {
+		activeStepIndex.value = 3;
+	} else if (datasetTriggerExist.value) {
+		activeStepIndex.value = 2;
+	} else {
+		activeStepIndex.value = 0;
+	}
+};
+
+// Run initialization on component mount
+initializeActiveStep();
+
+// Watch for changes and update active step dynamically
+watch(
+	() => datasetTriggerExist.value,
+	(newValue) => {
+		if (newValue && activeStepIndex.value < 1) {
+			activeStepIndex.value = 2;
+		}
+	},
+	{ immediate: true },
+);
+
+// Watch for changes to evaluation metric node
+watch(
+	() => evaluationMetricNodeExist.value,
+	(newValue) => {
+		if (newValue && activeStepIndex.value < 3) {
+			activeStepIndex.value = 3;
+		}
+	},
+	{ immediate: true },
+);
+
+const toggleStep = (index: number) => {
+	activeStepIndex.value = index;
+};
+
+function navigateToWorkflow() {
+	void router.push({
+		name: VIEWS.WORKFLOW,
+		params: { name: workflowStore.workflow.id },
+	});
+}
 </script>
 
 <template>
-	<div>
-		<div>
-			<div>
-				<N8nText size="large" color="text-dark" tag="h3" bold>
-					{{ locale.baseText('evaluations.setupWizard.title') }}
-				</N8nText>
-				<N8nText tag="p" size="small" color="text-base" :class="$style.description">
-					{{ locale.baseText('evaluations.setupWizard.description') }}<br />
-					<N8nLink size="small" color="text-base" href="https://google.com/">{{
-						locale.baseText('evaluations.setupWizard.moreInfo')
-					}}</N8nLink>
-				</N8nText>
+	<div :class="$style.container">
+		<div :class="$style.header">
+			<N8nText size="large" color="text-dark" tag="h3" bold>
+				{{ locale.baseText('evaluations.setupWizard.title') }}
+			</N8nText>
+			<N8nText tag="p" size="small" color="text-base" :class="$style.description">
+				{{ locale.baseText('evaluations.setupWizard.description') }}
+				<N8nLink size="small" href="https://google.com/">{{
+					locale.baseText('evaluations.setupWizard.moreInfo')
+				}}</N8nLink>
+			</N8nText>
+		</div>
+
+		<div :class="$style.steps">
+			<!-- Step 1 -->
+			<div :class="[$style.step, $style.completed]">
+				<StepHeader
+					:step-number="1"
+					title="Create a dataset and wire it up to your workflow"
+					:is-completed="datasetTriggerExist"
+					:is-active="activeStepIndex === 0"
+					@click="toggleStep(0)"
+				/>
+				<div v-if="activeStepIndex === 0" :class="$style.stepContent">
+					<ul :class="$style.bulletPoints">
+						<li>
+							<N8nText size="small" color="text-base">
+								Populate a Google Sheet with one test input per row.
+							</N8nText>
+						</li>
+						<li>
+							<N8nText size="small" color="text-base">
+								Add an 'Evaluation trigger' node to run once per row.
+							</N8nText>
+						</li>
+					</ul>
+
+					<div :class="$style.actionButton">
+						<N8nButton size="small" type="secondary" @click="navigateToWorkflow()"
+							>Add 'Evaluation trigger'</N8nButton
+						>
+					</div>
+				</div>
 			</div>
-			<div>
-				<div>
-					1. Create a dataset and wire it up to your workflow
-					<div>
-						Populate a Google Sheet with one test input per row. Add an ‘Evaluation trigger’ node to
-						run once per row.
 
-						<button>Add ‘Evaluation trigger’</button>
+			<!-- Step 2 (Active) -->
+			<div :class="[$style.step, activeStepIndex === 1 ? $style.active : '']">
+				<StepHeader
+					:step-number="2"
+					title="Write outputs back to dataset"
+					:is-completed="evaluationMetricNodeExist"
+					:is-active="activeStepIndex === 1"
+					@click="toggleStep(1)"
+				/>
+				<div v-if="activeStepIndex === 1" :class="$style.stepContent">
+					<ul :class="$style.bulletPoints">
+						<li>
+							<N8nText size="small" color="text-base">
+								Connect the 'Evaluation node' to the LLM or Agent node that outputs the response.
+							</N8nText>
+						</li>
+						<li>
+							<N8nText size="small" color="text-base">
+								Use the 'Set outputs' operation to log each output back to Google Sheets so you can
+								view them all in one place.
+							</N8nText>
+						</li>
+					</ul>
+					<div :class="$style.actionButton">
+						<N8nButton size="small" type="secondary" @click="navigateToWorkflow()"
+							>Add 'Evaluation node'</N8nButton
+						>
 					</div>
 				</div>
-				<div>
-					2. Write outputs back to dataset
-					<div>
-						Connect the ‘Evaluation node’ to the LLM or Agent node that outputs the response. Add an
-						‘Evaluation trigger’ to your workflow. It runs once per dataset row and passes that row
-						into your workflow. Use the ‘Set outputs’ operation to log each output back to Google
-						Sheets so you can view them all in one place.
+			</div>
 
-						<button>Add ‘Evaluation node</button>
-					</div>
-				</div>
-				<div>
-					3. Calculate a quality score [Optional]
-					<div>
-						Add custom logic and nodes before the ‘Evaluation node’ to calculate your metrics. In
-						the ‘Evaluation node,’ use the ‘Set evaluation metrics’ operation and map each metric
+			<!-- Step 3 -->
+			<div :class="$style.step">
+				<StepHeader
+					:step-number="3"
+					title="Calculate a quality score"
+					:is-completed="evaluationMetricNodeExist"
+					:is-active="activeStepIndex === 2"
+					:is-optional="true"
+					@click="toggleStep(2)"
+				/>
+				<div v-if="activeStepIndex === 2" :class="$style.stepContent">
+					<N8nText size="small" color="text-base">
+						Add custom logic and nodes before the 'Evaluation node' to calculate your metrics. In
+						the 'Evaluation node,' use the 'Set evaluation metrics' operation and map each metric
 						you want to track.
-
-						<button>Back to editor</button> <button>Skip</button>
+					</N8nText>
+					<div :class="$style.actionButton">
+						<N8nButton size="small" type="secondary" @click="navigateToWorkflow()"
+							>Back to editor</N8nButton
+						>
+						<N8nButton
+							size="small"
+							text
+							style="color: var(--color-text-light)"
+							@click="toggleStep(3)"
+							>Skip</N8nButton
+						>
 					</div>
 				</div>
-				<div>
-					<button>Test evaluation</button>
-				</div>
+			</div>
+
+			<!-- Step 4 -->
+			<div :class="$style.step">
+				<StepHeader
+					:step-number="4"
+					title="Test evaluation"
+					:is-completed="false"
+					:is-active="activeStepIndex === 3"
+					@click="toggleStep(3)"
+				>
+					<div
+						v-if="activeStepIndex === 3"
+						:class="[$style.actionButton, $style.actionButtonInline]"
+					>
+						<N8nButton
+							size="medium"
+							@click="$emit('runTest')"
+							:disabled="!datasetTriggerExist || !evaluationMetricNodeExist"
+							>Test evaluation</N8nButton
+						>
+					</div>
+				</StepHeader>
 			</div>
 		</div>
 	</div>
 </template>
 
 <style module lang="scss">
+.container {
+	background-color: var(--color-background-light);
+	border-radius: var(--border-radius-large);
+	padding: var(--spacing-l);
+}
+
+.header {
+	margin-bottom: var(--spacing-l);
+}
+
 .description {
+	margin-top: var(--spacing-2xs);
+
+	ul {
+		li {
+			margin-top: var(--spacing-2xs);
+		}
+	}
+}
+
+.steps {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing-m);
+}
+
+.step {
+	overflow: hidden;
+}
+
+.stepContent {
+	padding: 0 0 0 calc(var(--spacing-m) + 28px);
+	animation: slideDown 0.2s ease;
+}
+
+.bulletPoints {
+	list-style-type: disc;
+	list-style-position: inside;
+	margin-bottom: var(--spacing-m);
+
+	li {
+		margin-bottom: var(--spacing-3xs);
+	}
+}
+
+.actionButton {
+	margin-top: var(--spacing-s);
+	display: flex;
+	gap: var(--spacing-s);
+
+	button {
+		font-weight: var(--font-weight-bold);
+	}
+}
+
+.actionButtonInline {
+	margin: 0;
+}
+
+@keyframes slideDown {
+	from {
+		opacity: 0;
+		transform: translateY(-10px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
 }
 </style>
