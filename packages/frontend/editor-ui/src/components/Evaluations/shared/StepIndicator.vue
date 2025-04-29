@@ -43,8 +43,7 @@ defineProps<{
 
 	&.active {
 		border-color: var(--color-primary);
-		color: var(--color-primary);
-		background-color: var(--color-primary-tint-3);
+		color: var(--color-text-dark);
 	}
 
 	&.completed {
