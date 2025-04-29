@@ -4,7 +4,6 @@ import {
 	INSIGHTS_DATE_RANGE_KEYS,
 } from '@n8n/api-types';
 import { OnShutdown } from '@n8n/decorators';
-import type { WorkflowExecuteAfterContext } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { Logger } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
@@ -53,10 +52,6 @@ export class InsightsService {
 	async shutdown() {
 		await this.collectionService.shutdown();
 		this.compactionService.stopCompactionTimer();
-	}
-
-	async handleWorkflowExecuteAfter(ctx: WorkflowExecuteAfterContext) {
-		await this.collectionService.handleWorkflowExecuteAfter(ctx);
 	}
 
 	async getInsightsSummary({

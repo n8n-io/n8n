@@ -1,4 +1,4 @@
-import type { WorkflowExecuteAfterContext } from '@n8n/decorators';
+import { OnLifecycleEvent, type WorkflowExecuteAfterContext } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { In } from '@n8n/typeorm';
 import { DateTime } from 'luxon';
@@ -98,6 +98,7 @@ export class InsightsCollectionService {
 		await Promise.all([...this.flushesInProgress, this.flushEvents()]);
 	}
 
+	@OnLifecycleEvent('workflowExecuteAfter')
 	async handleWorkflowExecuteAfter(ctx: WorkflowExecuteAfterContext) {
 		if (shouldSkipStatus[ctx.runData.status] || shouldSkipMode[ctx.runData.mode]) {
 			return;
