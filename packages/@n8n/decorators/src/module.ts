@@ -40,6 +40,8 @@ interface ExecutionLifecycleHooks {
 
 @Service()
 export class ModuleRegistry {
+	constructor(private readonly metadata: LifecycleMetadata) {}
+
 	initializeModules() {
 		for (const ModuleClass of registry.keys()) {
 			const instance = Container.get(ModuleClass);
@@ -50,7 +52,7 @@ export class ModuleRegistry {
 	}
 
 	registerLifecycleHooks(hooks: ExecutionLifecycleHooks) {
-		const handlers = Container.get(LifecycleMetadata).getHandlers();
+		const handlers = this.metadata.getHandlers();
 
 		for (const { handlerClass, methodName, eventName } of handlers) {
 			const instance = Container.get(handlerClass);
