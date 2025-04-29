@@ -7,6 +7,11 @@ import { makeZodSchemaFromAttributes } from '../helpers';
 import { InformationExtractor } from '../InformationExtractor.node';
 import type { AttributeDefinition } from '../types';
 
+jest.mock('n8n-workflow', () => ({
+	...jest.requireActual('n8n-workflow'),
+	sleep: jest.fn(),
+}));
+
 const mockPersonAttributes: AttributeDefinition[] = [
 	{
 		name: 'name',

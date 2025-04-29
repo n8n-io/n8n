@@ -245,7 +245,6 @@ export class InformationExtractor implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const promises = [];
 		const { batchSize, delayBetweenBatches } = this.getNodeParameter('options.batching', 0, {}) as {
 			batchSize: number;
 			delayBetweenBatches: number;
@@ -295,7 +294,8 @@ export class InformationExtractor implements INodeType {
 		}
 
 		const resultData: INodeExecutionData[] = [];
-		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+
+		const promises = items.map(async (_item, itemIndex) => {
 			const input = this.getNodeParameter('text', itemIndex) as string;
 			const inputPrompt = new HumanMessage(input);
 
@@ -317,11 +317,12 @@ export class InformationExtractor implements INodeType {
 			const prompt = ChatPromptTemplate.fromMessages(messages);
 			const chain = prompt.pipe(llm).pipe(parser).withConfig(getTracingConfig(this));
 
-			promises.push(chain.invoke(messages));
+			const result = await chain.invoke(messages);
 			if (itemIndex % batchSize === 0) {
 				await sleep(delayBetweenBatches);
 			}
-		}
+			return result;
+		});
 
 		(await Promise.allSettled(promises)).forEach((response, index) => {
 			if (response.status === 'rejected') {
