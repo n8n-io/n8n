@@ -243,7 +243,6 @@ describe('LogsPanel', () => {
 				executionStatus: 'success',
 			},
 		});
-
 		expect(await treeItem.findByText('AI Agent')).toBeInTheDocument();
 		expect(treeItem.getByText('Success in 33ms')).toBeInTheDocument();
 
