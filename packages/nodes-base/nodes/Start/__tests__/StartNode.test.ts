@@ -1,10 +1,8 @@
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import type { WorkflowTestData } from 'n8n-workflow';
 
-// This is (temporarily) needed to setup LoadNodesAndCredentials first
-import '@test/nodes/Helpers';
-import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
-
 describe('Execute Start Node', () => {
+	const testHarness = new NodeTestHarness();
 	const tests: WorkflowTestData[] = [
 		{
 			description: 'should run start node',
@@ -25,21 +23,13 @@ describe('Execute Start Node', () => {
 			},
 			output: {
 				nodeExecutionOrder: ['Start'],
+				nodeExecutionStack: [],
 				nodeData: {},
 			},
 		},
 	];
 
 	for (const testData of tests) {
-		test(testData.description, async () => {
-			// execute workflow
-			const { result, nodeExecutionOrder } = await executeWorkflow(testData);
-			// Check if the nodes did execute in the correct order
-			expect(nodeExecutionOrder).toEqual(testData.output.nodeExecutionOrder);
-			// Check if other data has correct value
-			expect(result.finished).toEqual(true);
-			expect(result.data.executionData!.contextData).toEqual({});
-			expect(result.data.executionData!.nodeExecutionStack).toEqual([]);
-		});
+		testHarness.setupTest(testData);
 	}
 });

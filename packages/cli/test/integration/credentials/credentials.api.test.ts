@@ -14,8 +14,8 @@ import type { User } from '@/databases/entities/user';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
-import type { ListQuery } from '@/requests';
 import { CredentialsTester } from '@/services/credentials-tester.service';
+import type { ListQuery } from '@/types-db';
 
 import {
 	decryptCredentialData,

@@ -4,8 +4,9 @@ import { Logger } from 'n8n-core';
 import { ensureError, type ExecutionStatus, type IRun, type IWorkflowBase } from 'n8n-workflow';
 
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import type { IExecutionDb, UpdateExecutionPayload } from '@/interfaces';
+import type { UpdateExecutionPayload } from '@/interfaces';
 import { ExecutionMetadataService } from '@/services/execution-metadata.service';
+import type { IExecutionDb } from '@/types-db';
 import { isWorkflowIdValid } from '@/utils';
 
 export function determineFinalExecutionStatus(runData: IRun): ExecutionStatus {
