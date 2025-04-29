@@ -65,13 +65,15 @@ export const tryToParseBoolean = (value: unknown): value is boolean => {
 	});
 };
 
-export const tryToParseDateTime = (value: unknown): DateTime => {
-	if (value instanceof DateTime && value.isValid) {
+export const tryToParseDateTime = (value: unknown, defaultZone?: string): DateTime => {
+	if (DateTime.isDateTime(value) && value.isValid) {
+		// Ignore the defaultZone if the value is already a DateTime
+		// because DateTime objects already contain the zone information
 		return value;
 	}
 
 	if (value instanceof Date) {
-		const fromJSDate = DateTime.fromJSDate(value);
+		const fromJSDate = DateTime.fromJSDate(value, { zone: defaultZone });
 		if (fromJSDate.isValid) {
 			return fromJSDate;
 		}
@@ -80,24 +82,24 @@ export const tryToParseDateTime = (value: unknown): DateTime => {
 	const dateString = String(value).trim();
 
 	// Rely on luxon to parse different date formats
-	const isoDate = DateTime.fromISO(dateString, { setZone: true });
+	const isoDate = DateTime.fromISO(dateString, { zone: defaultZone, setZone: true });
 	if (isoDate.isValid) {
 		return isoDate;
 	}
-	const httpDate = DateTime.fromHTTP(dateString, { setZone: true });
+	const httpDate = DateTime.fromHTTP(dateString, { zone: defaultZone, setZone: true });
 	if (httpDate.isValid) {
 		return httpDate;
 	}
-	const rfc2822Date = DateTime.fromRFC2822(dateString, { setZone: true });
+	const rfc2822Date = DateTime.fromRFC2822(dateString, { zone: defaultZone, setZone: true });
 	if (rfc2822Date.isValid) {
 		return rfc2822Date;
 	}
-	const sqlDate = DateTime.fromSQL(dateString, { setZone: true });
+	const sqlDate = DateTime.fromSQL(dateString, { zone: defaultZone, setZone: true });
 	if (sqlDate.isValid) {
 		return sqlDate;
 	}
 
-	const parsedDateTime = DateTime.fromMillis(Date.parse(dateString));
+	const parsedDateTime = DateTime.fromMillis(Date.parse(dateString), { zone: defaultZone });
 	if (parsedDateTime.isValid) {
 		return parsedDateTime;
 	}

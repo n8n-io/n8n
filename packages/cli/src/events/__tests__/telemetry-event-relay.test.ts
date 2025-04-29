@@ -1,6 +1,6 @@
 import type { GlobalConfig } from '@n8n/config';
 import { mock } from 'jest-mock-extended';
-import { InstanceSettings } from 'n8n-core';
+import { type BinaryDataConfig, InstanceSettings } from 'n8n-core';
 import type { INode, INodesGraphResult } from 'n8n-workflow';
 import { NodeApiError, TelemetryHelpers, type IRun, type IWorkflowBase } from 'n8n-workflow';
 
@@ -14,10 +14,10 @@ import type { WorkflowRepository } from '@/databases/repositories/workflow.repos
 import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
-import type { IWorkflowDb } from '@/interfaces';
 import type { License } from '@/license';
 import type { NodeTypes } from '@/node-types';
 import type { Telemetry } from '@/telemetry';
+import type { IWorkflowDb } from '@/types-db';
 import { mockInstance } from '@test/mocking';
 
 const flushPromises = async () => await new Promise((resolve) => setImmediate(resolve));
@@ -49,6 +49,10 @@ describe('TelemetryEventRelay', () => {
 			outputs: ['console'],
 		},
 	});
+	const binaryDataConfig = mock<BinaryDataConfig>({
+		mode: 'default',
+		availableModes: ['default', 'filesystem', 's3'],
+	});
 	const instanceSettings = mockInstance(InstanceSettings, { isDocker: false, n8nFolder: '/test' });
 	const workflowRepository = mock<WorkflowRepository>();
 	const nodeTypes = mock<NodeTypes>();
@@ -66,6 +70,7 @@ describe('TelemetryEventRelay', () => {
 			license,
 			globalConfig,
 			instanceSettings,
+			binaryDataConfig,
 			workflowRepository,
 			nodeTypes,
 			sharedWorkflowRepository,
@@ -90,6 +95,7 @@ describe('TelemetryEventRelay', () => {
 				license,
 				globalConfig,
 				instanceSettings,
+				binaryDataConfig,
 				workflowRepository,
 				nodeTypes,
 				sharedWorkflowRepository,
@@ -113,6 +119,7 @@ describe('TelemetryEventRelay', () => {
 				license,
 				globalConfig,
 				instanceSettings,
+				binaryDataConfig,
 				workflowRepository,
 				nodeTypes,
 				sharedWorkflowRepository,

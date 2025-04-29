@@ -4,6 +4,19 @@ import {
 	TransferWorkflowBodyDto,
 } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
+import {
+	Body,
+	Delete,
+	Get,
+	Licensed,
+	Param,
+	Patch,
+	Post,
+	ProjectScope,
+	Put,
+	Query,
+	RestController,
+} from '@n8n/decorators';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In, type FindOptionsRelations } from '@n8n/typeorm';
 import axios from 'axios';
@@ -21,19 +34,6 @@ import { SharedWorkflowRepository } from '@/databases/repositories/shared-workfl
 import { TagRepository } from '@/databases/repositories/tag.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import * as Db from '@/db';
-import {
-	Body,
-	Delete,
-	Get,
-	Licensed,
-	Param,
-	Patch,
-	Post,
-	ProjectScope,
-	Put,
-	Query,
-	RestController,
-} from '@/decorators';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
@@ -55,6 +55,7 @@ import * as utils from '@/utils';
 import * as WorkflowHelpers from '@/workflow-helpers';
 
 import { WorkflowExecutionService } from './workflow-execution.service';
+import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowHistoryService } from './workflow-history.ee/workflow-history.service.ee';
 import { WorkflowRequest } from './workflow.request';
 import { WorkflowService } from './workflow.service';
@@ -84,6 +85,7 @@ export class WorkflowsController {
 		private readonly eventService: EventService,
 		private readonly globalConfig: GlobalConfig,
 		private readonly folderService: FolderService,
+		private readonly workflowFinderService: WorkflowFinderService,
 	) {}
 
 	@Post('/')
@@ -176,7 +178,7 @@ export class WorkflowsController {
 
 			await transactionManager.save<SharedWorkflow>(newSharedWorkflow);
 
-			return await this.sharedWorkflowRepository.findWorkflowForUser(
+			return await this.workflowFinderService.findWorkflowForUser(
 				workflow.id,
 				req.user,
 				['workflow:read'],
@@ -226,6 +228,7 @@ export class WorkflowsController {
 				req.listQueryOptions,
 				!!req.query.includeScopes,
 				!!req.query.includeFolders,
+				!!req.query.onlySharedWithMe,
 			);
 
 			res.json({ count, data });
@@ -292,11 +295,11 @@ export class WorkflowsController {
 				relations.tags = true;
 			}
 
-			const workflow = await this.sharedWorkflowRepository.findWorkflowForUser(
+			const workflow = await this.workflowFinderService.findWorkflowForUser(
 				workflowId,
 				req.user,
 				['workflow:read'],
-				{ includeTags: !this.globalConfig.tags.disabled },
+				{ includeTags: !this.globalConfig.tags.disabled, includeParentFolder: true },
 			);
 
 			if (!workflow) {
@@ -320,7 +323,7 @@ export class WorkflowsController {
 
 		// sharing disabled
 
-		const workflow = await this.sharedWorkflowRepository.findWorkflowForUser(
+		const workflow = await this.workflowFinderService.findWorkflowForUser(
 			workflowId,
 			req.user,
 			['workflow:read'],
@@ -442,7 +445,7 @@ export class WorkflowsController {
 			throw new BadRequestError('Bad request');
 		}
 
-		const workflow = await this.sharedWorkflowRepository.findWorkflowForUser(workflowId, req.user, [
+		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, req.user, [
 			'workflow:share',
 		]);
 
@@ -508,6 +511,7 @@ export class WorkflowsController {
 			workflowId,
 			body.destinationProjectId,
 			body.shareCredentials,
+			body.destinationParentFolderId,
 		);
 	}
 }

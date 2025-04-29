@@ -571,6 +571,8 @@ export interface IGetNodeParameterOptions {
 	extractValue?: boolean;
 	// get raw value of parameter with unresolved expressions
 	rawExpressions?: boolean;
+	// skip validation of parameter
+	skipValidation?: boolean;
 }
 
 namespace ExecuteFunctions {
@@ -690,6 +692,7 @@ export interface BinaryHelperFunctions {
 	binaryToString(body: Buffer | Readable, encoding?: BufferEncoding): Promise<string>;
 	getBinaryPath(binaryDataId: string): string;
 	getBinaryStream(binaryDataId: string, chunkSize?: number): Promise<Readable>;
+	createBinarySignedUrl(binaryData: IBinaryData, expiresIn?: string): string;
 	getBinaryMetadata(binaryDataId: string): Promise<{
 		fileName?: string;
 		mimeType?: string;
@@ -1132,6 +1135,7 @@ export interface INode {
 	credentials?: INodeCredentials;
 	webhookId?: string;
 	extendsCredential?: string;
+	rewireOutputLogTo?: NodeConnectionType;
 }
 
 export interface IPinData {
@@ -1376,7 +1380,7 @@ export interface IDisplayOptions {
 	};
 	show?: {
 		'@version'?: Array<number | DisplayCondition>;
-		'@tool'?: [boolean];
+		'@tool'?: boolean[];
 		[key: string]: Array<NodeParameterValue | DisplayCondition> | undefined;
 	};
 
@@ -2432,11 +2436,14 @@ export interface WorkflowTestData {
 		};
 	};
 	output: {
+		assertBinaryData?: boolean;
 		nodeExecutionOrder?: string[];
+		nodeExecutionStack?: IExecuteData[];
 		testAllOutputs?: boolean;
 		nodeData: {
 			[key: string]: any[][];
 		};
+		error?: string;
 	};
 	nock?: {
 		baseUrl: string;
@@ -2454,6 +2461,7 @@ export interface WorkflowTestData {
 		mode: WorkflowExecuteMode;
 		input: INodeExecutionData;
 	};
+	credentials?: Record<string, ICredentialDataDecryptedObject>;
 }
 
 export type LogLevel = (typeof LOG_LEVELS)[number];
@@ -2654,7 +2662,7 @@ export interface ResourceMapperFields {
 export interface WorkflowInputsData {
 	fields: ResourceMapperField[];
 	dataMode: string;
-	subworkflowInfo?: { id?: string };
+	subworkflowInfo?: { workflowId?: string; triggerId?: string };
 }
 
 export interface ResourceMapperField {

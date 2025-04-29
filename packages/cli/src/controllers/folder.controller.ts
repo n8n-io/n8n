@@ -4,17 +4,26 @@ import {
 	ListFolderQueryDto,
 	UpdateFolderDto,
 } from '@n8n/api-types';
+import {
+	Post,
+	RestController,
+	ProjectScope,
+	Body,
+	Get,
+	Patch,
+	Delete,
+	Query,
+} from '@n8n/decorators';
 import { Response } from 'express';
 import { UserError } from 'n8n-workflow';
 
-import { Post, RestController, ProjectScope, Body, Get, Patch, Delete, Query } from '@/decorators';
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import type { ListQuery } from '@/requests';
 import { AuthenticatedRequest } from '@/requests';
 import { FolderService } from '@/services/folder.service';
+import type { ListQuery } from '@/types-db';
 
 @RestController('/projects/:projectId/folders')
 export class ProjectController {

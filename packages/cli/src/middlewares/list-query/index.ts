@@ -1,6 +1,6 @@
 import { type NextFunction, type Response } from 'express';
 
-import type { ListQuery } from '@/requests';
+import type { ListQuery } from '@/types-db';
 
 import { filterListQueryMiddleware } from './filter';
 import { paginationListQueryMiddleware } from './pagination';
@@ -13,6 +13,9 @@ export type ListQueryMiddleware = (
 	next: NextFunction,
 ) => void;
 
+/**
+ * @deprecated Please create Zod validators in `@n8n/api-types` instead.
+ */
 export const listQueryMiddleware: ListQueryMiddleware[] = [
 	filterListQueryMiddleware,
 	selectListQueryMiddleware,

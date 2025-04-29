@@ -1,43 +1,55 @@
 <script lang="ts" setup>
-import { computed, onMounted, watch, ref, onBeforeUnmount } from 'vue';
-import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
+import Draggable from '@/components/Draggable.vue';
+import { FOLDER_LIST_ITEM_ACTIONS } from '@/components/Folders/constants';
 import type {
-	Resource,
 	BaseFilters,
 	FolderResource,
+	Resource,
 	WorkflowResource,
 } from '@/components/layouts/ResourcesListLayout.vue';
+import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
+import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
 import WorkflowCard from '@/components/WorkflowCard.vue';
 import WorkflowTagsDropdown from '@/components/WorkflowTagsDropdown.vue';
+import { useDebounce } from '@/composables/useDebounce';
+import { useDocumentTitle } from '@/composables/useDocumentTitle';
+import type { DragTarget, DropTarget } from '@/composables/useFolders';
+import { useFolders } from '@/composables/useFolders';
+import { useI18n } from '@/composables/useI18n';
+import { useMessage } from '@/composables/useMessage';
+import { useOverview } from '@/composables/useOverview';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { useToast } from '@/composables/useToast';
 import {
+	COMMUNITY_PLUS_ENROLLMENT_MODAL,
+	DEFAULT_WORKFLOW_PAGE_SIZE,
 	EASY_AI_WORKFLOW_EXPERIMENT,
 	EnterpriseEditionFeature,
-	VIEWS,
-	DEFAULT_WORKFLOW_PAGE_SIZE,
 	MODAL_CONFIRM,
-	COMMUNITY_PLUS_ENROLLMENT_MODAL,
+	VIEWS,
 } from '@/constants';
+import InsightsSummary from '@/features/insights/components/InsightsSummary.vue';
+import { useInsightsStore } from '@/features/insights/insights.store';
 import type {
+	FolderListItem,
 	IUser,
 	UserAction,
-	WorkflowListResource,
 	WorkflowListItem,
-	FolderPathItem,
-	FolderListItem,
+	WorkflowListResource,
 } from '@/Interface';
-import { useUIStore } from '@/stores/ui.store';
+import { getResourcePermissions } from '@/permissions';
+import { useFoldersStore } from '@/stores/folders.store';
+import { usePostHog } from '@/stores/posthog.store';
+import { useProjectsStore } from '@/stores/projects.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useUsersStore } from '@/stores/users.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useTagsStore } from '@/stores/tags.store';
-import { useProjectsStore } from '@/stores/projects.store';
-import { getResourcePermissions } from '@/permissions';
-import { usePostHog } from '@/stores/posthog.store';
-import { useDocumentTitle } from '@/composables/useDocumentTitle';
-import { useI18n } from '@/composables/useI18n';
-import { type LocationQueryRaw, useRoute, useRouter } from 'vue-router';
-import { useTelemetry } from '@/composables/useTelemetry';
+import { useUIStore } from '@/stores/ui.store';
+import { useUsageStore } from '@/stores/usage.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { type ProjectSharingData, ProjectTypes } from '@/types/projects.types';
+import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
 import {
 	N8nCard,
 	N8nHeading,
@@ -47,23 +59,12 @@ import {
 	N8nSelect,
 	N8nText,
 } from '@n8n/design-system';
-import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
-import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
-import { useDebounce } from '@/composables/useDebounce';
-import { createEventBus } from '@n8n/utils/event-bus';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
-import { type ProjectSharingData, ProjectTypes } from '@/types/projects.types';
-import { FOLDER_LIST_ITEM_ACTIONS } from '@/components/Folders/constants';
+import { createEventBus } from '@n8n/utils/event-bus';
 import { debounce } from 'lodash-es';
-import { useMessage } from '@/composables/useMessage';
-import { useToast } from '@/composables/useToast';
-import { useFoldersStore } from '@/stores/folders.store';
-import { useFolders } from '@/composables/useFolders';
-import { useUsageStore } from '@/stores/usage.store';
-import { useInsightsStore } from '@/features/insights/insights.store';
-import InsightsSummary from '@/features/insights/components/InsightsSummary.vue';
-import { useOverview } from '@/composables/useOverview';
 import { PROJECT_ROOT } from 'n8n-workflow';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { type LocationQueryRaw, useRoute, useRouter } from 'vue-router';
 
 const SEARCH_DEBOUNCE_TIME = 300;
 const FILTERS_DEBOUNCE_TIME = 100;
@@ -133,6 +134,8 @@ const currentSort = ref('updatedAt:desc');
 const currentFolderId = ref<string | null>(null);
 
 const showCardsBadge = ref(false);
+
+const isNameEditEnabled = ref(false);
 
 /**
  * Folder actions
@@ -209,6 +212,20 @@ const showFolders = computed(() => {
 
 const currentFolder = computed(() => {
 	return currentFolderId.value ? foldersStore.breadcrumbsCache[currentFolderId.value] : null;
+});
+
+const currentFolderParent = computed(() => {
+	return currentFolder.value?.parentFolder
+		? foldersStore.breadcrumbsCache[currentFolder.value.parentFolder]
+		: null;
+});
+
+const isDragging = computed(() => {
+	return foldersStore.draggedElement !== null;
+});
+
+const isDragNDropEnabled = computed(() => {
+	return !readOnlyEnv.value && hasPermissionToUpdateFolders.value;
 });
 
 const hasPermissionToCreateFolders = computed(() => {
@@ -494,6 +511,7 @@ const fetchWorkflows = async () => {
 				.map((r) => ({ id: r.id, name: r.name, parentFolder: r.parentFolder?.id })),
 		);
 
+		// This is for the case when user lands straight on a folder page
 		const isCurrentFolderCached = foldersStore.breadcrumbsCache[parentFolder ?? ''] !== undefined;
 		const needToFetchFolderPath = parentFolder && !isCurrentFolderCached && routeProjectId;
 
@@ -760,64 +778,92 @@ const getFolderContent = async (folderId: string) => {
 	}
 };
 
+/* Drag and drop methods */
+
+const onFolderCardDrop = async (event: MouseEvent) => {
+	const { draggedResource, dropTarget } = folderHelpers.handleDrop(event);
+	if (!draggedResource || !dropTarget) return;
+	await moveResourceOnDrop(draggedResource, dropTarget);
+};
+
+const onBreadCrumbsItemDrop = async (item: PathItem) => {
+	if (!foldersStore.draggedElement) return;
+	await moveResourceOnDrop(
+		{
+			id: foldersStore.draggedElement.id,
+			type: foldersStore.draggedElement.type,
+			name: foldersStore.draggedElement.name,
+		},
+		{
+			id: item.id,
+			type: 'folder',
+			name: item.label,
+		},
+	);
+	folderHelpers.onDragEnd();
+};
+
+const moveFolderToProjectRoot = async (id: string, name: string) => {
+	if (!foldersStore.draggedElement) return;
+	await moveResourceOnDrop(
+		{
+			id: foldersStore.draggedElement.id,
+			type: foldersStore.draggedElement.type,
+			name: foldersStore.draggedElement.name,
+		},
+		{
+			id,
+			type: 'project',
+			name,
+		},
+	);
+	folderHelpers.onDragEnd();
+};
+
+/**
+ * Perform resource move on drop, also handles toast messages and updating the UI
+ * @param draggedResource
+ * @param dropTarget
+ */
+const moveResourceOnDrop = async (draggedResource: DragTarget, dropTarget: DropTarget) => {
+	if (draggedResource.type === 'folder') {
+		await moveFolder({
+			folder: { id: draggedResource.id, name: draggedResource.name },
+			newParent: { id: dropTarget.id, name: dropTarget.name, type: dropTarget.type },
+			options: { skipFetch: true, skipNavigation: true },
+		});
+		// Remove the dragged folder from the list
+		workflowsAndFolders.value = workflowsAndFolders.value.filter(
+			(folder) => folder.id !== draggedResource.id,
+		);
+		// Increase the count of the target folder
+		const targetFolder = getFolderListItem(dropTarget.id);
+		if (targetFolder) {
+			targetFolder.subFolderCount += 1;
+		}
+	} else if (draggedResource.type === 'workflow') {
+		await onWorkflowMoved({
+			workflow: {
+				id: draggedResource.id,
+				name: draggedResource.name,
+				oldParentId: currentFolderId.value ?? '',
+			},
+			newParent: { id: dropTarget.id, name: dropTarget.name, type: dropTarget.type },
+			options: { skipFetch: true },
+		});
+		// Remove the dragged workflow from the list
+		workflowsAndFolders.value = workflowsAndFolders.value.filter(
+			(workflow) => workflow.id !== draggedResource.id,
+		);
+		// Increase the count of the target folder
+		const targetFolder = getFolderListItem(dropTarget.id);
+		if (targetFolder) {
+			targetFolder.workflowCount += 1;
+		}
+	}
+};
+
 // Breadcrumbs methods
-
-/**
- * Breadcrumbs: Calculate visible and hidden items for both main breadcrumbs and card breadcrumbs
- * We do this here and pass to each component to avoid recalculating in each card
- */
-const visibleBreadcrumbsItems = computed<FolderPathItem[]>(() => {
-	if (!currentFolder.value) return [];
-	const items: FolderPathItem[] = [];
-	const parent = foldersStore.getCachedFolder(currentFolder.value.parentFolder ?? '');
-	if (parent) {
-		items.push({
-			id: parent.id,
-			label: parent.name,
-			href: `/projects/${route.params.projectId}/folders/${parent.id}/workflows`,
-			parentFolder: parent.parentFolder,
-		});
-	}
-	items.push({
-		id: currentFolder.value.id,
-		label: currentFolder.value.name,
-		parentFolder: parent?.parentFolder,
-	});
-	return items;
-});
-
-const hiddenBreadcrumbsItems = computed<FolderPathItem[]>(() => {
-	const lastVisibleParent: FolderPathItem =
-		visibleBreadcrumbsItems.value[visibleBreadcrumbsItems.value.length - 1];
-	if (!lastVisibleParent) return [];
-	const items: FolderPathItem[] = [];
-	// Go through all the parent folders and add them to the hidden items
-	let parentFolder = lastVisibleParent.parentFolder;
-	while (parentFolder) {
-		const parent = foldersStore.getCachedFolder(parentFolder);
-
-		if (!parent) break;
-		items.unshift({
-			id: parent.id,
-			label: parent.name,
-			href: `/projects/${route.params.projectId}/folders/${parent.id}/workflows`,
-			parentFolder: parent.parentFolder,
-		});
-		parentFolder = parent.parentFolder;
-	}
-	return items;
-});
-
-/**
- * Main breadcrumbs items that show on top of the list
- * These show path to the current folder with up to 2 parents visible
- */
-const mainBreadcrumbs = computed(() => {
-	return {
-		visibleItems: visibleBreadcrumbsItems.value,
-		hiddenItems: hiddenBreadcrumbsItems.value,
-	};
-});
 
 const onBreadcrumbItemClick = (item: PathItem) => {
 	if (item.href) {
@@ -863,8 +909,7 @@ const onBreadCrumbsAction = async (action: string) => {
 			);
 			break;
 		case FOLDER_LIST_ITEM_ACTIONS.RENAME:
-			if (!route.params.folderId) return;
-			await renameFolder(route.params.folderId as string);
+			onNameToggle();
 			break;
 		case FOLDER_LIST_ITEM_ACTIONS.MOVE:
 			if (!currentFolder.value) return;
@@ -1087,6 +1132,10 @@ const deleteFolder = async (folderId: string, workflowCount: number, subFolderCo
 const moveFolder = async (payload: {
 	folder: { id: string; name: string };
 	newParent: { id: string; name: string; type: 'folder' | 'project' };
+	options?: {
+		skipFetch?: boolean;
+		skipNavigation?: boolean;
+	};
 }) => {
 	if (!route.params.projectId) return;
 	try {
@@ -1096,6 +1145,7 @@ const moveFolder = async (payload: {
 			payload.newParent.type === 'project' ? '0' : payload.newParent.id,
 		);
 		const isCurrentFolder = currentFolderId.value === payload.folder.id;
+
 		const newFolderURL = router.resolve({
 			name: VIEWS.PROJECTS_FOLDERS,
 			params: {
@@ -1103,7 +1153,7 @@ const moveFolder = async (payload: {
 				folderId: payload.newParent.type === 'project' ? undefined : payload.newParent.id,
 			},
 		}).href;
-		if (isCurrentFolder) {
+		if (isCurrentFolder && !payload.options?.skipNavigation) {
 			// If we just moved the current folder, automatically navigate to the new folder
 			void router.push(newFolderURL);
 		} else {
@@ -1121,7 +1171,9 @@ const moveFolder = async (payload: {
 				},
 				type: 'success',
 			});
-			await fetchWorkflows();
+			if (!payload.options?.skipFetch) {
+				await fetchWorkflows();
+			}
 		}
 	} catch (error) {
 		toast.showError(error, i18n.baseText('folders.move.error.title'));
@@ -1150,6 +1202,9 @@ const moveWorkflowToFolder = async (payload: {
 const onWorkflowMoved = async (payload: {
 	workflow: { id: string; name: string; oldParentId: string };
 	newParent: { id: string; name: string; type: 'folder' | 'project' };
+	options?: {
+		skipFetch?: boolean;
+	};
 }) => {
 	if (!route.params.projectId) return;
 	try {
@@ -1167,7 +1222,9 @@ const onWorkflowMoved = async (payload: {
 			parentFolderId: payload.newParent.type === 'project' ? '0' : payload.newParent.id,
 			versionId: workflowResource?.versionId,
 		});
-		await fetchWorkflows();
+		if (!payload.options?.skipFetch) {
+			await fetchWorkflows();
+		}
 		toast.showToast({
 			title: i18n.baseText('folders.move.workflow.success.title'),
 			message: i18n.baseText('folders.move.workflow.success.message', {
@@ -1200,6 +1257,69 @@ const onCreateWorkflowClick = () => {
 		},
 	});
 };
+
+const onNameToggle = () => {
+	isNameEditEnabled.value = !isNameEditEnabled.value;
+};
+
+const onNameSubmit = async ({
+	name,
+	onSubmit,
+}: {
+	name: string;
+	onSubmit: (saved: boolean) => void;
+}) => {
+	if (!currentFolder.value || !currentProject.value) return;
+
+	const newName = name.trim();
+	if (!newName) {
+		toast.showMessage({
+			title: i18n.baseText('renameAction.emptyName.title'),
+			message: i18n.baseText('renameAction.emptyName.message'),
+			type: 'error',
+		});
+
+		onSubmit(false);
+		return;
+	}
+
+	if (newName === currentFolder.value.name) {
+		isNameEditEnabled.value = false;
+
+		onSubmit(true);
+		return;
+	}
+
+	const validationResult = folderHelpers.validateFolderName(newName);
+	if (typeof validationResult === 'string') {
+		toast.showMessage({
+			title: i18n.baseText('renameAction.invalidName.title'),
+			message: validationResult,
+			type: 'error',
+		});
+		onSubmit(false);
+		return;
+	} else {
+		try {
+			await foldersStore.renameFolder(currentProject.value?.id, currentFolder.value.id, newName);
+			foldersStore.breadcrumbsCache[currentFolder.value.id].name = newName;
+			toast.showMessage({
+				title: i18n.baseText('folders.rename.success.message', {
+					interpolate: { folderName: newName },
+				}),
+				type: 'success',
+			});
+			telemetry.track('User renamed folder', {
+				folder_id: currentFolder.value.id,
+			});
+			isNameEditEnabled.value = false;
+			onSubmit(true);
+		} catch (error) {
+			toast.showError(error, i18n.baseText('folders.rename.error.title'));
+			onSubmit(false);
+		}
+	}
+};
 </script>
 
 <template>
@@ -1224,13 +1344,15 @@ const onCreateWorkflowClick = () => {
 		@update:page-size="setPageSize"
 		@update:filters="onFiltersUpdated"
 		@sort="onSortUpdated"
+		@mouseleave="folderHelpers.resetDropTarget"
 	>
 		<template #header>
 			<ProjectHeader @create-folder="createFolderInCurrent">
 				<InsightsSummary
 					v-if="overview.isOverviewSubPage && insightsStore.isSummaryEnabled"
-					:loading="insightsStore.summary.isLoading"
-					:summary="insightsStore.summary.state"
+					:loading="insightsStore.weeklySummary.isLoading"
+					:summary="insightsStore.weeklySummary.state"
+					time-range="week"
 				/>
 			</ProjectHeader>
 		</template>
@@ -1308,41 +1430,117 @@ const onCreateWorkflowClick = () => {
 				data-test-id="main-breadcrumbs"
 			>
 				<FolderBreadcrumbs
-					:breadcrumbs="mainBreadcrumbs"
+					:current-folder="currentFolderParent"
 					:actions="mainBreadcrumbsActions"
+					:hidden-items-trigger="isDragging ? 'hover' : 'click'"
+					:current-folder-as-link="true"
 					@item-selected="onBreadcrumbItemClick"
 					@action="onBreadCrumbsAction"
-				/>
+					@item-drop="onBreadCrumbsItemDrop"
+					@project-drop="moveFolderToProjectRoot"
+				>
+					<template #append>
+						<span :class="$style['path-separator']">/</span>
+						<InlineTextEdit
+							data-test-id="breadcrumbs-item-current"
+							:model-value="currentFolder.name"
+							:preview-value="currentFolder.name"
+							:is-edit-enabled="isNameEditEnabled"
+							:max-length="30"
+							:disabled="readOnlyEnv || !hasPermissionToUpdateFolders"
+							:class="{ [$style.name]: true, [$style['pointer-disabled']]: isDragging }"
+							:placeholder="i18n.baseText('folders.rename.placeholder')"
+							@toggle="onNameToggle"
+							@submit="onNameSubmit"
+						/>
+					</template>
+				</FolderBreadcrumbs>
 			</div>
 		</template>
 		<template #item="{ item: data, index }">
-			<FolderCard
+			<Draggable
 				v-if="(data as FolderResource | WorkflowResource).resourceType === 'folder'"
 				:key="`folder-${index}`"
-				:data="data as FolderResource"
-				:actions="folderCardActions"
-				:read-only="readOnlyEnv || (!hasPermissionToDeleteFolders && !hasPermissionToCreateFolders)"
-				:personal-project="projectsStore.personalProject"
-				:show-ownership-badge="showCardsBadge"
-				class="mb-2xs"
-				@action="onFolderCardAction"
-			/>
-			<WorkflowCard
+				:disabled="!isDragNDropEnabled"
+				type="move"
+				target-data-key="folder"
+				@dragstart="folderHelpers.onDragStart"
+				@dragend="folderHelpers.onDragEnd"
+			>
+				<template #preview>
+					<N8nCard>
+						<N8nText tag="h2" bold>
+							{{ (data as FolderResource).name }}
+						</N8nText>
+					</N8nCard>
+				</template>
+				<FolderCard
+					:data="data as FolderResource"
+					:actions="folderCardActions"
+					:read-only="
+						readOnlyEnv || (!hasPermissionToDeleteFolders && !hasPermissionToCreateFolders)
+					"
+					:personal-project="projectsStore.personalProject"
+					:data-resourceid="(data as FolderResource).id"
+					:data-resourcename="(data as FolderResource).name"
+					:class="{
+						['mb-2xs']: true,
+						[$style['drag-active']]: isDragging,
+						[$style.dragging]:
+							foldersStore.draggedElement?.type === 'folder' &&
+							foldersStore.draggedElement?.id === (data as FolderResource).id,
+						[$style['drop-active']]:
+							foldersStore.activeDropTarget?.id === (data as FolderResource).id,
+					}"
+					:show-ownership-badge="showCardsBadge"
+					data-target="folder"
+					class="mb-2xs"
+					@action="onFolderCardAction"
+					@mouseenter="folderHelpers.onDragEnter"
+					@mouseup="onFolderCardDrop"
+				/>
+			</Draggable>
+			<Draggable
 				v-else
 				:key="`workflow-${index}`"
-				data-test-id="resources-list-item-workflow"
-				class="mb-2xs"
-				:data="data as WorkflowResource"
-				:workflow-list-event-bus="workflowListEventBus"
-				:read-only="readOnlyEnv"
-				:show-ownership-badge="showCardsBadge"
-				@click:tag="onClickTag"
-				@workflow:deleted="onWorkflowDeleted"
-				@workflow:moved="fetchWorkflows"
-				@workflow:duplicated="fetchWorkflows"
-				@workflow:active-toggle="onWorkflowActiveToggle"
-				@action:move-to-folder="moveWorkflowToFolder"
-			/>
+				:disabled="!isDragNDropEnabled"
+				type="move"
+				target-data-key="workflow"
+				@dragstart="folderHelpers.onDragStart"
+				@dragend="folderHelpers.onDragEnd"
+			>
+				<template #preview>
+					<N8nCard>
+						<N8nText tag="h2" bold>
+							{{ (data as WorkflowResource).name }}
+						</N8nText>
+					</N8nCard>
+				</template>
+				<WorkflowCard
+					data-test-id="resources-list-item-workflow"
+					:class="{
+						['mb-2xs']: true,
+						[$style['drag-active']]: isDragging,
+						[$style.dragging]:
+							foldersStore.draggedElement?.type === 'workflow' &&
+							foldersStore.draggedElement?.id === (data as WorkflowResource).id,
+					}"
+					:data="data as WorkflowResource"
+					:workflow-list-event-bus="workflowListEventBus"
+					:read-only="readOnlyEnv"
+					:data-resourceid="(data as WorkflowResource).id"
+					:data-resourcename="(data as WorkflowResource).name"
+					:show-ownership-badge="showCardsBadge"
+					data-target="workflow"
+					@click:tag="onClickTag"
+					@workflow:deleted="onWorkflowDeleted"
+					@workflow:moved="fetchWorkflows"
+					@workflow:duplicated="fetchWorkflows"
+					@workflow:active-toggle="onWorkflowActiveToggle"
+					@action:move-to-folder="moveWorkflowToFolder"
+					@mouseenter="isDragging ? folderHelpers.resetDropTarget() : {}"
+				/>
+			</Draggable>
 		</template>
 		<template #empty>
 			<div class="text-center mt-s" data-test-id="list-empty-state">
@@ -1528,6 +1726,40 @@ const onCreateWorkflowClick = () => {
 	button {
 		margin-top: var(--spacing-2xs);
 	}
+}
+
+.drag-active *,
+.drag-active :global(.action-toggle) {
+	cursor: grabbing !important;
+}
+
+.dragging {
+	transition: opacity 0.3s ease;
+	opacity: 0.3;
+	border-style: dashed;
+	pointer-events: none;
+}
+
+.drop-active {
+	:global(.card) {
+		border-color: var(--color-secondary);
+		background-color: var(--color-callout-secondary-background);
+	}
+}
+
+.path-separator {
+	font-size: var(--font-size-xl);
+	color: var(--color-foreground-base);
+	margin: var(--spacing-4xs);
+}
+
+.name {
+	color: $custom-font-dark;
+	font-size: var(--font-size-s);
+}
+
+.pointer-disabled {
+	pointer-events: none;
 }
 </style>
 
