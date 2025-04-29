@@ -28,7 +28,7 @@ describe('InsightsPrunningService', () => {
 		insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
 	});
 
-	test('prune old insights', async () => {
+	test('old insights get pruned successfully', async () => {
 		// ARRANGE
 		insightsConfig.maxAgeDays = 10;
 
@@ -52,7 +52,7 @@ describe('InsightsPrunningService', () => {
 		expect(await insightsByPeriodRepository.count()).toBe(0);
 	});
 
-	test('prune old insights with recent data', async () => {
+	test('insights newer than maxAgeDays do not get pruned', async () => {
 		// ARRANGE
 		insightsConfig.maxAgeDays = 10;
 
