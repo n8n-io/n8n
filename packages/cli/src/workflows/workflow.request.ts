@@ -46,7 +46,11 @@ export declare namespace WorkflowRequest {
 		{},
 		{},
 		{},
-		ListQuery.Params & { includeScopes?: string; includeFolders?: string }
+		ListQuery.Params & {
+			includeScopes?: string;
+			includeFolders?: string;
+			onlySharedWithMe?: string;
+		}
 	> & {
 		listQueryOptions: ListQuery.Options;
 	};

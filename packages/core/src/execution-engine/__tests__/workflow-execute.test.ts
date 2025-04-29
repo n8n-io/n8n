@@ -191,6 +191,160 @@ describe('WorkflowExecute', () => {
 		}
 	});
 
+	describe('v0 hook order', () => {
+		const executionMode = 'manual';
+		const executionOrder = 'v0';
+		const nodeTypes = Helpers.NodeTypes();
+
+		test("don't run hooks for siblings of the destination node", async () => {
+			// ARRANGE
+			const trigger = createNodeData({ name: 'trigger', type: 'n8n-nodes-base.manualTrigger' });
+			const node1 = createNodeData({ name: 'node1' });
+			const node2 = createNodeData({ name: 'node2' });
+			const workflowInstance = new DirectedGraph()
+				.addNodes(trigger, node1, node2)
+				.addConnections({ from: trigger, to: node1 }, { from: trigger, to: node2 })
+				.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder } });
+
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(createDeferredPromise<IRun>());
+			const runHookSpy = jest.spyOn(additionalData.hooks!, 'runHook');
+
+			const workflowExecute = new WorkflowExecute(additionalData, executionMode);
+
+			// ACT
+			await workflowExecute.run(workflowInstance, trigger, 'node1');
+
+			// ASSERT
+			const workflowHooks = runHookSpy.mock.calls.filter(
+				(call) => call[0] === 'workflowExecuteBefore' || call[0] === 'workflowExecuteAfter',
+			);
+			const nodeHooks = runHookSpy.mock.calls.filter(
+				(call) => call[0] === 'nodeExecuteBefore' || call[0] === 'nodeExecuteAfter',
+			);
+
+			expect(workflowHooks.map((hook) => hook[0])).toEqual([
+				'workflowExecuteBefore',
+				'workflowExecuteAfter',
+			]);
+
+			expect(nodeHooks.map((hook) => ({ name: hook[0], node: hook[1][0] }))).toEqual([
+				{ name: 'nodeExecuteBefore', node: 'trigger' },
+				{ name: 'nodeExecuteAfter', node: 'trigger' },
+				{ name: 'nodeExecuteBefore', node: 'node1' },
+				{ name: 'nodeExecuteAfter', node: 'node1' },
+			]);
+		});
+
+		test("don't run hooks if a node does not have input data", async () => {
+			// ARRANGE
+			const trigger = createNodeData({ name: 'trigger', type: 'n8n-nodes-base.manualTrigger' });
+			const workflowInstance = new DirectedGraph()
+				.addNodes(trigger)
+				.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder } });
+
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(createDeferredPromise<IRun>());
+			const runHookSpy = jest.spyOn(additionalData.hooks!, 'runHook');
+
+			const workflowExecute = new WorkflowExecute(additionalData, executionMode);
+			jest.spyOn(workflowExecute, 'ensureInputData').mockReturnValue(false);
+
+			// ACT
+			await workflowExecute.run(workflowInstance, trigger);
+
+			// ASSERT
+			const workflowHooks = runHookSpy.mock.calls.filter(
+				(call) => call[0] === 'workflowExecuteBefore' || call[0] === 'workflowExecuteAfter',
+			);
+			const nodeHooks = runHookSpy.mock.calls.filter(
+				(call) => call[0] === 'nodeExecuteBefore' || call[0] === 'nodeExecuteAfter',
+			);
+
+			expect(workflowHooks.map((hook) => hook[0])).toEqual([
+				'workflowExecuteBefore',
+				'workflowExecuteAfter',
+			]);
+
+			expect(nodeHooks).toHaveLength(0);
+		});
+	});
+
+	describe('v1 hook order', () => {
+		const executionMode = 'manual';
+		const executionOrder = 'v1';
+		const nodeTypes = Helpers.NodeTypes();
+
+		test("don't run hooks for siblings of the destination node", async () => {
+			// ARRANGE
+			const trigger = createNodeData({ name: 'trigger', type: 'n8n-nodes-base.manualTrigger' });
+			const node1 = createNodeData({ name: 'node1' });
+			const node2 = createNodeData({ name: 'node2' });
+			const workflowInstance = new DirectedGraph()
+				.addNodes(trigger, node1, node2)
+				.addConnections({ from: trigger, to: node1 }, { from: trigger, to: node2 })
+				.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder } });
+
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(createDeferredPromise<IRun>());
+			const runHookSpy = jest.spyOn(additionalData.hooks!, 'runHook');
+
+			const workflowExecute = new WorkflowExecute(additionalData, executionMode);
+
+			// ACT
+			await workflowExecute.run(workflowInstance, trigger, 'node1');
+
+			// ASSERT
+			const workflowHooks = runHookSpy.mock.calls.filter(
+				(call) => call[0] === 'workflowExecuteBefore' || call[0] === 'workflowExecuteAfter',
+			);
+			const nodeHooks = runHookSpy.mock.calls.filter(
+				(call) => call[0] === 'nodeExecuteBefore' || call[0] === 'nodeExecuteAfter',
+			);
+
+			expect(workflowHooks.map((hook) => hook[0])).toEqual([
+				'workflowExecuteBefore',
+				'workflowExecuteAfter',
+			]);
+
+			expect(nodeHooks.map((hook) => ({ name: hook[0], node: hook[1][0] }))).toEqual([
+				{ name: 'nodeExecuteBefore', node: 'trigger' },
+				{ name: 'nodeExecuteAfter', node: 'trigger' },
+				{ name: 'nodeExecuteBefore', node: 'node1' },
+				{ name: 'nodeExecuteAfter', node: 'node1' },
+			]);
+		});
+
+		test("don't run hooks if a node does not have input data", async () => {
+			// ARRANGE
+			const trigger = createNodeData({ name: 'trigger', type: 'n8n-nodes-base.manualTrigger' });
+			const workflowInstance = new DirectedGraph()
+				.addNodes(trigger)
+				.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder } });
+
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(createDeferredPromise<IRun>());
+			const runHookSpy = jest.spyOn(additionalData.hooks!, 'runHook');
+
+			const workflowExecute = new WorkflowExecute(additionalData, executionMode);
+			jest.spyOn(workflowExecute, 'ensureInputData').mockReturnValue(false);
+
+			// ACT
+			await workflowExecute.run(workflowInstance, trigger);
+
+			// ASSERT
+			const workflowHooks = runHookSpy.mock.calls.filter(
+				(call) => call[0] === 'workflowExecuteBefore' || call[0] === 'workflowExecuteAfter',
+			);
+			const nodeHooks = runHookSpy.mock.calls.filter(
+				(call) => call[0] === 'nodeExecuteBefore' || call[0] === 'nodeExecuteAfter',
+			);
+
+			expect(workflowHooks.map((hook) => hook[0])).toEqual([
+				'workflowExecuteBefore',
+				'workflowExecuteAfter',
+			]);
+
+			expect(nodeHooks).toHaveLength(0);
+		});
+	});
+
 	//run tests on json files from specified directory, default 'workflows'
 	//workflows must have pinned data that would be used to test output after execution
 	describe('run test workflows', () => {
