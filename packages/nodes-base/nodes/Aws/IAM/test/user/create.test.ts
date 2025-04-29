@@ -1,10 +1,6 @@
 import nock from 'nock';
 
-import {
-	getWorkflowFilenames,
-	initBinaryDataService,
-	testWorkflows,
-} from '../../../../../test/nodes/Helpers';
+import { getWorkflowFilenames, testWorkflows } from '../../../../../test/nodes/Helpers';
 import { BASE_URL, CURRENT_VERSION } from '../../helpers/constants';
 
 describe('AWS IAM - Create user', () => {
@@ -12,15 +8,7 @@ describe('AWS IAM - Create user', () => {
 		filename.includes('create.workflow.json'),
 	);
 
-	beforeAll(async () => {
-		await initBinaryDataService();
-	});
-
 	beforeEach(() => {
-		if (!nock.isActive()) {
-			nock.activate();
-		}
-
 		nock.cleanAll();
 		nock(BASE_URL)
 			.persist()
@@ -48,10 +36,6 @@ describe('AWS IAM - Create user', () => {
 					},
 				},
 			});
-	});
-
-	afterEach(() => {
-		nock.cleanAll();
 	});
 
 	testWorkflows(workflows);

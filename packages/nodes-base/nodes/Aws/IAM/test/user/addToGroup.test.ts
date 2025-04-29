@@ -1,10 +1,6 @@
 import nock from 'nock';
 
-import {
-	getWorkflowFilenames,
-	initBinaryDataService,
-	testWorkflows,
-} from '../../../../../test/nodes/Helpers';
+import { getWorkflowFilenames, testWorkflows } from '../../../../../test/nodes/Helpers';
 import { CURRENT_VERSION } from '../../helpers/constants';
 
 describe('AWS IAM - Add User to Group', () => {
@@ -12,15 +8,7 @@ describe('AWS IAM - Add User to Group', () => {
 		filename.includes('addToGroup.workflow.json'),
 	);
 
-	beforeAll(async () => {
-		await initBinaryDataService();
-	});
-
 	beforeEach(() => {
-		if (!nock.isActive()) {
-			nock.activate();
-		}
-
 		const baseUrl = 'https://iam.amazonaws.com/';
 		nock.cleanAll();
 		nock(baseUrl)
@@ -39,10 +27,6 @@ describe('AWS IAM - Add User to Group', () => {
 					},
 				},
 			});
-	});
-
-	afterEach(() => {
-		nock.cleanAll();
 	});
 
 	testWorkflows(workflows);
