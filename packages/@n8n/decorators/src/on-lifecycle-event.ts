@@ -14,7 +14,7 @@ import { LifecycleMetadata } from './lifecycle-metadata';
  * @Service()
  * class MyService {
  *   @OnLifecycleEvent('workflowExecuteAfter')
- *   async handleEvent(ctx: LifecycleContext) {
+ *   async handleEvent(ctx: WorkflowExecuteAfterContext) {
  *     // ...
  *   }
  * }
