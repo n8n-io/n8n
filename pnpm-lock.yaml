@@ -18,6 +18,9 @@ catalogs:
     '@langchain/openai':
       specifier: 0.3.17
       version: 0.3.17
+    '@n8n_io/ai-assistant-sdk':
+      specifier: 1.14.0
+      version: 1.14.0
     '@sentry/node':
       specifier: 8.52.1
       version: 8.52.1
@@ -345,8 +348,8 @@ importers:
         specifier: workspace:*
         version: link:../di
       '@n8n_io/ai-assistant-sdk':
-        specifier: 1.13.0
-        version: 1.13.0
+        specifier: 'catalog:'
+        version: 1.14.0
       n8n-workflow:
         specifier: workspace:*
         version: link:../../workflow
@@ -457,6 +460,16 @@ importers:
         version: link:../typescript-config
 
   packages/@n8n/constants:
+    devDependencies:
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+
+  packages/@n8n/db:
+    dependencies:
+      reflect-metadata:
+        specifier: 'catalog:'
+        version: 0.2.2
     devDependencies:
       '@n8n/typescript-config':
         specifier: workspace:*
@@ -1009,6 +1022,9 @@ importers:
       '@n8n/constants':
         specifier: workspace:^
         version: link:../@n8n/constants
+      '@n8n/db':
+        specifier: workspace:^
+        version: link:../@n8n/db
       '@n8n/decorators':
         specifier: workspace:*
         version: link:../@n8n/decorators
@@ -1031,8 +1047,8 @@ importers:
         specifier: 0.3.20-12
         version: 0.3.20-12(@sentry/node@8.52.1)(ioredis@5.3.2)(mssql@10.0.2)(mysql2@3.11.0)(pg@8.12.0)(redis@4.6.14)(sqlite3@5.1.7)(ts-node@10.9.2(@types/node@18.16.16)(typescript@5.8.2))
       '@n8n_io/ai-assistant-sdk':
-        specifier: 1.13.0
-        version: 1.13.0
+        specifier: 'catalog:'
+        version: 1.14.0
       '@n8n_io/license-sdk':
         specifier: 2.20.0
         version: 2.20.0
@@ -1367,6 +1383,9 @@ importers:
       '@n8n/config':
         specifier: workspace:*
         version: link:../@n8n/config
+      '@n8n/decorators':
+        specifier: workspace:*
+        version: link:../@n8n/decorators
       '@n8n/di':
         specifier: workspace:*
         version: link:../@n8n/di
@@ -4840,8 +4859,8 @@ packages:
     engines: {node: '>=18.10', pnpm: '>=9.6'}
     hasBin: true
 
-  '@n8n_io/ai-assistant-sdk@1.13.0':
-    resolution: {integrity: sha512-16kftFTeX3/lBinHJaBK0OL1lB4FpPaUoHX4h25AkvgHvmjUHpWNY2ZtKos0rY89+pkzDsNxMZqSUkeKU45iRg==}
+  '@n8n_io/ai-assistant-sdk@1.14.0':
+    resolution: {integrity: sha512-apo1VXGmyUpwsBZ2dp9EyqZYR+FA3DzdD79MVzSMuknLIukhyZjvabBYRrjK5BJOU3vo5z9inaCm4UvenQ5Mgg==}
     engines: {node: '>=20.15', pnpm: '>=8.14'}
 
   '@n8n_io/license-sdk@2.20.0':
@@ -17297,7 +17316,7 @@ snapshots:
       acorn: 8.12.1
       acorn-walk: 8.3.4
 
-  '@n8n_io/ai-assistant-sdk@1.13.0': {}
+  '@n8n_io/ai-assistant-sdk@1.14.0': {}
 
   '@n8n_io/license-sdk@2.20.0':
     dependencies:

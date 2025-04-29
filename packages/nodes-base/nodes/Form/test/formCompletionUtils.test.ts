@@ -2,7 +2,7 @@ import { type Response } from 'express';
 import { type MockProxy, mock } from 'jest-mock-extended';
 import { type INode, type IWebhookFunctions } from 'n8n-workflow';
 
-import { renderFormCompletion } from '../formCompletionUtils';
+import { binaryResponse, renderFormCompletion } from '../formCompletionUtils';
 
 describe('formCompletionUtils', () => {
 	let mockWebhookFunctions: MockProxy<IWebhookFunctions>;
@@ -249,6 +249,56 @@ describe('formCompletionUtils', () => {
 					title: 'Form Completion',
 				});
 			}
+		});
+	});
+
+	describe('binaryResponse', () => {
+		it('should get the latest binary data from the parent nodes', async () => {
+			const expectedBinaryResponse = {
+				inputData: {
+					data: 'IyAxLiBHbyBpbiBwb3N0Z3',
+					fileExtension: 'txt',
+					fileName: 'file.txt',
+					fileSize: '458 B',
+					fileType: 'text',
+					mimeType: 'text/plain',
+				},
+			};
+
+			const notExpectedBinaryResponse = {
+				inputData: {
+					data: 'notexpected',
+					fileExtension: 'txt',
+					fileName: 'file.txt',
+					fileSize: '458 B',
+					fileType: 'text',
+					mimeType: 'text/plain',
+				},
+			};
+
+			mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
+				const params: { [key: string]: any } = {
+					inputDataFieldName: 'inputData',
+				};
+				return params[parameterName];
+			});
+
+			mockWebhookFunctions.getParentNodes.mockReturnValueOnce(parentNodesWithMultipleBinaryFiles);
+			mockWebhookFunctions.evaluateExpression.mockImplementation((arg) => {
+				if (arg === `{{ $('${nodeNameWithFile}').first().binary }}`) {
+					return expectedBinaryResponse;
+				} else {
+					return notExpectedBinaryResponse;
+				}
+			});
+
+			const result = await binaryResponse(mockWebhookFunctions);
+
+			expect(result).toEqual({
+				data: atob(expectedBinaryResponse.inputData.data),
+				fileName: expectedBinaryResponse.inputData.fileName,
+				type: expectedBinaryResponse.inputData.mimeType,
+			});
 		});
 	});
 });
