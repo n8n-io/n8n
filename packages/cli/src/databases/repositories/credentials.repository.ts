@@ -62,7 +62,6 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 		if (typeof filter?.projectId === 'string' && filter.projectId !== '') {
 			filter.shared = {
 				projectId: filter.projectId,
-				role: filter.withRole,
 			};
 			delete filter.projectId;
 		}
