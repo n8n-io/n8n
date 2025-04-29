@@ -3,7 +3,6 @@ import type {
 	INodeTypeDescription,
 	IExecuteFunctions,
 	INodeExecutionData,
-	IExecuteWorkflowInfo,
 } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
@@ -13,7 +12,7 @@ import { document, sheet } from '../Google/Sheet/GoogleSheetsTrigger.node';
 import { readFilter } from '../Google/Sheet/v2/actions/sheet/read.operation';
 import { authentication } from '../Google/Sheet/v2/actions/versionDescription';
 
-let startingRow = 1;
+export let startingRow = 1;
 
 export class EvaluationTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -21,7 +20,7 @@ export class EvaluationTrigger implements INodeType {
 		icon: 'fa:check-double',
 		name: 'evaluationTrigger',
 		group: ['trigger'],
-		version: 1,
+		version: 4.6,
 		description: 'Runs an evaluation',
 		eventTriggerDescription: '',
 		maxNodes: 1,
@@ -86,13 +85,18 @@ export class EvaluationTrigger implements INodeType {
 
 	methods = { loadOptions };
 
-	async execute(this: IExecuteFunctions) {
+	async execute(this: IExecuteFunctions, startRow?: number): Promise<INodeExecutionData[][]> {
+		// We need to allow tests to reset the startingRow
+		if (startRow) {
+			startingRow = startRow;
+		}
+
 		const MAX_ROWS = 1000;
 
-		const workflowId = this.getWorkflow().id;
+		// const workflowId = this.getWorkflow().id;
 
-		const workflowInfo: IExecuteWorkflowInfo = {};
-		workflowInfo.id = workflowId as string;
+		// const workflowInfo: IExecuteWorkflowInfo = {};
+		// workflowInfo.id = workflowId as string;
 
 		const maxRows = this.getNodeParameter('limitRows', 0)
 			? (this.getNodeParameter('maxRows', 0) as number)
@@ -128,6 +132,21 @@ export class EvaluationTrigger implements INodeType {
 			googleSheet.title,
 			`${googleSheet.title}!${startingRow}:${maxRows}`,
 		);
+
+		// for test runner
+		const inputData = this.getInputData();
+
+		if (inputData[0].json.requestDataset) {
+			const testRunnerResult = await getResults.call(
+				this,
+				operationResult,
+				googleSheetInstance,
+				googleSheet,
+				`${googleSheet.title}!${1}:${maxRows}`,
+				{},
+			);
+			return [testRunnerResult];
+		}
 
 		if (operationResult.length === 0 && rowsLeft === 0) {
 			startingRow = 1;
