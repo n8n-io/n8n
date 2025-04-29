@@ -1,0 +1,25 @@
+{
+	"node": "n8n-nodes-base.straico",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["AI", "Communication"],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://platform.straico.com/user-settings"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://documenter.getpostman.com/view/5900072/2s9YyzddrR"
+			}
+		]
+	},
+	"subcategories": {
+		"AI": [
+			"Language Models",
+			"Machine Learning"
+		]
+	},
+	"alias": ["LLM", "AI", "GPT", "Claude", "Gemini", "RAG", "Agent", "Chatbot", "Straico"]
+}
