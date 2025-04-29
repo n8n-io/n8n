@@ -481,6 +481,7 @@ export function setRunExecutionData(
 	// it can be displayed in the node-view
 	nodeHelpers.updateNodesExecutionIssues();
 
+	const lastNodeExecuted: string | undefined = runExecutionData.resultData.lastNodeExecuted;
 	let itemsCount = 0;
 	if (
 		lastNodeExecuted &&
