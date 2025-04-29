@@ -38,7 +38,6 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 		return await this.find(findManyOptions);
 	}
 
-	// eslint-disable-next-line complexity
 	private toFindManyOptions(listQueryOptions?: ListQuery.Options & { includeData?: boolean }) {
 		const findManyOptions: FindManyOptions<CredentialsEntity> = {};
 
@@ -59,20 +58,7 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 			filter.type = Like(`%${filter.type}%`);
 		}
 
-		if (typeof filter?.projectId === 'string' && filter.projectId !== '') {
-			filter.shared = {
-				projectId: filter.projectId,
-			};
-			delete filter.projectId;
-		}
-
-		if (typeof filter?.withRole === 'string' && filter.withRole !== '') {
-			filter.shared = {
-				...(filter?.shared ? filter.shared : {}),
-				role: filter.withRole,
-			};
-			delete filter.withRole;
-		}
+		this.handleSharedFilters(listQueryOptions);
 
 		if (filter) findManyOptions.where = filter;
 		if (select) findManyOptions.select = select;
@@ -97,6 +83,29 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 		}
 
 		return findManyOptions;
+	}
+
+	private handleSharedFilters(
+		listQueryOptions?: ListQuery.Options & { includeData?: boolean },
+	): void {
+		if (!listQueryOptions?.filter) return;
+
+		const { filter } = listQueryOptions;
+
+		if (typeof filter.projectId === 'string' && filter.projectId !== '') {
+			filter.shared = {
+				projectId: filter.projectId,
+			};
+			delete filter.projectId;
+		}
+
+		if (typeof filter.withRole === 'string' && filter.withRole !== '') {
+			filter.shared = {
+				...(filter?.shared ? filter.shared : {}),
+				role: filter.withRole,
+			};
+			delete filter.withRole;
+		}
 	}
 
 	async getManyByIds(ids: string[], { withSharings } = { withSharings: false }) {
