@@ -15,6 +15,7 @@ export async function retry(
 	fn: RetryFn,
 	interval: number = 1000,
 	maxRetries: number = 3,
+	backoff: 'exponential' | 'linear' | false = 'linear',
 ): Promise<boolean> {
 	let attempt = 0;
 
@@ -32,7 +33,16 @@ export async function retry(
 
 		// Wait for the specified interval before the next attempt, if any attempts remain.
 		if (attempt < maxRetries) {
-			await new Promise<void>((resolve) => setTimeout(resolve, interval));
+			let computedInterval = interval;
+
+			if (backoff === 'linear') {
+				computedInterval = interval * attempt;
+			} else if (backoff === 'exponential') {
+				computedInterval = Math.pow(2, attempt - 1) * interval;
+				computedInterval = Math.min(computedInterval, 30000); // Cap the maximum interval to 30 seconds
+			}
+
+			await new Promise<void>((resolve) => setTimeout(resolve, computedInterval));
 		}
 	}
 
