@@ -293,41 +293,28 @@ describe('useImportCurlCommand', () => {
 			expect(parameters.options.allowUnauthorizedCerts).toBe(true);
 		});
 
-		test('Should parse json body data', () => {
+		test('Should parse form url encoded body data if parameter has base64 special characters like / or % or =', () => {
 			const curl =
 				'curl -X POST https://reqbin.com/echo \
   -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "grant_type=authorization_code" \
-  -d "code=abc" \
   -d "redirect_uri=https://test.app.n8n.cloud/webhook-test/12345" \
-  -d "client_id=app-4343434" \
-  -d "client_secret=secret"';
+  -d "client_secret=secret%3D%3D"';
+
 			const parameters = toHttpNodeParameters(curl);
 
 			expect(parameters.url).toBe('https://reqbin.com/echo');
 			expect(parameters.method).toBe('POST');
 			expect(parameters.sendBody).toBe(true);
+			expect(parameters.contentType).toEqual('form-urlencoded');
 			expect(parameters.bodyParameters).toEqual({
 				parameters: [
-					{
-						name: 'grant_type',
-						value: 'authorization_code',
-					},
-					{
-						name: 'code',
-						value: 'abc',
-					},
 					{
 						name: 'redirect_uri',
 						value: 'https://test.app.n8n.cloud/webhook-test/12345',
 					},
 					{
-						name: 'client_id',
-						value: 'app-4343434',
-					},
-					{
 						name: 'client_secret',
-						value: 'secret',
+						value: 'secret==',
 					},
 				],
 			});
