@@ -7,6 +7,19 @@ vi.mock('@/composables/useToast', () => ({
 }));
 
 describe('useImportCurlCommand', () => {
+	describe('importCurlCommand', () => {
+		test('Should parse cURL command with invalid protocol', () => {
+			const curl = 'curl ftp://reqbin.com/echo -X POST';
+			useImportCurlCommand().importCurlCommand(curl);
+			expect(showToast).toHaveBeenCalledWith({
+				duration: 0,
+				message: 'The HTTP node doesn’t support FTP requests',
+				title: 'Use the FTP node',
+				type: 'error',
+			});
+		});
+	});
+
 	describe('toHttpNodeParameters', () => {
 		test('Should parse form-urlencoded content type correctly', () => {
 			const curl =
@@ -546,17 +559,6 @@ describe('useImportCurlCommand', () => {
 		test('Should parse cURL command with no URL', () => {
 			const curl = 'curl -X POST -d "key=value"';
 			expect(() => toHttpNodeParameters(curl)).toThrow('no URL specified!');
-		});
-
-		test('Should parse cURL command with invalid protocol', () => {
-			const curl = 'curl ftp://reqbin.com/echo -X POST';
-			useImportCurlCommand().importCurlCommand(curl);
-			expect(showToast).toHaveBeenCalledWith({
-				duration: 0,
-				message: 'The HTTP node doesn’t support FTP requests',
-				title: 'Use the FTP node',
-				type: 'error',
-			});
 		});
 	});
 });
