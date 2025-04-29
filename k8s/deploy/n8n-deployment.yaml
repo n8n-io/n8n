@@ -51,12 +51,18 @@ spec:
                 secretKeyRef:
                   name: postgres-secret
                   key: password
-            - name: N8N_PROTOCOL
-              value: http
-            - name: N8N_PORT
-              value: "5678"
-            - name: N8N_EDITOR_BASE_URL
-              value: "http://192.168.68.120:30567"
+            - name: NODE_ENV
+              value: production
+            - name: WEBHOOK_URL
+              value: "http://n8n.local:30567"
+            # - name: N8N_PROTOCOL
+            #   value: http
+            # - name: N8N_PORT
+            #   value: "5678"
+            # - name: N8N_HOST
+            #   value: "192.168.68.120"
+            # - name: N8N_EDITOR_BASE_URL
+            #   value: "http://192.168.68.120:30567"
           image: ghcr.io/ozlevka/n8n:v0.0.2
           name: n8n
           ports:
