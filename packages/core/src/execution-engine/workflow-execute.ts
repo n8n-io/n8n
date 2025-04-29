@@ -1433,20 +1433,12 @@ export class WorkflowExecute {
 					}
 					executionData.data = newTaskDataConnections;
 
-					Logger.debug(`Start processing node "${executionNode.name}"`, {
-						node: executionNode.name,
-						workflowId: workflow.id,
-					});
-					await hooks.runHook('nodeExecuteBefore', [executionNode.name, taskStartedData]);
-
 					// Get the index of the current run
 					runIndex = 0;
 					if (this.runExecutionData.resultData.runData.hasOwnProperty(executionNode.name)) {
 						runIndex = this.runExecutionData.resultData.runData[executionNode.name].length;
 					}
-
 					currentExecutionTry = `${executionNode.name}:${runIndex}`;
-
 					if (currentExecutionTry === lastExecutionTry) {
 						throw new ApplicationError(
 							'Stopped execution because it seems to be in an endless loop',
@@ -1469,6 +1461,11 @@ export class WorkflowExecute {
 						continue executionLoop;
 					}
 
+					Logger.debug(`Start executing node "${executionNode.name}"`, {
+						node: executionNode.name,
+						workflowId: workflow.id,
+					});
+					await hooks.runHook('nodeExecuteBefore', [executionNode.name, taskStartedData]);
 					let maxTries = 1;
 					if (executionData.node.retryOnFail === true) {
 						// TODO: Remove the hardcoded default-values here and also in NodeSettings.vue
