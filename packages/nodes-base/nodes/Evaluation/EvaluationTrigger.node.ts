@@ -7,10 +7,18 @@ import type {
 import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { loadOptions } from './methods';
-import { getGoogleSheet, getResults, getRowsLeft, getSheet } from './utils/evaluationTriggerUtils';
+import {
+	getFilteredResults,
+	getGoogleSheet,
+	getResults,
+	getRowsLeft,
+	getRowsLeftFilteredResults,
+	getSheet,
+} from './utils/evaluationTriggerUtils';
 import { document, sheet } from '../Google/Sheet/GoogleSheetsTrigger.node';
 import { readFilter } from '../Google/Sheet/v2/actions/sheet/read.operation';
 import { authentication } from '../Google/Sheet/v2/actions/versionDescription';
+import type { ILookupValues } from '../Google/Sheet/v2/helpers/GoogleSheets.types';
 
 export let startingRow = 1;
 
@@ -91,6 +99,8 @@ export class EvaluationTrigger implements INodeType {
 			startingRow = startRow;
 		}
 
+		const inputData = this.getInputData();
+
 		const MAX_ROWS = 1000;
 
 		const maxRows = this.getNodeParameter('limitRows', 0)
@@ -109,54 +119,97 @@ export class EvaluationTrigger implements INodeType {
 
 		let operationResult: INodeExecutionData[] = [];
 
-		//  In order to preserve the header row, we need to set the startingRow to 1
-		const rangeString = `${googleSheet.title}!${1}:${startingRow}`;
+		const hasFilter = this.getNodeParameter('filtersUI.values', 0, []) as ILookupValues[];
 
-		operationResult = await getResults.call(
-			this,
-			operationResult,
-			googleSheetInstance,
-			googleSheet,
-			rangeString,
-			rangeOptions,
-		);
-
-		const rowsLeft = await getRowsLeft.call(
-			this,
-			googleSheetInstance,
-			googleSheet.title,
-			`${googleSheet.title}!${startingRow}:${maxRows}`,
-		);
-
-		// This is for test runner which requires a different return format
-		const inputData = this.getInputData();
-
-		if (inputData[0].json.requestDataset) {
-			const testRunnerResult = await getResults.call(
+		if (hasFilter.length > 0) {
+			operationResult = await getFilteredResults.call(
 				this,
 				operationResult,
 				googleSheetInstance,
 				googleSheet,
-				`${googleSheet.title}!${1}:${maxRows}`,
-				{},
+				startingRow,
+				maxRows,
 			);
-			return [testRunnerResult];
+
+			if (inputData[0].json.requestDataset) {
+				return [operationResult];
+			} else {
+				operationResult = operationResult.length > 0 ? [operationResult[0]] : [];
+			}
+
+			if (operationResult.length === 0) {
+				startingRow = 1;
+				return [];
+			}
+
+			startingRow = (operationResult[0].json.row_number as number) + 1;
+
+			const rowsLeft = operationResult.length
+				? await getRowsLeftFilteredResults.call(
+						this,
+						googleSheetInstance,
+						googleSheet.title,
+						startingRow,
+						maxRows,
+					)
+				: 0;
+
+			operationResult.push({
+				json: {
+					_rowsLeft: rowsLeft,
+				},
+				pairedItems: [{ item: 0 }],
+			});
+
+			return [operationResult];
+		} else {
+			//  In order to preserve the header row, we need to set the startingRow to 1
+			const rangeString = `${googleSheet.title}!${1}:${startingRow}`;
+
+			operationResult = await getResults.call(
+				this,
+				operationResult,
+				googleSheetInstance,
+				googleSheet,
+				rangeString,
+				rangeOptions,
+			);
+
+			// This is for test runner which requires a different return format
+			if (inputData[0].json.requestDataset) {
+				const testRunnerResult = await getResults.call(
+					this,
+					operationResult,
+					googleSheetInstance,
+					googleSheet,
+					`${googleSheet.title}!${1}:${maxRows}`,
+					{},
+				);
+				return [testRunnerResult];
+			}
+
+			const rowsLeft = await getRowsLeft.call(
+				this,
+				googleSheetInstance,
+				googleSheet.title,
+				`${googleSheet.title}!${startingRow}:${maxRows}`,
+			);
+
+			if (operationResult.length === 0 && rowsLeft === 0) {
+				startingRow = 1;
+				return [];
+			}
+
+			operationResult.push({
+				json: {
+					_rowsLeft: rowsLeft,
+				},
+				pairedItems: [{ item: 0 }],
+			});
+
+			startingRow += 1;
+
+			return [operationResult];
 		}
-
-		if (operationResult.length === 0 && rowsLeft === 0) {
-			startingRow = 1;
-			return [];
-		}
-
-		operationResult.push({
-			json: {
-				_rowsLeft: rowsLeft,
-			},
-			pairedItems: [{ item: 0 }],
-		});
-
-		startingRow += 1;
-
-		return [operationResult];
 	}
 }
