@@ -18,7 +18,7 @@ describe('retry', () => {
 			return callCount === 2;
 		});
 
-		const promise = retry(fn, 1000, 2);
+		const promise = retry(fn, 1000, 2, null);
 
 		// The first call happens immediately.
 		expect(fn).toHaveBeenCalledTimes(1);
@@ -41,7 +41,7 @@ describe('retry', () => {
 			return false;
 		});
 
-		const promise = retry(fn, 1000, 3);
+		const promise = retry(fn, 1000, 3, null);
 
 		// The first attempt fires immediately.
 		expect(fn).toHaveBeenCalledTimes(1);
@@ -65,7 +65,58 @@ describe('retry', () => {
 		});
 
 		// Since the error is thrown on the first call, no timer advancement is needed.
-		await expect(retry(fn, 1000, 3)).rejects.toThrow('Test error');
+		await expect(retry(fn, 1000, 3, null)).rejects.toThrow('Test error');
 		expect(fn).toHaveBeenCalledTimes(1);
+	});
+
+	it('should use linear backoff strategy', async () => {
+		let callCount = 0;
+		const fn = vi.fn(async () => {
+			callCount++;
+			return callCount === 4; // Return true on the fourth attempt.
+		});
+
+		const promise = retry(fn, 1000, 4, 'linear');
+
+		expect(fn).toHaveBeenCalledTimes(1);
+
+		await vi.advanceTimersByTimeAsync(1000); // First backoff
+		expect(fn).toHaveBeenCalledTimes(2);
+
+		await vi.advanceTimersByTimeAsync(2000); // Second backoff
+		expect(fn).toHaveBeenCalledTimes(3);
+
+		await vi.advanceTimersByTimeAsync(3000); // Third backoff
+		expect(fn).toHaveBeenCalledTimes(4);
+
+		const result = await promise;
+		expect(result).toBe(true);
+	});
+
+	it('should use exponential backoff strategy', async () => {
+		let callCount = 0;
+		const fn = vi.fn(async () => {
+			callCount++;
+			return callCount === 5; // Return true on the fifth attempt.
+		});
+
+		const promise = retry(fn, 1000, 5, 'exponential');
+
+		expect(fn).toHaveBeenCalledTimes(1);
+
+		await vi.advanceTimersByTimeAsync(1000); // First backoff
+		expect(fn).toHaveBeenCalledTimes(2);
+
+		await vi.advanceTimersByTimeAsync(2000); // Second backoff
+		expect(fn).toHaveBeenCalledTimes(3);
+
+		await vi.advanceTimersByTimeAsync(4000); // Third backoff
+		expect(fn).toHaveBeenCalledTimes(4);
+
+		await vi.advanceTimersByTimeAsync(8000); // Fourth backoff
+		expect(fn).toHaveBeenCalledTimes(5);
+
+		const result = await promise;
+		expect(result).toBe(true);
 	});
 });
