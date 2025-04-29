@@ -11,7 +11,6 @@ import {
 	nodeExecuteBefore,
 	nodeExecuteAfter,
 	executionStarted,
-	executionWaiting,
 	sendWorkerStatusMessage,
 	sendConsoleMessage,
 	workflowFailedToActivate,
@@ -19,7 +18,6 @@ import {
 	executionRecovered,
 	workflowActivated,
 	workflowDeactivated,
-	collaboratorsChanged,
 } from '@/composables/usePushConnection/handlers';
 import { createEventQueue } from '@n8n/utils/event-queue';
 import type { useRouter } from 'vue-router';
@@ -64,8 +62,6 @@ export function usePushConnection(options: { router: ReturnType<typeof useRouter
 				return await nodeExecuteAfter(event);
 			case 'executionStarted':
 				return await executionStarted(event);
-			case 'executionWaiting':
-				return await executionWaiting(event);
 			case 'sendWorkerStatusMessage':
 				return await sendWorkerStatusMessage(event);
 			case 'sendConsoleMessage':
@@ -80,8 +76,6 @@ export function usePushConnection(options: { router: ReturnType<typeof useRouter
 				return await workflowActivated(event);
 			case 'workflowDeactivated':
 				return await workflowDeactivated(event);
-			case 'collaboratorsChanged':
-				return await collaboratorsChanged(event);
 		}
 	}
 
