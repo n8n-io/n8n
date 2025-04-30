@@ -4,26 +4,28 @@ import { type INode, NodeConnectionTypes } from 'n8n-workflow';
 import { type DirectedGraph } from './directed-graph';
 
 export function rewireGraph(tool: INode, graph: DirectedGraph): DirectedGraph {
-	graph = graph.clone();
-	const children = graph.getChildren(tool);
+	const modifiedGraph = graph.clone();
+	const children = modifiedGraph.getChildren(tool);
 
-	a.ok(children.size > 0, 'Tool must be connected to a root node');
+	if (children.size === 0) {
+		return graph;
+	}
 
 	const rootNode = [...children][0];
 
 	a.ok(rootNode);
 
-	const allIncomingConnection = graph
+	const allIncomingConnection = modifiedGraph
 		.getDirectParentConnections(rootNode)
 		.filter((cn) => cn.type === NodeConnectionTypes.Main);
 
 	tool.rewireOutputLogTo = NodeConnectionTypes.AiTool;
 
 	for (const cn of allIncomingConnection) {
-		graph.addConnection({ from: cn.from, to: tool });
+		modifiedGraph.addConnection({ from: cn.from, to: tool });
 	}
 
-	graph.removeNode(rootNode);
+	modifiedGraph.removeNode(rootNode);
 
-	return graph;
+	return modifiedGraph;
 }

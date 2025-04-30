@@ -93,14 +93,15 @@ describe('rewireGraph()', () => {
 		expect(tool.rewireOutputLogTo).toBe(NodeConnectionTypes.AiTool);
 	});
 
-	it('fails when the tool has no incoming connections', () => {
+	it('should not rewire when the tool has no root', () => {
 		const tool = createNodeData({ name: 'tool', type: 'n8n-nodes-base.ai-tool' });
 		const root = createNodeData({ name: 'root' });
 
 		const graph = new DirectedGraph();
 		graph.addNodes(root, tool);
+		const result = rewireGraph(tool, graph);
 
-		expect(() => rewireGraph(tool, graph)).toThrow();
+		expect(result).toStrictEqual(graph);
 	});
 
 	it('removes the root node from the graph', () => {
