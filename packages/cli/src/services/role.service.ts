@@ -30,7 +30,7 @@ import {
 	WORKFLOW_SHARING_EDITOR_SCOPES,
 	WORKFLOW_SHARING_OWNER_SCOPES,
 } from '@/permissions.ee/resource-roles';
-import type { ListQuery, ScopesField } from '@/types-db';
+import type { ListQueryDb, ScopesField } from '@/types-db';
 
 export type RoleNamespace = 'global' | 'project' | 'credential' | 'workflow';
 
@@ -159,10 +159,10 @@ export class RoleService {
 	}
 
 	addScopes(
-		rawWorkflow: ListQuery.Workflow.WithSharing | ListQuery.Workflow.WithOwnedByAndSharedWith,
+		rawWorkflow: ListQueryDb.Workflow.WithSharing | ListQueryDb.Workflow.WithOwnedByAndSharedWith,
 		user: User,
 		userProjectRelations: ProjectRelation[],
-	): ListQuery.Workflow.WithScopes;
+	): ListQueryDb.Workflow.WithScopes;
 	addScopes(
 		rawCredential: CredentialsEntity,
 		user: User,
@@ -170,29 +170,29 @@ export class RoleService {
 	): CredentialsEntity & ScopesField;
 	addScopes(
 		rawCredential:
-			| ListQuery.Credentials.WithSharing
-			| ListQuery.Credentials.WithOwnedByAndSharedWith,
+			| ListQueryDb.Credentials.WithSharing
+			| ListQueryDb.Credentials.WithOwnedByAndSharedWith,
 		user: User,
 		userProjectRelations: ProjectRelation[],
-	): ListQuery.Credentials.WithScopes;
+	): ListQueryDb.Credentials.WithScopes;
 	addScopes(
 		rawEntity:
 			| CredentialsEntity
-			| ListQuery.Workflow.WithSharing
-			| ListQuery.Credentials.WithOwnedByAndSharedWith
-			| ListQuery.Credentials.WithSharing
-			| ListQuery.Workflow.WithOwnedByAndSharedWith,
+			| ListQueryDb.Workflow.WithSharing
+			| ListQueryDb.Credentials.WithOwnedByAndSharedWith
+			| ListQueryDb.Credentials.WithSharing
+			| ListQueryDb.Workflow.WithOwnedByAndSharedWith,
 		user: User,
 		userProjectRelations: ProjectRelation[],
 	):
 		| (CredentialsEntity & ScopesField)
-		| ListQuery.Workflow.WithScopes
-		| ListQuery.Credentials.WithScopes {
+		| ListQueryDb.Workflow.WithScopes
+		| ListQueryDb.Credentials.WithScopes {
 		const shared = rawEntity.shared;
 		const entity = rawEntity as
 			| (CredentialsEntity & ScopesField)
-			| ListQuery.Workflow.WithScopes
-			| ListQuery.Credentials.WithScopes;
+			| ListQueryDb.Workflow.WithScopes
+			| ListQueryDb.Credentials.WithScopes;
 
 		Object.assign(entity, {
 			scopes: [],

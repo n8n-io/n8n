@@ -3,8 +3,9 @@ import type { Response, NextFunction } from 'express';
 import { filterListQueryMiddleware } from '@/middlewares/list-query/filter';
 import { paginationListQueryMiddleware } from '@/middlewares/list-query/pagination';
 import { selectListQueryMiddleware } from '@/middlewares/list-query/select';
+import type { ListQuery } from '@/requests';
 import * as ResponseHelper from '@/response-helper';
-import type { ListQuery } from '@/types-db';
+import type { ListQueryDb } from '@/types-db';
 
 import { sortByQueryMiddleware } from '../sort-by';
 
@@ -177,7 +178,7 @@ describe('List query middleware', () => {
 	});
 
 	describe('Query sort by', () => {
-		const validCases: Array<{ name: string; value: ListQuery.Workflow.SortOrder }> = [
+		const validCases: Array<{ name: string; value: ListQueryDb.Workflow.SortOrder }> = [
 			{
 				name: 'sorting by name asc',
 				value: 'name:asc',
@@ -236,7 +237,7 @@ describe('List query middleware', () => {
 
 		test.each(invalidCases)('should fail validation when $name', async ({ value }) => {
 			mockReq.query = {
-				sortBy: value as ListQuery.Workflow.SortOrder,
+				sortBy: value as ListQueryDb.Workflow.SortOrder,
 			};
 
 			await sortByQueryMiddleware(...args);

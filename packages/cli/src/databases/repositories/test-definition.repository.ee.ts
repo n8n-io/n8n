@@ -4,7 +4,7 @@ import { DataSource, In, Repository } from '@n8n/typeorm';
 
 import { TestDefinition } from '@/databases/entities/test-definition.ee';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import type { ListQuery } from '@/types-db';
+import type { ListQuery } from '@/requests';
 
 @Service()
 export class TestDefinitionRepository extends Repository<TestDefinition> {
