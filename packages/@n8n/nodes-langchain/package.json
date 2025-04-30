@@ -25,6 +25,7 @@
     "credentials": [
       "dist/credentials/AnthropicApi.credentials.js",
       "dist/credentials/AzureOpenAiApi.credentials.js",
+      "dist/credentials/AzureEntraCognitiveServicesOAuth2Api.credentials.js",
       "dist/credentials/CohereApi.credentials.js",
       "dist/credentials/DeepSeekApi.credentials.js",
       "dist/credentials/GooglePalmApi.credentials.js",
@@ -149,6 +150,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-sso-oidc": "3.666.0",
+    "@azure/identity": "4.3.0",
     "@getzep/zep-cloud": "1.0.12",
     "@getzep/zep-js": "0.9.0",
     "@google-ai/generativelanguage": "2.6.0",
@@ -173,6 +175,7 @@
     "@langchain/textsplitters": "0.1.0",
     "@modelcontextprotocol/sdk": "1.9.0",
     "@mozilla/readability": "0.6.0",
+    "@n8n/client-oauth2": "workspace:*",
     "@n8n/json-schema-to-zod": "workspace:*",
     "@n8n/typeorm": "0.3.20-12",
     "@n8n/typescript-config": "workspace:*",
