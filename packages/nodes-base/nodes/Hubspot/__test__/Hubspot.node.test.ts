@@ -1,7 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-param-display-name-miscased */
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import nock from 'nock';
-
-import { testWorkflows } from '@test/nodes/Helpers';
 
 import companies from './fixtures/companies.json';
 import companiesSearchResult from './fixtures/companies_search_result.json';
@@ -112,10 +111,10 @@ describe('Hubspot Node', () => {
 				.reply(200, companies.companies[0]);
 		});
 
-		testWorkflows(['nodes/Hubspot/__test__/companies.workflow.json']);
+		afterAll(() => hubspotNock.done());
 
-		it('should make the correct network calls', () => {
-			hubspotNock.done();
+		new NodeTestHarness().setupTests({
+			workflowFiles: ['companies.workflow.json'],
 		});
 	});
 
@@ -210,10 +209,10 @@ describe('Hubspot Node', () => {
 				.reply(200, contacts.contacts[0]);
 		});
 
-		testWorkflows(['nodes/Hubspot/__test__/contacts.workflow.json']);
+		afterAll(() => hubspotNock.done());
 
-		it('should make the correct network calls', () => {
-			hubspotNock.done();
+		new NodeTestHarness().setupTests({
+			workflowFiles: ['contacts.workflow.json'],
 		});
 	});
 
@@ -257,10 +256,10 @@ describe('Hubspot Node', () => {
 				.reply(200, dealsSearchResult);
 		});
 
-		testWorkflows(['nodes/Hubspot/__test__/deals.workflow.json']);
+		afterAll(() => hubspotNock.done());
 
-		it('should make the correct network calls', () => {
-			hubspotNock.done();
+		new NodeTestHarness().setupTests({
+			workflowFiles: ['deals.workflow.json'],
 		});
 	});
 });

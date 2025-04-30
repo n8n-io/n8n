@@ -431,8 +431,18 @@ export function findSelectedLogEntry(
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function deepToRaw<T>(sourceObj: T): T {
+	const seen = new WeakMap();
+
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const objectIterator = (input: any): any => {
+		if (seen.has(input)) {
+			return input;
+		}
+
+		if (input !== null && typeof input === 'object') {
+			seen.set(input, true);
+		}
+
 		if (Array.isArray(input)) {
 			return input.map((item) => objectIterator(item));
 		}
@@ -456,4 +466,20 @@ export function deepToRaw<T>(sourceObj: T): T {
 	};
 
 	return objectIterator(sourceObj);
+}
+
+export function flattenLogEntries(
+	entries: LogEntry[],
+	collapsedEntryIds: Record<string, boolean>,
+	ret: LogEntry[] = [],
+): LogEntry[] {
+	for (const entry of entries) {
+		ret.push(entry);
+
+		if (!collapsedEntryIds[entry.id]) {
+			flattenLogEntries(entry.children, collapsedEntryIds, ret);
+		}
+	}
+
+	return ret;
 }

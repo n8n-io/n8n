@@ -343,6 +343,22 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return workflow.value.nodes.find((node) => node.id === nodeId);
 	}
 
+	// Finds the full id for a given partial id for a node, relying on order for uniqueness in edge cases
+	function findNodeByPartialId(partialId: string): INodeUi | undefined {
+		return workflow.value.nodes.find((node) => node.id.startsWith(partialId));
+	}
+
+	// Finds a uniquely identifying partial id for a node, relying on order for uniqueness in edge cases
+	function getPartialIdForNode(fullId: string): string {
+		for (let length = 6; length < fullId.length; ++length) {
+			const partialId = fullId.slice(0, length);
+			if (workflow.value.nodes.filter((x) => x.id.startsWith(partialId)).length === 1) {
+				return partialId;
+			}
+		}
+		return fullId;
+	}
+
 	function getNodesByIds(nodeIds: string[]): INodeUi[] {
 		return nodeIds.map(getNodeById).filter(isPresent);
 	}
@@ -1122,6 +1138,13 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}
 	}
 
+	function setParentFolder(folder: IWorkflowDb['parentFolder']) {
+		workflow.value = {
+			...workflow.value,
+			parentFolder: folder,
+		};
+	}
+
 	function setNodes(nodes: INodeUi[]): void {
 		workflow.value.nodes = nodes;
 		nodes.forEach((node) => {
@@ -1827,6 +1850,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setWorkflowSettings,
 		setWorkflowPinData,
 		setWorkflowTagIds,
+		setParentFolder,
 		addWorkflowTagIds,
 		removeWorkflowTagId,
 		setWorkflowScopes,
@@ -1875,6 +1899,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setNodes,
 		setConnections,
 		markExecutionAsStopped,
+		findNodeByPartialId,
+		getPartialIdForNode,
 		totalWorkflowCount,
 	};
 });

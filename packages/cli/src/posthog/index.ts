@@ -4,7 +4,7 @@ import { InstanceSettings } from 'n8n-core';
 import type { FeatureFlags, ITelemetryTrackProperties } from 'n8n-workflow';
 import type { PostHog } from 'posthog-node';
 
-import type { PublicUser } from '@/interfaces';
+import type { PublicUser } from '@/types-db';
 
 @Service()
 export class PostHogClient {

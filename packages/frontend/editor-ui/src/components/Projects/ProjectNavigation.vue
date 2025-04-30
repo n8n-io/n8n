@@ -143,7 +143,7 @@ const showAddFirstProject = computed(
 				data-test-id="add-first-project-button"
 				@click="globalEntityCreation.createProject"
 			>
-				{{ locale.baseText('projects.menu.addFirstProject') }}
+				<span>{{ locale.baseText('projects.menu.addFirstProject') }}</span>
 			</N8nButton>
 		</N8nTooltip>
 		<hr v-if="projectsStore.isTeamProjectFeatureEnabled" class="mb-m" />
@@ -212,6 +212,7 @@ const showAddFirstProject = computed(
 	&.collapsed {
 		> span:last-child {
 			display: none;
+			margin: 0 var(--spacing-s) var(--spacing-m);
 		}
 	}
 }
