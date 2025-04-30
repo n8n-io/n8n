@@ -1538,18 +1538,20 @@ describe('POST /credentials/test', () => {
 
 		await shareCredentialWithUsers(memberCredential, [owner]);
 
-		const response = await authOwnerAgent.get('/credentials').query({ onlySharedWithMe: true });
+		let response;
 
+		response = await authOwnerAgent.get('/credentials').query({ onlySharedWithMe: true });
 		expect(response.statusCode).toBe(200);
-
 		expect(response.body.data).toHaveLength(1);
 		expect(response.body.data[0].id).toBe(memberCredential.id);
 		expect(response.body.data[0].homeProject).not.toBeNull();
+
+		response = await authMemberAgent.get('/credentials').query({ onlySharedWithMe: true });
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toHaveLength(0);
 	});
 
 	test('should return only credentials shared with me when ?onlySharedWithMe=true (admin)', async () => {
-		const admin = await createUser({ role: 'global:admin' });
-
 		await saveCredential(randomCredentialPayload(), {
 			user: admin,
 			role: 'credential:owner',
@@ -1567,22 +1569,26 @@ describe('POST /credentials/test', () => {
 
 		await shareCredentialWithUsers(memberCredential, [admin]);
 
-		const response = await authAdminAgent.get('/credentials').query({ onlySharedWithMe: true });
+		let response;
 
+		response = await authAdminAgent.get('/credentials').query({ onlySharedWithMe: true });
 		expect(response.statusCode).toBe(200);
-
 		expect(response.body.data).toHaveLength(1);
 		expect(response.body.data[0].id).toBe(memberCredential.id);
 		expect(response.body.data[0].homeProject).not.toBeNull();
+
+		response = await authMemberAgent.get('/credentials').query({ onlySharedWithMe: true });
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toHaveLength(0);
 	});
 
 	test('should return only credentials shared with me when ?onlySharedWithMe=true (member)', async () => {
-		await saveCredential(randomCredentialPayload(), {
+		await saveCredential(randomCredentialPayload({ name: 'member credential 1' }), {
 			user: member,
 			role: 'credential:owner',
 		});
 
-		await saveCredential(randomCredentialPayload(), {
+		await saveCredential(randomCredentialPayload({ name: 'member credential 2' }), {
 			user: member,
 			role: 'credential:owner',
 		});
@@ -1594,13 +1600,21 @@ describe('POST /credentials/test', () => {
 
 		await shareCredentialWithUsers(ownerCredential, [member]);
 
-		const response = await authMemberAgent.get('/credentials').query({ onlySharedWithMe: true });
+		let response;
+
+		response = await authMemberAgent.get('/credentials').query({ onlySharedWithMe: true });
 
 		expect(response.statusCode).toBe(200);
 
 		expect(response.body.data).toHaveLength(1);
 		expect(response.body.data[0].id).toBe(ownerCredential.id);
 		expect(response.body.data[0].homeProject).not.toBeNull();
+
+		response = await authOwnerAgent.get('/credentials').query({ onlySharedWithMe: true });
+
+		expect(response.statusCode).toBe(200);
+
+		expect(response.body.data).toHaveLength(0);
 	});
 });
 

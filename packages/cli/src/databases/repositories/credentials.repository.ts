@@ -5,6 +5,7 @@ import type { FindManyOptions } from '@n8n/typeorm';
 import type { ListQuery } from '@/requests';
 
 import { CredentialsEntity } from '../entities/credentials-entity';
+import type { User } from '../entities/user';
 
 @Service()
 export class CredentialsRepository extends Repository<CredentialsEntity> {
@@ -20,7 +21,7 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 	}
 
 	async findMany(
-		listQueryOptions?: ListQuery.Options & { includeData?: boolean },
+		listQueryOptions?: ListQuery.Options & { includeData?: boolean; user?: User },
 		credentialIds?: string[],
 	) {
 		const findManyOptions = this.toFindManyOptions(listQueryOptions);
@@ -37,7 +38,7 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 
 		type Select = Array<keyof CredentialsEntity>;
 
-		const defaultRelations = ['shared', 'shared.project'];
+		const defaultRelations = ['shared', 'shared.project', 'shared.project.projectRelations'];
 		const defaultSelect: Select = ['id', 'name', 'type', 'isManaged', 'createdAt', 'updatedAt'];
 
 		if (!listQueryOptions) return { select: defaultSelect, relations: defaultRelations };
@@ -99,6 +100,23 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 				role: filter.withRole,
 			};
 			delete filter.withRole;
+		}
+
+		if (
+			filter.user &&
+			typeof filter.user === 'object' &&
+			'id' in filter.user &&
+			typeof filter.user.id === 'string'
+		) {
+			filter.shared = {
+				...(filter?.shared ? filter.shared : {}),
+				project: {
+					projectRelations: {
+						userId: filter.user.id,
+					},
+				},
+			};
+			delete filter.user;
 		}
 	}
 

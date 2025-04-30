@@ -120,6 +120,7 @@ export class CredentialsService {
 				listQueryOptions.filter = {
 					...listQueryOptions.filter,
 					withRole: 'credential:user',
+					user,
 				};
 			}
 
@@ -177,6 +178,7 @@ export class CredentialsService {
 			listQueryOptions.filter = {
 				...listQueryOptions.filter,
 				withRole: 'credential:user',
+				user,
 			};
 		}
 
