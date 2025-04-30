@@ -418,7 +418,11 @@ export class WorkflowService {
 		return workflow;
 	}
 
-	async archive(user: User, workflowId: string): Promise<WorkflowEntity | undefined> {
+	async archive(
+		user: User,
+		workflowId: string,
+		force = false,
+	): Promise<WorkflowEntity | undefined> {
 		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:delete',
 		]);
@@ -427,7 +431,7 @@ export class WorkflowService {
 			return;
 		}
 
-		if (workflow.isArchived) {
+		if (workflow.isArchived && !force) {
 			throw new BadRequestError('Workflow is already archived.');
 		}
 
@@ -475,6 +479,19 @@ export class WorkflowService {
 		workflow.versionId = versionId;
 
 		return workflow;
+	}
+
+	async moveWorkflowsToRoot(user: User, folderId: string, projectId: string): Promise<void> {
+		const workflowIds = await this.workflowRepository.getAllWorkflowIdsInHierarchy(
+			folderId,
+			projectId,
+		);
+
+		for (const workflowId of workflowIds) {
+			await this.archive(user, workflowId, true);
+		}
+
+		await this.workflowRepository.moveToFolder(workflowIds, PROJECT_ROOT);
 	}
 
 	async getWorkflowScopes(user: User, workflowId: string): Promise<Scope[]> {

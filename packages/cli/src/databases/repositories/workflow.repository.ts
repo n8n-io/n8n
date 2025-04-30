@@ -297,6 +297,22 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		return [enrichedWorkflowsAndFolders, count] as const;
 	}
 
+	async getAllWorkflowIdsInHierarchy(folderId: string, projectId: string): Promise<string[]> {
+		const subFolderIds = await this.folderRepository.getAllFolderIdsInHierarchy(
+			folderId,
+			projectId,
+		);
+
+		const query = this.createQueryBuilder('workflow');
+
+		this.applySelect(query, { id: true });
+		this.applyParentFolderFilter(query, { parentFolderIds: [folderId, ...subFolderIds] });
+
+		const workflowIds = (await query.getMany()).map((workflow) => workflow.id);
+
+		return workflowIds;
+	}
+
 	private getFolderIds(workflowsAndFolders: WorkflowFolderUnionRow[]) {
 		return workflowsAndFolders.filter((item) => item.resource === 'folder').map((item) => item.id);
 	}
@@ -668,5 +684,13 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 							},
 			},
 		);
+	}
+
+	async moveToFolder(workflowIds: string[], toFolderId: string) {
+		await this.createQueryBuilder()
+			.update(WorkflowEntity)
+			.set({ parentFolder: toFolderId === PROJECT_ROOT ? null : { id: toFolderId } })
+			.where('id IN (:...workflowIds)', { workflowIds })
+			.execute();
 	}
 }
