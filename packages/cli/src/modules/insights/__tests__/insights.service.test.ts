@@ -2,7 +2,6 @@ import type { InsightsDateRange } from '@n8n/api-types';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { DateTime } from 'luxon';
-import type { Logger } from 'n8n-core';
 
 import type { Project } from '@/databases/entities/project';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
@@ -502,7 +501,6 @@ describe('getAvailableDateRanges', () => {
 			mock<InsightsCompactionService>(),
 			mock<InsightsCollectionService>(),
 			licenseMock,
-			mock<Logger>(),
 		);
 	});
 
@@ -603,7 +601,6 @@ describe('getMaxAgeInDaysAndGranularity', () => {
 			mock<InsightsCompactionService>(),
 			mock<InsightsCollectionService>(),
 			licenseMock,
-			mock<Logger>(),
 		);
 	});
 
