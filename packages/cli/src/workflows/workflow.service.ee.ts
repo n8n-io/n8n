@@ -11,6 +11,7 @@ import { CredentialsFinderService } from '@/credentials/credentials-finder.servi
 import { CredentialsService } from '@/credentials/credentials.service';
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
 import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
+import { Folder } from '@/databases/entities/folder';
 import { Project } from '@/databases/entities/project';
 import { SharedWorkflow } from '@/databases/entities/shared-workflow';
 import type { User } from '@/databases/entities/user';
@@ -30,7 +31,6 @@ import type {
 } from '@/types-db';
 
 import { WorkflowFinderService } from './workflow-finder.service';
-import { Folder } from '@/databases/entities/folder';
 
 @Service()
 export class EnterpriseWorkflowService {
