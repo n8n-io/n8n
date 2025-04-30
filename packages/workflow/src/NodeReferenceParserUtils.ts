@@ -368,7 +368,7 @@ function applyExtractMappingToNode(node: INode, parameterExtractMapping: Paramet
 		parameters: NodeParameterValueType,
 		mapping: ParameterExtractMapping,
 	): NodeParameterValueType => {
-		if (!mapping) return;
+		if (!mapping) return parameters;
 		if (typeof parameters !== 'object' || parameters === null) {
 			if (Array.isArray(mapping) && typeof parameters === 'string') {
 				for (const mapper of mapping) {

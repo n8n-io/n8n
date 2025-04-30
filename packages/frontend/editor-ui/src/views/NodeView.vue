@@ -116,6 +116,7 @@ import { useClearExecutionButtonVisible } from '@/composables/useClearExecutionB
 import { LOGS_PANEL_STATE } from '@/components/CanvasChat/types/logs';
 import { useBuilderStore } from '@/stores/builder.store';
 import { useFoldersStore } from '@/stores/folders.store';
+import { useWorkflowExtraction } from '@/composables/useWorkflowExtraction';
 
 defineOptions({
 	name: 'NodeView',
@@ -181,7 +182,6 @@ const {
 	updateNodePosition,
 	updateNodesPosition,
 	tidyUp,
-	extractWorkflow,
 	revertUpdateNodePosition,
 	renameNode,
 	revertRenameNode,
@@ -219,6 +219,7 @@ const {
 	lastClickPosition,
 	toggleChatOpen,
 } = useCanvasOperations({ router });
+const { extractWorkflow } = useWorkflowExtraction();
 const { applyExecutionData } = useExecutionDebugging();
 useClipboard({ onPaste: onClipboardPaste });
 

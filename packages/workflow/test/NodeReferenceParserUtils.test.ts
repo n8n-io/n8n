@@ -518,5 +518,32 @@ describe('NodeReferenceParserUtils', () => {
 				},
 			]);
 		});
+		it('should carry over unrelated properties', () => {
+			nodes = [
+				{
+					parameters: {
+						a: 3,
+						b: { c: 4, d: true },
+						d: 'hello',
+						e: "={{ $('goodbye').item.json.f }}",
+					},
+					name: 'A',
+				} as unknown as INode,
+			];
+			nodeNames = ['A', 'goodbye'];
+			const result = extractReferencesInNodeExpressions(nodes, nodeNames, startNodeName);
+			expect([...result.variables.entries()]).toEqual([['f', "$('goodbye').item.json.f"]]);
+			expect(result.nodes).toEqual([
+				{
+					parameters: {
+						a: 3,
+						b: { c: 4, d: true },
+						d: 'hello',
+						e: "={{ $('Start').item.json.f }}",
+					},
+					name: 'A',
+				},
+			]);
+		});
 	});
 });

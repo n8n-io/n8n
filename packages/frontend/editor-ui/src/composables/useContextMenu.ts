@@ -156,7 +156,7 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 
 		const extractionActions: ActionDropdownItem[] = [
 			{
-				id: 'extract_subworkflow',
+				id: 'extract_subWorkflow',
 				divided: true,
 				label: JSON.stringify(extractableSelectionResult.value), // i18n.baseText('contextMenu.extract', i18nOptions)
 				shortcut: { metaKey: true, keys: ['G'] },

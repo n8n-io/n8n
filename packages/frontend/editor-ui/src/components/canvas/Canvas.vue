@@ -631,6 +631,7 @@ function onOpenNodeContextMenu(
 }
 
 async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[]) {
+	console.log(action, nodeIds);
 	switch (action) {
 		case 'add_node':
 			return emit('create:node', 'context_menu');
