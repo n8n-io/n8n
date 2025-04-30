@@ -666,6 +666,9 @@ importers:
       '@aws-sdk/client-sso-oidc':
         specifier: 3.666.0
         version: 3.666.0(@aws-sdk/client-sts@3.666.0)
+      '@azure/identity':
+        specifier: 4.3.0
+        version: 4.3.0
       '@getzep/zep-cloud':
         specifier: 1.0.12
         version: 1.0.12(@langchain/core@0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)(langchain@0.3.11(e320b1d8e94e7308fefdef3743329630))
@@ -738,6 +741,9 @@ importers:
       '@mozilla/readability':
         specifier: 0.6.0
         version: 0.6.0
+      '@n8n/client-oauth2':
+        specifier: workspace:*
+        version: link:../client-oauth2
       '@n8n/json-schema-to-zod':
         specifier: workspace:*
         version: link:../json-schema-to-zod
