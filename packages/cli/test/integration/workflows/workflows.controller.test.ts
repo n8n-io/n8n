@@ -12,8 +12,8 @@ import { WorkflowHistoryRepository } from '@/databases/repositories/workflow-his
 import type { WorkflowFolderUnionFull } from '@/databases/repositories/workflow.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { License } from '@/license';
-import type { ListQuery } from '@/requests';
 import { ProjectService } from '@/services/project.service.ee';
+import type { ListQuery } from '@/types-db';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 import { createFolder } from '@test-integration/db/folders';
 
@@ -1309,6 +1309,54 @@ describe('GET /workflows', () => {
 
 			expect(response.body.data).toHaveLength(5);
 			expect(response.body.count).toBe(5);
+		});
+	});
+});
+
+describe('GET /workflows?onlySharedWithMe=true', () => {
+	test('should return only workflows shared with me', async () => {
+		const memberPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(
+			member.id,
+		);
+
+		const ownerPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(owner.id);
+
+		await createWorkflow({ name: 'First' }, owner);
+		await createWorkflow({ name: 'Second' }, member);
+		const workflow3 = await createWorkflow({ name: 'Third' }, member);
+
+		await shareWorkflowWithUsers(workflow3, [owner]);
+
+		const response = await authOwnerAgent.get('/workflows').query({ onlySharedWithMe: true });
+		expect(200);
+
+		expect(response.body).toEqual({
+			count: 1,
+			data: arrayContaining([
+				objectContaining({
+					id: any(String),
+					name: 'Third',
+					active: any(Boolean),
+					createdAt: any(String),
+					updatedAt: any(String),
+					versionId: any(String),
+					parentFolder: null,
+					homeProject: {
+						id: memberPersonalProject.id,
+						name: member.createPersonalProjectName(),
+						icon: null,
+						type: memberPersonalProject.type,
+					},
+					sharedWithProjects: [
+						objectContaining({
+							id: any(String),
+							name: ownerPersonalProject.name,
+							icon: null,
+							type: ownerPersonalProject.type,
+						}),
+					],
+				}),
+			]),
 		});
 	});
 });

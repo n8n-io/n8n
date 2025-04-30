@@ -21,6 +21,12 @@
     "dist/**/*"
   ],
   "dependencies": {
+    "@n8n/config": "workspace:^",
+    "@n8n/di": "workspace:^",
+    "@n8n/typeorm": "catalog:",
+    "n8n-core": "workspace:^",
+    "n8n-workflow": "workspace:^",
+    "nanoid": "catalog:",
     "reflect-metadata": "catalog:"
   },
   "devDependencies": {

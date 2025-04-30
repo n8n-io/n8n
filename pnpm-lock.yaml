@@ -18,6 +18,9 @@ catalogs:
     '@langchain/openai':
       specifier: 0.3.17
       version: 0.3.17
+    '@n8n/typeorm':
+      specifier: 0.3.20-12
+      version: 0.3.20-12
     '@n8n_io/ai-assistant-sdk':
       specifier: 1.14.0
       version: 1.14.0
@@ -43,8 +46,8 @@ catalogs:
       specifier: ^0.4.14
       version: 0.4.14
     axios:
-      specifier: 1.8.2
-      version: 1.8.2
+      specifier: 1.8.3
+      version: 1.8.3
     basic-auth:
       specifier: 2.0.1
       version: 2.0.1
@@ -167,10 +170,6 @@ overrides:
   typescript: ^5.8.2
   vue-tsc: ^2.2.8
   ws: '>=8.17.1'
-  '@rudderstack/rudder-sdk-node>axios': 1.8.2
-  ibm-cloud-sdk-core>axios: 1.8.2
-  langchain>axios: 1.8.2
-  snowflake-sdk>axios: 1.8.2
 
 patchedDependencies:
   '@types/express-serve-static-core@5.0.6':
@@ -182,9 +181,9 @@ patchedDependencies:
   '@types/ws@8.5.4':
     hash: 3daa0c4c940b0286c9877b0413548ff53acada5b927b75566ac76deee7a49357
     path: patches/@types__ws@8.5.4.patch
-  bull@4.12.1:
-    hash: 4b8aae78debc54697a9106a44b1a949089d4facfeee057883e32116ab8c80f68
-    path: patches/bull@4.12.1.patch
+  bull@4.16.4:
+    hash: a4b6d56db16fe5870646929938466d6a5c668435fd1551bed6a93fffb597ba42
+    path: patches/bull@4.16.4.patch
   element-plus@2.4.3:
     hash: fe650d17e32d13a07f54411f2ee552a8faeae20d92ef5e5a23424d590ba4a382
     path: patches/element-plus@2.4.3.patch
@@ -393,7 +392,7 @@ importers:
         version: 4.0.7
       axios:
         specifier: 'catalog:'
-        version: 1.8.2(debug@4.3.6)
+        version: 1.8.3(debug@4.3.6)
       dotenv:
         specifier: 8.6.0
         version: 8.6.0
@@ -418,7 +417,7 @@ importers:
     dependencies:
       axios:
         specifier: 'catalog:'
-        version: 1.8.2(debug@4.3.6)
+        version: 1.8.3(debug@4.3.6)
     devDependencies:
       '@n8n/typescript-config':
         specifier: workspace:*
@@ -467,6 +466,24 @@ importers:
 
   packages/@n8n/db:
     dependencies:
+      '@n8n/config':
+        specifier: workspace:^
+        version: link:../config
+      '@n8n/di':
+        specifier: workspace:^
+        version: link:../di
+      '@n8n/typeorm':
+        specifier: 'catalog:'
+        version: 0.3.20-12(@sentry/node@8.52.1)(ioredis@5.3.2)(mssql@10.0.2)(mysql2@3.11.0)(pg@8.12.0)(redis@4.6.14)(sqlite3@5.1.7)(ts-node@10.9.2(@types/node@18.16.16)(typescript@5.8.2))
+      n8n-core:
+        specifier: workspace:^
+        version: link:../../core
+      n8n-workflow:
+        specifier: workspace:^
+        version: link:../../workflow
+      nanoid:
+        specifier: 'catalog:'
+        version: 3.3.8
       reflect-metadata:
         specifier: 'catalog:'
         version: 0.2.2
@@ -651,7 +668,7 @@ importers:
         version: 3.666.0(@aws-sdk/client-sts@3.666.0)
       '@getzep/zep-cloud':
         specifier: 1.0.12
-        version: 1.0.12(@langchain/core@0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)(langchain@0.3.11(6006e4ec6d742ca755e4775e38dc0b4c))
+        version: 1.0.12(@langchain/core@0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)(langchain@0.3.11(e320b1d8e94e7308fefdef3743329630))
       '@getzep/zep-js':
         specifier: 0.9.0
         version: 0.9.0
@@ -678,7 +695,7 @@ importers:
         version: 0.3.2(@aws-sdk/client-sso-oidc@3.666.0(@aws-sdk/client-sts@3.666.0))(@langchain/core@0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)
       '@langchain/community':
         specifier: 'catalog:'
-        version: 0.3.24(c9c4611e1b6dc12df1941bdd7ead1452)
+        version: 0.3.24(a23560be5fb93c23c5c4ed2a6b67082b)
       '@langchain/core':
         specifier: 'catalog:'
         version: 0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1))
@@ -777,7 +794,7 @@ importers:
         version: 23.0.1
       langchain:
         specifier: 0.3.11
-        version: 0.3.11(6006e4ec6d742ca755e4775e38dc0b4c)
+        version: 0.3.11(e320b1d8e94e7308fefdef3743329630)
       lodash:
         specifier: 'catalog:'
         version: 4.17.21
@@ -1044,7 +1061,7 @@ importers:
         specifier: workspace:*
         version: link:../@n8n/task-runner
       '@n8n/typeorm':
-        specifier: 0.3.20-12
+        specifier: 'catalog:'
         version: 0.3.20-12(@sentry/node@8.52.1)(ioredis@5.3.2)(mssql@10.0.2)(mysql2@3.11.0)(pg@8.12.0)(redis@4.6.14)(sqlite3@5.1.7)(ts-node@10.9.2(@types/node@18.16.16)(typescript@5.8.2))
       '@n8n_io/ai-assistant-sdk':
         specifier: 'catalog:'
@@ -1056,8 +1073,8 @@ importers:
         specifier: 4.0.7
         version: 4.0.7
       '@rudderstack/rudder-sdk-node':
-        specifier: 2.0.9
-        version: 2.0.9(tslib@2.6.2)
+        specifier: 2.1.4
+        version: 2.1.4(tslib@2.6.2)
       '@sentry/node':
         specifier: 'catalog:'
         version: 8.52.1
@@ -1066,13 +1083,13 @@ importers:
         version: 1.11.0
       axios:
         specifier: 'catalog:'
-        version: 1.8.2(debug@4.3.6)
+        version: 1.8.3(debug@4.3.6)
       bcryptjs:
         specifier: 2.4.3
         version: 2.4.3
       bull:
-        specifier: 4.12.1
-        version: 4.12.1(patch_hash=4b8aae78debc54697a9106a44b1a949089d4facfeee057883e32116ab8c80f68)
+        specifier: 4.16.4
+        version: 4.16.4(patch_hash=a4b6d56db16fe5870646929938466d6a5c668435fd1551bed6a93fffb597ba42)
       cache-manager:
         specifier: 5.2.3
         version: 5.2.3
@@ -1394,7 +1411,7 @@ importers:
         version: 8.52.1
       axios:
         specifier: 'catalog:'
-        version: 1.8.2(debug@4.3.6)
+        version: 1.8.3(debug@4.3.6)
       callsites:
         specifier: 'catalog:'
         version: 3.1.0
@@ -1866,7 +1883,7 @@ importers:
         version: 1.1.4
       axios:
         specifier: 'catalog:'
-        version: 1.8.2(debug@4.3.6)
+        version: 1.8.3(debug@4.3.6)
       bowser:
         specifier: 2.11.0
         version: 2.11.0
@@ -2418,7 +2435,7 @@ importers:
         version: 0.15.2
       axios:
         specifier: 'catalog:'
-        version: 1.8.2(debug@4.3.6)
+        version: 1.8.3(debug@4.3.6)
       callsites:
         specifier: 'catalog:'
         version: 3.1.0
@@ -5369,9 +5386,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@rudderstack/rudder-sdk-node@2.0.9':
-    resolution: {integrity: sha512-Icm7a2x+CrVM9cHsXDRaFqGyvlaRDdALsrhzLHyRE+gIXubzJT730+fHS8KNdv9/r4Et/Cy1epjbkT3Qagd1VQ==}
-    engines: {node: '>=12'}
+  '@rudderstack/rudder-sdk-node@2.1.4':
+    resolution: {integrity: sha512-Y/WJRcIYss+gCipzCMYcbJ3WPkj4SxsqNcb/HYjKhaLjdfjCmuWVSsJFEajfpA8EpkKRh3OamerBO5kftwXLxQ==}
     peerDependencies:
       tslib: ^2.6.2
 
@@ -7149,11 +7165,13 @@ packages:
     resolution: {integrity: sha512-zIURGIS1E1Q4pcrMjp+nnEh+16G56eG/MUllJH8yEvw7asDo7Ac9uhC9KIH5jzpITueEZolfYglnCGIuSBz39g==}
     engines: {node: '>=4'}
 
-  axios-retry@3.7.0:
-    resolution: {integrity: sha512-ZTnCkJbRtfScvwiRnoVskFAfvU0UG3xNcsjwTR0mawSbIJoothxn67gKsMaNAFHRXJ1RmuLhmZBzvyXi3+9WyQ==}
+  axios-retry@4.5.0:
+    resolution: {integrity: sha512-aR99oXhpEDGo0UuAlYcn2iGRds30k366Zfa05XWScR9QaQD4JYiP3/1Qt1u7YlefUOK+cn0CcwoL1oefavQUlQ==}
+    peerDependencies:
+      axios: 0.x || 1.x
 
-  axios@1.8.2:
-    resolution: {integrity: sha512-ls4GYBm5aig9vWx8AWDSGLpnpDQRtWAfrjU+EuytuODrFBkqesN2RkOQCBzrA1RQNHw1SmRMSDDDSwzNAYQ6Rg==}
+  axios@1.8.3:
+    resolution: {integrity: sha512-iP4DebzoNlP/YN2dpwCgb8zoCmhtkajzS48JvwmkSkXvPI3DHc7m+XYL5tGnSlJtR6nImXZmdCuN5aP8dh1d8A==}
 
   babel-jest@29.6.2:
     resolution: {integrity: sha512-BYCzImLos6J3BH/+HvUCHG1dTf2MzmAB4jaVxHV+29RZLjR29XuYTmsf2sdDwkrb+FczkGo3kOhE7ga6sI0P4A==}
@@ -7340,12 +7358,8 @@ packages:
     resolution: {integrity: sha512-zhaCDicdLuWN5UbN5IMnFqNMhNfo919sH85y2/ea+5Yg9TsTkeZxpL+JLbp6cgYFS4sRLp3YV4S6yDuqVWHYOw==}
     engines: {node: '>=6'}
 
-  bull@4.11.3:
-    resolution: {integrity: sha512-DhS0XtiAuejkAY08iGOdDK35eex/yGNoezlWqGJTu9FqWFF/oBjUhpsusE9SXiI4culyDbOoFs+l3ar0VXhFqQ==}
-    engines: {node: '>=12'}
-
-  bull@4.12.1:
-    resolution: {integrity: sha512-ft4hTmex7WGSHt56mydw9uRKskkvgiNwqTYiV9b6q3ubhplglQmjo9OZrHlcUVNwBqSBhnzlsJQ9N/Wd7nhENA==}
+  bull@4.16.4:
+    resolution: {integrity: sha512-CF+nGsJyfsCC9MJL8hFxqXzbwq+jGBXhaz1j15G+5N/XtKIPFUUy5O1mfWWKbKunfuH/x+UV4NYRQDHSkjCOgA==}
     engines: {node: '>=12'}
 
   bundle-require@5.1.0:
@@ -7691,8 +7705,9 @@ packages:
   component-emitter@1.3.0:
     resolution: {integrity: sha512-Rd3se6QB+sO1TwqZjscQrurpEPIfO0/yYnSin6Q/rD3mOutHvUrCAhJub3r90uNb+SESBuE0QYoB90YdfatsRg==}
 
-  component-type@1.2.1:
-    resolution: {integrity: sha512-Kgy+2+Uwr75vAi6ChWXgHuLvd+QLD7ssgpaRq2zCvt80ptvAfMc/hijcJxXkBa2wMlEZcJvC2H8Ubo+A9ATHIg==}
+  component-type@2.0.0:
+    resolution: {integrity: sha512-/1+d/k0Al0uzg4rFAz9fbYOTnT20JYgN7SoaRr5x2cz7kH4Mtj+GQPh7W9UocpzFtxSL8flv6qAOOfJvQGqUjg==}
+    engines: {node: '>=18'}
 
   compressible@2.0.18:
     resolution: {integrity: sha512-AF3r7P5dWxL8MxyITRMlORQNaOA2IkAFaTr4k7BUumjPtRpGDTZpl0Pb1XCO6JeDCBdp126Cgs9sMxqSjgYyRg==}
@@ -8046,15 +8061,6 @@ packages:
 
   debug@4.3.6:
     resolution: {integrity: sha512-O/09Bd4Z1fBrU4VzkhFqVgpPzaGbw6Sm9FEkBT1A/YBXQFGuuSxa1dN2nxgxS34JmKXqYx8CZAwEVoJFImUXIg==}
-    engines: {node: '>=6.0'}
-    peerDependencies:
-      supports-color: '*'
-    peerDependenciesMeta:
-      supports-color:
-        optional: true
-
-  debug@4.3.7:
-    resolution: {integrity: sha512-Er2nc/H7RrMXZBFCEim6TCmMk02Z8vLC2Rbi1KEBggpo0fS6l0S1nnapwmIi3yW/+GOJap1Krg4w0Hg80oCqgQ==}
     engines: {node: '>=6.0'}
     peerDependencies:
       supports-color: '*'
@@ -9394,8 +9400,8 @@ packages:
   humanize-ms@1.2.1:
     resolution: {integrity: sha512-Fl70vYtsAFb/C06PTS9dZBo7ihau+Tu/DNCk/OyHhea07S+aeMWpFFkUaXRa8fI+ScZbEI8dfSxwY7gxZ9SAVQ==}
 
-  ibm-cloud-sdk-core@5.1.0:
-    resolution: {integrity: sha512-KJCbPz3tiXB1NGAD7cL4JtwpWV8yd/C7jsaHsxvedMo2ZblNG8emMyvSpGhiKAQVZmi3c0ujz6eJdy22NHuUWQ==}
+  ibm-cloud-sdk-core@5.3.2:
+    resolution: {integrity: sha512-YhtS+7hGNO61h/4jNShHxbbuJ1TnDqiFKQzfEaqePnonOvv8NnxWxOk92FlKKCCzZNOT34Gnd7WCLVJTntwEFQ==}
     engines: {node: '>=18'}
 
   iconv-lite@0.4.24:
@@ -10143,7 +10149,7 @@ packages:
       '@langchain/groq': '*'
       '@langchain/mistralai': '*'
       '@langchain/ollama': '*'
-      axios: 1.8.2
+      axios: '*'
       cheerio: '*'
       handlebars: ^4.7.8
       peggy: ^3.0.2
@@ -10937,8 +10943,8 @@ packages:
     resolution: {integrity: sha512-SdzXp4kD/Qf8agZ9+iTu6eql0m3kWm1A2y1hkpTeVNENutaB0BwHlSvAIaMxwntmRUAUjon2V4L8Z/njd0Ct8A==}
     hasBin: true
 
-  msgpackr@1.10.1:
-    resolution: {integrity: sha512-r5VRLv9qouXuLiIBrLpl2d5ZvPt8svdQTl5/vMvE4nzDMyEX4sgW5yWhuBBj5UmgwOTWj8CIdSXn5sAfsHAWIQ==}
+  msgpackr@1.11.2:
+    resolution: {integrity: sha512-F9UngXRlPyWCDEASDpTf6c9uNhGPTqnTeLVt7bN+bU1eajoR/8V9ys2BRaV5C/e5ihE6sJ9uPIKaYt6bFuO32g==}
 
   mssql@10.0.2:
     resolution: {integrity: sha512-GrQ6gzv2xA7ndOvONyZ++4RZsNkr8qDiIpvuFn2pR3TPiSk/cKdmvOrDU3jWgon7EPj7CPgmDiMh7Hgtft2xLg==}
@@ -13495,6 +13501,10 @@ packages:
 
   uuid@10.0.0:
     resolution: {integrity: sha512-8XkAphELsDnEGrDxUOHB3RGvXz6TeuYSGEZBOjtTtPm2lwhGBjLgOzLHB63IUWfBpNucQjND6d3AOudO+H3RWQ==}
+    hasBin: true
+
+  uuid@11.0.2:
+    resolution: {integrity: sha512-14FfcOJmqdjbBPdDjFQyk/SdT4NySW4eM0zcG+HqbHP5jzuH56xO3J1DGhgs/cEMCfwYi3HQI1gnTO62iaG+tQ==}
     hasBin: true
 
   uuid@8.3.2:
@@ -16325,7 +16335,7 @@ snapshots:
   '@gar/promisify@1.1.3':
     optional: true
 
-  '@getzep/zep-cloud@1.0.12(@langchain/core@0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)(langchain@0.3.11(6006e4ec6d742ca755e4775e38dc0b4c))':
+  '@getzep/zep-cloud@1.0.12(@langchain/core@0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)(langchain@0.3.11(e320b1d8e94e7308fefdef3743329630))':
     dependencies:
       form-data: 4.0.0
       node-fetch: 2.7.0(encoding@0.1.13)
@@ -16334,7 +16344,7 @@ snapshots:
       zod: 3.24.1
     optionalDependencies:
       '@langchain/core': 0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1))
-      langchain: 0.3.11(6006e4ec6d742ca755e4775e38dc0b4c)
+      langchain: 0.3.11(e320b1d8e94e7308fefdef3743329630)
     transitivePeerDependencies:
       - encoding
 
@@ -16442,7 +16452,7 @@ snapshots:
     dependencies:
       '@types/node': 18.16.16
       extend: 3.0.2
-      ibm-cloud-sdk-core: 5.1.0
+      ibm-cloud-sdk-core: 5.3.2
     transitivePeerDependencies:
       - supports-color
 
@@ -16849,7 +16859,7 @@ snapshots:
       - aws-crt
       - encoding
 
-  '@langchain/community@0.3.24(c9c4611e1b6dc12df1941bdd7ead1452)':
+  '@langchain/community@0.3.24(a23560be5fb93c23c5c4ed2a6b67082b)':
     dependencies:
       '@browserbasehq/stagehand': 1.9.0(@playwright/test@1.49.1)(deepmerge@4.3.1)(dotenv@16.4.5)(encoding@0.1.13)(openai@4.78.1(encoding@0.1.13)(zod@3.24.1))(zod@3.24.1)
       '@ibm-cloud/watsonx-ai': 1.1.2
@@ -16858,9 +16868,9 @@ snapshots:
       binary-extensions: 2.2.0
       expr-eval: 2.0.2
       flat: 5.0.2
-      ibm-cloud-sdk-core: 5.1.0
+      ibm-cloud-sdk-core: 5.3.2
       js-yaml: 4.1.0
-      langchain: 0.3.11(6006e4ec6d742ca755e4775e38dc0b4c)
+      langchain: 0.3.11(e320b1d8e94e7308fefdef3743329630)
       langsmith: 0.2.15(openai@4.78.1(encoding@0.1.13)(zod@3.24.1))
       openai: 4.78.1(encoding@0.1.13)(zod@3.24.1)
       uuid: 10.0.0
@@ -16875,7 +16885,7 @@ snapshots:
       '@aws-sdk/credential-provider-node': 3.666.0(@aws-sdk/client-sso-oidc@3.666.0(@aws-sdk/client-sts@3.666.0))(@aws-sdk/client-sts@3.666.0)
       '@azure/storage-blob': 12.18.0(encoding@0.1.13)
       '@browserbasehq/sdk': 2.0.0(encoding@0.1.13)
-      '@getzep/zep-cloud': 1.0.12(@langchain/core@0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)(langchain@0.3.11(6006e4ec6d742ca755e4775e38dc0b4c))
+      '@getzep/zep-cloud': 1.0.12(@langchain/core@0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)(langchain@0.3.11(e320b1d8e94e7308fefdef3743329630))
       '@getzep/zep-js': 0.9.0
       '@google-ai/generativelanguage': 2.6.0(encoding@0.1.13)
       '@google-cloud/storage': 7.12.1(encoding@0.1.13)
@@ -17230,7 +17240,7 @@ snapshots:
 
   '@n8n/localtunnel@3.0.0':
     dependencies:
-      axios: 1.8.2(debug@4.3.6)
+      axios: 1.8.3(debug@4.3.6)
       debug: 4.3.6(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
@@ -17257,8 +17267,8 @@ snapshots:
       buffer: 6.0.3
       chalk: 4.1.2
       dayjs: 1.11.10
-      debug: 4.3.7
-      dotenv: 16.3.1
+      debug: 4.4.0(supports-color@8.1.1)
+      dotenv: 16.4.5
       glob: 10.4.5
       mkdirp: 2.1.3
       reflect-metadata: 0.2.2
@@ -17289,8 +17299,8 @@ snapshots:
       buffer: 6.0.3
       chalk: 4.1.2
       dayjs: 1.11.10
-      debug: 4.3.7
-      dotenv: 16.3.1
+      debug: 4.4.0(supports-color@8.1.1)
+      dotenv: 16.4.5
       glob: 10.4.5
       mkdirp: 2.1.3
       reflect-metadata: 0.2.2
@@ -17933,11 +17943,11 @@ snapshots:
   '@rollup/rollup-win32-x64-msvc@4.35.0':
     optional: true
 
-  '@rudderstack/rudder-sdk-node@2.0.9(tslib@2.6.2)':
+  '@rudderstack/rudder-sdk-node@2.1.4(tslib@2.6.2)':
     dependencies:
-      axios: 1.8.2
-      axios-retry: 3.7.0
-      component-type: 1.2.1
+      axios: 1.8.3
+      axios-retry: 4.5.0(axios@1.8.3)
+      component-type: 2.0.0
       join-component: 1.1.0
       lodash.clonedeep: 4.5.0
       lodash.isstring: 4.0.1
@@ -17946,9 +17956,9 @@ snapshots:
       remove-trailing-slash: 0.1.1
       serialize-javascript: 6.0.2
       tslib: 2.6.2
-      uuid: 8.3.2
+      uuid: 11.0.2
     optionalDependencies:
-      bull: 4.11.3
+      bull: 4.16.4(patch_hash=a4b6d56db16fe5870646929938466d6a5c668435fd1551bed6a93fffb597ba42)
     transitivePeerDependencies:
       - debug
       - supports-color
@@ -20272,12 +20282,12 @@ snapshots:
 
   axe-core@4.7.2: {}
 
-  axios-retry@3.7.0:
+  axios-retry@4.5.0(axios@1.8.3):
     dependencies:
-      '@babel/runtime': 7.26.10
+      axios: 1.8.3
       is-retry-allowed: 2.2.0
 
-  axios@1.8.2:
+  axios@1.8.3:
     dependencies:
       follow-redirects: 1.15.6(debug@4.3.6)
       form-data: 4.0.0
@@ -20285,7 +20295,7 @@ snapshots:
     transitivePeerDependencies:
       - debug
 
-  axios@1.8.2(debug@4.3.6):
+  axios@1.8.3(debug@4.3.6):
     dependencies:
       follow-redirects: 1.15.6(debug@4.3.6)
       form-data: 4.0.0
@@ -20293,7 +20303,7 @@ snapshots:
     transitivePeerDependencies:
       - debug
 
-  axios@1.8.2(debug@4.4.0):
+  axios@1.8.3(debug@4.4.0):
     dependencies:
       follow-redirects: 1.15.6(debug@4.4.0)
       form-data: 4.0.0
@@ -20518,26 +20528,13 @@ snapshots:
 
   builtin-modules@3.3.0: {}
 
-  bull@4.11.3:
+  bull@4.16.4(patch_hash=a4b6d56db16fe5870646929938466d6a5c668435fd1551bed6a93fffb597ba42):
     dependencies:
       cron-parser: 4.9.0
       get-port: 5.1.1
       ioredis: 5.3.2
       lodash: 4.17.21
-      msgpackr: 1.10.1
-      semver: 7.6.0
-      uuid: 8.3.2
-    transitivePeerDependencies:
-      - supports-color
-    optional: true
-
-  bull@4.12.1(patch_hash=4b8aae78debc54697a9106a44b1a949089d4facfeee057883e32116ab8c80f68):
-    dependencies:
-      cron-parser: 4.9.0
-      get-port: 5.1.1
-      ioredis: 5.3.2
-      lodash: 4.17.21
-      msgpackr: 1.10.1
+      msgpackr: 1.11.2
       semver: 7.6.0
       uuid: 8.3.2
     transitivePeerDependencies:
@@ -20933,7 +20930,7 @@ snapshots:
 
   component-emitter@1.3.0: {}
 
-  component-type@1.2.1: {}
+  component-type@2.0.0: {}
 
   compressible@2.0.18:
     dependencies:
@@ -21356,10 +21353,6 @@ snapshots:
       ms: 2.1.2
     optionalDependencies:
       supports-color: 8.1.1
-
-  debug@4.3.7:
-    dependencies:
-      ms: 2.1.3
 
   debug@4.4.0(supports-color@8.1.1):
     dependencies:
@@ -23081,12 +23074,12 @@ snapshots:
     dependencies:
       ms: 2.1.3
 
-  ibm-cloud-sdk-core@5.1.0:
+  ibm-cloud-sdk-core@5.3.2:
     dependencies:
       '@types/debug': 4.1.12
       '@types/node': 18.16.16
       '@types/tough-cookie': 4.0.2
-      axios: 1.8.2(debug@4.4.0)
+      axios: 1.8.3
       camelcase: 6.3.0
       debug: 4.4.0(supports-color@8.1.1)
       dotenv: 16.4.5
@@ -23096,7 +23089,7 @@ snapshots:
       isstream: 0.1.2
       jsonwebtoken: 9.0.2
       mime-types: 2.1.35
-      retry-axios: 2.6.0(axios@1.8.2)
+      retry-axios: 2.6.0(axios@1.8.3(debug@4.4.0))
       tough-cookie: 4.1.3
     transitivePeerDependencies:
       - supports-color
@@ -23161,7 +23154,7 @@ snapshots:
 
   infisical-node@1.3.0:
     dependencies:
-      axios: 1.8.2
+      axios: 1.8.3
       dotenv: 16.3.1
       tweetnacl: 1.0.3
       tweetnacl-util: 0.15.1
@@ -24090,7 +24083,7 @@ snapshots:
 
   kuler@2.0.0: {}
 
-  langchain@0.3.11(6006e4ec6d742ca755e4775e38dc0b4c):
+  langchain@0.3.11(e320b1d8e94e7308fefdef3743329630):
     dependencies:
       '@langchain/core': 0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1))
       '@langchain/openai': 0.3.17(@langchain/core@0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)
@@ -24114,7 +24107,7 @@ snapshots:
       '@langchain/groq': 0.1.3(@langchain/core@0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)
       '@langchain/mistralai': 0.2.0(@langchain/core@0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))
       '@langchain/ollama': 0.1.4(@langchain/core@0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))
-      axios: 1.8.2
+      axios: 1.8.3
       cheerio: 1.0.0
       handlebars: 4.7.8
     transitivePeerDependencies:
@@ -25066,7 +25059,7 @@ snapshots:
       '@msgpackr-extract/msgpackr-extract-win32-x64': 3.0.2
     optional: true
 
-  msgpackr@1.10.1:
+  msgpackr@1.11.2:
     optionalDependencies:
       msgpackr-extract: 3.0.2
 
@@ -25877,7 +25870,7 @@ snapshots:
 
   posthog-node@3.2.1:
     dependencies:
-      axios: 1.8.2
+      axios: 1.8.3
       rusha: 0.8.14
     transitivePeerDependencies:
       - debug
@@ -26463,9 +26456,9 @@ snapshots:
       onetime: 5.1.2
       signal-exit: 3.0.7
 
-  retry-axios@2.6.0(axios@1.8.2):
+  retry-axios@2.6.0(axios@1.8.3(debug@4.4.0)):
     dependencies:
-      axios: 1.8.2
+      axios: 1.8.3
 
   retry-request@7.0.2(encoding@0.1.13):
     dependencies:
@@ -26923,7 +26916,7 @@ snapshots:
       asn1.js: 5.4.1
       asn1.js-rfc2560: 5.0.1(asn1.js@5.4.1)
       asn1.js-rfc5280: 3.0.0
-      axios: 1.8.2
+      axios: 1.8.3
       big-integer: 1.6.51
       bignumber.js: 9.1.2
       binascii: 0.0.2
@@ -27991,6 +27984,8 @@ snapshots:
 
   uuid@10.0.0: {}
 
+  uuid@11.0.2: {}
+
   uuid@8.3.2: {}
 
   uuid@9.0.1: {}
@@ -28278,7 +28273,7 @@ snapshots:
 
   wait-on@8.0.2(debug@4.4.0):
     dependencies:
-      axios: 1.8.2(debug@4.4.0)
+      axios: 1.8.3(debug@4.4.0)
       joi: 17.13.3
       lodash: 4.17.21
       minimist: 1.2.8

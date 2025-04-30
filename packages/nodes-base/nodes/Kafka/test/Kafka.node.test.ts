@@ -1,10 +1,8 @@
 import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import { mock } from 'jest-mock-extended';
 import type { Producer } from 'kafkajs';
 import { Kafka as apacheKafka } from 'kafkajs';
-import path from 'path';
-
-import { getWorkflowFilenames, testWorkflows } from '@test/nodes/Helpers';
 
 jest.mock('kafkajs');
 jest.mock('@kafkajs/confluent-schema-registry');
@@ -43,8 +41,7 @@ describe('Kafka Node', () => {
 		(SchemaRegistry as jest.Mock).mockReturnValue(mockRegistry);
 	});
 
-	const workflows = getWorkflowFilenames(path.join(__dirname, 'test'));
-	testWorkflows(workflows);
+	new NodeTestHarness().setupTests();
 
 	test('should publish the correct kafka messages', async () => {
 		expect(mockProducerSend).toHaveBeenCalledTimes(2);

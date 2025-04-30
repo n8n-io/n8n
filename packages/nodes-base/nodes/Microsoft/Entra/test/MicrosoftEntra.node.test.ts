@@ -1,13 +1,12 @@
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import type { ILoadOptionsFunctions, WorkflowTestData } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
-
-import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
-import * as Helpers from '@test/nodes/Helpers';
 
 import { microsoftEntraApiResponse, microsoftEntraNodeResponse } from './mocks';
 import { MicrosoftEntra } from '../MicrosoftEntra.node';
 
 describe('Microsoft Entra Node', () => {
+	const testHarness = new NodeTestHarness();
 	const baseUrl = 'https://graph.microsoft.com/v1.0';
 
 	describe('Credentials', () => {
@@ -76,7 +75,6 @@ describe('Microsoft Entra Node', () => {
 					},
 				},
 				output: {
-					nodeExecutionOrder: ['Start'],
 					nodeData: {
 						'Micosoft Entra ID': [microsoftEntraNodeResponse.getGroup],
 					},
@@ -94,18 +92,12 @@ describe('Microsoft Entra Node', () => {
 						},
 					],
 				},
-				credentials,
 			},
 		];
 
-		test.each(tests)('$description', async (testData) => {
-			const { result } = await executeWorkflow(testData);
-			const resultNodeData = Helpers.getResultNodeData(result, testData);
-			resultNodeData.forEach(({ nodeName, resultData }) =>
-				expect(resultData).toEqual(testData.output.nodeData[nodeName]),
-			);
-			expect(result.status).toEqual('success');
-		});
+		for (const testData of tests) {
+			testHarness.setupTest(testData, { credentials });
+		}
 	});
 
 	describe('Load options', () => {

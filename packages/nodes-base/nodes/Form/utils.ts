@@ -83,7 +83,7 @@ export const prepareFormFields = (context: IWebhookFunctions, fields: FormFields
 				html = html.replace(resolvable, context.evaluateExpression(resolvable) as string);
 			}
 
-			field.html = sanitizeHtml(html as string);
+			field.html = sanitizeHtml(html);
 		}
 
 		if (field.fieldType === 'hiddenField') {
