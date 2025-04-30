@@ -13,7 +13,7 @@ import type { WorkflowFolderUnionFull } from '@/databases/repositories/workflow.
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { License } from '@/license';
 import { ProjectService } from '@/services/project.service.ee';
-import type { ListQuery } from '@/types-db';
+import type { ListQueryDb } from '@/types-db';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 import { createFolder } from '@test-integration/db/folders';
 
@@ -641,7 +641,7 @@ describe('GET /workflows', () => {
 		});
 
 		const found = response.body.data.find(
-			(w: ListQuery.Workflow.WithOwnership) => w.name === 'First',
+			(w: ListQueryDb.Workflow.WithOwnership) => w.name === 'First',
 		);
 
 		expect(found.nodes).toBeUndefined();
@@ -1458,7 +1458,7 @@ describe('GET /workflows?includeFolders=true', () => {
 		});
 
 		const found = response.body.data.find(
-			(w: ListQuery.Workflow.WithOwnership) => w.name === 'First',
+			(w: ListQueryDb.Workflow.WithOwnership) => w.name === 'First',
 		);
 
 		expect(found.nodes).toBeUndefined();
