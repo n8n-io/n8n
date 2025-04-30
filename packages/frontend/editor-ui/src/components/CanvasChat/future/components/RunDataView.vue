@@ -20,10 +20,7 @@ const { title, logEntry, paneType, workflow, execution } = defineProps<{
 const locale = useI18n();
 const ndvStore = useNDVStore();
 
-const isSubNode = computed(
-	() => workflow.getChildNodes(logEntry.node.name, 'ALL_NON_MAIN').length > 0,
-);
-const displayMode = ref<IRunDataDisplayMode>(isSubNode.value ? 'ai' : 'schema');
+const displayMode = ref<IRunDataDisplayMode>(paneType === 'input' ? 'schema' : 'table');
 const isMultipleInput = computed(() => paneType === 'input' && logEntry.runData.source.length > 1);
 const runDataProps = computed<
 	Pick<InstanceType<typeof RunData>['$props'], 'node' | 'runIndex' | 'overrideOutputs'> | undefined
@@ -71,7 +68,7 @@ function handleChangeDisplayMode(value: IRunDataDisplayMode) {
 		:disable-edit="true"
 		:disable-hover-highlight="true"
 		:display-mode="displayMode"
-		:disable-ai-content="!isSubNode"
+		:disable-ai-content="logEntry.depth === 0"
 		table-header-bg-color="light"
 		@display-mode-change="handleChangeDisplayMode"
 	>
