@@ -183,7 +183,7 @@ describe('Webhook API', () => {
 		});
 	});
 
-	describe('Params support', () => {
+	describe('Route-parameters support', () => {
 		beforeAll(async () => {
 			node.parameters = { httpMethod: 'PATCH', path: ':variable' };
 		});
@@ -202,6 +202,24 @@ describe('Webhook API', () => {
 			});
 
 			await agent.post('/webhook/abcd').send({ test: true }).expect(404);
+		});
+	});
+
+	describe('Query-parameters support', () => {
+		beforeAll(async () => {
+			node.parameters = { httpMethod: 'GET', path: 'testing' };
+		});
+
+		test('should used the extended query parser', async () => {
+			const response = await agent.get('/webhook/testing?filter[field]=value');
+			expect(response.statusCode).toEqual(200);
+			expect(response.body).toEqual({
+				query: {
+					filter: {
+						field: 'value',
+					},
+				},
+			});
 		});
 	});
 });
