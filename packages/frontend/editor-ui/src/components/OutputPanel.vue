@@ -24,6 +24,7 @@ import { N8nRadioButtons, N8nText } from '@n8n/design-system';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useNodeDirtiness } from '@/composables/useNodeDirtiness';
 import { CanvasNodeDirtiness } from '@/types';
+import { type IRunDataDisplayMode } from '@/Interface';
 
 // Types
 
@@ -48,6 +49,7 @@ type Props = {
 	blockUI?: boolean;
 	isProductionExecutionPreview?: boolean;
 	isPaneActive?: boolean;
+	displayMode: IRunDataDisplayMode;
 };
 
 // Props and emits
@@ -67,6 +69,7 @@ const emit = defineEmits<{
 	itemHover: [item: { itemIndex: number; outputIndex: number } | null];
 	search: [string];
 	openSettings: [];
+	displayModeChange: [IRunDataDisplayMode];
 }>();
 
 // Stores
@@ -88,7 +91,7 @@ const { isSubNodeType } = useNodeType({
 });
 const pinnedData = usePinnedData(activeNode, {
 	runIndex: props.runIndex,
-	displayMode: ndvStore.outputPanelDisplayMode,
+	displayMode: props.displayMode,
 });
 
 // Data
@@ -341,6 +344,8 @@ const activatePane = () => {
 		pane-type="output"
 		:data-output-type="outputMode"
 		:callout-message="allToolsWereUnusedNotice"
+		:display-mode="displayMode"
+		:disable-ai-content="true"
 		@activate-pane="activatePane"
 		@run-change="onRunIndexChange"
 		@link-run="onLinkRun"
@@ -348,6 +353,7 @@ const activatePane = () => {
 		@table-mounted="emit('tableMounted', $event)"
 		@item-hover="emit('itemHover', $event)"
 		@search="emit('search', $event)"
+		@display-mode-change="emit('displayModeChange', $event)"
 	>
 		<template #header>
 			<div :class="$style.titleSection">
