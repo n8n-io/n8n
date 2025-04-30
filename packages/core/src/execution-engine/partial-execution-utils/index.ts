@@ -1,5 +1,3 @@
-import type { IRunData } from 'n8n-workflow';
-
 export { DirectedGraph } from './directed-graph';
 export { findTriggerForPartialExecution } from './find-trigger-for-partial-execution';
 export { findStartNodes } from './find-start-nodes';
@@ -10,12 +8,4 @@ export { handleCycles } from './handle-cycles';
 export { filterDisabledNodes } from './filter-disabled-nodes';
 export { isTool } from './is-tool';
 export { rewireGraph } from './rewire-graph';
-
-export function getNextExecutionIndex(runData: IRunData | undefined) {
-	const previousRuns = Object.values(runData ?? {}).flat();
-	const maxExecutionIndex = previousRuns.length
-		? Math.max(...previousRuns.map((taskData) => taskData.executionIndex))
-		: undefined;
-
-	return typeof maxExecutionIndex === 'number' ? maxExecutionIndex + 1 : undefined;
-}
+export { getNextExecutionIndex } from './run-data-utils';
