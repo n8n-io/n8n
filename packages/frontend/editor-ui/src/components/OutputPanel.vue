@@ -9,7 +9,6 @@ import {
 import RunData from './RunData.vue';
 import RunInfo from './RunInfo.vue';
 import { storeToRefs } from 'pinia';
-import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -77,7 +76,6 @@ const emit = defineEmits<{
 const ndvStore = useNDVStore();
 const nodeTypesStore = useNodeTypesStore();
 const workflowsStore = useWorkflowsStore();
-const uiStore = useUIStore();
 const telemetry = useTelemetry();
 const i18n = useI18n();
 const { activeNode } = storeToRefs(ndvStore);
@@ -144,7 +142,7 @@ const isNodeRunning = computed(() => {
 	return workflowRunning.value && !!node.value && workflowsStore.isNodeExecuting(node.value.name);
 });
 
-const workflowRunning = computed(() => uiStore.isActionActive.workflowRunning);
+const workflowRunning = computed(() => workflowsStore.isWorkflowRunning);
 
 const workflowExecution = computed(() => {
 	return workflowsStore.getWorkflowExecution;

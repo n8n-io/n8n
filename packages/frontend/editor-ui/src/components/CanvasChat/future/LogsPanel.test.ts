@@ -221,7 +221,7 @@ describe('LogsPanel', () => {
 		expect(rendered.getByText('Running')).toBeInTheDocument();
 		expect(rendered.queryByText('AI Agent')).not.toBeInTheDocument();
 
-		workflowsStore.setNodeExecuting({
+		workflowsStore.addNodeExecutionData({
 			nodeName: 'AI Agent',
 			executionId: '567',
 			data: { executionIndex: 0, startTime: Date.parse('2025-04-20T12:34:51.000Z'), source: [] },
@@ -243,7 +243,6 @@ describe('LogsPanel', () => {
 				executionStatus: 'success',
 			},
 		});
-
 		expect(await treeItem.findByText('AI Agent')).toBeInTheDocument();
 		expect(treeItem.getByText('Success in 33ms')).toBeInTheDocument();
 

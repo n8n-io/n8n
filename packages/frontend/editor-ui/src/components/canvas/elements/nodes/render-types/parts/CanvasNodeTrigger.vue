@@ -4,7 +4,6 @@ import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import { useI18n } from '@/composables/useI18n';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { CHAT_TRIGGER_NODE_TYPE } from '@/constants';
-import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { computed, useCssModule } from 'vue';
 import { useRouter } from 'vue-router';
@@ -36,12 +35,11 @@ const containerClass = computed(() => ({
 const router = useRouter();
 const i18n = useI18n();
 const workflowsStore = useWorkflowsStore();
-const uiStore = useUIStore();
 const { runEntireWorkflow } = useRunWorkflow({ router });
 const { toggleChatOpen } = useCanvasOperations({ router });
 
 const isChatOpen = computed(() => workflowsStore.logsPanelState !== LOGS_PANEL_STATE.CLOSED);
-const isExecuting = computed(() => uiStore.isActionActive.workflowRunning);
+const isExecuting = computed(() => workflowsStore.isWorkflowRunning);
 const testId = computed(() => `execute-workflow-button-${name}`);
 </script>
 
