@@ -195,6 +195,9 @@ export class WorkflowExecute {
 		let incomingNodeConnections: INodeConnections | undefined;
 		let connection: IConnection;
 
+		// Increment currentExecutionIndex based on previous run
+		this.additionalData.currentNodeExecutionIndex = getNextExecutionIndex(runData) ?? 0;
+
 		this.status = 'running';
 
 		const runIndex = 0;
