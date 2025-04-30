@@ -1,7 +1,8 @@
 import { mock } from 'jest-mock-extended';
 import type { Logger } from 'n8n-core';
 import { mockInstance } from 'n8n-core/test/utils';
-import type { IRunExecutionData, WorkflowExecuteMode } from 'n8n-workflow/src';
+import type { IPinData, ITaskData, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
+import { Workflow, type IRunExecutionData, type WorkflowExecuteMode } from 'n8n-workflow';
 
 import { CredentialsHelper } from '@/credentials-helper';
 import type { ExecutionRepository } from '@/databases/repositories/execution.repository';
@@ -11,6 +12,7 @@ import type { ManualExecutionService } from '@/manual-execution.service';
 import { SecretsHelper } from '@/secrets-helpers.ee';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import type { IExecutionResponse } from '@/types-db';
+import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 import { JobProcessor } from '../job-processor';
@@ -80,4 +82,57 @@ describe('JobProcessor', () => {
 			expect(manualExecutionService.runManually).toHaveBeenCalledTimes(1);
 		},
 	);
+
+	it('should pass additional data for partial executions to run', async () => {
+		const executionRepository = mock<ExecutionRepository>();
+		const pinData: IPinData = { pinned: [] };
+		const execution = mock<IExecutionResponse>({
+			mode: 'manual',
+			workflowData: { nodes: [], pinData },
+			data: mock<IRunExecutionData>({
+				isTestWebhook: false,
+				resultData: {
+					runData: {
+						trigger: [mock<ITaskData>({ executionIndex: 1 })],
+						node: [mock<ITaskData>({ executionIndex: 3 }), mock<ITaskData>({ executionIndex: 4 })],
+					},
+					pinData,
+				},
+			}),
+		});
+		executionRepository.findSingleExecution.mockResolvedValue(execution);
+
+		const additionalData = mock<IWorkflowExecuteAdditionalData>();
+		jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
+
+		const manualExecutionService = mock<ManualExecutionService>();
+		const jobProcessor = new JobProcessor(
+			logger,
+			mock(),
+			executionRepository,
+			mock(),
+			mock(),
+			mock(),
+			manualExecutionService,
+		);
+
+		const executionId = 'execution-id';
+		await jobProcessor.processJob(mock<Job>({ data: { executionId, loadStaticData: false } }));
+
+		expect(WorkflowExecuteAdditionalData.getBase).toHaveBeenCalledWith(
+			undefined,
+			undefined,
+			undefined,
+		);
+
+		expect(manualExecutionService.runManually).toHaveBeenCalledWith(
+			expect.objectContaining({
+				executionMode: 'manual',
+			}),
+			expect.any(Workflow),
+			additionalData,
+			executionId,
+			pinData,
+		);
+	});
 });
