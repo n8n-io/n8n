@@ -5,7 +5,7 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
-type ExecutionStarted = {
+export type ExecutionStarted = {
 	type: 'executionStarted';
 	data: {
 		executionId: string;
@@ -18,14 +18,14 @@ type ExecutionStarted = {
 	};
 };
 
-type ExecutionWaiting = {
+export type ExecutionWaiting = {
 	type: 'executionWaiting';
 	data: {
 		executionId: string;
 	};
 };
 
-type ExecutionFinished = {
+export type ExecutionFinished = {
 	type: 'executionFinished';
 	data: {
 		executionId: string;
@@ -36,14 +36,14 @@ type ExecutionFinished = {
 	};
 };
 
-type ExecutionRecovered = {
+export type ExecutionRecovered = {
 	type: 'executionRecovered';
 	data: {
 		executionId: string;
 	};
 };
 
-type NodeExecuteBefore = {
+export type NodeExecuteBefore = {
 	type: 'nodeExecuteBefore';
 	data: {
 		executionId: string;
@@ -52,7 +52,7 @@ type NodeExecuteBefore = {
 	};
 };
 
-type NodeExecuteAfter = {
+export type NodeExecuteAfter = {
 	type: 'nodeExecuteAfter';
 	data: {
 		executionId: string;
