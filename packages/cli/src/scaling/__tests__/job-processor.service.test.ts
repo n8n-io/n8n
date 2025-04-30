@@ -83,7 +83,7 @@ describe('JobProcessor', () => {
 		},
 	);
 
-	it('should increment execution index for partial executions based on previous runs', async () => {
+	it('should pass additional data for partial executions to run', async () => {
 		const executionRepository = mock<ExecutionRepository>();
 		const pinData: IPinData = { pinned: [] };
 		const execution = mock<IExecutionResponse>({
