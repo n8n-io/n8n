@@ -6,7 +6,7 @@ import {
 	type BooleanLicenseFeature,
 	type NumericLicenseFeature,
 } from '@n8n/constants';
-import { OnShutdown } from '@n8n/decorators';
+import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import type { TEntitlement, TFeatures, TLicenseBlock } from '@n8n_io/license-sdk';
 import { LicenseManager } from '@n8n_io/license-sdk';
@@ -448,10 +448,12 @@ export class License {
 		}
 	}
 
+	@OnLeaderTakeover()
 	enableAutoRenewals() {
 		this.manager?.enableAutoRenewals();
 	}
 
+	@OnLeaderStepdown()
 	disableAutoRenewals() {
 		this.manager?.disableAutoRenewals();
 	}
