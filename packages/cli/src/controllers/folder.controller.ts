@@ -164,8 +164,8 @@ export class ProjectController {
 	) {
 		return await this.enterpriseWorkflowService.transferFolder(
 			req.user,
-			sourceFolderId,
 			sourceProjectId,
+			sourceFolderId,
 			body.destinationProjectId,
 			body.destinationParentFolderId,
 			body.shareCredentials,
