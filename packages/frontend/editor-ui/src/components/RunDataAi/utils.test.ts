@@ -631,7 +631,5 @@ describe(deepToRaw, () => {
 		expect(isReactive(raw.foo)).toBe(false);
 		expect(isReactive(raw.foo.bar)).toBe(false);
 		expect(isReactive(raw.bazz)).toBe(false);
-
-		console.log(raw.foo.bar);
 	});
 });

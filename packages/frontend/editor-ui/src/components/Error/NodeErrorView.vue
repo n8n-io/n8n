@@ -29,6 +29,7 @@ import { N8nIconButton } from '@n8n/design-system';
 type Props = {
 	// TODO: .node can be undefined
 	error: NodeError | NodeApiError | NodeOperationError;
+	showDetails?: boolean;
 	compact?: boolean;
 };
 
@@ -416,7 +417,7 @@ async function onAskAssistantClick() {
 </script>
 
 <template>
-	<div class="node-error-view">
+	<div :class="['node-error-view', props.compact ? 'node-error-view_compact' : '']">
 		<div class="node-error-view__header">
 			<div class="node-error-view__header-message" data-test-id="node-error-message">
 				<div>
@@ -449,7 +450,7 @@ async function onAskAssistantClick() {
 			</div>
 		</div>
 
-		<div v-if="!compact" class="node-error-view__info">
+		<div v-if="showDetails" class="node-error-view__info">
 			<div class="node-error-view__info-header">
 				<p class="node-error-view__info-title">
 					{{ i18n.baseText('nodeErrorView.details.title') }}
@@ -660,6 +661,11 @@ async function onAskAssistantClick() {
 		background-color: var(--color-background-xlight);
 		border: 1px solid var(--color-foreground-base);
 		border-radius: var(--border-radius-large);
+
+		.node-error-view_compact & {
+			margin: 0 auto var(--spacing-2xs) auto;
+			border-radius: var(--border-radius-base);
+		}
 	}
 
 	&__header-title {
@@ -670,6 +676,10 @@ async function onAskAssistantClick() {
 		background-color: var(--color-danger-tint-2);
 		border-radius: var(--border-radius-large) var(--border-radius-large) 0 0;
 		color: var(--color-danger);
+
+		.node-error-view_compact & {
+			border-radius: var(--border-radius-base);
+		}
 	}
 
 	&__header-message {
@@ -758,6 +768,10 @@ async function onAskAssistantClick() {
 		margin: 0 auto;
 		border: 1px solid var(--color-foreground-base);
 		border-radius: var(--border-radius-large);
+
+		.node-error-view_compact & {
+			border-radius: var(--border-radius-base);
+		}
 	}
 
 	&__info-header {
