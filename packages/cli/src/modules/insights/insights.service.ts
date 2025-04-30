@@ -5,7 +5,6 @@ import {
 } from '@n8n/api-types';
 import { OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import { Logger } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
 
 import { License } from '@/license';
@@ -33,19 +32,16 @@ export class InsightsService {
 		private readonly compactionService: InsightsCompactionService,
 		private readonly collectionService: InsightsCollectionService,
 		private readonly license: License,
-		private readonly logger: Logger,
 	) {}
 
 	startBackgroundProcess() {
 		this.compactionService.startCompactionTimer();
 		this.collectionService.startFlushingTimer();
-		this.logger.debug('Started compaction and flushing schedulers');
 	}
 
 	stopBackgroundProcess() {
 		this.compactionService.stopCompactionTimer();
 		this.collectionService.stopFlushingTimer();
-		this.logger.debug('Stopped compaction and flushing schedulers');
 	}
 
 	@OnShutdown()

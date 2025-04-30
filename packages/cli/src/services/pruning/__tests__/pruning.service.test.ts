@@ -2,8 +2,6 @@ import type { ExecutionsConfig } from '@n8n/config';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
-import type { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
-import type { OrchestrationService } from '@/services/orchestration.service';
 import { mockLogger } from '@test/mocking';
 
 import { PruningService } from '../pruning.service';
@@ -20,9 +18,6 @@ describe('PruningService', () => {
 				mock<InstanceSettings>({ isLeader: true, isMultiMain: true }),
 				mock(),
 				mock(),
-				mock<OrchestrationService>({
-					multiMainSetup: mock<MultiMainSetup>(),
-				}),
 				mock(),
 			);
 			const startPruningSpy = jest.spyOn(pruningService, 'startPruning');
@@ -38,9 +33,6 @@ describe('PruningService', () => {
 				mock<InstanceSettings>({ isLeader: false, isMultiMain: true }),
 				mock(),
 				mock(),
-				mock<OrchestrationService>({
-					multiMainSetup: mock<MultiMainSetup>(),
-				}),
 				mock(),
 			);
 			const startPruningSpy = jest.spyOn(pruningService, 'startPruning');
@@ -48,33 +40,6 @@ describe('PruningService', () => {
 			pruningService.init();
 
 			expect(startPruningSpy).not.toHaveBeenCalled();
-		});
-
-		it('should register leadership events if main on multi-main setup', () => {
-			const pruningService = new PruningService(
-				mockLogger(),
-				mock<InstanceSettings>({ isLeader: true, isMultiMain: true }),
-				mock(),
-				mock(),
-				mock<OrchestrationService>({
-					multiMainSetup: mock<MultiMainSetup>({ on: jest.fn() }),
-				}),
-				mock(),
-			);
-
-			pruningService.init();
-
-			// @ts-expect-error Private method
-			expect(pruningService.orchestrationService.multiMainSetup.on).toHaveBeenCalledWith(
-				'leader-takeover',
-				expect.any(Function),
-			);
-
-			// @ts-expect-error Private method
-			expect(pruningService.orchestrationService.multiMainSetup.on).toHaveBeenCalledWith(
-				'leader-stepdown',
-				expect.any(Function),
-			);
 		});
 	});
 
@@ -85,9 +50,6 @@ describe('PruningService', () => {
 				mock<InstanceSettings>({ isLeader: true, instanceType: 'main', isMultiMain: true }),
 				mock(),
 				mock(),
-				mock<OrchestrationService>({
-					multiMainSetup: mock<MultiMainSetup>(),
-				}),
 				mock<ExecutionsConfig>({ pruneData: true }),
 			);
 
@@ -100,9 +62,6 @@ describe('PruningService', () => {
 				mock<InstanceSettings>({ isLeader: true, instanceType: 'main', isMultiMain: true }),
 				mock(),
 				mock(),
-				mock<OrchestrationService>({
-					multiMainSetup: mock<MultiMainSetup>(),
-				}),
 				mock<ExecutionsConfig>({ pruneData: false }),
 			);
 
@@ -115,9 +74,6 @@ describe('PruningService', () => {
 				mock<InstanceSettings>({ isLeader: false, instanceType: 'worker', isMultiMain: true }),
 				mock(),
 				mock(),
-				mock<OrchestrationService>({
-					multiMainSetup: mock<MultiMainSetup>(),
-				}),
 				mock<ExecutionsConfig>({ pruneData: true }),
 			);
 
@@ -135,9 +91,6 @@ describe('PruningService', () => {
 				}),
 				mock(),
 				mock(),
-				mock<OrchestrationService>({
-					multiMainSetup: mock<MultiMainSetup>(),
-				}),
 				mock<ExecutionsConfig>({ pruneData: true }),
 			);
 
@@ -152,9 +105,6 @@ describe('PruningService', () => {
 				mock<InstanceSettings>({ isLeader: true, instanceType: 'main', isMultiMain: true }),
 				mock(),
 				mock(),
-				mock<OrchestrationService>({
-					multiMainSetup: mock<MultiMainSetup>(),
-				}),
 				mock<ExecutionsConfig>({ pruneData: false }),
 			);
 
@@ -179,9 +129,6 @@ describe('PruningService', () => {
 				mock<InstanceSettings>({ isLeader: true, instanceType: 'main', isMultiMain: true }),
 				mock(),
 				mock(),
-				mock<OrchestrationService>({
-					multiMainSetup: mock<MultiMainSetup>(),
-				}),
 				mock<ExecutionsConfig>({ pruneData: true }),
 			);
 
