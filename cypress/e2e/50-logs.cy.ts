@@ -22,6 +22,7 @@ describe('Logs', () => {
 		logs.getInputTbodyCell(1, 0).should('contain.text', '0');
 		logs.getInputTbodyCell(10, 0).should('contain.text', '9');
 		logs.clickOpenNdvAtRow(2);
+		ndv.setInputDisplayMode('Table');
 		ndv.getInputSelect().should('have.value', 'Code ');
 		ndv.getInputTableRows().should('have.length', 11);
 		ndv.getInputTbodyCell(1, 0).should('contain.text', '0');
