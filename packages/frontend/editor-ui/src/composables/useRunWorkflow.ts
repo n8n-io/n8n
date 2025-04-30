@@ -285,7 +285,14 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				startRunData.destinationNode = options.destinationNode;
 				const nodeId = workflowsStore.getNodeByName(options.destinationNode as string)?.id;
 				if (nodeId && version === 2) {
-					parameterOverridesStore.substituteParameters(workflow.id, nodeId, workflowData);
+					const node = workflowData.nodes.find((nodeData) => nodeData.id === nodeId);
+					if (node?.parameters) {
+						node.parameters = parameterOverridesStore.substituteParameters(
+							workflow.id,
+							nodeId,
+							node?.parameters,
+						);
+					}
 				}
 			}
 

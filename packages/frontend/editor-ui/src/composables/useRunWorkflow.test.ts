@@ -10,6 +10,7 @@ import type {
 	IExecuteData,
 	ITaskData,
 	INodeConnections,
+	INode,
 } from 'n8n-workflow';
 
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
@@ -517,8 +518,38 @@ describe('useRunWorkflow({ router })', () => {
 			const mockRunData = { nodeName: [] };
 			const { runWorkflow } = useRunWorkflow({ router });
 			const dataCaptor = captor();
-			const workflow = mock<Workflow>({ name: 'Test Workflow', id: 'WorkflowId' });
-			const workflowData = mock<IWorkflowData>({ id: 'workflowId', nodes: [] });
+
+			const workflow = mock<Workflow>({
+				name: 'Test Workflow',
+				id: 'WorkflowId',
+				nodes: {
+					'Test node': {
+						id: 'Test id',
+						name: 'Test node',
+						parameters: {
+							param: '0',
+						},
+					},
+				},
+			});
+
+			const workflowData = {
+				id: 'workflowId',
+				nodes: [
+					{
+						id: 'Test id',
+						name: 'Test node',
+						parameters: {
+							param: '0',
+						},
+						position: [0, 0],
+						type: 'n8n-nodes-base.test',
+						typeVersion: 1,
+					} as INode,
+				],
+				connections: {},
+			};
+
 			workflow.getParentNodes.mockReturnValue([]);
 
 			vi.mocked(settingsStore).partialExecutionVersion = 2;
@@ -533,15 +564,15 @@ describe('useRunWorkflow({ router })', () => {
 			const result = await runWorkflow({ destinationNode: 'Test node' });
 
 			// ASSERT
+			expect(parameterOverridesStore.substituteParameters).toHaveBeenCalledWith(
+				'WorkflowId',
+				'Test id',
+				{ param: '0' },
+			);
 			expect(result).toEqual(mockExecutionResponse);
 			expect(workflowsStore.setWorkflowExecutionData).toHaveBeenCalledTimes(1);
 			expect(workflowsStore.setWorkflowExecutionData).toHaveBeenCalledWith(dataCaptor);
 			expect(dataCaptor.value).toMatchObject({ data: { resultData: { runData: mockRunData } } });
-			expect(parameterOverridesStore.substituteParameters).toHaveBeenCalledWith(
-				'WorkflowId',
-				'Test id',
-				workflowData,
-			);
 		});
 
 		it('retains the original run data if `partialExecutionVersion` is set to 2', async () => {

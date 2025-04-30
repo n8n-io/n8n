@@ -1,5 +1,4 @@
-import { type IWorkflowData } from '@/Interface';
-import { type INode, type INodeParameters, type NodeParameterValueType } from 'n8n-workflow';
+import { type INodeParameters, type NodeParameterValueType } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { ref, watch } from 'vue';
 
@@ -196,10 +195,9 @@ export const useParameterOverridesStore = defineStore('parameterOverrides', () =
 	const substituteParameters = (
 		workflowId: string,
 		nodeId: string,
-		workflowData: IWorkflowData,
-	): void => {
-		const node = workflowData.nodes.find((n: INode) => n.id === nodeId);
-		if (!node) return;
+		nodeParameters: INodeParameters,
+	): INodeParameters => {
+		if (!nodeParameters) return {};
 
 		const nodeOverrides = parameterOverrides.value[workflowId]?.[nodeId] || {};
 
@@ -208,7 +206,7 @@ export const useParameterOverridesStore = defineStore('parameterOverrides', () =
 			{} as INodeParameters,
 		);
 
-		node.parameters = deepMerge(node.parameters, overrideParams);
+		return deepMerge(nodeParameters, overrideParams);
 	};
 
 	return {

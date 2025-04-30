@@ -187,38 +187,26 @@ describe('parameterOverrides.store', () => {
 				'parent.array[1].value': 'overrideArray2',
 			});
 
-			const workflowData = {
-				nodes: [
-					{
-						id: 'id1',
-						name: 'node-1',
-						parameters: {
-							param1: 'original1',
-							parent: {
-								child: 'original2',
-								array: [
-									{
-										name: 'name',
-										value: 'original1',
-									},
-									{
-										name: 'name2',
-										value: 'original2',
-									},
-								],
-							},
+			const nodeParameters = {
+				param1: 'original1',
+				parent: {
+					child: 'original2',
+					array: [
+						{
+							name: 'name',
+							value: 'original1',
 						},
-						type: 'n8n-nodes-base.node1',
-						typeVersion: 1,
-						position: [0, 0] as [number, number],
-					},
-				],
-				connections: {},
+						{
+							name: 'name2',
+							value: 'original2',
+						},
+					],
+				},
 			};
 
-			store.substituteParameters('workflow-1', 'id1', workflowData);
+			const result = store.substituteParameters('workflow-1', 'id1', nodeParameters);
 
-			expect(workflowData.nodes[0].parameters).toEqual({
+			expect(result).toEqual({
 				param1: 'override1',
 				parent: {
 					child: 'override2',
@@ -233,40 +221,6 @@ describe('parameterOverrides.store', () => {
 						},
 					],
 				},
-			});
-		});
-
-		it('does not modifies parameters if node is not found', () => {
-			const store = useParameterOverridesStore();
-
-			// Add some parameter overrides
-			store.addParameterOverrides('workflow-1', 'id1', {
-				param1: 'override1',
-			});
-
-			// Create a mock workflow data object with a different node name
-			const workflowData = {
-				nodes: [
-					{
-						id: 'id2',
-						name: 'node-2',
-						parameters: {
-							param1: 'original1',
-						},
-						type: 'n8n-nodes-base.node1',
-						typeVersion: 1,
-						position: [0, 0] as [number, number],
-					},
-				],
-				connections: {},
-			};
-
-			// Call the substituteParameters function
-			store.substituteParameters('workflow-1', 'id1', workflowData);
-
-			// Check that the parameters were not modified
-			expect(workflowData.nodes[0].parameters).toEqual({
-				param1: 'original1',
 			});
 		});
 	});
