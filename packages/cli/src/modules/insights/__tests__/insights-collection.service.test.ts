@@ -18,6 +18,7 @@ import type { TypeUnit } from '@/modules/insights/database/entities/insights-sha
 import { InsightsMetadataRepository } from '@/modules/insights/database/repositories/insights-metadata.repository';
 import { InsightsRawRepository } from '@/modules/insights/database/repositories/insights-raw.repository';
 import type { IWorkflowDb } from '@/types-db';
+import { mockLogger } from '@test/mocking';
 import { createTeamProject } from '@test-integration/db/projects';
 import { createWorkflow } from '@test-integration/db/workflows';
 import * as testDb from '@test-integration/test-db';
@@ -284,7 +285,7 @@ describe('workflowExecuteAfterHandler - cacheMetadata', () => {
 		insightsCollectionService = new InsightsCollectionService(
 			sharedWorkflowRepositoryMock,
 			Container.get(InsightsConfig),
-			mock<Logger>(),
+			mockLogger(),
 		);
 	});
 
