@@ -1,5 +1,6 @@
 import type { Document } from '@langchain/core/documents';
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
+import type { ChainValues } from '@langchain/core/utils/types';
 import type { TextSplitter } from '@langchain/textsplitters';
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
 import { loadSummarizationChain } from 'langchain/chains';
@@ -21,7 +22,6 @@ import { getTracingConfig } from '@utils/tracing';
 
 import { getChainPromptsArgs } from '../helpers';
 import { REFINE_PROMPT_TEMPLATE, DEFAULT_PROMPT_TEMPLATE } from '../prompt';
-import { ChainValues } from '@langchain/core/utils/types';
 
 function getInputs(parameters: IDataObject) {
 	const chunkingMode = parameters?.chunkingMode;
@@ -325,7 +325,7 @@ export class ChainSummarizationV2 implements INodeType {
 								{
 									displayName: 'Delay Between Batches',
 									name: 'delayBetweenBatches',
-									default: 1000,
+									default: 0,
 									type: 'number',
 									description:
 										'Delay in milliseconds between batches. This is useful for rate limiting.',
@@ -350,7 +350,10 @@ export class ChainSummarizationV2 implements INodeType {
 
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
-		const { batchSize, delayBetweenBatches } = this.getNodeParameter('options.batching', 0, {}) as {
+		const { batchSize, delayBetweenBatches } = this.getNodeParameter('options.batching', 0, {
+			batchSize: 100,
+			delayBetweenBatches: 0,
+		}) as {
 			batchSize: number;
 			delayBetweenBatches: number;
 		};

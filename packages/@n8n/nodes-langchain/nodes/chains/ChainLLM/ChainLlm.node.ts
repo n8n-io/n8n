@@ -67,13 +67,13 @@ export class ChainLlm implements INodeType {
 		this.logger.debug('Executing Basic LLM Chain');
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
-		const batchSize = this.getNodeParameter('batching.batchSize', 0, 1) as number;
-		const delayBetweenBatches = this.getNodeParameter(
-			'batching.delayBetweenBatches',
-			0,
-			1000,
-		) as number;
-
+		const { batchSize, delayBetweenBatches } = this.getNodeParameter('batching', 0, {
+			batchSize: 100,
+			delayBetweenBatches: 0,
+		}) as {
+			batchSize: number;
+			delayBetweenBatches: number;
+		};
 		// Get output parser if configured
 		const outputParser = await getOptionalOutputParser(this);
 

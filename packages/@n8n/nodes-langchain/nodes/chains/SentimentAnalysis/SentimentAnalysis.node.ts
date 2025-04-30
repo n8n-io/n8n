@@ -149,7 +149,7 @@ export class SentimentAnalysis implements INodeType {
 							{
 								displayName: 'Delay Between Batches',
 								name: 'delayBetweenBatches',
-								default: 1000,
+								default: 0,
 								type: 'number',
 								description:
 									'Delay in milliseconds between batches. This is useful for rate limiting.',
@@ -170,7 +170,10 @@ export class SentimentAnalysis implements INodeType {
 		)) as BaseLanguageModel;
 
 		const returnData: INodeExecutionData[][] = [];
-		const { batchSize, delayBetweenBatches } = this.getNodeParameter('options.batching', 0, {}) as {
+		const { batchSize, delayBetweenBatches } = this.getNodeParameter('options.batching', 0, {
+			batchSize: 100,
+			delayBetweenBatches: 0,
+		}) as {
 			batchSize: number;
 			delayBetweenBatches: number;
 		};

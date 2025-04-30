@@ -65,7 +65,7 @@ export const toolsAgentProperties: INodeProperties[] = [
 					{
 						displayName: 'Delay Between Batches',
 						name: 'delayBetweenBatches',
-						default: 1000,
+						default: 0,
 						type: 'number',
 						description: 'Delay in milliseconds between batches. This is useful for rate limiting.',
 					},

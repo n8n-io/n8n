@@ -410,7 +410,10 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 	const outputParser = await getOptionalOutputParser(this);
 	const memory = await getOptionalMemory(this);
 	const tools = await getTools(this, outputParser);
-	const { batchSize, delayBetweenBatches } = this.getNodeParameter('options.batching', 0, {}) as {
+	const { batchSize, delayBetweenBatches } = this.getNodeParameter('options.batching', 0, {
+		batchSize: 1,
+		delayBetweenBatches: 0,
+	}) as {
 		batchSize: number;
 		delayBetweenBatches: number;
 	};
