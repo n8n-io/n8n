@@ -18,7 +18,6 @@ export async function readSheet(
 	nodeVersion: number,
 	items: INodeExecutionData[],
 	rangeString?: string,
-	structureColumns: boolean = true,
 	additionalOptions?: IDataObject,
 ): Promise<INodeExecutionData[]> {
 	const options = this.getNodeParameter('options', itemIndex, {});
@@ -94,10 +93,8 @@ export async function readSheet(
 			returnAllMatches,
 			combineFilters,
 		});
-	} else if (structureColumns) {
-		responseData = sheet.structureArrayDataByColumn(inputData, keyRowIndex, dataStartRowIndex);
 	} else {
-		responseData = sheet.structureArrayData(inputData, keyRowIndex, dataStartRowIndex);
+		responseData = sheet.structureArrayDataByColumn(inputData, keyRowIndex, dataStartRowIndex);
 	}
 
 	returnData.push(
