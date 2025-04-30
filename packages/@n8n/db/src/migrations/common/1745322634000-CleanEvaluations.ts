@@ -1,68 +1,54 @@
 import type { MigrationContext, IrreversibleMigration } from '@/databases/types';
-
+const testRunTableName = 'test_run';
+const testCaseExecutionTableName = 'test_case_execution';
 export class ClearEvaluation1745322634000 implements IrreversibleMigration {
-	async up({
-		isMysql,
-		queryRunner,
-		tablePrefix,
-		schemaBuilder: { dropColumns, dropTable, addColumns, column, createIndex, addForeignKey },
-	}: MigrationContext) {
-		// Delete all existing test data
-		await queryRunner.query('DELETE FROM test_run');
-		await queryRunner.query('DELETE FROM test_case_execution');
-
-		// Update test_run
-		if (isMysql) {
-			await queryRunner.query(
-				'ALTER TABLE `' +
-					tablePrefix +
-					'test_run` DROP FOREIGN KEY `FK_' +
-					tablePrefix +
-					'3a81713a76f2295b12b46cdfcab`',
-			);
-			await queryRunner.query(
-				'DROP INDEX `IDX_' +
-					tablePrefix +
-					'3a81713a76f2295b12b46cdfca` ON `' +
-					tablePrefix +
-					'test_run`',
-			);
-		}
-		await dropColumns('test_run', ['testDefinitionId', 'totalCases', 'passedCases', 'failedCases']);
-
-		// Add workflowId column & foreign key to test_run
-		await addColumns('test_run', [column('workflowId').varchar().notNull]);
-		await addForeignKey('test_run', 'workflowId', ['workflow_entity', 'id']);
-		await createIndex('test_run', ['workflowId']);
-
+	async up({ schemaBuilder: { dropTable, column, createTable } }: MigrationContext) {
 		// Drop test_metric, test_definition
-		await dropTable('test_metric');
+		await dropTable('test_case_execution');
+		await dropTable('test_run');
 		await dropTable('test_definition');
+		await dropTable('test_metric');
 
-		// Update test_case_execution
-		if (isMysql) {
-			await queryRunner.query(
-				'ALTER TABLE `' +
-					tablePrefix +
-					'test_case_execution` DROP FOREIGN KEY `FK_' +
-					tablePrefix +
-					'8e4b4774db42f1e6dda3452b2af`',
-			);
-			await queryRunner.query(
-				'ALTER TABLE `' +
-					tablePrefix +
-					'test_case_execution` DROP FOREIGN KEY `FK_' +
-					tablePrefix +
-					'258d954733841d51edd826a562b`',
-			);
-			await queryRunner.query(
-				'ALTER TABLE `' +
-					tablePrefix +
-					'test_case_execution` DROP FOREIGN KEY `FK_' +
-					tablePrefix +
-					'dfbe194e3ebdfe49a87bc4692ca`',
-			);
-		}
-		await dropColumns('test_case_execution', ['pastExecutionId', 'evaluationExecutionId']);
+		await createTable(testRunTableName)
+			.withColumns(
+				column('id').varchar(36).primary.notNull,
+				column('workflowId').varchar(36).notNull,
+				column('status').varchar().notNull,
+				column('errorCode').varchar(),
+				column('errorDetails').json,
+				column('runAt').timestamp(),
+				column('completedAt').timestamp(),
+				column('metrics').json,
+			)
+			.withIndexOn('workflowId')
+			.withForeignKey('workflowId', {
+				tableName: 'workflow_entity',
+				columnName: 'id',
+				onDelete: 'CASCADE',
+			}).withTimestamps;
+
+		await createTable(testCaseExecutionTableName)
+			.withColumns(
+				column('id').varchar(36).primary.notNull,
+				column('testRunId').varchar(36).notNull,
+				column('executionId').int, // Execution of the workflow under test. Might be null if execution was deleted after the test run
+				column('status').varchar().notNull,
+				column('runAt').timestamp(),
+				column('completedAt').timestamp(),
+				column('errorCode').varchar(),
+				column('errorDetails').json,
+				column('metrics').json,
+			)
+			.withIndexOn('testRunId')
+			.withForeignKey('testRunId', {
+				tableName: 'test_run',
+				columnName: 'id',
+				onDelete: 'CASCADE',
+			})
+			.withForeignKey('executionId', {
+				tableName: 'execution_entity',
+				columnName: 'id',
+				onDelete: 'SET NULL',
+			}).withTimestamps;
 	}
 }
