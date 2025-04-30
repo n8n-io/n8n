@@ -1,7 +1,6 @@
 import 'reflect-metadata';
 import { GlobalConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
-import { ModuleRegistry } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { Command, Errors } from '@oclif/core';
 import {
@@ -30,6 +29,7 @@ import { ExternalHooks } from '@/external-hooks';
 import { ExternalSecretsManager } from '@/external-secrets.ee/external-secrets-manager.ee';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { ModuleRegistry } from '@/modules/module-registry';
 import type { ModulePreInit } from '@/modules/modules.config';
 import { ModulesConfig } from '@/modules/modules.config';
 import { NodeTypes } from '@/node-types';

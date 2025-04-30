@@ -1,14 +1,9 @@
+import { OnLifecycleEvent, type WorkflowExecuteAfterContext } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { In } from '@n8n/typeorm';
 import { DateTime } from 'luxon';
 import { Logger } from 'n8n-core';
-import type { ExecutionLifecycleHooks } from 'n8n-core';
-import {
-	UnexpectedError,
-	type ExecutionStatus,
-	type IRun,
-	type WorkflowExecuteMode,
-} from 'n8n-workflow';
+import { UnexpectedError, type ExecutionStatus, type WorkflowExecuteMode } from 'n8n-workflow';
 
 import { SharedWorkflow } from '@/databases/entities/shared-workflow';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
@@ -103,16 +98,17 @@ export class InsightsCollectionService {
 		await Promise.all([...this.flushesInProgress, this.flushEvents()]);
 	}
 
-	async workflowExecuteAfterHandler(ctx: ExecutionLifecycleHooks, fullRunData: IRun) {
-		if (shouldSkipStatus[fullRunData.status] || shouldSkipMode[fullRunData.mode]) {
+	@OnLifecycleEvent('workflowExecuteAfter')
+	async handleWorkflowExecuteAfter(ctx: WorkflowExecuteAfterContext) {
+		if (shouldSkipStatus[ctx.runData.status] || shouldSkipMode[ctx.runData.mode]) {
 			return;
 		}
 
-		const status = fullRunData.status === 'success' ? 'success' : 'failure';
+		const status = ctx.runData.status === 'success' ? 'success' : 'failure';
 
 		const commonWorkflowData = {
-			workflowId: ctx.workflowData.id,
-			workflowName: ctx.workflowData.name,
+			workflowId: ctx.workflow.id,
+			workflowName: ctx.workflow.name,
 			timestamp: DateTime.utc().toJSDate(),
 		};
 
@@ -124,8 +120,8 @@ export class InsightsCollectionService {
 		});
 
 		// run time event
-		if (fullRunData.stoppedAt) {
-			const value = fullRunData.stoppedAt.getTime() - fullRunData.startedAt.getTime();
+		if (ctx.runData.stoppedAt) {
+			const value = ctx.runData.stoppedAt.getTime() - ctx.runData.startedAt.getTime();
 			this.bufferedInsights.add({
 				...commonWorkflowData,
 				type: 'runtime_ms',
@@ -134,11 +130,11 @@ export class InsightsCollectionService {
 		}
 
 		// time saved event
-		if (status === 'success' && ctx.workflowData.settings?.timeSavedPerExecution) {
+		if (status === 'success' && ctx.workflow.settings?.timeSavedPerExecution) {
 			this.bufferedInsights.add({
 				...commonWorkflowData,
 				type: 'time_saved_min',
-				value: ctx.workflowData.settings.timeSavedPerExecution,
+				value: ctx.workflow.settings.timeSavedPerExecution,
 			});
 		}
 
