@@ -1,5 +1,6 @@
-import { DateTimeColumn } from '@n8n/db';
 import { Entity, PrimaryColumn } from '@n8n/typeorm';
+
+import { DateTimeColumn } from './abstract-entity';
 
 @Entity()
 export class InvalidAuthToken {

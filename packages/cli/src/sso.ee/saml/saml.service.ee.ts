@@ -1,4 +1,5 @@
 import type { SamlPreferences } from '@n8n/api-types';
+import type { Settings } from '@n8n/db';
 import { Service } from '@n8n/di';
 import axios from 'axios';
 import type express from 'express';
@@ -8,7 +9,6 @@ import { jsonParse, UnexpectedError } from 'n8n-workflow';
 import type { IdentityProviderInstance, ServiceProviderInstance } from 'samlify';
 import type { BindingContext, PostBindingContext } from 'samlify/types/src/entity';
 
-import type { Settings } from '@/databases/entities/settings';
 import type { User } from '@/databases/entities/user';
 import { SettingsRepository } from '@/databases/repositories/settings.repository';
 import { UserRepository } from '@/databases/repositories/user.repository';

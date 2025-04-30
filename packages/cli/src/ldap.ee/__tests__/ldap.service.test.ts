@@ -1,3 +1,4 @@
+import type { Settings } from '@n8n/db';
 import { QueryFailedError } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 import { Client } from 'ldapts';
@@ -5,7 +6,6 @@ import type { Cipher } from 'n8n-core';
 import { randomString } from 'n8n-workflow';
 
 import config from '@/config';
-import type { Settings } from '@/databases/entities/settings';
 import { AuthIdentityRepository } from '@/databases/repositories/auth-identity.repository';
 import { SettingsRepository } from '@/databases/repositories/settings.repository';
 import type { EventService } from '@/events/event.service';

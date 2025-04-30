@@ -1,3 +1,4 @@
+import type { WebhookEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { Logger } from 'n8n-core';
@@ -13,7 +14,6 @@ import type {
 
 import { ActiveExecutions } from '@/active-executions';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import type { WebhookEntity } from '@/databases/entities/webhook-entity';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { ExecutionService } from '@/executions/execution.service';
 import { ExternalHooks } from '@/external-hooks';

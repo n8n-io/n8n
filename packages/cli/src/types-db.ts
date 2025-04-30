@@ -8,8 +8,6 @@ import type {
 	ExecutionStatus,
 	FeatureFlags,
 	IUserSettings,
-	DeduplicationMode,
-	DeduplicationItemTypes,
 	AnnotationVote,
 	ExecutionSummary,
 	IUser,
@@ -146,16 +144,6 @@ export interface WorkflowWithSharingsMetaDataAndCredentials extends Omit<Workflo
 	homeProject?: SlimProject | null;
 	sharedWithProjects: SlimProject[];
 	usedCredentials?: CredentialUsedByWorkflow[];
-}
-
-export interface IProcessedDataLatest {
-	mode: DeduplicationMode;
-	data: DeduplicationItemTypes;
-}
-
-export interface IProcessedDataEntries {
-	mode: DeduplicationMode;
-	data: DeduplicationItemTypes[];
 }
 
 /** Payload for creating an execution. */

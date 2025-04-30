@@ -1,9 +1,8 @@
-import { JsonColumn } from '@n8n/db';
+import { JsonColumn, idStringifier } from '@n8n/db';
 import { Column, Entity, ManyToOne, PrimaryColumn } from '@n8n/typeorm';
 import { IWorkflowBase } from 'n8n-workflow';
 
 import { ExecutionEntity } from './execution-entity';
-import { idStringifier } from '../utils/transformers';
 
 @Entity()
 export class ExecutionData {

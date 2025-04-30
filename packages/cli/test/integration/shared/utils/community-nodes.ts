@@ -1,7 +1,7 @@
+import { InstalledPackages } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { NODE_PACKAGE_PREFIX } from '@/constants';
-import { InstalledPackages } from '@/databases/entities/installed-packages';
 import { InstalledNodesRepository } from '@/databases/repositories/installed-nodes.repository';
 import { InstalledPackagesRepository } from '@/databases/repositories/installed-packages.repository';
 

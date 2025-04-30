@@ -1,4 +1,4 @@
-import { JsonColumn, WithTimestampsAndStringId, dbType } from '@n8n/db';
+import { JsonColumn, WithTimestampsAndStringId, dbType, objectRetriever, sqlite } from '@n8n/db';
 import {
 	Column,
 	Entity,
@@ -20,7 +20,6 @@ import type { SharedWorkflow } from './shared-workflow';
 import type { TagEntity } from './tag-entity';
 import type { WorkflowStatistics } from './workflow-statistics';
 import type { WorkflowTagMapping } from './workflow-tag-mapping';
-import { objectRetriever, sqlite } from '../utils/transformers';
 
 @Entity()
 export class WorkflowEntity extends WithTimestampsAndStringId implements IWorkflowDb {
