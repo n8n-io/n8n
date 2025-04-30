@@ -5,8 +5,7 @@ import {
 } from '@n8n/api-types';
 import { OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import type { ExecutionLifecycleHooks } from 'n8n-core';
-import { UserError, type IRun } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 
 import { License } from '@/license';
 
@@ -49,10 +48,6 @@ export class InsightsService {
 	async shutdown() {
 		await this.collectionService.shutdown();
 		this.compactionService.stopCompactionTimer();
-	}
-
-	async workflowExecuteAfterHandler(ctx: ExecutionLifecycleHooks, fullRunData: IRun) {
-		await this.collectionService.workflowExecuteAfterHandler(ctx, fullRunData);
 	}
 
 	async getInsightsSummary({
