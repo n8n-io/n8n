@@ -13,7 +13,8 @@ import type {
 } from '@n8n/typeorm';
 import { PROJECT_ROOT } from 'n8n-workflow';
 
-import type { ListQuery } from '@/types-db';
+import type { ListQuery } from '@/requests';
+import type { ListQueryDb } from '@/types-db';
 
 import { FolderRepository } from './folder.repository';
 import type { Folder, FolderWithWorkflowAndSubFolderCount } from '../entities/folder';
@@ -33,8 +34,8 @@ type WorkflowFolderUnionRow = {
 };
 
 export type WorkflowFolderUnionFull = (
-	| ListQuery.Workflow.Plain
-	| ListQuery.Workflow.WithSharing
+	| ListQueryDb.Workflow.Plain
+	| ListQueryDb.Workflow.WithSharing
 	| FolderWithWorkflowAndSubFolderCount
 ) & {
 	resource: ResourceType;
@@ -320,7 +321,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 	private enrichDataWithExtras(
 		baseData: WorkflowFolderUnionRow[],
 		extraData: {
-			workflows: ListQuery.Workflow.WithSharing[] | ListQuery.Workflow.Plain[];
+			workflows: ListQueryDb.Workflow.WithSharing[] | ListQueryDb.Workflow.Plain[];
 			folders: Folder[];
 		},
 	): WorkflowFolderUnionFull[] {
@@ -343,8 +344,8 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		const query = this.getManyQuery(workflowIds, options);
 
 		const workflows = (await query.getMany()) as
-			| ListQuery.Workflow.Plain[]
-			| ListQuery.Workflow.WithSharing[];
+			| ListQueryDb.Workflow.Plain[]
+			| ListQueryDb.Workflow.WithSharing[];
 
 		return workflows;
 	}
@@ -357,7 +358,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		const query = this.getManyQuery(sharedWorkflowIds, options);
 
 		const [workflows, count] = (await query.getManyAndCount()) as [
-			ListQuery.Workflow.Plain[] | ListQuery.Workflow.WithSharing[],
+			ListQueryDb.Workflow.Plain[] | ListQueryDb.Workflow.WithSharing[],
 			number,
 		];
 
