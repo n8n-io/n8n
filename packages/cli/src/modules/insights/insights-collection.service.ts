@@ -77,12 +77,14 @@ export class InsightsCollectionService {
 			async () => await this.flushEvents(),
 			this.insightsConfig.flushIntervalSeconds * 1000,
 		);
+		this.logger.debug('Started flushing timer');
 	}
 
 	stopFlushingTimer() {
 		if (this.flushInsightsRawBufferTimer !== undefined) {
 			clearTimeout(this.flushInsightsRawBufferTimer);
 			this.flushInsightsRawBufferTimer = undefined;
+			this.logger.debug('Stopped flushing timer');
 		}
 	}
 
