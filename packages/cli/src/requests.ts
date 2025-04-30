@@ -1,4 +1,5 @@
 import type { ProjectIcon, ProjectRole, ProjectType } from '@n8n/api-types';
+import type { Variables } from '@n8n/db';
 import type { AssignableRole, GlobalRole, Scope } from '@n8n/permissions';
 import type express from 'express';
 import type {
@@ -9,7 +10,6 @@ import type {
 
 import type { Project } from '@/databases/entities/project';
 import type { User } from '@/databases/entities/user';
-import type { Variables } from '@/databases/entities/variables';
 import type { WorkflowHistory } from '@/databases/entities/workflow-history';
 import type { ListQuery } from '@/types-db';
 

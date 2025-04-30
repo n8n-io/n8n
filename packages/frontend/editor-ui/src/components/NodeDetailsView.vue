@@ -3,7 +3,12 @@ import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type { IRunData, Workflow, NodeConnectionType, IConnectedNode } from 'n8n-workflow';
 import { jsonParse, NodeHelpers, NodeConnectionTypes } from 'n8n-workflow';
-import type { IUpdateInformation, TargetItem } from '@/Interface';
+import type {
+	IRunDataDisplayMode,
+	IUpdateInformation,
+	NodePanelType,
+	TargetItem,
+} from '@/Interface';
 
 import NodeSettings from '@/components/NodeSettings.vue';
 import NDVDraggablePanels from './NDVDraggablePanels.vue';
@@ -350,6 +355,10 @@ const foreignCredentials = computed(() => {
 
 const hasForeignCredential = computed(() => foreignCredentials.value.length > 0);
 
+const inputPanelDisplayMode = computed(() => ndvStore.inputPanelDisplayMode);
+
+const outputPanelDisplayMode = computed(() => ndvStore.outputPanelDisplayMode);
+
 //methods
 
 const setIsTooltipVisible = ({ isTooltipVisible }: DataPinningDiscoveryEvent) => {
@@ -619,6 +628,10 @@ const setSelectedInput = (value: string | undefined) => {
 	selectedInput.value = value;
 };
 
+const handleChangeDisplayMode = (pane: NodePanelType, mode: IRunDataDisplayMode) => {
+	ndvStore.setPanelDisplayMode({ pane, mode });
+};
+
 //watchers
 
 watch(
@@ -664,8 +677,8 @@ watch(
 						parameters_pane_position: mainPanelPosition.value,
 						input_first_connector_runs: maxInputRun.value,
 						output_first_connector_runs: maxOutputRun.value,
-						selected_view_inputs: isTriggerNode.value ? 'trigger' : ndvStore.inputPanelDisplayMode,
-						selected_view_outputs: ndvStore.outputPanelDisplayMode,
+						selected_view_inputs: isTriggerNode.value ? 'trigger' : inputPanelDisplayMode.value,
+						selected_view_outputs: outputPanelDisplayMode.value,
 						input_connectors: parentNodes.value.length,
 						output_connectors: outgoingConnections?.main?.length,
 						input_displayed_run_index: inputRun.value,
@@ -790,6 +803,7 @@ onBeforeUnmount(() => {
 						:read-only="readOnly || hasForeignCredential"
 						:is-production-execution-preview="isProductionExecutionPreview"
 						:is-pane-active="isInputPaneActive"
+						:display-mode="inputPanelDisplayMode"
 						@activate-pane="activateInputPane"
 						@link-run="onLinkRunToInput"
 						@unlink-run="() => onUnlinkRun('input')"
@@ -800,6 +814,7 @@ onBeforeUnmount(() => {
 						@table-mounted="onInputTableMounted"
 						@item-hover="onInputItemHover"
 						@search="onSearch"
+						@display-mode-change="handleChangeDisplayMode('input', $event)"
 					/>
 				</template>
 				<template #output>
@@ -814,6 +829,7 @@ onBeforeUnmount(() => {
 						:block-u-i="blockUi && isTriggerNode && !isExecutableTriggerNode"
 						:is-production-execution-preview="isProductionExecutionPreview"
 						:is-pane-active="isOutputPaneActive"
+						:display-mode="outputPanelDisplayMode"
 						@activate-pane="activateOutputPane"
 						@link-run="onLinkRunToOutput"
 						@unlink-run="() => onUnlinkRun('output')"
@@ -822,6 +838,7 @@ onBeforeUnmount(() => {
 						@table-mounted="onOutputTableMounted"
 						@item-hover="onOutputItemHover"
 						@search="onSearch"
+						@display-mode-change="handleChangeDisplayMode('output', $event)"
 					/>
 				</template>
 				<template #main>
