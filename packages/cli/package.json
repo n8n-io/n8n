@@ -54,6 +54,7 @@
   ],
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
+    "@types/express-session": "^1.18.1",
     "@redocly/cli": "^1.28.5",
     "@types/aws4": "^1.5.1",
     "@types/bcryptjs": "^2.4.2",
@@ -125,6 +126,7 @@
     "express-openapi-validator": "5.4.7",
     "express-prom-bundle": "8.0.0",
     "express-rate-limit": "7.5.0",
+    "express-session": "^1.18.1",
     "fast-glob": "catalog:",
     "flat": "5.0.2",
     "flatted": "catalog:",
@@ -149,6 +151,7 @@
     "nodemailer": "6.9.9",
     "oauth-1.0a": "2.2.6",
     "open": "7.4.2",
+    "openid-client": "5.7.1",
     "otpauth": "9.1.1",
     "p-cancelable": "2.1.1",
     "p-lazy": "3.1.0",

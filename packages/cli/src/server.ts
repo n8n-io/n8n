@@ -69,6 +69,7 @@ import '@/evaluation.ee/test-definitions.controller.ee';
 import '@/evaluation.ee/test-runs.controller.ee';
 import '@/workflows/workflow-history.ee/workflow-history.controller.ee';
 import '@/workflows/workflows.controller';
+import { Wso2Service } from './services/wso2.service';
 
 @Service()
 export class Server extends AbstractServer {
@@ -83,6 +84,7 @@ export class Server extends AbstractServer {
 		private readonly postHogClient: PostHogClient,
 		private readonly eventService: EventService,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly wso2Service: Wso2Service,
 	) {
 		super();
 
@@ -175,6 +177,8 @@ export class Server extends AbstractServer {
 			const { PrometheusMetricsService } = await import('@/metrics/prometheus-metrics.service');
 			await Container.get(PrometheusMetricsService).init(this.app);
 		}
+
+		this.wso2Service.initWso2(this.app);
 
 		const { frontendService } = this;
 		if (frontendService) {

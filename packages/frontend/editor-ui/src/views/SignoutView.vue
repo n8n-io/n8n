@@ -13,8 +13,11 @@ const i18n = useI18n();
 
 const logout = async () => {
 	try {
-		await usersStore.logout();
-		window.location.href = router.resolve({ name: VIEWS.SIGNIN }).href;
+		let returnObj = await usersStore.logout();
+		window.location.href =
+			returnObj && returnObj.redirectTo
+				? returnObj.redirectTo
+				: router.resolve({ name: VIEWS.SIGNIN }).href;
 	} catch (e) {
 		toast.showError(e, i18n.baseText('auth.signout.error'));
 	}

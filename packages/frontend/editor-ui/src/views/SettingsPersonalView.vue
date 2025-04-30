@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue';
 import { useI18n } from '@/composables/useI18n';
 import { useToast } from '@/composables/useToast';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
@@ -16,7 +16,8 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { createFormEventBus } from '@n8n/design-system/utils';
 import type { MfaModalEvents } from '@/event-bus/mfa';
 import { promptMfaCodeBus } from '@/event-bus/mfa';
-import type { BaseTextKey } from '@/plugins/i18n';
+import { loadLanguage, type BaseTextKey } from '@/plugins/i18n';
+import { useRootStore } from '@/stores/root.store';
 
 type UserBasicDetailsForm = {
 	firstName: string;
@@ -29,6 +30,20 @@ type UserBasicDetailsWithMfa = UserBasicDetailsForm & {
 };
 
 const i18n = useI18n();
+const availableLanguages = ref([
+	{ code: 'en', label: 'English' },
+	{ code: 'it', label: 'Italiano' },
+	// aggiungi altre lingue se necessarie
+]);
+
+const rootStore = useRootStore();
+const selectedLanguage = ref(i18n.locale); // prende la lingua attuale
+watch(selectedLanguage, async (newLang: 'en' | 'it') => {
+	rootStore.setDefaultLocale(newLang);
+	localStorage.setItem('user-language', newLang);
+	await loadLanguage(newLang);
+});
+
 const { showToast, showError } = useToast();
 const documentTitle = useDocumentTitle();
 
@@ -350,6 +365,23 @@ onBeforeUnmount(() => {
 							:value="item.name"
 						>
 						</n8n-option>
+					</n8n-select>
+				</n8n-input-label>
+			</div>
+			<div class="mt-l">
+				<n8n-input-label :label="i18n.baseText('settings.personal.language')">
+					<n8n-select
+						v-model="selectedLanguage"
+						:class="$style.themeSelect"
+						data-test-id="language-select"
+						size="small"
+					>
+						<n8n-option
+							v-for="lang in availableLanguages"
+							:key="lang.code"
+							:label="lang.label"
+							:value="lang.code"
+						/>
 					</n8n-select>
 				</n8n-input-label>
 			</div>

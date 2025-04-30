@@ -27,8 +27,8 @@ export async function login(
 	return await makeRestApiRequest(context, 'POST', '/login', params);
 }
 
-export async function logout(context: IRestApiContext): Promise<void> {
-	await makeRestApiRequest(context, 'POST', '/logout');
+export async function logout(context: IRestApiContext): Promise<any> {
+	return await makeRestApiRequest(context, 'POST', '/logout');
 }
 
 export async function setupOwner(

@@ -192,14 +192,14 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 	};
 
 	const logout = async () => {
-		await usersApi.logout(rootStore.restApiContext);
+		let response = await usersApi.logout(rootStore.restApiContext);
 		unsetCurrentUser();
 		cloudPlanStore.reset();
 		postHogStore.reset();
 		uiStore.clearBannerStack();
 		npsSurveyStore.resetNpsSurveyOnLogOut();
-
 		localStorage.removeItem(BROWSER_ID_STORAGE_KEY);
+		return response;
 	};
 
 	const createOwner = async (params: {

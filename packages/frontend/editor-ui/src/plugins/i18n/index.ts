@@ -8,6 +8,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useRootStore } from '@/stores/root.store';
 import englishBaseText from './locales/en.json';
+import italyBaseText from './locales/it.json';
 import {
 	deriveMiddleKey,
 	isNestedInCollectionLike,
@@ -18,7 +19,7 @@ import {
 export const i18nInstance = createI18n({
 	locale: 'en',
 	fallbackLocale: 'en',
-	messages: { en: englishBaseText },
+	messages: { en: englishBaseText, it: italyBaseText },
 	warnHtmlInMessage: 'off',
 });
 
@@ -59,7 +60,7 @@ export class I18nClass {
 	 */
 	baseText(key: BaseTextKey, options?: BaseTextOptions): string {
 		// Create a unique cache key
-		const cacheKey = `${key}-${JSON.stringify(options)}`;
+		const cacheKey = `${key}-${JSON.stringify(options)}-${i18nInstance.global.locale}`;
 
 		// Check if the result is already cached
 		if (this.baseTextCache.has(cacheKey)) {

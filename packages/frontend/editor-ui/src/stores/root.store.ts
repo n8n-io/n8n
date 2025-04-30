@@ -6,6 +6,8 @@ import { computed, ref } from 'vue';
 
 const { VUE_APP_URL_BASE_API } = import.meta.env;
 
+const defLang = localStorage.getItem('user-language');
+
 export const useRootStore = defineStore(STORES.ROOT, () => {
 	const state = ref<RootState>({
 		baseUrl: VUE_APP_URL_BASE_API ?? window.BASE_PATH,
@@ -13,7 +15,7 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 			!window.REST_ENDPOINT || window.REST_ENDPOINT === '{{REST_ENDPOINT}}'
 				? 'rest'
 				: window.REST_ENDPOINT,
-		defaultLocale: 'en',
+		defaultLocale: defLang != null ? defLang : 'en',
 		endpointForm: 'form',
 		endpointFormTest: 'form-test',
 		endpointFormWaiting: 'form-waiting',
