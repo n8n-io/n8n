@@ -180,7 +180,8 @@ export class SentimentAnalysis implements INodeType {
 
 		for (let i = 0; i < items.length; i += batchSize) {
 			const batch = items.slice(i, i + batchSize);
-			const batchPromises = batch.map(async (_item, itemIndex) => {
+			const batchPromises = batch.map(async (_item, batchItemIndex) => {
+				const itemIndex = i + batchItemIndex;
 				const sentimentCategories = this.getNodeParameter(
 					'options.categories',
 					itemIndex,

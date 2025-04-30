@@ -331,14 +331,15 @@ export class InformationExtractor implements INodeType {
 
 			batchResults.forEach((response, index) => {
 				if (response.status === 'rejected') {
+					const error = response.reason as Error;
 					if (this.continueOnFail()) {
 						resultData.push({
 							json: { error: response.reason as string },
-							pairedItem: { item: index },
+							pairedItem: { item: i + index },
 						});
 						return;
 					} else {
-						throw new NodeOperationError(this.getNode(), response.reason);
+						throw new NodeOperationError(this.getNode(), error.message);
 					}
 				}
 				const output = response.value;
