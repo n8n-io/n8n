@@ -267,11 +267,9 @@ describe('TestRunnerService', () => {
 			telemetry,
 			workflowRepository,
 			workflowRunner,
-			executionRepository,
 			activeExecutions,
 			testRunRepository,
 			testCaseExecutionRepository,
-			mockNodeTypes,
 			errorReporter,
 		);
 
@@ -284,11 +282,9 @@ describe('TestRunnerService', () => {
 			telemetry,
 			workflowRepository,
 			workflowRunner,
-			executionRepository,
 			activeExecutions,
 			testRunRepository,
 			testCaseExecutionRepository,
-			mockNodeTypes,
 			errorReporter,
 		);
 
@@ -317,11 +313,9 @@ describe('TestRunnerService', () => {
 			telemetry,
 			workflowRepository,
 			workflowRunner,
-			executionRepository,
 			activeExecutions,
 			testRunRepository,
 			testCaseExecutionRepository,
-			mockNodeTypes,
 			errorReporter,
 		);
 
@@ -409,11 +403,9 @@ describe('TestRunnerService', () => {
 			telemetry,
 			workflowRepository,
 			workflowRunner,
-			executionRepository,
 			activeExecutions,
 			testRunRepository,
 			testCaseExecutionRepository,
-			mockNodeTypes,
 			errorReporter,
 		);
 
@@ -459,11 +451,9 @@ describe('TestRunnerService', () => {
 			telemetry,
 			workflowRepository,
 			workflowRunner,
-			executionRepository,
 			activeExecutions,
 			testRunRepository,
 			testCaseExecutionRepository,
-			mockNodeTypes,
 			errorReporter,
 		);
 
@@ -505,11 +495,9 @@ describe('TestRunnerService', () => {
 			telemetry,
 			workflowRepository,
 			workflowRunner,
-			executionRepository,
 			activeExecutions,
 			testRunRepository,
 			testCaseExecutionRepository,
-			mockNodeTypes,
 			errorReporter,
 		);
 
@@ -555,11 +543,9 @@ describe('TestRunnerService', () => {
 			telemetry,
 			workflowRepository,
 			workflowRunner,
-			executionRepository,
 			activeExecutions,
 			testRunRepository,
 			testCaseExecutionRepository,
-			mockNodeTypes,
 			errorReporter,
 		);
 
@@ -624,11 +610,9 @@ describe('TestRunnerService', () => {
 			telemetry,
 			workflowRepository,
 			workflowRunner,
-			executionRepository,
 			activeExecutions,
 			testRunRepository,
 			testCaseExecutionRepository,
-			mockNodeTypes,
 			errorReporter,
 		);
 
@@ -652,11 +636,9 @@ describe('TestRunnerService', () => {
 			telemetry,
 			workflowRepository,
 			workflowRunner,
-			executionRepository,
 			activeExecutions,
 			testRunRepository,
 			testCaseExecutionRepository,
-			mockNodeTypes,
 			errorReporter,
 		);
 
@@ -680,11 +662,9 @@ describe('TestRunnerService', () => {
 			telemetry,
 			workflowRepository,
 			workflowRunner,
-			executionRepository,
 			activeExecutions,
 			testRunRepository,
 			testCaseExecutionRepository,
-			mockNodeTypes,
 			errorReporter,
 		);
 
@@ -713,11 +693,9 @@ describe('TestRunnerService', () => {
 			telemetry,
 			workflowRepository,
 			workflowRunner,
-			executionRepository,
 			activeExecutions,
 			testRunRepository,
 			testCaseExecutionRepository,
-			mockNodeTypes,
 			errorReporter,
 		);
 
@@ -743,11 +721,9 @@ describe('TestRunnerService', () => {
 			telemetry,
 			workflowRepository,
 			workflowRunner,
-			executionRepository,
 			activeExecutions,
 			testRunRepository,
 			testCaseExecutionRepository,
-			mockNodeTypes,
 			errorReporter,
 		);
 
@@ -803,11 +779,9 @@ describe('TestRunnerService', () => {
 			telemetry,
 			workflowRepository,
 			workflowRunner,
-			executionRepository,
 			activeExecutions,
 			testRunRepository,
 			testCaseExecutionRepository,
-			mockNodeTypes,
 			errorReporter,
 		);
 
@@ -853,11 +827,9 @@ describe('TestRunnerService', () => {
 			telemetry,
 			workflowRepository,
 			workflowRunner,
-			executionRepository,
 			activeExecutions,
 			testRunRepository,
 			testCaseExecutionRepository,
-			mockNodeTypes,
 			errorReporter,
 		);
 
@@ -946,11 +918,9 @@ describe('TestRunnerService', () => {
 			telemetry,
 			workflowRepository,
 			workflowRunner,
-			executionRepository,
 			activeExecutions,
 			testRunRepository,
 			testCaseExecutionRepository,
-			mockNodeTypes,
 			errorReporter,
 		);
 
@@ -1048,11 +1018,9 @@ describe('TestRunnerService', () => {
 				telemetry,
 				workflowRepository,
 				workflowRunner,
-				executionRepository,
 				activeExecutions,
 				testRunRepository,
 				testCaseExecutionRepository,
-				mockNodeTypes,
 				errorReporter,
 			);
 
