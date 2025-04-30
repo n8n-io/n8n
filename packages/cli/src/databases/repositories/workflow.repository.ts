@@ -1,4 +1,5 @@
 import { GlobalConfig } from '@n8n/config';
+import { isStringArray, WebhookEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, Repository, In, Like } from '@n8n/typeorm';
 import type {
@@ -12,13 +13,11 @@ import type {
 } from '@n8n/typeorm';
 import { PROJECT_ROOT } from 'n8n-workflow';
 
-import type { ListQuery } from '@/requests';
-import { isStringArray } from '@/utils';
+import type { ListQuery } from '@/types-db';
 
 import { FolderRepository } from './folder.repository';
 import type { Folder, FolderWithWorkflowAndSubFolderCount } from '../entities/folder';
 import { TagEntity } from '../entities/tag-entity';
-import { WebhookEntity } from '../entities/webhook-entity';
 import { WorkflowEntity } from '../entities/workflow-entity';
 import { WorkflowTagMapping } from '../entities/workflow-tag-mapping';
 
