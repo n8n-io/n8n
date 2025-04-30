@@ -1,5 +1,11 @@
 import { stringify } from 'flatted';
-import type { IDataObject, IRunExecutionData, ITaskData, ITaskDataConnections } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IRunData,
+	IRunExecutionData,
+	ITaskData,
+	ITaskDataConnections,
+} from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
 import { clickExecuteWorkflowButton } from '../composables/workflow';
@@ -52,10 +58,17 @@ export function runMockWorkflowExecution({
 }) {
 	const workflowId = nanoid();
 	const executionId = Math.floor(Math.random() * 1_000_000).toString();
+
+	const resolvedRunData = runData.reduce<IRunData>((acc, nodeExecution) => {
+		const nodeName = Object.keys(nodeExecution)[0];
+		acc[nodeName] = [nodeExecution[nodeName]];
+		return acc;
+	}, {});
+
 	const executionData: IRunExecutionData = {
 		startData: {},
 		resultData: {
-			runData,
+			runData: resolvedRunData,
 			pinData: {},
 			lastNodeExecuted,
 		},
