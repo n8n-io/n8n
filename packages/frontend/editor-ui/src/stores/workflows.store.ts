@@ -256,19 +256,15 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}, {});
 	});
 
-	const nodesIssuesExist = computed(() => {
-		for (const node of workflow.value.nodes) {
-			const isNodeDisabled = node.disabled === true;
-			const noNodeIssues = node.issues === undefined || Object.keys(node.issues).length === 0;
-			if (isNodeDisabled || noNodeIssues) {
-				continue;
-			}
-
-			return true;
-		}
-
-		return false;
-	});
+	const nodesIssuesExist = computed(() =>
+		workflow.value.nodes.some((node) => {
+			const nodeHasIssues = !!Object.keys(node.issues ?? {}).length;
+			const isConnected =
+				Object.keys(outgoingConnectionsByNodeName(node.name)).length > 0 ||
+				Object.keys(incomingConnectionsByNodeName(node.name)).length > 0;
+			return !node.disabled && isConnected && nodeHasIssues;
+		}),
+	);
 
 	const pinnedWorkflowData = computed(() => workflow.value.pinData);
 
@@ -345,6 +341,22 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	function getNodeById(nodeId: string): INodeUi | undefined {
 		return workflow.value.nodes.find((node) => node.id === nodeId);
+	}
+
+	// Finds the full id for a given partial id for a node, relying on order for uniqueness in edge cases
+	function findNodeByPartialId(partialId: string): INodeUi | undefined {
+		return workflow.value.nodes.find((node) => node.id.startsWith(partialId));
+	}
+
+	// Finds a uniquely identifying partial id for a node, relying on order for uniqueness in edge cases
+	function getPartialIdForNode(fullId: string): string {
+		for (let length = 6; length < fullId.length; ++length) {
+			const partialId = fullId.slice(0, length);
+			if (workflow.value.nodes.filter((x) => x.id.startsWith(partialId)).length === 1) {
+				return partialId;
+			}
+		}
+		return fullId;
 	}
 
 	function getNodesByIds(nodeIds: string[]): INodeUi[] {
@@ -1879,6 +1891,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setNodes,
 		setConnections,
 		markExecutionAsStopped,
+		findNodeByPartialId,
+		getPartialIdForNode,
 		totalWorkflowCount,
 	};
 });

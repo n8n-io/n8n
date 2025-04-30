@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue';
 import { createEventBus } from '@n8n/utils/event-bus';
-import type { IRunData, Workflow, NodeConnectionType } from 'n8n-workflow';
+import type { IRunData, Workflow, NodeConnectionType, IConnectedNode } from 'n8n-workflow';
 import { jsonParse, NodeHelpers, NodeConnectionTypes } from 'n8n-workflow';
 import type { IUpdateInformation, TargetItem } from '@/Interface';
 
@@ -79,7 +79,7 @@ const { APP_Z_INDEXES } = useStyles();
 const settingsEventBus = createEventBus();
 const redrawRequired = ref(false);
 const runInputIndex = ref(-1);
-const runOutputIndex = ref(-1);
+const runOutputIndex = computed(() => ndvStore.output.run ?? -1);
 const isLinkingEnabled = ref(true);
 const selectedInput = ref<string | undefined>();
 const triggerWaitingWarningEnabled = ref(false);
@@ -130,24 +130,19 @@ const workflowRunData = computed(() => {
 
 const parentNodes = computed(() => {
 	if (activeNode.value) {
-		return (
-			props.workflowObject
-				.getParentNodesByDepth(activeNode.value.name, 1)
-				.map(({ name }) => name) || []
-		);
-	} else {
-		return [];
+		return props.workflowObject.getParentNodesByDepth(activeNode.value.name, 1);
 	}
+	return [];
 });
 
-const parentNode = computed(() => {
-	for (const parentNodeName of parentNodes.value) {
-		if (workflowsStore?.pinnedWorkflowData?.[parentNodeName]) {
-			return parentNodeName;
+const parentNode = computed<IConnectedNode | undefined>(() => {
+	for (const parent of parentNodes.value) {
+		if (workflowsStore?.pinnedWorkflowData?.[parent.name]) {
+			return parent;
 		}
 
-		if (workflowRunData.value?.[parentNodeName]) {
-			return parentNodeName;
+		if (workflowRunData.value?.[parent.name]) {
+			return parent;
 		}
 	}
 	return parentNodes.value[0];
@@ -177,7 +172,7 @@ const inputNodeName = computed<string | undefined>(() => {
 		)?.[0];
 		return connectedOutputNode;
 	}
-	return selectedInput.value || parentNode.value;
+	return selectedInput.value ?? parentNode.value?.name;
 });
 
 const inputNode = computed(() => {
@@ -290,12 +285,23 @@ const maxInputRun = computed(() => {
 	return 0;
 });
 
+const connectedCurrentNodeOutputs = computed(() => {
+	return parentNodes.value.find(({ name }) => name === inputNodeName.value)?.indicies;
+});
+
 const inputRun = computed(() => {
 	if (isLinkingEnabled.value && maxOutputRun.value === maxInputRun.value) {
 		return outputRun.value;
 	}
-	if (runInputIndex.value === -1) {
-		return maxInputRun.value;
+	const currentInputNodeName = inputNodeName.value;
+	if (runInputIndex.value === -1 && currentInputNodeName) {
+		return (
+			connectedCurrentNodeOutputs.value
+				?.map((outputIndex) =>
+					nodeHelpers.getLastRunIndexWithData(currentInputNodeName, outputIndex),
+				)
+				.find((runIndex) => runIndex !== -1) ?? maxInputRun.value
+		);
 	}
 
 	return Math.min(runInputIndex.value, maxInputRun.value);
@@ -476,7 +482,7 @@ const trackLinking = (pane: string) => {
 };
 
 const onLinkRunToInput = () => {
-	runOutputIndex.value = runInputIndex.value;
+	ndvStore.setOutputRunIndex(runInputIndex.value);
 	isLinkingEnabled.value = true;
 	trackLinking('input');
 };
@@ -553,14 +559,14 @@ const trackRunChange = (run: number, pane: string) => {
 };
 
 const onRunOutputIndexChange = (run: number) => {
-	runOutputIndex.value = run;
+	ndvStore.setOutputRunIndex(run);
 	trackRunChange(run, 'output');
 };
 
 const onRunInputIndexChange = (run: number) => {
 	runInputIndex.value = run;
 	if (linked.value) {
-		runOutputIndex.value = run;
+		ndvStore.setOutputRunIndex(run);
 	}
 	trackRunChange(run, 'input');
 };
@@ -622,7 +628,7 @@ watch(
 
 		if (node && node.name !== oldNode?.name && !isActiveStickyNode.value) {
 			runInputIndex.value = -1;
-			runOutputIndex.value = -1;
+			ndvStore.setOutputRunIndex(-1);
 			isLinkingEnabled.value = true;
 			selectedInput.value = undefined;
 			triggerWaitingWarningEnabled.value = false;
@@ -675,7 +681,7 @@ watch(
 );
 
 watch(maxOutputRun, () => {
-	runOutputIndex.value = -1;
+	ndvStore.setOutputRunIndex(-1);
 });
 
 watch(maxInputRun, () => {

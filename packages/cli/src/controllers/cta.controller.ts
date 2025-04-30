@@ -1,6 +1,6 @@
+import { Get, RestController } from '@n8n/decorators';
 import express from 'express';
 
-import { Get, RestController } from '@/decorators';
 import { AuthenticatedRequest } from '@/requests';
 import { CtaService } from '@/services/cta.service';
 

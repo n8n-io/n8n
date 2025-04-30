@@ -25,6 +25,7 @@ import {
 import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, toRef, watch } from 'vue';
 
 import type {
+	IExecutionResponse,
 	INodeUi,
 	INodeUpdatePropertiesInformation,
 	IRunDataDisplayMode,
@@ -93,6 +94,7 @@ import { usePostHog } from '@/stores/posthog.store';
 import ViewSubExecution from './ViewSubExecution.vue';
 import RunDataItemCount from '@/components/RunDataItemCount.vue';
 import RunDataDisplayModeSelect from '@/components/RunDataDisplayModeSelect.vue';
+import RunDataPaginationBar from '@/components/RunDataPaginationBar.vue';
 
 const LazyRunDataTable = defineAsyncComponent(
 	async () => await import('@/components/RunDataTable.vue'),
@@ -117,6 +119,7 @@ export type EnterEditModeArgs = {
 
 type Props = {
 	workflow: Workflow;
+	workflowExecution?: IExecutionResponse;
 	runIndex: number;
 	tooMuchDataTitle: string;
 	executingMessage: string;
@@ -141,6 +144,7 @@ type Props = {
 	disablePin?: boolean;
 	compact?: boolean;
 	tableHeaderBgColor?: 'base' | 'light';
+	disableHoverHighlight?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -158,8 +162,10 @@ const props = withDefaults(defineProps<Props>(), {
 	disableRunIndexSelection: false,
 	disableEdit: false,
 	disablePin: false,
+	disableHoverHighlight: false,
 	compact: false,
 	tableHeaderBgColor: 'base',
+	workflowExecution: undefined,
 });
 
 defineSlots<{
@@ -203,7 +209,6 @@ const binaryDataDisplayVisible = ref(false);
 const binaryDataDisplayData = ref<IBinaryData | null>(null);
 const currentPage = ref(1);
 const pageSize = ref(10);
-const pageSizes = [1, 10, 25, 50, 100];
 
 const pinDataDiscoveryTooltipVisible = ref(false);
 const isControlledPinDataTooltip = ref(false);
@@ -260,9 +265,8 @@ const nodeType = computed(() => {
 
 const isSchemaView = computed(() => displayMode.value === 'schema');
 const isSearchInSchemaView = computed(() => isSchemaView.value && !!search.value);
-const displaysMultipleNodes = computed(
-	() => isSchemaView.value && props.paneType === 'input' && props.nodes.length > 0,
-);
+const hasMultipleInputNodes = computed(() => props.paneType === 'input' && props.nodes.length > 0);
+const displaysMultipleNodes = computed(() => isSchemaView.value && hasMultipleInputNodes.value);
 
 const isTriggerNode = computed(() => !!node.value && nodeTypesStore.isTriggerNode(node.value.type));
 
@@ -333,12 +337,14 @@ const executionHints = computed(() => {
 	return [];
 });
 
-const workflowExecution = computed(() => workflowsStore.getWorkflowExecution);
+const workflowExecution = computed(
+	() => props.workflowExecution ?? workflowsStore.getWorkflowExecution ?? undefined,
+);
 const workflowRunData = computed(() => {
-	if (workflowExecution.value === null) {
+	if (workflowExecution.value === undefined) {
 		return null;
 	}
-	const executionData: IRunExecutionData | undefined = workflowExecution.value.data;
+	const executionData: IRunExecutionData | undefined = workflowExecution.value?.data;
 	if (executionData?.resultData) {
 		return executionData.resultData.runData;
 	}
@@ -476,7 +482,10 @@ const isPaneTypeOutput = computed(() => props.paneType === 'output');
 
 const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
 const showIOSearch = computed(
-	() => hasNodeRun.value && !hasRunError.value && unfilteredInputData.value.length > 0,
+	() =>
+		hasNodeRun.value &&
+		!hasRunError.value &&
+		(unfilteredInputData.value.length > 0 || displaysMultipleNodes.value),
 );
 const inputSelectLocation = computed(() => {
 	if (isSchemaView.value) return 'none';
@@ -490,7 +499,8 @@ const inputSelectLocation = computed(() => {
 });
 
 const showIoSearchNoMatchContent = computed(
-	() => hasNodeRun.value && !inputData.value.length && !!search.value,
+	() =>
+		hasNodeRun.value && !inputData.value.length && !!search.value && !displaysMultipleNodes.value,
 );
 
 const parentNodeOutputData = computed(() => {
@@ -563,7 +573,7 @@ const hasInputOverwrite = computed((): boolean => {
 	if (!node.value) {
 		return false;
 	}
-	const taskData = nodeHelpers.getNodeTaskData(node.value, props.runIndex);
+	const taskData = nodeHelpers.getNodeTaskData(node.value.name, props.runIndex);
 	return Boolean(taskData?.inputOverride);
 });
 
@@ -605,7 +615,6 @@ const itemsCountProps = computed<InstanceType<typeof RunDataItemCount>['$props']
 	dataCount: dataCount.value,
 	unfilteredDataCount: unfilteredDataCount.value,
 	subExecutionsCount: activeTaskMetadata.value?.subExecutionsCount,
-	muted: props.compact || (props.paneType === 'input' && maxRunIndex.value === 0),
 }));
 
 watch(node, (newNode, prevNode) => {
@@ -746,7 +755,7 @@ function getNodeHints(): NodeHint[] {
 			const workflowNode = props.workflow.getNode(node.value.name);
 
 			if (workflowNode) {
-				const nodeHints = NodeHelpers.getNodeHints(props.workflow, workflowNode, nodeType.value, {
+				const nodeHints = nodeHelpers.getNodeHints(props.workflow, workflowNode, nodeType.value, {
 					runExecutionData: workflowExecution.value?.data ?? null,
 					runIndex: props.runIndex,
 					connectionInputData: parentNodeOutputData.value,
@@ -1100,6 +1109,7 @@ function getRawInputData(
 			outputIndex,
 			props.paneType,
 			connectionType,
+			workflowExecution.value,
 		);
 	}
 
@@ -1369,7 +1379,9 @@ defineExpose({ enterEditMode });
 		/>
 
 		<div :class="$style.header">
-			<slot name="header"></slot>
+			<div :class="$style.title">
+				<slot name="header"></slot>
+			</div>
 
 			<div
 				v-show="!hasRunError && !isTrimmedManualExecutionDataItem"
@@ -1392,7 +1404,9 @@ defineExpose({ enterEditMode });
 				<RunDataDisplayModeSelect
 					v-show="
 						hasPreviewSchema ||
-						(hasNodeRun && (inputData.length || binaryData.length || search) && !editMode.enabled)
+						(hasNodeRun &&
+							(inputData.length || binaryData.length || search || hasMultipleInputNodes) &&
+							!editMode.enabled)
 					"
 					:class="$style.displayModeSelect"
 					:compact="props.compact"
@@ -1676,7 +1690,10 @@ defineExpose({ enterEditMode });
 
 			<div
 				v-else-if="
-					hasNodeRun && (!unfilteredDataCount || (search && !dataCount)) && branches.length > 1
+					hasNodeRun &&
+					(!unfilteredDataCount || (search && !dataCount)) &&
+					!displaysMultipleNodes &&
+					branches.length > 1
 				"
 				:class="$style.center"
 			>
@@ -1697,7 +1714,10 @@ defineExpose({ enterEditMode });
 				</N8nText>
 			</div>
 
-			<div v-else-if="hasNodeRun && !inputData.length && !search" :class="$style.center">
+			<div
+				v-else-if="hasNodeRun && !inputData.length && !displaysMultipleNodes && !search"
+				:class="$style.center"
+			>
 				<slot name="no-output-data">xxx</slot>
 			</div>
 
@@ -1776,6 +1796,8 @@ defineExpose({ enterEditMode });
 					:has-default-hover-state="paneType === 'input' && !search"
 					:search="search"
 					:header-bg-color="tableHeaderBgColor"
+					:compact="props.compact"
+					:disable-hover-highlight="props.disableHoverHighlight"
 					@mounted="emit('tableMounted', $event)"
 					@active-row-changed="onItemHover"
 					@display-mode-change="onDisplayModeChange"
@@ -1795,6 +1817,7 @@ defineExpose({ enterEditMode });
 					:output-index="currentOutputIndex"
 					:total-runs="maxRunIndex"
 					:search="search"
+					:compact="props.compact"
 				/>
 			</Suspense>
 
@@ -1810,11 +1833,10 @@ defineExpose({ enterEditMode });
 					:data="jsonData"
 					:pane-type="paneType"
 					:connection-type="connectionType"
-					:run-index="runIndex"
 					:output-index="currentOutputIndex"
-					:total-runs="maxRunIndex"
 					:search="search"
 					:class="$style.schema"
+					:compact="props.compact"
 					@clear:search="onSearchClear"
 				/>
 			</Suspense>
@@ -1908,7 +1930,7 @@ defineExpose({ enterEditMode });
 				<slot name="node-not-run"></slot>
 			</div>
 		</div>
-		<div
+		<RunDataPaginationBar
 			v-if="
 				hidePagination === false &&
 				hasNodeRun &&
@@ -1919,41 +1941,17 @@ defineExpose({ enterEditMode });
 				!isArtificialRecoveredEventItem
 			"
 			v-show="!editMode.enabled"
-			:class="$style.pagination"
-			data-test-id="ndv-data-pagination"
-		>
-			<el-pagination
-				background
-				:hide-on-single-page="true"
-				:current-page="currentPage"
-				:pager-count="5"
-				:page-size="pageSize"
-				layout="prev, pager, next"
-				:total="dataCount"
-				@update:current-page="onCurrentPageChange"
-			>
-			</el-pagination>
-
-			<div :class="$style.pageSizeSelector">
-				<N8nSelect
-					size="mini"
-					:model-value="pageSize"
-					teleported
-					@update:model-value="onPageSizeChange"
-				>
-					<template #prepend>{{ i18n.baseText('ndv.output.pageSize') }}</template>
-					<N8nOption v-for="size in pageSizes" :key="size" :label="size" :value="size"> </N8nOption>
-					<N8nOption :label="i18n.baseText('ndv.output.all')" :value="dataCount"> </N8nOption>
-				</N8nSelect>
-			</div>
-		</div>
+			:current-page="currentPage"
+			:page-size="pageSize"
+			:total="dataCount"
+			@update:current-page="onCurrentPageChange"
+			@update:page-size="onPageSizeChange"
+		/>
 		<N8nBlockUi :show="blockUI" :class="$style.uiBlocker" />
 	</div>
 </template>
 
 <style lang="scss" module>
-@import '@/styles/variables';
-
 .infoIcon {
 	color: var(--color-foreground-dark);
 }
@@ -1999,10 +1997,15 @@ defineExpose({ enterEditMode });
 	overflow-y: hidden;
 	min-height: calc(30px + var(--spacing-s));
 	scrollbar-width: thin;
+	container-type: inline-size;
 
 	.compact & {
 		margin-bottom: var(--spacing-4xs);
-		padding: var(--spacing-4xs) var(--spacing-s) 0 var(--spacing-s);
+		padding: var(--spacing-2xs);
+		margin-bottom: 0;
+		flex-shrink: 0;
+		flex-grow: 0;
+		min-height: auto;
 	}
 
 	> *:first-child {
@@ -2014,12 +2017,6 @@ defineExpose({ enterEditMode });
 	position: relative;
 	overflow-y: auto;
 	height: 100%;
-
-	&:hover {
-		.actions-group {
-			opacity: 1;
-		}
-	}
 }
 
 .dataDisplay {
@@ -2032,6 +2029,10 @@ defineExpose({ enterEditMode });
 	line-height: var(--font-line-height-xloose);
 	word-break: normal;
 	height: 100%;
+
+	.compact & {
+		padding: 0 var(--spacing-2xs);
+	}
 }
 
 .inlineError {
@@ -2102,22 +2103,6 @@ defineExpose({ enterEditMode });
 	margin-left: auto;
 }
 
-.pagination {
-	width: 100%;
-	display: flex;
-	justify-content: center;
-	align-items: center;
-	bottom: 0;
-	padding: 5px;
-	overflow-y: hidden;
-}
-
-.pageSizeSelector {
-	text-transform: capitalize;
-	max-width: 150px;
-	flex: 0 1 auto;
-}
-
 .binaryIndex {
 	display: block;
 	padding: var(--spacing-2xs);
@@ -2185,6 +2170,11 @@ defineExpose({ enterEditMode });
 	align-items: center;
 	flex-grow: 1;
 	gap: var(--spacing-2xs);
+
+	.compact & {
+		/* let title text alone decide the height */
+		height: 0;
+	}
 }
 
 .tooltipContain {
@@ -2255,6 +2245,10 @@ defineExpose({ enterEditMode });
 	margin-bottom: var(--spacing-xs);
 	margin-left: var(--spacing-s);
 	margin-right: var(--spacing-s);
+
+	.compact & {
+		margin: 0 var(--spacing-2xs) var(--spacing-2xs) var(--spacing-2xs);
+	}
 }
 
 .schema {
@@ -2263,15 +2257,21 @@ defineExpose({ enterEditMode });
 
 .search,
 .displayModeSelect {
-	.compact & {
+	.compact:not(:hover) & {
 		opacity: 0;
-		visibility: hidden;
-		transition: opacity 0.3s $ease-out-expo;
+		display: none;
 	}
 
 	.compact:hover & {
 		opacity: 1;
-		visibility: visible;
+	}
+}
+
+@container (max-width: 240px) {
+	/* Hide title when the panel is too narrow */
+	.compact:hover .title {
+		visibility: hidden;
+		width: 0;
 	}
 }
 </style>

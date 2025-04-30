@@ -13,10 +13,8 @@ describe('Test SendGrid Node', () => {
 			)
 			.reply(202);
 
-		testWorkflows(['nodes/SendGrid/test/mail.workflow.json']);
+		afterAll(() => sendgridNock.done());
 
-		it('should make the correct network calls', () => {
-			sendgridNock.done();
-		});
+		testWorkflows(['nodes/SendGrid/test/mail.workflow.json']);
 	});
 });

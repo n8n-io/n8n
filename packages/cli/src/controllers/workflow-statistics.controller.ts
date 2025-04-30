@@ -1,3 +1,4 @@
+import { Get, Middleware, RestController } from '@n8n/decorators';
 import { Response, NextFunction } from 'express';
 import { Logger } from 'n8n-core';
 
@@ -5,7 +6,6 @@ import type { WorkflowStatistics } from '@/databases/entities/workflow-statistic
 import { StatisticsNames } from '@/databases/entities/workflow-statistics';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { WorkflowStatisticsRepository } from '@/databases/repositories/workflow-statistics.repository';
-import { Get, Middleware, RestController } from '@/decorators';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { IWorkflowStatisticsDataLoaded } from '@/interfaces';
 
