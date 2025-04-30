@@ -179,8 +179,8 @@ watch(
 				<div :class="$style.tree" v-bind="virtualList.containerProps">
 					<div v-bind="virtualList.wrapperProps.value" role="tree">
 						<LogsOverviewRow
-							v-for="{ data } of virtualList.list.value"
-							:key="data.id"
+							v-for="{ data, index } of virtualList.list.value"
+							:key="index"
 							:data="data"
 							:is-read-only="isReadOnly"
 							:is-selected="
