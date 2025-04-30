@@ -48,11 +48,10 @@ const classes = computed(() => ({
 
 const isExecuteNodeVisible = computed(() => {
 	return (
-		(!props.readOnly &&
-			render.value.type === CanvasNodeRenderType.Default &&
-			'configuration' in render.value.options &&
-			!render.value.options.configuration) ||
-		isNodesAsToolNode.value
+		!props.readOnly &&
+		render.value.type === CanvasNodeRenderType.Default &&
+		'configuration' in render.value.options &&
+		(!render.value.options.configuration || isNodesAsToolNode.value)
 	);
 });
 
