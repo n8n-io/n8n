@@ -2,11 +2,11 @@
 import RunData from '@/components/RunData.vue';
 import { type LogEntry } from '@/components/RunDataAi/utils';
 import { useI18n } from '@/composables/useI18n';
-import { type IExecutionResponse, type NodePanelType } from '@/Interface';
+import { type IRunDataDisplayMode, type IExecutionResponse, type NodePanelType } from '@/Interface';
 import { useNDVStore } from '@/stores/ndv.store';
 import { N8nLink, N8nText } from '@n8n/design-system';
 import { type Workflow } from 'n8n-workflow';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { I18nT } from 'vue-i18n';
 
 const { title, logEntry, paneType, workflow, execution } = defineProps<{
@@ -19,6 +19,8 @@ const { title, logEntry, paneType, workflow, execution } = defineProps<{
 
 const locale = useI18n();
 const ndvStore = useNDVStore();
+
+const displayMode = ref<IRunDataDisplayMode>(paneType === 'input' ? 'schema' : 'table');
 const isMultipleInput = computed(() => paneType === 'input' && logEntry.runData.source.length > 1);
 const runDataProps = computed<
 	Pick<InstanceType<typeof RunData>['$props'], 'node' | 'runIndex' | 'overrideOutputs'> | undefined
@@ -44,6 +46,10 @@ const runDataProps = computed<
 function handleClickOpenNdv() {
 	ndvStore.setActiveNodeName(logEntry.node.name);
 }
+
+function handleChangeDisplayMode(value: IRunDataDisplayMode) {
+	displayMode.value = value;
+}
 </script>
 
 <template>
@@ -61,7 +67,10 @@ function handleClickOpenNdv() {
 		:disable-pin="true"
 		:disable-edit="true"
 		:disable-hover-highlight="true"
+		:display-mode="displayMode"
+		:disable-ai-content="logEntry.depth === 0"
 		table-header-bg-color="light"
+		@display-mode-change="handleChangeDisplayMode"
 	>
 		<template #header>
 			<N8nText :class="$style.title" :bold="true" color="text-light" size="small">

@@ -310,3 +310,7 @@ export function verifyOutputHoverState(expectedText: string) {
 export function resetHoverState() {
 	getBackToCanvasButton().realHover();
 }
+
+export function setInputDisplayMode(mode: 'Schema' | 'Table' | 'JSON' | 'Binary') {
+	getInputPanel().findChildByTestId('ndv-run-data-display-mode').contains(mode).click();
+}

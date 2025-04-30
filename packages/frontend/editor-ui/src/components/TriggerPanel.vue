@@ -162,9 +162,7 @@ const isListeningForEvents = computed(() => {
 	);
 });
 
-const workflowRunning = computed(() => {
-	return uiStore.isActionActive.workflowRunning;
-});
+const workflowRunning = computed(() => workflowsStore.isWorkflowRunning);
 
 const isActivelyPolling = computed(() => {
 	const triggeredNode = workflowsStore.executedNode;
