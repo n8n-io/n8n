@@ -123,11 +123,11 @@ export class Push extends TypedEmitter<PushEvents> {
         if (headers.origin === expectedOrigin) {
             this.logger.debug('Origin header matches the expected origin.');
         } else {
-            this.logger.debug(
+            this.logger.error(
                 `Origin header does NOT match the expected origin. (Origin: "${headers.origin}", Expected: "${expectedOrigin}")`,
             );
         }
-		
+
 		if (!pushRef) {
 			connectionError = 'The query parameter "pushRef" is missing!';
 		} else if (
