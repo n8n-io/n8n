@@ -43,11 +43,11 @@ const parentNode = computed(() => {
 	if (!node.value) return undefined;
 	const workflow = workflowsStore.getCurrentWorkflow();
 	const parentNodes = workflow.getChildNodes(node.value.name, 'ALL', 1);
-	if (parentNodes.length === 0) return '';
+	if (parentNodes.length === 0) return undefined;
 	return workflowsStore.getNodeByName(parentNodes[0])?.name;
 });
 
-const runData = computed(() => {
+const nodeRunData = computed(() => {
 	if (!node.value) return undefined;
 
 	const workflowExecutionData = workflowsStore.getWorkflowExecution;
@@ -72,7 +72,7 @@ const mapTypes: {
 	},
 	['number']: {
 		inputType: 'number',
-		defaultValue: '',
+		defaultValue: 0,
 	},
 	['json']: {
 		inputType: 'text',
@@ -87,7 +87,8 @@ const parameters = computed(() => {
 	const params = node.value.parameters;
 	const collectedArgs: Map<string, FromAIArgument> = new Map();
 	traverseNodeParametersWithParamNames(params, collectedArgs);
-	const inputOverrides = runData.value?.inputOverride?.[NodeConnectionTypes.AiTool]?.[0]?.[0].json;
+	const inputOverrides =
+		nodeRunData.value?.inputOverride?.[NodeConnectionTypes.AiTool]?.[0]?.[0].json;
 
 	collectedArgs.forEach((value: FromAIArgument, paramName: string) => {
 		const type = value.type ?? 'string';
