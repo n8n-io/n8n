@@ -210,7 +210,7 @@ describe('Webhook API', () => {
 			node.parameters = { httpMethod: 'GET', path: 'testing' };
 		});
 
-		test('should used the extended query parser', async () => {
+		test('should use the extended query parser', async () => {
 			const response = await agent.get('/webhook/testing?filter[field]=value');
 			expect(response.statusCode).toEqual(200);
 			expect(response.body).toEqual({
