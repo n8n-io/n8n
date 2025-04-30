@@ -205,6 +205,12 @@ export class FrontendService {
 						limit: 0,
 					},
 				},
+				licensedRoles: {
+					'global:admin': false,
+					'project:admin': false,
+					'project:editor': false,
+					'project:viewer': false,
+				},
 			},
 			mfa: {
 				enabled: false,
@@ -390,6 +396,12 @@ export class FrontendService {
 		this.settings.binaryDataMode = this.binaryDataConfig.mode;
 
 		this.settings.enterprise.projects.team.limit = this.license.getTeamProjectLimit();
+		this.settings.enterprise.licensedRoles = {
+			'global:admin': this.license.isProjectRoleAdminLicensed(),
+			'project:admin': this.license.isProjectRoleEditorLicensed(),
+			'project:editor': this.license.isProjectRoleViewerLicensed(),
+			'project:viewer': this.license.isAdvancedPermissionsLicensed(),
+		};
 
 		this.settings.folders.enabled = this.license.isFoldersEnabled();
 

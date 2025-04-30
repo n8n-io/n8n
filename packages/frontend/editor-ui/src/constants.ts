@@ -702,6 +702,7 @@ export const enum STORES {
 	HISTORY = 'history',
 	CLOUD_PLAN = 'cloudPlan',
 	RBAC = 'rbac',
+	ROLES = 'roles',
 	PUSH = 'push',
 	COLLABORATION = 'collaboration',
 	ASSISTANT = 'assistant',

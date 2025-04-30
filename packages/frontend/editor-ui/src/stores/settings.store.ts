@@ -68,6 +68,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isEnterpriseFeatureEnabled = computed(() => settings.value.enterprise);
 
+	const licensedRoles = computed(() => settings.value.enterprise.licensedRoles);
+
 	const nodeJsVersion = computed(() => settings.value.nodeJsVersion);
 
 	const concurrency = computed(() => settings.value.concurrency);
@@ -387,6 +389,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isDocker,
 		isDevRelease,
 		isEnterpriseFeatureEnabled,
+		licensedRoles,
 		databaseType,
 		planName,
 		consumerId,

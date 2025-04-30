@@ -1,6 +1,6 @@
 import { Service } from '@n8n/di';
-import { ALL_ROLES, combineScopes, getRoleScopes } from '@n8n/permissions';
-import type { AllRoleTypes, Scope } from '@n8n/permissions';
+import { combineScopes, getRoleScopes } from '@n8n/permissions';
+import type { Scope } from '@n8n/permissions';
 import { UnexpectedError } from 'n8n-workflow';
 
 import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
@@ -8,22 +8,10 @@ import type { ProjectRelation } from '@/databases/entities/project-relation';
 import type { SharedCredentials } from '@/databases/entities/shared-credentials';
 import type { SharedWorkflow } from '@/databases/entities/shared-workflow';
 import type { User } from '@/databases/entities/user';
-import { License } from '@/license';
 import type { ListQueryDb, ScopesField } from '@/types-db';
 
 @Service()
 export class RoleService {
-	constructor(private readonly license: License) {}
-
-	getAllRoles() {
-		Object.values(ALL_ROLES).forEach((entries) => {
-			entries.forEach((entry) => {
-				entry.licensed = this.isRoleLicensed(entry.role);
-			});
-		});
-		return ALL_ROLES;
-	}
-
 	addScopes(
 		rawWorkflow: ListQueryDb.Workflow.WithSharing | ListQueryDb.Workflow.WithOwnedByAndSharedWith,
 		user: User,
@@ -107,21 +95,5 @@ export class RoleService {
 			mergedScopes.forEach((s) => scopesSet.add(s));
 		}
 		return [...scopesSet].sort();
-	}
-
-	private isRoleLicensed(role: AllRoleTypes) {
-		// TODO: move this info into FrontendSettings
-		switch (role) {
-			case 'project:admin':
-				return this.license.isProjectRoleAdminLicensed();
-			case 'project:editor':
-				return this.license.isProjectRoleEditorLicensed();
-			case 'project:viewer':
-				return this.license.isProjectRoleViewerLicensed();
-			case 'global:admin':
-				return this.license.isAdvancedPermissionsLicensed();
-			default:
-				return true;
-		}
 	}
 }

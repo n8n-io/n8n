@@ -7,6 +7,7 @@ import {
 import type { AllRolesMap, AllRoleTypes, Scope } from '../types.ee';
 import { getRoleScopes } from '../utilities/getRoleScopes.ee';
 
+// MOVE TO THE FRONTEND
 const ROLE_NAMES: Record<AllRoleTypes, string> = {
 	'global:owner': 'Owner',
 	'global:admin': 'Admin',
@@ -21,6 +22,7 @@ const ROLE_NAMES: Record<AllRoleTypes, string> = {
 	'workflow:editor': 'Workflow Editor',
 };
 
+// MOVE TO THE FRONTEND
 const mapToRoleObject = <T extends keyof typeof ROLE_NAMES>(roles: Record<T, Scope[]>) =>
 	(Object.keys(roles) as T[]).map((role) => ({
 		role,
@@ -29,6 +31,7 @@ const mapToRoleObject = <T extends keyof typeof ROLE_NAMES>(roles: Record<T, Sco
 		licensed: false,
 	}));
 
+// DELETE THIS
 export const ALL_ROLES: AllRolesMap = {
 	global: mapToRoleObject(GLOBAL_SCOPE_MAP),
 	project: mapToRoleObject(PROJECT_SCOPE_MAP),

@@ -27,6 +27,8 @@ export interface IUserManagementSettings {
 	authenticationMethod: AuthenticationMethod;
 }
 
+type LicensedRole = 'project:admin' | 'project:editor' | 'project:viewer' | 'global:admin';
+
 export interface FrontendSettings {
 	inE2ETests: boolean;
 	isDocker: boolean;
@@ -146,6 +148,7 @@ export interface FrontendSettings {
 				limit: number;
 			};
 		};
+		licensedRoles: Record<LicensedRole, boolean>;
 	};
 	hideUsagePage: boolean;
 	license: {

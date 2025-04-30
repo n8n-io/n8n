@@ -1,26 +1,33 @@
-import type { ProjectRole, AllRolesMap } from '@n8n/permissions';
+import { type ProjectRole, type AllRolesMap, ALL_ROLES } from '@n8n/permissions';
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import * as rolesApi from '@/api/roles.api';
-import { useRootStore } from './root.store';
+import { STORES } from '@/constants';
+import { useSettingsStore } from './settings.store';
 
-export const useRolesStore = defineStore('roles', () => {
-	const rootStore = useRootStore();
+export const useRolesStore = defineStore(STORES.ROLES, () => {
+	const settingsStore = useSettingsStore();
 
-	const roles = ref<AllRolesMap>({
-		global: [],
-		project: [],
-		credential: [],
-		workflow: [],
-	});
 	const projectRoleOrder = ref<ProjectRole[]>([
 		'project:viewer',
 		'project:editor',
 		'project:admin',
 	]);
+
 	const projectRoleOrderMap = computed<Map<ProjectRole, number>>(
 		() => new Map(projectRoleOrder.value.map((role, idx) => [role, idx])),
 	);
+
+	Object.values(ALL_ROLES).forEach((entries) => {
+		entries.forEach((entry) => {
+			const { role } = entry;
+			if (role in settingsStore.licensedRoles) {
+				// @ts-expect-error blah
+				entry.licensed = settingsStore.licensedRoles[role];
+			}
+		});
+	});
+
+	const roles = ref<AllRolesMap>(ALL_ROLES);
 
 	const processedProjectRoles = computed<AllRolesMap['project']>(() =>
 		roles.value.project
@@ -40,15 +47,10 @@ export const useRolesStore = defineStore('roles', () => {
 		roles.value.workflow.filter((role) => role.role !== 'workflow:owner'),
 	);
 
-	const fetchRoles = async () => {
-		roles.value = await rolesApi.getRoles(rootStore.restApiContext);
-	};
-
 	return {
 		roles,
 		processedProjectRoles,
 		processedCredentialRoles,
 		processedWorkflowRoles,
-		fetchRoles,
 	};
 });
