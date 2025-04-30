@@ -13,8 +13,14 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { waitingNodeTooltip } from '@/utils/executionUtils';
 import { uniqBy } from 'lodash-es';
 import { N8nIcon, N8nRadioButtons, N8nText, N8nTooltip } from '@n8n/design-system';
-import type { INodeInputConfiguration, INodeOutputConfiguration, Workflow } from 'n8n-workflow';
-import { type NodeConnectionType, NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
+import {
+	type INodeInputConfiguration,
+	type INodeOutputConfiguration,
+	type Workflow,
+	type NodeConnectionType,
+	NodeConnectionTypes,
+	NodeHelpers,
+} from 'n8n-workflow';
 import { storeToRefs } from 'pinia';
 import { computed, ref, watch } from 'vue';
 import { useNDVStore } from '../stores/ndv.store';
@@ -22,6 +28,7 @@ import InputNodeSelect from './InputNodeSelect.vue';
 import NodeExecuteButton from './NodeExecuteButton.vue';
 import RunData from './RunData.vue';
 import WireMeUp from './WireMeUp.vue';
+import { type IRunDataDisplayMode } from '@/Interface';
 
 type MappingMode = 'debugging' | 'mapping';
 
@@ -35,6 +42,7 @@ export type Props = {
 	readOnly?: boolean;
 	isProductionExecutionPreview?: boolean;
 	isPaneActive?: boolean;
+	displayMode: IRunDataDisplayMode;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -64,6 +72,7 @@ const emit = defineEmits<{
 	changeInputNode: [nodeName: string, index: number];
 	execute: [];
 	activatePane: [];
+	displayModeChange: [IRunDataDisplayMode];
 }>();
 
 const i18n = useI18n();
@@ -369,8 +378,10 @@ function activatePane() {
 		:distance-from-active="currentNodeDepth"
 		:is-production-execution-preview="isProductionExecutionPreview"
 		:is-pane-active="isPaneActive"
+		:display-mode="displayMode"
 		pane-type="input"
 		data-test-id="ndv-input-panel"
+		:disable-ai-content="true"
 		@activate-pane="activatePane"
 		@item-hover="onItemHover"
 		@link-run="onLinkRun"
@@ -378,6 +389,7 @@ function activatePane() {
 		@run-change="onRunIndexChange"
 		@table-mounted="onTableMounted"
 		@search="onSearch"
+		@display-mode-change="emit('displayModeChange', $event)"
 	>
 		<template #header>
 			<div :class="$style.titleSection">

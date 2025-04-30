@@ -106,7 +106,7 @@ const outputTypeParsers: {
 								  }
 								| string;
 						}
-						let message = content.kwargs.content;
+						let message = String(content.kwargs.content);
 						if (Array.isArray(message)) {
 							message = (message as MessageContent[])
 								.map((item) => {
@@ -199,6 +199,7 @@ const outputTypeParsers: {
 		};
 	},
 };
+
 export type ParsedAiContent = Array<{
 	raw: IDataObject | IDataObject[];
 	parsedContent: {
@@ -208,40 +209,33 @@ export type ParsedAiContent = Array<{
 	} | null;
 }>;
 
-export const useAiContentParsers = () => {
-	const parseAiRunData = (
-		executionData: INodeExecutionData[],
-		endpointType: NodeConnectionType,
-	): ParsedAiContent => {
-		if (
-			([NodeConnectionTypes.AiChain, NodeConnectionTypes.Main] as NodeConnectionType[]).includes(
-				endpointType,
-			)
-		) {
-			return executionData.map((data) => ({ raw: data.json, parsedContent: null }));
-		}
+export function parseAiContent(
+	executionData: INodeExecutionData[],
+	endpointType: NodeConnectionType,
+) {
+	if (
+		([NodeConnectionTypes.AiChain, NodeConnectionTypes.Main] as NodeConnectionType[]).includes(
+			endpointType,
+		)
+	) {
+		return executionData.map((data) => ({ raw: data.json, parsedContent: null }));
+	}
 
-		const contentJson = executionData.map((node) => {
-			const hasBinaryData = !isObjectEmpty(node.binary);
-			return hasBinaryData ? node.binary : node.json;
-		});
+	const contentJson = executionData.map((node) => {
+		const hasBinaryData = !isObjectEmpty(node.binary);
+		return hasBinaryData ? node.binary : node.json;
+	});
 
-		const parser = outputTypeParsers[endpointType as AllowedEndpointType];
-		if (!parser)
-			return [
-				{
-					raw: contentJson.filter((item): item is IDataObject => item !== undefined),
-					parsedContent: null,
-				},
-			];
+	const parser = outputTypeParsers[endpointType as AllowedEndpointType];
+	if (!parser)
+		return [
+			{
+				raw: contentJson.filter((item): item is IDataObject => item !== undefined),
+				parsedContent: null,
+			},
+		];
 
-		const parsedOutput = contentJson
-			.filter((c): c is IDataObject => c !== undefined)
-			.map((c) => ({ raw: c, parsedContent: parser(c) }));
-		return parsedOutput;
-	};
-
-	return {
-		parseAiRunData,
-	};
-};
+	return contentJson
+		.filter((c): c is IDataObject => c !== undefined)
+		.map((c) => ({ raw: c, parsedContent: parser(c) }));
+}
