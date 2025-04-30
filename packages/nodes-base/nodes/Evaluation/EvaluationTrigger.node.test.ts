@@ -1,5 +1,5 @@
 import { mock } from 'jest-mock-extended';
-import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import type { IExecuteFunctions } from 'n8n-workflow';
 
 import { EvaluationTrigger, startingRow } from './EvaluationTrigger.node';
 import * as utils from './utils/evaluationTriggerUtils';

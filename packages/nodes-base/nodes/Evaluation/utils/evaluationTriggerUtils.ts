@@ -50,7 +50,6 @@ export async function getFilteredResults(
 		this.getNode().typeVersion,
 		[],
 		undefined,
-		true,
 		{
 			rangeDefinition: 'specifyRange',
 			headerRow: 1,
@@ -77,7 +76,6 @@ export async function getRowsLeftFilteredResults(
 		this.getNode().typeVersion,
 		[],
 		undefined,
-		true,
 		{
 			rangeDefinition: 'specifyRange',
 			headerRow: 1,
@@ -107,7 +105,6 @@ export async function getResults(
 		this.getNode().typeVersion,
 		[],
 		rangeString,
-		true,
 		rangeOptions,
 	);
 
