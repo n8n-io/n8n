@@ -7,7 +7,6 @@ import type { ActiveExecutions } from '@/active-executions';
 import type { Project } from '@/databases/entities/project';
 import type { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import type { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
-import { OrchestrationService } from '@/services/orchestration.service';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { IExecutionResponse } from '@/types-db';
 import { WaitTracker } from '@/wait-tracker';
@@ -22,7 +21,6 @@ describe('WaitTracker', () => {
 	const workflowRunner = mock<WorkflowRunner>();
 	const executionRepository = mock<ExecutionRepository>();
 	const multiMainSetup = mock<MultiMainSetup>();
-	const orchestrationService = new OrchestrationService(mock(), multiMainSetup, mock());
 	const instanceSettings = mock<InstanceSettings>({ isLeader: true, isMultiMain: false });
 
 	const project = mock<Project>({ id: 'projectId' });
@@ -46,7 +44,6 @@ describe('WaitTracker', () => {
 			ownershipService,
 			activeExecutions,
 			workflowRunner,
-			orchestrationService,
 			instanceSettings,
 		);
 		multiMainSetup.on.mockReturnThis();
@@ -235,7 +232,6 @@ describe('WaitTracker', () => {
 				ownershipService,
 				activeExecutions,
 				workflowRunner,
-				orchestrationService,
 				mock<InstanceSettings>({ isLeader: false, isMultiMain: false }),
 			);
 
