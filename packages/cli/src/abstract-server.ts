@@ -66,7 +66,7 @@ export abstract class AbstractServer {
 	constructor() {
 		this.app = express();
 		this.app.disable('x-powered-by');
-
+		this.app.set('query parser', 'extended');
 		this.app.engine('handlebars', expressHandlebars({ defaultLayout: false }));
 		this.app.set('view engine', 'handlebars');
 		this.app.set('views', TEMPLATES_DIR);
