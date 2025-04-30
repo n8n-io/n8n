@@ -219,7 +219,9 @@ export class ActiveWorkflows {
 			await this.remove(workflowId);
 		}
 
-		this.logger.debug('Deactivated all trigger- and poller-based workflows');
+		this.logger.debug('Deactivated all trigger- and poller-based workflows', {
+			workflowIds: activeWorkflowIds,
+		});
 	}
 
 	private async closeTrigger(response: ITriggerResponse, workflowId: string) {
