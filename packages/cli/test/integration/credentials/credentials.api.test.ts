@@ -25,13 +25,7 @@ import {
 	shareCredentialWithUsers,
 } from '../shared/db/credentials';
 import { createTeamProject, linkUserToProject } from '../shared/db/projects';
-import {
-	createAdmin,
-	createManyUsers,
-	createMember,
-	createOwner,
-	createUser,
-} from '../shared/db/users';
+import { createAdmin, createManyUsers, createMember, createOwner } from '../shared/db/users';
 import {
 	randomCredentialPayload as payload,
 	randomCredentialPayload,
@@ -1583,12 +1577,12 @@ describe('POST /credentials/test', () => {
 	});
 
 	test('should return only credentials shared with me when ?onlySharedWithMe=true (member)', async () => {
-		await saveCredential(randomCredentialPayload({ name: 'member credential 1' }), {
+		await saveCredential(randomCredentialPayload(), {
 			user: member,
 			role: 'credential:owner',
 		});
 
-		await saveCredential(randomCredentialPayload({ name: 'member credential 2' }), {
+		await saveCredential(randomCredentialPayload(), {
 			user: member,
 			role: 'credential:owner',
 		});
