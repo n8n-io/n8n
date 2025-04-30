@@ -415,10 +415,10 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 		delayBetweenBatches: number;
 	};
 
-	const promises = [];
-
-	for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-		try {
+	for (let i = 0; i < items.length; i += batchSize) {
+		const batch = items.slice(i, i + batchSize);
+		const batchPromises = batch.map(async (_item, batchItemIndex) => {
+			const itemIndex = i + batchItemIndex;
 			const model = await getChatModel(this);
 
 			const input = getPromptInputByType({
@@ -469,67 +469,58 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 			});
 
 			// Invoke the executor with the given input and system message.
-			promises.push(
-				executor.invoke(
-					{
-						input,
-						system_message: options.systemMessage ?? SYSTEM_MESSAGE,
-						formatting_instructions:
-							'IMPORTANT: For your response to user, you MUST use the `format_final_json_response` tool with your complete answer formatted according to the required schema. Do not attempt to format the JSON manually - always use this tool. Your response will be rejected if it is not properly formatted through this tool. Only use this tool once you are ready to provide your final answer.',
-					},
-					{ signal: this.getExecutionCancelSignal() },
-				),
+			return await executor.invoke(
+				{
+					input,
+					system_message: options.systemMessage ?? SYSTEM_MESSAGE,
+					formatting_instructions:
+						'IMPORTANT: For your response to user, you MUST use the `format_final_json_response` tool with your complete answer formatted according to the required schema. Do not attempt to format the JSON manually - always use this tool. Your response will be rejected if it is not properly formatted through this tool. Only use this tool once you are ready to provide your final answer.',
+				},
+				{ signal: this.getExecutionCancelSignal() },
 			);
-			if (batchSize && itemIndex % batchSize === 0) {
-				this.logger.debug('Sleeping');
-				await sleep(delayBetweenBatches);
+		});
+		const batchResults = await Promise.allSettled(batchPromises);
+
+		batchResults.forEach((result, index) => {
+			if (result.status === 'rejected') {
+				if (this.continueOnFail()) {
+					returnData.push({
+						json: { error: result.reason as string },
+						pairedItem: { item: index },
+					});
+					return;
+				} else {
+					throw new NodeOperationError(this.getNode(), result.reason);
+				}
 			}
-		} catch (error) {
-			if (this.continueOnFail()) {
-				returnData.push({
-					json: { error: error.message },
-					pairedItem: { item: itemIndex },
-				});
-				continue;
+			const response = result.value;
+			// If memory and outputParser are connected, parse the output.
+			if (memory && outputParser) {
+				const parsedOutput = jsonParse<{ output: Record<string, unknown> }>(
+					response.output as string,
+				);
+				response.output = parsedOutput?.output ?? parsedOutput;
 			}
-			throw error;
+
+			// Omit internal keys before returning the result.
+			const itemResult = {
+				json: omit(
+					response,
+					'system_message',
+					'formatting_instructions',
+					'input',
+					'chat_history',
+					'agent_scratchpad',
+				),
+			};
+
+			returnData.push(itemResult);
+		});
+
+		if (i + batchSize < items.length && delayBetweenBatches > 0) {
+			await sleep(delayBetweenBatches);
 		}
 	}
-	(await Promise.allSettled(promises)).forEach((result, index) => {
-		if (result.status === 'rejected') {
-			if (this.continueOnFail()) {
-				returnData.push({
-					json: { error: result.reason as string },
-					pairedItem: { item: index },
-				});
-				return;
-			} else {
-				throw new NodeOperationError(this.getNode(), result.reason);
-			}
-		}
-		const response = result.value;
-		// If memory and outputParser are connected, parse the output.
-		if (memory && outputParser) {
-			const parsedOutput = jsonParse<{ output: Record<string, unknown> }>(
-				response.output as string,
-			);
-			response.output = parsedOutput?.output ?? parsedOutput;
-		}
-
-		// Omit internal keys before returning the result.
-		const itemResult = {
-			json: omit(
-				response,
-				'system_message',
-				'formatting_instructions',
-				'input',
-				'chat_history',
-				'agent_scratchpad',
-			),
-		};
-
-		returnData.push(itemResult);
-	});
 
 	return [returnData];
 }
