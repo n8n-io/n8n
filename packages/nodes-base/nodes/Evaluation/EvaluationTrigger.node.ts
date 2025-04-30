@@ -6,7 +6,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
-import { loadOptions } from './methods';
+import { loadOptions, listSearch } from './methods';
 import {
 	getFilteredResults,
 	getGoogleSheet,
@@ -91,7 +91,7 @@ export class EvaluationTrigger implements INodeType {
 		],
 	};
 
-	methods = { loadOptions };
+	methods = { loadOptions, listSearch };
 
 	async execute(this: IExecuteFunctions, startRow?: number): Promise<INodeExecutionData[][]> {
 		// We need to allow tests to reset the startingRow
