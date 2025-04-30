@@ -232,7 +232,7 @@ export function aggregateAndSplitData({
 		}
 
 		if (convertKeysToString) {
-			key = normalizeFieldName(String(key));
+			key = String(key);
 		}
 
 		if (options.skipEmptySplitFields && typeof key !== 'number' && !key) {
