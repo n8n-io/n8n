@@ -1,4 +1,4 @@
-import { JsonColumn, WithTimestamps } from '@n8n/db';
+import { JsonColumn, WithTimestamps, objectRetriever, lowerCaser } from '@n8n/db';
 import { hasScope, type ScopeOptions, type Scope, GlobalRole } from '@n8n/permissions';
 import {
 	AfterLoad,
@@ -28,7 +28,6 @@ import type { AuthIdentity } from './auth-identity';
 import type { ProjectRelation } from './project-relation';
 import type { SharedCredentials } from './shared-credentials';
 import type { SharedWorkflow } from './shared-workflow';
-import { objectRetriever, lowerCaser } from '../utils/transformers';
 
 const STATIC_SCOPE_MAP: Record<GlobalRole, Scope[]> = {
 	'global:owner': GLOBAL_OWNER_SCOPES,
