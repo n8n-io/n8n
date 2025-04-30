@@ -27,11 +27,10 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { listQueryMiddleware } from '@/middlewares';
-import { AuthenticatedRequest, UserRequest } from '@/requests';
+import { ListQuery, AuthenticatedRequest, UserRequest } from '@/requests';
 import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { UserService } from '@/services/user.service';
-import { ListQuery } from '@/types-db';
 import type { PublicUser } from '@/types-db';
 import { WorkflowService } from '@/workflows/workflow.service';
 

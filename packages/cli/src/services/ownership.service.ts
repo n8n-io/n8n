@@ -7,7 +7,7 @@ import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import { CacheService } from '@/services/cache/cache.service';
-import type { ListQuery } from '@/types-db';
+import type { ListQueryDb } from '@/types-db';
 
 @Service()
 export class OwnershipService {
@@ -57,18 +57,20 @@ export class OwnershipService {
 	}
 
 	addOwnedByAndSharedWith(
-		rawWorkflow: ListQuery.Workflow.WithSharing,
-	): ListQuery.Workflow.WithOwnedByAndSharedWith;
+		rawWorkflow: ListQueryDb.Workflow.WithSharing,
+	): ListQueryDb.Workflow.WithOwnedByAndSharedWith;
 	addOwnedByAndSharedWith(
-		rawCredential: ListQuery.Credentials.WithSharing,
-	): ListQuery.Credentials.WithOwnedByAndSharedWith;
+		rawCredential: ListQueryDb.Credentials.WithSharing,
+	): ListQueryDb.Credentials.WithOwnedByAndSharedWith;
 	addOwnedByAndSharedWith(
-		rawEntity: ListQuery.Workflow.WithSharing | ListQuery.Credentials.WithSharing,
-	): ListQuery.Workflow.WithOwnedByAndSharedWith | ListQuery.Credentials.WithOwnedByAndSharedWith {
+		rawEntity: ListQueryDb.Workflow.WithSharing | ListQueryDb.Credentials.WithSharing,
+	):
+		| ListQueryDb.Workflow.WithOwnedByAndSharedWith
+		| ListQueryDb.Credentials.WithOwnedByAndSharedWith {
 		const shared = rawEntity.shared;
 		const entity = rawEntity as
-			| ListQuery.Workflow.WithOwnedByAndSharedWith
-			| ListQuery.Credentials.WithOwnedByAndSharedWith;
+			| ListQueryDb.Workflow.WithOwnedByAndSharedWith
+			| ListQueryDb.Credentials.WithOwnedByAndSharedWith;
 
 		Object.assign(entity, {
 			homeProject: null,

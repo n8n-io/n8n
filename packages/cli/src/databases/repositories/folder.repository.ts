@@ -3,7 +3,7 @@ import type { EntityManager, SelectQueryBuilder } from '@n8n/typeorm';
 import { DataSource, Repository } from '@n8n/typeorm';
 import { PROJECT_ROOT } from 'n8n-workflow';
 
-import type { ListQuery } from '@/types-db';
+import type { ListQuery } from '@/requests';
 
 import type { FolderWithWorkflowAndSubFolderCount } from '../entities/folder';
 import { Folder } from '../entities/folder';

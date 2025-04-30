@@ -15,7 +15,7 @@ import { CredentialsRepository } from '@/databases/repositories/credentials.repo
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import { CredentialsTester } from '@/services/credentials-tester.service';
-import type { ListQuery } from '@/types-db';
+import type { ListQueryDb } from '@/types-db';
 
 import {
 	decryptCredentialData,
@@ -74,7 +74,7 @@ beforeEach(async () => {
 	sharedCredentialsRepository = Container.get(SharedCredentialsRepository);
 });
 
-type GetAllResponse = { body: { data: ListQuery.Credentials.WithOwnedByAndSharedWith[] } };
+type GetAllResponse = { body: { data: ListQueryDb.Credentials.WithOwnedByAndSharedWith[] } };
 
 // ----------------------------------------
 // GET /credentials - fetch all credentials
@@ -92,7 +92,7 @@ describe('GET /credentials', () => {
 		expect(response.body.data.length).toBe(2); // owner retrieved owner cred and member cred
 
 		const savedCredentialsIds = [savedOwnerCredentialId, savedMemberCredentialId];
-		response.body.data.forEach((credential: ListQuery.Credentials.WithOwnedByAndSharedWith) => {
+		response.body.data.forEach((credential: ListQueryDb.Credentials.WithOwnedByAndSharedWith) => {
 			validateMainCredentialData(credential);
 			expect('data' in credential).toBe(false);
 			expect(savedCredentialsIds).toContain(credential.id);
@@ -1502,7 +1502,7 @@ const INVALID_PAYLOADS = [
 	undefined,
 ];
 
-function validateMainCredentialData(credential: ListQuery.Credentials.WithOwnedByAndSharedWith) {
+function validateMainCredentialData(credential: ListQueryDb.Credentials.WithOwnedByAndSharedWith) {
 	const { name, type, sharedWithProjects, homeProject, isManaged } = credential;
 
 	expect(typeof name).toBe('string');
@@ -1522,7 +1522,9 @@ function validateMainCredentialData(credential: ListQuery.Credentials.WithOwnedB
 	}
 }
 
-function validateCredentialWithNoData(credential: ListQuery.Credentials.WithOwnedByAndSharedWith) {
+function validateCredentialWithNoData(
+	credential: ListQueryDb.Credentials.WithOwnedByAndSharedWith,
+) {
 	validateMainCredentialData(credential);
 
 	expect('data' in credential).toBe(false);

@@ -1,5 +1,4 @@
 import type { GlobalRole, Scope } from '@n8n/permissions';
-import type express from 'express';
 import type {
 	ICredentialsEncrypted,
 	IRunExecutionData,
@@ -13,7 +12,6 @@ import type {
 	IUser,
 } from 'n8n-workflow';
 
-import type { AnnotationTagEntity } from '@/databases/entities/annotation-tag-entity.ee';
 import type { AuthProviderType } from '@/databases/entities/auth-identity';
 import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
 import type { Folder } from '@/databases/entities/folder';
@@ -70,10 +68,6 @@ export interface IPersonalizationSurveyAnswers {
 export type ITagDb = Pick<TagEntity, 'id' | 'name' | 'createdAt' | 'updatedAt'>;
 
 export type ITagWithCountDb = ITagDb & UsageCount;
-
-export type IAnnotationTagDb = Pick<AnnotationTagEntity, 'id' | 'name' | 'createdAt' | 'updatedAt'>;
-
-export type IAnnotationTagWithCountDb = IAnnotationTagDb & UsageCount;
 
 // Almost identical to editor-ui.Interfaces.ts
 export interface IWorkflowDb extends IWorkflowBase {
@@ -211,49 +205,7 @@ export namespace ExecutionSummaries {
 	export type ExecutionSummaryWithScopes = ExecutionSummary & { scopes: Scope[] };
 }
 
-export type APIRequest<
-	RouteParams = {},
-	ResponseBody = {},
-	RequestBody = {},
-	RequestQuery = {},
-> = express.Request<RouteParams, ResponseBody, RequestBody, RequestQuery> & {
-	browserId?: string;
-};
-
-export type AuthenticatedRequest<
-	RouteParams = {},
-	ResponseBody = {},
-	RequestBody = {},
-	RequestQuery = {},
-> = Omit<APIRequest<RouteParams, ResponseBody, RequestBody, RequestQuery>, 'user' | 'cookies'> & {
-	user: User;
-	cookies: Record<string, string | undefined>;
-	headers: express.Request['headers'] & {
-		'push-ref': string;
-	};
-};
-
-export namespace ListQuery {
-	export type Request = AuthenticatedRequest<{}, {}, {}, Params> & {
-		listQueryOptions?: Options;
-	};
-
-	export type Params = {
-		filter?: string;
-		skip?: string;
-		take?: string;
-		select?: string;
-		sortBy?: string;
-	};
-
-	export type Options = {
-		filter?: Record<string, unknown>;
-		select?: Record<string, true>;
-		skip?: number;
-		take?: number;
-		sortBy?: string;
-	};
-
+export namespace ListQueryDb {
 	/**
 	 * Slim workflow returned from a list query operation.
 	 */
