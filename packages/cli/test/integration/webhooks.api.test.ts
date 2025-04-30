@@ -1,5 +1,6 @@
 import { readFileSync } from 'fs';
-import type { IWorkflowBase } from 'n8n-workflow';
+import { mock } from 'jest-mock-extended';
+import type { INode, IWorkflowBase } from 'n8n-workflow';
 import {
 	NodeConnectionTypes,
 	type INodeType,
@@ -8,10 +9,8 @@ import {
 } from 'n8n-workflow';
 import { agent as testAgent } from 'supertest';
 
-import { ExternalHooks } from '@/external-hooks';
+import type { User } from '@/databases/entities/user';
 import { NodeTypes } from '@/node-types';
-import { Push } from '@/push';
-import { Telemetry } from '@/telemetry';
 import { WebhookServer } from '@/webhooks/webhook-server';
 
 import { createUser } from './shared/db/users';
@@ -23,16 +22,78 @@ import { mockInstance } from '../shared/mocking';
 
 jest.unmock('node:fs');
 
-mockInstance(Telemetry);
+class WebhookTestingNode implements INodeType {
+	description: INodeTypeDescription = {
+		displayName: 'Webhook Testing Node',
+		name: 'webhook-testing-node',
+		group: ['trigger'],
+		version: 1,
+		description: '',
+		defaults: {},
+		inputs: [],
+		outputs: [NodeConnectionTypes.Main],
+		webhooks: [
+			{
+				name: 'default',
+				isFullPath: true,
+				httpMethod: '={{$parameter["httpMethod"]}}',
+				path: '={{$parameter["path"]}}',
+			},
+		],
+		properties: [
+			{
+				name: 'httpMethod',
+				type: 'string',
+				displayName: 'Method',
+				default: 'GET',
+			},
+			{
+				displayName: 'Path',
+				name: 'path',
+				type: 'string',
+				default: 'xyz',
+			},
+		],
+	};
+
+	async webhook(this: IWebhookFunctions) {
+		const { contentType, body, params, query } = this.getRequestObject();
+		const webhookResponse: Record<string, any> = { contentType, body };
+		if (Object.keys(params).length) webhookResponse.params = params;
+		if (Object.keys(query).length) webhookResponse.query = query;
+		return { webhookResponse };
+	}
+}
 
 describe('Webhook API', () => {
-	mockInstance(ExternalHooks);
-	mockInstance(Push);
+	const nodeInstance = new WebhookTestingNode();
+	const node = mock<INode>({
+		name: 'Webhook',
+		type: nodeInstance.description.name,
+		webhookId: '5ccef736-be16-4d10-b7fb-feed7a61ff22',
+	});
+	const workflowData = { active: true, nodes: [node] } as IWorkflowBase;
 
+	const nodeTypes = mockInstance(NodeTypes);
+	nodeTypes.getByName.mockReturnValue(nodeInstance);
+	nodeTypes.getByNameAndVersion.mockReturnValue(nodeInstance);
+
+	let user: User;
 	let agent: SuperAgentTest;
 
 	beforeAll(async () => {
 		await testDb.init();
+		user = await createUser();
+
+		const server = new WebhookServer();
+		await server.start();
+		agent = testAgent(server.app);
+	});
+
+	beforeEach(async () => {
+		await testDb.truncate(['Workflow']);
+		await createWorkflow(workflowData, user);
+		await initActiveWorkflowManager();
 	});
 
 	afterAll(async () => {
@@ -41,32 +102,15 @@ describe('Webhook API', () => {
 
 	describe('Content-Type support', () => {
 		beforeAll(async () => {
-			const node = new WebhookTestingNode();
-			const user = await createUser();
-			await createWorkflow(createWebhookWorkflow(node), user);
-
-			const nodeTypes = mockInstance(NodeTypes);
-			nodeTypes.getByName.mockReturnValue(node);
-			nodeTypes.getByNameAndVersion.mockReturnValue(node);
-
-			await initActiveWorkflowManager();
-
-			const server = new WebhookServer();
-			await server.start();
-			agent = testAgent(server.app);
-		});
-
-		afterAll(async () => {
-			await testDb.truncate(['Workflow']);
+			node.parameters = { httpMethod: 'POST', path: 'abcd' };
 		});
 
 		test('should handle JSON', async () => {
 			const response = await agent.post('/webhook/abcd').send({ test: true });
 			expect(response.statusCode).toEqual(200);
 			expect(response.body).toEqual({
-				type: 'application/json',
+				contentType: 'application/json',
 				body: { test: true },
-				params: {},
 			});
 		});
 
@@ -79,7 +123,7 @@ describe('Webhook API', () => {
 				);
 			expect(response.statusCode).toEqual(200);
 			expect(response.body).toEqual({
-				type: 'application/xml',
+				contentType: 'application/xml',
 				body: {
 					outer: {
 						$: {
@@ -88,7 +132,6 @@ describe('Webhook API', () => {
 						inner: 'value',
 					},
 				},
-				params: {},
 			});
 		});
 
@@ -99,9 +142,8 @@ describe('Webhook API', () => {
 				.send('x=5&y=str&z=false');
 			expect(response.statusCode).toEqual(200);
 			expect(response.body).toEqual({
-				type: 'application/x-www-form-urlencoded',
+				contentType: 'application/x-www-form-urlencoded',
 				body: { x: '5', y: 'str', z: 'false' },
-				params: {},
 			});
 		});
 
@@ -112,9 +154,8 @@ describe('Webhook API', () => {
 				.send('{"key": "value"}');
 			expect(response.statusCode).toEqual(200);
 			expect(response.body).toEqual({
-				type: 'text/plain',
+				contentType: 'text/plain',
 				body: '{"key": "value"}',
-				params: {},
 			});
 		});
 
@@ -130,7 +171,7 @@ describe('Webhook API', () => {
 				.set('content-type', 'multipart/form-data');
 
 			expect(response.statusCode).toEqual(200);
-			expect(response.body.type).toEqual('multipart/form-data');
+			expect(response.body.contentType).toEqual('multipart/form-data');
 			const { data, files } = response.body.body;
 			expect(data).toEqual({ field1: 'value1', field2: ['value2', 'value3'] });
 
@@ -142,25 +183,9 @@ describe('Webhook API', () => {
 		});
 	});
 
-	describe('Params support', () => {
+	describe('Route-parameters support', () => {
 		beforeAll(async () => {
-			const node = new WebhookTestingNode();
-			const user = await createUser();
-			await createWorkflow(createWebhookWorkflow(node, ':variable', 'PATCH'), user);
-
-			const nodeTypes = mockInstance(NodeTypes);
-			nodeTypes.getByName.mockReturnValue(node);
-			nodeTypes.getByNameAndVersion.mockReturnValue(node);
-
-			await initActiveWorkflowManager();
-
-			const server = new WebhookServer();
-			await server.start();
-			agent = testAgent(server.app);
-		});
-
-		afterAll(async () => {
-			await testDb.truncate(['Workflow']);
+			node.parameters = { httpMethod: 'PATCH', path: ':variable' };
 		});
 
 		test('should handle params', async () => {
@@ -169,7 +194,7 @@ describe('Webhook API', () => {
 				.send({ test: true });
 			expect(response.statusCode).toEqual(200);
 			expect(response.body).toEqual({
-				type: 'application/json',
+				contentType: 'application/json',
 				body: { test: true },
 				params: {
 					variable: 'test',
@@ -180,68 +205,21 @@ describe('Webhook API', () => {
 		});
 	});
 
-	class WebhookTestingNode implements INodeType {
-		description: INodeTypeDescription = {
-			displayName: 'Webhook Testing Node',
-			name: 'webhook-testing-node',
-			group: ['trigger'],
-			version: 1,
-			description: '',
-			defaults: {},
-			inputs: [],
-			outputs: [NodeConnectionTypes.Main],
-			webhooks: [
-				{
-					name: 'default',
-					isFullPath: true,
-					httpMethod: '={{$parameter["httpMethod"]}}',
-					path: '={{$parameter["path"]}}',
-				},
-			],
-			properties: [
-				{
-					name: 'httpMethod',
-					type: 'string',
-					displayName: 'Method',
-					default: 'GET',
-				},
-				{
-					displayName: 'Path',
-					name: 'path',
-					type: 'string',
-					default: 'xyz',
-				},
-			],
-		};
+	describe('Query-parameters support', () => {
+		beforeAll(async () => {
+			node.parameters = { httpMethod: 'GET', path: 'testing' };
+		});
 
-		async webhook(this: IWebhookFunctions) {
-			const req = this.getRequestObject();
-			return {
-				webhookResponse: {
-					type: req.contentType,
-					body: req.body,
-					params: req.params,
+		test('should use the extended query parser', async () => {
+			const response = await agent.get('/webhook/testing?filter[field]=value');
+			expect(response.statusCode).toEqual(200);
+			expect(response.body).toEqual({
+				query: {
+					filter: {
+						field: 'value',
+					},
 				},
-			};
-		}
-	}
-
-	const createWebhookWorkflow = (
-		node: WebhookTestingNode,
-		path = 'abcd',
-		httpMethod = 'POST',
-	): Partial<IWorkflowBase> => ({
-		active: true,
-		nodes: [
-			{
-				name: 'Webhook',
-				type: node.description.name,
-				typeVersion: 1,
-				parameters: { httpMethod, path },
-				id: '74786112-fb73-4d80-bd9a-43982939b801',
-				webhookId: '5ccef736-be16-4d10-b7fb-feed7a61ff22',
-				position: [740, 420],
-			},
-		],
+			});
+		});
 	});
 });

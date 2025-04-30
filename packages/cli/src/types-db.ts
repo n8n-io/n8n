@@ -7,10 +7,13 @@ import type {
 	ExecutionStatus,
 	FeatureFlags,
 	IUserSettings,
+	AnnotationVote,
+	ExecutionSummary,
+	IUser,
 } from 'n8n-workflow';
 
-import type { AnnotationTagEntity } from '@/databases/entities/annotation-tag-entity.ee';
 import type { AuthProviderType } from '@/databases/entities/auth-identity';
+import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
 import type { Folder } from '@/databases/entities/folder';
 import type { Project } from '@/databases/entities/project';
 import type { SharedCredentials } from '@/databases/entities/shared-credentials';
@@ -65,10 +68,6 @@ export interface IPersonalizationSurveyAnswers {
 export type ITagDb = Pick<TagEntity, 'id' | 'name' | 'createdAt' | 'updatedAt'>;
 
 export type ITagWithCountDb = ITagDb & UsageCount;
-
-export type IAnnotationTagDb = Pick<AnnotationTagEntity, 'id' | 'name' | 'createdAt' | 'updatedAt'>;
-
-export type IAnnotationTagWithCountDb = IAnnotationTagDb & UsageCount;
 
 // Almost identical to editor-ui.Interfaces.ts
 export interface IWorkflowDb extends IWorkflowBase {
@@ -140,3 +139,124 @@ export interface WorkflowWithSharingsMetaDataAndCredentials extends Omit<Workflo
 	sharedWithProjects: SlimProject[];
 	usedCredentials?: CredentialUsedByWorkflow[];
 }
+
+/** Payload for creating an execution. */
+export type CreateExecutionPayload = Omit<IExecutionDb, 'id' | 'createdAt' | 'startedAt'>;
+
+// Data in regular format with references
+export interface IExecutionDb extends IExecutionBase {
+	data: IRunExecutionData;
+	workflowData: IWorkflowBase;
+}
+
+export interface IExecutionFlattedDb extends IExecutionBase {
+	id: string;
+	data: string;
+	workflowData: Omit<IWorkflowBase, 'pinData'>;
+	customData: Record<string, string>;
+}
+
+export namespace ExecutionSummaries {
+	export type Query = RangeQuery | CountQuery;
+
+	export type RangeQuery = { kind: 'range' } & FilterFields &
+		AccessFields &
+		RangeFields &
+		OrderFields;
+
+	export type CountQuery = { kind: 'count' } & FilterFields & AccessFields;
+
+	type FilterFields = Partial<{
+		id: string;
+		finished: boolean;
+		mode: string;
+		retryOf: string;
+		retrySuccessId: string;
+		status: ExecutionStatus[];
+		workflowId: string;
+		waitTill: boolean;
+		metadata: Array<{ key: string; value: string }>;
+		startedAfter: string;
+		startedBefore: string;
+		annotationTags: string[]; // tag IDs
+		vote: AnnotationVote;
+		projectId: string;
+	}>;
+
+	type AccessFields = {
+		accessibleWorkflowIds?: string[];
+	};
+
+	type RangeFields = {
+		range: {
+			limit: number;
+			firstId?: string;
+			lastId?: string;
+		};
+	};
+
+	type OrderFields = {
+		order?: {
+			top?: ExecutionStatus;
+			startedAt?: 'DESC';
+		};
+	};
+
+	export type ExecutionSummaryWithScopes = ExecutionSummary & { scopes: Scope[] };
+}
+
+export namespace ListQueryDb {
+	/**
+	 * Slim workflow returned from a list query operation.
+	 */
+	export namespace Workflow {
+		type OptionalBaseFields = 'name' | 'active' | 'versionId' | 'createdAt' | 'updatedAt' | 'tags';
+
+		type BaseFields = Pick<WorkflowEntity, 'id'> &
+			Partial<Pick<WorkflowEntity, OptionalBaseFields>>;
+
+		type SharedField = Partial<Pick<WorkflowEntity, 'shared'>>;
+
+		type SortingField = 'createdAt' | 'updatedAt' | 'name';
+
+		export type SortOrder = `${SortingField}:asc` | `${SortingField}:desc`;
+
+		type OwnedByField = { ownedBy: SlimUser | null; homeProject: SlimProject | null };
+
+		export type Plain = BaseFields;
+
+		export type WithSharing = BaseFields & SharedField;
+
+		export type WithOwnership = BaseFields & OwnedByField;
+
+		type SharedWithField = { sharedWith: SlimUser[]; sharedWithProjects: SlimProject[] };
+
+		export type WithOwnedByAndSharedWith = BaseFields &
+			OwnedByField &
+			SharedWithField &
+			SharedField;
+
+		export type WithScopes = BaseFields & ScopesField & SharedField;
+	}
+
+	export namespace Credentials {
+		type OwnedByField = { homeProject: SlimProject | null };
+
+		type SharedField = Partial<Pick<CredentialsEntity, 'shared'>>;
+
+		type SharedWithField = { sharedWithProjects: SlimProject[] };
+
+		export type WithSharing = CredentialsEntity & SharedField;
+
+		export type WithOwnedByAndSharedWith = CredentialsEntity &
+			OwnedByField &
+			SharedWithField &
+			SharedField;
+
+		export type WithScopes = CredentialsEntity & ScopesField & SharedField;
+	}
+}
+
+type SlimUser = Pick<IUser, 'id' | 'email' | 'firstName' | 'lastName'>;
+
+export type ScopesField = { scopes: Scope[] };

@@ -27,13 +27,15 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
-import { hasSharing, type ListQuery } from '@/requests';
+import type { ListQuery } from '@/requests';
+import { hasSharing } from '@/requests';
 import { FolderService } from '@/services/folder.service';
 import { OrchestrationService } from '@/services/orchestration.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
 import { TagService } from '@/services/tag.service';
+import type { ListQueryDb } from '@/types-db';
 import * as WorkflowHelpers from '@/workflow-helpers';
 
 import { WorkflowFinderService } from './workflow-finder.service';
@@ -137,7 +139,7 @@ export class WorkflowService {
 	}
 
 	private async processSharedWorkflows(
-		workflows: ListQuery.Workflow.WithSharing[],
+		workflows: ListQueryDb.Workflow.WithSharing[],
 		options?: ListQuery.Options,
 	) {
 		const projectId = options?.filter?.projectId;
@@ -151,7 +153,7 @@ export class WorkflowService {
 		return workflows.map((workflow) => this.ownershipService.addOwnedByAndSharedWith(workflow));
 	}
 
-	private async addSharedRelation(workflows: ListQuery.Workflow.WithSharing[]): Promise<void> {
+	private async addSharedRelation(workflows: ListQueryDb.Workflow.WithSharing[]): Promise<void> {
 		const workflowIds = workflows.map((workflow) => workflow.id);
 		const relations = await this.sharedWorkflowRepository.getAllRelationsForWorkflows(workflowIds);
 
@@ -161,7 +163,7 @@ export class WorkflowService {
 	}
 
 	private async addUserScopes(
-		workflows: ListQuery.Workflow.Plain[] | ListQuery.Workflow.WithSharing[],
+		workflows: ListQueryDb.Workflow.Plain[] | ListQueryDb.Workflow.WithSharing[],
 		user: User,
 	) {
 		const projectRelations = await this.projectService.getProjectRelationsForUser(user);
@@ -172,7 +174,7 @@ export class WorkflowService {
 	}
 
 	private cleanupSharedField(
-		workflows: ListQuery.Workflow.Plain[] | ListQuery.Workflow.WithSharing[],
+		workflows: ListQueryDb.Workflow.Plain[] | ListQueryDb.Workflow.WithSharing[],
 	): void {
 		/*
 			This is to emulate the old behavior of removing the shared field as
@@ -186,7 +188,7 @@ export class WorkflowService {
 
 	private mergeProcessedWorkflows(
 		workflowsAndFolders: WorkflowFolderUnionFull[],
-		processedWorkflows: ListQuery.Workflow.Plain[] | ListQuery.Workflow.WithSharing[],
+		processedWorkflows: ListQueryDb.Workflow.Plain[] | ListQueryDb.Workflow.WithSharing[],
 	) {
 		const workflowMap = new Map(processedWorkflows.map((workflow) => [workflow.id, workflow]));
 

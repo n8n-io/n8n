@@ -70,6 +70,7 @@ import {
 	filterDisabledNodes,
 	rewireGraph,
 	isTool,
+	getNextExecutionIndex,
 } from './partial-execution-utils';
 import { RoutingNode } from './routing-node';
 import { TriggersAndPollers } from './triggers-and-pollers';
@@ -193,6 +194,9 @@ export class WorkflowExecute {
 	): PCancelable<IRun> {
 		let incomingNodeConnections: INodeConnections | undefined;
 		let connection: IConnection;
+
+		// Increment currentExecutionIndex based on previous run
+		this.additionalData.currentNodeExecutionIndex = getNextExecutionIndex(runData);
 
 		this.status = 'running';
 
@@ -428,6 +432,10 @@ export class WorkflowExecute {
 			recreateNodeExecutionStack(graph, startNodes, runData, pinData ?? {});
 
 		// 8. Execute
+
+		// Increment currentExecutionIndex based on previous run
+		this.additionalData.currentNodeExecutionIndex = getNextExecutionIndex(runData);
+
 		this.status = 'running';
 		this.runExecutionData = {
 			startData: {

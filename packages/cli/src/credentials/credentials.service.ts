@@ -38,9 +38,8 @@ import type { CredentialRequest, ListQuery } from '@/requests';
 import { CredentialsTester } from '@/services/credentials-tester.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
-import type { ScopesField } from '@/services/role.service';
 import { RoleService } from '@/services/role.service';
-import type { ICredentialsDb } from '@/types-db';
+import type { ICredentialsDb, ScopesField } from '@/types-db';
 
 import { CredentialsFinderService } from './credentials-finder.service';
 
