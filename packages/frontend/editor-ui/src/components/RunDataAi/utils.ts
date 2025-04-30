@@ -80,13 +80,24 @@ function getTreeNodeDataRec(
 		return resultData.map((d) => createNode(parent, nodeName, currentDepth, d.runIndex, d));
 	}
 
+	const filteredAiData =
+		currentDepth === 0
+			? aiData?.filter(({ data }) => {
+					if (!data?.source || data.source.length === 0) {
+						return true;
+					}
+
+					return data.source.filter((source) => source?.previousNode === nodeName)?.length > 0;
+				})
+			: aiData;
+
 	// Get the first level of children
 	const connectedSubNodes = workflow.getParentNodes(nodeName, 'ALL_NON_MAIN', 1);
 
 	const treeNode = createNode(parent, nodeName, currentDepth, runIndex ?? 0);
 
 	// Only include sub-nodes which have data
-	const children = (aiData ?? []).flatMap((data) =>
+	const children = (filteredAiData ?? []).flatMap((data) =>
 		connectedSubNodes.includes(data.node) && (runIndex === undefined || data.runIndex === runIndex)
 			? getTreeNodeDataRec(treeNode, data.node, currentDepth + 1, workflow, aiData, data.runIndex)
 			: [],
@@ -152,6 +163,7 @@ export function getReferencedData(
 				data: data[type][0],
 				inOut,
 				type: type as NodeConnectionType,
+				source: taskData.source,
 				metadata: {
 					executionTime: taskData.executionTime,
 					startTime: taskData.startTime,
@@ -307,6 +319,7 @@ function getTreeNodeDataRecV2(
 	data: IRunData,
 	runIndex: number | undefined,
 ): LogEntry[] {
+	console.log('Rec 2');
 	// Get the first level of children
 	const connectedSubNodes = workflow.getParentNodes(node.name, 'ALL_NON_MAIN', 1);
 	const treeNode = createNodeV2(parent, node, currentDepth, runIndex ?? 0, runData);
