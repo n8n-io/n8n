@@ -1,14 +1,9 @@
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import nock from 'nock';
-
-import { testWorkflows, getWorkflowFilenames } from '@test/nodes/Helpers';
 
 import { credentials } from '../credentials';
 
 describe('Azure Cosmos DB - Get All Items', () => {
-	const workflows = getWorkflowFilenames(__dirname).filter((filename) =>
-		filename.includes('getAll.workflow.json'),
-	);
-
 	beforeEach(() => {
 		const { baseUrl } = credentials.microsoftAzureCosmosDbSharedKeyApi;
 
@@ -69,5 +64,8 @@ describe('Azure Cosmos DB - Get All Items', () => {
 			});
 	});
 
-	testWorkflows(workflows, credentials);
+	new NodeTestHarness().setupTests({
+		credentials,
+		workflowFiles: ['getAll.workflow.json'],
+	});
 });

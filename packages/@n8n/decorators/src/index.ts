@@ -11,13 +11,22 @@ export {
 	LOWEST_SHUTDOWN_PRIORITY,
 } from './shutdown/constants';
 export { ShutdownRegistryMetadata } from './shutdown-registry-metadata';
-export { ModuleRegistry } from './module';
 export { OnShutdown } from './on-shutdown';
 export { Redactable } from './redactable';
 export { BaseN8nModule, N8nModule } from './module';
+export { ModuleMetadata } from './module-metadata';
 export { Debounce } from './debounce';
 export type { AccessScope, Controller, RateLimit } from './types';
 export type { ShutdownHandler } from './types';
 export { MultiMainMetadata } from './multi-main-metadata';
 export { OnLeaderTakeover, OnLeaderStepdown } from './on-multi-main-event';
 export { Memoized } from './memoized';
+export { OnLifecycleEvent } from './on-lifecycle-event';
+export type {
+	LifecycleContext,
+	NodeExecuteBeforeContext,
+	NodeExecuteAfterContext,
+	WorkflowExecuteBeforeContext,
+	WorkflowExecuteAfterContext,
+} from './lifecycle-metadata';
+export { LifecycleMetadata } from './lifecycle-metadata';

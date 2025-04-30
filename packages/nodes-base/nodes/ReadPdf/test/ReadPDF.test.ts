@@ -1,7 +1,5 @@
-import { getWorkflowFilenames, testWorkflows } from '@test/nodes/Helpers';
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 
 describe('Test Read PDF Node', () => {
-	const workflows = getWorkflowFilenames(__dirname);
-
-	testWorkflows(workflows);
+	new NodeTestHarness().setupTests({ assertBinaryData: true });
 });

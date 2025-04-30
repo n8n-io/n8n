@@ -1,12 +1,11 @@
-import { Column, Entity, PrimaryColumn } from '@n8n/typeorm';
-
-import { datetimeColumnType } from './abstract-entity';
+import { DateTimeColumn } from '@n8n/db';
+import { Entity, PrimaryColumn } from '@n8n/typeorm';
 
 @Entity()
 export class InvalidAuthToken {
 	@PrimaryColumn()
 	token: string;
 
-	@Column(datetimeColumnType)
+	@DateTimeColumn()
 	expiresAt: Date;
 }

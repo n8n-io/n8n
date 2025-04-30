@@ -1,9 +1,9 @@
+import type { WorkflowExecuteAfterContext } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { In, type EntityManager } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 import { DateTime } from 'luxon';
 import type { Logger } from 'n8n-core';
-import { type ExecutionLifecycleHooks } from 'n8n-core';
 import {
 	createDeferredPromise,
 	type ExecutionStatus,
@@ -76,10 +76,10 @@ describe('workflowExecuteAfterHandler', () => {
 		{ status: 'crashed', type: 'failure' },
 	])('stores events for executions with the status `$status`', async ({ status, type }) => {
 		// ARRANGE
-		const ctx = mock<ExecutionLifecycleHooks>({ workflowData: workflow });
+		const ctx = mock<WorkflowExecuteAfterContext>({ workflow });
 		const startedAt = DateTime.utc();
 		const stoppedAt = startedAt.plus({ seconds: 5 });
-		const run = mock<IRun>({
+		ctx.runData = mock<IRun>({
 			mode: 'webhook',
 			status,
 			startedAt: startedAt.toJSDate(),
@@ -88,7 +88,7 @@ describe('workflowExecuteAfterHandler', () => {
 
 		// ACT
 		const now = DateTime.utc().toJSDate();
-		await insightsCollectionService.workflowExecuteAfterHandler(ctx, run);
+		await insightsCollectionService.handleWorkflowExecuteAfter(ctx);
 		await insightsCollectionService.flushEvents();
 
 		// ASSERT
@@ -143,10 +143,10 @@ describe('workflowExecuteAfterHandler', () => {
 		{ status: 'running' },
 	])('does not store events for executions with the status `$status`', async ({ status }) => {
 		// ARRANGE
-		const ctx = mock<ExecutionLifecycleHooks>({ workflowData: workflow });
+		const ctx = mock<WorkflowExecuteAfterContext>({ workflow });
 		const startedAt = DateTime.utc();
 		const stoppedAt = startedAt.plus({ seconds: 5 });
-		const run = mock<IRun>({
+		ctx.runData = mock<IRun>({
 			mode: 'webhook',
 			status,
 			startedAt: startedAt.toJSDate(),
@@ -154,7 +154,7 @@ describe('workflowExecuteAfterHandler', () => {
 		});
 
 		// ACT
-		await insightsCollectionService.workflowExecuteAfterHandler(ctx, run);
+		await insightsCollectionService.handleWorkflowExecuteAfter(ctx);
 		await insightsCollectionService.flushEvents();
 
 		// ASSERT
@@ -170,10 +170,10 @@ describe('workflowExecuteAfterHandler', () => {
 		{ mode: 'integrated' },
 	])('does not store events for executions with the mode `$mode`', async ({ mode }) => {
 		// ARRANGE
-		const ctx = mock<ExecutionLifecycleHooks>({ workflowData: workflow });
+		const ctx = mock<WorkflowExecuteAfterContext>({ workflow });
 		const startedAt = DateTime.utc();
 		const stoppedAt = startedAt.plus({ seconds: 5 });
-		const run = mock<IRun>({
+		ctx.runData = mock<IRun>({
 			mode,
 			status: 'success',
 			startedAt: startedAt.toJSDate(),
@@ -181,7 +181,7 @@ describe('workflowExecuteAfterHandler', () => {
 		});
 
 		// ACT
-		await insightsCollectionService.workflowExecuteAfterHandler(ctx, run);
+		await insightsCollectionService.handleWorkflowExecuteAfter(ctx);
 		await insightsCollectionService.flushEvents();
 
 		// ASSERT
@@ -200,10 +200,10 @@ describe('workflowExecuteAfterHandler', () => {
 		{ mode: 'webhook' },
 	])('stores events for executions with the mode `$mode`', async ({ mode }) => {
 		// ARRANGE
-		const ctx = mock<ExecutionLifecycleHooks>({ workflowData: workflow });
+		const ctx = mock<WorkflowExecuteAfterContext>({ workflow });
 		const startedAt = DateTime.utc();
 		const stoppedAt = startedAt.plus({ seconds: 5 });
-		const run = mock<IRun>({
+		ctx.runData = mock<IRun>({
 			mode,
 			status: 'success',
 			startedAt: startedAt.toJSDate(),
@@ -211,7 +211,7 @@ describe('workflowExecuteAfterHandler', () => {
 		});
 
 		// ACT
-		await insightsCollectionService.workflowExecuteAfterHandler(ctx, run);
+		await insightsCollectionService.handleWorkflowExecuteAfter(ctx);
 		await insightsCollectionService.flushEvents();
 
 		// ASSERT
@@ -259,7 +259,7 @@ describe('workflowExecuteAfterHandler - cacheMetadata', () => {
 
 	const startedAt = DateTime.utc();
 	const stoppedAt = startedAt.plus({ seconds: 5 });
-	const run = mock<IRun>({
+	const runData = mock<IRun>({
 		mode: 'webhook',
 		status: 'success',
 		startedAt: startedAt.toJSDate(),
@@ -316,12 +316,13 @@ describe('workflowExecuteAfterHandler - cacheMetadata', () => {
 
 	test('reuses cached metadata for subsequent executions of the same workflow', async () => {
 		// ARRANGE
-		const ctx = mock<ExecutionLifecycleHooks>({
-			workflowData: { ...workflow, settings: undefined },
+		const ctx = mock<WorkflowExecuteAfterContext>({
+			workflow: { ...workflow, settings: undefined },
+			runData,
 		});
 
 		// ACT
-		await insightsCollectionService.workflowExecuteAfterHandler(ctx, run);
+		await insightsCollectionService.handleWorkflowExecuteAfter(ctx);
 		await insightsCollectionService.flushEvents();
 
 		// ASSERT
@@ -343,7 +344,7 @@ describe('workflowExecuteAfterHandler - cacheMetadata', () => {
 		);
 
 		// ACT AGAIN with the same workflow
-		await insightsCollectionService.workflowExecuteAfterHandler(ctx, run);
+		await insightsCollectionService.handleWorkflowExecuteAfter(ctx);
 		await insightsCollectionService.flushEvents();
 
 		// ASSERT AGAIN
@@ -355,10 +356,10 @@ describe('workflowExecuteAfterHandler - cacheMetadata', () => {
 
 	test('updates cached metadata if workflow details change', async () => {
 		// ARRANGE
-		const ctx = mock<ExecutionLifecycleHooks>({ workflowData: workflow });
+		const ctx = mock<WorkflowExecuteAfterContext>({ workflow });
 
 		// ACT
-		await insightsCollectionService.workflowExecuteAfterHandler(ctx, run);
+		await insightsCollectionService.handleWorkflowExecuteAfter(ctx);
 		await insightsCollectionService.flushEvents();
 
 		// ASSERT
@@ -369,7 +370,7 @@ describe('workflowExecuteAfterHandler - cacheMetadata', () => {
 		workflow.name = 'new-workflow-name';
 
 		// ACT AGAIN with the same workflow
-		await insightsCollectionService.workflowExecuteAfterHandler(ctx, run);
+		await insightsCollectionService.handleWorkflowExecuteAfter(ctx);
 		await insightsCollectionService.flushEvents();
 
 		// ASSERT AGAIN
@@ -410,7 +411,7 @@ describe('workflowExecuteAfterHandler - flushEvents', () => {
 
 	const startedAt = DateTime.utc();
 	const stoppedAt = startedAt.plus({ seconds: 5 });
-	const run = mock<IRun>({
+	const runData = mock<IRun>({
 		mode: 'trigger',
 		status: 'success',
 		startedAt: startedAt.toJSDate(),
@@ -463,13 +464,13 @@ describe('workflowExecuteAfterHandler - flushEvents', () => {
 
 	test('flushes events to the database once buffer is full', async () => {
 		// ARRANGE
-		const ctx = mock<ExecutionLifecycleHooks>({ workflowData: workflow });
+		const ctx = mock<WorkflowExecuteAfterContext>({ workflow, runData });
 
 		// ACT
 		// each `workflowExecuteAfterHandler` adds 3 insights (status, runtime, time saved);
 		// we call it 333 times be 1 away from the flushBatchSize (1000)
 		for (let i = 0; i < 333; i++) {
-			await insightsCollectionService.workflowExecuteAfterHandler(ctx, run);
+			await insightsCollectionService.handleWorkflowExecuteAfter(ctx);
 		}
 		// await for the next tick to ensure the flush is called
 		await new Promise(process.nextTick);
@@ -478,7 +479,7 @@ describe('workflowExecuteAfterHandler - flushEvents', () => {
 		expect(trxMock.insert).not.toHaveBeenCalled();
 
 		// ACT
-		await insightsCollectionService.workflowExecuteAfterHandler(ctx, run);
+		await insightsCollectionService.handleWorkflowExecuteAfter(ctx);
 
 		// ASSERT
 		// await for the next tick to ensure the flush is called
@@ -491,12 +492,12 @@ describe('workflowExecuteAfterHandler - flushEvents', () => {
 		jest.useFakeTimers();
 		trxMock.insert.mockClear();
 		insightsCollectionService.startFlushingTimer();
-		const ctx = mock<ExecutionLifecycleHooks>({ workflowData: workflow });
+		const ctx = mock<WorkflowExecuteAfterContext>({ workflow, runData });
 
 		try {
 			// ACT
 			for (let i = 0; i < 33; i++) {
-				await insightsCollectionService.workflowExecuteAfterHandler(ctx, run);
+				await insightsCollectionService.handleWorkflowExecuteAfter(ctx);
 			}
 			// ASSERT
 			expect(trxMock.insert).not.toHaveBeenCalled();
@@ -516,18 +517,18 @@ describe('workflowExecuteAfterHandler - flushEvents', () => {
 		jest.useFakeTimers();
 		trxMock.insert.mockClear();
 		insightsCollectionService.startFlushingTimer();
-		const ctx = mock<ExecutionLifecycleHooks>({ workflowData: workflow });
+		const ctx = mock<WorkflowExecuteAfterContext>({ workflow });
 
 		try {
 			// ACT
-			await insightsCollectionService.workflowExecuteAfterHandler(ctx, run);
+			await insightsCollectionService.handleWorkflowExecuteAfter(ctx);
 			await jest.advanceTimersByTimeAsync(31 * 1000);
 
 			// ASSERT
 			expect(trxMock.insert).toHaveBeenCalledTimes(1);
 
 			// // ACT
-			await insightsCollectionService.workflowExecuteAfterHandler(ctx, run);
+			await insightsCollectionService.handleWorkflowExecuteAfter(ctx);
 			await jest.advanceTimersByTimeAsync(31 * 1000);
 
 			expect(trxMock.insert).toHaveBeenCalledTimes(2);
@@ -562,11 +563,11 @@ describe('workflowExecuteAfterHandler - flushEvents', () => {
 	test('flushes events to the database on shutdown', async () => {
 		// ARRANGE
 		trxMock.insert.mockClear();
-		const ctx = mock<ExecutionLifecycleHooks>({ workflowData: workflow });
+		const ctx = mock<WorkflowExecuteAfterContext>({ workflow, runData });
 
 		// ACT
 		for (let i = 0; i < 10; i++) {
-			await insightsCollectionService.workflowExecuteAfterHandler(ctx, run);
+			await insightsCollectionService.handleWorkflowExecuteAfter(ctx);
 		}
 
 		await insightsCollectionService.shutdown();
@@ -583,16 +584,16 @@ describe('workflowExecuteAfterHandler - flushEvents', () => {
 		// reset insights async flushing
 		insightsCollectionService.startFlushingTimer();
 		trxMock.insert.mockClear();
-		const ctx = mock<ExecutionLifecycleHooks>({ workflowData: workflow });
+		const ctx = mock<WorkflowExecuteAfterContext>({ workflow, runData });
 
 		// ACT
 		for (let i = 0; i < 10; i++) {
-			await insightsCollectionService.workflowExecuteAfterHandler(ctx, run);
+			await insightsCollectionService.handleWorkflowExecuteAfter(ctx);
 		}
 
 		void insightsCollectionService.shutdown();
 		// trigger a workflow after shutdown
-		await insightsCollectionService.workflowExecuteAfterHandler(ctx, run);
+		await insightsCollectionService.handleWorkflowExecuteAfter(ctx);
 
 		// ASSERT
 		expect(trxMock.insert).toHaveBeenCalledTimes(2);
@@ -615,11 +616,11 @@ describe('workflowExecuteAfterHandler - flushEvents', () => {
 		trxMock.insert.mockClear();
 		trxMock.insert.mockRejectedValueOnce(new Error('Test error'));
 		insightsCollectionService.startFlushingTimer();
-		const ctx = mock<ExecutionLifecycleHooks>({ workflowData: workflow });
+		const ctx = mock<WorkflowExecuteAfterContext>({ workflow, runData });
 
 		try {
 			// ACT
-			await insightsCollectionService.workflowExecuteAfterHandler(ctx, run);
+			await insightsCollectionService.handleWorkflowExecuteAfter(ctx);
 			await jest.advanceTimersByTimeAsync(31 * 1000);
 
 			// ASSERT
@@ -646,7 +647,7 @@ describe('workflowExecuteAfterHandler - flushEvents', () => {
 		insightsCollectionService.startFlushingTimer();
 		trxMock.insert.mockClear();
 
-		const ctx = mock<ExecutionLifecycleHooks>({ workflowData: workflow });
+		const ctx = mock<WorkflowExecuteAfterContext>({ workflow, runData });
 
 		// Flush will hang until we manually resolve it
 		const { resolve: flushResolve, promise: flushPromise } = createDeferredPromise();
@@ -659,7 +660,7 @@ describe('workflowExecuteAfterHandler - flushEvents', () => {
 		// Each `workflowExecuteAfterHandler` adds 3 insights;
 		// we call it 4 times to exceed the flushBatchSize (10)
 		for (let i = 0; i < config.flushBatchSize / 3; i++) {
-			await insightsCollectionService.workflowExecuteAfterHandler(ctx, run);
+			await insightsCollectionService.handleWorkflowExecuteAfter(ctx);
 		}
 
 		// ACT

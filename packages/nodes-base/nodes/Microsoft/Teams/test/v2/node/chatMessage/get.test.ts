@@ -1,6 +1,5 @@
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import nock from 'nock';
-
-import { testWorkflows } from '@test/nodes/Helpers';
 
 import { credentials } from '../../../credentials';
 
@@ -48,6 +47,8 @@ describe('Test MicrosoftTeamsV2, chatMessage => get', () => {
 			reactions: [],
 		});
 
-	const workflows = ['nodes/Microsoft/Teams/test/v2/node/chatMessage/get.workflow.json'];
-	testWorkflows(workflows, credentials);
+	new NodeTestHarness().setupTests({
+		credentials,
+		workflowFiles: ['get.workflow.json'],
+	});
 });

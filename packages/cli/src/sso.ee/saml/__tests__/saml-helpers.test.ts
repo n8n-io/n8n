@@ -1,8 +1,9 @@
+import { generateNanoId } from '@n8n/db';
+
 import type { AuthIdentity } from '@/databases/entities/auth-identity';
 import { User } from '@/databases/entities/user';
 import { AuthIdentityRepository } from '@/databases/repositories/auth-identity.repository';
 import { UserRepository } from '@/databases/repositories/user.repository';
-import { generateNanoId } from '@/databases/utils/generators';
 import * as helpers from '@/sso.ee/saml/saml-helpers';
 import type { SamlUserAttributes } from '@/sso.ee/saml/types';
 import { mockInstance } from '@test/mocking';

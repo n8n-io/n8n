@@ -1,5 +1,4 @@
-import { Container, Service } from '@n8n/di';
-import { Credentials } from 'n8n-core';
+import { Service } from '@n8n/di';
 import { ICredentialsHelper } from 'n8n-workflow';
 import type {
 	ICredentialDataDecryptedObject,
@@ -10,11 +9,16 @@ import type {
 	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
 
+import { Credentials } from '../dist/credentials';
 import { CredentialTypes } from './credential-types';
 
 @Service()
 export class CredentialsHelper extends ICredentialsHelper {
 	private credentialsMap: Record<string, ICredentialDataDecryptedObject> = {};
+
+	constructor(private readonly credentialTypes: CredentialTypes) {
+		super();
+	}
 
 	setCredentials(credentialsMap: Record<string, ICredentialDataDecryptedObject>) {
 		this.credentialsMap = credentialsMap;
@@ -29,7 +33,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		typeName: string,
 		requestParams: IHttpRequestOptions,
 	): Promise<IHttpRequestOptions> {
-		const credentialType = Container.get(CredentialTypes).getByName(typeName);
+		const credentialType = this.credentialTypes.getByName(typeName);
 		if (typeof credentialType.authenticate === 'function') {
 			return await credentialType.authenticate(credentials, requestParams);
 		}
