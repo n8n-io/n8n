@@ -1,4 +1,5 @@
 import type { SourceControlledFile } from '@n8n/api-types';
+import type { Variables } from '@n8n/db';
 import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
@@ -14,7 +15,6 @@ import type { Project } from '@/databases/entities/project';
 import { SharedCredentials } from '@/databases/entities/shared-credentials';
 import type { TagEntity } from '@/databases/entities/tag-entity';
 import type { User } from '@/databases/entities/user';
-import type { Variables } from '@/databases/entities/variables';
 import type { WorkflowTagMapping } from '@/databases/entities/workflow-tag-mapping';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import { FolderRepository } from '@/databases/repositories/folder.repository';

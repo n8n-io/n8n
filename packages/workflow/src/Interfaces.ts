@@ -704,6 +704,16 @@ export type DeduplicationScope = 'node' | 'workflow';
 export type DeduplicationItemTypes = string | number;
 export type DeduplicationMode = 'entries' | 'latestIncrementalKey' | 'latestDate';
 
+export interface IProcessedDataLatest {
+	mode: DeduplicationMode;
+	data: DeduplicationItemTypes;
+}
+
+export interface IProcessedDataEntries {
+	mode: DeduplicationMode;
+	data: DeduplicationItemTypes[];
+}
+
 export interface IDeduplicationOutput {
 	new: DeduplicationItemTypes[];
 	processed: DeduplicationItemTypes[];
