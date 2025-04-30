@@ -123,7 +123,6 @@ describe('JobProcessor', () => {
 			undefined,
 			undefined,
 			undefined,
-			5,
 		);
 
 		expect(manualExecutionService.runManually).toHaveBeenCalledWith(
