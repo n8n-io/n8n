@@ -20,7 +20,7 @@ const telemetry = useTelemetry();
 const i18n = useI18n();
 const helpful = ref(false);
 const generationStartTime = ref(0);
-const generatedWorkflow = ref<IWorkflowDataUpdate | undefined>();
+
 const user = computed(() => ({
 	firstName: usersStore.currentUser?.firstName ?? '',
 	lastName: usersStore.currentUser?.lastName ?? '',
@@ -111,7 +111,6 @@ function onNewWorkflow() {
 	builderStore.resetBuilderChat();
 	workflowGenerated.value = false;
 	helpful.value = false;
-	generatedWorkflow.value = undefined;
 	generationStartTime.value = new Date().getTime();
 }
 
