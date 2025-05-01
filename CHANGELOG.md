@@ -1,3 +1,13 @@
+## [1.91.1](https://github.com/n8n-io/n8n/compare/n8n@1.91.0...n8n@1.91.1) (2025-05-01)
+
+
+### Bug Fixes
+
+* **core:** Error in partial execution of vector stores ([#15019](https://github.com/n8n-io/n8n/issues/15019)) ([7561836](https://github.com/n8n-io/n8n/commit/7561836ae4e9ee6014895f6c2171472982af8d8c))
+* **Summarize Node:** Fix spaces in Fields to Split By values converted to underscores ([#15020](https://github.com/n8n-io/n8n/issues/15020)) ([79fe34e](https://github.com/n8n-io/n8n/commit/79fe34e3a345855093ae8890253416c33fa83874))
+
+
+
 # [1.91.0](https://github.com/n8n-io/n8n/compare/n8n@1.90.0...n8n@1.91.0) (2025-04-28)
 
 
