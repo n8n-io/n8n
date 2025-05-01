@@ -10,6 +10,7 @@ import type {
 	LoadedClass,
 	INodeTypeDescription,
 	INodeIssues,
+	ITaskData,
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeHelpers, Workflow } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
@@ -26,8 +27,10 @@ import {
 	SIMULATE_NODE_TYPE,
 	STICKY_NODE_TYPE,
 } from '@/constants';
-import type { INodeUi, IWorkflowDb } from '@/Interface';
+import type { IExecutionResponse, INodeUi, IWorkflowDb } from '@/Interface';
 import { CanvasNodeRenderType } from '@/types';
+import type { FrontendSettings } from '@n8n/api-types';
+import { type LogEntry } from '@/components/RunDataAi/utils';
 
 export const mockNode = ({
 	id = uuid(),
@@ -59,6 +62,8 @@ export const mockNodeTypeDescription = ({
 	codex = undefined,
 	properties = [],
 	group,
+	hidden,
+	description,
 }: {
 	name?: INodeTypeDescription['name'];
 	icon?: INodeTypeDescription['icon'];
@@ -69,12 +74,14 @@ export const mockNodeTypeDescription = ({
 	codex?: INodeTypeDescription['codex'];
 	properties?: INodeTypeDescription['properties'];
 	group?: INodeTypeDescription['group'];
+	hidden?: INodeTypeDescription['hidden'];
+	description?: INodeTypeDescription['description'];
 } = {}) =>
 	mock<INodeTypeDescription>({
 		name,
 		icon,
 		displayName: name,
-		description: '',
+		description: description ?? '',
 		version,
 		defaults: {
 			name,
@@ -90,6 +97,7 @@ export const mockNodeTypeDescription = ({
 		documentationUrl: 'https://docs',
 		iconUrl: 'nodes/test-node/icon.svg',
 		webhooks: undefined,
+		hidden,
 	});
 
 export const mockLoadedNodeType = (name: string) =>
@@ -201,5 +209,79 @@ export function createTestNode(node: Partial<INode> = {}): INode {
 		position: [0, 0] as [number, number],
 		parameters: {},
 		...node,
+	};
+}
+
+export function createMockEnterpriseSettings(
+	overrides: Partial<FrontendSettings['enterprise']> = {},
+): FrontendSettings['enterprise'] {
+	return {
+		sharing: false,
+		ldap: false,
+		saml: false,
+		logStreaming: false,
+		advancedExecutionFilters: false,
+		variables: false,
+		sourceControl: false,
+		auditLogs: false,
+		externalSecrets: false,
+		showNonProdBanner: false,
+		debugInEditor: false,
+		binaryDataS3: false,
+		workflowHistory: false,
+		workerView: false,
+		advancedPermissions: false,
+		apiKeyScopes: false,
+		projects: {
+			team: {
+				limit: 0,
+			},
+		},
+		...overrides, // Override with any passed properties
+	};
+}
+
+export function createTestTaskData(partialData: Partial<ITaskData> = {}): ITaskData {
+	return {
+		startTime: 0,
+		executionTime: 1,
+		executionIndex: 0,
+		source: [],
+		executionStatus: 'success',
+		data: { main: [[{ json: {} }]] },
+		...partialData,
+	};
+}
+
+export function createTestLogEntry(data: Partial<LogEntry> = {}): LogEntry {
+	return {
+		node: createTestNode(),
+		runIndex: 0,
+		runData: createTestTaskData({}),
+		id: uuid(),
+		children: [],
+		consumedTokens: { completionTokens: 0, totalTokens: 0, promptTokens: 0, isEstimate: false },
+		depth: 0,
+		...data,
+	};
+}
+
+export function createTestWorkflowExecutionResponse(
+	data: Partial<IExecutionResponse> = {},
+): IExecutionResponse {
+	return {
+		id: 'test-exec-id',
+		finished: true,
+		mode: 'manual',
+		status: 'error',
+		workflowData: createTestWorkflow(),
+		data: {
+			resultData: {
+				runData: {},
+			},
+		},
+		createdAt: '2025-04-16T00:00:00.000Z',
+		startedAt: '2025-04-16T00:00:01.000Z',
+		...data,
 	};
 }

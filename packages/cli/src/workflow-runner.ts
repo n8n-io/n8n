@@ -55,6 +55,10 @@ export class WorkflowRunner {
 		private readonly executionDataService: ExecutionDataService,
 	) {}
 
+	setExecutionMode(mode: 'regular' | 'queue') {
+		this.executionsMode = mode;
+	}
+
 	/** The process did error */
 	async processError(
 		error: ExecutionError | ExecutionNotFoundError,
@@ -231,6 +235,7 @@ export class WorkflowRunner {
 			settings: workflowSettings,
 			pinData,
 		});
+
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(
 			data.userId,
 			undefined,

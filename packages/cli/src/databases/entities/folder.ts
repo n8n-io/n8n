@@ -1,3 +1,4 @@
+import { WithTimestampsAndStringId } from '@n8n/db';
 import {
 	Column,
 	Entity,
@@ -8,7 +9,6 @@ import {
 	OneToMany,
 } from '@n8n/typeorm';
 
-import { WithTimestampsAndStringId } from './abstract-entity';
 import { Project } from './project';
 import { TagEntity } from './tag-entity';
 import { type WorkflowEntity } from './workflow-entity';
@@ -22,6 +22,9 @@ export type FolderWithWorkflowAndSubFolderCount = Folder & {
 export class Folder extends WithTimestampsAndStringId {
 	@Column()
 	name: string;
+
+	@Column({ nullable: true })
+	parentFolderId: string | null;
 
 	@ManyToOne(() => Folder, { nullable: true, onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'parentFolderId' })

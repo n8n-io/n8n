@@ -4,7 +4,7 @@ import type { FrontendExtensionContext } from '@n8n/extension-sdk/frontend';
 import { STORES } from '@/constants';
 import { Component, reactive } from 'vue';
 import { ref, markRaw } from 'vue';
-import InsightsExtensionManifest from '@n8n/n8n-extension-insights';
+import CloudExtensionManifest from '@n8n/n8n-extension-cloud';
 
 type ExtensionMetadata = {
 	components: Record<string, Component>;
@@ -19,7 +19,7 @@ type ExtensionPoints = {
 };
 
 export const useExtensionsStore = defineStore(STORES.EXTENSIONS, () => {
-	const extensionManifests = ref<ExtensionManifest[]>([InsightsExtensionManifest]);
+	const extensionManifests = ref<ExtensionManifest[]>([CloudExtensionManifest]);
 	const extensionMetadata = reactive<Record<string, ExtensionMetadata>>({});
 	const extensionPoints = reactive<ExtensionPoints>({
 		views: {
@@ -41,7 +41,7 @@ export const useExtensionsStore = defineStore(STORES.EXTENSIONS, () => {
 		}
 	}
 
-	function registerExtensionPoints(manifest: ExtensionManifest, context: FrontendExtensionContext) {
+	function registerExtensionPoints(manifest: ExtensionManifest) {
 		const ns = createNamespaceString(manifest);
 
 		if (manifest.extends.views.workflows.header) {
@@ -86,7 +86,7 @@ export const useExtensionsStore = defineStore(STORES.EXTENSIONS, () => {
 
 			extensionModule.setup(extensionContext);
 
-			registerExtensionPoints(extensionManifest, extensionContext);
+			registerExtensionPoints(extensionManifest);
 		});
 	}
 

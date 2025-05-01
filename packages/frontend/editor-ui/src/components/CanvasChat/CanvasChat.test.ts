@@ -175,7 +175,7 @@ describe('CanvasChat', () => {
 
 			return matchedNode;
 		});
-		workflowsStore.chatPanelState = LOGS_PANEL_STATE.ATTACHED;
+		workflowsStore.logsPanelState = LOGS_PANEL_STATE.ATTACHED;
 		workflowsStore.isLogsPanelOpen = true;
 		workflowsStore.getWorkflowExecution = mockWorkflowExecution as unknown as IExecutionResponse;
 		workflowsStore.getPastChatMessages = ['Previous message 1', 'Previous message 2'];
@@ -198,7 +198,7 @@ describe('CanvasChat', () => {
 		});
 
 		it('should not render chat when panel is closed', async () => {
-			workflowsStore.chatPanelState = LOGS_PANEL_STATE.CLOSED;
+			workflowsStore.logsPanelState = LOGS_PANEL_STATE.CLOSED;
 			const { queryByTestId } = renderComponent();
 			await waitFor(() => {
 				expect(queryByTestId('canvas-chat')).not.toBeInTheDocument();
@@ -256,6 +256,7 @@ describe('CanvasChat', () => {
 									],
 								],
 							},
+							executionIndex: 0,
 							executionStatus: 'success',
 							executionTime: 0,
 							source: [null],
@@ -310,7 +311,6 @@ describe('CanvasChat', () => {
 				id: '1',
 				text: 'Existing message',
 				sender: 'user',
-				createdAt: new Date().toISOString(),
 			},
 		];
 
@@ -320,7 +320,6 @@ describe('CanvasChat', () => {
 
 				return {
 					sendMessage: vi.fn(),
-					extractResponseMessage: vi.fn(),
 					previousMessageIndex: ref(0),
 					isLoading: computed(() => false),
 				};
@@ -385,12 +384,11 @@ describe('CanvasChat', () => {
 		beforeEach(() => {
 			vi.spyOn(useChatMessaging, 'useChatMessaging').mockReturnValue({
 				sendMessage: vi.fn(),
-				extractResponseMessage: vi.fn(),
 				previousMessageIndex: ref(0),
 				isLoading: computed(() => false),
 			});
 
-			workflowsStore.chatPanelState = LOGS_PANEL_STATE.ATTACHED;
+			workflowsStore.logsPanelState = LOGS_PANEL_STATE.ATTACHED;
 			workflowsStore.allowFileUploads = true;
 		});
 
@@ -471,13 +469,11 @@ describe('CanvasChat', () => {
 					id: '1',
 					text: 'Original message',
 					sender: 'user',
-					createdAt: new Date().toISOString(),
 				},
 				{
 					id: '2',
 					text: 'AI response',
 					sender: 'bot',
-					createdAt: new Date().toISOString(),
 				},
 			];
 			vi.spyOn(useChatMessaging, 'useChatMessaging').mockImplementation(({ messages }) => {
@@ -485,7 +481,6 @@ describe('CanvasChat', () => {
 
 				return {
 					sendMessage: sendMessageSpy,
-					extractResponseMessage: vi.fn(),
 					previousMessageIndex: ref(0),
 					isLoading: computed(() => false),
 				};
@@ -555,7 +550,7 @@ describe('CanvasChat', () => {
 			});
 
 			// Close chat panel
-			workflowsStore.chatPanelState = LOGS_PANEL_STATE.CLOSED;
+			workflowsStore.logsPanelState = LOGS_PANEL_STATE.CLOSED;
 			await waitFor(() => {
 				expect(canvasStore.setPanelHeight).toHaveBeenCalledWith(0);
 			});
@@ -565,14 +560,14 @@ describe('CanvasChat', () => {
 			const { unmount, rerender } = renderComponent();
 
 			// Set initial state
-			workflowsStore.chatPanelState = LOGS_PANEL_STATE.ATTACHED;
+			workflowsStore.logsPanelState = LOGS_PANEL_STATE.ATTACHED;
 			workflowsStore.isLogsPanelOpen = true;
 
 			// Unmount and remount
 			unmount();
 			await rerender({});
 
-			expect(workflowsStore.chatPanelState).toBe(LOGS_PANEL_STATE.ATTACHED);
+			expect(workflowsStore.logsPanelState).toBe(LOGS_PANEL_STATE.ATTACHED);
 			expect(workflowsStore.isLogsPanelOpen).toBe(true);
 		});
 	});

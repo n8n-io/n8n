@@ -1,6 +1,6 @@
 {
   "name": "n8n-editor-ui",
-  "version": "1.86.0",
+  "version": "1.91.0",
   "description": "Workflow Editor UI for n8n",
   "main": "index.js",
   "scripts": {
@@ -38,7 +38,7 @@
     "@n8n/composables": "workspace:*",
     "@n8n/design-system": "workspace:*",
     "@n8n/extension-sdk": "workspace:*",
-    "@n8n/n8n-extension-insights": "workspace:*",
+    "@n8n/n8n-extension-cloud": "workspace:*",
     "@n8n/permissions": "workspace:*",
     "@n8n/utils": "workspace:*",
     "@replit/codemirror-indentation-markers": "^6.5.3",

@@ -25,6 +25,7 @@ describe('CredentialsController', () => {
 		sharedCredentialsRepository,
 		mock(),
 		eventService,
+		mock(),
 	);
 
 	let req: AuthenticatedRequest;
@@ -49,6 +50,7 @@ describe('CredentialsController', () => {
 				id: newCredentialsPayload.projectId,
 			});
 
+			// @ts-ignore
 			credentialsService.createUnmanagedCredential.mockResolvedValue(createdCredentials);
 
 			sharedCredentialsRepository.findCredentialOwningProject.mockResolvedValue(

@@ -1,24 +1,28 @@
 <script setup lang="ts">
 import { useI18n } from '@/composables/useI18n';
+import { useTelemetry } from '@/composables/useTelemetry';
 import { VIEWS } from '@/constants';
 import {
 	INSIGHT_IMPACT_TYPES,
 	INSIGHTS_UNIT_IMPACT_MAPPING,
+	TIME_RANGE_LABELS,
 } from '@/features/insights/insights.constants';
 import type { InsightsSummaryDisplay } from '@/features/insights/insights.types';
-import type { InsightsSummary } from '@n8n/api-types';
+import type { InsightsDateRange, InsightsSummary } from '@n8n/api-types';
 import { smartDecimal } from '@n8n/utils/number/smartDecimal';
 import { computed, useCssModule } from 'vue';
 import { useRoute } from 'vue-router';
 
 const props = defineProps<{
 	summary: InsightsSummaryDisplay;
+	timeRange: InsightsDateRange['key'];
 	loading?: boolean;
 }>();
 
 const i18n = useI18n();
 const route = useRoute();
 const $style = useCssModule();
+const telemetry = useTelemetry();
 
 const summaryTitles = computed<Record<keyof InsightsSummary, string>>(() => ({
 	total: i18n.baseText('insights.banner.title.total'),
@@ -28,6 +32,11 @@ const summaryTitles = computed<Record<keyof InsightsSummary, string>>(() => ({
 	averageRunTime: i18n.baseText('insights.banner.title.averageRunTime'),
 }));
 
+const summaryHasNoData = computed(() => {
+	const summaryValues = Object.values(props.summary);
+	return summaryValues.length > 0 && summaryValues.every((summary) => !summary.value);
+});
+
 const summaryWithRouteLocations = computed(() =>
 	props.summary.map((s) => ({
 		...s,
@@ -35,7 +44,6 @@ const summaryWithRouteLocations = computed(() =>
 	})),
 );
 
-const getSign = (n: number) => (n > 0 ? '+' : undefined);
 const getImpactStyle = (id: keyof InsightsSummary, value: number) => {
 	const impact = INSIGHTS_UNIT_IMPACT_MAPPING[id];
 	if (value === 0 || impact === INSIGHT_IMPACT_TYPES.NEUTRAL) {
@@ -49,53 +57,81 @@ const getImpactStyle = (id: keyof InsightsSummary, value: number) => {
 	}
 	return $style.neutral;
 };
+
+const trackTabClick = (insightType: keyof InsightsSummary) => {
+	telemetry.track(`User clicked ${summaryTitles.value[insightType]}`, {
+		referrer: route.name === VIEWS.INSIGHTS ? 'Dashboard' : 'Overview',
+	});
+};
 </script>
 
 <template>
 	<div :class="$style.insights">
-		<N8nHeading bold tag="h3" size="small" color="text-light" class="mb-xs">{{
-			i18n.baseText('insights.banner.title', { interpolate: { count: 7 } })
-		}}</N8nHeading>
-		<N8nLoading v-if="loading" :class="$style.loading" :cols="5" />
-		<ul v-else data-test-id="insights-summary-tabs">
-			<li
-				v-for="{ id, value, deviation, unit, to } in summaryWithRouteLocations"
-				:key="id"
-				:data-test-id="`insights-summary-tab-${id}`"
-			>
-				<router-link :to="to" :exact-active-class="$style.activeTab">
-					<strong>{{ summaryTitles[id] }}</strong>
-					<span v-if="value === 0 && id === 'timeSaved'" :class="$style.empty">
-						<em>--</em>
-						<small>
+		<ul data-test-id="insights-summary-tabs">
+			<N8nLoading v-if="loading" :class="$style.loading" :cols="5" />
+			<template v-else>
+				<li
+					v-for="{ id, value, deviation, deviationUnit, unit, to } in summaryWithRouteLocations"
+					:key="id"
+					:data-test-id="`insights-summary-tab-${id}`"
+				>
+					<router-link :to="to" :exact-active-class="$style.activeTab" @click="trackTabClick(id)">
+						<strong>
+							<N8nTooltip placement="bottom" :disabled="id !== 'timeSaved'">
+								<template #content>
+									{{ i18n.baseText('insights.banner.title.timeSaved.tooltip') }}
+								</template>
+								{{ summaryTitles[id] }}
+							</N8nTooltip>
+						</strong>
+						<small :class="$style.days">
+							{{ TIME_RANGE_LABELS[timeRange] }}
+						</small>
+						<span v-if="summaryHasNoData" :class="$style.noData">
 							<N8nTooltip placement="bottom">
 								<template #content>
-									<i18n-t keypath="insights.banner.timeSaved.tooltip">
-										<template #link>
-											<a href="#">{{
-												i18n.baseText('insights.banner.timeSaved.tooltip.link.text')
-											}}</a>
-										</template>
-									</i18n-t>
+									{{ i18n.baseText('insights.banner.noData.tooltip') }}
 								</template>
-								<N8nIcon :class="$style.icon" icon="info-circle" />
+								<em>{{ i18n.baseText('insights.banner.noData') }}</em>
 							</N8nTooltip>
-						</small>
-					</span>
-					<span v-else>
-						<em
-							>{{ smartDecimal(value) }} <i>{{ unit }}</i></em
-						>
-						<small v-if="deviation !== null" :class="getImpactStyle(id, deviation)">
-							<N8nIcon
-								:class="[$style.icon, getImpactStyle(id, deviation)]"
-								:icon="deviation === 0 ? 'caret-right' : deviation > 0 ? 'caret-up' : 'caret-down'"
-							/>
-							{{ getSign(deviation) }}{{ smartDecimal(deviation) }}
-						</small>
-					</span>
-				</router-link>
-			</li>
+						</span>
+						<span v-else-if="value === 0 && id === 'timeSaved'" :class="$style.empty">
+							<em>--</em>
+							<small>
+								<N8nTooltip placement="bottom">
+									<template #content>
+										<i18n-t keypath="insights.banner.timeSaved.tooltip">
+											<template #link>{{
+												i18n.baseText('insights.banner.timeSaved.tooltip.link.text')
+											}}</template>
+										</i18n-t>
+									</template>
+									<N8nIcon :class="$style.icon" icon="info-circle" />
+								</N8nTooltip>
+							</small>
+						</span>
+						<span v-else>
+							<em
+								>{{ smartDecimal(value).toLocaleString('en-US') }} <i>{{ unit }}</i></em
+							>
+							<small v-if="deviation !== null" :class="getImpactStyle(id, deviation)">
+								<N8nIcon
+									:class="[$style.icon, getImpactStyle(id, deviation)]"
+									:icon="
+										deviation === 0 ? 'caret-right' : deviation > 0 ? 'caret-up' : 'caret-down'
+									"
+								/>
+								<N8nTooltip placement="bottom" :disabled="id !== 'failureRate'">
+									<template #content>
+										{{ i18n.baseText('insights.banner.failureRate.deviation.tooltip') }}
+									</template>
+									{{ smartDecimal(Math.abs(deviation)).toLocaleString('en-US') }}{{ deviationUnit }}
+								</N8nTooltip>
+							</small>
+						</span>
+					</router-link>
+				</li>
+			</template>
 		</ul>
 	</div>
 </template>
@@ -108,7 +144,7 @@ const getImpactStyle = (id: keyof InsightsSummary, value: number) => {
 
 	ul {
 		display: flex;
-		height: 91px;
+		height: 101px;
 		align-items: stretch;
 		justify-content: space-evenly;
 		border: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
@@ -131,9 +167,10 @@ const getImpactStyle = (id: keyof InsightsSummary, value: number) => {
 		a {
 			display: grid;
 			align-items: center;
+			align-content: center;
 			width: 100%;
 			height: 100%;
-			padding: var(--spacing-m) var(--spacing-l);
+			padding: var(--spacing-3xs) var(--spacing-l) 0;
 			border-bottom: 3px solid transparent;
 
 			&:hover {
@@ -148,17 +185,25 @@ const getImpactStyle = (id: keyof InsightsSummary, value: number) => {
 			}
 
 			strong {
+				justify-self: flex-start;
 				color: var(--color-text-dark);
 				font-size: var(--font-size-s);
 				font-weight: 400;
 				white-space: nowrap;
-				margin-bottom: var(--spacing-2xs);
+				margin-bottom: var(--spacing-3xs);
+			}
+
+			.days {
+				padding: 0;
+				margin: 0 0 var(--spacing-xs);
+				color: var(--color-text-light);
+				font-size: var(--font-size-2xs);
+				font-weight: var(--font-weight-normal);
 			}
 
 			span {
 				display: flex;
 				align-items: baseline;
-				gap: var(--spacing-xs);
 
 				&.empty {
 					em {
@@ -172,7 +217,7 @@ const getImpactStyle = (id: keyof InsightsSummary, value: number) => {
 						.icon {
 							height: 20px;
 							width: 8px;
-							top: -3px;
+							top: 5px;
 							transform: translateY(0);
 							color: var(--color-text-light);
 						}
@@ -185,14 +230,13 @@ const getImpactStyle = (id: keyof InsightsSummary, value: number) => {
 				align-items: baseline;
 				justify-content: flex-start;
 				color: var(--color-text-dark);
-				font-size: var(--font-size-2xl);
+				font-size: 24px;
 				line-height: 100%;
 				font-weight: 600;
 				font-style: normal;
 				gap: var(--spacing-5xs);
 
 				i {
-					color: var(--color-text-light);
 					font-size: 22px;
 					font-style: normal;
 				}
@@ -202,11 +246,19 @@ const getImpactStyle = (id: keyof InsightsSummary, value: number) => {
 				position: relative;
 				display: flex;
 				align-items: center;
-				padding: 0 0 0 18px;
-				font-size: 14px;
-				font-weight: 400;
+				padding: 0 0 0 14px;
+				margin: 0 0 0 var(--spacing-xs);
+				font-size: var(--font-size-2xs);
+				font-weight: var(--font-weight-bold);
 				white-space: nowrap;
 			}
+		}
+	}
+
+	.noData {
+		em {
+			color: var(--color-text-light);
+			font-size: var(--font-size-m);
 		}
 	}
 }
@@ -223,13 +275,13 @@ const getImpactStyle = (id: keyof InsightsSummary, value: number) => {
 	color: var(--color-text-light);
 
 	.icon {
-		font-size: 23px;
+		font-size: 17px;
 	}
 }
 
 .icon {
 	position: absolute;
-	font-size: 32px;
+	font-size: 17px;
 	left: 0;
 	top: 50%;
 	transform: translateY(-50%);
@@ -237,13 +289,13 @@ const getImpactStyle = (id: keyof InsightsSummary, value: number) => {
 
 .loading {
 	display: flex;
-	min-height: 91px;
 	align-self: stretch;
 	align-items: stretch;
 
 	> div {
 		margin: 0;
 		height: auto;
+		border-radius: inherit;
 	}
 }
 </style>

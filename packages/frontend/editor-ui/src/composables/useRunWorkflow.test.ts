@@ -2,15 +2,14 @@ import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { useRouter } from 'vue-router';
 import type router from 'vue-router';
-import {
-	ExpressionError,
-	type IPinData,
-	type IRunData,
-	type Workflow,
-	type IExecuteData,
-	type ITaskData,
-	NodeConnectionTypes,
-	type INodeConnections,
+import { ExpressionError, NodeConnectionTypes } from 'n8n-workflow';
+import type {
+	IPinData,
+	IRunData,
+	Workflow,
+	IExecuteData,
+	ITaskData,
+	INodeConnections,
 } from 'n8n-workflow';
 
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
@@ -26,20 +25,23 @@ import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
 import { waitFor } from '@testing-library/vue';
 
-vi.mock('@/stores/workflows.store', () => ({
-	useWorkflowsStore: vi.fn().mockReturnValue({
+vi.mock('@/stores/workflows.store', () => {
+	const storeState: Partial<ReturnType<typeof useWorkflowsStore>> & {
+		activeExecutionId: string | null | undefined;
+	} = {
 		allNodes: [],
 		runWorkflow: vi.fn(),
 		subWorkflowExecutionError: null,
 		getWorkflowRunData: null,
+		workflowExecutionData: null,
 		setWorkflowExecutionData: vi.fn(),
-		activeExecutionId: null,
+		activeExecutionId: undefined,
+		previousExecutionId: undefined,
 		nodesIssuesExist: false,
 		executionWaitingForWebhook: false,
 		getCurrentWorkflow: vi.fn().mockReturnValue({ id: '123' }),
 		getNodeByName: vi.fn(),
 		getExecution: vi.fn(),
-		nodeIssuesExit: vi.fn(),
 		checkIfNodeHasChatParent: vi.fn(),
 		getParametersLastUpdate: vi.fn(),
 		getPinnedDataLastUpdate: vi.fn(),
@@ -47,8 +49,15 @@ vi.mock('@/stores/workflows.store', () => ({
 		incomingConnectionsByNodeName: vi.fn(),
 		outgoingConnectionsByNodeName: vi.fn(),
 		markExecutionAsStopped: vi.fn(),
-	}),
-}));
+		setActiveExecutionId: vi.fn((id: string | null | undefined) => {
+			storeState.activeExecutionId = id;
+		}),
+	};
+
+	return {
+		useWorkflowsStore: vi.fn().mockReturnValue(storeState),
+	};
+});
 
 vi.mock('@/stores/pushConnection.store', () => ({
 	usePushConnectionStore: vi.fn().mockReturnValue({
@@ -114,7 +123,7 @@ describe('useRunWorkflow({ router })', () => {
 	let workflowHelpers: ReturnType<typeof useWorkflowHelpers>;
 	let settingsStore: ReturnType<typeof useSettingsStore>;
 
-	beforeAll(() => {
+	beforeEach(() => {
 		const pinia = createTestingPinia({ stubActions: false });
 
 		setActivePinia(pinia);
@@ -128,8 +137,8 @@ describe('useRunWorkflow({ router })', () => {
 		workflowHelpers = useWorkflowHelpers({ router });
 	});
 
-	beforeEach(() => {
-		uiStore.activeActions = [];
+	afterEach(() => {
+		vi.mocked(workflowsStore).setActiveExecutionId(undefined);
 		vi.clearAllMocks();
 	});
 
@@ -155,9 +164,9 @@ describe('useRunWorkflow({ router })', () => {
 			const response = await runWorkflowApi({} as IStartRunData);
 
 			expect(response).toEqual(mockResponse);
-			expect(workflowsStore.activeExecutionId).toBe('123');
+			expect(workflowsStore.setActiveExecutionId).toHaveBeenNthCalledWith(1, null);
+			expect(workflowsStore.setActiveExecutionId).toHaveBeenNthCalledWith(2, '123');
 			expect(workflowsStore.executionWaitingForWebhook).toBe(false);
-			expect(uiStore.addActiveAction).toHaveBeenCalledWith('workflowRunning');
 		});
 
 		it('should prevent running a webhook-based workflow that has issues', async () => {
@@ -182,7 +191,7 @@ describe('useRunWorkflow({ router })', () => {
 			vi.mocked(workflowsStore).runWorkflow.mockRejectedValue(new Error('Failed to run workflow'));
 
 			await expect(runWorkflowApi({} as IStartRunData)).rejects.toThrow('Failed to run workflow');
-			expect(uiStore.removeActiveAction).toHaveBeenCalledWith('workflowRunning');
+			expect(workflowsStore.setActiveExecutionId).toHaveBeenCalledWith(undefined);
 		});
 
 		it('should set waitingForWebhook if response indicates waiting', async () => {
@@ -197,6 +206,7 @@ describe('useRunWorkflow({ router })', () => {
 			expect(response).toEqual(mockResponse);
 			expect(workflowsStore.executionWaitingForWebhook).toBe(true);
 		});
+
 		it('should prevent execution and show error message when workflow is active with single webhook trigger', async () => {
 			const pinia = createTestingPinia({ stubActions: false });
 			setActivePinia(pinia);
@@ -282,7 +292,7 @@ describe('useRunWorkflow({ router })', () => {
 	describe('runWorkflow()', () => {
 		it('should return undefined if UI action "workflowRunning" is active', async () => {
 			const { runWorkflow } = useRunWorkflow({ router });
-			uiStore.addActiveAction('workflowRunning');
+			vi.mocked(workflowsStore).setActiveExecutionId('123');
 			const result = await runWorkflow({});
 			expect(result).toBeUndefined();
 		});
@@ -354,6 +364,7 @@ describe('useRunWorkflow({ router })', () => {
 				[parentName]: [
 					{
 						startTime: 1,
+						executionIndex: 0,
 						executionTime: 0,
 						source: [],
 					},
@@ -361,6 +372,7 @@ describe('useRunWorkflow({ router })', () => {
 				[executeName]: [
 					{
 						startTime: 1,
+						executionIndex: 1,
 						executionTime: 8,
 						source: [
 							{
@@ -690,7 +702,7 @@ describe('useRunWorkflow({ router })', () => {
 
 			workflowsStore.workflowExecutionData = executionData;
 			workflowsStore.activeWorkflows = ['test-wf-id'];
-			workflowsStore.activeExecutionId = 'test-exec-id';
+			workflowsStore.setActiveExecutionId('test-exec-id');
 
 			// Exercise - don't wait for returned promise to resolve
 			void runWorkflowComposable.stopCurrentExecution();

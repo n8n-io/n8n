@@ -1,4 +1,5 @@
 import { GlobalConfig } from '@n8n/config';
+import { separate } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type {
 	FindManyOptions,
@@ -35,14 +36,13 @@ import { AnnotationTagEntity } from '@/databases/entities/annotation-tag-entity.
 import { AnnotationTagMapping } from '@/databases/entities/annotation-tag-mapping.ee';
 import { ExecutionAnnotation } from '@/databases/entities/execution-annotation.ee';
 import { PostgresLiveRowsRetrievalError } from '@/errors/postgres-live-rows-retrieval.error';
-import type { ExecutionSummaries } from '@/executions/execution.types';
 import type {
 	CreateExecutionPayload,
-	IExecutionBase,
 	IExecutionFlattedDb,
+	IExecutionBase,
 	IExecutionResponse,
-} from '@/interfaces';
-import { separate } from '@/utils';
+	ExecutionSummaries,
+} from '@/types-db';
 
 import { ExecutionDataRepository } from './execution-data.repository';
 import { ExecutionData } from '../entities/execution-data';

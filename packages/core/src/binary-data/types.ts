@@ -22,12 +22,6 @@ export namespace BinaryData {
 	 */
 	export type StoredMode = Exclude<ConfigMode | UpgradedMode, 'default'>;
 
-	export type Config = {
-		mode: ConfigMode;
-		availableModes: ConfigMode[];
-		localStoragePath: string;
-	};
-
 	export type Metadata = {
 		fileName?: string;
 		mimeType?: string;
@@ -70,4 +64,8 @@ export namespace BinaryData {
 
 		rename(oldFileId: string, newFileId: string): Promise<void>;
 	}
+
+	export type SigningPayload = {
+		id: string;
+	};
 }

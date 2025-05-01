@@ -1,20 +1,14 @@
 import { Service } from '@n8n/di';
-import type { Scope } from '@n8n/permissions';
 import { DataSource, In, Repository, Like } from '@n8n/typeorm';
-import type { FindManyOptions, FindOptionsWhere } from '@n8n/typeorm';
+import type { FindManyOptions } from '@n8n/typeorm';
 
 import type { ListQuery } from '@/requests';
-import { RoleService } from '@/services/role.service';
 
 import { CredentialsEntity } from '../entities/credentials-entity';
-import type { User } from '../entities/user';
 
 @Service()
 export class CredentialsRepository extends Repository<CredentialsEntity> {
-	constructor(
-		dataSource: DataSource,
-		readonly roleService: RoleService,
-	) {
+	constructor(dataSource: DataSource) {
 		super(CredentialsEntity, dataSource.manager);
 	}
 
@@ -58,10 +52,7 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 			filter.type = Like(`%${filter.type}%`);
 		}
 
-		if (typeof filter?.projectId === 'string' && filter.projectId !== '') {
-			filter.shared = { projectId: filter.projectId };
-			delete filter.projectId;
-		}
+		this.handleSharedFilters(listQueryOptions);
 
 		if (filter) findManyOptions.where = filter;
 		if (select) findManyOptions.select = select;
@@ -86,6 +77,29 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 		}
 
 		return findManyOptions;
+	}
+
+	private handleSharedFilters(
+		listQueryOptions?: ListQuery.Options & { includeData?: boolean },
+	): void {
+		if (!listQueryOptions?.filter) return;
+
+		const { filter } = listQueryOptions;
+
+		if (typeof filter.projectId === 'string' && filter.projectId !== '') {
+			filter.shared = {
+				projectId: filter.projectId,
+			};
+			delete filter.projectId;
+		}
+
+		if (typeof filter.withRole === 'string' && filter.withRole !== '') {
+			filter.shared = {
+				...(filter?.shared ? filter.shared : {}),
+				role: filter.withRole,
+			};
+			delete filter.withRole;
+		}
 	}
 
 	async getManyByIds(ids: string[], { withSharings } = { withSharings: false }) {
@@ -130,35 +144,5 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 	 */
 	async findAllCredentialsForProject(projectId: string): Promise<CredentialsEntity[]> {
 		return await this.findBy({ shared: { projectId } });
-	}
-
-	/**
-	 * Find all credentials that the user has access to taking the scopes into
-	 * account.
-	 *
-	 * This also returns `credentials.shared` which is useful for constructing
-	 * all scopes the user has for the credential using `RoleService.addScopes`.
-	 **/
-	async findCredentialsForUser(user: User, scopes: Scope[]) {
-		let where: FindOptionsWhere<CredentialsEntity> = {};
-
-		if (!user.hasGlobalScope(scopes, { mode: 'allOf' })) {
-			const projectRoles = this.roleService.rolesWithScope('project', scopes);
-			const credentialRoles = this.roleService.rolesWithScope('credential', scopes);
-			where = {
-				...where,
-				shared: {
-					role: In(credentialRoles),
-					project: {
-						projectRelations: {
-							role: In(projectRoles),
-							userId: user.id,
-						},
-					},
-				},
-			};
-		}
-
-		return await this.find({ where, relations: { shared: true } });
 	}
 }

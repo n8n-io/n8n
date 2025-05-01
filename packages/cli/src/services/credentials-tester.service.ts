@@ -187,14 +187,14 @@ export class CredentialsTester {
 		if (credentialsDecrypted.data) {
 			try {
 				const additionalData = await WorkflowExecuteAdditionalData.getBase(userId);
-				credentialsDecrypted.data = this.credentialsHelper.applyDefaultsAndOverwrites(
+				credentialsDecrypted.data = await this.credentialsHelper.applyDefaultsAndOverwrites(
 					additionalData,
 					credentialsDecrypted.data,
+					credentialsDecrypted,
 					credentialType,
 					'internal' as WorkflowExecuteMode,
 					undefined,
 					undefined,
-					await this.credentialsHelper.credentialCanUseExternalSecrets(credentialsDecrypted),
 				);
 			} catch (error) {
 				this.logger.debug('Credential test failed', error);

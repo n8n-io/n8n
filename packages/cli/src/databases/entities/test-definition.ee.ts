@@ -1,11 +1,10 @@
+import { JsonColumn, WithTimestampsAndStringId } from '@n8n/db';
 import { Column, Entity, Index, ManyToOne, OneToMany, RelationId } from '@n8n/typeorm';
 import { Length } from 'class-validator';
 
 import { AnnotationTagEntity } from '@/databases/entities/annotation-tag-entity.ee';
 import type { TestMetric } from '@/databases/entities/test-metric.ee';
 import { WorkflowEntity } from '@/databases/entities/workflow-entity';
-
-import { jsonColumnType, WithTimestampsAndStringId } from './abstract-entity';
 
 // Entity representing a node in a workflow under test, for which data should be mocked during test execution
 export type MockedNodeItem = {
@@ -33,7 +32,7 @@ export class TestDefinition extends WithTimestampsAndStringId {
 	@Column('text')
 	description: string;
 
-	@Column(jsonColumnType, { default: '[]' })
+	@JsonColumn({ default: '[]' })
 	mockedNodes: MockedNodeItem[];
 
 	/**
