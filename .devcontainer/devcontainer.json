@@ -4,16 +4,23 @@
 	"service": "n8n",
 	"workspaceFolder": "/workspaces",
 	"mounts": [
-		"type=bind,source=${localWorkspaceFolder},target=/workspaces,consistency=cached",
-		"type=bind,source=${localEnv:HOME}/.ssh,target=/home/node/.ssh,consistency=cached",
-		"type=bind,source=${localEnv:HOME}/.n8n,target=/home/node/.n8n,consistency=cached"
 	],
 	"forwardPorts": [8080, 5678],
-	"postCreateCommand": "corepack prepare --activate && pnpm install",
-	"postAttachCommand": "pnpm build",
+	//"postCreateCommand": "corepack prepare --activate && pnpm install",
+	//"postAttachCommand": "pnpm build",
 	"customizations": {
 		"codespaces": {
 			"openFiles": ["CONTRIBUTING.md"]
+		},
+		"node": {
+			"extensions": [
+				"dbaeumer.vscode-eslint",
+				"saoudrizwan.claude-dev"
+			],
+			"settings": {
+				"terminal.integrated.defaultProfile.linux": "/bin/bash"
+			}
 		}
-	}
+	}, 
+	"remoteUser": "node"
 }

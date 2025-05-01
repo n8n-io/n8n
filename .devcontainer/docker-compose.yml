@@ -7,9 +7,13 @@ services:
     restart: unless-stopped
     volumes:
       - postgres-data:/var/lib/postgresql/data
+      - ../:/workspaces
+      - /Users/ozlevka/.ssh:/home/node/.ssh:ro
+      - /Users/ozlevka/.n8n:/home/node/.n8n
     environment:
       - POSTGRES_DB=n8n
-      - POSTGRES_PASSWORD=password
+    
+    
 
   n8n:
     build:

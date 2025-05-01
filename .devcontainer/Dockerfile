@@ -1,6 +1,6 @@
-FROM n8nio/base:20
+FROM n8n-base:local
 
-RUN apk add --no-cache --update openssh sudo shadow bash
+RUN apk add --no-cache --update openssh sudo shadow bash fish
 RUN echo node ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/node && chmod 0440 /etc/sudoers.d/node
 RUN mkdir /workspaces && chown node:node /workspaces
 USER node

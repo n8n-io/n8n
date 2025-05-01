@@ -32,6 +32,7 @@
 			"type": "node",
 			"env": {
 				// "N8N_PORT": "5679",
+				"WEBHOOK_URL": "http://test.local.bla"
 			},
 			"outputCapture": "std",
 			"killBehavior": "polite"
