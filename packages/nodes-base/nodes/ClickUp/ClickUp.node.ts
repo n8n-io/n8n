@@ -910,7 +910,7 @@ export class ClickUp implements INodeType {
 							body.due_date_time = additionalFields.dueDateTime as boolean;
 						}
 						if (additionalFields.timeEstimate) {
-							body.time_estimate = (additionalFields.timeEstimate as number) * 60000;
+							body.time_estimate = (additionalFields.timeEstimate as number) * 6000;
 						}
 						if (additionalFields.startDate) {
 							body.start_date = new Date(additionalFields.startDate as string).getTime();
