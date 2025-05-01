@@ -1,18 +1,9 @@
 {
     "type": "object",
     "properties": {
-        "id": {
-            "type": "string"
-        },
-        "labelListVisibility": {
-            "type": "string"
-        },
-        "messageListVisibility": {
-            "type": "string"
-        },
-        "name": {
+        "error": {
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }
