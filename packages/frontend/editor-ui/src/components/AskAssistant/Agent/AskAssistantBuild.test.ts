@@ -33,6 +33,7 @@ vi.mock('@/composables/useI18n', () => ({
 	}),
 }));
 
+const workflowPrompt = 'Create a workflow';
 describe('AskAssistantBuild', () => {
 	const sessionId = faker.string.uuid();
 	const renderComponent = createComponentRenderer(AskAssistantBuild);
@@ -48,7 +49,7 @@ describe('AskAssistantBuild', () => {
 					currentSessionId: sessionId,
 					streaming: false,
 					assistantThinkingMessage: undefined,
-					workflowPrompt: 'Create a workflow',
+					workflowPrompt,
 				},
 			},
 		});
@@ -61,6 +62,7 @@ describe('AskAssistantBuild', () => {
 		builderStore.resetBuilderChat = vi.fn();
 		builderStore.addAssistantMessages = vi.fn();
 		builderStore.$onAction = vi.fn().mockReturnValue(vi.fn());
+		builderStore.workflowPrompt = workflowPrompt;
 	});
 
 	describe('rendering', () => {
@@ -99,6 +101,7 @@ describe('AskAssistantBuild', () => {
 	});
 
 	describe('feedback handling', () => {
+		const workflowJson = '{"nodes": [], "connections": {}}';
 		beforeEach(() => {
 			builderStore.chatMessages = [
 				{
@@ -106,7 +109,7 @@ describe('AskAssistantBuild', () => {
 					role: 'assistant',
 					type: 'workflow-generated',
 					read: true,
-					codeSnippet: '{}',
+					codeSnippet: workflowJson,
 				},
 				{
 					id: faker.string.uuid(),
@@ -128,8 +131,9 @@ describe('AskAssistantBuild', () => {
 			await flushPromises();
 
 			expect(trackMock).toHaveBeenCalledWith('User rated workflow generation', {
-				chat_session_id: sessionId,
 				helpful: true,
+				prompt: 'Create a workflow',
+				workflow_json: workflowJson,
 			});
 		});
 
@@ -143,8 +147,9 @@ describe('AskAssistantBuild', () => {
 			await flushPromises();
 
 			expect(trackMock).toHaveBeenCalledWith('User rated workflow generation', {
-				chat_session_id: sessionId,
 				helpful: false,
+				prompt: 'Create a workflow',
+				workflow_json: workflowJson,
 			});
 		});
 
@@ -171,8 +176,9 @@ describe('AskAssistantBuild', () => {
 			expect(trackMock).toHaveBeenCalledWith(
 				'User submitted workflow generation feedback',
 				expect.objectContaining({
-					chat_session_id: sessionId,
 					feedback: feedbackText,
+					prompt: 'Create a workflow',
+					workflow_json: workflowJson,
 				}),
 			);
 		});
