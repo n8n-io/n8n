@@ -29,6 +29,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { type IUpdateInformation } from '@/Interface';
 import { generateCodeForAiTransform } from '@/components/ButtonParameter/utils';
 import { hasFromAiExpressions } from '@/utils/nodes/nodeTransforms';
+import { useUIStore } from '@/stores/ui.store';
 
 const NODE_TEST_STEP_POPUP_COUNT_KEY = 'N8N_NODE_TEST_STEP_POPUP_COUNT';
 const MAX_POPUP_COUNT = 10;
@@ -76,6 +77,7 @@ const nodeTypesStore = useNodeTypesStore();
 const i18n = useI18n();
 const message = useMessage();
 const telemetry = useTelemetry();
+const uiStore = useUIStore();
 
 const node = computed(() => workflowsStore.getNodeByName(props.nodeName));
 const pinnedData = usePinnedData(node);
