@@ -1,10 +1,10 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import type { IExecuteFunctions, INodeTypeBaseDescription } from 'n8n-workflow';
 
-import { HttpRequestV3 } from '../../V3/HttpRequestV3.node';
+import { HttpRequestV2 } from '../../V2/HttpRequestV2.node';
 
-describe('HttpRequestV3', () => {
-	let node: HttpRequestV3;
+describe('HttpRequestV2', () => {
+	let node: HttpRequestV2;
 	let executeFunctions: IExecuteFunctions;
 
 	const baseUrl = 'http://example.com';
@@ -13,7 +13,7 @@ describe('HttpRequestV3', () => {
 		batching: { batch: { batchSize: 1, batchInterval: 1 } },
 		proxy: '',
 		timeout: '',
-		allowUnauthoridCerts: '',
+		allowUnauthorizedCerts: '',
 		queryParameterArrays: '',
 		response: '',
 		lowercaseHeaders: '',
@@ -26,14 +26,14 @@ describe('HttpRequestV3', () => {
 			description: 'Makes an HTTP request and returns the response data',
 			group: [],
 		};
-		node = new HttpRequestV3(baseDescription);
+		node = new HttpRequestV2(baseDescription);
 		executeFunctions = {
 			getInputData: jest.fn(),
 			getNodeParameter: jest.fn(),
 			getNode: jest.fn(() => {
 				return {
 					type: 'n8n-nodes-base.httpRequest',
-					typeVersion: 3,
+					typeVersion: 2,
 				};
 			}),
 			getCredentials: jest.fn(),
@@ -42,17 +42,13 @@ describe('HttpRequestV3', () => {
 				requestOAuth1: jest.fn(
 					async () =>
 						await Promise.resolve({
-							statusCode: 200,
-							headers: { 'content-type': 'application/json' },
-							body: Buffer.from(JSON.stringify({ success: true })),
+							success: true,
 						}),
 				),
 				requestOAuth2: jest.fn(
 					async () =>
 						await Promise.resolve({
-							statusCode: 200,
-							headers: { 'content-type': 'application/json' },
-							body: Buffer.from(JSON.stringify({ success: true })),
+							success: true,
 						}),
 				),
 				requestWithAuthentication: jest.fn(),
@@ -70,75 +66,6 @@ describe('HttpRequestV3', () => {
 			continueOnFail: jest.fn(),
 			getMode: jest.fn(),
 		} as unknown as IExecuteFunctions;
-	});
-
-	it('should make a GET request', async () => {
-		(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
-		(executeFunctions.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
-			switch (paramName) {
-				case 'method':
-					return 'GET';
-				case 'url':
-					return baseUrl;
-				case 'authentication':
-					return 'none';
-				case 'options':
-					return options;
-				default:
-					return undefined;
-			}
-		});
-		const response = {
-			headers: { 'content-type': 'application/json' },
-			body: Buffer.from(JSON.stringify({ success: true })),
-		};
-
-		(executeFunctions.helpers.request as jest.Mock).mockResolvedValue(response);
-
-		const result = await node.execute.call(executeFunctions);
-
-		expect(result).toEqual([[{ json: { success: true }, pairedItem: { item: 0 } }]]);
-	});
-
-	it('should handle authentication', async () => {
-		(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
-		(executeFunctions.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
-			switch (paramName) {
-				case 'method':
-					return 'GET';
-				case 'url':
-					return baseUrl;
-				case 'authentication':
-					return 'genericCredentialType';
-				case 'genericAuthType':
-					return 'httpBasicAuth';
-				case 'options':
-					return options;
-				default:
-					return undefined;
-			}
-		});
-		(executeFunctions.getCredentials as jest.Mock).mockResolvedValue({
-			user: 'username',
-			password: 'password',
-		});
-		const response = {
-			headers: { 'content-type': 'application/json' },
-			body: Buffer.from(JSON.stringify({ success: true })),
-		};
-		(executeFunctions.helpers.request as jest.Mock).mockResolvedValue(response);
-
-		const result = await node.execute.call(executeFunctions);
-
-		expect(result).toEqual([[{ json: { success: true }, pairedItem: { item: 0 } }]]);
-		expect(executeFunctions.helpers.request).toHaveBeenCalledWith(
-			expect.objectContaining({
-				auth: {
-					user: 'username',
-					pass: 'password',
-				},
-			}),
-		);
 	});
 
 	describe('Authentication Handling', () => {
@@ -203,6 +130,10 @@ describe('HttpRequestV3', () => {
 							return genericCredentialType;
 						case 'options':
 							return options;
+						case 'bodyParametersUi':
+						case 'headerParametersUi':
+						case 'queryParametersUi':
+							return { parameter: [] };
 						default:
 							return undefined;
 					}
@@ -210,13 +141,11 @@ describe('HttpRequestV3', () => {
 
 				(executeFunctions.getCredentials as jest.Mock).mockResolvedValue(credentials);
 				const response = {
-					headers: { 'content-type': 'application/json' },
-					body: Buffer.from(JSON.stringify({ success: true })),
+					success: true,
 				};
 				(executeFunctions.helpers.request as jest.Mock).mockResolvedValue(response);
 
 				const result = await node.execute.call(executeFunctions);
-
 				expect(result).toEqual([[{ json: { success: true }, pairedItem: { item: 0 } }]]);
 				if (genericCredentialType === 'oAuth1Api') {
 					expect(executeFunctions.helpers.requestOAuth1).toHaveBeenCalled();
