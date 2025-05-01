@@ -1,7 +1,7 @@
 ARG NODE_VERSION=20
 
 # 1. Create an image to build n8n
-FROM --platform=linux/amd64 ghcr.io/ozlevka/n8n-base:${NODE_VERSION} AS builder
+FROM --platform=linux/amd64 ghcr.io/ozlevka/n8n-base:${NODE_VERSION}-n AS builder
 
 # Build the application from source
 WORKDIR /src
