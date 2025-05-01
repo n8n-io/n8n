@@ -20,7 +20,7 @@ const telemetry = useTelemetry();
 const i18n = useI18n();
 const helpful = ref(false);
 const generationStartTime = ref(0);
-
+const generatedWorkflow = ref<IWorkflowDataUpdate | undefined>();
 const user = computed(() => ({
 	firstName: usersStore.currentUser?.firstName ?? '',
 	lastName: usersStore.currentUser?.lastName ?? '',
@@ -28,6 +28,9 @@ const user = computed(() => ({
 
 const workflowGenerated = ref(false);
 const loadingMessage = computed(() => builderStore.assistantThinkingMessage);
+const generatedWorkflowJson = computed(
+	() => builderStore.chatMessages.find((msg) => msg.type === 'workflow-generated')?.codeSnippet,
+);
 
 async function onUserMessage(content: string) {
 	// If there is no current session running, initialize the support chat session
@@ -84,7 +87,7 @@ function onInsertWorkflow(code: string) {
 	telemetry.track('Workflow generated from prompt', {
 		prompt: builderStore.workflowPrompt,
 		latency: new Date().getTime() - generationStartTime.value,
-		workflow_json: code,
+		workflow_json: generatedWorkflowJson.value,
 	});
 
 	nodeViewEventBus.emit('importWorkflowData', {
@@ -108,30 +111,34 @@ function onNewWorkflow() {
 	builderStore.resetBuilderChat();
 	workflowGenerated.value = false;
 	helpful.value = false;
+	generatedWorkflow.value = undefined;
 	generationStartTime.value = new Date().getTime();
 }
 
 function onThumbsUp() {
 	helpful.value = true;
 	telemetry.track('User rated workflow generation', {
-		chat_session_id: builderStore.currentSessionId,
 		helpful: helpful.value,
+		prompt: builderStore.workflowPrompt,
+		workflow_json: generatedWorkflowJson.value,
 	});
 }
 
 function onThumbsDown() {
 	helpful.value = false;
 	telemetry.track('User rated workflow generation', {
-		chat_session_id: builderStore.currentSessionId,
 		helpful: helpful.value,
+		prompt: builderStore.workflowPrompt,
+		workflow_json: generatedWorkflowJson.value,
 	});
 }
 
 function onSubmitFeedback(feedback: string) {
 	telemetry.track('User submitted workflow generation feedback', {
-		chat_session_id: builderStore.currentSessionId,
 		helpful: helpful.value,
 		feedback,
+		prompt: builderStore.workflowPrompt,
+		workflow_json: generatedWorkflowJson.value,
 	});
 }
 
