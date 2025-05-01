@@ -6,6 +6,7 @@ import {
 	MODAL_CONFIRM,
 	FORM_TRIGGER_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
+	FROM_AI_PARAMETERS_MODAL_KEY,
 } from '@/constants';
 import {
 	AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT,
@@ -27,6 +28,7 @@ import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { type IUpdateInformation } from '@/Interface';
 import { generateCodeForAiTransform } from '@/components/ButtonParameter/utils';
+import { hasFromAiExpressions } from '@/utils/nodes/nodeTransforms';
 
 const NODE_TEST_STEP_POPUP_COUNT_KEY = 'N8N_NODE_TEST_STEP_POPUP_COUNT';
 const MAX_POPUP_COUNT = 10;
@@ -341,22 +343,31 @@ async function onClick() {
 		}
 
 		if (!pinnedData.hasData.value || shouldUnpinAndExecute) {
-			const telemetryPayload = {
-				node_type: nodeType.value ? nodeType.value.name : null,
-				workflow_id: workflowsStore.workflowId,
-				source: props.telemetrySource,
-				push_ref: ndvStore.pushRef,
-			};
+			if (node.value && hasFromAiExpressions(node.value)) {
+				uiStore.openModalWithData({
+					name: FROM_AI_PARAMETERS_MODAL_KEY,
+					data: {
+						nodeName: props.nodeName,
+					},
+				});
+			} else {
+				const telemetryPayload = {
+					node_type: nodeType.value ? nodeType.value.name : null,
+					workflow_id: workflowsStore.workflowId,
+					source: props.telemetrySource,
+					push_ref: ndvStore.pushRef,
+				};
 
-			telemetry.track('User clicked execute node button', telemetryPayload);
-			await externalHooks.run('nodeExecuteButton.onClick', telemetryPayload);
+				telemetry.track('User clicked execute node button', telemetryPayload);
+				await externalHooks.run('nodeExecuteButton.onClick', telemetryPayload);
 
-			await runWorkflow({
-				destinationNode: props.nodeName,
-				source: 'RunData.ExecuteNodeButton',
-			});
+				await runWorkflow({
+					destinationNode: props.nodeName,
+					source: 'RunData.ExecuteNodeButton',
+				});
 
-			emit('execute');
+				emit('execute');
+			}
 		}
 	}
 }

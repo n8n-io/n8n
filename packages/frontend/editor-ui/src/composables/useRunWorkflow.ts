@@ -42,6 +42,7 @@ import { useTelemetry } from './useTelemetry';
 import { useSettingsStore } from '@/stores/settings.store';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { useNodeDirtiness } from '@/composables/useNodeDirtiness';
+import { useParameterOverridesStore } from '@/stores/parameterOverrides.store';
 
 export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof useRouter> }) {
 	const nodeHelpers = useNodeHelpers();
@@ -51,6 +52,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 	const telemetry = useTelemetry();
 	const externalHooks = useExternalHooks();
 	const settingsStore = useSettingsStore();
+	const parameterOverridesStore = useParameterOverridesStore();
 
 	const rootStore = useRootStore();
 	const pushConnectionStore = usePushConnectionStore();
@@ -278,6 +280,17 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 
 			if ('destinationNode' in options) {
 				startRunData.destinationNode = options.destinationNode;
+				const nodeId = workflowsStore.getNodeByName(options.destinationNode as string)?.id;
+				if (nodeId && version === 2) {
+					const node = workflowData.nodes.find((nodeData) => nodeData.id === nodeId);
+					if (node?.parameters) {
+						node.parameters = parameterOverridesStore.substituteParameters(
+							workflow.id,
+							nodeId,
+							node?.parameters,
+						);
+					}
+				}
 			}
 
 			if (startRunData.runData) {

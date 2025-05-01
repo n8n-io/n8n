@@ -1556,5 +1556,9 @@ export function isTriggerNode(nodeTypeData: INodeTypeDescription) {
 export function isExecutable(workflow: Workflow, node: INode, nodeTypeData: INodeTypeDescription) {
 	const outputs = getNodeOutputs(workflow, node, nodeTypeData);
 	const outputNames = getConnectionTypes(outputs);
-	return outputNames.includes(NodeConnectionTypes.Main) || isTriggerNode(nodeTypeData);
+	return (
+		outputNames.includes(NodeConnectionTypes.Main) ||
+		isTriggerNode(nodeTypeData) ||
+		nodeTypeData.usableAsTool === true
+	);
 }
