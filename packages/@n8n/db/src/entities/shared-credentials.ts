@@ -1,10 +1,9 @@
-import { WithTimestamps } from '@n8n/db';
 import { Column, Entity, ManyToOne, PrimaryColumn } from '@n8n/typeorm';
 
+import { WithTimestamps } from './abstract-entity';
 import { CredentialsEntity } from './credentials-entity';
 import { Project } from './project';
-
-export type CredentialSharingRole = 'credential:owner' | 'credential:user';
+import { CredentialSharingRole } from './types-db';
 
 @Entity()
 export class SharedCredentials extends WithTimestamps {

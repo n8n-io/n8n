@@ -12,15 +12,14 @@ import type {
 	IUser,
 } from 'n8n-workflow';
 
-import type { AuthProviderType } from '@/databases/entities/auth-identity';
-import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
-import type { Folder } from '@/databases/entities/folder';
-import type { Project } from '@/databases/entities/project';
-import type { SharedCredentials } from '@/databases/entities/shared-credentials';
-import type { SharedWorkflow } from '@/databases/entities/shared-workflow';
-import type { TagEntity } from '@/databases/entities/tag-entity';
-import type { User } from '@/databases/entities/user';
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
+import type { CredentialsEntity } from './credentials-entity';
+import type { Folder } from './folder';
+import type { Project } from './project';
+import type { SharedCredentials } from './shared-credentials';
+import type { SharedWorkflow } from './shared-workflow';
+import type { TagEntity } from './tag-entity';
+import type { User } from './user';
+import type { WorkflowEntity } from './workflow-entity';
 
 export type UsageCount = {
 	usageCount: number;
@@ -260,3 +259,22 @@ export namespace ListQueryDb {
 type SlimUser = Pick<IUser, 'id' | 'email' | 'firstName' | 'lastName'>;
 
 export type ScopesField = { scopes: Scope[] };
+
+export const enum StatisticsNames {
+	productionSuccess = 'production_success',
+	productionError = 'production_error',
+	manualSuccess = 'manual_success',
+	manualError = 'manual_error',
+	dataLoaded = 'data_loaded',
+}
+
+export type CredentialSharingRole = 'credential:owner' | 'credential:user';
+
+export type WorkflowSharingRole = 'workflow:owner' | 'workflow:editor';
+
+export type AuthProviderType = 'ldap' | 'email' | 'saml'; // | 'google';
+
+export type FolderWithWorkflowAndSubFolderCount = Folder & {
+	workflowCount: boolean;
+	subFolderCount: number;
+};

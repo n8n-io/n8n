@@ -1,4 +1,5 @@
-import type { User } from '@/databases/entities/user';
+import type { User } from '@n8n/db';
+
 import { Telemetry } from '@/telemetry';
 import { mockInstance } from '@test/mocking';
 
