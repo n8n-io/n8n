@@ -422,7 +422,7 @@ export class WorkflowService {
 	async archive(
 		user: User,
 		workflowId: string,
-		force = false,
+		skipArchived: boolean = false,
 	): Promise<WorkflowEntity | undefined> {
 		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:delete',
@@ -432,7 +432,11 @@ export class WorkflowService {
 			return;
 		}
 
-		if (workflow.isArchived && !force) {
+		if (workflow.isArchived) {
+			if (skipArchived) {
+				return workflow;
+			}
+
 			throw new BadRequestError('Workflow is already archived.');
 		}
 
