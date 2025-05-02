@@ -43,6 +43,7 @@ describe('createMessage', () => {
 			mockSendAndWaitConfig,
 			phoneID,
 			recipientPhone,
+			'',
 		);
 
 		expect(request).toEqual({
@@ -77,7 +78,12 @@ describe('createMessage', () => {
 			],
 		};
 
-		const request: IHttpRequestOptions = createMessage(singleOptionConfig, phoneID, recipientPhone);
+		const request: IHttpRequestOptions = createMessage(
+			singleOptionConfig,
+			phoneID,
+			recipientPhone,
+			'',
+		);
 
 		expect(request).toEqual({
 			baseURL: WHATSAPP_BASE_URL,

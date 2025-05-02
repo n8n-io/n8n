@@ -54,7 +54,9 @@ const isSubmitEnabled = computed(() => {
 		hasExecutionData.value
 	);
 });
-const hasExecutionData = computed(() => (useNDVStore().ndvInputData || []).length > 0);
+const hasExecutionData = computed(
+	() => (useNDVStore().ndvInputDataWithPinnedData || []).length > 0,
+);
 const loadingString = computed(() =>
 	i18n.baseText(`codeNodeEditor.askAi.loadingPhrase${loadingPhraseIndex.value}` as BaseTextKey),
 );
@@ -104,7 +106,11 @@ function getSchemas() {
 		})
 		.filter((node) => node.schema?.value.length > 0);
 
-	const inputSchema = parentNodesSchemas.shift();
+	// Account for empty objects
+	const inputSchema = parentNodesSchemas.shift() ?? {
+		nodeName: parentNodesNames[0] ?? '',
+		schema: { path: '', type: 'undefined', value: '' },
+	};
 
 	return {
 		parentNodesNames,
@@ -159,7 +165,7 @@ async function onSubmit() {
 		question: prompt.value,
 		context: {
 			schema: schemas.parentNodesSchemas,
-			inputSchema: schemas.inputSchema!,
+			inputSchema: schemas.inputSchema,
 			ndvPushRef: useNDVStore().pushRef,
 			pushRef: rootStore.pushRef,
 		},

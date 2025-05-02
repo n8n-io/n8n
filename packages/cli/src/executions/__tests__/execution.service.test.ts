@@ -1,3 +1,4 @@
+import type { IExecutionResponse } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import { WorkflowOperationError } from 'n8n-workflow';
 
@@ -9,7 +10,6 @@ import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.err
 import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error';
 import { ExecutionService } from '@/executions/execution.service';
 import type { ExecutionRequest } from '@/executions/execution.types';
-import type { IExecutionResponse } from '@/interfaces';
 import { ScalingService } from '@/scaling/scaling.service';
 import type { Job } from '@/scaling/scaling.types';
 import type { WaitTracker } from '@/wait-tracker';

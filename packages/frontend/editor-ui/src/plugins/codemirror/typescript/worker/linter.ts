@@ -49,8 +49,15 @@ function isDiagnosticWithLocation(
 }
 
 function isIgnoredDiagnostic(diagnostic: ts.Diagnostic) {
-	// No implicit any
-	return diagnostic.code === 7006;
+	switch (diagnostic.code) {
+		// No implicit any
+		case 7006:
+		// Cannot find module or its corresponding type declarations.
+		case 2307:
+			return true;
+	}
+
+	return false;
 }
 
 /**

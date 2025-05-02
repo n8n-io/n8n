@@ -1,11 +1,12 @@
 import { GlobalConfig } from '@n8n/config';
+import { separate } from '@n8n/db';
 import { Service } from '@n8n/di';
 import axios from 'axios';
 import { InstanceSettings, Logger } from 'n8n-core';
 import type { IWorkflowBase } from 'n8n-workflow';
 
 import config from '@/config';
-import { getN8nPackageJson, inDevelopment } from '@/constants';
+import { inDevelopment, N8N_VERSION } from '@/constants';
 import { isApiEnabled } from '@/public-api';
 import {
 	ENV_VARS_DOCS_URL,
@@ -15,7 +16,6 @@ import {
 } from '@/security-audit/constants';
 import type { RiskReporter, Risk, n8n } from '@/security-audit/types';
 import { toFlaggedNode } from '@/security-audit/utils';
-import { separate } from '@/utils';
 
 @Service()
 export class InstanceRiskReporter implements RiskReporter {
@@ -175,7 +175,7 @@ export class InstanceRiskReporter implements RiskReporter {
 	private async getOutdatedState() {
 		let versions = [];
 
-		const localVersion = getN8nPackageJson().version;
+		const localVersion = N8N_VERSION;
 
 		try {
 			versions = await this.getNextVersions(localVersion).then((v) => this.removeIconData(v));

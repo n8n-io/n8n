@@ -1,7 +1,7 @@
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import { mock } from 'jest-mock-extended';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
-import { testWorkflows, getWorkflowFilenames } from '../../../test/nodes/Helpers';
 import { ExecutionData } from '../ExecutionData.node';
 
 describe('ExecutionData Node', () => {
@@ -19,5 +19,6 @@ describe('ExecutionData Node', () => {
 	});
 });
 
-const workflows = getWorkflowFilenames(__dirname);
-describe('ExecutionData -> Should run the workflow', () => testWorkflows(workflows));
+describe('ExecutionData -> Should run the workflow', () => {
+	new NodeTestHarness().setupTests();
+});

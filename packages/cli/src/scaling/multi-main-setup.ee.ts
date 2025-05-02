@@ -1,5 +1,6 @@
 import { GlobalConfig } from '@n8n/config';
-import { Service } from '@n8n/di';
+import { MultiMainMetadata } from '@n8n/decorators';
+import { Container, Service } from '@n8n/di';
 import { InstanceSettings, Logger } from 'n8n-core';
 
 import config from '@/config';
@@ -12,14 +13,14 @@ type MultiMainEvents = {
 	/**
 	 * Emitted when this instance loses leadership. In response, its various
 	 * services will stop triggers, pollers, pruning, wait-tracking, license
-	 * renewal, queue recovery, etc.
+	 * renewal, queue recovery, insights, etc.
 	 */
 	'leader-stepdown': never;
 
 	/**
 	 * Emitted when this instance gains leadership. In response, its various
 	 * services will start triggers, pollers, pruning, wait-tracking, license
-	 * renewal, queue recovery, etc.
+	 * renewal, queue recovery, insights, etc.
 	 */
 	'leader-takeover': never;
 };
@@ -33,6 +34,7 @@ export class MultiMainSetup extends TypedEmitter<MultiMainEvents> {
 		private readonly publisher: Publisher,
 		private readonly redisClientService: RedisClientService,
 		private readonly globalConfig: GlobalConfig,
+		private readonly metadata: MultiMainMetadata,
 	) {
 		super();
 		this.logger = this.logger.scoped(['scaling', 'multi-main-setup']);
@@ -108,14 +110,16 @@ export class MultiMainSetup extends TypedEmitter<MultiMainEvents> {
 		const { hostId } = this.instanceSettings;
 
 		// this can only succeed if leadership is currently vacant
-		const keySetSuccessfully = await this.publisher.setIfNotExists(this.leaderKey, hostId);
+		const keySetSuccessfully = await this.publisher.setIfNotExists(
+			this.leaderKey,
+			hostId,
+			this.leaderKeyTtl,
+		);
 
 		if (keySetSuccessfully) {
 			this.logger.debug(`[Instance ID ${hostId}] Leader is now this instance`);
 
 			this.instanceSettings.markAsLeader();
-
-			await this.publisher.setExpiration(this.leaderKey, this.leaderKeyTtl);
 
 			this.emit('leader-takeover');
 		} else {
@@ -125,5 +129,17 @@ export class MultiMainSetup extends TypedEmitter<MultiMainEvents> {
 
 	async fetchLeaderKey() {
 		return await this.publisher.get(this.leaderKey);
+	}
+
+	registerEventHandlers() {
+		const handlers = this.metadata.getHandlers();
+
+		for (const { eventHandlerClass, methodName, eventName } of handlers) {
+			const instance = Container.get(eventHandlerClass);
+			this.on(eventName, async () => {
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+				return instance[methodName].call(instance);
+			});
+		}
 	}
 }

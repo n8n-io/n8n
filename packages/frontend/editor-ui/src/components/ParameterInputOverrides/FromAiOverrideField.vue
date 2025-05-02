@@ -13,7 +13,7 @@ const emit = defineEmits<{
 <template>
 	<div :class="$style.contentOverrideContainer" data-test-id="fromAI-override-field">
 		<div :class="[$style.iconStars, 'el-input-group__prepend', $style.noCornersRight]">
-			<AiStarsIcon :class="$style.aiStarsIcon" />
+			<AiStarsIcon />
 		</div>
 		<div :class="$style.overrideInput">
 			<N8nText

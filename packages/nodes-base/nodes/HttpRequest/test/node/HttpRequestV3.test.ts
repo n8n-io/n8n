@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import type { IExecuteFunctions, INodeTypeBaseDescription } from 'n8n-workflow';
 
 import { HttpRequestV3 } from '../../V3/HttpRequestV3.node';
@@ -148,6 +147,12 @@ describe('HttpRequestV3', () => {
 				credentials: { user: 'username', password: 'password' },
 				authField: 'auth',
 				authValue: { user: 'username', pass: 'password' },
+			},
+			{
+				genericCredentialType: 'httpBearerAuth',
+				credentials: { token: 'bearerToken123' },
+				authField: 'headers',
+				authValue: { Authorization: 'Bearer bearerToken123' },
 			},
 			{
 				genericCredentialType: 'httpDigestAuth',

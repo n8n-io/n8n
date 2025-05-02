@@ -1,14 +1,14 @@
 <script lang="ts" setup>
 import { type ContextMenuAction, useContextMenu } from '@/composables/useContextMenu';
+import { useStyles } from '@/composables/useStyles';
 import { N8nActionDropdown } from '@n8n/design-system';
 import { watch, ref } from 'vue';
-import { onClickOutside } from '@vueuse/core';
 
 const contextMenu = useContextMenu();
 const { position, isOpen, actions, target } = contextMenu;
 const dropdown = ref<InstanceType<typeof N8nActionDropdown>>();
 const emit = defineEmits<{ action: [action: ContextMenuAction, nodeIds: string[]] }>();
-const container = ref<HTMLDivElement>();
+const { APP_Z_INDEXES } = useStyles();
 
 watch(
 	isOpen,
@@ -28,31 +28,21 @@ function onActionSelect(item: string) {
 	emit('action', action, contextMenu.targetNodeIds.value);
 }
 
-function closeMenu(event: MouseEvent) {
-	if (event.cancelable) {
-		event.preventDefault();
-	}
-	event.stopPropagation();
-	contextMenu.close();
-}
-
 function onVisibleChange(open: boolean) {
 	if (!open) {
 		contextMenu.close();
 	}
 }
-
-onClickOutside(container, closeMenu);
 </script>
 
 <template>
 	<Teleport v-if="isOpen" to="body">
 		<div
-			ref="container"
 			:class="$style.contextMenu"
 			:style="{
 				left: `${position[0]}px`,
 				top: `${position[1]}px`,
+				zIndex: APP_Z_INDEXES.CONTEXT_MENU,
 			}"
 		>
 			<N8nActionDropdown

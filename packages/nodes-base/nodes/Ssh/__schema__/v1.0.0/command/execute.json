@@ -4,17 +4,12 @@
         "signal": {
             "type": "null"
         },
-        "stdout": {
+        "stderr": {
             "type": "string"
         },
-        "stderr": {
+        "stdout": {
             "type": "string"
         }
     },
-    "required": [
-        "code",
-        "signal",
-        "stdout",
-        "stderr"
-    ]
+    "version": 2
 }

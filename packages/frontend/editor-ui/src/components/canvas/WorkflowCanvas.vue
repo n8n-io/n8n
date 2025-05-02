@@ -8,6 +8,7 @@ import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type { CanvasEventBusEvents } from '@/types';
 import { useVueFlow } from '@vue-flow/core';
+import { debouncedRef } from '@vueuse/core';
 
 defineOptions({
 	inheritAttrs: false,
@@ -59,6 +60,9 @@ onNodesInitialized(() => {
 		initialFitViewDone.value = true;
 	}
 });
+
+const mappedNodesDebounced = debouncedRef(mappedNodes, 200, { maxWait: 50 });
+const mappedConnectionsDebounced = debouncedRef(mappedConnections, 200, { maxWait: 50 });
 </script>
 
 <template>
@@ -67,8 +71,8 @@ onNodesInitialized(() => {
 			<Canvas
 				v-if="workflow"
 				:id="id"
-				:nodes="mappedNodes"
-				:connections="mappedConnections"
+				:nodes="executing ? mappedNodesDebounced : mappedNodes"
+				:connections="executing ? mappedConnectionsDebounced : mappedConnections"
 				:event-bus="eventBus"
 				:read-only="readOnly"
 				v-bind="$attrs"

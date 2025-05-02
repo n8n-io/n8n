@@ -118,7 +118,9 @@ describe('WorkflowCard', () => {
 				name: projectName,
 			},
 		});
-		const { getByRole, getByTestId } = renderComponent({ props: { data } });
+		const { getByRole, getByTestId } = renderComponent({
+			props: { data, showOwnershipBadge: true },
+		});
 
 		const heading = getByRole('heading');
 		const badge = getByTestId('card-badge');
@@ -134,7 +136,9 @@ describe('WorkflowCard', () => {
 				name: projectName,
 			},
 		});
-		const { getByRole, getByTestId } = renderComponent({ props: { data } });
+		const { getByRole, getByTestId } = renderComponent({
+			props: { data, showOwnershipBadge: true },
+		});
 
 		const heading = getByRole('heading');
 		const badge = getByTestId('card-badge');
@@ -164,7 +168,7 @@ describe('WorkflowCard', () => {
 		if (!actions) {
 			throw new Error('Actions menu not found');
 		}
-		expect(actions).toHaveTextContent('Move');
+		expect(actions).toHaveTextContent('Change owner');
 	});
 
 	it('should show Read only mode', async () => {

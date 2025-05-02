@@ -12,7 +12,7 @@ import type {
 	INodeTypeDescription,
 	IRequestOptions,
 } from 'n8n-workflow';
-import { NodeConnectionType, deepCopy, randomInt } from 'n8n-workflow';
+import { NodeConnectionTypes, deepCopy, randomInt } from 'n8n-workflow';
 
 import {
 	contactDescription,
@@ -51,8 +51,8 @@ export class Odoo implements INodeType {
 			name: 'Odoo',
 		},
 		usableAsTool: true,
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'odooApi',

@@ -5,7 +5,7 @@ import { userEvent } from '@testing-library/user-event';
 import { createRouter, createWebHistory } from 'vue-router';
 import { computed, ref } from 'vue';
 import type { INodeTypeDescription } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import CanvasChat from './CanvasChat.vue';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -24,6 +24,7 @@ import { useToast } from '@/composables/useToast';
 import type { IExecutionResponse, INodeUi } from '@/Interface';
 import type { ChatMessage } from '@n8n/chat/types';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { LOGS_PANEL_STATE } from './types/logs';
 
 vi.mock('@/composables/useToast', () => {
 	const showMessage = vi.fn();
@@ -77,8 +78,8 @@ const mockNodeTypes: INodeTypeDescription[] = [
 		defaults: {
 			name: 'AI Agent',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		version: 0,
 		group: [],
 		description: '',
@@ -96,7 +97,7 @@ const mockConnections = {
 			[
 				{
 					node: 'AI Agent',
-					type: NodeConnectionType.Main,
+					type: NodeConnectionTypes.Main,
 					index: 0,
 				},
 			],
@@ -174,7 +175,7 @@ describe('CanvasChat', () => {
 
 			return matchedNode;
 		});
-		workflowsStore.isChatPanelOpen = true;
+		workflowsStore.logsPanelState = LOGS_PANEL_STATE.ATTACHED;
 		workflowsStore.isLogsPanelOpen = true;
 		workflowsStore.getWorkflowExecution = mockWorkflowExecution as unknown as IExecutionResponse;
 		workflowsStore.getPastChatMessages = ['Previous message 1', 'Previous message 2'];
@@ -197,7 +198,7 @@ describe('CanvasChat', () => {
 		});
 
 		it('should not render chat when panel is closed', async () => {
-			workflowsStore.isChatPanelOpen = false;
+			workflowsStore.logsPanelState = LOGS_PANEL_STATE.CLOSED;
 			const { queryByTestId } = renderComponent();
 			await waitFor(() => {
 				expect(queryByTestId('canvas-chat')).not.toBeInTheDocument();
@@ -255,6 +256,7 @@ describe('CanvasChat', () => {
 									],
 								],
 							},
+							executionIndex: 0,
 							executionStatus: 'success',
 							executionTime: 0,
 							source: [null],
@@ -309,17 +311,18 @@ describe('CanvasChat', () => {
 				id: '1',
 				text: 'Existing message',
 				sender: 'user',
-				createdAt: new Date().toISOString(),
 			},
 		];
 
 		beforeEach(() => {
-			vi.spyOn(useChatMessaging, 'useChatMessaging').mockReturnValue({
-				getChatMessages: vi.fn().mockReturnValue(mockMessages),
-				sendMessage: vi.fn(),
-				extractResponseMessage: vi.fn(),
-				previousMessageIndex: ref(0),
-				isLoading: computed(() => false),
+			vi.spyOn(useChatMessaging, 'useChatMessaging').mockImplementation(({ messages }) => {
+				messages.value.push(...mockMessages);
+
+				return {
+					sendMessage: vi.fn(),
+					previousMessageIndex: ref(0),
+					isLoading: computed(() => false),
+				};
 			});
 		});
 
@@ -338,16 +341,11 @@ describe('CanvasChat', () => {
 			});
 		});
 
-		it('should refresh session with confirmation when messages exist', async () => {
-			const { getByTestId, getByRole } = renderComponent();
+		it('should refresh session when messages exist', async () => {
+			const { getByTestId } = renderComponent();
 
 			const originalSessionId = getByTestId('chat-session-id').textContent;
 			await userEvent.click(getByTestId('refresh-session-button'));
-
-			const confirmButton = getByRole('dialog').querySelector('button.btn--confirm');
-
-			if (!confirmButton) throw new Error('Confirm button not found');
-			await userEvent.click(confirmButton);
 
 			expect(getByTestId('chat-session-id').textContent).not.toEqual(originalSessionId);
 		});
@@ -385,14 +383,12 @@ describe('CanvasChat', () => {
 	describe('file handling', () => {
 		beforeEach(() => {
 			vi.spyOn(useChatMessaging, 'useChatMessaging').mockReturnValue({
-				getChatMessages: vi.fn().mockReturnValue([]),
 				sendMessage: vi.fn(),
-				extractResponseMessage: vi.fn(),
 				previousMessageIndex: ref(0),
 				isLoading: computed(() => false),
 			});
 
-			workflowsStore.isChatPanelOpen = true;
+			workflowsStore.logsPanelState = LOGS_PANEL_STATE.ATTACHED;
 			workflowsStore.allowFileUploads = true;
 		});
 
@@ -473,21 +469,21 @@ describe('CanvasChat', () => {
 					id: '1',
 					text: 'Original message',
 					sender: 'user',
-					createdAt: new Date().toISOString(),
 				},
 				{
 					id: '2',
 					text: 'AI response',
 					sender: 'bot',
-					createdAt: new Date().toISOString(),
 				},
 			];
-			vi.spyOn(useChatMessaging, 'useChatMessaging').mockReturnValue({
-				getChatMessages: vi.fn().mockReturnValue(mockMessages),
-				sendMessage: sendMessageSpy,
-				extractResponseMessage: vi.fn(),
-				previousMessageIndex: ref(0),
-				isLoading: computed(() => false),
+			vi.spyOn(useChatMessaging, 'useChatMessaging').mockImplementation(({ messages }) => {
+				messages.value.push(...mockMessages);
+
+				return {
+					sendMessage: sendMessageSpy,
+					previousMessageIndex: ref(0),
+					isLoading: computed(() => false),
+				};
 			});
 			workflowsStore.messages = mockMessages;
 		});
@@ -554,7 +550,7 @@ describe('CanvasChat', () => {
 			});
 
 			// Close chat panel
-			workflowsStore.isChatPanelOpen = false;
+			workflowsStore.logsPanelState = LOGS_PANEL_STATE.CLOSED;
 			await waitFor(() => {
 				expect(canvasStore.setPanelHeight).toHaveBeenCalledWith(0);
 			});
@@ -564,14 +560,14 @@ describe('CanvasChat', () => {
 			const { unmount, rerender } = renderComponent();
 
 			// Set initial state
-			workflowsStore.isChatPanelOpen = true;
+			workflowsStore.logsPanelState = LOGS_PANEL_STATE.ATTACHED;
 			workflowsStore.isLogsPanelOpen = true;
 
 			// Unmount and remount
 			unmount();
 			await rerender({});
 
-			expect(workflowsStore.isChatPanelOpen).toBe(true);
+			expect(workflowsStore.logsPanelState).toBe(LOGS_PANEL_STATE.ATTACHED);
 			expect(workflowsStore.isLogsPanelOpen).toBe(true);
 		});
 	});
@@ -586,24 +582,6 @@ describe('CanvasChat', () => {
 			await userEvent.type(input, 'Line 2');
 
 			expect(input).toHaveValue('Line 1\nLine 2');
-		});
-	});
-
-	describe('chat synchronization', () => {
-		it('should load initial chat history when first opening panel', async () => {
-			const getChatMessagesSpy = vi.fn().mockReturnValue(['Previous message']);
-			vi.spyOn(useChatMessaging, 'useChatMessaging').mockReturnValue({
-				...vi.fn()(),
-				getChatMessages: getChatMessagesSpy,
-			});
-
-			workflowsStore.isChatPanelOpen = false;
-			const { rerender } = renderComponent();
-
-			workflowsStore.isChatPanelOpen = true;
-			await rerender({});
-
-			expect(getChatMessagesSpy).toHaveBeenCalled();
 		});
 	});
 });

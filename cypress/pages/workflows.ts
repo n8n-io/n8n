@@ -19,12 +19,12 @@ export class WorkflowsPage extends BasePage {
 			cy.getByTestId('add-resource-workflow').should('be.visible');
 			return cy.getByTestId('add-resource-workflow');
 		},
-		workflowCards: () => cy.getByTestId('resources-list-item'),
+		workflowCards: () => cy.getByTestId('resources-list-item-workflow'),
 		workflowCard: (workflowName: string) =>
 			this.getters
 				.workflowCards()
 				.contains(workflowName)
-				.parents('[data-test-id="resources-list-item"]'),
+				.parents('[data-test-id="resources-list-item-workflow"]'),
 		workflowTags: (workflowName: string) =>
 			this.getters.workflowCard(workflowName).findChildByTestId('workflow-card-tags'),
 		workflowCardContent: (workflowName: string) =>
@@ -39,7 +39,7 @@ export class WorkflowsPage extends BasePage {
 		workflowDeleteButton: () =>
 			cy.getByTestId('action-toggle-dropdown').filter(':visible').contains('Delete'),
 		workflowMoveButton: () =>
-			cy.getByTestId('action-toggle-dropdown').filter(':visible').contains('Move'),
+			cy.getByTestId('action-toggle-dropdown').filter(':visible').contains('Change owner'),
 		workflowFilterButton: () => cy.getByTestId('resources-list-filters-trigger').filter(':visible'),
 		workflowTagsDropdown: () => cy.getByTestId('tags-dropdown'),
 		workflowTagItem: (tag: string) => cy.getByTestId('tag').contains(tag),

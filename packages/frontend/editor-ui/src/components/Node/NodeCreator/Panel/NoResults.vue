@@ -72,7 +72,7 @@ const i18n = useI18n();
 	height: 100%;
 	border-left: 1px solid $node-creator-border-color;
 	flex-direction: column;
-	font-weight: 400;
+	font-weight: var(--font-weight-regular);
 	display: flex;
 	align-items: center;
 	align-content: center;

@@ -6,15 +6,15 @@ import {
 	PromptTemplate,
 } from '@langchain/core/prompts';
 import type { BaseRetriever } from '@langchain/core/retrievers';
-import { RetrievalQAChain } from 'langchain/chains';
+import { createStuffDocumentsChain } from 'langchain/chains/combine_documents';
+import { createRetrievalChain } from 'langchain/chains/retrieval';
+import { NodeConnectionTypes, NodeOperationError, parseErrorMetadata, sleep } from 'n8n-workflow';
 import {
-	NodeConnectionType,
+	type INodeProperties,
 	type IExecuteFunctions,
 	type INodeExecutionData,
 	type INodeType,
 	type INodeTypeDescription,
-	NodeOperationError,
-	parseErrorMetadata,
 } from 'n8n-workflow';
 
 import { promptTypeOptions, textFromPreviousNode } from '@utils/descriptions';
@@ -22,10 +22,24 @@ import { getPromptInputByType, isChatInstance } from '@utils/helpers';
 import { getTemplateNoticeField } from '@utils/sharedFields';
 import { getTracingConfig } from '@utils/tracing';
 
-const SYSTEM_PROMPT_TEMPLATE = `Use the following pieces of context to answer the users question.
+const SYSTEM_PROMPT_TEMPLATE = `You are an assistant for question-answering tasks. Use the following pieces of retrieved context to answer the question.
 If you don't know the answer, just say that you don't know, don't try to make up an answer.
 ----------------
-{context}`;
+Context: {context}`;
+
+// Due to the refactoring in version 1.5, the variable name {question} needed to be changed to {input} in the prompt template.
+const LEGACY_INPUT_TEMPLATE_KEY = 'question';
+const INPUT_TEMPLATE_KEY = 'input';
+
+const systemPromptOption: INodeProperties = {
+	displayName: 'System Prompt Template',
+	name: 'systemPromptTemplate',
+	type: 'string',
+	default: SYSTEM_PROMPT_TEMPLATE,
+	typeOptions: {
+		rows: 6,
+	},
+};
 
 export class ChainRetrievalQa implements INodeType {
 	description: INodeTypeDescription = {
@@ -34,7 +48,7 @@ export class ChainRetrievalQa implements INodeType {
 		icon: 'fa:link',
 		iconColor: 'black',
 		group: ['transform'],
-		version: [1, 1.1, 1.2, 1.3, 1.4],
+		version: [1, 1.1, 1.2, 1.3, 1.4, 1.5],
 		description: 'Answer questions about retrieved documents',
 		defaults: {
 			name: 'Question and Answer Chain',
@@ -56,21 +70,21 @@ export class ChainRetrievalQa implements INodeType {
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [
-			NodeConnectionType.Main,
+			NodeConnectionTypes.Main,
 			{
 				displayName: 'Model',
 				maxConnections: 1,
-				type: NodeConnectionType.AiLanguageModel,
+				type: NodeConnectionTypes.AiLanguageModel,
 				required: true,
 			},
 			{
 				displayName: 'Retriever',
 				maxConnections: 1,
-				type: NodeConnectionType.AiRetriever,
+				type: NodeConnectionTypes.AiRetriever,
 				required: true,
 			},
 		],
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [],
 		properties: [
 			getTemplateNoticeField(1960),
@@ -146,15 +160,47 @@ export class ChainRetrievalQa implements INodeType {
 				placeholder: 'Add Option',
 				options: [
 					{
-						displayName: 'System Prompt Template',
-						name: 'systemPromptTemplate',
-						type: 'string',
-						default: SYSTEM_PROMPT_TEMPLATE,
-						description:
-							'Template string used for the system prompt. This should include the variable `{context}` for the provided context. For text completion models, you should also include the variable `{question}` for the user’s query.',
-						typeOptions: {
-							rows: 6,
+						...systemPromptOption,
+						description: `Template string used for the system prompt. This should include the variable \`{context}\` for the provided context. For text completion models, you should also include the variable \`{${LEGACY_INPUT_TEMPLATE_KEY}}\` for the user’s query.`,
+						displayOptions: {
+							show: {
+								'@version': [{ _cnd: { lt: 1.5 } }],
+							},
 						},
+					},
+					{
+						...systemPromptOption,
+						description: `Template string used for the system prompt. This should include the variable \`{context}\` for the provided context. For text completion models, you should also include the variable \`{${INPUT_TEMPLATE_KEY}}\` for the user’s query.`,
+						displayOptions: {
+							show: {
+								'@version': [{ _cnd: { gte: 1.5 } }],
+							},
+						},
+					},
+					{
+						displayName: 'Batch Processing',
+						name: 'batching',
+						type: 'collection',
+						description: 'Batch processing options for rate limiting',
+						default: {},
+						options: [
+							{
+								displayName: 'Batch Size',
+								name: 'batchSize',
+								default: 100,
+								type: 'number',
+								description:
+									'How many items to process in parallel. This is useful for rate limiting.',
+							},
+							{
+								displayName: 'Delay Between Batches',
+								name: 'delayBetweenBatches',
+								default: 0,
+								type: 'number',
+								description:
+									'Delay in milliseconds between batches. This is useful for rate limiting.',
+							},
+						],
 					},
 				],
 			},
@@ -165,17 +211,27 @@ export class ChainRetrievalQa implements INodeType {
 		this.logger.debug('Executing Retrieval QA Chain');
 
 		const items = this.getInputData();
+		const { batchSize, delayBetweenBatches } = this.getNodeParameter('options.batching', 0, {
+			batchSize: 100,
+			delayBetweenBatches: 0,
+		}) as {
+			batchSize: number;
+			delayBetweenBatches: number;
+		};
 		const returnData: INodeExecutionData[] = [];
-		// Run for each item
-		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-			try {
+
+		for (let i = 0; i < items.length; i += batchSize) {
+			const batch = items.slice(i, i + batchSize);
+			const batchPromises = batch.map(async (_item, batchIndex) => {
+				const itemIndex = i + batchIndex;
+
 				const model = (await this.getInputConnectionData(
-					NodeConnectionType.AiLanguageModel,
+					NodeConnectionTypes.AiLanguageModel,
 					0,
 				)) as BaseLanguageModel;
 
 				const retriever = (await this.getInputConnectionData(
-					NodeConnectionType.AiRetriever,
+					NodeConnectionTypes.AiRetriever,
 					0,
 				)) as BaseRetriever;
 
@@ -200,49 +256,91 @@ export class ChainRetrievalQa implements INodeType {
 					systemPromptTemplate?: string;
 				};
 
-				const chainParameters = {} as {
-					prompt?: PromptTemplate | ChatPromptTemplate;
-				};
+				let templateText = options.systemPromptTemplate ?? SYSTEM_PROMPT_TEMPLATE;
 
-				if (options.systemPromptTemplate !== undefined) {
-					if (isChatInstance(model)) {
-						const messages = [
-							SystemMessagePromptTemplate.fromTemplate(options.systemPromptTemplate),
-							HumanMessagePromptTemplate.fromTemplate('{question}'),
-						];
-						const chatPromptTemplate = ChatPromptTemplate.fromMessages(messages);
+				// Replace legacy input template key for versions 1.4 and below
+				if (this.getNode().typeVersion < 1.5) {
+					templateText = templateText.replace(
+						`{${LEGACY_INPUT_TEMPLATE_KEY}}`,
+						`{${INPUT_TEMPLATE_KEY}}`,
+					);
+				}
 
-						chainParameters.prompt = chatPromptTemplate;
-					} else {
-						const completionPromptTemplate = new PromptTemplate({
-							template: options.systemPromptTemplate,
-							inputVariables: ['context', 'question'],
+				// Create prompt template based on model type and user configuration
+				let promptTemplate;
+				if (isChatInstance(model)) {
+					// For chat models, create a chat prompt template with system and human messages
+					const messages = [
+						SystemMessagePromptTemplate.fromTemplate(templateText),
+						HumanMessagePromptTemplate.fromTemplate('{input}'),
+					];
+					promptTemplate = ChatPromptTemplate.fromMessages(messages);
+				} else {
+					// For non-chat models, create a text prompt template with Question/Answer format
+					const questionSuffix =
+						options.systemPromptTemplate === undefined ? '\n\nQuestion: {input}\nAnswer:' : '';
+
+					promptTemplate = new PromptTemplate({
+						template: templateText + questionSuffix,
+						inputVariables: ['context', 'input'],
+					});
+				}
+
+				// Create the document chain that combines the retrieved documents
+				const combineDocsChain = await createStuffDocumentsChain({
+					llm: model,
+					prompt: promptTemplate,
+				});
+
+				// Create the retrieval chain that handles the retrieval and then passes to the combine docs chain
+				const retrievalChain = await createRetrievalChain({
+					combineDocsChain,
+					retriever,
+				});
+
+				// Execute the chain with tracing config
+				const tracingConfig = getTracingConfig(this);
+
+				const result = await retrievalChain
+					.withConfig(tracingConfig)
+					.invoke({ input: query }, { signal: this.getExecutionCancelSignal() });
+
+				return result;
+			});
+
+			const batchResults = await Promise.allSettled(batchPromises);
+
+			batchResults.forEach((response, index) => {
+				if (response.status === 'rejected') {
+					const error = response.reason;
+					if (this.continueOnFail()) {
+						const metadata = parseErrorMetadata(error);
+						returnData.push({
+							json: { error: error.message },
+							pairedItem: { item: index },
+							metadata,
 						});
-
-						chainParameters.prompt = completionPromptTemplate;
+						return;
+					} else {
+						throw error;
 					}
 				}
-
-				const chain = RetrievalQAChain.fromLLM(model, retriever, chainParameters);
-
-				const response = await chain
-					.withConfig(getTracingConfig(this))
-					.invoke({ query }, { signal: this.getExecutionCancelSignal() });
-				returnData.push({ json: { response } });
-			} catch (error) {
-				if (this.continueOnFail()) {
-					const metadata = parseErrorMetadata(error);
-					returnData.push({
-						json: { error: error.message },
-						pairedItem: { item: itemIndex },
-						metadata,
-					});
-					continue;
+				const output = response.value;
+				const answer: string = output.answer;
+				if (this.getNode().typeVersion >= 1.5) {
+					returnData.push({ json: { response: answer } });
+				} else {
+					// Legacy format for versions 1.4 and below is { text: string }
+					returnData.push({ json: { response: { text: answer } } });
 				}
+			});
 
-				throw error;
+			// Add delay between batches if not the last batch
+			if (i + batchSize < items.length && delayBetweenBatches > 0) {
+				await sleep(delayBetweenBatches);
 			}
 		}
+
 		return [returnData];
 	}
 }

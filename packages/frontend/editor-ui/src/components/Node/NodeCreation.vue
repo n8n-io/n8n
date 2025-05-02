@@ -101,7 +101,7 @@ onBeforeUnmount(() => {
 
 <template>
 	<div v-if="!createNodeActive" :class="$style.nodeButtonsWrapper">
-		<div :class="$style.nodeCreatorButton" ref="wrapperRef" data-test-id="node-creator-plus-button">
+		<div ref="wrapperRef" :class="$style.nodeCreatorButton" data-test-id="node-creator-plus-button">
 			<KeyboardShortcutTooltip
 				:label="i18n.baseText('nodeView.openNodesPanel')"
 				:shortcut="{ keys: ['Tab'] }"

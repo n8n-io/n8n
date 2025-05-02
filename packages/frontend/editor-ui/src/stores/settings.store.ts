@@ -160,6 +160,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	const allowedModules = computed(() => settings.value.allowedModules);
 
 	const isQueueModeEnabled = computed(() => settings.value.executionMode === 'queue');
+	const isMultiMain = computed(() => settings.value.isMultiMain);
 
 	const isWorkerViewAvailable = computed(() => !!settings.value.enterprise?.workerView);
 
@@ -182,6 +183,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	const isCommunityPlan = computed(() => planName.value.toLowerCase() === 'community');
 
 	const isDevRelease = computed(() => settings.value.releaseChannel === 'dev');
+
+	const isNewLogsEnabled = computed(() => !!settings.value.logsView?.enabled);
 
 	const setSettings = (newSettings: FrontendSettings) => {
 		settings.value = newSettings;
@@ -421,6 +424,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isCommunityNodesFeatureEnabled,
 		allowedModules,
 		isQueueModeEnabled,
+		isMultiMain,
 		isWorkerViewAvailable,
 		isDefaultAuthenticationSaml,
 		workflowCallerPolicyDefaultOption,
@@ -434,6 +438,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isAskAiEnabled,
 		isAiCreditsEnabled,
 		aiCreditsQuota,
+		isNewLogsEnabled,
 		reset,
 		testLdapConnection,
 		getLdapConfig,

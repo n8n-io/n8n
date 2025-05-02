@@ -1,9 +1,9 @@
+import type { Project } from '@n8n/db';
+import type { User } from '@n8n/db';
+import type { Folder } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DateTime } from 'luxon';
 
-import type { Folder } from '@/databases/entities/folder';
-import type { Project } from '@/databases/entities/project';
-import type { User } from '@/databases/entities/user';
 import { createFolder } from '@test-integration/db/folders';
 import { getPersonalProject } from '@test-integration/db/projects';
 import { createTag } from '@test-integration/db/tags';
@@ -345,6 +345,7 @@ describe('FolderRepository', () => {
 				expect(childFolder?.parentFolder).toEqual({
 					id: expect.any(String),
 					name: 'Parent Folder',
+					parentFolderId: null,
 				});
 			});
 
@@ -363,6 +364,24 @@ describe('FolderRepository', () => {
 					expect(folder.id).toBeDefined();
 					expect(folder.name).toBeDefined();
 					expect(folder.workflowCount).toBeDefined();
+				});
+			});
+
+			it('should return id, name and subFolderCount when specified', async () => {
+				const [folders] = await folderRepository.getManyAndCount({
+					select: {
+						id: true,
+						name: true,
+						subFolderCount: true,
+					},
+				});
+
+				expect(folders).toHaveLength(2);
+				folders.forEach((folder) => {
+					expect(Object.keys(folder).sort()).toEqual(['id', 'name', 'subFolderCount']);
+					expect(folder.id).toBeDefined();
+					expect(folder.name).toBeDefined();
+					expect(folder.subFolderCount).toBeDefined();
 				});
 			});
 
@@ -400,6 +419,7 @@ describe('FolderRepository', () => {
 							icon: null,
 						},
 						workflowCount: expect.any(Number),
+						subFolderCount: expect.any(Number),
 						tags: expect.any(Array),
 					});
 				});
@@ -554,6 +574,15 @@ describe('FolderRepository', () => {
 					'B Folder',
 					'A Folder',
 				]);
+			});
+
+			it('should sort by name:desc when select does not include the name', async () => {
+				const [folders] = await folderRepository.getManyAndCount({
+					sortBy: 'name:desc',
+					select: { id: true },
+				});
+
+				expect(folders.length).toBe(4);
 			});
 
 			it('should sort by createdAt:asc', async () => {

@@ -5,8 +5,5 @@
             "type": "string"
         }
     },
-    "required": [
-        "updateTime",
-        "status"
-    ]
+    "version": 1
 }

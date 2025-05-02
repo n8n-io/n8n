@@ -198,11 +198,11 @@ const onCheckboxChange = (index: number) => {
 		<div
 			v-if="!loading"
 			ref="editor"
+			v-n8n-html="htmlContent"
 			:class="$style[theme]"
 			@click="onClick"
 			@mousedown="onMouseDown"
 			@change="onChange"
-			v-n8n-html="htmlContent"
 		/>
 		<div v-else :class="$style.markdown">
 			<div v-for="(_, index) in loadingBlocks" :key="index">
@@ -289,6 +289,7 @@ input[type='checkbox'] + label {
 
 .sticky {
 	color: var(--color-sticky-font);
+	overflow-wrap: break-word;
 
 	h1,
 	h2,

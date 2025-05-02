@@ -1,32 +1,40 @@
 {
     "type": "object",
     "properties": {
-        "createdAt": {
-            "type": "string"
+        "active": {
+            "type": "boolean"
         },
-        "updatedAt": {
+        "createdAt": {
             "type": "string"
         },
         "id": {
             "type": "string"
         },
+        "meta": {
+            "type": "object",
+            "properties": {
+                "templateCredsSetupCompleted": {
+                    "type": "boolean"
+                }
+            }
+        },
         "name": {
             "type": "string"
-        },
-        "active": {
-            "type": "boolean"
         },
         "nodes": {
             "type": "array",
             "items": {
                 "type": "object",
                 "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
                     "parameters": {
                         "type": "object",
                         "properties": {
-                            "url": {
-                                "type": "string"
-                            },
                             "assignments": {
                                 "type": "object",
                                 "properties": {
@@ -41,25 +49,13 @@
                                                 "name": {
                                                     "type": "string"
                                                 },
-                                                "value": {
-                                                    "type": "string"
-                                                },
                                                 "type": {
                                                     "type": "string"
                                                 }
-                                            },
-                                            "required": [
-                                                "id",
-                                                "name",
-                                                "value",
-                                                "type"
-                                            ]
+                                            }
                                         }
                                     }
-                                },
-                                "required": [
-                                    "assignments"
-                                ]
+                                }
                             },
                             "authentication": {
                                 "type": "string"
@@ -67,22 +63,16 @@
                             "jsCode": {
                                 "type": "string"
                             },
-                            "resource": {
-                                "type": "string"
-                            },
                             "operation": {
                                 "type": "string"
                             },
                             "path": {
                                 "type": "string"
+                            },
+                            "url": {
+                                "type": "string"
                             }
                         }
-                    },
-                    "id": {
-                        "type": "string"
-                    },
-                    "name": {
-                        "type": "string"
                     },
                     "type": {
                         "type": "string"
@@ -90,51 +80,6 @@
                     "webhookId": {
                         "type": "string"
                     }
-                },
-                "required": [
-                    "parameters",
-                    "name",
-                    "type",
-                    "typeVersion",
-                    "position"
-                ]
-            }
-        },
-        "connections": {
-            "type": "object",
-            "properties": {
-                "When clicking ‘Test workflow’": {
-                    "type": "object",
-                    "properties": {
-                        "main": {
-                            "type": "array",
-                            "items": {
-                                "type": "array",
-                                "items": {
-                                    "type": "object",
-                                    "properties": {
-                                        "node": {
-                                            "type": "string"
-                                        },
-                                        "type": {
-                                            "type": "string"
-                                        },
-                                        "index": {
-                                            "type": "integer"
-                                        }
-                                    },
-                                    "required": [
-                                        "node",
-                                        "type",
-                                        "index"
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "required": [
-                        "main"
-                    ]
                 }
             }
         },
@@ -146,9 +91,6 @@
                 }
             }
         },
-        "triggerCount": {
-            "type": "integer"
-        },
         "tags": {
             "type": "array",
             "items": {
@@ -157,23 +99,24 @@
                     "createdAt": {
                         "type": "string"
                     },
-                    "updatedAt": {
-                        "type": "string"
-                    },
                     "id": {
                         "type": "string"
                     },
                     "name": {
                         "type": "string"
+                    },
+                    "updatedAt": {
+                        "type": "string"
                     }
-                },
-                "required": [
-                    "createdAt",
-                    "updatedAt",
-                    "id",
-                    "name"
-                ]
+                }
             }
+        },
+        "triggerCount": {
+            "type": "integer"
+        },
+        "updatedAt": {
+            "type": "string"
         }
-    }
+    },
+    "version": 1
 }

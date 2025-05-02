@@ -473,6 +473,17 @@ describe('Execution', () => {
 	});
 
 	it('should send proper payload for node rerun', () => {
+		const mockUserData = [
+			{
+				firstname: 'Lawrence',
+				lastname: 'Kertzmann',
+			},
+		];
+		cy.intercept('GET', 'https://internal.users.n8n.cloud/webhook/random-data-api', {
+			statusCode: 200,
+			body: mockUserData,
+		}).as('getRandomUsers');
+
 		cy.createFixtureWorkflow('Multiple_trigger_node_rerun.json', 'Multiple trigger node rerun');
 
 		workflowPage.getters.zoomToFitButton().click();
@@ -596,5 +607,23 @@ describe('Execution', () => {
 			.should('exist');
 
 		errorToast().should('contain', 'Problem in node ‘Telegram‘');
+	});
+
+	it('Paired items should be correctly mapped after passed through the merge node with more than two inputs', () => {
+		cy.createFixtureWorkflow('merge_node_inputs_paired_items.json');
+
+		workflowPage.getters.zoomToFitButton().click();
+		workflowPage.getters.executeWorkflowButton().click();
+
+		workflowPage.getters
+			.canvasNodeByName('Edit Fields')
+			.within(() => cy.get('.fa-check'))
+			.should('exist');
+
+		workflowPage.getters.canvasNodeByName('Edit Fields').dblclick();
+		ndv.actions.switchOutputMode('JSON');
+		ndv.getters.outputPanel().contains('Branch 1 Value').should('be.visible');
+		ndv.getters.outputPanel().contains('Branch 2 Value').should('be.visible');
+		ndv.getters.outputPanel().contains('Branch 3 Value').should('be.visible');
 	});
 });

@@ -7,7 +7,7 @@ import get from 'lodash/get';
 import isEqual from 'lodash/isEqual';
 
 import { ApplicationError } from './errors/application.error';
-import { NodeConnectionType } from './Interfaces';
+import { NodeConnectionTypes } from './Interfaces';
 import type {
 	FieldType,
 	IContextObject,
@@ -34,8 +34,7 @@ import type {
 	INodeInputConfiguration,
 	GenericValue,
 	DisplayCondition,
-	NodeHint,
-	INodeExecutionData,
+	NodeConnectionType,
 } from './Interfaces';
 import { validateFilterParameter } from './NodeParameters/FilterParameter';
 import {
@@ -234,87 +233,6 @@ export const cronNodeOptions: INodePropertyCollection[] = [
 	},
 ];
 
-const declarativeNodeOptionParameters: INodeProperties = {
-	displayName: 'Request Options',
-	name: 'requestOptions',
-	type: 'collection',
-	isNodeSetting: true,
-	placeholder: 'Add Option',
-	default: {},
-	options: [
-		{
-			displayName: 'Batching',
-			name: 'batching',
-			placeholder: 'Add Batching',
-			type: 'fixedCollection',
-			typeOptions: {
-				multipleValues: false,
-			},
-			default: {
-				batch: {},
-			},
-			options: [
-				{
-					displayName: 'Batching',
-					name: 'batch',
-					values: [
-						{
-							displayName: 'Items per Batch',
-							name: 'batchSize',
-							type: 'number',
-							typeOptions: {
-								minValue: -1,
-							},
-							default: 50,
-							description:
-								'Input will be split in batches to throttle requests. -1 for disabled. 0 will be treated as 1.',
-						},
-						{
-							displayName: 'Batch Interval (ms)',
-							name: 'batchInterval',
-							type: 'number',
-							typeOptions: {
-								minValue: 0,
-							},
-							default: 1000,
-							description: 'Time (in milliseconds) between each batch of requests. 0 for disabled.',
-						},
-					],
-				},
-			],
-		},
-		{
-			displayName: 'Ignore SSL Issues (Insecure)',
-			name: 'allowUnauthorizedCerts',
-			type: 'boolean',
-			noDataExpression: true,
-			default: false,
-			description:
-				'Whether to accept the response even if SSL certificate validation is not possible',
-		},
-		{
-			displayName: 'Proxy',
-			name: 'proxy',
-			type: 'string',
-			default: '',
-			placeholder: 'e.g. http://myproxy:3128',
-			description:
-				'HTTP proxy to use. If authentication is required it can be defined as follow: http://username:password@myproxy:3128',
-		},
-		{
-			displayName: 'Timeout',
-			name: 'timeout',
-			type: 'number',
-			typeOptions: {
-				minValue: 1,
-			},
-			default: 10000,
-			description:
-				'Time in ms to wait for the server to send response headers (and start the response body) before aborting the request',
-		},
-	],
-};
-
 /**
  * Determines if the provided node type has any output types other than the main connection type.
  * @param typeDescription The node's type description to check.
@@ -327,70 +245,15 @@ export function isSubNodeType(
 	}
 	const outputTypes = getConnectionTypes(typeDescription.outputs);
 	return outputTypes
-		? outputTypes.filter((output) => output !== NodeConnectionType.Main).length > 0
+		? outputTypes.filter((output) => output !== NodeConnectionTypes.Main).length > 0
 		: false;
-}
-
-/** Augments additional `Request Options` property on declarative node-type */
-export function applyDeclarativeNodeOptionParameters(nodeType: INodeType): void {
-	if (
-		nodeType.execute ||
-		nodeType.trigger ||
-		nodeType.webhook ||
-		nodeType.description.polling ||
-		isSubNodeType(nodeType.description)
-	) {
-		return;
-	}
-
-	const parameters = nodeType.description.properties;
-
-	if (!parameters) {
-		return;
-	}
-
-	// Was originally under "options" instead of "requestOptions" so the chance
-	// that that existed was quite high. With this name the chance is actually
-	// very low that it already exists but lets leave it in anyway to be sure.
-	const existingRequestOptionsIndex = parameters.findIndex(
-		(parameter) => parameter.name === 'requestOptions',
-	);
-	if (existingRequestOptionsIndex !== -1) {
-		parameters[existingRequestOptionsIndex] = {
-			...declarativeNodeOptionParameters,
-			options: [
-				...(declarativeNodeOptionParameters.options || []),
-				...(parameters[existingRequestOptionsIndex]?.options || []),
-			],
-		};
-
-		const options = parameters[existingRequestOptionsIndex]?.options;
-
-		if (options) {
-			options.sort((a, b) => {
-				if ('displayName' in a && 'displayName' in b) {
-					if (a.displayName < b.displayName) {
-						return -1;
-					}
-					if (a.displayName > b.displayName) {
-						return 1;
-					}
-				}
-
-				return 0;
-			});
-		}
-	} else {
-		parameters.push(declarativeNodeOptionParameters);
-	}
-
-	return;
 }
 
 const getPropertyValues = (
 	nodeValues: INodeParameters,
 	propertyName: string,
 	node: Pick<INode, 'typeVersion'> | null,
+	nodeTypeDescription: INodeTypeDescription | null,
 	nodeValuesRoot: INodeParameters,
 ) => {
 	let value;
@@ -399,6 +262,8 @@ const getPropertyValues = (
 		value = get(nodeValuesRoot, propertyName.slice(1));
 	} else if (propertyName === '@version') {
 		value = node?.typeVersion || 0;
+	} else if (propertyName === '@tool') {
+		value = nodeTypeDescription?.name.endsWith('Tool') ?? false;
 	} else {
 		// Get the value from current level
 		value = get(nodeValues, propertyName);
@@ -486,6 +351,7 @@ export function displayParameter(
 	nodeValues: INodeParameters,
 	parameter: INodeProperties | INodeCredentialDescription,
 	node: Pick<INode, 'typeVersion'> | null, // Allow null as it does also get used by credentials and they do not have versioning yet
+	nodeTypeDescription: INodeTypeDescription | null,
 	nodeValuesRoot?: INodeParameters,
 	displayKey: 'displayOptions' | 'disabledOptions' = 'displayOptions',
 ) {
@@ -500,7 +366,13 @@ export function displayParameter(
 	if (show) {
 		// All the defined rules have to match to display parameter
 		for (const propertyName of Object.keys(show)) {
-			const values = getPropertyValues(nodeValues, propertyName, node, nodeValuesRoot);
+			const values = getPropertyValues(
+				nodeValues,
+				propertyName,
+				node,
+				nodeTypeDescription,
+				nodeValuesRoot,
+			);
 
 			if (values.some((v) => typeof v === 'string' && v.charAt(0) === '=')) {
 				return true;
@@ -515,7 +387,13 @@ export function displayParameter(
 	if (hide) {
 		// Any of the defined hide rules have to match to hide the parameter
 		for (const propertyName of Object.keys(hide)) {
-			const values = getPropertyValues(nodeValues, propertyName, node, nodeValuesRoot);
+			const values = getPropertyValues(
+				nodeValues,
+				propertyName,
+				node,
+				nodeTypeDescription,
+				nodeValuesRoot,
+			);
 
 			if (values.length !== 0 && checkConditions(hide[propertyName]!, values)) {
 				return false;
@@ -540,6 +418,7 @@ export function displayParameterPath(
 	parameter: INodeProperties | INodeCredentialDescription,
 	path: string,
 	node: Pick<INode, 'typeVersion'> | null,
+	nodeTypeDescription: INodeTypeDescription | null,
 	displayKey: 'displayOptions' | 'disabledOptions' = 'displayOptions',
 ) {
 	let resolvedNodeValues = nodeValues;
@@ -553,7 +432,14 @@ export function displayParameterPath(
 		nodeValuesRoot = get(nodeValues, 'parameters') as INodeParameters;
 	}
 
-	return displayParameter(resolvedNodeValues, parameter, node, nodeValuesRoot, displayKey);
+	return displayParameter(
+		resolvedNodeValues,
+		parameter,
+		node,
+		nodeTypeDescription,
+		nodeValuesRoot,
+		displayKey,
+	);
 }
 
 /**
@@ -635,7 +521,7 @@ function getParameterDependencies(nodePropertiesArray: INodeProperties[]): IPara
  * Returns in which order the parameters should be resolved
  * to have the parameters available they depend on
  */
-export function getParameterResolveOrder(
+function getParameterResolveOrder(
 	nodePropertiesArray: INodeProperties[],
 	parameterDependencies: IParameterDependencies,
 ): number[] {
@@ -697,6 +583,14 @@ export function getParameterResolveOrder(
 	return executionOrder;
 }
 
+type GetNodeParametersOptions = {
+	onlySimpleTypes?: boolean;
+	dataIsResolved?: boolean; // If nodeValues are already fully resolved (so that all default values got added already)
+	nodeValuesRoot?: INodeParameters;
+	parentType?: string;
+	parameterDependencies?: IParameterDependencies;
+};
+
 /**
  * Returns the node parameter values. Depending on the settings it either just returns the none
  * default values or it applies all the default values.
@@ -705,9 +599,7 @@ export function getParameterResolveOrder(
  * @param {INodeParameters} nodeValues The node parameter data
  * @param {boolean} returnDefaults If default values get added or only none default values returned
  * @param {boolean} returnNoneDisplayed If also values which should not be displayed should be returned
- * @param {boolean} [onlySimpleTypes=false] If only simple types should be resolved
- * @param {boolean} [dataIsResolved=false] If nodeValues are already fully resolved (so that all default values got added already)
- * @param {INodeParameters} [nodeValuesRoot] The root node-parameter-data
+ * @param {GetNodeParametersOptions} options Optional properties
  */
 // eslint-disable-next-line complexity
 export function getNodeParameters(
@@ -716,12 +608,11 @@ export function getNodeParameters(
 	returnDefaults: boolean,
 	returnNoneDisplayed: boolean,
 	node: Pick<INode, 'typeVersion'> | null,
-	onlySimpleTypes = false,
-	dataIsResolved = false,
-	nodeValuesRoot?: INodeParameters,
-	parentType?: string,
-	parameterDependencies?: IParameterDependencies,
+	nodeTypeDescription: INodeTypeDescription | null,
+	options?: GetNodeParametersOptions,
 ): INodeParameters | null {
+	let { nodeValuesRoot, parameterDependencies } = options ?? {};
+	const { onlySimpleTypes = false, dataIsResolved = false, parentType } = options ?? {};
 	if (parameterDependencies === undefined) {
 		parameterDependencies = getParameterDependencies(nodePropertiesArray);
 	}
@@ -751,11 +642,14 @@ export function getNodeParameters(
 			true,
 			true,
 			node,
-			true,
-			true,
-			nodeValuesRoot,
-			parentType,
-			parameterDependencies,
+			nodeTypeDescription,
+			{
+				onlySimpleTypes: true,
+				dataIsResolved: true,
+				nodeValuesRoot,
+				parentType,
+				parameterDependencies,
+			},
 		) as INodeParameters;
 	}
 
@@ -780,7 +674,13 @@ export function getNodeParameters(
 
 		if (
 			!returnNoneDisplayed &&
-			!displayParameter(nodeValuesDisplayCheck, nodeProperties, node, nodeValuesRoot)
+			!displayParameter(
+				nodeValuesDisplayCheck,
+				nodeProperties,
+				node,
+				nodeTypeDescription,
+				nodeValuesRoot,
+			)
 		) {
 			if (!returnNoneDisplayed || !returnDefaults) {
 				continue;
@@ -791,7 +691,15 @@ export function getNodeParameters(
 			// Is a simple property so can be set as it is
 
 			if (duplicateParameterNames.includes(nodeProperties.name)) {
-				if (!displayParameter(nodeValuesDisplayCheck, nodeProperties, node, nodeValuesRoot)) {
+				if (
+					!displayParameter(
+						nodeValuesDisplayCheck,
+						nodeProperties,
+						node,
+						nodeTypeDescription,
+						nodeValuesRoot,
+					)
+				) {
 					continue;
 				}
 			}
@@ -870,10 +778,13 @@ export function getNodeParameters(
 					returnDefaults,
 					returnNoneDisplayed,
 					node,
-					false,
-					false,
-					nodeValuesRoot,
-					nodeProperties.type,
+					nodeTypeDescription,
+					{
+						onlySimpleTypes: false,
+						dataIsResolved: false,
+						nodeValuesRoot,
+						parentType: nodeProperties.type,
+					},
 				);
 
 				if (tempNodeParameters !== null) {
@@ -943,10 +854,13 @@ export function getNodeParameters(
 							returnDefaults,
 							returnNoneDisplayed,
 							node,
-							false,
-							false,
-							nodeValuesRoot,
-							nodeProperties.type,
+							nodeTypeDescription,
+							{
+								onlySimpleTypes: false,
+								dataIsResolved: false,
+								nodeValuesRoot,
+								parentType: nodeProperties.type,
+							},
 						);
 						if (tempValue !== null) {
 							tempArrayValue.push(tempValue);
@@ -971,10 +885,13 @@ export function getNodeParameters(
 							returnDefaults,
 							returnNoneDisplayed,
 							node,
-							false,
-							false,
-							nodeValuesRoot,
-							nodeProperties.type,
+							nodeTypeDescription,
+							{
+								onlySimpleTypes: false,
+								dataIsResolved: false,
+								nodeValuesRoot,
+								parentType: nodeProperties.type,
+							},
 						);
 						if (tempValue !== null) {
 							Object.assign(tempNodeParameters, tempValue);
@@ -1108,75 +1025,6 @@ export function getNodeInputs(
 	}
 }
 
-export function getNodeHints(
-	workflow: Workflow,
-	node: INode,
-	nodeTypeData: INodeTypeDescription,
-	nodeInputData?: {
-		runExecutionData: IRunExecutionData | null;
-		runIndex: number;
-		connectionInputData: INodeExecutionData[];
-	},
-): NodeHint[] {
-	const hints: NodeHint[] = [];
-
-	if (nodeTypeData?.hints?.length) {
-		for (const hint of nodeTypeData.hints) {
-			if (hint.displayCondition) {
-				try {
-					let display;
-
-					if (nodeInputData === undefined) {
-						display = (workflow.expression.getSimpleParameterValue(
-							node,
-							hint.displayCondition,
-							'internal',
-							{},
-						) || false) as boolean;
-					} else {
-						const { runExecutionData, runIndex, connectionInputData } = nodeInputData;
-						display = workflow.expression.getParameterValue(
-							hint.displayCondition,
-							runExecutionData ?? null,
-							runIndex,
-							0,
-							node.name,
-							connectionInputData,
-							'manual',
-							{},
-						);
-					}
-
-					if (typeof display === 'string' && display.trim() === 'true') {
-						display = true;
-					}
-
-					if (typeof display !== 'boolean') {
-						console.warn(
-							`Condition was not resolved as boolean in '${node.name}' node for hint: `,
-							hint.message,
-						);
-						continue;
-					}
-
-					if (display) {
-						hints.push(hint);
-					}
-				} catch (e) {
-					console.warn(
-						`Could not calculate display condition in '${node.name}' node for hint: `,
-						hint.message,
-					);
-				}
-			} else {
-				hints.push(hint);
-			}
-		}
-	}
-
-	return hints;
-}
-
 export function getNodeOutputs(
 	workflow: Workflow,
 	node: INode,
@@ -1217,7 +1065,7 @@ export function getNodeOutputs(
 			...outputs,
 			{
 				category: 'error',
-				type: NodeConnectionType.Main,
+				type: NodeConnectionTypes.Main,
 				displayName: 'Error',
 			},
 		];
@@ -1235,6 +1083,7 @@ export function getNodeOutputs(
 export function getNodeParametersIssues(
 	nodePropertiesArray: INodeProperties[],
 	node: INode,
+	nodeTypeDescription: INodeTypeDescription | null,
 	pinDataNodeNames?: string[],
 ): INodeIssues | null {
 	const foundIssues: INodeIssues = {};
@@ -1246,7 +1095,13 @@ export function getNodeParametersIssues(
 	}
 
 	for (const nodeProperty of nodePropertiesArray) {
-		propertyIssues = getParameterIssues(nodeProperty, node.parameters, '', node);
+		propertyIssues = getParameterIssues(
+			nodeProperty,
+			node.parameters,
+			'',
+			node,
+			nodeTypeDescription,
+		);
 		mergeIssues(foundIssues, propertyIssues);
 	}
 
@@ -1255,44 +1110,6 @@ export function getNodeParametersIssues(
 	}
 
 	return foundIssues;
-}
-
-/**
- * Returns the issues of the node as string
- *
- * @param {INodeIssues} issues The issues of the node
- * @param {INode} node The node
- */
-export function nodeIssuesToString(issues: INodeIssues, node?: INode): string[] {
-	const nodeIssues = [];
-
-	if (issues.execution !== undefined) {
-		nodeIssues.push('Execution Error.');
-	}
-
-	const objectProperties = ['parameters', 'credentials', 'input'];
-
-	let issueText: string;
-	let parameterName: string;
-	for (const propertyName of objectProperties) {
-		if (issues[propertyName] !== undefined) {
-			for (parameterName of Object.keys(issues[propertyName] as object)) {
-				for (issueText of (issues[propertyName] as INodeIssueObjectProperty)[parameterName]) {
-					nodeIssues.push(issueText);
-				}
-			}
-		}
-	}
-
-	if (issues.typeUnknown !== undefined) {
-		if (node !== undefined) {
-			nodeIssues.push(`Node Type "${node.type}" is not known.`);
-		} else {
-			nodeIssues.push('Node Type is not known.');
-		}
-	}
-
-	return nodeIssues;
 }
 
 /*
@@ -1455,9 +1272,16 @@ export function getParameterIssues(
 	nodeValues: INodeParameters,
 	path: string,
 	node: INode,
+	nodeTypeDescription: INodeTypeDescription | null,
 ): INodeIssues {
 	const foundIssues: INodeIssues = {};
-	const isDisplayed = displayParameterPath(nodeValues, nodeProperties, path, node);
+	const isDisplayed = displayParameterPath(
+		nodeValues,
+		nodeProperties,
+		path,
+		node,
+		nodeTypeDescription,
+	);
 	if (nodeProperties.required === true) {
 		if (isDisplayed) {
 			const value = getParameterValueByPath(nodeValues, nodeProperties.name, path);
@@ -1635,7 +1459,13 @@ export function getParameterIssues(
 	let propertyIssues;
 
 	for (const optionData of checkChildNodeProperties) {
-		propertyIssues = getParameterIssues(optionData.data, nodeValues, optionData.basePath, node);
+		propertyIssues = getParameterIssues(
+			optionData.data,
+			nodeValues,
+			optionData.basePath,
+			node,
+			nodeTypeDescription,
+		);
 		mergeIssues(foundIssues, propertyIssues);
 	}
 
@@ -1717,4 +1547,18 @@ export function getVersionedNodeType(
 		return object.getNodeType(version);
 	}
 	return object;
+}
+
+export function isTriggerNode(nodeTypeData: INodeTypeDescription) {
+	return nodeTypeData.group.includes('trigger');
+}
+
+export function isExecutable(workflow: Workflow, node: INode, nodeTypeData: INodeTypeDescription) {
+	const outputs = getNodeOutputs(workflow, node, nodeTypeData);
+	const outputNames = getConnectionTypes(outputs);
+	return (
+		outputNames.includes(NodeConnectionTypes.Main) ||
+		isTriggerNode(nodeTypeData) ||
+		nodeTypeData.usableAsTool === true
+	);
 }

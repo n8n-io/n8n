@@ -46,6 +46,7 @@ import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { computed, ref, useCssModule, watch } from 'vue';
 import type {
 	ActionDropdownItem,
+	FolderShortInfo,
 	IWorkflowDataUpdate,
 	IWorkflowDb,
 	IWorkflowToShare,
@@ -55,6 +56,9 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import type { BaseTextKey } from '@/plugins/i18n';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
+import { ProjectTypes } from '@/types/projects.types';
+import { useFoldersStore } from '@/stores/folders.store';
+import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 
 const props = defineProps<{
 	readOnly?: boolean;
@@ -64,6 +68,7 @@ const props = defineProps<{
 	meta: IWorkflowDb['meta'];
 	scopes: IWorkflowDb['scopes'];
 	active: IWorkflowDb['active'];
+	currentFolder?: FolderShortInfo;
 }>();
 
 const $style = useCssModule();
@@ -77,6 +82,7 @@ const uiStore = useUIStore();
 const usersStore = useUsersStore();
 const workflowsStore = useWorkflowsStore();
 const projectsStore = useProjectsStore();
+const foldersStore = useFoldersStore();
 const npsSurveyStore = useNpsSurveyStore();
 const i18n = useI18n();
 
@@ -138,6 +144,11 @@ const workflowMenuItems = computed<ActionDropdownItem[]>(() => {
 			label: locale.baseText('menuActions.download'),
 			disabled: !onWorkflowPage.value,
 		},
+		{
+			id: WORKFLOW_MENU_ACTIONS.RENAME,
+			label: locale.baseText('generic.rename'),
+			disabled: !onWorkflowPage.value || workflowPermissions.value.update !== true,
+		},
 	];
 
 	if ((workflowPermissions.value.delete && !props.readOnly) || isNewWorkflow.value) {
@@ -198,6 +209,25 @@ const isWorkflowHistoryFeatureEnabled = computed(() => {
 
 const workflowTagIds = computed(() => {
 	return (props.tags ?? []).map((tag) => (typeof tag === 'string' ? tag : tag.id));
+});
+
+const currentProjectName = computed(() => {
+	if (projectsStore.currentProject?.type === ProjectTypes.Personal) {
+		return locale.baseText('projects.menu.personal');
+	}
+	return projectsStore.currentProject?.name;
+});
+
+const currentFolderForBreadcrumbs = computed(() => {
+	if (!isNewWorkflow.value && props.currentFolder) {
+		return props.currentFolder;
+	}
+	const folderId = route.query.parentFolderId as string;
+
+	if (folderId) {
+		return foldersStore.getCachedFolder(folderId);
+	}
+	return null;
 });
 
 watch(
@@ -324,8 +354,8 @@ async function onNameSubmit({
 	const newName = name.trim();
 	if (!newName) {
 		toast.showMessage({
-			title: locale.baseText('workflowDetails.showMessage.title'),
-			message: locale.baseText('workflowDetails.showMessage.message'),
+			title: locale.baseText('renameAction.emptyName.title'),
+			message: locale.baseText('renameAction.emptyName.message'),
 			type: 'error',
 		});
 
@@ -387,8 +417,13 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 					id: props.id,
 					name: props.name,
 					tags: props.tags,
+					parentFolderId: props.currentFolder?.id,
 				},
 			});
+			break;
+		}
+		case WORKFLOW_MENU_ACTIONS.RENAME: {
+			onNameToggle();
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.DOWNLOAD: {
@@ -533,16 +568,22 @@ function showCreateWorkflowSuccessToast(id?: string) {
 		let toastTitle = locale.baseText('workflows.create.personal.toast.title');
 		let toastText = locale.baseText('workflows.create.personal.toast.text');
 
-		if (
-			projectsStore.currentProject &&
-			projectsStore.currentProject.id !== projectsStore.personalProject?.id
-		) {
-			toastTitle = locale.baseText('workflows.create.project.toast.title', {
-				interpolate: { projectName: projectsStore.currentProject.name ?? '' },
-			});
+		if (projectsStore.currentProject) {
+			if (props.currentFolder) {
+				toastTitle = locale.baseText('workflows.create.folder.toast.title', {
+					interpolate: {
+						projectName: currentProjectName.value ?? '',
+						folderName: props.currentFolder.name ?? '',
+					},
+				});
+			} else if (projectsStore.currentProject.id !== projectsStore.personalProject?.id) {
+				toastTitle = locale.baseText('workflows.create.project.toast.title', {
+					interpolate: { projectName: currentProjectName.value ?? '' },
+				});
+			}
 
 			toastText = locale.baseText('workflows.create.project.toast.text', {
-				interpolate: { projectName: projectsStore.currentProject.name ?? '' },
+				interpolate: { projectName: currentProjectName.value ?? '' },
 			});
 		}
 
@@ -553,27 +594,50 @@ function showCreateWorkflowSuccessToast(id?: string) {
 		});
 	}
 }
+
+const onBreadcrumbsItemSelected = (item: PathItem) => {
+	if (item.href) {
+		void router.push(item.href).catch((error) => {
+			toast.showError(error, i18n.baseText('folders.open.error.title'));
+		});
+	}
+};
 </script>
 
 <template>
 	<div :class="$style.container">
-		<BreakpointsObserver :value-x-s="15" :value-s-m="25" :value-m-d="50" class="name-container">
+		<BreakpointsObserver
+			:value-x-s="15"
+			:value-s-m="25"
+			:value-m-d="50"
+			class="name-container"
+			data-test-id="canvas-breadcrumbs"
+		>
 			<template #default="{ value }">
-				<ShortenName :name="name" :limit="value" :custom="true" test-id="workflow-name-input">
-					<template #default="{ shortenedName }">
-						<InlineTextEdit
-							:model-value="name"
-							:preview-value="shortenedName"
-							:is-edit-enabled="isNameEditEnabled"
-							:max-length="MAX_WORKFLOW_NAME_LENGTH"
-							:disabled="readOnly || (!isNewWorkflow && !workflowPermissions.update)"
-							placeholder="Enter workflow name"
-							class="name"
-							@toggle="onNameToggle"
-							@submit="onNameSubmit"
-						/>
+				<FolderBreadcrumbs
+					:current-folder="currentFolderForBreadcrumbs"
+					:current-folder-as-link="true"
+					@item-selected="onBreadcrumbsItemSelected"
+				>
+					<template #append>
+						<span v-if="projectsStore.currentProject" :class="$style['path-separator']">/</span>
+						<ShortenName :name="name" :limit="value" :custom="true" test-id="workflow-name-input">
+							<template #default="{ shortenedName }">
+								<InlineTextEdit
+									:model-value="name"
+									:preview-value="shortenedName"
+									:is-edit-enabled="isNameEditEnabled"
+									:max-length="MAX_WORKFLOW_NAME_LENGTH"
+									:disabled="readOnly || (!isNewWorkflow && !workflowPermissions.update)"
+									placeholder="Enter workflow name"
+									class="name"
+									@toggle="onNameToggle"
+									@submit="onNameSubmit"
+								/>
+							</template>
+						</ShortenName>
 					</template>
-				</ShortenName>
+				</FolderBreadcrumbs>
 			</template>
 		</BreakpointsObserver>
 
@@ -700,7 +764,7 @@ $--text-line-height: 24px;
 $--header-spacing: 20px;
 
 .name-container {
-	margin-right: $--header-spacing;
+	margin-right: var(--spacing-s);
 
 	:deep(.el-input) {
 		padding: 0;
@@ -709,13 +773,12 @@ $--header-spacing: 20px;
 
 .name {
 	color: $custom-font-dark;
-	font-size: 15px;
-	display: block;
+	font-size: var(--font-size-s);
 }
 
 .activator {
 	color: $custom-font-dark;
-	font-weight: 400;
+	font-weight: var(--font-weight-regular);
 	font-size: 13px;
 	line-height: $--text-line-height;
 	align-items: center;
@@ -729,7 +792,7 @@ $--header-spacing: 20px;
 	font-size: 12px;
 	padding: 20px 0; // to be more clickable
 	color: $custom-font-very-light;
-	font-weight: 600;
+	font-weight: var(--font-weight-bold);
 	white-space: nowrap;
 
 	&:hover {
@@ -775,6 +838,12 @@ $--header-spacing: 20px;
 	display: flex;
 	align-items: center;
 	flex-wrap: nowrap;
+}
+
+.path-separator {
+	font-size: var(--font-size-xl);
+	color: var(--color-foreground-base);
+	margin: var(--spacing-4xs);
 }
 
 .group {

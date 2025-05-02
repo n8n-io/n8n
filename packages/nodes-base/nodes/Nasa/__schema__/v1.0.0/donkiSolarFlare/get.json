@@ -1,10 +1,22 @@
 {
     "type": "object",
     "properties": {
-        "flrID": {
+        "activeRegionNum": {
+            "type": "integer"
+        },
+        "beginTime": {
             "type": "string"
         },
         "catalog": {
+            "type": "string"
+        },
+        "classType": {
+            "type": "string"
+        },
+        "endTime": {
+            "type": "string"
+        },
+        "flrID": {
             "type": "string"
         },
         "instruments": {
@@ -15,28 +27,19 @@
                     "displayName": {
                         "type": "string"
                     }
-                },
-                "required": [
-                    "displayName"
-                ]
+                }
             }
         },
-        "beginTime": {
+        "link": {
+            "type": "string"
+        },
+        "note": {
             "type": "string"
         },
         "peakTime": {
             "type": "string"
         },
-        "endTime": {
-            "type": "string"
-        },
-        "classType": {
-            "type": "string"
-        },
         "sourceLocation": {
-            "type": "string"
-        },
-        "note": {
             "type": "string"
         },
         "submissionTime": {
@@ -44,25 +47,7 @@
         },
         "versionId": {
             "type": "integer"
-        },
-        "link": {
-            "type": "string"
         }
     },
-    "required": [
-        "flrID",
-        "catalog",
-        "instruments",
-        "beginTime",
-        "peakTime",
-        "endTime",
-        "classType",
-        "sourceLocation",
-        "activeRegionNum",
-        "note",
-        "submissionTime",
-        "versionId",
-        "link",
-        "linkedEvents"
-    ]
+    "version": 2
 }

@@ -1,8 +1,11 @@
+import type { Request } from 'express';
 import { mock } from 'jest-mock-extended';
 import { DateTime } from 'luxon';
 import type {
 	FormFieldsParameter,
+	IDataObject,
 	INode,
+	INodeExecutionData,
 	IWebhookFunctions,
 	MultiPartFormData,
 	NodeTypeAndVersion,
@@ -17,6 +20,8 @@ import {
 	isFormConnected,
 	sanitizeHtml,
 	validateResponseModeConfiguration,
+	prepareFormFields,
+	addFormResponseDataToReturnItem,
 } from '../utils';
 
 describe('FormTrigger, parseFormDescription', () => {
@@ -199,7 +204,6 @@ describe('FormTrigger, formWebhook', () => {
 				'https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger&utm_campaign=instanceId',
 			testRun: true,
 			useResponseData: false,
-			validForm: true,
 		});
 	});
 
@@ -246,7 +250,6 @@ describe('FormTrigger, formWebhook', () => {
 					'https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger&utm_campaign=instanceId',
 				testRun: true,
 				useResponseData: false,
-				validForm: true,
 			});
 		}
 	});
@@ -349,7 +352,6 @@ describe('FormTrigger, prepareFormData', () => {
 
 		expect(result).toEqual({
 			testRun: false,
-			validForm: true,
 			formTitle: 'Test Form',
 			formDescription: 'This is a test form',
 			formDescriptionMetadata: 'This is a test form',
@@ -451,7 +453,6 @@ describe('FormTrigger, prepareFormData', () => {
 
 		expect(result).toEqual({
 			testRun: true,
-			validForm: true,
 			formTitle: 'Test Form',
 			formDescription: 'This is a test form',
 			formDescriptionMetadata: 'This is a test form',
@@ -511,7 +512,6 @@ describe('FormTrigger, prepareFormData', () => {
 			query: {},
 		});
 
-		expect(result.validForm).toBe(false);
 		expect(result.formFields).toEqual([]);
 	});
 
@@ -604,6 +604,7 @@ jest.mock('luxon', () => ({
 
 describe('prepareFormReturnItem', () => {
 	const mockContext = mock<IWebhookFunctions>({
+		getRequestObject: jest.fn().mockReturnValue({ method: 'GET', query: {} }),
 		nodeHelpers: mock({
 			copyBinaryFile: jest.fn().mockResolvedValue({}),
 		}),
@@ -736,13 +737,35 @@ describe('prepareFormReturnItem', () => {
 		expect(DateTime.now().setZone).toHaveBeenCalledWith('America/New_York');
 	});
 
-	it('should include workflow static data for form trigger node', async () => {
+	it('should not include workflow static data for form trigger node', async () => {
 		const staticData = { queryParam: 'value' };
 		mockContext.getWorkflowStaticData.mockReturnValue(staticData);
 
 		const result = await prepareFormReturnItem(mockContext, [], 'test');
 
-		expect(result.json.formQueryParameters).toEqual(staticData);
+		expect(result.json.formQueryParameters).toBeUndefined();
+	});
+
+	it('should include query parameters if present and is trigger node', async () => {
+		mockContext.getRequestObject.mockReturnValue({
+			method: 'POST',
+			query: { param: 'value' },
+		} as unknown as Request);
+
+		const result = await prepareFormReturnItem(mockContext, [], 'test');
+
+		expect(result.json.formQueryParameters).toEqual({ param: 'value' });
+	});
+
+	it('should not include query parameters if empty', async () => {
+		mockContext.getRequestObject.mockReturnValue({
+			method: 'POST',
+			query: {},
+		} as unknown as Request);
+
+		const result = await prepareFormReturnItem(mockContext, [], 'test');
+
+		expect(result.json.formQueryParameters).toBeUndefined();
 	});
 
 	it('should return html if field name is set', async () => {
@@ -993,5 +1016,113 @@ describe('validateResponseModeConfiguration', () => {
 		webhookFunctions.getNodeParameter.mockReturnValue('onReceived');
 
 		expect(() => validateResponseModeConfiguration(webhookFunctions)).not.toThrow();
+	});
+
+	describe('prepareFormFields', () => {
+		it('should resolve expressions in html fields', async () => {
+			webhookFunctions.evaluateExpression.mockImplementation((expression) => {
+				if (expression === '{{ $json.formMode }}') {
+					return 'Title';
+				}
+			});
+
+			const result = prepareFormFields(webhookFunctions, [
+				{
+					fieldLabel: 'Custom HTML',
+					fieldType: 'html',
+					elementName: 'test',
+					html: '<h1>{{ $json.formMode }}</h1>',
+				},
+			]);
+
+			expect(result[0].html).toBe('<h1>Title</h1>');
+		});
+		it('should prepare hiddenField', async () => {
+			const result = prepareFormFields(webhookFunctions, [
+				{
+					fieldLabel: '',
+					fieldName: 'test',
+					fieldType: 'hiddenField',
+				},
+			]);
+
+			expect(result[0]).toEqual({
+				fieldLabel: 'test',
+				fieldName: 'test',
+				fieldType: 'hiddenField',
+			});
+		});
+	});
+});
+
+describe('addFormResponseDataToReturnItem', () => {
+	let returnItem: INodeExecutionData;
+
+	beforeEach(() => {
+		returnItem = { json: {} };
+	});
+
+	test('should use fieldName if fieldLabel is missing', () => {
+		const formFields: FormFieldsParameter = [
+			{ fieldName: 'Alternative Field', fieldType: 'hiddenField' },
+		] as FormFieldsParameter;
+		const bodyData: IDataObject = { 'field-0': 'Test Value' };
+
+		addFormResponseDataToReturnItem(returnItem, formFields, bodyData);
+		expect(returnItem.json['Alternative Field']).toBe('Test Value');
+	});
+
+	it('should handle null values', () => {
+		const formFields: FormFieldsParameter = [{ fieldLabel: 'Test Field', fieldType: 'text' }];
+		const bodyData: IDataObject = {};
+
+		addFormResponseDataToReturnItem(returnItem, formFields, bodyData);
+		expect(returnItem.json['Test Field']).toBeNull();
+	});
+
+	it('should process html fields and set elementName', () => {
+		const formFields: FormFieldsParameter = [
+			{ fieldLabel: 'HTML Field', elementName: 'htmlElement', fieldType: 'html' },
+		];
+		const bodyData: IDataObject = { 'field-0': '<p>HTML Content</p>' };
+
+		addFormResponseDataToReturnItem(returnItem, formFields, bodyData);
+		expect(returnItem.json.htmlElement).toBe('<p>HTML Content</p>');
+	});
+
+	it('should parse number fields correctly', () => {
+		const formFields: FormFieldsParameter = [{ fieldLabel: 'Number Field', fieldType: 'number' }];
+		const bodyData: IDataObject = { 'field-0': '42' };
+
+		addFormResponseDataToReturnItem(returnItem, formFields, bodyData);
+		expect(returnItem.json['Number Field']).toBe(42);
+	});
+
+	it('should trim text fields', () => {
+		const formFields: FormFieldsParameter = [{ fieldLabel: 'Text Field', fieldType: 'text' }];
+		const bodyData: IDataObject = { 'field-0': '   hello world   ' };
+
+		addFormResponseDataToReturnItem(returnItem, formFields, bodyData);
+		expect(returnItem.json['Text Field']).toBe('hello world');
+	});
+
+	it('should parse multiselect fields from JSON', () => {
+		const formFields: FormFieldsParameter = [
+			{ fieldLabel: 'Multi Field', fieldType: 'text', multiselect: true },
+		];
+		const bodyData: IDataObject = { 'field-0': '["option1", "option2"]' };
+
+		addFormResponseDataToReturnItem(returnItem, formFields, bodyData);
+		expect(returnItem.json['Multi Field']).toEqual(['option1', 'option2']);
+	});
+
+	it('should convert single file values to an array if multipleFiles is true', () => {
+		const formFields: FormFieldsParameter = [
+			{ fieldLabel: 'File Field', fieldType: 'file', multipleFiles: true },
+		];
+		const bodyData: IDataObject = { 'field-0': 'file1.pdf' };
+
+		addFormResponseDataToReturnItem(returnItem, formFields, bodyData);
+		expect(returnItem.json['File Field']).toEqual(['file1.pdf']);
 	});
 });

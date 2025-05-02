@@ -55,6 +55,7 @@ export const SentryPlugin: Plugin = {
 			environment,
 			integrations: [
 				Sentry.rewriteFramesIntegration({
+					prefix: '',
 					root: window.location.origin + '/',
 				}),
 			],

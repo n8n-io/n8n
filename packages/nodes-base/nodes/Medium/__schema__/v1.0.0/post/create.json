@@ -1,26 +1,14 @@
 {
     "type": "object",
     "properties": {
-        "id": {
-            "type": "string"
-        },
-        "title": {
-            "type": "string"
-        },
         "authorId": {
-            "type": "string"
-        },
-        "url": {
             "type": "string"
         },
         "canonicalUrl": {
             "type": "string"
         },
-        "publishStatus": {
+        "id": {
             "type": "string"
-        },
-        "publishedAt": {
-            "type": "integer"
         },
         "license": {
             "type": "string"
@@ -28,11 +16,24 @@
         "licenseUrl": {
             "type": "string"
         },
+        "publishedAt": {
+            "type": "integer"
+        },
+        "publishStatus": {
+            "type": "string"
+        },
         "tags": {
             "type": "array",
             "items": {
                 "type": "string"
             }
+        },
+        "title": {
+            "type": "string"
+        },
+        "url": {
+            "type": "string"
         }
-    }
+    },
+    "version": 1
 }

@@ -11,14 +11,20 @@ import type { AgentAction, AgentFinish } from 'langchain/agents';
 import { AgentExecutor, createToolCallingAgent } from 'langchain/agents';
 import type { ToolsAgentAction } from 'langchain/dist/agents/tool_calling/output_parser';
 import { omit } from 'lodash';
-import { BINARY_ENCODING, jsonParse, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import {
+	BINARY_ENCODING,
+	jsonParse,
+	NodeConnectionTypes,
+	NodeOperationError,
+	sleep,
+} from 'n8n-workflow';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import type { ZodObject } from 'zod';
 import { z } from 'zod';
 
 import { isChatInstance, getPromptInputByType, getConnectedTools } from '@utils/helpers';
 import {
-	getOptionalOutputParsers,
+	getOptionalOutputParser,
 	type N8nOutputParser,
 } from '@utils/output_parsers/N8nOutputParser';
 
@@ -211,7 +217,7 @@ export function handleParsedStepOutput(
 
 /**
  * Parses agent steps using the provided output parser.
- * If the agent used the 'format_final_response' tool, the output is parsed accordingly.
+ * If the agent used the 'format_final_json_response' tool, the output is parsed accordingly.
  *
  * @param steps - The agent finish or action steps
  * @param outputParser - The output parser (if defined)
@@ -221,9 +227,9 @@ export function handleParsedStepOutput(
 export const getAgentStepsParser =
 	(outputParser?: N8nOutputParser, memory?: BaseChatMemory) =>
 	async (steps: AgentFinish | AgentAction[]): Promise<AgentFinish | AgentAction[]> => {
-		// Check if the steps contain the 'format_final_response' tool invocation.
+		// Check if the steps contain the 'format_final_json_response' tool invocation.
 		if (Array.isArray(steps)) {
-			const responseParserTool = steps.find((step) => step.tool === 'format_final_response');
+			const responseParserTool = steps.find((step) => step.tool === 'format_final_json_response');
 			if (responseParserTool && outputParser) {
 				const toolInput = responseParserTool.toolInput;
 				// Ensure the tool input is a string
@@ -275,7 +281,7 @@ export const getAgentStepsParser =
  * @returns The validated chat model
  */
 export async function getChatModel(ctx: IExecuteFunctions): Promise<BaseChatModel> {
-	const model = await ctx.getInputConnectionData(NodeConnectionType.AiLanguageModel, 0);
+	const model = await ctx.getInputConnectionData(NodeConnectionTypes.AiLanguageModel, 0);
 	if (!isChatInstance(model) || !model.bindTools) {
 		throw new NodeOperationError(
 			ctx.getNode(),
@@ -294,7 +300,7 @@ export async function getChatModel(ctx: IExecuteFunctions): Promise<BaseChatMode
 export async function getOptionalMemory(
 	ctx: IExecuteFunctions,
 ): Promise<BaseChatMemory | undefined> {
-	return (await ctx.getInputConnectionData(NodeConnectionType.AiMemory, 0)) as
+	return (await ctx.getInputConnectionData(NodeConnectionTypes.AiMemory, 0)) as
 		| BaseChatMemory
 		| undefined;
 }
@@ -318,9 +324,9 @@ export async function getTools(
 		const schema = getOutputParserSchema(outputParser);
 		const structuredOutputParserTool = new DynamicStructuredTool({
 			schema,
-			name: 'format_final_response',
+			name: 'format_final_json_response',
 			description:
-				'Always use this tool for the final output to the user. It validates the output so only use it when you are sure the output is final.',
+				'Use this tool to format your final response to the user in a structured JSON format. This tool validates your output against a schema to ensure it meets the required format. ONLY use this tool when you have completed all necessary reasoning and are ready to provide your final answer. Do not use this tool for intermediate steps or for asking questions. The output from this tool will be directly returned to the user.',
 			// We do not use a function here because we intercept the output with the parser.
 			func: async () => '',
 		});
@@ -346,17 +352,30 @@ export async function prepareMessages(
 		outputParser?: N8nOutputParser;
 	},
 ): Promise<BaseMessagePromptTemplateLike[]> {
-	const messages: BaseMessagePromptTemplateLike[] = [
-		['system', `{system_message}${options.outputParser ? '\n\n{formatting_instructions}' : ''}`],
-		['placeholder', '{chat_history}'],
-		['human', '{input}'],
-	];
+	const useSystemMessage = options.systemMessage ?? ctx.getNode().typeVersion < 1.9;
+
+	const messages: BaseMessagePromptTemplateLike[] = [];
+
+	if (useSystemMessage) {
+		messages.push([
+			'system',
+			`{system_message}${options.outputParser ? '\n\n{formatting_instructions}' : ''}`,
+		]);
+	} else if (options.outputParser) {
+		messages.push(['system', '{formatting_instructions}']);
+	}
+
+	messages.push(['placeholder', '{chat_history}'], ['human', '{input}']);
 
 	// If there is binary data and the node option permits it, add a binary message
 	const hasBinaryData = ctx.getInputData()?.[itemIndex]?.binary !== undefined;
 	if (hasBinaryData && options.passthroughBinaryImages) {
 		const binaryMessage = await extractBinaryMessages(ctx, itemIndex);
-		messages.push(binaryMessage);
+		if (binaryMessage.content.length !== 0) {
+			messages.push(binaryMessage);
+		} else {
+			ctx.logger.debug('Not attaching binary message, since its content was empty');
+		}
 	}
 
 	// We add the agent scratchpad last, so that the agent will not run in loops
@@ -392,14 +411,22 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 
 	const returnData: INodeExecutionData[] = [];
 	const items = this.getInputData();
-	const outputParsers = await getOptionalOutputParsers(this);
-	const outputParser = outputParsers?.[0];
+	const outputParser = await getOptionalOutputParser(this);
+	const memory = await getOptionalMemory(this);
 	const tools = await getTools(this, outputParser);
+	const { batchSize, delayBetweenBatches } = this.getNodeParameter('options.batching', 0, {
+		batchSize: 1,
+		delayBetweenBatches: 0,
+	}) as {
+		batchSize: number;
+		delayBetweenBatches: number;
+	};
 
-	for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-		try {
+	for (let i = 0; i < items.length; i += batchSize) {
+		const batch = items.slice(i, i + batchSize);
+		const batchPromises = batch.map(async (_item, batchItemIndex) => {
+			const itemIndex = i + batchItemIndex;
 			const model = await getChatModel(this);
-			const memory = await getOptionalMemory(this);
 
 			const input = getPromptInputByType({
 				ctx: this,
@@ -449,16 +476,31 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 			});
 
 			// Invoke the executor with the given input and system message.
-			const response = await executor.invoke(
+			return await executor.invoke(
 				{
 					input,
 					system_message: options.systemMessage ?? SYSTEM_MESSAGE,
 					formatting_instructions:
-						'IMPORTANT: Always call `format_final_response` to format your final response!',
+						'IMPORTANT: For your response to user, you MUST use the `format_final_json_response` tool with your complete answer formatted according to the required schema. Do not attempt to format the JSON manually - always use this tool. Your response will be rejected if it is not properly formatted through this tool. Only use this tool once you are ready to provide your final answer.',
 				},
 				{ signal: this.getExecutionCancelSignal() },
 			);
+		});
+		const batchResults = await Promise.allSettled(batchPromises);
 
+		batchResults.forEach((result, index) => {
+			if (result.status === 'rejected') {
+				if (this.continueOnFail()) {
+					returnData.push({
+						json: { error: result.reason as string },
+						pairedItem: { item: index },
+					});
+					return;
+				} else {
+					throw new NodeOperationError(this.getNode(), result.reason);
+				}
+			}
+			const response = result.value;
 			// If memory and outputParser are connected, parse the output.
 			if (memory && outputParser) {
 				const parsedOutput = jsonParse<{ output: Record<string, unknown> }>(
@@ -480,15 +522,10 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 			};
 
 			returnData.push(itemResult);
-		} catch (error) {
-			if (this.continueOnFail()) {
-				returnData.push({
-					json: { error: error.message },
-					pairedItem: { item: itemIndex },
-				});
-				continue;
-			}
-			throw error;
+		});
+
+		if (i + batchSize < items.length && delayBetweenBatches > 0) {
+			await sleep(delayBetweenBatches);
 		}
 	}
 

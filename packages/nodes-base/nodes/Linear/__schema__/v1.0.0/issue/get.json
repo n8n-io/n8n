@@ -1,20 +1,28 @@
 {
     "type": "object",
     "properties": {
+        "createdAt": {
+            "type": "string"
+        },
+        "creator": {
+            "type": "object",
+            "properties": {
+                "displayName": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
         "id": {
             "type": "string"
         },
         "identifier": {
             "type": "string"
         },
-        "title": {
-            "type": "string"
-        },
         "priority": {
             "type": "integer"
-        },
-        "archivedAt": {
-            "type": "null"
         },
         "state": {
             "type": "object",
@@ -25,43 +33,11 @@
                 "name": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "id",
-                "name"
-            ]
+            }
         },
-        "createdAt": {
+        "title": {
             "type": "string"
-        },
-        "creator": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "displayName": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "id",
-                "displayName"
-            ]
         }
     },
-    "required": [
-        "id",
-        "identifier",
-        "title",
-        "priority",
-        "archivedAt",
-        "assignee",
-        "state",
-        "createdAt",
-        "creator",
-        "description",
-        "dueDate",
-        "cycle"
-    ]
+    "version": 1
 }

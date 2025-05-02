@@ -1,4 +1,5 @@
 import { GlobalConfig } from '@n8n/config';
+import type { Project, User, CreateExecutionPayload } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ErrorReporter, Logger } from 'n8n-core';
 import type {
@@ -17,16 +18,14 @@ import type {
 import { SubworkflowOperationError, Workflow } from 'n8n-workflow';
 
 import config from '@/config';
-import type { Project } from '@/databases/entities/project';
-import type { User } from '@/databases/entities/user';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import type { CreateExecutionPayload, IWorkflowErrorData } from '@/interfaces';
+import { ExecutionDataService } from '@/executions/execution-data.service';
+import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
+import type { IWorkflowErrorData } from '@/interfaces';
 import { NodeTypes } from '@/node-types';
-import { SubworkflowPolicyChecker } from '@/subworkflows/subworkflow-policy-checker.service';
 import { TestWebhooks } from '@/webhooks/test-webhooks';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-import * as WorkflowHelpers from '@/workflow-helpers';
 import { WorkflowRunner } from '@/workflow-runner';
 import type { WorkflowRequest } from '@/workflows/workflow.request';
 
@@ -42,6 +41,7 @@ export class WorkflowExecutionService {
 		private readonly workflowRunner: WorkflowRunner,
 		private readonly globalConfig: GlobalConfig,
 		private readonly subworkflowPolicyChecker: SubworkflowPolicyChecker,
+		private readonly executionDataService: ExecutionDataService,
 	) {}
 
 	async runWorkflow(
@@ -207,7 +207,8 @@ export class WorkflowExecutionService {
 				},
 				resultData: {
 					pinData,
-					runData: runData ?? {},
+					// @ts-expect-error CAT-752
+					runData,
 				},
 				manualData: {
 					userId: data.userId,
@@ -273,7 +274,7 @@ export class WorkflowExecutionService {
 					);
 
 					// Create a fake execution and save it to DB.
-					const fakeExecution = WorkflowHelpers.generateFailedExecutionFromError(
+					const fakeExecution = this.executionDataService.generateFailedExecutionFromError(
 						'error',
 						errorWorkflowPermissionError,
 						initialNode,

@@ -4,6 +4,9 @@
         "_archived": {
             "type": "boolean"
         },
+        "_ctime": {
+            "type": "string"
+        },
         "_id": {
             "type": "string"
         },
@@ -13,11 +16,9 @@
         "_locked_by": {
             "type": "null"
         },
-        "_ctime": {
-            "type": "string"
-        },
         "_mtime": {
             "type": "string"
         }
-    }
+    },
+    "version": 1
 }

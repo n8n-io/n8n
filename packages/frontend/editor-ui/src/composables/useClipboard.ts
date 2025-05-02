@@ -1,6 +1,7 @@
-import { onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, inject, onBeforeUnmount, onMounted, ref, unref } from 'vue';
 import { useClipboard as useClipboardCore } from '@vueuse/core';
 import { useDebounce } from '@/composables/useDebounce';
+import { IsInPiPWindowSymbol } from '@/constants';
 
 type ClipboardEventFn = (data: string, event?: ClipboardEvent) => void;
 
@@ -12,6 +13,7 @@ export function useClipboard(
 	},
 ) {
 	const { debounce } = useDebounce();
+	const isInPiPWindow = inject(IsInPiPWindowSymbol, false);
 	const { copy, copied, isSupported, text } = useClipboardCore({ legacy: true });
 
 	const ignoreClasses = ['el-messsage-box', 'ignore-key-press-canvas'];
@@ -76,7 +78,9 @@ export function useClipboard(
 	return {
 		copy,
 		copied,
-		isSupported,
+		// When the `copy()` method is invoked from inside of the document picture-in-picture (PiP) window, it throws the error "Document is not focused".
+		// Therefore, we disable copying features in the PiP window for now.
+		isSupported: computed(() => isSupported && !unref(isInPiPWindow)),
 		text,
 		onPaste: onPasteCallback,
 	};

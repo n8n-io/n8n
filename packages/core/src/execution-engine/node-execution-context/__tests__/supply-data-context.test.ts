@@ -13,8 +13,9 @@ import type {
 	INodeType,
 	INodeTypes,
 	ICredentialDataDecryptedObject,
+	NodeConnectionType,
 } from 'n8n-workflow';
-import { ApplicationError, NodeConnectionType } from 'n8n-workflow';
+import { ApplicationError, NodeConnectionTypes } from 'n8n-workflow';
 
 import { describeCommonTests } from './shared-tests';
 import { SupplyDataContext } from '../supply-data-context';
@@ -58,7 +59,7 @@ describe('SupplyDataContext', () => {
 		resultData: { runData: {} },
 	});
 	const connectionInputData: INodeExecutionData[] = [];
-	const connectionType = NodeConnectionType.Main;
+	const connectionType = NodeConnectionTypes.Main;
 	const inputData: ITaskDataConnections = { [connectionType]: [[{ json: { test: 'data' } }]] };
 	const executeData = mock<IExecuteData>();
 	const runIndex = 0;

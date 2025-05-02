@@ -8,7 +8,7 @@ import type {
 	INodeTypeDescription,
 	IPairedItemData,
 } from 'n8n-workflow';
-import { NodeConnectionType, deepCopy } from 'n8n-workflow';
+import { NodeConnectionTypes, deepCopy } from 'n8n-workflow';
 
 import { oldVersionNotice } from '@utils/descriptions';
 
@@ -27,8 +27,8 @@ export class MergeV1 implements INodeType {
 				color: '#00bbcc',
 			},
 
-			inputs: [NodeConnectionType.Main, NodeConnectionType.Main],
-			outputs: [NodeConnectionType.Main],
+			inputs: [NodeConnectionTypes.Main, NodeConnectionTypes.Main],
+			outputs: [NodeConnectionTypes.Main],
 			inputNames: ['Input 1', 'Input 2'],
 			properties: [
 				oldVersionNotice,

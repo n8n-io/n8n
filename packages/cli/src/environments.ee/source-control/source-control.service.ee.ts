@@ -3,6 +3,7 @@ import type {
 	PushWorkFolderRequestDto,
 	SourceControlledFile,
 } from '@n8n/api-types';
+import type { Variables, TagEntity, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { writeFileSync } from 'fs';
 import { Logger } from 'n8n-core';
@@ -10,9 +11,7 @@ import { UnexpectedError, UserError } from 'n8n-workflow';
 import path from 'path';
 import type { PushResult } from 'simple-git';
 
-import type { TagEntity } from '@/databases/entities/tag-entity';
-import type { User } from '@/databases/entities/user';
-import type { Variables } from '@/databases/entities/variables';
+import { FolderRepository } from '@/databases/repositories/folder.repository';
 import { TagRepository } from '@/databases/repositories/tag.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { EventService } from '@/events/event.service';
@@ -25,17 +24,20 @@ import {
 import { SourceControlExportService } from './source-control-export.service.ee';
 import { SourceControlGitService } from './source-control-git.service.ee';
 import {
+	getFoldersPath,
 	getTagsPath,
 	getTrackingInformationFromPostPushResult,
 	getTrackingInformationFromPrePushResult,
 	getTrackingInformationFromPullResult,
 	getVariablesPath,
+	isWorkflowModified,
 	normalizeAndValidateSourceControlledFilePath,
 	sourceControlFoldersExistCheck,
 } from './source-control-helper.ee';
 import { SourceControlImportService } from './source-control-import.service.ee';
 import { SourceControlPreferencesService } from './source-control-preferences.service.ee';
 import type { ExportableCredential } from './types/exportable-credential';
+import type { ExportableFolder } from './types/exportable-folders';
 import type { ImportResult } from './types/import-result';
 import type { SourceControlGetStatus } from './types/source-control-get-status';
 import type { SourceControlPreferences } from './types/source-control-preferences';
@@ -57,6 +59,7 @@ export class SourceControlService {
 		private sourceControlExportService: SourceControlExportService,
 		private sourceControlImportService: SourceControlImportService,
 		private tagRepository: TagRepository,
+		private folderRepository: FolderRepository,
 		private readonly eventService: EventService,
 	) {
 		const { gitFolder, sshFolder, sshKeyName } = sourceControlPreferencesService;
@@ -209,7 +212,10 @@ export class SourceControlService {
 		return;
 	}
 
-	async pushWorkfolder(options: PushWorkFolderRequestDto): Promise<{
+	async pushWorkfolder(
+		user: User,
+		options: PushWorkFolderRequestDto,
+	): Promise<{
 		statusCode: number;
 		pushResult: PushResult | undefined;
 		statusResult: SourceControlledFile[];
@@ -235,7 +241,7 @@ export class SourceControlService {
 		// only determine file status if not provided by the frontend
 		let statusResult: SourceControlledFile[] = filesToPush;
 		if (statusResult.length === 0) {
-			statusResult = (await this.getStatus({
+			statusResult = (await this.getStatus(user, {
 				direction: 'push',
 				verbose: false,
 				preferLocalVersion: true,
@@ -255,13 +261,20 @@ export class SourceControlService {
 
 		const filesToBePushed = new Set<string>();
 		const filesToBeDeleted = new Set<string>();
-		filesToPush.forEach((e) => {
-			if (e.status !== 'deleted') {
-				filesToBePushed.add(e.file);
-			} else {
-				filesToBeDeleted.add(e.file);
-			}
-		});
+
+		/*
+			Exclude tags, variables and folders JSON file from being deleted as
+			we keep track of them in a single file unlike workflows and credentials
+		*/
+		filesToPush
+			.filter((f) => ['workflow', 'credential'].includes(f.type))
+			.forEach((e) => {
+				if (e.status !== 'deleted') {
+					filesToBePushed.add(e.file);
+				} else {
+					filesToBeDeleted.add(e.file);
+				}
+			});
 
 		this.sourceControlExportService.rmFilesFromExportFolder(filesToBeDeleted);
 
@@ -284,11 +297,21 @@ export class SourceControlService {
 			});
 		}
 
-		if (filesToPush.find((e) => e.type === 'tags')) {
+		const tagChanges = filesToPush.find((e) => e.type === 'tags');
+		if (tagChanges) {
+			filesToBePushed.add(tagChanges.file);
 			await this.sourceControlExportService.exportTagsToWorkFolder();
 		}
 
-		if (filesToPush.find((e) => e.type === 'variables')) {
+		const folderChanges = filesToPush.find((e) => e.type === 'folders');
+		if (folderChanges) {
+			filesToBePushed.add(folderChanges.file);
+			await this.sourceControlExportService.exportFoldersToWorkFolder();
+		}
+
+		const variablesChanges = filesToPush.find((e) => e.type === 'variables');
+		if (variablesChanges) {
+			filesToBePushed.add(variablesChanges.file);
 			await this.sourceControlExportService.exportVariablesToWorkFolder();
 		}
 
@@ -311,7 +334,7 @@ export class SourceControlService {
 		// #region Tracking Information
 		this.eventService.emit(
 			'source-control-user-finished-push-ui',
-			getTrackingInformationFromPostPushResult(statusResult),
+			getTrackingInformationFromPostPushResult(user.id, statusResult),
 		);
 		// #endregion
 
@@ -354,6 +377,14 @@ export class SourceControlService {
 		return files.find((e) => e.type === 'variables' && e.status !== 'deleted');
 	}
 
+	private getFoldersToImport(files: SourceControlledFile[]): SourceControlledFile | undefined {
+		return files.find((e) => e.type === 'folders' && e.status !== 'deleted');
+	}
+
+	private getFoldersToDelete(files: SourceControlledFile[]): SourceControlledFile[] {
+		return files.filter((e) => e.type === 'folders' && e.status === 'deleted');
+	}
+
 	private getVariablesToDelete(files: SourceControlledFile[]): SourceControlledFile[] {
 		return files.filter((e) => e.type === 'variables' && e.status === 'deleted');
 	}
@@ -364,7 +395,7 @@ export class SourceControlService {
 	): Promise<{ statusCode: number; statusResult: SourceControlledFile[] }> {
 		await this.sanityCheck();
 
-		const statusResult = (await this.getStatus({
+		const statusResult = (await this.getStatus(user, {
 			direction: 'pull',
 			verbose: false,
 			preferLocalVersion: false,
@@ -379,6 +410,12 @@ export class SourceControlService {
 					statusResult,
 				};
 			}
+		}
+
+		// Make sure the folders get processed first as the workflows depend on them
+		const foldersToBeImported = this.getFoldersToImport(statusResult);
+		if (foldersToBeImported) {
+			await this.sourceControlImportService.importFoldersFromWorkFolder(user, foldersToBeImported);
 		}
 
 		const workflowsToBeImported = this.getWorkflowsToImport(statusResult);
@@ -416,10 +453,13 @@ export class SourceControlService {
 		const variablesToBeDeleted = this.getVariablesToDelete(statusResult);
 		await this.sourceControlImportService.deleteVariablesNotInWorkfolder(variablesToBeDeleted);
 
+		const foldersToBeDeleted = this.getFoldersToDelete(statusResult);
+		await this.sourceControlImportService.deleteFoldersNotInWorkfolder(foldersToBeDeleted);
+
 		// #region Tracking Information
 		this.eventService.emit(
 			'source-control-user-finished-pull-ui',
-			getTrackingInformationFromPullResult(statusResult),
+			getTrackingInformationFromPullResult(user.id, statusResult),
 		);
 		// #endregion
 
@@ -439,7 +479,7 @@ export class SourceControlService {
 	 * @returns either SourceControlledFile[] if verbose is false,
 	 * or multiple SourceControlledFile[] with all determined differences for debugging purposes
 	 */
-	async getStatus(options: SourceControlGetStatus) {
+	async getStatus(user: User, options: SourceControlGetStatus) {
 		await this.sanityCheck();
 
 		const sourceControlledFiles: SourceControlledFile[] = [];
@@ -469,16 +509,19 @@ export class SourceControlService {
 			mappingsMissingInRemote,
 		} = await this.getStatusTagsMappings(options, sourceControlledFiles);
 
+		const { foldersMissingInLocal, foldersMissingInRemote, foldersModifiedInEither } =
+			await this.getStatusFoldersMapping(options, sourceControlledFiles);
+
 		// #region Tracking Information
 		if (options.direction === 'push') {
 			this.eventService.emit(
 				'source-control-user-started-push-ui',
-				getTrackingInformationFromPrePushResult(sourceControlledFiles),
+				getTrackingInformationFromPrePushResult(user.id, sourceControlledFiles),
 			);
 		} else if (options.direction === 'pull') {
 			this.eventService.emit(
 				'source-control-user-started-pull-ui',
-				getTrackingInformationFromPullResult(sourceControlledFiles),
+				getTrackingInformationFromPullResult(user.id, sourceControlledFiles),
 			);
 		}
 		// #endregion
@@ -501,6 +544,9 @@ export class SourceControlService {
 				tagsModifiedInEither,
 				mappingsMissingInLocal,
 				mappingsMissingInRemote,
+				foldersMissingInLocal,
+				foldersMissingInRemote,
+				foldersModifiedInEither,
 				sourceControlledFiles,
 			};
 		} else {
@@ -524,23 +570,37 @@ export class SourceControlService {
 		);
 
 		const wfModifiedInEither: SourceControlWorkflowVersionId[] = [];
-		wfLocalVersionIds.forEach((local) => {
-			const mismatchingIds = wfRemoteVersionIds.find(
-				(remote) => remote.id === local.id && remote.versionId !== local.versionId,
+
+		wfLocalVersionIds.forEach((localWorkflow) => {
+			const remoteWorkflowWithSameId = wfRemoteVersionIds.find(
+				(removeWorkflow) => removeWorkflow.id === localWorkflow.id,
 			);
-			let name = (options?.preferLocalVersion ? local?.name : mismatchingIds?.name) ?? 'Workflow';
-			if (local.name && mismatchingIds?.name && local.name !== mismatchingIds.name) {
-				name = options?.preferLocalVersion
-					? `${local.name} (Remote: ${mismatchingIds.name})`
-					: (name = `${mismatchingIds.name} (Local: ${local.name})`);
+
+			if (!remoteWorkflowWithSameId) {
+				return;
 			}
-			if (mismatchingIds) {
+
+			if (isWorkflowModified(localWorkflow, remoteWorkflowWithSameId)) {
+				let name =
+					(options?.preferLocalVersion ? localWorkflow?.name : remoteWorkflowWithSameId?.name) ??
+					'Workflow';
+				if (
+					localWorkflow.name &&
+					remoteWorkflowWithSameId?.name &&
+					localWorkflow.name !== remoteWorkflowWithSameId.name
+				) {
+					name = options?.preferLocalVersion
+						? `${localWorkflow.name} (Remote: ${remoteWorkflowWithSameId.name})`
+						: (name = `${remoteWorkflowWithSameId.name} (Local: ${localWorkflow.name})`);
+				}
 				wfModifiedInEither.push({
-					...local,
+					...localWorkflow,
 					name,
-					versionId: options.preferLocalVersion ? local.versionId : mismatchingIds.versionId,
-					localId: local.versionId,
-					remoteId: mismatchingIds.versionId,
+					versionId: options.preferLocalVersion
+						? localWorkflow.versionId
+						: remoteWorkflowWithSameId.versionId,
+					localId: localWorkflow.versionId,
+					remoteId: remoteWorkflowWithSameId.versionId,
 				});
 			}
 		});
@@ -837,6 +897,88 @@ export class SourceControlService {
 			tagsModifiedInEither,
 			mappingsMissingInLocal,
 			mappingsMissingInRemote,
+		};
+	}
+
+	private async getStatusFoldersMapping(
+		options: SourceControlGetStatus,
+		sourceControlledFiles: SourceControlledFile[],
+	) {
+		const lastUpdatedFolder = await this.folderRepository.find({
+			order: { updatedAt: 'DESC' },
+			take: 1,
+			select: ['updatedAt'],
+		});
+
+		const foldersMappingsRemote =
+			await this.sourceControlImportService.getRemoteFoldersAndMappingsFromFile();
+		const foldersMappingsLocal =
+			await this.sourceControlImportService.getLocalFoldersAndMappingsFromDb();
+
+		const foldersMissingInLocal = foldersMappingsRemote.folders.filter(
+			(remote) => foldersMappingsLocal.folders.findIndex((local) => local.id === remote.id) === -1,
+		);
+
+		const foldersMissingInRemote = foldersMappingsLocal.folders.filter(
+			(local) => foldersMappingsRemote.folders.findIndex((remote) => remote.id === local.id) === -1,
+		);
+
+		const foldersModifiedInEither: ExportableFolder[] = [];
+		foldersMappingsLocal.folders.forEach((local) => {
+			const mismatchingIds = foldersMappingsRemote.folders.find(
+				(remote) =>
+					remote.id === local.id &&
+					(remote.name !== local.name || remote.parentFolderId !== local.parentFolderId),
+			);
+
+			if (!mismatchingIds) {
+				return;
+			}
+			foldersModifiedInEither.push(options.preferLocalVersion ? local : mismatchingIds);
+		});
+
+		foldersMissingInLocal.forEach((item) => {
+			sourceControlledFiles.push({
+				id: item.id,
+				name: item.name,
+				type: 'folders',
+				status: options.direction === 'push' ? 'deleted' : 'created',
+				location: options.direction === 'push' ? 'local' : 'remote',
+				conflict: false,
+				file: getFoldersPath(this.gitFolder),
+				updatedAt: lastUpdatedFolder[0]?.updatedAt.toISOString(),
+			});
+		});
+		foldersMissingInRemote.forEach((item) => {
+			sourceControlledFiles.push({
+				id: item.id,
+				name: item.name,
+				type: 'folders',
+				status: options.direction === 'push' ? 'created' : 'deleted',
+				location: options.direction === 'push' ? 'local' : 'remote',
+				conflict: options.direction === 'push' ? false : true,
+				file: getFoldersPath(this.gitFolder),
+				updatedAt: lastUpdatedFolder[0]?.updatedAt.toISOString(),
+			});
+		});
+
+		foldersModifiedInEither.forEach((item) => {
+			sourceControlledFiles.push({
+				id: item.id,
+				name: item.name,
+				type: 'folders',
+				status: 'modified',
+				location: options.direction === 'push' ? 'local' : 'remote',
+				conflict: true,
+				file: getFoldersPath(this.gitFolder),
+				updatedAt: lastUpdatedFolder[0]?.updatedAt.toISOString(),
+			});
+		});
+
+		return {
+			foldersMissingInLocal,
+			foldersMissingInRemote,
+			foldersModifiedInEither,
 		};
 	}
 

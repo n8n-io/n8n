@@ -140,10 +140,27 @@ $--mode-selector-width: 92px;
 	cursor: pointer;
 }
 
-.error {
-	max-width: 170px;
-	word-break: normal;
+.errorContainer,
+.errorDetails {
+	display: flex;
+	gap: var(--spacing-s);
+	flex-direction: column;
+}
+
+.errorContainer {
+	width: 80%;
+	align-items: center;
 	text-align: center;
+}
+
+.errorDescription {
+	text-align: left;
+	margin: 0;
+	word-break: normal;
+}
+
+.credential-link {
+	font-size: var(--font-size-2xs);
 }
 
 .openResourceLink {

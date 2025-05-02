@@ -66,7 +66,6 @@ const getModelSearch =
 		}
 
 		results = results.sort((a, b) => a.name.localeCompare(b.name));
-
 		return {
 			results,
 		};
@@ -77,15 +76,22 @@ export async function modelSearch(
 	filter?: string,
 ): Promise<INodeListSearchResult> {
 	const credentials = await this.getCredentials<{ url: string }>('openAiApi');
-	const isCustomAPI = credentials.url && !credentials.url.includes('api.openai.com');
-
+	const url = credentials.url && new URL(credentials.url);
+	const isCustomAPI = url && url.hostname !== 'api.openai.com';
 	return await getModelSearch(
 		(model) =>
-			isCustomAPI ||
-			model.id.startsWith('gpt-') ||
-			model.id.startsWith('ft:') ||
-			model.id.startsWith('o1') ||
-			model.id.startsWith('o3'),
+			!isCustomAPI &&
+			!(
+				model.id.startsWith('babbage') ||
+				model.id.startsWith('davinci') ||
+				model.id.startsWith('computer-use') ||
+				model.id.startsWith('dall-e') ||
+				model.id.startsWith('text-embedding') ||
+				model.id.startsWith('tts') ||
+				model.id.startsWith('whisper') ||
+				model.id.startsWith('omni-moderation') ||
+				(model.id.startsWith('gpt-') && model.id.includes('instruct'))
+			),
 	)(this, filter);
 }
 
