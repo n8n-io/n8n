@@ -1,15 +1,13 @@
-import { WithTimestampsAndStringId, JsonColumn, DateTimeColumn } from '@n8n/db';
 import { Column, Entity, Index, ManyToOne, OneToMany, RelationId } from '@n8n/typeorm';
 import type { IDataObject } from 'n8n-workflow';
 
-import type { TestCaseExecution } from '@/databases/entities/test-case-execution.ee';
-import { TestDefinition } from '@/databases/entities/test-definition.ee';
-import type { TestRunFinalResult } from '@/databases/repositories/test-run.repository.ee';
-import type { TestRunErrorCode } from '@/evaluation.ee/test-runner/errors.ee';
+import { DateTimeColumn, JsonColumn, WithTimestampsAndStringId } from './abstract-entity';
+import type { TestCaseExecution } from './test-case-execution.ee';
+import { TestDefinition } from './test-definition.ee';
+import { AggregatedTestRunMetrics } from './types-db';
+import type { TestRunErrorCode, TestRunFinalResult } from './types-db';
 
 export type TestRunStatus = 'new' | 'running' | 'completed' | 'error' | 'cancelled';
-
-export type AggregatedTestRunMetrics = Record<string, number | boolean>;
 
 /**
  * Entity representing a Test Run.
