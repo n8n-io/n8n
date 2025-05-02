@@ -153,24 +153,23 @@ async function saveUserSettings(params: UserBasicDetailsWithMfa) {
 async function onSubmit(form: UserBasicDetailsForm) {
 	const emailChanged = usersStore.currentUser?.email !== form.email;
 
-	if (!emailChanged) {
-		await saveUserSettings(form);
-		return;
-	}
+	if (usersStore.currentUser?.mfaEnabled && emailChanged) {
+		uiStore.openModal(PROMPT_MFA_CODE_MODAL_KEY);
 
-	uiStore.openModal(PROMPT_MFA_CODE_MODAL_KEY);
+		promptMfaCodeBus.once('closed', async (payload: MfaModalEvents['closed']) => {
+			if (!payload) {
+				// User closed the modal without submitting the form
+				return;
+			}
 
-	promptMfaCodeBus.once('closed', async (payload: MfaModalEvents['closed']) => {
-		if (!payload) {
-			// User closed the modal without submitting the form
-			return;
-		}
-
-		await saveUserSettings({
-			...form,
-			mfaCode: payload.mfaCode,
+			await saveUserSettings({
+				...form,
+				mfaCode: payload.mfaCode,
+			});
 		});
-	});
+	} else {
+		await saveUserSettings(form);
+	}
 }
 
 async function updateUserBasicInfo(userBasicInfo: UserBasicDetailsWithMfa) {
