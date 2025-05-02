@@ -4,8 +4,8 @@ import { MainSidebar } from './../pages/sidebar/main-sidebar';
 import { INSTANCE_OWNER, INSTANCE_ADMIN, BACKEND_BASE_URL } from '../constants';
 import { SigninPage } from '../pages';
 import { MfaLoginPage } from '../pages/mfa-login';
-import { PersonalSettingsPage } from '../pages/settings-personal';
 import { successToast } from '../pages/notifications';
+import { PersonalSettingsPage } from '../pages/settings-personal';
 
 const MFA_SECRET = 'KVKFKRCPNZQUYMLXOVYDSQKJKZDTSRLD';
 
