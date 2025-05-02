@@ -96,7 +96,7 @@ export async function wordpress5ApiRequestMedia(
   };
   try {
     const credentialType = 'wordpress5Api';
-    return await this.helpers.requestWithAuthentication.call(this, credentialTy>
+    return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
   } catch (error) {
     throw new NodeApiError(this.getNode(), error as JsonObject);
   }
