@@ -1,16 +1,7 @@
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import nock from 'nock';
 
-import { initBinaryDataService, testWorkflows, getWorkflowFilenames } from '@test/nodes/Helpers';
-
 describe('Google GSuiteAdmin Node - Add User to Group', () => {
-	const workflows = getWorkflowFilenames(__dirname).filter((filename) =>
-		filename.includes('addToGroup.workflow.json'),
-	);
-
-	beforeAll(async () => {
-		await initBinaryDataService();
-	});
-
 	beforeEach(() => {
 		nock.disableNetConnect();
 		nock('https://www.googleapis.com/admin')
@@ -28,5 +19,7 @@ describe('Google GSuiteAdmin Node - Add User to Group', () => {
 			});
 	});
 
-	testWorkflows(workflows);
+	new NodeTestHarness().setupTests({
+		workflowFiles: ['addToGroup.workflow.json'],
+	});
 });
