@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import type { IExecuteFunctions, INodeTypeBaseDescription } from 'n8n-workflow';
 
 import { HttpRequestV2 } from '../../V2/HttpRequestV2.node';
