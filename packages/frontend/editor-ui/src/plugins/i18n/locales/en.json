@@ -949,7 +949,7 @@
 	"folder.count": "the {count} folder | the {count} folders",
 	"workflow.count": "the {count} workflow | the {count} workflows",
 	"folder.and.workflow.separator": "and",
-	"folders.delete.action": "Delete all workflows and subfolders",
+	"folders.delete.action": "Archive all workflows and delete subfolders",
 	"folders.delete.error.message": "Problem while deleting folder",
 	"folders.delete.confirmation.message": "Type \"delete {folderName}\" to confirm",
 	"folders.transfer.confirm.message": "Data transferred to \"{folderName}\"",
