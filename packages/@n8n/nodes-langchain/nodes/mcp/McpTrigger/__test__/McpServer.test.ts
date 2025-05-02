@@ -118,6 +118,7 @@ describe('McpServer', () => {
 				const requestKey = mockRequest.rawBody?.toString().includes(`"id":${firstId}`)
 					? `${sessionId}_${firstId}`
 					: `${sessionId}_${secondId}`;
+				// @ts-expect-error private property `resolveFunctions`
 				mcpServer.resolveFunctions[requestKey]();
 			});
 
