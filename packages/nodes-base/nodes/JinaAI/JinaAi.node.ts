@@ -25,6 +25,11 @@ export class JinaAi implements INodeType {
 				required: true,
 			},
 		],
+		requestDefaults: {
+			headers: {
+				Accept: 'application/json',
+			},
+		},
 		properties: [
 			{
 				displayName: 'Resource',
@@ -61,6 +66,19 @@ export class JinaAi implements INodeType {
 						action: 'Read URL content',
 						description:
 							'Fetches content from a URL and converts it to clean, LLM-friendly formats',
+						routing: {
+							request: {
+								method: 'GET',
+								url: '=https://r.jina.ai/{{ $parameter["url"] }}',
+								headers: {
+									'X-Return-Format': '={{ $parameter["options"]["outputFormat"] }}',
+									'X-Target-Selector': '={{ $parameter["options"]["targetSelector"] }}',
+									'X-Remove-Selector': '={{ $parameter["options"]["excludeSelector"] }}',
+									'X-With-Generated-Alt': '={{ $parameter["options"]["enableImageCaptioning"] }}',
+									'X-Wait-For-Selector': '={{ $parameter["options"]["waitForSelector"] }}',
+								},
+							},
+						},
 					},
 					{
 						name: 'Search',
@@ -68,6 +86,16 @@ export class JinaAi implements INodeType {
 						action: 'Search Web',
 						description:
 							'Performs a web search via Jina AI and returns top results as clean, LLM-friendly formats',
+						routing: {
+							request: {
+								method: 'GET',
+								url: 'https://s.jina.ai/',
+								headers: {
+									'X-Return-Format': '={{ $parameter["options"]["outputFormat"] }}',
+									'X-Site-Filter': '={{ $parameter["options"]["siteFilter"] }}',
+								},
+							},
+						},
 					},
 				],
 				default: 'read',
@@ -133,7 +161,7 @@ export class JinaAi implements INodeType {
 							},
 							{
 								name: 'JSON',
-								value: 'json',
+								value: '',
 							},
 							{
 								name: 'Markdown',
@@ -148,7 +176,7 @@ export class JinaAi implements INodeType {
 								value: 'text',
 							},
 						],
-						default: 'json',
+						default: '',
 					},
 					{
 						displayName: 'Target CSS Selector',
