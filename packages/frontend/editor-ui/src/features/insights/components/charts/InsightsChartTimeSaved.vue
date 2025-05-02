@@ -6,18 +6,17 @@ import {
 } from '@/features/insights/chartjs.utils';
 import { transformInsightsTimeSaved } from '@/features/insights/insights.utils';
 
-import { DATE_FORMAT_MASK, INSIGHTS_UNIT_MAPPING } from '@/features/insights/insights.constants';
-import type { InsightsByTime, InsightsSummaryType } from '@n8n/api-types';
+import {
+	GRANULARITY_DATE_FORMAT_MASK,
+	INSIGHTS_UNIT_MAPPING,
+} from '@/features/insights/insights.constants';
 import { type ChartData, Filler, type ScriptableContext } from 'chart.js';
-import dateformat from 'dateformat';
 import { computed } from 'vue';
 import { Line } from 'vue-chartjs';
 
-const props = defineProps<{
-	data: InsightsByTime[];
-	type: InsightsSummaryType;
-}>();
+import type { ChartProps } from './insightChartProps';
 
+const props = defineProps<ChartProps>();
 const i18n = useI18n();
 
 const chartOptions = computed(() =>
@@ -51,7 +50,7 @@ const chartData = computed<ChartData<'line'>>(() => {
 	const data: number[] = [];
 
 	for (const entry of props.data) {
-		labels.push(dateformat(entry.date, DATE_FORMAT_MASK));
+		labels.push(GRANULARITY_DATE_FORMAT_MASK[props.granularity](entry.date));
 		data.push(entry.values.timeSaved);
 	}
 

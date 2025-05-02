@@ -8,9 +8,9 @@ import type {
 } from 'n8n-workflow';
 
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import { ModuleRegistry } from '@/decorators/module';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
+import { ModuleRegistry } from '@/modules/module-registry';
 import { Push } from '@/push';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { isWorkflowIdValid } from '@/utils';

@@ -75,7 +75,21 @@ const plugins = [
 		],
 	}),
 	vue(),
-	svgLoader(),
+	svgLoader({
+		svgoConfig: {
+			plugins: [
+				{
+					name: 'preset-default',
+					params: {
+						overrides: {
+							// disable a default plugin
+							cleanupIds: false,
+						},
+					},
+				},
+			],
+		},
+	}),
 	legacy({
 		modernTargets: browsers,
 		modernPolyfills: true,

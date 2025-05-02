@@ -13,16 +13,12 @@ import type PCancelable from 'p-cancelable';
 
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
-import type {
-	CreateExecutionPayload,
-	IExecutingWorkflowData,
-	IExecutionDb,
-	IExecutionsCurrentSummary,
-} from '@/interfaces';
+import type { IExecutingWorkflowData, IExecutionsCurrentSummary } from '@/interfaces';
 import { isWorkflowIdValid } from '@/utils';
 
 import { ConcurrencyControlService } from './concurrency/concurrency-control.service';
 import config from './config';
+import type { CreateExecutionPayload, IExecutionDb } from './types-db';
 
 @Service()
 export class ActiveExecutions {

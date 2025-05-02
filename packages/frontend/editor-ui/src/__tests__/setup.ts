@@ -107,3 +107,8 @@ Object.defineProperty(window, 'DataTransfer', {
 	writable: true,
 	value: DataTransfer,
 });
+
+Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', {
+	writable: true,
+	value: vi.fn(),
+});

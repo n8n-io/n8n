@@ -1,4 +1,4 @@
-import type { SecretsProviderSettings } from '@/interfaces';
+import type { SecretsProviderSettings } from '../../types';
 
 type JsonString = string;
 

@@ -1,10 +1,11 @@
+import type { InstalledPackages } from '@n8n/db';
+import { Delete, Get, Patch, Post, RestController, GlobalScope } from '@n8n/decorators';
+
 import {
 	RESPONSE_ERROR_MESSAGES,
 	STARTER_TEMPLATE_NAME,
 	UNKNOWN_FAILURE_REASON,
 } from '@/constants';
-import type { InstalledPackages } from '@/databases/entities/installed-packages';
-import { Delete, Get, Patch, Post, RestController, GlobalScope } from '@/decorators';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { EventService } from '@/events/event.service';

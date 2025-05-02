@@ -10,7 +10,7 @@ import { User } from '@/databases/entities/user';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import type { IWorkflowDb } from '@/interfaces';
+import type { IWorkflowDb } from '@/types-db';
 
 export async function createManyWorkflows(
 	amount: number,

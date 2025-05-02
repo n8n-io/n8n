@@ -1,13 +1,16 @@
+import { GlobalConfig } from '@n8n/config';
 import { captor, mock } from 'jest-mock-extended';
 import type { Logger } from 'n8n-core';
 
 import config from '@/config';
+import { mockInstance } from '@test/mocking';
 
 import { DeprecationService } from '../deprecation.service';
 
 describe('DeprecationService', () => {
 	const logger = mock<Logger>();
-	const deprecationService = new DeprecationService(logger);
+	const globalConfig = mockInstance(GlobalConfig, { nodes: { exclude: [] } });
+	const deprecationService = new DeprecationService(logger, globalConfig);
 
 	beforeEach(() => {
 		// Ignore environment variables coming in from the environment when running
@@ -109,6 +112,20 @@ describe('DeprecationService', () => {
 		])('should handle value: %s', (value, mustWarn) => {
 			toTest(envVar, value, mustWarn);
 		});
+
+		test('should not warn when Code node is excluded', () => {
+			process.env[envVar] = 'false';
+
+			const globalConfig = mockInstance(GlobalConfig, {
+				nodes: {
+					exclude: ['n8n-nodes-base.code'],
+				},
+			});
+
+			new DeprecationService(logger, globalConfig).warn();
+
+			expect(logger.warn).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS', () => {
@@ -127,7 +144,7 @@ describe('DeprecationService', () => {
 			test('should warn when OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS is false', () => {
 				process.env[envVar] = 'false';
 
-				const service = new DeprecationService(logger);
+				const service = new DeprecationService(logger, globalConfig);
 				service.warn();
 
 				expect(logger.warn).toHaveBeenCalledTimes(1);
@@ -138,7 +155,7 @@ describe('DeprecationService', () => {
 			test('should warn when OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS is empty', () => {
 				process.env[envVar] = '';
 
-				const service = new DeprecationService(logger);
+				const service = new DeprecationService(logger, globalConfig);
 				service.warn();
 
 				expect(logger.warn).toHaveBeenCalledTimes(1);
@@ -149,7 +166,7 @@ describe('DeprecationService', () => {
 			test('should not warn when OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS is true', () => {
 				process.env[envVar] = 'true';
 
-				const service = new DeprecationService(logger);
+				const service = new DeprecationService(logger, globalConfig);
 				service.warn();
 
 				expect(logger.warn).not.toHaveBeenCalled();
@@ -158,7 +175,7 @@ describe('DeprecationService', () => {
 			test('should warn when OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS is undefined', () => {
 				delete process.env[envVar];
 
-				const service = new DeprecationService(logger);
+				const service = new DeprecationService(logger, globalConfig);
 				service.warn();
 
 				expect(logger.warn).toHaveBeenCalledTimes(1);
@@ -175,7 +192,7 @@ describe('DeprecationService', () => {
 				});
 				process.env[envVar] = 'false';
 
-				const service = new DeprecationService(logger);
+				const service = new DeprecationService(logger, globalConfig);
 				service.warn();
 
 				expect(logger.warn).not.toHaveBeenCalled();

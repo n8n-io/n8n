@@ -23,8 +23,9 @@ import { ExecutionRepository } from '@/databases/repositories/execution.reposito
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { ExecutionDataService } from '@/executions/execution-data.service';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
-import type { CreateExecutionPayload, IWorkflowErrorData } from '@/interfaces';
+import type { IWorkflowErrorData } from '@/interfaces';
 import { NodeTypes } from '@/node-types';
+import type { CreateExecutionPayload } from '@/types-db';
 import { TestWebhooks } from '@/webhooks/test-webhooks';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowRunner } from '@/workflow-runner';

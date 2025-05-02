@@ -2,8 +2,8 @@ import type { SamlPreferences, SamlToggleDto } from '@n8n/api-types';
 import { makeRestApiRequest } from '@/utils/apiUtils';
 import type { IRestApiContext, SamlPreferencesExtractedData } from '@/Interface';
 
-export const initSSO = async (context: IRestApiContext): Promise<string> => {
-	return await makeRestApiRequest(context, 'GET', '/sso/saml/initsso');
+export const initSSO = async (context: IRestApiContext, redirectUrl = ''): Promise<string> => {
+	return await makeRestApiRequest(context, 'GET', `/sso/saml/initsso?redirect=${redirectUrl}`);
 };
 
 export const getSamlMetadata = async (context: IRestApiContext): Promise<SamlPreferences> => {

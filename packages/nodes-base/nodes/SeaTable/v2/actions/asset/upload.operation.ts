@@ -117,7 +117,7 @@ export async function execute(
 	const relativePath =
 		uploadColumnType === 'image' ? uploadLink.img_relative_path : uploadLink.file_relative_path;
 
-	const options = this.getNodeParameter('options', index) as IDataObject;
+	const options = this.getNodeParameter('options', index);
 
 	// get server url
 	const credentials: any = await this.getCredentials('seaTableApi');

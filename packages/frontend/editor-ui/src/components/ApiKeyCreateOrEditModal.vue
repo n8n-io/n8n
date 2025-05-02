@@ -119,7 +119,9 @@ onMounted(() => {
 		const apiKey = apiKeysById[props.activeId];
 		label.value = apiKey.label ?? '';
 		apiKeyCreationDate.value = getApiKeyCreationTime(apiKey);
-		selectedScopes.value = !apiKeyScopesEnabled.value ? apiKeyStore.availableScopes : apiKey.scopes;
+		selectedScopes.value = !apiKeyScopesEnabled.value
+			? apiKeyStore.availableScopes
+			: apiKey.scopes.filter((scope) => apiKeyStore.availableScopes.includes(scope));
 	}
 
 	if (props.mode === 'new' && !apiKeyScopesEnabled.value) {
@@ -343,7 +345,7 @@ async function handleEnterKey(event: KeyboardEvent) {
 				<N8nButton
 					v-if="mode === 'edit'"
 					:disabled="!allFormFieldsAreSet"
-					:label="i18n.baseText('settings.api.view.modal.edit.button')"
+					:label="i18n.baseText('settings.api.view.modal.save.button')"
 					@click="onEdit"
 				/>
 				<N8nText v-if="mode === 'edit'" size="small" color="text-light">{{

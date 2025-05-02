@@ -365,7 +365,11 @@ export async function prepareMessages(
 	const hasBinaryData = ctx.getInputData()?.[itemIndex]?.binary !== undefined;
 	if (hasBinaryData && options.passthroughBinaryImages) {
 		const binaryMessage = await extractBinaryMessages(ctx, itemIndex);
-		messages.push(binaryMessage);
+		if (binaryMessage.content.length !== 0) {
+			messages.push(binaryMessage);
+		} else {
+			ctx.logger.debug('Not attaching binary message, since its content was empty');
+		}
 	}
 
 	// We add the agent scratchpad last, so that the agent will not run in loops

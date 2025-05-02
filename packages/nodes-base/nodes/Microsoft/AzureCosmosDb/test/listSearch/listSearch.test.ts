@@ -4,9 +4,9 @@ import {
 	type ILoadOptionsFunctions,
 } from 'n8n-workflow';
 
-import { FAKE_CREDENTIALS_DATA } from '../../../../../test/nodes/FakeCredentialsMap';
 import { AzureCosmosDb } from '../../AzureCosmosDb.node';
 import { HeaderConstants } from '../../helpers/constants';
+import { credentials } from '../credentials';
 
 describe('Azure Cosmos DB', () => {
 	describe('List search', () => {
@@ -31,7 +31,7 @@ describe('Azure Cosmos DB', () => {
 
 			const mockGetCredentials = jest.fn(async (type: string, _itemIndex?: number) => {
 				if (type === 'microsoftAzureCosmosDbSharedKeyApi') {
-					return FAKE_CREDENTIALS_DATA.microsoftAzureCosmosDbSharedKeyApi;
+					return credentials.microsoftAzureCosmosDbSharedKeyApi;
 				}
 				throw new OperationalError('Unknown credentials');
 			});
@@ -100,7 +100,7 @@ describe('Azure Cosmos DB', () => {
 
 			const mockGetCredentials = jest.fn(async (type: string, _itemIndex?: number) => {
 				if (type === 'microsoftAzureCosmosDbSharedKeyApi') {
-					return FAKE_CREDENTIALS_DATA.microsoftAzureCosmosDbSharedKeyApi;
+					return credentials.microsoftAzureCosmosDbSharedKeyApi;
 				}
 				throw new OperationalError('Unknown credentials');
 			});

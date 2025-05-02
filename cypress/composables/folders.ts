@@ -1,4 +1,4 @@
-import { successToast } from '../pages/notifications';
+import { errorToast, successToast } from '../pages/notifications';
 
 /**
  * Getters
@@ -47,6 +47,14 @@ export function getWorkflowCardActionItem(workflowName: string, actionName: stri
 		});
 }
 
+export function getDuplicateWorkflowModal() {
+	return cy.getByTestId('duplicate-modal');
+}
+
+export function getWorkflowMenu() {
+	return cy.getByTestId('workflow-menu');
+}
+
 export function getAddFolderButton() {
 	return cy.getByTestId('add-folder-button');
 }
@@ -68,7 +76,11 @@ export function getVisibleListBreadcrumbs() {
 }
 
 export function getCurrentBreadcrumb() {
-	return getListBreadcrumbs().findChildByTestId('breadcrumbs-item-current');
+	return getListBreadcrumbs().findChildByTestId('breadcrumbs-item-current').find('input');
+}
+
+export function getCurrentBreadcrumbText() {
+	return getCurrentBreadcrumb().invoke('val');
 }
 
 export function getMainBreadcrumbsEllipsis() {
@@ -109,6 +121,11 @@ export function getListActionsToggle() {
 	return cy.getByTestId('folder-breadcrumbs-actions');
 }
 
+export function getCanvasBreadcrumbs() {
+	cy.getByTestId('canvas-breadcrumbs').should('exist');
+	return cy.getByTestId('canvas-breadcrumbs').findChildByTestId('folder-breadcrumbs');
+}
+
 export function getListActionItem(name: string) {
 	return cy
 		.getByTestId('folder-breadcrumbs-actions')
@@ -117,6 +134,10 @@ export function getListActionItem(name: string) {
 		.then((popperId) => {
 			return cy.get(`#${popperId}`).find(`[data-test-id="action-${name}"]`);
 		});
+}
+
+export function getInlineEditInput() {
+	return cy.getByTestId('inline-edit-input');
 }
 
 export function getFolderCardActionToggle(folderName: string) {
@@ -295,13 +316,33 @@ export function renameFolderFromListActions(folderName: string, newName: string)
 	getFolderCard(folderName).click();
 	getListActionsToggle().click();
 	getListActionItem('rename').click();
-	renameFolder(newName);
+	getInlineEditInput().should('be.visible');
+	getInlineEditInput().type(newName, { delay: 50 });
+	successToast().should('exist');
 }
 
 export function renameFolderFromCardActions(folderName: string, newName: string) {
 	getFolderCardActionToggle(folderName).click();
 	getFolderCardActionItem(folderName, 'rename').click();
 	renameFolder(newName);
+}
+
+export function duplicateWorkflowFromCardActions(workflowName: string, duplicateName: string) {
+	getWorkflowCardActions(workflowName).click();
+	getWorkflowCardActionItem(workflowName, 'duplicate').click();
+	getDuplicateWorkflowModal().find('input').first().type('{selectall}');
+	getDuplicateWorkflowModal().find('input').first().type(duplicateName);
+	getDuplicateWorkflowModal().find('button').contains('Duplicate').click();
+	errorToast().should('not.exist');
+}
+
+export function duplicateWorkflowFromWorkflowPage(duplicateName: string) {
+	getWorkflowMenu().click();
+	cy.getByTestId('workflow-menu-item-duplicate').click();
+	getDuplicateWorkflowModal().find('input').first().type('{selectall}');
+	getDuplicateWorkflowModal().find('input').first().type(duplicateName);
+	getDuplicateWorkflowModal().find('button').contains('Duplicate').click();
+	errorToast().should('not.exist');
 }
 
 export function deleteEmptyFolderFromCardDropdown(folderName: string) {
@@ -346,12 +387,9 @@ export function deleteAndTransferFolderContentsFromCardDropdown(
 export function deleteAndTransferFolderContentsFromListDropdown(destinationName: string) {
 	getListActionsToggle().click();
 	getListActionItem('delete').click();
-	getCurrentBreadcrumb()
-		.find('span')
-		.invoke('text')
-		.then((currentFolderName) => {
-			deleteFolderAndMoveContents(currentFolderName, destinationName);
-		});
+	getCurrentBreadcrumbText().then((currentFolderName) => {
+		deleteFolderAndMoveContents(String(currentFolderName), destinationName);
+	});
 }
 
 export function createNewProject(projectName: string, options: { openAfterCreate?: boolean } = {}) {

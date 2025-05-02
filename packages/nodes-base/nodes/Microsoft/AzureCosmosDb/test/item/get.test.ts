@@ -1,28 +1,12 @@
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import nock from 'nock';
 
-import {
-	initBinaryDataService,
-	testWorkflows,
-	getWorkflowFilenames,
-} from '../../../../../test/nodes/Helpers';
+import { credentials } from '../credentials';
 
 describe('Azure Cosmos DB - Get Item', () => {
-	const workflows = getWorkflowFilenames(__dirname).filter((filename) =>
-		filename.includes('get.workflow.json'),
-	);
-
-	beforeAll(async () => {
-		await initBinaryDataService();
-	});
-
 	beforeEach(() => {
-		if (!nock.isActive()) {
-			nock.activate();
-		}
+		const { baseUrl } = credentials.microsoftAzureCosmosDbSharedKeyApi;
 
-		const baseUrl = 'https://n8n-us-east-account.documents.azure.com/dbs/database_1';
-
-		nock.cleanAll();
 		nock(baseUrl)
 			.persist()
 			.defaultReplyHeaders({ 'Content-Type': 'application/json' })
@@ -69,9 +53,8 @@ describe('Azure Cosmos DB - Get Item', () => {
 			});
 	});
 
-	afterEach(() => {
-		nock.cleanAll();
+	new NodeTestHarness().setupTests({
+		credentials,
+		workflowFiles: ['get.workflow.json'],
 	});
-
-	testWorkflows(workflows);
 });

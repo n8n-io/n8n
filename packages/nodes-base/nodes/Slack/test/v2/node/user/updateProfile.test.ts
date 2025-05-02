@@ -1,6 +1,5 @@
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import nock from 'nock';
-
-import { testWorkflows } from '@test/nodes/Helpers';
 
 describe('Test SlackV2, user => updateProfile', () => {
 	nock('https://slack.com')
@@ -21,6 +20,7 @@ describe('Test SlackV2, user => updateProfile', () => {
 		})
 		.reply(200, { profile: { test: 'OK' } });
 
-	const workflows = ['nodes/Slack/test/v2/node/user/updateProfile.workflow.json'];
-	testWorkflows(workflows);
+	new NodeTestHarness().setupTests({
+		workflowFiles: ['updateProfile.workflow.json'],
+	});
 });

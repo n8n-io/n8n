@@ -6,6 +6,7 @@ import type { User } from '@/databases/entities/user';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 @Service()
 export class ActiveWorkflowsService {
@@ -14,6 +15,7 @@ export class ActiveWorkflowsService {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly activationErrorsService: ActivationErrorsService,
+		private readonly workflowFinderService: WorkflowFinderService,
 	) {}
 
 	async getAllActiveIdsInStorage() {
@@ -37,7 +39,7 @@ export class ActiveWorkflowsService {
 	}
 
 	async getActivationError(workflowId: string, user: User) {
-		const workflow = await this.sharedWorkflowRepository.findWorkflowForUser(workflowId, user, [
+		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:read',
 		]);
 		if (!workflow) {

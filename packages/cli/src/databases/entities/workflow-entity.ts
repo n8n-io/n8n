@@ -1,3 +1,4 @@
+import { JsonColumn, WithTimestampsAndStringId, dbType, objectRetriever, sqlite } from '@n8n/db';
 import {
 	Column,
 	Entity,
@@ -12,15 +13,13 @@ import { Length } from 'class-validator';
 import { IConnections, IDataObject, IWorkflowSettings, WorkflowFEMeta } from 'n8n-workflow';
 import type { IBinaryKeyData, INode, IPairedItemData } from 'n8n-workflow';
 
-import type { IWorkflowDb } from '@/interfaces';
+import type { IWorkflowDb } from '@/types-db';
 
-import { WithTimestampsAndStringId, dbType, jsonColumnType } from './abstract-entity';
 import { type Folder } from './folder';
 import type { SharedWorkflow } from './shared-workflow';
 import type { TagEntity } from './tag-entity';
 import type { WorkflowStatistics } from './workflow-statistics';
 import type { WorkflowTagMapping } from './workflow-tag-mapping';
-import { objectRetriever, sqlite } from '../utils/transformers';
 
 @Entity()
 export class WorkflowEntity extends WithTimestampsAndStringId implements IWorkflowDb {
@@ -35,27 +34,22 @@ export class WorkflowEntity extends WithTimestampsAndStringId implements IWorkfl
 	@Column()
 	active: boolean;
 
-	@Column(jsonColumnType)
+	@JsonColumn()
 	nodes: INode[];
 
-	@Column(jsonColumnType)
+	@JsonColumn()
 	connections: IConnections;
 
-	@Column({
-		type: jsonColumnType,
-		nullable: true,
-	})
+	@JsonColumn({ nullable: true })
 	settings?: IWorkflowSettings;
 
-	@Column({
-		type: jsonColumnType,
+	@JsonColumn({
 		nullable: true,
 		transformer: objectRetriever,
 	})
 	staticData?: IDataObject;
 
-	@Column({
-		type: jsonColumnType,
+	@JsonColumn({
 		nullable: true,
 		transformer: objectRetriever,
 	})

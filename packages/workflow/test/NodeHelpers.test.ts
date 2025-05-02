@@ -5,14 +5,11 @@ import {
 	type INode,
 	type INodeParameters,
 	type INodeProperties,
-	type INodeType,
 	type INodeTypeDescription,
 } from '@/Interfaces';
 import {
 	getNodeParameters,
-	getNodeHints,
 	isSubNodeType,
-	applyDeclarativeNodeOptionParameters,
 	getParameterIssues,
 	isTriggerNode,
 	isExecutable,
@@ -3461,95 +3458,6 @@ describe('NodeHelpers', () => {
 		}
 	});
 
-	describe('getNodeHints', () => {
-		//TODO: Add more tests here when hints are added to some node types
-		test('should return node hints if present in node type', () => {
-			const testType = {
-				hints: [
-					{
-						message: 'TEST HINT',
-					},
-				],
-			} as INodeTypeDescription;
-
-			const workflow = {} as unknown as Workflow;
-
-			const node: INode = {
-				name: 'Test Node Hints',
-			} as INode;
-			const nodeType = testType;
-
-			const hints = getNodeHints(workflow, node, nodeType);
-
-			expect(hints).toHaveLength(1);
-			expect(hints[0].message).toEqual('TEST HINT');
-		});
-		test('should not include hint if displayCondition is false', () => {
-			const testType = {
-				hints: [
-					{
-						message: 'TEST HINT',
-						displayCondition: 'FALSE DISPLAY CONDITION EXPESSION',
-					},
-				],
-			} as INodeTypeDescription;
-
-			const workflow = {
-				expression: {
-					getSimpleParameterValue(
-						_node: string,
-						_parameter: string,
-						_mode: string,
-						_additionalData = {},
-					) {
-						return false;
-					},
-				},
-			} as unknown as Workflow;
-
-			const node: INode = {
-				name: 'Test Node Hints',
-			} as INode;
-			const nodeType = testType;
-
-			const hints = getNodeHints(workflow, node, nodeType);
-
-			expect(hints).toHaveLength(0);
-		});
-		test('should include hint if displayCondition is true', () => {
-			const testType = {
-				hints: [
-					{
-						message: 'TEST HINT',
-						displayCondition: 'TRUE DISPLAY CONDITION EXPESSION',
-					},
-				],
-			} as INodeTypeDescription;
-
-			const workflow = {
-				expression: {
-					getSimpleParameterValue(
-						_node: string,
-						_parameter: string,
-						_mode: string,
-						_additionalData = {},
-					) {
-						return true;
-					},
-				},
-			} as unknown as Workflow;
-
-			const node: INode = {
-				name: 'Test Node Hints',
-			} as INode;
-			const nodeType = testType;
-
-			const hints = getNodeHints(workflow, node, nodeType);
-
-			expect(hints).toHaveLength(1);
-		});
-	});
-
 	describe('isSubNodeType', () => {
 		const tests: Array<[boolean, Pick<INodeTypeDescription, 'outputs'> | null]> = [
 			[false, null],
@@ -3561,60 +3469,6 @@ describe('NodeHelpers', () => {
 		];
 		test.each(tests)('should return %p for %o', (expected, nodeType) => {
 			expect(isSubNodeType(nodeType)).toBe(expected);
-		});
-	});
-
-	describe('applyDeclarativeNodeOptionParameters', () => {
-		test.each([
-			[
-				'node with execute method',
-				{
-					execute: jest.fn(),
-					description: {
-						properties: [],
-					},
-				},
-			],
-			[
-				'node with trigger method',
-				{
-					trigger: jest.fn(),
-					description: {
-						properties: [],
-					},
-				},
-			],
-			[
-				'node with webhook method',
-				{
-					webhook: jest.fn(),
-					description: {
-						properties: [],
-					},
-				},
-			],
-			[
-				'a polling node-type',
-				{
-					description: {
-						polling: true,
-						properties: [],
-					},
-				},
-			],
-			[
-				'a node-type with a non-main output',
-				{
-					description: {
-						outputs: ['main', 'ai_agent'],
-						properties: [],
-					},
-				},
-			],
-		])('should not modify properties on node with %s method', (_, nodeTypeName) => {
-			const nodeType = nodeTypeName as unknown as INodeType;
-			applyDeclarativeNodeOptionParameters(nodeType);
-			expect(nodeType.description.properties).toEqual([]);
 		});
 	});
 

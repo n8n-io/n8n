@@ -6,7 +6,8 @@ import { UserError } from 'n8n-workflow';
 import path from 'path';
 
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
-import type { ICredentialsDb, ICredentialsDecryptedDb } from '@/interfaces';
+import type { ICredentialsDecryptedDb } from '@/interfaces';
+import type { ICredentialsDb } from '@/types-db';
 
 import { BaseCommand } from '../base-command';
 

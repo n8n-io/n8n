@@ -235,17 +235,15 @@ const handleTooltipClose = () => {
 					:class="{
 						[$style.item]: true,
 						[$style.current]: props.highlightLastItem && index === items.length - 1,
-						[$style.dragging]: props.dragActive && index !== items.length - 1,
+						[$style.dragging]: props.dragActive,
 					}"
 					:title="item.label"
-					:data-test-id="
-						index === items.length - 1 ? 'breadcrumbs-item-current' : 'breadcrumbs-item'
-					"
 					:data-resourceid="item.id"
+					data-test-id="breadcrumbs-item"
 					data-target="folder-breadcrumb-item"
 					@click.prevent="emitItemSelected(item.id)"
 					@mouseenter="emitItemHover(item.id)"
-					@mouseup="index !== items.length - 1 ? onItemMouseUp(item) : {}"
+					@mouseup="onItemMouseUp(item)"
 				>
 					<n8n-link v-if="item.href" :href="item.href" theme="text">{{ item.label }}</n8n-link>
 					<n8n-text v-else>{{ item.label }}</n8n-text>
@@ -330,8 +328,6 @@ const handleTooltipClose = () => {
 
 .hidden-items-menu {
 	display: flex;
-	position: relative;
-	top: var(--spacing-5xs);
 	color: var(--color-text-base);
 }
 
@@ -411,7 +407,7 @@ const handleTooltipClose = () => {
 	.item * {
 		color: var(--color-text-base);
 		font-size: var(--font-size-2xs);
-		line-height: var(--font-line-heigh-xsmall);
+		line-height: var(--font-line-height-xsmall);
 	}
 
 	.item a:hover * {
@@ -427,13 +423,14 @@ const handleTooltipClose = () => {
 // Medium theme overrides
 .medium {
 	li {
-		padding: var(--spacing-4xs);
+		padding: var(--spacing-3xs) var(--spacing-4xs) var(--spacing-4xs);
 	}
 
 	.item,
 	.item * {
 		color: var(--color-text-base);
 		font-size: var(--font-size-s);
+		line-height: var(--font-line-height-xsmall);
 	}
 
 	.item {

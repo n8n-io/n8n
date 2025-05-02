@@ -1,9 +1,9 @@
 import { BinaryDataQueryDto, BinaryDataSignedQueryDto, ViewableMimeTypes } from '@n8n/api-types';
+import { Get, Query, RestController } from '@n8n/decorators';
 import { Request, Response } from 'express';
 import { JsonWebTokenError } from 'jsonwebtoken';
 import { BinaryDataService, FileNotFoundError, isValidNonDefaultMode } from 'n8n-core';
 
-import { Get, Query, RestController } from '@/decorators';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 @RestController('/binary-data')

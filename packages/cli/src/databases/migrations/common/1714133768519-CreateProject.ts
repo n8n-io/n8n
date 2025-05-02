@@ -1,10 +1,10 @@
 import type { ProjectRole } from '@n8n/api-types';
+import { generateNanoId } from '@n8n/db';
 import { UserError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
 import type { User } from '@/databases/entities/user';
 import type { MigrationContext, ReversibleMigration } from '@/databases/types';
-import { generateNanoId } from '@/databases/utils/generators';
 
 const projectAdminRole: ProjectRole = 'project:personalOwner';
 

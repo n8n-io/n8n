@@ -56,11 +56,19 @@ describe(useResizablePanel, () => {
 	});
 
 	it('should restore value from local storage if valid number is stored', () => {
-		window.localStorage.setItem(localStorageKey, '333');
+		window.localStorage.setItem(localStorageKey, '0.333');
 
 		const { size } = useResizablePanel(localStorageKey, { container, defaultSize: 444 });
 
 		expect(size.value).toBe(333);
+	});
+
+	it('should return defaultSize if invalid value is stored in local storage', () => {
+		window.localStorage.setItem(localStorageKey, '333');
+
+		const { size } = useResizablePanel(localStorageKey, { container, defaultSize: 444 });
+
+		expect(size.value).toBe(444);
 	});
 
 	it('should update size when onResize is called', () => {

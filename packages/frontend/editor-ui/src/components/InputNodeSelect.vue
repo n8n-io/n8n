@@ -35,19 +35,20 @@ const selectedInputNodeType = computed(() => {
 	return nodeTypesStore.getNodeType(node.type, node.typeVersion);
 });
 
-const inputNodes = computed(() =>
-	props.nodes
-		.map((node) => {
-			const fullNode = workflowsStore.getNodeByName(node.name);
-			if (!fullNode) return null;
+const inputNodes = computed(
+	() =>
+		props.nodes
+			?.map((node) => {
+				const fullNode = workflowsStore.getNodeByName(node.name);
+				if (!fullNode) return null;
 
-			return {
-				node: fullNode,
-				type: nodeTypesStore.getNodeType(fullNode.type, fullNode.typeVersion),
-				depth: node.depth,
-			};
-		})
-		.filter(isPresent),
+				return {
+					node: fullNode,
+					type: nodeTypesStore.getNodeType(fullNode.type, fullNode.typeVersion),
+					depth: node.depth,
+				};
+			})
+			.filter(isPresent) ?? [],
 );
 
 const activeNode = computed(() => ndvStore.activeNode);

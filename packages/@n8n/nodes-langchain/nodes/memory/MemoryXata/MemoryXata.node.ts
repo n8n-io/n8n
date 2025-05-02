@@ -38,6 +38,7 @@ export class MemoryXata implements INodeType {
 			categories: ['AI'],
 			subcategories: {
 				AI: ['Memory'],
+				Memory: ['Other memories'],
 			},
 			resources: {
 				primaryDocumentation: [

@@ -11,12 +11,12 @@ import { z } from 'zod';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { TagRepository } from '@/databases/repositories/tag.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { addNodeIds, replaceInvalidCredentials } from '@/workflow-helpers';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history.ee/workflow-history.service.ee';
 import { WorkflowService } from '@/workflows/workflow.service';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
@@ -115,7 +115,7 @@ export = {
 			const { id } = req.params;
 			const { excludePinnedData = false } = req.query;
 
-			const workflow = await Container.get(SharedWorkflowRepository).findWorkflowForUser(
+			const workflow = await Container.get(WorkflowFinderService).findWorkflowForUser(
 				id,
 				req.user,
 				['workflow:read'],
@@ -169,7 +169,7 @@ export = {
 				}
 
 				if (projectId) {
-					const workflows = await Container.get(SharedWorkflowRepository).findAllWorkflowsForUser(
+					const workflows = await Container.get(WorkflowFinderService).findAllWorkflowsForUser(
 						req.user,
 						['workflow:read'],
 					);
@@ -189,7 +189,7 @@ export = {
 					);
 				}
 
-				let workflows = await Container.get(SharedWorkflowRepository).findAllWorkflowsForUser(
+				let workflows = await Container.get(WorkflowFinderService).findAllWorkflowsForUser(
 					req.user,
 					['workflow:read'],
 				);
@@ -252,7 +252,7 @@ export = {
 			updateData.id = id;
 			updateData.versionId = uuid();
 
-			const workflow = await Container.get(SharedWorkflowRepository).findWorkflowForUser(
+			const workflow = await Container.get(WorkflowFinderService).findWorkflowForUser(
 				id,
 				req.user,
 				['workflow:update'],
@@ -319,7 +319,7 @@ export = {
 		async (req: WorkflowRequest.Activate, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
 
-			const workflow = await Container.get(SharedWorkflowRepository).findWorkflowForUser(
+			const workflow = await Container.get(WorkflowFinderService).findWorkflowForUser(
 				id,
 				req.user,
 				['workflow:update'],
@@ -358,7 +358,7 @@ export = {
 		async (req: WorkflowRequest.Activate, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
 
-			const workflow = await Container.get(SharedWorkflowRepository).findWorkflowForUser(
+			const workflow = await Container.get(WorkflowFinderService).findWorkflowForUser(
 				id,
 				req.user,
 				['workflow:update'],
@@ -396,7 +396,7 @@ export = {
 				return res.status(400).json({ message: 'Workflow Tags Disabled' });
 			}
 
-			const workflow = await Container.get(SharedWorkflowRepository).findWorkflowForUser(
+			const workflow = await Container.get(WorkflowFinderService).findWorkflowForUser(
 				id,
 				req.user,
 				['workflow:read'],
@@ -424,7 +424,7 @@ export = {
 				return res.status(400).json({ message: 'Workflow Tags Disabled' });
 			}
 
-			const sharedWorkflow = await Container.get(SharedWorkflowRepository).findWorkflowForUser(
+			const sharedWorkflow = await Container.get(WorkflowFinderService).findWorkflowForUser(
 				id,
 				req.user,
 				['workflow:update'],

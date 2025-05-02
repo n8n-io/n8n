@@ -1,22 +1,15 @@
 import { NodeVM } from '@n8n/vm2';
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import { anyNumber, mock } from 'jest-mock-extended';
 import { normalizeItems } from 'n8n-core';
 import type { IExecuteFunctions, IWorkflowDataProxyData } from 'n8n-workflow';
 import { ApplicationError } from 'n8n-workflow';
 
-import { testWorkflows, getWorkflowFilenames, initBinaryDataService } from '@test/nodes/Helpers';
-
 import { Code } from '../Code.node';
 import { ValidationError } from '../ValidationError';
 
 describe('Test Code Node', () => {
-	const workflows = getWorkflowFilenames(__dirname);
-
-	beforeAll(async () => {
-		await initBinaryDataService();
-	});
-
-	testWorkflows(workflows);
+	new NodeTestHarness().setupTests();
 });
 
 describe('Code Node unit test', () => {

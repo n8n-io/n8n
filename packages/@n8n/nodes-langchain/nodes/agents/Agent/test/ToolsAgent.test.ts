@@ -233,6 +233,33 @@ describe('prepareMessages', () => {
 		expect(hasHumanMessage).toBe(false);
 	});
 
+	it('should not include a binary message if no image data is present', async () => {
+		const fakeItem = {
+			json: {},
+			binary: {
+				img1: {
+					mimeType: 'application/pdf',
+					data: 'data:application/pdf;base64,sampledata',
+				},
+			},
+		};
+		mockContext.getInputData.mockReturnValue([fakeItem]);
+		mockContext.logger = {
+			debug: jest.fn(),
+			info: jest.fn(),
+			warn: jest.fn(),
+			error: jest.fn(),
+		};
+
+		const messages = await prepareMessages(mockContext, 0, {
+			systemMessage: 'Test system',
+			passthroughBinaryImages: true,
+		});
+		const hasHumanMessage = messages.some((m) => m instanceof HumanMessage);
+		expect(hasHumanMessage).toBe(false);
+		expect(mockContext.logger.debug).toHaveBeenCalledTimes(1);
+	});
+
 	it('should not include system_message in prompt templates if not provided after version 1.9', async () => {
 		const fakeItem = { json: {} };
 		const mockNode = mock<INode>();

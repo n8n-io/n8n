@@ -4,11 +4,16 @@ import { EnterpriseEditionFeature, STORES, WORKFLOW_SHARE_MODAL_KEY } from '@/co
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { useUIStore } from '@/stores/ui.store';
+import { useRoute } from 'vue-router';
+import type { Mock } from 'vitest';
 
-vi.mock('vue-router', () => ({
-	useRoute: () => vi.fn(),
-	useRouter: () => vi.fn(),
-	RouterLink: vi.fn(),
+vi.mock('vue-router', async (importOriginal) => ({
+	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+	...(await importOriginal<typeof import('vue-router')>()),
+	useRoute: vi.fn().mockReturnValue({}),
+	useRouter: vi.fn(() => ({
+		replace: vi.fn(),
+	})),
 }));
 
 vi.mock('@/stores/pushConnection.store', () => ({
@@ -46,6 +51,9 @@ const renderComponent = createComponentRenderer(WorkflowDetails, {
 	global: {
 		stubs: {
 			RouterLink: true,
+			FolderBreadcrumbs: {
+				template: '<div><slot name="append" /></div>',
+			},
 		},
 	},
 });
@@ -63,6 +71,9 @@ describe('WorkflowDetails', () => {
 		uiStore = useUIStore();
 	});
 	it('renders workflow name and tags', async () => {
+		(useRoute as Mock).mockReturnValue({
+			query: { parentFolderId: '1' },
+		});
 		const { getByTestId, getByText } = renderComponent({
 			props: {
 				...workflow,

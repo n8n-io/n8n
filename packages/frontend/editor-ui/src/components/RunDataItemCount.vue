@@ -7,20 +7,18 @@ const {
 	unfilteredDataCount,
 	subExecutionsCount = 0,
 	search,
-	muted,
 } = defineProps<{
 	dataCount: number;
 	unfilteredDataCount: number;
 	subExecutionsCount?: number;
 	search: string;
-	muted: boolean;
 }>();
 
 const i18n = useI18n();
 </script>
 
 <template>
-	<N8nText v-if="search" :class="[$style.itemsText, muted ? $style.muted : '']">
+	<N8nText v-if="search" :class="$style.itemsText">
 		{{
 			i18n.baseText('ndv.search.items', {
 				adjustToNumber: unfilteredDataCount,
@@ -28,7 +26,7 @@ const i18n = useI18n();
 			})
 		}}
 	</N8nText>
-	<N8nText v-else :class="[$style.itemsText, muted ? $style.muted : '']">
+	<N8nText v-else :class="$style.itemsText">
 		<span>
 			{{
 				i18n.baseText('ndv.output.items', {
@@ -54,9 +52,6 @@ const i18n = useI18n();
 	overflow: hidden;
 	white-space: nowrap;
 	text-overflow: ellipsis;
-}
-
-.muted {
 	color: var(--color-text-light);
 	font-size: var(--font-size-2xs);
 }

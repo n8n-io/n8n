@@ -4,20 +4,18 @@ import {
 	generateLinearGradient,
 	generateLineChartOptions,
 } from '@/features/insights/chartjs.utils';
-import { DATE_FORMAT_MASK, INSIGHTS_UNIT_MAPPING } from '@/features/insights/insights.constants';
+import {
+	GRANULARITY_DATE_FORMAT_MASK,
+	INSIGHTS_UNIT_MAPPING,
+} from '@/features/insights/insights.constants';
 import { transformInsightsAverageRunTime } from '@/features/insights/insights.utils';
-import type { InsightsByTime, InsightsSummaryType } from '@n8n/api-types';
 import { smartDecimal } from '@n8n/utils/number/smartDecimal';
 import { type ChartData, Filler, type ScriptableContext } from 'chart.js';
-import dateformat from 'dateformat';
 import { computed } from 'vue';
 import { Line } from 'vue-chartjs';
+import type { ChartProps } from './insightChartProps';
 
-const props = defineProps<{
-	data: InsightsByTime[];
-	type: InsightsSummaryType;
-}>();
-
+const props = defineProps<ChartProps>();
 const i18n = useI18n();
 
 const chartOptions = computed(() =>
@@ -40,7 +38,7 @@ const chartData = computed<ChartData<'line'>>(() => {
 	const data: number[] = [];
 
 	for (const entry of props.data) {
-		labels.push(dateformat(entry.date, DATE_FORMAT_MASK));
+		labels.push(GRANULARITY_DATE_FORMAT_MASK[props.granularity](entry.date));
 
 		const value = transformInsightsAverageRunTime(entry.values.averageRunTime);
 

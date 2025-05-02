@@ -47,10 +47,10 @@ function sanitizeFromAiParameterName(s: string) {
 
 // nodeName | [nodeName, highestUnsupportedVersion]
 const NODE_DENYLIST = [
-	'toolCode',
-	'toolHttpRequest',
-	'mcpClientTool',
-	['toolWorkflow', 1.2],
+	'@n8n/n8n-nodes-langchain.toolCode',
+	'@n8n/n8n-nodes-langchain.toolHttpRequest',
+	'@n8n/n8n-nodes-langchain.mcpClientTool',
+	['@n8n/n8n-nodes-langchain.toolWorkflow', 1.2],
 ] as const;
 
 const PATH_DENYLIST = [
@@ -192,10 +192,10 @@ export function parseOverrides(
 
 function isDeniedNode(nodeDenyData: string | readonly [string, number], node: INodeUi) {
 	if (typeof nodeDenyData === 'string') {
-		return node.type.endsWith(nodeDenyData);
+		return node.type === nodeDenyData;
 	} else {
-		const [name, version] = nodeDenyData;
-		return node.type.endsWith(name) && node.typeVersion <= version;
+		const [typeName, version] = nodeDenyData;
+		return node.type === typeName && node.typeVersion <= version;
 	}
 }
 
