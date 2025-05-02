@@ -1,10 +1,10 @@
 import type { ApiKeyWithRawValue } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
+import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { ApiKeyScope } from '@n8n/permissions';
 import { mock } from 'jest-mock-extended';
 
-import type { User } from '@/databases/entities/user';
 import { ApiKeyRepository } from '@/databases/repositories/api-key.repository';
 import type { License } from '@/license';
 import { getApiKeyScopesForRole, getOwnerOnlyApiKeyScopes } from '@/public-api/permissions.ee';

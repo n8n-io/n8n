@@ -1,58 +1,66 @@
 <script setup lang="ts">
 import RunData from '@/components/RunData.vue';
-import { type TreeNode } from '@/components/RunDataAi/utils';
+import { type LogEntry } from '@/components/RunDataAi/utils';
 import { useI18n } from '@/composables/useI18n';
-import { type NodePanelType } from '@/Interface';
+import { type IRunDataDisplayMode, type IExecutionResponse, type NodePanelType } from '@/Interface';
 import { useNDVStore } from '@/stores/ndv.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
 import { N8nLink, N8nText } from '@n8n/design-system';
-import { uniqBy } from 'lodash-es';
-import { computed } from 'vue';
+import { type Workflow } from 'n8n-workflow';
+import { computed, ref } from 'vue';
 import { I18nT } from 'vue-i18n';
 
-const { title, logEntry, paneType } = defineProps<{
+const { title, logEntry, paneType, workflow, execution } = defineProps<{
 	title: string;
 	paneType: NodePanelType;
-	logEntry: TreeNode;
+	logEntry: LogEntry;
+	workflow: Workflow;
+	execution: IExecutionResponse;
 }>();
 
 const locale = useI18n();
-const workflowsStore = useWorkflowsStore();
 const ndvStore = useNDVStore();
-const workflow = computed(() => workflowsStore.getCurrentWorkflow());
-const node = computed(() => {
+
+const displayMode = ref<IRunDataDisplayMode>(paneType === 'input' ? 'schema' : 'table');
+const isMultipleInput = computed(() => paneType === 'input' && logEntry.runData.source.length > 1);
+const runDataProps = computed<
+	Pick<InstanceType<typeof RunData>['$props'], 'node' | 'runIndex' | 'overrideOutputs'> | undefined
+>(() => {
 	if (logEntry.depth > 0 || paneType === 'output') {
-		return workflowsStore.nodesByName[logEntry.node];
+		return { node: logEntry.node, runIndex: logEntry.runIndex };
 	}
 
-	const parent = workflow.value.getParentNodesByDepth(logEntry.node)[0];
+	const source = logEntry.runData.source[0];
+	const node = source && workflow.getNode(source.previousNode);
 
-	if (!parent) {
+	if (!source || !node) {
 		return undefined;
 	}
 
-	return workflowsStore.nodesByName[parent.name];
+	return {
+		node: {
+			...node,
+			disabled: false, // For RunData component to render data from disabled nodes as well
+		},
+		runIndex: source.previousNodeRun ?? 0,
+		overrideOutputs: [source.previousNodeOutput ?? 0],
+	};
 });
-const isMultipleInput = computed(
-	() =>
-		paneType === 'input' &&
-		uniqBy(
-			workflow.value.getParentNodesByDepth(logEntry.node).filter((n) => n.name !== logEntry.node),
-			(n) => n.name,
-		).length > 1,
-);
 
 function handleClickOpenNdv() {
-	ndvStore.setActiveNodeName(logEntry.node);
+	ndvStore.setActiveNodeName(logEntry.node.name);
+}
+
+function handleChangeDisplayMode(value: IRunDataDisplayMode) {
+	displayMode.value = value;
 }
 </script>
 
 <template>
 	<RunData
-		v-if="node"
-		:node="node"
+		v-if="runDataProps"
+		v-bind="runDataProps"
 		:workflow="workflow"
-		:run-index="logEntry.runIndex"
+		:workflow-execution="execution"
 		:too-much-data-title="locale.baseText('ndv.output.tooMuchData.title')"
 		:no-data-in-branch-message="locale.baseText('ndv.output.noOutputDataInBranch')"
 		:executing-message="locale.baseText('ndv.output.executing')"
@@ -61,7 +69,11 @@ function handleClickOpenNdv() {
 		:compact="true"
 		:disable-pin="true"
 		:disable-edit="true"
+		:disable-hover-highlight="true"
+		:display-mode="displayMode"
+		:disable-ai-content="logEntry.depth === 0"
 		table-header-bg-color="light"
+		@display-mode-change="handleChangeDisplayMode"
 	>
 		<template #header>
 			<N8nText :class="$style.title" :bold="true" color="text-light" size="small">

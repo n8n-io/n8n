@@ -1,5 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { WorkflowsConfig } from '@n8n/config';
+import type { WorkflowEntity, IWorkflowDb } from '@n8n/db';
+import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { chunk } from 'lodash';
 import {
@@ -40,13 +42,10 @@ import {
 	WORKFLOW_REACTIVATE_INITIAL_TIMEOUT,
 	WORKFLOW_REACTIVATE_MAX_TIMEOUT,
 } from '@/constants';
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import { OnShutdown } from '@/decorators/on-shutdown';
 import { executeErrorWorkflow } from '@/execution-lifecycle/execute-error-workflow';
 import { ExecutionService } from '@/executions/execution.service';
 import { ExternalHooks } from '@/external-hooks';
-import type { IWorkflowDb } from '@/interfaces';
 import { NodeTypes } from '@/node-types';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { ActiveWorkflowsService } from '@/services/active-workflows.service';
@@ -433,7 +432,7 @@ export class ActiveWorkflowManager {
 			await Promise.all(activationPromises);
 		}
 
-		this.logger.debug('Finished activating workflows (startup)');
+		this.logger.debug('Activated all trigger- and poller-based workflows');
 	}
 
 	private async activateWorkflow(
@@ -487,16 +486,14 @@ export class ActiveWorkflowManager {
 		await this.activationErrorsService.clearAll();
 	}
 
+	@OnLeaderTakeover()
 	async addAllTriggerAndPollerBasedWorkflows() {
-		this.logger.debug('Adding all trigger- and poller-based workflows');
-
 		await this.addActiveWorkflows('leadershipChange');
 	}
 
+	@OnLeaderStepdown()
 	@OnShutdown()
 	async removeAllTriggerAndPollerBasedWorkflows() {
-		this.logger.debug('Removing all trigger- and poller-based workflows');
-
 		await this.activeWorkflows.removeAllTriggerAndPollerBasedWorkflows();
 	}
 

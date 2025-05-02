@@ -1,8 +1,8 @@
 import { CommunityRegisteredRequestDto } from '@n8n/api-types';
+import { Get, Post, RestController, GlobalScope, Body } from '@n8n/decorators';
 import type { AxiosError } from 'axios';
 import { InstanceSettings } from 'n8n-core';
 
-import { Get, Post, RestController, GlobalScope, Body } from '@/decorators';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { AuthenticatedRequest, LicenseRequest } from '@/requests';
 import { UrlService } from '@/services/url.service';
