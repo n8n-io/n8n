@@ -204,7 +204,6 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 		metadata?: ITaskMetadata,
 	): void {
 		const nodeName = this.node.name;
-		console.log('Parent node', this.parentNode?.name ?? 'NONE');
 		this.addExecutionDataFunctions(
 			'output',
 			data,
@@ -236,8 +235,6 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 			runIndex: sourceNodeRunIndex,
 			node: { name: nodeName },
 		} = this;
-
-		console.log('Parent node addExecutionDataFunctions', this.parentNode?.name ?? 'NONE');
 
 		let taskData: ITaskData | undefined;
 		const source: ISourceData[] = [{ previousNode: this.parentNode?.name ?? '' }];
