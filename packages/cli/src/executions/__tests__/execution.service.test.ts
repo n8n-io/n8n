@@ -1,3 +1,4 @@
+import type { IExecutionResponse } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import { WorkflowOperationError } from 'n8n-workflow';
 
@@ -11,7 +12,6 @@ import { ExecutionService } from '@/executions/execution.service';
 import type { ExecutionRequest } from '@/executions/execution.types';
 import { ScalingService } from '@/scaling/scaling.service';
 import type { Job } from '@/scaling/scaling.types';
-import type { IExecutionResponse } from '@/types-db';
 import type { WaitTracker } from '@/wait-tracker';
 import { mockInstance } from '@test/mocking';
 

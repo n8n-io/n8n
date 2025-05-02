@@ -1,10 +1,10 @@
+import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { Not } from '@n8n/typeorm';
 import type { Entry as LdapUser } from 'ldapts';
 import { Cipher } from 'n8n-core';
 
 import config from '@/config';
-import type { User } from '@/databases/entities/user';
 import { AuthProviderSyncHistoryRepository } from '@/databases/repositories/auth-provider-sync-history.repository';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import { LDAP_DEFAULT_CONFIGURATION } from '@/ldap.ee/constants';

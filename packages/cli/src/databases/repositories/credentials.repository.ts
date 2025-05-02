@@ -1,10 +1,9 @@
+import { CredentialsEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, In, Repository, Like } from '@n8n/typeorm';
 import type { FindManyOptions } from '@n8n/typeorm';
 
-import type { ListQuery } from '@/types-db';
-
-import { CredentialsEntity } from '../entities/credentials-entity';
+import type { ListQuery } from '@/requests';
 
 @Service()
 export class CredentialsRepository extends Repository<CredentialsEntity> {
@@ -52,10 +51,7 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 			filter.type = Like(`%${filter.type}%`);
 		}
 
-		if (typeof filter?.projectId === 'string' && filter.projectId !== '') {
-			filter.shared = { projectId: filter.projectId };
-			delete filter.projectId;
-		}
+		this.handleSharedFilters(listQueryOptions);
 
 		if (filter) findManyOptions.where = filter;
 		if (select) findManyOptions.select = select;
@@ -80,6 +76,29 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 		}
 
 		return findManyOptions;
+	}
+
+	private handleSharedFilters(
+		listQueryOptions?: ListQuery.Options & { includeData?: boolean },
+	): void {
+		if (!listQueryOptions?.filter) return;
+
+		const { filter } = listQueryOptions;
+
+		if (typeof filter.projectId === 'string' && filter.projectId !== '') {
+			filter.shared = {
+				projectId: filter.projectId,
+			};
+			delete filter.projectId;
+		}
+
+		if (typeof filter.withRole === 'string' && filter.withRole !== '') {
+			filter.shared = {
+				...(filter?.shared ? filter.shared : {}),
+				role: filter.withRole,
+			};
+			delete filter.withRole;
+		}
 	}
 
 	async getManyByIds(ids: string[], { withSharings } = { withSharings: false }) {

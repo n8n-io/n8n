@@ -99,6 +99,7 @@ const render = (props: Partial<Props> = {}, pinData?: INodeExecutionData[], runD
 			runIndex: 0,
 			currentNodeName: nodes[1].name,
 			workflow: workflowObject,
+			displayMode: 'schema',
 		},
 		global: {
 			stubs: {

@@ -15,7 +15,6 @@ import {
 } from '@/constants';
 import NodeExecuteButton from '@/components/NodeExecuteButton.vue';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useUIStore } from '@/stores/ui.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
@@ -84,7 +83,6 @@ vi.mock('@/composables/useMessage', () => {
 
 let renderComponent: ReturnType<typeof createComponentRenderer>;
 let workflowsStore: MockedStore<typeof useWorkflowsStore>;
-let uiStore: MockedStore<typeof useUIStore>;
 let nodeTypesStore: MockedStore<typeof useNodeTypesStore>;
 let ndvStore: MockedStore<typeof useNDVStore>;
 
@@ -109,7 +107,6 @@ describe('NodeExecuteButton', () => {
 		});
 
 		workflowsStore = mockedStore(useWorkflowsStore);
-		uiStore = mockedStore(useUIStore);
 		nodeTypesStore = mockedStore(useNodeTypesStore);
 		ndvStore = mockedStore(useNDVStore);
 
@@ -193,7 +190,7 @@ describe('NodeExecuteButton', () => {
 		workflowsStore.getNodeByName.mockReturnValue(node);
 		workflowsStore.isNodeExecuting = vi.fn(() => true);
 		nodeTypesStore.isTriggerNode = () => true;
-		uiStore.isActionActive.workflowRunning = true;
+		workflowsStore.isWorkflowRunning = true;
 
 		const { getByRole } = renderComponent();
 		expect(getByRole('button').textContent).toBe('Stop Listening');
@@ -203,7 +200,7 @@ describe('NodeExecuteButton', () => {
 		const node = mockNode({ name: 'test-node', type: SET_NODE_TYPE });
 		workflowsStore.getNodeByName.mockReturnValue(node);
 		workflowsStore.isNodeExecuting = vi.fn(() => true);
-		uiStore.isActionActive.workflowRunning = true;
+		workflowsStore.isWorkflowRunning = true;
 
 		const { getByRole } = renderComponent();
 		expect(getByRole('button').querySelector('.n8n-spinner')).toBeVisible();
@@ -227,7 +224,7 @@ describe('NodeExecuteButton', () => {
 	});
 
 	it('should be disabled when workflow is running but node is not executing', async () => {
-		uiStore.isActionActive.workflowRunning = true;
+		workflowsStore.isWorkflowRunning = true;
 		workflowsStore.isNodeExecuting.mockReturnValue(false);
 		workflowsStore.getNodeByName.mockReturnValue(
 			mockNode({ name: 'test-node', type: SET_NODE_TYPE }),
@@ -277,7 +274,7 @@ describe('NodeExecuteButton', () => {
 	});
 
 	it('stops execution when clicking button while workflow is running', async () => {
-		uiStore.isActionActive.workflowRunning = true;
+		workflowsStore.isWorkflowRunning = true;
 		nodeTypesStore.isTriggerNode = () => true;
 		workflowsStore.setActiveExecutionId('test-execution-id');
 		workflowsStore.isNodeExecuting.mockReturnValue(true);

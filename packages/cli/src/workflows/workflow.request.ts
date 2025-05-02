@@ -8,8 +8,7 @@ import type {
 	IWorkflowBase,
 } from 'n8n-workflow';
 
-import type { AuthenticatedRequest } from '@/requests';
-import type { ListQuery } from '@/types-db';
+import type { AuthenticatedRequest, ListQuery } from '@/requests';
 
 export declare namespace WorkflowRequest {
 	type CreateUpdatePayload = Partial<{

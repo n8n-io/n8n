@@ -1,10 +1,9 @@
+import type { TagEntity, ITagWithCountDb } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import type { TagEntity } from '@/databases/entities/tag-entity';
 import { TagRepository } from '@/databases/repositories/tag.repository';
 import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
-import type { ITagWithCountDb } from '@/types-db';
 
 type GetAllResult<T> = T extends { withUsageCount: true } ? ITagWithCountDb[] : TagEntity[];
 

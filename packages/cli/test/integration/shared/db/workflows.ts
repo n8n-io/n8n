@@ -1,16 +1,16 @@
+import { Project } from '@n8n/db';
+import { User } from '@n8n/db';
+import type { SharedWorkflow, WorkflowSharingRole } from '@n8n/db';
+import type { IWorkflowDb } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { DeepPartial } from '@n8n/typeorm';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { Project } from '@/databases/entities/project';
-import type { SharedWorkflow, WorkflowSharingRole } from '@/databases/entities/shared-workflow';
-import { User } from '@/databases/entities/user';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import type { IWorkflowDb } from '@/types-db';
 
 export async function createManyWorkflows(
 	amount: number,

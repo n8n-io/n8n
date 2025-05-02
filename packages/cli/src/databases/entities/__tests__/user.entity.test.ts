@@ -1,4 +1,4 @@
-import { User } from '@/databases/entities/user';
+import { User } from '@n8n/db';
 
 describe('User Entity', () => {
 	describe('JSON.stringify', () => {

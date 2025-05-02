@@ -1,7 +1,7 @@
 import type { INodeUi } from '@/Interface';
 import type { NodeTypeProvider } from '@/utils/nodeTypes/nodeTypeTransforms';
-import type { INodeCredentialDescription } from 'n8n-workflow';
-import { NodeHelpers } from 'n8n-workflow';
+import type { INodeCredentialDescription, FromAIArgument } from 'n8n-workflow';
+import { NodeHelpers, traverseNodeParameters } from 'n8n-workflow';
 
 /**
  * Returns the credentials that are displayable for the given node.
@@ -76,4 +76,13 @@ export function doesNodeHaveAllCredentialsFilled(
 	const requiredCredentials = getNodeTypeDisplayableCredentials(nodeTypeProvider, node);
 
 	return requiredCredentials.every((cred) => hasNodeCredentialFilled(node, cred.name));
+}
+
+/**
+ * Checks if the given node has any fromAi expressions in its parameters.
+ */
+export function hasFromAiExpressions(node: Pick<INodeUi, 'parameters'>) {
+	const collectedArgs: FromAIArgument[] = [];
+	traverseNodeParameters(node.parameters, collectedArgs);
+	return collectedArgs.length > 0;
 }

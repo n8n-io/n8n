@@ -1,6 +1,6 @@
 import { type NextFunction, type Response } from 'express';
 
-import type { ListQuery } from '@/types-db';
+import type { ListQuery } from '@/requests';
 
 import { filterListQueryMiddleware } from './filter';
 import { paginationListQueryMiddleware } from './pagination';
