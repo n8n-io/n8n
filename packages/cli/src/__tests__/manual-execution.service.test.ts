@@ -34,6 +34,9 @@ describe('ManualExecutionService', () => {
 						name: nodeName,
 					};
 				},
+				getTriggerNodes() {
+					return [];
+				},
 			} as unknown as Workflow;
 			const executionStartNode = manualExecutionService.getExecutionStartNode(data, workflow);
 			expect(executionStartNode).toBeUndefined();
@@ -56,6 +59,9 @@ describe('ManualExecutionService', () => {
 					}
 					return undefined;
 				},
+				getTriggerNodes() {
+					return [];
+				},
 			} as unknown as Workflow;
 			const executionStartNode = manualExecutionService.getExecutionStartNode(data, workflow);
 			expect(executionStartNode).toEqual({
@@ -77,11 +83,42 @@ describe('ManualExecutionService', () => {
 						name: nodeName,
 					};
 				},
+				getTriggerNodes() {
+					return [];
+				},
 			} as unknown as Workflow;
 			const executionStartNode = manualExecutionService.getExecutionStartNode(data, workflow);
 			expect(executionStartNode).toEqual({
 				name: 'node3',
 			});
+		});
+
+		it('should default to The manual trigger', () => {
+			const data = {
+				pinData: {},
+				startNodes: [],
+			} as unknown as IWorkflowExecutionDataProcess;
+			const manualTrigger = {
+				type: 'n8n-nodes-base.manualTrigger',
+				name: 'When clicking ‘Test workflow’',
+			};
+
+			const workflow = {
+				getNode() {
+					return undefined;
+				},
+				getTriggerNodes() {
+					return [
+						{
+							type: 'n8n-nodes-base.scheduleTrigger',
+							name: 'Wed 12:00',
+						},
+						manualTrigger,
+					];
+				},
+			} as unknown as Workflow;
+			const executionStartNode = manualExecutionService.getExecutionStartNode(data, workflow);
+			expect(executionStartNode?.name).toBe(manualTrigger.name);
 		});
 	});
 
@@ -230,6 +267,7 @@ describe('ManualExecutionService', () => {
 
 			const workflow = mock<Workflow>({
 				getNode: jest.fn().mockReturnValue(null),
+				getTriggerNodes: jest.fn().mockReturnValue([]),
 			});
 
 			const additionalData = mock<IWorkflowExecuteAdditionalData>();
