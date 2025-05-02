@@ -8,18 +8,12 @@ tasks:
   - init: pnpm install && pnpm run build
     command: pnpm run start
 image:
-  file: .devcontainer/Dockerfile
-
-tasks:
-  - name: Start n8n
-    command: pnpm start
-
+  file: .devcontainer/Dockerfil
 ports:
   - port: 5678  # n8n
     onOpen: open-preview
   - port: 4040  # ngrok inspector
     onOpen: open-preview
-
 env:
   NGROK_AUTHTOKEN: $NGROK_AUTHTOKEN
   NGROK_API_KEY: $NGROK_API_KEY
