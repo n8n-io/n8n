@@ -3,7 +3,7 @@ import { HumanMessage } from '@langchain/core/messages';
 import { ChatPromptTemplate, SystemMessagePromptTemplate } from '@langchain/core/prompts';
 import type { JSONSchema7 } from 'json-schema';
 import { OutputFixingParser, StructuredOutputParser } from 'langchain/output_parsers';
-import { jsonParse, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { jsonParse, NodeConnectionTypes, NodeOperationError, sleep } from 'n8n-workflow';
 import type {
 	INodeType,
 	INodeTypeDescription,
@@ -213,6 +213,31 @@ export class InformationExtractor implements INodeType {
 							rows: 6,
 						},
 					},
+					{
+						displayName: 'Batch Processing',
+						name: 'batching',
+						type: 'collection',
+						description: 'Batch processing options for rate limiting',
+						default: {},
+						options: [
+							{
+								displayName: 'Batch Size',
+								name: 'batchSize',
+								default: 100,
+								type: 'number',
+								description:
+									'How many items to process in parallel. This is useful for rate limiting, but will impact the agents log output.',
+							},
+							{
+								displayName: 'Delay Between Batches',
+								name: 'delayBetweenBatches',
+								default: 0,
+								type: 'number',
+								description:
+									'Delay in milliseconds between batches. This is useful for rate limiting.',
+							},
+						],
+					},
 				],
 			},
 		],
@@ -220,6 +245,13 @@ export class InformationExtractor implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
+		const { batchSize, delayBetweenBatches } = this.getNodeParameter('options.batching', 0, {
+			batchSize: 100,
+			delayBetweenBatches: 0,
+		}) as {
+			batchSize: number;
+			delayBetweenBatches: number;
+		};
 
 		const llm = (await this.getInputConnectionData(
 			NodeConnectionTypes.AiLanguageModel,
@@ -265,38 +297,58 @@ export class InformationExtractor implements INodeType {
 		}
 
 		const resultData: INodeExecutionData[] = [];
-		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-			const input = this.getNodeParameter('text', itemIndex) as string;
-			const inputPrompt = new HumanMessage(input);
 
-			const options = this.getNodeParameter('options', itemIndex, {}) as {
-				systemPromptTemplate?: string;
-			};
+		for (let i = 0; i < items.length; i += batchSize) {
+			const batch = items.slice(i, i + batchSize);
 
-			const systemPromptTemplate = SystemMessagePromptTemplate.fromTemplate(
-				`${options.systemPromptTemplate ?? SYSTEM_PROMPT_TEMPLATE}
-{format_instructions}`,
-			);
+			const batchPromises = batch.map(async (_item, batchItemIndex) => {
+				const itemIndex = i + batchItemIndex;
 
-			const messages = [
-				await systemPromptTemplate.format({
-					format_instructions: parser.getFormatInstructions(),
-				}),
-				inputPrompt,
-			];
-			const prompt = ChatPromptTemplate.fromMessages(messages);
-			const chain = prompt.pipe(llm).pipe(parser).withConfig(getTracingConfig(this));
+				const input = this.getNodeParameter('text', itemIndex) as string;
+				const inputPrompt = new HumanMessage(input);
 
-			try {
-				const output = await chain.invoke(messages);
-				resultData.push({ json: { output } });
-			} catch (error) {
-				if (this.continueOnFail()) {
-					resultData.push({ json: { error: error.message }, pairedItem: { item: itemIndex } });
-					continue;
+				const options = this.getNodeParameter('options', itemIndex, {}) as {
+					systemPromptTemplate?: string;
+				};
+
+				const systemPromptTemplate = SystemMessagePromptTemplate.fromTemplate(
+					`${options.systemPromptTemplate ?? SYSTEM_PROMPT_TEMPLATE}
+	{format_instructions}`,
+				);
+
+				const messages = [
+					await systemPromptTemplate.format({
+						format_instructions: parser.getFormatInstructions(),
+					}),
+					inputPrompt,
+				];
+				const prompt = ChatPromptTemplate.fromMessages(messages);
+				const chain = prompt.pipe(llm).pipe(parser).withConfig(getTracingConfig(this));
+
+				return await chain.invoke(messages);
+			});
+			const batchResults = await Promise.allSettled(batchPromises);
+
+			batchResults.forEach((response, index) => {
+				if (response.status === 'rejected') {
+					const error = response.reason as Error;
+					if (this.continueOnFail()) {
+						resultData.push({
+							json: { error: response.reason as string },
+							pairedItem: { item: i + index },
+						});
+						return;
+					} else {
+						throw new NodeOperationError(this.getNode(), error.message);
+					}
 				}
+				const output = response.value;
+				resultData.push({ json: { output } });
+			});
 
-				throw error;
+			// Add delay between batches if not the last batch
+			if (i + batchSize < items.length && delayBetweenBatches > 0) {
+				await sleep(delayBetweenBatches);
 			}
 		}
 

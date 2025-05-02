@@ -11,7 +11,13 @@ import type { AgentAction, AgentFinish } from 'langchain/agents';
 import { AgentExecutor, createToolCallingAgent } from 'langchain/agents';
 import type { ToolsAgentAction } from 'langchain/dist/agents/tool_calling/output_parser';
 import { omit } from 'lodash';
-import { BINARY_ENCODING, jsonParse, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import {
+	BINARY_ENCODING,
+	jsonParse,
+	NodeConnectionTypes,
+	NodeOperationError,
+	sleep,
+} from 'n8n-workflow';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import type { ZodObject } from 'zod';
 import { z } from 'zod';
@@ -406,12 +412,21 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 	const returnData: INodeExecutionData[] = [];
 	const items = this.getInputData();
 	const outputParser = await getOptionalOutputParser(this);
+	const memory = await getOptionalMemory(this);
 	const tools = await getTools(this, outputParser);
+	const { batchSize, delayBetweenBatches } = this.getNodeParameter('options.batching', 0, {
+		batchSize: 1,
+		delayBetweenBatches: 0,
+	}) as {
+		batchSize: number;
+		delayBetweenBatches: number;
+	};
 
-	for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-		try {
+	for (let i = 0; i < items.length; i += batchSize) {
+		const batch = items.slice(i, i + batchSize);
+		const batchPromises = batch.map(async (_item, batchItemIndex) => {
+			const itemIndex = i + batchItemIndex;
 			const model = await getChatModel(this);
-			const memory = await getOptionalMemory(this);
 
 			const input = getPromptInputByType({
 				ctx: this,
@@ -461,7 +476,7 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 			});
 
 			// Invoke the executor with the given input and system message.
-			const response = await executor.invoke(
+			return await executor.invoke(
 				{
 					input,
 					system_message: options.systemMessage ?? SYSTEM_MESSAGE,
@@ -470,7 +485,22 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 				},
 				{ signal: this.getExecutionCancelSignal() },
 			);
+		});
+		const batchResults = await Promise.allSettled(batchPromises);
 
+		batchResults.forEach((result, index) => {
+			if (result.status === 'rejected') {
+				if (this.continueOnFail()) {
+					returnData.push({
+						json: { error: result.reason as string },
+						pairedItem: { item: index },
+					});
+					return;
+				} else {
+					throw new NodeOperationError(this.getNode(), result.reason);
+				}
+			}
+			const response = result.value;
 			// If memory and outputParser are connected, parse the output.
 			if (memory && outputParser) {
 				const parsedOutput = jsonParse<{ output: Record<string, unknown> }>(
@@ -492,15 +522,10 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 			};
 
 			returnData.push(itemResult);
-		} catch (error) {
-			if (this.continueOnFail()) {
-				returnData.push({
-					json: { error: error.message },
-					pairedItem: { item: itemIndex },
-				});
-				continue;
-			}
-			throw error;
+		});
+
+		if (i + batchSize < items.length && delayBetweenBatches > 0) {
+			await sleep(delayBetweenBatches);
 		}
 	}
 
