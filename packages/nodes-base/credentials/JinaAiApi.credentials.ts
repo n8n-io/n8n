@@ -1,4 +1,9 @@
-import type { IAuthenticateGeneric, ICredentialType, INodeProperties } from 'n8n-workflow';
+import type {
+	IAuthenticateGeneric,
+	ICredentialTestRequest,
+	ICredentialType,
+	INodeProperties,
+} from 'n8n-workflow';
 
 export class JinaAiApi implements ICredentialType {
 	name = 'jinaAiApi';
@@ -26,5 +31,13 @@ export class JinaAiApi implements ICredentialType {
 		},
 	};
 
-	// TODO: add a test request, not sure which endpoint to use
+	test: ICredentialTestRequest = {
+		request: {
+			method: 'GET',
+			url: 'https://embeddings-dashboard-api.jina.ai/api/v1/api_key/fe_user',
+			qs: {
+				api_key: '={{$credentials.apiKey}}',
+			},
+		},
+	};
 }
