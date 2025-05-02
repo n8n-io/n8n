@@ -165,6 +165,10 @@ export class McpServer {
 
 				const callId = extra.requestId ? `${extra.sessionId}_${extra.requestId}` : extra.sessionId;
 
+				if (!this.tools[callId]) {
+					throw new OperationalError('Tool not found');
+				}
+
 				const requestedTool: Tool | undefined = this.tools[callId].find(
 					(tool) => tool.name === request.params.name,
 				);
