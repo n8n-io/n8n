@@ -1,16 +1,7 @@
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import nock from 'nock';
 
-import { initBinaryDataService, testWorkflows, getWorkflowFilenames } from '@test/nodes/Helpers';
-
 describe('Google GSuiteAdmin Node - Get All Users', () => {
-	const workflows = getWorkflowFilenames(__dirname).filter((filename) =>
-		filename.includes('getAll.workflow.json'),
-	);
-
-	beforeAll(async () => {
-		await initBinaryDataService();
-	});
-
 	beforeEach(() => {
 		nock.disableNetConnect();
 
@@ -68,5 +59,7 @@ describe('Google GSuiteAdmin Node - Get All Users', () => {
 			});
 	});
 
-	testWorkflows(workflows);
+	new NodeTestHarness().setupTests({
+		workflowFiles: ['getAll.workflow.json'],
+	});
 });
