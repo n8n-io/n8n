@@ -90,6 +90,14 @@ export class CredentialsService {
 				? listQueryOptions.filter.projectId
 				: undefined;
 
+		if (onlySharedWithMe) {
+			listQueryOptions.filter = {
+				...listQueryOptions.filter,
+				withRole: 'credential:user',
+				user,
+			};
+		}
+
 		if (includeData) {
 			// We need the scopes to check if we're allowed to include the decrypted
 			// data.
@@ -112,14 +120,6 @@ export class CredentialsService {
 				listQueryOptions.filter = {
 					...listQueryOptions.filter,
 					withRole: 'credential:owner',
-				};
-			}
-
-			if (onlySharedWithMe) {
-				listQueryOptions.filter = {
-					...listQueryOptions.filter,
-					withRole: 'credential:user',
-					user,
 				};
 			}
 
@@ -172,14 +172,6 @@ export class CredentialsService {
 		const ids = await this.credentialsFinderService.getCredentialIdsByUserAndRole([user.id], {
 			scopes: ['credential:read'],
 		});
-
-		if (onlySharedWithMe) {
-			listQueryOptions.filter = {
-				...listQueryOptions.filter,
-				withRole: 'credential:user',
-				user,
-			};
-		}
 
 		let credentials = await this.credentialsRepository.findMany(
 			listQueryOptions,
