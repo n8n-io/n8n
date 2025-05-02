@@ -370,7 +370,7 @@ export class Kafka implements INodeType {
 						const eventName = this.getNodeParameter('eventName', 0) as string;
 
 						let registry: SchemaRegistry;
-						if (schemaRegistryUsername && schemaRegistryPassword) {
+						if (schemaRegistryUsername || schemaRegistryPassword) {
 							registry = new SchemaRegistry({
 								host: schemaRegistryUrl,
 								auth: {
