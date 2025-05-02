@@ -1,15 +1,18 @@
 import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import { HumanMessage } from '@langchain/core/messages';
-import type { BaseMessage } from '@langchain/core/messages';
+import { AIMessage, HumanMessage, ToolMessage } from '@langchain/core/messages';
+import type { AIMessageChunk, BaseMessage } from '@langchain/core/messages';
 import type { BaseMessagePromptTemplateLike } from '@langchain/core/prompts';
 import { ChatPromptTemplate } from '@langchain/core/prompts';
 import { RunnableSequence } from '@langchain/core/runnables';
 import type { Tool } from '@langchain/core/tools';
 import { DynamicStructuredTool } from '@langchain/core/tools';
-import type { AgentAction, AgentFinish } from 'langchain/agents';
+import type { AgentAction, AgentFinish, AgentStep } from 'langchain/agents';
 import { AgentExecutor, createToolCallingAgent } from 'langchain/agents';
-import type { ToolsAgentAction } from 'langchain/dist/agents/tool_calling/output_parser';
+import type {
+	ToolsAgentAction,
+	ToolsAgentStep,
+} from 'langchain/dist/agents/tool_calling/output_parser';
 import { omit } from 'lodash';
 import { BINARY_ENCODING, jsonParse, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
@@ -456,7 +459,7 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 				agent: runnableAgent,
 				memory,
 				tools,
-				returnIntermediateSteps: options.returnIntermediateSteps === true,
+				returnIntermediateSteps: true,
 				maxIterations: options.maxIterations ?? 10,
 			});
 
@@ -479,16 +482,45 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 				response.output = parsedOutput?.output ?? parsedOutput;
 			}
 
+			if (memory && response.intermediateSteps) {
+				function _createToolMessage(step: ToolsAgentStep): ToolMessage {
+					return new ToolMessage({
+						tool_call_id: step.action.toolCallId,
+						content: step.observation,
+						additional_kwargs: { name: step.action.tool },
+					});
+				}
+				function formatToToolMessages(steps: ToolsAgentStep[]): BaseMessage[] {
+					return steps.flatMap(({ action, observation }) => {
+						if ('messageLog' in action && action.messageLog !== undefined) {
+							const log = action.messageLog;
+							return log.concat(_createToolMessage({ action, observation }));
+						} else {
+							return [new AIMessage(action.log)];
+						}
+					});
+				}
+
+				const newToolMessages = formatToToolMessages(response.intermediateSteps);
+				for (const message of newToolMessages) {
+					await memory.chatHistory.addMessage(message);
+				}
+			}
+
 			// Omit internal keys before returning the result.
+			const omitKeys = [
+				'system_message',
+				'formatting_instructions',
+				'input',
+				'chat_history',
+				'agent_scratchpad',
+			];
+
+			if (options.returnIntermediateSteps !== true) {
+				omitKeys.push('intermediateSteps');
+			}
 			const itemResult = {
-				json: omit(
-					response,
-					'system_message',
-					'formatting_instructions',
-					'input',
-					'chat_history',
-					'agent_scratchpad',
-				),
+				json: omit(response, ...omitKeys),
 			};
 
 			returnData.push(itemResult);
