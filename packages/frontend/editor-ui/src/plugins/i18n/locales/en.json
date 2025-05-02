@@ -1583,6 +1583,7 @@
 	"parameterInput.selectDateAndTime": "Select date and time",
 	"parameterInput.selectACredentialTypeFromTheDropdown": "Select a credential type from the dropdown",
 	"parameterInput.theValueIsNotSupported": "The value \"{checkValue}\" is not supported!",
+	"parameterInput.selectedWorkflowIsArchived": "The selected workflow is archived",
 	"parameterInputExpanded.openDocs": "Open docs",
 	"parameterInputExpanded.thisFieldIsRequired": "This field is required",
 	"parameterInputList.delete": "Delete",
