@@ -105,12 +105,11 @@ describe('Two-factor authentication', { disableAutoLogin: true }, () => {
 		mainSidebar.actions.signout();
 	});
 
-	it('Should prompt for MFA code or recovery code when first name or last name changes', () => {
+	it('Should not prompt for MFA code or recovery code when first name or last name changes', () => {
 		const { email, password } = user;
 		signinPage.actions.loginWithEmailAndPassword(email, password);
 		personalSettingsPage.actions.enableMfa();
 		personalSettingsPage.actions.updateFirstAndLastName('newFirstName', 'newLastName');
-		personalSettingsPage.getters.mfaSaveButton().click();
 		successToast().should('exist');
 		mainSidebar.actions.signout();
 	});
