@@ -119,6 +119,27 @@ export class JinaAi implements INodeType {
 						value: 'deepResearch',
 						action: 'Perform Deep Research',
 						description: 'Research a topic and generate a structured research report',
+						routing: {
+							request: {
+								method: 'POST',
+								url: 'https://deepsearch.jina.ai/v1/chat/completions',
+								body: {
+									messages: [
+										{
+											role: 'user',
+											content: '={{ $parameter["researchQuery"] }}',
+										},
+									],
+									max_returned_urls: '={{ $parameter["options"]["maxReturnedSources"] }}',
+									boost_hostnames:
+										'={{ $parameter["options"]["prioritizeSources"].split(",").map((s) => s.trim()) }}',
+									bad_hostnames:
+										'={{ $parameter["options"]["excludeSources"].split(",").map((s) => s.trim()) }}',
+									only_hostnames:
+										'={{ $parameter["options"]["siteFilter"].split(",").map((s) => s.trim()) }}',
+								},
+							},
+						},
 					},
 				],
 				default: 'deepResearch',
