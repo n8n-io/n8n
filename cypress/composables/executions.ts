@@ -21,9 +21,17 @@ export function getExecutionPreviewOutputPanelRelatedExecutionLink() {
 	return getExecutionPreviewBody().findChildByTestId('related-execution-link');
 }
 
+export function getLogsOverviewStatus() {
+	return getExecutionPreviewBody().findChildByTestId('logs-overview-status');
+}
+
 /**
  * Actions
  */
+
+export function openExecutions() {
+	cy.getByTestId('radio-button-executions').click();
+}
 
 export const openExecutionPreviewNode = (name: string) =>
 	getExecutionPreviewBodyNodesByName(name).dblclick();
