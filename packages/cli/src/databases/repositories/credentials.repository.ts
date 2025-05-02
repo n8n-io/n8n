@@ -1,10 +1,9 @@
+import { CredentialsEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, In, Repository, Like } from '@n8n/typeorm';
 import type { FindManyOptions } from '@n8n/typeorm';
 
 import type { ListQuery } from '@/requests';
-
-import { CredentialsEntity } from '../entities/credentials-entity';
 
 @Service()
 export class CredentialsRepository extends Repository<CredentialsEntity> {

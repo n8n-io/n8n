@@ -1,15 +1,15 @@
 import type { ProjectRole } from '@n8n/api-types';
+import type { Project } from '@n8n/db';
+import type { User } from '@n8n/db';
+import type { ListQueryDb } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { In } from '@n8n/typeorm';
 
 import config from '@/config';
 import { CredentialsService } from '@/credentials/credentials.service';
-import type { Project } from '@/databases/entities/project';
-import type { User } from '@/databases/entities/user';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import { ProjectService } from '@/services/project.service.ee';
-import type { ListQueryDb } from '@/types-db';
 import { UserManagementMailer } from '@/user-management/email';
 import { createWorkflow, shareWorkflowWithUsers } from '@test-integration/db/workflows';
 
