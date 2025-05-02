@@ -1,10 +1,10 @@
+import type { InstalledPackages } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { CommunityNodeAttributes, INodeTypeDescription } from 'n8n-workflow';
 
 import { CommunityPackagesController } from '@/controllers/community-packages.controller';
 import type { NodeRequest } from '@/requests';
 
-import type { InstalledPackages } from '../../databases/entities/installed-packages';
 import type { EventService } from '../../events/event.service';
 import type { Push } from '../../push';
 import type { CommunityNodeTypesService } from '../../services/community-node-types.service';
