@@ -8,6 +8,11 @@ import { NodeConnectionTypes, NodeOperationError, UnexpectedError } from 'n8n-wo
 
 import { ChainRetrievalQa } from '../ChainRetrievalQa.node';
 
+jest.mock('n8n-workflow', () => ({
+	...jest.requireActual('n8n-workflow'),
+	sleep: jest.fn(),
+}));
+
 const createExecuteFunctionsMock = (
 	parameters: IDataObject,
 	fakeLlm: BaseLanguageModel,
@@ -80,7 +85,12 @@ describe('ChainRetrievalQa', () => {
 			const params = {
 				promptType: 'define',
 				text: 'What is the capital of France?',
-				options: {},
+				options: {
+					batching: {
+						batchSize: 1,
+						delayBetweenBatches: 100,
+					},
+				},
 			};
 
 			const result = await node.execute.call(
@@ -114,7 +124,12 @@ describe('ChainRetrievalQa', () => {
 			const params = {
 				promptType: 'define',
 				text: 'What is the capital of France?',
-				options: {},
+				options: {
+					batching: {
+						batchSize: 1,
+						delayBetweenBatches: 100,
+					},
+				},
 			};
 
 			const result = await node.execute.call(
@@ -158,6 +173,10 @@ describe('ChainRetrievalQa', () => {
 				text: 'What is the capital of France?',
 				options: {
 					systemPromptTemplate: customSystemPrompt,
+					batching: {
+						batchSize: 1,
+						delayBetweenBatches: 100,
+					},
 				},
 			};
 
@@ -185,7 +204,12 @@ describe('ChainRetrievalQa', () => {
 			const params = {
 				promptType: 'define',
 				text: undefined, // undefined query
-				options: {},
+				options: {
+					batching: {
+						batchSize: 1,
+						delayBetweenBatches: 100,
+					},
+				},
 			};
 
 			await expect(
@@ -211,7 +235,12 @@ describe('ChainRetrievalQa', () => {
 			const params = {
 				promptType: 'define',
 				text: 'What is the capital of France?',
-				options: {},
+				options: {
+					batching: {
+						batchSize: 1,
+						delayBetweenBatches: 100,
+					},
+				},
 			};
 
 			// Override continueOnFail to return true
