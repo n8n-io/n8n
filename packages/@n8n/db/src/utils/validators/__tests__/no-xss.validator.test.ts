@@ -48,7 +48,7 @@ describe('NoXss', () => {
 		for (const name of VALID_NAMES) {
 			test(`should allow ${name}`, async () => {
 				entity.name = name;
-				expect(await validate(entity)).toBeEmptyArray();
+				await expect(validate(entity)).resolves.toHaveLength(0);
 			});
 		}
 	});
@@ -59,7 +59,7 @@ describe('NoXss', () => {
 		for (const timestamp of VALID_TIMESTAMPS) {
 			test(`should allow ${timestamp}`, async () => {
 				entity.timestamp = timestamp;
-				await expect(validate(entity)).resolves.toBeEmptyArray();
+				await expect(validate(entity)).resolves.toHaveLength(0);
 			});
 		}
 	});
@@ -70,7 +70,7 @@ describe('NoXss', () => {
 		for (const version of VALID_VERSIONS) {
 			test(`should allow ${version}`, async () => {
 				entity.version = version;
-				await expect(validate(entity)).resolves.toBeEmptyArray();
+				await expect(validate(entity)).resolves.toHaveLength(0);
 			});
 		}
 	});
@@ -81,7 +81,7 @@ describe('NoXss', () => {
 		for (const str of VALID_MISCELLANEOUS_STRINGS) {
 			test(`should allow ${str}`, async () => {
 				entity.name = str;
-				await expect(validate(entity)).resolves.toBeEmptyArray();
+				await expect(validate(entity)).resolves.toHaveLength(0);
 			});
 		}
 	});
@@ -95,7 +95,7 @@ describe('NoXss', () => {
 		for (const arr of VALID_STRING_ARRAYS) {
 			test(`should allow array: ${JSON.stringify(arr)}`, async () => {
 				entity.categories = arr;
-				await expect(validate(entity)).resolves.toBeEmptyArray();
+				await expect(validate(entity)).resolves.toHaveLength(0);
 			});
 		}
 
