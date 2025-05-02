@@ -227,6 +227,52 @@ describe('KafkaTrigger Node', () => {
 		]);
 	});
 
+	it('should instantiate SchemaRegistry with auth when username and password are provided', async () => {
+		const { emit } = await testTriggerNode(KafkaTrigger, {
+			mode: 'trigger',
+			node: {
+				parameters: {
+					topic: 'test-topic',
+					groupId: 'test-group',
+					useSchemaRegistry: true,
+					schemaRegistryUrl: 'http://localhost:8081',
+					schemaRegistryUsername: 'user1',
+					schemaRegistryPassword: 'pass1',
+					options: { parallelProcessing: true },
+				},
+			},
+			credential: {
+				brokers: 'localhost:9092',
+				clientId: 'n8n-kafka',
+				ssl: false,
+				authentication: false,
+			},
+		});
+
+		await publishMessage({
+			value: Buffer.from('test-message'),
+		});
+
+		expect(SchemaRegistry).toHaveBeenCalledWith({
+			host: 'http://localhost:8081',
+			auth: {
+				username: 'user1',
+				password: 'pass1',
+			},
+		});
+		expect(mockRegistryDecode).toHaveBeenCalledWith(Buffer.from('test-message'));
+		expect(emit).toHaveBeenCalledWith([
+			[
+				{
+					json: {
+						message: { data: 'decoded-data' },
+						topic: 'test-topic',
+					},
+				},
+			],
+		]);
+	});
+
 	it('should parse JSON message when jsonParseMessage is true', async () => {
 		const { emit } = await testTriggerNode(KafkaTrigger, {
 			mode: 'trigger',
