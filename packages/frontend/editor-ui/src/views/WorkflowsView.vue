@@ -376,6 +376,7 @@ watch(
 	async (newVal) => {
 		currentFolderId.value = newVal as string;
 		filters.value.search = '';
+		saveFiltersOnQueryString();
 		await fetchWorkflows();
 	},
 );
@@ -708,6 +709,7 @@ const setFiltersFromQueryString = async () => {
 		filters.value.showArchived = showArchived === 'true';
 	} else {
 		delete newQuery.showArchived;
+		filters.value.showArchived = false;
 	}
 
 	void router.replace({ query: newQuery });
@@ -1649,9 +1651,8 @@ const onNameSubmit = async ({
 			</div>
 			<div class="mb-s">
 				<N8nCheckbox
-					ref="inputRef"
 					:label="i18n.baseText('workflows.filters.showArchived')"
-					:model-value="filters.showArchived"
+					:model-value="filters.showArchived || false"
 					data-test-id="show-archived-checkbox"
 					@update:model-value="setKeyValue('showArchived', $event)"
 				/>
