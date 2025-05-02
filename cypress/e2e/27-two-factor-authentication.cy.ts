@@ -5,6 +5,7 @@ import { INSTANCE_OWNER, INSTANCE_ADMIN, BACKEND_BASE_URL } from '../constants';
 import { SigninPage } from '../pages';
 import { MfaLoginPage } from '../pages/mfa-login';
 import { PersonalSettingsPage } from '../pages/settings-personal';
+import { successToast } from '../pages/notifications';
 
 const MFA_SECRET = 'KVKFKRCPNZQUYMLXOVYDSQKJKZDTSRLD';
 
@@ -78,6 +79,39 @@ describe('Two-factor authentication', { disableAutoLogin: true }, () => {
 		const disableToken = generateOTPToken(user.mfaSecret);
 		personalSettingsPage.actions.disableMfa(disableToken);
 		personalSettingsPage.getters.enableMfaButton().should('exist');
+		mainSidebar.actions.signout();
+	});
+
+	it('Should prompt for MFA code when email changes', () => {
+		const { email, password } = user;
+		signinPage.actions.loginWithEmailAndPassword(email, password);
+		personalSettingsPage.actions.enableMfa();
+		personalSettingsPage.actions.updateEmail('newemail@test.com');
+		const mfaCode = generateOTPToken(user.mfaSecret);
+		personalSettingsPage.getters.mfaCodeOrMfaRecoveryCodeInput().type(mfaCode);
+		personalSettingsPage.getters.mfaSaveButton().click();
+		successToast().should('exist');
+		mainSidebar.actions.signout();
+	});
+
+	it('Should prompt for MFA recovery code when email changes', () => {
+		const { email, password } = user;
+		signinPage.actions.loginWithEmailAndPassword(email, password);
+		personalSettingsPage.actions.enableMfa();
+		personalSettingsPage.actions.updateEmail('newemail@test.com');
+		personalSettingsPage.getters.mfaCodeOrMfaRecoveryCodeInput().type(RECOVERY_CODE);
+		personalSettingsPage.getters.mfaSaveButton().click();
+		successToast().should('exist');
+		mainSidebar.actions.signout();
+	});
+
+	it('Should prompt for MFA code or recovery code when first name or last name changes', () => {
+		const { email, password } = user;
+		signinPage.actions.loginWithEmailAndPassword(email, password);
+		personalSettingsPage.actions.enableMfa();
+		personalSettingsPage.actions.updateFirstAndLastName('newFirstName', 'newLastName');
+		personalSettingsPage.getters.mfaSaveButton().click();
+		successToast().should('exist');
 		mainSidebar.actions.signout();
 	});
 
