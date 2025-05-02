@@ -1,10 +1,10 @@
-import { DateTimeColumn, JsonColumn, WithStringId } from '@n8n/db';
 import { Column, Entity, ManyToOne, OneToOne } from '@n8n/typeorm';
 import type { IDataObject } from 'n8n-workflow';
 
-import type { ExecutionEntity } from '@/databases/entities/execution-entity';
-import { TestRun } from '@/databases/entities/test-run.ee';
-import type { TestCaseExecutionErrorCode } from '@/evaluation.ee/test-runner/errors.ee';
+import { WithStringId, DateTimeColumn, JsonColumn } from './abstract-entity';
+import type { ExecutionEntity } from './execution-entity';
+import { TestRun } from './test-run.ee';
+import type { TestCaseExecutionErrorCode } from './types-db';
 
 export type TestCaseRunMetrics = Record<string, number | boolean>;
 

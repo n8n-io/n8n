@@ -1,8 +1,8 @@
-import { WithTimestampsAndStringId } from '@n8n/db';
 import { Column, Entity, Index, ManyToOne } from '@n8n/typeorm';
 import { Length } from 'class-validator';
 
-import { TestDefinition } from '@/databases/entities/test-definition.ee';
+import { WithTimestampsAndStringId } from './abstract-entity';
+import { TestDefinition } from './test-definition.ee';
 
 /**
  * Entity representing a Test Metric

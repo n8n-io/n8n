@@ -278,3 +278,33 @@ export type FolderWithWorkflowAndSubFolderCount = Folder & {
 	workflowCount: boolean;
 	subFolderCount: number;
 };
+
+export type TestRunFinalResult = 'success' | 'error' | 'warning';
+
+export type TestRunErrorCode =
+	| 'PAST_EXECUTIONS_NOT_FOUND'
+	| 'EVALUATION_WORKFLOW_NOT_FOUND'
+	| 'INTERRUPTED'
+	| 'UNKNOWN_ERROR';
+
+export type TestCaseExecutionErrorCode =
+	| 'MOCKED_NODE_DOES_NOT_EXIST'
+	| 'TRIGGER_NO_LONGER_EXISTS'
+	| 'FAILED_TO_EXECUTE_WORKFLOW'
+	| 'EVALUATION_WORKFLOW_DOES_NOT_EXIST'
+	| 'FAILED_TO_EXECUTE_EVALUATION_WORKFLOW'
+	| 'INVALID_METRICS'
+	| 'PAYLOAD_LIMIT_EXCEEDED'
+	| 'UNKNOWN_ERROR';
+
+export type AggregatedTestRunMetrics = Record<string, number | boolean>;
+
+// Entity representing a node in a workflow under test, for which data should be mocked during test execution
+export type MockedNodeItem = {
+	name?: string;
+	id: string;
+};
+
+export type RunningMode = 'dry' | 'live';
+
+export type SyncStatus = 'success' | 'error';
