@@ -174,11 +174,11 @@ export class McpServer {
 
 				try {
 					const result = await requestedTool.invoke(request.params.arguments);
-					if (!this.resolveFunctions[callId]) {
-						throw new OperationalError('Tool call not found');
+					if (this.resolveFunctions[callId]) {
+						this.resolveFunctions[callId]();
+					} else {
+						this.logger.warn(`No resolve function found for ${callId}`);
 					}
-
-					this.resolveFunctions[callId]();
 
 					this.logger.debug(`Got request for ${requestedTool.name}, and executed it.`);
 
