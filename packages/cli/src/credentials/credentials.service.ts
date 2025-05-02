@@ -72,10 +72,12 @@ export class CredentialsService {
 			listQueryOptions = {},
 			includeScopes = false,
 			includeData = false,
+			onlySharedWithMe = false,
 		}: {
 			listQueryOptions?: ListQuery.Options & { includeData?: boolean };
 			includeScopes?: boolean;
 			includeData?: boolean;
+			onlySharedWithMe?: boolean;
 		} = {},
 	) {
 		const returnAll = user.hasGlobalScope('credential:list');
@@ -84,6 +86,14 @@ export class CredentialsService {
 			typeof listQueryOptions.filter?.projectId === 'string'
 				? listQueryOptions.filter.projectId
 				: undefined;
+
+		if (onlySharedWithMe) {
+			listQueryOptions.filter = {
+				...listQueryOptions.filter,
+				withRole: 'credential:user',
+				user,
+			};
+		}
 
 		if (includeData) {
 			// We need the scopes to check if we're allowed to include the decrypted
@@ -118,7 +128,10 @@ export class CredentialsService {
 				// it's shared to a project, it won't be able to find the home project.
 				// To solve this, we have to get all the relation now, even though
 				// we're deleting them later.
-				if ((listQueryOptions.filter?.shared as { projectId?: string })?.projectId) {
+				if (
+					(listQueryOptions.filter?.shared as { projectId?: string })?.projectId ??
+					onlySharedWithMe
+				) {
 					const relations = await this.sharedCredentialsRepository.getAllRelationsForCredentials(
 						credentials.map((c) => c.id),
 					);
@@ -168,7 +181,10 @@ export class CredentialsService {
 			// it's shared to a project, it won't be able to find the home project.
 			// To solve this, we have to get all the relation now, even though
 			// we're deleting them later.
-			if ((listQueryOptions.filter?.shared as { projectId?: string })?.projectId) {
+			if (
+				(listQueryOptions.filter?.shared as { projectId?: string })?.projectId ??
+				onlySharedWithMe
+			) {
 				const relations = await this.sharedCredentialsRepository.getAllRelationsForCredentials(
 					credentials.map((c) => c.id),
 				);
