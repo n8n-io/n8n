@@ -4,7 +4,10 @@ export class JinaAi implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Jina AI',
 		name: 'jinaAi',
-		icon: 'file:jinaAI.svg',
+		icon: {
+			light: 'file:jinaAi.svg',
+			dark: 'file:jinaAi.dark.svg',
+		},
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{ $parameter["operation"] + ": " + $parameter["resource"] }}',
@@ -284,6 +287,7 @@ export class JinaAi implements INodeType {
 						type: 'number',
 						typeOptions: {
 							minValue: 1,
+							numberPrecision: 0,
 						},
 						default: '',
 						placeholder: 'e.g. 5',
