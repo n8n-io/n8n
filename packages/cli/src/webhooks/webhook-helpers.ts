@@ -7,6 +7,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 import { GlobalConfig } from '@n8n/config';
+import type { Project } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type express from 'express';
 import get from 'lodash/get';
@@ -49,7 +50,6 @@ import { finished } from 'stream/promises';
 import { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
 import { MCP_TRIGGER_NODE_TYPE } from '@/constants';
-import type { Project } from '@/databases/entities/project';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';

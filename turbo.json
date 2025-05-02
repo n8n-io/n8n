@@ -68,6 +68,7 @@
 				"@n8n/api-types#test",
 				"@n8n/config#test",
 				"@n8n/decorators#test",
+				"@n8n/db#test",
 				"@n8n/di#test",
 				"@n8n/client-oauth2#test",
 				"@n8n/imap#test",
