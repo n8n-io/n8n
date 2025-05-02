@@ -1,4 +1,4 @@
-import type { User } from '@n8n/db';
+import type { User, ExecutionEntity, MockedNodeItem, TestDefinition, TestRun } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { parse } from 'flatted';
 import difference from 'lodash/difference';
@@ -17,9 +17,6 @@ import assert from 'node:assert';
 import { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
 import { EVALUATION_METRICS_NODE } from '@/constants';
-import type { ExecutionEntity } from '@/databases/entities/execution-entity';
-import type { MockedNodeItem, TestDefinition } from '@/databases/entities/test-definition.ee';
-import type { TestRun } from '@/databases/entities/test-run.ee';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { TestCaseExecutionRepository } from '@/databases/repositories/test-case-execution.repository.ee';
 import { TestMetricRepository } from '@/databases/repositories/test-metric.repository.ee';

@@ -1,4 +1,5 @@
-import type { MockedNodeItem } from '@/databases/entities/test-definition.ee';
+import type { MockedNodeItem } from '@n8n/db';
+
 import type { AuthenticatedRequest, ListQuery } from '@/requests';
 
 // ----------------------------------

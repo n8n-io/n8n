@@ -1,8 +1,8 @@
+import { TestDefinition } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { FindManyOptions, FindOptionsWhere } from '@n8n/typeorm';
 import { DataSource, In, Repository } from '@n8n/typeorm';
 
-import { TestDefinition } from '@/databases/entities/test-definition.ee';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import type { ListQuery } from '@/requests';
 

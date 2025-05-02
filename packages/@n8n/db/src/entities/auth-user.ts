@@ -1,5 +1,6 @@
-import { User } from '@n8n/db';
 import { Column, Entity } from '@n8n/typeorm';
+
+import { User } from './user';
 
 @Entity({ name: 'user' })
 export class AuthUser extends User {

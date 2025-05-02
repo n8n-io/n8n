@@ -1,15 +1,11 @@
-import { JsonColumn, WithTimestampsAndStringId, WorkflowEntity } from '@n8n/db';
 import { Column, Entity, Index, ManyToOne, OneToMany, RelationId } from '@n8n/typeorm';
 import { Length } from 'class-validator';
 
-import { AnnotationTagEntity } from '@/databases/entities/annotation-tag-entity.ee';
-import type { TestMetric } from '@/databases/entities/test-metric.ee';
-
-// Entity representing a node in a workflow under test, for which data should be mocked during test execution
-export type MockedNodeItem = {
-	name?: string;
-	id: string;
-};
+import { JsonColumn, WithTimestampsAndStringId } from './abstract-entity';
+import { AnnotationTagEntity } from './annotation-tag-entity.ee';
+import type { TestMetric } from './test-metric.ee';
+import type { MockedNodeItem } from './types-db';
+import { WorkflowEntity } from './workflow-entity';
 
 /**
  * Entity representing a Test Definition

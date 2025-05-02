@@ -1,8 +1,7 @@
-import { DateTimeColumn, AuthProviderType } from '@n8n/db';
 import { Column, Entity, PrimaryGeneratedColumn } from '@n8n/typeorm';
 
-export type RunningMode = 'dry' | 'live';
-export type SyncStatus = 'success' | 'error';
+import { DateTimeColumn } from './abstract-entity';
+import { AuthProviderType, RunningMode, SyncStatus } from './types-db';
 
 @Entity()
 export class AuthProviderSyncHistory {

@@ -1,3 +1,4 @@
+import type { TestCaseExecution, MockedNodeItem, TestRunFinalResult } from '@n8n/db';
 import assert from 'assert';
 import { mapValues, pick } from 'lodash';
 import type {
@@ -9,9 +10,6 @@ import type {
 	INode,
 } from 'n8n-workflow';
 
-import type { TestCaseExecution } from '@/databases/entities/test-case-execution.ee';
-import type { MockedNodeItem } from '@/databases/entities/test-definition.ee';
-import type { TestRunFinalResult } from '@/databases/repositories/test-run.repository.ee';
 import { TestCaseExecutionError } from '@/evaluation.ee/test-runner/errors.ee';
 import type { TestCaseRunMetadata } from '@/evaluation.ee/test-runner/test-runner.service.ee';
 

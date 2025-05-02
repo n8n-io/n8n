@@ -1,4 +1,5 @@
 import { GlobalConfig } from '@n8n/config';
+import { entities } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { DataSourceOptions, LoggerOptions } from '@n8n/typeorm';
 import type { MysqlConnectionOptions } from '@n8n/typeorm/driver/mysql/MysqlConnectionOptions';
@@ -10,7 +11,10 @@ import { UserError } from 'n8n-workflow';
 import path from 'path';
 import type { TlsOptions } from 'tls';
 
-import { entities } from './entities';
+import { InsightsByPeriod } from '@/modules/insights/database/entities/insights-by-period';
+import { InsightsMetadata } from '@/modules/insights/database/entities/insights-metadata';
+import { InsightsRaw } from '@/modules/insights/database/entities/insights-raw';
+
 import { mysqlMigrations } from './migrations/mysqldb';
 import { postgresMigrations } from './migrations/postgresdb';
 import { sqliteMigrations } from './migrations/sqlite';
@@ -32,7 +36,7 @@ const getCommonOptions = () => {
 
 	return {
 		entityPrefix,
-		entities: Object.values(entities),
+		entities: [...Object.values(entities), InsightsRaw, InsightsByPeriod, InsightsMetadata],
 		subscribers: Object.values(subscribers),
 		migrationsTableName: `${entityPrefix}migrations`,
 		migrationsRun: false,
