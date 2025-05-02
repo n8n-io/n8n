@@ -99,7 +99,7 @@ export const postFields: INodeProperties[] = [
       },
     },
     default: '',
-    description: 'The Media Name with extention (example.jpeg)',
+    description: 'The Media Name with extension (example.jpeg)',
   },
 	{
 		displayName: 'Additional Fields',
@@ -413,7 +413,7 @@ export const postFields: INodeProperties[] = [
       },
     },
     default: '',
-    description: 'The Media Name with extention (example.jpeg)',
+    description: 'The Media Name with extension (example.jpeg)',
   },
 	{
 		displayName: 'Update Fields',
