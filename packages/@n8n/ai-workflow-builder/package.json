@@ -1,6 +1,6 @@
 {
   "name": "@n8n/ai-workflow-builder",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "typecheck": "tsc --noEmit",
@@ -33,7 +33,7 @@
     "@langchain/openai": "catalog:",
     "@n8n/config": "workspace:*",
     "@n8n/di": "workspace:*",
-    "@n8n_io/ai-assistant-sdk": "1.13.0",
+    "@n8n_io/ai-assistant-sdk": "catalog:",
     "n8n-workflow": "workspace:*",
     "zod": "catalog:"
   },

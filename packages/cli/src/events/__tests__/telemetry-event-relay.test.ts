@@ -1,12 +1,13 @@
 import type { GlobalConfig } from '@n8n/config';
+import type { CredentialsEntity } from '@n8n/db';
+import type { WorkflowEntity } from '@n8n/db';
+import type { IWorkflowDb } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import { type BinaryDataConfig, InstanceSettings } from 'n8n-core';
 import type { INode, INodesGraphResult } from 'n8n-workflow';
 import { NodeApiError, TelemetryHelpers, type IRun, type IWorkflowBase } from 'n8n-workflow';
 
 import { N8N_VERSION } from '@/constants';
-import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import type { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import type { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
 import type { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
@@ -14,7 +15,6 @@ import type { WorkflowRepository } from '@/databases/repositories/workflow.repos
 import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
-import type { IWorkflowDb } from '@/interfaces';
 import type { License } from '@/license';
 import type { NodeTypes } from '@/node-types';
 import type { Telemetry } from '@/telemetry';

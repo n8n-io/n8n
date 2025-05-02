@@ -1,7 +1,7 @@
+import type { CredentialsEntity } from '@n8n/db';
+import { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
-import { User } from '@/databases/entities/user';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { SettingsRepository } from '@/databases/repositories/settings.repository';

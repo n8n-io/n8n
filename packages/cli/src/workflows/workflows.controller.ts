@@ -4,6 +4,8 @@ import {
 	TransferWorkflowBodyDto,
 } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
+import type { Project } from '@n8n/db';
+import { SharedWorkflow, WorkflowEntity } from '@n8n/db';
 import {
 	Body,
 	Delete,
@@ -25,9 +27,6 @@ import { Logger } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import type { Project } from '@/databases/entities/project';
-import { SharedWorkflow } from '@/databases/entities/shared-workflow';
-import { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
@@ -55,6 +54,7 @@ import * as utils from '@/utils';
 import * as WorkflowHelpers from '@/workflow-helpers';
 
 import { WorkflowExecutionService } from './workflow-execution.service';
+import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowHistoryService } from './workflow-history.ee/workflow-history.service.ee';
 import { WorkflowRequest } from './workflow.request';
 import { WorkflowService } from './workflow.service';
@@ -84,6 +84,7 @@ export class WorkflowsController {
 		private readonly eventService: EventService,
 		private readonly globalConfig: GlobalConfig,
 		private readonly folderService: FolderService,
+		private readonly workflowFinderService: WorkflowFinderService,
 	) {}
 
 	@Post('/')
@@ -176,7 +177,7 @@ export class WorkflowsController {
 
 			await transactionManager.save<SharedWorkflow>(newSharedWorkflow);
 
-			return await this.sharedWorkflowRepository.findWorkflowForUser(
+			return await this.workflowFinderService.findWorkflowForUser(
 				workflow.id,
 				req.user,
 				['workflow:read'],
@@ -226,6 +227,7 @@ export class WorkflowsController {
 				req.listQueryOptions,
 				!!req.query.includeScopes,
 				!!req.query.includeFolders,
+				!!req.query.onlySharedWithMe,
 			);
 
 			res.json({ count, data });
@@ -292,7 +294,7 @@ export class WorkflowsController {
 				relations.tags = true;
 			}
 
-			const workflow = await this.sharedWorkflowRepository.findWorkflowForUser(
+			const workflow = await this.workflowFinderService.findWorkflowForUser(
 				workflowId,
 				req.user,
 				['workflow:read'],
@@ -320,7 +322,7 @@ export class WorkflowsController {
 
 		// sharing disabled
 
-		const workflow = await this.sharedWorkflowRepository.findWorkflowForUser(
+		const workflow = await this.workflowFinderService.findWorkflowForUser(
 			workflowId,
 			req.user,
 			['workflow:read'],
@@ -442,7 +444,7 @@ export class WorkflowsController {
 			throw new BadRequestError('Bad request');
 		}
 
-		const workflow = await this.sharedWorkflowRepository.findWorkflowForUser(workflowId, req.user, [
+		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, req.user, [
 			'workflow:share',
 		]);
 
@@ -508,6 +510,7 @@ export class WorkflowsController {
 			workflowId,
 			body.destinationProjectId,
 			body.shareCredentials,
+			body.destinationParentFolderId,
 		);
 	}
 }
