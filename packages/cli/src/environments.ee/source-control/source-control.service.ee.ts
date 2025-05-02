@@ -3,7 +3,7 @@ import type {
 	PushWorkFolderRequestDto,
 	SourceControlledFile,
 } from '@n8n/api-types';
-import type { Variables } from '@n8n/db';
+import type { Variables, TagEntity, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { writeFileSync } from 'fs';
 import { Logger } from 'n8n-core';
@@ -11,8 +11,6 @@ import { UnexpectedError, UserError } from 'n8n-workflow';
 import path from 'path';
 import type { PushResult } from 'simple-git';
 
-import type { TagEntity } from '@/databases/entities/tag-entity';
-import type { User } from '@/databases/entities/user';
 import { FolderRepository } from '@/databases/repositories/folder.repository';
 import { TagRepository } from '@/databases/repositories/tag.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';

@@ -1,4 +1,6 @@
 import { UserUpdateRequestDto } from '@n8n/api-types';
+import type { User } from '@n8n/db';
+import type { PublicUser } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
 import { mock, anyObject } from 'jest-mock-extended';
@@ -6,7 +8,6 @@ import jwt from 'jsonwebtoken';
 
 import { AUTH_COOKIE_NAME } from '@/constants';
 import { MeController } from '@/controllers/me.controller';
-import type { User } from '@/databases/entities/user';
 import { AuthUserRepository } from '@/databases/repositories/auth-user.repository';
 import { InvalidAuthTokenRepository } from '@/databases/repositories/invalid-auth-token.repository';
 import { UserRepository } from '@/databases/repositories/user.repository';
@@ -18,7 +19,6 @@ import { License } from '@/license';
 import { MfaService } from '@/mfa/mfa.service';
 import type { AuthenticatedRequest, MeRequest } from '@/requests';
 import { UserService } from '@/services/user.service';
-import type { PublicUser } from '@/types-db';
 import { mockInstance } from '@test/mocking';
 import { badPasswords } from '@test/test-data';
 
