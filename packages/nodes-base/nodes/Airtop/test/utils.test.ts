@@ -1,8 +1,9 @@
 import { NodeApiError } from 'n8n-workflow';
 
 import { createMockExecuteFunction } from './node/helpers';
-import { ERROR_MESSAGES } from '../constants';
+import { ERROR_MESSAGES, SESSION_STATUS } from '../constants';
 import {
+	createSession,
 	createSessionAndWindow,
 	validateProfileName,
 	validateTimeoutMinutes,
@@ -17,14 +18,28 @@ import {
 } from '../GenericFunctions';
 import type * as transport from '../transport';
 
+const mockCreatedSession = {
+	data: { id: 'new-session-123', status: SESSION_STATUS.RUNNING },
+};
+
 jest.mock('../transport', () => {
 	const originalModule = jest.requireActual<typeof transport>('../transport');
 	return {
 		...originalModule,
-		apiRequest: jest.fn(async (method: string, endpoint: string) => {
+		apiRequest: jest.fn(async (method: string, endpoint: string, params: { fail?: boolean }) => {
+			// return failed request
+			if (endpoint.endsWith('/sessions') && params.fail) {
+				return {};
+			}
+
 			// create session
-			if (endpoint.includes('/create-session')) {
-				return { sessionId: 'new-session-123' };
+			if (method === 'POST' && endpoint.endsWith('/sessions')) {
+				return { ...mockCreatedSession };
+			}
+
+			// get session status - general case
+			if (method === 'GET' && endpoint.includes('/sessions')) {
+				return { ...mockCreatedSession };
 			}
 
 			// create window
@@ -412,6 +427,19 @@ describe('Test Airtop utils', () => {
 
 			const result = shouldCreateNewSession.call(createMockExecuteFunction(nodeParameters), 0);
 			expect(result).toBe(false);
+		});
+	});
+
+	describe('createSession', () => {
+		it('should create a session and return the session ID', async () => {
+			const result = await createSession.call(createMockExecuteFunction({}), {});
+			expect(result).toEqual({ sessionId: 'new-session-123' });
+		});
+
+		it('should throw an error if no session ID is returned', async () => {
+			await expect(
+				createSession.call(createMockExecuteFunction({}), { fail: true }),
+			).rejects.toThrow();
 		});
 	});
 

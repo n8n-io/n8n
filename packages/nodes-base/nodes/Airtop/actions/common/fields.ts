@@ -61,6 +61,15 @@ export const outputSchemaField: INodeProperties = {
 	default: '',
 };
 
+export const parseJsonOutputField: INodeProperties = {
+	displayName: 'Parse JSON Output',
+	name: 'parseJsonOutput',
+	type: 'boolean',
+	default: true,
+	description:
+		"Whether to parse the model's response to JSON in the output. Requires the 'JSON Output Schema' parameter to be set.",
+};
+
 /**
  * Interaction related fields
  */
