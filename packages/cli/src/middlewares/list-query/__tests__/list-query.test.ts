@@ -1,3 +1,4 @@
+import type { ListQueryDb } from '@n8n/db';
 import type { Response, NextFunction } from 'express';
 
 import { filterListQueryMiddleware } from '@/middlewares/list-query/filter';
@@ -5,7 +6,6 @@ import { paginationListQueryMiddleware } from '@/middlewares/list-query/paginati
 import { selectListQueryMiddleware } from '@/middlewares/list-query/select';
 import type { ListQuery } from '@/requests';
 import * as ResponseHelper from '@/response-helper';
-import type { ListQueryDb } from '@/types-db';
 
 import { sortByQueryMiddleware } from '../sort-by';
 

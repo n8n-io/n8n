@@ -1,6 +1,6 @@
+import { WorkflowEntity } from '@n8n/db';
 import { UserError } from 'n8n-workflow';
 
-import { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import type { IrreversibleMigration, MigrationContext } from '@/databases/types';
 
 export class PurgeInvalidWorkflowConnections1675940580449 implements IrreversibleMigration {

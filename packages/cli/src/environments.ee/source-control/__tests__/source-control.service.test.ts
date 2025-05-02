@@ -1,12 +1,12 @@
 import type { SourceControlledFile } from '@n8n/api-types';
 import type { Variables } from '@n8n/db';
+import type { FolderWithWorkflowAndSubFolderCount } from '@n8n/db';
+import type { TagEntity } from '@n8n/db';
+import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
 
-import type { FolderWithWorkflowAndSubFolderCount } from '@/databases/entities/folder';
-import type { TagEntity } from '@/databases/entities/tag-entity';
-import type { User } from '@/databases/entities/user';
 import type { FolderRepository } from '@/databases/repositories/folder.repository';
 import type { TagRepository } from '@/databases/repositories/tag.repository';
 import { SourceControlPreferencesService } from '@/environments.ee/source-control/source-control-preferences.service.ee';

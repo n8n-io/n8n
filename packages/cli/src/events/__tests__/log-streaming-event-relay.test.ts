@@ -1,3 +1,4 @@
+import type { IWorkflowDb } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { INode, IRun, IWorkflowBase } from 'n8n-workflow';
 
@@ -5,7 +6,6 @@ import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event
 import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
-import type { IWorkflowDb } from '@/types-db';
 
 describe('LogStreamingEventRelay', () => {
 	const eventBus = mock<MessageEventBus>();

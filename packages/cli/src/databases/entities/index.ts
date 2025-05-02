@@ -7,35 +7,35 @@ import {
 	Settings,
 	Variables,
 	WebhookEntity,
+	AuthIdentity,
+	User,
+	WorkflowEntity,
+	CredentialsEntity,
+	ApiKey,
+	Folder,
+	FolderTagMapping,
+	Project,
+	ProjectRelation,
+	SharedCredentials,
+	SharedWorkflow,
+	TagEntity,
+	WorkflowStatistics,
+	WorkflowTagMapping,
 } from '@n8n/db';
 
 import { AnnotationTagEntity } from './annotation-tag-entity.ee';
 import { AnnotationTagMapping } from './annotation-tag-mapping.ee';
-import { ApiKey } from './api-key';
-import { AuthIdentity } from './auth-identity';
 import { AuthProviderSyncHistory } from './auth-provider-sync-history';
 import { AuthUser } from './auth-user';
-import { CredentialsEntity } from './credentials-entity';
 import { ExecutionAnnotation } from './execution-annotation.ee';
 import { ExecutionData } from './execution-data';
 import { ExecutionEntity } from './execution-entity';
 import { ExecutionMetadata } from './execution-metadata';
-import { Folder } from './folder';
-import { FolderTagMapping } from './folder-tag-mapping';
-import { Project } from './project';
-import { ProjectRelation } from './project-relation';
-import { SharedCredentials } from './shared-credentials';
-import { SharedWorkflow } from './shared-workflow';
-import { TagEntity } from './tag-entity';
 import { TestCaseExecution } from './test-case-execution.ee';
 import { TestDefinition } from './test-definition.ee';
 import { TestMetric } from './test-metric.ee';
 import { TestRun } from './test-run.ee';
-import { User } from './user';
-import { WorkflowEntity } from './workflow-entity';
 import { WorkflowHistory } from './workflow-history';
-import { WorkflowStatistics } from './workflow-statistics';
-import { WorkflowTagMapping } from './workflow-tag-mapping';
 import { InsightsByPeriod } from '../../modules/insights/database/entities/insights-by-period';
 import { InsightsMetadata } from '../../modules/insights/database/entities/insights-metadata';
 import { InsightsRaw } from '../../modules/insights/database/entities/insights-raw';

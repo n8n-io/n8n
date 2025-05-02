@@ -1,6 +1,5 @@
+import type { User } from '@n8n/db';
 import validator from 'validator';
-
-import type { User } from '@/databases/entities/user';
 
 import type { UserInvitationResult } from '../../shared/utils/users';
 

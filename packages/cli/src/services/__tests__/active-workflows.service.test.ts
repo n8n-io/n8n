@@ -1,8 +1,8 @@
+import type { User } from '@n8n/db';
+import { WorkflowEntity } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
 import type { ActivationErrorsService } from '@/activation-errors.service';
-import type { User } from '@/databases/entities/user';
-import { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import type { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import type { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';

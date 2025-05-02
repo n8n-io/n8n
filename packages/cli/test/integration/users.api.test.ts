@@ -1,9 +1,9 @@
+import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { v4 as uuid } from 'uuid';
 
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { UsersController } from '@/controllers/users.controller';
-import type { User } from '@/databases/entities/user';
 import { FolderRepository } from '@/databases/repositories/folder.repository';
 import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
 import { ProjectRepository } from '@/databases/repositories/project.repository';

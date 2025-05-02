@@ -1,4 +1,4 @@
-import type { Scope } from '@n8n/permissions';
+import type { Scope } from './types.ee';
 
 export const CREDENTIALS_SHARING_OWNER_SCOPES: Scope[] = [
 	'credential:read',

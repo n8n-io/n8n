@@ -1,4 +1,3 @@
-import { JsonColumn, WithTimestampsAndStringId, dbType, objectRetriever, sqlite } from '@n8n/db';
 import {
 	Column,
 	Entity,
@@ -13,13 +12,14 @@ import { Length } from 'class-validator';
 import { IConnections, IDataObject, IWorkflowSettings, WorkflowFEMeta } from 'n8n-workflow';
 import type { IBinaryKeyData, INode, IPairedItemData } from 'n8n-workflow';
 
-import type { IWorkflowDb } from '@/types-db';
-
+import { JsonColumn, WithTimestampsAndStringId, dbType } from './abstract-entity';
 import { type Folder } from './folder';
 import type { SharedWorkflow } from './shared-workflow';
 import type { TagEntity } from './tag-entity';
+import type { IWorkflowDb } from './types-db';
 import type { WorkflowStatistics } from './workflow-statistics';
 import type { WorkflowTagMapping } from './workflow-tag-mapping';
+import { objectRetriever, sqlite } from '../utils/transformers';
 
 @Entity()
 export class WorkflowEntity extends WithTimestampsAndStringId implements IWorkflowDb {

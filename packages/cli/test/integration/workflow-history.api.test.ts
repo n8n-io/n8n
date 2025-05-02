@@ -1,4 +1,4 @@
-import type { User } from '@/databases/entities/user';
+import type { User } from '@n8n/db';
 
 import { createOwner, createUser } from './shared/db/users';
 import { createWorkflowHistoryItem } from './shared/db/workflow-history';

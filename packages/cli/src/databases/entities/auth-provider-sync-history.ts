@@ -1,7 +1,5 @@
-import { DateTimeColumn } from '@n8n/db';
+import { DateTimeColumn, AuthProviderType } from '@n8n/db';
 import { Column, Entity, PrimaryGeneratedColumn } from '@n8n/typeorm';
-
-import { AuthProviderType } from './auth-identity';
 
 export type RunningMode = 'dry' | 'live';
 export type SyncStatus = 'success' | 'error';

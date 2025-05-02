@@ -1,4 +1,4 @@
-import { DateTimeColumn, datetimeColumnType, idStringifier } from '@n8n/db';
+import { DateTimeColumn, datetimeColumnType, idStringifier, WorkflowEntity } from '@n8n/db';
 import {
 	Column,
 	Entity,
@@ -18,7 +18,6 @@ import type { ExecutionAnnotation } from '@/databases/entities/execution-annotat
 
 import type { ExecutionData } from './execution-data';
 import type { ExecutionMetadata } from './execution-metadata';
-import { WorkflowEntity } from './workflow-entity';
 
 @Entity()
 @Index(['workflowId', 'id'])

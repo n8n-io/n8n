@@ -1,15 +1,8 @@
-import { DateTimeColumn } from '@n8n/db';
 import { Column, Entity, ManyToOne, PrimaryColumn } from '@n8n/typeorm';
 
+import { DateTimeColumn } from './abstract-entity';
+import { StatisticsNames } from './types-db';
 import { WorkflowEntity } from './workflow-entity';
-
-export const enum StatisticsNames {
-	productionSuccess = 'production_success',
-	productionError = 'production_error',
-	manualSuccess = 'manual_success',
-	manualError = 'manual_error',
-	dataLoaded = 'data_loaded',
-}
 
 @Entity()
 export class WorkflowStatistics {

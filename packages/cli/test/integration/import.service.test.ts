@@ -1,11 +1,11 @@
+import { TagEntity } from '@n8n/db';
+import type { Project } from '@n8n/db';
+import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type { INode } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import type { Project } from '@/databases/entities/project';
-import { TagEntity } from '@/databases/entities/tag-entity';
-import type { User } from '@/databases/entities/user';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { TagRepository } from '@/databases/repositories/tag.repository';

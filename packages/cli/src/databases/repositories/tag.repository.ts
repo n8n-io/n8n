@@ -1,11 +1,9 @@
+import type { IWorkflowDb } from '@n8n/db';
+import { TagEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { EntityManager } from '@n8n/typeorm';
 import { DataSource, In, Repository } from '@n8n/typeorm';
 import intersection from 'lodash/intersection';
-
-import type { IWorkflowDb } from '@/types-db';
-
-import { TagEntity } from '../entities/tag-entity';
 
 @Service()
 export class TagRepository extends Repository<TagEntity> {

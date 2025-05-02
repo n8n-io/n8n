@@ -1,7 +1,6 @@
-import { ProjectIcon, ProjectType } from '@n8n/api-types';
-import { WithTimestampsAndStringId } from '@n8n/db';
 import { Column, Entity, OneToMany } from '@n8n/typeorm';
 
+import { WithTimestampsAndStringId } from './abstract-entity';
 import type { ProjectRelation } from './project-relation';
 import type { SharedCredentials } from './shared-credentials';
 import type { SharedWorkflow } from './shared-workflow';
@@ -12,10 +11,10 @@ export class Project extends WithTimestampsAndStringId {
 	name: string;
 
 	@Column({ type: 'varchar', length: 36 })
-	type: ProjectType;
+	type: 'personal' | 'team';
 
 	@Column({ type: 'json', nullable: true })
-	icon: ProjectIcon;
+	icon: { type: 'emoji' | 'icon'; value: string } | null;
 
 	@OneToMany('ProjectRelation', 'project')
 	projectRelations: ProjectRelation[];

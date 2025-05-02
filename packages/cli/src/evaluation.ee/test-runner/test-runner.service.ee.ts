@@ -1,3 +1,4 @@
+import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { parse } from 'flatted';
 import difference from 'lodash/difference';
@@ -19,7 +20,6 @@ import { EVALUATION_METRICS_NODE } from '@/constants';
 import type { ExecutionEntity } from '@/databases/entities/execution-entity';
 import type { MockedNodeItem, TestDefinition } from '@/databases/entities/test-definition.ee';
 import type { TestRun } from '@/databases/entities/test-run.ee';
-import type { User } from '@/databases/entities/user';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { TestCaseExecutionRepository } from '@/databases/repositories/test-case-execution.repository.ee';
 import { TestMetricRepository } from '@/databases/repositories/test-metric.repository.ee';

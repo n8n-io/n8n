@@ -1,9 +1,9 @@
+import { AuthIdentity } from '@n8n/db';
+import { type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { ApiKeyScope, GlobalRole } from '@n8n/permissions';
 import { hash } from 'bcryptjs';
 
-import { AuthIdentity } from '@/databases/entities/auth-identity';
-import { type User } from '@/databases/entities/user';
 import { AuthIdentityRepository } from '@/databases/repositories/auth-identity.repository';
 import { AuthUserRepository } from '@/databases/repositories/auth-user.repository';
 import { UserRepository } from '@/databases/repositories/user.repository';

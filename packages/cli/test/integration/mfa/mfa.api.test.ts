@@ -1,9 +1,9 @@
+import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { randomString } from 'n8n-workflow';
 
 import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
-import type { User } from '@/databases/entities/user';
 import { AuthUserRepository } from '@/databases/repositories/auth-user.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ExternalHooks } from '@/external-hooks';

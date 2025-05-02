@@ -1,17 +1,17 @@
 import type { ProjectRole } from '@n8n/api-types';
+import type { Project } from '@n8n/db';
+import type { User } from '@n8n/db';
+import type { WorkflowWithSharingsMetaDataAndCredentials } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { ApplicationError, WorkflowActivationError, type INode } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import config from '@/config';
-import type { Project } from '@/databases/entities/project';
-import type { User } from '@/databases/entities/user';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { WorkflowHistoryRepository } from '@/databases/repositories/workflow-history.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import type { WorkflowWithSharingsMetaDataAndCredentials } from '@/types-db';
 import { UserManagementMailer } from '@/user-management/email';
 import { mockInstance } from '@test/mocking';
 import { createFolder } from '@test-integration/db/folders';

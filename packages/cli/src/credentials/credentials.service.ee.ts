@@ -1,12 +1,10 @@
+import { Project, SharedCredentials } from '@n8n/db';
+import type { CredentialsEntity, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In, type EntityManager } from '@n8n/typeorm';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
-import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
-import { Project } from '@/databases/entities/project';
-import { SharedCredentials } from '@/databases/entities/shared-credentials';
-import type { User } from '@/databases/entities/user';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { TransferCredentialError } from '@/errors/response-errors/transfer-credential.error';

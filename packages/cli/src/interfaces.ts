@@ -1,3 +1,4 @@
+import type { ICredentialsBase, IExecutionBase, IExecutionDb, ITagBase } from '@n8n/db';
 import type { AssignableRole } from '@n8n/permissions';
 import type { Application } from 'express';
 import type {
@@ -19,7 +20,6 @@ import type PCancelable from 'p-cancelable';
 
 import type { ActiveWorkflowManager } from '@/active-workflow-manager';
 import type { ExternalHooks } from '@/external-hooks';
-import type { ICredentialsBase, IExecutionBase, IExecutionDb, ITagBase } from '@/types-db';
 
 export interface ICredentialsTypeData {
 	[key: string]: CredentialLoadingDetails;

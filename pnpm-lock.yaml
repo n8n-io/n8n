@@ -482,9 +482,15 @@ importers:
       '@n8n/di':
         specifier: workspace:^
         version: link:../di
+      '@n8n/permissions':
+        specifier: workspace:^
+        version: link:../permissions
       '@n8n/typeorm':
         specifier: 'catalog:'
         version: 0.3.20-12(@sentry/node@8.52.1)(ioredis@5.3.2)(mssql@10.0.2)(mysql2@3.11.0)(pg@8.12.0)(redis@4.6.14)(sqlite3@5.1.7)(ts-node@10.9.2(@types/node@18.16.16)(typescript@5.8.2))
+      class-validator:
+        specifier: 0.14.0
+        version: 0.14.0
       n8n-core:
         specifier: workspace:^
         version: link:../../core
@@ -497,6 +503,9 @@ importers:
       reflect-metadata:
         specifier: 'catalog:'
         version: 0.2.2
+      xss:
+        specifier: 'catalog:'
+        version: 1.0.15
     devDependencies:
       '@n8n/typescript-config':
         specifier: workspace:*

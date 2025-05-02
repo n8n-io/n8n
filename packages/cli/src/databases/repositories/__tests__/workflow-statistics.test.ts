@@ -1,8 +1,8 @@
+import { StatisticsNames, WorkflowStatistics } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { type InsertResult, QueryFailedError } from '@n8n/typeorm';
 import { mock, mockClear } from 'jest-mock-extended';
 
-import { StatisticsNames, WorkflowStatistics } from '@/databases/entities/workflow-statistics';
 import { WorkflowStatisticsRepository } from '@/databases/repositories/workflow-statistics.repository';
 import { mockEntityManager } from '@test/mocking';
 import { createWorkflow } from '@test-integration/db/workflows';

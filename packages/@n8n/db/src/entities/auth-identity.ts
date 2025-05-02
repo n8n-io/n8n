@@ -1,9 +1,8 @@
-import { WithTimestamps } from '@n8n/db';
 import { Column, Entity, ManyToOne, PrimaryColumn, Unique } from '@n8n/typeorm';
 
+import { WithTimestamps } from './abstract-entity';
+import { AuthProviderType } from './types-db';
 import { User } from './user';
-
-export type AuthProviderType = 'ldap' | 'email' | 'saml'; // | 'google';
 
 @Entity()
 @Unique(['providerId', 'providerType'])

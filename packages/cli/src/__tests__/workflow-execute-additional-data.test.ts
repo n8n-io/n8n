@@ -1,4 +1,5 @@
 import { GlobalConfig } from '@n8n/config';
+import type { WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type { IWorkflowBase } from 'n8n-workflow';
@@ -13,7 +14,6 @@ import type PCancelable from 'p-cancelable';
 
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsHelper } from '@/credentials-helper';
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';

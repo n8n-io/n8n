@@ -1,10 +1,9 @@
 import type { ProjectRole } from '@n8n/api-types';
+import { SharedCredentials } from '@n8n/db';
+import type { Project, CredentialSharingRole } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { EntityManager, FindOptionsWhere } from '@n8n/typeorm';
 import { DataSource, In, Not, Repository } from '@n8n/typeorm';
-
-import type { Project } from '../entities/project';
-import { type CredentialSharingRole, SharedCredentials } from '../entities/shared-credentials';
 
 @Service()
 export class SharedCredentialsRepository extends Repository<SharedCredentials> {

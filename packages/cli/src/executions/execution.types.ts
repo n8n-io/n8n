@@ -1,3 +1,4 @@
+import type { ExecutionSummaries } from '@n8n/db';
 import type {
 	AnnotationVote,
 	ExecutionStatus,
@@ -7,7 +8,6 @@ import type {
 
 import type { ExecutionEntity } from '@/databases/entities/execution-entity';
 import type { AuthenticatedRequest } from '@/requests';
-import type { ExecutionSummaries } from '@/types-db';
 
 export declare namespace ExecutionRequest {
 	namespace QueryParams {

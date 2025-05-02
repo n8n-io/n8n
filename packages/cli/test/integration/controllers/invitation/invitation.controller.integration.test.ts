@@ -1,7 +1,7 @@
+import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { Not } from '@n8n/typeorm';
 
-import type { User } from '@/databases/entities/user';
 import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import { EventService } from '@/events/event.service';

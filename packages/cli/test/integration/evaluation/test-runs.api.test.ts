@@ -1,9 +1,9 @@
+import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mockInstance } from 'n8n-core/test/utils';
 import type { IWorkflowBase } from 'n8n-workflow';
 
 import type { TestDefinition } from '@/databases/entities/test-definition.ee';
-import type { User } from '@/databases/entities/user';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { TestDefinitionRepository } from '@/databases/repositories/test-definition.repository.ee';
 import { TestRunRepository } from '@/databases/repositories/test-run.repository.ee';

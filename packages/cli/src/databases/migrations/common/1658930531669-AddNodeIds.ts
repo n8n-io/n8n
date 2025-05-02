@@ -1,7 +1,7 @@
+import type { WorkflowEntity } from '@n8n/db';
 import type { INode } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import type { MigrationContext, ReversibleMigration } from '@/databases/types';
 
 type Workflow = Pick<WorkflowEntity, 'id'> & { nodes: string | INode[] };

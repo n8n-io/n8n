@@ -1,9 +1,9 @@
+import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import axios, { AxiosError } from 'axios';
 import { Logger } from 'n8n-core';
 import { ensureError } from 'n8n-workflow';
 
-import type { User } from '@/databases/entities/user';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { EventService } from '@/events/event.service';

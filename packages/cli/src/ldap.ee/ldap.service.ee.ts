@@ -1,3 +1,4 @@
+import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { QueryFailedError } from '@n8n/typeorm';
@@ -9,7 +10,6 @@ import type { ConnectionOptions } from 'tls';
 
 import config from '@/config';
 import type { RunningMode, SyncStatus } from '@/databases/entities/auth-provider-sync-history';
-import type { User } from '@/databases/entities/user';
 import { SettingsRepository } from '@/databases/repositories/settings.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';

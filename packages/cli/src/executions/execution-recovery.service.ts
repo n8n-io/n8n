@@ -1,3 +1,4 @@
+import type { IExecutionResponse } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { DateTime } from 'luxon';
 import { InstanceSettings, Logger } from 'n8n-core';
@@ -10,7 +11,6 @@ import { NodeCrashedError } from '@/errors/node-crashed.error';
 import { WorkflowCrashedError } from '@/errors/workflow-crashed.error';
 import { getLifecycleHooksForRegularMain } from '@/execution-lifecycle/execution-lifecycle-hooks';
 import { Push } from '@/push';
-import type { IExecutionResponse } from '@/types-db';
 
 import type { EventMessageTypes } from '../eventbus/event-message-classes';
 

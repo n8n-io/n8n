@@ -1,3 +1,4 @@
+import type { CredentialsEntity } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import { CREDENTIAL_ERRORS, CredentialDataError, Credentials, type ErrorReporter } from 'n8n-core';
 import { CREDENTIAL_EMPTY_VALUE, type ICredentialType } from 'n8n-workflow';
@@ -5,7 +6,6 @@ import { CREDENTIAL_EMPTY_VALUE, type ICredentialType } from 'n8n-workflow';
 import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
 import type { CredentialTypes } from '@/credential-types';
 import { CredentialsService } from '@/credentials/credentials.service';
-import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
 import type { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 
 describe('CredentialsService', () => {
