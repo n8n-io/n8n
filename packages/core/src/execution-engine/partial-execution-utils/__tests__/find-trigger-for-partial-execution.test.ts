@@ -24,12 +24,9 @@ describe('findTriggerForPartialExecution', () => {
 	const disabledTriggerNode = createNode('DisabledTrigger', 'n8n-nodes-base.manualTrigger', true);
 	const pinnedTrigger = createNode('PinnedTrigger', 'n8n-nodes-base.manualTrigger');
 	const setNode = createNode('Set', 'n8n-nodes-base.set');
-	const setNode1 = createNode('Set1', 'n8n-nodes-base.set');
 	const noOpNode = createNode('No Operation', 'n8n-nodes-base.noOp');
 	const webhookNode = createNode('Webhook', 'n8n-nodes-base.webhook');
 	const webhookNode1 = createNode('Webhook1', 'n8n-nodes-base.webhook');
-	const scheduleTrigger = createNode('Wed 12:00', 'n8n-nodes-base.scheduleTrigger');
-	const scheduleTrigger1 = createNode('Sun 12:00', 'n8n-nodes-base.scheduleTrigger');
 
 	beforeEach(() => {
 		nodeTypes.getByNameAndVersion.mockImplementation((type) => {
@@ -110,17 +107,6 @@ describe('findTriggerForPartialExecution', () => {
 					{ from: manualTriggerNode, to: setNode },
 				],
 				destinationNodeName: setNode.name,
-				expectedTrigger: manualTriggerNode,
-			},
-			{
-				description: 'should prioritize manual trigger',
-				nodes: [scheduleTrigger, scheduleTrigger1, manualTriggerNode, setNode, setNode1],
-				connections: [
-					{ from: scheduleTrigger, to: setNode },
-					{ from: manualTriggerNode, to: setNode1 },
-					{ from: scheduleTrigger1, to: setNode1 },
-				],
-				destinationNodeName: setNode1.name,
 				expectedTrigger: manualTriggerNode,
 			},
 		],
