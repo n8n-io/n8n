@@ -368,6 +368,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 
 			return runWorkflowApiResponse;
 		} catch (error) {
+			workflowsStore.setWorkflowExecutionData(null);
 			workflowHelpers.setDocumentTitle(workflow.name as string, 'ERROR');
 			toast.showError(error, i18n.baseText('workflowRun.showError.title'));
 			return undefined;

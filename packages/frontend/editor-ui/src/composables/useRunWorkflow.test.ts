@@ -224,7 +224,9 @@ describe('useRunWorkflow({ router })', () => {
 			expect(response).toEqual(mockResponse);
 			expect(workflowsStore.executionWaitingForWebhook).toBe(true);
 		});
+	});
 
+	describe('runWorkflow()', () => {
 		it('should prevent execution and show error message when workflow is active with single webhook trigger', async () => {
 			const pinia = createTestingPinia({ stubActions: false });
 			setActivePinia(pinia);
@@ -305,9 +307,7 @@ describe('useRunWorkflow({ router })', () => {
 				type: 'error',
 			});
 		});
-	});
 
-	describe('runWorkflow()', () => {
 		it('should return undefined if UI action "workflowRunning" is active', async () => {
 			const { runWorkflow } = useRunWorkflow({ router });
 			vi.mocked(workflowsStore).setActiveExecutionId('123');
@@ -631,6 +631,25 @@ describe('useRunWorkflow({ router })', () => {
 			expect(workflowsStore.runWorkflow).toHaveBeenCalledTimes(1);
 			expect(workflowsStore.runWorkflow).toHaveBeenCalledWith(dataCaptor);
 			expect(dataCaptor.value).toHaveProperty('runData', undefined);
+		});
+
+		it('should set execution data to null if the execution did not start successfully', async () => {
+			const { runWorkflow } = useRunWorkflow({ router });
+			const workflow = mock<Workflow>({ name: 'Test Workflow' });
+
+			vi.mocked(workflowHelpers).getCurrentWorkflow.mockReturnValue(workflow);
+			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue({
+				id: workflow.id,
+				nodes: [],
+			} as unknown as IWorkflowData);
+
+			// Simulate failed execution start
+			vi.mocked(workflowsStore).runWorkflow.mockRejectedValueOnce(new Error());
+
+			await runWorkflow({});
+
+			expect(workflowsStore.runWorkflow).toHaveBeenCalledTimes(1);
+			expect(workflowsStore.setWorkflowExecutionData).lastCalledWith(null);
 		});
 	});
 

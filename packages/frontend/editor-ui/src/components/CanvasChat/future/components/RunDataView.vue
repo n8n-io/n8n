@@ -37,7 +37,10 @@ const runDataProps = computed<
 	}
 
 	return {
-		node,
+		node: {
+			...node,
+			disabled: false, // For RunData component to render data from disabled nodes as well
+		},
 		runIndex: source.previousNodeRun ?? 0,
 		overrideOutputs: [source.previousNodeOutput ?? 0],
 	};
