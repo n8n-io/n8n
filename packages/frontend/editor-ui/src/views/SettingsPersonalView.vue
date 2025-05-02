@@ -151,7 +151,9 @@ async function saveUserSettings(params: UserBasicDetailsWithMfa) {
 }
 
 async function onSubmit(form: UserBasicDetailsForm) {
-	if (!usersStore.currentUser?.mfaEnabled) {
+	const emailChanged = usersStore.currentUser?.email !== form.email;
+
+	if (!emailChanged) {
 		await saveUserSettings(form);
 		return;
 	}
