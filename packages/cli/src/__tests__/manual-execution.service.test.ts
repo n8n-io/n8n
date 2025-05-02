@@ -1,7 +1,7 @@
 import { mock } from 'jest-mock-extended';
 import * as core from 'n8n-core';
 import { DirectedGraph, recreateNodeExecutionStack, WorkflowExecute } from 'n8n-core';
-import {
+import type {
 	Workflow,
 	IWorkflowExecutionDataProcess,
 	IWorkflowExecuteAdditionalData,
