@@ -1,4 +1,22 @@
 {
 	"extends": "./packages/@n8n/typescript-config/tsconfig.common.json",
-	"exclude": ["**/dist/**/*", "**/node_modules/**/*", "cypress"]
+	"compilerOptions": {
+		"target": "ES2020",
+		"module": "CommonJS",
+		"moduleResolution": "node16",
+		"baseUrl": ".",
+		"paths": {
+			"@n8n/*": ["packages/*/src"],
+			"n8n-core": ["packages/core/src"],
+			"n8n-workflow": ["packages/workflow/src"],
+			"n8n-design-system": ["packages/design-system/src"]
+		},
+		"esModuleInterop": true,
+		"skipLibCheck": true,
+		"resolveJsonModule": true,
+		"strict": true,
+		"allowJs": true,
+		"forceConsistentCasingInFileNames": true
+	},
+	"exclude": ["**/dist/**/*", "**/node_modules/**/*", "cypress", "node_modules", "dist"]
 }
