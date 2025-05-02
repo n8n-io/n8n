@@ -744,7 +744,7 @@ describe('DELETE /projects/:projectId/folders/:folderId', () => {
 		expect(folderInDb).toBeNull();
 	});
 
-	test('should delete folder, all child folders, and archive and move contained workflows to projectf root when no transfer folder is specified', async () => {
+	test('should delete folder, all child folders, and archive and move contained workflows to project root when no transfer folder is specified', async () => {
 		const project = await createTeamProject('test', owner);
 		const rootFolder = await createFolder(project, { name: 'Root' });
 		const childFolder = await createFolder(project, {
