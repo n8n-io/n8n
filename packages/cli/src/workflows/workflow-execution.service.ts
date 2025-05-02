@@ -1,4 +1,5 @@
 import { GlobalConfig } from '@n8n/config';
+import type { Project, User, CreateExecutionPayload } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ErrorReporter, Logger } from 'n8n-core';
 import type {
@@ -17,15 +18,12 @@ import type {
 import { SubworkflowOperationError, Workflow } from 'n8n-workflow';
 
 import config from '@/config';
-import type { Project } from '@/databases/entities/project';
-import type { User } from '@/databases/entities/user';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { ExecutionDataService } from '@/executions/execution-data.service';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
 import type { IWorkflowErrorData } from '@/interfaces';
 import { NodeTypes } from '@/node-types';
-import type { CreateExecutionPayload } from '@/types-db';
 import { TestWebhooks } from '@/webhooks/test-webhooks';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowRunner } from '@/workflow-runner';

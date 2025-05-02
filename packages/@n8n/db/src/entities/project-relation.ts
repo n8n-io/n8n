@@ -1,14 +1,13 @@
-import { ProjectRole } from '@n8n/api-types';
-import { WithTimestamps } from '@n8n/db';
 import { Column, Entity, ManyToOne, PrimaryColumn } from '@n8n/typeorm';
 
+import { WithTimestamps } from './abstract-entity';
 import { Project } from './project';
 import { User } from './user';
 
 @Entity()
 export class ProjectRelation extends WithTimestamps {
 	@Column({ type: 'varchar' })
-	role: ProjectRole;
+	role: 'project:personalOwner' | 'project:admin' | 'project:editor' | 'project:viewer';
 
 	@ManyToOne('User', 'projectRelations')
 	user: User;

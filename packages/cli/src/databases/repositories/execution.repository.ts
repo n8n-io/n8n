@@ -1,5 +1,12 @@
 import { GlobalConfig } from '@n8n/config';
-import { separate } from '@n8n/db';
+import type {
+	CreateExecutionPayload,
+	IExecutionFlattedDb,
+	IExecutionBase,
+	IExecutionResponse,
+	ExecutionSummaries,
+} from '@n8n/db';
+import { separate, SharedWorkflow, WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type {
 	FindManyOptions,
@@ -36,20 +43,11 @@ import { AnnotationTagEntity } from '@/databases/entities/annotation-tag-entity.
 import { AnnotationTagMapping } from '@/databases/entities/annotation-tag-mapping.ee';
 import { ExecutionAnnotation } from '@/databases/entities/execution-annotation.ee';
 import { PostgresLiveRowsRetrievalError } from '@/errors/postgres-live-rows-retrieval.error';
-import type {
-	CreateExecutionPayload,
-	IExecutionFlattedDb,
-	IExecutionBase,
-	IExecutionResponse,
-	ExecutionSummaries,
-} from '@/types-db';
 
 import { ExecutionDataRepository } from './execution-data.repository';
 import { ExecutionData } from '../entities/execution-data';
 import { ExecutionEntity } from '../entities/execution-entity';
 import { ExecutionMetadata } from '../entities/execution-metadata';
-import { SharedWorkflow } from '../entities/shared-workflow';
-import { WorkflowEntity } from '../entities/workflow-entity';
 
 export interface IGetExecutionsQueryFilter {
 	id?: FindOperator<string> | string;

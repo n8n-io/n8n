@@ -1,13 +1,13 @@
+import { CredentialsEntity } from '@n8n/db';
+import type { Project } from '@n8n/db';
+import type { CredentialSharingRole } from '@n8n/db';
+import type { User } from '@n8n/db';
+import type { ICredentialsDb } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { CredentialsEntity } from '@/databases/entities/credentials-entity';
-import type { Project } from '@/databases/entities/project';
-import type { CredentialSharingRole } from '@/databases/entities/shared-credentials';
-import type { User } from '@/databases/entities/user';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
-import type { ICredentialsDb } from '@/types-db';
 
 import type { CredentialPayload } from '../types';
 

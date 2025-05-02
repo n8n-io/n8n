@@ -1,8 +1,8 @@
+import type { TagEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { randomString } from 'n8n-workflow';
 import validator from 'validator';
 
-import type { TagEntity } from '@/databases/entities/tag-entity';
 import { ApiKeyRepository } from '@/databases/repositories/api-key.repository';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import { ProjectRepository } from '@/databases/repositories/project.repository';

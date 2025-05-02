@@ -1,3 +1,4 @@
+import type { ExecutionSummaries } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -5,7 +6,6 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { ExecutionService } from '@/executions/execution.service';
 import type { ExecutionRequest } from '@/executions/execution.types';
 import { ExecutionsController } from '@/executions/executions.controller';
-import type { ExecutionSummaries } from '@/types-db';
 import type { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
 describe('ExecutionsController', () => {

@@ -1,3 +1,4 @@
+import type { ICredentialsDb } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { Flags } from '@oclif/core';
 import fs from 'fs';
@@ -7,7 +8,6 @@ import path from 'path';
 
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import type { ICredentialsDecryptedDb } from '@/interfaces';
-import type { ICredentialsDb } from '@/types-db';
 
 import { BaseCommand } from '../base-command';
 
