@@ -51,6 +51,7 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const $style = useCssModule();
+const locale = useI18n();
 
 const hoverIndex = ref(0);
 const showHoverUrl = ref(false);
@@ -69,6 +70,9 @@ const sortedResources = computed<IResourceLocatorResultExpanded[]>(() => {
 
 			if (props.modelValue && item.value === props.modelValue) {
 				acc.selected = item;
+			} else if (item.isArchived) {
+				// Archived items are not shown in the list unless selected
+				acc.archived.push(item);
 			} else {
 				acc.notSelected.push(item);
 			}
@@ -78,6 +82,7 @@ const sortedResources = computed<IResourceLocatorResultExpanded[]>(() => {
 		{
 			selected: null as IResourceLocatorResultExpanded | null,
 			notSelected: [] as IResourceLocatorResultExpanded[],
+			archived: [] as IResourceLocatorResultExpanded[],
 		},
 	);
 
@@ -282,6 +287,11 @@ defineExpose({ isWithinDropdown });
 			>
 				<div :class="$style.resourceNameContainer">
 					<span>{{ result.name }}</span>
+					<span v-if="result.isArchived">
+						<N8nBadge class="ml-3xs" theme="tertiary" bold data-test-id="workflow-archived-tag">
+							{{ locale.baseText('workflows.item.archived') }}
+						</N8nBadge>
+					</span>
 				</div>
 				<div :class="$style.urlLink">
 					<font-awesome-icon
