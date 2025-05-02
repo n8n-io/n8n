@@ -46,6 +46,15 @@ export const credentialsProperty = (
 			},
 		},
 	},
+	{
+		name: 'oAuth2ResourceServer',
+		required: true,
+		displayOptions: {
+			show: {
+				[propertyName]: ['oAuth2ResourceServer'],
+			},
+		},
+	},
 ];
 
 export const authenticationProperty = (propertyName = 'authentication'): INodeProperties => ({
@@ -68,6 +77,10 @@ export const authenticationProperty = (propertyName = 'authentication'): INodePr
 		{
 			name: 'None',
 			value: 'none',
+		},
+		{
+			name: 'OAuth 2.0 Resource Server',
+			value: 'oAuth2ResourceServer',
 		},
 	],
 	default: 'none',

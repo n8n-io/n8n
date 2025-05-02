@@ -16,6 +16,8 @@ import { pipeline } from 'stream/promises';
 import { file as tmpFile } from 'tmp-promise';
 import { v4 as uuid } from 'uuid';
 
+import type { OAuth2ResourceServerCredential } from '@credentials/OAuth2ResourceServer.credentials';
+
 import {
 	authenticationProperty,
 	credentialsProperty,
@@ -28,7 +30,7 @@ import {
 	responseDataProperty,
 	responseModeProperty,
 } from './description';
-import { WebhookAuthorizationError } from './error';
+import { OAuthResourceServerAuthError, WebhookAuthorizationError } from './error';
 import {
 	checkResponseModeConfiguration,
 	configuredOutputs,
@@ -68,7 +70,18 @@ export class Webhook extends Node {
 		inputs: [],
 		outputs: `={{(${configuredOutputs})($parameter)}}`,
 		credentials: credentialsProperty(this.authPropertyName),
-		webhooks: [defaultWebhookDescription],
+		webhooks: [
+			defaultWebhookDescription,
+			{
+				name: 'oauthResourceMetadata',
+				httpMethod: 'GET',
+				responseMode: 'onReceived',
+				isFullPath: true,
+				path: '={{$parameter["path"]}}/.well-known/oauth-protected-resource',
+				ndvHideMethod: true,
+				ndvHideUrl: true,
+			},
+		],
 		properties: [
 			{
 				displayName: 'Allow Multiple HTTP Methods',
@@ -201,6 +214,24 @@ export class Webhook extends Node {
 			return { noWebhookResponse: true };
 		}
 
+		const webhookName = context.getWebhookName();
+		if (webhookName === 'oauthResourceMetadata') {
+			const authentication = context.getNodeParameter('authentication') as string;
+			if (authentication !== 'oAuth2ResourceServer') {
+				resp.writeHead(404);
+				resp.end('Not Found');
+				return { noWebhookResponse: true };
+			}
+			const { authorizationServerUrl } =
+				await context.getCredentials<OAuth2ResourceServerCredential>('oAuth2ResourceServer');
+			resp.status(200).json({
+				resource_server: 'n8n-oauth-resource', // TODO: let users customize these
+				description: 'n8n protected resource', // TODO: let users customize these
+				authorization_servers: [{ issuer: authorizationServerUrl }],
+			});
+			return { noWebhookResponse: true };
+		}
+
 		let validationData: IDataObject | undefined;
 		try {
 			if (options.ignoreBots && isbot(req.headers['user-agent']))
@@ -210,6 +241,11 @@ export class Webhook extends Node {
 			if (error instanceof WebhookAuthorizationError) {
 				resp.writeHead(error.responseCode, { 'WWW-Authenticate': 'Basic realm="Webhook"' });
 				resp.end(error.message);
+				return { noWebhookResponse: true };
+			}
+			if (error instanceof OAuthResourceServerAuthError) {
+				resp.writeHead(401, { 'WWW-Authenticate': error.resourceMetadataUrl });
+				resp.end();
 				return { noWebhookResponse: true };
 			}
 			throw error;

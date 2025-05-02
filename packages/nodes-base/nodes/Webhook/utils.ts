@@ -1,4 +1,5 @@
 import basicAuth from 'basic-auth';
+import { createRemoteJWKSet, jwtVerify } from 'jose';
 import jwt from 'jsonwebtoken';
 import { NodeOperationError } from 'n8n-workflow';
 import type {
@@ -8,7 +9,9 @@ import type {
 	ICredentialDataDecryptedObject,
 } from 'n8n-workflow';
 
-import { WebhookAuthorizationError } from './error';
+import type { OAuth2ResourceServerCredential } from '@credentials/OAuth2ResourceServer.credentials';
+
+import { OAuthResourceServerAuthError, WebhookAuthorizationError } from './error';
 import { formatPrivateKey } from '../../utils/utilities';
 
 export type WebhookParameters = {
@@ -178,11 +181,19 @@ export const checkResponseModeConfiguration = (context: IWebhookFunctions) => {
 	}
 };
 
+type WebhookAuthenticationType =
+	| 'none'
+	| 'basicAuth'
+	| 'bearerAuth'
+	| 'headerAuth'
+	| 'jwtAuth'
+	| 'oAuth2ResourceServer';
+
 export async function validateWebhookAuthentication(
 	ctx: IWebhookFunctions,
 	authPropertyName: string,
 ) {
-	const authentication = ctx.getNodeParameter(authPropertyName) as string;
+	const authentication = ctx.getNodeParameter(authPropertyName) as WebhookAuthenticationType;
 	if (authentication === 'none') return;
 
 	const req = ctx.getRequestObject();
@@ -281,6 +292,67 @@ export async function validateWebhookAuthentication(
 			}) as IDataObject;
 		} catch (error) {
 			throw new WebhookAuthorizationError(403, error.message);
+		}
+	} else if (authentication === 'oAuth2ResourceServer') {
+		let expectedAuth;
+		try {
+			expectedAuth =
+				await ctx.getCredentials<OAuth2ResourceServerCredential>('oAuth2ResourceServer');
+		} catch {}
+
+		const resourceMetadataUrl = ctx.getNodeWebhookUrl('oauthResourceMetadata')!;
+		if (expectedAuth === undefined) {
+			throw new OAuthResourceServerAuthError(resourceMetadataUrl);
+		}
+
+		const authHeader = req.headers.authorization;
+		const token = authHeader?.split(' ')[1];
+		if (!token) {
+			throw new OAuthResourceServerAuthError(resourceMetadataUrl);
+		}
+
+		if (expectedAuth.tokenValidationMethod === 'introspection') {
+			const {
+				introspectionEndpoint,
+				authorizationServerUrl,
+				tokenTypeHint,
+				clientId,
+				clientSecret,
+			} = expectedAuth;
+			const introspectionUrl = new URL(introspectionEndpoint, authorizationServerUrl);
+			const response = await fetch(introspectionUrl.toString(), {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/x-www-form-urlencoded',
+				},
+				body: new URLSearchParams({
+					token,
+					token_type_hint: tokenTypeHint,
+					client_id: clientId,
+					client_secret: clientSecret,
+				}).toString(),
+			});
+
+			if (!response.ok) {
+				throw new OAuthResourceServerAuthError(resourceMetadataUrl);
+			}
+
+			// const introspectionResult = await response.json();
+			// if (!introspectionResult.active) {
+			// 	throw new OAuthResourceServerAuthError(fakeResourceMetadataUrl);
+			// }
+		} else {
+			const jwksUrl = new URL(expectedAuth.jwksEndpoint, expectedAuth.authorizationServerUrl);
+			try {
+				const { payload } = await jwtVerify(token, createRemoteJWKSet(jwksUrl));
+				const now = Math.floor(Date.now() / 1000);
+				if (payload.exp && payload.exp < now) {
+					throw new OAuthResourceServerAuthError(resourceMetadataUrl);
+				}
+			} catch (error) {
+				// TODO: should we log this error?
+				throw new OAuthResourceServerAuthError(resourceMetadataUrl);
+			}
 		}
 	}
 }

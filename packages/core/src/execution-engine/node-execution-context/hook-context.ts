@@ -51,7 +51,7 @@ export class HookContext extends NodeExecutionContext implements IHookFunctions 
 		);
 	}
 
-	getWebhookName(): string {
+	getWebhookName(): WebhookType {
 		if (this.webhookData === undefined) {
 			throw new ApplicationError('Only supported in webhook functions');
 		}

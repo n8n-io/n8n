@@ -80,6 +80,15 @@ export class McpTrigger extends Node {
 					},
 				},
 			},
+			{
+				name: 'oAuth2ResourceServer',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['oAuth2ResourceServer'],
+					},
+				},
+			},
 		],
 		properties: [
 			{
@@ -90,6 +99,7 @@ export class McpTrigger extends Node {
 					{ name: 'None', value: 'none' },
 					{ name: 'Bearer Auth', value: 'bearerAuth' },
 					{ name: 'Header Auth', value: 'headerAuth' },
+					{ name: 'OAuth 2.0 Resource Server', value: 'oAuth2ResourceServer' },
 				],
 				default: 'none',
 				description: 'The way to authenticate',

@@ -1080,7 +1080,7 @@ export interface ITriggerFunctions
 
 export interface IHookFunctions
 	extends FunctionsBaseWithRequiredKeys<'getMode' | 'getActivationMode'> {
-	getWebhookName(): string;
+	getWebhookName(): WebhookType;
 	getWebhookDescription(name: WebhookType): IWebhookDescription | undefined;
 	getNodeWebhookUrl: (name: WebhookType) => string | undefined;
 	getNodeParameter(
@@ -1110,7 +1110,7 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 	getQueryData(): object;
 	getRequestObject(): express.Request;
 	getResponseObject(): express.Response;
-	getWebhookName(): string;
+	getWebhookName(): WebhookType;
 	nodeHelpers: NodeHelperFunctions;
 	helpers: RequestHelperFunctions & BaseHelperFunctions & BinaryHelperFunctions;
 }
@@ -1988,7 +1988,7 @@ export interface IWebhookData {
 	staticData?: Workflow['staticData'];
 }
 
-export type WebhookType = 'default' | 'setup';
+export type WebhookType = 'default' | 'setup' | 'oauthResourceMetadata';
 
 export interface IWebhookDescription {
 	[key: string]: IHttpRequestMethods | WebhookResponseMode | boolean | string | undefined;
