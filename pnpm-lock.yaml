@@ -413,6 +413,16 @@ importers:
         specifier: ^0.52.0
         version: 0.52.0
 
+  packages/@n8n/ccc:
+    dependencies:
+      reflect-metadata:
+        specifier: 'catalog:'
+        version: 0.2.2
+    devDependencies:
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+
   packages/@n8n/client-oauth2:
     dependencies:
       axios:
@@ -1036,6 +1046,9 @@ importers:
       '@n8n/api-types':
         specifier: workspace:*
         version: link:../@n8n/api-types
+      '@n8n/ccc':
+        specifier: workspace:^
+        version: link:../@n8n/ccc
       '@n8n/client-oauth2':
         specifier: workspace:*
         version: link:../@n8n/client-oauth2
