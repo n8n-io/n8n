@@ -3,7 +3,7 @@ import axios from 'axios';
 import { ErrorReporter, Logger } from 'n8n-core';
 import type { CommunityNodeData } from 'n8n-workflow';
 
-interface StrapiResponseData {
+interface ResponseData {
 	data: CommunityNodeData[];
 	meta: Meta;
 }
@@ -19,7 +19,7 @@ interface Pagination {
 	total: number;
 }
 
-export async function strapiPaginatedRequest(url: string): Promise<CommunityNodeData[]> {
+export async function paginatedRequest(url: string): Promise<CommunityNodeData[]> {
 	let returnData: CommunityNodeData[] = [];
 	let responseData: CommunityNodeData[] | undefined = [];
 
@@ -33,14 +33,16 @@ export async function strapiPaginatedRequest(url: string): Promise<CommunityNode
 	do {
 		let response;
 		try {
-			response = await axios.get<StrapiResponseData>(url, {
+			response = await axios.get<ResponseData>(url, {
 				headers: { 'Content-Type': 'application/json' },
 				params,
 			});
 		} catch (error) {
-			Container.get(ErrorReporter).error(error, { tags: { source: 'strapiPaginatedRequest' } });
+			Container.get(ErrorReporter).error(error, {
+				tags: { source: 'communityNodesPaginatedRequest' },
+			});
 			Container.get(Logger).error(
-				`Error while fetching community nodes from Strapi: ${(error as Error).message}`,
+				`Error while fetching community nodes: ${(error as Error).message}`,
 			);
 			break;
 		}

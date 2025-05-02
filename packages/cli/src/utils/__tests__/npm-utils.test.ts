@@ -1,4 +1,3 @@
-import crypto from 'crypto';
 import { UnexpectedError } from 'n8n-workflow';
 import nock from 'nock';
 
@@ -8,25 +7,18 @@ describe('verifyIntegrity', () => {
 	const registryUrl = 'https://registry.npmjs.org';
 	const packageName = 'test-package';
 	const version = '1.0.0';
-	const tarballPath = '/tarballs/test-package-1.0.0.tgz';
-	const tarballUrl = `${registryUrl}${tarballPath}`;
-	const fakeTarball = Buffer.from('this is a test tarball');
+	const integrity = 'sha512-hash==';
 
 	afterEach(() => {
 		nock.cleanAll();
 	});
 
 	it('should verify integrity successfully', async () => {
-		const hash = crypto.createHash('sha512').update(fakeTarball).digest('base64');
-		const integrity = `sha512-${hash}`;
-
 		nock(registryUrl)
 			.get(`/${encodeURIComponent(packageName)}/${version}`)
 			.reply(200, {
-				dist: { tarball: tarballUrl },
+				dist: { integrity },
 			});
-
-		nock(registryUrl).get(tarballPath).reply(200, fakeTarball);
 
 		await expect(
 			verifyIntegrity(packageName, version, registryUrl, integrity),
@@ -39,10 +31,8 @@ describe('verifyIntegrity', () => {
 		nock(registryUrl)
 			.get(`/${encodeURIComponent(packageName)}/${version}`)
 			.reply(200, {
-				dist: { tarball: tarballUrl },
+				dist: { integrity },
 			});
-
-		nock(registryUrl).get(tarballPath).reply(200, fakeTarball);
 
 		await expect(verifyIntegrity(packageName, version, registryUrl, wrongHash)).rejects.toThrow(
 			UnexpectedError,
@@ -50,25 +40,9 @@ describe('verifyIntegrity', () => {
 	});
 
 	it('should throw error if metadata request fails', async () => {
-		const integrity = 'sha512-somerandomhash==';
-
 		nock(registryUrl)
 			.get(`/${encodeURIComponent(packageName)}/${version}`)
 			.reply(500);
-
-		await expect(verifyIntegrity(packageName, version, registryUrl, integrity)).rejects.toThrow();
-	});
-
-	it('should throw error if tarball download fails', async () => {
-		const integrity = 'sha512-somerandomhash==';
-
-		nock(registryUrl)
-			.get(`/${encodeURIComponent(packageName)}/${version}`)
-			.reply(200, {
-				dist: { tarball: tarballUrl },
-			});
-
-		nock(registryUrl).get(tarballPath).reply(404);
 
 		await expect(verifyIntegrity(packageName, version, registryUrl, integrity)).rejects.toThrow();
 	});

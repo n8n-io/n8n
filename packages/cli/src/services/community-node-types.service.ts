@@ -9,7 +9,7 @@ import type {
 import { ensureError } from 'n8n-workflow';
 
 import { CommunityPackagesService } from './community-packages.service';
-import { strapiPaginatedRequest } from '../utils/strapi-utils';
+import { paginatedRequest } from '../utils/community-nodes-request-utils';
 
 const UPDATE_INTERVAL = 8 * 60 * 60 * 1000;
 
@@ -38,7 +38,7 @@ export class CommunityNodeTypesService {
 				this.globalConfig.nodes.communityPackages.enabled &&
 				this.globalConfig.nodes.communityPackages.verifiedEnabled
 			) {
-				data = await strapiPaginatedRequest(N8N_VETTED_NODE_TYPES_URL);
+				data = await paginatedRequest(N8N_VETTED_NODE_TYPES_URL);
 			}
 
 			this.updateData(data);

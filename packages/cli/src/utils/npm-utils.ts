@@ -1,6 +1,4 @@
 import axios from 'axios';
-import type { BinaryLike } from 'crypto';
-import crypto from 'crypto';
 import { UnexpectedError } from 'n8n-workflow';
 
 const REQUEST_TIMEOUT = 30000;
@@ -15,22 +13,12 @@ export async function verifyIntegrity(
 
 	try {
 		const url = `${registryUrl.replace(/\/+$/, '')}/${encodeURIComponent(packageName)}`;
-		const metadata = await axios.get<{ dist: { tarball: string } }>(
+		const metadata = await axios.get<{ dist: { integrity: string } }>(
 			`${url}/${version}`,
 			timeoutOption,
 		);
 
-		const tarballUrl = metadata.data.dist.tarball;
-		const { data } = await axios.get<BinaryLike>(tarballUrl, {
-			responseType: 'arraybuffer',
-			...timeoutOption,
-		});
-
-		const algorithm = 'sha512';
-		const hash = crypto.createHash(algorithm).update(data).digest('base64');
-		const actualIntegrity = `${algorithm}-${hash}`;
-
-		if (actualIntegrity !== expectedIntegrity) {
+		if (metadata?.data?.dist?.integrity !== expectedIntegrity) {
 			throw new UnexpectedError('Checksum verification failed. Package integrity does not match.');
 		}
 	} catch (error) {

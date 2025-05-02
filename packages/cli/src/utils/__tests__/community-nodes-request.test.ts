@@ -1,7 +1,7 @@
 import type { CommunityNodeData } from 'n8n-workflow';
 import nock from 'nock';
 
-import { strapiPaginatedRequest } from '../strapi-utils';
+import { paginatedRequest } from '../community-nodes-request-utils';
 
 describe('strapiPaginatedRequest', () => {
 	const baseUrl = 'https://strapi.test/api/nodes';
@@ -55,7 +55,7 @@ describe('strapiPaginatedRequest', () => {
 				},
 			});
 
-		const result = await strapiPaginatedRequest('https://strapi.test/api/nodes');
+		const result = await paginatedRequest('https://strapi.test/api/nodes');
 
 		expect(result).toHaveLength(2);
 		expect(result[0].id).toBe(1);
@@ -78,7 +78,7 @@ describe('strapiPaginatedRequest', () => {
 				},
 			});
 
-		const result = await strapiPaginatedRequest(baseUrl);
+		const result = await paginatedRequest(baseUrl);
 		expect(result).toEqual([]);
 	});
 
@@ -108,7 +108,7 @@ describe('strapiPaginatedRequest', () => {
 				},
 			});
 
-		const result = await strapiPaginatedRequest(baseUrl);
+		const result = await paginatedRequest(baseUrl);
 		expect(result).toHaveLength(1);
 		expect(result[0].attributes.name).toBe('NodeSingle');
 	});
@@ -118,7 +118,7 @@ describe('strapiPaginatedRequest', () => {
 
 		nock(baseUrl).get(endpoint).query(true).replyWithError('Request failed');
 
-		const result = await strapiPaginatedRequest(`${baseUrl}${endpoint}`);
+		const result = await paginatedRequest(`${baseUrl}${endpoint}`);
 
 		expect(result).toEqual([]);
 	});
