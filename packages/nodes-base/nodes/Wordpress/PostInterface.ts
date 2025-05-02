@@ -13,4 +13,5 @@ export interface IPost {
 	template?: string;
 	categories?: number[];
 	tags?: number[];
+	featured_media?: number;
 }
