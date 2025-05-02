@@ -75,6 +75,7 @@ function createRunDataWithError(inputMessage: string) {
 					],
 				],
 			},
+			source: [{ previousNode: AGENT_NODE_NAME }],
 			error: {
 				message: 'Internal error',
 				timestamp: 1722591723244,
