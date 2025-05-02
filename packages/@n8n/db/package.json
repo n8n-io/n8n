@@ -29,7 +29,8 @@
     "n8n-core": "workspace:^",
     "n8n-workflow": "workspace:^",
     "nanoid": "catalog:",
-    "reflect-metadata": "catalog:"
+    "reflect-metadata": "catalog:",
+    "xss": "catalog:"
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*"
