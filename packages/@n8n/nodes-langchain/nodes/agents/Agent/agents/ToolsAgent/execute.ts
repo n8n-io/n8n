@@ -344,6 +344,7 @@ export async function prepareMessages(
 		systemMessage?: string;
 		passthroughBinaryImages?: boolean;
 		outputParser?: N8nOutputParser;
+		context?: string; // Added context option
 	},
 ): Promise<BaseMessagePromptTemplateLike[]> {
 	const useSystemMessage = options.systemMessage ?? ctx.getNode().typeVersion < 1.9;
@@ -359,7 +360,12 @@ export async function prepareMessages(
 		messages.push(['system', '{formatting_instructions}']);
 	}
 
-	messages.push(['placeholder', '{chat_history}'], ['human', '{input}']);
+	messages.push(['placeholder', '{chat_history}']);
+	// Modify human message to include context if provided
+	const userContent = options.context
+		? `<context>${options.context}</context>user_prompt:{input}`
+		: '{input}';
+	messages.push(['human', userContent]);
 
 	// If there is binary data and the node option permits it, add a binary message
 	const hasBinaryData = ctx.getInputData()?.[itemIndex]?.binary !== undefined;
@@ -413,13 +419,14 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 			const model = await getChatModel(this);
 			const memory = await getOptionalMemory(this);
 
-			const input = getPromptInputByType({
+			// Get the raw input
+			const rawInput = getPromptInputByType({
 				ctx: this,
 				i: itemIndex,
 				inputKey: 'text',
 				promptTypeKey: 'promptType',
 			});
-			if (input === undefined) {
+			if (rawInput === undefined) {
 				throw new NodeOperationError(this.getNode(), 'The “text” parameter is empty.');
 			}
 
@@ -428,13 +435,21 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 				maxIterations?: number;
 				returnIntermediateSteps?: boolean;
 				passthroughBinaryImages?: boolean;
+				context?: string; // Added context option
 			};
+
+			// Clean the input *before* passing it to the executor
+			const cleanedInput = rawInput
+				.replace(/<context>[\s\S]*?<\/context>/g, '')
+				.replace(/^ *user_prompt:/, '')
+				.trim();
 
 			// Prepare the prompt messages and prompt template.
 			const messages = await prepareMessages(this, itemIndex, {
 				systemMessage: options.systemMessage,
 				passthroughBinaryImages: options.passthroughBinaryImages ?? true,
 				outputParser,
+				context: options.context, // Pass context to prepareMessages
 			});
 			const prompt = preparePrompt(messages);
 
@@ -460,26 +475,31 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 				maxIterations: options.maxIterations ?? 10,
 			});
 
-			// Invoke the executor with the given input and system message.
+			// Invoke the executor with the cleaned input and system message.
 			const response = await executor.invoke(
 				{
-					input,
+					input: cleanedInput, // Use cleaned input
 					system_message: options.systemMessage ?? SYSTEM_MESSAGE,
-					formatting_instructions:
-						'IMPORTANT: For your response to user, you MUST use the `format_final_json_response` tool with your complete answer formatted according to the required schema. Do not attempt to format the JSON manually - always use this tool. Your response will be rejected if it is not properly formatted through this tool. Only use this tool once you are ready to provide your final answer.',
+					formatting_instructions: outputParser // Check if outputParser exists before adding instructions
+						? 'IMPORTANT: For your response to user, you MUST use the `format_final_json_response` tool with your complete answer formatted according to the required schema. Do not attempt to format the JSON manually - always use this tool. Your response will be rejected if it is not properly formatted через этот инструмент. Используйте этот инструмент только тогда, когда вы готовы предоставить свой окончательный ответ.'
+						: undefined,
 				},
 				{ signal: this.getExecutionCancelSignal() },
 			);
 
 			// If memory and outputParser are connected, parse the output.
 			if (memory && outputParser) {
-				const parsedOutput = jsonParse<{ output: Record<string, unknown> }>(
-					response.output as string,
-				);
-				response.output = parsedOutput?.output ?? parsedOutput;
+				try {
+					const parsedOutput = jsonParse<{ output: Record<string, unknown> }>(
+						response.output as string,
+					);
+					response.output = parsedOutput?.output ?? parsedOutput;
+				} catch (e) {
+					this.logger.warn(
+						`Could not parse final output when memory and output parser were connected: ${e.message}`,
+					);
+				}
 			}
-
-			// Omit internal keys before returning the result.
 			const itemResult = {
 				json: omit(
 					response,
@@ -488,9 +508,9 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 					'input',
 					'chat_history',
 					'agent_scratchpad',
+					...(options.returnIntermediateSteps ? [] : ['intermediateSteps']),
 				),
 			};
-
 			returnData.push(itemResult);
 		} catch (error) {
 			if (this.continueOnFail()) {
