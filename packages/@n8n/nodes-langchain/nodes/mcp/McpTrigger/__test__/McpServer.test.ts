@@ -78,7 +78,7 @@ describe('McpServer', () => {
 		it('should call transport.handlePostMessage when transport exists', async () => {
 			mockTransport.handlePostMessage.mockImplementation(async () => {
 				// @ts-expect-error private property `resolveFunctions`
-				mcpServer.resolveFunctions[sessionId]();
+				mcpServer.resolveFunctions[`${sessionId}_123`]();
 			});
 
 			// Add the transport directly
