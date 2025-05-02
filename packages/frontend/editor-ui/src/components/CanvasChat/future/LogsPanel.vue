@@ -50,7 +50,7 @@ const {
 const { workflow, execution, hasChat, latestNodeNameById, resetExecutionData } = useExecutionData();
 
 const manualLogEntrySelection = ref<LogEntrySelection>({ type: 'initial' });
-const selectedLogEntry = computed(() =>
+const selectedLogEntry = computed<LogEntry | undefined>(() =>
 	findSelectedLogEntry(manualLogEntrySelection.value, execution.value),
 );
 const isLogDetailsOpen = computed(() => isOpen.value && selectedLogEntry.value !== undefined);
@@ -89,13 +89,13 @@ function handleResizeOverviewPanelEnd() {
 
 <template>
 	<div ref="pipContainer">
-		<div ref="pipContent" :class="$style.pipContent">
+		<div ref="pipContent" :class="[$style.pipContent, isPoppedOut ? $style.popout : '']">
 			<N8nResizeWrapper
 				:height="height"
 				:supported-directions="['top']"
 				:is-resizing-enabled="!isPoppedOut"
 				:class="$style.resizeWrapper"
-				:style="{ height: isOpen ? `${height}px` : 'auto' }"
+				:style="{ height: isOpen && !isPoppedOut ? `${height}px` : 'auto' }"
 				@resize="onResize"
 				@resizeend="onResizeEnd"
 			>
@@ -171,7 +171,11 @@ function handleResizeOverviewPanelEnd() {
 							:workflow="workflow"
 							:execution="execution"
 							:window="pipWindow"
-							:latest-info="latestNodeNameById[selectedLogEntry.node.id]"
+							:latest-info="
+								selectedLogEntry.type === 'node'
+									? latestNodeNameById[selectedLogEntry.node.id]
+									: undefined
+							"
 							@click-header="onToggleOpen(true)"
 						>
 							<template #actions>
@@ -186,13 +190,6 @@ function handleResizeOverviewPanelEnd() {
 </template>
 
 <style lang="scss" module>
-@media all and (display-mode: picture-in-picture) {
-	.resizeWrapper {
-		height: 100% !important;
-		max-height: 100vh !important;
-	}
-}
-
 .pipContent {
 	height: 100%;
 	position: relative;
@@ -205,6 +202,12 @@ function handleResizeOverviewPanelEnd() {
 	flex-basis: 0;
 	border-top: var(--border-base);
 	background-color: var(--color-background-light);
+
+	.popout & {
+		height: 100% !important;
+		max-height: 100vh !important;
+		border-top: none;
+	}
 }
 
 .container {

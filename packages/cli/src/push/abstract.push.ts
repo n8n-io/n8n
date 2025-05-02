@@ -69,10 +69,10 @@ export abstract class AbstractPush<Connection> extends TypedEmitter<AbstractPush
 	}
 
 	private sendTo({ type, data }: PushMessage, pushRefs: string[]) {
-		this.logger.debug(`Pushed to frontend: ${type}`, {
-			dataType: type,
-			pushRefs: pushRefs.join(', '),
-		});
+		// this.logger.debug(`Pushed to frontend: ${type}`, {
+		// 	dataType: type,
+		// 	pushRefs: pushRefs.join(', '),
+		// });
 
 		const stringifiedPayload = jsonStringify({ type, data }, { replaceCircularRefs: true });
 
@@ -95,7 +95,7 @@ export abstract class AbstractPush<Connection> extends TypedEmitter<AbstractPush
 
 	sendToOne(pushMsg: PushMessage, pushRef: string) {
 		if (this.connections[pushRef] === undefined) {
-			this.logger.error(`The session "${pushRef}" is not registered.`, { pushRef });
+			// this.logger.error(`The session "${pushRef}" is not registered.`, { pushRef });
 			return;
 		}
 

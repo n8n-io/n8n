@@ -227,6 +227,7 @@ async function startExecution(
 			workflowData,
 			additionalData.userId,
 		);
+		additionalDataIntegrated.logger = additionalData.logger;
 		additionalDataIntegrated.executionId = executionId;
 		additionalDataIntegrated.parentCallbackManager = options.parentCallbackManager;
 
@@ -373,6 +374,7 @@ export async function getBase(
 	const eventService = Container.get(EventService);
 
 	return {
+		logger: Container.get(Logger),
 		currentNodeExecutionIndex: 0,
 		credentialsHelper: Container.get(CredentialsHelper),
 		executeWorkflow,

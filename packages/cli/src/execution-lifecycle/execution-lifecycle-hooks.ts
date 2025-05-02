@@ -72,11 +72,11 @@ function hookFunctionsPush(
 		const { executionId } = this;
 		// Push data to session which started workflow before each
 		// node which starts rendering
-		logger.debug(`Executing hook on node "${nodeName}" (hookFunctionsPush)`, {
-			executionId,
-			pushRef,
-			workflowId: this.workflowData.id,
-		});
+		// logger.debug(`Executing hook on node "${nodeName}" (hookFunctionsPush)`, {
+		// 	executionId,
+		// 	pushRef,
+		// 	workflowId: this.workflowData.id,
+		// });
 
 		pushInstance.send(
 			{ type: 'nodeExecuteBefore', data: { executionId, nodeName, data } },
@@ -86,11 +86,11 @@ function hookFunctionsPush(
 	hooks.addHandler('nodeExecuteAfter', function (nodeName, data) {
 		const { executionId } = this;
 		// Push data to session which started workflow after each rendered node
-		logger.debug(`Executing hook on node "${nodeName}" (hookFunctionsPush)`, {
-			executionId,
-			pushRef,
-			workflowId: this.workflowData.id,
-		});
+		// logger.debug(`Executing hook on node "${nodeName}" (hookFunctionsPush)`, {
+		// 	executionId,
+		// 	pushRef,
+		// 	workflowId: this.workflowData.id,
+		// });
 
 		pushInstance.send({ type: 'nodeExecuteAfter', data: { executionId, nodeName, data } }, pushRef);
 	});

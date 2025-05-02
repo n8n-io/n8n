@@ -2,7 +2,7 @@
 import { computed } from 'vue';
 import { N8nButton, N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { upperFirst } from 'lodash-es';
+import { isEmpty, upperFirst } from 'lodash-es';
 import { useI18n } from '@/composables/useI18n';
 import ConsumedTokenCountText from '@/components/CanvasChat/future/components/ConsumedTokenCountText.vue';
 import { I18nT } from 'vue-i18n';
@@ -13,6 +13,7 @@ import {
 	type LatestNodeInfo,
 	type LogEntry,
 } from '@/components/RunDataAi/utils';
+import { useTimestamp } from '@vueuse/core';
 
 const props = defineProps<{
 	data: LogEntry;
@@ -32,21 +33,28 @@ const emit = defineEmits<{
 
 const locale = useI18n();
 const nodeTypeStore = useNodeTypesStore();
-const type = computed(() => nodeTypeStore.getNodeType(props.data.node.type));
+const type = computed(() =>
+	props.data.type === 'node' ? nodeTypeStore.getNodeType(props.data.node.type) : null,
+);
+const now = useTimestamp({ interval: 1000 });
 const isSettled = computed(
 	() =>
+		props.data.type === 'node' &&
 		props.data.runData.executionStatus &&
 		['crashed', 'error', 'success'].includes(props.data.runData.executionStatus),
 );
-const isError = computed(() => !!props.data.runData.error);
+const isError = computed(() => props.data.type === 'node' && !!props.data.runData.error);
 const startedAtText = computed(() => {
-	const time = new Date(props.data.runData.startTime);
+	const time = new Date(props.data.timestamp);
+	const timeText = `${toTime(time, true)}, ${toDayMonth(time)}`;
 
-	return locale.baseText('logs.overview.body.started', {
-		interpolate: {
-			time: `${toTime(time, true)}, ${toDayMonth(time)}`,
-		},
-	});
+	return props.data.type === 'general'
+		? timeText
+		: locale.baseText('logs.overview.body.started', {
+				interpolate: {
+					time: timeText,
+				},
+			});
 });
 
 const subtreeConsumedTokens = computed(() =>
@@ -67,7 +75,10 @@ function isLastChild(level: number) {
 
 	return (
 		(data === undefined && lastSibling === undefined) ||
-		(data?.node === lastSibling?.node && data?.runIndex === lastSibling?.runIndex)
+		(data?.type === 'node' &&
+			lastSibling?.type === 'node' &&
+			data?.node === lastSibling?.node &&
+			data?.runIndex === lastSibling?.runIndex)
 	);
 }
 </script>
@@ -82,6 +93,7 @@ function isLastChild(level: number) {
 			[$style.compact]: props.isCompact,
 			[$style.error]: isError,
 			[$style.selected]: props.isSelected,
+			[$style.general]: props.data.type === 'general',
 		}"
 	>
 		<template v-for="level in props.data.depth" :key="level">
@@ -94,16 +106,49 @@ function isLastChild(level: number) {
 			/>
 		</template>
 		<div :class="$style.background" :style="{ '--indent-depth': props.data.depth }" />
-		<NodeIcon :node-type="type" :size="16" :class="$style.icon" />
+		<NodeIcon v-if="props.data.type === 'node'" :node-type="type" :size="16" :class="$style.icon" />
+		<N8nIcon
+			v-else
+			size="medium"
+			icon="info-circle"
+			:class="$style.icon"
+			:style="{
+				color:
+					props.data.level === 'error'
+						? 'var(--color-danger)'
+						: props.data.level === 'warn'
+							? 'var(--color-warning)'
+							: props.data.level === 'debug'
+								? 'var(--color-text-light)'
+								: 'oklch(68.5% 0.169 237.323)',
+			}"
+		/>
 		<NodeName
+			v-if="props.data.type === 'node'"
 			:class="$style.name"
 			:latest-name="latestInfo?.name ?? props.data.node.name"
 			:name="props.data.node.name"
 			:is-error="isError"
 			:is-deleted="latestInfo?.deleted ?? false"
 		/>
-		<N8nText v-if="!isCompact" tag="div" color="text-light" size="small" :class="$style.timeTook">
-			<I18nT v-if="isSettled" keypath="logs.overview.body.summaryText">
+		<N8nText v-else bold :class="$style.name" size="small"
+			>{{ props.data.message }}
+			<N8nText
+				v-if="props.data.type === 'general' && !isEmpty(props.data.payload)"
+				color="text-light"
+				:class="$style.payload"
+				size="small"
+				>{{ JSON.stringify(props.data.payload) }}</N8nText
+			>
+		</N8nText>
+		<N8nText
+			v-if="!isCompact && props.data.type === 'node'"
+			tag="div"
+			color="text-light"
+			size="small"
+			:class="$style.timeTook"
+		>
+			<I18nT keypath="logs.overview.body.summaryText">
 				<template #status>
 					<N8nText v-if="isError" color="danger" :bold="true" size="small">
 						<N8nIcon icon="exclamation-triangle" :class="$style.errorIcon" />{{
@@ -112,10 +157,16 @@ function isLastChild(level: number) {
 					</N8nText>
 					<template v-else>{{ upperFirst(props.data.runData.executionStatus) }}</template>
 				</template>
-				<template #time>{{ locale.displayTimer(props.data.runData.executionTime, true) }}</template>
+				<template #time>{{
+					locale.displayTimer(
+						isSettled
+							? props.data.runData.executionTime
+							: Math.floor((now - props.data.runData.startTime) / 1000) * 1000,
+						true,
+					)
+				}}</template>
 			</I18nT>
-			<template v-else>{{ upperFirst(props.data.runData.executionStatus) }}</template></N8nText
-		>
+		</N8nText>
 		<N8nText
 			v-if="!isCompact"
 			tag="div"
@@ -268,6 +319,10 @@ function isLastChild(level: number) {
 	flex-basis: 0;
 	flex-grow: 1;
 	padding-inline-start: 0;
+
+	.payload {
+		margin-inline-start: var(--spacing-2xs);
+	}
 }
 
 .timeTook {
@@ -315,7 +370,7 @@ function isLastChild(level: number) {
 		display: none;
 	}
 
-	.container:hover &:not(.unavailable) {
+	.container:not(.general):hover &:not(.unavailable) {
 		visibility: visible;
 		display: inline-flex;
 	}

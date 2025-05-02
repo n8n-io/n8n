@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { LogScope } from '@n8n/config';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
@@ -20,6 +22,29 @@ import { isObjectLiteral } from '@/utils/is-object-literal';
 
 const noOp = () => {};
 
+type SendToUI = (level: string, message: string, payload?: unknown) => void;
+
+function safeStringify(obj: unknown): any {
+	const seen = new WeakSet<any>();
+
+	function iter(value: unknown): any {
+		if (Array.isArray(value)) {
+			return value.map(iter);
+		}
+
+		if (typeof value === 'object' && value !== null) {
+			if (seen.has(value)) {
+				return '[Circular]';
+			}
+			seen.add(value);
+		}
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+		return value;
+	}
+
+	return iter(obj);
+}
+
 @Service()
 export class Logger implements LoggerType {
 	private internalLogger: winston.Logger;
@@ -31,6 +56,8 @@ export class Logger implements LoggerType {
 	private get isScopingEnabled() {
 		return this.scopes.size > 0;
 	}
+
+	private sendToUI: SendToUI | undefined;
 
 	/** https://no-color.org/ */
 	private readonly noColor = process.env.NO_COLOR !== undefined && process.env.NO_COLOR !== '';
@@ -82,7 +109,8 @@ export class Logger implements LoggerType {
 		return scopedLogger;
 	}
 
-	private log(level: LogLevel, message: string, metadata: LogMetadata) {
+	private log(level: LogLevel, message: string, metadata_: LogMetadata) {
+		const metadata = safeStringify(metadata_);
 		const location: LogLocationMetadata = {};
 
 		const caller = callsites().at(2); // zeroth and first are this file, second is caller
@@ -93,7 +121,8 @@ export class Logger implements LoggerType {
 			if (fnName) location.function = fnName;
 		}
 
-		this.internalLogger.log(level, message, { ...metadata, ...location });
+		// this.internalLogger.log(level, message, { ...metadata, ...location });
+		this.sendToUI?.(level, message, metadata);
 	}
 
 	private setLevel() {
@@ -229,6 +258,10 @@ export class Logger implements LoggerType {
 
 	debug(message: string, metadata: LogMetadata = {}) {
 		this.log('debug', message, metadata);
+	}
+
+	setSendToUI(send: SendToUI) {
+		this.sendToUI = send;
 	}
 
 	// #endregion

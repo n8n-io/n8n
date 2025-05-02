@@ -257,6 +257,8 @@ export class WebhookService {
 		mode: WorkflowExecuteMode,
 		activation: WorkflowActivateMode,
 	): Promise<void> {
+		this.logger.info('Checking if webhook already exists...');
+
 		const webhookExists = await this.runWebhookMethod(
 			'checkExists',
 			workflow,
@@ -264,8 +266,10 @@ export class WebhookService {
 			mode,
 			activation,
 		);
+
 		if (!webhookExists) {
 			// If webhook does not exist yet create it
+			this.logger.info('Creating new webhook...');
 			await this.runWebhookMethod('create', workflow, webhookData, mode, activation);
 		}
 	}

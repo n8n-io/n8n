@@ -1403,9 +1403,10 @@ export class WorkflowExecute {
 						this.runExecutionData.executionData!.nodeExecutionStack.shift() as IExecuteData;
 					executionNode = executionData.node;
 
+					const executionIndex = this.additionalData.currentNodeExecutionIndex++;
 					const taskStartedData: ITaskStartedData = {
 						startTime: Date.now(),
-						executionIndex: this.additionalData.currentNodeExecutionIndex++,
+						executionIndex,
 						source: !executionData.source ? [] : executionData.source.main,
 						hints: [],
 					};
@@ -1464,6 +1465,7 @@ export class WorkflowExecute {
 					Logger.debug(`Start executing node "${executionNode.name}"`, {
 						node: executionNode.name,
 						workflowId: workflow.id,
+						executionIndex,
 					});
 					await hooks.runHook('nodeExecuteBefore', [executionNode.name, taskStartedData]);
 					let maxTries = 1;
@@ -1507,6 +1509,7 @@ export class WorkflowExecute {
 							} else {
 								Logger.debug(`Running node "${executionNode.name}" started`, {
 									node: executionNode.name,
+									executionIndex,
 									workflowId: workflow.id,
 								});
 
@@ -1558,6 +1561,7 @@ export class WorkflowExecute {
 							Logger.debug(`Running node "${executionNode.name}" finished successfully`, {
 								node: executionNode.name,
 								workflowId: workflow.id,
+								executionIndex,
 							});
 
 							nodeSuccessData = this.assignPairedItems(nodeSuccessData, executionData);
@@ -1626,6 +1630,7 @@ export class WorkflowExecute {
 							Logger.debug(`Running node "${executionNode.name}" finished with error`, {
 								node: executionNode.name,
 								workflowId: workflow.id,
+								executionIndex,
 							});
 						}
 					}

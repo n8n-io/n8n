@@ -54,7 +54,11 @@ export function useExecutionData() {
 
 		return {
 			...execData.value,
-			tree: createLogEntries(workflow.value, execData.value.data?.resultData.runData ?? {}),
+			tree: createLogEntries(
+				workflowsStore.consoleMessages,
+				workflow.value,
+				execData.value.data?.resultData.runData ?? {},
+			),
 		};
 	});
 	const updateInterval = computed(() => ((execution.value?.tree.length ?? 0) > 10 ? 300 : 0));

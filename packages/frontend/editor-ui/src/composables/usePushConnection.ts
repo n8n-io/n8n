@@ -134,7 +134,8 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 
 		if (receivedData.type === 'sendConsoleMessage') {
 			const pushData = receivedData.data;
-			console.log(pushData.source, ...pushData.messages);
+			// console.log(pushData.source, ...pushData.messages);
+			workflowsStore.addConsoleMessage(pushData);
 			return true;
 		}
 

@@ -94,6 +94,17 @@ import { updateCurrentUserSettings } from '@/api/users';
 import { useExecutingNode } from '@/composables/useExecutingNode';
 import { LOGS_PANEL_STATE } from '@/components/CanvasChat/types/logs';
 import { useLocalStorage } from '@vueuse/core';
+import z from 'zod';
+
+const GenericLogSchema = z.object({
+	level: z.enum(['debug', 'info', 'warn', 'error']),
+	message: z.string(),
+	id: z.string(),
+	timestamp: z.number(),
+	payload: z.object({ executionIndex: z.number().optional() }).passthrough().optional(),
+});
+
+export type GenericLog = z.infer<typeof GenericLogSchema>;
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
@@ -158,6 +169,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 				: LOGS_PANEL_STATE.ATTACHED
 			: LOGS_PANEL_STATE.CLOSED,
 	);
+
+	const consoleMessages = ref<GenericLog[]>([]);
 
 	const { executingNode, addExecutingNode, removeExecutingNode, clearNodeExecutionQueue } =
 		useExecutingNode();
@@ -793,6 +806,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}
 		workflowExecutionData.value = workflowResultData;
 		workflowExecutionPairedItemMappings.value = getPairedItemsMapping(workflowResultData);
+
+		if (workflowResultData === null) {
+			consoleMessages.value = [];
+		}
 	}
 
 	function setWorkflowExecutionRunData(workflowResultData: IRunExecutionData) {
@@ -1754,6 +1771,16 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}
 	}
 
+	function addConsoleMessage(message: unknown) {
+		const parsed = GenericLogSchema.safeParse(message);
+
+		if (!parsed.data) {
+			return;
+		}
+
+		consoleMessages.value.push(parsed.data);
+	}
+
 	return {
 		workflow,
 		usedCredentials,
@@ -1902,5 +1929,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		findNodeByPartialId,
 		getPartialIdForNode,
 		totalWorkflowCount,
+		consoleMessages,
+		addConsoleMessage,
 	};
 });

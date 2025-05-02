@@ -15,6 +15,7 @@ import type {
 	IWorkflowBase,
 } from 'n8n-workflow';
 import { SubworkflowOperationError, Workflow } from 'n8n-workflow';
+import { v4 as uuid } from 'uuid';
 
 import config from '@/config';
 import type { Project } from '@/databases/entities/project';
@@ -114,6 +115,22 @@ export class WorkflowExecutionService {
 		pushRef?: string,
 		partialExecutionVersion: 1 | 2 = 1,
 	) {
+		if (pushRef) {
+			const send = WorkflowExecuteAdditionalData.sendDataToUI.bind({ pushRef });
+
+			this.logger.setSendToUI((level, message, payload) =>
+				send('sendConsoleMessage', {
+					id: uuid(),
+					level,
+					message,
+					payload,
+					timestamp: Date.now(),
+				}),
+			);
+		}
+
+		this.logger.info('Starting manual execution...');
+
 		const pinData = workflowData.pinData;
 		let pinnedTrigger = this.selectPinnedActivatorStarter(
 			workflowData,
@@ -164,7 +181,11 @@ export class WorkflowExecutionService {
 				triggerToStartFrom,
 			});
 
-			if (needsWebhook) return { waitingForWebhook: true };
+			if (needsWebhook) {
+				this.logger.info('Waiting for the user to make a webhook call...');
+
+				return { waitingForWebhook: true };
+			}
 		}
 
 		// For manual testing always set to not active

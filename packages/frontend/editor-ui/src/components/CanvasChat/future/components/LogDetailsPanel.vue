@@ -19,6 +19,7 @@ import {
 import { N8nButton, N8nResizeWrapper } from '@n8n/design-system';
 import { useLocalStorage } from '@vueuse/core';
 import { computed, useTemplateRef } from 'vue';
+import { isEmpty } from 'lodash-es';
 
 const MIN_IO_PANEL_WIDTH = 200;
 
@@ -45,7 +46,9 @@ const content = useLocalStorage<LogDetailsContent>(
 	{ writeDefaults: false },
 );
 
-const type = computed(() => nodeTypeStore.getNodeType(logEntry.node.type));
+const type = computed(() =>
+	logEntry.type === 'node' ? nodeTypeStore.getNodeType(logEntry.node.type) : null,
+);
 const consumedTokens = computed(() => getSubtreeTotalConsumedTokens(logEntry));
 const isTriggerNode = computed(() => type.value?.group.includes('trigger'));
 const container = useTemplateRef<HTMLElement>('container');
@@ -103,14 +106,18 @@ function handleResizeEnd() {
 </script>
 
 <template>
-	<div ref="container" :class="$style.container" data-test-id="log-details">
+	<div
+		ref="container"
+		:class="[$style.container, logEntry.type === 'general' ? $style.general : '']"
+		data-test-id="log-details"
+	>
 		<PanelHeader
 			data-test-id="log-details-header"
 			:class="$style.header"
 			@click="emit('clickHeader')"
 		>
 			<template #title>
-				<div :class="$style.title">
+				<div v-if="logEntry.type === 'node'" :class="$style.title">
 					<NodeIcon :node-type="type" :size="16" :class="$style.icon" />
 					<NodeName
 						:latest-name="latestInfo?.name ?? logEntry.node.name"
@@ -125,9 +132,10 @@ function handleResizeEnd() {
 						:time-took="logEntry.runData.executionTime"
 					/>
 				</div>
+				<div v-else>Execution Engine Log</div>
 			</template>
 			<template #actions>
-				<div v-if="isOpen && !isTriggerNode" :class="$style.actions">
+				<div v-if="isOpen && !isTriggerNode && logEntry.type === 'node'" :class="$style.actions">
 					<N8nButton
 						size="mini"
 						type="secondary"
@@ -149,40 +157,46 @@ function handleResizeEnd() {
 			</template>
 		</PanelHeader>
 		<div v-if="isOpen" :class="$style.content" data-test-id="logs-details-body">
-			<N8nResizeWrapper
-				v-if="!isTriggerNode && content !== LOG_DETAILS_CONTENT.OUTPUT"
-				:class="{
-					[$style.inputResizer]: true,
-					[$style.collapsed]: resizer.isCollapsed.value,
-					[$style.full]: resizer.isFullSize.value,
-				}"
-				:width="resizer.size.value"
-				:style="shouldResize ? { width: `${resizer.size.value ?? 0}px` } : undefined"
-				:supported-directions="['right']"
-				:is-resizing-enabled="shouldResize"
-				:window="window"
-				@resize="resizer.onResize"
-				@resizeend="handleResizeEnd"
-			>
+			<template v-if="logEntry.type === 'node'">
+				<N8nResizeWrapper
+					v-if="!isTriggerNode && content !== LOG_DETAILS_CONTENT.OUTPUT"
+					:class="{
+						[$style.inputResizer]: true,
+						[$style.collapsed]: resizer.isCollapsed.value,
+						[$style.full]: resizer.isFullSize.value,
+					}"
+					:width="resizer.size.value"
+					:style="shouldResize ? { width: `${resizer.size.value ?? 0}px` } : undefined"
+					:supported-directions="['right']"
+					:is-resizing-enabled="shouldResize"
+					:window="window"
+					@resize="resizer.onResize"
+					@resizeend="handleResizeEnd"
+				>
+					<RunDataView
+						data-test-id="log-details-input"
+						pane-type="input"
+						:title="locale.baseText('logs.details.header.actions.input')"
+						:log-entry="logEntry"
+						:workflow="workflow"
+						:execution="execution"
+					/>
+				</N8nResizeWrapper>
 				<RunDataView
-					data-test-id="log-details-input"
-					pane-type="input"
-					:title="locale.baseText('logs.details.header.actions.input')"
+					v-if="isTriggerNode || content !== LOG_DETAILS_CONTENT.INPUT"
+					data-test-id="log-details-output"
+					pane-type="output"
+					:class="$style.outputPanel"
+					:title="locale.baseText('logs.details.header.actions.output')"
 					:log-entry="logEntry"
 					:workflow="workflow"
 					:execution="execution"
 				/>
-			</N8nResizeWrapper>
-			<RunDataView
-				v-if="isTriggerNode || content !== LOG_DETAILS_CONTENT.INPUT"
-				data-test-id="log-details-output"
-				pane-type="output"
-				:class="$style.outputPanel"
-				:title="locale.baseText('logs.details.header.actions.output')"
-				:log-entry="logEntry"
-				:workflow="workflow"
-				:execution="execution"
-			/>
+			</template>
+			<div v-else :class="$style.engineLog">
+				<div>{{ logEntry.message }}</div>
+				<pre v-if="!isEmpty(logEntry.payload)">{{ JSON.stringify(logEntry.payload, null, 2) }}</pre>
+			</div>
 		</div>
 	</div>
 </template>
@@ -232,6 +246,10 @@ function handleResizeEnd() {
 	display: flex;
 	align-items: stretch;
 	overflow: hidden;
+
+	.general & {
+		overflow: auto;
+	}
 }
 
 .outputPanel {
@@ -245,6 +263,16 @@ function handleResizeEnd() {
 
 	&:not(:is(:last-child, .collapsed, .full)) {
 		border-right: var(--border-base);
+	}
+}
+
+.engineLog {
+	padding: var(--spacing-2xs);
+	font-size: var(--font-size-xs);
+
+	pre {
+		padding-top: var(--spacing-2xs);
+		white-space: pre-wrap;
 	}
 }
 </style>

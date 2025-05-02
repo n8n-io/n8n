@@ -653,6 +653,14 @@ export async function proxyRequestToAxios(
 	axiosConfig = Object.assign(axiosConfig, await parseRequestObject(configObject));
 
 	try {
+		additionalData?.logger.debug('Making HTTP request...', {
+			url: axiosConfig.url,
+			method: axiosConfig.method,
+			headers: axiosConfig.headers,
+			body: axiosConfig.data,
+			executionIndex: additionalData.currentNodeExecutionIndex - 1,
+		} as {});
+
 		const response = await invokeAxios(axiosConfig, configObject.auth);
 		let body = response.data;
 		if (body instanceof IncomingMessage && axiosConfig.responseType === 'stream') {
@@ -680,7 +688,14 @@ export async function proxyRequestToAxios(
 			error.config = error.request = undefined;
 			error.options = pick(config ?? {}, ['url', 'method', 'data', 'headers']);
 			if (response) {
-				Container.get(Logger).debug('Request proxied to Axios failed', { status: response.status });
+				additionalData?.logger?.debug(
+					'Request proxied to Axios failed',
+					Object.assign(response, {
+						config: undefined,
+						request: undefined,
+						executionIndex: additionalData.currentNodeExecutionIndex - 1,
+					}),
+				);
 				let responseData = response.data;
 
 				if (Buffer.isBuffer(responseData) || responseData instanceof Readable) {
@@ -978,7 +993,7 @@ export async function requestOAuth2(
 		return await this.helpers.httpRequest(newRequestOptions).catch(async (error: AxiosError) => {
 			if (error.response?.status === 401) {
 				this.logger.debug(
-					`OAuth2 token for "${credentialsType}" used by node "${node.name}" expired. Should revalidate.`,
+					`OAuth2 token for "${credentialsType}" used by node "${node.name}" expired. Attempting revalidate...`,
 				);
 				const tokenRefreshOptions: IDataObject = {};
 				if (oAuth2Options?.includeCredentialsOnRefreshOnBody) {
@@ -1071,7 +1086,7 @@ export async function requestOAuth2(
 					};
 				}
 				this.logger.debug(
-					`OAuth2 token for "${credentialsType}" used by node "${node.name}" expired. Should revalidate.`,
+					`OAuth2 token for "${credentialsType}" used by node "${node.name}" expired. Attempting revalidate...`,
 				);
 
 				let newToken;

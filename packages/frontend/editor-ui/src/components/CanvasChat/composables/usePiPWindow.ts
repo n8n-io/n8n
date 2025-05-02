@@ -59,11 +59,8 @@ export function usePiPWindow({
 
 		pipWindow.value =
 			pipWindow.value ??
-			(await window.documentPictureInPicture?.requestWindow({
-				width: initialWidth,
-				height: initialHeight,
-				disallowReturnToOpener: true,
-			}));
+			window.open(undefined, 'n8n-logs', 'popup=1,width=500,height=500') ??
+			undefined;
 
 		// Copy style sheets over from the initial document
 		// so that the content looks the same.

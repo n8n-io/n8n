@@ -1,6 +1,6 @@
 import { Service } from '@n8n/di';
 import type express from 'express';
-import { InstanceSettings } from 'n8n-core';
+import { InstanceSettings, Logger } from 'n8n-core';
 import { WebhookPathTakenError, Workflow } from 'n8n-workflow';
 import type {
 	IWebhookData,
@@ -39,6 +39,7 @@ import type {
 @Service()
 export class TestWebhooks implements IWebhookManager {
 	constructor(
+		private readonly logger: Logger,
 		private readonly push: Push,
 		private readonly nodeTypes: NodeTypes,
 		private readonly registrations: TestWebhookRegistrationsService,
@@ -274,6 +275,8 @@ export class TestWebhooks implements IWebhookManager {
 				return false;
 			}
 
+			this.logger.info('Registering webhook...');
+
 			// if registration already exists and is not a test webhook created by this user in this workflow throw an error
 			if (
 				registrationByKey &&
@@ -318,6 +321,7 @@ export class TestWebhooks implements IWebhookManager {
 
 				this.timeouts[key] = timeout;
 			} catch (error) {
+				this.logger.error('Error registering webhook', error as {});
 				await this.deactivateWebhooks(workflow);
 
 				delete this.timeouts[key];
@@ -330,6 +334,8 @@ export class TestWebhooks implements IWebhookManager {
 	}
 
 	async cancelWebhook(workflowId: string) {
+		this.logger.info('Cancelling webhook', { workflowId });
+
 		let foundWebhook = false;
 
 		const allWebhookKeys = await this.registrations.getAllKeys();

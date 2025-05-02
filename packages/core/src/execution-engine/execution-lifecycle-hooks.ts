@@ -11,6 +11,8 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
+import { type Logger } from '@/logging';
+
 export type ExecutionLifecyleHookHandlers = {
 	nodeExecuteBefore: Array<
 		(
@@ -120,5 +122,6 @@ export class ExecutionLifecycleHooks {
 declare module 'n8n-workflow' {
 	interface IWorkflowExecuteAdditionalData {
 		hooks?: ExecutionLifecycleHooks;
+		logger: Logger;
 	}
 }

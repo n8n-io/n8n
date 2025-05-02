@@ -15,6 +15,7 @@ import {
 } from 'n8n-workflow';
 import { type LogEntrySelection } from '../CanvasChat/types/logs';
 import { isProxy, isReactive, isRef, toRaw } from 'vue';
+import { type GenericLog } from '@/stores/workflows.store';
 
 export interface AIResult {
 	node: string;
@@ -227,16 +228,31 @@ export interface ExecutionLogViewData extends IExecutionResponse {
 	tree: LogEntry[];
 }
 
-export interface LogEntry {
-	parent?: LogEntry;
-	node: INodeUi;
-	id: string;
-	children: LogEntry[];
-	depth: number;
-	runIndex: number;
-	runData: ITaskData;
-	consumedTokens: LlmTokenUsageData;
-}
+export type LogEntry =
+	| {
+			type: 'general';
+			parent?: LogEntry;
+			level: 'debug' | 'error' | 'info' | 'warn';
+			id: string;
+			message: string;
+			payload: unknown;
+			timestamp: number;
+			children: [];
+			depth: number;
+			consumedTokens: LlmTokenUsageData;
+	  }
+	| {
+			type: 'node';
+			parent?: LogEntry;
+			node: INodeUi;
+			id: string;
+			children: LogEntry[];
+			timestamp: number;
+			depth: number;
+			runIndex: number;
+			runData: ITaskData;
+			consumedTokens: LlmTokenUsageData;
+	  };
 
 export interface LatestNodeInfo {
 	disabled: boolean;
@@ -275,10 +291,12 @@ function createNodeV2(
 	children: LogEntry[] = [],
 ): LogEntry {
 	return {
+		type: 'node',
 		parent,
 		node,
 		id: `${node.name}:${runIndex}`,
 		depth: currentDepth,
+		timestamp: runData.startTime,
 		runIndex,
 		runData,
 		children,
@@ -288,6 +306,7 @@ function createNodeV2(
 
 export function getTreeNodeDataV2(
 	nodeName: string,
+	genericLogs: LogEntry[],
 	runData: ITaskData,
 	workflow: Workflow,
 	data: IRunData,
@@ -295,12 +314,15 @@ export function getTreeNodeDataV2(
 ): LogEntry[] {
 	const node = workflow.getNode(nodeName);
 
-	return node ? getTreeNodeDataRecV2(undefined, node, runData, 0, workflow, data, runIndex) : [];
+	return node
+		? getTreeNodeDataRecV2(undefined, node, genericLogs, runData, 0, workflow, data, runIndex)
+		: [];
 }
 
 function getTreeNodeDataRecV2(
 	parent: LogEntry | undefined,
 	node: INodeUi,
+	genericLogs: LogEntry[],
 	runData: ITaskData,
 	currentDepth: number,
 	workflow: Workflow,
@@ -310,21 +332,37 @@ function getTreeNodeDataRecV2(
 	// Get the first level of children
 	const connectedSubNodes = workflow.getParentNodes(node.name, 'ALL_NON_MAIN', 1);
 	const treeNode = createNodeV2(parent, node, currentDepth, runIndex ?? 0, runData);
-	const children = connectedSubNodes
-		.flatMap((subNodeName) =>
-			(data[subNodeName] ?? []).flatMap((t, index) => {
-				if (runIndex !== undefined && index !== runIndex) {
-					return [];
-				}
+	const children = genericLogs
+		.map<LogEntry>((g) => ({ ...g, parent: treeNode, depth: currentDepth + 1 }))
+		.concat(
+			connectedSubNodes.flatMap((subNodeName) =>
+				(data[subNodeName] ?? []).flatMap((t, index) => {
+					if (runIndex !== undefined && index !== runIndex) {
+						return [];
+					}
 
-				const subNode = workflow.getNode(subNodeName);
+					const subNode = workflow.getNode(subNodeName);
 
-				return subNode
-					? getTreeNodeDataRecV2(treeNode, subNode, t, currentDepth + 1, workflow, data, index)
-					: [];
-			}),
+					return subNode
+						? getTreeNodeDataRecV2(
+								treeNode,
+								subNode,
+								[],
+								t,
+								currentDepth + 1,
+								workflow,
+								data,
+								index,
+							)
+						: [];
+				}),
+			),
 		)
 		.sort((a, b) => {
+			if (a.type !== 'node' || b.type !== 'node') {
+				return 0;
+			}
+
 			// Sort the data by execution index or start time
 			if (a.runData.executionIndex !== undefined && b.runData.executionIndex !== undefined) {
 				return a.runData.executionIndex - b.runData.executionIndex;
@@ -358,7 +396,15 @@ function findLogEntryToAutoSelectRec(
 	depth: number,
 ): LogEntry | undefined {
 	for (const entry of subTree) {
-		const taskData = data.data?.resultData.runData[entry.node.name]?.[entry.runIndex];
+		if (entry.type === 'general') {
+			if (entry.level === 'error') {
+				return entry;
+			}
+
+			continue;
+		}
+
+		const taskData = entry.runData;
 
 		if (taskData?.error) {
 			return entry;
@@ -378,40 +424,69 @@ function findLogEntryToAutoSelectRec(
 		}
 	}
 
-	return depth === 0 ? subTree[0] : undefined;
+	return depth === 0 && subTree.length > 0 && subTree[0].type === 'node' ? subTree[0] : undefined;
 }
 
-export function createLogEntries(workflow: Workflow, runData: IRunData) {
-	const runs = Object.entries(runData)
-		.filter(([nodeName]) => workflow.getChildNodes(nodeName, 'ALL_NON_MAIN').length === 0)
-		.flatMap(([nodeName, taskData]) =>
-			taskData.map((task, runIndex) => ({ nodeName, task, runIndex })),
+export function createLogEntries(
+	consoleMessages: GenericLog[],
+	workflow: Workflow,
+	runData: IRunData,
+) {
+	const genericLogByExecutionIndex = new Map<number, LogEntry[]>();
+
+	for (const log of consoleMessages) {
+		const index = log.payload?.executionIndex ?? -1;
+
+		genericLogByExecutionIndex.set(index, [
+			...(genericLogByExecutionIndex.get(index) ?? []),
+			{
+				payload: undefined,
+				...log,
+				parent: undefined,
+				type: 'general',
+				depth: 0,
+				children: [],
+				consumedTokens: emptyTokenUsageData,
+			},
+		]);
+	}
+
+	const runs = (genericLogByExecutionIndex.get(-1) ?? [])
+		.concat(
+			Object.entries(runData)
+				.filter(([nodeName]) => workflow.getChildNodes(nodeName, 'ALL_NON_MAIN').length === 0)
+				.flatMap(([nodeName, taskData]) =>
+					taskData.map((task, runIndex) => ({ nodeName, task, runIndex })),
+				)
+				.flatMap(({ nodeName, runIndex, task }) => {
+					const logs = genericLogByExecutionIndex.get(task.executionIndex) ?? [];
+
+					if (workflow.getParentNodes(nodeName, 'ALL_NON_MAIN').length > 0) {
+						return getTreeNodeDataV2(nodeName, logs, task, workflow, runData, undefined);
+					}
+
+					return getTreeNodeDataV2(nodeName, logs, task, workflow, runData, runIndex);
+				}),
 		)
 		.sort((a, b) => {
-			if (a.task.executionIndex !== undefined && b.task.executionIndex !== undefined) {
-				return a.task.executionIndex - b.task.executionIndex;
+			if (a.timestamp !== b.timestamp || a.type === 'general' || b.type === 'general') {
+				return a.timestamp - b.timestamp;
 			}
 
-			return a.nodeName === b.nodeName
+			if (a.runData.executionIndex !== undefined && b.runData.executionIndex !== undefined) {
+				return a.runData.executionIndex - b.runData.executionIndex;
+			}
+
+			return a.node.name === b.node.name
 				? a.runIndex - b.runIndex
-				: a.task.startTime - b.task.startTime;
+				: a.runData.startTime - b.runData.startTime;
 		});
 
-	return runs.flatMap(({ nodeName, runIndex, task }) => {
-		if (workflow.getParentNodes(nodeName, 'ALL_NON_MAIN').length > 0) {
-			return getTreeNodeDataV2(nodeName, task, workflow, runData, undefined);
-		}
-
-		return getTreeNodeDataV2(nodeName, task, workflow, runData, runIndex);
-	});
+	return runs;
 }
 
 export function includesLogEntry(log: LogEntry, logs: LogEntry[]): boolean {
-	return logs.some(
-		(l) =>
-			(l.node.name === log.node.name && log.runIndex === l.runIndex) ||
-			includesLogEntry(log, l.children),
-	);
+	return logs.some((l) => l.id === log.id || includesLogEntry(log, l.children));
 }
 
 export function findSelectedLogEntry(

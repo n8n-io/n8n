@@ -18,7 +18,7 @@ import {
 	type LatestNodeInfo,
 	type LogEntry,
 } from '@/components/RunDataAi/utils';
-import { useVirtualList } from '@vueuse/core';
+import { useTimestamp, useVirtualList } from '@vueuse/core';
 import { ndvEventBus } from '@/event-bus';
 
 const { isOpen, isReadOnly, selected, isCompact, execution, latestNodeInfo, scrollToSelection } =
@@ -59,20 +59,23 @@ const flatLogEntries = computed(() =>
 	flattenLogEntries(execution?.tree ?? [], collapsedEntries.value),
 );
 const virtualList = useVirtualList(flatLogEntries, { itemHeight: 32 });
+const now = useTimestamp({ interval: 1000 });
 
 function handleClickNode(clicked: LogEntry) {
-	if (selected?.node === clicked.node && selected?.runIndex === clicked.runIndex) {
+	if (selected?.id === clicked.id) {
 		emit('select', undefined);
 		return;
 	}
-
 	emit('select', clicked);
-	telemetry.track('User selected node in log view', {
-		node_type: clicked.node.type,
-		node_id: clicked.node.id,
-		execution_id: execution?.id,
-		workflow_id: execution?.workflowData.id,
-	});
+
+	if (clicked.type === 'node') {
+		telemetry.track('User selected node in log view', {
+			node_type: clicked.node.type,
+			node_id: clicked.node.id,
+			execution_id: execution?.id,
+			workflow_id: execution?.workflowData.id,
+		});
+	}
 }
 
 function handleSwitchView(value: 'overview' | 'details') {
@@ -87,6 +90,10 @@ function handleToggleExpanded(treeNode: LogEntry) {
 }
 
 async function handleOpenNdv(treeNode: LogEntry) {
+	if (treeNode.type !== 'node') {
+		return;
+	}
+
 	ndvStore.setActiveNodeName(treeNode.node.name);
 
 	await nextTick(() => {
@@ -100,6 +107,10 @@ async function handleOpenNdv(treeNode: LogEntry) {
 }
 
 async function handleTriggerPartialExecution(treeNode: LogEntry) {
+	if (treeNode.type !== 'node') {
+		return;
+	}
+
 	const latestName = latestNodeInfo[treeNode.node.id]?.name ?? treeNode.node.name;
 
 	if (latestName) {
@@ -171,9 +182,9 @@ watch(
 					:status="execution.status"
 					:consumed-tokens="consumedTokens"
 					:time-took="
-						execution.startedAt && execution.stoppedAt
+						execution.stoppedAt
 							? +new Date(execution.stoppedAt) - +new Date(execution.startedAt)
-							: undefined
+							: Math.floor((+new Date(now) - +new Date(execution.startedAt)) / 1000) * 1000
 					"
 				/>
 				<div :class="$style.tree" v-bind="virtualList.containerProps">
@@ -183,12 +194,10 @@ watch(
 							:key="index"
 							:data="data"
 							:is-read-only="isReadOnly"
-							:is-selected="
-								data.node.name === selected?.node.name && data.runIndex === selected?.runIndex
-							"
+							:is-selected="data.id === selected?.id"
 							:is-compact="isCompact"
 							:should-show-consumed-tokens="consumedTokens.totalTokens > 0"
-							:latest-info="latestNodeInfo[data.node.id]"
+							:latest-info="data.type === 'node' ? latestNodeInfo[data.node.id] : undefined"
 							:expanded="!collapsedEntries[data.id]"
 							@click.stop="handleClickNode(data)"
 							@toggle-expanded="handleToggleExpanded"
