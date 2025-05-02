@@ -1,4 +1,4 @@
-import type { Scope } from '@n8n/permissions';
+import type { Scope } from './types.ee';
 
 export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'annotationTag:create',

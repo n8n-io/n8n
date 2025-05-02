@@ -2,6 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
+import type { CredentialsEntity, ICredentialsDb } from '@n8n/db';
 import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
@@ -30,10 +31,8 @@ import { ICredentialsHelper, NodeHelpers, Workflow, UnexpectedError } from 'n8n-
 
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
-import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
-import type { ICredentialsDb } from '@/types-db';
 
 import { RESPONSE_ERROR_MESSAGES } from './constants';
 import { CredentialNotFoundError } from './errors/credential-not-found.error';

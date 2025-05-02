@@ -1,3 +1,5 @@
+import type { CredentialsEntity } from '@n8n/db';
+import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import Csrf from 'csrf';
 import { type Response } from 'express';
@@ -10,8 +12,6 @@ import { CREDENTIAL_BLANKING_VALUE, Time } from '@/constants';
 import { OAuth2CredentialController } from '@/controllers/oauth/oauth2-credential.controller';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsHelper } from '@/credentials-helper';
-import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
-import type { User } from '@/databases/entities/user';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';

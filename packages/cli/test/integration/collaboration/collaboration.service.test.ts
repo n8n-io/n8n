@@ -1,3 +1,4 @@
+import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type { IWorkflowBase } from 'n8n-workflow';
@@ -7,7 +8,6 @@ import type {
 	WorkflowOpenedMessage,
 } from '@/collaboration/collaboration.message';
 import { CollaborationService } from '@/collaboration/collaboration.service';
-import type { User } from '@/databases/entities/user';
 import { Push } from '@/push';
 import { CacheService } from '@/services/cache/cache.service';
 import { mockInstance } from '@test/mocking';

@@ -1,3 +1,4 @@
+import type { User } from '@n8n/db';
 import { readFileSync } from 'fs';
 import { mock } from 'jest-mock-extended';
 import type { INode, IWorkflowBase } from 'n8n-workflow';
@@ -9,7 +10,6 @@ import {
 } from 'n8n-workflow';
 import { agent as testAgent } from 'supertest';
 
-import type { User } from '@/databases/entities/user';
 import { NodeTypes } from '@/node-types';
 import { WebhookServer } from '@/webhooks/webhook-server';
 

@@ -5,6 +5,7 @@ import {
 	GenerateCredentialNameRequestQuery,
 } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
+import { SharedCredentials } from '@n8n/db';
 import {
 	Delete,
 	Get,
@@ -25,7 +26,6 @@ import { deepCopy } from 'n8n-workflow';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { SharedCredentials } from '@/databases/entities/shared-credentials';
 import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import * as Db from '@/db';

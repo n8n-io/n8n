@@ -1,3 +1,4 @@
+import type { IExecutionResponse } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { Logger } from 'n8n-core';
 import { mockInstance } from 'n8n-core/test/utils';
@@ -11,7 +12,6 @@ import { ExternalHooks } from '@/external-hooks';
 import type { ManualExecutionService } from '@/manual-execution.service';
 import { SecretsHelper } from '@/secrets-helpers.ee';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
-import type { IExecutionResponse } from '@/types-db';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
