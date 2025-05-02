@@ -92,7 +92,10 @@ export class JinaAi implements INodeType {
 								url: 'https://s.jina.ai/',
 								headers: {
 									'X-Return-Format': '={{ $parameter["options"]["outputFormat"] }}',
-									'X-Site-Filter': '={{ $parameter["options"]["siteFilter"] }}',
+									'X-Site': '={{ $parameter["options"]["siteFilter"] }}',
+								},
+								qs: {
+									q: '={{ $parameter["searchQuery"] }}',
 								},
 							},
 						},
