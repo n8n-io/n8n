@@ -75,14 +75,14 @@ export async function wordpressApiRequestAllItems(
 	return returnData;
 }
 
-export async function wordpress5ApiRequestMedia(
+export async function wordpressApiRequestMedia(
   this: IExecuteFunctions | ILoadOptionsFunctions,
   method: IHttpRequestMethods,
   resource: string,
   body: any,
   headers: IDataObject = {},
 ): Promise<any> {
-  const credentials = await this.getCredentials('wordpress5Api');
+  const credentials = await this.getCredentials('wordpressApi');
   let options: IRequestOptions = {
     headers: {
       'Content-Type': 'multipart/form-data',
@@ -95,7 +95,7 @@ export async function wordpress5ApiRequestMedia(
     json: true,
   };
   try {
-    const credentialType = 'wordpress5Api';
+    const credentialType = 'wordpressApi';
     return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
   } catch (error) {
     throw new NodeApiError(this.getNode(), error as JsonObject);
