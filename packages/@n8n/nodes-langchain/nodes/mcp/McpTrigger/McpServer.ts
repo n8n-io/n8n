@@ -102,14 +102,14 @@ export class McpServer {
 
 			// Use session & message ID if available, otherwise fall back to sessionId
 			const callId = messageId ? `${sessionId}_${messageId}` : sessionId;
-			this.tools[callId] = connectedTools;
+			this.tools[sessionId] = connectedTools;
 
 			await new Promise(async (resolve) => {
 				this.resolveFunctions[callId] = resolve;
 				await transport.handlePostMessage(req, resp, bodyString);
 			});
 			delete this.resolveFunctions[callId];
-			delete this.tools[callId]; // Clean up to avoid keeping all tools in memory
+			delete this.tools[sessionId]; // Clean up to avoid keeping all tools in memory
 		} else {
 			this.logger.warn(`No transport found for session ${sessionId}`);
 			resp.status(401).send('No transport found for sessionId');
@@ -165,11 +165,7 @@ export class McpServer {
 
 				const callId = extra.requestId ? `${extra.sessionId}_${extra.requestId}` : extra.sessionId;
 
-				if (!this.tools[callId]) {
-					throw new OperationalError('Tool not found');
-				}
-
-				const requestedTool: Tool | undefined = this.tools[callId].find(
+				const requestedTool: Tool | undefined = this.tools[extra.sessionId].find(
 					(tool) => tool.name === request.params.name,
 				);
 				if (!requestedTool) {
@@ -178,6 +174,9 @@ export class McpServer {
 
 				try {
 					const result = await requestedTool.invoke(request.params.arguments);
+					if (!this.resolveFunctions[callId]) {
+						throw new OperationalError('Tool call not found');
+					}
 
 					this.resolveFunctions[callId]();
 
