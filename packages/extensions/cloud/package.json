@@ -38,15 +38,13 @@
   },
   "peerDependencies": {
     "vue": "catalog:frontend",
-    "vue-router": "catalog:frontend",
-    "@n8n/design-system": "workspace:*"
+    "vue-router": "catalog:frontend"
   },
   "dependencies": {
     "@n8n/extension-sdk": "workspace:*"
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
-    "@n8n/design-system": "workspace:*",
     "@vitejs/plugin-vue": "catalog:frontend",
     "@vue/tsconfig": "catalog:frontend",
     "rimraf": "catalog:",

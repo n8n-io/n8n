@@ -1057,6 +1057,9 @@ importers:
       '@n8n/localtunnel':
         specifier: 3.0.0
         version: 3.0.0
+      '@n8n/n8n-extension-cloud':
+        specifier: workspace:*
+        version: link:../extensions/cloud
       '@n8n/n8n-nodes-langchain':
         specifier: workspace:*
         version: link:../@n8n/nodes-langchain
@@ -1298,6 +1301,9 @@ importers:
         specifier: 'catalog:'
         version: 3.24.1
     devDependencies:
+      '@n8n/extension-sdk':
+        specifier: workspace:*
+        version: link:../@n8n/extension-sdk
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../@n8n/typescript-config
@@ -1516,9 +1522,6 @@ importers:
         specifier: workspace:*
         version: link:../../@n8n/extension-sdk
     devDependencies:
-      '@n8n/design-system':
-        specifier: workspace:*
-        version: link:../../frontend/@n8n/design-system
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../../@n8n/typescript-config

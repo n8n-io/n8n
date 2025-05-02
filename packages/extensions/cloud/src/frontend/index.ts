@@ -1,7 +1,7 @@
 import { defineFrontendExtension } from '@n8n/extension-sdk/frontend';
 
-export default defineFrontendExtension({
+defineFrontendExtension({
 	setup(n8n) {
-		console.log(n8n);
+		console.log('Cloud Extension', { n8n });
 	},
 });
