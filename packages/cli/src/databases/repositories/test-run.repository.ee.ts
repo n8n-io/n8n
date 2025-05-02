@@ -116,6 +116,6 @@ export class TestRunRepository extends Repository<TestRun> {
 		testRun.finalResult =
 			testRun.status === 'completed' ? getTestRunFinalResult(testRun.testCaseExecutions) : null;
 
-		return testRun as TestRunSummary; // @TODO: Fix typing
+		return testRun as TestRunSummary;
 	}
 }
