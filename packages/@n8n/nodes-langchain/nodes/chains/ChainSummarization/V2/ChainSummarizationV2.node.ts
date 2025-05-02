@@ -1,5 +1,6 @@
 import type { Document } from '@langchain/core/documents';
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
+import type { ChainValues } from '@langchain/core/utils/types';
 import type { TextSplitter } from '@langchain/textsplitters';
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
 import { loadSummarizationChain } from 'langchain/chains';
@@ -12,7 +13,7 @@ import type {
 	IDataObject,
 	INodeInputConfiguration,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, sleep } from 'n8n-workflow';
 
 import { N8nBinaryLoader } from '@utils/N8nBinaryLoader';
 import { N8nJsonLoader } from '@utils/N8nJsonLoader';
@@ -306,6 +307,31 @@ export class ChainSummarizationV2 implements INodeType {
 								},
 							],
 						},
+						{
+							displayName: 'Batch Processing',
+							name: 'batching',
+							type: 'collection',
+							description: 'Batch processing options for rate limiting',
+							default: {},
+							options: [
+								{
+									displayName: 'Batch Size',
+									name: 'batchSize',
+									default: 100,
+									type: 'number',
+									description:
+										'How many items to process in parallel. This is useful for rate limiting.',
+								},
+								{
+									displayName: 'Delay Between Batches',
+									name: 'delayBetweenBatches',
+									default: 0,
+									type: 'number',
+									description:
+										'Delay in milliseconds between batches. This is useful for rate limiting.',
+								},
+							],
+						},
 					],
 				},
 			],
@@ -324,9 +350,19 @@ export class ChainSummarizationV2 implements INodeType {
 
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
+		const { batchSize, delayBetweenBatches } = this.getNodeParameter('options.batching', 0, {
+			batchSize: 100,
+			delayBetweenBatches: 0,
+		}) as {
+			batchSize: number;
+			delayBetweenBatches: number;
+		};
 
-		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-			try {
+		for (let i = 0; i < items.length; i += batchSize) {
+			const batch = items.slice(i, i + batchSize);
+			const batchPromises = batch.map(async (_item, batchIndex) => {
+				const itemIndex = i + batchIndex;
+
 				const model = (await this.getInputConnectionData(
 					NodeConnectionTypes.AiLanguageModel,
 					0,
@@ -353,6 +389,7 @@ export class ChainSummarizationV2 implements INodeType {
 				const item = items[itemIndex];
 
 				let processedDocuments: Document[];
+				let output: ChainValues = {};
 
 				// Use dedicated document loader input to load documents
 				if (operationMode === 'documentLoader') {
@@ -368,11 +405,9 @@ export class ChainSummarizationV2 implements INodeType {
 						? await documentInput.processItem(item, itemIndex)
 						: documentInput;
 
-					const response = await chain.withConfig(getTracingConfig(this)).invoke({
+					output = await chain.withConfig(getTracingConfig(this)).invoke({
 						input_documents: processedDocuments,
 					});
-
-					returnData.push({ json: { response } });
 				}
 
 				// Take the input and use binary or json loader
@@ -412,21 +447,37 @@ export class ChainSummarizationV2 implements INodeType {
 					}
 
 					const processedItem = await processor.processItem(item, itemIndex);
-					const response = await chain.invoke(
+					output = await chain.invoke(
 						{
 							input_documents: processedItem,
 						},
 						{ signal: this.getExecutionCancelSignal() },
 					);
-					returnData.push({ json: { response } });
 				}
-			} catch (error) {
-				if (this.continueOnFail()) {
-					returnData.push({ json: { error: error.message }, pairedItem: { item: itemIndex } });
-					continue;
-				}
+				return output;
+			});
 
-				throw error;
+			const batchResults = await Promise.allSettled(batchPromises);
+			batchResults.forEach((response, index) => {
+				if (response.status === 'rejected') {
+					const error = response.reason as Error;
+					if (this.continueOnFail()) {
+						returnData.push({
+							json: { error: error.message },
+							pairedItem: { item: i + index },
+						});
+					} else {
+						throw error;
+					}
+				} else {
+					const output = response.value;
+					returnData.push({ json: { output } });
+				}
+			});
+
+			// Add delay between batches if not the last batch
+			if (i + batchSize < items.length && delayBetweenBatches > 0) {
+				await sleep(delayBetweenBatches);
 			}
 		}
 
