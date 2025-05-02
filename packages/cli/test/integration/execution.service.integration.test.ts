@@ -1,3 +1,4 @@
+import type { ExecutionSummaries } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 
@@ -5,7 +6,6 @@ import { ExecutionMetadataRepository } from '@/databases/repositories/execution-
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { ExecutionService } from '@/executions/execution.service';
-import type { ExecutionSummaries } from '@/types-db';
 import { createTeamProject } from '@test-integration/db/projects';
 
 import { annotateExecution, createAnnotationTags, createExecution } from './shared/db/executions';

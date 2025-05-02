@@ -1,7 +1,7 @@
-import { JsonColumn, WithTimestampsAndStringId } from '@n8n/db';
 import type { ApiKeyScope } from '@n8n/permissions';
 import { Column, Entity, Index, ManyToOne, Unique } from '@n8n/typeorm';
 
+import { JsonColumn, WithTimestampsAndStringId } from './abstract-entity';
 import { User } from './user';
 
 @Entity('user_api_keys')

@@ -1,3 +1,4 @@
+import type { User } from '@n8n/db';
 import type { SelectQueryBuilder } from '@n8n/typeorm';
 import { stringify } from 'flatted';
 import { readFileSync } from 'fs';
@@ -13,7 +14,6 @@ import type { ExecutionEntity } from '@/databases/entities/execution-entity';
 import type { TestDefinition } from '@/databases/entities/test-definition.ee';
 import type { TestMetric } from '@/databases/entities/test-metric.ee';
 import type { TestRun } from '@/databases/entities/test-run.ee';
-import type { User } from '@/databases/entities/user';
 import type { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import type { TestCaseExecutionRepository } from '@/databases/repositories/test-case-execution.repository.ee';
 import type { TestMetricRepository } from '@/databases/repositories/test-metric.repository.ee';

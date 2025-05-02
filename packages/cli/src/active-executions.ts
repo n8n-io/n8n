@@ -1,3 +1,4 @@
+import type { CreateExecutionPayload, IExecutionDb } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { Logger } from 'n8n-core';
 import type {
@@ -18,7 +19,6 @@ import { isWorkflowIdValid } from '@/utils';
 
 import { ConcurrencyControlService } from './concurrency/concurrency-control.service';
 import config from './config';
-import type { CreateExecutionPayload, IExecutionDb } from './types-db';
 
 @Service()
 export class ActiveExecutions {
