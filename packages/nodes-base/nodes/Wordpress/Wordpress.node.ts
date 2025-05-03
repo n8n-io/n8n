@@ -144,8 +144,8 @@ export class Wordpress implements INodeType {
 					if (operation === 'create') {
 						const title = this.getNodeParameter('title', i) as string;
 						const featuredMedia = this.getNodeParameter('featuredMedia', i, false) as boolean;
-            const binaryProperty = this.getNodeParameter('binaryProperty', i, 'data') as string;
-            const fileName = this.getNodeParameter('fileName', i, '') as string;
+            			const binaryProperty = this.getNodeParameter('binaryProperty', i, 'data') as string;
+						const fileName = this.getNodeParameter('fileName', i, '') as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: IPost = {
 							title,
@@ -191,40 +191,40 @@ export class Wordpress implements INodeType {
 							body.format = additionalFields.format as string;
 						}
 						// Handle Media upload if featuredMedia is true
-            let featuredMediaId: number | undefined;
-            if (featuredMedia) {
-              const binaryData = this.helpers.assertBinaryData(i, binaryProperty);
-              const uploadData = await this.helpers.getBinaryDataBuffer(i, binaryProperty);
-              const formData: { [key: string]: any } = {
-                file: {
-                  value: uploadData,
-                  options: {
-                    filename: fileName,
-                    contentType: binaryData.mimeType || 'application/octet-stream',
-                  },
-                },
-              };
-              const contentLength = uploadData.length;
-              const mediaResponse = await wordpressApiRequestMedia.call(this, 'POST', '/media', formData, {
-                'Content-Disposition': `attachment; filename="${fileName}"`,
-                'Content-Length': contentLength,
-              });
-              // Get the uploaded media ID as featuredMediaId for furture use
-              featuredMediaId = mediaResponse.id;
-            }
-            // Use the featuredMediaId as the featured media when creating the Post
-            if (featuredMediaId) {
-              body.featured_media = featuredMediaId as number;
-            }
-            // Create the post
-            responseData = await wordpressApiRequest.call(this, 'POST', '/posts', body);
-            const postId = responseData.id;
-            // Update media with postId if media was uploaded
-            if (featuredMediaId && postId) {
-              await wordpressApiRequest.call(this, 'PUT', `/media/${featuredMediaId}`, {
-                post: postId,
-              });
-            }
+            			let featuredMediaId: number | undefined;
+            			if (featuredMedia) {
+              				const binaryData = this.helpers.assertBinaryData(i, binaryProperty);
+              				const uploadData = await this.helpers.getBinaryDataBuffer(i, binaryProperty);
+              					const formData: { [key: string]: any } = {
+                					file: {
+                  						value: uploadData,
+                  						options: {
+                    						filename: fileName,
+                    						contentType: binaryData.mimeType || 'application/octet-stream',
+                  						},
+                					},
+              					};
+              				const contentLength = uploadData.length;
+              				const mediaResponse = await wordpressApiRequestMedia.call(this, 'POST', '/media', formData, {
+                				'Content-Disposition': `attachment; filename="${fileName}"`,
+                				'Content-Length': contentLength,
+              				});
+              				// Get the uploaded media ID as featuredMediaId for furture use
+              				featuredMediaId = mediaResponse.id;
+            			}
+            			// Use the featuredMediaId as the featured media when creating the Post
+            			if (featuredMediaId) {
+              				body.featured_media = featuredMediaId as number;
+            			}
+            			// Create the post
+            			responseData = await wordpressApiRequest.call(this, 'POST', '/posts', body);
+            			const postId = responseData.id;
+            			// Update media with postId if media was uploaded
+            			if (featuredMediaId && postId) {
+              				await wordpressApiRequest.call(this, 'PUT', `/media/${featuredMediaId}`, {
+                				post: postId,
+              			});
+            		}
             // Include featuredMediaId in response
             responseData.featuredMediaId = featuredMediaId;
 					}
@@ -232,8 +232,8 @@ export class Wordpress implements INodeType {
 					if (operation === 'update') {
 						const postId = this.getNodeParameter('postId', i) as string;
 						const featuredMedia = this.getNodeParameter('featuredMedia', i, false) as boolean;
-            const binaryProperty = this.getNodeParameter('binaryProperty', i, 'data') as string;
-            const fileName = this.getNodeParameter('fileName', i, '') as string;
+            			const binaryProperty = this.getNodeParameter('binaryProperty', i, 'data') as string;
+            			const fileName = this.getNodeParameter('fileName', i, '') as string;
 						const updateFields = this.getNodeParameter('updateFields', i);
 						const body: IPost = {
 							id: parseInt(postId, 10),
@@ -282,41 +282,41 @@ export class Wordpress implements INodeType {
 							body.format = updateFields.format as string;
 						}
 						// Handle Media upload if featuredMedia is true
-            let featuredMediaId: number | undefined;
-            if (featuredMedia) {
-              const binaryData = this.helpers.assertBinaryData(i, binaryProperty);
-              const uploadData = await this.helpers.getBinaryDataBuffer(i, binaryProperty);
-              const formData: { [key: string]: any } = {
-                file: {
-                  value: uploadData,
-                  options: {
-                    filename: fileName,
-                    contentType: binaryData.mimeType || 'application/octet-stream',
-                  },
-                },
-              };
-              const contentLength = uploadData.length;
-              const mediaResponse = await wordpressApiRequestMedia.call(this, 'POST', '/media', formData, {
-                'Content-Disposition': `attachment; filename="${fileName}"`,
-                'Content-Length': contentLength,
-              });
-              // Get the uploaded media ID as featuredMediaId for furture use
-              featuredMediaId = mediaResponse.id;
-            }
-            // Use the featuredMediaId as the featured media when updating the Post
-            if (featuredMediaId) {
-              body.featured_media = featuredMediaId as number;
-            }
-            // Update the post
-            responseData = await wordpressApiRequest.call(this, 'POST', `/posts/${postId}`, body);
-            // Update media with postId if media was uploaded
-            if (featuredMediaId && postId) {
+            			let featuredMediaId: number | undefined;
+            			if (featuredMedia) {
+              				const binaryData = this.helpers.assertBinaryData(i, binaryProperty);
+              				const uploadData = await this.helpers.getBinaryDataBuffer(i, binaryProperty);
+              				const formData: { [key: string]: any } = {
+                				file: {
+                  					value: uploadData,
+                  					options: {
+                    					filename: fileName,
+                    					contentType: binaryData.mimeType || 'application/octet-stream',
+                  					},
+                				},
+              				};
+              				const contentLength = uploadData.length;
+              				const mediaResponse = await wordpressApiRequestMedia.call(this, 'POST', '/media', formData, {
+                				'Content-Disposition': `attachment; filename="${fileName}"`,
+                				'Content-Length': contentLength,
+              				});
+              				// Get the uploaded media ID as featuredMediaId for furture use
+              				featuredMediaId = mediaResponse.id;
+            			}
+            			// Use the featuredMediaId as the featured media when updating the Post
+            			if (featuredMediaId) {
+              				body.featured_media = featuredMediaId as number;
+            			}
+            			// Update the post
+            			responseData = await wordpressApiRequest.call(this, 'POST', `/posts/${postId}`, body);
+            			// Update media with postId if media was uploaded
+            			if (featuredMediaId && postId) {
 							await wordpressApiRequest.call(this, 'PUT', `/media/${featuredMediaId}`, {
 								post: postId,
-              });
-            }
-            // Include featuredMediaId in response
-            responseData.featuredMediaId = featuredMediaId;
+              				});
+            			}
+            			// Include featuredMediaId in response
+            			responseData.featuredMediaId = featuredMediaId;
 					}
 					//https://developer.wordpress.org/rest-api/reference/posts/#retrieve-a-post
 					if (operation === 'get') {
@@ -398,8 +398,8 @@ export class Wordpress implements INodeType {
 					if (operation === 'create') {
 						const title = this.getNodeParameter('title', i) as string;
 						const featuredMedia = this.getNodeParameter('featuredMedia', i, false) as boolean;
-            const binaryProperty = this.getNodeParameter('binaryProperty', i, 'data') as string;
-            const fileName = this.getNodeParameter('fileName', i, '') as string;
+            			const binaryProperty = this.getNodeParameter('binaryProperty', i, 'data') as string;
+            			const fileName = this.getNodeParameter('fileName', i, '') as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: IPage = {
 							title,
@@ -442,49 +442,49 @@ export class Wordpress implements INodeType {
 							body.featured_media = additionalFields.featuredMediaId as number;
 						}
 						// Handle Media upload if featuredMedia is true
-            let featuredMediaId: number | undefined;
-            if (featuredMedia) {
-              const binaryData = this.helpers.assertBinaryData(i, binaryProperty);
-              const uploadData = await this.helpers.getBinaryDataBuffer(i, binaryProperty);
-              const formData: { [key: string]: any } = {
-                file: {
-                  value: uploadData,
-                  options: {
-                    filename: fileName,
-                    contentType: binaryData.mimeType || 'application/octet-stream',
-                  },
-                },
-              };
-              const contentLength = uploadData.length;
-              const mediaResponse = await wordpressApiRequestMedia.call(this, 'POST', '/media', formData, {
-                'Content-Disposition': `attachment; filename="${fileName}"`,
-                'Content-Length': contentLength,
-              });
-              // Get the uploaded media ID as featuredMediaId for furture use
-              featuredMediaId = mediaResponse.id;
-            }
-            // Use the featuredMediaId as the featured media when creating the Page
-            if (featuredMediaId) {
-              body.featured_media = featuredMediaId as number;
-            }
-            // Create the page
-            responseData = await wordpressApiRequest.call(this, 'POST', '/pages', body);
-            const pageId = responseData.id;
-            // Update media with pageId if media was uploaded
-            if (featuredMediaId && pageId) {
-              await wordpressApiRequest.call(this, 'PUT', `/media/${featuredMediaId}`, {
-                post: pageId,
-              });
-            }
-            // Include featuredMediaId in response
-            responseData.featuredMediaId = featuredMediaId;
+            			let featuredMediaId: number | undefined;
+            			if (featuredMedia) {
+              				const binaryData = this.helpers.assertBinaryData(i, binaryProperty);
+              				const uploadData = await this.helpers.getBinaryDataBuffer(i, binaryProperty);
+              				const formData: { [key: string]: any } = {
+                				file: {
+                  					value: uploadData,
+                  					options: {
+                    					filename: fileName,
+                    					contentType: binaryData.mimeType || 'application/octet-stream',
+                  					},
+                				},
+              				};
+              				const contentLength = uploadData.length;
+              				const mediaResponse = await wordpressApiRequestMedia.call(this, 'POST', '/media', formData, {
+                				'Content-Disposition': `attachment; filename="${fileName}"`,
+                				'Content-Length': contentLength,
+              				});
+              				// Get the uploaded media ID as featuredMediaId for furture use
+              				featuredMediaId = mediaResponse.id;
+            			}
+            			// Use the featuredMediaId as the featured media when creating the Page
+            			if (featuredMediaId) {
+              				body.featured_media = featuredMediaId as number;
+            			}
+            			// Create the page
+            			responseData = await wordpressApiRequest.call(this, 'POST', '/pages', body);
+            			const pageId = responseData.id;
+            			// Update media with pageId if media was uploaded
+            			if (featuredMediaId && pageId) {
+              				await wordpressApiRequest.call(this, 'PUT', `/media/${featuredMediaId}`, {
+                				post: pageId,
+              				});
+            			}
+            			// Include featuredMediaId in response
+            			responseData.featuredMediaId = featuredMediaId;
 					}
 					//https://developer.wordpress.org/rest-api/reference/pages/#update-a-page
 					if (operation === 'update') {
 						const pageId = this.getNodeParameter('pageId', i) as string;
 						const featuredMedia = this.getNodeParameter('featuredMedia', i, false) as boolean;
-            const binaryProperty = this.getNodeParameter('binaryProperty', i, 'data') as string;
-            const fileName = this.getNodeParameter('fileName', i, '') as string;
+            			const binaryProperty = this.getNodeParameter('binaryProperty', i, 'data') as string;
+            			const fileName = this.getNodeParameter('fileName', i, '') as string;
 						const updateFields = this.getNodeParameter('updateFields', i);
 						const body: IPage = {
 							id: parseInt(pageId, 10),
@@ -530,41 +530,41 @@ export class Wordpress implements INodeType {
 							body.featured_media = updateFields.featuredMediaId as number;
 						}
 						// Handle Media upload if featuredMedia is true
-            let featuredMediaId: number | undefined;
-            if (featuredMedia) {
-              const binaryData = this.helpers.assertBinaryData(i, binaryProperty);
-              const uploadData = await this.helpers.getBinaryDataBuffer(i, binaryProperty);
-              const formData: { [key: string]: any } = {
-                file: {
-                  value: uploadData,
-                  options: {
-                    filename: fileName,
-                    contentType: binaryData.mimeType || 'application/octet-stream',
-                  },
-                },
-              };
-              const contentLength = uploadData.length;
-              const mediaResponse = await wordpressApiRequestMedia.call(this, 'POST', '/media', formData, {
-                'Content-Disposition': `attachment; filename="${fileName}"`,
-                'Content-Length': contentLength,
-              });
-              // Get the uploaded media ID as featuredMediaId for furture use
-              featuredMediaId = mediaResponse.id;
-            }
-            // Use the featuredMediaId as the featured media when updating the Page
-            if (featuredMediaId) {
-              body.featured_media = featuredMediaId as number;
-            }
-            // Update the page
-            responseData = await wordpressApiRequest.call(this, 'POST', `/pages/${pageId}`, body);
-            // Update media with pageId if media was uploaded
-            if (featuredMediaId && pageId) {
+            			let featuredMediaId: number | undefined;
+            			if (featuredMedia) {
+              				const binaryData = this.helpers.assertBinaryData(i, binaryProperty);
+              				const uploadData = await this.helpers.getBinaryDataBuffer(i, binaryProperty);
+              				const formData: { [key: string]: any } = {
+                				file: {
+                  					value: uploadData,
+                  					options: {
+                    					filename: fileName,
+                    					contentType: binaryData.mimeType || 'application/octet-stream',
+                  					},
+                				},
+              				};
+              				const contentLength = uploadData.length;
+              				const mediaResponse = await wordpressApiRequestMedia.call(this, 'POST', '/media', formData, {
+                				'Content-Disposition': `attachment; filename="${fileName}"`,
+                				'Content-Length': contentLength,
+              				});
+              				// Get the uploaded media ID as featuredMediaId for furture use
+              				featuredMediaId = mediaResponse.id;
+            			}
+            			// Use the featuredMediaId as the featured media when updating the Page
+            			if (featuredMediaId) {
+              				body.featured_media = featuredMediaId as number;
+            			}
+            			// Update the page
+            			responseData = await wordpressApiRequest.call(this, 'POST', `/pages/${pageId}`, body);
+            			// Update media with pageId if media was uploaded
+            			if (featuredMediaId && pageId) {
 							await wordpressApiRequest.call(this, 'PUT', `/media/${featuredMediaId}`, {
 								post: pageId,
-              });
-            }
-            // Include featuredMediaId in response
-            responseData.featuredMediaId = featuredMediaId;
+              				});
+            			}
+            			// Include featuredMediaId in response
+            			responseData.featuredMediaId = featuredMediaId;
 					}
 					//https://developer.wordpress.org/rest-api/reference/pages/#retrieve-a-page
 					if (operation === 'get') {

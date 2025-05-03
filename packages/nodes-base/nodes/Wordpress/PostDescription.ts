@@ -59,48 +59,48 @@ export const postFields: INodeProperties[] = [
 		},
 		description: 'The title for the post',
 	},
-  {
-    displayName: 'Featured Media',
-    name: 'featuredMedia',
-    type: 'boolean',
-    displayOptions: {
-      show: {
-        resource: ['post'],
-        operation: ['create'],
-      },
-    },
-    default: false,
-    description: 'Upload featured media',
-  },
-  {
-    displayName: 'Binary Property',
-    name: 'binaryProperty',
-    type: 'string',
-    required: true,
-    displayOptions: {
-      show: {
-        resource: ['post'],
-        operation: ['create'],
-        featuredMedia: [true],
-      },
-    },
-    default: 'data',
-    description: 'The Media to Upload',
-  },
-  {
-    displayName: 'File Name',
-    name: 'fileName',
-    type: 'string',
-    displayOptions: {
-      show: {
-        resource: ['post'],
-        operation: ['create'],
-        featuredMedia: [true],
-      },
-    },
-    default: '',
-    description: 'The Media Name with extension (example.jpeg)',
-  },
+	{
+		displayName: 'Featured Media',
+		name: 'featuredMedia',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: ['post'],
+				operation: ['create'],
+			},
+		},
+		default: false,
+		description: 'Upload featured media',
+	},
+	{
+		displayName: 'Binary Property',
+		name: 'binaryProperty',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['post'],
+				operation: ['create'],
+				featuredMedia: [true],
+			},
+		},
+		default: 'data',
+		description: 'The Media to Upload',
+	},
+	{
+		displayName: 'File Name',
+		name: 'fileName',
+		type: 'string',
+		displayOptions: {
+			show: {
+				resource: ['post'],
+				operation: ['create'],
+				featuredMedia: [true],
+			},
+		},
+		default: '',
+		description: 'The Media Name with extension (example.jpeg)',
+	},
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
@@ -373,48 +373,48 @@ export const postFields: INodeProperties[] = [
 		},
 		description: 'Unique identifier for the object',
 	},
-  {
-    displayName: 'Featured Media',
-    name: 'featuredMedia',
-    type: 'boolean',
-    displayOptions: {
-      show: {
-        resource: ['post'],
-        operation: ['update'],
-      },
-    },
-    default: false,
-    description: 'Upload featured media',
-  },
-  {
-    displayName: 'Binary Property',
-    name: 'binaryProperty',
-    type: 'string',
-    required: true,
-    displayOptions: {
-      show: {
-        resource: ['post'],
-        operation: ['update'],
-        featuredMedia: [true],
-      },
-    },
-    default: 'data',
-    description: 'The Media to Upload',
-  },
-  {
-    displayName: 'File Name',
-    name: 'fileName',
-    type: 'string',
-    displayOptions: {
-      show: {
-        resource: ['post'],
-        operation: ['update'],
-        featuredMedia: [true],
-      },
-    },
-    default: '',
-    description: 'The Media Name with extension (example.jpeg)',
-  },
+	{
+		displayName: 'Featured Media',
+		name: 'featuredMedia',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: ['post'],
+				operation: ['update'],
+			},
+		},
+		default: false,
+		description: 'Upload featured media',
+	},
+	{
+		displayName: 'Binary Property',
+		name: 'binaryProperty',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['post'],
+				operation: ['update'],
+				featuredMedia: [true],
+			},
+		},
+		default: 'data',
+		description: 'The Media to Upload',
+	},
+	{
+		displayName: 'File Name',
+		name: 'fileName',
+		type: 'string',
+		displayOptions: {
+			show: {
+				resource: ['post'],
+				operation: ['update'],
+				featuredMedia: [true],
+			},
+		},
+		default: '',
+		description: 'The Media Name with extension (example.jpeg)',
+	},
 	{
 		displayName: 'Update Fields',
 		name: 'updateFields',
