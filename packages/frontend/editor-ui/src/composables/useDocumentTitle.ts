@@ -6,7 +6,7 @@ export function useDocumentTitle() {
 	const settingsStore = useSettingsStore();
 	const { releaseChannel } = settingsStore.settings;
 	const suffix =
-		!releaseChannel || releaseChannel === 'stable' ? 'n8n' : `n8n[${releaseChannel.toUpperCase()}]`;
+		!releaseChannel || releaseChannel === 'stable' ? 'n8n' : `hepta[${releaseChannel.toUpperCase()}]`;
 
 	const set = (title: string) => {
 		const sections = [title || DEFAULT_TITLE, suffix];

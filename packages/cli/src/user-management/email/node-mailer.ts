@@ -55,8 +55,8 @@ export class NodeMailer {
 				attachments: [
 					{
 						cid: 'n8n-logo',
-						filename: 'n8n-logo.png',
-						path: path.resolve(__dirname, 'templates/n8n-logo.png'),
+						filename: 'heptaStack_logo_v2.png',
+						path: path.resolve(__dirname, 'templates/heptaStack_logo_v2.png'),
 						contentDisposition: 'inline',
 					},
 				],
