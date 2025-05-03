@@ -1,6 +1,5 @@
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import nock from 'nock';
-
-import { testWorkflows } from '@test/nodes/Helpers';
 
 const API_RESPONSE = {
 	results: [
@@ -314,6 +313,7 @@ describe('Test NotionV2, database => getAll', () => {
 		.post('/v1/search', { filter: { property: 'object', value: 'database' } })
 		.reply(200, API_RESPONSE);
 
-	const workflows = ['nodes/Notion/test/node/v2/database/getAll.workflow.json'];
-	testWorkflows(workflows);
+	new NodeTestHarness().setupTests({
+		workflowFiles: ['getAll.workflow.json'],
+	});
 });

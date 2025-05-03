@@ -1,16 +1,14 @@
-/* eslint-disable @typescript-eslint/no-loop-func */
-import type { IDataObject, WorkflowTestData } from 'n8n-workflow';
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
+import type { WorkflowTestData } from 'n8n-workflow';
 import os from 'node:os';
 import path from 'path';
 
-import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
-import { getResultNodeData, readJsonFileSync } from '@test/nodes/Helpers';
-
 if (os.platform() !== 'win32') {
 	describe('Execute Compression Node', () => {
-		const workflowData = readJsonFileSync('nodes/Compression/test/node/workflow.compression.json');
+		const testHarness = new NodeTestHarness();
+		const workflowData = testHarness.readWorkflowJSON('workflow.compression.json');
 
-		const node = workflowData.nodes.find((n: IDataObject) => n.name === 'Read Binary File');
+		const node = workflowData.nodes.find((n) => n.name === 'Read Binary File')!;
 		node.parameters.filePath = path.join(__dirname, 'lorem.txt');
 
 		const tests: WorkflowTestData[] = [
@@ -20,6 +18,7 @@ if (os.platform() !== 'win32') {
 					workflowData,
 				},
 				output: {
+					assertBinaryData: true,
 					nodeData: {
 						Compression1: [
 							[
@@ -44,16 +43,7 @@ if (os.platform() !== 'win32') {
 		];
 
 		for (const testData of tests) {
-			test(testData.description, async () => {
-				const { result } = await executeWorkflow(testData);
-
-				const resultNodeData = getResultNodeData(result, testData);
-				resultNodeData.forEach(({ nodeName, resultData }) => {
-					expect(resultData).toEqual(testData.output.nodeData[nodeName]);
-				});
-
-				expect(result.finished).toEqual(true);
-			});
+			testHarness.setupTest(testData);
 		}
 	});
 } else {

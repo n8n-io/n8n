@@ -1,6 +1,5 @@
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import nock from 'nock';
-
-import { getWorkflowFilenames, testWorkflows } from '@test/nodes/Helpers';
 
 import {
 	deleteLightResponse,
@@ -38,7 +37,6 @@ describe('PhilipsHue', () => {
 			mock.delete('/api/pAtwdCV8NZId25Gk/lights/1').reply(200, deleteLightResponse);
 		});
 
-		const workflows = getWorkflowFilenames(__dirname);
-		testWorkflows(workflows, credentials);
+		new NodeTestHarness().setupTests({ credentials });
 	});
 });

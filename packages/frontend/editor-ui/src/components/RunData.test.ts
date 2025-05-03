@@ -641,7 +641,6 @@ describe('RunData', () => {
 			initialState: {
 				[STORES.SETTINGS]: SETTINGS_STORE_DEFAULT_STATE,
 				[STORES.NDV]: {
-					outputPanelDisplayMode: displayMode,
 					activeNodeName: 'Test Node',
 				},
 				[STORES.WORKFLOWS]: {
@@ -696,6 +695,7 @@ describe('RunData', () => {
 					// @ts-expect-error allow missing properties in test
 					workflowNodes,
 				}),
+				displayMode,
 			},
 			global: {
 				stubs: {

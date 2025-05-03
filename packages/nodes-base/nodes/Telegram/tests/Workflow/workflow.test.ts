@@ -1,6 +1,5 @@
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import nock from 'nock';
-
-import { getWorkflowFilenames, testWorkflows } from '@test/nodes/Helpers';
 
 import {
 	getChatResponse,
@@ -47,7 +46,6 @@ describe('Telegram', () => {
 			mock.post('/bottestToken/getChatMember').reply(200, getMemberResponse);
 		});
 
-		const workflows = getWorkflowFilenames(__dirname);
-		testWorkflows(workflows, credentials);
+		new NodeTestHarness().setupTests({ credentials });
 	});
 });

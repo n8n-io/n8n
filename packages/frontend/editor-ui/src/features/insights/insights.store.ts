@@ -1,7 +1,7 @@
 import { computed } from 'vue';
 import { defineStore } from 'pinia';
 import { useAsyncState } from '@vueuse/core';
-import type { ListInsightsWorkflowQueryDto } from '@n8n/api-types';
+import type { ListInsightsWorkflowQueryDto, InsightsDateRange } from '@n8n/api-types';
 import * as insightsApi from '@/features/insights/insights.api';
 import { useRootStore } from '@/stores/root.store';
 import { useUsersStore } from '@/stores/users.store';
@@ -25,9 +25,20 @@ export const useInsightsStore = defineStore('insights', () => {
 		() => globalInsightsPermissions.value.list && isInsightsEnabled.value,
 	);
 
-	const summary = useAsyncState(
+	const weeklySummary = useAsyncState(
 		async () => {
-			const raw = await insightsApi.fetchInsightsSummary(rootStore.restApiContext);
+			const raw = await insightsApi.fetchInsightsSummary(rootStore.restApiContext, {
+				dateRange: 'week',
+			});
+			return transformInsightsSummary(raw);
+		},
+		[],
+		{ immediate: false },
+	);
+
+	const summary = useAsyncState(
+		async (filter?: { dateRange: InsightsDateRange['key'] }) => {
+			const raw = await insightsApi.fetchInsightsSummary(rootStore.restApiContext, filter);
 			return transformInsightsSummary(raw);
 		},
 		[],
@@ -35,8 +46,8 @@ export const useInsightsStore = defineStore('insights', () => {
 	);
 
 	const charts = useAsyncState(
-		async () => {
-			return await insightsApi.fetchInsightsByTime(rootStore.restApiContext);
+		async (filter?: { dateRange: InsightsDateRange['key'] }) => {
+			return await insightsApi.fetchInsightsByTime(rootStore.restApiContext, filter);
 		},
 		[],
 		{ immediate: false },
@@ -53,13 +64,17 @@ export const useInsightsStore = defineStore('insights', () => {
 		{ resetOnExecute: false, immediate: false },
 	);
 
+	const dateRanges = computed(() => settingsStore.settings.insights.dateRanges);
+
 	return {
 		globalInsightsPermissions,
 		isInsightsEnabled,
 		isSummaryEnabled,
 		isDashboardEnabled,
+		weeklySummary,
 		summary,
 		charts,
 		table,
+		dateRanges,
 	};
 });

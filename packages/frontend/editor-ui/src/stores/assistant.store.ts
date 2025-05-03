@@ -31,7 +31,7 @@ import { useCredentialsStore } from './credentials.store';
 import { useAIAssistantHelpers } from '@/composables/useAIAssistantHelpers';
 
 export const MAX_CHAT_WIDTH = 425;
-export const MIN_CHAT_WIDTH = 250;
+export const MIN_CHAT_WIDTH = 300;
 export const DEFAULT_CHAT_WIDTH = 330;
 export const ENABLED_VIEWS = [
 	...EDITABLE_CANVAS_VIEWS,
@@ -74,7 +74,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	const chatSessionCredType = ref<ICredentialType | undefined>();
 	const chatSessionError = ref<ChatRequest.ErrorContext | undefined>();
 	const currentSessionId = ref<string | undefined>();
-	const currentSessionActiveExecutionId = ref<string | null>(null);
+	const currentSessionActiveExecutionId = ref<string | undefined>(undefined);
 	const currentSessionWorkflowId = ref<string | undefined>();
 	const lastUnread = ref<ChatUI.AssistantMessage | undefined>();
 	const nodeExecutionStatus = ref<NodeExecutionStatus>('not_executed');
@@ -125,7 +125,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		currentSessionId.value = undefined;
 		chatSessionError.value = undefined;
 		lastUnread.value = undefined;
-		currentSessionActiveExecutionId.value = null;
+		currentSessionActiveExecutionId.value = undefined;
 		suggestions.value = {};
 		nodeExecutionStatus.value = 'not_executed';
 		chatSessionCredType.value = undefined;

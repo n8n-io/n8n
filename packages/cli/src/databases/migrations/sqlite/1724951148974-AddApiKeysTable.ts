@@ -1,6 +1,7 @@
-import type { ApiKey } from '@/databases/entities/api-key';
+import { generateNanoId } from '@n8n/db';
+import type { ApiKey } from '@n8n/db';
+
 import type { MigrationContext, ReversibleMigration } from '@/databases/types';
-import { generateNanoId } from '@/databases/utils/generators';
 
 export class AddApiKeysTable1724951148974 implements ReversibleMigration {
 	transaction = false as const;

@@ -1,6 +1,5 @@
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import nock from 'nock';
-
-import { testWorkflows } from '@test/nodes/Helpers';
 
 import { credentials } from '../../../credentials';
 
@@ -11,6 +10,8 @@ describe('Test MicrosoftExcelV2, table => deleteTable', () => {
 		)
 		.reply(200);
 
-	const workflows = ['nodes/Microsoft/Excel/test/v2/node/table/deleteTable.workflow.json'];
-	testWorkflows(workflows, credentials);
+	new NodeTestHarness().setupTests({
+		credentials,
+		workflowFiles: ['deleteTable.workflow.json'],
+	});
 });

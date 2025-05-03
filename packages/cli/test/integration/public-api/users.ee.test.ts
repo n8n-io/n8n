@@ -1,7 +1,7 @@
+import type { User } from '@n8n/db';
 import { v4 as uuid } from 'uuid';
 import validator from 'validator';
 
-import type { User } from '@/databases/entities/user';
 import { License } from '@/license';
 import { createTeamProject, linkUserToProject } from '@test-integration/db/projects';
 

@@ -3,6 +3,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
+import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import get from 'lodash/get';
 import {
@@ -35,7 +36,6 @@ import type {
 import { VersionedNodeType, NodeHelpers, Workflow, UnexpectedError } from 'n8n-workflow';
 
 import { CredentialTypes } from '@/credential-types';
-import type { User } from '@/databases/entities/user';
 import { NodeTypes } from '@/node-types';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 

@@ -1,8 +1,8 @@
+import type { ExecutionEntity } from '@n8n/db';
+import type { ExecutionData } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { AnnotationVote, IWorkflowBase } from 'n8n-workflow';
 
-import type { ExecutionData } from '@/databases/entities/execution-data';
-import type { ExecutionEntity } from '@/databases/entities/execution-entity';
 import { AnnotationTagRepository } from '@/databases/repositories/annotation-tag.repository.ee';
 import { ExecutionDataRepository } from '@/databases/repositories/execution-data.repository';
 import { ExecutionMetadataRepository } from '@/databases/repositories/execution-metadata.repository';

@@ -1,7 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-param-display-name-miscased */
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import nock from 'nock';
-
-import { testWorkflows } from '@test/nodes/Helpers';
 
 describe('Test SendGrid Node', () => {
 	describe('Mail', () => {
@@ -15,6 +14,8 @@ describe('Test SendGrid Node', () => {
 
 		afterAll(() => sendgridNock.done());
 
-		testWorkflows(['nodes/SendGrid/test/mail.workflow.json']);
+		new NodeTestHarness().setupTests({
+			workflowFiles: ['mail.workflow.json'],
+		});
 	});
 });

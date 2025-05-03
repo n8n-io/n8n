@@ -1454,10 +1454,10 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		workflowsStore.resetWorkflow();
 		workflowsStore.resetState();
 		workflowsStore.currentWorkflowExecutions = [];
+		workflowsStore.setActiveExecutionId(undefined);
 
 		// Reset actions
 		uiStore.resetLastInteractedWith();
-		uiStore.removeActiveAction('workflowRunning');
 		uiStore.stateIsDirty = false;
 
 		// Reset executions

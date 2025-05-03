@@ -70,14 +70,18 @@ type ContentTypes = (typeof SUPPORTED_CONTENT_TYPES)[number];
 
 const CONTENT_TYPE_KEY = 'content-type';
 
+const getContentTypeHeader = (headers: JSONOutput['headers']): string | undefined => {
+	return get(headers, CONTENT_TYPE_KEY) ?? undefined;
+};
+
 const isContentType = (headers: JSONOutput['headers'], contentType: ContentTypes): boolean => {
-	return get(headers, CONTENT_TYPE_KEY) === contentType;
+	return getContentTypeHeader(headers) === contentType;
 };
 
 const isJsonRequest = (curlJson: JSONOutput): boolean => {
 	if (isContentType(curlJson.headers, 'application/json')) return true;
 
-	if (curlJson.data) {
+	if (curlJson.data && !getContentTypeHeader(curlJson.headers)) {
 		const bodyKey = Object.keys(curlJson.data)[0];
 		try {
 			JSON.parse(bodyKey);
@@ -91,7 +95,7 @@ const isJsonRequest = (curlJson: JSONOutput): boolean => {
 
 const isFormUrlEncodedRequest = (curlJson: JSONOutput): boolean => {
 	if (isContentType(curlJson.headers, 'application/x-www-form-urlencoded')) return true;
-	if (curlJson.data && !curlJson.files) return true;
+	if (!getContentTypeHeader(curlJson.headers) && curlJson.data && !curlJson.files) return true;
 	return false;
 };
 
@@ -148,8 +152,21 @@ const extractQueries = (queries: JSONOutput['queries'] = {}): HttpNodeQueries =>
 	};
 };
 
-const jsonBodyToNodeParameters = (body: JSONOutput['data'] = {}): Parameter[] | [] => {
+const keyValueBodyToNodeParameters = (body: JSONOutput['data'] = {}): Parameter[] | [] => {
 	return Object.entries(body).map(toKeyValueArray);
+};
+
+const jsonBodyToNodeParameters = (body: JSONOutput['data'] = {}): Parameter[] | [] => {
+	// curlconverter returns string if parameter includes special base64 characters like % or / or =
+	if (typeof body === 'string') {
+		// handles decoding percent-encoded characters like %3D to =
+		const parameters = new URLSearchParams(body);
+
+		return [...parameters.entries()].map((parameter) => {
+			return toKeyValueArray(parameter);
+		});
+	}
+	return keyValueBodyToNodeParameters(body);
 };
 
 const multipartToNodeParameters = (
@@ -164,10 +181,6 @@ const multipartToNodeParameters = (
 			.map(toKeyValueArray)
 			.map((e) => ({ parameterType: 'formBinaryData', ...e })),
 	];
-};
-
-const keyValueBodyToNodeParameters = (body: JSONOutput['data'] = {}): Parameter[] | [] => {
-	return Object.entries(body).map(toKeyValueArray);
 };
 
 const lowerCaseContentTypeKey = (obj: JSONOutput['headers']): void => {
@@ -220,7 +233,6 @@ export const flattenObject = <T extends Record<string, unknown>>(obj: T, prefix 
 
 export const toHttpNodeParameters = (curlCommand: string): HttpNodeParameters => {
 	const curlJson = curlToJson(curlCommand);
-
 	const headers = curlJson.headers ?? {};
 
 	lowerCaseContentTypeKey(headers);
@@ -327,7 +339,7 @@ export const toHttpNodeParameters = (curlCommand: string): HttpNodeParameters =>
 			sendBody: true,
 			specifyBody: 'keypair',
 			bodyParameters: {
-				parameters: keyValueBodyToNodeParameters(curlJson.data),
+				parameters: jsonBodyToNodeParameters(curlJson.data),
 			},
 		});
 	} else if (isMultipartRequest(curlJson)) {

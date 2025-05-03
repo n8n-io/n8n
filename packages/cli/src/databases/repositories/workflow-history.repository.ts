@@ -1,7 +1,6 @@
+import { WorkflowHistory } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, LessThan, Repository } from '@n8n/typeorm';
-
-import { WorkflowHistory } from '../entities/workflow-history';
 
 @Service()
 export class WorkflowHistoryRepository extends Repository<WorkflowHistory> {

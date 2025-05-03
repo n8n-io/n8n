@@ -1,7 +1,6 @@
+import { AuthUser } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, Repository } from '@n8n/typeorm';
-
-import { AuthUser } from '../entities/auth-user';
 
 @Service()
 export class AuthUserRepository extends Repository<AuthUser> {

@@ -1,3 +1,4 @@
+import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { compare } from 'bcryptjs';
 import { mock } from 'jest-mock-extended';
@@ -6,7 +7,6 @@ import { v4 as uuid } from 'uuid';
 
 import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
-import type { User } from '@/databases/entities/user';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import { ExternalHooks } from '@/external-hooks';
 import { License } from '@/license';

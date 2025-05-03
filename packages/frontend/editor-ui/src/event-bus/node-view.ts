@@ -23,6 +23,9 @@ export interface NodeViewEventBusEvents {
 	'runWorkflowButton:mouseenter': never;
 
 	'runWorkflowButton:mouseleave': never;
+
+	/** Command to tidy up the canvas */
+	tidyUp: never;
 }
 
 export const nodeViewEventBus = createEventBus<NodeViewEventBusEvents>();

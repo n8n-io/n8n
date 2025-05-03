@@ -251,6 +251,7 @@ export class FrontendService {
 				enabled: this.modulesConfig.modules.includes('insights'),
 				summary: true,
 				dashboard: false,
+				dateRanges: [],
 			},
 			logsView: {
 				enabled: false,

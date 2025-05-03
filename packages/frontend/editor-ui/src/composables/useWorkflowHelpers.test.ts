@@ -1,4 +1,4 @@
-import type { IWorkflowDataUpdate } from '@/Interface';
+import type { IWorkflowData, IWorkflowDataUpdate, IWorkflowDb } from '@/Interface';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import router from '@/router';
 import { createTestingPinia } from '@pinia/testing';
@@ -6,8 +6,10 @@ import { setActivePinia } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
 import { useTagsStore } from '@/stores/tags.store';
+import { useUIStore } from '@/stores/ui.store';
 import { createTestWorkflow } from '@/__tests__/mocks';
-import type { AssignmentCollectionValue } from 'n8n-workflow';
+import { WEBHOOK_NODE_TYPE, type AssignmentCollectionValue } from 'n8n-workflow';
+import * as apiWebhooks from '../api/webhooks';
 
 const getDuplicateTestWorkflow = (): IWorkflowDataUpdate => ({
 	name: 'Duplicate webhook test',
@@ -59,12 +61,14 @@ describe('useWorkflowHelpers', () => {
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 	let workflowsEEStore: ReturnType<typeof useWorkflowsEEStore>;
 	let tagsStore: ReturnType<typeof useTagsStore>;
+	let uiStore: ReturnType<typeof useUIStore>;
 
 	beforeAll(() => {
 		setActivePinia(createTestingPinia());
 		workflowsStore = useWorkflowsStore();
 		workflowsEEStore = useWorkflowsEEStore();
 		tagsStore = useTagsStore();
+		uiStore = useUIStore();
 	});
 
 	afterEach(() => {
@@ -368,6 +372,86 @@ describe('useWorkflowHelpers', () => {
 
 			expect(setWorkflowTagIdsSpy).toHaveBeenCalledWith([]);
 			expect(upsertTagsSpy).toHaveBeenCalledWith([]);
+		});
+	});
+
+	describe('checkConflictingWebhooks', () => {
+		it('should return null if no conflicts', async () => {
+			const workflowHelpers = useWorkflowHelpers({ router });
+			uiStore.stateIsDirty = false;
+			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
+				nodes: [],
+			} as unknown as IWorkflowDb);
+			expect(await workflowHelpers.checkConflictingWebhooks('12345')).toEqual(null);
+		});
+
+		it('should return conflicting webhook data and workflow id is different', async () => {
+			const workflowHelpers = useWorkflowHelpers({ router });
+			uiStore.stateIsDirty = false;
+			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
+				nodes: [
+					{
+						type: WEBHOOK_NODE_TYPE,
+						parameters: {
+							method: 'GET',
+							path: 'test-path',
+						},
+					},
+				],
+			} as unknown as IWorkflowDb);
+			vi.spyOn(apiWebhooks, 'findWebhook').mockResolvedValue({
+				method: 'GET',
+				webhookPath: 'test-path',
+				node: 'Webhook 1',
+				workflowId: '456',
+			});
+			expect(await workflowHelpers.checkConflictingWebhooks('123')).toEqual({
+				conflict: {
+					method: 'GET',
+					node: 'Webhook 1',
+					webhookPath: 'test-path',
+					workflowId: '456',
+				},
+				trigger: {
+					parameters: {
+						method: 'GET',
+						path: 'test-path',
+					},
+					type: 'n8n-nodes-base.webhook',
+				},
+			});
+		});
+
+		it('should return null if webhook already exist but workflow id is the same', async () => {
+			const workflowHelpers = useWorkflowHelpers({ router });
+			uiStore.stateIsDirty = false;
+			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
+				nodes: [
+					{
+						type: WEBHOOK_NODE_TYPE,
+						parameters: {
+							method: 'GET',
+							path: 'test-path',
+						},
+					},
+				],
+			} as unknown as IWorkflowDb);
+			vi.spyOn(apiWebhooks, 'findWebhook').mockResolvedValue({
+				method: 'GET',
+				webhookPath: 'test-path',
+				node: 'Webhook 1',
+				workflowId: '123',
+			});
+			expect(await workflowHelpers.checkConflictingWebhooks('123')).toEqual(null);
+		});
+
+		it('should call getWorkflowDataToSave if state is dirty', async () => {
+			const workflowHelpers = useWorkflowHelpers({ router });
+			uiStore.stateIsDirty = true;
+			vi.spyOn(workflowHelpers, 'getWorkflowDataToSave').mockResolvedValue({
+				nodes: [],
+			} as unknown as IWorkflowData);
+			expect(await workflowHelpers.checkConflictingWebhooks('12345')).toEqual(null);
 		});
 	});
 });

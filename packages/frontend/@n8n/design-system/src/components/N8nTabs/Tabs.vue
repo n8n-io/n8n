@@ -17,10 +17,12 @@ interface TabOptions {
 interface TabsProps {
 	modelValue?: Value;
 	options?: TabOptions[];
+	size?: 'small' | 'medium';
 }
 
 withDefaults(defineProps<TabsProps>(), {
 	options: () => [],
+	size: 'medium',
 });
 
 const scrollPosition = ref(0);
@@ -74,7 +76,7 @@ const scrollRight = () => scroll(50);
 </script>
 
 <template>
-	<div :class="['n8n-tabs', $style.container]">
+	<div :class="['n8n-tabs', $style.container, size === 'small' ? $style.small : '']">
 		<div v-if="scrollPosition > 0" :class="$style.back" @click="scrollLeft">
 			<N8nIcon icon="chevron-left" size="small" />
 		</div>
@@ -171,6 +173,10 @@ const scrollRight = () => scroll(50);
 
 	span + span {
 		margin-left: var(--spacing-4xs);
+	}
+
+	.small & {
+		font-size: var(--font-size-2xs);
 	}
 }
 

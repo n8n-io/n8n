@@ -1,6 +1,5 @@
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import nock from 'nock';
-
-import { testWorkflows } from '@test/nodes/Helpers';
 
 describe('Test SlackV2, file => upload', () => {
 	nock('https://slack.com')
@@ -11,6 +10,7 @@ describe('Test SlackV2, file => upload', () => {
 		.post('/api/files.completeUploadExternal')
 		.reply(200, { ok: true, files: [{ id: 'file_id' }] });
 
-	const workflows = ['nodes/Slack/test/v2/node/file/upload.workflow.json'];
-	testWorkflows(workflows);
+	new NodeTestHarness().setupTests({
+		workflowFiles: ['upload.workflow.json'],
+	});
 });

@@ -11,14 +11,16 @@ interface RadioButtonsProps {
 	modelValue?: Value;
 	options?: RadioOption[];
 	/** @default medium */
-	size?: 'small' | 'medium';
+	size?: 'small' | 'small-medium' | 'medium';
 	disabled?: boolean;
+	squareButtons?: boolean;
 }
 
 const props = withDefaults(defineProps<RadioButtonsProps>(), {
 	active: false,
 	disabled: false,
 	size: 'medium',
+	squareButtons: false,
 });
 
 const emit = defineEmits<{
@@ -50,7 +52,7 @@ const onClick = (
 			:active="modelValue === option.value"
 			:size="size"
 			:disabled="disabled || option.disabled"
-			:no-padding="!!slots.option"
+			:square="squareButtons"
 			@click.prevent.stop="onClick(option, $event)"
 		>
 			<slot name="option" v-bind="option" />

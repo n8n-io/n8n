@@ -261,18 +261,6 @@ export class Start extends BaseCommand {
 		await subscriber.subscribe('n8n.worker-response');
 
 		this.logger.scoped(['scaling', 'pubsub']).debug('Pubsub setup completed');
-
-		if (this.instanceSettings.isSingleMain) return;
-
-		orchestrationService.multiMainSetup
-			.on('leader-stepdown', async () => {
-				this.license.disableAutoRenewals();
-				await this.activeWorkflowManager.removeAllTriggerAndPollerBasedWorkflows();
-			})
-			.on('leader-takeover', async () => {
-				this.license.enableAutoRenewals();
-				await this.activeWorkflowManager.addAllTriggerAndPollerBasedWorkflows();
-			});
 	}
 
 	async run() {

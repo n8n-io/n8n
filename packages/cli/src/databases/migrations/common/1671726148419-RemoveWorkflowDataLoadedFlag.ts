@@ -1,4 +1,5 @@
-import { StatisticsNames } from '@/databases/entities/workflow-statistics';
+import { StatisticsNames } from '@n8n/db';
+
 import type { MigrationContext, ReversibleMigration } from '@/databases/types';
 
 export class RemoveWorkflowDataLoadedFlag1671726148419 implements ReversibleMigration {

@@ -1,0 +1,127 @@
+{
+	"nodes": [
+		{
+			"parameters": {
+				"rule": {
+					"interval": [{}]
+				}
+			},
+			"type": "n8n-nodes-base.scheduleTrigger",
+			"typeVersion": 1.2,
+			"position": [-900, 60],
+			"id": "e6b8fc7c-442e-4283-a0cd-604dc7c9e816",
+			"name": "Schedule Trigger"
+		},
+		{
+			"parameters": {
+				"conditions": {
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "strict",
+						"version": 2
+					},
+					"conditions": [
+						{
+							"id": "553f50d9-5023-433f-8f62-eebc9c9e2269",
+							"leftValue": "={{ $json.data }}",
+							"rightValue": 5,
+							"operator": {
+								"type": "number",
+								"operation": "lt"
+							}
+						}
+					],
+					"combinator": "and"
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 2.2,
+			"position": [-460, 135],
+			"id": "f5c96b5b-9e22-4348-a258-fdb0417f5ff5",
+			"name": "If"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "71475f04-571e-4e99-bdf8-adff367533fb",
+							"name": "data",
+							"value": "={{ $json.data }}",
+							"type": "number"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [-240, 60],
+			"id": "2a6fc40d-5d8c-4c35-bf53-ee910267619f",
+			"name": "Edit Fields"
+		},
+		{
+			"parameters": {
+				"jsCode": "return Array.from({length:10}).map((_,i)=>({data:i}))"
+			},
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [-680, 60],
+			"id": "12ae07e7-be34-43b6-806b-4c24be169ee6",
+			"name": "Code"
+		}
+	],
+	"connections": {
+		"Schedule Trigger": {
+			"main": [
+				[
+					{
+						"node": "Code",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"If": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Edit Fields",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code": {
+			"main": [
+				[
+					{
+						"node": "If",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Edit Fields",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {},
+	"meta": {
+		"instanceId": "db1f26b45a71ad9a8df79dde8d35bf1be13616c3b23eb55be8ecf642dd31500c"
+	}
+}

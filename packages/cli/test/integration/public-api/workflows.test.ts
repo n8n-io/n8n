@@ -1,12 +1,12 @@
 import { GlobalConfig } from '@n8n/config';
+import type { Project } from '@n8n/db';
+import type { TagEntity } from '@n8n/db';
+import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { INode } from 'n8n-workflow';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { STARTING_NODES } from '@/constants';
-import type { Project } from '@/databases/entities/project';
-import type { TagEntity } from '@/databases/entities/tag-entity';
-import type { User } from '@/databases/entities/user';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { WorkflowHistoryRepository } from '@/databases/repositories/workflow-history.repository';

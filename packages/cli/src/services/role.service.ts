@@ -1,36 +1,34 @@
 import type { ProjectRole } from '@n8n/api-types';
-import { Service } from '@n8n/di';
-import { combineScopes } from '@n8n/permissions';
-import type { GlobalRole, Resource, Scope } from '@n8n/permissions';
-import { UnexpectedError } from 'n8n-workflow';
-
-import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
-import type { ProjectRelation } from '@/databases/entities/project-relation';
 import type {
+	CredentialsEntity,
 	CredentialSharingRole,
 	SharedCredentials,
-} from '@/databases/entities/shared-credentials';
-import type { SharedWorkflow, WorkflowSharingRole } from '@/databases/entities/shared-workflow';
-import type { User } from '@/databases/entities/user';
-import { License } from '@/license';
+	SharedWorkflow,
+	WorkflowSharingRole,
+	User,
+	ListQueryDb,
+	ScopesField,
+	ProjectRelation,
+} from '@n8n/db';
+import { Service } from '@n8n/di';
+import type { GlobalRole, Resource, Scope } from '@n8n/permissions';
 import {
+	combineScopes,
 	GLOBAL_ADMIN_SCOPES,
 	GLOBAL_MEMBER_SCOPES,
 	GLOBAL_OWNER_SCOPES,
-} from '@/permissions.ee/global-roles';
-import {
 	PERSONAL_PROJECT_OWNER_SCOPES,
 	PROJECT_EDITOR_SCOPES,
 	PROJECT_VIEWER_SCOPES,
 	REGULAR_PROJECT_ADMIN_SCOPES,
-} from '@/permissions.ee/project-roles';
-import {
 	CREDENTIALS_SHARING_OWNER_SCOPES,
 	CREDENTIALS_SHARING_USER_SCOPES,
 	WORKFLOW_SHARING_EDITOR_SCOPES,
 	WORKFLOW_SHARING_OWNER_SCOPES,
-} from '@/permissions.ee/resource-roles';
-import type { ListQuery } from '@/requests';
+} from '@n8n/permissions';
+import { UnexpectedError } from 'n8n-workflow';
+
+import { License } from '@/license';
 
 export type RoleNamespace = 'global' | 'project' | 'credential' | 'workflow';
 
@@ -100,7 +98,7 @@ const ROLE_NAMES: Record<
 	'workflow:editor': 'Workflow Editor',
 };
 
-export type ScopesField = { scopes: Scope[] };
+// export type ScopesField = { scopes: Scope[] };
 
 @Service()
 export class RoleService {
@@ -159,10 +157,10 @@ export class RoleService {
 	}
 
 	addScopes(
-		rawWorkflow: ListQuery.Workflow.WithSharing | ListQuery.Workflow.WithOwnedByAndSharedWith,
+		rawWorkflow: ListQueryDb.Workflow.WithSharing | ListQueryDb.Workflow.WithOwnedByAndSharedWith,
 		user: User,
 		userProjectRelations: ProjectRelation[],
-	): ListQuery.Workflow.WithScopes;
+	): ListQueryDb.Workflow.WithScopes;
 	addScopes(
 		rawCredential: CredentialsEntity,
 		user: User,
@@ -170,26 +168,29 @@ export class RoleService {
 	): CredentialsEntity & ScopesField;
 	addScopes(
 		rawCredential:
-			| ListQuery.Credentials.WithSharing
-			| ListQuery.Credentials.WithOwnedByAndSharedWith,
+			| ListQueryDb.Credentials.WithSharing
+			| ListQueryDb.Credentials.WithOwnedByAndSharedWith,
 		user: User,
 		userProjectRelations: ProjectRelation[],
-	): ListQuery.Credentials.WithScopes;
+	): ListQueryDb.Credentials.WithScopes;
 	addScopes(
 		rawEntity:
 			| CredentialsEntity
-			| ListQuery.Workflow.WithSharing
-			| ListQuery.Credentials.WithOwnedByAndSharedWith
-			| ListQuery.Credentials.WithSharing
-			| ListQuery.Workflow.WithOwnedByAndSharedWith,
+			| ListQueryDb.Workflow.WithSharing
+			| ListQueryDb.Credentials.WithOwnedByAndSharedWith
+			| ListQueryDb.Credentials.WithSharing
+			| ListQueryDb.Workflow.WithOwnedByAndSharedWith,
 		user: User,
 		userProjectRelations: ProjectRelation[],
 	):
 		| (CredentialsEntity & ScopesField)
-		| ListQuery.Workflow.WithScopes
-		| ListQuery.Credentials.WithScopes {
+		| ListQueryDb.Workflow.WithScopes
+		| ListQueryDb.Credentials.WithScopes {
 		const shared = rawEntity.shared;
-		const entity = rawEntity as ListQuery.Workflow.WithScopes | ListQuery.Credentials.WithScopes;
+		const entity = rawEntity as
+			| (CredentialsEntity & ScopesField)
+			| ListQueryDb.Workflow.WithScopes
+			| ListQueryDb.Credentials.WithScopes;
 
 		Object.assign(entity, {
 			scopes: [],

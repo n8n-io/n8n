@@ -1,7 +1,7 @@
+import { CredentialsEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { Reset } from '@/commands/user-management/reset';
-import { CredentialsEntity } from '@/databases/entities/credentials-entity';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import { SettingsRepository } from '@/databases/repositories/settings.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';

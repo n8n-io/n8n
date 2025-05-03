@@ -50,7 +50,7 @@ export type Controller = Constructable<object> &
 
 type RouteHandlerFn = () => Promise<void> | void;
 
-type Class<T = object, A extends unknown[] = unknown[]> = new (...args: A) => T;
+export type Class<T = object, A extends unknown[] = unknown[]> = new (...args: A) => T;
 
 export type ServiceClass = Class<Record<string, RouteHandlerFn>>;
 

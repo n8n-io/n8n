@@ -10,6 +10,7 @@ export interface OAuth2CredentialData {
 	authUrl?: string;
 	scope?: string;
 	authQueryParameters?: string;
+	additionalBodyProperties?: string;
 	grantType: OAuth2GrantType;
 	ignoreSSLIssues?: boolean;
 	oauthTokenData?: {

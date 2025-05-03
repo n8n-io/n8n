@@ -1,9 +1,9 @@
+import type { WorkflowEntity } from '@n8n/db';
 import * as fastGlob from 'fast-glob';
 import { mock } from 'jest-mock-extended';
 import { type InstanceSettings } from 'n8n-core';
 import fsp from 'node:fs/promises';
 
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import type { FolderRepository } from '@/databases/repositories/folder.repository';
 import type { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 
