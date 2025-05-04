@@ -422,7 +422,7 @@ export class License {
 	}
 
 	isWithinUsersLimit() {
-		return this.getUsersLimit() === UNLIMITED_LICENSE_QUOTA;
+		return true;
 	}
 
 	/**
