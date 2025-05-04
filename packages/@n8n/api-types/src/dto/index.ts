@@ -68,3 +68,5 @@ export { ListInsightsWorkflowQueryDto } from './insights/list-workflow-query.dto
 export { InsightsDateFilterDto } from './insights/date-filter.dto';
 
 export { PaginationDto } from './pagination/pagination.dto';
+
+export { CreateSchemaDto } from './schemas/create-schema.dto';

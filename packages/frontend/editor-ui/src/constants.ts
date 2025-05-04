@@ -78,6 +78,7 @@ export const EXTERNAL_SECRETS_PROVIDER_MODAL_KEY = 'externalSecretsProvider';
 export const COMMUNITY_PLUS_ENROLLMENT_MODAL = 'communityPlusEnrollment';
 export const DELETE_FOLDER_MODAL_KEY = 'deleteFolder';
 export const MOVE_FOLDER_MODAL_KEY = 'moveFolder';
+export const SCHEMA_CREATE_OR_EDIT_MODAL_KEY = 'schemaCreateOrEditApiKey';
 export const WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY =
 	'workflowActivationConflictingWebhook';
 export const FROM_AI_PARAMETERS_MODAL_KEY = 'fromAiParameters';
@@ -520,6 +521,7 @@ export const enum VIEWS {
 	TEMPLATES = 'TemplatesSearchView',
 	CREDENTIALS = 'CredentialsView',
 	VARIABLES = 'VariablesView',
+	SCHEMAS = 'SchemasView',
 	NEW_WORKFLOW = 'NodeViewNew',
 	WORKFLOW = 'NodeViewExisting',
 	DEMO = 'WorkflowDemo',

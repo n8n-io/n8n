@@ -17,7 +17,7 @@ import type { Scope } from '@n8n/permissions';
 import type { BaseFolderItem, BaseResource, ITag, ResourceParentFolder } from '@/Interface';
 import { isSharedResource, isResourceSortableByDate } from '@/utils/typeGuards';
 
-type ResourceKeyType = 'credentials' | 'workflows' | 'variables' | 'folders';
+type ResourceKeyType = 'credentials' | 'workflows' | 'variables' | 'folders' | 'schemas';
 
 export type FolderResource = BaseFolderItem & {
 	resourceType: 'folder';
@@ -39,6 +39,12 @@ export type WorkflowResource = BaseResource & {
 
 export type VariableResource = BaseResource & {
 	resourceType: 'variable';
+	key?: string;
+	value?: string;
+};
+
+export type SchemaResource = BaseResource & {
+	resourceType: 'schema';
 	key?: string;
 	value?: string;
 };

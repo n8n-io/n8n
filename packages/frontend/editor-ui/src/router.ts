@@ -21,6 +21,7 @@ import { tryToParseNumber } from '@/utils/typesUtils';
 import { projectsRoutes } from '@/routes/projects.routes';
 import { insightsRoutes } from '@/features/insights/insights.router';
 import TestDefinitionRunDetailView from './views/TestDefinition/TestDefinitionRunDetailView.vue';
+import Schema from 'miragejs/orm/schema';
 
 const ChangePasswordView = async () => await import('./views/ChangePasswordView.vue');
 const ErrorView = async () => await import('./views/ErrorView.vue');
@@ -53,6 +54,7 @@ const SetupWorkflowFromTemplateView = async () =>
 	await import('@/views/SetupWorkflowFromTemplateView/SetupWorkflowFromTemplateView.vue');
 const TemplatesSearchView = async () => await import('@/views/TemplatesSearchView.vue');
 const VariablesView = async () => await import('@/views/VariablesView.vue');
+const SchemasView = async () => await import('@/views/SchemasView.vue');
 const SettingsUsageAndPlan = async () => await import('./views/SettingsUsageAndPlan.vue');
 const SettingsSso = async () => await import('./views/SettingsSso.vue');
 const SignoutView = async () => await import('@/views/SignoutView.vue');
@@ -202,6 +204,15 @@ export const routes: RouteRecordRaw[] = [
 		name: VIEWS.VARIABLES,
 		components: {
 			default: VariablesView,
+			sidebar: MainSidebar,
+		},
+		meta: { middleware: ['authenticated'] },
+	},
+	{
+		path: '/schemas',
+		name: VIEWS.SCHEMAS,
+		components: {
+			default: SchemasView,
 			sidebar: MainSidebar,
 		},
 		meta: { middleware: ['authenticated'] },

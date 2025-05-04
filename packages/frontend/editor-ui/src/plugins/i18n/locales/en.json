@@ -3137,5 +3137,9 @@
 	"insights.upgradeModal.perks.0": "View up to one year of insights history",
 	"insights.upgradeModal.perks.1": "Zoom into last 24 hours with hourly granularity",
 	"insights.upgradeModal.perks.2": "Gain deeper visibility into workflow trends over time",
-	"insights.upgradeModal.title": "Upgrade to Enterprise"
+	"insights.upgradeModal.title": "Upgrade to Enterprise",
+	"schemas.empty.heading": "{name}, let's set up a schema",
+	"schemas.empty.heading.userNotSetup": "Set up a schema",
+	"schemas.empty.description": "Schema can be used to store data that can be referenced easily across multiple workflows.",
+	"schemas.empty.button": "Add first schema"
 }

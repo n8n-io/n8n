@@ -18,6 +18,7 @@ import { InvalidAuthToken } from './invalid-auth-token';
 import { ProcessedData } from './processed-data';
 import { Project } from './project';
 import { ProjectRelation } from './project-relation';
+import { Schema } from './schema';
 import { Settings } from './settings';
 import { SharedCredentials } from './shared-credentials';
 import { SharedWorkflow } from './shared-workflow';
@@ -108,4 +109,5 @@ export const entities = {
 	TestRun,
 	TestCaseExecution,
 	ExecutionEntity,
+	Schema,
 };

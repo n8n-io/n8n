@@ -37,6 +37,7 @@ import {
 	MOVE_FOLDER_MODAL_KEY,
 	WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY,
 	FROM_AI_PARAMETERS_MODAL_KEY,
+	SCHEMA_CREATE_OR_EDIT_MODAL_KEY,
 } from '@/constants';
 
 import AboutModal from '@/components/AboutModal.vue';
@@ -290,6 +291,12 @@ import type { EventBus } from '@n8n/utils/event-bus';
 		<ModalRoot :name="DELETE_FOLDER_MODAL_KEY">
 			<template #default="{ modalName, activeId, data }">
 				<DeleteFolderModal :modal-name="modalName" :active-id="activeId" :data="data" />
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="SCHEMA_CREATE_OR_EDIT_MODAL_KEY">
+			<template #default="{ modalName, activeId, data }">
+				<SchemaCreateOrEditModal :modal-name="modalName" :active-id="activeId" :data="data" />
 			</template>
 		</ModalRoot>
 

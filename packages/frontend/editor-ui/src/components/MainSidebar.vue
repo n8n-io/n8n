@@ -105,6 +105,14 @@ const mainMenuItems = computed(() => [
 		route: { to: { name: VIEWS.VARIABLES } },
 	},
 	{
+		id: 'schemas',
+		icon: 'schema',
+		label: 'Schemas',
+		customIconSize: 'medium',
+		position: 'bottom',
+		route: { to: { name: VIEWS.SCHEMAS } },
+	},
+	{
 		id: 'insights',
 		icon: 'chart-bar',
 		label: 'Insights',

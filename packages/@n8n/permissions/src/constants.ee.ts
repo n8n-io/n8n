@@ -20,6 +20,7 @@ export const RESOURCES = {
 	tag: [...DEFAULT_OPERATIONS] as const,
 	user: ['resetPassword', 'changeRole', ...DEFAULT_OPERATIONS] as const,
 	variable: [...DEFAULT_OPERATIONS] as const,
+	schemas: [...DEFAULT_OPERATIONS] as const,
 	workersView: ['manage'] as const,
 	workflow: ['share', 'execute', 'move', ...DEFAULT_OPERATIONS] as const,
 	folder: [...DEFAULT_OPERATIONS] as const,

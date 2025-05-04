@@ -107,7 +107,7 @@ function onEdit(id: string) {
 </script>
 
 <template>
-	<div :class="$style.container">
+	<div>
 		<div :class="$style.header">
 			<n8n-heading size="2xlarge">
 				{{ i18n.baseText('settings.api') }}

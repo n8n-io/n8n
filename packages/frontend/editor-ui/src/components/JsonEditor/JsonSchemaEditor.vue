@@ -45,7 +45,6 @@ const editorState = ref<EditorState | null>(null);
 const extensions = computed(() => {
 	const extensionsToApply: Extension[] = [
 		json(),
-		lineNumbers(),
 		EditorView.lineWrapping,
 		EditorState.readOnly.of(props.isReadOnly),
 		codeEditorTheme({
