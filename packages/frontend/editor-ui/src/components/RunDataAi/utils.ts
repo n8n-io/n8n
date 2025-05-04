@@ -383,9 +383,11 @@ function findLogEntryToAutoSelectRec(
 
 export function createLogEntries(workflow: Workflow, runData: IRunData) {
 	const runs = Object.entries(runData)
-		.filter(([nodeName]) => workflow.getChildNodes(nodeName, 'ALL_NON_MAIN').length === 0)
 		.flatMap(([nodeName, taskData]) =>
-			taskData.map((task, runIndex) => ({ nodeName, task, runIndex })),
+			workflow.getChildNodes(nodeName, 'ALL_NON_MAIN').length > 0 ||
+			workflow.getNode(nodeName)?.disabled
+				? [] // skip sub nodes and disabled nodes
+				: taskData.map((task, runIndex) => ({ nodeName, task, runIndex })),
 		)
 		.sort((a, b) => {
 			if (a.task.executionIndex !== undefined && b.task.executionIndex !== undefined) {
@@ -431,8 +433,18 @@ export function findSelectedLogEntry(
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function deepToRaw<T>(sourceObj: T): T {
+	const seen = new WeakMap();
+
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const objectIterator = (input: any): any => {
+		if (seen.has(input)) {
+			return input;
+		}
+
+		if (input !== null && typeof input === 'object') {
+			seen.set(input, true);
+		}
+
 		if (Array.isArray(input)) {
 			return input.map((item) => objectIterator(item));
 		}

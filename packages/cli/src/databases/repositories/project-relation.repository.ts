@@ -1,8 +1,7 @@
 import type { ProjectRole } from '@n8n/api-types';
+import { ProjectRelation } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, In, Repository } from '@n8n/typeorm';
-
-import { ProjectRelation } from '../entities/project-relation';
 
 @Service()
 export class ProjectRelationRepository extends Repository<ProjectRelation> {

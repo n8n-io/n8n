@@ -1,3 +1,4 @@
+import type { IExecutionResponse } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type express from 'express';
 import { Logger } from 'n8n-core';
@@ -14,7 +15,6 @@ import { ExecutionRepository } from '@/databases/repositories/execution.reposito
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { NodeTypes } from '@/node-types';
-import type { IExecutionResponse } from '@/types-db';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 

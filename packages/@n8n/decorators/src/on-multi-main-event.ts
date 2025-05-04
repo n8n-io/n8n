@@ -1,18 +1,12 @@
 import { Container } from '@n8n/di';
-import { UnexpectedError } from 'n8n-workflow';
 
+import { NonMethodError } from './errors';
 import type { EventHandlerClass, MultiMainEvent } from './multi-main-metadata';
 import {
 	LEADER_TAKEOVER_EVENT_NAME,
 	LEADER_STEPDOWN_EVENT_NAME,
 	MultiMainMetadata,
 } from './multi-main-metadata';
-
-export class NonMethodError extends UnexpectedError {
-	constructor(name: string) {
-		super(`${name} must be a method on a class to use this decorator`);
-	}
-}
 
 const OnMultiMainEvent =
 	(eventName: MultiMainEvent): MethodDecorator =>

@@ -4,13 +4,13 @@ import {
 	SettingsUpdateRequestDto,
 	UserUpdateRequestDto,
 } from '@n8n/api-types';
+import type { User, PublicUser } from '@n8n/db';
 import { Body, Patch, Post, RestController } from '@n8n/decorators';
 import { plainToInstance } from 'class-transformer';
 import { Response } from 'express';
 import { Logger } from 'n8n-core';
 
 import { AuthService } from '@/auth/auth.service';
-import type { User } from '@/databases/entities/user';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InvalidMfaCodeError } from '@/errors/response-errors/invalid-mfa-code.error';
@@ -22,7 +22,6 @@ import { AuthenticatedRequest, MeRequest } from '@/requests';
 import { PasswordUtility } from '@/services/password.utility';
 import { UserService } from '@/services/user.service';
 import { isSamlLicensedAndEnabled } from '@/sso.ee/saml/saml-helpers';
-import type { PublicUser } from '@/types-db';
 
 import { PersonalizationSurveyAnswersV4 } from './survey-answers.dto';
 @RestController('/me')

@@ -157,18 +157,6 @@ export const faPopOut: IconDefinition = {
 	],
 };
 
-export const faTable: IconDefinition = {
-	prefix: 'fas',
-	iconName: 'table' as IconName,
-	icon: [
-		12,
-		12,
-		[],
-		'',
-		'M10.875 0C11.4844 0 12 0.589286 12 1.28571V10.7143C12 11.4375 11.4844 12 10.875 12H1.125C0.492188 12 0 11.4375 0 10.7143V1.28571C0 0.589286 0.492188 0 1.125 0H10.875ZM5.25 10.2857V7.71429H1.5V10.2857H5.25ZM5.25 6V3.42857H1.5V6H5.25ZM10.5 10.2857V7.71429H6.75V10.2857H10.5ZM10.5 6V3.42857H6.75V6H10.5Z',
-	],
-};
-
 export const faSchema: IconDefinition = {
 	prefix: 'fas',
 	iconName: 'schema' as IconName,
