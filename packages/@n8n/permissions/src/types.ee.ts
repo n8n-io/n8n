@@ -22,8 +22,15 @@ type ResourceScope<
 /** A wildcard scope applies to all operations on a resource or all resources */
 type WildcardScope = `${Resource}:*` | '*';
 
+// This is purely an intermediary type.
+// If we tried to do use `ResourceScope<Resource>` directly we'd end
+// up with all resources having all scopes (e.g. `ldap:uninstall`).
+type AllScopesObject = {
+	[R in Resource]: ResourceScope<R>;
+};
+
 /** A permission scope in the system, either a specific resource:operation or a wildcard */
-export type Scope = ResourceScope<Resource> | WildcardScope;
+export type Scope = AllScopesObject[Resource] | WildcardScope;
 
 export type ScopeLevels = {
 	global: Scope[];
@@ -85,4 +92,5 @@ type AllApiKeyScopesObject = {
 };
 
 export type ApiKeyScope = AllApiKeyScopesObject[PublicApiKeyResources];
+
 // #endregion
