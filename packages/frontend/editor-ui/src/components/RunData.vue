@@ -37,6 +37,7 @@ import {
 	CORE_NODES_CATEGORY,
 	DATA_EDITING_DOCS_URL,
 	DATA_PINNING_DOCS_URL,
+	EXTRACT_FROM_FILE_NODE_TYPE,
 	HTML_NODE_TYPE,
 	LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG,
 	LOCAL_STORAGE_PIN_DATA_DISCOVERY_NDV_FLAG,
@@ -1325,14 +1326,22 @@ function enableNode() {
 	}
 }
 
+const shouldDisplayHtml = computed(() => {
+	if (!activeNode.value) return false;
+
+	return (
+		(activeNode.value?.type === HTML_NODE_TYPE &&
+			activeNode.value?.parameters.operation === 'generateHtmlTemplate') ||
+		(activeNode.value?.type === EXTRACT_FROM_FILE_NODE_TYPE &&
+			activeNode.value?.parameters.operation === 'docx' &&
+			(activeNode.value.parameters.options as Record<string, unknown>).outputFormat === 'html')
+	);
+});
+
 function setDisplayMode() {
 	if (!activeNode.value) return;
 
-	const shouldDisplayHtml =
-		activeNode.value.type === HTML_NODE_TYPE &&
-		activeNode.value.parameters.operation === 'generateHtmlTemplate';
-
-	if (shouldDisplayHtml) {
+	if (shouldDisplayHtml.value) {
 		emit('displayModeChange', 'html');
 	}
 }
@@ -1435,10 +1444,7 @@ defineExpose({ enterEditMode });
 					:value="displayMode"
 					:has-binary-data="binaryData.length > 0"
 					:pane-type="paneType"
-					:node-generates-html="
-						activeNode?.type === HTML_NODE_TYPE &&
-						activeNode.parameters.operation === 'generateHtmlTemplate'
-					"
+					:node-generates-html="shouldDisplayHtml"
 					:has-renderable-data="hasParsedAiContent"
 					@change="onDisplayModeChange"
 				/>
