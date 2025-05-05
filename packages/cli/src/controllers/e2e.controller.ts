@@ -6,6 +6,8 @@ import { Patch, Post, RestController } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { Request } from 'express';
 import { Logger } from 'n8n-core';
+// eslint-disable-next-line import/no-extraneous-dependencies
+import nock from 'nock';
 import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
@@ -25,6 +27,8 @@ if (!inE2ETests) {
 	Container.get(Logger).error('E2E endpoints only allowed during E2E tests');
 	process.exit(1);
 }
+
+const RECORD_API_CALLS = process.env.N8N_E2E_RECORD_API === 'true';
 
 const tablesToTruncate = [
 	'auth_identity',
@@ -141,8 +145,11 @@ export class E2EController {
 			E2EController.numericFeaturesDefaults[LICENSE_QUOTAS.INSIGHTS_RETENTION_PRUNE_INTERVAL_DAYS],
 	};
 
+	private networkMocks: nock.Scope[] = [];
+
 	constructor(
 		license: License,
+		private readonly logger: Logger,
 		private readonly settingsRepo: SettingsRepository,
 		private readonly workflowRunner: ActiveWorkflowManager,
 		private readonly mfaService: MfaService,
@@ -168,6 +175,16 @@ export class E2EController {
 		license.getValue = getFeatureValue;
 
 		license.getPlanName = () => 'Enterprise';
+
+		if (!RECORD_API_CALLS) {
+			// The backend should not make any external http requests in E2E tests
+			nock.disableNetConnect();
+		} else {
+			nock.recorder.rec({
+				dont_print: true,
+				output_objects: true,
+			});
+		}
 	}
 
 	@Post('/reset', { skipAuth: true })
@@ -178,6 +195,7 @@ export class E2EController {
 		await this.truncateAll();
 		await this.resetCache();
 		await this.setupUserManagement(req.body.owner, req.body.members, req.body.admin);
+		this.resetNetworkMocks();
 	}
 
 	@Post('/push', { skipAuth: true })
@@ -203,6 +221,58 @@ export class E2EController {
 		const { enabled } = req.body;
 		config.set('executions.mode', enabled ? 'queue' : 'regular');
 		return { success: true, message: `Queue mode set to ${config.getEnv('executions.mode')}` };
+	}
+
+	@Post('/network-mocks', { skipAuth: true })
+	defineNetworkMocks(
+		req: Request<
+			{},
+			{},
+			{
+				mocks: Array<{
+					baseUrl: string;
+					method: 'get' | 'post';
+					path: string;
+					statusCode: number;
+					response: object | object[];
+					headers?: Record<string, string>;
+					persist?: boolean;
+				}>;
+			}
+		>,
+	) {
+		const { mocks } = req.body;
+
+		for (const mock of mocks) {
+			const { baseUrl, method, path, statusCode, response, headers, persist = false } = mock;
+			let scope = nock(baseUrl);
+			this.networkMocks.push(scope);
+			if (persist) scope = scope.persist();
+			scope[method](path).reply(statusCode, response, headers ?? {});
+		}
+
+		return { success: true };
+	}
+
+	private resetNetworkMocks() {
+		if (RECORD_API_CALLS) {
+			const recordings = nock.recorder.play() as nock.Definition[];
+			const mocks = recordings.map((rec) => ({
+				baseUrl: rec.scope,
+				method: rec.method,
+				path: rec.path,
+				statusCode: rec.status,
+				response: rec.response,
+				requestBody: rec.body,
+				headers: rec.headers,
+				persist: true,
+			}));
+			console.log(mocks);
+
+			nock.recorder.clear();
+		}
+		nock.cleanAll();
+		this.networkMocks = [];
 	}
 
 	private resetFeatures() {
@@ -235,7 +305,7 @@ export class E2EController {
 					`DELETE FROM ${table}; DELETE FROM sqlite_sequence WHERE name=${table};`,
 				);
 			} catch (error) {
-				Container.get(Logger).warn('Dropping Table for E2E Reset error', {
+				this.logger.warn('Dropping Table for E2E Reset error', {
 					error: error as Error,
 				});
 			}
