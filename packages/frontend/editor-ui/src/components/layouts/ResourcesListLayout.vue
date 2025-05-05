@@ -526,7 +526,7 @@ const loadPaginationPreferences = async () => {
 	if (props.type !== 'list-paginated') {
 		return;
 	}
-	const query = router.currentRoute.value.query;
+	const query = route.query;
 	// For now, only load workflow list preferences from local storage
 	const localStorageValues = n8nLocalStorage.loadProjectPreferencesFromLocalStorage(
 		(route.params.projectId as string) ?? '',
@@ -707,7 +707,11 @@ defineExpose({
 						</template>
 					</n8n-recycle-scroller>
 					<!-- PAGINATED LIST -->
-					<div v-else-if="type === 'list-paginated'" :class="$style.paginatedListWrapper">
+					<div
+						v-else-if="type === 'list-paginated'"
+						:class="$style.paginatedListWrapper"
+						data-test-id="paginated-list"
+					>
 						<div :class="$style.listItems">
 							<div v-for="(item, index) in resources" :key="index" :class="$style.listItem">
 								<slot name="item" :item="item" :index="index">

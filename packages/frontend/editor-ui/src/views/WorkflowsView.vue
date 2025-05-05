@@ -571,6 +571,9 @@ const setPaginationAndSort = async (payload: SortingAndPaginationUpdates) => {
 		currentSort.value =
 			WORKFLOWS_SORT_MAP[payload.sort as keyof typeof WORKFLOWS_SORT_MAP] ?? 'updatedAt:desc';
 	}
+	// Don't fetch workflows if we are loading
+	// This will prevent unnecessary API calls when changing sort and pagination from url/local storage
+	// when switching between projects
 	if (!loading.value) {
 		await callDebounced(fetchWorkflows, { debounceTime: FILTERS_DEBOUNCE_TIME, trailing: true });
 	}
