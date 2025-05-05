@@ -3,8 +3,8 @@ services:
     name: n8n-vedant
     env: docker
     plan: free
-    autoDeploy: true
     dockerfilePath: ./Dockerfile
+    autoDeploy: true
     envVars:
       - key: N8N_BASIC_AUTH_ACTIVE
         value: true
