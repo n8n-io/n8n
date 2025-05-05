@@ -27,7 +27,7 @@ import { PubSubHandler } from '@/scaling/pubsub/pubsub-handler';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { Server } from '@/server';
 import { OwnershipService } from '@/services/ownership.service';
-import { PruningService } from '@/services/pruning/pruning.service';
+import { ExecutionsPruningService } from '@/services/pruning/executions-pruning.service';
 import { UrlService } from '@/services/url.service';
 import { WaitTracker } from '@/wait-tracker';
 import { WorkflowRunner } from '@/workflow-runner';
@@ -315,7 +315,7 @@ export class Start extends BaseCommand {
 
 		await this.server.start();
 
-		Container.get(PruningService).init();
+		Container.get(ExecutionsPruningService).init();
 
 		if (config.getEnv('executions.mode') === 'regular') {
 			await this.runEnqueuedExecutions();
