@@ -16,5 +16,8 @@ export { idStringifier, lowerCaser, objectRetriever, sqlite } from './utils/tran
 
 export * from './entities';
 export * from './entities/types-db';
+export * from './repositories';
+export * from './subscribers';
+
 export { NoXss } from './utils/validators/no-xss.validator';
 export { NoUrl } from './utils/validators/no-url.validator';

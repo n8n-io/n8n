@@ -5,7 +5,15 @@ import {
 } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import type { Project } from '@n8n/db';
-import { SharedWorkflow, WorkflowEntity } from '@n8n/db';
+import {
+	SharedWorkflow,
+	WorkflowEntity,
+	ProjectRelationRepository,
+	ProjectRepository,
+	SharedWorkflowRepository,
+	TagRepository,
+	WorkflowRepository,
+} from '@n8n/db';
 import {
 	Body,
 	Delete,
@@ -27,11 +35,6 @@ import { Logger } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
-import { TagRepository } from '@/databases/repositories/tag.repository';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import * as Db from '@/db';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';

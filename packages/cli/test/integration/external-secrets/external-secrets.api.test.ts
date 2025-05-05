@@ -1,3 +1,4 @@
+import { SettingsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { Cipher } from 'n8n-core';
@@ -5,7 +6,6 @@ import { jsonParse, type IDataObject } from 'n8n-workflow';
 
 import config from '@/config';
 import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
-import { SettingsRepository } from '@/databases/repositories/settings.repository';
 import type { EventService } from '@/events/event.service';
 import { ExternalSecretsManager } from '@/external-secrets.ee/external-secrets-manager.ee';
 import { ExternalSecretsProviders } from '@/external-secrets.ee/external-secrets-providers.ee';

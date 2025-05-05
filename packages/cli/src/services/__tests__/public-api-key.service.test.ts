@@ -1,3 +1,5 @@
+import { ApiKeyRepository } from '@n8n/db';
+import { UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { ApiKeyScope } from '@n8n/permissions';
 import type { Response, NextFunction } from 'express';
@@ -7,8 +9,6 @@ import type { InstanceSettings } from 'n8n-core';
 import { randomString } from 'n8n-workflow';
 import type { OpenAPIV3 } from 'openapi-types';
 
-import { ApiKeyRepository } from '@/databases/repositories/api-key.repository';
-import { UserRepository } from '@/databases/repositories/user.repository';
 import { getConnection } from '@/db';
 import type { EventService } from '@/events/event.service';
 import { getOwnerOnlyApiKeyScopes } from '@/public-api/permissions.ee';
