@@ -4,7 +4,7 @@ import type { InstalledPackages } from '@n8n/db';
 import { Service } from '@n8n/di';
 import axios from 'axios';
 import { exec } from 'child_process';
-import { access as fsAccess, mkdir as fsMkdir } from 'fs/promises';
+import { mkdir as fsMkdir } from 'fs/promises';
 import type { PackageDirectoryLoader } from 'n8n-core';
 import { InstanceSettings, Logger } from 'n8n-core';
 import { UnexpectedError, UserError, type PublicInstalledPackage } from 'n8n-workflow';
@@ -28,6 +28,14 @@ import { toError } from '@/utils';
 import { verifyIntegrity } from '../utils/npm-utils';
 
 const DEFAULT_REGISTRY = 'https://registry.npmjs.org';
+const NPM_COMMON_ARGS = ['--audit=false', '--fund=false'];
+const NPM_INSTALL_ARGS = [
+	'--bin-links=false',
+	'--install-strategy=shallow',
+	'--omit=dev',
+	'--omit=optional',
+	'--omit=peer',
+];
 
 const {
 	PACKAGE_NAME_NOT_PROVIDED,
@@ -136,17 +144,11 @@ export class CommunityPackagesService {
 				NODE_PATH: process.env.NODE_PATH,
 				PATH: process.env.PATH,
 				APPDATA: process.env.APPDATA,
+				NODE_ENV: 'production',
 			},
 		};
 
-		try {
-			await fsAccess(downloadFolder);
-		} catch {
-			await fsMkdir(downloadFolder);
-			// Also init the folder since some versions
-			// of npm complain if the folder is empty
-			await asyncExec('npm init -y', execOptions);
-		}
+		await fsMkdir(downloadFolder, { recursive: true });
 
 		try {
 			const commandResult = await asyncExec(command, execOptions);
@@ -332,12 +334,12 @@ export class CommunityPackagesService {
 		});
 	}
 
-	private getNpmRegistry() {
+	private getNpmInstallArgs() {
 		const { registry } = this.globalConfig.nodes.communityPackages;
 		if (registry !== DEFAULT_REGISTRY && !this.license.isCustomNpmRegistryEnabled()) {
 			throw new FeatureNotLicensedError(LICENSE_FEATURES.COMMUNITY_NODES_CUSTOM_REGISTRY);
 		}
-		return registry;
+		return [...NPM_COMMON_ARGS, ...NPM_INSTALL_ARGS, `--registry=${registry}`].join(' ');
 	}
 
 	private checkInstallPermissions(isUpdate: boolean, checksumProvided: boolean) {
@@ -354,7 +356,7 @@ export class CommunityPackagesService {
 	) {
 		const isUpdate = 'installedPackage' in options;
 		const packageVersion = isUpdate || !options.version ? 'latest' : options.version;
-		const command = `npm install ${packageName}@${packageVersion} --registry=${this.getNpmRegistry()}`;
+		const command = `npm install ${packageName}@${packageVersion} ${this.getNpmInstallArgs()}`;
 
 		const shouldValidateChecksum = 'checksum' in options && Boolean(options.checksum);
 		this.checkInstallPermissions(isUpdate, shouldValidateChecksum);
@@ -415,7 +417,7 @@ export class CommunityPackagesService {
 
 	async installOrUpdateNpmPackage(packageName: string, packageVersion: string) {
 		await this.executeNpmCommand(
-			`npm install ${packageName}@${packageVersion} --registry=${this.getNpmRegistry()}`,
+			`npm install ${packageName}@${packageVersion} ${this.getNpmInstallArgs()}`,
 		);
 		await this.loadNodesAndCredentials.loadPackage(packageName);
 		await this.loadNodesAndCredentials.postProcessLoaders();
