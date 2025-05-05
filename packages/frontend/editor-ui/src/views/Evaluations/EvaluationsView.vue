@@ -64,15 +64,7 @@ const showWizard = computed(() => {
 <template>
 	<div v-if="isReady" :class="[$style.container]">
 		<div :class="$style.header" v-if="!showWizard">
-			<div style="display: flex; align-items: center">
-				<N8nText bold size="xlarge" color="text-dark">{{
-					locale.baseText('evaluation.listRuns.runListHeader', {
-						interpolate: {
-							name: workflowName,
-						},
-					})
-				}}</N8nText>
-			</div>
+			<div style="display: flex; align-items: center"></div>
 			<div style="display: flex; align-items: center; gap: 10px">
 				<N8nTooltip v-if="!showWizard" :disabled="isRunTestEnabled" :placement="'left'">
 					<N8nButton
