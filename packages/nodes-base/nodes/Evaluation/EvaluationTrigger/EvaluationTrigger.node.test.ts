@@ -2,8 +2,8 @@ import { mock } from 'jest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
 
 import { EvaluationTrigger, startingRow } from './EvaluationTrigger.node';
-import * as utils from './utils/evaluationTriggerUtils';
-import { GoogleSheet } from '../Google/Sheet/v2/helpers/GoogleSheet';
+import * as utils from '../utils/evaluationTriggerUtils';
+import { GoogleSheet } from '../../Google/Sheet/v2/helpers/GoogleSheet';
 
 describe('Evaluation Trigger Node', () => {
 	const sheetName = 'Sheet5';
