@@ -18,7 +18,6 @@ export class JinaAi implements INodeType {
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
 		usableAsTool: true,
-		// TODO: required for some operations, optional for others
 		credentials: [
 			{
 				name: 'jinaAiApi',
