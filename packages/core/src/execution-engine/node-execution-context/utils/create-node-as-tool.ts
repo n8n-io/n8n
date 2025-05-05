@@ -90,8 +90,6 @@ function getSchema(node: INode) {
  * @returns A string description for the node.
  */
 function makeDescription(node: INode, nodeType: INodeType): string {
-	const manualDescription = node.parameters.toolDescription as string;
-
 	if (node.parameters.descriptionType === 'auto') {
 		const resource = node.parameters.resource as string;
 		const operation = node.parameters.operation as string;
@@ -104,11 +102,10 @@ function makeDescription(node: INode, nodeType: INodeType): string {
 		}
 		return description.trim();
 	}
-	if (node.parameters.descriptionType === 'manual') {
-		return manualDescription ?? nodeType.description.description;
-	}
 
-	return nodeType.description.description;
+	// Users can define custom descriptions when `descriptionType` is manual or not included
+	// in the node's properties, e.g. when the node has neither `operation` or `resource`
+	return (node.parameters.toolDescription as string) ?? nodeType.description.description;
 }
 
 export function nodeNameToToolName(node: INode): string {
