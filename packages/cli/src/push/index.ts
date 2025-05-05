@@ -1,23 +1,22 @@
 import type { PushMessage } from '@n8n/api-types';
+import type { User } from '@n8n/db';
+import { OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import type { Application } from 'express';
 import { ServerResponse } from 'http';
 import type { Server } from 'http';
 import { InstanceSettings, Logger } from 'n8n-core';
 import { deepCopy } from 'n8n-workflow';
-import type { Socket } from 'net';
 import { parse as parseUrl } from 'url';
 import { Server as WSServer } from 'ws';
 
 import { AuthService } from '@/auth/auth.service';
-import config from '@/config';
-import { TRIMMED_TASK_DATA_CONNECTIONS } from '@/constants';
-import type { User } from '@/databases/entities/user';
-import { OnShutdown } from '@/decorators/on-shutdown';
+import { inProduction, TRIMMED_TASK_DATA_CONNECTIONS } from '@/constants';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { TypedEmitter } from '@/typed-emitter';
 
+import { PushConfig } from './push.config';
 import { SSEPush } from './sse.push';
 import type { OnPushMessage, PushResponse, SSEPushRequest, WebSocketPushRequest } from './types';
 import { WebSocketPush } from './websocket.push';
@@ -26,8 +25,6 @@ type PushEvents = {
 	editorUiConnected: string;
 	message: OnPushMessage;
 };
-
-const useWebSockets = config.getEnv('push.backend') === 'websocket';
 
 /**
  * Max allowed size of a push message in bytes. Events going through the pubsub
@@ -44,23 +41,62 @@ const MAX_PAYLOAD_SIZE_BYTES = 5 * 1024 * 1024; // 5 MiB
  */
 @Service()
 export class Push extends TypedEmitter<PushEvents> {
-	isBidirectional = useWebSockets;
+	private useWebSockets = this.config.backend === 'websocket';
 
-	private backend = useWebSockets ? Container.get(WebSocketPush) : Container.get(SSEPush);
+	isBidirectional = this.useWebSockets;
+
+	private backend = this.useWebSockets ? Container.get(WebSocketPush) : Container.get(SSEPush);
 
 	constructor(
+		private readonly config: PushConfig,
 		private readonly instanceSettings: InstanceSettings,
-		private readonly publisher: Publisher,
 		private readonly logger: Logger,
+		private readonly authService: AuthService,
+		private readonly publisher: Publisher,
 	) {
 		super();
 		this.logger = this.logger.scoped('push');
 
-		if (useWebSockets) this.backend.on('message', (msg) => this.emit('message', msg));
+		if (this.useWebSockets) this.backend.on('message', (msg) => this.emit('message', msg));
 	}
 
 	getBackend() {
 		return this.backend;
+	}
+
+	/** Sets up the main express app to upgrade websocket connections */
+	setupPushServer(restEndpoint: string, server: Server, app: Application) {
+		if (this.useWebSockets) {
+			const wsServer = new WSServer({ noServer: true });
+			server.on('upgrade', (request: WebSocketPushRequest, socket, upgradeHead) => {
+				if (parseUrl(request.url).pathname === `/${restEndpoint}/push`) {
+					wsServer.handleUpgrade(request, socket, upgradeHead, (ws) => {
+						request.ws = ws;
+
+						const response = new ServerResponse(request);
+						response.writeHead = (statusCode) => {
+							if (statusCode > 200) ws.close();
+							return response;
+						};
+
+						// @ts-expect-error `handle` isn't documented
+						// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+						app.handle(request, response);
+					});
+				}
+			});
+		}
+	}
+
+	/** Sets up the push endppoint that the frontend connects to. */
+	setupPushHandler(restEndpoint: string, app: Application) {
+		app.use(
+			`/${restEndpoint}/push`,
+			// eslint-disable-next-line @typescript-eslint/unbound-method
+			this.authService.authMiddleware,
+			(req: SSEPushRequest | WebSocketPushRequest, res: PushResponse) =>
+				this.handleRequest(req, res),
+		);
 	}
 
 	handleRequest(req: SSEPushRequest | WebSocketPushRequest, res: PushResponse) {
@@ -68,20 +104,31 @@ export class Push extends TypedEmitter<PushEvents> {
 			ws,
 			query: { pushRef },
 			user,
+			headers,
 		} = req;
 
+		let connectionError = '';
 		if (!pushRef) {
+			connectionError = 'The query parameter "pushRef" is missing!';
+		} else if (
+			inProduction &&
+			!(headers.origin === `http://${headers.host}` || headers.origin === `https://${headers.host}`)
+		) {
+			connectionError = 'Invalid origin!';
+		}
+
+		if (connectionError) {
 			if (ws) {
-				ws.send('The query parameter "pushRef" is missing!');
+				ws.send(connectionError);
 				ws.close(1008);
 				return;
 			}
-			throw new BadRequestError('The query parameter "pushRef" is missing!');
+			throw new BadRequestError(connectionError);
 		}
 
 		if (req.ws) {
 			(this.backend as WebSocketPush).add(pushRef, user.id, req.ws);
-		} else if (!useWebSockets) {
+		} else if (!this.useWebSockets) {
 			(this.backend as SSEPush).add(pushRef, user.id, { req, res });
 		} else {
 			res.status(401).send('Unauthorized');
@@ -182,38 +229,3 @@ export class Push extends TypedEmitter<PushEvents> {
 		});
 	}
 }
-
-export const setupPushServer = (restEndpoint: string, server: Server, app: Application) => {
-	if (useWebSockets) {
-		const wsServer = new WSServer({ noServer: true });
-		server.on('upgrade', (request: WebSocketPushRequest, socket: Socket, head) => {
-			if (parseUrl(request.url).pathname === `/${restEndpoint}/push`) {
-				wsServer.handleUpgrade(request, socket, head, (ws) => {
-					request.ws = ws;
-
-					const response = new ServerResponse(request);
-					response.writeHead = (statusCode) => {
-						if (statusCode > 200) ws.close();
-						return response;
-					};
-
-					// @ts-ignore
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-call
-					app.handle(request, response);
-				});
-			}
-		});
-	}
-};
-
-export const setupPushHandler = (restEndpoint: string, app: Application) => {
-	const endpoint = `/${restEndpoint}/push`;
-	const push = Container.get(Push);
-	const authService = Container.get(AuthService);
-	app.use(
-		endpoint,
-		// eslint-disable-next-line @typescript-eslint/unbound-method
-		authService.authMiddleware,
-		(req: SSEPushRequest | WebSocketPushRequest, res: PushResponse) => push.handleRequest(req, res),
-	);
-};

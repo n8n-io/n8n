@@ -1,12 +1,10 @@
+import { Project, ProjectRelation, User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import type { GlobalRole } from '@n8n/permissions';
 import type { DeepPartial, EntityManager, FindManyOptions } from '@n8n/typeorm';
 import { DataSource, In, IsNull, Not, Repository } from '@n8n/typeorm';
 
 import type { ListQuery } from '@/requests';
-
-import { Project } from '../entities/project';
-import { ProjectRelation } from '../entities/project-relation';
-import { type GlobalRole, User } from '../entities/user';
 
 @Service()
 export class UserRepository extends Repository<User> {

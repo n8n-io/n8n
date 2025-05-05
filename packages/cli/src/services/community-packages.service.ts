@@ -1,4 +1,6 @@
 import { GlobalConfig } from '@n8n/config';
+import { LICENSE_FEATURES } from '@n8n/constants';
+import type { InstalledPackages } from '@n8n/db';
 import { Service } from '@n8n/di';
 import axios from 'axios';
 import { exec } from 'child_process';
@@ -9,14 +11,12 @@ import { UnexpectedError, UserError, type PublicInstalledPackage } from 'n8n-wor
 import { promisify } from 'util';
 
 import {
-	LICENSE_FEATURES,
 	NODE_PACKAGE_PREFIX,
 	NPM_COMMAND_TOKENS,
 	NPM_PACKAGE_STATUS_GOOD,
 	RESPONSE_ERROR_MESSAGES,
 	UNKNOWN_FAILURE_REASON,
 } from '@/constants';
-import type { InstalledPackages } from '@/databases/entities/installed-packages';
 import { InstalledPackagesRepository } from '@/databases/repositories/installed-packages.repository';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import type { CommunityPackages } from '@/interfaces';

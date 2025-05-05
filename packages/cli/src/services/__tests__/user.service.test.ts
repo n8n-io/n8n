@@ -1,8 +1,8 @@
 import { GlobalConfig } from '@n8n/config';
+import { User } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import { v4 as uuid } from 'uuid';
 
-import { User } from '@/databases/entities/user';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import { UrlService } from '@/services/url.service';
 import { UserService } from '@/services/user.service';
@@ -18,7 +18,7 @@ describe('UserService', () => {
 	});
 	const urlService = new UrlService(globalConfig);
 	const userRepository = mockInstance(UserRepository);
-	const userService = new UserService(mock(), userRepository, mock(), urlService, mock());
+	const userService = new UserService(mock(), userRepository, mock(), urlService, mock(), mock());
 
 	const commonMockUser = Object.assign(new User(), {
 		id: uuid(),

@@ -269,7 +269,7 @@ export class MicrosoftSql implements INodeType {
 						);
 					}
 					const results = await executeSqlQueryAndPrepareResults(pool, rawQuery, i);
-					returnData.push(...results);
+					returnData = returnData.concat(results);
 				} catch (error) {
 					if (this.continueOnFail()) {
 						returnData.push({

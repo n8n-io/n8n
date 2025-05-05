@@ -12,6 +12,7 @@ export { createHeartbeatMessage, heartbeatMessageSchema } from './push/heartbeat
 export type { SendWorkerStatusMessage } from './push/worker';
 
 export type { BannerName } from './schemas/bannerName.schema';
+export { ViewableMimeTypes } from './schemas/binaryData.schema';
 export { passwordSchema } from './schemas/password.schema';
 
 export type {
@@ -28,8 +29,12 @@ export {
 	SOURCE_CONTROL_FILE_TYPE,
 } from './schemas/source-controlled-file.schema';
 
-export type {
-	InsightsSummaryType,
-	InsightsSummaryUnit,
-	InsightsSummary,
+export {
+	type InsightsSummaryType,
+	type InsightsSummaryUnit,
+	type InsightsSummary,
+	type InsightsByWorkflow,
+	type InsightsByTime,
+	type InsightsDateRange,
+	INSIGHTS_DATE_RANGE_KEYS,
 } from './schemas/insights.schema';

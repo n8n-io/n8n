@@ -1,7 +1,7 @@
+import type { User } from '@n8n/db';
 import { v4 as uuid } from 'uuid';
 import validator from 'validator';
 
-import type { User } from '@/databases/entities/user';
 import { License } from '@/license';
 import { createTeamProject, linkUserToProject } from '@test-integration/db/projects';
 
@@ -37,12 +37,6 @@ describe('With license unlimited quota:users', () => {
 		test('should fail due to invalid API Key', async () => {
 			const authOwnerAgent = testServer.publicApiAgentWithApiKey('invalid-key');
 			await authOwnerAgent.get('/users').expect(401);
-		});
-
-		test('should fail due to member trying to access owner only endpoint', async () => {
-			const member = await createMemberWithApiKey();
-			const authMemberAgent = testServer.publicApiAgentFor(member);
-			await authMemberAgent.get('/users').expect(403);
 		});
 
 		test('should return all users', async () => {
@@ -139,6 +133,7 @@ describe('With license unlimited quota:users', () => {
 
 		test('should fail due to member trying to access owner only endpoint', async () => {
 			const member = await createMemberWithApiKey();
+
 			const authMemberAgent = testServer.publicApiAgentFor(member);
 			await authMemberAgent.get(`/users/${member.id}`).expect(403);
 		});

@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
-import type { IDataObject, ExecutionSummary, AnnotationVote } from 'n8n-workflow';
+import type { IDataObject, ExecutionSummary, AnnotationVote, ExecutionStatus } from 'n8n-workflow';
 import type {
 	ExecutionFilterType,
 	ExecutionsQueryFilter,
@@ -240,7 +240,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 		);
 	}
 
-	async function retryExecution(id: string, loadWorkflow?: boolean): Promise<boolean> {
+	async function retryExecution(id: string, loadWorkflow?: boolean): Promise<ExecutionStatus> {
 		return await makeRestApiRequest(
 			rootStore.restApiContext,
 			'POST',

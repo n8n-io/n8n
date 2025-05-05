@@ -1,4 +1,6 @@
 import type { AuthenticationMethod, ProjectRelation } from '@n8n/api-types';
+import type { AuthProviderType, User, IWorkflowDb } from '@n8n/db';
+import type { GlobalRole } from '@n8n/permissions';
 import type {
 	IPersonalizationSurveyAnswersV4,
 	IRun,
@@ -7,9 +9,6 @@ import type {
 } from 'n8n-workflow';
 
 import type { ConcurrencyQueueType } from '@/concurrency/concurrency-control.service';
-import type { AuthProviderType } from '@/databases/entities/auth-identity';
-import type { GlobalRole, User } from '@/databases/entities/user';
-import type { IWorkflowDb } from '@/interfaces';
 
 import type { AiEventMap } from './ai.event-map';
 
@@ -381,12 +380,14 @@ export type RelayEventMap = {
 	};
 
 	'source-control-user-started-pull-ui': {
+		userId?: string;
 		workflowUpdates: number;
 		workflowConflicts: number;
 		credConflicts: number;
 	};
 
 	'source-control-user-finished-pull-ui': {
+		userId?: string;
 		workflowUpdates: number;
 	};
 
@@ -396,6 +397,7 @@ export type RelayEventMap = {
 	};
 
 	'source-control-user-started-push-ui': {
+		userId?: string;
 		workflowsEligible: number;
 		workflowsEligibleWithConflicts: number;
 		credsEligible: number;
@@ -404,6 +406,7 @@ export type RelayEventMap = {
 	};
 
 	'source-control-user-finished-push-ui': {
+		userId: string;
 		workflowsEligible: number;
 		workflowsPushed: number;
 		credsPushed: number;

@@ -138,6 +138,10 @@ const node = computed(() => ndvStore.activeNode);
 
 const isTriggerNode = computed(() => !!node.value && nodeTypesStore.isTriggerNode(node.value.type));
 
+const isNodesAsToolNode = computed(
+	() => !!node.value && nodeTypesStore.isNodesAsToolNode(node.value.type),
+);
+
 const isExecutable = computed(() => {
 	if (props.nodeType && node.value) {
 		const workflowNode = currentWorkflowInstance.value.getNode(node.value.name);
@@ -148,7 +152,11 @@ const isExecutable = computed(() => {
 		);
 		const inputNames = NodeHelpers.getConnectionTypes(inputs);
 
-		if (!inputNames.includes(NodeConnectionTypes.Main) && !isTriggerNode.value) {
+		if (
+			!inputNames.includes(NodeConnectionTypes.Main) &&
+			!isNodesAsToolNode.value &&
+			!isTriggerNode.value
+		) {
 			return false;
 		}
 	}
@@ -359,7 +367,7 @@ const removeMismatchedOptionValues = (
 			);
 		}
 
-		if (!hasValidOptions && displayParameter(nodeParameterValues, prop, node.value)) {
+		if (!hasValidOptions && displayParameter(nodeParameterValues, prop, node.value, nodeType)) {
 			unset(nodeParameterValues as object, prop.name);
 		}
 	});
@@ -417,6 +425,7 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 			false,
 			false,
 			_node,
+			nodeType,
 		);
 
 		const oldNodeParameters = Object.assign({}, nodeParameters);
@@ -475,6 +484,7 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 			true,
 			false,
 			_node,
+			nodeType,
 		);
 
 		for (const key of Object.keys(nodeParameters as object)) {
@@ -509,6 +519,7 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 			false,
 			false,
 			_node,
+			nodeType,
 		);
 		const oldNodeParameters = Object.assign({}, nodeParameters);
 
@@ -557,6 +568,7 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 			true,
 			false,
 			_node,
+			nodeType,
 		);
 
 		for (const key of Object.keys(nodeParameters as object)) {

@@ -45,6 +45,8 @@ describe('router', () => {
 		['/workflow', VIEWS.NEW_WORKFLOW],
 		['/workflow/new', VIEWS.NEW_WORKFLOW],
 		['/workflow/R9JFXwkUCL1jZBuw', VIEWS.WORKFLOW],
+		['/workflow/R9JFXwkUCL1jZBuw/myNodeId', VIEWS.WORKFLOW],
+		['/workflow/R9JFXwkUCL1jZBuw/398-1ewq213', VIEWS.WORKFLOW],
 		['/workflow/R9JFXwkUCL1jZBuw/executions/29021', VIEWS.EXECUTION_PREVIEW],
 		['/workflows/templates/R9JFXwkUCL1jZBuw', VIEWS.TEMPLATE_IMPORT],
 		['/workflows/demo', VIEWS.DEMO],

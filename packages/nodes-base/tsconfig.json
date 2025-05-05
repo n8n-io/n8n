@@ -5,10 +5,14 @@
 	],
 	"compilerOptions": {
 		"paths": {
+			"@credentials/*": ["./credentials/*"],
 			"@test/*": ["./test/*"],
-			"@utils/*": ["./utils/*"]
+			"@utils/*": ["./utils/*"],
+			"@nodes-testing/*": ["../core/nodes-testing/*"]
 		},
 		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
+		"emitDecoratorMetadata": true,
+		"experimentalDecorators": true,
 		// TODO: remove all options below this line
 		"noImplicitReturns": false,
 		"useUnknownInCatchVariables": false
@@ -16,9 +20,10 @@
 	"include": [
 		"credentials/**/*.ts",
 		"nodes/**/*.ts",
+		"nodes/**/*.json",
 		"test/**/*.ts",
-		"utils/**/*.ts",
-		"types/**/*.ts"
+		"types/**/*.ts",
+		"utils/**/*.ts"
 	],
 	"references": [
 		{ "path": "../@n8n/imap/tsconfig.build.json" },

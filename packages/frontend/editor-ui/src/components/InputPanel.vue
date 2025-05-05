@@ -9,22 +9,28 @@ import {
 	START_NODE_TYPE,
 } from '@/constants';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNDVStore } from '@/stores/ndv.store';
 import { waitingNodeTooltip } from '@/utils/executionUtils';
 import { uniqBy } from 'lodash-es';
 import { N8nIcon, N8nRadioButtons, N8nText, N8nTooltip } from '@n8n/design-system';
-import type { INodeInputConfiguration, INodeOutputConfiguration, Workflow } from 'n8n-workflow';
-import { type NodeConnectionType, NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
+import {
+	type INodeInputConfiguration,
+	type INodeOutputConfiguration,
+	type Workflow,
+	type NodeConnectionType,
+	NodeConnectionTypes,
+	NodeHelpers,
+} from 'n8n-workflow';
 import { storeToRefs } from 'pinia';
 import { computed, ref, watch } from 'vue';
-import { useNDVStore } from '../stores/ndv.store';
 import InputNodeSelect from './InputNodeSelect.vue';
 import NodeExecuteButton from './NodeExecuteButton.vue';
 import NDVEmptyState from './NDVEmptyState.vue';
 import RunData from './RunData.vue';
 import WireMeUp from './WireMeUp.vue';
 import { usePostHog } from '@/stores/posthog.store';
+import { type IRunDataDisplayMode } from '@/Interface';
 
 type MappingMode = 'debugging' | 'mapping';
 
@@ -38,6 +44,7 @@ export type Props = {
 	readOnly?: boolean;
 	isProductionExecutionPreview?: boolean;
 	isPaneActive?: boolean;
+	displayMode: IRunDataDisplayMode;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -67,6 +74,7 @@ const emit = defineEmits<{
 	changeInputNode: [nodeName: string, index: number];
 	execute: [];
 	activatePane: [];
+	displayModeChange: [IRunDataDisplayMode];
 }>();
 
 const i18n = useI18n();
@@ -84,7 +92,6 @@ const inputModes = [
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
-const uiStore = useUIStore();
 const posthogStore = usePostHog();
 
 const {
@@ -161,7 +168,7 @@ const isMappingEnabled = computed(() => {
 	return true;
 });
 const isExecutingPrevious = computed(() => {
-	if (!workflowRunning.value) {
+	if (!workflowsStore.isWorkflowRunning) {
 		return false;
 	}
 	const triggeredNode = workflowsStore.executedNode;
@@ -182,7 +189,6 @@ const isExecutingPrevious = computed(() => {
 	}
 	return false;
 });
-const workflowRunning = computed(() => uiStore.isActionActive.workflowRunning);
 
 const rootNodesParents = computed(() => {
 	if (!rootNode.value) return [];
@@ -363,6 +369,7 @@ function activatePane() {
 
 <template>
 	<RunData
+		:class="$style.runData"
 		:node="currentNode"
 		:nodes="isMappingMode ? rootNodesParents : parentNodes"
 		:workflow="workflow"
@@ -379,8 +386,10 @@ function activatePane() {
 		:distance-from-active="currentNodeDepth"
 		:is-production-execution-preview="isProductionExecutionPreview"
 		:is-pane-active="isPaneActive"
+		:display-mode="displayMode"
 		pane-type="input"
 		data-test-id="ndv-input-panel"
+		:disable-ai-content="true"
 		@activate-pane="activatePane"
 		@item-hover="onItemHover"
 		@link-run="onLinkRun"
@@ -388,6 +397,7 @@ function activatePane() {
 		@run-change="onRunIndexChange"
 		@table-mounted="onTableMounted"
 		@search="onSearch"
+		@display-mode-change="emit('displayModeChange', $event)"
 	>
 		<template #header>
 			<div :class="$style.titleSection">
@@ -615,6 +625,10 @@ function activatePane() {
 </template>
 
 <style lang="scss" module>
+.runData {
+	background-color: var(--color-run-data-background);
+}
+
 .mappedNode {
 	padding: 0 var(--spacing-s) var(--spacing-s);
 }

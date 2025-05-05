@@ -9,7 +9,6 @@ import {
 import RunData from './RunData.vue';
 import RunInfo from './RunInfo.vue';
 import { storeToRefs } from 'pinia';
-import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -26,6 +25,7 @@ import { useNodeDirtiness } from '@/composables/useNodeDirtiness';
 import { CanvasNodeDirtiness } from '@/types';
 import { NDV_UI_OVERHAUL_EXPERIMENT } from '@/constants';
 import { usePostHog } from '@/stores/posthog.store';
+import { type IRunDataDisplayMode } from '@/Interface';
 
 // Types
 
@@ -50,6 +50,7 @@ type Props = {
 	blockUI?: boolean;
 	isProductionExecutionPreview?: boolean;
 	isPaneActive?: boolean;
+	displayMode: IRunDataDisplayMode;
 };
 
 // Props and emits
@@ -70,6 +71,7 @@ const emit = defineEmits<{
 	search: [string];
 	openSettings: [];
 	execute: [];
+	displayModeChange: [IRunDataDisplayMode];
 }>();
 
 // Stores
@@ -77,7 +79,6 @@ const emit = defineEmits<{
 const ndvStore = useNDVStore();
 const nodeTypesStore = useNodeTypesStore();
 const workflowsStore = useWorkflowsStore();
-const uiStore = useUIStore();
 const posthogStore = usePostHog();
 const telemetry = useTelemetry();
 const i18n = useI18n();
@@ -92,7 +93,7 @@ const { isSubNodeType } = useNodeType({
 });
 const pinnedData = usePinnedData(activeNode, {
 	runIndex: props.runIndex,
-	displayMode: ndvStore.outputPanelDisplayMode,
+	displayMode: props.displayMode,
 });
 
 // Data
@@ -145,7 +146,7 @@ const isNodeRunning = computed(() => {
 	return workflowRunning.value && !!node.value && workflowsStore.isNodeExecuting(node.value.name);
 });
 
-const workflowRunning = computed(() => uiStore.isActionActive.workflowRunning);
+const workflowRunning = computed(() => workflowsStore.isWorkflowRunning);
 
 const workflowExecution = computed(() => {
 	return workflowsStore.getWorkflowExecution;
@@ -334,6 +335,7 @@ const activatePane = () => {
 <template>
 	<RunData
 		ref="runDataRef"
+		:class="$style.runData"
 		:node="node"
 		:workflow="workflow"
 		:run-index="runIndex"
@@ -351,6 +353,8 @@ const activatePane = () => {
 		pane-type="output"
 		:data-output-type="outputMode"
 		:callout-message="allToolsWereUnusedNotice"
+		:display-mode="displayMode"
+		:disable-ai-content="true"
 		@activate-pane="activatePane"
 		@run-change="onRunIndexChange"
 		@link-run="onLinkRun"
@@ -358,6 +362,7 @@ const activatePane = () => {
 		@table-mounted="emit('tableMounted', $event)"
 		@item-hover="emit('itemHover', $event)"
 		@search="emit('search', $event)"
+		@display-mode-change="emit('displayModeChange', $event)"
 	>
 		<template #header>
 			<div :class="$style.titleSection">
@@ -510,6 +515,9 @@ const activatePane = () => {
 :global([data-output-type='logs'] [class*='itemsCount']),
 :global([data-output-type='logs'] [class*='displayModes']) {
 	display: none;
+}
+.runData {
+	background-color: var(--color-run-data-background);
 }
 .outputTypeSelect {
 	margin-bottom: var(--spacing-4xs);

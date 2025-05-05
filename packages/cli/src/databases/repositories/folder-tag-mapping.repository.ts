@@ -1,7 +1,6 @@
+import { FolderTagMapping } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, Repository } from '@n8n/typeorm';
-
-import { FolderTagMapping } from '../entities/folder-tag-mapping';
 
 @Service()
 export class FolderTagMappingRepository extends Repository<FolderTagMapping> {
