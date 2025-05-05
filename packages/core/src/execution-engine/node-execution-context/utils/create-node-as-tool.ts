@@ -103,11 +103,9 @@ function makeDescription(node: INode, nodeType: INodeType): string {
 		return description.trim();
 	}
 
-	// This is the custom description the user may provide if descriptionType
-	// is `manual` or not included in the node's properties
-	const explicitDescription = node.parameters.toolDescription as string;
-
-	return explicitDescription ?? nodeType.description.description;
+	// Users can define custom descriptions when `descriptionType` is manual or not included
+	// in the node's properties, e.g. when the node has neither `operation` or `resource`
+	return (node.parameters.toolDescription as string) ?? nodeType.description.description;
 }
 
 export function nodeNameToToolName(node: INode): string {
