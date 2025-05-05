@@ -1,18 +1,8 @@
-import {
-	UNLIMITED_LICENSE_QUOTA,
-	type BooleanLicenseFeature,
-	type NumericLicenseFeature,
-} from '@n8n/constants';
+import { UNLIMITED_LICENSE_QUOTA, type BooleanLicenseFeature } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
 
-import type { LicenseProvider } from './types';
-
-export type FeatureReturnType = Partial<
-	{
-		planName: string;
-	} & { [K in NumericLicenseFeature]: number } & { [K in BooleanLicenseFeature]: boolean }
->;
+import type { FeatureReturnType, LicenseProvider } from './types';
 
 class ProviderNotSetError extends UnexpectedError {
 	constructor() {

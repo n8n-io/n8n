@@ -1,6 +1,10 @@
-import type { BooleanLicenseFeature } from '@n8n/constants';
+import type { BooleanLicenseFeature, NumericLicenseFeature } from '@n8n/constants';
 
-import type { FeatureReturnType } from './license-state';
+export type FeatureReturnType = Partial<
+	{
+		planName: string;
+	} & { [K in NumericLicenseFeature]: number } & { [K in BooleanLicenseFeature]: boolean }
+>;
 
 export interface LicenseProvider {
 	/** Returns whether a feature is included in the user's license plan. */
