@@ -19,7 +19,12 @@ describe('hasGlobalScope', () => {
 	describe('multiple scopes', () => {
 		test('oneOf mode (default)', () => {
 			expect(
-				hasGlobalScope({ role: 'global:admin' }, ['workflow:create', 'invalid:scope'] as Scope[]),
+				hasGlobalScope({ role: 'global:member' }, [
+					'tag:create',
+					'user:list',
+					// a member cannot create users
+					'user:create',
+				]),
 			).toBe(true);
 		});
 
