@@ -85,18 +85,6 @@ function navigateToWorkflow() {
 
 <template>
 	<div :class="$style.container" data-test-id="evaluation-setup-wizard">
-		<div :class="$style.header">
-			<N8nText size="large" color="text-dark" tag="h3" bold>
-				{{ locale.baseText('evaluations.setupWizard.title') }}
-			</N8nText>
-			<N8nText tag="p" size="small" color="text-base" :class="$style.description">
-				{{ locale.baseText('evaluations.setupWizard.description') }}
-				<N8nLink size="small" href="https://google.com/">{{
-					locale.baseText('evaluations.setupWizard.moreInfo')
-				}}</N8nLink>
-			</N8nText>
-		</div>
-
 		<div :class="$style.steps">
 			<!-- Step 1 -->
 			<div :class="[$style.step, $style.completed]">
@@ -220,22 +208,6 @@ function navigateToWorkflow() {
 <style module lang="scss">
 .container {
 	background-color: var(--color-background-light);
-	border-radius: var(--border-radius-large);
-	padding: var(--spacing-l);
-}
-
-.header {
-	margin-bottom: var(--spacing-l);
-}
-
-.description {
-	margin-top: var(--spacing-2xs);
-
-	ul {
-		li {
-			margin-top: var(--spacing-2xs);
-		}
-	}
 }
 
 .steps {
