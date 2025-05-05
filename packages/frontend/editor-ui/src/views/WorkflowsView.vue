@@ -5,6 +5,7 @@ import type {
 	BaseFilters,
 	FolderResource,
 	Resource,
+	SortingAndPaginationUpdates,
 	WorkflowResource,
 } from '@/components/layouts/ResourcesListLayout.vue';
 import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
@@ -559,16 +560,12 @@ const onSearchUpdated = async (search: string) => {
 	}
 };
 
-const setPaginationAndSort = async (payload: {
-	page?: number;
-	rowsPerPage?: number;
-	sort?: string;
-}) => {
+const setPaginationAndSort = async (payload: SortingAndPaginationUpdates) => {
 	if (payload.page) {
 		currentPage.value = payload.page;
 	}
-	if (payload.rowsPerPage) {
-		pageSize.value = payload.rowsPerPage;
+	if (payload.pageSize) {
+		pageSize.value = payload.pageSize;
 	}
 	if (payload.sort) {
 		currentSort.value =
@@ -1338,10 +1335,7 @@ const onNameSubmit = async ({
 		:has-empty-state="foldersStore.totalWorkflowCount === 0 && !currentFolderId"
 		@click:add="addWorkflow"
 		@update:search="onSearchUpdated"
-		@update:current-page="setPaginationAndSort({ page: $event })"
-		@update:page-size="setPaginationAndSort({ rowsPerPage: $event })"
 		@update:filters="onFiltersUpdated"
-		@sort="setPaginationAndSort({ sort: $event })"
 		@update:pagination-and-sort="setPaginationAndSort"
 		@mouseleave="folderHelpers.resetDropTarget"
 	>
