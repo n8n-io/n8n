@@ -12,7 +12,9 @@ export class InsightsPruningService {
 		private readonly insightsByPeriodRepository: InsightsByPeriodRepository,
 		private readonly config: InsightsConfig,
 		private readonly logger: Logger, // Assuming a logger is injected,
-	) {}
+	) {
+		this.logger = this.logger.scoped('insights');
+	}
 
 	get isPruningEnabled() {
 		return this.config.maxAgeDays > -1;
