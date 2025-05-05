@@ -9,6 +9,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { N8nButton, N8nText } from '@n8n/design-system';
 import { useAsyncState } from '@vueuse/core';
 import { orderBy } from 'lodash-es';
+import N8nLink from '@n8n/design-system/components/N8nLink';
 
 const props = defineProps<{
 	name: string;
@@ -62,8 +63,8 @@ const showWizard = computed(() => {
 </script>
 
 <template>
-	<div v-if="isReady" :class="[$style.container]">
-		<div :class="$style.header" v-if="!showWizard">
+	<div v-if="isReady" style="display: flex; justify-content: center">
+		<div v-if="!showWizard" :class="$style.header">
 			<div style="display: flex; align-items: center"></div>
 			<div style="display: flex; align-items: center; gap: 10px">
 				<N8nTooltip v-if="!showWizard" :disabled="isRunTestEnabled" :placement="'left'">
@@ -84,7 +85,7 @@ const showWizard = computed(() => {
 				</N8nTooltip>
 			</div>
 		</div>
-		<div :class="$style.wrapper">
+		<div :class="{ [$style.wrapper]: true, [$style.setupWrapper]: showWizard }">
 			<div :class="{ [$style.content]: true, [$style.contentWithRuns]: hasRuns }">
 				<RunsSection
 					v-if="hasRuns"
@@ -94,7 +95,37 @@ const showWizard = computed(() => {
 					:workflow-id="props.name"
 				/>
 
-				<SetupWizard v-if="showWizard" :class="$style.config" @run-test="runTest" />
+				<div v-if="showWizard" :class="$style.setupContent">
+					<div :class="$style.setupHeader">
+						<N8nText size="large" color="text-dark" tag="h3" bold>
+							{{ locale.baseText('evaluations.setupWizard.title') }}
+						</N8nText>
+						<N8nText tag="p" size="small" color="text-base" :class="$style.description">
+							{{ locale.baseText('evaluations.setupWizard.description') }}
+							<N8nLink size="small" href="https://google.com/">{{
+								locale.baseText('evaluations.setupWizard.moreInfo')
+							}}</N8nLink>
+						</N8nText>
+					</div>
+
+					<div :class="$style.config">
+						<SetupWizard @run-test="runTest" />
+						<div :class="$style.tutorial">
+							<iframe
+								style="min-width: 500px"
+								width="500"
+								height="280"
+								src="https://www.youtube.com/embed/ZCuL2e4zC_4"
+								title="n8n: Flexible AI Workflow Automation for Technical Teams [2025]"
+								frameborder="0"
+								allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+								referrerpolicy="strict-origin-when-cross-origin"
+								allowfullscreen
+							></iframe>
+							<N8nText size="small" color="text-dark" tag="h3" bold></N8nText>
+						</div>
+					</div>
+				</div>
 			</div>
 		</div>
 	</div>
@@ -109,8 +140,9 @@ const showWizard = computed(() => {
 }
 
 .config {
-	width: 640px;
-	margin-top: var(--spacing-xl);
+	display: flex;
+	flex-direction: row;
+	gap: var(--spacing-2xl);
 }
 
 .header {
@@ -127,9 +159,35 @@ const showWizard = computed(() => {
 	z-index: 2;
 }
 
+.setupHeader {
+	//margin-bottom: var(--spacing-l);
+}
+
+.setupDescription {
+	margin-top: var(--spacing-2xs);
+
+	ul {
+		li {
+			margin-top: var(--spacing-2xs);
+		}
+	}
+}
+
 .wrapper {
 	padding: 0 var(--spacing-l);
 	padding-left: 58px;
+}
+
+.setupWrapper {
+	display: flex;
+	max-width: 1024px;
+	margin-top: var(--spacing-2xl);
+}
+
+.setupContent {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing-xl);
 }
 
 .description {
@@ -140,5 +198,11 @@ const showWizard = computed(() => {
 .arrowBack {
 	--button-hover-background-color: transparent;
 	border: 0;
+}
+
+.tutorial {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing-s);
 }
 </style>
