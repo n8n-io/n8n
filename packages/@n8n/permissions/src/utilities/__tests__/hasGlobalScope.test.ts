@@ -25,10 +25,17 @@ describe('hasGlobalScope', () => {
 
 		test('allOf mode', () => {
 			expect(
-				hasGlobalScope({ role: 'global:owner' }, ['workflow:create', 'workflow:read'], {
-					mode: 'allOf',
-				}),
-			).toBe(true);
+				hasGlobalScope(
+					{ role: 'global:member' },
+					[
+						'tag:create',
+						'user:list',
+						// a member cannot create users
+						'user:create',
+					],
+					{ mode: 'allOf' },
+				),
+			).toBe(false);
 		});
 	});
 
