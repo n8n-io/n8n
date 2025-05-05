@@ -21,6 +21,7 @@ describe('CredentialsFinderService', () => {
 		});
 		const member = mock<User>({
 			role: 'global:member',
+			id: 'test',
 		});
 
 		beforeEach(() => {
