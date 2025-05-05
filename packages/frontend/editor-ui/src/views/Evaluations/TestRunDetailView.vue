@@ -56,13 +56,13 @@ const filteredTestCases = computed(() =>
 	),
 );
 
-const testRunIndex = computed(() => {
-	return (
-		Object.values(evaluationStore.testRunsById ?? {})
-			.reverse()
-			.findIndex(({ id }) => id === runId.value) - 2
-	);
-});
+const testRunIndex = computed(() =>
+	Object.values(
+		orderBy(evaluationStore.testRunsById, (record) => new Date(record.runAt), ['asc']).filter(
+			({ workflowId: wId }) => wId === workflowId.value,
+		) ?? {},
+	).findIndex(({ id }) => id === runId.value),
+);
 
 const formattedTime = computed(() => convertToDisplayDate(new Date(run.value?.runAt).getTime()));
 
@@ -173,7 +173,6 @@ const fetchExecutionTestCases = async () => {
 			workflowId: workflowId.value,
 			runId: runId.value,
 		});
-
 		const testCaseEvaluationExecutions = await evaluationStore.fetchTestCaseExecutions({
 			workflowId: workflowId.value,
 			runId: testRun.id,
