@@ -5,6 +5,7 @@ import {
 	extractReferencesInNodeExpressions,
 	type IConnections,
 	type INode,
+	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 } from 'n8n-workflow';
 import { computed } from 'vue';
 import { useToast } from './useToast';
@@ -41,7 +42,14 @@ export function useWorkflowExtraction() {
 		nodeIds: string[],
 		connections: IConnections,
 	): Promise<boolean> {
-		const subGraph = nodeIds.map(workflowsStore.getNodeById).filter((x) => x !== undefined);
+		const subGraph = nodeIds
+			.map(workflowsStore.getNodeById)
+			.filter((x) => x !== undefined && x !== null);
+		console.log(subGraph.map((x) => x.type));
+		if (subGraph.some((x) => x.type.toLowerCase().includes('trigger'))) {
+			toast.showError(undefined, `Cannot extract ${EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE}`);
+			return false;
+		}
 
 		const allNodeNames = workflowsStore.workflow.nodes.map((x) => x.name);
 
@@ -81,12 +89,12 @@ export function useWorkflowExtraction() {
 		while (allNodeNames.includes(executeWorkflowNodeName)) executeWorkflowNodeName += '_1';
 
 		const newConnections = { ...connections };
-		debugger;
+		// debugger;
 		if (start) {
-			for (const nodeConnection of Object.values(newConnections[start])) {
+			for (const nodeConnection of Object.values(newConnections[start] ?? {})) {
 				for (const nodeInputConnections of nodeConnection) {
 					if (nodeInputConnections) {
-						for (const connection of Object.values(nodeInputConnections)) {
+						for (const connection of Object.values(nodeInputConnections ?? {})) {
 							if (connection.node === start) {
 								connection.node = executeWorkflowNodeName;
 							}

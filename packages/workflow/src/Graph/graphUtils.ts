@@ -1,4 +1,4 @@
-import type { IConnections } from '../Interfaces';
+import type { IConnection, IConnections } from '../Interfaces';
 
 type MultipleInputNodesError = {
 	errorCode: 'Multiple Input Nodes';
@@ -33,7 +33,7 @@ export type ExtractableErrorResult =
 	| OutputEdgeFromNonLeafNode
 	| NoContinuousPathFromRootToLeaf;
 
-type AdjacencyList = Map<string, Set<string>>;
+type AdjacencyList = Map<string, Set<IConnection>>;
 
 /**
  * Find all edges leading into the graph described in `graphIds`.
@@ -41,13 +41,13 @@ type AdjacencyList = Map<string, Set<string>>;
 export function getInputEdges(
 	graphIds: Set<string>,
 	adjacencyList: AdjacencyList,
-): Array<[string, string]> {
-	const result: Array<[string, string]> = [];
+): Array<[string, IConnection]> {
+	const result: Array<[string, IConnection]> = [];
 	for (const [from, tos] of adjacencyList.entries()) {
 		if (graphIds.has(from)) continue;
 
 		for (const to of tos) {
-			if (graphIds.has(to)) {
+			if (graphIds.has(to.node)) {
 				result.push([from, to]);
 			}
 		}
@@ -62,13 +62,13 @@ export function getInputEdges(
 export function getOutputEdges(
 	graphIds: Set<string>,
 	adjacencyList: AdjacencyList,
-): Array<[string, string]> {
-	const result: Array<[string, string]> = [];
+): Array<[string, IConnection]> {
+	const result: Array<[string, IConnection]> = [];
 	for (const [from, tos] of adjacencyList.entries()) {
 		if (!graphIds.has(from)) continue;
 
 		for (const to of tos) {
-			if (!graphIds.has(to)) {
+			if (!graphIds.has(to.node)) {
 				result.push([from, to]);
 			}
 		}
@@ -104,7 +104,12 @@ export function getRootNodes(graphIds: Set<string>, adjacencyList: AdjacencyList
 	// Inner nodes are all nodes with an incoming edge from another node in the graph
 	let innerNodes = new Set<string>();
 	for (const nodeId of graphIds) {
-		innerNodes = union(innerNodes, adjacencyList.get(nodeId) ?? new Set());
+		innerNodes = union(
+			innerNodes,
+			new Set(
+				[...(adjacencyList.get(nodeId) ?? [])].filter((x) => x.type === 'main').map((x) => x.node),
+			),
+		);
 	}
 
 	return difference(graphIds, innerNodes);
@@ -129,7 +134,14 @@ export function hasPath(start: string, end: string, adjacencyList: AdjacencyList
 		if (next === undefined) return false;
 		seen.add(next);
 
-		paths.push(...difference(adjacencyList.get(next) ?? new Set<string>(), seen));
+		paths.push(
+			...difference(
+				new Set(
+					[...(adjacencyList.get(next) ?? [])].filter((x) => x.type === 'main').map((x) => x.node),
+				),
+				seen,
+			),
+		);
 	}
 }
 
@@ -138,9 +150,9 @@ export type ExtractableSubgraphData = {
 	end?: string;
 };
 
-export function buildAdjacencyList(connectionsBySourceNode: IConnections) {
-	const result = new Map<string, Set<string>>();
-	const addOrCreate = (k: string, v: string) =>
+export function buildAdjacencyList(connectionsBySourceNode: IConnections): AdjacencyList {
+	const result = new Map<string, Set<IConnection>>();
+	const addOrCreate = (k: string, v: IConnection) =>
 		result.set(k, union(result.get(k) ?? new Set(), new Set([v])));
 
 	for (const sourceNode of Object.keys(connectionsBySourceNode)) {
@@ -149,11 +161,11 @@ export function buildAdjacencyList(connectionsBySourceNode: IConnections) {
 				for (const connectionIndex of Object.keys(
 					connectionsBySourceNode[sourceNode][type][parseInt(sourceIndex, 10)] ?? [],
 				)) {
-					const nodeName =
+					const connection =
 						connectionsBySourceNode[sourceNode][type][parseInt(sourceIndex, 10)]?.[
 							parseInt(connectionIndex, 10)
-						]?.node;
-					if (nodeName) addOrCreate(sourceNode, nodeName);
+						];
+					if (connection) addOrCreate(sourceNode, connection);
 				}
 			}
 		}
@@ -183,7 +195,7 @@ export function parseExtractableSubgraphSelection(
 
 	// 0-1 Input nodes
 	const inputEdges = getInputEdges(graphIds, adjacencyList);
-	const inputNodes = new Set(inputEdges.map((x) => x[1]));
+	const inputNodes = new Set(inputEdges.filter((x) => x[1].type === 'main').map((x) => x[1].node));
 	const rootNodes = getRootNodes(graphIds, adjacencyList);
 	for (const inputNode of difference(inputNodes, rootNodes).values()) {
 		errors.push({
@@ -201,7 +213,7 @@ export function parseExtractableSubgraphSelection(
 
 	// 0-1 Output nodes
 	const outputEdges = getOutputEdges(graphIds, adjacencyList);
-	const outputNodes = new Set(outputEdges.map((x) => x[0]));
+	const outputNodes = new Set(outputEdges.filter((x) => x[1].type === 'main').map((x) => x[0]));
 	const leafNodes = getLeafNodes(graphIds, adjacencyList);
 	for (const outputNode of difference(outputNodes, leafNodes).values()) {
 		errors.push({
