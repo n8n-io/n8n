@@ -15,7 +15,6 @@ import type {
 	NodeHint,
 	Workflow,
 	NodeConnectionType,
-	NodeParameterValue,
 } from 'n8n-workflow';
 import {
 	parseErrorMetadata,
@@ -38,6 +37,7 @@ import {
 	CORE_NODES_CATEGORY,
 	DATA_EDITING_DOCS_URL,
 	DATA_PINNING_DOCS_URL,
+	EXTRACT_FROM_FILE_NODE_TYPE,
 	HTML_NODE_TYPE,
 	LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG,
 	LOCAL_STORAGE_PIN_DATA_DISCOVERY_NDV_FLAG,
@@ -1326,20 +1326,21 @@ function enableNode() {
 	}
 }
 
+const shouldDisplayHtml = computed(() => {
+	if (!activeNode.value) return false;
+
+	return (
+		(activeNode.value?.type === HTML_NODE_TYPE &&
+			activeNode.value?.parameters.operation === 'generateHtmlTemplate') ||
+		(activeNode.value?.type === EXTRACT_FROM_FILE_NODE_TYPE &&
+			(activeNode.value.parameters.options as Record<string, unknown>)['outputFormat'] === 'html')
+	);
+});
+
 function setDisplayMode() {
 	if (!activeNode.value) return;
 
-	const isHtmlNode = activeNode.value?.type === HTML_NODE_TYPE;
-	const isExtractFromFile = activeNode.value?.type === 'n8n-nodes-base.extractFromFile';
-	const isGenerateHtmlTemplate = activeNode.value?.parameters.operation === 'generateHtmlTemplate';
-	const isDocxWithHtmlOutput =
-		activeNode.value?.parameters.operation === 'docx' &&
-		(activeNode.value.parameters.options as Record<string, unknown>)['outputFormat'] === 'html';
-	const shouldDisplayHtml =
-		isPaneTypeOutput.value &&
-		((isHtmlNode && isGenerateHtmlTemplate) || (isExtractFromFile && isDocxWithHtmlOutput));
-
-	if (shouldDisplayHtml) {
+	if (shouldDisplayHtml.value) {
 		emit('displayModeChange', 'html');
 	}
 }
@@ -1442,10 +1443,7 @@ defineExpose({ enterEditMode });
 					:value="displayMode"
 					:has-binary-data="binaryData.length > 0"
 					:pane-type="paneType"
-					:node-generates-html="
-						activeNode?.type === HTML_NODE_TYPE &&
-						activeNode.parameters.operation === 'generateHtmlTemplate'
-					"
+					:node-generates-html="shouldDisplayHtml"
 					:has-renderable-data="hasParsedAiContent"
 					@change="onDisplayModeChange"
 				/>
