@@ -106,7 +106,6 @@ const showWizard = computed(() => {
 			</div>
 		</div>
 	</div>
-	<div v-else>TESTTESTTEST</div>
 </template>
 
 <style module lang="scss">
