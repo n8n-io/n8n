@@ -8,7 +8,7 @@ import { VIEWS } from '@/constants';
 import type { BaseTextKey } from '@/plugins/i18n';
 import { useEvaluationStore } from '@/stores/evaluation.store.ee';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { convertToDisplayDate } from '@/utils/typesUtils';
+import { convertToDisplayDate } from '@/utils/formatters/dateFormatter';
 import { N8nText, N8nTooltip } from '@n8n/design-system';
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
@@ -64,9 +64,7 @@ const testRunIndex = computed(() => {
 	);
 });
 
-const formattedTime = computed(() =>
-	convertToDisplayDate(new Date(run.value?.runAt).getTime()).split(' ').reverse(),
-);
+const formattedTime = computed(() => convertToDisplayDate(new Date(run.value?.runAt).getTime()));
 
 const handleRowClick = (row: TestCaseExecutionRecord) => {
 	const executionId = row.executionId;
