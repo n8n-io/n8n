@@ -73,6 +73,11 @@ const onInputScroll = (event: WheelEvent) => {
 		event.stopPropagation();
 	}
 };
+
+const internalValue = computed({
+	get: () => props.modelValue,
+	set: (value: string) => onUpdateModelValue(value),
+});
 </script>
 
 <template>
@@ -106,12 +111,11 @@ const onInputScroll = (event: WheelEvent) => {
 		>
 			<N8nInput
 				ref="input"
-				:model-value="modelValue"
+				v-model="internalValue"
 				:name="inputName"
 				type="textarea"
 				:rows="5"
 				@blur="onInputBlur"
-				@update:model-value="onUpdateModelValue"
 				@wheel="onInputScroll"
 			/>
 		</div>
