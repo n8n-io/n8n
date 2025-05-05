@@ -3,7 +3,8 @@ import type { EntityManager, FindManyOptions } from '@n8n/typeorm';
 import { DataSource, In, Repository } from '@n8n/typeorm';
 import { UnexpectedError, type IDataObject } from 'n8n-workflow';
 
-import type { TestCaseExecution } from '../entities';
+import { getTestRunFinalResult } from 'utils/get-final-test-result';
+
 import { TestRun } from '../entities';
 import type {
 	AggregatedTestRunMetrics,
@@ -15,34 +16,6 @@ import type {
 export type TestRunSummary = TestRun & {
 	finalResult: TestRunFinalResult | null;
 };
-
-/**
- * Returns the final result of the test run based on the test case executions.
- * The final result is the most severe status among all test case executions' statuses.
- */
-export function getTestRunFinalResult(testCaseExecutions: TestCaseExecution[]): TestRunFinalResult {
-	// Priority of statuses: error > warning > success
-	const severityMap: Record<TestRunFinalResult, number> = {
-		error: 3,
-		warning: 2,
-		success: 1,
-	};
-
-	let finalResult: TestRunFinalResult = 'success';
-
-	for (const testCaseExecution of testCaseExecutions) {
-		if (['error', 'warning'].includes(testCaseExecution.status)) {
-			if (
-				testCaseExecution.status in severityMap &&
-				severityMap[testCaseExecution.status as TestRunFinalResult] > severityMap[finalResult]
-			) {
-				finalResult = testCaseExecution.status as TestRunFinalResult;
-			}
-		}
-	}
-
-	return finalResult;
-}
 
 @Service()
 export class TestRunRepository extends Repository<TestRun> {
