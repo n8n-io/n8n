@@ -14,10 +14,14 @@ describe('rolesWithScope', () => {
 
 	describe('multiple scopes', () => {
 		test('returns roles with all scopes', () => {
-			expect(rolesWithScope('global', ['workflow:create', 'user:delete'])).toEqual([
-				'global:owner',
-				'global:admin',
-			]);
+			expect(
+				rolesWithScope('global', [
+					// all global roles have this scope
+					'tag:create',
+					// only owner and admin have this scope
+					'user:delete',
+				]),
+			).toEqual(['global:owner', 'global:admin']);
 		});
 	});
 });
