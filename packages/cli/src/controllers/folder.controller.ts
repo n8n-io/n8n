@@ -101,9 +101,12 @@ export class ProjectController {
 		const { projectId, folderId } = req.params;
 
 		try {
+			await this.folderService.findFolderInProjectOrFail(folderId, projectId);
+
 			if (!payload.transferToFolderId) {
 				await this.workflowService.moveWorkflowsToRoot(req.user, folderId, projectId);
 			}
+
 			await this.folderService.deleteFolder(folderId, projectId, payload);
 		} catch (e) {
 			if (e instanceof FolderNotFoundError) {

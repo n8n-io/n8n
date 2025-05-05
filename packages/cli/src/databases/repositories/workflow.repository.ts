@@ -690,7 +690,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		await this.createQueryBuilder()
 			.update(WorkflowEntity)
 			.set({ parentFolder: toFolderId === PROJECT_ROOT ? null : { id: toFolderId } })
-			.where('id IN (:...workflowIds)', { workflowIds })
+			.where({ id: In(workflowIds) })
 			.execute();
 	}
 }
