@@ -78,6 +78,7 @@ export class LoadNodesAndCredentials {
 		if (!inE2ETests) {
 			this.excludeNodes = this.excludeNodes ?? [];
 			this.excludeNodes.push('n8n-nodes-base.e2eTest');
+			this.excludeNodes.push('n8n-nodes-langchain.lmChatE2eTest');
 		}
 
 		// Load nodes from `n8n-nodes-base`

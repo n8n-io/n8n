@@ -197,9 +197,13 @@ export function executeWorkflow() {
 	cy.get('[data-test-id="execute-workflow-button"]').click();
 }
 
+export function waitForSuccessBannerToAppear() {
+	cy.contains(/(Workflow|Node) executed successfully/, { timeout: 4000 }).should('be.visible');
+}
+
 export function executeWorkflowAndWait(waitForSuccessBannerToDisappear = true) {
 	executeWorkflow();
-	cy.contains('Workflow executed successfully', { timeout: 4000 }).should('be.visible');
+	waitForSuccessBannerToAppear();
 	if (waitForSuccessBannerToDisappear) {
 		cy.contains('Workflow executed successfully', { timeout: 10000 }).should('not.exist');
 	}

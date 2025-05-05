@@ -1,8 +1,9 @@
 import * as executions from '../composables/executions';
 import * as logs from '../composables/logs';
+import * as chat from '../composables/modals/chat-modal';
 import * as ndv from '../composables/ndv';
 import * as workflow from '../composables/workflow';
-import * as chat from '../composables/modals/chat-modal';
+import Workflow_chat from '../fixtures/Workflow_ai_agent.json';
 import Workflow_if from '../fixtures/Workflow_if.json';
 import Workflow_loop from '../fixtures/Workflow_loop.json';
 
@@ -71,6 +72,17 @@ describe('Logs', () => {
 		logs.getLogEntries().eq(0).should('contain.text', 'Schedule Trigger');
 		logs.getLogEntries().eq(1).should('contain.text', 'Code');
 		logs.getLogEntries().eq(2).should('contain.text', 'If');
+	});
+
+	it('should show input and output data in the selected display mode', () => {
+		workflow.navigateToNewWorkflowPage();
+		workflow.pasteWorkflow(Workflow_chat);
+		workflow.clickZoomToFit();
+		logs.openLogsPanel();
+		chat.sendManualChatMessage('Hi!');
+		workflow.waitForSuccessBannerToAppear();
+		chat.getManualChatMessages().eq(0).should('contain.text', 'Hi!');
+		chat.getManualChatMessages().eq(1).should('contain.text', 'Hello from e2e model!');
 	});
 
 	it('should show input and output data of correct run index and branch', () => {
