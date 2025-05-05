@@ -180,7 +180,7 @@ export class LicenseState {
 		return this.getValue('quota:aiCredits') ?? 0;
 	}
 
-	getWorkflowHistoryPruneQuta() {
+	getWorkflowHistoryPruneQuota() {
 		return this.getValue('quota:workflowHistoryPrune') ?? UNLIMITED_LICENSE_QUOTA;
 	}
 
