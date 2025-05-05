@@ -1,3 +1,12 @@
+## [1.90.3](https://github.com/n8n-io/n8n/compare/n8n@1.90.2...n8n@1.90.3) (2025-05-05)
+
+
+### Bug Fixes
+
+* **core:** Use manual tool description if neither resources or operations exist  ([#15093](https://github.com/n8n-io/n8n/issues/15093)) ([43cbc51](https://github.com/n8n-io/n8n/commit/43cbc5119457eca888829a931f049d695119a062))
+
+
+
 ## [1.90.2](https://github.com/n8n-io/n8n/compare/n8n@1.90.1...n8n@1.90.2) (2025-04-25)
 
 
