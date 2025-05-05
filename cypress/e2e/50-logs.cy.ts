@@ -2,6 +2,7 @@ import * as executions from '../composables/executions';
 import * as logs from '../composables/logs';
 import * as ndv from '../composables/ndv';
 import * as workflow from '../composables/workflow';
+import * as chat from '../composables/modals/chat-modal';
 import Workflow_if from '../fixtures/Workflow_if.json';
 import Workflow_loop from '../fixtures/Workflow_loop.json';
 
@@ -141,11 +142,18 @@ describe('Logs', () => {
 		logs.openLogsPanel();
 
 		workflow.executeWorkflowAndWait(false);
-		executions.openExecutions();
-		// TODO: make this work
+		workflow.openExecutions();
+		executions.toggleAutoRefresh(); // Stop unnecessary background requests
 		executions
 			.getLogsOverviewStatus()
-			.contains(/Success in [\d\.]+s/)
+			.contains(/Success in [\d\.]+m?s/)
 			.should('exist');
+		executions.getLogEntries().should('have.length', 6);
+		executions.getLogEntries().eq(0).should('contain.text', 'Schedule Trigger');
+		executions.getLogEntries().eq(1).should('contain.text', 'Code');
+		executions.getLogEntries().eq(2).should('contain.text', 'Edit Fields');
+		executions.getLogEntries().eq(3).should('contain.text', 'If');
+		executions.getLogEntries().eq(4).should('contain.text', 'Edit Fields');
+		executions.getLogEntries().eq(5).should('contain.text', 'Edit Fields');
 	});
 });

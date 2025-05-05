@@ -377,3 +377,7 @@ export function openContextMenu(
 export function clickContextMenuAction(action: string) {
 	getContextMenuAction(action).click({ force: true });
 }
+
+export function openExecutions() {
+	cy.getByTestId('radio-button-executions').click();
+}
