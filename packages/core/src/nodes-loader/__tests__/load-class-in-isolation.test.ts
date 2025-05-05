@@ -2,6 +2,10 @@ import vm from 'vm';
 
 import { loadClassInIsolation } from '../load-class-in-isolation';
 
+jest.mock('@/constants', () => ({
+	inTest: false,
+}));
+
 describe('loadClassInIsolation', () => {
 	const filePath = '/path/to/TestClass.js';
 	const className = 'TestClass';

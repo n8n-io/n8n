@@ -6,7 +6,7 @@ abstract class StringArray<T extends string> extends Array<T> {
 	}
 }
 
-export class CommaSeperatedStringArray<T extends string> extends StringArray<T> {
+export class CommaSeparatedStringArray<T extends string> extends StringArray<T> {
 	constructor(str: string) {
 		super(str, ',');
 	}

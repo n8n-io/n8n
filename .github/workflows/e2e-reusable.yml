@@ -64,32 +64,34 @@ jobs:
         # "sha-5d3fe...35d3-time-1620841214"
         run: echo "value=sha-$GITHUB_SHA-time-$(date +"%s")" >> $GITHUB_OUTPUT
 
+      - name: Calculate Git Ref 🤔
+        id: calculate_ref
+        run: |
+          if [ -n "${{ inputs.pr_number }}" ]; then
+            echo "value=refs/pull/${{ inputs.pr_number }}/head" >> $GITHUB_OUTPUT
+          else
+            echo "value=${{ inputs.branch }}" >> $GITHUB_OUTPUT
+          fi
   install:
     runs-on: blacksmith-4vcpu-ubuntu-2204
     needs: ['prepare']
 
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          ref: ${{ inputs.branch }}
-
-      - name: Checkout PR
-        if: ${{ inputs.pr_number }}
-        run: |
-          git fetch origin pull/${{ inputs.pr_number }}/head
-          git checkout FETCH_HEAD
+          ref: ${{ steps.calculate_ref.outputs.value }}
 
       - uses: pnpm/action-setup@fe02b34f77f8bc703788d5817da081398fad5dd2 # v4.0.0
 
       - name: Cache build artifacts
         id: cache-build-artifacts
-        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
+        uses: useblacksmith/cache@c5fe29eb0efdf1cf4186b9f7fcbbcbc0cf025662 # v5
         with:
           path: |
             /home/runner/.cache/Cypress
             /github/home/.pnpm-store
             ./packages/**/dist
-          key: ${{ github.sha }}:build-artifacts
+          key: ${{ github.sha }}-ui
 
       - name: Install dependencies
         if: steps.cache-build-artifacts.outputs.cache-hit != 'true'
@@ -109,9 +111,8 @@ jobs:
         working-directory: cypress
         run: pnpm cypress:install
 
-
   testing:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-2vcpu-ubuntu-2204
     needs: ['prepare', 'install']
     strategy:
       fail-fast: false
@@ -120,27 +121,21 @@ jobs:
         # running the same tests multiple times
         containers: ${{ fromJSON( inputs.spec == 'e2e/*' && inputs.containers || '[1]' ) }}
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          ref: ${{ inputs.branch }}
-
-      - name: Checkout PR
-        if: ${{ inputs.pr_number }}
-        run: |
-          git fetch origin pull/${{ inputs.pr_number }}/head
-          git checkout FETCH_HEAD
+          ref: ${{ steps.calculate_ref.outputs.value }}
 
       - uses: pnpm/action-setup@fe02b34f77f8bc703788d5817da081398fad5dd2 # v4.0.0
 
       - name: Restore cached pnpm modules
         id: cache-build-artifacts
-        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
+        uses: useblacksmith/cache@c5fe29eb0efdf1cf4186b9f7fcbbcbc0cf025662 # v5
         with:
           path: |
             /home/runner/.cache/Cypress
             /github/home/.pnpm-store
             ./packages/**/dist
-          key: ${{ github.sha }}:build-artifacts
+          key: ${{ github.sha }}-ui
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile

@@ -63,8 +63,8 @@ describe('useResolvedExpression', () => {
 			});
 
 		expect(toValue(isExpression)).toBe(false);
-		expect(toValue(resolvedExpression)).toBe('');
-		expect(toValue(resolvedExpressionString)).toBe('[empty]');
+		expect(toValue(resolvedExpression)).toBe(null);
+		expect(toValue(resolvedExpressionString)).toBe('');
 	});
 
 	it('should handle errors', async () => {

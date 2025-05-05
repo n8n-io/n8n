@@ -10,6 +10,7 @@ import { findCliWorkflowStart, isWorkflowIdValid } from '@/utils';
 import { WorkflowRunner } from '@/workflow-runner';
 
 import { BaseCommand } from './base-command';
+import config from '../config';
 
 export class Execute extends BaseCommand {
 	static description = '\nExecutes a given workflow';
@@ -81,7 +82,16 @@ export class Execute extends BaseCommand {
 			userId: user.id,
 		};
 
-		const executionId = await Container.get(WorkflowRunner).run(runData);
+		const workflowRunner = Container.get(WorkflowRunner);
+
+		if (config.getEnv('executions.mode') === 'queue') {
+			this.logger.warn(
+				'CLI command `execute` does not support queue mode. Falling back to regular mode.',
+			);
+			workflowRunner.setExecutionMode('regular');
+		}
+
+		const executionId = await workflowRunner.run(runData);
 
 		const activeExecutions = Container.get(ActiveExecutions);
 		const data = await activeExecutions.getPostExecutePromise(executionId);

@@ -9,34 +9,34 @@ export const insightsSummaryTypeSchema = z.enum([
 ]);
 export type InsightsSummaryType = z.infer<typeof insightsSummaryTypeSchema>;
 
-export const insightsSummaryUnitSchema = z.enum(['count', 'ratio', 'time']);
+export const insightsSummaryUnitSchema = z.enum(['count', 'ratio', 'millisecond', 'minute']);
 export type InsightsSummaryUnit = z.infer<typeof insightsSummaryUnitSchema>;
 
 export const insightsSummaryDataSchemas = {
 	total: z.object({
 		value: z.number(),
-		deviation: z.number(),
+		deviation: z.union([z.null(), z.number()]),
 		unit: z.literal('count'),
 	}),
 	failed: z.object({
 		value: z.number(),
-		deviation: z.number(),
+		deviation: z.union([z.null(), z.number()]),
 		unit: z.literal('count'),
 	}),
 	failureRate: z.object({
 		value: z.number(),
-		deviation: z.number(),
+		deviation: z.union([z.null(), z.number()]),
 		unit: z.literal('ratio'),
 	}),
 	timeSaved: z.object({
 		value: z.number(),
-		deviation: z.number(),
-		unit: z.literal('time'),
+		deviation: z.union([z.null(), z.number()]),
+		unit: z.literal('minute'),
 	}),
 	averageRunTime: z.object({
 		value: z.number(),
-		deviation: z.number(),
-		unit: z.literal('time'),
+		deviation: z.union([z.null(), z.number()]),
+		unit: z.literal('millisecond'),
 	}),
 } as const;
 
@@ -49,9 +49,9 @@ export const insightsByWorkflowDataSchemas = {
 		z
 			.object({
 				workflowId: z.string(),
-				workflowName: z.string().optional(),
-				projectId: z.string().optional(),
-				projectName: z.string().optional(),
+				workflowName: z.string(),
+				projectId: z.string(),
+				projectName: z.string(),
 				total: z.number(),
 				succeeded: z.number(),
 				failed: z.number(),
@@ -74,12 +74,31 @@ export const insightsByTimeDataSchemas = {
 	values: z
 		.object({
 			total: z.number(),
+			succeeded: z.number(),
+			failed: z.number(),
 			failureRate: z.number(),
 			averageRunTime: z.number(),
 			timeSaved: z.number(),
 		})
 		.strict(),
 } as const;
-
 export const insightsByTimeSchema = z.object(insightsByTimeDataSchemas).strict();
 export type InsightsByTime = z.infer<typeof insightsByTimeSchema>;
+
+export const INSIGHTS_DATE_RANGE_KEYS = [
+	'day',
+	'week',
+	'2weeks',
+	'month',
+	'quarter',
+	'6months',
+	'year',
+] as const;
+export const insightsDateRangeSchema = z
+	.object({
+		key: z.enum(INSIGHTS_DATE_RANGE_KEYS),
+		licensed: z.boolean(),
+		granularity: z.enum(['hour', 'day', 'week']),
+	})
+	.strict();
+export type InsightsDateRange = z.infer<typeof insightsDateRangeSchema>;
