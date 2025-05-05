@@ -389,12 +389,12 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		return aggregatedInsightsByTimeParser.parse(rawRows);
 	}
 
-	async pruneOldData(maxAgeInDays: number): Promise<{ affected: number }> {
+	async pruneOldData(maxAgeInDays: number): Promise<{ affected: number | null | undefined }> {
 		const thresholdDate = DateTime.now().minus({ days: maxAgeInDays }).toJSDate();
 		const result = await this.delete({
 			periodStart: LessThan(thresholdDate),
 		});
 
-		return { affected: result.affected ?? 0 };
+		return { affected: result.affected };
 	}
 }

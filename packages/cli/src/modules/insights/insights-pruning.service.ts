@@ -65,7 +65,10 @@ export class InsightsPruningService {
 		for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
 			try {
 				const result = await this.insightsByPeriodRepository.pruneOldData(this.config.maxAgeDays);
-				this.logger.debug('Deleted insights by period', { count: result.affected });
+				this.logger.debug(
+					'Deleted insights by period',
+					result.affected ? { count: result.affected } : {},
+				);
 				return;
 			} catch (error: unknown) {
 				this.logger.warn(`Prune attempt ${attempt} failed`, { error });
