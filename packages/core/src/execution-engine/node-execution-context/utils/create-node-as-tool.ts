@@ -90,10 +90,6 @@ function getSchema(node: INode) {
  * @returns A string description for the node.
  */
 function makeDescription(node: INode, nodeType: INodeType): string {
-	// This is the custom description the user may provide if descriptionType
-	// is `manual` or not included in the node's properties
-	const explicitDescription = node.parameters.toolDescription as string;
-
 	if (node.parameters.descriptionType === 'auto') {
 		const resource = node.parameters.resource as string;
 		const operation = node.parameters.operation as string;
@@ -106,6 +102,10 @@ function makeDescription(node: INode, nodeType: INodeType): string {
 		}
 		return description.trim();
 	}
+
+	// This is the custom description the user may provide if descriptionType
+	// is `manual` or not included in the node's properties
+	const explicitDescription = node.parameters.toolDescription as string;
 
 	return explicitDescription ?? nodeType.description.description;
 }
