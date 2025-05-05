@@ -135,7 +135,7 @@ export class License {
 		const { isMultiMain, isLeader } = this.instanceSettings;
 
 		if (Object.keys(_features).length === 0) {
-			this.logger.error('Empty license features recieved', { isMultiMain, isLeader });
+			this.logger.error('Empty license features received', { isMultiMain, isLeader });
 			return;
 		}
 

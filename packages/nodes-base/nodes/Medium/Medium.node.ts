@@ -426,7 +426,7 @@ export class Medium implements INodeType {
 								if (returnValue.length > 25) {
 									throw new NodeOperationError(
 										this.getNode(),
-										`The tag "${returnValue}" is to long. Maximum lenght of a tag is 25 characters.`,
+										`The tag "${returnValue}" is to long. Maximum length of a tag is 25 characters.`,
 										{ itemIndex: i },
 									);
 								}

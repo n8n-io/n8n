@@ -37,7 +37,7 @@
 				}
 			},
 			"id": "10431f40-d47d-4bd9-8dd6-d4dbb35d626b",
-			"name": "IF Occured After",
+			"name": "IF Occurred After",
 			"type": "n8n-nodes-base.if",
 			"typeVersion": 1,
 			"position": [
@@ -48,7 +48,7 @@
 		{
 			"parameters": {},
 			"id": "2727a2f7-2bda-469b-a548-8df82de433e2",
-			"name": "On False Occured After",
+			"name": "On False Occurred After",
 			"type": "n8n-nodes-base.noOp",
 			"typeVersion": 1,
 			"position": [
@@ -59,7 +59,7 @@
 		{
 			"parameters": {},
 			"id": "40baaffe-9769-4b15-b09f-3553e37f90a5",
-			"name": "On True Occured After",
+			"name": "On True Occurred After",
 			"type": "n8n-nodes-base.noOp",
 			"typeVersion": 1,
 			"position": [
@@ -80,7 +80,7 @@
 				}
 			},
 			"id": "29ff421d-d7c5-4cc6-8830-73c0abf1c13f",
-			"name": "IF Occured Before",
+			"name": "IF Occurred Before",
 			"type": "n8n-nodes-base.if",
 			"typeVersion": 1,
 			"position": [
@@ -91,7 +91,7 @@
 		{
 			"parameters": {},
 			"id": "3347b52a-e513-4900-ab9a-bbcc7a6ec063",
-			"name": "On True Occured Before",
+			"name": "On True Occurred Before",
 			"type": "n8n-nodes-base.noOp",
 			"typeVersion": 1,
 			"position": [
@@ -102,7 +102,7 @@
 		{
 			"parameters": {},
 			"id": "d8401e15-f6e5-4347-b885-54798494cb1b",
-			"name": "On False Occured Before",
+			"name": "On False Occurred Before",
 			"type": "n8n-nodes-base.noOp",
 			"typeVersion": 1,
 			"position": [
@@ -112,7 +112,7 @@
 		}
 	],
 	"pinData": {
-		"On True Occured After": [
+		"On True Occurred After": [
 			{
 				"json": {
 					"dayOne": "2023-01-02T00:00:00.000-05:00",
@@ -120,7 +120,7 @@
 				}
 			}
 		],
-		"On False Occured After": [
+		"On False Occurred After": [
 			{
 				"json": {
 					"dayOne": "2023-01-01T00:00:00.000-05:00",
@@ -128,7 +128,7 @@
 				}
 			}
 		],
-		"On True Occured Before": [
+		"On True Occurred Before": [
 			{
 				"json": {
 					"dayOne": "2023-01-01T00:00:00.000-05:00",
@@ -136,7 +136,7 @@
 				}
 			}
 		],
-		"On False Occured Before": [
+		"On False Occurred Before": [
 			{
 				"json": {
 					"dayOne": "2023-01-02T00:00:00.000-05:00",
@@ -161,48 +161,48 @@
 			"main": [
 				[
 					{
-						"node": "IF Occured After",
+						"node": "IF Occurred After",
 						"type": "main",
 						"index": 0
 					},
 					{
-						"node": "IF Occured Before",
+						"node": "IF Occurred Before",
 						"type": "main",
 						"index": 0
 					}
 				]
 			]
 		},
-		"IF Occured After": {
+		"IF Occurred After": {
 			"main": [
 				[
 					{
-						"node": "On True Occured After",
+						"node": "On True Occurred After",
 						"type": "main",
 						"index": 0
 					}
 				],
 				[
 					{
-						"node": "On False Occured After",
+						"node": "On False Occurred After",
 						"type": "main",
 						"index": 0
 					}
 				]
 			]
 		},
-		"IF Occured Before": {
+		"IF Occurred Before": {
 			"main": [
 				[
 					{
-						"node": "On True Occured Before",
+						"node": "On True Occurred Before",
 						"type": "main",
 						"index": 0
 					}
 				],
 				[
 					{
-						"node": "On False Occured Before",
+						"node": "On False Occurred Before",
 						"type": "main",
 						"index": 0
 					}

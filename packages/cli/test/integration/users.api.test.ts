@@ -336,7 +336,7 @@ describe('DELETE /users/:id', () => {
 				projectRelationRepository.findOneBy({ userId: member.id, projectId: teamProject.id }),
 			).resolves.toBeNull(),
 
-			// their personal workflows and and credentials are gone
+			// their personal workflows and credentials are gone
 			expect(
 				sharedWorkflowRepository.findOneBy({
 					workflowId: savedWorkflow.id,

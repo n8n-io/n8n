@@ -102,7 +102,7 @@ describe('UI store', () => {
 		expect(uiStore.bannerStack).not.toContain('V1');
 	});
 
-	it('should add trial banner to the the stack', async () => {
+	it('should add trial banner to the stack', async () => {
 		const fetchCloudSpy = vi
 			.spyOn(cloudPlanApi, 'getCurrentPlan')
 			.mockResolvedValue(getTrialingUserResponse());
@@ -123,7 +123,7 @@ describe('UI store', () => {
 		expect(uiStore.bannerStack).not.toContain('EMAIL_CONFIRMATION');
 	});
 
-	it('should add trial over banner to the the stack', async () => {
+	it('should add trial over banner to the stack', async () => {
 		const fetchCloudSpy = vi
 			.spyOn(cloudPlanApi, 'getCurrentPlan')
 			.mockResolvedValue(getTrialExpiredUserResponse());
@@ -145,7 +145,7 @@ describe('UI store', () => {
 		expect(uiStore.bannerStack).not.toContain('EMAIL_CONFIRMATION');
 	});
 
-	it('should add email confirmation banner to the the stack', async () => {
+	it('should add email confirmation banner to the stack', async () => {
 		const fetchCloudSpy = vi
 			.spyOn(cloudPlanApi, 'getCurrentPlan')
 			.mockResolvedValue(getNotTrialingUserResponse());
