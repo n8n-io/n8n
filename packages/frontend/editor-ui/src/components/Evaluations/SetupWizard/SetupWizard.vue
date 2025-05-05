@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from '@/composables/useI18n';
 import { N8nText, N8nButton } from '@n8n/design-system';
-import N8nLink from '@n8n/design-system/components/N8nLink';
 import { ref, computed, watch } from 'vue';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { EVALUATION_DATASET_TRIGGER_NODE, PLACEHOLDER_EMPTY_WORKFLOW_ID, VIEWS } from '@/constants';
@@ -90,7 +89,7 @@ function navigateToWorkflow() {
 			<div :class="[$style.step, $style.completed]">
 				<StepHeader
 					:step-number="1"
-					title="Create a dataset and wire it up to your workflow"
+					:title="locale.baseText('evaluations.setupWizard.step1.title')"
 					:is-completed="datasetTriggerExist"
 					:is-active="activeStepIndex === 0"
 					@click="toggleStep(0)"
@@ -99,20 +98,20 @@ function navigateToWorkflow() {
 					<ul :class="$style.bulletPoints">
 						<li>
 							<N8nText size="small" color="text-base">
-								Populate a Google Sheet with one test input per row.
+								{{ locale.baseText('evaluations.setupWizard.step1.item1') }}
 							</N8nText>
 						</li>
 						<li>
 							<N8nText size="small" color="text-base">
-								Add an 'Evaluation trigger' node to run once per row.
+								{{ locale.baseText('evaluations.setupWizard.step1.item2') }}
 							</N8nText>
 						</li>
 					</ul>
 
 					<div :class="$style.actionButton">
-						<N8nButton size="small" type="secondary" @click="navigateToWorkflow()"
-							>Add 'Evaluation trigger'</N8nButton
-						>
+						<N8nButton size="small" type="secondary" @click="navigateToWorkflow()">
+							{{ locale.baseText('evaluations.setupWizard.step1.button') }}
+						</N8nButton>
 					</div>
 				</div>
 			</div>
@@ -121,7 +120,7 @@ function navigateToWorkflow() {
 			<div :class="[$style.step, activeStepIndex === 1 ? $style.active : '']">
 				<StepHeader
 					:step-number="2"
-					title="Write outputs back to dataset"
+					:title="locale.baseText('evaluations.setupWizard.step2.title')"
 					:is-completed="evaluationMetricNodeExist"
 					:is-active="activeStepIndex === 1"
 					@click="toggleStep(1)"
@@ -130,20 +129,19 @@ function navigateToWorkflow() {
 					<ul :class="$style.bulletPoints">
 						<li>
 							<N8nText size="small" color="text-base">
-								Connect the 'Evaluation node' to the LLM or Agent node that outputs the response.
+								{{ locale.baseText('evaluations.setupWizard.step2.item1') }}
 							</N8nText>
 						</li>
 						<li>
 							<N8nText size="small" color="text-base">
-								Use the 'Set outputs' operation to log each output back to Google Sheets so you can
-								view them all in one place.
+								{{ locale.baseText('evaluations.setupWizard.step2.item2') }}
 							</N8nText>
 						</li>
 					</ul>
 					<div :class="$style.actionButton">
-						<N8nButton size="small" type="secondary" @click="navigateToWorkflow()"
-							>Add 'Evaluation node'</N8nButton
-						>
+						<N8nButton size="small" type="secondary" @click="navigateToWorkflow()">
+							{{ locale.baseText('evaluations.setupWizard.step2.button') }}
+						</N8nButton>
 					</div>
 				</div>
 			</div>
@@ -152,29 +150,37 @@ function navigateToWorkflow() {
 			<div :class="$style.step">
 				<StepHeader
 					:step-number="3"
-					title="Calculate a quality score"
+					:title="locale.baseText('evaluations.setupWizard.step3.title')"
 					:is-completed="evaluationMetricNodeExist"
 					:is-active="activeStepIndex === 2"
 					:is-optional="true"
 					@click="toggleStep(2)"
 				/>
 				<div v-if="activeStepIndex === 2" :class="$style.stepContent">
-					<N8nText size="small" color="text-base">
-						Add custom logic and nodes before the 'Evaluation node' to calculate your metrics. In
-						the 'Evaluation node,' use the 'Set evaluation metrics' operation and map each metric
-						you want to track.
-					</N8nText>
+					<ul :class="$style.bulletPoints">
+						<li>
+							<N8nText size="small" color="text-base">
+								{{ locale.baseText('evaluations.setupWizard.step3.item1') }}
+							</N8nText>
+						</li>
+						<li>
+							<N8nText size="small" color="text-base">
+								{{ locale.baseText('evaluations.setupWizard.step3.item2') }}
+							</N8nText>
+						</li>
+					</ul>
 					<div :class="$style.actionButton">
-						<N8nButton size="small" type="secondary" @click="navigateToWorkflow()"
-							>Back to editor</N8nButton
-						>
+						<N8nButton size="small" type="secondary" @click="navigateToWorkflow()">
+							{{ locale.baseText('evaluations.setupWizard.step3.button') }}
+						</N8nButton>
 						<N8nButton
 							size="small"
 							text
 							style="color: var(--color-text-light)"
 							@click="toggleStep(3)"
-							>Skip</N8nButton
 						>
+							{{ locale.baseText('evaluations.setupWizard.step3.skip') }}
+						</N8nButton>
 					</div>
 				</div>
 			</div>
@@ -183,7 +189,7 @@ function navigateToWorkflow() {
 			<div :class="$style.step">
 				<StepHeader
 					:step-number="4"
-					title="Test evaluation"
+					:title="locale.baseText('evaluations.setupWizard.step4.title')"
 					:is-completed="false"
 					:is-active="activeStepIndex === 3"
 					@click="toggleStep(3)"
@@ -196,8 +202,9 @@ function navigateToWorkflow() {
 							size="medium"
 							@click="$emit('runTest')"
 							:disabled="!datasetTriggerExist || !evaluationMetricNodeExist"
-							>Test evaluation</N8nButton
 						>
+							{{ locale.baseText('evaluations.setupWizard.step4.button') }}
+						</N8nButton>
 					</div>
 				</StepHeader>
 			</div>
