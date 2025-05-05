@@ -14,7 +14,10 @@ import type { URLSearchParams } from 'url';
 
 import type { CODE_EXECUTION_MODES, CODE_LANGUAGES, LOG_LEVELS } from './Constants';
 import type { IDeferredPromise } from './DeferredPromise';
-import type { ExecutionCancelledError } from './errors';
+import type {
+	ExecutionCancelledError,
+	ExecutionCancellationReason,
+} from './errors/execution-cancelled.error';
 import type { ExpressionError } from './errors/expression.error';
 import type { NodeApiError } from './errors/node-api.error';
 import type { NodeOperationError } from './errors/node-operation.error';
@@ -2161,6 +2164,7 @@ export interface IRunExecutionData {
 	parentExecution?: RelatedExecution;
 	waitTill?: Date;
 	pushRef?: string;
+	cancellationReason?: ExecutionCancellationReason;
 
 	/** Whether this execution was started by a test webhook call. */
 	isTestWebhook?: boolean;

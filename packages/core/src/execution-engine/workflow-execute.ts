@@ -2029,7 +2029,7 @@ export class WorkflowExecute {
 						return await this.processSuccessExecution(
 							startedAt,
 							workflow,
-							new ExecutionCancelledError(this.additionalData.executionId ?? 'unknown'),
+							new ExecutionCancelledError(this.additionalData.executionId ?? 'unknown', 'manual'),
 							closeFunction,
 						);
 					}

@@ -149,7 +149,7 @@ export class ActiveExecutions {
 			// There is no execution running with that id
 			return;
 		}
-		const error = new ExecutionCancelledError(executionId);
+		const error = new ExecutionCancelledError(executionId, 'timeout');
 		execution.responsePromise?.reject(error);
 		if (execution.status === 'waiting') {
 			// A waiting execution will not have a valid workflowExecution or postExecutePromise

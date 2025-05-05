@@ -377,7 +377,7 @@ export class WorkflowRunner {
 					// We use "getLifecycleHooksForScalingWorker" as "getLifecycleHooksForScalingMain" does not contain the
 					// "workflowExecuteAfter" which we require.
 					const lifecycleHooks = getLifecycleHooksForScalingWorker(data, executionId);
-					const error = new ExecutionCancelledError(executionId);
+					const error = new ExecutionCancelledError(executionId, 'manual');
 					await this.processError(
 						error,
 						new Date(),
