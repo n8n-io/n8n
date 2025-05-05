@@ -122,23 +122,19 @@ export class Evaluation implements INodeType {
 	methods = { loadOptions, listSearch };
 
 	async execute(this: IExecuteFunctions) {
-		const disableNormalExecutions = this.getNodeParameter('disableNormalExecutions', 0) as boolean;
 		const evaluationNode = this.getNode();
-
 		const parentNodes = this.getParentNodes(evaluationNode.name);
 
-		// throw error if no evaluation trigger node. => depends on david's answer
-		// similar to respond to webhhook
 		const evalTrigger = parentNodes.find(
 			(node) => node.type === 'n8n-nodes-base.evaluationTrigger',
 		);
 
-		const isEvaluationExecution =
-			evalTrigger &&
-			(this.evaluateExpression(`{{ $(${evalTrigger?.name}).isExecuted }}`, 0) as IDataObject);
-
-		if (disableNormalExecutions && !isEvaluationExecution) {
-			return [this.getInputData()];
+		if (!evalTrigger) {
+			this.addExecutionHints({
+				message: "No outputs were set since the execution didn't start from an evaluation trigger",
+				location: 'outputPane',
+			});
+			return [];
 		}
 
 		const outputFields = this.getNodeParameter('outputs.values', 0, []) as Array<{
