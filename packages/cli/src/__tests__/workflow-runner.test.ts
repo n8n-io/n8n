@@ -1,4 +1,5 @@
 import type { User } from '@n8n/db';
+import type { ExecutionEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { DirectedGraph, WorkflowExecute } from 'n8n-core';
@@ -20,7 +21,6 @@ import PCancelable from 'p-cancelable';
 
 import { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
-import type { ExecutionEntity } from '@/databases/entities/execution-entity';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import { ManualExecutionService } from '@/manual-execution.service';
