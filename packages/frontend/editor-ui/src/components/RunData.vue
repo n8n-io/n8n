@@ -14,7 +14,6 @@ import type {
 	NodeHint,
 	Workflow,
 	NodeConnectionType,
-	NodeParameterValue,
 } from 'n8n-workflow';
 import {
 	parseErrorMetadata,
@@ -234,6 +233,19 @@ const nodeType = computed(() => {
 	return nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion);
 });
 
+const isHtmlNode = computed(() => activeNode.value?.type === HTML_NODE_TYPE);
+const isExtractFromFile = computed(
+	() => activeNode.value?.type === 'n8n-nodes-base.extractFromFile',
+);
+const isGenerateHtmlTemplate = computed(
+	() => activeNode.value?.parameters.operation === 'generateHtmlTemplate',
+);
+const isDocxWithHtmlOutput = computed(
+	() =>
+		activeNode.value?.parameters.operation === 'docx' &&
+		(activeNode.value.parameters.options as Record<string, unknown>).outputFormat === 'html',
+);
+
 const isSchemaView = computed(() => displayMode.value === 'schema');
 const isSearchInSchemaView = computed(() => isSchemaView.value && !!search.value);
 const displaysMultipleNodes = computed(
@@ -267,15 +279,10 @@ const displayModes = computed(() => {
 		defaults.push(schemaView);
 	}
 
-	const isHtmlNode = activeNode.value?.type === HTML_NODE_TYPE;
-	const isExtractFromFile = activeNode.value?.type === 'n8n-nodes-base.extractFromFile';
-	const isGenerateHtmlTemplate = activeNode.value?.parameters.operation === 'generateHtmlTemplate';
-	const isDocxWithHtmlOutput =
-		activeNode.value?.parameters.operation === 'docx' &&
-		(activeNode.value.parameters.options as Record<string, unknown>)['outputFormat'] === 'html';
 	if (
 		isPaneTypeOutput.value &&
-		((isHtmlNode && isGenerateHtmlTemplate) || (isExtractFromFile && isDocxWithHtmlOutput))
+		((isHtmlNode.value && isGenerateHtmlTemplate.value) ||
+			(isExtractFromFile.value && isDocxWithHtmlOutput.value))
 	) {
 		defaults.unshift({ label: 'HTML', value: 'html' });
 	}
@@ -1297,15 +1304,9 @@ function enableNode() {
 function setDisplayMode() {
 	if (!activeNode.value) return;
 
-	const isHtmlNode = activeNode.value?.type === HTML_NODE_TYPE;
-	const isExtractFromFile = activeNode.value?.type === 'n8n-nodes-base.extractFromFile';
-	const isGenerateHtmlTemplate = activeNode.value?.parameters.operation === 'generateHtmlTemplate';
-	const isDocxWithHtmlOutput =
-		activeNode.value?.parameters.operation === 'docx' &&
-		(activeNode.value.parameters.options as Record<string, unknown>)['outputFormat'] === 'html';
 	const shouldDisplayHtml =
-		isPaneTypeOutput.value &&
-		((isHtmlNode && isGenerateHtmlTemplate) || (isExtractFromFile && isDocxWithHtmlOutput));
+		(isHtmlNode.value && isGenerateHtmlTemplate.value) ||
+		(isExtractFromFile.value && isDocxWithHtmlOutput.value);
 
 	if (shouldDisplayHtml) {
 		ndvStore.setPanelDisplayMode({
