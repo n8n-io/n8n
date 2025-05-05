@@ -6,7 +6,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
-import { listSearch, loadOptions } from './methods';
+import { listSearch, loadOptions } from '../methods';
 import {
 	getFilteredResults,
 	getGoogleSheet,
@@ -14,11 +14,11 @@ import {
 	getRowsLeft,
 	getRowsLeftFilteredResults,
 	getSheet,
-} from './utils/evaluationTriggerUtils';
-import { document, sheet } from '../Google/Sheet/GoogleSheetsTrigger.node';
-import { readFilter } from '../Google/Sheet/v2/actions/sheet/read.operation';
-import { authentication } from '../Google/Sheet/v2/actions/versionDescription';
-import type { ILookupValues } from '../Google/Sheet/v2/helpers/GoogleSheets.types';
+} from '../utils/evaluationTriggerUtils';
+import { document, sheet } from '../../Google/Sheet/GoogleSheetsTrigger.node';
+import { readFilter } from '../../Google/Sheet/v2/actions/sheet/read.operation';
+import { authentication } from '../../Google/Sheet/v2/actions/versionDescription';
+import type { ILookupValues } from '../../Google/Sheet/v2/helpers/GoogleSheets.types';
 
 export let startingRow = 1;
 
