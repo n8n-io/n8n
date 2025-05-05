@@ -3089,7 +3089,7 @@
 	"evaluation.runDetail.totalCases": "Total cases",
 	"evaluation.runDetail.error.mockedNodeMissing": "Output for a mocked node does not exist in benchmark execution.{link}.",
 	"evaluation.runDetail.error.mockedNodeMissing.solution": "Fix test configuration",
-	"evaluation.runDetail.error.executionFailed": "Failed to execute workflow with benchmark trigger. {link}.",
+	"evaluation.runDetail.error.executionFailed": "Failed to execute workflow.",
 	"evaluation.runDetail.error.executionFailed.solution": "View execution",
 	"evaluation.runDetail.error.datasetTriggerNotFound": "Dataset trigger does not exist in the workflow.{link}.",
 	"evaluation.runDetail.error.datasetTriggerNotFound.solution": "View workflow",
