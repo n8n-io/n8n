@@ -9,6 +9,7 @@ import {
 	isTool,
 	rewireGraph,
 } from 'n8n-core';
+import { MANUAL_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import type {
 	IPinData,
 	IRun,
@@ -39,7 +40,15 @@ export class ManualExecutionService {
 			startNode = workflow.getNode(data.startNodes[0].name) ?? undefined;
 		}
 
-		return startNode;
+		if (startNode) {
+			return startNode;
+		}
+
+		const manualTrigger = workflow
+			.getTriggerNodes()
+			.find((node) => node.type === MANUAL_TRIGGER_NODE_TYPE);
+
+		return manualTrigger;
 	}
 
 	// eslint-disable-next-line @typescript-eslint/promise-function-async

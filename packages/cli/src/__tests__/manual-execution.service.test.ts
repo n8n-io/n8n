@@ -12,6 +12,7 @@ import type {
 	IExecuteData,
 	IWaitingForExecution,
 	IWaitingForExecutionSource,
+	INodeExecutionData,
 } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
 
@@ -24,64 +25,73 @@ describe('ManualExecutionService', () => {
 
 	describe('getExecutionStartNode', () => {
 		it('Should return undefined', () => {
-			const data = {
-				pinData: {},
-				startNodes: [],
-			} as unknown as IWorkflowExecutionDataProcess;
-			const workflow = {
-				getNode(nodeName: string) {
-					return {
-						name: nodeName,
-					};
+			const data = mock<IWorkflowExecutionDataProcess>();
+			const workflow = mock<Workflow>({
+				getTriggerNodes() {
+					return [];
 				},
-			} as unknown as Workflow;
+			});
 			const executionStartNode = manualExecutionService.getExecutionStartNode(data, workflow);
 			expect(executionStartNode).toBeUndefined();
 		});
 
 		it('Should return startNode', () => {
-			const data = {
+			const data = mock<IWorkflowExecutionDataProcess>({
 				pinData: {
-					node1: {},
-					node2: {},
+					node1: [mock<INodeExecutionData>()],
+					node2: [mock<INodeExecutionData>()],
 				},
 				startNodes: [{ name: 'node2' }],
-			} as unknown as IWorkflowExecutionDataProcess;
-			const workflow = {
+			});
+			const workflow = mock<Workflow>({
 				getNode(nodeName: string) {
 					if (nodeName === 'node2') {
-						return {
-							name: 'node2',
-						};
+						return mock<INode>({ name: 'node2' });
 					}
-					return undefined;
+					return null;
 				},
-			} as unknown as Workflow;
-			const executionStartNode = manualExecutionService.getExecutionStartNode(data, workflow);
-			expect(executionStartNode).toEqual({
-				name: 'node2',
 			});
+			const executionStartNode = manualExecutionService.getExecutionStartNode(data, workflow);
+			expect(executionStartNode?.name).toEqual('node2');
 		});
 
 		it('Should return triggerToStartFrom trigger node', () => {
-			const data = {
+			const data = mock<IWorkflowExecutionDataProcess>({
 				pinData: {
-					node1: {},
-					node2: {},
+					node1: [mock<INodeExecutionData>()],
+					node2: [mock<INodeExecutionData>()],
 				},
 				triggerToStartFrom: { name: 'node3' },
-			} as unknown as IWorkflowExecutionDataProcess;
-			const workflow = {
-				getNode(nodeName: string) {
-					return {
-						name: nodeName,
-					};
-				},
-			} as unknown as Workflow;
-			const executionStartNode = manualExecutionService.getExecutionStartNode(data, workflow);
-			expect(executionStartNode).toEqual({
-				name: 'node3',
 			});
+			const workflow = mock<Workflow>({
+				getNode(nodeName: string) {
+					return mock<INode>({ name: nodeName });
+				},
+			});
+			const executionStartNode = manualExecutionService.getExecutionStartNode(data, workflow);
+			expect(executionStartNode?.name).toEqual('node3');
+		});
+
+		it('should default to The manual trigger', () => {
+			const data = mock<IWorkflowExecutionDataProcess>();
+			const manualTrigger = mock<INode>({
+				type: 'n8n-nodes-base.manualTrigger',
+				name: 'When clicking ‘Test workflow’',
+			});
+
+			const workflow = mock<Workflow>({
+				getTriggerNodes() {
+					return [
+						mock<INode>({
+							type: 'n8n-nodes-base.scheduleTrigger',
+							name: 'Wed 12:00',
+						}),
+						manualTrigger,
+					];
+				},
+			});
+			const executionStartNode = manualExecutionService.getExecutionStartNode(data, workflow);
+			expect(executionStartNode?.name).toBe(manualTrigger.name);
 		});
 	});
 
@@ -230,6 +240,7 @@ describe('ManualExecutionService', () => {
 
 			const workflow = mock<Workflow>({
 				getNode: jest.fn().mockReturnValue(null),
+				getTriggerNodes: jest.fn().mockReturnValue([]),
 			});
 
 			const additionalData = mock<IWorkflowExecuteAdditionalData>();
