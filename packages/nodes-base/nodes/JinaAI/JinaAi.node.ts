@@ -132,11 +132,9 @@ export class JinaAi implements INodeType {
 									],
 									max_returned_urls: '={{ $parameter["options"]["maxReturnedSources"] }}',
 									boost_hostnames:
-										'={{ $parameter["options"]["prioritizeSources"].split(",").map((s) => s.trim()) }}',
-									bad_hostnames:
-										'={{ $parameter["options"]["excludeSources"].split(",").map((s) => s.trim()) }}',
-									only_hostnames:
-										'={{ $parameter["options"]["siteFilter"].split(",").map((s) => s.trim()) }}',
+										'={{ $parameter["options"]["prioritizeSources"].split(/,\\s*/) }}',
+									bad_hostnames: '={{ $parameter["options"]["excludeSources"].split(/,\\s*/) }}',
+									only_hostnames: '={{ $parameter["options"]["siteFilter"].split(/,\\s*/) }}',
 								},
 							},
 						},
