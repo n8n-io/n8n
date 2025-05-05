@@ -1,7 +1,14 @@
+import { isObject } from 'lodash';
 import set from 'lodash/set';
 import { DateTime, Duration, Interval } from 'luxon';
 import { getAdditionalKeys } from 'n8n-core';
-import { WorkflowDataProxy, Workflow, ObservableObject, Expression } from 'n8n-workflow';
+import {
+	WorkflowDataProxy,
+	Workflow,
+	ObservableObject,
+	Expression,
+	jsonStringify,
+} from 'n8n-workflow';
 import type {
 	CodeExecutionMode,
 	IWorkflowExecuteAdditionalData,
@@ -19,7 +26,6 @@ import type {
 	IWorkflowDataProxyData,
 } from 'n8n-workflow';
 import * as a from 'node:assert';
-import { inspect } from 'node:util';
 import { type Context, createContext, runInContext } from 'node:vm';
 
 import type { MainConfig } from '@/config/main-config';
@@ -498,7 +504,11 @@ export class JsTaskRunner extends TaskRunner {
 			// Send log output back to the main process. It will take care of forwarding
 			// it to the UI or printing to console.
 			log: (...args: unknown[]) => {
-				const formattedLogArgs = args.map((arg) => inspect(arg));
+				const formattedLogArgs = args.map((arg) => {
+					if (isObject(arg) && '__isExecutionContext' in arg) return '[[ExecutionContext]]';
+					if (typeof arg === 'string') return `'${arg}'`;
+					return jsonStringify(arg, { replaceCircularRefs: true });
+				});
 				void this.makeRpcCall(taskId, 'logNodeOutput', formattedLogArgs);
 			},
 		};
@@ -521,7 +531,7 @@ export class JsTaskRunner extends TaskRunner {
 		additionalProperties: Record<string, unknown> = {},
 	): Context {
 		return createContext({
-			[inspect.custom]: () => '[[ExecutionContext]]',
+			__isExecutionContext: true,
 			require: this.requireResolver,
 			module: {},
 			console: this.buildCustomConsole(taskId),
