@@ -14,7 +14,7 @@ import { paginatedRequest } from '../utils/community-nodes-request-utils';
 const UPDATE_INTERVAL = 8 * 60 * 60 * 1000;
 
 const N8N_VETTED_NODE_TYPES_STAGING_URL = 'https://api-staging.n8n.io/api/community-nodes';
-const N8N_VETTED_NODE_TYPES_PRODUCTION_URL = 'https://api.n8n.io/api/community-nodes';
+// const N8N_VETTED_NODE_TYPES_PRODUCTION_URL = 'https://api.n8n.io/api/community-nodes';
 
 @Service()
 export class CommunityNodeTypesService {
@@ -42,7 +42,7 @@ export class CommunityNodeTypesService {
 				const environment = this.globalConfig.license.tenantId === 1 ? 'production' : 'staging';
 				const url =
 					environment === 'production'
-						? N8N_VETTED_NODE_TYPES_PRODUCTION_URL
+						? N8N_VETTED_NODE_TYPES_STAGING_URL // TODO: change this when production url is live
 						: N8N_VETTED_NODE_TYPES_STAGING_URL;
 				data = await paginatedRequest(url);
 			}
