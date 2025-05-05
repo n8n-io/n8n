@@ -1,6 +1,7 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import nock from 'nock';
 
+import deepResearchResult from './fixtures/deepResearch.json';
 import readResult from './fixtures/read.json';
 import searchResult from './fixtures/search.json';
 
@@ -58,6 +59,42 @@ describe('JinaAI Node', () => {
 		new NodeTestHarness().setupTests({
 			credentials,
 			workflowFiles: ['search.workflow.json'],
+		});
+	});
+
+	describe('Research -> Deep Research', () => {
+		const jinaAiNock = nock('https://deepsearch.jina.ai');
+
+		beforeAll(() => {
+			jinaAiNock
+				.post('/v1/chat/completions', {
+					messages: [
+						{
+							role: 'user',
+							content: 'Describe the latest features in Jina AI',
+						},
+					],
+				})
+				.reply(200, deepResearchResult);
+			jinaAiNock
+				.post('/v1/chat/completions', {
+					messages: [
+						{
+							role: 'user',
+							content: 'Describe the latest features in Jina AI',
+						},
+					],
+					max_returned_urls: 5,
+					boost_hostnames: ['jina.ai'],
+					bad_hostnames: ['medium.com'],
+					only_hostnames: ['jina.ai', 'github.com'],
+				})
+				.reply(200, deepResearchResult);
+		});
+
+		new NodeTestHarness().setupTests({
+			credentials,
+			workflowFiles: ['deepResearch.workflow.json'],
 		});
 	});
 });

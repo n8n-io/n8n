@@ -1,0 +1,177 @@
+{
+	"name": "Jina AI -> Research -> Deep Research",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "23e5b28b-f0a4-4068-b15a-5b002f75d186",
+			"name": "When clicking ‘Test workflow’"
+		},
+		{
+			"parameters": {
+				"resource": "research",
+				"researchQuery": "Describe the latest features in Jina AI",
+				"options": {},
+				"requestOptions": {}
+			},
+			"type": "n8n-nodes-base.jinaAi",
+			"typeVersion": 1,
+			"position": [220, -100],
+			"id": "a9617ffc-9b3b-47c9-8eed-869804d7b2ca",
+			"name": "No options",
+			"credentials": {
+				"jinaAiApi": {
+					"id": "rOFy0C66uXp8PhE2",
+					"name": "Jina AI account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "research",
+				"researchQuery": "Describe the latest features in Jina AI",
+				"options": {
+					"maxReturnedSources": 5,
+					"prioritizeSources": "jina.ai",
+					"excludeSources": "medium.com",
+					"siteFilter": "jina.ai, github.com"
+				},
+				"requestOptions": {}
+			},
+			"type": "n8n-nodes-base.jinaAi",
+			"typeVersion": 1,
+			"position": [220, 100],
+			"id": "40502416-59cf-4b97-bfbb-8dfbc1731432",
+			"name": "With options",
+			"credentials": {
+				"jinaAiApi": {
+					"id": "rOFy0C66uXp8PhE2",
+					"name": "Jina AI account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"No options": [
+			{
+				"json": {
+					"id": "123",
+					"object": "chat.completion",
+					"created": 1746186539,
+					"system_fingerprint": "fp_123",
+					"choices": [
+						{
+							"index": 0,
+							"message": {
+								"role": "assistant",
+								"content": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
+								"type": "text",
+								"annotations": [
+									{
+										"type": "url_citation",
+										"url_citation": {
+											"title": "Lorem ipsum dolor sit amet",
+											"exactQuote": "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
+											"url": "https://some.referenced.site.com/article",
+											"dateTime": "Aug 30, 2024"
+										}
+									}
+								]
+							},
+							"logprobs": null,
+							"finish_reason": "stop"
+						}
+					],
+					"usage": {
+						"prompt_tokens": 123,
+						"completion_tokens": 456,
+						"total_tokens": 579
+					},
+					"visitedURLs": ["https://first.com/some/path", "https://second.com/?foo=bar"],
+					"readURLs": [
+						"https://example.com",
+						"https://example.com/2",
+						"https://some.other.site.com/path"
+					],
+					"numURLs": 5
+				}
+			}
+		],
+		"With options": [
+			{
+				"json": {
+					"id": "123",
+					"object": "chat.completion",
+					"created": 1746186539,
+					"system_fingerprint": "fp_123",
+					"choices": [
+						{
+							"index": 0,
+							"message": {
+								"role": "assistant",
+								"content": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
+								"type": "text",
+								"annotations": [
+									{
+										"type": "url_citation",
+										"url_citation": {
+											"title": "Lorem ipsum dolor sit amet",
+											"exactQuote": "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
+											"url": "https://some.referenced.site.com/article",
+											"dateTime": "Aug 30, 2024"
+										}
+									}
+								]
+							},
+							"logprobs": null,
+							"finish_reason": "stop"
+						}
+					],
+					"usage": {
+						"prompt_tokens": 123,
+						"completion_tokens": 456,
+						"total_tokens": 579
+					},
+					"visitedURLs": ["https://first.com/some/path", "https://second.com/?foo=bar"],
+					"readURLs": [
+						"https://example.com",
+						"https://example.com/2",
+						"https://some.other.site.com/path"
+					],
+					"numURLs": 5
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Test workflow’": {
+			"main": [
+				[
+					{
+						"node": "No options",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "With options",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "f2f57a3f-2584-4ba2-8dba-14f0d4073dfc",
+	"meta": {
+		"templateCredsSetupCompleted": true,
+		"instanceId": "e115be144a6a5547dbfca93e774dfffa178aa94a181854c13e2ce5e14d195b2e"
+	},
+	"id": "Qttu9wESqI9vHYBA",
+	"tags": []
+}
