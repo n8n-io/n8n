@@ -14,6 +14,7 @@ import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { orderBy } from 'lodash-es';
 import { statusDictionary } from '@/components/Evaluations/shared/statusDictionary';
+
 // TODO: replace with n8n-api type
 const TEST_CASE_EXECUTION_ERROR_CODE = {
 	MOCKED_NODE_NOT_FOUND: 'MOCKED_NODE_NOT_FOUND',
@@ -242,7 +243,11 @@ onMounted(async () => {
 					<N8nText size="small">
 						{{ locale.baseText('evaluation.listRuns.status') }}
 					</N8nText>
-					<N8nText size="large" :class="run?.status.toLowerCase()">
+					<N8nText
+						size="large"
+						:class="run?.status.toLowerCase()"
+						style="text-transform: capitalize"
+					>
 						{{ run?.status }}
 					</N8nText>
 				</div>
