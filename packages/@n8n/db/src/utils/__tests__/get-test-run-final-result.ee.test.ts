@@ -1,8 +1,7 @@
 import { mock } from 'jest-mock-extended';
 
-import { getTestRunFinalResult } from 'utils/get-final-test-result';
-
 import type { TestCaseExecution } from '../../entities';
+import { getTestRunFinalResult } from '../get-final-test-result';
 
 function mockTestCaseExecutions(statuses: Array<TestCaseExecution['status']>) {
 	return statuses.map((status) => mock<TestCaseExecution>({ status }));
