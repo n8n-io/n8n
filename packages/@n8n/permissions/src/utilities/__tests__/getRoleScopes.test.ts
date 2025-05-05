@@ -25,6 +25,8 @@ describe('getRoleScopes', () => {
 			const filtered = getRoleScopes('global:owner', ['workflow', 'credential']);
 			expect(filtered.some((s) => s.startsWith('workflow:'))).toBe(true);
 			expect(filtered.some((s) => s.startsWith('credential:'))).toBe(true);
+			expect(filtered.every((s) => !s.startsWith('tag:'))).toBe(true);
+			expect(filtered.every((s) => !s.startsWith('user:'))).toBe(true);
 		});
 
 		test('should return empty array for no matches', () => {
