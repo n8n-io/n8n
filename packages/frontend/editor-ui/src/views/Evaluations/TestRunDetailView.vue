@@ -69,7 +69,6 @@ const formattedTime = computed(() => convertToDisplayDate(new Date(run.value?.ru
 const handleRowClick = (row: TestCaseExecutionRecord) => {
 	const executionId = row.executionId;
 	if (executionId) {
-		// gotToExecution(row.executionId);
 		const { href } = router.resolve({
 			name: VIEWS.EXECUTION_PREVIEW,
 			params: {
@@ -100,7 +99,29 @@ const getErrorBaseKey = (errorCode?: string): string =>
 	testRunErrorDictionary[errorCode as TestRunErrorCode] ??
 	'';
 
-const getErrorTooltipLinkRoute = (_row: TestCaseExecutionRecord) => {
+const getErrorTooltipLinkRoute = (row: TestCaseExecutionRecord) => {
+	switch (row.errorCode) {
+		case TEST_CASE_EXECUTION_ERROR_CODE.UNKNOWN_ERROR:
+			return row.executionId
+				? {
+						name: VIEWS.EXECUTION_PREVIEW,
+						params: {
+							name: workflowId.value,
+							executionId: row.executionId,
+						},
+					}
+				: undefined;
+		case TEST_CASE_EXECUTION_ERROR_CODE.FAILED_TO_EXECUTE_WORKFLOW:
+			return {
+				name: VIEWS.EXECUTION_PREVIEW,
+				params: {
+					name: workflowId.value,
+					executionId: row.executionId,
+				},
+			};
+		default:
+			return undefined;
+	}
 	// if (row.errorCode === TEST_CASE_EXECUTION_ERROR_CODE.MOCKED_NODE_NOT_FOUND) {
 	// 	return {
 	// 		name: VIEWS.EVALUATION_EDIT,
@@ -290,24 +311,24 @@ onMounted(async () => {
 						<N8nTooltip placement="right" :show-after="300">
 							<template #content>
 								<template v-if="getErrorBaseKey(row.errorCode)">
-									<i18n-t :keypath="getErrorBaseKey(row.errorCode)">
-										<template #link>
-											<RouterLink :to="getErrorTooltipLinkRoute(row) ?? ''" target="_blank">
-												{{
-													locale.baseText(
-														`${getErrorBaseKey(row.errorCode)}.solution` as BaseTextKey,
-													)
-												}}
-											</RouterLink>
-										</template>
-									</i18n-t>
+									<template v-if="getErrorTooltipLinkRoute(row)">
+										<RouterLink :to="getErrorTooltipLinkRoute(row) ?? ''" target="_blank">
+											{{
+												locale.baseText(`${getErrorBaseKey(row.errorCode)}.solution` as BaseTextKey)
+											}}
+										</RouterLink>
+									</template>
+									<template v-else> UNKNOWN_ERROR </template>
 								</template>
 								<template v-else> UNKNOWN_ERROR </template>
 							</template>
 							<div style="display: inline-flex; gap: 8px; text-transform: capitalize">
 								<N8nIcon icon="exclamation-triangle" color="danger"></N8nIcon>
 								<N8nText size="small" color="danger">
-									{{ row.status }}
+									{{
+										locale.baseText(`${getErrorBaseKey(row.errorCode)}` as BaseTextKey) ||
+										row.status
+									}}
 								</N8nText>
 							</div>
 						</N8nTooltip>
