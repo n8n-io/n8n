@@ -516,9 +516,6 @@ importers:
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
-      jest-mock-extended:
-        specifier: ^3.0.4
-        version: 3.0.4(jest@29.6.2(@types/node@18.16.16)(ts-node@10.9.2(@types/node@18.16.16)(typescript@5.8.2)))(typescript@5.8.2)
 
   packages/@n8n/decorators:
     dependencies:
