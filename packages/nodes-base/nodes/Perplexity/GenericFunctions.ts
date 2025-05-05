@@ -35,7 +35,7 @@ export async function sendErrorPostReceive(
 
 		// Fallback for other errors
 		throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
-			message: `${errorMessage} ${itemIndex}.`,
+			message: `${errorMessage}${itemIndex ? ' ' + itemIndex : ''}.`,
 			description:
 				'Any optional system messages must be sent first, followed by alternating user and assistant messages. For more details, refer to the API documentation: https://docs.perplexity.ai/api-reference/chat-completions',
 		});

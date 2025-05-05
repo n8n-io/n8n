@@ -56,7 +56,7 @@ describe('Generic Functions', () => {
 				body: {
 					error: {
 						type: 'invalid_model',
-						message: 'Invalid model type provided.',
+						message: 'Invalid model type provided',
 					},
 				},
 			};
@@ -82,7 +82,7 @@ describe('Generic Functions', () => {
 				body: {
 					error: {
 						type: 'invalid_parameter',
-						message: 'Invalid parameter provided.',
+						message: 'Invalid parameter provided',
 					},
 				},
 			};
@@ -95,7 +95,7 @@ describe('Generic Functions', () => {
 				),
 			).rejects.toThrowError(
 				new NodeApiError(mockExecuteSingleFunctions.getNode(), errorResponse.body, {
-					message: 'invalid_parameter Invalid parameter provided.',
+					message: 'Invalid parameter provided.',
 					description:
 						'Please check all input parameters and ensure they are correctly formatted. Valid values can be found in the documentation at https://docs.perplexity.ai/api-reference/chat-completions.',
 				}),
@@ -147,7 +147,7 @@ describe('Generic Functions', () => {
 				),
 			).rejects.toThrowError(
 				new NodeApiError(mockExecuteSingleFunctions.getNode(), errorResponse.body, {
-					message: 'invalid_parameter An unexpected issue occurred',
+					message: 'An unexpected issue occurred.',
 					description: 'Please check parameters...',
 				}),
 			);
@@ -172,7 +172,7 @@ describe('Generic Functions', () => {
 				),
 			).rejects.toThrowError(
 				new NodeApiError(mockExecuteSingleFunctions.getNode(), errorResponse.body, {
-					message: 'Internal server error .',
+					message: 'Internal server error.',
 					description: 'Refer to API documentation...',
 				}),
 			);
