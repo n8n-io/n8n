@@ -11,6 +11,7 @@ import {
 	ObjectStoreService,
 	DataDeduplicationService,
 	ErrorReporter,
+	InputValidationService,
 } from 'n8n-core';
 import { ensureError, sleep, UserError } from 'n8n-workflow';
 
@@ -27,6 +28,7 @@ import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { initExpressionEvaluator } from '@/expression-evaluator';
 import { ExternalHooks } from '@/external-hooks';
 import { ExternalSecretsManager } from '@/external-secrets.ee/external-secrets-manager.ee';
+import { InputValidationHelper } from '@/input-validation-helpers';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { ModuleRegistry } from '@/modules/module-registry';
@@ -230,6 +232,10 @@ export abstract class BaseCommand extends Command {
 	protected async initDataDeduplicationService() {
 		const dataDeduplicationService = getDataDeduplicationService();
 		await DataDeduplicationService.init(dataDeduplicationService);
+	}
+
+	protected async initInputValidationService() {
+		await InputValidationService.init(new InputValidationHelper());
 	}
 
 	async initExternalHooks() {

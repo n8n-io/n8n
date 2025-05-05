@@ -45,8 +45,10 @@ export type VariableResource = BaseResource & {
 
 export type SchemaResource = BaseResource & {
 	resourceType: 'schema';
-	key?: string;
-	value?: string;
+	name: string;
+	definition: string;
+	updatedAt: string;
+	createdAt: string;
 };
 
 export type CredentialsResource = BaseResource & {
@@ -61,7 +63,12 @@ export type CredentialsResource = BaseResource & {
 	needsSetup: boolean;
 };
 
-export type Resource = WorkflowResource | FolderResource | CredentialsResource | VariableResource;
+export type Resource =
+	| WorkflowResource
+	| FolderResource
+	| CredentialsResource
+	| VariableResource
+	| SchemaResource;
 
 export type BaseFilters = {
 	search: string;

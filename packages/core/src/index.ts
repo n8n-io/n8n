@@ -4,6 +4,7 @@ export * from './binary-data';
 export * from './constants';
 export * from './credentials';
 export * from './data-deduplication-service';
+export * from './input-validation-service';
 export * from './encryption';
 export * from './errors';
 export * from './execution-engine';

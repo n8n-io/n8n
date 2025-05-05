@@ -752,6 +752,11 @@ export interface DeduplicationHelperFunctions {
 		options: ICheckProcessedOptions,
 	): Promise<number>;
 }
+
+export interface InputValidationHelperFunction {
+	isValid(schemaId: string, body: unknown): Promise<void>;
+}
+
 interface NodeHelperFunctions {
 	copyBinaryFile(filePath: string, fileName: string, mimeType?: string): Promise<IBinaryData>;
 }
@@ -1112,7 +1117,10 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 	getResponseObject(): express.Response;
 	getWebhookName(): string;
 	nodeHelpers: NodeHelperFunctions;
-	helpers: RequestHelperFunctions & BaseHelperFunctions & BinaryHelperFunctions;
+	helpers: RequestHelperFunctions &
+		BaseHelperFunctions &
+		BinaryHelperFunctions &
+		InputValidationHelperFunction;
 }
 
 export interface INodeCredentialsDetails {
@@ -1252,7 +1260,8 @@ export type NodePropertyTypes =
 	| 'filter'
 	| 'assignmentCollection'
 	| 'credentials'
-	| 'workflowSelector';
+	| 'workflowSelector'
+	| 'schemaSelector';
 
 export type CodeAutocompleteTypes = 'function' | 'functionItem';
 
@@ -2853,6 +2862,10 @@ export interface IDataDeduplicator {
 		contextData: ICheckProcessedContextData,
 		options: ICheckProcessedOptions,
 	): Promise<number>;
+}
+
+export interface IInputValidator {
+	isValid(schemaId: string, body: unknown): Promise<void>;
 }
 
 export interface ICheckProcessedContextData {

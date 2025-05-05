@@ -40,6 +40,8 @@ import {
 import { uid } from '@n8n/design-system/utils';
 import { useAsyncState } from '@vueuse/core';
 import { pickBy } from 'lodash-es';
+import { useSchemaStore } from '@/stores/schemas.store';
+import { Schema } from '@n8n/api-types';
 
 const settingsStore = useSettingsStore();
 const environmentsStore = useEnvironmentsStore();
@@ -51,6 +53,18 @@ const message = useMessage();
 const sourceControlStore = useSourceControlStore();
 const route = useRoute();
 const router = useRouter();
+const schemaStore = useSchemaStore();
+const schemas = ref<Schema[]>([]);
+
+const schemaResources = computed<Resource[]>(() =>
+	schemas.value.map((schema) => ({
+		...schema,
+		type: 'schema',
+		resourceType: 'schema',
+		updatedAt: schema.updatedAt || '',
+		createdAt: schema.createdAt || '',
+	})),
+);
 
 const layoutRef = useTemplateRef<InstanceType<typeof ResourcesListLayout>>('layoutRef');
 
@@ -223,22 +237,25 @@ function displayName(resource: Resource) {
 onMounted(() => {
 	// useDocumentTitle().set(i18n.baseText('variables.heading'));
 });
+
+const initialize = async () => {
+	schemas.value = await schemaStore.getAndCacheApiKeys();
+};
 </script>
 
 <template>
 	<ResourcesListLayout
-		ref="layoutRef"
 		v-model:filters="filters"
 		resource-key="schemas"
-		:disabled="!isFeatureEnabled"
-		:resources="[]"
+		:disabled="false"
+		:resources="schemaResources"
 		:additional-filters-handler="handleFilter"
 		:shareable="false"
+		:initialize="initialize"
 		:display-name="displayName"
 		:sort-fns="sortFns"
-		:sort-options="['nameAsc', 'nameDesc']"
-		type="list-full"
-		:type-props="{ columns }"
+		type="list-paginated"
+		:type-props="{ itemSize: 50 }"
 		:loading="false"
 		@update:filters="updateFilter"
 		@update:search="onSearchUpdated"
@@ -257,7 +274,7 @@ onMounted(() => {
 						data-test-id="resources-list-add"
 						@click="addEmptyVariableForm"
 					>
-						{{ i18n.baseText(`variables.add`) }}
+						Create Schema
 					</N8nButton>
 				</div>
 				<template #content>
@@ -268,24 +285,7 @@ onMounted(() => {
 				</template>
 			</N8nTooltip>
 		</template>
-		<template #filters="{ setKeyValue }">
-			<div class="mb-s">
-				<N8nInputLabel
-					:label="i18n.baseText('credentials.filters.status')"
-					:bold="false"
-					size="small"
-					color="text-base"
-					class="mb-3xs"
-				/>
 
-				<N8nCheckbox
-					label="Value missing"
-					data-test-id="variable-filter-incomplete"
-					:model-value="filters.incomplete"
-					@update:model-value="setKeyValue('incomplete', $event)"
-				/>
-			</div>
-		</template>
 		<!-- <template v-if="!isFeatureEnabled" #preamble>
 			<N8nActionBox class="mb-m" v-bind="unavailableNoticeProps" />
 		</template>
@@ -304,61 +304,8 @@ onMounted(() => {
 				@click="goToUpgrade"
 			/>
 		</template> -->
-		<template #default="{ data }">
-			<VariablesForm
-				v-if="editableVariables.includes(data.id)"
-				:key="data.id"
-				data-test-id="variables-row"
-				:variable="data"
-				@submit="handleSubmit"
-				@cancel="removeEditableVariable(data.id)"
-			/>
-
-			<tr v-else data-test-id="variables-row">
-				<td>
-					{{ data.key }}
-				</td>
-				<td>
-					<template v-if="data.value">
-						{{ data.value }}
-					</template>
-					<N8nBadge v-else theme="warning"> Value missing </N8nBadge>
-				</td>
-				<td>
-					<VariablesUsageBadge v-if="data.key" :name="data.key" />
-				</td>
-				<td v-if="isFeatureEnabled" align="right">
-					<div class="action-buttons">
-						<N8nTooltip :disabled="permissions.update" placement="top">
-							<N8nButton
-								data-test-id="variable-row-edit-button"
-								type="tertiary"
-								class="mr-xs"
-								:disabled="!permissions.update"
-								@click="addToEditableVariables(data.id)"
-							>
-								{{ i18n.baseText('variables.row.button.edit') }}
-							</N8nButton>
-							<template #content>
-								{{ i18n.baseText('variables.row.button.edit.onlyRoleCanEdit') }}
-							</template>
-						</N8nTooltip>
-						<N8nTooltip :disabled="permissions.delete" placement="top">
-							<N8nButton
-								data-test-id="variable-row-delete-button"
-								type="tertiary"
-								:disabled="!permissions.delete"
-								@click="handleDeleteVariable(data)"
-							>
-								{{ i18n.baseText('variables.row.button.delete') }}
-							</N8nButton>
-							<template #content>
-								{{ i18n.baseText('variables.row.button.delete.onlyRoleCanDelete') }}
-							</template>
-						</N8nTooltip>
-					</div>
-				</td>
-			</tr>
+		<template #item="{ item: data }">
+			<SchemaCard :schema="data" />
 		</template>
 	</ResourcesListLayout>
 </template>
@@ -390,5 +337,23 @@ onMounted(() => {
 	.variables-actions-column {
 		width: 170px;
 	}
+}
+
+.cardLink {
+	transition: box-shadow 0.3s ease;
+	cursor: pointer;
+	padding: 0 0 0 var(--spacing-s);
+	align-items: stretch;
+
+	&:hover {
+		box-shadow: 0 2px 8px rgba(#441c17, 0.1);
+	}
+}
+
+.cardHeading {
+	font-size: var(--font-size-s);
+	word-break: word-break;
+	padding: var(--spacing-s) 0 0 var(--spacing-s);
+	width: 200px;
 }
 </style>

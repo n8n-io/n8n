@@ -583,6 +583,8 @@ function isRemoteParameterOption(option: INodePropertyOptions) {
 }
 
 function credentialSelected(updateInformation: INodeUpdatePropertiesInformation) {
+	console.log('credentialSelected', updateInformation);
+
 	// Update the values on the node
 	workflowsStore.updateNodeProperties(updateInformation);
 
@@ -843,6 +845,7 @@ function onUpdateTextInput(value: string) {
 }
 
 function valueChanged(value: NodeParameterValueType | {} | Date) {
+	console.log('valueChanged', value);
 	if (remoteParameterOptionsLoading.value) {
 		return;
 	}
@@ -894,6 +897,8 @@ function valueChanged(value: NodeParameterValueType | {} | Date) {
 		name: props.path,
 		value,
 	};
+
+	console.log('valueChanged', parameterData);
 
 	emit('update', parameterData);
 
@@ -1231,6 +1236,24 @@ onUpdated(async () => {
 				@blur="onBlur"
 				@drop="onResourceLocatorDrop"
 			/>
+			<SchemasSelect
+				v-else-if="parameter.type === 'schemaSelector'"
+				ref="inputField"
+				:parameter="parameter"
+				:node="node"
+				:active-credential-type="activeCredentialType"
+				:input-size="inputSize"
+				:display-value="displayValue"
+				:is-read-only="isReadOnly"
+				:display-title="displayTitle"
+				@update:model-value="valueChanged"
+				@set-focus="setFocus"
+				@on-blur="onBlur"
+			>
+				<template #issues-and-options>
+					<ParameterIssues :issues="getIssues" />
+				</template>
+			</SchemasSelect>
 			<ExpressionParameterInput
 				v-else-if="isModelValueExpression || forceShowExpression"
 				ref="inputField"

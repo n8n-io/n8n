@@ -11,47 +11,39 @@ import JsonEditor from '@/components/JsonEditor/JsonEditor.vue';
 import { jsonParse, NodeParameterValueType } from 'n8n-workflow';
 import { useDebounce } from '@/composables/useDebounce';
 import Ajv from 'ajv/dist/2020';
+import { useSchemaStore } from '@/stores/schemas.store';
+import { useUIStore } from '@/stores/ui.store';
+import { useToast } from '@/composables/useToast';
 
 const i18n = useI18n();
 const { debounce } = useDebounce();
+const schemaStore = useSchemaStore();
+const uiStore = useUIStore();
+const { showError, showMessage } = useToast();
+let jsonValue;
 
 const formBus = createFormEventBus();
-const readyToSubmit = ref(false);
 
 const ajv = new Ajv();
 
-const formFields: IFormInputs = [
-	{
-		name: 'mfaCodeOrMfaRecoveryCode',
-		initialValue: '',
-		properties: {
-			label: i18n.baseText('mfa.code.recovery.input.label'),
-			placeholder: i18n.baseText('mfa.code.recovery.input.placeholder'),
-			focusInitially: true,
-			capitalize: true,
-			required: true,
-		},
-	},
-];
+function closeModal() {
+	uiStore.closeModal(SCHEMA_CREATE_OR_EDIT_MODAL_KEY);
+}
 
-function onSubmit(values: { mfaCodeOrMfaRecoveryCode: string }) {
-	if (validateUuid(values.mfaCodeOrMfaRecoveryCode)) {
-		promptMfaCodeBus.emit('close', {
-			mfaRecoveryCode: values.mfaCodeOrMfaRecoveryCode,
+async function onClickSave() {
+	try {
+		await schemaStore.createSchema({
+			name: schemaName.value,
+			definition: jsonValue,
 		});
-		return;
+		showMessage({
+			type: 'success',
+			title: 'schema was saved correctly',
+		});
+		closeModal();
+	} catch (e) {
+		showError(e, 'there as an issue saving the schema');
 	}
-	promptMfaCodeBus.emit('close', {
-		mfaCode: values.mfaCodeOrMfaRecoveryCode,
-	});
-}
-
-function onClickSave() {
-	formBus.emit('submit');
-}
-
-function onFormReady(isReady: boolean) {
-	readyToSubmit.value = isReady;
 }
 
 async function valueChanged(value: NodeParameterValueType | {} | Date, type: string) {
@@ -63,6 +55,7 @@ async function valueChanged(value: NodeParameterValueType | {} | Date, type: str
 		} catch (e) {
 			console.log(e.message);
 		}
+		jsonValue = JSON.parse(value);
 	} else if (type === 'input') {
 		modelTestJson.value = value?.toString() || '';
 	}
@@ -127,7 +120,6 @@ const valueChangedDebounced = debounce(valueChanged, { debounceTime: 100 });
 			<div>
 				<n8n-button
 					float="right"
-					:disabled="!readyToSubmit"
 					:label="i18n.baseText('settings.personal.save')"
 					size="large"
 					data-test-id="mfa-save-button"

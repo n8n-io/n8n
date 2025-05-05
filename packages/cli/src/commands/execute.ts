@@ -33,6 +33,7 @@ export class Execute extends BaseCommand {
 		await super.init();
 		await this.initBinaryDataService();
 		await this.initDataDeduplicationService();
+		await this.initInputValidationService();
 		await this.initExternalHooks();
 	}
 

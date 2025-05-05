@@ -24,6 +24,7 @@ import { getInputConnectionData } from './utils/get-input-connection-data';
 import { getRequestHelperFunctions } from './utils/request-helper-functions';
 import { returnJsonArray } from './utils/return-json-array';
 import { getNodeWebhookUrl } from './utils/webhook-helper-functions';
+import { getInputDataValidationHelperFunctions } from './utils/input-validation-helper-functions';
 
 export class WebhookContext extends NodeExecutionContext implements IWebhookFunctions {
 	readonly helpers: IWebhookFunctions['helpers'];
@@ -65,6 +66,7 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 			returnJsonArray,
 			...getRequestHelperFunctions(workflow, node, additionalData),
 			...getBinaryHelperFunctions(additionalData, workflow.id),
+			...getInputDataValidationHelperFunctions(workflow, node),
 		};
 
 		this.nodeHelpers = {

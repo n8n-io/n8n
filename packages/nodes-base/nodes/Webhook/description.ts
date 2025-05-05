@@ -388,6 +388,63 @@ export const optionsProperty: INodeProperties = {
 			default: 'data',
 			description: 'Name of the property to return the data of instead of the whole JSON',
 		},
+		{
+			displayName: 'Input Validation',
+			name: 'inputValidation',
+			type: 'fixedCollection',
+			typeOptions: {
+				multipleValues: false,
+			},
+			default: {},
+			options: [
+				{
+					displayName: 'Values',
+					name: 'values',
+					values: [
+						{
+							displayName: 'Input Type',
+							name: 'inputType',
+							type: 'options',
+							options: [
+								{
+									name: 'Allow Only JSON Data',
+									value: 'onlyJson',
+								},
+								{
+									name: 'Allow Only Binary Data',
+									value: 'onlyBinary',
+								},
+							],
+							default: '',
+							description: 'Name of the header',
+						},
+						{
+							displayName: 'Force Schema',
+							name: 'forceSchema',
+							displayOptions: {
+								show: {
+									inputType: ['onlyJson'],
+								},
+							},
+							type: 'boolean',
+							default: false,
+						},
+						{
+							displayName: 'Schema',
+							name: 'schema',
+							displayOptions: {
+								show: {
+									inputType: ['onlyJson'],
+									forceSchema: [true],
+								},
+							},
+							type: 'schemaSelector',
+							default: '',
+						},
+					],
+				},
+			],
+		},
 	],
 };
 

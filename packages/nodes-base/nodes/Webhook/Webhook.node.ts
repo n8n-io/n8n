@@ -190,10 +190,43 @@ export class Webhook extends Node {
 			rawBody: boolean;
 			responseData?: string;
 			ipWhitelist?: string;
+			inputValidation?: {
+				values: {
+					inputType: string;
+					forceSchema?: boolean;
+					schema: string;
+				};
+			};
 		};
+
+		// {
+		// 	"inputValidation": {
+		// 		"values": {
+		// 			"inputType": "onlyJson",
+		// 			"validateSchema": "asasasa"
+		// 		}
+		// 	}
+		// }
+
 		const req = context.getRequestObject();
 		const resp = context.getResponseObject();
 		const requestMethod = context.getRequestObject().method;
+
+		if (options.inputValidation?.values.inputType === 'onlyJson') {
+			if (options.inputValidation.values.forceSchema && options.inputValidation.values.schema) {
+				try {
+					await context.helpers.isValid(
+						options.inputValidation.values.schema,
+						context.getRequestObject().body,
+					);
+				} catch (e) {
+					resp.status(400).send({ error: e.message });
+					return { noWebhookResponse: true };
+				}
+			}
+		}
+
+		console.log(JSON.stringify(options, null, 2));
 
 		if (!isIpWhitelisted(options.ipWhitelist, req.ips, req.ip)) {
 			resp.writeHead(403);

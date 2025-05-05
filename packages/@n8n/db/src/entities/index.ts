@@ -71,6 +71,7 @@ export {
 	TestRun,
 	TestCaseExecution,
 	ExecutionEntity,
+	Schema,
 };
 
 export const entities = {

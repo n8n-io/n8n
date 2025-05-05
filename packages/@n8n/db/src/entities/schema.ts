@@ -1,12 +1,13 @@
 import { Column, Entity } from '@n8n/typeorm';
+import { IDataObject } from 'n8n-workflow';
 
-import { WithTimestampsAndStringId } from './abstract-entity';
+import { JsonColumn, WithTimestampsAndStringId } from './abstract-entity';
 
-@Entity()
+@Entity('schemas')
 export class Schema extends WithTimestampsAndStringId {
-	@Column()
+	@Column('varchar')
 	name: string;
 
-	@Column({ nullable: true })
-	definition: string | null;
+	@JsonColumn({ nullable: false })
+	definition: IDataObject;
 }

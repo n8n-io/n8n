@@ -224,6 +224,7 @@ export class Start extends BaseCommand {
 		this.logger.debug('External secrets init complete');
 		this.initWorkflowHistory();
 		this.logger.debug('Workflow history init complete');
+		await this.initInputValidationService();
 
 		if (!isMultiMainEnabled) {
 			await this.cleanupTestRunner();
