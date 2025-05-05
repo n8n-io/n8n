@@ -104,11 +104,10 @@ function makeDescription(node: INode, nodeType: INodeType): string {
 		}
 		return description.trim();
 	}
-	if (node.parameters.descriptionType === 'manual') {
-		return manualDescription ?? nodeType.description.description;
-	}
 
-	return nodeType.description.description;
+	// This covers both cases where either descriptionType is `manual` or
+	// we only have the `toolDescription` field
+	return manualDescription ?? nodeType.description.description;
 }
 
 export function nodeNameToToolName(node: INode): string {
