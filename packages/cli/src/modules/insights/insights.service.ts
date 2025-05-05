@@ -6,6 +6,7 @@ import {
 import { LicenseState } from '@n8n/backend-common';
 import { OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
+import { Logger } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
 
 import type { PeriodUnit, TypeUnit } from './database/entities/insights-shared';
@@ -33,8 +34,10 @@ export class InsightsService {
 		private readonly collectionService: InsightsCollectionService,
 		private readonly pruningService: InsightsPruningService,
 		private readonly licenseState: LicenseState,
-		private readonly logger: Logger, // Assuming a logger is injected,
-	) {}
+		private readonly logger: Logger,
+	) {
+		this.logger = this.logger.scoped('insights');
+	}
 
 	startBackgroundProcess() {
 		this.compactionService.startCompactionTimer();
@@ -54,11 +57,6 @@ export class InsightsService {
 	async shutdown() {
 		await this.collectionService.shutdown();
 		this.stopBackgroundProcess();
-	}
-
-	async pruneInsights() {
-		const result = await this.insightsByPeriodRepository.pruneOldData(this.config.maxAgeDays);
-		this.logger.debug('Hard-deleted insights', { count: result.affected });
 	}
 
 	async getInsightsSummary({

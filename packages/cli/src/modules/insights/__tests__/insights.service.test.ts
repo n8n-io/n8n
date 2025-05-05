@@ -6,7 +6,9 @@ import type { IWorkflowDb } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { DateTime } from 'luxon';
+import type { Logger } from 'n8n-core';
 
+import { mockLogger } from '@test/mocking';
 import { createTeamProject } from '@test-integration/db/projects';
 import { createWorkflow } from '@test-integration/db/workflows';
 import * as testDb from '@test-integration/test-db';
@@ -503,6 +505,7 @@ describe('getAvailableDateRanges', () => {
 			mock<InsightsCollectionService>(),
 			mock<InsightsPruningService>(),
 			licenseMock,
+			mockLogger(),
 		);
 	});
 
@@ -604,6 +607,7 @@ describe('getMaxAgeInDaysAndGranularity', () => {
 			mock<InsightsCollectionService>(),
 			mock<InsightsPruningService>(),
 			licenseMock,
+			mockLogger(),
 		);
 	});
 
@@ -690,8 +694,8 @@ describe('shutdown', () => {
 			mockCompactionService,
 			mockCollectionService,
 			mockPruningService,
-			mock<License>(),
-			mock<Logger>(),
+			mock<LicenseState>(),
+			mockLogger(),
 		);
 	});
 
@@ -724,9 +728,13 @@ describe('backgroundProcess', () => {
 		stopPruningTimer: jest.fn(),
 	} as unknown as InsightsPruningService;
 
-	const mockLogger = {
+	const mockedScopedLogger = {
 		debug: jest.fn(),
 	} as unknown as Logger;
+
+	const mockedLogger = mock<Logger>({
+		scoped: jest.fn().mockReturnValue(mockedScopedLogger),
+	});
 
 	beforeAll(() => {
 		insightsService = new InsightsService(
@@ -734,8 +742,8 @@ describe('backgroundProcess', () => {
 			mockCompactionService,
 			mockCollectionService,
 			mockPruningService,
-			mock<License>(),
-			mockLogger,
+			mock<LicenseState>(),
+			mockedLogger,
 		);
 	});
 
@@ -747,7 +755,7 @@ describe('backgroundProcess', () => {
 		expect(mockCompactionService.startCompactionTimer).toHaveBeenCalled();
 		expect(mockCollectionService.startFlushingTimer).toHaveBeenCalled();
 		expect(mockPruningService.startPruningTimer).toHaveBeenCalled();
-		expect(mockLogger.debug).toHaveBeenCalledWith(
+		expect(mockedScopedLogger.debug).toHaveBeenCalledWith(
 			'Started compaction, flushing and pruning schedulers',
 		);
 	});
@@ -760,7 +768,7 @@ describe('backgroundProcess', () => {
 		expect(mockCompactionService.stopCompactionTimer).toHaveBeenCalled();
 		expect(mockCollectionService.stopFlushingTimer).toHaveBeenCalled();
 		expect(mockPruningService.stopPruningTimer).toHaveBeenCalled();
-		expect(mockLogger.debug).toHaveBeenCalledWith(
+		expect(mockedScopedLogger.debug).toHaveBeenCalledWith(
 			'Stopped compaction, flushing and pruning schedulers',
 		);
 	});
