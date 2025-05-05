@@ -110,20 +110,17 @@ const showWizard = computed(() => {
 
 					<div :class="$style.config">
 						<SetupWizard @run-test="runTest" />
-						<div :class="$style.tutorial">
-							<iframe
-								style="min-width: 500px"
-								width="500"
-								height="280"
-								src="https://www.youtube.com/embed/ZCuL2e4zC_4"
-								title="n8n: Flexible AI Workflow Automation for Technical Teams [2025]"
-								frameborder="0"
-								allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-								referrerpolicy="strict-origin-when-cross-origin"
-								allowfullscreen
-							></iframe>
-							<N8nText size="small" color="text-dark" tag="h3" bold></N8nText>
-						</div>
+						<iframe
+							style="min-width: 500px"
+							width="500"
+							height="280"
+							src="https://www.youtube.com/embed/ZCuL2e4zC_4"
+							title="n8n: Flexible AI Workflow Automation for Technical Teams [2025]"
+							frameborder="0"
+							allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+							referrerpolicy="strict-origin-when-cross-origin"
+							allowfullscreen
+						></iframe>
 					</div>
 				</div>
 			</div>
@@ -198,11 +195,5 @@ const showWizard = computed(() => {
 .arrowBack {
 	--button-hover-background-color: transparent;
 	border: 0;
-}
-
-.tutorial {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing-s);
 }
 </style>
