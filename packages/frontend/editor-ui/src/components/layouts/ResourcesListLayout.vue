@@ -365,6 +365,7 @@ const setSorting = async (sort: string, updateUrl = true) => {
 	emit('update:pagination-and-sort', {
 		sort,
 	});
+	sendSortingTelemetry();
 };
 
 const setCurrentPage = async (page: number, updateUrl = true) => {
@@ -376,11 +377,6 @@ const setCurrentPage = async (page: number, updateUrl = true) => {
 		page,
 	});
 };
-
-defineExpose({
-	currentPage,
-	setCurrentPage,
-});
 
 const sendFiltersTelemetry = (source: string) => {
 	// Prevent sending multiple telemetry events when resetting filters
@@ -467,31 +463,6 @@ const findNearestPageSize = (size: number): number => {
 	return props.availablePageSizeOptions.reduce((prev, curr) =>
 		Math.abs(curr - size) < Math.abs(prev - size) ? curr : prev,
 	);
-};
-
-const savePaginationToQueryString = async () => {
-	// For now, only available for paginated lists
-	if (props.type !== 'list-paginated') {
-		return;
-	}
-	const currentQuery = { ...route.query };
-
-	// Update pagination parameters
-	if (currentPage.value !== 1) {
-		currentQuery.page = currentPage.value.toString();
-	} else {
-		delete currentQuery.page;
-	}
-
-	if (rowsPerPage.value !== props.customPageSize) {
-		currentQuery.pageSize = rowsPerPage.value.toString();
-	} else {
-		delete currentQuery.pageSize;
-	}
-
-	await router.replace({
-		query: Object.keys(currentQuery).length ? currentQuery : undefined,
-	});
 };
 
 /**
@@ -596,6 +567,11 @@ const loadPaginationPreferences = async () => {
 	}
 	emit('update:pagination-and-sort', emitPayload);
 };
+
+defineExpose({
+	currentPage,
+	setCurrentPage,
+});
 </script>
 
 <template>
