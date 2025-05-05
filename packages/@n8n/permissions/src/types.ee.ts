@@ -77,5 +77,12 @@ type ApiKeyResourceScope<
 	Operation extends (typeof API_KEY_RESOURCES)[R][number] = (typeof API_KEY_RESOURCES)[R][number],
 > = `${R}:${Operation}`;
 
-export type ApiKeyScope = ApiKeyResourceScope<PublicApiKeyResources>;
+// This is purely an intermediary type.
+// If we tried to do use `ResourceScope<Resource>` directly we'd end
+// up with all resources having all scopes.
+type AllApiKeyScopesObject = {
+	[R in PublicApiKeyResources]: ApiKeyResourceScope<R>;
+};
+
+export type ApiKeyScope = AllApiKeyScopesObject[PublicApiKeyResources];
 // #endregion
