@@ -1,6 +1,7 @@
 import { Container } from '@n8n/di';
 import { DateTime } from 'luxon';
 
+import { Time } from '@/constants';
 import { createTeamProject } from '@test-integration/db/projects';
 import { createWorkflow } from '@test-integration/db/workflows';
 import * as testDb from '@test-integration/test-db';
@@ -24,14 +25,14 @@ describe('InsightsPrunningService', () => {
 	let insightsPruningService: InsightsPruningService;
 	beforeAll(async () => {
 		insightsConfig = Container.get(InsightsConfig);
+		insightsConfig.maxAgeDays = 10;
+		insightsConfig.pruneCheckIntervalHours = 1;
 		insightsPruningService = Container.get(InsightsPruningService);
 		insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
 	});
 
 	test('old insights get pruned successfully', async () => {
 		// ARRANGE
-		insightsConfig.maxAgeDays = 10;
-
 		const project = await createTeamProject();
 		const workflow = await createWorkflow({}, project);
 
@@ -54,8 +55,6 @@ describe('InsightsPrunningService', () => {
 
 	test('insights newer than maxAgeDays do not get pruned', async () => {
 		// ARRANGE
-		insightsConfig.maxAgeDays = 10;
-
 		const project = await createTeamProject();
 		const workflow = await createWorkflow({}, project);
 
@@ -76,23 +75,77 @@ describe('InsightsPrunningService', () => {
 		expect(await insightsByPeriodRepository.count()).toBe(1);
 	});
 
-	test('startPruningTimer runs pruning on schedule', async () => {
+	test('pruning timer is scheduled on start and rescheduled after each run', async () => {
 		jest.useFakeTimers();
+		const setTimeoutSpy = jest.spyOn(global, 'setTimeout');
+
 		try {
-			// ARRANGE
-			insightsConfig.pruneCheckIntervalHours = 1; // Set pruning interval to 1 hour
-			insightsPruningService.startPruningTimer();
 			const pruneSpy = jest.spyOn(insightsPruningService, 'pruneInsights');
 
-			// ACT
-			// Advance time by 1 hour and 1 minute
-			jest.advanceTimersByTime(1000 * 60 * 61);
+			insightsPruningService.startPruningTimer();
+			jest.advanceTimersByTime(Time.hours.toMilliseconds + 1);
 
-			// ASSERT
+			// Wait for pruning timer promise to resolve
+			await jest.runOnlyPendingTimersAsync();
+
 			expect(pruneSpy).toHaveBeenCalledTimes(1);
+			expect(setTimeoutSpy).toHaveBeenCalledTimes(2);
 		} finally {
 			jest.useRealTimers();
 			insightsPruningService.stopPruningTimer();
+			setTimeoutSpy.mockRestore();
 		}
+	});
+
+	test('if stopped during prune, it does not reschedule the timer', async () => {
+		jest.useFakeTimers();
+		const setTimeoutSpy = jest.spyOn(global, 'setTimeout');
+		let resolvePrune!: () => void;
+		const pruneInsightsMock = jest
+			.spyOn(insightsPruningService, 'pruneInsights')
+			.mockImplementation(
+				async () =>
+					await new Promise((resolve) => {
+						resolvePrune = () => resolve();
+					}),
+			);
+
+		try {
+			insightsConfig.pruneCheckIntervalHours = 1;
+
+			insightsPruningService.startPruningTimer();
+			jest.advanceTimersByTime(Time.hours.toMilliseconds + 1); // 1h + 1min
+
+			// Immediately stop while pruning is "in progress"
+			insightsPruningService.stopPruningTimer();
+			resolvePrune(); // Now allow the fake pruning to complete
+
+			// Wait for pruning timer promise to resolve
+			await jest.runOnlyPendingTimersAsync();
+
+			expect(setTimeoutSpy).toHaveBeenCalledTimes(1); // Only from start, not re-scheduled
+		} finally {
+			pruneInsightsMock.mockRestore();
+			setTimeoutSpy.mockRestore();
+			jest.useRealTimers();
+		}
+	});
+
+	test('pruneInsights is retried up to 3 times if it fails', async () => {
+		const failSpy = jest
+			.spyOn(insightsByPeriodRepository, 'pruneOldData')
+			.mockRejectedValueOnce(new Error('Fail 1'))
+			.mockRejectedValueOnce(new Error('Fail 2'))
+			.mockResolvedValueOnce({ affected: 0 });
+
+		// prevent actual wait between retries
+		const delaySpy = jest
+			.spyOn(insightsPruningService as any, 'delay')
+			.mockResolvedValue(undefined);
+
+		await insightsPruningService.pruneInsights();
+
+		expect(failSpy).toHaveBeenCalledTimes(3);
+		expect(delaySpy).toHaveBeenCalledTimes(2);
 	});
 });
