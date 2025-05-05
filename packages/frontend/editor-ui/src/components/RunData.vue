@@ -1333,7 +1333,8 @@ const shouldDisplayHtml = computed(() => {
 		(activeNode.value?.type === HTML_NODE_TYPE &&
 			activeNode.value?.parameters.operation === 'generateHtmlTemplate') ||
 		(activeNode.value?.type === EXTRACT_FROM_FILE_NODE_TYPE &&
-			(activeNode.value.parameters.options as Record<string, unknown>)['outputFormat'] === 'html')
+			activeNode.value?.parameters.operation === 'docx' &&
+			(activeNode.value.parameters.options as Record<string, unknown>).outputFormat === 'html')
 	);
 });
 
