@@ -185,7 +185,7 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 	logNodeOutput(...args: unknown[]): void {
 		if (this.mode === 'manual') {
 			const parsedLogArgs = args.map((arg) =>
-				typeof arg === 'string' ? jsonParse(arg, { fallbackValue: true }) : arg,
+				typeof arg === 'string' ? jsonParse(arg, { fallbackValue: arg }) : arg,
 			);
 			this.sendMessageToUI(...parsedLogArgs);
 			return;
