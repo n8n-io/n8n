@@ -33,7 +33,7 @@ const runSummaries = computed(() => {
 	<div :class="$style.container">
 		<N8nHeading size="large" :bold="true" :class="$style.runsTableHeading" color="text-base">
 			{{ locale.baseText('evaluation.edit.pastRuns.total', { adjustToNumber: runs.length }) }}
-			<N8nText> ({{ runs.length }}) </N8nText>
+			({{ runs.length }})
 		</N8nHeading>
 
 		<TestTableBase
