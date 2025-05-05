@@ -328,10 +328,13 @@ function isLastChild(level: number) {
 	flex-shrink: 0;
 	border: none;
 	background: transparent;
-	margin-inline-end: var(--spacing-5xs);
 	color: var(--color-text-base);
 	align-items: center;
 	justify-content: center;
+
+	&:last-child {
+		margin-inline-end: var(--spacing-5xs);
+	}
 
 	&:hover {
 		background: transparent;

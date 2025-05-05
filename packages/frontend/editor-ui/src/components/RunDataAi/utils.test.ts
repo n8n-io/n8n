@@ -609,6 +609,19 @@ describe(createLogEntries, () => {
 			}),
 		]);
 	});
+
+	it('should not include runs for disabled nodes', () => {
+		const workflow = createTestWorkflowObject({
+			nodes: [createTestNode({ name: 'A' }), createTestNode({ name: 'B', disabled: true })],
+			connections: {
+				A: { main: [[{ node: 'B', type: NodeConnectionTypes.Main, index: 0 }]] },
+			},
+		});
+
+		expect(
+			createLogEntries(workflow, { A: [createTestTaskData()], B: [createTestTaskData()] }),
+		).toEqual([expect.objectContaining({ node: expect.objectContaining({ name: 'A' }) })]);
+	});
 });
 
 describe(deepToRaw, () => {
@@ -631,7 +644,5 @@ describe(deepToRaw, () => {
 		expect(isReactive(raw.foo)).toBe(false);
 		expect(isReactive(raw.foo.bar)).toBe(false);
 		expect(isReactive(raw.bazz)).toBe(false);
-
-		console.log(raw.foo.bar);
 	});
 });

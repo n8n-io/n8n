@@ -270,4 +270,29 @@ export const nodeProperties: INodeProperties[] = [
 			},
 		},
 	},
+	{
+		displayName: 'Batch Processing',
+		name: 'batching',
+		type: 'collection',
+		placeholder: 'Add Batch Processing Option',
+		description: 'Batch processing options for rate limiting',
+		default: {},
+		options: [
+			{
+				displayName: 'Batch Size',
+				name: 'batchSize',
+				default: 100,
+				type: 'number',
+				description:
+					'How many items to process in parallel. This is useful for rate limiting, but will impact the agents log output.',
+			},
+			{
+				displayName: 'Delay Between Batches',
+				name: 'delayBetweenBatches',
+				default: 1000,
+				type: 'number',
+				description: 'Delay in milliseconds between batches. This is useful for rate limiting.',
+			},
+		],
+	},
 ];

@@ -1,9 +1,9 @@
+import type { IExecutionResponse } from '@n8n/db';
 import type express from 'express';
 import { mock } from 'jest-mock-extended';
 import { FORM_NODE_TYPE, WAITING_FORMS_EXECUTION_STATUS, type Workflow } from 'n8n-workflow';
 
 import type { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import type { IExecutionResponse } from '@/types-db';
 import { WaitingForms } from '@/webhooks/waiting-forms';
 
 import type { WaitingWebhookRequest } from '../webhook.types';

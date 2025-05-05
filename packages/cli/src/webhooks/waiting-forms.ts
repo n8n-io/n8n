@@ -1,3 +1,4 @@
+import type { IExecutionResponse } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type express from 'express';
 import type { IRunData } from 'n8n-workflow';
@@ -10,7 +11,6 @@ import {
 
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import type { IExecutionResponse } from '@/types-db';
 import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
 
 import type { IWebhookResponseCallbackData, WaitingWebhookRequest } from './webhook.types';

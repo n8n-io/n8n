@@ -1,3 +1,10 @@
+import { Project, SharedWorkflow } from '@n8n/db';
+import type {
+	CredentialsEntity,
+	User,
+	WorkflowWithSharingsAndCredentials,
+	WorkflowWithSharingsMetaDataAndCredentials,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In, type EntityManager } from '@n8n/typeorm';
@@ -25,10 +32,6 @@ import { TransferWorkflowError } from '@/errors/response-errors/transfer-workflo
 import { FolderService } from '@/services/folder.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
-import type {
-	WorkflowWithSharingsAndCredentials,
-	WorkflowWithSharingsMetaDataAndCredentials,
-} from '@/types-db';
 
 import { WorkflowFinderService } from './workflow-finder.service';
 

@@ -1,11 +1,10 @@
-import type { ProjectRole } from '@n8n/api-types';
+import type { Project } from '@n8n/db';
+import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DateTime } from 'luxon';
 import { ApplicationError, PROJECT_ROOT } from 'n8n-workflow';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import type { Project } from '@/databases/entities/project';
-import type { User } from '@/databases/entities/user';
 import { FolderRepository } from '@/databases/repositories/folder.repository';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
