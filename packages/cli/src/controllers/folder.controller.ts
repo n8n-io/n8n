@@ -24,10 +24,9 @@ import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import type { ListQuery } from '@/requests';
 import { AuthenticatedRequest } from '@/requests';
+import type { ListQuery } from '@/requests';
 import { FolderService } from '@/services/folder.service';
-import type { ListQuery } from '@/types-db';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
 @RestController('/projects/:projectId/folders')

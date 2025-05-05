@@ -1,4 +1,4 @@
-import { Project, SharedWorkflow } from '@n8n/db';
+import { Folder, Project, SharedWorkflow } from '@n8n/db';
 import type {
 	CredentialsEntity,
 	User,
@@ -17,11 +17,6 @@ import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
-import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
-import { Folder } from '@/databases/entities/folder';
-import { Project } from '@/databases/entities/project';
-import { SharedWorkflow } from '@/databases/entities/shared-workflow';
-import type { User } from '@/databases/entities/user';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import { FolderRepository } from '@/databases/repositories/folder.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
