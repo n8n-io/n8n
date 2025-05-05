@@ -57,6 +57,7 @@ describe('combineScopes', () => {
 			'%s',
 			(_, scopes, masks, expected) => {
 				const result = combineScopes(scopes, masks);
+				expect(result.size).toBe(expected.length);
 				expected.forEach((scope) => expect(result.has(scope)).toBe(true));
 			},
 		);
