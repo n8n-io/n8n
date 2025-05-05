@@ -3,6 +3,7 @@
   "version": "1.91.0",
   "description": "Workflow Editor UI for n8n",
   "main": "index.js",
+  "type": "module",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "build": "cross-env VUE_APP_PUBLIC_PATH=\"/{{BASE_PATH}}/\" NODE_OPTIONS=\"--max-old-space-size=8192\" vite build",

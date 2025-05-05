@@ -1,13 +1,7 @@
-const sharedOptions = require('@n8n/eslint-config/shared');
+import { defineConfig } from 'eslint/config';
+import { frontendConfig } from '@n8n/eslint-config/frontend';
 
-/**
- * @type {import('@types/eslint').ESLint.ConfigData}
- */
-module.exports = {
-	extends: ['@n8n/eslint-config/frontend'],
-
-	...sharedOptions(__dirname, 'frontend'),
-
+export default defineConfig(frontendConfig, {
 	rules: {
 		'n8n-local-rules/dangerously-use-html-string-missing': 'error',
 
@@ -20,8 +14,8 @@ module.exports = {
 		'import/no-duplicates': 'warn',
 		'@typescript-eslint/no-restricted-types': 'warn',
 		'@typescript-eslint/dot-notation': 'warn',
-		'@typescript-eslint/lines-between-class-members': 'warn',
-		'@typescript-eslint/member-delimiter-style': 'warn',
+		'@stylistic/ts/lines-between-class-members': 'warn',
+		'@stylistic/ts/member-delimiter-style': 'warn',
 		'@typescript-eslint/naming-convention': 'warn',
 		'@typescript-eslint/no-empty-interface': 'warn',
 		'@typescript-eslint/no-for-in-array': 'warn',
@@ -41,4 +35,4 @@ module.exports = {
 		'@typescript-eslint/no-redundant-type-constituents': 'warn',
 		'@typescript-eslint/no-unsafe-enum-comparison': 'warn',
 	},
-};
+});
