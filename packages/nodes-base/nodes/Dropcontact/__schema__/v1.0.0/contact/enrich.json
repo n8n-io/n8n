@@ -13,20 +13,6 @@
         "country": {
             "type": "string"
         },
-        "email": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "email": {
-                        "type": "string"
-                    },
-                    "qualification": {
-                        "type": "string"
-                    }
-                }
-            }
-        },
         "first_name": {
             "type": "string"
         },
@@ -54,6 +40,12 @@
         "siren": {
             "type": "string"
         },
+        "siret": {
+            "type": "string"
+        },
+        "siret_address": {
+            "type": "string"
+        },
         "vat": {
             "type": "string"
         },
@@ -61,5 +53,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }
