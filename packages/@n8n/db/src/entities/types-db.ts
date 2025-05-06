@@ -289,6 +289,7 @@ export type TestRunErrorCode =
 	| 'EVALUATION_TRIGGER_NOT_FOUND';
 
 export type TestCaseExecutionErrorCode =
+	| 'NO_METRICS_COLLECTED'
 	| 'MOCKED_NODE_NOT_FOUND' // This will be used when node mocking will be implemented
 	| 'FAILED_TO_EXECUTE_WORKFLOW'
 	| 'INVALID_METRICS'

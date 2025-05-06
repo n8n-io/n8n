@@ -21,6 +21,7 @@ const TEST_CASE_EXECUTION_ERROR_CODE = {
 	FAILED_TO_EXECUTE_WORKFLOW: 'FAILED_TO_EXECUTE_WORKFLOW',
 	INVALID_METRICS: 'INVALID_METRICS',
 	UNKNOWN_ERROR: 'UNKNOWN_ERROR',
+	NO_METRICS_COLLECTED: 'NO_METRICS_COLLECTED',
 } as const;
 
 type TestCaseExecutionErrorCodes =
@@ -85,6 +86,7 @@ const testCaseErrorDictionary: Partial<Record<TestCaseExecutionErrorCodes, BaseT
 	FAILED_TO_EXECUTE_WORKFLOW: 'evaluation.runDetail.error.executionFailed',
 	INVALID_METRICS: 'evaluation.runDetail.error.invalidMetrics',
 	UNKNOWN_ERROR: 'evaluation.runDetail.error.unknownError',
+	NO_METRICS_COLLECTED: 'evaluation.runDetail.error.noMetricsCollected',
 } as const;
 
 const testRunErrorDictionary: Partial<Record<TestRunErrorCode, BaseTextKey>> = {
