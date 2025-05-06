@@ -2,12 +2,25 @@ import type { MigrationContext, IrreversibleMigration } from '@/databases/types'
 const testRunTableName = 'test_run';
 const testCaseExecutionTableName = 'test_case_execution';
 export class ClearEvaluation1745322634000 implements IrreversibleMigration {
-	async up({ schemaBuilder: { dropTable, column, createTable } }: MigrationContext) {
+	async up({
+		schemaBuilder: { dropTable, column, createTable, dropForeignKey },
+		queryRunner,
+		tablePrefix,
+		isSqlite,
+		isPostgres,
+		isMysql,
+	}: MigrationContext) {
 		// Drop test_metric, test_definition
 		await dropTable('test_case_execution');
 		await dropTable('test_run');
-		await dropTable('test_definition');
 		await dropTable('test_metric');
+		if (isSqlite) {
+			await queryRunner.query(`DROP TABLE IF EXISTS ${tablePrefix}test_definition;`);
+		} else if (isPostgres) {
+			await queryRunner.query(`DROP TABLE IF EXISTS ${tablePrefix}test_definition CASCADE;`);
+		} else if (isMysql) {
+			await queryRunner.query(`DROP TABLE IF EXISTS ${tablePrefix}test_definition CASCADE;`);
+		}
 
 		await createTable(testRunTableName)
 			.withColumns(
