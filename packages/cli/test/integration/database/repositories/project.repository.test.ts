@@ -1,8 +1,8 @@
 import { AuthIdentity } from '@n8n/db';
+import { ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { EntityNotFoundError } from '@n8n/typeorm';
 
-import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { UserRepository } from '@/databases/repositories/user.repository';
 
 import { createTeamProject } from '../../shared/db/projects';

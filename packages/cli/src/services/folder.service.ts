@@ -1,12 +1,10 @@
 import type { CreateFolderDto, DeleteFolderDto, UpdateFolderDto } from '@n8n/api-types';
-import { Folder } from '@n8n/db';
+import { Folder, FolderTagMappingRepository, FolderRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { EntityManager } from '@n8n/typeorm';
 import { UserError, PROJECT_ROOT } from 'n8n-workflow';
 
-import { FolderTagMappingRepository } from '@/databases/repositories/folder-tag-mapping.repository';
-import { FolderRepository } from '@/databases/repositories/folder.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import type { ListQuery } from '@/requests';

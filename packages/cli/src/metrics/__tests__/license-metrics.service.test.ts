@@ -1,6 +1,6 @@
+import type { LicenseMetricsRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
-import type { LicenseMetricsRepository } from '@/databases/repositories/license-metrics.repository';
 import type { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { LicenseMetricsService } from '@/metrics/license-metrics.service';
 

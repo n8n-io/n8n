@@ -1,6 +1,11 @@
 import type { SourceControlledFile } from '@n8n/api-types';
 import type { Variables, Project, TagEntity, User, WorkflowTagMapping } from '@n8n/db';
-import { SharedCredentials, CredentialsRepository } from '@n8n/db';
+import {
+	SharedCredentials,
+	CredentialsRepository,
+	FolderRepository,
+	ProjectRepository,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
@@ -12,8 +17,6 @@ import path from 'path';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CredentialsService } from '@/credentials/credentials.service';
-import { FolderRepository } from '@/databases/repositories/folder.repository';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { TagRepository } from '@/databases/repositories/tag.repository';

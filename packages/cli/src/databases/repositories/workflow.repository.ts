@@ -6,6 +6,7 @@ import {
 	TagEntity,
 	WorkflowEntity,
 	WorkflowTagMapping,
+	FolderRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, Repository, In, Like } from '@n8n/typeorm';
@@ -21,8 +22,6 @@ import type {
 import { PROJECT_ROOT } from 'n8n-workflow';
 
 import type { ListQuery } from '@/requests';
-
-import { FolderRepository } from './folder.repository';
 
 type ResourceType = 'folder' | 'workflow';
 
