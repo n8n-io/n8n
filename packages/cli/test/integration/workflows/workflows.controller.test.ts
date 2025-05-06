@@ -2386,7 +2386,7 @@ describe('POST /workflows/:workflowId/archive', () => {
 	test('should not archive missing workflow', async () => {
 		const response = await authOwnerAgent.post('/workflows/404/archive').send().expect(403);
 		expect(response.body.message).toBe(
-			"Could not archive the workflow - workflow wasn't found from your projects",
+			'Could not archive the workflow - workflow was not found in your projects',
 		);
 	});
 
@@ -2467,7 +2467,7 @@ describe('POST /workflows/:workflowId/unarchive', () => {
 	test('should not unarchive missing workflow', async () => {
 		const response = await authOwnerAgent.post('/workflows/404/unarchive').send().expect(403);
 		expect(response.body.message).toBe(
-			"Could not unarchive the workflow - workflow wasn't found from your projects",
+			'Could not unarchive the workflow - workflow was not found in your projects',
 		);
 	});
 
@@ -2534,7 +2534,7 @@ describe('DELETE /workflows/:workflowId', () => {
 	test('should not delete missing workflow', async () => {
 		const response = await authOwnerAgent.delete('/workflows/404').send().expect(403);
 		expect(response.body.message).toBe(
-			"Could not delete the workflow - workflow wasn't found from your projects",
+			'Could not delete the workflow - workflow was not found in your projects',
 		);
 	});
 
