@@ -24,6 +24,18 @@ import { mockInstance } from '@test/mocking';
 
 jest.mock('@/workflow-execute-additional-data');
 
+const codeChallenge = 'mocked-code-challenge';
+const codeVerifier = 'mocked-code-verifier';
+
+jest.mock('pkce-challenge', () => ({
+	__esModule: true,
+	default: () =>
+		Promise.resolve({
+			code_verifier: codeVerifier,
+			code_challenge: codeChallenge,
+		}),
+}));
+
 describe('OAuth2CredentialController', () => {
 	mockInstance(Logger);
 	mockInstance(SecretsHelper);
@@ -127,6 +139,80 @@ describe('OAuth2CredentialController', () => {
 				'internal',
 				undefined,
 				false,
+			);
+		});
+
+		it('should return a valid auth URI if pkce is used', async () => {
+			jest.spyOn(Csrf.prototype, 'secretSync').mockReturnValueOnce(csrfSecret);
+			jest.spyOn(Csrf.prototype, 'create').mockReturnValueOnce('token');
+			credentialsHelper.applyDefaultsAndOverwrites.mockResolvedValue({
+				clientId: 'test-client-id',
+				clientSecret: 'oauth-secret',
+				authUrl: 'https://example.domain/o/oauth2/v2/auth',
+				accessTokenUrl: 'https://example.domain/token',
+				grantType: 'pkce',
+			});
+
+			credentialsFinderService.findCredentialForUser.mockResolvedValueOnce(credential);
+			credentialsHelper.getDecrypted.mockResolvedValueOnce({});
+
+			const req = mock<OAuthRequest.OAuth2Credential.Auth>({ user, query: { id: '1' } });
+			const authUri = await controller.getAuthUri(req);
+
+			const url = new URL(authUri);
+			expect(url.searchParams.get('code_challenge')).toBe(codeChallenge);
+			expect(url.searchParams.get('code_challenge_method')).toBe('S256');
+
+			const dataCaptor = captor();
+			expect(credentialsRepository.update).toHaveBeenCalledWith(
+				'1',
+				expect.objectContaining({
+					data: dataCaptor,
+				}),
+			);
+			expect(cipher.decrypt(dataCaptor.value)).toEqual(
+				JSON.stringify({
+					csrfSecret: 'csrf-secret',
+					codeVerifier: 'mocked-code-verifier',
+				}),
+			);
+		});
+
+		it('should return a valid auth URI if pkce is used and format is hex', async () => {
+			jest.spyOn(Csrf.prototype, 'secretSync').mockReturnValueOnce(csrfSecret);
+			jest.spyOn(Csrf.prototype, 'create').mockReturnValueOnce('token');
+			credentialsHelper.applyDefaultsAndOverwrites.mockResolvedValue({
+				clientId: 'test-client-id',
+				clientSecret: 'oauth-secret',
+				authUrl: 'https://example.domain/o/oauth2/v2/auth',
+				accessTokenUrl: 'https://example.domain/token',
+				grantType: 'pkce',
+				pkceChallengeFormat: 'hex',
+			});
+
+			credentialsFinderService.findCredentialForUser.mockResolvedValueOnce(credential);
+			credentialsHelper.getDecrypted.mockResolvedValueOnce({});
+
+			const req = mock<OAuthRequest.OAuth2Credential.Auth>({ user, query: { id: '1' } });
+			const authUri = await controller.getAuthUri(req);
+
+			const url = new URL(authUri);
+			const codeChallengeHex = Buffer.from(codeChallenge, 'base64').toString('hex');
+			expect(url.searchParams.get('code_challenge')).toBe(codeChallengeHex);
+			expect(url.searchParams.get('code_challenge_method')).toBe('S256');
+
+			const dataCaptor = captor();
+			expect(credentialsRepository.update).toHaveBeenCalledWith(
+				'1',
+				expect.objectContaining({
+					data: dataCaptor,
+				}),
+			);
+			expect(cipher.decrypt(dataCaptor.value)).toEqual(
+				JSON.stringify({
+					csrfSecret: 'csrf-secret',
+					codeVerifier: 'mocked-code-verifier',
+				}),
 			);
 		});
 	});
