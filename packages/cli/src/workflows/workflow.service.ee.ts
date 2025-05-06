@@ -2,6 +2,7 @@ import { Folder, Project, SharedWorkflow } from '@n8n/db';
 import type {
 	CredentialsEntity,
 	User,
+	WorkflowEntity,
 	WorkflowWithSharingsAndCredentials,
 	WorkflowWithSharingsMetaDataAndCredentials,
 } from '@n8n/db';
@@ -329,68 +330,17 @@ export class EnterpriseWorkflowService {
 		}
 
 		// 7. transfer the workflow
-		await this.workflowRepository.manager.transaction(async (trx) => {
-			// remove all sharings
-			await trx.remove(workflow.shared);
-
-			// create new owner-sharing
-			await trx.save(
-				trx.create(SharedWorkflow, {
-					workflowId: workflow.id,
-					projectId: destinationProject.id,
-					role: 'workflow:owner',
-				}),
-			);
-		});
+		await this.transferWorkflowOwnership([workflow], destinationProject.id);
 
 		// 8. share credentials into the destination project
-		await this.workflowRepository.manager.transaction(async (trx) => {
-			const allCredentials = await this.credentialsFinderService.findAllCredentialsForUser(
-				user,
-				['credential:share'],
-				trx,
-			);
-			const credentialsAllowedToShare = allCredentials.filter((c) =>
-				shareCredentials.includes(c.id),
-			);
-
-			for (const credential of credentialsAllowedToShare) {
-				await this.enterpriseCredentialsService.shareWithProjects(
-					user,
-					credential.id,
-					[destinationProject.id],
-					trx,
-				);
-			}
-		});
+		await this.shareCredentialsWithProject(user, shareCredentials, destinationProject.id);
 
 		// 9. Move workflow to the right folder if any
 		await this.workflowRepository.update({ id: workflow.id }, { parentFolder });
 
 		// 10. try to activate it again if it was active
 		if (wasActive) {
-			try {
-				await this.activeWorkflowManager.add(workflowId, 'update');
-
-				return;
-			} catch (error) {
-				await this.workflowRepository.updateActiveState(workflowId, false);
-
-				// Since the transfer worked we return a 200 but also return the
-				// activation error as data.
-				if (error instanceof WorkflowActivationError) {
-					return {
-						error: error.toJSON
-							? error.toJSON()
-							: {
-									name: error.name,
-									message: error.message,
-								},
-					};
-				}
-
-				throw error;
-			}
+			return await this.attemptWorkflowReactivation(workflowId);
 		}
 
 		return;
@@ -468,53 +418,113 @@ export class EnterpriseWorkflowService {
 		await Promise.all(deactivateWorkflowsPromises);
 
 		// 6. transfer the workflows
+		await this.transferWorkflowOwnership(workflows, destinationProject.id);
+
+		// 7. share credentials into the destination project
+		await this.shareCredentialsWithProject(user, shareCredentials, destinationProject.id);
+
+		// 8. Move all children folder to the destination project
+		await this.moveFoldersToDestination(
+			sourceFolderId,
+			childrenFolderIds,
+			destinationProjectId,
+			destinationParentFolderId,
+		);
+
+		// 9. try to activate workflows again if they were active
+
+		for (const workflowId of activeWorkflows) {
+			await this.attemptWorkflowReactivation(workflowId);
+		}
+	}
+
+	private formatActivationError(error: WorkflowActivationError) {
+		return {
+			error: error.toJSON
+				? error.toJSON()
+				: {
+						name: error.name,
+						message: error.message,
+					},
+		};
+	}
+
+	private async attemptWorkflowReactivation(workflowId: string) {
+		try {
+			await this.activeWorkflowManager.add(workflowId, 'update');
+			return;
+		} catch (error) {
+			await this.workflowRepository.updateActiveState(workflowId, false);
+
+			if (error instanceof WorkflowActivationError) {
+				return this.formatActivationError(error);
+			}
+
+			throw error;
+		}
+	}
+
+	private async transferWorkflowOwnership(
+		workflows: WorkflowEntity[],
+		destinationProjectId: string,
+	) {
 		await this.workflowRepository.manager.transaction(async (trx) => {
 			for (const workflow of workflows) {
-				// remove all sharings
+				// Remove all sharings
 				await trx.remove(workflow.shared);
 
-				// create new owner-sharing
+				// Create new owner-sharing
 				await trx.save(
 					trx.create(SharedWorkflow, {
 						workflowId: workflow.id,
-						projectId: destinationProject.id,
+						projectId: destinationProjectId,
 						role: 'workflow:owner',
 					}),
 				);
 			}
 		});
+	}
 
-		// 7. share credentials into the destination project
+	private async shareCredentialsWithProject(
+		user: User,
+		credentialIds: string[],
+		projectId: string,
+	) {
 		await this.workflowRepository.manager.transaction(async (trx) => {
 			const allCredentials = await this.credentialsFinderService.findAllCredentialsForUser(
 				user,
 				['credential:share'],
 				trx,
 			);
-			const credentialsAllowedToShare = allCredentials.filter((c) =>
-				shareCredentials.includes(c.id),
-			);
 
-			for (const credential of credentialsAllowedToShare) {
+			const credentialsToShare = allCredentials.filter((c) => credentialIds.includes(c.id));
+
+			for (const credential of credentialsToShare) {
 				await this.enterpriseCredentialsService.shareWithProjects(
 					user,
 					credential.id,
-					[destinationProject.id],
+					[projectId],
 					trx,
 				);
 			}
 		});
+	}
 
+	private async moveFoldersToDestination(
+		sourceFolderId: string,
+		childrenFolderIds: string[],
+		destinationProjectId: string,
+		destinationParentFolderId: string,
+	) {
 		await this.folderRepository.manager.transaction(async (trx) => {
-			// 8. Move all children folder to the destination project
+			// Move all children folders to the destination project
 			await trx.update(
 				Folder,
 				{ id: In(childrenFolderIds) },
 				{ homeProject: { id: destinationProjectId } },
 			);
 
-			// Move the source folder to the destination project and under the destination folder if any
-
+			// Move source folder to destination project and under destination folder if specified
 			await trx.update(
 				Folder,
 				{ id: sourceFolderId },
@@ -525,34 +535,5 @@ export class EnterpriseWorkflowService {
 				},
 			);
 		});
-
-		// 9. try to activate workflows again if they were active
-
-		for (const workflowId of activeWorkflows) {
-			try {
-				await this.activeWorkflowManager.add(workflowId, 'update');
-
-				return;
-			} catch (error) {
-				await this.workflowRepository.updateActiveState(workflowId, false);
-
-				// Since the transfer worked we return a 200 but also return the
-				// activation error as data.
-				if (error instanceof WorkflowActivationError) {
-					return {
-						error: error.toJSON
-							? error.toJSON()
-							: {
-									name: error.name,
-									message: error.message,
-								},
-					};
-				}
-
-				throw error;
-			}
-		}
-
-		return;
 	}
 }
