@@ -13,8 +13,8 @@ vi.mock('@/composables/useOverview', () => ({
 }));
 
 vi.mock('@vueuse/core', () => ({
-	useLocalStorage: vi.fn((key, defaultValue) => {
-		// Only initialize with default value if our mock is empty
+	useLocalStorage: vi.fn((_key, defaultValue) => {
+		// Only initialize with default value if the mock is empty
 		if (Object.keys(mockLocalStorageValue).length === 0) {
 			Object.assign(mockLocalStorageValue, structuredClone(defaultValue));
 		}
