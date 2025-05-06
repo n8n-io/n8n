@@ -334,12 +334,18 @@ export class CommunityPackagesService {
 		});
 	}
 
-	private getNpmInstallArgs() {
+	private getNpmRegistry() {
 		const { registry } = this.globalConfig.nodes.communityPackages;
 		if (registry !== DEFAULT_REGISTRY && !this.license.isCustomNpmRegistryEnabled()) {
 			throw new FeatureNotLicensedError(LICENSE_FEATURES.COMMUNITY_NODES_CUSTOM_REGISTRY);
 		}
-		return [...NPM_COMMON_ARGS, ...NPM_INSTALL_ARGS, `--registry=${registry}`].join(' ');
+		return registry;
+	}
+
+	private getNpmInstallArgs() {
+		return [...NPM_COMMON_ARGS, ...NPM_INSTALL_ARGS, `--registry=${this.getNpmRegistry()}`].join(
+			' ',
+		);
 	}
 
 	private checkInstallPermissions(isUpdate: boolean, checksumProvided: boolean) {
@@ -356,7 +362,6 @@ export class CommunityPackagesService {
 	) {
 		const isUpdate = 'installedPackage' in options;
 		const packageVersion = isUpdate || !options.version ? 'latest' : options.version;
-		const command = `npm install ${packageName}@${packageVersion} ${this.getNpmInstallArgs()}`;
 
 		const shouldValidateChecksum = 'checksum' in options && Boolean(options.checksum);
 		this.checkInstallPermissions(isUpdate, shouldValidateChecksum);
@@ -364,6 +369,8 @@ export class CommunityPackagesService {
 		if (!isUpdate && options.checksum) {
 			await verifyIntegrity(packageName, packageVersion, this.getNpmRegistry(), options.checksum);
 		}
+
+		const command = `npm install ${packageName}@${packageVersion} ${this.getNpmInstallArgs()}`;
 
 		try {
 			await this.executeNpmCommand(command);
