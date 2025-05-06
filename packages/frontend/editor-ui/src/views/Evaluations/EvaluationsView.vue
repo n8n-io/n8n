@@ -109,7 +109,6 @@ const showWizard = computed(() => {
 					</div>
 
 					<div :class="$style.config">
-						<SetupWizard @run-test="runTest" />
 						<iframe
 							style="min-width: 500px"
 							width="500"
@@ -121,6 +120,7 @@ const showWizard = computed(() => {
 							referrerpolicy="strict-origin-when-cross-origin"
 							allowfullscreen
 						></iframe>
+						<SetupWizard @run-test="runTest" />
 					</div>
 				</div>
 			</div>
@@ -139,7 +139,7 @@ const showWizard = computed(() => {
 .config {
 	display: flex;
 	flex-direction: row;
-	gap: var(--spacing-2xl);
+	gap: var(--spacing-l);
 }
 
 .header {
@@ -184,7 +184,7 @@ const showWizard = computed(() => {
 .setupContent {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-xl);
+	gap: var(--spacing-l);
 }
 
 .description {
