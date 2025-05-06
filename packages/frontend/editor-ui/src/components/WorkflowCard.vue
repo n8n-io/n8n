@@ -298,7 +298,9 @@ async function deleteWorkflow() {
 
 	// Reset tab title since workflow is deleted.
 	toast.showMessage({
-		title: locale.baseText('mainSidebar.showMessage.handleSelect1.title'),
+		title: locale.baseText('mainSidebar.showMessage.handleSelect1.title', {
+			interpolate: { workflowName: props.data.name },
+		}),
 		type: 'success',
 	});
 	emit('workflow:deleted');
@@ -333,7 +335,9 @@ async function archiveWorkflow() {
 	}
 
 	toast.showMessage({
-		title: locale.baseText('mainSidebar.showMessage.handleArchive.title'),
+		title: locale.baseText('mainSidebar.showMessage.handleArchive.title', {
+			interpolate: { workflowName: props.data.name },
+		}),
 		type: 'success',
 	});
 	emit('workflow:archived');
@@ -348,7 +352,9 @@ async function unarchiveWorkflow() {
 	}
 
 	toast.showMessage({
-		title: locale.baseText('mainSidebar.showMessage.handleUnarchive.title'),
+		title: locale.baseText('mainSidebar.showMessage.handleUnarchive.title', {
+			interpolate: { workflowName: props.data.name },
+		}),
 		type: 'success',
 	});
 	emit('workflow:unarchived');

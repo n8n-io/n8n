@@ -564,7 +564,9 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 
 			uiStore.stateIsDirty = false;
 			toast.showMessage({
-				title: locale.baseText('mainSidebar.showMessage.handleArchive.title'),
+				title: locale.baseText('mainSidebar.showMessage.handleArchive.title', {
+					interpolate: { workflowName: props.name },
+				}),
 				type: 'success',
 			});
 
@@ -575,7 +577,9 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 		case WORKFLOW_MENU_ACTIONS.UNARCHIVE: {
 			await workflowsStore.unarchiveWorkflow(props.id);
 			toast.showMessage({
-				title: locale.baseText('mainSidebar.showMessage.handleUnarchive.title'),
+				title: locale.baseText('mainSidebar.showMessage.handleUnarchive.title', {
+					interpolate: { workflowName: props.name },
+				}),
 				type: 'success',
 			});
 			break;
@@ -611,7 +615,9 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 			// Reset tab title since workflow is deleted.
 			documentTitle.reset();
 			toast.showMessage({
-				title: locale.baseText('mainSidebar.showMessage.handleSelect1.title'),
+				title: locale.baseText('mainSidebar.showMessage.handleSelect1.title', {
+					interpolate: { workflowName: props.name },
+				}),
 				type: 'success',
 			});
 
