@@ -5,9 +5,17 @@ import { useRoute } from 'vue-router';
 import { VIEWS } from '@/constants';
 import { useI18n } from '@/composables/useI18n';
 
-const props = defineProps<{
+type Props = {
 	showSettings?: boolean;
-}>();
+	showExecutions?: boolean;
+	pageType?: 'overview' | 'shared' | 'project';
+};
+
+const props = withDefaults(defineProps<Props>(), {
+	showSettings: true,
+	showExecutions: true,
+	pageType: 'project',
+});
 
 const locale = useI18n();
 const route = useRoute();
@@ -15,32 +23,54 @@ const route = useRoute();
 const selectedTab = ref<RouteRecordName | null | undefined>('');
 const options = computed(() => {
 	const projectId = route?.params?.projectId;
-	const to = projectId
-		? {
-				workflows: {
-					name: VIEWS.PROJECTS_WORKFLOWS,
-					params: { projectId },
-				},
-				credentials: {
-					name: VIEWS.PROJECTS_CREDENTIALS,
-					params: { projectId },
-				},
-				executions: {
-					name: VIEWS.PROJECTS_EXECUTIONS,
-					params: { projectId },
-				},
-			}
-		: {
-				workflows: {
-					name: VIEWS.WORKFLOWS,
-				},
-				credentials: {
-					name: VIEWS.CREDENTIALS,
-				},
-				executions: {
-					name: VIEWS.EXECUTIONS,
-				},
-			};
+	let to = {
+		workflows: {
+			name: VIEWS.PROJECTS_WORKFLOWS,
+			params: { projectId },
+		},
+		credentials: {
+			name: VIEWS.PROJECTS_CREDENTIALS,
+			params: { projectId },
+		},
+		executions: {
+			name: VIEWS.PROJECTS_EXECUTIONS,
+			params: { projectId },
+		},
+	};
+
+	if (props.pageType === 'overview') {
+		to = {
+			workflows: {
+				name: VIEWS.WORKFLOWS,
+				params: { projectId },
+			},
+			credentials: {
+				name: VIEWS.CREDENTIALS,
+				params: { projectId },
+			},
+			executions: {
+				name: VIEWS.EXECUTIONS,
+				params: { projectId },
+			},
+		};
+	}
+
+	if (props.pageType === 'shared') {
+		to = {
+			workflows: {
+				name: VIEWS.SHARED_WORKFLOWS,
+				params: { projectId: '' },
+			},
+			credentials: {
+				name: VIEWS.SHARED_CREDENTIALS,
+				params: { projectId: '' },
+			},
+			executions: {
+				name: VIEWS.NOT_FOUND,
+				params: { projectId: '' },
+			},
+		};
+	}
 	const tabs = [
 		{
 			label: locale.baseText('mainSidebar.workflows'),
@@ -52,12 +82,15 @@ const options = computed(() => {
 			value: to.credentials.name,
 			to: to.credentials,
 		},
-		{
+	];
+
+	if (props.showExecutions) {
+		tabs.push({
 			label: locale.baseText('mainSidebar.executions'),
 			value: to.executions.name,
 			to: to.executions,
-		},
-	];
+		});
+	}
 
 	if (props.showSettings) {
 		tabs.push({

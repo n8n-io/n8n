@@ -39,7 +39,12 @@ const headerIcon = computed((): ProjectIconType => {
 
 const projectName = computed(() => {
 	if (!projectsStore.currentProject) {
-		return i18n.baseText('projects.menu.overview');
+		if (overview.isOverviewSubPage) {
+			return i18n.baseText('projects.menu.overview');
+		} else if (overview.isSharedSubPage) {
+			return i18n.baseText('projects.header.shared.title');
+		}
+		return null;
 	} else if (projectsStore.currentProject.type === ProjectTypes.Personal) {
 		return i18n.baseText('projects.menu.personal');
 	} else {
@@ -59,6 +64,10 @@ const showSettings = computed(
 );
 
 const homeProject = computed(() => projectsStore.currentProject ?? projectsStore.personalProject);
+
+const isPersonalProject = computed(() => {
+	return homeProject.value?.type === ProjectTypes.Personal;
+});
 
 const showFolders = computed(() => {
 	return (
@@ -105,6 +114,10 @@ const menu = computed(() => {
 	return items;
 });
 
+const showProjectIcon = computed(() => {
+	return !overview.isOverviewSubPage && !overview.isSharedSubPage && !isPersonalProject.value;
+});
+
 const actions: Record<ActionTypes, (projectId: string) => void> = {
 	[ACTION_TYPES.WORKFLOW]: (projectId: string) => {
 		void router.push({
@@ -136,25 +149,36 @@ const onSelect = (action: string) => {
 	}
 	executableAction(homeProject.value.id);
 };
+
+const pageType = computed(() => {
+	if (overview.isOverviewSubPage) {
+		return 'overview';
+	} else if (overview.isSharedSubPage) {
+		return 'shared';
+	} else {
+		return 'project';
+	}
+});
 </script>
 
 <template>
 	<div>
 		<div :class="$style.projectHeader">
 			<div :class="$style.projectDetails">
-				<ProjectIcon
-					v-if="!overview.isOverviewSubPage"
-					:icon="headerIcon"
-					:border-less="true"
-					size="medium"
-				/>
+				<ProjectIcon v-if="showProjectIcon" :icon="headerIcon" :border-less="true" size="medium" />
 				<div :class="$style.headerActions">
-					<N8nHeading bold tag="h2" size="xlarge">{{ projectName }}</N8nHeading>
+					<N8nHeading v-if="projectName" bold tag="h2" size="xlarge">{{ projectName }}</N8nHeading>
 					<N8nText color="text-light">
 						<slot name="subtitle">
-							<span v-if="!projectsStore.currentProject">{{
-								i18n.baseText('projects.header.subtitle')
+							<span v-if="overview.isOverviewSubPage">{{
+								i18n.baseText('projects.header.overview.subtitle')
 							}}</span>
+							<span v-else-if="overview.isSharedSubPage">{{
+								i18n.baseText('projects.header.shared.subtitle')
+							}}</span>
+							<span v-else-if="isPersonalProject">
+								{{ i18n.baseText('projects.header.personal.subtitle') }}
+							</span>
 						</slot>
 					</N8nText>
 				</div>
@@ -181,7 +205,11 @@ const onSelect = (action: string) => {
 		</div>
 		<slot></slot>
 		<div :class="$style.actions">
-			<ProjectTabs :show-settings="showSettings" />
+			<ProjectTabs
+				:page-type="pageType"
+				:show-executions="!overview.isSharedSubPage"
+				:show-settings="showSettings"
+			/>
 		</div>
 	</div>
 </template>

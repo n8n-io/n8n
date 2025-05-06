@@ -14,7 +14,12 @@ export const useOverview = () => {
 			route.name === VIEWS.FOLDERS,
 	);
 
+	const isSharedSubPage = computed(
+		() => route.name === VIEWS.SHARED_WITH_ME || route.name === VIEWS.SHARED_WORKFLOWS,
+	);
+
 	return reactive({
 		isOverviewSubPage,
+		isSharedSubPage,
 	});
 };

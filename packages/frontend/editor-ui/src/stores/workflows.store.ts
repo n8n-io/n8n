@@ -543,6 +543,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		sortBy?: string,
 		filters: { name?: string; tags?: string[]; active?: boolean; parentFolderId?: string } = {},
 		includeFolders: boolean = false,
+		onlySharedWithMe: boolean = false,
 	): Promise<WorkflowListResource[]> {
 		const filter = { ...filters, projectId };
 		const options = {
@@ -556,6 +557,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			Object.keys(filter).length ? filter : undefined,
 			Object.keys(options).length ? options : undefined,
 			includeFolders ? includeFolders : undefined,
+			onlySharedWithMe ? onlySharedWithMe : undefined,
 		);
 		totalWorkflowCount.value = count;
 		// Also set fetched workflows to store

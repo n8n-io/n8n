@@ -48,7 +48,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { useUsageStore } from '@/stores/usage.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { type ProjectSharingData, ProjectTypes } from '@/types/projects.types';
+import { Project, type ProjectSharingData, ProjectTypes } from '@/types/projects.types';
 import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
 import {
 	N8nCard,
@@ -193,6 +193,9 @@ const mainBreadcrumbsActions = computed(() =>
 
 const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
 const isOverviewPage = computed(() => route.name === VIEWS.WORKFLOWS);
+const isSharedPage = computed(() => {
+	return [VIEWS.SHARED_WITH_ME, VIEWS.SHARED_WORKFLOWS].includes(route.name as VIEWS);
+});
 const currentUser = computed(() => usersStore.currentUser ?? ({} as IUser));
 const isShareable = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing],
@@ -207,7 +210,7 @@ const teamProjectsEnabled = computed(() => {
 });
 
 const showFolders = computed(() => {
-	return foldersEnabled.value && !isOverviewPage.value;
+	return foldersEnabled.value && !isOverviewPage.value && !isSharedPage.value;
 });
 
 const currentFolder = computed(() => {
@@ -262,6 +265,10 @@ const currentParentName = computed(() => {
 		return currentFolder.value.name;
 	}
 	return projectName.value;
+});
+
+const personalProject = computed<Project | null>(() => {
+	return projectsStore.personalProject;
 });
 
 const workflowListResources = computed<Resource[]>(() => {
@@ -324,7 +331,7 @@ const showEasyAIWorkflowCallout = computed(() => {
 
 const projectPermissions = computed(() => {
 	return getResourcePermissions(
-		projectsStore.currentProject?.scopes ?? projectsStore.personalProject?.scopes,
+		projectsStore.currentProject?.scopes ?? personalProject.value?.scopes,
 	);
 });
 
@@ -360,12 +367,9 @@ const showRegisteredCommunityCTA = computed(
  * WATCHERS, STORE SUBSCRIPTIONS AND EVENT BUS HANDLERS
  */
 
-watch(
-	() => route.params?.projectId,
-	async () => {
-		await initialize();
-	},
-);
+watch([() => route.params?.projectId, () => route.name], async () => {
+	await initialize();
+});
 
 watch(
 	() => route.params?.folderId,
@@ -498,11 +502,10 @@ const fetchWorkflows = async () => {
 				name: filters.value.search || undefined,
 				active: activeFilter,
 				tags: tags.length ? tags : undefined,
-				parentFolderId:
-					parentFolder ??
-					(isOverviewPage.value ? undefined : filters?.value.search ? undefined : PROJECT_ROOT), // Sending 0 will only show one level of folders
+				parentFolderId: getParentFolderId(parentFolder),
 			},
 			fetchFolders,
+			isSharedPage.value,
 		);
 
 		foldersStore.cacheFolders(
@@ -524,7 +527,8 @@ const fetchWorkflows = async () => {
 		workflowsAndFolders.value = fetchedResources;
 
 		// Toggle ownership cards visibility only after we have fetched the workflows
-		showCardsBadge.value = isOverviewPage.value || filters.value.search !== '';
+		showCardsBadge.value =
+			isOverviewPage.value || isSharedPage.value || filters.value.search !== '';
 
 		return fetchedResources;
 	} catch (error) {
@@ -539,6 +543,24 @@ const fetchWorkflows = async () => {
 			breadcrumbsLoading.value = false;
 		}
 	}
+};
+
+/**
+ * Get parent folder id for filtering requests
+ */
+const getParentFolderId = (routeId?: string) => {
+	// If parentFolder is defined in route, use it
+	if (routeId !== null && routeId !== undefined) {
+		return routeId;
+	}
+
+	// If we're on overview/shared page or searching, don't filter by parent folder
+	if (isOverviewPage.value || isSharedPage.value || filters?.value.search) {
+		return undefined;
+	}
+
+	// Default: 0 will only show one level of folders
+	return PROJECT_ROOT;
 };
 
 // Filter and sort methods
@@ -1359,10 +1381,12 @@ const onNameSubmit = async ({
 		<template v-if="foldersEnabled || showRegisteredCommunityCTA" #add-button>
 			<N8nTooltip
 				placement="top"
-				:disabled="!(isOverviewPage || (!readOnlyEnv && hasPermissionToCreateFolders))"
+				:disabled="
+					!(isOverviewPage || isSharedPage || (!readOnlyEnv && hasPermissionToCreateFolders))
+				"
 			>
 				<template #content>
-					<span v-if="isOverviewPage && !showRegisteredCommunityCTA">
+					<span v-if="(isOverviewPage || isSharedPage) && !showRegisteredCommunityCTA">
 						<span v-if="teamProjectsEnabled">
 							{{ i18n.baseText('folders.add.overview.withProjects.message') }}
 						</span>
@@ -1480,7 +1504,7 @@ const onNameSubmit = async ({
 					:read-only="
 						readOnlyEnv || (!hasPermissionToDeleteFolders && !hasPermissionToCreateFolders)
 					"
-					:personal-project="projectsStore.personalProject"
+					:personal-project="personalProject"
 					:data-resourceid="(data as FolderResource).id"
 					:data-resourcename="(data as FolderResource).name"
 					:class="{
@@ -1627,12 +1651,19 @@ const onNameSubmit = async ({
 			</div>
 		</template>
 		<template #postamble>
+			<!-- Empty states for shared section and folders -->
 			<div
-				v-if="workflowsAndFolders.length === 0 && currentFolder && !hasFilters"
+				v-if="workflowsAndFolders.length === 0 && !hasFilters"
 				:class="$style['empty-folder-container']"
 				data-test-id="empty-folder-container"
 			>
+				<EmptySharedSectionActionBox
+					v-if="isSharedPage && personalProject"
+					:personal-project="personalProject"
+					resource-type="workflows"
+				/>
 				<n8n-action-box
+					v-else-if="currentFolder"
 					data-test-id="empty-folder-action-box"
 					:heading="
 						i18n.baseText('folders.empty.actionbox.title', {
