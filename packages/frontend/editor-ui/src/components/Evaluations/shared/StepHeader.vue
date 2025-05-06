@@ -56,7 +56,7 @@ const handleClick = (event: Event) => {
 .stepHeader {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-m);
+	gap: var(--spacing-xs);
 	cursor: pointer;
 	position: relative;
 }
