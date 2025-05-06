@@ -12,7 +12,6 @@ import { authentication } from '../../Google/Sheet/v2/actions/versionDescription
 import type { ILookupValues } from '../../Google/Sheet/v2/helpers/GoogleSheets.types';
 import { listSearch, loadOptions } from '../methods';
 import {
-	getFilteredResults,
 	getGoogleSheet,
 	getResults,
 	getRowsLeft,
@@ -29,40 +28,18 @@ export class EvaluationTrigger implements INodeType {
 		name: 'evaluationTrigger',
 		group: ['trigger'],
 		version: 4.6,
-		description: 'Runs an evaluation',
+		description: 'Run a test dataset through your workflow to check performance',
 		eventTriggerDescription: '',
 		maxNodes: 1,
 		defaults: {
-			name: 'Evaluation Trigger',
+			name: 'When fetching a dataset row',
 		},
-
 		inputs: [],
 		outputs: [NodeConnectionTypes.Main],
-		credentials: [
-			{
-				name: 'googleApi',
-				required: true,
-				displayOptions: {
-					show: {
-						authentication: ['serviceAccount'],
-					},
-				},
-				testedBy: 'googleApiCredentialTest',
-			},
-			{
-				name: 'googleSheetsOAuth2Api',
-				required: true,
-				displayOptions: {
-					show: {
-						authentication: ['oAuth2'],
-					},
-				},
-			},
-		],
 		properties: [
 			{
 				displayName:
-					'Pulls a test dataset from a Google Sheet. The workflow will run once for each row, in sequence. More info.', // TODO Change
+					'Pulls a test dataset from a Google Sheet. The workflow will run once for each row, in sequence. Tips for wiring this node up [here].',
 				name: 'notice',
 				type: 'notice',
 				default: '',
@@ -88,6 +65,41 @@ export class EvaluationTrigger implements INodeType {
 				displayOptions: { show: { limitRows: [true] } },
 			},
 			readFilter,
+			{
+				displayName: 'Trigger On',
+				name: 'event',
+				type: 'options',
+				description: 'Run a test dataset through your workflow to check performance',
+				options: [
+					{
+						name: 'Triggering an Evaluation',
+						value: 'triggerEvaluation',
+					},
+				],
+				default: 'triggerEvaluation',
+				required: true,
+			},
+		],
+		credentials: [
+			{
+				name: 'googleApi',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['serviceAccount'],
+					},
+				},
+				testedBy: 'googleApiCredentialTest',
+			},
+			{
+				name: 'googleSheetsOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['oAuth2'],
+					},
+				},
+			},
 		],
 	};
 
