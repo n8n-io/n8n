@@ -28,7 +28,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { listenForModalChanges, useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
-import { Project } from '@/types/projects.types';
+import type { Project } from '@/types/projects.types';
 import { isCredentialsResource } from '@/utils/typeGuards';
 import { N8nCheckbox } from '@n8n/design-system';
 import { pickBy } from 'lodash-es';
