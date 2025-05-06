@@ -122,40 +122,6 @@ const getErrorTooltipLinkRoute = (row: TestCaseExecutionRecord) => {
 		default:
 			return undefined;
 	}
-	// if (row.errorCode === TEST_CASE_EXECUTION_ERROR_CODE.MOCKED_NODE_NOT_FOUND) {
-	// 	return {
-	// 		name: VIEWS.EVALUATION_EDIT,
-	// 		params: {
-	// 			testId: testId.value,
-	// 		},
-	// 	};
-	// } else if (row.errorCode === TEST_CASE_EXECUTION_ERROR_CODE.FAILED_TO_EXECUTE_WORKFLOW) {
-	// 	return {
-	// 		name: VIEWS.EXECUTION_PREVIEW,
-	// 		params: {
-	// 			name: test.value?.workflowId,
-	// 			executionId: row.executionId,
-	// 		},
-	// 	};
-	// } else if (row.errorCode === TEST_CASE_EXECUTION_ERROR_CODE.EVALUATION_TRIGGER_NOT_FOUND) {
-	// 	return {
-	// 		name: VIEWS.EXECUTION_PREVIEW,
-	// 		params: {
-	// 			name: test.value?.workflowId,
-	// 			executionId: row.pastExecutionId,
-	// 		},
-	// 	};
-	// } else if (row.errorCode === TEST_CASE_EXECUTION_ERROR_CODE.INVALID_METRICS) {
-	// 	return {
-	// 		name: VIEWS.EXECUTION_PREVIEW,
-	// 		params: {
-	// 			name: test.value?.evaluationWorkflowId,
-	// 			executionId: row.evaluationExecutionId,
-	// 		},
-	// 	};
-	// }
-
-	return undefined;
 };
 
 const columns = computed(
@@ -312,18 +278,25 @@ onMounted(async () => {
 							<template #content>
 								<template v-if="getErrorBaseKey(row.errorCode)">
 									<template v-if="getErrorTooltipLinkRoute(row)">
-										<RouterLink :to="getErrorTooltipLinkRoute(row) ?? ''" target="_blank">
-											{{
-												locale.baseText(`${getErrorBaseKey(row.errorCode)}.solution` as BaseTextKey)
-											}}
-										</RouterLink>
+										{{
+											locale.baseText(`${getErrorBaseKey(row.errorCode)}` as BaseTextKey) ||
+											row.status
+										}}
 									</template>
 									<template v-else> UNKNOWN_ERROR </template>
 								</template>
 								<template v-else> UNKNOWN_ERROR </template>
 							</template>
-							<div style="display: inline-flex; gap: 8px; text-transform: capitalize">
-								<N8nIcon icon="exclamation-triangle" color="danger"></N8nIcon>
+							<div
+								style="
+									display: inline-flex;
+									gap: 8px;
+									text-transform: none;
+									text-overflow: ellipsis;
+									overflow: hidden;
+									white-space: nowrap;
+								"
+							>
 								<N8nText size="small" color="danger">
 									{{
 										locale.baseText(`${getErrorBaseKey(row.errorCode)}` as BaseTextKey) ||
