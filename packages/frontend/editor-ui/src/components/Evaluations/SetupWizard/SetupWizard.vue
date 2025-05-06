@@ -69,7 +69,7 @@ const toggleStep = (index: number) => {
 	activeStepIndex.value = index;
 };
 
-function navigateToWorkflow() {
+function navigateToWorkflow(action?: 'addEvaluationTrigger' | 'addEvaluationNode') {
 	const routeWorkflowId =
 		workflowsStore.workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID
 			? 'new'
@@ -78,6 +78,7 @@ function navigateToWorkflow() {
 	void router.push({
 		name: VIEWS.WORKFLOW,
 		params: { name: routeWorkflowId },
+		query: action ? { action } : undefined,
 	});
 }
 </script>
@@ -109,7 +110,11 @@ function navigateToWorkflow() {
 					</ul>
 
 					<div :class="$style.actionButton">
-						<N8nButton size="small" type="secondary" @click="navigateToWorkflow()">
+						<N8nButton
+							size="small"
+							type="secondary"
+							@click="navigateToWorkflow('addEvaluationTrigger')"
+						>
 							{{ locale.baseText('evaluations.setupWizard.step1.button') }}
 						</N8nButton>
 					</div>
@@ -139,7 +144,11 @@ function navigateToWorkflow() {
 						</li>
 					</ul>
 					<div :class="$style.actionButton">
-						<N8nButton size="small" type="secondary" @click="navigateToWorkflow()">
+						<N8nButton
+							size="small"
+							type="secondary"
+							@click="navigateToWorkflow('addEvaluationNode')"
+						>
 							{{ locale.baseText('evaluations.setupWizard.step2.button') }}
 						</N8nButton>
 					</div>
@@ -200,8 +209,8 @@ function navigateToWorkflow() {
 					>
 						<N8nButton
 							size="medium"
-							@click="$emit('runTest')"
 							:disabled="!datasetTriggerExist || !evaluationMetricNodeExist"
+							@click="$emit('runTest')"
 						>
 							{{ locale.baseText('evaluations.setupWizard.step4.button') }}
 						</N8nButton>

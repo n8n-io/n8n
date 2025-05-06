@@ -280,6 +280,8 @@ export const NODE_CREATOR_OPEN_SOURCES: Record<
 	NODE_CONNECTION_DROP: 'node_connection_drop',
 	NOTICE_ERROR_MESSAGE: 'notice_error_message',
 	CONTEXT_MENU: 'context_menu',
+	ADD_EVALUATION_NODE_BUTTON: 'add_evaluation_node_button',
+	ADD_EVALUATION_TRIGGER_BUTTON: 'add_evaluation_trigger_button',
 	'': '',
 };
 export const CORE_NODES_CATEGORY = 'Core Nodes';
@@ -311,6 +313,7 @@ export const AI_CATEGORY_TEXT_SPLITTERS = 'Text Splitters';
 export const AI_CATEGORY_OTHER_TOOLS = 'Other Tools';
 export const AI_CATEGORY_ROOT_NODES = 'Root Nodes';
 export const AI_CATEGORY_MCP_NODES = 'Model Context Protocol';
+export const AI_EVALUATION = 'Evaluation';
 export const AI_UNCATEGORIZED_CATEGORY = 'Miscellaneous';
 export const AI_CODE_TOOL_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.toolCode';
 export const AI_WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.toolWorkflow';
