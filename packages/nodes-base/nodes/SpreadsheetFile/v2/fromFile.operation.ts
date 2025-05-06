@@ -124,18 +124,17 @@ export async function execute(
 				let workbook: WorkBook;
 				const xlsxOptions: ParsingOptions = { raw: options.rawData as boolean };
 				if (options.readAsString) xlsxOptions.type = 'string';
-
+				let binaryDataBuffer: Buffer;
 				if (binaryData.id) {
-					const binaryPath = this.helpers.getBinaryPath(binaryData.id);
-					workbook = xlsxReadFile(binaryPath, xlsxOptions);
+					// 兼容 S3，本地和 buffer 都走 getBinaryDataBuffer
+					binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 				} else {
-					const binaryDataBuffer = Buffer.from(binaryData.data, BINARY_ENCODING);
-					workbook = xlsxRead(
-						options.readAsString ? binaryDataBuffer.toString() : binaryDataBuffer,
-						xlsxOptions,
-					);
+					binaryDataBuffer = Buffer.from(binaryData.data, BINARY_ENCODING);
 				}
-
+				workbook = xlsxRead(
+					options.readAsString ? binaryDataBuffer.toString() : binaryDataBuffer,
+					xlsxOptions,
+				);
 				if (workbook.SheetNames.length === 0) {
 					throw new NodeOperationError(this.getNode(), 'Spreadsheet does not have any sheets!', {
 						itemIndex: i,
