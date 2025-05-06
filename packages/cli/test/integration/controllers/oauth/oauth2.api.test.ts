@@ -38,7 +38,7 @@ describe('OAuth2 API', () => {
 	});
 
 	beforeEach(async () => {
-		await testDb.truncate(['SharedCredentials', 'Credentials']);
+		await testDb.truncate(['SharedCredentials', 'CredentialsEntity']);
 		credential = await saveCredential(
 			{
 				name: 'Test',
