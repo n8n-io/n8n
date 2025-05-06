@@ -1,0 +1,167 @@
+{
+  "name": "Context option test",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        400,
+        80
+      ],
+      "id": "7b0a2cd7-4aae-439d-9f67-0b85e38c7353",
+      "name": "When clicking ‘Test workflow’"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.userInput }}",
+        "options": {
+          "systemMessage": "={{ $json.system_prompt }}",
+          "context": "={{ $json.context }}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.8,
+      "position": [
+        780,
+        80
+      ],
+      "id": "5381193a-503e-4817-8bbf-d6f0d1f2254d",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        720,
+        280
+      ],
+      "id": "076027ac-177e-4ddf-b659-d508f879c0ff",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "OLx0DRKFMTM9wjtR",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        880,
+        280
+      ],
+      "id": "fa95d4dc-f4a9-41df-9300-07a103ac54c8",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "20673744-19a7-4ade-9a78-e3032f55d3b7",
+              "name": "context",
+              "value": "Ducks fly south, flapping their wings beautifully and cackling loudly.",
+              "type": "string"
+            },
+            {
+              "id": "bdac35b0-737f-4e05-8359-9b1a926b9380",
+              "name": "system_prompt",
+              "value": "Extract knowledge from context and answer user questions.",
+              "type": "string"
+            },
+            {
+              "id": "a4e8fa46-ad01-43a3-9891-b033c3c1b437",
+              "name": "userInput",
+              "value": "What are the ducks doing?",
+              "type": "string"
+            },
+            {
+              "id": "7365d895-7f0b-47e2-aa41-fa57d731930d",
+              "name": "sessionId",
+              "value": "={{ Math.floor(Math.random() * 100_000_000); }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        600,
+        80
+      ],
+      "id": "e24539e7-00a3-4a14-bcab-811ca14403c0",
+      "name": "Set context and prompt"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Test workflow’": {
+      "main": [
+        [
+          {
+            "node": "Set context and prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set context and prompt": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "9a655a48-38f0-4235-bc77-645c08169bca",
+  "meta": {
+    "instanceId": "2fc43cd6f4acc2664335c9c27d2718a985653b4b4f3c7b028198251580225323"
+  },
+  "id": "sYo7K9LTE6Eek0sj",
+  "tags": []
+}
