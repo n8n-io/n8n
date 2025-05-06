@@ -1,4 +1,4 @@
-import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
+import type { BaseMemory } from '@langchain/core/memory';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { HumanMessage } from '@langchain/core/messages';
 import type { BaseMessage } from '@langchain/core/messages';
@@ -201,7 +201,7 @@ export function handleAgentFinishOutput(
  */
 export function handleParsedStepOutput(
 	output: Record<string, unknown>,
-	memory?: BaseChatMemory,
+	memory?: BaseMemory,
 ): { returnValues: Record<string, unknown>; log: string } {
 	return {
 		returnValues: memory ? { output: JSON.stringify(output) } : output,
@@ -219,7 +219,7 @@ export function handleParsedStepOutput(
  * @returns The parsed steps with the final output
  */
 export const getAgentStepsParser =
-	(outputParser?: N8nOutputParser, memory?: BaseChatMemory) =>
+	(outputParser?: N8nOutputParser, memory?: BaseMemory) =>
 	async (steps: AgentFinish | AgentAction[]): Promise<AgentFinish | AgentAction[]> => {
 		// Check if the steps contain the 'format_final_json_response' tool invocation.
 		if (Array.isArray(steps)) {
@@ -291,11 +291,9 @@ export async function getChatModel(ctx: IExecuteFunctions): Promise<BaseChatMode
  * @param ctx - The execution context
  * @returns The connected memory (if any)
  */
-export async function getOptionalMemory(
-	ctx: IExecuteFunctions,
-): Promise<BaseChatMemory | undefined> {
+export async function getOptionalMemory(ctx: IExecuteFunctions): Promise<BaseMemory | undefined> {
 	return (await ctx.getInputConnectionData(NodeConnectionTypes.AiMemory, 0)) as
-		| BaseChatMemory
+		| BaseMemory
 		| undefined;
 }
 
@@ -344,7 +342,7 @@ export async function prepareMessages(
 		systemMessage?: string;
 		passthroughBinaryImages?: boolean;
 		outputParser?: N8nOutputParser;
-		context?: string; // Added context option
+		context?: string; // Ensure context is part of the options type
 	},
 ): Promise<BaseMessagePromptTemplateLike[]> {
 	const useSystemMessage = options.systemMessage ?? ctx.getNode().typeVersion < 1.9;
@@ -361,11 +359,13 @@ export async function prepareMessages(
 	}
 
 	messages.push(['placeholder', '{chat_history}']);
-	// Modify human message to include context if provided
-	const userContent = options.context
-		? `<context>${options.context}</context>user_prompt:{input}`
-		: '{input}';
-	messages.push(['human', userContent]);
+
+	// Prepare the main input, potentially prepending context
+	let mainInput = '{input}';
+	if (options.context && options.context.trim() !== '') {
+		mainInput = `<context>${options.context.trim()}</context>user_prompt:{input}`;
+	}
+	messages.push(['human', mainInput]);
 
 	// If there is binary data and the node option permits it, add a binary message
 	const hasBinaryData = ctx.getInputData()?.[itemIndex]?.binary !== undefined;
@@ -419,7 +419,6 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 			const model = await getChatModel(this);
 			const memory = await getOptionalMemory(this);
 
-			// Get the raw input
 			const rawInput = getPromptInputByType({
 				ctx: this,
 				i: itemIndex,
@@ -435,7 +434,7 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 				maxIterations?: number;
 				returnIntermediateSteps?: boolean;
 				passthroughBinaryImages?: boolean;
-				context?: string; // Added context option
+				context?: string; // Add context to the options type assertion
 			};
 
 			// Clean the input *before* passing it to the executor
@@ -487,8 +486,8 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 				{ signal: this.getExecutionCancelSignal() },
 			);
 
-			// If memory and outputParser are connected, parse the output.
-			if (memory && outputParser) {
+			// If memory и outputParser подключены, парсим output.
+			if (memory && outputParser && response && response.output) {
 				try {
 					const parsedOutput = jsonParse<{ output: Record<string, unknown> }>(
 						response.output as string,
