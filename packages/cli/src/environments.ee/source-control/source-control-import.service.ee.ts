@@ -308,6 +308,11 @@ export class SourceControlImportService {
 				continue;
 			}
 			const existingWorkflow = existingWorkflows.find((e) => e.id === importedWorkflow.id);
+
+			// Workflow's active status is not saved in the remote workflow files, and the field is missing despite
+			// IWorkflowToImport having it typed as boolean. Imported workflows are always inactive if they are new,
+			// and existing workflows use the existing workflow's active status unless they have been archived on the remote.
+			// In that case, we deactivate the existing workflow on pull and turn it archived.
 			importedWorkflow.active = existingWorkflow
 				? existingWorkflow.active && !importedWorkflow.isArchived
 				: false;
