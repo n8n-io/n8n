@@ -107,15 +107,6 @@ export class Evaluation implements INodeType {
 				default: 'setOutput',
 			},
 			this.outputs,
-			{
-				displayName: 'Disable for Normal Executions',
-				name: 'disableNormalExecutions',
-				type: 'boolean',
-				default: false,
-				noDataExpression: true,
-				description:
-					'Whether to execute this node in normal executions. If disabled, the node will only run when triggered by an evaluation trigger.',
-			},
 		],
 	};
 
