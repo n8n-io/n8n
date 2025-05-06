@@ -36,6 +36,7 @@ import { copyInputItems } from './utils/copy-input-items';
 import { getDeduplicationHelperFunctions } from './utils/deduplication-helper-functions';
 import { getFileSystemHelperFunctions } from './utils/file-system-helper-functions';
 import { getInputConnectionData } from './utils/get-input-connection-data';
+import { getInputDataValidationHelperFunctions } from './utils/input-validation-helper-functions';
 import { normalizeItems } from './utils/normalize-items';
 import { getRequestHelperFunctions } from './utils/request-helper-functions';
 import { returnJsonArray } from './utils/return-json-array';
@@ -93,7 +94,7 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 			...getSSHTunnelFunctions(),
 			...getFileSystemHelperFunctions(node),
 			...getDeduplicationHelperFunctions(workflow, node),
-
+			...getInputDataValidationHelperFunctions(workflow, node),
 			assertBinaryData: (itemIndex, propertyName) =>
 				assertBinaryData(inputData, node, itemIndex, propertyName, 0),
 			getBinaryDataBuffer: async (itemIndex, propertyName) =>

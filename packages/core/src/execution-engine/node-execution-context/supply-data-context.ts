@@ -36,6 +36,7 @@ import { normalizeItems } from './utils/normalize-items';
 import { getRequestHelperFunctions } from './utils/request-helper-functions';
 import { returnJsonArray } from './utils/return-json-array';
 import { getSSHTunnelFunctions } from './utils/ssh-tunnel-helper-functions';
+import { getInputDataValidationHelperFunctions } from './utils/input-validation-helper-functions';
 
 export class SupplyDataContext extends BaseExecuteContext implements ISupplyDataFunctions {
 	readonly helpers: ISupplyDataFunctions['helpers'];
@@ -83,12 +84,12 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 			...getFileSystemHelperFunctions(node),
 			...getBinaryHelperFunctions(additionalData, workflow.id),
 			...getDeduplicationHelperFunctions(workflow, node),
+			...getInputDataValidationHelperFunctions(workflow, node),
 			assertBinaryData: (itemIndex, propertyName) =>
 				assertBinaryData(inputData, node, itemIndex, propertyName, 0),
 			getBinaryDataBuffer: async (itemIndex, propertyName) =>
 				await getBinaryDataBuffer(inputData, itemIndex, propertyName, 0),
 			detectBinaryEncoding: (buffer: Buffer) => detectBinaryEncoding(buffer),
-
 			returnJsonArray,
 			normalizeItems,
 			constructExecutionMetaData,

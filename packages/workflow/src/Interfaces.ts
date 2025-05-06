@@ -945,6 +945,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 			BinaryHelperFunctions &
 			DeduplicationHelperFunctions &
 			FileSystemHelperFunctions &
+			InputValidationHelperFunction &
 			SSHTunnelFunctions & {
 				normalizeItems(items: INodeExecutionData | INodeExecutionData[]): INodeExecutionData[];
 				constructExecutionMetaData(
