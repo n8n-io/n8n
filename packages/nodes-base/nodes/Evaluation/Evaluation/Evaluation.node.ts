@@ -5,7 +5,7 @@ import type {
 	INodeProperties,
 	IDataObject,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { document, sheet } from '../../Google/Sheet/GoogleSheetsTrigger.node';
 import { authentication } from '../../Google/Sheet/v2/actions/versionDescription';
@@ -144,10 +144,6 @@ export class Evaluation implements INodeType {
 
 		const googleSheetInstance = getGoogleSheet.call(this);
 		const googleSheet = await getSheet.call(this, googleSheetInstance);
-
-		if (!evalTrigger) {
-			throw new NodeOperationError(evaluationNode, 'No evaluation trigger node found.');
-		}
 
 		const evaluationTrigger = this.evaluateExpression(
 			`{{ $('${evalTrigger.name}').first().json }}`,
