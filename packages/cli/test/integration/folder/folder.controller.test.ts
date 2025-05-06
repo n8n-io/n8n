@@ -24,6 +24,7 @@ import { createOwner, createMember, createUser, createAdmin } from '../shared/db
 import * as testDb from '../shared/test-db';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
 
 let owner: User;
 let member: User;
