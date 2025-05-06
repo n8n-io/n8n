@@ -4,7 +4,7 @@ import { mock } from 'jest-mock-extended';
 
 import { mockEntityManager } from '@test/mocking';
 
-import { CredentialsRepository } from '../credentials.repository';
+import { CredentialsRepository } from '@n8n/db';
 
 const entityManager = mockEntityManager(CredentialsEntity);
 const repository = Container.get(CredentialsRepository);
