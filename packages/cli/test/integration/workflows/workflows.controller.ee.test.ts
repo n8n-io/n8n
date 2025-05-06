@@ -1,6 +1,7 @@
 import type { Project } from '@n8n/db';
 import type { User } from '@n8n/db';
 import type { WorkflowWithSharingsMetaDataAndCredentials } from '@n8n/db';
+import { ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { ProjectRole } from '@n8n/permissions';
 import { ApplicationError, WorkflowActivationError, type INode } from 'n8n-workflow';
@@ -8,7 +9,6 @@ import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import config from '@/config';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { WorkflowHistoryRepository } from '@/databases/repositories/workflow-history.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
