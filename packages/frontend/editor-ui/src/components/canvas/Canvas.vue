@@ -4,11 +4,8 @@ import type { CanvasLayoutEvent, CanvasLayoutSource } from '@/composables/useCan
 import { useCanvasLayout } from '@/composables/useCanvasLayout';
 import { useCanvasNodeHover } from '@/composables/useCanvasNodeHover';
 import { useCanvasTraversal } from '@/composables/useCanvasTraversal';
-import {
-	type ContextMenuAction,
-	ContextMenuTarget,
-	useContextMenu,
-} from '@/composables/useContextMenu';
+import type { ContextMenuAction, ContextMenuTarget } from '@/composables/useContextMenu';
+import { useContextMenu } from '@/composables/useContextMenu';
 import { useKeybindings } from '@/composables/useKeybindings';
 import type { PinDataSource } from '@/composables/usePinnedData';
 import { CanvasKey } from '@/constants';
@@ -607,7 +604,7 @@ const nodeDataById = computed(() => {
 
 const contextMenu = useContextMenu();
 
-function onOpenContextMenu(event: MouseEvent, target?: ContextMenuTarget) {
+function onOpenContextMenu(event: MouseEvent, target?: Partial<ContextMenuTarget>) {
 	contextMenu.open(event, {
 		source: 'canvas',
 		nodeIds: selectedNodeIds.value,
@@ -624,7 +621,7 @@ function onOpenNodeContextMenu(
 	event: MouseEvent,
 	source: 'node-button' | 'node-right-click',
 ) {
-	if (selectedNodeIds.value.length >= 1 && selectedNodeIds.value.includes(id)) {
+	if (selectedNodeIds.value.length > 1 && selectedNodeIds.value.includes(id)) {
 		onOpenContextMenu(event, { nodeId: id });
 	} else {
 		onSelectNodes({ ids: [id] });
