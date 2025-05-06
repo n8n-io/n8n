@@ -179,10 +179,14 @@ const onSelect = (action: string) => {
 			<div :class="$style.projectDetails">
 				<ProjectIcon v-if="showProjectIcon" :icon="headerIcon" :border-less="true" size="medium" />
 				<div :class="$style.headerActions">
-					<N8nHeading v-if="projectName" bold tag="h2" size="xlarge">{{ projectName }}</N8nHeading>
+					<N8nHeading v-if="projectName" bold tag="h2" size="xlarge" data-test-id="project-name">{{
+						projectName
+					}}</N8nHeading>
 					<N8nText color="text-light">
-						<slot v-if="subtitle" name="subtitle">
-							<N8nText v-if="subtitle" color="text-light">{{ subtitle }}</N8nText>
+						<slot name="subtitle">
+							<N8nText v-if="subtitle" color="text-light" data-test-id="project-subtitle">{{
+								subtitle
+							}}</N8nText>
 						</slot>
 					</N8nText>
 				</div>

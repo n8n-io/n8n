@@ -158,6 +158,7 @@ describe('WorkflowsView', () => {
 					tags: [TEST_TAG.name],
 				}),
 				expect.any(Boolean),
+				expect.any(Boolean),
 			);
 		});
 
@@ -177,6 +178,7 @@ describe('WorkflowsView', () => {
 				expect.objectContaining({
 					name: 'one',
 				}),
+				expect.any(Boolean),
 				expect.any(Boolean),
 			);
 		});
@@ -198,6 +200,7 @@ describe('WorkflowsView', () => {
 					active: true,
 				}),
 				expect.any(Boolean),
+				expect.any(Boolean),
 			);
 		});
 
@@ -217,6 +220,7 @@ describe('WorkflowsView', () => {
 				expect.objectContaining({
 					active: false,
 				}),
+				expect.any(Boolean),
 				expect.any(Boolean),
 			);
 		});

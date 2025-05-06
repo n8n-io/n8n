@@ -13,7 +13,7 @@ type Props = {
 };
 
 const props = withDefaults(defineProps<Props>(), {
-	showSettings: true,
+	showSettings: false,
 	showExecutions: true,
 	pageType: 'project',
 });
