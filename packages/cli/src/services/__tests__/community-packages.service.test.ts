@@ -1,6 +1,8 @@
 import type { GlobalConfig } from '@n8n/config';
 import { InstalledNodes } from '@n8n/db';
 import { InstalledPackages } from '@n8n/db';
+import { InstalledNodesRepository } from '@n8n/db';
+import { InstalledPackagesRepository } from '@n8n/db';
 import axios from 'axios';
 import { exec } from 'child_process';
 import { mkdir as fsMkdir } from 'fs/promises';
@@ -15,8 +17,6 @@ import {
 	NPM_PACKAGE_STATUS_GOOD,
 	RESPONSE_ERROR_MESSAGES,
 } from '@/constants';
-import { InstalledNodesRepository } from '@/databases/repositories/installed-nodes.repository';
-import { InstalledPackagesRepository } from '@/databases/repositories/installed-packages.repository';
 import type { CommunityPackages } from '@/interfaces';
 import type { License } from '@/license';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';

@@ -3,11 +3,11 @@ import type { Variables } from '@n8n/db';
 import type { FolderWithWorkflowAndSubFolderCount } from '@n8n/db';
 import type { TagEntity } from '@n8n/db';
 import type { User } from '@n8n/db';
+import type { FolderRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
 
-import type { FolderRepository } from '@/databases/repositories/folder.repository';
 import type { TagRepository } from '@/databases/repositories/tag.repository';
 import { SourceControlPreferencesService } from '@/environments.ee/source-control/source-control-preferences.service.ee';
 import { SourceControlService } from '@/environments.ee/source-control/source-control.service.ee';
