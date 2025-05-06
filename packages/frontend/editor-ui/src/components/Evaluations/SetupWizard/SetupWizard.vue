@@ -31,7 +31,7 @@ const activeStepIndex = ref(0);
 
 // Calculate the initial active step based on the workflow state
 const initializeActiveStep = () => {
-	if (evaluationMetricNodeExist.value) {
+	if (datasetTriggerExist.value && evaluationMetricNodeExist.value) {
 		activeStepIndex.value = 3;
 	} else if (datasetTriggerExist.value) {
 		activeStepIndex.value = 2;
@@ -56,7 +56,7 @@ watch(
 
 // Watch for changes to evaluation metric node
 watch(
-	() => evaluationMetricNodeExist.value,
+	() => datasetTriggerExist.value && evaluationMetricNodeExist.value,
 	(newValue) => {
 		if (newValue && activeStepIndex.value < 3) {
 			activeStepIndex.value = 3;
