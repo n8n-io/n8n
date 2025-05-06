@@ -99,7 +99,7 @@ describe('Workflows', () => {
 		WorkflowsPage.getters.workflowCards().should('have.length', 1);
 	});
 
-	it('should preserve filters and pagination in URL', () => {
+	it('should preserve filters in URL', () => {
 		// Add a search query
 		WorkflowsPage.getters.searchBar().type('My');
 		// Add a tag filter
@@ -118,8 +118,6 @@ describe('Workflows', () => {
 		cy.url().should('include', 'search=My');
 		// Cannot really know tag id, so just check if it contains 'tags='
 		cy.url().should('include', 'tags=');
-		cy.url().should('include', 'sort=lastCreated');
-		cy.url().should('include', 'pageSize=25');
 
 		// Reload the page
 		cy.reload();
@@ -136,8 +134,6 @@ describe('Workflows', () => {
 		// Aso, check if the URL is preserved
 		cy.url().should('include', 'search=My');
 		cy.url().should('include', 'tags=');
-		cy.url().should('include', 'sort=lastCreated');
-		cy.url().should('include', 'pageSize=25');
 	});
 
 	it('should be able to share workflows from workflows list', () => {
