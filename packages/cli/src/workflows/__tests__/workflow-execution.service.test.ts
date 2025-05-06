@@ -234,6 +234,7 @@ describe('WorkflowExecutionService', () => {
 					id: 'abc',
 					name: 'test',
 					active: false,
+					isArchived: false,
 					pinData: {
 						[pinnedTrigger.name]: [{ json: {} }],
 					},
@@ -301,6 +302,7 @@ describe('WorkflowExecutionService', () => {
 					id: 'abc',
 					name: 'test',
 					active: false,
+					isArchived: false,
 					pinData: {
 						[pinnedTrigger.name]: [{ json: {} }],
 					},

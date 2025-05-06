@@ -177,6 +177,7 @@ export function createTestWorkflow({
 	nodes = [],
 	connections = {},
 	active = false,
+	isArchived = false,
 	settings = {
 		timezone: 'DEFAULT',
 		executionOrder: 'v1',
@@ -192,6 +193,7 @@ export function createTestWorkflow({
 		nodes,
 		connections,
 		active,
+		isArchived,
 		settings,
 		versionId: '1',
 		meta: {},

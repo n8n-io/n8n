@@ -34,6 +34,16 @@ export class WorkflowEntity extends WithTimestampsAndStringId implements IWorkfl
 	@Column()
 	active: boolean;
 
+	/**
+	 * Indicates whether the workflow has been soft-deleted (`true`) or not (`false`).
+	 *
+	 * Archived workflows can be restored (unarchived) or deleted permanently,
+	 * and they can still be executed as sub workflow executions, but they
+	 * cannot be activated or modified.
+	 */
+	@Column({ default: false })
+	isArchived: boolean;
+
 	@JsonColumn()
 	nodes: INode[];
 

@@ -1161,6 +1161,7 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 	function initState(workflowData: IWorkflowDb) {
 		workflowsStore.addWorkflow(workflowData);
 		workflowsStore.setActive(workflowData.active || false);
+		workflowsStore.setIsArchived(workflowData.isArchived);
 		workflowsStore.setWorkflowId(workflowData.id);
 		workflowsStore.setWorkflowName({
 			newName: workflowData.name,

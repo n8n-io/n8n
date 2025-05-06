@@ -35,6 +35,8 @@ const WORKFLOW_LIST_ITEM_ACTIONS = {
 	SHARE: 'share',
 	DUPLICATE: 'duplicate',
 	DELETE: 'delete',
+	ARCHIVE: 'archive',
+	UNARCHIVE: 'unarchive',
 	MOVE: 'move',
 	MOVE_TO_FOLDER: 'moveToFolder',
 };
@@ -57,6 +59,8 @@ const emit = defineEmits<{
 	'expand:tags': [];
 	'click:tag': [tagId: string, e: PointerEvent];
 	'workflow:deleted': [];
+	'workflow:archived': [];
+	'workflow:unarchived': [];
 	'workflow:active-toggle': [value: { id: string; active: boolean }];
 	'action:move-to-folder': [value: { id: string; name: string; parentFolderId?: string }];
 }>();
@@ -129,7 +133,7 @@ const actions = computed(() => {
 		},
 	];
 
-	if (workflowPermissions.value.create && !props.readOnly) {
+	if (workflowPermissions.value.create && !props.readOnly && !props.data.isArchived) {
 		items.push({
 			label: locale.baseText('workflows.item.duplicate'),
 			value: WORKFLOW_LIST_ITEM_ACTIONS.DUPLICATE,
@@ -151,10 +155,21 @@ const actions = computed(() => {
 	}
 
 	if (workflowPermissions.value.delete && !props.readOnly) {
-		items.push({
-			label: locale.baseText('workflows.item.delete'),
-			value: WORKFLOW_LIST_ITEM_ACTIONS.DELETE,
-		});
+		if (!props.data.isArchived) {
+			items.push({
+				label: locale.baseText('workflows.item.archive'),
+				value: WORKFLOW_LIST_ITEM_ACTIONS.ARCHIVE,
+			});
+		} else {
+			items.push({
+				label: locale.baseText('workflows.item.delete'),
+				value: WORKFLOW_LIST_ITEM_ACTIONS.DELETE,
+			});
+			items.push({
+				label: locale.baseText('workflows.item.unarchive'),
+				value: WORKFLOW_LIST_ITEM_ACTIONS.UNARCHIVE,
+			});
+		}
 	}
 
 	return items;
@@ -234,6 +249,12 @@ async function onAction(action: string) {
 		case WORKFLOW_LIST_ITEM_ACTIONS.DELETE:
 			await deleteWorkflow();
 			break;
+		case WORKFLOW_LIST_ITEM_ACTIONS.ARCHIVE:
+			await archiveWorkflow();
+			break;
+		case WORKFLOW_LIST_ITEM_ACTIONS.UNARCHIVE:
+			await unarchiveWorkflow();
+			break;
 		case WORKFLOW_LIST_ITEM_ACTIONS.MOVE:
 			moveResource();
 			break;
@@ -277,10 +298,66 @@ async function deleteWorkflow() {
 
 	// Reset tab title since workflow is deleted.
 	toast.showMessage({
-		title: locale.baseText('mainSidebar.showMessage.handleSelect1.title'),
+		title: locale.baseText('mainSidebar.showMessage.handleSelect1.title', {
+			interpolate: { workflowName: props.data.name },
+		}),
 		type: 'success',
 	});
 	emit('workflow:deleted');
+}
+
+async function archiveWorkflow() {
+	const archiveConfirmed = await message.confirm(
+		locale.baseText('mainSidebar.confirmMessage.workflowArchive.message', {
+			interpolate: { workflowName: props.data.name },
+		}),
+		locale.baseText('mainSidebar.confirmMessage.workflowArchive.headline'),
+		{
+			type: 'warning',
+			confirmButtonText: locale.baseText(
+				'mainSidebar.confirmMessage.workflowArchive.confirmButtonText',
+			),
+			cancelButtonText: locale.baseText(
+				'mainSidebar.confirmMessage.workflowArchive.cancelButtonText',
+			),
+		},
+	);
+
+	if (archiveConfirmed !== MODAL_CONFIRM) {
+		return;
+	}
+
+	try {
+		await workflowsStore.archiveWorkflow(props.data.id);
+	} catch (error) {
+		toast.showError(error, locale.baseText('generic.archiveWorkflowError'));
+		return;
+	}
+
+	toast.showMessage({
+		title: locale.baseText('mainSidebar.showMessage.handleArchive.title', {
+			interpolate: { workflowName: props.data.name },
+		}),
+		type: 'success',
+	});
+	emit('workflow:archived');
+}
+
+async function unarchiveWorkflow() {
+	try {
+		await workflowsStore.unarchiveWorkflow(props.data.id);
+	} catch (error) {
+		toast.showError(error, locale.baseText('generic.unarchiveWorkflowError'));
+		return;
+	}
+
+	toast.showMessage({
+		title: locale.baseText('mainSidebar.showMessage.handleUnarchive.title', {
+			interpolate: { workflowName: props.data.name },
+		}),
+		type: 'success',
+	});
+	emit('workflow:unarchived');
 }
 
 const fetchHiddenBreadCrumbsItems = async () => {
@@ -330,6 +407,15 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 				{{ data.name }}
 				<N8nBadge v-if="!workflowPermissions.update" class="ml-3xs" theme="tertiary" bold>
 					{{ locale.baseText('workflows.item.readonly') }}
+				</N8nBadge>
+				<N8nBadge
+					v-if="data.isArchived"
+					class="ml-3xs"
+					theme="tertiary"
+					bold
+					data-test-id="workflow-archived-tag"
+				>
+					{{ locale.baseText('workflows.item.archived') }}
 				</N8nBadge>
 			</n8n-text>
 		</template>
@@ -388,6 +474,7 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 				</ProjectCardBadge>
 				<WorkflowActivator
 					class="mr-s"
+					:is-archived="data.isArchived"
 					:workflow-active="data.active"
 					:workflow-id="data.id"
 					:workflow-permissions="workflowPermissions"

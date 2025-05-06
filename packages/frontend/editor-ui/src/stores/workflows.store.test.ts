@@ -853,6 +853,84 @@ describe('useWorkflowsStore', () => {
 			},
 		);
 	});
+
+	describe('archiveWorkflow', () => {
+		it('should call the API to archive the workflow', async () => {
+			const workflowId = '1';
+			const versionId = '00000000-0000-0000-0000-000000000000';
+			const updatedVersionId = '11111111-1111-1111-1111-111111111111';
+
+			workflowsStore.workflowsById = {
+				'1': { active: true, isArchived: false, versionId } as IWorkflowDb,
+			};
+			workflowsStore.workflow.active = true;
+			workflowsStore.workflow.isArchived = false;
+			workflowsStore.workflow.id = workflowId;
+			workflowsStore.workflow.versionId = versionId;
+
+			const makeRestApiRequestSpy = vi
+				.spyOn(apiUtils, 'makeRestApiRequest')
+				.mockImplementation(async () => ({
+					versionId: updatedVersionId,
+				}));
+
+			await workflowsStore.archiveWorkflow(workflowId);
+
+			expect(workflowsStore.workflowsById['1'].active).toBe(false);
+			expect(workflowsStore.workflowsById['1'].isArchived).toBe(true);
+			expect(workflowsStore.workflowsById['1'].versionId).toBe(updatedVersionId);
+			expect(workflowsStore.workflow.active).toBe(false);
+			expect(workflowsStore.workflow.isArchived).toBe(true);
+			expect(workflowsStore.workflow.versionId).toBe(updatedVersionId);
+			expect(makeRestApiRequestSpy).toHaveBeenCalledWith(
+				expect.objectContaining({
+					baseUrl: '/rest',
+					pushRef: expect.any(String),
+				}),
+				'POST',
+				`/workflows/${workflowId}/archive`,
+			);
+		});
+	});
+
+	describe('unarchiveWorkflow', () => {
+		it('should call the API to unarchive the workflow', async () => {
+			const workflowId = '1';
+			const versionId = '00000000-0000-0000-0000-000000000000';
+			const updatedVersionId = '11111111-1111-1111-1111-111111111111';
+
+			workflowsStore.workflowsById = {
+				'1': { active: false, isArchived: true, versionId } as IWorkflowDb,
+			};
+			workflowsStore.workflow.active = false;
+			workflowsStore.workflow.isArchived = true;
+			workflowsStore.workflow.id = workflowId;
+			workflowsStore.workflow.versionId = versionId;
+
+			const makeRestApiRequestSpy = vi
+				.spyOn(apiUtils, 'makeRestApiRequest')
+				.mockImplementation(async () => ({
+					versionId: updatedVersionId,
+				}));
+
+			await workflowsStore.unarchiveWorkflow(workflowId);
+
+			expect(workflowsStore.workflowsById['1'].active).toBe(false);
+			expect(workflowsStore.workflowsById['1'].isArchived).toBe(false);
+			expect(workflowsStore.workflowsById['1'].versionId).toBe(updatedVersionId);
+			expect(workflowsStore.workflow.active).toBe(false);
+			expect(workflowsStore.workflow.isArchived).toBe(false);
+			expect(workflowsStore.workflow.versionId).toBe(updatedVersionId);
+			expect(makeRestApiRequestSpy).toHaveBeenCalledWith(
+				expect.objectContaining({
+					baseUrl: '/rest',
+					pushRef: expect.any(String),
+				}),
+				'POST',
+				`/workflows/${workflowId}/unarchive`,
+			);
+		});
+	});
 });
 
 function getMockEditFieldsNode() {
@@ -886,6 +964,7 @@ function generateMockExecutionEvents() {
 			nodes: [],
 			connections: {},
 			active: false,
+			isArchived: false,
 			versionId: '1',
 		},
 		finished: false,

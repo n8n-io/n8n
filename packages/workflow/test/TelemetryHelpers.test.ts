@@ -94,6 +94,7 @@ describe('generateNodesGraph', () => {
 			id: 'NfV4GV9aQTifSLc2',
 			name: 'My workflow 26',
 			active: false,
+			isArchived: false,
 			nodes: [
 				{
 					parameters: {},
@@ -157,6 +158,7 @@ describe('generateNodesGraph', () => {
 			id: 'NfV4GV9aQTifSLc2',
 			name: 'My workflow 26',
 			active: false,
+			isArchived: false,
 			nodes: [],
 			connections: {},
 			settings: { executionOrder: 'v1' },
@@ -198,6 +200,7 @@ describe('generateNodesGraph', () => {
 			id: 'NfV4GV9aQTifSLc2',
 			name: 'My workflow 26',
 			active: false,
+			isArchived: false,
 			nodes: [
 				{
 					parameters: {},
@@ -263,6 +266,7 @@ describe('generateNodesGraph', () => {
 			id: 'NfV4GV9aQTifSLc2',
 			name: 'My workflow 26',
 			active: false,
+			isArchived: false,
 			nodes: [
 				{
 					parameters: {},
@@ -339,6 +343,7 @@ describe('generateNodesGraph', () => {
 			id: 'NfV4GV9aQTifSLc2',
 			name: 'My workflow 26',
 			active: false,
+			isArchived: false,
 			nodes: [
 				{
 					parameters: {},

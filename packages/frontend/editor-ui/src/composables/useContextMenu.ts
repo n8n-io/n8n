@@ -57,7 +57,8 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 		() =>
 			sourceControlStore.preferences.branchReadOnly ||
 			uiStore.isReadOnlyView ||
-			!workflowPermissions.value.update,
+			!workflowPermissions.value.update ||
+			workflowsStore.workflow.isArchived,
 	);
 
 	const targetNodeIds = computed(() => {

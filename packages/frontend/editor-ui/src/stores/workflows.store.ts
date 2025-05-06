@@ -99,6 +99,7 @@ import type { NodeExecuteBefore } from '@n8n/api-types/push/execution';
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
 	active: false,
+	isArchived: false,
 	createdAt: -1,
 	updatedAt: -1,
 	connections: {},
@@ -541,7 +542,13 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		page = 1,
 		pageSize = DEFAULT_WORKFLOW_PAGE_SIZE,
 		sortBy?: string,
-		filters: { name?: string; tags?: string[]; active?: boolean; parentFolderId?: string } = {},
+		filters: {
+			name?: string;
+			tags?: string[];
+			active?: boolean;
+			isArchived?: boolean;
+			parentFolderId?: string;
+		} = {},
 		includeFolders: boolean = false,
 	): Promise<WorkflowListResource[]> {
 		const filter = { ...filters, projectId };
@@ -734,6 +741,42 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflowsById.value = workflows;
 	}
 
+	async function archiveWorkflow(id: string) {
+		const updatedWorkflow = await makeRestApiRequest<IWorkflowDb>(
+			rootStore.restApiContext,
+			'POST',
+			`/workflows/${id}/archive`,
+		);
+		if (workflowsById.value[id]) {
+			workflowsById.value[id].isArchived = true;
+			workflowsById.value[id].versionId = updatedWorkflow.versionId;
+		}
+
+		setWorkflowInactive(id);
+
+		if (id === workflow.value.id) {
+			setIsArchived(true);
+			setWorkflowVersionId(updatedWorkflow.versionId);
+		}
+	}
+
+	async function unarchiveWorkflow(id: string) {
+		const updatedWorkflow = await makeRestApiRequest<IWorkflowDb>(
+			rootStore.restApiContext,
+			'POST',
+			`/workflows/${id}/unarchive`,
+		);
+		if (workflowsById.value[id]) {
+			workflowsById.value[id].isArchived = false;
+			workflowsById.value[id].versionId = updatedWorkflow.versionId;
+		}
+
+		if (id === workflow.value.id) {
+			setIsArchived(false);
+			setWorkflowVersionId(updatedWorkflow.versionId);
+		}
+	}
+
 	function addWorkflow(workflow: IWorkflowDb) {
 		workflowsById.value = {
 			...workflowsById.value,
@@ -779,6 +822,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	function setActive(active: boolean) {
 		workflow.value.active = active;
+	}
+
+	function setIsArchived(isArchived: boolean) {
+		workflow.value.isArchived = isArchived;
 	}
 
 	async function getDuplicateCurrentWorkflowName(currentWorkflowName: string): Promise<string> {
@@ -1849,11 +1896,14 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		replaceInvalidWorkflowCredentials,
 		setWorkflows,
 		deleteWorkflow,
+		archiveWorkflow,
+		unarchiveWorkflow,
 		addWorkflow,
 		setWorkflowActive,
 		setWorkflowInactive,
 		fetchActiveWorkflows,
 		setActive,
+		setIsArchived,
 		getDuplicateCurrentWorkflowName,
 		setWorkflowExecutionData,
 		setWorkflowExecutionRunData,

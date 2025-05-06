@@ -114,7 +114,7 @@ export class ProjectService {
 			);
 		} else {
 			for (const sharedWorkflow of ownedSharedWorkflows) {
-				await workflowService.delete(user, sharedWorkflow.workflowId);
+				await workflowService.delete(user, sharedWorkflow.workflowId, true);
 			}
 		}
 
