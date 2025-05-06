@@ -34,7 +34,8 @@
 				"searchQuery": "Jina AI",
 				"options": {
 					"outputFormat": "markdown",
-					"siteFilter": "jina.ai"
+					"siteFilter": "jina.ai",
+					"pageNumber": 2
 				},
 				"requestOptions": {}
 			},

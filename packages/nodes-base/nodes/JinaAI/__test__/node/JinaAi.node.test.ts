@@ -50,6 +50,7 @@ describe('JinaAI Node', () => {
 				.get('/')
 				.query({
 					q: 'Jina AI',
+					page: 2,
 				})
 				.matchHeader('X-Return-Format', 'markdown')
 				.matchHeader('X-Site', 'jina.ai')
