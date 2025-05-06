@@ -13,7 +13,7 @@ import { VIEWS } from '@/constants';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import ProjectCreateResource from '@/components/Projects/ProjectCreateResource.vue';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useOverview } from '@/composables/useOverview';
+import { useProjectPages } from '@/composables/useProjectPages';
 
 const route = useRoute();
 const router = useRouter();
@@ -21,7 +21,7 @@ const i18n = useI18n();
 const projectsStore = useProjectsStore();
 const sourceControlStore = useSourceControlStore();
 const settingsStore = useSettingsStore();
-const overview = useOverview();
+const overview = useProjectPages();
 
 const emit = defineEmits<{
 	createFolder: [];

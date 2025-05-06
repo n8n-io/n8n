@@ -17,7 +17,7 @@ import type { DragTarget, DropTarget } from '@/composables/useFolders';
 import { useFolders } from '@/composables/useFolders';
 import { useI18n } from '@/composables/useI18n';
 import { useMessage } from '@/composables/useMessage';
-import { useOverview } from '@/composables/useOverview';
+import { useProjectPages } from '@/composables/useProjectPages';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
 import {
@@ -110,7 +110,7 @@ const insightsStore = useInsightsStore();
 
 const documentTitle = useDocumentTitle();
 const { callDebounced } = useDebounce();
-const overview = useOverview();
+const overview = useProjectPages();
 
 const loading = ref(false);
 const breadcrumbsLoading = ref(false);

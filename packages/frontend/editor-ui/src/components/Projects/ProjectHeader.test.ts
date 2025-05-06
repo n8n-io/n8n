@@ -12,7 +12,7 @@ import { VIEWS } from '@/constants';
 import userEvent from '@testing-library/user-event';
 import { waitFor, within } from '@testing-library/vue';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useOverview } from '@/composables/useOverview';
+import { useProjectPages } from '@/composables/useProjectPages';
 
 const mockPush = vi.fn();
 vi.mock('vue-router', async () => {
@@ -31,8 +31,8 @@ vi.mock('vue-router', async () => {
 	};
 });
 
-vi.mock('@/composables/useOverview', () => ({
-	useOverview: vi.fn().mockReturnValue({
+vi.mock('@/composables/useProjectPages', () => ({
+	useProjectPages: vi.fn().mockReturnValue({
 		isOverviewSubPage: false,
 	}),
 }));
@@ -52,7 +52,7 @@ const renderComponent = createComponentRenderer(ProjectHeader, {
 let route: ReturnType<typeof router.useRoute>;
 let projectsStore: ReturnType<typeof mockedStore<typeof useProjectsStore>>;
 let settingsStore: ReturnType<typeof mockedStore<typeof useSettingsStore>>;
-let overview: ReturnType<typeof useOverview>;
+let overview: ReturnType<typeof useProjectPages>;
 
 describe('ProjectHeader', () => {
 	beforeEach(() => {
@@ -60,7 +60,7 @@ describe('ProjectHeader', () => {
 		route = router.useRoute();
 		projectsStore = mockedStore(useProjectsStore);
 		settingsStore = mockedStore(useSettingsStore);
-		overview = useOverview();
+		overview = useProjectPages();
 
 		projectsStore.teamProjectsLimit = -1;
 		settingsStore.settings.folders = { enabled: false };

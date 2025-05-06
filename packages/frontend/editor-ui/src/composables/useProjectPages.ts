@@ -2,7 +2,10 @@ import { computed, reactive } from 'vue';
 import { useRoute } from 'vue-router';
 import { VIEWS } from '@/constants';
 
-export const useOverview = () => {
+/**
+ * This composable holds reusable logic that detects the current page type
+ */
+export const useProjectPages = () => {
 	const route = useRoute();
 
 	const isOverviewSubPage = computed(
