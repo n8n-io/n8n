@@ -44,6 +44,12 @@ export class EvaluationTrigger implements INodeType {
 				type: 'notice',
 				default: '',
 			},
+			{
+				displayName: 'Credentials',
+				name: 'credentials',
+				type: 'credentials',
+				default: '',
+			},
 			authentication,
 			document,
 			sheet,
