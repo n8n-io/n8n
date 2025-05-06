@@ -108,8 +108,13 @@ function makeDescription(node: INode, nodeType: INodeType): string {
 	return (node.parameters.toolDescription as string) ?? nodeType.description.description;
 }
 
+/**
+ * Converts a node name to a valid tool name by replacing special characters with underscores
+ * and collapsing consecutive underscores into a single one.
+ * This method is copied from `packages/@n8n/nodes-langchain/utils/helpers.ts`.
+ */
 export function nodeNameToToolName(node: INode): string {
-	return node.name.replace(/ /g, '_');
+	return node.name.replace(/[\s.?!=+#@&*()[\]{}:;,<>\/\\'"^%$]/g, '_').replace(/_+/g, '_');
 }
 
 /**
