@@ -1,11 +1,11 @@
 import type { IExecutionResponse } from '@n8n/db';
+import type { ExecutionRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import { WorkflowOperationError } from 'n8n-workflow';
 
 import type { ActiveExecutions } from '@/active-executions';
 import type { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import config from '@/config';
-import type { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
 import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error';
 import { ExecutionService } from '@/executions/execution.service';

@@ -81,7 +81,7 @@ beforeAll(async () => {
 
 describe('check()', () => {
 	beforeEach(async () => {
-		await testDb.truncate(['Workflow', 'Credentials']);
+		await testDb.truncate(['WorkflowEntity', 'CredentialsEntity']);
 	});
 
 	afterAll(async () => {
