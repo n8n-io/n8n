@@ -7,26 +7,25 @@ import { Folder, FolderTagMapping, TagEntity } from '../entities';
 import type { FolderWithWorkflowAndSubFolderCount, ListQuery } from '../entities/types-db';
 
 @Service()
-export class FolderRepository extends Repository<FolderWithWorkflowAndSubFolderCount> {
+export class FolderRepository extends Repository<Folder> {
 	constructor(dataSource: DataSource) {
 		super(Folder, dataSource.manager);
 	}
 
-	async getManyAndCount(
-		options: ListQuery.Options = {},
-	): Promise<[FolderWithWorkflowAndSubFolderCount[], number]> {
+	async getManyAndCount(options: ListQuery.Options = {}) {
 		const query = this.getManyQuery(options);
-		return await query.getManyAndCount();
+		return (await query.getManyAndCount()) as unknown as [
+			FolderWithWorkflowAndSubFolderCount[],
+			number,
+		];
 	}
 
-	async getMany(options: ListQuery.Options = {}): Promise<FolderWithWorkflowAndSubFolderCount[]> {
+	async getMany(options: ListQuery.Options = {}) {
 		const query = this.getManyQuery(options);
-		return await query.getMany();
+		return (await query.getMany()) as unknown as [FolderWithWorkflowAndSubFolderCount[], number];
 	}
 
-	getManyQuery(
-		options: ListQuery.Options = {},
-	): SelectQueryBuilder<FolderWithWorkflowAndSubFolderCount> {
+	getManyQuery(options: ListQuery.Options = {}): SelectQueryBuilder<Folder> {
 		const query = this.createQueryBuilder('folder');
 
 		this.applySelections(query, options.select);
@@ -38,9 +37,10 @@ export class FolderRepository extends Repository<FolderWithWorkflowAndSubFolderC
 	}
 
 	private applySelections(
-		query: SelectQueryBuilder<FolderWithWorkflowAndSubFolderCount>,
+		query: SelectQueryBuilder<Folder>,
 		select?: Record<string, boolean>,
 	): void {
+		console.log('Applying selections:', select);
 		if (select) {
 			this.applyCustomSelect(query, select);
 		} else {
@@ -48,7 +48,7 @@ export class FolderRepository extends Repository<FolderWithWorkflowAndSubFolderC
 		}
 	}
 
-	private applyDefaultSelect(query: SelectQueryBuilder<FolderWithWorkflowAndSubFolderCount>): void {
+	private applyDefaultSelect(query: SelectQueryBuilder<Folder>): void {
 		query
 			.leftJoinAndSelect('folder.homeProject', 'homeProject')
 			.leftJoinAndSelect('folder.parentFolder', 'parentFolder')
@@ -64,14 +64,13 @@ export class FolderRepository extends Repository<FolderWithWorkflowAndSubFolderC
 	}
 
 	private applyCustomSelect(
-		query: SelectQueryBuilder<FolderWithWorkflowAndSubFolderCount>,
+		query: SelectQueryBuilder<Folder>,
 		select?: Record<string, boolean>,
 	): void {
 		const selections = ['folder.id'];
 
 		this.addBasicFields(selections, select);
 		this.addRelationFields(query, selections, select);
-
 		query.select(selections);
 	}
 
@@ -82,13 +81,17 @@ export class FolderRepository extends Repository<FolderWithWorkflowAndSubFolderC
 	}
 
 	private addRelationFields(
-		query: SelectQueryBuilder<FolderWithWorkflowAndSubFolderCount>,
+		query: SelectQueryBuilder<Folder>,
 		selections: string[],
 		select?: Record<string, boolean>,
 	): void {
 		if (select?.project) {
 			query.leftJoin('folder.homeProject', 'homeProject');
 			selections.push(...this.getProjectFields('homeProject'));
+
+			if (!selections.includes('folder.updatedAt')) {
+				selections.push('folder.updatedAt');
+			}
 		}
 
 		if (select?.tags) {
@@ -125,7 +128,7 @@ export class FolderRepository extends Repository<FolderWithWorkflowAndSubFolderC
 	}
 
 	private applyFilters(
-		query: SelectQueryBuilder<FolderWithWorkflowAndSubFolderCount>,
+		query: SelectQueryBuilder<Folder>,
 		filter?: ListQuery.Options['filter'],
 	): void {
 		if (!filter) return;
@@ -142,7 +145,7 @@ export class FolderRepository extends Repository<FolderWithWorkflowAndSubFolderC
 	}
 
 	private applyBasicFilters(
-		query: SelectQueryBuilder<FolderWithWorkflowAndSubFolderCount>,
+		query: SelectQueryBuilder<Folder>,
 		filter: ListQuery.Options['filter'],
 	): void {
 		if (filter?.folderIds && Array.isArray(filter.folderIds)) {
@@ -174,10 +177,7 @@ export class FolderRepository extends Repository<FolderWithWorkflowAndSubFolderC
 		}
 	}
 
-	private applyTagsFilter(
-		query: SelectQueryBuilder<FolderWithWorkflowAndSubFolderCount>,
-		tags?: string[],
-	): void {
+	private applyTagsFilter(query: SelectQueryBuilder<Folder>, tags?: string[]): void {
 		if (!Array.isArray(tags) || tags.length === 0) return;
 
 		const subQuery = this.createTagsSubQuery(query, tags);
@@ -189,7 +189,7 @@ export class FolderRepository extends Repository<FolderWithWorkflowAndSubFolderC
 	}
 
 	private createTagsSubQuery(
-		query: SelectQueryBuilder<FolderWithWorkflowAndSubFolderCount>,
+		query: SelectQueryBuilder<Folder>,
 		tags: string[],
 	): SelectQueryBuilder<FolderTagMapping> {
 		return query
@@ -204,10 +204,7 @@ export class FolderRepository extends Repository<FolderWithWorkflowAndSubFolderC
 			});
 	}
 
-	private applySorting(
-		query: SelectQueryBuilder<FolderWithWorkflowAndSubFolderCount>,
-		sortBy?: string,
-	): void {
+	private applySorting(query: SelectQueryBuilder<Folder>, sortBy?: string): void {
 		if (!sortBy) {
 			query.orderBy('folder.updatedAt', 'DESC');
 			return;
@@ -223,7 +220,7 @@ export class FolderRepository extends Repository<FolderWithWorkflowAndSubFolderC
 	}
 
 	private applySortingByField(
-		query: SelectQueryBuilder<FolderWithWorkflowAndSubFolderCount>,
+		query: SelectQueryBuilder<Folder>,
 		field: string,
 		direction: 'DESC' | 'ASC',
 	): void {
@@ -236,10 +233,7 @@ export class FolderRepository extends Repository<FolderWithWorkflowAndSubFolderC
 		}
 	}
 
-	private applyPagination(
-		query: SelectQueryBuilder<FolderWithWorkflowAndSubFolderCount>,
-		options: ListQuery.Options,
-	): void {
+	private applyPagination(query: SelectQueryBuilder<Folder>, options: ListQuery.Options): void {
 		if (options?.take) {
 			query.skip(options.skip ?? 0).take(options.take);
 		}
@@ -298,7 +292,7 @@ export class FolderRepository extends Repository<FolderWithWorkflowAndSubFolderC
 	}
 
 	private applyExcludeFolderFilter(
-		query: SelectQueryBuilder<FolderWithWorkflowAndSubFolderCount>,
+		query: SelectQueryBuilder<Folder>,
 		excludeFolderIdAndDescendants: string,
 	): void {
 		// Exclude the specific folder by ID
@@ -372,5 +366,63 @@ export class FolderRepository extends Repository<FolderWithWorkflowAndSubFolderC
 		// Execute the query and extract IDs
 		const result = await query.getRawMany<{ id: string }>();
 		return result.map((row) => row.id);
+	}
+
+	async getFolderPathsToRoot(folderIds: string[]): Promise<Map<string, string[]>> {
+		if (!folderIds.length) {
+			return new Map();
+		}
+
+		// Base query: select all root folders
+		const baseQuery = this.createQueryBuilder('folder')
+			.select([
+				'folder.id as id',
+				'folder.name as name',
+				'folder.parentFolderId as parentFolderId',
+				// Use CONCAT which is supported by all three databases
+				'CONCAT(folder.name) as path', // Ensures consistent type
+				'1 as level',
+			])
+			.where('folder.parentFolderId IS NULL');
+
+		// Recursive query: join child folders to their parents
+		const recursiveQuery = this.createQueryBuilder('child')
+			.select([
+				'child.id as id',
+				'child.name as name',
+				'child.parentFolderId as parentFolderId',
+				// Use CONCAT which works across all databases
+				"CONCAT(parent.path, '/', child.name) as path",
+				'parent.level + 1 as level',
+			])
+			.innerJoin('folder_paths', 'parent', 'child.parentFolderId = parent.id');
+
+		// Main query with the CTE
+		const mainQuery = this.createQueryBuilder()
+			.addCommonTableExpression(
+				`${baseQuery.getQuery()} UNION ALL ${recursiveQuery.getQuery()}`,
+				'folder_paths',
+				{ recursive: true },
+			)
+			.select('fp.id as folder_id, fp.path as folder_path')
+			.from('folder_paths', 'fp')
+			.where('fp.id IN (:...folderIds)', { folderIds });
+
+		// Execute the query
+		const results = await mainQuery.getRawMany<{
+			folder_id: string;
+			folder_path: string;
+		}>();
+
+		// Process results into the map
+		const pathMap = new Map<string, string[]>();
+
+		for (const row of results) {
+			// Split the path to get an array of folder names
+			const pathNames = row.folder_path.split('/');
+			pathMap.set(row.folder_id, pathNames);
+		}
+
+		return pathMap;
 	}
 }
