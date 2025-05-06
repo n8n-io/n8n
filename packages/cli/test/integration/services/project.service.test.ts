@@ -1,8 +1,7 @@
-import type { ProjectRole } from '@n8n/api-types';
 import { ProjectRelationRepository } from '@n8n/db';
 import { ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type { Scope } from '@n8n/permissions';
+import type { ProjectRole, Scope } from '@n8n/permissions';
 
 import { ProjectService } from '@/services/project.service.ee';
 

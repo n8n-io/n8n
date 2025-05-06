@@ -1,10 +1,10 @@
-import type { ProjectRole } from '@n8n/api-types';
 import type { Project } from '@n8n/db';
 import type { User } from '@n8n/db';
 import type { ProjectRelation } from '@n8n/db';
 import { ProjectRelationRepository } from '@n8n/db';
 import { ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { ProjectRole } from '@n8n/permissions';
 
 import { randomName } from '../random';
 
