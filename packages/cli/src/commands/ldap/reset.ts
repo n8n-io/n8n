@@ -108,7 +108,7 @@ export class Reset extends BaseCommand {
 		const ownedCredentials = ownedSharedCredentials.map(({ credentials }) => credentials);
 
 		for (const { workflowId } of ownedSharedWorkflows) {
-			await Container.get(WorkflowService).delete(owner, workflowId);
+			await Container.get(WorkflowService).delete(owner, workflowId, true);
 		}
 
 		for (const credential of ownedCredentials) {

@@ -315,6 +315,7 @@ export interface IWorkflowDb {
 	id: string;
 	name: string;
 	active: boolean;
+	isArchived: boolean;
 	createdAt: number | string;
 	updatedAt: number | string;
 	nodes: INodeUi[];
