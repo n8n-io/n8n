@@ -1,11 +1,11 @@
 import type { Project } from '@n8n/db';
 import type { User } from '@n8n/db';
+import { FolderRepository } from '@n8n/db';
+import { ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DateTime } from 'luxon';
 import { PROJECT_ROOT } from 'n8n-workflow';
 
-import { FolderRepository } from '@/databases/repositories/folder.repository';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { createFolder } from '@test-integration/db/folders';
 import { createTag } from '@test-integration/db/tags';

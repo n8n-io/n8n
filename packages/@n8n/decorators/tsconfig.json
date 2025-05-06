@@ -8,5 +8,11 @@
 		"experimentalDecorators": true,
 		"emitDecoratorMetadata": true
 	},
-	"include": ["src/**/*.ts"]
+	"include": ["src/**/*.ts"],
+	"references": [
+		{ "path": "../../workflow/tsconfig.build.json" },
+		{ "path": "../constants/tsconfig.build.json" },
+		{ "path": "../di/tsconfig.build.json" },
+		{ "path": "../permissions/tsconfig.build.json" }
+	]
 }

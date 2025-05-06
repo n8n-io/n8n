@@ -61,6 +61,7 @@ describe('Execution Lifecycle Hooks', () => {
 		id: workflowId,
 		name: 'Test Workflow',
 		active: true,
+		isArchived: false,
 		connections: {},
 		nodes: [],
 		settings: {},

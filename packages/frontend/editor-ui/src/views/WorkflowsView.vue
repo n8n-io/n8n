@@ -5,6 +5,7 @@ import type {
 	BaseFilters,
 	FolderResource,
 	Resource,
+	SortingAndPaginationUpdates,
 	WorkflowResource,
 } from '@/components/layouts/ResourcesListLayout.vue';
 import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
@@ -71,13 +72,14 @@ const FILTERS_DEBOUNCE_TIME = 100;
 
 interface Filters extends BaseFilters {
 	status: string | boolean;
+	showArchived: boolean;
 	tags: string[];
 }
 
 const StatusFilter = {
+	ALL: '',
 	ACTIVE: 'active',
 	DEACTIVATED: 'deactivated',
-	ALL: '',
 };
 
 /** Maps sort values from the ResourcesListLayout component to values expected by workflows endpoint */
@@ -112,12 +114,15 @@ const documentTitle = useDocumentTitle();
 const { callDebounced } = useDebounce();
 const overview = useOverview();
 
-const loading = ref(false);
+// We render component in a loading state until initialization is done
+// This will prevent any additional workflow fetches while initializing
+const loading = ref(true);
 const breadcrumbsLoading = ref(false);
 const filters = ref<Filters>({
 	search: '',
 	homeProject: '',
 	status: StatusFilter.ALL,
+	showArchived: false,
 	tags: [],
 });
 
@@ -278,13 +283,14 @@ const workflowListResources = computed<Resource[]>(() => {
 				workflowCount: resource.workflowCount,
 				subFolderCount: resource.subFolderCount,
 				parentFolder: resource.parentFolder,
-			} as FolderResource;
+			} satisfies FolderResource;
 		} else {
 			return {
 				resourceType: 'workflow',
 				id: resource.id,
 				name: resource.name,
 				active: resource.active ?? false,
+				isArchived: resource.isArchived,
 				updatedAt: resource.updatedAt.toString(),
 				createdAt: resource.createdAt.toString(),
 				homeProject: resource.homeProject,
@@ -293,7 +299,7 @@ const workflowListResources = computed<Resource[]>(() => {
 				readOnly: !getResourcePermissions(resource.scopes).workflow.update,
 				tags: resource.tags,
 				parentFolder: resource.parentFolder,
-			} as WorkflowResource;
+			} satisfies WorkflowResource;
 		}
 	});
 	return resources;
@@ -342,6 +348,7 @@ const hasFilters = computed(() => {
 	return !!(
 		filters.value.search ||
 		filters.value.status !== StatusFilter.ALL ||
+		filters.value.showArchived ||
 		filters.value.tags.length
 	);
 });
@@ -363,7 +370,7 @@ const showRegisteredCommunityCTA = computed(
 watch(
 	() => route.params?.projectId,
 	async () => {
-		await initialize();
+		loading.value = true;
 	},
 );
 
@@ -372,6 +379,7 @@ watch(
 	async (newVal) => {
 		currentFolderId.value = newVal as string;
 		filters.value.search = '';
+		saveFiltersOnQueryString();
 		await fetchWorkflows();
 	},
 );
@@ -381,7 +389,7 @@ sourceControlStore.$onAction(({ name, after }) => {
 	after(async () => await initialize());
 });
 
-const onWorkflowDeleted = async () => {
+const refreshWorkflows = async () => {
 	await Promise.all([
 		fetchWorkflows(),
 		foldersStore.fetchTotalWorkflowsAndFoldersCount(route.params.projectId as string | undefined),
@@ -480,10 +488,13 @@ const fetchWorkflows = async () => {
 	const tags = filters.value.tags.length
 		? filters.value.tags.map((tagId) => tagsStore.tagsById[tagId]?.name)
 		: [];
+
 	const activeFilter =
 		filters.value.status === StatusFilter.ALL
 			? undefined
 			: filters.value.status === StatusFilter.ACTIVE;
+
+	const archivedFilter = filters.value.showArchived ? undefined : false;
 
 	// Only fetch folders if showFolders is enabled and there are not tags or active filter applied
 	const fetchFolders = showFolders.value && !tags.length && activeFilter === undefined;
@@ -497,6 +508,7 @@ const fetchWorkflows = async () => {
 			{
 				name: filters.value.search || undefined,
 				active: activeFilter,
+				isArchived: archivedFilter,
 				tags: tags.length ? tags : undefined,
 				parentFolderId:
 					parentFolder ??
@@ -542,18 +554,6 @@ const fetchWorkflows = async () => {
 };
 
 // Filter and sort methods
-
-const onSortUpdated = async (sort: string) => {
-	currentSort.value =
-		WORKFLOWS_SORT_MAP[sort as keyof typeof WORKFLOWS_SORT_MAP] ?? 'updatedAt:desc';
-	if (currentSort.value !== 'updatedAt:desc') {
-		void router.replace({ query: { ...route.query, sort } });
-	} else {
-		void router.replace({ query: { ...route.query, sort: undefined } });
-	}
-	await fetchWorkflows();
-};
-
 const onFiltersUpdated = async () => {
 	currentPage.value = 1;
 	saveFiltersOnQueryString();
@@ -571,14 +571,23 @@ const onSearchUpdated = async (search: string) => {
 	}
 };
 
-const setCurrentPage = async (page: number) => {
-	currentPage.value = page;
-	await callDebounced(fetchWorkflows, { debounceTime: FILTERS_DEBOUNCE_TIME, trailing: true });
-};
-
-const setPageSize = async (size: number) => {
-	pageSize.value = size;
-	await callDebounced(fetchWorkflows, { debounceTime: FILTERS_DEBOUNCE_TIME, trailing: true });
+const setPaginationAndSort = async (payload: SortingAndPaginationUpdates) => {
+	if (payload.page) {
+		currentPage.value = payload.page;
+	}
+	if (payload.pageSize) {
+		pageSize.value = payload.pageSize;
+	}
+	if (payload.sort) {
+		currentSort.value =
+			WORKFLOWS_SORT_MAP[payload.sort as keyof typeof WORKFLOWS_SORT_MAP] ?? 'updatedAt:desc';
+	}
+	// Don't fetch workflows if we are loading
+	// This will prevent unnecessary API calls when changing sort and pagination from url/local storage
+	// when switching between projects
+	if (!loading.value) {
+		await callDebounced(fetchWorkflows, { debounceTime: FILTERS_DEBOUNCE_TIME, trailing: true });
+	}
 };
 
 const onClickTag = async (tagId: string) => {
@@ -609,6 +618,12 @@ const saveFiltersOnQueryString = () => {
 		delete currentQuery.status;
 	}
 
+	if (filters.value.showArchived) {
+		currentQuery.showArchived = 'true';
+	} else {
+		delete currentQuery.showArchived;
+	}
+
 	if (filters.value.tags.length) {
 		currentQuery.tags = filters.value.tags.join(',');
 	} else {
@@ -628,7 +643,7 @@ const saveFiltersOnQueryString = () => {
 
 const setFiltersFromQueryString = async () => {
 	const newQuery: LocationQueryRaw = { ...route.query };
-	const { tags, status, search, homeProject, sort } = route.query ?? {};
+	const { tags, status, search, homeProject, sort, showArchived } = route.query ?? {};
 
 	// Helper to check if string value is not empty
 	const isValidString = (value: unknown): value is string =>
@@ -673,8 +688,7 @@ const setFiltersFromQueryString = async () => {
 	}
 
 	// Handle status
-	const validStatusValues = ['true', 'false'];
-	if (isValidString(status) && validStatusValues.includes(status)) {
+	if (isValidString(status)) {
 		newQuery.status = status;
 		filters.value.status = status === 'true' ? StatusFilter.ACTIVE : StatusFilter.DEACTIVATED;
 	} else {
@@ -688,6 +702,14 @@ const setFiltersFromQueryString = async () => {
 		currentSort.value = newSort;
 	} else {
 		delete newQuery.sort;
+	}
+
+	if (isValidString(showArchived)) {
+		newQuery.showArchived = showArchived;
+		filters.value.showArchived = showArchived === 'true';
+	} else {
+		delete newQuery.showArchived;
+		filters.value.showArchived = false;
 	}
 
 	void router.replace({ query: newQuery });
@@ -1340,10 +1362,8 @@ const onNameSubmit = async ({
 		:has-empty-state="foldersStore.totalWorkflowCount === 0 && !currentFolderId"
 		@click:add="addWorkflow"
 		@update:search="onSearchUpdated"
-		@update:current-page="setCurrentPage"
-		@update:page-size="setPageSize"
 		@update:filters="onFiltersUpdated"
-		@sort="onSortUpdated"
+		@update:pagination-and-sort="setPaginationAndSort"
 		@mouseleave="folderHelpers.resetDropTarget"
 	>
 		<template #header>
@@ -1533,7 +1553,9 @@ const onNameSubmit = async ({
 					:show-ownership-badge="showCardsBadge"
 					data-target="workflow"
 					@click:tag="onClickTag"
-					@workflow:deleted="onWorkflowDeleted"
+					@workflow:deleted="refreshWorkflows"
+					@workflow:archived="refreshWorkflows"
+					@workflow:unarchived="refreshWorkflows"
 					@workflow:moved="fetchWorkflows"
 					@workflow:duplicated="fetchWorkflows"
 					@workflow:active-toggle="onWorkflowActiveToggle"
@@ -1624,6 +1646,14 @@ const onNameSubmit = async ({
 					>
 					</N8nOption>
 				</N8nSelect>
+			</div>
+			<div class="mb-s">
+				<N8nCheckbox
+					:label="i18n.baseText('workflows.filters.showArchived')"
+					:model-value="filters.showArchived || false"
+					data-test-id="show-archived-checkbox"
+					@update:model-value="setKeyValue('showArchived', $event)"
+				/>
 			</div>
 		</template>
 		<template #postamble>
