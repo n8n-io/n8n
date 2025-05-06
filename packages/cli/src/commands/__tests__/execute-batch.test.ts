@@ -8,7 +8,14 @@ import type { IRun } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { DeprecationService } from '@/deprecation/deprecation.service';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
+import { ExternalHooks } from '@/external-hooks';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { PostHogClient } from '@/posthog';
 import { OwnershipService } from '@/services/ownership.service';
+import { ShutdownService } from '@/shutdown/shutdown.service';
 import { TaskRunnerModule } from '@/task-runners/task-runner-module';
 import { WorkflowRunner } from '@/workflow-runner';
 import { mockInstance } from '@test/mocking';
@@ -20,6 +27,20 @@ const workflowRepository = mockInstance(WorkflowRepository);
 const ownershipService = mockInstance(OwnershipService);
 const workflowRunner = mockInstance(WorkflowRunner);
 const activeExecutions = mockInstance(ActiveExecutions);
+const loadNodesAndCredentials = mockInstance(LoadNodesAndCredentials);
+const shutdownService = mockInstance(ShutdownService);
+const deprecationService = mockInstance(DeprecationService);
+mockInstance(MessageEventBus);
+const posthogClient = mockInstance(PostHogClient);
+const telemetryEventRelay = mockInstance(TelemetryEventRelay);
+const externalHooks = mockInstance(ExternalHooks);
+
+jest.mock('@/db', () => ({
+	init: jest.fn().mockResolvedValue(undefined),
+	migrate: jest.fn().mockResolvedValue(undefined),
+	connectionState: { connected: false },
+	close: jest.fn().mockResolvedValue(undefined),
+}));
 
 test('should start a task runner when task runners are enabled', async () => {
 	// arrange
@@ -36,22 +57,35 @@ test('should start a task runner when task runners are enabled', async () => {
 		getMany: jest.fn().mockResolvedValue([workflow]),
 	});
 
+	loadNodesAndCredentials.init.mockResolvedValue(undefined);
+	shutdownService.shutdown.mockReturnValue();
+	deprecationService.warn.mockReturnValue();
+	posthogClient.init.mockResolvedValue();
+	telemetryEventRelay.init.mockResolvedValue();
+	externalHooks.init.mockResolvedValue();
+
 	workflowRepository.createQueryBuilder.mockReturnValue(queryBuilder);
 	ownershipService.getInstanceOwner.mockResolvedValue(mock<User>({ id: '123' }));
 	workflowRunner.run.mockResolvedValue('123');
 	activeExecutions.getPostExecutePromise.mockResolvedValue(run);
 
-	Container.set(GlobalConfig, mock<GlobalConfig>({ taskRunners: { enabled: true } }));
+	Container.set(
+		GlobalConfig,
+		mock<GlobalConfig>({
+			taskRunners: { enabled: true },
+			nodes: { communityPackages: { enabled: false } },
+		}),
+	);
 
 	const cmd = new ExecuteBatch([], {} as Config);
 	// @ts-expect-error Private property
 	cmd.parse = jest.fn().mockResolvedValue({ flags: {} });
-	cmd.init = jest.fn().mockResolvedValue(undefined);
 	// @ts-expect-error Private property
 	cmd.runTests = jest.fn().mockResolvedValue({ summary: { failedExecutions: [] } });
 
 	// act
 
+	await cmd.init();
 	await cmd.run();
 
 	// assert

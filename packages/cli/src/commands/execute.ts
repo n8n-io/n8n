@@ -29,6 +29,8 @@ export class Execute extends BaseCommand {
 
 	override needsCommunityPackages = true;
 
+	override needsTaskRunner = true;
+
 	async init() {
 		await super.init();
 		await this.initBinaryDataService();
@@ -70,11 +72,6 @@ export class Execute extends BaseCommand {
 
 		if (!isWorkflowIdValid(workflowId)) {
 			workflowId = undefined;
-		}
-
-		if (this.globalConfig.taskRunners.enabled) {
-			const { TaskRunnerModule } = await import('@/task-runners/task-runner-module');
-			await Container.get(TaskRunnerModule).start();
 		}
 
 		const startingNode = findCliWorkflowStart(workflowData.nodes);
