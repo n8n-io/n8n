@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useAsyncState } from '@vueuse/core';
 import { useRouter } from 'vue-router';
@@ -9,17 +8,16 @@ const props = defineProps<{
 }>();
 
 const router = useRouter();
-const workflowHelpers = useWorkflowHelpers({ router });
-const workflowStore = useWorkflowsStore();
+const workflowsStore = useWorkflowsStore();
 
 const { isReady } = useAsyncState(async () => {
 	const workflowId = props.name;
-	const isAlreadyInitialized = workflowStore.workflow.id === workflowId;
+	const isAlreadyInitialized = workflowsStore.workflow.id === workflowId;
 
 	if (isAlreadyInitialized) return;
 
-	const workflow = await workflowStore.fetchWorkflow(workflowId);
-	workflowHelpers.initState(workflow);
+	const workflow = await workflowsStore.fetchWorkflow(workflowId);
+	workflowsStore.workflow = workflow;
 }, undefined);
 </script>
 

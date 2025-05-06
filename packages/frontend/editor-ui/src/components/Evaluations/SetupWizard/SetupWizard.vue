@@ -14,14 +14,16 @@ defineEmits<{
 
 const router = useRouter();
 const locale = useI18n();
-const workflowStore = useWorkflowsStore();
+const workflowsStore = useWorkflowsStore();
 
 const datasetTriggerExist = computed(() => {
-	return workflowStore.workflow.nodes.some((node) => node.type === EVALUATION_DATASET_TRIGGER_NODE);
+	return workflowsStore.workflow.nodes.some(
+		(node) => node.type === EVALUATION_DATASET_TRIGGER_NODE,
+	);
 });
 
 const evaluationMetricNodeExist = computed(() => {
-	return workflowStore.workflow.nodes.some(
+	return workflowsStore.workflow.nodes.some(
 		(node) => node.type === 'n8n-nodes-base.evaluationMetrics',
 	);
 });
@@ -70,7 +72,9 @@ const toggleStep = (index: number) => {
 
 function navigateToWorkflow() {
 	const routeWorkflowId =
-		workflowStore.workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID ? 'new' : workflowStore.workflow.id;
+		workflowsStore.workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID
+			? 'new'
+			: workflowsStore.workflow.id;
 
 	void router.push({
 		name: VIEWS.WORKFLOW,
