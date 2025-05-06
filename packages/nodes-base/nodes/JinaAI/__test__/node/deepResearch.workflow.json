@@ -13,6 +13,7 @@
 			"parameters": {
 				"resource": "research",
 				"researchQuery": "Describe the latest features in Jina AI",
+				"simplify": false,
 				"options": {},
 				"requestOptions": {}
 			},
@@ -32,6 +33,7 @@
 			"parameters": {
 				"resource": "research",
 				"researchQuery": "Describe the latest features in Jina AI",
+				"simplify": false,
 				"options": {
 					"maxReturnedSources": 5,
 					"prioritizeSources": "jina.ai",

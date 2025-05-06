@@ -12,6 +12,7 @@
 		{
 			"parameters": {
 				"url": "https://first.com/some/path",
+				"simplify": false,
 				"options": {},
 				"requestOptions": {}
 			},
@@ -30,6 +31,7 @@
 		{
 			"parameters": {
 				"url": "https://second.com/other?foo=bar",
+				"simplify": false,
 				"options": {
 					"outputFormat": "markdown",
 					"targetSelector": "article",

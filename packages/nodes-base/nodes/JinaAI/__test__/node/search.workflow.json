@@ -13,6 +13,7 @@
 			"parameters": {
 				"operation": "search",
 				"searchQuery": "Jina AI",
+				"simplify": false,
 				"options": {},
 				"requestOptions": {}
 			},
@@ -32,6 +33,7 @@
 			"parameters": {
 				"operation": "search",
 				"searchQuery": "Jina AI",
+				"simplify": false,
 				"options": {
 					"outputFormat": "markdown",
 					"siteFilter": "jina.ai",
