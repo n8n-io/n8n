@@ -72,6 +72,11 @@ export class Execute extends BaseCommand {
 			workflowId = undefined;
 		}
 
+		if (this.globalConfig.taskRunners.enabled) {
+			const { TaskRunnerModule } = await import('@/task-runners/task-runner-module');
+			await Container.get(TaskRunnerModule).start();
+		}
+
 		const startingNode = findCliWorkflowStart(workflowData.nodes);
 
 		const user = await Container.get(OwnershipService).getInstanceOwner();

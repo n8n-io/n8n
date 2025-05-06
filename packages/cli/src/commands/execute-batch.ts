@@ -11,6 +11,7 @@ import os from 'os';
 import { sep } from 'path';
 
 import { ActiveExecutions } from '@/active-executions';
+import { inTest } from '@/constants';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { OwnershipService } from '@/services/ownership.service';
 import { findCliWorkflowStart } from '@/utils';
@@ -263,6 +264,11 @@ export class ExecuteBatch extends BaseCommand {
 			ExecuteBatch.githubWorkflow = true;
 		}
 
+		if (this.globalConfig.taskRunners.enabled) {
+			const { TaskRunnerModule } = await import('@/task-runners/task-runner-module');
+			await Container.get(TaskRunnerModule).start();
+		}
+
 		ExecuteBatch.instanceOwner = await Container.get(OwnershipService).getInstanceOwner();
 
 		const query = Container.get(WorkflowRepository).createQueryBuilder('workflows');
@@ -335,7 +341,7 @@ export class ExecuteBatch extends BaseCommand {
 		if (results.summary.failedExecutions > 0) {
 			this.exit(1);
 		}
-		this.exit(0);
+		if (!inTest) this.exit(0);
 	}
 
 	mergeResults(results: IResult, retryResults: IResult) {
