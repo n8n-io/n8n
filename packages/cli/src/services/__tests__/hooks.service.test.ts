@@ -1,11 +1,11 @@
 import type { AuthUser } from '@n8n/db';
+import type { AuthUserRepository } from '@n8n/db';
+import type { CredentialsRepository } from '@n8n/db';
 import RudderStack from '@rudderstack/rudder-sdk-node';
 import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
 
 import type { AuthService } from '@/auth/auth.service';
-import type { AuthUserRepository } from '@/databases/repositories/auth-user.repository';
-import type { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import type { SettingsRepository } from '@/databases/repositories/settings.repository';
 import type { UserRepository } from '@/databases/repositories/user.repository';
 import type { WorkflowRepository } from '@/databases/repositories/workflow.repository';

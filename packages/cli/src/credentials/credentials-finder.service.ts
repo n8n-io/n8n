@@ -1,4 +1,5 @@
 import type { CredentialsEntity, SharedCredentials, User } from '@n8n/db';
+import { CredentialsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope, rolesWithScope } from '@n8n/permissions';
 import type { CredentialSharingRole, ProjectRole, Scope } from '@n8n/permissions';
@@ -7,7 +8,6 @@ import type { EntityManager, FindOptionsWhere } from '@n8n/typeorm';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 
-import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 
 @Service()

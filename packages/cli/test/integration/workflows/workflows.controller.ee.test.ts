@@ -89,7 +89,7 @@ beforeEach(async () => {
 	activeWorkflowManager.add.mockReset();
 	activeWorkflowManager.remove.mockReset();
 
-	await testDb.truncate(['Workflow', 'SharedWorkflow', 'WorkflowHistory', 'Tag']);
+	await testDb.truncate(['WorkflowEntity', 'SharedWorkflow', 'WorkflowHistory', 'TagEntity']);
 });
 
 afterEach(() => {
