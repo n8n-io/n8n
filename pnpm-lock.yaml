@@ -686,6 +686,16 @@ importers:
         specifier: ^0.0.3
         version: 0.0.3(patch_hash=083a73709a54db57b092d986b43d27ddda3cb8008f9510e98bc9e6da0e1cbb62)
 
+  packages/@n8n/integration-test-utils:
+    dependencies:
+      reflect-metadata:
+        specifier: 'catalog:'
+        version: 0.2.2
+    devDependencies:
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+
   packages/@n8n/json-schema-to-zod:
     devDependencies:
       '@n8n/typescript-config':
@@ -1098,6 +1108,9 @@ importers:
       '@n8n/di':
         specifier: workspace:*
         version: link:../@n8n/di
+      '@n8n/integration-test-utils':
+        specifier: workspace:^
+        version: link:../@n8n/integration-test-utils
       '@n8n/localtunnel':
         specifier: 3.0.0
         version: 3.0.0
