@@ -16,7 +16,7 @@ export const statusDictionary: Record<TestRunRecord['status'], { icon: string; c
 			color: 'success',
 		},
 		error: {
-			icon: 'status-error',
+			icon: 'exclamation-triangle',
 			color: 'danger',
 		},
 		cancelled: {
