@@ -68,6 +68,8 @@ export class Start extends BaseCommand {
 
 	override needsCommunityPackages = true;
 
+	override needsTaskRunner = true;
+
 	private getEditorUrl = () => Container.get(UrlService).getInstanceBaseUrl();
 
 	/**
@@ -232,13 +234,6 @@ export class Start extends BaseCommand {
 
 		if (!this.globalConfig.endpoints.disableUi) {
 			await this.generateStaticAssets();
-		}
-
-		const { taskRunners: taskRunnerConfig } = this.globalConfig;
-		if (taskRunnerConfig.enabled) {
-			const { TaskRunnerModule } = await import('@/task-runners/task-runner-module');
-			const taskRunnerModule = Container.get(TaskRunnerModule);
-			await taskRunnerModule.start();
 		}
 
 		await this.loadModules();
