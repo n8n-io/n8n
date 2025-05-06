@@ -8,7 +8,7 @@ import {
 import type { BaseRetriever } from '@langchain/core/retrievers';
 import { createStuffDocumentsChain } from 'langchain/chains/combine_documents';
 import { createRetrievalChain } from 'langchain/chains/retrieval';
-import { NodeConnectionTypes, NodeOperationError, parseErrorMetadata, sleep } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, parseErrorMetadata } from 'n8n-workflow';
 import {
 	type INodeProperties,
 	type IExecuteFunctions,
@@ -177,31 +177,6 @@ export class ChainRetrievalQa implements INodeType {
 							},
 						},
 					},
-					{
-						displayName: 'Batch Processing',
-						name: 'batching',
-						type: 'collection',
-						description: 'Batch processing options for rate limiting',
-						default: {},
-						options: [
-							{
-								displayName: 'Batch Size',
-								name: 'batchSize',
-								default: 100,
-								type: 'number',
-								description:
-									'How many items to process in parallel. This is useful for rate limiting.',
-							},
-							{
-								displayName: 'Delay Between Batches',
-								name: 'delayBetweenBatches',
-								default: 0,
-								type: 'number',
-								description:
-									'Delay in milliseconds between batches. This is useful for rate limiting.',
-							},
-						],
-					},
 				],
 			},
 		],
@@ -211,20 +186,11 @@ export class ChainRetrievalQa implements INodeType {
 		this.logger.debug('Executing Retrieval QA Chain');
 
 		const items = this.getInputData();
-		const { batchSize, delayBetweenBatches } = this.getNodeParameter('options.batching', 0, {
-			batchSize: 100,
-			delayBetweenBatches: 0,
-		}) as {
-			batchSize: number;
-			delayBetweenBatches: number;
-		};
 		const returnData: INodeExecutionData[] = [];
 
-		for (let i = 0; i < items.length; i += batchSize) {
-			const batch = items.slice(i, i + batchSize);
-			const batchPromises = batch.map(async (_item, batchIndex) => {
-				const itemIndex = i + batchIndex;
-
+		// Run for each item
+		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+			try {
 				const model = (await this.getInputConnectionData(
 					NodeConnectionTypes.AiLanguageModel,
 					0,
@@ -300,47 +266,32 @@ export class ChainRetrievalQa implements INodeType {
 
 				// Execute the chain with tracing config
 				const tracingConfig = getTracingConfig(this);
-
-				const result = await retrievalChain
+				const response = await retrievalChain
 					.withConfig(tracingConfig)
 					.invoke({ input: query }, { signal: this.getExecutionCancelSignal() });
 
-				return result;
-			});
-
-			const batchResults = await Promise.allSettled(batchPromises);
-
-			batchResults.forEach((response, index) => {
-				if (response.status === 'rejected') {
-					const error = response.reason;
-					if (this.continueOnFail()) {
-						const metadata = parseErrorMetadata(error);
-						returnData.push({
-							json: { error: error.message },
-							pairedItem: { item: index },
-							metadata,
-						});
-						return;
-					} else {
-						throw error;
-					}
-				}
-				const output = response.value;
-				const answer: string = output.answer;
+				// Get the answer from the response
+				const answer: string = response.answer;
 				if (this.getNode().typeVersion >= 1.5) {
 					returnData.push({ json: { response: answer } });
 				} else {
 					// Legacy format for versions 1.4 and below is { text: string }
 					returnData.push({ json: { response: { text: answer } } });
 				}
-			});
+			} catch (error) {
+				if (this.continueOnFail()) {
+					const metadata = parseErrorMetadata(error);
+					returnData.push({
+						json: { error: error.message },
+						pairedItem: { item: itemIndex },
+						metadata,
+					});
+					continue;
+				}
 
-			// Add delay between batches if not the last batch
-			if (i + batchSize < items.length && delayBetweenBatches > 0) {
-				await sleep(delayBetweenBatches);
+				throw error;
 			}
 		}
-
 		return [returnData];
 	}
 }
