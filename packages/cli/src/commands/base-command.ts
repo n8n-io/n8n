@@ -69,6 +69,9 @@ export abstract class BaseCommand extends Command {
 	/** Whether to init community packages (if enabled) */
 	protected needsCommunityPackages = false;
 
+	/** Whether to init task runner (if enabled). */
+	protected needsTaskRunner = false;
+
 	protected async loadModules() {
 		for (const moduleName of this.modulesConfig.modules) {
 			let preInitModule: ModulePreInit | undefined;
@@ -154,6 +157,11 @@ export abstract class BaseCommand extends Command {
 		if (communityPackages.enabled && this.needsCommunityPackages) {
 			const { CommunityPackagesService } = await import('@/services/community-packages.service');
 			await Container.get(CommunityPackagesService).checkForMissingPackages();
+		}
+
+		if (this.needsTaskRunner && this.globalConfig.taskRunners.enabled) {
+			const { TaskRunnerModule } = await import('@/task-runners/task-runner-module');
+			await Container.get(TaskRunnerModule).start();
 		}
 
 		// TODO: remove this after the cyclic dependencies around the event-bus are resolved
