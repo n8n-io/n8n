@@ -145,12 +145,15 @@ const workflowMenuItems = computed<ActionDropdownItem[]>(() => {
 			label: locale.baseText('menuActions.download'),
 			disabled: !onWorkflowPage.value,
 		},
-		{
+	];
+
+	if (!props.readOnly && !props.isArchived) {
+		actions.push({
 			id: WORKFLOW_MENU_ACTIONS.RENAME,
 			label: locale.baseText('generic.rename'),
 			disabled: !onWorkflowPage.value || workflowPermissions.value.update !== true,
-		},
-	];
+		});
+	}
 
 	if (
 		(workflowPermissions.value.delete === true && !props.readOnly && !props.isArchived) ||
