@@ -1,3 +1,4 @@
+import type { ProjectRole } from '@n8n/api-types';
 import type { Project } from '@n8n/db';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
