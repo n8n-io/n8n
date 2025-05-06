@@ -320,21 +320,21 @@ if (dbType === 'sqlite' && !globalConfig.database.sqlite.poolSize) {
 
 		describe('compactionSchedule', () => {
 			test('compaction is running on schedule', async () => {
+				// ARRANGE
 				jest.useFakeTimers();
-				try {
-					// ARRANGE
-					const insightsCompactionService = new InsightsCompactionService(
-						mock<InsightsByPeriodRepository>(),
-						mock<InsightsRawRepository>(),
-						mock<InsightsConfig>({
-							compactionIntervalMinutes: 60,
-						}),
-						mockLogger(),
-					);
-					insightsCompactionService.startCompactionTimer();
+				const insightsCompactionService = new InsightsCompactionService(
+					mock<InsightsByPeriodRepository>(),
+					mock<InsightsRawRepository>(),
+					mock<InsightsConfig>({
+						compactionIntervalMinutes: 60,
+					}),
+					mockLogger(),
+				);
+				// spy on the compactInsights method to check if it's called
+				const compactInsightsSpy = jest.spyOn(insightsCompactionService, 'compactInsights');
 
-					// spy on the compactInsights method to check if it's called
-					const compactInsightsSpy = jest.spyOn(insightsCompactionService, 'compactInsights');
+				try {
+					insightsCompactionService.startCompactionTimer();
 
 					// ACT
 					// advance by 1 hour and 1 minute
@@ -343,6 +343,7 @@ if (dbType === 'sqlite' && !globalConfig.database.sqlite.poolSize) {
 					// ASSERT
 					expect(compactInsightsSpy).toHaveBeenCalledTimes(1);
 				} finally {
+					insightsCompactionService.stopCompactionTimer();
 					jest.useRealTimers();
 				}
 			});
