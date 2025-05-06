@@ -25,10 +25,11 @@ export async function createManyWorkflows(
 }
 
 export function newWorkflow(attributes: Partial<IWorkflowDb> = {}): IWorkflowDb {
-	const { active, name, nodes, connections, versionId, settings } = attributes;
+	const { active, isArchived, name, nodes, connections, versionId, settings } = attributes;
 
 	const workflowEntity = Container.get(WorkflowRepository).create({
 		active: active ?? false,
+		isArchived: isArchived ?? false,
 		name: name ?? 'test workflow',
 		nodes: nodes ?? [
 			{

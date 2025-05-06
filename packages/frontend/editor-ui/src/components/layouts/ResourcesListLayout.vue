@@ -22,7 +22,6 @@ type ResourceKeyType = 'credentials' | 'workflows' | 'variables' | 'folders';
 
 export type FolderResource = BaseFolderItem & {
 	resourceType: 'folder';
-	readOnly: boolean;
 };
 
 export type WorkflowResource = BaseResource & {
@@ -30,6 +29,7 @@ export type WorkflowResource = BaseResource & {
 	updatedAt: string;
 	createdAt: string;
 	active: boolean;
+	isArchived: boolean;
 	homeProject?: ProjectSharingData;
 	scopes?: Scope[];
 	tags?: ITag[] | string[];
