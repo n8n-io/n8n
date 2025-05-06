@@ -14,8 +14,7 @@ import { isPresent } from '../utils/typesUtils';
 import { getResourcePermissions } from '@/permissions';
 
 export type ContextMenuTarget =
-	| { source: 'canvas'; nodeIds: string[]; nodeId: string }
-	| { source: 'canvas'; nodeIds: string[] }
+	| { source: 'canvas'; nodeIds: string[]; nodeId?: string }
 	| { source: 'node-right-click'; nodeId: string }
 	| { source: 'node-button'; nodeId: string };
 export type ContextMenuActionCallback = (action: ContextMenuAction, nodeIds: string[]) => void;
