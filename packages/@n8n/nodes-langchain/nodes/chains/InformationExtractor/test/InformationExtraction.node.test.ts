@@ -7,11 +7,6 @@ import { makeZodSchemaFromAttributes } from '../helpers';
 import { InformationExtractor } from '../InformationExtractor.node';
 import type { AttributeDefinition } from '../types';
 
-jest.mock('n8n-workflow', () => ({
-	...jest.requireActual('n8n-workflow'),
-	sleep: jest.fn(),
-}));
-
 const mockPersonAttributes: AttributeDefinition[] = [
 	{
 		name: 'name',
@@ -96,12 +91,7 @@ describe('InformationExtractor', () => {
 						attributes: {
 							attributes: mockPersonAttributes,
 						},
-						options: {
-							batching: {
-								batchSize: 1,
-								delayBetweenBatches: 100,
-							},
-						},
+						options: {},
 						schemaType: 'fromAttributes',
 					},
 					new FakeLLM({ response: formatFakeLlmResponse({ name: 'John', age: 30 }) }),
@@ -121,12 +111,7 @@ describe('InformationExtractor', () => {
 						attributes: {
 							attributes: mockPersonAttributes,
 						},
-						options: {
-							batching: {
-								batchSize: 1,
-								delayBetweenBatches: 100,
-							},
-						},
+						options: {},
 						schemaType: 'fromAttributes',
 					},
 					new FakeLLM({ response: formatFakeLlmResponse({ name: 'John' }) }),
@@ -147,12 +132,7 @@ describe('InformationExtractor', () => {
 							attributes: {
 								attributes: mockPersonAttributesRequired,
 							},
-							options: {
-								batching: {
-									batchSize: 1,
-									delayBetweenBatches: 100,
-								},
-							},
+							options: {},
 							schemaType: 'fromAttributes',
 						},
 						new FakeLLM({ response: formatFakeLlmResponse({ name: 'John' }) }),
@@ -174,12 +154,7 @@ describe('InformationExtractor', () => {
 							attributes: {
 								attributes: mockPersonAttributes,
 							},
-							options: {
-								batching: {
-									batchSize: 1,
-									delayBetweenBatches: 100,
-								},
-							},
+							options: {},
 							schemaType: 'fromAttributes',
 						},
 						new FakeLLM({ response: formatFakeLlmResponse({ name: 'John', age: '30' }) }),
@@ -200,12 +175,7 @@ describe('InformationExtractor', () => {
 						attributes: {
 							attributes: mockPersonAttributesRequired,
 						},
-						options: {
-							batching: {
-								batchSize: 1,
-								delayBetweenBatches: 100,
-							},
-						},
+						options: {},
 						schemaType: 'fromAttributes',
 					},
 					new FakeListChatModel({
@@ -230,12 +200,7 @@ describe('InformationExtractor', () => {
 						attributes: {
 							attributes: mockPersonAttributesRequired,
 						},
-						options: {
-							batching: {
-								batchSize: 1,
-								delayBetweenBatches: 100,
-							},
-						},
+						options: {},
 						schemaType: 'fromAttributes',
 					},
 					new FakeListChatModel({

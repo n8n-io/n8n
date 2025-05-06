@@ -2,7 +2,7 @@ import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import { HumanMessage } from '@langchain/core/messages';
 import { SystemMessagePromptTemplate, ChatPromptTemplate } from '@langchain/core/prompts';
 import { OutputFixingParser, StructuredOutputParser } from 'langchain/output_parsers';
-import { NodeOperationError, NodeConnectionTypes, sleep } from 'n8n-workflow';
+import { NodeOperationError, NodeConnectionTypes } from 'n8n-workflow';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -158,31 +158,6 @@ export class TextClassifier implements INodeType {
 						description:
 							'Whether to enable auto-fixing (may trigger an additional LLM call if output is broken)',
 					},
-					{
-						displayName: 'Batch Processing',
-						name: 'batching',
-						type: 'collection',
-						description: 'Batch processing options for rate limiting',
-						default: {},
-						options: [
-							{
-								displayName: 'Batch Size',
-								name: 'batchSize',
-								default: 100,
-								type: 'number',
-								description:
-									'How many items to process in parallel. This is useful for rate limiting.',
-							},
-							{
-								displayName: 'Delay Between Batches',
-								name: 'delayBetweenBatches',
-								default: 0,
-								type: 'number',
-								description:
-									'Delay in milliseconds between batches. This is useful for rate limiting.',
-							},
-						],
-					},
 				],
 			},
 		],
@@ -190,13 +165,6 @@ export class TextClassifier implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const { batchSize, delayBetweenBatches } = this.getNodeParameter('options.batching', 0, {
-			batchSize: 100,
-			delayBetweenBatches: 0,
-		}) as {
-			batchSize: number;
-			delayBetweenBatches: number;
-		};
 
 		const llm = (await this.getInputConnectionData(
 			NodeConnectionTypes.AiLanguageModel,
@@ -255,79 +223,68 @@ export class TextClassifier implements INodeType {
 			{ length: categories.length + (fallback === 'other' ? 1 : 0) },
 			(_) => [],
 		);
+		for (let itemIdx = 0; itemIdx < items.length; itemIdx++) {
+			const item = items[itemIdx];
+			item.pairedItem = { item: itemIdx };
+			const input = this.getNodeParameter('inputText', itemIdx) as string;
 
-		for (let i = 0; i < items.length; i += batchSize) {
-			const batch = items.slice(i, i + batchSize);
-			const batchPromises = batch.map(async (_item, batchItemIndex) => {
-				const itemIdx = i + batchItemIndex;
-				const item = items[itemIdx];
-				item.pairedItem = { item: itemIdx };
-				const input = this.getNodeParameter('inputText', itemIdx) as string;
-
-				if (input === undefined || input === null) {
+			if (input === undefined || input === null) {
+				if (this.continueOnFail()) {
+					returnData[0].push({
+						json: { error: 'Text to classify is not defined' },
+						pairedItem: { item: itemIdx },
+					});
+					continue;
+				} else {
 					throw new NodeOperationError(
 						this.getNode(),
 						`Text to classify for item ${itemIdx} is not defined`,
 					);
 				}
+			}
 
-				const inputPrompt = new HumanMessage(input);
+			const inputPrompt = new HumanMessage(input);
 
-				const systemPromptTemplateOpt = this.getNodeParameter(
-					'options.systemPromptTemplate',
-					itemIdx,
-					SYSTEM_PROMPT_TEMPLATE,
-				) as string;
-				const systemPromptTemplate = SystemMessagePromptTemplate.fromTemplate(
-					`${systemPromptTemplateOpt ?? SYSTEM_PROMPT_TEMPLATE}
-	{format_instructions}
-	${multiClassPrompt}
-	${fallbackPrompt}`,
-				);
+			const systemPromptTemplateOpt = this.getNodeParameter(
+				'options.systemPromptTemplate',
+				itemIdx,
+				SYSTEM_PROMPT_TEMPLATE,
+			) as string;
+			const systemPromptTemplate = SystemMessagePromptTemplate.fromTemplate(
+				`${systemPromptTemplateOpt ?? SYSTEM_PROMPT_TEMPLATE}
+{format_instructions}
+${multiClassPrompt}
+${fallbackPrompt}`,
+			);
 
-				const messages = [
-					await systemPromptTemplate.format({
-						categories: categories.map((cat) => cat.category).join(', '),
-						format_instructions: parser.getFormatInstructions(),
-					}),
-					inputPrompt,
-				];
-				const prompt = ChatPromptTemplate.fromMessages(messages);
-				const chain = prompt.pipe(llm).pipe(parser).withConfig(getTracingConfig(this));
+			const messages = [
+				await systemPromptTemplate.format({
+					categories: categories.map((cat) => cat.category).join(', '),
+					format_instructions: parser.getFormatInstructions(),
+				}),
+				inputPrompt,
+			];
+			const prompt = ChatPromptTemplate.fromMessages(messages);
+			const chain = prompt.pipe(llm).pipe(parser).withConfig(getTracingConfig(this));
 
-				return await chain.invoke(messages);
-			});
+			try {
+				const output = await chain.invoke(messages);
 
-			const batchResults = await Promise.allSettled(batchPromises);
-
-			batchResults.forEach((response, batchItemIndex) => {
-				const index = i + batchItemIndex;
-				if (response.status === 'rejected') {
-					const error = response.reason as Error;
-					if (this.continueOnFail()) {
-						returnData[0].push({
-							json: { error: error.message },
-							pairedItem: { item: index },
-						});
-						return;
-					} else {
-						throw new NodeOperationError(this.getNode(), error.message);
-					}
-				} else {
-					const output = response.value;
-					const item = items[index];
-
-					categories.forEach((cat, idx) => {
-						if (output[cat.category]) returnData[idx].push(item);
+				categories.forEach((cat, idx) => {
+					if (output[cat.category]) returnData[idx].push(item);
+				});
+				if (fallback === 'other' && output.fallback) returnData[returnData.length - 1].push(item);
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData[0].push({
+						json: { error: error.message },
+						pairedItem: { item: itemIdx },
 					});
 
-					if (fallback === 'other' && output.fallback) returnData[returnData.length - 1].push(item);
+					continue;
 				}
-			});
 
-			// Add delay between batches if not the last batch
-			if (i + batchSize < items.length && delayBetweenBatches > 0) {
-				await sleep(delayBetweenBatches);
+				throw error;
 			}
 		}
 

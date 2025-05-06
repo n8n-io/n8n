@@ -3,7 +3,7 @@
 import { FakeChatModel } from '@langchain/core/utils/testing';
 import { mock } from 'jest-mock-extended';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
-import { NodeConnectionTypes, UnexpectedError } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import * as helperModule from '@utils/helpers';
 import * as outputParserModule from '@utils/output_parsers/N8nOutputParser';
@@ -11,11 +11,6 @@ import * as outputParserModule from '@utils/output_parsers/N8nOutputParser';
 import { ChainLlm } from '../ChainLlm.node';
 import * as executeChainModule from '../methods/chainExecutor';
 import * as responseFormatterModule from '../methods/responseFormatter';
-
-jest.mock('n8n-workflow', () => ({
-	...jest.requireActual('n8n-workflow'),
-	sleep: jest.fn(),
-}));
 
 jest.mock('@utils/helpers', () => ({
 	getPromptInputByType: jest.fn(),
@@ -30,7 +25,12 @@ jest.mock('../methods/chainExecutor', () => ({
 }));
 
 jest.mock('../methods/responseFormatter', () => ({
-	formatResponse: jest.fn(),
+	formatResponse: jest.fn().mockImplementation((response) => {
+		if (typeof response === 'string') {
+			return { text: response.trim() };
+		}
+		return response;
+	}),
 }));
 
 describe('ChainLlm Node', () => {
@@ -38,8 +38,6 @@ describe('ChainLlm Node', () => {
 	let mockExecuteFunction: jest.Mocked<IExecuteFunctions>;
 
 	beforeEach(() => {
-		jest.resetAllMocks();
-
 		node = new ChainLlm();
 		mockExecuteFunction = mock<IExecuteFunctions>();
 
@@ -65,12 +63,7 @@ describe('ChainLlm Node', () => {
 		const fakeLLM = new FakeChatModel({});
 		mockExecuteFunction.getInputConnectionData.mockResolvedValue(fakeLLM);
 
-		(responseFormatterModule.formatResponse as jest.Mock).mockImplementation((response) => {
-			if (typeof response === 'string') {
-				return { text: response.trim() };
-			}
-			return response;
-		});
+		jest.clearAllMocks();
 	});
 
 	describe('description', () => {
@@ -171,14 +164,15 @@ describe('ChainLlm Node', () => {
 		});
 
 		it('should continue on failure when configured', async () => {
-			mockExecuteFunction.continueOnFail.mockReturnValue(true);
 			(helperModule.getPromptInputByType as jest.Mock).mockReturnValue('Test prompt');
 
-			(executeChainModule.executeChain as jest.Mock).mockRejectedValueOnce(
-				new UnexpectedError('Test error'),
-			);
+			const error = new Error('Test error');
+			(executeChainModule.executeChain as jest.Mock).mockRejectedValue(error);
+
+			mockExecuteFunction.continueOnFail.mockReturnValue(true);
 
 			const result = await node.execute.call(mockExecuteFunction);
+
 			expect(result).toEqual([[{ json: { error: 'Test error' }, pairedItem: { item: 0 } }]]);
 		});
 
