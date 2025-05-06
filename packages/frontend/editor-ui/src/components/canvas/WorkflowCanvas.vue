@@ -61,8 +61,8 @@ onNodesInitialized(() => {
 	}
 });
 
-const mappedNodesThrottled = throttledRef(mappedNodes, 200, { maxWait: 50 });
-const mappedConnectionsThrottled = throttledRef(mappedConnections, 200, { maxWait: 50 });
+const mappedNodesThrottled = throttledRef(mappedNodes, 200);
+const mappedConnectionsThrottled = throttledRef(mappedConnections, 200);
 </script>
 
 <template>
