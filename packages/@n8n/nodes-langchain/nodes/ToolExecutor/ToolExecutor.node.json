@@ -1,8 +1,8 @@
 {
-	"node": "n8n-nodes-base.virtualAgent",
+	"node": "n8n-nodes-base.toolExecutor",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"details": "The is a test node for tool testing.",
+	"details": "Can execute tools by simulating an agent function call with a given query.",
 	"categories": ["Core Nodes"],
 	"resources": {
 		"primaryDocumentation": [
