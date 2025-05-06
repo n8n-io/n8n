@@ -1,4 +1,5 @@
 import type { ProcessedData } from '@n8n/db';
+import { ProcessedDataRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { createHash } from 'crypto';
 import { tryToParseDateTime } from 'n8n-workflow';
@@ -15,7 +16,6 @@ import type {
 } from 'n8n-workflow';
 import * as assert from 'node:assert/strict';
 
-import { ProcessedDataRepository } from '@/databases/repositories/processed-data.repository';
 import { DeduplicationError } from '@/errors/deduplication.error';
 
 export class DeduplicationHelper implements IDataDeduplicator {
