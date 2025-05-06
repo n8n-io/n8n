@@ -14,7 +14,7 @@ import { isPresent } from '../utils/typesUtils';
 import { getResourcePermissions } from '@/permissions';
 
 export type ContextMenuTarget =
-	| { source: 'canvas'; nodeIds: string[] }
+	| { source: 'canvas'; nodeIds: string[]; nodeId?: string }
 	| { source: 'node-right-click'; nodeId: string }
 	| { source: 'node-button'; nodeId: string };
 export type ContextMenuActionCallback = (action: ContextMenuAction, nodeIds: string[]) => void;
@@ -108,7 +108,11 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 	const open = (event: MouseEvent, menuTarget: ContextMenuTarget) => {
 		event.stopPropagation();
 
-		if (isOpen.value && menuTarget.source === target.value?.source) {
+		if (
+			isOpen.value &&
+			menuTarget.source === target.value?.source &&
+			menuTarget.nodeId === target.value?.nodeId
+		) {
 			// Close context menu, let browser open native context menu
 			close();
 			return;
@@ -244,7 +248,7 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 							{
 								id: 'rename',
 								label: i18n.baseText('contextMenu.rename'),
-								shortcut: { keys: ['F2'] },
+								shortcut: { keys: ['Space'] },
 								disabled: isReadOnly.value,
 							},
 						];

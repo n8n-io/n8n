@@ -4,7 +4,8 @@ import type { CanvasLayoutEvent, CanvasLayoutSource } from '@/composables/useCan
 import { useCanvasLayout } from '@/composables/useCanvasLayout';
 import { useCanvasNodeHover } from '@/composables/useCanvasNodeHover';
 import { useCanvasTraversal } from '@/composables/useCanvasTraversal';
-import { type ContextMenuAction, useContextMenu } from '@/composables/useContextMenu';
+import type { ContextMenuAction, ContextMenuTarget } from '@/composables/useContextMenu';
+import { useContextMenu } from '@/composables/useContextMenu';
 import { useKeybindings } from '@/composables/useKeybindings';
 import type { PinDataSource } from '@/composables/usePinnedData';
 import { CanvasKey } from '@/constants';
@@ -603,18 +604,16 @@ const nodeDataById = computed(() => {
 
 const contextMenu = useContextMenu();
 
-function onOpenContextMenu(event: MouseEvent) {
+function onOpenContextMenu(event: MouseEvent, target?: Pick<ContextMenuTarget, 'nodeId'>) {
 	contextMenu.open(event, {
 		source: 'canvas',
 		nodeIds: selectedNodeIds.value,
+		...target,
 	});
 }
 
 function onOpenSelectionContextMenu({ event }: { event: MouseEvent }) {
-	contextMenu.open(event, {
-		source: 'canvas',
-		nodeIds: selectedNodeIds.value,
-	});
+	onOpenContextMenu(event);
 }
 
 function onOpenNodeContextMenu(
@@ -622,11 +621,14 @@ function onOpenNodeContextMenu(
 	event: MouseEvent,
 	source: 'node-button' | 'node-right-click',
 ) {
-	if (selectedNodeIds.value.includes(id)) {
-		onOpenContextMenu(event);
+	if (source === 'node-button') {
+		contextMenu.open(event, { source, nodeId: id });
+	} else if (selectedNodeIds.value.length > 1 && selectedNodeIds.value.includes(id)) {
+		onOpenContextMenu(event, { nodeId: id });
+	} else {
+		onSelectNodes({ ids: [id] });
+		contextMenu.open(event, { source, nodeId: id });
 	}
-
-	contextMenu.open(event, { source, nodeId: id });
 }
 
 async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[]) {
