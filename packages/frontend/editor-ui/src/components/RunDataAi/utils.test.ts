@@ -191,7 +191,7 @@ describe(getTreeNodeData, () => {
 	});
 
 	it('should filter node executions based on source node', () => {
-		const workflow = createTestWorkflowObject({
+		const workflowWithSharedSubNode = createTestWorkflowObject({
 			nodes: [
 				createTestNode({ name: 'RootNode1' }),
 				createTestNode({ name: 'RootNode2' }),
@@ -215,7 +215,7 @@ describe(getTreeNodeData, () => {
 				data: [{ json: { result: 'from RootNode1' } }],
 				inOut: 'output' as const,
 				type: NodeConnectionTypes.AiTool,
-				source: [{ previousNode: 'RootNode1' }],
+				source: [{ previousNode: 'RootNode1', previousNodeRun: 0 }],
 				metadata: {
 					executionTime: 100,
 					startTime: Date.parse('2025-02-26T00:00:01.000Z'),
@@ -231,7 +231,7 @@ describe(getTreeNodeData, () => {
 				data: [{ json: { result: 'from RootNode2' } }],
 				inOut: 'output' as const,
 				type: NodeConnectionTypes.AiTool,
-				source: [{ previousNode: 'RootNode2' }],
+				source: [{ previousNode: 'RootNode2', previousNodeRun: 0 }],
 				metadata: {
 					executionTime: 100,
 					startTime: Date.parse('2025-02-26T00:00:02.000Z'),
@@ -244,15 +244,74 @@ describe(getTreeNodeData, () => {
 		const aiData = [sharedSubNodeData1, sharedSubNodeData2];
 
 		// Test for RootNode1 - should only show SharedSubNode with source RootNode1
-		const rootNode1Tree = getTreeNodeData('RootNode1', workflow, aiData);
+		const rootNode1Tree = getTreeNodeData('RootNode1', workflowWithSharedSubNode, aiData);
 		expect(rootNode1Tree[0].children.length).toBe(1);
 		expect(rootNode1Tree[0].children[0].node).toBe('SharedSubNode');
 		expect(rootNode1Tree[0].children[0].runIndex).toBe(0);
 
 		// Test for RootNode2 - should only show SharedSubNode with source RootNode2
-		const rootNode2Tree = getTreeNodeData('RootNode2', workflow, aiData);
+		const rootNode2Tree = getTreeNodeData('RootNode2', workflowWithSharedSubNode, aiData);
 		expect(rootNode2Tree[0].children.length).toBe(1);
 		expect(rootNode2Tree[0].children[0].node).toBe('SharedSubNode');
+		expect(rootNode2Tree[0].children[0].runIndex).toBe(1);
+	});
+
+	it('should filter node executions based on source run index', () => {
+		const workflow = createTestWorkflowObject({
+			nodes: [createTestNode({ name: 'RootNode' }), createTestNode({ name: 'SubNode' })],
+			connections: {
+				SubNode: {
+					ai_tool: [[{ node: 'RootNode', type: NodeConnectionTypes.AiTool, index: 0 }]],
+				},
+			},
+		});
+
+		// Create test AI data with source information
+		const subNodeData1 = {
+			node: 'SubNode',
+			runIndex: 0,
+			data: {
+				data: [{ json: { result: 'from RootNode' } }],
+				inOut: 'output' as const,
+				type: NodeConnectionTypes.AiTool,
+				source: [{ previousNode: 'RootNode', previousNodeRun: 0 }],
+				metadata: {
+					executionTime: 100,
+					startTime: Date.parse('2025-02-26T00:00:01.000Z'),
+					subExecution: undefined,
+				},
+			},
+		};
+
+		const subNodeData2 = {
+			node: 'SubNode',
+			runIndex: 1,
+			data: {
+				data: [{ json: { result: 'from RootNode' } }],
+				inOut: 'output' as const,
+				type: NodeConnectionTypes.AiTool,
+				source: [{ previousNode: 'RootNode', previousNodeRun: 1 }],
+				metadata: {
+					executionTime: 100,
+					startTime: Date.parse('2025-02-26T00:00:02.000Z'),
+					subExecution: undefined,
+				},
+			},
+		};
+
+		// Create test AI data array
+		const aiData = [subNodeData1, subNodeData2];
+
+		// Test for run #1 of RootNode - should only show SubNode with source run index 0
+		const rootNode1Tree = getTreeNodeData('RootNode', workflow, aiData, 0);
+		expect(rootNode1Tree[0].children.length).toBe(1);
+		expect(rootNode1Tree[0].children[0].node).toBe('SubNode');
+		expect(rootNode1Tree[0].children[0].runIndex).toBe(0);
+
+		// Test for run #2 of RootNode - should only show SubNode with source run index 1
+		const rootNode2Tree = getTreeNodeData('RootNode', workflow, aiData, 1);
+		expect(rootNode2Tree[0].children.length).toBe(1);
+		expect(rootNode2Tree[0].children[0].node).toBe('SubNode');
 		expect(rootNode2Tree[0].children[0].runIndex).toBe(1);
 	});
 
@@ -359,7 +418,7 @@ describe(getTreeNodeData, () => {
 				data: [{ json: { result: 'from RootNode1' } }],
 				inOut: 'output' as const,
 				type: NodeConnectionTypes.AiTool,
-				source: [{ previousNode: 'RootNode1' }],
+				source: [{ previousNode: 'RootNode1', previousNodeRun: 0 }],
 				metadata: {
 					executionTime: 100,
 					startTime: Date.parse('2025-02-26T00:00:01.000Z'),
@@ -375,7 +434,7 @@ describe(getTreeNodeData, () => {
 				data: [{ json: { result: 'from RootNode2' } }],
 				inOut: 'output' as const,
 				type: NodeConnectionTypes.AiTool,
-				source: [{ previousNode: 'RootNode2' }],
+				source: [{ previousNode: 'RootNode2', previousNodeRun: 0 }],
 				metadata: {
 					executionTime: 100,
 					startTime: Date.parse('2025-02-26T00:00:02.000Z'),
@@ -391,7 +450,7 @@ describe(getTreeNodeData, () => {
 				data: [{ json: { result: 'from SharedSubNode run 0' } }],
 				inOut: 'output' as const,
 				type: NodeConnectionTypes.AiTool,
-				source: [{ previousNode: 'SharedSubNode' }],
+				source: [{ previousNode: 'SharedSubNode', previousNodeRun: 0 }],
 				metadata: {
 					executionTime: 100,
 					startTime: Date.parse('2025-02-26T00:00:03.000Z'),
@@ -407,7 +466,7 @@ describe(getTreeNodeData, () => {
 				data: [{ json: { result: 'from SharedSubNode run 1' } }],
 				inOut: 'output' as const,
 				type: NodeConnectionTypes.AiTool,
-				source: [{ previousNode: 'SharedSubNode' }],
+				source: [{ previousNode: 'SharedSubNode', previousNodeRun: 1 }],
 				metadata: {
 					executionTime: 100,
 					startTime: Date.parse('2025-02-26T00:00:04.000Z'),
@@ -605,13 +664,13 @@ describe(getTreeNodeDataV2, () => {
 				createTestTaskData({
 					startTime: Date.parse('2025-02-26T00:00:02.000Z'),
 					executionIndex: 2,
-					source: [{ previousNode: 'RootNode1' }],
+					source: [{ previousNode: 'RootNode1', previousNodeRun: 0 }],
 					data: { main: [[{ json: { result: 'from RootNode1' } }]] },
 				}),
 				createTestTaskData({
 					startTime: Date.parse('2025-02-26T00:00:03.000Z'),
 					executionIndex: 3,
-					source: [{ previousNode: 'RootNode2' }],
+					source: [{ previousNode: 'RootNode2', previousNodeRun: 1 }],
 					data: { main: [[{ json: { result: 'from RootNode2' } }]] },
 				}),
 			],
@@ -627,6 +686,53 @@ describe(getTreeNodeDataV2, () => {
 		const rootNode2Tree = getTreeNodeDataV2('RootNode2', runData.RootNode2[0], workflow, runData);
 		expect(rootNode2Tree[0].children.length).toBe(1);
 		expect(rootNode2Tree[0].children[0].node.name).toBe('SharedSubNode');
+		expect(rootNode2Tree[0].children[0].runIndex).toBe(1);
+	});
+
+	it('should filter node executions based on source run index', () => {
+		const workflow = createTestWorkflowObject({
+			nodes: [createTestNode({ name: 'RootNode' }), createTestNode({ name: 'SubNode' })],
+			connections: {
+				SubNode: {
+					ai_tool: [[{ node: 'RootNode', type: NodeConnectionTypes.AiTool, index: 0 }]],
+				},
+			},
+		});
+
+		// Create test run data with source information
+		const runData = {
+			RootNode: [
+				createTestTaskData({
+					startTime: Date.parse('2025-02-26T00:00:00.000Z'),
+					executionIndex: 0,
+				}),
+				createTestTaskData({
+					startTime: Date.parse('2025-02-26T00:00:02.000Z'),
+					executionIndex: 2,
+				}),
+			],
+			SubNode: [
+				createTestTaskData({
+					startTime: Date.parse('2025-02-26T00:00:01.000Z'),
+					executionIndex: 1,
+				}),
+				createTestTaskData({
+					startTime: Date.parse('2025-02-26T00:00:03.000Z'),
+					executionIndex: 3,
+				}),
+			],
+		};
+
+		// Test for run #1 of RootNode - should only show SubNode with source run index 0
+		const rootNode1Tree = getTreeNodeDataV2('RootNode', runData.RootNode[0], workflow, runData, 0);
+		expect(rootNode1Tree[0].children.length).toBe(1);
+		expect(rootNode1Tree[0].children[0].node.name).toBe('SubNode');
+		expect(rootNode1Tree[0].children[0].runIndex).toBe(0);
+
+		// Test for run #2 of RootNode - should only show SubNode with source run index 1
+		const rootNode2Tree = getTreeNodeDataV2('RootNode', runData.RootNode[1], workflow, runData, 1);
+		expect(rootNode2Tree[0].children.length).toBe(1);
+		expect(rootNode2Tree[0].children[0].node.name).toBe('SubNode');
 		expect(rootNode2Tree[0].children[0].runIndex).toBe(1);
 	});
 
@@ -1184,7 +1290,5 @@ describe(deepToRaw, () => {
 		expect(isReactive(raw.foo)).toBe(false);
 		expect(isReactive(raw.foo.bar)).toBe(false);
 		expect(isReactive(raw.bazz)).toBe(false);
-
-		console.log(raw.foo.bar);
 	});
 });

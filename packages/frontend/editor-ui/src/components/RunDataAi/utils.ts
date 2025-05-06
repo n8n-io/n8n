@@ -90,7 +90,11 @@ function getTreeNodeDataRec(
 						return true;
 					}
 
-					return data.source.filter((source) => source?.previousNode === nodeName)?.length > 0;
+					return data.source.some(
+						(source) =>
+							source?.previousNode === nodeName &&
+							(runIndex === undefined || source.previousNodeRun === runIndex),
+					);
 				})
 			: aiData;
 
@@ -334,15 +338,16 @@ function getTreeNodeDataRecV2(
 				// At root depth, filter out node executions that weren't triggered by this node
 				// This prevents showing duplicate executions when a sub-node is connected to multiple parents
 				// Only filter nodes that have source information with valid previousNode references
-				if (currentDepth === 0) {
-					if (
-						t.source?.length > 0 &&
-						t.source.filter((source) => source?.previousNode === node.name)?.length === 0
-					) {
-						return [];
-					}
-				}
-				if (runIndex !== undefined && index !== runIndex) {
+				const isMatched =
+					currentDepth === 0 && t.source?.length > 0
+						? t.source.some(
+								(source) =>
+									source?.previousNode === node.name &&
+									(runIndex === undefined || source.previousNodeRun === runIndex),
+							)
+						: runIndex === undefined || index === runIndex;
+
+				if (!isMatched) {
 					return [];
 				}
 
@@ -414,7 +419,12 @@ export function createLogEntries(workflow: Workflow, runData: IRunData) {
 	const runs = Object.entries(runData)
 		.filter(([nodeName]) => workflow.getChildNodes(nodeName, 'ALL_NON_MAIN').length === 0)
 		.flatMap(([nodeName, taskData]) =>
-			taskData.map((task, runIndex) => ({ nodeName, task, runIndex })),
+			taskData.map((task, runIndex) => ({
+				nodeName,
+				task,
+				runIndex,
+				nodeHasMultipleRuns: taskData.length > 1,
+			})),
 		)
 		.sort((a, b) => {
 			if (a.task.executionIndex !== undefined && b.task.executionIndex !== undefined) {
@@ -426,13 +436,15 @@ export function createLogEntries(workflow: Workflow, runData: IRunData) {
 				: a.task.startTime - b.task.startTime;
 		});
 
-	return runs.flatMap(({ nodeName, runIndex, task }) => {
-		if (workflow.getParentNodes(nodeName, 'ALL_NON_MAIN').length > 0) {
-			return getTreeNodeDataV2(nodeName, task, workflow, runData, undefined);
-		}
-
-		return getTreeNodeDataV2(nodeName, task, workflow, runData, runIndex);
-	});
+	return runs.flatMap(({ nodeName, runIndex, task, nodeHasMultipleRuns }) =>
+		getTreeNodeDataV2(
+			nodeName,
+			task,
+			workflow,
+			runData,
+			nodeHasMultipleRuns ? runIndex : undefined,
+		),
+	);
 }
 
 export function includesLogEntry(log: LogEntry, logs: LogEntry[]): boolean {

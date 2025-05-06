@@ -237,7 +237,9 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 		} = this;
 
 		let taskData: ITaskData | undefined;
-		const source: ISourceData[] = [{ previousNode: this.parentNode?.name ?? '' }];
+		const source: ISourceData[] = this.parentNode
+			? [{ previousNode: this.parentNode.name, previousNodeRun: sourceNodeRunIndex }]
+			: [];
 
 		if (type === 'input') {
 			taskData = {
