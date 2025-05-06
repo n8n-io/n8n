@@ -13,7 +13,7 @@ const getBrowserId = () => {
 		browserId = crypto.randomUUID();
 		localStorage.setItem(BROWSER_ID_STORAGE_KEY, browserId);
 	}
-	return browserId!;
+	return browserId;
 };
 
 export const NO_NETWORK_ERROR_CODE = 999;

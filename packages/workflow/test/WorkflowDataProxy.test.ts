@@ -3,7 +3,8 @@ import { DateTime, Duration, Interval } from 'luxon';
 import { ensureError } from '@/errors/ensure-error';
 import { ExpressionError } from '@/errors/expression.error';
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
+	type NodeConnectionType,
 	type IExecuteData,
 	type INode,
 	type IPinData,
@@ -38,7 +39,7 @@ const getProxyFromFixture = (
 ) => {
 	const taskData = run?.data.resultData.runData[activeNode]?.[opts?.runIndex ?? 0];
 	const lastNodeConnectionInputData =
-		taskData?.data?.[opts?.connectionType ?? NodeConnectionType.Main]?.[0];
+		taskData?.data?.[opts?.connectionType ?? NodeConnectionTypes.Main]?.[0];
 
 	let executeData: IExecuteData | undefined;
 
@@ -47,7 +48,7 @@ const getProxyFromFixture = (
 			data: taskData.data!,
 			node: workflow.nodes.find((node) => node.name === activeNode) as INode,
 			source: {
-				[opts?.connectionType ?? NodeConnectionType.Main]: taskData.source,
+				[opts?.connectionType ?? NodeConnectionTypes.Main]: taskData.source,
 			},
 		};
 	}
@@ -519,7 +520,7 @@ describe('WorkflowDataProxy', () => {
 		const fixture = loadFixture('from_ai_multiple_items');
 		const getFromAIProxy = (runIndex = 0) =>
 			getProxyFromFixture(fixture.workflow, fixture.run, 'Google Sheets1', 'manual', {
-				connectionType: NodeConnectionType.AiTool,
+				connectionType: NodeConnectionTypes.AiTool,
 				throwOnMissingExecutionData: false,
 				runIndex,
 			});
@@ -555,7 +556,7 @@ describe('WorkflowDataProxy', () => {
 	describe('$rawParameter', () => {
 		const fixture = loadFixture('rawParameter');
 		const proxy = getProxyFromFixture(fixture.workflow, fixture.run, 'Execute Workflow', 'manual', {
-			connectionType: NodeConnectionType.Main,
+			connectionType: NodeConnectionTypes.Main,
 			throwOnMissingExecutionData: false,
 			runIndex: 0,
 		});
@@ -582,7 +583,7 @@ describe('WorkflowDataProxy', () => {
 				'Execute Workflow',
 				'manual',
 				{
-					connectionType: NodeConnectionType.Main,
+					connectionType: NodeConnectionTypes.Main,
 					throwOnMissingExecutionData: false,
 					runIndex: 0,
 				},
@@ -784,6 +785,54 @@ describe('WorkflowDataProxy', () => {
 
 				expect(() => noDataProxy.$items('Rename')).toThrowError(ExpressionError);
 			});
+		});
+	});
+
+	describe('$agentInfo', () => {
+		const fixture = loadFixture('agentInfo');
+		const proxy = getProxyFromFixture(fixture.workflow, fixture.run, 'AI Agent');
+
+		test('$agentInfo should return undefined for non-agent nodes', () => {
+			const nonAgentProxy = getProxyFromFixture(fixture.workflow, fixture.run, 'Calculator');
+			expect(nonAgentProxy.$agentInfo).toBeUndefined();
+		});
+
+		test('$agentInfo should return memoryConnectedToAgent as true if memory is connected', () => {
+			expect(proxy.$agentInfo.memoryConnectedToAgent).toBe(true);
+		});
+
+		test('$agentInfo should return memoryConnectedToAgent as false if no memory is connected', () => {
+			const noMemoryProxy = getProxyFromFixture(fixture.workflow, fixture.run, 'Another Agent');
+			expect(noMemoryProxy.$agentInfo.memoryConnectedToAgent).toBe(false);
+		});
+
+		test('$agentInfo.tools should include connected tools with correct details', () => {
+			const tools = proxy.$agentInfo.tools;
+			// don't show tool connected to other agent
+			expect(tools.length).toEqual(2);
+			expect(tools[0]).toMatchObject({
+				connected: true,
+				name: 'Google Calendar',
+				type: 'Google Calendar',
+				resource: 'Event',
+				operation: 'Create',
+				hasCredentials: false,
+			});
+			expect(tools[1]).toMatchObject({
+				connected: false,
+				name: 'Calculator',
+				type: 'Calculator',
+				resource: null,
+				operation: null,
+				hasCredentials: false,
+			});
+		});
+
+		test('$agentInfo.tools should correctly identify AI-defined fields', () => {
+			const tools = proxy.$agentInfo.tools;
+			expect(tools[0].name).toBe('Google Calendar');
+			expect(tools[0].aiDefinedFields.length).toBe(1);
+			expect(tools[0].aiDefinedFields).toEqual(['Start']);
 		});
 	});
 });

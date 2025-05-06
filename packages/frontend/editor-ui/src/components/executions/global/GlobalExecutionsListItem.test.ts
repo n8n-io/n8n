@@ -98,21 +98,6 @@ describe('GlobalExecutionsListItem', () => {
 		expect(emitted().delete).toBeTruthy();
 	});
 
-	it('should open a new window on execution click', async () => {
-		global.window.open = vi.fn();
-
-		const { getByText } = renderComponent({
-			props: {
-				execution: { status: 'success', id: 123, workflowName: 'TestWorkflow' },
-				workflowPermissions: {},
-			},
-		});
-
-		await fireEvent.click(getByText('TestWorkflow'));
-		expect(window.open).toHaveBeenCalledWith('mockedRoute', '_blank');
-		expect(globalExecutionsListItemQueuedTooltipRenderSpy).not.toHaveBeenCalled();
-	});
-
 	it('should show formatted start date', () => {
 		const testDate = '2022-01-01T12:00:00Z';
 		const { getByText } = renderComponent({
@@ -123,7 +108,7 @@ describe('GlobalExecutionsListItem', () => {
 		});
 
 		expect(
-			getByText(`1 Jan, 2022 at ${DateTime.fromJSDate(new Date(testDate)).toFormat('HH')}:00:00`),
+			getByText(`Jan 1, 2022, ${DateTime.fromJSDate(new Date(testDate)).toFormat('HH')}:00:00`),
 		).toBeInTheDocument();
 	});
 

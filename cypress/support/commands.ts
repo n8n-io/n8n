@@ -69,7 +69,7 @@ Cypress.Commands.add('signin', ({ email, password }) => {
 			.request({
 				method: 'POST',
 				url: `${BACKEND_BASE_URL}/rest/login`,
-				body: { email, password },
+				body: { emailOrLdapLoginId: email, password },
 				failOnStatusCode: false,
 			})
 			.then((response) => {

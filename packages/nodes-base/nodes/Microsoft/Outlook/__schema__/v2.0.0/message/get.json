@@ -7,7 +7,18 @@
         "@odata.etag": {
             "type": "string"
         },
-        "id": {
+        "body": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "type": "string"
+                },
+                "contentType": {
+                    "type": "string"
+                }
+            }
+        },
+        "bodyPreview": {
             "type": "string"
         },
         "categories": {
@@ -16,35 +27,8 @@
                 "type": "string"
             }
         },
-        "receivedDateTime": {
-            "type": "string"
-        },
-        "hasAttachments": {
-            "type": "boolean"
-        },
-        "subject": {
-            "type": "string"
-        },
-        "bodyPreview": {
-            "type": "string"
-        },
         "conversationId": {
             "type": "string"
-        },
-        "body": {
-            "type": "object",
-            "properties": {
-                "contentType": {
-                    "type": "string"
-                },
-                "content": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "contentType",
-                "content"
-            ]
         },
         "from": {
             "type": "object",
@@ -52,77 +36,25 @@
                 "emailAddress": {
                     "type": "object",
                     "properties": {
-                        "name": {
-                            "type": "string"
-                        },
                         "address": {
                             "type": "string"
+                        },
+                        "name": {
+                            "type": "string"
                         }
-                    },
-                    "required": [
-                        "name",
-                        "address"
-                    ]
+                    }
                 }
-            },
-            "required": [
-                "emailAddress"
-            ]
-        },
-        "toRecipients": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "emailAddress": {
-                        "type": "object",
-                        "properties": {
-                            "name": {
-                                "type": "string"
-                            },
-                            "address": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "name",
-                            "address"
-                        ]
-                    }
-                },
-                "required": [
-                    "emailAddress"
-                ]
             }
         },
-        "ccRecipients": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "emailAddress": {
-                        "type": "object",
-                        "properties": {
-                            "name": {
-                                "type": "string"
-                            },
-                            "address": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "name",
-                            "address"
-                        ]
-                    }
-                },
-                "required": [
-                    "emailAddress"
-                ]
-            }
+        "hasAttachments": {
+            "type": "boolean"
+        },
+        "id": {
+            "type": "string"
+        },
+        "subject": {
+            "type": "string"
         }
     },
-    "required": [
-        "id"
-    ]
+    "version": 2
 }

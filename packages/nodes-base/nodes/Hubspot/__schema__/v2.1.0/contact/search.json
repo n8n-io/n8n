@@ -1,6 +1,12 @@
 {
     "type": "object",
     "properties": {
+        "archived": {
+            "type": "boolean"
+        },
+        "createdAt": {
+            "type": "string"
+        },
         "id": {
             "type": "string"
         },
@@ -10,34 +16,20 @@
                 "createdate": {
                     "type": "string"
                 },
+                "email": {
+                    "type": "string"
+                },
                 "hs_object_id": {
                     "type": "string"
                 },
                 "lastmodifieddate": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "createdate",
-                "hs_object_id",
-                "lastmodifieddate"
-            ]
-        },
-        "createdAt": {
-            "type": "string"
+            }
         },
         "updatedAt": {
             "type": "string"
-        },
-        "archived": {
-            "type": "boolean"
         }
     },
-    "required": [
-        "id",
-        "properties",
-        "createdAt",
-        "updatedAt",
-        "archived"
-    ]
+    "version": 2
 }

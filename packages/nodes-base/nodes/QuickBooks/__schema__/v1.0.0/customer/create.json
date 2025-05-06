@@ -1,13 +1,7 @@
 {
     "type": "object",
     "properties": {
-        "Taxable": {
-            "type": "boolean"
-        },
-        "Job": {
-            "type": "boolean"
-        },
-        "BillWithParent": {
+        "Active": {
             "type": "boolean"
         },
         "Balance": {
@@ -16,35 +10,45 @@
         "BalanceWithJobs": {
             "type": "integer"
         },
+        "BillWithParent": {
+            "type": "boolean"
+        },
         "CurrencyRef": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
+        "DefaultTaxCodeRef": {
             "type": "object",
             "properties": {
                 "value": {
                     "type": "string"
-                },
-                "name": {
-                    "type": "string"
                 }
-            },
-            "required": [
-                "value",
-                "name"
-            ]
+            }
         },
-        "PreferredDeliveryMethod": {
+        "DisplayName": {
             "type": "string"
         },
         "domain": {
             "type": "string"
         },
-        "sparse": {
-            "type": "boolean"
+        "FullyQualifiedName": {
+            "type": "string"
         },
         "Id": {
             "type": "string"
         },
-        "SyncToken": {
-            "type": "string"
+        "IsProject": {
+            "type": "boolean"
+        },
+        "Job": {
+            "type": "boolean"
         },
         "MetaData": {
             "type": "object",
@@ -55,45 +59,23 @@
                 "LastUpdatedTime": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "CreateTime",
-                "LastUpdatedTime"
-            ]
+            }
         },
-        "FullyQualifiedName": {
-            "type": "string"
-        },
-        "DisplayName": {
+        "PreferredDeliveryMethod": {
             "type": "string"
         },
         "PrintOnCheckName": {
             "type": "string"
         },
-        "Active": {
+        "sparse": {
             "type": "boolean"
         },
-        "PrimaryEmailAddr": {
-            "type": "object",
-            "properties": {
-                "Address": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "Address"
-            ]
+        "SyncToken": {
+            "type": "string"
         },
-        "DefaultTaxCodeRef": {
-            "type": "object",
-            "properties": {
-                "value": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "value"
-            ]
+        "Taxable": {
+            "type": "boolean"
         }
-    }
+    },
+    "version": 1
 }

@@ -12,7 +12,7 @@
 	border: var(--border-width-base) $button-border-color var(--border-style-base) unquote($important);
 	color: $button-font-color unquote($important);
 	background-color: $button-background-color unquote($important);
-	font-weight: var(--font-weight-bold) unquote($important);
+	font-weight: var(--font-weight-medium) unquote($important);
 	border-radius: $button-border-radius unquote($important);
 	padding: $button-padding-vertical $button-padding-horizontal unquote($important);
 	font-size: $button-font-size unquote($important);

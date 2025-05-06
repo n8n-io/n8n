@@ -12,7 +12,13 @@ import type { IExecutionResponse, INodeUi, IWorkflowDb, IWorkflowSettings } from
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 import { SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
-import type { IPinData, ExecutionSummary, IConnection, INodeExecutionData } from 'n8n-workflow';
+import type {
+	IPinData,
+	ExecutionSummary,
+	IConnection,
+	INodeExecutionData,
+	INode,
+} from 'n8n-workflow';
 import { stringSizeInBytes } from '@/utils/typesUtils';
 import { dataPinningEventBus } from '@/event-bus';
 import { useUIStore } from '@/stores/ui.store';
@@ -253,14 +259,28 @@ describe('useWorkflowsStore', () => {
 	});
 
 	describe('nodesIssuesExist', () => {
-		it('should return true when a node has issues', () => {
+		it('should return true when a node has issues and connected', () => {
+			workflowsStore.workflow.nodes = [
+				{ name: 'Node1', issues: { error: ['Error message'] } },
+				{ name: 'Node2' },
+			] as unknown as IWorkflowDb['nodes'];
+
+			workflowsStore.workflow.connections = {
+				Node1: { main: [[{ node: 'Node2' } as IConnection]] },
+			};
+
+			const hasIssues = workflowsStore.nodesIssuesExist;
+			expect(hasIssues).toBe(true);
+		});
+
+		it('should return false when node has issues but it is not connected', () => {
 			workflowsStore.workflow.nodes = [
 				{ name: 'Node1', issues: { error: ['Error message'] } },
 				{ name: 'Node2' },
 			] as unknown as IWorkflowDb['nodes'];
 
 			const hasIssues = workflowsStore.nodesIssuesExist;
-			expect(hasIssues).toBe(true);
+			expect(hasIssues).toBe(false);
 		});
 
 		it('should return false when no nodes have issues', () => {
@@ -268,6 +288,10 @@ describe('useWorkflowsStore', () => {
 				{ name: 'Node1' },
 				{ name: 'Node2' },
 			] as unknown as IWorkflowDb['nodes'];
+
+			workflowsStore.workflow.connections = {
+				Node1: { main: [[{ node: 'Node2' } as IConnection]] },
+			};
 
 			const hasIssues = workflowsStore.nodesIssuesExist;
 			expect(hasIssues).toBe(false);
@@ -681,6 +705,83 @@ describe('useWorkflowsStore', () => {
 		});
 	});
 
+	describe('setNodes()', () => {
+		it('should transform credential-only nodes', () => {
+			const setNodeId = '1';
+			const credentialOnlyNodeId = '2';
+			workflowsStore.setNodes([
+				mock<INode>({
+					id: setNodeId,
+					name: 'Edit Fields',
+					type: 'n8n-nodes-base.set',
+				}),
+				mock<INode>({
+					id: credentialOnlyNodeId,
+					name: 'AlienVault Request',
+					type: 'n8n-nodes-base.httpRequest',
+					extendsCredential: 'alienVaultApi',
+				}),
+			]);
+
+			expect(workflowsStore.workflow.nodes[0].id).toEqual(setNodeId);
+			expect(workflowsStore.workflow.nodes[1].id).toEqual(credentialOnlyNodeId);
+			expect(workflowsStore.workflow.nodes[1].type).toEqual('n8n-creds-base.alienVaultApi');
+			expect(workflowsStore.nodeMetadata).toEqual({
+				'AlienVault Request': { pristine: true },
+				'Edit Fields': { pristine: true },
+			});
+		});
+	});
+
+	describe('updateNodeAtIndex', () => {
+		it.each([
+			{
+				description: 'should update node at given index with provided data',
+				nodeIndex: 0,
+				nodeData: { name: 'Updated Node' },
+				initialNodes: [{ name: 'Original Node' }],
+				expectedNodes: [{ name: 'Updated Node' }],
+				expectedResult: true,
+			},
+			{
+				description: 'should not update node if index is invalid',
+				nodeIndex: -1,
+				nodeData: { name: 'Updated Node' },
+				initialNodes: [{ name: 'Original Node' }],
+				expectedNodes: [{ name: 'Original Node' }],
+				expectedResult: false,
+			},
+			{
+				description: 'should return false if node data is unchanged',
+				nodeIndex: 0,
+				nodeData: { name: 'Original Node' },
+				initialNodes: [{ name: 'Original Node' }],
+				expectedNodes: [{ name: 'Original Node' }],
+				expectedResult: false,
+			},
+			{
+				description: 'should update multiple properties of a node',
+				nodeIndex: 0,
+				nodeData: { name: 'Updated Node', type: 'newType' },
+				initialNodes: [{ name: 'Original Node', type: 'oldType' }],
+				expectedNodes: [{ name: 'Updated Node', type: 'newType' }],
+				expectedResult: true,
+			},
+		])('$description', ({ nodeIndex, nodeData, initialNodes, expectedNodes, expectedResult }) => {
+			workflowsStore.workflow.nodes = initialNodes as unknown as IWorkflowDb['nodes'];
+
+			const result = workflowsStore.updateNodeAtIndex(nodeIndex, nodeData);
+
+			expect(result).toBe(expectedResult);
+			expect(workflowsStore.workflow.nodes).toEqual(expectedNodes);
+		});
+
+		it('should throw error if out of bounds', () => {
+			workflowsStore.workflow.nodes = [];
+			expect(() => workflowsStore.updateNodeAtIndex(0, { name: 'Updated Node' })).toThrowError();
+		});
+	});
+
 	test.each([
 		// check userVersion behavior
 		[-1, 1, 1], // userVersion -1, use default (1)
@@ -714,6 +815,44 @@ describe('useWorkflowsStore', () => {
 			);
 		},
 	);
+
+	describe('findNodeByPartialId', () => {
+		test.each([
+			[[], 'D', undefined],
+			[['A', 'B', 'C'], 'D', undefined],
+			[['A', 'B', 'C'], 'B', 1],
+			[['AA', 'BB', 'CC'], 'B', 1],
+			[['AA', 'BB', 'BC'], 'B', 1],
+			[['AA', 'BB', 'BC'], 'BC', 2],
+		] as Array<[string[], string, number | undefined]>)(
+			'with input %s , %s returns node with index %s',
+			(ids, id, expectedIndex) => {
+				workflowsStore.workflow.nodes = ids.map((x) => ({ id: x }) as never);
+
+				expect(workflowsStore.findNodeByPartialId(id)).toBe(
+					workflowsStore.workflow.nodes[expectedIndex ?? -1],
+				);
+			},
+		);
+	});
+
+	describe('getPartialIdForNode', () => {
+		test.each([
+			[[], 'Alphabet', 'Alphabet'],
+			[['Alphabet'], 'Alphabet', 'Alphab'],
+			[['Alphabet', 'Alphabeta'], 'Alphabeta', 'Alphabeta'],
+			[['Alphabet', 'Alphabeta', 'Alphabetagamma'], 'Alphabet', 'Alphabet'],
+			[['Alphabet', 'Alphabeta', 'Alphabetagamma'], 'Alphabeta', 'Alphabeta'],
+			[['Alphabet', 'Alphabeta', 'Alphabetagamma'], 'Alphabetagamma', 'Alphabetag'],
+		] as Array<[string[], string, string]>)(
+			'with input %s , %s returns %s',
+			(ids, id, expected) => {
+				workflowsStore.workflow.nodes = ids.map((x) => ({ id: x }) as never);
+
+				expect(workflowsStore.getPartialIdForNode(id)).toBe(expected);
+			},
+		);
+	});
 });
 
 function getMockEditFieldsNode() {
@@ -766,6 +905,7 @@ function generateMockExecutionEvents() {
 		data: {
 			hints: [],
 			startTime: 1727867966633,
+			executionIndex: 0,
 			executionTime: 1,
 			source: [],
 			executionStatus: 'success',
@@ -790,6 +930,7 @@ function generateMockExecutionEvents() {
 		data: {
 			hints: [],
 			startTime: 1727869043441,
+			executionIndex: 0,
 			executionTime: 2,
 			source: [
 				{

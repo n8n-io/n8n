@@ -1,4 +1,4 @@
-import { NodeConnectionType, NodeOperationError, tryToParseDateTime } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, tryToParseDateTime } from 'n8n-workflow';
 import type {
 	INodeTypeBaseDescription,
 	IExecuteFunctions,
@@ -22,8 +22,8 @@ const versionDescription: INodeTypeDescription = {
 	defaults: {
 		name: 'Remove Duplicates',
 	},
-	inputs: [NodeConnectionType.Main],
-	outputs: [NodeConnectionType.Main],
+	inputs: [NodeConnectionTypes.Main],
+	outputs: [NodeConnectionTypes.Main],
 	outputNames: ['Kept', 'Discarded'],
 	hints: [
 		{

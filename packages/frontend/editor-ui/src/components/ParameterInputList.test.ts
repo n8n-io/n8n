@@ -3,6 +3,8 @@ import ParameterInputList from './ParameterInputList.vue';
 import { createTestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
 import { useNDVStore } from '@/stores/ndv.store';
+import * as workflowHelpers from '@/composables/useWorkflowHelpers';
+
 import {
 	TEST_NODE_NO_ISSUES,
 	TEST_PARAMETERS,
@@ -11,6 +13,15 @@ import {
 	FIXED_COLLECTION_PARAMETERS,
 	TEST_ISSUE,
 } from './ParameterInputList.test.constants';
+import { FORM_NODE_TYPE, FORM_TRIGGER_NODE_TYPE } from 'n8n-workflow';
+import type { INodeUi } from '../Interface';
+import type { MockInstance } from 'vitest';
+
+vi.mock('@/composables/useWorkflowHelpers', () => ({
+	useWorkflowHelpers: vi.fn().mockReturnValue({
+		getCurrentWorkflow: vi.fn(),
+	}),
+}));
 
 vi.mock('vue-router', async () => {
 	const actual = await vi.importActual('vue-router');
@@ -97,5 +108,72 @@ describe('ParameterInputList', () => {
 			getByTestId(`${FIXED_COLLECTION_PARAMETERS[0].name}-parameter-input-issues-container`),
 		).toBeInTheDocument();
 		expect(getByText(TEST_ISSUE)).toBeInTheDocument();
+	});
+
+	describe('updateFormParameters', () => {
+		const workflowHelpersMock: MockInstance = vi.spyOn(workflowHelpers, 'useWorkflowHelpers');
+		const formParameters = [
+			{
+				displayName: 'TRIGGER NOTICE',
+				name: 'triggerNotice',
+				type: 'notice',
+				default: '',
+			},
+		];
+
+		afterAll(() => {
+			workflowHelpersMock.mockRestore();
+		});
+
+		it('should show triggerNotice if Form Trigger not connected', () => {
+			ndvStore.activeNode = { name: 'From', type: FORM_NODE_TYPE, parameters: {} } as INodeUi;
+
+			workflowHelpersMock.mockReturnValue({
+				getCurrentWorkflow: vi.fn(() => {
+					return {
+						getParentNodes: vi.fn(() => []),
+						nodes: {},
+					};
+				}),
+			});
+
+			const { getByText } = renderComponent({
+				props: {
+					parameters: formParameters,
+					nodeValues: {},
+				},
+			});
+
+			expect(getByText('TRIGGER NOTICE')).toBeInTheDocument();
+		});
+
+		it('should not show triggerNotice if Form Trigger is connected', () => {
+			ndvStore.activeNode = { name: 'From', type: FORM_NODE_TYPE, parameters: {} } as INodeUi;
+
+			workflowHelpersMock.mockReturnValue({
+				getCurrentWorkflow: vi.fn(() => {
+					return {
+						getParentNodes: vi.fn(() => ['Form Trigger']),
+						nodes: {
+							'Form Trigger': {
+								type: FORM_TRIGGER_NODE_TYPE,
+								parameters: {},
+							},
+						},
+					};
+				}),
+			});
+
+			const { queryByText } = renderComponent({
+				props: {
+					parameters: formParameters,
+					nodeValues: {},
+				},
+			});
+
+			const el = queryByText('TRIGGER NOTICE');
+
+			expect(el).not.toBeInTheDocument();
+		});
 	});
 });

@@ -9,12 +9,12 @@
 
 	@include mixins.e(separator) {
 		margin: 0 9px;
-		font-weight: bold;
+		font-weight: var(--font-weight-bold);
 		color: var(--color-text-lighter);
 
 		&[class*='icon'] {
 			margin: 0 6px;
-			font-weight: normal;
+			font-weight: var(--font-weight-regular);
 		}
 	}
 
@@ -26,7 +26,7 @@
 
 			&.is-link,
 			& a {
-				font-weight: bold;
+				font-weight: var(--font-weight-bold);
 				text-decoration: none;
 				transition: var.$color-transition-base;
 				color: var(--color-text-dark);
@@ -43,7 +43,7 @@
 			.el-breadcrumb__inner a {
 				&,
 				&:hover {
-					font-weight: normal;
+					font-weight: var(--font-weight-regular);
 					color: var(--color-text-dark);
 					cursor: text;
 				}

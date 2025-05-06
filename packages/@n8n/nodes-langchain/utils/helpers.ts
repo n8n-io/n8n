@@ -3,10 +3,12 @@ import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import type { BaseLLM } from '@langchain/core/language_models/llms';
 import type { BaseMessage } from '@langchain/core/messages';
 import type { Tool } from '@langchain/core/tools';
+import { Toolkit } from 'langchain/agents';
 import type { BaseChatMemory } from 'langchain/memory';
-import { NodeConnectionType, NodeOperationError, jsonStringify } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, jsonStringify } from 'n8n-workflow';
 import type {
 	AiEvent,
+	INode,
 	IDataObject,
 	IExecuteFunctions,
 	ISupplyDataFunctions,
@@ -184,19 +186,27 @@ export function escapeSingleCurlyBrackets(text?: string): string | undefined {
 }
 
 export const getConnectedTools = async (
-	ctx: IExecuteFunctions,
+	ctx: IExecuteFunctions | IWebhookFunctions,
 	enforceUniqueNames: boolean,
 	convertStructuredTool: boolean = true,
 	escapeCurlyBrackets: boolean = false,
 ) => {
-	const connectedTools =
-		((await ctx.getInputConnectionData(NodeConnectionType.AiTool, 0)) as Tool[]) || [];
+	const connectedTools = (
+		((await ctx.getInputConnectionData(NodeConnectionTypes.AiTool, 0)) as Array<Toolkit | Tool>) ??
+		[]
+	).flatMap((toolOrToolkit) => {
+		if (toolOrToolkit instanceof Toolkit) {
+			return toolOrToolkit.getTools() as Tool[];
+		}
+
+		return toolOrToolkit;
+	});
 
 	if (!enforceUniqueNames) return connectedTools;
 
 	const seenNames = new Set<string>();
 
-	const finalTools = [];
+	const finalTools: Tool[] = [];
 
 	for (const tool of connectedTools) {
 		const { name } = tool;
@@ -221,3 +231,30 @@ export const getConnectedTools = async (
 
 	return finalTools;
 };
+
+/**
+ * Sometimes model output is wrapped in an additional object property.
+ * This function unwraps the output if it is in the format { output: { output: { ... } } }
+ */
+export function unwrapNestedOutput(output: Record<string, unknown>): Record<string, unknown> {
+	if (
+		'output' in output &&
+		Object.keys(output).length === 1 &&
+		typeof output.output === 'object' &&
+		output.output !== null &&
+		'output' in output.output &&
+		Object.keys(output.output).length === 1
+	) {
+		return output.output as Record<string, unknown>;
+	}
+
+	return output;
+}
+
+/**
+ * Converts a node name to a valid tool name by replacing special characters with underscores
+ * and collapsing consecutive underscores into a single one.
+ */
+export function nodeNameToToolName(node: INode): string {
+	return node.name.replace(/[\s.?!=+#@&*()[\]{}:;,<>\/\\'"^%$]/g, '_').replace(/_+/g, '_');
+}

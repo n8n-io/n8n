@@ -167,7 +167,6 @@ describe('Form Node', () => {
 				n8nWebsiteLink: 'https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger',
 				testRun: true,
 				useResponseData: true,
-				validForm: true,
 				formSubmittedHeader: undefined,
 			});
 		});
@@ -232,6 +231,7 @@ describe('Form Node', () => {
 						message: 'Test Message',
 						redirectUrl: '',
 						title: 'Test Title',
+						responseBinary: encodeURIComponent(JSON.stringify('')),
 						responseText: '',
 					},
 				},
@@ -246,6 +246,7 @@ describe('Form Node', () => {
 						redirectUrl: '',
 						title: 'Test Title',
 						responseText: '<div>hey</div>',
+						responseBinary: encodeURIComponent(JSON.stringify('')),
 					},
 				},
 				{
@@ -257,6 +258,7 @@ describe('Form Node', () => {
 						formTitle: 'test',
 						message: 'Test Message',
 						redirectUrl: '',
+						responseBinary: encodeURIComponent(JSON.stringify('')),
 						title: 'Test Title',
 						responseText: 'my text over here',
 					},
@@ -434,6 +436,7 @@ describe('Form Node', () => {
 				redirectUrl: 'https://n8n.io',
 				responseText: '',
 				title: 'Test Title',
+				responseBinary: encodeURIComponent(JSON.stringify('')),
 			});
 		});
 	});

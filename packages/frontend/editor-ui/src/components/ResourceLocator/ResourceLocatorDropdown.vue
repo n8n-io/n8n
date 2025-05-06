@@ -213,7 +213,7 @@ defineExpose({ isWithinDropdown });
 		:width="width"
 		:popper-class="$style.popover"
 		:visible="show"
-		:teleported="true"
+		:teleported="false"
 		data-test-id="resource-locator-dropdown"
 	>
 		<div v-if="errorView" :class="$style.messageContainer">
@@ -416,7 +416,7 @@ defineExpose({ isWithinDropdown });
 }
 
 .addResourceText {
-	font-weight: bold;
+	font-weight: var(--font-weight-bold);
 }
 
 .addResourceIcon {

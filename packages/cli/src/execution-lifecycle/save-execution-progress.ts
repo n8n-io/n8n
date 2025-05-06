@@ -1,8 +1,7 @@
+import { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { ErrorReporter, Logger } from 'n8n-core';
 import type { IRunExecutionData, ITaskData } from 'n8n-workflow';
-
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 
 export async function saveExecutionProgress(
 	workflowId: string,

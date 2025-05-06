@@ -105,6 +105,17 @@ const mainMenuItems = computed(() => [
 		route: { to: { name: VIEWS.VARIABLES } },
 	},
 	{
+		id: 'insights',
+		icon: 'chart-bar',
+		label: 'Insights',
+		customIconSize: 'medium',
+		position: 'bottom',
+		route: { to: { name: VIEWS.INSIGHTS } },
+		available:
+			settingsStore.settings.insights.enabled &&
+			hasPermission(['rbac'], { rbac: { scope: 'insights:list' } }),
+	},
+	{
 		id: 'help',
 		icon: 'question',
 		label: i18n.baseText('mainSidebar.help'),
@@ -265,6 +276,8 @@ const handleSelect = (key: string) => {
 			trackHelpItemClick(key);
 			break;
 		}
+		case 'insights':
+			telemetry.track('User clicked insights link from side menu');
 		default:
 			break;
 	}
@@ -294,6 +307,7 @@ const {
 	createCredentialsAppendSlotName,
 	projectsLimitReachedMessage,
 	upgradeLabel,
+	hasPermissionToCreateProjects,
 } = useGlobalEntityCreation();
 onClickOutside(createBtn as Ref<VueInstance>, () => {
 	createBtn.value?.close();
@@ -339,7 +353,12 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 							</template>
 						</i18n-t>
 					</template>
-					<N8nIcon icon="lock" size="xsmall" :class="$style.readOnlyEnvironmentIcon" />
+					<N8nIcon
+						data-test-id="read-only-env-icon"
+						icon="lock"
+						size="xsmall"
+						:class="$style.readOnlyEnvironmentIcon"
+					/>
 				</N8nTooltip>
 			</Logo>
 			<N8nNavigationDropdown
@@ -368,8 +387,26 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 					</N8nTooltip>
 				</template>
 				<template #[createProjectAppendSlotName]="{ item }">
-					<N8nTooltip v-if="item.disabled" placement="right" :content="projectsLimitReachedMessage">
+					<N8nTooltip
+						v-if="sourceControlStore.preferences.branchReadOnly"
+						placement="right"
+						:content="i18n.baseText('readOnlyEnv.cantAdd.project')"
+					>
+						<N8nIcon style="margin-left: auto; margin-right: 5px" icon="lock" size="xsmall" />
+					</N8nTooltip>
+					<N8nTooltip
+						v-else-if="item.disabled"
+						placement="right"
+						:content="projectsLimitReachedMessage"
+					>
+						<N8nIcon
+							v-if="!hasPermissionToCreateProjects"
+							style="margin-left: auto; margin-right: 5px"
+							icon="lock"
+							size="xsmall"
+						/>
 						<N8nButton
+							v-else
 							:size="'mini'"
 							style="margin-left: auto"
 							type="tertiary"
@@ -462,19 +499,17 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 
 <style lang="scss" module>
 .sideMenu {
+	display: grid;
 	position: relative;
 	height: 100%;
+	grid-template-rows: auto 1fr auto;
 	border-right: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
 	transition: width 150ms ease-in-out;
-	width: $sidebar-expanded-width;
-	padding-top: 54px;
+	min-width: $sidebar-expanded-width;
+	max-width: 244px;
 	background-color: var(--menu-background, var(--color-background-xlight));
 
 	.logo {
-		position: absolute;
-		top: 0;
-		left: 0;
-		width: 100%;
 		display: flex;
 		align-items: center;
 		padding: var(--spacing-xs);
@@ -489,7 +524,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 
 	&.sideMenuCollapsed {
 		width: $sidebar-width;
-		padding-top: 100px;
+		min-width: auto;
 
 		.logo {
 			flex-direction: column;
@@ -589,6 +624,6 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 	align-self: center;
 	padding: 2px;
 	border-radius: var(--border-radius-small);
-	margin: 5px 5px 0;
+	margin: 7px 12px 0 5px;
 }
 </style>

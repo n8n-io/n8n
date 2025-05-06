@@ -14,7 +14,7 @@ mockInstance(LoadNodesAndCredentials);
 const command = setupTestCommand(ImportWorkflowsCommand);
 
 beforeEach(async () => {
-	await testDb.truncate(['Workflow', 'SharedWorkflow', 'User']);
+	await testDb.truncate(['WorkflowEntity', 'SharedWorkflow', 'User']);
 });
 
 test('import:workflow should import active workflow and deactivate it', async () => {
@@ -93,6 +93,37 @@ test('import:workflow should import active workflow from combined file and deact
 			}),
 			expect.objectContaining({
 				workflowId: '999',
+				projectId: ownerProject.id,
+				role: 'workflow:owner',
+			}),
+		],
+	});
+});
+
+test('import:workflow can import a single workflow object', async () => {
+	//
+	// ARRANGE
+	//
+	const owner = await createOwner();
+	const ownerProject = await getPersonalProject(owner);
+
+	//
+	// ACT
+	//
+	await command.run(['--input=./test/integration/commands/import-workflows/combined/single.json']);
+
+	//
+	// ASSERT
+	//
+	const after = {
+		workflows: await getAllWorkflows(),
+		sharings: await getAllSharedWorkflows(),
+	};
+	expect(after).toMatchObject({
+		workflows: [expect.objectContaining({ name: 'active-workflow', active: false })],
+		sharings: [
+			expect.objectContaining({
+				workflowId: '998',
 				projectId: ownerProject.id,
 				role: 'workflow:owner',
 			}),

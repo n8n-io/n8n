@@ -3,9 +3,10 @@
     "properties": {
         "id": {
             "type": "integer"
+        },
+        "name": {
+            "type": "string"
         }
     },
-    "required": [
-        "id"
-    ]
+    "version": 2
 }

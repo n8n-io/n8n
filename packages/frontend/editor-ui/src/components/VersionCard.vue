@@ -55,8 +55,8 @@ const nodeName = (node: IVersionNode): string => {
 		<div>
 			<div
 				v-if="version.description"
-				:class="$style.description"
 				v-n8n-html="version.description"
+				:class="$style.description"
 			></div>
 			<div v-if="version.nodes && version.nodes.length > 0" :class="$style.nodes">
 				<NodeIcon
@@ -103,7 +103,7 @@ const nodeName = (node: IVersionNode): string => {
 }
 
 .name {
-	font-weight: 600;
+	font-weight: var(--font-weight-bold);
 	font-size: 16px;
 	line-height: 18px;
 	color: $version-card-name-text-color;
@@ -117,7 +117,7 @@ const nodeName = (node: IVersionNode): string => {
 
 .description {
 	font-size: 14px;
-	font-weight: 400;
+	font-weight: var(--font-weight-regular);
 	line-height: 19px;
 	color: $version-card-description-text-color;
 }
@@ -125,7 +125,7 @@ const nodeName = (node: IVersionNode): string => {
 .release-date {
 	font-size: 12px;
 	line-height: 18px;
-	font-weight: 400;
+	font-weight: var(--font-weight-regular);
 	color: $version-card-release-date-text-color;
 }
 

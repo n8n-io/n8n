@@ -19,9 +19,10 @@ import type {
 	ITaskDataConnections,
 	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
-import { NodeHelpers, Workflow } from 'n8n-workflow';
+import { Workflow } from 'n8n-workflow';
 
 import * as executionContexts from '@/execution-engine/node-execution-context';
+import { DirectoryLoader } from '@/nodes-loader';
 import { NodeTypes } from '@test/helpers';
 
 import { RoutingNode } from '../routing-node';
@@ -86,23 +87,6 @@ const getExecuteSingleFunctions = (
 describe('RoutingNode', () => {
 	const nodeTypes = NodeTypes();
 	const additionalData = mock<IWorkflowExecuteAdditionalData>();
-
-	test('applyDeclarativeNodeOptionParameters', () => {
-		const nodeTypes = NodeTypes();
-		const nodeType = nodeTypes.getByNameAndVersion('test.setMulti');
-
-		NodeHelpers.applyDeclarativeNodeOptionParameters(nodeType);
-
-		const options = nodeType.description.properties.find(
-			(property) => property.name === 'requestOptions',
-		);
-
-		expect(options?.options).toBeDefined;
-
-		const optionNames = options!.options!.map((option) => option.name);
-
-		expect(optionNames).toEqual(['batching', 'allowUnauthorizedCerts', 'proxy', 'timeout']);
-	});
 
 	describe('getRequestOptionsFromParameters', () => {
 		const tests: Array<{
@@ -1921,7 +1905,7 @@ describe('RoutingNode', () => {
 		const connectionInputData: INodeExecutionData[] = [];
 		const runExecutionData: IRunExecutionData = { resultData: { runData: {} } };
 		const nodeType = nodeTypes.getByNameAndVersion(baseNode.type);
-		NodeHelpers.applyDeclarativeNodeOptionParameters(nodeType);
+		DirectoryLoader.applyDeclarativeNodeOptionParameters(nodeType);
 
 		const propertiesOriginal = nodeType.description.properties;
 

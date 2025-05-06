@@ -37,7 +37,7 @@ export function updateDynamicConnections(
 			parameterData.name === 'parameters.options.fallbackOutput'
 		) {
 			const curentFallbackOutput = (node.parameters?.options as { fallbackOutput: string })
-				?.fallbackOutput as string;
+				?.fallbackOutput;
 			if (curentFallbackOutput === 'extra') {
 				if (!parameterData.value || parameterData.value !== 'extra') {
 					connections[node.name].main = connections[node.name].main.slice(0, -1);

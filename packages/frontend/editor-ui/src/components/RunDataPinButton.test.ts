@@ -30,7 +30,7 @@ const renderComponent = createComponentRenderer(RunDataPinButton, {
 		},
 		dataPinningDocsUrl: '',
 		pinnedData: {
-			hasData: false,
+			hasData: { value: false },
 		},
 		disabled: false,
 	},
@@ -120,5 +120,31 @@ describe('RunDataPinButton.vue', () => {
 
 		expect(getByRole('tooltip')).toBeVisible();
 		expect(getByRole('tooltip')).toHaveTextContent('disabled');
+	});
+
+	it('pins data on button click', async () => {
+		const { getByTestId, getByRole, emitted } = renderComponent({});
+		// Should show 'Pin data' tooltip and emit togglePinData event
+		await userEvent.hover(getByTestId('ndv-pin-data'));
+		expect(getByRole('tooltip')).toBeVisible();
+		expect(getByRole('tooltip').textContent).toContain('Pin data');
+		await userEvent.click(getByTestId('ndv-pin-data'));
+		expect(emitted().togglePinData).toBeDefined();
+	});
+
+	it('should show correct tooltip and unpin data on button click', async () => {
+		const { getByTestId, getByRole, emitted } = renderComponent({
+			props: {
+				pinnedData: {
+					hasData: { value: true },
+				},
+			},
+		});
+		// Should show 'Unpin data' tooltip and emit togglePinData event
+		await userEvent.hover(getByTestId('ndv-pin-data'));
+		expect(getByRole('tooltip')).toBeVisible();
+		expect(getByRole('tooltip').textContent).toContain('Unpin data');
+		await userEvent.click(getByTestId('ndv-pin-data'));
+		expect(emitted().togglePinData).toBeDefined();
 	});
 });

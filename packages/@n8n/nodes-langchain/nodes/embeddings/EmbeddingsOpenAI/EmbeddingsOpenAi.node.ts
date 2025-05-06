@@ -1,7 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import { OpenAIEmbeddings } from '@langchain/openai';
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeDescription,
 	type SupplyData,
@@ -101,7 +101,7 @@ export class EmbeddingsOpenAi implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.AiEmbedding],
+		outputs: [NodeConnectionTypes.AiEmbedding],
 		outputNames: ['Embeddings'],
 		requestDefaults: {
 			ignoreHttpStatusErrors: true,
@@ -109,7 +109,7 @@ export class EmbeddingsOpenAi implements INodeType {
 				'={{ $parameter.options?.baseURL?.split("/").slice(0,-1).join("/") || $credentials.url?.split("/").slice(0,-1).join("/") || "https://api.openai.com" }}',
 		},
 		properties: [
-			getConnectionHintNoticeField([NodeConnectionType.AiVectorStore]),
+			getConnectionHintNoticeField([NodeConnectionTypes.AiVectorStore]),
 			{
 				...modelParameter,
 				default: 'text-embedding-ada-002',

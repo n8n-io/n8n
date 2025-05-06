@@ -83,6 +83,7 @@ const pullMessage = ({
 	tags,
 	variables,
 	workflow,
+	folders,
 }: Partial<Record<SourceControlledFile['type'], SourceControlledFile[]>>) => {
 	const messages: string[] = [];
 
@@ -112,6 +113,10 @@ const pullMessage = ({
 		messages.push(i18n.baseText('generic.tag_plural'));
 	}
 
+	if (folders?.length) {
+		messages.push(i18n.baseText('generic.folders_plural'));
+	}
+
 	return [
 		new Intl.ListFormat(i18n.locale, { style: 'long', type: 'conjunction' }).format(messages),
 		'were pulled',
@@ -131,14 +136,14 @@ export const notifyUserAboutPullWorkFolderOutcome = async (
 		return;
 	}
 
-	const { credential, tags, variables, workflow } = groupBy(files, 'type');
+	const { credential, tags, variables, workflow, folders } = groupBy(files, 'type');
 
 	const toastMessages = [
 		...(variables?.length ? [variablesToast] : []),
 		...(credential?.length ? [credentialsToast] : []),
 		{
 			title: i18n.baseText('settings.sourceControl.pull.success.title'),
-			message: pullMessage({ credential, tags, variables, workflow }),
+			message: pullMessage({ credential, tags, variables, workflow, folders }),
 			type: 'success' as const,
 		},
 	];

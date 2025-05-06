@@ -4,7 +4,7 @@ import { v5 as uuidv5, v3 as uuidv3, v4 as uuidv4, v1 as uuidv1 } from 'uuid';
 import { STICKY_NODE_TYPE } from '@/Constants';
 import { ApplicationError, ExpressionError, NodeApiError } from '@/errors';
 import type { INode, INodeTypeDescription, IRun, IRunData } from '@/Interfaces';
-import { NodeConnectionType, type IWorkflowBase } from '@/Interfaces';
+import { type NodeConnectionType, NodeConnectionTypes, type IWorkflowBase } from '@/Interfaces';
 import * as nodeHelpers from '@/NodeHelpers';
 import {
 	ANONYMIZATION_CHARACTER as CHAR,
@@ -117,7 +117,7 @@ describe('generateNodesGraph', () => {
 			],
 			connections: {
 				'When clicking "Execute Workflow"': {
-					main: [[{ node: 'Google Sheets', type: NodeConnectionType.Main, index: 0 }]],
+					main: [[{ node: 'Google Sheets', type: NodeConnectionTypes.Main, index: 0 }]],
 				},
 			},
 			settings: { executionOrder: 'v1' },
@@ -221,7 +221,7 @@ describe('generateNodesGraph', () => {
 			],
 			connections: {
 				'When clicking "Execute Workflow"': {
-					main: [[{ node: 'Google Sheets', type: NodeConnectionType.Main, index: 0 }]],
+					main: [[{ node: 'Google Sheets', type: NodeConnectionTypes.Main, index: 0 }]],
 				},
 			},
 			settings: { executionOrder: 'v1' },
@@ -297,7 +297,7 @@ describe('generateNodesGraph', () => {
 			],
 			connections: {
 				'When clicking "Execute Workflow"': {
-					main: [[{ node: 'Google Sheets', type: NodeConnectionType.Main, index: 0 }]],
+					main: [[{ node: 'Google Sheets', type: NodeConnectionTypes.Main, index: 0 }]],
 				},
 			},
 			settings: { executionOrder: 'v1' },
@@ -375,7 +375,7 @@ describe('generateNodesGraph', () => {
 			],
 			connections: {
 				'When clicking "Execute Workflow"': {
-					main: [[{ node: 'Google Sheets', type: NodeConnectionType.Main, index: 0 }]],
+					main: [[{ node: 'Google Sheets', type: NodeConnectionTypes.Main, index: 0 }]],
 				},
 			},
 			settings: { executionOrder: 'v1' },
@@ -592,6 +592,128 @@ describe('generateNodesGraph', () => {
 		});
 	});
 
+	it.each([
+		{
+			workflow: {
+				nodes: [
+					{
+						parameters: {
+							mode: 'combineBySql',
+							query: 'SELECT * FROM input1 LEFT JOIN input2 ON input1.name = input2.id',
+						},
+						id: 'b468b603-3e59-4515-b555-90cfebd64d47',
+						name: 'Merge Node V3',
+						type: 'n8n-nodes-base.merge',
+						typeVersion: 3,
+						position: [320, 460],
+					},
+				],
+				connections: {},
+				pinData: {},
+			} as Partial<IWorkflowBase>,
+			isCloudDeployment: false,
+			expected: {
+				nodeGraph: {
+					node_types: ['n8n-nodes-base.merge'],
+					node_connections: [],
+					nodes: {
+						'0': {
+							id: 'b468b603-3e59-4515-b555-90cfebd64d47',
+							type: 'n8n-nodes-base.merge',
+							version: 3,
+							position: [320, 460],
+							operation: 'combineBySql',
+						},
+					},
+					notes: {},
+					is_pinned: false,
+				},
+				nameIndices: { 'Merge Node V3': '0' },
+				webhookNodeNames: [],
+			},
+		},
+		{
+			workflow: {
+				nodes: [
+					{
+						parameters: {
+							mode: 'append',
+						},
+						id: 'b468b603-3e59-4515-b555-90cfebd64d47',
+						name: 'Merge Node V3',
+						type: 'n8n-nodes-base.merge',
+						typeVersion: 3,
+						position: [320, 460],
+					},
+				],
+				connections: {},
+				pinData: {},
+			} as Partial<IWorkflowBase>,
+			isCloudDeployment: true,
+			expected: {
+				nodeGraph: {
+					node_types: ['n8n-nodes-base.merge'],
+					node_connections: [],
+					nodes: {
+						'0': {
+							id: 'b468b603-3e59-4515-b555-90cfebd64d47',
+							type: 'n8n-nodes-base.merge',
+							version: 3,
+							position: [320, 460],
+							operation: 'append',
+						},
+					},
+					notes: {},
+					is_pinned: false,
+				},
+				nameIndices: { 'Merge Node V3': '0' },
+				webhookNodeNames: [],
+			},
+		},
+		{
+			workflow: {
+				nodes: [
+					{
+						parameters: {
+							mode: 'combineBySql',
+							query: 'SELECT * FROM input1 LEFT JOIN input2 ON input1.name = input2.id',
+						},
+						id: 'b468b603-3e59-4515-b555-90cfebd64d47',
+						name: 'Merge Node V3',
+						type: 'n8n-nodes-base.merge',
+						typeVersion: 3,
+						position: [320, 460],
+					},
+				],
+				connections: {},
+				pinData: {},
+			} as Partial<IWorkflowBase>,
+			isCloudDeployment: true,
+			expected: {
+				nodeGraph: {
+					node_types: ['n8n-nodes-base.merge'],
+					node_connections: [],
+					nodes: {
+						'0': {
+							id: 'b468b603-3e59-4515-b555-90cfebd64d47',
+							type: 'n8n-nodes-base.merge',
+							version: 3,
+							position: [320, 460],
+							operation: 'combineBySql',
+							sql: 'SELECT * FROM input1 LEFT JOIN input2 ON input1.name = input2.id',
+						},
+					},
+					notes: {},
+					is_pinned: false,
+				},
+				nameIndices: { 'Merge Node V3': '0' },
+				webhookNodeNames: [],
+			},
+		},
+	])('should return graph with merge v3 node', ({ workflow, expected, isCloudDeployment }) => {
+		expect(generateNodesGraph(workflow, nodeTypes, { isCloudDeployment })).toEqual(expected);
+	});
+
 	test('should return graph with http v1 node', () => {
 		const workflow: Partial<IWorkflowBase> = {
 			nodes: [
@@ -707,7 +829,7 @@ describe('generateNodesGraph', () => {
 						[
 							{
 								node: 'Chain',
-								type: NodeConnectionType.Main,
+								type: NodeConnectionTypes.Main,
 								index: 0,
 							},
 						],
@@ -718,7 +840,7 @@ describe('generateNodesGraph', () => {
 						[
 							{
 								node: 'Chain',
-								type: NodeConnectionType.AiLanguageModel,
+								type: NodeConnectionTypes.AiLanguageModel,
 								index: 0,
 							},
 						],
@@ -1390,6 +1512,7 @@ function generateTestWorkflowAndRunData(): { workflow: Partial<IWorkflowBase>; r
 				hints: [],
 				startTime: 1727793340927,
 				executionTime: 0,
+				executionIndex: 0,
 				source: [],
 				executionStatus: 'success',
 				data: { main: [[{ json: {}, pairedItem: { item: 0 } }]] },
@@ -1400,6 +1523,7 @@ function generateTestWorkflowAndRunData(): { workflow: Partial<IWorkflowBase>; r
 				hints: [],
 				startTime: 1727793340928,
 				executionTime: 0,
+				executionIndex: 1,
 				source: [{ previousNode: 'Execute Workflow Trigger' }],
 				executionStatus: 'success',
 				data: {
@@ -1433,6 +1557,7 @@ function generateTestWorkflowAndRunData(): { workflow: Partial<IWorkflowBase>; r
 				hints: [],
 				startTime: 1727793340928,
 				executionTime: 1,
+				executionIndex: 2,
 				source: [{ previousNode: 'DebugHelper' }],
 				executionStatus: 'success',
 				data: {
@@ -1464,6 +1589,7 @@ function generateTestWorkflowAndRunData(): { workflow: Partial<IWorkflowBase>; r
 				hints: [],
 				startTime: 1727793340931,
 				executionTime: 0,
+				executionIndex: 3,
 				source: [{ previousNode: 'Execute Workflow Trigger' }],
 				executionStatus: 'success',
 				data: { main: [[{ json: {}, pairedItem: { item: 0 } }]] },
@@ -1474,6 +1600,7 @@ function generateTestWorkflowAndRunData(): { workflow: Partial<IWorkflowBase>; r
 				hints: [],
 				startTime: 1727793340929,
 				executionTime: 1,
+				executionIndex: 4,
 				source: [{ previousNode: 'Edit Fields' }],
 				executionStatus: 'success',
 				data: {
@@ -1508,6 +1635,7 @@ function generateTestWorkflowAndRunData(): { workflow: Partial<IWorkflowBase>; r
 				hints: [],
 				startTime: 1727793340931,
 				executionTime: 0,
+				executionIndex: 5,
 				source: [{ previousNode: 'Edit Fields', previousNodeRun: 1 }],
 				executionStatus: 'success',
 				data: { main: [[], [], [{ json: {}, pairedItem: { item: 0 } }], []] },
@@ -1518,6 +1646,7 @@ function generateTestWorkflowAndRunData(): { workflow: Partial<IWorkflowBase>; r
 				hints: [],
 				startTime: 1727793340930,
 				executionTime: 0,
+				executionIndex: 6,
 				source: [{ previousNode: 'Switch', previousNodeOutput: 2 }],
 				executionStatus: 'success',
 				data: {
@@ -1534,6 +1663,7 @@ function generateTestWorkflowAndRunData(): { workflow: Partial<IWorkflowBase>; r
 				hints: [],
 				startTime: 1727793340932,
 				executionTime: 1,
+				executionIndex: 7,
 				source: [{ previousNode: 'Switch', previousNodeOutput: 2, previousNodeRun: 1 }],
 				executionStatus: 'success',
 				data: { main: [[{ json: {}, pairedItem: { item: 0 } }]] },

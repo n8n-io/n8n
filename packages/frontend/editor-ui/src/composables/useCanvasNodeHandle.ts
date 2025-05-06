@@ -5,7 +5,7 @@
 
 import { CanvasNodeHandleKey } from '@/constants';
 import { computed, inject } from 'vue';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import { CanvasConnectionMode } from '@/types';
 
 export function useCanvasNodeHandle() {
@@ -17,7 +17,7 @@ export function useCanvasNodeHandle() {
 	const isReadOnly = computed(() => handle?.isReadOnly.value);
 	const isRequired = computed(() => handle?.isRequired.value);
 	const maxConnections = computed(() => handle?.maxConnections.value);
-	const type = computed(() => handle?.type.value ?? NodeConnectionType.Main);
+	const type = computed(() => handle?.type.value ?? NodeConnectionTypes.Main);
 	const mode = computed(() => handle?.mode.value ?? CanvasConnectionMode.Input);
 	const index = computed(() => handle?.index.value ?? 0);
 	const runData = computed(() => handle?.runData.value);

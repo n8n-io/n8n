@@ -461,7 +461,6 @@ describe('Langchain Integration', () => {
 
 		getManualChatMessages().should('contain', 'this_my_field_1');
 		cy.getByTestId('refresh-session-button').click();
-		cy.get('button').contains('Reset').click();
 		getManualChatMessages().should('not.exist');
 
 		sendManualChatMessage('Another test');

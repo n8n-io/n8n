@@ -134,7 +134,7 @@ function moveResource() {
 			<CredentialIcon :credential-type-name="credentialType?.name ?? ''" />
 		</template>
 		<template #header>
-			<n8n-heading tag="h2" bold :class="$style.cardHeading">
+			<n8n-text tag="h2" bold :class="$style.cardHeading">
 				{{ data.name }}
 				<N8nBadge v-if="readOnly" class="ml-3xs" theme="tertiary" bold>
 					{{ locale.baseText('credentials.item.readonly') }}
@@ -142,7 +142,7 @@ function moveResource() {
 				<N8nBadge v-if="needsSetup" class="ml-3xs" theme="warning">
 					{{ locale.baseText('credentials.item.needsSetup') }}
 				</N8nBadge>
-			</n8n-heading>
+			</n8n-text>
 		</template>
 		<div :class="$style.cardDescription">
 			<n8n-text color="text-light" size="small">

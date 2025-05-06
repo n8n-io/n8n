@@ -616,15 +616,17 @@
 	--font-size-xl: 1.25rem;
 	--font-size-2xl: 1.75rem;
 
+	--font-line-height-xsmall: 1;
 	--font-line-height-compact: 1.25;
 	--font-line-height-regular: 1.3;
 	--font-line-height-loose: 1.35;
 	--font-line-height-xloose: 1.5;
 
 	--font-weight-regular: 400;
+	--font-weight-medium: 500;
 	--font-weight-bold: 600;
-	--font-family: 'Open Sans', sans-serif;
-	--font-family-monospace: Menlo, Consolas, 'DejaVu Sans Mono', monospace;
+	--font-family: InterVariable, sans-serif;
+	--font-family-monospace: CommitMono, ui-monospace, Menlo, Consolas, 'DejaVu Sans Mono', monospace;
 
 	--spacing-5xs: 0.125rem;
 	--spacing-4xs: 0.25rem;

@@ -1,29 +1,85 @@
 {
     "type": "object",
     "properties": {
-        "name": {
+        "content_type": {
             "type": "string"
         },
         "created_at": {
             "type": "string"
         },
-        "id": {
-            "type": "integer"
+        "default_root": {
+            "type": "null"
         },
-        "uuid": {
-            "type": "string"
+        "deleted_at": {
+            "type": "null"
         },
-        "slug": {
-            "type": "string"
+        "disable_fe_editor": {
+            "type": "boolean"
+        },
+        "disble_fe_editor": {
+            "type": "boolean"
+        },
+        "expire_at": {
+            "type": "null"
         },
         "full_slug": {
             "type": "string"
         },
-        "sort_by_date": {
+        "group_id": {
+            "type": "string"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "is_folder": {
+            "type": "boolean"
+        },
+        "is_startpage": {
+            "type": "boolean"
+        },
+        "last_author": {
+            "type": "object",
+            "properties": {
+                "friendly_name": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "userid": {
+                    "type": "string"
+                }
+            }
+        },
+        "last_author_id": {
+            "type": "integer"
+        },
+        "name": {
+            "type": "string"
+        },
+        "path": {
             "type": "null"
+        },
+        "pinned": {
+            "type": "boolean"
         },
         "position": {
             "type": "integer"
+        },
+        "publish_at": {
+            "type": "null"
+        },
+        "published": {
+            "type": "boolean"
+        },
+        "scheduled_dates": {
+            "type": "null"
+        },
+        "slug": {
+            "type": "string"
+        },
+        "sort_by_date": {
+            "type": "null"
         },
         "tag_list": {
             "type": "array",
@@ -31,97 +87,15 @@
                 "type": "string"
             }
         },
-        "is_startpage": {
+        "unpublished_changes": {
             "type": "boolean"
-        },
-        "group_id": {
-            "type": "string"
-        },
-        "path": {
-            "type": "null"
-        },
-        "deleted_at": {
-            "type": "null"
         },
         "updated_at": {
             "type": "string"
         },
-        "is_folder": {
-            "type": "boolean"
-        },
-        "published": {
-            "type": "boolean"
-        },
-        "unpublished_changes": {
-            "type": "boolean"
-        },
-        "pinned": {
-            "type": "boolean"
-        },
-        "publish_at": {
-            "type": "null"
-        },
-        "expire_at": {
-            "type": "null"
-        },
-        "default_root": {
-            "type": "null"
-        },
-        "disble_fe_editor": {
-            "type": "boolean"
-        },
-        "disable_fe_editor": {
-            "type": "boolean"
-        },
-        "last_author": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "integer"
-                },
-                "userid": {
-                    "type": "string"
-                },
-                "friendly_name": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "id",
-                "userid",
-                "friendly_name",
-                "avatar"
-            ]
-        },
-        "last_author_id": {
-            "type": "integer"
-        },
-        "content_type": {
+        "uuid": {
             "type": "string"
-        },
-        "can_not_view": {
-            "type": "boolean"
-        },
-        "scheduled_dates": {
-            "type": "null"
         }
     },
-    "required": [
-        "name",
-        "created_at",
-        "published_at",
-        "alternates",
-        "id",
-        "uuid",
-        "slug",
-        "full_slug",
-        "sort_by_date",
-        "position",
-        "tag_list",
-        "is_startpage",
-        "parent_id",
-        "group_id",
-        "first_published_at",
-        "path"
-    ]
+    "version": 1
 }

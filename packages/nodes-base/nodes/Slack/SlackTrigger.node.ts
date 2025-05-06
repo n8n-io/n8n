@@ -10,7 +10,7 @@ import {
 	type INodeTypeDescription,
 	type IWebhookResponseData,
 	type IBinaryKeyData,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
 import { downloadFile, getChannelInfo, getUserInfo } from './SlackTriggerHelpers';
@@ -29,7 +29,7 @@ export class SlackTrigger implements INodeType {
 			name: 'Slack Trigger',
 		},
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		webhooks: [
 			{
 				name: 'default',
@@ -320,7 +320,7 @@ export class SlackTrigger implements INodeType {
 		const options = this.getNodeParameter('options', {}) as IDataObject;
 		const binaryData: IBinaryKeyData = {};
 		const watchWorkspace = this.getNodeParameter('watchWorkspace', false) as boolean;
-
+		let eventChannel: string = '';
 		// Check if the request is a challenge request
 		if (req.body.type === 'url_verification') {
 			const res = this.getResponseObject();
@@ -342,14 +342,17 @@ export class SlackTrigger implements INodeType {
 			return {};
 		}
 
-		const eventChannel = req.body.event.channel ?? req.body.event.item.channel;
+		if (eventType !== 'team_join') {
+			eventChannel = req.body.event.channel ?? req.body.event.item.channel;
 
-		// Check for single channel
-		if (!watchWorkspace) {
-			if (
-				eventChannel !== (this.getNodeParameter('channelId', {}, { extractValue: true }) as string)
-			) {
-				return {};
+			// Check for single channel
+			if (!watchWorkspace) {
+				if (
+					eventChannel !==
+					(this.getNodeParameter('channelId', {}, { extractValue: true }) as string)
+				) {
+					return {};
+				}
 			}
 		}
 

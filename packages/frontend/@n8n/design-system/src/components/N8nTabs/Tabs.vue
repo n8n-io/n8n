@@ -17,10 +17,12 @@ interface TabOptions {
 interface TabsProps {
 	modelValue?: Value;
 	options?: TabOptions[];
+	size?: 'small' | 'medium';
 }
 
 withDefaults(defineProps<TabsProps>(), {
 	options: () => [],
+	size: 'medium',
 });
 
 const scrollPosition = ref(0);
@@ -74,7 +76,7 @@ const scrollRight = () => scroll(50);
 </script>
 
 <template>
-	<div :class="['n8n-tabs', $style.container]">
+	<div :class="['n8n-tabs', $style.container, size === 'small' ? $style.small : '']">
 		<div v-if="scrollPosition > 0" :class="$style.back" @click="scrollLeft">
 			<N8nIcon icon="chevron-left" size="small" />
 		</div>
@@ -90,7 +92,7 @@ const scrollRight = () => scroll(50);
 			>
 				<N8nTooltip :disabled="!option.tooltip" placement="bottom">
 					<template #content>
-						<div @click="handleTooltipClick(option.value, $event)" v-n8n-html="option.tooltip" />
+						<div v-n8n-html="option.tooltip" @click="handleTooltipClick(option.value, $event)" />
 					</template>
 					<a
 						v-if="option.href"
@@ -139,7 +141,7 @@ const scrollRight = () => scroll(50);
 
 .tabs {
 	color: var(--color-text-base);
-	font-weight: var(--font-weight-bold);
+	font-weight: var(--font-weight-medium);
 	display: flex;
 	align-items: center;
 	width: 100%;
@@ -171,6 +173,10 @@ const scrollRight = () => scroll(50);
 
 	span + span {
 		margin-left: var(--spacing-4xs);
+	}
+
+	.small & {
+		font-size: var(--font-size-2xs);
 	}
 }
 

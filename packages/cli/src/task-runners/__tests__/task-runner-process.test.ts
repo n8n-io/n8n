@@ -76,7 +76,9 @@ describe('TaskRunnerProcess', () => {
 			'N8N_VERSION',
 			'ENVIRONMENT',
 			'DEPLOYMENT_NAME',
+			'NODE_PATH',
 			'GENERIC_TIMEZONE',
+			'N8N_RUNNERS_ALLOW_PROTOTYPE_MUTATION',
 		])('should propagate %s from env as is', async (envVar) => {
 			jest.spyOn(authService, 'createGrantToken').mockResolvedValue('grantToken');
 			process.env[envVar] = 'custom value';
@@ -116,6 +118,36 @@ describe('TaskRunnerProcess', () => {
 			// @ts-expect-error The type is not correct
 			const options = spawnMock.mock.calls[0][2] as SpawnOptions;
 			expect(options.env).not.toHaveProperty('NODE_OPTIONS');
+		});
+
+		it('should pass N8N_RUNNERS_TASK_TIMEOUT if set', async () => {
+			jest.spyOn(authService, 'createGrantToken').mockResolvedValue('grantToken');
+			runnerConfig.taskTimeout = 123;
+
+			await taskRunnerProcess.start();
+
+			// @ts-expect-error The type is not correct
+			const options = spawnMock.mock.calls[0][2] as SpawnOptions;
+			expect(options.env).toEqual(
+				expect.objectContaining({
+					N8N_RUNNERS_TASK_TIMEOUT: '123',
+				}),
+			);
+		});
+
+		it('should pass N8N_RUNNERS_HEARTBEAT_INTERVAL if set', async () => {
+			jest.spyOn(authService, 'createGrantToken').mockResolvedValue('grantToken');
+			runnerConfig.heartbeatInterval = 456;
+
+			await taskRunnerProcess.start();
+
+			// @ts-expect-error The type is not correct
+			const options = spawnMock.mock.calls[0][2] as SpawnOptions;
+			expect(options.env).toEqual(
+				expect.objectContaining({
+					N8N_RUNNERS_HEARTBEAT_INTERVAL: '456',
+				}),
+			);
 		});
 
 		it('should use --disallow-code-generation-from-strings and --disable-proto=delete flags', async () => {

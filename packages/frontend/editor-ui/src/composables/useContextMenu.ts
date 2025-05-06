@@ -1,10 +1,11 @@
-import type { ActionDropdownItem, XYPosition } from '@/Interface';
+import type { ActionDropdownItem, XYPosition, INodeUi } from '@/Interface';
 import { NOT_DUPLICATABLE_NODE_TYPES, STICKY_NODE_TYPE } from '@/constants';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
+import { NodeHelpers } from 'n8n-workflow';
 import { computed, ref, watch } from 'vue';
 import { getMousePosition } from '../utils/nodeViewUtils';
 import { useI18n } from './useI18n';
@@ -13,7 +14,7 @@ import { isPresent } from '../utils/typesUtils';
 import { getResourcePermissions } from '@/permissions';
 
 export type ContextMenuTarget =
-	| { source: 'canvas'; nodeIds: string[] }
+	| { source: 'canvas'; nodeIds: string[]; nodeId?: string }
 	| { source: 'node-right-click'; nodeId: string }
 	| { source: 'node-button'; nodeId: string };
 export type ContextMenuActionCallback = (action: ContextMenuAction, nodeIds: string[]) => void;
@@ -94,10 +95,24 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 		position.value = [0, 0];
 	};
 
+	const isExecutable = (node: INodeUi) => {
+		const currentWorkflow = workflowsStore.getCurrentWorkflow();
+		const workflowNode = currentWorkflow.getNode(node.name) as INode;
+		const nodeType = nodeTypesStore.getNodeType(
+			workflowNode.type,
+			workflowNode.typeVersion,
+		) as INodeTypeDescription;
+		return NodeHelpers.isExecutable(currentWorkflow, workflowNode, nodeType);
+	};
+
 	const open = (event: MouseEvent, menuTarget: ContextMenuTarget) => {
 		event.stopPropagation();
 
-		if (isOpen.value && menuTarget.source === target.value?.source) {
+		if (
+			isOpen.value &&
+			menuTarget.source === target.value?.source &&
+			menuTarget.nodeId === target.value?.nodeId
+		) {
 			// Close context menu, let browser open native context menu
 			close();
 			return;
@@ -228,12 +243,12 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 							{
 								id: 'execute',
 								label: i18n.baseText('contextMenu.test'),
-								disabled: isReadOnly.value,
+								disabled: isReadOnly.value || !isExecutable(nodes[0]),
 							},
 							{
 								id: 'rename',
 								label: i18n.baseText('contextMenu.rename'),
-								shortcut: { keys: ['F2'] },
+								shortcut: { keys: ['Space'] },
 								disabled: isReadOnly.value,
 							},
 						];

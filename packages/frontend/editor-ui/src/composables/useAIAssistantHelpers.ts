@@ -1,11 +1,12 @@
+import { deepCopy } from 'n8n-workflow';
 import type {
 	IDataObject,
 	IRunExecutionData,
 	NodeApiError,
 	NodeError,
 	NodeOperationError,
+	INode,
 } from 'n8n-workflow';
-import { deepCopy, type INode } from 'n8n-workflow';
 import { useWorkflowHelpers } from './useWorkflowHelpers';
 import { useRouter } from 'vue-router';
 import { useNDVStore } from '@/stores/ndv.store';

@@ -1,21 +1,11 @@
-import { NodeConnectionType } from 'n8n-workflow';
-import nock from 'nock';
-
-import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
-import * as Helpers from '@test/nodes/Helpers';
-import type { WorkflowTestData } from '@test/nodes/types';
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
+import { NodeConnectionTypes, type WorkflowTestData } from 'n8n-workflow';
 
 import { microsoftEntraApiResponse, microsoftEntraNodeResponse } from './mocks';
 
 describe('Microsoft Entra Node', () => {
+	const testHarness = new NodeTestHarness();
 	const baseUrl = 'https://graph.microsoft.com/v1.0';
-
-	beforeEach(() => {
-		// https://github.com/nock/nock/issues/2057#issuecomment-663665683
-		if (!nock.isActive()) {
-			nock.activate();
-		}
-	});
 
 	describe('User description', () => {
 		const tests: WorkflowTestData[] = [
@@ -67,7 +57,7 @@ describe('Microsoft Entra Node', () => {
 									[
 										{
 											node: 'Micosoft Entra ID',
-											type: NodeConnectionType.Main,
+											type: NodeConnectionTypes.Main,
 											index: 0,
 										},
 									],
@@ -77,7 +67,6 @@ describe('Microsoft Entra Node', () => {
 					},
 				},
 				output: {
-					nodeExecutionOrder: ['Start'],
 					nodeData: {
 						'Micosoft Entra ID': [microsoftEntraNodeResponse.addUserToGroup],
 					},
@@ -182,7 +171,7 @@ describe('Microsoft Entra Node', () => {
 									[
 										{
 											node: 'Micosoft Entra ID',
-											type: NodeConnectionType.Main,
+											type: NodeConnectionTypes.Main,
 											index: 0,
 										},
 									],
@@ -192,7 +181,6 @@ describe('Microsoft Entra Node', () => {
 					},
 				},
 				output: {
-					nodeExecutionOrder: ['Start'],
 					nodeData: {
 						'Micosoft Entra ID': [microsoftEntraNodeResponse.createUser],
 					},
@@ -319,7 +307,7 @@ describe('Microsoft Entra Node', () => {
 									[
 										{
 											node: 'Micosoft Entra ID',
-											type: NodeConnectionType.Main,
+											type: NodeConnectionTypes.Main,
 											index: 0,
 										},
 									],
@@ -329,7 +317,6 @@ describe('Microsoft Entra Node', () => {
 					},
 				},
 				output: {
-					nodeExecutionOrder: ['Start'],
 					nodeData: {
 						'Micosoft Entra ID': [microsoftEntraNodeResponse.deleteUser],
 					},
@@ -390,7 +377,7 @@ describe('Microsoft Entra Node', () => {
 									[
 										{
 											node: 'Micosoft Entra ID',
-											type: NodeConnectionType.Main,
+											type: NodeConnectionTypes.Main,
 											index: 0,
 										},
 									],
@@ -400,7 +387,6 @@ describe('Microsoft Entra Node', () => {
 					},
 				},
 				output: {
-					nodeExecutionOrder: ['Start'],
 					nodeData: {
 						'Micosoft Entra ID': [microsoftEntraNodeResponse.getUser],
 					},
@@ -538,7 +524,7 @@ describe('Microsoft Entra Node', () => {
 									[
 										{
 											node: 'Micosoft Entra ID',
-											type: NodeConnectionType.Main,
+											type: NodeConnectionTypes.Main,
 											index: 0,
 										},
 									],
@@ -548,7 +534,6 @@ describe('Microsoft Entra Node', () => {
 					},
 				},
 				output: {
-					nodeExecutionOrder: ['Start'],
 					nodeData: {
 						'Micosoft Entra ID': [
 							[
@@ -619,7 +604,7 @@ describe('Microsoft Entra Node', () => {
 									[
 										{
 											node: 'Micosoft Entra ID',
-											type: NodeConnectionType.Main,
+											type: NodeConnectionTypes.Main,
 											index: 0,
 										},
 									],
@@ -629,7 +614,6 @@ describe('Microsoft Entra Node', () => {
 					},
 				},
 				output: {
-					nodeExecutionOrder: ['Start'],
 					nodeData: {
 						'Micosoft Entra ID': [new Array(102).fill(microsoftEntraNodeResponse.getUser[0])],
 					},
@@ -701,7 +685,7 @@ describe('Microsoft Entra Node', () => {
 									[
 										{
 											node: 'Micosoft Entra ID',
-											type: NodeConnectionType.Main,
+											type: NodeConnectionTypes.Main,
 											index: 0,
 										},
 									],
@@ -711,7 +695,6 @@ describe('Microsoft Entra Node', () => {
 					},
 				},
 				output: {
-					nodeExecutionOrder: ['Start'],
 					nodeData: {
 						'Micosoft Entra ID': [new Array(10).fill(microsoftEntraNodeResponse.getUser[0])],
 					},
@@ -841,7 +824,7 @@ describe('Microsoft Entra Node', () => {
 									[
 										{
 											node: 'Micosoft Entra ID',
-											type: NodeConnectionType.Main,
+											type: NodeConnectionTypes.Main,
 											index: 0,
 										},
 									],
@@ -851,7 +834,6 @@ describe('Microsoft Entra Node', () => {
 					},
 				},
 				output: {
-					nodeExecutionOrder: ['Start'],
 					nodeData: {
 						'Micosoft Entra ID': [
 							new Array(102).fill({
@@ -943,7 +925,7 @@ describe('Microsoft Entra Node', () => {
 									[
 										{
 											node: 'Micosoft Entra ID',
-											type: NodeConnectionType.Main,
+											type: NodeConnectionTypes.Main,
 											index: 0,
 										},
 									],
@@ -953,7 +935,6 @@ describe('Microsoft Entra Node', () => {
 					},
 				},
 				output: {
-					nodeExecutionOrder: ['Start'],
 					nodeData: {
 						'Micosoft Entra ID': [microsoftEntraNodeResponse.removeUserFromGroup],
 					},
@@ -1061,7 +1042,7 @@ describe('Microsoft Entra Node', () => {
 									[
 										{
 											node: 'Micosoft Entra ID',
-											type: NodeConnectionType.Main,
+											type: NodeConnectionTypes.Main,
 											index: 0,
 										},
 									],
@@ -1071,7 +1052,6 @@ describe('Microsoft Entra Node', () => {
 					},
 				},
 				output: {
-					nodeExecutionOrder: ['Start'],
 					nodeData: {
 						'Micosoft Entra ID': [microsoftEntraNodeResponse.updateUser],
 					},
@@ -1146,16 +1126,8 @@ describe('Microsoft Entra Node', () => {
 			},
 		];
 
-		const nodeTypes = Helpers.setup(tests);
-
-		test.each(tests)('$description', async (testData) => {
-			const { result } = await executeWorkflow(testData, nodeTypes);
-
-			const resultNodeData = Helpers.getResultNodeData(result, testData);
-			resultNodeData.forEach(({ nodeName, resultData }) =>
-				expect(resultData).toEqual(testData.output.nodeData[nodeName]),
-			);
-			expect(result.status).toEqual('success');
-		});
+		for (const testData of tests) {
+			testHarness.setupTest(testData);
+		}
 	});
 });

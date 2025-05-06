@@ -15,6 +15,7 @@ import { STORES } from '@/constants';
 import { useUsersStore } from '@/stores/users.store';
 import { getResourcePermissions } from '@/permissions';
 import type { CreateProjectDto, UpdateProjectDto } from '@n8n/api-types';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
 
 export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 	const route = useRoute();
@@ -22,6 +23,7 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 	const settingsStore = useSettingsStore();
 	const credentialsStore = useCredentialsStore();
 	const usersStore = useUsersStore();
+	const sourceControlStore = useSourceControlStore();
 
 	const projects = ref<ProjectListItem[]>([]);
 	const myProjects = ref<ProjectListItem[]>([]);
@@ -60,8 +62,9 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 	);
 	const canCreateProjects = computed<boolean>(
 		() =>
-			hasUnlimitedProjects.value ||
-			(isTeamProjectFeatureEnabled.value && !isTeamProjectLimitExceeded.value),
+			(hasUnlimitedProjects.value ||
+				(isTeamProjectFeatureEnabled.value && !isTeamProjectLimitExceeded.value)) &&
+			!sourceControlStore.preferences.branchReadOnly,
 	);
 	const hasPermissionToCreateProjects = computed(() =>
 		hasPermission(['rbac'], { rbac: { scope: 'project:create' } }),
@@ -145,9 +148,19 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 	const setProjectNavActiveIdByWorkflowHomeProject = async (
 		homeProject?: IWorkflowDb['homeProject'],
 	) => {
+		// Handle personal projects
 		if (homeProject?.type === ProjectTypes.Personal) {
-			projectNavActiveId.value = 'home';
+			const isOwnPersonalProject = personalProject.value?.id === homeProject?.id;
+			// If it's current user's personal project, set it as current project
+			if (isOwnPersonalProject) {
+				projectNavActiveId.value = homeProject?.id ?? null;
+				currentProject.value = personalProject.value;
+			} else {
+				// Else default to overview page
+				projectNavActiveId.value = 'home';
+			}
 		} else {
+			// Handle team projects
 			projectNavActiveId.value = homeProject?.id ?? null;
 			if (homeProject?.id && !currentProjectId.value) {
 				await getProject(homeProject?.id);

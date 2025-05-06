@@ -1,4 +1,4 @@
-import { BINARY_ENCODING, NodeConnectionType } from 'n8n-workflow';
+import { BINARY_ENCODING, NodeConnectionTypes } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
 	INodeExecutionData,
@@ -20,8 +20,8 @@ export class WriteBinaryFile implements INodeType {
 			name: 'Write Binary File',
 			color: '#CC2233',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
 				displayName: 'File Name',

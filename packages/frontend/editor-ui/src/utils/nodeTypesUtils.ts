@@ -3,9 +3,7 @@ import type {
 	INodeUi,
 	INodeUpdatePropertiesInformation,
 	ITemplatesNode,
-	IVersionNode,
 	NodeAuthenticationOption,
-	SimplifiedNodeType,
 } from '@/Interface';
 import {
 	CORE_NODES_CATEGORY,
@@ -501,34 +499,4 @@ export const getThemedValue = <T extends string>(
 	}
 
 	return value[theme];
-};
-
-export const getNodeIcon = (
-	nodeType: INodeTypeDescription | SimplifiedNodeType | IVersionNode,
-	theme: AppliedThemeOption = 'light',
-): string | null => {
-	return getThemedValue(nodeType.icon, theme);
-};
-
-export const getNodeIconUrl = (
-	nodeType: INodeTypeDescription | SimplifiedNodeType | IVersionNode,
-	theme: AppliedThemeOption = 'light',
-): string | null => {
-	return getThemedValue(nodeType.iconUrl, theme);
-};
-
-export const getBadgeIconUrl = (
-	nodeType: INodeTypeDescription | SimplifiedNodeType,
-	theme: AppliedThemeOption = 'light',
-): string | null => {
-	return getThemedValue(nodeType.badgeIconUrl, theme);
-};
-
-export const getNodeIconColor = (
-	nodeType?: INodeTypeDescription | SimplifiedNodeType | IVersionNode | null,
-) => {
-	if (nodeType && 'iconColor' in nodeType && nodeType.iconColor) {
-		return `var(--color-node-icon-${nodeType.iconColor})`;
-	}
-	return nodeType?.defaults?.color?.toString();
 };

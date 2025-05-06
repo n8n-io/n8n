@@ -1,7 +1,7 @@
 {
   "name": "@n8n/composables",
   "type": "module",
-  "version": "1.2.0",
+  "version": "1.5.0",
   "files": [
     "dist"
   ],
@@ -35,10 +35,9 @@
     "@vue/tsconfig": "catalog:frontend",
     "@vueuse/core": "catalog:frontend",
     "vue": "catalog:frontend",
-    "tsup": "catalog:frontend",
+    "tsup": "catalog:",
     "typescript": "catalog:frontend",
     "vite": "catalog:frontend",
-    "vite-plugin-dts": "catalog:frontend",
     "vitest": "catalog:frontend",
     "vue-tsc": "catalog:frontend"
   },

@@ -22,3 +22,5 @@ packages/**/.turbo
 CHANGELOG-*.md
 *.mdx
 build-storybook.log
+*.junit.xml
+junit.xml

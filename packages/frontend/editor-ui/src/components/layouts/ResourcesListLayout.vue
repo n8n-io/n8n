@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, nextTick, ref, onMounted, watch } from 'vue';
+import { computed, nextTick, ref, onMounted, watch, onBeforeUnmount } from 'vue';
 
 import { type ProjectSharingData } from '@/types/projects.types';
 import PageViewLayout from '@/components/layouts/PageViewLayout.vue';
@@ -14,7 +14,7 @@ import { useRoute, useRouter } from 'vue-router';
 
 import type { BaseTextKey } from '@/plugins/i18n';
 import type { Scope } from '@n8n/permissions';
-import type { BaseFolderItem, BaseResource, FolderShortInfo, ITag } from '@/Interface';
+import type { BaseFolderItem, BaseResource, ITag, ResourceParentFolder } from '@/Interface';
 import { isSharedResource, isResourceSortableByDate } from '@/utils/typeGuards';
 
 type ResourceKeyType = 'credentials' | 'workflows' | 'variables' | 'folders';
@@ -34,7 +34,7 @@ export type WorkflowResource = BaseResource & {
 	tags?: ITag[] | string[];
 	sharedWithProjects?: ProjectSharingData[];
 	readOnly: boolean;
-	parentFolder?: FolderShortInfo;
+	parentFolder?: ResourceParentFolder;
 };
 
 export type VariableResource = BaseResource & {
@@ -96,6 +96,7 @@ const props = withDefaults(
 		resourcesRefreshing?: boolean;
 		// Set to true if sorting and filtering is done outside of the component
 		dontPerformSortingAndFiltering?: boolean;
+		hasEmptyState?: boolean;
 	}>(),
 	{
 		displayName: (resource: Resource) => resource.name || '',
@@ -114,6 +115,7 @@ const props = withDefaults(
 		totalItems: 0,
 		dontPerformSortingAndFiltering: false,
 		resourcesRefreshing: false,
+		hasEmptyState: true,
 	},
 );
 
@@ -144,8 +146,13 @@ const slots = defineSlots<{
 		filters: Record<string, boolean | string | string[]>;
 		setKeyValue: (key: string, value: unknown) => void;
 	}): unknown;
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	default(props: { data: any; updateItemSize: (data: any) => void }): unknown;
+	default(props: {
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		data: any;
+		columns?: DatatableColumn[];
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		updateItemSize?: (data: any) => void;
+	}): unknown;
 	item(props: { item: unknown; index: number }): unknown;
 	breadcrumbs(): unknown;
 }>();
@@ -158,7 +165,7 @@ const filtersModel = computed({
 
 const showEmptyState = computed(() => {
 	return (
-		route.params.folderId === undefined &&
+		props.hasEmptyState &&
 		props.resources.length === 0 &&
 		// Don't show empty state if resources are refreshing or if filters are being set
 		!hasFilters.value &&
@@ -294,28 +301,31 @@ watch(
 	},
 );
 
-watch(
-	() => props.resources,
-	async () => {
-		await nextTick();
-		focusSearchInput();
-	},
-);
-
 // Lifecycle hooks
 onMounted(async () => {
 	await loadPaginationFromQueryString();
 	await props.initialize();
 	await nextTick();
 
-	focusSearchInput();
-
 	if (hasAppliedFilters()) {
 		hasFilters.value = true;
 	}
+
+	window.addEventListener('keydown', captureSearchHotKey);
+});
+
+onBeforeUnmount(() => {
+	window.removeEventListener('keydown', captureSearchHotKey);
 });
 
 //methods
+const captureSearchHotKey = (e: KeyboardEvent) => {
+	if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+		e.preventDefault();
+		focusSearchInput();
+	}
+};
+
 const focusSearchInput = () => {
 	if (search.value) {
 		search.value.focus();
@@ -418,7 +428,7 @@ const getColumns = () => {
 	if ('columns' in props.typeProps) {
 		return props.typeProps.columns;
 	}
-	return {};
+	return [];
 };
 
 const sendSortingTelemetry = () => {
@@ -534,8 +544,9 @@ const loadPaginationFromQueryString = async () => {
 							<n8n-input
 								ref="search"
 								:model-value="filtersModel.search"
-								:class="[$style['search'], 'mr-2xs']"
+								:class="$style.search"
 								:placeholder="i18n.baseText(`${resourceKey}.search.placeholder` as BaseTextKey)"
+								size="small"
 								clearable
 								data-test-id="resources-list-search"
 								@update:model-value="onSearch"
@@ -545,7 +556,7 @@ const loadPaginationFromQueryString = async () => {
 								</template>
 							</n8n-input>
 							<div :class="$style['sort-and-filter']">
-								<n8n-select v-model="sortBy" data-test-id="resources-list-sort">
+								<n8n-select v-model="sortBy" size="small" data-test-id="resources-list-sort">
 									<n8n-option
 										v-for="sortOption in sortOptions"
 										:key="sortOption"
@@ -653,7 +664,12 @@ const loadPaginationFromQueryString = async () => {
 					</n8n-datatable>
 				</div>
 
-				<n8n-text v-else color="text-base" size="medium" data-test-id="resources-list-empty">
+				<n8n-text
+					v-else-if="hasAppliedFilters() || filtersModel.search !== ''"
+					color="text-base"
+					size="medium"
+					data-test-id="resources-list-empty"
+				>
 					{{ i18n.baseText(`${resourceKey}.noResults` as BaseTextKey) }}
 				</n8n-text>
 
@@ -677,14 +693,14 @@ const loadPaginationFromQueryString = async () => {
 	display: grid;
 	grid-auto-flow: column;
 	grid-auto-columns: 1fr max-content max-content max-content;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing-4xs);
 	align-items: center;
 	justify-content: end;
 	width: 100%;
 
 	.sort-and-filter {
 		display: flex;
-		gap: var(--spacing-2xs);
+		gap: var(--spacing-4xs);
 		align-items: center;
 	}
 
@@ -692,6 +708,15 @@ const loadPaginationFromQueryString = async () => {
 		grid-auto-flow: row;
 		grid-auto-columns: unset;
 		grid-template-columns: 1fr;
+	}
+}
+
+.search {
+	max-width: 196px;
+	justify-self: end;
+
+	input {
+		height: 30px;
 	}
 }
 

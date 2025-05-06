@@ -1,25 +1,30 @@
 import type { TLP } from './AlertInterface';
 
-export const enum ObservableStatus {
-	OK = 'Ok',
-	DELETED = 'Deleted',
-}
-export const enum ObservableDataType {
-	domain = 'domain',
-	file = 'file',
-	filename = 'filename',
-	fqdn = 'fqdn',
-	hash = 'hash',
-	ip = 'ip',
-	mail = 'mail',
-	mail_subject = 'mail_subject',
-	other = 'other',
-	regexp = 'regexp',
-	registry = 'registry',
-	uri_path = 'uri_path',
-	url = 'url',
-	'user-agent' = 'user-agent',
-}
+export const ObservableStatuses = {
+	OK: 'Ok',
+	DELETED: 'Deleted',
+} as const;
+
+export type ObservableStatus = (typeof ObservableStatuses)[keyof typeof ObservableStatuses];
+
+export const ObservableDataTypes = {
+	domain: 'domain',
+	file: 'file',
+	filename: 'filename',
+	fqdn: 'fqdn',
+	hash: 'hash',
+	ip: 'ip',
+	mail: 'mail',
+	mail_subject: 'mail_subject',
+	other: 'other',
+	regexp: 'regexp',
+	registry: 'registry',
+	uri_path: 'uri_path',
+	url: 'url',
+	'user-agent': 'user-agent',
+} as const;
+
+export type ObservableDataType = (typeof ObservableDataTypes)[keyof typeof ObservableDataTypes];
 
 export interface IAttachment {
 	name?: string;

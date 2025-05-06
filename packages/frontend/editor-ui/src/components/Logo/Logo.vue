@@ -22,12 +22,6 @@ const props = defineProps<
 
 const { location, releaseChannel } = props;
 
-const showReleaseChannelTag = computed(() => {
-	if (releaseChannel === 'stable') return false;
-	if (location === 'authView') return true;
-	return !props.collapsed;
-});
-
 const showLogoText = computed(() => {
 	if (location === 'authView') return true;
 	return !props.collapsed;
@@ -63,11 +57,8 @@ onMounted(() => {
 
 <template>
 	<div :class="containerClasses" data-test-id="n8n-logo">
-		<LogoIcon :class="$style.logo" ref="logo" />
+		<LogoIcon ref="logo" :class="$style.logo" />
 		<LogoText v-if="showLogoText" :class="$style.logoText" />
-		<div v-if="showReleaseChannelTag" size="small" round :class="$style.releaseChannelTag">
-			{{ releaseChannel }}
-		</div>
 		<slot />
 	</div>
 </template>
@@ -76,6 +67,7 @@ onMounted(() => {
 .logoContainer {
 	display: flex;
 	justify-content: center;
+	align-items: center;
 }
 
 .logoText {
@@ -85,31 +77,23 @@ onMounted(() => {
 	}
 }
 
-.releaseChannelTag {
-	color: var(--color-text-dark);
-	padding: var(--spacing-5xs) var(--spacing-4xs);
-	background-color: var(--color-background-base);
-	border: 1px solid var(--color-foreground-base);
-	border-radius: var(--border-radius-base);
-	font-size: var(--font-size-4xs);
-	font-weight: var(--font-weight-bold);
-	text-transform: capitalize;
-	line-height: var(--font-line-height-regular);
-	height: var(--spacing-s);
-	margin: 10px 0 0 3px;
-}
-
 .authView {
 	transform: scale(2);
 	margin-bottom: var(--spacing-xl);
 }
 
-.sidebar {
-	transform: scale(1.3);
+.logo,
+.logoText {
+	transform: scale(1.3) translateY(-2px);
+}
+
+.logoText {
+	margin-left: var(--spacing-xs);
+	margin-right: var(--spacing-3xs);
 }
 
 .sidebarExpanded .logo {
-	margin-left: var(--spacing-xs);
+	margin-left: var(--spacing-2xs);
 }
 
 .sidebarCollapsed .logo {

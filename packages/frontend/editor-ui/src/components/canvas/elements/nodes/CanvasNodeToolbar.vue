@@ -4,6 +4,8 @@ import { useI18n } from '@/composables/useI18n';
 import { useCanvasNode } from '@/composables/useCanvasNode';
 import { CanvasNodeRenderType } from '@/types';
 import { useCanvas } from '@/composables/useCanvas';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 
 const emit = defineEmits<{
 	delete: [];
@@ -21,7 +23,15 @@ const $style = useCssModule();
 const i18n = useI18n();
 
 const { isExecuting } = useCanvas();
-const { isDisabled, render } = useCanvasNode();
+const { isDisabled, render, name } = useCanvasNode();
+
+const workflowsStore = useWorkflowsStore();
+const nodeTypesStore = useNodeTypesStore();
+
+const node = computed(() => !!name.value && workflowsStore.getNodeByName(name.value));
+const isNodesAsToolNode = computed(
+	() => !!node.value && nodeTypesStore.isNodesAsToolNode(node.value.type),
+);
 
 const nodeDisabledTitle = computed(() => {
 	return isDisabled.value ? i18n.baseText('node.enable') : i18n.baseText('node.disable');
@@ -41,7 +51,7 @@ const isExecuteNodeVisible = computed(() => {
 		!props.readOnly &&
 		render.value.type === CanvasNodeRenderType.Default &&
 		'configuration' in render.value.options &&
-		!render.value.options.configuration
+		(!render.value.options.configuration || isNodesAsToolNode.value)
 	);
 });
 
@@ -94,17 +104,23 @@ function onMouseLeave() {
 		@mouseleave="onMouseLeave"
 	>
 		<div :class="$style.canvasNodeToolbarItems">
-			<N8nIconButton
-				v-if="isExecuteNodeVisible"
-				data-test-id="execute-node-button"
-				type="tertiary"
-				text
-				size="small"
-				icon="play"
-				:disabled="isExecuting"
-				:title="i18n.baseText('node.testStep')"
-				@click="executeNode"
-			/>
+			<N8nTooltip
+				placement="top"
+				:disabled="!isDisabled"
+				:content="i18n.baseText('ndv.execute.deactivated')"
+			>
+				<N8nIconButton
+					v-if="isExecuteNodeVisible"
+					data-test-id="execute-node-button"
+					type="tertiary"
+					text
+					size="small"
+					icon="play"
+					:disabled="isExecuting || isDisabled"
+					:title="i18n.baseText('node.testStep')"
+					@click="executeNode"
+				/>
+			</N8nTooltip>
 			<N8nIconButton
 				v-if="isDisableNodeVisible"
 				data-test-id="disable-node-button"

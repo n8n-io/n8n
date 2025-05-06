@@ -1,14 +1,23 @@
 <script lang="ts" setup>
-import { ref, computed, useCssModule } from 'vue';
-import type { ExecutionSummary } from 'n8n-workflow';
-import { WAIT_INDEFINITELY } from 'n8n-workflow';
-import { useI18n } from '@/composables/useI18n';
-import { convertToDisplayDate } from '@/utils/formatters/dateFormatter';
-import { i18n as locale } from '@/plugins/i18n';
+import AnimatedSpinner from '@/components/AnimatedSpinner.vue';
 import ExecutionsTime from '@/components/executions/ExecutionsTime.vue';
 import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
+import { useI18n } from '@/composables/useI18n';
+import { VIEWS } from '@/constants';
 import type { PermissionsRecord } from '@/permissions';
-import GlobalExecutionsListItemQueuedTooltip from '@/components/executions/global/GlobalExecutionsListItemQueuedTooltip.vue';
+import { convertToDisplayDate } from '@/utils/formatters/dateFormatter';
+import {
+	N8nButton,
+	N8nCheckbox,
+	N8nIcon,
+	N8nIconButton,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
+import type { IconColor } from '@n8n/design-system/types/icon';
+import type { ExecutionStatus, ExecutionSummary } from 'n8n-workflow';
+import { WAIT_INDEFINITELY } from 'n8n-workflow';
+import { computed, ref, useCssModule } from 'vue';
 
 type Command = 'retrySaved' | 'retryOriginal' | 'delete';
 
@@ -37,18 +46,12 @@ const props = withDefaults(
 );
 
 const style = useCssModule();
-const i18n = useI18n();
+const locale = useI18n();
 const executionHelpers = useExecutionHelpers();
 
 const isStopping = ref(false);
 
-const isRunning = computed(() => {
-	return props.execution.status === 'running';
-});
-
-const isQueued = computed(() => {
-	return props.execution.status === 'new';
-});
+const isRunning = computed(() => props.execution.status === 'running');
 
 const isWaitTillIndefinite = computed(() => {
 	if (!props.execution.waitTill) {
@@ -60,17 +63,63 @@ const isWaitTillIndefinite = computed(() => {
 
 const isRetriable = computed(() => executionHelpers.isExecutionRetriable(props.execution));
 
+const EXECUTION_STATUS = {
+	CRASHED: 'crashed',
+	ERROR: 'error',
+	WAITING: 'waiting',
+	SUCCESS: 'success',
+	NEW: 'new',
+	RUNNING: 'running',
+	UNKNOWN: 'unknown',
+	CANCELED: 'canceled',
+} as const;
+
+const executionIconStatusDictionary: Record<ExecutionStatus, { icon: string; color: IconColor }> = {
+	[EXECUTION_STATUS.CRASHED]: {
+		icon: 'status-error',
+		color: 'danger',
+	},
+	[EXECUTION_STATUS.ERROR]: {
+		icon: 'status-error',
+		color: 'danger',
+	},
+	[EXECUTION_STATUS.WAITING]: {
+		icon: 'status-waiting',
+		color: 'secondary',
+	},
+	[EXECUTION_STATUS.SUCCESS]: {
+		icon: 'status-completed',
+		color: 'success',
+	},
+	[EXECUTION_STATUS.NEW]: {
+		icon: 'status-new',
+		color: 'foreground-xdark',
+	},
+	[EXECUTION_STATUS.RUNNING]: {
+		icon: 'spinner',
+		color: 'secondary',
+	},
+	[EXECUTION_STATUS.UNKNOWN]: {
+		icon: 'status-unknown',
+		color: 'foreground-xdark',
+	},
+	[EXECUTION_STATUS.CANCELED]: {
+		icon: 'status-canceled',
+		color: 'foreground-xdark',
+	},
+};
+
+const errorStatuses: ExecutionStatus[] = [EXECUTION_STATUS.ERROR, EXECUTION_STATUS.CRASHED];
 const classes = computed(() => {
 	return {
-		[style.executionListItem]: true,
-		[style[props.execution.status]]: true,
+		[style.dangerBg]: errorStatuses.includes(props.execution.status),
 	};
 });
 
 const formattedStartedAtDate = computed(() => {
 	return props.execution.startedAt
 		? formatDate(props.execution.startedAt)
-		: i18n.baseText('executionsList.startingSoon');
+		: locale.baseText('executionsList.startingSoon');
 });
 
 const formattedWaitTillDate = computed(() => {
@@ -79,7 +128,7 @@ const formattedWaitTillDate = computed(() => {
 
 const formattedStoppedAtDate = computed(() => {
 	return props.execution.stoppedAt
-		? i18n.displayTimer(
+		? locale.displayTimer(
 				new Date(props.execution.stoppedAt).getTime() -
 					new Date(props.execution.startedAt).getTime(),
 				true,
@@ -87,57 +136,23 @@ const formattedStoppedAtDate = computed(() => {
 		: '';
 });
 
-const statusText = computed(() => {
-	switch (props.execution.status) {
-		case 'waiting':
-			return i18n.baseText('executionsList.waiting');
-		case 'canceled':
-			return i18n.baseText('executionsList.canceled');
-		case 'crashed':
-			return i18n.baseText('executionsList.error');
-		case 'new':
-			return i18n.baseText('executionsList.new');
-		case 'running':
-			return i18n.baseText('executionsList.running');
-		case 'success':
-			return i18n.baseText('executionsList.succeeded');
-		case 'error':
-			return i18n.baseText('executionsList.error');
-		default:
-			return i18n.baseText('executionsList.unknown');
+function getStatusLabel(status: ExecutionStatus) {
+	if (status === EXECUTION_STATUS.CRASHED) {
+		return locale.baseText('executionsList.error');
 	}
-});
+	return locale.baseText(`executionsList.${status}`);
+}
 
-const statusTextTranslationPath = computed(() => {
-	switch (props.execution.status) {
-		case 'waiting':
-			return 'executionsList.statusWaiting';
-		case 'canceled':
-			return 'executionsList.statusCanceled';
-		case 'crashed':
-		case 'error':
-		case 'success':
-			if (!props.execution.stoppedAt) {
-				return 'executionsList.statusTextWithoutTime';
-			} else {
-				return 'executionsList.statusText';
-			}
-		case 'new':
-			return 'executionsList.statusTextWithoutTime';
-		case 'running':
-			return 'executionsList.statusRunning';
-		default:
-			return 'executionsList.statusUnknown';
-	}
+const statusRender = computed(() => {
+	return {
+		...executionIconStatusDictionary[props.execution.status],
+		label: getStatusLabel(props.execution.status),
+	};
 });
 
 function formatDate(fullDate: Date | string | number) {
 	const { date, time } = convertToDisplayDate(fullDate);
 	return locale.baseText('executionsList.started', { interpolate: { time, date } });
-}
-
-function displayExecution() {
-	executionHelpers.openExecutionInNewTab(props.execution.id, props.execution.workflowId);
 }
 
 function onStopExecution() {
@@ -157,108 +172,100 @@ async function handleActionItemClick(commandData: Command) {
 <template>
 	<tr :class="classes">
 		<td>
-			<ElCheckbox
-				v-if="!!execution.stoppedAt && execution.id"
+			<N8nCheckbox
 				:model-value="selected"
-				label=""
 				data-test-id="select-execution-checkbox"
+				:disabled="!Boolean(execution.id && execution.stoppedAt)"
+				class="mb-0"
+				:style="{ marginTop: '-3px' }"
 				@update:model-value="onSelect"
 			/>
 		</td>
 		<td>
-			<span :class="$style.link" @click.stop="displayExecution">
-				{{ execution.workflowName || workflowName }}
-			</span>
-		</td>
-		<td>
-			<span>{{ formattedStartedAtDate }}</span>
-		</td>
-		<td>
-			<div :class="$style.statusColumn">
-				<span v-if="isRunning" :class="$style.spinner">
-					<FontAwesomeIcon icon="spinner" spin />
-				</span>
-				<i18n-t
-					v-if="!isWaitTillIndefinite && !isQueued"
-					data-test-id="execution-status"
-					tag="span"
-					:keypath="statusTextTranslationPath"
+			<N8nTooltip :content="execution.workflowName || workflowName" placement="top">
+				<RouterLink
+					:to="{
+						name: VIEWS.EXECUTION_PREVIEW,
+						params: { name: execution.workflowId, executionId: execution.id },
+					}"
+					:class="$style.workflowName"
+					target="_blank"
 				>
-					<template #status>
-						<span :class="$style.status">{{ statusText }}</span>
-					</template>
-					<template #time>
-						<span v-if="execution.waitTill">{{ formattedWaitTillDate }}</span>
-						<span v-else-if="!!execution.stoppedAt">
-							{{ formattedStoppedAtDate }}
-						</span>
-						<ExecutionsTime
-							v-else-if="execution.status !== 'new'"
-							:start-time="execution.startedAt"
-						/>
-					</template>
-				</i18n-t>
-				<GlobalExecutionsListItemQueuedTooltip
-					v-else
-					:status="props.execution.status"
-					:concurrency-cap="props.concurrencyCap"
-					:is-cloud-deployment="props.isCloudDeployment"
-					@go-to-upgrade="emit('goToUpgrade')"
-				>
-					<span :class="$style.status">{{ statusText }}</span>
-				</GlobalExecutionsListItemQueuedTooltip>
-			</div>
+					{{ execution.workflowName || workflowName }}
+				</RouterLink>
+			</N8nTooltip>
+		</td>
+		<td data-test-id="execution-status">
+			<GlobalExecutionsListItemQueuedTooltip
+				v-if="isWaitTillIndefinite || execution.status === EXECUTION_STATUS.NEW"
+				:status="props.execution.status"
+				:concurrency-cap="props.concurrencyCap"
+				:is-cloud-deployment="props.isCloudDeployment"
+				@go-to-upgrade="emit('goToUpgrade')"
+			>
+				<div>
+					<N8nIcon :icon="statusRender.icon" :color="statusRender.color" class="mr-2xs" />
+					{{ statusRender.label }}
+				</div>
+			</GlobalExecutionsListItemQueuedTooltip>
+			<N8nTooltip
+				v-else
+				:disabled="execution.status !== EXECUTION_STATUS.WAITING"
+				:content="
+					locale.baseText('executionsList.statusWaiting', {
+						interpolate: { status: execution.status, time: formattedWaitTillDate },
+					})
+				"
+			>
+				<div>
+					<N8nText
+						v-if="execution.status === EXECUTION_STATUS.RUNNING"
+						color="secondary"
+						class="mr-2xs"
+					>
+						<AnimatedSpinner />
+					</N8nText>
+					<N8nIcon v-else :icon="statusRender.icon" :color="statusRender.color" class="mr-2xs" />
+					{{ statusRender.label }}
+				</div>
+			</N8nTooltip>
 		</td>
 		<td>
-			<span v-if="execution.id">#{{ execution.id }}</span>
+			{{ formattedStartedAtDate }}
+		</td>
+		<td>
+			<template v-if="formattedStoppedAtDate">
+				{{ formattedStoppedAtDate }}
+			</template>
+			<ExecutionsTime v-else :start-time="execution.startedAt" />
+		</td>
+		<td>
+			<span v-if="execution.id">{{ execution.id }}</span>
 			<span v-if="execution.retryOf">
 				<br />
-				<small> ({{ i18n.baseText('executionsList.retryOf') }} #{{ execution.retryOf }}) </small>
+				<small> ({{ locale.baseText('executionsList.retryOf') }} {{ execution.retryOf }}) </small>
 			</span>
 			<span v-else-if="execution.retrySuccessId">
 				<br />
 				<small>
-					({{ i18n.baseText('executionsList.successRetry') }} #{{ execution.retrySuccessId }})
+					({{ locale.baseText('executionsList.successRetry') }} {{ execution.retrySuccessId }})
 				</small>
 			</span>
 		</td>
 		<td>
-			<N8nTooltip v-if="execution.mode === 'manual'" placement="top">
-				<template #content>
-					<span>{{ i18n.baseText('executionsList.test') }}</span>
-				</template>
-				<FontAwesomeIcon icon="flask" />
-			</N8nTooltip>
-			<N8nTooltip v-if="execution.mode === 'evaluation'" placement="top">
-				<template #content>
-					<span>{{ i18n.baseText('executionsList.evaluation') }}</span>
-				</template>
-				<FontAwesomeIcon icon="tasks" />
-			</N8nTooltip>
+			<FontAwesomeIcon v-if="execution.mode === 'manual'" icon="flask" />
 		</td>
 		<td>
-			<div :class="$style.buttonCell">
-				<N8nButton
-					v-if="!!execution.stoppedAt && execution.id"
-					size="small"
-					outline
-					:label="i18n.baseText('executionsList.view')"
-					@click.stop="displayExecution"
-				/>
-			</div>
-		</td>
-		<td>
-			<div :class="$style.buttonCell">
-				<N8nButton
-					v-if="!execution.stoppedAt || execution.waitTill"
-					data-test-id="stop-execution-button"
-					size="small"
-					outline
-					:label="i18n.baseText('executionsList.stop')"
-					:loading="isStopping"
-					@click.stop="onStopExecution"
-				/>
-			</div>
+			<N8nButton
+				v-if="!execution.stoppedAt || execution.waitTill"
+				data-test-id="stop-execution-button"
+				type="secondary"
+				:loading="isStopping"
+				:disabled="isStopping"
+				@click.stop="onStopExecution"
+			>
+				{{ locale.baseText('executionsList.stop') }}
+			</N8nButton>
 		</td>
 		<td>
 			<ElDropdown v-if="!isRunning" trigger="click" @command="handleActionItemClick">
@@ -277,7 +284,7 @@ async function handleActionItemClick(commandData: Command) {
 							command="retrySaved"
 							:disabled="!workflowPermissions.execute"
 						>
-							{{ i18n.baseText('executionsList.retryWithCurrentlySavedWorkflow') }}
+							{{ locale.baseText('executionsList.retryWithCurrentlySavedWorkflow') }}
 						</ElDropdownItem>
 						<ElDropdownItem
 							v-if="isRetriable"
@@ -286,7 +293,7 @@ async function handleActionItemClick(commandData: Command) {
 							command="retryOriginal"
 							:disabled="!workflowPermissions.execute"
 						>
-							{{ i18n.baseText('executionsList.retryWithOriginalWorkflow') }}
+							{{ locale.baseText('executionsList.retryWithOriginalWorkflow') }}
 						</ElDropdownItem>
 						<ElDropdownItem
 							data-test-id="execution-delete-dropdown-item"
@@ -294,7 +301,7 @@ async function handleActionItemClick(commandData: Command) {
 							command="delete"
 							:disabled="!workflowPermissions.update"
 						>
-							{{ i18n.baseText('generic.delete') }}
+							{{ locale.baseText('generic.delete') }}
 						</ElDropdownItem>
 					</ElDropdownMenu>
 				</template>
@@ -304,126 +311,19 @@ async function handleActionItemClick(commandData: Command) {
 </template>
 
 <style lang="scss" module>
-@import '@/styles/variables';
-
-.executionListItem {
-	--execution-list-item-background: var(--color-table-row-background);
-	--execution-list-item-highlight-background: var(--color-table-row-highlight-background);
-	color: var(--color-text-base);
-
-	td {
-		background: var(--execution-list-item-background);
-	}
-
-	&:nth-child(even) td {
-		--execution-list-item-background: var(--color-table-row-even-background);
-	}
-
-	&:hover td {
-		background: var(--color-table-row-hover-background);
-	}
-
-	td:first-child {
-		width: 30px;
-		padding: 0 var(--spacing-s) 0 0;
-
-		/*
-			This is needed instead of table cell border because they are overlapping the sticky header
-		*/
-		&::before {
-			content: '';
-			display: inline-block;
-			width: var(--spacing-4xs);
-			height: 100%;
-			vertical-align: middle;
-			margin-right: var(--spacing-xs);
-		}
-	}
-
-	&.crashed td:first-child::before,
-	&.error td:first-child::before {
-		background: var(--execution-card-border-error);
-	}
-
-	&.success td:first-child::before {
-		background: var(--execution-card-border-success);
-	}
-
-	&.new td:first-child::before {
-		background: var(--execution-card-border-waiting);
-	}
-
-	&.running td:first-child::before {
-		background: var(--execution-card-border-running);
-	}
-
-	&.waiting td:first-child::before {
-		background: var(--execution-card-border-waiting);
-	}
-
-	&.unknown td:first-child::before {
-		background: var(--execution-card-border-unknown);
-	}
+tr.dangerBg {
+	background-color: rgba(215, 56, 58, 0.1);
 }
 
-.link {
-	color: var(--color-text-base);
-	text-decoration: underline;
-	cursor: pointer;
-}
-
-.statusColumn {
-	display: flex;
-	align-items: center;
-}
-
-.spinner {
-	margin-right: var(--spacing-2xs);
-}
-
-.status {
-	line-height: 22.6px;
-	text-align: center;
-	font-size: var(--font-size-s);
-	font-weight: var(--font-weight-bold);
-
-	.crashed &,
-	.error & {
-		color: var(--color-danger);
-	}
-
-	.waiting & {
-		color: var(--color-secondary);
-	}
-
-	.success & {
-		font-weight: var(--font-weight-normal);
-	}
-
-	.new & {
-		color: var(--execution-card-text-waiting);
-	}
-
-	.running & {
-		color: var(--color-warning);
-	}
-
-	.unknown & {
-		color: var(--color-background-dark);
-	}
-}
-
-.buttonCell {
+.workflowName {
+	display: inline-block;
 	overflow: hidden;
-
-	button {
-		transform: translateX(1000%);
-		transition: transform 0s;
-
-		&:focus-visible,
-		.executionListItem:hover & {
-			transform: translateX(0);
-		}
-	}
+	text-overflow: ellipsis;
+	line-height: 1.2;
+	max-width: 100%;
+	color: var(--color-text-dark);
+	font-size: var(--font-size-s);
+	line-height: var(--font-line-height-loose);
+	max-width: 450px;
 }
 </style>

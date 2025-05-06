@@ -566,7 +566,7 @@ function callEventBus(event: string, data: unknown) {
 
 .cardTitle {
 	font-size: 14px;
-	font-weight: bold;
+	font-weight: var(--font-weight-bold);
 }
 
 .header {

@@ -1,11 +1,11 @@
+import type { ExecutionSummaries } from '@n8n/db';
+import { ExecutionMetadataRepository } from '@n8n/db';
+import { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 
-import { ExecutionMetadataRepository } from '@/databases/repositories/execution-metadata.repository';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { ExecutionService } from '@/executions/execution.service';
-import type { ExecutionSummaries } from '@/executions/execution.types';
 import { createTeamProject } from '@test-integration/db/projects';
 
 import { annotateExecution, createAnnotationTags, createExecution } from './shared/db/executions';
@@ -39,7 +39,7 @@ describe('ExecutionService', () => {
 	});
 
 	afterEach(async () => {
-		await testDb.truncate(['Execution']);
+		await testDb.truncate(['ExecutionEntity']);
 	});
 
 	afterAll(async () => {
@@ -609,7 +609,7 @@ describe('ExecutionService', () => {
 		};
 
 		afterEach(async () => {
-			await testDb.truncate(['AnnotationTag', 'ExecutionAnnotation']);
+			await testDb.truncate(['AnnotationTagEntity', 'ExecutionAnnotation']);
 		});
 
 		test('should add and retrieve annotation', async () => {

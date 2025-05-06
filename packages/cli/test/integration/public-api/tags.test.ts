@@ -1,6 +1,6 @@
+import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import type { User } from '@/databases/entities/user';
 import { TagRepository } from '@/databases/repositories/tag.repository';
 
 import { createTag } from '../shared/db/tags';
@@ -22,7 +22,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['Tag']);
+	await testDb.truncate(['TagEntity']);
 
 	authOwnerAgent = testServer.publicApiAgentFor(owner);
 	authMemberAgent = testServer.publicApiAgentFor(member);

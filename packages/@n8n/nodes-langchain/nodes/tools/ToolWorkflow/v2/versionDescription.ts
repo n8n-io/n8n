@@ -1,6 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-import { NodeConnectionType, type INodeTypeDescription } from 'n8n-workflow';
+import { NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
 
 import { getConnectionHintNoticeField } from '../../../../utils/sharedFields';
 
@@ -12,12 +12,12 @@ export const versionDescription: INodeTypeDescription = {
 	defaults: {
 		name: 'Call n8n Workflow Tool',
 	},
-	version: [2],
+	version: [2, 2.1, 2.2],
 	inputs: [],
-	outputs: [NodeConnectionType.AiTool],
+	outputs: [NodeConnectionTypes.AiTool],
 	outputNames: ['Tool'],
 	properties: [
-		getConnectionHintNoticeField([NodeConnectionType.AiAgent]),
+		getConnectionHintNoticeField([NodeConnectionTypes.AiAgent]),
 		{
 			displayName:
 				'See an example of a workflow to suggest meeting slots using AI <a href="/templates/1953" target="_blank">here</a>.',
@@ -34,6 +34,11 @@ export const versionDescription: INodeTypeDescription = {
 			validateType: 'string-alphanumeric',
 			description:
 				'The name of the function to be called, could contain letters, numbers, and underscores only',
+			displayOptions: {
+				show: {
+					'@version': [{ _cnd: { lte: 2.1 } }],
+				},
+			},
 		},
 		{
 			displayName: 'Description',

@@ -1,4 +1,7 @@
+import { z } from 'zod';
+
 import { AiAssistantConfig } from './configs/aiAssistant.config';
+import { AuthConfig } from './configs/auth.config';
 import { CacheConfig } from './configs/cache.config';
 import { CredentialsConfig } from './configs/credentials.config';
 import { DatabaseConfig } from './configs/database.config';
@@ -7,8 +10,6 @@ import { EndpointsConfig } from './configs/endpoints.config';
 import { EventBusConfig } from './configs/event-bus.config';
 import { ExecutionsConfig } from './configs/executions.config';
 import { ExternalHooksConfig } from './configs/external-hooks.config';
-import { ExternalSecretsConfig } from './configs/external-secrets.config';
-import { ExternalStorageConfig } from './configs/external-storage.config';
 import { GenericConfig } from './configs/generic.config';
 import { LicenseConfig } from './configs/license.config';
 import { LoggingConfig } from './configs/logging.config';
@@ -24,6 +25,7 @@ import { TagsConfig } from './configs/tags.config';
 import { TemplatesConfig } from './configs/templates.config';
 import { UserManagementConfig } from './configs/user-management.config';
 import { VersionNotificationsConfig } from './configs/version-notifications.config';
+import { WorkflowHistoryConfig } from './configs/workflow-history.config';
 import { WorkflowsConfig } from './configs/workflows.config';
 import { Config, Env, Nested } from './decorators';
 
@@ -31,13 +33,20 @@ export { Config, Env, Nested } from './decorators';
 export { TaskRunnersConfig } from './configs/runners.config';
 export { SecurityConfig } from './configs/security.config';
 export { ExecutionsConfig } from './configs/executions.config';
-export { S3Config } from './configs/external-storage.config';
 export { LOG_SCOPES } from './configs/logging.config';
 export type { LogScope } from './configs/logging.config';
 export { WorkflowsConfig } from './configs/workflows.config';
+export * from './custom-types';
+
+const protocolSchema = z.enum(['http', 'https']);
+
+export type Protocol = z.infer<typeof protocolSchema>;
 
 @Config
 export class GlobalConfig {
+	@Nested
+	auth: AuthConfig;
+
 	@Nested
 	database: DatabaseConfig;
 
@@ -57,9 +66,6 @@ export class GlobalConfig {
 	externalHooks: ExternalHooksConfig;
 
 	@Nested
-	externalSecrets: ExternalSecretsConfig;
-
-	@Nested
 	templates: TemplatesConfig;
 
 	@Nested
@@ -67,9 +73,6 @@ export class GlobalConfig {
 
 	@Nested
 	nodes: NodesConfig;
-
-	@Nested
-	externalStorage: ExternalStorageConfig;
 
 	@Nested
 	workflows: WorkflowsConfig;
@@ -94,8 +97,8 @@ export class GlobalConfig {
 	listen_address: string = '0.0.0.0';
 
 	/** HTTP Protocol via which n8n can be reached */
-	@Env('N8N_PROTOCOL')
-	protocol: 'http' | 'https' = 'http';
+	@Env('N8N_PROTOCOL', protocolSchema)
+	protocol: Protocol = 'http';
 
 	@Nested
 	endpoints: EndpointsConfig;
@@ -138,4 +141,7 @@ export class GlobalConfig {
 
 	@Nested
 	partialExecutions: PartialExecutionsConfig;
+
+	@Nested
+	workflowHistory: WorkflowHistoryConfig;
 }

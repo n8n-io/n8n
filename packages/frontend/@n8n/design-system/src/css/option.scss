@@ -34,7 +34,7 @@
 
 		&.selected {
 			color: var.$select-option-selected-font-color;
-			font-weight: bold;
+			font-weight: var(--font-weight-bold);
 		}
 	}
 }

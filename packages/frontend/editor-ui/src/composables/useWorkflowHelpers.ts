@@ -1,6 +1,5 @@
 import {
 	HTTP_REQUEST_NODE_TYPE,
-	MODAL_CANCEL,
 	MODAL_CONFIRM,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
@@ -25,7 +24,12 @@ import type {
 	NodeParameterValue,
 	Workflow,
 } from 'n8n-workflow';
-import { NodeConnectionType, ExpressionEvaluatorProxy, NodeHelpers } from 'n8n-workflow';
+import {
+	NodeConnectionTypes,
+	ExpressionEvaluatorProxy,
+	NodeHelpers,
+	WEBHOOK_NODE_TYPE,
+} from 'n8n-workflow';
 
 import type {
 	ICredentialsResponse,
@@ -64,12 +68,12 @@ import { useCanvasStore } from '@/stores/canvas.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { tryToParseNumber } from '@/utils/typesUtils';
 import { useI18n } from '@/composables/useI18n';
-import type { useRouter, NavigationGuardNext } from 'vue-router';
+import type { useRouter } from 'vue-router';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useTagsStore } from '@/stores/tags.store';
 import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
-import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
+import { findWebhook } from '../api/webhooks';
 
 export type ResolveParameterOptions = {
 	targetItem?: TargetItem;
@@ -123,7 +127,7 @@ export function resolveParameter<T = IDataObject>(
 		) as T;
 	}
 
-	const inputName = NodeConnectionType.Main;
+	const inputName = NodeConnectionTypes.Main;
 
 	const activeNode =
 		useNDVStore().activeNode ?? useWorkflowsStore().getNodeByName(opts.contextNodeName || '');
@@ -395,7 +399,7 @@ export function executeData(
 			!workflowRunData[parentNodeName][runIndex] ||
 			!workflowRunData[parentNodeName][runIndex].hasOwnProperty('data') ||
 			workflowRunData[parentNodeName][runIndex].data === undefined ||
-			!workflowRunData[parentNodeName][runIndex].data!.hasOwnProperty(inputName)
+			!workflowRunData[parentNodeName][runIndex].data.hasOwnProperty(inputName)
 		) {
 			executeData.data = {};
 		} else {
@@ -416,7 +420,7 @@ export function executeData(
 					].main) {
 						for (const connection of mainConnections ?? []) {
 							if (
-								connection.type === NodeConnectionType.Main &&
+								connection.type === NodeConnectionTypes.Main &&
 								connection.node === parentNodeName
 							) {
 								previousNodeOutput = connection.index;
@@ -588,6 +592,7 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 				isCredentialOnly,
 				false,
 				node,
+				nodeType,
 			);
 			nodeData.parameters = nodeParameters !== null ? nodeParameters : {};
 
@@ -677,20 +682,26 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 	function getWebhookUrl(
 		webhookData: IWebhookDescription,
 		node: INode,
-		showUrlFor?: string,
+		showUrlFor: 'test' | 'production',
 	): string {
-		const { isForm, restartWebhook } = webhookData;
+		const { nodeType, restartWebhook } = webhookData;
 		if (restartWebhook === true) {
-			return isForm ? '$execution.resumeFormUrl' : '$execution.resumeUrl';
+			return nodeType === 'form' ? '$execution.resumeFormUrl' : '$execution.resumeUrl';
 		}
 
-		let baseUrl;
-		if (showUrlFor === 'test') {
-			baseUrl = isForm ? rootStore.formTestUrl : rootStore.webhookTestUrl;
-		} else {
-			baseUrl = isForm ? rootStore.formUrl : rootStore.webhookUrl;
-		}
-
+		const baseUrls = {
+			test: {
+				form: rootStore.formTestUrl,
+				mcp: rootStore.mcpTestUrl,
+				webhook: rootStore.webhookTestUrl,
+			},
+			production: {
+				form: rootStore.formUrl,
+				mcp: rootStore.mcpUrl,
+				webhook: rootStore.webhookUrl,
+			},
+		} as const;
+		const baseUrl = baseUrls[showUrlFor][nodeType ?? 'webhook'];
 		const workflowId = workflowsStore.workflowId;
 		const path = getWebhookExpressionValue(webhookData, 'path', true, node.name) ?? '';
 		const isFullPath =
@@ -827,6 +838,12 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 
 			const workflowDataRequest: IWorkflowDataUpdate = await getWorkflowDataToSave();
 
+			// This can happen if the user has another workflow in the browser history and navigates
+			// via the browser back button, encountering our warning dialog with the new route already set
+			if (workflowDataRequest.id !== currentWorkflow) {
+				throw new Error('Attempted to save a workflow different from the current workflow');
+			}
+
 			if (name) {
 				workflowDataRequest.name = name.trim();
 			}
@@ -836,6 +853,22 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 			}
 
 			workflowDataRequest.versionId = workflowsStore.workflowVersionId;
+
+			// workflow should not be active if there is live webhook with the same path
+			const conflictData = await checkConflictingWebhooks(currentWorkflow);
+			if (conflictData) {
+				workflowDataRequest.active = false;
+
+				if (workflowsStore.isWorkflowActive) {
+					toast.showMessage({
+						title: 'Conflicting Webhook Path',
+						message: `Workflow set to inactive: Live webhook in another workflow uses same path as node '${conflictData.trigger.name}'.`,
+						type: 'error',
+					});
+
+					workflowsStore.setWorkflowInactive(currentWorkflow);
+				}
+			}
 
 			const workflowData = await workflowsStore.updateWorkflow(
 				currentWorkflow,
@@ -979,6 +1012,20 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 				return true;
 			}
 
+			// workflow should not be active if there is live webhook with the same path
+			if (workflowData.active) {
+				const conflict = await checkConflictingWebhooks(workflowData.id);
+				if (conflict) {
+					workflowData.active = false;
+
+					toast.showMessage({
+						title: 'Conflicting Webhook Path',
+						message: `Workflow set to inactive: Live webhook in another workflow uses same path as node '${conflict.trigger.name}'.`,
+						type: 'error',
+					});
+				}
+			}
+
 			workflowsStore.setActive(workflowData.active || false);
 			workflowsStore.setWorkflowId(workflowData.id);
 			workflowsStore.setWorkflowVersionId(workflowData.versionId);
@@ -1111,52 +1158,6 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 		}
 	}
 
-	async function promptSaveUnsavedWorkflowChanges(
-		next: NavigationGuardNext,
-		{
-			confirm = async () => true,
-			cancel = async () => {},
-		}: {
-			confirm?: () => Promise<boolean>;
-			cancel?: () => Promise<void>;
-		} = {},
-	) {
-		if (uiStore.stateIsDirty) {
-			const npsSurveyStore = useNpsSurveyStore();
-
-			const confirmModal = await message.confirm(
-				i18n.baseText('generic.unsavedWork.confirmMessage.message'),
-				{
-					title: i18n.baseText('generic.unsavedWork.confirmMessage.headline'),
-					type: 'warning',
-					confirmButtonText: i18n.baseText('generic.unsavedWork.confirmMessage.confirmButtonText'),
-					cancelButtonText: i18n.baseText('generic.unsavedWork.confirmMessage.cancelButtonText'),
-					showClose: true,
-				},
-			);
-
-			if (confirmModal === MODAL_CONFIRM) {
-				const saved = await saveCurrentWorkflow({}, false);
-				if (saved) {
-					await npsSurveyStore.fetchPromptsData();
-				}
-				uiStore.stateIsDirty = false;
-
-				const goToNext = await confirm();
-				if (goToNext) {
-					next();
-				}
-			} else if (confirmModal === MODAL_CANCEL) {
-				await cancel();
-
-				uiStore.stateIsDirty = false;
-				next();
-			}
-		} else {
-			next();
-		}
-	}
-
 	function initState(workflowData: IWorkflowDb) {
 		workflowsStore.addWorkflow(workflowData);
 		workflowsStore.setActive(workflowData.active || false);
@@ -1196,6 +1197,36 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 		return workflow.nodes.some((node) => node.type.startsWith(packageName));
 	};
 
+	async function checkConflictingWebhooks(workflowId: string) {
+		let data;
+		if (uiStore.stateIsDirty) {
+			data = await getWorkflowDataToSave();
+		} else {
+			data = await workflowsStore.fetchWorkflow(workflowId);
+		}
+
+		const webhookTriggers = data.nodes.filter(
+			(node) => node.disabled !== true && node.type === WEBHOOK_NODE_TYPE,
+		);
+
+		for (const trigger of webhookTriggers) {
+			const method = (trigger.parameters.method as string) ?? 'GET';
+
+			const path = trigger.parameters.path as string;
+
+			const conflict = await findWebhook(rootStore.restApiContext, {
+				path,
+				method,
+			});
+
+			if (conflict && conflict.workflowId !== workflowId) {
+				return { trigger, conflict };
+			}
+		}
+
+		return null;
+	}
+
 	return {
 		setDocumentTitle,
 		resolveParameter,
@@ -1219,9 +1250,9 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 		updateNodePositions,
 		removeForeignCredentialsFromWorkflow,
 		getWorkflowProjectRole,
-		promptSaveUnsavedWorkflowChanges,
 		initState,
 		getNodeParametersWithResolvedExpressions,
 		containsNodeFromPackage,
+		checkConflictingWebhooks,
 	};
 }

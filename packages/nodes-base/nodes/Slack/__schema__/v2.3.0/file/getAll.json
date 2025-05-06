@@ -1,79 +1,7 @@
 {
     "type": "object",
     "properties": {
-        "id": {
-            "type": "string"
-        },
-        "created": {
-            "type": "integer"
-        },
-        "timestamp": {
-            "type": "integer"
-        },
-        "name": {
-            "type": "string"
-        },
-        "title": {
-            "type": "string"
-        },
-        "mimetype": {
-            "type": "string"
-        },
-        "filetype": {
-            "type": "string"
-        },
-        "pretty_type": {
-            "type": "string"
-        },
-        "user": {
-            "type": "string"
-        },
-        "user_team": {
-            "type": "string"
-        },
-        "editable": {
-            "type": "boolean"
-        },
-        "size": {
-            "type": "integer"
-        },
-        "mode": {
-            "type": "string"
-        },
-        "is_external": {
-            "type": "boolean"
-        },
-        "external_type": {
-            "type": "string"
-        },
-        "is_public": {
-            "type": "boolean"
-        },
-        "public_url_shared": {
-            "type": "boolean"
-        },
-        "display_as_bot": {
-            "type": "boolean"
-        },
-        "username": {
-            "type": "string"
-        },
-        "url_private": {
-            "type": "string"
-        },
-        "url_private_download": {
-            "type": "string"
-        },
-        "permalink": {
-            "type": "string"
-        },
         "channels": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "ims": {
             "type": "array",
             "items": {
                 "type": "string"
@@ -82,36 +10,87 @@
         "comments_count": {
             "type": "integer"
         },
+        "created": {
+            "type": "integer"
+        },
+        "display_as_bot": {
+            "type": "boolean"
+        },
+        "editable": {
+            "type": "boolean"
+        },
+        "external_type": {
+            "type": "string"
+        },
+        "filetype": {
+            "type": "string"
+        },
+        "groups": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "id": {
+            "type": "string"
+        },
+        "ims": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "is_external": {
+            "type": "boolean"
+        },
+        "is_public": {
+            "type": "boolean"
+        },
         "media_display_type": {
+            "type": "string"
+        },
+        "mimetype": {
+            "type": "string"
+        },
+        "mode": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "permalink": {
+            "type": "string"
+        },
+        "pretty_type": {
+            "type": "string"
+        },
+        "public_url_shared": {
+            "type": "boolean"
+        },
+        "size": {
+            "type": "integer"
+        },
+        "timestamp": {
+            "type": "integer"
+        },
+        "title": {
+            "type": "string"
+        },
+        "url_private": {
+            "type": "string"
+        },
+        "url_private_download": {
+            "type": "string"
+        },
+        "user": {
+            "type": "string"
+        },
+        "user_team": {
+            "type": "string"
+        },
+        "username": {
             "type": "string"
         }
     },
-    "required": [
-        "id",
-        "created",
-        "timestamp",
-        "name",
-        "title",
-        "mimetype",
-        "filetype",
-        "pretty_type",
-        "user",
-        "user_team",
-        "editable",
-        "size",
-        "mode",
-        "is_external",
-        "external_type",
-        "is_public",
-        "public_url_shared",
-        "display_as_bot",
-        "username",
-        "url_private",
-        "url_private_download",
-        "permalink",
-        "channels",
-        "groups",
-        "ims",
-        "comments_count"
-    ]
+    "version": 1
 }

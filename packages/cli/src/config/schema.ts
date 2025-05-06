@@ -1,26 +1,8 @@
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
-import convict from 'convict';
-import { InstanceSettings } from 'n8n-core';
-import path from 'path';
-
-import { ensureStringArray } from './utils';
-
-convict.addFormat({
-	name: 'comma-separated-list',
-	coerce: (rawStr: string) => rawStr.split(','),
-	validate: ensureStringArray,
-});
 
 export const schema = {
 	executions: {
-		// TODO: remove this and all usage of `executions.process` when we're sure that nobody has this in their config file anymore.
-		process: {
-			doc: 'Deprecated key, that will be removed in the future. Please remove it from your configuration and environment variables to prevent issues in the future.',
-			format: String,
-			default: '',
-			env: 'EXECUTIONS_PROCESS',
-		},
 		mode: {
 			doc: 'If it should run executions directly or via queue',
 			format: ['regular', 'queue'] as const,
@@ -120,12 +102,6 @@ export const schema = {
 		},
 	},
 
-	secure_cookie: {
-		doc: 'This sets the `Secure` flag on n8n auth cookie',
-		format: Boolean,
-		default: true,
-		env: 'N8N_SECURE_COOKIE',
-	},
 	ssl_key: {
 		format: String,
 		default: '',
@@ -187,36 +163,6 @@ export const schema = {
 		format: String,
 		default: '',
 		env: 'EXTERNAL_FRONTEND_HOOKS_URLS',
-	},
-
-	push: {
-		backend: {
-			format: ['sse', 'websocket'] as const,
-			default: 'websocket',
-			env: 'N8N_PUSH_BACKEND',
-			doc: 'Backend to use for push notifications',
-		},
-	},
-
-	binaryDataManager: {
-		availableModes: {
-			format: 'comma-separated-list',
-			default: 'filesystem',
-			env: 'N8N_AVAILABLE_BINARY_DATA_MODES',
-			doc: 'Available modes of binary data storage, as comma separated strings',
-		},
-		mode: {
-			format: ['default', 'filesystem', 's3'] as const,
-			default: 'default',
-			env: 'N8N_DEFAULT_BINARY_DATA_MODE',
-			doc: 'Storage mode for binary data',
-		},
-		localStoragePath: {
-			format: String,
-			default: path.join(Container.get(InstanceSettings).n8nFolder, 'binaryData'),
-			env: 'N8N_BINARY_DATA_STORAGE_PATH',
-			doc: 'Path for binary data storage in "filesystem" mode',
-		},
 	},
 
 	deployment: {
@@ -348,22 +294,6 @@ export const schema = {
 		},
 	},
 
-	workflowHistory: {
-		enabled: {
-			doc: 'Whether to save workflow history versions',
-			format: Boolean,
-			default: true,
-			env: 'N8N_WORKFLOW_HISTORY_ENABLED',
-		},
-
-		pruneTime: {
-			doc: 'Time (in hours) to keep workflow history versions for',
-			format: Number,
-			default: -1,
-			env: 'N8N_WORKFLOW_HISTORY_PRUNE_TIME',
-		},
-	},
-
 	proxy_hops: {
 		format: Number,
 		default: 0,
@@ -371,12 +301,12 @@ export const schema = {
 		doc: 'Number of reverse-proxies n8n is running behind',
 	},
 
-	folders: {
+	logs_view: {
 		enabled: {
 			format: Boolean,
 			default: false,
-			env: 'N8N_FOLDERS_ENABLED',
-			doc: 'Temporary env variable to enable folders feature',
+			env: 'N8N_ENABLE_LOGS_VIEW',
+			doc: 'Temporary env variable to enable logs view',
 		},
 	},
 };

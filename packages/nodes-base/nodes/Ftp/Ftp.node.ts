@@ -1,5 +1,5 @@
 import { createWriteStream } from 'fs';
-import { BINARY_ENCODING, NodeApiError, NodeConnectionType } from 'n8n-workflow';
+import { BINARY_ENCODING, NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
@@ -123,8 +123,8 @@ export class Ftp implements INodeType {
 			name: 'FTP',
 			color: '#303050',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				// nodelinter-ignore-next-line

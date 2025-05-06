@@ -7,34 +7,47 @@ import MessageOptionAction from './MessageOptionAction.vue';
 import { chatEventBus } from '@n8n/chat/event-buses';
 import type { ArrowKeyDownPayload } from '@n8n/chat/components/Input.vue';
 import ChatInput from '@n8n/chat/components/Input.vue';
-import { useMessage } from '@/composables/useMessage';
-import { MODAL_CONFIRM } from '@/constants';
-import { computed, ref } from 'vue';
+import { watch, computed, ref } from 'vue';
 import { useClipboard } from '@/composables/useClipboard';
 import { useToast } from '@/composables/useToast';
+import PanelHeader from '@/components/CanvasChat/future/components/PanelHeader.vue';
+import { N8nButton, N8nIconButton, N8nTooltip } from '@n8n/design-system';
 
 interface Props {
 	pastChatMessages: string[];
 	messages: ChatMessage[];
 	sessionId: string;
 	showCloseButton?: boolean;
+	isOpen?: boolean;
+	isReadOnly?: boolean;
+	isNewLogsEnabled?: boolean;
 }
 
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), {
+	isOpen: true,
+	isReadOnly: false,
+	isNewLogsEnabled: false,
+});
 
 const emit = defineEmits<{
 	displayExecution: [id: string];
 	sendMessage: [message: string];
 	refreshSession: [];
 	close: [];
+	clickHeader: [];
 }>();
 
-const messageComposable = useMessage();
 const clipboard = useClipboard();
 const locale = useI18n();
 const toast = useToast();
 
 const previousMessageIndex = ref(0);
+
+const sessionIdText = computed(() =>
+	locale.baseText('chat.window.session.id', {
+		interpolate: { id: `${props.sessionId.slice(0, 5)}...` },
+	}),
+);
 
 const inputPlaceholder = computed(() => {
 	if (props.messages.length > 0) {
@@ -62,25 +75,8 @@ function sendMessage(message: string) {
 	emit('sendMessage', message);
 }
 
-async function onRefreshSession() {
-	// If there are no messages, refresh the session without asking
-	if (props.messages.length === 0) {
-		emit('refreshSession');
-		return;
-	}
-
-	const confirmResult = await messageComposable.confirm(
-		locale.baseText('chat.window.session.reset.warning'),
-		{
-			title: locale.baseText('chat.window.session.reset.title'),
-			type: 'warning',
-			confirmButtonText: locale.baseText('chat.window.session.reset.confirm'),
-			showClose: true,
-		},
-	);
-	if (confirmResult === MODAL_CONFIRM) {
-		emit('refreshSession');
-	}
+function onRefreshSession() {
+	emit('refreshSession');
 }
 
 function onArrowKeyDown({ currentInputValue, key }: ArrowKeyDownPayload) {
@@ -131,41 +127,97 @@ function onArrowKeyDown({ currentInputValue, key }: ArrowKeyDownPayload) {
 		previousMessageIndex.value = 0;
 	}
 }
-function copySessionId() {
-	void clipboard.copy(props.sessionId);
+
+async function copySessionId() {
+	await clipboard.copy(props.sessionId);
 	toast.showMessage({
 		title: locale.baseText('generic.copiedToClipboard'),
 		message: '',
 		type: 'success',
 	});
 }
+
+watch(
+	() => props.isOpen,
+	(isOpen) => {
+		if (isOpen) {
+			setTimeout(() => {
+				chatEventBus.emit('focusInput');
+			}, 0);
+		}
+	},
+	{ immediate: true },
+);
 </script>
 
 <template>
 	<div :class="$style.chat" data-test-id="workflow-lm-chat-dialog">
-		<header :class="$style.chatHeader">
+		<PanelHeader
+			v-if="isNewLogsEnabled"
+			data-test-id="chat-header"
+			:title="locale.baseText('chat.window.title')"
+			@click="emit('clickHeader')"
+		>
+			<template #actions>
+				<N8nTooltip v-if="clipboard.isSupported.value && !isReadOnly">
+					<template #content>
+						{{ sessionId }}
+						<br />
+						{{ locale.baseText('chat.window.session.id.copy') }}
+					</template>
+					<N8nButton
+						data-test-id="chat-session-id"
+						type="secondary"
+						size="mini"
+						:class="$style.newHeaderButton"
+						@click.stop="copySessionId"
+						>{{ sessionIdText }}</N8nButton
+					>
+				</N8nTooltip>
+				<N8nTooltip
+					v-if="messages.length > 0 && !isReadOnly"
+					:content="locale.baseText('chat.window.session.resetSession')"
+				>
+					<N8nIconButton
+						:class="$style.newHeaderButton"
+						data-test-id="refresh-session-button"
+						outline
+						type="secondary"
+						size="small"
+						icon-size="medium"
+						icon="undo"
+						:title="locale.baseText('chat.window.session.reset')"
+						@click.stop="onRefreshSession"
+					/>
+				</N8nTooltip>
+			</template>
+		</PanelHeader>
+		<header v-else :class="$style.chatHeader">
 			<span :class="$style.chatTitle">{{ locale.baseText('chat.window.title') }}</span>
 			<div :class="$style.session">
 				<span>{{ locale.baseText('chat.window.session.title') }}</span>
-				<n8n-tooltip placement="left">
+				<N8nTooltip placement="left">
 					<template #content>
 						{{ sessionId }}
 					</template>
-					<span :class="$style.sessionId" data-test-id="chat-session-id" @click="copySessionId">{{
-						sessionId
-					}}</span>
-				</n8n-tooltip>
-				<n8n-icon-button
+					<span
+						:class="[$style.sessionId, clipboard.isSupported.value ? $style.copyable : '']"
+						data-test-id="chat-session-id"
+						@click="clipboard.isSupported.value ? copySessionId() : null"
+						>{{ sessionId }}</span
+					>
+				</N8nTooltip>
+				<N8nIconButton
 					:class="$style.headerButton"
 					data-test-id="refresh-session-button"
 					outline
 					type="secondary"
 					size="mini"
 					icon="undo"
-					:title="locale.baseText('chat.window.session.reset.confirm')"
+					:title="locale.baseText('chat.window.session.reset')"
 					@click="onRefreshSession"
 				/>
-				<n8n-icon-button
+				<N8nIconButton
 					v-if="showCloseButton"
 					:class="$style.headerButton"
 					outline
@@ -176,11 +228,17 @@ function copySessionId() {
 				/>
 			</div>
 		</header>
-		<main :class="$style.chatBody">
-			<MessagesList :messages="messages" :class="$style.messages">
+		<main v-if="isOpen" :class="$style.chatBody">
+			<MessagesList
+				:messages="messages"
+				:class="$style.messages"
+				:empty-text="
+					isNewLogsEnabled ? locale.baseText('chat.window.chat.emptyChatMessage.v2') : undefined
+				"
+			>
 				<template #beforeMessage="{ message }">
 					<MessageOptionTooltip
-						v-if="message.sender === 'bot' && !message.id.includes('preload')"
+						v-if="!isReadOnly && message.sender === 'bot' && !message.id.includes('preload')"
 						placement="right"
 						data-test-id="execution-id-tooltip"
 					>
@@ -189,7 +247,7 @@ function copySessionId() {
 					</MessageOptionTooltip>
 
 					<MessageOptionAction
-						v-if="isTextMessage(message) && message.sender === 'user'"
+						v-if="!isReadOnly && isTextMessage(message) && message.sender === 'user'"
 						data-test-id="repost-message-button"
 						icon="redo"
 						:label="locale.baseText('chat.window.chat.chatMessageOptions.repostMessage')"
@@ -198,7 +256,7 @@ function copySessionId() {
 					/>
 
 					<MessageOptionAction
-						v-if="isTextMessage(message) && message.sender === 'user'"
+						v-if="!isReadOnly && isTextMessage(message) && message.sender === 'user'"
 						data-test-id="reuse-message-button"
 						icon="copy"
 						:label="locale.baseText('chat.window.chat.chatMessageOptions.reuseMessage')"
@@ -209,7 +267,7 @@ function copySessionId() {
 			</MessagesList>
 		</main>
 
-		<div :class="$style.messagesInput">
+		<div v-if="isOpen" :class="$style.messagesInput">
 			<ChatInput
 				data-test-id="lm-chat-inputs"
 				:placeholder="inputPlaceholder"
@@ -217,7 +275,7 @@ function copySessionId() {
 			>
 				<template v-if="pastChatMessages.length > 0" #leftPanel>
 					<div :class="$style.messagesHistory">
-						<n8n-button
+						<N8nButton
 							title="Navigate to previous message"
 							icon="chevron-up"
 							type="tertiary"
@@ -225,7 +283,7 @@ function copySessionId() {
 							size="mini"
 							@click="onArrowKeyDown({ currentInputValue: '', key: 'ArrowUp' })"
 						/>
-						<n8n-button
+						<N8nButton
 							title="Navigate to next message"
 							icon="chevron-down"
 							type="tertiary"
@@ -265,9 +323,10 @@ function copySessionId() {
 	overflow: hidden;
 	background-color: var(--color-background-light);
 }
+
 .chatHeader {
 	font-size: var(--font-size-s);
-	font-weight: 400;
+	font-weight: var(--font-weight-regular);
 	line-height: 18px;
 	text-align: left;
 	border-bottom: 1px solid var(--color-foreground-base);
@@ -277,9 +336,11 @@ function copySessionId() {
 	justify-content: space-between;
 	align-items: center;
 }
+
 .chatTitle {
-	font-weight: 600;
+	font-weight: var(--font-weight-medium);
 }
+
 .session {
 	display: flex;
 	align-items: center;
@@ -287,22 +348,35 @@ function copySessionId() {
 	color: var(--color-text-base);
 	max-width: 70%;
 }
+
 .sessionId {
 	display: inline-block;
 	white-space: nowrap;
 	text-overflow: ellipsis;
 	overflow: hidden;
 
-	cursor: pointer;
+	&.copyable {
+		cursor: pointer;
+	}
 }
+
 .headerButton {
 	max-height: 1.1rem;
 	border: none;
 }
+
+.newHeaderButton {
+	border: none;
+	color: var(--color-text-light);
+}
+
 .chatBody {
 	display: flex;
 	height: 100%;
 	overflow: auto;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
 }
 
 .messages {
@@ -310,7 +384,7 @@ function copySessionId() {
 	height: 100%;
 	width: 100%;
 	overflow: auto;
-	padding-top: 1.5em;
+	padding-top: var(--spacing-l);
 
 	&:not(:last-child) {
 		margin-right: 1em;

@@ -1,7 +1,7 @@
 import { computed } from 'vue';
 import {
 	CHAIN_LLM_LANGCHAIN_NODE_TYPE,
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type IDataObject,
 	type INodeParameters,
 } from 'n8n-workflow';
@@ -249,7 +249,7 @@ export const useActions = () => {
 			if (shouldPrependLLMChain(addedNodes)) {
 				addedNodes.unshift({ type: CHAIN_LLM_LANGCHAIN_NODE_TYPE, isAutoAdd: true });
 				connections.push({
-					from: { nodeIndex: 2, type: NodeConnectionType.AiLanguageModel },
+					from: { nodeIndex: 2, type: NodeConnectionTypes.AiLanguageModel },
 					to: { nodeIndex: 1 },
 				});
 			}
