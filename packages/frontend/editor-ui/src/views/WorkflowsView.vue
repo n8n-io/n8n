@@ -48,7 +48,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { useUsageStore } from '@/stores/usage.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { Project, type ProjectSharingData, ProjectTypes } from '@/types/projects.types';
+import { type Project, type ProjectSharingData, ProjectTypes } from '@/types/projects.types';
 import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
 import {
 	N8nCard,
@@ -110,7 +110,7 @@ const insightsStore = useInsightsStore();
 
 const documentTitle = useDocumentTitle();
 const { callDebounced } = useDebounce();
-const overview = useProjectPages();
+const projectPages = useProjectPages();
 
 const loading = ref(false);
 const breadcrumbsLoading = ref(false);
@@ -192,10 +192,6 @@ const mainBreadcrumbsActions = computed(() =>
 );
 
 const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
-const isOverviewPage = computed(() => route.name === VIEWS.WORKFLOWS);
-const isSharedPage = computed(() => {
-	return [VIEWS.SHARED_WITH_ME, VIEWS.SHARED_WORKFLOWS].includes(route.name as VIEWS);
-});
 const currentUser = computed(() => usersStore.currentUser ?? ({} as IUser));
 const isShareable = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing],
@@ -210,7 +206,7 @@ const teamProjectsEnabled = computed(() => {
 });
 
 const showFolders = computed(() => {
-	return foldersEnabled.value && !isOverviewPage.value && !isSharedPage.value;
+	return foldersEnabled.value && !projectPages.isOverviewSubPage && !projectPages.isSharedSubPage;
 });
 
 const currentFolder = computed(() => {
@@ -505,7 +501,7 @@ const fetchWorkflows = async () => {
 				parentFolderId: getParentFolderId(parentFolder),
 			},
 			fetchFolders,
-			isSharedPage.value,
+			projectPages.isSharedSubPage,
 		);
 
 		foldersStore.cacheFolders(
@@ -528,7 +524,7 @@ const fetchWorkflows = async () => {
 
 		// Toggle ownership cards visibility only after we have fetched the workflows
 		showCardsBadge.value =
-			isOverviewPage.value || isSharedPage.value || filters.value.search !== '';
+			projectPages.isOverviewSubPage || projectPages.isSharedSubPage || filters.value.search !== '';
 
 		return fetchedResources;
 	} catch (error) {
@@ -555,7 +551,7 @@ const getParentFolderId = (routeId?: string) => {
 	}
 
 	// If we're on overview/shared page or searching, don't filter by parent folder
-	if (isOverviewPage.value || isSharedPage.value || filters?.value.search) {
+	if (projectPages.isOverviewSubPage || projectPages.isSharedSubPage || filters?.value.search) {
 		return undefined;
 	}
 
@@ -1371,7 +1367,7 @@ const onNameSubmit = async ({
 		<template #header>
 			<ProjectHeader @create-folder="createFolderInCurrent">
 				<InsightsSummary
-					v-if="overview.isOverviewSubPage && insightsStore.isSummaryEnabled"
+					v-if="projectPages.isOverviewSubPage && insightsStore.isSummaryEnabled"
 					:loading="insightsStore.weeklySummary.isLoading"
 					:summary="insightsStore.weeklySummary.state"
 					time-range="week"
@@ -1382,11 +1378,20 @@ const onNameSubmit = async ({
 			<N8nTooltip
 				placement="top"
 				:disabled="
-					!(isOverviewPage || isSharedPage || (!readOnlyEnv && hasPermissionToCreateFolders))
+					!(
+						projectPages.isOverviewSubPage ||
+						projectPages.isSharedSubPage ||
+						(!readOnlyEnv && hasPermissionToCreateFolders)
+					)
 				"
 			>
 				<template #content>
-					<span v-if="(isOverviewPage || isSharedPage) && !showRegisteredCommunityCTA">
+					<span
+						v-if="
+							(projectPages.isOverviewSubPage || projectPages.isSharedSubPage) &&
+							!showRegisteredCommunityCTA
+						"
+					>
 						<span v-if="teamProjectsEnabled">
 							{{ i18n.baseText('folders.add.overview.withProjects.message') }}
 						</span>
@@ -1568,7 +1573,7 @@ const onNameSubmit = async ({
 		</template>
 		<template #empty>
 			<EmptySharedSectionActionBox
-				v-if="overview.isSharedSubPage && personalProject"
+				v-if="projectPages.isSharedSubPage && personalProject"
 				:personal-project="personalProject"
 				resource-type="workflows"
 			/>
@@ -1665,7 +1670,7 @@ const onNameSubmit = async ({
 				data-test-id="empty-folder-container"
 			>
 				<EmptySharedSectionActionBox
-					v-if="isSharedPage && personalProject"
+					v-if="projectPages.isSharedSubPage && personalProject"
 					:personal-project="personalProject"
 					resource-type="workflows"
 				/>

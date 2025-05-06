@@ -21,7 +21,7 @@ const i18n = useI18n();
 const projectsStore = useProjectsStore();
 const sourceControlStore = useSourceControlStore();
 const settingsStore = useSettingsStore();
-const overview = useProjectPages();
+const projectPages = useProjectPages();
 
 const emit = defineEmits<{
 	createFolder: [];
@@ -39,9 +39,9 @@ const headerIcon = computed((): ProjectIconType => {
 
 const projectName = computed(() => {
 	if (!projectsStore.currentProject) {
-		if (overview.isOverviewSubPage) {
+		if (projectPages.isOverviewSubPage) {
 			return i18n.baseText('projects.menu.overview');
-		} else if (overview.isSharedSubPage) {
+		} else if (projectPages.isSharedSubPage) {
 			return i18n.baseText('projects.header.shared.title');
 		}
 		return null;
@@ -116,7 +116,9 @@ const menu = computed(() => {
 });
 
 const showProjectIcon = computed(() => {
-	return !overview.isOverviewSubPage && !overview.isSharedSubPage && !isPersonalProject.value;
+	return (
+		!projectPages.isOverviewSubPage && !projectPages.isSharedSubPage && !isPersonalProject.value
+	);
 });
 
 const actions: Record<ActionTypes, (projectId: string) => void> = {
@@ -144,9 +146,9 @@ const actions: Record<ActionTypes, (projectId: string) => void> = {
 } as const;
 
 const pageType = computed(() => {
-	if (overview.isOverviewSubPage) {
+	if (projectPages.isOverviewSubPage) {
 		return 'overview';
-	} else if (overview.isSharedSubPage) {
+	} else if (projectPages.isSharedSubPage) {
 		return 'shared';
 	} else {
 		return 'project';
@@ -154,9 +156,9 @@ const pageType = computed(() => {
 });
 
 const subtitle = computed(() => {
-	if (overview.isOverviewSubPage) {
+	if (projectPages.isOverviewSubPage) {
 		return i18n.baseText('projects.header.overview.subtitle');
-	} else if (overview.isSharedSubPage) {
+	} else if (projectPages.isSharedSubPage) {
 		return i18n.baseText('projects.header.shared.subtitle');
 	} else if (isPersonalProject.value) {
 		return i18n.baseText('projects.header.personal.subtitle');
@@ -215,7 +217,7 @@ const onSelect = (action: string) => {
 		<div :class="$style.actions">
 			<ProjectTabs
 				:page-type="pageType"
-				:show-executions="!overview.isSharedSubPage"
+				:show-executions="!projectPages.isSharedSubPage"
 				:show-settings="showSettings"
 			/>
 		</div>
