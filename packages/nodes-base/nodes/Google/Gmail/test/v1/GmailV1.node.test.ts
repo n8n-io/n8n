@@ -1,8 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-param-display-name-miscased */
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import { jsonParse } from 'n8n-workflow';
 import nock from 'nock';
-
-import { testWorkflows } from '@test/nodes/Helpers';
 
 import labels from '../fixtures/labels.json';
 import messages from '../fixtures/messages.json';
@@ -71,7 +70,9 @@ describe('Test Gmail Node v1', () => {
 
 		afterAll(() => gmailNock.done());
 
-		testWorkflows(['nodes/Google/Gmail/test/v1/messages.workflow.json']);
+		new NodeTestHarness().setupTests({
+			workflowFiles: ['messages.workflow.json'],
+		});
 	});
 
 	describe('Labels', () => {
@@ -94,7 +95,9 @@ describe('Test Gmail Node v1', () => {
 
 		afterAll(() => gmailNock.done());
 
-		testWorkflows(['nodes/Google/Gmail/test/v1/labels.workflow.json']);
+		new NodeTestHarness().setupTests({
+			workflowFiles: ['labels.workflow.json'],
+		});
 	});
 
 	describe('Message Labels', () => {
@@ -111,7 +114,9 @@ describe('Test Gmail Node v1', () => {
 
 		afterAll(() => gmailNock.done());
 
-		testWorkflows(['nodes/Google/Gmail/test/v1/message-labels.workflow.json']);
+		new NodeTestHarness().setupTests({
+			workflowFiles: ['message-labels.workflow.json'],
+		});
 	});
 
 	describe('Drafts', () => {
@@ -189,6 +194,8 @@ describe('Test Gmail Node v1', () => {
 
 		afterAll(() => gmailNock.done());
 
-		testWorkflows(['nodes/Google/Gmail/test/v1/drafts.workflow.json']);
+		new NodeTestHarness().setupTests({
+			workflowFiles: ['drafts.workflow.json'],
+		});
 	});
 });

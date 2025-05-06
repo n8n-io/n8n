@@ -70,6 +70,7 @@ const render = (props: Partial<Props> = {}, pinData?: INodeExecutionData[], runD
 				id: '',
 				name: '',
 				active: false,
+				isArchived: false,
 				createdAt: '',
 				updatedAt: '',
 				nodes,
@@ -98,6 +99,7 @@ const render = (props: Partial<Props> = {}, pinData?: INodeExecutionData[], runD
 			runIndex: 0,
 			currentNodeName: nodes[1].name,
 			workflow: workflowObject,
+			displayMode: 'schema',
 		},
 		global: {
 			stubs: {

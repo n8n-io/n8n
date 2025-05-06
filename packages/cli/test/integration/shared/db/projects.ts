@@ -1,11 +1,10 @@
-import type { ProjectRole } from '@n8n/api-types';
+import type { Project } from '@n8n/db';
+import type { User } from '@n8n/db';
+import type { ProjectRelation } from '@n8n/db';
+import { ProjectRelationRepository } from '@n8n/db';
+import { ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-
-import type { Project } from '@/databases/entities/project';
-import type { ProjectRelation } from '@/databases/entities/project-relation';
-import type { User } from '@/databases/entities/user';
-import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
+import type { ProjectRole } from '@n8n/permissions';
 
 import { randomName } from '../random';
 
