@@ -39,7 +39,6 @@ export async function newUser(attributes: Partial<User> = {}): Promise<User> {
 export async function createUser(attributes: Partial<User> = {}): Promise<User> {
 	const userInstance = await newUser(attributes);
 	const { user } = await Container.get(UserRepository).createUserWithProject(userInstance);
-	user.computeIsOwner();
 	return user;
 }
 

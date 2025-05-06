@@ -1,5 +1,5 @@
 import type { ICredentialsBase, IExecutionBase, IExecutionDb, ITagBase } from '@n8n/db';
-import type { AssignableRole } from '@n8n/permissions';
+import type { AssignableGlobalRole } from '@n8n/permissions';
 import type { Application } from 'express';
 import type {
 	ExecutionError,
@@ -207,7 +207,7 @@ export interface ILicensePostResponse extends ILicenseReadResponse {
 
 export interface Invitation {
 	email: string;
-	role: AssignableRole;
+	role: AssignableGlobalRole;
 }
 
 export interface N8nApp {

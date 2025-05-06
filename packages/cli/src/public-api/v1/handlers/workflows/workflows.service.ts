@@ -1,8 +1,8 @@
 import { GlobalConfig } from '@n8n/config';
-import type { Project, WorkflowSharingRole, User } from '@n8n/db';
+import type { Project, User } from '@n8n/db';
 import { WorkflowEntity, WorkflowTagMapping, SharedWorkflow } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type { Scope } from '@n8n/permissions';
+import type { Scope, WorkflowSharingRole } from '@n8n/permissions';
 import type { WorkflowId } from 'n8n-workflow';
 
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';

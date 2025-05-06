@@ -43,21 +43,19 @@ describe('ActiveWorkflowsService', () => {
 		});
 
 		it('should return all workflow ids when user has full access', async () => {
-			user.hasGlobalScope.mockReturnValue(true);
+			user.role = 'global:admin';
 			const ids = await service.getAllActiveIdsFor(user);
 
 			expect(ids).toEqual(['2', '3', '4']);
-			expect(user.hasGlobalScope).toHaveBeenCalledWith('workflow:list');
 			expect(sharedWorkflowRepository.getSharedWorkflowIds).not.toHaveBeenCalled();
 		});
 
 		it('should filter out workflow ids that the user does not have access to', async () => {
-			user.hasGlobalScope.mockReturnValue(false);
+			user.role = 'global:member';
 			sharedWorkflowRepository.getSharedWorkflowIds.mockResolvedValue(['3']);
 			const ids = await service.getAllActiveIdsFor(user);
 
 			expect(ids).toEqual(['3']);
-			expect(user.hasGlobalScope).toHaveBeenCalledWith('workflow:list');
 			expect(sharedWorkflowRepository.getSharedWorkflowIds).toHaveBeenCalledWith(activeIds);
 		});
 	});

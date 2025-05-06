@@ -919,6 +919,10 @@ importers:
         version: 8.4.0(@microsoft/api-extractor@7.52.1(@types/node@18.16.16))(jiti@1.21.0)(postcss@8.5.3)(tsx@4.19.3)(typescript@5.8.2)
 
   packages/@n8n/permissions:
+    dependencies:
+      zod:
+        specifier: 'catalog:'
+        version: 3.24.1
     devDependencies:
       '@n8n/typescript-config':
         specifier: workspace:*

@@ -1,8 +1,9 @@
 import { Project } from '@n8n/db';
 import { User } from '@n8n/db';
-import type { SharedWorkflow, WorkflowSharingRole } from '@n8n/db';
+import type { SharedWorkflow } from '@n8n/db';
 import type { IWorkflowDb } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { WorkflowSharingRole } from '@n8n/permissions';
 import type { DeepPartial } from '@n8n/typeorm';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
