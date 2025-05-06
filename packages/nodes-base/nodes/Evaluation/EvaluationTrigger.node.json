@@ -2,7 +2,8 @@
 	"node": "n8n-nodes-base.evaluationTrigger",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": ["Core Nodes"],
+	"categories": ["AI", "Evaluation", "Core Nodes"],
+	"alias": ["Evaluation"],
 	"resources": {
 		"primaryDocumentation": [
 			{
