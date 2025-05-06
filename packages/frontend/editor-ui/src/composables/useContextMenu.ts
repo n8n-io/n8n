@@ -5,7 +5,7 @@ import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
-import { NodeHelpers } from 'n8n-workflow';
+import { EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, NodeHelpers } from 'n8n-workflow';
 import { computed, ref, watch } from 'vue';
 import { getMousePosition } from '../utils/nodeViewUtils';
 import { useI18n } from './useI18n';
@@ -76,6 +76,10 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 
 	const extractableSelectionResult = computed(() =>
 		workflowExtraction.getExtractableSelection(new Set(targetNodes.value.map((x) => x.name))),
+	);
+
+	const workflowTriggerSelected = computed(() =>
+		targetNodes.value.some((x) => x.type === EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE),
 	);
 
 	const canAddNodeOfType = (nodeType: INodeTypeDescription) => {
@@ -160,7 +164,7 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 				divided: true,
 				label: JSON.stringify(extractableSelectionResult.value), // i18n.baseText('contextMenu.extract', i18nOptions)
 				shortcut: { metaKey: true, keys: ['G'] },
-				disabled: Array.isArray(extractableSelectionResult.value),
+				disabled: workflowTriggerSelected.value || Array.isArray(extractableSelectionResult.value),
 			},
 		];
 

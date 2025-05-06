@@ -1111,6 +1111,50 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}
 	}
 
+	function replaceAllNodeConnection(
+		node: INodeUi,
+		newNode: INodeUi,
+		{ preserveInputConnections = false, preserveOutputConnections = false } = {},
+	): void {
+		uiStore.stateIsDirty = true;
+
+		// Remove all source connections
+		if (!preserveOutputConnections) {
+			delete workflow.value.connections[node.name];
+		}
+
+		// Remove all destination connections
+		if (preserveInputConnections) return;
+
+		const indexesToRemove = [];
+		let sourceNode: string,
+			type: string,
+			sourceIndex: string,
+			connectionIndex: string,
+			connectionData: IConnection;
+
+		for (sourceNode of Object.keys(workflow.value.connections)) {
+			for (type of Object.keys(workflow.value.connections[sourceNode])) {
+				for (sourceIndex of Object.keys(workflow.value.connections[sourceNode][type])) {
+					indexesToRemove.length = 0;
+					const connectionsToRemove =
+						workflow.value.connections[sourceNode][type][parseInt(sourceIndex, 10)];
+					if (connectionsToRemove) {
+						for (connectionIndex of Object.keys(connectionsToRemove)) {
+							connectionData = connectionsToRemove[parseInt(connectionIndex, 10)];
+							if (connectionData.node === node.name) {
+								indexesToRemove.push(connectionIndex);
+							}
+						}
+						indexesToRemove.forEach((index) => {
+							connectionsToRemove.splice(parseInt(index, 10), 1);
+						});
+					}
+				}
+			}
+		}
+	}
+
 	function renameNodeSelectedAndExecution(nameData: { old: string; new: string }): void {
 		uiStore.stateIsDirty = true;
 
@@ -1909,5 +1953,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		findNodeByPartialId,
 		getPartialIdForNode,
 		totalWorkflowCount,
+		updateCachedWorkflow,
 	};
 });
