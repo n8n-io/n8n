@@ -97,7 +97,7 @@ export = {
 		async (req: WorkflowRequest.Get, res: express.Response): Promise<express.Response> => {
 			const { id: workflowId } = req.params;
 
-			const workflow = await Container.get(WorkflowService).delete(req.user, workflowId);
+			const workflow = await Container.get(WorkflowService).delete(req.user, workflowId, true);
 			if (!workflow) {
 				// user trying to access a workflow they do not own
 				// or workflow does not exist
