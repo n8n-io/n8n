@@ -1,5 +1,6 @@
 import { GlobalConfig } from '@n8n/config';
 import type { Project, User, CreateExecutionPayload } from '@n8n/db';
+import { ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ErrorReporter, Logger } from 'n8n-core';
 import type {
@@ -18,7 +19,6 @@ import type {
 import { SubworkflowOperationError, Workflow } from 'n8n-workflow';
 
 import config from '@/config';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { ExecutionDataService } from '@/executions/execution-data.service';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';

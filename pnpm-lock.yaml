@@ -500,6 +500,12 @@ importers:
       class-validator:
         specifier: 0.14.0
         version: 0.14.0
+      flatted:
+        specifier: 'catalog:'
+        version: 3.2.7
+      lodash:
+        specifier: 'catalog:'
+        version: 4.17.21
       n8n-core:
         specifier: workspace:^
         version: link:../../core
@@ -519,6 +525,9 @@ importers:
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
+      '@types/lodash':
+        specifier: 'catalog:'
+        version: 4.14.195
 
   packages/@n8n/decorators:
     dependencies:

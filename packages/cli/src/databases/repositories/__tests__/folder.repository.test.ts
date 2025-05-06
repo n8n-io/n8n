@@ -22,7 +22,7 @@ describe('FolderRepository', () => {
 	});
 
 	afterEach(async () => {
-		await testDb.truncate(['Folder', 'Tag']);
+		await testDb.truncate(['Folder', 'TagEntity']);
 	});
 
 	afterAll(async () => {
