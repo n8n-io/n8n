@@ -289,14 +289,11 @@ export type TestRunErrorCode =
 	| 'UNKNOWN_ERROR';
 
 export type TestCaseExecutionErrorCode =
-	| 'MOCKED_NODE_DOES_NOT_EXIST'
-	| 'TRIGGER_NO_LONGER_EXISTS'
+	| 'MOCKED_NODE_NOT_FOUND' // This will be used when node mocking will be implemented
 	| 'FAILED_TO_EXECUTE_WORKFLOW'
-	| 'EVALUATION_WORKFLOW_DOES_NOT_EXIST'
-	| 'FAILED_TO_EXECUTE_EVALUATION_WORKFLOW'
 	| 'INVALID_METRICS'
-	| 'PAYLOAD_LIMIT_EXCEEDED'
-	| 'UNKNOWN_ERROR';
+	| 'UNKNOWN_ERROR'
+	| 'NO_METRICS_COLLECTED';
 
 export type AggregatedTestRunMetrics = Record<string, number | boolean>;
 

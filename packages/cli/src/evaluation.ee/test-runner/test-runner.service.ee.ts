@@ -255,14 +255,14 @@ export class TestRunnerService {
 	 * Evaluation result is collected from all Evaluation Metrics nodes
 	 */
 	private extractEvaluationResult(execution: IRun, workflow: IWorkflowBase): IDataObject {
-		// TODO: Do not fail if not all metric nodes were executed
 		const metricsNodes = TestRunnerService.getEvaluationMetricsNodes(workflow);
-		const metricsRunData = metricsNodes.flatMap(
-			(node) => execution.data.resultData.runData[node.name],
-		);
+
+		// If a metrics node did not execute, ignore it.
+		const metricsRunData = metricsNodes
+			.flatMap((node) => execution.data.resultData.runData[node.name])
+			.filter((data) => data !== undefined);
 		const metricsData = metricsRunData.reverse().map((data) => data.data?.main?.[0]?.[0]?.json);
 		const metricsResult = metricsData.reduce((acc, curr) => ({ ...acc, ...curr }), {}) ?? {};
-
 		return metricsResult;
 	}
 
@@ -390,18 +390,31 @@ export class TestRunnerService {
 						this.extractEvaluationResult(testCaseExecution, workflow),
 					);
 
-					this.logger.debug('Test case metrics extracted', addedMetrics);
-					// Create a new test case execution in DB
-					await this.testCaseExecutionRepository.createTestCaseExecution({
-						executionId: testCaseExecutionId,
-						testRun: {
-							id: testRun.id,
-						},
-						runAt,
-						completedAt,
-						status: 'success',
-						metrics: addedMetrics,
-					});
+					if (Object.keys(addedMetrics).length === 0) {
+						await this.testCaseExecutionRepository.createTestCaseExecution({
+							executionId: testCaseExecutionId,
+							testRun: {
+								id: testRun.id,
+							},
+							runAt,
+							completedAt,
+							status: 'error',
+							errorCode: 'NO_METRICS_COLLECTED',
+						});
+					} else {
+						this.logger.debug('Test case metrics extracted', addedMetrics);
+						// Create a new test case execution in DB
+						await this.testCaseExecutionRepository.createTestCaseExecution({
+							executionId: testCaseExecutionId,
+							testRun: {
+								id: testRun.id,
+							},
+							runAt,
+							completedAt,
+							status: 'success',
+							metrics: addedMetrics,
+						});
+					}
 				} catch (e) {
 					const completedAt = new Date();
 					// FIXME: this is a temporary log

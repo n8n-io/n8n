@@ -1,4 +1,4 @@
-import type { MockedNodeItem } from '@n8n/db';
+import type { TestCaseExecution, MockedNodeItem, TestRunFinalResult } from '@n8n/db';
 import assert from 'assert';
 import type { IRunExecutionData, IPinData, IWorkflowBase } from 'n8n-workflow';
 
