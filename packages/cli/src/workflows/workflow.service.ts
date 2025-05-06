@@ -485,7 +485,13 @@ export class WorkflowService {
 		return workflow;
 	}
 
-	async moveWorkflowsToRoot(user: User, folderId: string, projectId: string): Promise<void> {
+	/**
+	 * Moves all workflows in a folder to the root of the project and archives them,
+	 * flattening the folder structure.
+	 *
+	 * If any workflows were active this will also deactivate those workflows.
+	 */
+	async flattenAndArchive(user: User, folderId: string, projectId: string): Promise<void> {
 		const workflowIds = await this.workflowRepository.getAllWorkflowIdsInHierarchy(
 			folderId,
 			projectId,

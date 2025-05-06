@@ -104,7 +104,7 @@ export class ProjectController {
 			await this.folderService.findFolderInProjectOrFail(folderId, projectId);
 
 			if (!payload.transferToFolderId) {
-				await this.workflowService.moveWorkflowsToRoot(req.user, folderId, projectId);
+				await this.workflowService.flattenAndArchive(req.user, folderId, projectId);
 			}
 
 			await this.folderService.deleteFolder(folderId, projectId, payload);
