@@ -1,7 +1,16 @@
 {
     "type": "object",
     "properties": {
-        "error": {
+       "id": {
+            "type": "string"
+        },
+        "labelListVisibility": {
+            "type": "string"
+        },
+        "messageListVisibility": {
+            "type": "string"
+        },
+        "name": {
             "type": "string"
         }
     },
