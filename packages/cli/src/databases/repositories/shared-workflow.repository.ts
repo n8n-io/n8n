@@ -1,6 +1,7 @@
 import { SharedWorkflow } from '@n8n/db';
-import type { Project, WorkflowSharingRole } from '@n8n/db';
+import type { Project } from '@n8n/db';
 import { Service } from '@n8n/di';
+import type { WorkflowSharingRole } from '@n8n/permissions';
 import { DataSource, Repository, In, Not } from '@n8n/typeorm';
 import type { EntityManager, FindManyOptions, FindOptionsWhere } from '@n8n/typeorm';
 
