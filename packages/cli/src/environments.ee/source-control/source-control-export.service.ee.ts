@@ -106,6 +106,7 @@ export class SourceControlExportService {
 					versionId: e.versionId,
 					owner: owners[e.id],
 					parentFolderId: e.parentFolder?.id ?? null,
+					isArchived: e.isArchived,
 				};
 				this.logger.debug(`Writing workflow ${e.id} to ${fileName}`);
 				return await fsWriteFile(fileName, JSON.stringify(sanitizedWorkflow, null, 2));

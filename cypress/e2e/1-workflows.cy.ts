@@ -62,13 +62,13 @@ describe('Workflows', () => {
 		cy.contains('No workflows found').should('be.visible');
 	});
 
-	it('should delete all the workflows', () => {
+	it('should archive all the workflows', () => {
 		WorkflowsPage.getters.workflowCards().should('have.length', multipleWorkflowsCount + 1);
 
 		for (let i = 0; i < multipleWorkflowsCount + 1; i++) {
 			cy.getByTestId('workflow-card-actions').first().click();
-			WorkflowsPage.getters.workflowDeleteButton().click();
-			cy.get('button').contains('delete').click();
+			WorkflowsPage.getters.workflowArchiveButton().click();
+			cy.get('button').contains('archive').click();
 			successToast().should('be.visible');
 		}
 
@@ -140,5 +140,41 @@ describe('Workflows', () => {
 		WorkflowsPage.getters.workflowCardActions('Empty State Card Workflow').click();
 		WorkflowsPage.getters.workflowActionItem('share').click();
 		workflowSharingModal.getters.modal().should('be.visible');
+	});
+
+	it('should delete archived workflows', () => {
+		cy.visit(WorkflowsPage.url);
+
+		// Toggle "Show archived workflows" filter
+		WorkflowsPage.getters.workflowFilterButton().click();
+		WorkflowsPage.getters.workflowArchivedCheckbox().click();
+
+		WorkflowsPage.getters.workflowCards().should('have.length', multipleWorkflowsCount + 3);
+
+		cy.reload();
+
+		WorkflowsPage.getters.workflowCards().should('have.length', multipleWorkflowsCount + 3);
+
+		// Archive -> Unarchive -> Archive -> Delete on the first workflow
+		cy.getByTestId('workflow-card-actions').first().click();
+		WorkflowsPage.getters.workflowArchiveButton().click();
+		cy.get('button').contains('archive').click();
+		successToast().should('be.visible');
+
+		cy.getByTestId('workflow-card-actions').first().click();
+		WorkflowsPage.getters.workflowUnarchiveButton().click();
+		successToast().should('be.visible');
+
+		cy.getByTestId('workflow-card-actions').first().click();
+		WorkflowsPage.getters.workflowArchiveButton().click();
+		cy.get('button').contains('archive').click();
+		successToast().should('be.visible');
+
+		cy.getByTestId('workflow-card-actions').first().click();
+		WorkflowsPage.getters.workflowDeleteButton().click();
+		cy.get('button').contains('delete').click();
+		successToast().should('be.visible');
+
+		WorkflowsPage.getters.workflowCards().should('have.length', multipleWorkflowsCount + 2);
 	});
 });
