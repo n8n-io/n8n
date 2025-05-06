@@ -92,6 +92,7 @@ const createWorkflowButton = computed(() => ({
 		sourceControlStore.preferences.branchReadOnly ||
 		!getResourcePermissions(homeProject.value?.scopes).workflow.create,
 }));
+
 const menu = computed(() => {
 	const items: UserAction[] = [
 		{
@@ -142,14 +143,6 @@ const actions: Record<ActionTypes, (projectId: string) => void> = {
 	},
 } as const;
 
-const onSelect = (action: string) => {
-	const executableAction = actions[action as ActionTypes];
-	if (!homeProject.value) {
-		return;
-	}
-	executableAction(homeProject.value.id);
-};
-
 const pageType = computed(() => {
 	if (overview.isOverviewSubPage) {
 		return 'overview';
@@ -159,6 +152,25 @@ const pageType = computed(() => {
 		return 'project';
 	}
 });
+
+const subtitle = computed(() => {
+	if (overview.isOverviewSubPage) {
+		return i18n.baseText('projects.header.overview.subtitle');
+	} else if (overview.isSharedSubPage) {
+		return i18n.baseText('projects.header.shared.subtitle');
+	} else if (isPersonalProject.value) {
+		return i18n.baseText('projects.header.personal.subtitle');
+	}
+	return null;
+});
+
+const onSelect = (action: string) => {
+	const executableAction = actions[action as ActionTypes];
+	if (!homeProject.value) {
+		return;
+	}
+	executableAction(homeProject.value.id);
+};
 </script>
 
 <template>
@@ -169,16 +181,8 @@ const pageType = computed(() => {
 				<div :class="$style.headerActions">
 					<N8nHeading v-if="projectName" bold tag="h2" size="xlarge">{{ projectName }}</N8nHeading>
 					<N8nText color="text-light">
-						<slot name="subtitle">
-							<span v-if="overview.isOverviewSubPage">{{
-								i18n.baseText('projects.header.overview.subtitle')
-							}}</span>
-							<span v-else-if="overview.isSharedSubPage">{{
-								i18n.baseText('projects.header.shared.subtitle')
-							}}</span>
-							<span v-else-if="isPersonalProject">
-								{{ i18n.baseText('projects.header.personal.subtitle') }}
-							</span>
+						<slot v-if="subtitle" name="subtitle">
+							<N8nText v-if="subtitle" color="text-light">{{ subtitle }}</N8nText>
 						</slot>
 					</N8nText>
 				</div>
