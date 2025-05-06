@@ -1,6 +1,11 @@
 import type { CreateCredentialDto } from '@n8n/api-types';
 import type { Project, User, ICredentialsDb, ScopesField } from '@n8n/db';
-import { CredentialsEntity, SharedCredentials, CredentialsRepository } from '@n8n/db';
+import {
+	CredentialsEntity,
+	SharedCredentials,
+	CredentialsRepository,
+	ProjectRepository,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
@@ -22,7 +27,6 @@ import { CREDENTIAL_EMPTY_VALUE, deepCopy, NodeHelpers, UnexpectedError } from '
 import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
 import { CredentialTypes } from '@/credential-types';
 import { createCredentialsFromCredentialsEntity } from '@/credentials-helper';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import * as Db from '@/db';

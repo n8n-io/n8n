@@ -5,6 +5,7 @@ import type {
 	BaseFilters,
 	FolderResource,
 	Resource,
+	SortingAndPaginationUpdates,
 	WorkflowResource,
 } from '@/components/layouts/ResourcesListLayout.vue';
 import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
@@ -112,7 +113,9 @@ const documentTitle = useDocumentTitle();
 const { callDebounced } = useDebounce();
 const overview = useOverview();
 
-const loading = ref(false);
+// We render component in a loading state until initialization is done
+// This will prevent any additional workflow fetches while initializing
+const loading = ref(true);
 const breadcrumbsLoading = ref(false);
 const filters = ref<Filters>({
 	search: '',
@@ -363,7 +366,7 @@ const showRegisteredCommunityCTA = computed(
 watch(
 	() => route.params?.projectId,
 	async () => {
-		await initialize();
+		loading.value = true;
 	},
 );
 
@@ -542,18 +545,6 @@ const fetchWorkflows = async () => {
 };
 
 // Filter and sort methods
-
-const onSortUpdated = async (sort: string) => {
-	currentSort.value =
-		WORKFLOWS_SORT_MAP[sort as keyof typeof WORKFLOWS_SORT_MAP] ?? 'updatedAt:desc';
-	if (currentSort.value !== 'updatedAt:desc') {
-		void router.replace({ query: { ...route.query, sort } });
-	} else {
-		void router.replace({ query: { ...route.query, sort: undefined } });
-	}
-	await fetchWorkflows();
-};
-
 const onFiltersUpdated = async () => {
 	currentPage.value = 1;
 	saveFiltersOnQueryString();
@@ -571,14 +562,23 @@ const onSearchUpdated = async (search: string) => {
 	}
 };
 
-const setCurrentPage = async (page: number) => {
-	currentPage.value = page;
-	await callDebounced(fetchWorkflows, { debounceTime: FILTERS_DEBOUNCE_TIME, trailing: true });
-};
-
-const setPageSize = async (size: number) => {
-	pageSize.value = size;
-	await callDebounced(fetchWorkflows, { debounceTime: FILTERS_DEBOUNCE_TIME, trailing: true });
+const setPaginationAndSort = async (payload: SortingAndPaginationUpdates) => {
+	if (payload.page) {
+		currentPage.value = payload.page;
+	}
+	if (payload.pageSize) {
+		pageSize.value = payload.pageSize;
+	}
+	if (payload.sort) {
+		currentSort.value =
+			WORKFLOWS_SORT_MAP[payload.sort as keyof typeof WORKFLOWS_SORT_MAP] ?? 'updatedAt:desc';
+	}
+	// Don't fetch workflows if we are loading
+	// This will prevent unnecessary API calls when changing sort and pagination from url/local storage
+	// when switching between projects
+	if (!loading.value) {
+		await callDebounced(fetchWorkflows, { debounceTime: FILTERS_DEBOUNCE_TIME, trailing: true });
+	}
 };
 
 const onClickTag = async (tagId: string) => {
@@ -1340,10 +1340,8 @@ const onNameSubmit = async ({
 		:has-empty-state="foldersStore.totalWorkflowCount === 0 && !currentFolderId"
 		@click:add="addWorkflow"
 		@update:search="onSearchUpdated"
-		@update:current-page="setCurrentPage"
-		@update:page-size="setPageSize"
 		@update:filters="onFiltersUpdated"
-		@sort="onSortUpdated"
+		@update:pagination-and-sort="setPaginationAndSort"
 		@mouseleave="folderHelpers.resetDropTarget"
 	>
 		<template #header>
