@@ -77,6 +77,17 @@ export class JinaAi implements INodeType {
 									'X-Wait-For-Selector': '={{ $parameter["options"]["waitForSelector"] }}',
 								},
 							},
+							output: {
+								postReceive: [
+									{
+										type: 'rootProperty',
+										enabled: '={{ $parameter["simplify"] }}',
+										properties: {
+											property: 'data',
+										},
+									},
+								],
+							},
 						},
 					},
 					{
@@ -97,6 +108,17 @@ export class JinaAi implements INodeType {
 									q: '={{ $parameter["searchQuery"] }}',
 									page: '={{ $parameter["options"]["pageNumber"] }}',
 								},
+							},
+							output: {
+								postReceive: [
+									{
+										type: 'rootProperty',
+										enabled: '={{ $parameter["simplify"] }}',
+										properties: {
+											property: 'data',
+										},
+									},
+								],
 							},
 						},
 					},
@@ -137,6 +159,19 @@ export class JinaAi implements INodeType {
 									only_hostnames: '={{ $parameter["options"]["siteFilter"].split(/,\\s*/) }}',
 								},
 							},
+							output: {
+								postReceive: [
+									{
+										type: 'setKeyValue',
+										enabled: '={{ $parameter["simplify"] }}',
+										properties: {
+											content: '={{ $responseItem["choices"][0]["message"]["content"] }}',
+											annotations: '={{ $responseItem["choices"][0]["message"]["annotations"] }}',
+											usage: '={{ $responseItem["usage"] }}',
+										},
+									},
+								],
+							},
 						},
 					},
 				],
@@ -151,6 +186,20 @@ export class JinaAi implements INodeType {
 				default: '',
 				placeholder: 'https://jina.ai/',
 				description: 'The URL to fetch content from',
+				displayOptions: {
+					show: {
+						resource: ['reader'],
+						operation: ['read'],
+					},
+				},
+			},
+			{
+				displayName: 'Simplify',
+				name: 'simplify',
+				type: 'boolean',
+				default: true,
+				description:
+					'Whether to return a simplified version of the response instead of the raw data',
 				displayOptions: {
 					show: {
 						resource: ['reader'],
@@ -249,6 +298,20 @@ export class JinaAi implements INodeType {
 				},
 			},
 			{
+				displayName: 'Simplify',
+				name: 'simplify',
+				type: 'boolean',
+				default: true,
+				description:
+					'Whether to return a simplified version of the response instead of the raw data',
+				displayOptions: {
+					show: {
+						resource: ['reader'],
+						operation: ['search'],
+					},
+				},
+			},
+			{
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
@@ -322,6 +385,20 @@ export class JinaAi implements INodeType {
 				description: 'The topic or question for the AI to research',
 				placeholder:
 					'e.g. Analyze the impact of renewable energy sources on climate change mitigation',
+				displayOptions: {
+					show: {
+						resource: ['research'],
+						operation: ['deepResearch'],
+					},
+				},
+			},
+			{
+				displayName: 'Simplify',
+				name: 'simplify',
+				type: 'boolean',
+				default: true,
+				description:
+					'Whether to return a simplified version of the response instead of the raw data',
 				displayOptions: {
 					show: {
 						resource: ['research'],
