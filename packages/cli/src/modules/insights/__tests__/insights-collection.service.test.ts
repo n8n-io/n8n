@@ -28,7 +28,7 @@ import { InsightsConfig } from '../insights.config';
 
 // Initialize DB once for all tests
 beforeAll(async () => {
-	await testDb.init(['insights']);
+	await testDb.init();
 });
 
 beforeEach(async () => {
@@ -36,7 +36,7 @@ beforeEach(async () => {
 		'InsightsRaw',
 		'InsightsByPeriod',
 		'InsightsMetadata',
-		'Workflow',
+		'WorkflowEntity',
 		'Project',
 	]);
 });

@@ -1,8 +1,8 @@
-import type { ProjectRole } from '@n8n/api-types';
 import type { Project } from '@n8n/db';
 import type { User } from '@n8n/db';
 import type { ListQueryDb } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { ProjectRole } from '@n8n/permissions';
 import { In } from '@n8n/typeorm';
 
 import config from '@/config';
@@ -62,7 +62,7 @@ let projectService: ProjectService;
 let projectRepository: ProjectRepository;
 
 beforeEach(async () => {
-	await testDb.truncate(['SharedCredentials', 'Credentials', 'Project', 'ProjectRelation']);
+	await testDb.truncate(['SharedCredentials', 'CredentialsEntity', 'Project', 'ProjectRelation']);
 	projectRepository = Container.get(ProjectRepository);
 	projectService = Container.get(ProjectService);
 

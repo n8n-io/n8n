@@ -22,7 +22,7 @@ exports[`useContextMenu > Read-only mode > should return the correct actions whe
     "label": "Rename",
     "shortcut": {
       "keys": [
-        "F2",
+        "Space",
       ],
     },
   },
@@ -213,7 +213,7 @@ exports[`useContextMenu > should return the correct actions opening the menu fro
     "label": "Rename",
     "shortcut": {
       "keys": [
-        "F2",
+        "Space",
       ],
     },
   },
@@ -323,7 +323,7 @@ exports[`useContextMenu > should return the correct actions when right clicking 
     "label": "Rename",
     "shortcut": {
       "keys": [
-        "F2",
+        "Space",
       ],
     },
   },
