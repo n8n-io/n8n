@@ -1,4 +1,3 @@
-import { Folder, Project, SharedWorkflow } from '@n8n/db';
 import type {
 	CredentialsEntity,
 	User,
@@ -6,7 +5,7 @@ import type {
 	WorkflowWithSharingsAndCredentials,
 	WorkflowWithSharingsMetaDataAndCredentials,
 } from '@n8n/db';
-import { Project, SharedWorkflow, CredentialsRepository } from '@n8n/db';
+import { Folder, Project, SharedWorkflow, CredentialsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In, type EntityManager } from '@n8n/typeorm';
@@ -19,7 +18,6 @@ import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
-import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import { FolderRepository } from '@/databases/repositories/folder.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
