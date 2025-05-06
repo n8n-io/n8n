@@ -54,7 +54,7 @@ export class Evaluation implements INodeType {
 		description: 'Runs an evaluation',
 		eventTriggerDescription: '',
 		maxNodes: 1,
-		subtitle: '={{$parameter["resource"] + ": " + $parameter["operation"]}}',
+		subtitle: '={{$parameter["operation"]}}',
 		defaults: {
 			name: 'Evaluation',
 		},
