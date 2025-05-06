@@ -153,8 +153,7 @@ export class E2EController {
 		private readonly userRepository: UserRepository,
 		private readonly authUserRepository: AuthUserRepository,
 	) {
-		license.isFeatureEnabled = (feature: BooleanLicenseFeature) =>
-			this.enabledFeatures[feature] ?? false;
+		license.isLicensed = (feature: BooleanLicenseFeature) => this.enabledFeatures[feature] ?? false;
 
 		// Ugly hack to satisfy biome parser
 		const getFeatureValue = <T extends keyof FeatureReturnType>(
@@ -166,7 +165,7 @@ export class E2EController {
 				return UNLIMITED_LICENSE_QUOTA as FeatureReturnType[T];
 			}
 		};
-		license.getFeatureValue = getFeatureValue;
+		license.getValue = getFeatureValue;
 
 		license.getPlanName = () => 'Enterprise';
 	}
