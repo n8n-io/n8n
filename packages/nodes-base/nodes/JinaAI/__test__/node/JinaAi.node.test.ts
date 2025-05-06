@@ -16,7 +16,7 @@ describe('JinaAI Node', () => {
 		const jinaAiNock = nock('https://r.jina.ai');
 
 		beforeAll(() => {
-			jinaAiNock.get('/https://first.com/some/path').reply(200, readResult);
+			jinaAiNock.get('/https://first.com/some/path').times(2).reply(200, readResult);
 			jinaAiNock
 				.get('/https://second.com/other')
 				.query({
@@ -45,6 +45,7 @@ describe('JinaAI Node', () => {
 				.query({
 					q: 'Jina AI',
 				})
+				.times(2)
 				.reply(200, searchResult);
 			jinaAiNock
 				.get('/')
@@ -76,6 +77,7 @@ describe('JinaAI Node', () => {
 						},
 					],
 				})
+				.times(2)
 				.reply(200, deepResearchResult);
 			jinaAiNock
 				.post('/v1/chat/completions', {

@@ -5,8 +5,8 @@
 			"parameters": {},
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
-			"position": [0, 0],
-			"id": "23e5b28b-f0a4-4068-b15a-5b002f75d186",
+			"position": [-240, 260],
+			"id": "8a73e8c0-c2b8-4933-98e1-a2577b9f4902",
 			"name": "When clicking ‘Test workflow’"
 		},
 		{
@@ -19,12 +19,12 @@
 			},
 			"type": "n8n-nodes-base.jinaAi",
 			"typeVersion": 1,
-			"position": [220, -100],
-			"id": "a9617ffc-9b3b-47c9-8eed-869804d7b2ca",
+			"position": [-20, 60],
+			"id": "cf8f337f-841c-4715-9ecd-d1b877d5b098",
 			"name": "No options",
 			"credentials": {
 				"jinaAiApi": {
-					"id": "rOFy0C66uXp8PhE2",
+					"id": "8ph5AE62dQFfqkLx",
 					"name": "Jina AI account"
 				}
 			}
@@ -44,12 +44,31 @@
 			},
 			"type": "n8n-nodes-base.jinaAi",
 			"typeVersion": 1,
-			"position": [220, 100],
-			"id": "40502416-59cf-4b97-bfbb-8dfbc1731432",
+			"position": [-20, 260],
+			"id": "c353f860-0bc4-453f-a620-2f054721f52a",
 			"name": "With options",
 			"credentials": {
 				"jinaAiApi": {
-					"id": "rOFy0C66uXp8PhE2",
+					"id": "8ph5AE62dQFfqkLx",
+					"name": "Jina AI account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "research",
+				"researchQuery": "Describe the latest features in Jina AI",
+				"options": {},
+				"requestOptions": {}
+			},
+			"type": "n8n-nodes-base.jinaAi",
+			"typeVersion": 1,
+			"position": [-20, 460],
+			"id": "91269e77-35b1-4bf5-b0b6-8876e0126b36",
+			"name": "Simplified",
+			"credentials": {
+				"jinaAiApi": {
+					"id": "8ph5AE62dQFfqkLx",
 					"name": "Jina AI account"
 				}
 			}
@@ -145,6 +164,29 @@
 					"numURLs": 5
 				}
 			}
+		],
+		"Simplified": [
+			{
+				"json": {
+					"content": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
+					"annotations": [
+						{
+							"type": "url_citation",
+							"url_citation": {
+								"title": "Lorem ipsum dolor sit amet",
+								"exactQuote": "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
+								"url": "https://some.referenced.site.com/article",
+								"dateTime": "Aug 30, 2024"
+							}
+						}
+					],
+					"usage": {
+						"prompt_tokens": 123,
+						"completion_tokens": 456,
+						"total_tokens": 579
+					}
+				}
+			}
 		]
 	},
 	"connections": {
@@ -160,6 +202,11 @@
 						"node": "With options",
 						"type": "main",
 						"index": 0
+					},
+					{
+						"node": "Simplified",
+						"type": "main",
+						"index": 0
 					}
 				]
 			]
@@ -169,7 +216,7 @@
 	"settings": {
 		"executionOrder": "v1"
 	},
-	"versionId": "f2f57a3f-2584-4ba2-8dba-14f0d4073dfc",
+	"versionId": "b822e0dc-3c01-43d5-ad56-419814a40af7",
 	"meta": {
 		"templateCredsSetupCompleted": true,
 		"instanceId": "e115be144a6a5547dbfca93e774dfffa178aa94a181854c13e2ce5e14d195b2e"

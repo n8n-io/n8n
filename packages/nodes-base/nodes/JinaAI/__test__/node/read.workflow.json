@@ -5,7 +5,7 @@
 			"parameters": {},
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
-			"position": [0, 0],
+			"position": [0, 100],
 			"id": "75a081a7-14e6-4f63-a0b6-86f54937d59d",
 			"name": "When clicking ‘Test workflow’"
 		},
@@ -23,7 +23,7 @@
 			"name": "No options",
 			"credentials": {
 				"jinaAiApi": {
-					"id": "rOFy0C66uXp8PhE2",
+					"id": "8ph5AE62dQFfqkLx",
 					"name": "Jina AI account"
 				}
 			}
@@ -48,7 +48,25 @@
 			"name": "With options",
 			"credentials": {
 				"jinaAiApi": {
-					"id": "rOFy0C66uXp8PhE2",
+					"id": "8ph5AE62dQFfqkLx",
+					"name": "Jina AI account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"url": "https://first.com/some/path",
+				"options": {},
+				"requestOptions": {}
+			},
+			"type": "n8n-nodes-base.jinaAi",
+			"typeVersion": 1,
+			"position": [220, 300],
+			"id": "79d27978-20af-494d-b9bd-32f68883ac54",
+			"name": "Simplified",
+			"credentials": {
+				"jinaAiApi": {
+					"id": "8ph5AE62dQFfqkLx",
 					"name": "Jina AI account"
 				}
 			}
@@ -66,12 +84,12 @@
 						"description": "Best-in-class embeddings, rerankers, web crawler scraper, deepsearch, small LMs. The search AI for multilingual and multimodal data.",
 						"content": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
 						"usage": {
-							"tokens": 12421
+							"tokens": 123
 						}
 					},
 					"meta": {
 						"usage": {
-							"tokens": 12421
+							"tokens": 123
 						}
 					}
 				}
@@ -88,13 +106,26 @@
 						"description": "Best-in-class embeddings, rerankers, web crawler scraper, deepsearch, small LMs. The search AI for multilingual and multimodal data.",
 						"content": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
 						"usage": {
-							"tokens": 12421
+							"tokens": 123
 						}
 					},
 					"meta": {
 						"usage": {
-							"tokens": 12421
+							"tokens": 123
 						}
+					}
+				}
+			}
+		],
+		"Simplified": [
+			{
+				"json": {
+					"title": "Jina AI - Your Search Foundation, Supercharged.",
+					"url": "https://jina.ai/",
+					"description": "Best-in-class embeddings, rerankers, web crawler scraper, deepsearch, small LMs. The search AI for multilingual and multimodal data.",
+					"content": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
+					"usage": {
+						"tokens": 123
 					}
 				}
 			}
@@ -113,6 +144,11 @@
 						"node": "With options",
 						"type": "main",
 						"index": 0
+					},
+					{
+						"node": "Simplified",
+						"type": "main",
+						"index": 0
 					}
 				]
 			]
@@ -122,7 +158,7 @@
 	"settings": {
 		"executionOrder": "v1"
 	},
-	"versionId": "f5c3c678-42d4-4bb9-a75b-edaafc925d95",
+	"versionId": "41f0e679-7754-4b3c-a86c-e130a18d4378",
 	"meta": {
 		"templateCredsSetupCompleted": true,
 		"instanceId": "e115be144a6a5547dbfca93e774dfffa178aa94a181854c13e2ce5e14d195b2e"

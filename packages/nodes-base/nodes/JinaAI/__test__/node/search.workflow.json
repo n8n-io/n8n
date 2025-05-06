@@ -5,8 +5,8 @@
 			"parameters": {},
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
-			"position": [0, 0],
-			"id": "f371a798-56c2-4f21-8bbe-df5385801035",
+			"position": [-360, 40],
+			"id": "b7e0a085-eb10-48a7-a25e-853b36aef252",
 			"name": "When clicking ‘Test workflow’"
 		},
 		{
@@ -19,12 +19,12 @@
 			},
 			"type": "n8n-nodes-base.jinaAi",
 			"typeVersion": 1,
-			"position": [220, -100],
-			"id": "94431fe2-cc6a-470b-897b-e2fdd9579c80",
+			"position": [-140, -160],
+			"id": "ea197991-8539-4221-9798-842f4026f31b",
 			"name": "No options",
 			"credentials": {
 				"jinaAiApi": {
-					"id": "rOFy0C66uXp8PhE2",
+					"id": "8ph5AE62dQFfqkLx",
 					"name": "Jina AI account"
 				}
 			}
@@ -43,12 +43,31 @@
 			},
 			"type": "n8n-nodes-base.jinaAi",
 			"typeVersion": 1,
-			"position": [220, 100],
-			"id": "80653ef6-0af0-4fb5-a157-f9fbb3d47d14",
+			"position": [-140, 40],
+			"id": "dbfbbf4a-caa1-4922-b200-723748636773",
 			"name": "With options",
 			"credentials": {
 				"jinaAiApi": {
-					"id": "rOFy0C66uXp8PhE2",
+					"id": "8ph5AE62dQFfqkLx",
+					"name": "Jina AI account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "search",
+				"searchQuery": "Jina AI",
+				"options": {},
+				"requestOptions": {}
+			},
+			"type": "n8n-nodes-base.jinaAi",
+			"typeVersion": 1,
+			"position": [-140, 240],
+			"id": "91ca27b2-eab4-4131-a544-5ae4794ac0b3",
+			"name": "Simplified",
+			"credentials": {
+				"jinaAiApi": {
+					"id": "8ph5AE62dQFfqkLx",
 					"name": "Jina AI account"
 				}
 			}
@@ -67,7 +86,7 @@
 							"description": "Best-in-class embeddings, rerankers, web crawler scraper, deepsearch, small LMs. The search AI for multilingual and multimodal data.",
 							"content": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
 							"usage": {
-								"tokens": 12421
+								"tokens": 123
 							}
 						},
 						{
@@ -77,13 +96,13 @@
 							"date": "Mar 24, 2025",
 							"content": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
 							"usage": {
-								"tokens": 14526
+								"tokens": 123
 							}
 						}
 					],
 					"meta": {
 						"usage": {
-							"tokens": 26947
+							"tokens": 246
 						}
 					}
 				}
@@ -101,7 +120,7 @@
 							"description": "Best-in-class embeddings, rerankers, web crawler scraper, deepsearch, small LMs. The search AI for multilingual and multimodal data.",
 							"content": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
 							"usage": {
-								"tokens": 12421
+								"tokens": 123
 							}
 						},
 						{
@@ -111,14 +130,39 @@
 							"date": "Mar 24, 2025",
 							"content": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
 							"usage": {
-								"tokens": 14526
+								"tokens": 123
 							}
 						}
 					],
 					"meta": {
 						"usage": {
-							"tokens": 26947
+							"tokens": 246
 						}
+					}
+				}
+			}
+		],
+		"Simplified": [
+			{
+				"json": {
+					"title": "Jina AI - Your Search Foundation, Supercharged.",
+					"url": "https://jina.ai/",
+					"description": "Best-in-class embeddings, rerankers, web crawler scraper, deepsearch, small LMs. The search AI for multilingual and multimodal data.",
+					"content": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
+					"usage": {
+						"tokens": 123
+					}
+				}
+			},
+			{
+				"json": {
+					"title": "Jina AI",
+					"url": "https://github.com/jina-ai",
+					"description": "Your Search Foundation, Supercharged! Jina AI has 243 repositories available. Follow their code on GitHub.",
+					"date": "Mar 24, 2025",
+					"content": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
+					"usage": {
+						"tokens": 123
 					}
 				}
 			}
@@ -137,6 +181,11 @@
 						"node": "With options",
 						"type": "main",
 						"index": 0
+					},
+					{
+						"node": "Simplified",
+						"type": "main",
+						"index": 0
 					}
 				]
 			]
@@ -146,7 +195,7 @@
 	"settings": {
 		"executionOrder": "v1"
 	},
-	"versionId": "ca4f2648-90f8-43f3-8e62-908e7e1da7ea",
+	"versionId": "b425b5ec-f0b1-4f81-a83b-ca6a787d7a1d",
 	"meta": {
 		"templateCredsSetupCompleted": true,
 		"instanceId": "e115be144a6a5547dbfca93e774dfffa178aa94a181854c13e2ce5e14d195b2e"
