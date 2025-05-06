@@ -1,8 +1,8 @@
-import type { ProjectRole } from '@n8n/api-types';
 import type { Project } from '@n8n/db';
 import type { User } from '@n8n/db';
 import type { ListQueryDb } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { ProjectRole } from '@n8n/permissions';
 import { In } from '@n8n/typeorm';
 
 import config from '@/config';

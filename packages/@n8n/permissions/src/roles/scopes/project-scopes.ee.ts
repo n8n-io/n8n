@@ -1,4 +1,4 @@
-import type { Scope } from './types.ee';
+import type { Scope } from '../../types.ee';
 
 /**
  * Diff between admin in personal project and admin in other projects:
