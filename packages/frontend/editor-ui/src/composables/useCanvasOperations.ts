@@ -1120,6 +1120,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 	) {
 		const sourceNode = workflowsStore.getNodeById(connection.source);
 		const targetNode = workflowsStore.getNodeById(connection.target);
+		console.log('createConnection', connection, sourceNode, targetNode);
 		if (!sourceNode || !targetNode) {
 			return;
 		}
