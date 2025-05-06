@@ -250,6 +250,7 @@ const { isSubNodeType } = useNodeType({
 	node,
 });
 
+const isArchivedWorkflow = computed(() => workflowsStore.workflow.isArchived);
 const isReadOnlyRoute = computed(() => route.meta.readOnlyCanvas === true);
 const isWaitNodeWaiting = computed(() => {
 	return (
@@ -549,7 +550,8 @@ const pinButtonDisabled = computed(
 		(!rawInputData.value.length && !pinnedData.hasData.value) ||
 		!!binaryData.value?.length ||
 		isReadOnlyRoute.value ||
-		readOnlyEnv.value,
+		readOnlyEnv.value ||
+		isArchivedWorkflow.value,
 );
 
 const activeTaskMetadata = computed((): ITaskMetadata | null => {
@@ -847,7 +849,13 @@ function showPinDataDiscoveryTooltip(value: IDataObject[]) {
 
 	const pinDataDiscoveryFlag = useStorage(LOCAL_STORAGE_PIN_DATA_DISCOVERY_NDV_FLAG).value;
 
-	if (value && value.length > 0 && !isReadOnlyRoute.value && !pinDataDiscoveryFlag) {
+	if (
+		value &&
+		value.length > 0 &&
+		!isReadOnlyRoute.value &&
+		!isArchivedWorkflow.value &&
+		!pinDataDiscoveryFlag
+	) {
 		pinDataDiscoveryComplete();
 
 		setTimeout(() => {
@@ -1367,7 +1375,7 @@ defineExpose({ enterEditMode });
 			data-test-id="ndv-pinned-data-callout"
 		>
 			{{ i18n.baseText('runData.pindata.thisDataIsPinned') }}
-			<span v-if="!isReadOnlyRoute && !readOnlyEnv" class="ml-4xs">
+			<span v-if="!isReadOnlyRoute && !isArchivedWorkflow && !readOnlyEnv" class="ml-4xs">
 				<N8nLink
 					theme="secondary"
 					size="small"
