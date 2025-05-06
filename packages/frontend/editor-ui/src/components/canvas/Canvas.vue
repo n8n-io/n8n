@@ -604,7 +604,7 @@ const nodeDataById = computed(() => {
 
 const contextMenu = useContextMenu();
 
-function onOpenContextMenu(event: MouseEvent, target?: Partial<ContextMenuTarget>) {
+function onOpenContextMenu(event: MouseEvent, target?: Pick<ContextMenuTarget, 'nodeId'>) {
 	contextMenu.open(event, {
 		source: 'canvas',
 		nodeIds: selectedNodeIds.value,
