@@ -4,7 +4,8 @@ export type TestCaseExecutionErrorCode =
 	| 'MOCKED_NODE_NOT_FOUND' // This will be used when node mocking will be implemented
 	| 'FAILED_TO_EXECUTE_WORKFLOW'
 	| 'INVALID_METRICS'
-	| 'UNKNOWN_ERROR';
+	| 'UNKNOWN_ERROR'
+	| 'NO_METRICS_COLLECTED';
 
 export class TestCaseExecutionError extends UnexpectedError {
 	readonly code: TestCaseExecutionErrorCode;
