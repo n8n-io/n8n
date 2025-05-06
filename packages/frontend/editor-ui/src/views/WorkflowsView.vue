@@ -113,6 +113,8 @@ const documentTitle = useDocumentTitle();
 const { callDebounced } = useDebounce();
 const overview = useOverview();
 
+// We render component in a loading state until initialization is done
+// This will prevent any additional workflow fetches while initializing
 const loading = ref(true);
 const breadcrumbsLoading = ref(false);
 const filters = ref<Filters>({

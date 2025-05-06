@@ -559,9 +559,8 @@ const loadPaginationPreferences = async () => {
 	}
 
 	if (query.sort) {
-		sortBy.value = query.sort as string;
-		emitPayload.sort = query.sort as string;
-		preferredSort.value = query.sort as string;
+		// Update the sortBy value and emit the event based on the query parameter
+		sortBy.value = emitPayload.sort = preferredSort.value = query.sort as string;
 	} else if (localStorageValues.sort) {
 		await setSorting(localStorageValues.sort, false);
 		emitPayload.sort = localStorageValues.sort;

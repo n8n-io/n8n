@@ -6,7 +6,7 @@ const mockOverview = {
 };
 
 // Create a shared storage object that persists between calls
-const mockLocalStorageValue: Record<string, unknown> = {};
+let mockLocalStorageValue: Record<string, unknown> = {};
 
 vi.mock('@/composables/useOverview', () => ({
 	useOverview: vi.fn(() => mockOverview),
@@ -29,9 +29,7 @@ describe('useN8nLocalStorage', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mockOverview.isOverviewSubPage = false;
-		Object.keys(mockLocalStorageValue).forEach((key) => {
-			delete mockLocalStorageValue[key];
-		});
+		mockLocalStorageValue = {};
 	});
 
 	describe('getProjectKey', () => {
