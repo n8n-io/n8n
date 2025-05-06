@@ -51,6 +51,7 @@ import type {
 } from '@/types';
 import { CanvasNodeRenderType, CanvasConnectionMode } from '@/types';
 import {
+	AI_EVALUATION,
 	CHAT_TRIGGER_NODE_TYPE,
 	DRAG_EVENT_DATA_KEY,
 	EnterpriseEditionFeature,
@@ -325,6 +326,19 @@ async function initializeRoute(force = false) {
 			query: { ...route.query, action: undefined },
 		});
 		return;
+	}
+
+	// Open node panel if the route has a corresponding action
+	if (route.query.action === 'addEvaluationTrigger') {
+		nodeCreatorStore.openNodeCreatorForTriggerNodes(
+			NODE_CREATOR_OPEN_SOURCES.ADD_EVALUATION_TRIGGER_BUTTON,
+		);
+	} else if (route.query.action === 'addEvaluationNode') {
+		nodeCreatorStore.openSelectiveNodeCreator({
+			connectionType: NodeConnectionTypes.Main,
+			node: '',
+			creatorView: 'AI',
+		});
 	}
 
 	const isAlreadyInitialized =
