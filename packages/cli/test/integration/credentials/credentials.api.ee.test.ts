@@ -62,7 +62,7 @@ let projectService: ProjectService;
 let projectRepository: ProjectRepository;
 
 beforeEach(async () => {
-	await testDb.truncate(['SharedCredentials', 'Credentials', 'Project', 'ProjectRelation']);
+	await testDb.truncate(['SharedCredentials', 'CredentialsEntity', 'Project', 'ProjectRelation']);
 	projectRepository = Container.get(ProjectRepository);
 	projectService = Container.get(ProjectService);
 

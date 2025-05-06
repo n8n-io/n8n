@@ -1,8 +1,8 @@
 import type { IExecutionResponse } from '@n8n/db';
+import type { ExecutionRepository } from '@n8n/db';
 import type express from 'express';
 import { mock } from 'jest-mock-extended';
 
-import type { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';

@@ -1,10 +1,11 @@
-import { ApiKey } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, Repository } from '@n8n/typeorm';
 
+import { AuthUser } from '../entities';
+
 @Service()
-export class ApiKeyRepository extends Repository<ApiKey> {
+export class AuthUserRepository extends Repository<AuthUser> {
 	constructor(dataSource: DataSource) {
-		super(ApiKey, dataSource.manager);
+		super(AuthUser, dataSource.manager);
 	}
 }

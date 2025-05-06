@@ -15,7 +15,7 @@ describe('WorkflowRepository', () => {
 	});
 
 	beforeEach(async () => {
-		await testDb.truncate(['Workflow']);
+		await testDb.truncate(['WorkflowEntity']);
 	});
 
 	afterAll(async () => {

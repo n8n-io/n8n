@@ -22,7 +22,13 @@ describe('LicenseMetricsRepository', () => {
 	});
 
 	beforeEach(async () => {
-		await testDb.truncate(['User', 'Credentials', 'Workflow', 'Execution', 'WorkflowStatistics']);
+		await testDb.truncate([
+			'User',
+			'CredentialsEntity',
+			'WorkflowEntity',
+			'ExecutionEntity',
+			'WorkflowStatistics',
+		]);
 	});
 
 	afterAll(async () => {

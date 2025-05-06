@@ -4,6 +4,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import type { PushMessage, PushType } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
+import { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { Logger, WorkflowExecute } from 'n8n-core';
 import { UnexpectedError, Workflow } from 'n8n-workflow';
@@ -32,7 +33,6 @@ import type {
 
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsHelper } from '@/credentials-helper';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { EventService } from '@/events/event.service';
 import type { AiEventMap, AiEventPayload } from '@/events/maps/ai.event-map';

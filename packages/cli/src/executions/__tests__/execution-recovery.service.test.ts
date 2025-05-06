@@ -1,3 +1,4 @@
+import { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { stringify } from 'flatted';
 import { mock } from 'jest-mock-extended';
@@ -6,7 +7,6 @@ import { randomInt } from 'n8n-workflow';
 import assert from 'node:assert';
 
 import { ARTIFICIAL_TASK_DATA } from '@/constants';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { NodeCrashedError } from '@/errors/node-crashed.error';
 import { WorkflowCrashedError } from '@/errors/workflow-crashed.error';
 import type { EventMessageTypes as EventMessage } from '@/eventbus/event-message-classes';
@@ -46,7 +46,7 @@ describe('ExecutionRecoveryService', () => {
 
 	afterEach(async () => {
 		jest.restoreAllMocks();
-		await testDb.truncate(['Execution', 'ExecutionData', 'Workflow']);
+		await testDb.truncate(['ExecutionEntity', 'ExecutionData', 'WorkflowEntity']);
 	});
 
 	afterAll(async () => {

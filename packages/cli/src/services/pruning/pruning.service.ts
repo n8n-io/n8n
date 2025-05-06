@@ -1,4 +1,5 @@
 import { ExecutionsConfig } from '@n8n/config';
+import { ExecutionRepository } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { BinaryDataService, InstanceSettings, Logger } from 'n8n-core';
@@ -6,7 +7,6 @@ import { ensureError } from 'n8n-workflow';
 import { strict } from 'node:assert';
 
 import { Time } from '@/constants';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { connectionState as dbConnectionState } from '@/db';
 
 /**

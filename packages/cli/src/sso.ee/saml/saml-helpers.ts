@@ -1,12 +1,11 @@
 import type { SamlAcsDto, SamlPreferences } from '@n8n/api-types';
-import { AuthIdentity } from '@n8n/db';
 import type { User } from '@n8n/db';
+import { AuthIdentity, AuthIdentityRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { randomString } from 'n8n-workflow';
 import type { FlowResult } from 'samlify/types/src/flow';
 
 import config from '@/config';
-import { AuthIdentityRepository } from '@/databases/repositories/auth-identity.repository';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';

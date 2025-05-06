@@ -1,4 +1,5 @@
 import type { IExecutionResponse } from '@n8n/db';
+import type { ExecutionRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { Logger } from 'n8n-core';
 import { mockInstance } from 'n8n-core/test/utils';
@@ -6,7 +7,6 @@ import type { IPinData, ITaskData, IWorkflowExecuteAdditionalData } from 'n8n-wo
 import { Workflow, type IRunExecutionData, type WorkflowExecuteMode } from 'n8n-workflow';
 
 import { CredentialsHelper } from '@/credentials-helper';
-import type { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { ExternalHooks } from '@/external-hooks';
 import type { ManualExecutionService } from '@/manual-execution.service';

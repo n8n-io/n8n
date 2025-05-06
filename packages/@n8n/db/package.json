@@ -26,6 +26,8 @@
     "@n8n/permissions": "workspace:^",
     "@n8n/typeorm": "catalog:",
     "class-validator": "0.14.0",
+    "flatted": "catalog:",
+    "lodash": "catalog:",
     "n8n-core": "workspace:^",
     "n8n-workflow": "workspace:^",
     "nanoid": "catalog:",
@@ -33,6 +35,7 @@
     "xss": "catalog:"
   },
   "devDependencies": {
-    "@n8n/typescript-config": "workspace:*"
+    "@n8n/typescript-config": "workspace:*",
+    "@types/lodash": "catalog:"
   }
 }

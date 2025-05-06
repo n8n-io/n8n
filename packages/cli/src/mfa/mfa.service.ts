@@ -1,8 +1,8 @@
+import { AuthUserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { Cipher } from 'n8n-core';
 import { v4 as uuid } from 'uuid';
 
-import { AuthUserRepository } from '@/databases/repositories/auth-user.repository';
 import { InvalidMfaCodeError } from '@/errors/response-errors/invalid-mfa-code.error';
 import { InvalidMfaRecoveryCodeError } from '@/errors/response-errors/invalid-mfa-recovery-code-error';
 

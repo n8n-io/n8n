@@ -71,7 +71,7 @@ beforeAll(async () => {
 
 afterEach(async () => {
 	await activeWorkflowManager.removeAll();
-	await testDb.truncate(['Workflow', 'Webhook']);
+	await testDb.truncate(['WorkflowEntity', 'WebhookEntity']);
 	jest.clearAllMocks();
 });
 

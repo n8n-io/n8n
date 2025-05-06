@@ -1,4 +1,5 @@
 import { GlobalConfig } from '@n8n/config';
+import { ExecutionRepository } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { ErrorReporter, InstanceSettings, isObjectLiteral, Logger } from 'n8n-core';
@@ -16,7 +17,6 @@ import assert, { strict } from 'node:assert';
 import { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
 import { HIGHEST_SHUTDOWN_PRIORITY, Time } from '@/constants';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { EventService } from '@/events/event.service';
 import { assertNever } from '@/utils';
 

@@ -51,9 +51,9 @@ beforeEach(async () => {
 	await testDb.truncate([
 		'SharedCredentials',
 		'SharedWorkflow',
-		'Workflow',
-		'Credentials',
-		'Execution',
+		'WorkflowEntity',
+		'CredentialsEntity',
+		'ExecutionEntity',
 		'Settings',
 	]);
 

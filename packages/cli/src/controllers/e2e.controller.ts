@@ -1,6 +1,7 @@
 import type { PushMessage } from '@n8n/api-types';
 import type { BooleanLicenseFeature, NumericLicenseFeature } from '@n8n/constants';
 import { LICENSE_FEATURES, LICENSE_QUOTAS, UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
+import { AuthUserRepository } from '@n8n/db';
 import { Patch, Post, RestController } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { Request } from 'express';
@@ -10,7 +11,6 @@ import { v4 as uuid } from 'uuid';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import config from '@/config';
 import { inE2ETests } from '@/constants';
-import { AuthUserRepository } from '@/databases/repositories/auth-user.repository';
 import { SettingsRepository } from '@/databases/repositories/settings.repository';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';

@@ -1,8 +1,7 @@
 import type { CredentialsEntity } from '@n8n/db';
-import { User } from '@n8n/db';
+import { User, CredentialsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { SettingsRepository } from '@/databases/repositories/settings.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';

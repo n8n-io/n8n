@@ -17,7 +17,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['Tag']);
+	await testDb.truncate(['TagEntity']);
 });
 
 describe('POST /tags', () => {

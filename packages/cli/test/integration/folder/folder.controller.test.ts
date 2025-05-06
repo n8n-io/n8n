@@ -33,7 +33,7 @@ let folderRepository: FolderRepository;
 let workflowRepository: WorkflowRepository;
 
 beforeEach(async () => {
-	await testDb.truncate(['Folder', 'SharedWorkflow', 'Tag', 'Project', 'ProjectRelation']);
+	await testDb.truncate(['Folder', 'SharedWorkflow', 'TagEntity', 'Project', 'ProjectRelation']);
 
 	projectRepository = Container.get(ProjectRepository);
 	folderRepository = Container.get(FolderRepository);

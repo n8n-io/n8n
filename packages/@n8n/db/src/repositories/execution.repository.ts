@@ -1,22 +1,4 @@
 import { GlobalConfig } from '@n8n/config';
-import type {
-	CreateExecutionPayload,
-	IExecutionFlattedDb,
-	IExecutionBase,
-	IExecutionResponse,
-	ExecutionSummaries,
-} from '@n8n/db';
-import {
-	separate,
-	SharedWorkflow,
-	WorkflowEntity,
-	AnnotationTagEntity,
-	AnnotationTagMapping,
-	ExecutionData,
-	ExecutionEntity,
-	ExecutionAnnotation,
-	ExecutionMetadata,
-} from '@n8n/db';
 import { Service } from '@n8n/di';
 import type {
 	FindManyOptions,
@@ -49,9 +31,31 @@ import type {
 	IRunExecutionData,
 } from 'n8n-workflow';
 
-import { PostgresLiveRowsRetrievalError } from '@/errors/postgres-live-rows-retrieval.error';
-
 import { ExecutionDataRepository } from './execution-data.repository';
+import {
+	ExecutionEntity,
+	ExecutionMetadata,
+	ExecutionData,
+	ExecutionAnnotation,
+	AnnotationTagMapping,
+	WorkflowEntity,
+	SharedWorkflow,
+	AnnotationTagEntity,
+} from '../entities';
+import type {
+	CreateExecutionPayload,
+	IExecutionFlattedDb,
+	IExecutionBase,
+	IExecutionResponse,
+	ExecutionSummaries,
+} from '../entities/types-db';
+import { separate } from '../utils/separate';
+
+class PostgresLiveRowsRetrievalError extends UnexpectedError {
+	constructor(rows: unknown) {
+		super('Failed to retrieve live execution rows in Postgres', { extra: { rows } });
+	}
+}
 
 export interface IGetExecutionsQueryFilter {
 	id?: FindOperator<string> | string;
@@ -61,6 +65,7 @@ export interface IGetExecutionsQueryFilter {
 	retrySuccessId?: string;
 	status?: ExecutionStatus[];
 	workflowId?: string;
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	waitTill?: FindOperator<any> | boolean;
 	metadata?: Array<{ key: string; value: string }>;
 	startedAfter?: string;
@@ -989,6 +994,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			qb.setParameter('value', value);
 		}
 
+		// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
 		if (annotationTags?.length || vote) {
 			// If there is a filter by one or multiple tags or by vote - we need to join the annotations table
 			qb.innerJoin('execution.annotation', 'annotation');
