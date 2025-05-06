@@ -1,9 +1,12 @@
 {
     "type": "object",
     "properties": {
+        "Keyword": {
+            "type": "string"
+        },
         "row_number": {
             "type": "integer"
         }
     },
-    "version": 1
+    "version": 2
 }
