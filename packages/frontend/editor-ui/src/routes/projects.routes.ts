@@ -183,7 +183,8 @@ export const projectsRoutes: RouteRecordRaw[] = [
 				},
 			},
 			{
-				path: 'credentials',
+				path: 'credentials/:credentialId?',
+				props: true,
 				name: VIEWS.SHARED_CREDENTIALS,
 				components: {
 					default: CredentialsView,

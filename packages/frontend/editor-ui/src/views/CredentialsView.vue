@@ -28,6 +28,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { listenForModalChanges, useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
+import { Project } from '@/types/projects.types';
 import { isCredentialsResource } from '@/utils/typeGuards';
 import { N8nCheckbox } from '@n8n/design-system';
 import { pickBy } from 'lodash-es';
@@ -111,6 +112,10 @@ const projectPermissions = computed(() =>
 	),
 );
 
+const personalProject = computed<Project | null>(() => {
+	return projectsStore.personalProject;
+});
+
 const setRouteCredentialId = (credentialId?: string) => {
 	void router.replace({ params: { credentialId }, query: route.query });
 };
@@ -182,7 +187,11 @@ const initialize = async () => {
 		useSettingsStore().isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Variables];
 
 	const loadPromises = [
-		credentialsStore.fetchAllCredentials(route?.params?.projectId as string | undefined),
+		credentialsStore.fetchAllCredentials(
+			route?.params?.projectId as string | undefined,
+			true,
+			overview.isSharedSubPage,
+		),
 		credentialsStore.fetchCredentialTypes(false),
 		externalSecretsStore.fetchAllSecrets(),
 		nodeTypesStore.loadNodeTypesIfNotLoaded(),
@@ -304,7 +313,13 @@ onMounted(() => {
 			</div>
 		</template>
 		<template #empty>
+			<EmptySharedSectionActionBox
+				v-if="overview.isSharedSubPage && personalProject"
+				:personal-project="personalProject"
+				resource-type="credentials"
+			/>
 			<n8n-action-box
+				v-else
 				data-test-id="empty-resources-list"
 				emoji="👋"
 				:heading="

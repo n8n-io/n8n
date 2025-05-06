@@ -2736,7 +2736,7 @@
 	"projects.header.overview.subtitle": "All the workflows, credentials and executions you have access to",
 	"projects.header.shared.title": "Shared with you",
 	"projects.header.personal.subtitle": "Workflows and credentials owned by you",
-	"projects.header.shared.subtitle": "All the workflows and credentials other users have shared with you",
+	"projects.header.shared.subtitle": "Workflows and credentials other users have shared with you",
 	"projects.header.create.workflow": "Create Workflow",
 	"projects.header.create.credential": "Create Credential",
 	"projects.header.create.folder": "Create Folder",

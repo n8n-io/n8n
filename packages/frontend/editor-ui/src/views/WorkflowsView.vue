@@ -1567,47 +1567,54 @@ const onNameSubmit = async ({
 			</Draggable>
 		</template>
 		<template #empty>
-			<div class="text-center mt-s" data-test-id="list-empty-state">
-				<N8nHeading tag="h2" size="xlarge" class="mb-2xs">
-					{{
-						currentUser.firstName
-							? i18n.baseText('workflows.empty.heading', {
-									interpolate: { name: currentUser.firstName },
-								})
-							: i18n.baseText('workflows.empty.heading.userNotSetup')
-					}}
-				</N8nHeading>
-				<N8nText size="large" color="text-base">
-					{{ emptyListDescription }}
-				</N8nText>
-			</div>
-			<div
-				v-if="!readOnlyEnv && projectPermissions.workflow.create"
-				:class="['text-center', 'mt-2xl', $style.actionsContainer]"
-			>
-				<N8nCard
-					:class="$style.emptyStateCard"
-					hoverable
-					data-test-id="new-workflow-card"
-					@click="addWorkflow"
-				>
-					<N8nIcon :class="$style.emptyStateCardIcon" icon="file" />
-					<N8nText size="large" class="mt-xs" color="text-dark">
-						{{ i18n.baseText('workflows.empty.startFromScratch') }}
+			<EmptySharedSectionActionBox
+				v-if="overview.isSharedSubPage && personalProject"
+				:personal-project="personalProject"
+				resource-type="workflows"
+			/>
+			<div v-else>
+				<div class="text-center mt-s" data-test-id="list-empty-state">
+					<N8nHeading tag="h2" size="xlarge" class="mb-2xs">
+						{{
+							currentUser.firstName
+								? i18n.baseText('workflows.empty.heading', {
+										interpolate: { name: currentUser.firstName },
+									})
+								: i18n.baseText('workflows.empty.heading.userNotSetup')
+						}}
+					</N8nHeading>
+					<N8nText size="large" color="text-base">
+						{{ emptyListDescription }}
 					</N8nText>
-				</N8nCard>
-				<N8nCard
-					v-if="showEasyAIWorkflowCallout"
-					:class="$style.emptyStateCard"
-					hoverable
-					data-test-id="easy-ai-workflow-card"
-					@click="openAIWorkflow('empty')"
+				</div>
+				<div
+					v-if="!readOnlyEnv && projectPermissions.workflow.create"
+					:class="['text-center', 'mt-2xl', $style.actionsContainer]"
 				>
-					<N8nIcon :class="$style.emptyStateCardIcon" icon="robot" />
-					<N8nText size="large" class="mt-xs pl-2xs pr-2xs" color="text-dark">
-						{{ i18n.baseText('workflows.empty.easyAI') }}
-					</N8nText>
-				</N8nCard>
+					<N8nCard
+						:class="$style.emptyStateCard"
+						hoverable
+						data-test-id="new-workflow-card"
+						@click="addWorkflow"
+					>
+						<N8nIcon :class="$style.emptyStateCardIcon" icon="file" />
+						<N8nText size="large" class="mt-xs" color="text-dark">
+							{{ i18n.baseText('workflows.empty.startFromScratch') }}
+						</N8nText>
+					</N8nCard>
+					<N8nCard
+						v-if="showEasyAIWorkflowCallout"
+						:class="$style.emptyStateCard"
+						hoverable
+						data-test-id="easy-ai-workflow-card"
+						@click="openAIWorkflow('empty')"
+					>
+						<N8nIcon :class="$style.emptyStateCardIcon" icon="robot" />
+						<N8nText size="large" class="mt-xs pl-2xs pr-2xs" color="text-dark">
+							{{ i18n.baseText('workflows.empty.easyAI') }}
+						</N8nText>
+					</N8nCard>
+				</div>
 			</div>
 		</template>
 		<template #filters="{ setKeyValue }">

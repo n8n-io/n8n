@@ -15,7 +15,10 @@ export const useOverview = () => {
 	);
 
 	const isSharedSubPage = computed(
-		() => route.name === VIEWS.SHARED_WITH_ME || route.name === VIEWS.SHARED_WORKFLOWS,
+		() =>
+			route.name === VIEWS.SHARED_WITH_ME ||
+			route.name === VIEWS.SHARED_WORKFLOWS ||
+			route.name === VIEWS.SHARED_CREDENTIALS,
 	);
 
 	return reactive({
