@@ -6,6 +6,7 @@ import type {
 } from '@n8n/api-types';
 import { makeRestApiRequest } from '@/utils/apiUtils';
 import type { INodeTranslationHeaders, IRestApiContext } from '@/Interface';
+import type { CommunityNodeAttributes } from '@n8n/api-types';
 import {
 	type INodeListSearchResult,
 	type INodePropertyOptions,
@@ -13,7 +14,6 @@ import {
 	type INodeTypeNameVersion,
 	type NodeParameterValueType,
 	type ResourceMapperFields,
-	type CommunityNodeAttributes,
 	sleep,
 } from 'n8n-workflow';
 import axios from 'axios';

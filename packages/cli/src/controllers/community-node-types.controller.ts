@@ -1,6 +1,6 @@
+import type { CommunityNodeAttributes } from '@n8n/api-types';
 import { Get, RestController } from '@n8n/decorators';
 import { Request } from 'express';
-import { type CommunityNodeAttributes } from 'n8n-workflow';
 
 import { CommunityNodeTypesService } from '@/services/community-node-types.service';
 

@@ -1,7 +1,7 @@
+import type { CommunityNodeData } from '@n8n/api-types';
 import { Container } from '@n8n/di';
 import axios from 'axios';
 import { ErrorReporter, Logger } from 'n8n-core';
-import type { CommunityNodeData } from 'n8n-workflow';
 
 interface ResponseData {
 	data: CommunityNodeData[];

@@ -2901,25 +2901,3 @@ export type IPersonalizationSurveyAnswersV4 = {
 	reportedSource?: string | null;
 	reportedSourceOther?: string | null;
 };
-
-export interface CommunityNodeAttributes {
-	authorGithubUrl: string;
-	authorName: string;
-	checksum: string;
-	description: string;
-	displayName: string;
-	name: string;
-	numberOfStars: number;
-	numberOfDownloads: number;
-	packageName: string;
-	createdAt: string;
-	updatedAt: string;
-	npmVersion: string;
-}
-
-export interface CommunityNodeData {
-	id: number;
-	attributes: CommunityNodeAttributes & {
-		nodeDescription: INodeTypeDescription;
-	};
-}

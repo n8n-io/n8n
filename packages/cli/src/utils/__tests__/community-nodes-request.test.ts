@@ -1,4 +1,4 @@
-import type { CommunityNodeData } from 'n8n-workflow';
+import type { CommunityNodeData } from '@n8n/api-types';
 import nock from 'nock';
 
 import { paginatedRequest } from '../community-nodes-request-utils';
