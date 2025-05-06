@@ -1,7 +1,7 @@
 {
     "type": "object",
     "properties": {
-       "id": {
+        "id": {
             "type": "string"
         },
         "labelListVisibility": {
