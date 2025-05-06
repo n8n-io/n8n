@@ -387,7 +387,7 @@ export class WorkflowsController {
 				userId: req.user.id,
 			});
 			throw new ForbiddenError(
-				"Could not delete the workflow - workflow wasn't found from your projects",
+				'Could not delete the workflow - workflow was not found in your projects',
 			);
 		}
 
@@ -408,7 +408,7 @@ export class WorkflowsController {
 				userId: req.user.id,
 			});
 			throw new ForbiddenError(
-				"Could not archive the workflow - workflow wasn't found from your projects",
+				'Could not archive the workflow - workflow was not found in your projects',
 			);
 		}
 
@@ -429,7 +429,7 @@ export class WorkflowsController {
 				userId: req.user.id,
 			});
 			throw new ForbiddenError(
-				"Could not unarchive the workflow - workflow wasn't found from your projects",
+				'Could not unarchive the workflow - workflow was not found in your projects',
 			);
 		}
 
