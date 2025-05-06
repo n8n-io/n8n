@@ -95,6 +95,7 @@ export class JinaAi implements INodeType {
 								},
 								qs: {
 									q: '={{ $parameter["searchQuery"] }}',
+									page: '={{ $parameter["options"]["pageNumber"] }}',
 								},
 							},
 						},
@@ -296,6 +297,18 @@ export class JinaAi implements INodeType {
 						description: 'Restrict search to specific websites',
 						default: '',
 						placeholder: 'e.g. jina.ai, github.com',
+					},
+					{
+						displayName: 'Page Number',
+						name: 'pageNumber',
+						type: 'number',
+						typeOptions: {
+							minValue: 1,
+							numberPrecision: 0,
+						},
+						description: 'The page number of the search results to retrieve',
+						default: '',
+						placeholder: '1',
 					},
 				],
 			},
