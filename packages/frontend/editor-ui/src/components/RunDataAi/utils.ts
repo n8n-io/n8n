@@ -417,14 +417,16 @@ function findLogEntryToAutoSelectRec(
 
 export function createLogEntries(workflow: Workflow, runData: IRunData) {
 	const runs = Object.entries(runData)
-		.filter(([nodeName]) => workflow.getChildNodes(nodeName, 'ALL_NON_MAIN').length === 0)
 		.flatMap(([nodeName, taskData]) =>
-			taskData.map((task, runIndex) => ({
-				nodeName,
-				task,
-				runIndex,
-				nodeHasMultipleRuns: taskData.length > 1,
-			})),
+			workflow.getChildNodes(nodeName, 'ALL_NON_MAIN').length > 0 ||
+			workflow.getNode(nodeName)?.disabled
+				? [] // skip sub nodes and disabled nodes
+				: taskData.map((task, runIndex) => ({
+						nodeName,
+						task,
+						runIndex,
+						nodeHasMultipleRuns: taskData.length > 1,
+					})),
 		)
 		.sort((a, b) => {
 			if (a.task.executionIndex !== undefined && b.task.executionIndex !== undefined) {

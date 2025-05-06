@@ -1,4 +1,5 @@
 import type { SourceControlledFile } from '@n8n/api-types';
+import type { IWorkflowDb } from '@n8n/db';
 import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
@@ -14,7 +15,6 @@ import { SharedWorkflowRepository } from '@/databases/repositories/shared-workfl
 import { TagRepository } from '@/databases/repositories/tag.repository';
 import { WorkflowTagMappingRepository } from '@/databases/repositories/workflow-tag-mapping.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import type { IWorkflowDb } from '@/types-db';
 import { formatWorkflow } from '@/workflows/workflow.formatter';
 
 import {

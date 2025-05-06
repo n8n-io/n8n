@@ -1,4 +1,5 @@
 import { Service } from '@n8n/di';
+import { Logger } from 'n8n-core';
 
 import { InsightsByPeriodRepository } from './database/repositories/insights-by-period.repository';
 import { InsightsRawRepository } from './database/repositories/insights-raw.repository';
@@ -16,7 +17,10 @@ export class InsightsCompactionService {
 		private readonly insightsByPeriodRepository: InsightsByPeriodRepository,
 		private readonly insightsRawRepository: InsightsRawRepository,
 		private readonly insightsConfig: InsightsConfig,
-	) {}
+		private readonly logger: Logger,
+	) {
+		this.logger = this.logger.scoped('insights');
+	}
 
 	startCompactionTimer() {
 		this.stopCompactionTimer();
@@ -24,12 +28,14 @@ export class InsightsCompactionService {
 			async () => await this.compactInsights(),
 			this.insightsConfig.compactionIntervalMinutes * 60 * 1000,
 		);
+		this.logger.debug('Started compaction timer');
 	}
 
 	stopCompactionTimer() {
 		if (this.compactInsightsTimer !== undefined) {
 			clearInterval(this.compactInsightsTimer);
 			this.compactInsightsTimer = undefined;
+			this.logger.debug('Stopped compaction timer');
 		}
 	}
 

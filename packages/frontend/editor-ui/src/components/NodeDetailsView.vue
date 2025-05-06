@@ -3,7 +3,12 @@ import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type { IRunData, Workflow, NodeConnectionType, IConnectedNode } from 'n8n-workflow';
 import { jsonParse, NodeHelpers, NodeConnectionTypes } from 'n8n-workflow';
-import type { IUpdateInformation, TargetItem } from '@/Interface';
+import type {
+	IRunDataDisplayMode,
+	IUpdateInformation,
+	NodePanelType,
+	TargetItem,
+} from '@/Interface';
 
 import NodeSettings from '@/components/NodeSettings.vue';
 import NDVDraggablePanels from './NDVDraggablePanels.vue';
@@ -26,7 +31,6 @@ import { dataPinningEventBus, ndvEventBus } from '@/event-bus';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
@@ -67,7 +71,6 @@ const { activeNode } = storeToRefs(ndvStore);
 const pinnedData = usePinnedData(activeNode);
 const workflowActivate = useWorkflowActivate();
 const nodeTypesStore = useNodeTypesStore();
-const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 const settingsStore = useSettingsStore();
 const deviceSupport = useDeviceSupport();
@@ -103,14 +106,12 @@ const activeNodeType = computed(() => {
 	return null;
 });
 
-const workflowRunning = computed(() => uiStore.isActionActive.workflowRunning);
-
 const showTriggerWaitingWarning = computed(
 	() =>
 		triggerWaitingWarningEnabled.value &&
 		!!activeNodeType.value &&
 		!activeNodeType.value.group.includes('trigger') &&
-		workflowRunning.value &&
+		workflowsStore.isWorkflowRunning &&
 		workflowsStore.executionWaitingForWebhook,
 );
 
@@ -322,11 +323,11 @@ const featureRequestUrl = computed(() => {
 
 const outputPanelEditMode = computed(() => ndvStore.outputPanelEditMode);
 
-const isWorkflowRunning = computed(() => uiStore.isActionActive.workflowRunning);
-
 const isExecutionWaitingForWebhook = computed(() => workflowsStore.executionWaitingForWebhook);
 
-const blockUi = computed(() => isWorkflowRunning.value || isExecutionWaitingForWebhook.value);
+const blockUi = computed(
+	() => workflowsStore.isWorkflowRunning || isExecutionWaitingForWebhook.value,
+);
 
 const foreignCredentials = computed(() => {
 	const credentials = activeNode.value?.credentials;
@@ -349,6 +350,10 @@ const foreignCredentials = computed(() => {
 });
 
 const hasForeignCredential = computed(() => foreignCredentials.value.length > 0);
+
+const inputPanelDisplayMode = computed(() => ndvStore.inputPanelDisplayMode);
+
+const outputPanelDisplayMode = computed(() => ndvStore.outputPanelDisplayMode);
 
 //methods
 
@@ -461,7 +466,7 @@ const onUnlinkRun = (pane: string) => {
 
 const onNodeExecute = () => {
 	setTimeout(() => {
-		if (!activeNode.value || !workflowRunning.value) {
+		if (!activeNode.value || !workflowsStore.isWorkflowRunning) {
 			return;
 		}
 		triggerWaitingWarningEnabled.value = true;
@@ -619,6 +624,10 @@ const setSelectedInput = (value: string | undefined) => {
 	selectedInput.value = value;
 };
 
+const handleChangeDisplayMode = (pane: NodePanelType, mode: IRunDataDisplayMode) => {
+	ndvStore.setPanelDisplayMode({ pane, mode });
+};
+
 //watchers
 
 watch(
@@ -664,8 +673,8 @@ watch(
 						parameters_pane_position: mainPanelPosition.value,
 						input_first_connector_runs: maxInputRun.value,
 						output_first_connector_runs: maxOutputRun.value,
-						selected_view_inputs: isTriggerNode.value ? 'trigger' : ndvStore.inputPanelDisplayMode,
-						selected_view_outputs: ndvStore.outputPanelDisplayMode,
+						selected_view_inputs: isTriggerNode.value ? 'trigger' : inputPanelDisplayMode.value,
+						selected_view_outputs: outputPanelDisplayMode.value,
 						input_connectors: parentNodes.value.length,
 						output_connectors: outgoingConnections?.main?.length,
 						input_displayed_run_index: inputRun.value,
@@ -790,6 +799,7 @@ onBeforeUnmount(() => {
 						:read-only="readOnly || hasForeignCredential"
 						:is-production-execution-preview="isProductionExecutionPreview"
 						:is-pane-active="isInputPaneActive"
+						:display-mode="inputPanelDisplayMode"
 						@activate-pane="activateInputPane"
 						@link-run="onLinkRunToInput"
 						@unlink-run="() => onUnlinkRun('input')"
@@ -800,6 +810,7 @@ onBeforeUnmount(() => {
 						@table-mounted="onInputTableMounted"
 						@item-hover="onInputItemHover"
 						@search="onSearch"
+						@display-mode-change="handleChangeDisplayMode('input', $event)"
 					/>
 				</template>
 				<template #output>
@@ -814,6 +825,7 @@ onBeforeUnmount(() => {
 						:block-u-i="blockUi && isTriggerNode && !isExecutableTriggerNode"
 						:is-production-execution-preview="isProductionExecutionPreview"
 						:is-pane-active="isOutputPaneActive"
+						:display-mode="outputPanelDisplayMode"
 						@activate-pane="activateOutputPane"
 						@link-run="onLinkRunToOutput"
 						@unlink-run="() => onUnlinkRun('output')"
@@ -822,6 +834,7 @@ onBeforeUnmount(() => {
 						@table-mounted="onOutputTableMounted"
 						@item-hover="onOutputItemHover"
 						@search="onSearch"
+						@display-mode-change="handleChangeDisplayMode('output', $event)"
 					/>
 				</template>
 				<template #main>

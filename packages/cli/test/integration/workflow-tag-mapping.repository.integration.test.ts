@@ -18,7 +18,7 @@ describe('WorkflowTagMappingRepository', () => {
 	});
 
 	afterEach(async () => {
-		await testDb.truncate(['WorkflowTagMapping', 'Workflow', 'Tag']);
+		await testDb.truncate(['WorkflowTagMapping', 'WorkflowEntity', 'TagEntity']);
 	});
 
 	afterAll(async () => {

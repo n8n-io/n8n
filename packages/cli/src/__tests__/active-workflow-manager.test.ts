@@ -1,3 +1,4 @@
+import type { WorkflowEntity } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import type {
@@ -10,7 +11,6 @@ import type {
 import { Workflow } from 'n8n-workflow';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import type { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import type { NodeTypes } from '@/node-types';
 
