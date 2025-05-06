@@ -11,5 +11,12 @@
 		// remove all options below this line
 		"strictPropertyInitialization": false
 	},
-	"include": ["src/**/*.ts"]
+	"include": ["src/**/*.ts"],
+	"references": [
+		{ "path": "../../core/tsconfig.build.json" },
+		{ "path": "../../workflow/tsconfig.build.json" },
+		{ "path": "../config/tsconfig.build.json" },
+		{ "path": "../di/tsconfig.build.json" },
+		{ "path": "../permissions/tsconfig.build.json" }
+	]
 }
