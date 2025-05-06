@@ -38,5 +38,10 @@ describe('hasScope', () => {
 				hasScope(['workflow:read', 'workflow:update'], userScopes, undefined, { mode: 'allOf' }),
 			).toBe(true);
 		});
+
+		test('edge cases', () => {
+			expect(hasScope([], userScopes, undefined, { mode: 'allOf' })).toBe(false);
+			expect(hasScope([], userScopes, undefined, { mode: 'oneOf' })).toBe(false);
+		});
 	});
 });
