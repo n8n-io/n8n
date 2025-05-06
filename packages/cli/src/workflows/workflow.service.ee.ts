@@ -410,7 +410,6 @@ export class EnterpriseWorkflowService {
 		}
 
 		// 5. deactivate all workflows if necessary
-
 		const deactivateWorkflowsPromises = activeWorkflows.map(
 			async (workflowId) => await this.activeWorkflowManager.remove(workflowId),
 		);
