@@ -226,4 +226,37 @@ describe('ExecuteContext', () => {
 			]);
 		});
 	});
+
+	describe('logNodeOutput', () => {
+		it('when in manual mode, should parse JSON', () => {
+			const json = '{"key": "value", "nested": {"foo": "bar"}}';
+			const expectedParsedObject = { key: 'value', nested: { foo: 'bar' } };
+			const numberArg = 42;
+			const stringArg = 'hello world!';
+
+			const manualModeContext = new ExecuteContext(
+				workflow,
+				node,
+				additionalData,
+				'manual',
+				runExecutionData,
+				runIndex,
+				connectionInputData,
+				inputData,
+				executeData,
+				[closeFn],
+				abortSignal,
+			);
+
+			const sendMessageSpy = jest.spyOn(manualModeContext, 'sendMessageToUI');
+
+			manualModeContext.logNodeOutput(json, numberArg, stringArg);
+
+			expect(sendMessageSpy.mock.calls[0][0]).toEqual(expectedParsedObject);
+			expect(sendMessageSpy.mock.calls[0][1]).toBe(numberArg);
+			expect(sendMessageSpy.mock.calls[0][2]).toBe(stringArg);
+
+			sendMessageSpy.mockRestore();
+		});
+	});
 });
