@@ -1,5 +1,10 @@
-import { AuthIdentity, User } from '@n8n/db';
 import type { AuthProviderSyncHistory } from '@n8n/db';
+import {
+	AuthIdentity,
+	User,
+	AuthIdentityRepository,
+	AuthProviderSyncHistoryRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { validate } from 'jsonschema';
 import type { Entry as LdapUser } from 'ldapts';
@@ -7,8 +12,6 @@ import { Filter } from 'ldapts/filters/Filter';
 import { randomString } from 'n8n-workflow';
 
 import config from '@/config';
-import { AuthIdentityRepository } from '@/databases/repositories/auth-identity.repository';
-import { AuthProviderSyncHistoryRepository } from '@/databases/repositories/auth-provider-sync-history.repository';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import * as Db from '@/db';
 import { License } from '@/license';

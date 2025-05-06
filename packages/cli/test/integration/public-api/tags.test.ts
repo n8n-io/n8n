@@ -22,7 +22,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['Tag']);
+	await testDb.truncate(['TagEntity']);
 
 	authOwnerAgent = testServer.publicApiAgentFor(owner);
 	authMemberAgent = testServer.publicApiAgentFor(member);

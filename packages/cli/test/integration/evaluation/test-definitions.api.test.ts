@@ -31,7 +31,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['TestDefinition', 'Workflow', 'AnnotationTag']);
+	await testDb.truncate(['TestDefinition', 'WorkflowEntity', 'AnnotationTagEntity']);
 
 	workflowUnderTest = await createWorkflow({ name: 'workflow-under-test' }, ownerShell);
 	workflowUnderTest2 = await createWorkflow({ name: 'workflow-under-test-2' }, ownerShell);
