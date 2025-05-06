@@ -621,7 +621,9 @@ function onOpenNodeContextMenu(
 	event: MouseEvent,
 	source: 'node-button' | 'node-right-click',
 ) {
-	if (selectedNodeIds.value.length > 1 && selectedNodeIds.value.includes(id)) {
+	if (source === 'node-button') {
+		contextMenu.open(event, { source, nodeId: id });
+	} else if (selectedNodeIds.value.length > 1 && selectedNodeIds.value.includes(id)) {
 		onOpenContextMenu(event, { nodeId: id });
 	} else {
 		onSelectNodes({ ids: [id] });
