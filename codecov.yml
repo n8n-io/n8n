@@ -40,6 +40,7 @@ component_management:
         - packages/@n8n/decorators/**
         - packages/@n8n/constants/**
         - packages/@n8n/backend-common/**
+        - packages/@n8n/integration-test-utils/**
         - packages/@n8n/db/**
         - packages/@n8n/di/**
         - packages/@n8n/imap/**
