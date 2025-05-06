@@ -5,7 +5,7 @@ import { InstalledPackagesRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import axios from 'axios';
 import { exec } from 'child_process';
-import { mkdir as fsMkdir } from 'fs/promises';
+import { mkdir, readFile, writeFile } from 'fs/promises';
 import type { PackageDirectoryLoader } from 'n8n-core';
 import { InstanceSettings, Logger } from 'n8n-core';
 import { UnexpectedError, UserError, type PublicInstalledPackage } from 'n8n-workflow';
@@ -32,9 +32,8 @@ const NPM_COMMON_ARGS = ['--audit=false', '--fund=false'];
 const NPM_INSTALL_ARGS = [
 	'--bin-links=false',
 	'--install-strategy=shallow',
-	'--omit=dev',
-	'--omit=optional',
-	'--omit=peer',
+	'--ignore-scripts=true',
+	'--package-lock=false',
 ];
 
 const {
@@ -135,6 +134,7 @@ export class CommunityPackagesService {
 		return { packageName, scope, version, rawString };
 	}
 
+	/** @deprecated */
 	async executeNpmCommand(command: string, options?: { doNotHandleError?: boolean }) {
 		const downloadFolder = this.instanceSettings.nodesDownloadDir;
 
@@ -148,7 +148,7 @@ export class CommunityPackagesService {
 			},
 		};
 
-		await fsMkdir(downloadFolder, { recursive: true });
+		await mkdir(downloadFolder, { recursive: true });
 
 		try {
 			const commandResult = await asyncExec(command, execOptions);
@@ -370,10 +370,8 @@ export class CommunityPackagesService {
 			await verifyIntegrity(packageName, packageVersion, this.getNpmRegistry(), options.checksum);
 		}
 
-		const command = `npm install ${packageName}@${packageVersion} ${this.getNpmInstallArgs()}`;
-
 		try {
-			await this.executeNpmCommand(command);
+			await this.downloadPackage(packageName, packageVersion);
 		} catch (error) {
 			if (error instanceof Error && error.message === RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_FOUND) {
 				throw new UserError('npm package not found', { extra: { packageName } });
@@ -388,7 +386,7 @@ export class CommunityPackagesService {
 		} catch (error) {
 			// Remove this package since loading it failed
 			try {
-				await this.executeNpmCommand(`npm remove ${packageName}`);
+				await this.deletePackageDirectory(packageName);
 			} catch {}
 			throw new UnexpectedError(RESPONSE_ERROR_MESSAGES.PACKAGE_LOADING_FAILED, { cause: error });
 		}
@@ -416,25 +414,72 @@ export class CommunityPackagesService {
 		} else {
 			// Remove this package since it contains no loadable nodes
 			try {
-				await this.executeNpmCommand(`npm remove ${packageName}`);
+				await this.deletePackageDirectory(packageName);
 			} catch {}
 			throw new UnexpectedError(RESPONSE_ERROR_MESSAGES.PACKAGE_DOES_NOT_CONTAIN_NODES);
 		}
 	}
 
 	async installOrUpdateNpmPackage(packageName: string, packageVersion: string) {
-		await this.executeNpmCommand(
-			`npm install ${packageName}@${packageVersion} ${this.getNpmInstallArgs()}`,
-		);
+		await this.downloadPackage(packageName, packageVersion);
 		await this.loadNodesAndCredentials.loadPackage(packageName);
 		await this.loadNodesAndCredentials.postProcessLoaders();
 		this.logger.info(`Community package installed: ${packageName}`);
 	}
 
 	async removeNpmPackage(packageName: string) {
-		await this.executeNpmCommand(`npm remove ${packageName}`);
+		await this.deletePackageDirectory(packageName);
 		await this.loadNodesAndCredentials.unloadPackage(packageName);
 		await this.loadNodesAndCredentials.postProcessLoaders();
 		this.logger.info(`Community package uninstalled: ${packageName}`);
+	}
+
+	private resolvePackageDirectory(packageName: string) {
+		const downloadFolder = this.instanceSettings.nodesDownloadDir;
+		return `${downloadFolder}/node_modules/${packageName}`;
+	}
+
+	private async downloadPackage(packageName: string, packageVersion: string): Promise<string> {
+		const registry = this.getNpmRegistry();
+		const downloadFolder = this.instanceSettings.nodesDownloadDir;
+		const packageDirectory = this.resolvePackageDirectory(packageName);
+
+		// (Re)create the packageDir
+		await this.deletePackageDirectory(packageName);
+		await mkdir(packageDirectory, { recursive: true });
+
+		// TODO: make sure that this works for scoped packages as well
+		// if (packageName.startsWith('@') && packageName.includes('/')) {}
+
+		const { stdout: tarOutput } = await asyncExec(
+			`npm pack ${packageName}@${packageVersion} --registry=${registry} --quiet`,
+			{ cwd: downloadFolder },
+		);
+		const tarballName = tarOutput.trim();
+
+		try {
+			await asyncExec(`tar -xzf ${tarballName} -C ${packageDirectory} --strip-components=1`, {
+				cwd: downloadFolder,
+			});
+
+			// Strip dev, optional, and peer dependencies before running `npm install`
+			const packageJsonPath = `${packageDirectory}/package.json`;
+			const packageJsonContent = await readFile(packageJsonPath, 'utf-8');
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+			const { devDependencies, peerDependencies, optionalDependencies, ...packageJson } =
+				JSON.parse(packageJsonContent);
+			await writeFile(packageJsonPath, JSON.stringify(packageJson, null, 2), 'utf-8');
+
+			await asyncExec(`npm install ${this.getNpmInstallArgs()}`, { cwd: packageDirectory });
+		} finally {
+			await asyncExec(`rm ${tarballName}`, { cwd: downloadFolder });
+		}
+
+		return packageDirectory;
+	}
+
+	private async deletePackageDirectory(packageName: string) {
+		const packageDirectory = this.resolvePackageDirectory(packageName);
+		await asyncExec(`rm -rf ${packageDirectory}`);
 	}
 }
