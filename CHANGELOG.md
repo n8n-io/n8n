@@ -1,3 +1,12 @@
+## [1.92.1](https://github.com/n8n-io/n8n/compare/n8n@1.92.0...n8n@1.92.1) (2025-05-06)
+
+
+### Bug Fixes
+
+* Revert AI nodes batching ([#15129](https://github.com/n8n-io/n8n/issues/15129)) ([6a8ed36](https://github.com/n8n-io/n8n/commit/6a8ed36ead3167e738148a874bb76b27da3f38cb))
+
+
+
 # [1.92.0](https://github.com/n8n-io/n8n/compare/n8n@1.91.0...n8n@1.92.0) (2025-05-05)
 
 
