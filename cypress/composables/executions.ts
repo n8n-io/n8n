@@ -32,6 +32,10 @@ export function getLogEntries() {
 	return getExecutionPreviewBody().findChildByTestId('logs-overview-body').find('[role=treeitem]');
 }
 
+export function getManualChatMessages() {
+	return getExecutionPreviewBody().find('.chat-messages-list .chat-message');
+}
+
 /**
  * Actions
  */

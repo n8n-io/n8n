@@ -22,7 +22,9 @@
 			"name": "AI Agent"
 		},
 		{
-			"parameters": {},
+			"parameters": {
+				"response": "Hello from **e2e** model!!!"
+			},
 			"type": "@n8n/n8n-nodes-langchain.lmChatE2eTest",
 			"typeVersion": 1,
 			"position": [308, 220],

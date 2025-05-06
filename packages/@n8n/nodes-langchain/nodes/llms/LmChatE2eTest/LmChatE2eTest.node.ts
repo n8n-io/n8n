@@ -1,4 +1,7 @@
-import { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import {
+	BaseChatModel,
+	type BaseChatModelParams,
+} from '@langchain/core/language_models/chat_models';
 import { ChatMessage } from '@langchain/core/messages';
 import type { ChatResult } from '@langchain/core/outputs';
 import {
@@ -12,18 +15,23 @@ import {
 import { N8nLlmTracing } from '../N8nLlmTracing';
 
 class E2eTestModel extends BaseChatModel<{}> {
+	constructor(
+		private response: string,
+		fields: BaseChatModelParams,
+	) {
+		super(fields);
+	}
+
 	_llmType(): string {
 		return 'e2e';
 	}
 
 	async _generate(): Promise<ChatResult> {
-		const message = 'Hello from e2e model!';
-
 		return {
 			generations: [
 				{
-					message: new ChatMessage(message, 'assistant'),
-					text: message,
+					message: new ChatMessage(this.response, 'assistant'),
+					text: this.response,
 				},
 			],
 			llmOutput: {
@@ -67,12 +75,21 @@ export class LmChatE2eTest implements INodeType {
 		outputNames: ['Model'],
 		credentials: [],
 		requestDefaults: {},
-		properties: [],
+		properties: [
+			{
+				displayName: 'Response',
+				name: 'response',
+				type: 'string',
+				default: 'Hello from e2e model!',
+			},
+		],
 	};
 
-	async supplyData(this: ISupplyDataFunctions): Promise<SupplyData> {
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
+		const response = this.getNodeParameter('response', itemIndex) as string;
+
 		return {
-			response: new E2eTestModel({
+			response: new E2eTestModel(response, {
 				callbacks: [new N8nLlmTracing(this)],
 			}),
 		};

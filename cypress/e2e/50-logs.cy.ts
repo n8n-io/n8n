@@ -82,7 +82,29 @@ describe('Logs', () => {
 		chat.sendManualChatMessage('Hi!');
 		workflow.waitForSuccessBannerToAppear();
 		chat.getManualChatMessages().eq(0).should('contain.text', 'Hi!');
-		chat.getManualChatMessages().eq(1).should('contain.text', 'Hello from e2e model!');
+		chat.getManualChatMessages().eq(1).should('contain.text', 'Hello from e2e model!!!');
+		logs.getLogEntries().eq(2).should('have.text', 'E2E Chat Model');
+		logs.getLogEntries().eq(2).click();
+
+		logs.getOutputPanel().should('contain.text', 'Hello from e2e model!!!');
+		logs.setOutputDisplayMode('table');
+		logs.getOutputTbodyCell(1, 0).should('contain.text', 'text:Hello from **e2e** model!!!');
+		logs.getOutputTbodyCell(1, 1).should('contain.text', 'completionTokens:20');
+		logs.setOutputDisplayMode('schema');
+		logs.getOutputPanel().should('contain.text', 'generations[0]');
+		logs.getOutputPanel().should('contain.text', 'Hello from **e2e** model!!!');
+		logs.setOutputDisplayMode('json');
+		logs.getOutputPanel().should('contain.text', '[{"response": {"generations": [');
+
+		logs.toggleInputPanel();
+		logs.getInputPanel().should('contain.text', 'Human: Hi!');
+		logs.setInputDisplayMode('table');
+		logs.getInputTbodyCell(1, 0).should('contain.text', '0:Human: Hi!');
+		logs.setInputDisplayMode('schema');
+		logs.getInputPanel().should('contain.text', 'messages[0]');
+		logs.getInputPanel().should('contain.text', 'Human: Hi!');
+		logs.setInputDisplayMode('json');
+		logs.getInputPanel().should('contain.text', '[{"messages": ["Human: Hi!"],');
 	});
 
 	it('should show input and output data of correct run index and branch', () => {
@@ -149,23 +171,22 @@ describe('Logs', () => {
 
 	it('should show logs for a past execution', () => {
 		workflow.navigateToNewWorkflowPage();
-		workflow.pasteWorkflow(Workflow_if);
+		workflow.pasteWorkflow(Workflow_chat);
 		workflow.clickZoomToFit();
 		logs.openLogsPanel();
-
-		workflow.executeWorkflowAndWait(false);
+		chat.sendManualChatMessage('Hi!');
+		workflow.waitForSuccessBannerToAppear();
 		workflow.openExecutions();
 		executions.toggleAutoRefresh(); // Stop unnecessary background requests
+		executions.getManualChatMessages().eq(0).should('contain.text', 'Hi!');
+		executions.getManualChatMessages().eq(1).should('contain.text', 'Hello from e2e model!!!');
 		executions
 			.getLogsOverviewStatus()
 			.contains(/Success in [\d\.]+m?s/)
 			.should('exist');
-		executions.getLogEntries().should('have.length', 6);
-		executions.getLogEntries().eq(0).should('contain.text', 'Schedule Trigger');
-		executions.getLogEntries().eq(1).should('contain.text', 'Code');
-		executions.getLogEntries().eq(2).should('contain.text', 'Edit Fields');
-		executions.getLogEntries().eq(3).should('contain.text', 'If');
-		executions.getLogEntries().eq(4).should('contain.text', 'Edit Fields');
-		executions.getLogEntries().eq(5).should('contain.text', 'Edit Fields');
+		executions.getLogEntries().should('have.length', 3);
+		executions.getLogEntries().eq(0).should('contain.text', 'When chat message received');
+		executions.getLogEntries().eq(1).should('contain.text', 'AI Agent');
+		executions.getLogEntries().eq(2).should('contain.text', 'E2E Chat Model');
 	});
 });
