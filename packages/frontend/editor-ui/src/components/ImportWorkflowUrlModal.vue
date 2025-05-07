@@ -9,7 +9,9 @@ const i18n = useI18n();
 const uiStore = useUIStore();
 
 const url = ref('');
-const isValid = ref(true);
+const isValid = computed(() => {
+	return url.value ? VALID_WORKFLOW_IMPORT_URL_REGEX.test(url.value) : true;
+});
 
 const closeModal = () => {
 	uiStore.closeModal(IMPORT_WORKFLOW_URL_MODAL_KEY);
