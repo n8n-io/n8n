@@ -1,6 +1,7 @@
+import type { User } from '@n8n/db';
+import type { ExecutionEntity } from '@n8n/db';
+
 import type { ActiveWorkflowManager } from '@/active-workflow-manager';
-import type { ExecutionEntity } from '@/databases/entities/execution-entity';
-import type { User } from '@/databases/entities/user';
 import { Telemetry } from '@/telemetry';
 import { mockInstance } from '@test/mocking';
 import { createTeamProject } from '@test-integration/db/projects';
@@ -50,9 +51,9 @@ beforeEach(async () => {
 	await testDb.truncate([
 		'SharedCredentials',
 		'SharedWorkflow',
-		'Workflow',
-		'Credentials',
-		'Execution',
+		'WorkflowEntity',
+		'CredentialsEntity',
+		'ExecutionEntity',
 		'Settings',
 	]);
 

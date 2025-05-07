@@ -1,4 +1,5 @@
-import type { User } from '@/databases/entities/user';
+import type { User } from '@n8n/db';
+
 import { Telemetry } from '@/telemetry';
 import { mockInstance } from '@test/mocking';
 
@@ -24,7 +25,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['Workflow', 'SharedWorkflow']);
+	await testDb.truncate(['WorkflowEntity', 'SharedWorkflow']);
 });
 
 describe('PUT /:workflowId/transfer', () => {

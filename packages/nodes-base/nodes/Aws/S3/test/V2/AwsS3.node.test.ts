@@ -1,10 +1,7 @@
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import nock from 'nock';
 
-import { getWorkflowFilenames, testWorkflows } from '@test/nodes/Helpers';
-
 import { credentials } from '../../../__tests__/credentials';
-
-const workflows = getWorkflowFilenames(__dirname);
 
 describe('Test S3 V2 Node', () => {
 	describe('File Upload', () => {
@@ -39,6 +36,6 @@ describe('Test S3 V2 Node', () => {
 				.reply(200, { success: true });
 		});
 
-		testWorkflows(workflows, credentials);
+		new NodeTestHarness().setupTests({ credentials });
 	});
 });

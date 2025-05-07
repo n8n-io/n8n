@@ -1,7 +1,11 @@
 import type { GlobalConfig } from '@n8n/config';
+import { InstalledNodes } from '@n8n/db';
+import { InstalledPackages } from '@n8n/db';
+import { InstalledNodesRepository } from '@n8n/db';
+import { InstalledPackagesRepository } from '@n8n/db';
 import axios from 'axios';
 import { exec } from 'child_process';
-import { access as fsAccess, mkdir as fsMkdir } from 'fs/promises';
+import { mkdir as fsMkdir } from 'fs/promises';
 import { mocked } from 'jest-mock';
 import { mock } from 'jest-mock-extended';
 import type { PackageDirectoryLoader } from 'n8n-core';
@@ -13,10 +17,6 @@ import {
 	NPM_PACKAGE_STATUS_GOOD,
 	RESPONSE_ERROR_MESSAGES,
 } from '@/constants';
-import { InstalledNodes } from '@/databases/entities/installed-nodes';
-import { InstalledPackages } from '@/databases/entities/installed-packages';
-import { InstalledNodesRepository } from '@/databases/repositories/installed-nodes.repository';
-import { InstalledPackagesRepository } from '@/databases/repositories/installed-packages.repository';
 import type { CommunityPackages } from '@/interfaces';
 import type { License } from '@/license';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
@@ -128,7 +128,6 @@ describe('CommunityPackagesService', () => {
 
 	describe('executeCommand()', () => {
 		beforeEach(() => {
-			mocked(fsAccess).mockReset();
 			mocked(fsMkdir).mockReset();
 			mocked(exec).mockReset();
 		});
@@ -147,31 +146,17 @@ describe('CommunityPackagesService', () => {
 
 			await communityPackagesService.executeNpmCommand('ls');
 
-			expect(fsAccess).toHaveBeenCalled();
+			expect(fsMkdir).toHaveBeenCalled();
 			expect(exec).toHaveBeenCalled();
-			expect(fsMkdir).toBeCalledTimes(0);
 		});
 
 		test('should make sure folder exists', async () => {
 			mocked(exec).mockImplementation(execMock);
 
 			await communityPackagesService.executeNpmCommand('ls');
-			expect(fsAccess).toHaveBeenCalled();
-			expect(exec).toHaveBeenCalled();
-			expect(fsMkdir).toBeCalledTimes(0);
-		});
 
-		test('should try to create folder if it does not exist', async () => {
-			mocked(exec).mockImplementation(execMock);
-			mocked(fsAccess).mockImplementation(() => {
-				throw new Error('Folder does not exist.');
-			});
-
-			await communityPackagesService.executeNpmCommand('ls');
-
-			expect(fsAccess).toHaveBeenCalled();
-			expect(exec).toHaveBeenCalled();
 			expect(fsMkdir).toHaveBeenCalled();
+			expect(exec).toHaveBeenCalled();
 		});
 
 		test('should throw especial error when package is not found', async () => {
@@ -187,9 +172,8 @@ describe('CommunityPackagesService', () => {
 
 			await expect(call).rejects.toThrowError(RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_FOUND);
 
-			expect(fsAccess).toHaveBeenCalled();
+			expect(fsMkdir).toHaveBeenCalled();
 			expect(exec).toHaveBeenCalled();
-			expect(fsMkdir).toHaveBeenCalledTimes(0);
 		});
 	});
 
@@ -406,7 +390,7 @@ describe('CommunityPackagesService', () => {
 			expect(exec).toHaveBeenCalledTimes(1);
 			expect(exec).toHaveBeenNthCalledWith(
 				1,
-				`npm install ${installedPackage.packageName}@latest --registry=some.random.host`,
+				`npm install ${installedPackage.packageName}@latest --audit=false --fund=false --bin-links=false --install-strategy=shallow --omit=dev --omit=optional --omit=peer --registry=some.random.host`,
 				expect.any(Object),
 				expect.any(Function),
 			);

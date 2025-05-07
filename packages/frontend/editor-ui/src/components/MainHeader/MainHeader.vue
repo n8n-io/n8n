@@ -25,6 +25,7 @@ import { useRoute, useRouter } from 'vue-router';
 
 import { useLocalStorage } from '@vueuse/core';
 import GithubButton from 'vue-github-button';
+import type { FolderShortInfo } from '@/Interface';
 
 const router = useRouter();
 const route = useRoute();
@@ -93,6 +94,17 @@ const isEnterprise = computed(
 const showGitHubButton = computed(
 	() => !isEnterprise.value && !settingsStore.settings.inE2ETests && !githubButtonHidden.value,
 );
+
+const parentFolderForBreadcrumbs = computed<FolderShortInfo | undefined>(() => {
+	if (!workflow.value.parentFolder) {
+		return undefined;
+	}
+	return {
+		id: workflow.value.parentFolder.id,
+		name: workflow.value.parentFolder.name,
+		parentFolder: workflow.value.parentFolder.parentFolderId ?? undefined,
+	};
+});
 
 watch(route, (to, from) => {
 	syncTabsWithRoute(to, from);
@@ -238,6 +250,8 @@ function hideGithubButton() {
 					:scopes="workflow.scopes"
 					:active="workflow.active"
 					:read-only="readOnly"
+					:current-folder="parentFolderForBreadcrumbs"
+					:is-archived="workflow.isArchived"
 				/>
 				<div v-if="showGitHubButton" :class="[$style['github-button'], 'hidden-sm-and-down']">
 					<div :class="$style['github-button-container']">
@@ -288,17 +302,19 @@ function hideGithubButton() {
 .top-menu {
 	position: relative;
 	display: flex;
+	height: var(--navbar--height);
 	align-items: center;
 	font-size: 0.9em;
 	font-weight: var(--font-weight-regular);
-	overflow: auto;
+	overflow-x: auto;
+	overflow-y: hidden;
 }
 
 .github-button {
 	display: flex;
 	align-items: center;
 	align-self: stretch;
-	padding: var(--spacing-5xs) var(--spacing-m) 0;
+	padding: var(--spacing-5xs) var(--spacing-m);
 	background-color: var(--color-background-xlight);
 	border-left: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
 }

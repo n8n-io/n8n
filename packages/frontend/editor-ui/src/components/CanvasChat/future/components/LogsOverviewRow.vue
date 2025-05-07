@@ -147,6 +147,17 @@ function isLastChild(level: number) {
 			:class="$style.compactErrorIcon"
 		/>
 		<N8nIconButton
+			v-if="!isCompact || !props.latestInfo?.deleted"
+			type="secondary"
+			size="medium"
+			icon="edit"
+			style="color: var(--color-text-base)"
+			:disabled="props.latestInfo?.deleted"
+			:class="$style.openNdvButton"
+			:aria-label="locale.baseText('logs.overview.body.open')"
+			@click.stop="emit('openNdv', props.data)"
+		/>
+		<N8nIconButton
 			v-if="
 				!isCompact ||
 				(!props.isReadOnly && !props.latestInfo?.deleted && !props.latestInfo?.disabled)
@@ -159,17 +170,6 @@ function isLastChild(level: number) {
 			:class="[$style.partialExecutionButton, props.data.depth > 0 ? $style.unavailable : '']"
 			:disabled="props.latestInfo?.deleted || props.latestInfo?.disabled"
 			@click.stop="emit('triggerPartialExecution', props.data)"
-		/>
-		<N8nIconButton
-			v-if="!isCompact || !props.latestInfo?.deleted"
-			type="secondary"
-			size="small"
-			icon="external-link-alt"
-			style="color: var(--color-text-base)"
-			:disabled="props.latestInfo?.deleted"
-			:class="$style.openNdvButton"
-			:aria-label="locale.baseText('logs.overview.body.open')"
-			@click.stop="emit('openNdv', props.data)"
 		/>
 		<N8nButton
 			v-if="!isCompact || props.data.children.length > 0"
@@ -328,10 +328,13 @@ function isLastChild(level: number) {
 	flex-shrink: 0;
 	border: none;
 	background: transparent;
-	margin-inline-end: var(--spacing-5xs);
 	color: var(--color-text-base);
 	align-items: center;
 	justify-content: center;
+
+	&:last-child {
+		margin-inline-end: var(--spacing-5xs);
+	}
 
 	&:hover {
 		background: transparent;
