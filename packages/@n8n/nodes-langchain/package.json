@@ -81,7 +81,6 @@
       "dist/nodes/llms/LmChatOpenRouter/LmChatOpenRouter.node.js",
       "dist/nodes/llms/LmChatXAiGrok/LmChatXAiGrok.node.js",
       "dist/nodes/llms/LMChatOpenAi/LmChatOpenAi.node.js",
-      "dist/nodes/llms/LmChatE2eTest/LmChatE2eTest.node.js",
       "dist/nodes/llms/LMOpenAi/LmOpenAi.node.js",
       "dist/nodes/llms/LMCohere/LmCohere.node.js",
       "dist/nodes/llms/LMOllama/LmOllama.node.js",

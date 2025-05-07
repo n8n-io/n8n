@@ -74,7 +74,9 @@ describe('Logs', () => {
 		logs.getLogEntries().eq(2).should('contain.text', 'If');
 	});
 
-	it('should show input and output data in the selected display mode', () => {
+	// TODO: make it possible to test workflows with AI model end-to-end
+	// eslint-disable-next-line n8n-local-rules/no-skipped-tests
+	it.skip('should show input and output data in the selected display mode', () => {
 		workflow.navigateToNewWorkflowPage();
 		workflow.pasteWorkflow(Workflow_chat);
 		workflow.clickZoomToFit();
@@ -169,7 +171,9 @@ describe('Logs', () => {
 		logs.getLogEntries().should('have.length', 6);
 	});
 
-	it('should show logs for a past execution', () => {
+	// TODO: make it possible to test workflows with AI model end-to-end
+	// eslint-disable-next-line n8n-local-rules/no-skipped-tests
+	it.skip('should show logs for a past execution', () => {
 		workflow.navigateToNewWorkflowPage();
 		workflow.pasteWorkflow(Workflow_chat);
 		workflow.clickZoomToFit();
