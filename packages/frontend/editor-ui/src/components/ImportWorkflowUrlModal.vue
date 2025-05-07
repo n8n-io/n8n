@@ -23,7 +23,7 @@ const confirm = () => {
 		return;
 	}
 	nodeViewEventBus.emit('importWorkflowUrl', { url: url.value });
-	uiStore.closeModal(IMPORT_WORKFLOW_URL_MODAL_KEY);
+	closeModal();
 };
 
 watch(url, (newValue) => {
