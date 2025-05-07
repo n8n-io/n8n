@@ -190,16 +190,8 @@ describe('FromAiParametersModal', () => {
 		const toolOption = await findByText('Test Tool');
 		await userEvent.click(toolOption);
 		await nextTick();
-
-		// Debug what's actually rendered
-		debug();
-
-		// Try different ways to find the input
 		const inputs = getByTestId('from-ai-parameters-modal-inputs');
-
-		// Wait for input to appear
 		const inputByName = inputs.querySelector('input[name="query.query"]');
-
 		expect(inputByName).toBeTruthy();
 	});
 

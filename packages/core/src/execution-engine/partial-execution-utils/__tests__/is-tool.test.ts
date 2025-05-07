@@ -50,6 +50,8 @@ describe('isTool', () => {
 				description: '',
 			},
 		});
+		const result = isTool(mockNode, mockNodeTypes);
+		expect(result).toBe(true);
 	});
 
 	it('returns true for a vectore store node in retrieve-as-tool mode', () => {

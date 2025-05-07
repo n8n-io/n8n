@@ -310,11 +310,5 @@ import type { EventBus } from '@n8n/utils/event-bus';
 				<FromAiParametersModal :modal-name="modalName" :data="data" />
 			</template>
 		</ModalRoot>
-
-		<ModalRoot :name="FROM_AI_PARAMETERS_MODAL_KEY">
-			<template #default="{ modalName, data }">
-				<FromAiParametersModal :modal-name="modalName" :data="data" />
-			</template>
-		</ModalRoot>
 	</div>
 </template>

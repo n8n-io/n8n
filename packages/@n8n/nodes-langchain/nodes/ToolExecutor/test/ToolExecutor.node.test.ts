@@ -74,7 +74,6 @@ describe('ToolExecutor Node', () => {
 			const result = await node.execute.call(mockExecuteFunction);
 
 			expect(mockInvoke).toHaveBeenCalledWith('test input');
-			console.log(result);
 			expect(result).toEqual([[{ json: 'test result' }]]);
 		});
 

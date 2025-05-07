@@ -281,7 +281,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			if ('destinationNode' in options) {
 				startRunData.destinationNode = options.destinationNode;
 				const nodeId = workflowsStore.getNodeByName(options.destinationNode as string)?.id;
-				if (nodeId && version === 2) {
+				if (workflow.id && nodeId && version === 2) {
 					const agentRequest = agentRequestStore.generateAgentRequest(workflow.id, nodeId);
 
 					if (agentRequest) {

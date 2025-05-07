@@ -518,6 +518,10 @@ describe('useRunWorkflow({ router })', () => {
 			const mockRunData = { nodeName: [] };
 			const { runWorkflow } = useRunWorkflow({ router });
 			const dataCaptor = captor();
+			const agentRequest = {
+				query: 'query',
+				toolName: 'tool',
+			};
 
 			const workflow = mock<Workflow>({
 				name: 'Test Workflow',
@@ -559,12 +563,31 @@ describe('useRunWorkflow({ router })', () => {
 			vi.mocked(workflowHelpers).getCurrentWorkflow.mockReturnValue(workflow);
 			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue(workflowData);
 			vi.mocked(workflowsStore).getWorkflowRunData = mockRunData;
-
+			vi.mocked(agentRequestStore).generateAgentRequest.mockReturnValue(agentRequest);
 			// ACT
 			const result = await runWorkflow({ destinationNode: 'Test node' });
 
 			// ASSERT
 			expect(agentRequestStore.generateAgentRequest).toHaveBeenCalledWith('WorkflowId', 'Test id');
+			expect(workflowsStore.runWorkflow).toHaveBeenCalledWith({
+				agentRequest: {
+					query: 'query',
+					tool: {
+						name: 'tool',
+					},
+				},
+				destinationNode: 'Test node',
+				dirtyNodeNames: undefined,
+				runData: mockRunData,
+				startNodes: [
+					{
+						name: 'Test node',
+						sourceData: null,
+					},
+				],
+				triggerToStartFrom: undefined,
+				workflowData,
+			});
 			expect(result).toEqual(mockExecutionResponse);
 			expect(workflowsStore.setWorkflowExecutionData).toHaveBeenCalledTimes(1);
 			expect(workflowsStore.setWorkflowExecutionData).toHaveBeenCalledWith(dataCaptor);

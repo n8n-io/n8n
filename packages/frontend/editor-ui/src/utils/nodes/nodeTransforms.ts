@@ -84,7 +84,7 @@ export function doesNodeHaveAllCredentialsFilled(
 }
 
 /**
- * Checks if the given node has any fromAi expressions in its parameters.
+ * Checks if the given node needs agentInput
  */
 export function needsAgentInput(node: Pick<INodeUi, 'parameters' | 'type'>) {
 	const nodeTypesNeedModal = [

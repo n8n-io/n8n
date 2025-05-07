@@ -64,13 +64,11 @@ export class ToolExecutor implements INodeType {
 			if (tool instanceof Tool || tool instanceof StructuredTool) {
 				// Handle LangChain tools
 				try {
-					// If tool has a schema, use it to parse and validate the input
 					if ('schema' in tool && tool.schema) {
 						const convertedQuery = convertObjectBySchema(parsedQuery, tool.schema);
 						const result = await tool.invoke(convertedQuery);
 						resultData.push({ json: result as IDataObject });
 					} else {
-						// Fallback to direct invocation if no schema
 						const result = await tool.invoke(parsedQuery);
 						resultData.push({ json: result as IDataObject });
 					}
@@ -105,10 +103,6 @@ export class ToolExecutor implements INodeType {
 				}
 			}
 		}
-
-		// Log the tool output
-		this.logger.info('Tool execution result:', { resultData });
-
 		return [resultData];
 	}
 }

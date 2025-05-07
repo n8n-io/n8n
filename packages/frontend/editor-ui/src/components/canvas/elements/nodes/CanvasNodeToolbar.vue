@@ -29,7 +29,7 @@ const workflowsStore = useWorkflowsStore();
 const nodeTypesStore = useNodeTypesStore();
 
 const node = computed(() => !!name.value && workflowsStore.getNodeByName(name.value));
-const isAiToolNode = computed(() => !!node.value && nodeTypesStore.isToolNode(node.value.type));
+const isToolNode = computed(() => !!node.value && nodeTypesStore.isToolNode(node.value.type));
 
 const nodeDisabledTitle = computed(() => {
 	return isDisabled.value ? i18n.baseText('node.enable') : i18n.baseText('node.disable');
@@ -49,7 +49,7 @@ const isExecuteNodeVisible = computed(() => {
 		!props.readOnly &&
 		render.value.type === CanvasNodeRenderType.Default &&
 		'configuration' in render.value.options &&
-		(!render.value.options.configuration || isAiToolNode.value)
+		(!render.value.options.configuration || isToolNode.value)
 	);
 });
 
