@@ -30,6 +30,7 @@ export const REGULAR_PROJECT_ADMIN_SCOPES: Scope[] = [
 	'folder:update',
 	'folder:delete',
 	'folder:list',
+	'folder:move',
 ];
 
 export const PERSONAL_PROJECT_OWNER_SCOPES: Scope[] = [
@@ -55,6 +56,7 @@ export const PERSONAL_PROJECT_OWNER_SCOPES: Scope[] = [
 	'folder:update',
 	'folder:delete',
 	'folder:list',
+	'folder:move',
 ];
 
 export const PROJECT_EDITOR_SCOPES: Scope[] = [
