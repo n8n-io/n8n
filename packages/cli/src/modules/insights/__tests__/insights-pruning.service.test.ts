@@ -20,6 +20,20 @@ beforeAll(async () => {
 	await testDb.init();
 });
 
+beforeEach(async () => {
+	await testDb.truncate([
+		'InsightsRaw',
+		'InsightsByPeriod',
+		'InsightsMetadata',
+		'WorkflowEntity',
+		'Project',
+	]);
+});
+
+afterAll(async () => {
+	await testDb.terminate();
+});
+
 describe('InsightsPruningService', () => {
 	let insightsConfig: InsightsConfig;
 	let insightsByPeriodRepository: InsightsByPeriodRepository;
