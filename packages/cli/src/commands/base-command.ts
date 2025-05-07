@@ -1,7 +1,7 @@
 import 'reflect-metadata';
+import { LicenseState } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
-import { ModuleRegistry } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { Command, Errors } from '@oclif/core';
 import {
@@ -30,6 +30,7 @@ import { ExternalHooks } from '@/external-hooks';
 import { ExternalSecretsManager } from '@/external-secrets.ee/external-secrets-manager.ee';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { ModuleRegistry } from '@/modules/module-registry';
 import type { ModulePreInit } from '@/modules/modules.config';
 import { ModulesConfig } from '@/modules/modules.config';
 import { NodeTypes } from '@/node-types';
@@ -68,6 +69,9 @@ export abstract class BaseCommand extends Command {
 	/** Whether to init community packages (if enabled) */
 	protected needsCommunityPackages = false;
 
+	/** Whether to init task runner (if enabled). */
+	protected needsTaskRunner = false;
+
 	protected async loadModules() {
 		for (const moduleName of this.modulesConfig.modules) {
 			let preInitModule: ModulePreInit | undefined;
@@ -92,12 +96,10 @@ export abstract class BaseCommand extends Command {
 			}
 		}
 
-		const moduleRegistry = Container.get(ModuleRegistry);
-
-		moduleRegistry.initializeModules();
+		Container.get(ModuleRegistry).initializeModules();
 
 		if (this.instanceSettings.isMultiMain) {
-			moduleRegistry.registerMultiMainListeners(Container.get(MultiMainSetup));
+			Container.get(MultiMainSetup).registerEventHandlers();
 		}
 	}
 
@@ -157,6 +159,11 @@ export abstract class BaseCommand extends Command {
 			await Container.get(CommunityPackagesService).checkForMissingPackages();
 		}
 
+		if (this.needsTaskRunner && this.globalConfig.taskRunners.enabled) {
+			const { TaskRunnerModule } = await import('@/task-runners/task-runner-module');
+			await Container.get(TaskRunnerModule).start();
+		}
+
 		// TODO: remove this after the cyclic dependencies around the event-bus are resolved
 		Container.get(MessageEventBus);
 
@@ -199,7 +206,7 @@ export abstract class BaseCommand extends Command {
 			);
 		}
 
-		const isLicensed = Container.get(License).isFeatureEnabled(LICENSE_FEATURES.BINARY_DATA_S3);
+		const isLicensed = Container.get(License).isLicensed(LICENSE_FEATURES.BINARY_DATA_S3);
 		if (!isLicensed) {
 			this.logger.error(
 				'No license found for S3 storage. \n Either set `N8N_DEFAULT_BINARY_DATA_MODE` to something else, or upgrade to a license that supports this feature.',
@@ -242,6 +249,8 @@ export abstract class BaseCommand extends Command {
 	async initLicense(): Promise<void> {
 		this.license = Container.get(License);
 		await this.license.init();
+
+		Container.get(LicenseState).setLicenseProvider(this.license);
 
 		const { activationKey } = this.globalConfig.license;
 

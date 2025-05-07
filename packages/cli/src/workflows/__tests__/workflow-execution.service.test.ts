@@ -1,7 +1,7 @@
+import type { User } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { INode, IWorkflowBase, INodeType, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 
-import type { User } from '@/databases/entities/user';
 import type { NodeTypes } from '@/node-types';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import type { WorkflowRunner } from '@/workflow-runner';
@@ -234,6 +234,7 @@ describe('WorkflowExecutionService', () => {
 					id: 'abc',
 					name: 'test',
 					active: false,
+					isArchived: false,
 					pinData: {
 						[pinnedTrigger.name]: [{ json: {} }],
 					},
@@ -301,6 +302,7 @@ describe('WorkflowExecutionService', () => {
 					id: 'abc',
 					name: 'test',
 					active: false,
+					isArchived: false,
 					pinData: {
 						[pinnedTrigger.name]: [{ json: {} }],
 					},

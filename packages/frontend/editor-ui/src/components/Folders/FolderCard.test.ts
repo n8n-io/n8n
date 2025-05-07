@@ -31,7 +31,6 @@ const DEFAULT_FOLDER: FolderResource = {
 	createdAt: new Date().toISOString(),
 	updatedAt: new Date().toISOString(),
 	resourceType: 'folder',
-	readOnly: false,
 	workflowCount: 2,
 	subFolderCount: 2,
 	homeProject: {

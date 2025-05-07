@@ -1,6 +1,5 @@
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import nock from 'nock';
-
-import { testWorkflows } from '@test/nodes/Helpers';
 
 describe('Test DiscordV2, message => send', () => {
 	nock('https://discord.com/api/v10')
@@ -61,6 +60,7 @@ describe('Test DiscordV2, message => send', () => {
 			referenced_message: null,
 		});
 
-	const workflows = ['nodes/Discord/test/v2/node/message/send.workflow.json'];
-	testWorkflows(workflows);
+	new NodeTestHarness().setupTests({
+		workflowFiles: ['send.workflow.json'],
+	});
 });

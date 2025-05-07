@@ -1,44 +1,56 @@
 <script lang="ts" setup>
-import { computed, onMounted, watch, ref, onBeforeUnmount } from 'vue';
-import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
+import Draggable from '@/components/Draggable.vue';
+import { FOLDER_LIST_ITEM_ACTIONS } from '@/components/Folders/constants';
 import type {
-	Resource,
 	BaseFilters,
 	FolderResource,
+	Resource,
+	SortingAndPaginationUpdates,
 	WorkflowResource,
 } from '@/components/layouts/ResourcesListLayout.vue';
+import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
+import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
 import WorkflowCard from '@/components/WorkflowCard.vue';
 import WorkflowTagsDropdown from '@/components/WorkflowTagsDropdown.vue';
-import Draggable from '@/components/Draggable.vue';
+import { useDebounce } from '@/composables/useDebounce';
+import { useDocumentTitle } from '@/composables/useDocumentTitle';
+import type { DragTarget, DropTarget } from '@/composables/useFolders';
+import { useFolders } from '@/composables/useFolders';
+import { useI18n } from '@/composables/useI18n';
+import { useMessage } from '@/composables/useMessage';
+import { useOverview } from '@/composables/useOverview';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { useToast } from '@/composables/useToast';
 import {
+	COMMUNITY_PLUS_ENROLLMENT_MODAL,
+	DEFAULT_WORKFLOW_PAGE_SIZE,
 	EASY_AI_WORKFLOW_EXPERIMENT,
 	EnterpriseEditionFeature,
-	VIEWS,
-	DEFAULT_WORKFLOW_PAGE_SIZE,
 	MODAL_CONFIRM,
-	COMMUNITY_PLUS_ENROLLMENT_MODAL,
+	VIEWS,
 } from '@/constants';
+import InsightsSummary from '@/features/insights/components/InsightsSummary.vue';
+import { useInsightsStore } from '@/features/insights/insights.store';
 import type {
+	FolderListItem,
 	IUser,
 	UserAction,
-	WorkflowListResource,
 	WorkflowListItem,
-	FolderPathItem,
-	FolderListItem,
+	WorkflowListResource,
 } from '@/Interface';
-import { useUIStore } from '@/stores/ui.store';
+import { getResourcePermissions } from '@/permissions';
+import { useFoldersStore } from '@/stores/folders.store';
+import { usePostHog } from '@/stores/posthog.store';
+import { useProjectsStore } from '@/stores/projects.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useUsersStore } from '@/stores/users.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useTagsStore } from '@/stores/tags.store';
-import { useProjectsStore } from '@/stores/projects.store';
-import { getResourcePermissions } from '@/permissions';
-import { usePostHog } from '@/stores/posthog.store';
-import { useDocumentTitle } from '@/composables/useDocumentTitle';
-import { useI18n } from '@/composables/useI18n';
-import { type LocationQueryRaw, useRoute, useRouter } from 'vue-router';
-import { useTelemetry } from '@/composables/useTelemetry';
+import { useUIStore } from '@/stores/ui.store';
+import { useUsageStore } from '@/stores/usage.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { type ProjectSharingData, ProjectTypes } from '@/types/projects.types';
+import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
 import {
 	N8nCard,
 	N8nHeading,
@@ -48,37 +60,26 @@ import {
 	N8nSelect,
 	N8nText,
 } from '@n8n/design-system';
-import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
-import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
-import { useDebounce } from '@/composables/useDebounce';
-import { createEventBus } from '@n8n/utils/event-bus';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
-import { type ProjectSharingData, ProjectTypes } from '@/types/projects.types';
-import { FOLDER_LIST_ITEM_ACTIONS } from '@/components/Folders/constants';
+import { createEventBus } from '@n8n/utils/event-bus';
 import { debounce } from 'lodash-es';
-import { useMessage } from '@/composables/useMessage';
-import { useToast } from '@/composables/useToast';
-import { useFoldersStore } from '@/stores/folders.store';
-import type { DragTarget, DropTarget } from '@/composables/useFolders';
-import { useFolders } from '@/composables/useFolders';
-import { useUsageStore } from '@/stores/usage.store';
-import { useInsightsStore } from '@/features/insights/insights.store';
-import InsightsSummary from '@/features/insights/components/InsightsSummary.vue';
-import { useOverview } from '@/composables/useOverview';
 import { PROJECT_ROOT } from 'n8n-workflow';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { type LocationQueryRaw, useRoute, useRouter } from 'vue-router';
 
 const SEARCH_DEBOUNCE_TIME = 300;
 const FILTERS_DEBOUNCE_TIME = 100;
 
 interface Filters extends BaseFilters {
 	status: string | boolean;
+	showArchived: boolean;
 	tags: string[];
 }
 
 const StatusFilter = {
+	ALL: '',
 	ACTIVE: 'active',
 	DEACTIVATED: 'deactivated',
-	ALL: '',
 };
 
 /** Maps sort values from the ResourcesListLayout component to values expected by workflows endpoint */
@@ -113,12 +114,15 @@ const documentTitle = useDocumentTitle();
 const { callDebounced } = useDebounce();
 const overview = useOverview();
 
-const loading = ref(false);
+// We render component in a loading state until initialization is done
+// This will prevent any additional workflow fetches while initializing
+const loading = ref(true);
 const breadcrumbsLoading = ref(false);
 const filters = ref<Filters>({
 	search: '',
 	homeProject: '',
 	status: StatusFilter.ALL,
+	showArchived: false,
 	tags: [],
 });
 
@@ -135,6 +139,8 @@ const currentSort = ref('updatedAt:desc');
 const currentFolderId = ref<string | null>(null);
 
 const showCardsBadge = ref(false);
+
+const isNameEditEnabled = ref(false);
 
 /**
  * Folder actions
@@ -213,6 +219,12 @@ const currentFolder = computed(() => {
 	return currentFolderId.value ? foldersStore.breadcrumbsCache[currentFolderId.value] : null;
 });
 
+const currentFolderParent = computed(() => {
+	return currentFolder.value?.parentFolder
+		? foldersStore.breadcrumbsCache[currentFolder.value.parentFolder]
+		: null;
+});
+
 const isDragging = computed(() => {
 	return foldersStore.draggedElement !== null;
 });
@@ -271,13 +283,14 @@ const workflowListResources = computed<Resource[]>(() => {
 				workflowCount: resource.workflowCount,
 				subFolderCount: resource.subFolderCount,
 				parentFolder: resource.parentFolder,
-			} as FolderResource;
+			} satisfies FolderResource;
 		} else {
 			return {
 				resourceType: 'workflow',
 				id: resource.id,
 				name: resource.name,
 				active: resource.active ?? false,
+				isArchived: resource.isArchived,
 				updatedAt: resource.updatedAt.toString(),
 				createdAt: resource.createdAt.toString(),
 				homeProject: resource.homeProject,
@@ -286,7 +299,7 @@ const workflowListResources = computed<Resource[]>(() => {
 				readOnly: !getResourcePermissions(resource.scopes).workflow.update,
 				tags: resource.tags,
 				parentFolder: resource.parentFolder,
-			} as WorkflowResource;
+			} satisfies WorkflowResource;
 		}
 	});
 	return resources;
@@ -335,6 +348,7 @@ const hasFilters = computed(() => {
 	return !!(
 		filters.value.search ||
 		filters.value.status !== StatusFilter.ALL ||
+		filters.value.showArchived ||
 		filters.value.tags.length
 	);
 });
@@ -356,7 +370,7 @@ const showRegisteredCommunityCTA = computed(
 watch(
 	() => route.params?.projectId,
 	async () => {
-		await initialize();
+		loading.value = true;
 	},
 );
 
@@ -365,6 +379,7 @@ watch(
 	async (newVal) => {
 		currentFolderId.value = newVal as string;
 		filters.value.search = '';
+		saveFiltersOnQueryString();
 		await fetchWorkflows();
 	},
 );
@@ -374,7 +389,7 @@ sourceControlStore.$onAction(({ name, after }) => {
 	after(async () => await initialize());
 });
 
-const onWorkflowDeleted = async () => {
+const refreshWorkflows = async () => {
 	await Promise.all([
 		fetchWorkflows(),
 		foldersStore.fetchTotalWorkflowsAndFoldersCount(route.params.projectId as string | undefined),
@@ -473,10 +488,13 @@ const fetchWorkflows = async () => {
 	const tags = filters.value.tags.length
 		? filters.value.tags.map((tagId) => tagsStore.tagsById[tagId]?.name)
 		: [];
+
 	const activeFilter =
 		filters.value.status === StatusFilter.ALL
 			? undefined
 			: filters.value.status === StatusFilter.ACTIVE;
+
+	const archivedFilter = filters.value.showArchived ? undefined : false;
 
 	// Only fetch folders if showFolders is enabled and there are not tags or active filter applied
 	const fetchFolders = showFolders.value && !tags.length && activeFilter === undefined;
@@ -490,6 +508,7 @@ const fetchWorkflows = async () => {
 			{
 				name: filters.value.search || undefined,
 				active: activeFilter,
+				isArchived: archivedFilter,
 				tags: tags.length ? tags : undefined,
 				parentFolderId:
 					parentFolder ??
@@ -504,6 +523,7 @@ const fetchWorkflows = async () => {
 				.map((r) => ({ id: r.id, name: r.name, parentFolder: r.parentFolder?.id })),
 		);
 
+		// This is for the case when user lands straight on a folder page
 		const isCurrentFolderCached = foldersStore.breadcrumbsCache[parentFolder ?? ''] !== undefined;
 		const needToFetchFolderPath = parentFolder && !isCurrentFolderCached && routeProjectId;
 
@@ -534,18 +554,6 @@ const fetchWorkflows = async () => {
 };
 
 // Filter and sort methods
-
-const onSortUpdated = async (sort: string) => {
-	currentSort.value =
-		WORKFLOWS_SORT_MAP[sort as keyof typeof WORKFLOWS_SORT_MAP] ?? 'updatedAt:desc';
-	if (currentSort.value !== 'updatedAt:desc') {
-		void router.replace({ query: { ...route.query, sort } });
-	} else {
-		void router.replace({ query: { ...route.query, sort: undefined } });
-	}
-	await fetchWorkflows();
-};
-
 const onFiltersUpdated = async () => {
 	currentPage.value = 1;
 	saveFiltersOnQueryString();
@@ -563,14 +571,23 @@ const onSearchUpdated = async (search: string) => {
 	}
 };
 
-const setCurrentPage = async (page: number) => {
-	currentPage.value = page;
-	await callDebounced(fetchWorkflows, { debounceTime: FILTERS_DEBOUNCE_TIME, trailing: true });
-};
-
-const setPageSize = async (size: number) => {
-	pageSize.value = size;
-	await callDebounced(fetchWorkflows, { debounceTime: FILTERS_DEBOUNCE_TIME, trailing: true });
+const setPaginationAndSort = async (payload: SortingAndPaginationUpdates) => {
+	if (payload.page) {
+		currentPage.value = payload.page;
+	}
+	if (payload.pageSize) {
+		pageSize.value = payload.pageSize;
+	}
+	if (payload.sort) {
+		currentSort.value =
+			WORKFLOWS_SORT_MAP[payload.sort as keyof typeof WORKFLOWS_SORT_MAP] ?? 'updatedAt:desc';
+	}
+	// Don't fetch workflows if we are loading
+	// This will prevent unnecessary API calls when changing sort and pagination from url/local storage
+	// when switching between projects
+	if (!loading.value) {
+		await callDebounced(fetchWorkflows, { debounceTime: FILTERS_DEBOUNCE_TIME, trailing: true });
+	}
 };
 
 const onClickTag = async (tagId: string) => {
@@ -601,6 +618,12 @@ const saveFiltersOnQueryString = () => {
 		delete currentQuery.status;
 	}
 
+	if (filters.value.showArchived) {
+		currentQuery.showArchived = 'true';
+	} else {
+		delete currentQuery.showArchived;
+	}
+
 	if (filters.value.tags.length) {
 		currentQuery.tags = filters.value.tags.join(',');
 	} else {
@@ -620,7 +643,7 @@ const saveFiltersOnQueryString = () => {
 
 const setFiltersFromQueryString = async () => {
 	const newQuery: LocationQueryRaw = { ...route.query };
-	const { tags, status, search, homeProject, sort } = route.query ?? {};
+	const { tags, status, search, homeProject, sort, showArchived } = route.query ?? {};
 
 	// Helper to check if string value is not empty
 	const isValidString = (value: unknown): value is string =>
@@ -665,8 +688,7 @@ const setFiltersFromQueryString = async () => {
 	}
 
 	// Handle status
-	const validStatusValues = ['true', 'false'];
-	if (isValidString(status) && validStatusValues.includes(status)) {
+	if (isValidString(status)) {
 		newQuery.status = status;
 		filters.value.status = status === 'true' ? StatusFilter.ACTIVE : StatusFilter.DEACTIVATED;
 	} else {
@@ -680,6 +702,14 @@ const setFiltersFromQueryString = async () => {
 		currentSort.value = newSort;
 	} else {
 		delete newQuery.sort;
+	}
+
+	if (isValidString(showArchived)) {
+		newQuery.showArchived = showArchived;
+		filters.value.showArchived = showArchived === 'true';
+	} else {
+		delete newQuery.showArchived;
+		filters.value.showArchived = false;
 	}
 
 	void router.replace({ query: newQuery });
@@ -857,63 +887,6 @@ const moveResourceOnDrop = async (draggedResource: DragTarget, dropTarget: DropT
 
 // Breadcrumbs methods
 
-/**
- * Breadcrumbs: Calculate visible and hidden items for both main breadcrumbs and card breadcrumbs
- * We do this here and pass to each component to avoid recalculating in each card
- */
-const visibleBreadcrumbsItems = computed<FolderPathItem[]>(() => {
-	if (!currentFolder.value) return [];
-	const items: FolderPathItem[] = [];
-	const parent = foldersStore.getCachedFolder(currentFolder.value.parentFolder ?? '');
-	if (parent) {
-		items.push({
-			id: parent.id,
-			label: parent.name,
-			href: `/projects/${route.params.projectId}/folders/${parent.id}/workflows`,
-			parentFolder: parent.parentFolder,
-		});
-	}
-	items.push({
-		id: currentFolder.value.id,
-		label: currentFolder.value.name,
-		parentFolder: parent?.parentFolder,
-	});
-	return items;
-});
-
-const hiddenBreadcrumbsItems = computed<FolderPathItem[]>(() => {
-	const lastVisibleParent: FolderPathItem =
-		visibleBreadcrumbsItems.value[visibleBreadcrumbsItems.value.length - 1];
-	if (!lastVisibleParent) return [];
-	const items: FolderPathItem[] = [];
-	// Go through all the parent folders and add them to the hidden items
-	let parentFolder = lastVisibleParent.parentFolder;
-	while (parentFolder) {
-		const parent = foldersStore.getCachedFolder(parentFolder);
-
-		if (!parent) break;
-		items.unshift({
-			id: parent.id,
-			label: parent.name,
-			href: `/projects/${route.params.projectId}/folders/${parent.id}/workflows`,
-			parentFolder: parent.parentFolder,
-		});
-		parentFolder = parent.parentFolder;
-	}
-	return items;
-});
-
-/**
- * Main breadcrumbs items that show on top of the list
- * These show path to the current folder with up to 2 parents visible
- */
-const mainBreadcrumbs = computed(() => {
-	return {
-		visibleItems: visibleBreadcrumbsItems.value,
-		hiddenItems: hiddenBreadcrumbsItems.value,
-	};
-});
-
 const onBreadcrumbItemClick = (item: PathItem) => {
 	if (item.href) {
 		loading.value = true;
@@ -958,8 +931,7 @@ const onBreadCrumbsAction = async (action: string) => {
 			);
 			break;
 		case FOLDER_LIST_ITEM_ACTIONS.RENAME:
-			if (!route.params.folderId) return;
-			await renameFolder(route.params.folderId as string);
+			onNameToggle();
 			break;
 		case FOLDER_LIST_ITEM_ACTIONS.MOVE:
 			if (!currentFolder.value) return;
@@ -1307,6 +1279,69 @@ const onCreateWorkflowClick = () => {
 		},
 	});
 };
+
+const onNameToggle = () => {
+	isNameEditEnabled.value = !isNameEditEnabled.value;
+};
+
+const onNameSubmit = async ({
+	name,
+	onSubmit,
+}: {
+	name: string;
+	onSubmit: (saved: boolean) => void;
+}) => {
+	if (!currentFolder.value || !currentProject.value) return;
+
+	const newName = name.trim();
+	if (!newName) {
+		toast.showMessage({
+			title: i18n.baseText('renameAction.emptyName.title'),
+			message: i18n.baseText('renameAction.emptyName.message'),
+			type: 'error',
+		});
+
+		onSubmit(false);
+		return;
+	}
+
+	if (newName === currentFolder.value.name) {
+		isNameEditEnabled.value = false;
+
+		onSubmit(true);
+		return;
+	}
+
+	const validationResult = folderHelpers.validateFolderName(newName);
+	if (typeof validationResult === 'string') {
+		toast.showMessage({
+			title: i18n.baseText('renameAction.invalidName.title'),
+			message: validationResult,
+			type: 'error',
+		});
+		onSubmit(false);
+		return;
+	} else {
+		try {
+			await foldersStore.renameFolder(currentProject.value?.id, currentFolder.value.id, newName);
+			foldersStore.breadcrumbsCache[currentFolder.value.id].name = newName;
+			toast.showMessage({
+				title: i18n.baseText('folders.rename.success.message', {
+					interpolate: { folderName: newName },
+				}),
+				type: 'success',
+			});
+			telemetry.track('User renamed folder', {
+				folder_id: currentFolder.value.id,
+			});
+			isNameEditEnabled.value = false;
+			onSubmit(true);
+		} catch (error) {
+			toast.showError(error, i18n.baseText('folders.rename.error.title'));
+			onSubmit(false);
+		}
+	}
+};
 </script>
 
 <template>
@@ -1327,18 +1362,17 @@ const onCreateWorkflowClick = () => {
 		:has-empty-state="foldersStore.totalWorkflowCount === 0 && !currentFolderId"
 		@click:add="addWorkflow"
 		@update:search="onSearchUpdated"
-		@update:current-page="setCurrentPage"
-		@update:page-size="setPageSize"
 		@update:filters="onFiltersUpdated"
-		@sort="onSortUpdated"
+		@update:pagination-and-sort="setPaginationAndSort"
 		@mouseleave="folderHelpers.resetDropTarget"
 	>
 		<template #header>
 			<ProjectHeader @create-folder="createFolderInCurrent">
 				<InsightsSummary
 					v-if="overview.isOverviewSubPage && insightsStore.isSummaryEnabled"
-					:loading="insightsStore.summary.isLoading"
-					:summary="insightsStore.summary.state"
+					:loading="insightsStore.weeklySummary.isLoading"
+					:summary="insightsStore.weeklySummary.state"
+					time-range="week"
 				/>
 			</ProjectHeader>
 		</template>
@@ -1416,14 +1450,31 @@ const onCreateWorkflowClick = () => {
 				data-test-id="main-breadcrumbs"
 			>
 				<FolderBreadcrumbs
-					:breadcrumbs="mainBreadcrumbs"
+					:current-folder="currentFolderParent"
 					:actions="mainBreadcrumbsActions"
 					:hidden-items-trigger="isDragging ? 'hover' : 'click'"
+					:current-folder-as-link="true"
 					@item-selected="onBreadcrumbItemClick"
 					@action="onBreadCrumbsAction"
 					@item-drop="onBreadCrumbsItemDrop"
 					@project-drop="moveFolderToProjectRoot"
-				/>
+				>
+					<template #append>
+						<span :class="$style['path-separator']">/</span>
+						<InlineTextEdit
+							data-test-id="breadcrumbs-item-current"
+							:model-value="currentFolder.name"
+							:preview-value="currentFolder.name"
+							:is-edit-enabled="isNameEditEnabled"
+							:max-length="30"
+							:disabled="readOnlyEnv || !hasPermissionToUpdateFolders"
+							:class="{ [$style.name]: true, [$style['pointer-disabled']]: isDragging }"
+							:placeholder="i18n.baseText('folders.rename.placeholder')"
+							@toggle="onNameToggle"
+							@submit="onNameSubmit"
+						/>
+					</template>
+				</FolderBreadcrumbs>
 			</div>
 		</template>
 		<template #item="{ item: data, index }">
@@ -1502,7 +1553,9 @@ const onCreateWorkflowClick = () => {
 					:show-ownership-badge="showCardsBadge"
 					data-target="workflow"
 					@click:tag="onClickTag"
-					@workflow:deleted="onWorkflowDeleted"
+					@workflow:deleted="refreshWorkflows"
+					@workflow:archived="refreshWorkflows"
+					@workflow:unarchived="refreshWorkflows"
 					@workflow:moved="fetchWorkflows"
 					@workflow:duplicated="fetchWorkflows"
 					@workflow:active-toggle="onWorkflowActiveToggle"
@@ -1593,6 +1646,14 @@ const onCreateWorkflowClick = () => {
 					>
 					</N8nOption>
 				</N8nSelect>
+			</div>
+			<div class="mb-s">
+				<N8nCheckbox
+					:label="i18n.baseText('workflows.filters.showArchived')"
+					:model-value="filters.showArchived || false"
+					data-test-id="show-archived-checkbox"
+					@update:model-value="setKeyValue('showArchived', $event)"
+				/>
 			</div>
 		</template>
 		<template #postamble>
@@ -1714,6 +1775,21 @@ const onCreateWorkflowClick = () => {
 		border-color: var(--color-secondary);
 		background-color: var(--color-callout-secondary-background);
 	}
+}
+
+.path-separator {
+	font-size: var(--font-size-xl);
+	color: var(--color-foreground-base);
+	margin: var(--spacing-4xs);
+}
+
+.name {
+	color: $custom-font-dark;
+	font-size: var(--font-size-s);
+}
+
+.pointer-disabled {
+	pointer-events: none;
 }
 </style>
 

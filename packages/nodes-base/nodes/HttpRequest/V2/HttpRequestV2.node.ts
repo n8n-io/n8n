@@ -640,6 +640,7 @@ export class HttpRequestV2 implements INodeType {
 		} catch {}
 
 		let httpBasicAuth;
+		let httpBearerAuth;
 		let httpDigestAuth;
 		let httpHeaderAuth;
 		let httpQueryAuth;
@@ -653,6 +654,10 @@ export class HttpRequestV2 implements INodeType {
 			if (genericAuthType === 'httpBasicAuth') {
 				try {
 					httpBasicAuth = await this.getCredentials('httpBasicAuth');
+				} catch {}
+			} else if (genericAuthType === 'httpBearerAuth') {
+				try {
+					httpBearerAuth = await this.getCredentials('httpBearerAuth');
 				} catch {}
 			} else if (genericAuthType === 'httpDigestAuth') {
 				try {
@@ -958,6 +963,11 @@ export class HttpRequestV2 implements INodeType {
 					pass: httpBasicAuth.password as string,
 				};
 				authDataKeys.auth = ['pass'];
+			}
+			if (httpBearerAuth !== undefined) {
+				requestOptions.headers = requestOptions.headers ?? {};
+				requestOptions.headers.Authorization = `Bearer ${String(httpBearerAuth.token)}`;
+				authDataKeys.headers = ['Authorization'];
 			}
 			if (httpHeaderAuth !== undefined) {
 				requestOptions.headers![httpHeaderAuth.name as string] = httpHeaderAuth.value;

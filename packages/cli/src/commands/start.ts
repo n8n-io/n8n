@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { LICENSE_FEATURES } from '@n8n/constants';
+import { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { Flags } from '@oclif/core';
 import glob from 'fast-glob';
@@ -15,7 +16,6 @@ import { ActiveExecutions } from '@/active-executions';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import config from '@/config';
 import { EDITOR_UI_DIST_DIR } from '@/constants';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { SettingsRepository } from '@/databases/repositories/settings.repository';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
@@ -67,6 +67,8 @@ export class Start extends BaseCommand {
 	protected server = Container.get(Server);
 
 	override needsCommunityPackages = true;
+
+	override needsTaskRunner = true;
 
 	private getEditorUrl = () => Container.get(UrlService).getInstanceBaseUrl();
 
@@ -234,13 +236,6 @@ export class Start extends BaseCommand {
 			await this.generateStaticAssets();
 		}
 
-		const { taskRunners: taskRunnerConfig } = this.globalConfig;
-		if (taskRunnerConfig.enabled) {
-			const { TaskRunnerModule } = await import('@/task-runners/task-runner-module');
-			const taskRunnerModule = Container.get(TaskRunnerModule);
-			await taskRunnerModule.start();
-		}
-
 		await this.loadModules();
 	}
 
@@ -261,18 +256,6 @@ export class Start extends BaseCommand {
 		await subscriber.subscribe('n8n.worker-response');
 
 		this.logger.scoped(['scaling', 'pubsub']).debug('Pubsub setup completed');
-
-		if (this.instanceSettings.isSingleMain) return;
-
-		orchestrationService.multiMainSetup
-			.on('leader-stepdown', async () => {
-				this.license.disableAutoRenewals();
-				await this.activeWorkflowManager.removeAllTriggerAndPollerBasedWorkflows();
-			})
-			.on('leader-takeover', async () => {
-				this.license.enableAutoRenewals();
-				await this.activeWorkflowManager.addAllTriggerAndPollerBasedWorkflows();
-			});
 	}
 
 	async run() {

@@ -13,7 +13,11 @@ import { GRID_SIZE, NODE_SIZE } from '../utils/nodeViewUtils';
 
 export type CanvasLayoutOptions = { id?: string };
 export type CanvasLayoutTarget = 'selection' | 'all';
-export type CanvasLayoutSource = 'keyboard-shortcut' | 'canvas-button' | 'context-menu';
+export type CanvasLayoutSource =
+	| 'keyboard-shortcut'
+	| 'canvas-button'
+	| 'context-menu'
+	| 'import-workflow-data';
 export type CanvasLayoutTargetData = {
 	nodes: Array<GraphNode<CanvasNodeData>>;
 	edges: CanvasConnection[];
