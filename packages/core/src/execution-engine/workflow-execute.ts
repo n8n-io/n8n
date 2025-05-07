@@ -74,9 +74,9 @@ import {
 	isTool,
 	getNextExecutionIndex,
 } from './partial-execution-utils';
+import { TOOL_EXECUTOR_NODE_NAME } from './partial-execution-utils/rewire-graph';
 import { RoutingNode } from './routing-node';
 import { TriggersAndPollers } from './triggers-and-pollers';
-import { TOOL_EXECUTOR_NODE_NAME } from './partial-execution-utils/rewire-graph';
 
 export class WorkflowExecute {
 	private status: ExecutionStatus = 'new';

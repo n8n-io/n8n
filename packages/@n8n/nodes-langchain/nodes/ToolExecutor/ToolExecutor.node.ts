@@ -83,7 +83,6 @@ export class ToolExecutor implements INodeType {
 				for (const toolkitTool of tools) {
 					if (toolkitTool instanceof Tool || toolkitTool instanceof StructuredTool) {
 						if (toolName === toolkitTool.name) {
-							console.log('Virtual Agent executing Tool:', parsedQuery, toolName);
 							try {
 								// If tool has a schema, use it to parse and validate the input
 								if ('schema' in toolkitTool && toolkitTool.schema) {

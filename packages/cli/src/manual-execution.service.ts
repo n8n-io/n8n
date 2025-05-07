@@ -11,7 +11,6 @@ import {
 } from 'n8n-core';
 import { MANUAL_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import type {
-	INodeParameters,
 	IPinData,
 	IRun,
 	IRunExecutionData,
