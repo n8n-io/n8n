@@ -1514,7 +1514,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		const nodeNameTable: {
 			[key: string]: string;
 		} = {};
-		const newNodeNames = new Set<string>(data.nodes.map((node) => node.name));
+		const newNodeNames = new Set<string>((data.nodes ?? []).map((node) => node.name));
 
 		if (!data.nodes) {
 			// No nodes to add
