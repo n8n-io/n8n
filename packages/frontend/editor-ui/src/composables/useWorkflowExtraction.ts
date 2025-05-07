@@ -2,10 +2,13 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import {
 	buildAdjacencyList,
 	parseExtractableSubgraphSelection,
+	type ExtractableSubgraphData,
+	type ExtractableErrorResult,
 	extractReferencesInNodeExpressions,
 	type IConnections,
 	type INode,
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+	NodeHelpers,
 } from 'n8n-workflow';
 import { computed, nextTick } from 'vue';
 import { useToast } from './useToast';
@@ -15,8 +18,10 @@ import { useHistoryStore } from '@/stores/history.store';
 import { useCanvasOperations } from './useCanvasOperations';
 
 import type { IWorkflowDataCreate, IWorkflowDb } from '@/Interface';
+import { useI18n } from '@/composables/useI18n';
 import { PUSH_NODES_OFFSET } from '@/utils/nodeViewUtils';
 import { useUIStore } from '@/stores/ui.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 export const SUBWORKFLOW_TRIGGER_ID = 'c155762a-8fe7-4141-a639-df2372f30060';
 const CANVAS_HISTORY_OPTIONS = {
@@ -31,12 +36,105 @@ export function useWorkflowExtraction() {
 	const router = useRouter();
 	const historyStore = useHistoryStore();
 	const canvasOperations = useCanvasOperations({ router });
+	const i18n = useI18n();
 
 	const adjacencyList = computed(() => buildAdjacencyList(workflowsStore.workflow.connections));
+
+	function showError(message: string) {
+		toast.showMessage({
+			type: 'error',
+			message,
+			title: i18n.baseText('workflowExtraction.error.failure'),
+		});
+	}
 
 	// An array indicates a list of errors, preventing extraction
 	function getExtractableSelection(nodeNameSet: Set<string>) {
 		return parseExtractableSubgraphSelection(nodeNameSet, adjacencyList.value);
+	}
+
+	function extractableErrorResultToMessage(result: ExtractableErrorResult) {
+		switch (result.errorCode) {
+			case 'Input Edge To Non-Root Node':
+				return i18n.baseText('workflowExtraction.error.selectionGraph.inputEdgeToNonRoot', {
+					interpolate: { node: result.node },
+				});
+			case 'Output Edge From Non-Leaf Node':
+				return i18n.baseText('workflowExtraction.error.selectionGraph.outputEdgeFromNonLeaf', {
+					interpolate: { node: result.node },
+				});
+			case 'Multiple Input Nodes':
+				return i18n.baseText('workflowExtraction.error.selectionGraph.multipleInputNodes', {
+					interpolate: { nodes: [...result.nodes].map((x) => `'${x}'`).join(', ') },
+				});
+			case 'Multiple Output Nodes':
+				return i18n.baseText('workflowExtraction.error.selectionGraph.multipleOutputNodes', {
+					interpolate: { node: [...result.nodes].map((x) => `'${x}'`).join(', ') },
+				});
+			case 'No Continuous Path From Root To Leaf In Selection':
+				return i18n.baseText(
+					'workflowExtraction.error.selectionGraph.noContinuousPathFromRootToLeaf',
+					{ interpolate: { start: result.start, end: result.end } },
+				);
+		}
+	}
+
+	function checkExtractableSelectionValidity(
+		selection: ReturnType<typeof getExtractableSelection>,
+	): selection is ExtractableSubgraphData {
+		if (Array.isArray(selection)) {
+			showError(
+				i18n.baseText('workflowExtraction.error.selectionGraph.listHeader', {
+					interpolate: { body: selection.map(extractableErrorResultToMessage).join('\n') },
+				}),
+			);
+			return false;
+		}
+		const { start, end } = selection;
+
+		const isSinglePut = (
+			nodeName: string | undefined,
+			fn: (
+				...x: Parameters<typeof NodeHelpers.getNodeInputs>
+			) => ReturnType<typeof NodeHelpers.getNodeInputs>,
+		) => {
+			if (nodeName) {
+				const node = workflowsStore.getNodeByName(nodeName);
+				if (node) {
+					const nodeType = useNodeTypesStore().getNodeType(node.type, node.typeVersion);
+					if (nodeType) {
+						const outputs = fn(workflowsStore.getCurrentWorkflow(), node, nodeType);
+						if (
+							outputs.filter((x) => (typeof x === 'string' ? x === 'main' : x.type === 'main'))
+								.length > 1
+						) {
+							return false;
+						}
+					}
+				}
+			}
+			return true;
+		};
+
+		if (start && !isSinglePut(start, NodeHelpers.getNodeInputs)) {
+			showError(
+				i18n.baseText('workflowExtraction.error.inputNodeHasMultipleInputBranches', {
+					interpolate: { node: start },
+				}),
+			);
+			return false;
+		}
+		if (end && !isSinglePut(end, NodeHelpers.getNodeOutputs)) {
+			showError(
+				i18n.baseText('workflowExtraction.error.outputNodeHasMultipleOutputBranches', {
+					interpolate: { node: end },
+				}),
+			);
+			return false;
+		}
+
+		// Returns an array of errors
+		return !Array.isArray(selection);
 	}
 
 	async function tryExtractNodesIntoSubworkflow(
@@ -46,14 +144,22 @@ export function useWorkflowExtraction() {
 		const subGraph = nodeIds
 			.map(workflowsStore.getNodeById)
 			.filter((x) => x !== undefined && x !== null);
-		if (subGraph.some((x) => x.type === EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE)) {
+
+		const wfTriggers = subGraph.filter((x) => x.type === EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE);
+		if (wfTriggers.length > 0) {
+			showError(
+				i18n.baseText('workflowExtraction.error.executeWorkflowTriggerSelected', {
+					interpolate: { nodes: wfTriggers.map((x) => `'${x.name}'`).join(', ') },
+				}),
+			);
 			return false;
 		}
 
 		const allNodeNames = workflowsStore.workflow.nodes.map((x) => x.name);
 
 		const selectionResult = getExtractableSelection(new Set(subGraph.map((x) => x.name)));
-		if (Array.isArray(selectionResult)) return false;
+
+		if (!checkExtractableSelectionValidity(selectionResult)) return false;
 
 		const { start, end } = selectionResult;
 		const currentWorkflow = workflowsStore.getCurrentWorkflow();
@@ -143,6 +249,8 @@ export function useWorkflowExtraction() {
 				...startNodeConnection,
 			},
 			settings: { executionOrder: 'v1' },
+			projectId: workflowsStore.workflow.homeProject?.id,
+			parentFolderId: workflowsStore.workflow.parentFolder?.parentFolderId ?? undefined,
 		};
 
 		let createdWorkflow: IWorkflowDb;
@@ -160,7 +268,7 @@ export function useWorkflowExtraction() {
 			window.open(href, '_blank');
 			// window.open(href);
 		} catch (e) {
-			toast.showError(e, 'Sub-workflow Extraction failed');
+			toast.showError(e, i18n.baseText('workflowExtraction.error.subworkflowCreationFailed'));
 			return false;
 		}
 
@@ -239,7 +347,6 @@ export function useWorkflowExtraction() {
 				},
 			)
 		)[0];
-		debugger;
 
 		await nextTick();
 		if (end) {

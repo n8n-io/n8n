@@ -51,7 +51,12 @@ export {
 
 export { ExpressionExtensions } from './Extensions';
 export * as ExpressionParser from './Extensions/ExpressionParser';
-export { parseExtractableSubgraphSelection, buildAdjacencyList } from './Graph/graphUtils';
+export {
+	parseExtractableSubgraphSelection,
+	buildAdjacencyList,
+	ExtractableErrorResult,
+	ExtractableSubgraphData,
+} from './Graph/graphUtils';
 export { NativeMethods } from './NativeMethods';
 export * from './NodeParameters/FilterParameter';
 
