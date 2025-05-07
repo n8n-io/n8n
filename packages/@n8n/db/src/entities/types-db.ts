@@ -269,10 +269,6 @@ export const enum StatisticsNames {
 	dataLoaded = 'data_loaded',
 }
 
-export type CredentialSharingRole = 'credential:owner' | 'credential:user';
-
-export type WorkflowSharingRole = 'workflow:owner' | 'workflow:editor';
-
 export type AuthProviderType = 'ldap' | 'email' | 'saml'; // | 'google';
 
 export type FolderWithWorkflowAndSubFolderCount = Folder & {
