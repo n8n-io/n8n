@@ -1444,7 +1444,7 @@ const onNameSubmit = async ({
 		</template>
 		<template #callout>
 			<N8nCallout
-				v-if="showEasyAIWorkflowCallout && easyAICalloutVisible"
+				v-if="!loading && showEasyAIWorkflowCallout && easyAICalloutVisible"
 				theme="secondary"
 				icon="robot"
 				:class="$style['easy-ai-workflow-callout']"
