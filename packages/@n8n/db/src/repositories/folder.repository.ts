@@ -40,7 +40,6 @@ export class FolderRepository extends Repository<Folder> {
 		query: SelectQueryBuilder<Folder>,
 		select?: Record<string, boolean>,
 	): void {
-		console.log('Applying selections:', select);
 		if (select) {
 			this.applyCustomSelect(query, select);
 		} else {
@@ -88,10 +87,6 @@ export class FolderRepository extends Repository<Folder> {
 		if (select?.project) {
 			query.leftJoin('folder.homeProject', 'homeProject');
 			selections.push(...this.getProjectFields('homeProject'));
-
-			if (!selections.includes('folder.updatedAt')) {
-				selections.push('folder.updatedAt');
-			}
 		}
 
 		if (select?.tags) {
