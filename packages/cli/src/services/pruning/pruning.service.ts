@@ -1,15 +1,13 @@
 import { ExecutionsConfig } from '@n8n/config';
+import { ExecutionRepository } from '@n8n/db';
+import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { BinaryDataService, InstanceSettings, Logger } from 'n8n-core';
 import { ensureError } from 'n8n-workflow';
 import { strict } from 'node:assert';
 
 import { Time } from '@/constants';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { connectionState as dbConnectionState } from '@/db';
-import { OnShutdown } from '@/decorators/on-shutdown';
-
-import { OrchestrationService } from '../orchestration.service';
 
 /**
  * Responsible for deleting old executions from the database and deleting their
@@ -47,7 +45,6 @@ export class PruningService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly binaryDataService: BinaryDataService,
-		private readonly orchestrationService: OrchestrationService,
 		private readonly executionsConfig: ExecutionsConfig,
 	) {
 		this.logger = this.logger.scoped('pruning');
@@ -57,11 +54,6 @@ export class PruningService {
 		strict(this.instanceSettings.instanceRole !== 'unset', 'Instance role is not set');
 
 		if (this.instanceSettings.isLeader) this.startPruning();
-
-		if (this.instanceSettings.isMultiMain) {
-			this.orchestrationService.multiMainSetup.on('leader-takeover', () => this.startPruning());
-			this.orchestrationService.multiMainSetup.on('leader-stepdown', () => this.stopPruning());
-		}
 	}
 
 	get isEnabled() {
@@ -72,18 +64,24 @@ export class PruningService {
 		);
 	}
 
+	@OnLeaderTakeover()
 	startPruning() {
 		if (!this.isEnabled || !dbConnectionState.migrated || this.isShuttingDown) return;
 
 		this.scheduleRollingSoftDeletions();
 		this.scheduleNextHardDeletion();
+
+		this.logger.debug('Started pruning timers');
 	}
 
+	@OnLeaderStepdown()
 	stopPruning() {
 		if (!this.isEnabled) return;
 
 		clearInterval(this.softDeletionInterval);
 		clearTimeout(this.hardDeletionTimeout);
+
+		this.logger.debug('Stopped pruning timers');
 	}
 
 	private scheduleRollingSoftDeletions(rateMs = this.rates.softDeletion) {

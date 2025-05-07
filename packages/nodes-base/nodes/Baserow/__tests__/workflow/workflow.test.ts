@@ -1,3 +1,4 @@
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import nock from 'nock';
 
 import {
@@ -7,18 +8,17 @@ import {
 	getResponse,
 	updateResponse,
 } from './apiResponses';
-import {
-	setup,
-	equalityTest,
-	workflowToTests,
-	getWorkflowFilenames,
-} from '../../../../test/nodes/Helpers';
 
 describe('Baserow > Workflows', () => {
-	describe('Run workflow', () => {
-		const workflows = getWorkflowFilenames(__dirname);
-		const tests = workflowToTests(workflows);
+	const credentials = {
+		baserowApi: {
+			host: 'https://api.baserow.io',
+			username: 'nathan@n8n.io',
+			password: 'fake-password',
+		},
+	};
 
+	describe('Run workflow', () => {
 		beforeAll(() => {
 			const mock = nock('https://api.baserow.io');
 			// Baserow > Get Token
@@ -54,10 +54,6 @@ describe('Baserow > Workflows', () => {
 			mock.delete('/api/database/rows/table/482710/3/').reply(200, {});
 		});
 
-		const nodeTypes = setup(tests);
-
-		for (const testData of tests) {
-			test(testData.description, async () => await equalityTest(testData, nodeTypes));
-		}
+		new NodeTestHarness().setupTests({ credentials });
 	});
 });

@@ -1,5 +1,4 @@
-import type { TagEntity } from '@/databases/entities/tag-entity';
-import type { WorkflowTagMapping } from '@/databases/entities/workflow-tag-mapping';
+import type { TagEntity, WorkflowTagMapping } from '@n8n/db';
 
 export interface ImportResult {
 	workflows: Array<{

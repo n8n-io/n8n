@@ -2,6 +2,7 @@
 	"extends": ["./tsconfig.json", "@n8n/typescript-config/tsconfig.build.json"],
 	"compilerOptions": {
 		"outDir": "dist",
+		"composite": true,
 		"tsBuildInfoFile": "dist/build.tsbuildinfo"
 	},
 	"include": [

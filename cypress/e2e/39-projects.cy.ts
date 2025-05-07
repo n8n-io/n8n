@@ -1,6 +1,10 @@
 import { createResource } from '../composables/create';
 import { setCredentialValues } from '../composables/modals/credential-modal';
-import { clickCreateNewCredential, selectResourceLocatorItem } from '../composables/ndv';
+import {
+	clickCreateNewCredential,
+	getNdvContainer,
+	selectResourceLocatorItem,
+} from '../composables/ndv';
 import * as projects from '../composables/projects';
 import {
 	EDIT_FIELDS_SET_NODE_NAME,
@@ -302,7 +306,8 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			});
 
 			selectResourceLocatorItem('workflowId', 0, 'Create a');
-
+			// Need to wait for the trigger node to auto-open after a delay
+			getNdvContainer().should('be.visible');
 			cy.get('body').type('{esc}');
 			workflowPage.actions.addNodeToCanvas(NOTION_NODE_NAME, true, true);
 			clickCreateNewCredential();
@@ -514,7 +519,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			workflowsPage.getters.workflowCards().should('have.length', 3);
 			workflowsPage.getters
 				.workflowCards()
-				.filter(':has([data-test-id="workflow-card-breadcrumbs"]:contains("Project"))')
+				.filter(':has([data-test-id="card-badge"]:contains("Project"))')
 				.should('have.length', 2);
 			workflowsPage.getters.workflowCardActions('Workflow in Home project').click();
 			workflowsPage.getters.workflowMoveButton().click();

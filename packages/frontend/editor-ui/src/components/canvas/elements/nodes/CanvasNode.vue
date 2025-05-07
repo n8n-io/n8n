@@ -288,6 +288,10 @@ provide(CanvasNodeKey, {
 	eventBus: canvasNodeEventBus,
 });
 
+const hasToolbar = computed(
+	() => ![CanvasNodeRenderType.AddNodes, CanvasNodeRenderType.AIPrompt].includes(renderType.value),
+);
+
 const showToolbar = computed(() => {
 	const target = contextMenu.target.value;
 	return contextMenu.isOpen && target?.source === 'node-button' && target.nodeId === id.value;
@@ -373,7 +377,7 @@ onBeforeUnmount(() => {
 		</template>
 
 		<CanvasNodeToolbar
-			v-else
+			v-else-if="hasToolbar"
 			data-test-id="canvas-node-toolbar"
 			:read-only="readOnly"
 			:class="$style.canvasNodeToolbar"
@@ -390,6 +394,7 @@ onBeforeUnmount(() => {
 			@move="onMove"
 			@update="onUpdate"
 			@open:contextmenu="onOpenContextMenuFromNode"
+			@delete="onDelete"
 		/>
 
 		<CanvasNodeTrigger

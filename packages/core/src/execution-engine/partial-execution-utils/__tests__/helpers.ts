@@ -33,13 +33,15 @@ type TaskData = {
 	nodeConnectionType?: NodeConnectionType;
 };
 
-export function toITaskData(taskData: TaskData[]): ITaskData {
+export function toITaskData(taskData: TaskData[], overrides?: Partial<ITaskData>): ITaskData {
 	const result: ITaskData = {
 		executionStatus: 'success',
 		executionTime: 0,
 		startTime: 0,
+		executionIndex: 0,
 		source: [],
 		data: {},
+		...(overrides ?? {}),
 	};
 
 	// NOTE: Here to make TS happy.

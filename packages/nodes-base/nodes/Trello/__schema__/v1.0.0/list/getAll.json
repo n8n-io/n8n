@@ -4,6 +4,9 @@
         "closed": {
             "type": "boolean"
         },
+        "color": {
+            "type": "null"
+        },
         "datasource": {
             "type": "object",
             "properties": {
@@ -31,5 +34,5 @@
             "type": "null"
         }
     },
-    "version": 1
+    "version": 3
 }

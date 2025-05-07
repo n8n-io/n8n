@@ -233,7 +233,10 @@ export type SchemaNode = {
 	itemsCount: number;
 	schema: Schema;
 	preview: boolean;
+	isNodeExecuted: boolean;
 	hasBinary: boolean;
+	runIndex: number;
+	isDataEmpty: boolean;
 };
 
 export type RenderItem = {
@@ -279,7 +282,15 @@ export type RenderNotice = {
 	message: string;
 };
 
-export type Renders = RenderHeader | RenderItem | RenderIcon | RenderNotice;
+export type RenderEmpty = {
+	id: string;
+	type: 'empty';
+	level: number;
+	nodeName: string;
+	key: 'emptyData' | 'emptySchema' | 'emptySchemaWithBinary' | 'executeSchema';
+};
+
+export type Renders = RenderHeader | RenderItem | RenderIcon | RenderNotice | RenderEmpty;
 
 const icons = {
 	object: 'cube',
@@ -297,12 +308,14 @@ const icons = {
 const getIconBySchemaType = (type: Schema['type']): string => icons[type];
 
 const emptyItem = (
-	message = useI18n().baseText('dataMapping.schemaView.emptyData'),
-): RenderItem => ({
+	key: RenderEmpty['key'],
+	{ nodeName, level }: { nodeName?: string; level?: number } = {},
+): RenderEmpty => ({
 	id: `empty-${window.crypto.randomUUID()}`,
-	icon: '',
-	value: message,
-	type: 'item',
+	type: 'empty',
+	key,
+	level: level ?? 0,
+	nodeName: nodeName ?? '',
 });
 
 const moreFieldsItem = (): RenderIcon => ({
@@ -312,7 +325,7 @@ const moreFieldsItem = (): RenderIcon => ({
 	tooltip: useI18n().baseText('dataMapping.schemaView.previewExtraFields'),
 });
 
-const isDataEmpty = (schema: Schema) => {
+const isEmptySchema = (schema: Schema) => {
 	// Utilize the generated schema instead of looping over the entire data again
 	// The schema for empty data is { type: 'object', value: [] }
 	const isObjectOrArray = schema.type === 'object';
@@ -325,18 +338,8 @@ const prefixTitle = (title: string, prefix?: string) => (prefix ? `${prefix}[${t
 
 export const useFlattenSchema = () => {
 	const closedNodes = ref<Set<string>>(new Set());
-	const headerIds = ref<Set<string>>(new Set());
-	const toggleLeaf = (id: string) => {
-		if (closedNodes.value.has(id)) {
-			closedNodes.value.delete(id);
-		} else {
-			closedNodes.value.add(id);
-		}
-	};
-
 	const toggleNode = (id: string) => {
 		if (closedNodes.value.has(id)) {
-			closedNodes.value = new Set(headerIds.value);
 			closedNodes.value.delete(id);
 		} else {
 			closedNodes.value.add(id);
@@ -361,18 +364,18 @@ export const useFlattenSchema = () => {
 		prefix?: string;
 		level?: number;
 		preview?: boolean;
-	}): RenderItem[] => {
+	}): Renders[] => {
 		// only show empty item for the first level
-		if (isDataEmpty(schema) && depth <= 0) {
-			return [emptyItem()];
+		if (isEmptySchema(schema) && level < 0) {
+			return [emptyItem('emptyData')];
 		}
 
 		const expression = `{{ ${expressionPrefix ? expressionPrefix + schema.path : schema.path.slice(1)} }}`;
 
-		const id = expression;
+		const id = `${nodeName}-${expression}`;
 
 		if (Array.isArray(schema.value)) {
-			const items: RenderItem[] = [];
+			const items: Renders[] = [];
 
 			if (schema.key) {
 				items.push({
@@ -439,8 +442,6 @@ export const useFlattenSchema = () => {
 		nodes: SchemaNode[],
 		additionalInfo: (node: INodeUi) => string,
 	) => {
-		headerIds.value.clear();
-
 		return nodes.reduce<Renders[]>((acc, item) => {
 			acc.push({
 				title: item.node.name,
@@ -453,19 +454,21 @@ export const useFlattenSchema = () => {
 				preview: item.preview,
 			});
 
-			headerIds.value.add(item.node.name);
-
 			if (closedNodes.value.has(item.node.name)) {
 				return acc;
 			}
 
-			if (isDataEmpty(item.schema)) {
-				const message = useI18n().baseText(
-					item.hasBinary
-						? 'dataMapping.schemaView.emptyDataWithBinary'
-						: 'dataMapping.schemaView.emptyData',
-				);
-				acc.push(emptyItem(message));
+			if (isEmptySchema(item.schema)) {
+				if (!item.isNodeExecuted) {
+					acc.push(emptyItem('executeSchema', { level: 1 }));
+					return acc;
+				}
+
+				if (item.isDataEmpty) {
+					acc.push(emptyItem('emptyData', { level: 1 }));
+					return acc;
+				}
+				acc.push(emptyItem(item.hasBinary ? 'emptySchemaWithBinary' : 'emptySchema', { level: 1 }));
 				return acc;
 			}
 
@@ -493,7 +496,6 @@ export const useFlattenSchema = () => {
 
 	return {
 		closedNodes,
-		toggleLeaf,
 		toggleNode,
 		flattenSchema,
 		flattenMultipleSchemas,

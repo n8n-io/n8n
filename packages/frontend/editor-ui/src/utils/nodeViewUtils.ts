@@ -1,4 +1,5 @@
 import {
+	AI_MCP_TOOL_NODE_TYPE,
 	LIST_LIKE_NODE_OPERATIONS,
 	MAIN_HEADER_TABS,
 	NODE_POSITION_CONFLICT_ALLOWLIST,
@@ -312,7 +313,11 @@ export function getGenericHints({
 	const nodeHints: NodeHint[] = [];
 
 	// tools hints
-	if (node?.type.toLocaleLowerCase().includes('tool') && hasNodeRun) {
+	if (
+		node?.type.toLocaleLowerCase().includes('tool') &&
+		node?.type !== AI_MCP_TOOL_NODE_TYPE &&
+		hasNodeRun
+	) {
 		const stringifiedParameters = JSON.stringify(workflowNode.parameters);
 		if (!stringifiedParameters.includes('$fromAI')) {
 			nodeHints.push({
@@ -369,8 +374,7 @@ export function getGenericHints({
 			true,
 			false,
 			node,
-			undefined,
-			false,
+			nodeType,
 		);
 
 		const assignments =

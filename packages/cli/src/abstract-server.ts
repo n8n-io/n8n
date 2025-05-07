@@ -1,4 +1,5 @@
 import { GlobalConfig } from '@n8n/config';
+import { OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import compression from 'compression';
 import express from 'express';
@@ -11,7 +12,6 @@ import { Logger } from 'n8n-core';
 import config from '@/config';
 import { N8N_VERSION, TEMPLATES_DIR, inDevelopment, inTest } from '@/constants';
 import * as Db from '@/db';
-import { OnShutdown } from '@/decorators/on-shutdown';
 import { ExternalHooks } from '@/external-hooks';
 import { rawBodyReader, bodyParser, corsMiddleware } from '@/middlewares';
 import { send, sendErrorResponse } from '@/response-helper';
@@ -53,6 +53,10 @@ export abstract class AbstractServer {
 
 	protected endpointWebhookWaiting: string;
 
+	protected endpointMcp: string;
+
+	protected endpointMcpTest: string;
+
 	protected webhooksEnabled = true;
 
 	protected testWebhooksEnabled = false;
@@ -62,7 +66,7 @@ export abstract class AbstractServer {
 	constructor() {
 		this.app = express();
 		this.app.disable('x-powered-by');
-
+		this.app.set('query parser', 'extended');
 		this.app.engine('handlebars', expressHandlebars({ defaultLayout: false }));
 		this.app.set('view engine', 'handlebars');
 		this.app.set('views', TEMPLATES_DIR);
@@ -73,15 +77,19 @@ export abstract class AbstractServer {
 		this.sslKey = config.getEnv('ssl_key');
 		this.sslCert = config.getEnv('ssl_cert');
 
-		this.restEndpoint = this.globalConfig.endpoints.rest;
+		const { endpoints } = this.globalConfig;
+		this.restEndpoint = endpoints.rest;
 
-		this.endpointForm = this.globalConfig.endpoints.form;
-		this.endpointFormTest = this.globalConfig.endpoints.formTest;
-		this.endpointFormWaiting = this.globalConfig.endpoints.formWaiting;
+		this.endpointForm = endpoints.form;
+		this.endpointFormTest = endpoints.formTest;
+		this.endpointFormWaiting = endpoints.formWaiting;
 
-		this.endpointWebhook = this.globalConfig.endpoints.webhook;
-		this.endpointWebhookTest = this.globalConfig.endpoints.webhookTest;
-		this.endpointWebhookWaiting = this.globalConfig.endpoints.webhookWaiting;
+		this.endpointWebhook = endpoints.webhook;
+		this.endpointWebhookTest = endpoints.webhookTest;
+		this.endpointWebhookWaiting = endpoints.webhookWaiting;
+
+		this.endpointMcp = endpoints.mcp;
+		this.endpointMcpTest = endpoints.mcpTest;
 
 		this.logger = Container.get(Logger);
 	}
@@ -114,14 +122,17 @@ export abstract class AbstractServer {
 
 	private async setupHealthCheck() {
 		// main health check should not care about DB connections
-		this.app.get('/healthz', async (_req, res) => {
+		this.app.get('/healthz', (_req, res) => {
 			res.send({ status: 'ok' });
 		});
 
-		this.app.get('/healthz/readiness', async (_req, res) => {
-			return Db.connectionState.connected && Db.connectionState.migrated
-				? res.status(200).send({ status: 'ok' })
-				: res.status(503).send({ status: 'error' });
+		this.app.get('/healthz/readiness', (_req, res) => {
+			const { connected, migrated } = Db.connectionState;
+			if (connected && migrated) {
+				res.status(200).send({ status: 'ok' });
+			} else {
+				res.status(503).send({ status: 'error' });
+			}
 		});
 
 		const { connectionState } = Db;
@@ -183,30 +194,36 @@ export abstract class AbstractServer {
 		if (this.webhooksEnabled) {
 			const liveWebhooksRequestHandler = createWebhookHandlerFor(Container.get(LiveWebhooks));
 			// Register a handler for live forms
-			this.app.all(`/${this.endpointForm}/:path(*)`, liveWebhooksRequestHandler);
+			this.app.all(`/${this.endpointForm}/*path`, liveWebhooksRequestHandler);
 
 			// Register a handler for live webhooks
-			this.app.all(`/${this.endpointWebhook}/:path(*)`, liveWebhooksRequestHandler);
+			this.app.all(`/${this.endpointWebhook}/*path`, liveWebhooksRequestHandler);
 
 			// Register a handler for waiting forms
 			this.app.all(
-				`/${this.endpointFormWaiting}/:path/:suffix?`,
+				`/${this.endpointFormWaiting}/:path{/:suffix}`,
 				createWebhookHandlerFor(Container.get(WaitingForms)),
 			);
 
 			// Register a handler for waiting webhooks
 			this.app.all(
-				`/${this.endpointWebhookWaiting}/:path/:suffix?`,
+				`/${this.endpointWebhookWaiting}/:path{/:suffix}`,
 				createWebhookHandlerFor(Container.get(WaitingWebhooks)),
 			);
+
+			// Register a handler for live MCP servers
+			this.app.all(`/${this.endpointMcp}/*path`, liveWebhooksRequestHandler);
 		}
 
 		if (this.testWebhooksEnabled) {
 			const testWebhooksRequestHandler = createWebhookHandlerFor(Container.get(TestWebhooks));
 
 			// Register a handler
-			this.app.all(`/${this.endpointFormTest}/:path(*)`, testWebhooksRequestHandler);
-			this.app.all(`/${this.endpointWebhookTest}/:path(*)`, testWebhooksRequestHandler);
+			this.app.all(`/${this.endpointFormTest}/*path`, testWebhooksRequestHandler);
+			this.app.all(`/${this.endpointWebhookTest}/*path`, testWebhooksRequestHandler);
+
+			// Register a handler for test MCP servers
+			this.app.all(`/${this.endpointMcpTest}/*path`, testWebhooksRequestHandler);
 		}
 
 		// Block bots from scanning the application

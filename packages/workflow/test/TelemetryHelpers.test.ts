@@ -94,6 +94,7 @@ describe('generateNodesGraph', () => {
 			id: 'NfV4GV9aQTifSLc2',
 			name: 'My workflow 26',
 			active: false,
+			isArchived: false,
 			nodes: [
 				{
 					parameters: {},
@@ -157,6 +158,7 @@ describe('generateNodesGraph', () => {
 			id: 'NfV4GV9aQTifSLc2',
 			name: 'My workflow 26',
 			active: false,
+			isArchived: false,
 			nodes: [],
 			connections: {},
 			settings: { executionOrder: 'v1' },
@@ -198,6 +200,7 @@ describe('generateNodesGraph', () => {
 			id: 'NfV4GV9aQTifSLc2',
 			name: 'My workflow 26',
 			active: false,
+			isArchived: false,
 			nodes: [
 				{
 					parameters: {},
@@ -263,6 +266,7 @@ describe('generateNodesGraph', () => {
 			id: 'NfV4GV9aQTifSLc2',
 			name: 'My workflow 26',
 			active: false,
+			isArchived: false,
 			nodes: [
 				{
 					parameters: {},
@@ -339,6 +343,7 @@ describe('generateNodesGraph', () => {
 			id: 'NfV4GV9aQTifSLc2',
 			name: 'My workflow 26',
 			active: false,
+			isArchived: false,
 			nodes: [
 				{
 					parameters: {},
@@ -1512,6 +1517,7 @@ function generateTestWorkflowAndRunData(): { workflow: Partial<IWorkflowBase>; r
 				hints: [],
 				startTime: 1727793340927,
 				executionTime: 0,
+				executionIndex: 0,
 				source: [],
 				executionStatus: 'success',
 				data: { main: [[{ json: {}, pairedItem: { item: 0 } }]] },
@@ -1522,6 +1528,7 @@ function generateTestWorkflowAndRunData(): { workflow: Partial<IWorkflowBase>; r
 				hints: [],
 				startTime: 1727793340928,
 				executionTime: 0,
+				executionIndex: 1,
 				source: [{ previousNode: 'Execute Workflow Trigger' }],
 				executionStatus: 'success',
 				data: {
@@ -1555,6 +1562,7 @@ function generateTestWorkflowAndRunData(): { workflow: Partial<IWorkflowBase>; r
 				hints: [],
 				startTime: 1727793340928,
 				executionTime: 1,
+				executionIndex: 2,
 				source: [{ previousNode: 'DebugHelper' }],
 				executionStatus: 'success',
 				data: {
@@ -1586,6 +1594,7 @@ function generateTestWorkflowAndRunData(): { workflow: Partial<IWorkflowBase>; r
 				hints: [],
 				startTime: 1727793340931,
 				executionTime: 0,
+				executionIndex: 3,
 				source: [{ previousNode: 'Execute Workflow Trigger' }],
 				executionStatus: 'success',
 				data: { main: [[{ json: {}, pairedItem: { item: 0 } }]] },
@@ -1596,6 +1605,7 @@ function generateTestWorkflowAndRunData(): { workflow: Partial<IWorkflowBase>; r
 				hints: [],
 				startTime: 1727793340929,
 				executionTime: 1,
+				executionIndex: 4,
 				source: [{ previousNode: 'Edit Fields' }],
 				executionStatus: 'success',
 				data: {
@@ -1630,6 +1640,7 @@ function generateTestWorkflowAndRunData(): { workflow: Partial<IWorkflowBase>; r
 				hints: [],
 				startTime: 1727793340931,
 				executionTime: 0,
+				executionIndex: 5,
 				source: [{ previousNode: 'Edit Fields', previousNodeRun: 1 }],
 				executionStatus: 'success',
 				data: { main: [[], [], [{ json: {}, pairedItem: { item: 0 } }], []] },
@@ -1640,6 +1651,7 @@ function generateTestWorkflowAndRunData(): { workflow: Partial<IWorkflowBase>; r
 				hints: [],
 				startTime: 1727793340930,
 				executionTime: 0,
+				executionIndex: 6,
 				source: [{ previousNode: 'Switch', previousNodeOutput: 2 }],
 				executionStatus: 'success',
 				data: {
@@ -1656,6 +1668,7 @@ function generateTestWorkflowAndRunData(): { workflow: Partial<IWorkflowBase>; r
 				hints: [],
 				startTime: 1727793340932,
 				executionTime: 1,
+				executionIndex: 7,
 				source: [{ previousNode: 'Switch', previousNodeOutput: 2, previousNodeRun: 1 }],
 				executionStatus: 'success',
 				data: { main: [[{ json: {}, pairedItem: { item: 0 } }]] },
