@@ -336,7 +336,7 @@ export class JinaAi implements INodeType {
 							},
 							{
 								name: 'JSON',
-								value: 'json',
+								value: '',
 							},
 							{
 								name: 'Markdown',
