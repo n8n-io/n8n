@@ -28,7 +28,7 @@ if (dbType === 'sqlite' && !globalConfig.database.sqlite.poolSize) {
 } else {
 	// Initialize DB once for all tests
 	beforeAll(async () => {
-		await testDb.init(['insights']);
+		await testDb.init();
 	});
 
 	beforeEach(async () => {
@@ -36,7 +36,7 @@ if (dbType === 'sqlite' && !globalConfig.database.sqlite.poolSize) {
 			'InsightsRaw',
 			'InsightsByPeriod',
 			'InsightsMetadata',
-			'Workflow',
+			'WorkflowEntity',
 			'Project',
 		]);
 	});

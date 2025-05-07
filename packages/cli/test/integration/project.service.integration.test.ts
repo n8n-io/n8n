@@ -22,7 +22,13 @@ describe('ProjectService', () => {
 	});
 
 	afterEach(async () => {
-		await testDb.truncate(['User', 'Project', 'ProjectRelation', 'Workflow', 'SharedWorkflow']);
+		await testDb.truncate([
+			'User',
+			'Project',
+			'ProjectRelation',
+			'WorkflowEntity',
+			'SharedWorkflow',
+		]);
 	});
 
 	afterAll(async () => {
