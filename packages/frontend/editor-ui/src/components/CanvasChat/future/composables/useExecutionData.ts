@@ -54,20 +54,18 @@ export function useExecutionData() {
 			return [];
 		}
 
-		return createLogEntries({
-			depth: 0,
-			workflow: workflow.value,
-			executionId: execData.value.id,
-			data: execData.value.data,
-			workflows: Object.fromEntries(
+		return createLogEntries(
+			workflow.value,
+			execData.value,
+			Object.fromEntries(
 				Object.entries(workflowsStore.workflowsById).flatMap(([id, data]) =>
 					data.nodes
 						? [[id, new Workflow({ ...data, nodeTypes: workflowsStore.getNodeTypes() })]]
 						: [],
 				),
 			),
-			subWorkflowData: subWorkflowExecData.value,
-		});
+			subWorkflowExecData.value,
+		);
 	});
 	const updateInterval = computed(() => ((entries.value?.length ?? 0) > 10 ? 300 : 0));
 	const runStatusList = computed(() =>

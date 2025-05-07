@@ -540,7 +540,7 @@ describe(getTreeNodeDataV2, () => {
 				createTestTaskData({ startTime: 1740528000004 }),
 			],
 		});
-		const logTree = getTreeNodeDataV2('A', ctx.data.resultData.runData.A[0], ctx);
+		const logTree = getTreeNodeDataV2('A', ctx.data.resultData.runData.A[0], undefined, ctx);
 
 		expect(logTree.length).toBe(1);
 
@@ -633,6 +633,7 @@ describe(getTreeNodeDataV2, () => {
 		const rootNode1Tree = getTreeNodeDataV2(
 			'RootNode1',
 			runData.RootNode1[0],
+			undefined,
 			createTestLogsBuildContext(workflow, runData),
 		);
 		expect(rootNode1Tree[0].children.length).toBe(1);
@@ -643,6 +644,7 @@ describe(getTreeNodeDataV2, () => {
 		const rootNode2Tree = getTreeNodeDataV2(
 			'RootNode2',
 			runData.RootNode2[0],
+			undefined,
 			createTestLogsBuildContext(workflow, runData),
 		);
 		expect(rootNode2Tree[0].children.length).toBe(1);
@@ -688,8 +690,8 @@ describe(getTreeNodeDataV2, () => {
 		const rootNode1Tree = getTreeNodeDataV2(
 			'RootNode',
 			runData.RootNode[0],
-			createTestLogsBuildContext(workflow, runData),
 			0,
+			createTestLogsBuildContext(workflow, runData),
 		);
 		expect(rootNode1Tree[0].children.length).toBe(1);
 		expect(rootNode1Tree[0].children[0].node.name).toBe('SubNode');
@@ -699,8 +701,8 @@ describe(getTreeNodeDataV2, () => {
 		const rootNode2Tree = getTreeNodeDataV2(
 			'RootNode',
 			runData.RootNode[1],
-			createTestLogsBuildContext(workflow, runData),
 			1,
+			createTestLogsBuildContext(workflow, runData),
 		);
 		expect(rootNode2Tree[0].children.length).toBe(1);
 		expect(rootNode2Tree[0].children[0].node.name).toBe('SubNode');
@@ -739,6 +741,7 @@ describe(getTreeNodeDataV2, () => {
 		const rootNodeTree = getTreeNodeDataV2(
 			'RootNode',
 			runData.RootNode[0],
+			undefined,
 			createTestLogsBuildContext(workflow, runData),
 		);
 		expect(rootNodeTree[0].children.length).toBe(1);
@@ -778,6 +781,7 @@ describe(getTreeNodeDataV2, () => {
 		const rootNodeTree = getTreeNodeDataV2(
 			'RootNode',
 			runData.RootNode[0],
+			undefined,
 			createTestLogsBuildContext(workflow, runData),
 		);
 		expect(rootNodeTree[0].children.length).toBe(1);
@@ -854,6 +858,7 @@ describe(getTreeNodeDataV2, () => {
 		const rootNode1Tree = getTreeNodeDataV2(
 			'RootNode1',
 			runData.RootNode1[0],
+			undefined,
 			createTestLogsBuildContext(workflow, runData),
 		);
 		expect(rootNode1Tree[0].children.length).toBe(1);
@@ -867,6 +872,7 @@ describe(getTreeNodeDataV2, () => {
 		const rootNode2Tree = getTreeNodeDataV2(
 			'RootNode2',
 			runData.RootNode2[0],
+			undefined,
 			createTestLogsBuildContext(workflow, runData),
 		);
 		expect(rootNode2Tree[0].children.length).toBe(1);
@@ -952,6 +958,7 @@ describe(getTreeNodeDataV2, () => {
 		const rootNode1Tree = getTreeNodeDataV2(
 			'RootNode1',
 			runData.RootNode1[0],
+			undefined,
 			createTestLogsBuildContext(workflow, runData),
 		);
 		expect(rootNode1Tree[0].children.length).toBe(1);
@@ -964,6 +971,7 @@ describe(getTreeNodeDataV2, () => {
 		const rootNode2Tree = getTreeNodeDataV2(
 			'RootNode2',
 			runData.RootNode2[0],
+			undefined,
 			createTestLogsBuildContext(workflow, runData),
 		);
 
@@ -979,12 +987,10 @@ describe(getTreeNodeDataV2, () => {
 
 describe(findSelectedLogEntry, () => {
 	function find(state: LogEntrySelection, response: IExecutionResponse) {
-		const ctx = createTestLogsBuildContext(
-			createTestWorkflowObject(response.workflowData),
-			response.data?.resultData.runData ?? {},
+		return findSelectedLogEntry(
+			state,
+			createLogEntries(createTestWorkflowObject(response.workflowData), response),
 		);
-
-		return findSelectedLogEntry(state, createLogEntries(ctx));
 	}
 
 	describe('when log is not manually selected', () => {
@@ -1173,32 +1179,38 @@ describe(createLogEntries, () => {
 				C: { main: [[{ node: 'B', type: NodeConnectionTypes.Main, index: 0 }]] },
 			},
 		});
-		const ctx = createTestLogsBuildContext(workflow, {
-			A: [
-				createTestTaskData({
-					startTime: Date.parse('2025-04-04T00:00:00.000Z'),
-					executionIndex: 0,
-				}),
-			],
-			B: [
-				createTestTaskData({
-					startTime: Date.parse('2025-04-04T00:00:01.000Z'),
-					executionIndex: 1,
-				}),
-			],
-			C: [
-				createTestTaskData({
-					startTime: Date.parse('2025-04-04T00:00:02.000Z'),
-					executionIndex: 3,
-				}),
-				createTestTaskData({
-					startTime: Date.parse('2025-04-04T00:00:03.000Z'),
-					executionIndex: 2,
-				}),
-			],
+		const execution = createTestWorkflowExecutionResponse({
+			data: {
+				resultData: {
+					runData: {
+						A: [
+							createTestTaskData({
+								startTime: Date.parse('2025-04-04T00:00:00.000Z'),
+								executionIndex: 0,
+							}),
+						],
+						B: [
+							createTestTaskData({
+								startTime: Date.parse('2025-04-04T00:00:01.000Z'),
+								executionIndex: 1,
+							}),
+						],
+						C: [
+							createTestTaskData({
+								startTime: Date.parse('2025-04-04T00:00:02.000Z'),
+								executionIndex: 3,
+							}),
+							createTestTaskData({
+								startTime: Date.parse('2025-04-04T00:00:03.000Z'),
+								executionIndex: 2,
+							}),
+						],
+					},
+				},
+			},
 		});
 
-		expect(createLogEntries(ctx)).toEqual([
+		expect(createLogEntries(workflow, execution)).toEqual([
 			expect.objectContaining({ node: expect.objectContaining({ name: 'A' }), runIndex: 0 }),
 			expect.objectContaining({ node: expect.objectContaining({ name: 'B' }), runIndex: 0 }),
 			expect.objectContaining({ node: expect.objectContaining({ name: 'C' }), runIndex: 1 }),
@@ -1222,32 +1234,42 @@ describe(createLogEntries, () => {
 				},
 			},
 		});
-		const ctx = createTestLogsBuildContext(workflow, {
-			A: [
-				createTestTaskData({
-					startTime: Date.parse('2025-04-04T00:00:00.000Z'),
-					executionIndex: 0,
-				}),
-			],
-			B: [
-				createTestTaskData({
-					startTime: Date.parse('2025-04-04T00:00:01.000Z'),
-					executionIndex: 1,
-				}),
-			],
-			C: [
-				createTestTaskData({
-					startTime: Date.parse('2025-04-04T00:00:02.000Z'),
-					executionIndex: 3,
-				}),
-				createTestTaskData({
-					startTime: Date.parse('2025-04-04T00:00:03.000Z'),
-					executionIndex: 2,
-				}),
-			],
-		});
 
-		expect(createLogEntries(ctx)).toEqual([
+		expect(
+			createLogEntries(
+				workflow,
+				createTestWorkflowExecutionResponse({
+					data: {
+						resultData: {
+							runData: {
+								A: [
+									createTestTaskData({
+										startTime: Date.parse('2025-04-04T00:00:00.000Z'),
+										executionIndex: 0,
+									}),
+								],
+								B: [
+									createTestTaskData({
+										startTime: Date.parse('2025-04-04T00:00:01.000Z'),
+										executionIndex: 1,
+									}),
+								],
+								C: [
+									createTestTaskData({
+										startTime: Date.parse('2025-04-04T00:00:02.000Z'),
+										executionIndex: 3,
+									}),
+									createTestTaskData({
+										startTime: Date.parse('2025-04-04T00:00:03.000Z'),
+										executionIndex: 2,
+									}),
+								],
+							},
+						},
+					},
+				}),
+			),
+		).toEqual([
 			expect.objectContaining({ node: expect.objectContaining({ name: 'A' }), runIndex: 0 }),
 			expect.objectContaining({
 				node: expect.objectContaining({ name: 'B' }),
@@ -1267,14 +1289,90 @@ describe(createLogEntries, () => {
 				A: { main: [[{ node: 'B', type: NodeConnectionTypes.Main, index: 0 }]] },
 			},
 		});
-		const ctx = createTestLogsBuildContext(workflow, {
-			A: [createTestTaskData()],
-			B: [createTestTaskData()],
+		const response = createTestWorkflowExecutionResponse({
+			data: {
+				resultData: {
+					runData: {
+						A: [createTestTaskData()],
+						B: [createTestTaskData()],
+					},
+				},
+			},
 		});
 
-		expect(createLogEntries(ctx)).toEqual([
+		expect(createLogEntries(workflow, response)).toEqual([
 			expect.objectContaining({ node: expect.objectContaining({ name: 'A' }) }),
 		]);
+	});
+
+	it('should include runs of a sub execution', () => {
+		const workflow = createTestWorkflowObject({
+			id: 'root-workflow-id',
+			nodes: [createTestNode({ name: 'A' }), createTestNode({ name: 'B' })],
+			connections: {
+				A: { main: [[{ node: 'B', type: NodeConnectionTypes.Main, index: 0 }]] },
+			},
+		});
+		const subWorkflow = createTestWorkflowObject({
+			id: 'sub-workflow-id',
+			nodes: [createTestNode({ name: 'C' })],
+		});
+		const rootExecutionData = createTestWorkflowExecutionResponse({
+			id: 'root-exec-id',
+			data: {
+				resultData: {
+					runData: {
+						A: [createTestTaskData()],
+						B: [
+							createTestTaskData({
+								metadata: {
+									subExecution: { workflowId: 'sub-workflow-id', executionId: 'sub-exec-id' },
+								},
+							}),
+						],
+					},
+				},
+			},
+		});
+		const subExecutionData = {
+			resultData: { runData: { C: [createTestTaskData(), createTestTaskData()] } },
+		};
+		const logs = createLogEntries(
+			workflow,
+			rootExecutionData,
+			{ 'sub-workflow-id': subWorkflow },
+			{ 'sub-exec-id': subExecutionData },
+		);
+
+		expect(logs).toHaveLength(2);
+
+		expect(logs[0].node.name).toBe('A');
+		expect(logs[0].depth).toBe(0);
+		expect(logs[0].workflow).toBe(workflow);
+		expect(logs[0].execution).toBe(rootExecutionData.data);
+		expect(logs[0].executionId).toBe('root-exec-id');
+		expect(logs[0].children).toHaveLength(0);
+
+		expect(logs[1].node.name).toBe('B');
+		expect(logs[1].depth).toBe(0);
+		expect(logs[1].workflow).toBe(workflow);
+		expect(logs[1].execution).toBe(rootExecutionData.data);
+		expect(logs[1].executionId).toBe('root-exec-id');
+		expect(logs[1].children).toHaveLength(2);
+
+		expect(logs[1].children[0].node.name).toBe('C');
+		expect(logs[1].children[0].depth).toBe(1);
+		expect(logs[1].children[0].workflow).toBe(subWorkflow);
+		expect(logs[1].children[0].execution).toBe(subExecutionData);
+		expect(logs[1].children[0].executionId).toBe('sub-exec-id');
+		expect(logs[1].children[0].children).toHaveLength(0);
+
+		expect(logs[1].children[1].node.name).toBe('C');
+		expect(logs[1].children[1].depth).toBe(1);
+		expect(logs[1].children[1].workflow).toBe(subWorkflow);
+		expect(logs[1].children[1].execution).toBe(subExecutionData);
+		expect(logs[1].children[1].executionId).toBe('sub-exec-id');
+		expect(logs[1].children[1].children).toHaveLength(0);
 	});
 });
 

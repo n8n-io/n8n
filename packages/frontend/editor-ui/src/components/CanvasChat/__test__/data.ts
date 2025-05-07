@@ -15,6 +15,7 @@ export function createTestLogsBuildContext(
 	runData: IRunData,
 ): LogTreeBuildContext {
 	return {
+		parent: undefined,
 		workflow,
 		workflows: {},
 		subWorkflowData: {},

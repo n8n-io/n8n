@@ -1,4 +1,9 @@
-import { type LlmTokenUsageData, type IAiDataContent, type INodeUi } from '@/Interface';
+import {
+	type LlmTokenUsageData,
+	type IAiDataContent,
+	type INodeUi,
+	type IExecutionResponse,
+} from '@/Interface';
 import {
 	AGENT_LANGCHAIN_NODE_TYPE,
 	type INodeExecutionData,
@@ -316,8 +321,8 @@ function createNodeV2(
 export function getTreeNodeDataV2(
 	nodeName: string,
 	runData: ITaskData,
+	runIndex: number | undefined,
 	context: LogTreeBuildContext,
-	runIndex?: number,
 ): LogEntry[] {
 	const node = context.workflow.getNode(nodeName);
 
@@ -340,7 +345,7 @@ function getChildNodes(
 			return [];
 		}
 
-		return createLogEntries({
+		return createLogEntriesRec({
 			...context,
 			parent: treeNode,
 			depth: context.depth + 1,
@@ -440,7 +445,24 @@ function findLogEntryToAutoSelectRec(subTree: LogEntry[], depth: number): LogEnt
 	return depth === 0 ? subTree[0] : undefined;
 }
 
-export function createLogEntries(context: LogTreeBuildContext) {
+export function createLogEntries(
+	workflow: Workflow,
+	response: IExecutionResponse,
+	workflows: Record<string, Workflow> = {},
+	subWorkflowData: Record<string, IRunExecutionData> = {},
+) {
+	return createLogEntriesRec({
+		parent: undefined,
+		depth: 0,
+		executionId: response.id,
+		workflow,
+		workflows,
+		data: response.data ?? { resultData: { runData: {} } },
+		subWorkflowData,
+	});
+}
+
+function createLogEntriesRec(context: LogTreeBuildContext) {
 	const runs = Object.entries(context.data.resultData.runData)
 		.flatMap(([nodeName, taskData]) =>
 			context.workflow.getChildNodes(nodeName, 'ALL_NON_MAIN').length > 0 ||
@@ -463,13 +485,9 @@ export function createLogEntries(context: LogTreeBuildContext) {
 				: a.task.startTime - b.task.startTime;
 		});
 
-	return runs.flatMap(({ nodeName, runIndex, task }) => {
-		if (context.workflow.getParentNodes(nodeName, 'ALL_NON_MAIN').length > 0) {
-			return getTreeNodeDataV2(nodeName, task, context, undefined);
-		}
-
-		return getTreeNodeDataV2(nodeName, task, context, runIndex);
-	});
+	return runs.flatMap(({ nodeName, runIndex, task, nodeHasMultipleRuns }) =>
+		getTreeNodeDataV2(nodeName, task, nodeHasMultipleRuns ? runIndex : undefined, context),
+	);
 }
 
 export function includesLogEntry(log: LogEntry, logs: LogEntry[]): boolean {
