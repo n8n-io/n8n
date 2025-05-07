@@ -935,7 +935,7 @@ export class Workflow {
 		const result: Array<[IConnection, IConnection]> = [];
 
 		for (const source of sources) {
-			for (const type of Object.keys(this.connectionsBySourceNode[source])) {
+			for (const type of Object.keys(this.connectionsBySourceNode[source] ?? {})) {
 				for (const sourceIndex of Object.keys(this.connectionsBySourceNode[source][type])) {
 					for (const connectionIndex of Object.keys(
 						this.connectionsBySourceNode[source][type][parseInt(sourceIndex, 10)] || [],

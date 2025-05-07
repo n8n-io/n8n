@@ -6,7 +6,6 @@ import {
 	type IConnections,
 	type INode,
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
-	deepCopy,
 } from 'n8n-workflow';
 import { computed, nextTick } from 'vue';
 import { useToast } from './useToast';
@@ -20,7 +19,6 @@ import { PUSH_NODES_OFFSET } from '@/utils/nodeViewUtils';
 import { useUIStore } from '@/stores/ui.store';
 
 export const SUBWORKFLOW_TRIGGER_ID = 'c155762a-8fe7-4141-a639-df2372f30060';
-const EXECUTE_WORKFLOW_NODE_ID = 'e531785e-a493-4401-a6df-5da262cb4442';
 const CANVAS_HISTORY_OPTIONS = {
 	trackBulk: false,
 	trackHistory: true,
@@ -107,7 +105,7 @@ export function useWorkflowExtraction() {
 							[
 								{
 									node: startNodeTarget.name,
-									type: 'main',
+									type: 'main', // todo check if this is valid
 									index: 0,
 								},
 							],
@@ -179,16 +177,24 @@ export function useWorkflowExtraction() {
 		const endAvg = avgPosition(afterEndNodes);
 
 		const executeWorkflowPosition: [number, number] =
-			beforeStartNodes.length && afterEndNodes.length
-				? [startAvg[0] + (endAvg[0] - startAvg[0]) / 2, startAvg[1] + (endAvg[1] - startAvg[1]) / 2]
-				: beforeStartNodes.length
-					? [startAvg[0] + PUSH_NODES_OFFSET, startAvg[1]]
-					: afterEndNodes.length
-						? [endAvg[0] - PUSH_NODES_OFFSET, endAvg[0]]
-						: avgPosition(nodes);
+			subGraph.length === 1
+				? subGraph[0].position
+				: beforeStartNodes.length && afterEndNodes.length
+					? [
+							startAvg[0] + (endAvg[0] - startAvg[0]) / 2,
+							startAvg[1] + (endAvg[1] - startAvg[1]) / 2,
+						]
+					: beforeStartNodes.length
+						? [startAvg[0] + PUSH_NODES_OFFSET, startAvg[1]]
+						: afterEndNodes.length
+							? [endAvg[0] - PUSH_NODES_OFFSET, endAvg[0]]
+							: avgPosition(nodes);
 
 		historyStore.startRecordingUndo();
-
+		// In most cases we're about to move the selection anyway
+		// One remarkable edge case is when a single node is right-clicked on
+		// This allows extraction, but does not necessarily select the node
+		uiStore.resetLastInteractedWith();
 		const executeWorkflowNode = (
 			await canvasOperations.addNodes(
 				[
@@ -223,44 +229,34 @@ export function useWorkflowExtraction() {
 						type: 'n8n-nodes-base.executeWorkflow',
 						typeVersion: 1.2,
 						position: executeWorkflowPosition,
-						id: EXECUTE_WORKFLOW_NODE_ID,
 						name: executeWorkflowNodeName,
 					},
 				],
-				CANVAS_HISTORY_OPTIONS,
+				{
+					...CANVAS_HISTORY_OPTIONS,
+					position: executeWorkflowPosition,
+					forcePosition: true,
+				},
 			)
 		)[0];
+		debugger;
 
-		// if (start) {
-		// 	for (const beforeStartNode of beforeStartNodes) {
-		// 		for (const nodeConnection of Object.values(connections[beforeStartNode.name] ?? {})) {
-		// 			for (const nodeInputConnections of nodeConnection) {
-		// 				if (!nodeInputConnections) continue;
-
-		// 				for (const connection of Object.values(nodeInputConnections ?? {})) {
-		// 					if (connection.node === start) {
-		// 						connection.node = executeWorkflowNode.name;
-		// 						uiStore.stateIsDirty = true;
-		// 					}
-		// 				}
-		// 			}
-		// 		}
-		// 	}
-		// }
-		// await nextTick();
+		await nextTick();
 		if (end) {
 			const endId = subGraph.find((x) => x.name === end)?.id;
 			if (endId)
-				canvasOperations.replaceNodeInputConnections(
+				canvasOperations.replaceNodeConnections(
 					endId,
 					executeWorkflowNode.id,
 					CANVAS_HISTORY_OPTIONS,
 				);
 		}
-		if (start) {
-			const startId = subGraph.find((x) => x.name === end)?.id;
+		await nextTick();
+
+		if (start && start !== end) {
+			const startId = subGraph.find((x) => x.name === start)?.id;
 			if (startId)
-				canvasOperations.replaceNodeInputConnections(
+				canvasOperations.replaceNodeConnections(
 					startId,
 					executeWorkflowNode.id,
 					CANVAS_HISTORY_OPTIONS,
@@ -268,7 +264,8 @@ export function useWorkflowExtraction() {
 		}
 
 		for (const id of nodeIds) {
-			canvasOperations.deleteNode(id, { ...CANVAS_HISTORY_OPTIONS });
+			await nextTick();
+			canvasOperations.deleteNode(id, CANVAS_HISTORY_OPTIONS);
 		}
 		uiStore.stateIsDirty = true;
 		historyStore.stopRecordingUndo();

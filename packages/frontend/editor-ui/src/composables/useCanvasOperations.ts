@@ -116,6 +116,7 @@ type AddNodesBaseOptions = {
 	trackHistory?: boolean;
 	keepPristine?: boolean;
 	telemetry?: boolean;
+	forcePosition?: boolean;
 };
 
 type AddNodesOptions = AddNodesBaseOptions & {
@@ -343,10 +344,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		}
 	}
 
-	function deleteNode(
-		id: string,
-		{ trackHistory = false, trackBulk = true, connectAdjacent = true } = {},
-	) {
+	function deleteNode(id: string, { trackHistory = false, trackBulk = true } = {}) {
 		const node = workflowsStore.getNodeById(id);
 		if (!node) {
 			return;
@@ -360,7 +358,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 			uiStore.lastInteractedWithNodeId = undefined;
 		}
 
-		if (connectAdjacent) connectAdjacentNodes(id, { trackHistory });
+		connectAdjacentNodes(id, { trackHistory });
 		deleteConnectionsByNodeId(id, { trackHistory, trackBulk: false });
 
 		workflowsStore.removeNodeExecutionDataById(id);
@@ -412,7 +410,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		}
 	}
 
-	function replaceNodeInputConnections(
+	function replaceNodeConnections(
 		previousId: string,
 		newId: string,
 		{ trackHistory = false, trackBulk = true } = {},
@@ -423,13 +421,11 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		if (!previousNode || !newNode) {
 			return;
 		}
-		debugger;
 
 		const wf = workflowsStore.getCurrentWorkflow();
 
-		const inputNodeNames = wf.getParentNodes(previousNode.name, 'main', -1);
-		const outputNodeNames = wf.getChildNodes(previousNode.name, 'main', -1);
-
+		const inputNodeNames = wf.getParentNodes(previousNode.name, 'main', 1);
+		const outputNodeNames = wf.getChildNodes(previousNode.name, 'main', 1);
 		const connectionPairs = [
 			...wf.getConnectionsBetweenNodes(inputNodeNames, [previousNode.name]),
 			...wf.getConnectionsBetweenNodes([previousNode.name], outputNodeNames),
@@ -438,7 +434,6 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		if (trackHistory && trackBulk) {
 			historyStore.startRecordingUndo();
 		}
-
 		for (const pair of connectionPairs) {
 			const sourceNode = workflowsStore.getNodeByName(pair[0].node);
 			const targetNode = workflowsStore.getNodeByName(pair[1].node);
@@ -450,12 +445,19 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 			);
 			deleteConnection(oldCanvasConnection, { trackHistory, trackBulk: false });
 
-			if (pair[0].node === previousNode.name) pair[0].node = newNode.name;
-			if (pair[1].node === previousNode.name) pair[1].node = newNode.name;
 			const newCanvasConnection = mapLegacyConnectionToCanvasConnection(
 				sourceNode.name === previousNode.name ? newNode : sourceNode,
 				targetNode.name === previousNode.name ? newNode : targetNode,
-				pair,
+				[
+					{
+						...pair[0],
+						node: pair[0].node === previousNode.name ? newNode.name : pair[0].node,
+					},
+					{
+						...pair[1],
+						node: pair[1].node === previousNode.name ? newNode.name : pair[1].node,
+					},
+				],
 			);
 			createConnection(newCanvasConnection, { trackHistory });
 		}
@@ -586,7 +588,6 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		let insertPosition = options.position;
 		let lastAddedNode: INodeUi | undefined;
 		const addedNodes: INodeUi[] = [];
-
 		const nodesWithTypeVersion = nodes.map((node) => {
 			const typeVersion =
 				node.typeVersion ?? resolveNodeVersion(requireNodeTypeDescription(node.type));
@@ -690,7 +691,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 	): INodeUi {
 		checkMaxNodesOfTypeReached(nodeTypeDescription);
 
-		const nodeData = resolveNodeData(node, nodeTypeDescription);
+		const nodeData = resolveNodeData(node, nodeTypeDescription, options);
 		if (!nodeData) {
 			throw new Error(i18n.baseText('nodeViewV2.showError.failedToCreateNode'));
 		}
@@ -853,12 +854,16 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 	function resolveNodeData(
 		node: AddNodeDataWithTypeVersion,
 		nodeTypeDescription: INodeTypeDescription,
+		{ forcePosition = false } = {},
 	) {
 		const id = node.id ?? nodeHelpers.assignNodeId(node as INodeUi);
 		const name = node.name ?? (nodeTypeDescription.defaults.name as string);
 		const type = nodeTypeDescription.name;
 		const typeVersion = node.typeVersion;
-		const position = resolveNodePosition(node as INodeUi, nodeTypeDescription);
+		const position =
+			node.position && forcePosition
+				? node.position
+				: resolveNodePosition(node as INodeUi, nodeTypeDescription);
 		const disabled = node.disabled ?? false;
 		const parameters = node.parameters ?? {};
 
@@ -2113,6 +2118,6 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		openExecution,
 		toggleChatOpen,
 		importTemplate,
-		replaceNodeInputConnections,
+		replaceNodeConnections,
 	};
 }
