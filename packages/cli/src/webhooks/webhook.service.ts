@@ -38,6 +38,10 @@ export class WebhookService {
 		void this.cacheService.setMany(allWebhooks.map((w) => [w.cacheKey, w]));
 	}
 
+	async findAll() {
+		return await this.webhookRepository.find();
+	}
+
 	private async findCached(method: Method, path: string) {
 		const cacheKey = `webhook:${method}-${path}`;
 
