@@ -14,22 +14,27 @@ export class FolderRepository extends Repository<FolderWithWorkflowAndSubFolderC
 
 	async getManyAndCount(
 		options: ListQuery.Options = {},
+		isArchivedFilter?: boolean,
 	): Promise<[FolderWithWorkflowAndSubFolderCount[], number]> {
-		const query = this.getManyQuery(options);
+		const query = this.getManyQuery(options, isArchivedFilter);
 		return await query.getManyAndCount();
 	}
 
-	async getMany(options: ListQuery.Options = {}): Promise<FolderWithWorkflowAndSubFolderCount[]> {
-		const query = this.getManyQuery(options);
+	async getMany(
+		options: ListQuery.Options = {},
+		isArchivedFilter?: boolean,
+	): Promise<FolderWithWorkflowAndSubFolderCount[]> {
+		const query = this.getManyQuery(options, isArchivedFilter);
 		return await query.getMany();
 	}
 
 	getManyQuery(
 		options: ListQuery.Options = {},
+		isArchivedFilter?: boolean,
 	): SelectQueryBuilder<FolderWithWorkflowAndSubFolderCount> {
 		const query = this.createQueryBuilder('folder');
 
-		this.applySelections(query, options.select);
+		this.applySelections(query, options.select, isArchivedFilter);
 		this.applyFilters(query, options.filter);
 		this.applySorting(query, options.sortBy);
 		this.applyPagination(query, options);
@@ -40,20 +45,40 @@ export class FolderRepository extends Repository<FolderWithWorkflowAndSubFolderC
 	private applySelections(
 		query: SelectQueryBuilder<FolderWithWorkflowAndSubFolderCount>,
 		select?: Record<string, boolean>,
+		isArchivedFilter?: boolean,
 	): void {
 		if (select) {
-			this.applyCustomSelect(query, select);
+			this.applyCustomSelect(query, select, isArchivedFilter);
 		} else {
-			this.applyDefaultSelect(query);
+			this.applyDefaultSelect(query, isArchivedFilter);
 		}
 	}
 
-	private applyDefaultSelect(query: SelectQueryBuilder<FolderWithWorkflowAndSubFolderCount>): void {
+	private applyWorkflowCountSelect(
+		query: SelectQueryBuilder<FolderWithWorkflowAndSubFolderCount>,
+		isArchivedFilter?: boolean,
+	): void {
+		if (typeof isArchivedFilter === 'boolean') {
+			query.loadRelationCountAndMap('folder.workflowCount', 'folder.workflows', 'workflow', (qb) =>
+				qb.andWhere('workflow.isArchived = :isArchived', {
+					isArchived: isArchivedFilter,
+				}),
+			);
+		} else {
+			query.loadRelationCountAndMap('folder.workflowCount', 'folder.workflows');
+		}
+	}
+
+	private applyDefaultSelect(
+		query: SelectQueryBuilder<FolderWithWorkflowAndSubFolderCount>,
+		isArchivedFilter?: boolean,
+	): void {
+		this.applyWorkflowCountSelect(query, isArchivedFilter);
+
 		query
 			.leftJoinAndSelect('folder.homeProject', 'homeProject')
 			.leftJoinAndSelect('folder.parentFolder', 'parentFolder')
 			.leftJoinAndSelect('folder.tags', 'tags')
-			.loadRelationCountAndMap('folder.workflowCount', 'folder.workflows')
 			.loadRelationCountAndMap('folder.subFolderCount', 'folder.subFolders')
 			.select([
 				'folder',
@@ -66,11 +91,12 @@ export class FolderRepository extends Repository<FolderWithWorkflowAndSubFolderC
 	private applyCustomSelect(
 		query: SelectQueryBuilder<FolderWithWorkflowAndSubFolderCount>,
 		select?: Record<string, boolean>,
+		isArchivedFilter?: boolean,
 	): void {
 		const selections = ['folder.id'];
 
 		this.addBasicFields(selections, select);
-		this.addRelationFields(query, selections, select);
+		this.addRelationFields(query, selections, select, isArchivedFilter);
 
 		query.select(selections);
 	}
@@ -85,6 +111,7 @@ export class FolderRepository extends Repository<FolderWithWorkflowAndSubFolderC
 		query: SelectQueryBuilder<FolderWithWorkflowAndSubFolderCount>,
 		selections: string[],
 		select?: Record<string, boolean>,
+		isArchivedFilter?: boolean,
 	): void {
 		if (select?.project) {
 			query.leftJoin('folder.homeProject', 'homeProject');
@@ -102,7 +129,7 @@ export class FolderRepository extends Repository<FolderWithWorkflowAndSubFolderC
 		}
 
 		if (select?.workflowCount) {
-			query.loadRelationCountAndMap('folder.workflowCount', 'folder.workflows');
+			this.applyWorkflowCountSelect(query, isArchivedFilter);
 		}
 
 		if (select?.subFolderCount) {

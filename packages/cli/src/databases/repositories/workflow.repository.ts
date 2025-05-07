@@ -287,7 +287,10 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			this.getWorkflowsAndFoldersCount(workflowIds, options),
 		]);
 
-		const { workflows, folders } = await this.fetchExtraData(workflowsAndFolders);
+		const isArchivedFilter =
+			typeof options.filter?.isArchived === 'boolean' ? options.filter.isArchived : undefined;
+
+		const { workflows, folders } = await this.fetchExtraData(workflowsAndFolders, isArchivedFilter);
 
 		const enrichedWorkflowsAndFolders = this.enrichDataWithExtras(workflowsAndFolders, {
 			workflows,
@@ -307,13 +310,16 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			.map((item) => item.id);
 	}
 
-	private async fetchExtraData(workflowsAndFolders: WorkflowFolderUnionRow[]) {
+	private async fetchExtraData(
+		workflowsAndFolders: WorkflowFolderUnionRow[],
+		isArchivedFilter?: boolean,
+	) {
 		const workflowIds = this.getWorkflowsIds(workflowsAndFolders);
 		const folderIds = this.getFolderIds(workflowsAndFolders);
 
 		const [workflows, folders] = await Promise.all([
 			this.getMany(workflowIds),
-			this.folderRepository.getMany({ filter: { folderIds } }),
+			this.folderRepository.getMany({ filter: { folderIds } }, isArchivedFilter),
 		]);
 
 		return { workflows, folders };
