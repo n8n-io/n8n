@@ -2,6 +2,8 @@ import { GlobalConfig } from '@n8n/config';
 import type { Project } from '@n8n/db';
 import type { User } from '@n8n/db';
 import type { ListQueryDb } from '@n8n/db';
+import { CredentialsRepository } from '@n8n/db';
+import { ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Scope } from '@sentry/node';
 import * as a from 'assert';
@@ -12,8 +14,6 @@ import { randomString } from 'n8n-workflow';
 
 import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
 import { CredentialsService } from '@/credentials/credentials.service';
-import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import { CredentialsTester } from '@/services/credentials-tester.service';
 
@@ -56,7 +56,7 @@ let projectRepository: ProjectRepository;
 let sharedCredentialsRepository: SharedCredentialsRepository;
 
 beforeEach(async () => {
-	await testDb.truncate(['SharedCredentials', 'Credentials']);
+	await testDb.truncate(['SharedCredentials', 'CredentialsEntity']);
 
 	owner = await createOwner();
 	member = await createMember();

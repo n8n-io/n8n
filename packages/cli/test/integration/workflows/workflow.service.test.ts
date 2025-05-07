@@ -45,7 +45,7 @@ beforeAll(async () => {
 });
 
 afterEach(async () => {
-	await testDb.truncate(['Workflow']);
+	await testDb.truncate(['WorkflowEntity']);
 	jest.restoreAllMocks();
 });
 

@@ -2,7 +2,7 @@ import type { RoleChangeRequestDto } from '@n8n/api-types';
 import { User } from '@n8n/db';
 import type { PublicUser } from '@n8n/db';
 import { Service } from '@n8n/di';
-import type { AssignableRole } from '@n8n/permissions';
+import { getGlobalScopes, type AssignableGlobalRole } from '@n8n/permissions';
 import { Logger } from 'n8n-core';
 import type { IUserSettings } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
@@ -71,6 +71,7 @@ export class UserService {
 		let publicUser: PublicUser = {
 			...rest,
 			signInType: ldapIdentity ? 'ldap' : 'email',
+			isOwner: user.role === 'global:owner',
 		};
 
 		if (options?.withInviteUrl && !options?.inviterId) {
@@ -85,8 +86,9 @@ export class UserService {
 			publicUser = await this.addFeatureFlags(publicUser, options.posthog);
 		}
 
+		// TODO: resolve these directly in the frontend
 		if (options?.withScopes) {
-			publicUser.globalScopes = user.globalScopes;
+			publicUser.globalScopes = getGlobalScopes(user);
 		}
 
 		return publicUser;
@@ -123,7 +125,7 @@ export class UserService {
 	private async sendEmails(
 		owner: User,
 		toInviteUsers: { [key: string]: string },
-		role: AssignableRole,
+		role: AssignableGlobalRole,
 	) {
 		const domain = this.urlService.getInstanceBaseUrl();
 

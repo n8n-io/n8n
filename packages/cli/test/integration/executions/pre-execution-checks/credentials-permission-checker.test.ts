@@ -1,11 +1,11 @@
 import type { Project } from '@n8n/db';
 import type { User } from '@n8n/db';
+import { ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { INode, IWorkflowBase } from 'n8n-workflow';
 import { randomInt } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
@@ -81,7 +81,7 @@ beforeAll(async () => {
 
 describe('check()', () => {
 	beforeEach(async () => {
-		await testDb.truncate(['Workflow', 'Credentials']);
+		await testDb.truncate(['WorkflowEntity', 'CredentialsEntity']);
 	});
 
 	afterAll(async () => {

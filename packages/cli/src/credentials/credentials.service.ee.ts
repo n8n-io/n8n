@@ -1,6 +1,7 @@
 import { Project, SharedCredentials } from '@n8n/db';
 import type { CredentialsEntity, User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { hasGlobalScope, rolesWithScope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In, type EntityManager } from '@n8n/typeorm';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
@@ -10,7 +11,6 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { TransferCredentialError } from '@/errors/response-errors/transfer-credential.error';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
-import { RoleService } from '@/services/role.service';
 
 import { CredentialsFinderService } from './credentials-finder.service';
 import { CredentialsService } from './credentials.service';
@@ -22,7 +22,6 @@ export class EnterpriseCredentialsService {
 		private readonly ownershipService: OwnershipService,
 		private readonly credentialsService: CredentialsService,
 		private readonly projectService: ProjectService,
-		private readonly roleService: RoleService,
 		private readonly credentialsFinderService: CredentialsFinderService,
 	) {}
 
@@ -41,12 +40,12 @@ export class EnterpriseCredentialsService {
 					type: 'team',
 					// if user can see all projects, don't check project access
 					// if they can't, find projects they can list
-					...(user.hasGlobalScope('project:list')
+					...(hasGlobalScope(user, 'project:list')
 						? {}
 						: {
 								projectRelations: {
 									userId: user.id,
-									role: In(this.roleService.rolesWithScope('project', 'project:list')),
+									role: In(rolesWithScope('project', 'project:list')),
 								},
 							}),
 				},

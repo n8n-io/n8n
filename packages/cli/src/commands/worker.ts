@@ -39,6 +39,8 @@ export class Worker extends BaseCommand {
 
 	override needsCommunityPackages = true;
 
+	override needsTaskRunner = true;
+
 	/**
 	 * Stop n8n in a graceful way.
 	 * Make for example sure that all the webhooks from third party services
@@ -107,13 +109,6 @@ export class Worker extends BaseCommand {
 				},
 			}),
 		);
-
-		const { taskRunners: taskRunnerConfig } = this.globalConfig;
-		if (taskRunnerConfig.enabled) {
-			const { TaskRunnerModule } = await import('@/task-runners/task-runner-module');
-			const taskRunnerModule = Container.get(TaskRunnerModule);
-			await taskRunnerModule.start();
-		}
 
 		await this.loadModules();
 	}

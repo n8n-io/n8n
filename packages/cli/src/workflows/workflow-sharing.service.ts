@@ -1,11 +1,16 @@
-import type { ProjectRole } from '@n8n/api-types';
-import type { WorkflowSharingRole, User } from '@n8n/db';
+import { ProjectRelationRepository } from '@n8n/db';
+import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import type { Scope } from '@n8n/permissions';
+import {
+	hasGlobalScope,
+	rolesWithScope,
+	type ProjectRole,
+	type WorkflowSharingRole,
+	type Scope,
+} from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 
-import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { RoleService } from '@/services/role.service';
 
@@ -33,7 +38,7 @@ export class WorkflowSharingService {
 	async getSharedWorkflowIds(user: User, options: ShareWorkflowOptions): Promise<string[]> {
 		const { projectId } = options;
 
-		if (user.hasGlobalScope('workflow:read')) {
+		if (hasGlobalScope(user, 'workflow:read')) {
 			const sharedWorkflows = await this.sharedWorkflowRepository.find({
 				select: ['workflowId'],
 				...(projectId && { where: { projectId } }),
@@ -42,13 +47,9 @@ export class WorkflowSharingService {
 		}
 
 		const projectRoles =
-			'scopes' in options
-				? this.roleService.rolesWithScope('project', options.scopes)
-				: options.projectRoles;
+			'scopes' in options ? rolesWithScope('project', options.scopes) : options.projectRoles;
 		const workflowRoles =
-			'scopes' in options
-				? this.roleService.rolesWithScope('workflow', options.scopes)
-				: options.workflowRoles;
+			'scopes' in options ? rolesWithScope('workflow', options.scopes) : options.workflowRoles;
 
 		const sharedWorkflows = await this.sharedWorkflowRepository.find({
 			where: {
