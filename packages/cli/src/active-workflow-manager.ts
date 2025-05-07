@@ -87,7 +87,7 @@ export class ActiveWorkflowManager {
 		private readonly publisher: Publisher,
 		private readonly workflowsConfig: WorkflowsConfig,
 	) {
-		this.logger.scoped(['workflow-activation']);
+		this.logger = this.logger.scoped(['workflow-activation']);
 	}
 
 	async init() {
