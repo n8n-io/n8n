@@ -12,6 +12,7 @@ import { useRouter } from 'vue-router';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { type JSONSchema7 } from 'json-schema';
 
 type Value = string | number | boolean | null | undefined;
 
@@ -124,8 +125,9 @@ watch(
 			// Only show parameters for selected tool
 			if (newSelectedTool) {
 				const selectedToolData = tools?.find((tool) => String(tool.value) === newSelectedTool);
-				if (selectedToolData?.schema?.properties) {
-					for (const [propertyName, value] of Object.entries(selectedToolData.schema.properties)) {
+				const schema = selectedToolData?.inputSchema as JSONSchema7;
+				if (schema.properties) {
+					for (const [propertyName, value] of Object.entries(schema.properties)) {
 						const typedValue = value as {
 							type: string;
 							description: string;

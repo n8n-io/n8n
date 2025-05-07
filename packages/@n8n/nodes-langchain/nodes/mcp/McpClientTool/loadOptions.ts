@@ -28,6 +28,6 @@ export async function getTools(this: ILoadOptionsFunctions): Promise<INodeProper
 		name: tool.name,
 		value: tool.name,
 		description: tool.description,
-		schema: tool.inputSchema,
+		inputSchema: tool.inputSchema,
 	}));
 }

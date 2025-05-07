@@ -71,7 +71,7 @@ const mockTools = [
 	{
 		name: 'Test Tool',
 		value: 'test-tool',
-		schema: {
+		inputSchema: {
 			properties: {
 				query: {
 					type: 'string',
@@ -169,7 +169,7 @@ describe('FromAiParametersModal', () => {
 	});
 
 	it('shows tool parameters after tool selection', async () => {
-		const { getByTestId, findByRole, findByText, debug } = renderModal({
+		const { getByTestId, findByRole, findByText } = renderModal({
 			props: {
 				modalName: FROM_AI_PARAMETERS_MODAL_KEY,
 				data: {

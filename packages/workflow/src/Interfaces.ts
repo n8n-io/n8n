@@ -1492,7 +1492,7 @@ export interface INodePropertyOptions {
 	description?: string;
 	routing?: INodePropertyRouting;
 	outputConnectionType?: NodeConnectionType;
-	schema?: unknown;
+	inputSchema?: any;
 }
 
 export interface INodeListSearchItems extends INodePropertyOptions {
