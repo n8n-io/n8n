@@ -43,6 +43,7 @@ describe('WorkflowStatisticsService', () => {
 			mock<EntityMetadata>({
 				tableName: 'workflow_statistics',
 			}),
+		driver: { escape: jest.fn().mockImplementation((id) => id) },
 	});
 	Object.assign(entityManager, { connection: dataSource });
 
@@ -92,10 +93,12 @@ describe('WorkflowStatisticsService', () => {
 				};
 
 				await workflowStatisticsService.workflowExecutionCompleted(fakeWorkflow, runData);
-				expect(entityManager.query).toHaveBeenCalledWith(
-					expect.stringMatching(rootCountRegex),
-					undefined,
-				);
+				expect(entityManager.query).toHaveReturnedTimes(1);
+				expect(entityManager.query).toHaveBeenNthCalledWith(1, expect.any(String), [
+					1,
+					expect.any(String),
+					'1',
+				]);
 			},
 		);
 
@@ -111,10 +114,12 @@ describe('WorkflowStatisticsService', () => {
 				};
 
 				await workflowStatisticsService.workflowExecutionCompleted(fakeWorkflow, runData);
-				expect(entityManager.query).toHaveBeenCalledWith(
-					expect.not.stringMatching(rootCountRegex),
-					undefined,
-				);
+				expect(entityManager.query).toHaveReturnedTimes(1);
+				expect(entityManager.query).toHaveBeenNthCalledWith(1, expect.any(String), [
+					0,
+					expect.any(String),
+					'1',
+				]);
 			},
 		);
 
@@ -130,10 +135,12 @@ describe('WorkflowStatisticsService', () => {
 				};
 
 				await workflowStatisticsService.workflowExecutionCompleted(fakeWorkflow, runData);
-				expect(entityManager.query).toHaveBeenCalledWith(
-					expect.stringMatching(rootCountRegex),
-					undefined,
-				);
+				expect(entityManager.query).toHaveReturnedTimes(1);
+				expect(entityManager.query).toHaveBeenNthCalledWith(1, expect.any(String), [
+					1,
+					expect.any(String),
+					'1',
+				]);
 			},
 		);
 
@@ -149,10 +156,12 @@ describe('WorkflowStatisticsService', () => {
 				};
 
 				await workflowStatisticsService.workflowExecutionCompleted(fakeWorkflow, runData);
-				expect(entityManager.query).toHaveBeenCalledWith(
-					expect.not.stringMatching(rootCountRegex),
-					undefined,
-				);
+				expect(entityManager.query).toHaveReturnedTimes(1);
+				expect(entityManager.query).toHaveBeenNthCalledWith(1, expect.any(String), [
+					0,
+					expect.any(String),
+					'1',
+				]);
 			},
 		);
 
