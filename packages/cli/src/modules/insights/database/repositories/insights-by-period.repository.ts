@@ -179,59 +179,60 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		}
 		this.isRunningCompaction = true;
 
-		// Create temp table that only exists in this transaction for rows to compact
-		const getBatchAndStoreInTemporaryTable = sql`
-			CREATE TEMPORARY TABLE rows_to_compact AS
-			${sourceBatchQuery.getSql()};
-		`;
+		try {
+			// Create temp table that only exists in this transaction for rows to compact
+			const getBatchAndStoreInTemporaryTable = sql`
+				CREATE TEMPORARY TABLE rows_to_compact AS
+				${sourceBatchQuery.getSql()};
+			`;
 
-		const countBatch = sql`
-			SELECT COUNT(*) ${this.escapeField('rowsInBatch')} FROM rows_to_compact;
-		`;
+			const countBatch = sql`
+				SELECT COUNT(*) ${this.escapeField('rowsInBatch')} FROM rows_to_compact;
+			`;
 
-		const targetColumnNamesStr = ['metaId', 'type', 'periodUnit', 'periodStart']
-			.map((param) => this.escapeField(param))
-			.join(', ');
-		const targetColumnNamesWithValue = `${targetColumnNamesStr}, value`;
+			const targetColumnNamesStr = ['metaId', 'type', 'periodUnit', 'periodStart']
+				.map((param) => this.escapeField(param))
+				.join(', ');
+			const targetColumnNamesWithValue = `${targetColumnNamesStr}, value`;
 
-		// Function to get the aggregation query
-		const aggregationQuery = this.getAggregationQuery(periodUnitToCompactInto);
+			// Function to get the aggregation query
+			const aggregationQuery = this.getAggregationQuery(periodUnitToCompactInto);
 
-		// Insert or update aggregated data
-		const insertQueryBase = sql`
-			INSERT INTO ${this.metadata.tableName}
-				(${targetColumnNamesWithValue})
-			${aggregationQuery.getSql()}
-		`;
+			// Insert or update aggregated data
+			const insertQueryBase = sql`
+				INSERT INTO ${this.metadata.tableName}
+					(${targetColumnNamesWithValue})
+				${aggregationQuery.getSql()}
+			`;
 
-		// Database-specific duplicate key logic
-		let deduplicateQuery: string;
-		if (dbType === 'mysqldb' || dbType === 'mariadb') {
-			deduplicateQuery = sql`
+			// Database-specific duplicate key logic
+			let deduplicateQuery: string;
+			if (dbType === 'mysqldb' || dbType === 'mariadb') {
+				deduplicateQuery = sql`
 				ON DUPLICATE KEY UPDATE value = value + VALUES(value)`;
-		} else {
-			deduplicateQuery = sql`
+			} else {
+				deduplicateQuery = sql`
 				ON CONFLICT(${targetColumnNamesStr})
 				DO UPDATE SET value = ${this.metadata.tableName}.value + excluded.value
 				RETURNING *`;
-		}
+			}
 
-		const upsertEvents = sql`
-			${insertQueryBase}
-			${deduplicateQuery}
-		`;
+			const upsertEvents = sql`
+				${insertQueryBase}
+				${deduplicateQuery}
+			`;
 
-		// Delete the processed rows
-		const deleteBatch = sql`
-			DELETE FROM ${sourceTableName}
-			WHERE id IN (SELECT id FROM rows_to_compact);
-		`;
+			// Delete the processed rows
+			const deleteBatch = sql`
+				DELETE FROM ${sourceTableName}
+				WHERE id IN (SELECT id FROM rows_to_compact);
+			`;
 
-		// Clean up
-		const dropTemporaryTable = sql`
-			DROP TABLE rows_to_compact;
-		`;
-		try {
+			// Clean up
+			const dropTemporaryTable = sql`
+				DROP TABLE rows_to_compact;
+			`;
+
 			const result = await this.manager.transaction(async (trx) => {
 				await trx.query(getBatchAndStoreInTemporaryTable);
 
@@ -244,6 +245,7 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 
 				return Number(rowsInBatch[0].rowsInBatch);
 			});
+
 			return result;
 		} finally {
 			this.isRunningCompaction = false;
