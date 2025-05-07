@@ -71,20 +71,6 @@ export class EvaluationTrigger implements INodeType {
 				displayOptions: { show: { limitRows: [true] } },
 			},
 			readFilter,
-			{
-				displayName: 'Trigger On',
-				name: 'event',
-				type: 'options',
-				description: 'Run a test dataset through your workflow to check performance',
-				options: [
-					{
-						name: 'Triggering an Evaluation',
-						value: 'triggerEvaluation',
-					},
-				],
-				default: 'triggerEvaluation',
-				required: true,
-			},
 		],
 		credentials: [
 			{
