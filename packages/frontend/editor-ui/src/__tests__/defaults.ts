@@ -36,6 +36,7 @@ export const defaultSettings: FrontendSettings = {
 		externalSecrets: false,
 		workerView: false,
 		advancedPermissions: false,
+		apiKeyScopes: false,
 		projects: {
 			team: {
 				limit: 1,
@@ -46,6 +47,7 @@ export const defaultSettings: FrontendSettings = {
 		evaluator: 'tournament',
 	},
 	executionMode: 'regular',
+	isMultiMain: false,
 	executionTimeout: 0,
 	hideUsagePage: false,
 	hiringBannerEnabled: false,
@@ -147,5 +149,17 @@ export const defaultSettings: FrontendSettings = {
 		enabled: false,
 		summary: true,
 		dashboard: false,
+		dateRanges: [
+			{ key: 'day', licensed: true, granularity: 'hour' },
+			{ key: 'week', licensed: true, granularity: 'day' },
+			{ key: '2weeks', licensed: true, granularity: 'day' },
+			{ key: 'month', licensed: false, granularity: 'day' },
+			{ key: 'quarter', licensed: false, granularity: 'week' },
+			{ key: '6months', licensed: false, granularity: 'week' },
+			{ key: 'year', licensed: false, granularity: 'week' },
+		],
+	},
+	logsView: {
+		enabled: false,
 	},
 };

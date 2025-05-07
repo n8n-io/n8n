@@ -1,13 +1,10 @@
 import { Container, Service } from '@n8n/di';
-import { createHash } from 'crypto';
 import jwt from 'jsonwebtoken';
 import { BINARY_ENCODING, UnexpectedError } from 'n8n-workflow';
 import type { INodeExecutionData, IBinaryData } from 'n8n-workflow';
 import { readFile, stat } from 'node:fs/promises';
 import prettyBytes from 'pretty-bytes';
 import type { Readable } from 'stream';
-
-import { InstanceSettings } from '@/instance-settings';
 
 import { BinaryDataConfig } from './binary-data.config';
 import type { BinaryData } from './types';
@@ -21,15 +18,10 @@ export class BinaryDataService {
 
 	private managers: Record<string, BinaryData.Manager> = {};
 
-	readonly signingSecret: string;
+	constructor(private readonly config: BinaryDataConfig) {}
 
-	constructor({ encryptionKey }: InstanceSettings, binaryDataConfig: BinaryDataConfig) {
-		this.signingSecret =
-			binaryDataConfig.signingSecret ??
-			createHash('sha256').update(`url-signing:${encryptionKey}`).digest('hex');
-	}
-
-	async init(config: BinaryData.Config) {
+	async init() {
+		const { config } = this;
 		if (!areConfigModes(config.availableModes)) throw new InvalidModeError();
 
 		this.mode = config.mode === 'filesystem' ? 'filesystem-v2' : config.mode;
@@ -62,11 +54,13 @@ export class BinaryDataService {
 			id: binaryData.id,
 		};
 
-		return jwt.sign(signingPayload, this.signingSecret, { expiresIn });
+		const { signingSecret } = this.config;
+		return jwt.sign(signingPayload, signingSecret, { expiresIn });
 	}
 
 	validateSignedToken(token: string) {
-		const signedPayload = jwt.verify(token, this.signingSecret) as BinaryData.SigningPayload;
+		const { signingSecret } = this.config;
+		const signedPayload = jwt.verify(token, signingSecret) as BinaryData.SigningPayload;
 		return signedPayload.id;
 	}
 

@@ -1,12 +1,11 @@
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import { NodeConnectionTypes, type WorkflowTestData } from 'n8n-workflow';
-
-import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
-import * as Helpers from '@test/nodes/Helpers';
 
 import { microsoftEntraApiResponse, microsoftEntraNodeResponse } from './mocks';
 
 describe('Microsoft Entra Node', () => {
 	const baseUrl = 'https://graph.microsoft.com/v1.0';
+	const testHarness = new NodeTestHarness();
 
 	describe('Group description', () => {
 		const tests: WorkflowTestData[] = [
@@ -48,7 +47,7 @@ describe('Microsoft Entra Node', () => {
 								typeVersion: 1,
 								position: [220, 0],
 								id: '3429f7f2-dfca-4b72-8913-43a582e96e66',
-								name: 'Micosoft Entra ID',
+								name: 'Microsoft Entra ID',
 								credentials: {
 									microsoftEntraOAuth2Api: {
 										id: 'Hot2KwSMSoSmMVqd',
@@ -62,7 +61,7 @@ describe('Microsoft Entra Node', () => {
 								main: [
 									[
 										{
-											node: 'Micosoft Entra ID',
+											node: 'Microsoft Entra ID',
 											type: NodeConnectionTypes.Main,
 											index: 0,
 										},
@@ -73,9 +72,8 @@ describe('Microsoft Entra Node', () => {
 					},
 				},
 				output: {
-					nodeExecutionOrder: ['Start'],
 					nodeData: {
-						'Micosoft Entra ID': [microsoftEntraNodeResponse.createGroup],
+						'Microsoft Entra ID': [microsoftEntraNodeResponse.createGroup],
 					},
 				},
 				nock: {
@@ -140,7 +138,7 @@ describe('Microsoft Entra Node', () => {
 								typeVersion: 1,
 								position: [220, 0],
 								id: '3429f7f2-dfca-4b72-8913-43a582e96e66',
-								name: 'Micosoft Entra ID',
+								name: 'Microsoft Entra ID',
 								credentials: {
 									microsoftEntraOAuth2Api: {
 										id: 'Hot2KwSMSoSmMVqd',
@@ -154,7 +152,7 @@ describe('Microsoft Entra Node', () => {
 								main: [
 									[
 										{
-											node: 'Micosoft Entra ID',
+											node: 'Microsoft Entra ID',
 											type: NodeConnectionTypes.Main,
 											index: 0,
 										},
@@ -165,9 +163,8 @@ describe('Microsoft Entra Node', () => {
 					},
 				},
 				output: {
-					nodeExecutionOrder: ['Start'],
 					nodeData: {
-						'Micosoft Entra ID': [microsoftEntraNodeResponse.deleteGroup],
+						'Microsoft Entra ID': [microsoftEntraNodeResponse.deleteGroup],
 					},
 				},
 				nock: {
@@ -211,7 +208,7 @@ describe('Microsoft Entra Node', () => {
 								typeVersion: 1,
 								position: [220, 0],
 								id: '3429f7f2-dfca-4b72-8913-43a582e96e66',
-								name: 'Micosoft Entra ID',
+								name: 'Microsoft Entra ID',
 								credentials: {
 									microsoftEntraOAuth2Api: {
 										id: 'Hot2KwSMSoSmMVqd',
@@ -225,7 +222,7 @@ describe('Microsoft Entra Node', () => {
 								main: [
 									[
 										{
-											node: 'Micosoft Entra ID',
+											node: 'Microsoft Entra ID',
 											type: NodeConnectionTypes.Main,
 											index: 0,
 										},
@@ -236,9 +233,8 @@ describe('Microsoft Entra Node', () => {
 					},
 				},
 				output: {
-					nodeExecutionOrder: ['Start'],
 					nodeData: {
-						'Micosoft Entra ID': [microsoftEntraNodeResponse.getGroup],
+						'Microsoft Entra ID': [microsoftEntraNodeResponse.getGroup],
 					},
 				},
 				nock: {
@@ -328,7 +324,7 @@ describe('Microsoft Entra Node', () => {
 								typeVersion: 1,
 								position: [220, 0],
 								id: '3429f7f2-dfca-4b72-8913-43a582e96e66',
-								name: 'Micosoft Entra ID',
+								name: 'Microsoft Entra ID',
 								credentials: {
 									microsoftEntraOAuth2Api: {
 										id: 'Hot2KwSMSoSmMVqd',
@@ -342,7 +338,7 @@ describe('Microsoft Entra Node', () => {
 								main: [
 									[
 										{
-											node: 'Micosoft Entra ID',
+											node: 'Microsoft Entra ID',
 											type: NodeConnectionTypes.Main,
 											index: 0,
 										},
@@ -353,9 +349,8 @@ describe('Microsoft Entra Node', () => {
 					},
 				},
 				output: {
-					nodeExecutionOrder: ['Start'],
 					nodeData: {
-						'Micosoft Entra ID': [microsoftEntraNodeResponse.getGroupWithProperties],
+						'Microsoft Entra ID': [microsoftEntraNodeResponse.getGroupWithProperties],
 					},
 				},
 				nock: {
@@ -396,7 +391,7 @@ describe('Microsoft Entra Node', () => {
 								typeVersion: 1,
 								position: [220, 0],
 								id: '3429f7f2-dfca-4b72-8913-43a582e96e66',
-								name: 'Micosoft Entra ID',
+								name: 'Microsoft Entra ID',
 								credentials: {
 									microsoftEntraOAuth2Api: {
 										id: 'Hot2KwSMSoSmMVqd',
@@ -410,7 +405,7 @@ describe('Microsoft Entra Node', () => {
 								main: [
 									[
 										{
-											node: 'Micosoft Entra ID',
+											node: 'Microsoft Entra ID',
 											type: NodeConnectionTypes.Main,
 											index: 0,
 										},
@@ -421,9 +416,8 @@ describe('Microsoft Entra Node', () => {
 					},
 				},
 				output: {
-					nodeExecutionOrder: ['Start'],
 					nodeData: {
-						'Micosoft Entra ID': [new Array(102).fill(microsoftEntraNodeResponse.getGroup[0])],
+						'Microsoft Entra ID': [new Array(102).fill(microsoftEntraNodeResponse.getGroup[0])],
 					},
 				},
 				nock: {
@@ -478,7 +472,7 @@ describe('Microsoft Entra Node', () => {
 								typeVersion: 1,
 								position: [220, 0],
 								id: '3429f7f2-dfca-4b72-8913-43a582e96e66',
-								name: 'Micosoft Entra ID',
+								name: 'Microsoft Entra ID',
 								credentials: {
 									microsoftEntraOAuth2Api: {
 										id: 'Hot2KwSMSoSmMVqd',
@@ -492,7 +486,7 @@ describe('Microsoft Entra Node', () => {
 								main: [
 									[
 										{
-											node: 'Micosoft Entra ID',
+											node: 'Microsoft Entra ID',
 											type: NodeConnectionTypes.Main,
 											index: 0,
 										},
@@ -503,9 +497,8 @@ describe('Microsoft Entra Node', () => {
 					},
 				},
 				output: {
-					nodeExecutionOrder: ['Start'],
 					nodeData: {
-						'Micosoft Entra ID': [new Array(10).fill(microsoftEntraNodeResponse.getGroup[0])],
+						'Microsoft Entra ID': [new Array(10).fill(microsoftEntraNodeResponse.getGroup[0])],
 					},
 				},
 				nock: {
@@ -587,7 +580,7 @@ describe('Microsoft Entra Node', () => {
 								typeVersion: 1,
 								position: [220, 0],
 								id: '3429f7f2-dfca-4b72-8913-43a582e96e66',
-								name: 'Micosoft Entra ID',
+								name: 'Microsoft Entra ID',
 								credentials: {
 									microsoftEntraOAuth2Api: {
 										id: 'Hot2KwSMSoSmMVqd',
@@ -601,7 +594,7 @@ describe('Microsoft Entra Node', () => {
 								main: [
 									[
 										{
-											node: 'Micosoft Entra ID',
+											node: 'Microsoft Entra ID',
 											type: NodeConnectionTypes.Main,
 											index: 0,
 										},
@@ -612,9 +605,8 @@ describe('Microsoft Entra Node', () => {
 					},
 				},
 				output: {
-					nodeExecutionOrder: ['Start'],
 					nodeData: {
-						'Micosoft Entra ID': [
+						'Microsoft Entra ID': [
 							new Array(102).fill(microsoftEntraNodeResponse.getGroupWithProperties[0]),
 						],
 					},
@@ -686,7 +678,7 @@ describe('Microsoft Entra Node', () => {
 								typeVersion: 1,
 								position: [220, 0],
 								id: '3429f7f2-dfca-4b72-8913-43a582e96e66',
-								name: 'Micosoft Entra ID',
+								name: 'Microsoft Entra ID',
 								credentials: {
 									microsoftEntraOAuth2Api: {
 										id: 'Hot2KwSMSoSmMVqd',
@@ -700,7 +692,7 @@ describe('Microsoft Entra Node', () => {
 								main: [
 									[
 										{
-											node: 'Micosoft Entra ID',
+											node: 'Microsoft Entra ID',
 											type: NodeConnectionTypes.Main,
 											index: 0,
 										},
@@ -711,9 +703,8 @@ describe('Microsoft Entra Node', () => {
 					},
 				},
 				output: {
-					nodeExecutionOrder: ['Start'],
 					nodeData: {
-						'Micosoft Entra ID': [microsoftEntraNodeResponse.updateGroup],
+						'Microsoft Entra ID': [microsoftEntraNodeResponse.updateGroup],
 					},
 				},
 				nock: {
@@ -751,14 +742,8 @@ describe('Microsoft Entra Node', () => {
 			},
 		];
 
-		test.each(tests)('$description', async (testData) => {
-			const { result } = await executeWorkflow(testData);
-
-			const resultNodeData = Helpers.getResultNodeData(result, testData);
-			resultNodeData.forEach(({ nodeName, resultData }) =>
-				expect(resultData).toEqual(testData.output.nodeData[nodeName]),
-			);
-			expect(result.status).toEqual('success');
-		});
+		for (const testData of tests) {
+			testHarness.setupTest(testData);
+		}
 	});
 });

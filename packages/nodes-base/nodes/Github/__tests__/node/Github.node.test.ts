@@ -1,13 +1,8 @@
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 import nock from 'nock';
 
-import { getWorkflowFilenames, initBinaryDataService, testWorkflows } from '@test/nodes/Helpers';
-
 import { Github } from '../../Github.node';
-
-const workflows = getWorkflowFilenames(__dirname).filter((filename) =>
-	filename.includes('GithubTestWorkflow.json'),
-);
 
 describe('Test Github Node', () => {
 	describe('Workflow Dispatch', () => {
@@ -65,7 +60,6 @@ describe('Test Github Node', () => {
 
 		beforeAll(async () => {
 			jest.useFakeTimers({ doNotFake: ['nextTick'], now });
-			await initBinaryDataService();
 		});
 
 		beforeEach(async () => {
@@ -88,7 +82,9 @@ describe('Test Github Node', () => {
 				.reply(200, {});
 		});
 
-		testWorkflows(workflows);
+		new NodeTestHarness().setupTests({
+			workflowFiles: ['GithubTestWorkflow.json'],
+		});
 	});
 
 	describe('Error Handling', () => {

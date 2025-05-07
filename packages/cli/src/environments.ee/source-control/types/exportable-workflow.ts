@@ -12,4 +12,5 @@ export interface ExportableWorkflow {
 	versionId?: string;
 	owner: ResourceOwner;
 	parentFolderId: string | null;
+	isArchived: boolean;
 }

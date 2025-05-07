@@ -115,10 +115,6 @@ describe('GlobalConfig', () => {
 		externalHooks: {
 			files: [],
 		},
-		externalSecrets: {
-			preferGet: false,
-			updateInterval: 300,
-		},
 		nodes: {
 			communityPackages: {
 				enabled: true,
@@ -142,20 +138,6 @@ describe('GlobalConfig', () => {
 			enabled: true,
 			endpoint: 'https://api.n8n.io/api/versions/',
 			infoUrl: 'https://docs.n8n.io/hosting/installation/updating/',
-		},
-		externalStorage: {
-			s3: {
-				host: '',
-				protocol: 'https',
-				bucket: {
-					name: '',
-					region: '',
-				},
-				credentials: {
-					accessKey: '',
-					accessSecret: '',
-				},
-			},
 		},
 		workflows: {
 			defaultName: 'My workflow',
@@ -314,6 +296,10 @@ describe('GlobalConfig', () => {
 		},
 		partialExecutions: {
 			version: 2,
+		},
+		workflowHistory: {
+			enabled: true,
+			pruneTime: -1,
 		},
 	};
 

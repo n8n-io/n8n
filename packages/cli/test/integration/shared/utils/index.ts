@@ -1,6 +1,8 @@
+import { WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import {
+	BinaryDataConfig,
 	BinaryDataService,
 	InstanceSettings,
 	UnrecognizedNodeTypeError,
@@ -19,7 +21,6 @@ import { v4 as uuid } from 'uuid';
 
 import config from '@/config';
 import { AUTH_COOKIE_NAME } from '@/constants';
-import { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { SettingsRepository } from '@/databases/repositories/settings.repository';
 import { ExecutionService } from '@/executions/execution.service';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
@@ -37,6 +38,7 @@ export { setupTestServer } from './test-server';
  * Initialize node types.
  */
 export async function initActiveWorkflowManager() {
+	mockInstance(BinaryDataConfig);
 	mockInstance(InstanceSettings, {
 		isMultiMain: false,
 	});
@@ -110,12 +112,13 @@ export async function initNodeTypes(customNodes?: INodeTypeData) {
  * Initialize a BinaryDataService for test runs.
  */
 export async function initBinaryDataService(mode: 'default' | 'filesystem' = 'default') {
-	const binaryDataService = new BinaryDataService(mock(), mock());
-	await binaryDataService.init({
+	const config = mock<BinaryDataConfig>({
 		mode,
 		availableModes: [mode],
 		localStoragePath: '',
 	});
+	const binaryDataService = new BinaryDataService(config);
+	await binaryDataService.init();
 	Container.set(BinaryDataService, binaryDataService);
 }
 

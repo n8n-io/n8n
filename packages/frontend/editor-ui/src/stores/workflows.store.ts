@@ -6,6 +6,7 @@ import {
 	DUPLICATE_POSTFFIX,
 	ERROR_TRIGGER_NODE_TYPE,
 	FORM_NODE_TYPE,
+	LOCAL_STORAGE_LOGS_PANEL_OPEN,
 	MAX_WORKFLOW_NAME_LENGTH,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	START_NODE_TYPE,
@@ -92,10 +93,13 @@ import { useUsersStore } from '@/stores/users.store';
 import { updateCurrentUserSettings } from '@/api/users';
 import { useExecutingNode } from '@/composables/useExecutingNode';
 import { LOGS_PANEL_STATE } from '@/components/CanvasChat/types/logs';
+import { useLocalStorage } from '@vueuse/core';
+import type { NodeExecuteBefore } from '@n8n/api-types/push/execution';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
 	active: false,
+	isArchived: false,
 	createdAt: -1,
 	updatedAt: -1,
 	connections: {},
@@ -138,8 +142,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const currentWorkflowExecutions = ref<ExecutionSummary[]>([]);
 	const workflowExecutionData = ref<IExecutionResponse | null>(null);
 	const workflowExecutionPairedItemMappings = ref<Record<string, Set<string>>>({});
-	const activeExecutionId = ref<string | null>(null);
-	const previousExecutionId = ref<string | null>(null);
 	const subWorkflowExecutionError = ref<Error | null>(null);
 	const executionWaitingForWebhook = ref(false);
 	const workflowsById = ref<Record<string, IWorkflowDb>>({});
@@ -147,7 +149,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const isInDebugMode = ref(false);
 	const chatMessages = ref<string[]>([]);
 	const chatPartialExecutionDestinationNode = ref<string | null>(null);
-	const isLogsPanelOpen = ref(false);
+	const isLogsPanelOpen = useLocalStorage(LOCAL_STORAGE_LOGS_PANEL_OPEN, false);
 	const preferPopOutLogsView = ref(false);
 	const logsPanelState = computed(() =>
 		isLogsPanelOpen.value
@@ -157,8 +159,13 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			: LOGS_PANEL_STATE.CLOSED,
 	);
 
-	const { executingNode, addExecutingNode, removeExecutingNode, clearNodeExecutionQueue } =
-		useExecutingNode();
+	const {
+		executingNode,
+		addExecutingNode,
+		removeExecutingNode,
+		isNodeExecuting,
+		clearNodeExecutionQueue,
+	} = useExecutingNode();
 
 	const workflowName = computed(() => workflow.value.name);
 
@@ -232,11 +239,13 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	});
 
 	const isWorkflowRunning = computed(() => {
-		if (uiStore.isActionActive.workflowRunning) return true;
-
-		if (activeExecutionId.value) {
-			const execution = getWorkflowExecution;
-			if (execution.value && execution.value.status === 'waiting' && !execution.value.finished) {
+		if (activeExecutionId.value === null) {
+			return true;
+		} else if (activeExecutionId.value && workflowExecutionData.value) {
+			if (
+				['waiting', 'running'].includes(workflowExecutionData.value.status) &&
+				!workflowExecutionData.value.finished
+			) {
 				return true;
 			}
 		}
@@ -254,19 +263,15 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}, {});
 	});
 
-	const nodesIssuesExist = computed(() => {
-		for (const node of workflow.value.nodes) {
-			const isNodeDisabled = node.disabled === true;
-			const noNodeIssues = node.issues === undefined || Object.keys(node.issues).length === 0;
-			if (isNodeDisabled || noNodeIssues) {
-				continue;
-			}
-
-			return true;
-		}
-
-		return false;
-	});
+	const nodesIssuesExist = computed(() =>
+		workflow.value.nodes.some((node) => {
+			const nodeHasIssues = !!Object.keys(node.issues ?? {}).length;
+			const isConnected =
+				Object.keys(outgoingConnectionsByNodeName(node.name)).length > 0 ||
+				Object.keys(incomingConnectionsByNodeName(node.name)).length > 0;
+			return !node.disabled && isConnected && nodeHasIssues;
+		}),
+	);
 
 	const pinnedWorkflowData = computed(() => workflow.value.pinData);
 
@@ -290,8 +295,20 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		Workflow.getConnectionsByDestination(workflow.value.connections),
 	);
 
-	function setActiveExecutionId(id: string | null) {
-		previousExecutionId.value = activeExecutionId.value;
+	/**
+	 * Sets the active execution id
+	 *
+	 * @param {string} id used to indicate the id of the active execution
+	 * @param {null} id used to indicate that an execution has started but its id has not been retrieved yet
+	 * @param {undefined} id used to indicate there is no active execution
+	 */
+	const activeExecutionId = ref<string | null | undefined>();
+	const previousExecutionId = ref<string | null | undefined>();
+	const readonlyActiveExecutionId = computed(() => activeExecutionId.value);
+	const readonlyPreviousExecutionId = computed(() => previousExecutionId.value);
+
+	function setActiveExecutionId(id: string | null | undefined) {
+		if (id) previousExecutionId.value = activeExecutionId.value;
 		activeExecutionId.value = id;
 	}
 
@@ -345,6 +362,22 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return workflow.value.nodes.find((node) => node.id === nodeId);
 	}
 
+	// Finds the full id for a given partial id for a node, relying on order for uniqueness in edge cases
+	function findNodeByPartialId(partialId: string): INodeUi | undefined {
+		return workflow.value.nodes.find((node) => node.id.startsWith(partialId));
+	}
+
+	// Finds a uniquely identifying partial id for a node, relying on order for uniqueness in edge cases
+	function getPartialIdForNode(fullId: string): string {
+		for (let length = 6; length < fullId.length; ++length) {
+			const partialId = fullId.slice(0, length);
+			if (workflow.value.nodes.filter((x) => x.id.startsWith(partialId)).length === 1) {
+				return partialId;
+			}
+		}
+		return fullId;
+	}
+
 	function getNodesByIds(nodeIds: string[]): INodeUi[] {
 		return nodeIds.map(getNodeById).filter(isPresent);
 	}
@@ -363,10 +396,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	function isNodePristine(nodeName: string): boolean {
 		return nodeMetadata.value[nodeName] === undefined || nodeMetadata.value[nodeName].pristine;
-	}
-
-	function isNodeExecuting(nodeName: string): boolean {
-		return executingNode.value.includes(nodeName);
 	}
 
 	function getExecutionDataById(id: string): ExecutionSummary | undefined {
@@ -513,7 +542,13 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		page = 1,
 		pageSize = DEFAULT_WORKFLOW_PAGE_SIZE,
 		sortBy?: string,
-		filters: { name?: string; tags?: string[]; active?: boolean; parentFolderId?: string } = {},
+		filters: {
+			name?: string;
+			tags?: string[];
+			active?: boolean;
+			isArchived?: boolean;
+			parentFolderId?: string;
+		} = {},
 		includeFolders: boolean = false,
 	): Promise<WorkflowListResource[]> {
 		const filter = { ...filters, projectId };
@@ -621,7 +656,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setWorkflowSettings({ ...defaults.settings });
 		setWorkflowTagIds([]);
 
-		setActiveExecutionId(null);
+		setActiveExecutionId(undefined);
 		executingNode.value.length = 0;
 		executionWaitingForWebhook.value = false;
 	}
@@ -706,6 +741,42 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflowsById.value = workflows;
 	}
 
+	async function archiveWorkflow(id: string) {
+		const updatedWorkflow = await makeRestApiRequest<IWorkflowDb>(
+			rootStore.restApiContext,
+			'POST',
+			`/workflows/${id}/archive`,
+		);
+		if (workflowsById.value[id]) {
+			workflowsById.value[id].isArchived = true;
+			workflowsById.value[id].versionId = updatedWorkflow.versionId;
+		}
+
+		setWorkflowInactive(id);
+
+		if (id === workflow.value.id) {
+			setIsArchived(true);
+			setWorkflowVersionId(updatedWorkflow.versionId);
+		}
+	}
+
+	async function unarchiveWorkflow(id: string) {
+		const updatedWorkflow = await makeRestApiRequest<IWorkflowDb>(
+			rootStore.restApiContext,
+			'POST',
+			`/workflows/${id}/unarchive`,
+		);
+		if (workflowsById.value[id]) {
+			workflowsById.value[id].isArchived = false;
+			workflowsById.value[id].versionId = updatedWorkflow.versionId;
+		}
+
+		if (id === workflow.value.id) {
+			setIsArchived(false);
+			setWorkflowVersionId(updatedWorkflow.versionId);
+		}
+	}
+
 	function addWorkflow(workflow: IWorkflowDb) {
 		workflowsById.value = {
 			...workflowsById.value,
@@ -751,6 +822,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	function setActive(active: boolean) {
 		workflow.value.active = active;
+	}
+
+	function setIsArchived(isArchived: boolean) {
+		workflow.value.isArchived = isArchived;
 	}
 
 	async function getDuplicateCurrentWorkflowName(currentWorkflowName: string): Promise<string> {
@@ -1124,6 +1199,13 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}
 	}
 
+	function setParentFolder(folder: IWorkflowDb['parentFolder']) {
+		workflow.value = {
+			...workflow.value,
+			parentFolder: folder,
+		};
+	}
+
 	function setNodes(nodes: INodeUi[]): void {
 		workflow.value.nodes = nodes;
 		nodes.forEach((node) => {
@@ -1387,24 +1469,21 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return testUrl;
 	}
 
-	function setNodeExecuting(pushData: PushPayload<'nodeExecuteBefore'>): void {
-		addExecutingNode(pushData.nodeName);
-
+	function addNodeExecutionData(data: NodeExecuteBefore['data']): void {
 		if (settingsStore.isNewLogsEnabled) {
-			const node = getNodeByName(pushData.nodeName);
-
+			const node = getNodeByName(data.nodeName);
 			if (!node || !workflowExecutionData.value?.data) {
 				return;
 			}
 
-			if (workflowExecutionData.value.data.resultData.runData[pushData.nodeName] === undefined) {
-				workflowExecutionData.value.data.resultData.runData[pushData.nodeName] = [];
+			if (workflowExecutionData.value.data.resultData.runData[data.nodeName] === undefined) {
+				workflowExecutionData.value.data.resultData.runData[data.nodeName] = [];
 			}
 
-			workflowExecutionData.value.data.resultData.runData[pushData.nodeName].push({
+			workflowExecutionData.value.data.resultData.runData[data.nodeName].push({
 				executionStatus: 'running',
 				executionTime: 0,
-				...pushData.data,
+				...data.data,
 			});
 		}
 	}
@@ -1454,7 +1533,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 				tasksData.push(data);
 			}
 
-			removeExecutingNode(nodeName);
 			void trackNodeExecution(pushData);
 		}
 	}
@@ -1717,10 +1795,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	function markExecutionAsStopped() {
-		setActiveExecutionId(null);
+		setActiveExecutionId(undefined);
 		clearNodeExecutionQueue();
 		executionWaitingForWebhook.value = false;
-		uiStore.removeActiveAction('workflowRunning');
 		workflowHelpers.setDocumentTitle(workflowName.value, 'IDLE');
 
 		clearPopupWindowState();
@@ -1741,8 +1818,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		currentWorkflowExecutions,
 		workflowExecutionData,
 		workflowExecutionPairedItemMappings,
-		activeExecutionId: computed(() => activeExecutionId.value),
-		previousExecutionId: computed(() => previousExecutionId.value),
+		activeExecutionId: readonlyActiveExecutionId,
+		previousExecutionId: readonlyPreviousExecutionId,
 		setActiveExecutionId,
 		subWorkflowExecutionError,
 		executionWaitingForWebhook,
@@ -1809,7 +1886,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		makeNewWorkflowShareable,
 		resetWorkflow,
 		resetState,
-		setNodeExecuting,
+		addNodeExecutionData,
+		addExecutingNode,
 		removeExecutingNode,
 		setWorkflowId,
 		setUsedCredentials,
@@ -1818,17 +1896,21 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		replaceInvalidWorkflowCredentials,
 		setWorkflows,
 		deleteWorkflow,
+		archiveWorkflow,
+		unarchiveWorkflow,
 		addWorkflow,
 		setWorkflowActive,
 		setWorkflowInactive,
 		fetchActiveWorkflows,
 		setActive,
+		setIsArchived,
 		getDuplicateCurrentWorkflowName,
 		setWorkflowExecutionData,
 		setWorkflowExecutionRunData,
 		setWorkflowSettings,
 		setWorkflowPinData,
 		setWorkflowTagIds,
+		setParentFolder,
 		addWorkflowTagIds,
 		removeWorkflowTagId,
 		setWorkflowScopes,
@@ -1877,6 +1959,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setNodes,
 		setConnections,
 		markExecutionAsStopped,
+		findNodeByPartialId,
+		getPartialIdForNode,
 		totalWorkflowCount,
 	};
 });

@@ -259,14 +259,28 @@ describe('useWorkflowsStore', () => {
 	});
 
 	describe('nodesIssuesExist', () => {
-		it('should return true when a node has issues', () => {
+		it('should return true when a node has issues and connected', () => {
+			workflowsStore.workflow.nodes = [
+				{ name: 'Node1', issues: { error: ['Error message'] } },
+				{ name: 'Node2' },
+			] as unknown as IWorkflowDb['nodes'];
+
+			workflowsStore.workflow.connections = {
+				Node1: { main: [[{ node: 'Node2' } as IConnection]] },
+			};
+
+			const hasIssues = workflowsStore.nodesIssuesExist;
+			expect(hasIssues).toBe(true);
+		});
+
+		it('should return false when node has issues but it is not connected', () => {
 			workflowsStore.workflow.nodes = [
 				{ name: 'Node1', issues: { error: ['Error message'] } },
 				{ name: 'Node2' },
 			] as unknown as IWorkflowDb['nodes'];
 
 			const hasIssues = workflowsStore.nodesIssuesExist;
-			expect(hasIssues).toBe(true);
+			expect(hasIssues).toBe(false);
 		});
 
 		it('should return false when no nodes have issues', () => {
@@ -274,6 +288,10 @@ describe('useWorkflowsStore', () => {
 				{ name: 'Node1' },
 				{ name: 'Node2' },
 			] as unknown as IWorkflowDb['nodes'];
+
+			workflowsStore.workflow.connections = {
+				Node1: { main: [[{ node: 'Node2' } as IConnection]] },
+			};
 
 			const hasIssues = workflowsStore.nodesIssuesExist;
 			expect(hasIssues).toBe(false);
@@ -797,6 +815,122 @@ describe('useWorkflowsStore', () => {
 			);
 		},
 	);
+
+	describe('findNodeByPartialId', () => {
+		test.each([
+			[[], 'D', undefined],
+			[['A', 'B', 'C'], 'D', undefined],
+			[['A', 'B', 'C'], 'B', 1],
+			[['AA', 'BB', 'CC'], 'B', 1],
+			[['AA', 'BB', 'BC'], 'B', 1],
+			[['AA', 'BB', 'BC'], 'BC', 2],
+		] as Array<[string[], string, number | undefined]>)(
+			'with input %s , %s returns node with index %s',
+			(ids, id, expectedIndex) => {
+				workflowsStore.workflow.nodes = ids.map((x) => ({ id: x }) as never);
+
+				expect(workflowsStore.findNodeByPartialId(id)).toBe(
+					workflowsStore.workflow.nodes[expectedIndex ?? -1],
+				);
+			},
+		);
+	});
+
+	describe('getPartialIdForNode', () => {
+		test.each([
+			[[], 'Alphabet', 'Alphabet'],
+			[['Alphabet'], 'Alphabet', 'Alphab'],
+			[['Alphabet', 'Alphabeta'], 'Alphabeta', 'Alphabeta'],
+			[['Alphabet', 'Alphabeta', 'Alphabetagamma'], 'Alphabet', 'Alphabet'],
+			[['Alphabet', 'Alphabeta', 'Alphabetagamma'], 'Alphabeta', 'Alphabeta'],
+			[['Alphabet', 'Alphabeta', 'Alphabetagamma'], 'Alphabetagamma', 'Alphabetag'],
+		] as Array<[string[], string, string]>)(
+			'with input %s , %s returns %s',
+			(ids, id, expected) => {
+				workflowsStore.workflow.nodes = ids.map((x) => ({ id: x }) as never);
+
+				expect(workflowsStore.getPartialIdForNode(id)).toBe(expected);
+			},
+		);
+	});
+
+	describe('archiveWorkflow', () => {
+		it('should call the API to archive the workflow', async () => {
+			const workflowId = '1';
+			const versionId = '00000000-0000-0000-0000-000000000000';
+			const updatedVersionId = '11111111-1111-1111-1111-111111111111';
+
+			workflowsStore.workflowsById = {
+				'1': { active: true, isArchived: false, versionId } as IWorkflowDb,
+			};
+			workflowsStore.workflow.active = true;
+			workflowsStore.workflow.isArchived = false;
+			workflowsStore.workflow.id = workflowId;
+			workflowsStore.workflow.versionId = versionId;
+
+			const makeRestApiRequestSpy = vi
+				.spyOn(apiUtils, 'makeRestApiRequest')
+				.mockImplementation(async () => ({
+					versionId: updatedVersionId,
+				}));
+
+			await workflowsStore.archiveWorkflow(workflowId);
+
+			expect(workflowsStore.workflowsById['1'].active).toBe(false);
+			expect(workflowsStore.workflowsById['1'].isArchived).toBe(true);
+			expect(workflowsStore.workflowsById['1'].versionId).toBe(updatedVersionId);
+			expect(workflowsStore.workflow.active).toBe(false);
+			expect(workflowsStore.workflow.isArchived).toBe(true);
+			expect(workflowsStore.workflow.versionId).toBe(updatedVersionId);
+			expect(makeRestApiRequestSpy).toHaveBeenCalledWith(
+				expect.objectContaining({
+					baseUrl: '/rest',
+					pushRef: expect.any(String),
+				}),
+				'POST',
+				`/workflows/${workflowId}/archive`,
+			);
+		});
+	});
+
+	describe('unarchiveWorkflow', () => {
+		it('should call the API to unarchive the workflow', async () => {
+			const workflowId = '1';
+			const versionId = '00000000-0000-0000-0000-000000000000';
+			const updatedVersionId = '11111111-1111-1111-1111-111111111111';
+
+			workflowsStore.workflowsById = {
+				'1': { active: false, isArchived: true, versionId } as IWorkflowDb,
+			};
+			workflowsStore.workflow.active = false;
+			workflowsStore.workflow.isArchived = true;
+			workflowsStore.workflow.id = workflowId;
+			workflowsStore.workflow.versionId = versionId;
+
+			const makeRestApiRequestSpy = vi
+				.spyOn(apiUtils, 'makeRestApiRequest')
+				.mockImplementation(async () => ({
+					versionId: updatedVersionId,
+				}));
+
+			await workflowsStore.unarchiveWorkflow(workflowId);
+
+			expect(workflowsStore.workflowsById['1'].active).toBe(false);
+			expect(workflowsStore.workflowsById['1'].isArchived).toBe(false);
+			expect(workflowsStore.workflowsById['1'].versionId).toBe(updatedVersionId);
+			expect(workflowsStore.workflow.active).toBe(false);
+			expect(workflowsStore.workflow.isArchived).toBe(false);
+			expect(workflowsStore.workflow.versionId).toBe(updatedVersionId);
+			expect(makeRestApiRequestSpy).toHaveBeenCalledWith(
+				expect.objectContaining({
+					baseUrl: '/rest',
+					pushRef: expect.any(String),
+				}),
+				'POST',
+				`/workflows/${workflowId}/unarchive`,
+			);
+		});
+	});
 });
 
 function getMockEditFieldsNode() {
@@ -830,6 +964,7 @@ function generateMockExecutionEvents() {
 			nodes: [],
 			connections: {},
 			active: false,
+			isArchived: false,
 			versionId: '1',
 		},
 		finished: false,
