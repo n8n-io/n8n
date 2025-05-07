@@ -49,7 +49,7 @@ watch(url, (newValue) => {
 					v-model="url"
 					:placeholder="i18n.baseText('mainSidebar.prompt.workflowUrl')"
 					:state="isValid ? 'default' : 'error'"
-					@input="isValid = true"
+					@keyup.enter="confirm"
 				/>
 				<p v-if="!isValid" :class="$style['error-text']">
 					{{ i18n.baseText('mainSidebar.prompt.invalidUrl') }}
