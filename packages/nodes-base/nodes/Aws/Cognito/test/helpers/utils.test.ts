@@ -3,7 +3,6 @@ import type { MockProxy } from 'jest-mock-extended';
 import type { IExecuteSingleFunctions, IHttpRequestOptions } from 'n8n-workflow';
 import { NodeOperationError, NodeApiError } from 'n8n-workflow';
 
-import { FAKE_CREDENTIALS_DATA } from '../../../../../test/nodes/FakeCredentialsMap';
 import {
 	getUserPool,
 	validateArn,
@@ -39,7 +38,11 @@ describe('AWS Cognito - Helpers functions', () => {
 		mockReturnJsonArray = jest.fn();
 		loadOptionsFunctions.helpers.httpRequestWithAuthentication = mockRequestWithAuthentication;
 		loadOptionsFunctions.helpers.returnJsonArray = mockReturnJsonArray;
-		loadOptionsFunctions.getCredentials.mockResolvedValue(FAKE_CREDENTIALS_DATA.aws);
+		loadOptionsFunctions.getCredentials.mockResolvedValue({
+			region: 'eu-central-1',
+			accessKeyId: 'test',
+			secretAccessKey: 'test',
+		});
 	});
 
 	afterEach(() => {

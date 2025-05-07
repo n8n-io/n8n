@@ -1,12 +1,7 @@
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import nock from 'nock';
 
-import { getWorkflowFilenames, testWorkflows } from '../../../../../test/nodes/Helpers';
-
 describe('AWS Cognito - Remove User From Group', () => {
-	const workflows = getWorkflowFilenames(__dirname).filter((filename) =>
-		filename.includes('removeFromGroup.workflow.json'),
-	);
-
 	beforeEach(() => {
 		const baseUrl = 'https://cognito-idp.eu-central-1.amazonaws.com/';
 
@@ -66,5 +61,14 @@ describe('AWS Cognito - Remove User From Group', () => {
 			.reply(200, {});
 	});
 
-	testWorkflows(workflows);
+	new NodeTestHarness().setupTests({
+		workflowFiles: ['removeFromGroup.workflow.json'],
+		credentials: {
+			aws: {
+				region: 'eu-central-1',
+				accessKeyId: 'test',
+				secretAccessKey: 'test',
+			},
+		},
+	});
 });

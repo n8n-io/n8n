@@ -1,12 +1,7 @@
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import nock from 'nock';
 
-import { getWorkflowFilenames, testWorkflows } from '../../../../../test/nodes/Helpers';
-
 describe('AWS Cognito - Update Group', () => {
-	const workflows = getWorkflowFilenames(__dirname).filter((filename) =>
-		filename.includes('update.workflow.json'),
-	);
-
 	beforeEach(() => {
 		const baseUrl = 'https://cognito-idp.eu-central-1.amazonaws.com/';
 
@@ -28,5 +23,14 @@ describe('AWS Cognito - Update Group', () => {
 			});
 	});
 
-	testWorkflows(workflows);
+	new NodeTestHarness().setupTests({
+		workflowFiles: ['update.workflow.json'],
+		credentials: {
+			aws: {
+				region: 'eu-central-1',
+				accessKeyId: 'test',
+				secretAccessKey: 'test',
+			},
+		},
+	});
 });
