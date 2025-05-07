@@ -250,7 +250,7 @@ export function useWorkflowExtraction() {
 			},
 			settings: { executionOrder: 'v1' },
 			projectId: workflowsStore.workflow.homeProject?.id,
-			parentFolderId: workflowsStore.workflow.parentFolder?.parentFolderId ?? undefined,
+			parentFolderId: workflowsStore.workflow.parentFolder?.id ?? undefined,
 		};
 
 		let createdWorkflow: IWorkflowDb;
