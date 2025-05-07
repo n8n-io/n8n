@@ -1,5 +1,8 @@
 import type { CreateFolderDto, DeleteFolderDto, UpdateFolderDto } from '@n8n/api-types';
-import type { FolderWithWorkflowAndSubFolderCountAndPath } from '@n8n/db';
+import type {
+	FolderWithWorkflowAndSubFolderCount,
+	FolderWithWorkflowAndSubFolderCountAndPath,
+} from '@n8n/db';
 import { Folder, FolderTagMappingRepository, FolderRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
@@ -255,18 +258,26 @@ export class FolderService {
 	async getManyAndCount(projectId: string, options: ListQuery.Options) {
 		options.filter = { ...options.filter, projectId };
 		// eslint-disable-next-line prefer-const
-		let [data, count] = await this.folderRepository.getManyAndCount(options);
+		let [folders, count] = await this.folderRepository.getManyAndCount(options);
 		if (options.select?.path) {
-			const folderIds = data.map((folder) => folder.id);
-			const folderPaths = await this.folderRepository.getFolderPathsToRoot(folderIds);
-			data = data.map(
-				(folder) =>
-					({
-						...folder,
-						path: folderPaths.get(folder.id),
-					}) as FolderWithWorkflowAndSubFolderCountAndPath,
-			);
+			folders = await this.enrichFoldersWithPaths(folders);
 		}
-		return [data, count];
+		return [folders, count];
+	}
+
+	private async enrichFoldersWithPaths(
+		folders: FolderWithWorkflowAndSubFolderCount[],
+	): Promise<FolderWithWorkflowAndSubFolderCountAndPath[]> {
+		const folderIds = folders.map((folder) => folder.id);
+
+		const folderPaths = await this.folderRepository.getFolderPathsToRoot(folderIds);
+
+		return folders.map(
+			(folder) =>
+				({
+					...folder,
+					path: folderPaths.get(folder.id),
+				}) as FolderWithWorkflowAndSubFolderCountAndPath,
+		);
 	}
 }
