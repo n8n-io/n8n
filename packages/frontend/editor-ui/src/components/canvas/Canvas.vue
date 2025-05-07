@@ -548,10 +548,16 @@ const isPaneMoving = ref(false);
 
 useViewportAutoAdjust(viewportRef, viewport, setViewport);
 
-function getProjectedPosition(event?: Pick<MouseEvent, 'clientX' | 'clientY'>) {
+function getProjectedPosition(
+	event?: Pick<MouseEvent, 'clientX' | 'clientY'> | Pick<TouchEvent, 'touches'>,
+) {
 	const bounds = viewportRef.value?.getBoundingClientRect() ?? { left: 0, top: 0 };
-	const offsetX = event?.clientX ?? 0;
-	const offsetY = event?.clientY ?? 0;
+
+	const clientX = event && 'clientX' in event ? event.clientX : event?.touches?.[0]?.clientX;
+	const clientY = event && 'clientY' in event ? event.clientY : event?.touches?.[0]?.clientY;
+
+	const offsetX = clientX ?? 0;
+	const offsetY = clientY ?? 0;
 
 	return project({
 		x: offsetX - bounds.left,
