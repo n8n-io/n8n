@@ -88,7 +88,10 @@ export class ActiveWorkflowManager {
 	) {}
 
 	async init() {
-		strict(this.instanceSettings.instanceRole !== 'unset');
+		strict(
+			this.instanceSettings.instanceRole !== 'unset',
+			'Active workflow manager expects instance role to be set',
+		);
 
 		await this.addActiveWorkflows('init');
 
