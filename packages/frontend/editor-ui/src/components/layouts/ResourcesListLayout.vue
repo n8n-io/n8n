@@ -337,20 +337,32 @@ const focusSearchInput = () => {
 	}
 };
 
+const isFilterApplied = (key: string) => {
+	if (key === 'search') return false;
+
+	if (typeof props.filters[key] === 'boolean') {
+		return props.filters[key];
+	}
+
+	if (Array.isArray(props.filters[key])) {
+		return props.filters[key].length > 0;
+	}
+
+	return props.filters[key] !== '';
+};
+
+const hasOnlyShowArchivedFilter = computed(() => {
+	const activeFilters = filterKeys.value.filter(isFilterApplied);
+
+	if (activeFilters.length !== 1) {
+		return false;
+	}
+
+	return activeFilters[0] === 'showArchived';
+});
+
 const hasAppliedFilters = (): boolean => {
-	return !!filterKeys.value.find((key) => {
-		if (key === 'search') return false;
-
-		if (typeof props.filters[key] === 'boolean') {
-			return props.filters[key];
-		}
-
-		if (Array.isArray(props.filters[key])) {
-			return props.filters[key].length > 0;
-		}
-
-		return props.filters[key] !== '';
-	});
+	return !!filterKeys.value.find(isFilterApplied);
 };
 
 const setRowsPerPage = async (numberOfRowsPerPage: number) => {
@@ -672,7 +684,11 @@ defineExpose({
 
 					<div v-if="showFiltersDropdown" v-show="hasFilters" class="mt-xs">
 						<n8n-info-tip :bold="false">
-							{{ i18n.baseText(`${resourceKey}.filters.active` as BaseTextKey) }}
+							{{
+								hasOnlyShowArchivedFilter
+									? i18n.baseText(`${resourceKey}.filters.active.onlyShowArchived` as BaseTextKey)
+									: i18n.baseText(`${resourceKey}.filters.active` as BaseTextKey)
+							}}
 							<n8n-link data-test-id="workflows-filter-reset" size="small" @click="resetFilters">
 								{{ i18n.baseText(`${resourceKey}.filters.active.reset` as BaseTextKey) }}
 							</n8n-link>
