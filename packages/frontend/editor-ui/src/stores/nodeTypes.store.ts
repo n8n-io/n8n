@@ -122,11 +122,19 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		};
 	});
 
-	const isNodesAsToolNode = computed(() => {
+	const isToolNode = computed(() => {
 		return (nodeTypeName: string) => {
 			const nodeType = getNodeType.value(nodeTypeName);
-			console.log(nodeType);
-			return !!(nodeType && nodeType.outputs.includes(NodeConnectionTypes.AiTool));
+			if (nodeType?.outputs && Array.isArray(nodeType.outputs)) {
+				const outputTypes = nodeType.outputs.map(
+					(output: NodeConnectionType | INodeOutputConfiguration) =>
+						typeof output === 'string' ? output : output.type,
+				);
+
+				return outputTypes.includes(NodeConnectionTypes.AiTool);
+			} else {
+				return nodeType?.outputs.includes(NodeConnectionTypes.AiTool);
+			}
 		};
 	});
 
@@ -336,7 +344,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		getCredentialOnlyNodeType,
 		isConfigNode,
 		isTriggerNode,
-		isNodesAsToolNode,
+		isNodesAsToolNode: isToolNode,
 		isCoreNodeType,
 		visibleNodeTypes,
 		nativelyNumberSuffixedDefaults,

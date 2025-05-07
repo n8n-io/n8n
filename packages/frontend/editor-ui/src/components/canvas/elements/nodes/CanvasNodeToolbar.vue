@@ -29,7 +29,7 @@ const workflowsStore = useWorkflowsStore();
 const nodeTypesStore = useNodeTypesStore();
 
 const node = computed(() => !!name.value && workflowsStore.getNodeByName(name.value));
-const isNodesAsToolNode = computed(
+const isAiToolNode = computed(
 	() => !!node.value && nodeTypesStore.isNodesAsToolNode(node.value.type),
 );
 
@@ -51,7 +51,7 @@ const isExecuteNodeVisible = computed(() => {
 		!props.readOnly &&
 		render.value.type === CanvasNodeRenderType.Default &&
 		'configuration' in render.value.options &&
-		(!render.value.options.configuration || isNodesAsToolNode.value)
+		(!render.value.options.configuration || isAiToolNode.value)
 	);
 });
 
