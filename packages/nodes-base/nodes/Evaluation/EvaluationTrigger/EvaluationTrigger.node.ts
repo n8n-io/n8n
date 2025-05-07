@@ -189,47 +189,5 @@ export class EvaluationTrigger implements INodeType {
 
 			return [[currentRow]];
 		}
-
-		// const hasFilter = this.getNodeParameter('filtersUI.values', 0, []) as ILookupValues[];
-
-		// if (hasFilter.length > 0) {
-		// 	operationResult = await getFilteredResults.call(
-		// 		this,
-		// 		operationResult,
-		// 		googleSheetInstance,
-		// 		googleSheet,
-		// 		startingRow,
-		// 		maxRows,
-		// 	);
-
-		// 	if (inputData[0].json.requestDataset) {
-		// 		return [operationResult];
-		// 	} else {
-		// 		operationResult = operationResult.length > 0 ? [operationResult[0]] : [];
-		// 	}
-
-		// 	if (operationResult.length === 0) {
-		// 		startingRow = 1;
-		// 		return [];
-		// 	}
-
-		// 	startingRow = (operationResult[0].json.row_number as number) + 1;
-
-		// 	const rowsLeft = operationResult.length
-		// 		? await getRowsLeftFilteredResults.call(
-		// 				this,
-		// 				googleSheetInstance,
-		// 				googleSheet.title,
-		// 				startingRow,
-		// 				maxRows,
-		// 			)
-		// 		: 0;
-
-		// 	operationResult[0].json._rowsLeft = rowsLeft
-
-		// 	return [operationResult];
-		// } else {
-
-		// }
 	}
 }
