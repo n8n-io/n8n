@@ -1,4 +1,6 @@
 import { GlobalConfig } from '@n8n/config';
+import type { User, WorkflowEntity, ListQueryDb } from '@n8n/db';
+import { SharedWorkflow, ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
@@ -14,10 +16,6 @@ import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import config from '@/config';
-import { SharedWorkflow } from '@/databases/entities/shared-workflow';
-import type { User } from '@/databases/entities/user';
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { WorkflowTagMappingRepository } from '@/databases/repositories/workflow-tag-mapping.repository';
 import type { WorkflowFolderUnionFull } from '@/databases/repositories/workflow.repository';
@@ -35,7 +33,6 @@ import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
 import { TagService } from '@/services/tag.service';
-import type { ListQueryDb } from '@/types-db';
 import * as WorkflowHelpers from '@/workflow-helpers';
 
 import { WorkflowFinderService } from './workflow-finder.service';
@@ -385,7 +382,7 @@ export class WorkflowService {
 	 * If the user does not have the permissions to delete the workflow this does
 	 * nothing and returns void.
 	 */
-	async delete(user: User, workflowId: string): Promise<WorkflowEntity | undefined> {
+	async delete(user: User, workflowId: string, force = false): Promise<WorkflowEntity | undefined> {
 		await this.externalHooks.run('workflow.delete', [workflowId]);
 
 		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
@@ -394,6 +391,10 @@ export class WorkflowService {
 
 		if (!workflow) {
 			return;
+		}
+
+		if (!workflow.isArchived && !force) {
+			throw new BadRequestError('Workflow must be archived before it can be deleted.');
 		}
 
 		if (workflow.active) {
@@ -413,6 +414,65 @@ export class WorkflowService {
 
 		this.eventService.emit('workflow-deleted', { user, workflowId, publicApi: false });
 		await this.externalHooks.run('workflow.afterDelete', [workflowId]);
+
+		return workflow;
+	}
+
+	async archive(user: User, workflowId: string): Promise<WorkflowEntity | undefined> {
+		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
+			'workflow:delete',
+		]);
+
+		if (!workflow) {
+			return;
+		}
+
+		if (workflow.isArchived) {
+			throw new BadRequestError('Workflow is already archived.');
+		}
+
+		if (workflow.active) {
+			await this.activeWorkflowManager.remove(workflowId);
+		}
+
+		const versionId = uuid();
+		await this.workflowRepository.update(workflowId, {
+			isArchived: true,
+			active: false,
+			versionId,
+		});
+
+		this.eventService.emit('workflow-archived', { user, workflowId, publicApi: false });
+		await this.externalHooks.run('workflow.afterArchive', [workflowId]);
+
+		workflow.isArchived = true;
+		workflow.active = false;
+		workflow.versionId = versionId;
+
+		return workflow;
+	}
+
+	async unarchive(user: User, workflowId: string): Promise<WorkflowEntity | undefined> {
+		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
+			'workflow:delete',
+		]);
+
+		if (!workflow) {
+			return;
+		}
+
+		if (!workflow.isArchived) {
+			throw new BadRequestError('Workflow is not archived.');
+		}
+
+		const versionId = uuid();
+		await this.workflowRepository.update(workflowId, { isArchived: false, versionId });
+
+		this.eventService.emit('workflow-unarchived', { user, workflowId, publicApi: false });
+		await this.externalHooks.run('workflow.afterUnarchive', [workflowId]);
+
+		workflow.isArchived = false;
+		workflow.versionId = versionId;
 
 		return workflow;
 	}

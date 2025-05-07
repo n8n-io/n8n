@@ -41,6 +41,7 @@ describe('WorkflowActivator', () => {
 	it('renders correctly', () => {
 		const renderOptions = {
 			props: {
+				isArchived: false,
 				workflowActive: false,
 				workflowId: '1',
 				workflowPermissions: { update: true },
@@ -50,6 +51,7 @@ describe('WorkflowActivator', () => {
 		const { getByTestId, getByRole } = renderComponent(renderOptions);
 		expect(getByTestId('workflow-activator-status')).toBeInTheDocument();
 		expect(getByRole('switch')).toBeInTheDocument();
+		expect(getByRole('switch')).not.toBeDisabled();
 	});
 
 	it('display an inactive tooltip when there are no nodes available', async () => {
@@ -57,6 +59,7 @@ describe('WorkflowActivator', () => {
 
 		const { getByTestId, getByRole } = renderComponent({
 			props: {
+				isArchived: false,
 				workflowActive: false,
 				workflowId: '1',
 				workflowPermissions: { update: true },
@@ -80,6 +83,7 @@ describe('WorkflowActivator', () => {
 
 		const { getByTestId, getByRole } = renderComponent({
 			props: {
+				isArchived: false,
 				workflowActive: false,
 				workflowId: '1',
 				workflowPermissions: { update: true },
@@ -143,6 +147,7 @@ describe('WorkflowActivator', () => {
 
 		const { rerender } = renderComponent({
 			props: {
+				isArchived: false,
 				workflowActive: false,
 				workflowId: '1',
 				workflowPermissions: { update: true },
@@ -210,6 +215,7 @@ describe('WorkflowActivator', () => {
 
 		const { rerender } = renderComponent({
 			props: {
+				isArchived: false,
 				workflowActive: false,
 				workflowId: '1',
 				workflowPermissions: { update: true },
@@ -251,6 +257,7 @@ describe('WorkflowActivator', () => {
 
 		const { rerender } = renderComponent({
 			props: {
+				isArchived: false,
 				workflowActive: false,
 				workflowId: '1',
 				workflowPermissions: { update: true },
@@ -260,5 +267,28 @@ describe('WorkflowActivator', () => {
 		await rerender({ workflowActive: true });
 
 		expect(toast.showMessage).not.toHaveBeenCalled();
+	});
+
+	it('Should be disabled on archived workflow', async () => {
+		const renderOptions = {
+			props: {
+				isArchived: true,
+				workflowActive: false,
+				workflowId: '1',
+				workflowPermissions: { update: true },
+			},
+		};
+
+		const { getByTestId, getByRole } = renderComponent(renderOptions);
+		expect(getByTestId('workflow-activator-status')).toBeInTheDocument();
+		expect(getByRole('switch')).toBeInTheDocument();
+		expect(getByRole('switch')).toBeDisabled();
+
+		await userEvent.hover(getByRole('switch'));
+		expect(getByRole('tooltip')).toBeInTheDocument();
+		expect(getByRole('tooltip')).toHaveTextContent(
+			'This workflow is archived so it cannot be activated',
+		);
+		expect(getByTestId('workflow-activator-status')).toHaveTextContent('Inactive');
 	});
 });
