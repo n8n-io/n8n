@@ -61,7 +61,7 @@ watch(url, (newValue) => {
 				<n8n-button type="secondary" float="right" @click="closeModal">
 					{{ i18n.baseText('mainSidebar.prompt.cancel') }}
 				</n8n-button>
-				<n8n-button type="primary" float="right" @click="confirm">
+				<n8n-button type="primary" float="right" :disabled="!url.value || !isValid.value" @click="confirm">
 					{{ i18n.baseText('mainSidebar.prompt.import') }}
 				</n8n-button>
 			</div>
