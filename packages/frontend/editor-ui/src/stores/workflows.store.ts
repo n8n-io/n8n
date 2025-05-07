@@ -630,6 +630,16 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return workflowData;
 	}
 
+	async function getNewWorkflowDataAndMakeShareable(
+		name?: string,
+		projectId?: string,
+		parentFolderId?: string,
+	): Promise<INewWorkflowData> {
+		const workflowData = await getNewWorkflowData(name, projectId, parentFolderId);
+		makeNewWorkflowShareable();
+		return workflowData;
+	}
+
 	function makeNewWorkflowShareable() {
 		const { currentProject, personalProject } = useProjectsStore();
 		const homeProject = currentProject ?? personalProject ?? {};
@@ -1961,6 +1971,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		markExecutionAsStopped,
 		findNodeByPartialId,
 		getPartialIdForNode,
+		getNewWorkflowDataAndMakeShareable,
 		totalWorkflowCount,
 	};
 });
