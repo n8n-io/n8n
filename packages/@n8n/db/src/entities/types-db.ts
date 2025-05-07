@@ -283,10 +283,16 @@ export type FolderWithWorkflowAndSubFolderCountAndPath = FolderWithWorkflowAndSu
 export type TestRunFinalResult = 'success' | 'error' | 'warning';
 
 export type TestRunErrorCode =
-	| 'PAST_EXECUTIONS_NOT_FOUND'
-	| 'EVALUATION_WORKFLOW_NOT_FOUND'
+	| 'TEST_CASES_NOT_FOUND'
 	| 'INTERRUPTED'
-	| 'UNKNOWN_ERROR';
+	| 'UNKNOWN_ERROR'
+	| 'EVALUATION_TRIGGER_NOT_FOUND'
+	| 'EVALUATION_TRIGGER_NOT_CONFIGURED'
+	| 'SET_OUTPUTS_NODE_NOT_FOUND'
+	| 'SET_OUTPUTS_NODE_NOT_CONFIGURED'
+	| 'SET_METRICS_NODE_NOT_FOUND'
+	| 'SET_METRICS_NODE_NOT_CONFIGURED'
+	| 'CANT_FETCH_TEST_CASES';
 
 export type TestCaseExecutionErrorCode =
 	| 'MOCKED_NODE_NOT_FOUND' // This will be used when node mocking will be implemented
