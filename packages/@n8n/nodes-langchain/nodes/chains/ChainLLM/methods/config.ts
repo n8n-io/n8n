@@ -260,6 +260,36 @@ export const nodeProperties: INodeProperties[] = [
 		],
 	},
 	{
+		displayName: 'Batch Processing',
+		name: 'batching',
+		type: 'collection',
+		placeholder: 'Add Batch Processing Option',
+		description: 'Batch processing options for rate limiting',
+		default: {},
+		options: [
+			{
+				displayName: 'Batch Size',
+				name: 'batchSize',
+				default: 100,
+				type: 'number',
+				description:
+					'How many items to process in parallel. This is useful for rate limiting, but will impact the agents log output.',
+			},
+			{
+				displayName: 'Delay Between Batches',
+				name: 'delayBetweenBatches',
+				default: 0,
+				type: 'number',
+				description: 'Delay in milliseconds between batches. This is useful for rate limiting.',
+			},
+		],
+		displayOptions: {
+			show: {
+				'@version': [{ _cnd: { gte: 1.7 } }],
+			},
+		},
+	},
+	{
 		displayName: `Connect an <a data-action='openSelectiveNodeCreator' data-action-parameter-connectiontype='${NodeConnectionTypes.AiOutputParser}'>output parser</a> on the canvas to specify the output format you require`,
 		name: 'notice',
 		type: 'notice',
