@@ -65,24 +65,22 @@ const showWizard = computed(() => {
 <template>
 	<div v-if="isReady">
 		<div v-if="!showWizard" :class="$style.header">
-			<div style="display: flex; align-items: center; gap: 10px">
-				<N8nTooltip v-if="!showWizard" :disabled="isRunTestEnabled" :placement="'left'">
-					<N8nButton
-						:disabled="!isRunTestEnabled"
-						:class="$style.runTestButton"
-						size="small"
-						data-test-id="run-test-button"
-						:label="locale.baseText('evaluation.runTest')"
-						type="primary"
-						@click="runTest"
-					/>
-					<template #content>
-						<template v-if="isRunning">
-							{{ locale.baseText('evaluation.testIsRunning') }}
-						</template>
+			<N8nTooltip v-if="!showWizard" :disabled="isRunTestEnabled" :placement="'left'">
+				<N8nButton
+					:disabled="!isRunTestEnabled"
+					:class="$style.runTestButton"
+					size="small"
+					data-test-id="run-test-button"
+					:label="locale.baseText('evaluation.runTest')"
+					type="primary"
+					@click="runTest"
+				/>
+				<template #content>
+					<template v-if="isRunning">
+						{{ locale.baseText('evaluation.testIsRunning') }}
 					</template>
-				</N8nTooltip>
-			</div>
+				</template>
+			</N8nTooltip>
 		</div>
 		<div :class="{ [$style.wrapper]: true, [$style.setupWrapper]: showWizard }">
 			<div :class="{ [$style.content]: true, [$style.contentWithRuns]: hasRuns }">
@@ -143,7 +141,7 @@ const showWizard = computed(() => {
 
 .header {
 	display: flex;
-	justify-content: space-between;
+	justify-content: end;
 	align-items: center;
 	padding: var(--spacing-m) var(--spacing-l);
 	padding-left: 27px;
