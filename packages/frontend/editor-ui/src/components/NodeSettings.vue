@@ -131,7 +131,7 @@ const node = computed(() => ndvStore.activeNode);
 const isTriggerNode = computed(() => !!node.value && nodeTypesStore.isTriggerNode(node.value.type));
 
 const isNodesAsToolNode = computed(
-	() => !!node.value && nodeTypesStore.isNodesAsToolNode(node.value.type),
+	() => !!node.value && nodeTypesStore.isToolNode(node.value.type),
 );
 
 const isExecutable = computed(() => {

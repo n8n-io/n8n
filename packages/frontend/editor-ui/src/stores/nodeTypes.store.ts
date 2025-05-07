@@ -344,7 +344,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		getCredentialOnlyNodeType,
 		isConfigNode,
 		isTriggerNode,
-		isNodesAsToolNode: isToolNode,
+		isToolNode,
 		isCoreNodeType,
 		visibleNodeTypes,
 		nativelyNumberSuffixedDefaults,

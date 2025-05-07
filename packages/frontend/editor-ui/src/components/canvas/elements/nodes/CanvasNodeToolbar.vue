@@ -29,9 +29,7 @@ const workflowsStore = useWorkflowsStore();
 const nodeTypesStore = useNodeTypesStore();
 
 const node = computed(() => !!name.value && workflowsStore.getNodeByName(name.value));
-const isAiToolNode = computed(
-	() => !!node.value && nodeTypesStore.isNodesAsToolNode(node.value.type),
-);
+const isAiToolNode = computed(() => !!node.value && nodeTypesStore.isToolNode(node.value.type));
 
 const nodeDisabledTitle = computed(() => {
 	return isDisabled.value ? i18n.baseText('node.enable') : i18n.baseText('node.disable');
