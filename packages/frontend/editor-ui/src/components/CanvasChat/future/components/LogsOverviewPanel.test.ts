@@ -12,7 +12,7 @@ import {
 	aiChatWorkflow,
 	aiManualExecutionResponse,
 	aiManualWorkflow,
-	createLogsBuildContext,
+	createTestLogsBuildContext,
 } from '../../__test__/data';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -32,7 +32,7 @@ describe('LogsOverviewPanel', () => {
 			isCompact: false,
 			scrollToSelection: false,
 			entries: createLogEntries(
-				createLogsBuildContext(
+				createTestLogsBuildContext(
 					createTestWorkflowObject(aiChatWorkflow),
 					aiChatExecutionResponse.data?.resultData.runData ?? {},
 				),
@@ -136,7 +136,7 @@ describe('LogsOverviewPanel', () => {
 		const rendered = render({
 			isOpen: true,
 			entries: createLogEntries(
-				createLogsBuildContext(
+				createTestLogsBuildContext(
 					createTestWorkflowObject(aiManualWorkflow),
 					aiManualExecutionResponse.data?.resultData.runData ?? {},
 				),

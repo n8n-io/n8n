@@ -10,7 +10,10 @@ import {
 import { type IExecutionResponse } from '@/Interface';
 import { WorkflowOperationError, type IRunData, type Workflow } from 'n8n-workflow';
 
-export function createLogsBuildContext(workflow: Workflow, runData: IRunData): LogTreeBuildContext {
+export function createTestLogsBuildContext(
+	workflow: Workflow,
+	runData: IRunData,
+): LogTreeBuildContext {
 	return {
 		workflow,
 		workflows: {},

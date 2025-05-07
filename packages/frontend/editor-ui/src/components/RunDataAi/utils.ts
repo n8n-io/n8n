@@ -76,13 +76,31 @@ function getTreeNodeDataRec(
 		return resultData.map((d) => createNode(parent, nodeName, currentDepth, d.runIndex, d));
 	}
 
+	// When at root depth, filter AI data to only show executions that were triggered by this node
+	// This prevents duplicate entries in logs when a sub-node is connected to multiple root nodes
+	// Nodes without source info or with empty source arrays are always included
+	const filteredAiData =
+		currentDepth === 0
+			? aiData?.filter(({ data }) => {
+					if (!data?.source || data.source.length === 0) {
+						return true;
+					}
+
+					return data.source.some(
+						(source) =>
+							source?.previousNode === nodeName &&
+							(runIndex === undefined || source.previousNodeRun === runIndex),
+					);
+				})
+			: aiData;
+
 	// Get the first level of children
 	const connectedSubNodes = workflow.getParentNodes(nodeName, 'ALL_NON_MAIN', 1);
 
 	const treeNode = createNode(parent, nodeName, currentDepth, runIndex ?? 0);
 
 	// Only include sub-nodes which have data
-	const children = (aiData ?? []).flatMap((data) =>
+	const children = (filteredAiData ?? []).flatMap((data) =>
 		connectedSubNodes.includes(data.node) && (runIndex === undefined || data.runIndex === runIndex)
 			? getTreeNodeDataRec(treeNode, data.node, currentDepth + 1, workflow, aiData, data.runIndex)
 			: [],
@@ -148,6 +166,9 @@ export function getReferencedData(
 				data: data[type][0],
 				inOut,
 				type: type as NodeConnectionType,
+				// Include source information in AI content to track which node triggered the execution
+				// This enables filtering in the UI to show only relevant executions
+				source: taskData.source,
 				metadata: {
 					executionTime: taskData.executionTime,
 					startTime: taskData.startTime,
@@ -334,7 +355,19 @@ function getChildNodes(
 
 	return connectedSubNodes.flatMap((subNodeName) =>
 		(context.data.resultData.runData[subNodeName] ?? []).flatMap((t, index) => {
-			if (runIndex !== undefined && index !== runIndex) {
+			// At root depth, filter out node executions that weren't triggered by this node
+			// This prevents showing duplicate executions when a sub-node is connected to multiple parents
+			// Only filter nodes that have source information with valid previousNode references
+			const isMatched =
+				context.depth === 0 && t.source?.length > 0
+					? t.source.some(
+							(source) =>
+								source?.previousNode === node.name &&
+								(runIndex === undefined || source.previousNodeRun === runIndex),
+						)
+					: runIndex === undefined || index === runIndex;
+
+			if (!isMatched) {
 				return [];
 			}
 
@@ -415,7 +448,12 @@ export function createLogEntries(context: LogTreeBuildContext) {
 			context.workflow.getChildNodes(nodeName, 'ALL_NON_MAIN').length > 0 ||
 			context.workflow.getNode(nodeName)?.disabled
 				? [] // skip sub nodes and disabled nodes
-				: taskData.map((task, runIndex) => ({ nodeName, task, runIndex })),
+				: taskData.map((task, runIndex) => ({
+						nodeName,
+						task,
+						runIndex,
+						nodeHasMultipleRuns: taskData.length > 1,
+					})),
 		)
 		.sort((a, b) => {
 			if (a.task.executionIndex !== undefined && b.task.executionIndex !== undefined) {
