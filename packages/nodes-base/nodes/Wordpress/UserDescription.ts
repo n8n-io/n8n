@@ -175,24 +175,24 @@ export const userFields: INodeProperties[] = [
 			{
 				displayName: 'Roles',
 				name: 'roles',
-				type: 'options',
+				type: 'multiOptions',
 				options: [
 					{
 						name: 'Administrator',
 						value: 'administrator',
-					}
+					},
 					{
 						name: 'Editor',
 						value: 'editor',
-					}
+					},
 					{
 						name: 'Author',
 						value: 'author',
-					}
+					},
 					{
 						name: 'Contributor',
 						value: 'contributor',
-					}
+					},
 					{
 						name: 'Subscriber',
 						value: 'subscriber',
@@ -308,7 +308,7 @@ export const userFields: INodeProperties[] = [
 			{
 				displayName: 'Roles',
 				name: 'roles',
-				type: 'options',
+				type: 'multiOptions',
 				options: [
 					{
 						name: 'Administrator',
@@ -317,15 +317,15 @@ export const userFields: INodeProperties[] = [
 					{
 						name: 'Editor',
 						value: 'editor',
-					}
+					},
 					{
 						name: 'Author',
 						value: 'author',
-					}
+					},
 					{
 						name: 'Contributor',
 						value: 'contributor',
-					}
+					},
 					{
 						name: 'Subscriber',
 						value: 'subscriber',
