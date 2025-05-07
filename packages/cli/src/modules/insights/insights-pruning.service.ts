@@ -55,9 +55,9 @@ export class InsightsPruningService {
 	private scheduleNextPrune() {
 		if (this.isStopped) return;
 
-		this.pruneInsightsTimer = setTimeout(async () => {
+		this.pruneInsightsTimout = setTimeout(async () => {
 			await this.pruneInsights();
-			this.scheduleNextPrune(); // reschedule after execution
+			this.scheduleNextPrune();
 		}, this.config.pruneCheckIntervalHours * Time.hours.toMilliseconds);
 	}
 
@@ -69,7 +69,6 @@ export class InsightsPruningService {
 					'Deleted insights by period',
 					result.affected ? { count: result.affected } : {},
 				);
-				return;
 			} catch (error: unknown) {
 				this.logger.warn(`Prune attempt ${attempt} failed`, { error });
 

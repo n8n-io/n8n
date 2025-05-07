@@ -16,12 +16,11 @@ import { InsightsByPeriodRepository } from '../database/repositories/insights-by
 import { InsightsPruningService } from '../insights-pruning.service';
 import { InsightsConfig } from '../insights.config';
 
-// Initialize DB once for all tests
 beforeAll(async () => {
 	await testDb.init();
 });
 
-describe('InsightsPrunningService', () => {
+describe('InsightsPruningService', () => {
 	let insightsConfig: InsightsConfig;
 	let insightsByPeriodRepository: InsightsByPeriodRepository;
 	let insightsPruningService: InsightsPruningService;
