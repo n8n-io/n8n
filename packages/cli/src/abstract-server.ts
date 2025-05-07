@@ -173,7 +173,14 @@ export abstract class AbstractServer {
 			}
 		});
 
-		await new Promise<void>((resolve) => this.server.listen(port, address, () => resolve()));
+		await new Promise<void>((resolve) => {
+			this.logger.info(`Start server on ${address}:${port}`);
+
+			this.server.listen(port, address, () => {
+				this.logger.info(`Server listening on ${address}:${port}`);
+				resolve();
+			});
+		});
 
 		this.externalHooks = Container.get(ExternalHooks);
 
