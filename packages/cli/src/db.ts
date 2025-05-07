@@ -3,7 +3,7 @@ import { Container } from '@n8n/di';
 import type { EntityManager } from '@n8n/typeorm';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { DataSource as Connection } from '@n8n/typeorm';
-import { ErrorReporter } from 'n8n-core';
+import { ErrorReporter, Logger } from 'n8n-core';
 import { DbConnectionTimeoutError, ensureError } from 'n8n-workflow';
 
 import { inTest } from '@/constants';
@@ -31,10 +31,14 @@ if (!inTest) {
 	const pingDBFn = async () => {
 		if (connection?.isInitialized) {
 			try {
+				Container.get(Logger).debug('Pinging database connection');
 				await connection.query('SELECT 1');
 				connectionState.connected = true;
 				return;
 			} catch (error) {
+				Container.get(Logger).error('Database connection ping failed', {
+					errorMessage: error instanceof Error ? error.message : new Error(`${error}`),
+				});
 				Container.get(ErrorReporter).error(error);
 			} finally {
 				pingTimer = setTimeout(pingDBFn, 2000);
@@ -56,9 +60,16 @@ export async function init(): Promise<void> {
 	connection = new Connection(connectionOptions);
 	Container.set(Connection, connection);
 	try {
+		Container.get(Logger).info('Attempting to open database connection');
 		await connection.initialize();
+
+		Container.get(Logger).info('Opened database connection');
 	} catch (e) {
 		let error = ensureError(e);
+		Container.get(Logger).error('Failed to open database connection', {
+			errorMessage: error.message,
+		});
+
 		if (
 			arePostgresOptions(connectionOptions) &&
 			error.message === 'Connection terminated due to connection timeout'
@@ -82,10 +93,14 @@ export async function migrate() {
 }
 
 export const close = async () => {
+	Container.get(Logger).info('Closing database connection');
 	if (pingTimer) {
 		clearTimeout(pingTimer);
 		pingTimer = undefined;
 	}
 
-	if (connection.isInitialized) await connection.destroy();
+	if (connection.isInitialized) {
+		await connection.destroy();
+		Container.get(Logger).info('Closed database connection');
+	}
 };
