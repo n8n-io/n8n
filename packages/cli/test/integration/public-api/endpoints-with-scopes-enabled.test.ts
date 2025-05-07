@@ -1,11 +1,11 @@
 import type { TagEntity } from '@n8n/db';
+import { ApiKeyRepository } from '@n8n/db';
+import { CredentialsRepository } from '@n8n/db';
+import { ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { randomString } from 'n8n-workflow';
 import validator from 'validator';
 
-import { ApiKeyRepository } from '@/databases/repositories/api-key.repository';
-import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { TagRepository } from '@/databases/repositories/tag.repository';
@@ -72,13 +72,13 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 		await testDb.truncate([
 			'User',
 			'SharedCredentials',
-			'Credentials',
-			'Execution',
+			'CredentialsEntity',
+			'ExecutionEntity',
 			'SharedWorkflow',
-			'Tag',
+			'TagEntity',
 			'Variables',
 			'Project',
-			'Workflow',
+			'WorkflowEntity',
 			'WorkflowHistory',
 		]);
 		// globalConfig.tags.disabled = false;

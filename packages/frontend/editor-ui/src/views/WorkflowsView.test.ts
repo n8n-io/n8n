@@ -216,6 +216,7 @@ describe('WorkflowsView', () => {
 				expect.any(String),
 				expect.objectContaining({
 					tags: [TEST_TAG.name],
+					isArchived: false,
 				}),
 				false, // No folders if tag filter is set
 				expect.any(Boolean),
@@ -237,6 +238,7 @@ describe('WorkflowsView', () => {
 				expect.any(String),
 				expect.objectContaining({
 					name: 'one',
+					isArchived: false,
 				}),
 				expect.any(Boolean),
 				expect.any(Boolean),
@@ -258,6 +260,7 @@ describe('WorkflowsView', () => {
 				expect.any(String),
 				expect.objectContaining({
 					active: true,
+					isArchived: false,
 				}),
 				false, // No folders if active filter is set
 				expect.any(Boolean),
@@ -279,6 +282,27 @@ describe('WorkflowsView', () => {
 				expect.any(String),
 				expect.objectContaining({
 					active: false,
+					isArchived: false,
+				}),
+				expect.any(Boolean),
+			);
+		});
+
+		it('should unset isArchived filter based on query parameters', async () => {
+			await router.replace({ query: { showArchived: 'true' } });
+
+			workflowsStore.fetchWorkflowsPage.mockResolvedValue([]);
+
+			renderComponent({ pinia });
+			await waitAllPromises();
+
+			expect(workflowsStore.fetchWorkflowsPage).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.any(Number),
+				expect.any(Number),
+				expect.any(String),
+				expect.objectContaining({
+					isArchived: undefined,
 				}),
 				false, // No folders if active filter is set
 				expect.any(Boolean),
@@ -363,6 +387,7 @@ describe('Folders', () => {
 		createdAt: new Date().toISOString(),
 		updatedAt: new Date().toISOString(),
 		active: true,
+		isArchived: false,
 		versionId: '1',
 		homeProject: {
 			id: '1',

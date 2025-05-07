@@ -111,13 +111,13 @@ describe('License', () => {
 	});
 
 	test('check if feature is enabled', () => {
-		license.isFeatureEnabled(MOCK_FEATURE_FLAG);
+		license.isLicensed(MOCK_FEATURE_FLAG);
 
 		expect(LicenseManager.prototype.hasFeatureEnabled).toHaveBeenCalledWith(MOCK_FEATURE_FLAG);
 	});
 
 	test('check if sharing feature is enabled', () => {
-		license.isFeatureEnabled(MOCK_FEATURE_FLAG);
+		license.isLicensed(MOCK_FEATURE_FLAG);
 
 		expect(LicenseManager.prototype.hasFeatureEnabled).toHaveBeenCalledWith(MOCK_FEATURE_FLAG);
 	});
@@ -129,7 +129,7 @@ describe('License', () => {
 	});
 
 	test('check fetching feature values', async () => {
-		license.getFeatureValue(MOCK_FEATURE_FLAG);
+		license.getValue(MOCK_FEATURE_FLAG);
 
 		expect(LicenseManager.prototype.getFeatureValue).toHaveBeenCalledWith(MOCK_FEATURE_FLAG);
 	});

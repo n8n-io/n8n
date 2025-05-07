@@ -1,6 +1,9 @@
 {
     "type": "object",
     "properties": {
+        "canUploadPhoto": {
+            "type": "boolean"
+        },
         "displayName": {
             "type": "string"
         },
@@ -12,7 +15,13 @@
         },
         "lastName": {
             "type": "string"
+        },
+        "photoUploaded": {
+            "type": "boolean"
+        },
+        "photoUrl": {
+            "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

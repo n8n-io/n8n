@@ -1,7 +1,7 @@
 import { StatisticsNames } from '@n8n/db';
+import { LicenseMetricsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { LicenseMetricsRepository } from '@/databases/repositories/license-metrics.repository';
 import { WorkflowStatisticsRepository } from '@/databases/repositories/workflow-statistics.repository';
 
 import { createManyCredentials } from './shared/db/credentials';
@@ -22,7 +22,13 @@ describe('LicenseMetricsRepository', () => {
 	});
 
 	beforeEach(async () => {
-		await testDb.truncate(['User', 'Credentials', 'Workflow', 'Execution', 'WorkflowStatistics']);
+		await testDb.truncate([
+			'User',
+			'CredentialsEntity',
+			'WorkflowEntity',
+			'ExecutionEntity',
+			'WorkflowStatistics',
+		]);
 	});
 
 	afterAll(async () => {
