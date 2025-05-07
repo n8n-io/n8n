@@ -44,6 +44,31 @@ describe('Test Evaluation', () => {
 			return { sheetId: 1, title: sheetName };
 		});
 
+		test('should return empty if output values is empty', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation(
+				(key: string, _: number, fallbackValue?: string | number | boolean | object) => {
+					const mockParams: { [key: string]: unknown } = {
+						'outputs.values': [],
+						documentId: {
+							mode: 'id',
+							value: spreadsheetId,
+						},
+						sheetName,
+						sheetMode: 'id',
+						operation: 'setOutput',
+					};
+					return mockParams[key] ?? fallbackValue;
+				},
+			);
+
+			const result = await new Evaluation().execute.call(mockExecuteFunctions);
+			expect(result).toEqual([]);
+
+			expect(GoogleSheet.prototype.updateRows).not.toBeCalled();
+
+			expect(GoogleSheet.prototype.batchUpdate).not.toBeCalled();
+		});
+
 		test('should update rows and return input data for existing headers', async () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation(
 				(key: string, _: number, fallbackValue?: string | number | boolean | object) => {

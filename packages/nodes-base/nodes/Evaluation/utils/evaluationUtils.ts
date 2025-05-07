@@ -1,11 +1,11 @@
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 import type {
 	FieldType,
 	INodeParameters,
-	type AssignmentCollectionValue,
-	type IDataObject,
-	type IExecuteFunctions,
-	type INodeExecutionData,
+	AssignmentCollectionValue,
+	IDataObject,
+	IExecuteFunctions,
+	INodeExecutionData,
 } from 'n8n-workflow';
 
 import { getGoogleSheet, getSheet } from './evaluationTriggerUtils';
@@ -29,6 +29,10 @@ export async function setOutput(this: IExecuteFunctions): Promise<INodeExecution
 		outputName: string;
 		outputValue: string;
 	}>;
+
+	if (outputFields.length === 0) {
+		return [];
+	}
 
 	const googleSheetInstance = getGoogleSheet.call(this);
 	const googleSheet = await getSheet.call(this, googleSheetInstance);
