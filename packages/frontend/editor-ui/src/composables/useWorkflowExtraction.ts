@@ -23,7 +23,7 @@ export const SUBWORKFLOW_TRIGGER_ID = 'c155762a-8fe7-4141-a639-df2372f30060';
 const EXECUTE_WORKFLOW_NODE_ID = 'e531785e-a493-4401-a6df-5da262cb4442';
 const CANVAS_HISTORY_OPTIONS = {
 	trackBulk: false,
-	trackHistory: false,
+	trackHistory: true,
 };
 
 export function useWorkflowExtraction() {
@@ -58,8 +58,6 @@ export function useWorkflowExtraction() {
 		if (Array.isArray(selectionResult)) return false;
 
 		const { start, end } = selectionResult;
-		const startIndex = workflowsStore.workflow.nodes.findIndex((x) => x.name === start);
-		const endIndex = workflowsStore.workflow.nodes.findIndex((x) => x.name === end);
 		const currentWorkflow = workflowsStore.getCurrentWorkflow();
 		const beforeStartNodes = start
 			? currentWorkflow
@@ -73,11 +71,6 @@ export function useWorkflowExtraction() {
 					.map((x) => currentWorkflow.getNode(x))
 					.filter((x) => x !== null)
 			: [];
-
-		// const areBeforeStartAndAfterEndDirectlyConnected =
-		// 	beforeStartNode &&
-		// 	afterEndNode &&
-		// 	workflowsStore.isNodeInOutgoingNodeConnections(beforeStartNode.name, afterEndNode.name, 1);
 
 		let startNodeName = 'Start';
 		while (allNodeNames.includes(startNodeName)) startNodeName += '_1';
@@ -95,6 +88,8 @@ export function useWorkflowExtraction() {
 			Object.entries(connections).filter(([k]) => nodes.some((x) => x.name === k)),
 		);
 		if (end) {
+			// this is necessary because the new workflow crashes looking for the
+			// nodes in these connections
 			newConnections[end] = {};
 			delete newConnections[end];
 		}
@@ -170,7 +165,6 @@ export function useWorkflowExtraction() {
 			toast.showError(e, 'Sub-workflow Extraction failed');
 			return false;
 		}
-		historyStore.startRecordingUndo();
 
 		const mathy = ([a, b, c]: [number, number, number]): [number, number] => [a / c, b / c];
 		const avgPosition = (n: INode[]) =>
@@ -193,117 +187,89 @@ export function useWorkflowExtraction() {
 						? [endAvg[0] - PUSH_NODES_OFFSET, endAvg[0]]
 						: avgPosition(nodes);
 
-		// const executeWorkflowNode = (
-		// 	await canvasOperations.addNodes(
-		// 		[
-		// 			{
-		// 				parameters: {
-		// 					workflowId: {
-		// 						__rl: true,
-		// 						value: createdWorkflow.id,
-		// 						mode: 'list',
-		// 					},
-		// 					workflowInputs: {
-		// 						mappingMode: 'defineBelow',
-		// 						value: Object.fromEntries(variables.entries().map(([k, v]) => [k, `={{ ${v} }}`])),
-		// 						matchingColumns: [...variables.keys()],
-		// 						schema: [
-		// 							...variables.keys().map((x) => ({
-		// 								id: x,
-		// 								displayName: x,
-		// 								required: false,
-		// 								defaultMatch: false,
-		// 								display: true,
-		// 								canBeUsedToMatch: true,
-		// 								removed: false,
-		// 								// no type implicitly uses our `any` type
-		// 							})),
-		// 						],
-		// 						attemptToConvertTypes: false,
-		// 						convertFieldsToString: true,
-		// 					},
-		// 					options: {},
-		// 				},
-		// 				type: 'n8n-nodes-base.executeWorkflow',
-		// 				typeVersion: 1.2,
-		// 				position: executeWorkflowPosition,
-		// 				id: EXECUTE_WORKFLOW_NODE_ID,
-		// 				name: executeWorkflowNodeName,
-		// 			},
-		// 		],
-		// 		CANVAS_HISTORY_OPTIONS,
-		// 	)
-		// )[0];
+		historyStore.startRecordingUndo();
 
-		workflowsStore.addNode({
-			parameters: {
-				workflowId: {
-					__rl: true,
-					value: createdWorkflow.id,
-					mode: 'list',
-				},
-				workflowInputs: {
-					mappingMode: 'defineBelow',
-					value: Object.fromEntries(variables.entries().map(([k, v]) => [k, `={{ ${v} }}`])),
-					matchingColumns: [...variables.keys()],
-					schema: [
-						...variables.keys().map((x) => ({
-							id: x,
-							displayName: x,
-							required: false,
-							defaultMatch: false,
-							display: true,
-							canBeUsedToMatch: true,
-							removed: false,
-							// no type implicitly uses our `any` type
-						})),
-					],
-					attemptToConvertTypes: false,
-					convertFieldsToString: true,
-				},
-				options: {},
-			},
-			type: 'n8n-nodes-base.executeWorkflow',
-			typeVersion: 1.2,
-			position: executeWorkflowPosition,
-			id: EXECUTE_WORKFLOW_NODE_ID,
-			name: executeWorkflowNodeName,
-		});
+		const executeWorkflowNode = (
+			await canvasOperations.addNodes(
+				[
+					{
+						parameters: {
+							workflowId: {
+								__rl: true,
+								value: createdWorkflow.id,
+								mode: 'list',
+							},
+							workflowInputs: {
+								mappingMode: 'defineBelow',
+								value: Object.fromEntries(variables.entries().map(([k, v]) => [k, `={{ ${v} }}`])),
+								matchingColumns: [...variables.keys()],
+								schema: [
+									...variables.keys().map((x) => ({
+										id: x,
+										displayName: x,
+										required: false,
+										defaultMatch: false,
+										display: true,
+										canBeUsedToMatch: true,
+										removed: false,
+										// no type implicitly uses our `any` type
+									})),
+								],
+								attemptToConvertTypes: false,
+								convertFieldsToString: true,
+							},
+							options: {},
+						},
+						type: 'n8n-nodes-base.executeWorkflow',
+						typeVersion: 1.2,
+						position: executeWorkflowPosition,
+						id: EXECUTE_WORKFLOW_NODE_ID,
+						name: executeWorkflowNodeName,
+					},
+				],
+				CANVAS_HISTORY_OPTIONS,
+			)
+		)[0];
 
-		if (start) {
-			for (const beforeStartNode of beforeStartNodes) {
-				for (const nodeConnection of Object.values(connections[beforeStartNode.name] ?? {})) {
-					for (const nodeInputConnections of nodeConnection) {
-						if (!nodeInputConnections) continue;
+		// if (start) {
+		// 	for (const beforeStartNode of beforeStartNodes) {
+		// 		for (const nodeConnection of Object.values(connections[beforeStartNode.name] ?? {})) {
+		// 			for (const nodeInputConnections of nodeConnection) {
+		// 				if (!nodeInputConnections) continue;
 
-						for (const connection of Object.values(nodeInputConnections ?? {})) {
-							if (connection.node === start) {
-								connection.node = executeWorkflowNodeName;
-								uiStore.stateIsDirty = true;
-							}
-						}
-					}
-				}
-			}
-		}
-		await nextTick();
+		// 				for (const connection of Object.values(nodeInputConnections ?? {})) {
+		// 					if (connection.node === start) {
+		// 						connection.node = executeWorkflowNode.name;
+		// 						uiStore.stateIsDirty = true;
+		// 					}
+		// 				}
+		// 			}
+		// 		}
+		// 	}
+		// }
+		// await nextTick();
 		if (end) {
-			debugger;
-			connections[executeWorkflowNodeName] = Object.fromEntries(
-				Object.entries(connections[end]).map(([k, v]) =>
-					k === end ? [executeWorkflowNodeName, { ...v }] : [k, { ...v }],
-				),
-			);
-			delete connections[end];
-			uiStore.stateIsDirty = true;
+			const endId = subGraph.find((x) => x.name === end)?.id;
+			if (endId)
+				canvasOperations.replaceNodeInputConnections(
+					endId,
+					executeWorkflowNode.id,
+					CANVAS_HISTORY_OPTIONS,
+				);
 		}
-		await nextTick();
+		if (start) {
+			const startId = subGraph.find((x) => x.name === end)?.id;
+			if (startId)
+				canvasOperations.replaceNodeInputConnections(
+					startId,
+					executeWorkflowNode.id,
+					CANVAS_HISTORY_OPTIONS,
+				);
+		}
 
-		for (const [id, name] of subGraph.map((x) => [x.id, x.name])) {
-			workflowsStore.removeNodeById(id);
-			await nextTick();
+		for (const id of nodeIds) {
+			canvasOperations.deleteNode(id, { ...CANVAS_HISTORY_OPTIONS });
 		}
-		workflowsStore.updateCachedWorkflow();
 		uiStore.stateIsDirty = true;
 		historyStore.stopRecordingUndo();
 

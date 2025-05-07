@@ -412,6 +412,59 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		}
 	}
 
+	function replaceNodeInputConnections(
+		previousId: string,
+		newId: string,
+		{ trackHistory = false, trackBulk = true } = {},
+	) {
+		const previousNode = workflowsStore.getNodeById(previousId);
+		const newNode = workflowsStore.getNodeById(newId);
+
+		if (!previousNode || !newNode) {
+			return;
+		}
+		debugger;
+
+		const wf = workflowsStore.getCurrentWorkflow();
+
+		const inputNodeNames = wf.getParentNodes(previousNode.name, 'main', -1);
+		const outputNodeNames = wf.getChildNodes(previousNode.name, 'main', -1);
+
+		const connectionPairs = [
+			...wf.getConnectionsBetweenNodes(inputNodeNames, [previousNode.name]),
+			...wf.getConnectionsBetweenNodes([previousNode.name], outputNodeNames),
+		];
+
+		if (trackHistory && trackBulk) {
+			historyStore.startRecordingUndo();
+		}
+
+		for (const pair of connectionPairs) {
+			const sourceNode = workflowsStore.getNodeByName(pair[0].node);
+			const targetNode = workflowsStore.getNodeByName(pair[1].node);
+			if (!sourceNode || !targetNode) continue;
+			const oldCanvasConnection = mapLegacyConnectionToCanvasConnection(
+				sourceNode,
+				targetNode,
+				pair,
+			);
+			deleteConnection(oldCanvasConnection, { trackHistory, trackBulk: false });
+
+			if (pair[0].node === previousNode.name) pair[0].node = newNode.name;
+			if (pair[1].node === previousNode.name) pair[1].node = newNode.name;
+			const newCanvasConnection = mapLegacyConnectionToCanvasConnection(
+				sourceNode.name === previousNode.name ? newNode : sourceNode,
+				targetNode.name === previousNode.name ? newNode : targetNode,
+				pair,
+			);
+			createConnection(newCanvasConnection, { trackHistory });
+		}
+
+		if (trackHistory && trackBulk) {
+			historyStore.stopRecordingUndo();
+		}
+	}
+
 	function setNodeActive(id: string) {
 		const node = workflowsStore.getNodeById(id);
 		if (!node) {
@@ -2060,5 +2113,6 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		openExecution,
 		toggleChatOpen,
 		importTemplate,
+		replaceNodeInputConnections,
 	};
 }
