@@ -35,7 +35,7 @@ describe('AWS Cognito - Add User to Group', () => {
 			.defaultReplyHeaders({ 'Content-Type': 'application/x-amz-json-1.1' })
 			.post('/', {
 				UserPoolId: 'eu-central-1_W3WwpiBXV',
-				Limit: 50,
+				Filter: 'sub = "0394e8e2-5081-7020-06bd-44bdfc84dd10"',
 			})
 			.matchHeader('x-amz-target', 'AWSCognitoIdentityProviderService.ListUsers')
 			.reply(200, {

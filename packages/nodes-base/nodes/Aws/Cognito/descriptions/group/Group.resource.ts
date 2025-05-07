@@ -6,7 +6,7 @@ import * as get from './get.operation';
 import * as getAll from './getAll.operation';
 import * as update from './update.operation';
 import { handleError } from '../../helpers/errorHandler';
-import { processGroupResponse, processGroupsResponse } from '../../helpers/utils';
+import { processGroup } from '../../helpers/utils';
 
 export const description: INodeProperties[] = [
 	{
@@ -86,7 +86,7 @@ export const description: INodeProperties[] = [
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
-						postReceive: [handleError, processGroupResponse],
+						postReceive: [handleError, processGroup],
 					},
 				},
 				action: 'Get group',
@@ -106,7 +106,7 @@ export const description: INodeProperties[] = [
 					output: {
 						postReceive: [
 							handleError,
-							processGroupsResponse,
+							processGroup,
 							{
 								type: 'rootProperty',
 								properties: {

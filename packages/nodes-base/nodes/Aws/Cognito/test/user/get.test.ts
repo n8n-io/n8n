@@ -35,7 +35,7 @@ describe('AWS Cognito - Get User', () => {
 			.defaultReplyHeaders({ 'Content-Type': 'application/x-amz-json-1.1' })
 			.post('/', {
 				UserPoolId: 'eu-central-1_EUZ4iEF1T',
-				Limit: 50,
+				Filter: 'sub = "b30498c2-d0f1-70a8-4b0c-3da25a3b998f"',
 			})
 			.matchHeader('x-amz-target', 'AWSCognitoIdentityProviderService.ListUsers')
 			.reply(200, {
@@ -59,7 +59,7 @@ describe('AWS Cognito - Get User', () => {
 			.defaultReplyHeaders({ 'Content-Type': 'application/x-amz-json-1.1' })
 			.post('/', {
 				UserPoolId: 'eu-central-1_EUZ4iEF1T',
-				Username: 'b30498c2-d0f1-70a8-4b0c-3da25a3b998f',
+				Username: 'userName10',
 			})
 			.matchHeader('x-amz-target', 'AWSCognitoIdentityProviderService.AdminGetUser')
 			.reply(200, {

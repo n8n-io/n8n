@@ -11,7 +11,7 @@ export interface IUser {
 	UserCreateDate: string;
 	UserLastModifiedDate: string;
 	UserStatus: string;
-	Attributes: IUserAttribute[];
+	Attributes?: IUserAttribute[];
 }
 
 export interface IGroup {
@@ -26,6 +26,10 @@ export interface IListUsersResponse {
 export interface IListGroupsResponse {
 	Groups: IGroup[];
 	NextToken?: string;
+}
+
+export interface IGroupWithUserResponse extends IGroup {
+	Users: IUser[];
 }
 
 export interface IUserAttributeInput {

@@ -3,24 +3,32 @@ import type {
 	IPollFunctions,
 	IHttpRequestOptions,
 	IExecuteSingleFunctions,
+	IDataObject,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
 
 import type { AwsCredentialsType } from '../../../../credentials/Aws.credentials';
 
 export async function awsApiRequest(
 	this: ILoadOptionsFunctions | IPollFunctions | IExecuteSingleFunctions,
-	opts: IHttpRequestOptions,
+	method: IHttpRequestMethods,
+	action: string,
+	body: string,
 ): Promise<any> {
 	const credentialsType = 'aws';
 	const credentials = await this.getCredentials<AwsCredentialsType>(credentialsType);
 
 	const requestOptions: IHttpRequestOptions = {
-		...opts,
-		baseURL: `https://cognito-idp.${credentials.region}.amazonaws.com`,
-		json: true,
+		url: '',
+		method,
+		body,
 		headers: {
 			'Content-Type': 'application/x-amz-json-1.1',
-			...opts.headers,
+			'X-Amz-Target': `AWSCognitoIdentityProviderService.${action}`,
+		},
+		qs: {
+			service: 'cognito-idp',
+			_region: credentials.region,
 		},
 	};
 
@@ -29,4 +37,36 @@ export async function awsApiRequest(
 		credentialsType,
 		requestOptions,
 	);
+}
+
+export async function awsApiRequestAllItems(
+	this: ILoadOptionsFunctions | IPollFunctions | IExecuteSingleFunctions,
+	method: IHttpRequestMethods,
+	action: string,
+	body: IDataObject,
+	propertyName: string,
+): Promise<IDataObject[]> {
+	const returnData: IDataObject[] = [];
+	let nextToken: string | undefined;
+
+	do {
+		const requestBody: IDataObject = {
+			...body,
+			...(nextToken ? { NextToken: nextToken } : {}),
+		};
+
+		const response = (await awsApiRequest.call(
+			this,
+			method,
+			action,
+			JSON.stringify(requestBody),
+		)) as IDataObject;
+
+		const items = (response[propertyName] ?? []) as IDataObject[];
+		returnData.push(...items);
+
+		nextToken = response.NextToken as string | undefined;
+	} while (nextToken);
+
+	return returnData;
 }

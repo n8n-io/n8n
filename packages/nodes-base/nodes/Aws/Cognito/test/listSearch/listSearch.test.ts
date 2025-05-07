@@ -4,21 +4,18 @@ import {
 	type INodeListSearchResult,
 } from 'n8n-workflow';
 
-import { searchUsersForGroup } from '../../helpers/utils';
+import type { IUserPool } from '../../helpers/interfaces';
 import {
 	searchUsers,
 	searchGroups,
 	searchUserPools,
 	searchGroupsForUser,
 } from '../../methods/listSearch';
-import { awsApiRequest } from '../../transport/index';
+import { awsApiRequest, awsApiRequestAllItems } from '../../transport/index';
 
 jest.mock('../../transport/index', () => ({
 	awsApiRequest: jest.fn(),
-}));
-
-jest.mock('../../helpers/utils', () => ({
-	searchUsersForGroup: jest.fn(),
+	awsApiRequestAllItems: jest.fn(),
 }));
 
 describe('AWS Cognito Functions', () => {
@@ -77,12 +74,9 @@ describe('AWS Cognito Functions', () => {
 
 			expect(result).toEqual(expectedResult);
 			expect(awsApiRequest).toHaveBeenCalledWith(
-				expect.objectContaining({
-					url: '',
-					method: 'POST',
-					headers: { 'X-Amz-Target': 'AWSCognitoIdentityProviderService.ListUsers' },
-					body: expect.stringContaining('UserPoolId'),
-				}),
+				'POST',
+				'ListUsers',
+				expect.stringContaining('UserPoolId'),
 			);
 		});
 
@@ -131,12 +125,9 @@ describe('AWS Cognito Functions', () => {
 
 			expect(result).toEqual(expectedResult);
 			expect(awsApiRequest).toHaveBeenCalledWith(
-				expect.objectContaining({
-					url: '',
-					method: 'POST',
-					headers: { 'X-Amz-Target': 'AWSCognitoIdentityProviderService.ListGroups' },
-					body: expect.stringContaining('UserPoolId'),
-				}),
+				'POST',
+				'ListGroups',
+				expect.stringContaining('UserPoolId'),
 			);
 		});
 
@@ -183,12 +174,9 @@ describe('AWS Cognito Functions', () => {
 
 			expect(result).toEqual(expectedResult);
 			expect(awsApiRequest).toHaveBeenCalledWith(
-				expect.objectContaining({
-					url: '',
-					method: 'POST',
-					headers: { 'X-Amz-Target': 'AWSCognitoIdentityProviderService.ListUserPools' },
-					body: expect.stringContaining('Limit'),
-				}),
+				'POST',
+				'ListUserPools',
+				expect.stringContaining('Limit'),
 			);
 		});
 	});
@@ -197,47 +185,68 @@ describe('AWS Cognito Functions', () => {
 		const userName = '03a438f2-10d1-70f1-f45a-09753ab5c4c3';
 		const userPoolId = 'eu-central-1_KkXQgdCJv';
 
+		const mockContext = {
+			getNodeParameter: jest.fn((param) => {
+				if (param === 'user') return userName;
+				if (param === 'userPool') return userPoolId;
+				return null;
+			}),
+			getNode: jest.fn(() => ({
+				name: 'mockNode',
+			})),
+		} as unknown as ILoadOptionsFunctions;
+
+		beforeEach(() => {
+			(awsApiRequest as jest.Mock).mockResolvedValueOnce({
+				UserPool: {
+					Id: userPoolId,
+					UsernameAttributes: ['email', 'phone_number'],
+				},
+			} as { UserPool: IUserPool });
+		});
+
 		it('should handle empty groups response', async () => {
-			const mockListGroupsResponse = { Groups: [] };
+			(awsApiRequestAllItems as jest.Mock).mockResolvedValueOnce([]);
 
-			(awsApiRequest as jest.Mock).mockResolvedValueOnce(mockListGroupsResponse);
-
-			const mockContext = {
-				getNodeParameter: jest.fn((param) => {
-					if (param === 'user') return { value: userName };
-					if (param === 'userPool') return { value: userPoolId };
-					return null;
-				}),
-			} as unknown as ILoadOptionsFunctions;
-
-			const result = await searchGroupsForUser.call(mockContext, '', '');
+			const result = await searchGroupsForUser.call(mockContext, '');
 
 			const expectedResult: INodeListSearchResult = {
 				results: [],
-				paginationToken: undefined,
 			};
 
 			expect(result).toEqual(expectedResult);
 		});
 
-		it('should return empty array when user is not in any groups', async () => {
-			const mockListGroupsResponse = {
-				Groups: [{ GroupName: 'AdminGroup' }, { GroupName: 'UserGroup' }],
-			};
+		it('should return filtered and sorted group list', async () => {
+			const mockGroups = [
+				{ GroupName: 'Developers' },
+				{ GroupName: 'Admins' },
+				{ GroupName: 'Guests' },
+			];
 
-			(awsApiRequest as jest.Mock).mockResolvedValueOnce(mockListGroupsResponse);
-			(searchUsersForGroup as jest.Mock).mockResolvedValue({ results: [] });
+			(awsApiRequestAllItems as jest.Mock).mockResolvedValueOnce(mockGroups);
 
-			const mockContext = {
-				getNodeParameter: jest.fn((param) => {
-					if (param === 'user') return { value: userName };
-					if (param === 'userPool') return { value: userPoolId };
-					return null;
-				}),
-			} as unknown as ILoadOptionsFunctions;
+			const result = await searchGroupsForUser.call(mockContext, 'dev');
+
+			expect(result).toEqual({
+				results: [{ name: 'Developers', value: 'Developers' }],
+			});
+		});
+
+		it('should return all groups when no filter is passed', async () => {
+			const mockGroups = [{ GroupName: 'Zeta' }, { GroupName: 'Alpha' }, { GroupName: 'Beta' }];
+
+			(awsApiRequestAllItems as jest.Mock).mockResolvedValueOnce(mockGroups);
 
 			const result = await searchGroupsForUser.call(mockContext);
-			expect(result).toEqual({ results: [], paginationToken: undefined });
+
+			expect(result).toEqual({
+				results: [
+					{ name: 'Alpha', value: 'Alpha' },
+					{ name: 'Beta', value: 'Beta' },
+					{ name: 'Zeta', value: 'Zeta' },
+				],
+			});
 		});
 	});
 });

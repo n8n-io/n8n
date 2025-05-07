@@ -35,7 +35,7 @@ describe('AWS Cognito - Update User', () => {
 			.defaultReplyHeaders({ 'Content-Type': 'application/x-amz-json-1.1' })
 			.post('/', {
 				UserPoolId: 'eu-central-1_EUZ4iEF1T',
-				Limit: 50,
+				Filter: 'sub = "43045822-80e1-70f6-582d-78ae7992e9d9"',
 			})
 			.matchHeader('x-amz-target', 'AWSCognitoIdentityProviderService.ListUsers')
 			.reply(200, {

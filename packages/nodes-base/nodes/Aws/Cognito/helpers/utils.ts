@@ -10,15 +10,14 @@ import { jsonParse, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import type {
 	IGroup,
+	IGroupWithUserResponse,
 	IListGroupsResponse,
 	IUser,
 	IUserAttribute,
 	IUserAttributeInput,
 	IUserPool,
 } from './interfaces';
-// eslint-disable-next-line import/no-cycle
-import { searchUsers } from '../methods/listSearch';
-import { awsApiRequest } from '../transport';
+import { awsApiRequest, awsApiRequestAllItems } from '../transport';
 
 const validateEmail = (email: string): boolean => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 const validatePhoneNumber = (phone: string): boolean => /^\+[0-9]\d{1,14}$/.test(phone);
@@ -41,26 +40,25 @@ export async function getUserPool(
 		throw new NodeOperationError(this.getNode(), 'User Pool ID is required');
 	}
 
-	const response = (await awsApiRequest.call(this, {
-		url: '',
-		method: 'POST',
-		headers: { 'X-Amz-Target': 'AWSCognitoIdentityProviderService.DescribeUserPool' },
-		body: JSON.stringify({ UserPoolId: userPoolId }),
-	})) as IDataObject;
+	const response = (await awsApiRequest.call(
+		this,
+		'POST',
+		'DescribeUserPool',
+		JSON.stringify({ UserPoolId: userPoolId }),
+	)) as { UserPool: IUserPool };
 
 	if (!response?.UserPool) {
 		throw new NodeOperationError(this.getNode(), 'User Pool not found in response');
 	}
 
-	return response.UserPool as IUserPool;
+	return response.UserPool;
 }
 
-export async function searchUsersForGroup(
+export async function getUsersInGroup(
 	this: IExecuteSingleFunctions | ILoadOptionsFunctions,
 	groupName: string,
 	userPoolId: string,
-	paginationToken?: string,
-): Promise<IDataObject> {
+): Promise<IUser[]> {
 	if (!userPoolId) {
 		throw new NodeOperationError(this.getNode(), 'User Pool ID is required');
 	}
@@ -68,56 +66,45 @@ export async function searchUsersForGroup(
 	const requestBody: IDataObject = {
 		UserPoolId: userPoolId,
 		GroupName: groupName,
-		Limit: 50,
 	};
 
-	if (paginationToken) {
-		requestBody.NextToken = paginationToken;
+	const allUsers = (await awsApiRequestAllItems.call(
+		this,
+		'POST',
+		'ListUsersInGroup',
+		requestBody,
+		'Users',
+	)) as unknown as IUser[];
+
+	return allUsers;
+}
+
+export async function getUserNameFromExistingUsers(
+	this: IExecuteSingleFunctions | ILoadOptionsFunctions,
+	userName: string,
+	userPoolId: string,
+	isEmailOrPhone: boolean,
+): Promise<string | undefined> {
+	if (isEmailOrPhone) {
+		return userName;
 	}
 
-	const responseData = (await awsApiRequest.call(this, {
-		url: '',
-		method: 'POST',
-		headers: {
-			'X-Amz-Target': 'AWSCognitoIdentityProviderService.ListUsersInGroup',
-		},
-		body: JSON.stringify(requestBody),
-	})) as IDataObject;
+	const usersResponse = (await awsApiRequest.call(
+		this,
+		'POST',
+		'ListUsers',
+		JSON.stringify({
+			UserPoolId: userPoolId,
+			Filter: `sub = "${userName}"`,
+		}),
+	)) as { Users: IUser[] };
 
-	const users = responseData.Users as IUser[];
+	const username =
+		usersResponse.Users && usersResponse.Users.length > 0
+			? usersResponse.Users[0].Username
+			: undefined;
 
-	if (users.length === 0) {
-		return { results: [] };
-	}
-
-	const results = users.map(
-		({
-			Username,
-			Enabled,
-			UserCreateDate,
-			UserLastModifiedDate,
-			UserStatus,
-			Attributes,
-		}: IUser) => {
-			const userAttributes = Object.fromEntries(
-				(Attributes ?? [])
-					.filter(({ Name }) => Name?.trim())
-					.map(({ Name, Value }) => [Name, Value ?? '']),
-			);
-			return {
-				Enabled,
-				...userAttributes,
-				UserCreateDate,
-				UserLastModifiedDate,
-				UserStatus,
-				Username,
-			};
-		},
-	);
-
-	return {
-		results,
-	};
+	return username;
 }
 
 export async function preSendUserFields(
@@ -128,14 +115,9 @@ export async function preSendUserFields(
 	const userPoolId = this.getNodeParameter('userPool', undefined, {
 		extractValue: true,
 	}) as string;
-	const userPoolResponse = (await awsApiRequest.call(this, {
-		url: '',
-		method: 'POST',
-		headers: { 'X-Amz-Target': 'AWSCognitoIdentityProviderService.DescribeUserPool' },
-		body: JSON.stringify({ UserPoolId: userPoolId }),
-	})) as IDataObject;
 
-	const userPool = userPoolResponse.UserPool as IUserPool;
+	const userPool = await getUserPool.call(this, userPoolId);
+
 	const usernameAttributes = userPool.UsernameAttributes ?? [];
 	const isEmailAuth = usernameAttributes.includes('email');
 	const isPhoneAuth = usernameAttributes.includes('phone_number');
@@ -160,24 +142,15 @@ export async function preSendUserFields(
 		return newUsername;
 	};
 
-	const getUserNameFromExistingUsers = async (): Promise<string | undefined> => {
-		const userName = this.getNodeParameter('user', undefined, {
-			extractValue: true,
-		}) as string;
-
-		if (isEmailOrPhone) {
-			return userName;
-		}
-
-		const { results: users } = await searchUsers.call(this);
-
-		const matchedUser = users?.find((user) => user.value === userName);
-
-		return matchedUser?.name;
-	};
-
 	const finalUserName =
-		operation === 'create' ? getValidatedNewUserName() : await getUserNameFromExistingUsers();
+		operation === 'create'
+			? getValidatedNewUserName()
+			: await getUserNameFromExistingUsers.call(
+					this,
+					this.getNodeParameter('user', undefined, { extractValue: true }) as string,
+					userPoolId,
+					isEmailOrPhone,
+				);
 
 	const body = jsonParse<IDataObject>(String(requestOptions.body), {
 		acceptJSObject: true,
@@ -193,25 +166,7 @@ export async function preSendUserFields(
 	};
 }
 
-export async function processGroupResponse(
-	this: IExecuteSingleFunctions,
-	_items: INodeExecutionData[],
-	response: IN8nHttpFullResponse,
-): Promise<INodeExecutionData[]> {
-	const userPoolId = this.getNodeParameter('userPool', undefined, {
-		extractValue: true,
-	}) as string;
-	const include = this.getNodeParameter('includeUsers') as boolean;
-	const responseBody = response.body as { Group: IGroup };
-	const group = responseBody.Group ?? [];
-
-	if (!include) return this.helpers.returnJsonArray({ ...group });
-
-	const users = await searchUsersForGroup.call(this, group.GroupName, userPoolId);
-	return this.helpers.returnJsonArray({ ...group, Users: users.results ?? [] });
-}
-
-export async function processGroupsResponse(
+export async function processGroup(
 	this: IExecuteSingleFunctions,
 	items: INodeExecutionData[],
 	response: IN8nHttpFullResponse,
@@ -220,19 +175,31 @@ export async function processGroupsResponse(
 		extractValue: true,
 	}) as string;
 	const includeUsers = this.getNodeParameter('includeUsers') as boolean;
-	const responseBody = response.body as IListGroupsResponse;
-	const groups = responseBody.Groups ?? [];
+	const body = response.body as IDataObject;
+
+	if (body.Group) {
+		const group = body.Group as IGroup;
+
+		if (!includeUsers) {
+			return this.helpers.returnJsonArray({ ...group });
+		}
+
+		const users = await getUsersInGroup.call(this, group.GroupName, userPoolId);
+		return this.helpers.returnJsonArray({ ...group, Users: users });
+	}
+
+	const groups = (response.body as IListGroupsResponse).Groups ?? [];
 
 	if (!includeUsers) {
 		return items;
 	}
 
-	const processedGroups: IDataObject[] = [];
+	const processedGroups: IGroupWithUserResponse[] = [];
 	for (const group of groups) {
-		const usersResponse = await searchUsersForGroup.call(this, group.GroupName, userPoolId);
+		const users = await getUsersInGroup.call(this, group.GroupName, userPoolId);
 		processedGroups.push({
 			...group,
-			Users: usersResponse.results ?? [],
+			Users: users,
 		});
 	}
 
@@ -264,12 +231,15 @@ export async function simplifyUserPool(
 	_response: IN8nHttpFullResponse,
 ): Promise<INodeExecutionData[]> {
 	const simple = this.getNodeParameter('simple') as boolean;
+
 	if (!simple) {
 		return items;
 	}
+
 	return items
 		.map((item) => {
 			const data = item.json?.UserPool as IUserPool;
+
 			if (!data) {
 				return;
 			}
@@ -299,56 +269,52 @@ export async function simplifyUser(
 	_response: IN8nHttpFullResponse,
 ): Promise<INodeExecutionData[]> {
 	const simple = this.getNodeParameter('simple') as boolean;
+
 	if (!simple) {
 		return items;
 	}
+
 	return items
 		.map((item) => {
 			const data = item.json;
+
 			if (!data) {
 				return;
 			}
 
-			const attributesArray = data.UserAttributes as IUserAttribute[];
+			if (Array.isArray(data.Users)) {
+				const users = data.Users as IUser[];
 
-			const userAttributes = Object.fromEntries(
-				attributesArray
-					.filter(({ Name }) => Name?.trim())
-					.map(({ Name, Value }) => [Name, Value ?? '']),
-			);
-			const { UserAttributes, ...selectedData } = data;
+				const simplifiedUsers = users.map((user) => {
+					const attributesArray = user.Attributes ?? [];
 
-			return { json: { ...selectedData, ...userAttributes } };
-		})
-		.filter(Boolean) as INodeExecutionData[];
-}
+					const userAttributes = Object.fromEntries(
+						attributesArray
+							.filter(({ Name }) => Name?.trim())
+							.map(({ Name, Value }) => [Name, Value ?? '']),
+					);
 
-export async function simplifyUsers(
-	this: IExecuteSingleFunctions,
-	items: INodeExecutionData[],
-	_response: IN8nHttpFullResponse,
-): Promise<INodeExecutionData[]> {
-	const simple = this.getNodeParameter('simple') as boolean;
-	if (!simple) {
-		return items;
-	}
-	return items
-		.map((item) => {
-			const users = (item.json?.Users as IUser[]) ?? [];
+					const { Attributes, ...rest } = user;
+					return { ...rest, ...userAttributes };
+				});
 
-			const processedUsers = users.map((user) => {
-				const attributesArray = user.Attributes;
+				return { json: { ...data, Users: simplifiedUsers } };
+			}
+
+			if (Array.isArray(data.UserAttributes)) {
+				const attributesArray = data.UserAttributes as IUserAttribute[];
+
 				const userAttributes = Object.fromEntries(
 					attributesArray
 						.filter(({ Name }) => Name?.trim())
 						.map(({ Name, Value }) => [Name, Value ?? '']),
 				);
-				const { Attributes, ...selectedData } = user;
 
-				return { ...selectedData, ...userAttributes };
-			});
+				const { UserAttributes, ...rest } = data;
+				return { json: { ...rest, ...userAttributes } };
+			}
 
-			return { json: { Users: processedUsers } };
+			return item;
 		})
 		.filter(Boolean) as INodeExecutionData[];
 }
@@ -373,11 +339,11 @@ export async function preSendAttributes(
 
 	if (operation === 'create') {
 		const hasEmail = attributes.some((a) => a.standardName === 'email');
-		const hasEmailVerifiedTrue = attributes.some(
+		const hasEmailVerified = attributes.some(
 			(a) => a.standardName === 'email_verified' && a.value === 'true',
 		);
 
-		if (hasEmailVerifiedTrue && !hasEmail) {
+		if (hasEmailVerified && !hasEmail) {
 			throw new NodeOperationError(this.getNode(), 'Missing required "email" attribute', {
 				description:
 					'"email_verified" is set to true, but the corresponding "email" attribute is not provided.',
@@ -385,11 +351,11 @@ export async function preSendAttributes(
 		}
 
 		const hasPhone = attributes.some((a) => a.standardName === 'phone_number');
-		const hasPhoneVerifiedTrue = attributes.some(
+		const hasPhoneVerified = attributes.some(
 			(a) => a.standardName === 'phone_number_verified' && a.value === 'true',
 		);
 
-		if (hasPhoneVerifiedTrue && !hasPhone) {
+		if (hasPhoneVerified && !hasPhone) {
 			throw new NodeOperationError(this.getNode(), 'Missing required "phone_number" attribute', {
 				description:
 					'"phone_number_verified" is set to true, but the corresponding "phone_number" attribute is not provided.',

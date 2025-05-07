@@ -8,7 +8,7 @@ import * as getAll from './getAll.operation';
 import * as removeFromGroup from './removeFromGroup.operation';
 import * as update from './update.operation';
 import { handleError } from '../../helpers/errorHandler';
-import { preSendUserFields, simplifyUser, simplifyUsers } from '../../helpers/utils';
+import { preSendUserFields, simplifyUser } from '../../helpers/utils';
 
 export const description: INodeProperties[] = [
 	{
@@ -146,7 +146,7 @@ export const description: INodeProperties[] = [
 					output: {
 						postReceive: [
 							handleError,
-							simplifyUsers,
+							simplifyUser,
 							{
 								type: 'rootProperty',
 								properties: {

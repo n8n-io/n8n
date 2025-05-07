@@ -8,18 +8,19 @@ import {
 	getUserPool,
 	validateArn,
 	simplifyUserPool,
-	simplifyUser,
-	simplifyUsers,
 	preSendUserFields,
 	preSendAttributes,
 	preSendDesiredDeliveryMediums,
-	searchUsersForGroup,
+	getUsersInGroup,
+	simplifyUser,
+	getUserNameFromExistingUsers,
 } from '../../helpers/utils';
 import { searchUsers } from '../../methods/listSearch';
-import { awsApiRequest } from '../../transport/index';
+import { awsApiRequest, awsApiRequestAllItems } from '../../transport/index';
 
 jest.mock('../../transport/index', () => ({
 	awsApiRequest: jest.fn(),
+	awsApiRequestAllItems: jest.fn(),
 }));
 
 jest.mock('../../methods/listSearch', () => ({
@@ -80,31 +81,24 @@ describe('AWS Cognito - Helpers functions', () => {
 		});
 	});
 
-	describe('searchUsersForGroup', () => {
+	describe('getUsersInGroup', () => {
 		it('should throw an error if UserPoolId is missing', async () => {
 			loadOptionsFunctions.getNodeParameter.mockReturnValue(undefined);
 
 			await expect(
-				searchUsersForGroup.call(loadOptionsFunctions, 'groupName', ''),
+				getUsersInGroup.call(loadOptionsFunctions, 'groupName', ''),
 			).rejects.toThrowError(NodeOperationError);
 		});
 
 		it('should return an empty list if no users are found', async () => {
-			loadOptionsFunctions.getNodeParameter.mockReturnValue('userPoolId');
-			const mockResponse = { Users: [] };
+			(loadOptionsFunctions.getNodeParameter as jest.Mock).mockReturnValue('userPoolId');
+			(awsApiRequestAllItems as jest.Mock).mockResolvedValue([]);
 
-			(awsApiRequest as jest.Mock).mockResolvedValue(mockResponse);
-
-			const result = await searchUsersForGroup.call(
-				loadOptionsFunctions,
-				'groupName',
-				'userPoolId',
-			);
-			expect(result).toEqual({ results: [] });
+			const result = await getUsersInGroup.call(loadOptionsFunctions, 'groupName', 'userPoolId');
+			expect(result).toEqual([]);
 		});
 
 		it('should return users correctly', async () => {
-			loadOptionsFunctions.getNodeParameter.mockReturnValue('userPoolId');
 			const mockUsers = [
 				{
 					Username: 'user1',
@@ -117,54 +111,58 @@ describe('AWS Cognito - Helpers functions', () => {
 					Attributes: [{ Name: 'email', Value: 'user2@example.com' }],
 				},
 			];
-			const mockResponse = { Users: mockUsers, NextToken: 'next-token' };
 
-			(awsApiRequest as jest.Mock).mockResolvedValue(mockResponse);
+			(awsApiRequestAllItems as jest.Mock).mockResolvedValue(mockUsers);
 
-			const result = await searchUsersForGroup.call(
-				loadOptionsFunctions,
-				'groupName',
-				'userPoolId',
-			);
-			expect(result).toEqual({
-				results: [
-					{
-						Username: 'user1',
-						Enabled: true,
-						email: 'user1@example.com',
-					},
-					{
-						Username: 'user2',
-						Enabled: true,
-						email: 'user2@example.com',
-					},
-				],
-			});
+			const result = await getUsersInGroup.call(loadOptionsFunctions, 'groupName', 'userPoolId');
+			expect(result).toEqual([
+				{
+					Username: 'user1',
+					Enabled: true,
+					Attributes: [
+						{
+							Name: 'email',
+							Value: 'user1@example.com',
+						},
+					],
+				},
+				{
+					Username: 'user2',
+					Enabled: true,
+					Attributes: [
+						{
+							Name: 'email',
+							Value: 'user2@example.com',
+						},
+					],
+				},
+			]);
 		});
 
 		it('should handle empty attributes and missing values', async () => {
-			loadOptionsFunctions.getNodeParameter.mockReturnValue('userPoolId');
 			const mockUsers = [
-				{ Username: 'user1', Enabled: true, Attributes: [{ Name: 'email', Value: '' }] },
+				{
+					Username: 'user1',
+					Enabled: true,
+					Attributes: [{ Name: 'email', Value: '' }],
+				},
 			];
-			const mockResponse = { Users: mockUsers };
 
-			(awsApiRequest as jest.Mock).mockResolvedValue(mockResponse);
+			(awsApiRequestAllItems as jest.Mock).mockResolvedValue(mockUsers);
 
-			const result = await searchUsersForGroup.call(
-				loadOptionsFunctions,
-				'groupName',
-				'userPoolId',
-			);
-			expect(result).toEqual({
-				results: [
-					{
-						Username: 'user1',
-						Enabled: true,
-						email: '',
-					},
-				],
-			});
+			const result = await getUsersInGroup.call(loadOptionsFunctions, 'groupName', 'userPoolId');
+			expect(result).toEqual([
+				{
+					Username: 'user1',
+					Enabled: true,
+					Attributes: [
+						{
+							Name: 'email',
+							Value: '',
+						},
+					],
+				},
+			]);
 		});
 	});
 
@@ -221,31 +219,127 @@ describe('AWS Cognito - Helpers functions', () => {
 		});
 	});
 
-	describe('simplifyUser', () => {
-		it('should simplify the user data when simple is true', async () => {
-			loadOptionsFunctions.getNodeParameter.mockImplementation(() => true);
-			const items = [{ json: { UserAttributes: [{ Name: 'email', Value: 'user@example.com' }] } }];
+	describe('simplifyUserData', () => {
+		it('should simplify a single user with UserAttributes when simple is true', async () => {
+			loadOptionsFunctions.getNodeParameter.mockReturnValue(true);
+
+			const items = [
+				{
+					json: {
+						UserAttributes: [{ Name: 'email', Value: 'user@example.com' }],
+					},
+				},
+			];
+
 			const result = await simplifyUser.call(loadOptionsFunctions, items, {
 				body: {},
 				headers: {},
 				statusCode: 200,
 			});
+
 			expect(result).toEqual([{ json: { email: 'user@example.com' } }]);
 		});
-	});
 
-	describe('simplifyUsers', () => {
-		it('should simplify multiple users when simple is true', async () => {
-			loadOptionsFunctions.getNodeParameter.mockImplementation(() => true);
+		it('should simplify multiple users in Users array when simple is true', async () => {
+			loadOptionsFunctions.getNodeParameter.mockReturnValue(true);
+
 			const items = [
-				{ json: { Users: [{ Attributes: [{ Name: 'email', Value: 'user1@example.com' }] }] } },
+				{
+					json: {
+						Users: [
+							{
+								Attributes: [{ Name: 'email', Value: 'user1@example.com' }],
+							},
+						],
+					},
+				},
 			];
-			const result = await simplifyUsers.call(loadOptionsFunctions, items, {
+
+			const result = await simplifyUser.call(loadOptionsFunctions, items, {
 				body: {},
 				headers: {},
 				statusCode: 200,
 			});
-			expect(result).toEqual([{ json: { Users: [{ email: 'user1@example.com' }] } }]);
+
+			expect(result).toEqual([
+				{
+					json: {
+						Users: [{ email: 'user1@example.com' }],
+					},
+				},
+			]);
+		});
+
+		it('should return original items when simple is false', async () => {
+			const items = [
+				{
+					json: {
+						UserAttributes: [{ Name: 'email', Value: 'user@example.com' }],
+					},
+				},
+			];
+
+			const result = await simplifyUser.call(loadOptionsFunctions, items, {
+				body: {},
+				headers: {},
+				statusCode: 200,
+			});
+
+			expect(result).toEqual(items);
+		});
+	});
+
+	describe('getUserNameFromExistingUsers', () => {
+		const userPoolId = 'eu-central-1_KkXQgdCJv';
+		const userName = '03a438f2-10d1-70f1-f45a-09753ab5c4c3';
+
+		it('should return the userName if email or phone is used for authentication', async () => {
+			const isEmailOrPhone = true;
+
+			const result = await getUserNameFromExistingUsers.call(
+				loadOptionsFunctions,
+				userName,
+				userPoolId,
+				isEmailOrPhone,
+			);
+
+			expect(result).toEqual(userName);
+		});
+
+		it('should return the username from ListUsers API when it is not email or phone authentication', async () => {
+			const isEmailOrPhone = false;
+			const mockApiResponse = {
+				Users: [{ Username: 'existing-user' }],
+			};
+
+			(awsApiRequest as jest.Mock).mockResolvedValue(mockApiResponse);
+
+			const result = await getUserNameFromExistingUsers.call(
+				loadOptionsFunctions,
+				userName,
+				userPoolId,
+				isEmailOrPhone,
+			);
+
+			expect(result).toEqual('existing-user');
+		});
+
+		it('should return undefined if no user is found in ListUsers API', async () => {
+			const isEmailOrPhone = false;
+			const mockApiResponse = {
+				Users: [],
+			};
+
+			(awsApiRequest as jest.Mock).mockResolvedValue(mockApiResponse);
+
+			const result = await getUserNameFromExistingUsers.call(
+				loadOptionsFunctions,
+				userName,
+				userPoolId,
+				isEmailOrPhone,
+			);
+
+			expect(result).toBeUndefined();
 		});
 	});
 
@@ -292,6 +386,7 @@ describe('AWS Cognito - Helpers functions', () => {
 			loadOptionsFunctions.getNodeParameter.mockImplementation((name: string) => {
 				if (name === 'operation') return 'update';
 				if (name === 'user') return 'existing-user';
+				if (name === 'userPool') return 'eu-central-1_KkXQgdCJv';
 				return undefined;
 			});
 

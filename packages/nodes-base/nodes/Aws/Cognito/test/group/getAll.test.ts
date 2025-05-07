@@ -64,8 +64,7 @@ describe('AWS Cognito - Get All Groups', () => {
 			.defaultReplyHeaders({ 'Content-Type': 'application/x-amz-json-1.1' })
 			.post('/', {
 				UserPoolId: 'eu-central-1_KkXQgdCJv',
-				GroupName: 'MyNewTesttttt',
-				Limit: 50,
+				GroupName: 'MyNewGroup',
 			})
 			.matchHeader('x-amz-target', 'AWSCognitoIdentityProviderService.ListUsersInGroup')
 			.reply(200, {
@@ -77,8 +76,7 @@ describe('AWS Cognito - Get All Groups', () => {
 			.defaultReplyHeaders({ 'Content-Type': 'application/x-amz-json-1.1' })
 			.post('/', {
 				UserPoolId: 'eu-central-1_KkXQgdCJv',
-				GroupName: 'MyNewGroup',
-				Limit: 50,
+				GroupName: 'MyNewTesttttt',
 			})
 			.matchHeader('x-amz-target', 'AWSCognitoIdentityProviderService.ListUsersInGroup')
 			.reply(200, {
@@ -91,7 +89,6 @@ describe('AWS Cognito - Get All Groups', () => {
 			.post('/', {
 				UserPoolId: 'eu-central-1_KkXQgdCJv',
 				GroupName: 'MyNewTest1',
-				Limit: 50,
 			})
 			.matchHeader('x-amz-target', 'AWSCognitoIdentityProviderService.ListUsersInGroup')
 			.reply(200, {

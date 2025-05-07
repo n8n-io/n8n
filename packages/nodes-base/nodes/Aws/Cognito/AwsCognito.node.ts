@@ -29,11 +29,12 @@ export class AwsCognito implements INodeType {
 			},
 		],
 		requestDefaults: {
-			baseURL: '=https://cognito-idp.{{$credentials.region}}.amazonaws.com',
-			url: '',
-			json: true,
 			headers: {
 				'Content-Type': 'application/x-amz-json-1.1',
+			},
+			qs: {
+				service: 'cognito-idp',
+				_region: '={{$credentials.region}}',
 			},
 		},
 		properties: [

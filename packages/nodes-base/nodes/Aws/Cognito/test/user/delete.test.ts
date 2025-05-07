@@ -34,7 +34,7 @@ describe('AWS Cognito - Delete User', () => {
 			.defaultReplyHeaders({ 'Content-Type': 'application/x-amz-json-1.1' })
 			.post('/', {
 				UserPoolId: 'eu-central-1_EUZ4iEF1T',
-				Limit: 50,
+				Filter: 'sub = "53c4f8c2-c071-707b-debd-d45585618da0"',
 			})
 			.matchHeader('x-amz-target', 'AWSCognitoIdentityProviderService.ListUsers')
 			.reply(200, {
