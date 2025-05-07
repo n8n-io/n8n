@@ -119,7 +119,7 @@ import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
 import { useBuilderStore } from '@/stores/builder.store';
 import { useFoldersStore } from '@/stores/folders.store';
 import { useAgentRequestStore } from '@/stores/agentRequest.store';
-import { hasFromAiExpressions } from '@/utils/nodes/nodeTransforms';
+import { needsAgentInput } from '@/utils/nodes/nodeTransforms';
 
 defineOptions({
 	name: 'NodeView',
@@ -1167,7 +1167,7 @@ async function onRunWorkflowToNode(id: string) {
 	const node = workflowsStore.getNodeById(id);
 	if (!node) return;
 
-	if (hasFromAiExpressions(node) && nodeTypesStore.isNodesAsToolNode(node.type)) {
+	if (needsAgentInput(node) && nodeTypesStore.isNodesAsToolNode(node.type)) {
 		uiStore.openModalWithData({
 			name: FROM_AI_PARAMETERS_MODAL_KEY,
 			data: {

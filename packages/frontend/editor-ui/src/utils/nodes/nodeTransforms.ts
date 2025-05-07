@@ -1,4 +1,8 @@
-import { AI_CODE_TOOL_LANGCHAIN_NODE_TYPE, AI_MCP_TOOL_NODE_TYPE } from '@/constants';
+import {
+	AI_CODE_TOOL_LANGCHAIN_NODE_TYPE,
+	AI_MCP_TOOL_NODE_TYPE,
+	WIKIPEDIA_TOOL_NODE_TYPE,
+} from '@/constants';
 import type { INodeUi } from '@/Interface';
 import type { NodeTypeProvider } from '@/utils/nodeTypes/nodeTypeTransforms';
 import type { INodeCredentialDescription, FromAIArgument } from 'n8n-workflow';
@@ -82,8 +86,12 @@ export function doesNodeHaveAllCredentialsFilled(
 /**
  * Checks if the given node has any fromAi expressions in its parameters.
  */
-export function hasFromAiExpressions(node: Pick<INodeUi, 'parameters' | 'type'>) {
-	const nodeTypesNeedModal = [AI_MCP_TOOL_NODE_TYPE, AI_CODE_TOOL_LANGCHAIN_NODE_TYPE];
+export function needsAgentInput(node: Pick<INodeUi, 'parameters' | 'type'>) {
+	const nodeTypesNeedModal = [
+		WIKIPEDIA_TOOL_NODE_TYPE,
+		AI_MCP_TOOL_NODE_TYPE,
+		AI_CODE_TOOL_LANGCHAIN_NODE_TYPE,
+	];
 	const collectedArgs: FromAIArgument[] = [];
 	traverseNodeParameters(node.parameters, collectedArgs);
 	return (
