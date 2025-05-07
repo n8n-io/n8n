@@ -248,7 +248,7 @@ onMounted(async () => {
 					>
 						{{ run?.status }}
 						{{
-							locale.baseText(`${getErrorBaseKey(run.errorCode)}` as BaseTextKey) || run.errorCode
+							locale.baseText(`${getErrorBaseKey(run?.errorCode)}` as BaseTextKey) ?? run?.errorCode
 						}}
 					</N8nText>
 				</div>
