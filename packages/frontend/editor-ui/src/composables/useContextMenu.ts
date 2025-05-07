@@ -207,7 +207,7 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 			{
 				id: 'extract_subWorkflow',
 				divided: true,
-				label: JSON.stringify(extractableSelectionResult.value), // i18n.baseText('contextMenu.extract', i18nOptions)
+				label: i18n.baseText('contextMenu.extract', { adjustToNumber: nodes.length }),
 				shortcut: { metaKey: true, shiftKey: true, keys: ['G'] },
 				disabled: !isExtractableSelectionValid.value,
 			},
@@ -240,7 +240,6 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 				},
 				...layoutActions,
 				...selectionActions,
-				...extractionActions,
 			];
 		} else {
 			const menuActions: ActionDropdownItem[] = [
@@ -272,8 +271,8 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 					disabled: isReadOnly.value || !nodes.every(canDuplicateNode),
 				},
 				...layoutActions,
-				...selectionActions,
 				...extractionActions,
+				...selectionActions,
 				{
 					id: 'delete',
 					divided: true,

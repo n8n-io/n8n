@@ -1500,6 +1500,7 @@
 	"contextMenu.deselectAll": "Clear selection",
 	"contextMenu.tidyUpWorkflow": "Tidy up workflow",
 	"contextMenu.tidyUpSelection": "Tidy up selection",
+	"contextMenu.extract": "Convert node to Sub-workflow | Convert {count} nodes to Sub-workflow",
 	"contextMenu.duplicate": "Duplicate | Duplicate {count} {subject}",
 	"contextMenu.open": "Open...",
 	"contextMenu.test": "Test step",
