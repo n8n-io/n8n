@@ -9,7 +9,7 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 import { setEvaluationProperties, setOutputProperties } from './Description.node';
 import { authentication } from '../../Google/Sheet/v2/actions/versionDescription';
 import { listSearch, loadOptions } from '../methods';
-import { setEvaluation, setOutput } from '../utils/evaluationUtils';
+import { checkIfEvaluating, setEvaluation, setOutputs, setOutput } from '../utils/evaluationUtils';
 
 export class Evaluation implements INodeType {
 	description: INodeTypeDescription = {
@@ -26,7 +26,7 @@ export class Evaluation implements INodeType {
 			name: 'Evaluation',
 		},
 		inputs: [NodeConnectionTypes.Main],
-		outputs: [NodeConnectionTypes.Main],
+		outputs: `={{(${setOutputs})($parameter)}}`,
 		credentials: [
 			{
 				name: 'googleApi',
@@ -86,7 +86,8 @@ export class Evaluation implements INodeType {
 		} else if (operation === 'setEvaluation') {
 			return await setEvaluation.call(this);
 		} else {
-			return [this.getInputData()];
+			// operation === 'checkIfEvaluating'
+			return await checkIfEvaluating.call(this);
 		}
 	}
 }
