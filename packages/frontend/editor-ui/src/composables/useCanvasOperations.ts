@@ -1802,7 +1802,9 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 			workflowHelpers.updateNodePositions(
 				workflowData,
 				NodeViewUtils.getNewNodePosition(editableWorkflow.value.nodes, lastClickPosition.value, {
-					size: getNodesGroupSize(workflowData.nodes ?? []),
+					...(workflowData.nodes && workflowData.nodes.length > 1
+						? { size: getNodesGroupSize(workflowData.nodes) }
+						: {}),
 					viewport,
 				}),
 			);
