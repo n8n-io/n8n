@@ -1,6 +1,13 @@
 import type { CreateCredentialDto } from '@n8n/api-types';
+import type { Project, User, ICredentialsDb, ScopesField } from '@n8n/db';
+import {
+	CredentialsEntity,
+	SharedCredentials,
+	CredentialsRepository,
+	ProjectRepository,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
-import type { Scope } from '@n8n/permissions';
+import { hasGlobalScope, type Scope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import {
 	In,
@@ -20,12 +27,6 @@ import { CREDENTIAL_EMPTY_VALUE, deepCopy, NodeHelpers, UnexpectedError } from '
 import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
 import { CredentialTypes } from '@/credential-types';
 import { createCredentialsFromCredentialsEntity } from '@/credentials-helper';
-import { CredentialsEntity } from '@/databases/entities/credentials-entity';
-import type { Project } from '@/databases/entities/project';
-import { SharedCredentials } from '@/databases/entities/shared-credentials';
-import type { User } from '@/databases/entities/user';
-import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import * as Db from '@/db';
@@ -39,7 +40,6 @@ import { CredentialsTester } from '@/services/credentials-tester.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
-import type { ICredentialsDb, ScopesField } from '@/types-db';
 
 import { CredentialsFinderService } from './credentials-finder.service';
 
@@ -75,18 +75,28 @@ export class CredentialsService {
 			listQueryOptions = {},
 			includeScopes = false,
 			includeData = false,
+			onlySharedWithMe = false,
 		}: {
 			listQueryOptions?: ListQuery.Options & { includeData?: boolean };
 			includeScopes?: boolean;
 			includeData?: boolean;
+			onlySharedWithMe?: boolean;
 		} = {},
 	) {
-		const returnAll = user.hasGlobalScope('credential:list');
+		const returnAll = hasGlobalScope(user, 'credential:list');
 		const isDefaultSelect = !listQueryOptions.select;
 		const projectId =
 			typeof listQueryOptions.filter?.projectId === 'string'
 				? listQueryOptions.filter.projectId
 				: undefined;
+
+		if (onlySharedWithMe) {
+			listQueryOptions.filter = {
+				...listQueryOptions.filter,
+				withRole: 'credential:user',
+				user,
+			};
+		}
 
 		if (includeData) {
 			// We need the scopes to check if we're allowed to include the decrypted
@@ -121,7 +131,10 @@ export class CredentialsService {
 				// it's shared to a project, it won't be able to find the home project.
 				// To solve this, we have to get all the relation now, even though
 				// we're deleting them later.
-				if ((listQueryOptions.filter?.shared as { projectId?: string })?.projectId) {
+				if (
+					(listQueryOptions.filter?.shared as { projectId?: string })?.projectId ??
+					onlySharedWithMe
+				) {
 					const relations = await this.sharedCredentialsRepository.getAllRelationsForCredentials(
 						credentials.map((c) => c.id),
 					);
@@ -171,7 +184,10 @@ export class CredentialsService {
 			// it's shared to a project, it won't be able to find the home project.
 			// To solve this, we have to get all the relation now, even though
 			// we're deleting them later.
-			if ((listQueryOptions.filter?.shared as { projectId?: string })?.projectId) {
+			if (
+				(listQueryOptions.filter?.shared as { projectId?: string })?.projectId ??
+				onlySharedWithMe
+			) {
 				const relations = await this.sharedCredentialsRepository.getAllRelationsForCredentials(
 					credentials.map((c) => c.id),
 				);
@@ -243,7 +259,7 @@ export class CredentialsService {
 		// If the workflow is owned by a personal project and the owner of the
 		// project has global read permissions it can use all personal credentials.
 		const user = await this.userRepository.findPersonalOwnerForWorkflow(workflowId);
-		if (user?.hasGlobalScope('credential:read')) {
+		if (user && hasGlobalScope(user, 'credential:read')) {
 			return await this.credentialsRepository.findAllPersonalCredentials();
 		}
 
@@ -257,7 +273,7 @@ export class CredentialsService {
 		// read permissions then all workflows in that project can use all
 		// credentials of all personal projects.
 		const user = await this.userRepository.findPersonalOwnerForProject(projectId);
-		if (user?.hasGlobalScope('credential:read')) {
+		if (user && hasGlobalScope(user, 'credential:read')) {
 			return await this.credentialsRepository.findAllPersonalCredentials();
 		}
 
@@ -277,7 +293,7 @@ export class CredentialsService {
 	): Promise<SharedCredentials | null> {
 		let where: FindOptionsWhere<SharedCredentials> = { credentialsId: credentialId };
 
-		if (!user.hasGlobalScope(globalScopes, { mode: 'allOf' })) {
+		if (!hasGlobalScope(user, globalScopes, { mode: 'allOf' })) {
 			where = {
 				...where,
 				role: 'credential:owner',

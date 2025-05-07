@@ -2263,6 +2263,7 @@ export interface IWorkflowBase {
 	id: string;
 	name: string;
 	active: boolean;
+	isArchived: boolean;
 	createdAt: Date;
 	startedAt?: Date;
 	updatedAt: Date;

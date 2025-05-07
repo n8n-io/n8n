@@ -56,8 +56,6 @@ export declare namespace WorkflowRequest {
 		listQueryOptions: ListQuery.Options;
 	};
 
-	type Delete = Get;
-
 	type Update = AuthenticatedRequest<
 		{ workflowId: string },
 		{},

@@ -1,12 +1,6 @@
 {
     "type": "object",
     "properties": {
-        "custom_fields": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
         "emails": {
             "type": "array",
             "items": {
@@ -23,17 +17,6 @@
             "type": "array",
             "items": {
                 "type": "string"
-            }
-        },
-        "organization": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "integer"
-                },
-                "name": {
-                    "type": "string"
-                }
             }
         },
         "owner": {
@@ -63,5 +46,5 @@
             "type": "integer"
         }
     },
-    "version": 2
+    "version": 3
 }

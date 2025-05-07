@@ -32,9 +32,8 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 			cancel?: () => Promise<void>;
 		} = {},
 	) {
-		if (!uiStore.stateIsDirty) {
+		if (!uiStore.stateIsDirty || workflowsStore.workflow.isArchived) {
 			next();
-
 			return;
 		}
 

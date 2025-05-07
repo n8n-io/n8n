@@ -1,6 +1,6 @@
+import { User } from '@n8n/db';
 import { mockClear } from 'jest-mock-extended';
 
-import { User } from '@/databases/entities/user';
 import { WorkflowHistoryRepository } from '@/databases/repositories/workflow-history.repository';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history.ee/workflow-history.service.ee';

@@ -1,3 +1,4 @@
+import type { ExecutionRepository } from '@n8n/db';
 import { captor, mock } from 'jest-mock-extended';
 import type {
 	IDeferredPromise,
@@ -12,7 +13,6 @@ import { v4 as uuid } from 'uuid';
 import { ActiveExecutions } from '@/active-executions';
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import config from '@/config';
-import type { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { mockInstance } from '@test/mocking';
 
 jest.mock('n8n-workflow', () => ({
@@ -53,6 +53,7 @@ describe('ActiveExecutions', () => {
 			id: '123',
 			name: 'Test workflow 1',
 			active: false,
+			isArchived: false,
 			createdAt: new Date(),
 			updatedAt: new Date(),
 			nodes: [],

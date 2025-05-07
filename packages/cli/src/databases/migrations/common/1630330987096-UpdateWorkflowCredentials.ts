@@ -1,7 +1,6 @@
+import type { CredentialsEntity, WorkflowEntity } from '@n8n/db';
 import type { IWorkflowBase } from 'n8n-workflow';
 
-import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import type { MigrationContext, ReversibleMigration } from '@/databases/types';
 
 type Credential = Pick<CredentialsEntity, 'id' | 'name' | 'type'>;
