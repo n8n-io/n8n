@@ -151,7 +151,7 @@ export async function checkIfEvaluating(this: IExecuteFunctions): Promise<INodeE
 
 	const evalTrigger = parentNodes.find((node) => node.type === 'n8n-nodes-base.evaluationTrigger');
 	const evalTriggerOutput = evalTrigger
-		? this.evaluateExpression(`{{ $('${evalTrigger?.name}').first() }}`, 0)
+		? this.evaluateExpression(`{{ $('${evalTrigger?.name}').isExecuted }}`, 0)
 		: undefined;
 
 	if (evalTriggerOutput) {
