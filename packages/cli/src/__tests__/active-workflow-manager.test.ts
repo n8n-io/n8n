@@ -138,12 +138,12 @@ describe('ActiveWorkflowManager', () => {
 					);
 					workflowRepository.findById.mockResolvedValue(mock<WorkflowEntity>({ active: false }));
 
-					const result = await activeWorkflowManager.add('some-id', mode);
+					const added = await activeWorkflowManager.add('some-id', mode);
 
 					expect(checkSpy).not.toHaveBeenCalled();
 					expect(addWebhooksSpy).not.toHaveBeenCalled();
 					expect(addTriggersAndPollersSpy).not.toHaveBeenCalled();
-					expect(result).toBe(false);
+					expect(added).toEqual({ triggersAndPollers: false, webhooks: false });
 				},
 			);
 		});
