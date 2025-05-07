@@ -12,6 +12,7 @@ import { cleanupAppModals, createAppModals, mockedStore } from '@/__tests__/util
 import { createEventBus } from '@n8n/utils/event-bus';
 import { createMockEnterpriseSettings } from '@/__tests__/mocks';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import type { INodeParameterResourceLocator } from 'n8n-workflow';
 
 let mockNdvState: Partial<ReturnType<typeof useNDVStore>>;
 let mockNodeTypesState: Partial<ReturnType<typeof useNodeTypesStore>>;
@@ -381,7 +382,8 @@ describe('ParameterInput.vue', () => {
 
 	test('should show error when workflow selector has archived workflow selected', async () => {
 		const workflowId = faker.string.uuid();
-		const modelValue = {
+		const modelValue: INodeParameterResourceLocator = {
+			__rl: true,
 			mode: 'id',
 			value: workflowId,
 		};

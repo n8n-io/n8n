@@ -412,7 +412,11 @@ const onAddResourceClicked = async () => {
 						:issues="parameterIssues"
 						:class="$style['parameter-issues']"
 					/>
-					<div v-if="showOpenResourceLink" :class="$style.openResourceLink">
+					<div
+						v-if="showOpenResourceLink"
+						:class="$style.openResourceLink"
+						data-test-id="rlc-open-resource-link"
+					>
 						<n8n-link theme="text" @click.stop="openWorkflow()">
 							<font-awesome-icon icon="external-link-alt" :title="'Open resource link'" />
 						</n8n-link>
