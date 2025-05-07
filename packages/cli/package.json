@@ -106,7 +106,7 @@
     "@n8n/ai-workflow-builder": "workspace:*",
     "@n8n/typeorm": "catalog:",
     "@n8n_io/ai-assistant-sdk": "catalog:",
-    "@n8n_io/license-sdk": "2.20.0",
+    "@n8n_io/license-sdk": "2.20.1",
     "@oclif/core": "4.0.7",
     "@rudderstack/rudder-sdk-node": "2.1.4",
     "@sentry/node": "catalog:",
