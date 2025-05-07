@@ -141,6 +141,7 @@ export async function getInputConnectionData(
 				executeData,
 				closeFunctions,
 				abortSignal,
+				parentNode,
 			);
 
 		if (!connectedNodeType.supplyData) {
