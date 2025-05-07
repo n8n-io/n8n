@@ -454,13 +454,7 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.IMPORT_FROM_URL: {
-			uiStore.openModal(IMPORT_WORKFLOW_URL_MODAL_KEY, {
-				onClose: (result) => {
-					if (result?.url) {
-						nodeViewEventBus.emit('importWorkflowUrl', { url: result.url });
-					}
-				},
-			});
+			uiStore.openModal('IMPORT_WORKFLOW_URL_MODAL_KEY');
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.IMPORT_FROM_FILE: {

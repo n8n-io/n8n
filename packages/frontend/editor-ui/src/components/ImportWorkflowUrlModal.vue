@@ -35,7 +35,7 @@ watch(url, (newValue) => {
 
 <template>
 	<Modal
-		:name="'IMPORT_WORKFLOW_URL_MODAL'"
+		:name="IMPORT_WORKFLOW_URL_MODAL_KEY"
 		:title="i18n.baseText('mainSidebar.prompt.importWorkflowFromUrl')"
 		:show-close="true"
 		:center="true"
