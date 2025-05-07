@@ -6,7 +6,7 @@ import type {
 } from '@n8n/api-types';
 import * as nodeTypesApi from '@/api/nodeTypes';
 import { HTTP_REQUEST_NODE_TYPE, STORES, CREDENTIAL_ONLY_HTTP_NODE_VERSION } from '@/constants';
-import type { NodeTypesByTypeNameAndVersion } from '@/Interface';
+import type { INodeUi, NodeTypesByTypeNameAndVersion } from '@/Interface';
 import { addHeaders, addNodeTranslation } from '@/plugins/i18n';
 import { omit } from '@/utils/typesUtils';
 import type {
@@ -18,7 +18,12 @@ import type {
 	Workflow,
 	NodeConnectionType,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
+import {
+	EXECUTE_WORKFLOW_NODE_TYPE,
+	isResourceLocatorValue,
+	NodeConnectionTypes,
+	NodeHelpers,
+} from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { useCredentialsStore } from './credentials.store';
 import { useRootStore } from './root.store';
@@ -328,6 +333,16 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		return await nodeTypesApi.getNodeParameterActionResult(rootStore.restApiContext, sendData);
 	};
 
+	function getSubworkflowId(node: INodeUi): string | undefined {
+		if (
+			node &&
+			node.type === EXECUTE_WORKFLOW_NODE_TYPE &&
+			isResourceLocatorValue(node.parameters.workflowId)
+		) {
+			return node.parameters.workflowId.value as string;
+		}
+		return;
+	}
 	// #endregion
 
 	return {
@@ -358,5 +373,6 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		getNodeTranslationHeaders,
 		setNodeTypes,
 		removeNodeTypes,
+		getSubworkflowId,
 	};
 });

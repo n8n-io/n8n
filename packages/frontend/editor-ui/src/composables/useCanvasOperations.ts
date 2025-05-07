@@ -94,7 +94,14 @@ import type {
 	Workflow,
 	NodeConnectionType,
 } from 'n8n-workflow';
-import { deepCopy, NodeConnectionTypes, NodeHelpers, TelemetryHelpers } from 'n8n-workflow';
+import {
+	deepCopy,
+	EXECUTE_WORKFLOW_NODE_TYPE,
+	isResourceLocatorValue,
+	NodeConnectionTypes,
+	NodeHelpers,
+	TelemetryHelpers,
+} from 'n8n-workflow';
 import { computed, nextTick, ref } from 'vue';
 import type { useRouter } from 'vue-router';
 import { useClipboard } from '@/composables/useClipboard';
@@ -2007,6 +2014,14 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		workflowsStore.addToWorkflowMetadata({ templateId: `${id}` });
 	}
 
+	function tryToOpenSubworkflowInNewTab(id: string) {
+		const node = workflowsStore.getNodeById(id);
+		if (!node) return;
+		const subWorkflowId = nodeTypesStore.getSubworkflowId(node);
+		if (!subWorkflowId) return;
+		window.open(`${rootStore.baseUrl}workflow/${subWorkflowId}`, '_blank');
+	}
+
 	return {
 		lastClickPosition,
 		editableWorkflow,
@@ -2057,5 +2072,6 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		openExecution,
 		toggleChatOpen,
 		importTemplate,
+		tryToOpenSubworkflowInNewTab,
 	};
 }

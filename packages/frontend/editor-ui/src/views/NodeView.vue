@@ -36,10 +36,10 @@ import type {
 	WorkflowDataWithTemplateId,
 	XYPosition,
 } from '@/Interface';
-import type {
-	Connection,
-	ViewportTransform,
-	XYPosition as VueFlowXYPosition,
+import {
+	type Connection,
+	type ViewportTransform,
+	type XYPosition as VueFlowXYPosition,
 } from '@vue-flow/core';
 import type {
 	CanvasConnectionCreateData,
@@ -213,6 +213,7 @@ const {
 	setNodeActiveByName,
 	clearNodeActive,
 	addConnections,
+	tryToOpenSubworkflowInNewTab,
 	importWorkflowData,
 	fetchWorkflowDataFromUrl,
 	resetWorkspace,
@@ -666,8 +667,19 @@ function onClickNode() {
 	closeNodeCreator();
 }
 
-function onSetNodeActivated(id: string) {
+function onSetNodeActivated(id: string, event?: MouseEvent) {
+	// Handle Ctrl/Cmd + Double Click case
+	if (event?.metaKey || event?.ctrlKey) {
+		tryToOpenSubworkflowInNewTab(id);
+		return;
+	}
+
 	setNodeActive(id);
+}
+
+function onOpenSubWorkflow(id: string) {
+	tryToOpenSubworkflowInNewTab(id);
+	return;
 }
 
 function onSetNodeDeactivated() {
@@ -1889,6 +1901,7 @@ onBeforeUnmount(() => {
 		@update:node:parameters="onUpdateNodeParameters"
 		@update:node:inputs="onUpdateNodeInputs"
 		@update:node:outputs="onUpdateNodeOutputs"
+		@open:sub-workflow="onOpenSubWorkflow"
 		@click:node="onClickNode"
 		@click:node:add="onClickNodeAdd"
 		@run:node="onRunWorkflowToNode"
