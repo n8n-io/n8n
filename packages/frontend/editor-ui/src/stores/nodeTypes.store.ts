@@ -125,11 +125,8 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 	const isNodesAsToolNode = computed(() => {
 		return (nodeTypeName: string) => {
 			const nodeType = getNodeType.value(nodeTypeName);
-			return !!(
-				nodeType &&
-				nodeType.outputs.includes(NodeConnectionTypes.AiTool) &&
-				nodeType.usableAsTool
-			);
+			console.log(nodeType);
+			return !!(nodeType && nodeType.outputs.includes(NodeConnectionTypes.AiTool));
 		};
 	});
 

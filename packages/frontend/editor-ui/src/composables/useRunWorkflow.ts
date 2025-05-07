@@ -282,13 +282,19 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				startRunData.destinationNode = options.destinationNode;
 				const nodeId = workflowsStore.getNodeByName(options.destinationNode as string)?.id;
 				if (nodeId && version === 2) {
-					const node = workflowData.nodes.find((nodeData) => nodeData.id === nodeId);
-					if (node?.parameters) {
-						node.parameters = parameterOverridesStore.substituteParameters(
-							workflow.id,
-							nodeId,
-							node?.parameters,
-						);
+					const agentRequest = parameterOverridesStore.substituteParameters(
+						workflow.id,
+						nodeId,
+						{},
+					);
+
+					if (agentRequest) {
+						startRunData.agentRequest = {
+							query: agentRequest.query ?? {},
+							tool: {
+								name: agentRequest.toolName ?? '',
+							},
+						};
 					}
 				}
 			}

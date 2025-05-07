@@ -1,20 +1,17 @@
 <script setup lang="ts">
 import { useI18n } from '@/composables/useI18n';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
-import { FROM_AI_PARAMETERS_MODAL_KEY } from '@/constants';
+import { FROM_AI_PARAMETERS_MODAL_KEY, AI_MCP_TOOL_NODE_TYPE } from '@/constants';
 import { useParameterOverridesStore } from '@/stores/parameterOverrides.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createEventBus } from '@n8n/utils/event-bus';
-import {
-	type FromAIArgument,
-	NodeConnectionTypes,
-	traverseNodeParametersWithParamNames,
-} from 'n8n-workflow';
-import { computed, ref } from 'vue';
+import { type FromAIArgument, NodeConnectionTypes, traverseNodeParameters } from 'n8n-workflow';
+import type { IFormInput } from '@n8n/design-system';
+import { computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
-import { type IFormInput } from '@n8n/design-system';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useNDVStore } from '@/stores/ndv.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 type Value = string | number | boolean | null | undefined;
 
@@ -31,6 +28,7 @@ const telemetry = useTelemetry();
 const ndvStore = useNDVStore();
 const modalBus = createEventBus();
 const workflowsStore = useWorkflowsStore();
+const nodeTypesStore = useNodeTypesStore();
 const router = useRouter();
 const { runWorkflow } = useRunWorkflow({ router });
 const parameterOverridesStore = useParameterOverridesStore();
@@ -46,6 +44,9 @@ const parentNode = computed(() => {
 	if (parentNodes.length === 0) return undefined;
 	return workflowsStore.getNodeByName(parentNodes[0])?.name;
 });
+
+const parameters = ref<IFormInput[]>([]);
+const selectedTool = ref<string>('');
 
 const nodeRunData = computed(() => {
 	if (!node.value) return undefined;
@@ -80,38 +81,128 @@ const mapTypes: {
 	},
 };
 
-const parameters = computed(() => {
-	if (!node.value) return [];
+watch(
+	[node, selectedTool],
+	async ([newNode, newSelectedTool]) => {
+		if (!newNode) {
+			parameters.value = [];
+			return;
+		}
 
-	const result: IFormInput[] = [];
-	const params = node.value.parameters;
-	const collectedArgs: Map<string, FromAIArgument> = new Map();
-	traverseNodeParametersWithParamNames(params, collectedArgs);
-	const inputOverrides =
-		nodeRunData.value?.inputOverride?.[NodeConnectionTypes.AiTool]?.[0]?.[0].json;
+		const result: IFormInput[] = [];
 
-	collectedArgs.forEach((value: FromAIArgument, paramName: string) => {
-		const type = value.type ?? 'string';
-		const initialValue = inputOverrides?.[value.key]
-			? inputOverrides[value.key]
-			: (parameterOverridesStore.getParameterOverride(
-					workflowsStore.workflowId,
-					node.value!.id,
-					paramName,
-				) ?? mapTypes[type]?.defaultValue);
+		// Handle MCPClientTool nodes differently
+		if (newNode.type === AI_MCP_TOOL_NODE_TYPE) {
+			const tools = await nodeTypesStore.getNodeParameterOptions({
+				nodeTypeAndVersion: {
+					name: newNode.type,
+					version: newNode.typeVersion,
+				},
+				path: 'parmeters.includedTools',
+				methodName: 'getTools',
+				currentNodeParameters: newNode.parameters,
+			});
 
-		result.push({
-			name: paramName,
-			initialValue: initialValue as string | number | boolean | null | undefined,
-			properties: {
-				label: value.key,
-				type: mapTypes[type].inputType,
-				required: true,
-			},
+			// Load available tools
+			const toolOptions = tools?.map((tool) => ({
+				label: tool.name,
+				value: String(tool.value),
+				disabled: false,
+			}));
+
+			result.push({
+				name: 'toolName',
+				initialValue: '',
+				properties: {
+					label: 'Tool name',
+					type: 'select',
+					options: toolOptions,
+					required: true,
+				},
+			});
+
+			// Only show parameters for selected tool
+			if (newSelectedTool) {
+				const selectedTool = newSelectedTool;
+				const selectedToolData = tools?.find((tool) => String(tool.value) === selectedTool);
+				if (selectedToolData?.schema?.properties) {
+					for (const [propertyName, value] of Object.entries(selectedToolData.schema.properties)) {
+						const typedValue = value as {
+							type: string;
+							description: string;
+						};
+						const previousValue =
+							parameterOverridesStore.getParameterOverride(
+								workflowsStore.workflowId,
+								newNode.id,
+								'query.' + propertyName,
+							) ?? mapTypes[typedValue.type ?? 'text']?.defaultValue;
+
+						result.push({
+							name: 'query.' + propertyName,
+							initialValue: previousValue as string | number | boolean | null | undefined,
+							properties: {
+								label: propertyName,
+								type: mapTypes[typedValue.type ?? 'text'].inputType,
+								required: true,
+							},
+						});
+					}
+				}
+			}
+
+			parameters.value = result;
+		}
+
+		// Handle regular tool nodes
+		const params = newNode.parameters;
+		const collectedArgs: FromAIArgument[] = [];
+		traverseNodeParameters(params, collectedArgs);
+		const inputOverrides =
+			nodeRunData.value?.inputOverride?.[NodeConnectionTypes.AiTool]?.[0]?.[0].json;
+
+		collectedArgs.forEach((value: FromAIArgument) => {
+			const type = value.type ?? 'string';
+			const initialValue = inputOverrides?.[value.key]
+				? inputOverrides[value.key]
+				: (parameterOverridesStore.getParameterOverride(
+						workflowsStore.workflowId,
+						newNode.id,
+						'query.' + value.key,
+					) ?? mapTypes[type]?.defaultValue);
+
+			result.push({
+				name: 'query.' + value.key,
+				initialValue: initialValue as string | number | boolean | null | undefined,
+				properties: {
+					label: value.key,
+					type: mapTypes[value.type ?? 'string'].inputType,
+					required: true,
+				},
+			});
 		});
-	});
-	return result;
-});
+		if (result.length === 0) {
+			const queryValue =
+				parameterOverridesStore.getParameterOverride(
+					workflowsStore.workflowId,
+					newNode.id,
+					'query',
+				) ?? '';
+
+			result.push({
+				name: 'query',
+				initialValue: queryValue as string,
+				properties: {
+					label: 'Query',
+					type: 'text',
+					required: true,
+				},
+			});
+		}
+		parameters.value = result;
+	},
+	{ immediate: true },
+);
 
 const onClose = () => {
 	modalBus.emit('close');
@@ -139,10 +230,15 @@ const onExecute = async () => {
 
 	await runWorkflow({
 		destinationNode: node.value.name,
-		source: 'RunData.TestExecuteModal',
 	});
 
 	onClose();
+};
+
+// Add handler for tool selection change
+const onUpdate = (change: { name: string; value: string }) => {
+	if (change.name !== 'toolName') return;
+	selectedTool.value = change.value;
 };
 </script>
 
@@ -177,6 +273,7 @@ const onExecute = async () => {
 						:column-view="true"
 						data-test-id="from-ai-parameters-modal-inputs"
 						@submit="onExecute"
+						@update="onUpdate"
 					></N8nFormInputs>
 				</el-row>
 			</el-col>
