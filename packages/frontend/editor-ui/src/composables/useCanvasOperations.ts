@@ -75,6 +75,7 @@ import {
 	DEFAULT_NODE_SIZE,
 	DEFAULT_VIEWPORT_BOUNDARIES,
 	generateOffsets,
+	getNodesGroupSize,
 	PUSH_NODES_OFFSET,
 } from '@/utils/nodeViewUtils';
 import type { Connection } from '@vue-flow/core';
@@ -913,15 +914,15 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 
 		const nodeSize =
 			connectionType === NodeConnectionTypes.Main ? DEFAULT_NODE_SIZE : CONFIGURATION_NODE_SIZE;
-
-		let position: XYPosition | undefined = node.position;
 		let pushOffsets: XYPosition = [nodeSize[0] / 2, nodeSize[1] / 2];
 
+		let position: XYPosition | undefined = node.position;
 		if (position) {
 			return NodeViewUtils.getNewNodePosition(workflowsStore.allNodes, position, {
 				offset: pushOffsets,
 				size: nodeSize,
-				boundaries: options.viewport,
+				viewport: options.viewport,
+				normalize: false,
 			});
 		}
 
@@ -1076,7 +1077,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		return NodeViewUtils.getNewNodePosition(workflowsStore.allNodes, position, {
 			offset: pushOffsets,
 			size: nodeSize,
-			boundaries: options.viewport,
+			viewport: options.viewport,
 		});
 	}
 
@@ -1801,7 +1802,8 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 			workflowHelpers.updateNodePositions(
 				workflowData,
 				NodeViewUtils.getNewNodePosition(editableWorkflow.value.nodes, lastClickPosition.value, {
-					boundaries: viewport,
+					size: getNodesGroupSize(workflowData.nodes ?? []),
+					viewport,
 				}),
 			);
 

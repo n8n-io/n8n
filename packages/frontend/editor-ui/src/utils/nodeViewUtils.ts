@@ -43,8 +43,9 @@ export const DEFAULT_VIEWPORT_BOUNDARIES: ViewportBoundaries = {
 };
 
 /**
- * Returns the leftmost and topmost node from the given list of nodes
+ * Utility functions for returning nodes found at the edges of a group
  */
+
 export const getLeftmostTopNode = <T extends { position: XYPosition }>(nodes: T[]): T => {
 	return nodes.reduce((leftmostTop, node) => {
 		if (node.position[0] > leftmostTop.position[0] || node.position[1] > leftmostTop.position[1]) {
@@ -53,6 +54,58 @@ export const getLeftmostTopNode = <T extends { position: XYPosition }>(nodes: T[
 
 		return node;
 	}, nodes[0]);
+};
+
+export const getLeftMostNode = <T extends { position: XYPosition }>(nodes: T[]): T => {
+	return nodes.reduce((leftmost, node) => {
+		if (node.position[0] < leftmost.position[0]) {
+			return node;
+		}
+
+		return leftmost;
+	}, nodes[0]);
+};
+
+export const getTopMostNode = <T extends { position: XYPosition }>(nodes: T[]): T => {
+	return nodes.reduce((topmost, node) => {
+		if (node.position[1] < topmost.position[1]) {
+			return node;
+		}
+
+		return topmost;
+	}, nodes[0]);
+};
+
+export const getRightMostNode = <T extends { position: XYPosition }>(nodes: T[]): T => {
+	return nodes.reduce((rightmost, node) => {
+		if (node.position[0] > rightmost.position[0]) {
+			return node;
+		}
+
+		return rightmost;
+	}, nodes[0]);
+};
+
+export const getBottomMostNode = <T extends { position: XYPosition }>(nodes: T[]): T => {
+	return nodes.reduce((bottommost, node) => {
+		if (node.position[1] > bottommost.position[1]) {
+			return node;
+		}
+
+		return bottommost;
+	}, nodes[0]);
+};
+
+export const getNodesGroupSize = (nodes: INodeUi[]): [number, number] => {
+	const leftMostNode = getLeftMostNode(nodes);
+	const topMostNode = getTopMostNode(nodes);
+	const rightMostNode = getRightMostNode(nodes);
+	const bottomMostNode = getBottomMostNode(nodes);
+
+	const width = Math.abs(rightMostNode.position[0] - leftMostNode.position[0]) + NODE_SIZE;
+	const height = Math.abs(bottomMostNode.position[1] - topMostNode.position[1]) + NODE_SIZE;
+
+	return [width, height];
 };
 
 /**
@@ -103,58 +156,65 @@ export const getNewNodePosition = (
 	{
 		offset = [DEFAULT_NODE_SIZE[0] / 2, DEFAULT_NODE_SIZE[1] / 2],
 		size = DEFAULT_NODE_SIZE,
-		boundaries = DEFAULT_VIEWPORT_BOUNDARIES,
+		viewport = DEFAULT_VIEWPORT_BOUNDARIES,
+		normalize = true,
 	}: {
 		offset?: XYPosition;
 		size?: [number, number];
-		boundaries?: ViewportBoundaries;
+		viewport?: ViewportBoundaries;
+		normalize?: boolean;
 	} = {},
 ): XYPosition => {
-	const newPosition: XYPosition = [...initialPosition];
+	const resolvedOffset = [...offset];
+	resolvedOffset[0] = closestNumberDivisibleBy(resolvedOffset[0], GRID_SIZE);
+	resolvedOffset[1] = closestNumberDivisibleBy(resolvedOffset[1], GRID_SIZE);
 
-	newPosition[0] = closestNumberDivisibleBy(newPosition[0], GRID_SIZE);
-	newPosition[1] = closestNumberDivisibleBy(newPosition[1], GRID_SIZE);
+	const resolvedPosition: XYPosition = [...initialPosition];
+	resolvedPosition[0] = closestNumberDivisibleBy(resolvedPosition[0], GRID_SIZE);
+	resolvedPosition[1] = closestNumberDivisibleBy(resolvedPosition[1], GRID_SIZE);
 
-	let conflictFound = false;
-	let i, node;
-	do {
-		conflictFound = false;
-		for (i = 0; i < nodes.length; i++) {
-			node = nodes[i];
+	if (normalize) {
+		let conflictFound = false;
+		let i, node;
+		do {
+			conflictFound = false;
+			for (i = 0; i < nodes.length; i++) {
+				node = nodes[i];
 
-			if (NODE_POSITION_CONFLICT_ALLOWLIST.includes(node.type)) {
-				continue;
+				if (!node || NODE_POSITION_CONFLICT_ALLOWLIST.includes(node.type)) {
+					continue;
+				}
+
+				if (!canUsePosition(node.position, resolvedPosition, size)) {
+					conflictFound = true;
+					break;
+				}
 			}
 
-			if (!canUsePosition(node.position, newPosition, size)) {
-				conflictFound = true;
-				break;
+			if (conflictFound) {
+				resolvedPosition[0] += resolvedOffset[0];
+				resolvedPosition[1] += resolvedOffset[1];
 			}
+		} while (conflictFound);
+
+		if (resolvedPosition[0] < viewport.xMin + resolvedOffset[0]) {
+			resolvedPosition[0] = viewport.xMin + resolvedOffset[0];
 		}
 
-		if (conflictFound) {
-			newPosition[0] += offset[0];
-			newPosition[1] += offset[1];
+		if (resolvedPosition[1] < viewport.yMin + resolvedOffset[1]) {
+			resolvedPosition[1] = viewport.yMin + resolvedOffset[1];
 		}
-	} while (conflictFound);
 
-	if (newPosition[0] < boundaries.xMin + offset[0]) {
-		newPosition[0] = boundaries.xMin + offset[0];
+		if (resolvedPosition[0] > viewport.xMax - resolvedOffset[0]) {
+			resolvedPosition[0] = viewport.xMax - size[0] - resolvedOffset[0];
+		}
+
+		if (resolvedPosition[1] > viewport.yMax - resolvedOffset[1]) {
+			resolvedPosition[1] = viewport.yMax - size[1] - resolvedOffset[1];
+		}
 	}
 
-	if (newPosition[1] < boundaries.yMin + offset[1]) {
-		newPosition[1] = boundaries.yMin + offset[1];
-	}
-
-	if (newPosition[0] > boundaries.xMax - offset[0]) {
-		newPosition[0] = boundaries.xMax - size[0] - offset[0];
-	}
-
-	if (newPosition[1] > boundaries.yMax - offset[1]) {
-		newPosition[1] = boundaries.yMax - size[1] - offset[1];
-	}
-
-	return newPosition;
+	return resolvedPosition;
 };
 
 /**
