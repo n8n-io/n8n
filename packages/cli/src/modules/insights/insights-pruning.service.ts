@@ -8,13 +8,11 @@ import { InsightsConfig } from './insights.config';
 
 @Service()
 export class InsightsPruningService {
-	private pruneInsightsTimer: NodeJS.Timeout | undefined;
+	private pruneInsightsTimeout: NodeJS.Timeout | undefined;
 
 	private isStopped = false;
 
-	private readonly delayBetweenRetries = Time.seconds.toMilliseconds * 10;
-
-	private readonly maxRetries = 3;
+	private readonly delayOnError = Time.seconds.toMilliseconds;
 
 	constructor(
 		private readonly insightsByPeriodRepository: InsightsByPeriodRepository,
@@ -40,9 +38,9 @@ export class InsightsPruningService {
 	}
 
 	private clearPruningTimer() {
-		if (this.pruneInsightsTimer !== undefined) {
-			clearTimeout(this.pruneInsightsTimer);
-			this.pruneInsightsTimer = undefined;
+		if (this.pruneInsightsTimeout !== undefined) {
+			clearTimeout(this.pruneInsightsTimeout);
+			this.pruneInsightsTimeout = undefined;
 		}
 	}
 
@@ -52,38 +50,29 @@ export class InsightsPruningService {
 		this.logger.debug('Stopped Insights pruning');
 	}
 
-	private scheduleNextPrune() {
+	private scheduleNextPrune(
+		delayMs = this.config.pruneCheckIntervalHours * Time.hours.toMilliseconds,
+	) {
 		if (this.isStopped) return;
 
-		this.pruneInsightsTimout = setTimeout(async () => {
+		this.pruneInsightsTimeout = setTimeout(async () => {
 			await this.pruneInsights();
-			this.scheduleNextPrune();
-		}, this.config.pruneCheckIntervalHours * Time.hours.toMilliseconds);
+		}, delayMs);
 	}
 
 	async pruneInsights() {
-		for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
-			try {
-				const result = await this.insightsByPeriodRepository.pruneOldData(this.config.maxAgeDays);
-				this.logger.debug(
-					'Deleted insights by period',
-					result.affected ? { count: result.affected } : {},
-				);
-			} catch (error: unknown) {
-				this.logger.warn(`Prune attempt ${attempt} failed`, { error });
+		try {
+			const result = await this.insightsByPeriodRepository.pruneOldData(this.config.maxAgeDays);
+			this.logger.debug(
+				'Deleted insights by period',
+				result.affected ? { count: result.affected } : {},
+			);
+			this.scheduleNextPrune();
+		} catch (error: unknown) {
+			this.logger.warn('Pruning failed', { error });
 
-				if (attempt === this.maxRetries) {
-					this.logger.error('All pruning attempts failed', { error });
-				} else {
-					await this.delay(this.delayBetweenRetries);
-				}
-			}
+			// In case of failure, we retry the operation after a shorter time
+			this.scheduleNextPrune(this.delayOnError);
 		}
-	}
-
-	private async delay(ms: number) {
-		return await new Promise((resolve) => {
-			setTimeout(resolve, ms);
-		});
 	}
 }

@@ -51,7 +51,7 @@ describe('InsightsPruningService', () => {
 		await insightsPruningService.pruneInsights();
 
 		// ASSERT
-		expect(await insightsByPeriodRepository.count()).toBe(0);
+		await expect(insightsByPeriodRepository.count()).resolves.toBe(0);
 	});
 
 	test('insights newer than maxAgeDays do not get pruned', async () => {
@@ -76,22 +76,32 @@ describe('InsightsPruningService', () => {
 		expect(await insightsByPeriodRepository.count()).toBe(1);
 	});
 
-	test('pruning timer is scheduled on start and rescheduled after each run', async () => {
-		jest.useFakeTimers();
-		const insightsByPeriodRepository = mock<InsightsByPeriodRepository>({
-			pruneOldData: async () => {
-				return { affected: 0 };
-			},
+	describe('pruning scheduling', () => {
+		beforeEach(() => {
+			jest.useFakeTimers();
+			insightsPruningService.startPruningTimer();
 		});
-		const insightsPruningService = new InsightsPruningService(
-			insightsByPeriodRepository,
-			insightsConfig,
-			mockLogger(),
-		);
-		const pruneSpy = jest.spyOn(insightsPruningService, 'pruneInsights');
-		const scheduleNextPruneSpy = jest.spyOn(insightsPruningService as any, 'scheduleNextPrune');
 
-		try {
+		afterEach(() => {
+			jest.useRealTimers();
+			insightsPruningService.stopPruningTimer();
+			jest.restoreAllMocks();
+		});
+
+		test('pruning timeout is scheduled on start and rescheduled after each run', async () => {
+			const insightsByPeriodRepository = mock<InsightsByPeriodRepository>({
+				pruneOldData: async () => {
+					return { affected: 0 };
+				},
+			});
+			const insightsPruningService = new InsightsPruningService(
+				insightsByPeriodRepository,
+				insightsConfig,
+				mockLogger(),
+			);
+			const pruneSpy = jest.spyOn(insightsPruningService, 'pruneInsights');
+			const scheduleNextPruneSpy = jest.spyOn(insightsPruningService as any, 'scheduleNextPrune');
+
 			insightsPruningService.startPruningTimer();
 
 			// Wait for pruning timer promise to resolve
@@ -99,36 +109,30 @@ describe('InsightsPruningService', () => {
 
 			expect(pruneSpy).toHaveBeenCalledTimes(1);
 			expect(scheduleNextPruneSpy).toHaveBeenCalledTimes(2);
-		} finally {
-			jest.useRealTimers();
-			insightsPruningService.stopPruningTimer();
-		}
-	});
-
-	test('if stopped during prune, it does not reschedule the timer', async () => {
-		jest.useFakeTimers();
-		const insightsByPeriodRepository = mock<InsightsByPeriodRepository>({
-			pruneOldData: async () => {
-				return { affected: 0 };
-			},
 		});
-		const insightsPruningService = new InsightsPruningService(
-			insightsByPeriodRepository,
-			insightsConfig,
-			mockLogger(),
-		);
 
-		let resolvePrune!: () => void;
-		const pruneInsightsMock = jest
-			.spyOn(insightsPruningService, 'pruneInsights')
-			.mockImplementation(
-				async () =>
-					await new Promise((resolve) => {
-						resolvePrune = () => resolve();
-					}),
+		test('if stopped during prune, it does not reschedule the timeout', async () => {
+			const insightsByPeriodRepository = mock<InsightsByPeriodRepository>({
+				pruneOldData: async () => {
+					return { affected: 0 };
+				},
+			});
+			const insightsPruningService = new InsightsPruningService(
+				insightsByPeriodRepository,
+				insightsConfig,
+				mockLogger(),
 			);
 
-		try {
+			let resolvePrune!: () => void;
+			const pruneInsightsMock = jest
+				.spyOn(insightsPruningService, 'pruneInsights')
+				.mockImplementation(
+					async () =>
+						await new Promise((resolve) => {
+							resolvePrune = () => resolve();
+						}),
+				);
+
 			insightsConfig.pruneCheckIntervalHours = 1;
 
 			insightsPruningService.startPruningTimer();
@@ -142,27 +146,19 @@ describe('InsightsPruningService', () => {
 			await jest.runOnlyPendingTimersAsync();
 
 			expect(pruneInsightsMock).toHaveBeenCalledTimes(1); // Only from start, not re-scheduled
-		} finally {
-			pruneInsightsMock.mockRestore();
-			jest.useRealTimers();
-		}
-	});
+		});
 
-	test('pruneInsights is retried up to 3 times if it fails', async () => {
-		const failSpy = jest
-			.spyOn(insightsByPeriodRepository, 'pruneOldData')
-			.mockRejectedValueOnce(new Error('Fail 1'))
-			.mockRejectedValueOnce(new Error('Fail 2'))
-			.mockResolvedValueOnce({ affected: 0 });
+		test('pruneInsights is retried up when failing', async () => {
+			const pruneOldDataSpy = jest
+				.spyOn(insightsByPeriodRepository, 'pruneOldData')
+				.mockRejectedValueOnce(new Error('Fail 1'))
+				.mockRejectedValueOnce(new Error('Fail 2'))
+				.mockResolvedValueOnce({ affected: 0 });
 
-		// prevent actual wait between retries
-		const delaySpy = jest
-			.spyOn(insightsPruningService as any, 'delay')
-			.mockResolvedValue(undefined);
+			await insightsPruningService.pruneInsights();
+			await jest.advanceTimersByTimeAsync(Time.seconds.toMilliseconds * 2 + 1);
 
-		await insightsPruningService.pruneInsights();
-
-		expect(failSpy).toHaveBeenCalledTimes(3);
-		expect(delaySpy).toHaveBeenCalledTimes(2);
+			expect(pruneOldDataSpy).toHaveBeenCalledTimes(3);
+		});
 	});
 });

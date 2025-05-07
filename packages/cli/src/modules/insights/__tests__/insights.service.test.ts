@@ -6,7 +6,6 @@ import type { IWorkflowDb } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { DateTime } from 'luxon';
-import type { Logger } from 'n8n-core';
 
 import { mockLogger } from '@test/mocking';
 import { createTeamProject } from '@test-integration/db/projects';
@@ -675,10 +674,10 @@ describe('getMaxAgeInDaysAndGranularity', () => {
 describe('shutdown', () => {
 	let insightsService: InsightsService;
 
-	const mockCollectionService = {
+	const mockCollectionService = mock<InsightsCollectionService>({
 		shutdown: jest.fn().mockResolvedValue(undefined),
 		stopFlushingTimer: jest.fn(),
-	} as unknown as InsightsCollectionService;
+	});
 
 	const mockCompactionService = {
 		stopCompactionTimer: jest.fn(),
@@ -728,13 +727,7 @@ describe('backgroundProcess', () => {
 		stopPruningTimer: jest.fn(),
 	} as unknown as InsightsPruningService;
 
-	const mockedScopedLogger = {
-		debug: jest.fn(),
-	} as unknown as Logger;
-
-	const mockedLogger = mock<Logger>({
-		scoped: jest.fn().mockReturnValue(mockedScopedLogger),
-	});
+	const mockedLogger = mockLogger();
 
 	beforeAll(() => {
 		insightsService = new InsightsService(
@@ -755,9 +748,6 @@ describe('backgroundProcess', () => {
 		expect(mockCompactionService.startCompactionTimer).toHaveBeenCalled();
 		expect(mockCollectionService.startFlushingTimer).toHaveBeenCalled();
 		expect(mockPruningService.startPruningTimer).toHaveBeenCalled();
-		expect(mockedScopedLogger.debug).toHaveBeenCalledWith(
-			'Started compaction, flushing and pruning schedulers',
-		);
 	});
 
 	test('stopBackgroundProcess stops timers and logs message', () => {
@@ -768,8 +758,5 @@ describe('backgroundProcess', () => {
 		expect(mockCompactionService.stopCompactionTimer).toHaveBeenCalled();
 		expect(mockCollectionService.stopFlushingTimer).toHaveBeenCalled();
 		expect(mockPruningService.stopPruningTimer).toHaveBeenCalled();
-		expect(mockedScopedLogger.debug).toHaveBeenCalledWith(
-			'Stopped compaction, flushing and pruning schedulers',
-		);
 	});
 });

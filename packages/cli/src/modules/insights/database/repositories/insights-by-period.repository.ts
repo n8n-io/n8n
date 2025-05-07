@@ -1,7 +1,7 @@
 import { GlobalConfig } from '@n8n/config';
 import { Container, Service } from '@n8n/di';
 import type { SelectQueryBuilder } from '@n8n/typeorm';
-import { DataSource, LessThan, Repository } from '@n8n/typeorm';
+import { DataSource, LessThanOrEqual, Repository } from '@n8n/typeorm';
 import { DateTime } from 'luxon';
 import { z } from 'zod';
 
@@ -390,9 +390,9 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 	}
 
 	async pruneOldData(maxAgeInDays: number): Promise<{ affected: number | null | undefined }> {
-		const thresholdDate = DateTime.now().minus({ days: maxAgeInDays }).toJSDate();
+		const thresholdDate = DateTime.now().minus({ days: maxAgeInDays }).startOf('day').toJSDate();
 		const result = await this.delete({
-			periodStart: LessThan(thresholdDate),
+			periodStart: LessThanOrEqual(thresholdDate),
 		});
 
 		return { affected: result.affected };
