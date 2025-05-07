@@ -245,22 +245,20 @@ export function useWorkflowExtraction() {
 		if (end) {
 			const endId = subGraph.find((x) => x.name === end)?.id;
 			if (endId)
-				canvasOperations.replaceNodeConnections(
-					endId,
-					executeWorkflowNode.id,
-					CANVAS_HISTORY_OPTIONS,
-				);
+				canvasOperations.replaceNodeConnections(endId, executeWorkflowNode.id, {
+					...CANVAS_HISTORY_OPTIONS,
+					replaceInputs: false,
+				});
 		}
 		await nextTick();
 
-		if (start && start !== end) {
+		if (start) {
 			const startId = subGraph.find((x) => x.name === start)?.id;
 			if (startId)
-				canvasOperations.replaceNodeConnections(
-					startId,
-					executeWorkflowNode.id,
-					CANVAS_HISTORY_OPTIONS,
-				);
+				canvasOperations.replaceNodeConnections(startId, executeWorkflowNode.id, {
+					...CANVAS_HISTORY_OPTIONS,
+					replaceOutputs: false,
+				});
 		}
 
 		for (const id of nodeIds) {
@@ -275,6 +273,7 @@ export function useWorkflowExtraction() {
 
 	async function extractWorkflow(nodeIds: string[]) {
 		const success = tryExtractNodesIntoSubworkflow(nodeIds, workflowsStore.workflow.connections);
+		// should we auto open or post the link in a notification instead?
 		trackExtractWorkflow();
 	}
 

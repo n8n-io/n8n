@@ -3,7 +3,6 @@ import type { KeyboardShortcut } from '@n8n/design-system/types/keyboardshortcut
 export interface ActionDropdownItem {
 	id: string;
 	label: string;
-	tooltip?: string;
 	badge?: string;
 	badgeProps?: Record<string, unknown>;
 	icon?: string;

@@ -78,6 +78,47 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 		workflowExtraction.getExtractableSelection(new Set(targetNodes.value.map((x) => x.name))),
 	);
 
+	const isExtractableSelectionValid = computed(() => {
+		if (workflowTriggerSelected.value) return false;
+
+		const selection = extractableSelectionResult.value;
+
+		if (Array.isArray(selection)) return false;
+
+		const { start, end } = selection;
+
+		const isSinglePut = (
+			nodeName: string | undefined,
+			fn: (
+				...x: Parameters<typeof NodeHelpers.getNodeInputs>
+			) => ReturnType<typeof NodeHelpers.getNodeInputs>,
+		) => {
+			if (nodeName) {
+				const node = workflowsStore.getNodeByName(nodeName);
+				if (node) {
+					const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+					if (nodeType) {
+						const outputs = fn(workflowsStore.getCurrentWorkflow(), node, nodeType);
+						debugger;
+						if (
+							outputs.filter((x) => (typeof x === 'string' ? x === 'main' : x.type === 'main'))
+								.length > 1
+						) {
+							return false;
+						}
+					}
+				}
+			}
+			return true;
+		};
+
+		if (!isSinglePut(start, NodeHelpers.getNodeInputs)) return false;
+		if (!isSinglePut(end, NodeHelpers.getNodeOutputs)) return false;
+
+		// Returns an array of errors
+		return !Array.isArray(selection);
+	});
+
 	const workflowTriggerSelected = computed(() =>
 		targetNodes.value.some((x) => x.type === EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE),
 	);
@@ -167,8 +208,8 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 				id: 'extract_subWorkflow',
 				divided: true,
 				label: JSON.stringify(extractableSelectionResult.value), // i18n.baseText('contextMenu.extract', i18nOptions)
-				shortcut: { metaKey: true, keys: ['G'] },
-				disabled: workflowTriggerSelected.value || Array.isArray(extractableSelectionResult.value),
+				shortcut: { metaKey: true, shiftKey: true, keys: ['G'] },
+				disabled: !isExtractableSelectionValid.value,
 			},
 		];
 

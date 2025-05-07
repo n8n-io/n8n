@@ -615,7 +615,6 @@ function onTidyUp(event: CanvasLayoutEvent) {
 }
 
 function onExtractWorkflow(nodeIds: string[]) {
-	console.log('c');
 	void extractWorkflow(nodeIds);
 }
 

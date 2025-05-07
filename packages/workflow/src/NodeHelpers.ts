@@ -7,7 +7,7 @@ import get from 'lodash/get';
 import isEqual from 'lodash/isEqual';
 
 import { ApplicationError } from './errors/application.error';
-import { NodeConnectionTypes } from './Interfaces';
+import { nodeConnectionTypes, NodeConnectionTypes } from './Interfaces';
 import type {
 	FieldType,
 	IContextObject,

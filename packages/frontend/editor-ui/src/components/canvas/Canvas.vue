@@ -633,7 +633,6 @@ function onOpenNodeContextMenu(
 }
 
 async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[]) {
-	console.log(action, nodeIds);
 	switch (action) {
 		case 'add_node':
 			return emit('create:node', 'context_menu');
@@ -664,7 +663,6 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[])
 		case 'tidy_up':
 			return await onTidyUp({ source: 'context-menu' });
 		case 'extract_subWorkflow':
-			console.log('f');
 			return emit('extract-workflow', nodeIds);
 	}
 }

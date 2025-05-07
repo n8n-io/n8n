@@ -41,18 +41,10 @@ defaultActionDropdown.args = {
 		{
 			id: 'item1',
 			label: 'Action 1',
-			tooltip: 'Tooltip 1',
 		},
 		{
 			id: 'item2',
 			label: 'Action 2',
-			tooltip: 'Tooltip 2',
-		},
-		{
-			id: 'item3',
-			disabled: true,
-			label: 'Disabled Action 3',
-			tooltip: 'Tooltip 3',
 		},
 	],
 };

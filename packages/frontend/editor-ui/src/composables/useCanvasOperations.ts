@@ -413,7 +413,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 	function replaceNodeConnections(
 		previousId: string,
 		newId: string,
-		{ trackHistory = false, trackBulk = true } = {},
+		{ trackHistory = false, trackBulk = true, replaceInputs = true, replaceOutputs = true } = {},
 	) {
 		const previousNode = workflowsStore.getNodeById(previousId);
 		const newNode = workflowsStore.getNodeById(newId);
@@ -424,8 +424,8 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 
 		const wf = workflowsStore.getCurrentWorkflow();
 
-		const inputNodeNames = wf.getParentNodes(previousNode.name, 'main', 1);
-		const outputNodeNames = wf.getChildNodes(previousNode.name, 'main', 1);
+		const inputNodeNames = replaceInputs ? wf.getParentNodes(previousNode.name, 'main', 1) : [];
+		const outputNodeNames = replaceOutputs ? wf.getChildNodes(previousNode.name, 'main', 1) : [];
 		const connectionPairs = [
 			...wf.getConnectionsBetweenNodes(inputNodeNames, [previousNode.name]),
 			...wf.getConnectionsBetweenNodes([previousNode.name], outputNodeNames),
@@ -588,6 +588,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		let insertPosition = options.position;
 		let lastAddedNode: INodeUi | undefined;
 		const addedNodes: INodeUi[] = [];
+
 		const nodesWithTypeVersion = nodes.map((node) => {
 			const typeVersion =
 				node.typeVersion ?? resolveNodeVersion(requireNodeTypeDescription(node.type));
@@ -690,7 +691,6 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		options: AddNodeOptions = {},
 	): INodeUi {
 		checkMaxNodesOfTypeReached(nodeTypeDescription);
-
 		const nodeData = resolveNodeData(node, nodeTypeDescription, options);
 		if (!nodeData) {
 			throw new Error(i18n.baseText('nodeViewV2.showError.failedToCreateNode'));
@@ -751,7 +751,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		const lastInteractedWithNodeId = lastInteractedWithNode.id;
 		const lastInteractedWithNodeConnection = uiStore.lastInteractedWithNodeConnection;
 		const lastInteractedWithNodeHandle = uiStore.lastInteractedWithNodeHandle;
-
+		debugger;
 		// If we have a specific endpoint to connect to
 		if (lastInteractedWithNodeHandle) {
 			const { type: connectionType, mode } = parseCanvasConnectionHandleString(
