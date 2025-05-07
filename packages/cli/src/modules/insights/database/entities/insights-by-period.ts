@@ -1,3 +1,4 @@
+import { DateTimeColumn } from '@n8n/db';
 import {
 	BaseEntity,
 	Column,
@@ -7,8 +8,6 @@ import {
 	PrimaryGeneratedColumn,
 } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
-
-import { datetimeColumnType } from '@/databases/entities/abstract-entity';
 
 import { InsightsMetadata } from './insights-metadata';
 import type { PeriodUnit } from './insights-shared';
@@ -70,6 +69,6 @@ export class InsightsByPeriod extends BaseEntity {
 		this.periodUnit_ = PeriodUnitToNumber[value];
 	}
 
-	@Column({ type: datetimeColumnType })
+	@DateTimeColumn()
 	periodStart: Date;
 }

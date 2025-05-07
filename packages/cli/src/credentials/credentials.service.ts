@@ -1,4 +1,6 @@
 import type { CreateCredentialDto } from '@n8n/api-types';
+import type { Project, User, ICredentialsDb, ScopesField } from '@n8n/db';
+import { CredentialsEntity, SharedCredentials, CredentialsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
@@ -20,10 +22,6 @@ import { CREDENTIAL_EMPTY_VALUE, deepCopy, NodeHelpers, UnexpectedError } from '
 import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
 import { CredentialTypes } from '@/credential-types';
 import { createCredentialsFromCredentialsEntity } from '@/credentials-helper';
-import { CredentialsEntity } from '@/databases/entities/credentials-entity';
-import { SharedCredentials } from '@/databases/entities/shared-credentials';
-import type { User } from '@/databases/entities/user';
-import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import { UserRepository } from '@/databases/repositories/user.repository';
@@ -37,9 +35,7 @@ import type { CredentialRequest, ListQuery } from '@/requests';
 import { CredentialsTester } from '@/services/credentials-tester.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
-import type { ScopesField } from '@/services/role.service';
 import { RoleService } from '@/services/role.service';
-import type { ICredentialsDb } from '@/types-db';
 
 import { CredentialsFinderService } from './credentials-finder.service';
 
@@ -75,14 +71,28 @@ export class CredentialsService {
 			listQueryOptions = {},
 			includeScopes = false,
 			includeData = false,
+			onlySharedWithMe = false,
 		}: {
 			listQueryOptions?: ListQuery.Options & { includeData?: boolean };
 			includeScopes?: boolean;
 			includeData?: boolean;
+			onlySharedWithMe?: boolean;
 		} = {},
 	) {
 		const returnAll = user.hasGlobalScope('credential:list');
 		const isDefaultSelect = !listQueryOptions.select;
+		const projectId =
+			typeof listQueryOptions.filter?.projectId === 'string'
+				? listQueryOptions.filter.projectId
+				: undefined;
+
+		if (onlySharedWithMe) {
+			listQueryOptions.filter = {
+				...listQueryOptions.filter,
+				withRole: 'credential:user',
+				user,
+			};
+		}
 
 		if (includeData) {
 			// We need the scopes to check if we're allowed to include the decrypted
@@ -94,6 +104,21 @@ export class CredentialsService {
 		}
 
 		if (returnAll) {
+			let project: Project | undefined;
+
+			if (projectId) {
+				try {
+					project = await this.projectService.getProject(projectId);
+				} catch {}
+			}
+
+			if (project?.type === 'personal') {
+				listQueryOptions.filter = {
+					...listQueryOptions.filter,
+					withRole: 'credential:owner',
+				};
+			}
+
 			let credentials = await this.credentialsRepository.findMany(listQueryOptions);
 
 			if (isDefaultSelect) {
@@ -102,7 +127,10 @@ export class CredentialsService {
 				// it's shared to a project, it won't be able to find the home project.
 				// To solve this, we have to get all the relation now, even though
 				// we're deleting them later.
-				if ((listQueryOptions.filter?.shared as { projectId?: string })?.projectId) {
+				if (
+					(listQueryOptions.filter?.shared as { projectId?: string })?.projectId ??
+					onlySharedWithMe
+				) {
 					const relations = await this.sharedCredentialsRepository.getAllRelationsForCredentials(
 						credentials.map((c) => c.id),
 					);
@@ -137,17 +165,6 @@ export class CredentialsService {
 			return credentials;
 		}
 
-		// If the workflow is part of a personal project we want to show the
-		// credentials the user making the request has access to, not the
-		// credentials the user owning the workflow has access to.
-		if (typeof listQueryOptions.filter?.projectId === 'string') {
-			const project = await this.projectService.getProject(listQueryOptions.filter.projectId);
-			if (project?.type === 'personal') {
-				const currentUsersPersonalProject = await this.projectService.getPersonalProject(user);
-				listQueryOptions.filter.projectId = currentUsersPersonalProject?.id;
-			}
-		}
-
 		const ids = await this.credentialsFinderService.getCredentialIdsByUserAndRole([user.id], {
 			scopes: ['credential:read'],
 		});
@@ -163,7 +180,10 @@ export class CredentialsService {
 			// it's shared to a project, it won't be able to find the home project.
 			// To solve this, we have to get all the relation now, even though
 			// we're deleting them later.
-			if ((listQueryOptions.filter?.shared as { projectId?: string })?.projectId) {
+			if (
+				(listQueryOptions.filter?.shared as { projectId?: string })?.projectId ??
+				onlySharedWithMe
+			) {
 				const relations = await this.sharedCredentialsRepository.getAllRelationsForCredentials(
 					credentials.map((c) => c.id),
 				);
