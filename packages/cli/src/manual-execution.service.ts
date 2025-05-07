@@ -10,6 +10,7 @@ import {
 	rewireGraph,
 } from 'n8n-core';
 import type {
+	INodeParameters,
 	IPinData,
 	IRun,
 	IRunExecutionData,
@@ -118,9 +119,16 @@ export class ManualExecutionService {
 
 				// Rewire graph to be able to execute the destination tool node
 				if (isTool(destinationNode, workflow.nodeTypes)) {
-					workflow = rewireGraph(destinationNode, DirectedGraph.fromWorkflow(workflow)).toWorkflow({
+					const graph = rewireGraph(
+						destinationNode,
+						DirectedGraph.fromWorkflow(workflow),
+						data.agentRequest,
+					);
+
+					workflow = graph.toWorkflow({
 						...workflow,
 					});
+					data.destinationNode = graph.getDirectChildConnections(destinationNode).at(0)?.to?.name;
 				}
 			}
 
@@ -141,6 +149,7 @@ export class ManualExecutionService {
 					data.pinData,
 					data.dirtyNodeNames,
 					data.destinationNode,
+					data.agentRequest,
 				);
 			} else {
 				return workflowExecute.runPartialWorkflow(
