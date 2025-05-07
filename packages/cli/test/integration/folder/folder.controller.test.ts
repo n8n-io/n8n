@@ -753,7 +753,7 @@ describe('DELETE /projects/:projectId/folders/:folderId', () => {
 		});
 
 		// Create workflows in the folders
-		const workflow1 = await createWorkflow({ parentFolder: rootFolder }, owner);
+		const workflow1 = await createWorkflow({ parentFolder: rootFolder, active: false }, owner);
 		const workflow2 = await createWorkflow({ parentFolder: childFolder, active: true }, owner);
 
 		await authOwnerAgent.delete(`/projects/${project.id}/folders/${rootFolder.id}`);
@@ -774,6 +774,7 @@ describe('DELETE /projects/:projectId/folders/:folderId', () => {
 		expect(workflow1InDb).not.toBeNull();
 		expect(workflow1InDb?.isArchived).toBe(true);
 		expect(workflow1InDb?.parentFolder).toBe(null);
+		expect(workflow1InDb?.active).toBe(false);
 
 		const workflow2InDb = await workflowRepository.findOne({
 			where: { id: workflow2.id },
