@@ -118,7 +118,7 @@ import { LOGS_PANEL_STATE } from '@/components/CanvasChat/types/logs';
 import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
 import { useBuilderStore } from '@/stores/builder.store';
 import { useFoldersStore } from '@/stores/folders.store';
-import { useParameterOverridesStore } from '@/stores/parameterOverrides.store';
+import { useAgentRequestStore } from '@/stores/agentRequest.store';
 import { hasFromAiExpressions } from '@/utils/nodes/nodeTransforms';
 
 defineOptions({
@@ -172,7 +172,7 @@ const ndvStore = useNDVStore();
 const templatesStore = useTemplatesStore();
 const builderStore = useBuilderStore();
 const foldersStore = useFoldersStore();
-const parameterOverridesStore = useParameterOverridesStore();
+const agentRequestStore = useAgentRequestStore();
 
 const canvasEventBus = createEventBus<CanvasEventBusEvents>();
 
@@ -1176,7 +1176,7 @@ async function onRunWorkflowToNode(id: string) {
 		});
 	} else {
 		trackRunWorkflowToNode(node);
-		parameterOverridesStore.clearParameterOverrides(workflowsStore.workflowId, node.id);
+		agentRequestStore.clearAgentRequests(workflowsStore.workflowId, node.id);
 
 		void runWorkflow({ destinationNode: node.name, source: 'Node.executeNode' });
 	}

@@ -2,7 +2,7 @@
 import { useI18n } from '@/composables/useI18n';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { FROM_AI_PARAMETERS_MODAL_KEY, AI_MCP_TOOL_NODE_TYPE } from '@/constants';
-import { useParameterOverridesStore } from '@/stores/parameterOverrides.store';
+import { useAgentRequestStore } from '@/stores/agentRequest.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { type FromAIArgument, NodeConnectionTypes, traverseNodeParameters } from 'n8n-workflow';
@@ -31,7 +31,7 @@ const workflowsStore = useWorkflowsStore();
 const nodeTypesStore = useNodeTypesStore();
 const router = useRouter();
 const { runWorkflow } = useRunWorkflow({ router });
-const parameterOverridesStore = useParameterOverridesStore();
+const agentRequestStore = useAgentRequestStore();
 
 const node = computed(() =>
 	props.data.nodeName ? workflowsStore.getNodeByName(props.data.nodeName) : undefined,
@@ -123,24 +123,17 @@ watch(
 
 			// Only show parameters for selected tool
 			if (newSelectedTool) {
-				const selectedTool = newSelectedTool;
-				const selectedToolData = tools?.find((tool) => String(tool.value) === selectedTool);
+				const selectedToolData = tools?.find((tool) => String(tool.value) === newSelectedTool);
 				if (selectedToolData?.schema?.properties) {
 					for (const [propertyName, value] of Object.entries(selectedToolData.schema.properties)) {
 						const typedValue = value as {
 							type: string;
 							description: string;
 						};
-						const previousValue =
-							parameterOverridesStore.getParameterOverride(
-								workflowsStore.workflowId,
-								newNode.id,
-								'query.' + propertyName,
-							) ?? mapTypes[typedValue.type ?? 'text']?.defaultValue;
 
 						result.push({
 							name: 'query.' + propertyName,
-							initialValue: previousValue as string | number | boolean | null | undefined,
+							initialValue: '',
 							properties: {
 								label: propertyName,
 								type: mapTypes[typedValue.type ?? 'text'].inputType,
@@ -165,7 +158,7 @@ watch(
 			const type = value.type ?? 'string';
 			const initialValue = inputOverrides?.[value.key]
 				? inputOverrides[value.key]
-				: (parameterOverridesStore.getParameterOverride(
+				: (agentRequestStore.getAgentRequest(
 						workflowsStore.workflowId,
 						newNode.id,
 						'query.' + value.key,
@@ -183,11 +176,7 @@ watch(
 		});
 		if (result.length === 0) {
 			const queryValue =
-				parameterOverridesStore.getParameterOverride(
-					workflowsStore.workflowId,
-					newNode.id,
-					'query',
-				) ?? '';
+				agentRequestStore.getAgentRequest(workflowsStore.workflowId, newNode.id, 'query') ?? '';
 
 			result.push({
 				name: 'query',
@@ -210,14 +199,10 @@ const onClose = () => {
 
 const onExecute = async () => {
 	if (!node.value) return;
-	const inputValues = inputs.value!.getValues();
+	const inputValues = inputs.value?.getValues() ?? {};
 
-	parameterOverridesStore.clearParameterOverrides(workflowsStore.workflowId, node.value.id);
-	parameterOverridesStore.addParameterOverrides(
-		workflowsStore.workflowId,
-		node.value.id,
-		inputValues,
-	);
+	agentRequestStore.clearAgentRequests(workflowsStore.workflowId, node.value.id);
+	agentRequestStore.addAgentRequests(workflowsStore.workflowId, node.value.id, inputValues);
 
 	const telemetryPayload = {
 		node_type: node.value.type,
