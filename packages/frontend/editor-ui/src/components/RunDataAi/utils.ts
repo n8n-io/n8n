@@ -86,7 +86,7 @@ function getTreeNodeDataRec(
 	const filteredAiData =
 		currentDepth === 0
 			? aiData?.filter(({ data }) => {
-					if (!data?.source || data.source.length === 0) {
+					if (!data?.source || data.source.every((source) => source === null)) {
 						return true;
 					}
 
@@ -339,7 +339,7 @@ function getTreeNodeDataRecV2(
 				// This prevents showing duplicate executions when a sub-node is connected to multiple parents
 				// Only filter nodes that have source information with valid previousNode references
 				const isMatched =
-					currentDepth === 0 && t.source?.length > 0
+					currentDepth === 0 && t.source.some((source) => source !== null)
 						? t.source.some(
 								(source) =>
 									source?.previousNode === node.name &&
