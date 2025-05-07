@@ -51,7 +51,7 @@ watch(url, (newValue) => {
 					:state="isValid ? 'default' : 'error'"
 					@input="isValid = true"
 				/>
-				<p v-if="!isValid" :class="$style.error - text">
+				<p v-if="!isValid" :class="$style['error-text']">
 					{{ i18n.baseText('mainSidebar.prompt.invalidUrl') }}
 				</p>
 			</div>
