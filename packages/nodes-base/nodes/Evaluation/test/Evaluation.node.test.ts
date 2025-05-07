@@ -1,5 +1,10 @@
 import { mock } from 'jest-mock-extended';
-import type { IExecuteFunctions } from 'n8n-workflow';
+import {
+	NodeOperationError,
+	type AssignmentCollectionValue,
+	type IExecuteFunctions,
+	type INodeTypes,
+} from 'n8n-workflow';
 
 import { GoogleSheet } from '../../Google/Sheet/v2/helpers/GoogleSheet';
 import { Evaluation } from '../Evaluation/Evaluation.node';
@@ -26,7 +31,7 @@ describe('Test Evaluation', () => {
 
 	afterEach(() => jest.clearAllMocks());
 
-	describe('Test Evaluation Node', () => {
+	describe('Test Evaluation Node for Set Output', () => {
 		jest.spyOn(GoogleSheet.prototype, 'spreadsheetGetSheet').mockImplementation(async () => {
 			return { sheetId: 1, title: sheetName };
 		});
@@ -50,6 +55,7 @@ describe('Test Evaluation', () => {
 						},
 						sheetName,
 						sheetMode: 'id',
+						operation: 'setOutput',
 					};
 					return mockParams[key] ?? fallbackValue;
 				},
@@ -86,6 +92,7 @@ describe('Test Evaluation', () => {
 						},
 						sheetName,
 						sheetMode: 'id',
+						operation: 'setOutput',
 					};
 					return mockParams[key] ?? fallbackValue;
 				},
@@ -112,6 +119,7 @@ describe('Test Evaluation', () => {
 						},
 						sheetName,
 						sheetMode: 'id',
+						operation: 'setOutput',
 					};
 					return mockParams[key] ?? fallbackValue;
 				},
@@ -135,6 +143,119 @@ describe('Test Evaluation', () => {
 				],
 				'RAW',
 			);
+		});
+	});
+
+	describe('Test Evaluation Node for Set Metrics', () => {
+		const nodeTypes = mock<INodeTypes>();
+		const evaluationMetricsNode = new Evaluation();
+
+		let mockExecuteFunction: IExecuteFunctions;
+
+		function getMockExecuteFunction(metrics: AssignmentCollectionValue['assignments']) {
+			return {
+				getInputData: jest.fn().mockReturnValue([{}]),
+
+				getNodeParameter: jest.fn((param: string, _: number) => {
+					if (param === 'metrics') {
+						return { assignments: metrics };
+					}
+					if (param === 'operation') {
+						return 'setEvaluation';
+					}
+					return param;
+				}),
+
+				getNode: jest.fn().mockReturnValue({
+					typeVersion: 1,
+				}),
+			} as unknown as IExecuteFunctions;
+		}
+
+		beforeAll(() => {
+			mockExecuteFunction = getMockExecuteFunction([
+				{
+					id: '1',
+					name: 'Accuracy',
+					value: 0.95,
+					type: 'number',
+				},
+				{
+					id: '2',
+					name: 'Latency',
+					value: 100,
+					type: 'number',
+				},
+			]);
+			nodeTypes.getByName.mockReturnValue(evaluationMetricsNode);
+			jest.clearAllMocks();
+		});
+
+		describe('execute', () => {
+			it('should output the defined metrics', async () => {
+				const result = await evaluationMetricsNode.execute.call(mockExecuteFunction);
+
+				expect(result).toHaveLength(1);
+				expect(result[0]).toHaveLength(1);
+
+				const outputItem = result[0][0].json;
+				expect(outputItem).toEqual({
+					Accuracy: 0.95,
+					Latency: 100,
+				});
+			});
+
+			it('should handle no metrics defined', async () => {
+				mockExecuteFunction = getMockExecuteFunction([]);
+				const result = await evaluationMetricsNode.execute.call(mockExecuteFunction);
+
+				expect(result).toHaveLength(1);
+				expect(result[0]).toHaveLength(1);
+				expect(result[0][0].json).toEqual({});
+			});
+
+			it('should convert string values to numbers', async () => {
+				const mockExecuteWithStringValues = getMockExecuteFunction([
+					{
+						id: '1',
+						name: 'Accuracy',
+						value: '0.95',
+						type: 'number',
+					},
+					{
+						id: '2',
+						name: 'Latency',
+						value: '100',
+						type: 'number',
+					},
+				]);
+
+				const result = await evaluationMetricsNode.execute.call(mockExecuteWithStringValues);
+
+				expect(result).toHaveLength(1);
+				expect(result[0]).toHaveLength(1);
+
+				const outputItem = result[0][0].json;
+				expect(outputItem).toEqual({
+					Accuracy: 0.95,
+					Latency: 100,
+				});
+			});
+
+			it('should throw error for non-numeric string values', async () => {
+				const mockExecuteWithInvalidValue = getMockExecuteFunction([
+					{
+						id: '1',
+						name: 'Accuracy',
+						value: 'not-a-number',
+						type: 'number',
+					},
+				]);
+
+				await expect(
+					evaluationMetricsNode.execute.call(mockExecuteWithInvalidValue),
+				).rejects.toThrow(NodeOperationError);
+			});
 		});
 	});
 });
