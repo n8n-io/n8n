@@ -1,5 +1,11 @@
 import assert from 'assert';
-import type { IRunExecutionData, IPinData, IWorkflowBase } from 'n8n-workflow';
+import type {
+	IRunExecutionData,
+	IPinData,
+	IWorkflowBase,
+	NodeParameterValueType,
+	INodeParameterResourceLocator,
+} from 'n8n-workflow';
 
 import { TestCaseExecutionError } from '@/evaluation.ee/test-runner/errors.ee';
 
@@ -64,4 +70,22 @@ export function getPastExecutionTriggerNode(executionData: IRunExecutionData) {
 		const data = executionData.resultData.runData[nodeName];
 		return !data[0].source || data[0].source.length === 0 || data[0].source[0] === null;
 	});
+}
+
+function isRlcValue(value: NodeParameterValueType): value is INodeParameterResourceLocator {
+	return Boolean(
+		typeof value === 'object' && value && 'value' in value && '__rl' in value && value.__rl,
+	);
+}
+
+export function checkNodeParameterNotEmpty(value: NodeParameterValueType) {
+	if (value === undefined || value === null || value === '') {
+		return false;
+	}
+
+	if (isRlcValue(value)) {
+		return checkNodeParameterNotEmpty(value.value);
+	}
+
+	return true;
 }
