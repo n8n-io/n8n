@@ -2,6 +2,7 @@ import { GlobalConfig } from '@n8n/config';
 import type { Project } from '@n8n/db';
 import type { User } from '@n8n/db';
 import type { WorkflowStatistics } from '@n8n/db';
+import { WorkflowStatisticsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import {
 	QueryFailedError,
@@ -20,7 +21,6 @@ import {
 } from 'n8n-workflow';
 
 import config from '@/config';
-import { WorkflowStatisticsRepository } from '@/databases/repositories/workflow-statistics.repository';
 import type { EventService } from '@/events/event.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { UserService } from '@/services/user.service';
