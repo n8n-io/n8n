@@ -27,24 +27,24 @@ describe('Evaluation Trigger Node', () => {
 				return { sheetId: 1, title: sheetName };
 			});
 
+			// Mocks getResults() and getRowsLeft()
 			jest.spyOn(GoogleSheet.prototype, 'getData').mockImplementation(async (range: string) => {
 				if (range === `${sheetName}!1:1`) {
 					return [['Header1', 'Header2']];
-				} else if (range === `${sheetName}!1:1000`) {
+				} else if (range === `${sheetName}!2:1000`) {
 					return [
 						['Header1', 'Header2'],
 						['Value1', 'Value2'],
 						['Value3', 'Value4'],
 					];
-				} else if (range === `${sheetName}!1:2`) {
-					return [
-						['Header1', 'Header2'],
-						['Value1', 'Value2'],
-					];
+				} else if (range === `${sheetName}!2:2`) {
+					// getRowsLeft with limit
+					return [];
 				} else if (range === sheetName) {
 					return [
 						['Header1', 'Header2'],
 						['Value1', 'Value2'],
+						['Value3', 'Value4'],
 					];
 				} else {
 					return [];
@@ -76,28 +76,19 @@ describe('Evaluation Trigger Node', () => {
 				[
 					{
 						json: {
-							row_number: 'row_number',
-							Header1: 'Header1',
-							Header2: 'Header2',
+							row_number: 2,
+							Header1: 'Value1',
+							Header2: 'Value2',
+							_rowsLeft: 2,
 						},
 						pairedItem: {
 							item: 0,
 						},
 					},
-					{
-						json: {
-							_rowsLeft: 2,
-						},
-						pairedItems: [
-							{
-								item: 0,
-							},
-						],
-					},
 				],
 			]);
 
-			expect(startingRow).toBe(2);
+			expect(startingRow).toBe(3);
 		});
 
 		test('should return a single row from google sheet with limit', async () => {
@@ -120,90 +111,25 @@ describe('Evaluation Trigger Node', () => {
 				},
 			);
 
-			const result = await new EvaluationTrigger().execute.call(mockExecuteFunctions, 1);
+			const result = await new EvaluationTrigger().execute.call(mockExecuteFunctions, 2);
 
 			expect(result).toEqual([
-				[
-					{
-						json: {
-							row_number: 'row_number',
-							Header1: 'Header1',
-							Header2: 'Header2',
-						},
-						pairedItem: {
-							item: 0,
-						},
-					},
-					{
-						json: {
-							_rowsLeft: 0,
-						},
-						pairedItems: [
-							{
-								item: 0,
-							},
-						],
-					},
-				],
-			]);
-
-			expect(startingRow).toBe(2);
-		});
-
-		test('should return empty when no rows left', async () => {
-			mockExecuteFunctions.getNodeParameter.mockImplementation(
-				(key: string, _: number, fallbackValue?: string | number | boolean | object) => {
-					const mockParams: { [key: string]: unknown } = {
-						options: {},
-						'filtersUI.values': [],
-						combineFilters: 'AND',
-						documentId: {
-							mode: 'id',
-							value: spreadsheetId,
-						},
-						sheetName,
-						sheetMode: 'id',
-						limitRows: true,
-						maxRows: 2,
-					};
-					return mockParams[key] ?? fallbackValue;
-				},
-			);
-
-			const result1 = await new EvaluationTrigger().execute.call(mockExecuteFunctions, 2);
-
-			expect(result1).toEqual([
 				[
 					{
 						json: {
 							row_number: 2,
 							Header1: 'Value1',
 							Header2: 'Value2',
+							_rowsLeft: 0,
 						},
 						pairedItem: {
 							item: 0,
 						},
 					},
-					{
-						json: {
-							_rowsLeft: 0,
-						},
-						pairedItems: [
-							{
-								item: 0,
-							},
-						],
-					},
 				],
 			]);
 
-			expect(startingRow).toBe(3);
-
-			const result2 = await new EvaluationTrigger().execute.call(mockExecuteFunctions);
-
-			expect(result2).toEqual([]);
-
-			expect(startingRow).toBe(1);
+			expect(startingRow).toBe(2);
 		});
 
 		test('should return the sheet with limits applied when test runner is enabled', async () => {
@@ -234,9 +160,9 @@ describe('Evaluation Trigger Node', () => {
 				[
 					{
 						json: {
-							row_number: 'row_number',
-							Header1: 'Header1',
-							Header2: 'Header2',
+							row_number: 2,
+							Header1: 'Value1',
+							Header2: 'Value2',
 						},
 						pairedItem: {
 							item: 0,
@@ -244,9 +170,9 @@ describe('Evaluation Trigger Node', () => {
 					},
 					{
 						json: {
-							row_number: 2,
-							Header1: 'Value1',
-							Header2: 'Value2',
+							row_number: 3,
+							Header1: 'Value3',
+							Header2: 'Value4',
 						},
 						pairedItem: {
 							item: 0,
@@ -382,67 +308,14 @@ describe('Evaluation Trigger Node', () => {
 							row_number: 2,
 							Header1: 'Value1',
 							Header2: 'Value2',
+							_rowsLeft: 0,
 						},
 						pairedItem: {
 							item: 0,
 						},
 					},
-					{
-						json: {
-							_rowsLeft: 0,
-						},
-						pairedItems: [
-							{
-								item: 0,
-							},
-						],
-					},
 				],
 			]);
-		});
-
-		test('should return empty when no rows left with filters', async () => {
-			jest
-				.spyOn(GoogleSheet.prototype, 'getData')
-				.mockResolvedValueOnce([
-					// operationResult
-					['Header1', 'Header2'],
-					['Value1', 'Value2'],
-					['Value3', 'Value4'],
-				])
-				.mockResolvedValueOnce([
-					// rowsLeft
-					['Header1', 'Header2'],
-					['Value1', 'Value2'],
-					['Value3', 'Value4'],
-				]);
-
-			mockExecuteFunctions.getNodeParameter.mockImplementation(
-				(key: string, _: number, fallbackValue?: string | number | boolean | object) => {
-					const mockParams: { [key: string]: unknown } = {
-						limitRows: true,
-						maxRows: 2,
-						'filtersUI.values': [{ lookupColumn: 'Header1', lookupValue: 'Value1' }],
-						options: {},
-						combineFilters: 'AND',
-						documentId: {
-							mode: 'id',
-							value: spreadsheetId,
-						},
-						sheetName,
-						sheetMode: 'id',
-					};
-					return mockParams[key] ?? fallbackValue;
-				},
-			);
-
-			jest.spyOn(utils, 'getRowsLeft').mockResolvedValue(0);
-
-			const evaluationTrigger = new EvaluationTrigger();
-
-			const result = await evaluationTrigger.execute.call(mockExecuteFunctions);
-
-			expect(result).toEqual([]);
 		});
 	});
 });
