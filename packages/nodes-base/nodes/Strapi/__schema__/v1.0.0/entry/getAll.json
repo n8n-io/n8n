@@ -7,9 +7,6 @@
                 "createdAt": {
                     "type": "string"
                 },
-                "scene_id": {
-                    "type": "integer"
-                },
                 "updatedAt": {
                     "type": "string"
                 }
@@ -19,5 +16,5 @@
             "type": "integer"
         }
     },
-    "version": 1
+    "version": 2
 }

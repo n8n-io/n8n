@@ -268,6 +268,7 @@ export async function execute(
 				lookupValues,
 				returnAllMatches,
 				combineFilters,
+				nodeVersion,
 			});
 		} else {
 			responseData = sheet.structureArrayDataByColumn(inputData, keyRowIndex, dataStartRowIndex);

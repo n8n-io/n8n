@@ -1,5 +1,5 @@
 import { GlobalConfig } from '@n8n/config';
-import { WorkflowEntity } from '@n8n/db';
+import { WorkflowEntity, ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In, Like, QueryFailedError } from '@n8n/typeorm';
@@ -10,7 +10,6 @@ import { v4 as uuid } from 'uuid';
 import { z } from 'zod';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { TagRepository } from '@/databases/repositories/tag.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { EventService } from '@/events/event.service';
@@ -98,7 +97,7 @@ export = {
 		async (req: WorkflowRequest.Get, res: express.Response): Promise<express.Response> => {
 			const { id: workflowId } = req.params;
 
-			const workflow = await Container.get(WorkflowService).delete(req.user, workflowId);
+			const workflow = await Container.get(WorkflowService).delete(req.user, workflowId, true);
 			if (!workflow) {
 				// user trying to access a workflow they do not own
 				// or workflow does not exist
