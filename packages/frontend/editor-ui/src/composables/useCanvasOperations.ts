@@ -94,14 +94,7 @@ import type {
 	Workflow,
 	NodeConnectionType,
 } from 'n8n-workflow';
-import {
-	deepCopy,
-	EXECUTE_WORKFLOW_NODE_TYPE,
-	isResourceLocatorValue,
-	NodeConnectionTypes,
-	NodeHelpers,
-	TelemetryHelpers,
-} from 'n8n-workflow';
+import { deepCopy, NodeConnectionTypes, NodeHelpers, TelemetryHelpers } from 'n8n-workflow';
 import { computed, nextTick, ref } from 'vue';
 import type { useRouter } from 'vue-router';
 import { useClipboard } from '@/composables/useClipboard';
