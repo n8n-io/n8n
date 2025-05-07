@@ -173,7 +173,7 @@
     "@langchain/qdrant": "0.1.1",
     "@langchain/redis": "0.1.0",
     "@langchain/textsplitters": "0.1.0",
-    "@modelcontextprotocol/sdk": "1.9.0",
+    "@modelcontextprotocol/sdk": "1.11.0",
     "@mozilla/readability": "0.6.0",
     "@n8n/client-oauth2": "workspace:*",
     "@n8n/json-schema-to-zod": "workspace:*",
