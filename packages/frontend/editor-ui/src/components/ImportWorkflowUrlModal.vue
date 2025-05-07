@@ -61,7 +61,12 @@ watch(url, (newValue) => {
 				<n8n-button type="secondary" float="right" @click="closeModal">
 					{{ i18n.baseText('mainSidebar.prompt.cancel') }}
 				</n8n-button>
-				<n8n-button type="primary" float="right" :disabled="!url.value || !isValid.value" @click="confirm">
+				<n8n-button
+					type="primary"
+					float="right"
+					:disabled="!url.value || !isValid.value"
+					@click="confirm"
+				>
 					{{ i18n.baseText('mainSidebar.prompt.import') }}
 				</n8n-button>
 			</div>
@@ -71,15 +76,11 @@ watch(url, (newValue) => {
 
 <style lang="scss" module>
 .error-text {
-	> * {
-		color: var(--color-danger);
-		font-size: var(--font-size-s);
-		margin-top: var(--spacing-2xs);
-	}
+	color: var(--color-danger);
+	font-size: var(--font-size-s);
+	margin-top: var(--spacing-2xs);
 }
 .footer {
-	> * {
-		margin-left: var(--spacing-3xs);
-	}
+	margin-left: var(--spacing-3xs);
 }
 </style>
