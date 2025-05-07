@@ -258,4 +258,36 @@ describe('Test Evaluation', () => {
 			});
 		});
 	});
+
+	describe('Test Evaluation Node for Check If Evaluating', () => {
+		beforeEach(() => {
+			(mockExecuteFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
+			(mockExecuteFunctions.getNode as jest.Mock).mockReturnValue({ typeVersion: 4.6 });
+			mockExecuteFunctions.getNodeParameter.mockImplementation(
+				(key: string, _: number, fallbackValue?: string | number | boolean | object) => {
+					const mockParams: { [key: string]: unknown } = {
+						operation: 'checkIfEvaluating',
+					};
+					return mockParams[key] ?? fallbackValue;
+				},
+			);
+		});
+
+		afterEach(() => jest.clearAllMocks());
+
+		test('should return output in normal branch if normal execution', async () => {
+			(mockExecuteFunctions.getParentNodes as jest.Mock).mockReturnValue([]);
+			const result = await new Evaluation().execute.call(mockExecuteFunctions);
+			expect(result).toEqual([[], [{ json: {} }]]);
+		});
+
+		test('should return output in evaluation branch if evaluation execution', async () => {
+			(mockExecuteFunctions.getParentNodes as jest.Mock).mockReturnValue([
+				{ type: 'n8n-nodes-base.evaluationTrigger', name: 'Evaluation' },
+			]);
+
+			const result = await new Evaluation().execute.call(mockExecuteFunctions);
+			expect(result).toEqual([[{ json: {} }], []]);
+		});
+	});
 });
