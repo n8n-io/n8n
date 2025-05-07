@@ -230,10 +230,10 @@ describe('WorkflowCard', () => {
 
 		await userEvent.click(getByTestId('action-archive'));
 
-		expect(message.confirm).toHaveBeenCalledTimes(0);
+		expect(message.confirm).not.toHaveBeenCalled();
 		expect(workflowsStore.archiveWorkflow).toHaveBeenCalledTimes(1);
 		expect(workflowsStore.archiveWorkflow).toHaveBeenCalledWith(data.id);
-		expect(toast.showError).toHaveBeenCalledTimes(0);
+		expect(toast.showError).not.toHaveBeenCalled();
 		expect(toast.showMessage).toHaveBeenCalledTimes(1);
 		expect(emitted()['workflow:archived']).toHaveLength(1);
 	});
@@ -269,7 +269,7 @@ describe('WorkflowCard', () => {
 		expect(message.confirm).toHaveBeenCalledTimes(1);
 		expect(workflowsStore.archiveWorkflow).toHaveBeenCalledTimes(1);
 		expect(workflowsStore.archiveWorkflow).toHaveBeenCalledWith(data.id);
-		expect(toast.showError).toHaveBeenCalledTimes(0);
+		expect(toast.showError).not.toHaveBeenCalled();
 		expect(toast.showMessage).toHaveBeenCalledTimes(1);
 		expect(emitted()['workflow:archived']).toHaveLength(1);
 	});
@@ -303,7 +303,7 @@ describe('WorkflowCard', () => {
 
 		expect(workflowsStore.unarchiveWorkflow).toHaveBeenCalledTimes(1);
 		expect(workflowsStore.unarchiveWorkflow).toHaveBeenCalledWith(data.id);
-		expect(toast.showError).toHaveBeenCalledTimes(0);
+		expect(toast.showError).not.toHaveBeenCalled();
 		expect(toast.showMessage).toHaveBeenCalledTimes(1);
 		expect(emitted()['workflow:unarchived']).toHaveLength(1);
 	});
@@ -338,7 +338,7 @@ describe('WorkflowCard', () => {
 		expect(message.confirm).toHaveBeenCalledTimes(1);
 		expect(workflowsStore.deleteWorkflow).toHaveBeenCalledTimes(1);
 		expect(workflowsStore.deleteWorkflow).toHaveBeenCalledWith(data.id);
-		expect(toast.showError).toHaveBeenCalledTimes(0);
+		expect(toast.showError).not.toHaveBeenCalled();
 		expect(toast.showMessage).toHaveBeenCalledTimes(1);
 		expect(emitted()['workflow:deleted']).toHaveLength(1);
 	});
