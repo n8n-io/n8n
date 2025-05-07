@@ -38,22 +38,25 @@ export class WebhookService {
 		void this.cacheService.setMany(allWebhooks.map((w) => [w.cacheKey, w]));
 	}
 
+	async findAll() {
+		return await this.webhookRepository.find();
+	}
+
 	private async findCached(method: Method, path: string) {
 		const cacheKey = `webhook:${method}-${path}`;
 
-		const cachedWebhook = await this.cacheService.get(cacheKey);
+		const cachedStaticWebhook = await this.cacheService.get(cacheKey);
 
-		if (cachedWebhook) return this.webhookRepository.create(cachedWebhook);
+		if (cachedStaticWebhook) return this.webhookRepository.create(cachedStaticWebhook);
 
-		let dbWebhook = await this.findStaticWebhook(method, path);
+		const dbStaticWebhook = await this.findStaticWebhook(method, path);
 
-		if (dbWebhook === null) {
-			dbWebhook = await this.findDynamicWebhook(method, path);
+		if (dbStaticWebhook) {
+			void this.cacheService.set(cacheKey, dbStaticWebhook);
+			return dbStaticWebhook;
 		}
 
-		void this.cacheService.set(cacheKey, dbWebhook);
-
-		return dbWebhook;
+		return await this.findDynamicWebhook(method, path);
 	}
 
 	/**
