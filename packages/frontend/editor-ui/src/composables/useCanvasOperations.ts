@@ -2005,6 +2005,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		await addNodes(convertedNodes ?? []);
 		await workflowsStore.getNewWorkflowData(name, projectsStore.currentProjectId);
 		workflowsStore.addToWorkflowMetadata({ templateId: `${id}` });
+		workflowsStore.makeNewWorkflowShareable();
 	}
 
 	return {
