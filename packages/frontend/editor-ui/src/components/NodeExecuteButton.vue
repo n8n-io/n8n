@@ -222,7 +222,7 @@ const isLoading = computed(
 
 const buttonIcon = computed(() => {
 	if (shouldGenerateCode.value) return 'terminal';
-	if (!isListeningForEvents.value && !props.hideIcon) return 'flask';
+	if (!isListeningForEvents.value && !props.hideIcon) return 'play';
 	return undefined;
 });
 
@@ -328,6 +328,7 @@ async function onClick() {
 		emit('stopExecution');
 	} else {
 		let shouldUnpinAndExecute = false;
+		console.log('===pin?', node.value, pinnedData.hasData.value);
 		if (pinnedData.hasData.value) {
 			const confirmResult = await message.confirm(
 				i18n.baseText('ndv.pinData.unpinAndExecute.description'),
