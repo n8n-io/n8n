@@ -77,7 +77,6 @@ export class McpServer {
 		resp.on('close', async () => {
 			this.logger.debug(`Deleting transport for ${sessionId}`);
 			delete this.tools[sessionId];
-			delete this.resolveFunctions[sessionId];
 			delete this.transports[sessionId];
 			delete this.servers[sessionId];
 		});
@@ -104,12 +103,14 @@ export class McpServer {
 			const callId = messageId ? `${sessionId}_${messageId}` : sessionId;
 			this.tools[sessionId] = connectedTools;
 
-			await new Promise(async (resolve) => {
-				this.resolveFunctions[callId] = resolve;
-				await transport.handlePostMessage(req, resp, bodyString);
-			});
-			delete this.resolveFunctions[callId];
-			delete this.tools[sessionId]; // Clean up to avoid keeping all tools in memory
+			try {
+				await new Promise(async (resolve) => {
+					this.resolveFunctions[callId] = resolve;
+					await transport.handlePostMessage(req, resp, bodyString);
+				});
+			} finally {
+				delete this.resolveFunctions[callId];
+			}
 		} else {
 			this.logger.warn(`No transport found for session ${sessionId}`);
 			resp.status(401).send('No transport found for sessionId');
