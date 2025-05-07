@@ -1,7 +1,6 @@
 import type { WebhookEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
-import { Logger } from 'n8n-core';
 import { FormTrigger } from 'n8n-nodes-base/nodes/Form/FormTrigger.node';
 import { ScheduleTrigger } from 'n8n-nodes-base/nodes/Schedule/ScheduleTrigger.node';
 import { NodeApiError, Workflow } from 'n8n-workflow';
@@ -32,7 +31,6 @@ import * as utils from './shared/utils/';
 import { mockInstance } from '../shared/mocking';
 
 mockInstance(ActiveExecutions);
-mockInstance(Logger);
 mockInstance(Push);
 mockInstance(SecretsHelper);
 mockInstance(ExecutionService);

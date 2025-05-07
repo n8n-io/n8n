@@ -13,6 +13,7 @@ import { Workflow } from 'n8n-workflow';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import type { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import type { NodeTypes } from '@/node-types';
+import { mockLogger } from '@test/mocking';
 
 describe('ActiveWorkflowManager', () => {
 	let activeWorkflowManager: ActiveWorkflowManager;
@@ -23,7 +24,7 @@ describe('ActiveWorkflowManager', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
 		activeWorkflowManager = new ActiveWorkflowManager(
-			mock(),
+			mockLogger(),
 			mock(),
 			mock(),
 			mock(),
