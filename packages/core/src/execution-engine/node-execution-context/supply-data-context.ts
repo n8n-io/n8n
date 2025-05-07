@@ -16,7 +16,6 @@ import type {
 	Workflow,
 	WorkflowExecuteMode,
 	NodeConnectionType,
-	ISourceData,
 } from 'n8n-workflow';
 import { createDeferredPromise, NodeConnectionTypes } from 'n8n-workflow';
 
@@ -43,8 +42,6 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 
 	readonly getNodeParameter: ISupplyDataFunctions['getNodeParameter'];
 
-	readonly parentNode?: INode;
-
 	constructor(
 		workflow: Workflow,
 		node: INode,
@@ -58,7 +55,6 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 		executeData: IExecuteData,
 		private readonly closeFunctions: CloseFunction[],
 		abortSignal?: AbortSignal,
-		parentNode?: INode,
 	) {
 		super(
 			workflow,
@@ -72,8 +68,6 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 			executeData,
 			abortSignal,
 		);
-
-		this.parentNode = parentNode;
 
 		this.helpers = {
 			createDeferredPromise,
@@ -132,7 +126,6 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 			this.executeData,
 			this.closeFunctions,
 			this.abortSignal,
-			this.parentNode,
 		);
 		context.addInputData(NodeConnectionTypes.AiTool, replacements.inputData);
 		return context;
@@ -237,17 +230,13 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 		} = this;
 
 		let taskData: ITaskData | undefined;
-		const source: ISourceData[] = this.parentNode
-			? [{ previousNode: this.parentNode.name, previousNodeRun: sourceNodeRunIndex }]
-			: [];
-
 		if (type === 'input') {
 			taskData = {
 				startTime: Date.now(),
 				executionTime: 0,
 				executionIndex: additionalData.currentNodeExecutionIndex++,
 				executionStatus: 'running',
-				source,
+				source: [null],
 			};
 		} else {
 			// At the moment we expect that there is always an input sent before the output
@@ -260,7 +249,6 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 				return;
 			}
 			taskData.metadata = metadata;
-			taskData.source = source;
 		}
 		taskData = taskData!;
 

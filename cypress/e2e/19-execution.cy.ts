@@ -473,6 +473,17 @@ describe('Execution', () => {
 	});
 
 	it('should send proper payload for node rerun', () => {
+		const mockUserData = [
+			{
+				firstname: 'Lawrence',
+				lastname: 'Kertzmann',
+			},
+		];
+		cy.intercept('GET', 'https://internal.users.n8n.cloud/webhook/random-data-api', {
+			statusCode: 200,
+			body: mockUserData,
+		}).as('getRandomUsers');
+
 		cy.createFixtureWorkflow('Multiple_trigger_node_rerun.json', 'Multiple trigger node rerun');
 
 		workflowPage.getters.zoomToFitButton().click();
@@ -483,16 +494,19 @@ describe('Execution', () => {
 		cy.intercept('POST', '/rest/workflows/**/run?**').as('workflowRun');
 
 		workflowPage.getters
-			.canvasNodeByName('Process The Data')
+			.canvasNodeByName('do something with them')
 			.findChildByTestId('execute-node-button')
 			.click({ force: true });
 
 		cy.wait('@workflowRun').then((interception) => {
 			expect(interception.request.body).to.have.property('runData').that.is.an('object');
+			const expectedKeys = [
+				'When clicking ‘Test workflow’',
+				'fetch 5 random users',
+				'do something with them',
+			];
 
-			const expectedKeys = ['Start Manually', 'Edit Fields', 'Process The Data'];
-
-			const { runData } = interception.request.body;
+			const { runData } = interception.request.body as Record<string, object>;
 			expect(Object.keys(runData)).to.have.lengthOf(expectedKeys.length);
 			expect(runData).to.include.all.keys(expectedKeys);
 		});

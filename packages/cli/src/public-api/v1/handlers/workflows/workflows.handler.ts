@@ -81,7 +81,7 @@ export = {
 
 			const body = z.object({ destinationProjectId: z.string() }).parse(req.body);
 
-			await Container.get(EnterpriseWorkflowService).transferWorkflow(
+			await Container.get(EnterpriseWorkflowService).transferOne(
 				req.user,
 				workflowId,
 				body.destinationProjectId,

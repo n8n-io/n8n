@@ -43,7 +43,6 @@ import type {
 	IPersonalizationSurveyAnswersV4,
 	AnnotationVote,
 	ITaskData,
-	ISourceData,
 } from 'n8n-workflow';
 
 import type {
@@ -190,7 +189,6 @@ export interface IAiDataContent {
 	data: INodeExecutionData[] | null;
 	inOut: 'input' | 'output';
 	type: NodeConnectionType;
-	source?: Array<ISourceData | null>;
 	metadata: {
 		executionTime: number;
 		startTime: number;

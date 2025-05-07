@@ -548,7 +548,7 @@ export class WorkflowsController {
 		@Param('workflowId') workflowId: string,
 		@Body body: TransferWorkflowBodyDto,
 	) {
-		return await this.enterpriseWorkflowService.transferWorkflow(
+		return await this.enterpriseWorkflowService.transferOne(
 			req.user,
 			workflowId,
 			body.destinationProjectId,
