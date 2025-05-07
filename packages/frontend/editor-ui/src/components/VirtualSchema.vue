@@ -37,7 +37,6 @@ import MappingPill from './MappingPill.vue';
 
 import { EnterpriseEditionFeature, PLACEHOLDER_FILLED_AT_EXECUTION_TIME } from '@/constants';
 import useEnvironmentsStore from '@/stores/environments.ee.store';
-import { usePostHog } from '@/stores/posthog.store';
 import { useSchemaPreviewStore } from '@/stores/schemaPreview.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { isEmpty } from '@/utils/typesUtils';
@@ -77,7 +76,6 @@ const workflowsStore = useWorkflowsStore();
 const schemaPreviewStore = useSchemaPreviewStore();
 const environmentsStore = useEnvironmentsStore();
 const settingsStore = useSettingsStore();
-const posthogStore = usePostHog();
 
 const { getSchemaForExecutionData, getSchemaForJsonSchema, getSchema, filterSchema } =
 	useDataSchema();
