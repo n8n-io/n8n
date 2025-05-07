@@ -389,6 +389,42 @@ describe(getTreeNodeData, () => {
 		expect(rootNodeTree[0].children[0].runIndex).toBe(0);
 	});
 
+	it('should include nodes with source array without previous node', () => {
+		const workflow = createTestWorkflowObject({
+			nodes: [createTestNode({ name: 'RootNode' }), createTestNode({ name: 'SubNode' })],
+			connections: {
+				SubNode: {
+					ai_tool: [[{ node: 'RootNode', type: NodeConnectionTypes.AiTool, index: 0 }]],
+				},
+			},
+		});
+
+		// Create test AI data with a node that has empty source array
+		const subNodeData = {
+			node: 'SubNode',
+			runIndex: 0,
+			data: {
+				data: [{ json: { result: 'from RootNode' } }],
+				inOut: 'output' as const,
+				type: NodeConnectionTypes.AiTool,
+				source: [null], // Array with null
+				metadata: {
+					executionTime: 100,
+					startTime: Date.parse('2025-02-26T00:00:01.000Z'),
+					subExecution: undefined,
+				},
+			},
+		};
+
+		// Create test AI data array
+		const aiData = [subNodeData];
+
+		const rootNodeTree = getTreeNodeData('RootNode', workflow, aiData);
+
+		expect(rootNodeTree[0].children.length).toBe(1);
+		expect(rootNodeTree[0].children[0].node).toBe('SubNode');
+	});
+
 	it('should filter deeper nested nodes based on source', () => {
 		const workflow = createTestWorkflowObject({
 			nodes: [
@@ -804,6 +840,28 @@ describe(getTreeNodeDataV2, () => {
 		expect(rootNodeTree[0].children.length).toBe(1);
 		expect(rootNodeTree[0].children[0].node.name).toBe('SubNode');
 		expect(rootNodeTree[0].children[0].runIndex).toBe(0);
+	});
+
+	it('should include nodes with source array without previous node (v2)', () => {
+		const workflow = createTestWorkflowObject({
+			nodes: [createTestNode({ name: 'RootNode' }), createTestNode({ name: 'SubNode' })],
+			connections: {
+				SubNode: {
+					ai_tool: [[{ node: 'RootNode', type: NodeConnectionTypes.AiTool, index: 0 }]],
+				},
+			},
+		});
+
+		// Create test run data with source information
+		const runData = {
+			RootNode: [createTestTaskData({ executionIndex: 0 })],
+			SubNode: [createTestTaskData({ executionIndex: 1, source: [null] })],
+		};
+
+		const rootNodeTree = getTreeNodeDataV2('RootNode', runData.RootNode[0], workflow, runData);
+
+		expect(rootNodeTree[0].children.length).toBe(1);
+		expect(rootNodeTree[0].children[0].node.name).toBe('SubNode');
 	});
 
 	it('should filter deeper nested nodes based on source (v2)', () => {
