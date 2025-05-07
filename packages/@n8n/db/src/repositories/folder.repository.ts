@@ -22,7 +22,7 @@ export class FolderRepository extends Repository<Folder> {
 
 	async getMany(options: ListQuery.Options = {}) {
 		const query = this.getManyQuery(options);
-		return (await query.getMany()) as unknown as [FolderWithWorkflowAndSubFolderCount[], number];
+		return (await query.getMany()) as unknown as FolderWithWorkflowAndSubFolderCount[];
 	}
 
 	getManyQuery(options: ListQuery.Options = {}): SelectQueryBuilder<Folder> {

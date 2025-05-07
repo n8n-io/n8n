@@ -1,5 +1,5 @@
 import { GlobalConfig } from '@n8n/config';
-import type { ListQueryDb, Folder, FolderWithWorkflowAndSubFolderCount } from '@n8n/db';
+import type { ListQueryDb, FolderWithWorkflowAndSubFolderCount } from '@n8n/db';
 import {
 	isStringArray,
 	WebhookEntity,
@@ -323,7 +323,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		baseData: WorkflowFolderUnionRow[],
 		extraData: {
 			workflows: ListQueryDb.Workflow.WithSharing[] | ListQueryDb.Workflow.Plain[];
-			folders: Folder[];
+			folders: FolderWithWorkflowAndSubFolderCount[];
 		},
 	): WorkflowFolderUnionFull[] {
 		const workflowsMap = new Map(extraData.workflows.map((workflow) => [workflow.id, workflow]));
