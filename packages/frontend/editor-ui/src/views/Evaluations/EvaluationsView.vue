@@ -63,7 +63,7 @@ const showWizard = computed(() => {
 </script>
 
 <template>
-	<div v-if="isReady" style="display: flex; justify-content: center">
+	<div v-if="isReady">
 		<div v-if="!showWizard" :class="$style.header">
 			<div style="display: flex; align-items: center; gap: 10px">
 				<N8nTooltip v-if="!showWizard" :disabled="isRunTestEnabled" :placement="'left'">
