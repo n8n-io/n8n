@@ -284,6 +284,7 @@ describe('WorkflowsView', () => {
 					active: false,
 					isArchived: false,
 				}),
+				false,
 				expect.any(Boolean),
 			);
 		});
