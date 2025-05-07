@@ -500,6 +500,12 @@ importers:
       class-validator:
         specifier: 0.14.0
         version: 0.14.0
+      flatted:
+        specifier: 'catalog:'
+        version: 3.2.7
+      lodash:
+        specifier: 'catalog:'
+        version: 4.17.21
       n8n-core:
         specifier: workspace:^
         version: link:../../core
@@ -519,6 +525,9 @@ importers:
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
+      '@types/lodash':
+        specifier: 'catalog:'
+        version: 4.14.195
 
   packages/@n8n/decorators:
     dependencies:
@@ -676,6 +685,16 @@ importers:
       '@types/uuencode':
         specifier: ^0.0.3
         version: 0.0.3(patch_hash=083a73709a54db57b092d986b43d27ddda3cb8008f9510e98bc9e6da0e1cbb62)
+
+  packages/@n8n/integration-test-utils:
+    dependencies:
+      reflect-metadata:
+        specifier: 'catalog:'
+        version: 0.2.2
+    devDependencies:
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
 
   packages/@n8n/json-schema-to-zod:
     devDependencies:
@@ -910,6 +929,10 @@ importers:
         version: 8.4.0(@microsoft/api-extractor@7.52.1(@types/node@18.16.16))(jiti@1.21.0)(postcss@8.5.3)(tsx@4.19.3)(typescript@5.8.2)
 
   packages/@n8n/permissions:
+    dependencies:
+      zod:
+        specifier: 'catalog:'
+        version: 3.24.1
     devDependencies:
       '@n8n/typescript-config':
         specifier: workspace:*
@@ -1085,6 +1108,9 @@ importers:
       '@n8n/di':
         specifier: workspace:*
         version: link:../@n8n/di
+      '@n8n/integration-test-utils':
+        specifier: workspace:^
+        version: link:../@n8n/integration-test-utils
       '@n8n/localtunnel':
         specifier: 3.0.0
         version: 3.0.0

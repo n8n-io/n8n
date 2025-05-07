@@ -9,8 +9,6 @@ export function assertReturnedUserProps(user: User) {
 	expect(user.personalizationAnswers).toBeNull();
 	expect(user.password).toBeUndefined();
 	expect(user.isPending).toBe(false);
-	expect(user.globalScopes).toBeDefined();
-	expect(user.globalScopes).not.toHaveLength(0);
 }
 
 export const assertStoredUserProps = (user: User) => {

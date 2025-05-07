@@ -1,6 +1,11 @@
 import type { SourceControlledFile } from '@n8n/api-types';
-import { SharedCredentials } from '@n8n/db';
 import type { Variables, Project, TagEntity, User, WorkflowTagMapping } from '@n8n/db';
+import {
+	SharedCredentials,
+	CredentialsRepository,
+	FolderRepository,
+	ProjectRepository,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
@@ -12,9 +17,6 @@ import path from 'path';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CredentialsService } from '@/credentials/credentials.service';
-import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
-import { FolderRepository } from '@/databases/repositories/folder.repository';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { TagRepository } from '@/databases/repositories/tag.repository';
@@ -308,7 +310,14 @@ export class SourceControlImportService {
 				continue;
 			}
 			const existingWorkflow = existingWorkflows.find((e) => e.id === importedWorkflow.id);
-			importedWorkflow.active = existingWorkflow?.active ?? false;
+
+			// Workflow's active status is not saved in the remote workflow files, and the field is missing despite
+			// IWorkflowToImport having it typed as boolean. Imported workflows are always inactive if they are new,
+			// and existing workflows use the existing workflow's active status unless they have been archived on the remote.
+			// In that case, we deactivate the existing workflow on pull and turn it archived.
+			importedWorkflow.active = existingWorkflow
+				? existingWorkflow.active && !importedWorkflow.isArchived
+				: false;
 
 			const parentFolderId = importedWorkflow.parentFolderId ?? '';
 
@@ -351,14 +360,17 @@ export class SourceControlImportService {
 					// remove active pre-import workflow
 					this.logger.debug(`Deactivating workflow id ${existingWorkflow.id}`);
 					await workflowManager.remove(existingWorkflow.id);
-					// try activating the imported workflow
-					this.logger.debug(`Reactivating workflow id ${existingWorkflow.id}`);
-					await workflowManager.add(existingWorkflow.id, 'activate');
-					// update the versionId of the workflow to match the imported workflow
+
+					if (importedWorkflow.active) {
+						// try activating the imported workflow
+						this.logger.debug(`Reactivating workflow id ${existingWorkflow.id}`);
+						await workflowManager.add(existingWorkflow.id, 'activate');
+					}
 				} catch (e) {
 					const error = ensureError(e);
 					this.logger.error(`Failed to activate workflow ${existingWorkflow.id}`, { error });
 				} finally {
+					// update the versionId of the workflow to match the imported workflow
 					await this.workflowRepository.update(
 						{ id: existingWorkflow.id },
 						{ versionId: importedWorkflow.versionId },
@@ -637,7 +649,7 @@ export class SourceControlImportService {
 
 	async deleteWorkflowsNotInWorkfolder(user: User, candidates: SourceControlledFile[]) {
 		for (const candidate of candidates) {
-			await this.workflowService.delete(user, candidate.id);
+			await this.workflowService.delete(user, candidate.id, true);
 		}
 	}
 
