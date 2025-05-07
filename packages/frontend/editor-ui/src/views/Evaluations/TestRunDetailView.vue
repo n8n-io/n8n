@@ -32,6 +32,12 @@ const TEST_RUN_ERROR_CODES = {
 	INTERRUPTED: 'INTERRUPTED',
 	UNKNOWN_ERROR: 'UNKNOWN_ERROR',
 	EVALUATION_TRIGGER_NOT_FOUND: 'EVALUATION_TRIGGER_NOT_FOUND',
+	EVALUATION_TRIGGER_NOT_CONFIGURED: 'EVALUATION_TRIGGER_NOT_CONFIGURED',
+	SET_OUTPUTS_NODE_NOT_FOUND: 'SET_OUTPUTS_NODE_NOT_FOUND',
+	SET_OUTPUTS_NODE_NOT_CONFIGURED: 'SET_OUTPUTS_NODE_NOT_CONFIGURED',
+	SET_METRICS_NODE_NOT_FOUND: 'SET_METRICS_NODE_NOT_FOUND',
+	SET_METRICS_NODE_NOT_CONFIGURED: 'SET_METRICS_NODE_NOT_CONFIGURED',
+	CANT_FETCH_TEST_CASES: 'CANT_FETCH_TEST_CASES',
 } as const;
 
 type TestRunErrorCode = (typeof TEST_RUN_ERROR_CODES)[keyof typeof TEST_RUN_ERROR_CODES];
@@ -94,6 +100,12 @@ const testRunErrorDictionary: Partial<Record<TestRunErrorCode, BaseTextKey>> = {
 	INTERRUPTED: 'evaluation.listRuns.error.executionInterrupted',
 	UNKNOWN_ERROR: 'evaluation.listRuns.error.unknownError',
 	EVALUATION_TRIGGER_NOT_FOUND: 'evaluation.listRuns.error.evaluationTriggerNotFound',
+	EVALUATION_TRIGGER_NOT_CONFIGURED: 'evaluation.listRuns.error.evaluationTriggerNotConfigured',
+	SET_OUTPUTS_NODE_NOT_FOUND: 'evaluation.listRuns.error.setOutputsNodeNotFound',
+	SET_OUTPUTS_NODE_NOT_CONFIGURED: 'evaluation.listRuns.error.setOutputsNodeNotConfigured',
+	SET_METRICS_NODE_NOT_FOUND: 'evaluation.listRuns.error.setMetricsNodeNotFound',
+	SET_METRICS_NODE_NOT_CONFIGURED: 'evaluation.listRuns.error.setMetricsNodeNotConfigured',
+	CANT_FETCH_TEST_CASES: 'evaluation.listRuns.error.cantFetchTestCases',
 } as const;
 
 const getErrorBaseKey = (errorCode?: string): string =>
@@ -235,6 +247,9 @@ onMounted(async () => {
 						style="text-transform: capitalize"
 					>
 						{{ run?.status }}
+						{{
+							locale.baseText(`${getErrorBaseKey(run.errorCode)}` as BaseTextKey) || run.errorCode
+						}}
 					</N8nText>
 				</div>
 

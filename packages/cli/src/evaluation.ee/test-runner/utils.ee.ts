@@ -1,6 +1,12 @@
 import type { TestRunFinalResult, TestCaseExecution } from '@n8n/db';
 import assert from 'assert';
-import type { IRunExecutionData, IPinData, IWorkflowBase } from 'n8n-workflow';
+import type {
+	IRunExecutionData,
+	IPinData,
+	IWorkflowBase,
+	NodeParameterValueType,
+	INodeParameterResourceLocator,
+} from 'n8n-workflow';
 
 import { TestCaseExecutionError } from '@/evaluation.ee/test-runner/errors.ee';
 
@@ -93,4 +99,22 @@ export function getTestRunFinalResult(testCaseExecutions: TestCaseExecution[]): 
 	}
 
 	return finalResult;
+}
+
+function isRlcValue(value: NodeParameterValueType): value is INodeParameterResourceLocator {
+	return Boolean(
+		typeof value === 'object' && value && 'value' in value && '__rl' in value && value.__rl,
+	);
+}
+
+export function checkNodeParameterNotEmpty(value: NodeParameterValueType) {
+	if (value === undefined || value === null || value === '') {
+		return false;
+	}
+
+	if (isRlcValue(value)) {
+		return checkNodeParameterNotEmpty(value.value);
+	}
+
+	return true;
 }
