@@ -93,7 +93,7 @@ export class JinaAi implements INodeType {
 					{
 						name: 'Search',
 						value: 'search',
-						action: 'Search Web',
+						action: 'Search web',
 						description:
 							'Performs a web search via Jina AI and returns top results as clean, LLM-friendly formats',
 						routing: {
@@ -139,7 +139,7 @@ export class JinaAi implements INodeType {
 					{
 						name: 'Deep Research',
 						value: 'deepResearch',
-						action: 'Perform Deep Research',
+						action: 'Perform deep research',
 						description: 'Research a topic and generate a structured research report',
 						routing: {
 							request: {
@@ -261,7 +261,7 @@ export class JinaAi implements INodeType {
 						displayName: 'Exclude CSS Selector',
 						name: 'excludeSelector',
 						type: 'string',
-						description: 'CSS selector for elements to remove',
+						description: 'CSS selector for elements to exclude',
 						default: '',
 						placeholder: 'e.g. header, footer, .ads',
 					},
@@ -385,6 +385,9 @@ export class JinaAi implements INodeType {
 				description: 'The topic or question for the AI to research',
 				placeholder:
 					'e.g. Analyze the impact of renewable energy sources on climate change mitigation',
+				typeOptions: {
+					rows: 2,
+				},
 				displayOptions: {
 					show: {
 						resource: ['research'],
