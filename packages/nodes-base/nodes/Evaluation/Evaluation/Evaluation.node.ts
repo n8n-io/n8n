@@ -2,49 +2,16 @@ import type {
 	IExecuteFunctions,
 	INodeType,
 	INodeTypeDescription,
-	INodeProperties,
-	IDataObject,
+	INodeExecutionData,
 } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
-import { document, sheet } from '../../Google/Sheet/GoogleSheetsTrigger.node';
+import { setEvaluationProperties, setOutputProperties } from './Description.node';
 import { authentication } from '../../Google/Sheet/v2/actions/versionDescription';
 import { listSearch, loadOptions } from '../methods';
-import { getGoogleSheet, getSheet } from '../utils/evaluationTriggerUtils';
+import { setEvaluation, setOutput } from '../utils/evaluationUtils';
 
 export class Evaluation implements INodeType {
-	outputs: INodeProperties = {
-		displayName: 'Outputs',
-		name: 'outputs',
-		placeholder: 'Add Output',
-		type: 'fixedCollection',
-		typeOptions: {
-			multipleValueButtonText: 'Add Output',
-			multipleValues: true,
-		},
-		default: {},
-		options: [
-			{
-				displayName: 'Filter',
-				name: 'values',
-				values: [
-					{
-						displayName: 'Name',
-						name: 'outputName',
-						type: 'string',
-						default: '',
-					},
-					{
-						displayName: 'Value',
-						name: 'outputValue',
-						type: 'string',
-						default: '',
-					},
-				],
-			},
-		],
-	};
-
 	description: INodeTypeDescription = {
 		displayName: 'Evaluation',
 		icon: 'fa:check-double',
@@ -83,8 +50,6 @@ export class Evaluation implements INodeType {
 		],
 		properties: [
 			authentication,
-			document,
-			sheet,
 			{
 				displayName: 'Operation',
 				name: 'operation',
@@ -106,82 +71,22 @@ export class Evaluation implements INodeType {
 				],
 				default: 'setOutput',
 			},
-			this.outputs,
+			...setOutputProperties,
+			...setEvaluationProperties,
 		],
 	};
 
 	methods = { loadOptions, listSearch };
 
-	async execute(this: IExecuteFunctions) {
-		const evaluationNode = this.getNode();
-		const parentNodes = this.getParentNodes(evaluationNode.name);
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const operation = this.getNodeParameter('operation', 0);
 
-		const evalTrigger = parentNodes.find(
-			(node) => node.type === 'n8n-nodes-base.evaluationTrigger',
-		);
-
-		if (!evalTrigger) {
-			this.addExecutionHints({
-				message: "No outputs were set since the execution didn't start from an evaluation trigger",
-				location: 'outputPane',
-			});
-			return [];
+		if (operation === 'setOutput') {
+			return await setOutput.call(this);
+		} else if (operation === 'setEvaluation') {
+			return await setEvaluation.call(this);
+		} else {
+			return [this.getInputData()];
 		}
-
-		const outputFields = this.getNodeParameter('outputs.values', 0, []) as Array<{
-			outputName: string;
-			outputValue: string;
-		}>;
-
-		const googleSheetInstance = getGoogleSheet.call(this);
-		const googleSheet = await getSheet.call(this, googleSheetInstance);
-
-		const evaluationTrigger = this.evaluateExpression(
-			`{{ $('${evalTrigger.name}').first().json }}`,
-			0,
-		) as IDataObject;
-
-		const rowNumber =
-			evaluationTrigger.row_number === 'row_number' ? 1 : evaluationTrigger.row_number;
-
-		const columnNames = Object.keys(evaluationTrigger).filter(
-			(key) => key !== 'row_number' && key !== '_rowsLeft',
-		);
-
-		outputFields.forEach(async ({ outputName }) => {
-			if (!columnNames.includes(outputName)) {
-				columnNames.push(outputName);
-			}
-		});
-
-		await googleSheetInstance.updateRows(
-			googleSheet.title,
-			[columnNames],
-			'RAW', // default value for Value Input Mode
-			1, // header row
-		);
-
-		const outputs = outputFields.reduce((acc, { outputName, outputValue }) => {
-			acc[outputName] = outputValue;
-			return acc;
-		}, {} as IDataObject);
-
-		const preparedData = googleSheetInstance.prepareDataForUpdatingByRowNumber(
-			[
-				{
-					row_number: rowNumber,
-					...outputs,
-				},
-			],
-			`${googleSheet.title}!A:Z`,
-			[columnNames],
-		);
-
-		await googleSheetInstance.batchUpdate(
-			preparedData.updateData,
-			'RAW', // default value for Value Input Mode
-		);
-
-		return [this.getInputData()];
 	}
 }
