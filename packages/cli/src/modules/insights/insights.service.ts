@@ -39,14 +39,14 @@ export class InsightsService {
 		this.logger = this.logger.scoped('insights');
 	}
 
-	startBackgroundProcess() {
+	startTimers() {
 		this.compactionService.startCompactionTimer();
 		this.collectionService.startFlushingTimer();
 		this.pruningService.startPruningTimer();
 		this.logger.debug('Started compaction, flushing and pruning schedulers');
 	}
 
-	stopBackgroundProcess() {
+	stopTimers() {
 		this.compactionService.stopCompactionTimer();
 		this.collectionService.stopFlushingTimer();
 		this.pruningService.stopPruningTimer();
@@ -56,7 +56,7 @@ export class InsightsService {
 	@OnShutdown()
 	async shutdown() {
 		await this.collectionService.shutdown();
-		this.stopBackgroundProcess();
+		this.stopTimers();
 	}
 
 	async getInsightsSummary({

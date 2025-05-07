@@ -709,7 +709,7 @@ describe('shutdown', () => {
 	});
 });
 
-describe('backgroundProcess', () => {
+describe('timers', () => {
 	let insightsService: InsightsService;
 
 	const mockCollectionService = {
@@ -740,9 +740,9 @@ describe('backgroundProcess', () => {
 		);
 	});
 
-	test('startBackgroundProcess starts timers and logs message', () => {
+	test('startTimers starts timers and logs message', () => {
 		// ACT
-		insightsService.startBackgroundProcess();
+		insightsService.startTimers();
 
 		// ASSERT
 		expect(mockCompactionService.startCompactionTimer).toHaveBeenCalled();
@@ -750,9 +750,9 @@ describe('backgroundProcess', () => {
 		expect(mockPruningService.startPruningTimer).toHaveBeenCalled();
 	});
 
-	test('stopBackgroundProcess stops timers and logs message', () => {
+	test('stopTimers stops timers and logs message', () => {
 		// ACT
-		insightsService.stopBackgroundProcess();
+		insightsService.stopTimers();
 
 		// ASSERT
 		expect(mockCompactionService.stopCompactionTimer).toHaveBeenCalled();
