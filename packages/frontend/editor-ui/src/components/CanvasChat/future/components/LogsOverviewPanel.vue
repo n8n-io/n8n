@@ -11,15 +11,16 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useRouter } from 'vue-router';
 import ExecutionSummary from '@/components/CanvasChat/future/components/ExecutionSummary.vue';
 import {
+	collectEmptySubNodeExecutions,
 	flattenLogEntries,
 	getSubtreeTotalConsumedTokens,
 	getTotalConsumedTokens,
+	hasSubExecution,
 	type LatestNodeInfo,
 	type LogEntry,
 } from '@/components/RunDataAi/utils';
 import { useVirtualList } from '@vueuse/core';
 import { ndvEventBus } from '@/event-bus';
-import { EXECUTE_WORKFLOW_NODE_TYPE } from '@/constants';
 import { type IExecutionResponse } from '@/Interface';
 
 const {
@@ -67,15 +68,10 @@ const consumedTokens = computed(() =>
 );
 const manuallyCollapsedEntries = ref<Record<string, boolean>>({});
 const collapsedEntries = computed(() => ({
+	...Object.fromEntries(collectEmptySubNodeExecutions(entries).map((id) => [id, true])),
 	...manuallyCollapsedEntries.value,
-	...entries.reduce<Record<string, boolean>>((acc, entry) => {
-		if (entry.node.type === EXECUTE_WORKFLOW_NODE_TYPE && entry.children.length === 0) {
-			acc[entry.id] = true; // Runs in sub workflow are collapsed by default
-		}
-		return acc;
-	}, {}),
 }));
-const flatLogEntries = computed(() => flattenLogEntries(entries, manuallyCollapsedEntries.value));
+const flatLogEntries = computed(() => flattenLogEntries(entries, collapsedEntries.value));
 const virtualList = useVirtualList(flatLogEntries, { itemHeight: 32 });
 
 function handleClickNode(clicked: LogEntry) {
@@ -98,7 +94,7 @@ function handleSwitchView(value: 'overview' | 'details') {
 }
 
 async function handleToggleExpanded(treeNode: LogEntry) {
-	if (treeNode.node.type === EXECUTE_WORKFLOW_NODE_TYPE && treeNode.children.length === 0) {
+	if (hasSubExecution(treeNode) && treeNode.children.length === 0) {
 		emit('loadSubExecution', treeNode);
 		return;
 	}

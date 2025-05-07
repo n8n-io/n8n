@@ -10,7 +10,6 @@ import {
 } from 'n8n-workflow';
 import { type LogEntrySelection } from '../CanvasChat/types/logs';
 import { isProxy, isReactive, isRef, toRaw } from 'vue';
-import { EXECUTE_WORKFLOW_NODE_TYPE } from '@/constants';
 
 export interface AIResult {
 	node: string;
@@ -255,6 +254,7 @@ export interface LogEntry {
 }
 
 export interface LogTreeBuildContext {
+	parent: LogEntry | undefined;
 	depth: number;
 	workflow: Workflow;
 	executionId: string;
@@ -292,7 +292,6 @@ function getConsumedTokensV2(task: ITaskData): LlmTokenUsageData {
 }
 
 function createNodeV2(
-	parent: LogEntry | undefined,
 	node: INodeUi,
 	context: LogTreeBuildContext,
 	runIndex: number,
@@ -300,7 +299,7 @@ function createNodeV2(
 	children: LogEntry[] = [],
 ): LogEntry {
 	return {
-		parent,
+		parent: context.parent,
 		node,
 		id: `${context.workflow.id}:${node.name}:${context.executionId}:${runIndex}`,
 		depth: context.depth,
@@ -322,7 +321,7 @@ export function getTreeNodeDataV2(
 ): LogEntry[] {
 	const node = context.workflow.getNode(nodeName);
 
-	return node ? getTreeNodeDataRecV2(undefined, node, runData, context, runIndex) : [];
+	return node ? getTreeNodeDataRecV2(node, runData, context, runIndex) : [];
 }
 
 function getChildNodes(
@@ -331,7 +330,7 @@ function getChildNodes(
 	runIndex: number | undefined,
 	context: LogTreeBuildContext,
 ) {
-	if (node.type === EXECUTE_WORKFLOW_NODE_TYPE) {
+	if (hasSubExecution(treeNode)) {
 		const workflowId = treeNode.runData.metadata?.subExecution?.workflowId;
 		const executionId = treeNode.runData.metadata?.subExecution?.executionId;
 		const workflow = workflowId ? context.workflows[workflowId] : undefined;
@@ -343,6 +342,7 @@ function getChildNodes(
 
 		return createLogEntries({
 			...context,
+			parent: treeNode,
 			depth: context.depth + 1,
 			workflow,
 			executionId,
@@ -375,10 +375,9 @@ function getChildNodes(
 
 			return subNode
 				? getTreeNodeDataRecV2(
-						treeNode,
 						subNode,
 						t,
-						{ ...context, depth: context.depth + 1 },
+						{ ...context, depth: context.depth + 1, parent: treeNode },
 						index,
 					)
 				: [];
@@ -387,13 +386,12 @@ function getChildNodes(
 }
 
 function getTreeNodeDataRecV2(
-	parent: LogEntry | undefined,
 	node: INodeUi,
 	runData: ITaskData,
 	context: LogTreeBuildContext,
 	runIndex: number | undefined,
 ): LogEntry[] {
-	const treeNode = createNodeV2(parent, node, context, runIndex ?? 0, runData);
+	const treeNode = createNodeV2(node, context, runIndex ?? 0, runData);
 	const children = getChildNodes(treeNode, node, runIndex, context).sort((a, b) => {
 		// Sort the data by execution index or start time
 		if (a.runData.executionIndex !== undefined && b.runData.executionIndex !== undefined) {
@@ -548,5 +546,20 @@ export function flattenLogEntries(
 		}
 	}
 
+	return ret;
+}
+
+export function hasSubExecution(entry: LogEntry): boolean {
+	return !!entry.runData.metadata?.subExecution;
+}
+
+export function collectEmptySubNodeExecutions(entries: LogEntry[], ret: string[] = []): string[] {
+	for (const entry of entries) {
+		if (hasSubExecution(entry)) {
+			ret.push(entry.id);
+		}
+
+		collectEmptySubNodeExecutions(entry.children);
+	}
 	return ret;
 }
