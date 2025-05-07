@@ -12,6 +12,7 @@ import {
 	aiChatWorkflow,
 	aiManualExecutionResponse,
 	aiManualWorkflow,
+	createLogsBuildContext,
 } from '../../__test__/data';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -30,14 +31,14 @@ describe('LogsOverviewPanel', () => {
 			isReadOnly: false,
 			isCompact: false,
 			scrollToSelection: false,
-			execution: {
-				...aiChatExecutionResponse,
-				tree: createLogEntries(
+			entries: createLogEntries(
+				createLogsBuildContext(
 					createTestWorkflowObject(aiChatWorkflow),
 					aiChatExecutionResponse.data?.resultData.runData ?? {},
 				),
-			},
+			),
 			latestNodeInfo: {},
+			execution: aiChatExecutionResponse,
 			...props,
 		};
 
@@ -75,7 +76,7 @@ describe('LogsOverviewPanel', () => {
 	});
 
 	it('should render empty text if there is no execution', () => {
-		const rendered = render({ isOpen: true, execution: undefined });
+		const rendered = render({ isOpen: true, entries: [], execution: undefined });
 
 		expect(rendered.queryByTestId('logs-overview-empty')).toBeInTheDocument();
 	});
@@ -134,13 +135,12 @@ describe('LogsOverviewPanel', () => {
 
 		const rendered = render({
 			isOpen: true,
-			execution: {
-				...aiManualExecutionResponse,
-				tree: createLogEntries(
+			entries: createLogEntries(
+				createLogsBuildContext(
 					createTestWorkflowObject(aiManualWorkflow),
 					aiManualExecutionResponse.data?.resultData.runData ?? {},
 				),
-			},
+			),
 		});
 		const aiAgentRow = (await rendered.findAllByRole('treeitem'))[0];
 

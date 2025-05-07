@@ -1,7 +1,7 @@
 import { watch, computed, ref } from 'vue';
 import { isChatNode } from '../../utils';
 import { type IExecutionResponse } from '@/Interface';
-import { Workflow } from 'n8n-workflow';
+import { Workflow, type IRunExecutionData } from 'n8n-workflow';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useThrottleFn } from '@vueuse/core';
@@ -9,15 +9,17 @@ import { IN_PROGRESS_EXECUTION_ID } from '@/constants';
 import {
 	createLogEntries,
 	deepToRaw,
-	type ExecutionLogViewData,
 	type LatestNodeInfo,
+	type LogEntry,
 } from '@/components/RunDataAi/utils';
+import { parse } from 'flatted';
 
 export function useExecutionData() {
 	const nodeHelpers = useNodeHelpers();
 	const workflowsStore = useWorkflowsStore();
 
 	const execData = ref<IExecutionResponse | undefined>();
+	const subWorkflowExecData = ref<Record<string, IRunExecutionData>>({});
 
 	const workflow = computed(() =>
 		execData.value
@@ -47,17 +49,27 @@ export function useExecutionData() {
 			nodes.some(isChatNode),
 		),
 	);
-	const execution = computed<ExecutionLogViewData | undefined>(() => {
-		if (!execData.value || !workflow.value) {
-			return undefined;
+	const entries = computed<LogEntry[]>(() => {
+		if (!execData.value?.data || !workflow.value) {
+			return [];
 		}
 
-		return {
-			...execData.value,
-			tree: createLogEntries(workflow.value, execData.value.data?.resultData.runData ?? {}),
-		};
+		return createLogEntries({
+			depth: 0,
+			workflow: workflow.value,
+			executionId: execData.value.id,
+			data: execData.value.data,
+			workflows: Object.fromEntries(
+				Object.entries(workflowsStore.workflowsById).flatMap(([id, data]) =>
+					data.nodes
+						? [[id, new Workflow({ ...data, nodeTypes: workflowsStore.getNodeTypes() })]]
+						: [],
+				),
+			),
+			subWorkflowData: subWorkflowExecData.value,
+		});
 	});
-	const updateInterval = computed(() => ((execution.value?.tree.length ?? 0) > 10 ? 300 : 0));
+	const updateInterval = computed(() => ((entries.value?.length ?? 0) > 10 ? 300 : 0));
 	const runStatusList = computed(() =>
 		workflowsStore.workflowExecutionData?.id === IN_PROGRESS_EXECUTION_ID
 			? Object.values(workflowsStore.workflowExecutionData?.data?.resultData.runData ?? {})
@@ -70,6 +82,27 @@ export function useExecutionData() {
 		execData.value = undefined;
 		workflowsStore.setWorkflowExecutionData(null);
 		nodeHelpers.updateNodesExecutionIssues();
+	}
+
+	async function loadSubExecution(logEntry: LogEntry) {
+		const executionId = logEntry.runData.metadata?.subExecution?.executionId;
+		const workflowId = logEntry.runData.metadata?.subExecution?.workflowId;
+
+		if (!execData.value?.data || !executionId || !workflowId) {
+			return;
+		}
+
+		const [, res] = await Promise.all([
+			workflowsStore.fetchWorkflow(workflowId),
+			workflowsStore.fetchExecutionDataById(executionId),
+		]);
+		const data = res?.data
+			? (parse(res.data as unknown as string) as IRunExecutionData)
+			: undefined;
+
+		if (data) {
+			subWorkflowExecData.value[executionId] = data;
+		}
 	}
 
 	watch(
@@ -92,5 +125,12 @@ export function useExecutionData() {
 		{ immediate: true },
 	);
 
-	return { execution, workflow, hasChat, latestNodeNameById, resetExecutionData };
+	return {
+		execution: execData.value,
+		entries,
+		hasChat,
+		latestNodeNameById,
+		resetExecutionData,
+		loadSubExecution,
+	};
 }

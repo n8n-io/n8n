@@ -47,11 +47,12 @@ const {
 	displayExecution,
 } = useChatState(props.isReadOnly);
 
-const { workflow, execution, hasChat, latestNodeNameById, resetExecutionData } = useExecutionData();
+const { entries, execution, hasChat, latestNodeNameById, resetExecutionData, loadSubExecution } =
+	useExecutionData();
 
 const manualLogEntrySelection = ref<LogEntrySelection>({ type: 'initial' });
 const selectedLogEntry = computed(() =>
-	findSelectedLogEntry(manualLogEntrySelection.value, execution.value),
+	findSelectedLogEntry(manualLogEntrySelection.value as LogEntrySelection, entries.value),
 );
 const isLogDetailsOpen = computed(() => isOpen.value && selectedLogEntry.value !== undefined);
 const isLogDetailsVisuallyOpen = computed(
@@ -66,16 +67,8 @@ const logsPanelActionsProps = computed<InstanceType<typeof LogsPanelActions>['$p
 }));
 
 function handleSelectLogEntry(selected: LogEntry | undefined) {
-	const workflowId = execution.value?.workflowData.id;
-
-	if (!workflowId) {
-		return;
-	}
-
 	manualLogEntrySelection.value =
-		selected === undefined
-			? { type: 'none', workflowId }
-			: { type: 'selected', workflowId, data: selected };
+		selected === undefined ? { type: 'none' } : { type: 'selected', data: selected };
 }
 
 function handleResizeOverviewPanelEnd() {
@@ -145,6 +138,7 @@ function handleResizeOverviewPanelEnd() {
 								:is-read-only="isReadOnly"
 								:is-compact="isLogDetailsVisuallyOpen"
 								:selected="selectedLogEntry"
+								:entries="entries"
 								:execution="execution"
 								:scroll-to-selection="
 									manualLogEntrySelection.type !== 'selected' ||
@@ -154,6 +148,7 @@ function handleResizeOverviewPanelEnd() {
 								@click-header="onToggleOpen(true)"
 								@select="handleSelectLogEntry"
 								@clear-execution-data="resetExecutionData"
+								@load-sub-execution="loadSubExecution"
 							>
 								<template #actions>
 									<LogsPanelActions
@@ -164,12 +159,10 @@ function handleResizeOverviewPanelEnd() {
 							</LogsOverviewPanel>
 						</N8nResizeWrapper>
 						<LogsDetailsPanel
-							v-if="isLogDetailsVisuallyOpen && selectedLogEntry && workflow && execution"
+							v-if="isLogDetailsVisuallyOpen && selectedLogEntry"
 							:class="$style.logDetails"
 							:is-open="isOpen"
 							:log-entry="selectedLogEntry"
-							:workflow="workflow"
-							:execution="execution"
 							:window="pipWindow"
 							:latest-info="latestNodeNameById[selectedLogEntry.node.id]"
 							@click-header="onToggleOpen(true)"

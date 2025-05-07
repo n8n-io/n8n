@@ -25,7 +25,6 @@ import {
 import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, toRef, watch } from 'vue';
 
 import type {
-	IExecutionResponse,
 	INodeUi,
 	INodeUpdatePropertiesInformation,
 	IRunDataDisplayMode,
@@ -123,7 +122,7 @@ export type EnterEditModeArgs = {
 
 type Props = {
 	workflow: Workflow;
-	workflowExecution?: IExecutionResponse;
+	workflowExecution?: IRunExecutionData;
 	runIndex: number;
 	tooMuchDataTitle: string;
 	executingMessage: string;
@@ -255,7 +254,7 @@ const isReadOnlyRoute = computed(() => route.meta.readOnlyCanvas === true);
 const isWaitNodeWaiting = computed(() => {
 	return (
 		node.value?.name &&
-		workflowExecution.value?.data?.resultData?.runData?.[node.value?.name]?.[props.runIndex]
+		workflowExecution.value?.resultData?.runData?.[node.value?.name]?.[props.runIndex]
 			?.executionStatus === 'waiting'
 	);
 });
@@ -342,13 +341,13 @@ const executionHints = computed(() => {
 });
 
 const workflowExecution = computed(
-	() => props.workflowExecution ?? workflowsStore.getWorkflowExecution ?? undefined,
+	() => props.workflowExecution ?? workflowsStore.getWorkflowExecution?.data ?? undefined,
 );
 const workflowRunData = computed(() => {
 	if (workflowExecution.value === undefined) {
 		return null;
 	}
-	const executionData: IRunExecutionData | undefined = workflowExecution.value?.data;
+	const executionData: IRunExecutionData | undefined = workflowExecution.value;
 	if (executionData?.resultData) {
 		return executionData.resultData.runData;
 	}
@@ -789,7 +788,7 @@ function getNodeHints(): NodeHint[] {
 
 			if (workflowNode) {
 				const nodeHints = nodeHelpers.getNodeHints(props.workflow, workflowNode, nodeType.value, {
-					runExecutionData: workflowExecution.value?.data ?? null,
+					runExecutionData: workflowExecution.value ?? null,
 					runIndex: props.runIndex,
 					connectionInputData: parentNodeOutputData.value,
 				});
