@@ -78,8 +78,6 @@ describe('WorkflowStatisticsService', () => {
 	};
 
 	describe('workflowExecutionCompleted', () => {
-		const rootCountRegex = /"?rootCount"?\s*=\s*(?:"?\w+"?\.)?"?rootCount"?\s*\+\s*1/;
-
 		test.each<WorkflowExecuteMode>(['cli', 'error', 'retry', 'trigger', 'webhook', 'evaluation'])(
 			'should upsert with root executions for execution mode %s',
 			async (mode) => {
