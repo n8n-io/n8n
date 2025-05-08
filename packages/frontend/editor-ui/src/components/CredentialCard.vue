@@ -163,6 +163,7 @@ function moveResource() {
 					:resource-type="ResourceType.Credential"
 					:resource-type-label="resourceTypeLabel"
 					:personal-project="projectsStore.personalProject"
+					:show-badge-border="false"
 				/>
 				<n8n-action-toggle
 					data-test-id="credential-card-actions"
