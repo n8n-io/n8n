@@ -479,7 +479,14 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 					</div>
 				</ProjectCardBadge>
 
-				<n8n-text v-if="data.isArchived" color="text-light" size="small" bold class="ml-s mr-s">
+				<n8n-text
+					v-if="data.isArchived"
+					color="text-light"
+					size="small"
+					bold
+					class="ml-s mr-s"
+					data-test-id="workflow-card-archived"
+				>
 					{{ locale.baseText('workflows.item.archived') }}
 				</n8n-text>
 				<WorkflowActivator
