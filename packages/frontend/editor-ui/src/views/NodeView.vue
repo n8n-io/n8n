@@ -670,8 +670,10 @@ function onClickNode() {
 function onSetNodeActivated(id: string, event?: MouseEvent) {
 	// Handle Ctrl/Cmd + Double Click case
 	if (event?.metaKey || event?.ctrlKey) {
-		tryToOpenSubworkflowInNewTab(id);
-		return;
+		const couldOpen = tryToOpenSubworkflowInNewTab(id);
+		if (couldOpen) {
+			return;
+		}
 	}
 
 	setNodeActive(id);
