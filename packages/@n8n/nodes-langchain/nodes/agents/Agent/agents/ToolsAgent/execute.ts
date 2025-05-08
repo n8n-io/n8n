@@ -11,7 +11,13 @@ import type { AgentAction, AgentFinish } from 'langchain/agents';
 import { AgentExecutor, createToolCallingAgent } from 'langchain/agents';
 import type { ToolsAgentAction } from 'langchain/dist/agents/tool_calling/output_parser';
 import { omit } from 'lodash';
-import { BINARY_ENCODING, jsonParse, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import {
+	BINARY_ENCODING,
+	jsonParse,
+	NodeConnectionTypes,
+	NodeOperationError,
+	sleep,
+} from 'n8n-workflow';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import type { ZodObject } from 'zod';
 import { z } from 'zod';
@@ -388,6 +394,73 @@ export function preparePrompt(messages: BaseMessagePromptTemplateLike[]): ChatPr
 	return ChatPromptTemplate.fromMessages(messages);
 }
 
+async function processSingleItem(
+	ctx: IExecuteFunctions,
+	itemIndex: number,
+	model: BaseChatModel,
+	memory: BaseChatMemory | undefined,
+	tools: Array<DynamicStructuredTool | Tool>,
+	outputParser: N8nOutputParser | undefined,
+) {
+	const input = getPromptInputByType({
+		ctx,
+		i: itemIndex,
+		inputKey: 'text',
+		promptTypeKey: 'promptType',
+	});
+	if (input === undefined) {
+		throw new NodeOperationError(ctx.getNode(), 'The “text” parameter is empty.');
+	}
+
+	const options = ctx.getNodeParameter('options', itemIndex, {}) as {
+		systemMessage?: string;
+		maxIterations?: number;
+		returnIntermediateSteps?: boolean;
+		passthroughBinaryImages?: boolean;
+	};
+
+	// Prepare the prompt messages and prompt template.
+	const messages = await prepareMessages(ctx, itemIndex, {
+		systemMessage: options.systemMessage,
+		passthroughBinaryImages: options.passthroughBinaryImages ?? true,
+		outputParser,
+	});
+	const prompt = preparePrompt(messages);
+
+	// Create the base agent that calls tools.
+	const agent = createToolCallingAgent({
+		llm: model,
+		tools,
+		prompt,
+		streamRunnable: false,
+	});
+	agent.streamRunnable = false;
+	// Wrap the agent with parsers and fixes.
+	const runnableAgent = RunnableSequence.from([
+		agent,
+		getAgentStepsParser(outputParser, memory),
+		fixEmptyContentMessage,
+	]);
+	const executor = AgentExecutor.fromAgentAndTools({
+		agent: runnableAgent,
+		memory,
+		tools,
+		returnIntermediateSteps: options.returnIntermediateSteps === true,
+		maxIterations: options.maxIterations ?? 10,
+	});
+
+	// Invoke the executor with the given input and system message.
+	return await executor.invoke(
+		{
+			input,
+			system_message: options.systemMessage ?? SYSTEM_MESSAGE,
+			formatting_instructions:
+				'IMPORTANT: For your response to user, you MUST use the `format_final_json_response` tool with your complete answer formatted according to the required schema. Do not attempt to format the JSON manually - always use this tool. Your response will be rejected if it is not properly formatted through this tool. Only use this tool once you are ready to provide your final answer.',
+		},
+		{ signal: ctx.getExecutionCancelSignal() },
+	);
+}
+
 /* -----------------------------------------------------------
    Main Executor Function
 ----------------------------------------------------------- */
@@ -407,100 +480,108 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 	const items = this.getInputData();
 	const outputParser = await getOptionalOutputParser(this);
 	const tools = await getTools(this, outputParser);
+	const batchSize = this.getNodeParameter('options.batching.batchSize', 0, 1) as number;
+	const delayBetweenBatches = this.getNodeParameter(
+		'options.batching.delayBetweenBatches',
+		0,
+		0,
+	) as number;
+	const model = await getChatModel(this);
+	const memory = await getOptionalMemory(this);
 
-	for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-		try {
-			const model = await getChatModel(this);
-			const memory = await getOptionalMemory(this);
-
-			const input = getPromptInputByType({
-				ctx: this,
-				i: itemIndex,
-				inputKey: 'text',
-				promptTypeKey: 'promptType',
+	if (this.getNode().typeVersion >= 2.0 && batchSize > 1) {
+		for (let i = 0; i < items.length; i += batchSize) {
+			const batch = items.slice(i, i + batchSize);
+			const batchPromises = batch.map(async (_item, index) => {
+				return await processSingleItem(this, index, model, memory, tools, outputParser);
 			});
-			if (input === undefined) {
-				throw new NodeOperationError(this.getNode(), 'The “text” parameter is empty.');
+
+			const batchResults = await Promise.allSettled(batchPromises);
+
+			batchResults.forEach((result, index) => {
+				if (result.status === 'rejected') {
+					const error = result.reason as Error;
+					if (this.continueOnFail()) {
+						returnData.push({
+							json: { error: error.message },
+							pairedItem: { item: index },
+						});
+						return;
+					} else {
+						throw new NodeOperationError(this.getNode(), error);
+					}
+				}
+				const response = result.value;
+				// If memory and outputParser are connected, parse the output.
+				if (memory && outputParser) {
+					const parsedOutput = jsonParse<{ output: Record<string, unknown> }>(
+						response.output as string,
+					);
+					response.output = parsedOutput?.output ?? parsedOutput;
+				}
+
+				// Omit internal keys before returning the result.
+				const itemResult = {
+					json: omit(
+						response,
+						'system_message',
+						'formatting_instructions',
+						'input',
+						'chat_history',
+						'agent_scratchpad',
+					),
+				};
+
+				returnData.push(itemResult);
+			});
+
+			if (i + batchSize < items.length && delayBetweenBatches > 0) {
+				await sleep(delayBetweenBatches);
 			}
-
-			const options = this.getNodeParameter('options', itemIndex, {}) as {
-				systemMessage?: string;
-				maxIterations?: number;
-				returnIntermediateSteps?: boolean;
-				passthroughBinaryImages?: boolean;
-			};
-
-			// Prepare the prompt messages and prompt template.
-			const messages = await prepareMessages(this, itemIndex, {
-				systemMessage: options.systemMessage,
-				passthroughBinaryImages: options.passthroughBinaryImages ?? true,
-				outputParser,
-			});
-			const prompt = preparePrompt(messages);
-
-			// Create the base agent that calls tools.
-			const agent = createToolCallingAgent({
-				llm: model,
-				tools,
-				prompt,
-				streamRunnable: false,
-			});
-			agent.streamRunnable = false;
-			// Wrap the agent with parsers and fixes.
-			const runnableAgent = RunnableSequence.from([
-				agent,
-				getAgentStepsParser(outputParser, memory),
-				fixEmptyContentMessage,
-			]);
-			const executor = AgentExecutor.fromAgentAndTools({
-				agent: runnableAgent,
-				memory,
-				tools,
-				returnIntermediateSteps: options.returnIntermediateSteps === true,
-				maxIterations: options.maxIterations ?? 10,
-			});
-
-			// Invoke the executor with the given input and system message.
-			const response = await executor.invoke(
-				{
-					input,
-					system_message: options.systemMessage ?? SYSTEM_MESSAGE,
-					formatting_instructions:
-						'IMPORTANT: For your response to user, you MUST use the `format_final_json_response` tool with your complete answer formatted according to the required schema. Do not attempt to format the JSON manually - always use this tool. Your response will be rejected if it is not properly formatted through this tool. Only use this tool once you are ready to provide your final answer.',
-				},
-				{ signal: this.getExecutionCancelSignal() },
-			);
-
-			// If memory and outputParser are connected, parse the output.
-			if (memory && outputParser) {
-				const parsedOutput = jsonParse<{ output: Record<string, unknown> }>(
-					response.output as string,
+		}
+	} else {
+		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+			try {
+				const response = await processSingleItem(
+					this,
+					itemIndex,
+					model,
+					memory,
+					tools,
+					outputParser,
 				);
-				response.output = parsedOutput?.output ?? parsedOutput;
-			}
 
-			// Omit internal keys before returning the result.
-			const itemResult = {
-				json: omit(
-					response,
-					'system_message',
-					'formatting_instructions',
-					'input',
-					'chat_history',
-					'agent_scratchpad',
-				),
-			};
+				// If memory and outputParser are connected, parse the output.
+				if (memory && outputParser) {
+					const parsedOutput = jsonParse<{ output: Record<string, unknown> }>(
+						response.output as string,
+					);
+					response.output = parsedOutput?.output ?? parsedOutput;
+				}
 
-			returnData.push(itemResult);
-		} catch (error) {
-			if (this.continueOnFail()) {
-				returnData.push({
-					json: { error: error.message },
-					pairedItem: { item: itemIndex },
-				});
-				continue;
+				// Omit internal keys before returning the result.
+				const itemResult = {
+					json: omit(
+						response,
+						'system_message',
+						'formatting_instructions',
+						'input',
+						'chat_history',
+						'agent_scratchpad',
+					),
+				};
+
+				returnData.push(itemResult);
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({
+						json: { error: error.message },
+						pairedItem: { item: itemIndex },
+					});
+					continue;
+				}
+				throw error;
 			}
-			throw error;
 		}
 	}
 

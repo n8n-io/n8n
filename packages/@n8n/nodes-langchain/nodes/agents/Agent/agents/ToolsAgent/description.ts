@@ -47,6 +47,36 @@ export const toolsAgentProperties: INodeProperties[] = [
 				description:
 					'Whether or not binary images should be automatically passed through to the agent as image type messages',
 			},
+			{
+				displayName: 'Batch Processing',
+				name: 'batching',
+				type: 'collection',
+				placeholder: 'Add Batch Processing Option',
+				description: 'Batch processing options for rate limiting',
+				default: {},
+				options: [
+					{
+						displayName: 'Batch Size',
+						name: 'batchSize',
+						default: 1,
+						type: 'number',
+						description:
+							'How many items to process in parallel. This is useful for rate limiting, but will impact the agents log output.',
+					},
+					{
+						displayName: 'Delay Between Batches',
+						name: 'delayBetweenBatches',
+						default: 0,
+						type: 'number',
+						description: 'Delay in milliseconds between batches. This is useful for rate limiting.',
+					},
+				],
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 2.0 } }],
+					},
+				},
+			},
 		],
 	},
 ];
