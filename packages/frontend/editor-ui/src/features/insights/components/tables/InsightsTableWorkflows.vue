@@ -89,7 +89,7 @@ const headers = ref<Array<TableHeader<Item>>>([
 
 const sortBy = defineModel<Array<{ id: string; desc: boolean }>>('sortBy');
 const currentPage = ref(0);
-const itemsPerPage = ref(20);
+const itemsPerPage = ref(25);
 
 const emit = defineEmits<{
 	'update:options': [
@@ -185,7 +185,6 @@ watch(sortBy, (newValue) => {
 	display: inline-flex;
 	height: 100%;
 	align-items: center;
-	text-decoration: none;
 	color: var(--color-text-base);
 	text-decoration: underline;
 	max-width: 100%;
