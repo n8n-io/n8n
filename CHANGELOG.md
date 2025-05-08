@@ -1,3 +1,12 @@
+## [1.91.3](https://github.com/n8n-io/n8n/compare/n8n@1.91.2...n8n@1.91.3) (2025-05-08)
+
+
+### Bug Fixes
+
+* **Code Node:** Update pyodide sandbox context to fix micropip regressions ([#15181](https://github.com/n8n-io/n8n/issues/15181)) ([faef48f](https://github.com/n8n-io/n8n/commit/faef48f835319650ec7b179d4292c1414a658842))
+
+
+
 ## [1.91.2](https://github.com/n8n-io/n8n/compare/n8n@1.91.1...n8n@1.91.2) (2025-05-05)
 
 
