@@ -1,8 +1,10 @@
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
+import { mock } from 'jest-mock-extended';
 import { DateTime } from 'luxon';
 
 import { InsightsRawRepository } from '@/modules/insights/database/repositories/insights-raw.repository';
+import { mockLogger } from '@test/mocking';
 import { createTeamProject } from '@test-integration/db/projects';
 import { createWorkflow } from '@test-integration/db/workflows';
 import * as testDb from '@test-integration/test-db';
@@ -45,6 +47,7 @@ if (dbType === 'sqlite' && !globalConfig.database.sqlite.poolSize) {
 	afterAll(async () => {
 		await testDb.terminate();
 	});
+
 	describe('compaction', () => {
 		describe('compactRawToHour', () => {
 			type TestData = {
@@ -317,14 +320,21 @@ if (dbType === 'sqlite' && !globalConfig.database.sqlite.poolSize) {
 
 		describe('compactionSchedule', () => {
 			test('compaction is running on schedule', async () => {
+				// ARRANGE
 				jest.useFakeTimers();
-				try {
-					// ARRANGE
-					const insightsCompactionService = Container.get(InsightsCompactionService);
-					insightsCompactionService.startCompactionTimer();
+				const insightsCompactionService = new InsightsCompactionService(
+					mock<InsightsByPeriodRepository>(),
+					mock<InsightsRawRepository>(),
+					mock<InsightsConfig>({
+						compactionIntervalMinutes: 60,
+					}),
+					mockLogger(),
+				);
+				// spy on the compactInsights method to check if it's called
+				const compactInsightsSpy = jest.spyOn(insightsCompactionService, 'compactInsights');
 
-					// spy on the compactInsights method to check if it's called
-					const compactInsightsSpy = jest.spyOn(insightsCompactionService, 'compactInsights');
+				try {
+					insightsCompactionService.startCompactionTimer();
 
 					// ACT
 					// advance by 1 hour and 1 minute
@@ -333,6 +343,7 @@ if (dbType === 'sqlite' && !globalConfig.database.sqlite.poolSize) {
 					// ASSERT
 					expect(compactInsightsSpy).toHaveBeenCalledTimes(1);
 				} finally {
+					insightsCompactionService.stopCompactionTimer();
 					jest.useRealTimers();
 				}
 			});
