@@ -70,8 +70,6 @@ export class WorkflowToolService {
 		description: string;
 		itemIndex: number;
 	}): Promise<DynamicTool | DynamicStructuredTool> {
-		console.log('node', ctx.getNode());
-		console.log('runDataLength', ctx.getRunDataLength());
 		// Handler for the tool execution, will be called when the tool is executed
 		// This function will execute the sub-workflow and return the response
 		const toolHandler = async (
@@ -79,7 +77,6 @@ export class WorkflowToolService {
 			runManager?: CallbackManagerForToolRun,
 		): Promise<IDataObject | IDataObject[] | string> => {
 			const localRunIndex: number = ctx.getRunDataLength();
-			console.log(`runIndex: ${localRunIndex}`);
 			// We need to clone the context here to handle runIndex correctly
 			// Otherwise the runIndex will be shared between different executions
 			// Causing incorrect data to be passed to the sub-workflow and via $fromAI

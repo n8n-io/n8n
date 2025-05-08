@@ -169,10 +169,7 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 
 	getRunDataLength(): number {
 		const nodeName = this.node.name;
-		if (this.runExecutionData.resultData.runData.hasOwnProperty(nodeName)) {
-			return this.runExecutionData.resultData.runData[nodeName].length;
-		}
-		return 0;
+		return this.runExecutionData.resultData.runData[nodeName]?.length ?? 0;
 	}
 
 	/** @deprecated create a context object with inputData for every runIndex */
