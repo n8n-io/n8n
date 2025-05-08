@@ -11,6 +11,7 @@ import {
 	createLogEntries,
 	deepToRaw,
 	findSelectedLogEntry,
+	getDefaultCollapsedEntries,
 	getTreeNodeData,
 	getTreeNodeDataV2,
 } from '@/components/RunDataAi/utils';
@@ -1135,11 +1136,11 @@ describe(findSelectedLogEntry, () => {
 
 	describe('when log is manually selected', () => {
 		it('should return manually selected log', () => {
-			const nodeA = createTestNode({ name: 'A' });
 			const response = createTestWorkflowExecutionResponse({
+				id: 'my-exec-id',
 				workflowData: createTestWorkflow({
 					id: 'test-wf-id',
-					nodes: [nodeA, createTestNode({ name: 'B' })],
+					nodes: [createTestNode({ name: 'A' }), createTestNode({ name: 'B' })],
 				}),
 				data: {
 					resultData: {
@@ -1151,13 +1152,7 @@ describe(findSelectedLogEntry, () => {
 				},
 			});
 
-			const result = find(
-				{
-					type: 'selected',
-					data: createTestLogEntry({ node: nodeA, runIndex: 0 }),
-				},
-				response,
-			);
+			const result = find({ type: 'selected', id: 'test-wf-id:A:my-exec-id:0' }, response);
 
 			expect(result).toEqual(
 				expect.objectContaining({ node: expect.objectContaining({ name: 'A' }), runIndex: 0 }),
@@ -1396,5 +1391,44 @@ describe(deepToRaw, () => {
 		expect(isReactive(raw.foo)).toBe(false);
 		expect(isReactive(raw.foo.bar)).toBe(false);
 		expect(isReactive(raw.bazz)).toBe(false);
+	});
+});
+
+describe(getDefaultCollapsedEntries, () => {
+	it('should recursively find logs for runs with a sub execution and has no child logs', () => {
+		const entries = [
+			// Has sub execution and has no children
+			createTestLogEntry({
+				id: 'l0',
+				runData: createTestTaskData({
+					metadata: { subExecution: { workflowId: 'w0', executionId: 'e0' } },
+				}),
+				children: [],
+			}),
+			// Has no sub execution
+			createTestLogEntry({ id: 'l1' }),
+			// Has sub execution and has children
+			createTestLogEntry({
+				id: 'l2',
+				runData: createTestTaskData({
+					metadata: { subExecution: { workflowId: 'w0', executionId: 'e0' } },
+				}),
+				children: [
+					// Has no sub execution - nested
+					createTestLogEntry({ id: 'l3' }),
+					// Has sub execution and has no children - nested
+					createTestLogEntry({
+						id: 'l4',
+						runData: createTestTaskData({
+							metadata: {
+								subExecution: { workflowId: 'w0', executionId: 'e0' },
+							},
+						}),
+					}),
+				],
+			}),
+		];
+
+		expect(getDefaultCollapsedEntries(entries)).toEqual({ l0: true, l4: true });
 	});
 });

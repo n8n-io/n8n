@@ -20,6 +20,7 @@ export function useExecutionData() {
 
 	const execData = ref<IExecutionResponse | undefined>();
 	const subWorkflowExecData = ref<Record<string, IRunExecutionData>>({});
+	const subWorkflows = ref<Record<string, Workflow>>({});
 
 	const workflow = computed(() =>
 		execData.value
@@ -57,13 +58,7 @@ export function useExecutionData() {
 		return createLogEntries(
 			workflow.value,
 			execData.value,
-			Object.fromEntries(
-				Object.entries(workflowsStore.workflowsById).flatMap(([id, data]) =>
-					data.nodes
-						? [[id, new Workflow({ ...data, nodeTypes: workflowsStore.getNodeTypes() })]]
-						: [],
-				),
-			),
+			subWorkflows.value,
 			subWorkflowExecData.value,
 		);
 	});
@@ -90,17 +85,22 @@ export function useExecutionData() {
 			return;
 		}
 
-		const [, res] = await Promise.all([
+		const [subWorkflow, subExecution] = await Promise.all([
 			workflowsStore.fetchWorkflow(workflowId),
 			workflowsStore.fetchExecutionDataById(executionId),
 		]);
-		const data = res?.data
-			? (parse(res.data as unknown as string) as IRunExecutionData)
+		const data = subExecution?.data
+			? (parse(subExecution.data as unknown as string) as IRunExecutionData)
 			: undefined;
 
 		if (data) {
 			subWorkflowExecData.value[executionId] = data;
 		}
+
+		subWorkflows.value[workflowId] = new Workflow({
+			...subWorkflow,
+			nodeTypes: workflowsStore.getNodeTypes(),
+		});
 	}
 
 	watch(

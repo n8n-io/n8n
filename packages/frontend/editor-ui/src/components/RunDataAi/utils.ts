@@ -490,26 +490,41 @@ function createLogEntriesRec(context: LogTreeBuildContext) {
 	);
 }
 
-export function includesLogEntry(log: LogEntry, logs: LogEntry[]): boolean {
-	return logs.some(
-		(l) =>
-			(l.node.name === log.node.name && log.runIndex === l.runIndex) ||
-			includesLogEntry(log, l.children),
-	);
+export function findLogEntryRec(id: string, entries: LogEntry[]): LogEntry | undefined {
+	for (const entry of entries) {
+		if (entry.id === id) {
+			return entry;
+		}
+
+		const child = findLogEntryRec(id, entry.children);
+
+		if (child) {
+			return child;
+		}
+	}
+
+	return undefined;
 }
 
 export function findSelectedLogEntry(
-	state: LogEntrySelection,
-	execution: LogEntry[],
+	selection: LogEntrySelection,
+	entries: LogEntry[],
 ): LogEntry | undefined {
-	return state.type === 'initial' ||
-		(state.type === 'selected' && !includesLogEntry(state.data, execution))
-		? execution
-			? findLogEntryToAutoSelectRec(execution, 0)
-			: undefined
-		: state.type === 'none'
-			? undefined
-			: state.data;
+	switch (selection.type) {
+		case 'initial':
+			return findLogEntryToAutoSelectRec(entries, 0);
+		case 'none':
+			return undefined;
+		case 'selected': {
+			const entry = findLogEntryRec(selection.id, entries);
+
+			if (entry) {
+				return entry;
+			}
+
+			return findLogEntryToAutoSelectRec(entries, 0);
+		}
+	}
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -571,13 +586,20 @@ export function hasSubExecution(entry: LogEntry): boolean {
 	return !!entry.runData.metadata?.subExecution;
 }
 
-export function collectEmptySubNodeExecutions(entries: LogEntry[], ret: string[] = []): string[] {
-	for (const entry of entries) {
-		if (hasSubExecution(entry)) {
-			ret.push(entry.id);
-		}
+export function getDefaultCollapsedEntries(entries: LogEntry[]): Record<string, boolean> {
+	const ret: Record<string, boolean> = {};
 
-		collectEmptySubNodeExecutions(entry.children);
+	function collect(children: LogEntry[]) {
+		for (const entry of children) {
+			if (hasSubExecution(entry) && entry.children.length === 0) {
+				ret[entry.id] = true;
+			}
+
+			collect(entry.children);
+		}
 	}
+
+	collect(entries);
+
 	return ret;
 }

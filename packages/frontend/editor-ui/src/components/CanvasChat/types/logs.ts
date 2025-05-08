@@ -1,8 +1,6 @@
-import { type LogEntry } from '@/components/RunDataAi/utils';
-
 export type LogEntrySelection =
 	| { type: 'initial' }
-	| { type: 'selected'; data: LogEntry }
+	| { type: 'selected'; id: string }
 	| { type: 'none' };
 
 export const LOGS_PANEL_STATE = {

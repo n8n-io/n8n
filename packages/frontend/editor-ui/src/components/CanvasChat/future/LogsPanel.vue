@@ -68,7 +68,7 @@ const logsPanelActionsProps = computed<InstanceType<typeof LogsPanelActions>['$p
 
 function handleSelectLogEntry(selected: LogEntry | undefined) {
 	manualLogEntrySelection.value =
-		selected === undefined ? { type: 'none' } : { type: 'selected', data: selected };
+		selected === undefined ? { type: 'none' } : { type: 'selected', id: selected.id };
 }
 
 function handleResizeOverviewPanelEnd() {
@@ -142,7 +142,7 @@ function handleResizeOverviewPanelEnd() {
 								:execution="execution"
 								:scroll-to-selection="
 									manualLogEntrySelection.type !== 'selected' ||
-									manualLogEntrySelection.data.id !== selectedLogEntry?.id
+									manualLogEntrySelection.id !== selectedLogEntry?.id
 								"
 								:latest-node-info="latestNodeNameById"
 								@click-header="onToggleOpen(true)"
@@ -164,7 +164,7 @@ function handleResizeOverviewPanelEnd() {
 							:is-open="isOpen"
 							:log-entry="selectedLogEntry"
 							:window="pipWindow"
-							:latest-info="latestNodeNameById[selectedLogEntry.node.id]"
+							:latest-info="latestNodeNameById[selectedLogEntry.id]"
 							@click-header="onToggleOpen(true)"
 						>
 							<template #actions>

@@ -11,7 +11,7 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useRouter } from 'vue-router';
 import ExecutionSummary from '@/components/CanvasChat/future/components/ExecutionSummary.vue';
 import {
-	collectEmptySubNodeExecutions,
+	getDefaultCollapsedEntries,
 	flattenLogEntries,
 	getSubtreeTotalConsumedTokens,
 	getTotalConsumedTokens,
@@ -68,7 +68,7 @@ const consumedTokens = computed(() =>
 );
 const manuallyCollapsedEntries = ref<Record<string, boolean>>({});
 const collapsedEntries = computed(() => ({
-	...Object.fromEntries(collectEmptySubNodeExecutions(entries).map((id) => [id, true])),
+	...getDefaultCollapsedEntries(entries),
 	...manuallyCollapsedEntries.value,
 }));
 const flatLogEntries = computed(() => flattenLogEntries(entries, collapsedEntries.value));
@@ -99,7 +99,7 @@ async function handleToggleExpanded(treeNode: LogEntry) {
 		return;
 	}
 
-	manuallyCollapsedEntries.value[treeNode.id] = !manuallyCollapsedEntries.value[treeNode.id];
+	manuallyCollapsedEntries.value[treeNode.id] = !collapsedEntries.value[treeNode.id];
 }
 
 async function handleOpenNdv(treeNode: LogEntry) {
@@ -125,10 +125,10 @@ async function handleTriggerPartialExecution(treeNode: LogEntry) {
 
 // Scroll selected row into view
 watch(
-	() => (scrollToSelection ? selected : undefined),
-	async (entry) => {
-		if (entry) {
-			const index = flatLogEntries.value.findIndex((e) => e.id === entry.id);
+	() => (scrollToSelection ? selected?.id : undefined),
+	async (selectedId) => {
+		if (selectedId) {
+			const index = flatLogEntries.value.findIndex((e) => e.id === selectedId);
 
 			if (index >= 0) {
 				// Wait for the node to be added to the list, and then scroll
@@ -203,7 +203,7 @@ watch(
 							:should-show-consumed-tokens="consumedTokens.totalTokens > 0"
 							:latest-info="latestNodeInfo[data.node.id]"
 							:expanded="!collapsedEntries[data.id]"
-							:can-open-ndv="data.workflow.id === execution?.workflowId"
+							:can-open-ndv="data.executionId === execution?.id"
 							@click.stop="handleClickNode(data)"
 							@toggle-expanded="handleToggleExpanded"
 							@open-ndv="handleOpenNdv"
