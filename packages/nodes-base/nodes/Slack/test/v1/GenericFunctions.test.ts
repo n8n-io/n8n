@@ -54,7 +54,7 @@ describe('Slack V1 > GenericFunctions', () => {
 				.mockResolvedValue(mockResponse);
 
 			await slackApiRequest.call(mockExecuteFunctions, 'GET', '/test');
-			
+
 			expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
 				'slackOAuth2Api',
 				expect.any(Object),

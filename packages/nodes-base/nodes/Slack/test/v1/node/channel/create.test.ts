@@ -29,20 +29,20 @@ const API_RESPONSE = {
 		topic: {
 			value: '',
 			creator: '',
-			last_set: 0
+			last_set: 0,
 		},
 		purpose: {
 			value: '',
 			creator: '',
-			last_set: 0
-		}
-	}
+			last_set: 0,
+		},
+	},
 };
 
 describe('Test SlackV1, channel => create', () => {
 	nock('https://slack.com')
 		.post('/api/conversations.create', {
-			name: 'test-channel'
+			name: 'test-channel',
 		})
 		.reply(200, API_RESPONSE);
 
