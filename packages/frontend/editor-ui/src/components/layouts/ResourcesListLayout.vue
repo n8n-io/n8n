@@ -682,7 +682,12 @@ defineExpose({
 
 					<slot name="callout"></slot>
 
-					<div v-if="showFiltersDropdown" v-show="hasFilters" class="mt-xs">
+					<div
+						v-if="showFiltersDropdown"
+						v-show="hasFilters"
+						class="mt-xs"
+						data-test-id="resources-list-filters-applied-info"
+					>
 						<n8n-info-tip :bold="false">
 							{{
 								hasOnlyFiltersThatShowMoreResults
