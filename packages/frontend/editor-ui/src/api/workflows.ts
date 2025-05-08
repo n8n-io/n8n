@@ -47,10 +47,12 @@ export async function getWorkflowsAndFolders(
 	filter?: object,
 	options?: object,
 	includeFolders?: boolean,
+	onlySharedWithMe?: boolean,
 ) {
 	return await getFullApiResponse<WorkflowListResource[]>(context, 'GET', '/workflows', {
 		includeScopes: true,
 		includeFolders,
+		onlySharedWithMe,
 		...(filter ? { filter } : {}),
 		...(options ? options : {}),
 	});

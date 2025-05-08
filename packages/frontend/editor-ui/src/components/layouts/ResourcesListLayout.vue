@@ -297,14 +297,11 @@ watch(
 	},
 );
 
-watch(
-	() => route?.params?.projectId,
-	async () => {
-		await resetFilters();
-		await loadPaginationPreferences();
-		await props.initialize();
-	},
-);
+watch([() => route.params?.projectId, () => route.name], async () => {
+	await resetFilters();
+	await loadPaginationPreferences();
+	await props.initialize();
+});
 
 // Lifecycle hooks
 onMounted(async () => {

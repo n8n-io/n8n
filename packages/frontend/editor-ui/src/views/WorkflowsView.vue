@@ -18,7 +18,7 @@ import type { DragTarget, DropTarget } from '@/composables/useFolders';
 import { useFolders } from '@/composables/useFolders';
 import { useI18n } from '@/composables/useI18n';
 import { useMessage } from '@/composables/useMessage';
-import { useOverview } from '@/composables/useOverview';
+import { useProjectPages } from '@/composables/useProjectPages';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
 import {
@@ -49,7 +49,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { useUsageStore } from '@/stores/usage.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { type ProjectSharingData, ProjectTypes } from '@/types/projects.types';
+import { type Project, type ProjectSharingData, ProjectTypes } from '@/types/projects.types';
 import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
 import {
 	N8nCard,
@@ -112,7 +112,7 @@ const insightsStore = useInsightsStore();
 
 const documentTitle = useDocumentTitle();
 const { callDebounced } = useDebounce();
-const overview = useOverview();
+const projectPages = useProjectPages();
 
 // We render component in a loading state until initialization is done
 // This will prevent any additional workflow fetches while initializing
@@ -197,7 +197,6 @@ const mainBreadcrumbsActions = computed(() =>
 );
 
 const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
-const isOverviewPage = computed(() => route.name === VIEWS.WORKFLOWS);
 const currentUser = computed(() => usersStore.currentUser ?? ({} as IUser));
 const isShareable = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing],
@@ -212,7 +211,7 @@ const teamProjectsEnabled = computed(() => {
 });
 
 const showFolders = computed(() => {
-	return foldersEnabled.value && !isOverviewPage.value;
+	return foldersEnabled.value && !projectPages.isOverviewSubPage && !projectPages.isSharedSubPage;
 });
 
 const currentFolder = computed(() => {
@@ -267,6 +266,10 @@ const currentParentName = computed(() => {
 		return currentFolder.value.name;
 	}
 	return projectName.value;
+});
+
+const personalProject = computed<Project | null>(() => {
+	return projectsStore.personalProject;
 });
 
 const workflowListResources = computed<Resource[]>(() => {
@@ -330,7 +333,7 @@ const showEasyAIWorkflowCallout = computed(() => {
 
 const projectPermissions = computed(() => {
 	return getResourcePermissions(
-		projectsStore.currentProject?.scopes ?? projectsStore.personalProject?.scopes,
+		projectsStore.currentProject?.scopes ?? personalProject.value?.scopes,
 	);
 });
 
@@ -367,12 +370,9 @@ const showRegisteredCommunityCTA = computed(
  * WATCHERS, STORE SUBSCRIPTIONS AND EVENT BUS HANDLERS
  */
 
-watch(
-	() => route.params?.projectId,
-	async () => {
-		loading.value = true;
-	},
-);
+watch([() => route.params?.projectId, () => route.name], async () => {
+	loading.value = true;
+});
 
 watch(
 	() => route.params?.folderId,
@@ -510,11 +510,10 @@ const fetchWorkflows = async () => {
 				active: activeFilter,
 				isArchived: archivedFilter,
 				tags: tags.length ? tags : undefined,
-				parentFolderId:
-					parentFolder ??
-					(isOverviewPage.value ? undefined : filters?.value.search ? undefined : PROJECT_ROOT), // Sending 0 will only show one level of folders
+				parentFolderId: getParentFolderId(parentFolder),
 			},
 			fetchFolders,
+			projectPages.isSharedSubPage,
 		);
 
 		foldersStore.cacheFolders(
@@ -536,7 +535,8 @@ const fetchWorkflows = async () => {
 		workflowsAndFolders.value = fetchedResources;
 
 		// Toggle ownership cards visibility only after we have fetched the workflows
-		showCardsBadge.value = isOverviewPage.value || filters.value.search !== '';
+		showCardsBadge.value =
+			projectPages.isOverviewSubPage || projectPages.isSharedSubPage || filters.value.search !== '';
 
 		return fetchedResources;
 	} catch (error) {
@@ -553,11 +553,31 @@ const fetchWorkflows = async () => {
 	}
 };
 
+/**
+ * Get parent folder id for filtering requests
+ */
+const getParentFolderId = (routeId?: string) => {
+	// If parentFolder is defined in route, use it
+	if (routeId !== null && routeId !== undefined) {
+		return routeId;
+	}
+
+	// If we're on overview/shared page or searching, don't filter by parent folder
+	if (projectPages.isOverviewSubPage || projectPages.isSharedSubPage || filters?.value.search) {
+		return undefined;
+	}
+
+	// Default: 0 will only show one level of folders
+	return PROJECT_ROOT;
+};
+
 // Filter and sort methods
 const onFiltersUpdated = async () => {
 	currentPage.value = 1;
 	saveFiltersOnQueryString();
-	await callDebounced(fetchWorkflows, { debounceTime: FILTERS_DEBOUNCE_TIME, trailing: true });
+	if (!loading.value) {
+		await callDebounced(fetchWorkflows, { debounceTime: FILTERS_DEBOUNCE_TIME, trailing: true });
+	}
 };
 
 const onSearchUpdated = async (search: string) => {
@@ -1369,7 +1389,7 @@ const onNameSubmit = async ({
 		<template #header>
 			<ProjectHeader @create-folder="createFolderInCurrent">
 				<InsightsSummary
-					v-if="overview.isOverviewSubPage && insightsStore.isSummaryEnabled"
+					v-if="projectPages.isOverviewSubPage && insightsStore.isSummaryEnabled"
 					:loading="insightsStore.weeklySummary.isLoading"
 					:summary="insightsStore.weeklySummary.state"
 					time-range="week"
@@ -1379,10 +1399,21 @@ const onNameSubmit = async ({
 		<template v-if="foldersEnabled || showRegisteredCommunityCTA" #add-button>
 			<N8nTooltip
 				placement="top"
-				:disabled="!(isOverviewPage || (!readOnlyEnv && hasPermissionToCreateFolders))"
+				:disabled="
+					!(
+						projectPages.isOverviewSubPage ||
+						projectPages.isSharedSubPage ||
+						(!readOnlyEnv && hasPermissionToCreateFolders)
+					)
+				"
 			>
 				<template #content>
-					<span v-if="isOverviewPage && !showRegisteredCommunityCTA">
+					<span
+						v-if="
+							(projectPages.isOverviewSubPage || projectPages.isSharedSubPage) &&
+							!showRegisteredCommunityCTA
+						"
+					>
 						<span v-if="teamProjectsEnabled">
 							{{ i18n.baseText('folders.add.overview.withProjects.message') }}
 						</span>
@@ -1413,7 +1444,7 @@ const onNameSubmit = async ({
 		</template>
 		<template #callout>
 			<N8nCallout
-				v-if="showEasyAIWorkflowCallout && easyAICalloutVisible"
+				v-if="!loading && showEasyAIWorkflowCallout && easyAICalloutVisible"
 				theme="secondary"
 				icon="robot"
 				:class="$style['easy-ai-workflow-callout']"
@@ -1500,7 +1531,7 @@ const onNameSubmit = async ({
 					:read-only="
 						readOnlyEnv || (!hasPermissionToDeleteFolders && !hasPermissionToCreateFolders)
 					"
-					:personal-project="projectsStore.personalProject"
+					:personal-project="personalProject"
 					:data-resourceid="(data as FolderResource).id"
 					:data-resourcename="(data as FolderResource).name"
 					:class="{
@@ -1565,47 +1596,54 @@ const onNameSubmit = async ({
 			</Draggable>
 		</template>
 		<template #empty>
-			<div class="text-center mt-s" data-test-id="list-empty-state">
-				<N8nHeading tag="h2" size="xlarge" class="mb-2xs">
-					{{
-						currentUser.firstName
-							? i18n.baseText('workflows.empty.heading', {
-									interpolate: { name: currentUser.firstName },
-								})
-							: i18n.baseText('workflows.empty.heading.userNotSetup')
-					}}
-				</N8nHeading>
-				<N8nText size="large" color="text-base">
-					{{ emptyListDescription }}
-				</N8nText>
-			</div>
-			<div
-				v-if="!readOnlyEnv && projectPermissions.workflow.create"
-				:class="['text-center', 'mt-2xl', $style.actionsContainer]"
-			>
-				<N8nCard
-					:class="$style.emptyStateCard"
-					hoverable
-					data-test-id="new-workflow-card"
-					@click="addWorkflow"
-				>
-					<N8nIcon :class="$style.emptyStateCardIcon" icon="file" />
-					<N8nText size="large" class="mt-xs" color="text-dark">
-						{{ i18n.baseText('workflows.empty.startFromScratch') }}
+			<EmptySharedSectionActionBox
+				v-if="projectPages.isSharedSubPage && personalProject"
+				:personal-project="personalProject"
+				resource-type="workflows"
+			/>
+			<div v-else>
+				<div class="text-center mt-s" data-test-id="list-empty-state">
+					<N8nHeading tag="h2" size="xlarge" class="mb-2xs">
+						{{
+							currentUser.firstName
+								? i18n.baseText('workflows.empty.heading', {
+										interpolate: { name: currentUser.firstName },
+									})
+								: i18n.baseText('workflows.empty.heading.userNotSetup')
+						}}
+					</N8nHeading>
+					<N8nText size="large" color="text-base">
+						{{ emptyListDescription }}
 					</N8nText>
-				</N8nCard>
-				<N8nCard
-					v-if="showEasyAIWorkflowCallout"
-					:class="$style.emptyStateCard"
-					hoverable
-					data-test-id="easy-ai-workflow-card"
-					@click="openAIWorkflow('empty')"
+				</div>
+				<div
+					v-if="!readOnlyEnv && projectPermissions.workflow.create"
+					:class="['text-center', 'mt-2xl', $style.actionsContainer]"
 				>
-					<N8nIcon :class="$style.emptyStateCardIcon" icon="robot" />
-					<N8nText size="large" class="mt-xs pl-2xs pr-2xs" color="text-dark">
-						{{ i18n.baseText('workflows.empty.easyAI') }}
-					</N8nText>
-				</N8nCard>
+					<N8nCard
+						:class="$style.emptyStateCard"
+						hoverable
+						data-test-id="new-workflow-card"
+						@click="addWorkflow"
+					>
+						<N8nIcon :class="$style.emptyStateCardIcon" icon="file" />
+						<N8nText size="large" class="mt-xs" color="text-dark">
+							{{ i18n.baseText('workflows.empty.startFromScratch') }}
+						</N8nText>
+					</N8nCard>
+					<N8nCard
+						v-if="showEasyAIWorkflowCallout"
+						:class="$style.emptyStateCard"
+						hoverable
+						data-test-id="easy-ai-workflow-card"
+						@click="openAIWorkflow('empty')"
+					>
+						<N8nIcon :class="$style.emptyStateCardIcon" icon="robot" />
+						<N8nText size="large" class="mt-xs pl-2xs pr-2xs" color="text-dark">
+							{{ i18n.baseText('workflows.empty.easyAI') }}
+						</N8nText>
+					</N8nCard>
+				</div>
 			</div>
 		</template>
 		<template #filters="{ setKeyValue }">
@@ -1657,12 +1695,19 @@ const onNameSubmit = async ({
 			</div>
 		</template>
 		<template #postamble>
+			<!-- Empty states for shared section and folders -->
 			<div
-				v-if="workflowsAndFolders.length === 0 && currentFolder && !hasFilters"
+				v-if="workflowsAndFolders.length === 0 && !hasFilters"
 				:class="$style['empty-folder-container']"
 				data-test-id="empty-folder-container"
 			>
+				<EmptySharedSectionActionBox
+					v-if="projectPages.isSharedSubPage && personalProject"
+					:personal-project="personalProject"
+					resource-type="workflows"
+				/>
 				<n8n-action-box
+					v-else-if="currentFolder"
 					data-test-id="empty-folder-action-box"
 					:heading="
 						i18n.baseText('folders.empty.actionbox.title', {
