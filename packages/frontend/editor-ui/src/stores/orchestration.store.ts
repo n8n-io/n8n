@@ -14,7 +14,7 @@ export interface IOrchestrationStoreState {
 		[id: string]: IWorkerHistoryItem[];
 	};
 	workersLastUpdated: { [id: string]: number };
-	statusInterval: NodeJS.Timer | null;
+	statusInterval: NodeJS.Timeout | null;
 }
 
 export interface IWorkerHistoryItem {

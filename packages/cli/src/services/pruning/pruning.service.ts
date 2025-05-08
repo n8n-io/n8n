@@ -25,7 +25,7 @@ import { connectionState as dbConnectionState } from '@/db';
 @Service()
 export class PruningService {
 	/** Timer for soft-deleting executions on a rolling basis. */
-	private softDeletionInterval: NodeJS.Timer | undefined;
+	private softDeletionInterval: NodeJS.Timeout | undefined;
 
 	/** Timeout for next hard-deletion of soft-deleted executions. */
 	private hardDeletionTimeout: NodeJS.Timeout | undefined;

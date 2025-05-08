@@ -23,9 +23,9 @@ export class ExternalSecretsManager {
 
 	initialized = false;
 
-	updateInterval: NodeJS.Timer;
+	updateInterval: NodeJS.Timeout;
 
-	initRetryTimeouts: Record<string, NodeJS.Timer> = {};
+	initRetryTimeouts: Record<string, NodeJS.Timeout> = {};
 
 	constructor(
 		private readonly logger: Logger,

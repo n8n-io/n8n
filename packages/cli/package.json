@@ -44,7 +44,7 @@
     "workflow"
   ],
   "engines": {
-    "node": ">=18.17 <= 22"
+    "node": ">=20.19 <= 22.x"
   },
   "files": [
     "bin",

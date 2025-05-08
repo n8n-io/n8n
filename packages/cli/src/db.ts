@@ -26,7 +26,7 @@ export const connectionState: ConnectionState = {
 };
 
 // Ping DB connection every 2 seconds
-let pingTimer: NodeJS.Timer | undefined;
+let pingTimer: NodeJS.Timeout | undefined;
 if (!inTest) {
 	const pingDBFn = async () => {
 		if (connection?.isInitialized) {
