@@ -5,6 +5,8 @@ import { useI18n } from '@n8n/i18n';
 import { useCanvasNode } from '@/composables/useCanvasNode';
 import type { CanvasNodeDefaultRender } from '@/types';
 import { useCanvas } from '@/composables/useCanvas';
+import CanvasNodeSettingsIcons from '@/components/canvas/elements/nodes/render-types/parts/CanvasNodeSettingsIcons.vue';
+import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { calculateNodeSize } from '@/utils/nodeViewUtils';
 import ExperimentalInPlaceNodeSettings from '@/components/canvas/experimental/components/ExperimentalEmbeddedNodeDetails.vue';
 import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
@@ -44,6 +46,7 @@ const { mainOutputs, mainOutputConnections, mainInputs, mainInputConnections, no
 		connections,
 	});
 
+const nodeHelpers = useNodeHelpers();
 const renderOptions = computed(() => render.value.options as CanvasNodeDefaultRender['options']);
 
 const experimentalNdvStore = useExperimentalNdvStore();
@@ -155,6 +158,11 @@ function onActivate(event: MouseEvent) {
 			:shrink="false"
 			:disabled="isDisabled"
 			:class="$style.icon"
+		/>
+		<NodeIcon :icon-source="iconSource" :size="iconSize" :shrink="false" :disabled="isDisabled" />
+		<CanvasNodeSettingsIcons
+			v-if="!isDisabled && !(hasPinnedData && !nodeHelpers.isProductionExecutionPreview.value)"
+			:class="$style.settingsIcons"
 		/>
 		<CanvasNodeDisabledStrikeThrough v-if="isStrikethroughVisible" />
 		<div :class="$style.description">
@@ -355,5 +363,12 @@ function onActivate(event: MouseEvent) {
 .icon {
 	flex-grow: 0;
 	flex-shrink: 0;
+}
+.settingsIcons {
+	position: absolute;
+	bottom: var(--canvas-node--status-icons-offset);
+	left: var(--canvas-node--status-icons-offset);
+	display: flex;
+	gap: var(--spacing-4xs);
 }
 </style>
