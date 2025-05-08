@@ -700,6 +700,50 @@ describe('TelemetryEventRelay', () => {
 			});
 		});
 
+		it('should track on `workflow-archived` event', () => {
+			const event: RelayEventMap['workflow-archived'] = {
+				user: {
+					id: 'user123',
+					email: 'user@example.com',
+					firstName: 'John',
+					lastName: 'Doe',
+					role: 'global:owner',
+				},
+				workflowId: 'workflow123',
+				publicApi: false,
+			};
+
+			eventService.emit('workflow-archived', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User archived workflow', {
+				user_id: 'user123',
+				workflow_id: 'workflow123',
+				public_api: false,
+			});
+		});
+
+		it('should track on `workflow-unarchived` event', () => {
+			const event: RelayEventMap['workflow-unarchived'] = {
+				user: {
+					id: 'user123',
+					email: 'user@example.com',
+					firstName: 'John',
+					lastName: 'Doe',
+					role: 'global:owner',
+				},
+				workflowId: 'workflow123',
+				publicApi: false,
+			};
+
+			eventService.emit('workflow-unarchived', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User unarchived workflow', {
+				user_id: 'user123',
+				workflow_id: 'workflow123',
+				public_api: false,
+			});
+		});
+
 		it('should track on `workflow-deleted` event', () => {
 			const event: RelayEventMap['workflow-deleted'] = {
 				user: {

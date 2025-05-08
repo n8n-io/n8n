@@ -77,6 +77,8 @@ export class TelemetryEventRelay extends EventRelay {
 			'ldap-login-sync-failed': (event) => this.ldapLoginSyncFailed(event),
 			'login-failed-due-to-ldap-disabled': (event) => this.loginFailedDueToLdapDisabled(event),
 			'workflow-created': (event) => this.workflowCreated(event),
+			'workflow-archived': (event) => this.workflowArchived(event),
+			'workflow-unarchived': (event) => this.workflowUnarchived(event),
 			'workflow-deleted': (event) => this.workflowDeleted(event),
 			'workflow-sharing-updated': (event) => this.workflowSharingUpdated(event),
 			'workflow-saved': async (event) => await this.workflowSaved(event),
@@ -529,6 +531,26 @@ export class TelemetryEventRelay extends EventRelay {
 			public_api: publicApi,
 			project_id: projectId,
 			project_type: projectType,
+		});
+	}
+
+	private workflowArchived({ user, workflowId, publicApi }: RelayEventMap['workflow-archived']) {
+		this.telemetry.track('User archived workflow', {
+			user_id: user.id,
+			workflow_id: workflowId,
+			public_api: publicApi,
+		});
+	}
+
+	private workflowUnarchived({
+		user,
+		workflowId,
+		publicApi,
+	}: RelayEventMap['workflow-unarchived']) {
+		this.telemetry.track('User unarchived workflow', {
+			user_id: user.id,
+			workflow_id: workflowId,
+			public_api: publicApi,
 		});
 	}
 
