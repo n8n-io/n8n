@@ -1,6 +1,6 @@
 import { GlobalConfig } from '@n8n/config';
 import type { User, WorkflowEntity, ListQueryDb } from '@n8n/db';
-import { SharedWorkflow, ExecutionRepository } from '@n8n/db';
+import { SharedWorkflow, ExecutionRepository, FolderRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
@@ -20,6 +20,7 @@ import { SharedWorkflowRepository } from '@/databases/repositories/shared-workfl
 import { WorkflowTagMappingRepository } from '@/databases/repositories/workflow-tag-mapping.repository';
 import type { WorkflowFolderUnionFull } from '@/databases/repositories/workflow.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
@@ -27,7 +28,6 @@ import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
 import type { ListQuery } from '@/requests';
 import { hasSharing } from '@/requests';
-import { FolderService } from '@/services/folder.service';
 import { OrchestrationService } from '@/services/orchestration.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
@@ -59,7 +59,7 @@ export class WorkflowService {
 		private readonly executionRepository: ExecutionRepository,
 		private readonly eventService: EventService,
 		private readonly globalConfig: GlobalConfig,
-		private readonly folderService: FolderService,
+		private readonly folderRepository: FolderRepository,
 		private readonly workflowFinderService: WorkflowFinderService,
 	) {}
 
@@ -300,7 +300,14 @@ export class WorkflowService {
 		if (parentFolderId) {
 			const project = await this.sharedWorkflowRepository.getWorkflowOwningProject(workflow.id);
 			if (parentFolderId !== PROJECT_ROOT) {
-				await this.folderService.findFolderInProjectOrFail(parentFolderId, project?.id ?? '');
+				try {
+					await this.folderRepository.findOneOrFailFolderInProject(
+						parentFolderId,
+						project?.id ?? '',
+					);
+				} catch (e) {
+					throw new FolderNotFoundError(parentFolderId);
+				}
 			}
 			updatePayload.parentFolder = parentFolderId === PROJECT_ROOT ? null : { id: parentFolderId };
 		}
@@ -483,25 +490,6 @@ export class WorkflowService {
 		workflow.versionId = versionId;
 
 		return workflow;
-	}
-
-	/**
-	 * Moves all workflows in a folder to the root of the project and archives them,
-	 * flattening the folder structure.
-	 *
-	 * If any workflows were active this will also deactivate those workflows.
-	 */
-	async flattenAndArchive(user: User, folderId: string, projectId: string): Promise<void> {
-		const workflowIds = await this.workflowRepository.getAllWorkflowIdsInHierarchy(
-			folderId,
-			projectId,
-		);
-
-		for (const workflowId of workflowIds) {
-			await this.archive(user, workflowId, true);
-		}
-
-		await this.workflowRepository.moveToFolder(workflowIds, PROJECT_ROOT);
 	}
 
 	async getWorkflowScopes(user: User, workflowId: string): Promise<Scope[]> {
