@@ -2003,7 +2003,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 			workflowsStore.setConnections(workflow.connections);
 		}
 		await addNodes(convertedNodes ?? []);
-		await workflowsStore.getNewWorkflowData(name, projectsStore.currentProjectId);
+		await workflowsStore.getNewWorkflowDataAndMakeShareable(name, projectsStore.currentProjectId);
 		workflowsStore.addToWorkflowMetadata({ templateId: `${id}` });
 	}
 

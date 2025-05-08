@@ -161,6 +161,45 @@ export const projectsRoutes: RouteRecordRaw[] = [
 		})),
 	},
 	{
+		path: '/shared',
+		name: VIEWS.SHARED_WITH_ME,
+		meta: {
+			middleware: ['authenticated'],
+		},
+		redirect: '/shared/workflows',
+		children: [
+			{
+				path: 'workflows',
+				name: VIEWS.SHARED_WORKFLOWS,
+				components: {
+					default: WorkflowsView,
+					sidebar: MainSidebar,
+				},
+				meta: {
+					middleware: ['authenticated', 'custom'],
+					middlewareOptions: {
+						custom: (options) => checkProjectAvailability(options?.to),
+					},
+				},
+			},
+			{
+				path: 'credentials/:credentialId?',
+				props: true,
+				name: VIEWS.SHARED_CREDENTIALS,
+				components: {
+					default: CredentialsView,
+					sidebar: MainSidebar,
+				},
+				meta: {
+					middleware: ['authenticated', 'custom'],
+					middlewareOptions: {
+						custom: (options) => checkProjectAvailability(options?.to),
+					},
+				},
+			},
+		],
+	},
+	{
 		path: '/workflows',
 		redirect: '/home/workflows',
 	},
