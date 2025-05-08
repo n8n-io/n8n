@@ -430,6 +430,7 @@
       "dist/nodes/Aws/AwsSns.node.js",
       "dist/nodes/Aws/AwsSnsTrigger.node.js",
       "dist/nodes/Aws/CertificateManager/AwsCertificateManager.node.js",
+      "dist/nodes/Aws/Cognito/AwsCognito.node.js",
       "dist/nodes/Aws/Comprehend/AwsComprehend.node.js",
       "dist/nodes/Aws/DynamoDB/AwsDynamoDB.node.js",
       "dist/nodes/Aws/ELB/AwsElb.node.js",
