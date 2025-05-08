@@ -1554,9 +1554,10 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 
 			const localized = i18n.localizeNodeName(node.name, node.type);
 
+			newNodeNames.delete(oldName);
 			newName = uniqueNodeName(localized, Array.from(newNodeNames));
-
 			newNodeNames.add(newName);
+
 			nodeNameTable[oldName] = newName;
 
 			createNodes.push(node);
