@@ -13,10 +13,12 @@ import {
 	type LogEntry,
 } from '@/components/RunDataAi/utils';
 import { parse } from 'flatted';
+import { useToast } from '@/composables/useToast';
 
 export function useExecutionData() {
 	const nodeHelpers = useNodeHelpers();
 	const workflowsStore = useWorkflowsStore();
+	const toast = useToast();
 
 	const execData = ref<IExecutionResponse | undefined>();
 	const subWorkflowExecData = ref<Record<string, IRunExecutionData>>({});
@@ -85,22 +87,26 @@ export function useExecutionData() {
 			return;
 		}
 
-		const [subWorkflow, subExecution] = await Promise.all([
-			workflowsStore.fetchWorkflow(workflowId),
-			workflowsStore.fetchExecutionDataById(executionId),
-		]);
-		const data = subExecution?.data
-			? (parse(subExecution.data as unknown as string) as IRunExecutionData)
-			: undefined;
+		try {
+			const [subWorkflow, subExecution] = await Promise.all([
+				workflowsStore.fetchWorkflow(workflowId),
+				workflowsStore.fetchExecutionDataById(executionId),
+			]);
+			const data = subExecution?.data
+				? (parse(subExecution.data as unknown as string) as IRunExecutionData)
+				: undefined;
 
-		if (data) {
-			subWorkflowExecData.value[executionId] = data;
+			if (data) {
+				subWorkflowExecData.value[executionId] = data;
+			}
+
+			subWorkflows.value[workflowId] = new Workflow({
+				...subWorkflow,
+				nodeTypes: workflowsStore.getNodeTypes(),
+			});
+		} catch (e) {
+			toast.showError(e, 'Unable to load sub execution');
 		}
-
-		subWorkflows.value[workflowId] = new Workflow({
-			...subWorkflow,
-			nodeTypes: workflowsStore.getNodeTypes(),
-		});
 	}
 
 	watch(
