@@ -337,7 +337,7 @@ const focusSearchInput = () => {
 	}
 };
 
-const isFilterApplied = (key: string) => {
+const isFilterApplied = (key: string): boolean => {
 	if (key === 'search') return false;
 
 	if (typeof props.filters[key] === 'boolean') {
@@ -351,14 +351,14 @@ const isFilterApplied = (key: string) => {
 	return props.filters[key] !== '';
 };
 
-const hasOnlyShowArchivedFilter = computed(() => {
+const hasOnlyFiltersThatShowMoreResults = computed(() => {
 	const activeFilters = filterKeys.value.filter(isFilterApplied);
 
-	if (activeFilters.length !== 1) {
-		return false;
-	}
+	const filtersThatShowMoreResults = ['showArchived'];
 
-	return activeFilters[0] === 'showArchived';
+	return activeFilters.every((filter) => {
+		return filtersThatShowMoreResults.includes(filter);
+	});
 });
 
 const hasAppliedFilters = (): boolean => {
@@ -685,8 +685,8 @@ defineExpose({
 					<div v-if="showFiltersDropdown" v-show="hasFilters" class="mt-xs">
 						<n8n-info-tip :bold="false">
 							{{
-								hasOnlyShowArchivedFilter
-									? i18n.baseText(`${resourceKey}.filters.active.onlyShowArchived` as BaseTextKey)
+								hasOnlyFiltersThatShowMoreResults
+									? i18n.baseText(`${resourceKey}.filters.active.shortText` as BaseTextKey)
 									: i18n.baseText(`${resourceKey}.filters.active` as BaseTextKey)
 							}}
 							<n8n-link data-test-id="workflows-filter-reset" size="small" @click="resetFilters">
