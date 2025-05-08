@@ -48,17 +48,17 @@ export class TagService {
 
 	async getAll<T extends { withUsageCount: boolean }>(options?: T): Promise<GetAllResult<T>> {
 		if (options?.withUsageCount) {
-			const allTags = await this.tagRepository.find({
-				select: ['id', 'name', 'createdAt', 'updatedAt'],
-				relations: ['workflowMappings'],
-			});
+			const tags = await this.tagRepository
+				.createQueryBuilder('tag')
+				.select(['tag.id', 'tag.name', 'tag.createdAt', 'tag.updatedAt'])
+				.loadRelationCountAndMap('tag.usageCount', 'tag.workflowMappings', 'wm', (qb) =>
+					qb.leftJoin('wm.workflows', 'workflow').where('workflow.isArchived = :isArchived', {
+						isArchived: false,
+					}),
+				)
+				.getMany();
 
-			return allTags.map(({ workflowMappings, ...rest }) => {
-				return {
-					...rest,
-					usageCount: workflowMappings.length,
-				} as ITagWithCountDb;
-			}) as GetAllResult<T>;
+			return tags as GetAllResult<T>;
 		}
 
 		return await (this.tagRepository.find({
