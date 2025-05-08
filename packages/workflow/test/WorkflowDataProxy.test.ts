@@ -339,7 +339,7 @@ describe('WorkflowDataProxy', () => {
 				expect(error).toBeInstanceOf(ExpressionError);
 				const exprError = error as ExpressionError;
 				expect(exprError.message).toEqual(
-					"Using the item method doesn't work with pinned data in this scenario. Please unpin 'Break pairedItem chain' and try again.",
+					"Paired item data for item from node 'Break pairedItem chain' is unavailable. Ensure 'Break pairedItem chain' is providing the required output.",
 				);
 				expect(exprError.context.type).toEqual('paired_item_no_info');
 				done();
