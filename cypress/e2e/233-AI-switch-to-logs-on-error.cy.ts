@@ -1,10 +1,9 @@
 import type { ExecutionError } from 'n8n-workflow';
 
+import * as logs from '../composables/logs';
 import {
 	closeManualChatModal,
 	getManualChatMessages,
-	getManualChatModalLogs,
-	getManualChatModalLogsEntries,
 	sendManualChatMessage,
 } from '../composables/modals/chat-modal';
 import { setCredentialValues } from '../composables/modals/credential-modal';
@@ -199,10 +198,10 @@ function checkMessages(inputMessage: string, outputMessage: string) {
 	messages.should('contain', inputMessage);
 	messages.should('contain', outputMessage);
 
-	getManualChatModalLogs().should('exist');
-	getManualChatModalLogsEntries()
-		.should('have.length', 1)
-		.should('contain', AI_MEMORY_POSTGRES_NODE_NAME);
+	logs.getOverviewPanelBody().should('exist');
+	logs.getLogEntries().should('have.length', 2);
+	logs.getSelectedLogEntry().should('have.text', 'AI Agent');
+	logs.getOutputPanel().should('contain', AI_MEMORY_POSTGRES_NODE_NAME);
 }
 
 describe("AI-233 Make root node's logs pane active in case of an error in sub-nodes", () => {
