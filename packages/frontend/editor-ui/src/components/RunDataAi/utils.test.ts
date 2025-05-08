@@ -842,7 +842,12 @@ describe(getTreeNodeDataV2, () => {
 			SubNode: [createTestTaskData({ executionIndex: 1, source: [null] })],
 		};
 
-		const rootNodeTree = getTreeNodeDataV2('RootNode', runData.RootNode[0], workflow, runData);
+		const rootNodeTree = getTreeNodeDataV2(
+			'RootNode',
+			runData.RootNode[0],
+			undefined,
+			createTestLogTreeCreationContext(workflow, runData),
+		);
 
 		expect(rootNodeTree[0].children.length).toBe(1);
 		expect(rootNodeTree[0].children[0].node.name).toBe('SubNode');
