@@ -1,0 +1,20 @@
+# Ignorar Git y node_modules
+.git
+node_modules
+*.log
+
+# Ignorar archivos temporales
+.tmp/
+tmp/
+.DS_Store
+
+# Ignorar archivos de configuración local
+.env
+.env.*
+
+# No ignores lo necesario para el build
+!/Dockerfile
+!/.patches/**
+!/.npmrc
+!/packages/**
+!/patches/**
