@@ -39,8 +39,12 @@ export function makeHandleToolInvocation(
 	 */
 	let toolRunIndex = 0;
 	return async (toolArgs: IDataObject) => {
-		const runIndex = toolRunIndex++;
-		const context = contextFactory(runIndex);
+		let runIndex = toolRunIndex++;
+		let context = contextFactory(runIndex);
+		if (context.getRunDataLength() !== runIndex) {
+			runIndex = context.getRunDataLength();
+			context = contextFactory(runIndex);
+		}
 		context.addInputData(NodeConnectionTypes.AiTool, [[{ json: toolArgs }]]);
 
 		try {
