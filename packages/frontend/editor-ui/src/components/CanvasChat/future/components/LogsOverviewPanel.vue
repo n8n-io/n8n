@@ -167,6 +167,7 @@ watch(
 			<template v-else>
 				<ExecutionSummary
 					v-if="execution"
+					data-test-id="logs-overview-status"
 					:class="$style.summary"
 					:status="execution.status"
 					:consumed-tokens="consumedTokens"
