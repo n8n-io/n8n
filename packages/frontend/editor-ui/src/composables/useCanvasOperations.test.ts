@@ -3002,7 +3002,7 @@ describe('useCanvasOperations', () => {
 				disabled: false,
 			});
 			expect(workflowsStore.setNodePristine).toHaveBeenCalledWith(nodeB.name, true);
-			expect(workflowsStore.getNewWorkflowData).toHaveBeenCalledWith(
+			expect(workflowsStore.getNewWorkflowDataAndMakeShareable).toHaveBeenCalledWith(
 				templateName,
 				projectsStore.currentProjectId,
 			);
