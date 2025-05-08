@@ -42,7 +42,6 @@ import {
 	MAX_DISPLAY_DATA_SIZE,
 	MAX_DISPLAY_DATA_SIZE_SCHEMA_VIEW,
 	NODE_TYPES_EXCLUDED_FROM_OUTPUT_NAME_APPEND,
-	SCHEMA_PREVIEW_EXPERIMENT,
 	TEST_PIN_DATA,
 } from '@/constants';
 
@@ -89,7 +88,6 @@ import { useRoute } from 'vue-router';
 import { useUIStore } from '@/stores/ui.store';
 import { useSchemaPreviewStore } from '@/stores/schemaPreview.store';
 import { asyncComputed } from '@vueuse/core';
-import { usePostHog } from '@/stores/posthog.store';
 import ViewSubExecution from './ViewSubExecution.vue';
 import RunDataItemCount from '@/components/RunDataItemCount.vue';
 import RunDataDisplayModeSelect from '@/components/RunDataDisplayModeSelect.vue';
@@ -230,7 +228,6 @@ const sourceControlStore = useSourceControlStore();
 const rootStore = useRootStore();
 const uiStore = useUIStore();
 const schemaPreviewStore = useSchemaPreviewStore();
-const posthogStore = usePostHog();
 
 const toast = useToast();
 const route = useRoute();
@@ -584,13 +581,7 @@ const hasInputOverwrite = computed((): boolean => {
 const isSchemaPreviewEnabled = computed(
 	() =>
 		props.paneType === 'input' &&
-		!(nodeType.value?.codex?.categories ?? []).some(
-			(category) => category === CORE_NODES_CATEGORY,
-		) &&
-		posthogStore.isVariantEnabled(
-			SCHEMA_PREVIEW_EXPERIMENT.name,
-			SCHEMA_PREVIEW_EXPERIMENT.variant,
-		),
+		!(nodeType.value?.codex?.categories ?? []).some((category) => category === CORE_NODES_CATEGORY),
 );
 
 const hasPreviewSchema = asyncComputed(async () => {

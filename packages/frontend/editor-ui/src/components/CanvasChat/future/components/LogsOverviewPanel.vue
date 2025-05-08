@@ -182,6 +182,7 @@ watch(
 			</N8nText>
 			<template v-else>
 				<ExecutionSummary
+					data-test-id="logs-overview-status"
 					:class="$style.summary"
 					:status="execution.status"
 					:consumed-tokens="consumedTokens"

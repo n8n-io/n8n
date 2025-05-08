@@ -82,6 +82,7 @@ function isLastChild(level: number) {
 		role="treeitem"
 		tabindex="0"
 		:aria-expanded="props.data.children.length > 0 && props.expanded"
+		:aria-selected="props.isSelected"
 		:class="{
 			[$style.container]: true,
 			[$style.compact]: props.isCompact,

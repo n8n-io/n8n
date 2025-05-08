@@ -783,8 +783,8 @@ importers:
         specifier: 0.1.0
         version: 0.1.0(@langchain/core@0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1)))
       '@modelcontextprotocol/sdk':
-        specifier: 1.9.0
-        version: 1.9.0
+        specifier: 1.11.0
+        version: 1.11.0
       '@mozilla/readability':
         specifier: 0.6.0
         version: 0.6.0
@@ -1130,8 +1130,8 @@ importers:
         specifier: 'catalog:'
         version: 1.14.0
       '@n8n_io/license-sdk':
-        specifier: 2.20.0
-        version: 2.20.0
+        specifier: 2.20.1
+        version: 2.20.1
       '@oclif/core':
         specifier: 4.0.7
         version: 4.0.7
@@ -4810,8 +4810,8 @@ packages:
     peerDependencies:
       zod: '>= 3'
 
-  '@modelcontextprotocol/sdk@1.9.0':
-    resolution: {integrity: sha512-Jq2EUCQpe0iyO5FGpzVYDNFR6oR53AIrwph9yWl7uSc7IWUMsrmpmSaTGra5hQNunXpM+9oit85p924jWuHzUA==}
+  '@modelcontextprotocol/sdk@1.11.0':
+    resolution: {integrity: sha512-k/1pb70eD638anoi0e8wUGAlbMJXyvdV4p62Ko+EZ7eBe1xMx8Uhak1R5DgfoofsK5IBBnRwsYGTaLZl+6/+RQ==}
     engines: {node: '>=18'}
 
   '@mongodb-js/saslprep@1.1.9':
@@ -4943,8 +4943,8 @@ packages:
     resolution: {integrity: sha512-apo1VXGmyUpwsBZ2dp9EyqZYR+FA3DzdD79MVzSMuknLIukhyZjvabBYRrjK5BJOU3vo5z9inaCm4UvenQ5Mgg==}
     engines: {node: '>=20.15', pnpm: '>=8.14'}
 
-  '@n8n_io/license-sdk@2.20.0':
-    resolution: {integrity: sha512-OfDkwULt3/CkZtQsFFsSkwB34HXoJfBQ696AO0ND4/XoCv4CRQ7ZCIZcSfh/mQmVWrqdjY4iCKjLHo64qIID1w==}
+  '@n8n_io/license-sdk@2.20.1':
+    resolution: {integrity: sha512-HrxdwlZw3MfYrfgvjxIGTyi3gJUCOFHtMcL5OpqpHhwfMGwuBauRgUOt63Twx4qs7f2bnz5yHV3jvuU3mF45UQ==}
     engines: {node: '>=18.12.1'}
 
   '@n8n_io/riot-tmpl@4.0.0':
@@ -17242,7 +17242,7 @@ snapshots:
     dependencies:
       zod: 3.24.1
 
-  '@modelcontextprotocol/sdk@1.9.0':
+  '@modelcontextprotocol/sdk@1.11.0':
     dependencies:
       content-type: 1.0.5
       cors: 2.8.5
@@ -17391,7 +17391,7 @@ snapshots:
 
   '@n8n_io/ai-assistant-sdk@1.14.0': {}
 
-  '@n8n_io/license-sdk@2.20.0':
+  '@n8n_io/license-sdk@2.20.1':
     dependencies:
       crypto-js: 4.2.0
       node-machine-id: 1.1.12
