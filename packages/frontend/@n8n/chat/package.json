@@ -17,14 +17,14 @@
     "storybook": "storybook dev -p 6006 --no-open",
     "build:storybook": "storybook build"
   },
+  "types": "./dist/index.d.ts",
   "main": "./dist/chat.umd.js",
   "module": "./dist/chat.es.js",
-  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
+      "types": "./dist/index.d.ts",
       "import": "./dist/chat.es.js",
-      "require": "./dist/chat.umd.js",
-      "types": "./dist/index.d.ts"
+      "require": "./dist/chat.umd.js"
     },
     "./style.css": {
       "import": "./dist/style.css",
