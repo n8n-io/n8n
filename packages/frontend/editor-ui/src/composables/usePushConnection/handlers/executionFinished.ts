@@ -94,6 +94,17 @@ export async function executionFinished(
 		}
 	}
 
+	//console.log("data", execution);
+	if (execution.status === 'success' && execution.data?.startData?.destinationNode === undefined) {
+		// TODO we need a better way to find the actual triggering button, probably!
+		const button = Array.from(document.querySelectorAll('[data-test-id]')).filter((x) =>
+			(x as HTMLElement)?.dataset?.testId?.startsWith('execute-workflow-button-When clicking'),
+		)[0];
+		setTimeout(() => {
+			(button as HTMLElement)?.click();
+		}, 2);
+	}
+
 	const runExecutionData = getRunExecutionData(execution);
 	uiStore.setProcessingExecutionResults(false);
 
