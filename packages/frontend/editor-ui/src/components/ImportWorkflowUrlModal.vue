@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { ref, watch, computed } from 'vue';
 import { useI18n } from '@/composables/useI18n';
 import { useUIStore } from '@/stores/ui.store';
 import { nodeViewEventBus } from '@/event-bus';
@@ -51,7 +51,7 @@ watch(url, (newValue) => {
 					:state="isValid ? 'default' : 'error'"
 					@keyup.enter="confirm"
 				/>
-				<p v-if="!isValid" :class="$style['error-text']">
+				<p :class="$style['error-text']" :style="{ visibility: isValid ? 'hidden' : 'visible' }">
 					{{ i18n.baseText('mainSidebar.prompt.invalidUrl') }}
 				</p>
 			</div>
@@ -77,10 +77,14 @@ watch(url, (newValue) => {
 <style lang="scss" module>
 .error-text {
 	color: var(--color-danger);
-	font-size: var(--font-size-s);
+	font-size: var(--font-size-2xs);
 	margin-top: var(--spacing-2xs);
+	height: var(--spacing-s);
+	visibility: hidden;
 }
 .footer {
-	margin-left: var(--spacing-3xs);
+	> * {
+		margin-left: var(--spacing-3xs);
+	}
 }
 </style>
