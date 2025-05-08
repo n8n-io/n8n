@@ -145,11 +145,13 @@ export function useWorkflowExtraction() {
 			.map(workflowsStore.getNodeById)
 			.filter((x) => x !== undefined && x !== null);
 
-		const wfTriggers = subGraph.filter((x) => x.type === EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE);
-		if (wfTriggers.length > 0) {
+		const triggers = subGraph.filter((x) =>
+			useNodeTypesStore().getNodeType(x.type, x.typeVersion)?.group.includes('trigger'),
+		);
+		if (triggers.length > 0) {
 			showError(
-				i18n.baseText('workflowExtraction.error.executeWorkflowTriggerSelected', {
-					interpolate: { nodes: wfTriggers.map((x) => `'${x.name}'`).join(', ') },
+				i18n.baseText('workflowExtraction.error.triggerSelected', {
+					interpolate: { nodes: triggers.map((x) => `'${x.name}'`).join(', ') },
 				}),
 			);
 			return false;

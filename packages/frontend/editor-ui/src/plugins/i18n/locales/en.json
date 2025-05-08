@@ -2349,7 +2349,7 @@
 	"workflowExtraction.error.selectionGraph.listHeader": "Selection is invalid because of these errors:\n\n{body}\n\nSee docs for more info.",
 	"workflowExtraction.error.inputNodeHasMultipleInputBranches": "First node '{node}' has multiple input branches, which Sub-workflows do not support.",
 	"workflowExtraction.error.outputNodeHasMultipleOutputBranches": "Last node '{node}' has multiple output branches, which Sub-workflows do not support.",
-	"workflowExtraction.error.executeWorkflowTriggerSelected": "ExecuteWorkflowTrigger {nodes} cannot be converted to a Sub-workflow.",
+	"workflowExtraction.error.triggerSelected": "Triggers cannot be converted to a Sub-workflow. Please unselect {nodes}.",
 	"workflowExtraction.error.subworkflowCreationFailed": "Sub-workflow creation failed, aborting conversion.",
 	"workflowHelpers.showMessage.title": "Problem saving workflow",
 	"workflowOpen.active": "Active",
