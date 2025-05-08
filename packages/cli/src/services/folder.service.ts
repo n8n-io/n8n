@@ -1,8 +1,5 @@
 import type { CreateFolderDto, DeleteFolderDto, UpdateFolderDto } from '@n8n/api-types';
-import type {
-	FolderWithWorkflowAndSubFolderCount,
-	FolderWithWorkflowAndSubFolderCountAndPath,
-} from '@n8n/db';
+import type { FolderWithWorkflowAndSubFolderCount } from '@n8n/db';
 import { Folder, FolderTagMappingRepository, FolderRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
@@ -267,17 +264,17 @@ export class FolderService {
 
 	private async enrichFoldersWithPaths(
 		folders: FolderWithWorkflowAndSubFolderCount[],
-	): Promise<FolderWithWorkflowAndSubFolderCountAndPath[]> {
+	): Promise<FolderWithWorkflowAndSubFolderCount[]> {
 		const folderIds = folders.map((folder) => folder.id);
 
 		const folderPaths = await this.folderRepository.getFolderPathsToRoot(folderIds);
 
-		return folders.map(
-			(folder) =>
-				({
-					...folder,
-					path: folderPaths.get(folder.id),
-				}) as FolderWithWorkflowAndSubFolderCountAndPath,
-		);
+		for (const folder of folders) {
+			if (folderPaths.has(folder.id)) {
+				folder.path = folderPaths.get(folder.id);
+			}
+		}
+
+		return folders;
 	}
 }
