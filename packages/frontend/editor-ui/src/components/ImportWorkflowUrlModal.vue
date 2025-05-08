@@ -47,9 +47,6 @@ const confirm = () => {
 		</template>
 		<template #footer>
 			<div :class="$style.footer">
-				<n8n-button type="secondary" float="right" data-test-id="cancel-button" @click="closeModal">
-					{{ i18n.baseText('mainSidebar.prompt.cancel') }}
-				</n8n-button>
 				<n8n-button
 					type="primary"
 					float="right"
@@ -58,6 +55,9 @@ const confirm = () => {
 					@click="confirm"
 				>
 					{{ i18n.baseText('mainSidebar.prompt.import') }}
+				</n8n-button>
+				<n8n-button type="secondary" float="right" data-test-id="cancel-button" @click="closeModal">
+					{{ i18n.baseText('mainSidebar.prompt.cancel') }}
 				</n8n-button>
 			</div>
 		</template>
