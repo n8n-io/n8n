@@ -59,7 +59,7 @@ const emit = defineEmits<{
 	'update:modelValue': [elements: CanvasNode[]];
 	'update:node:position': [id: string, position: XYPosition];
 	'update:nodes:position': [events: CanvasNodeMoveEvent[]];
-	'update:node:activated': [id: string, event?: MouseEvent]; // Add optional event parameter
+	'update:node:activated': [id: string, event?: MouseEvent];
 	'update:node:deactivated': [id: string];
 	'update:node:enabled': [id: string];
 	'update:node:selected': [id?: string];

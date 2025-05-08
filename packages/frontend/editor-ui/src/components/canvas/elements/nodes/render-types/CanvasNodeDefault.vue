@@ -141,7 +141,7 @@ function onActivate(event: MouseEvent) {
 		:style="styles"
 		:data-test-id="dataTestId"
 		@contextmenu="openContextMenu"
-		@dblclick.stop="(event) => onActivate(event)"
+		@dblclick.stop="onActivate"
 	>
 		<CanvasNodeTooltip v-if="renderOptions.tooltip" :visible="showTooltip" />
 		<NodeIcon :icon-source="iconSource" :size="iconSize" :shrink="false" :disabled="isDisabled" />

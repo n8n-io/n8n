@@ -36,10 +36,10 @@ import type {
 	WorkflowDataWithTemplateId,
 	XYPosition,
 } from '@/Interface';
-import {
-	type Connection,
-	type ViewportTransform,
-	type XYPosition as VueFlowXYPosition,
+import type {
+	Connection,
+	ViewportTransform,
+	XYPosition as VueFlowXYPosition,
 } from '@vue-flow/core';
 import type {
 	CanvasConnectionCreateData,
