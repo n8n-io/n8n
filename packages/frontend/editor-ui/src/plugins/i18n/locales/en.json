@@ -2732,6 +2732,7 @@
 	"settings.sso.settings.ips.xml.help": "Paste here the raw Metadata XML provided by your Identity Provider",
 	"settings.sso.settings.ips.url.help": "Paste here the Internet Provider Metadata URL",
 	"settings.sso.settings.ips.url.placeholder": "e.g. https://samltest.id/saml/idp",
+	"settings.sso.settings.ips.url.invalid": "The Internet Provider Metadata URL is not valid",
 	"settings.sso.settings.ips.options.url": "Metadata URL",
 	"settings.sso.settings.ips.options.xml": "XML",
 	"settings.sso.settings.test": "Test settings",
