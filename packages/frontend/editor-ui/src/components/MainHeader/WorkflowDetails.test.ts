@@ -298,10 +298,38 @@ describe('WorkflowDetails', () => {
 			expect(queryByTestId('workflow-menu-item-unarchive')).not.toBeInTheDocument();
 		});
 
-		it("should call onWorkflowMenuSelect on 'Archive' option click", async () => {
+		it("should call onWorkflowMenuSelect on 'Archive' option click on nonactive workflow", async () => {
 			const { getByTestId } = renderComponent({
 				props: {
 					...workflow,
+					active: false,
+					readOnly: false,
+					isArchived: false,
+					scopes: ['workflow:delete'],
+				},
+			});
+
+			workflowsStore.archiveWorkflow.mockResolvedValue(undefined);
+
+			await userEvent.click(getByTestId('workflow-menu'));
+			await userEvent.click(getByTestId('workflow-menu-item-archive'));
+
+			expect(message.confirm).toHaveBeenCalledTimes(0);
+			expect(toast.showError).toHaveBeenCalledTimes(0);
+			expect(toast.showMessage).toHaveBeenCalledTimes(1);
+			expect(workflowsStore.archiveWorkflow).toHaveBeenCalledTimes(1);
+			expect(workflowsStore.archiveWorkflow).toHaveBeenCalledWith(workflow.id);
+			expect(router.push).toHaveBeenCalledTimes(1);
+			expect(router.push).toHaveBeenCalledWith({
+				name: VIEWS.WORKFLOWS,
+			});
+		});
+
+		it("should confirm onWorkflowMenuSelect on 'Archive' option click on active workflow", async () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					...workflow,
+					active: true,
 					readOnly: false,
 					isArchived: false,
 					scopes: ['workflow:delete'],

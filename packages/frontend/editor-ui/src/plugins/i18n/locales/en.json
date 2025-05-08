@@ -1025,7 +1025,7 @@
 	"mainSidebar.confirmMessage.workflowDelete.cancelButtonText": "",
 	"mainSidebar.confirmMessage.workflowDelete.confirmButtonText": "Yes, delete",
 	"mainSidebar.confirmMessage.workflowDelete.headline": "Delete Workflow?",
-	"mainSidebar.confirmMessage.workflowDelete.message": "Are you sure that you want to delete '{workflowName}'?",
+	"mainSidebar.confirmMessage.workflowDelete.message": "Are you sure that you want to delete '{workflowName}' permanently?",
 	"mainSidebar.credentials": "Credentials",
 	"mainSidebar.variables": "Variables",
 	"mainSidebar.help": "Help",

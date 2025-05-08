@@ -307,24 +307,26 @@ async function deleteWorkflow() {
 }
 
 async function archiveWorkflow() {
-	const archiveConfirmed = await message.confirm(
-		locale.baseText('mainSidebar.confirmMessage.workflowArchive.message', {
-			interpolate: { workflowName: props.data.name },
-		}),
-		locale.baseText('mainSidebar.confirmMessage.workflowArchive.headline'),
-		{
-			type: 'warning',
-			confirmButtonText: locale.baseText(
-				'mainSidebar.confirmMessage.workflowArchive.confirmButtonText',
-			),
-			cancelButtonText: locale.baseText(
-				'mainSidebar.confirmMessage.workflowArchive.cancelButtonText',
-			),
-		},
-	);
+	if (props.data.active) {
+		const archiveConfirmed = await message.confirm(
+			locale.baseText('mainSidebar.confirmMessage.workflowArchive.message', {
+				interpolate: { workflowName: props.data.name },
+			}),
+			locale.baseText('mainSidebar.confirmMessage.workflowArchive.headline'),
+			{
+				type: 'warning',
+				confirmButtonText: locale.baseText(
+					'mainSidebar.confirmMessage.workflowArchive.confirmButtonText',
+				),
+				cancelButtonText: locale.baseText(
+					'mainSidebar.confirmMessage.workflowArchive.cancelButtonText',
+				),
+			},
+		);
 
-	if (archiveConfirmed !== MODAL_CONFIRM) {
-		return;
+		if (archiveConfirmed !== MODAL_CONFIRM) {
+			return;
+		}
 	}
 
 	try {

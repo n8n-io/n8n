@@ -202,9 +202,46 @@ describe('WorkflowCard', () => {
 		expect(actions).toHaveTextContent('Change owner');
 	});
 
-	it("should have 'Archive' action on non archived workflows", async () => {
+	it("should have 'Archive' action on non archived nonactive workflows", async () => {
+		const data = createWorkflow({
+			active: false,
+			isArchived: false,
+			scopes: ['workflow:delete'],
+		});
+
+		const { getByTestId, emitted } = renderComponent({
+			props: { data },
+		});
+		const cardActions = getByTestId('workflow-card-actions');
+		expect(cardActions).toBeInTheDocument();
+
+		const cardActionsOpener = within(cardActions).getByRole('button');
+		expect(cardActionsOpener).toBeInTheDocument();
+
+		const controllingId = cardActionsOpener.getAttribute('aria-controls');
+		await userEvent.click(cardActions);
+		const actions = document.querySelector(`#${controllingId}`);
+		if (!actions) {
+			throw new Error('Actions menu not found');
+		}
+		expect(actions).toHaveTextContent('Archive');
+		expect(actions).not.toHaveTextContent('Unarchive');
+		expect(actions).not.toHaveTextContent('Delete');
+
+		await userEvent.click(getByTestId('action-archive'));
+
+		expect(message.confirm).not.toHaveBeenCalled();
+		expect(workflowsStore.archiveWorkflow).toHaveBeenCalledTimes(1);
+		expect(workflowsStore.archiveWorkflow).toHaveBeenCalledWith(data.id);
+		expect(toast.showError).not.toHaveBeenCalled();
+		expect(toast.showMessage).toHaveBeenCalledTimes(1);
+		expect(emitted()['workflow:archived']).toHaveLength(1);
+	});
+
+	it("should confirm 'Archive' action on active workflows", async () => {
 		const data = createWorkflow({
 			isArchived: false,
+			active: true,
 			scopes: ['workflow:delete'],
 		});
 
@@ -232,7 +269,7 @@ describe('WorkflowCard', () => {
 		expect(message.confirm).toHaveBeenCalledTimes(1);
 		expect(workflowsStore.archiveWorkflow).toHaveBeenCalledTimes(1);
 		expect(workflowsStore.archiveWorkflow).toHaveBeenCalledWith(data.id);
-		expect(toast.showError).toHaveBeenCalledTimes(0);
+		expect(toast.showError).not.toHaveBeenCalled();
 		expect(toast.showMessage).toHaveBeenCalledTimes(1);
 		expect(emitted()['workflow:archived']).toHaveLength(1);
 	});
@@ -266,7 +303,7 @@ describe('WorkflowCard', () => {
 
 		expect(workflowsStore.unarchiveWorkflow).toHaveBeenCalledTimes(1);
 		expect(workflowsStore.unarchiveWorkflow).toHaveBeenCalledWith(data.id);
-		expect(toast.showError).toHaveBeenCalledTimes(0);
+		expect(toast.showError).not.toHaveBeenCalled();
 		expect(toast.showMessage).toHaveBeenCalledTimes(1);
 		expect(emitted()['workflow:unarchived']).toHaveLength(1);
 	});
@@ -301,7 +338,7 @@ describe('WorkflowCard', () => {
 		expect(message.confirm).toHaveBeenCalledTimes(1);
 		expect(workflowsStore.deleteWorkflow).toHaveBeenCalledTimes(1);
 		expect(workflowsStore.deleteWorkflow).toHaveBeenCalledWith(data.id);
-		expect(toast.showError).toHaveBeenCalledTimes(0);
+		expect(toast.showError).not.toHaveBeenCalled();
 		expect(toast.showMessage).toHaveBeenCalledTimes(1);
 		expect(emitted()['workflow:deleted']).toHaveLength(1);
 	});

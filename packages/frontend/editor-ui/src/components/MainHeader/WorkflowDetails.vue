@@ -535,24 +535,26 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.ARCHIVE: {
-			const archiveConfirmed = await message.confirm(
-				locale.baseText('mainSidebar.confirmMessage.workflowArchive.message', {
-					interpolate: { workflowName: props.name },
-				}),
-				locale.baseText('mainSidebar.confirmMessage.workflowArchive.headline'),
-				{
-					type: 'warning',
-					confirmButtonText: locale.baseText(
-						'mainSidebar.confirmMessage.workflowArchive.confirmButtonText',
-					),
-					cancelButtonText: locale.baseText(
-						'mainSidebar.confirmMessage.workflowArchive.cancelButtonText',
-					),
-				},
-			);
+			if (props.active) {
+				const archiveConfirmed = await message.confirm(
+					locale.baseText('mainSidebar.confirmMessage.workflowArchive.message', {
+						interpolate: { workflowName: props.name },
+					}),
+					locale.baseText('mainSidebar.confirmMessage.workflowArchive.headline'),
+					{
+						type: 'warning',
+						confirmButtonText: locale.baseText(
+							'mainSidebar.confirmMessage.workflowArchive.confirmButtonText',
+						),
+						cancelButtonText: locale.baseText(
+							'mainSidebar.confirmMessage.workflowArchive.cancelButtonText',
+						),
+					},
+				);
 
-			if (archiveConfirmed !== MODAL_CONFIRM) {
-				return;
+				if (archiveConfirmed !== MODAL_CONFIRM) {
+					return;
+				}
 			}
 
 			try {
