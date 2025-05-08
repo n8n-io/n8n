@@ -117,7 +117,7 @@ describe('NDV', () => {
 			.nodeRunErrorMessage()
 			.should(
 				'have.text',
-				"Using the item method doesn't work with pinned data in this scenario. Please unpin 'Break pairedItem chain' and try again.",
+				"Paired item data for item from node 'Break pairedItem chain' is unavailable. Ensure 'Break pairedItem chain' is providing the required output.",
 			);
 		ndv.getters
 			.nodeRunErrorDescription()

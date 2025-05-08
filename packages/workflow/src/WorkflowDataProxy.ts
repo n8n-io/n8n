@@ -792,7 +792,11 @@ export class WorkflowDataProxy {
 			nodeCause: string,
 			usedMethodName: 'itemMatching' | 'pairedItem' | 'item' | '$getPairedItem' = 'pairedItem',
 		) => {
-			const message = `Using the ${usedMethodName} method doesn't work with pinned data in this scenario. Please unpin '${nodeCause}' and try again.`;
+			const pinData = getPinDataIfManualExecution(that.workflow, nodeCause, that.mode);
+			const message = pinData
+				? `Using the ${usedMethodName} method doesn't work with pinned data in this scenario. Please unpin '${nodeCause}' and try again.`
+				: `Paired item data for ${usedMethodName} from node '${nodeCause}' is unavailable. Ensure '${nodeCause}' is providing the required output.`;
+
 			return new ExpressionError(message, {
 				runIndex: that.runIndex,
 				itemIndex: that.itemIndex,
