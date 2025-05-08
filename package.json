@@ -46,6 +46,10 @@
     "webhook": "./packages/cli/bin/n8n webhook",
     "worker": "./packages/cli/bin/n8n worker"
   },
+  "dependencies": {
+    "@endcycles/n8n-nodes-youtube-transcript": "*",
+    "@maxim_mazurok/gapi.client.youtubeanalytics": "*"
+  },
   "devDependencies": {
     "@biomejs/biome": "^1.9.0",
     "@n8n/eslint-config": "workspace:*",
@@ -88,8 +92,14 @@
       "tslib": "^2.6.2",
       "tsconfig-paths": "^4.2.0",
       "typescript": "^5.8.2",
-      "vue-tsc": "^2.2.8",
-      "ws": ">=8.17.1"
+      "vue-tsc": "2.2.8",
+      "ws": ">=8.17.1",
+      "@types/express-serve-static-core": "5.0.6",
+      "pkce-challenge": "5.0.0",
+      "bull": "4.16.4",
+      "@types/ws": "8.5.4",
+      "@types/uuencode": "0.0.3",
+      "element-plus": "2.4.3"
     },
     "patchedDependencies": {
       "bull@4.16.4": "patches/bull@4.16.4.patch",

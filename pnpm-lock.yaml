@@ -133,9 +133,6 @@ catalogs:
     '@vueuse/core':
       specifier: ^10.11.0
       version: 10.11.0
-    element-plus:
-      specifier: 2.4.3
-      version: 2.4.3
     highlight.js:
       specifier: ^11.8.0
       version: 11.9.0
@@ -168,8 +165,14 @@ overrides:
   tslib: ^2.6.2
   tsconfig-paths: ^4.2.0
   typescript: ^5.8.2
-  vue-tsc: ^2.2.8
+  vue-tsc: 2.2.8
   ws: '>=8.17.1'
+  '@types/express-serve-static-core': 5.0.6
+  pkce-challenge: 5.0.0
+  bull: 4.16.4
+  '@types/ws': 8.5.4
+  '@types/uuencode': 0.0.3
+  element-plus: 2.4.3
 
 patchedDependencies:
   '@types/express-serve-static-core@5.0.6':
@@ -200,6 +203,13 @@ patchedDependencies:
 importers:
 
   .:
+    dependencies:
+      '@endcycles/n8n-nodes-youtube-transcript':
+        specifier: '*'
+        version: 1.0.3(n8n-workflow@packages+workflow)
+      '@maxim_mazurok/gapi.client.youtubeanalytics':
+        specifier: '*'
+        version: 2.0.20220808
     devDependencies:
       '@biomejs/biome':
         specifier: ^1.9.0
@@ -646,7 +656,7 @@ importers:
         specifier: catalog:frontend
         version: 4.5.0(vue@3.5.13(typescript@5.8.2))
       vue-tsc:
-        specifier: ^2.2.8
+        specifier: 2.2.8
         version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.8.2)
       zod-to-json-schema:
         specifier: 'catalog:'
@@ -683,7 +693,7 @@ importers:
         specifier: ^3.0.3
         version: 3.0.3
       '@types/uuencode':
-        specifier: ^0.0.3
+        specifier: 0.0.3
         version: 0.0.3(patch_hash=083a73709a54db57b092d986b43d27ddda3cb8008f9510e98bc9e6da0e1cbb62)
 
   packages/@n8n/integration-test-utils:
@@ -1422,7 +1432,7 @@ importers:
         specifier: ^13.7.0
         version: 13.7.7
       '@types/ws':
-        specifier: ^8.5.4
+        specifier: 8.5.4
         version: 8.5.4(patch_hash=3daa0c4c940b0286c9877b0413548ff53acada5b927b75566ac76deee7a49357)
       '@types/xml2js':
         specifier: 'catalog:'
@@ -1595,7 +1605,7 @@ importers:
         specifier: catalog:frontend
         version: 4.5.0(vue@3.5.13(typescript@5.8.2))
       vue-tsc:
-        specifier: ^2.2.8
+        specifier: 2.2.8
         version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.8.2)
 
   packages/frontend/@n8n/chat:
@@ -1653,7 +1663,7 @@ importers:
         specifier: catalog:frontend
         version: 3.0.8(@types/debug@4.1.12)(@types/node@18.16.16)(jiti@1.21.0)(jsdom@23.0.1)(sass@1.64.1)(terser@5.16.1)(tsx@4.19.3)
       vue-tsc:
-        specifier: ^2.2.8
+        specifier: 2.2.8
         version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.8.2)
 
   packages/frontend/@n8n/composables:
@@ -1701,7 +1711,7 @@ importers:
         specifier: catalog:frontend
         version: 3.5.13(typescript@5.8.2)
       vue-tsc:
-        specifier: ^2.2.8
+        specifier: 2.2.8
         version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.8.2)
 
   packages/frontend/@n8n/design-system:
@@ -1728,7 +1738,7 @@ importers:
         specifier: '*'
         version: 10.11.0(vue@3.5.13(typescript@5.8.2))
       element-plus:
-        specifier: catalog:frontend
+        specifier: 2.4.3
         version: 2.4.3(patch_hash=3bc4ea0a42ad52c6bbc3d06c12c2963d55b57d6b5b8d436e46e7fd8ff8c10661)(vue@3.5.13(typescript@5.8.2))
       is-emoji-supported:
         specifier: ^0.0.5
@@ -1831,7 +1841,7 @@ importers:
         specifier: catalog:frontend
         version: 3.0.1(typescript@5.8.2)(vitest@3.0.8(@types/debug@4.1.12)(@types/node@18.16.16)(jiti@1.21.0)(jsdom@23.0.1)(sass@1.64.1)(terser@5.16.1)(tsx@4.19.3))
       vue-tsc:
-        specifier: ^2.2.8
+        specifier: 2.2.8
         version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.8.2)
 
   packages/frontend/editor-ui:
@@ -1972,7 +1982,7 @@ importers:
         specifier: ^3.0.3
         version: 3.0.3
       element-plus:
-        specifier: catalog:frontend
+        specifier: 2.4.3
         version: 2.4.3(patch_hash=3bc4ea0a42ad52c6bbc3d06c12c2963d55b57d6b5b8d436e46e7fd8ff8c10661)(vue@3.5.13(typescript@5.8.2))
       email-providers:
         specifier: ^2.0.1
@@ -2150,7 +2160,7 @@ importers:
         specifier: catalog:frontend
         version: 3.0.1(typescript@5.8.2)(vitest@3.0.8(@types/debug@4.1.12)(@types/node@18.16.16)(jiti@1.21.0)(jsdom@23.0.1)(sass@1.64.1)(terser@5.16.1)(tsx@4.19.3))
       vue-tsc:
-        specifier: ^2.2.8
+        specifier: 2.2.8
         version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.8.2)
 
   packages/node-dev:
@@ -3679,6 +3689,12 @@ packages:
   '@emotion/unitless@0.8.0':
     resolution: {integrity: sha512-VINS5vEYAscRl2ZUDiT3uMPlrFQupiKgHz5AA4bCH1miKBg4qtwkim1qPmJj/4WG6TreYMY111rEFsjupcOKHw==}
 
+  '@endcycles/n8n-nodes-youtube-transcript@1.0.3':
+    resolution: {integrity: sha512-5Wc8XO6r6CiESeKNFNPZNXi6XLp7OyEDZL/RQ/ZvIIHLGKEb+fnBkWLvdx5TjIPTnnWKPayHqaymFHj3PgY8SQ==}
+    engines: {node: '>=20.15'}
+    peerDependencies:
+      n8n-workflow: '*'
+
   '@esbuild/aix-ppc64@0.24.0':
     resolution: {integrity: sha512-WtKdFM7ls47zkKHFVzMz8opM7LkcsIp9amDUBIAWirg70RM71WRSjdILPsY5Uv1D42ZpUfaPILDlfactHgsRkw==}
     engines: {node: '>=18'}
@@ -4782,6 +4798,9 @@ packages:
 
   '@lezer/python@1.1.5':
     resolution: {integrity: sha512-h0DVr6IfrmKUbTc5PeetaC87IZYoHyn5JogsVYW5mRDpVRyEsvaLBMLyEN4Ufc2BKp1c9y2Pkr8ZNLxS8dTLsQ==}
+
+  '@maxim_mazurok/gapi.client.youtubeanalytics@2.0.20220808':
+    resolution: {integrity: sha512-JVKivvfBO2BjXNwpVEv87F1tFMT4FgpGIAPLUqruuhz9pa7OLft4zYjomp85/0x0lJUygLmmiVVXEViDedDAtw==}
 
   '@mdx-js/react@3.0.1':
     resolution: {integrity: sha512-9ZrPIU4MGf6et1m1ov3zKf+q9+deetI51zprKB1D/z3NOb+rUxxtEl3mCjW5wTGh6VhRdwPueh1oRzi6ezkA8A==}
@@ -6235,6 +6254,9 @@ packages:
   '@types/ftp@0.3.33':
     resolution: {integrity: sha512-L7wFlX3t9GsGgNS0oxLt6zbAZZGgsdptMmciL4cdxHmbL3Hz4Lysh8YqAR34eHsJ1uacJITcZBBDl5XpQlxPpQ==}
 
+  '@types/gapi.client@1.0.8':
+    resolution: {integrity: sha512-qJQUmmumbYym3Amax0S8CVzuSngcXsC1fJdwRS2zeW5lM63zXkw4wJFP+bG0jzgi0R6EsJKoHnGNVTDbOyG1ng==}
+
   '@types/glob@8.0.0':
     resolution: {integrity: sha512-l6NQsDDyQUVeoTynNpC9uRvCUint/gSUXQA2euwmTuWGvPY5LSDUu6tkCtJB2SvGQlJQzLaKqcGZP4//7EDveA==}
 
@@ -6546,9 +6568,6 @@ packages:
 
   '@types/whatwg-url@11.0.4':
     resolution: {integrity: sha512-lXCmTWSHJvf0TRSO58nm978b8HJ/EdsSsEKLd3ODHFjo+3VGAyyTp4v50nWvwtzBxSMQrVOK7tcuN0zGPLICMw==}
-
-  '@types/ws@8.5.12':
-    resolution: {integrity: sha512-3tPRkv1EtkDpzlgyKyI8pGsGZAGPEaXeu0DOj5DI25Ja91bdAYddYHbADRYVrZMRbfW+1l5YwXVDKohDJNQxkQ==}
 
   '@types/ws@8.5.4':
     resolution: {integrity: sha512-zdQDHKUgcX/zBc4GrwsE/7dVdAD8JR4EuiAXiiUhhfyIJXXb2+PrGshFyeXWQPMmmZ2XxgaqclgpIC7eTXc1mg==}
@@ -16263,6 +16282,10 @@ snapshots:
 
   '@emotion/unitless@0.8.0': {}
 
+  '@endcycles/n8n-nodes-youtube-transcript@1.0.3(n8n-workflow@packages+workflow)':
+    dependencies:
+      n8n-workflow: link:packages/workflow
+
   '@esbuild/aix-ppc64@0.24.0':
     optional: true
 
@@ -17194,6 +17217,10 @@ snapshots:
     dependencies:
       '@lezer/highlight': 1.1.1
       '@lezer/lr': 1.4.0
+
+  '@maxim_mazurok/gapi.client.youtubeanalytics@2.0.20220808':
+    dependencies:
+      '@types/gapi.client': 1.0.8
 
   '@mdx-js/react@3.0.1(@types/react@18.0.27)(react@18.2.0)':
     dependencies:
@@ -18896,7 +18923,7 @@ snapshots:
     dependencies:
       '@supabase/node-fetch': 2.6.15
       '@types/phoenix': 1.6.4
-      '@types/ws': 8.5.12
+      '@types/ws': 8.5.4(patch_hash=3daa0c4c940b0286c9877b0413548ff53acada5b927b75566ac76deee7a49357)
       ws: 8.17.1
     transitivePeerDependencies:
       - bufferutil
@@ -19146,6 +19173,8 @@ snapshots:
   '@types/ftp@0.3.33':
     dependencies:
       '@types/node': 18.16.16
+
+  '@types/gapi.client@1.0.8': {}
 
   '@types/glob@8.0.0':
     dependencies:
@@ -19486,10 +19515,6 @@ snapshots:
   '@types/whatwg-url@11.0.4':
     dependencies:
       '@types/webidl-conversions': 7.0.0
-
-  '@types/ws@8.5.12':
-    dependencies:
-      '@types/node': 18.16.16
 
   '@types/ws@8.5.4(patch_hash=3daa0c4c940b0286c9877b0413548ff53acada5b927b75566ac76deee7a49357)':
     dependencies:
@@ -25084,7 +25109,7 @@ snapshots:
   mqtt@5.7.2:
     dependencies:
       '@types/readable-stream': 4.0.10
-      '@types/ws': 8.5.12
+      '@types/ws': 8.5.4(patch_hash=3daa0c4c940b0286c9877b0413548ff53acada5b927b75566ac76deee7a49357)
       commist: 3.2.0
       concat-stream: 2.0.0
       debug: 4.3.4
