@@ -681,7 +681,6 @@ function onSetNodeActivated(id: string, event?: MouseEvent) {
 
 function onOpenSubWorkflow(id: string) {
 	tryToOpenSubworkflowInNewTab(id);
-	return;
 }
 
 function onSetNodeDeactivated() {
