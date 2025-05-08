@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue';
+import { ref, computed } from 'vue';
 import { useI18n } from '@/composables/useI18n';
 import { useUIStore } from '@/stores/ui.store';
 import { nodeViewEventBus } from '@/event-bus';
@@ -18,21 +18,9 @@ const closeModal = () => {
 };
 
 const confirm = () => {
-	if (!url.value.match(VALID_WORKFLOW_IMPORT_URL_REGEX)) {
-		isValid.value = false;
-		return;
-	}
 	nodeViewEventBus.emit('importWorkflowUrl', { url: url.value });
 	closeModal();
 };
-
-watch(url, (newValue) => {
-	if (!newValue) {
-		isValid.value = true;
-	} else {
-		isValid.value = VALID_WORKFLOW_IMPORT_URL_REGEX.test(newValue);
-	}
-});
 </script>
 
 <template>
@@ -61,12 +49,7 @@ watch(url, (newValue) => {
 				<n8n-button type="secondary" float="right" @click="closeModal">
 					{{ i18n.baseText('mainSidebar.prompt.cancel') }}
 				</n8n-button>
-				<n8n-button
-					type="primary"
-					float="right"
-					:disabled="!url.value || !isValid.value"
-					@click="confirm"
-				>
+				<n8n-button type="primary" float="right" :disabled="!url || !isValid" @click="confirm">
 					{{ i18n.baseText('mainSidebar.prompt.import') }}
 				</n8n-button>
 			</div>
