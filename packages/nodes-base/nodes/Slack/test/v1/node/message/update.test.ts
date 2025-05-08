@@ -39,6 +39,7 @@ describe('Test SlackV1, message => update', () => {
 			channel: 'C08514ZPKB8',
 			text: 'updated message',
 			ts: '1734321960.507649',
+			attachments: [],
 			link_names: true,
 			parse: 'none',
 		})

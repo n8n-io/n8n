@@ -28,6 +28,11 @@ describe('Slack V1 > GenericFunctions', () => {
 				.fn()
 				.mockResolvedValue(mockResponse);
 
+			const mockNodeApiError = jest.fn().mockImplementation(() => {
+				throw new Error('Slack Error: This feature is only available for paid teams');
+			});
+			jest.spyOn(require('n8n-workflow'), 'NodeApiError').mockImplementation(mockNodeApiError);
+
 			await expect(slackApiRequest.call(mockExecuteFunctions, 'GET', '/test')).rejects.toThrow();
 		});
 

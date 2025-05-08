@@ -42,8 +42,7 @@ const API_RESPONSE = {
 describe('Test SlackV1, channel => create', () => {
 	nock('https://slack.com')
 		.post('/api/conversations.create', {
-			name: 'test-channel',
-			is_private: false
+			name: 'test-channel'
 		})
 		.reply(200, API_RESPONSE);
 
