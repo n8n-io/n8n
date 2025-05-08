@@ -37,6 +37,7 @@ const confirm = () => {
 					v-model="url"
 					:placeholder="i18n.baseText('mainSidebar.prompt.workflowUrl')"
 					:state="isValid ? 'default' : 'error'"
+					data-test-id="workflow-url-input"
 					@keyup.enter="confirm"
 				/>
 				<p :class="$style['error-text']" :style="{ visibility: isValid ? 'hidden' : 'visible' }">
@@ -46,10 +47,16 @@ const confirm = () => {
 		</template>
 		<template #footer>
 			<div :class="$style.footer">
-				<n8n-button type="secondary" float="right" @click="closeModal">
+				<n8n-button type="secondary" float="right" data-test-id="cancel-button" @click="closeModal">
 					{{ i18n.baseText('mainSidebar.prompt.cancel') }}
 				</n8n-button>
-				<n8n-button type="primary" float="right" :disabled="!url || !isValid" @click="confirm">
+				<n8n-button
+					type="primary"
+					float="right"
+					:disabled="!url || !isValid"
+					data-test-id="confirm-import-button"
+					@click="confirm"
+				>
 					{{ i18n.baseText('mainSidebar.prompt.import') }}
 				</n8n-button>
 			</div>
