@@ -374,7 +374,7 @@ const activatePane = () => {
 						@update:model-value="onUpdateOutputMode"
 					/>
 				</template>
-				<span v-else-if="!isNDVV2" :class="$style.title">
+				<span v-else :class="$style.title">
 					{{ i18n.baseText(outputPanelEditMode.enabled ? 'ndv.output.edit' : 'ndv.output') }}
 				</span>
 				<RunInfo

@@ -328,7 +328,6 @@ async function onClick() {
 		emit('stopExecution');
 	} else {
 		let shouldUnpinAndExecute = false;
-		console.log('===pin?', node.value, pinnedData.hasData.value);
 		if (pinnedData.hasData.value) {
 			const confirmResult = await message.confirm(
 				i18n.baseText('ndv.pinData.unpinAndExecute.description'),

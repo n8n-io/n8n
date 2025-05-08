@@ -3,7 +3,14 @@ import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type { IRunData, Workflow, NodeConnectionType } from 'n8n-workflow';
 import { jsonParse, NodeHelpers, NodeConnectionTypes } from 'n8n-workflow';
-import type { IUpdateInformation, ResizeData, TargetItem, XYPosition } from '@/Interface';
+import type {
+	IRunDataDisplayMode,
+	IUpdateInformation,
+	NodePanelType,
+	ResizeData,
+	TargetItem,
+	XYPosition,
+} from '@/Interface';
 
 import NodeSettings from '@/components/NodeSettings.vue';
 
@@ -344,6 +351,10 @@ const foreignCredentials = computed(() => {
 
 const hasForeignCredential = computed(() => foreignCredentials.value.length > 0);
 
+const inputPanelDisplayMode = computed(() => ndvStore.inputPanelDisplayMode);
+
+const outputPanelDisplayMode = computed(() => ndvStore.outputPanelDisplayMode);
+
 const isDraggable = computed(() => !isTriggerNode.value);
 
 const hasInputPanel = computed(() => !isTriggerNode.value || showTriggerPanel.value);
@@ -664,6 +675,10 @@ const pxToFraction = (px: number) => {
 	return (px / containerWidth.value) * GRID_FRACTION_TOTAL;
 };
 
+const handleChangeDisplayMode = (pane: NodePanelType, mode: IRunDataDisplayMode) => {
+	ndvStore.setPanelDisplayMode({ pane, mode });
+};
+
 const onDragThrottled = useThrottleFn(onDrag, 16);
 
 //watchers
@@ -809,7 +824,7 @@ onBeforeUnmount(() => {
 						:read-only="readOnly || hasForeignCredential"
 						:is-production-execution-preview="isProductionExecutionPreview"
 						:is-pane-active="isInputPaneActive"
-						hide-title
+						:display-mode="inputPanelDisplayMode"
 						@activate-pane="activateInputPane"
 						@link-run="onLinkRunToInput"
 						@unlink-run="() => onUnlinkRun('input')"
@@ -820,6 +835,7 @@ onBeforeUnmount(() => {
 						@table-mounted="onInputTableMounted"
 						@item-hover="onInputItemHover"
 						@search="onSearch"
+						@display-mode-change="handleChangeDisplayMode('input', $event)"
 					/>
 				</div>
 
@@ -874,8 +890,8 @@ onBeforeUnmount(() => {
 					:block-u-i="blockUi && isTriggerNode && !isExecutableTriggerNode"
 					:is-production-execution-preview="isProductionExecutionPreview"
 					:is-pane-active="isOutputPaneActive"
+					:display-mode="outputPanelDisplayMode"
 					:class="$style.column"
-					hide-title
 					@activate-pane="activateOutputPane"
 					@link-run="onLinkRunToOutput"
 					@unlink-run="() => onUnlinkRun('output')"
@@ -885,6 +901,7 @@ onBeforeUnmount(() => {
 					@item-hover="onOutputItemHover"
 					@search="onSearch"
 					@execute="onNodeExecute"
+					@display-mode-change="handleChangeDisplayMode('output', $event)"
 				/>
 			</div>
 		</dialog>
@@ -923,11 +940,11 @@ onBeforeUnmount(() => {
 	border: var(--border-base);
 	border-radius: var(--border-radius-large);
 	overflow: hidden;
+	color: var(--color-text-base);
 }
 
 .column {
 	overflow: hidden;
-	min-width: 280px;
 }
 
 .header {

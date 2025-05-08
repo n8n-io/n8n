@@ -401,7 +401,7 @@ function activatePane() {
 	>
 		<template #header>
 			<div :class="$style.titleSection">
-				<span v-if="!isNDVV2" :class="$style.title">{{ i18n.baseText('ndv.input') }}</span>
+				<span :class="$style.title">{{ i18n.baseText('ndv.input') }}</span>
 				<N8nRadioButtons
 					v-if="isActiveNodeConfig && !readOnly"
 					data-test-id="input-panel-mode"
