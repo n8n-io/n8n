@@ -1253,12 +1253,12 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return false;
 	}
 
-	function setNodeIssue(nodeIssueData: INodeIssueData): boolean {
+	function setNodeIssue(nodeIssueData: INodeIssueData): void {
 		const nodeIndex = workflow.value.nodes.findIndex((node) => {
 			return node.name === nodeIssueData.node;
 		});
 		if (nodeIndex === -1) {
-			return false;
+			return;
 		}
 
 		const node = workflow.value.nodes[nodeIndex];
@@ -1267,7 +1267,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			// Remove the value if one exists
 			if (node.issues?.[nodeIssueData.type] === undefined) {
 				// No values for type exist so nothing has to get removed
-				return true;
+				return;
 			}
 
 			const { [nodeIssueData.type]: removedNodeIssue, ...remainingNodeIssues } = node.issues;
@@ -1282,7 +1282,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 				},
 			});
 		}
-		return true;
 	}
 
 	function addNode(nodeData: INodeUi): void {
