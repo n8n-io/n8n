@@ -339,7 +339,7 @@ describe('WorkflowDataProxy', () => {
 				expect(error).toBeInstanceOf(ExpressionError);
 				const exprError = error as ExpressionError;
 				expect(exprError.message).toEqual(
-					"Missing item data (node 'Break pairedItem chain' probably didn't supply it)",
+					"Paired item data for item from node 'Break pairedItem chain' is unavailable. Ensure 'Break pairedItem chain' is providing the required output.",
 				);
 				expect(exprError.context.type).toEqual('paired_item_no_info');
 				done();
