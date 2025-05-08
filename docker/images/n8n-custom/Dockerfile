@@ -24,6 +24,11 @@ RUN NODE_ENV=production DOCKER_BUILD=true pnpm --filter=n8n --prod --no-optional
 FROM n8nio/base:${NODE_VERSION}
 ENV NODE_ENV=production
 
+# Install ffmpeg (includes ffprobe)
+USER root
+RUN apt-get update && apt-get install -y ffmpeg && apt-get clean
+USER node
+
 ARG N8N_RELEASE_TYPE=dev
 ENV N8N_RELEASE_TYPE=${N8N_RELEASE_TYPE}
 
