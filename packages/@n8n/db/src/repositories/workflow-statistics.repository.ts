@@ -92,7 +92,7 @@ export class WorkflowStatisticsRepository extends Repository<WorkflowStatistics>
 						"rootCount" = ${upsertRootCount},
 						"latestEvent" = CURRENT_TIMESTAMP
 					RETURNING *;`,
-					[isRootExecution ? '1' : '0', eventName, workflowId],
+					[isRootExecution ? 1 : 0, eventName, workflowId],
 				)) as Array<{ count: number }>;
 
 				return queryResult[0].count === 1 ? 'insert' : 'update';
@@ -105,7 +105,7 @@ export class WorkflowStatisticsRepository extends Repository<WorkflowStatistics>
 						count = count + 1,
 						rootCount = ${isRootExecution ? 'rootCount + 1' : 'rootCount'},
 						latestEvent = NOW();`,
-					[isRootExecution ? '1' : '0', eventName, workflowId],
+					[isRootExecution ? 1 : 0, eventName, workflowId],
 				)) as { affectedRows: number };
 
 				// MySQL returns 2 affected rows on update
