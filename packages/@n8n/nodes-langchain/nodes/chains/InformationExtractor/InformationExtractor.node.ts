@@ -1,6 +1,4 @@
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
-import { HumanMessage } from '@langchain/core/messages';
-import { ChatPromptTemplate, SystemMessagePromptTemplate } from '@langchain/core/prompts';
 import type { JSONSchema7 } from 'json-schema';
 import { OutputFixingParser, StructuredOutputParser } from 'langchain/output_parsers';
 import { jsonParse, NodeConnectionTypes, NodeOperationError, sleep } from 'n8n-workflow';
@@ -15,7 +13,6 @@ import type { z } from 'zod';
 
 import { inputSchemaField, jsonSchemaExampleField, schemaTypeField } from '@utils/descriptions';
 import { convertJsonSchemaToZod, generateSchema } from '@utils/schemaParsing';
-import { getTracingConfig } from '@utils/tracing';
 
 import { SYSTEM_PROMPT_TEMPLATE } from './constants';
 import { makeZodSchemaFromAttributes } from './helpers';
@@ -225,7 +222,7 @@ export class InformationExtractor implements INodeType {
 								default: 100,
 								type: 'number',
 								description:
-									'How many items to process in parallel. This is useful for rate limiting, but will impact the agents log output.',
+									'How many items to process in parallel. This is useful for rate limiting.',
 							},
 							{
 								displayName: 'Delay Between Batches',

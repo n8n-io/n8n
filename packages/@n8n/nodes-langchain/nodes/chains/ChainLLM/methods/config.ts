@@ -272,8 +272,7 @@ export const nodeProperties: INodeProperties[] = [
 				name: 'batchSize',
 				default: 100,
 				type: 'number',
-				description:
-					'How many items to process in parallel. This is useful for rate limiting, but will impact the agents log output.',
+				description: 'How many items to process in parallel. This is useful for rate limiting.',
 			},
 			{
 				displayName: 'Delay Between Batches',

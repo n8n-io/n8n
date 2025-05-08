@@ -1,8 +1,3 @@
-import type { Document } from '@langchain/core/documents';
-import type { BaseLanguageModel } from '@langchain/core/language_models/base';
-import type { TextSplitter } from '@langchain/textsplitters';
-import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
-import { loadSummarizationChain } from 'langchain/chains';
 import type {
 	INodeTypeBaseDescription,
 	IExecuteFunctions,
@@ -14,14 +9,10 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes, sleep } from 'n8n-workflow';
 
-import { N8nBinaryLoader } from '@utils/N8nBinaryLoader';
-import { N8nJsonLoader } from '@utils/N8nJsonLoader';
 import { getTemplateNoticeField } from '@utils/sharedFields';
-import { getTracingConfig } from '@utils/tracing';
 
-import { getChainPromptsArgs } from '../helpers';
-import { REFINE_PROMPT_TEMPLATE, DEFAULT_PROMPT_TEMPLATE } from '../prompt';
 import { processItem } from './processItem';
+import { REFINE_PROMPT_TEMPLATE, DEFAULT_PROMPT_TEMPLATE } from '../prompt';
 
 function getInputs(parameters: IDataObject) {
 	const chunkingMode = parameters?.chunkingMode;
@@ -321,7 +312,7 @@ export class ChainSummarizationV2 implements INodeType {
 									default: 100,
 									type: 'number',
 									description:
-										'How many items to process in parallel. This is useful for rate limiting, but will impact the agents log output.',
+										'How many items to process in parallel. This is useful for rate limiting.',
 								},
 								{
 									displayName: 'Delay Between Batches',

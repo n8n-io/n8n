@@ -162,7 +162,7 @@ export class ChainRetrievalQa implements INodeType {
 								default: 100,
 								type: 'number',
 								description:
-									'How many items to process in parallel. This is useful for rate limiting, but will impact the agents log output.',
+									'How many items to process in parallel. This is useful for rate limiting.',
 							},
 							{
 								displayName: 'Delay Between Batches',
@@ -222,7 +222,7 @@ export class ChainRetrievalQa implements INodeType {
 						}
 					}
 					const output = response.value;
-					const answer: string = output.answer;
+					const answer = output.answer as string;
 					if (this.getNode().typeVersion >= 1.5) {
 						returnData.push({ json: { response: answer } });
 					} else {
@@ -241,7 +241,7 @@ export class ChainRetrievalQa implements INodeType {
 			for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 				try {
 					const response = await processItem(this, itemIndex);
-					const answer: string = response.answer;
+					const answer = response.answer as string;
 					if (this.getNode().typeVersion >= 1.5) {
 						returnData.push({ json: { response: answer } });
 					} else {

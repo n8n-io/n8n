@@ -15,7 +15,10 @@ import { getTracingConfig } from '@utils/tracing';
 
 import { INPUT_TEMPLATE_KEY, LEGACY_INPUT_TEMPLATE_KEY, SYSTEM_PROMPT_TEMPLATE } from './constants';
 
-export const processItem = async (ctx: IExecuteFunctions, itemIndex: number): Promise<unknown> => {
+export const processItem = async (
+	ctx: IExecuteFunctions,
+	itemIndex: number,
+): Promise<Record<string, unknown>> => {
 	const model = (await ctx.getInputConnectionData(
 		NodeConnectionTypes.AiLanguageModel,
 		0,
