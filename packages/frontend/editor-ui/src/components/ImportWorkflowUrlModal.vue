@@ -9,6 +9,8 @@ const i18n = useI18n();
 const uiStore = useUIStore();
 
 const url = ref('');
+const inputRef = ref<HTMLInputElement | null>(null);
+
 const isValid = computed(() => {
 	return url.value ? VALID_WORKFLOW_IMPORT_URL_REGEX.test(url.value) : true;
 });
@@ -21,6 +23,12 @@ const confirm = () => {
 	nodeViewEventBus.emit('importWorkflowUrl', { url: url.value });
 	closeModal();
 };
+
+const focusInput = async () => {
+	if (inputRef.value) {
+		inputRef.value.focus();
+	}
+};
 </script>
 
 <template>
@@ -30,10 +38,12 @@ const confirm = () => {
 		:show-close="true"
 		:center="true"
 		width="420px"
+		@opened="focusInput"
 	>
 		<template #content>
 			<div>
 				<n8n-input
+					ref="inputRef"
 					v-model="url"
 					:placeholder="i18n.baseText('mainSidebar.prompt.workflowUrl')"
 					:state="isValid ? 'default' : 'error'"
