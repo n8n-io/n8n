@@ -314,17 +314,20 @@ describe('WorkflowCard', () => {
 		expect(heading).toHaveTextContent('Read only');
 	});
 
-	it('should show Archived badge on archived workflows', async () => {
+	it('should show Archived text on archived workflows', async () => {
 		const data = createWorkflow({ isArchived: true });
-		const { getByTestId } = renderComponent({ props: { data } });
+		const { getByTestId, queryByTestId } = renderComponent({ props: { data } });
 
-		expect(getByTestId('workflow-archived-tag')).toBeInTheDocument();
+		expect(getByTestId('workflow-card-archived')).toBeInTheDocument();
+		expect(getByTestId('workflow-card-archived')).toHaveTextContent('Archived');
+		expect(queryByTestId('workflow-card-activator')).not.toBeInTheDocument();
 	});
 
-	it('should not show Archived badge on non archived workflows', async () => {
+	it('should not show Archived text on non archived workflows', async () => {
 		const data = createWorkflow({ isArchived: false });
 		const { queryByTestId } = renderComponent({ props: { data } });
 
-		expect(queryByTestId('workflow-archived-tag')).not.toBeInTheDocument();
+		expect(queryByTestId('workflow-card-archived')).not.toBeInTheDocument();
+		expect(queryByTestId('workflow-card-activator')).toBeInTheDocument();
 	});
 });
