@@ -334,20 +334,32 @@ const focusSearchInput = () => {
 	}
 };
 
-const hasAppliedFilters = (): boolean => {
-	return !!filterKeys.value.find((key) => {
-		if (key === 'search') return false;
+const isFilterApplied = (key: string): boolean => {
+	if (key === 'search') return false;
 
-		if (typeof props.filters[key] === 'boolean') {
-			return props.filters[key];
-		}
+	if (typeof props.filters[key] === 'boolean') {
+		return props.filters[key];
+	}
 
-		if (Array.isArray(props.filters[key])) {
-			return props.filters[key].length > 0;
-		}
+	if (Array.isArray(props.filters[key])) {
+		return props.filters[key].length > 0;
+	}
 
-		return props.filters[key] !== '';
+	return props.filters[key] !== '';
+};
+
+const hasOnlyFiltersThatShowMoreResults = computed(() => {
+	const activeFilters = filterKeys.value.filter(isFilterApplied);
+
+	const filtersThatShowMoreResults = ['showArchived'];
+
+	return activeFilters.every((filter) => {
+		return filtersThatShowMoreResults.includes(filter);
 	});
+});
+
+const hasAppliedFilters = (): boolean => {
+	return !!filterKeys.value.find(isFilterApplied);
 };
 
 const setRowsPerPage = async (numberOfRowsPerPage: number) => {
@@ -667,9 +679,18 @@ defineExpose({
 
 					<slot name="callout"></slot>
 
-					<div v-if="showFiltersDropdown" v-show="hasFilters" class="mt-xs">
+					<div
+						v-if="showFiltersDropdown"
+						v-show="hasFilters"
+						class="mt-xs"
+						data-test-id="resources-list-filters-applied-info"
+					>
 						<n8n-info-tip :bold="false">
-							{{ i18n.baseText(`${resourceKey}.filters.active` as BaseTextKey) }}
+							{{
+								hasOnlyFiltersThatShowMoreResults
+									? i18n.baseText(`${resourceKey}.filters.active.shortText` as BaseTextKey)
+									: i18n.baseText(`${resourceKey}.filters.active` as BaseTextKey)
+							}}
 							<n8n-link data-test-id="workflows-filter-reset" size="small" @click="resetFilters">
 								{{ i18n.baseText(`${resourceKey}.filters.active.reset` as BaseTextKey) }}
 							</n8n-link>

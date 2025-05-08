@@ -2498,6 +2498,7 @@
 	"workflows.filters.apply": "Apply filters",
 	"workflows.filters.reset": "Reset all",
 	"workflows.filters.active": "Some workflows may be hidden since filters are applied.",
+	"workflows.filters.active.shortText": "Filters are applied.",
 	"workflows.filters.active.reset": "Remove filters",
 	"workflows.sort.lastUpdated": "Sort by last updated",
 	"workflows.sort.lastCreated": "Sort by last created",
