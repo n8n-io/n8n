@@ -43,7 +43,7 @@ describe('WorkflowStatisticsService', () => {
 			mock<EntityMetadata>({
 				tableName: 'workflow_statistics',
 			}),
-		driver: { escape: jest.fn().mockImplementation((id) => id) },
+		driver: { escape: jest.fn((id) => id) },
 	});
 	Object.assign(entityManager, { connection: dataSource });
 
