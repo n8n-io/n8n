@@ -401,21 +401,27 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 </script>
 
 <template>
-	<n8n-card :class="$style.cardLink" data-test-id="workflow-card" @click="onClick">
+	<n8n-card
+		:class="{
+			[$style.cardLink]: true,
+			[$style.cardArchived]: data.isArchived,
+		}"
+		data-test-id="workflow-card"
+		@click="onClick"
+	>
 		<template #header>
-			<n8n-text tag="h2" bold :class="$style.cardHeading" data-test-id="workflow-card-name">
+			<n8n-text
+				tag="h2"
+				bold
+				:class="{
+					[$style.cardHeading]: true,
+					[$style.cardHeadingArchived]: data.isArchived,
+				}"
+				data-test-id="workflow-card-name"
+			>
 				{{ data.name }}
 				<N8nBadge v-if="!workflowPermissions.update" class="ml-3xs" theme="tertiary" bold>
 					{{ locale.baseText('workflows.item.readonly') }}
-				</N8nBadge>
-				<N8nBadge
-					v-if="data.isArchived"
-					class="ml-3xs"
-					theme="tertiary"
-					bold
-					data-test-id="workflow-archived-tag"
-				>
-					{{ locale.baseText('workflows.item.archived') }}
 				</N8nBadge>
 			</n8n-text>
 		</template>
@@ -472,7 +478,19 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 						</n8n-breadcrumbs>
 					</div>
 				</ProjectCardBadge>
+
+				<n8n-text
+					v-if="data.isArchived"
+					color="text-light"
+					size="small"
+					bold
+					class="ml-s mr-s"
+					data-test-id="workflow-card-archived"
+				>
+					{{ locale.baseText('workflows.item.archived') }}
+				</n8n-text>
 				<WorkflowActivator
+					v-else
 					class="mr-s"
 					:is-archived="data.isArchived"
 					:workflow-active="data.active"
@@ -515,6 +533,10 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 	}
 }
 
+.cardHeadingArchived {
+	color: var(--color-text-light);
+}
+
 .cardDescription {
 	min-height: 19px;
 	display: flex;
@@ -532,6 +554,10 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 	cursor: default;
 }
 
+.cardBadge {
+	background-color: var(--color-background-xlight);
+}
+
 .cardBadge.with-breadcrumbs {
 	:global(.n8n-badge) {
 		padding-right: 0;
@@ -539,6 +565,12 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 	:global(.n8n-breadcrumbs) {
 		padding-left: var(--spacing-5xs);
 	}
+}
+
+.cardArchived {
+	background-color: var(--color-background-light);
+	border-color: var(--color-foreground-light);
+	color: var(--color-text-base);
 }
 
 @include mixins.breakpoint('sm-and-down') {
