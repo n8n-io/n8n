@@ -397,6 +397,21 @@ const getIssues = computed<string[]>(() => {
 		issues.parameters[props.parameter.name] = [
 			`There was a problem loading the parameter options from server: "${remoteParameterOptionsLoadingIssues.value}"`,
 		];
+	} else if (props.parameter.type === 'workflowSelector') {
+		const selected = modelValueResourceLocator.value?.value;
+		if (selected) {
+			const isSelectedArchived = workflowsStore.allWorkflows.some(
+				(resource) => resource.id === selected && resource.isArchived,
+			);
+
+			if (isSelectedArchived) {
+				if (issues.parameters === undefined) {
+					issues.parameters = {};
+				}
+				const issue = i18n.baseText('parameterInput.selectedWorkflowIsArchived');
+				issues.parameters[props.parameter.name] = [issue];
+			}
+		}
 	}
 
 	if (issues?.parameters?.[props.parameter.name] !== undefined) {
