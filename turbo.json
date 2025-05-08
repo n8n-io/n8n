@@ -31,6 +31,7 @@
 				"@n8n/decorators#lint",
 				"@n8n/constants#lint",
 				"@n8n/backend-common#lint",
+				"@n8n/integration-test-utils#lint",
 				"@n8n/db#lint",
 				"@n8n/di#lint",
 				"@n8n/client-oauth2#lint",

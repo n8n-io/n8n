@@ -1,5 +1,6 @@
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { hasGlobalScope } from '@n8n/permissions';
 import { Logger } from 'n8n-core';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
@@ -28,7 +29,7 @@ export class ActiveWorkflowsService {
 		const activationErrors = await this.activationErrorsService.getAll();
 		const activeWorkflowIds = await this.workflowRepository.getActiveIds();
 
-		const hasFullAccess = user.hasGlobalScope('workflow:list');
+		const hasFullAccess = hasGlobalScope(user, 'workflow:list');
 		if (hasFullAccess) {
 			return activeWorkflowIds.filter((workflowId) => !activationErrors[workflowId]);
 		}

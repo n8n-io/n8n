@@ -1,4 +1,5 @@
 export const DEFAULT_OPERATIONS = ['create', 'read', 'update', 'delete', 'list'] as const;
+
 export const RESOURCES = {
 	annotationTag: [...DEFAULT_OPERATIONS] as const,
 	auditLogs: ['manage'] as const,
@@ -22,7 +23,7 @@ export const RESOURCES = {
 	variable: [...DEFAULT_OPERATIONS] as const,
 	workersView: ['manage'] as const,
 	workflow: ['share', 'execute', 'move', ...DEFAULT_OPERATIONS] as const,
-	folder: [...DEFAULT_OPERATIONS] as const,
+	folder: [...DEFAULT_OPERATIONS, 'move'] as const,
 	insights: ['list'] as const,
 } as const;
 

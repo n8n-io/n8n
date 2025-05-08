@@ -1,10 +1,10 @@
 import type { User } from '@n8n/db';
 import type { TestDefinition } from '@n8n/db';
+import { ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mockInstance } from 'n8n-core/test/utils';
 import type { IWorkflowBase } from 'n8n-workflow';
 
-import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { TestDefinitionRepository } from '@/databases/repositories/test-definition.repository.ee';
 import { TestRunRepository } from '@/databases/repositories/test-run.repository.ee';
 import { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.service.ee';
@@ -34,7 +34,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['TestDefinition', 'TestRun', 'Workflow', 'SharedWorkflow']);
+	await testDb.truncate(['TestDefinition', 'TestRun', 'WorkflowEntity', 'SharedWorkflow']);
 
 	workflowUnderTest = await createWorkflow({ name: 'workflow-under-test' }, ownerShell);
 

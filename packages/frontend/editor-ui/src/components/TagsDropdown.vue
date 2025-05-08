@@ -240,10 +240,10 @@ onClickOutside(
 			</N8nOption>
 			<N8nOption v-else-if="options.length === 0" value="message" disabled>
 				<span v-if="createEnabled">{{ i18n.baseText('tagsDropdown.typeToCreateATag') }}</span>
-				<span v-if="allTags.length > 0">{{
+				<span v-else-if="allTags.length > 0">{{
 					i18n.baseText('tagsDropdown.noMatchingTagsExist')
 				}}</span>
-				<span v-else-if="filter">{{ i18n.baseText('tagsDropdown.noTagsExist') }}</span>
+				<span v-else>{{ i18n.baseText('tagsDropdown.noTagsExist') }}</span>
 			</N8nOption>
 
 			<N8nOption

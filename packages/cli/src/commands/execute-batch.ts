@@ -112,6 +112,8 @@ export class ExecuteBatch extends BaseCommand {
 
 	override needsCommunityPackages = true;
 
+	override needsTaskRunner = true;
+
 	/**
 	 * Gracefully handles exit.
 	 * @param {boolean} skipExit Whether to skip exit or number according to received signal
@@ -335,7 +337,6 @@ export class ExecuteBatch extends BaseCommand {
 		if (results.summary.failedExecutions > 0) {
 			this.exit(1);
 		}
-		this.exit(0);
 	}
 
 	mergeResults(results: IResult, retryResults: IResult) {

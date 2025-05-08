@@ -1,5 +1,6 @@
 import type { SourceControlledFile } from '@n8n/api-types';
 import type { IWorkflowDb } from '@n8n/db';
+import { FolderRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
@@ -9,7 +10,6 @@ import { UnexpectedError, type ICredentialDataDecryptedObject } from 'n8n-workfl
 import { writeFile as fsWriteFile, rm as fsRm } from 'node:fs/promises';
 import path from 'path';
 
-import { FolderRepository } from '@/databases/repositories/folder.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { TagRepository } from '@/databases/repositories/tag.repository';
@@ -106,6 +106,7 @@ export class SourceControlExportService {
 					versionId: e.versionId,
 					owner: owners[e.id],
 					parentFolderId: e.parentFolder?.id ?? null,
+					isArchived: e.isArchived,
 				};
 				this.logger.debug(`Writing workflow ${e.id} to ${fileName}`);
 				return await fsWriteFile(fileName, JSON.stringify(sanitizedWorkflow, null, 2));

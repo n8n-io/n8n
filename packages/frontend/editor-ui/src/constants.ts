@@ -480,6 +480,7 @@ export const LOCAL_STORAGE_HIDE_GITHUB_STAR_BUTTON = 'N8N_HIDE_HIDE_GITHUB_STAR_
 export const LOCAL_STORAGE_NDV_INPUT_PANEL_DISPLAY_MODE = 'N8N_NDV_INPUT_PANEL_DISPLAY_MODE';
 export const LOCAL_STORAGE_NDV_OUTPUT_PANEL_DISPLAY_MODE = 'N8N_NDV_OUTPUT_PANEL_DISPLAY_MODE';
 export const LOCAL_STORAGE_LOGS_PANEL_OPEN = 'N8N_LOGS_PANEL_OPEN';
+export const LOCAL_STORAGE_WORKFLOW_LIST_PREFERENCES_KEY = 'N8N_WORKFLOWS_LIST_PREFERENCES';
 export const BASE_NODE_SURVEY_URL = 'https://n8n-community.typeform.com/to/BvmzxqYv#nodename=';
 export const COMMUNITY_PLUS_DOCS_URL =
 	'https://docs.n8n.io/hosting/community-edition-features/#registered-community-edition';
@@ -562,6 +563,9 @@ export const enum VIEWS {
 	FOLDERS = 'Folders',
 	PROJECTS_FOLDERS = 'ProjectsFolders',
 	INSIGHTS = 'Insights',
+	SHARED_WITH_ME = 'SharedWithMe',
+	SHARED_WORKFLOWS = 'SharedWorkflows',
+	SHARED_CREDENTIALS = 'SharedCredentials',
 }
 
 export const EDITABLE_CANVAS_VIEWS = [VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW, VIEWS.EXECUTION_DEBUG];
@@ -613,6 +617,8 @@ export const enum WORKFLOW_MENU_ACTIONS {
 	PUSH = 'push',
 	SETTINGS = 'settings',
 	DELETE = 'delete',
+	ARCHIVE = 'archive',
+	UNARCHIVE = 'unarchive',
 	SWITCH_NODE_VIEW_VERSION = 'switch-node-view-version',
 	RENAME = 'rename',
 }
@@ -755,12 +761,6 @@ export const AI_CREDITS_EXPERIMENT = {
 	variant: 'variant',
 };
 
-export const SCHEMA_PREVIEW_EXPERIMENT = {
-	name: '028_schema_preview',
-	control: 'control',
-	variant: 'variant',
-};
-
 export const WORKFLOW_BUILDER_EXPERIMENT = {
 	name: '30_workflow_builder',
 	control: 'control',
@@ -771,7 +771,6 @@ export const EXPERIMENTS_TO_TRACK = [
 	CREDENTIAL_DOCS_EXPERIMENT.name,
 	EASY_AI_WORKFLOW_EXPERIMENT.name,
 	AI_CREDITS_EXPERIMENT.name,
-	SCHEMA_PREVIEW_EXPERIMENT.name,
 	WORKFLOW_BUILDER_EXPERIMENT.name,
 ];
 
