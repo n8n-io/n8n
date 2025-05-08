@@ -86,6 +86,8 @@ const getSamlConfig = async () => {
 
 const onSave = async () => {
 	try {
+		// Validate provided information before we save the settings to the server
+		validateInput();
 		const config =
 			ipsType.value === IdentityProviderSettingsType.URL
 				? { metadataUrl: metadataUrl.value }
@@ -129,6 +131,24 @@ const onTest = async () => {
 		}
 	} catch (error) {
 		toast.showError(error, 'error');
+	}
+};
+
+const validateInput = () => {
+	if (ipsType.value === IdentityProviderSettingsType.URL) {
+		// In case the user wants to set the metadata url we want to be sure that
+		// the provided url is at least a valid http, https url.
+		try {
+			const parsedUrl = new URL(metadataUrl.value);
+			// Not sure if we should allow unencrypted http urls for SAML metadata?
+			if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
+				// The content of this error is never seen by the user, because the catch clause
+				// below catches it and translates it to a more general error message.
+				throw new Error('The provided protocol is not valid');
+			}
+		} catch (error) {
+			throw new Error(i18n.baseText('settings.sso.settings.ips.url.invalid'));
+		}
 	}
 };
 
