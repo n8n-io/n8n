@@ -34,6 +34,7 @@ describe('Test SlackV1, message => post', () => {
 		.post('/api/chat.postMessage', {
 			channel: 'C08514ZPKB8',
 			text: 'test message',
+			attachments: [],
 			icon_emoji: '😁',
 			link_names: true,
 			mrkdwn: true,

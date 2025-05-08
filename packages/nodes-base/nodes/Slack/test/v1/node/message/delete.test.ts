@@ -11,7 +11,8 @@ describe('Test SlackV1, message => delete', () => {
 	nock('https://slack.com')
 		.post('/api/chat.delete', {
 			channel: 'C08514ZPKB8',
-			ts: '1734322671.726339'
+			ts: '1734322671.726339',
+			as_user: true
 		})
 		.reply(200, API_RESPONSE);
 
