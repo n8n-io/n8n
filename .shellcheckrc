@@ -1,0 +1,26 @@
+# Seguir las buenas prácticas para scripts bash
+# https://www.shellcheck.net/
+
+# Permite usar source para cargar archivos externos
+# source=external-sources.sh
+
+# No se queja de variables indefinidas que vienen del entorno
+disable=SC2154
+
+# Severidad mínima (error, warning, info, style)
+severity=style
+
+# Formato de salida (checkstyle, diff, gcc, json, json1, quiet, tty)
+# format=gcc
+
+# Escapa caracteres especiales en nombres de archivo
+enable=check-extra-masked-returns
+
+# Escapa espacios en nombres de archivo
+enable=quote-safe-variables
+
+# Sugiere '[[' en lugar de '[' para tests
+enable=require-double-brackets
+
+# Recomienda ${var} en lugar de $var
+enable=avoid-nullary-conditions 

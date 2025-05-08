@@ -1,0 +1,23 @@
+FROM node:16-alpine
+
+# Instalar dependencias del sistema
+RUN apk add --update graphicsmagick tzdata git
+
+# Configurar timezone
+ENV TZ=Europe/Madrid
+
+# Directorio de trabajo
+WORKDIR /app
+
+# Copiar el código
+COPY . .
+
+# Instalar dependencias y construir
+RUN npm install
+RUN npm run build
+
+# Exponer puerto
+EXPOSE 5678
+
+# Iniciar n8n
+CMD ["npm", "run", "start"]
