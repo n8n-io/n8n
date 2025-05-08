@@ -563,6 +563,9 @@ export const enum VIEWS {
 	FOLDERS = 'Folders',
 	PROJECTS_FOLDERS = 'ProjectsFolders',
 	INSIGHTS = 'Insights',
+	SHARED_WITH_ME = 'SharedWithMe',
+	SHARED_WORKFLOWS = 'SharedWorkflows',
+	SHARED_CREDENTIALS = 'SharedCredentials',
 }
 
 export const EDITABLE_CANVAS_VIEWS = [VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW, VIEWS.EXECUTION_DEBUG];

@@ -550,6 +550,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			parentFolderId?: string;
 		} = {},
 		includeFolders: boolean = false,
+		onlySharedWithMe: boolean = false,
 	): Promise<WorkflowListResource[]> {
 		const filter = { ...filters, projectId };
 		const options = {
@@ -563,6 +564,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			Object.keys(filter).length ? filter : undefined,
 			Object.keys(options).length ? options : undefined,
 			includeFolders ? includeFolders : undefined,
+			onlySharedWithMe ? onlySharedWithMe : undefined,
 		);
 		totalWorkflowCount.value = count;
 		// Also set fetched workflows to store
@@ -627,6 +629,16 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 		setWorkflowName({ newName: workflowData.name, setStateDirty: false });
 
+		return workflowData;
+	}
+
+	async function getNewWorkflowDataAndMakeShareable(
+		name?: string,
+		projectId?: string,
+		parentFolderId?: string,
+	): Promise<INewWorkflowData> {
+		const workflowData = await getNewWorkflowData(name, projectId, parentFolderId);
+		makeNewWorkflowShareable();
 		return workflowData;
 	}
 
@@ -1961,6 +1973,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		markExecutionAsStopped,
 		findNodeByPartialId,
 		getPartialIdForNode,
+		getNewWorkflowDataAndMakeShareable,
 		totalWorkflowCount,
 	};
 });
