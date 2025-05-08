@@ -687,10 +687,9 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 	}
 
 	async moveToFolder(workflowIds: string[], toFolderId: string) {
-		await this.createQueryBuilder()
-			.update(WorkflowEntity)
-			.set({ parentFolder: toFolderId === PROJECT_ROOT ? null : { id: toFolderId } })
-			.where({ id: In(workflowIds) })
-			.execute();
+		await this.update(
+			{ id: In(workflowIds) },
+			{ parentFolder: toFolderId === PROJECT_ROOT ? null : { id: toFolderId } },
+		);
 	}
 }

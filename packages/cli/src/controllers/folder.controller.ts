@@ -27,14 +27,12 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { AuthenticatedRequest } from '@/requests';
 import type { ListQuery } from '@/requests';
 import { FolderService } from '@/services/folder.service';
-import { WorkflowService } from '@/workflows/workflow.service';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
 @RestController('/projects/:projectId/folders')
 export class ProjectController {
 	constructor(
 		private readonly folderService: FolderService,
-		private readonly workflowService: WorkflowService,
 		private readonly enterpriseWorkflowService: EnterpriseWorkflowService,
 	) {}
 
@@ -106,13 +104,7 @@ export class ProjectController {
 		const { projectId, folderId } = req.params;
 
 		try {
-			await this.folderService.findFolderInProjectOrFail(folderId, projectId);
-
-			if (!payload.transferToFolderId) {
-				await this.workflowService.flattenAndArchive(req.user, folderId, projectId);
-			}
-
-			await this.folderService.deleteFolder(folderId, projectId, payload);
+			await this.folderService.deleteFolder(req.user, folderId, projectId, payload);
 		} catch (e) {
 			if (e instanceof FolderNotFoundError) {
 				throw new NotFoundError(e.message);
