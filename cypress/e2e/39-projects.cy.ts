@@ -299,11 +299,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			workflowPage.actions.saveWorkflowOnButtonClick();
 			workflowPage.actions.addNodeToCanvas('Execute Workflow', true, true);
 
-			cy.window().then((win) => {
-				cy.stub(win, 'open').callsFake((url) => {
-					cy.visit(url);
-				});
-			});
+			cy.window().then((win) => cy.stub(win, 'open').callsFake((url) => cy.visit(url)));
 
 			selectResourceLocatorItem('workflowId', 0, 'Create a');
 			// Need to wait for the trigger node to auto-open after a delay
