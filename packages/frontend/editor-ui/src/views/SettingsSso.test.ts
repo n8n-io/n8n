@@ -194,7 +194,7 @@ describe('SettingsSso View', () => {
 		expect(ssoStore.getSamlConfig).toHaveBeenCalledTimes(2);
 	});
 
-	it('PAY-2490: validate the url before setting the saml config', async () => {
+	it('should validate the url before setting the saml config', async () => {
 		const pinia = createTestingPinia();
 
 		const ssoStore = mockedStore(useSSOStore);
@@ -223,7 +223,7 @@ describe('SettingsSso View', () => {
 		expect(ssoStore.getSamlConfig).toHaveBeenCalledTimes(2);
 	});
 
-	it('PAY-2490: make sure url does not support invalid protocols like mailto', async () => {
+	it('should ensure the url does not support invalid protocols like mailto', async () => {
 		const pinia = createTestingPinia();
 
 		const ssoStore = mockedStore(useSSOStore);
@@ -252,7 +252,7 @@ describe('SettingsSso View', () => {
 		expect(ssoStore.getSamlConfig).toHaveBeenCalledTimes(2);
 	});
 
-	it('PAY-1812: allows user to disable SSO even if config request failed', async () => {
+	it('allows user to disable SSO even if config request failed', async () => {
 		const pinia = createTestingPinia();
 
 		const ssoStore = mockedStore(useSSOStore);
