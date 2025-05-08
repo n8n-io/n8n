@@ -25,14 +25,6 @@ export type EndpointType =
  * Getters
  */
 
-export function executeWorkflowAndWait(waitForSuccessBannerToDisappear = true) {
-	cy.get('[data-test-id="execute-workflow-button"]').click();
-	cy.contains('Workflow executed successfully', { timeout: 4000 }).should('be.visible');
-	if (waitForSuccessBannerToDisappear) {
-		cy.contains('Workflow executed successfully', { timeout: 10000 }).should('not.exist');
-	}
-}
-
 export function getCanvas() {
 	return cy.getByTestId('canvas');
 }
@@ -141,7 +133,7 @@ export function getWorkflowHistoryCloseButton() {
 
 export function disableNode(name: string) {
 	const target = getNodeByName(name);
-	target.rightclick(name ? 'center' : 'topLeft', { force: true });
+	target.trigger('contextmenu');
 	cy.getByTestId('context-menu-item-toggle_activation').click();
 }
 
@@ -200,6 +192,22 @@ export function getNodeIssuesByName(nodeName: string) {
 /**
  * Actions
  */
+
+export function executeWorkflow() {
+	cy.get('[data-test-id="execute-workflow-button"]').click();
+}
+
+export function waitForSuccessBannerToAppear() {
+	cy.contains(/(Workflow|Node) executed successfully/, { timeout: 4000 }).should('be.visible');
+}
+
+export function executeWorkflowAndWait(waitForSuccessBannerToDisappear = true) {
+	executeWorkflow();
+	waitForSuccessBannerToAppear();
+	if (waitForSuccessBannerToDisappear) {
+		cy.contains('Workflow executed successfully', { timeout: 10000 }).should('not.exist');
+	}
+}
 
 export function addNodeToCanvas(
 	nodeDisplayName: string,
@@ -372,4 +380,8 @@ export function openContextMenu(
 
 export function clickContextMenuAction(action: string) {
 	getContextMenuAction(action).click({ force: true });
+}
+
+export function openExecutions() {
+	cy.getByTestId('radio-button-executions').click();
 }
