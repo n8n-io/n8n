@@ -60,22 +60,26 @@ export class WorkflowToolService {
 
 	// Creates the tool based on the provided parameters
 	async createTool({
+		ctx,
 		name,
 		description,
 		itemIndex,
 	}: {
+		ctx: ISupplyDataFunctions;
 		name: string;
 		description: string;
 		itemIndex: number;
 	}): Promise<DynamicTool | DynamicStructuredTool> {
-		let runIndex = 0;
+		console.log('node', ctx.getNode());
+		console.log('runDataLength', ctx.getRunDataLength());
 		// Handler for the tool execution, will be called when the tool is executed
 		// This function will execute the sub-workflow and return the response
 		const toolHandler = async (
 			query: string | IDataObject,
 			runManager?: CallbackManagerForToolRun,
 		): Promise<IDataObject | IDataObject[] | string> => {
-			const localRunIndex = runIndex++;
+			const localRunIndex: number = ctx.getRunDataLength();
+			console.log(`runIndex: ${localRunIndex}`);
 			// We need to clone the context here to handle runIndex correctly
 			// Otherwise the runIndex will be shared between different executions
 			// Causing incorrect data to be passed to the sub-workflow and via $fromAI
@@ -319,6 +323,8 @@ export class WorkflowToolService {
 			jsonData = currentWorkflowInputs[itemIndex].json;
 		}
 
+		console.log(jsonData);
+
 		const newItem = await manual.execute.call(
 			context,
 			{ json: jsonData },
@@ -327,6 +333,7 @@ export class WorkflowToolService {
 			rawData,
 			context.getNode(),
 		);
+		console.log('new item:', newItem);
 
 		return [newItem] as INodeExecutionData[];
 	}
