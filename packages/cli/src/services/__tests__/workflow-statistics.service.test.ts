@@ -81,6 +81,7 @@ describe('WorkflowStatisticsService', () => {
 		test.each<WorkflowExecuteMode>(['cli', 'error', 'retry', 'trigger', 'webhook', 'evaluation'])(
 			'should upsert with root executions for execution mode %s',
 			async (mode) => {
+				mockDBCall();
 				// Call the function with a production success result, ensure metrics hook gets called
 				const runData: IRun = {
 					finished: true,
@@ -103,6 +104,7 @@ describe('WorkflowStatisticsService', () => {
 		test.each<WorkflowExecuteMode>(['manual', 'integrated', 'internal'])(
 			'should upsert without root executions for execution mode %s',
 			async (mode) => {
+				mockDBCall();
 				const runData: IRun = {
 					finished: true,
 					status: 'success',
@@ -124,6 +126,7 @@ describe('WorkflowStatisticsService', () => {
 		test.each<ExecutionStatus>(['success', 'crashed', 'error'])(
 			'should upsert with root executions for execution status %s',
 			async (status) => {
+				mockDBCall();
 				const runData: IRun = {
 					finished: true,
 					status,
@@ -145,6 +148,7 @@ describe('WorkflowStatisticsService', () => {
 		test.each<ExecutionStatus>(['canceled', 'new', 'running', 'unknown', 'waiting'])(
 			'should upsert without root executions for execution status %s',
 			async (status) => {
+				mockDBCall();
 				const runData: IRun = {
 					finished: true,
 					status,
@@ -194,6 +198,7 @@ describe('WorkflowStatisticsService', () => {
 		});
 
 		test('should only create metrics for production successes', async () => {
+			mockDBCall();
 			// Call the function with a non production success result, ensure metrics hook is never called
 			const workflow = {
 				id: '1',
