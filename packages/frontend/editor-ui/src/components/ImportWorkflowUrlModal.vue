@@ -41,7 +41,7 @@ const focusInput = async () => {
 		@opened="focusInput"
 	>
 		<template #content>
-			<div>
+			<div :class="$style.noScrollbar">
 				<n8n-input
 					ref="inputRef"
 					v-model="url"
@@ -86,5 +86,8 @@ const focusInput = async () => {
 	> * {
 		margin-left: var(--spacing-3xs);
 	}
+}
+.noScrollbar {
+	overflow: hidden;
 }
 </style>
