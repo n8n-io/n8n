@@ -1,0 +1,71 @@
+name: Deploy Rankia n8n to Cloud Run
+
+on:
+  pull_request:
+    branches: [rankia] # Se activa en PRs hacia rankia
+  push:
+    branches: [rankia] # Se activa cuando se fusiona a rankia
+
+jobs:
+  build-and-deploy:
+    name: Build and Deploy
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: 'read'
+      id-token: 'write' # Necesario para Workload Identity Federation con GCP
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }} # ej: projects/123456789/locations/global/workloadIdentityPools/my-pool/providers/my-provider
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }} # ej: my-sa@my-project.iam.gserviceaccount.com
+
+      - name: Set up Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for GCR
+        run: gcloud auth configure-docker europe-west1-docker.pkg.dev # Ajusta la región de Artifact Registry si es diferente
+
+      # Setup Node.js y pnpm (para cualquier paso que pueda necesitarlos, aunque el build principal es con Cloud Build)
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 10.2.1
+          run_install: false # No ejecutar pnpm install aquí, ya que lo hará Cloud Build
+
+      # El script deploy-cloud-run.sh ya maneja gcloud builds submit y gcloud run deploy
+      # Nos aseguraremos de que tenga permisos de ejecución
+      - name: Make deploy script executable
+        run: chmod +x ./deploy-cloud-run.sh
+
+      - name: Execute deployment script
+        env:
+          PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }} # Pasa el PROJECT_ID como variable de entorno al script
+          # Puedes añadir otras variables que tu script necesite y que estén en secrets
+          # o que sean específicas del entorno de CI/CD.
+          # Asegúrate de que tu script deploy-cloud-run.sh pueda leer estas variables de entorno.
+        run: ./deploy-cloud-run.sh
+        # Consideraciones para el script deploy-cloud-run.sh:
+        # 1. Debería ser no interactivo (quitar `read -p "Continuar?"`).
+        # 2. Debería poder obtener las variables de entorno necesarias (PROJECT_ID, REGION, etc.)
+        #    desde las variables del entorno de GitHub Actions o secrets, en lugar de tenerlas hardcodeadas
+        #    o pedirlas interactivamente.
+        # 3. Podría ser útil que el script acepte el tag de la imagen como argumento,
+        #    para poder usar github.sha (ej: gcr.io/PROJECT_ID/SERVICE_NAME:${{ github.sha }})
+
+      # (Opcional) Si quieres un despliegue a staging/preview en PRs, y producción en merge a rankia,
+      # necesitarías lógica condicional aquí o dos jobs separados.
+      # Por ahora, este workflow se ejecutará en ambos eventos (PR y push a rankia)
+      # y ejecutará el mismo script deploy-cloud-run.sh.
+      # Necesitarás adaptar tu deploy-cloud-run.sh para que se comporte de manera diferente
+      # (ej. desplegar a un servicio de staging con nombre diferente) si es un PR. 
