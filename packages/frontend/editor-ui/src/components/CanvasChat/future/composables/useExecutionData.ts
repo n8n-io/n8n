@@ -7,7 +7,7 @@ import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useThrottleFn } from '@vueuse/core';
 import { IN_PROGRESS_EXECUTION_ID } from '@/constants';
 import {
-	createLogEntries,
+	createLogTree,
 	deepToRaw,
 	type LatestNodeInfo,
 	type LogEntry,
@@ -57,7 +57,7 @@ export function useExecutionData() {
 			return [];
 		}
 
-		return createLogEntries(
+		return createLogTree(
 			workflow.value,
 			execData.value,
 			subWorkflows.value,

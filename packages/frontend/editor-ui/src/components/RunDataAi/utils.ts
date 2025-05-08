@@ -258,7 +258,7 @@ export interface LogEntry {
 	execution: IRunExecutionData;
 }
 
-export interface LogTreeBuildContext {
+export interface LogTreeCreationContext {
 	parent: LogEntry | undefined;
 	depth: number;
 	workflow: Workflow;
@@ -298,7 +298,7 @@ function getConsumedTokensV2(task: ITaskData): LlmTokenUsageData {
 
 function createNodeV2(
 	node: INodeUi,
-	context: LogTreeBuildContext,
+	context: LogTreeCreationContext,
 	runIndex: number,
 	runData: ITaskData,
 	children: LogEntry[] = [],
@@ -322,7 +322,7 @@ export function getTreeNodeDataV2(
 	nodeName: string,
 	runData: ITaskData,
 	runIndex: number | undefined,
-	context: LogTreeBuildContext,
+	context: LogTreeCreationContext,
 ): LogEntry[] {
 	const node = context.workflow.getNode(nodeName);
 
@@ -333,7 +333,7 @@ function getChildNodes(
 	treeNode: LogEntry,
 	node: INodeUi,
 	runIndex: number | undefined,
-	context: LogTreeBuildContext,
+	context: LogTreeCreationContext,
 ) {
 	if (hasSubExecution(treeNode)) {
 		const workflowId = treeNode.runData.metadata?.subExecution?.workflowId;
@@ -345,7 +345,7 @@ function getChildNodes(
 			return [];
 		}
 
-		return createLogEntriesRec({
+		return createLogTreeRec({
 			...context,
 			parent: treeNode,
 			depth: context.depth + 1,
@@ -393,7 +393,7 @@ function getChildNodes(
 function getTreeNodeDataRecV2(
 	node: INodeUi,
 	runData: ITaskData,
-	context: LogTreeBuildContext,
+	context: LogTreeCreationContext,
 	runIndex: number | undefined,
 ): LogEntry[] {
 	const treeNode = createNodeV2(node, context, runIndex ?? 0, runData);
@@ -445,13 +445,13 @@ function findLogEntryToAutoSelectRec(subTree: LogEntry[], depth: number): LogEnt
 	return depth === 0 ? subTree[0] : undefined;
 }
 
-export function createLogEntries(
+export function createLogTree(
 	workflow: Workflow,
 	response: IExecutionResponse,
 	workflows: Record<string, Workflow> = {},
 	subWorkflowData: Record<string, IRunExecutionData> = {},
 ) {
-	return createLogEntriesRec({
+	return createLogTreeRec({
 		parent: undefined,
 		depth: 0,
 		executionId: response.id,
@@ -462,7 +462,7 @@ export function createLogEntries(
 	});
 }
 
-function createLogEntriesRec(context: LogTreeBuildContext) {
+function createLogTreeRec(context: LogTreeCreationContext) {
 	const runs = Object.entries(context.data.resultData.runData)
 		.flatMap(([nodeName, taskData]) =>
 			context.workflow.getChildNodes(nodeName, 'ALL_NON_MAIN').length > 0 ||

@@ -16,7 +16,7 @@ import {
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { createTestWorkflowObject } from '@/__tests__/mocks';
-import { createLogEntries } from '@/components/RunDataAi/utils';
+import { createLogTree } from '@/components/RunDataAi/utils';
 
 describe('LogsOverviewPanel', () => {
 	let pinia: TestingPinia;
@@ -30,7 +30,7 @@ describe('LogsOverviewPanel', () => {
 			isReadOnly: false,
 			isCompact: false,
 			scrollToSelection: false,
-			entries: createLogEntries(createTestWorkflowObject(aiChatWorkflow), aiChatExecutionResponse),
+			entries: createLogTree(createTestWorkflowObject(aiChatWorkflow), aiChatExecutionResponse),
 			latestNodeInfo: {},
 			execution: aiChatExecutionResponse,
 			...props,
@@ -129,10 +129,7 @@ describe('LogsOverviewPanel', () => {
 
 		const rendered = render({
 			isOpen: true,
-			entries: createLogEntries(
-				createTestWorkflowObject(aiManualWorkflow),
-				aiManualExecutionResponse,
-			),
+			entries: createLogTree(createTestWorkflowObject(aiManualWorkflow), aiManualExecutionResponse),
 		});
 		const aiAgentRow = (await rendered.findAllByRole('treeitem'))[0];
 

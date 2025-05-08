@@ -8,7 +8,7 @@ import {
 } from '@/__tests__/mocks';
 import {
 	createAiData,
-	createLogEntries,
+	createLogTree,
 	deepToRaw,
 	findSelectedLogEntry,
 	getDefaultCollapsedEntries,
@@ -24,7 +24,7 @@ import {
 import { type LogEntrySelection } from '../CanvasChat/types/logs';
 import { type IExecutionResponse } from '@/Interface';
 import { isReactive, reactive } from 'vue';
-import { createTestLogsBuildContext } from '../CanvasChat/__test__/data';
+import { createTestLogTreeCreationContext } from '../CanvasChat/__test__/data';
 
 describe(getTreeNodeData, () => {
 	it('should generate one node per execution', () => {
@@ -521,7 +521,7 @@ describe(getTreeNodeDataV2, () => {
 		const jsonB2 = { tokenUsage: { completionTokens: 4, promptTokens: 5, totalTokens: 6 } };
 		const jsonC1 = { tokenUsageEstimate: { completionTokens: 7, promptTokens: 8, totalTokens: 9 } };
 
-		const ctx = createTestLogsBuildContext(workflow, {
+		const ctx = createTestLogTreeCreationContext(workflow, {
 			A: [createTestTaskData({ startTime: 1740528000000 })],
 			B: [
 				createTestTaskData({
@@ -635,7 +635,7 @@ describe(getTreeNodeDataV2, () => {
 			'RootNode1',
 			runData.RootNode1[0],
 			undefined,
-			createTestLogsBuildContext(workflow, runData),
+			createTestLogTreeCreationContext(workflow, runData),
 		);
 		expect(rootNode1Tree[0].children.length).toBe(1);
 		expect(rootNode1Tree[0].children[0].node.name).toBe('SharedSubNode');
@@ -646,7 +646,7 @@ describe(getTreeNodeDataV2, () => {
 			'RootNode2',
 			runData.RootNode2[0],
 			undefined,
-			createTestLogsBuildContext(workflow, runData),
+			createTestLogTreeCreationContext(workflow, runData),
 		);
 		expect(rootNode2Tree[0].children.length).toBe(1);
 		expect(rootNode2Tree[0].children[0].node.name).toBe('SharedSubNode');
@@ -692,7 +692,7 @@ describe(getTreeNodeDataV2, () => {
 			'RootNode',
 			runData.RootNode[0],
 			0,
-			createTestLogsBuildContext(workflow, runData),
+			createTestLogTreeCreationContext(workflow, runData),
 		);
 		expect(rootNode1Tree[0].children.length).toBe(1);
 		expect(rootNode1Tree[0].children[0].node.name).toBe('SubNode');
@@ -703,7 +703,7 @@ describe(getTreeNodeDataV2, () => {
 			'RootNode',
 			runData.RootNode[1],
 			1,
-			createTestLogsBuildContext(workflow, runData),
+			createTestLogTreeCreationContext(workflow, runData),
 		);
 		expect(rootNode2Tree[0].children.length).toBe(1);
 		expect(rootNode2Tree[0].children[0].node.name).toBe('SubNode');
@@ -743,7 +743,7 @@ describe(getTreeNodeDataV2, () => {
 			'RootNode',
 			runData.RootNode[0],
 			undefined,
-			createTestLogsBuildContext(workflow, runData),
+			createTestLogTreeCreationContext(workflow, runData),
 		);
 		expect(rootNodeTree[0].children.length).toBe(1);
 		expect(rootNodeTree[0].children[0].node.name).toBe('SubNode');
@@ -783,7 +783,7 @@ describe(getTreeNodeDataV2, () => {
 			'RootNode',
 			runData.RootNode[0],
 			undefined,
-			createTestLogsBuildContext(workflow, runData),
+			createTestLogTreeCreationContext(workflow, runData),
 		);
 		expect(rootNodeTree[0].children.length).toBe(1);
 		expect(rootNodeTree[0].children[0].node.name).toBe('SubNode');
@@ -860,7 +860,7 @@ describe(getTreeNodeDataV2, () => {
 			'RootNode1',
 			runData.RootNode1[0],
 			undefined,
-			createTestLogsBuildContext(workflow, runData),
+			createTestLogTreeCreationContext(workflow, runData),
 		);
 		expect(rootNode1Tree[0].children.length).toBe(1);
 		expect(rootNode1Tree[0].children[0].node.name).toBe('SharedSubNode');
@@ -874,7 +874,7 @@ describe(getTreeNodeDataV2, () => {
 			'RootNode2',
 			runData.RootNode2[0],
 			undefined,
-			createTestLogsBuildContext(workflow, runData),
+			createTestLogTreeCreationContext(workflow, runData),
 		);
 		expect(rootNode2Tree[0].children.length).toBe(1);
 		expect(rootNode2Tree[0].children[0].node.name).toBe('SharedSubNode');
@@ -960,7 +960,7 @@ describe(getTreeNodeDataV2, () => {
 			'RootNode1',
 			runData.RootNode1[0],
 			undefined,
-			createTestLogsBuildContext(workflow, runData),
+			createTestLogTreeCreationContext(workflow, runData),
 		);
 		expect(rootNode1Tree[0].children.length).toBe(1);
 		expect(rootNode1Tree[0].children[0].node.name).toBe('SubNodeA');
@@ -973,7 +973,7 @@ describe(getTreeNodeDataV2, () => {
 			'RootNode2',
 			runData.RootNode2[0],
 			undefined,
-			createTestLogsBuildContext(workflow, runData),
+			createTestLogTreeCreationContext(workflow, runData),
 		);
 
 		expect(rootNode2Tree[0].children.length).toBe(1);
@@ -990,7 +990,7 @@ describe(findSelectedLogEntry, () => {
 	function find(state: LogEntrySelection, response: IExecutionResponse) {
 		return findSelectedLogEntry(
 			state,
-			createLogEntries(createTestWorkflowObject(response.workflowData), response),
+			createLogTree(createTestWorkflowObject(response.workflowData), response),
 		);
 	}
 
@@ -1161,7 +1161,7 @@ describe(findSelectedLogEntry, () => {
 	});
 });
 
-describe(createLogEntries, () => {
+describe(createLogTree, () => {
 	it('should return root node log entries in ascending order of executionIndex', () => {
 		const workflow = createTestWorkflowObject({
 			nodes: [
@@ -1205,7 +1205,7 @@ describe(createLogEntries, () => {
 			},
 		});
 
-		expect(createLogEntries(workflow, execution)).toEqual([
+		expect(createLogTree(workflow, execution)).toEqual([
 			expect.objectContaining({ node: expect.objectContaining({ name: 'A' }), runIndex: 0 }),
 			expect.objectContaining({ node: expect.objectContaining({ name: 'B' }), runIndex: 0 }),
 			expect.objectContaining({ node: expect.objectContaining({ name: 'C' }), runIndex: 1 }),
@@ -1231,7 +1231,7 @@ describe(createLogEntries, () => {
 		});
 
 		expect(
-			createLogEntries(
+			createLogTree(
 				workflow,
 				createTestWorkflowExecutionResponse({
 					data: {
@@ -1295,7 +1295,7 @@ describe(createLogEntries, () => {
 			},
 		});
 
-		expect(createLogEntries(workflow, response)).toEqual([
+		expect(createLogTree(workflow, response)).toEqual([
 			expect.objectContaining({ node: expect.objectContaining({ name: 'A' }) }),
 		]);
 	});
@@ -1332,7 +1332,7 @@ describe(createLogEntries, () => {
 		const subExecutionData = {
 			resultData: { runData: { C: [createTestTaskData(), createTestTaskData()] } },
 		};
-		const logs = createLogEntries(
+		const logs = createLogTree(
 			workflow,
 			rootExecutionData,
 			{ 'sub-workflow-id': subWorkflow },
