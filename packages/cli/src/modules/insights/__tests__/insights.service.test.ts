@@ -17,6 +17,7 @@ import type { InsightsByPeriodRepository } from '../database/repositories/insigh
 import type { InsightsCollectionService } from '../insights-collection.service';
 import type { InsightsCompactionService } from '../insights-compaction.service';
 import type { InsightsPruningService } from '../insights-pruning.service';
+import type { InsightsConfig } from '../insights.config';
 import { InsightsService } from '../insights.service';
 
 // Initialize DB once for all tests
@@ -504,6 +505,7 @@ describe('getAvailableDateRanges', () => {
 			mock<InsightsCollectionService>(),
 			mock<InsightsPruningService>(),
 			licenseMock,
+			mock<InsightsConfig>(),
 			mockLogger(),
 		);
 	});
@@ -606,6 +608,7 @@ describe('getMaxAgeInDaysAndGranularity', () => {
 			mock<InsightsCollectionService>(),
 			mock<InsightsPruningService>(),
 			licenseMock,
+			mock<InsightsConfig>(),
 			mockLogger(),
 		);
 	});
@@ -679,13 +682,13 @@ describe('shutdown', () => {
 		stopFlushingTimer: jest.fn(),
 	});
 
-	const mockCompactionService = {
+	const mockCompactionService = mock<InsightsCompactionService>({
 		stopCompactionTimer: jest.fn(),
-	} as unknown as InsightsCompactionService;
+	});
 
-	const mockPruningService = {
+	const mockPruningService = mock<InsightsPruningService>({
 		stopPruningTimer: jest.fn(),
-	} as unknown as InsightsPruningService;
+	});
 
 	beforeAll(() => {
 		insightsService = new InsightsService(
@@ -694,6 +697,7 @@ describe('shutdown', () => {
 			mockCollectionService,
 			mockPruningService,
 			mock<LicenseState>(),
+			mock<InsightsConfig>(),
 			mockLogger(),
 		);
 	});
@@ -712,22 +716,25 @@ describe('shutdown', () => {
 describe('timers', () => {
 	let insightsService: InsightsService;
 
-	const mockCollectionService = {
+	const mockCollectionService = mock<InsightsCollectionService>({
 		startFlushingTimer: jest.fn(),
 		stopFlushingTimer: jest.fn(),
-	} as unknown as InsightsCollectionService;
+	});
 
-	const mockCompactionService = {
+	const mockCompactionService = mock<InsightsCompactionService>({
 		startCompactionTimer: jest.fn(),
 		stopCompactionTimer: jest.fn(),
-	} as unknown as InsightsCompactionService;
+	});
 
-	const mockPruningService = {
+	const mockPruningService = mock<InsightsPruningService>({
 		startPruningTimer: jest.fn(),
 		stopPruningTimer: jest.fn(),
-	} as unknown as InsightsPruningService;
+	});
 
 	const mockedLogger = mockLogger();
+	const mockedConfig = mock<InsightsConfig>({
+		maxAgeDays: -1,
+	});
 
 	beforeAll(() => {
 		insightsService = new InsightsService(
@@ -736,21 +743,33 @@ describe('timers', () => {
 			mockCollectionService,
 			mockPruningService,
 			mock<LicenseState>(),
+			mockedConfig,
 			mockedLogger,
 		);
 	});
 
-	test('startTimers starts timers and logs message', () => {
+	test('startTimers starts timers except pruning', () => {
 		// ACT
 		insightsService.startTimers();
 
 		// ASSERT
 		expect(mockCompactionService.startCompactionTimer).toHaveBeenCalled();
 		expect(mockCollectionService.startFlushingTimer).toHaveBeenCalled();
+		expect(mockPruningService.startPruningTimer).not.toHaveBeenCalled();
+	});
+
+	test('startTimers starts pruning timer', () => {
+		// ARRANGE
+		mockedConfig.maxAgeDays = 30;
+
+		// ACT
+		insightsService.startTimers();
+
+		// ASSERT
 		expect(mockPruningService.startPruningTimer).toHaveBeenCalled();
 	});
 
-	test('stopTimers stops timers and logs message', () => {
+	test('stopTimers stops timers', () => {
 		// ACT
 		insightsService.stopTimers();
 

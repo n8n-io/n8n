@@ -1,4 +1,5 @@
 import { Service } from '@n8n/di';
+import { strict } from 'assert';
 import { Logger } from 'n8n-core';
 
 import { Time } from '@/constants';
@@ -10,7 +11,7 @@ import { InsightsConfig } from './insights.config';
 export class InsightsPruningService {
 	private pruneInsightsTimeout: NodeJS.Timeout | undefined;
 
-	private isStopped = false;
+	private isStopped = true;
 
 	private readonly delayOnError = Time.seconds.toMilliseconds;
 
@@ -22,15 +23,8 @@ export class InsightsPruningService {
 		this.logger = this.logger.scoped('insights');
 	}
 
-	get isPruningEnabled() {
-		return this.config.maxAgeDays > -1;
-	}
-
 	startPruningTimer() {
-		if (!this.isPruningEnabled) {
-			return;
-		}
-
+		strict(this.isStopped);
 		this.clearPruningTimer();
 		this.isStopped = false;
 		this.scheduleNextPrune();
@@ -61,6 +55,7 @@ export class InsightsPruningService {
 	}
 
 	async pruneInsights() {
+		this.logger.info('Pruning old insights data');
 		try {
 			const result = await this.insightsByPeriodRepository.pruneOldData(this.config.maxAgeDays);
 			this.logger.debug(

@@ -15,6 +15,7 @@ import { InsightsByPeriodRepository } from './database/repositories/insights-by-
 import { InsightsCollectionService } from './insights-collection.service';
 import { InsightsCompactionService } from './insights-compaction.service';
 import { InsightsPruningService } from './insights-pruning.service';
+import { InsightsConfig } from './insights.config';
 
 const keyRangeToDays: Record<InsightsDateRange['key'], number> = {
 	day: 1,
@@ -34,15 +35,22 @@ export class InsightsService {
 		private readonly collectionService: InsightsCollectionService,
 		private readonly pruningService: InsightsPruningService,
 		private readonly licenseState: LicenseState,
+		private readonly config: InsightsConfig,
 		private readonly logger: Logger,
 	) {
 		this.logger = this.logger.scoped('insights');
 	}
 
+	get isPruningEnabled() {
+		return this.config.maxAgeDays > -1;
+	}
+
 	startTimers() {
 		this.compactionService.startCompactionTimer();
 		this.collectionService.startFlushingTimer();
-		this.pruningService.startPruningTimer();
+		if (this.isPruningEnabled) {
+			this.pruningService.startPruningTimer();
+		}
 		this.logger.debug('Started compaction, flushing and pruning schedulers');
 	}
 
