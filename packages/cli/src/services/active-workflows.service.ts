@@ -1,10 +1,10 @@
 import type { User } from '@n8n/db';
+import { SharedWorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import { Logger } from 'n8n-core';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';

@@ -5,6 +5,7 @@ import {
 	ExecutionRepository,
 	FolderRepository,
 	WorkflowTagMappingRepository,
+	SharedWorkflowRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
@@ -21,7 +22,6 @@ import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import config from '@/config';
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import type { WorkflowFolderUnionFull } from '@/databases/repositories/workflow.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
