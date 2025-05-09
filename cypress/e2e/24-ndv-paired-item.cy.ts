@@ -240,6 +240,7 @@ describe('NDV', () => {
 	});
 
 	// https://linear.app/n8n/issue/ADO-3563/flaky-ndv-can-resolve-expression-with-paired-item-in-multi-input-node
+	// eslint-disable-next-line n8n-local-rules/no-skipped-tests
 	it.skip('can resolve expression with paired item in multi-input node', () => {
 		cy.fixture('expression_with_paired_item_in_multi_input_node.json').then((data) => {
 			cy.get('body').paste(JSON.stringify(data));
