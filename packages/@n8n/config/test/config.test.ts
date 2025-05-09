@@ -71,6 +71,7 @@ describe('GlobalConfig', () => {
 			},
 			tablePrefix: '',
 			type: 'sqlite',
+			isLegacySqlite: true,
 		},
 		credentials: {
 			defaultName: 'My credentials',
