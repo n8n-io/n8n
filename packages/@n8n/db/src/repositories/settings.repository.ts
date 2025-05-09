@@ -1,10 +1,10 @@
-import { Settings } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, Repository } from '@n8n/typeorm';
 import { ErrorReporter } from 'n8n-core';
 
-import config from '@/config';
-import { EXTERNAL_SECRETS_DB_KEY } from '@/external-secrets.ee/constants';
+import { Settings } from '../entities';
+
+export const EXTERNAL_SECRETS_DB_KEY = 'feature.externalSecrets';
 
 @Service()
 export class SettingsRepository extends Repository<Settings> {
@@ -34,7 +34,9 @@ export class SettingsRepository extends Repository<Settings> {
 		);
 	}
 
-	async dismissBanner({ bannerName }: { bannerName: string }): Promise<{ success: boolean }> {
+	async dismissBanner({
+		bannerName,
+	}: { bannerName: string }): Promise<{ success: boolean; value: string } | { success: false }> {
 		const key = 'ui.banners.dismissed';
 		const dismissedBannersSetting = await this.findOneBy({ key });
 		try {
@@ -48,8 +50,7 @@ export class SettingsRepository extends Repository<Settings> {
 				value = JSON.stringify([bannerName]);
 				await this.save({ key, value, loadOnStartup: true }, { transaction: false });
 			}
-			config.set(key, value);
-			return { success: true };
+			return { success: true, value };
 		} catch (error) {
 			this.errorReporter.error(error);
 		}

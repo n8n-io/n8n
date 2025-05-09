@@ -1,12 +1,17 @@
 import { GlobalConfig } from '@n8n/config';
 import type { Project, User } from '@n8n/db';
-import { WorkflowEntity, WorkflowTagMapping, SharedWorkflow, TagRepository } from '@n8n/db';
+import {
+	WorkflowEntity,
+	WorkflowTagMapping,
+	SharedWorkflow,
+	TagRepository,
+	SharedWorkflowRepository,
+	WorkflowRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Scope, WorkflowSharingRole } from '@n8n/permissions';
 import type { WorkflowId } from 'n8n-workflow';
 
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import * as Db from '@/db';
 import { License } from '@/license';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';

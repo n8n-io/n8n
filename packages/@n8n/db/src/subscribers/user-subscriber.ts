@@ -1,10 +1,10 @@
-import { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { EntitySubscriberInterface, UpdateEvent } from '@n8n/typeorm';
 import { EventSubscriber } from '@n8n/typeorm';
 import { ErrorReporter, Logger } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
 
+import { Project, User } from '../entities';
 import { UserRepository } from '../repositories/user.repository';
 
 @EventSubscriber()
