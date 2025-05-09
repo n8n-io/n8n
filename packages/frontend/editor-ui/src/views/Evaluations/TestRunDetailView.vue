@@ -16,31 +16,7 @@ import { orderBy } from 'lodash-es';
 import { statusDictionary } from '@/components/Evaluations/shared/statusDictionary';
 
 // TODO: replace with n8n-api type
-const TEST_CASE_EXECUTION_ERROR_CODE = {
-	MOCKED_NODE_NOT_FOUND: 'MOCKED_NODE_NOT_FOUND',
-	FAILED_TO_EXECUTE_WORKFLOW: 'FAILED_TO_EXECUTE_WORKFLOW',
-	INVALID_METRICS: 'INVALID_METRICS',
-	UNKNOWN_ERROR: 'UNKNOWN_ERROR',
-	NO_METRICS_COLLECTED: 'NO_METRICS_COLLECTED',
-} as const;
-
-type TestCaseExecutionErrorCodes =
-	(typeof TEST_CASE_EXECUTION_ERROR_CODE)[keyof typeof TEST_CASE_EXECUTION_ERROR_CODE];
-
-const TEST_RUN_ERROR_CODES = {
-	TEST_CASE_NOT_FOUND: 'TEST_CASES_NOT_FOUND',
-	INTERRUPTED: 'INTERRUPTED',
-	UNKNOWN_ERROR: 'UNKNOWN_ERROR',
-	EVALUATION_TRIGGER_NOT_FOUND: 'EVALUATION_TRIGGER_NOT_FOUND',
-	EVALUATION_TRIGGER_NOT_CONFIGURED: 'EVALUATION_TRIGGER_NOT_CONFIGURED',
-	SET_OUTPUTS_NODE_NOT_FOUND: 'SET_OUTPUTS_NODE_NOT_FOUND',
-	SET_OUTPUTS_NODE_NOT_CONFIGURED: 'SET_OUTPUTS_NODE_NOT_CONFIGURED',
-	SET_METRICS_NODE_NOT_FOUND: 'SET_METRICS_NODE_NOT_FOUND',
-	SET_METRICS_NODE_NOT_CONFIGURED: 'SET_METRICS_NODE_NOT_CONFIGURED',
-	CANT_FETCH_TEST_CASES: 'CANT_FETCH_TEST_CASES',
-} as const;
-
-type TestRunErrorCode = (typeof TEST_RUN_ERROR_CODES)[keyof typeof TEST_RUN_ERROR_CODES];
+import { getErrorBaseKey } from '@/components/Evaluations/shared/errorCodes';
 
 const router = useRouter();
 const toast = useToast();
@@ -84,57 +60,6 @@ const handleRowClick = (row: TestCaseExecutionRecord) => {
 			},
 		});
 		window.open(href, '_blank');
-	}
-};
-
-const testCaseErrorDictionary: Partial<Record<TestCaseExecutionErrorCodes, BaseTextKey>> = {
-	MOCKED_NODE_NOT_FOUND: 'evaluation.runDetail.error.mockedNodeMissing',
-	FAILED_TO_EXECUTE_WORKFLOW: 'evaluation.runDetail.error.executionFailed',
-	INVALID_METRICS: 'evaluation.runDetail.error.invalidMetrics',
-	UNKNOWN_ERROR: 'evaluation.runDetail.error.unknownError',
-	NO_METRICS_COLLECTED: 'evaluation.runDetail.error.noMetricsCollected',
-} as const;
-
-const testRunErrorDictionary: Partial<Record<TestRunErrorCode, BaseTextKey>> = {
-	TEST_CASES_NOT_FOUND: 'evaluation.listRuns.error.testCasesNotFound',
-	INTERRUPTED: 'evaluation.listRuns.error.executionInterrupted',
-	UNKNOWN_ERROR: 'evaluation.listRuns.error.unknownError',
-	EVALUATION_TRIGGER_NOT_FOUND: 'evaluation.listRuns.error.evaluationTriggerNotFound',
-	EVALUATION_TRIGGER_NOT_CONFIGURED: 'evaluation.listRuns.error.evaluationTriggerNotConfigured',
-	SET_OUTPUTS_NODE_NOT_FOUND: 'evaluation.listRuns.error.setOutputsNodeNotFound',
-	SET_OUTPUTS_NODE_NOT_CONFIGURED: 'evaluation.listRuns.error.setOutputsNodeNotConfigured',
-	SET_METRICS_NODE_NOT_FOUND: 'evaluation.listRuns.error.setMetricsNodeNotFound',
-	SET_METRICS_NODE_NOT_CONFIGURED: 'evaluation.listRuns.error.setMetricsNodeNotConfigured',
-	CANT_FETCH_TEST_CASES: 'evaluation.listRuns.error.cantFetchTestCases',
-} as const;
-
-const getErrorBaseKey = (errorCode?: string): string =>
-	testCaseErrorDictionary[errorCode as TestCaseExecutionErrorCodes] ??
-	testRunErrorDictionary[errorCode as TestRunErrorCode] ??
-	'';
-
-const getErrorTooltipLinkRoute = (row: TestCaseExecutionRecord) => {
-	switch (row.errorCode) {
-		case TEST_CASE_EXECUTION_ERROR_CODE.UNKNOWN_ERROR:
-			return row.executionId
-				? {
-						name: VIEWS.EXECUTION_PREVIEW,
-						params: {
-							name: workflowId.value,
-							executionId: row.executionId,
-						},
-					}
-				: undefined;
-		case TEST_CASE_EXECUTION_ERROR_CODE.FAILED_TO_EXECUTE_WORKFLOW:
-			return {
-				name: VIEWS.EXECUTION_PREVIEW,
-				params: {
-					name: workflowId.value,
-					executionId: row.executionId,
-				},
-			};
-		default:
-			return undefined;
 	}
 };
 
@@ -294,13 +219,10 @@ onMounted(async () => {
 						<N8nTooltip placement="right" :show-after="300">
 							<template #content>
 								<template v-if="getErrorBaseKey(row.errorCode)">
-									<template v-if="getErrorTooltipLinkRoute(row)">
-										{{
-											locale.baseText(`${getErrorBaseKey(row.errorCode)}` as BaseTextKey) ||
-											row.status
-										}}
-									</template>
-									<template v-else> UNKNOWN_ERROR </template>
+									{{
+										locale.baseText(`${getErrorBaseKey(row.errorCode)}` as BaseTextKey) ||
+										row.status
+									}}
 								</template>
 								<template v-else> UNKNOWN_ERROR </template>
 							</template>
