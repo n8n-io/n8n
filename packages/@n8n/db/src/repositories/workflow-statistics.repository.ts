@@ -58,6 +58,7 @@ export class WorkflowStatisticsRepository extends Repository<WorkflowStatistics>
 		const escapedTableName = this.manager.connection.driver.escape(this.metadata.tableName);
 
 		try {
+			const rootCountIncrement = isRootExecution ? 1 : 0;
 			if (dbType === 'sqlite') {
 				await this.query(
 					`INSERT INTO ${escapedTableName} ("count", "rootCount", "name", "workflowId", "latestEvent")
@@ -65,9 +66,9 @@ export class WorkflowStatisticsRepository extends Repository<WorkflowStatistics>
 					ON CONFLICT (workflowId, name)
 					DO UPDATE SET
 						count = count + 1,
-						rootCount = ${isRootExecution ? 'rootCount + 1' : 'rootCount'},
+						rootCount = rootCount + ?,
 						latestEvent = CURRENT_TIMESTAMP`,
-					[isRootExecution ? 1 : 0, eventName, workflowId],
+					[rootCountIncrement, eventName, workflowId, rootCountIncrement],
 				);
 
 				// SQLite does not offer a reliable way to know whether or not an insert or update happened.
@@ -80,19 +81,16 @@ export class WorkflowStatisticsRepository extends Repository<WorkflowStatistics>
 
 				return (counter?.count ?? 0) > 1 ? 'update' : counter?.count === 1 ? 'insert' : 'failed';
 			} else if (dbType === 'postgresdb') {
-				const upsertRootCount = isRootExecution
-					? `${escapedTableName}."rootCount" + 1`
-					: `${escapedTableName}."rootCount"`;
 				const queryResult = (await this.query(
 					`INSERT INTO ${escapedTableName} ("count", "rootCount", "name", "workflowId", "latestEvent")
 					VALUES (1, $1, $2, $3, CURRENT_TIMESTAMP)
 					ON CONFLICT ("name", "workflowId")
 					DO UPDATE SET
 						"count" = ${escapedTableName}."count" + 1,
-						"rootCount" = ${upsertRootCount},
+						"rootCount" = ${escapedTableName}."rootCount" + $4,
 						"latestEvent" = CURRENT_TIMESTAMP
 					RETURNING *;`,
-					[isRootExecution ? 1 : 0, eventName, workflowId],
+					[rootCountIncrement, eventName, workflowId, rootCountIncrement],
 				)) as Array<{ count: number }>;
 
 				return queryResult[0].count === 1 ? 'insert' : 'update';
@@ -103,9 +101,9 @@ export class WorkflowStatisticsRepository extends Repository<WorkflowStatistics>
 					ON DUPLICATE KEY
 					UPDATE
 						count = count + 1,
-						rootCount = ${isRootExecution ? 'rootCount + 1' : 'rootCount'},
+						rootCount = rootCount + ?,
 						latestEvent = NOW();`,
-					[isRootExecution ? 1 : 0, eventName, workflowId],
+					[rootCountIncrement, eventName, workflowId, rootCountIncrement],
 				)) as { affectedRows: number };
 
 				// MySQL returns 2 affected rows on update

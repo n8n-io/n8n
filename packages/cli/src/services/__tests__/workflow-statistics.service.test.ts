@@ -97,6 +97,7 @@ describe('WorkflowStatisticsService', () => {
 					1,
 					expect.any(String),
 					'1',
+					1,
 				]);
 			},
 		);
@@ -119,6 +120,7 @@ describe('WorkflowStatisticsService', () => {
 					0,
 					expect.any(String),
 					'1',
+					0,
 				]);
 			},
 		);
@@ -141,6 +143,7 @@ describe('WorkflowStatisticsService', () => {
 					1,
 					expect.any(String),
 					'1',
+					1,
 				]);
 			},
 		);
@@ -163,6 +166,7 @@ describe('WorkflowStatisticsService', () => {
 					0,
 					expect.any(String),
 					'1',
+					0,
 				]);
 			},
 		);
