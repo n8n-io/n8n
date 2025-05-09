@@ -6,12 +6,10 @@ import {
 	MANUAL_TRIGGER_NODE_NAME,
 	MANUAL_TRIGGER_NODE_DISPLAY_NAME,
 } from '../constants';
-import { MessageBox as MessageBoxClass } from '../pages/modals/message-box';
 import { NDV } from '../pages/ndv';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 
 const WorkflowPage = new WorkflowPageClass();
-const messageBox = new MessageBoxClass();
 const ndv = new NDV();
 
 describe('Undo/Redo', () => {
