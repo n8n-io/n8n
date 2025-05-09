@@ -313,7 +313,7 @@ export class InformationExtractor implements INodeType {
 						const error = response.reason as Error;
 						if (this.continueOnFail()) {
 							resultData.push({
-								json: { error: response.reason as string },
+								json: { error: error.message },
 								pairedItem: { item: i + index },
 							});
 							return;

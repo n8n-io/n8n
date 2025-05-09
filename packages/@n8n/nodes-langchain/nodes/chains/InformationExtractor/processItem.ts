@@ -1,10 +1,9 @@
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import { HumanMessage } from '@langchain/core/messages';
 import { ChatPromptTemplate, SystemMessagePromptTemplate } from '@langchain/core/prompts';
+import { getTracingConfig } from '@utils/tracing';
 import type { OutputFixingParser } from 'langchain/output_parsers';
 import type { IExecuteFunctions } from 'n8n-workflow';
-
-import { getTracingConfig } from '@utils/tracing';
 
 import { SYSTEM_PROMPT_TEMPLATE } from './constants';
 
