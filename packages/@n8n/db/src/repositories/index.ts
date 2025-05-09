@@ -28,3 +28,5 @@ export { VariablesRepository } from './variables.repository';
 export { WorkflowHistoryRepository } from './workflow-history.repository';
 export { WorkflowStatisticsRepository } from './workflow-statistics.repository';
 export { WorkflowTagMappingRepository } from './workflow-tag-mapping.repository';
+export { SharedWorkflowRepository } from './shared-workflow.repository';
+export { SharedCredentialsRepository } from './shared-credentials.repository';
