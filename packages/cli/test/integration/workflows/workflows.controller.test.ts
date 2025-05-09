@@ -2,6 +2,7 @@ import type { User } from '@n8n/db';
 import type { ListQueryDb } from '@n8n/db';
 import { ProjectRepository } from '@n8n/db';
 import { WorkflowHistoryRepository } from '@n8n/db';
+import { SharedWorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 import { DateTime } from 'luxon';
@@ -9,7 +10,6 @@ import { PROJECT_ROOT, type INode, type IPinData, type IWorkflowBase } from 'n8n
 import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import type { WorkflowFolderUnionFull } from '@/databases/repositories/workflow.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { License } from '@/license';
