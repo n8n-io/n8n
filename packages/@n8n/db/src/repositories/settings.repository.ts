@@ -4,7 +4,7 @@ import { ErrorReporter } from 'n8n-core';
 
 import { Settings } from '../entities';
 
-export const EXTERNAL_SECRETS_DB_KEY = 'feature.externalSecrets';
+const EXTERNAL_SECRETS_DB_KEY = 'feature.externalSecrets';
 
 @Service()
 export class SettingsRepository extends Repository<Settings> {
