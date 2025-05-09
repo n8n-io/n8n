@@ -208,10 +208,7 @@ export class ProjectService {
 	}
 
 	async createTeamProject(adminUser: User, data: CreateProjectDto): Promise<Project> {
-		if (
-			this.globalConfig.database.type === 'sqlite' &&
-			this.globalConfig.database.sqlite.poolSize === 0
-		) {
+		if (this.globalConfig.database.isLegacySqlite) {
 			// Using transaction in the sqlite legacy driver can cause data loss, so
 			// we avoid this here.
 			return await this.createTeamProjectWithEntityManager(

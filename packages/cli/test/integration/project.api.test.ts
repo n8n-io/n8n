@@ -1,6 +1,6 @@
 import { GlobalConfig } from '@n8n/config';
 import type { Project } from '@n8n/db';
-import { dbType, FolderRepository } from '@n8n/db';
+import { FolderRepository } from '@n8n/db';
 import { ProjectRelationRepository } from '@n8n/db';
 import { ProjectRepository } from '@n8n/db';
 import { SharedCredentialsRepository } from '@n8n/db';
@@ -434,31 +434,29 @@ describe('POST /projects/', () => {
 		expect(await Container.get(ProjectRepository).count({ where: { type: 'team' } })).toBe(2);
 	});
 
-	test('should respect the quota when trying to create multiple projects in parallel (no race conditions)', async () => {
-		const globalConfig = Container.get(GlobalConfig);
-		// Preventing this relies on transactions and we can't use them with the
-		// sqlite legacy driver due to data loss risks.
-		if (dbType === 'sqlite' && globalConfig.database.sqlite.poolSize === 0) {
-			return expect(1).toBe(1);
-		}
+	const globalConfig = Container.get(GlobalConfig);
+	// Preventing this relies on transactions and we can't use them with the
+	// sqlite legacy driver due to data loss risks.
+	if (!globalConfig.database.isLegacySqlite) {
+		test('should respect the quota when trying to create multiple projects in parallel (no race conditions)', async () => {
+			expect(await Container.get(ProjectRepository).count({ where: { type: 'team' } })).toBe(0);
+			testServer.license.setQuota('quota:maxTeamProjects', 1);
+			const ownerUser = await createOwner();
+			const ownerAgent = testServer.authAgentFor(ownerUser);
+			expect(await Container.get(ProjectRepository).count({ where: { type: 'team' } })).toBe(0);
 
-		expect(await Container.get(ProjectRepository).count({ where: { type: 'team' } })).toBe(0);
-		testServer.license.setQuota('quota:maxTeamProjects', 1);
-		const ownerUser = await createOwner();
-		const ownerAgent = testServer.authAgentFor(ownerUser);
-		expect(await Container.get(ProjectRepository).count({ where: { type: 'team' } })).toBe(0);
+			await Promise.all([
+				ownerAgent.post('/projects/').send({ name: 'Test Team Project 1' }),
+				ownerAgent.post('/projects/').send({ name: 'Test Team Project 2' }),
+				ownerAgent.post('/projects/').send({ name: 'Test Team Project 3' }),
+				ownerAgent.post('/projects/').send({ name: 'Test Team Project 4' }),
+				ownerAgent.post('/projects/').send({ name: 'Test Team Project 5' }),
+				ownerAgent.post('/projects/').send({ name: 'Test Team Project 6' }),
+			]);
 
-		await Promise.all([
-			ownerAgent.post('/projects/').send({ name: 'Test Team Project 1' }),
-			ownerAgent.post('/projects/').send({ name: 'Test Team Project 2' }),
-			ownerAgent.post('/projects/').send({ name: 'Test Team Project 3' }),
-			ownerAgent.post('/projects/').send({ name: 'Test Team Project 4' }),
-			ownerAgent.post('/projects/').send({ name: 'Test Team Project 5' }),
-			ownerAgent.post('/projects/').send({ name: 'Test Team Project 6' }),
-		]);
-
-		expect(await Container.get(ProjectRepository).count({ where: { type: 'team' } })).toBe(1);
-	});
+			expect(await Container.get(ProjectRepository).count({ where: { type: 'team' } })).toBe(1);
+		});
+	}
 });
 
 describe('PATCH /projects/:projectId', () => {
