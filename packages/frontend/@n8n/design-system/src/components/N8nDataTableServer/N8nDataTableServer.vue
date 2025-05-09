@@ -60,7 +60,7 @@ const props = withDefaults(
 	{
 		itemSelectable: undefined,
 		itemValue: 'id',
-		pageSizes: [10, 25, 50, 100],
+		pageSizes: () => [10, 25, 50, 100],
 	},
 );
 
