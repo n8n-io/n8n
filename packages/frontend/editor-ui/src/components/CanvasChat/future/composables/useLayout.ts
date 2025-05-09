@@ -6,7 +6,6 @@ import {
 } from '../../composables/useResize';
 import { LOGS_PANEL_STATE } from '../../types/logs';
 import { usePiPWindow } from '../../composables/usePiPWindow';
-import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useCanvasStore } from '@/stores/canvas.store';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { watch } from 'vue';
@@ -20,8 +19,6 @@ export function useLayout(
 ) {
 	const canvasStore = useCanvasStore();
 	const telemetry = useTelemetry();
-	const workflowsStore = useWorkflowsStore();
-	const panelState = computed(() => workflowsStore.logsPanelState);
 
 	const resizer = useResizablePanel(LOCAL_STORAGE_PANEL_HEIGHT, {
 		container: document.body,
@@ -49,9 +46,9 @@ export function useLayout(
 	});
 
 	const isOpen = computed(() =>
-		panelState.value === LOGS_PANEL_STATE.CLOSED
-			? resizer.isResizing.value && resizer.size.value > 0
-			: !resizer.isCollapsed.value,
+		canvasStore.isLogsPanelOpen
+			? !resizer.isCollapsed.value
+			: resizer.isResizing.value && resizer.size.value > 0,
 	);
 	const isCollapsingDetailsPanel = computed(() => overviewPanelResizer.isFullSize.value);
 
@@ -60,25 +57,25 @@ export function useLayout(
 		initialWidth: window.document.body.offsetWidth * 0.8,
 		container: pipContainer,
 		content: pipContent,
-		shouldPopOut: computed(() => panelState.value === LOGS_PANEL_STATE.FLOATING),
+		shouldPopOut: computed(() => canvasStore.logsPanelState === LOGS_PANEL_STATE.FLOATING),
 		onRequestClose: () => {
 			if (!isOpen.value) {
 				return;
 			}
 
 			telemetry.track('User toggled log view', { new_state: 'attached' });
-			workflowsStore.setPreferPoppedOutLogsView(false);
+			canvasStore.setPreferPoppedOutLogsView(false);
 		},
 	});
 
 	function handleToggleOpen(open?: boolean) {
-		const wasOpen = panelState.value !== LOGS_PANEL_STATE.CLOSED;
+		const wasOpen = canvasStore.isLogsPanelOpen;
 
 		if (open === wasOpen) {
 			return;
 		}
 
-		workflowsStore.toggleLogsPanelOpen(open);
+		canvasStore.toggleLogsPanelOpen(open, { disableFocusChatInput: true });
 
 		telemetry.track('User toggled log view', {
 			new_state: wasOpen ? 'collapsed' : 'attached',
@@ -87,12 +84,12 @@ export function useLayout(
 
 	function handlePopOut() {
 		telemetry.track('User toggled log view', { new_state: 'floating' });
-		workflowsStore.toggleLogsPanelOpen(true);
-		workflowsStore.setPreferPoppedOutLogsView(true);
+		canvasStore.toggleLogsPanelOpen(true);
+		canvasStore.setPreferPoppedOutLogsView(true);
 	}
 
 	function handleResizeEnd() {
-		if (panelState.value === LOGS_PANEL_STATE.CLOSED && !resizer.isCollapsed.value) {
+		if (!canvasStore.isLogsPanelOpen && !resizer.isCollapsed.value) {
 			handleToggleOpen(true);
 		}
 
@@ -104,7 +101,7 @@ export function useLayout(
 	}
 
 	watch(
-		[panelState, resizer.size],
+		[() => canvasStore.logsPanelState, resizer.size],
 		([state, height]) => {
 			canvasStore.setPanelHeight(
 				state === LOGS_PANEL_STATE.FLOATING

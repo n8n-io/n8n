@@ -6,7 +6,6 @@ import { useResizablePanel } from '@/components/CanvasChat/future/composables/us
 import { LOG_DETAILS_CONTENT, type LogDetailsContent } from '@/components/CanvasChat/types/logs';
 import NodeIcon from '@/components/NodeIcon.vue';
 import { useI18n } from '@/composables/useI18n';
-import { useTelemetry } from '@/composables/useTelemetry';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { type Workflow } from 'n8n-workflow';
 import { type IExecutionResponse } from '@/Interface';
@@ -17,33 +16,30 @@ import {
 	type LogEntry,
 } from '@/components/RunDataAi/utils';
 import { N8nButton, N8nResizeWrapper } from '@n8n/design-system';
-import { useLocalStorage } from '@vueuse/core';
 import { computed, useTemplateRef } from 'vue';
 
 const MIN_IO_PANEL_WIDTH = 200;
 
-const { isOpen, logEntry, workflow, execution, window, latestInfo } = defineProps<{
+const { isOpen, logEntry, workflow, execution, window, latestInfo, panels } = defineProps<{
 	isOpen: boolean;
 	logEntry: LogEntry;
 	workflow: Workflow;
 	execution: IExecutionResponse;
 	window?: Window;
 	latestInfo?: LatestNodeInfo;
+	panels: LogDetailsContent;
 }>();
 
-const emit = defineEmits<{ clickHeader: [] }>();
+const emit = defineEmits<{
+	clickHeader: [];
+	toggleInputOpen: [] | [boolean];
+	toggleOutputOpen: [] | [boolean];
+}>();
 
 defineSlots<{ actions: {} }>();
 
 const locale = useI18n();
-const telemetry = useTelemetry();
 const nodeTypeStore = useNodeTypesStore();
-
-const content = useLocalStorage<LogDetailsContent>(
-	'N8N_LOGS_DETAIL_PANEL_CONTENT',
-	LOG_DETAILS_CONTENT.OUTPUT,
-	{ writeDefaults: false },
-);
 
 const type = computed(() => nodeTypeStore.getNodeType(logEntry.node.type));
 const consumedTokens = computed(() => getSubtreeTotalConsumedTokens(logEntry));
@@ -57,45 +53,15 @@ const resizer = useResizablePanel('N8N_LOGS_INPUT_PANEL_WIDTH', {
 	allowCollapse: true,
 	allowFullSize: true,
 });
-const shouldResize = computed(() => content.value === LOG_DETAILS_CONTENT.BOTH);
-
-function handleToggleInput(open?: boolean) {
-	const wasOpen = [LOG_DETAILS_CONTENT.INPUT, LOG_DETAILS_CONTENT.BOTH].includes(content.value);
-
-	if (open === wasOpen) {
-		return;
-	}
-
-	content.value = wasOpen ? LOG_DETAILS_CONTENT.OUTPUT : LOG_DETAILS_CONTENT.BOTH;
-
-	telemetry.track('User toggled log view sub pane', {
-		pane: 'input',
-		newState: wasOpen ? 'hidden' : 'visible',
-	});
-}
-
-function handleToggleOutput(open?: boolean) {
-	const wasOpen = [LOG_DETAILS_CONTENT.OUTPUT, LOG_DETAILS_CONTENT.BOTH].includes(content.value);
-
-	if (open === wasOpen) {
-		return;
-	}
-
-	content.value = wasOpen ? LOG_DETAILS_CONTENT.INPUT : LOG_DETAILS_CONTENT.BOTH;
-
-	telemetry.track('User toggled log view sub pane', {
-		pane: 'output',
-		newState: wasOpen ? 'hidden' : 'visible',
-	});
-}
+const shouldResize = computed(() => panels === LOG_DETAILS_CONTENT.BOTH);
 
 function handleResizeEnd() {
 	if (resizer.isCollapsed.value) {
-		handleToggleInput(false);
+		emit('toggleInputOpen', false);
 	}
 
 	if (resizer.isFullSize.value) {
-		handleToggleOutput(false);
+		emit('toggleInputOpen', true);
 	}
 
 	resizer.onResizeEnd();
@@ -128,29 +94,39 @@ function handleResizeEnd() {
 			</template>
 			<template #actions>
 				<div v-if="isOpen && !isTriggerNode" :class="$style.actions">
-					<N8nButton
-						size="mini"
-						type="secondary"
-						:class="content === LOG_DETAILS_CONTENT.OUTPUT ? '' : $style.pressed"
-						@click.stop="handleToggleInput"
+					<KeyboardShortcutTooltip
+						:label="locale.baseText('generic.shortcutHint')"
+						:shortcut="{ keys: ['i'] }"
 					>
-						{{ locale.baseText('logs.details.header.actions.input') }}
-					</N8nButton>
-					<N8nButton
-						size="mini"
-						type="secondary"
-						:class="content === LOG_DETAILS_CONTENT.INPUT ? '' : $style.pressed"
-						@click.stop="handleToggleOutput"
+						<N8nButton
+							size="mini"
+							type="secondary"
+							:class="panels === LOG_DETAILS_CONTENT.OUTPUT ? '' : $style.pressed"
+							@click.stop="emit('toggleInputOpen')"
+						>
+							{{ locale.baseText('logs.details.header.actions.input') }}
+						</N8nButton>
+					</KeyboardShortcutTooltip>
+					<KeyboardShortcutTooltip
+						:label="locale.baseText('generic.shortcutHint')"
+						:shortcut="{ keys: ['o'] }"
 					>
-						{{ locale.baseText('logs.details.header.actions.output') }}
-					</N8nButton>
+						<N8nButton
+							size="mini"
+							type="secondary"
+							:class="panels === LOG_DETAILS_CONTENT.INPUT ? '' : $style.pressed"
+							@click.stop="emit('toggleOutputOpen')"
+						>
+							{{ locale.baseText('logs.details.header.actions.output') }}
+						</N8nButton>
+					</KeyboardShortcutTooltip>
 				</div>
 				<slot name="actions" />
 			</template>
 		</PanelHeader>
 		<div v-if="isOpen" :class="$style.content" data-test-id="logs-details-body">
 			<N8nResizeWrapper
-				v-if="!isTriggerNode && content !== LOG_DETAILS_CONTENT.OUTPUT"
+				v-if="!isTriggerNode && panels !== LOG_DETAILS_CONTENT.OUTPUT"
 				:class="{
 					[$style.inputResizer]: true,
 					[$style.collapsed]: resizer.isCollapsed.value,
@@ -174,7 +150,7 @@ function handleResizeEnd() {
 				/>
 			</N8nResizeWrapper>
 			<RunDataView
-				v-if="isTriggerNode || content !== LOG_DETAILS_CONTENT.INPUT"
+				v-if="isTriggerNode || panels !== LOG_DETAILS_CONTENT.INPUT"
 				data-test-id="log-details-output"
 				pane-type="output"
 				:class="$style.outputPanel"

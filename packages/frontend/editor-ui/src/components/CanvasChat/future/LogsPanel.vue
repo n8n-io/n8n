@@ -1,15 +1,19 @@
 <script setup lang="ts">
-import { computed, ref, useTemplateRef } from 'vue';
+import { nextTick, computed, useTemplateRef } from 'vue';
 import { N8nResizeWrapper } from '@n8n/design-system';
 import { useChatState } from '@/components/CanvasChat/composables/useChatState';
 import LogsOverviewPanel from '@/components/CanvasChat/future/components/LogsOverviewPanel.vue';
 import ChatMessagesPanel from '@/components/CanvasChat/components/ChatMessagesPanel.vue';
 import LogsDetailsPanel from '@/components/CanvasChat/future/components/LogDetailsPanel.vue';
-import { type LogEntrySelection } from '@/components/CanvasChat/types/logs';
 import LogsPanelActions from '@/components/CanvasChat/future/components/LogsPanelActions.vue';
 import { useLayout } from '@/components/CanvasChat/future/composables/useLayout';
 import { useExecutionData } from '@/components/CanvasChat/future/composables/useExecutionData';
-import { findSelectedLogEntry, type LogEntry } from '@/components/RunDataAi/utils';
+import { type LogEntry } from '@/components/RunDataAi/utils';
+import { useCanvasStore } from '@/stores/canvas.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { ndvEventBus } from '@/event-bus';
+import { useSelection } from '@/components/CanvasChat/future/composables/useSelection';
+import { useExpand } from '@/components/CanvasChat/future/composables/useExpand';
 
 const props = withDefaults(defineProps<{ isReadOnly?: boolean }>(), { isReadOnly: false });
 
@@ -17,6 +21,9 @@ const container = useTemplateRef('container');
 const logsContainer = useTemplateRef('logsContainer');
 const pipContainer = useTemplateRef('pipContainer');
 const pipContent = useTemplateRef('pipContent');
+
+const canvasStore = useCanvasStore();
+const ndvStore = useNDVStore();
 
 const {
 	height,
@@ -45,15 +52,13 @@ const {
 	sendMessage,
 	refreshSession,
 	displayExecution,
-} = useChatState(props.isReadOnly);
+} = useChatState(isOpen.value, props.isReadOnly);
 
 const { workflow, execution, hasChat, latestNodeNameById, resetExecutionData } = useExecutionData();
+const { flatLogEntries, toggleExpanded } = useExpand(execution);
+const { selected, select, selectNext, selectPrev } = useSelection(execution, flatLogEntries);
 
-const manualLogEntrySelection = ref<LogEntrySelection>({ type: 'initial' });
-const selectedLogEntry = computed(() =>
-	findSelectedLogEntry(manualLogEntrySelection.value, execution.value),
-);
-const isLogDetailsOpen = computed(() => isOpen.value && selectedLogEntry.value !== undefined);
+const isLogDetailsOpen = computed(() => isOpen.value && selected.value !== undefined);
 const isLogDetailsVisuallyOpen = computed(
 	() => isLogDetailsOpen.value && !isCollapsingDetailsPanel.value,
 );
@@ -65,25 +70,25 @@ const logsPanelActionsProps = computed<InstanceType<typeof LogsPanelActions>['$p
 	onToggleOpen,
 }));
 
-function handleSelectLogEntry(selected: LogEntry | undefined) {
-	const workflowId = execution.value?.workflowData.id;
-
-	if (!workflowId) {
-		return;
-	}
-
-	manualLogEntrySelection.value =
-		selected === undefined
-			? { type: 'none', workflowId }
-			: { type: 'selected', workflowId, data: selected };
-}
-
 function handleResizeOverviewPanelEnd() {
 	if (isOverviewPanelFullWidth.value) {
-		handleSelectLogEntry(undefined);
+		select(undefined);
 	}
 
 	onOverviewPanelResizeEnd();
+}
+
+async function handleOpenNdv(treeNode: LogEntry) {
+	ndvStore.setActiveNodeName(treeNode.node.name);
+
+	await nextTick(() => {
+		const source = treeNode.runData.source[0];
+		const inputBranch = source?.previousNodeOutput ?? 0;
+
+		ndvEventBus.emit('updateInputNodeName', source?.previousNode);
+		ndvEventBus.emit('setInputBranchIndex', inputBranch);
+		ndvStore.setOutputRunIndex(treeNode.runIndex);
+	});
 }
 </script>
 
@@ -99,7 +104,18 @@ function handleResizeOverviewPanelEnd() {
 				@resize="onResize"
 				@resizeend="onResizeEnd"
 			>
-				<div ref="container" :class="[$style.container, 'ignore-key-press-canvas']" tabindex="0">
+				<div
+					ref="container"
+					:class="$style.container"
+					tabindex="-1"
+					@keydown.esc.stop="select(undefined)"
+					@keydown.j.stop="selectNext"
+					@keydown.down.stop.prevent="selectNext"
+					@keydown.k.stop="selectPrev"
+					@keydown.up.stop.prevent="selectPrev"
+					@keydown.space.stop="selected && toggleExpanded(selected)"
+					@keydown.enter.stop="selected && handleOpenNdv(selected)"
+				>
 					<N8nResizeWrapper
 						v-if="hasChat && (!props.isReadOnly || messages.length > 0)"
 						:supported-directions="['right']"
@@ -144,16 +160,15 @@ function handleResizeOverviewPanelEnd() {
 								:is-open="isOpen"
 								:is-read-only="isReadOnly"
 								:is-compact="isLogDetailsVisuallyOpen"
-								:selected="selectedLogEntry"
+								:selected="selected"
 								:execution="execution"
-								:scroll-to-selection="
-									manualLogEntrySelection.type !== 'selected' ||
-									manualLogEntrySelection.data.id !== selectedLogEntry?.id
-								"
 								:latest-node-info="latestNodeNameById"
+								:flat-log-entries="flatLogEntries"
 								@click-header="onToggleOpen(true)"
-								@select="handleSelectLogEntry"
+								@select="select"
 								@clear-execution-data="resetExecutionData"
+								@toggle-expanded="toggleExpanded"
+								@open-ndv="handleOpenNdv"
 							>
 								<template #actions>
 									<LogsPanelActions
@@ -164,15 +179,18 @@ function handleResizeOverviewPanelEnd() {
 							</LogsOverviewPanel>
 						</N8nResizeWrapper>
 						<LogsDetailsPanel
-							v-if="isLogDetailsVisuallyOpen && selectedLogEntry && workflow && execution"
+							v-if="isLogDetailsVisuallyOpen && selected && workflow && execution"
 							:class="$style.logDetails"
 							:is-open="isOpen"
-							:log-entry="selectedLogEntry"
+							:log-entry="selected"
 							:workflow="workflow"
 							:execution="execution"
 							:window="pipWindow"
-							:latest-info="latestNodeNameById[selectedLogEntry.node.id]"
+							:latest-info="latestNodeNameById[selected.node.id]"
+							:panels="canvasStore.logDetailsPanel"
 							@click-header="onToggleOpen(true)"
+							@toggle-input-open="canvasStore.toggleLogInputOpen"
+							@toggle-output-open="canvasStore.toggleLogInputOpen"
 						>
 							<template #actions>
 								<LogsPanelActions v-if="isLogDetailsVisuallyOpen" v-bind="logsPanelActionsProps" />

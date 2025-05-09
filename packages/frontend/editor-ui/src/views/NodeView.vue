@@ -114,12 +114,12 @@ import { isValidNodeConnectionType } from '@/utils/typeGuards';
 import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
 import type { CanvasLayoutEvent } from '@/composables/useCanvasLayout';
 import { useClearExecutionButtonVisible } from '@/composables/useClearExecutionButtonVisible';
-import { LOGS_PANEL_STATE } from '@/components/CanvasChat/types/logs';
 import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
 import { useBuilderStore } from '@/stores/builder.store';
 import { useFoldersStore } from '@/stores/folders.store';
 import { useParameterOverridesStore } from '@/stores/parameterOverrides.store';
 import { hasFromAiExpressions } from '@/utils/nodes/nodeTransforms';
+import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
 
 defineOptions({
 	name: 'NodeView',
@@ -269,7 +269,7 @@ const keyBindingsEnabled = computed(() => {
 	return !ndvStore.activeNode && uiStore.activeModals.length === 0;
 });
 
-const isLogsPanelOpen = computed(() => workflowsStore.logsPanelState !== LOGS_PANEL_STATE.CLOSED);
+const isLogsPanelOpen = computed(() => canvasStore.isLogsPanelOpen);
 
 /**
  * Initialization
@@ -1888,6 +1888,10 @@ onBeforeUnmount(() => {
 		@update:node:parameters="onUpdateNodeParameters"
 		@update:node:inputs="onUpdateNodeInputs"
 		@update:node:outputs="onUpdateNodeOutputs"
+		@update:logs-open="canvasStore.toggleLogsPanelOpen($event, { disableFocusChatInput: true })"
+		@update:logs:input-open="canvasStore.toggleLogInputOpen"
+		@update:logs:output-open="canvasStore.toggleLogOutputOpen"
+		@update:chat-open="canvasStore.toggleLogsPanelOpen($event)"
 		@click:node="onClickNode"
 		@click:node:add="onClickNodeAdd"
 		@run:node="onRunWorkflowToNode"
@@ -1925,12 +1929,18 @@ onBeforeUnmount(() => {
 				@mouseleave="onRunWorkflowButtonMouseLeave"
 				@click="runEntireWorkflow('main')"
 			/>
-			<CanvasChatButton
+			<KeyboardShortcutTooltip
 				v-if="containsChatTriggerNodes"
-				:type="isLogsPanelOpen ? 'tertiary' : 'primary'"
-				:label="isLogsPanelOpen ? i18n.baseText('chat.hide') : i18n.baseText('chat.open')"
-				@click="onToggleChat"
-			/>
+				:label="i18n.baseText('chat.open')"
+				:shortcut="{ keys: ['c'] }"
+				:disabled="isLogsPanelOpen"
+			>
+				<CanvasChatButton
+					:type="isLogsPanelOpen ? 'tertiary' : 'primary'"
+					:label="isLogsPanelOpen ? i18n.baseText('chat.hide') : i18n.baseText('chat.open')"
+					@click="onToggleChat"
+				/>
+			</KeyboardShortcutTooltip>
 			<CanvasStopCurrentExecutionButton
 				v-if="isStopExecutionButtonVisible"
 				:stopping="isStoppingExecution"

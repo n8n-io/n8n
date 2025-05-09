@@ -98,6 +98,7 @@
 	"generic.workflows": "Workflows",
 	"generic.rename": "Rename",
 	"generic.missing.permissions": "Missing permissions to perform this action",
+	"generic.shortcutHint": "Or press",
 	"about.aboutN8n": "About n8n",
 	"about.close": "Close",
 	"about.license": "License",

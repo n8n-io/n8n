@@ -6,7 +6,6 @@ import {
 	DUPLICATE_POSTFFIX,
 	ERROR_TRIGGER_NODE_TYPE,
 	FORM_NODE_TYPE,
-	LOCAL_STORAGE_LOGS_PANEL_OPEN,
 	MAX_WORKFLOW_NAME_LENGTH,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	START_NODE_TYPE,
@@ -92,9 +91,8 @@ import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useUsersStore } from '@/stores/users.store';
 import { updateCurrentUserSettings } from '@/api/users';
 import { useExecutingNode } from '@/composables/useExecutingNode';
-import { LOGS_PANEL_STATE } from '@/components/CanvasChat/types/logs';
-import { useLocalStorage } from '@vueuse/core';
 import type { NodeExecuteBefore } from '@n8n/api-types/push/execution';
+import { useCanvasStore } from './canvas.store';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
@@ -149,15 +147,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const isInDebugMode = ref(false);
 	const chatMessages = ref<string[]>([]);
 	const chatPartialExecutionDestinationNode = ref<string | null>(null);
-	const isLogsPanelOpen = useLocalStorage(LOCAL_STORAGE_LOGS_PANEL_OPEN, false);
-	const preferPopOutLogsView = ref(false);
-	const logsPanelState = computed(() =>
-		isLogsPanelOpen.value
-			? preferPopOutLogsView.value
-				? LOGS_PANEL_STATE.FLOATING
-				: LOGS_PANEL_STATE.ATTACHED
-			: LOGS_PANEL_STATE.CLOSED,
-	);
 
 	const {
 		executingNode,
@@ -1315,7 +1304,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 		// If chat trigger node is removed, close chat
 		if (node.type === CHAT_TRIGGER_NODE_TYPE && !settingsStore.isNewLogsEnabled) {
-			toggleLogsPanelOpen(false);
+			useCanvasStore().toggleLogsPanelOpen(false);
 		}
 
 		if (workflow.value.pinData && workflow.value.pinData.hasOwnProperty(node.name)) {
@@ -1798,14 +1787,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	// End Canvas V2 Functions
 	//
 
-	function toggleLogsPanelOpen(isOpen?: boolean) {
-		isLogsPanelOpen.value = isOpen ?? !isLogsPanelOpen.value;
-	}
-
-	function setPreferPoppedOutLogsView(value: boolean) {
-		preferPopOutLogsView.value = value;
-	}
-
 	function markExecutionAsStopped() {
 		setActiveExecutionId(undefined);
 		clearNodeExecutionQueue();
@@ -1866,9 +1847,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		getAllLoadedFinishedExecutions,
 		getWorkflowExecution,
 		getPastChatMessages,
-		logsPanelState: computed(() => logsPanelState.value),
-		toggleLogsPanelOpen,
-		setPreferPoppedOutLogsView,
 		outgoingConnectionsByNodeName,
 		incomingConnectionsByNodeName,
 		nodeHasOutputConnection,

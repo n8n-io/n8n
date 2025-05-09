@@ -15,6 +15,7 @@ import {
 import { mockedStore } from '@/__tests__/utils';
 import { useSettingsStore } from '@/stores/settings.store';
 import { type FrontendSettings } from '@n8n/api-types';
+import { LOG_DETAILS_CONTENT } from '../../types/logs';
 
 describe('LogDetailsPanel', () => {
 	let pinia: TestingPinia;
@@ -39,20 +40,19 @@ describe('LogDetailsPanel', () => {
 
 	function render(props: Partial<InstanceType<typeof LogDetailsPanel>['$props']>) {
 		const mergedProps: InstanceType<typeof LogDetailsPanel>['$props'] = {
-			...props,
-			logEntry: props.logEntry ?? createTestLogEntry(),
-			workflow: props.workflow ?? createTestWorkflowObject(workflowData),
-			execution:
-				props.execution ??
-				createTestWorkflowExecutionResponse({
-					workflowData,
-					data: {
-						resultData: {
-							runData: { 'Chat Trigger': [chatNodeRunData], 'AI Agent': [aiNodeRunData] },
-						},
+			isOpen: true,
+			panels: LOG_DETAILS_CONTENT.OUTPUT,
+			logEntry: createTestLogEntry(),
+			workflow: createTestWorkflowObject(workflowData),
+			execution: createTestWorkflowExecutionResponse({
+				workflowData,
+				data: {
+					resultData: {
+						runData: { 'Chat Trigger': [chatNodeRunData], 'AI Agent': [aiNodeRunData] },
 					},
-				}),
-			isOpen: props.isOpen ?? true,
+				},
+			}),
+			...props,
 		};
 
 		const rendered = renderComponent(LogDetailsPanel, {

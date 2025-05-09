@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, nextTick, useTemplateRef, watch } from 'vue';
 import { N8nButton, N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { upperFirst } from 'lodash-es';
@@ -26,10 +26,12 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	toggleExpanded: [node: LogEntry];
+	toggleSelected: [node: LogEntry];
 	triggerPartialExecution: [node: LogEntry];
 	openNdv: [node: LogEntry];
 }>();
 
+const container = useTemplateRef('containerRef');
 const locale = useI18n();
 const nodeTypeStore = useNodeTypesStore();
 const type = computed(() => nodeTypeStore.getNodeType(props.data.node.type));
@@ -70,12 +72,26 @@ function isLastChild(level: number) {
 		(data?.node === lastSibling?.node && data?.runIndex === lastSibling?.runIndex)
 	);
 }
+
+// Focus when selected: For scrolling into view and for keyboard navigation to work
+watch(
+	() => props.isSelected,
+	(isSelected) => {
+		void nextTick(() => {
+			if (isSelected) {
+				container.value?.focus();
+			}
+		});
+	},
+	{ immediate: true },
+);
 </script>
 
 <template>
 	<div
+		ref="containerRef"
 		role="treeitem"
-		tabindex="0"
+		tabindex="-1"
 		:aria-expanded="props.data.children.length > 0 && props.expanded"
 		:aria-selected="props.isSelected"
 		:class="{
@@ -84,6 +100,7 @@ function isLastChild(level: number) {
 			[$style.error]: isError,
 			[$style.selected]: props.isSelected,
 		}"
+		@click.stop="emit('toggleSelected', data)"
 	>
 		<template v-for="level in props.data.depth" :key="level">
 			<div

@@ -1,10 +1,12 @@
 <script lang="ts" setup>
-import { LOGS_PANEL_STATE } from '@/components/CanvasChat/types/logs';
+import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import { useI18n } from '@/composables/useI18n';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { CHAT_TRIGGER_NODE_TYPE } from '@/constants';
+import { useCanvasStore } from '@/stores/canvas.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { N8nButton } from '@n8n/design-system';
 import { computed, useCssModule } from 'vue';
 import { useRouter } from 'vue-router';
 
@@ -35,10 +37,11 @@ const containerClass = computed(() => ({
 const router = useRouter();
 const i18n = useI18n();
 const workflowsStore = useWorkflowsStore();
+const canvasStore = useCanvasStore();
 const { runEntireWorkflow } = useRunWorkflow({ router });
 const { toggleChatOpen } = useCanvasOperations({ router });
 
-const isChatOpen = computed(() => workflowsStore.logsPanelState !== LOGS_PANEL_STATE.CLOSED);
+const isChatOpen = computed(() => canvasStore.isLogsPanelOpen);
 const isExecuting = computed(() => workflowsStore.isWorkflowRunning);
 const testId = computed(() => `execute-workflow-button-${name}`);
 </script>
@@ -52,15 +55,21 @@ const testId = computed(() => `execute-workflow-button-${name}`);
 			</div>
 
 			<template v-if="!readOnly">
-				<N8nButton
+				<KeyboardShortcutTooltip
 					v-if="type === CHAT_TRIGGER_NODE_TYPE"
-					:type="isChatOpen ? 'secondary' : 'primary'"
-					size="large"
-					:disabled="isExecuting"
-					:data-test-id="testId"
-					:label="isChatOpen ? i18n.baseText('chat.hide') : i18n.baseText('chat.open')"
-					@click.capture="toggleChatOpen('node')"
-				/>
+					:label="i18n.baseText('chat.open')"
+					:shortcut="{ keys: ['c'] }"
+					:disabled="isChatOpen"
+				>
+					<N8nButton
+						:type="isChatOpen ? 'secondary' : 'primary'"
+						size="large"
+						:disabled="isExecuting"
+						:data-test-id="testId"
+						:label="isChatOpen ? i18n.baseText('chat.hide') : i18n.baseText('chat.open')"
+						@click.capture="toggleChatOpen('node')"
+					/>
+				</KeyboardShortcutTooltip>
 				<N8nButton
 					v-else
 					type="primary"

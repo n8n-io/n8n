@@ -526,3 +526,13 @@ export function flattenLogEntries(
 
 	return ret;
 }
+
+export function getEntryAtRelativeIndex(
+	entries: LogEntry[],
+	id: string,
+	relativeIndex: number,
+): LogEntry | undefined {
+	const offset = entries.findIndex((e) => e.id === id);
+
+	return offset === -1 ? undefined : entries[offset + relativeIndex];
+}

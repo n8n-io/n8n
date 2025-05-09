@@ -28,7 +28,7 @@ const pipContent = useTemplateRef('pipContent');
 // Computed properties
 const workflow = computed(() => workflowsStore.getCurrentWorkflow());
 
-const chatPanelState = computed(() => workflowsStore.logsPanelState);
+const chatPanelState = computed(() => canvasStore.logsPanelState);
 const resultData = computed(() => workflowsStore.getWorkflowRunData);
 
 const telemetry = useTelemetry();
@@ -55,7 +55,7 @@ const { canPopOut, isPoppedOut, pipWindow } = usePiPWindow({
 		}
 
 		telemetry.track('User toggled log view', { new_state: 'attached' });
-		workflowsStore.setPreferPoppedOutLogsView(false);
+		canvasStore.setPreferPoppedOutLogsView(false);
 	},
 });
 
@@ -68,7 +68,7 @@ const {
 	sendMessage,
 	refreshSession,
 	displayExecution,
-} = useChatState(false);
+} = useChatState(canvasStore.isLogsPanelOpen, false);
 
 // Expose internal state for testing
 defineExpose({
@@ -78,13 +78,13 @@ defineExpose({
 });
 
 const closePanel = () => {
-	workflowsStore.toggleLogsPanelOpen(false);
+	canvasStore.toggleLogsPanelOpen(false);
 };
 
 function onPopOut() {
 	telemetry.track('User toggled log view', { new_state: 'floating' });
-	workflowsStore.toggleLogsPanelOpen(true);
-	workflowsStore.setPreferPoppedOutLogsView(true);
+	canvasStore.toggleLogsPanelOpen(true);
+	canvasStore.setPreferPoppedOutLogsView(true);
 }
 
 // Watchers
@@ -93,7 +93,7 @@ watchEffect(() => {
 });
 
 watch(
-	() => workflowsStore.logsPanelState,
+	chatPanelState,
 	(state) => {
 		if (state !== LOGS_PANEL_STATE.CLOSED) {
 			setTimeout(() => {

@@ -12,6 +12,7 @@ import { useClipboard } from '@/composables/useClipboard';
 import { useToast } from '@/composables/useToast';
 import PanelHeader from '@/components/CanvasChat/future/components/PanelHeader.vue';
 import { N8nButton, N8nIconButton, N8nTooltip } from '@n8n/design-system';
+import { useCanvasStore } from '@/stores/canvas.store';
 
 interface Props {
 	pastChatMessages: string[];
@@ -40,6 +41,7 @@ const emit = defineEmits<{
 const clipboard = useClipboard();
 const locale = useI18n();
 const toast = useToast();
+const canvasStore = useCanvasStore();
 
 const previousMessageIndex = ref(0);
 
@@ -140,7 +142,7 @@ async function copySessionId() {
 watch(
 	() => props.isOpen,
 	(isOpen) => {
-		if (isOpen) {
+		if (isOpen && !props.isReadOnly && canvasStore.preferFocusChatOnLogsPanelOpen) {
 			setTimeout(() => {
 				chatEventBus.emit('focusInput');
 			}, 0);
@@ -151,7 +153,12 @@ watch(
 </script>
 
 <template>
-	<div :class="$style.chat" data-test-id="workflow-lm-chat-dialog">
+	<div
+		:class="$style.chat"
+		data-test-id="workflow-lm-chat-dialog"
+		class="ignore-key-press-canvas"
+		tabindex="0"
+	>
 		<PanelHeader
 			v-if="isNewLogsEnabled"
 			data-test-id="chat-header"
@@ -159,7 +166,11 @@ watch(
 			@click="emit('clickHeader')"
 		>
 			<template #actions>
-				<N8nTooltip v-if="clipboard.isSupported.value && !isReadOnly">
+				<N8nTooltip
+					v-if="clipboard.isSupported.value && !isReadOnly"
+					:show-after="500"
+					placement="top"
+				>
 					<template #content>
 						{{ sessionId }}
 						<br />

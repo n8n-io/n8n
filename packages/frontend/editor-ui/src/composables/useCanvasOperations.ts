@@ -1977,7 +1977,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 	async function toggleChatOpen(source: 'node' | 'main', isOpen?: boolean) {
 		const workflow = workflowsStore.getCurrentWorkflow();
 
-		workflowsStore.toggleLogsPanelOpen(isOpen);
+		canvasStore.toggleLogsPanelOpen(isOpen);
 
 		const payload = {
 			workflow_id: workflow.id,
