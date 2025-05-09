@@ -455,7 +455,8 @@ export class CommunityPackagesService {
 			`npm pack ${packageName}@${packageVersion} --registry=${registry} --quiet`,
 			{ cwd: downloadFolder },
 		);
-		const tarballName = tarOutput.trim();
+
+		const tarballName = tarOutput?.trim();
 
 		try {
 			await asyncExec(`tar -xzf ${tarballName} -C ${packageDirectory} --strip-components=1`, {
