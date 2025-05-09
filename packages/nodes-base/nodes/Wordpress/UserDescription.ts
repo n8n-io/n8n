@@ -313,7 +313,7 @@ export const userFields: INodeProperties[] = [
 					{
 						name: 'Administrator',
 						value: 'administrator',
-					}
+					},
 					{
 						name: 'Editor',
 						value: 'editor',
