@@ -62,16 +62,13 @@ describe(useExecutionData, () => {
 		});
 
 		it('should add runs from sub execution to the entries', async () => {
-			workflowsStore.fetchWorkflow.mockResolvedValueOnce(
-				createTestWorkflow({ id: 'w1', nodes: [createTestNode({ name: 'C' })] }),
-			);
-
 			workflowsStore.fetchExecutionDataById.mockResolvedValueOnce(
 				createTestWorkflowExecutionResponse({
 					id: 'e1',
 					data: stringify({
 						resultData: { runData: { C: [createTestTaskData()] } },
 					}) as unknown as IRunExecutionData, // Data is stringified in actual API response
+					workflowData: createTestWorkflow({ id: 'w1', nodes: [createTestNode({ name: 'C' })] }),
 				}),
 			);
 
@@ -89,25 +86,6 @@ describe(useExecutionData, () => {
 				expect(entries.value[1].children[0].workflow.id).toBe('w1');
 				expect(entries.value[1].children[0].executionId).toBe('e1');
 			});
-		});
-
-		it('should show toast when failed to fetch workflow for sub execution', async () => {
-			const showErrorSpy = vi.fn();
-			const useToastMock = vi.mocked(useToast);
-
-			useToastMock.mockReturnValue({ showError: showErrorSpy } as unknown as ReturnType<
-				typeof useToastMock
-			>);
-
-			workflowsStore.fetchWorkflow.mockRejectedValueOnce(new Error('test wf fetch fail'));
-			workflowsStore.fetchExecutionDataById.mockResolvedValueOnce(
-				createTestWorkflowExecutionResponse(),
-			);
-
-			const { loadSubExecution, entries } = useExecutionData();
-
-			await loadSubExecution(entries.value[1]);
-			await waitFor(() => expect(showErrorSpy).toHaveBeenCalled());
 		});
 
 		it('should show toast when failed to fetch execution data for sub execution', async () => {

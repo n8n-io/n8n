@@ -88,20 +88,18 @@ export function useExecutionData() {
 		}
 
 		try {
-			const [subWorkflow, subExecution] = await Promise.all([
-				workflowsStore.fetchWorkflow(workflowId),
-				workflowsStore.fetchExecutionDataById(executionId),
-			]);
+			const subExecution = await workflowsStore.fetchExecutionDataById(executionId);
 			const data = subExecution?.data
 				? (parse(subExecution.data as unknown as string) as IRunExecutionData)
 				: undefined;
 
-			if (data) {
-				subWorkflowExecData.value[executionId] = data;
+			if (!data || !subExecution) {
+				throw Error('Data is missing');
 			}
 
+			subWorkflowExecData.value[executionId] = data;
 			subWorkflows.value[workflowId] = new Workflow({
-				...subWorkflow,
+				...subExecution.workflowData,
 				nodeTypes: workflowsStore.getNodeTypes(),
 			});
 		} catch (e) {
