@@ -1,7 +1,8 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-import { SYSTEM_MESSAGE } from './prompt';
 import { getBatchingOptionFields } from '@utils/sharedFields';
+
+import { SYSTEM_MESSAGE } from './prompt';
 
 export const toolsAgentProperties: INodeProperties[] = [
 	{

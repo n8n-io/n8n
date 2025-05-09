@@ -13,12 +13,12 @@ import type { z } from 'zod';
 
 import { inputSchemaField, jsonSchemaExampleField, schemaTypeField } from '@utils/descriptions';
 import { convertJsonSchemaToZod, generateSchema } from '@utils/schemaParsing';
+import { getBatchingOptionFields } from '@utils/sharedFields';
 
 import { SYSTEM_PROMPT_TEMPLATE } from './constants';
 import { makeZodSchemaFromAttributes } from './helpers';
 import { processItem } from './processItem';
 import type { AttributeDefinition } from './types';
-import { getBatchingOptionFields } from '@utils/sharedFields';
 
 export class InformationExtractor implements INodeType {
 	description: INodeTypeDescription = {
