@@ -35,7 +35,6 @@ const { isReady } = useAsyncState(
 );
 
 const hasRuns = computed(() => runs.value.length > 0);
-const workflowName = computed(() => workflowsStore.getWorkflowById(props.name)?.name ?? '');
 
 const selectedMetric = ref<string>('');
 

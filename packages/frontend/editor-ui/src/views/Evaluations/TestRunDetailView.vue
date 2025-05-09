@@ -214,17 +214,12 @@ onMounted(async () => {
 						:color="statusDictionary[row.status].color"
 						class="mr-2xs"
 					/>
-
 					<template v-if="row.status === 'error'">
 						<N8nTooltip placement="right" :show-after="300">
 							<template #content>
-								<template v-if="getErrorBaseKey(row.errorCode)">
-									{{
-										locale.baseText(`${getErrorBaseKey(row.errorCode)}` as BaseTextKey) ||
-										row.status
-									}}
-								</template>
-								<template v-else> UNKNOWN_ERROR </template>
+								{{
+									locale.baseText(`${getErrorBaseKey(row.errorCode)}` as BaseTextKey) || row.status
+								}}
 							</template>
 							<div
 								style="
