@@ -106,6 +106,7 @@ describe('OwnerController', () => {
 
 		it('should call dismissBanner with the correct banner name', async () => {
 			const payload = mock<DismissBannerRequestDto>({ banner: 'TRIAL' });
+			settingsRepository.dismissBanner.mockResolvedValue({ success: true, value: 'TRIAL' });
 
 			await controller.dismissBanner(mock(), mock(), payload);
 
