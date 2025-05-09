@@ -17,6 +17,7 @@ export const LOG_SCOPES = [
 	'waiting-executions',
 	'task-runner',
 	'insights',
+	'workflow-activation',
 ] as const;
 
 export type LogScope = (typeof LOG_SCOPES)[number];
