@@ -1031,18 +1031,7 @@ export class WorkflowDataProxy {
 									const executionData = that.connectionInputData;
 									const input = executionData?.[itemIndex];
 									if (!input) {
-										throw errorUtils.createExpressionError('Can’t get data for expression', {
-											messageTemplate: 'Can’t get data for expression under ‘%%PARAMETER%%’ field',
-											functionality: 'pairedItem',
-											functionOverrides: {
-												description: `Some intermediate nodes between ‘<strong>${nodeName}</strong>‘ and  ‘<strong>${that.activeNodeName}</strong>‘ have not executed yet.`,
-												message: 'Can’t get data',
-											},
-											description: `Some intermediate nodes between ‘<strong>${nodeName}</strong>‘ and  ‘<strong>${that.activeNodeName}</strong>‘ have not executed yet.`,
-											causeDetailed: `pairedItem can\'t be found when intermediate nodes between ‘<strong>${nodeName}</strong>‘ and  ‘<strong>${that.activeNodeName}</strong> have not executed yet.`,
-											itemIndex,
-											type: 'paired_item_intermediate_nodes',
-										});
+										throw errorUtils.createPairedItemIntermediateNodesError(nodeName);
 									}
 
 									// As we operate on the incoming item we can be sure that pairedItem is not an
@@ -1055,17 +1044,7 @@ export class WorkflowDataProxy {
 									}
 
 									if (!that.executeData?.source) {
-										throw errorUtils.createExpressionError('Can’t get data for expression', {
-											messageTemplate: 'Can’t get data for expression under ‘%%PARAMETER%%’ field',
-											functionality: 'pairedItem',
-											functionOverrides: {
-												message: 'Can’t get data',
-											},
-											description:
-												'Apologies, this is an internal error. See details for more information',
-											causeDetailed: 'Missing sourceData (probably an internal error)',
-											itemIndex,
-										});
+										throw errorUtils.createMissingSourceDataError();
 									}
 
 									const sourceData: ISourceData | null =

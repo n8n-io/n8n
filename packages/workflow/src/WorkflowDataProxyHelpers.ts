@@ -164,13 +164,43 @@ export function createErrorUtils(context: CreateErrorContext) {
 		});
 	};
 
+	const createPairedItemIntermediateNodesError = (nodeName: string) => {
+		return createExpressionError('Can’t get data for expression', {
+			messageTemplate: 'Can’t get data for expression under ‘%%PARAMETER%%’ field',
+			functionality: 'pairedItem',
+			functionOverrides: {
+				description: `Some intermediate nodes between ‘<strong>${nodeName}</strong>‘ and  ‘<strong>${activeNodeName}</strong>‘ have not executed yet.`,
+				message: 'Can’t get data',
+			},
+			description: `Some intermediate nodes between ‘<strong>${nodeName}</strong>‘ and  ‘<strong>${activeNodeName}</strong>‘ have not executed yet.`,
+			causeDetailed: `pairedItem can\'t be found when intermediate nodes between ‘<strong>${nodeName}</strong>‘ and  ‘<strong>${activeNodeName}</strong> have not executed yet.`,
+			itemIndex,
+			type: 'paired_item_intermediate_nodes',
+		});
+	};
+
+	const createMissingSourceDataError = () => {
+		return createExpressionError('Can’t get data for expression', {
+			messageTemplate: 'Can’t get data for expression under ‘%%PARAMETER%%’ field',
+			functionality: 'pairedItem',
+			functionOverrides: {
+				message: 'Can’t get data',
+			},
+			description: 'Apologies, this is an internal error. See details for more information',
+			causeDetailed: 'Missing sourceData (probably an internal error)',
+			itemIndex,
+		});
+	};
+
 	return {
 		createExpressionError,
 		createInvalidPairedItemError,
 		createMissingPairedItemError,
 		createPairedItemNotFound,
 		createPairedItemMultipleItemsError,
+		createPairedItemIntermediateNodesError,
 		createNoConnectionError,
 		createBranchNotFoundError,
+		createMissingSourceDataError,
 	};
 }
