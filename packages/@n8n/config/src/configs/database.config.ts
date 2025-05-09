@@ -145,6 +145,10 @@ export class DatabaseConfig {
 	@Env('DB_TYPE', dbTypeSchema)
 	type: DbType = 'sqlite';
 
+	get isLegacySqlite() {
+		return this.type === 'sqlite' && this.sqlite.poolSize === 0;
+	}
+
 	/** Prefix for table names */
 	@Env('DB_TABLE_PREFIX')
 	tablePrefix: string = '';
