@@ -1,7 +1,7 @@
+import { VariablesRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
 
-import { VariablesRepository } from '@/databases/repositories/variables.repository';
 import { VariablesController } from '@/environments.ee/variables/variables.controller.ee';
 import type { PaginatedRequest } from '@/public-api/types';
 import type { VariablesRequest } from '@/requests';

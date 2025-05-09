@@ -2,6 +2,8 @@ import type { User } from '@n8n/db';
 import type { ExecutionEntity } from '@n8n/db';
 import type { TestRun } from '@n8n/db';
 import type { ExecutionRepository } from '@n8n/db';
+import type { TestCaseExecutionRepository } from '@n8n/db';
+import type { TestRunRepository } from '@n8n/db';
 import type { SelectQueryBuilder } from '@n8n/typeorm';
 import { stringify } from 'flatted';
 import { readFileSync } from 'fs';
@@ -13,8 +15,6 @@ import path from 'path';
 
 import type { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
-import type { TestCaseExecutionRepository } from '@/databases/repositories/test-case-execution.repository.ee';
-import type { TestRunRepository } from '@/databases/repositories/test-run.repository.ee';
 import type { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { NodeTypes } from '@/node-types';

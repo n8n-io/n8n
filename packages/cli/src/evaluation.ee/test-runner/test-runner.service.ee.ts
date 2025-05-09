@@ -1,3 +1,4 @@
+import { TestRunRepository, TestCaseExecutionRepository } from '@n8n/db';
 import type { User, TestRun } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ErrorReporter, Logger } from 'n8n-core';
@@ -16,8 +17,6 @@ import assert from 'node:assert';
 import { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
 import { EVALUATION_DATASET_TRIGGER_NODE, EVALUATION_METRICS_NODE } from '@/constants';
-import { TestCaseExecutionRepository } from '@/databases/repositories/test-case-execution.repository.ee';
-import { TestRunRepository } from '@/databases/repositories/test-run.repository.ee';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import * as Db from '@/db';
 import { TestCaseExecutionError, TestRunError } from '@/evaluation.ee/test-runner/errors.ee';

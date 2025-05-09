@@ -68,7 +68,6 @@ describe('Workflows', () => {
 		for (let i = 0; i < multipleWorkflowsCount + 1; i++) {
 			cy.getByTestId('workflow-card-actions').first().click();
 			WorkflowsPage.getters.workflowArchiveButton().click();
-			cy.get('button').contains('archive').click();
 			successToast().should('be.visible');
 		}
 
@@ -158,7 +157,6 @@ describe('Workflows', () => {
 		// Archive -> Unarchive -> Archive -> Delete on the first workflow
 		cy.getByTestId('workflow-card-actions').first().click();
 		WorkflowsPage.getters.workflowArchiveButton().click();
-		cy.get('button').contains('archive').click();
 		successToast().should('be.visible');
 
 		cy.getByTestId('workflow-card-actions').first().click();
@@ -167,7 +165,6 @@ describe('Workflows', () => {
 
 		cy.getByTestId('workflow-card-actions').first().click();
 		WorkflowsPage.getters.workflowArchiveButton().click();
-		cy.get('button').contains('archive').click();
 		successToast().should('be.visible');
 
 		cy.getByTestId('workflow-card-actions').first().click();
