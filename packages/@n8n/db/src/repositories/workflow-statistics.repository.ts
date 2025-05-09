@@ -1,8 +1,10 @@
 import { GlobalConfig } from '@n8n/config';
-import type { User } from '@n8n/db';
-import { StatisticsNames, WorkflowStatistics } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, MoreThanOrEqual, QueryFailedError, Repository } from '@n8n/typeorm';
+
+import { WorkflowStatistics } from '../entities';
+import type { User } from '../entities';
+import { StatisticsNames } from '../entities/types-db';
 
 type StatisticsInsertResult = 'insert' | 'failed' | 'alreadyExists';
 type StatisticsUpsertResult = StatisticsInsertResult | 'update';
