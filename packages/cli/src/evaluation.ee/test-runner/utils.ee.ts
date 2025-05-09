@@ -1,3 +1,4 @@
+import type { TestCaseExecution, MockedNodeItem, TestRunFinalResult } from '@n8n/db';
 import assert from 'assert';
 import type {
 	IRunExecutionData,
@@ -7,15 +8,7 @@ import type {
 	INodeParameterResourceLocator,
 } from 'n8n-workflow';
 
-import type { TestCaseExecution } from '@/databases/entities/test-case-execution.ee';
-import type { TestRunFinalResult } from '@/databases/repositories/test-run.repository.ee';
 import { TestCaseExecutionError } from '@/evaluation.ee/test-runner/errors.ee';
-
-// Entity representing a node in a workflow under test, for which data should be mocked during test execution
-export type MockedNodeItem = {
-	name?: string;
-	id: string;
-};
 
 /**
  * Extracts the execution data from the past execution

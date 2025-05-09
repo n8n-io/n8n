@@ -2,15 +2,17 @@
 import { useI18n } from '@/composables/useI18n';
 import { type NodePanelType, type IRunDataDisplayMode } from '@/Interface';
 import { N8nIcon, N8nRadioButtons } from '@n8n/design-system';
-import { computed } from 'vue';
+import { computed, watch } from 'vue';
 
-const { compact, value, hasBinaryData, paneType, nodeGeneratesHtml } = defineProps<{
-	compact: boolean;
-	value: IRunDataDisplayMode;
-	hasBinaryData: boolean;
-	paneType: NodePanelType;
-	nodeGeneratesHtml: boolean;
-}>();
+const { compact, value, hasBinaryData, paneType, nodeGeneratesHtml, hasRenderableData } =
+	defineProps<{
+		compact: boolean;
+		value: IRunDataDisplayMode;
+		hasBinaryData: boolean;
+		paneType: NodePanelType;
+		nodeGeneratesHtml: boolean;
+		hasRenderableData: boolean;
+	}>();
 
 const emit = defineEmits<{ change: [IRunDataDisplayMode] }>();
 
@@ -30,8 +32,23 @@ const options = computed(() => {
 		defaults.unshift({ label: 'HTML', value: 'html' });
 	}
 
+	if (hasRenderableData) {
+		defaults.unshift({ label: i18n.baseText('runData.rendered'), value: 'ai' });
+	}
+
 	return defaults;
 });
+
+// If selected display mode isn't included in the options, rest to the first item
+watch(
+	[() => value, options],
+	([val, opts]) => {
+		if (opts.length > 0 && opts.every((opt) => opt.value !== val)) {
+			emit('change', opts[0].value);
+		}
+	},
+	{ immediate: true },
+);
 </script>
 
 <template>
@@ -39,32 +56,18 @@ const options = computed(() => {
 		:model-value="value"
 		:options="options"
 		data-test-id="ndv-run-data-display-mode"
-		:size="compact ? 'small' : 'medium'"
+		:size="compact ? 'small-medium' : 'medium'"
+		:square-buttons="compact"
 		@update:model-value="(selected) => emit('change', selected)"
 	>
 		<template v-if="compact" #option="option">
-			<N8nIcon v-if="option.value === 'table'" icon="table" size="small" :class="$style.icon" />
-			<N8nIcon v-else-if="option.value === 'json'" icon="json" size="small" :class="$style.icon" />
-			<N8nIcon
-				v-else-if="option.value === 'binary'"
-				icon="binary"
-				size="small"
-				:class="$style.icon"
-			/>
-			<N8nIcon
-				v-else-if="option.value === 'schema'"
-				icon="schema"
-				size="small"
-				:class="$style.icon"
-			/>
-			<N8nIcon v-else-if="option.value === 'html'" icon="html" size="small" :class="$style.icon" />
+			<N8nIcon v-if="option.value === 'table'" icon="table" size="small" />
+			<N8nIcon v-else-if="option.value === 'json'" icon="json" size="small" />
+			<N8nIcon v-else-if="option.value === 'binary'" icon="binary" size="small" />
+			<N8nIcon v-else-if="option.value === 'schema'" icon="schema" size="small" />
+			<N8nIcon v-else-if="option.value === 'html'" icon="html" size="small" />
+			<N8nIcon v-else-if="option.value === 'ai'" icon="text" size="small" />
 			<span v-else>{{ option.label }}</span>
 		</template>
 	</N8nRadioButtons>
 </template>
-
-<style lang="scss" module>
-.icon {
-	padding-inline: var(--spacing-4xs);
-}
-</style>

@@ -1,11 +1,5 @@
+import type { TestCaseExecutionErrorCode, TestRunErrorCode } from '@n8n/db';
 import { UnexpectedError } from 'n8n-workflow';
-
-export type TestCaseExecutionErrorCode =
-	| 'MOCKED_NODE_NOT_FOUND' // This will be used when node mocking will be implemented
-	| 'FAILED_TO_EXECUTE_WORKFLOW'
-	| 'INVALID_METRICS'
-	| 'UNKNOWN_ERROR'
-	| 'NO_METRICS_COLLECTED';
 
 export class TestCaseExecutionError extends UnexpectedError {
 	readonly code: TestCaseExecutionErrorCode;
@@ -16,18 +10,6 @@ export class TestCaseExecutionError extends UnexpectedError {
 		this.code = code;
 	}
 }
-
-export type TestRunErrorCode =
-	| 'TEST_CASES_NOT_FOUND'
-	| 'INTERRUPTED'
-	| 'UNKNOWN_ERROR'
-	| 'EVALUATION_TRIGGER_NOT_FOUND'
-	| 'EVALUATION_TRIGGER_NOT_CONFIGURED'
-	| 'SET_OUTPUTS_NODE_NOT_FOUND'
-	| 'SET_OUTPUTS_NODE_NOT_CONFIGURED'
-	| 'SET_METRICS_NODE_NOT_FOUND'
-	| 'SET_METRICS_NODE_NOT_CONFIGURED'
-	| 'CANT_FETCH_TEST_CASES';
 
 export class TestRunError extends UnexpectedError {
 	readonly code: TestRunErrorCode;

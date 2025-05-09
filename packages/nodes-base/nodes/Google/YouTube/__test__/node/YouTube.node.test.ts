@@ -1,6 +1,5 @@
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import nock from 'nock';
-
-import { testWorkflows } from '@test/nodes/Helpers';
 
 import categories from './fixtures/categories.json';
 import channels from './fixtures/channels.json';
@@ -62,9 +61,10 @@ describe('Test YouTube Node', () => {
 				});
 		});
 
-		afterAll(() => youtubeNock.done());
-
-		testWorkflows(['nodes/Google/YouTube/__test__/node/channels.workflow.json'], credentials);
+		new NodeTestHarness().setupTests({
+			credentials,
+			workflowFiles: ['channels.workflow.json'],
+		});
 	});
 
 	describe('Playlist', () => {
@@ -113,9 +113,10 @@ describe('Test YouTube Node', () => {
 			youtubeNock.delete('/v3/playlists', { id: 'playlist_id_1' }).reply(200, { success: true });
 		});
 
-		afterAll(() => youtubeNock.done());
-
-		testWorkflows(['nodes/Google/YouTube/__test__/node/playlists.workflow.json'], credentials);
+		new NodeTestHarness().setupTests({
+			credentials,
+			workflowFiles: ['playlists.workflow.json'],
+		});
 	});
 
 	describe('Video Categories', () => {
@@ -131,10 +132,10 @@ describe('Test YouTube Node', () => {
 
 		afterAll(() => youtubeNock.done());
 
-		testWorkflows(
-			['nodes/Google/YouTube/__test__/node/videoCategories.workflow.json'],
+		new NodeTestHarness().setupTests({
 			credentials,
-		);
+			workflowFiles: ['videoCategories.workflow.json'],
+		});
 	});
 
 	describe('Playlist Item', () => {
@@ -173,6 +174,9 @@ describe('Test YouTube Node', () => {
 
 		afterAll(() => youtubeNock.done());
 
-		testWorkflows(['nodes/Google/YouTube/__test__/node/playlistItems.workflow.json'], credentials);
+		new NodeTestHarness().setupTests({
+			credentials,
+			workflowFiles: ['playlistItems.workflow.json'],
+		});
 	});
 });

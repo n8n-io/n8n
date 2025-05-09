@@ -2,7 +2,6 @@ import { Delete, Get, Post, RestController } from '@n8n/decorators';
 import express from 'express';
 import { InstanceSettings } from 'n8n-core';
 
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { TestCaseExecutionRepository } from '@/databases/repositories/test-case-execution.repository.ee';
 import { TestRunRepository } from '@/databases/repositories/test-run.repository.ee';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
@@ -12,12 +11,13 @@ import { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.servi
 import { TestRunsRequest } from '@/evaluation.ee/test-runs.types.ee';
 import { listQueryMiddleware } from '@/middlewares';
 import { Telemetry } from '@/telemetry';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 @RestController('/workflows')
 export class TestRunsController {
 	constructor(
 		private readonly testRunRepository: TestRunRepository,
-		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
+		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly testCaseExecutionRepository: TestCaseExecutionRepository,
 		private readonly testRunnerService: TestRunnerService,
 		private readonly instanceSettings: InstanceSettings,
@@ -103,7 +103,7 @@ export class TestRunsController {
 	async create(req: TestRunsRequest.Create, res: express.Response) {
 		const { workflowId } = req.params;
 
-		const workflow = await this.sharedWorkflowRepository.findWorkflowForUser(workflowId, req.user, [
+		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, req.user, [
 			'workflow:read',
 		]);
 

@@ -16,6 +16,7 @@ describe('TestDefinitionRootView', () => {
 		id: 'different-id',
 		name: 'Test Workflow',
 		active: false,
+		isArchived: false,
 		createdAt: Date.now(),
 		updatedAt: Date.now(),
 		nodes: [],

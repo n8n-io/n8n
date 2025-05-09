@@ -68,6 +68,7 @@ import '@/license/license.controller';
 import '@/evaluation.ee/test-runs.controller.ee';
 import '@/workflows/workflow-history.ee/workflow-history.controller.ee';
 import '@/workflows/workflows.controller';
+import '@/webhooks/webhooks.controller';
 
 @Service()
 export class Server extends AbstractServer {

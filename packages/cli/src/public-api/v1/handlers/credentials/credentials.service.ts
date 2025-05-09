@@ -1,3 +1,10 @@
+import type { User, ICredentialsDb } from '@n8n/db';
+import {
+	CredentialsEntity,
+	SharedCredentials,
+	CredentialsRepository,
+	ProjectRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { Credentials } from 'n8n-core';
 import type {
@@ -7,16 +14,10 @@ import type {
 	INodePropertyOptions,
 } from 'n8n-workflow';
 
-import { CredentialsEntity } from '@/databases/entities/credentials-entity';
-import { SharedCredentials } from '@/databases/entities/shared-credentials';
-import type { User } from '@/databases/entities/user';
-import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import * as Db from '@/db';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
-import type { ICredentialsDb } from '@/interfaces';
 import type { CredentialRequest } from '@/requests';
 
 import type { IDependency, IJsonSchema } from '../../../types';

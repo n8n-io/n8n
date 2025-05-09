@@ -37,6 +37,7 @@ export async function getFilteredResults(
 	googleSheet: GoogleSheet,
 	result: { title: string; sheetId: number },
 	startingRow: number,
+	endingRow: number,
 ): Promise<INodeExecutionData[]> {
 	const sheetName = result.title;
 
@@ -49,7 +50,6 @@ export async function getFilteredResults(
 		this.getNode().typeVersion,
 		[],
 		undefined,
-		true,
 		{
 			rangeDefinition: 'specifyRange',
 			headerRow: 1,
@@ -57,7 +57,7 @@ export async function getFilteredResults(
 		},
 	);
 
-	return operationResult.length >= 0 ? [operationResult[0]] : [];
+	return operationResult.filter((row) => (row?.json?.row_number as number) <= endingRow);
 }
 
 export async function getRowsLeftFilteredResults(
@@ -65,6 +65,7 @@ export async function getRowsLeftFilteredResults(
 	googleSheet: GoogleSheet,
 	sheetName: string,
 	startingRow: number,
+	endingRow: number,
 ) {
 	const remainderSheet: INodeExecutionData[] = await readSheet.call(
 		this,
@@ -75,7 +76,6 @@ export async function getRowsLeftFilteredResults(
 		this.getNode().typeVersion,
 		[],
 		undefined,
-		true,
 		{
 			rangeDefinition: 'specifyRange',
 			headerRow: 1,
@@ -83,7 +83,7 @@ export async function getRowsLeftFilteredResults(
 		},
 	);
 
-	return remainderSheet.length;
+	return remainderSheet.filter((row) => (row?.json?.row_number as number) <= endingRow).length;
 }
 
 export async function getResults(
@@ -91,7 +91,6 @@ export async function getResults(
 	operationResult: INodeExecutionData[],
 	googleSheet: GoogleSheet,
 	result: { title: string; sheetId: number },
-	rangeString: string,
 	rangeOptions: IDataObject,
 ): Promise<INodeExecutionData[]> {
 	const sheetName = result.title;
@@ -104,8 +103,7 @@ export async function getResults(
 		operationResult,
 		this.getNode().typeVersion,
 		[],
-		rangeString,
-		true,
+		undefined,
 		rangeOptions,
 	);
 

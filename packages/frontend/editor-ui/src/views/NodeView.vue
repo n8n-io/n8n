@@ -54,6 +54,7 @@ import {
 	CHAT_TRIGGER_NODE_TYPE,
 	DRAG_EVENT_DATA_KEY,
 	EnterpriseEditionFeature,
+	FROM_AI_PARAMETERS_MODAL_KEY,
 	MAIN_HEADER_TABS,
 	MANUAL_CHAT_TRIGGER_NODE_TYPE,
 	MODAL_CONFIRM,
@@ -115,6 +116,11 @@ import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
 import type { CanvasLayoutEvent } from '@/composables/useCanvasLayout';
 import { useClearExecutionButtonVisible } from '@/composables/useClearExecutionButtonVisible';
 import { LOGS_PANEL_STATE } from '@/components/CanvasChat/types/logs';
+import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
+import { useBuilderStore } from '@/stores/builder.store';
+import { useFoldersStore } from '@/stores/folders.store';
+import { useParameterOverridesStore } from '@/stores/parameterOverrides.store';
+import { hasFromAiExpressions } from '@/utils/nodes/nodeTransforms';
 
 defineOptions({
 	name: 'NodeView',
@@ -165,6 +171,9 @@ const tagsStore = useTagsStore();
 const pushConnectionStore = usePushConnectionStore();
 const ndvStore = useNDVStore();
 const templatesStore = useTemplatesStore();
+const builderStore = useBuilderStore();
+const foldersStore = useFoldersStore();
+const parameterOverridesStore = useParameterOverridesStore();
 
 const canvasEventBus = createEventBus<CanvasEventBusEvents>();
 
@@ -227,6 +236,7 @@ const isExecutionPreview = ref(false);
 
 const canOpenNDV = ref(true);
 const hideNodeIssues = ref(false);
+const fallbackNodes = ref<INodeUi[]>([]);
 
 const initializedWorkflowId = ref<string | undefined>();
 const workflowId = computed(() => {
@@ -249,24 +259,10 @@ const isCanvasReadOnly = computed(() => {
 	return (
 		isDemoRoute.value ||
 		isReadOnlyEnvironment.value ||
-		!(workflowPermissions.value.update ?? projectPermissions.value.workflow.update)
+		!(workflowPermissions.value.update ?? projectPermissions.value.workflow.update) ||
+		editableWorkflow.value.isArchived
 	);
 });
-
-const fallbackNodes = computed<INodeUi[]>(() =>
-	isLoading.value || isCanvasReadOnly.value
-		? []
-		: [
-				{
-					id: CanvasNodeRenderType.AddNodes,
-					name: CanvasNodeRenderType.AddNodes,
-					type: CanvasNodeRenderType.AddNodes,
-					typeVersion: 1,
-					position: [0, 0],
-					parameters: {},
-				},
-			],
-);
 
 const showFallbackNodes = computed(() => triggerNodes.value.length === 0);
 
@@ -396,15 +392,47 @@ async function initializeRoute(force = false) {
 async function initializeWorkspaceForNewWorkflow() {
 	resetWorkspace();
 
+	const parentFolderId = route.query.parentFolderId as string | undefined;
+
 	await workflowsStore.getNewWorkflowData(
 		undefined,
 		projectsStore.currentProjectId,
-		route.query.parentFolderId as string | undefined,
+		parentFolderId,
 	);
 	workflowsStore.makeNewWorkflowShareable();
 
+	if (projectsStore.currentProjectId) {
+		await fetchAndSetProject(projectsStore.currentProjectId);
+	}
+	await fetchAndSetParentFolder(parentFolderId);
+
 	uiStore.nodeViewInitialized = true;
 	initializedWorkflowId.value = NEW_WORKFLOW_ID;
+}
+
+// These two methods load home project and parent folder data if they are not already loaded
+// This happens when user lands straight on the new workflow page and we have nothing in the store
+async function fetchAndSetParentFolder(folderId?: string) {
+	if (folderId) {
+		let parentFolder = foldersStore.getCachedFolder(folderId);
+		if (!parentFolder && projectsStore.currentProjectId) {
+			await foldersStore.getFolderPath(projectsStore.currentProjectId, folderId);
+			parentFolder = foldersStore.getCachedFolder(folderId);
+		}
+		if (parentFolder) {
+			workflowsStore.setParentFolder({
+				...parentFolder,
+				parentFolderId: parentFolder.parentFolder ?? null,
+			});
+		}
+	}
+}
+
+async function fetchAndSetProject(projectId: string) {
+	if (!projectsStore.currentProject) {
+		const project = await projectsStore.fetchProject(projectId);
+		projectsStore.setCurrentProject(project);
+	}
 }
 
 async function initializeWorkspaceForExistingWorkflow(id: string) {
@@ -412,6 +440,10 @@ async function initializeWorkspaceForExistingWorkflow(id: string) {
 		const workflowData = await workflowsStore.fetchWorkflow(id);
 
 		openWorkflow(workflowData);
+
+		if (workflowData.parentFolder) {
+			workflowsStore.setParentFolder(workflowData.parentFolder);
+		}
 
 		if (workflowData.meta?.onboardingId) {
 			trackOpenWorkflowFromOnboardingTemplate();
@@ -608,7 +640,12 @@ function onRevertNodePosition({ nodeName, position }: { nodeName: string; positi
 }
 
 function onDeleteNode(id: string) {
-	deleteNode(id, { trackHistory: true });
+	const matchedFallbackNode = fallbackNodes.value.findIndex((node) => node.id === id);
+	if (matchedFallbackNode >= 0) {
+		fallbackNodes.value.splice(matchedFallbackNode, 1);
+	} else {
+		deleteNode(id, { trackHistory: true });
+	}
 }
 
 function onDeleteNodes(ids: string[]) {
@@ -737,8 +774,9 @@ function onPinNodes(ids: string[], source: PinDataSource) {
 
 async function onSaveWorkflow() {
 	const workflowIsSaved = !uiStore.stateIsDirty;
+	const workflowIsArchived = workflowsStore.workflow.isArchived;
 
-	if (workflowIsSaved) {
+	if (workflowIsSaved || workflowIsArchived) {
 		return;
 	}
 	const saved = await workflowHelpers.saveCurrentWorkflow();
@@ -948,6 +986,11 @@ async function onImportWorkflowDataEvent(data: IDataObject) {
 
 	fitView();
 	selectNodes(workflowData.nodes?.map((node) => node.id) ?? []);
+	if (data.tidyUp) {
+		setTimeout(() => {
+			canvasEventBus.emit('tidyUp', { source: 'import-workflow-data' });
+		}, 0);
+	}
 }
 
 async function onImportWorkflowUrlEvent(data: IDataObject) {
@@ -1138,9 +1181,19 @@ async function onRunWorkflowToNode(id: string) {
 	const node = workflowsStore.getNodeById(id);
 	if (!node) return;
 
-	trackRunWorkflowToNode(node);
+	if (hasFromAiExpressions(node) && nodeTypesStore.isNodesAsToolNode(node.type)) {
+		uiStore.openModalWithData({
+			name: FROM_AI_PARAMETERS_MODAL_KEY,
+			data: {
+				nodeName: node.name,
+			},
+		});
+	} else {
+		trackRunWorkflowToNode(node);
+		parameterOverridesStore.clearParameterOverrides(workflowsStore.workflowId, node.id);
 
-	void runWorkflow({ destinationNode: node.name, source: 'Node.executeNode' });
+		void runWorkflow({ destinationNode: node.name, source: 'Node.executeNode' });
+	}
 }
 
 function trackRunWorkflowToNode(node: INodeUi) {
@@ -1649,6 +1702,37 @@ watch(
 	},
 );
 
+watch(
+	() => {
+		return isLoading.value || isCanvasReadOnly.value || editableWorkflow.value.nodes.length !== 0;
+	},
+	(isReadOnlyOrLoading) => {
+		const defaultFallbackNodes: INodeUi[] = [
+			{
+				id: CanvasNodeRenderType.AddNodes,
+				name: CanvasNodeRenderType.AddNodes,
+				type: CanvasNodeRenderType.AddNodes,
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			},
+		];
+
+		if (builderStore.isAIBuilderEnabled && builderStore.isAssistantEnabled) {
+			defaultFallbackNodes.unshift({
+				id: CanvasNodeRenderType.AIPrompt,
+				name: CanvasNodeRenderType.AIPrompt,
+				type: CanvasNodeRenderType.AIPrompt,
+				typeVersion: 1,
+				position: [-690, -15],
+				parameters: {},
+			});
+		}
+
+		fallbackNodes.value = isReadOnlyOrLoading ? [] : defaultFallbackNodes;
+	},
+);
+
 // This keeps the selected node in sync if the URL is updated
 watch(
 	() => route.params.nodeId,
@@ -1691,14 +1775,15 @@ onBeforeRouteLeave(async (to, from, next) => {
 		return;
 	}
 
-	await workflowHelpers.promptSaveUnsavedWorkflowChanges(next, {
+	await useWorkflowSaving({ router }).promptSaveUnsavedWorkflowChanges(next, {
 		async confirm() {
 			if (from.name === VIEWS.NEW_WORKFLOW) {
 				// Replace the current route with the new workflow route
 				// before navigating to the new route when saving new workflow.
+				const savedWorkflowId = workflowsStore.workflowId;
 				await router.replace({
 					name: VIEWS.WORKFLOW,
-					params: { name: workflowId.value },
+					params: { name: savedWorkflowId },
 				});
 
 				await router.push(to);

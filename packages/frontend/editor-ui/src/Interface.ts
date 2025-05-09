@@ -43,6 +43,7 @@ import type {
 	IPersonalizationSurveyAnswersV4,
 	AnnotationVote,
 	ITaskData,
+	ISourceData,
 } from 'n8n-workflow';
 
 import {
@@ -190,6 +191,7 @@ export interface IAiDataContent {
 	data: INodeExecutionData[] | null;
 	inOut: 'input' | 'output';
 	type: NodeConnectionType;
+	source?: Array<ISourceData | null>;
 	metadata: {
 		executionTime: number;
 		startTime: number;
@@ -316,6 +318,7 @@ export interface IWorkflowDb {
 	id: string;
 	name: string;
 	active: boolean;
+	isArchived: boolean;
 	createdAt: number | string;
 	updatedAt: number | string;
 	nodes: INodeUi[];
@@ -329,7 +332,13 @@ export interface IWorkflowDb {
 	versionId: string;
 	usedCredentials?: IUsedCredential[];
 	meta?: WorkflowMetadata;
-	parentFolder?: { id: string; name: string };
+	parentFolder?: {
+		id: string;
+		name: string;
+		parentFolderId: string | null;
+		createdAt?: string;
+		updatedAt?: string;
+	};
 }
 
 // For workflow list we don't need the full workflow data
@@ -349,7 +358,6 @@ export type FolderShortInfo = {
 	id: string;
 	name: string;
 	parentFolder?: string;
-	parentFolderId?: string | null;
 };
 
 export type BaseFolderItem = BaseResource & {
@@ -357,10 +365,16 @@ export type BaseFolderItem = BaseResource & {
 	updatedAt: string;
 	workflowCount: number;
 	subFolderCount: number;
-	parentFolder?: FolderShortInfo;
+	parentFolder?: ResourceParentFolder;
 	homeProject?: ProjectSharingData;
 	sharedWithProjects?: ProjectSharingData[];
 	tags?: ITag[];
+};
+
+export type ResourceParentFolder = {
+	id: string;
+	name: string;
+	parentFolderId: string | null;
 };
 
 export interface FolderListItem extends BaseFolderItem {
