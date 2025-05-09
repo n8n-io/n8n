@@ -38,12 +38,7 @@ import {
 	isScriptingNode,
 	createErrorUtils,
 } from './WorkflowDataProxyHelpers';
-import {
-	normalizeInputs,
-	pinDataToTask,
-	PAIRED_ITEM_METHOD,
-	type PairedItemMethod,
-} from './WorkflowDataProxyPairedItem';
+import { PAIRED_ITEM_METHOD, usePairedItem } from './WorkflowDataProxyPairedItem';
 
 export function isResourceLocatorValue(value: unknown): value is INodeParameterResourceLocator {
 	return Boolean(
@@ -729,7 +724,7 @@ export class WorkflowDataProxy {
 			return jmespath.search(data, query);
 		};
 
-		const errorUtils = createErrorUtils({
+		const context = {
 			get workflow() {
 				return that.workflow;
 			},
@@ -745,142 +740,13 @@ export class WorkflowDataProxy {
 			get activeNodeName() {
 				return that.activeNodeName;
 			},
-		});
-
-		function getTaskData(source: ISourceData): ITaskData | undefined {
-			return (
-				that.runExecutionData?.resultData?.runData?.[source.previousNode]?.[
-					source.previousNodeRun || 0
-				] ??
-				pinDataToTask(getPinDataIfManualExecution(that.workflow, source.previousNode, that.mode))
-			);
-		}
-
-		function getNodeOutput(
-			taskData: ITaskData | undefined,
-			source: ISourceData,
-			nodeCause?: string,
-		): INodeExecutionData[] {
-			const outputIndex = source.previousNodeOutput || 0;
-			const outputs = taskData?.data?.main?.[outputIndex];
-			if (!outputs) {
-				throw errorUtils.createExpressionError('Can’t get data for expression', {
-					messageTemplate: 'Missing output data',
-					functionOverrides: { message: 'Missing output' },
-					nodeCause,
-					description: `Expected output #${outputIndex} from node ${source.previousNode}`,
-					type: 'internal',
-				});
-			}
-			return outputs;
-		}
-
-		function resolveMultiplePairings(
-			pairings: IPairedItemData[],
-			source: ISourceData[],
-			destinationNode: string,
-			method: PairedItemMethod,
-			itemIndex: number,
-		): INodeExecutionData {
-			const results = pairings
-				.map((pairing) => {
-					try {
-						const input = pairing.input || 0;
-						if (input >= source.length) {
-							// Could not resolve pairedItem as the defined node input does not exist on source.previousNode.
-							return null;
-						}
-						// eslint-disable-next-line @typescript-eslint/no-use-before-define
-						return getPairedItem(destinationNode, source[input], pairing, method);
-					} catch {
-						return null;
-					}
-				})
-				.filter(Boolean) as INodeExecutionData[];
-
-			if (results.length === 1) return results[0];
-
-			const allSame = results.every((r) => r === results[0]);
-			if (allSame) return results[0];
-
-			throw errorUtils.createPairedItemMultipleItemsError(destinationNode, itemIndex);
-		}
-
-		/**
-		 * Attempts to find the execution data for a specific paired item
-		 * by traversing the node execution ancestry chain.
-		 */
-		const getPairedItem = (
-			destinationNodeName: string,
-			incomingSourceData: ISourceData | null,
-			initialPairedItem: IPairedItemData,
-			usedMethodName: PairedItemMethod = PAIRED_ITEM_METHOD.$GET_PAIRED_ITEM,
-		): INodeExecutionData | null => {
-			// Step 1: Normalize inputs
-			const [pairedItem, sourceData] = normalizeInputs(initialPairedItem, incomingSourceData);
-
-			let currentPairedItem = pairedItem;
-			let currentSource = sourceData;
-			let nodeBeforeLast: string | undefined;
-
-			// Step 2: Traverse ancestry to find correct node
-			while (currentSource && currentSource.previousNode !== destinationNodeName) {
-				const taskData = getTaskData(currentSource);
-
-				const outputData = getNodeOutput(taskData, currentSource, nodeBeforeLast);
-				const sourceArray = taskData?.source.filter((s): s is ISourceData => s !== null) ?? [];
-
-				const item = outputData[currentPairedItem.item];
-				if (item?.pairedItem === undefined) {
-					throw errorUtils.createMissingPairedItemError(currentSource.previousNode, usedMethodName);
-				}
-
-				// Multiple pairings? Recurse over all
-				if (Array.isArray(item.pairedItem)) {
-					return resolveMultiplePairings(
-						item.pairedItem,
-						sourceArray,
-						destinationNodeName,
-						usedMethodName,
-						currentPairedItem.item,
-					);
-				}
-
-				// Follow single paired item
-				currentPairedItem =
-					typeof item.pairedItem === 'number' ? { item: item.pairedItem } : item.pairedItem;
-
-				const inputIndex = currentPairedItem.input || 0;
-
-				if (inputIndex >= sourceArray.length) {
-					if (sourceArray.length === 0) {
-						throw errorUtils.createNoConnectionError(destinationNodeName);
-					}
-
-					throw errorUtils.createBranchNotFoundError(
-						currentSource.previousNode,
-						currentPairedItem.item,
-						nodeBeforeLast,
-					);
-				}
-
-				nodeBeforeLast = currentSource.previousNode;
-				currentSource = currentPairedItem.sourceOverwrite || sourceArray[inputIndex];
-			}
-
-			// Step 3: Final node reached — fetch paired item
-			if (!currentSource)
-				throw errorUtils.createPairedItemNotFound(destinationNodeName, nodeBeforeLast);
-
-			const finalTaskData = getTaskData(currentSource);
-			const finalOutputData = getNodeOutput(finalTaskData, currentSource);
-
-			if (currentPairedItem.item >= finalOutputData.length) {
-				throw errorUtils.createInvalidPairedItemError({ nodeName: currentSource.previousNode });
-			}
-
-			return finalOutputData[currentPairedItem.item];
+			get runExecutionData() {
+				return that.runExecutionData;
+			},
 		};
+
+		const errorUtils = createErrorUtils(context);
+		const { getPairedItem } = usePairedItem(context);
 
 		const handleFromAi = (
 			name: string,
