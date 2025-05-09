@@ -31,7 +31,7 @@ export class AzureEntraCognitiveServicesOAuth2Api implements ICredentialType {
 			name: 'apiVersion',
 			type: 'string',
 			required: true,
-			default: '2024-12-01-preview',
+			default: '2025-03-01-preview',
 		},
 		{
 			displayName: 'Endpoint',
