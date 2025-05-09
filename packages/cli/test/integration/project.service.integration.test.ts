@@ -1,6 +1,6 @@
+import { SharedWorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { ProjectService } from '@/services/project.service.ee';
 
 import { linkUserToProject, createTeamProject } from './shared/db/projects';
