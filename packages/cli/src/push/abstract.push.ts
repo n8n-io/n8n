@@ -95,7 +95,7 @@ export abstract class AbstractPush<Connection> extends TypedEmitter<AbstractPush
 
 	sendToOne(pushMsg: PushMessage, pushRef: string) {
 		if (this.connections[pushRef] === undefined) {
-			this.logger.error(`The session "${pushRef}" is not registered.`, { pushRef });
+			this.logger.debug(`The session "${pushRef}" is not registered.`, { pushRef });
 			return;
 		}
 
