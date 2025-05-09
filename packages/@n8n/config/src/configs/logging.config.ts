@@ -84,6 +84,8 @@ export class LoggingConfig {
 	 * - `scaling`
 	 * - `waiting-executions`
 	 * - `task-runner`
+	 * - `workflow-activation`
+	 * - `insights`
 	 *
 	 * @example
 	 * `N8N_LOG_SCOPES=license`

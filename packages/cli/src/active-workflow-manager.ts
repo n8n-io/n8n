@@ -34,6 +34,7 @@ import {
 	WebhookPathTakenError,
 	UnexpectedError,
 } from 'n8n-workflow';
+import { strict } from 'node:assert';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
 import { ActiveExecutions } from '@/active-executions';
@@ -49,7 +50,6 @@ import { ExternalHooks } from '@/external-hooks';
 import { NodeTypes } from '@/node-types';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { ActiveWorkflowsService } from '@/services/active-workflows.service';
-import { OrchestrationService } from '@/services/orchestration.service';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import { WebhookService } from '@/webhooks/webhook.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
@@ -77,7 +77,6 @@ export class ActiveWorkflowManager {
 		private readonly nodeTypes: NodeTypes,
 		private readonly webhookService: WebhookService,
 		private readonly workflowRepository: WorkflowRepository,
-		private readonly orchestrationService: OrchestrationService,
 		private readonly activationErrorsService: ActivationErrorsService,
 		private readonly executionService: ExecutionService,
 		private readonly workflowStaticDataService: WorkflowStaticDataService,
@@ -89,7 +88,10 @@ export class ActiveWorkflowManager {
 	) {}
 
 	async init() {
-		await this.orchestrationService.init();
+		strict(
+			this.instanceSettings.instanceRole !== 'unset',
+			'Active workflow manager expects instance role to be set',
+		);
 
 		await this.addActiveWorkflows('init');
 
