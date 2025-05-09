@@ -1,13 +1,13 @@
+import { LicenseState } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { mock } from 'jest-mock-extended';
 
-import { License } from '@/license';
 import { ProjectService } from '@/services/project.service.ee';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
 import { createUser } from '../shared/db/users';
 import { createWorkflow, shareWorkflowWithUsers } from '../shared/db/workflows';
-import { LicenseMocker } from '../shared/license';
 import * as testDb from '../shared/test-db';
 
 let owner: User;
@@ -21,11 +21,10 @@ beforeAll(async () => {
 	owner = await createUser({ role: 'global:owner' });
 	member = await createUser({ role: 'global:member' });
 	anotherMember = await createUser({ role: 'global:member' });
-	let license: LicenseMocker;
-	license = new LicenseMocker();
-	license.mock(Container.get(License));
-	license.enable('feat:sharing');
-	license.setQuota('quota:maxTeamProjects', -1);
+	const licenseMock = mock<LicenseState>();
+	licenseMock.isSharingLicensed.mockReturnValue(true);
+	licenseMock.getMaxTeamProjects.mockReturnValue(-1);
+	Container.set(LicenseState, licenseMock);
 	workflowSharingService = Container.get(WorkflowSharingService);
 	projectService = Container.get(ProjectService);
 });

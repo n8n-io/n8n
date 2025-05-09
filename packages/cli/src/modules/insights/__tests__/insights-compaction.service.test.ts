@@ -20,10 +20,9 @@ import { InsightsCompactionService } from '../insights-compaction.service';
 import { InsightsConfig } from '../insights.config';
 
 const globalConfig = Container.get(GlobalConfig);
-const dbType = globalConfig.database.type;
 
 // Disable tests for legacy sqlite
-if (dbType === 'sqlite' && !globalConfig.database.sqlite.poolSize) {
+if (globalConfig.database.isLegacySqlite) {
 	test('dummy', () => {
 		expect(true).toBe(true);
 	});

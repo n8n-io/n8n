@@ -1,4 +1,6 @@
 import type { CreateProjectDto, ProjectType, UpdateProjectDto } from '@n8n/api-types';
+import { LicenseState } from '@n8n/backend-common';
+import { GlobalConfig } from '@n8n/config';
 import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import type { User } from '@n8n/db';
 import { Project, ProjectRelation, ProjectRelationRepository, ProjectRepository } from '@n8n/db';
@@ -15,7 +17,6 @@ import { SharedWorkflowRepository } from '@/databases/repositories/shared-workfl
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { License } from '@/license';
 
 import { CacheService } from './cache/cache.service';
 
@@ -41,7 +42,8 @@ export class ProjectService {
 		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly cacheService: CacheService,
-		private readonly license: License,
+		private readonly licenseState: LicenseState,
+		private readonly globalConfig: GlobalConfig,
 	) {}
 
 	private get workflowService() {
@@ -174,23 +176,46 @@ export class ProjectService {
 		return await this.projectRelationRepository.getPersonalProjectOwners(projectIds);
 	}
 
-	async createTeamProject(adminUser: User, data: CreateProjectDto): Promise<Project> {
-		const limit = this.license.getTeamProjectLimit();
-		if (
-			limit !== UNLIMITED_LICENSE_QUOTA &&
-			limit <= (await this.projectRepository.count({ where: { type: 'team' } }))
-		) {
-			throw new TeamProjectOverQuotaError(limit);
+	private async createTeamProjectWithEntityManager(
+		adminUser: User,
+		data: CreateProjectDto,
+		trx: EntityManager,
+	) {
+		const limit = this.licenseState.getMaxTeamProjects();
+		if (limit !== UNLIMITED_LICENSE_QUOTA) {
+			const teamProjectCount = await trx.count(Project, { where: { type: 'team' } });
+			if (limit <= teamProjectCount) {
+				throw new TeamProjectOverQuotaError(limit);
+			}
 		}
 
-		const project = await this.projectRepository.save(
+		const project = await trx.save(
+			Project,
 			this.projectRepository.create({ ...data, type: 'team' }),
 		);
 
 		// Link admin
-		await this.addUser(project.id, adminUser.id, 'project:admin');
+		await this.addUser(project.id, adminUser.id, 'project:admin', trx);
 
 		return project;
+	}
+
+	async createTeamProject(adminUser: User, data: CreateProjectDto): Promise<Project> {
+		if (this.globalConfig.database.isLegacySqlite) {
+			// Using transaction in the sqlite legacy driver can cause data loss, so
+			// we avoid this here.
+			return await this.createTeamProjectWithEntityManager(
+				adminUser,
+				data,
+				this.projectRepository.manager,
+			);
+		} else {
+			// This needs to be SERIALIZABLE otherwise the count would not block a
+			// concurrent transaction and we could insert multiple projects.
+			return await this.projectRepository.manager.transaction('SERIALIZABLE', async (trx) => {
+				return await this.createTeamProjectWithEntityManager(adminUser, data, trx);
+			});
+		}
 	}
 
 	async updateProject(
@@ -245,11 +270,11 @@ export class ProjectService {
 	private isProjectRoleLicensed(role: ProjectRole) {
 		switch (role) {
 			case 'project:admin':
-				return this.license.isProjectRoleAdminLicensed();
+				return this.licenseState.isProjectRoleAdminLicensed();
 			case 'project:editor':
-				return this.license.isProjectRoleEditorLicensed();
+				return this.licenseState.isProjectRoleEditorLicensed();
 			case 'project:viewer':
-				return this.license.isProjectRoleViewerLicensed();
+				return this.licenseState.isProjectRoleViewerLicensed();
 			default:
 				return true;
 		}
@@ -319,8 +344,9 @@ export class ProjectService {
 		});
 	}
 
-	async addUser(projectId: string, userId: string, role: ProjectRole) {
-		return await this.projectRelationRepository.save({
+	async addUser(projectId: string, userId: string, role: ProjectRole, trx?: EntityManager) {
+		trx = trx ?? this.projectRelationRepository.manager;
+		return await trx.save(ProjectRelation, {
 			projectId,
 			userId,
 			role,
