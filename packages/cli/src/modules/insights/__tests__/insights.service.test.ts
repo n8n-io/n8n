@@ -733,6 +733,7 @@ describe('timers', () => {
 	const mockPruningService = mock<InsightsPruningService>({
 		startPruningTimer: jest.fn(),
 		stopPruningTimer: jest.fn(),
+		isPruningEnabled: false,
 	});
 
 	const mockedLogger = mockLogger();
@@ -764,6 +765,7 @@ describe('timers', () => {
 	test('startTimers starts pruning timer', () => {
 		// ARRANGE
 		mockedConfig.maxAgeDays = 30;
+		Object.defineProperty(mockPruningService, 'isPruningEnabled', { value: true });
 
 		// ACT
 		insightsService.startTimers();
