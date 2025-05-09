@@ -28,23 +28,23 @@ import type { ExecuteContext, WebhookContext } from '../../node-execution-contex
 // eslint-disable-next-line import/no-cycle
 import { SupplyDataContext } from '../../node-execution-context/supply-data-context';
 
+function getLatestRunIndex(runExecutionData: IRunExecutionData, nodeName: string) {
+	return runExecutionData.resultData.runData[nodeName]?.length ?? 0;
+}
+
 export function makeHandleToolInvocation(
 	contextFactory: (runIndex: number) => ISupplyDataFunctions,
 	node: INode,
 	nodeType: INodeType,
+	runExecutionData: IRunExecutionData,
 ) {
 	/**
 	 * This keeps track of how many times this specific AI tool node has been invoked.
 	 * It is incremented on every invocation of the tool to keep the output of each invocation separate from each other.
 	 */
-	let toolRunIndex = 0;
 	return async (toolArgs: IDataObject) => {
-		let runIndex = toolRunIndex++;
-		let context = contextFactory(runIndex);
-		if (context.getRunDataLength() !== runIndex) {
-			runIndex = context.getRunDataLength();
-			context = contextFactory(runIndex);
-		}
+		const runIndex = getLatestRunIndex(runExecutionData, node.name);
+		const context = contextFactory(runIndex);
 		context.addInputData(NodeConnectionTypes.AiTool, [[{ json: toolArgs }]]);
 
 		try {
@@ -157,6 +157,7 @@ export async function getInputConnectionData(
 						(i) => contextFactory(i, {}),
 						connectedNode,
 						connectedNodeType,
+						runExecutionData,
 					),
 				});
 				nodes.push(supplyData);

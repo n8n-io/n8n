@@ -320,8 +320,6 @@ export class WorkflowToolService {
 			jsonData = currentWorkflowInputs[itemIndex].json;
 		}
 
-		console.log(jsonData);
-
 		const newItem = await manual.execute.call(
 			context,
 			{ json: jsonData },
@@ -330,7 +328,6 @@ export class WorkflowToolService {
 			rawData,
 			context.getNode(),
 		);
-		console.log('new item:', newItem);
 
 		return [newItem] as INodeExecutionData[];
 	}
