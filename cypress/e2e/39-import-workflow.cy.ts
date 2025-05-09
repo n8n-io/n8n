@@ -1,9 +1,7 @@
 import { WorkflowPage } from '../pages';
-import { MessageBox as MessageBoxClass } from '../pages/modals/message-box';
 import { errorToast, successToast } from '../pages/notifications';
 
 const workflowPage = new WorkflowPage();
-const messageBox = new MessageBoxClass();
 
 before(() => {
 	cy.fixture('Onboarding_workflow.json').then((data) => {
