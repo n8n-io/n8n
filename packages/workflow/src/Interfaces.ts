@@ -2146,6 +2146,7 @@ export interface IRunExecutionData {
 		runData: IRunData;
 		pinData?: IPinData;
 		lastNodeExecuted?: string;
+		pendingSubnode?: string;
 		metadata?: Record<string, string>;
 	};
 	executionData?: {

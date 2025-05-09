@@ -1,3 +1,4 @@
+// import { sendAndWaitWebhooksDescription } from 'n8n-nodes-base/utils/sendAndWait/descriptions';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import type {
 	INodeInputConfiguration,
@@ -8,12 +9,14 @@ import type {
 	INodeTypeDescription,
 	INodeProperties,
 	NodeConnectionType,
+	IWebhookFunctions,
 } from 'n8n-workflow';
 
 import { promptTypeOptions, textFromPreviousNode, textInput } from '@utils/descriptions';
 
 import { conversationalAgentProperties } from './agents/ConversationalAgent/description';
 import { conversationalAgentExecute } from './agents/ConversationalAgent/execute';
+import { langGraphAgentExecute } from './agents/LangGraphAgent/execute';
 import { openAiFunctionsAgentProperties } from './agents/OpenAiFunctionsAgent/description';
 import { openAiFunctionsAgentExecute } from './agents/OpenAiFunctionsAgent/execute';
 import { planAndExecuteAgentProperties } from './agents/PlanAndExecuteAgent/description';
@@ -23,8 +26,9 @@ import { reActAgentAgentExecute } from './agents/ReActAgent/execute';
 import { sqlAgentAgentProperties } from './agents/SqlAgent/description';
 import { sqlAgentAgentExecute } from './agents/SqlAgent/execute';
 import { toolsAgentProperties } from './agents/ToolsAgent/description';
-import { toolsAgentExecute } from './agents/ToolsAgent/execute';
-
+import { langGraphAgentWebhook } from './agents/LangGraphAgent/webhook';
+// import { prepareFormData } from 'n8n-nodes-base/nodes/Form/utils';
+// import { ACTION_RECORDED_PAGE } from 'n8n-nodes-base/utils/sendAndWait/email-templates';
 // Function used in the inputs expression to figure out which inputs to
 // display based on the agent type
 function getInputs(
@@ -271,6 +275,26 @@ export class Agent implements INodeType {
 			name: 'AI Agent',
 			color: '#404040',
 		},
+		webhooks: [
+			{
+				name: 'default',
+				httpMethod: 'GET',
+				responseMode: 'onReceived',
+				responseData: '',
+				path: '={{ $nodeId }}',
+				restartWebhook: true,
+				isFullPath: true,
+			},
+			{
+				name: 'default',
+				httpMethod: 'POST',
+				responseMode: 'onReceived',
+				responseData: '',
+				path: '={{ $nodeId }}',
+				restartWebhook: true,
+				isFullPath: true,
+			},
+		],
 		codex: {
 			alias: ['LangChain', 'Chat', 'Conversational', 'Plan and Execute', 'ReAct', 'Tools'],
 			categories: ['AI'],
@@ -452,6 +476,8 @@ export class Agent implements INodeType {
 		],
 	};
 
+	webhook = langGraphAgentWebhook;
+
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const agentType = this.getNodeParameter('agent', 0, '') as string;
 		const nodeVersion = this.getNode().typeVersion;
@@ -459,7 +485,7 @@ export class Agent implements INodeType {
 		if (agentType === 'conversationalAgent') {
 			return await conversationalAgentExecute.call(this, nodeVersion);
 		} else if (agentType === 'toolsAgent') {
-			return await toolsAgentExecute.call(this);
+			return await langGraphAgentExecute.call(this);
 		} else if (agentType === 'openAiFunctionsAgent') {
 			return await openAiFunctionsAgentExecute.call(this, nodeVersion);
 		} else if (agentType === 'reActAgent') {

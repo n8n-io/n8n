@@ -312,4 +312,14 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 			});
 		}
 	}
+
+	async putExecutionToWait(waitTill: Date): Promise<void> {
+		console.log('Called PutExecutionToWait from SupplyDataContext');
+
+		// this.runExecutionData.waitTill = waitTill;
+		this.runExecutionData.resultData.pendingSubnode = this.node.name;
+		// if (this.additionalData.setExecutionStatus) {
+		// 	this.additionalData.setExecutionStatus('waiting');
+		// }
+	}
 }

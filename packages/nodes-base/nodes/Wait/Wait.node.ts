@@ -242,6 +242,7 @@ export class Wait extends Webhook {
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
 		credentials: credentialsProperty(this.authPropertyName),
+		usableAsTool: true,
 		webhooks: [
 			{
 				...defaultWebhookDescription,
@@ -461,22 +462,23 @@ export class Wait extends Webhook {
 	}
 
 	async execute(context: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const resume = context.getNodeParameter('resume', 0) as string;
+		const fixedContext = context ?? this;
+		const resume = fixedContext.getNodeParameter('resume', 0) as string;
 
 		if (['webhook', 'form'].includes(resume)) {
 			let hasFormTrigger = false;
 
 			if (resume === 'form') {
-				const parentNodes = context.getParentNodes(context.getNode().name);
+				const parentNodes = fixedContext.getParentNodes(fixedContext.getNode().name);
 				hasFormTrigger = parentNodes.some((node) => node.type === FORM_TRIGGER_NODE_TYPE);
 			}
 
 			const returnData = await this.configureAndPutToWait(context);
 
 			if (resume === 'form' && hasFormTrigger) {
-				context.sendResponse({
+				fixedContext.sendResponse({
 					headers: {
-						location: context.evaluateExpression('{{ $execution.resumeFormUrl }}', 0),
+						location: fixedContext.evaluateExpression('{{ $execution.resumeFormUrl }}', 0),
 					},
 					statusCode: 307,
 				});
@@ -487,9 +489,9 @@ export class Wait extends Webhook {
 
 		let waitTill: Date;
 		if (resume === 'timeInterval') {
-			const unit = context.getNodeParameter('unit', 0) as string;
+			const unit = fixedContext.getNodeParameter('unit', 0) as string;
 
-			let waitAmount = context.getNodeParameter('amount', 0) as number;
+			let waitAmount = fixedContext.getNodeParameter('amount', 0) as number;
 			if (unit === 'minutes') {
 				waitAmount *= 60;
 			}
@@ -507,13 +509,13 @@ export class Wait extends Webhook {
 			waitTill = new Date(new Date().getTime() + waitAmount);
 		} else {
 			try {
-				const dateTimeStrRaw = context.getNodeParameter('dateTime', 0);
-				const parsedDateTime = tryToParseDateTime(dateTimeStrRaw, context.getTimezone());
+				const dateTimeStrRaw = fixedContext.getNodeParameter('dateTime', 0);
+				const parsedDateTime = tryToParseDateTime(dateTimeStrRaw, fixedContext.getTimezone());
 
 				waitTill = parsedDateTime.toUTC().toJSDate();
 			} catch (e) {
 				throw new NodeOperationError(
-					context.getNode(),
+					fixedContext.getNode(),
 					'[Wait node] Cannot put execution to wait because `dateTime` parameter is not a valid date. Please pick a specific date and time to wait until.',
 				);
 			}
@@ -525,8 +527,8 @@ export class Wait extends Webhook {
 			// If wait time is shorter than 65 seconds leave execution active because
 			// we just check the database every 60 seconds.
 			return await new Promise((resolve) => {
-				const timer = setTimeout(() => resolve([context.getInputData()]), waitValue);
-				context.onExecutionCancellation(() => clearTimeout(timer));
+				const timer = setTimeout(() => resolve([fixedContext.getInputData()]), waitValue);
+				fixedContext.onExecutionCancellation(() => clearTimeout(timer));
 			});
 		}
 
@@ -562,7 +564,8 @@ export class Wait extends Webhook {
 			}
 		}
 
-		return await this.putToWait(context, waitTill);
+		await context.putExecutionToWait(waitTill);
+		return [context.getInputData()];
 	}
 
 	private async putToWait(context: IExecuteFunctions, waitTill: Date) {

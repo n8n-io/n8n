@@ -1,4 +1,4 @@
-import type { IExecuteFunctions } from 'n8n-workflow';
+import type { IExecuteFunctions, IWebhookFunctions } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { N8nItemListOutputParser } from './N8nItemListOutputParser';
@@ -13,7 +13,7 @@ export type N8nOutputParser =
 export { N8nOutputFixingParser, N8nItemListOutputParser, N8nStructuredOutputParser };
 
 export async function getOptionalOutputParser(
-	ctx: IExecuteFunctions,
+	ctx: IExecuteFunctions | IWebhookFunctions,
 ): Promise<N8nOutputParser | undefined> {
 	let outputParser: N8nOutputParser | undefined;
 

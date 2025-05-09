@@ -371,7 +371,7 @@ export class SlackV2 implements INodeType {
 			const waitTill = configureWaitTillDate(this);
 
 			await this.putExecutionToWait(waitTill);
-			return [this.getInputData()];
+			return [[{ json: { __waiting: waitTill } }]];
 		}
 
 		for (let i = 0; i < length; i++) {

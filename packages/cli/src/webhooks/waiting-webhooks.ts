@@ -119,7 +119,8 @@ export class WaitingWebhooks implements IWebhookManager {
 			}
 		}
 
-		const lastNodeExecuted = execution.data.resultData.lastNodeExecuted as string;
+		const lastNodeExecuted = (execution.data.resultData.pendingSubnode ??
+			execution.data.resultData.lastNodeExecuted) as string;
 
 		/**
 		 * A manual execution resumed by a webhook call needs to be marked as such
