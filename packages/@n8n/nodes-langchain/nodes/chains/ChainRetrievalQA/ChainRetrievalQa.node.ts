@@ -196,7 +196,7 @@ export class ChainRetrievalQa implements INodeType {
 			0,
 		) as number;
 
-		if (this.getNode().typeVersion >= 1.6 && batchSize >= 1 && delayBetweenBatches >= 0) {
+		if (this.getNode().typeVersion >= 1.6 && batchSize >= 1) {
 			// Run in batches
 			for (let i = 0; i < items.length; i += batchSize) {
 				const batch = items.slice(i, i + batchSize);

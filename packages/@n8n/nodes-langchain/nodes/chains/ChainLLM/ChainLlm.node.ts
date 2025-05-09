@@ -65,14 +65,14 @@ export class ChainLlm implements INodeType {
 		//  we unwrap the response and return the object directly as JSON
 		const shouldUnwrapObjects = this.getNode().typeVersion >= 1.6 || !!outputParser;
 
-		if (this.getNode().typeVersion >= 1.7) {
-			const batchSize = this.getNodeParameter('batching.batchSize', 0, 100) as number;
-			const delayBetweenBatches = this.getNodeParameter(
-				'batching.delayBetweenBatches',
-				0,
-				0,
-			) as number;
+		const batchSize = this.getNodeParameter('batching.batchSize', 0, 100) as number;
+		const delayBetweenBatches = this.getNodeParameter(
+			'batching.delayBetweenBatches',
+			0,
+			0,
+		) as number;
 
+		if (this.getNode().typeVersion >= 1.7 && batchSize > 1) {
 			// Process items in batches
 			for (let i = 0; i < items.length; i += batchSize) {
 				console.log('Processing item:', i, ' until ', i + batchSize);

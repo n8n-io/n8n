@@ -355,7 +355,7 @@ export class ChainSummarizationV2 implements INodeType {
 			0,
 		) as number;
 
-		if (this.getNode().typeVersion >= 2.1) {
+		if (this.getNode().typeVersion >= 2.1 && batchSize > 1) {
 			// Batch processing
 			for (let i = 0; i < items.length; i += batchSize) {
 				const batch = items.slice(i, i + batchSize);

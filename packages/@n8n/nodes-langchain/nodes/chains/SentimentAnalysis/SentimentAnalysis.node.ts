@@ -184,7 +184,7 @@ export class SentimentAnalysis implements INodeType {
 			0,
 		) as number;
 
-		if (this.getNode().typeVersion >= 1.1 && batchSize > 1 && delayBetweenBatches >= 0) {
+		if (this.getNode().typeVersion >= 1.1 && batchSize > 1) {
 			for (let i = 0; i < items.length; i += batchSize) {
 				const batch = items.slice(i, i + batchSize);
 				const batchPromises = batch.map(async (_item, batchItemIndex) => {
