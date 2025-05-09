@@ -1,6 +1,6 @@
 import { RoleChangeRequestDto, SettingsUpdateRequestDto } from '@n8n/api-types';
 import type { PublicUser } from '@n8n/db';
-import { Project, User, AuthIdentity } from '@n8n/db';
+import { Project, User, AuthIdentity, ProjectRepository } from '@n8n/db';
 import {
 	GlobalScope,
 	Delete,
@@ -16,7 +16,6 @@ import { Logger } from 'n8n-core';
 
 import { AuthService } from '@/auth/auth.service';
 import { CredentialsService } from '@/credentials/credentials.service';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { UserRepository } from '@/databases/repositories/user.repository';
@@ -239,7 +238,7 @@ export class UsersController {
 		const ownedCredentials = ownedSharedCredentials.map(({ credentials }) => credentials);
 
 		for (const { workflowId } of ownedSharedWorkflows) {
-			await this.workflowService.delete(userToDelete, workflowId);
+			await this.workflowService.delete(userToDelete, workflowId, true);
 		}
 
 		for (const credential of ownedCredentials) {

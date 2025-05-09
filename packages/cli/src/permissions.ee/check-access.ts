@@ -1,14 +1,13 @@
 import type { User } from '@n8n/db';
+import { ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type { Scope } from '@n8n/permissions';
+import { hasGlobalScope, rolesWithScope, type Scope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
 
-import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
-import { RoleService } from '@/services/role.service';
 
 /**
  * Check if a user has the required scopes. The check can be:
@@ -28,15 +27,14 @@ export async function userHasScopes(
 		projectId,
 	}: { credentialId?: string; workflowId?: string; projectId?: string } /* only one */,
 ): Promise<boolean> {
-	if (user.hasGlobalScope(scopes, { mode: 'allOf' })) return true;
+	if (hasGlobalScope(user, scopes, { mode: 'allOf' })) return true;
 
 	if (globalOnly) return false;
 
 	// Find which project roles are defined to contain the required scopes.
 	// Then find projects having this user and having those project roles.
 
-	const roleService = Container.get(RoleService);
-	const projectRoles = roleService.rolesWithScope('project', scopes);
+	const projectRoles = rolesWithScope('project', scopes);
 	const userProjectIds = (
 		await Container.get(ProjectRepository).find({
 			where: {
@@ -57,7 +55,7 @@ export async function userHasScopes(
 		return await Container.get(SharedCredentialsRepository).existsBy({
 			credentialsId: credentialId,
 			projectId: In(userProjectIds),
-			role: In(roleService.rolesWithScope('credential', scopes)),
+			role: In(rolesWithScope('credential', scopes)),
 		});
 	}
 
@@ -65,7 +63,7 @@ export async function userHasScopes(
 		return await Container.get(SharedWorkflowRepository).existsBy({
 			workflowId,
 			projectId: In(userProjectIds),
-			role: In(roleService.rolesWithScope('workflow', scopes)),
+			role: In(rolesWithScope('workflow', scopes)),
 		});
 	}
 
