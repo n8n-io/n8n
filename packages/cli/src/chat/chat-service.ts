@@ -1,3 +1,5 @@
+import { ExecutionRepository } from '@n8n/db';
+import type { IExecutionResponse, Project } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import type { Application, Request } from 'express';
 import type { Server } from 'http';
@@ -9,14 +11,11 @@ import type { Socket } from 'net';
 import { parse as parseUrl } from 'url';
 import { type RawData, type WebSocket, Server as WebSocketServer } from 'ws';
 
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowRunner } from '@/workflow-runner';
 
-import type { Project } from '../databases/entities/project';
-import type { IExecutionResponse } from '../interfaces';
 import { NodeTypes } from '../node-types';
 import { OwnershipService } from '../services/ownership.service';
 
