@@ -1,7 +1,7 @@
 import { GlobalConfig } from '@n8n/config';
 import { Container, Service } from '@n8n/di';
 import type { SelectQueryBuilder } from '@n8n/typeorm';
-import { DataSource, Repository } from '@n8n/typeorm';
+import { DataSource, LessThanOrEqual, Repository } from '@n8n/typeorm';
 import { DateTime } from 'luxon';
 import { z } from 'zod';
 
@@ -387,5 +387,14 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		const rawRows = await rawRowsQuery.getRawMany();
 
 		return aggregatedInsightsByTimeParser.parse(rawRows);
+	}
+
+	async pruneOldData(maxAgeInDays: number): Promise<{ affected: number | null | undefined }> {
+		const thresholdDate = DateTime.now().minus({ days: maxAgeInDays }).startOf('day').toJSDate();
+		const result = await this.delete({
+			periodStart: LessThanOrEqual(thresholdDate),
+		});
+
+		return { affected: result.affected };
 	}
 }

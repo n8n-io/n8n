@@ -6,7 +6,7 @@ import { BinaryDataService, InstanceSettings } from 'n8n-core';
 import type { ExecutionStatus, IWorkflowBase } from 'n8n-workflow';
 
 import { Time } from '@/constants';
-import { PruningService } from '@/services/pruning/pruning.service';
+import { ExecutionsPruningService } from '@/services/pruning/executions-pruning.service';
 
 import {
 	annotateExecution,
@@ -18,7 +18,7 @@ import * as testDb from './shared/test-db';
 import { mockInstance, mockLogger } from '../shared/mocking';
 
 describe('softDeleteOnPruningCycle()', () => {
-	let pruningService: PruningService;
+	let pruningService: ExecutionsPruningService;
 	const instanceSettings = Container.get(InstanceSettings);
 	instanceSettings.markAsLeader();
 
@@ -31,7 +31,7 @@ describe('softDeleteOnPruningCycle()', () => {
 		await testDb.init();
 
 		executionsConfig = Container.get(ExecutionsConfig);
-		pruningService = new PruningService(
+		pruningService = new ExecutionsPruningService(
 			mockLogger(),
 			instanceSettings,
 			Container.get(ExecutionRepository),
