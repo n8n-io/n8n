@@ -6,12 +6,12 @@
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": ""
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/jinaai/"
 			}
 		],
 		"primaryDocumentation": [
 			{
-				"url": ""
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.jinaai/"
 			}
 		]
 	}

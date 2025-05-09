@@ -30,6 +30,8 @@ describe('JinaAI Node', () => {
 				.reply(200, readResult);
 		});
 
+		afterAll(() => jinaAiNock.done());
+
 		new NodeTestHarness().setupTests({
 			credentials,
 			workflowFiles: ['read.workflow.json'],
@@ -57,6 +59,8 @@ describe('JinaAI Node', () => {
 				.matchHeader('X-Site', 'jina.ai')
 				.reply(200, searchResult);
 		});
+
+		afterAll(() => jinaAiNock.done());
 
 		new NodeTestHarness().setupTests({
 			credentials,
@@ -94,6 +98,8 @@ describe('JinaAI Node', () => {
 				})
 				.reply(200, deepResearchResult);
 		});
+
+		afterAll(() => jinaAiNock.done());
 
 		new NodeTestHarness().setupTests({
 			credentials,
