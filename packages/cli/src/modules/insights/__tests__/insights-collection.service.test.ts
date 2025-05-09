@@ -6,7 +6,6 @@ import { Container } from '@n8n/di';
 import { In, type EntityManager } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 import { DateTime } from 'luxon';
-import type { Logger } from 'n8n-core';
 import {
 	createDeferredPromise,
 	type ExecutionStatus,
@@ -402,14 +401,7 @@ describe('workflowExecuteAfterHandler - flushEvents', () => {
 	const sharedWorkflowRepositoryMock: jest.Mocked<SharedWorkflowRepository> = {
 		manager: entityManagerMock,
 	} as unknown as jest.Mocked<SharedWorkflowRepository>;
-	const logger = mock<Logger>({
-		scoped: jest.fn().mockReturnValue(
-			mock<Logger>({
-				error: jest.fn(),
-			}),
-		),
-	});
-
+	const logger = mockLogger();
 	const startedAt = DateTime.utc();
 	const stoppedAt = startedAt.plus({ seconds: 5 });
 	const runData = mock<IRun>({

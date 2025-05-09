@@ -4,7 +4,7 @@ import type { InstanceSettings } from 'n8n-core';
 
 import { mockLogger } from '@test/mocking';
 
-import { PruningService } from '../pruning.service';
+import { ExecutionsPruningService } from '../executions-pruning.service';
 
 jest.mock('@/db', () => ({
 	connectionState: { migrated: true },
@@ -13,7 +13,7 @@ jest.mock('@/db', () => ({
 describe('PruningService', () => {
 	describe('init', () => {
 		it('should start pruning on main instance that is the leader', () => {
-			const pruningService = new PruningService(
+			const pruningService = new ExecutionsPruningService(
 				mockLogger(),
 				mock<InstanceSettings>({ isLeader: true, isMultiMain: true }),
 				mock(),
@@ -28,7 +28,7 @@ describe('PruningService', () => {
 		});
 
 		it('should not start pruning on main instance that is a follower', () => {
-			const pruningService = new PruningService(
+			const pruningService = new ExecutionsPruningService(
 				mockLogger(),
 				mock<InstanceSettings>({ isLeader: false, isMultiMain: true }),
 				mock(),
@@ -45,7 +45,7 @@ describe('PruningService', () => {
 
 	describe('isEnabled', () => {
 		it('should return `true` based on config if leader main', () => {
-			const pruningService = new PruningService(
+			const pruningService = new ExecutionsPruningService(
 				mockLogger(),
 				mock<InstanceSettings>({ isLeader: true, instanceType: 'main', isMultiMain: true }),
 				mock(),
@@ -57,7 +57,7 @@ describe('PruningService', () => {
 		});
 
 		it('should return `false` based on config if leader main', () => {
-			const pruningService = new PruningService(
+			const pruningService = new ExecutionsPruningService(
 				mockLogger(),
 				mock<InstanceSettings>({ isLeader: true, instanceType: 'main', isMultiMain: true }),
 				mock(),
@@ -69,7 +69,7 @@ describe('PruningService', () => {
 		});
 
 		it('should return `false` if non-main even if config is enabled', () => {
-			const pruningService = new PruningService(
+			const pruningService = new ExecutionsPruningService(
 				mockLogger(),
 				mock<InstanceSettings>({ isLeader: false, instanceType: 'worker', isMultiMain: true }),
 				mock(),
@@ -81,7 +81,7 @@ describe('PruningService', () => {
 		});
 
 		it('should return `false` if follower main even if config is enabled', () => {
-			const pruningService = new PruningService(
+			const pruningService = new ExecutionsPruningService(
 				mockLogger(),
 				mock<InstanceSettings>({
 					isLeader: false,
@@ -100,7 +100,7 @@ describe('PruningService', () => {
 
 	describe('startPruning', () => {
 		it('should not start pruning if service is disabled', () => {
-			const pruningService = new PruningService(
+			const pruningService = new ExecutionsPruningService(
 				mockLogger(),
 				mock<InstanceSettings>({ isLeader: true, instanceType: 'main', isMultiMain: true }),
 				mock(),
@@ -124,7 +124,7 @@ describe('PruningService', () => {
 		});
 
 		it('should start pruning if service is enabled and DB is migrated', () => {
-			const pruningService = new PruningService(
+			const pruningService = new ExecutionsPruningService(
 				mockLogger(),
 				mock<InstanceSettings>({ isLeader: true, instanceType: 'main', isMultiMain: true }),
 				mock(),

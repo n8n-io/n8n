@@ -23,7 +23,7 @@ import { connectionState as dbConnectionState } from '@/db';
  * - Once mostly caught up, hard deletion goes back to the 15m schedule.
  */
 @Service()
-export class PruningService {
+export class ExecutionsPruningService {
 	/** Timer for soft-deleting executions on a rolling basis. */
 	private softDeletionInterval: NodeJS.Timer | undefined;
 
