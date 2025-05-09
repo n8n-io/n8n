@@ -278,12 +278,10 @@ describe('FolderRepository', () => {
 				});
 
 				it('should include only archived workflows in the workflow count if filtered', async () => {
-					const [folders] = await folderRepository.getManyAndCount(
-						{
-							select: { workflowCount: true },
-						},
-						true,
-					);
+					const [folders] = await folderRepository.getManyAndCount({
+						select: { workflowCount: true },
+						filter: { isArchived: true },
+					});
 
 					expect(folders).toHaveLength(2);
 					expect(folders).toEqual(
@@ -301,12 +299,10 @@ describe('FolderRepository', () => {
 				});
 
 				it('should return only unarchived workflows in the workflow count if filtered', async () => {
-					const [folders] = await folderRepository.getManyAndCount(
-						{
-							select: { workflowCount: true },
-						},
-						false,
-					);
+					const [folders] = await folderRepository.getManyAndCount({
+						select: { workflowCount: true },
+						filter: { isArchived: false },
+					});
 
 					expect(folders).toHaveLength(2);
 					expect(folders).toEqual(

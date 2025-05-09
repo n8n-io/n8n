@@ -14,27 +14,22 @@ export class FolderRepository extends Repository<FolderWithWorkflowAndSubFolderC
 
 	async getManyAndCount(
 		options: ListQuery.Options = {},
-		isArchivedFilter?: boolean,
 	): Promise<[FolderWithWorkflowAndSubFolderCount[], number]> {
-		const query = this.getManyQuery(options, isArchivedFilter);
+		const query = this.getManyQuery(options);
 		return await query.getManyAndCount();
 	}
 
-	async getMany(
-		options: ListQuery.Options = {},
-		isArchivedFilter?: boolean,
-	): Promise<FolderWithWorkflowAndSubFolderCount[]> {
-		const query = this.getManyQuery(options, isArchivedFilter);
+	async getMany(options: ListQuery.Options = {}): Promise<FolderWithWorkflowAndSubFolderCount[]> {
+		const query = this.getManyQuery(options);
 		return await query.getMany();
 	}
 
 	getManyQuery(
 		options: ListQuery.Options = {},
-		isArchivedFilter?: boolean,
 	): SelectQueryBuilder<FolderWithWorkflowAndSubFolderCount> {
 		const query = this.createQueryBuilder('folder');
 
-		this.applySelections(query, options.select, isArchivedFilter);
+		this.applySelections(query, options.select, options.filter);
 		this.applyFilters(query, options.filter);
 		this.applySorting(query, options.sortBy);
 		this.applyPagination(query, options);
@@ -44,24 +39,24 @@ export class FolderRepository extends Repository<FolderWithWorkflowAndSubFolderC
 
 	private applySelections(
 		query: SelectQueryBuilder<FolderWithWorkflowAndSubFolderCount>,
-		select?: Record<string, boolean>,
-		isArchivedFilter?: boolean,
+		select?: ListQuery.Options['select'],
+		filter?: ListQuery.Options['filter'],
 	): void {
 		if (select) {
-			this.applyCustomSelect(query, select, isArchivedFilter);
+			this.applyCustomSelect(query, select, filter);
 		} else {
-			this.applyDefaultSelect(query, isArchivedFilter);
+			this.applyDefaultSelect(query, filter);
 		}
 	}
 
 	private applyWorkflowCountSelect(
 		query: SelectQueryBuilder<FolderWithWorkflowAndSubFolderCount>,
-		isArchivedFilter?: boolean,
+		filter?: ListQuery.Options['filter'],
 	): void {
-		if (typeof isArchivedFilter === 'boolean') {
+		if (typeof filter?.isArchived === 'boolean') {
 			query.loadRelationCountAndMap('folder.workflowCount', 'folder.workflows', 'workflow', (qb) =>
 				qb.andWhere('workflow.isArchived = :isArchived', {
-					isArchived: isArchivedFilter,
+					isArchived: filter.isArchived,
 				}),
 			);
 		} else {
@@ -71,9 +66,9 @@ export class FolderRepository extends Repository<FolderWithWorkflowAndSubFolderC
 
 	private applyDefaultSelect(
 		query: SelectQueryBuilder<FolderWithWorkflowAndSubFolderCount>,
-		isArchivedFilter?: boolean,
+		filter?: ListQuery.Options['filter'],
 	): void {
-		this.applyWorkflowCountSelect(query, isArchivedFilter);
+		this.applyWorkflowCountSelect(query, filter);
 
 		query
 			.leftJoinAndSelect('folder.homeProject', 'homeProject')
@@ -90,18 +85,18 @@ export class FolderRepository extends Repository<FolderWithWorkflowAndSubFolderC
 
 	private applyCustomSelect(
 		query: SelectQueryBuilder<FolderWithWorkflowAndSubFolderCount>,
-		select?: Record<string, boolean>,
-		isArchivedFilter?: boolean,
+		select?: ListQuery.Options['select'],
+		filter?: ListQuery.Options['filter'],
 	): void {
 		const selections = ['folder.id'];
 
 		this.addBasicFields(selections, select);
-		this.addRelationFields(query, selections, select, isArchivedFilter);
+		this.addRelationFields(query, selections, select, filter);
 
 		query.select(selections);
 	}
 
-	private addBasicFields(selections: string[], select?: Record<string, boolean>): void {
+	private addBasicFields(selections: string[], select?: ListQuery.Options['select']): void {
 		if (select?.name) selections.push('folder.name');
 		if (select?.createdAt) selections.push('folder.createdAt');
 		if (select?.updatedAt) selections.push('folder.updatedAt');
@@ -110,8 +105,8 @@ export class FolderRepository extends Repository<FolderWithWorkflowAndSubFolderC
 	private addRelationFields(
 		query: SelectQueryBuilder<FolderWithWorkflowAndSubFolderCount>,
 		selections: string[],
-		select?: Record<string, boolean>,
-		isArchivedFilter?: boolean,
+		select?: ListQuery.Options['select'],
+		filter?: ListQuery.Options['filter'],
 	): void {
 		if (select?.project) {
 			query.leftJoin('folder.homeProject', 'homeProject');
@@ -129,7 +124,7 @@ export class FolderRepository extends Repository<FolderWithWorkflowAndSubFolderC
 		}
 
 		if (select?.workflowCount) {
-			this.applyWorkflowCountSelect(query, isArchivedFilter);
+			this.applyWorkflowCountSelect(query, filter);
 		}
 
 		if (select?.subFolderCount) {

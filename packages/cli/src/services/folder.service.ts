@@ -253,12 +253,8 @@ export class FolderService {
 		};
 	}
 
-	async getManyAndCount(
-		projectId: string,
-		options: ListQuery.Options,
-		includeArchivedWorkflowsInCount = false,
-	) {
-		options.filter = { ...options.filter, projectId };
-		return await this.folderRepository.getManyAndCount(options, includeArchivedWorkflowsInCount);
+	async getManyAndCount(projectId: string, options: ListQuery.Options) {
+		options.filter = { ...options.filter, projectId, isArchived: false };
+		return await this.folderRepository.getManyAndCount(options);
 	}
 }
