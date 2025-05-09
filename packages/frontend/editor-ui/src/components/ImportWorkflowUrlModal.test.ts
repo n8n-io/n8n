@@ -60,7 +60,7 @@ describe('ImportWorkflowUrlModal', () => {
 		});
 
 		const urlInput = getByTestId('workflow-url-import-input');
-		const confirmButton = getByTestId('confirm-import-button');
+		const confirmButton = getByTestId('confirm-workflow-import-url-button');
 
 		await userEvent.type(urlInput, 'https://valid-url.com/workflow.json');
 		expect(confirmButton).toBeEnabled();
@@ -80,7 +80,7 @@ describe('ImportWorkflowUrlModal', () => {
 		});
 
 		const urlInput = getByTestId('workflow-url-import-input');
-		const confirmButton = getByTestId('confirm-import-button');
+		const confirmButton = getByTestId('confirm-workflow-import-url-button');
 
 		await userEvent.type(urlInput, 'invalid-url');
 		expect(confirmButton).toBeDisabled();

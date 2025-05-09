@@ -61,7 +61,7 @@ const focusInput = async () => {
 					type="primary"
 					float="right"
 					:disabled="!url || !isValid"
-					data-test-id="confirm-import-button"
+					data-test-id="confirm-workflow-import-url-button"
 					@click="confirm"
 				>
 					{{ i18n.baseText('mainSidebar.prompt.import') }}
