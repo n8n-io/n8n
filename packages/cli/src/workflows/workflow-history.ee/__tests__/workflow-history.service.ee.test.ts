@@ -1,7 +1,7 @@
 import { User } from '@n8n/db';
+import { WorkflowHistoryRepository } from '@n8n/db';
 import { mockClear } from 'jest-mock-extended';
 
-import { WorkflowHistoryRepository } from '@/databases/repositories/workflow-history.repository';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history.ee/workflow-history.service.ee';
 import { mockInstance, mockLogger } from '@test/mocking';
