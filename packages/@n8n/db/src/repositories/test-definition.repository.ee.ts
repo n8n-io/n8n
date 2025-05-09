@@ -1,10 +1,10 @@
-import { TestDefinition } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { FindManyOptions, FindOptionsWhere } from '@n8n/typeorm';
 import { DataSource, In, Repository } from '@n8n/typeorm';
+import { UserError } from 'n8n-workflow';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import type { ListQuery } from '@/requests';
+import { TestDefinition } from '../entities';
+import type { ListQuery } from '../entities/types-db';
 
 @Service()
 export class TestDefinitionRepository extends Repository<TestDefinition> {
@@ -19,7 +19,7 @@ export class TestDefinitionRepository extends Repository<TestDefinition> {
 
 		if (options?.filter?.workflowId) {
 			if (!accessibleWorkflowIds.includes(options.filter.workflowId as string)) {
-				throw new ForbiddenError('User does not have access to the workflow');
+				throw new UserError('User does not have access to the workflow');
 			}
 
 			where.workflow = {

@@ -1,13 +1,16 @@
-import type { AggregatedTestRunMetrics, TestRunErrorCode, TestRunFinalResult } from '@n8n/db';
-import { TestRun } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { EntityManager, FindManyOptions } from '@n8n/typeorm';
 import { DataSource, In, Repository } from '@n8n/typeorm';
-import type { IDataObject } from 'n8n-workflow';
+import { UnexpectedError, type IDataObject } from 'n8n-workflow';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { getTestRunFinalResult } from '@/evaluation.ee/test-runner/utils.ee';
-import type { ListQuery } from '@/requests';
+import { TestRun } from '../entities';
+import type {
+	AggregatedTestRunMetrics,
+	TestRunErrorCode,
+	TestRunFinalResult,
+	ListQuery,
+} from '../entities/types-db';
+import { getTestRunFinalResult } from '../utils/get-final-test-result';
 
 export type TestRunSummary = TestRun & {
 	finalResult: TestRunFinalResult | null;
@@ -110,7 +113,7 @@ export class TestRunRepository extends Repository<TestRun> {
 		});
 
 		if (!testRun) {
-			throw new NotFoundError('Test run not found');
+			throw new UnexpectedError('Test run not found');
 		}
 
 		testRun.finalResult =

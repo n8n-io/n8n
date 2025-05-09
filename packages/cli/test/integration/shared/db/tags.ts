@@ -1,11 +1,10 @@
-import { generateNanoId } from '@n8n/db';
 import type { TagEntity } from '@n8n/db';
 import type { WorkflowEntity } from '@n8n/db';
+import { generateNanoId } from '@n8n/db';
+import { TagRepository } from '@n8n/db';
+import { WorkflowTagMappingRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { IWorkflowBase } from 'n8n-workflow';
-
-import { TagRepository } from '@/databases/repositories/tag.repository';
-import { WorkflowTagMappingRepository } from '@/databases/repositories/workflow-tag-mapping.repository';
 
 import { randomName } from '../random';
 
