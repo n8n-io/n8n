@@ -167,7 +167,7 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 		return super.getInputItems(inputIndex, connectionType) ?? [];
 	}
 
-	getRunDataLength(): number {
+	getLatestRunIndex(): number {
 		const nodeName = this.node.name;
 		return this.runExecutionData.resultData.runData[nodeName]?.length ?? 0;
 	}
@@ -178,7 +178,7 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 		data: INodeExecutionData[][],
 	): { index: number } {
 		const nodeName = this.node.name;
-		const currentNodeRunIndex = this.getRunDataLength();
+		const currentNodeRunIndex = this.getLatestRunIndex();
 
 		this.addExecutionDataFunctions(
 			'input',

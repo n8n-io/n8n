@@ -392,7 +392,7 @@ describe('makeHandleToolInvocation', () => {
 	});
 	it('should return stringified results when execution is successful', async () => {
 		const mockContext = mock<IExecuteFunctions>({
-			getRunDataLength: jest.fn().mockReturnValue(0),
+			getLatestRunIndex: jest.fn().mockReturnValue(0),
 		});
 		contextFactory.mockReturnValue(mockContext);
 
@@ -415,7 +415,7 @@ describe('makeHandleToolInvocation', () => {
 
 	it('should handle binary data and return a warning message', async () => {
 		const mockContext = mock<IExecuteFunctions>({
-			getRunDataLength: jest.fn().mockReturnValue(0),
+			getLatestRunIndex: jest.fn().mockReturnValue(0),
 		});
 		contextFactory.mockReturnValue(mockContext);
 		const mockResult = [[{ json: {}, binary: { file: 'data' } }]];
@@ -447,7 +447,7 @@ describe('makeHandleToolInvocation', () => {
 	it('should continue if json and binary data exist', async () => {
 		const warnFn = jest.fn();
 		const mockContext = mock<IExecuteFunctions>({
-			getRunDataLength: jest.fn().mockReturnValue(0),
+			getLatestRunIndex: jest.fn().mockReturnValue(0),
 			logger: {
 				warn: warnFn,
 			},
@@ -479,7 +479,7 @@ describe('makeHandleToolInvocation', () => {
 
 	it('should handle execution errors and return an error message', async () => {
 		const mockContext = mock<IExecuteFunctions>({
-			getRunDataLength: jest.fn().mockReturnValue(0),
+			getLatestRunIndex: jest.fn().mockReturnValue(0),
 		});
 		contextFactory.mockReturnValue(mockContext);
 		const error = new Error('Execution failed');

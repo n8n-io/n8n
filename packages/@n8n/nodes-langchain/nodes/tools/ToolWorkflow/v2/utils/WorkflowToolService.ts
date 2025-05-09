@@ -76,7 +76,7 @@ export class WorkflowToolService {
 			query: string | IDataObject,
 			runManager?: CallbackManagerForToolRun,
 		): Promise<IDataObject | IDataObject[] | string> => {
-			const localRunIndex: number = ctx.getRunDataLength();
+			const localRunIndex: number = ctx.getLatestRunIndex();
 			// We need to clone the context here to handle runIndex correctly
 			// Otherwise the runIndex will be shared between different executions
 			// Causing incorrect data to be passed to the sub-workflow and via $fromAI
