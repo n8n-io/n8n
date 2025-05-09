@@ -47,7 +47,7 @@ const focusInput = async () => {
 					v-model="url"
 					:placeholder="i18n.baseText('mainSidebar.prompt.workflowUrl')"
 					:state="isValid ? 'default' : 'error'"
-					data-test-id="workflow-url-input"
+					data-test-id="workflow-url-import-input"
 					@keyup.enter="confirm"
 				/>
 				<p :class="$style['error-text']" :style="{ visibility: isValid ? 'hidden' : 'visible' }">
@@ -66,7 +66,12 @@ const focusInput = async () => {
 				>
 					{{ i18n.baseText('mainSidebar.prompt.import') }}
 				</n8n-button>
-				<n8n-button type="secondary" float="right" data-test-id="cancel-button" @click="closeModal">
+				<n8n-button
+					type="secondary"
+					float="right"
+					data-test-id="cancel-workflow-import-url-button"
+					@click="closeModal"
+				>
 					{{ i18n.baseText('mainSidebar.prompt.cancel') }}
 				</n8n-button>
 			</div>

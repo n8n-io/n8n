@@ -48,7 +48,7 @@ describe('ImportWorkflowUrlModal', () => {
 
 		const uiStore = useUIStore();
 
-		await userEvent.click(getByTestId('cancel-button'));
+		await userEvent.click(getByTestId('cancel-workflow-import-url-button'));
 
 		expect(uiStore.closeModal).toHaveBeenCalledWith(IMPORT_WORKFLOW_URL_MODAL_KEY);
 	});
@@ -59,7 +59,7 @@ describe('ImportWorkflowUrlModal', () => {
 			pinia,
 		});
 
-		const urlInput = getByTestId('workflow-url-input');
+		const urlInput = getByTestId('workflow-url-import-input');
 		const confirmButton = getByTestId('confirm-import-button');
 
 		await userEvent.type(urlInput, 'https://valid-url.com/workflow.json');
@@ -79,7 +79,7 @@ describe('ImportWorkflowUrlModal', () => {
 			pinia,
 		});
 
-		const urlInput = getByTestId('workflow-url-input');
+		const urlInput = getByTestId('workflow-url-import-input');
 		const confirmButton = getByTestId('confirm-import-button');
 
 		await userEvent.type(urlInput, 'invalid-url');

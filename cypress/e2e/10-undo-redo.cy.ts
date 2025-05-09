@@ -256,11 +256,11 @@ describe('Undo/Redo', () => {
 		WorkflowPage.getters.workflowMenuItemImportFromURLItem().should('be.visible');
 		WorkflowPage.getters.workflowMenuItemImportFromURLItem().click();
 		// Try while prompt is open
-		messageBox.getters.header().click();
+		WorkflowPage.getters.inputURLImportWorkflowFromURL().click();
 		WorkflowPage.actions.hitUndo();
 		WorkflowPage.getters.canvasNodes().should('have.have.length', 1);
 		// Close prompt and try again
-		messageBox.actions.cancel();
+		WorkflowPage.getters.cancelActionImportWorkflowFromURL().click();
 		WorkflowPage.actions.hitUndo();
 		WorkflowPage.getters.canvasNodes().should('have.have.length', 0);
 	});

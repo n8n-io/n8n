@@ -214,6 +214,8 @@ export class WorkflowPage extends BasePage {
 			}
 			return parseFloat(element.css('top'));
 		},
+		inputURLImportWorkflowFromURL: () => cy.getByTestId('workflow-url-import-input'),
+		cancelActionImportWorkflowFromURL: () => cy.getByTestId('cancel-workflow-import-url-button'),
 	};
 
 	actions = {
