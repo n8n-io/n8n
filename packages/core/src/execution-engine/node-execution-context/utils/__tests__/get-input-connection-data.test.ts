@@ -11,8 +11,9 @@ import type {
 	INodeType,
 	INodeTypes,
 	IExecuteFunctions,
+	IRunData,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { ITaskData, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { ExecuteContext } from '../../execute-context';
 import { makeHandleToolInvocation } from '../get-input-connection-data';
@@ -377,6 +378,13 @@ describe('makeHandleToolInvocation', () => {
 		execute,
 	});
 	const contextFactory = jest.fn();
+	const taskData = mock<ITaskData>();
+
+	let runExecutionData = mock<IRunExecutionData>({
+		resultData: {
+			runData: mock<IRunData>(),
+		},
+	});
 	const toolArgs = { key: 'value' };
 
 	beforeEach(() => {
@@ -395,6 +403,7 @@ describe('makeHandleToolInvocation', () => {
 			contextFactory,
 			connectedNode,
 			connectedNodeType,
+			runExecutionData,
 		);
 		const result = await handleToolInvocation(toolArgs);
 
@@ -409,7 +418,6 @@ describe('makeHandleToolInvocation', () => {
 			getRunDataLength: jest.fn().mockReturnValue(0),
 		});
 		contextFactory.mockReturnValue(mockContext);
-
 		const mockResult = [[{ json: {}, binary: { file: 'data' } }]];
 		execute.mockResolvedValueOnce(mockResult);
 
@@ -417,6 +425,7 @@ describe('makeHandleToolInvocation', () => {
 			contextFactory,
 			connectedNode,
 			connectedNodeType,
+			runExecutionData,
 		);
 		const result = await handleToolInvocation(toolArgs);
 
@@ -444,7 +453,6 @@ describe('makeHandleToolInvocation', () => {
 			},
 		});
 		contextFactory.mockReturnValue(mockContext);
-
 		const mockResult = [[{ json: { a: 3 }, binary: { file: 'data' } }]];
 		execute.mockResolvedValueOnce(mockResult);
 
@@ -452,6 +460,7 @@ describe('makeHandleToolInvocation', () => {
 			contextFactory,
 			connectedNode,
 			connectedNodeType,
+			runExecutionData,
 		);
 		const result = await handleToolInvocation(toolArgs);
 
@@ -473,7 +482,6 @@ describe('makeHandleToolInvocation', () => {
 			getRunDataLength: jest.fn().mockReturnValue(0),
 		});
 		contextFactory.mockReturnValue(mockContext);
-
 		const error = new Error('Execution failed');
 		execute.mockRejectedValueOnce(error);
 
@@ -481,6 +489,7 @@ describe('makeHandleToolInvocation', () => {
 			contextFactory,
 			connectedNode,
 			connectedNodeType,
+			runExecutionData,
 		);
 		const result = await handleToolInvocation(toolArgs);
 
@@ -496,14 +505,42 @@ describe('makeHandleToolInvocation', () => {
 		const mockContext = mock<IExecuteFunctions>();
 		contextFactory.mockReturnValue(mockContext);
 
-		const handleToolInvocation = makeHandleToolInvocation(
+		let handleToolInvocation = makeHandleToolInvocation(
 			contextFactory,
 			connectedNode,
 			connectedNodeType,
+			runExecutionData,
 		);
+		await handleToolInvocation(toolArgs);
 
+		runExecutionData = mock<IRunExecutionData>({
+			resultData: {
+				runData: {
+					[connectedNode.name]: [taskData],
+				},
+			},
+		});
+		handleToolInvocation = makeHandleToolInvocation(
+			contextFactory,
+			connectedNode,
+			connectedNodeType,
+			runExecutionData,
+		);
 		await handleToolInvocation(toolArgs);
-		await handleToolInvocation(toolArgs);
+
+		runExecutionData = mock<IRunExecutionData>({
+			resultData: {
+				runData: {
+					[connectedNode.name]: [taskData, taskData],
+				},
+			},
+		});
+		handleToolInvocation = makeHandleToolInvocation(
+			contextFactory,
+			connectedNode,
+			connectedNodeType,
+			runExecutionData,
+		);
 		await handleToolInvocation(toolArgs);
 
 		expect(contextFactory).toHaveBeenCalledWith(0);
