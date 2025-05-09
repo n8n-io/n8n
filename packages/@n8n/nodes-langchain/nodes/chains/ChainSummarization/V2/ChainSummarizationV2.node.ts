@@ -9,7 +9,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes, sleep } from 'n8n-workflow';
 
-import { getTemplateNoticeField } from '@utils/sharedFields';
+import { getBatchingOptionFields, getTemplateNoticeField } from '@utils/sharedFields';
 
 import { processItem } from './processItem';
 import { REFINE_PROMPT_TEMPLATE, DEFAULT_PROMPT_TEMPLATE } from '../prompt';
@@ -298,37 +298,11 @@ export class ChainSummarizationV2 implements INodeType {
 								},
 							],
 						},
-						{
-							displayName: 'Batch Processing',
-							name: 'batching',
-							type: 'collection',
-							placeholder: 'Add Batch Processing Option',
-							description: 'Batch processing options for rate limiting',
-							default: {},
-							options: [
-								{
-									displayName: 'Batch Size',
-									name: 'batchSize',
-									default: 100,
-									type: 'number',
-									description:
-										'How many items to process in parallel. This is useful for rate limiting.',
-								},
-								{
-									displayName: 'Delay Between Batches',
-									name: 'delayBetweenBatches',
-									default: 0,
-									type: 'number',
-									description:
-										'Delay in milliseconds between batches. This is useful for rate limiting.',
-								},
-							],
-							displayOptions: {
-								show: {
-									'@version': [{ _cnd: { gte: 2.1 } }],
-								},
+						getBatchingOptionFields({
+							show: {
+								'@version': [{ _cnd: { gte: 2.1 } }],
 							},
-						},
+						}),
 					],
 				},
 			],

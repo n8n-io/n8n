@@ -7,7 +7,7 @@ import {
 } from 'n8n-workflow';
 
 import { promptTypeOptions, textFromPreviousNode } from '@utils/descriptions';
-import { getTemplateNoticeField } from '@utils/sharedFields';
+import { getBatchingOptionFields, getTemplateNoticeField } from '@utils/sharedFields';
 
 import { INPUT_TEMPLATE_KEY, LEGACY_INPUT_TEMPLATE_KEY, systemPromptOption } from './constants';
 import { processItem } from './processItem';
@@ -148,37 +148,11 @@ export class ChainRetrievalQa implements INodeType {
 							},
 						},
 					},
-					{
-						displayName: 'Batch Processing',
-						name: 'batching',
-						type: 'collection',
-						placeholder: 'Add Batch Processing Option',
-						description: 'Batch processing options for rate limiting',
-						default: {},
-						options: [
-							{
-								displayName: 'Batch Size',
-								name: 'batchSize',
-								default: 100,
-								type: 'number',
-								description:
-									'How many items to process in parallel. This is useful for rate limiting.',
-							},
-							{
-								displayName: 'Delay Between Batches',
-								name: 'delayBetweenBatches',
-								default: 0,
-								type: 'number',
-								description:
-									'Delay in milliseconds between batches. This is useful for rate limiting.',
-							},
-						],
-						displayOptions: {
-							show: {
-								'@version': [{ _cnd: { gte: 1.6 } }],
-							},
+					getBatchingOptionFields({
+						show: {
+							'@version': [{ _cnd: { gte: 1.6 } }],
 						},
-					},
+					}),
 				],
 			},
 		],

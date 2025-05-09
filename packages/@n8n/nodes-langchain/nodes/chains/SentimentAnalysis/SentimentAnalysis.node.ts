@@ -13,6 +13,7 @@ import type {
 } from 'n8n-workflow';
 import { z } from 'zod';
 
+import { getBatchingOptionFields } from '@utils/sharedFields';
 import { getTracingConfig } from '@utils/tracing';
 
 const DEFAULT_SYSTEM_PROMPT_TEMPLATE =
@@ -131,37 +132,11 @@ export class SentimentAnalysis implements INodeType {
 						description:
 							'Whether to enable auto-fixing (may trigger an additional LLM call if output is broken)',
 					},
-					{
-						displayName: 'Batch Processing',
-						name: 'batching',
-						type: 'collection',
-						placeholder: 'Add Batch Processing Option',
-						description: 'Batch processing options for rate limiting',
-						default: {},
-						options: [
-							{
-								displayName: 'Batch Size',
-								name: 'batchSize',
-								default: 100,
-								type: 'number',
-								description:
-									'How many items to process in parallel. This is useful for rate limiting.',
-							},
-							{
-								displayName: 'Delay Between Batches',
-								name: 'delayBetweenBatches',
-								default: 0,
-								type: 'number',
-								description:
-									'Delay in milliseconds between batches. This is useful for rate limiting.',
-							},
-						],
-						displayOptions: {
-							show: {
-								'@version': [{ _cnd: { gte: 1.1 } }],
-							},
+					getBatchingOptionFields({
+						show: {
+							'@version': [{ _cnd: { gte: 1.1 } }],
 						},
-					},
+					}),
 				],
 			},
 		],

@@ -18,6 +18,7 @@ import { SYSTEM_PROMPT_TEMPLATE } from './constants';
 import { makeZodSchemaFromAttributes } from './helpers';
 import { processItem } from './processItem';
 import type { AttributeDefinition } from './types';
+import { getBatchingOptionFields } from '@utils/sharedFields';
 
 export class InformationExtractor implements INodeType {
 	description: INodeTypeDescription = {
@@ -208,37 +209,11 @@ export class InformationExtractor implements INodeType {
 							rows: 6,
 						},
 					},
-					{
-						displayName: 'Batch Processing',
-						name: 'batching',
-						type: 'collection',
-						placeholder: 'Add Batch Processing Option',
-						description: 'Batch processing options for rate limiting',
-						default: {},
-						options: [
-							{
-								displayName: 'Batch Size',
-								name: 'batchSize',
-								default: 100,
-								type: 'number',
-								description:
-									'How many items to process in parallel. This is useful for rate limiting.',
-							},
-							{
-								displayName: 'Delay Between Batches',
-								name: 'delayBetweenBatches',
-								default: 0,
-								type: 'number',
-								description:
-									'Delay in milliseconds between batches. This is useful for rate limiting.',
-							},
-						],
-						displayOptions: {
-							show: {
-								'@version': [{ _cnd: { gte: 1.1 } }],
-							},
+					getBatchingOptionFields({
+						show: {
+							'@version': [{ _cnd: { gte: 1.1 } }],
 						},
-					},
+					}),
 				],
 			},
 		],
