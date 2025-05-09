@@ -192,7 +192,6 @@ export class FolderService {
 	async getFolderAndWorkflowCount(
 		folderId: string,
 		projectId: string,
-		includeArchivedWorkflowsInCount = false,
 	): Promise<{ totalSubFolders: number; totalWorkflows: number }> {
 		await this.findFolderInProjectOrFail(folderId, projectId);
 
@@ -227,7 +226,7 @@ export class FolderService {
 		const workflowCountQuery = this.workflowRepository
 			.createQueryBuilder('workflow')
 			.select('COUNT(workflow.id)', 'count')
-			.where('workflow.isArchived = :isArchived', { isArchived: includeArchivedWorkflowsInCount })
+			.where('workflow.isArchived = :isArchived', { isArchived: false })
 			.andWhere((qb) => {
 				const folderQuery = qb.subQuery().from('folder_path', 'fp').select('fp.id').getQuery();
 				return `workflow.parentFolderId IN ${folderQuery}`;
