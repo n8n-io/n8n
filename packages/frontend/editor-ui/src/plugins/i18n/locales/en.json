@@ -2520,7 +2520,7 @@
 	"workflows.empty.learnN8n": "Learn n8n",
 	"workflows.empty.button.disabled.tooltip": "Your current role in the project does not allow you to create workflows",
 	"workflows.empty.easyAI": "Test a simple AI Agent example",
-	"workflows.empty.shared-with-me": "No {resource} have been shared with you",
+	"workflows.empty.shared-with-me": "No {resource} has been shared with you",
 	"workflows.empty.shared-with-me.link": "<a href=\"#\">Back to Personal</a>",
 	"workflows.list.easyAI": "Test the power of AI in n8n with this simple AI Agent Workflow",
 	"workflows.list.error.fetching": "Error fetching workflows",
