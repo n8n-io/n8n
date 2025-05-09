@@ -440,7 +440,7 @@ describe('POST /projects/', () => {
 	if (!globalConfig.database.isLegacySqlite) {
 		test('should respect the quota when trying to create multiple projects in parallel (no race conditions)', async () => {
 			expect(await Container.get(ProjectRepository).count({ where: { type: 'team' } })).toBe(0);
-			testServer.license.setQuota('quota:maxTeamProjects', 1);
+			testServer.license.setQuota('quota:maxTeamProjects', 3);
 			const ownerUser = await createOwner();
 			const ownerAgent = testServer.authAgentFor(ownerUser);
 			expect(await Container.get(ProjectRepository).count({ where: { type: 'team' } })).toBe(0);
@@ -454,7 +454,7 @@ describe('POST /projects/', () => {
 				ownerAgent.post('/projects/').send({ name: 'Test Team Project 6' }),
 			]);
 
-			expect(await Container.get(ProjectRepository).count({ where: { type: 'team' } })).toBe(1);
+			expect(await Container.get(ProjectRepository).count({ where: { type: 'team' } })).toBe(3);
 		});
 	}
 });
