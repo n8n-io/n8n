@@ -220,6 +220,8 @@ const pagination = computed<PaginationState>({
 	},
 });
 
+const showPagination = computed(() => props.itemsLength > Math.min(...props.pageSizes));
+
 const sortBy = defineModel<SortingState>('sort-by', { default: [], required: false });
 
 function handleSortingChange(updaterOrValue: Updater<SortingState>) {
@@ -450,7 +452,7 @@ const table = useVueTable({
 				</table>
 			</div>
 		</div>
-		<div class="table-pagination" data-test-id="pagination">
+		<div v-if="showPagination" class="table-pagination" data-test-id="pagination">
 			<N8nPagination
 				:current-page="page + 1"
 				:page-size="itemsPerPage"
