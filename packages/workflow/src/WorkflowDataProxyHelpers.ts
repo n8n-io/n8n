@@ -97,7 +97,11 @@ export function createErrorUtils(context: CreateErrorContext) {
 		nodeCause: string,
 		usedMethodName: 'itemMatching' | 'pairedItem' | 'item' | '$getPairedItem' = 'pairedItem',
 	) => {
-		const message = `Using the ${usedMethodName} method doesn't work with pinned data in this scenario. Please unpin '${nodeCause}' and try again.`;
+		const pinData = getPinDataIfManualExecution(workflow, nodeCause, mode);
+		const message = pinData
+			? `Using the ${usedMethodName} method doesn't work with pinned data in this scenario. Please unpin '${nodeCause}' and try again.`
+			: `Paired item data for ${usedMethodName} from node '${nodeCause}' is unavailable. Ensure '${nodeCause}' is providing the required output.`;
+
 		return new ExpressionError(message, {
 			runIndex,
 			itemIndex,
@@ -124,10 +128,49 @@ export function createErrorUtils(context: CreateErrorContext) {
 		});
 	};
 
+	const createBranchNotFoundError = (node: string, item: number, cause?: string) => {
+		return createExpressionError('Branch not found', {
+			messageTemplate: 'Paired item references non-existent branch',
+			functionality: 'pairedItem',
+			nodeCause: cause,
+			functionOverrides: { message: 'Invalid branch reference' },
+			description: `Item ${item} in node ${node} references a branch that doesn't exist.`,
+			type: 'paired_item_invalid_info',
+		});
+	};
+
+	const createPairedItemNotFound = (destinationNode: string, cause?: string) => {
+		return createExpressionError('Paired item resolution failed', {
+			messageTemplate: 'Unable to find paired item source',
+			functionality: 'pairedItem',
+			nodeCause: cause,
+			functionOverrides: { message: 'Data not found' },
+			description: `Could not trace back to node '${destinationNode}'`,
+			type: 'paired_item_no_info',
+			moreInfoLink: true,
+		});
+	};
+
+	const createPairedItemMultipleItemsError = (destinationNode: string, index: number) => {
+		return createExpressionError('Multiple matches found', {
+			messageTemplate: `Multiple matching items for item [${index}]`,
+			functionality: 'pairedItem',
+			functionOverrides: { message: 'Multiple matches' },
+			nodeCause: destinationNode,
+			descriptionKey: isScriptingNode(destinationNode, workflow)
+				? 'pairedItemMultipleMatchesCodeNode'
+				: 'pairedItemMultipleMatches',
+			type: 'paired_item_multiple_matches',
+		});
+	};
+
 	return {
 		createExpressionError,
 		createInvalidPairedItemError,
 		createMissingPairedItemError,
+		createPairedItemNotFound,
+		createPairedItemMultipleItemsError,
 		createNoConnectionError,
+		createBranchNotFoundError,
 	};
 }

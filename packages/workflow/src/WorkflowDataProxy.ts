@@ -803,39 +803,7 @@ export class WorkflowDataProxy {
 			const allSame = results.every((r) => r === results[0]);
 			if (allSame) return results[0];
 
-			throw errorUtils.createExpressionError('Multiple matches found', {
-				messageTemplate: `Multiple matching items for item [${itemIndex}]`,
-				functionality: 'pairedItem',
-				functionOverrides: { message: 'Multiple matches' },
-				nodeCause: destinationNode,
-				descriptionKey: isScriptingNode(destinationNode, that.workflow)
-					? 'pairedItemMultipleMatchesCodeNode'
-					: 'pairedItemMultipleMatches',
-				type: 'paired_item_multiple_matches',
-			});
-		}
-
-		function createBranchNotFoundError(node: string, item: number, cause?: string) {
-			return errorUtils.createExpressionError('Branch not found', {
-				messageTemplate: 'Paired item references non-existent branch',
-				functionality: 'pairedItem',
-				nodeCause: cause,
-				functionOverrides: { message: 'Invalid branch reference' },
-				description: `Item ${item} in node ${node} references a branch that doesn't exist.`,
-				type: 'paired_item_invalid_info',
-			});
-		}
-
-		function createPairedItemNotFound(destNode: string, cause?: string) {
-			return errorUtils.createExpressionError('Paired item resolution failed', {
-				messageTemplate: 'Unable to find paired item source',
-				functionality: 'pairedItem',
-				nodeCause: cause,
-				functionOverrides: { message: 'Data not found' },
-				description: `Could not trace back to node '${destNode}'`,
-				type: 'paired_item_no_info',
-				moreInfoLink: true,
-			});
+			throw errorUtils.createPairedItemMultipleItemsError(destinationNode, itemIndex);
 		}
 
 		/**
@@ -883,10 +851,13 @@ export class WorkflowDataProxy {
 					typeof item.pairedItem === 'number' ? { item: item.pairedItem } : item.pairedItem;
 
 				const inputIndex = currentPairedItem.input || 0;
+
 				if (inputIndex >= sourceArray.length) {
-					if (sourceArray.length === 0)
+					if (sourceArray.length === 0) {
 						throw errorUtils.createNoConnectionError(destinationNodeName);
-					throw createBranchNotFoundError(
+					}
+
+					throw errorUtils.createBranchNotFoundError(
 						currentSource.previousNode,
 						currentPairedItem.item,
 						nodeBeforeLast,
@@ -898,7 +869,8 @@ export class WorkflowDataProxy {
 			}
 
 			// Step 3: Final node reached — fetch paired item
-			if (!currentSource) throw createPairedItemNotFound(destinationNodeName, nodeBeforeLast);
+			if (!currentSource)
+				throw errorUtils.createPairedItemNotFound(destinationNodeName, nodeBeforeLast);
 
 			const finalTaskData = getTaskData(currentSource);
 			const finalOutputData = getNodeOutput(finalTaskData, currentSource);
