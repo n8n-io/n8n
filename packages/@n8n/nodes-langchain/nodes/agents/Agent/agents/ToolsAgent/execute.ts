@@ -489,7 +489,7 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 	const model = await getChatModel(this);
 	const memory = await getOptionalMemory(this);
 
-	if (this.getNode().typeVersion >= 2.0 && batchSize > 1) {
+	if (this.getNode().typeVersion >= 2 && batchSize > 1) {
 		for (let i = 0; i < items.length; i += batchSize) {
 			const batch = items.slice(i, i + batchSize);
 			const batchPromises = batch.map(async (_item, index) => {

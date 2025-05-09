@@ -73,7 +73,7 @@ export const toolsAgentProperties: INodeProperties[] = [
 				],
 				displayOptions: {
 					show: {
-						'@version': [{ _cnd: { gte: 2.0 } }],
+						'@version': [{ _cnd: { gte: 2 } }],
 					},
 				},
 			},

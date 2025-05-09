@@ -350,7 +350,7 @@ describe('toolsAgentExecute', () => {
 		jest.clearAllMocks();
 	});
 
-	it('should process items sequentially when version < 2.0', async () => {
+	it('should process items sequentially when version < 2', async () => {
 		const mockNode = mock<INode>();
 		mockNode.typeVersion = 1.9;
 		mockContext.getNode.mockReturnValue(mockNode);
@@ -397,9 +397,9 @@ describe('toolsAgentExecute', () => {
 		expect(result[0][1].json).toEqual({ output: { text: 'success 2' } });
 	});
 
-	it('should process items in parallel within batches when version >= 2.0 and batchSize > 1', async () => {
+	it('should process items in parallel within batches when version >= 2 and batchSize > 1', async () => {
 		const mockNode = mock<INode>();
-		mockNode.typeVersion = 2.0;
+		mockNode.typeVersion = 2;
 		mockContext.getNode.mockReturnValue(mockNode);
 		mockContext.getInputData.mockReturnValue([
 			{ json: { text: 'test input 1' } },
@@ -454,7 +454,7 @@ describe('toolsAgentExecute', () => {
 
 	it('should handle errors in batch processing when continueOnFail is true', async () => {
 		const mockNode = mock<INode>();
-		mockNode.typeVersion = 2.0;
+		mockNode.typeVersion = 2;
 		mockContext.getNode.mockReturnValue(mockNode);
 		mockContext.getInputData.mockReturnValue([
 			{ json: { text: 'test input 1' } },
@@ -503,7 +503,7 @@ describe('toolsAgentExecute', () => {
 
 	it('should throw error in batch processing when continueOnFail is false', async () => {
 		const mockNode = mock<INode>();
-		mockNode.typeVersion = 2.0;
+		mockNode.typeVersion = 2;
 		mockContext.getNode.mockReturnValue(mockNode);
 		mockContext.getInputData.mockReturnValue([
 			{ json: { text: 'test input 1' } },
