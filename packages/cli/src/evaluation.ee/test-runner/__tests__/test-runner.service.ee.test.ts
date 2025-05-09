@@ -7,6 +7,7 @@ import type { ExecutionRepository } from '@n8n/db';
 import type { TestCaseExecutionRepository } from '@n8n/db';
 import type { TestMetricRepository } from '@n8n/db';
 import type { TestRunRepository } from '@n8n/db';
+import type { WorkflowRepository } from '@n8n/db';
 import type { SelectQueryBuilder } from '@n8n/typeorm';
 import { stringify } from 'flatted';
 import { readFileSync } from 'fs';
@@ -18,7 +19,6 @@ import path from 'path';
 
 import type { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
-import type { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { NodeTypes } from '@/node-types';
 import type { Telemetry } from '@/telemetry';

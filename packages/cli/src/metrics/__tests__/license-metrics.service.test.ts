@@ -1,7 +1,7 @@
 import type { LicenseMetricsRepository } from '@n8n/db';
+import type { WorkflowRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
-import type { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { LicenseMetricsService } from '@/metrics/license-metrics.service';
 
 describe('LicenseMetricsService', () => {

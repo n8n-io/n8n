@@ -3,12 +3,12 @@ import type { User } from '@n8n/db';
 import { ProjectRepository } from '@n8n/db';
 import { SharedCredentialsRepository } from '@n8n/db';
 import { SharedWorkflowRepository } from '@n8n/db';
+import { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { INode, IWorkflowBase } from 'n8n-workflow';
 import { randomInt } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { NodeTypes } from '@/node-types';

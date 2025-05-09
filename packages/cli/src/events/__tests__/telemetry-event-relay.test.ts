@@ -5,13 +5,13 @@ import type { IWorkflowDb } from '@n8n/db';
 import type { CredentialsRepository } from '@n8n/db';
 import type { ProjectRelationRepository } from '@n8n/db';
 import type { SharedWorkflowRepository } from '@n8n/db';
+import type { WorkflowRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import { type BinaryDataConfig, InstanceSettings } from 'n8n-core';
 import type { INode, INodesGraphResult } from 'n8n-workflow';
 import { NodeApiError, TelemetryHelpers, type IRun, type IWorkflowBase } from 'n8n-workflow';
 
 import { N8N_VERSION } from '@/constants';
-import type { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';

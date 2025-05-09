@@ -6,6 +6,7 @@ import {
 	WorkflowTagMappingRepository,
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
+	WorkflowRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
@@ -16,7 +17,6 @@ import { UnexpectedError, type ICredentialDataDecryptedObject } from 'n8n-workfl
 import { writeFile as fsWriteFile, rm as fsRm } from 'node:fs/promises';
 import path from 'path';
 
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { formatWorkflow } from '@/workflows/workflow.formatter';
 
 import {

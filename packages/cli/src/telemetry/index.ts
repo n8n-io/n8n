@@ -1,5 +1,5 @@
 import { GlobalConfig } from '@n8n/config';
-import { ProjectRelationRepository, ProjectRepository } from '@n8n/db';
+import { ProjectRelationRepository, ProjectRepository, WorkflowRepository } from '@n8n/db';
 import { OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import type RudderStack from '@rudderstack/rudder-sdk-node';
@@ -9,7 +9,6 @@ import type { ITelemetryTrackProperties } from 'n8n-workflow';
 
 import { LOWEST_SHUTDOWN_PRIORITY, N8N_VERSION } from '@/constants';
 import { UserRepository } from '@/databases/repositories/user.repository';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import type { IExecutionTrackProperties } from '@/interfaces';
 import { License } from '@/license';
 import { PostHogClient } from '@/posthog';

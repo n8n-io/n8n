@@ -6,12 +6,11 @@ import type { TagRepository } from '@n8n/db';
 import type { WorkflowTagMappingRepository } from '@n8n/db';
 import type { SharedCredentialsRepository } from '@n8n/db';
 import type { SharedWorkflowRepository } from '@n8n/db';
+import type { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock, captor } from 'jest-mock-extended';
 import { Cipher, type InstanceSettings } from 'n8n-core';
 import fsp from 'node:fs/promises';
-
-import type { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 
 import type { VariablesService } from '../../variables/variables.service.ee';
 import { SourceControlExportService } from '../source-control-export.service.ee';
