@@ -787,7 +787,7 @@ describe('timers', () => {
 	});
 });
 
-describe('TransactionNotStarted error on sqlite without pooling', () => {
+describe('legacy sqlite (without pooling) handles concurrent insights db process without throwing', () => {
 	let initialFlushBatchSize: number;
 	let insightsConfig: InsightsConfig;
 	beforeAll(() => {
@@ -801,7 +801,7 @@ describe('TransactionNotStarted error on sqlite without pooling', () => {
 		insightsConfig.flushBatchSize = initialFlushBatchSize;
 	});
 
-	test('should throw TransactionNotStarted error', async () => {
+	test('should handle concurrent flush and compaction without error', async () => {
 		const insightsCollectionService = Container.get(InsightsCollectionService);
 		const insightsCompactionService = Container.get(InsightsCompactionService);
 
@@ -846,6 +846,7 @@ describe('TransactionNotStarted error on sqlite without pooling', () => {
 			await insightsCollectionService.handleWorkflowExecuteAfter(ctx);
 		}
 
+		// ACT
 		const promises = [
 			insightsCollectionService.flushEvents(),
 			insightsCollectionService.flushEvents(),
