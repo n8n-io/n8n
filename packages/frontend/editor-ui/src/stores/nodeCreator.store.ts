@@ -70,6 +70,10 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		mergedNodes.value = nodes;
 	}
 
+	function removeNodeFromMergedNodes(nodeName: string) {
+		mergedNodes.value = mergedNodes.value.filter((n) => n.name !== nodeName);
+	}
+
 	function setActions(nodes: ActionsRecord<typeof mergedNodes.value>) {
 		actions.value = nodes;
 	}
@@ -390,16 +394,17 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		showScrim,
 		mergedNodes,
 		actions,
+		allNodeCreatorNodes,
 		setShowScrim,
 		setSelectedView,
 		setOpenSource,
 		setActions,
 		setMergeNodes,
+		removeNodeFromMergedNodes,
 		setNodeCreatorState,
 		openSelectiveNodeCreator,
 		openNodeCreatorForConnectingNode,
 		openNodeCreatorForTriggerNodes,
-		allNodeCreatorNodes,
 		onCreatorOpened,
 		onNodeFilterChanged,
 		onCategoryExpanded,

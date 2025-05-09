@@ -1,14 +1,15 @@
 import type { GlobalConfig } from '@n8n/config';
+import { LICENSE_FEATURES } from '@n8n/constants';
 import { InstalledNodes } from '@n8n/db';
 import { InstalledPackages } from '@n8n/db';
 import { InstalledNodesRepository } from '@n8n/db';
 import { InstalledPackagesRepository } from '@n8n/db';
 import axios from 'axios';
 import { exec } from 'child_process';
-import { mkdir as fsMkdir } from 'fs/promises';
+import { mkdir as fsMkdir, readFile, writeFile } from 'fs/promises';
 import { mocked } from 'jest-mock';
 import { mock } from 'jest-mock-extended';
-import type { PackageDirectoryLoader } from 'n8n-core';
+import type { Logger, InstanceSettings, PackageDirectoryLoader } from 'n8n-core';
 import type { PublicInstalledPackage } from 'n8n-workflow';
 
 import {
@@ -17,9 +18,11 @@ import {
 	NPM_PACKAGE_STATUS_GOOD,
 	RESPONSE_ERROR_MESSAGES,
 } from '@/constants';
+import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import type { CommunityPackages } from '@/interfaces';
 import type { License } from '@/license';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import { CommunityPackagesService } from '@/services/community-packages.service';
 import { mockInstance } from '@test/mocking';
 import { COMMUNITY_NODE_VERSION, COMMUNITY_PACKAGE_VERSION } from '@test-integration/constants';
@@ -45,6 +48,7 @@ describe('CommunityPackagesService', () => {
 			communityPackages: {
 				reinstallMissing: false,
 				registry: 'some.random.host',
+				unverifiedEnabled: true,
 			},
 		},
 	});
@@ -69,12 +73,19 @@ describe('CommunityPackagesService', () => {
 		});
 	});
 
+	const instanceSettings = mock<InstanceSettings>({
+		nodesDownloadDir: '/tmp/n8n-jest-global-downloads',
+	});
+
+	const logger = mock<Logger>();
+	const publisher = mock<Publisher>();
+
 	const communityPackagesService = new CommunityPackagesService(
-		mock(),
-		mock(),
-		mock(),
+		instanceSettings,
+		logger,
+		installedPackageRepository,
 		loadNodesAndCredentials,
-		mock(),
+		publisher,
 		license,
 		globalConfig,
 	);
@@ -129,7 +140,9 @@ describe('CommunityPackagesService', () => {
 	describe('executeCommand()', () => {
 		beforeEach(() => {
 			mocked(fsMkdir).mockReset();
+			mocked(fsMkdir).mockResolvedValue(undefined);
 			mocked(exec).mockReset();
+			mocked(exec).mockImplementation(execMock);
 		});
 
 		test('should call command with valid options', async () => {
@@ -359,68 +372,169 @@ describe('CommunityPackagesService', () => {
 		Object.assign(communityPackagesService, { missingPackages });
 	};
 
-	describe('updateNpmModule', () => {
-		const installedPackage = mock<InstalledPackages>({ packageName: mockPackageName() });
-		const packageDirectoryLoader = mock<PackageDirectoryLoader>({
-			loadedNodes: [{ name: nodeName, version: 1 }],
+	describe('updatePackage', () => {
+		const PACKAGE_NAME = 'n8n-nodes-test';
+		const installedPackageForUpdateTest = mock<InstalledPackages>({
+			packageName: PACKAGE_NAME,
 		});
 
-		beforeEach(async () => {
+		const packageDirectoryLoader = mock<PackageDirectoryLoader>({
+			loadedNodes: [{ name: 'a-node-from-the-loader', version: 1 }],
+		});
+
+		const testBlockDownloadDir = instanceSettings.nodesDownloadDir;
+		const testBlockPackageDir = `${testBlockDownloadDir}/node_modules/${PACKAGE_NAME}`;
+		const testBlockTarballName = `${PACKAGE_NAME}-latest.tgz`;
+		const testBlockRegistry = globalConfig.nodes.communityPackages.registry;
+		const testBlockNpmInstallArgs = [
+			'--audit=false',
+			'--fund=false',
+			'--bin-links=false',
+			'--install-strategy=shallow',
+			'--ignore-scripts=true',
+			'--package-lock=false',
+			`--registry=${testBlockRegistry}`,
+		].join(' ');
+
+		const execMockForThisBlock = (command: string, optionsOrCallback: any, callback?: any) => {
+			const actualCallback = typeof optionsOrCallback === 'function' ? optionsOrCallback : callback;
+			if (command.startsWith('npm pack') && command.includes(PACKAGE_NAME)) {
+				actualCallback(null, { stdout: testBlockTarballName, stderr: '' });
+			} else {
+				actualCallback(null, 'Done', '');
+			}
+		};
+
+		beforeEach(() => {
 			jest.clearAllMocks();
 
+			mocked(exec).mockImplementation(execMockForThisBlock as typeof exec);
+
+			mocked(fsMkdir).mockResolvedValue(undefined);
+			mocked(readFile).mockResolvedValue(
+				JSON.stringify({
+					name: PACKAGE_NAME,
+					version: '1.0.0', // Mocked version from package.json inside tarball
+					dependencies: { 'some-actual-dep': '1.2.3' },
+					devDependencies: { 'a-dev-dep': '1.0.0' },
+					peerDependencies: { 'a-peer-dep': '2.0.0' },
+					optionalDependencies: { 'an-optional-dep': '3.0.0' },
+				}),
+			);
+			mocked(writeFile).mockResolvedValue(undefined);
+
 			loadNodesAndCredentials.loadPackage.mockResolvedValue(packageDirectoryLoader);
-			mocked(exec).mockImplementation(execMock);
+			loadNodesAndCredentials.unloadPackage.mockResolvedValue(undefined);
+			loadNodesAndCredentials.postProcessLoaders.mockResolvedValue(undefined);
+
+			installedPackageRepository.remove.mockResolvedValue(undefined as any);
+			installedPackageRepository.saveInstalledPackageWithNodes.mockResolvedValue(
+				installedPackageForUpdateTest,
+			);
+
+			publisher.publishCommand.mockResolvedValue(undefined);
 		});
 
-		test('should call `exec` with the correct command and registry', async () => {
-			//
+		test('should call `exec` with the correct sequence of commands, handle file ops, and interact with services', async () => {
 			// ARRANGE
-			//
 			license.isCustomNpmRegistryEnabled.mockReturnValue(true);
 
-			//
 			// ACT
-			//
-			await communityPackagesService.updatePackage(installedPackage.packageName, installedPackage);
+			await communityPackagesService.updatePackage(
+				installedPackageForUpdateTest.packageName,
+				installedPackageForUpdateTest,
+			);
 
-			//
-			// ASSERT
-			//
+			// ASSERT:
+			expect(exec).toHaveBeenCalledTimes(5);
 
-			expect(exec).toHaveBeenCalledTimes(1);
 			expect(exec).toHaveBeenNthCalledWith(
 				1,
-				`npm install ${installedPackage.packageName}@latest --audit=false --fund=false --bin-links=false --install-strategy=shallow --omit=dev --omit=optional --omit=peer --registry=some.random.host`,
-				expect.any(Object),
+				`rm -rf ${testBlockPackageDir}`,
 				expect.any(Function),
 			);
-			expect(loadNodesAndCredentials.unloadPackage).toHaveBeenCalledWith(
-				installedPackage.packageName,
+
+			expect(exec).toHaveBeenNthCalledWith(
+				2,
+				`npm pack ${PACKAGE_NAME}@latest --registry=${testBlockRegistry} --quiet`,
+				{ cwd: testBlockDownloadDir },
+				expect.any(Function),
 			);
-			expect(loadNodesAndCredentials.loadPackage).toHaveBeenCalledWith(
-				installedPackage.packageName,
+
+			expect(exec).toHaveBeenNthCalledWith(
+				3,
+				`tar -xzf ${testBlockTarballName} -C ${testBlockPackageDir} --strip-components=1`,
+				{ cwd: testBlockDownloadDir },
+				expect.any(Function),
 			);
+
+			expect(exec).toHaveBeenNthCalledWith(
+				4,
+				`npm install ${testBlockNpmInstallArgs}`,
+				{ cwd: testBlockPackageDir },
+				expect.any(Function),
+			);
+
+			expect(exec).toHaveBeenNthCalledWith(
+				5,
+				`rm ${testBlockTarballName}`,
+				{ cwd: testBlockDownloadDir },
+				expect.any(Function),
+			);
+
+			expect(fsMkdir).toHaveBeenCalledWith(testBlockPackageDir, { recursive: true });
+			expect(readFile).toHaveBeenCalledWith(`${testBlockPackageDir}/package.json`, 'utf-8');
+			expect(writeFile).toHaveBeenCalledWith(
+				`${testBlockPackageDir}/package.json`,
+				JSON.stringify(
+					{
+						name: PACKAGE_NAME,
+						version: '1.0.0',
+						dependencies: { 'some-actual-dep': '1.2.3' },
+					},
+					null,
+					2,
+				),
+				'utf-8',
+			);
+
+			expect(loadNodesAndCredentials.unloadPackage).toHaveBeenCalledWith(PACKAGE_NAME);
+			expect(loadNodesAndCredentials.loadPackage).toHaveBeenCalledWith(PACKAGE_NAME);
+			expect(loadNodesAndCredentials.postProcessLoaders).toHaveBeenCalledTimes(1);
+
+			expect(installedPackageRepository.remove).toHaveBeenCalledWith(installedPackageForUpdateTest);
+			expect(installedPackageRepository.saveInstalledPackageWithNodes).toHaveBeenCalledWith(
+				packageDirectoryLoader,
+			);
+
+			expect(publisher.publishCommand).toHaveBeenCalledWith({
+				command: 'community-package-update',
+				payload: { packageName: PACKAGE_NAME, packageVersion: 'latest' },
+			});
 		});
 
-		test('should throw when not licensed', async () => {
-			//
+		test('should throw when not licensed for custom registry if custom registry is different from default', async () => {
 			// ARRANGE
-			//
 			license.isCustomNpmRegistryEnabled.mockReturnValue(false);
 
-			//
-			// ACT
-			//
-			const promise = communityPackagesService.updatePackage(
-				installedPackage.packageName,
-				installedPackage,
+			// ACT & ASSERT
+			await expect(
+				communityPackagesService.updatePackage(
+					installedPackageForUpdateTest.packageName,
+					installedPackageForUpdateTest,
+				),
+			).rejects.toThrow(
+				new FeatureNotLicensedError(LICENSE_FEATURES.COMMUNITY_NODES_CUSTOM_REGISTRY),
 			);
+		});
+	});
 
-			//
-			// ASSERT
-			//
-			await expect(promise).rejects.toThrow(
-				'Your license does not allow for feat:communityNodes:customRegistry.',
+	describe('installPackage', () => {
+		test('should throw when installation of not vetted packages is forbidden', async () => {
+			globalConfig.nodes.communityPackages.unverifiedEnabled = false;
+			globalConfig.nodes.communityPackages.registry = 'https://registry.npmjs.org';
+			await expect(communityPackagesService.installPackage('package', '0.1.0')).rejects.toThrow(
+				'Installation of non-vetted community packages is forbidden!',
 			);
 		});
 	});
