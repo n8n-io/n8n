@@ -81,6 +81,9 @@ import { CreateTestCaseExecutionTable1736947513045 } from '../common/17369475130
 import { AddErrorColumnsToTestRuns1737715421462 } from '../common/1737715421462-AddErrorColumnsToTestRuns';
 import { CreateAnalyticsTables1739549398681 } from '../common/1739549398681-CreateAnalyticsTables';
 import { RenameAnalyticsToInsights1741167584277 } from '../common/1741167584277-RenameAnalyticsToInsights';
+import { AddWorkflowStatisticsRootCount1745587087521 } from '../common/1745587087521-AddWorkflowStatisticsRootCount';
+import { AddWorkflowArchivedColumn1745934666076 } from '../common/1745934666076-AddWorkflowArchivedColumn';
+import { DropRoleTable1745934666077 } from '../common/1745934666077-DropRoleTable';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
@@ -164,6 +167,9 @@ const sqliteMigrations: Migration[] = [
 	UpdateParentFolderIdColumn1740445074052,
 	RenameAnalyticsToInsights1741167584277,
 	AddScopesColumnToApiKeys1742918400000,
+	AddWorkflowStatisticsRootCount1745587087521,
+	AddWorkflowArchivedColumn1745934666076,
+	DropRoleTable1745934666077,
 ];
 
 export { sqliteMigrations };

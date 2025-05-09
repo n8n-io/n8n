@@ -1,3 +1,4 @@
+import { Get, RestController } from '@n8n/decorators';
 import type { AxiosRequestConfig } from 'axios';
 import axios from 'axios';
 import { createHmac } from 'crypto';
@@ -6,7 +7,6 @@ import { ensureError, jsonStringify } from 'n8n-workflow';
 import type { RequestOptions } from 'oauth-1.0a';
 import clientOAuth1 from 'oauth-1.0a';
 
-import { Get, RestController } from '@/decorators';
 import { OAuthRequest } from '@/requests';
 
 import { AbstractOAuthController, skipAuthOnOAuthCallback } from './abstract-oauth.controller';
@@ -36,7 +36,7 @@ export class OAuth1CredentialController extends AbstractOAuthController {
 		const credential = await this.getCredential(req);
 		const additionalData = await this.getAdditionalData();
 		const decryptedDataOriginal = await this.getDecryptedDataForAuthUri(credential, additionalData);
-		const oauthCredentials = this.applyDefaultsAndOverwrites<OAuth1CredentialData>(
+		const oauthCredentials = await this.applyDefaultsAndOverwrites<OAuth1CredentialData>(
 			credential,
 			decryptedDataOriginal,
 			additionalData,

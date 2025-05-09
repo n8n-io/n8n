@@ -22,7 +22,10 @@ jest.mock('fast-glob', () => async (pattern: string) => {
 		: ['dist/Credential1.js'];
 });
 
+import { NodeTypes } from '@test/helpers';
+
 import { CustomDirectoryLoader } from '../custom-directory-loader';
+import { DirectoryLoader } from '../directory-loader';
 import { LazyPackageDirectoryLoader } from '../lazy-package-directory-loader';
 import * as classLoader from '../load-class-in-isolation';
 import { PackageDirectoryLoader } from '../package-directory-loader';
@@ -753,6 +756,77 @@ describe('DirectoryLoader', () => {
 			expect(() => loader.getNode('nonexistent')).toThrow(
 				'Unrecognized node type: CUSTOM.nonexistent',
 			);
+		});
+	});
+
+	describe('applyDeclarativeNodeOptionParameters', () => {
+		test('sets up the options parameters', () => {
+			const nodeTypes = NodeTypes();
+			const nodeType = nodeTypes.getByNameAndVersion('test.setMulti');
+
+			DirectoryLoader.applyDeclarativeNodeOptionParameters(nodeType);
+
+			const options = nodeType.description.properties.find(
+				(property) => property.name === 'requestOptions',
+			);
+
+			expect(options?.options).toBeDefined;
+
+			const optionNames = options!.options!.map((option) => option.name);
+
+			expect(optionNames).toEqual(['batching', 'allowUnauthorizedCerts', 'proxy', 'timeout']);
+		});
+
+		test.each([
+			[
+				'node with execute method',
+				{
+					execute: jest.fn(),
+					description: {
+						properties: [],
+					},
+				},
+			],
+			[
+				'node with trigger method',
+				{
+					trigger: jest.fn(),
+					description: {
+						properties: [],
+					},
+				},
+			],
+			[
+				'node with webhook method',
+				{
+					webhook: jest.fn(),
+					description: {
+						properties: [],
+					},
+				},
+			],
+			[
+				'a polling node-type',
+				{
+					description: {
+						polling: true,
+						properties: [],
+					},
+				},
+			],
+			[
+				'a node-type with a non-main output',
+				{
+					description: {
+						outputs: ['main', 'ai_agent'],
+						properties: [],
+					},
+				},
+			],
+		])('should not modify properties on node with %s method', (_, nodeTypeName) => {
+			const nodeType = nodeTypeName as unknown as INodeType;
+			DirectoryLoader.applyDeclarativeNodeOptionParameters(nodeType);
+			expect(nodeType.description.properties).toEqual([]);
 		});
 	});
 });

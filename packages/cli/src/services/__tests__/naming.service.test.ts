@@ -1,6 +1,7 @@
-import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
-import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
+import type { CredentialsEntity } from '@n8n/db';
+import type { WorkflowEntity } from '@n8n/db';
+import { CredentialsRepository } from '@n8n/db';
+
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { NamingService } from '@/services/naming.service';
 import { mockInstance } from '@test/mocking';

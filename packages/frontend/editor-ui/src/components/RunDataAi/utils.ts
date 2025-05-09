@@ -1,4 +1,9 @@
-import { type LlmTokenUsageData, type IAiDataContent, type INodeUi } from '@/Interface';
+import {
+	type LlmTokenUsageData,
+	type IAiDataContent,
+	type INodeUi,
+	type IExecutionResponse,
+} from '@/Interface';
 import {
 	AGENT_LANGCHAIN_NODE_TYPE,
 	type IRunData,
@@ -8,6 +13,8 @@ import {
 	type NodeConnectionType,
 	type Workflow,
 } from 'n8n-workflow';
+import { type LogEntrySelection } from '../CanvasChat/types/logs';
+import { isProxy, isReactive, isRef, toRaw } from 'vue';
 
 export interface AIResult {
 	node: string;
@@ -73,13 +80,31 @@ function getTreeNodeDataRec(
 		return resultData.map((d) => createNode(parent, nodeName, currentDepth, d.runIndex, d));
 	}
 
+	// When at root depth, filter AI data to only show executions that were triggered by this node
+	// This prevents duplicate entries in logs when a sub-node is connected to multiple root nodes
+	// Nodes without source info or with empty source arrays are always included
+	const filteredAiData =
+		currentDepth === 0
+			? aiData?.filter(({ data }) => {
+					if (!data?.source || data.source.every((source) => source === null)) {
+						return true;
+					}
+
+					return data.source.some(
+						(source) =>
+							source?.previousNode === nodeName &&
+							(runIndex === undefined || source.previousNodeRun === runIndex),
+					);
+				})
+			: aiData;
+
 	// Get the first level of children
 	const connectedSubNodes = workflow.getParentNodes(nodeName, 'ALL_NON_MAIN', 1);
 
 	const treeNode = createNode(parent, nodeName, currentDepth, runIndex ?? 0);
 
 	// Only include sub-nodes which have data
-	const children = (aiData ?? []).flatMap((data) =>
+	const children = (filteredAiData ?? []).flatMap((data) =>
 		connectedSubNodes.includes(data.node) && (runIndex === undefined || data.runIndex === runIndex)
 			? getTreeNodeDataRec(treeNode, data.node, currentDepth + 1, workflow, aiData, data.runIndex)
 			: [],
@@ -145,6 +170,9 @@ export function getReferencedData(
 				data: data[type][0],
 				inOut,
 				type: type as NodeConnectionType,
+				// Include source information in AI content to track which node triggered the execution
+				// This enables filtering in the UI to show only relevant executions
+				source: taskData.source,
 				metadata: {
 					executionTime: taskData.executionTime,
 					startTime: taskData.startTime,
@@ -202,17 +230,6 @@ export function getConsumedTokens(outputRun: IAiDataContent | undefined): LlmTok
 	return tokenUsage;
 }
 
-export function getTotalConsumedTokens(...usage: LlmTokenUsageData[]): LlmTokenUsageData {
-	return usage.reduce(addTokenUsageData, emptyTokenUsageData);
-}
-
-export function getSubtreeTotalConsumedTokens(treeNode: TreeNode): LlmTokenUsageData {
-	return getTotalConsumedTokens(
-		treeNode.consumedTokens,
-		...treeNode.children.map(getSubtreeTotalConsumedTokens),
-	);
-}
-
 export function formatTokenUsageCount(
 	usage: LlmTokenUsageData,
 	field: 'total' | 'prompt' | 'completion',
@@ -227,51 +244,189 @@ export function formatTokenUsageCount(
 	return usage.isEstimate ? `~${count}` : count.toLocaleString();
 }
 
-export function findLogEntryToAutoSelect(
-	tree: TreeNode[],
-	nodesByName: Record<string, INodeUi>,
-	runData: IRunData,
-): TreeNode | undefined {
-	return findLogEntryToAutoSelectRec(tree, nodesByName, runData, 0);
+export interface ExecutionLogViewData extends IExecutionResponse {
+	tree: LogEntry[];
+}
+
+export interface LogEntry {
+	parent?: LogEntry;
+	node: INodeUi;
+	id: string;
+	children: LogEntry[];
+	depth: number;
+	runIndex: number;
+	runData: ITaskData;
+	consumedTokens: LlmTokenUsageData;
+}
+
+export interface LatestNodeInfo {
+	disabled: boolean;
+	deleted: boolean;
+	name: string;
+}
+
+function getConsumedTokensV2(task: ITaskData): LlmTokenUsageData {
+	if (!task.data) {
+		return emptyTokenUsageData;
+	}
+
+	const tokenUsage = Object.values(task.data)
+		.flat()
+		.flat()
+		.reduce<LlmTokenUsageData>((acc, curr) => {
+			const tokenUsageData = curr?.json?.tokenUsage ?? curr?.json?.tokenUsageEstimate;
+
+			if (!tokenUsageData) return acc;
+
+			return addTokenUsageData(acc, {
+				...(tokenUsageData as Omit<LlmTokenUsageData, 'isEstimate'>),
+				isEstimate: !!curr?.json.tokenUsageEstimate,
+			});
+		}, emptyTokenUsageData);
+
+	return tokenUsage;
+}
+
+function createNodeV2(
+	parent: LogEntry | undefined,
+	node: INodeUi,
+	currentDepth: number,
+	runIndex: number,
+	runData: ITaskData,
+	children: LogEntry[] = [],
+): LogEntry {
+	return {
+		parent,
+		node,
+		id: `${node.name}:${runIndex}`,
+		depth: currentDepth,
+		runIndex,
+		runData,
+		children,
+		consumedTokens: getConsumedTokensV2(runData),
+	};
+}
+
+export function getTreeNodeDataV2(
+	nodeName: string,
+	runData: ITaskData,
+	workflow: Workflow,
+	data: IRunData,
+	runIndex?: number,
+): LogEntry[] {
+	const node = workflow.getNode(nodeName);
+
+	return node ? getTreeNodeDataRecV2(undefined, node, runData, 0, workflow, data, runIndex) : [];
+}
+
+function getTreeNodeDataRecV2(
+	parent: LogEntry | undefined,
+	node: INodeUi,
+	runData: ITaskData,
+	currentDepth: number,
+	workflow: Workflow,
+	data: IRunData,
+	runIndex: number | undefined,
+): LogEntry[] {
+	// Get the first level of children
+	const connectedSubNodes = workflow.getParentNodes(node.name, 'ALL_NON_MAIN', 1);
+	const treeNode = createNodeV2(parent, node, currentDepth, runIndex ?? 0, runData);
+
+	const children = connectedSubNodes
+		.flatMap((subNodeName) =>
+			(data[subNodeName] ?? []).flatMap((t, index) => {
+				// At root depth, filter out node executions that weren't triggered by this node
+				// This prevents showing duplicate executions when a sub-node is connected to multiple parents
+				// Only filter nodes that have source information with valid previousNode references
+				const isMatched =
+					currentDepth === 0 && t.source.some((source) => source !== null)
+						? t.source.some(
+								(source) =>
+									source?.previousNode === node.name &&
+									(runIndex === undefined || source.previousNodeRun === runIndex),
+							)
+						: runIndex === undefined || index === runIndex;
+
+				if (!isMatched) {
+					return [];
+				}
+
+				const subNode = workflow.getNode(subNodeName);
+
+				return subNode
+					? getTreeNodeDataRecV2(treeNode, subNode, t, currentDepth + 1, workflow, data, index)
+					: [];
+			}),
+		)
+		.sort((a, b) => {
+			// Sort the data by execution index or start time
+			if (a.runData.executionIndex !== undefined && b.runData.executionIndex !== undefined) {
+				return a.runData.executionIndex - b.runData.executionIndex;
+			}
+
+			const aTime = a.runData.startTime ?? 0;
+			const bTime = b.runData.startTime ?? 0;
+
+			return aTime - bTime;
+		});
+
+	treeNode.children = children;
+
+	return [treeNode];
+}
+
+export function getTotalConsumedTokens(...usage: LlmTokenUsageData[]): LlmTokenUsageData {
+	return usage.reduce(addTokenUsageData, emptyTokenUsageData);
+}
+
+export function getSubtreeTotalConsumedTokens(treeNode: LogEntry): LlmTokenUsageData {
+	return getTotalConsumedTokens(
+		treeNode.consumedTokens,
+		...treeNode.children.map(getSubtreeTotalConsumedTokens),
+	);
 }
 
 function findLogEntryToAutoSelectRec(
-	tree: TreeNode[],
-	nodesByName: Record<string, INodeUi>,
-	runData: IRunData,
+	data: ExecutionLogViewData,
+	subTree: LogEntry[],
 	depth: number,
-): TreeNode | undefined {
-	for (const entry of tree) {
-		const taskData = runData[entry.node]?.[entry.runIndex];
+): LogEntry | undefined {
+	for (const entry of subTree) {
+		const taskData = data.data?.resultData.runData[entry.node.name]?.[entry.runIndex];
 
 		if (taskData?.error) {
 			return entry;
 		}
 
-		const childAutoSelect = findLogEntryToAutoSelectRec(
-			entry.children,
-			nodesByName,
-			runData,
-			depth + 1,
-		);
+		const childAutoSelect = findLogEntryToAutoSelectRec(data, entry.children, depth + 1);
 
 		if (childAutoSelect) {
 			return childAutoSelect;
 		}
 
-		if (nodesByName[entry.node]?.type === AGENT_LANGCHAIN_NODE_TYPE) {
+		if (
+			data.workflowData.nodes.find((n) => n.name === entry.node.name)?.type ===
+			AGENT_LANGCHAIN_NODE_TYPE
+		) {
 			return entry;
 		}
 	}
 
-	return depth === 0 ? tree[0] : undefined;
+	return depth === 0 ? subTree[0] : undefined;
 }
 
 export function createLogEntries(workflow: Workflow, runData: IRunData) {
 	const runs = Object.entries(runData)
-		.filter(([nodeName]) => workflow.getChildNodes(nodeName, 'ALL_NON_MAIN').length === 0)
 		.flatMap(([nodeName, taskData]) =>
-			taskData.map((task, runIndex) => ({ nodeName, task, runIndex })),
+			workflow.getChildNodes(nodeName, 'ALL_NON_MAIN').length > 0 ||
+			workflow.getNode(nodeName)?.disabled
+				? [] // skip sub nodes and disabled nodes
+				: taskData.map((task, runIndex) => ({
+						nodeName,
+						task,
+						runIndex,
+						nodeHasMultipleRuns: taskData.length > 1,
+					})),
 		)
 		.sort((a, b) => {
 			if (a.task.executionIndex !== undefined && b.task.executionIndex !== undefined) {
@@ -283,27 +438,91 @@ export function createLogEntries(workflow: Workflow, runData: IRunData) {
 				: a.task.startTime - b.task.startTime;
 		});
 
-	return runs.flatMap(({ nodeName, runIndex, task }) => {
-		if (workflow.getParentNodes(nodeName, 'ALL_NON_MAIN').length > 0) {
-			return getTreeNodeData(
-				nodeName,
-				workflow,
-				createAiData(nodeName, workflow, (node) => runData[node] ?? []),
-				undefined,
-			);
+	return runs.flatMap(({ nodeName, runIndex, task, nodeHasMultipleRuns }) =>
+		getTreeNodeDataV2(
+			nodeName,
+			task,
+			workflow,
+			runData,
+			nodeHasMultipleRuns ? runIndex : undefined,
+		),
+	);
+}
+
+export function includesLogEntry(log: LogEntry, logs: LogEntry[]): boolean {
+	return logs.some(
+		(l) =>
+			(l.node.name === log.node.name && log.runIndex === l.runIndex) ||
+			includesLogEntry(log, l.children),
+	);
+}
+
+export function findSelectedLogEntry(
+	state: LogEntrySelection,
+	execution?: ExecutionLogViewData,
+): LogEntry | undefined {
+	return state.type === 'initial' ||
+		state.workflowId !== execution?.workflowData.id ||
+		(state.type === 'selected' && !includesLogEntry(state.data, execution.tree))
+		? execution
+			? findLogEntryToAutoSelectRec(execution, execution.tree, 0)
+			: undefined
+		: state.type === 'none'
+			? undefined
+			: state.data;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function deepToRaw<T>(sourceObj: T): T {
+	const seen = new WeakMap();
+
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	const objectIterator = (input: any): any => {
+		if (seen.has(input)) {
+			return input;
 		}
 
-		return getTreeNodeData(
-			nodeName,
-			workflow,
-			[
-				{
-					data: getReferencedData(task, false, true)[0],
-					node: nodeName,
-					runIndex,
-				},
-			],
-			runIndex,
-		);
-	});
+		if (input !== null && typeof input === 'object') {
+			seen.set(input, true);
+		}
+
+		if (Array.isArray(input)) {
+			return input.map((item) => objectIterator(item));
+		}
+
+		if (isRef(input) || isReactive(input) || isProxy(input)) {
+			return objectIterator(toRaw(input));
+		}
+
+		if (
+			input !== null &&
+			typeof input === 'object' &&
+			Object.getPrototypeOf(input) === Object.prototype
+		) {
+			return Object.keys(input).reduce((acc, key) => {
+				acc[key as keyof typeof acc] = objectIterator(input[key]);
+				return acc;
+			}, {} as T);
+		}
+
+		return input;
+	};
+
+	return objectIterator(sourceObj);
+}
+
+export function flattenLogEntries(
+	entries: LogEntry[],
+	collapsedEntryIds: Record<string, boolean>,
+	ret: LogEntry[] = [],
+): LogEntry[] {
+	for (const entry of entries) {
+		ret.push(entry);
+
+		if (!collapsedEntryIds[entry.id]) {
+			flattenLogEntries(entry.children, collapsedEntryIds, ret);
+		}
+	}
+
+	return ret;
 }

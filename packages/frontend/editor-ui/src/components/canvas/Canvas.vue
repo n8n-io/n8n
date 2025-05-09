@@ -4,7 +4,8 @@ import type { CanvasLayoutEvent, CanvasLayoutSource } from '@/composables/useCan
 import { useCanvasLayout } from '@/composables/useCanvasLayout';
 import { useCanvasNodeHover } from '@/composables/useCanvasNodeHover';
 import { useCanvasTraversal } from '@/composables/useCanvasTraversal';
-import { type ContextMenuAction, useContextMenu } from '@/composables/useContextMenu';
+import type { ContextMenuAction, ContextMenuTarget } from '@/composables/useContextMenu';
+import { useContextMenu } from '@/composables/useContextMenu';
 import { useKeybindings } from '@/composables/useKeybindings';
 import type { PinDataSource } from '@/composables/usePinnedData';
 import { CanvasKey } from '@/constants';
@@ -50,6 +51,7 @@ import CanvasBackground from './elements/background/CanvasBackground.vue';
 import CanvasArrowHeadMarker from './elements/edges/CanvasArrowHeadMarker.vue';
 import Edge from './elements/edges/CanvasEdge.vue';
 import Node from './elements/nodes/CanvasNode.vue';
+import { useViewportAutoAdjust } from '@/components/canvas/composables/useViewportAutoAdjust';
 
 const $style = useCssModule();
 
@@ -141,6 +143,7 @@ const {
 	findNode,
 	viewport,
 	nodesSelectionActive,
+	setViewport,
 	onEdgeMouseLeave,
 	onEdgeMouseEnter,
 	onEdgeMouseMove,
@@ -198,7 +201,7 @@ const renameKeyCode = ' ';
 useShortKeyPress(
 	renameKeyCode,
 	() => {
-		if (lastSelectedNode.value) {
+		if (lastSelectedNode.value && lastSelectedNode.value.id !== CanvasNodeRenderType.AIPrompt) {
 			emit('update:node:name', lastSelectedNode.value.id);
 		}
 	},
@@ -294,7 +297,7 @@ const keyMap = computed(() => {
 		ctrl_alt_n: () => emit('create:workflow'),
 		ctrl_enter: () => emit('run:workflow'),
 		ctrl_s: () => emit('save:workflow'),
-		shift_alt_t: async () => await onTidyUp('keyboard-shortcut'),
+		shift_alt_t: async () => await onTidyUp({ source: 'keyboard-shortcut' }),
 	};
 	return fullKeymap;
 });
@@ -536,6 +539,8 @@ function emitWithLastSelectedNode(emitFn: (id: string) => void) {
 const defaultZoom = 1;
 const isPaneMoving = ref(false);
 
+useViewportAutoAdjust(viewportRef, viewport, setViewport);
+
 function getProjectedPosition(event?: Pick<MouseEvent, 'clientX' | 'clientY'>) {
 	const bounds = viewportRef.value?.getBoundingClientRect() ?? { left: 0, top: 0 };
 	const offsetX = event?.clientX ?? 0;
@@ -599,18 +604,16 @@ const nodeDataById = computed(() => {
 
 const contextMenu = useContextMenu();
 
-function onOpenContextMenu(event: MouseEvent) {
+function onOpenContextMenu(event: MouseEvent, target?: Pick<ContextMenuTarget, 'nodeId'>) {
 	contextMenu.open(event, {
 		source: 'canvas',
 		nodeIds: selectedNodeIds.value,
+		...target,
 	});
 }
 
 function onOpenSelectionContextMenu({ event }: { event: MouseEvent }) {
-	contextMenu.open(event, {
-		source: 'canvas',
-		nodeIds: selectedNodeIds.value,
-	});
+	onOpenContextMenu(event);
 }
 
 function onOpenNodeContextMenu(
@@ -618,11 +621,14 @@ function onOpenNodeContextMenu(
 	event: MouseEvent,
 	source: 'node-button' | 'node-right-click',
 ) {
-	if (selectedNodeIds.value.includes(id)) {
-		onOpenContextMenu(event);
+	if (source === 'node-button') {
+		contextMenu.open(event, { source, nodeId: id });
+	} else if (selectedNodeIds.value.length > 1 && selectedNodeIds.value.includes(id)) {
+		onOpenContextMenu(event, { nodeId: id });
+	} else {
+		onSelectNodes({ ids: [id] });
+		contextMenu.open(event, { source, nodeId: id });
 	}
-
-	contextMenu.open(event, { source, nodeId: id });
 }
 
 async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[]) {
@@ -654,16 +660,16 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[])
 		case 'change_color':
 			return props.eventBus.emit('nodes:action', { ids: nodeIds, action: 'update:sticky:color' });
 		case 'tidy_up':
-			return await onTidyUp('context-menu');
+			return await onTidyUp({ source: 'context-menu' });
 	}
 }
 
-async function onTidyUp(source: CanvasLayoutSource) {
+async function onTidyUp(payload: { source: CanvasLayoutSource }) {
 	const applyOnSelection = selectedNodes.value.length > 1;
 	const target = applyOnSelection ? 'selection' : 'all';
 	const result = layout(target);
 
-	emit('tidy-up', { result, target, source });
+	emit('tidy-up', { result, target, source: payload.source });
 
 	if (!applyOnSelection) {
 		await nextTick();
@@ -745,14 +751,14 @@ const initialized = ref(false);
 onMounted(() => {
 	props.eventBus.on('fitView', onFitView);
 	props.eventBus.on('nodes:select', onSelectNodes);
-
+	props.eventBus.on('tidyUp', onTidyUp);
 	window.addEventListener('blur', onWindowBlur);
 });
 
 onUnmounted(() => {
 	props.eventBus.off('fitView', onFitView);
 	props.eventBus.off('nodes:select', onSelectNodes);
-
+	props.eventBus.off('tidyUp', onTidyUp);
 	window.removeEventListener('blur', onWindowBlur);
 });
 
@@ -896,7 +902,7 @@ provide(CanvasKey, {
 			@zoom-in="onZoomIn"
 			@zoom-out="onZoomOut"
 			@reset-zoom="onResetZoom"
-			@tidy-up="onTidyUp('canvas-button')"
+			@tidy-up="onTidyUp({ source: 'canvas-button' })"
 		/>
 
 		<Suspense>

@@ -1,4 +1,8 @@
 import type { PushMessage } from '@n8n/api-types';
+import type { BooleanLicenseFeature, NumericLicenseFeature } from '@n8n/constants';
+import { LICENSE_FEATURES, LICENSE_QUOTAS, UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
+import { AuthUserRepository } from '@n8n/db';
+import { Patch, Post, RestController } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { Request } from 'express';
 import { Logger } from 'n8n-core';
@@ -6,13 +10,10 @@ import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import config from '@/config';
-import { LICENSE_FEATURES, LICENSE_QUOTAS, UNLIMITED_LICENSE_QUOTA, inE2ETests } from '@/constants';
-import { AuthUserRepository } from '@/databases/repositories/auth-user.repository';
+import { inE2ETests } from '@/constants';
 import { SettingsRepository } from '@/databases/repositories/settings.repository';
 import { UserRepository } from '@/databases/repositories/user.repository';
-import { Patch, Post, RestController } from '@/decorators';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import type { BooleanLicenseFeature, NumericLicenseFeature } from '@/interfaces';
 import type { FeatureReturnType } from '@/license';
 import { License } from '@/license';
 import { MfaService } from '@/mfa/mfa.service';
@@ -152,8 +153,7 @@ export class E2EController {
 		private readonly userRepository: UserRepository,
 		private readonly authUserRepository: AuthUserRepository,
 	) {
-		license.isFeatureEnabled = (feature: BooleanLicenseFeature) =>
-			this.enabledFeatures[feature] ?? false;
+		license.isLicensed = (feature: BooleanLicenseFeature) => this.enabledFeatures[feature] ?? false;
 
 		// Ugly hack to satisfy biome parser
 		const getFeatureValue = <T extends keyof FeatureReturnType>(
@@ -165,7 +165,7 @@ export class E2EController {
 				return UNLIMITED_LICENSE_QUOTA as FeatureReturnType[T];
 			}
 		};
-		license.getFeatureValue = getFeatureValue;
+		license.getValue = getFeatureValue;
 
 		license.getPlanName = () => 'Enterprise';
 	}

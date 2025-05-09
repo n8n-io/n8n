@@ -1,9 +1,10 @@
+import type { Project } from '@n8n/db';
+import type { User } from '@n8n/db';
+import type { Folder } from '@n8n/db';
+import { FolderRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DateTime } from 'luxon';
 
-import type { Folder } from '@/databases/entities/folder';
-import type { Project } from '@/databases/entities/project';
-import type { User } from '@/databases/entities/user';
 import { createFolder } from '@test-integration/db/folders';
 import { getPersonalProject } from '@test-integration/db/projects';
 import { createTag } from '@test-integration/db/tags';
@@ -11,7 +12,6 @@ import { createMember, createOwner } from '@test-integration/db/users';
 import { createWorkflow } from '@test-integration/db/workflows';
 
 import * as testDb from '../../../../test/integration/shared/test-db';
-import { FolderRepository } from '../folder.repository';
 
 describe('FolderRepository', () => {
 	let folderRepository: FolderRepository;
@@ -22,7 +22,7 @@ describe('FolderRepository', () => {
 	});
 
 	afterEach(async () => {
-		await testDb.truncate(['Folder', 'Tag']);
+		await testDb.truncate(['Folder', 'TagEntity']);
 	});
 
 	afterAll(async () => {

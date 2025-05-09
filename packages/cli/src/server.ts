@@ -21,8 +21,8 @@ import {
 	N8N_VERSION,
 	Time,
 } from '@/constants';
+import { ControllerRegistry } from '@/controller.registry';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
-import { ControllerRegistry } from '@/decorators';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { EventService } from '@/events/event.service';
 import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
@@ -70,6 +70,7 @@ import '@/evaluation.ee/test-definitions.controller.ee';
 import '@/evaluation.ee/test-runs.controller.ee';
 import '@/workflows/workflow-history.ee/workflow-history.controller.ee';
 import '@/workflows/workflows.controller';
+import '@/webhooks/webhooks.controller';
 
 @Service()
 export class Server extends AbstractServer {

@@ -1,12 +1,11 @@
 import { ExecutionsConfig } from '@n8n/config';
+import type { ExecutionEntity } from '@n8n/db';
+import { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
 import { BinaryDataService, InstanceSettings } from 'n8n-core';
 import type { ExecutionStatus, IWorkflowBase } from 'n8n-workflow';
 
 import { Time } from '@/constants';
-import type { ExecutionEntity } from '@/databases/entities/execution-entity';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { PruningService } from '@/services/pruning/pruning.service';
 
 import {
@@ -37,7 +36,6 @@ describe('softDeleteOnPruningCycle()', () => {
 			instanceSettings,
 			Container.get(ExecutionRepository),
 			mockInstance(BinaryDataService),
-			mock(),
 			executionsConfig,
 		);
 
@@ -45,7 +43,7 @@ describe('softDeleteOnPruningCycle()', () => {
 	});
 
 	beforeEach(async () => {
-		await testDb.truncate(['Execution', 'ExecutionAnnotation']);
+		await testDb.truncate(['ExecutionEntity', 'ExecutionAnnotation']);
 	});
 
 	afterAll(async () => {

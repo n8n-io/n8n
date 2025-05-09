@@ -3,13 +3,14 @@ import {
 	ForgotPasswordRequestDto,
 	ResolvePasswordTokenQueryDto,
 } from '@n8n/api-types';
+import { Body, Get, Post, Query, RestController } from '@n8n/decorators';
+import { hasGlobalScope } from '@n8n/permissions';
 import { Response } from 'express';
 import { Logger } from 'n8n-core';
 
 import { AuthService } from '@/auth/auth.service';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { UserRepository } from '@/databases/repositories/user.repository';
-import { Body, Get, Post, Query, RestController } from '@/decorators';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
@@ -62,18 +63,23 @@ export class PasswordResetController {
 
 		// User should just be able to reset password if one is already present
 		const user = await this.userRepository.findNonShellUser(email);
+		if (!user) {
+			this.logger.debug('No user found in the system');
+			return;
+		}
 
-		if (!user?.isOwner && !this.license.isWithinUsersLimit()) {
+		if (user.role !== 'global:owner' && !this.license.isWithinUsersLimit()) {
 			this.logger.debug(
 				'Request to send password reset email failed because the user limit was reached',
 			);
 			throw new ForbiddenError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
 		}
+
 		if (
 			isSamlCurrentAuthenticationMethod() &&
 			!(
-				user?.hasGlobalScope('user:resetPassword') === true ||
-				user?.settings?.allowSSOManualLogin === true
+				user &&
+				(hasGlobalScope(user, 'user:resetPassword') || user.settings?.allowSSOManualLogin === true)
 			)
 		) {
 			this.logger.debug(
@@ -84,8 +90,8 @@ export class PasswordResetController {
 			);
 		}
 
-		const ldapIdentity = user?.authIdentities?.find((i) => i.providerType === 'ldap');
-		if (!user?.password || (ldapIdentity && user.disabled)) {
+		const ldapIdentity = user.authIdentities?.find((i) => i.providerType === 'ldap');
+		if (!user.password || (ldapIdentity && user.disabled)) {
 			this.logger.debug(
 				'Request to send password reset email failed because no user was found for the provided email',
 				{ invalidEmail: email },
@@ -140,7 +146,7 @@ export class PasswordResetController {
 		const user = await this.authService.resolvePasswordResetToken(token);
 		if (!user) throw new NotFoundError('');
 
-		if (!user?.isOwner && !this.license.isWithinUsersLimit()) {
+		if (user.role !== 'global:owner' && !this.license.isWithinUsersLimit()) {
 			this.logger.debug(
 				'Request to resolve password token failed because the user limit was reached',
 				{ userId: user.id },

@@ -1,6 +1,5 @@
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import nock from 'nock';
-
-import { testWorkflows } from '@test/nodes/Helpers';
 
 const API_RESPONSE = {
 	ok: true,
@@ -13,6 +12,7 @@ describe('Test SlackV2, message => getPermalink', () => {
 		.get('/api/chat.getPermalink?channel=C08514ZPKB8&message_ts=1734322671.726339')
 		.reply(200, API_RESPONSE);
 
-	const workflows = ['nodes/Slack/test/v2/node/message/getPermalink.workflow.json'];
-	testWorkflows(workflows);
+	new NodeTestHarness().setupTests({
+		workflowFiles: ['getPermalink.workflow.json'],
+	});
 });

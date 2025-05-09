@@ -148,9 +148,19 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 	const setProjectNavActiveIdByWorkflowHomeProject = async (
 		homeProject?: IWorkflowDb['homeProject'],
 	) => {
+		// Handle personal projects
 		if (homeProject?.type === ProjectTypes.Personal) {
-			projectNavActiveId.value = 'home';
+			const isOwnPersonalProject = personalProject.value?.id === homeProject?.id;
+			// If it's current user's personal project, set it as current project
+			if (isOwnPersonalProject) {
+				projectNavActiveId.value = homeProject?.id ?? null;
+				currentProject.value = personalProject.value;
+			} else {
+				// Else default to overview page
+				projectNavActiveId.value = 'home';
+			}
 		} else {
+			// Handle team projects
 			projectNavActiveId.value = homeProject?.id ?? null;
 			if (homeProject?.id && !currentProjectId.value) {
 				await getProject(homeProject?.id);
@@ -186,6 +196,11 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 
 			if (newRoute?.path?.includes('home')) {
 				projectNavActiveId.value = 'home';
+				setCurrentProject(null);
+			}
+
+			if (newRoute?.path?.includes('shared')) {
+				projectNavActiveId.value = 'shared';
 				setCurrentProject(null);
 			}
 
