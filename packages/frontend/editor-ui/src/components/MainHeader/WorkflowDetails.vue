@@ -6,11 +6,11 @@ import {
 	MODAL_CONFIRM,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	SOURCE_CONTROL_PUSH_MODAL_KEY,
-	VALID_WORKFLOW_IMPORT_URL_REGEX,
 	VIEWS,
 	WORKFLOW_MENU_ACTIONS,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_SHARE_MODAL_KEY,
+	IMPORT_WORKFLOW_URL_MODAL_KEY,
 } from '@/constants';
 import ShortenName from '@/components/ShortenName.vue';
 import WorkflowTagsContainer from '@/components/WorkflowTagsContainer.vue';
@@ -476,24 +476,7 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.IMPORT_FROM_URL: {
-			try {
-				const promptResponse = await message.prompt(
-					locale.baseText('mainSidebar.prompt.workflowUrl') + ':',
-					locale.baseText('mainSidebar.prompt.importWorkflowFromUrl') + ':',
-					{
-						confirmButtonText: locale.baseText('mainSidebar.prompt.import'),
-						cancelButtonText: locale.baseText('mainSidebar.prompt.cancel'),
-						inputErrorMessage: locale.baseText('mainSidebar.prompt.invalidUrl'),
-						inputPattern: VALID_WORKFLOW_IMPORT_URL_REGEX,
-					},
-				);
-
-				if (promptResponse.action === 'cancel') {
-					return;
-				}
-
-				nodeViewEventBus.emit('importWorkflowUrl', { url: promptResponse.value });
-			} catch (e) {}
+			uiStore.openModal(IMPORT_WORKFLOW_URL_MODAL_KEY);
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.IMPORT_FROM_FILE: {
