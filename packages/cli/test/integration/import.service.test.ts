@@ -3,12 +3,12 @@ import type { User } from '@n8n/db';
 import { TagEntity } from '@n8n/db';
 import { CredentialsRepository } from '@n8n/db';
 import { TagRepository } from '@n8n/db';
+import { SharedWorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type { INode } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { ImportService } from '@/services/import.service';
 

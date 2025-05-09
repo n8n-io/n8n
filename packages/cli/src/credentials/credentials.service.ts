@@ -5,6 +5,7 @@ import {
 	SharedCredentials,
 	CredentialsRepository,
 	ProjectRepository,
+	SharedCredentialsRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
@@ -27,7 +28,6 @@ import { CREDENTIAL_EMPTY_VALUE, deepCopy, NodeHelpers, UnexpectedError } from '
 import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
 import { CredentialTypes } from '@/credential-types';
 import { createCredentialsFromCredentialsEntity } from '@/credentials-helper';
-import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import * as Db from '@/db';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';

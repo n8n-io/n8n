@@ -1,9 +1,9 @@
 import { CredentialsEntity } from '@n8n/db';
 import { CredentialsRepository } from '@n8n/db';
+import { SharedWorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { Telemetry } from '@/telemetry';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';

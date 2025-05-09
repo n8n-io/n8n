@@ -1,8 +1,8 @@
+import { SharedWorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { Telemetry } from '@/telemetry';

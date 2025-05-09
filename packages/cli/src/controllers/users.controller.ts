@@ -1,6 +1,13 @@
 import { RoleChangeRequestDto, SettingsUpdateRequestDto } from '@n8n/api-types';
 import type { PublicUser } from '@n8n/db';
-import { Project, User, AuthIdentity, ProjectRepository } from '@n8n/db';
+import {
+	Project,
+	User,
+	AuthIdentity,
+	ProjectRepository,
+	SharedCredentialsRepository,
+	SharedWorkflowRepository,
+} from '@n8n/db';
 import {
 	GlobalScope,
 	Delete,
@@ -16,8 +23,6 @@ import { Logger } from 'n8n-core';
 
 import { AuthService } from '@/auth/auth.service';
 import { CredentialsService } from '@/credentials/credentials.service';
-import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';

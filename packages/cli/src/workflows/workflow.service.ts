@@ -1,6 +1,11 @@
 import { GlobalConfig } from '@n8n/config';
 import type { User, WorkflowEntity, ListQueryDb } from '@n8n/db';
-import { SharedWorkflow, ExecutionRepository, WorkflowTagMappingRepository } from '@n8n/db';
+import {
+	SharedWorkflow,
+	ExecutionRepository,
+	WorkflowTagMappingRepository,
+	SharedWorkflowRepository,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
@@ -16,7 +21,6 @@ import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import config from '@/config';
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import type { WorkflowFolderUnionFull } from '@/databases/repositories/workflow.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
