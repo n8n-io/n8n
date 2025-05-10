@@ -1,3 +1,4 @@
+import type { LicenseState } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { DateTime } from 'luxon';
@@ -38,12 +39,21 @@ describe('InsightsPruningService', () => {
 	let insightsConfig: InsightsConfig;
 	let insightsByPeriodRepository: InsightsByPeriodRepository;
 	let insightsPruningService: InsightsPruningService;
+	let licenseState: LicenseState;
 	beforeAll(async () => {
 		insightsConfig = Container.get(InsightsConfig);
 		insightsConfig.maxAgeDays = 10;
 		insightsConfig.pruneCheckIntervalHours = 1;
-		insightsPruningService = Container.get(InsightsPruningService);
 		insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
+		licenseState = mock<LicenseState>({
+			getInsightsRetentionMaxAge: () => insightsConfig.maxAgeDays,
+		});
+		insightsPruningService = new InsightsPruningService(
+			insightsByPeriodRepository,
+			insightsConfig,
+			licenseState,
+			mockLogger(),
+		);
 	});
 
 	test('old insights get pruned successfully', async () => {
@@ -90,6 +100,58 @@ describe('InsightsPruningService', () => {
 		expect(await insightsByPeriodRepository.count()).toBe(1);
 	});
 
+	test.each<{ config: number; license: number; result: number }>([
+		{
+			config: -1,
+			license: -1,
+			result: Number.MAX_SAFE_INTEGER,
+		},
+		{
+			config: -1,
+			license: 5,
+			result: 5,
+		},
+		{
+			config: 5,
+			license: -1,
+			result: 5,
+		},
+		{
+			config: 5,
+			license: 10,
+			result: 5,
+		},
+		{
+			config: 10,
+			license: 5,
+			result: 5,
+		},
+	])(
+		'pruningMaxAgeInDays is minimal age between license and config max age',
+		async ({ config, license, result }) => {
+			// ARRANGE
+			const licenseState = mock<LicenseState>({
+				getInsightsRetentionMaxAge() {
+					return license;
+				},
+			});
+			const insightsPruningService = new InsightsPruningService(
+				insightsByPeriodRepository,
+				mock<InsightsConfig>({
+					maxAgeDays: config,
+				}),
+				licenseState,
+				mockLogger(),
+			);
+
+			// ACT
+			const maxAge = insightsPruningService.pruningMaxAgeInDays;
+
+			// ASSERT
+			expect(maxAge).toBe(result);
+		},
+	);
+
 	describe('pruning scheduling', () => {
 		beforeEach(() => {
 			jest.useFakeTimers();
@@ -111,6 +173,7 @@ describe('InsightsPruningService', () => {
 			const insightsPruningService = new InsightsPruningService(
 				insightsByPeriodRepository,
 				insightsConfig,
+				licenseState,
 				mockLogger(),
 			);
 			const pruneSpy = jest.spyOn(insightsPruningService, 'pruneInsights');
@@ -134,6 +197,7 @@ describe('InsightsPruningService', () => {
 			const insightsPruningService = new InsightsPruningService(
 				insightsByPeriodRepository,
 				insightsConfig,
+				licenseState,
 				mockLogger(),
 			);
 
