@@ -3,6 +3,7 @@ import type { IUpdateInformation, InputSize } from '@/Interface';
 import ParameterInput from '@/components/ParameterInput.vue';
 import InputHint from '@/components/ParameterInputHint.vue';
 import {
+	isResourceLocatorValue,
 	type IDataObject,
 	type INodeProperties,
 	type INodePropertyMode,
@@ -18,7 +19,6 @@ import { isValueExpression, parseResourceMapperFieldName } from '@/utils/nodeTyp
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { computed, useTemplateRef } from 'vue';
-import { isResourceLocatorValue } from '@/utils/typeGuards';
 
 type Props = {
 	parameter: INodeProperties;
