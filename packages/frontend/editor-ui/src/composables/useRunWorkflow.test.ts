@@ -822,4 +822,37 @@ describe('useRunWorkflow({ router })', () => {
 			await waitFor(() => expect(markStoppedSpy).toHaveBeenCalled());
 		});
 	});
+
+	describe('sortNodesByYPosition()', () => {
+		const getNodeUi = (name: string, position: [number, number]) => {
+			return {
+				name,
+				position,
+				type: 'n8n-nodes-base.test',
+				typeVersion: 1,
+				id: name,
+				parameters: {},
+			};
+		};
+		it('should sort nodes by Y position in ascending order', () => {
+			const { sortNodesByYPosition } = useRunWorkflow({ router });
+
+			const topNode = 'topNode';
+			const middleNode = 'middleNode';
+			const bottomNode = 'bottomNode';
+
+			vi.mocked(workflowsStore.getNodeByName).mockImplementation((name) => {
+				if (name === topNode) return getNodeUi(topNode, [100, 50]);
+				if (name === middleNode) return getNodeUi(middleNode, [200, 200]);
+				if (name === bottomNode) return getNodeUi(bottomNode, [150, 350]);
+				return null;
+			});
+
+			// Test with different order of input nodes
+			const result = sortNodesByYPosition([bottomNode, topNode, middleNode]);
+
+			// Should be sorted by Y position (top to bottom)
+			expect(result).toEqual([topNode, middleNode, bottomNode]);
+		});
+	});
 });
