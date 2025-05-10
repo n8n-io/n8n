@@ -142,6 +142,9 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 	const nodeTypesStore = useNodeTypesStore();
 	const templatesStore = useTemplatesStore();
 
+	const evaluationNodeStore = nodeTypesStore.getNodeType('n8n-nodes-base.evaluation');
+	const evaluationNode = evaluationNodeStore ? [getNodeView(evaluationNodeStore)] : [];
+
 	const chainNodes = getAiNodesBySubcategory(nodeTypesStore.allLatestNodeTypes, AI_CATEGORY_CHAINS);
 	const agentNodes = getAiNodesBySubcategory(nodeTypesStore.allLatestNodeTypes, AI_CATEGORY_AGENTS);
 
@@ -177,6 +180,7 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 			...agentNodes,
 			...chainNodes,
 			...transformNode,
+			...evaluationNode,
 			{
 				key: AI_OTHERS_NODE_CREATOR_VIEW,
 				type: 'view',
@@ -337,6 +341,18 @@ export function TriggerView() {
 		title: i18n.baseText('nodeCreator.triggerHelperPanel.selectATrigger'),
 		subtitle: i18n.baseText('nodeCreator.triggerHelperPanel.selectATriggerDescription'),
 		items: [
+			{
+				key: 'n8n-nodes-base.evaluationTrigger',
+				type: 'node',
+				category: [CORE_NODES_CATEGORY],
+				properties: {
+					group: [],
+					name: 'n8n-nodes-base.evaluationTrigger',
+					displayName: 'Evaluation Trigger', // i18n.baseText('nodeCreator.triggerHelperPanel.manualTriggerDisplayName'),
+					description: 'Run to start evaluation', // i18n.baseText('nodeCreator.triggerHelperPanel.manualTriggerDescription'),
+					icon: 'fa:check-double',
+				},
+			},
 			{
 				key: MANUAL_TRIGGER_NODE_TYPE,
 				type: 'node',
