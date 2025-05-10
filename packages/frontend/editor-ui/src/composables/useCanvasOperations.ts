@@ -2007,8 +2007,8 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		workflowsStore.addToWorkflowMetadata({ templateId: `${id}` });
 	}
 
-	function tryToOpenSubworkflowInNewTab(id: string): boolean {
-		const node = workflowsStore.getNodeById(id);
+	function tryToOpenSubworkflowInNewTab(nodeId: string): boolean {
+		const node = workflowsStore.getNodeById(nodeId);
 		if (!node) return false;
 		const subWorkflowId = nodeTypesStore.getSubworkflowId(node);
 		if (!subWorkflowId) return false;
