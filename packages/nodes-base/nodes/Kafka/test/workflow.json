@@ -5,8 +5,8 @@
 			"parameters": {},
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
-			"position": [0, -100],
-			"id": "d0594d58-ebb3-4dc0-a241-3f2531212fd7",
+			"position": [-940, 240],
+			"id": "b404bc73-a3fb-456b-8be1-9abf00c46ed4",
 			"name": "When clicking ‘Test workflow’"
 		},
 		{
@@ -30,8 +30,8 @@
 			},
 			"type": "n8n-nodes-base.kafka",
 			"typeVersion": 1,
-			"position": [440, -200],
-			"id": "f29d6af7-9ded-421a-8ada-cea80eac9464",
+			"position": [-500, 40],
+			"id": "9743513a-fcd1-46f3-9bcd-445d2d1e4652",
 			"name": "Send Input Data",
 			"credentials": {
 				"kafka": {
@@ -54,8 +54,8 @@
 			},
 			"type": "n8n-nodes-base.kafka",
 			"typeVersion": 1,
-			"position": [440, 0],
-			"id": "d851834f-6b97-445d-8e69-cc2e873bdf80",
+			"position": [-500, 240],
+			"id": "f124b387-82f2-4670-bcbf-fc6f325927f1",
 			"name": "Schema Registry",
 			"credentials": {
 				"kafka": {
@@ -70,9 +70,35 @@
 			},
 			"type": "n8n-nodes-base.code",
 			"typeVersion": 2,
-			"position": [220, -100],
-			"id": "50ce815c-cf9a-4d83-8739-c95f9c3d7ec6",
+			"position": [-720, 240],
+			"id": "220b83e3-c9d2-4215-bb3a-a19106e63159",
 			"name": "Test Data"
+		},
+		{
+			"parameters": {
+				"topic": "test-topic",
+				"sendInputData": false,
+				"message": "={{ JSON.stringify({foo: 'bar'}) }}",
+				"jsonParameters": true,
+				"useSchemaRegistry": true,
+				"schemaRegistryUrl": "https://test-kafka-registry.local",
+				"schemaRegistryUsername": "abc",
+				"schemaRegistryPassword": "supersecretkey",
+				"eventName": "test-event-name",
+				"headerParametersJson": "{\n  \"headerKey\": \"headerValue\"\n}",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.kafka",
+			"typeVersion": 1,
+			"position": [-500, 440],
+			"id": "2ea52b64-3cf6-4ba1-9fbb-ddc1b0db05e7",
+			"name": "Schema Registry with auth",
+			"credentials": {
+				"kafka": {
+					"id": "JJBjHkOrIfcj91EX",
+					"name": "Kafka account"
+				}
+			}
 		}
 	],
 	"pinData": {
@@ -84,6 +110,13 @@
 			}
 		],
 		"Schema Registry": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Schema Registry with auth": [
 			{
 				"json": {
 					"success": true
@@ -113,6 +146,11 @@
 					},
 					{
 						"node": "Send Input Data",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Schema Registry with auth",
 						"type": "main",
 						"index": 0
 					}
