@@ -1320,6 +1320,23 @@ describe('GET /projects/:projectId/folders', () => {
 			['Owner Folder 1', 'Owner Folder 2'].sort(),
 		);
 	});
+
+	test('should include workflow count', async () => {
+		const folder = await createFolder(ownerProject, { name: 'Test Folder' });
+		await createWorkflow({ parentFolder: folder, isArchived: false }, ownerProject);
+		await createWorkflow({ parentFolder: folder, isArchived: false }, ownerProject);
+		// Not included in the count
+		await createWorkflow({ parentFolder: folder, isArchived: true }, ownerProject);
+
+		const response = await authOwnerAgent
+			.get(`/projects/${ownerProject.id}/folders`)
+			.query({ filter: '{ "name": "test" }' })
+			.expect(200);
+
+		expect(response.body.count).toBe(1);
+		expect(response.body.data).toHaveLength(1);
+		expect(response.body.data[0].workflowCount).toEqual(2);
+	});
 });
 
 describe('GET /projects/:projectId/folders/content', () => {
@@ -1371,6 +1388,11 @@ describe('GET /projects/:projectId/folders/content', () => {
 		await createWorkflow({ parentFolder: personalFolder1 }, ownerProject);
 		await createWorkflow({ parentFolder: personalProjectSubfolder1 }, ownerProject);
 		await createWorkflow({ parentFolder: personalProjectSubfolder2 }, ownerProject);
+		// Not included in the count
+		await createWorkflow(
+			{ parentFolder: personalProjectSubfolder2, isArchived: true },
+			ownerProject,
+		);
 
 		const response = await authOwnerAgent
 			.get(`/projects/${ownerProject.id}/folders/${personalFolder1.id}/content`)

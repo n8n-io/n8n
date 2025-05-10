@@ -25,7 +25,6 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { AuthenticatedRequest } from '@/requests';
-import type { ListQuery } from '@/requests';
 import { FolderService } from '@/services/folder.service';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
@@ -124,10 +123,7 @@ export class ProjectController {
 	) {
 		const { projectId } = req.params;
 
-		const [data, count] = await this.folderService.getManyAndCount(
-			projectId,
-			payload as ListQuery.Options,
-		);
+		const [data, count] = await this.folderService.getManyAndCount(projectId, payload);
 
 		res.json({ count, data });
 	}

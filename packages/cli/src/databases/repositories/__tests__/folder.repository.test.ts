@@ -242,6 +242,83 @@ describe('FolderRepository', () => {
 				expect(folders[0].parentFolder?.id).toBe(parentFolder.id);
 				expect(folders[0].tags[0].name).toBe('important');
 			});
+
+			describe('workflowCount', () => {
+				let testFolder: Folder;
+
+				beforeEach(async () => {
+					const parentFolder = await createFolder(project, { name: 'Parent' });
+					testFolder = await createFolder(project, { name: 'Test Folder', parentFolder });
+
+					await createWorkflow({ parentFolder: testFolder, isArchived: false });
+					await createWorkflow({ parentFolder: testFolder, isArchived: false });
+					await createWorkflow({ parentFolder: testFolder, isArchived: true });
+					await createWorkflow({ parentFolder: testFolder, isArchived: true });
+					await createWorkflow({ parentFolder: testFolder, isArchived: true });
+				});
+
+				it('should include archived workflows in the workflow count by default', async () => {
+					const [folders] = await folderRepository.getManyAndCount({
+						select: { workflowCount: true },
+					});
+
+					expect(folders).toHaveLength(2);
+					expect(folders).toEqual(
+						expect.arrayContaining([
+							expect.objectContaining({
+								id: testFolder.id,
+								workflowCount: 5,
+							}),
+							expect.objectContaining({
+								id: testFolder.parentFolderId,
+								workflowCount: 0,
+							}),
+						]),
+					);
+				});
+
+				it('should include only archived workflows in the workflow count if filtered', async () => {
+					const [folders] = await folderRepository.getManyAndCount({
+						select: { workflowCount: true },
+						filter: { isArchived: true },
+					});
+
+					expect(folders).toHaveLength(2);
+					expect(folders).toEqual(
+						expect.arrayContaining([
+							expect.objectContaining({
+								id: testFolder.id,
+								workflowCount: 3,
+							}),
+							expect.objectContaining({
+								id: testFolder.parentFolderId,
+								workflowCount: 0,
+							}),
+						]),
+					);
+				});
+
+				it('should return only unarchived workflows in the workflow count if filtered', async () => {
+					const [folders] = await folderRepository.getManyAndCount({
+						select: { workflowCount: true },
+						filter: { isArchived: false },
+					});
+
+					expect(folders).toHaveLength(2);
+					expect(folders).toEqual(
+						expect.arrayContaining([
+							expect.objectContaining({
+								id: testFolder.id,
+								workflowCount: 2,
+							}),
+							expect.objectContaining({
+								id: testFolder.parentFolderId,
+								workflowCount: 0,
+							}),
+						]),
+					);
+				});
+			});
 		});
 
 		describe('select', () => {

@@ -253,7 +253,8 @@ export class FolderService {
 		const workflowCountQuery = this.workflowRepository
 			.createQueryBuilder('workflow')
 			.select('COUNT(workflow.id)', 'count')
-			.where((qb) => {
+			.where('workflow.isArchived = :isArchived', { isArchived: false })
+			.andWhere((qb) => {
 				const folderQuery = qb.subQuery().from('folder_path', 'fp').select('fp.id').getQuery();
 				return `workflow.parentFolderId IN ${folderQuery}`;
 			})
@@ -279,7 +280,7 @@ export class FolderService {
 	}
 
 	async getManyAndCount(projectId: string, options: ListQuery.Options) {
-		options.filter = { ...options.filter, projectId };
+		options.filter = { ...options.filter, projectId, isArchived: false };
 		return await this.folderRepository.getManyAndCount(options);
 	}
 }
