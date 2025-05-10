@@ -1,6 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 
 import { ChatOpenAI, type ClientOptions } from '@langchain/openai';
+import { HttpsProxyAgent } from 'https-proxy-agent';
 import {
 	NodeConnectionTypes,
 	type INodeType,
@@ -351,6 +352,14 @@ export class LmChatOpenAi implements INodeType {
 			configuration.baseURL = options.baseURL;
 		} else if (credentials.url) {
 			configuration.baseURL = credentials.url as string;
+		}
+
+		// set ODE_TLS_REJECT_UNAUTHORIZED to '0' value in order to skip SSL trust issue(i.e. self cert)
+		// This works by setting the value in terminal as following:
+		// export https_proxy=http://127.0.0.1:9091 NODE_TLS_REJECT_UNAUTHORIZED=0
+		const httpProxy = process.env.http_proxy ?? process.env.https_proxy;
+		if (httpProxy) {
+			configuration.httpAgent = new HttpsProxyAgent(httpProxy);
 		}
 
 		// Extra options to send to OpenAI, that are not directly supported by LangChain
