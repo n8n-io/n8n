@@ -51,5 +51,26 @@ export class BitwardenApi implements ICredentialType {
 				},
 			},
 		},
+		{
+			displayName: 'Region',
+			name: 'region',
+			type: 'options',
+			default: 'bitwarden.com',
+			options: [
+				{
+					name: 'United States',
+					value: 'bitwarden.com',
+				},
+				{
+					name: 'European Union',
+					value: 'bitwarden.eu',
+				},
+			],
+			displayOptions: {
+				show: {
+					environment: ['cloudHosted'],
+				},
+			},
+		},
 	];
 }
