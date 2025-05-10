@@ -4,7 +4,7 @@ import type {
 	SourceControlledFile,
 } from '@n8n/api-types';
 import type { Variables, TagEntity, User } from '@n8n/db';
-import { FolderRepository } from '@n8n/db';
+import { FolderRepository, TagRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { writeFileSync } from 'fs';
 import { Logger } from 'n8n-core';
@@ -12,7 +12,6 @@ import { UnexpectedError, UserError } from 'n8n-workflow';
 import path from 'path';
 import type { PushResult } from 'simple-git';
 
-import { TagRepository } from '@/databases/repositories/tag.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { EventService } from '@/events/event.service';
 

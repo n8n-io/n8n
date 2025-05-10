@@ -3,13 +3,14 @@ import type { Project } from '@n8n/db';
 import type { TagEntity } from '@n8n/db';
 import type { User } from '@n8n/db';
 import { ProjectRepository } from '@n8n/db';
+import { WorkflowHistoryRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { InstanceSettings } from 'n8n-core';
 import type { INode } from 'n8n-workflow';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { STARTING_NODES } from '@/constants';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
-import { WorkflowHistoryRepository } from '@/databases/repositories/workflow-history.repository';
 import { ExecutionService } from '@/executions/execution.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { Telemetry } from '@/telemetry';
@@ -42,6 +43,7 @@ mockInstance(ExecutionService);
 
 beforeAll(async () => {
 	owner = await createOwnerWithApiKey();
+	Container.get(InstanceSettings).markAsLeader();
 	ownerPersonalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
 		owner.id,
 	);
