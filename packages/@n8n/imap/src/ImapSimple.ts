@@ -136,7 +136,7 @@ export class ImapSimple extends EventEmitter {
 
 				const data = result.parts[0].body as string;
 				const encoding = part.encoding.toUpperCase();
-				resolve(PartData.fromData(data, encoding));
+				resolve(PartData.fromData(data, encoding, part.params?.charset));
 			};
 
 			const fetchOnError = (error: Error) => {
