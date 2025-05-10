@@ -7,6 +7,12 @@ import type {
 	FilterValue,
 } from './Interfaces';
 
+export function isResourceLocatorValue(value: unknown): value is INodeParameterResourceLocator {
+	return Boolean(
+		typeof value === 'object' && value && 'mode' in value && 'value' in value && '__rl' in value,
+	);
+}
+
 export const isINodeProperties = (
 	item: INodePropertyOptions | INodeProperties | INodePropertyCollection,
 ): item is INodeProperties => 'name' in item && 'type' in item && !('value' in item);

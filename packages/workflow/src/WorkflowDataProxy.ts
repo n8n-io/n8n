@@ -22,24 +22,18 @@ import type {
 	ITaskData,
 	IWorkflowDataProxyAdditionalKeys,
 	IWorkflowDataProxyData,
-	INodeParameterResourceLocator,
 	NodeParameterValueType,
 	WorkflowExecuteMode,
 	ProxyInput,
 	INode,
 } from './Interfaces';
 import * as NodeHelpers from './NodeHelpers';
+import { isResourceLocatorValue } from './type-guards';
 import { deepCopy, isObjectEmpty } from './utils';
 import type { Workflow } from './Workflow';
 import type { EnvProviderState } from './WorkflowDataProxyEnvProvider';
 import { createEnvProvider, createEnvProviderState } from './WorkflowDataProxyEnvProvider';
 import { getPinDataIfManualExecution } from './WorkflowDataProxyHelpers';
-
-export function isResourceLocatorValue(value: unknown): value is INodeParameterResourceLocator {
-	return Boolean(
-		typeof value === 'object' && value && 'mode' in value && 'value' in value && '__rl' in value,
-	);
-}
 
 const isScriptingNode = (nodeName: string, workflow: Workflow) => {
 	const node = workflow.getNode(nodeName);
