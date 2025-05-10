@@ -6,7 +6,7 @@ import type {
 } from '@n8n/api-types';
 import * as nodeTypesApi from '@/api/nodeTypes';
 import { HTTP_REQUEST_NODE_TYPE, STORES, CREDENTIAL_ONLY_HTTP_NODE_VERSION } from '@/constants';
-import type { INodeUi, NodeTypesByTypeNameAndVersion } from '@/Interface';
+import type { NodeTypesByTypeNameAndVersion } from '@/Interface';
 import { addHeaders, addNodeTranslation } from '@/plugins/i18n';
 import { omit } from '@/utils/typesUtils';
 import type {
@@ -18,12 +18,7 @@ import type {
 	Workflow,
 	NodeConnectionType,
 } from 'n8n-workflow';
-import {
-	EXECUTE_WORKFLOW_NODE_TYPE,
-	isResourceLocatorValue,
-	NodeConnectionTypes,
-	NodeHelpers,
-} from 'n8n-workflow';
+import { NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { useCredentialsStore } from './credentials.store';
 import { useRootStore } from './root.store';
