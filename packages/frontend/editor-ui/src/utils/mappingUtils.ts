@@ -1,6 +1,6 @@
 import type { INodeProperties, NodeParameterValueType } from 'n8n-workflow';
-import { isResourceLocatorValue } from 'n8n-workflow';
 import { isExpression } from './expressions';
+import { isResourceLocatorValue } from './typeGuards';
 
 const validJsIdNameRegex = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/;
 

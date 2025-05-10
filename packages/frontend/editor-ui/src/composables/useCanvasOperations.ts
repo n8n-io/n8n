@@ -2010,7 +2010,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 	function tryToOpenSubworkflowInNewTab(nodeId: string): boolean {
 		const node = workflowsStore.getNodeById(nodeId);
 		if (!node) return false;
-		const subWorkflowId = nodeTypesStore.getSubworkflowId(node);
+		const subWorkflowId = NodeHelpers.getSubworkflowId(node);
 		if (!subWorkflowId) return false;
 		window.open(`${rootStore.baseUrl}workflow/${subWorkflowId}`, '_blank');
 		return true;

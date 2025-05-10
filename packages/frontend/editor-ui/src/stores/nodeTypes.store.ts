@@ -333,16 +333,6 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		return await nodeTypesApi.getNodeParameterActionResult(rootStore.restApiContext, sendData);
 	};
 
-	function getSubworkflowId(node: INodeUi): string | undefined {
-		if (
-			node &&
-			node.type === EXECUTE_WORKFLOW_NODE_TYPE &&
-			isResourceLocatorValue(node.parameters.workflowId)
-		) {
-			return node.parameters.workflowId.value as string;
-		}
-		return;
-	}
 	// #endregion
 
 	return {
@@ -373,6 +363,5 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		getNodeTranslationHeaders,
 		setNodeTypes,
 		removeNodeTypes,
-		getSubworkflowId,
 	};
 });
