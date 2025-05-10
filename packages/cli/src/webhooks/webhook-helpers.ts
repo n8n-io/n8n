@@ -44,11 +44,9 @@ import {
 	UnexpectedError,
 	WAIT_NODE_TYPE,
 } from 'n8n-workflow';
-import assert from 'node:assert';
 import { finished } from 'stream/promises';
 
 import { ActiveExecutions } from '@/active-executions';
-import config from '@/config';
 import { MCP_TRIGGER_NODE_TYPE } from '@/constants';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -636,15 +634,6 @@ export async function executeWebhook(
 				executionId,
 				workflow,
 			);
-		}
-
-		if (
-			config.getEnv('executions.mode') === 'queue' &&
-			process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true' &&
-			runData.executionMode === 'manual'
-		) {
-			assert(runData.executionData);
-			runData.executionData.isTestWebhook = true;
 		}
 
 		// Start now to run the workflow

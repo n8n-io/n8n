@@ -200,27 +200,6 @@ describe('WaitingForms', () => {
 			expect(result).toBe('Form2');
 		});
 
-		it('should mark as test form webhook when execution mode is manual', async () => {
-			jest
-				// @ts-expect-error Protected method
-				.spyOn(waitingForms, 'getWebhookExecutionData')
-				// @ts-expect-error Protected method
-				.mockResolvedValue(mock<IWebhookResponseCallbackData>());
-
-			const execution = mock<IExecutionResponse>({
-				finished: false,
-				mode: 'manual',
-				data: {
-					resultData: { lastNodeExecuted: 'someNode', error: undefined },
-				},
-			});
-			executionRepository.findSingleExecution.mockResolvedValue(execution);
-
-			await waitingForms.executeWebhook(mock<WaitingWebhookRequest>(), mock<express.Response>());
-
-			expect(execution.data.isTestWebhook).toBe(true);
-		});
-
 		it('should return status of execution if suffix is WAITING_FORMS_EXECUTION_STATUS', async () => {
 			const execution = mock<IExecutionResponse>({
 				status: 'success',
