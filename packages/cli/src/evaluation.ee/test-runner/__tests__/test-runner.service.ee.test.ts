@@ -113,7 +113,7 @@ function mockExecutionData() {
 		data: {
 			resultData: {
 				runData: {
-					'When clicking ‘Test workflow’': mock<ITaskData[]>(),
+					'When clicking ‘Execute workflow’': mock<ITaskData[]>(),
 				},
 				// error is an optional prop, but jest-mock-extended will mock it by default,
 				// which affects the code logic. So, we need to explicitly set it to undefined.
@@ -395,8 +395,9 @@ describe('TestRunnerService', () => {
 			expect.objectContaining({
 				executionMode: 'evaluation',
 				pinData: {
-					'When clicking ‘Test workflow’':
-						executionDataJson.resultData.runData['When clicking ‘Test workflow’'][0].data.main[0],
+					'When clicking ‘Execute workflow’':
+						executionDataJson.resultData.runData['When clicking ‘Execute workflow’'][0].data
+							.main[0],
 				},
 				workflowData: expect.objectContaining({
 					id: 'workflow-under-test-id',
@@ -677,14 +678,15 @@ describe('TestRunnerService', () => {
 			expect.objectContaining({
 				executionMode: 'evaluation',
 				pinData: {
-					'When clicking ‘Test workflow’':
-						executionDataJson.resultData.runData['When clicking ‘Test workflow’'][0].data.main[0],
+					'When clicking ‘Execute workflow’':
+						executionDataJson.resultData.runData['When clicking ‘Execute workflow’'][0].data
+							.main[0],
 				},
 				workflowData: expect.objectContaining({
 					id: 'workflow-under-test-id',
 				}),
 				triggerToStartFrom: expect.objectContaining({
-					name: 'When clicking ‘Test workflow’',
+					name: 'When clicking ‘Execute workflow’',
 				}),
 			}),
 		);
@@ -714,7 +716,7 @@ describe('TestRunnerService', () => {
 		expect(startNodesData).toEqual({
 			startNodes: expect.arrayContaining([expect.objectContaining({ name: 'NoOp' })]),
 			triggerToStartFrom: expect.objectContaining({
-				name: 'When clicking ‘Test workflow’',
+				name: 'When clicking ‘Execute workflow’',
 			}),
 		});
 	});
@@ -996,8 +998,9 @@ describe('TestRunnerService', () => {
 			expect.objectContaining({
 				executionMode: 'evaluation',
 				pinData: {
-					'When clicking ‘Test workflow’':
-						executionDataJson.resultData.runData['When clicking ‘Test workflow’'][0].data.main[0],
+					'When clicking ‘Execute workflow’':
+						executionDataJson.resultData.runData['When clicking ‘Execute workflow’'][0].data
+							.main[0],
 				},
 				workflowData: expect.objectContaining({
 					id: 'workflow-under-test-id',
@@ -1104,8 +1107,9 @@ describe('TestRunnerService', () => {
 			expect.objectContaining({
 				executionMode: 'evaluation',
 				pinData: {
-					'When clicking ‘Test workflow’':
-						executionDataJson.resultData.runData['When clicking ‘Test workflow’'][0].data.main[0],
+					'When clicking ‘Execute workflow’':
+						executionDataJson.resultData.runData['When clicking ‘Execute workflow’'][0].data
+							.main[0],
 				},
 				workflowData: expect.objectContaining({
 					id: 'workflow-under-test-id',

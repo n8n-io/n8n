@@ -23,13 +23,13 @@ describe('getPastExecutionStartNode', () => {
 	test('should return the start node of the past execution', () => {
 		const startNode = getPastExecutionTriggerNode(executionDataJson);
 
-		expect(startNode).toEqual('When clicking ‘Test workflow’');
+		expect(startNode).toEqual('When clicking ‘Execute workflow’');
 	});
 
 	test('should return the start node of the past execution with multiple triggers', () => {
 		const startNode = getPastExecutionTriggerNode(executionDataMultipleTriggersJson);
 
-		expect(startNode).toEqual('When clicking ‘Test workflow’');
+		expect(startNode).toEqual('When clicking ‘Execute workflow’');
 	});
 
 	test('should return the start node of the past execution with multiple triggers - chat trigger', () => {
