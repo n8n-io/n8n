@@ -55,10 +55,12 @@ const props = withDefaults(
 		returnObject?: boolean;
 
 		itemSelectable?: boolean | DeepKeys<T> | ((row: T) => boolean);
+		pageSizes?: number[];
 	}>(),
 	{
 		itemSelectable: undefined,
 		itemValue: 'id',
+		pageSizes: () => [10, 25, 50, 100],
 	},
 );
 
@@ -217,6 +219,8 @@ const pagination = computed<PaginationState>({
 		itemsPerPage.value = newValue.pageSize;
 	},
 });
+
+const showPagination = computed(() => props.itemsLength > Math.min(...props.pageSizes));
 
 const sortBy = defineModel<SortingState>('sort-by', { default: [], required: false });
 
@@ -448,11 +452,11 @@ const table = useVueTable({
 				</table>
 			</div>
 		</div>
-		<div class="table-pagination" data-test-id="pagination">
+		<div v-if="showPagination" class="table-pagination" data-test-id="pagination">
 			<N8nPagination
 				:current-page="page + 1"
 				:page-size="itemsPerPage"
-				:page-sizes="[10, 20, 30, 40]"
+				:page-sizes="pageSizes"
 				layout="prev, pager, next"
 				:total="itemsLength"
 				@update:current-page="page = $event - 1"
@@ -466,7 +470,7 @@ const table = useVueTable({
 					size="small"
 					:teleported="false"
 				>
-					<el-option v-for="item in [10, 20, 30, 40]" :key="item" :label="item" :value="item" />
+					<el-option v-for="item in pageSizes" :key="item" :label="item" :value="item" />
 				</el-select>
 			</div>
 		</div>

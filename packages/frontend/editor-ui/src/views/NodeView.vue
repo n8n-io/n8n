@@ -1849,6 +1849,7 @@ onActivated(async () => {
 });
 
 onDeactivated(() => {
+	uiStore.closeModal(WORKFLOW_SETTINGS_MODAL_KEY);
 	removeUndoRedoEventBindings();
 });
 

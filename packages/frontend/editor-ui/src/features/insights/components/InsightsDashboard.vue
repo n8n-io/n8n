@@ -8,6 +8,7 @@ import { computed, defineAsyncComponent, ref, watch } from 'vue';
 import { TELEMETRY_TIME_RANGE, UNLICENSED_TIME_RANGE } from '../insights.constants';
 import InsightsDateRangeSelect from './InsightsDateRangeSelect.vue';
 import InsightsUpgradeModal from './InsightsUpgradeModal.vue';
+import InsightsCollectingDataMessage from '@/features/insights/components/InsightsCollectingDataMessage.vue';
 
 const InsightsPaywall = defineAsyncComponent(
 	async () => await import('@/features/insights/components/InsightsPaywall.vue'),
@@ -147,6 +148,10 @@ watch(
 				<InsightsPaywall
 					v-if="!insightsStore.isDashboardEnabled"
 					data-test-id="insights-dashboard-unlicensed"
+				/>
+				<InsightsCollectingDataMessage
+					v-else-if="!insightsStore.charts.state.length && !insightsStore.table.state.count"
+					data-test-id="insights-collecting-data-message"
 				/>
 				<div v-else>
 					<div :class="$style.insightsChartWrapper">

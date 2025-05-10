@@ -208,6 +208,9 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 				&.empty {
 					em {
 						color: var(--color-text-lighter);
+						body[data-theme='dark'] & {
+							color: var(--color-text-light);
+						}
 					}
 					small {
 						padding: 0;
