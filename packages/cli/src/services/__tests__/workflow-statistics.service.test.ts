@@ -43,6 +43,7 @@ describe('WorkflowStatisticsService', () => {
 			mock<EntityMetadata>({
 				tableName: 'workflow_statistics',
 			}),
+		driver: { escape: jest.fn((id) => id) },
 	});
 	Object.assign(entityManager, { connection: dataSource });
 
@@ -77,11 +78,10 @@ describe('WorkflowStatisticsService', () => {
 	};
 
 	describe('workflowExecutionCompleted', () => {
-		const rootCountRegex = /"?rootCount"?\s*=\s*(?:"?\w+"?\.)?"?rootCount"?\s*\+\s*1/;
-
 		test.each<WorkflowExecuteMode>(['cli', 'error', 'retry', 'trigger', 'webhook', 'evaluation'])(
 			'should upsert with root executions for execution mode %s',
 			async (mode) => {
+				mockDBCall();
 				// Call the function with a production success result, ensure metrics hook gets called
 				const runData: IRun = {
 					finished: true,
@@ -92,16 +92,20 @@ describe('WorkflowStatisticsService', () => {
 				};
 
 				await workflowStatisticsService.workflowExecutionCompleted(fakeWorkflow, runData);
-				expect(entityManager.query).toHaveBeenCalledWith(
-					expect.stringMatching(rootCountRegex),
-					undefined,
-				);
+				expect(entityManager.query).toHaveReturnedTimes(1);
+				expect(entityManager.query).toHaveBeenNthCalledWith(1, expect.any(String), [
+					1,
+					expect.any(String),
+					'1',
+					1,
+				]);
 			},
 		);
 
 		test.each<WorkflowExecuteMode>(['manual', 'integrated', 'internal'])(
 			'should upsert without root executions for execution mode %s',
 			async (mode) => {
+				mockDBCall();
 				const runData: IRun = {
 					finished: true,
 					status: 'success',
@@ -111,16 +115,20 @@ describe('WorkflowStatisticsService', () => {
 				};
 
 				await workflowStatisticsService.workflowExecutionCompleted(fakeWorkflow, runData);
-				expect(entityManager.query).toHaveBeenCalledWith(
-					expect.not.stringMatching(rootCountRegex),
-					undefined,
-				);
+				expect(entityManager.query).toHaveReturnedTimes(1);
+				expect(entityManager.query).toHaveBeenNthCalledWith(1, expect.any(String), [
+					0,
+					expect.any(String),
+					'1',
+					0,
+				]);
 			},
 		);
 
 		test.each<ExecutionStatus>(['success', 'crashed', 'error'])(
 			'should upsert with root executions for execution status %s',
 			async (status) => {
+				mockDBCall();
 				const runData: IRun = {
 					finished: true,
 					status,
@@ -130,16 +138,20 @@ describe('WorkflowStatisticsService', () => {
 				};
 
 				await workflowStatisticsService.workflowExecutionCompleted(fakeWorkflow, runData);
-				expect(entityManager.query).toHaveBeenCalledWith(
-					expect.stringMatching(rootCountRegex),
-					undefined,
-				);
+				expect(entityManager.query).toHaveReturnedTimes(1);
+				expect(entityManager.query).toHaveBeenNthCalledWith(1, expect.any(String), [
+					1,
+					expect.any(String),
+					'1',
+					1,
+				]);
 			},
 		);
 
 		test.each<ExecutionStatus>(['canceled', 'new', 'running', 'unknown', 'waiting'])(
 			'should upsert without root executions for execution status %s',
 			async (status) => {
+				mockDBCall();
 				const runData: IRun = {
 					finished: true,
 					status,
@@ -149,10 +161,13 @@ describe('WorkflowStatisticsService', () => {
 				};
 
 				await workflowStatisticsService.workflowExecutionCompleted(fakeWorkflow, runData);
-				expect(entityManager.query).toHaveBeenCalledWith(
-					expect.not.stringMatching(rootCountRegex),
-					undefined,
-				);
+				expect(entityManager.query).toHaveReturnedTimes(1);
+				expect(entityManager.query).toHaveBeenNthCalledWith(1, expect.any(String), [
+					0,
+					expect.any(String),
+					'1',
+					0,
+				]);
 			},
 		);
 
@@ -187,6 +202,7 @@ describe('WorkflowStatisticsService', () => {
 		});
 
 		test('should only create metrics for production successes', async () => {
+			mockDBCall();
 			// Call the function with a non production success result, ensure metrics hook is never called
 			const workflow = {
 				id: '1',
