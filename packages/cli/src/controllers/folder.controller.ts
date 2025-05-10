@@ -104,7 +104,7 @@ export class ProjectController {
 		const { projectId, folderId } = req.params;
 
 		try {
-			await this.folderService.deleteFolder(folderId, projectId, payload);
+			await this.folderService.deleteFolder(req.user, folderId, projectId, payload);
 		} catch (e) {
 			if (e instanceof FolderNotFoundError) {
 				throw new NotFoundError(e.message);
