@@ -1,8 +1,7 @@
 import type { MockedNodeItem, TestDefinition } from '@n8n/db';
-import { AnnotationTagRepository } from '@n8n/db';
+import { AnnotationTagRepository, TestDefinitionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import { TestDefinitionRepository } from '@/databases/repositories/test-definition.repository.ee';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { validateEntity } from '@/generic-helpers';

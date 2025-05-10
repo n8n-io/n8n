@@ -2,6 +2,7 @@ import type { SourceControlledFile } from '@n8n/api-types';
 import { CredentialsRepository } from '@n8n/db';
 import { FolderRepository } from '@n8n/db';
 import { ProjectRepository } from '@n8n/db';
+import { SharedCredentialsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { Cipher } from 'n8n-core';
@@ -10,7 +11,6 @@ import * as utils from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import fsp from 'node:fs/promises';
 
-import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import { SourceControlImportService } from '@/environments.ee/source-control/source-control-import.service.ee';
 import type { ExportableCredential } from '@/environments.ee/source-control/types/exportable-credential';

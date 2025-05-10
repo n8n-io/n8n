@@ -1,4 +1,4 @@
-import { useOverview } from '@/composables/useOverview';
+import { useProjectPages } from '@/composables/useProjectPages';
 import { LOCAL_STORAGE_WORKFLOW_LIST_PREFERENCES_KEY } from '@/constants';
 import { useLocalStorage } from '@vueuse/core';
 
@@ -22,10 +22,10 @@ export type WorkflowListPreferences = {
  * Currently only used for workflow list user preferences.
  */
 export function useN8nLocalStorage() {
-	const overview = useOverview();
+	const projectPages = useProjectPages();
 
 	const getProjectKey = (projectId?: string) => {
-		return overview.isOverviewSubPage ? 'home' : projectId;
+		return projectPages.isOverviewSubPage ? 'home' : projectId;
 	};
 
 	const saveProjectPreferencesToLocalStorage = (

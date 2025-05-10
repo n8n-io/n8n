@@ -69,7 +69,8 @@ const sortedResources = computed<IResourceLocatorResultExpanded[]>(() => {
 
 			if (props.modelValue && item.value === props.modelValue) {
 				acc.selected = item;
-			} else {
+			} else if (!item.isArchived) {
+				// Archived items are not shown in the list unless selected
 				acc.notSelected.push(item);
 			}
 
@@ -282,6 +283,11 @@ defineExpose({ isWithinDropdown });
 			>
 				<div :class="$style.resourceNameContainer">
 					<span>{{ result.name }}</span>
+					<span v-if="result.isArchived">
+						<N8nBadge class="ml-3xs" theme="tertiary" bold data-test-id="workflow-archived-tag">
+							{{ i18n.baseText('workflows.item.archived') }}
+						</N8nBadge>
+					</span>
 				</div>
 				<div :class="$style.urlLink">
 					<font-awesome-icon
