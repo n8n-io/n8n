@@ -5,6 +5,11 @@ import { z } from 'zod';
  */
 export const extensionManifestSchema = z.object({
 	/**
+	 * Allow setting the schema to validate the manifest file.
+	 */
+	$schema: z.string().optional(),
+
+	/**
 	 * Name of the extension package.
 	 */
 	name: z.string(),
@@ -56,41 +61,45 @@ export const extensionManifestSchema = z.object({
 	/**
 	 * Permissions object specifying allowed access for frontend and backend.
 	 */
-	permissions: z.object({
-		/**
-		 * List of frontend permissions (array of strings).
-		 */
-		frontend: z.array(z.string()),
-		/**
-		 * List of backend permissions (array of strings).
-		 */
-		backend: z.array(z.string()),
-	}),
+	permissions: z
+		.object({
+			/**
+			 * List of frontend permissions (array of strings).
+			 */
+			frontend: z.array(z.string()),
+			/**
+			 * List of backend permissions (array of strings).
+			 */
+			backend: z.array(z.string()),
+		})
+		.optional(),
 
 	/**
 	 * List of events that the extension listens to.
 	 */
-	events: z.array(z.string()),
+	events: z.array(z.string()).optional(),
 
 	/**
 	 * Define extension points for existing functionalities.
 	 */
-	extends: z.object({
-		/**
-		 * Extends the views configuration.
-		 */
-		views: z.object({
+	extends: z
+		.object({
 			/**
-			 * Extends the workflows view configuration.
+			 * Extends the views configuration.
 			 */
-			workflows: z.object({
+			views: z.object({
 				/**
-				 * Header component for the workflows view.
+				 * Extends the workflows view configuration.
 				 */
-				header: z.string(),
+				workflows: z.object({
+					/**
+					 * Header component for the workflows view.
+					 */
+					header: z.string(),
+				}),
 			}),
-		}),
-	}),
+		})
+		.optional(),
 });
 
 export type ExtensionManifest = z.infer<typeof extensionManifestSchema>;

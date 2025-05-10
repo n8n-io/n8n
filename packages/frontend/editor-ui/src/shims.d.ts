@@ -4,6 +4,7 @@ import type { VNode, ComponentPublicInstance } from 'vue';
 import type { PartialDeep } from 'type-fest';
 import type { ExternalHooks } from '@/types/externalHooks';
 import type { FrontendSettings } from '@n8n/api-types';
+import type { FrontendExtension } from '@n8n/extension-sdk/frontend';
 
 export {};
 
@@ -22,6 +23,7 @@ declare global {
 		REST_ENDPOINT: string;
 		sentry?: { dsn?: string; environment: string; release: string; serverName?: string };
 		n8nExternalHooks?: PartialDeep<ExternalHooks>;
+		n8nFrontendExtensions: FrontendExtension[];
 		preventNodeViewBeforeUnload?: boolean;
 		maxPinnedDataSize?: number;
 	}

@@ -719,6 +719,7 @@ export const enum STORES {
 	API_KEYS = 'apiKeys',
 	TEST_DEFINITION = 'testDefinition',
 	FOLDERS = 'folders',
+	EXTENSIONS = 'extensions',
 }
 
 export const enum SignInType {

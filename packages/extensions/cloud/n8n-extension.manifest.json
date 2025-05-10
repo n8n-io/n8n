@@ -1,0 +1,19 @@
+{
+	"$schema": "https://raw.githubusercontent.com/n8n-io/n8n/refs/heads/master/packages/%40n8n/extension-sdk/schema.json",
+	"name": "cloud",
+	"publisher": "n8n",
+	"displayName": "Cloud",
+	"description": "Extension for n8n Cloud",
+	"version": "1.0.0",
+	"categories": ["Internal"],
+	"minSDKVersion": "0.0.0",
+	"permissions": {
+		"frontend": [],
+		"backend": []
+	},
+	"events": ["workflow:started"],
+	"entry": {
+		"backend": "./dist/backend/index.js",
+		"frontend": "./dist/frontend/index.js"
+	}
+}

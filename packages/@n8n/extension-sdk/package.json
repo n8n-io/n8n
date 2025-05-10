@@ -4,6 +4,7 @@
   "type": "module",
   "files": [
     "dist",
+    "config",
     "schema.json",
     "LICENSE",
     "README.md"
@@ -26,6 +27,12 @@
       "types": "./dist/frontend/index.d.ts",
       "import": "./dist/frontend/index.js",
       "require": "./dist/frontend/index.cjs"
+    },
+    "./config/vite": {
+      "import": "./config/vite.mjs"
+    },
+    "./config/tsup": {
+      "import": "./config/tsup.mjs"
     },
     "./*": "./*"
   },
