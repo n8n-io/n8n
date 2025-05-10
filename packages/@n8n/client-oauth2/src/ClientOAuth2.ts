@@ -35,6 +35,7 @@ export interface ClientOAuth2Options {
 	body?: Record<string, any>;
 	query?: qs.ParsedUrlQuery;
 	ignoreSSLIssues?: boolean;
+	pkceChallengeFormat?: 'base64' | 'hex';
 }
 
 export class ResponseError extends Error {

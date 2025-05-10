@@ -17,6 +17,7 @@ export interface OAuth2CredentialData {
 		access_token: string;
 		refresh_token?: string;
 	};
+	pkceChallengeFormat?: 'hex' | 'base64';
 }
 
 /**
