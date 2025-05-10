@@ -1,5 +1,7 @@
 import type { INodeProperties } from 'n8n-workflow';
 
+import { getBatchingOptionFields } from '@utils/sharedFields';
+
 import { SYSTEM_MESSAGE } from './prompt';
 
 export const toolsAgentProperties: INodeProperties[] = [
@@ -47,6 +49,14 @@ export const toolsAgentProperties: INodeProperties[] = [
 				description:
 					'Whether or not binary images should be automatically passed through to the agent as image type messages',
 			},
+			getBatchingOptionFields(
+				{
+					show: {
+						'@version': [{ _cnd: { gte: 1.1 } }],
+					},
+				},
+				1,
+			),
 		],
 	},
 ];
