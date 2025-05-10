@@ -27,9 +27,11 @@ import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type {
 	Connection,
+	Dimensions,
 	GraphNode,
 	NodeDragEvent,
 	NodeMouseEvent,
+	ViewportTransform,
 	XYPosition,
 } from '@vue-flow/core';
 import { MarkerType, PanelPosition, useVueFlow, VueFlow } from '@vue-flow/core';
@@ -67,7 +69,7 @@ const emit = defineEmits<{
 	'update:node:parameters': [id: string, parameters: Record<string, unknown>];
 	'update:node:inputs': [id: string];
 	'update:node:outputs': [id: string];
-	'click:node': [id: string];
+	'click:node': [id: string, position: XYPosition];
 	'click:node:add': [id: string, handle: string];
 	'run:node': [id: string];
 	'delete:node': [id: string];
@@ -95,6 +97,8 @@ const emit = defineEmits<{
 	'create:workflow': [];
 	'drag-and-drop': [position: XYPosition, event: DragEvent];
 	'tidy-up': [CanvasLayoutEvent];
+	'viewport:change': [viewport: ViewportTransform, dimensions: Dimensions];
+	'selection:end': [position: XYPosition];
 }>();
 
 const props = withDefaults(
@@ -142,6 +146,7 @@ const {
 	onNodesInitialized,
 	findNode,
 	viewport,
+	dimensions,
 	nodesSelectionActive,
 	setViewport,
 	onEdgeMouseLeave,
@@ -349,7 +354,7 @@ function onNodeDragStop(event: NodeDragEvent) {
 }
 
 function onNodeClick({ event, node }: NodeMouseEvent) {
-	emit('click:node', node.id);
+	emit('click:node', node.id, getProjectedPosition(event));
 
 	if (event.ctrlKey || event.metaKey || selectedNodes.value.length < 2) {
 		return;
@@ -362,10 +367,12 @@ function onSelectionDragStop(event: NodeDragEvent) {
 	onUpdateNodesPosition(event.nodes.map(({ id, position }) => ({ id, position })));
 }
 
-function onSelectionEnd() {
+function onSelectionEnd(event: MouseEvent) {
 	if (selectedNodes.value.length === 1) {
 		nodesSelectionActive.value = false;
 	}
+
+	emit('selection:end', getProjectedPosition(event));
 }
 
 function onSetNodeActivated(id: string) {
@@ -541,10 +548,16 @@ const isPaneMoving = ref(false);
 
 useViewportAutoAdjust(viewportRef, viewport, setViewport);
 
-function getProjectedPosition(event?: Pick<MouseEvent, 'clientX' | 'clientY'>) {
+function getProjectedPosition(
+	event?: Pick<MouseEvent, 'clientX' | 'clientY'> | Pick<TouchEvent, 'touches'>,
+) {
 	const bounds = viewportRef.value?.getBoundingClientRect() ?? { left: 0, top: 0 };
-	const offsetX = event?.clientX ?? 0;
-	const offsetY = event?.clientY ?? 0;
+
+	const clientX = event && 'clientX' in event ? event.clientX : event?.touches?.[0]?.clientX;
+	const clientY = event && 'clientY' in event ? event.clientY : event?.touches?.[0]?.clientY;
+
+	const offsetX = clientX ?? 0;
+	const offsetY = clientY ?? 0;
 
 	return project({
 		x: offsetX - bounds.left,
@@ -587,6 +600,10 @@ function onPaneMoveStart() {
 
 function onPaneMoveEnd() {
 	isPaneMoving.value = false;
+}
+
+function onViewportChange() {
+	emit('viewport:change', viewport.value, dimensions.value);
 }
 
 // #AI-716: Due to a bug in vue-flow reactivity, the node data is not updated when the node is added
@@ -823,6 +840,7 @@ provide(CanvasKey, {
 		@selection-context-menu="onOpenSelectionContextMenu"
 		@dragover="onDragOver"
 		@drop="onDrop"
+		@viewport-change="onViewportChange"
 	>
 		<template #node-canvas-node="nodeProps">
 			<slot name="node" v-bind="{ nodeProps }">
