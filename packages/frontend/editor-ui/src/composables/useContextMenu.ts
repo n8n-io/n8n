@@ -275,7 +275,7 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 						id: 'open_sub_workflow',
 						label: i18n.baseText('contextMenu.openSubworkflow'),
 						shortcut: { shiftKey: true, metaKey: true, keys: ['O'] },
-						disabled: !canOpenSubworkflow.value || isReadOnly.value,
+						disabled: !canOpenSubworkflow.value,
 					});
 				}
 				// Add actions only available for a single node
