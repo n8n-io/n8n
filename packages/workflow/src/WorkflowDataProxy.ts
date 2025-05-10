@@ -6,9 +6,9 @@ import * as jmespath from 'jmespath';
 import { DateTime, Duration, Interval, Settings } from 'luxon';
 
 import { augmentArray, augmentObject } from './AugmentObject';
-import { AGENT_LANGCHAIN_NODE_TYPE, SCRIPTING_NODE_TYPES } from './Constants';
+import { AGENT_LANGCHAIN_NODE_TYPE } from './Constants';
 import { ApplicationError } from './errors/application.error';
-import { ExpressionError, type ExpressionErrorOptions } from './errors/expression.error';
+import { ExpressionError } from './errors/expression.error';
 import { getGlobalState } from './GlobalState';
 import { NodeConnectionTypes } from './Interfaces';
 import type {
@@ -33,19 +33,18 @@ import { deepCopy, isObjectEmpty } from './utils';
 import type { Workflow } from './Workflow';
 import type { EnvProviderState } from './WorkflowDataProxyEnvProvider';
 import { createEnvProvider, createEnvProviderState } from './WorkflowDataProxyEnvProvider';
-import { getPinDataIfManualExecution } from './WorkflowDataProxyHelpers';
+import {
+	getPinDataIfManualExecution,
+	isScriptingNode,
+	createErrorUtils,
+} from './WorkflowDataProxyHelpers';
+import { PAIRED_ITEM_METHOD, usePairedItem } from './WorkflowDataProxyPairedItem';
 
 export function isResourceLocatorValue(value: unknown): value is INodeParameterResourceLocator {
 	return Boolean(
 		typeof value === 'object' && value && 'mode' in value && 'value' in value && '__rl' in value,
 	);
 }
-
-const isScriptingNode = (nodeName: string, workflow: Workflow) => {
-	const node = workflow.getNode(nodeName);
-
-	return node && SCRIPTING_NODE_TYPES.includes(node.type);
-};
 
 export class WorkflowDataProxy {
 	private runExecutionData: IRunExecutionData | null;
@@ -725,320 +724,29 @@ export class WorkflowDataProxy {
 			return jmespath.search(data, query);
 		};
 
-		const createExpressionError = (
-			message: string,
-			context?: ExpressionErrorOptions & {
-				moreInfoLink?: boolean;
-				functionOverrides?: {
-					// Custom data to display for Function-Nodes
-					message?: string;
-					description?: string;
-				};
+		const context = {
+			get workflow() {
+				return that.workflow;
 			},
-		) => {
-			if (isScriptingNode(that.activeNodeName, that.workflow) && context?.functionOverrides) {
-				// If the node in which the error is thrown is a function node,
-				// display a different error message in case there is one defined
-				message = context.functionOverrides.message || message;
-				context.description = context.functionOverrides.description || context.description;
-				// The error will be in the code and not on an expression on a parameter
-				// so remove the messageTemplate as it would overwrite the message
-				context.messageTemplate = undefined;
-			}
-
-			if (context?.nodeCause) {
-				const nodeName = context.nodeCause;
-				const pinData = getPinDataIfManualExecution(that.workflow, nodeName, that.mode);
-
-				if (pinData) {
-					if (!context) {
-						context = {};
-					}
-					message = `Unpin '${nodeName}' to execute`;
-					context.messageTemplate = undefined;
-					context.descriptionKey = 'pairedItemPinned';
-				}
-
-				if (context.moreInfoLink && (pinData || isScriptingNode(nodeName, that.workflow))) {
-					const moreInfoLink =
-						' <a target="_blank" href="https://docs.n8n.io/data/data-mapping/data-item-linking/item-linking-errors/">More info</a>';
-
-					context.description += moreInfoLink;
-					if (context.descriptionTemplate) context.descriptionTemplate += moreInfoLink;
-				}
-			}
-
-			return new ExpressionError(message, {
-				runIndex: that.runIndex,
-				itemIndex: that.itemIndex,
-				...context,
-			});
+			get mode() {
+				return that.mode;
+			},
+			get runIndex() {
+				return that.runIndex;
+			},
+			get itemIndex() {
+				return that.itemIndex;
+			},
+			get activeNodeName() {
+				return that.activeNodeName;
+			},
+			get runExecutionData() {
+				return that.runExecutionData;
+			},
 		};
 
-		const createInvalidPairedItemError = ({ nodeName }: { nodeName: string }) => {
-			return createExpressionError("Can't get data for expression", {
-				messageTemplate: 'Expression info invalid',
-				functionality: 'pairedItem',
-				functionOverrides: {
-					message: "Can't get data",
-				},
-				nodeCause: nodeName,
-				descriptionKey: 'pairedItemInvalidInfo',
-				type: 'paired_item_invalid_info',
-			});
-		};
-
-		const createMissingPairedItemError = (
-			nodeCause: string,
-			usedMethodName: 'itemMatching' | 'pairedItem' | 'item' | '$getPairedItem' = 'pairedItem',
-		) => {
-			const pinData = getPinDataIfManualExecution(that.workflow, nodeCause, that.mode);
-			const message = pinData
-				? `Using the ${usedMethodName} method doesn't work with pinned data in this scenario. Please unpin '${nodeCause}' and try again.`
-				: `Paired item data for ${usedMethodName} from node '${nodeCause}' is unavailable. Ensure '${nodeCause}' is providing the required output.`;
-
-			return new ExpressionError(message, {
-				runIndex: that.runIndex,
-				itemIndex: that.itemIndex,
-				functionality: 'pairedItem',
-				descriptionKey: isScriptingNode(nodeCause, that.workflow)
-					? 'pairedItemNoInfoCodeNode'
-					: 'pairedItemNoInfo',
-				nodeCause,
-				causeDetailed: `Missing pairedItem data (node '${nodeCause}' probably didn't supply it)`,
-				type: 'paired_item_no_info',
-			});
-		};
-
-		const createNoConnectionError = (nodeCause: string) => {
-			return createExpressionError('Invalid expression', {
-				messageTemplate: 'No path back to referenced node',
-				functionality: 'pairedItem',
-				descriptionKey: isScriptingNode(nodeCause, that.workflow)
-					? 'pairedItemNoConnectionCodeNode'
-					: 'pairedItemNoConnection',
-				type: 'paired_item_no_connection',
-				moreInfoLink: true,
-				nodeCause,
-			});
-		};
-
-		// eslint-disable-next-line complexity
-		const getPairedItem = (
-			destinationNodeName: string,
-			incomingSourceData: ISourceData | null,
-			pairedItem: IPairedItemData,
-			usedMethodName: 'pairedItem' | 'itemMatching' | 'item' | '$getPairedItem' = '$getPairedItem',
-		): INodeExecutionData | null => {
-			let taskData: ITaskData | undefined;
-
-			let sourceData: ISourceData | null = incomingSourceData;
-
-			if (pairedItem.sourceOverwrite) {
-				sourceData = pairedItem.sourceOverwrite;
-			}
-
-			if (typeof pairedItem === 'number') {
-				pairedItem = {
-					item: pairedItem,
-				};
-			}
-
-			let currentPairedItem = pairedItem;
-
-			let nodeBeforeLast: string | undefined;
-
-			while (sourceData !== null && destinationNodeName !== sourceData.previousNode) {
-				const runIndex = sourceData?.previousNodeRun || 0;
-				const previousNodeOutput = sourceData.previousNodeOutput || 0;
-				taskData =
-					that.runExecutionData?.resultData?.runData?.[sourceData.previousNode]?.[runIndex];
-
-				if (taskData?.data?.main && previousNodeOutput >= taskData.data.main.length) {
-					throw createExpressionError('Can’t get data for expression', {
-						messageTemplate: 'Can’t get data for expression under ‘%%PARAMETER%%’ field',
-						functionOverrides: {
-							message: 'Can’t get data',
-						},
-						nodeCause: nodeBeforeLast,
-						description: 'Apologies, this is an internal error. See details for more information',
-						causeDetailed: 'Referencing a non-existent output on a node, problem with source data',
-						type: 'internal',
-					});
-				}
-
-				const previousNodeOutputData =
-					taskData?.data?.main?.[previousNodeOutput] ??
-					getPinDataIfManualExecution(that.workflow, sourceData.previousNode, that.mode) ??
-					[];
-				const source = taskData?.source ?? [];
-
-				if (pairedItem.item >= previousNodeOutputData.length) {
-					throw createInvalidPairedItemError({
-						nodeName: sourceData.previousNode,
-					});
-				}
-
-				const itemPreviousNode: INodeExecutionData = previousNodeOutputData[pairedItem.item];
-
-				if (itemPreviousNode.pairedItem === undefined) {
-					throw createMissingPairedItemError(sourceData.previousNode, usedMethodName);
-				}
-
-				if (Array.isArray(itemPreviousNode.pairedItem)) {
-					// Item is based on multiple items so check all of them
-					const results = itemPreviousNode.pairedItem
-
-						.map((item) => {
-							try {
-								const itemInput = item.input || 0;
-								if (itemInput >= source.length) {
-									// `Could not resolve pairedItem as the defined node input '${itemInput}' does not exist on node '${sourceData!.previousNode}'.`
-									// Actual error does not matter as it gets caught below and `null` will be returned
-									throw new ApplicationError('Not found');
-								}
-
-								return getPairedItem(destinationNodeName, source[itemInput], item, usedMethodName);
-							} catch (error) {
-								// Means pairedItem could not be found
-								return null;
-							}
-						})
-						.filter((result) => result !== null && result !== undefined);
-
-					if (results.length !== 1) {
-						// Check if the results are all the same
-						const firstResult = results[0];
-						if (results.every((result) => result === firstResult)) {
-							// All results are the same so return the first one
-							return firstResult;
-						}
-
-						throw createExpressionError('Invalid expression', {
-							messageTemplate: `Multiple matching items for expression [item ${
-								currentPairedItem.item || 0
-							}]`,
-							functionality: 'pairedItem',
-							functionOverrides: {
-								message: `Multiple matching items for code [item ${currentPairedItem.item || 0}]`,
-							},
-							nodeCause: destinationNodeName,
-							descriptionKey: isScriptingNode(destinationNodeName, that.workflow)
-								? 'pairedItemMultipleMatchesCodeNode'
-								: 'pairedItemMultipleMatches',
-							type: 'paired_item_multiple_matches',
-						});
-					}
-
-					return results[0];
-				}
-
-				currentPairedItem = pairedItem;
-
-				// pairedItem is not an array
-				if (typeof itemPreviousNode.pairedItem === 'number') {
-					pairedItem = {
-						item: itemPreviousNode.pairedItem,
-					};
-				} else {
-					pairedItem = itemPreviousNode.pairedItem;
-				}
-
-				const itemInput = pairedItem.input || 0;
-				if (itemInput >= source.length) {
-					if (source.length === 0) {
-						// A trigger node got reached, so looks like that that item can not be resolved
-						throw createNoConnectionError(destinationNodeName);
-					}
-
-					throw createExpressionError('Can’t get data for expression', {
-						messageTemplate: 'Can’t get data for expression under ‘%%PARAMETER%%’ field',
-						functionality: 'pairedItem',
-						functionOverrides: {
-							message: 'Can’t get data',
-						},
-						nodeCause: nodeBeforeLast,
-						description: `In node ‘<strong>${sourceData.previousNode}</strong>’, output item ${
-							currentPairedItem.item || 0
-						} of ${
-							sourceData.previousNodeRun
-								? `of run ${(sourceData.previousNodeRun || 0).toString()} `
-								: ''
-						}points to a branch that doesn’t exist.`,
-						type: 'paired_item_invalid_info',
-					});
-				}
-
-				nodeBeforeLast = sourceData.previousNode;
-				sourceData = source[pairedItem.input || 0] || null;
-
-				if (pairedItem.sourceOverwrite) {
-					sourceData = pairedItem.sourceOverwrite;
-				}
-			}
-
-			if (sourceData === null) {
-				throw createExpressionError('Can’t get data for expression', {
-					messageTemplate: 'Can’t get data for expression under ‘%%PARAMETER%%’ field',
-					functionality: 'pairedItem',
-					functionOverrides: {
-						message: 'Can’t get data',
-					},
-					nodeCause: nodeBeforeLast,
-					description: 'Could not resolve, probably no pairedItem exists',
-					type: 'paired_item_no_info',
-					moreInfoLink: true,
-				});
-			}
-
-			taskData =
-				that.runExecutionData!.resultData.runData[sourceData.previousNode]?.[
-					sourceData?.previousNodeRun || 0
-				];
-
-			if (!taskData) {
-				const pinData = getPinDataIfManualExecution(
-					that.workflow,
-					sourceData.previousNode,
-					that.mode,
-				);
-
-				if (pinData) {
-					taskData = {
-						data: {
-							main: [pinData],
-						},
-						startTime: 0,
-						executionTime: 0,
-						executionIndex: 0,
-						source: [],
-					};
-				}
-			}
-
-			const previousNodeOutput = sourceData.previousNodeOutput || 0;
-			if (previousNodeOutput >= taskData.data!.main.length) {
-				throw createExpressionError('Can’t get data for expression', {
-					messageTemplate: 'Can’t get data for expression under ‘%%PARAMETER%%’ field',
-					functionality: 'pairedItem',
-					functionOverrides: {
-						message: 'Can’t get data',
-					},
-					nodeCause: sourceData.previousNode,
-					description: 'Item points to a node output which does not exist',
-					causeDetailed: `The sourceData points to a node output ‘${previousNodeOutput}‘ which does not exist on node ‘${sourceData.previousNode}‘ (output node did probably supply a wrong one)`,
-					type: 'paired_item_invalid_info',
-				});
-			}
-
-			if (pairedItem.item >= taskData.data!.main[previousNodeOutput]!.length) {
-				throw createInvalidPairedItemError({
-					nodeName: sourceData.previousNode,
-				});
-			}
-
-			return taskData.data!.main[previousNodeOutput]![pairedItem.item];
-		};
+		const errorUtils = createErrorUtils(context);
+		const { getPairedItem } = usePairedItem(context);
 
 		const handleFromAi = (
 			name: string,
@@ -1086,12 +794,12 @@ export class WorkflowDataProxy {
 		const base = {
 			$: (nodeName: string) => {
 				if (!nodeName) {
-					throw createExpressionError('When calling $(), please specify a node');
+					throw errorUtils.createExpressionError('When calling $(), please specify a node');
 				}
 
 				const referencedNode = that.workflow.getNode(nodeName);
 				if (referencedNode === null) {
-					throw createExpressionError("Referenced node doesn't exist", {
+					throw errorUtils.createExpressionError("Referenced node doesn't exist", {
 						runIndex: that.runIndex,
 						itemIndex: that.itemIndex,
 						nodeCause: nodeName,
@@ -1104,7 +812,7 @@ export class WorkflowDataProxy {
 						!that?.runExecutionData?.resultData?.runData.hasOwnProperty(nodeName) &&
 						!getPinDataIfManualExecution(that.workflow, nodeName, that.mode)
 					) {
-						throw createExpressionError('Referenced node is unexecuted', {
+						throw errorUtils.createExpressionError('Referenced node is unexecuted', {
 							runIndex: that.runIndex,
 							itemIndex: that.itemIndex,
 							type: 'no_node_execution_data',
@@ -1120,10 +828,10 @@ export class WorkflowDataProxy {
 						has: () => true,
 						ownKeys() {
 							return [
-								'pairedItem',
+								PAIRED_ITEM_METHOD.PAIRED_ITEM,
 								'isExecuted',
-								'itemMatching',
-								'item',
+								PAIRED_ITEM_METHOD.ITEM_MATCHING,
+								PAIRED_ITEM_METHOD.ITEM,
 								'first',
 								'last',
 								'all',
@@ -1140,7 +848,11 @@ export class WorkflowDataProxy {
 								);
 							}
 
-							if (property === 'pairedItem' || property === 'itemMatching' || property === 'item') {
+							if (
+								property === PAIRED_ITEM_METHOD.PAIRED_ITEM ||
+								property === PAIRED_ITEM_METHOD.ITEM_MATCHING ||
+								property === PAIRED_ITEM_METHOD.ITEM
+							) {
 								// Before resolving the pairedItem make sure that the requested node comes in the
 								// graph before the current one
 								const activeNode = that.workflow.getNode(that.activeNodeName);
@@ -1152,17 +864,20 @@ export class WorkflowDataProxy {
 								}
 								const parentNodes = that.workflow.getParentNodes(contextNode);
 								if (!parentNodes.includes(nodeName)) {
-									throw createNoConnectionError(nodeName);
+									throw errorUtils.createNoConnectionError(nodeName);
 								}
 
 								ensureNodeExecutionData();
 
 								const pairedItemMethod = (itemIndex?: number) => {
 									if (itemIndex === undefined) {
-										if (property === 'itemMatching') {
-											throw createExpressionError('Missing item index for .itemMatching()', {
-												itemIndex,
-											});
+										if (property === PAIRED_ITEM_METHOD.ITEM_MATCHING) {
+											throw errorUtils.createExpressionError(
+												'Missing item index for .itemMatching()',
+												{
+													itemIndex,
+												},
+											);
 										}
 										itemIndex = that.itemIndex;
 									}
@@ -1182,18 +897,7 @@ export class WorkflowDataProxy {
 									const executionData = that.connectionInputData;
 									const input = executionData?.[itemIndex];
 									if (!input) {
-										throw createExpressionError('Can’t get data for expression', {
-											messageTemplate: 'Can’t get data for expression under ‘%%PARAMETER%%’ field',
-											functionality: 'pairedItem',
-											functionOverrides: {
-												description: `Some intermediate nodes between ‘<strong>${nodeName}</strong>‘ and  ‘<strong>${that.activeNodeName}</strong>‘ have not executed yet.`,
-												message: 'Can’t get data',
-											},
-											description: `Some intermediate nodes between ‘<strong>${nodeName}</strong>‘ and  ‘<strong>${that.activeNodeName}</strong>‘ have not executed yet.`,
-											causeDetailed: `pairedItem can\'t be found when intermediate nodes between ‘<strong>${nodeName}</strong>‘ and  ‘<strong>${that.activeNodeName}</strong> have not executed yet.`,
-											itemIndex,
-											type: 'paired_item_intermediate_nodes',
-										});
+										throw errorUtils.createPairedItemIntermediateNodesError(nodeName);
 									}
 
 									// As we operate on the incoming item we can be sure that pairedItem is not an
@@ -1202,21 +906,11 @@ export class WorkflowDataProxy {
 									const pairedItem = input.pairedItem as IPairedItemData;
 
 									if (pairedItem === undefined) {
-										throw createMissingPairedItemError(that.activeNodeName, property);
+										throw errorUtils.createMissingPairedItemError(that.activeNodeName, property);
 									}
 
 									if (!that.executeData?.source) {
-										throw createExpressionError('Can’t get data for expression', {
-											messageTemplate: 'Can’t get data for expression under ‘%%PARAMETER%%’ field',
-											functionality: 'pairedItem',
-											functionOverrides: {
-												message: 'Can’t get data',
-											},
-											description:
-												'Apologies, this is an internal error. See details for more information',
-											causeDetailed: 'Missing sourceData (probably an internal error)',
-											itemIndex,
-										});
+										throw errorUtils.createMissingSourceDataError();
 									}
 
 									const sourceData: ISourceData | null =
@@ -1226,7 +920,7 @@ export class WorkflowDataProxy {
 									return getPairedItem(nodeName, sourceData, pairedItem, property);
 								};
 
-								if (property === 'item') {
+								if (property === PAIRED_ITEM_METHOD.ITEM) {
 									return pairedItemMethod();
 								}
 								return pairedItemMethod;
@@ -1310,7 +1004,7 @@ export class WorkflowDataProxy {
 					if (property === 'isProxy') return true;
 
 					if (that.connectionInputData.length === 0) {
-						throw createExpressionError('No execution data available', {
+						throw errorUtils.createExpressionError('No execution data available', {
 							runIndex: that.runIndex,
 							itemIndex: that.itemIndex,
 							type: 'no_execution_data',
@@ -1323,7 +1017,7 @@ export class WorkflowDataProxy {
 					if (property === 'first') {
 						return (...args: unknown[]) => {
 							if (args.length) {
-								throw createExpressionError('$input.first() should have no arguments');
+								throw errorUtils.createExpressionError('$input.first() should have no arguments');
 							}
 
 							const result = that.connectionInputData;
@@ -1336,7 +1030,7 @@ export class WorkflowDataProxy {
 					if (property === 'last') {
 						return (...args: unknown[]) => {
 							if (args.length) {
-								throw createExpressionError('$input.last() should have no arguments');
+								throw errorUtils.createExpressionError('$input.last() should have no arguments');
 							}
 
 							const result = that.connectionInputData;
@@ -1360,7 +1054,7 @@ export class WorkflowDataProxy {
 						// For the following properties we need the source data so fail in case it is missing
 						// for some reason (even though that should actually never happen)
 						if (!that.executeData?.source) {
-							throw createExpressionError('Can’t get data for expression', {
+							throw errorUtils.createExpressionError('Can’t get data for expression', {
 								messageTemplate: 'Can’t get data for expression under ‘%%PARAMETER%%’ field',
 								functionOverrides: {
 									message: 'Can’t get data',
