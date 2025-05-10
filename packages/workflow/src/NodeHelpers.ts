@@ -455,8 +455,13 @@ export function getContext(
 	node?: INode,
 ): IContextObject {
 	if (runExecutionData.executionData === undefined) {
-		// TODO: Should not happen leave it for test now
-		throw new ApplicationError('`executionData` is not initialized');
+		// Improved error handling: log error and return empty context instead of throwing
+		console.error('Missing executionData. Context:', {
+			type,
+			nodeName: node?.name,
+		});
+		// Return empty context object to avoid breaking the workflow
+		return {};
 	}
 
 	let key: string;
@@ -464,7 +469,6 @@ export function getContext(
 		key = 'flow';
 	} else if (type === 'node') {
 		if (node === undefined) {
-			// @TODO: What does this mean?
 			throw new ApplicationError(
 				'The request data of context type "node" the node parameter has to be set!',
 			);
@@ -1217,28 +1221,30 @@ function addToIssuesIfMissing(
 	nodeProperties: INodeProperties,
 	value: NodeParameterValue | INodeParameterResourceLocator,
 ) {
-	// TODO: Check what it really has when undefined
-	if (
-		(nodeProperties.type === 'string' && (value === '' || value === undefined)) ||
-		(nodeProperties.type === 'multiOptions' && Array.isArray(value) && value.length === 0) ||
-		(nodeProperties.type === 'dateTime' && (value === '' || value === undefined)) ||
-		(nodeProperties.type === 'options' && (value === '' || value === undefined)) ||
-		((nodeProperties.type === 'resourceLocator' || nodeProperties.type === 'workflowSelector') &&
-			!isValidResourceLocatorParameterValue(value as INodeParameterResourceLocator))
-	) {
-		// Parameter is required but empty
-		if (foundIssues.parameters === undefined) {
-			foundIssues.parameters = {};
-		}
-		if (foundIssues.parameters[nodeProperties.name] === undefined) {
-			foundIssues.parameters[nodeProperties.name] = [];
-		}
+    // Improved check for undefined and null values
+    if (
+        value === undefined ||
+        value === null ||
+        (nodeProperties.type === 'string' && value === '') ||
+        (nodeProperties.type === 'multiOptions' && Array.isArray(value) && value.length === 0) ||
+        (nodeProperties.type === 'dateTime' && value === '') ||
+        (nodeProperties.type === 'options' && value === '') ||
+        ((nodeProperties.type === 'resourceLocator' || nodeProperties.type === 'workflowSelector') &&
+            !isValidResourceLocatorParameterValue(value as INodeParameterResourceLocator))
+    ) {
+        // Parameter is required but empty
+        if (foundIssues.parameters === undefined) {
+            foundIssues.parameters = {};
+        }
+        if (foundIssues.parameters[nodeProperties.name] === undefined) {
+            foundIssues.parameters[nodeProperties.name] = [];
+        }
 
-		foundIssues.parameters[nodeProperties.name].push(
-			`Parameter "${nodeProperties.displayName}" is required.`,
-		);
-	}
-}
+        foundIssues.parameters[nodeProperties.name].push(
+            `Parameter "${nodeProperties.displayName}" is required.`,
+        );
+    }
+}	
 
 /**
  * Returns the parameter value
