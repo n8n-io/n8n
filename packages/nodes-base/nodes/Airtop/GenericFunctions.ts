@@ -1,16 +1,18 @@
-import { NodeApiError, type IExecuteFunctions, type INode } from 'n8n-workflow';
+import { NodeApiError, type IExecuteFunctions, type INode, type IDataObject } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
 import { SESSION_MODE } from './actions/common/fields';
+import type { TScrollingMode } from './constants';
 import {
 	ERROR_MESSAGES,
 	DEFAULT_TIMEOUT_MINUTES,
 	MIN_TIMEOUT_MINUTES,
 	MAX_TIMEOUT_MINUTES,
-	INTEGRATION_URL,
+	SESSION_STATUS,
+	SESSION_CREATION_TIMEOUT,
 } from './constants';
 import { apiRequest } from './transport';
-import type { IAirtopResponse } from './transport/types';
+import type { IAirtopResponse, IAirtopSessionResponse } from './transport/types';
 
 /**
  * Validate a required string field
@@ -187,6 +189,81 @@ export function validateProxyUrl(this: IExecuteFunctions, index: number, proxy: 
 }
 
 /**
+ * Validate the scrollBy amount parameter
+ * @param this - The execution context
+ * @param index - The index of the node
+ * @param parameterName - The name of the parameter
+ * @returns The validated scrollBy amount
+ */
+export function validateScrollByAmount(
+	this: IExecuteFunctions,
+	index: number,
+	parameterName: string,
+) {
+	// regex for percentage or pixels, accepts negative numbers
+	const regex = /^-?\d{1,3}%?|-?\d{1,3}px$/;
+	const scrollBy = this.getNodeParameter(parameterName, index, {}) as {
+		xAxis?: string;
+		yAxis?: string;
+	};
+
+	if (!scrollBy?.xAxis && !scrollBy?.yAxis) {
+		return {};
+	}
+
+	// if no value is provided, set it to 0 to avoid regex errors
+	const validParams = regex.test(scrollBy.xAxis ?? '0') || regex.test(scrollBy.yAxis ?? '0');
+
+	if (!validParams) {
+		throw new NodeOperationError(this.getNode(), ERROR_MESSAGES.SCROLL_BY_AMOUNT_INVALID, {
+			itemIndex: index,
+		});
+	}
+
+	return scrollBy;
+}
+
+/**
+ * Validate the scroll mode parameter
+ * @param this - The execution context
+ * @param index - The index of the node
+ * @returns Scroll mode
+ * @throws Error if the scroll mode or scroll parameters are invalid
+ */
+export function validateScrollingMode(this: IExecuteFunctions, index: number): TScrollingMode {
+	const scrollingMode = this.getNodeParameter(
+		'scrollingMode',
+		index,
+		'automatic',
+	) as TScrollingMode;
+
+	const scrollToEdge = this.getNodeParameter('scrollToEdge.edgeValues', index, {}) as {
+		xAxis?: string;
+		yAxis?: string;
+	};
+	const scrollBy = this.getNodeParameter('scrollBy.scrollValues', index, {}) as {
+		xAxis?: string;
+		yAxis?: string;
+	};
+
+	if (scrollingMode !== 'manual') {
+		return scrollingMode;
+	}
+
+	// validate manual scroll parameters
+	const emptyScrollBy = !scrollBy.xAxis && !scrollBy.yAxis;
+	const emptyScrollToEdge = !scrollToEdge.xAxis && !scrollToEdge.yAxis;
+
+	if (emptyScrollBy && emptyScrollToEdge) {
+		throw new NodeOperationError(this.getNode(), ERROR_MESSAGES.SCROLL_MODE_INVALID, {
+			itemIndex: index,
+		});
+	}
+
+	return scrollingMode;
+}
+
+/**
  * Validate the screen resolution parameter
  * @param this - The execution context
  * @param index - The index of the node
@@ -274,6 +351,56 @@ export function shouldCreateNewSession(this: IExecuteFunctions, index: number) {
 }
 
 /**
+ * Create a new session and wait until the session is ready
+ * @param this - The execution context
+ * @param parameters - The parameters for the session
+ * @returns The session ID
+ */
+export async function createSession(
+	this: IExecuteFunctions,
+	parameters: IDataObject,
+	timeout = SESSION_CREATION_TIMEOUT,
+): Promise<{ sessionId: string }> {
+	// Request session creation
+	const response = (await apiRequest.call(
+		this,
+		'POST',
+		'/sessions',
+		parameters,
+	)) as IAirtopSessionResponse;
+	const sessionId = response?.data?.id;
+
+	if (!sessionId) {
+		throw new NodeApiError(this.getNode(), {
+			message: 'Failed to create session',
+			code: 500,
+		});
+	}
+
+	// Poll until the session is ready or timeout is reached
+	let sessionStatus = response?.data?.status;
+	const startTime = Date.now();
+
+	while (sessionStatus !== SESSION_STATUS.RUNNING) {
+		if (Date.now() - startTime > timeout) {
+			throw new NodeApiError(this.getNode(), {
+				message: ERROR_MESSAGES.TIMEOUT_REACHED,
+				code: 500,
+			});
+		}
+		await new Promise((resolve) => setTimeout(resolve, 1000));
+		const sessionStatusResponse = (await apiRequest.call(
+			this,
+			'GET',
+			`/sessions/${sessionId}`,
+		)) as IAirtopSessionResponse;
+		sessionStatus = sessionStatusResponse.data.status;
+	}
+
+	return { sessionId };
+}
+
+/**
  * Create a new session and window
  * @param this - The execution context
  * @param index - The index of the node
@@ -284,11 +411,10 @@ export async function createSessionAndWindow(
 	index: number,
 ): Promise<{ sessionId: string; windowId: string }> {
 	const node = this.getNode();
-	const noCodeEndpoint = `${INTEGRATION_URL}/create-session`;
 	const profileName = validateProfileName.call(this, index);
 	const url = validateRequiredStringField.call(this, index, 'url', 'URL');
 
-	const { sessionId } = await apiRequest.call(this, 'POST', noCodeEndpoint, {
+	const { sessionId } = await createSession.call(this, {
 		configuration: {
 			profileName,
 		},
