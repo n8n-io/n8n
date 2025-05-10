@@ -38,6 +38,7 @@ describe('McpClientTool', () => {
 					description: 'MyTool does something',
 					name: 'MyTool',
 					value: 'MyTool',
+					inputSchema: { type: 'object', properties: { input: { type: 'string' } } },
 				},
 			]);
 		});

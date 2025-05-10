@@ -820,14 +820,32 @@ describe('WorkflowExecute', () => {
 				.spyOn(workflowExecute, 'processRunExecutionData')
 				.mockImplementationOnce(jest.fn());
 
+			const expectedToolExecutor: INode = {
+				name: 'PartialExecutionToolExecutor',
+				disabled: false,
+				type: '@n8n/n8n-nodes-langchain.toolExecutor',
+				parameters: {
+					query: {},
+					toolName: '',
+				},
+				id: agentNode.id,
+				typeVersion: 0,
+				position: [0, 0],
+			};
+
 			const expectedTool = {
 				...tool,
 				rewireOutputLogTo: NodeConnectionTypes.AiTool,
 			};
 
 			const expectedGraph = new DirectedGraph()
-				.addNodes(trigger, expectedTool)
-				.addConnections({ from: trigger, to: expectedTool })
+				.addNodes(trigger, expectedToolExecutor, expectedTool)
+				.addConnections({ from: trigger, to: expectedToolExecutor })
+				.addConnections({
+					from: expectedTool,
+					to: expectedToolExecutor,
+					type: NodeConnectionTypes.AiTool,
+				})
 				.toWorkflow({ ...workflow });
 
 			// ACT

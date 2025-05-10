@@ -318,7 +318,6 @@ describe('LoadNodesAndCredentials', () => {
 				group: ['input'],
 				inputs: [],
 				outputs: ['ai_tool'],
-				usableAsTool: true,
 				properties: [
 					{
 						default: 'A test node',
@@ -371,7 +370,6 @@ describe('LoadNodesAndCredentials', () => {
 				inputs: [],
 				outputs: ['ai_tool'],
 				description: 'A test node',
-				usableAsTool: true,
 				properties: [
 					{
 						displayName: 'Description',

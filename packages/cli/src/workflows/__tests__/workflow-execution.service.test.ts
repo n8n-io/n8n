@@ -92,6 +92,7 @@ describe('WorkflowExecutionService', () => {
 			const runPayload = mock<WorkflowRequest.ManualRunPayload>({
 				startNodes: [],
 				destinationNode: undefined,
+				agentRequest: undefined,
 			});
 
 			workflowRunner.run.mockResolvedValue(executionId);
@@ -123,6 +124,7 @@ describe('WorkflowExecutionService', () => {
 				workflowData: { nodes: [node] },
 				startNodes: [],
 				destinationNode: node.name,
+				agentRequest: undefined,
 			});
 
 			jest
@@ -177,6 +179,7 @@ describe('WorkflowExecutionService', () => {
 						nodes: [triggerNode],
 					},
 					triggerToStartFrom: undefined,
+					agentRequest: undefined,
 				});
 
 				workflowRunner.run.mockResolvedValue(executionId);

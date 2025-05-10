@@ -6,6 +6,7 @@ import type {
 	StartNodeData,
 	ITaskData,
 	IWorkflowBase,
+	AiAgentRequest,
 } from 'n8n-workflow';
 
 import type { AuthenticatedRequest, ListQuery } from '@/requests';
@@ -35,6 +36,7 @@ export declare namespace WorkflowRequest {
 			name: string;
 			data?: ITaskData;
 		};
+		agentRequest?: AiAgentRequest;
 	};
 
 	type Create = AuthenticatedRequest<{}, {}, CreateUpdatePayload>;

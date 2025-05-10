@@ -2,20 +2,20 @@ import { type INodeParameters, type NodeParameterValueType } from 'n8n-workflow'
 import { defineStore } from 'pinia';
 import { ref, watch } from 'vue';
 
-interface IParameterOverridesStoreState {
+interface IAgentRequestStoreState {
 	[workflowId: string]: {
 		[nodeName: string]: INodeParameters;
 	};
 }
 
-const STORAGE_KEY = 'n8n-parameter-overrides';
+const STORAGE_KEY = 'n8n-agent-requests';
 
-export const useParameterOverridesStore = defineStore('parameterOverrides', () => {
+export const useAgentRequestStore = defineStore('agentRequest', () => {
 	// State
-	const parameterOverrides = ref<IParameterOverridesStoreState>(loadFromLocalStorage());
+	const agentRequests = ref<IAgentRequestStoreState>(loadFromLocalStorage());
 
 	// Load initial state from localStorage
-	function loadFromLocalStorage(): IParameterOverridesStoreState {
+	function loadFromLocalStorage(): IAgentRequestStoreState {
 		try {
 			const storedData = localStorage.getItem(STORAGE_KEY);
 			return storedData ? JSON.parse(storedData) : {};
@@ -26,12 +26,12 @@ export const useParameterOverridesStore = defineStore('parameterOverrides', () =
 
 	// Save state to localStorage whenever it changes
 	watch(
-		parameterOverrides,
+		agentRequests,
 		(newValue) => {
 			try {
 				localStorage.setItem(STORAGE_KEY, JSON.stringify(newValue));
 			} catch (error) {
-				console.error('Failed to save parameter overrides to localStorage:', error);
+				console.error('Failed to save agent requests to localStorage:', error);
 			}
 		},
 		{ deep: true },
@@ -39,30 +39,30 @@ export const useParameterOverridesStore = defineStore('parameterOverrides', () =
 
 	// Helper function to ensure workflow and node entries exist
 	const ensureWorkflowAndNodeExist = (workflowId: string, nodeId: string): void => {
-		if (!parameterOverrides.value[workflowId]) {
-			parameterOverrides.value[workflowId] = {};
+		if (!agentRequests.value[workflowId]) {
+			agentRequests.value[workflowId] = {};
 		}
 
-		if (!parameterOverrides.value[workflowId][nodeId]) {
-			parameterOverrides.value[workflowId][nodeId] = {};
+		if (!agentRequests.value[workflowId][nodeId]) {
+			agentRequests.value[workflowId][nodeId] = {};
 		}
 	};
 
 	// Getters
-	const getParameterOverrides = (workflowId: string, nodeId: string): INodeParameters => {
-		return parameterOverrides.value[workflowId]?.[nodeId] || {};
+	const getAgentRequests = (workflowId: string, nodeId: string): INodeParameters => {
+		return agentRequests.value[workflowId]?.[nodeId] || {};
 	};
 
-	const getParameterOverride = (
+	const getAgentRequest = (
 		workflowId: string,
 		nodeId: string,
 		paramName: string,
 	): NodeParameterValueType | undefined => {
-		return parameterOverrides.value[workflowId]?.[nodeId]?.[paramName];
+		return agentRequests.value[workflowId]?.[nodeId]?.[paramName];
 	};
 
 	// Actions
-	const addParameterOverride = (
+	const addAgentRequest = (
 		workflowId: string,
 		nodeId: string,
 		paramName: string,
@@ -70,40 +70,36 @@ export const useParameterOverridesStore = defineStore('parameterOverrides', () =
 	): INodeParameters => {
 		ensureWorkflowAndNodeExist(workflowId, nodeId);
 
-		parameterOverrides.value[workflowId][nodeId] = {
-			...parameterOverrides.value[workflowId][nodeId],
+		agentRequests.value[workflowId][nodeId] = {
+			...agentRequests.value[workflowId][nodeId],
 			[paramName]: paramValues,
 		};
 
-		return parameterOverrides.value[workflowId][nodeId];
+		return agentRequests.value[workflowId][nodeId];
 	};
 
-	const addParameterOverrides = (
-		workflowId: string,
-		nodeId: string,
-		params: INodeParameters,
-	): void => {
+	const addAgentRequests = (workflowId: string, nodeId: string, params: INodeParameters): void => {
 		ensureWorkflowAndNodeExist(workflowId, nodeId);
 
-		parameterOverrides.value[workflowId][nodeId] = {
-			...parameterOverrides.value[workflowId][nodeId],
+		agentRequests.value[workflowId][nodeId] = {
+			...agentRequests.value[workflowId][nodeId],
 			...params,
 		};
 	};
 
-	const clearParameterOverrides = (workflowId: string, nodeId: string): void => {
-		if (parameterOverrides.value[workflowId]) {
-			parameterOverrides.value[workflowId][nodeId] = {};
+	const clearAgentRequests = (workflowId: string, nodeId: string): void => {
+		if (agentRequests.value[workflowId]) {
+			agentRequests.value[workflowId][nodeId] = {};
 		}
 	};
 
-	const clearAllParameterOverrides = (workflowId?: string): void => {
+	const clearAllAgentRequests = (workflowId?: string): void => {
 		if (workflowId) {
-			// Clear overrides for a specific workflow
-			parameterOverrides.value[workflowId] = {};
+			// Clear requests for a specific workflow
+			agentRequests.value[workflowId] = {};
 		} else {
-			// Clear all overrides
-			parameterOverrides.value = {};
+			// Clear all requests
+			agentRequests.value = {};
 		}
 	};
 
@@ -120,7 +116,7 @@ export const useParameterOverridesStore = defineStore('parameterOverrides', () =
 		}, []);
 	}
 
-	function buildOverrideObject(path: string[], value: NodeParameterValueType): INodeParameters {
+	function buildRequestObject(path: string[], value: NodeParameterValueType): INodeParameters {
 		const result: INodeParameters = {};
 		let current = result;
 
@@ -192,31 +188,23 @@ export const useParameterOverridesStore = defineStore('parameterOverrides', () =
 		return result;
 	}
 
-	const substituteParameters = (
-		workflowId: string,
-		nodeId: string,
-		nodeParameters: INodeParameters,
-	): INodeParameters => {
-		if (!nodeParameters) return {};
+	const generateAgentRequest = (workflowId: string, nodeId: string): INodeParameters => {
+		const nodeRequests = agentRequests.value[workflowId]?.[nodeId] || {};
 
-		const nodeOverrides = parameterOverrides.value[workflowId]?.[nodeId] || {};
-
-		const overrideParams = Object.entries(nodeOverrides).reduce(
-			(acc, [path, value]) => deepMerge(acc, buildOverrideObject(parsePath(path), value)),
+		return Object.entries(nodeRequests).reduce(
+			(acc, [path, value]) => deepMerge(acc, buildRequestObject(parsePath(path), value)),
 			{} as INodeParameters,
 		);
-
-		return deepMerge(nodeParameters, overrideParams);
 	};
 
 	return {
-		parameterOverrides,
-		getParameterOverrides,
-		getParameterOverride,
-		addParameterOverride,
-		addParameterOverrides,
-		clearParameterOverrides,
-		clearAllParameterOverrides,
-		substituteParameters,
+		agentRequests,
+		getAgentRequests,
+		getAgentRequest,
+		addAgentRequest,
+		addAgentRequests,
+		clearAgentRequests,
+		clearAllAgentRequests,
+		generateAgentRequest,
 	};
 });
