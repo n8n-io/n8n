@@ -2490,9 +2490,6 @@ importers:
       '@n8n/tournament':
         specifier: 1.0.6
         version: 1.0.6
-      '@n8n_io/riot-tmpl':
-        specifier: 4.0.0
-        version: 4.0.0
       ast-types:
         specifier: 0.15.2
         version: 0.15.2
@@ -4946,9 +4943,6 @@ packages:
   '@n8n_io/license-sdk@2.20.1':
     resolution: {integrity: sha512-HrxdwlZw3MfYrfgvjxIGTyi3gJUCOFHtMcL5OpqpHhwfMGwuBauRgUOt63Twx4qs7f2bnz5yHV3jvuU3mF45UQ==}
     engines: {node: '>=18.12.1'}
-
-  '@n8n_io/riot-tmpl@4.0.0':
-    resolution: {integrity: sha512-/xw8HQgYQlBCrt3IKpNSSB1CgpP7XArw1QTRjP+KEw+OHT8XGvHxXrW9VGdUu9RwDnzm/LFu+dNLeDmwJMeOwQ==}
 
   '@n8n_io/riot-tmpl@4.0.1':
     resolution: {integrity: sha512-/zdRbEfTFjsm1NqnpPQHgZTkTdbp5v3VUxGeMA9098sps8jRCTraQkc3AQstJgHUm7ylBXJcIVhnVeLUMWAfwQ==}
@@ -11526,9 +11520,6 @@ packages:
   pathe@1.1.2:
     resolution: {integrity: sha512-whLdWMYL2TwI08hn8/ZqAbrVemu0LNaNNJZX73O6qaIdCTfXutsLhMkjdENX0qhsQ9uIimo4/aQOmXkoon2nDQ==}
 
-  pathe@2.0.2:
-    resolution: {integrity: sha512-15Ztpk+nov8DR524R4BF7uEuzESgzUEAV4Ah7CUMNGXdE5ELuvxElxGXndBl32vMSsWa1jpNf22Z+Er3sKwq+w==}
-
   pathe@2.0.3:
     resolution: {integrity: sha512-WUjGcAqP1gQacoQe+OBJsFA7Ld4DyXuUIjZ5cc75cLHvJ7dtNsTugphxIADwspS+AraAUePCKrSVtPLFj/F88w==}
 
@@ -17397,10 +17388,6 @@ snapshots:
       node-machine-id: 1.1.12
       node-rsa: 1.1.1
       undici: 7.7.0
-
-  '@n8n_io/riot-tmpl@4.0.0':
-    dependencies:
-      eslint-config-riot: 1.0.0
 
   '@n8n_io/riot-tmpl@4.0.1':
     dependencies:
@@ -25028,7 +25015,7 @@ snapshots:
   mlly@1.7.4:
     dependencies:
       acorn: 8.14.0
-      pathe: 2.0.2
+      pathe: 2.0.3
       pkg-types: 1.3.1
       ufo: 1.5.4
 
@@ -25695,8 +25682,6 @@ snapshots:
 
   pathe@1.1.2: {}
 
-  pathe@2.0.2: {}
-
   pathe@2.0.3: {}
 
   pathval@2.0.0: {}
@@ -25823,7 +25808,7 @@ snapshots:
     dependencies:
       confbox: 0.1.8
       mlly: 1.7.4
-      pathe: 2.0.2
+      pathe: 2.0.3
 
   pkg-types@2.1.0:
     dependencies:

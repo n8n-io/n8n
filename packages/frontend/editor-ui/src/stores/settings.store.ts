@@ -10,7 +10,6 @@ import type { ILdapConfig } from '@/Interface';
 import { STORES, INSECURE_CONNECTION_WARNING } from '@/constants';
 import { UserManagementAuthenticationMethod } from '@/Interface';
 import type { IDataObject, WorkflowSettings } from 'n8n-workflow';
-import { ExpressionEvaluatorProxy } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { useRootStore } from './root.store';
 import { useUIStore } from './ui.store';
@@ -299,8 +298,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		const { showToast } = useToast();
 		try {
 			await getSettings();
-
-			ExpressionEvaluatorProxy.setEvaluator(settings.value.expressions.evaluator);
 
 			initialized.value = true;
 		} catch (e) {
