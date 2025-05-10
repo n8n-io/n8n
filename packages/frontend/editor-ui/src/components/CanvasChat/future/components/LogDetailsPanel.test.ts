@@ -9,12 +9,12 @@ import {
 	createTestNode,
 	createTestTaskData,
 	createTestWorkflow,
-	createTestWorkflowExecutionResponse,
 	createTestWorkflowObject,
 } from '@/__tests__/mocks';
 import { mockedStore } from '@/__tests__/utils';
 import { useSettingsStore } from '@/stores/settings.store';
 import { type FrontendSettings } from '@n8n/api-types';
+import type { LogEntry } from '@/components/RunDataAi/utils';
 
 describe('LogDetailsPanel', () => {
 	let pinia: TestingPinia;
@@ -37,26 +37,24 @@ describe('LogDetailsPanel', () => {
 		source: [{ previousNode: 'Chat Trigger' }],
 	});
 
-	function render(props: Partial<InstanceType<typeof LogDetailsPanel>['$props']>) {
-		const mergedProps: InstanceType<typeof LogDetailsPanel>['$props'] = {
-			...props,
-			logEntry: props.logEntry ?? createTestLogEntry(),
-			workflow: props.workflow ?? createTestWorkflowObject(workflowData),
-			execution:
-				props.execution ??
-				createTestWorkflowExecutionResponse({
-					workflowData,
-					data: {
-						resultData: {
-							runData: { 'Chat Trigger': [chatNodeRunData], 'AI Agent': [aiNodeRunData] },
-						},
+	function createLogEntry(data: Partial<LogEntry> = {}) {
+		return createTestLogEntry({
+			workflow: createTestWorkflowObject(workflowData),
+			execution: {
+				resultData: {
+					runData: {
+						'Chat Trigger': [chatNodeRunData],
+						'AI Agent': [aiNodeRunData],
 					},
-				}),
-			isOpen: props.isOpen ?? true,
-		};
+				},
+			},
+			...data,
+		});
+	}
 
+	function render(props: InstanceType<typeof LogDetailsPanel>['$props']) {
 		const rendered = renderComponent(LogDetailsPanel, {
-			props: mergedProps,
+			props,
 			global: {
 				plugins: [
 					createRouter({
@@ -97,11 +95,7 @@ describe('LogDetailsPanel', () => {
 
 		const rendered = render({
 			isOpen: true,
-			logEntry: createTestLogEntry({
-				node: aiNode,
-				runIndex: 0,
-				runData: aiNodeRunData,
-			}),
+			logEntry: createLogEntry({ node: aiNode, runIndex: 0, runData: aiNodeRunData }),
 		});
 
 		const header = within(rendered.getByTestId('log-details-header'));
@@ -117,7 +111,7 @@ describe('LogDetailsPanel', () => {
 	it('should toggle input and output panel when the button is clicked', async () => {
 		const rendered = render({
 			isOpen: true,
-			logEntry: createTestLogEntry({ node: aiNode, runIndex: 0, runData: aiNodeRunData }),
+			logEntry: createLogEntry({ node: aiNode, runIndex: 0, runData: aiNodeRunData }),
 		});
 
 		const header = within(rendered.getByTestId('log-details-header'));
@@ -141,7 +135,7 @@ describe('LogDetailsPanel', () => {
 
 		const rendered = render({
 			isOpen: true,
-			logEntry: createTestLogEntry({ node: aiNode, runIndex: 0, runData: aiNodeRunData }),
+			logEntry: createLogEntry({ node: aiNode, runIndex: 0, runData: aiNodeRunData }),
 		});
 
 		await fireEvent.mouseDown(rendered.getByTestId('resize-handle'));
@@ -160,7 +154,7 @@ describe('LogDetailsPanel', () => {
 
 		const rendered = render({
 			isOpen: true,
-			logEntry: createTestLogEntry({ node: aiNode, runIndex: 0, runData: aiNodeRunData }),
+			logEntry: createLogEntry({ node: aiNode, runIndex: 0, runData: aiNodeRunData }),
 		});
 
 		await fireEvent.mouseDown(rendered.getByTestId('resize-handle'));

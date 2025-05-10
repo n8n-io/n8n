@@ -2,19 +2,16 @@
 import RunData from '@/components/RunData.vue';
 import { type LogEntry } from '@/components/RunDataAi/utils';
 import { useI18n } from '@/composables/useI18n';
-import { type IRunDataDisplayMode, type IExecutionResponse, type NodePanelType } from '@/Interface';
+import { type IRunDataDisplayMode, type NodePanelType } from '@/Interface';
 import { useNDVStore } from '@/stores/ndv.store';
 import { N8nLink, N8nText } from '@n8n/design-system';
-import { type Workflow } from 'n8n-workflow';
 import { computed, ref } from 'vue';
 import { I18nT } from 'vue-i18n';
 
-const { title, logEntry, paneType, workflow, execution } = defineProps<{
+const { title, logEntry, paneType } = defineProps<{
 	title: string;
 	paneType: NodePanelType;
 	logEntry: LogEntry;
-	workflow: Workflow;
-	execution: IExecutionResponse;
 }>();
 
 const locale = useI18n();
@@ -30,7 +27,7 @@ const runDataProps = computed<
 	}
 
 	const source = logEntry.runData.source[0];
-	const node = source && workflow.getNode(source.previousNode);
+	const node = source && logEntry.workflow.getNode(source.previousNode);
 
 	if (!source || !node) {
 		return undefined;
@@ -59,8 +56,8 @@ function handleChangeDisplayMode(value: IRunDataDisplayMode) {
 	<RunData
 		v-if="runDataProps"
 		v-bind="runDataProps"
-		:workflow="workflow"
-		:workflow-execution="execution"
+		:workflow="logEntry.workflow"
+		:workflow-execution="logEntry.execution"
 		:too-much-data-title="locale.baseText('ndv.output.tooMuchData.title')"
 		:no-data-in-branch-message="locale.baseText('ndv.output.noOutputDataInBranch')"
 		:executing-message="locale.baseText('ndv.output.executing')"
