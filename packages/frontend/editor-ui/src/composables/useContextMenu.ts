@@ -72,7 +72,7 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 		const node = targetNodes.value[0];
 		if (node.type !== EXECUTE_WORKFLOW_NODE_TYPE) return false;
 
-		return nodeTypesStore.getSubworkflowId(node);
+		return NodeHelpers.getSubworkflowId(node);
 	});
 
 	const targetNodeIds = computed(() => {
