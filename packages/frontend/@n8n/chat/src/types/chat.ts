@@ -10,4 +10,5 @@ export interface Chat {
 	loadPreviousSession?: () => Promise<string | undefined>;
 	startNewSession?: () => Promise<void>;
 	sendMessage: (text: string, files: File[]) => Promise<void>;
+	ws?: WebSocket | null;
 }

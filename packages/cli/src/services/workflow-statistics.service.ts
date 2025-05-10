@@ -34,6 +34,7 @@ const isModeRootExecution = {
 	trigger: true,
 	webhook: true,
 	evaluation: true,
+	chat: false,
 
 	// sub workflows
 	integrated: false,
