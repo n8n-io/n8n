@@ -5,7 +5,12 @@ import { FROM_AI_PARAMETERS_MODAL_KEY, AI_MCP_TOOL_NODE_TYPE } from '@/constants
 import { useAgentRequestStore } from '@/stores/agentRequest.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createEventBus } from '@n8n/utils/event-bus';
-import { type FromAIArgument, NodeConnectionTypes, traverseNodeParameters } from 'n8n-workflow';
+import {
+	type FromAIArgument,
+	IDataObject,
+	NodeConnectionTypes,
+	traverseNodeParameters,
+} from 'n8n-workflow';
 import type { IFormInput } from '@n8n/design-system';
 import { computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
@@ -158,8 +163,9 @@ watch(
 
 		collectedArgs.forEach((value: FromAIArgument) => {
 			const type = value.type ?? 'string';
-			const initialValue = inputOverrides?.[value.key]
-				? inputOverrides[value.key]
+			const inputQuery = inputOverrides?.query as IDataObject;
+			const initialValue = inputQuery?.[value.key]
+				? inputQuery[value.key]
 				: (agentRequestStore.getAgentRequest(
 						workflowsStore.workflowId,
 						newNode.id,
@@ -177,12 +183,18 @@ watch(
 			});
 		});
 		if (result.length === 0) {
+			let inputQuery = inputOverrides?.query;
+			if (typeof inputQuery === 'object') {
+				inputQuery = JSON.stringify(inputQuery);
+			}
 			const queryValue =
-				agentRequestStore.getAgentRequest(workflowsStore.workflowId, newNode.id, 'query') ?? '';
+				inputQuery ??
+				agentRequestStore.getAgentRequest(workflowsStore.workflowId, newNode.id, 'query') ??
+				'';
 
 			result.push({
 				name: 'query',
-				initialValue: queryValue as string,
+				initialValue: (queryValue as string) ?? '',
 				properties: {
 					label: 'Query',
 					type: 'text',
