@@ -455,12 +455,11 @@ export function getContext(
 	node?: INode,
 ): IContextObject {
 	if (runExecutionData.executionData === undefined) {
-		// Improved error handling: log error and return empty context instead of throwing
+		// Instead of throwing an error, log and return empty context to keep workflow running
 		console.error('Missing executionData. Context:', {
 			type,
 			nodeName: node?.name,
 		});
-		// Return empty context object to avoid breaking the workflow
 		return {};
 	}
 
@@ -470,22 +469,6 @@ export function getContext(
 	} else if (type === 'node') {
 		if (node === undefined) {
 			throw new ApplicationError(
-				'The request data of context type "node" the node parameter has to be set!',
-			);
-		}
-		key = `node:${node.name}`;
-	} else {
-		throw new ApplicationError('Unknown context type. Only `flow` and `node` are supported.', {
-			extra: { contextType: type },
-		});
-	}
-
-	if (runExecutionData.executionData.contextData[key] === undefined) {
-		runExecutionData.executionData.contextData[key] = {};
-	}
-
-	return runExecutionData.executionData.contextData[key];
-}
 
 /**
  * Returns which parameters are dependent on which
@@ -1015,7 +998,7 @@ export function getNodeInputs(
 		return nodeTypeData.inputs;
 	}
 
-	// Calculate the outputs dynamically
+	// Calculate the inputs dynamically
 	try {
 		return (workflow.expression.getSimpleParameterValue(
 			node,
@@ -1024,8 +1007,7 @@ export function getNodeInputs(
 			{},
 		) || []) as NodeConnectionType[];
 	} catch (e) {
-		console.warn('Could not calculate inputs dynamically for node: ', node.name);
-		return [];
+		throw new Error(`Failed to calculate inputs dynamically for node: ${node.name}. Error: ${(e as Error).message}`);
 	}
 }
 
@@ -1048,7 +1030,7 @@ export function getNodeOutputs(
 				{},
 			) || []) as NodeConnectionType[];
 		} catch (e) {
-			console.warn('Could not calculate outputs dynamically for node: ', node.name);
+			throw new Error(`Failed to calculate outputs dynamically for node: ${node.name}. Error: ${(e as Error).message}`);
 		}
 	}
 
@@ -1244,7 +1226,23 @@ function addToIssuesIfMissing(
             `Parameter "${nodeProperties.displayName}" is required.`,
         );
     }
-}	
+}Bug Description
+In the getContext function (located in packages/workflow/src/NodeHelpers.ts), if the executionData inside runExecutionData is undefined, the function just logs an error and returns an empty context object instead of throwing an actual error.
+This can hide bigger workflow or data issues, making it harder to debug and leading to silent failures or wrong workflow behavior without anyone noticing.
+
+To Reproduce
+Open or create a workflow in the n8n app where nodes use context data.
+Start the workflow manually, through a webhook, or on a schedule.
+Cause an issue during execution that stops executionData from being properly set (like a node error, a bug in the engine, or a corrupted workflow state).
+When a node tries to call getContext, notice that executionData is undefined.
+Instead of crashing, the function logs an error and just gives back an empty context object.
+As a result, other nodes may get empty or wrong context data, which can cause silent issues or bad behavior later on.
+Expected behavior
+The getContext function should clearly throw an error if executionData is undefined.
+This way, problems are easier to catch and fix instead of letting workflows fail silently.
+
+Operating System
+
 
 /**
  * Returns the parameter value
