@@ -1,8 +1,7 @@
 import type { Project, User, ListQueryDb } from '@n8n/db';
-import { ProjectRelationRepository, ProjectRepository } from '@n8n/db';
+import { ProjectRelationRepository, ProjectRepository, SharedWorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import { CacheService } from '@/services/cache/cache.service';
 

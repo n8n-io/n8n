@@ -1,6 +1,7 @@
-import { WorkflowTagMapping } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, Repository } from '@n8n/typeorm';
+
+import { WorkflowTagMapping } from '../entities';
 
 @Service()
 export class WorkflowTagMappingRepository extends Repository<WorkflowTagMapping> {
