@@ -14,6 +14,8 @@ import {
 	isTriggerNode,
 	isExecutable,
 	displayParameter,
+	makeDescription,
+	getToolDescription,
 } from '@/NodeHelpers';
 import type { Workflow } from '@/Workflow';
 
@@ -4773,5 +4775,327 @@ describe('NodeHelpers', () => {
 				expect(result).toEqual(expected);
 			});
 		}
+	});
+
+	describe('makeDescription', () => {
+		let mockNodeTypeDescription: INodeTypeDescription;
+
+		beforeEach(() => {
+			// Arrange a basic mock node type description
+			mockNodeTypeDescription = {
+				displayName: 'Test Node',
+				name: 'testNode',
+				icon: 'fa:test',
+				group: ['transform'],
+				version: 1,
+				description: 'This is a test node',
+				defaults: {
+					name: 'Test Node',
+				},
+				inputs: ['main'],
+				outputs: ['main'],
+				properties: [],
+			};
+		});
+
+		test('should return action-based description when action is available', () => {
+			// Arrange
+			const nodeParameters: INodeParameters = {
+				resource: 'user',
+				operation: 'create',
+			};
+
+			mockNodeTypeDescription.properties = [
+				{
+					displayName: 'Operation',
+					name: 'operation',
+					type: 'options',
+					displayOptions: {
+						show: {
+							resource: ['user'],
+						},
+					},
+					options: [
+						{
+							name: 'Create',
+							value: 'create',
+							action: 'Create a new user',
+						},
+					],
+					default: 'create',
+				},
+			];
+
+			// Act
+			const result = makeDescription(nodeParameters, mockNodeTypeDescription);
+
+			// Assert
+			expect(result).toBe('Create a new user in Test Node');
+		});
+
+		test('should return resource-operation-based description when action is not available', () => {
+			// Arrange
+			const nodeParameters: INodeParameters = {
+				resource: 'user',
+				operation: 'create',
+			};
+
+			mockNodeTypeDescription.properties = [
+				{
+					displayName: 'Operation',
+					name: 'operation',
+					type: 'options',
+					displayOptions: {
+						show: {
+							resource: ['user'],
+						},
+					},
+					options: [
+						{
+							name: 'Create',
+							value: 'create',
+							// No action property
+						},
+					],
+					default: 'create',
+				},
+			];
+
+			// Act
+			const result = makeDescription(nodeParameters, mockNodeTypeDescription);
+
+			// Assert
+			expect(result).toBe('create user in Test Node');
+		});
+
+		test('should return default description when resource or operation is missing', () => {
+			// Arrange
+			const nodeParameters: INodeParameters = {
+				// No resource or operation
+			};
+
+			// Act
+			const result = makeDescription(nodeParameters, mockNodeTypeDescription);
+
+			// Assert
+			expect(result).toBe('This is a test node');
+		});
+
+		test('should handle case where nodeTypeOperation is not found', () => {
+			// Arrange
+			const nodeParameters: INodeParameters = {
+				resource: 'user',
+				operation: 'create',
+			};
+
+			mockNodeTypeDescription.properties = [
+				// No matching operation property
+			];
+
+			// Act
+			const result = makeDescription(nodeParameters, mockNodeTypeDescription);
+
+			// Assert
+			expect(result).toBe('create user in Test Node');
+		});
+
+		test('should handle case where options are not a list of INodePropertyOptions', () => {
+			// Arrange
+			const nodeParameters: INodeParameters = {
+				resource: 'user',
+				operation: 'create',
+			};
+
+			mockNodeTypeDescription.properties = [
+				{
+					displayName: 'Operation',
+					name: 'operation',
+					type: 'options',
+					displayOptions: {
+						show: {
+							resource: ['user'],
+						},
+					},
+					// Options are not INodePropertyOptions[]
+					options: [
+						//@ts-expect-error
+						{},
+					],
+					default: 'create',
+				},
+			];
+
+			// Act
+			const result = makeDescription(nodeParameters, mockNodeTypeDescription);
+
+			// Assert
+			expect(result).toBe('create user in Test Node');
+		});
+	});
+
+	describe('getToolDescription', () => {
+		let mockNodeTypeDescription: INodeTypeDescription;
+
+		beforeEach(() => {
+			// Arrange a basic mock node type description
+			mockNodeTypeDescription = {
+				displayName: 'Test Node',
+				name: 'testNode',
+				icon: 'fa:test',
+				group: ['transform'],
+				version: 1,
+				description: 'This is a test node',
+				defaults: {
+					name: 'Test Node',
+				},
+				inputs: ['main'],
+				outputs: ['main'],
+				properties: [],
+				usableAsTool: true,
+			};
+		});
+
+		test('should not update when node type is not usable as tool', () => {
+			// Arrange
+			const { usableAsTool, ...currentNodeType } = mockNodeTypeDescription;
+
+			const newParameters: INodeParameters = {
+				descriptionType: 'manual',
+				resource: 'user',
+				operation: 'create',
+			};
+			const currentParameters: INodeParameters = {
+				descriptionType: 'manual',
+				resource: 'user',
+				operation: 'create',
+			};
+
+			// Act
+			const result = getToolDescription(currentNodeType, newParameters, currentParameters);
+
+			// Assert
+			expect(result.shouldUpdate).toBe(false);
+			expect(result.newDescription).toBe(null);
+		});
+
+		test('should not update when descriptionType is not manual', () => {
+			// Arrange
+			const newParameters: INodeParameters = {
+				descriptionType: 'automatic',
+				resource: 'user',
+				operation: 'create',
+			};
+			const currentParameters: INodeParameters = {
+				descriptionType: 'automatic',
+				resource: 'user',
+				operation: 'create',
+			};
+
+			// Act
+			const result = getToolDescription(mockNodeTypeDescription, newParameters, currentParameters);
+
+			// Assert
+			expect(result.shouldUpdate).toBe(false);
+			expect(result.newDescription).toBe(null);
+		});
+
+		test('should update when toolDescription matches previous description', () => {
+			// Arrange
+			mockNodeTypeDescription.properties = [
+				{
+					displayName: 'Operation',
+					name: 'operation',
+					type: 'options',
+					displayOptions: {
+						show: {
+							resource: ['user'],
+						},
+					},
+					options: [
+						{
+							name: 'Create',
+							value: 'create',
+							action: 'Create a new user',
+						},
+					],
+					default: 'create',
+				},
+			];
+
+			const currentParameters: INodeParameters = {
+				descriptionType: 'manual',
+				resource: 'user',
+				operation: 'create',
+			};
+
+			const newParameters: INodeParameters = {
+				descriptionType: 'manual',
+				resource: 'user',
+				operation: 'update',
+				toolDescription: 'Create a new user in Test Node', // Matches the previous description
+			};
+
+			// Act
+			const result = getToolDescription(mockNodeTypeDescription, newParameters, currentParameters);
+
+			// Assert
+			expect(result.shouldUpdate).toBe(true);
+			expect(result.newDescription).toBe('update user in Test Node');
+		});
+
+		test('should update when toolDescription matches node type description', () => {
+			// Arrange
+			const currentParameters: INodeParameters = {
+				descriptionType: 'manual',
+				resource: 'user',
+				operation: 'create',
+			};
+
+			const newParameters: INodeParameters = {
+				descriptionType: 'manual',
+				resource: 'user',
+				operation: 'update',
+				toolDescription: 'This is a test node', // Matches the node type description
+			};
+
+			// Act
+			const result = getToolDescription(mockNodeTypeDescription, newParameters, currentParameters);
+
+			// Assert
+			expect(result.shouldUpdate).toBe(true);
+			expect(result.newDescription).toBe('update user in Test Node');
+		});
+
+		test('should not update when toolDescription is custom', () => {
+			// Arrange
+			const currentParameters: INodeParameters = {
+				descriptionType: 'manual',
+				resource: 'user',
+				operation: 'create',
+			};
+
+			const newParameters: INodeParameters = {
+				descriptionType: 'manual',
+				resource: 'user',
+				operation: 'update',
+				toolDescription: 'My custom description', // Custom description
+			};
+
+			// Act
+			const result = getToolDescription(mockNodeTypeDescription, newParameters, currentParameters);
+
+			// Assert
+			expect(result.shouldUpdate).toBe(false);
+			expect(result.newDescription).toBe(null);
+		});
+
+		test('should handle null inputs gracefully', () => {
+			// Arrange
+			const result = getToolDescription(null, null);
+
+			// Assert
+			expect(result.shouldUpdate).toBe(false);
+			expect(result.newDescription).toBe(null);
+		});
 	});
 });

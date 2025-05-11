@@ -499,6 +499,7 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 			_node,
 			nodeType,
 		);
+
 		const oldNodeParameters = Object.assign({}, nodeParameters);
 
 		// Copy the data because it is the data of vuex so make sure that
@@ -548,6 +549,16 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 			_node,
 			nodeType,
 		);
+
+		const { shouldUpdate, newDescription } = NodeHelpers.getToolDescription(
+			props.nodeType,
+			nodeParameters,
+			node.value?.parameters,
+		);
+
+		if (shouldUpdate && nodeParameters) {
+			nodeParameters.toolDescription = newDescription;
+		}
 
 		for (const key of Object.keys(nodeParameters as object)) {
 			if (nodeParameters && nodeParameters[key] !== null && nodeParameters[key] !== undefined) {
