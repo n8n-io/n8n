@@ -1,6 +1,6 @@
 import { GlobalConfig } from '@n8n/config';
 import type { User, WorkflowEntity, ListQueryDb } from '@n8n/db';
-import { SharedWorkflow, ExecutionRepository } from '@n8n/db';
+import { SharedWorkflow, ExecutionRepository, WorkflowTagMappingRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
@@ -17,7 +17,6 @@ import { v4 as uuid } from 'uuid';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import config from '@/config';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
-import { WorkflowTagMappingRepository } from '@/databases/repositories/workflow-tag-mapping.repository';
 import type { WorkflowFolderUnionFull } from '@/databases/repositories/workflow.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -28,7 +27,6 @@ import { validateEntity } from '@/generic-helpers';
 import type { ListQuery } from '@/requests';
 import { hasSharing } from '@/requests';
 import { FolderService } from '@/services/folder.service';
-import { OrchestrationService } from '@/services/orchestration.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
@@ -50,7 +48,6 @@ export class WorkflowService {
 		private readonly ownershipService: OwnershipService,
 		private readonly tagService: TagService,
 		private readonly workflowHistoryService: WorkflowHistoryService,
-		private readonly orchestrationService: OrchestrationService,
 		private readonly externalHooks: ExternalHooks,
 		private readonly activeWorkflowManager: ActiveWorkflowManager,
 		private readonly roleService: RoleService,
@@ -369,8 +366,6 @@ export class WorkflowService {
 				throw new BadRequestError(message);
 			}
 		}
-
-		await this.orchestrationService.init();
 
 		return updatedWorkflow;
 	}

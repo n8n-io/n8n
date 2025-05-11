@@ -1254,6 +1254,7 @@ export interface ITabBarItem {
 
 export interface IResourceLocatorResultExpanded extends INodeListSearchItems {
 	linkAlt?: string;
+	isArchived?: boolean;
 }
 
 export interface CurlToJSONResponse {

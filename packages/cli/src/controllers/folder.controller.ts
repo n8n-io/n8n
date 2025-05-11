@@ -2,6 +2,7 @@ import {
 	CreateFolderDto,
 	DeleteFolderDto,
 	ListFolderQueryDto,
+	TransferFolderBodyDto,
 	UpdateFolderDto,
 } from '@n8n/api-types';
 import {
@@ -13,6 +14,8 @@ import {
 	Patch,
 	Delete,
 	Query,
+	Put,
+	Param,
 } from '@n8n/decorators';
 import { Response } from 'express';
 import { UserError } from 'n8n-workflow';
@@ -21,13 +24,17 @@ import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import type { ListQuery } from '@/requests';
 import { AuthenticatedRequest } from '@/requests';
+import type { ListQuery } from '@/requests';
 import { FolderService } from '@/services/folder.service';
+import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
 @RestController('/projects/:projectId/folders')
 export class ProjectController {
-	constructor(private readonly folderService: FolderService) {}
+	constructor(
+		private readonly folderService: FolderService,
+		private readonly enterpriseWorkflowService: EnterpriseWorkflowService,
+	) {}
 
 	@Post('/')
 	@ProjectScope('folder:create')
@@ -144,5 +151,24 @@ export class ProjectController {
 			}
 			throw new InternalServerError(undefined, e);
 		}
+	}
+
+	@Put('/:folderId/transfer')
+	@ProjectScope('folder:move')
+	async transferFolderToProject(
+		req: AuthenticatedRequest,
+		_res: unknown,
+		@Param('folderId') sourceFolderId: string,
+		@Param('projectId') sourceProjectId: string,
+		@Body body: TransferFolderBodyDto,
+	) {
+		return await this.enterpriseWorkflowService.transferFolder(
+			req.user,
+			sourceProjectId,
+			sourceFolderId,
+			body.destinationProjectId,
+			body.destinationParentFolderId,
+			body.shareCredentials,
+		);
 	}
 }

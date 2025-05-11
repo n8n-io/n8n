@@ -7,6 +7,7 @@ import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { DateTime } from 'luxon';
 
+import { mockLogger } from '@test/mocking';
 import { createTeamProject } from '@test-integration/db/projects';
 import { createWorkflow } from '@test-integration/db/workflows';
 import * as testDb from '@test-integration/test-db';
@@ -15,6 +16,8 @@ import { createCompactedInsightsEvent } from '../database/entities/__tests__/db-
 import type { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository';
 import type { InsightsCollectionService } from '../insights-collection.service';
 import type { InsightsCompactionService } from '../insights-compaction.service';
+import type { InsightsPruningService } from '../insights-pruning.service';
+import type { InsightsConfig } from '../insights.config';
 import { InsightsService } from '../insights.service';
 
 // Initialize DB once for all tests
@@ -500,7 +503,10 @@ describe('getAvailableDateRanges', () => {
 			mock<InsightsByPeriodRepository>(),
 			mock<InsightsCompactionService>(),
 			mock<InsightsCollectionService>(),
+			mock<InsightsPruningService>(),
 			licenseMock,
+			mock<InsightsConfig>(),
+			mockLogger(),
 		);
 	});
 
@@ -600,7 +606,10 @@ describe('getMaxAgeInDaysAndGranularity', () => {
 			mock<InsightsByPeriodRepository>(),
 			mock<InsightsCompactionService>(),
 			mock<InsightsCollectionService>(),
+			mock<InsightsPruningService>(),
 			licenseMock,
+			mock<InsightsConfig>(),
+			mockLogger(),
 		);
 	});
 
@@ -662,5 +671,111 @@ describe('getMaxAgeInDaysAndGranularity', () => {
 			granularity: 'hour',
 			maxAgeInDays: 1,
 		});
+	});
+});
+
+describe('shutdown', () => {
+	let insightsService: InsightsService;
+
+	const mockCollectionService = mock<InsightsCollectionService>({
+		shutdown: jest.fn().mockResolvedValue(undefined),
+		stopFlushingTimer: jest.fn(),
+	});
+
+	const mockCompactionService = mock<InsightsCompactionService>({
+		stopCompactionTimer: jest.fn(),
+	});
+
+	const mockPruningService = mock<InsightsPruningService>({
+		stopPruningTimer: jest.fn(),
+	});
+
+	beforeAll(() => {
+		insightsService = new InsightsService(
+			mock<InsightsByPeriodRepository>(),
+			mockCompactionService,
+			mockCollectionService,
+			mockPruningService,
+			mock<LicenseState>(),
+			mock<InsightsConfig>(),
+			mockLogger(),
+		);
+	});
+
+	test('shutdown stops timers and shuts down services', async () => {
+		// ACT
+		await insightsService.shutdown();
+
+		// ASSERT
+		expect(mockCollectionService.shutdown).toHaveBeenCalled();
+		expect(mockCompactionService.stopCompactionTimer).toHaveBeenCalled();
+		expect(mockPruningService.stopPruningTimer).toHaveBeenCalled();
+	});
+});
+
+describe('timers', () => {
+	let insightsService: InsightsService;
+
+	const mockCollectionService = mock<InsightsCollectionService>({
+		startFlushingTimer: jest.fn(),
+		stopFlushingTimer: jest.fn(),
+	});
+
+	const mockCompactionService = mock<InsightsCompactionService>({
+		startCompactionTimer: jest.fn(),
+		stopCompactionTimer: jest.fn(),
+	});
+
+	const mockPruningService = mock<InsightsPruningService>({
+		startPruningTimer: jest.fn(),
+		stopPruningTimer: jest.fn(),
+	});
+
+	const mockedLogger = mockLogger();
+	const mockedConfig = mock<InsightsConfig>({
+		maxAgeDays: -1,
+	});
+
+	beforeAll(() => {
+		insightsService = new InsightsService(
+			mock<InsightsByPeriodRepository>(),
+			mockCompactionService,
+			mockCollectionService,
+			mockPruningService,
+			mock<LicenseState>(),
+			mockedConfig,
+			mockedLogger,
+		);
+	});
+
+	test('startTimers starts timers except pruning', () => {
+		// ACT
+		insightsService.startTimers();
+
+		// ASSERT
+		expect(mockCompactionService.startCompactionTimer).toHaveBeenCalled();
+		expect(mockCollectionService.startFlushingTimer).toHaveBeenCalled();
+		expect(mockPruningService.startPruningTimer).not.toHaveBeenCalled();
+	});
+
+	test('startTimers starts pruning timer', () => {
+		// ARRANGE
+		mockedConfig.maxAgeDays = 30;
+
+		// ACT
+		insightsService.startTimers();
+
+		// ASSERT
+		expect(mockPruningService.startPruningTimer).toHaveBeenCalled();
+	});
+
+	test('stopTimers stops timers', () => {
+		// ACT
+		insightsService.stopTimers();
+
+		// ASSERT
+		expect(mockCompactionService.stopCompactionTimer).toHaveBeenCalled();
+		expect(mockCollectionService.stopFlushingTimer).toHaveBeenCalled();
+		expect(mockPruningService.stopPruningTimer).toHaveBeenCalled();
 	});
 });

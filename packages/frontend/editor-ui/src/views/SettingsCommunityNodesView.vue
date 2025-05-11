@@ -17,6 +17,7 @@ import { usePushConnection } from '@/composables/usePushConnection';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { useSettingsStore } from '@/stores/settings.store';
 
 const PACKAGE_COUNT_THRESHOLD = 31;
 
@@ -33,6 +34,7 @@ const documentTitle = useDocumentTitle();
 
 const communityNodesStore = useCommunityNodesStore();
 const uiStore = useUIStore();
+const settingsStore = useSettingsStore();
 
 const getEmptyStateDescription = computed(() => {
 	const packageCount = communityNodesStore.availablePackageCount;
@@ -139,7 +141,11 @@ onBeforeUnmount(() => {
 		<div :class="$style.headingContainer">
 			<n8n-heading size="2xlarge">{{ i18n.baseText('settings.communityNodes') }}</n8n-heading>
 			<n8n-button
-				v-if="communityNodesStore.getInstalledPackages.length > 0 && !loading"
+				v-if="
+					settingsStore.isUnverifiedPackagesEnabled &&
+					communityNodesStore.getInstalledPackages.length > 0 &&
+					!loading
+				"
 				:label="i18n.baseText('settings.communityNodes.installModal.installButton.label')"
 				size="large"
 				@click="openInstallModal"
