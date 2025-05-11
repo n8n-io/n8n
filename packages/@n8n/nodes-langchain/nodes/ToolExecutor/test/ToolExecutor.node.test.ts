@@ -103,16 +103,23 @@ describe('ToolExecutor Node', () => {
 			expect(result).toEqual([[{ json: 'test result' }]]);
 		});
 
-		it('executes a specific tool from a toolkit', async () => {
+		it('executes a specific tool from a toolkit with several tools', async () => {
 			const mockTool = new DynamicTool({
 				name: 'specific_tool',
 				description: 'A specific tool',
 				func: jest.fn().mockResolvedValue('specific result'),
 			});
+
+			const irrelevantTool = new DynamicTool({
+				name: 'other_tool',
+				description: 'A specific irrelevant tool',
+				func: jest.fn().mockResolvedValue('specific result'),
+			});
+
 			mockTool.invoke = jest.fn().mockResolvedValue('specific result');
 
 			const toolkit = {
-				getTools: () => [mockTool],
+				getTools: () => [mockTool, irrelevantTool],
 			};
 
 			mockExecuteFunction.getInputConnectionData.mockResolvedValue([toolkit]);

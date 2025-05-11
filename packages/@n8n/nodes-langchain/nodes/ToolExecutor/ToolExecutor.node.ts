@@ -1,6 +1,6 @@
 import { Tool, StructuredTool } from '@langchain/core/tools';
+import type { Toolkit } from 'langchain/agents';
 import type {
-	IDataObject,
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
@@ -8,7 +8,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
-import { convertObjectBySchema } from './utils/convertToSchema';
+import { executeTool } from './utils/executeTool';
 
 export class ToolExecutor implements INodeType {
 	description: INodeTypeDescription = {
@@ -37,20 +37,20 @@ export class ToolExecutor implements INodeType {
 				description: 'Name of the tool to execute if the connected tool is a toolkit',
 			},
 		],
-		group: ['output'],
-		description: 'Virtual Agent to execute tools in partial executions',
+		group: ['transform'],
+		description: 'Node to execute tools without an AI Agent',
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const query = this.getNodeParameter('query', 0, {}) as string | object;
 		const toolName = this.getNodeParameter('toolName', 0, '') as string;
 
-		let parsedQuery: string | object = query;
+		let parsedQuery: string | object;
 
 		try {
 			parsedQuery = typeof query === 'string' ? JSON.parse(query) : query;
 		} catch (error) {
-			// If parsing fails, keep the original string
+			parsedQuery = query;
 		}
 
 		const resultData: INodeExecutionData[] = [];
@@ -60,48 +60,32 @@ export class ToolExecutor implements INodeType {
 			throw new NodeOperationError(this.getNode(), 'No tool inputs found');
 		}
 
-		for (const tool of toolInputs) {
-			if (tool instanceof Tool || tool instanceof StructuredTool) {
-				// Handle LangChain tools
-				try {
-					if ('schema' in tool && tool.schema) {
-						const convertedQuery = convertObjectBySchema(parsedQuery, tool.schema);
-						const result = await tool.invoke(convertedQuery);
-						resultData.push({ json: result as IDataObject });
-					} else {
-						const result = await tool.invoke(parsedQuery);
-						resultData.push({ json: result as IDataObject });
-					}
-				} catch (error) {
-					throw new NodeOperationError(this.getNode(), `Error executing tool: ${error.message}`);
-				}
-			} else if (tool && typeof (tool as { getTools?: () => unknown[] }).getTools === 'function') {
+		try {
+			for (const tool of toolInputs) {
 				// Handle toolkits
-				const tools = (tool as { getTools: () => unknown[] }).getTools();
-				for (const toolkitTool of tools) {
-					if (toolkitTool instanceof Tool || toolkitTool instanceof StructuredTool) {
-						if (toolName === toolkitTool.name) {
-							try {
-								// If tool has a schema, use it to parse and validate the input
-								if ('schema' in toolkitTool && toolkitTool.schema) {
-									const convertedQuery = convertObjectBySchema(parsedQuery, toolkitTool.schema);
-									const result = await toolkitTool.invoke(convertedQuery);
-									resultData.push({ json: result as IDataObject });
-								} else {
-									// Fallback to direct invocation if no schema
-									const result = await toolkitTool.invoke(parsedQuery);
-									resultData.push({ json: result as IDataObject });
-								}
-							} catch (error) {
-								throw new NodeOperationError(
-									this.getNode(),
-									`Error executing tool: ${error.message}`,
-								);
+				if (tool && typeof (tool as Toolkit).getTools === 'function') {
+					const toolsInToolkit = (tool as Toolkit).getTools();
+					for (const toolkitTool of toolsInToolkit) {
+						if (toolkitTool instanceof Tool || toolkitTool instanceof StructuredTool) {
+							if (toolName === toolkitTool.name) {
+								const result = await executeTool(toolkitTool, parsedQuery);
+								resultData.push(result);
 							}
 						}
 					}
+				} else {
+					// Handle single tool
+					if (!toolName || toolName === (tool as Tool).name) {
+						const result = await executeTool(tool as Tool, parsedQuery);
+						resultData.push(result);
+					}
 				}
 			}
+		} catch (error) {
+			throw new NodeOperationError(
+				this.getNode(),
+				`Error executing tool: ${(error as Error).message}`,
+			);
 		}
 		return [resultData];
 	}
