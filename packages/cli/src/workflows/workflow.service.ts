@@ -3,6 +3,7 @@ import type { User, WorkflowEntity, ListQueryDb, WorkflowFolderUnionFull } from 
 import {
 	SharedWorkflow,
 	ExecutionRepository,
+	FolderRepository,
 	WorkflowTagMappingRepository,
 	SharedWorkflowRepository,
 	WorkflowRepository,
@@ -29,7 +30,6 @@ import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
 import type { ListQuery } from '@/requests';
 import { hasSharing } from '@/requests';
-import { FolderService } from '@/services/folder.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
@@ -59,7 +59,7 @@ export class WorkflowService {
 		private readonly executionRepository: ExecutionRepository,
 		private readonly eventService: EventService,
 		private readonly globalConfig: GlobalConfig,
-		private readonly folderService: FolderService,
+		private readonly folderRepository: FolderRepository,
 		private readonly workflowFinderService: WorkflowFinderService,
 	) {}
 
@@ -300,7 +300,14 @@ export class WorkflowService {
 		if (parentFolderId) {
 			const project = await this.sharedWorkflowRepository.getWorkflowOwningProject(workflow.id);
 			if (parentFolderId !== PROJECT_ROOT) {
-				await this.folderService.findFolderInProjectOrFail(parentFolderId, project?.id ?? '');
+				try {
+					await this.folderRepository.findOneOrFailFolderInProject(
+						parentFolderId,
+						project?.id ?? '',
+					);
+				} catch (e) {
+					throw new FolderNotFoundError(parentFolderId);
+				}
 			}
 			updatePayload.parentFolder = parentFolderId === PROJECT_ROOT ? null : { id: parentFolderId };
 		}
@@ -416,7 +423,11 @@ export class WorkflowService {
 		return workflow;
 	}
 
-	async archive(user: User, workflowId: string): Promise<WorkflowEntity | undefined> {
+	async archive(
+		user: User,
+		workflowId: string,
+		skipArchived: boolean = false,
+	): Promise<WorkflowEntity | undefined> {
 		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:delete',
 		]);
@@ -426,6 +437,10 @@ export class WorkflowService {
 		}
 
 		if (workflow.isArchived) {
+			if (skipArchived) {
+				return workflow;
+			}
+
 			throw new BadRequestError('Workflow is already archived.');
 		}
 
