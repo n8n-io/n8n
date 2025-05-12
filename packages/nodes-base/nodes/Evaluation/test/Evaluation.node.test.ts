@@ -186,7 +186,7 @@ describe('Test Evaluation', () => {
 						return { assignments: metrics };
 					}
 					if (param === 'operation') {
-						return 'setEvaluation';
+						return 'setMetrics';
 					}
 					return param;
 				}),
