@@ -1,60 +1,14 @@
-import type { BooleanLicenseFeature } from '@n8n/constants';
-import type { Constructable } from '@n8n/di';
-import type { Scope } from '@n8n/permissions';
-import type { RequestHandler } from 'express';
-
-export type Method = 'get' | 'post' | 'put' | 'patch' | 'delete';
-
-export type Arg = { type: 'body' | 'query' } | { type: 'param'; key: string };
-
-export interface RateLimit {
-	/**
-	 * The maximum number of requests to allow during the `window` before rate limiting the client.
-	 * @default 5
-	 */
-	limit?: number;
-	/**
-	 * How long we should remember the requests.
-	 * @default 300_000 (5 minutes)
-	 */
-	windowMs?: number;
-}
-
-export type HandlerName = string;
-
-export interface AccessScope {
-	scope: Scope;
-	globalOnly: boolean;
-}
-
-export interface RouteMetadata {
-	method: Method;
-	path: string;
-	middlewares: RequestHandler[];
-	usesTemplates: boolean;
-	skipAuth: boolean;
-	rateLimit?: boolean | RateLimit;
-	licenseFeature?: BooleanLicenseFeature;
-	accessScope?: AccessScope;
-	args: Arg[];
-}
-
-export interface ControllerMetadata {
-	basePath: `/${string}`;
-	middlewares: HandlerName[];
-	routes: Map<HandlerName, RouteMetadata>;
-}
-
-export type Controller = Constructable<object> &
-	Record<HandlerName, (...args: unknown[]) => Promise<unknown>>;
-
-type RouteHandlerFn = () => Promise<void> | void;
-
 export type Class<T = object, A extends unknown[] = unknown[]> = new (...args: A) => T;
 
-export type ServiceClass = Class<Record<string, RouteHandlerFn>>;
+type EventHandlerFn = () => Promise<void> | void;
+export type EventHandlerClass = Class<Record<string, EventHandlerFn>>;
+export type EventHandler<T extends string> = {
+	/** Class holding the method to call on an event. */
+	eventHandlerClass: EventHandlerClass;
 
-export interface ShutdownHandler {
-	serviceClass: ServiceClass;
+	/** Name of the method to call on an event. */
 	methodName: string;
-}
+
+	/** Name of the event to listen to. */
+	eventName: T;
+};
