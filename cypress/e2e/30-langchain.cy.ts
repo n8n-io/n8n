@@ -453,11 +453,11 @@ describe('Langchain Integration', () => {
 		cy.createFixtureWorkflow('Test_workflow_chat_partial_execution.json');
 		workflowPage.actions.zoomToFit();
 
-		getManualChatModal().find('main').should('not.exist');
+		getManualChatModal().should('not.exist');
 		openNode('Node 1');
 		ndv.actions.execute();
 
-		getManualChatModal().find('main').should('exist');
+		getManualChatModal().should('exist');
 		sendManualChatMessage('Test');
 
 		getManualChatMessages().should('contain', 'this_my_field_1');
