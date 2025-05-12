@@ -1,4 +1,5 @@
-import type { User, RunningMode, SyncStatus, SettingsRepository } from '@n8n/db';
+import { SettingsRepository } from '@n8n/db';
+import type { User, RunningMode, SyncStatus } from '@n8n/db';
 import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { QueryFailedError } from '@n8n/typeorm';
