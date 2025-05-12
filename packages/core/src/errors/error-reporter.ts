@@ -1,3 +1,4 @@
+import type { InstanceType } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import type { NodeOptions } from '@sentry/node';
 import { close } from '@sentry/node';
@@ -7,7 +8,6 @@ import type { ReportingOptions } from 'n8n-workflow';
 import { ApplicationError, ExecutionCancelledError, BaseError } from 'n8n-workflow';
 import { createHash } from 'node:crypto';
 
-import type { InstanceType } from '@/instance-settings';
 import { Logger } from '@/logging/logger';
 
 type ErrorReporterInitOptions = {
