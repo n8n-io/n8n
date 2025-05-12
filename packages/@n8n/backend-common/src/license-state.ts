@@ -189,4 +189,8 @@ export class LicenseState {
 	getMaxTeamProjects() {
 		return this.getValue('quota:maxTeamProjects') ?? 0;
 	}
+
+	getMaxWorkflowsWithEvaluations() {
+		return this.getValue('quota:evaluations:maxWorkflows') ?? 1;
+	}
 }

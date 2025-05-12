@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { useI18n } from '@/composables/useI18n';
-import { N8nText, N8nButton } from '@n8n/design-system';
+import { N8nText, N8nButton, N8nCallout } from '@n8n/design-system';
 import { ref, computed, watch } from 'vue';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useEvaluationStore } from '@/stores/evaluation.store.ee';
 import { EVALUATION_DATASET_TRIGGER_NODE, PLACEHOLDER_EMPTY_WORKFLOW_ID, VIEWS } from '@/constants';
 import StepHeader from '../shared/StepHeader.vue';
 import { useRouter } from 'vue-router';
+import { useUsageStore } from '@/stores/usage.store';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
 defineEmits<{
@@ -15,7 +17,13 @@ defineEmits<{
 const router = useRouter();
 const locale = useI18n();
 const workflowsStore = useWorkflowsStore();
+const evaluationsStore = useEvaluationStore();
+const usageStore = useUsageStore();
 const pageRedirectionHelper = usePageRedirectionHelper();
+
+const hasRuns = computed(() => {
+	return evaluationsStore.testRunsById[workflowsStore.workflow.id]?.length > 0;
+});
 
 const datasetTriggerExist = computed(() => {
 	return workflowsStore.workflow.nodes.some(
@@ -39,10 +47,30 @@ const evaluationSetOutputNodeExist = computed(() => {
 	);
 });
 
+const evaluationsAvailable = computed(() => {
+	return (
+		usageStore.workflowsWithEvaluationsLimit === -1 ||
+		usageStore.workflowsWithEvaluationsCount < usageStore.workflowsWithEvaluationsLimit
+	);
+});
+
+const evaluationsQuotaExceeded = computed(() => {
+	return (
+		usageStore.workflowsWithEvaluationsLimit !== -1 &&
+		usageStore.workflowsWithEvaluationsCount >= usageStore.workflowsWithEvaluationsLimit &&
+		!hasRuns.value
+	);
+});
+
 const activeStepIndex = ref(0);
 
 // Calculate the initial active step based on the workflow state
 const initializeActiveStep = () => {
+	if (evaluationsQuotaExceeded.value) {
+		activeStepIndex.value = 2;
+		return;
+	}
+
 	if (
 		datasetTriggerExist.value &&
 		evaluationSetOutputNodeExist.value &&
@@ -65,7 +93,7 @@ initializeActiveStep();
 watch(
 	() => datasetTriggerExist.value,
 	(newValue) => {
-		if (newValue && activeStepIndex.value < 1) {
+		if (newValue && activeStepIndex.value < 1 && !evaluationsQuotaExceeded.value) {
 			activeStepIndex.value = 2;
 		}
 	},
@@ -76,7 +104,7 @@ watch(
 watch(
 	() => datasetTriggerExist.value && evaluationMetricNodeExist.value,
 	(newValue) => {
-		if (newValue && activeStepIndex.value < 3) {
+		if (newValue && activeStepIndex.value < 3 && !evaluationsQuotaExceeded.value) {
 			activeStepIndex.value = 3;
 		}
 	},
@@ -103,7 +131,7 @@ function navigateToWorkflow(
 }
 
 function onSeePlans() {
-	void pageRedirectionHelper.goToUpgrade('usage_page', 'open');
+	void pageRedirectionHelper.goToUpgrade('evaluations', 'upgrade-evaluations');
 }
 </script>
 
@@ -185,7 +213,7 @@ function onSeePlans() {
 					@click="toggleStep(2)"
 				/>
 				<div v-if="activeStepIndex === 2" :class="$style.stepContent">
-					<ul :class="$style.bulletPoints">
+					<ul v-if="!evaluationsQuotaExceeded" :class="$style.bulletPoints">
 						<li>
 							<N8nText size="small" color="text-base">
 								{{ locale.baseText('evaluations.setupWizard.step3.item1') }}
@@ -197,13 +225,20 @@ function onSeePlans() {
 							</N8nText>
 						</li>
 					</ul>
+					<N8nCallout v-else theme="warning" iconless>
+						{{ locale.baseText('evaluations.setupWizard.limitReached') }}
+					</N8nCallout>
 					<div :class="$style.actionButton">
 						<N8nButton
+							v-if="!evaluationsQuotaExceeded"
 							size="small"
 							type="secondary"
 							@click="navigateToWorkflow('addEvaluationNode')"
 						>
 							{{ locale.baseText('evaluations.setupWizard.step3.button') }}
+						</N8nButton>
+						<N8nButton v-else size="small" @click="onSeePlans">
+							{{ locale.baseText('generic.seePlans') }}
 						</N8nButton>
 						<N8nButton
 							size="small"
@@ -214,7 +249,10 @@ function onSeePlans() {
 							{{ locale.baseText('evaluations.setupWizard.step3.skip') }}
 						</N8nButton>
 					</div>
-					<div :class="$style.quotaNote">
+					<div
+						v-if="usageStore.workflowsWithEvaluationsLimit !== -1 && evaluationsAvailable"
+						:class="$style.quotaNote"
+					>
 						<N8nText size="xsmall" color="text-base">
 							<i18n-t keypath="evaluations.setupWizard.step3.notice">
 								<template #link>
@@ -239,7 +277,7 @@ function onSeePlans() {
 				>
 					<div :class="[$style.actionButton, $style.actionButtonInline]">
 						<N8nButton
-							v-if="evaluationMetricNodeExist"
+							v-if="evaluationMetricNodeExist && !evaluationsQuotaExceeded"
 							size="medium"
 							type="secondary"
 							:disabled="!datasetTriggerExist || !evaluationSetOutputNodeExist"
