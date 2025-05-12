@@ -1,5 +1,12 @@
 import { NodeConnectionTypes, type INodeProperties, type INodeTypeDescription } from 'n8n-workflow';
 import { useActionsGenerator } from './composables/useActionsGeneration';
+import { usePostHog } from '@/stores/posthog.store';
+import { createTestingPinia } from '@pinia/testing';
+import { setActivePinia } from 'pinia';
+
+vi.mock('@/stores/posthog.store', () => ({
+	usePostHog: vi.fn(),
+}));
 
 describe('useActionsGenerator', () => {
 	const { generateMergedNodesAndActions } = useActionsGenerator();
@@ -18,6 +25,17 @@ describe('useActionsGenerator', () => {
 		outputs: [NodeConnectionTypes.Main],
 		properties: [],
 	};
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+
+		const pinia = createTestingPinia({ stubActions: false });
+		setActivePinia(pinia);
+
+		const posthogStore = usePostHog();
+
+		vi.spyOn(posthogStore, 'isVariantEnabled').mockReturnValue(true);
+	});
 
 	describe('App actions for resource category', () => {
 		const resourcePropertyWithUser: INodeProperties = {
