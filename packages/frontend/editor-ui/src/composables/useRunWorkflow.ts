@@ -42,7 +42,7 @@ import { useTelemetry } from './useTelemetry';
 import { useSettingsStore } from '@/stores/settings.store';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { useNodeDirtiness } from '@/composables/useNodeDirtiness';
-import { useParameterOverridesStore } from '@/stores/parameterOverrides.store';
+import { useAgentRequestStore } from '@/stores/agentRequest.store';
 
 export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof useRouter> }) {
 	const nodeHelpers = useNodeHelpers();
@@ -52,7 +52,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 	const telemetry = useTelemetry();
 	const externalHooks = useExternalHooks();
 	const settingsStore = useSettingsStore();
-	const parameterOverridesStore = useParameterOverridesStore();
+	const agentRequestStore = useAgentRequestStore();
 
 	const rootStore = useRootStore();
 	const pushConnectionStore = usePushConnectionStore();
@@ -295,14 +295,16 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			if ('destinationNode' in options) {
 				startRunData.destinationNode = options.destinationNode;
 				const nodeId = workflowsStore.getNodeByName(options.destinationNode as string)?.id;
-				if (nodeId && version === 2) {
-					const node = workflowData.nodes.find((nodeData) => nodeData.id === nodeId);
-					if (node?.parameters) {
-						node.parameters = parameterOverridesStore.substituteParameters(
-							workflow.id,
-							nodeId,
-							node?.parameters,
-						);
+				if (workflow.id && nodeId && version === 2) {
+					const agentRequest = agentRequestStore.generateAgentRequest(workflow.id, nodeId);
+
+					if (agentRequest) {
+						startRunData.agentRequest = {
+							query: agentRequest.query ?? {},
+							tool: {
+								name: agentRequest.toolName ?? '',
+							},
+						};
 					}
 				}
 			}
