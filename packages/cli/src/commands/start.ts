@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { LICENSE_FEATURES } from '@n8n/constants';
-import { ExecutionRepository } from '@n8n/db';
+import { ExecutionRepository, SettingsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { Flags } from '@oclif/core';
 import glob from 'fast-glob';
@@ -16,17 +16,17 @@ import { ActiveExecutions } from '@/active-executions';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import config from '@/config';
 import { EDITOR_UI_DIST_DIR } from '@/constants';
-import { SettingsRepository } from '@/databases/repositories/settings.repository';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { EventService } from '@/events/event.service';
 import { ExecutionService } from '@/executions/execution.service';
+import { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { PubSubHandler } from '@/scaling/pubsub/pubsub-handler';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { Server } from '@/server';
-import { OrchestrationService } from '@/services/orchestration.service';
 import { OwnershipService } from '@/services/ownership.service';
-import { PruningService } from '@/services/pruning/pruning.service';
+import { ExecutionsPruningService } from '@/services/pruning/executions-pruning.service';
 import { UrlService } from '@/services/url.service';
 import { WaitTracker } from '@/wait-tracker';
 import { WorkflowRunner } from '@/workflow-runner';
@@ -104,7 +104,12 @@ export class Start extends BaseCommand {
 			await this.activeWorkflowManager.removeAllTriggerAndPollerBasedWorkflows();
 
 			if (this.instanceSettings.isMultiMain) {
-				await Container.get(OrchestrationService).shutdown();
+				await Container.get(MultiMainSetup).shutdown();
+			}
+
+			if (config.getEnv('executions.mode') === 'queue') {
+				Container.get(Publisher).shutdown();
+				Container.get(Subscriber).shutdown();
 			}
 
 			Container.get(EventService).emit('instance-stopped');
@@ -201,13 +206,18 @@ export class Start extends BaseCommand {
 		this.instanceSettings.setMultiMainEnabled(isMultiMainEnabled);
 
 		/**
-		 * We temporarily license multi-main to allow orchestration to set instance
-		 * role, which is needed by license init. Once the license is initialized,
+		 * We temporarily license multi-main to allow it to set instance role,
+		 * which is needed by license init. Once the license is initialized,
 		 * the actual value will be used for the license check.
 		 */
 		if (isMultiMainEnabled) this.instanceSettings.setMultiMainLicensed(true);
 
-		await this.initOrchestration();
+		if (config.getEnv('executions.mode') === 'regular') {
+			this.instanceSettings.markAsLeader();
+		} else {
+			await this.initOrchestration();
+		}
+
 		await this.initLicense();
 
 		if (isMultiMainEnabled && !this.license.isMultiMainLicensed()) {
@@ -240,14 +250,7 @@ export class Start extends BaseCommand {
 	}
 
 	async initOrchestration() {
-		if (config.getEnv('executions.mode') === 'regular') {
-			this.instanceSettings.markAsLeader();
-			return;
-		}
-
-		const orchestrationService = Container.get(OrchestrationService);
-
-		await orchestrationService.init();
+		Container.get(Publisher);
 
 		Container.get(PubSubHandler).init();
 
@@ -255,7 +258,11 @@ export class Start extends BaseCommand {
 		await subscriber.subscribe('n8n.commands');
 		await subscriber.subscribe('n8n.worker-response');
 
-		this.logger.scoped(['scaling', 'pubsub']).debug('Pubsub setup completed');
+		if (this.instanceSettings.isMultiMain) {
+			await Container.get(MultiMainSetup).init();
+		} else {
+			this.instanceSettings.markAsLeader();
+		}
 	}
 
 	async run() {
@@ -307,7 +314,7 @@ export class Start extends BaseCommand {
 
 		await this.server.start();
 
-		Container.get(PruningService).init();
+		Container.get(ExecutionsPruningService).init();
 
 		if (config.getEnv('executions.mode') === 'regular') {
 			await this.runEnqueuedExecutions();

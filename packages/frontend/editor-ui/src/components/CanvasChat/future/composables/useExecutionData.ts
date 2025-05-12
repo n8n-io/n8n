@@ -5,7 +5,6 @@ import { Workflow, type IRunExecutionData } from 'n8n-workflow';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useThrottleFn } from '@vueuse/core';
-import { IN_PROGRESS_EXECUTION_ID } from '@/constants';
 import {
 	createLogTree,
 	deepToRaw,
@@ -65,13 +64,6 @@ export function useExecutionData() {
 		);
 	});
 	const updateInterval = computed(() => ((entries.value?.length ?? 0) > 10 ? 300 : 0));
-	const runStatusList = computed(() =>
-		workflowsStore.workflowExecutionData?.id === IN_PROGRESS_EXECUTION_ID
-			? Object.values(workflowsStore.workflowExecutionData?.data?.resultData.runData ?? {})
-					.flatMap((tasks) => tasks.map((task) => task.executionStatus ?? ''))
-					.join('|')
-			: '',
-	);
 
 	function resetExecutionData() {
 		execData.value = undefined;
@@ -113,7 +105,7 @@ export function useExecutionData() {
 			() => workflowsStore.workflowExecutionData?.id,
 			() => workflowsStore.workflowExecutionData?.workflowData.id,
 			() => workflowsStore.workflowExecutionData?.status,
-			runStatusList,
+			() => workflowsStore.workflowExecutionResultDataLastUpdate,
 		],
 		useThrottleFn(
 			() => {

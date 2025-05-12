@@ -172,7 +172,6 @@ watch(
 						type="secondary"
 						icon="trash"
 						icon-size="medium"
-						data-test-id="clear-execution-data-button"
 						:class="$style.clearButton"
 						@click.stop="emit('clearExecutionData')"
 						>{{ locale.baseText('logs.overview.header.actions.clearExecution') }}</N8nButton

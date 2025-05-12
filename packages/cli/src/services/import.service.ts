@@ -5,13 +5,13 @@ import {
 	SharedWorkflow,
 	WorkflowTagMapping,
 	CredentialsRepository,
+	TagRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { Logger } from 'n8n-core';
 import { type INode, type INodeCredentialsDetails, type IWorkflowBase } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { TagRepository } from '@/databases/repositories/tag.repository';
 import * as Db from '@/db';
 import { replaceInvalidCredentials } from '@/workflow-helpers';
 
