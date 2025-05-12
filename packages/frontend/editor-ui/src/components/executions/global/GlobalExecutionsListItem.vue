@@ -233,7 +233,7 @@ async function handleActionItemClick(commandData: Command) {
 		<td>
 			{{ formattedStartedAtDate }}
 		</td>
-		<td>
+		<td data-test-id="execution-time">
 			<template v-if="formattedStoppedAtDate">
 				{{ formattedStoppedAtDate }}
 			</template>
