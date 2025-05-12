@@ -22,6 +22,7 @@ const TEST_RUN_ERROR_CODES = {
 	SET_METRICS_NODE_NOT_FOUND: 'SET_METRICS_NODE_NOT_FOUND',
 	SET_METRICS_NODE_NOT_CONFIGURED: 'SET_METRICS_NODE_NOT_CONFIGURED',
 	CANT_FETCH_TEST_CASES: 'CANT_FETCH_TEST_CASES',
+	PARTIAL_CASES_FAILED: 'PARTIAL_CASES_FAILED',
 } as const;
 
 export type TestRunErrorCode = (typeof TEST_RUN_ERROR_CODES)[keyof typeof TEST_RUN_ERROR_CODES];
@@ -44,6 +45,7 @@ const testRunErrorDictionary: Partial<Record<TestRunErrorCode, BaseTextKey>> = {
 	SET_METRICS_NODE_NOT_FOUND: 'evaluation.listRuns.error.setMetricsNodeNotFound',
 	SET_METRICS_NODE_NOT_CONFIGURED: 'evaluation.listRuns.error.setMetricsNodeNotConfigured',
 	CANT_FETCH_TEST_CASES: 'evaluation.listRuns.error.cantFetchTestCases',
+	PARTIAL_CASES_FAILED: 'evaluation.runDetail.error.partialCasesFailed',
 } as const;
 
 export const getErrorBaseKey = (errorCode?: string): string => {
