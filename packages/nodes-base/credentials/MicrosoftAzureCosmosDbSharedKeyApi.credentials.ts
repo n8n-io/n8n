@@ -20,7 +20,7 @@ export class MicrosoftAzureCosmosDbSharedKeyApi implements ICredentialType {
 
 	displayName = 'Microsoft Azure Cosmos DB API';
 
-	documentationUrl = 'microsoftAzureCosmosdb';
+	documentationUrl = 'azurecosmosdb';
 
 	properties: INodeProperties[] = [
 		{
