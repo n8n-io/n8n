@@ -1,21 +1,3 @@
-<script lang="ts">
-export type TableHeader<T> = {
-	title?: string;
-	key?: DeepKeys<T> | string;
-	value?: DeepKeys<T> | AccessorFn<T>;
-	disableSort?: boolean;
-	minWidth?: number;
-	width?: number;
-	align?: 'end' | 'start' | 'center';
-} & (
-	| { title: string; key?: never; value?: never } // Ensures an object with only `title` is valid
-	| { key: DeepKeys<T> }
-	| { value: DeepKeys<T>; key?: string }
-	| { key: string; value: AccessorFn<T> }
-);
-export type TableSortBy = SortingState;
-</script>
-
 <script setup lang="ts" generic="T extends Record<string, any>">
 import type {
 	AccessorFn,
@@ -37,6 +19,22 @@ import { get } from 'lodash-es';
 import { computed, h, ref, shallowRef, useSlots, watch } from 'vue';
 
 import N8nPagination from '../N8nPagination';
+
+export type TableHeader<T> = {
+	title?: string;
+	key?: DeepKeys<T> | string;
+	value?: DeepKeys<T> | AccessorFn<T>;
+	disableSort?: boolean;
+	minWidth?: number;
+	width?: number;
+	align?: 'end' | 'start' | 'center';
+} & (
+	| { title: string; key?: never; value?: never } // Ensures an object with only `title` is valid
+	| { key: DeepKeys<T> }
+	| { value: DeepKeys<T>; key?: string }
+	| { key: string; value: AccessorFn<T> }
+);
+export type TableSortBy = SortingState;
 
 const props = withDefaults(
 	defineProps<{
@@ -110,12 +108,6 @@ function getHeaderTitle(column: TableHeader<T>) {
 	return column.title ?? column.key ?? value;
 }
 
-function isAccessorColumn(
-	column: TableHeader<T>,
-): column is Omit<TableHeader<T>, 'key' | 'value'> & { key: string; value: AccessorFn<T> } {
-	return typeof column.value === 'function';
-}
-
 type ColumnMeta = {
 	cellProps: {
 		align?: 'end' | 'start' | 'center';
@@ -129,7 +121,7 @@ const getColumnMeta = (column: CoreColumn<T, unknown>) => {
 const MIN_COLUMN_WIDTH = 75;
 
 function getValueAccessor(column: Required<TableHeader<T>>) {
-	if (isAccessorColumn(column)) {
+	if (typeof column.value === 'function') {
 		return columnHelper.accessor(column.value, {
 			id: column.key,
 			cell: itemKeySlot,
@@ -168,7 +160,6 @@ function mapHeaders(columns: Array<TableHeader<T>>) {
 
 		if (column.key) {
 			const accessor = column.key;
-			//@ts-expect-error key is marked as a string
 			return columnHelper.accessor(column.key, {
 				id: accessor,
 				cell: itemKeySlot,
