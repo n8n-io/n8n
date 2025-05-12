@@ -916,7 +916,7 @@ describe('NDV', () => {
 			.should('contain.text', 'onlyOnItem3');
 	});
 
-	it('should keep search expanded after Test step node run', () => {
+	it('should keep search expanded after Execute step node run', () => {
 		cy.createFixtureWorkflow('Test_ndv_search.json');
 		workflowPage.actions.zoomToFit();
 		workflowPage.actions.executeWorkflow();
