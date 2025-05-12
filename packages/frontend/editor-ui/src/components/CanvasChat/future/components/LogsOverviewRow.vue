@@ -18,7 +18,7 @@ const props = defineProps<{
 	data: LogEntry;
 	isSelected: boolean;
 	isReadOnly: boolean;
-	shouldShowConsumedTokens: boolean;
+	shouldShowTokenCountColumn: boolean;
 	isCompact: boolean;
 	latestInfo?: LatestNodeInfo;
 	expanded: boolean;
@@ -51,7 +51,7 @@ const startedAtText = computed(() => {
 });
 
 const subtreeConsumedTokens = computed(() =>
-	props.shouldShowConsumedTokens ? getSubtreeTotalConsumedTokens(props.data) : undefined,
+	props.shouldShowTokenCountColumn ? getSubtreeTotalConsumedTokens(props.data, false) : undefined,
 );
 
 const hasChildren = computed(

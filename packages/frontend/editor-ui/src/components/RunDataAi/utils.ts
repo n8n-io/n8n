@@ -418,11 +418,24 @@ export function getTotalConsumedTokens(...usage: LlmTokenUsageData[]): LlmTokenU
 	return usage.reduce(addTokenUsageData, emptyTokenUsageData);
 }
 
-export function getSubtreeTotalConsumedTokens(treeNode: LogEntry): LlmTokenUsageData {
-	return getTotalConsumedTokens(
-		treeNode.consumedTokens,
-		...treeNode.children.map(getSubtreeTotalConsumedTokens),
-	);
+export function getSubtreeTotalConsumedTokens(
+	treeNode: LogEntry,
+	includeSubWorkflow: boolean,
+): LlmTokenUsageData {
+	const executionId = treeNode.executionId;
+
+	function calculate(currentNode: LogEntry): LlmTokenUsageData {
+		if (!includeSubWorkflow && currentNode.executionId !== executionId) {
+			return emptyTokenUsageData;
+		}
+
+		return getTotalConsumedTokens(
+			currentNode.consumedTokens,
+			...currentNode.children.map(calculate),
+		);
+	}
+
+	return calculate(treeNode);
 }
 
 function findLogEntryToAutoSelectRec(subTree: LogEntry[], depth: number): LogEntry | undefined {

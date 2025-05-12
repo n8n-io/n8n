@@ -64,7 +64,19 @@ const switchViewOptions = computed(() => [
 	{ label: locale.baseText('logs.overview.header.switch.details'), value: 'details' as const },
 ]);
 const consumedTokens = computed(() =>
-	getTotalConsumedTokens(...entries.map(getSubtreeTotalConsumedTokens)),
+	getTotalConsumedTokens(
+		...entries.map((entry) =>
+			getSubtreeTotalConsumedTokens(
+				entry,
+				false, // Exclude token usages from sub workflow which is loaded only after expanding the row
+			),
+		),
+	),
+);
+const shouldShowTokenCountColumn = computed(
+	() =>
+		consumedTokens.value.totalTokens > 0 ||
+		entries.some((entry) => getSubtreeTotalConsumedTokens(entry, true).totalTokens > 0),
 );
 const manuallyCollapsedEntries = ref<Record<string, boolean>>({});
 const collapsedEntries = computed(() => ({
@@ -202,7 +214,7 @@ watch(
 							:is-read-only="isReadOnly"
 							:is-selected="data.id === selected?.id"
 							:is-compact="isCompact"
-							:should-show-consumed-tokens="consumedTokens.totalTokens > 0"
+							:should-show-token-count-column="shouldShowTokenCountColumn"
 							:latest-info="latestNodeInfo[data.node.id]"
 							:expanded="!collapsedEntries[data.id]"
 							:can-open-ndv="data.executionId === execution?.id"

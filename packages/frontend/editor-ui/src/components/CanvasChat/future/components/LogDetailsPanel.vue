@@ -42,7 +42,7 @@ const content = useLocalStorage<LogDetailsContent>(
 );
 
 const type = computed(() => nodeTypeStore.getNodeType(logEntry.node.type));
-const consumedTokens = computed(() => getSubtreeTotalConsumedTokens(logEntry));
+const consumedTokens = computed(() => getSubtreeTotalConsumedTokens(logEntry, false));
 const isTriggerNode = computed(() => type.value?.group.includes('trigger'));
 const container = useTemplateRef<HTMLElement>('container');
 const resizer = useResizablePanel('N8N_LOGS_INPUT_PANEL_WIDTH', {
