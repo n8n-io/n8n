@@ -2,12 +2,11 @@
 
 import { ChatCohere } from '@langchain/cohere';
 import type { LLMResult } from '@langchain/core/outputs';
-import {
-	NodeConnectionType,
-	type INodeType,
-	type INodeTypeDescription,
-	type ISupplyDataFunctions,
-	type SupplyData,
+import type {
+	INodeType,
+	INodeTypeDescription,
+	ISupplyDataFunctions,
+	SupplyData,
 } from 'n8n-workflow';
 
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
@@ -70,7 +69,7 @@ export class LmChatCohere implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.AiLanguageModel],
+		outputs: ['ai_languageModel'],
 		outputNames: ['Model'],
 		credentials: [
 			{
@@ -86,7 +85,7 @@ export class LmChatCohere implements INodeType {
 			},
 		},
 		properties: [
-			getConnectionHintNoticeField([NodeConnectionType.AiChain, NodeConnectionType.AiAgent]),
+			getConnectionHintNoticeField(['ai_chain', 'ai_agent']),
 			{
 				displayName: 'Model',
 				name: 'model',
