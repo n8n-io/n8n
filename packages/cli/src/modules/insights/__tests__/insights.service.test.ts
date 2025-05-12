@@ -512,7 +512,6 @@ describe('getAvailableDateRanges', () => {
 			mock<InsightsCollectionService>(),
 			mock<InsightsPruningService>(),
 			licenseMock,
-			mock<InsightsConfig>(),
 			mockLogger(),
 		);
 	});
@@ -615,7 +614,6 @@ describe('getMaxAgeInDaysAndGranularity', () => {
 			mock<InsightsCollectionService>(),
 			mock<InsightsPruningService>(),
 			licenseMock,
-			mock<InsightsConfig>(),
 			mockLogger(),
 		);
 	});
@@ -704,7 +702,6 @@ describe('shutdown', () => {
 			mockCollectionService,
 			mockPruningService,
 			mock<LicenseState>(),
-			mock<InsightsConfig>(),
 			mockLogger(),
 		);
 	});
@@ -736,6 +733,7 @@ describe('timers', () => {
 	const mockPruningService = mock<InsightsPruningService>({
 		startPruningTimer: jest.fn(),
 		stopPruningTimer: jest.fn(),
+		isPruningEnabled: false,
 	});
 
 	const mockedLogger = mockLogger();
@@ -750,7 +748,6 @@ describe('timers', () => {
 			mockCollectionService,
 			mockPruningService,
 			mock<LicenseState>(),
-			mockedConfig,
 			mockedLogger,
 		);
 	});
@@ -768,6 +765,7 @@ describe('timers', () => {
 	test('startTimers starts pruning timer', () => {
 		// ARRANGE
 		mockedConfig.maxAgeDays = 30;
+		Object.defineProperty(mockPruningService, 'isPruningEnabled', { value: true });
 
 		// ACT
 		insightsService.startTimers();
