@@ -3,6 +3,7 @@ import {
 	AuthProviderSyncHistoryRepository,
 	ProjectRelationRepository,
 	ProjectRepository,
+	SettingsRepository,
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
 } from '@n8n/db';
@@ -14,7 +15,6 @@ import { UserError } from 'n8n-workflow';
 
 import { UM_FIX_INSTRUCTION } from '@/constants';
 import { CredentialsService } from '@/credentials/credentials.service';
-import { SettingsRepository } from '@/databases/repositories/settings.repository';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import { LDAP_DEFAULT_CONFIGURATION, LDAP_FEATURE_NAME } from '@/ldap.ee/constants';
 import { WorkflowService } from '@/workflows/workflow.service';
