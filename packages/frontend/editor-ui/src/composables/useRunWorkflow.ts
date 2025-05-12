@@ -60,6 +60,20 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 	const executionsStore = useExecutionsStore();
 	const { dirtinessByName } = useNodeDirtiness();
 
+	function sortNodesByYPosition(nodes: string[]) {
+		return [...nodes].sort((a, b) => {
+			const nodeA = workflowsStore.getNodeByName(a)?.position ?? [0, 0];
+			const nodeB = workflowsStore.getNodeByName(b)?.position ?? [0, 0];
+
+			const nodeAYPosition = nodeA[1];
+			const nodeBYPosition = nodeB[1];
+
+			if (nodeAYPosition === nodeBYPosition) return 0;
+
+			return nodeAYPosition > nodeBYPosition ? 1 : -1;
+		});
+	}
+
 	// Starts to execute a workflow on server
 	async function runWorkflowApi(runData: IStartRunData): Promise<IExecutionPushResponse> {
 		if (!pushConnectionStore.isConnected) {
@@ -223,7 +237,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			const version = settingsStore.partialExecutionVersion;
 
 			// TODO: this will be redundant once we cleanup the partial execution v1
-			const startNodes: StartNodeData[] = startNodeNames.map((name) => {
+			const startNodes: StartNodeData[] = sortNodesByYPosition(startNodeNames).map((name) => {
 				// Find for each start node the source data
 				let sourceData = get(runData, [name, 0, 'source', 0], null);
 				if (sourceData === null) {
@@ -519,5 +533,6 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 		runWorkflowApi,
 		stopCurrentExecution,
 		stopWaitingForWebhook,
+		sortNodesByYPosition,
 	};
 }
