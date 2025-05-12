@@ -6,10 +6,10 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
-import { setEvaluationProperties, setOutputProperties } from './Description.node';
+import { setMetricsProperties, setOutputProperties } from './Description.node';
 import { authentication } from '../../Google/Sheet/v2/actions/versionDescription';
 import { listSearch, loadOptions } from '../methods';
-import { checkIfEvaluating, setEvaluation, setOutputs, setOutput } from '../utils/evaluationUtils';
+import { checkIfEvaluating, setMetrics, setOutputs, setOutput } from '../utils/evaluationUtils';
 
 export class Evaluation implements INodeType {
 	description: INodeTypeDescription = {
@@ -33,6 +33,7 @@ export class Evaluation implements INodeType {
 				displayOptions: {
 					show: {
 						authentication: ['serviceAccount'],
+						operation: ['setOutput'],
 					},
 				},
 				testedBy: 'googleApiCredentialTest',
@@ -43,12 +44,12 @@ export class Evaluation implements INodeType {
 				displayOptions: {
 					show: {
 						authentication: ['oAuth2'],
+						operation: ['setOutput'],
 					},
 				},
 			},
 		],
 		properties: [
-			authentication,
 			{
 				displayName: 'Operation',
 				name: 'operation',
@@ -60,8 +61,8 @@ export class Evaluation implements INodeType {
 						value: 'setOutput',
 					},
 					{
-						name: 'Set Evaluation',
-						value: 'setEvaluation',
+						name: 'Set Metrics',
+						value: 'setMetrics',
 					},
 					{
 						name: 'Check If Evaluating',
@@ -70,8 +71,9 @@ export class Evaluation implements INodeType {
 				],
 				default: 'setOutput',
 			},
+			authentication,
 			...setOutputProperties,
-			...setEvaluationProperties,
+			...setMetricsProperties,
 		],
 	};
 
@@ -82,8 +84,8 @@ export class Evaluation implements INodeType {
 
 		if (operation === 'setOutput') {
 			return await setOutput.call(this);
-		} else if (operation === 'setEvaluation') {
-			return await setEvaluation.call(this);
+		} else if (operation === 'setMetrics') {
+			return await setMetrics.call(this);
 		} else {
 			// operation === 'checkIfEvaluating'
 			return await checkIfEvaluating.call(this);
