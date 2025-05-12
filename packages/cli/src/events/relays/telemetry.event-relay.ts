@@ -1,5 +1,9 @@
 import { GlobalConfig } from '@n8n/config';
-import { CredentialsRepository, ProjectRelationRepository } from '@n8n/db';
+import {
+	CredentialsRepository,
+	ProjectRelationRepository,
+	SharedWorkflowRepository,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import { snakeCase } from 'change-case';
 import { BinaryDataConfig, InstanceSettings } from 'n8n-core';
@@ -10,7 +14,6 @@ import { get as pslGet } from 'psl';
 
 import config from '@/config';
 import { N8N_VERSION } from '@/constants';
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
@@ -77,6 +80,8 @@ export class TelemetryEventRelay extends EventRelay {
 			'ldap-login-sync-failed': (event) => this.ldapLoginSyncFailed(event),
 			'login-failed-due-to-ldap-disabled': (event) => this.loginFailedDueToLdapDisabled(event),
 			'workflow-created': (event) => this.workflowCreated(event),
+			'workflow-archived': (event) => this.workflowArchived(event),
+			'workflow-unarchived': (event) => this.workflowUnarchived(event),
 			'workflow-deleted': (event) => this.workflowDeleted(event),
 			'workflow-sharing-updated': (event) => this.workflowSharingUpdated(event),
 			'workflow-saved': async (event) => await this.workflowSaved(event),
@@ -529,6 +534,26 @@ export class TelemetryEventRelay extends EventRelay {
 			public_api: publicApi,
 			project_id: projectId,
 			project_type: projectType,
+		});
+	}
+
+	private workflowArchived({ user, workflowId, publicApi }: RelayEventMap['workflow-archived']) {
+		this.telemetry.track('User archived workflow', {
+			user_id: user.id,
+			workflow_id: workflowId,
+			public_api: publicApi,
+		});
+	}
+
+	private workflowUnarchived({
+		user,
+		workflowId,
+		publicApi,
+	}: RelayEventMap['workflow-unarchived']) {
+		this.telemetry.track('User unarchived workflow', {
+			user_id: user.id,
+			workflow_id: workflowId,
+			public_api: publicApi,
 		});
 	}
 

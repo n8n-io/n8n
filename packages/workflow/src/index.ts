@@ -44,6 +44,7 @@ export {
 	isINodePropertyCollectionList,
 	isINodePropertyOptionsList,
 	isResourceMapperValue,
+	isResourceLocatorValue,
 	isFilterValue,
 } from './type-guards';
 

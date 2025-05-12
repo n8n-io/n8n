@@ -21,6 +21,7 @@ import type {
 	ExpressionError,
 	IDataObject,
 	IRunExecutionData,
+	IRunData,
 } from 'n8n-workflow';
 import { codeNodeEditorEventBus, globalLinkActionsEventBus } from '@/event-bus';
 import { h } from 'vue';
@@ -32,7 +33,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 export type SimplifiedExecution = Pick<
 	IExecutionResponse,
-	'workflowId' | 'workflowData' | 'data' | 'status' | 'startedAt' | 'stoppedAt'
+	'workflowId' | 'workflowData' | 'data' | 'status' | 'startedAt' | 'stoppedAt' | 'id'
 >;
 
 /**
@@ -74,9 +75,10 @@ export async function executionFinished(
 	let successToastAlreadyShown = false;
 	let execution: SimplifiedExecution | undefined;
 	if (data.rawData) {
-		const { workflowId, status, rawData } = data;
+		const { executionId, workflowId, status, rawData } = data;
 
 		execution = {
+			id: executionId,
 			workflowId,
 			workflowData: workflowsStore.workflow,
 			data: parse(rawData),
@@ -125,6 +127,7 @@ export async function fetchExecutionData(
 		}
 
 		return {
+			id: executionId,
 			workflowId: executionResponse.workflowId,
 			workflowData: workflowsStore.workflow,
 			data: parse(executionResponse.data as unknown as string),
@@ -450,7 +453,6 @@ export function handleExecutionFinishedWithOther(
 export function setRunExecutionData(
 	execution: SimplifiedExecution,
 	runExecutionData: IRunExecutionData,
-	normalize = true,
 ) {
 	const workflowsStore = useWorkflowsStore();
 	const nodeHelpers = useNodeHelpers();
@@ -465,15 +467,16 @@ export function setRunExecutionData(
 		runExecutionData.resultData.runData = workflowsStore.getWorkflowRunData;
 	}
 
+	removeRunningTaskData(runExecutionData.resultData.runData);
+
 	workflowsStore.executingNode.length = 0;
 
-	if (normalize) {
-		// As a temporary workaround for https://linear.app/n8n/issue/PAY-2762,
-		// remove runs that is still 'running' status when execution is finished
-		removeRunningTaskData(execution as IExecutionResponse);
-	}
-
-	workflowsStore.setWorkflowExecutionData(workflowExecution as IExecutionResponse);
+	workflowsStore.setWorkflowExecutionData({
+		...workflowExecution,
+		status: execution.status,
+		id: execution.id,
+		stoppedAt: execution.stoppedAt,
+	} as IExecutionResponse);
 	workflowsStore.setWorkflowExecutionRunData(runExecutionData);
 	workflowsStore.setActiveExecutionId(undefined);
 
@@ -506,21 +509,10 @@ export function setRunExecutionData(
 	codeNodeEditorEventBus.emit('highlightLine', lineNumber ?? 'last');
 }
 
-function removeRunningTaskData(execution: IExecutionResponse): void {
-	if (execution.data) {
-		execution.data = {
-			...execution.data,
-			resultData: {
-				...execution.data.resultData,
-				runData: Object.fromEntries(
-					Object.entries(execution.data.resultData.runData)
-						.map(([nodeName, runs]) => [
-							nodeName,
-							runs.filter((run) => run.executionStatus !== 'running'),
-						])
-						.filter(([, runs]) => runs.length > 0),
-				),
-			},
-		};
+function removeRunningTaskData(runData: IRunData): void {
+	for (const [nodeName, taskItems] of Object.entries(runData)) {
+		if (taskItems.some((item) => item.executionStatus === 'running')) {
+			runData[nodeName] = taskItems.filter((item) => item.executionStatus !== 'running');
+		}
 	}
 }
