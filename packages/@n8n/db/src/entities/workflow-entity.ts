@@ -102,6 +102,9 @@ export class WorkflowEntity extends WithTimestampsAndStringId implements IWorkfl
 	@Column({ default: 0 })
 	triggerCount: number;
 
+	@Column({ default: 0 })
+	hasEvaluation: number;
+
 	@ManyToOne('Folder', 'workflows', {
 		nullable: true,
 		onDelete: 'CASCADE',
