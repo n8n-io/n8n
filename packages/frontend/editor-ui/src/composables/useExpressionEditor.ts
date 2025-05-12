@@ -172,9 +172,8 @@ export const useExpressionEditor = ({
 		if (viewUpdate.docChanged && !shouldIgnoreUpdate) {
 			hasChanges.value = true;
 			emitChanges(viewUpdate);
+			debouncedUpdateSegments();
 		}
-
-		debouncedUpdateSegments();
 	}
 
 	function blur() {
