@@ -724,6 +724,12 @@ export const EVALUATION_TRIGGER = {
 	variant: 'variant',
 };
 
+export const EVALUATION_TRIGGER = {
+	name: '031-evaluation-trigger',
+	control: 'control',
+	variant: 'variant',
+};
+
 export const EASY_AI_WORKFLOW_EXPERIMENT = {
 	name: '026_easy_ai_workflow',
 	control: 'control',
