@@ -72,7 +72,7 @@ const SamlSettingWithInvalidUrl: Settings = {
 	}),
 };
 
-const SamlSettingWithInvalidUrAndInvalidMetadataXML: Settings = {
+const SamlSettingWithInvalidUrlAndInvalidMetadataXML: Settings = {
 	loadOnStartup: true,
 	key: SAML_PREFERENCES_DB_KEY,
 	value: JSON.stringify({
@@ -241,7 +241,9 @@ describe('SamlService', () => {
 
 		test('does throw `InvalidSamlMetadataError` when invalid SAML url and no saml metadata is available', async () => {
 			// ARRANGE
-			jest.spyOn(settingsRepository, 'findOne').mockResolvedValue(InvalidSamlSetting);
+			jest
+				.spyOn(settingsRepository, 'findOne')
+				.mockResolvedValue(SamlSettingWithInvalidUrlAndInvalidMetadataXML);
 
 			// ACT && ASSERT
 			await expect(samlService.loadFromDbAndApplySamlPreferences(true)).rejects.toThrowError(
