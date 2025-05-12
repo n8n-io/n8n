@@ -220,11 +220,9 @@ export const getNewNodePosition = (
 /**
  * Returns the position of a mouse or touch event
  */
-export const getMousePosition = (e: MouseEvent | TouchEvent): XYPosition => {
-	// @ts-ignore
-	const x = e.pageX !== undefined ? e.pageX : e.touches?.[0]?.pageX ? e.touches[0].pageX : 0;
-	// @ts-ignore
-	const y = e.pageY !== undefined ? e.pageY : e.touches?.[0]?.pageY ? e.touches[0].pageY : 0;
+export const getMousePosition = (event: MouseEvent | TouchEvent): XYPosition => {
+	const x = (event && 'clientX' in event ? event.clientX : event?.touches?.[0]?.clientX) ?? 0;
+	const y = (event && 'clientY' in event ? event.clientY : event?.touches?.[0]?.clientY) ?? 0;
 
 	return [x, y];
 };

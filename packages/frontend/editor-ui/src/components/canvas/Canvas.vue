@@ -19,7 +19,7 @@ import type {
 	CanvasNodeData,
 } from '@/types';
 import { CanvasNodeRenderType } from '@/types';
-import { GRID_SIZE } from '@/utils/nodeViewUtils';
+import { getMousePosition, GRID_SIZE } from '@/utils/nodeViewUtils';
 import { isPresent } from '@/utils/typesUtils';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useShortKeyPress } from '@n8n/composables/useShortKeyPress';
@@ -548,16 +548,9 @@ const isPaneMoving = ref(false);
 
 useViewportAutoAdjust(viewportRef, viewport, setViewport);
 
-function getProjectedPosition(
-	event?: Pick<MouseEvent, 'clientX' | 'clientY'> | Pick<TouchEvent, 'touches'>,
-) {
+function getProjectedPosition(event?: MouseEvent | TouchEvent) {
 	const bounds = viewportRef.value?.getBoundingClientRect() ?? { left: 0, top: 0 };
-
-	const clientX = event && 'clientX' in event ? event.clientX : event?.touches?.[0]?.clientX;
-	const clientY = event && 'clientY' in event ? event.clientY : event?.touches?.[0]?.clientY;
-
-	const offsetX = clientX ?? 0;
-	const offsetY = clientY ?? 0;
+	const [offsetX, offsetY] = event ? getMousePosition(event) : [0, 0];
 
 	return project({
 		x: offsetX - bounds.left,
