@@ -4,7 +4,6 @@ import { DataSource, Repository } from '@n8n/typeorm';
 import { ErrorReporter } from 'n8n-core';
 
 import config from '@/config';
-import { EXTERNAL_SECRETS_DB_KEY } from '@/external-secrets.ee/constants';
 
 @Service()
 export class SettingsRepository extends Repository<Settings> {
@@ -15,23 +14,8 @@ export class SettingsRepository extends Repository<Settings> {
 		super(Settings, dataSource.manager);
 	}
 
-	async getEncryptedSecretsProviderSettings(): Promise<string | null> {
-		return (await this.findByKey(EXTERNAL_SECRETS_DB_KEY))?.value ?? null;
-	}
-
 	async findByKey(key: string): Promise<Settings | null> {
 		return await this.findOneBy({ key });
-	}
-
-	async saveEncryptedSecretsProviderSettings(data: string): Promise<void> {
-		await this.upsert(
-			{
-				key: EXTERNAL_SECRETS_DB_KEY,
-				value: data,
-				loadOnStartup: false,
-			},
-			['key'],
-		);
 	}
 
 	async dismissBanner({ bannerName }: { bannerName: string }): Promise<{ success: boolean }> {
