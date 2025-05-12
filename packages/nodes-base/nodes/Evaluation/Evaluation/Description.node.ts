@@ -4,6 +4,12 @@ import { document, sheet } from '../../Google/Sheet/GoogleSheetsTrigger.node';
 
 export const setOutputProperties: INodeProperties[] = [
 	{
+		displayName: 'Credentials',
+		name: 'credentials',
+		type: 'credentials',
+		default: '',
+	},
+	{
 		...document,
 		displayOptions: {
 			show: {
@@ -57,16 +63,16 @@ export const setOutputProperties: INodeProperties[] = [
 	},
 ];
 
-export const setEvaluationProperties: INodeProperties[] = [
+export const setMetricsProperties: INodeProperties[] = [
 	{
 		displayName:
-			"Define the score(s) for the evaluation. They will be displayed in the ‘evaluations’ tab, not the Google Sheet. <a href='https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.evaluationmetric/' target='_blank'>More Info</a>",
+			"Calculate the score(s) for the evaluation, then map them into this node. They will be displayed in the ‘evaluations’ tab, not the Google Sheet. <a href='https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.evaluationmetric/' target='_blank'>View metric examples</a>",
 		name: 'notice',
 		type: 'notice',
 		default: '',
 		displayOptions: {
 			show: {
-				operation: ['setEvaluation'],
+				operation: ['setMetrics'],
 			},
 		},
 	},
@@ -91,7 +97,7 @@ export const setEvaluationProperties: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				operation: ['setEvaluation'],
+				operation: ['setMetrics'],
 			},
 		},
 	},
