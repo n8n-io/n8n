@@ -2008,6 +2008,15 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		workflowsStore.addToWorkflowMetadata({ templateId: `${id}` });
 	}
 
+	function tryToOpenSubworkflowInNewTab(nodeId: string): boolean {
+		const node = workflowsStore.getNodeById(nodeId);
+		if (!node) return false;
+		const subWorkflowId = NodeHelpers.getSubworkflowId(node);
+		if (!subWorkflowId) return false;
+		window.open(`${rootStore.baseUrl}workflow/${subWorkflowId}`, '_blank');
+		return true;
+	}
+
 	return {
 		lastClickPosition,
 		editableWorkflow,
@@ -2058,5 +2067,6 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		openExecution,
 		toggleChatOpen,
 		importTemplate,
+		tryToOpenSubworkflowInNewTab,
 	};
 }
