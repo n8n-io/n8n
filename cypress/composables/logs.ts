@@ -2,14 +2,6 @@
  * Accessors
  */
 
-export function getOverviewPanel() {
-	return cy.getByTestId('logs-overview');
-}
-
-export function getOverviewPanelBody() {
-	return cy.getByTestId('logs-overview-body');
-}
-
 export function getOverviewStatus() {
 	return cy.getByTestId('logs-overview-status');
 }
