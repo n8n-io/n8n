@@ -1,15 +1,14 @@
 import type { SamlPreferences } from '@n8n/api-types';
+import type { Settings, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import axios from 'axios';
 import type express from 'express';
 import https from 'https';
 import { Logger } from 'n8n-core';
-import { ApplicationError, jsonParse } from 'n8n-workflow';
+import { jsonParse, UnexpectedError } from 'n8n-workflow';
 import type { IdentityProviderInstance, ServiceProviderInstance } from 'samlify';
 import type { BindingContext, PostBindingContext } from 'samlify/types/src/entity';
 
-import type { Settings } from '@/databases/entities/settings';
-import type { User } from '@/databases/entities/user';
 import { SettingsRepository } from '@/databases/repositories/settings.repository';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import { AuthError } from '@/errors/response-errors/auth.error';
@@ -124,7 +123,7 @@ export class SamlService {
 
 	getIdentityProviderInstance(forceRecreate = false): IdentityProviderInstance {
 		if (this.samlify === undefined) {
-			throw new ApplicationError('Samlify is not initialized');
+			throw new UnexpectedError('Samlify is not initialized');
 		}
 		if (this.identityProviderInstance === undefined || forceRecreate) {
 			this.identityProviderInstance = this.samlify.IdentityProvider({
@@ -137,7 +136,7 @@ export class SamlService {
 
 	getServiceProviderInstance(): ServiceProviderInstance {
 		if (this.samlify === undefined) {
-			throw new ApplicationError('Samlify is not initialized');
+			throw new UnexpectedError('Samlify is not initialized');
 		}
 		return getServiceProviderInstance(this._samlPreferences, this.samlify);
 	}

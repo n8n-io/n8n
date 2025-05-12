@@ -4,40 +4,189 @@
         "expand": {
             "type": "string"
         },
-        "id": {
-            "type": "string"
-        },
-        "self": {
-            "type": "string"
-        },
-        "key": {
-            "type": "string"
-        },
         "fields": {
             "type": "object",
             "properties": {
-                "status": {
+                "attachment": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "author": {
+                                "type": "object",
+                                "properties": {
+                                    "accountId": {
+                                        "type": "string"
+                                    },
+                                    "accountType": {
+                                        "type": "string"
+                                    },
+                                    "active": {
+                                        "type": "boolean"
+                                    },
+                                    "avatarUrls": {
+                                        "type": "object",
+                                        "properties": {
+                                            "16x16": {
+                                                "type": "string"
+                                            },
+                                            "24x24": {
+                                                "type": "string"
+                                            },
+                                            "32x32": {
+                                                "type": "string"
+                                            },
+                                            "48x48": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    },
+                                    "displayName": {
+                                        "type": "string"
+                                    },
+                                    "emailAddress": {
+                                        "type": "string"
+                                    },
+                                    "self": {
+                                        "type": "string"
+                                    },
+                                    "timeZone": {
+                                        "type": "string"
+                                    }
+                                }
+                            },
+                            "content": {
+                                "type": "string"
+                            },
+                            "created": {
+                                "type": "string"
+                            },
+                            "filename": {
+                                "type": "string"
+                            },
+                            "id": {
+                                "type": "string"
+                            },
+                            "mimeType": {
+                                "type": "string"
+                            },
+                            "self": {
+                                "type": "string"
+                            },
+                            "size": {
+                                "type": "integer"
+                            },
+                            "thumbnail": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "project": {
                     "type": "object",
                     "properties": {
+                        "avatarUrls": {
+                            "type": "object",
+                            "properties": {
+                                "16x16": {
+                                    "type": "string"
+                                },
+                                "24x24": {
+                                    "type": "string"
+                                },
+                                "32x32": {
+                                    "type": "string"
+                                },
+                                "48x48": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "id": {
+                            "type": "string"
+                        },
+                        "key": {
+                            "type": "string"
+                        },
+                        "name": {
+                            "type": "string"
+                        },
+                        "projectTypeKey": {
+                            "type": "string"
+                        },
                         "self": {
                             "type": "string"
                         },
+                        "simplified": {
+                            "type": "boolean"
+                        }
+                    }
+                },
+                "reporter": {
+                    "type": "object",
+                    "properties": {
+                        "accountId": {
+                            "type": "string"
+                        },
+                        "accountType": {
+                            "type": "string"
+                        },
+                        "active": {
+                            "type": "boolean"
+                        },
+                        "avatarUrls": {
+                            "type": "object",
+                            "properties": {
+                                "16x16": {
+                                    "type": "string"
+                                },
+                                "24x24": {
+                                    "type": "string"
+                                },
+                                "32x32": {
+                                    "type": "string"
+                                },
+                                "48x48": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "displayName": {
+                            "type": "string"
+                        },
+                        "emailAddress": {
+                            "type": "string"
+                        },
+                        "self": {
+                            "type": "string"
+                        },
+                        "timeZone": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "status": {
+                    "type": "object",
+                    "properties": {
                         "description": {
                             "type": "string"
                         },
                         "iconUrl": {
                             "type": "string"
                         },
+                        "id": {
+                            "type": "string"
+                        },
                         "name": {
                             "type": "string"
                         },
-                        "id": {
+                        "self": {
                             "type": "string"
                         },
                         "statusCategory": {
                             "type": "object",
                             "properties": {
-                                "self": {
+                                "colorName": {
                                     "type": "string"
                                 },
                                 "id": {
@@ -46,30 +195,15 @@
                                 "key": {
                                     "type": "string"
                                 },
-                                "colorName": {
-                                    "type": "string"
-                                },
                                 "name": {
                                     "type": "string"
+                                },
+                                "self": {
+                                    "type": "string"
                                 }
-                            },
-                            "required": [
-                                "self",
-                                "id",
-                                "key",
-                                "colorName",
-                                "name"
-                            ]
+                            }
                         }
-                    },
-                    "required": [
-                        "self",
-                        "description",
-                        "iconUrl",
-                        "name",
-                        "id",
-                        "statusCategory"
-                    ]
+                    }
                 },
                 "summary": {
                     "type": "string"
@@ -77,10 +211,10 @@
                 "worklog": {
                     "type": "object",
                     "properties": {
-                        "startAt": {
+                        "maxResults": {
                             "type": "integer"
                         },
-                        "maxResults": {
+                        "startAt": {
                             "type": "integer"
                         },
                         "total": {
@@ -91,118 +225,48 @@
                             "items": {
                                 "type": "object",
                                 "properties": {
-                                    "self": {
-                                        "type": "string"
-                                    },
                                     "author": {
                                         "type": "object",
                                         "properties": {
-                                            "self": {
-                                                "type": "string"
-                                            },
                                             "accountId": {
                                                 "type": "string"
                                             },
-                                            "avatarUrls": {
-                                                "type": "object",
-                                                "properties": {
-                                                    "48x48": {
-                                                        "type": "string"
-                                                    },
-                                                    "24x24": {
-                                                        "type": "string"
-                                                    },
-                                                    "16x16": {
-                                                        "type": "string"
-                                                    },
-                                                    "32x32": {
-                                                        "type": "string"
-                                                    }
-                                                },
-                                                "required": [
-                                                    "48x48",
-                                                    "24x24",
-                                                    "16x16",
-                                                    "32x32"
-                                                ]
-                                            },
-                                            "displayName": {
+                                            "accountType": {
                                                 "type": "string"
                                             },
                                             "active": {
                                                 "type": "boolean"
                                             },
-                                            "timeZone": {
-                                                "type": "string"
-                                            },
-                                            "accountType": {
-                                                "type": "string"
-                                            }
-                                        },
-                                        "required": [
-                                            "self",
-                                            "accountId",
-                                            "avatarUrls",
-                                            "displayName",
-                                            "active",
-                                            "timeZone",
-                                            "accountType"
-                                        ]
-                                    },
-                                    "updateAuthor": {
-                                        "type": "object",
-                                        "properties": {
-                                            "self": {
-                                                "type": "string"
-                                            },
-                                            "accountId": {
-                                                "type": "string"
-                                            },
                                             "avatarUrls": {
                                                 "type": "object",
                                                 "properties": {
-                                                    "48x48": {
+                                                    "16x16": {
                                                         "type": "string"
                                                     },
                                                     "24x24": {
                                                         "type": "string"
                                                     },
-                                                    "16x16": {
-                                                        "type": "string"
-                                                    },
                                                     "32x32": {
                                                         "type": "string"
+                                                    },
+                                                    "48x48": {
+                                                        "type": "string"
                                                     }
-                                                },
-                                                "required": [
-                                                    "48x48",
-                                                    "24x24",
-                                                    "16x16",
-                                                    "32x32"
-                                                ]
+                                                }
                                             },
                                             "displayName": {
                                                 "type": "string"
                                             },
-                                            "active": {
-                                                "type": "boolean"
+                                            "emailAddress": {
+                                                "type": "string"
+                                            },
+                                            "self": {
+                                                "type": "string"
                                             },
                                             "timeZone": {
                                                 "type": "string"
-                                            },
-                                            "accountType": {
-                                                "type": "string"
                                             }
-                                        },
-                                        "required": [
-                                            "self",
-                                            "accountId",
-                                            "avatarUrls",
-                                            "displayName",
-                                            "active",
-                                            "timeZone",
-                                            "accountType"
-                                        ]
+                                        }
                                     },
                                     "comment": {
                                         "type": "string"
@@ -210,7 +274,13 @@
                                     "created": {
                                         "type": "string"
                                     },
-                                    "updated": {
+                                    "id": {
+                                        "type": "string"
+                                    },
+                                    "issueId": {
+                                        "type": "string"
+                                    },
+                                    "self": {
                                         "type": "string"
                                     },
                                     "started": {
@@ -222,37 +292,68 @@
                                     "timeSpentSeconds": {
                                         "type": "integer"
                                     },
-                                    "id": {
-                                        "type": "string"
+                                    "updateAuthor": {
+                                        "type": "object",
+                                        "properties": {
+                                            "accountId": {
+                                                "type": "string"
+                                            },
+                                            "accountType": {
+                                                "type": "string"
+                                            },
+                                            "active": {
+                                                "type": "boolean"
+                                            },
+                                            "avatarUrls": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "16x16": {
+                                                        "type": "string"
+                                                    },
+                                                    "24x24": {
+                                                        "type": "string"
+                                                    },
+                                                    "32x32": {
+                                                        "type": "string"
+                                                    },
+                                                    "48x48": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            },
+                                            "displayName": {
+                                                "type": "string"
+                                            },
+                                            "emailAddress": {
+                                                "type": "string"
+                                            },
+                                            "self": {
+                                                "type": "string"
+                                            },
+                                            "timeZone": {
+                                                "type": "string"
+                                            }
+                                        }
                                     },
-                                    "issueId": {
+                                    "updated": {
                                         "type": "string"
                                     }
-                                },
-                                "required": [
-                                    "self",
-                                    "author",
-                                    "updateAuthor",
-                                    "comment",
-                                    "created",
-                                    "updated",
-                                    "started",
-                                    "timeSpent",
-                                    "timeSpentSeconds",
-                                    "id",
-                                    "issueId"
-                                ]
+                                }
                             }
                         }
-                    },
-                    "required": [
-                        "startAt",
-                        "maxResults",
-                        "total",
-                        "worklogs"
-                    ]
+                    }
                 }
             }
+        },
+        "id": {
+            "type": "string"
+        },
+        "key": {
+            "type": "string"
+        },
+        "self": {
+            "type": "string"
         }
-    }
+    },
+    "version": 3
 }

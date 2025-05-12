@@ -4,53 +4,30 @@
         "number": {
             "type": "string"
         },
-        "short_description": {
+        "state": {
             "type": "string"
         },
-        "sys_id": {
+        "sys_class_name": {
             "type": "string"
         },
-        "author": {
-            "type": "object",
-            "properties": {
-                "link": {
-                    "type": "string"
-                },
-                "value": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "link",
-                "value"
-            ]
-        },
-        "rating": {
+        "sys_created_by": {
             "type": "string"
         },
-        "language": {
+        "sys_created_on": {
             "type": "string"
         },
-        "embedded_media": {
+        "sys_mod_count": {
             "type": "string"
         },
-        "content": {
+        "sys_tags": {
             "type": "string"
         },
-        "helpful_text": {
+        "sys_updated_by": {
             "type": "string"
         },
-        "last_updated_on": {
-            "type": "string"
-        },
-        "last_helpful_rating": {
-            "type": "string"
-        },
-        "last_rating": {
-            "type": "string"
-        },
-        "view_count": {
+        "sys_updated_on": {
             "type": "string"
         }
-    }
+    },
+    "version": 3
 }

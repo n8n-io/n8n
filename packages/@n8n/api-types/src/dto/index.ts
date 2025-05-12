@@ -1,7 +1,11 @@
 export { AiAskRequestDto } from './ai/ai-ask-request.dto';
 export { AiChatRequestDto } from './ai/ai-chat-request.dto';
+export { AiBuilderChatRequestDto } from './ai/ai-build-request.dto';
 export { AiApplySuggestionRequestDto } from './ai/ai-apply-suggestion-request.dto';
 export { AiFreeCreditsRequestDto } from './ai/ai-free-credits-request.dto';
+
+export { BinaryDataQueryDto } from './binary-data/binary-data-query.dto';
+export { BinaryDataSignedQueryDto } from './binary-data/binary-data-signed-query.dto';
 
 export { LoginRequestDto } from './auth/login-request.dto';
 export { ResolveSignupTokenQueryDto } from './auth/resolve-signup-token-query.dto';
@@ -39,13 +43,29 @@ export { CommunityRegisteredRequestDto } from './license/community-registered-re
 export { PullWorkFolderRequestDto } from './source-control/pull-work-folder-request.dto';
 export { PushWorkFolderRequestDto } from './source-control/push-work-folder-request.dto';
 
+export { CreateCredentialDto } from './credentials/create-credential.dto';
 export { VariableListRequestDto } from './variables/variables-list-request.dto';
 export { CredentialsGetOneRequestQuery } from './credentials/credentials-get-one-request.dto';
 export { CredentialsGetManyRequestQuery } from './credentials/credentials-get-many-request.dto';
+export { GenerateCredentialNameRequestQuery } from './credentials/generate-credential-name.dto';
 
 export { ImportWorkflowFromUrlDto } from './workflows/import-workflow-from-url.dto';
+export { ManualRunQueryDto } from './workflows/manual-run-query.dto';
+export { TransferWorkflowBodyDto } from './workflows/transfer.dto';
 
 export { CreateOrUpdateTagRequestDto } from './tag/create-or-update-tag-request.dto';
 export { RetrieveTagQueryDto } from './tag/retrieve-tag-query.dto';
 
-export { CreateOrUpdateApiKeyRequestDto } from './api-keys/create-or-update-api-key-request.dto';
+export { UpdateApiKeyRequestDto } from './api-keys/update-api-key-request.dto';
+export { CreateApiKeyRequestDto } from './api-keys/create-api-key-request.dto';
+
+export { CreateFolderDto } from './folders/create-folder.dto';
+export { UpdateFolderDto } from './folders/update-folder.dto';
+export { DeleteFolderDto } from './folders/delete-folder.dto';
+export { ListFolderQueryDto } from './folders/list-folder-query.dto';
+export { TransferFolderBodyDto } from './folders/transfer-folder.dto';
+
+export { ListInsightsWorkflowQueryDto } from './insights/list-workflow-query.dto';
+export { InsightsDateFilterDto } from './insights/date-filter.dto';
+
+export { PaginationDto } from './pagination/pagination.dto';

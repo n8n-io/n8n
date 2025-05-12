@@ -1,13 +1,13 @@
+import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
+import type { IWorkflowBase } from 'n8n-workflow';
 
 import type {
 	WorkflowClosedMessage,
 	WorkflowOpenedMessage,
 } from '@/collaboration/collaboration.message';
 import { CollaborationService } from '@/collaboration/collaboration.service';
-import type { User } from '@/databases/entities/user';
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { Push } from '@/push';
 import { CacheService } from '@/services/cache/cache.service';
 import { mockInstance } from '@test/mocking';
@@ -16,13 +16,13 @@ import { createWorkflow, shareWorkflowWithUsers } from '@test-integration/db/wor
 import * as testDb from '@test-integration/test-db';
 
 describe('CollaborationService', () => {
-	mockInstance(Push, new Push(mock(), mock(), mock()));
+	mockInstance(Push, new Push(mock(), mock(), mock(), mock(), mock()));
 	let pushService: Push;
 	let collaborationService: CollaborationService;
 	let owner: User;
 	let memberWithoutAccess: User;
 	let memberWithAccess: User;
-	let workflow: WorkflowEntity;
+	let workflow: IWorkflowBase;
 	let cacheService: CacheService;
 
 	beforeAll(async () => {

@@ -41,7 +41,8 @@ describe('Test GoogleChat, message => sendAndWait', () => {
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('my subject');
 		mockExecuteFunctions.evaluateExpression.mockReturnValueOnce('http://localhost/waiting-webhook');
 		mockExecuteFunctions.evaluateExpression.mockReturnValueOnce('nodeID');
-		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({});
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({}); // approvalOptions
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({}); // options
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('approval');
 
 		// configureWaitTillDate
@@ -54,7 +55,7 @@ describe('Test GoogleChat, message => sendAndWait', () => {
 		expect(mockExecuteFunctions.putExecutionToWait).toHaveBeenCalledTimes(1);
 
 		expect(genericFunctions.googleApiRequest).toHaveBeenCalledWith('POST', '/v1/spaceID/messages', {
-			text: 'my message\n\n\n*<http://localhost/waiting-webhook/nodeID?approved=true|Approve>*\n\n_This_ _message_ _was_ _sent_ _automatically_ _with_ _<https://n8n.io/?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=n8n-nodes-base.telegram_instanceId|n8n>_',
+			text: 'my message\n\n\n*<http://localhost/waiting-webhook/nodeID?approved=true|Approve>*\n\n_This_ _message_ _was_ _sent_ _automatically_ _with_ _<https://n8n.io/?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=n8n-nodes-base.googleChat_instanceId|n8n>_',
 		});
 	});
 });

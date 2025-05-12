@@ -7,7 +7,7 @@ import type {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { BINARY_ENCODING, NodeConnectionType } from 'n8n-workflow';
+import { BINARY_ENCODING, NodeConnectionTypes } from 'n8n-workflow';
 import type { Readable } from 'stream';
 import { v4 as uuid } from 'uuid';
 
@@ -30,8 +30,8 @@ const versionDescription: INodeTypeDescription = {
 	defaults: {
 		name: 'Google Drive',
 	},
-	inputs: [NodeConnectionType.Main],
-	outputs: [NodeConnectionType.Main],
+	inputs: [NodeConnectionTypes.Main],
+	outputs: [NodeConnectionTypes.Main],
 	credentials: [
 		{
 			name: 'googleApi',

@@ -1,14 +1,16 @@
 import { GlobalConfig } from '@n8n/config';
+import type { Project, User } from '@n8n/db';
+import {
+	WorkflowEntity,
+	WorkflowTagMapping,
+	SharedWorkflow,
+	TagRepository,
+	SharedWorkflowRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
-import type { Scope } from '@n8n/permissions';
+import type { Scope, WorkflowSharingRole } from '@n8n/permissions';
+import type { WorkflowId } from 'n8n-workflow';
 
-import type { Project } from '@/databases/entities/project';
-import { SharedWorkflow, type WorkflowSharingRole } from '@/databases/entities/shared-workflow';
-import type { User } from '@/databases/entities/user';
-import { WorkflowEntity } from '@/databases/entities/workflow-entity';
-import { WorkflowTagMapping } from '@/databases/entities/workflow-tag-mapping';
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
-import { TagRepository } from '@/databases/repositories/tag.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import * as Db from '@/db';
 import { License } from '@/license';
@@ -83,15 +85,15 @@ export async function createWorkflow(
 	});
 }
 
-export async function setWorkflowAsActive(workflow: WorkflowEntity) {
-	await Container.get(WorkflowRepository).update(workflow.id, {
+export async function setWorkflowAsActive(workflowId: WorkflowId) {
+	await Container.get(WorkflowRepository).update(workflowId, {
 		active: true,
 		updatedAt: new Date(),
 	});
 }
 
-export async function setWorkflowAsInactive(workflow: WorkflowEntity) {
-	return await Container.get(WorkflowRepository).update(workflow.id, {
+export async function setWorkflowAsInactive(workflowId: WorkflowId) {
+	return await Container.get(WorkflowRepository).update(workflowId, {
 		active: false,
 		updatedAt: new Date(),
 	});

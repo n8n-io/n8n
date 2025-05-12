@@ -1,6 +1,6 @@
 {
   "name": "@n8n/permissions",
-  "version": "0.17.0",
+  "version": "0.23.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
@@ -19,5 +19,11 @@
   "types": "dist/index.d.ts",
   "files": [
     "dist/**/*"
-  ]
+  ],
+  "dependencies": {
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@n8n/typescript-config": "workspace:*"
+  }
 }

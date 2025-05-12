@@ -4,14 +4,17 @@
         "@odata.context": {
             "type": "string"
         },
-        "@odata.type": {
+        "@odata.mediaContentType": {
             "type": "string"
         },
-        "@odata.mediaContentType": {
+        "@odata.type": {
             "type": "string"
         },
         "id": {
             "type": "string"
+        },
+        "isInline": {
+            "type": "boolean"
         },
         "lastModifiedDateTime": {
             "type": "string"
@@ -21,12 +24,7 @@
         },
         "size": {
             "type": "integer"
-        },
-        "isInline": {
-            "type": "boolean"
         }
     },
-    "required": [
-        "@odata.context"
-    ]
+    "version": 2
 }

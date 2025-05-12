@@ -1,6 +1,6 @@
 import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
-import type { INode, IExecuteFunctions, IDataObject, NodeExecutionOutput } from 'n8n-workflow';
+import type { INode, IExecuteFunctions, IDataObject } from 'n8n-workflow';
 
 import * as genericFunctions from '../../GenericFunctions';
 import { GoogleCalendar } from '../../GoogleCalendar.node';
@@ -207,15 +207,13 @@ describe('Google Calendar Node', () => {
 				},
 			];
 
-			const result = await googleCalendar.execute.call(mockExecuteFunctions);
+			await googleCalendar.execute.call(mockExecuteFunctions);
 
-			expect((result as NodeExecutionOutput).getHints()).toEqual([
-				{
-					message:
-						"Some events repeat far into the future. To return less of them, add a 'Before' date or change the 'Recurring Event Handling' option.",
-					location: 'outputPane',
-				},
-			]);
+			expect(mockExecuteFunctions.addExecutionHints).toHaveBeenCalledWith({
+				message:
+					"Some events repeat far into the future. To return less of them, add a 'Before' date or change the 'Recurring Event Handling' option.",
+				location: 'outputPane',
+			});
 		});
 	});
 });

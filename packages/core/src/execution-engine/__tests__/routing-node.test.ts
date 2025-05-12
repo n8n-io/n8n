@@ -19,9 +19,10 @@ import type {
 	ITaskDataConnections,
 	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
-import { NodeHelpers, Workflow } from 'n8n-workflow';
+import { Workflow } from 'n8n-workflow';
 
 import * as executionContexts from '@/execution-engine/node-execution-context';
+import { DirectoryLoader } from '@/nodes-loader';
 import { NodeTypes } from '@test/helpers';
 
 import { RoutingNode } from '../routing-node';
@@ -86,23 +87,6 @@ const getExecuteSingleFunctions = (
 describe('RoutingNode', () => {
 	const nodeTypes = NodeTypes();
 	const additionalData = mock<IWorkflowExecuteAdditionalData>();
-
-	test('applyDeclarativeNodeOptionParameters', () => {
-		const nodeTypes = NodeTypes();
-		const nodeType = nodeTypes.getByNameAndVersion('test.setMulti');
-
-		NodeHelpers.applyDeclarativeNodeOptionParameters(nodeType);
-
-		const options = nodeType.description.properties.find(
-			(property) => property.name === 'requestOptions',
-		);
-
-		expect(options?.options).toBeDefined;
-
-		const optionNames = options!.options!.map((option) => option.name);
-
-		expect(optionNames).toEqual(['batching', 'allowUnauthorizedCerts', 'proxy', 'timeout']);
-	});
 
 	describe('getRequestOptionsFromParameters', () => {
 		const tests: Array<{
@@ -744,14 +728,17 @@ describe('RoutingNode', () => {
 					nodeTypes,
 				});
 
-				const routingNode = new RoutingNode(
+				const executeFunctions = mock<executionContexts.ExecuteContext>();
+				Object.assign(executeFunctions, {
+					runIndex,
+					additionalData,
 					workflow,
 					node,
-					connectionInputData,
-					runExecutionData ?? null,
-					additionalData,
 					mode,
-				);
+					connectionInputData,
+					runExecutionData,
+				});
+				const routingNode = new RoutingNode(executeFunctions, nodeType);
 
 				const executeSingleFunctions = getExecuteSingleFunctions(
 					workflow,
@@ -1918,7 +1905,7 @@ describe('RoutingNode', () => {
 		const connectionInputData: INodeExecutionData[] = [];
 		const runExecutionData: IRunExecutionData = { resultData: { runData: {} } };
 		const nodeType = nodeTypes.getByNameAndVersion(baseNode.type);
-		NodeHelpers.applyDeclarativeNodeOptionParameters(nodeType);
+		DirectoryLoader.applyDeclarativeNodeOptionParameters(nodeType);
 
 		const propertiesOriginal = nodeType.description.properties;
 
@@ -1947,15 +1934,6 @@ describe('RoutingNode', () => {
 					nodeTypes,
 				});
 
-				const routingNode = new RoutingNode(
-					workflow,
-					node,
-					connectionInputData,
-					runExecutionData ?? null,
-					additionalData,
-					mode,
-				);
-
 				const executeData = {
 					data: {},
 					node,
@@ -1963,6 +1941,18 @@ describe('RoutingNode', () => {
 				} as IExecuteData;
 
 				const executeFunctions = mock<executionContexts.ExecuteContext>();
+				Object.assign(executeFunctions, {
+					executeData,
+					inputData,
+					runIndex,
+					additionalData,
+					workflow,
+					node,
+					mode,
+					connectionInputData,
+					runExecutionData,
+				});
+
 				const executeSingleFunctions = getExecuteSingleFunctions(
 					workflow,
 					runExecutionData,
@@ -1971,7 +1961,6 @@ describe('RoutingNode', () => {
 					itemIndex,
 				);
 
-				jest.spyOn(executionContexts, 'ExecuteContext').mockReturnValue(executeFunctions);
 				jest
 					.spyOn(executionContexts, 'ExecuteSingleContext')
 					.mockReturnValue(executeSingleFunctions);
@@ -2004,7 +1993,8 @@ describe('RoutingNode', () => {
 						? testData.input.node.parameters[parameterName]
 						: (getNodeParameter(parameterName) ?? {});
 
-				const result = await routingNode.runNode(inputData, runIndex, nodeType, executeData);
+				const routingNode = new RoutingNode(executeFunctions, nodeType);
+				const result = await routingNode.runNode();
 
 				if (testData.input.specialTestOptions?.sleepCalls) {
 					expect(spy.mock.calls).toEqual(testData.input.specialTestOptions?.sleepCalls);

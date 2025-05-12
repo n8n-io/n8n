@@ -1,7 +1,7 @@
 import { mock } from 'jest-mock-extended';
 
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type IDataObject,
 	type INodeType,
 	type INodeTypeData,
@@ -62,8 +62,8 @@ const googleSheetsNode: LoadedClass<IVersionedNodeType> = {
 					defaults: {
 						name: 'Google Sheets',
 					},
-					inputs: [NodeConnectionType.Main],
-					outputs: [NodeConnectionType.Main],
+					inputs: [NodeConnectionTypes.Main],
+					outputs: [NodeConnectionTypes.Main],
 					credentials: [
 						{
 							name: 'googleApi',
@@ -288,9 +288,9 @@ const googleSheetsNode: LoadedClass<IVersionedNodeType> = {
 					displayName: 'Google Sheets',
 					group: ['input', 'output'],
 					icon: 'file:googleSheets.svg',
-					inputs: [NodeConnectionType.Main],
+					inputs: [NodeConnectionTypes.Main],
 					name: 'googleSheets',
-					outputs: [NodeConnectionType.Main],
+					outputs: [NodeConnectionTypes.Main],
 					properties: [
 						{
 							default: 'oAuth2',
@@ -553,8 +553,8 @@ const setNode: LoadedClass<INodeType> = {
 				name: 'Set',
 				color: '#0000FF',
 			},
-			inputs: [NodeConnectionType.Main],
-			outputs: [NodeConnectionType.Main],
+			inputs: [NodeConnectionTypes.Main],
+			outputs: [NodeConnectionTypes.Main],
 			properties: [
 				{
 					displayName: 'Value1',
@@ -590,7 +590,7 @@ const manualTriggerNode: LoadedClass<INodeType> = {
 				color: '#909298',
 			},
 			inputs: [],
-			outputs: [NodeConnectionType.Main],
+			outputs: [NodeConnectionTypes.Main],
 			properties: [
 				{
 					displayName:
@@ -604,12 +604,410 @@ const manualTriggerNode: LoadedClass<INodeType> = {
 	},
 };
 
+const executeWorkflowNode: LoadedClass<INodeType> = {
+	type: {
+		description: {
+			name: 'n8n-nodes-base.executeWorkflow',
+			displayName: 'Execute Sub-workflow',
+			icon: 'fa:sign-in-alt',
+			iconColor: 'orange-red',
+			group: ['transform'],
+			version: [1, 1.1, 1.2],
+			subtitle: '={{"Workflow: " + $parameter["workflowId"]}}',
+			description: 'Execute another workflow',
+			defaults: { name: 'Execute Workflow', color: '#ff6d5a' },
+			inputs: [],
+			outputs: [],
+			properties: [
+				{
+					displayName: 'Operation',
+					name: 'operation',
+					type: 'hidden',
+					noDataExpression: true,
+					default: 'call_workflow',
+					options: [{ name: 'Execute a Sub-Workflow', value: 'call_workflow' }],
+				},
+				{
+					displayName:
+						'This node is out of date. Please upgrade by removing it and adding a new one',
+					name: 'outdatedVersionWarning',
+					type: 'notice',
+					displayOptions: { show: { '@version': [{ _cnd: { lte: 1.1 } }] } },
+					default: '',
+				},
+				{
+					displayName: 'Source',
+					name: 'source',
+					type: 'options',
+					options: [
+						{
+							name: 'Database',
+							value: 'database',
+							description: 'Load the workflow from the database by ID',
+						},
+						{
+							name: 'Local File',
+							value: 'localFile',
+							description: 'Load the workflow from a locally saved file',
+						},
+						{
+							name: 'Parameter',
+							value: 'parameter',
+							description: 'Load the workflow from a parameter',
+						},
+						{ name: 'URL', value: 'url', description: 'Load the workflow from an URL' },
+					],
+					default: 'database',
+					description: 'Where to get the workflow to execute from',
+					displayOptions: { show: { '@version': [{ _cnd: { lte: 1.1 } }] } },
+				},
+				{
+					displayName: 'Source',
+					name: 'source',
+					type: 'options',
+					options: [
+						{
+							name: 'Database',
+							value: 'database',
+							description: 'Load the workflow from the database by ID',
+						},
+						{
+							name: 'Define Below',
+							value: 'parameter',
+							description: 'Pass the JSON code of a workflow',
+						},
+					],
+					default: 'database',
+					description: 'Where to get the workflow to execute from',
+					displayOptions: { show: { '@version': [{ _cnd: { gte: 1.2 } }] } },
+				},
+				{
+					displayName: 'Workflow ID',
+					name: 'workflowId',
+					type: 'string',
+					displayOptions: { show: { source: ['database'], '@version': [1] } },
+					default: '',
+					required: true,
+					hint: 'Can be found in the URL of the workflow',
+					description:
+						"Note on using an expression here: if this node is set to run once with all items, they will all be sent to the <em>same</em> workflow. That workflow's ID will be calculated by evaluating the expression for the <strong>first input item</strong>.",
+				},
+				{
+					displayName: 'Workflow',
+					name: 'workflowId',
+					type: 'workflowSelector',
+					displayOptions: { show: { source: ['database'], '@version': [{ _cnd: { gte: 1.1 } }] } },
+					default: '',
+					required: true,
+				},
+				{
+					displayName: 'Workflow Path',
+					name: 'workflowPath',
+					type: 'string',
+					displayOptions: { show: { source: ['localFile'] } },
+					default: '',
+					placeholder: '/data/workflow.json',
+					required: true,
+					description: 'The path to local JSON workflow file to execute',
+				},
+				{
+					displayName: 'Workflow JSON',
+					name: 'workflowJson',
+					type: 'json',
+					typeOptions: { rows: 10 },
+					displayOptions: { show: { source: ['parameter'] } },
+					default: '\n\n\n',
+					required: true,
+					description: 'The workflow JSON code to execute',
+				},
+				{
+					displayName: 'Workflow URL',
+					name: 'workflowUrl',
+					type: 'string',
+					displayOptions: { show: { source: ['url'] } },
+					default: '',
+					placeholder: 'https://example.com/workflow.json',
+					required: true,
+					description: 'The URL from which to load the workflow from',
+				},
+				{
+					displayName:
+						'Any data you pass into this node will be output by the Execute Workflow Trigger. <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.executeworkflow/" target="_blank">More info</a>',
+					name: 'executeWorkflowNotice',
+					type: 'notice',
+					default: '',
+					displayOptions: { show: { '@version': [{ _cnd: { lte: 1.1 } }] } },
+				},
+				{
+					displayName: 'Workflow Inputs',
+					name: 'workflowInputs',
+					type: 'resourceMapper',
+					noDataExpression: true,
+					default: { mappingMode: 'defineBelow', value: null },
+					required: true,
+					typeOptions: {
+						loadOptionsDependsOn: ['workflowId.value'],
+						resourceMapper: {
+							localResourceMapperMethod: 'loadSubWorkflowInputs',
+							valuesLabel: 'Workflow Inputs',
+							mode: 'map',
+							fieldWords: { singular: 'input', plural: 'inputs' },
+							addAllFields: true,
+							multiKeyMatch: false,
+							supportAutoMap: false,
+							showTypeConversionOptions: true,
+						},
+					},
+					displayOptions: {
+						show: { source: ['database'], '@version': [{ _cnd: { gte: 1.2 } }] },
+						hide: { workflowId: [''] },
+					},
+				},
+				{
+					displayName: 'Mode',
+					name: 'mode',
+					type: 'options',
+					noDataExpression: true,
+					options: [
+						{
+							name: 'Run once with all items',
+							value: 'once',
+							description: 'Pass all items into a single execution of the sub-workflow',
+						},
+						{
+							name: 'Run once for each item',
+							value: 'each',
+							description: 'Call the sub-workflow individually for each item',
+						},
+					],
+					default: 'once',
+				},
+				{
+					displayName: 'Options',
+					name: 'options',
+					type: 'collection',
+					default: {},
+					placeholder: 'Add option',
+					options: [
+						{
+							displayName: 'Wait For Sub-Workflow Completion',
+							name: 'waitForSubWorkflow',
+							type: 'boolean',
+							default: true,
+							description:
+								'Whether the main workflow should wait for the sub-workflow to complete its execution before proceeding',
+						},
+					],
+				},
+			],
+			hints: [
+				{
+					type: 'info',
+					message:
+						"Note on using an expression for workflow ID: if this node is set to run once with all items, they will all be sent to the <em>same</em> workflow. That workflow's ID will be calculated by evaluating the expression for the <strong>first input item</strong>.",
+					displayCondition:
+						'={{ $rawParameter.workflowId.startsWith("=") && $nodeVersion >= 1.2 }}',
+					whenToDisplay: 'always',
+					location: 'outputPane',
+				},
+			],
+			codex: {
+				categories: ['Core Nodes'],
+				subcategories: { 'Core Nodes': ['Helpers', 'Flow'] },
+				alias: ['n8n', 'call', 'sub', 'workflow', 'sub-workflow', 'subworkflow'],
+				resources: {
+					primaryDocumentation: [
+						{
+							url: 'https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.executeworkflow/',
+						},
+					],
+				},
+			},
+		},
+	},
+	sourcePath: '',
+};
+
+const aiAgentNode: LoadedClass<INodeType> = {
+	sourcePath: '',
+	type: {
+		description: {
+			displayName: 'AI Agent',
+			name: '@n8n/n8n-nodes-langchain.agent',
+			icon: 'fa:robot',
+			iconColor: 'black',
+			group: ['transform'],
+			version: [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8],
+			description: 'Generates an action plan and executes it. Can use external tools.',
+			defaults: {
+				name: 'AI Agent',
+				color: '#404040',
+			},
+			inputs: [
+				NodeConnectionTypes.Main,
+				NodeConnectionTypes.AiLanguageModel,
+				NodeConnectionTypes.AiTool,
+				NodeConnectionTypes.AiMemory,
+			],
+			outputs: [NodeConnectionTypes.Main],
+			properties: [],
+		},
+	},
+};
+
+const wikipediaTool: LoadedClass<INodeType> = {
+	sourcePath: '',
+	type: {
+		description: {
+			displayName: 'Wikipedia',
+			name: '@n8n/n8n-nodes-langchain.toolWikipedia',
+			icon: 'file:wikipedia.svg',
+			group: ['transform'],
+			version: 1,
+			description: 'Search in Wikipedia',
+			defaults: {
+				name: 'Wikipedia',
+			},
+			inputs: [],
+			outputs: [NodeConnectionTypes.AiTool],
+			properties: [],
+		},
+	},
+};
+
+const calculatorTool: LoadedClass<INodeType> = {
+	sourcePath: '',
+	type: {
+		description: {
+			displayName: 'Calculator',
+			name: '@n8n/n8n-nodes-langchain.toolCalculator',
+			icon: 'fa:calculator',
+			iconColor: 'black',
+			group: ['transform'],
+			version: 1,
+			description: 'Make it easier for AI agents to perform arithmetic',
+			defaults: {
+				name: 'Calculator',
+			},
+			inputs: [],
+			outputs: [NodeConnectionTypes.AiTool],
+			properties: [],
+		},
+	},
+};
+
+const googleCalendarTool: LoadedClass<INodeType> = {
+	sourcePath: '',
+	type: {
+		description: {
+			displayName: 'Google Calendar',
+			name: 'n8n-nodes-base.googleCalendarTool',
+			icon: 'file:googleCalendar.svg',
+			group: ['input'],
+			version: [1, 1.1, 1.2, 1.3],
+			subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
+			description: 'Consume Google Calendar API',
+			defaults: {
+				name: 'Google Calendar',
+			},
+			inputs: [NodeConnectionTypes.Main],
+			outputs: [NodeConnectionTypes.Main],
+			usableAsTool: true,
+			properties: [
+				{ name: 'start', type: 'dateTime', displayName: 'Start', default: '' },
+				{
+					displayName: 'Operation',
+					name: 'operation',
+					type: 'options',
+					noDataExpression: true,
+					displayOptions: {
+						show: {
+							resource: ['calendar'],
+						},
+					},
+					options: [
+						{
+							name: 'Availability',
+							value: 'availability',
+							description: 'If a time-slot is available in a calendar',
+							action: 'Get availability in a calendar',
+						},
+					],
+					default: 'availability',
+				},
+				{
+					displayName: 'Operation',
+					name: 'operation',
+					type: 'options',
+					noDataExpression: true,
+					displayOptions: {
+						show: {
+							resource: ['event'],
+						},
+					},
+					options: [
+						{
+							name: 'Create',
+							value: 'create',
+							description: 'Add a event to calendar',
+							action: 'Create an event',
+						},
+						{
+							name: 'Delete',
+							value: 'delete',
+							description: 'Delete an event',
+							action: 'Delete an event',
+						},
+						{
+							name: 'Get',
+							value: 'get',
+							description: 'Retrieve an event',
+							action: 'Get an event',
+						},
+						{
+							name: 'Get Many',
+							value: 'getAll',
+							description: 'Retrieve many events from a calendar',
+							action: 'Get many events',
+						},
+						{
+							name: 'Update',
+							value: 'update',
+							description: 'Update an event',
+							action: 'Update an event',
+						},
+					],
+					default: 'create',
+				},
+				{
+					displayName: 'Resource',
+					name: 'resource',
+					type: 'options',
+					noDataExpression: true,
+					options: [
+						{
+							name: 'Calendar',
+							value: 'calendar',
+						},
+						{
+							name: 'Event',
+							value: 'event',
+						},
+					],
+					default: 'event',
+				},
+			],
+		},
+	},
+};
+
 export class NodeTypes implements INodeTypes {
 	nodeTypes: INodeTypeData = {
 		'n8n-nodes-base.stickyNote': stickyNode,
 		'n8n-nodes-base.set': setNode,
 		'test.googleSheets': googleSheetsNode,
 		'test.set': setNode,
+		'n8n-nodes-base.executeWorkflow': executeWorkflowNode,
 		'test.setMulti': {
 			sourcePath: '',
 			type: {
@@ -623,8 +1021,8 @@ export class NodeTypes implements INodeTypes {
 						name: 'Set Multi',
 						color: '#0000FF',
 					},
-					inputs: [NodeConnectionType.Main],
-					outputs: [NodeConnectionType.Main],
+					inputs: [NodeConnectionTypes.Main],
+					outputs: [NodeConnectionTypes.Main],
 					properties: [
 						{
 							displayName: 'Values',
@@ -662,6 +1060,10 @@ export class NodeTypes implements INodeTypes {
 			},
 		},
 		'n8n-nodes-base.manualTrigger': manualTriggerNode,
+		'@n8n/n8n-nodes-langchain.agent': aiAgentNode,
+		'n8n-nodes-base.googleCalendarTool': googleCalendarTool,
+		'@n8n/n8n-nodes-langchain.toolCalculator': calculatorTool,
+		'@n8n/n8n-nodes-langchain.toolWikipedia': wikipediaTool,
 	};
 
 	getByName(nodeType: string): INodeType | IVersionedNodeType {
@@ -675,6 +1077,7 @@ export class NodeTypes implements INodeTypes {
 		return mock<INodeType>({
 			description: {
 				properties: [],
+				name: nodeType,
 			},
 		});
 	}

@@ -1,13 +1,15 @@
 import { GlobalConfig } from '@n8n/config';
+import { ExecutionRepository } from '@n8n/db';
+import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { ErrorReporter, InstanceSettings, isObjectLiteral, Logger } from 'n8n-core';
 import {
-	ApplicationError,
 	BINARY_ENCODING,
 	sleep,
 	jsonStringify,
 	ensureError,
 	ExecutionCancelledError,
+	UnexpectedError,
 } from 'n8n-workflow';
 import type { IExecuteResponsePromiseData } from 'n8n-workflow';
 import assert, { strict } from 'node:assert';
@@ -15,10 +17,7 @@ import assert, { strict } from 'node:assert';
 import { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
 import { HIGHEST_SHUTDOWN_PRIORITY, Time } from '@/constants';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import { OnShutdown } from '@/decorators/on-shutdown';
 import { EventService } from '@/events/event.service';
-import { OrchestrationService } from '@/services/orchestration.service';
 import { assertNever } from '@/utils';
 
 import { JOB_TYPE_NAME, QUEUE_NAME } from './constants';
@@ -47,7 +46,6 @@ export class ScalingService {
 		private readonly globalConfig: GlobalConfig,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly instanceSettings: InstanceSettings,
-		private readonly orchestrationService: OrchestrationService,
 		private readonly eventService: EventService,
 	) {
 		this.logger = this.logger.scoped('scaling');
@@ -71,15 +69,7 @@ export class ScalingService {
 
 		this.registerListeners();
 
-		const { isLeader, isMultiMain } = this.instanceSettings;
-
-		if (isLeader) this.scheduleQueueRecovery();
-
-		if (isMultiMain) {
-			this.orchestrationService.multiMainSetup
-				.on('leader-takeover', () => this.scheduleQueueRecovery())
-				.on('leader-stepdown', () => this.stopQueueRecovery());
-		}
+		if (this.instanceSettings.isLeader) this.scheduleQueueRecovery();
 
 		this.scheduleQueueMetrics();
 
@@ -93,7 +83,7 @@ export class ScalingService {
 		void this.queue.process(JOB_TYPE_NAME, concurrency, async (job: Job) => {
 			try {
 				if (!this.hasValidJobData(job)) {
-					throw new ApplicationError('Worker received invalid job', {
+					throw new UnexpectedError('Worker received invalid job', {
 						extra: { jobData: jsonStringify(job, { replaceCircularRefs: true }) },
 					});
 				}
@@ -139,17 +129,21 @@ export class ScalingService {
 		else if (instanceType === 'worker') await this.stopWorker();
 	}
 
+	private async pauseQueue() {
+		await this.queue.pause(true, true); // no more jobs will be enqueued or picked up
+		this.logger.debug('Paused queue');
+	}
+
 	private async stopMain() {
-		if (this.instanceSettings.isSingleMain) {
-			await this.queue.pause(true, true); // no more jobs will be picked up
-			this.logger.debug('Queue paused');
-		}
+		if (this.instanceSettings.isSingleMain) await this.pauseQueue();
 
 		if (this.queueRecoveryContext.timeout) this.stopQueueRecovery();
 		if (this.isQueueMetricsEnabled) this.stopQueueMetrics();
 	}
 
 	private async stopWorker() {
+		await this.pauseQueue();
+
 		let count = 0;
 
 		while (this.getRunningJobsCount() !== 0) {
@@ -369,13 +363,13 @@ export class ScalingService {
 	private assertQueue() {
 		if (this.queue) return;
 
-		throw new ApplicationError('This method must be called after `setupQueue`');
+		throw new UnexpectedError('This method must be called after `setupQueue`');
 	}
 
 	private assertWorker() {
 		if (this.instanceSettings.instanceType === 'worker') return;
 
-		throw new ApplicationError('This method must be called on a `worker` instance');
+		throw new UnexpectedError('This method must be called on a `worker` instance');
 	}
 
 	// #region Queue metrics
@@ -430,6 +424,7 @@ export class ScalingService {
 		waitMs: config.getEnv('executions.queueRecovery.interval') * 60 * 1000,
 	};
 
+	@OnLeaderTakeover()
 	private scheduleQueueRecovery(waitMs = this.queueRecoveryContext.waitMs) {
 		this.queueRecoveryContext.timeout = setTimeout(async () => {
 			try {
@@ -450,7 +445,10 @@ export class ScalingService {
 		this.logger.debug(`Scheduled queue recovery check for next ${wait}`);
 	}
 
+	@OnLeaderStepdown()
 	private stopQueueRecovery() {
+		if (!this.queueRecoveryContext.timeout) return;
+
 		clearTimeout(this.queueRecoveryContext.timeout);
 
 		this.logger.debug('Queue recovery stopped');

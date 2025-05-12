@@ -253,6 +253,7 @@ describe('Langchain Integration', () => {
 				metadata: {
 					subRun: [{ node: AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME, runIndex: 0 }],
 				},
+				source: [{ previousNode: AGENT_NODE_NAME, previousNodeRun: 0 }],
 				inputOverride: {
 					ai_languageModel: [
 						[
@@ -461,7 +462,6 @@ describe('Langchain Integration', () => {
 
 		getManualChatMessages().should('contain', 'this_my_field_1');
 		cy.getByTestId('refresh-session-button').click();
-		cy.get('button').contains('Reset').click();
 		getManualChatMessages().should('not.exist');
 
 		sendManualChatMessage('Another test');

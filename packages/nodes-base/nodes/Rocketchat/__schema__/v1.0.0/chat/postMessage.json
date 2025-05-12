@@ -1,19 +1,19 @@
 {
     "type": "object",
     "properties": {
-        "ts": {
-            "type": "integer"
-        },
         "channel": {
             "type": "string"
         },
         "message": {
             "type": "object",
             "properties": {
-                "alias": {
+                "_id": {
                     "type": "string"
                 },
-                "msg": {
+                "_updatedAt": {
+                    "type": "string"
+                },
+                "alias": {
                     "type": "string"
                 },
                 "attachments": {
@@ -21,15 +21,6 @@
                     "items": {
                         "type": "object",
                         "properties": {
-                            "text": {
-                                "type": "string"
-                            },
-                            "ts": {
-                                "type": "string"
-                            },
-                            "title": {
-                                "type": "string"
-                            },
                             "fields": {
                                 "type": "array",
                                 "items": {
@@ -44,84 +35,23 @@
                                         "value": {
                                             "type": "string"
                                         }
-                                    },
-                                    "required": [
-                                        "short",
-                                        "title"
-                                    ]
+                                    }
                                 }
+                            },
+                            "text": {
+                                "type": "string"
+                            },
+                            "title": {
+                                "type": "string"
+                            },
+                            "ts": {
+                                "type": "string"
                             }
-                        },
-                        "required": [
-                            "ts"
-                        ]
+                        }
                     }
-                },
-                "parseUrls": {
-                    "type": "boolean"
                 },
                 "groupable": {
                     "type": "boolean"
-                },
-                "ts": {
-                    "type": "string"
-                },
-                "u": {
-                    "type": "object",
-                    "properties": {
-                        "_id": {
-                            "type": "string"
-                        },
-                        "username": {
-                            "type": "string"
-                        },
-                        "name": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "_id",
-                        "username",
-                        "name"
-                    ]
-                },
-                "rid": {
-                    "type": "string"
-                },
-                "unread": {
-                    "type": "boolean"
-                },
-                "_id": {
-                    "type": "string"
-                },
-                "_updatedAt": {
-                    "type": "string"
-                },
-                "mentions": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "_id": {
-                                "type": "string"
-                            },
-                            "username": {
-                                "type": "string"
-                            },
-                            "name": {
-                                "type": "string"
-                            },
-                            "type": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "_id",
-                            "username",
-                            "name",
-                            "type"
-                        ]
-                    }
                 },
                 "md": {
                     "type": "array",
@@ -139,17 +69,60 @@
                                         "type": {
                                             "type": "string"
                                         }
-                                    },
-                                    "required": [
-                                        "type"
-                                    ]
+                                    }
                                 }
                             }
-                        },
-                        "required": [
-                            "type"
-                        ]
+                        }
                     }
+                },
+                "mentions": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "_id": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            },
+                            "type": {
+                                "type": "string"
+                            },
+                            "username": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "msg": {
+                    "type": "string"
+                },
+                "parseUrls": {
+                    "type": "boolean"
+                },
+                "rid": {
+                    "type": "string"
+                },
+                "ts": {
+                    "type": "string"
+                },
+                "u": {
+                    "type": "object",
+                    "properties": {
+                        "_id": {
+                            "type": "string"
+                        },
+                        "name": {
+                            "type": "string"
+                        },
+                        "username": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "unread": {
+                    "type": "boolean"
                 },
                 "urls": {
                     "type": "array",
@@ -159,31 +132,17 @@
                             "url": {
                                 "type": "string"
                             }
-                        },
-                        "required": [
-                            "url",
-                            "meta"
-                        ]
+                        }
                     }
                 }
-            },
-            "required": [
-                "alias",
-                "msg",
-                "attachments",
-                "parseUrls",
-                "groupable",
-                "ts",
-                "u",
-                "rid",
-                "_id",
-                "_updatedAt",
-                "mentions",
-                "channels"
-            ]
+            }
         },
         "success": {
             "type": "boolean"
+        },
+        "ts": {
+            "type": "integer"
         }
-    }
+    },
+    "version": 1
 }

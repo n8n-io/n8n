@@ -7,7 +7,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
-import { updateDisplayOptions } from '@utils/utilities';
+import { createUtmCampaignLink, updateDisplayOptions } from '@utils/utilities';
 
 import { fromEmailProperty, toEmailProperty } from './descriptions';
 import { configureTransport, type EmailSendOptions } from './utils';
@@ -218,9 +218,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 
 			if (appendAttribution) {
 				const attributionText = 'This email was sent automatically with ';
-				const link = `https://n8n.io/?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=${encodeURIComponent(
-					'n8n-nodes-base.emailSend',
-				)}${instanceId ? '_' + instanceId : ''}`;
+				const link = createUtmCampaignLink('n8n-nodes-base.emailSend', instanceId);
 				if (emailFormat === 'html' || (emailFormat === 'both' && mailOptions.html)) {
 					mailOptions.html = `
 					${mailOptions.html}

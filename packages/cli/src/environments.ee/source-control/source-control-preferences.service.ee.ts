@@ -3,7 +3,7 @@ import type { ValidationError } from 'class-validator';
 import { validate } from 'class-validator';
 import { rm as fsRm } from 'fs/promises';
 import { Cipher, InstanceSettings, Logger } from 'n8n-core';
-import { ApplicationError, jsonParse } from 'n8n-workflow';
+import { jsonParse, UnexpectedError } from 'n8n-workflow';
 import { writeFile, chmod, readFile } from 'node:fs/promises';
 import path from 'path';
 
@@ -78,7 +78,7 @@ export class SourceControlPreferencesService {
 	private async getPrivateKeyFromDatabase() {
 		const dbKeyPair = await this.getKeyPairFromDatabase();
 
-		if (!dbKeyPair) throw new ApplicationError('Failed to find key pair in database');
+		if (!dbKeyPair) throw new UnexpectedError('Failed to find key pair in database');
 
 		return this.cipher.decrypt(dbKeyPair.encryptedPrivateKey);
 	}
@@ -86,7 +86,7 @@ export class SourceControlPreferencesService {
 	private async getPublicKeyFromDatabase() {
 		const dbKeyPair = await this.getKeyPairFromDatabase();
 
-		if (!dbKeyPair) throw new ApplicationError('Failed to find key pair in database');
+		if (!dbKeyPair) throw new UnexpectedError('Failed to find key pair in database');
 
 		return dbKeyPair.publicKey;
 	}
@@ -147,7 +147,7 @@ export class SourceControlPreferencesService {
 				loadOnStartup: true,
 			});
 		} catch (error) {
-			throw new ApplicationError('Failed to write key pair to database', { cause: error });
+			throw new UnexpectedError('Failed to write key pair to database', { cause: error });
 		}
 
 		// update preferences only after generating key pair to prevent endless loop
@@ -190,7 +190,7 @@ export class SourceControlPreferencesService {
 			validationError: { target: false },
 		});
 		if (validationResult.length > 0) {
-			throw new ApplicationError('Invalid source control preferences', {
+			throw new UnexpectedError('Invalid source control preferences', {
 				extra: { preferences: validationResult },
 			});
 		}
@@ -218,7 +218,7 @@ export class SourceControlPreferencesService {
 					{ transaction: false },
 				);
 			} catch (error) {
-				throw new ApplicationError('Failed to save source control preferences', { cause: error });
+				throw new UnexpectedError('Failed to save source control preferences', { cause: error });
 			}
 		}
 		return this.sourceControlPreferences;

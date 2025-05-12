@@ -1,9 +1,8 @@
 import { GlobalConfig } from '@n8n/config';
+import type { entities } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type { DataSourceOptions, Repository } from '@n8n/typeorm';
+import type { DataSourceOptions } from '@n8n/typeorm';
 import { DataSource as Connection } from '@n8n/typeorm';
-import { kebabCase } from 'lodash';
-import type { Class } from 'n8n-core';
 import { randomString } from 'n8n-workflow';
 
 import { getOptionOverrides } from '@/databases/config';
@@ -51,60 +50,16 @@ export async function terminate() {
 	Db.connectionState.connected = false;
 }
 
-// Can't use `Object.keys(entities)` here because some entities have a `Entity` suffix, while the repositories don't
-const repositories = [
-	'AnnotationTag',
-	'AuthIdentity',
-	'AuthProviderSyncHistory',
-	'Credentials',
-	'EventDestinations',
-	'Execution',
-	'ExecutionAnnotation',
-	'ExecutionData',
-	'ExecutionMetadata',
-	'InstalledNodes',
-	'InstalledPackages',
-	'Project',
-	'ProjectRelation',
-	'Role',
-	'ProcessedData',
-	'Project',
-	'ProjectRelation',
-	'Settings',
-	'SharedCredentials',
-	'SharedWorkflow',
-	'Tag',
-	'TestDefinition',
-	'TestMetric',
-	'TestRun',
-	'User',
-	'Variables',
-	'Webhook',
-	'Workflow',
-	'WorkflowHistory',
-	'WorkflowStatistics',
-	'WorkflowTagMapping',
-	'ApiKey',
-] as const;
+type EntityName = keyof typeof entities | 'InsightsRaw' | 'InsightsByPeriod' | 'InsightsMetadata';
 
 /**
  * Truncate specific DB tables in a test DB.
  */
-export async function truncate(names: Array<(typeof repositories)[number]>) {
-	for (const name of names) {
-		let RepositoryClass: Class<Repository<object>>;
+export async function truncate(entities: EntityName[]) {
+	const connection = Container.get(Connection);
 
-		try {
-			RepositoryClass = (await import(`@/databases/repositories/${kebabCase(name)}.repository`))[
-				`${name}Repository`
-			];
-		} catch (e) {
-			RepositoryClass = (await import(`@/databases/repositories/${kebabCase(name)}.repository.ee`))[
-				`${name}Repository`
-			];
-		}
-
-		await Container.get(RepositoryClass).delete({});
+	for (const name of entities) {
+		await connection.getRepository(name).delete({});
 	}
 }
 

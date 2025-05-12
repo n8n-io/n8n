@@ -17,14 +17,14 @@ RUN set -eux; \
 	npm install -g --omit=dev n8n@${N8N_VERSION} --ignore-scripts && \
 	npm rebuild --prefix=/usr/local/lib/node_modules/n8n sqlite3 && \
 	rm -rf /usr/local/lib/node_modules/n8n/node_modules/@n8n/chat && \
-	rm -rf /usr/local/lib/node_modules/n8n/node_modules/n8n-design-system && \
+	rm -rf /usr/local/lib/node_modules/n8n/node_modules/@n8n/design-system && \
 	rm -rf /usr/local/lib/node_modules/n8n/node_modules/n8n-editor-ui/node_modules && \
 	find /usr/local/lib/node_modules/n8n -type f -name "*.ts" -o -name "*.js.map" -o -name "*.vue" | xargs rm -f && \
 	rm -rf /root/.npm
 
 # Setup the Task Runner Launcher
 ARG TARGETPLATFORM
-ARG LAUNCHER_VERSION=1.1.0
+ARG LAUNCHER_VERSION=1.1.2
 COPY n8n-task-runners.json /etc/n8n-task-runners.json
 # Download, verify, then extract the launcher binary
 RUN \

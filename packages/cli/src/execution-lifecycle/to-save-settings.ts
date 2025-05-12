@@ -2,6 +2,13 @@ import type { IWorkflowSettings } from 'n8n-workflow';
 
 import config from '@/config';
 
+export type ExecutionSaveSettings = {
+	error: boolean | 'all' | 'none';
+	success: boolean | 'all' | 'none';
+	manual: boolean;
+	progress: boolean;
+};
+
 /**
  * Return whether a workflow execution is configured to be saved or not:
  *
@@ -10,7 +17,7 @@ import config from '@/config';
  * - `manual`: Whether to save successful or failed manual executions.
  * - `progress`: Whether to save execution progress, i.e. after each node's execution.
  */
-export function toSaveSettings(workflowSettings: IWorkflowSettings = {}) {
+export function toSaveSettings(workflowSettings: IWorkflowSettings = {}): ExecutionSaveSettings {
 	const DEFAULTS = {
 		ERROR: config.getEnv('executions.saveDataOnError'),
 		SUCCESS: config.getEnv('executions.saveDataOnSuccess'),

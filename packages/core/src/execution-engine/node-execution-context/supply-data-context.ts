@@ -13,35 +13,37 @@ import type {
 	ITaskDataConnections,
 	ITaskMetadata,
 	IWorkflowExecuteAdditionalData,
-	NodeConnectionType,
 	Workflow,
 	WorkflowExecuteMode,
+	NodeConnectionType,
+	ISourceData,
 } from 'n8n-workflow';
-import { createDeferredPromise } from 'n8n-workflow';
+import { createDeferredPromise, NodeConnectionTypes } from 'n8n-workflow';
 
-// eslint-disable-next-line import/no-cycle
+import { BaseExecuteContext } from './base-execute-context';
 import {
 	assertBinaryData,
-	constructExecutionMetaData,
-	copyInputItems,
 	detectBinaryEncoding,
 	getBinaryDataBuffer,
 	getBinaryHelperFunctions,
-	getCheckProcessedHelperFunctions,
-	getFileSystemHelperFunctions,
-	getRequestHelperFunctions,
-	getSSHTunnelFunctions,
-	normalizeItems,
-	returnJsonArray,
-} from '@/node-execute-functions';
-
-import { BaseExecuteContext } from './base-execute-context';
+} from './utils/binary-helper-functions';
+import { constructExecutionMetaData } from './utils/construct-execution-metadata';
+import { copyInputItems } from './utils/copy-input-items';
+import { getDeduplicationHelperFunctions } from './utils/deduplication-helper-functions';
+import { getFileSystemHelperFunctions } from './utils/file-system-helper-functions';
+// eslint-disable-next-line import/no-cycle
 import { getInputConnectionData } from './utils/get-input-connection-data';
+import { normalizeItems } from './utils/normalize-items';
+import { getRequestHelperFunctions } from './utils/request-helper-functions';
+import { returnJsonArray } from './utils/return-json-array';
+import { getSSHTunnelFunctions } from './utils/ssh-tunnel-helper-functions';
 
 export class SupplyDataContext extends BaseExecuteContext implements ISupplyDataFunctions {
 	readonly helpers: ISupplyDataFunctions['helpers'];
 
 	readonly getNodeParameter: ISupplyDataFunctions['getNodeParameter'];
+
+	readonly parentNode?: INode;
 
 	constructor(
 		workflow: Workflow,
@@ -56,6 +58,7 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 		executeData: IExecuteData,
 		private readonly closeFunctions: CloseFunction[],
 		abortSignal?: AbortSignal,
+		parentNode?: INode,
 	) {
 		super(
 			workflow,
@@ -70,6 +73,8 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 			abortSignal,
 		);
 
+		this.parentNode = parentNode;
+
 		this.helpers = {
 			createDeferredPromise,
 			copyInputItems,
@@ -83,7 +88,7 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 			...getSSHTunnelFunctions(),
 			...getFileSystemHelperFunctions(node),
 			...getBinaryHelperFunctions(additionalData, workflow.id),
-			...getCheckProcessedHelperFunctions(workflow, node),
+			...getDeduplicationHelperFunctions(workflow, node),
 			assertBinaryData: (itemIndex, propertyName) =>
 				assertBinaryData(inputData, node, itemIndex, propertyName, 0),
 			getBinaryDataBuffer: async (itemIndex, propertyName) =>
@@ -108,6 +113,29 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 				fallbackValue,
 				options,
 			)) as ISupplyDataFunctions['getNodeParameter'];
+	}
+
+	cloneWith(replacements: {
+		runIndex: number;
+		inputData: INodeExecutionData[][];
+	}): SupplyDataContext {
+		const context = new SupplyDataContext(
+			this.workflow,
+			this.node,
+			this.additionalData,
+			this.mode,
+			this.runExecutionData,
+			replacements.runIndex,
+			this.connectionInputData,
+			{},
+			this.connectionType,
+			this.executeData,
+			this.closeFunctions,
+			this.abortSignal,
+			this.parentNode,
+		);
+		context.addInputData(NodeConnectionTypes.AiTool, replacements.inputData);
+		return context;
 	}
 
 	async getInputConnectionData(
@@ -209,12 +237,17 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 		} = this;
 
 		let taskData: ITaskData | undefined;
+		const source: ISourceData[] = this.parentNode
+			? [{ previousNode: this.parentNode.name, previousNodeRun: sourceNodeRunIndex }]
+			: [];
+
 		if (type === 'input') {
 			taskData = {
-				startTime: new Date().getTime(),
+				startTime: Date.now(),
 				executionTime: 0,
+				executionIndex: additionalData.currentNodeExecutionIndex++,
 				executionStatus: 'running',
-				source: [null],
+				source,
 			};
 		} else {
 			// At the moment we expect that there is always an input sent before the output
@@ -227,6 +260,7 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 				return;
 			}
 			taskData.metadata = metadata;
+			taskData.source = source;
 		}
 		taskData = taskData!;
 
@@ -256,12 +290,12 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 			}
 
 			runExecutionData.resultData.runData[nodeName][currentNodeRunIndex] = taskData;
-			await additionalData.hooks?.executeHookFunctions('nodeExecuteBefore', [nodeName]);
+			await additionalData.hooks?.runHook('nodeExecuteBefore', [nodeName, taskData]);
 		} else {
 			// Outputs
-			taskData.executionTime = new Date().getTime() - taskData.startTime;
+			taskData.executionTime = Date.now() - taskData.startTime;
 
-			await additionalData.hooks?.executeHookFunctions('nodeExecuteAfter', [
+			await additionalData.hooks?.runHook('nodeExecuteAfter', [
 				nodeName,
 				taskData,
 				this.runExecutionData,

@@ -1,15 +1,16 @@
 import type { SourceControlledFile } from '@n8n/api-types';
+import type { SharedCredentials } from '@n8n/db';
+import type { SharedWorkflow } from '@n8n/db';
+import type { FolderRepository } from '@n8n/db';
+import type { TagRepository } from '@n8n/db';
+import type { WorkflowTagMappingRepository } from '@n8n/db';
+import type { SharedCredentialsRepository } from '@n8n/db';
+import type { SharedWorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock, captor } from 'jest-mock-extended';
 import { Cipher, type InstanceSettings } from 'n8n-core';
 import fsp from 'node:fs/promises';
 
-import type { SharedCredentials } from '@/databases/entities/shared-credentials';
-import type { SharedWorkflow } from '@/databases/entities/shared-workflow';
-import type { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
-import type { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
-import type { TagRepository } from '@/databases/repositories/tag.repository';
-import type { WorkflowTagMappingRepository } from '@/databases/repositories/workflow-tag-mapping.repository';
 import type { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 
 import type { VariablesService } from '../../variables/variables.service.ee';
@@ -23,6 +24,7 @@ describe('SourceControlExportService', () => {
 	const tagRepository = mock<TagRepository>();
 	const workflowTagMappingRepository = mock<WorkflowTagMappingRepository>();
 	const variablesService = mock<VariablesService>();
+	const folderRepository = mock<FolderRepository>();
 
 	const service = new SourceControlExportService(
 		mock(),
@@ -32,6 +34,7 @@ describe('SourceControlExportService', () => {
 		sharedWorkflowRepository,
 		workflowRepository,
 		workflowTagMappingRepository,
+		folderRepository,
 		mock<InstanceSettings>({ n8nFolder: '/mock/n8n' }),
 	);
 
@@ -190,6 +193,35 @@ describe('SourceControlExportService', () => {
 		});
 	});
 
+	describe('exportFoldersToWorkFolder', () => {
+		it('should export folders to work folder', async () => {
+			// Arrange
+			folderRepository.find.mockResolvedValue([
+				mock({ updatedAt: new Date(), createdAt: new Date() }),
+			]);
+			workflowRepository.find.mockResolvedValue([mock()]);
+
+			// Act
+			const result = await service.exportFoldersToWorkFolder();
+
+			// Assert
+			expect(result.count).toBe(1);
+			expect(result.files).toHaveLength(1);
+		});
+
+		it('should not export empty folders', async () => {
+			// Arrange
+			folderRepository.find.mockResolvedValue([]);
+
+			// Act
+			const result = await service.exportFoldersToWorkFolder();
+
+			// Assert
+			expect(result.count).toBe(0);
+			expect(result.files).toHaveLength(0);
+		});
+	});
+
 	describe('exportVariablesToWorkFolder', () => {
 		it('should export variables to work folder', async () => {
 			// Arrange
@@ -247,14 +279,15 @@ describe('SourceControlExportService', () => {
 						projectRelations: [],
 					}),
 					workflow: mock({
-						display: () => 'TestWorkflow',
+						id: 'test-workflow-id',
+						name: 'TestWorkflow',
 					}),
 				}),
 			]);
 
 			// Act & Assert
 			await expect(service.exportWorkflowsToWorkFolder([mock()])).rejects.toThrow(
-				'Workflow TestWorkflow has no owner',
+				'Workflow "TestWorkflow" (ID: test-workflow-id) has no owner',
 			);
 		});
 	});

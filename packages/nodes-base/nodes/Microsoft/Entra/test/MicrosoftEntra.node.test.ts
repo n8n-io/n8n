@@ -1,31 +1,24 @@
-import type {
-	ICredentialDataDecryptedObject,
-	IDataObject,
-	IHttpRequestOptions,
-	ILoadOptionsFunctions,
-} from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
-import nock from 'nock';
-
-import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
-import * as Helpers from '@test/nodes/Helpers';
-import type { WorkflowTestData } from '@test/nodes/types';
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
+import type { ILoadOptionsFunctions, WorkflowTestData } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { microsoftEntraApiResponse, microsoftEntraNodeResponse } from './mocks';
-import { FAKE_CREDENTIALS_DATA } from '../../../../test/nodes/FakeCredentialsMap';
 import { MicrosoftEntra } from '../MicrosoftEntra.node';
 
-describe('Gong Node', () => {
+describe('Microsoft Entra Node', () => {
+	const testHarness = new NodeTestHarness();
 	const baseUrl = 'https://graph.microsoft.com/v1.0';
 
-	beforeEach(() => {
-		// https://github.com/nock/nock/issues/2057#issuecomment-663665683
-		if (!nock.isActive()) {
-			nock.activate();
-		}
-	});
-
 	describe('Credentials', () => {
+		const credentials = {
+			microsoftEntraOAuth2Api: {
+				scope: '',
+				oauthTokenData: {
+					access_token: 'ACCESSTOKEN',
+				},
+			},
+		};
+
 		const tests: WorkflowTestData[] = [
 			{
 				description: 'should use correct credentials',
@@ -57,7 +50,7 @@ describe('Gong Node', () => {
 								typeVersion: 1,
 								position: [220, 0],
 								id: '3429f7f2-dfca-4b72-8913-43a582e96e66',
-								name: 'Micosoft Entra ID',
+								name: 'Microsoft Entra ID',
 								credentials: {
 									microsoftEntraOAuth2Api: {
 										id: 'Hot2KwSMSoSmMVqd',
@@ -71,8 +64,8 @@ describe('Gong Node', () => {
 								main: [
 									[
 										{
-											node: 'Micosoft Entra ID',
-											type: NodeConnectionType.Main,
+											node: 'Microsoft Entra ID',
+											type: NodeConnectionTypes.Main,
 											index: 0,
 										},
 									],
@@ -82,58 +75,29 @@ describe('Gong Node', () => {
 					},
 				},
 				output: {
-					nodeExecutionOrder: ['Start'],
 					nodeData: {
-						'Micosoft Entra ID': [microsoftEntraNodeResponse.getGroup],
+						'Microsoft Entra ID': [microsoftEntraNodeResponse.getGroup],
 					},
+				},
+				nock: {
+					baseUrl,
+					mocks: [
+						{
+							method: 'get',
+							path: `/groups/${microsoftEntraApiResponse.getGroup.id}`,
+							statusCode: 200,
+							responseBody: {
+								...microsoftEntraApiResponse.getGroup,
+							},
+						},
+					],
 				},
 			},
 		];
 
-		beforeAll(() => {
-			jest
-				.spyOn(Helpers.CredentialsHelper.prototype, 'authenticate')
-				.mockImplementation(
-					async (
-						credentials: ICredentialDataDecryptedObject,
-						typeName: string,
-						requestParams: IHttpRequestOptions,
-					): Promise<IHttpRequestOptions> => {
-						if (typeName === 'microsoftEntraOAuth2Api') {
-							return {
-								...requestParams,
-								headers: {
-									authorization:
-										'bearer ' + (credentials.oauthTokenData as IDataObject).access_token,
-								},
-							};
-						} else {
-							return requestParams;
-						}
-					},
-				);
-		});
-
-		nock(baseUrl)
-			.get(`/groups/${microsoftEntraApiResponse.getGroup.id}`)
-			.matchHeader(
-				'authorization',
-				'bearer ' + FAKE_CREDENTIALS_DATA.microsoftEntraOAuth2Api.oauthTokenData.access_token,
-			)
-			.reply(200, {
-				...microsoftEntraApiResponse.getGroup,
-			});
-
-		const nodeTypes = Helpers.setup(tests);
-
-		test.each(tests)('$description', async (testData) => {
-			const { result } = await executeWorkflow(testData, nodeTypes);
-			const resultNodeData = Helpers.getResultNodeData(result, testData);
-			resultNodeData.forEach(({ nodeName, resultData }) =>
-				expect(resultData).toEqual(testData.output.nodeData[nodeName]),
-			);
-			expect(result.status).toEqual('success');
-		});
+		for (const testData of tests) {
+			testHarness.setupTest(testData, { credentials });
+		}
 	});
 
 	describe('Load options', () => {

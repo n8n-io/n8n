@@ -2,15 +2,18 @@ import { Service } from '@n8n/di';
 import type { NeededNodeType } from '@n8n/task-runner';
 import type { Dirent } from 'fs';
 import { readdir } from 'fs/promises';
+import { RoutingNode } from 'n8n-core';
+import type { ExecuteContext } from 'n8n-core';
 import type { INodeType, INodeTypeDescription, INodeTypes, IVersionedNodeType } from 'n8n-workflow';
-import { ApplicationError, NodeHelpers } from 'n8n-workflow';
+import { NodeHelpers, UnexpectedError, UserError } from 'n8n-workflow';
 import { join, dirname } from 'path';
 
 import { LoadNodesAndCredentials } from './load-nodes-and-credentials';
+import { shouldAssignExecuteMethod } from './utils';
 
 @Service()
 export class NodeTypes implements INodeTypes {
-	constructor(private loadNodesAndCredentials: LoadNodesAndCredentials) {}
+	constructor(private readonly loadNodesAndCredentials: LoadNodesAndCredentials) {}
 
 	/**
 	 * Variant of `getByNameAndVersion` that includes the node's source path, used to locate a node's translations.
@@ -31,7 +34,15 @@ export class NodeTypes implements INodeTypes {
 
 	getByNameAndVersion(nodeType: string, version?: number): INodeType {
 		const origType = nodeType;
-		const toolRequested = nodeType.startsWith('n8n-nodes-base') && nodeType.endsWith('Tool');
+
+		const toolRequested = nodeType.endsWith('Tool');
+
+		// If an existing node name ends in `Tool`, then return that node, instead of creating a fake Tool node
+		if (toolRequested && this.loadNodesAndCredentials.recognizesNode(nodeType)) {
+			const node = this.loadNodesAndCredentials.getNode(nodeType);
+			return NodeHelpers.getVersionedNodeType(node.type, version);
+		}
+
 		// Make sure the nodeType to actually get from disk is the un-wrapped type
 		if (toolRequested) {
 			nodeType = nodeType.replace(/Tool$/, '');
@@ -39,10 +50,22 @@ export class NodeTypes implements INodeTypes {
 
 		const node = this.loadNodesAndCredentials.getNode(nodeType);
 		const versionedNodeType = NodeHelpers.getVersionedNodeType(node.type, version);
+		if (toolRequested && typeof versionedNodeType.supplyData === 'function') {
+			throw new UnexpectedError('Node already has a `supplyData` method', { extra: { nodeType } });
+		}
+
+		if (shouldAssignExecuteMethod(versionedNodeType)) {
+			versionedNodeType.execute = async function (this: ExecuteContext) {
+				const routingNode = new RoutingNode(this, versionedNodeType);
+				const data = await routingNode.runNode();
+				return data ?? [];
+			};
+		}
+
 		if (!toolRequested) return versionedNodeType;
 
 		if (!versionedNodeType.description.usableAsTool)
-			throw new ApplicationError('Node cannot be used as a tool', { extra: { nodeType } });
+			throw new UserError('Node cannot be used as a tool', { extra: { nodeType } });
 
 		const { loadedNodes } = this.loadNodesAndCredentials;
 		if (origType in loadedNodes) {

@@ -1,15 +1,15 @@
-import { ApplicationError } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 
-import type { TaskRunner } from '../task-broker.service';
+import type { TaskRunner } from '@/task-runners/task-broker/task-broker.service';
 
-export class TaskRunnerOomError extends ApplicationError {
+export class TaskRunnerOomError extends UserError {
 	description: string;
 
 	constructor(
 		readonly runnerId: TaskRunner['id'],
 		isCloudDeployment: boolean,
 	) {
-		super('Node ran out of memory.', { level: 'error' });
+		super('Node ran out of memory');
 
 		const fixSuggestions = {
 			reduceItems:

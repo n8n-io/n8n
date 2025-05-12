@@ -10,20 +10,14 @@
                 "url": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "type",
-                "url"
-            ]
+            }
         },
         "Id": {
             "type": "string"
         },
-        "AccountId": {
-            "type": "string"
+        "Probability": {
+            "type": "integer"
         }
     },
-    "required": [
-        "attributes"
-    ]
+    "version": 3
 }

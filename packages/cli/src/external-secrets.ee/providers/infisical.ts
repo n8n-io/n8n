@@ -1,11 +1,10 @@
 import InfisicalClient from 'infisical-node';
 import { getServiceTokenData } from 'infisical-node/lib/api/serviceTokenData';
 import { populateClientWorkspaceConfigsHelper } from 'infisical-node/lib/helpers/key';
-import { ApplicationError, type IDataObject, type INodeProperties } from 'n8n-workflow';
-
-import type { SecretsProvider, SecretsProviderSettings, SecretsProviderState } from '@/interfaces';
+import { UnexpectedError, type IDataObject, type INodeProperties } from 'n8n-workflow';
 
 import { EXTERNAL_SECRETS_NAME_REGEX } from '../constants';
+import type { SecretsProvider, SecretsProviderSettings, SecretsProviderState } from '../types';
 
 export interface InfisicalSettings {
 	token: string;
@@ -77,10 +76,10 @@ export class InfisicalProvider implements SecretsProvider {
 
 	async update(): Promise<void> {
 		if (!this.client) {
-			throw new ApplicationError('Updated attempted on Infisical when initialization failed');
+			throw new UnexpectedError('Updated attempted on Infisical when initialization failed');
 		}
 		if (!(await this.test())[0]) {
-			throw new ApplicationError('Infisical provider test failed during update');
+			throw new UnexpectedError('Infisical provider test failed during update');
 		}
 		const secrets = (await this.client.getAllSecrets({
 			environment: this.environment,
@@ -123,7 +122,7 @@ export class InfisicalProvider implements SecretsProvider {
 		if (serviceTokenData.scopes) {
 			return serviceTokenData.scopes[0].environment;
 		}
-		throw new ApplicationError("Couldn't find environment for Infisical");
+		throw new UnexpectedError("Couldn't find environment for Infisical");
 	}
 
 	async test(): Promise<[boolean] | [boolean, string]> {

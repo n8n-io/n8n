@@ -1,10 +1,11 @@
+import { ShutdownRegistryMetadata } from '@n8n/decorators';
+import type { ServiceClass } from '@n8n/decorators/src/types';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type { ErrorReporter } from 'n8n-core';
-import { ApplicationError } from 'n8n-workflow';
+import { UnexpectedError } from 'n8n-workflow';
 
-import type { ServiceClass } from '@/shutdown/shutdown.service';
-import { ShutdownService } from '@/shutdown/shutdown.service';
+import { ShutdownService } from '../shutdown.service';
 
 class MockComponent {
 	onShutdown() {}
@@ -15,9 +16,11 @@ describe('ShutdownService', () => {
 	let mockComponent: MockComponent;
 	let onShutdownSpy: jest.SpyInstance;
 	const errorReporter = mock<ErrorReporter>();
+	const shutdownRegistryMetadata = Container.get(ShutdownRegistryMetadata);
 
 	beforeEach(() => {
-		shutdownService = new ShutdownService(mock(), errorReporter);
+		shutdownRegistryMetadata.clear();
+		shutdownService = new ShutdownService(mock(), errorReporter, shutdownRegistryMetadata);
 		mockComponent = new MockComponent();
 		Container.set(MockComponent, mockComponent);
 		onShutdownSpy = jest.spyOn(mockComponent, 'onShutdown');
@@ -84,8 +87,8 @@ describe('ShutdownService', () => {
 			await shutdownService.waitForShutdown();
 
 			expect(errorReporter.error).toHaveBeenCalledTimes(1);
-			const error = errorReporter.error.mock.calls[0][0] as ApplicationError;
-			expect(error).toBeInstanceOf(ApplicationError);
+			const error = errorReporter.error.mock.calls[0][0] as UnexpectedError;
+			expect(error).toBeInstanceOf(UnexpectedError);
 			expect(error.message).toBe('Failed to shutdown gracefully');
 			expect(error.extra).toEqual({
 				component: 'MockComponent.onShutdown()',

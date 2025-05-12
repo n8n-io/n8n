@@ -1,10 +1,10 @@
 import type { GlobalConfig } from '@n8n/config';
+import type { CredentialsRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { ErrorReporter, Logger } from 'n8n-core';
 import type { IWorkflowBase } from 'n8n-workflow';
-import { ApplicationError } from 'n8n-workflow';
+import { UnexpectedError } from 'n8n-workflow';
 
-import type { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import type { SettingsRepository } from '@/databases/repositories/settings.repository';
 import type { UserRepository } from '@/databases/repositories/user.repository';
 import type { WorkflowRepository } from '@/databases/repositories/workflow.repository';
@@ -57,7 +57,7 @@ describe('ExternalHooks', () => {
 				{ virtual: true },
 			);
 
-			await expect(externalHooks.init()).rejects.toThrow(ApplicationError);
+			await expect(externalHooks.init()).rejects.toThrow(UnexpectedError);
 		});
 
 		it('should successfully load hooks from valid hook file', async () => {
@@ -106,17 +106,19 @@ describe('ExternalHooks', () => {
 		});
 
 		it('should report error if hook execution fails', async () => {
-			hookFn.mockRejectedValueOnce(new Error('Hook failed'));
+			const error = new Error('Hook failed');
+			hookFn.mockRejectedValueOnce(error);
 			// eslint-disable-next-line @typescript-eslint/dot-notation
 			externalHooks['registered']['workflow.create'] = [hookFn];
 
-			await expect(externalHooks.run('workflow.create', [workflowData])).rejects.toThrow(
-				ApplicationError,
+			await expect(externalHooks.run('workflow.create', [workflowData])).rejects.toThrow(error);
+			expect(errorReporter.error).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message: 'External hook "workflow.create" failed',
+					cause: error,
+				}),
+				{ level: 'fatal' },
 			);
-
-			expect(errorReporter.error).toHaveBeenCalledWith(expect.any(ApplicationError), {
-				level: 'fatal',
-			});
 			expect(logger.error).toHaveBeenCalledWith(
 				'There was a problem running hook "workflow.create"',
 			);

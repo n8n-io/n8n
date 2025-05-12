@@ -1,20 +1,20 @@
 {
     "type": "object",
     "properties": {
+        "archivedAt": {
+            "type": "null"
+        },
+        "createdAt": {
+            "type": "string"
+        },
         "id": {
             "type": "string"
         },
         "identifier": {
             "type": "string"
         },
-        "title": {
-            "type": "string"
-        },
         "priority": {
             "type": "integer"
-        },
-        "archivedAt": {
-            "type": "null"
         },
         "state": {
             "type": "object",
@@ -25,27 +25,11 @@
                 "name": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "id",
-                "name"
-            ]
+            }
         },
-        "createdAt": {
+        "title": {
             "type": "string"
         }
     },
-    "required": [
-        "id",
-        "title",
-        "priority",
-        "archivedAt",
-        "assignee",
-        "state",
-        "createdAt",
-        "creator",
-        "description",
-        "dueDate",
-        "cycle"
-    ]
+    "version": 2
 }

@@ -5,7 +5,7 @@ import type {
 	INodeTypeDescription,
 	IPollFunctions,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import {
 	arrayOfArraysToJson,
@@ -34,7 +34,7 @@ export class GoogleSheetsTrigger implements INodeType {
 			name: 'Google Sheets Trigger',
 		},
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'googleSheetsTriggerOAuth2Api',
@@ -120,6 +120,9 @@ export class GoogleSheetsTrigger implements INodeType {
 				default: { mode: 'list', value: '' },
 				// default: '', //empty string set to progresivly reveal fields
 				required: true,
+				typeOptions: {
+					loadOptionsDependsOn: ['documentId.value'],
+				},
 				modes: [
 					{
 						displayName: 'From List',
@@ -530,9 +533,19 @@ export class GoogleSheetsTrigger implements INodeType {
 					(options.dateTimeRenderOption as string) || 'FORMATTED_STRING',
 				);
 
+				if (Array.isArray(sheetData) && sheetData.length !== 0) {
+					sheetData.splice(0, 1); // Remove header row
+				}
+
+				let dataStartIndex = 0;
+				if (rangeDefinition === 'specifyRange' && keyRow < startIndex) {
+					dataStartIndex = startIndex - keyRow - 1;
+				}
+
 				if (this.getMode() === 'manual') {
 					if (Array.isArray(sheetData)) {
-						const returnData = arrayOfArraysToJson(sheetData, columns);
+						const sheetDataFromStartIndex = sheetData.slice(dataStartIndex);
+						const returnData = arrayOfArraysToJson(sheetDataFromStartIndex, columns);
 
 						if (Array.isArray(returnData) && returnData.length !== 0) {
 							return [this.helpers.returnJsonArray(returnData)];
@@ -546,7 +559,11 @@ export class GoogleSheetsTrigger implements INodeType {
 						return null;
 					}
 
-					const addedRows = sheetData?.slice(workflowStaticData.lastIndexChecked as number) || [];
+					const rowsStartIndex = Math.max(
+						workflowStaticData.lastIndexChecked as number,
+						dataStartIndex,
+					);
+					const addedRows = sheetData?.slice(rowsStartIndex) || [];
 					const returnData = arrayOfArraysToJson(addedRows, columns);
 
 					workflowStaticData.lastIndexChecked = sheetData.length;

@@ -1,9 +1,9 @@
+import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import validator from 'validator';
 
 import config from '@/config';
 import { AUTH_COOKIE_NAME } from '@/constants';
-import type { User } from '@/databases/entities/user';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import { MfaService } from '@/mfa/mfa.service';
 
@@ -43,7 +43,7 @@ describe('POST /login', () => {
 
 	test('should log user in', async () => {
 		const response = await testServer.authlessAgent.post('/login').send({
-			email: owner.email,
+			emailOrLdapLoginId: owner.email,
 			password: ownerPassword,
 		});
 
@@ -87,7 +87,7 @@ describe('POST /login', () => {
 		await mfaService.enableMfa(owner.id);
 
 		const response = await testServer.authlessAgent.post('/login').send({
-			email: owner.email,
+			emailOrLdapLoginId: owner.email,
 			password: ownerPassword,
 			mfaCode: mfaService.totp.generateTOTP(secret),
 		});
@@ -131,7 +131,7 @@ describe('POST /login', () => {
 		});
 
 		const response = await testServer.authlessAgent.post('/login').send({
-			email: member.email,
+			emailOrLdapLoginId: member.email,
 			password,
 		});
 		expect(response.statusCode).toBe(403);
@@ -148,19 +148,16 @@ describe('POST /login', () => {
 		expect(response.statusCode).toBe(200);
 	});
 
-	test('should fail on invalid email in the payload', async () => {
+	test('should fail with invalid email in the payload is the current authentication method is "email"', async () => {
+		config.set('userManagement.authenticationMethod', 'email');
+
 		const response = await testServer.authlessAgent.post('/login').send({
-			email: 'invalid-email',
+			emailOrLdapLoginId: 'invalid-email',
 			password: ownerPassword,
 		});
 
 		expect(response.statusCode).toBe(400);
-		expect(response.body).toEqual({
-			validation: 'email',
-			code: 'invalid_string',
-			message: 'Invalid email',
-			path: ['email'],
-		});
+		expect(response.body.message).toBe('Invalid email address');
 	});
 });
 

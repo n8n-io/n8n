@@ -1,12 +1,11 @@
 import { Container } from '@n8n/di';
 import { Flags } from '@oclif/core';
-import { ApplicationError } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { PubSubHandler } from '@/scaling/pubsub/pubsub-handler';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
-import { OrchestrationService } from '@/services/orchestration.service';
 import { WebhookServer } from '@/webhooks/webhook-server';
 
 import { BaseCommand } from './base-command';
@@ -80,15 +79,11 @@ export class Webhook extends BaseCommand {
 		this.logger.debug('External hooks init complete');
 		await this.initExternalSecrets();
 		this.logger.debug('External secrets init complete');
+
+		await this.loadModules();
 	}
 
 	async run() {
-		if (this.globalConfig.multiMainSetup.enabled) {
-			throw new ApplicationError(
-				'Webhook process cannot be started when multi-main setup is enabled.',
-			);
-		}
-
 		const { ScalingService } = await import('@/scaling/scaling.service');
 		await Container.get(ScalingService).setupQueue();
 		await this.server.start();
@@ -103,7 +98,7 @@ export class Webhook extends BaseCommand {
 	}
 
 	async initOrchestration() {
-		await Container.get(OrchestrationService).init();
+		Container.get(Publisher);
 
 		Container.get(PubSubHandler).init();
 		await Container.get(Subscriber).subscribe('n8n.commands');

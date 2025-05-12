@@ -30,5 +30,5 @@
 			}
 		]
 	},
-	"alias": ["SMTP"]
+	"alias": ["SMTP", "email", "human", "form", "wait", "hitl", "approval"]
 }

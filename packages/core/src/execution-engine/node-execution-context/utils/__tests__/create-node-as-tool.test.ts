@@ -68,6 +68,15 @@ describe('createNodeAsTool', () => {
 
 			expect(tool.description).toBe('Custom tool description');
 		});
+
+		it('should use toolDescription when descriptionType is absent', () => {
+			delete node.parameters.descriptionType;
+			node.parameters.toolDescription = 'Another custom tool description';
+
+			const tool = createNodeAsTool(options).response;
+
+			expect(tool.description).toBe('Another custom tool description');
+		});
 	});
 
 	describe('Schema Creation and Parameter Handling', () => {
@@ -319,7 +328,7 @@ describe('createNodeAsTool', () => {
 
 			const tool = createNodeAsTool(options).response;
 
-			expect(tool.schema.shape.complexJson._def.innerType).toBeInstanceOf(z.ZodRecord);
+			expect(tool.schema.shape.complexJson._def.innerType).toBeInstanceOf(z.ZodEffects);
 			expect(tool.schema.shape.complexJson.description).toBe('Param with complex JSON default');
 			expect(tool.schema.shape.complexJson._def.defaultValue()).toEqual({
 				nested: { key: 'value' },

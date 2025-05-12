@@ -1,6 +1,6 @@
 {
   "name": "@n8n/di",
-  "version": "0.3.0",
+  "version": "0.5.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
@@ -22,5 +22,8 @@
   ],
   "dependencies": {
     "reflect-metadata": "catalog:"
+  },
+  "devDependencies": {
+    "@n8n/typescript-config": "workspace:*"
   }
 }

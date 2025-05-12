@@ -1,3 +1,4 @@
+import { CredentialsEntity, Project, User, SharedCredentials, ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { EntityManager } from '@n8n/typeorm';
@@ -6,14 +7,9 @@ import glob from 'fast-glob';
 import fs from 'fs';
 import { Cipher } from 'n8n-core';
 import type { ICredentialsEncrypted } from 'n8n-workflow';
-import { ApplicationError, jsonParse } from 'n8n-workflow';
+import { jsonParse, UserError } from 'n8n-workflow';
 
 import { UM_FIX_INSTRUCTION } from '@/constants';
-import { CredentialsEntity } from '@/databases/entities/credentials-entity';
-import { Project } from '@/databases/entities/project';
-import { SharedCredentials } from '@/databases/entities/shared-credentials';
-import { User } from '@/databases/entities/user';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
 import * as Db from '@/db';
 
 import { BaseCommand } from '../base-command';
@@ -66,7 +62,7 @@ export class ImportCredentialsCommand extends BaseCommand {
 		}
 
 		if (flags.projectId && flags.userId) {
-			throw new ApplicationError(
+			throw new UserError(
 				'You cannot use `--userId` and `--projectId` together. Use one or the other.',
 			);
 		}
@@ -81,7 +77,7 @@ export class ImportCredentialsCommand extends BaseCommand {
 			const result = await this.checkRelations(credentials, flags.projectId, flags.userId);
 
 			if (!result.success) {
-				throw new ApplicationError(result.message);
+				throw new UserError(result.message);
 			}
 
 			for (const credential of credentials) {
@@ -202,7 +198,7 @@ export class ImportCredentialsCommand extends BaseCommand {
 			);
 
 			if (!Array.isArray(credentialsUnchecked)) {
-				throw new ApplicationError(
+				throw new UserError(
 					'File does not seem to contain credentials. Make sure the credentials are contained in an array.',
 				);
 			}
@@ -252,7 +248,7 @@ export class ImportCredentialsCommand extends BaseCommand {
 		if (!userId) {
 			const owner = await this.transactionManager.findOneBy(User, { role: 'global:owner' });
 			if (!owner) {
-				throw new ApplicationError(`Failed to find owner. ${UM_FIX_INSTRUCTION}`);
+				throw new UserError(`Failed to find owner. ${UM_FIX_INSTRUCTION}`);
 			}
 			userId = owner.id;
 		}

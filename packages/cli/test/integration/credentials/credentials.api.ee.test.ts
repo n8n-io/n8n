@@ -1,14 +1,14 @@
-import type { ProjectRole } from '@n8n/api-types';
+import type { Project } from '@n8n/db';
+import type { User } from '@n8n/db';
+import type { ListQueryDb } from '@n8n/db';
+import { ProjectRepository } from '@n8n/db';
+import { SharedCredentialsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { ProjectRole } from '@n8n/permissions';
 import { In } from '@n8n/typeorm';
 
 import config from '@/config';
 import { CredentialsService } from '@/credentials/credentials.service';
-import type { Project } from '@/databases/entities/project';
-import type { User } from '@/databases/entities/user';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
-import type { ListQuery } from '@/requests';
 import { ProjectService } from '@/services/project.service.ee';
 import { UserManagementMailer } from '@/user-management/email';
 import { createWorkflow, shareWorkflowWithUsers } from '@test-integration/db/workflows';
@@ -28,7 +28,10 @@ import {
 	createUser,
 	createUserShell,
 } from '../shared/db/users';
-import { randomCredentialPayload } from '../shared/random';
+import {
+	randomCredentialPayload,
+	randomCredentialPayloadWithOauthTokenData,
+} from '../shared/random';
 import * as testDb from '../shared/test-db';
 import type { SaveCredentialFunction } from '../shared/types';
 import type { SuperAgentTest } from '../shared/types';
@@ -59,7 +62,7 @@ let projectService: ProjectService;
 let projectRepository: ProjectRepository;
 
 beforeEach(async () => {
-	await testDb.truncate(['SharedCredentials', 'Credentials', 'Project', 'ProjectRelation']);
+	await testDb.truncate(['SharedCredentials', 'CredentialsEntity', 'Project', 'ProjectRelation']);
 	projectRepository = Container.get(ProjectRepository);
 	projectService = Container.get(ProjectService);
 
@@ -131,13 +134,14 @@ describe('GET /credentials', () => {
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data).toHaveLength(2); // owner retrieved owner cred and member cred
-		const ownerCredential: ListQuery.Credentials.WithOwnedByAndSharedWith = response.body.data.find(
-			(e: ListQuery.Credentials.WithOwnedByAndSharedWith) =>
-				e.homeProject?.id === ownerPersonalProject.id,
-		);
-		const memberCredential: ListQuery.Credentials.WithOwnedByAndSharedWith =
+		const ownerCredential: ListQueryDb.Credentials.WithOwnedByAndSharedWith =
 			response.body.data.find(
-				(e: ListQuery.Credentials.WithOwnedByAndSharedWith) =>
+				(e: ListQueryDb.Credentials.WithOwnedByAndSharedWith) =>
+					e.homeProject?.id === ownerPersonalProject.id,
+			);
+		const memberCredential: ListQueryDb.Credentials.WithOwnedByAndSharedWith =
+			response.body.data.find(
+				(e: ListQueryDb.Credentials.WithOwnedByAndSharedWith) =>
 					e.homeProject?.id === member1PersonalProject.id,
 			);
 
@@ -202,7 +206,7 @@ describe('GET /credentials', () => {
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data).toHaveLength(1); // member retrieved only member cred
 
-		const [member1Credential]: [ListQuery.Credentials.WithOwnedByAndSharedWith] =
+		const [member1Credential]: [ListQueryDb.Credentials.WithOwnedByAndSharedWith] =
 			response.body.data;
 
 		validateMainCredentialData(member1Credential);
@@ -533,7 +537,8 @@ describe('GET /credentials/:id', () => {
 
 		expect(firstResponse.statusCode).toBe(200);
 
-		const firstCredential: ListQuery.Credentials.WithOwnedByAndSharedWith = firstResponse.body.data;
+		const firstCredential: ListQueryDb.Credentials.WithOwnedByAndSharedWith =
+			firstResponse.body.data;
 		validateMainCredentialData(firstCredential);
 		expect(firstCredential.data).toBeUndefined();
 
@@ -556,10 +561,11 @@ describe('GET /credentials/:id', () => {
 		expect(secondCredential.data).toBeDefined();
 	});
 
-	test('should not redact the data when `includeData:true` is passed', async () => {
+	test('should redact the data when `includeData:true` is passed', async () => {
 		const credentialService = Container.get(CredentialsService);
 		const redactSpy = jest.spyOn(credentialService, 'redact');
-		const savedCredential = await saveCredential(randomCredentialPayload(), {
+		const credential = randomCredentialPayloadWithOauthTokenData();
+		const savedCredential = await saveCredential(credential, {
 			user: owner,
 		});
 
@@ -569,7 +575,8 @@ describe('GET /credentials/:id', () => {
 
 		validateMainCredentialData(response.body.data);
 		expect(response.body.data.data).toBeDefined();
-		expect(redactSpy).not.toHaveBeenCalled();
+		expect(response.body.data.data.oauthTokenData).toBe(true);
+		expect(redactSpy).toHaveBeenCalled();
 	});
 
 	test('should retrieve non-owned cred for owner', async () => {
@@ -588,7 +595,7 @@ describe('GET /credentials/:id', () => {
 
 		const response1 = await authOwnerAgent.get(`/credentials/${savedCredential.id}`).expect(200);
 
-		const credential: ListQuery.Credentials.WithOwnedByAndSharedWith = response1.body.data;
+		const credential: ListQueryDb.Credentials.WithOwnedByAndSharedWith = response1.body.data;
 
 		validateMainCredentialData(credential);
 		expect(credential.data).toBeUndefined();
@@ -612,7 +619,7 @@ describe('GET /credentials/:id', () => {
 			.query({ includeData: true })
 			.expect(200);
 
-		const credential2: ListQuery.Credentials.WithOwnedByAndSharedWith = response2.body.data;
+		const credential2: ListQueryDb.Credentials.WithOwnedByAndSharedWith = response2.body.data;
 
 		validateMainCredentialData(credential);
 		expect(credential2.data).toBeDefined(); // Instance owners should be capable of editing all credentials
@@ -640,7 +647,8 @@ describe('GET /credentials/:id', () => {
 			.get(`/credentials/${savedCredential.id}`)
 			.expect(200);
 
-		const firstCredential: ListQuery.Credentials.WithOwnedByAndSharedWith = firstResponse.body.data;
+		const firstCredential: ListQueryDb.Credentials.WithOwnedByAndSharedWith =
+			firstResponse.body.data;
 		validateMainCredentialData(firstCredential);
 		expect(firstCredential.data).toBeUndefined();
 		expect(firstCredential).toMatchObject({
@@ -671,7 +679,7 @@ describe('GET /credentials/:id', () => {
 			.query({ includeData: true })
 			.expect(200);
 
-		const secondCredential: ListQuery.Credentials.WithOwnedByAndSharedWith =
+		const secondCredential: ListQueryDb.Credentials.WithOwnedByAndSharedWith =
 			secondResponse.body.data;
 		validateMainCredentialData(secondCredential);
 		expect(secondCredential.data).toBeDefined();
@@ -944,6 +952,57 @@ describe('PUT /credentials/:id/share', () => {
 		expect(sharedCredentials).toHaveLength(1);
 		expect(sharedCredentials[0].projectId).toBe(ownerPersonalProject.id);
 		expect(mailer.notifyCredentialsShared).toHaveBeenCalledTimes(1);
+	});
+
+	test('should ignore sharing with owner project', async () => {
+		// ARRANGE
+		const project = await projectService.createTeamProject(owner, { name: 'Team Project' });
+		const credential = await saveCredential(randomCredentialPayload(), { project });
+
+		// ACT
+		const response = await authOwnerAgent
+			.put(`/credentials/${credential.id}/share`)
+			.send({ shareWithIds: [project.id] });
+
+		const sharedCredentials = await Container.get(SharedCredentialsRepository).find({
+			where: { credentialsId: credential.id },
+		});
+
+		// ASSERT
+		expect(response.statusCode).toBe(200);
+
+		expect(sharedCredentials).toHaveLength(1);
+		expect(sharedCredentials[0].projectId).toBe(project.id);
+		expect(sharedCredentials[0].role).toBe('credential:owner');
+	});
+
+	test('should ignore sharing with project that already has it shared', async () => {
+		// ARRANGE
+		const project = await projectService.createTeamProject(owner, { name: 'Team Project' });
+		const credential = await saveCredential(randomCredentialPayload(), { project });
+
+		const project2 = await projectService.createTeamProject(owner, { name: 'Team Project 2' });
+		await shareCredentialWithProjects(credential, [project2]);
+
+		// ACT
+		const response = await authOwnerAgent
+			.put(`/credentials/${credential.id}/share`)
+			.send({ shareWithIds: [project2.id] });
+
+		const sharedCredentials = await Container.get(SharedCredentialsRepository).find({
+			where: { credentialsId: credential.id },
+		});
+
+		// ASSERT
+		expect(response.statusCode).toBe(200);
+
+		expect(sharedCredentials).toHaveLength(2);
+		expect(sharedCredentials).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ projectId: project.id, role: 'credential:owner' }),
+				expect.objectContaining({ projectId: project2.id, role: 'credential:user' }),
+			]),
+		);
 	});
 
 	test('should respond 400 if invalid payload is provided', async () => {
@@ -1303,7 +1362,7 @@ describe('PUT /:credentialId/transfer', () => {
 	);
 });
 
-function validateMainCredentialData(credential: ListQuery.Credentials.WithOwnedByAndSharedWith) {
+function validateMainCredentialData(credential: ListQueryDb.Credentials.WithOwnedByAndSharedWith) {
 	expect(typeof credential.name).toBe('string');
 	expect(typeof credential.type).toBe('string');
 	expect(credential.homeProject).toBeDefined();

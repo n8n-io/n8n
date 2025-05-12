@@ -4,75 +4,19 @@
         "@odata.etag": {
             "type": "string"
         },
-        "id": {
-            "type": "string"
-        },
-        "subject": {
-            "type": "string"
-        },
         "body": {
             "type": "object",
             "properties": {
-                "contentType": {
-                    "type": "string"
-                },
                 "content": {
                     "type": "string"
+                },
+                "contentType": {
+                    "type": "string"
                 }
-            },
-            "required": [
-                "contentType",
-                "content"
-            ]
+            }
         },
-        "sender": {
-            "type": "object",
-            "properties": {
-                "emailAddress": {
-                    "type": "object",
-                    "properties": {
-                        "name": {
-                            "type": "string"
-                        },
-                        "address": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "name",
-                        "address"
-                    ]
-                }
-            },
-            "required": [
-                "emailAddress"
-            ]
-        },
-        "from": {
-            "type": "object",
-            "properties": {
-                "emailAddress": {
-                    "type": "object",
-                    "properties": {
-                        "name": {
-                            "type": "string"
-                        },
-                        "address": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "name",
-                        "address"
-                    ]
-                }
-            },
-            "required": [
-                "emailAddress"
-            ]
-        },
-        "hasAttachments": {
-            "type": "boolean"
+        "bodyPreview": {
+            "type": "string"
         },
         "categories": {
             "type": "array",
@@ -80,11 +24,34 @@
                 "type": "string"
             }
         },
-        "bodyPreview": {
-            "type": "string"
-        },
         "conversationId": {
             "type": "string"
+        },
+        "from": {
+            "type": "object",
+            "properties": {
+                "emailAddress": {
+                    "type": "object",
+                    "properties": {
+                        "address": {
+                            "type": "string"
+                        },
+                        "name": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "hasAttachments": {
+            "type": "boolean"
+        },
+        "id": {
+            "type": "string"
+        },
+        "subject": {
+            "type": "string"
         }
-    }
+    },
+    "version": 3
 }

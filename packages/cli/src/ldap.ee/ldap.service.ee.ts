@@ -1,15 +1,14 @@
+import type { User, RunningMode, SyncStatus } from '@n8n/db';
 import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { QueryFailedError } from '@n8n/typeorm';
 import type { Entry as LdapUser, ClientOptions } from 'ldapts';
 import { Client } from 'ldapts';
 import { Cipher, Logger } from 'n8n-core';
-import { ApplicationError, jsonParse } from 'n8n-workflow';
+import { jsonParse, UnexpectedError } from 'n8n-workflow';
 import type { ConnectionOptions } from 'tls';
 
 import config from '@/config';
-import type { RunningMode, SyncStatus } from '@/databases/entities/auth-provider-sync-history';
-import type { User } from '@/databases/entities/user';
 import { SettingsRepository } from '@/databases/repositories/settings.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
@@ -89,7 +88,7 @@ export class LdapService {
 		const { valid, message } = validateLdapConfigurationSchema(ldapConfig);
 
 		if (!valid) {
-			throw new ApplicationError(message);
+			throw new UnexpectedError(message);
 		}
 
 		if (ldapConfig.loginEnabled && getCurrentAuthenticationMethod() === 'saml') {
@@ -165,7 +164,7 @@ export class LdapService {
 	 */
 	private async getClient() {
 		if (this.config === undefined) {
-			throw new ApplicationError('Service cannot be used without setting the property config');
+			throw new UnexpectedError('Service cannot be used without setting the property config');
 		}
 		if (this.client === undefined) {
 			const url = formatUrl(
@@ -304,7 +303,7 @@ export class LdapService {
 	/** Schedule a synchronization job based on the interval set in the LDAP config */
 	private scheduleSync(): void {
 		if (!this.config.synchronizationInterval) {
-			throw new ApplicationError('Interval variable has to be defined');
+			throw new UnexpectedError('Interval variable has to be defined');
 		}
 		this.syncTimer = setInterval(async () => {
 			await this.runSync('live');

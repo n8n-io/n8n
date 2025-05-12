@@ -1,3 +1,4 @@
+import type { ExecutionRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { WorkflowExecuteMode as ExecutionMode } from 'n8n-workflow';
 
@@ -8,10 +9,8 @@ import {
 	ConcurrencyControlService,
 } from '@/concurrency/concurrency-control.service';
 import config from '@/config';
-import type { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { InvalidConcurrencyLimitError } from '@/errors/invalid-concurrency-limit.error';
 import type { EventService } from '@/events/event.service';
-import type { IExecutingWorkflowData } from '@/interfaces';
 import type { Telemetry } from '@/telemetry';
 import { mockLogger } from '@test/mocking';
 
@@ -432,11 +431,7 @@ describe('ConcurrencyControlService', () => {
 					/**
 					 * Act
 					 */
-					await service.removeAll({
-						'1': mock<IExecutingWorkflowData>(),
-						'2': mock<IExecutingWorkflowData>(),
-						'3': mock<IExecutingWorkflowData>(),
-					});
+					await service.removeAll(['1', '2', '3']);
 
 					/**
 					 * Assert

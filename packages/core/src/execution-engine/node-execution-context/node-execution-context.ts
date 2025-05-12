@@ -1,3 +1,4 @@
+import { Memoized } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { get } from 'lodash';
 import type {
@@ -28,8 +29,11 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import { HTTP_REQUEST_NODE_TYPE, HTTP_REQUEST_TOOL_NODE_TYPE } from '@/constants';
-import { Memoized } from '@/decorators';
+import {
+	HTTP_REQUEST_AS_TOOL_NODE_TYPE,
+	HTTP_REQUEST_NODE_TYPE,
+	HTTP_REQUEST_TOOL_NODE_TYPE,
+} from '@/constants';
 import { InstanceSettings } from '@/instance-settings';
 import { Logger } from '@/logging/logger';
 
@@ -43,14 +47,14 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 	protected readonly instanceSettings = Container.get(InstanceSettings);
 
 	constructor(
-		protected readonly workflow: Workflow,
-		protected readonly node: INode,
-		protected readonly additionalData: IWorkflowExecuteAdditionalData,
-		protected readonly mode: WorkflowExecuteMode,
-		protected readonly runExecutionData: IRunExecutionData | null = null,
-		protected readonly runIndex = 0,
-		protected readonly connectionInputData: INodeExecutionData[] = [],
-		protected readonly executeData?: IExecuteData,
+		readonly workflow: Workflow,
+		readonly node: INode,
+		readonly additionalData: IWorkflowExecuteAdditionalData,
+		readonly mode: WorkflowExecuteMode,
+		readonly runExecutionData: IRunExecutionData | null = null,
+		readonly runIndex = 0,
+		readonly connectionInputData: INodeExecutionData[] = [],
+		readonly executeData?: IExecuteData,
 	) {}
 
 	@Memoized
@@ -190,7 +194,11 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 
 		// Hardcode for now for security reasons that only a single node can access
 		// all credentials
-		const fullAccess = [HTTP_REQUEST_NODE_TYPE, HTTP_REQUEST_TOOL_NODE_TYPE].includes(node.type);
+		const fullAccess = [
+			HTTP_REQUEST_NODE_TYPE,
+			HTTP_REQUEST_TOOL_NODE_TYPE,
+			HTTP_REQUEST_AS_TOOL_NODE_TYPE,
+		].includes(node.type);
 
 		let nodeCredentialDescription: INodeCredentialDescription | undefined;
 		if (!fullAccess) {
@@ -219,6 +227,7 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 					additionalData.currentNodeParameters || node.parameters,
 					nodeCredentialDescription,
 					node,
+					nodeType.description,
 					node.parameters,
 				)
 			) {
@@ -396,6 +405,8 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 				nodeCause: node.name,
 			});
 		}
+
+		if (options?.skipValidation) return returnData;
 
 		// Validate parameter value if it has a schema defined(RMC) or validateType defined
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment

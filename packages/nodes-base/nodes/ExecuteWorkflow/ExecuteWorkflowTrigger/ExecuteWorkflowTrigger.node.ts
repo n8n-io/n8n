@@ -1,7 +1,7 @@
 import _ from 'lodash';
 import {
 	type INodeExecutionData,
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type IExecuteFunctions,
 	type INodeType,
 	type INodeTypeDescription,
@@ -34,7 +34,7 @@ export class ExecuteWorkflowTrigger implements INodeType {
 			color: '#ff6d5a',
 		},
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		hints: [
 			{
 				message:

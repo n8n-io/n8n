@@ -1,13 +1,12 @@
+import type { ExecutionEntity } from '@n8n/db';
+import type { ExecutionData } from '@n8n/db';
+import { ExecutionDataRepository } from '@n8n/db';
+import { ExecutionMetadataRepository } from '@n8n/db';
+import { ExecutionRepository } from '@n8n/db';
+import { AnnotationTagRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type { AnnotationVote } from 'n8n-workflow';
+import type { AnnotationVote, IWorkflowBase } from 'n8n-workflow';
 
-import type { ExecutionData } from '@/databases/entities/execution-data';
-import type { ExecutionEntity } from '@/databases/entities/execution-entity';
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
-import { AnnotationTagRepository } from '@/databases/repositories/annotation-tag.repository.ee';
-import { ExecutionDataRepository } from '@/databases/repositories/execution-data.repository';
-import { ExecutionMetadataRepository } from '@/databases/repositories/execution-metadata.repository';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { ExecutionService } from '@/executions/execution.service';
 import { Telemetry } from '@/telemetry';
 import { mockInstance } from '@test/mocking';
@@ -16,8 +15,8 @@ mockInstance(Telemetry);
 
 export async function createManyExecutions(
 	amount: number,
-	workflow: WorkflowEntity,
-	callback: (workflow: WorkflowEntity) => Promise<ExecutionEntity>,
+	workflow: IWorkflowBase,
+	callback: (workflow: IWorkflowBase) => Promise<ExecutionEntity>,
 ) {
 	const executionsRequests = [...Array(amount)].map(async (_) => await callback(workflow));
 	return await Promise.all(executionsRequests);
@@ -31,7 +30,7 @@ export async function createExecution(
 		Omit<ExecutionEntity, 'metadata'> &
 			ExecutionData & { metadata: Array<{ key: string; value: string }> }
 	>,
-	workflow: WorkflowEntity,
+	workflow: IWorkflowBase,
 ) {
 	const { data, finished, mode, startedAt, stoppedAt, waitTill, status, deletedAt, metadata } =
 		attributes;
@@ -70,14 +69,14 @@ export async function createExecution(
 /**
  * Store a successful execution in the DB and assign it to a workflow.
  */
-export async function createSuccessfulExecution(workflow: WorkflowEntity) {
+export async function createSuccessfulExecution(workflow: IWorkflowBase) {
 	return await createExecution({ finished: true, status: 'success' }, workflow);
 }
 
 /**
  * Store an error execution in the DB and assign it to a workflow.
  */
-export async function createErrorExecution(workflow: WorkflowEntity) {
+export async function createErrorExecution(workflow: IWorkflowBase) {
 	return await createExecution(
 		{ finished: false, stoppedAt: new Date(), status: 'error' },
 		workflow,
@@ -87,7 +86,7 @@ export async function createErrorExecution(workflow: WorkflowEntity) {
 /**
  * Store a waiting execution in the DB and assign it to a workflow.
  */
-export async function createWaitingExecution(workflow: WorkflowEntity) {
+export async function createWaitingExecution(workflow: IWorkflowBase) {
 	return await createExecution(
 		{ finished: false, waitTill: new Date(), status: 'waiting' },
 		workflow,

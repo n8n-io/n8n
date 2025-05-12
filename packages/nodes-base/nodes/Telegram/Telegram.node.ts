@@ -9,7 +9,7 @@ import type {
 import {
 	BINARY_ENCODING,
 	SEND_AND_WAIT_OPERATION,
-	NodeConnectionType,
+	NodeConnectionTypes,
 	NodeOperationError,
 } from 'n8n-workflow';
 import type { Readable } from 'stream';
@@ -21,12 +21,9 @@ import {
 	getPropertyName,
 } from './GenericFunctions';
 import { appendAttributionOption } from '../../utils/descriptions';
+import { configureWaitTillDate } from '../../utils/sendAndWait/configureWaitTillDate.util';
 import { sendAndWaitWebhooksDescription } from '../../utils/sendAndWait/descriptions';
-import {
-	configureWaitTillDate,
-	getSendAndWaitProperties,
-	sendAndWaitWebhook,
-} from '../../utils/sendAndWait/utils';
+import { getSendAndWaitProperties, sendAndWaitWebhook } from '../../utils/sendAndWait/utils';
 
 export class Telegram implements INodeType {
 	description: INodeTypeDescription = {
@@ -41,8 +38,8 @@ export class Telegram implements INodeType {
 			name: 'Telegram',
 		},
 		usableAsTool: true,
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'telegramApi',
@@ -351,7 +348,7 @@ export class Telegram implements INodeType {
 				},
 				required: true,
 				description:
-					'Unique identifier for the target chat or username of the target channel (in the format @channelusername)',
+					'Unique identifier for the target chat or username, To find your chat ID ask @get_id_bot',
 			},
 
 			// ----------------------------------
@@ -706,7 +703,7 @@ export class Telegram implements INodeType {
 				},
 				required: true,
 				description:
-					'Unique identifier for the target chat or username of the target channel (in the format @channelusername). To find your chat ID ask @get_id_bot.',
+					'Unique identifier for the target chat or username, To find your chat ID ask @get_id_bot',
 			},
 			// ----------------------------------
 			//         message:sendAnimation/sendAudio/sendDocument/sendPhoto/sendSticker/sendVideo
@@ -2141,7 +2138,9 @@ export class Telegram implements INodeType {
 						},
 					};
 
-					responseData = await apiRequest.call(this, requestMethod, endpoint, {}, qs, { formData });
+					responseData = await apiRequest.call(this, requestMethod, endpoint, {}, qs, {
+						formData,
+					});
 				} else {
 					responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 				}

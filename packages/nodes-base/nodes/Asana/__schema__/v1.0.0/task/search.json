@@ -7,17 +7,12 @@
         "name": {
             "type": "string"
         },
-        "resource_type": {
+        "resource_subtype": {
             "type": "string"
         },
-        "resource_subtype": {
+        "resource_type": {
             "type": "string"
         }
     },
-    "required": [
-        "gid",
-        "name",
-        "resource_type",
-        "resource_subtype"
-    ]
+    "version": 1
 }

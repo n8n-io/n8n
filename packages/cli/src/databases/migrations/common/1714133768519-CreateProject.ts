@@ -1,10 +1,10 @@
-import type { ProjectRole } from '@n8n/api-types';
-import { ApplicationError } from 'n8n-workflow';
+import { generateNanoId } from '@n8n/db';
+import type { User } from '@n8n/db';
+import type { ProjectRole } from '@n8n/permissions';
+import { UserError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
-import type { User } from '@/databases/entities/user';
 import type { MigrationContext, ReversibleMigration } from '@/databases/types';
-import { generateNanoId } from '@/databases/utils/generators';
 
 const projectAdminRole: ProjectRole = 'project:personalOwner';
 
@@ -249,7 +249,7 @@ export class CreateProject1714133768519 implements ReversibleMigration {
 			const message =
 				'Down migration only possible when there are no projects. Please delete all projects that were created via the UI first.';
 			logger.error(message);
-			throw new ApplicationError(message);
+			throw new UserError(message);
 		}
 
 		// 1. create temp table for shared workflows

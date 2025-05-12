@@ -9,8 +9,9 @@ import type {
 	IDataObject,
 	ResourceMapperField,
 	ILocalLoadOptionsFunctions,
-	ISupplyDataFunctions,
 	WorkflowInputsData,
+	IExecuteFunctions,
+	ISupplyDataFunctions,
 } from 'n8n-workflow';
 import { jsonParse, NodeOperationError, EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
@@ -95,12 +96,19 @@ export function getFieldEntries(context: IWorkflowNodeContext): {
 	if (Array.isArray(result)) {
 		const dataMode = String(inputSource);
 		const workflow = context.getWorkflow();
-		return { fields: result, dataMode, subworkflowInfo: { id: workflow.id } };
+		const node = context.getNode();
+		return {
+			fields: result,
+			dataMode,
+			subworkflowInfo: { workflowId: workflow.id, triggerId: node.id },
+		};
 	}
 	throw new NodeOperationError(context.getNode(), result);
 }
 
-export function getWorkflowInputValues(this: ISupplyDataFunctions): INodeExecutionData[] {
+export function getWorkflowInputValues(
+	this: IExecuteFunctions | ISupplyDataFunctions,
+): INodeExecutionData[] {
 	const inputData = this.getInputData();
 
 	return inputData.map(({ json, binary }, itemIndex) => {
@@ -124,7 +132,7 @@ export function getWorkflowInputValues(this: ISupplyDataFunctions): INodeExecuti
 	});
 }
 
-export function getCurrentWorkflowInputData(this: ISupplyDataFunctions) {
+export function getCurrentWorkflowInputData(this: IExecuteFunctions | ISupplyDataFunctions) {
 	const inputData: INodeExecutionData[] = getWorkflowInputValues.call(this);
 
 	const schema = this.getNodeParameter('workflowInputs.schema', 0, []) as ResourceMapperField[];
@@ -150,7 +158,7 @@ export async function loadWorkflowInputMappings(
 	const nodeLoadContext = await this.getWorkflowNodeContext(EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE);
 	let fields: ResourceMapperField[] = [];
 	let dataMode: string = PASSTHROUGH;
-	let subworkflowInfo: { id?: string } | undefined;
+	let subworkflowInfo: { workflowId?: string; triggerId?: string } | undefined;
 
 	if (nodeLoadContext) {
 		const fieldValues = getFieldEntries(nodeLoadContext);

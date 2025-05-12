@@ -33,7 +33,6 @@ export async function sms77ApiRequest(
 
 	if (Object.keys(body).length) {
 		options.form = body;
-		body.json = 1;
 	}
 
 	const response = await this.helpers.requestWithAuthentication.call(this, 'sms77Api', options);

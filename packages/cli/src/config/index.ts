@@ -5,9 +5,8 @@ import { flatten } from 'flat';
 import { readFileSync } from 'fs';
 import merge from 'lodash/merge';
 import { Logger } from 'n8n-core';
-import { ApplicationError, setGlobalState } from 'n8n-workflow';
+import { setGlobalState, UserError } from 'n8n-workflow';
 import assert from 'node:assert';
-import colors from 'picocolors';
 
 import { inTest, inE2ETests } from '@/constants';
 
@@ -84,7 +83,7 @@ if (!inE2ETests && !inTest) {
 				} catch (error) {
 					// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 					if (error.code === 'ENOENT') {
-						throw new ApplicationError('File not found', { extra: { fileName } });
+						throw new UserError('File not found', { extra: { fileName } });
 					}
 					throw error;
 				}
@@ -106,25 +105,6 @@ if (userManagement.jwtRefreshTimeoutHours >= userManagement.jwtSessionDurationHo
 		);
 
 	config.set('userManagement.jwtRefreshTimeoutHours', 0);
-}
-
-const executionProcess = config.getEnv('executions.process');
-if (executionProcess) {
-	logger.error(
-		colors.yellow('Please unset the deprecated env variable') +
-			colors.bold(colors.yellow('EXECUTIONS_PROCESS')),
-	);
-}
-if (executionProcess === 'own') {
-	logger.error(
-		colors.bold(colors.red('Application failed to start because "Own" mode has been removed.')),
-	);
-	logger.error(
-		colors.red(
-			'If you need the isolation and performance gains, please consider using queue mode instead.\n\n',
-		),
-	);
-	process.exit(-1);
 }
 
 setGlobalState({

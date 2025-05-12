@@ -7,17 +7,25 @@
         "result": {
             "type": "object",
             "properties": {
-                "id": {
+                "accent_color_id": {
                     "type": "integer"
                 },
-                "first_name": {
-                    "type": "string"
-                },
-                "username": {
-                    "type": "string"
-                },
-                "type": {
-                    "type": "string"
+                "accepted_gift_types": {
+                    "type": "object",
+                    "properties": {
+                        "limited_gifts": {
+                            "type": "boolean"
+                        },
+                        "premium_subscription": {
+                            "type": "boolean"
+                        },
+                        "unique_gifts": {
+                            "type": "boolean"
+                        },
+                        "unlimited_gifts": {
+                            "type": "boolean"
+                        }
+                    }
                 },
                 "active_usernames": {
                     "type": "array",
@@ -25,23 +33,26 @@
                         "type": "string"
                     }
                 },
+                "can_send_gift": {
+                    "type": "boolean"
+                },
+                "first_name": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
                 "max_reaction_count": {
                     "type": "integer"
                 },
-                "accent_color_id": {
-                    "type": "integer"
+                "type": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
                 }
-            },
-            "required": [
-                "id",
-                "type",
-                "max_reaction_count",
-                "accent_color_id"
-            ]
+            }
         }
     },
-    "required": [
-        "ok",
-        "result"
-    ]
+    "version": 3
 }

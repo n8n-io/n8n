@@ -1,0 +1,177 @@
+{
+    "type": "object",
+    "properties": {
+        "@odata.context": {
+            "type": "string"
+        },
+        "@odata.etag": {
+            "type": "string"
+        },
+        "body": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "type": "string"
+                },
+                "contentType": {
+                    "type": "string"
+                }
+            }
+        },
+        "bodyPreview": {
+            "type": "string"
+        },
+        "ccRecipients": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "emailAddress": {
+                        "type": "object",
+                        "properties": {
+                            "address": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "changeKey": {
+            "type": "string"
+        },
+        "conversationId": {
+            "type": "string"
+        },
+        "conversationIndex": {
+            "type": "string"
+        },
+        "createdDateTime": {
+            "type": "string"
+        },
+        "flag": {
+            "type": "object",
+            "properties": {
+                "flagStatus": {
+                    "type": "string"
+                }
+            }
+        },
+        "from": {
+            "type": "object",
+            "properties": {
+                "emailAddress": {
+                    "type": "object",
+                    "properties": {
+                        "address": {
+                            "type": "string"
+                        },
+                        "name": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "hasAttachments": {
+            "type": "boolean"
+        },
+        "id": {
+            "type": "string"
+        },
+        "importance": {
+            "type": "string"
+        },
+        "inferenceClassification": {
+            "type": "string"
+        },
+        "internetMessageId": {
+            "type": "string"
+        },
+        "isDraft": {
+            "type": "boolean"
+        },
+        "isRead": {
+            "type": "boolean"
+        },
+        "isReadReceiptRequested": {
+            "type": "boolean"
+        },
+        "lastModifiedDateTime": {
+            "type": "string"
+        },
+        "parentFolderId": {
+            "type": "string"
+        },
+        "receivedDateTime": {
+            "type": "string"
+        },
+        "replyTo": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "emailAddress": {
+                        "type": "object",
+                        "properties": {
+                            "address": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "sender": {
+            "type": "object",
+            "properties": {
+                "emailAddress": {
+                    "type": "object",
+                    "properties": {
+                        "address": {
+                            "type": "string"
+                        },
+                        "name": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "sentDateTime": {
+            "type": "string"
+        },
+        "subject": {
+            "type": "string"
+        },
+        "toRecipients": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "emailAddress": {
+                        "type": "object",
+                        "properties": {
+                            "address": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "webLink": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

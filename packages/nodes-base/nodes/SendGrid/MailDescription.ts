@@ -252,6 +252,15 @@ export const mailFields: INodeProperties[] = [
 				description: 'The IP Pool that you would like to send this email from',
 			},
 			{
+				displayName: 'Reply-To Email',
+				name: 'replyToEmail',
+				type: 'string',
+				default: '',
+				placeholder: 'reply@domain.com',
+				description:
+					'Comma-separated list of email addresses that will appear in the reply-to field of the email',
+			},
+			{
 				displayName: 'Headers',
 				name: 'headers',
 				placeholder: 'Add Header',
@@ -306,6 +315,7 @@ export type SendMailBody = {
 	}>;
 	ip_pool_name?: string;
 	from: EmailName;
+	reply_to_list?: EmailName[];
 	template_id?: string;
 	content?: Array<{
 		type: string;

@@ -1,14 +1,12 @@
 import { ExecutionsConfig } from '@n8n/config';
+import type { ExecutionEntity } from '@n8n/db';
+import { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
 import { BinaryDataService, InstanceSettings } from 'n8n-core';
-import type { ExecutionStatus } from 'n8n-workflow';
+import type { ExecutionStatus, IWorkflowBase } from 'n8n-workflow';
 
 import { Time } from '@/constants';
-import type { ExecutionEntity } from '@/databases/entities/execution-entity';
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import { PruningService } from '@/services/pruning/pruning.service';
+import { ExecutionsPruningService } from '@/services/pruning/executions-pruning.service';
 
 import {
 	annotateExecution,
@@ -20,25 +18,24 @@ import * as testDb from './shared/test-db';
 import { mockInstance, mockLogger } from '../shared/mocking';
 
 describe('softDeleteOnPruningCycle()', () => {
-	let pruningService: PruningService;
+	let pruningService: ExecutionsPruningService;
 	const instanceSettings = Container.get(InstanceSettings);
 	instanceSettings.markAsLeader();
 
 	const now = new Date();
 	const yesterday = new Date(Date.now() - 1 * Time.days.toMilliseconds);
-	let workflow: WorkflowEntity;
+	let workflow: IWorkflowBase;
 	let executionsConfig: ExecutionsConfig;
 
 	beforeAll(async () => {
 		await testDb.init();
 
 		executionsConfig = Container.get(ExecutionsConfig);
-		pruningService = new PruningService(
+		pruningService = new ExecutionsPruningService(
 			mockLogger(),
 			instanceSettings,
 			Container.get(ExecutionRepository),
 			mockInstance(BinaryDataService),
-			mock(),
 			executionsConfig,
 		);
 
@@ -46,7 +43,7 @@ describe('softDeleteOnPruningCycle()', () => {
 	});
 
 	beforeEach(async () => {
-		await testDb.truncate(['Execution', 'ExecutionAnnotation']);
+		await testDb.truncate(['ExecutionEntity', 'ExecutionAnnotation']);
 	});
 
 	afterAll(async () => {

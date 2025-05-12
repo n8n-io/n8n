@@ -1,86 +1,22 @@
 {
     "type": "object",
     "properties": {
-        "gid": {
-            "type": "string"
-        },
-        "projects": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "gid": {
-                        "type": "string"
-                    },
-                    "resource_type": {
-                        "type": "string"
-                    },
-                    "name": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "gid",
-                    "resource_type",
-                    "name"
-                ]
-            }
-        },
-        "num_likes": {
+        "actual_time_minutes": {
             "type": "integer"
         },
-        "num_hearts": {
-            "type": "integer"
-        },
-        "workspace": {
+        "assignee": {
             "type": "object",
             "properties": {
                 "gid": {
                     "type": "string"
                 },
-                "resource_type": {
-                    "type": "string"
-                },
                 "name": {
                     "type": "string"
-                }
-            },
-            "required": [
-                "gid",
-                "resource_type",
-                "name"
-            ]
-        },
-        "tags": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "gid": {
-                        "type": "string"
-                    },
-                    "resource_type": {
-                        "type": "string"
-                    },
-                    "name": {
-                        "type": "string"
-                    }
                 },
-                "required": [
-                    "gid",
-                    "resource_type",
-                    "name"
-                ]
+                "resource_type": {
+                    "type": "string"
+                }
             }
-        },
-        "start_at": {
-            "type": "null"
-        },
-        "resource_subtype": {
-            "type": "string"
-        },
-        "due_at": {
-            "type": "null"
         },
         "assignee_status": {
             "type": "string"
@@ -88,32 +24,103 @@
         "completed": {
             "type": "boolean"
         },
-        "actual_time_minutes": {
-            "type": "integer"
-        },
-        "notes": {
-            "type": "string"
-        },
-        "name": {
-            "type": "string"
-        },
-        "modified_at": {
-            "type": "string"
-        },
         "created_at": {
             "type": "string"
         },
-        "resource_type": {
-            "type": "string"
+        "custom_fields": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "created_by": {
+                        "type": "object",
+                        "properties": {
+                            "gid": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            },
+                            "resource_type": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "enabled": {
+                        "type": "boolean"
+                    },
+                    "enum_options": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "color": {
+                                    "type": "string"
+                                },
+                                "enabled": {
+                                    "type": "boolean"
+                                },
+                                "gid": {
+                                    "type": "string"
+                                },
+                                "name": {
+                                    "type": "string"
+                                },
+                                "resource_type": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "gid": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "precision": {
+                        "type": "integer"
+                    },
+                    "resource_subtype": {
+                        "type": "string"
+                    },
+                    "resource_type": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string"
+                    }
+                }
+            }
         },
-        "liked": {
-            "type": "boolean"
+        "due_at": {
+            "type": "null"
+        },
+        "followers": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "gid": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "resource_type": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "gid": {
+            "type": "string"
         },
         "hearted": {
             "type": "boolean"
         },
-        "permalink_url": {
-            "type": "string"
+        "liked": {
+            "type": "boolean"
         },
         "memberships": {
             "type": "array",
@@ -126,18 +133,13 @@
                             "gid": {
                                 "type": "string"
                             },
-                            "resource_type": {
-                                "type": "string"
-                            },
                             "name": {
                                 "type": "string"
+                            },
+                            "resource_type": {
+                                "type": "string"
                             }
-                        },
-                        "required": [
-                            "gid",
-                            "resource_type",
-                            "name"
-                        ]
+                        }
                     },
                     "section": {
                         "type": "object",
@@ -145,115 +147,36 @@
                             "gid": {
                                 "type": "string"
                             },
-                            "resource_type": {
-                                "type": "string"
-                            },
                             "name": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "gid",
-                            "resource_type",
-                            "name"
-                        ]
-                    }
-                },
-                "required": [
-                    "project",
-                    "section"
-                ]
-            }
-        },
-        "custom_fields": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "gid": {
-                        "type": "string"
-                    },
-                    "resource_type": {
-                        "type": "string"
-                    },
-                    "enabled": {
-                        "type": "boolean"
-                    },
-                    "name": {
-                        "type": "string"
-                    },
-                    "type": {
-                        "type": "string"
-                    },
-                    "resource_subtype": {
-                        "type": "string"
-                    },
-                    "created_by": {
-                        "type": "object",
-                        "properties": {
-                            "gid": {
                                 "type": "string"
                             },
                             "resource_type": {
                                 "type": "string"
-                            },
-                            "name": {
-                                "type": "string"
                             }
-                        },
-                        "required": [
-                            "gid",
-                            "resource_type",
-                            "name"
-                        ]
-                    },
-                    "enum_options": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "gid": {
-                                    "type": "string"
-                                },
-                                "resource_type": {
-                                    "type": "string"
-                                },
-                                "enabled": {
-                                    "type": "boolean"
-                                },
-                                "name": {
-                                    "type": "string"
-                                },
-                                "color": {
-                                    "type": "string"
-                                }
-                            },
-                            "required": [
-                                "gid",
-                                "resource_type",
-                                "enabled",
-                                "name",
-                                "color"
-                            ]
                         }
-                    },
-                    "precision": {
-                        "type": "integer"
                     }
-                },
-                "required": [
-                    "gid",
-                    "resource_type",
-                    "enabled",
-                    "name",
-                    "type",
-                    "resource_subtype",
-                    "display_value",
-                    "created_by"
-                ]
+                }
             }
         },
-        "followers": {
+        "modified_at": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "notes": {
+            "type": "string"
+        },
+        "num_hearts": {
+            "type": "integer"
+        },
+        "num_likes": {
+            "type": "integer"
+        },
+        "permalink_url": {
+            "type": "string"
+        },
+        "projects": {
             "type": "array",
             "items": {
                 "type": "object",
@@ -261,50 +184,55 @@
                     "gid": {
                         "type": "string"
                     },
+                    "name": {
+                        "type": "string"
+                    },
                     "resource_type": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "resource_subtype": {
+            "type": "string"
+        },
+        "resource_type": {
+            "type": "string"
+        },
+        "start_at": {
+            "type": "null"
+        },
+        "tags": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "gid": {
                         "type": "string"
                     },
                     "name": {
                         "type": "string"
+                    },
+                    "resource_type": {
+                        "type": "string"
                     }
+                }
+            }
+        },
+        "workspace": {
+            "type": "object",
+            "properties": {
+                "gid": {
+                    "type": "string"
                 },
-                "required": [
-                    "gid",
-                    "resource_type",
-                    "name"
-                ]
+                "name": {
+                    "type": "string"
+                },
+                "resource_type": {
+                    "type": "string"
+                }
             }
         }
     },
-    "required": [
-        "gid",
-        "projects",
-        "num_likes",
-        "num_hearts",
-        "workspace",
-        "tags",
-        "start_at",
-        "start_on",
-        "resource_subtype",
-        "due_at",
-        "due_on",
-        "completed_at",
-        "assignee_status",
-        "completed",
-        "actual_time_minutes",
-        "assignee",
-        "notes",
-        "name",
-        "modified_at",
-        "created_at",
-        "resource_type",
-        "parent",
-        "likes",
-        "hearts",
-        "liked",
-        "hearted",
-        "permalink_url",
-        "memberships",
-        "followers"
-    ]
+    "version": 1
 }

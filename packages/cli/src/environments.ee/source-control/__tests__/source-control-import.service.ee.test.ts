@@ -1,17 +1,20 @@
+import type { WorkflowEntity } from '@n8n/db';
+import type { FolderRepository } from '@n8n/db';
 import * as fastGlob from 'fast-glob';
 import { mock } from 'jest-mock-extended';
 import { type InstanceSettings } from 'n8n-core';
 import fsp from 'node:fs/promises';
 
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import type { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 
 import { SourceControlImportService } from '../source-control-import.service.ee';
+import type { ExportableFolder } from '../types/exportable-folders';
 
 jest.mock('fast-glob');
 
 describe('SourceControlImportService', () => {
 	const workflowRepository = mock<WorkflowRepository>();
+	const folderRepository = mock<FolderRepository>();
 	const service = new SourceControlImportService(
 		mock(),
 		mock(),
@@ -29,6 +32,7 @@ describe('SourceControlImportService', () => {
 		mock(),
 		mock(),
 		mock(),
+		folderRepository,
 		mock<InstanceSettings>({ n8nFolder: '/mock/n8n' }),
 	);
 
@@ -160,6 +164,43 @@ describe('SourceControlImportService', () => {
 		});
 	});
 
+	describe('getRemoteFoldersAndMappingsFromFile', () => {
+		it('should parse folders and mappings file correctly', async () => {
+			globMock.mockResolvedValue(['/mock/folders.json']);
+
+			const now = new Date();
+
+			const mockFoldersData: {
+				folders: ExportableFolder[];
+			} = {
+				folders: [
+					{
+						id: 'folder1',
+						name: 'folder 1',
+						parentFolderId: null,
+						homeProjectId: 'project1',
+						createdAt: now.toISOString(),
+						updatedAt: now.toISOString(),
+					},
+				],
+			};
+
+			fsReadFile.mockResolvedValue(JSON.stringify(mockFoldersData));
+
+			const result = await service.getRemoteFoldersAndMappingsFromFile();
+
+			expect(result.folders).toEqual(mockFoldersData.folders);
+		});
+
+		it('should return empty folders and mappings if no file found', async () => {
+			globMock.mockResolvedValue([]);
+
+			const result = await service.getRemoteFoldersAndMappingsFromFile();
+
+			expect(result.folders).toHaveLength(0);
+		});
+	});
+
 	describe('getLocalVersionIdsFromDb', () => {
 		const now = new Date();
 		jest.useFakeTimers({ now });
@@ -179,5 +220,32 @@ describe('SourceControlImportService', () => {
 
 			expect(result[0].updatedAt).toBe(now.toISOString());
 		});
+	});
+
+	describe('getLocalFoldersAndMappingsFromDb', () => {
+		it('should return data from DB', async () => {
+			// Arrange
+
+			folderRepository.find.mockResolvedValue([
+				mock({ createdAt: new Date(), updatedAt: new Date() }),
+			]);
+			workflowRepository.find.mockResolvedValue([mock()]);
+
+			// Act
+
+			const result = await service.getLocalFoldersAndMappingsFromDb();
+
+			// Assert
+
+			expect(result.folders).toHaveLength(1);
+			expect(result.folders[0]).toHaveProperty('id');
+			expect(result.folders[0]).toHaveProperty('name');
+			expect(result.folders[0]).toHaveProperty('parentFolderId');
+			expect(result.folders[0]).toHaveProperty('homeProjectId');
+		});
+	});
+
+	describe('importFoldersFromWorkFolder', () => {
+		// add tests for this.
 	});
 });

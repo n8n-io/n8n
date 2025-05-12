@@ -11,6 +11,7 @@ process.env.N8N_RUNNERS_ENABLED = 'false';
 // 1  means the output has run data
 // ►► denotes the node that the user wants to execute to
 // XX denotes that the node is disabled
+// DR denotes that the node is dirty
 // PD denotes that the node has pinned data
 
 import { mock } from 'jest-mock-extended';
@@ -31,12 +32,12 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	WorkflowTestData,
 	RelatedExecution,
+	IExecuteFunctions,
 } from 'n8n-workflow';
 import {
 	ApplicationError,
 	createDeferredPromise,
-	NodeConnectionType,
-	NodeExecutionOutput,
+	NodeConnectionTypes,
 	NodeHelpers,
 	Workflow,
 } from 'n8n-workflow';
@@ -44,12 +45,17 @@ import {
 import * as Helpers from '@test/helpers';
 import { legacyWorkflowExecuteTests, v1WorkflowExecuteTests } from '@test/helpers/constants';
 
+import type { ExecutionLifecycleHooks } from '../execution-lifecycle-hooks';
 import { DirectedGraph } from '../partial-execution-utils';
 import * as partialExecutionUtils from '../partial-execution-utils';
 import { createNodeData, toITaskData } from '../partial-execution-utils/__tests__/helpers';
 import { WorkflowExecute } from '../workflow-execute';
 
 const nodeTypes = Helpers.NodeTypes();
+
+beforeEach(() => {
+	jest.resetAllMocks();
+});
 
 describe('WorkflowExecute', () => {
 	describe('v0 execution order', () => {
@@ -71,11 +77,7 @@ describe('WorkflowExecute', () => {
 				});
 
 				const waitPromise = createDeferredPromise<IRun>();
-				const nodeExecutionOrder: string[] = [];
-				const additionalData = Helpers.WorkflowExecuteAdditionalData(
-					waitPromise,
-					nodeExecutionOrder,
-				);
+				const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
 
 				const workflowExecute = new WorkflowExecute(additionalData, executionMode);
 
@@ -104,6 +106,12 @@ describe('WorkflowExecute', () => {
 				}
 
 				// Check if the nodes did execute in the correct order
+				const nodeExecutionOrder: string[] = [];
+				Object.entries(result.data.resultData.runData).forEach(([nodeName, taskDataArr]) => {
+					taskDataArr.forEach((taskData) => {
+						nodeExecutionOrder[taskData.executionIndex] = nodeName;
+					});
+				});
 				expect(nodeExecutionOrder).toEqual(testData.output.nodeExecutionOrder);
 
 				// Check if other data has correct value
@@ -134,11 +142,7 @@ describe('WorkflowExecute', () => {
 				});
 
 				const waitPromise = createDeferredPromise<IRun>();
-				const nodeExecutionOrder: string[] = [];
-				const additionalData = Helpers.WorkflowExecuteAdditionalData(
-					waitPromise,
-					nodeExecutionOrder,
-				);
+				const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
 
 				const workflowExecute = new WorkflowExecute(additionalData, executionMode);
 
@@ -171,6 +175,12 @@ describe('WorkflowExecute', () => {
 				}
 
 				// Check if the nodes did execute in the correct order
+				const nodeExecutionOrder: string[] = [];
+				Object.entries(result.data.resultData.runData).forEach(([nodeName, taskDataArr]) => {
+					taskDataArr.forEach((taskData) => {
+						nodeExecutionOrder[taskData.executionIndex] = nodeName;
+					});
+				});
 				expect(nodeExecutionOrder).toEqual(testData.output.nodeExecutionOrder);
 
 				// Check if other data has correct value
@@ -179,6 +189,160 @@ describe('WorkflowExecute', () => {
 				expect(result.data.executionData!.nodeExecutionStack).toEqual([]);
 			});
 		}
+	});
+
+	describe('v0 hook order', () => {
+		const executionMode = 'manual';
+		const executionOrder = 'v0';
+		const nodeTypes = Helpers.NodeTypes();
+
+		test("don't run hooks for siblings of the destination node", async () => {
+			// ARRANGE
+			const trigger = createNodeData({ name: 'trigger', type: 'n8n-nodes-base.manualTrigger' });
+			const node1 = createNodeData({ name: 'node1' });
+			const node2 = createNodeData({ name: 'node2' });
+			const workflowInstance = new DirectedGraph()
+				.addNodes(trigger, node1, node2)
+				.addConnections({ from: trigger, to: node1 }, { from: trigger, to: node2 })
+				.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder } });
+
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(createDeferredPromise<IRun>());
+			const runHookSpy = jest.spyOn(additionalData.hooks!, 'runHook');
+
+			const workflowExecute = new WorkflowExecute(additionalData, executionMode);
+
+			// ACT
+			await workflowExecute.run(workflowInstance, trigger, 'node1');
+
+			// ASSERT
+			const workflowHooks = runHookSpy.mock.calls.filter(
+				(call) => call[0] === 'workflowExecuteBefore' || call[0] === 'workflowExecuteAfter',
+			);
+			const nodeHooks = runHookSpy.mock.calls.filter(
+				(call) => call[0] === 'nodeExecuteBefore' || call[0] === 'nodeExecuteAfter',
+			);
+
+			expect(workflowHooks.map((hook) => hook[0])).toEqual([
+				'workflowExecuteBefore',
+				'workflowExecuteAfter',
+			]);
+
+			expect(nodeHooks.map((hook) => ({ name: hook[0], node: hook[1][0] }))).toEqual([
+				{ name: 'nodeExecuteBefore', node: 'trigger' },
+				{ name: 'nodeExecuteAfter', node: 'trigger' },
+				{ name: 'nodeExecuteBefore', node: 'node1' },
+				{ name: 'nodeExecuteAfter', node: 'node1' },
+			]);
+		});
+
+		test("don't run hooks if a node does not have input data", async () => {
+			// ARRANGE
+			const trigger = createNodeData({ name: 'trigger', type: 'n8n-nodes-base.manualTrigger' });
+			const workflowInstance = new DirectedGraph()
+				.addNodes(trigger)
+				.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder } });
+
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(createDeferredPromise<IRun>());
+			const runHookSpy = jest.spyOn(additionalData.hooks!, 'runHook');
+
+			const workflowExecute = new WorkflowExecute(additionalData, executionMode);
+			jest.spyOn(workflowExecute, 'ensureInputData').mockReturnValue(false);
+
+			// ACT
+			await workflowExecute.run(workflowInstance, trigger);
+
+			// ASSERT
+			const workflowHooks = runHookSpy.mock.calls.filter(
+				(call) => call[0] === 'workflowExecuteBefore' || call[0] === 'workflowExecuteAfter',
+			);
+			const nodeHooks = runHookSpy.mock.calls.filter(
+				(call) => call[0] === 'nodeExecuteBefore' || call[0] === 'nodeExecuteAfter',
+			);
+
+			expect(workflowHooks.map((hook) => hook[0])).toEqual([
+				'workflowExecuteBefore',
+				'workflowExecuteAfter',
+			]);
+
+			expect(nodeHooks).toHaveLength(0);
+		});
+	});
+
+	describe('v1 hook order', () => {
+		const executionMode = 'manual';
+		const executionOrder = 'v1';
+		const nodeTypes = Helpers.NodeTypes();
+
+		test("don't run hooks for siblings of the destination node", async () => {
+			// ARRANGE
+			const trigger = createNodeData({ name: 'trigger', type: 'n8n-nodes-base.manualTrigger' });
+			const node1 = createNodeData({ name: 'node1' });
+			const node2 = createNodeData({ name: 'node2' });
+			const workflowInstance = new DirectedGraph()
+				.addNodes(trigger, node1, node2)
+				.addConnections({ from: trigger, to: node1 }, { from: trigger, to: node2 })
+				.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder } });
+
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(createDeferredPromise<IRun>());
+			const runHookSpy = jest.spyOn(additionalData.hooks!, 'runHook');
+
+			const workflowExecute = new WorkflowExecute(additionalData, executionMode);
+
+			// ACT
+			await workflowExecute.run(workflowInstance, trigger, 'node1');
+
+			// ASSERT
+			const workflowHooks = runHookSpy.mock.calls.filter(
+				(call) => call[0] === 'workflowExecuteBefore' || call[0] === 'workflowExecuteAfter',
+			);
+			const nodeHooks = runHookSpy.mock.calls.filter(
+				(call) => call[0] === 'nodeExecuteBefore' || call[0] === 'nodeExecuteAfter',
+			);
+
+			expect(workflowHooks.map((hook) => hook[0])).toEqual([
+				'workflowExecuteBefore',
+				'workflowExecuteAfter',
+			]);
+
+			expect(nodeHooks.map((hook) => ({ name: hook[0], node: hook[1][0] }))).toEqual([
+				{ name: 'nodeExecuteBefore', node: 'trigger' },
+				{ name: 'nodeExecuteAfter', node: 'trigger' },
+				{ name: 'nodeExecuteBefore', node: 'node1' },
+				{ name: 'nodeExecuteAfter', node: 'node1' },
+			]);
+		});
+
+		test("don't run hooks if a node does not have input data", async () => {
+			// ARRANGE
+			const trigger = createNodeData({ name: 'trigger', type: 'n8n-nodes-base.manualTrigger' });
+			const workflowInstance = new DirectedGraph()
+				.addNodes(trigger)
+				.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder } });
+
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(createDeferredPromise<IRun>());
+			const runHookSpy = jest.spyOn(additionalData.hooks!, 'runHook');
+
+			const workflowExecute = new WorkflowExecute(additionalData, executionMode);
+			jest.spyOn(workflowExecute, 'ensureInputData').mockReturnValue(false);
+
+			// ACT
+			await workflowExecute.run(workflowInstance, trigger);
+
+			// ASSERT
+			const workflowHooks = runHookSpy.mock.calls.filter(
+				(call) => call[0] === 'workflowExecuteBefore' || call[0] === 'workflowExecuteAfter',
+			);
+			const nodeHooks = runHookSpy.mock.calls.filter(
+				(call) => call[0] === 'nodeExecuteBefore' || call[0] === 'nodeExecuteAfter',
+			);
+
+			expect(workflowHooks.map((hook) => hook[0])).toEqual([
+				'workflowExecuteBefore',
+				'workflowExecuteAfter',
+			]);
+
+			expect(nodeHooks).toHaveLength(0);
+		});
 	});
 
 	//run tests on json files from specified directory, default 'workflows'
@@ -201,11 +365,7 @@ describe('WorkflowExecute', () => {
 				});
 
 				const waitPromise = createDeferredPromise<IRun>();
-				const nodeExecutionOrder: string[] = [];
-				const additionalData = Helpers.WorkflowExecuteAdditionalData(
-					waitPromise,
-					nodeExecutionOrder,
-				);
+				const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
 
 				const workflowExecute = new WorkflowExecute(additionalData, executionMode);
 
@@ -245,18 +405,6 @@ describe('WorkflowExecute', () => {
 		}
 	});
 
-	test('WorkflowExecute, NodeExecutionOutput type test', () => {
-		//TODO Add more tests here when execution hints are added to some node types
-		const nodeExecutionOutput = new NodeExecutionOutput(
-			[[{ json: { data: 123 } }]],
-			[{ message: 'TEXT HINT' }],
-		);
-
-		expect(nodeExecutionOutput).toBeInstanceOf(NodeExecutionOutput);
-		expect(nodeExecutionOutput[0][0].json.data).toEqual(123);
-		expect(nodeExecutionOutput.getHints()[0].message).toEqual('TEXT HINT');
-	});
-
 	describe('runPartialWorkflow2', () => {
 		//                Dirty         ►
 		// ┌───────┐1     ┌─────┐1     ┌─────┐
@@ -265,8 +413,7 @@ describe('WorkflowExecute', () => {
 		test("deletes dirty nodes' run data", async () => {
 			// ARRANGE
 			const waitPromise = createDeferredPromise<IRun>();
-			const nodeExecutionOrder: string[] = [];
-			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise, nodeExecutionOrder);
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
 			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
 
 			const trigger = createNodeData({ name: 'trigger', type: 'n8n-nodes-base.manualTrigger' });
@@ -302,6 +449,71 @@ describe('WorkflowExecute', () => {
 			expect(fullRunData.data.resultData.runData).not.toHaveProperty(node1.name);
 		});
 
+		//
+		// ┌───────┐1  ┌────┐1
+		// │trigger├───►set1├─┐ ┌─────┐    ►►
+		// └───────┘   └────┘ └─►     │1  ┌───────────┐
+		//              DR      │merge├───►destination│
+		//             ┌────┐1┌─►     │   └───────────┘
+		//             │set2├─┘ └─────┘
+		//             └────┘
+		test('deletes run data of children of dirty nodes as well', async () => {
+			// ARRANGE
+			const waitPromise = createDeferredPromise<IRun>();
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
+			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
+			jest.spyOn(workflowExecute, 'processRunExecutionData').mockImplementationOnce(jest.fn());
+
+			const recreateNodeExecutionStackSpy = jest.spyOn(
+				partialExecutionUtils,
+				'recreateNodeExecutionStack',
+			);
+
+			const trigger = createNodeData({ name: 'trigger', type: 'n8n-nodes-base.manualTrigger' });
+			const set1 = createNodeData({ name: 'set1' });
+			const set2 = createNodeData({ name: 'set2' });
+			const merge = createNodeData({ name: 'merge' });
+			const destination = createNodeData({ name: 'destination' });
+			const workflow = new DirectedGraph()
+				.addNodes(trigger, set1, set2, merge, destination)
+				.addConnections(
+					{ from: trigger, to: set1 },
+					{ from: trigger, to: set2 },
+					{ from: set1, to: merge, inputIndex: 0 },
+					{ from: set2, to: merge, inputIndex: 1 },
+					{ from: merge, to: destination },
+				)
+				.toWorkflow({ name: '', active: false, nodeTypes });
+			const pinData: IPinData = {};
+			const runData: IRunData = {
+				[trigger.name]: [toITaskData([{ data: { node: 'trigger' } }])],
+				[set1.name]: [toITaskData([{ data: { node: 'set1' } }])],
+				[set2.name]: [toITaskData([{ data: { node: 'set2' } }])],
+				[merge.name]: [toITaskData([{ data: { node: 'merge' } }])],
+				[destination.name]: [toITaskData([{ data: { node: 'destination' } }])],
+			};
+			const dirtyNodeNames = [set2.name];
+			const destinationNode = destination.name;
+
+			// ACT
+			await workflowExecute.runPartialWorkflow2(
+				workflow,
+				runData,
+				pinData,
+				dirtyNodeNames,
+				destinationNode,
+			);
+
+			// ASSERT
+			expect(recreateNodeExecutionStackSpy).toHaveBeenCalledTimes(1);
+			expect(recreateNodeExecutionStackSpy).toHaveBeenCalledWith(
+				expect.any(DirectedGraph),
+				new Set([merge, set2]),
+				pick(runData, [trigger.name, set1.name]),
+				pinData,
+			);
+		});
+
 		//                 XX           ►►
 		// ┌───────┐1     ┌─────┐1     ┌─────┐
 		// │trigger├──────►node1├──────►node2│
@@ -309,8 +521,7 @@ describe('WorkflowExecute', () => {
 		test('removes disabled nodes from the workflow', async () => {
 			// ARRANGE
 			const waitPromise = createDeferredPromise<IRun>();
-			const nodeExecutionOrder: string[] = [];
-			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise, nodeExecutionOrder);
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
 			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
 
 			const trigger = createNodeData({ name: 'trigger', type: 'n8n-nodes-base.manualTrigger' });
@@ -363,8 +574,7 @@ describe('WorkflowExecute', () => {
 		test('passes filtered run data to `recreateNodeExecutionStack`', async () => {
 			// ARRANGE
 			const waitPromise = createDeferredPromise<IRun>();
-			const nodeExecutionOrder: string[] = [];
-			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise, nodeExecutionOrder);
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
 			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
 
 			const trigger = createNodeData({ name: 'trigger', type: 'n8n-nodes-base.manualTrigger' });
@@ -426,8 +636,7 @@ describe('WorkflowExecute', () => {
 		test('passes subgraph to `cleanRunData`', async () => {
 			// ARRANGE
 			const waitPromise = createDeferredPromise<IRun>();
-			const nodeExecutionOrder: string[] = [];
-			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise, nodeExecutionOrder);
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
 			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
 
 			const trigger = createNodeData({ name: 'trigger', type: 'n8n-nodes-base.manualTrigger' });
@@ -459,12 +668,298 @@ describe('WorkflowExecute', () => {
 			);
 
 			// ASSERT
+			const subgraph = new DirectedGraph()
+				.addNodes(trigger, node1)
+				.addConnections({ from: trigger, to: node1 });
+			expect(cleanRunDataSpy).toHaveBeenCalledTimes(2);
 			expect(cleanRunDataSpy).toHaveBeenNthCalledWith(
 				1,
 				runData,
-				new DirectedGraph().addNodes(trigger, node1).addConnections({ from: trigger, to: node1 }),
+				subgraph,
+				// first call with the dirty nodes, which are an empty set in this case
+				new Set(),
+			);
+			expect(cleanRunDataSpy).toHaveBeenNthCalledWith(
+				2,
+				pick(runData, [trigger.name, node1.name]),
+				subgraph,
+				// second call with start nodes, which is the destination node in this
+				// case
 				new Set([node1]),
 			);
+		});
+
+		//  DR          ►►              DR
+		// ┌───────┐   ┌───────────┐   ┌─────────┐
+		// │trigger├───►destination├───►dirtyNode│
+		// └───────┘   └───────────┘   └─────────┘
+		test('passes pruned dirty nodes to `cleanRunData`', async () => {
+			// ARRANGE
+			const waitPromise = createDeferredPromise<IRun>();
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
+			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
+
+			const trigger = createNodeData({ name: 'trigger', type: 'n8n-nodes-base.manualTrigger' });
+			const destination = createNodeData({ name: 'destination' });
+			const dirtyNode = createNodeData({ name: 'dirtyNode' });
+			const workflow = new DirectedGraph()
+				.addNodes(trigger, destination, dirtyNode)
+				.addConnections({ from: trigger, to: destination }, { from: destination, to: dirtyNode })
+				.toWorkflow({ name: '', active: false, nodeTypes });
+
+			const pinData: IPinData = {};
+			const runData: IRunData = {};
+			const dirtyNodeNames: string[] = [trigger.name, dirtyNode.name];
+
+			jest.spyOn(workflowExecute, 'processRunExecutionData').mockImplementationOnce(jest.fn());
+			const cleanRunDataSpy = jest.spyOn(partialExecutionUtils, 'cleanRunData');
+
+			// ACT
+			await workflowExecute.runPartialWorkflow2(
+				workflow,
+				runData,
+				pinData,
+				dirtyNodeNames,
+				destination.name,
+			);
+
+			// ASSERT
+			const subgraph = new DirectedGraph()
+				.addNodes(trigger, destination)
+				.addConnections({ from: trigger, to: destination });
+			expect(cleanRunDataSpy).toHaveBeenCalledTimes(2);
+			expect(cleanRunDataSpy).toHaveBeenNthCalledWith(
+				1,
+				runData,
+				subgraph,
+				// first call with the dirty nodes, which are an empty set in this case
+				new Set([trigger]),
+			);
+		});
+
+		//                 ►►
+		//                ┌──────┐
+		//                │orphan│
+		//                └──────┘
+		//  ┌───────┐     ┌───────────┐
+		//  │trigger├────►│destination│
+		//  └───────┘     └───────────┘
+		test('works with a single node', async () => {
+			// ARRANGE
+			const waitPromise = createDeferredPromise<IRun>();
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
+			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
+
+			const trigger = createNodeData({ name: 'trigger' });
+			const destination = createNodeData({ name: 'destination' });
+			const orphan = createNodeData({ name: 'orphan' });
+
+			const workflow = new DirectedGraph()
+				.addNodes(trigger, destination, orphan)
+				.addConnections({ from: trigger, to: destination })
+				.toWorkflow({ name: '', active: false, nodeTypes });
+
+			const pinData: IPinData = {};
+			const runData: IRunData = {
+				[trigger.name]: [toITaskData([{ data: { value: 1 } }])],
+				[destination.name]: [toITaskData([{ data: { nodeName: destination.name } }])],
+			};
+			const dirtyNodeNames: string[] = [];
+
+			const processRunExecutionDataSpy = jest
+				.spyOn(workflowExecute, 'processRunExecutionData')
+				.mockImplementationOnce(jest.fn());
+
+			// ACT
+			await workflowExecute.runPartialWorkflow2(
+				workflow,
+				runData,
+				pinData,
+				dirtyNodeNames,
+				orphan.name,
+			);
+
+			// ASSERT
+			expect(processRunExecutionDataSpy).toHaveBeenCalledTimes(1);
+			expect(processRunExecutionDataSpy).toHaveBeenCalledWith(
+				new DirectedGraph().addNode(orphan).toWorkflow({ ...workflow }),
+			);
+		});
+
+		//  ┌───────┐     ┌───────────┐
+		//  │trigger├────►│agentNode  │
+		//  └───────┘     └───────────┘
+		//                       │ ┌──────┐
+		//                       └─│ Tool │
+		//                         └──────┘
+		it('rewires graph for partial execution of tools', async () => {
+			// ARRANGE
+			const waitPromise = createDeferredPromise<IRun>();
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
+			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
+			const nodeTypes = Helpers.NodeTypes();
+
+			const trigger = createNodeData({ name: 'trigger', type: 'n8n-nodes-base.manualTrigger' });
+			const tool = createNodeData({ name: 'tool', type: 'n8n-nodes-base.toolTest' });
+			const agentNode = createNodeData({ name: 'agent' });
+
+			const workflow = new DirectedGraph()
+				.addNodes(trigger, tool, agentNode)
+				.addConnections(
+					{ from: trigger, to: agentNode },
+					{ from: tool, to: agentNode, type: NodeConnectionTypes.AiTool },
+				)
+				.toWorkflow({ name: '', active: false, nodeTypes });
+			const pinData: IPinData = {};
+			const runData: IRunData = {
+				[trigger.name]: [toITaskData([{ data: { value: 1 } }])],
+			};
+			const dirtyNodeNames: string[] = [];
+
+			const processRunExecutionDataSpy = jest
+				.spyOn(workflowExecute, 'processRunExecutionData')
+				.mockImplementationOnce(jest.fn());
+
+			const expectedToolExecutor: INode = {
+				name: 'PartialExecutionToolExecutor',
+				disabled: false,
+				type: '@n8n/n8n-nodes-langchain.toolExecutor',
+				parameters: {
+					query: {},
+					toolName: '',
+				},
+				id: agentNode.id,
+				typeVersion: 0,
+				position: [0, 0],
+			};
+
+			const expectedTool = {
+				...tool,
+				rewireOutputLogTo: NodeConnectionTypes.AiTool,
+			};
+
+			const expectedGraph = new DirectedGraph()
+				.addNodes(trigger, expectedToolExecutor, expectedTool)
+				.addConnections({ from: trigger, to: expectedToolExecutor })
+				.addConnections({
+					from: expectedTool,
+					to: expectedToolExecutor,
+					type: NodeConnectionTypes.AiTool,
+				})
+				.toWorkflow({ ...workflow });
+
+			// ACT
+			await workflowExecute.runPartialWorkflow2(
+				workflow,
+				runData,
+				pinData,
+				dirtyNodeNames,
+				tool.name,
+			);
+
+			// ASSERT
+			expect(processRunExecutionDataSpy).toHaveBeenCalledTimes(1);
+			expect(processRunExecutionDataSpy).toHaveBeenCalledWith(expectedGraph);
+		});
+
+		//                             ►►
+		// ┌───────┐1     ┌─────┐1     ┌─────┐
+		// │trigger├──────►node1├──────►node2│
+		// └───────┘      └─────┘      └─────┘
+		test('increments partial execution index starting with max index of previous runs', async () => {
+			// ARRANGE
+			const waitPromise = createDeferredPromise<IRun>();
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
+			additionalData.hooks = mock<ExecutionLifecycleHooks>();
+			jest.spyOn(additionalData.hooks, 'runHook');
+
+			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
+
+			const trigger = createNodeData({ name: 'trigger', type: 'n8n-nodes-base.manualTrigger' });
+			const node1 = createNodeData({ name: 'node1' });
+			const node2 = createNodeData({ name: 'node2' });
+			const workflow = new DirectedGraph()
+				.addNodes(trigger, node1, node2)
+				.addConnections({ from: trigger, to: node1 }, { from: node1, to: node2 })
+				.toWorkflow({ name: '', active: false, nodeTypes });
+			const pinData: IPinData = {};
+			const runData: IRunData = {
+				[trigger.name]: [toITaskData([{ data: { name: trigger.name } }], { executionIndex: 0 })],
+				[node1.name]: [
+					toITaskData([{ data: { name: node1.name } }], { executionIndex: 3 }),
+					toITaskData([{ data: { name: node1.name } }], { executionIndex: 4 }),
+				],
+				[node2.name]: [toITaskData([{ data: { name: node2.name } }], { executionIndex: 2 })],
+			};
+			const dirtyNodeNames: string[] = [];
+			const destinationNode = node2.name;
+
+			const processRunExecutionDataSpy = jest.spyOn(workflowExecute, 'processRunExecutionData');
+
+			// ACT
+			await workflowExecute.runPartialWorkflow2(
+				workflow,
+				runData,
+				pinData,
+				dirtyNodeNames,
+				destinationNode,
+			);
+
+			// ASSERT
+			expect(processRunExecutionDataSpy).toHaveBeenCalledTimes(1);
+			expect(additionalData.hooks?.runHook).toHaveBeenCalledWith('nodeExecuteBefore', [
+				node2.name,
+				expect.objectContaining({ executionIndex: 5 }),
+			]);
+		});
+
+		//                ►►
+		// ┌───────┐1     ┌─────┐1
+		// │trigger├──────►node1|
+		// └───────┘      └─────┘
+		test('increments partial execution index starting with max index of 0 of previous runs', async () => {
+			// ARRANGE
+			const waitPromise = createDeferredPromise<IRun>();
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
+			additionalData.hooks = mock<ExecutionLifecycleHooks>();
+			jest.spyOn(additionalData.hooks, 'runHook');
+
+			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
+
+			const trigger = createNodeData({ name: 'trigger', type: 'n8n-nodes-base.manualTrigger' });
+			const node1 = createNodeData({ name: 'node1' });
+			const workflow = new DirectedGraph()
+				.addNodes(trigger, node1)
+				.addConnections({ from: trigger, to: node1 })
+				.toWorkflow({ name: '', active: false, nodeTypes });
+			const pinData: IPinData = {};
+			const runData: IRunData = {
+				[trigger.name]: [toITaskData([{ data: { name: trigger.name } }], { executionIndex: 0 })],
+				[node1.name]: [
+					toITaskData([{ data: { name: node1.name } }], { executionIndex: 3 }),
+					toITaskData([{ data: { name: node1.name } }], { executionIndex: 4 }),
+				],
+			};
+			const dirtyNodeNames: string[] = [];
+			const destinationNode = node1.name;
+
+			const processRunExecutionDataSpy = jest.spyOn(workflowExecute, 'processRunExecutionData');
+
+			// ACT
+			await workflowExecute.runPartialWorkflow2(
+				workflow,
+				runData,
+				pinData,
+				dirtyNodeNames,
+				destinationNode,
+			);
+
+			// ASSERT
+			expect(processRunExecutionDataSpy).toHaveBeenCalledTimes(1);
+			expect(additionalData.hooks?.runHook).toHaveBeenCalledWith('nodeExecuteBefore', [
+				node1.name,
+				expect.objectContaining({ executionIndex: 1 }),
+			]);
 		});
 	});
 
@@ -476,18 +971,19 @@ describe('WorkflowExecute', () => {
 		const nodeParamIssuesSpy = jest.spyOn(NodeHelpers, 'getNodeParametersIssues');
 
 		const nodeTypes = mock<INodeTypes>();
-		nodeTypes.getByNameAndVersion.mockImplementation((type) => {
-			// TODO: getByNameAndVersion signature needs to be updated to allow returning undefined
-			if (type === 'unknownNode') return undefined as unknown as INodeType;
-			return mock<INodeType>({
-				description: {
-					properties: [],
-				},
+
+		beforeEach(() => {
+			nodeTypes.getByNameAndVersion.mockImplementation((type) => {
+				// TODO: getByNameAndVersion signature needs to be updated to allow returning undefined
+				if (type === 'unknownNode') return undefined as unknown as INodeType;
+				return mock<INodeType>({
+					description: {
+						properties: [],
+					},
+				});
 			});
 		});
 		const workflowExecute = new WorkflowExecute(mock(), 'manual');
-
-		beforeEach(() => jest.clearAllMocks());
 
 		it('should return null if there are no nodes', () => {
 			const workflow = new Workflow({
@@ -573,7 +1069,9 @@ describe('WorkflowExecute', () => {
 			},
 		});
 
-		nodeTypes.getByNameAndVersion.mockReturnValue(triggerNodeType);
+		beforeEach(() => {
+			nodeTypes.getByNameAndVersion.mockReturnValue(triggerNodeType);
+		});
 
 		const workflow = new Workflow({
 			nodeTypes,
@@ -630,10 +1128,10 @@ describe('WorkflowExecute', () => {
 				displayName: 'test',
 				defaultVersion: 1,
 				properties: [],
-				inputs: [{ type: NodeConnectionType.Main }],
+				inputs: [{ type: NodeConnectionTypes.Main }],
 				outputs: [
-					{ type: NodeConnectionType.Main },
-					{ type: NodeConnectionType.Main, category: 'error' },
+					{ type: NodeConnectionTypes.Main },
+					{ type: NodeConnectionTypes.Main, category: 'error' },
 				],
 			},
 		});
@@ -661,7 +1159,7 @@ describe('WorkflowExecute', () => {
 				],
 			},
 			source: {
-				[NodeConnectionType.Main]: [
+				[NodeConnectionTypes.Main]: [
 					{
 						previousNode: 'previousNode',
 						previousNodeOutput: 0,
@@ -681,6 +1179,7 @@ describe('WorkflowExecute', () => {
 							},
 							source: [],
 							startTime: 0,
+							executionIndex: 0,
 							executionTime: 0,
 						},
 					],
@@ -957,14 +1456,15 @@ describe('WorkflowExecute', () => {
 						source: [],
 						data: { main: [[], []] },
 						startTime: 0,
+						executionIndex: 0,
 						executionTime: 0,
 					},
 				],
 			};
 
 			const inputConnections: IConnection[] = [
-				{ node: 'node1', type: NodeConnectionType.Main, index: 0 },
-				{ node: 'node1', type: NodeConnectionType.Main, index: 1 },
+				{ node: 'node1', type: NodeConnectionTypes.Main, index: 0 },
+				{ node: 'node1', type: NodeConnectionTypes.Main, index: 1 },
 			];
 
 			const result = workflowExecute.incomingConnectionIsEmpty(runData, inputConnections, 0);
@@ -974,7 +1474,7 @@ describe('WorkflowExecute', () => {
 		test('should return true when input connection node does not exist in runData', () => {
 			const runData: IRunData = {};
 			const inputConnections: IConnection[] = [
-				{ node: 'nonexistentNode', type: NodeConnectionType.Main, index: 0 },
+				{ node: 'nonexistentNode', type: NodeConnectionTypes.Main, index: 0 },
 			];
 
 			const result = workflowExecute.incomingConnectionIsEmpty(runData, inputConnections, 0);
@@ -990,14 +1490,15 @@ describe('WorkflowExecute', () => {
 							main: [[{ json: { data: 'test' } }], []],
 						},
 						startTime: 0,
+						executionIndex: 0,
 						executionTime: 0,
 					},
 				],
 			};
 
 			const inputConnections: IConnection[] = [
-				{ node: 'node1', type: NodeConnectionType.Main, index: 0 },
-				{ node: 'node1', type: NodeConnectionType.Main, index: 1 },
+				{ node: 'node1', type: NodeConnectionTypes.Main, index: 0 },
+				{ node: 'node1', type: NodeConnectionTypes.Main, index: 1 },
 			];
 
 			const result = workflowExecute.incomingConnectionIsEmpty(runData, inputConnections, 0);
@@ -1013,6 +1514,7 @@ describe('WorkflowExecute', () => {
 							main: [[]],
 						},
 						startTime: 0,
+						executionIndex: 0,
 						executionTime: 0,
 					},
 					{
@@ -1021,13 +1523,14 @@ describe('WorkflowExecute', () => {
 							main: [[{ json: { data: 'test' } }]],
 						},
 						startTime: 0,
+						executionIndex: 1,
 						executionTime: 0,
 					},
 				],
 			};
 
 			const inputConnections: IConnection[] = [
-				{ node: 'node1', type: NodeConnectionType.Main, index: 0 },
+				{ node: 'node1', type: NodeConnectionTypes.Main, index: 0 },
 			];
 
 			expect(workflowExecute.incomingConnectionIsEmpty(runData, inputConnections, 0)).toBe(true);
@@ -1040,13 +1543,14 @@ describe('WorkflowExecute', () => {
 					{
 						source: [],
 						startTime: 0,
+						executionIndex: 0,
 						executionTime: 0,
 					},
 				],
 			};
 
 			const inputConnections: IConnection[] = [
-				{ node: 'node1', type: NodeConnectionType.Main, index: 0 },
+				{ node: 'node1', type: NodeConnectionTypes.Main, index: 0 },
 			];
 
 			const result = workflowExecute.incomingConnectionIsEmpty(runData, inputConnections, 0);
@@ -1079,7 +1583,7 @@ describe('WorkflowExecute', () => {
 
 		test('should do nothing when there is no metadata', () => {
 			runExecutionData.resultData.runData = {
-				node1: [{ startTime: 0, executionTime: 0, source: [] }],
+				node1: [{ startTime: 0, executionTime: 0, source: [], executionIndex: 0 }],
 			};
 
 			workflowExecute.moveNodeMetadata();
@@ -1089,7 +1593,7 @@ describe('WorkflowExecute', () => {
 
 		test('should merge metadata into runData for single node', () => {
 			runExecutionData.resultData.runData = {
-				node1: [{ startTime: 0, executionTime: 0, source: [] }],
+				node1: [{ startTime: 0, executionTime: 0, source: [], executionIndex: 0 }],
 			};
 			runExecutionData.executionData!.metadata = {
 				node1: [{ parentExecution }],
@@ -1102,8 +1606,8 @@ describe('WorkflowExecute', () => {
 
 		test('should merge metadata into runData for multiple nodes', () => {
 			runExecutionData.resultData.runData = {
-				node1: [{ startTime: 0, executionTime: 0, source: [] }],
-				node2: [{ startTime: 0, executionTime: 0, source: [] }],
+				node1: [{ startTime: 0, executionTime: 0, source: [], executionIndex: 0 }],
+				node2: [{ startTime: 0, executionTime: 0, source: [], executionIndex: 1 }],
 			};
 			runExecutionData.executionData!.metadata = {
 				node1: [{ parentExecution }],
@@ -1122,6 +1626,7 @@ describe('WorkflowExecute', () => {
 				node1: [
 					{
 						startTime: 0,
+						executionIndex: 0,
 						executionTime: 0,
 						source: [],
 						metadata: { subExecutionsCount: 4 },
@@ -1143,8 +1648,8 @@ describe('WorkflowExecute', () => {
 		test('should handle multiple run indices', () => {
 			runExecutionData.resultData.runData = {
 				node1: [
-					{ startTime: 0, executionTime: 0, source: [] },
-					{ startTime: 0, executionTime: 0, source: [] },
+					{ startTime: 0, executionTime: 0, source: [], executionIndex: 0 },
+					{ startTime: 0, executionTime: 0, source: [], executionIndex: 1 },
 				],
 			};
 			runExecutionData.executionData!.metadata = {
@@ -1211,6 +1716,7 @@ describe('WorkflowExecute', () => {
 
 		let runExecutionData: IRunExecutionData;
 		let workflowExecute: WorkflowExecute;
+		let additionalData: IWorkflowExecuteAdditionalData;
 
 		beforeEach(() => {
 			runExecutionData = {
@@ -1224,9 +1730,12 @@ describe('WorkflowExecute', () => {
 					waitingExecutionSource: null,
 				},
 			};
-			workflowExecute = new WorkflowExecute(mock(), 'manual', runExecutionData);
+			additionalData = mock();
+			additionalData.hooks = mock<ExecutionLifecycleHooks>();
 
-			jest.spyOn(workflowExecute, 'executeHook').mockResolvedValue(undefined);
+			workflowExecute = new WorkflowExecute(additionalData, 'manual', runExecutionData);
+
+			jest.spyOn(additionalData.hooks, 'runHook').mockResolvedValue(undefined);
 			jest.spyOn(workflowExecute, 'moveNodeMetadata').mockImplementation();
 		});
 
@@ -1294,7 +1803,7 @@ describe('WorkflowExecute', () => {
 			// Verify static data handling
 			expect(result).toBeDefined();
 			expect(workflowExecute.moveNodeMetadata).toHaveBeenCalled();
-			expect(workflowExecute.executeHook).toHaveBeenCalledWith('workflowExecuteAfter', [
+			expect(additionalData.hooks?.runHook).toHaveBeenCalledWith('workflowExecuteAfter', [
 				result,
 				workflow.staticData,
 			]);
@@ -1359,6 +1868,201 @@ describe('WorkflowExecute', () => {
 
 			expect(result?.[0][0].pairedItem).toEqual({ item: 0 });
 			expect(result?.[1][0].pairedItem).toEqual({ item: 0 });
+		});
+	});
+
+	describe('ensureInputData', () => {
+		const node: INode = {
+			id: '1',
+			name: 'TestNode',
+			type: 'test.set',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+		};
+		const parentNode: INode = {
+			id: '2',
+			name: 'ParentNode',
+			type: 'test.set',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+		};
+		const runExecutionData = mock<IRunExecutionData>({
+			executionData: {
+				nodeExecutionStack: [],
+			},
+		});
+		const workflow = new Workflow({
+			id: 'test',
+			nodes: [],
+			connections: {},
+			active: false,
+			nodeTypes: mock(),
+		});
+
+		let executionData: IExecuteData;
+		let workflowExecute: WorkflowExecute;
+		beforeEach(() => {
+			executionData = {
+				node,
+				data: {},
+				source: null,
+			};
+			workflowExecute = new WorkflowExecute(mock(), 'manual', runExecutionData);
+			jest.resetAllMocks();
+		});
+
+		test('should return true when node has no input connections', () => {
+			workflow.nodes = {};
+			workflow.connectionsByDestinationNode = {};
+
+			const hasInputData = workflowExecute.ensureInputData(workflow, node, executionData);
+
+			expect(hasInputData).toBe(true);
+		});
+
+		test('should return false when execution data does not have main connection', () => {
+			workflow.nodes = {
+				[node.name]: node,
+				[parentNode.name]: parentNode,
+			};
+
+			workflow.connectionsByDestinationNode = {
+				[node.name]: {
+					main: [[{ node: parentNode.name, type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+			};
+
+			const hasInputData = workflowExecute.ensureInputData(workflow, node, executionData);
+
+			expect(hasInputData).toBe(false);
+			expect(runExecutionData.executionData?.nodeExecutionStack).toContain(executionData);
+		});
+
+		test('should return true when input data is available for force input node execution', () => {
+			workflow.nodes = {
+				[node.name]: node,
+				[parentNode.name]: parentNode,
+			};
+
+			workflow.connectionsByDestinationNode = {
+				[node.name]: {
+					main: [[{ node: parentNode.name, type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+			};
+
+			executionData.data = { main: [[{ json: { test: 'data' } }]] };
+
+			const hasInputData = workflowExecute.ensureInputData(workflow, node, executionData);
+
+			expect(hasInputData).toBe(true);
+		});
+
+		test('should return false when input data is not available for force input node execution', () => {
+			workflow.nodes = {
+				[node.name]: node,
+				[parentNode.name]: parentNode,
+			};
+
+			workflow.connectionsByDestinationNode = {
+				[node.name]: {
+					main: [[{ node: parentNode.name, type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+			};
+
+			executionData.data = { main: [null] };
+
+			const hasInputData = workflowExecute.ensureInputData(workflow, node, executionData);
+
+			expect(hasInputData).toBe(false);
+			expect(runExecutionData.executionData?.nodeExecutionStack).toContain(executionData);
+		});
+	});
+
+	describe('customOperations', () => {
+		const nodeTypes = mock<INodeTypes>();
+		const testNode = mock<INode>();
+
+		const workflow = new Workflow({
+			nodeTypes,
+			nodes: [testNode],
+			connections: {},
+			active: false,
+		});
+
+		const executionData = mock<IExecuteData>({
+			node: { parameters: { resource: 'test', operation: 'test' } },
+			data: { main: [[{ json: {} }]] },
+		});
+		const runExecutionData = mock<IRunExecutionData>();
+		const additionalData = mock<IWorkflowExecuteAdditionalData>();
+		const workflowExecute = new WorkflowExecute(additionalData, 'manual');
+
+		test('should execute customOperations', async () => {
+			const nodeType = mock<INodeType>({
+				description: {
+					properties: [],
+				},
+				execute: undefined,
+				customOperations: {
+					test: {
+						async test(this: IExecuteFunctions) {
+							return [[{ json: { customOperationsRun: true } }]];
+						},
+					},
+				},
+			});
+
+			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
+
+			const runPromise = workflowExecute.runNode(
+				workflow,
+				executionData,
+				runExecutionData,
+				0,
+				additionalData,
+				'manual',
+			);
+
+			const result = await runPromise;
+
+			expect(result).toEqual({ data: [[{ json: { customOperationsRun: true } }]], hints: [] });
+		});
+
+		test('should throw error if customOperation and execute both defined', async () => {
+			const nodeType = mock<INodeType>({
+				description: {
+					properties: [],
+				},
+				async execute(this: IExecuteFunctions) {
+					return [];
+				},
+				customOperations: {
+					test: {
+						async test(this: IExecuteFunctions) {
+							return [];
+						},
+					},
+				},
+			});
+
+			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
+
+			try {
+				await workflowExecute.runNode(
+					workflow,
+					executionData,
+					runExecutionData,
+					0,
+					additionalData,
+					'manual',
+				);
+			} catch (error) {
+				expect(error.message).toBe(
+					'Node type cannot have both customOperations and execute defined',
+				);
+			}
 		});
 	});
 });

@@ -1,8 +1,7 @@
+import type { Variables } from '@n8n/db';
+import { generateNanoId, VariablesRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import type { Variables } from '@/databases/entities/variables';
-import { VariablesRepository } from '@/databases/repositories/variables.repository';
-import { generateNanoId } from '@/databases/utils/generators';
 import { VariableCountLimitReachedError } from '@/errors/variable-count-limit-reached.error';
 import { VariableValidationError } from '@/errors/variable-validation.error';
 import { EventService } from '@/events/event.service';

@@ -1,0 +1,91 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`component > Text overflow behavior > displays ellipsis with options 1`] = `
+<div>
+  <div
+    class="container"
+    data-test-id="input-label"
+  >
+    <div
+      class="labelRow"
+    >
+      <label
+        class="n8n-input-label inputLabel heading medium"
+      >
+        <div
+          class="main-content"
+        >
+          <div
+            class="title"
+          >
+            <span
+              class="n8n-text size-medium bold textEllipses textEllipses"
+            >
+              
+              a label 
+              <!--v-if-->
+              
+            </span>
+          </div>
+          <!--v-if-->
+        </div>
+        <div
+          class="trailing-content"
+        >
+          <!--v-if-->
+          <!--v-if-->
+          <!--v-if-->
+        </div>
+      </label>
+      <!--v-if-->
+    </div>
+    
+    
+  </div>
+</div>
+`;
+
+exports[`component > Text overflow behavior > displays full text without options 1`] = `
+<div>
+  <div
+    class="container"
+    data-test-id="input-label"
+  >
+    <div
+      class="labelRow"
+    >
+      <label
+        class="n8n-input-label inputLabel heading medium"
+      >
+        <div
+          class="main-content"
+        >
+          <div
+            class="title"
+          >
+            <span
+              class="n8n-text size-medium bold"
+            >
+              
+              a label 
+              <!--v-if-->
+              
+            </span>
+          </div>
+          <!--v-if-->
+        </div>
+        <div
+          class="trailing-content"
+        >
+          <!--v-if-->
+          <!--v-if-->
+          <!--v-if-->
+        </div>
+      </label>
+      <!--v-if-->
+    </div>
+    
+    
+  </div>
+</div>
+`;

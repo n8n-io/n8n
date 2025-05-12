@@ -10,6 +10,7 @@ import type {
 import { NodeApiError } from 'n8n-workflow';
 
 import { getSendAndWaitConfig } from '../../../utils/sendAndWait/utils';
+import { createUtmCampaignLink } from '../../../utils/utilities';
 import { getGoogleAccessToken } from '../GenericFunctions';
 
 async function googleServiceAccountApiRequest(
@@ -161,18 +162,19 @@ export function getPagingParameters(resource: string, operation = 'getAll') {
 export function createSendAndWaitMessageBody(context: IExecuteFunctions) {
 	const config = getSendAndWaitConfig(context);
 
-	const instanceId = context.getInstanceId();
-	const attributionText = '_This_ _message_ _was_ _sent_ _automatically_ _with_';
-	const link = `https://n8n.io/?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=${encodeURIComponent(
-		'n8n-nodes-base.telegram',
-	)}${instanceId ? '_' + instanceId : ''}`;
-	const attribution = `${attributionText} _<${link}|n8n>_`;
-
 	const buttons: string[] = config.options.map(
 		(option) => `*<${`${config.url}?approved=${option.value}`}|${option.label}>*`,
 	);
 
-	const text = `${config.message}\n\n\n${buttons.join('   ')}\n\n${attribution}`;
+	let text = `${config.message}\n\n\n${buttons.join('   ')}`;
+
+	if (config.appendAttribution !== false) {
+		const instanceId = context.getInstanceId();
+		const attributionText = '_This_ _message_ _was_ _sent_ _automatically_ _with_';
+		const link = createUtmCampaignLink('n8n-nodes-base.googleChat', instanceId);
+		const attribution = `${attributionText} _<${link}|n8n>_`;
+		text += `\n\n${attribution}`;
+	}
 
 	const body = {
 		text,

@@ -1,5 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import { NodeConnectionType, type INodeTypeDescription } from 'n8n-workflow';
+import { NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
 
 import * as sheet from './sheet/Sheet.resource';
 import * as spreadsheet from './spreadsheet/SpreadSheet.resource';
@@ -9,14 +9,14 @@ export const versionDescription: INodeTypeDescription = {
 	name: 'googleSheets',
 	icon: 'file:googleSheets.svg',
 	group: ['input', 'output'],
-	version: [3, 4, 4.1, 4.2, 4.3, 4.4, 4.5],
+	version: [3, 4, 4.1, 4.2, 4.3, 4.4, 4.5, 4.6],
 	subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 	description: 'Read, update and write data to Google Sheets',
 	defaults: {
 		name: 'Google Sheets',
 	},
-	inputs: [NodeConnectionType.Main],
-	outputs: [NodeConnectionType.Main],
+	inputs: [NodeConnectionTypes.Main],
+	outputs: [NodeConnectionTypes.Main],
 	usableAsTool: true,
 	hints: [
 		{

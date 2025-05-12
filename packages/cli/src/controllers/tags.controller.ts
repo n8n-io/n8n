@@ -1,6 +1,4 @@
 import { CreateOrUpdateTagRequestDto, RetrieveTagQueryDto } from '@n8n/api-types';
-import { Response } from 'express';
-
 import {
 	Delete,
 	Get,
@@ -11,7 +9,9 @@ import {
 	Body,
 	Param,
 	Query,
-} from '@/decorators';
+} from '@n8n/decorators';
+import { Response } from 'express';
+
 import { AuthenticatedRequest } from '@/requests';
 import { TagService } from '@/services/tag.service';
 
@@ -38,7 +38,7 @@ export class TagsController {
 		return await this.tagService.save(tag, 'create');
 	}
 
-	@Patch('/:id(\\w+)')
+	@Patch('/:id')
 	@GlobalScope('tag:update')
 	async updateTag(
 		_req: AuthenticatedRequest,
@@ -51,7 +51,7 @@ export class TagsController {
 		return await this.tagService.save(newTag, 'update');
 	}
 
-	@Delete('/:id(\\w+)')
+	@Delete('/:id')
 	@GlobalScope('tag:delete')
 	async deleteTag(_req: AuthenticatedRequest, _res: Response, @Param('id') tagId: string) {
 		await this.tagService.delete(tagId);

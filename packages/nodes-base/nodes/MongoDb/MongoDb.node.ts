@@ -5,7 +5,7 @@ import type {
 	Sort,
 } from 'mongodb';
 import { ObjectId } from 'mongodb';
-import { ApplicationError, NodeConnectionType } from 'n8n-workflow';
+import { ApplicationError, NodeConnectionTypes } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
 	ICredentialsDecrypted,
@@ -41,8 +41,8 @@ export class MongoDb implements INodeType {
 		defaults: {
 			name: 'MongoDB',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		usableAsTool: true,
 		credentials: [
 			{

@@ -1,21 +1,19 @@
 import type { FrontendSettings, UserUpdateRequestDto } from '@n8n/api-types';
 import type { ClientOAuth2Options } from '@n8n/client-oauth2';
 import { GlobalConfig } from '@n8n/config';
+import type { TagEntity, User, ICredentialsDb, PublicUser } from '@n8n/db';
+import { CredentialsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ErrorReporter, Logger } from 'n8n-core';
 import type { IRun, IWorkflowBase, Workflow, WorkflowExecuteMode } from 'n8n-workflow';
-import { ApplicationError } from 'n8n-workflow';
+import { UnexpectedError } from 'n8n-workflow';
 import type clientOAuth1 from 'oauth-1.0a';
 
 import type { AbstractServer } from '@/abstract-server';
 import type { Config } from '@/config';
-import type { TagEntity } from '@/databases/entities/tag-entity';
-import type { User } from '@/databases/entities/user';
-import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import { SettingsRepository } from '@/databases/repositories/settings.repository';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import type { ICredentialsDb, PublicUser } from '@/interfaces';
 
 type Repositories = {
 	User: UserRepository;
@@ -70,6 +68,8 @@ type ExternalHooksMap = {
 	'workflow.afterUpdate': [updatedWorkflow: IWorkflowBase];
 	'workflow.delete': [workflowId: string];
 	'workflow.afterDelete': [workflowId: string];
+	'workflow.afterArchive': [workflowId: string];
+	'workflow.afterUnarchive': [workflowId: string];
 
 	'workflow.preExecute': [workflow: Workflow, mode: WorkflowExecuteMode];
 	'workflow.postExecute': [
@@ -125,7 +125,7 @@ export class ExternalHooks {
 			} catch (e) {
 				const error = e instanceof Error ? e : new Error(`${e}`);
 
-				throw new ApplicationError('Problem loading external hook file', {
+				throw new UnexpectedError('Problem loading external hook file', {
 					extra: { errorMessage: error.message, hookFilePath },
 					cause: error,
 				});
@@ -160,9 +160,12 @@ export class ExternalHooks {
 			} catch (cause) {
 				this.logger.error(`There was a problem running hook "${hookName}"`);
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				const error = new ApplicationError(`External hook "${hookName}" failed`, { cause });
+				const error = new UnexpectedError(`External hook "${hookName}" failed`, { cause });
 				this.errorReporter.error(error, { level: 'fatal' });
-				throw error;
+
+				// Throw original error, so that hooks control the error returned to use
+				// For example on Cloud we return upgrade message when user reaches max executions or activations
+				throw cause;
 			}
 		}
 	}

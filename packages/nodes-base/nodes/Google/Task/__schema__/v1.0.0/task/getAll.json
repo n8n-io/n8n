@@ -1,13 +1,39 @@
 {
     "type": "object",
     "properties": {
-        "kind": {
+        "etag": {
             "type": "string"
         },
         "id": {
             "type": "string"
         },
-        "etag": {
+        "kind": {
+            "type": "string"
+        },
+        "links": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "description": {
+                        "type": "string"
+                    },
+                    "link": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "position": {
+            "type": "string"
+        },
+        "selfLink": {
+            "type": "string"
+        },
+        "status": {
             "type": "string"
         },
         "title": {
@@ -16,57 +42,9 @@
         "updated": {
             "type": "string"
         },
-        "selfLink": {
-            "type": "string"
-        },
-        "position": {
-            "type": "string"
-        },
-        "notes": {
-            "type": "string"
-        },
-        "status": {
-            "type": "string"
-        },
-        "due": {
-            "type": "string"
-        },
-        "links": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "type": {
-                        "type": "string"
-                    },
-                    "description": {
-                        "type": "string"
-                    },
-                    "link": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "type",
-                    "description",
-                    "link"
-                ]
-            }
-        },
         "webViewLink": {
             "type": "string"
         }
     },
-    "required": [
-        "kind",
-        "id",
-        "etag",
-        "title",
-        "updated",
-        "selfLink",
-        "position",
-        "status",
-        "links",
-        "webViewLink"
-    ]
+    "version": 2
 }

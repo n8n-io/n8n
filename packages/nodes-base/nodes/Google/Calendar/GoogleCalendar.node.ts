@@ -10,12 +10,7 @@ import type {
 	JsonObject,
 	NodeExecutionHint,
 } from 'n8n-workflow';
-import {
-	NodeConnectionType,
-	NodeApiError,
-	NodeOperationError,
-	NodeExecutionOutput,
-} from 'n8n-workflow';
+import { NodeConnectionTypes, NodeApiError, NodeOperationError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { calendarFields, calendarOperations } from './CalendarDescription';
@@ -48,8 +43,8 @@ export class GoogleCalendar implements INodeType {
 		defaults: {
 			name: 'Google Calendar',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		usableAsTool: true,
 		credentials: [
 			{
@@ -811,7 +806,7 @@ export class GoogleCalendar implements INodeType {
 		}
 
 		if (hints.length) {
-			return new NodeExecutionOutput([nodeExecutionData], hints);
+			this.addExecutionHints(...hints);
 		}
 
 		return [nodeExecutionData];

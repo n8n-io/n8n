@@ -461,3 +461,9 @@ export function sortItemKeysByPriorityList(data: INodeExecutionData[], priorityL
 		return item;
 	});
 }
+
+export function createUtmCampaignLink(nodeType: string, instanceId?: string) {
+	return `https://n8n.io/?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=${encodeURIComponent(
+		nodeType,
+	)}${instanceId ? '_' + instanceId : ''}`;
+}

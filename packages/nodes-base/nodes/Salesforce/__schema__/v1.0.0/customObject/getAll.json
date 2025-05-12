@@ -10,14 +10,11 @@
                 "url": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "type",
-                "url"
-            ]
+            }
         },
         "Id": {
             "type": "string"
         }
-    }
+    },
+    "version": 3
 }
