@@ -23,7 +23,7 @@ import type {
 	IParameterLabel,
 	NodeParameterValueType,
 } from 'n8n-workflow';
-import { CREDENTIAL_EMPTY_VALUE, NodeHelpers } from 'n8n-workflow';
+import { CREDENTIAL_EMPTY_VALUE, isResourceLocatorValue, NodeHelpers } from 'n8n-workflow';
 
 import CodeNodeEditor from '@/components/CodeNodeEditor/CodeNodeEditor.vue';
 import CredentialsSelect from '@/components/CredentialsSelect.vue';
@@ -38,7 +38,6 @@ import SqlEditor from '@/components/SqlEditor/SqlEditor.vue';
 import TextEdit from '@/components/TextEdit.vue';
 
 import { hasExpressionMapping, isValueExpression } from '@/utils/nodeTypesUtils';
-import { isResourceLocatorValue } from '@/utils/typeGuards';
 
 import {
 	AI_TRANSFORM_NODE_TYPE,

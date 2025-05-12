@@ -191,6 +191,128 @@ exports[`useContextMenu > Read-only mode > should return the correct actions whe
 ]
 `;
 
+exports[`useContextMenu > should include "Open Sub-workflow" action when node is "Execute Workflow" with a set workflow 1`] = `
+[
+  {
+    "id": "open",
+    "label": "Open...",
+    "shortcut": {
+      "keys": [
+        "↵",
+      ],
+    },
+  },
+  {
+    "disabled": false,
+    "id": "execute",
+    "label": "Test step",
+  },
+  {
+    "disabled": false,
+    "id": "rename",
+    "label": "Rename",
+    "shortcut": {
+      "keys": [
+        "Space",
+      ],
+    },
+  },
+  {
+    "disabled": false,
+    "id": "open_sub_workflow",
+    "label": "Open Sub-workflow",
+    "shortcut": {
+      "keys": [
+        "O",
+      ],
+      "metaKey": true,
+      "shiftKey": true,
+    },
+  },
+  {
+    "disabled": false,
+    "id": "toggle_activation",
+    "label": "Deactivate",
+    "shortcut": {
+      "keys": [
+        "D",
+      ],
+    },
+  },
+  {
+    "disabled": true,
+    "id": "toggle_pin",
+    "label": "Pin",
+    "shortcut": {
+      "keys": [
+        "p",
+      ],
+    },
+  },
+  {
+    "id": "copy",
+    "label": "Copy",
+    "shortcut": {
+      "keys": [
+        "C",
+      ],
+      "metaKey": true,
+    },
+  },
+  {
+    "disabled": true,
+    "id": "duplicate",
+    "label": "Duplicate",
+    "shortcut": {
+      "keys": [
+        "D",
+      ],
+      "metaKey": true,
+    },
+  },
+  {
+    "divided": true,
+    "id": "tidy_up",
+    "label": "Tidy up workflow",
+    "shortcut": {
+      "altKey": true,
+      "keys": [
+        "T",
+      ],
+      "shiftKey": true,
+    },
+  },
+  {
+    "disabled": false,
+    "divided": true,
+    "id": "select_all",
+    "label": "Select all",
+    "shortcut": {
+      "keys": [
+        "A",
+      ],
+      "metaKey": true,
+    },
+  },
+  {
+    "disabled": false,
+    "id": "deselect_all",
+    "label": "Clear selection",
+  },
+  {
+    "disabled": false,
+    "divided": true,
+    "id": "delete",
+    "label": "Delete",
+    "shortcut": {
+      "keys": [
+        "Del",
+      ],
+    },
+  },
+]
+`;
+
 exports[`useContextMenu > should return the correct actions opening the menu from the button 1`] = `
 [
   {
@@ -427,6 +549,250 @@ exports[`useContextMenu > should return the correct actions when right clicking 
     "disabled": false,
     "id": "change_color",
     "label": "Change color",
+  },
+  {
+    "id": "copy",
+    "label": "Copy",
+    "shortcut": {
+      "keys": [
+        "C",
+      ],
+      "metaKey": true,
+    },
+  },
+  {
+    "disabled": true,
+    "id": "duplicate",
+    "label": "Duplicate",
+    "shortcut": {
+      "keys": [
+        "D",
+      ],
+      "metaKey": true,
+    },
+  },
+  {
+    "divided": true,
+    "id": "tidy_up",
+    "label": "Tidy up workflow",
+    "shortcut": {
+      "altKey": true,
+      "keys": [
+        "T",
+      ],
+      "shiftKey": true,
+    },
+  },
+  {
+    "disabled": false,
+    "divided": true,
+    "id": "select_all",
+    "label": "Select all",
+    "shortcut": {
+      "keys": [
+        "A",
+      ],
+      "metaKey": true,
+    },
+  },
+  {
+    "disabled": false,
+    "id": "deselect_all",
+    "label": "Clear selection",
+  },
+  {
+    "disabled": false,
+    "divided": true,
+    "id": "delete",
+    "label": "Delete",
+    "shortcut": {
+      "keys": [
+        "Del",
+      ],
+    },
+  },
+]
+`;
+
+exports[`useContextMenu > should show "Open Sub-workflow" action (disabled) when node is "Execute Workflow" without a set workflow 1`] = `
+[
+  {
+    "id": "open",
+    "label": "Open...",
+    "shortcut": {
+      "keys": [
+        "↵",
+      ],
+    },
+  },
+  {
+    "disabled": false,
+    "id": "execute",
+    "label": "Test step",
+  },
+  {
+    "disabled": false,
+    "id": "rename",
+    "label": "Rename",
+    "shortcut": {
+      "keys": [
+        "Space",
+      ],
+    },
+  },
+  {
+    "disabled": true,
+    "id": "open_sub_workflow",
+    "label": "Open Sub-workflow",
+    "shortcut": {
+      "keys": [
+        "O",
+      ],
+      "metaKey": true,
+      "shiftKey": true,
+    },
+  },
+  {
+    "disabled": false,
+    "id": "toggle_activation",
+    "label": "Deactivate",
+    "shortcut": {
+      "keys": [
+        "D",
+      ],
+    },
+  },
+  {
+    "disabled": true,
+    "id": "toggle_pin",
+    "label": "Pin",
+    "shortcut": {
+      "keys": [
+        "p",
+      ],
+    },
+  },
+  {
+    "id": "copy",
+    "label": "Copy",
+    "shortcut": {
+      "keys": [
+        "C",
+      ],
+      "metaKey": true,
+    },
+  },
+  {
+    "disabled": true,
+    "id": "duplicate",
+    "label": "Duplicate",
+    "shortcut": {
+      "keys": [
+        "D",
+      ],
+      "metaKey": true,
+    },
+  },
+  {
+    "divided": true,
+    "id": "tidy_up",
+    "label": "Tidy up workflow",
+    "shortcut": {
+      "altKey": true,
+      "keys": [
+        "T",
+      ],
+      "shiftKey": true,
+    },
+  },
+  {
+    "disabled": false,
+    "divided": true,
+    "id": "select_all",
+    "label": "Select all",
+    "shortcut": {
+      "keys": [
+        "A",
+      ],
+      "metaKey": true,
+    },
+  },
+  {
+    "disabled": false,
+    "id": "deselect_all",
+    "label": "Clear selection",
+  },
+  {
+    "disabled": false,
+    "divided": true,
+    "id": "delete",
+    "label": "Delete",
+    "shortcut": {
+      "keys": [
+        "Del",
+      ],
+    },
+  },
+]
+`;
+
+exports[`useContextMenu > should show "Open Sub-workflow" action (enabled) when node is "Execute Workflow" with a set workflow 1`] = `
+[
+  {
+    "id": "open",
+    "label": "Open...",
+    "shortcut": {
+      "keys": [
+        "↵",
+      ],
+    },
+  },
+  {
+    "disabled": false,
+    "id": "execute",
+    "label": "Test step",
+  },
+  {
+    "disabled": false,
+    "id": "rename",
+    "label": "Rename",
+    "shortcut": {
+      "keys": [
+        "Space",
+      ],
+    },
+  },
+  {
+    "disabled": false,
+    "id": "open_sub_workflow",
+    "label": "Open Sub-workflow",
+    "shortcut": {
+      "keys": [
+        "O",
+      ],
+      "metaKey": true,
+      "shiftKey": true,
+    },
+  },
+  {
+    "disabled": false,
+    "id": "toggle_activation",
+    "label": "Deactivate",
+    "shortcut": {
+      "keys": [
+        "D",
+      ],
+    },
+  },
+  {
+    "disabled": true,
+    "id": "toggle_pin",
+    "label": "Pin",
+    "shortcut": {
+      "keys": [
+        "p",
+      ],
+    },
   },
   {
     "id": "copy",
