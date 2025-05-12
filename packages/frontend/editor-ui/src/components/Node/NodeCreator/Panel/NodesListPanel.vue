@@ -25,6 +25,7 @@ import CommunityNodeDetails from './CommunityNodeDetails.vue';
 import CommunityNodeInfo from './CommunityNodeInfo.vue';
 import CommunityNodeDocsLink from './CommunityNodeDocsLink.vue';
 import CommunityNodeFooter from './CommunityNodeFooter.vue';
+import { useUsersStore } from '@/stores/users.store';
 
 const i18n = useI18n();
 const { callDebounced } = useDebounce();
@@ -33,6 +34,8 @@ const { mergedNodes } = useNodeCreatorStore();
 const { pushViewStack, popViewStack, updateCurrentViewStack } = useViewStacks();
 const { setActiveItemIndex, attachKeydownEvent, detachKeydownEvent } = useKeyboardNavigation();
 const nodeCreatorStore = useNodeCreatorStore();
+
+const { isInstanceOwner } = useUsersStore();
 
 const activeViewStack = computed(() => useViewStacks().activeViewStack);
 
@@ -233,6 +236,7 @@ function onBackButton() {
 			<CommunityNodeFooter
 				v-if="communityNodeDetails && !isCommunityNodeActionsMode"
 				:package-name="communityNodeDetails.packageName"
+				:show-manage="communityNodeDetails.installed && isInstanceOwner"
 			/>
 		</aside>
 	</transition>

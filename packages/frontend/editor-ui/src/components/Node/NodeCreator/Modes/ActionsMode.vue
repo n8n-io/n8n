@@ -39,7 +39,7 @@ const emit = defineEmits<{
 const telemetry = useTelemetry();
 const i18n = useI18n();
 
-const { userActivated } = useUsersStore();
+const { userActivated, isInstanceOwner } = useUsersStore();
 const { popViewStack, updateCurrentViewStack } = useViewStacks();
 const { registerKeyHook } = useKeyboardNavigation();
 const {
@@ -337,6 +337,7 @@ onMounted(() => {
 			:class="$style.communityNodeFooter"
 			v-if="communityNodeDetails"
 			:package-name="communityNodeDetails.packageName"
+			:show-manage="communityNodeDetails.installed && isInstanceOwner"
 		/>
 	</div>
 </template>

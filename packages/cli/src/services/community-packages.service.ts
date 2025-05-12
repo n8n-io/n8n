@@ -352,7 +352,7 @@ export class CommunityPackagesService {
 		if (isUpdate) return;
 
 		if (!this.globalConfig.nodes.communityPackages.unverifiedEnabled && !checksumProvided) {
-			throw new UnexpectedError('Installation of non-vetted community packages is forbidden!');
+			throw new UnexpectedError('Installation of unverified community packages is forbidden!');
 		}
 	}
 

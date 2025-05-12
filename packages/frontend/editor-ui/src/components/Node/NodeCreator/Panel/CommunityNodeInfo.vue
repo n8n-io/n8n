@@ -142,14 +142,14 @@ onMounted(async () => {
 		</div>
 		<div v-if="!isOwner && !communityNodeDetails?.installed" :class="$style.contactOwnerHint">
 			<N8nIcon color="text-light" icon="info-circle" size="large" />
-			<nN8nText color="text-base" size="medium">
+			<N8nText color="text-base" size="medium">
 				<div style="padding-bottom: 8px">
 					{{ i18n.baseText('communityNodeInfo.contact.admin') }}
 				</div>
 				<N8nText bold v-if="ownerEmailList.length">
 					{{ ownerEmailList.join(', ') }}
 				</N8nText>
-			</nN8nText>
+			</N8nText>
 		</div>
 	</div>
 </template>

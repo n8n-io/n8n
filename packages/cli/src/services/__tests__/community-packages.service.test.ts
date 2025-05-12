@@ -534,7 +534,7 @@ describe('CommunityPackagesService', () => {
 			globalConfig.nodes.communityPackages.unverifiedEnabled = false;
 			globalConfig.nodes.communityPackages.registry = 'https://registry.npmjs.org';
 			await expect(communityPackagesService.installPackage('package', '0.1.0')).rejects.toThrow(
-				'Installation of non-vetted community packages is forbidden!',
+				'Installation of unverified community packages is forbidden!',
 			);
 		});
 	});
