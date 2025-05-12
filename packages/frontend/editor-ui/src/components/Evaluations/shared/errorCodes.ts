@@ -12,7 +12,7 @@ export type TestCaseExecutionErrorCodes =
 	(typeof TEST_CASE_EXECUTION_ERROR_CODE)[keyof typeof TEST_CASE_EXECUTION_ERROR_CODE];
 
 const TEST_RUN_ERROR_CODES = {
-	TEST_CASE_NOT_FOUND: 'TEST_CASES_NOT_FOUND',
+	TEST_CASES_NOT_FOUND: 'TEST_CASES_NOT_FOUND',
 	INTERRUPTED: 'INTERRUPTED',
 	UNKNOWN_ERROR: 'UNKNOWN_ERROR',
 	EVALUATION_TRIGGER_NOT_FOUND: 'EVALUATION_TRIGGER_NOT_FOUND',
@@ -46,7 +46,11 @@ const testRunErrorDictionary: Partial<Record<TestRunErrorCode, BaseTextKey>> = {
 	CANT_FETCH_TEST_CASES: 'evaluation.listRuns.error.cantFetchTestCases',
 } as const;
 
-export const getErrorBaseKey = (errorCode?: string): string =>
-	testCaseErrorDictionary[errorCode as TestCaseExecutionErrorCodes] ??
-	testRunErrorDictionary[errorCode as TestRunErrorCode] ??
-	'';
+export const getErrorBaseKey = (errorCode?: string): string => {
+	console.log('errorCode', errorCode);
+	return (
+		testCaseErrorDictionary[errorCode as TestCaseExecutionErrorCodes] ??
+		testRunErrorDictionary[errorCode as TestRunErrorCode] ??
+		''
+	);
+};
