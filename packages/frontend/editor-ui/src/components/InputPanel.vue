@@ -186,13 +186,36 @@ const isExecutingPrevious = computed(() => {
 	return false;
 });
 
+const isToolNode = computed(() => {
+	if (!activeNode.value) return false;
+	const nodeType = nodeTypesStore.getNodeType(activeNode.value.type, activeNode.value.typeVersion);
+	return !!nodeType?.usableAsTool;
+});
+
 const rootNodesParents = computed(() => {
 	if (!rootNode.value) return [];
-	return props.workflow.getParentNodesByDepth(rootNode.value);
+	const parents = props.workflow.getParentNodesByDepth(rootNode.value);
+
+	if (!isToolNode.value) {
+		return parents;
+	}
+
+	return [
+		...parents,
+		{
+			name: activeNode.value?.name,
+			indicies: [0],
+			depth: 0,
+		},
+	];
 });
 
 const currentNode = computed(() => {
 	if (isActiveNodeConfig.value) {
+		if (isToolNode.value && activeNode.value) {
+			return workflowsStore.getNodeByName(activeNode.value.name);
+		}
+
 		// if we're mapping node we want to show the output of the mapped node
 		if (mappedNode.value) {
 			return workflowsStore.getNodeByName(mappedNode.value);
