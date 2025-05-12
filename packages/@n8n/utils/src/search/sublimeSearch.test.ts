@@ -3,7 +3,7 @@ import { sublimeSearch } from './sublimeSearch';
 
 describe('sublimeSearch', () => {
 	describe('search finds at least one match', () => {
-		const testCases: Array<[string, string[]]> = [['agent', ['Magento 2', 'AI Agent']]];
+		const testCases: Array<[string, string[]]> = [['agent', ['AI Agent', 'Magento 2']]];
 
 		test.each(testCases)(
 			'should return at least "$expectedOrder" for filter "$filter"',
