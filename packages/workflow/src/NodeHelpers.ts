@@ -1558,7 +1558,7 @@ export function isExecutable(workflow: Workflow, node: INode, nodeTypeData: INod
 	const outputNames = getConnectionTypes(outputs);
 	return (
 		outputNames.includes(NodeConnectionTypes.Main) ||
-		isTriggerNode(nodeTypeData) ||
-		nodeTypeData.usableAsTool === true
+		outputNames.includes(NodeConnectionTypes.AiTool) ||
+		isTriggerNode(nodeTypeData)
 	);
 }

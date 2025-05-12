@@ -3,6 +3,8 @@ import {
 	AuthProviderSyncHistoryRepository,
 	ProjectRelationRepository,
 	ProjectRepository,
+	SharedCredentialsRepository,
+	SharedWorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
@@ -13,8 +15,6 @@ import { UserError } from 'n8n-workflow';
 import { UM_FIX_INSTRUCTION } from '@/constants';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { SettingsRepository } from '@/databases/repositories/settings.repository';
-import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import { LDAP_DEFAULT_CONFIGURATION, LDAP_FEATURE_NAME } from '@/ldap.ee/constants';
 import { WorkflowService } from '@/workflows/workflow.service';
