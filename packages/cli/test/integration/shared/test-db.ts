@@ -6,7 +6,7 @@ import { DataSource as Connection } from '@n8n/typeorm';
 import { randomString } from 'n8n-workflow';
 
 import { getOptionOverrides } from '@/databases/config';
-import * as Db from '@/db';
+import { DBConnection } from '@/databases/db-connection';
 
 export const testDbPrefix = 'n8n_test_';
 
@@ -34,20 +34,23 @@ export async function init() {
 		globalConfig.database.mysqldb.database = testDbName;
 	}
 
-	await Db.init();
-	await Db.migrate();
+	const dbConnection = Container.get(DBConnection);
+	await dbConnection.init();
+	await dbConnection.migrate();
 }
 
 export function isReady() {
-	return Db.connectionState.connected && Db.connectionState.migrated;
+	const { connectionState } = Container.get(DBConnection);
+	return connectionState.connected && connectionState.migrated;
 }
 
 /**
  * Drop test DB, closing bootstrap connection if existing.
  */
 export async function terminate() {
-	await Db.close();
-	Db.connectionState.connected = false;
+	const dbConnection = Container.get(DBConnection);
+	await dbConnection.close();
+	dbConnection.connectionState.connected = false;
 }
 
 type EntityName = keyof typeof entities | 'InsightsRaw' | 'InsightsByPeriod' | 'InsightsMetadata';
