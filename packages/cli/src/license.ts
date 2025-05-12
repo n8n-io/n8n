@@ -410,21 +410,6 @@ export class License implements LicenseProvider {
 	}
 
 	/** @deprecated Use `LicenseState` instead. */
-	getInsightsMaxHistory() {
-		return this.getValue(LICENSE_QUOTAS.INSIGHTS_MAX_HISTORY_DAYS) ?? 7;
-	}
-
-	/** @deprecated Use `LicenseState` instead. */
-	getInsightsRetentionMaxAge() {
-		return this.getValue(LICENSE_QUOTAS.INSIGHTS_RETENTION_MAX_AGE_DAYS) ?? 180;
-	}
-
-	/** @deprecated Use `LicenseState` instead. */
-	getInsightsRetentionPruneInterval() {
-		return this.getValue(LICENSE_QUOTAS.INSIGHTS_RETENTION_PRUNE_INTERVAL_DAYS) ?? 24;
-	}
-
-	/** @deprecated Use `LicenseState` instead. */
 	getTeamProjectLimit() {
 		return this.getValue(LICENSE_QUOTAS.TEAM_PROJECT_LIMIT) ?? 0;
 	}
