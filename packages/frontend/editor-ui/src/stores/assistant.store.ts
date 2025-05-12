@@ -147,6 +147,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	function closeChat() {
 		chatWindowOpen.value = false;
 		// Looks smoother if we wait for slide animation to finish before updating the grid width
+		// Has to wait for longer than SlideTransition duration
 		setTimeout(() => {
 			uiStore.appGridDimensions = {
 				...uiStore.appGridDimensions,
@@ -156,7 +157,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			if (isSessionEnded.value) {
 				resetAssistantChat();
 			}
-		}, 200);
+		}, 250);
 	}
 
 	function addAssistantMessages(newMessages: ChatRequest.MessageResponse[], id: string) {

@@ -88,12 +88,13 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	function closeChat() {
 		chatWindowOpen.value = false;
 		// Looks smoother if we wait for slide animation to finish before updating the grid width
+		// Has to wait for longer than SlideTransition duration
 		setTimeout(() => {
 			uiStore.appGridDimensions = {
 				...uiStore.appGridDimensions,
 				width: window.innerWidth,
 			};
-		}, 200);
+		}, 250);
 	}
 
 	function clearMessages() {
