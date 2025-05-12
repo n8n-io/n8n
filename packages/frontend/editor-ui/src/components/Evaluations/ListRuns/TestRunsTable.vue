@@ -62,7 +62,8 @@ const runSummaries = computed(() => {
 						<N8nTooltip placement="right" :show-after="300">
 							<template #content>
 								{{
-									locale.baseText(`${getErrorBaseKey(row.errorCode)}` as BaseTextKey) || row.status
+									locale.baseText(`${getErrorBaseKey(row.errorCode)}` as BaseTextKey) ||
+									locale.baseText(`${getErrorBaseKey('UNKNOWN_ERROR')}` as BaseTextKey)
 								}}
 							</template>
 
@@ -77,8 +78,8 @@ const runSummaries = computed(() => {
 							>
 								<N8nText size="small" color="danger">
 									{{
-										locale.baseText(`${getErrorBaseKey(row?.errorCode)}` as BaseTextKey) ??
-										row?.errorCode
+										locale.baseText(`${getErrorBaseKey(row?.errorCode)}` as BaseTextKey) ||
+										locale.baseText(`${getErrorBaseKey('UNKNOWN_ERROR')}` as BaseTextKey)
 									}}
 								</N8nText>
 							</div>
