@@ -55,12 +55,12 @@ onMounted(async () => {
 
 <template>
 	<div :class="$style.container">
-		<div v-if="props.showManage">
+		<template v-if="props.showManage">
 			<N8nLink theme="text" @click="openSettingsPage">
 				<N8nText size="small" color="primary" bold> Manage </N8nText>
 			</N8nLink>
 			<N8nText size="small" color="primary" bold>|</N8nText>
-		</div>
+		</template>
 		<N8nLink theme="text" @click="openIssuesPage">
 			<N8nText size="small" color="primary" bold> Report issue </N8nText>
 		</N8nLink>
