@@ -58,14 +58,13 @@ describe('executions.store', () => {
 		});
 
 		it('should delete executions started before given date', async () => {
-			const deleteBefore = mockExecutions[1].startedAt;
+			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+			const deleteBefore = mockExecutions[1].startedAt!;
 			await executionsStore.deleteExecutions({ deleteBefore });
 
 			expect(executionsStore.executions.length).toBe(2);
 			executionsStore.executions.forEach(({ startedAt }) =>
-				// TODO: fix this
-				// @ts-expect-error
-				expect(startedAt.getTime()).toBeGreaterThanOrEqual(deleteBefore.getTime()),
+				expect(startedAt?.getTime()).toBeGreaterThanOrEqual(deleteBefore.getTime()),
 			);
 		});
 
