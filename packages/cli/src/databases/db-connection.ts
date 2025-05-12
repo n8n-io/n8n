@@ -1,3 +1,4 @@
+import { Memoized } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { ErrorReporter } from 'n8n-core';
@@ -5,7 +6,7 @@ import { DbConnectionTimeoutError, ensureError } from 'n8n-workflow';
 
 import { inTest } from '@/constants';
 
-import { getConnectionOptions, arePostgresOptions } from './config';
+import { DBConnectionOptions } from './db-connection-options';
 import type { Migration } from './types';
 import { wrapMigration } from './utils/migration-helpers';
 
@@ -25,41 +26,47 @@ export class DBConnection {
 		migrated: false,
 	};
 
-	constructor(private readonly errorReporter: ErrorReporter) {
-		if (!inTest) this.scheduleNextPing();
+	constructor(
+		private readonly errorReporter: ErrorReporter,
+		private readonly connectionOptions: DBConnectionOptions,
+	) {
+		this.dataSource = new DataSource(this.options);
+		Container.set(DataSource, this.dataSource);
+	}
+
+	@Memoized
+	get options() {
+		return this.connectionOptions.getOptions();
 	}
 
 	async init(): Promise<void> {
-		if (this.connectionState.connected) return;
-
-		const connectionOptions = getConnectionOptions();
-		this.dataSource = new DataSource(connectionOptions);
-		Container.set(DataSource, this.dataSource);
-
+		const { connectionState, options } = this;
+		if (connectionState.connected) return;
 		try {
 			await this.dataSource.initialize();
 		} catch (e) {
 			let error = ensureError(e);
 			if (
-				arePostgresOptions(connectionOptions) &&
+				options.type === 'postgres' &&
 				error.message === 'Connection terminated due to connection timeout'
 			) {
 				error = new DbConnectionTimeoutError({
 					cause: error,
-					configuredTimeoutInMs: connectionOptions.connectTimeoutMS!,
+					configuredTimeoutInMs: options.connectTimeoutMS!,
 				});
 			}
-
 			throw error;
 		}
 
-		this.connectionState.connected = true;
+		connectionState.connected = true;
+		if (!inTest) this.scheduleNextPing();
 	}
 
 	async migrate() {
-		(this.dataSource.options.migrations as Migration[]).forEach(wrapMigration);
-		await this.dataSource.runMigrations({ transaction: 'each' });
-		this.connectionState.migrated = true;
+		const { dataSource, connectionState } = this;
+		(dataSource.options.migrations as Migration[]).forEach(wrapMigration);
+		await dataSource.runMigrations({ transaction: 'each' });
+		connectionState.migrated = true;
 	}
 
 	async close() {
@@ -68,7 +75,9 @@ export class DBConnection {
 			this.pingTimer = undefined;
 		}
 
-		if (this.dataSource.isInitialized) await this.dataSource.destroy();
+		if (this.dataSource.isInitialized) {
+			await this.dataSource.destroy();
+		}
 	}
 
 	/** Ping DB connection every 2 seconds */
@@ -77,7 +86,7 @@ export class DBConnection {
 	}
 
 	private async ping() {
-		if (!this.dataSource?.isInitialized) return;
+		if (!this.dataSource.isInitialized) return;
 		try {
 			await this.dataSource.query('SELECT 1');
 			this.connectionState.connected = true;
