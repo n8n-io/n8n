@@ -28,7 +28,7 @@ import type { ExecuteContext, WebhookContext } from '../../node-execution-contex
 // eslint-disable-next-line import/no-cycle
 import { SupplyDataContext } from '../../node-execution-context/supply-data-context';
 
-function getLatestRunIndex(runExecutionData: IRunExecutionData, nodeName: string) {
+function nextRunIndex(runExecutionData: IRunExecutionData, nodeName: string) {
 	return runExecutionData.resultData.runData[nodeName]?.length ?? 0;
 }
 
@@ -43,7 +43,7 @@ export function makeHandleToolInvocation(
 	 * It is incremented on every invocation of the tool to keep the output of each invocation separate from each other.
 	 */
 	return async (toolArgs: IDataObject) => {
-		const runIndex = getLatestRunIndex(runExecutionData, node.name);
+		const runIndex = nextRunIndex(runExecutionData, node.name);
 		const context = contextFactory(runIndex);
 		context.addInputData(NodeConnectionTypes.AiTool, [[{ json: toolArgs }]]);
 

@@ -912,7 +912,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 			itemIndex: number,
 			inputIndex?: number,
 		): Promise<unknown>;
-		getLatestRunIndex(): number;
+		nextRunIndex(): number;
 		getInputData(inputIndex?: number, connectionType?: NodeConnectionType): INodeExecutionData[];
 		getNodeInputs(): INodeInputConfiguration[];
 		getNodeOutputs(): INodeOutputConfiguration[];
@@ -988,7 +988,7 @@ export type ISupplyDataFunctions = ExecuteFunctions.GetNodeParameterFn &
 		| 'addOutputData'
 		| 'getInputConnectionData'
 		| 'getInputData'
-		| 'getLatestRunIndex'
+		| 'nextRunIndex'
 		| 'getNodeOutputs'
 		| 'executeWorkflow'
 		| 'sendMessageToUI'
