@@ -2,7 +2,7 @@ import { mock } from 'jest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
 
 import { GoogleSheet } from '../../Google/Sheet/v2/helpers/GoogleSheet';
-import { EvaluationTrigger, startingRow } from '../EvaluationTrigger/EvaluationTrigger.node';
+import { EvaluationTrigger, startingRow } from '../EvaluationTrigger/EvaluationTrigger.node.ee';
 import * as utils from '../utils/evaluationTriggerUtils';
 
 describe('Evaluation Trigger Node', () => {
