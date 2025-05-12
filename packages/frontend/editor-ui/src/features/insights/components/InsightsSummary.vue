@@ -68,70 +68,65 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 <template>
 	<div :class="$style.insights">
 		<ul data-test-id="insights-summary-tabs">
-			<N8nLoading v-if="loading" :class="$style.loading" :cols="5" />
-			<template v-else>
-				<li
-					v-for="{ id, value, deviation, deviationUnit, unit, to } in summaryWithRouteLocations"
-					:key="id"
-					:data-test-id="`insights-summary-tab-${id}`"
-				>
-					<router-link :to="to" :exact-active-class="$style.activeTab" @click="trackTabClick(id)">
-						<strong>
-							<N8nTooltip placement="bottom" :disabled="id !== 'timeSaved'">
-								<template #content>
-									{{ i18n.baseText('insights.banner.title.timeSaved.tooltip') }}
-								</template>
-								{{ summaryTitles[id] }}
-							</N8nTooltip>
-						</strong>
-						<small :class="$style.days">
-							{{ TIME_RANGE_LABELS[timeRange] }}
-						</small>
-						<span v-if="summaryHasNoData" :class="$style.noData">
+			<li
+				v-for="{ id, value, deviation, deviationUnit, unit, to } in summaryWithRouteLocations"
+				:key="id"
+				:data-test-id="`insights-summary-tab-${id}`"
+			>
+				<router-link :to="to" :exact-active-class="$style.activeTab" @click="trackTabClick(id)">
+					<strong>
+						<N8nTooltip placement="bottom" :disabled="id !== 'timeSaved'">
+							<template #content>
+								{{ i18n.baseText('insights.banner.title.timeSaved.tooltip') }}
+							</template>
+							{{ summaryTitles[id] }}
+						</N8nTooltip>
+					</strong>
+					<small :class="$style.days">
+						{{ TIME_RANGE_LABELS[timeRange] }}
+					</small>
+					<span v-if="summaryHasNoData" :class="$style.noData">
+						<N8nTooltip placement="bottom">
+							<template #content>
+								{{ i18n.baseText('insights.banner.noData.tooltip') }}
+							</template>
+							<em>{{ i18n.baseText('insights.banner.noData') }}</em>
+						</N8nTooltip>
+					</span>
+					<span v-else-if="value === 0 && id === 'timeSaved'" :class="$style.empty">
+						<em>--</em>
+						<small>
 							<N8nTooltip placement="bottom">
 								<template #content>
-									{{ i18n.baseText('insights.banner.noData.tooltip') }}
+									<i18n-t keypath="insights.banner.timeSaved.tooltip">
+										<template #link>{{
+											i18n.baseText('insights.banner.timeSaved.tooltip.link.text')
+										}}</template>
+									</i18n-t>
 								</template>
-								<em>{{ i18n.baseText('insights.banner.noData') }}</em>
+								<N8nIcon :class="$style.icon" icon="info-circle" />
 							</N8nTooltip>
-						</span>
-						<span v-else-if="value === 0 && id === 'timeSaved'" :class="$style.empty">
-							<em>--</em>
-							<small>
-								<N8nTooltip placement="bottom">
-									<template #content>
-										<i18n-t keypath="insights.banner.timeSaved.tooltip">
-											<template #link>{{
-												i18n.baseText('insights.banner.timeSaved.tooltip.link.text')
-											}}</template>
-										</i18n-t>
-									</template>
-									<N8nIcon :class="$style.icon" icon="info-circle" />
-								</N8nTooltip>
-							</small>
-						</span>
-						<span v-else>
-							<em
-								>{{ smartDecimal(value).toLocaleString('en-US') }} <i>{{ unit }}</i></em
-							>
-							<small v-if="deviation !== null" :class="getImpactStyle(id, deviation)">
-								<N8nIcon
-									:class="[$style.icon, getImpactStyle(id, deviation)]"
-									:icon="
-										deviation === 0 ? 'caret-right' : deviation > 0 ? 'caret-up' : 'caret-down'
-									"
-								/>
-								<N8nTooltip placement="bottom" :disabled="id !== 'failureRate'">
-									<template #content>
-										{{ i18n.baseText('insights.banner.failureRate.deviation.tooltip') }}
-									</template>
-									{{ smartDecimal(Math.abs(deviation)).toLocaleString('en-US') }}{{ deviationUnit }}
-								</N8nTooltip>
-							</small>
-						</span>
-					</router-link>
-				</li>
-			</template>
+						</small>
+					</span>
+					<span v-else>
+						<em
+							>{{ smartDecimal(value).toLocaleString('en-US') }} <i>{{ unit }}</i></em
+						>
+						<small v-if="deviation !== null" :class="getImpactStyle(id, deviation)">
+							<N8nIcon
+								:class="[$style.icon, getImpactStyle(id, deviation)]"
+								:icon="deviation === 0 ? 'caret-right' : deviation > 0 ? 'caret-up' : 'caret-down'"
+							/>
+							<N8nTooltip placement="bottom" :disabled="id !== 'failureRate'">
+								<template #content>
+									{{ i18n.baseText('insights.banner.failureRate.deviation.tooltip') }}
+								</template>
+								{{ smartDecimal(Math.abs(deviation)).toLocaleString('en-US') }}{{ deviationUnit }}
+							</N8nTooltip>
+						</small>
+					</span>
+				</router-link>
+			</li>
 		</ul>
 	</div>
 </template>

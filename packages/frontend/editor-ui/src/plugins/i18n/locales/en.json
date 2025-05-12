@@ -3156,7 +3156,7 @@
 	"insights.banner.failureRate.deviation.tooltip": "Percentage point change from previous period",
 	"insights.chart.failed": "Failed",
 	"insights.chart.succeeded": "Successful",
-	"insights.chart.loading": "Loading data...",
+	"insights.chart.loading": "Loading data",
 	"communityNodesDocsLink.link.title": "Open community node docs",
 	"communityNodesDocsLink.title": "Docs",
 	"communityNodeItem.node.hint": "Install this node to start using it",

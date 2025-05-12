@@ -135,7 +135,6 @@ watch(sortBy, (newValue) => {
 			:items="rows"
 			:headers="headers"
 			:items-length="data.count"
-			:loading="loading"
 			@update:options="emit('update:options', $event)"
 		>
 			<template #[`item.workflowName`]="{ item }">
