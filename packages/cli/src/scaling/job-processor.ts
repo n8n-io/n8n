@@ -170,7 +170,10 @@ export class JobProcessor {
 
 		const { startData, resultData, manualData, isTestWebhook } = execution.data;
 
-		if (['manual', 'evaluation'].includes(execution.mode) && !isTestWebhook) {
+		if (execution.data?.executionData) {
+			workflowExecute = new WorkflowExecute(additionalData, execution.mode, execution.data);
+			workflowRun = workflowExecute.processRunExecutionData(workflow);
+		} else if (['manual', 'evaluation'].includes(execution.mode) && !isTestWebhook) {
 			const data: IWorkflowExecutionDataProcess = {
 				executionMode: execution.mode,
 				workflowData: execution.workflowData,
@@ -211,9 +214,6 @@ export class JobProcessor {
 				}
 				throw error;
 			}
-		} else if (execution.data !== undefined) {
-			workflowExecute = new WorkflowExecute(additionalData, execution.mode, execution.data);
-			workflowRun = workflowExecute.processRunExecutionData(workflow);
 		} else {
 			this.errorReporter.info(`Worker found execution ${executionId} without data`);
 			// Execute all nodes

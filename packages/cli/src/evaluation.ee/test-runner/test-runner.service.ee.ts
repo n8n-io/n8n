@@ -1,5 +1,10 @@
 import type { User, ExecutionEntity, MockedNodeItem, TestDefinition, TestRun } from '@n8n/db';
-import { ExecutionRepository } from '@n8n/db';
+import {
+	ExecutionRepository,
+	TestCaseExecutionRepository,
+	TestMetricRepository,
+	TestRunRepository,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import { parse } from 'flatted';
 import difference from 'lodash/difference';
@@ -18,9 +23,6 @@ import assert from 'node:assert';
 import { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
 import { EVALUATION_METRICS_NODE } from '@/constants';
-import { TestCaseExecutionRepository } from '@/databases/repositories/test-case-execution.repository.ee';
-import { TestMetricRepository } from '@/databases/repositories/test-metric.repository.ee';
-import { TestRunRepository } from '@/databases/repositories/test-run.repository.ee';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import * as Db from '@/db';
 import { TestCaseExecutionError, TestRunError } from '@/evaluation.ee/test-runner/errors.ee';

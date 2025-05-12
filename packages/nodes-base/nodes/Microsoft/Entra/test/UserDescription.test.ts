@@ -42,7 +42,7 @@ describe('Microsoft Entra Node', () => {
 								typeVersion: 1,
 								position: [220, 0],
 								id: '3429f7f2-dfca-4b72-8913-43a582e96e66',
-								name: 'Micosoft Entra ID',
+								name: 'Microsoft Entra ID',
 								credentials: {
 									microsoftEntraOAuth2Api: {
 										id: 'Hot2KwSMSoSmMVqd',
@@ -56,7 +56,7 @@ describe('Microsoft Entra Node', () => {
 								main: [
 									[
 										{
-											node: 'Micosoft Entra ID',
+											node: 'Microsoft Entra ID',
 											type: NodeConnectionTypes.Main,
 											index: 0,
 										},
@@ -68,7 +68,7 @@ describe('Microsoft Entra Node', () => {
 				},
 				output: {
 					nodeData: {
-						'Micosoft Entra ID': [microsoftEntraNodeResponse.addUserToGroup],
+						'Microsoft Entra ID': [microsoftEntraNodeResponse.addUserToGroup],
 					},
 				},
 				nock: {
@@ -156,7 +156,7 @@ describe('Microsoft Entra Node', () => {
 								typeVersion: 1,
 								position: [220, 0],
 								id: '3429f7f2-dfca-4b72-8913-43a582e96e66',
-								name: 'Micosoft Entra ID',
+								name: 'Microsoft Entra ID',
 								credentials: {
 									microsoftEntraOAuth2Api: {
 										id: 'Hot2KwSMSoSmMVqd',
@@ -170,7 +170,7 @@ describe('Microsoft Entra Node', () => {
 								main: [
 									[
 										{
-											node: 'Micosoft Entra ID',
+											node: 'Microsoft Entra ID',
 											type: NodeConnectionTypes.Main,
 											index: 0,
 										},
@@ -182,7 +182,7 @@ describe('Microsoft Entra Node', () => {
 				},
 				output: {
 					nodeData: {
-						'Micosoft Entra ID': [microsoftEntraNodeResponse.createUser],
+						'Microsoft Entra ID': [microsoftEntraNodeResponse.createUser],
 					},
 				},
 				nock: {
@@ -292,7 +292,7 @@ describe('Microsoft Entra Node', () => {
 								typeVersion: 1,
 								position: [220, 0],
 								id: '3429f7f2-dfca-4b72-8913-43a582e96e66',
-								name: 'Micosoft Entra ID',
+								name: 'Microsoft Entra ID',
 								credentials: {
 									microsoftEntraOAuth2Api: {
 										id: 'Hot2KwSMSoSmMVqd',
@@ -306,7 +306,7 @@ describe('Microsoft Entra Node', () => {
 								main: [
 									[
 										{
-											node: 'Micosoft Entra ID',
+											node: 'Microsoft Entra ID',
 											type: NodeConnectionTypes.Main,
 											index: 0,
 										},
@@ -318,7 +318,7 @@ describe('Microsoft Entra Node', () => {
 				},
 				output: {
 					nodeData: {
-						'Micosoft Entra ID': [microsoftEntraNodeResponse.deleteUser],
+						'Microsoft Entra ID': [microsoftEntraNodeResponse.deleteUser],
 					},
 				},
 				nock: {
@@ -362,7 +362,7 @@ describe('Microsoft Entra Node', () => {
 								typeVersion: 1,
 								position: [220, 0],
 								id: '3429f7f2-dfca-4b72-8913-43a582e96e66',
-								name: 'Micosoft Entra ID',
+								name: 'Microsoft Entra ID',
 								credentials: {
 									microsoftEntraOAuth2Api: {
 										id: 'Hot2KwSMSoSmMVqd',
@@ -376,7 +376,7 @@ describe('Microsoft Entra Node', () => {
 								main: [
 									[
 										{
-											node: 'Micosoft Entra ID',
+											node: 'Microsoft Entra ID',
 											type: NodeConnectionTypes.Main,
 											index: 0,
 										},
@@ -388,7 +388,7 @@ describe('Microsoft Entra Node', () => {
 				},
 				output: {
 					nodeData: {
-						'Micosoft Entra ID': [microsoftEntraNodeResponse.getUser],
+						'Microsoft Entra ID': [microsoftEntraNodeResponse.getUser],
 					},
 				},
 				nock: {
@@ -509,7 +509,7 @@ describe('Microsoft Entra Node', () => {
 								typeVersion: 1,
 								position: [220, 0],
 								id: '3429f7f2-dfca-4b72-8913-43a582e96e66',
-								name: 'Micosoft Entra ID',
+								name: 'Microsoft Entra ID',
 								credentials: {
 									microsoftEntraOAuth2Api: {
 										id: 'Hot2KwSMSoSmMVqd',
@@ -523,7 +523,7 @@ describe('Microsoft Entra Node', () => {
 								main: [
 									[
 										{
-											node: 'Micosoft Entra ID',
+											node: 'Microsoft Entra ID',
 											type: NodeConnectionTypes.Main,
 											index: 0,
 										},
@@ -535,7 +535,7 @@ describe('Microsoft Entra Node', () => {
 				},
 				output: {
 					nodeData: {
-						'Micosoft Entra ID': [
+						'Microsoft Entra ID': [
 							[
 								{
 									json: {
@@ -589,7 +589,7 @@ describe('Microsoft Entra Node', () => {
 								typeVersion: 1,
 								position: [220, 0],
 								id: '3429f7f2-dfca-4b72-8913-43a582e96e66',
-								name: 'Micosoft Entra ID',
+								name: 'Microsoft Entra ID',
 								credentials: {
 									microsoftEntraOAuth2Api: {
 										id: 'Hot2KwSMSoSmMVqd',
@@ -603,7 +603,7 @@ describe('Microsoft Entra Node', () => {
 								main: [
 									[
 										{
-											node: 'Micosoft Entra ID',
+											node: 'Microsoft Entra ID',
 											type: NodeConnectionTypes.Main,
 											index: 0,
 										},
@@ -615,7 +615,7 @@ describe('Microsoft Entra Node', () => {
 				},
 				output: {
 					nodeData: {
-						'Micosoft Entra ID': [new Array(102).fill(microsoftEntraNodeResponse.getUser[0])],
+						'Microsoft Entra ID': [new Array(102).fill(microsoftEntraNodeResponse.getUser[0])],
 					},
 				},
 				nock: {
@@ -670,7 +670,7 @@ describe('Microsoft Entra Node', () => {
 								typeVersion: 1,
 								position: [220, 0],
 								id: '3429f7f2-dfca-4b72-8913-43a582e96e66',
-								name: 'Micosoft Entra ID',
+								name: 'Microsoft Entra ID',
 								credentials: {
 									microsoftEntraOAuth2Api: {
 										id: 'Hot2KwSMSoSmMVqd',
@@ -684,7 +684,7 @@ describe('Microsoft Entra Node', () => {
 								main: [
 									[
 										{
-											node: 'Micosoft Entra ID',
+											node: 'Microsoft Entra ID',
 											type: NodeConnectionTypes.Main,
 											index: 0,
 										},
@@ -696,7 +696,7 @@ describe('Microsoft Entra Node', () => {
 				},
 				output: {
 					nodeData: {
-						'Micosoft Entra ID': [new Array(10).fill(microsoftEntraNodeResponse.getUser[0])],
+						'Microsoft Entra ID': [new Array(10).fill(microsoftEntraNodeResponse.getUser[0])],
 					},
 				},
 				nock: {
@@ -809,7 +809,7 @@ describe('Microsoft Entra Node', () => {
 								typeVersion: 1,
 								position: [220, 0],
 								id: '3429f7f2-dfca-4b72-8913-43a582e96e66',
-								name: 'Micosoft Entra ID',
+								name: 'Microsoft Entra ID',
 								credentials: {
 									microsoftEntraOAuth2Api: {
 										id: 'Hot2KwSMSoSmMVqd',
@@ -823,7 +823,7 @@ describe('Microsoft Entra Node', () => {
 								main: [
 									[
 										{
-											node: 'Micosoft Entra ID',
+											node: 'Microsoft Entra ID',
 											type: NodeConnectionTypes.Main,
 											index: 0,
 										},
@@ -835,7 +835,7 @@ describe('Microsoft Entra Node', () => {
 				},
 				output: {
 					nodeData: {
-						'Micosoft Entra ID': [
+						'Microsoft Entra ID': [
 							new Array(102).fill({
 								json: {
 									'@odata.context': 'https://graph.microsoft.com/v1.0/$metadata#users(id)/$entity',
@@ -910,7 +910,7 @@ describe('Microsoft Entra Node', () => {
 								typeVersion: 1,
 								position: [220, 0],
 								id: '3429f7f2-dfca-4b72-8913-43a582e96e66',
-								name: 'Micosoft Entra ID',
+								name: 'Microsoft Entra ID',
 								credentials: {
 									microsoftEntraOAuth2Api: {
 										id: 'Hot2KwSMSoSmMVqd',
@@ -924,7 +924,7 @@ describe('Microsoft Entra Node', () => {
 								main: [
 									[
 										{
-											node: 'Micosoft Entra ID',
+											node: 'Microsoft Entra ID',
 											type: NodeConnectionTypes.Main,
 											index: 0,
 										},
@@ -936,7 +936,7 @@ describe('Microsoft Entra Node', () => {
 				},
 				output: {
 					nodeData: {
-						'Micosoft Entra ID': [microsoftEntraNodeResponse.removeUserFromGroup],
+						'Microsoft Entra ID': [microsoftEntraNodeResponse.removeUserFromGroup],
 					},
 				},
 				nock: {
@@ -1027,7 +1027,7 @@ describe('Microsoft Entra Node', () => {
 								typeVersion: 1,
 								position: [220, 0],
 								id: '3429f7f2-dfca-4b72-8913-43a582e96e66',
-								name: 'Micosoft Entra ID',
+								name: 'Microsoft Entra ID',
 								credentials: {
 									microsoftEntraOAuth2Api: {
 										id: 'Hot2KwSMSoSmMVqd',
@@ -1041,7 +1041,7 @@ describe('Microsoft Entra Node', () => {
 								main: [
 									[
 										{
-											node: 'Micosoft Entra ID',
+											node: 'Microsoft Entra ID',
 											type: NodeConnectionTypes.Main,
 											index: 0,
 										},
@@ -1053,7 +1053,7 @@ describe('Microsoft Entra Node', () => {
 				},
 				output: {
 					nodeData: {
-						'Micosoft Entra ID': [microsoftEntraNodeResponse.updateUser],
+						'Microsoft Entra ID': [microsoftEntraNodeResponse.updateUser],
 					},
 				},
 				nock: {
