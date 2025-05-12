@@ -141,6 +141,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const activeWorkflowExecution = ref<ExecutionSummary | null>(null);
 	const currentWorkflowExecutions = ref<ExecutionSummary[]>([]);
 	const workflowExecutionData = ref<IExecutionResponse | null>(null);
+	const workflowExecutionResultDataLastUpdate = ref<number>();
 	const workflowExecutionPairedItemMappings = ref<Record<string, Set<string>>>({});
 	const subWorkflowExecutionError = ref<Error | null>(null);
 	const executionWaitingForWebhook = ref(false);
@@ -866,6 +867,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}
 		workflowExecutionData.value = workflowResultData;
 		workflowExecutionPairedItemMappings.value = getPairedItemsMapping(workflowResultData);
+		workflowExecutionResultDataLastUpdate.value = Date.now();
 	}
 
 	function setWorkflowExecutionRunData(workflowResultData: IRunExecutionData) {
@@ -874,6 +876,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 				...workflowExecutionData.value,
 				data: workflowResultData,
 			};
+			workflowExecutionResultDataLastUpdate.value = Date.now();
 		}
 	}
 
@@ -1497,6 +1500,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 				executionTime: 0,
 				...data.data,
 			});
+			workflowExecutionResultDataLastUpdate.value = Date.now();
 		}
 	}
 
@@ -1544,6 +1548,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			} else {
 				tasksData.push(data);
 			}
+
+			workflowExecutionResultDataLastUpdate.value = Date.now();
 
 			void trackNodeExecution(pushData);
 		}
@@ -1830,6 +1836,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		currentWorkflowExecutions,
 		workflowExecutionData,
 		workflowExecutionPairedItemMappings,
+		workflowExecutionResultDataLastUpdate,
 		activeExecutionId: readonlyActiveExecutionId,
 		previousExecutionId: readonlyPreviousExecutionId,
 		setActiveExecutionId,
