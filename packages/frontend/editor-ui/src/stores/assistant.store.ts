@@ -806,11 +806,11 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	);
 
 	watch(
-		() => workflowsStore.workflowExecutionData?.data?.resultData ?? {},
+		() => workflowsStore.workflowExecutionResultDataLastUpdate,
 		() => {
 			workflowExecutionDataStale.value = true;
 		},
-		{ deep: true, immediate: true },
+		{ immediate: true },
 	);
 
 	return {
