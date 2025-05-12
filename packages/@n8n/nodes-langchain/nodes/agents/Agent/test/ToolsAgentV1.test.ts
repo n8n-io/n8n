@@ -25,8 +25,8 @@ import {
 	prepareMessages,
 	preparePrompt,
 	getTools,
-	toolsAgentExecute,
-} from '../agents/ToolsAgent/execute';
+} from '../agents/ToolsAgent/common';
+import { toolsAgentExecute } from '../agents/ToolsAgent/V1/execute';
 
 function getFakeOutputParser(returnSchema?: ZodType): N8nOutputParser {
 	const fakeOutputParser = mock<N8nOutputParser>();
