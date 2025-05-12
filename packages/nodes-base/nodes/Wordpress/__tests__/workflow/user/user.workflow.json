@@ -200,6 +200,7 @@
 					"description": "",
 					"link": "https://myblog.com/author/new-user/",
 					"slug": "new-user",
+					"roles": ["subscriber", "contributor"],
 					"avatar_urls": {
 						"24": "https://secure.gravatar.com/avatar/6eabaa023affb379ccfd92d522ab0e37?s=24&d=mm&r=g",
 						"48": "https://secure.gravatar.com/avatar/6eabaa023affb379ccfd92d522ab0e37?s=48&d=mm&r=g",
@@ -233,6 +234,7 @@
 					"description": "",
 					"link": "https://myblog.com/author/nodeqa/",
 					"slug": "nodeqa",
+					"roles": ["administrator"],
 					"avatar_urls": {
 						"24": "https://secure.gravatar.com/avatar/de2d127be16acfb3d435ff80b5e13687?s=24&d=mm&r=g",
 						"48": "https://secure.gravatar.com/avatar/de2d127be16acfb3d435ff80b5e13687?s=48&d=mm&r=g",
