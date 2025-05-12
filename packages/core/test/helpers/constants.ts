@@ -43,6 +43,25 @@ export const predefinedNodesTypes: INodeTypeData = {
 		type: new SplitInBatches(),
 		sourcePath: '',
 	},
+	'@n8n/n8n-nodes-langchain.toolExecutor': {
+		sourcePath: '',
+		type: {
+			description: {
+				displayName: 'Test tool executor',
+				name: 'toolTestExecutor',
+				group: ['transform'],
+				version: 1,
+				description: 'Test tool executor',
+				defaults: {
+					name: 'Test Tool Executor',
+					color: '#0000FF',
+				},
+				inputs: [NodeConnectionTypes.AiTool, NodeConnectionTypes.Main],
+				outputs: [NodeConnectionTypes.Main],
+				properties: [],
+			},
+		},
+	},
 	'n8n-nodes-base.toolTest': {
 		sourcePath: '',
 		type: {

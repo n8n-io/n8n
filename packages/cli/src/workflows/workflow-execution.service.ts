@@ -107,6 +107,7 @@ export class WorkflowExecutionService {
 			destinationNode,
 			dirtyNodeNames,
 			triggerToStartFrom,
+			agentRequest,
 		}: WorkflowRequest.ManualRunPayload,
 		user: User,
 		pushRef?: string,
@@ -181,6 +182,7 @@ export class WorkflowExecutionService {
 			partialExecutionVersion,
 			dirtyNodeNames,
 			triggerToStartFrom,
+			agentRequest,
 		};
 
 		const hasRunData = (node: INode) => runData !== undefined && !!runData[node.name];

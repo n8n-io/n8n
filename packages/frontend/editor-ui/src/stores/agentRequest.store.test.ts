@@ -1,5 +1,5 @@
 import { setActivePinia, createPinia } from 'pinia';
-import { useParameterOverridesStore } from './parameterOverrides.store';
+import { useAgentRequestStore } from './agentRequest.store';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { nextTick } from 'vue';
 
@@ -26,8 +26,8 @@ describe('parameterOverrides.store', () => {
 	describe('Initialization', () => {
 		it('initializes with empty state when localStorage is empty', () => {
 			localStorageMock.getItem.mockReturnValue(null);
-			const store = useParameterOverridesStore();
-			expect(store.parameterOverrides).toEqual({});
+			const store = useAgentRequestStore();
+			expect(store.agentRequests).toEqual({});
 		});
 
 		it('initializes with data from localStorage', () => {
@@ -37,16 +37,16 @@ describe('parameterOverrides.store', () => {
 				},
 			};
 			localStorageMock.getItem.mockReturnValue(JSON.stringify(mockData));
-			const store = useParameterOverridesStore();
-			expect(store.parameterOverrides).toEqual(mockData);
+			const store = useAgentRequestStore();
+			expect(store.agentRequests).toEqual(mockData);
 		});
 
 		it('handles localStorage errors gracefully', () => {
 			localStorageMock.getItem.mockImplementation(() => {
 				throw new Error('Storage error');
 			});
-			const store = useParameterOverridesStore();
-			expect(store.parameterOverrides).toEqual({});
+			const store = useAgentRequestStore();
+			expect(store.agentRequests).toEqual({});
 		});
 	});
 
@@ -58,16 +58,16 @@ describe('parameterOverrides.store', () => {
 				},
 			};
 			localStorageMock.getItem.mockReturnValue(JSON.stringify(mockData));
-			const store = useParameterOverridesStore();
+			const store = useAgentRequestStore();
 
-			const overrides = store.getParameterOverrides('workflow-1', 'node-1');
+			const overrides = store.getAgentRequests('workflow-1', 'node-1');
 			expect(overrides).toEqual({ param1: 'value1', param2: 'value2' });
 		});
 
 		it('returns empty object for non-existent workflow/node', () => {
-			const store = useParameterOverridesStore();
+			const store = useAgentRequestStore();
 
-			const overrides = store.getParameterOverrides('non-existent', 'node-1');
+			const overrides = store.getAgentRequests('non-existent', 'node-1');
 			expect(overrides).toEqual({});
 		});
 
@@ -78,9 +78,9 @@ describe('parameterOverrides.store', () => {
 				},
 			};
 			localStorageMock.getItem.mockReturnValue(JSON.stringify(mockData));
-			const store = useParameterOverridesStore();
+			const store = useAgentRequestStore();
 
-			const override = store.getParameterOverride('workflow-1', 'node-1', 'param1');
+			const override = store.getAgentRequest('workflow-1', 'node-1', 'param1');
 			expect(override).toBe('value1');
 		});
 
@@ -91,31 +91,31 @@ describe('parameterOverrides.store', () => {
 				},
 			};
 			localStorageMock.getItem.mockReturnValue(JSON.stringify(mockData));
-			const store = useParameterOverridesStore();
+			const store = useAgentRequestStore();
 
-			const override = store.getParameterOverride('workflow-1', 'node-1', 'non-existent');
+			const override = store.getAgentRequest('workflow-1', 'node-1', 'non-existent');
 			expect(override).toBeUndefined();
 		});
 	});
 
 	describe('Actions', () => {
 		it('adds a parameter override', () => {
-			const store = useParameterOverridesStore();
+			const store = useAgentRequestStore();
 
-			store.addParameterOverride('workflow-1', 'node-1', 'param1', 'value1');
+			store.addAgentRequest('workflow-1', 'node-1', 'param1', 'value1');
 
-			expect(store.parameterOverrides['workflow-1']['node-1']['param1']).toBe('value1');
+			expect(store.agentRequests['workflow-1']['node-1']['param1']).toBe('value1');
 		});
 
 		it('adds multiple parameter overrides', () => {
-			const store = useParameterOverridesStore();
+			const store = useAgentRequestStore();
 
-			store.addParameterOverrides('workflow-1', 'node-1', {
+			store.addAgentRequests('workflow-1', 'node-1', {
 				param1: 'value1',
 				param2: 'value2',
 			});
 
-			expect(store.parameterOverrides['workflow-1']['node-1']).toEqual({
+			expect(store.agentRequests['workflow-1']['node-1']).toEqual({
 				param1: 'value1',
 				param2: 'value2',
 			});
@@ -129,12 +129,12 @@ describe('parameterOverrides.store', () => {
 				},
 			};
 			localStorageMock.getItem.mockReturnValue(JSON.stringify(mockData));
-			const store = useParameterOverridesStore();
+			const store = useAgentRequestStore();
 
-			store.clearParameterOverrides('workflow-1', 'node-1');
+			store.clearAgentRequests('workflow-1', 'node-1');
 
-			expect(store.parameterOverrides['workflow-1']['node-1']).toEqual({});
-			expect(store.parameterOverrides['workflow-1']['node-2']).toEqual({ param3: 'value3' });
+			expect(store.agentRequests['workflow-1']['node-1']).toEqual({});
+			expect(store.agentRequests['workflow-1']['node-2']).toEqual({ param3: 'value3' });
 		});
 
 		it('clears all parameter overrides for a workflow', () => {
@@ -148,12 +148,12 @@ describe('parameterOverrides.store', () => {
 				},
 			};
 			localStorageMock.getItem.mockReturnValue(JSON.stringify(mockData));
-			const store = useParameterOverridesStore();
+			const store = useAgentRequestStore();
 
-			store.clearAllParameterOverrides('workflow-1');
+			store.clearAllAgentRequests('workflow-1');
 
-			expect(store.parameterOverrides['workflow-1']).toEqual({});
-			expect(store.parameterOverrides['workflow-2']).toEqual({
+			expect(store.agentRequests['workflow-1']).toEqual({});
+			expect(store.agentRequests['workflow-2']).toEqual({
 				'node-3': { param3: 'value3' },
 			});
 		});
@@ -168,43 +168,26 @@ describe('parameterOverrides.store', () => {
 				},
 			};
 			localStorageMock.getItem.mockReturnValue(JSON.stringify(mockData));
-			const store = useParameterOverridesStore();
+			const store = useAgentRequestStore();
 
-			store.clearAllParameterOverrides();
+			store.clearAllAgentRequests();
 
-			expect(store.parameterOverrides).toEqual({});
+			expect(store.agentRequests).toEqual({});
 		});
 	});
 
-	describe('substituteParameters', () => {
-		it('substitutes parameters in a node', () => {
-			const store = useParameterOverridesStore();
+	describe('generateAgentRequest', () => {
+		it('generateAgentRequest', () => {
+			const store = useAgentRequestStore();
 
-			store.addParameterOverrides('workflow-1', 'id1', {
+			store.addAgentRequests('workflow-1', 'id1', {
 				param1: 'override1',
 				'parent.child': 'override2',
 				'parent.array[0].value': 'overrideArray1',
 				'parent.array[1].value': 'overrideArray2',
 			});
 
-			const nodeParameters = {
-				param1: 'original1',
-				parent: {
-					child: 'original2',
-					array: [
-						{
-							name: 'name',
-							value: 'original1',
-						},
-						{
-							name: 'name2',
-							value: 'original2',
-						},
-					],
-				},
-			};
-
-			const result = store.substituteParameters('workflow-1', 'id1', nodeParameters);
+			const result = store.generateAgentRequest('workflow-1', 'id1');
 
 			expect(result).toEqual({
 				param1: 'override1',
@@ -212,11 +195,9 @@ describe('parameterOverrides.store', () => {
 					child: 'override2',
 					array: [
 						{
-							name: 'name',
 							value: 'overrideArray1',
 						},
 						{
-							name: 'name2',
 							value: 'overrideArray2',
 						},
 					],
@@ -227,17 +208,17 @@ describe('parameterOverrides.store', () => {
 
 	describe('Persistence', () => {
 		it('saves to localStorage when state changes', async () => {
-			const store = useParameterOverridesStore();
+			const store = useAgentRequestStore();
 
 			localStorageMock.setItem.mockReset();
 
-			store.addParameterOverride('workflow-1', 'node-1', 'param1', 'value1');
+			store.addAgentRequest('workflow-1', 'node-1', 'param1', 'value1');
 
 			// Wait for the next tick to allow the watch to execute
 			await nextTick();
 
 			expect(localStorageMock.setItem).toHaveBeenCalledWith(
-				'n8n-parameter-overrides',
+				'n8n-agent-requests',
 				JSON.stringify({
 					'workflow-1': {
 						'node-1': { param1: 'value1' },
@@ -247,7 +228,7 @@ describe('parameterOverrides.store', () => {
 		});
 
 		it('should handle localStorage errors when saving', async () => {
-			const store = useParameterOverridesStore();
+			const store = useAgentRequestStore();
 
 			localStorageMock.setItem.mockReset();
 
@@ -255,11 +236,11 @@ describe('parameterOverrides.store', () => {
 				throw new Error('Storage error');
 			});
 
-			store.addParameterOverride('workflow-1', 'node-1', 'param1', 'value1');
+			store.addAgentRequest('workflow-1', 'node-1', 'param1', 'value1');
 
 			await nextTick();
 
-			expect(store.parameterOverrides['workflow-1']['node-1'].param1).toBe('value1');
+			expect(store.agentRequests['workflow-1']['node-1'].param1).toBe('value1');
 		});
 	});
 });

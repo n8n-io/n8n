@@ -217,6 +217,12 @@ export interface IStartRunData {
 		name: string;
 		data?: ITaskData;
 	};
+	agentRequest?: {
+		query: NodeParameterValueType;
+		tool: {
+			name: NodeParameterValueType;
+		};
+	};
 }
 
 export interface ITableData {
