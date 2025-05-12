@@ -5,10 +5,13 @@ import { computed, ref } from 'vue';
 
 import RunsSection from '@/components/Evaluations/EditDefinition/sections/RunsSection.vue';
 import { useEvaluationStore } from '@/stores/evaluation.store.ee';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import { N8nButton, N8nText } from '@n8n/design-system';
 import { useAsyncState } from '@vueuse/core';
 import { orderBy } from 'lodash-es';
 import N8nLink from '@n8n/design-system/components/N8nLink';
+import { useUsageStore } from '@/stores/usage.store';
+import EvaluationsPaywall from '@/components/Evaluations/Paywall/EvaluationsPaywall.vue';
 
 const props = defineProps<{
 	name: string;
@@ -17,6 +20,9 @@ const props = defineProps<{
 const locale = useI18n();
 const toast = useToast();
 const evaluationsStore = useEvaluationStore();
+const usageStore = useUsageStore();
+const workflowsStore = useWorkflowsStore();
+// const usersStore = useUsersStore();
 
 const { isReady } = useAsyncState(
 	async () => {
@@ -34,6 +40,13 @@ const { isReady } = useAsyncState(
 const hasRuns = computed(() => runs.value.length > 0);
 
 const selectedMetric = ref<string>('');
+
+const evaluationMetricNodeExist = computed(() => {
+	return workflowsStore.workflow.nodes.some(
+		(node) =>
+			node.type === 'n8n-nodes-base.evaluation' && node.parameters.operation === 'setMetrics',
+	);
+});
 
 async function runTest() {
 	await evaluationsStore.startTestRun(props.name);
@@ -56,6 +69,14 @@ const isRunTestEnabled = computed(() => !isRunning.value);
 const showWizard = computed(() => {
 	return !hasRuns.value;
 });
+
+const evaluationsLicensed = computed(() => {
+	return usageStore.workflowsWithEvaluationsLimit !== 0;
+});
+
+// const canUserRegisterCommunityPlus = computed(
+// 	() => getResourcePermissions(usersStore.currentUser?.globalScopes).community.register,
+// );
 </script>
 
 <template>
@@ -79,9 +100,9 @@ const showWizard = computed(() => {
 			</N8nTooltip>
 		</div>
 		<div :class="{ [$style.wrapper]: true, [$style.setupWrapper]: showWizard }">
-			<div :class="{ [$style.content]: true, [$style.contentWithRuns]: hasRuns }">
+			<div :class="$style.content">
 				<RunsSection
-					v-if="hasRuns"
+					v-if="!showWizard"
 					v-model:selectedMetric="selectedMetric"
 					:class="$style.runs"
 					:runs="runs"
@@ -113,7 +134,8 @@ const showWizard = computed(() => {
 							referrerpolicy="strict-origin-when-cross-origin"
 							allowfullscreen
 						></iframe>
-						<SetupWizard @run-test="runTest" />
+						<SetupWizard v-if="evaluationsLicensed" @run-test="runTest" />
+						<EvaluationsPaywall v-else />
 					</div>
 				</div>
 			</div>
