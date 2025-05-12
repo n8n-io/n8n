@@ -134,6 +134,7 @@ export function resolveParameter<T = IDataObject>(
 	let contextNode = activeNode;
 
 	if (activeNode) {
+		// here - no, this finds a main node for sub-nodes
 		contextNode = workflow.getParentMainInputNode(activeNode);
 	}
 
@@ -761,6 +762,7 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 			__xxxxxxx__: expression,
 			...siblingParameters,
 		};
+		// debugger;
 		const returnData: IDataObject | null = resolveParameter(parameters, opts);
 		if (!returnData) {
 			return null;
