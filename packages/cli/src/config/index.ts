@@ -21,7 +21,6 @@ if (inE2ETests) {
 } else if (inTest) {
 	globalConfig.logging.level = 'silent';
 	globalConfig.publicApi.disabled = true;
-	globalConfig.publicApi.disabled = true;
 	process.env.SKIP_STATISTICS_EVENTS = 'true';
 	globalConfig.auth.cookie.secure = false;
 	process.env.N8N_SKIP_AUTH_ON_OAUTH_CALLBACK = 'true';
