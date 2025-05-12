@@ -757,7 +757,7 @@ describe('DELETE /projects/:projectId/folders/:folderId', () => {
 		expect(folderInDb).toBeNull();
 	});
 
-	test('should delete folder, all child folders, and contained workflows when no transfer folder is specified', async () => {
+	test('should delete folder, all child folders, and archive and move contained workflows to project root when no transfer folder is specified', async () => {
 		const project = await createTeamProject('test', owner);
 		const rootFolder = await createFolder(project, { name: 'Root' });
 		const childFolder = await createFolder(project, {
@@ -766,9 +766,8 @@ describe('DELETE /projects/:projectId/folders/:folderId', () => {
 		});
 
 		// Create workflows in the folders
-		const workflow1 = await createWorkflow({ parentFolder: rootFolder }, owner);
-
-		const workflow2 = await createWorkflow({ parentFolder: childFolder }, owner);
+		const workflow1 = await createWorkflow({ parentFolder: rootFolder, active: false }, owner);
+		const workflow2 = await createWorkflow({ parentFolder: childFolder, active: true }, owner);
 
 		await authOwnerAgent.delete(`/projects/${project.id}/folders/${rootFolder.id}`);
 
@@ -780,10 +779,24 @@ describe('DELETE /projects/:projectId/folders/:folderId', () => {
 		expect(childFolderInDb).toBeNull();
 
 		// Check workflows
-		const workflow1InDb = await workflowRepository.findOneBy({ id: workflow1.id });
-		const workflow2InDb = await workflowRepository.findOneBy({ id: workflow2.id });
-		expect(workflow1InDb).toBeNull();
-		expect(workflow2InDb).toBeNull();
+
+		const workflow1InDb = await workflowRepository.findOne({
+			where: { id: workflow1.id },
+			relations: ['parentFolder'],
+		});
+		expect(workflow1InDb).not.toBeNull();
+		expect(workflow1InDb?.isArchived).toBe(true);
+		expect(workflow1InDb?.parentFolder).toBe(null);
+		expect(workflow1InDb?.active).toBe(false);
+
+		const workflow2InDb = await workflowRepository.findOne({
+			where: { id: workflow2.id },
+			relations: ['parentFolder'],
+		});
+		expect(workflow2InDb).not.toBeNull();
+		expect(workflow2InDb?.isArchived).toBe(true);
+		expect(workflow2InDb?.parentFolder).toBe(null);
+		expect(workflow2InDb?.active).toBe(false);
 	});
 
 	test('should transfer folder contents when transferToFolderId is specified', async () => {
@@ -1307,6 +1320,23 @@ describe('GET /projects/:projectId/folders', () => {
 			['Owner Folder 1', 'Owner Folder 2'].sort(),
 		);
 	});
+
+	test('should include workflow count', async () => {
+		const folder = await createFolder(ownerProject, { name: 'Test Folder' });
+		await createWorkflow({ parentFolder: folder, isArchived: false }, ownerProject);
+		await createWorkflow({ parentFolder: folder, isArchived: false }, ownerProject);
+		// Not included in the count
+		await createWorkflow({ parentFolder: folder, isArchived: true }, ownerProject);
+
+		const response = await authOwnerAgent
+			.get(`/projects/${ownerProject.id}/folders`)
+			.query({ filter: '{ "name": "test" }' })
+			.expect(200);
+
+		expect(response.body.count).toBe(1);
+		expect(response.body.data).toHaveLength(1);
+		expect(response.body.data[0].workflowCount).toEqual(2);
+	});
 });
 
 describe('GET /projects/:projectId/folders/content', () => {
@@ -1358,6 +1388,11 @@ describe('GET /projects/:projectId/folders/content', () => {
 		await createWorkflow({ parentFolder: personalFolder1 }, ownerProject);
 		await createWorkflow({ parentFolder: personalProjectSubfolder1 }, ownerProject);
 		await createWorkflow({ parentFolder: personalProjectSubfolder2 }, ownerProject);
+		// Not included in the count
+		await createWorkflow(
+			{ parentFolder: personalProjectSubfolder2, isArchived: true },
+			ownerProject,
+		);
 
 		const response = await authOwnerAgent
 			.get(`/projects/${ownerProject.id}/folders/${personalFolder1.id}/content`)

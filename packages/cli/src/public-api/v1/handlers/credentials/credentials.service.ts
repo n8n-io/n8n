@@ -4,6 +4,7 @@ import {
 	SharedCredentials,
 	CredentialsRepository,
 	ProjectRepository,
+	SharedCredentialsRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { Credentials } from 'n8n-core';
@@ -14,7 +15,6 @@ import type {
 	INodePropertyOptions,
 } from 'n8n-workflow';
 
-import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import * as Db from '@/db';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';

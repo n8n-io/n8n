@@ -23,11 +23,15 @@ import { useViewStacks } from '../composables/useViewStacks';
 
 import ItemsRenderer from '../Renderers/ItemsRenderer.vue';
 import CategorizedItemsRenderer from '../Renderers/CategorizedItemsRenderer.vue';
-import type { IDataObject } from 'n8n-workflow';
+import { type IDataObject } from 'n8n-workflow';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useI18n } from '@/composables/useI18n';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import OrderSwitcher from './../OrderSwitcher.vue';
+import { isNodePreviewKey } from '../utils';
+
+import CommunityNodeInfo from '../Panel/CommunityNodeInfo.vue';
+import CommunityNodeFooter from '../Panel/CommunityNodeFooter.vue';
 
 const emit = defineEmits<{
 	nodeTypeSelected: [value: [actionKey: string, nodeName: string] | [nodeName: string]];
@@ -90,6 +94,8 @@ const subcategory = computed(() => useViewStacks().activeViewStack.subcategory);
 
 const rootView = computed(() => useViewStacks().activeViewStack.rootView);
 
+const communityNodeDetails = computed(() => useViewStacks().activeViewStack?.communityNodeDetails);
+
 const placeholderTriggerActions = getPlaceholderTriggerActions(subcategory.value || '');
 
 const hasNoTriggerActions = computed(
@@ -112,6 +118,16 @@ const containsAPIAction = computed(() => {
 });
 
 const isTriggerRootView = computed(() => rootView.value === TRIGGER_NODE_CREATOR_VIEW);
+
+const shouldShowTriggers = computed(() => {
+	if (communityNodeDetails.value && !parsedTriggerActions.value.length) {
+		// do not show baseline trigger actions for community nodes if it is not installed
+		return (
+			!isNodePreviewKey(useViewStacks().activeViewStack?.items?.[0].key) && isTriggerRootView.value
+		);
+	}
+	return isTriggerRootView.value || parsedTriggerActionsBaseline.value.length !== 0;
+});
 
 registerKeyHook('ActionsKeyRight', {
 	keyboardKeys: ['ArrowRight', 'Enter'],
@@ -157,6 +173,8 @@ function onSelected(actionCreateElement: INodeCreateElement) {
 		(actionData?.value as IDataObject)?.operation === 'message'
 	) {
 		emit('nodeTypeSelected', [OPEN_AI_NODE_MESSAGE_ASSISTANT_TYPE]);
+	} else if (isNodePreviewKey(actionData?.key)) {
+		return;
 	} else {
 		emit('nodeTypeSelected', [actionData.key as string]);
 	}
@@ -216,10 +234,17 @@ onMounted(() => {
 </script>
 
 <template>
-	<div :class="$style.container">
+	<div
+		:class="{
+			[$style.container]: true,
+			[$style.containerPaddingBottom]: !communityNodeDetails,
+		}"
+	>
+		<CommunityNodeInfo v-if="communityNodeDetails" />
 		<OrderSwitcher v-if="rootView" :root-view="rootView">
-			<template v-if="isTriggerRootView || parsedTriggerActionsBaseline.length !== 0" #triggers>
+			<template v-if="shouldShowTriggers" #triggers>
 				<!-- Triggers Category -->
+
 				<CategorizedItemsRenderer
 					v-memo="[search]"
 					:elements="parsedTriggerActions"
@@ -298,7 +323,7 @@ onMounted(() => {
 				</CategorizedItemsRenderer>
 			</template>
 		</OrderSwitcher>
-		<div v-if="containsAPIAction" :class="$style.apiHint">
+		<div v-if="containsAPIAction && !communityNodeDetails" :class="$style.apiHint">
 			<span
 				v-n8n-html="
 					i18n.baseText('nodeCreator.actionsList.apiCall', {
@@ -308,6 +333,11 @@ onMounted(() => {
 				@click.prevent="addHttpNode"
 			/>
 		</div>
+		<CommunityNodeFooter
+			:class="$style.communityNodeFooter"
+			v-if="communityNodeDetails"
+			:package-name="communityNodeDetails.packageName"
+		/>
 	</div>
 </template>
 
@@ -315,7 +345,15 @@ onMounted(() => {
 .container {
 	display: flex;
 	flex-direction: column;
+	min-height: 100%;
+}
+
+.containerPaddingBottom {
 	padding-bottom: var(--spacing-3xl);
+}
+
+.communityNodeFooter {
+	margin-top: auto;
 }
 
 .resetSearch {
