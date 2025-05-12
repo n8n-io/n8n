@@ -27,6 +27,15 @@ export = {
 			res.status(201).send();
 		},
 	],
+	updateVariable: [
+		isLicensed('feat:variables'),
+		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'variable:update' }),
+		async (req: VariablesRequest.Update, res: Response) => {
+			await Container.get(VariablesController).updateVariable(req);
+
+			res.status(204).send();
+		},
+	],
 	deleteVariable: [
 		isLicensed('feat:variables'),
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'variable:delete' }),
