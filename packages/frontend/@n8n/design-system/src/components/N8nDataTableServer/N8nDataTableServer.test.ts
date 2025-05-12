@@ -112,18 +112,10 @@ describe('N8nDataTableServer', () => {
 		expect(queryByTestId('pagination')).not.toBeInTheDocument();
 	});
 
-	it('should not show the pagination if there are less items than the snallest page size value', async () => {
+	it('should not show the pagination if there are less items than the smallest page size value', async () => {
 		const { queryByTestId } = render(N8nDataTableServer, {
 			//@ts-expect-error testing-library errors due to header generics
-			props: {
-				items: [
-					{ id: '1', firstName: '1', lastName: '1' },
-					{ id: '2', firstName: '2', lastName: '2' },
-					{ id: '3', firstName: '3', lastName: '3' },
-				],
-				headers,
-				itemsLength: 3,
-			},
+			props: { items: items.slice(0, 3), headers, itemsLength: 3 },
 		});
 
 		expect(queryByTestId('pagination')).not.toBeInTheDocument();
