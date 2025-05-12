@@ -17,8 +17,11 @@ describe('convertToSchema', () => {
 		});
 
 		it('should parse JSON string when schema is ZodObject', () => {
-			const result = convertValueBySchema('{"key": "value"}', z.object({}));
-			expect(result).toEqual({ key: 'value' });
+			const result = convertValueBySchema(
+				'{"key": "value", "other_key": 1, "booleanValue": false }',
+				z.object({}),
+			);
+			expect(result).toEqual({ key: 'value', other_key: 1, booleanValue: false });
 		});
 
 		it('should return original value if JSON parsing fails', () => {
