@@ -868,7 +868,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	private toSummary(execution: {
 		id: number | string;
 		createdAt?: Date | string;
-		startedAt?: Date | string;
+		startedAt: Date | string | null;
 		stoppedAt?: Date | string;
 		waitTill?: Date | string | null;
 	}): ExecutionSummary {
