@@ -1,5 +1,9 @@
 import type { ActionDropdownItem, XYPosition, INodeUi } from '@/Interface';
-import { NOT_DUPLICATABLE_NODE_TYPES, STICKY_NODE_TYPE } from '@/constants';
+import {
+	NOT_DUPLICATABLE_NODE_TYPES,
+	STICKY_NODE_TYPE,
+	EXECUTE_WORKFLOW_NODE_TYPE,
+} from '@/constants';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useUIStore } from '@/stores/ui.store';
@@ -33,6 +37,7 @@ export type ContextMenuAction =
 	| 'add_node'
 	| 'add_sticky'
 	| 'change_color'
+	| 'open_sub_workflow'
 	| 'tidy_up';
 
 const position = ref<XYPosition>([0, 0]);
@@ -60,6 +65,15 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 			!workflowPermissions.value.update ||
 			workflowsStore.workflow.isArchived,
 	);
+
+	const canOpenSubworkflow = computed(() => {
+		if (targetNodes.value.length !== 1) return false;
+
+		const node = targetNodes.value[0];
+		if (node.type !== EXECUTE_WORKFLOW_NODE_TYPE) return false;
+
+		return NodeHelpers.getSubworkflowId(node);
+	});
 
 	const targetNodeIds = computed(() => {
 		if (!isOpen.value || !target.value) return [];
@@ -128,6 +142,7 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 
 		const nodes = targetNodes.value;
 		const onlyStickies = nodes.every((node) => node.type === STICKY_NODE_TYPE);
+
 		const i18nOptions = {
 			adjustToNumber: nodes.length,
 			interpolate: {
@@ -221,7 +236,8 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 			].filter(Boolean) as ActionDropdownItem[];
 
 			if (nodes.length === 1) {
-				const singleNodeActions = onlyStickies
+				const isExecuteWorkflowNode = nodes[0].type === EXECUTE_WORKFLOW_NODE_TYPE;
+				const singleNodeActions: ActionDropdownItem[] = onlyStickies
 					? [
 							{
 								id: 'open',
@@ -253,6 +269,15 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 								disabled: isReadOnly.value,
 							},
 						];
+
+				if (isExecuteWorkflowNode) {
+					singleNodeActions.push({
+						id: 'open_sub_workflow',
+						label: i18n.baseText('contextMenu.openSubworkflow'),
+						shortcut: { shiftKey: true, metaKey: true, keys: ['O'] },
+						disabled: !canOpenSubworkflow.value,
+					});
+				}
 				// Add actions only available for a single node
 				menuActions.unshift(...singleNodeActions);
 			}

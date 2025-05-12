@@ -1,6 +1,6 @@
 {
   "name": "@n8n/n8n-nodes-langchain",
-  "version": "1.92.0",
+  "version": "1.93.0",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -133,7 +133,8 @@
       "dist/nodes/vector_store/VectorStoreSupabaseLoad/VectorStoreSupabaseLoad.node.js",
       "dist/nodes/vector_store/VectorStoreZep/VectorStoreZep.node.js",
       "dist/nodes/vector_store/VectorStoreZepInsert/VectorStoreZepInsert.node.js",
-      "dist/nodes/vector_store/VectorStoreZepLoad/VectorStoreZepLoad.node.js"
+      "dist/nodes/vector_store/VectorStoreZepLoad/VectorStoreZepLoad.node.js",
+      "dist/nodes/ToolExecutor/ToolExecutor.node.js"
     ]
   },
   "devDependencies": {

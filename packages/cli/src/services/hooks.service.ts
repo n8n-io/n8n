@@ -1,5 +1,10 @@
 import type { Settings, CredentialsEntity, User, WorkflowEntity, AuthUser } from '@n8n/db';
-import { AuthUserRepository, CredentialsRepository, WorkflowRepository } from '@n8n/db';
+import {
+	AuthUserRepository,
+	CredentialsRepository,
+	WorkflowRepository,
+	SettingsRepository,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { FindManyOptions, FindOneOptions, FindOptionsWhere } from '@n8n/typeorm';
@@ -8,7 +13,6 @@ import RudderStack, { type constructorOptions } from '@rudderstack/rudder-sdk-no
 import type { NextFunction, Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
-import { SettingsRepository } from '@/databases/repositories/settings.repository';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import type { Invitation } from '@/interfaces';
 import type { AuthenticatedRequest } from '@/requests';
