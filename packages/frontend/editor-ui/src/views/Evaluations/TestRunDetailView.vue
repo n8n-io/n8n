@@ -14,7 +14,6 @@ import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { orderBy } from 'lodash-es';
 import { statusDictionary } from '@/components/Evaluations/shared/statusDictionary';
-
 // TODO: replace with n8n-api type
 import { getErrorBaseKey } from '@/components/Evaluations/shared/errorCodes';
 
@@ -120,6 +119,20 @@ onMounted(async () => {
 
 <template>
 	<div :class="$style.container" data-test-id="test-definition-run-detail">
+		<n8n-callout
+			v-if="run?.status === 'error'"
+			theme="danger"
+			icon="exclamation-triangle"
+			class="mb-s"
+		>
+			<n8n-text size="small">
+				{{
+					locale.baseText(`${getErrorBaseKey(run?.errorCode)}` as BaseTextKey) ??
+					locale.baseText(`${getErrorBaseKey('UNKNOWN_ERROR')}` as BaseTextKey)
+				}}
+			</n8n-text>
+		</n8n-callout>
+
 		<div :class="$style.header">
 			<button :class="$style.backButton" @click="router.back()">
 				<i class="mr-xs"><font-awesome-icon icon="arrow-left" /></i>
@@ -167,14 +180,12 @@ onMounted(async () => {
 						{{ locale.baseText('evaluation.listRuns.status') }}
 					</N8nText>
 					<N8nText
+						:color="statusDictionary[run?.status]?.color"
 						size="large"
 						:class="run?.status.toLowerCase()"
 						style="text-transform: capitalize"
 					>
 						{{ run?.status }}
-						{{
-							locale.baseText(`${getErrorBaseKey(run?.errorCode)}` as BaseTextKey) ?? run?.errorCode
-						}}
 					</N8nText>
 				</div>
 
