@@ -13,7 +13,8 @@ import type {
 	IExecuteFunctions,
 	IRunData,
 } from 'n8n-workflow';
-import { ITaskData, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import type { ITaskData } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { ExecuteContext } from '../../execute-context';
 import { makeHandleToolInvocation } from '../get-input-connection-data';
