@@ -7,7 +7,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createEventBus } from '@n8n/utils/event-bus';
 import {
 	type FromAIArgument,
-	IDataObject,
+	type IDataObject,
 	NodeConnectionTypes,
 	traverseNodeParameters,
 } from 'n8n-workflow';
