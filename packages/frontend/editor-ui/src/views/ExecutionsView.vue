@@ -5,7 +5,7 @@ import GlobalExecutionsList from '@/components/executions/global/GlobalExecution
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useI18n } from '@/composables/useI18n';
-import { useOverview } from '@/composables/useOverview';
+import { useProjectPages } from '@/composables/useProjectPages';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
 import InsightsSummary from '@/features/insights/components/InsightsSummary.vue';
@@ -25,7 +25,7 @@ const executionsStore = useExecutionsStore();
 const insightsStore = useInsightsStore();
 const documentTitle = useDocumentTitle();
 const toast = useToast();
-const overview = useOverview();
+const overview = useProjectPages();
 
 const { executionsCount, executionsCountEstimated, filters, allExecutions } =
 	storeToRefs(executionsStore);

@@ -78,7 +78,7 @@ describe('McpServer', () => {
 		it('should call transport.handlePostMessage when transport exists', async () => {
 			mockTransport.handlePostMessage.mockImplementation(async () => {
 				// @ts-expect-error private property `resolveFunctions`
-				mcpServer.resolveFunctions[sessionId]();
+				mcpServer.resolveFunctions[`${sessionId}_123`]();
 			});
 
 			// Add the transport directly
@@ -108,6 +108,61 @@ describe('McpServer', () => {
 
 			// Verify flush was called
 			expect(mockResponse.flush).toHaveBeenCalled();
+		});
+
+		it('should handle multiple tool calls with different ids', async () => {
+			const firstId = 123;
+			const secondId = 456;
+
+			mockTransport.handlePostMessage.mockImplementation(async () => {
+				const requestKey = mockRequest.rawBody?.toString().includes(`"id":${firstId}`)
+					? `${sessionId}_${firstId}`
+					: `${sessionId}_${secondId}`;
+				// @ts-expect-error private property `resolveFunctions`
+				mcpServer.resolveFunctions[requestKey]();
+			});
+
+			// Add the transport directly
+			mcpServer.transports[sessionId] = mockTransport;
+
+			// First tool call
+			mockRequest.rawBody = Buffer.from(
+				JSON.stringify({
+					jsonrpc: '2.0',
+					method: 'tools/call',
+					id: firstId,
+					params: { name: 'mockTool', arguments: { param: 'first call' } },
+				}),
+			);
+
+			// Handle first tool call
+			const firstResult = await mcpServer.handlePostMessage(mockRequest, mockResponse, [mockTool]);
+			expect(firstResult).toBe(true);
+			expect(mockTransport.handlePostMessage).toHaveBeenCalledWith(
+				mockRequest,
+				mockResponse,
+				expect.any(String),
+			);
+
+			// Second tool call with different id
+			mockRequest.rawBody = Buffer.from(
+				JSON.stringify({
+					jsonrpc: '2.0',
+					method: 'tools/call',
+					id: secondId,
+					params: { name: 'mockTool', arguments: { param: 'second call' } },
+				}),
+			);
+
+			// Handle second tool call
+			const secondResult = await mcpServer.handlePostMessage(mockRequest, mockResponse, [mockTool]);
+			expect(secondResult).toBe(true);
+
+			// Verify transport's handlePostMessage was called twice
+			expect(mockTransport.handlePostMessage).toHaveBeenCalledTimes(2);
+
+			// Verify flush was called for both requests
+			expect(mockResponse.flush).toHaveBeenCalledTimes(2);
 		});
 
 		it('should return 401 when transport does not exist', async () => {

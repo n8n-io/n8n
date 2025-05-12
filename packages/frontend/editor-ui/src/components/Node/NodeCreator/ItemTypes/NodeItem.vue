@@ -18,6 +18,7 @@ import { useViewStacks } from '../composables/useViewStacks';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useNodeType } from '@/composables/useNodeType';
+import { isNodePreviewKey } from '../utils';
 
 export interface Props {
 	nodeType: SimplifiedNodeType;
@@ -45,6 +46,9 @@ const draggablePosition = ref({ x: -100, y: -100 });
 const draggableDataTransfer = ref(null as Element | null);
 
 const description = computed<string>(() => {
+	if (isCommunityNodePreview.value) {
+		return props.nodeType.description;
+	}
 	if (isSendAndWaitCategory.value) {
 		return '';
 	}
@@ -60,7 +64,14 @@ const description = computed<string>(() => {
 		fallback: props.nodeType.description,
 	});
 });
-const showActionArrow = computed(() => hasActions.value && !isSendAndWaitCategory.value);
+const showActionArrow = computed(() => {
+	// show action arrow if it's a community node and the community node details are not opened
+	if (isCommunityNode.value && !activeViewStack.communityNodeDetails) {
+		return true;
+	}
+
+	return hasActions.value && !isSendAndWaitCategory.value;
+});
 const isSendAndWaitCategory = computed(() => activeViewStack.subcategory === HITL_SUBCATEGORY);
 const dataTestId = computed(() =>
 	hasActions.value ? 'node-creator-action-item' : 'node-creator-node-item',
@@ -82,6 +93,7 @@ const draggableStyle = computed<{ top: string; left: string }>(() => ({
 }));
 
 const isCommunityNode = computed<boolean>(() => isCommunityPackageName(props.nodeType.name));
+const isCommunityNodePreview = computed<boolean>(() => isNodePreviewKey(props.nodeType.name));
 
 const displayName = computed<string>(() => {
 	const trimmedDisplayName = props.nodeType.displayName.trimEnd();
@@ -143,7 +155,10 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 			<NodeIcon :class="$style.nodeIcon" :node-type="nodeType" />
 		</template>
 
-		<template v-if="isCommunityNode" #tooltip>
+		<template
+			v-if="isCommunityNode && !isCommunityNodePreview && !activeViewStack?.communityNodeDetails"
+			#tooltip
+		>
 			<p
 				v-n8n-html="
 					i18n.baseText('generic.communityNode.tooltip', {
@@ -192,6 +207,7 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 	width: 40px;
 	z-index: 1;
 }
+
 .communityNodeIcon {
 	vertical-align: top;
 }
