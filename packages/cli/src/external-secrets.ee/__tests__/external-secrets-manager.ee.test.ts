@@ -1,7 +1,6 @@
-import type { Settings } from '@n8n/db';
+import type { Settings, SettingsRepository } from '@n8n/db';
 import { captor, mock } from 'jest-mock-extended';
 
-import type { SettingsRepository } from '@/databases/repositories/settings.repository';
 import type { License } from '@/license';
 import {
 	AnotherDummyProvider,

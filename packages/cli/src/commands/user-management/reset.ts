@@ -3,12 +3,12 @@ import {
 	User,
 	CredentialsRepository,
 	ProjectRepository,
+	SettingsRepository,
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { SettingsRepository } from '@/databases/repositories/settings.repository';
 import { UserRepository } from '@/databases/repositories/user.repository';
 
 import { BaseCommand } from '../base-command';

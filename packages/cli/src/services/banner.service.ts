@@ -1,9 +1,9 @@
 import type { BannerName } from '@n8n/api-types';
+import { SettingsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
 
 import config from '@/config';
-import { SettingsRepository } from '@/databases/repositories/settings.repository';
 
 @Service()
 export class BannerService {
