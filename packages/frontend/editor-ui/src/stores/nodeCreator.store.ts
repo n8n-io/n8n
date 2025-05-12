@@ -164,15 +164,6 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		}
 	}
 
-	function mapNodeConnectionTypeToSubmode(connection: NodeConnectionType | undefined) {
-		switch (connection) {
-			case 'main':
-				return null;
-			default:
-				return connection;
-		}
-	}
-
 	function openNodeCreatorForConnectingNode({
 		connection,
 		eventSource,

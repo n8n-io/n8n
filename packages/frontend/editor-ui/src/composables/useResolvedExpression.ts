@@ -30,11 +30,11 @@ export function useResolvedExpression({
 
 	const targetItem = computed(() => ndvStore.expressionTargetItem ?? undefined);
 	const activeNode = computed(() => ndvStore.activeNode);
-	const hasRunData = computed(() => {
-		return Boolean(
+	const hasRunData = computed(() =>
+		Boolean(
 			workflowsStore.workflowExecutionData?.data?.resultData?.runData[activeNode.value?.name ?? ''],
-		);
-	});
+		),
+	);
 	const isExpression = computed(() => isExpressionUtil(toValue(expression)));
 
 	function resolve(): Result<unknown, Error> {
@@ -60,7 +60,6 @@ export function useResolvedExpression({
 		}
 
 		try {
-			// debugger;
 			const resolvedValue = resolveExpression(
 				expressionString,
 				undefined,

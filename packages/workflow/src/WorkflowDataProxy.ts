@@ -874,7 +874,6 @@ export class WorkflowDataProxy {
 				const source = taskData?.source ?? [];
 
 				if (pairedItem.item >= previousNodeOutputData.length) {
-					// debugger;
 					throw createInvalidPairedItemError({
 						nodeName: sourceData.previousNode,
 					});
