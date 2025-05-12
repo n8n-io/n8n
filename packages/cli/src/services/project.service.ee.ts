@@ -16,7 +16,7 @@ import { hasGlobalScope, rolesWithScope, type Scope, type ProjectRole } from '@n
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { FindOptionsWhere, EntityManager } from '@n8n/typeorm';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import { In, Not } from '@n8n/typeorm';
+import { In } from '@n8n/typeorm';
 import { UserError } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -24,6 +24,7 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { CacheService } from './cache/cache.service';
+import { RoleService } from './role.service';
 
 type Relation = { userId: string; role: ProjectRole };
 
@@ -62,6 +63,7 @@ export class ProjectService {
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly projectRepository: ProjectRepository,
 		private readonly projectRelationRepository: ProjectRelationRepository,
+		private readonly roleService: RoleService,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly cacheService: CacheService,
 		private readonly licenseState: LicenseState,

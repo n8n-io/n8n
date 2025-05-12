@@ -34,13 +34,12 @@ describe('AddUsersToProjectDto', () => {
 				},
 			},
 			{
-				name: 'with all possible roles',
+				name: 'with all possible roles unless the `project:personalOwner`',
 				request: {
 					relations: [
-						{ userId: 'user-1', role: 'project:personalOwner' },
-						{ userId: 'user-2', role: 'project:admin' },
-						{ userId: 'user-3', role: 'project:editor' },
-						{ userId: 'user-4', role: 'project:viewer' },
+						{ userId: 'user-1', role: 'project:admin' },
+						{ userId: 'user-2', role: 'project:editor' },
+						{ userId: 'user-3', role: 'project:viewer' },
 					],
 				},
 			},

@@ -1,12 +1,13 @@
 import type { ProjectRelation } from '@n8n/api-types';
+import type {
+	Project,
+	ProjectRepository,
+	SharedCredentialsRepository,
+	ProjectRelationRepository,
+	SharedCredentials,
+} from '@n8n/db';
 import type { EntityManager } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
-
-import type { Project } from '@/databases/entities/project';
-import type { SharedCredentials } from '@/databases/entities/shared-credentials';
-import type { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
-import type { ProjectRepository } from '@/databases/repositories/project.repository';
-import type { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 
 import type { CacheService } from '../cache/cache.service';
 import { ProjectService } from '../project.service.ee';

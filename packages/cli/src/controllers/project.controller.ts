@@ -30,7 +30,6 @@ import {
 	TeamProjectOverQuotaError,
 	UnlicensedProjectRoleError,
 } from '@/services/project.service.ee';
-import { RoleService } from '@/services/role.service';
 
 @RestController('/projects')
 export class ProjectController {
@@ -222,20 +221,6 @@ export class ProjectController {
 				}
 				throw e;
 			}
-		}
-	}
-
-	async syncProjectRelations(
-		projectId: string,
-		relations: ProjectRequest.ProjectRelationPayload[],
-	) {
-		try {
-			await this.projectsService.syncProjectRelations(projectId, relations);
-		} catch (e) {
-			if (e instanceof UnlicensedProjectRoleError) {
-				throw new BadRequestError(e.message);
-			}
-			throw e;
 		}
 	}
 
