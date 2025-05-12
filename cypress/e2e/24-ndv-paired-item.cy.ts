@@ -290,6 +290,13 @@ describe('NDV', () => {
 		workflowPage.actions.openNode('Switch1');
 		ndv.actions.execute();
 
-		ndv.getters.parameterExpressionPreview('output').should('include.text', '1');
+		ndv.getters.parameterExpressionPreview('output').should('have.text', '1');
+		ndv.getters.inlineExpressionEditorInput().click();
+		ndv.getters.inlineExpressionEditorOutput().should('have.text', '1');
+		ndv.actions.expressionSelectNextItem();
+		ndv.getters.inlineExpressionEditorOutput().should('have.text', '3');
+		ndv.actions.expressionSelectNextItem();
+		ndv.getters.inlineExpressionEditorOutput().should('have.text', '1');
+		ndv.getters.inlineExpressionEditorItemNextButton().should('be.disabled');
 	});
 });

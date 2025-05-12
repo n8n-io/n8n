@@ -21,6 +21,7 @@ import type {
 	ExpressionError,
 	IDataObject,
 	IRunExecutionData,
+	IRunData,
 } from 'n8n-workflow';
 import { codeNodeEditorEventBus, globalLinkActionsEventBus } from '@/event-bus';
 import { h } from 'vue';
@@ -466,6 +467,8 @@ export function setRunExecutionData(
 		runExecutionData.resultData.runData = workflowsStore.getWorkflowRunData;
 	}
 
+	removeRunningTaskData(runExecutionData.resultData.runData);
+
 	workflowsStore.executingNode.length = 0;
 
 	workflowsStore.setWorkflowExecutionData({
@@ -504,4 +507,12 @@ export function setRunExecutionData(
 
 	const lineNumber = runExecutionData.resultData?.error?.lineNumber;
 	codeNodeEditorEventBus.emit('highlightLine', lineNumber ?? 'last');
+}
+
+function removeRunningTaskData(runData: IRunData): void {
+	for (const [nodeName, taskItems] of Object.entries(runData)) {
+		if (taskItems.some((item) => item.executionStatus === 'running')) {
+			runData[nodeName] = taskItems.filter((item) => item.executionStatus !== 'running');
+		}
+	}
 }
