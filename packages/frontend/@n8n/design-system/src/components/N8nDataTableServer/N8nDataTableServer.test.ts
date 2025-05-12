@@ -39,6 +39,7 @@ const headers: Array<TableHeader<Item>> = [
 describe('N8nDataTableServer', () => {
 	it('should render a table', () => {
 		const { container } = render(N8nDataTableServer, {
+			//@ts-expect-error testing-library errors due to header generics
 			props: { items, headers, itemsLength: items.length },
 		});
 
@@ -50,6 +51,7 @@ describe('N8nDataTableServer', () => {
 	it('should render dynamic slots', () => {
 		const slotName = 'item.id' as `item.${string}`;
 		const { container } = render(N8nDataTableServer, {
+			//@ts-expect-error testing-library errors due to header generics
 			props: { items, headers, itemsLength: items.length },
 			slots: {
 				[slotName]: ({ item }: { item: Item }) => {
@@ -67,6 +69,7 @@ describe('N8nDataTableServer', () => {
 
 	it('should synchronize the state', async () => {
 		const { container, rerender } = render(N8nDataTableServer, {
+			//@ts-expect-error testing-library errors due to header generics
 			props: { items, headers, itemsLength: items.length },
 		});
 
@@ -82,6 +85,7 @@ describe('N8nDataTableServer', () => {
 
 	it('should emit options for sorting / pagination', async () => {
 		const { container, emitted, getByTestId } = render(N8nDataTableServer, {
+			//@ts-expect-error testing-library errors due to header generics
 			props: { items, headers, itemsLength: 100 },
 		});
 
@@ -101,6 +105,7 @@ describe('N8nDataTableServer', () => {
 
 	it('should not show the pagination if there are no items', async () => {
 		const { queryByTestId } = render(N8nDataTableServer, {
+			//@ts-expect-error testing-library errors due to header generics
 			props: { items: [], headers, itemsLength: 0 },
 		});
 
@@ -109,6 +114,7 @@ describe('N8nDataTableServer', () => {
 
 	it('should not show the pagination if there are less items than the snallest page size value', async () => {
 		const { queryByTestId } = render(N8nDataTableServer, {
+			//@ts-expect-error testing-library errors due to header generics
 			props: {
 				items: [
 					{ id: '1', firstName: '1', lastName: '1' },
