@@ -1537,10 +1537,14 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 				openFormPopupWindow(testUrl);
 			}
 		} else {
-			const status = tasksData[tasksData.length - 1]?.executionStatus ?? 'unknown';
+			const existingRunIndex = tasksData.findIndex(
+				(item) => item.executionIndex === data.executionIndex,
+			);
+			const index = existingRunIndex > -1 ? existingRunIndex : tasksData.length - 1;
+			const status = tasksData[index]?.executionStatus ?? 'unknown';
 
 			if ('waiting' === status || (settingsStore.isNewLogsEnabled && 'running' === status)) {
-				tasksData.splice(tasksData.length - 1, 1, data);
+				tasksData.splice(index, 1, data);
 			} else {
 				tasksData.push(data);
 			}
