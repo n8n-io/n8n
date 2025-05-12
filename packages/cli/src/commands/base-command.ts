@@ -84,7 +84,6 @@ export abstract class BaseCommand extends Command {
 			if (
 				!preInitModule ||
 				preInitModule.shouldLoadModule?.({
-					database: this.globalConfig.database,
 					instance: this.instanceSettings,
 				})
 			) {

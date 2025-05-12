@@ -1,4 +1,3 @@
-import type { DatabaseConfig } from '@n8n/config/src/configs/database.config';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
@@ -10,7 +9,6 @@ describe('InsightsModulePreInit', () => {
 	it('should return false if instance type is not "main"', () => {
 		const ctx: ModulePreInitContext = {
 			instance: mock<InstanceSettings>({ instanceType: 'worker' }),
-			database: mock<DatabaseConfig>(),
 		};
 		expect(shouldLoadModule(ctx)).toBe(false);
 	});
@@ -18,7 +16,6 @@ describe('InsightsModulePreInit', () => {
 	it('should return true if instance type is "main"', () => {
 		const ctx: ModulePreInitContext = {
 			instance: mock<InstanceSettings>({ instanceType: 'main' }),
-			database: mock<DatabaseConfig>(),
 		};
 		expect(shouldLoadModule(ctx)).toBe(true);
 	});
