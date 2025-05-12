@@ -110,6 +110,40 @@ describe('Editors', () => {
 			ndv.actions.close();
 			workflowPage.getters.isWorkflowSaved().should('not.be.true');
 		});
+
+		it('should allow switching between SQL editors in connected nodes', () => {
+			workflowPage.actions.addInitialNodeToCanvas('Postgres', {
+				action: 'Execute a SQL query',
+				keepNdvOpen: true,
+			});
+			ndv.getters
+				.sqlEditorContainer()
+				.click()
+				.find('.cm-content')
+				.type('SELECT * FROM `firstTable`', { delay: TYPING_DELAY })
+				.type('{esc}');
+			ndv.actions.close();
+
+			workflowPage.actions.addNodeToCanvas('Postgres', true, true, 'Execute a SQL query');
+			ndv.getters
+				.sqlEditorContainer()
+				.click()
+				.find('.cm-content')
+				.type('SELECT * FROM `secondTable`', { delay: TYPING_DELAY })
+				.type('{esc}');
+
+			ndv.actions.clickFloatingNode('Postgres');
+			ndv.getters
+				.sqlEditorContainer()
+				.find('.cm-content')
+				.should('have.text', 'SELECT * FROM `firstTable`');
+
+			ndv.actions.clickFloatingNode('Postgres1');
+			ndv.getters
+				.sqlEditorContainer()
+				.find('.cm-content')
+				.should('have.text', 'SELECT * FROM `secondTable`');
+		});
 	});
 
 	describe('HTML Editor', () => {
@@ -172,6 +206,37 @@ describe('Editors', () => {
 				.type('{esc}');
 			ndv.actions.close();
 			workflowPage.getters.isWorkflowSaved().should('not.be.true');
+		});
+
+		it('should allow switching between HTML editors in connected nodes', () => {
+			workflowPage.actions.addInitialNodeToCanvas('HTML', {
+				action: 'Generate HTML template',
+				keepNdvOpen: true,
+			});
+			ndv.getters
+				.htmlEditorContainer()
+				.click()
+				.find('.cm-content')
+				.type('{selectall}<div>First', { delay: TYPING_DELAY })
+				.type('{esc}');
+			ndv.actions.close();
+
+			workflowPage.actions.addNodeToCanvas('HTML', true, true, 'Generate HTML template');
+			ndv.getters
+				.htmlEditorContainer()
+				.click()
+				.find('.cm-content')
+				.type('{selectall}<div>Second', { delay: TYPING_DELAY })
+				.type('{esc}');
+
+			ndv.actions.clickFloatingNode('HTML');
+			ndv.getters.htmlEditorContainer().find('.cm-content').should('have.text', '<div>First</div>');
+
+			ndv.actions.clickFloatingNode('HTML1');
+			ndv.getters
+				.htmlEditorContainer()
+				.find('.cm-content')
+				.should('have.text', '<div>Second</div>');
 		});
 	});
 });

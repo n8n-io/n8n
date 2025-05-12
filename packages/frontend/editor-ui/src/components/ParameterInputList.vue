@@ -529,7 +529,6 @@ function getParameterValue<T extends NodeParameterValueType = NodeParameterValue
 	<div class="parameter-input-list-wrapper">
 		<div
 			v-for="(parameter, index) in filteredParameters"
-			:key="parameter.name"
 			:class="{ indent }"
 			data-test-id="parameter-item"
 		>
