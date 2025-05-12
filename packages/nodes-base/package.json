@@ -598,7 +598,6 @@
       "dist/nodes/ItemLists/ItemLists.node.js",
       "dist/nodes/Iterable/Iterable.node.js",
       "dist/nodes/Jenkins/Jenkins.node.js",
-      "dist/nodes/FnShift/FnShift.node.js",
       "dist/nodes/JinaAI/JinaAi.node.js",
       "dist/nodes/Jira/Jira.node.js",
       "dist/nodes/Jira/JiraTrigger.node.js",
