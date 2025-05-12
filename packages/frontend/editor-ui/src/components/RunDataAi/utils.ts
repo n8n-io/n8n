@@ -616,3 +616,15 @@ export function getDefaultCollapsedEntries(entries: LogEntry[]): Record<string, 
 
 	return ret;
 }
+
+export function getDepth(entry: LogEntry): number {
+	let depth = 0;
+	let currentEntry = entry;
+
+	while (currentEntry.parent !== undefined) {
+		currentEntry = currentEntry.parent;
+		depth++;
+	}
+
+	return depth;
+}

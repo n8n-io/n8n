@@ -18,6 +18,7 @@ import {
 	hasSubExecution,
 	type LatestNodeInfo,
 	type LogEntry,
+	getDepth,
 } from '@/components/RunDataAi/utils';
 import { useVirtualList } from '@vueuse/core';
 import { ndvEventBus } from '@/event-bus';
@@ -93,11 +94,13 @@ function handleClickNode(clicked: LogEntry) {
 	}
 
 	emit('select', clicked);
+
 	telemetry.track('User selected node in log view', {
 		node_type: clicked.node.type,
 		node_id: clicked.node.id,
-		execution_id: clicked.executionId,
-		workflow_id: clicked.workflow.id,
+		execution_id: execution?.id,
+		workflow_id: execution?.workflowData.id,
+		subworkflow_depth: getDepth(clicked),
 	});
 }
 
