@@ -213,6 +213,7 @@ const {
 	setNodeActiveByName,
 	clearNodeActive,
 	addConnections,
+	tryToOpenSubworkflowInNewTab,
 	importWorkflowData,
 	fetchWorkflowDataFromUrl,
 	resetWorkspace,
@@ -665,8 +666,20 @@ function onClickNode() {
 	closeNodeCreator();
 }
 
-function onSetNodeActivated(id: string) {
+function onSetNodeActivated(id: string, event?: MouseEvent) {
+	// Handle Ctrl/Cmd + Double Click case
+	if (event?.metaKey || event?.ctrlKey) {
+		const didOpen = tryToOpenSubworkflowInNewTab(id);
+		if (didOpen) {
+			return;
+		}
+	}
+
 	setNodeActive(id);
+}
+
+function onOpenSubWorkflow(id: string) {
+	tryToOpenSubworkflowInNewTab(id);
 }
 
 function onSetNodeDeactivated() {
@@ -1888,6 +1901,7 @@ onBeforeUnmount(() => {
 		@update:node:parameters="onUpdateNodeParameters"
 		@update:node:inputs="onUpdateNodeInputs"
 		@update:node:outputs="onUpdateNodeOutputs"
+		@open:sub-workflow="onOpenSubWorkflow"
 		@click:node="onClickNode"
 		@click:node:add="onClickNodeAdd"
 		@run:node="onRunWorkflowToNode"
