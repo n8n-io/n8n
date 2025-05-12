@@ -149,17 +149,23 @@ export async function itemColumnsPreSend(
 
 		if (operation === 'upsert') {
 			if (mapperValue.matchingColumns.includes('id')) {
-				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-				requestOptions.url += '/' + mapperValue.value!.id;
-				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-				delete mapperValue.value!.id;
+				if (!mapperValue.value?.id) {
+					throw new NodeOperationError(
+						this.getNode(),
+						"The column(s) don't match any existing item",
+						{
+							description: 'Double-check the value(s) for the columns to match and try again',
+						},
+					);
+				}
+				requestOptions.url += '/' + mapperValue.value.id;
+				delete mapperValue.value.id;
 				requestOptions.method = 'PATCH';
 			}
 		} else if (operation === 'update') {
-			if (mapperValue.matchingColumns.includes('id')) {
-				requestOptions.url += '/' + mapperValue.value!.id;
-				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-				delete mapperValue.value!.id;
+			if (mapperValue.matchingColumns.includes('id') && mapperValue.value?.id) {
+				requestOptions.url += '/' + mapperValue.value.id;
+				delete mapperValue.value.id;
 			} else {
 				throw new NodeOperationError(
 					this.getNode(),

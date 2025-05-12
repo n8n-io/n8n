@@ -10,12 +10,9 @@ import { microsoftSharePointApiRequest } from '../transport';
 
 const unsupportedFields = ['geoLocation', 'location', 'term', 'url'];
 const fieldTypeMapping: Partial<Record<FieldType, string[]>> = {
-	// eslint-disable-next-line id-denylist
 	string: ['text', 'user', 'lookup'],
 	// unknownFutureValue: rating
-	// eslint-disable-next-line id-denylist
 	number: ['number', 'currency', 'unknownFutureValue'],
-	// eslint-disable-next-line id-denylist
 	boolean: ['boolean'],
 	dateTime: ['dateTime'],
 	object: ['thumbnail'],
@@ -69,12 +66,13 @@ export async function getMappingColumns(
 		} as ResourceMapperField;
 		if (field.type === 'options') {
 			field.options = [];
-			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-			for (const choice of column.choice!.choices) {
-				field.options.push({
-					name: choice,
-					value: choice,
-				});
+			if (Array.isArray(column.choice?.choices)) {
+				for (const choice of column.choice.choices) {
+					field.options.push({
+						name: choice,
+						value: choice,
+					});
+				}
 			}
 		}
 		fields.push(field);
