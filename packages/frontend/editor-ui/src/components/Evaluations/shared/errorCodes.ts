@@ -47,7 +47,6 @@ const testRunErrorDictionary: Partial<Record<TestRunErrorCode, BaseTextKey>> = {
 } as const;
 
 export const getErrorBaseKey = (errorCode?: string): string => {
-	console.log('errorCode', errorCode);
 	return (
 		testCaseErrorDictionary[errorCode as TestCaseExecutionErrorCodes] ??
 		testRunErrorDictionary[errorCode as TestRunErrorCode] ??
