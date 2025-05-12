@@ -188,9 +188,9 @@ describe('SupplyDataContext', () => {
 		});
 	});
 
-	describe('nextRunIndex', () => {
+	describe('getNextRunIndex', () => {
 		it('should return 0 as the default latest run index', () => {
-			const latestRunIndex = supplyDataContext.nextRunIndex();
+			const latestRunIndex = supplyDataContext.getNextRunIndex();
 			expect(latestRunIndex).toBe(0);
 		});
 
@@ -214,7 +214,7 @@ describe('SupplyDataContext', () => {
 				abortSignal,
 			);
 
-			const latestRunIndex = supplyDataContext.nextRunIndex();
+			const latestRunIndex = supplyDataContext.getNextRunIndex();
 
 			expect(latestRunIndex).toBe(2);
 		});

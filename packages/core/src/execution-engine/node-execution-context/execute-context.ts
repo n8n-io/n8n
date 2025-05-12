@@ -200,8 +200,8 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 		await this.additionalData.hooks?.runHook('sendResponse', [response]);
 	}
 
-	nextRunIndex(): number {
-		throw new ApplicationError('nextRunIndex should not be called on IExecuteFunctions');
+	getNextRunIndex(): number {
+		throw new ApplicationError('getNextRunIndex should not be called on IExecuteFunctions');
 	}
 
 	/** @deprecated use ISupplyDataFunctions.addInputData */

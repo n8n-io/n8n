@@ -14,7 +14,7 @@ import { WorkflowToolService } from './utils/WorkflowToolService';
 // Mock ISupplyDataFunctions interface
 function createMockContext(overrides?: Partial<ISupplyDataFunctions>): ISupplyDataFunctions {
 	let runIndex = 0;
-	const nextRunIndex = jest.fn(() => {
+	const getNextRunIndex = jest.fn(() => {
 		return runIndex++;
 	});
 	return {
@@ -30,7 +30,7 @@ function createMockContext(overrides?: Partial<ISupplyDataFunctions>): ISupplyDa
 		getInputData: jest.fn(),
 		getMode: jest.fn(),
 		getRestApiUrl: jest.fn(),
-		nextRunIndex,
+		getNextRunIndex,
 		getTimezone: jest.fn(),
 		getWorkflow: jest.fn(),
 		getWorkflowStaticData: jest.fn(),

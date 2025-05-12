@@ -28,7 +28,7 @@ import type { ExecuteContext, WebhookContext } from '../../node-execution-contex
 // eslint-disable-next-line import/no-cycle
 import { SupplyDataContext } from '../../node-execution-context/supply-data-context';
 
-function nextRunIndex(runExecutionData: IRunExecutionData, nodeName: string) {
+function getNextRunIndex(runExecutionData: IRunExecutionData, nodeName: string) {
 	return runExecutionData.resultData.runData[nodeName]?.length ?? 0;
 }
 
@@ -42,9 +42,14 @@ export function makeHandleToolInvocation(
 	 * This keeps track of how many times this specific AI tool node has been invoked.
 	 * It is incremented on every invocation of the tool to keep the output of each invocation separate from each other.
 	 */
+	// We get the runIndex from the context to handle multiple executions
+	// of the same tool when the tool is used in a loop or in a parallel execution.
+	let runIndex = getNextRunIndex(runExecutionData, node.name);
+
 	return async (toolArgs: IDataObject) => {
-		const runIndex = nextRunIndex(runExecutionData, node.name);
-		const context = contextFactory(runIndex);
+		// Increment the runIndex for the next invocation
+		const localRunIndex = runIndex++;
+		const context = contextFactory(localRunIndex);
 		context.addInputData(NodeConnectionTypes.AiTool, [[{ json: toolArgs }]]);
 
 		try {
@@ -68,13 +73,13 @@ export function makeHandleToolInvocation(
 			}
 
 			// Add output data to the context
-			context.addOutputData(NodeConnectionTypes.AiTool, runIndex, [[{ json: { response } }]]);
+			context.addOutputData(NodeConnectionTypes.AiTool, localRunIndex, [[{ json: { response } }]]);
 
 			// Return the stringified results
 			return JSON.stringify(response);
 		} catch (error) {
 			const nodeError = new NodeOperationError(node, error as Error);
-			context.addOutputData(NodeConnectionTypes.AiTool, runIndex, nodeError);
+			context.addOutputData(NodeConnectionTypes.AiTool, localRunIndex, nodeError);
 			return 'Error during node execution: ' + (nodeError.description ?? nodeError.message);
 		}
 	};
