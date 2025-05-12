@@ -1,7 +1,6 @@
+import { AuthUserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { Flags } from '@oclif/core';
-
-import { AuthUserRepository } from '@/databases/repositories/auth-user.repository';
 
 import { BaseCommand } from '../base-command';
 

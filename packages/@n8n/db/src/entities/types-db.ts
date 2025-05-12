@@ -1,4 +1,5 @@
 import type { GlobalRole, Scope } from '@n8n/permissions';
+import type { FindOperator } from '@n8n/typeorm';
 import type {
 	ICredentialsEncrypted,
 	IRunExecutionData,
@@ -268,10 +269,6 @@ export const enum StatisticsNames {
 	dataLoaded = 'data_loaded',
 }
 
-export type CredentialSharingRole = 'credential:owner' | 'credential:user';
-
-export type WorkflowSharingRole = 'workflow:owner' | 'workflow:editor';
-
 export type AuthProviderType = 'ldap' | 'email' | 'saml'; // | 'google';
 
 export type FolderWithWorkflowAndSubFolderCount = Folder & {
@@ -308,3 +305,45 @@ export type MockedNodeItem = {
 export type RunningMode = 'dry' | 'live';
 
 export type SyncStatus = 'success' | 'error';
+
+/** @deprecated This is tech debt. Do not rely on request-level types in repositories. */
+export namespace ListQuery {
+	export type Options = {
+		filter?: Record<string, unknown>;
+		select?: Record<string, true>;
+		skip?: number;
+		take?: number;
+		sortBy?: string;
+	};
+}
+
+export type ProjectRole =
+	| 'project:personalOwner'
+	| 'project:admin'
+	| 'project:editor'
+	| 'project:viewer';
+
+export interface IGetExecutionsQueryFilter {
+	id?: FindOperator<string> | string;
+	finished?: boolean;
+	mode?: string;
+	retryOf?: string;
+	retrySuccessId?: string;
+	status?: ExecutionStatus[];
+	workflowId?: string;
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	waitTill?: FindOperator<any> | boolean;
+	metadata?: Array<{ key: string; value: string }>;
+	startedAfter?: string;
+	startedBefore?: string;
+}
+
+export type ResourceType = 'folder' | 'workflow';
+
+export type WorkflowFolderUnionFull = (
+	| ListQueryDb.Workflow.Plain
+	| ListQueryDb.Workflow.WithSharing
+	| FolderWithWorkflowAndSubFolderCount
+) & {
+	resource: ResourceType;
+};

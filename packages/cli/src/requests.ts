@@ -1,6 +1,6 @@
-import type { ProjectIcon, ProjectRole, ProjectType } from '@n8n/api-types';
+import type { ProjectIcon, ProjectType } from '@n8n/api-types';
 import type { Variables, Project, User, ListQueryDb, WorkflowHistory } from '@n8n/db';
-import type { AssignableRole, GlobalRole, Scope } from '@n8n/permissions';
+import type { AssignableGlobalRole, GlobalRole, ProjectRole, Scope } from '@n8n/permissions';
 import type express from 'express';
 import type {
 	ICredentialDataDecryptedObject,
@@ -137,7 +137,7 @@ export declare namespace UserRequest {
 			email: string;
 			inviteAcceptUrl?: string;
 			emailSent: boolean;
-			role: AssignableRole;
+			role: AssignableGlobalRole;
 		};
 		error?: string;
 	};
@@ -217,7 +217,7 @@ export declare namespace AnnotationTagsRequest {
 export declare namespace NodeRequest {
 	type GetAll = AuthenticatedRequest;
 
-	type Post = AuthenticatedRequest<{}, {}, { name?: string }>;
+	type Post = AuthenticatedRequest<{}, {}, { name?: string; verify?: boolean; version?: string }>;
 
 	type Delete = AuthenticatedRequest<{}, {}, {}, { name: string }>;
 

@@ -22,19 +22,8 @@ export function getManualChatModalCloseButton() {
 	return cy.getByTestId('workflow-chat-button');
 }
 
-export function getManualChatModalLogs() {
-	return cy.getByTestId('canvas-chat-logs');
-}
 export function getManualChatDialog() {
 	return getManualChatModal().getByTestId('workflow-lm-chat-dialog');
-}
-
-export function getManualChatModalLogsTree() {
-	return getManualChatModalLogs().getByTestId('lm-chat-logs-tree');
-}
-
-export function getManualChatModalLogsEntries() {
-	return getManualChatModalLogs().getByTestId('lm-chat-logs-entry');
 }
 
 /**

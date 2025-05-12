@@ -262,6 +262,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 	const fetchAllCredentials = async (
 		projectId?: string,
 		includeScopes = true,
+		onlySharedWithMe = false,
 	): Promise<ICredentialsResponse[]> => {
 		const filter = {
 			projectId,
@@ -271,6 +272,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 			rootStore.restApiContext,
 			isEmpty(filter) ? undefined : filter,
 			includeScopes,
+			onlySharedWithMe,
 		);
 		setCredentials(credentials);
 		return credentials;

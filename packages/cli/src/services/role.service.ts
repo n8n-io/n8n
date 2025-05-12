@@ -1,159 +1,30 @@
-import type { ProjectRole } from '@n8n/api-types';
 import type {
 	CredentialsEntity,
-	CredentialSharingRole,
 	SharedCredentials,
 	SharedWorkflow,
-	WorkflowSharingRole,
 	User,
 	ListQueryDb,
 	ScopesField,
 	ProjectRelation,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import type { GlobalRole, Resource, Scope } from '@n8n/permissions';
-import {
-	combineScopes,
-	GLOBAL_ADMIN_SCOPES,
-	GLOBAL_MEMBER_SCOPES,
-	GLOBAL_OWNER_SCOPES,
-	PERSONAL_PROJECT_OWNER_SCOPES,
-	PROJECT_EDITOR_SCOPES,
-	PROJECT_VIEWER_SCOPES,
-	REGULAR_PROJECT_ADMIN_SCOPES,
-	CREDENTIALS_SHARING_OWNER_SCOPES,
-	CREDENTIALS_SHARING_USER_SCOPES,
-	WORKFLOW_SHARING_EDITOR_SCOPES,
-	WORKFLOW_SHARING_OWNER_SCOPES,
-} from '@n8n/permissions';
+import type { AllRoleTypes, Scope } from '@n8n/permissions';
+import { ALL_ROLES, combineScopes, getRoleScopes } from '@n8n/permissions';
 import { UnexpectedError } from 'n8n-workflow';
 
 import { License } from '@/license';
-
-export type RoleNamespace = 'global' | 'project' | 'credential' | 'workflow';
-
-const GLOBAL_SCOPE_MAP: Record<GlobalRole, Scope[]> = {
-	'global:owner': GLOBAL_OWNER_SCOPES,
-	'global:admin': GLOBAL_ADMIN_SCOPES,
-	'global:member': GLOBAL_MEMBER_SCOPES,
-};
-
-const PROJECT_SCOPE_MAP: Record<ProjectRole, Scope[]> = {
-	'project:admin': REGULAR_PROJECT_ADMIN_SCOPES,
-	'project:personalOwner': PERSONAL_PROJECT_OWNER_SCOPES,
-	'project:editor': PROJECT_EDITOR_SCOPES,
-	'project:viewer': PROJECT_VIEWER_SCOPES,
-};
-
-const CREDENTIALS_SHARING_SCOPE_MAP: Record<CredentialSharingRole, Scope[]> = {
-	'credential:owner': CREDENTIALS_SHARING_OWNER_SCOPES,
-	'credential:user': CREDENTIALS_SHARING_USER_SCOPES,
-};
-
-const WORKFLOW_SHARING_SCOPE_MAP: Record<WorkflowSharingRole, Scope[]> = {
-	'workflow:owner': WORKFLOW_SHARING_OWNER_SCOPES,
-	'workflow:editor': WORKFLOW_SHARING_EDITOR_SCOPES,
-};
-
-interface AllMaps {
-	global: Record<GlobalRole, Scope[]>;
-	project: Record<ProjectRole, Scope[]>;
-	credential: Record<CredentialSharingRole, Scope[]>;
-	workflow: Record<WorkflowSharingRole, Scope[]>;
-}
-
-const ALL_MAPS: AllMaps = {
-	global: GLOBAL_SCOPE_MAP,
-	project: PROJECT_SCOPE_MAP,
-	credential: CREDENTIALS_SHARING_SCOPE_MAP,
-	workflow: WORKFLOW_SHARING_SCOPE_MAP,
-} as const;
-
-const COMBINED_MAP = Object.fromEntries(
-	Object.values(ALL_MAPS).flatMap((o: Record<string, Scope[]>) => Object.entries(o)),
-) as Record<GlobalRole | ProjectRole | CredentialSharingRole | WorkflowSharingRole, Scope[]>;
-
-export interface RoleMap {
-	global: GlobalRole[];
-	project: ProjectRole[];
-	credential: CredentialSharingRole[];
-	workflow: WorkflowSharingRole[];
-}
-export type AllRoleTypes = GlobalRole | ProjectRole | WorkflowSharingRole | CredentialSharingRole;
-
-const ROLE_NAMES: Record<
-	GlobalRole | ProjectRole | WorkflowSharingRole | CredentialSharingRole,
-	string
-> = {
-	'global:owner': 'Owner',
-	'global:admin': 'Admin',
-	'global:member': 'Member',
-	'project:personalOwner': 'Project Owner',
-	'project:admin': 'Project Admin',
-	'project:editor': 'Project Editor',
-	'project:viewer': 'Project Viewer',
-	'credential:user': 'Credential User',
-	'credential:owner': 'Credential Owner',
-	'workflow:owner': 'Workflow Owner',
-	'workflow:editor': 'Workflow Editor',
-};
-
-// export type ScopesField = { scopes: Scope[] };
 
 @Service()
 export class RoleService {
 	constructor(private readonly license: License) {}
 
-	rolesWithScope(namespace: 'global', scopes: Scope | Scope[]): GlobalRole[];
-	rolesWithScope(namespace: 'project', scopes: Scope | Scope[]): ProjectRole[];
-	rolesWithScope(namespace: 'credential', scopes: Scope | Scope[]): CredentialSharingRole[];
-	rolesWithScope(namespace: 'workflow', scopes: Scope | Scope[]): WorkflowSharingRole[];
-	rolesWithScope(namespace: RoleNamespace, scopes: Scope | Scope[]) {
-		if (!Array.isArray(scopes)) {
-			scopes = [scopes];
-		}
-
-		return Object.keys(ALL_MAPS[namespace]).filter((k) => {
-			return scopes.every((s) =>
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
-				((ALL_MAPS[namespace] as any)[k] as Scope[]).includes(s),
-			);
+	getAllRoles() {
+		Object.values(ALL_ROLES).forEach((entries) => {
+			entries.forEach((entry) => {
+				entry.licensed = this.isRoleLicensed(entry.role);
+			});
 		});
-	}
-
-	getRoles(): RoleMap {
-		return Object.fromEntries(
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-			Object.entries(ALL_MAPS).map((e) => [e[0], Object.keys(e[1])]),
-		) as unknown as RoleMap;
-	}
-
-	getRoleName(role: AllRoleTypes): string {
-		return ROLE_NAMES[role];
-	}
-
-	getRoleScopes(
-		role: GlobalRole | ProjectRole | WorkflowSharingRole | CredentialSharingRole,
-		filters?: Resource[],
-	): Scope[] {
-		let scopes = COMBINED_MAP[role];
-		if (filters) {
-			scopes = scopes.filter((s) => filters.includes(s.split(':')[0] as Resource));
-		}
-		return scopes;
-	}
-
-	/**
-	 * Find all distinct scopes in a set of project roles.
-	 */
-	getScopesBy(projectRoles: Set<ProjectRole>) {
-		return [...projectRoles].reduce<Set<Scope>>((acc, projectRole) => {
-			for (const scope of PROJECT_SCOPE_MAP[projectRole] ?? []) {
-				acc.add(scope);
-			}
-
-			return acc;
-		}, new Set());
+		return ALL_ROLES;
 	}
 
 	addScopes(
@@ -192,9 +63,7 @@ export class RoleService {
 			| ListQueryDb.Workflow.WithScopes
 			| ListQueryDb.Credentials.WithScopes;
 
-		Object.assign(entity, {
-			scopes: [],
-		});
+		entity.scopes = [];
 
 		if (shared === undefined) {
 			return entity;
@@ -220,7 +89,7 @@ export class RoleService {
 		shared: SharedCredentials[] | SharedWorkflow[],
 		userProjectRelations: ProjectRelation[],
 	): Scope[] {
-		const globalScopes = this.getRoleScopes(user.role, [type]);
+		const globalScopes = getRoleScopes(user.role, [type]);
 		const scopesSet: Set<Scope> = new Set(globalScopes);
 		for (const sharedEntity of shared) {
 			const pr = userProjectRelations.find(
@@ -228,9 +97,9 @@ export class RoleService {
 			);
 			let projectScopes: Scope[] = [];
 			if (pr) {
-				projectScopes = this.getRoleScopes(pr.role);
+				projectScopes = getRoleScopes(pr.role);
 			}
-			const resourceMask = this.getRoleScopes(sharedEntity.role);
+			const resourceMask = getRoleScopes(sharedEntity.role);
 			const mergedScopes = combineScopes(
 				{
 					global: globalScopes,
@@ -243,7 +112,8 @@ export class RoleService {
 		return [...scopesSet].sort();
 	}
 
-	isRoleLicensed(role: AllRoleTypes) {
+	private isRoleLicensed(role: AllRoleTypes) {
+		// TODO: move this info into FrontendSettings
 		switch (role) {
 			case 'project:admin':
 				return this.license.isProjectRoleAdminLicensed();

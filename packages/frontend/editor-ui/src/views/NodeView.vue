@@ -258,7 +258,8 @@ const isCanvasReadOnly = computed(() => {
 	return (
 		isDemoRoute.value ||
 		isReadOnlyEnvironment.value ||
-		!(workflowPermissions.value.update ?? projectPermissions.value.workflow.update)
+		!(workflowPermissions.value.update ?? projectPermissions.value.workflow.update) ||
+		editableWorkflow.value.isArchived
 	);
 });
 
@@ -379,12 +380,11 @@ async function initializeWorkspaceForNewWorkflow() {
 
 	const parentFolderId = route.query.parentFolderId as string | undefined;
 
-	await workflowsStore.getNewWorkflowData(
+	await workflowsStore.getNewWorkflowDataAndMakeShareable(
 		undefined,
 		projectsStore.currentProjectId,
 		parentFolderId,
 	);
-	workflowsStore.makeNewWorkflowShareable();
 
 	if (projectsStore.currentProjectId) {
 		await fetchAndSetProject(projectsStore.currentProjectId);
@@ -759,8 +759,9 @@ function onPinNodes(ids: string[], source: PinDataSource) {
 
 async function onSaveWorkflow() {
 	const workflowIsSaved = !uiStore.stateIsDirty;
+	const workflowIsArchived = workflowsStore.workflow.isArchived;
 
-	if (workflowIsSaved) {
+	if (workflowIsSaved || workflowIsArchived) {
 		return;
 	}
 	const saved = await workflowHelpers.saveCurrentWorkflow();
