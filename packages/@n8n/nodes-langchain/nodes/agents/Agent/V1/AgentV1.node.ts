@@ -438,7 +438,6 @@ export class AgentV1 implements INodeType {
 	}
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		console.log('Execute AgentV1');
 		const agentType = this.getNodeParameter('agent', 0, '') as string;
 		const nodeVersion = this.getNode().typeVersion;
 

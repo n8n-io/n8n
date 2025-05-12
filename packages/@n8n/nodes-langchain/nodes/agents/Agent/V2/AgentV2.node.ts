@@ -164,7 +164,6 @@ export class AgentV2 implements INodeType {
 	}
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		console.log('Execute AgentV2');
 		return await toolsAgentExecute.call(this);
 	}
 }
