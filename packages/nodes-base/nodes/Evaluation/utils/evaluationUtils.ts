@@ -86,7 +86,7 @@ export async function setOutput(this: IExecuteFunctions): Promise<INodeExecution
 	return [this.getInputData()];
 }
 
-export async function setEvaluation(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+export async function setMetrics(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	const items = this.getInputData();
 	const metrics: INodeExecutionData[] = [];
 
