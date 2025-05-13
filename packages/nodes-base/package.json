@@ -862,7 +862,6 @@
     "@types/rfc2047": "^2.0.1",
     "@types/sanitize-html": "^2.11.0",
     "@types/showdown": "^1.9.4",
-    "@types/snowflake-sdk": "^1.6.24",
     "@types/ssh2-sftp-client": "^5.1.0",
     "@types/uuid": "catalog:",
     "@types/xml2js": "catalog:",
@@ -870,7 +869,7 @@
     "n8n-core": "workspace:*"
   },
   "dependencies": {
-    "@aws-sdk/client-sso-oidc": "3.666.0",
+    "@aws-sdk/client-sso-oidc": "3.808.0",
     "@kafkajs/confluent-schema-registry": "3.8.0",
     "@mozilla/readability": "0.6.0",
     "@n8n/config": "workspace:*",
@@ -932,7 +931,7 @@
     "semver": "7.5.4",
     "showdown": "2.1.0",
     "simple-git": "3.17.0",
-    "snowflake-sdk": "1.12.0",
+    "snowflake-sdk": "2.1.0",
     "ssh2-sftp-client": "7.2.3",
     "tmp-promise": "3.0.3",
     "ts-ics": "1.2.2",

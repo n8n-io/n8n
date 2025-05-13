@@ -150,7 +150,7 @@
     "tsup": "catalog:"
   },
   "dependencies": {
-    "@aws-sdk/client-sso-oidc": "3.666.0",
+    "@aws-sdk/client-sso-oidc": "3.808.0",
     "@azure/identity": "4.3.0",
     "@getzep/zep-cloud": "1.0.12",
     "@getzep/zep-js": "0.9.0",
