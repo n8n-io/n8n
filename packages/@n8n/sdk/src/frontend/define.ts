@@ -1,8 +1,8 @@
-import type { FrontendExtension } from './types';
+import type { FrontendModule } from './types';
 
-export function defineFrontendExtension(extension: FrontendExtension): FrontendExtension {
-	window.n8nFrontendExtensions = window.n8nFrontendExtensions || [];
-	window.n8nFrontendExtensions.push(extension);
+export function defineFrontendModule(extension: FrontendModule): FrontendModule {
+	window.n8nFrontendModules = window.n8nFrontendModules || [];
+	window.n8nFrontendModules.push(extension);
 
 	return extension;
 }

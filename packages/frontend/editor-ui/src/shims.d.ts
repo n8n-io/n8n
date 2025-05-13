@@ -23,7 +23,7 @@ declare global {
 		REST_ENDPOINT: string;
 		sentry?: { dsn?: string; environment: string; release: string; serverName?: string };
 		n8nExternalHooks?: PartialDeep<ExternalHooks>;
-		n8nFrontendExtensions: FrontendExtension[];
+		n8nFrontendModules: FrontendExtension[];
 		preventNodeViewBeforeUnload?: boolean;
 		maxPinnedDataSize?: number;
 	}

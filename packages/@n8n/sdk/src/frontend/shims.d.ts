@@ -1,9 +1,9 @@
-import type { FrontendExtension } from './types';
+import type { FrontendModule } from './types';
 
 export {};
 
 declare global {
 	interface Window {
-		n8nFrontendExtensions: FrontendExtension[];
+		n8nFrontendModules: FrontendModule[];
 	}
 }

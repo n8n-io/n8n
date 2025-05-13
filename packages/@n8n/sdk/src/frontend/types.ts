@@ -1,13 +1,13 @@
 import type { Component } from 'vue';
 
-export type FrontendExtensionRegisterComponentFn = (name: string, component: Component) => void;
+export type FrontendModuleRegisterComponentFn = (name: string, component: Component) => void;
 
-export type FrontendExtensionContext = {
-	registerComponent?: FrontendExtensionRegisterComponentFn;
+export type FrontendModuleContext = {
+	registerComponent?: FrontendModuleRegisterComponentFn;
 };
 
-export type FrontendExtensionSetupFn = (context: FrontendExtensionContext) => void;
+export type FrontendModuleSetupFn = (context: FrontendModuleContext) => void;
 
-export type FrontendExtension = {
-	setup: FrontendExtensionSetupFn;
+export type FrontendModule = {
+	setup: FrontendModuleSetupFn;
 };

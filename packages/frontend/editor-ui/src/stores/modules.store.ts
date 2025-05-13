@@ -1,17 +1,17 @@
 import { defineStore } from 'pinia';
 import type { ModuleManifest } from '@n8n/sdk';
-import type { FrontendExtension, FrontendExtensionContext } from '@n8n/sdk/frontend';
+import type { FrontendModuleContext } from '@n8n/sdk/frontend';
 import { STORES } from '@/constants';
 import type { Component } from 'vue';
 import { ref, reactive, markRaw } from 'vue';
 import { useRootStore } from '@/stores/root.store';
-import { getExtensions } from '@/api/extensions';
+import { getModules } from '@/api/modules';
 
-type ExtensionMetadata = {
+type ModuleMetadata = {
 	components: Record<string, Component>;
 };
 
-type ExtensionPoints = {
+type ModuleExtensionPoints = {
 	views: {
 		workflows: {
 			header: Component[];
@@ -19,12 +19,12 @@ type ExtensionPoints = {
 	};
 };
 
-export const useExtensionsStore = defineStore(STORES.EXTENSIONS, () => {
+export const useModulesStore = defineStore(STORES.MODULES, () => {
 	const rootStore = useRootStore();
 
-	const moduleManifests = ref<ModuleManifest[]>([]);
-	const extensionMetadata = reactive<Record<string, ExtensionMetadata>>({});
-	const extensionPoints = reactive<ExtensionPoints>({
+	const manifests = ref<ModuleManifest[]>([]);
+	const metadata = reactive<Record<string, ModuleMetadata>>({});
+	const extensionPoints = reactive<ModuleExtensionPoints>({
 		views: {
 			workflows: {
 				header: [],
@@ -37,8 +37,8 @@ export const useExtensionsStore = defineStore(STORES.EXTENSIONS, () => {
 	}
 
 	function registerNamespace(ns: string) {
-		if (!extensionMetadata[ns]) {
-			extensionMetadata[ns] = {
+		if (!metadata[ns]) {
+			metadata[ns] = {
 				components: {},
 			};
 		}
@@ -48,8 +48,7 @@ export const useExtensionsStore = defineStore(STORES.EXTENSIONS, () => {
 		const ns = createNamespaceString(manifest);
 
 		if (manifest.extends?.views.workflows.header) {
-			const component: Component =
-				extensionMetadata[ns].components[manifest.extends.views.workflows.header];
+			const component: Component = metadata[ns].components[manifest.extends.views.workflows.header];
 			extensionPoints.views.workflows.header.push(component);
 		}
 	}
@@ -58,12 +57,12 @@ export const useExtensionsStore = defineStore(STORES.EXTENSIONS, () => {
 		registerNamespace(ns);
 
 		return (name: string, component: Component) => {
-			extensionMetadata[ns].components[name] = markRaw(component);
+			metadata[ns].components[name] = markRaw(component);
 		};
 	}
 
-	function createExtensionContext(manifest: ModuleManifest): FrontendExtensionContext {
-		const context: FrontendExtensionContext = {};
+	function createModuleContext(manifest: ModuleManifest): FrontendModuleContext {
+		const context: FrontendModuleContext = {};
 		const ns = createNamespaceString(manifest);
 
 		if (manifest.extends?.views) {
@@ -74,22 +73,22 @@ export const useExtensionsStore = defineStore(STORES.EXTENSIONS, () => {
 	}
 
 	async function initialize() {
-		await fetchExtensions();
+		await fetchModules();
 
-		const loadedExtensions = await Promise.all(moduleManifests.value.map(injectExtensionScript));
+		const loadedModules = await Promise.all(manifests.value.map(injectModuleScript));
 
-		loadedExtensions.forEach((moduleManifest, index) => {
-			const extensionContext = createExtensionContext(moduleManifest);
-			const extensionModule = window.n8nFrontendExtensions[index];
+		loadedModules.forEach((moduleManifest, index) => {
+			const moduleContext = createModuleContext(moduleManifest);
+			const moduleObject = window.n8nFrontendModules[index];
 
-			extensionModule.setup(extensionContext);
+			moduleObject.setup(moduleContext);
 
 			registerExtensionPoints(moduleManifest);
 		});
 	}
 
-	async function injectExtensionScript(manifest: ModuleManifest) {
-		const source = `http://localhost:5678/assets/extensions/${manifest.publisher}/${manifest.name}/frontend.js`;
+	async function injectModuleScript(manifest: ModuleManifest) {
+		const source = `http://localhost:5678/rest/modules/${manifest.name}/frontend.js`;
 		await injectScript(source);
 		return manifest;
 	}
@@ -110,19 +109,19 @@ export const useExtensionsStore = defineStore(STORES.EXTENSIONS, () => {
 		});
 	}
 
-	async function fetchExtensions() {
-		const extensions = await getExtensions(rootStore.restApiContext);
+	async function fetchModules() {
+		const modules = await getModules(rootStore.restApiContext);
 
-		extensions.forEach((extension) => {
-			if (!moduleManifests.value.some((e) => e.name === extension.name)) {
-				moduleManifests.value.push(extension);
+		modules.forEach((extension) => {
+			if (!manifests.value.some((e) => e.name === extension.name)) {
+				manifests.value.push(extension);
 			}
 		});
 	}
 
 	return {
-		moduleManifests,
-		extensionMetadata,
+		manifests,
+		metadata,
 		extensionPoints,
 		initialize,
 	};
