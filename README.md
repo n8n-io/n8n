@@ -31,6 +31,10 @@ docker run -it --rm --name n8n -p 5678:5678 -v n8n_data:/home/node/.n8n docker.n
 
 Access the editor at http://localhost:5678
 
+## Building from Source
+
+For detailed instructions on building n8n from source, see the [BUILDING.md](docs/BUILDING.md) document.
+
 ## Resources
 
 - 📚 [Documentation](https://docs.n8n.io)
