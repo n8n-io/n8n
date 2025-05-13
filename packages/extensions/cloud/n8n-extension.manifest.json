@@ -1,5 +1,5 @@
 {
-	"$schema": "https://raw.githubusercontent.com/n8n-io/n8n/refs/heads/master/packages/%40n8n/extension-sdk/schema.json",
+	"$schema": "https://raw.githubusercontent.com/n8n-io/n8n/refs/heads/master/packages/%40n8n/sdk/schema.json",
 	"name": "cloud",
 	"publisher": "n8n",
 	"displayName": "Cloud",

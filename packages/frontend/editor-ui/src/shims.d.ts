@@ -4,7 +4,7 @@ import type { VNode, ComponentPublicInstance } from 'vue';
 import type { PartialDeep } from 'type-fest';
 import type { ExternalHooks } from '@/types/externalHooks';
 import type { FrontendSettings } from '@n8n/api-types';
-import type { FrontendExtension } from '@n8n/extension-sdk/frontend';
+import type { FrontendExtension } from '@n8n/sdk/frontend';
 
 export {};
 

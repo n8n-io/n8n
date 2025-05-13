@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
-import type { ExtensionManifest } from '@n8n/extension-sdk';
-import type { FrontendExtension, FrontendExtensionContext } from '@n8n/extension-sdk/frontend';
+import type { ExtensionManifest } from '@n8n/sdk';
+import type { FrontendExtension, FrontendExtensionContext } from '@n8n/sdk/frontend';
 import { STORES } from '@/constants';
 import type { Component } from 'vue';
 import { ref, reactive, markRaw } from 'vue';

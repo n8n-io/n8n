@@ -578,7 +578,7 @@ importers:
         specifier: ^9.4.2
         version: 9.4.2(eslint@8.57.0)
 
-  packages/@n8n/extension-sdk:
+  packages/@n8n/sdk:
     dependencies:
       zod:
         specifier: 'catalog:'
@@ -1301,9 +1301,9 @@ importers:
         specifier: 'catalog:'
         version: 3.24.1
     devDependencies:
-      '@n8n/extension-sdk':
+      '@n8n/sdk':
         specifier: workspace:*
-        version: link:../@n8n/extension-sdk
+        version: link:../@n8n/sdk
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../@n8n/typescript-config
@@ -1518,9 +1518,9 @@ importers:
 
   packages/extensions/cloud:
     dependencies:
-      '@n8n/extension-sdk':
+      '@n8n/sdk':
         specifier: workspace:*
-        version: link:../../@n8n/extension-sdk
+        version: link:../../@n8n/sdk
     devDependencies:
       '@n8n/typescript-config':
         specifier: workspace:*
@@ -1854,9 +1854,9 @@ importers:
       '@n8n/design-system':
         specifier: workspace:*
         version: link:../@n8n/design-system
-      '@n8n/extension-sdk':
+      '@n8n/sdk':
         specifier: workspace:*
-        version: link:../../@n8n/extension-sdk
+        version: link:../../@n8n/sdk
       '@n8n/n8n-extension-cloud':
         specifier: workspace:*
         version: link:../../extensions/cloud

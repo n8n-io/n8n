@@ -41,7 +41,7 @@
     "vue-router": "catalog:frontend"
   },
   "dependencies": {
-    "@n8n/extension-sdk": "workspace:*"
+    "@n8n/sdk": "workspace:*"
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",

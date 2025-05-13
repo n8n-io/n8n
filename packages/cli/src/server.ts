@@ -1,6 +1,6 @@
 import { SecurityConfig } from '@n8n/config';
 import { Container, Service } from '@n8n/di';
-import type { ExtensionManifest } from '@n8n/extension-sdk';
+import type { ExtensionManifest } from '@n8n/sdk';
 import cookieParser from 'cookie-parser';
 import express from 'express';
 import { access as fsAccess, readFile } from 'fs/promises';

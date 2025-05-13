@@ -1,4 +1,4 @@
-import { defineFrontendExtension } from '@n8n/extension-sdk/frontend';
+import { defineFrontendExtension } from '@n8n/sdk/frontend';
 
 defineFrontendExtension({
 	setup(n8n) {
