@@ -1,8 +1,27 @@
+import { ClientOAuth2 } from '@n8n/client-oauth2';
 import type { INode } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
 import { N8nOAuth2TokenCredential } from '../credentials/N8nOAuth2TokenCredential';
 import type { AzureEntraCognitiveServicesOAuth2ApiCredential } from '../types';
+
+// Mock ClientOAuth2
+jest.mock('@n8n/client-oauth2', () => {
+	return {
+		ClientOAuth2: jest.fn().mockImplementation(() => {
+			return {
+				credentials: {
+					getToken: jest.fn().mockResolvedValue({
+						data: {
+							access_token: 'fresh-test-token',
+							expires_on: 1234567890,
+						},
+					}),
+				},
+			};
+		}),
+	};
+});
 
 const mockNode: INode = {
 	id: '1',
@@ -21,11 +40,12 @@ describe('N8nOAuth2TokenCredential', () => {
 		// Create a mock credential with all required properties
 		mockCredential = {
 			authQueryParameters: '',
-			authentication: 'body', // Set valid authentication type
+			authentication: 'body',
 			authUrl: '',
-			accessTokenUrl: '', // Added missing property
-			grantType: 'clientCredentials', // Corrected grant type value
+			accessTokenUrl: '',
+			grantType: 'clientCredentials',
 			clientId: '',
+			clientSecret: 'secret',
 			customScopes: false,
 			apiVersion: '2023-05-15',
 			endpoint: 'https://test.openai.azure.com',
@@ -53,9 +73,15 @@ describe('N8nOAuth2TokenCredential', () => {
 
 			// Assert
 			expect(result).toEqual({
-				token: 'test-token',
+				token: 'fresh-test-token',
 				expiresOnTimestamp: 1234567890,
 			});
+			expect(ClientOAuth2).toHaveBeenCalledWith(
+				expect.objectContaining({
+					clientId: mockCredential.clientId,
+					clientSecret: mockCredential.clientSecret,
+				}),
+			);
 		});
 
 		it('should throw NodeOperationError when credentials do not contain token', async () => {

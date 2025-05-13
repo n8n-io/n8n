@@ -8,7 +8,7 @@ delete:
   parameters:
     - $ref: '../schemas/parameters/variableId.yml'
   responses:
-    '201':
+    '204':
       description: Operation successful.
     '401':
       $ref: '../../../../shared/spec/responses/unauthorized.yml'

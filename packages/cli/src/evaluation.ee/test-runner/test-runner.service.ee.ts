@@ -17,8 +17,6 @@ import assert from 'node:assert';
 import { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
 import { EVALUATION_DATASET_TRIGGER_NODE, EVALUATION_NODE } from '@/constants';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import * as Db from '@/db';
 import { TestCaseExecutionError, TestRunError } from '@/evaluation.ee/test-runner/errors.ee';
 import { checkNodeParameterNotEmpty } from '@/evaluation.ee/test-runner/utils.ee';
 import { Telemetry } from '@/telemetry';
@@ -363,6 +361,8 @@ export class TestRunnerService {
 		let testRunEndStatusForTelemetry;
 
 		const abortSignal = abortController.signal;
+		const { manager: dbManager } = this.executionRepository;
+
 		try {
 			// Update test run status
 			await this.testRunRepository.markAsRunning(testRun.id);
@@ -526,7 +526,7 @@ export class TestRunnerService {
 
 			// Mark the test run as completed or cancelled
 			if (abortSignal.aborted) {
-				await Db.transaction(async (trx) => {
+				await dbManager.transaction(async (trx) => {
 					await this.testRunRepository.markAsCancelled(testRun.id, trx);
 					await this.testCaseExecutionRepository.markAllPendingAsCancelled(testRun.id, trx);
 
@@ -550,7 +550,7 @@ export class TestRunnerService {
 					stoppedOn: e.extra?.executionId,
 				});
 
-				await Db.transaction(async (trx) => {
+				await dbManager.transaction(async (trx) => {
 					await this.testRunRepository.markAsCancelled(testRun.id, trx);
 					await this.testCaseExecutionRepository.markAllPendingAsCancelled(testRun.id, trx);
 				});
@@ -594,8 +594,9 @@ export class TestRunnerService {
 			abortController.abort();
 			this.abortControllers.delete(testRunId);
 		} else {
+			const { manager: dbManager } = this.executionRepository;
 			// If there is no abort controller - just mark the test run and all its pending test case executions as cancelled
-			await Db.transaction(async (trx) => {
+			await dbManager.transaction(async (trx) => {
 				await this.testRunRepository.markAsCancelled(testRunId, trx);
 				await this.testCaseExecutionRepository.markAllPendingAsCancelled(testRunId, trx);
 			});

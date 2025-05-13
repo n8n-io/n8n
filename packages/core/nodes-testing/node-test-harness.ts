@@ -12,7 +12,12 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	WorkflowTestData,
 } from 'n8n-workflow';
-import { createDeferredPromise, UnexpectedError, Workflow } from 'n8n-workflow';
+import {
+	createDeferredPromise,
+	ExpressionEvaluatorProxy,
+	UnexpectedError,
+	Workflow,
+} from 'n8n-workflow';
 import nock from 'nock';
 import { readFileSync, mkdtempSync, existsSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -44,6 +49,7 @@ export class NodeTestHarness {
 	private readonly packagePaths: string[];
 
 	constructor({ additionalPackagePaths }: TestHarnessOptions = {}) {
+		ExpressionEvaluatorProxy.setEvaluator('tournament');
 		this.testDir = path.dirname(callsites()[1].getFileName()!);
 		this.packagePaths = additionalPackagePaths ?? [];
 		this.packagePaths.unshift(this.packageDir);

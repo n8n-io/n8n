@@ -1,4 +1,5 @@
 import { ApiKeyRepository } from '@n8n/db';
+import { UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { ApiKeyScope } from '@n8n/permissions';
 import type { Response, NextFunction } from 'express';
@@ -8,8 +9,6 @@ import type { InstanceSettings } from 'n8n-core';
 import { randomString } from 'n8n-workflow';
 import type { OpenAPIV3 } from 'openapi-types';
 
-import { UserRepository } from '@/databases/repositories/user.repository';
-import { getConnection } from '@/db';
 import type { EventService } from '@/events/event.service';
 import { getOwnerOnlyApiKeyScopes } from '@/public-api/permissions.ee';
 import type { AuthenticatedRequest } from '@/requests';
@@ -50,8 +49,8 @@ describe('PublicApiKeyService', () => {
 
 	beforeAll(async () => {
 		await testDb.init();
-		userRepository = new UserRepository(getConnection());
-		apiKeyRepository = new ApiKeyRepository(getConnection());
+		userRepository = Container.get(UserRepository);
+		apiKeyRepository = Container.get(ApiKeyRepository);
 	});
 
 	afterAll(async () => {
