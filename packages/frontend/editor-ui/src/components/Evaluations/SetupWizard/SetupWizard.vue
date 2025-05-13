@@ -23,7 +23,17 @@ const datasetTriggerExist = computed(() => {
 
 const evaluationMetricNodeExist = computed(() => {
 	return workflowsStore.workflow.nodes.some(
-		(node) => node.type === 'n8n-nodes-base.evaluationMetrics',
+		(node) =>
+			node.type === 'n8n-nodes-base.evaluation' && node.parameters.operation === 'setEvaluation',
+	);
+});
+
+const evaluationSetOutputNodeExist = computed(() => {
+	return workflowsStore.workflow.nodes.some(
+		// FIXME: handle default operation properly
+		(node) =>
+			node.type === 'n8n-nodes-base.evaluation' &&
+			(node.parameters.operation === 'setOutput' || node.parameters.operation === undefined),
 	);
 });
 
@@ -31,10 +41,16 @@ const activeStepIndex = ref(0);
 
 // Calculate the initial active step based on the workflow state
 const initializeActiveStep = () => {
-	if (datasetTriggerExist.value && evaluationMetricNodeExist.value) {
+	if (
+		datasetTriggerExist.value &&
+		evaluationSetOutputNodeExist.value &&
+		evaluationMetricNodeExist.value
+	) {
 		activeStepIndex.value = 3;
-	} else if (datasetTriggerExist.value) {
+	} else if (datasetTriggerExist.value && evaluationSetOutputNodeExist.value) {
 		activeStepIndex.value = 2;
+	} else if (datasetTriggerExist.value) {
+		activeStepIndex.value = 1;
 	} else {
 		activeStepIndex.value = 0;
 	}
@@ -121,12 +137,12 @@ function navigateToWorkflow(action?: 'addEvaluationTrigger' | 'addEvaluationNode
 				</div>
 			</div>
 
-			<!-- Step 2 (Active) -->
+			<!-- Step 2 -->
 			<div :class="[$style.step, activeStepIndex === 1 ? $style.active : '']">
 				<StepHeader
 					:step-number="2"
 					:title="locale.baseText('evaluations.setupWizard.step2.title')"
-					:is-completed="evaluationMetricNodeExist"
+					:is-completed="evaluationSetOutputNodeExist"
 					:is-active="activeStepIndex === 1"
 					@click="toggleStep(1)"
 				/>
