@@ -72,12 +72,6 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { usePostHog } from '@/stores/posthog.store';
 import { computed } from 'vue';
 
-const posthogStore = usePostHog();
-
-const isEvaluationVariantEnabled = computed(() =>
-	posthogStore.isVariantEnabled(EVALUATION_TRIGGER.name, EVALUATION_TRIGGER.variant),
-);
-
 export interface NodeViewItemSection {
 	key: string;
 	title: string;
@@ -150,6 +144,11 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 	const i18n = useI18n();
 	const nodeTypesStore = useNodeTypesStore();
 	const templatesStore = useTemplatesStore();
+	const posthogStore = usePostHog();
+
+	const isEvaluationVariantEnabled = computed(() =>
+		posthogStore.isVariantEnabled(EVALUATION_TRIGGER.name, EVALUATION_TRIGGER.variant),
+	);
 
 	const evaluationNodeStore = nodeTypesStore.getNodeType('n8n-nodes-base.evaluation');
 	const evaluationNode =
