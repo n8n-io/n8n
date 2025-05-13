@@ -126,7 +126,7 @@ export function useExecutionData() {
 	);
 
 	return {
-		execution: execData,
+		execution: computed(() => execData.value),
 		entries,
 		hasChat,
 		latestNodeNameById,

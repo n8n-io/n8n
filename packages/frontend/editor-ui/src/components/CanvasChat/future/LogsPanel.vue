@@ -56,8 +56,12 @@ const {
 
 const { entries, execution, hasChat, latestNodeNameById, resetExecutionData, loadSubExecution } =
 	useExecutionData();
-const { flatLogEntries, toggleExpanded } = useExpand(entries);
-const { selected, select, selectNext, selectPrev } = useSelection(entries, flatLogEntries);
+const { flatLogEntries, toggleExpanded } = useExpand(entries.value);
+const { selected, select, selectNext, selectPrev } = useSelection(
+	execution,
+	entries,
+	flatLogEntries,
+);
 
 const isLogDetailsOpen = computed(() => isOpen.value && selected.value !== undefined);
 const isLogDetailsVisuallyOpen = computed(

@@ -1,34 +1,26 @@
 import type { LogEntrySelection } from '@/components/CanvasChat/types/logs';
 import {
 	findSelectedLogEntry,
+	getDepth,
 	getEntryAtRelativeIndex,
-	type ExecutionLogViewData,
 	type LogEntry,
 } from '@/components/RunDataAi/utils';
 import { useTelemetry } from '@/composables/useTelemetry';
+import type { IExecutionResponse } from '@/Interface';
 import { computed, ref, type ComputedRef } from 'vue';
 
 export function useSelection(
-	execution: ComputedRef<ExecutionLogViewData | undefined>,
+	execution: ComputedRef<IExecutionResponse | undefined>,
+	tree: ComputedRef<LogEntry[]>,
 	flatLogEntries: ComputedRef<LogEntry[]>,
 ) {
 	const telemetry = useTelemetry();
 	const manualLogEntrySelection = ref<LogEntrySelection>({ type: 'initial' });
-	const selected = computed(() =>
-		findSelectedLogEntry(manualLogEntrySelection.value, execution.value),
-	);
+	const selected = computed(() => findSelectedLogEntry(manualLogEntrySelection.value, tree.value));
 
 	function select(value: LogEntry | undefined) {
-		const workflowId = execution.value?.workflowData.id;
-
-		if (!workflowId) {
-			return;
-		}
-
 		manualLogEntrySelection.value =
-			value === undefined
-				? { type: 'none', workflowId }
-				: { type: 'selected', workflowId, data: value };
+			value === undefined ? { type: 'none' } : { type: 'selected', id: value.id };
 
 		if (value) {
 			telemetry.track('User selected node in log view', {
@@ -36,6 +28,7 @@ export function useSelection(
 				node_id: value.node.id,
 				execution_id: execution.value?.id,
 				workflow_id: execution.value?.workflowData.id,
+				subworkflow_depth: getDepth(value),
 			});
 		}
 	}
