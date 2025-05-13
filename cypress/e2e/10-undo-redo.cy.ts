@@ -208,7 +208,7 @@ describe('Undo/Redo', () => {
 		});
 	});
 
-	it.only('should be able to copy and paste pinned data nodes in workflows with dynamic Switch node', () => {
+	it('should be able to copy and paste pinned data nodes in workflows with dynamic Switch node', () => {
 		cy.fixture('Test_workflow_form_switch.json').then((data) => {
 			cy.get('body').paste(JSON.stringify(data));
 		});
