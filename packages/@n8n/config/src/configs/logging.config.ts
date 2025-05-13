@@ -17,6 +17,7 @@ export const LOG_SCOPES = [
 	'waiting-executions',
 	'task-runner',
 	'insights',
+	'workflow-activation',
 ] as const;
 
 export type LogScope = (typeof LOG_SCOPES)[number];
@@ -84,6 +85,8 @@ export class LoggingConfig {
 	 * - `scaling`
 	 * - `waiting-executions`
 	 * - `task-runner`
+	 * - `workflow-activation`
+	 * - `insights`
 	 *
 	 * @example
 	 * `N8N_LOG_SCOPES=license`

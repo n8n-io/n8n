@@ -117,7 +117,7 @@ describe('NDV', () => {
 			.nodeRunErrorMessage()
 			.should(
 				'have.text',
-				"Using the item method doesn't work with pinned data in this scenario. Please unpin 'Break pairedItem chain' and try again.",
+				"Paired item data for item from node 'Break pairedItem chain' is unavailable. Ensure 'Break pairedItem chain' is providing the required output.",
 			);
 		ndv.getters
 			.nodeRunErrorDescription()
@@ -749,7 +749,7 @@ describe('NDV', () => {
 		ndv.getters.backToCanvas().click();
 		workflowPage.actions.executeWorkflow();
 		// Manual tigger node should show success indicator
-		workflowPage.actions.openNode('When clicking ‘Test workflow’');
+		workflowPage.actions.openNode('When clicking ‘Execute workflow’');
 		ndv.getters.nodeRunSuccessIndicator().should('exist');
 		ndv.getters.nodeRunTooltipIndicator().should('exist');
 		// Code node should show error
@@ -916,7 +916,7 @@ describe('NDV', () => {
 			.should('contain.text', 'onlyOnItem3');
 	});
 
-	it('should keep search expanded after Test step node run', () => {
+	it('should keep search expanded after Execute step node run', () => {
 		cy.createFixtureWorkflow('Test_ndv_search.json');
 		workflowPage.actions.zoomToFit();
 		workflowPage.actions.executeWorkflow();

@@ -1,5 +1,5 @@
 import type { RunningJobSummary } from '@n8n/api-types';
-import { ExecutionRepository } from '@n8n/db';
+import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
 	WorkflowHasIssuesError,
@@ -18,7 +18,6 @@ import { BINARY_ENCODING, Workflow, UnexpectedError } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
 
 import config from '@/config';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { getLifecycleHooksForScalingWorker } from '@/execution-lifecycle/execution-lifecycle-hooks';
 import { ManualExecutionService } from '@/manual-execution.service';
 import { NodeTypes } from '@/node-types';
@@ -170,7 +169,10 @@ export class JobProcessor {
 
 		const { startData, resultData, manualData, isTestWebhook } = execution.data;
 
-		if (['manual', 'evaluation'].includes(execution.mode) && !isTestWebhook) {
+		if (execution.data?.executionData) {
+			workflowExecute = new WorkflowExecute(additionalData, execution.mode, execution.data);
+			workflowRun = workflowExecute.processRunExecutionData(workflow);
+		} else if (['manual', 'evaluation'].includes(execution.mode) && !isTestWebhook) {
 			const data: IWorkflowExecutionDataProcess = {
 				executionMode: execution.mode,
 				workflowData: execution.workflowData,
@@ -211,9 +213,6 @@ export class JobProcessor {
 				}
 				throw error;
 			}
-		} else if (execution.data !== undefined) {
-			workflowExecute = new WorkflowExecute(additionalData, execution.mode, execution.data);
-			workflowRun = workflowExecute.processRunExecutionData(workflow);
 		} else {
 			this.errorReporter.info(`Worker found execution ${executionId} without data`);
 			// Execute all nodes

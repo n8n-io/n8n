@@ -1,11 +1,11 @@
+import { SettingsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { Cipher } from 'n8n-core';
-import { jsonParse, type IDataObject } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
 
 import config from '@/config';
 import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
-import { SettingsRepository } from '@/databases/repositories/settings.repository';
 import type { EventService } from '@/events/event.service';
 import { ExternalSecretsManager } from '@/external-secrets.ee/external-secrets-manager.ee';
 import { ExternalSecretsProviders } from '@/external-secrets.ee/external-secrets-providers.ee';
@@ -37,17 +37,11 @@ const testServer = setupTestServer({
 const connectedDate = '2023-08-01T12:32:29.000Z';
 
 async function setExternalSecretsSettings(settings: ExternalSecretsSettings) {
-	return await Container.get(SettingsRepository).saveEncryptedSecretsProviderSettings(
-		Container.get(Cipher).encrypt(settings),
-	);
+	await Container.get(ExternalSecretsManager).saveAndSetSettings(settings);
 }
 
 async function getExternalSecretsSettings(): Promise<ExternalSecretsSettings | null> {
-	const encSettings = await Container.get(SettingsRepository).getEncryptedSecretsProviderSettings();
-	if (encSettings === null) {
-		return null;
-	}
-	return await jsonParse(Container.get(Cipher).decrypt(encSettings));
+	return await Container.get(ExternalSecretsManager).getDecryptedSettings();
 }
 
 const eventService = mock<EventService>();
