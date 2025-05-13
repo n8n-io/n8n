@@ -31,7 +31,7 @@ describe('ProjectService', () => {
 	);
 
 	describe('addUsersToProject', () => {
-		it('throws if called with a team project', async () => {
+		it('throws if called with a personal project', async () => {
 			// ARRANGE
 			const projectId = '12345';
 			projectRepository.findOne.mockResolvedValueOnce(
@@ -149,6 +149,87 @@ describe('ProjectService', () => {
 					{ userId: 'user1', role: 'project:admin' },
 				]),
 			).resolves.not.toThrow();
+		});
+	});
+
+	describe('changeUserRoleInProject', () => {
+		const projectId = '12345';
+		const mockRelations: ProjectRelation[] = [
+			{ userId: 'user1', role: 'project:admin' },
+			{ userId: 'user2', role: 'project:viewer' },
+		];
+
+		beforeEach(() => {
+			jest.clearAllMocks();
+			manager.transaction.mockImplementation(async (arg1: unknown, arg2?: unknown) => {
+				const runInTransaction = (arg2 ?? arg1) as (
+					entityManager: EntityManager,
+				) => Promise<unknown>;
+				return await runInTransaction(manager);
+			});
+		});
+
+		it('should successfully change the user role in the project', async () => {
+			projectRepository.findOne.mockResolvedValueOnce(
+				mock<Project>({
+					id: projectId,
+					type: 'team',
+					projectRelations: mockRelations,
+				}),
+			);
+			roleService.isRoleLicensed.mockReturnValue(true);
+
+			await projectService.changeUserRoleInProject(projectId, 'user2', 'project:admin');
+
+			expect(projectRepository.findOne).toHaveBeenCalledWith({
+				where: { id: projectId, type: 'team' },
+				relations: { projectRelations: true },
+			});
+
+			expect(projectRelationRepository.update).toHaveBeenCalledWith(
+				{ projectId, userId: 'user2' },
+				{ role: 'project:admin' },
+			);
+		});
+
+		it('should throw if the user is not part of the project', async () => {
+			projectRepository.findOne.mockResolvedValueOnce(
+				mock<Project>({
+					id: projectId,
+					type: 'team',
+					projectRelations: mockRelations,
+				}),
+			);
+			roleService.isRoleLicensed.mockReturnValue(true);
+
+			await expect(
+				projectService.changeUserRoleInProject(projectId, 'user3', 'project:admin'),
+			).rejects.toThrow(`Could not find project with ID: ${projectId}`);
+
+			expect(projectRepository.findOne).toHaveBeenCalledWith({
+				where: { id: projectId, type: 'team' },
+				relations: { projectRelations: true },
+			});
+		});
+
+		it('should throw if the role to be set is `project:personalOwner`', async () => {
+			await expect(
+				projectService.changeUserRoleInProject(projectId, 'user2', 'project:personalOwner'),
+			).rejects.toThrow('Personal owner cannot be added to a team project.');
+		});
+
+		it('should throw if the project is not a team project', async () => {
+			projectRepository.findOne.mockResolvedValueOnce(null);
+			roleService.isRoleLicensed.mockReturnValue(true);
+
+			await expect(
+				projectService.changeUserRoleInProject(projectId, 'user2', 'project:admin'),
+			).rejects.toThrow(`Could not find project with ID: ${projectId}`);
+
+			expect(projectRepository.findOne).toHaveBeenCalledWith({
+				where: { id: projectId, type: 'team' },
+				relations: { projectRelations: true },
+			});
 		});
 	});
 });

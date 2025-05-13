@@ -209,18 +209,19 @@ export class ProjectController {
 		if (relations) {
 			try {
 				await this.projectsService.syncProjectRelations(projectId, relations);
-				this.eventService.emit('team-project-updated', {
-					userId: req.user.id,
-					role: req.user.role,
-					members: relations,
-					projectId,
-				});
 			} catch (e) {
 				if (e instanceof UnlicensedProjectRoleError) {
 					throw new BadRequestError(e.message);
 				}
 				throw e;
 			}
+
+			this.eventService.emit('team-project-updated', {
+				userId: req.user.id,
+				role: req.user.role,
+				members: relations,
+				projectId,
+			});
 		}
 	}
 

@@ -26,7 +26,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { CacheService } from './cache/cache.service';
 import { RoleService } from './role.service';
 
-type Relation = { userId: string; role: ProjectRole };
+type Relation = Pick<ProjectRelation, 'userId' | 'role'>;
 
 export class TeamProjectOverQuotaError extends UserError {
 	constructor(limit: number) {
@@ -339,12 +339,18 @@ export class ProjectService {
 	}
 
 	async changeUserRoleInProject(projectId: string, userId: string, role: ProjectRole) {
-		const projectUserExists = await this.projectRelationRepository.existsBy({ projectId, userId });
+		if (role === 'project:personalOwner') {
+			throw new ForbiddenError('Personal owner cannot be added to a team project.');
+		}
+
+		const project = await this.getTeamProjectWithRelations(projectId);
+		ProjectNotFoundError.isDefinedAndNotNull(project, projectId);
+
+		const projectUserExists = project.projectRelations.some((r) => r.userId === userId);
 		if (!projectUserExists) {
 			throw new ProjectNotFoundError(projectId);
 		}
 
-		// TODO: do we need to block any specific roles here?
 		await this.projectRelationRepository.update({ projectId, userId }, { role });
 	}
 

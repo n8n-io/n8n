@@ -124,6 +124,12 @@ describe('AddUsersToProjectDto', () => {
 				},
 				expectedErrorPath: ['relations', 0],
 			},
+			{
+				name: 'invalid with `project:personalOwner` role',
+				request: {
+					relations: [{ userId: 'user-1', role: 'project:personalOwner' }],
+				},
+			},
 		])('should fail validation for $name', ({ request, expectedErrorPath }) => {
 			const result = AddUsersToProjectDto.safeParse(request);
 
