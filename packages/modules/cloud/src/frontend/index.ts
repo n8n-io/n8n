@@ -1,7 +1,7 @@
-import { defineFrontendExtension } from '@n8n/sdk/frontend';
+import { defineFrontendModule } from '@n8n/sdk/frontend';
 
-defineFrontendExtension({
+defineFrontendModule({
 	setup(n8n) {
-		console.log('Cloud Extension', { n8n });
+		console.log('Cloud Module', { n8n });
 	},
 });

@@ -3,14 +3,9 @@ import type { ModuleManifest } from '@n8n/sdk';
 import { readFile } from 'fs/promises';
 import { jsonParse } from 'n8n-workflow';
 
-type N8nModule = {
-	name: string;
-	disabled?: boolean;
-};
-
 @Service()
 export class ModulesService {
-	private modules: N8nModule[] = ['cloud'];
+	private modules: string[] = ['cloud'];
 
 	private loadedModuleManifests: ModuleManifest[] = [];
 
@@ -31,7 +26,7 @@ export class ModulesService {
 	}
 
 	getModuleFrontendFile(name: string): string | undefined {
-		const extension = this.loadedModuleManifests.find((m) => m === name);
+		const extension = this.loadedModuleManifests.find((m) => m.name === name);
 
 		return extension ? require.resolve(`${name}/frontend`) : undefined;
 	}
