@@ -36,7 +36,7 @@
     }
   },
   "dependencies": {
-    "@vueuse/core": "^10.11.0",
+    "@vueuse/core": "catalog:frontend",
     "highlight.js": "catalog:frontend",
     "markdown-it-link-attributes": "^4.0.1",
     "uuid": "catalog:",
