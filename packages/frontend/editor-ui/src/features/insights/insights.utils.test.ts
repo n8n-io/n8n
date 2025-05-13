@@ -13,7 +13,6 @@ import {
 	INSIGHTS_DEVIATION_UNIT_MAPPING,
 	INSIGHTS_SUMMARY_ORDER,
 } from '@/features/insights/insights.constants';
-import { beforeEach } from 'vitest';
 
 describe('Insights Transformers', () => {
 	describe('transformInsightsTimeSaved', () => {
