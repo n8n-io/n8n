@@ -22,24 +22,8 @@ import {
 } from 'n8n-workflow';
 import type { Readable } from 'stream';
 
+import { configuredOutputs } from './utils';
 import { formatPrivateKey, generatePairedItemData } from '../../utils/utilities';
-
-const configuredOutputs = (version: number) => {
-	if (version >= 1.3) {
-		return [
-			{
-				type: 'main',
-				displayName: 'Input Data',
-			},
-			{
-				type: 'main',
-				displayName: 'Response',
-			},
-		];
-	}
-
-	return ['main'];
-};
 
 const respondWithProperty: INodeProperties = {
 	displayName: 'Respond With',
