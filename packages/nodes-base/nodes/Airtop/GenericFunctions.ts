@@ -204,8 +204,7 @@ export function validateScrollByAmount(
 	index: number,
 	parameterName: string,
 ) {
-	// regex for percentage or pixels, accepts negative numbers
-	const regex = /^-?\d{1,3}%?|-?\d{1,3}px$/;
+	const regex = /^(?:-?\d{1,3}(?:%|px))$/;
 	const scrollBy = this.getNodeParameter(parameterName, index, {}) as {
 		xAxis?: string;
 		yAxis?: string;
@@ -215,10 +214,11 @@ export function validateScrollByAmount(
 		return {};
 	}
 
-	// if no value is provided, set it to 0 to avoid regex errors
-	const validParams = regex.test(scrollBy.xAxis ?? '0') || regex.test(scrollBy.yAxis ?? '0');
+	const allAxisValid = [scrollBy.xAxis, scrollBy.yAxis]
+		.filter(Boolean)
+		.every((axis) => regex.test(axis ?? ''));
 
-	if (!validParams) {
+	if (!allAxisValid) {
 		throw new NodeOperationError(this.getNode(), ERROR_MESSAGES.SCROLL_BY_AMOUNT_INVALID, {
 			itemIndex: index,
 		});

@@ -133,7 +133,7 @@ export const description: INodeProperties[] = [
 		options: [
 			{
 				displayName: 'Auto Solve Captchas',
-				name: 'autoSolveCaptchas',
+				name: 'solveCaptcha',
 				type: 'boolean',
 				default: false,
 				description:
@@ -160,8 +160,8 @@ export async function execute(
 	const timeoutMinutes = validateTimeoutMinutes.call(this, index);
 	const saveProfileOnTermination = validateSaveProfileOnTermination.call(this, index, profileName);
 	const { proxy } = validateProxy.call(this, index);
-	const autoSolveCaptchas = this.getNodeParameter(
-		'additionalFields.autoSolveCaptchas',
+	const solveCaptcha = this.getNodeParameter(
+		'additionalFields.solveCaptcha',
 		index,
 		false,
 	) as boolean;
@@ -174,7 +174,7 @@ export async function execute(
 			profileName,
 			timeoutMinutes,
 			proxy,
-			solveCaptcha: autoSolveCaptchas,
+			solveCaptcha,
 			...(extensionIds.length > 0 ? { extensionIds } : {}),
 		},
 	};

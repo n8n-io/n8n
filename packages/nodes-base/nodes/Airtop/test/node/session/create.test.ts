@@ -204,7 +204,7 @@ describe('Test Airtop, session create operation', () => {
 		const nodeParameters = {
 			...baseNodeParameters,
 			additionalFields: {
-				autoSolveCaptchas: true,
+				solveCaptcha: true,
 			},
 		};
 
