@@ -146,6 +146,8 @@ export class EvaluationTrigger implements INodeType {
 			const currentRowNumber = currentRow.json?.row_number as number;
 
 			if (currentRow === undefined) {
+				startingRow = 2;
+
 				throw new NodeOperationError(this.getNode(), 'No row found');
 			}
 
@@ -177,6 +179,8 @@ export class EvaluationTrigger implements INodeType {
 			);
 
 			if (currentRow === undefined) {
+				startingRow = 2;
+
 				throw new NodeOperationError(this.getNode(), 'No row found');
 			}
 
