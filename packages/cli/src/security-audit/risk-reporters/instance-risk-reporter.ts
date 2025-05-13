@@ -1,5 +1,5 @@
+import { inDevelopment } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import { inDevelopment } from '@n8n/constants';
 import { separate } from '@n8n/db';
 import { Service } from '@n8n/di';
 import axios from 'axios';

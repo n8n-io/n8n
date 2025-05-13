@@ -1,5 +1,5 @@
+import { inTest } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import { inTest } from '@n8n/constants';
 import type { User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { existsSync } from 'fs';

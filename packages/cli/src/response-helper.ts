@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import { inDevelopment } from '@n8n/constants';
+import { inDevelopment } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import type { Request, Response } from 'express';
 import { ErrorReporter, Logger } from 'n8n-core';

@@ -1,4 +1,4 @@
-import { inTest } from '@n8n/constants';
+import { inTest } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import { Flags, type Config } from '@oclif/core';
 

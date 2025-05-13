@@ -1,4 +1,4 @@
-import { inProduction } from '@n8n/constants';
+import { inProduction } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import { existsSync } from 'fs';
 import { mkdir, utimes, open, rm } from 'fs/promises';

@@ -1,5 +1,5 @@
+import { inTest } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import { inTest } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import compression from 'compression';
 import express from 'express';

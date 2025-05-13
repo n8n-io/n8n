@@ -1,6 +1,6 @@
+import { inDevelopment, inProduction } from '@n8n/backend-common';
 import type { LogScope } from '@n8n/config';
 import { GlobalConfig, InstanceSettingsConfig } from '@n8n/config';
-import { inDevelopment, inProduction } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import callsites from 'callsites';
 import type { TransformableInfo } from 'logform';

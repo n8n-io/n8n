@@ -1,5 +1,5 @@
 import type { PushMessage } from '@n8n/api-types';
-import { inProduction } from '@n8n/constants';
+import { inProduction } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';

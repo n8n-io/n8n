@@ -1,5 +1,5 @@
+import { inTest } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import { inTest } from '@n8n/constants';
 import { Container } from '@n8n/di';
 import type { ObjectLiteral } from '@n8n/typeorm';
 import type { QueryRunner } from '@n8n/typeorm/query-runner/QueryRunner';
