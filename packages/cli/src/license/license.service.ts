@@ -48,8 +48,7 @@ export class LicenseService {
 				},
 				workflowsHavingEvaluations: {
 					value: workflowsWithEvaluationsCount,
-					// limit: this.licenseState.getMaxWorkflowsWithEvaluations(),
-					limit: 1,
+					limit: this.licenseState.getMaxWorkflowsWithEvaluations(),
 				},
 			},
 			license: {
