@@ -6,6 +6,7 @@ import { BinaryDataService, InstanceSettings } from 'n8n-core';
 import type { ExecutionStatus, IWorkflowBase } from 'n8n-workflow';
 
 import { Time } from '@/constants';
+import { DbConnection } from '@/databases/db-connection';
 import { ExecutionsPruningService } from '@/services/pruning/executions-pruning.service';
 
 import {
@@ -34,6 +35,7 @@ describe('softDeleteOnPruningCycle()', () => {
 		pruningService = new ExecutionsPruningService(
 			mockLogger(),
 			instanceSettings,
+			Container.get(DbConnection),
 			Container.get(ExecutionRepository),
 			mockInstance(BinaryDataService),
 			executionsConfig,
