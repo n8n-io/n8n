@@ -158,6 +158,5 @@ export const WsStatusCodes = {
 
 export const FREE_AI_CREDITS_CREDENTIAL_NAME = 'n8n free OpenAI API credits';
 
-export const EVALUATION_METRICS_NODE = `${NODE_PACKAGE_PREFIX}base.evaluationMetrics`;
-
+export const EVALUATION_NODE = `${NODE_PACKAGE_PREFIX}base.evaluation`;
 export const EVALUATION_DATASET_TRIGGER_NODE = `${NODE_PACKAGE_PREFIX}base.evaluationTrigger`;
