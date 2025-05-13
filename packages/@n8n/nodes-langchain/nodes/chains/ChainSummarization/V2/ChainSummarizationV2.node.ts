@@ -322,7 +322,7 @@ export class ChainSummarizationV2 implements INodeType {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 
-		const batchSize = this.getNodeParameter('options.batching.batchSize', 0, 100) as number;
+		const batchSize = this.getNodeParameter('options.batching.batchSize', 0, 5) as number;
 		const delayBetweenBatches = this.getNodeParameter(
 			'options.batching.delayBetweenBatches',
 			0,

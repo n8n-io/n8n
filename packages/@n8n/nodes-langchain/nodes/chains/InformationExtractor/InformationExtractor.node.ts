@@ -266,7 +266,7 @@ export class InformationExtractor implements INodeType {
 		}
 
 		const resultData: INodeExecutionData[] = [];
-		const batchSize = this.getNodeParameter('options.batching.batchSize', 0, 100) as number;
+		const batchSize = this.getNodeParameter('options.batching.batchSize', 0, 5) as number;
 		const delayBetweenBatches = this.getNodeParameter(
 			'options.batching.delayBetweenBatches',
 			0,
