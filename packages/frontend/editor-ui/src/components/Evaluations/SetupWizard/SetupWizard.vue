@@ -24,7 +24,7 @@ const datasetTriggerExist = computed(() => {
 const evaluationMetricNodeExist = computed(() => {
 	return workflowsStore.workflow.nodes.some(
 		(node) =>
-			node.type === 'n8n-nodes-base.evaluation' && node.parameters.operation === 'setEvaluation',
+			node.type === 'n8n-nodes-base.evaluation' && node.parameters.operation === 'setMetrics',
 	);
 });
 
@@ -225,7 +225,7 @@ function navigateToWorkflow(action?: 'addEvaluationTrigger' | 'addEvaluationNode
 					>
 						<N8nButton
 							size="medium"
-							:disabled="!datasetTriggerExist || !evaluationMetricNodeExist"
+							:disabled="!datasetTriggerExist || !evaluationSetOutputNodeExist"
 							@click="$emit('runTest')"
 						>
 							{{ locale.baseText('evaluations.setupWizard.step4.button') }}
