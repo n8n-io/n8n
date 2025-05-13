@@ -1,4 +1,4 @@
-import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
+import type { BaseMemory } from '@langchain/core/memory'; // Corrected import path from BaseChatMemory to BaseMemory
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { HumanMessage } from '@langchain/core/messages';
 import type { BaseMessagePromptTemplateLike } from '@langchain/core/prompts';
@@ -12,6 +12,14 @@ import type { ZodType } from 'zod';
 import { z } from 'zod';
 
 import type { N8nOutputParser } from '@utils/output_parsers/N8nOutputParser';
+
+// Define an interface for the options passed to prepareMessages in tests
+interface PrepareMessagesTestOptions {
+	systemMessage?: string;
+	passthroughBinaryImages?: boolean;
+	outputParser?: N8nOutputParser;
+	context?: string;
+}
 
 import {
 	getOutputParserSchema,
@@ -34,7 +42,10 @@ function getFakeOutputParser(returnSchema?: ZodType): N8nOutputParser {
 const mockHelpers = mock<IExecuteFunctions['helpers']>();
 const mockContext = mock<IExecuteFunctions>({ helpers: mockHelpers });
 
-beforeEach(() => jest.resetAllMocks());
+beforeEach(() => {
+	jest.resetAllMocks();
+	(mockContext.getNode as jest.Mock).mockReturnValue({ typeVersion: 2 });
+});
 
 describe('getOutputParserSchema', () => {
 	it('should return a default schema if getSchema returns undefined', () => {
@@ -131,7 +142,7 @@ describe('fixEmptyContentMessage', () => {
 describe('handleParsedStepOutput', () => {
 	it('should stringify the output if memory is provided', () => {
 		const output = { key: 'value' };
-		const fakeMemory = mock<BaseChatMemory>();
+		const fakeMemory = mock<BaseMemory>();
 		const result = handleParsedStepOutput(output, fakeMemory);
 		expect(result.returnValues).toEqual({ output: JSON.stringify(output) });
 		expect(result.log).toEqual('Final response formatted');
@@ -327,6 +338,103 @@ describe('prepareMessages', () => {
 
 		expect(messages.length).toBe(4);
 		expect(messages).toContainEqual(['system', '{formatting_instructions}']);
+	});
+
+	it('should prepend context to input if context option is provided', async () => {
+		const userInput = 'User query';
+		const contextOption: PrepareMessagesTestOptions = { context: 'This is some context.' };
+		const chatHistory = [new HumanMessage('Previous message')];
+
+		mockContext.getNodeParameter.calledWith('input', 0).mockReturnValue(userInput);
+		const memoryInstance = mock<BaseMemory>();
+		(memoryInstance.loadMemoryVariables as jest.Mock).mockResolvedValue({
+			chat_history: chatHistory,
+		});
+		mockContext.getInputConnectionData
+			.calledWith(NodeConnectionTypes.AiMemory, 0)
+			.mockResolvedValue(memoryInstance);
+
+		const messages = await prepareMessages(mockContext, 0, contextOption);
+
+		expect(messages).toHaveLength(3);
+
+		const newHumanMessage = messages[1];
+		const expectedContent = `<context>${contextOption.context}</context>user_prompt:{input}`;
+		if (newHumanMessage instanceof Array && newHumanMessage[0] === 'human') {
+			expect(newHumanMessage[1]).toBe(expectedContent);
+		} else {
+			expect(newHumanMessage).toEqual(['human', expectedContent]);
+		}
+	});
+
+	it('should not prepend context if context option is not provided', async () => {
+		const userInput = 'User query';
+		const contextOption: PrepareMessagesTestOptions = {}; // No context
+		const chatHistory = [new HumanMessage('Previous message')];
+
+		mockContext.getNodeParameter.calledWith('input', 0).mockReturnValue(userInput);
+		const memoryInstance = mock<BaseMemory>();
+		(memoryInstance.loadMemoryVariables as jest.Mock).mockResolvedValue({
+			chat_history: chatHistory,
+		});
+		mockContext.getInputConnectionData
+			.calledWith(NodeConnectionTypes.AiMemory, 0)
+			.mockResolvedValue(memoryInstance);
+
+		const messages = await prepareMessages(mockContext, 0, contextOption);
+
+		expect(messages).toHaveLength(3);
+		const newHumanMessage = messages[1];
+		const expectedContent = '{input}'; // Expect template placeholder
+		if (newHumanMessage instanceof Array && newHumanMessage[0] === 'human') {
+			expect(newHumanMessage[1]).toBe(expectedContent);
+		} else {
+			expect(newHumanMessage).toEqual(['human', expectedContent]);
+		}
+	});
+
+	it('should handle empty input with context', async () => {
+		const userInput = '';
+		const contextOption: PrepareMessagesTestOptions = { context: 'This is context.' };
+
+		mockContext.getNodeParameter.calledWith('input', 0).mockReturnValue(userInput);
+		const memoryInstance = mock<BaseMemory>();
+		(memoryInstance.loadMemoryVariables as jest.Mock).mockResolvedValue({});
+		mockContext.getInputConnectionData
+			.calledWith(NodeConnectionTypes.AiMemory, 0)
+			.mockResolvedValue(memoryInstance);
+
+		const messages = await prepareMessages(mockContext, 0, contextOption);
+		expect(messages).toHaveLength(3);
+		const message = messages[1];
+		const expectedContent = `<context>${contextOption.context}</context>user_prompt:{input}`;
+		if (message instanceof Array && message[0] === 'human') {
+			expect(message[1]).toBe(expectedContent);
+		} else {
+			expect(message).toEqual(['human', expectedContent]);
+		}
+	});
+
+	it('should handle empty context with input', async () => {
+		const userInput = 'User query';
+		const contextOption: PrepareMessagesTestOptions = { context: '' }; // Empty context
+
+		mockContext.getNodeParameter.calledWith('input', 0).mockReturnValue(userInput);
+		const memoryInstance = mock<BaseMemory>();
+		(memoryInstance.loadMemoryVariables as jest.Mock).mockResolvedValue({});
+		mockContext.getInputConnectionData
+			.calledWith(NodeConnectionTypes.AiMemory, 0)
+			.mockResolvedValue(memoryInstance);
+
+		const messages = await prepareMessages(mockContext, 0, contextOption);
+		expect(messages).toHaveLength(3);
+		const message = messages[1];
+		const expectedContent = '{input}'; // Expect template placeholder
+		if (message instanceof Array && message[0] === 'human') {
+			expect(message[1]).toBe(expectedContent);
+		} else {
+			expect(message).toEqual(['human', expectedContent]);
+		}
 	});
 });
 

@@ -1,0 +1,515 @@
+{
+  "name": "AI Agent context option use case",
+  "nodes": [
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('When chat message received').item.json.chatInput }}",
+        "options": {
+          "systemMessage": "=Answer user questions based on context",
+          "context": "={{ $json.concatenated_document_pageContent }}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.8,
+      "position": [
+        1240,
+        80
+      ],
+      "id": "a8e8065a-f1d4-40ee-8ca9-bf712d7d7c46",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "=1 {{ $('When chat message received').item.json.sessionId }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
+      "typeVersion": 1.3,
+      "position": [
+        1340,
+        280
+      ],
+      "id": "d3551917-e462-4caa-a457-9df0be96db85",
+      "name": "Postgres Chat Memory",
+      "credentials": {
+        "postgres": {
+          "id": "JzPxCwy7G23u7DCf",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Use Case: AI Agent Context Option\nThe context option makes it easy to apply the classic Retrieval-Augmented Generation (RAG) approach using the AI Agent node. Unlike vector stores or other databases used as tools that the model may choose to call when needed, the context option allows you to attach relevant information to every user prompt explicitly, regardless of the model’s internal decision-making. This helps make agent behavior more consistent and reduces the risk of hallucinations.\n\nA key feature of the context option is that it adds context only to the user’s latest message right before sending it to the model. This context isn’t saved in the conversation history, so it doesn’t fill up the model’s context window or waste tokens. By adding context only to the last user prompt, we ensure the model gets useful information while keeping token usage efficient.\n\n",
+        "height": 320,
+        "width": 540
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -540,
+        80
+      ],
+      "typeVersion": 1,
+      "id": "2bf59e57-6f6a-46c1-91e3-48a209e1b789",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        180,
+        80
+      ],
+      "id": "2cb3d333-b0de-43cc-96e8-67a87985497f",
+      "name": "When chat message received",
+      "webhookId": "55a35bf9-3a84-4e9e-8a9d-1485944ece11"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dateTimeTool",
+      "typeVersion": 2,
+      "position": [
+        1480,
+        280
+      ],
+      "id": "710265e3-f50f-4944-90fc-47e2e6fd3b44",
+      "name": "Date Time"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.chatInput }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "You are part of a text processing system. Respond only with 2-3 keywords describing the prompt."
+            }
+          ]
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.6,
+      "position": [
+        360,
+        80
+      ],
+      "id": "5dface05-42da-4338-bb03-7b2c810706ad",
+      "name": "Formulate a query to the vector store"
+    },
+    {
+      "parameters": {
+        "mode": "load",
+        "tableName": {
+          "__rl": true,
+          "value": "documents",
+          "mode": "list",
+          "cachedResultName": "documents"
+        },
+        "prompt": "={{ $json.text }}",
+        "includeDocumentMetadata": false,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
+      "typeVersion": 1.1,
+      "position": [
+        700,
+        80
+      ],
+      "id": "c6d38c19-7653-4d9e-938e-897e15a7c71b",
+      "name": "Get chunks from the vector store",
+      "credentials": {
+        "supabaseApi": {
+          "id": "M05S1afVTZuWMfXP",
+          "name": "Supabase test account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fieldsToSummarize": {
+          "values": [
+            {
+              "aggregation": "concatenate",
+              "field": "document.pageContent",
+              "separateBy": "\n"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.summarize",
+      "typeVersion": 1.1,
+      "position": [
+        1060,
+        80
+      ],
+      "id": "a51cc527-413c-4070-acce-c583cabdaac8",
+      "name": "Concatenate chunks"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        180,
+        540
+      ],
+      "id": "5d26c41c-aa9d-4761-86cb-d2d7f927477b",
+      "name": "When clicking ‘Test workflow’"
+    },
+    {
+      "parameters": {
+        "dataType": "binary",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "typeVersion": 1,
+      "position": [
+        720,
+        740
+      ],
+      "id": "506caa91-9ff2-4ce7-914f-482f1c362562",
+      "name": "Default Data Loader"
+    },
+    {
+      "parameters": {
+        "chunkSize": 500,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
+      "typeVersion": 1,
+      "position": [
+        740,
+        900
+      ],
+      "id": "cdfc2e07-c310-4392-9b22-48f76dff9eef",
+      "name": "Recursive Character Text Splitter"
+    },
+    {
+      "parameters": {
+        "content": "## Upload documents to the Vector Store",
+        "height": 560,
+        "width": 900
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        120,
+        480
+      ],
+      "typeVersion": 1,
+      "id": "025483d5-246f-4521-967b-7a504b81f683",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini"
+        },
+        "options": {
+          "temperature": 0
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        360,
+        260
+      ],
+      "id": "7a0c82c6-bd60-4219-b7fa-aedbe48751c4",
+      "name": "Store query model",
+      "notesInFlow": true,
+      "credentials": {
+        "openAiApi": {
+          "id": "OLx0DRKFMTM9wjtR",
+          "name": "OpenAi account"
+        }
+      },
+      "notes": "temp=0 consistensy"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        1180,
+        280
+      ],
+      "id": "5aa1a191-8a6d-4c23-a141-45288ffb3b2f",
+      "name": "Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "OLx0DRKFMTM9wjtR",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "text-embedding-3-large",
+        "options": {
+          "dimensions": 1536
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        580,
+        740
+      ],
+      "id": "61901f3d-754e-4b3a-94c7-579dbfce5b81",
+      "name": "Embeddings model",
+      "credentials": {
+        "openAiApi": {
+          "id": "OLx0DRKFMTM9wjtR",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "tableName": {
+          "__rl": true,
+          "value": "blooming_beauty",
+          "mode": "list",
+          "cachedResultName": "blooming_beauty"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
+      "typeVersion": 1.1,
+      "position": [
+        600,
+        540
+      ],
+      "id": "ccde0c68-dcb6-4d22-bb27-1dfade2e105e",
+      "name": "Upload document to the Vector Store",
+      "credentials": {
+        "supabaseApi": {
+          "id": "M05S1afVTZuWMfXP",
+          "name": "Supabase test account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "1cKU_YSudZD5NbSs4CmtagiGoamVkofxeIkXcW2dt8Do",
+          "mode": "list",
+          "cachedResultName": "База знаний: Салон Краси \"Blooming Beauty\" (демо)",
+          "cachedResultUrl": "https://docs.google.com/document/d/1cKU_YSudZD5NbSs4CmtagiGoamVkofxeIkXcW2dt8Do/edit?usp=drivesdk"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        400,
+        540
+      ],
+      "id": "54a0c166-ed43-4a72-905d-7c40e0ccd33a",
+      "name": "Download document",
+      "credentials": {
+        "googleApi": {
+          "id": "CdzSsU0HXqugzWhv",
+          "name": "Google Service Account account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Using tools with context\nThe agent can use tools alongside the context option. For example, you can ask the agent for the current time while also including a question that requires information from the vector store — all in the same prompt. This allows you to test how the agent uses the Date & Time tool or any other custom tools you’ve added.",
+        "height": 180,
+        "width": 400
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1480,
+        420
+      ],
+      "typeVersion": 1,
+      "id": "ce2b920a-c0b4-4d02-8d8b-e60dc140dd6e",
+      "name": "Sticky Note2"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Postgres Chat Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "Formulate a query to the vector store",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Date Time": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formulate a query to the vector store": {
+      "main": [
+        [
+          {
+            "node": "Get chunks from the vector store",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get chunks from the vector store": {
+      "main": [
+        [
+          {
+            "node": "Concatenate chunks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Concatenate chunks": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When clicking ‘Test workflow’": {
+      "main": [
+        [
+          {
+            "node": "Download document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Default Data Loader": {
+      "ai_document": [
+        [
+          {
+            "node": "Upload document to the Vector Store",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recursive Character Text Splitter": {
+      "ai_textSplitter": [
+        [
+          {
+            "node": "Default Data Loader",
+            "type": "ai_textSplitter",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store query model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Formulate a query to the vector store",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings model": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Get chunks from the vector store",
+            "type": "ai_embedding",
+            "index": 0
+          },
+          {
+            "node": "Upload document to the Vector Store",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download document": {
+      "main": [
+        [
+          {
+            "node": "Upload document to the Vector Store",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "50a22d9e-9cbe-460c-98c3-44151eb1cf04",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "2fc43cd6f4acc2664335c9c27d2718a985653b4b4f3c7b028198251580225323"
+  },
+  "id": "dgy4pa7OGjBSOVk3",
+  "tags": []
+}

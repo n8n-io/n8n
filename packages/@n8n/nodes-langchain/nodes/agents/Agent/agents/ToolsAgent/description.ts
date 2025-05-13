@@ -26,6 +26,17 @@ export const toolsAgentProperties: INodeProperties[] = [
 				},
 			},
 			{
+				displayName: 'Context',
+				name: 'context',
+				type: 'string',
+				default: '',
+				description:
+					"Optional context to include in the user prompt. Will be wrapped in <context> tags before the user's prompt.",
+				typeOptions: {
+					rows: 4,
+				},
+			},
+			{
 				displayName: 'Max Iterations',
 				name: 'maxIterations',
 				type: 'number',
