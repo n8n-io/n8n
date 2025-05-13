@@ -25,7 +25,12 @@ const runSummaries = computed(() => {
 		if (status === 'completed' && finalResult && ['error', 'warning'].includes(finalResult)) {
 			status = 'warning';
 		}
-		return { ...run, status, finalResult, errorDetails };
+		return {
+			...run,
+			status,
+			finalResult,
+			errorDetails: errorDetails as Record<string, string | number> | undefined,
+		};
 	});
 });
 </script>
@@ -70,15 +75,19 @@ const runSummaries = computed(() => {
 						<N8nTooltip placement="top" :show-after="300">
 							<template #content>
 								{{
-									locale.baseText(`${getErrorBaseKey(row.errorCode)}` as BaseTextKey) ||
-									locale.baseText(`${getErrorBaseKey('UNKNOWN_ERROR')}` as BaseTextKey)
+									locale.baseText(
+										`${getErrorBaseKey(row.errorCode)}` as BaseTextKey,
+										row.errorDetails ? { interpolate: row.errorDetails } : {},
+									) || locale.baseText('evaluation.runDetail.error.unknownError')
 								}}
 							</template>
 
 							<p :class="[$style.alertText, $style.errorText]">
 								{{
-									locale.baseText(`${getErrorBaseKey(row?.errorCode)}` as BaseTextKey) ||
-									locale.baseText(`${getErrorBaseKey('UNKNOWN_ERROR')}` as BaseTextKey)
+									locale.baseText(
+										`${getErrorBaseKey(row?.errorCode)}` as BaseTextKey,
+										row.errorDetails ? { interpolate: row.errorDetails } : {},
+									) || locale.baseText('evaluation.runDetail.error.unknownError')
 								}}
 							</p>
 						</N8nTooltip>
