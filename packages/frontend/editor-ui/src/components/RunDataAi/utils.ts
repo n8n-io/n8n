@@ -532,39 +532,38 @@ export function mergeStartData(
 	const nodeNames = uniq(
 		Object.keys(startData).concat(Object.keys(response.data.resultData.runData)),
 	);
+	const runData = Object.fromEntries(
+		nodeNames.map<[string, ITaskData[]]>((nodeName) => {
+			const tasks = response.data?.resultData.runData[nodeName] ?? [];
+			const mergedTasks = tasks.concat(
+				(startData[nodeName] ?? [])
+					.filter((task) =>
+						// To remove duplicate runs, we check start time in addition to execution index
+						// because nodes such as Wait and Form emits multiple websocket events with
+						// different execution index for a single run
+						tasks.every(
+							(t) => t.startTime < task.startTime && t.executionIndex !== task.executionIndex,
+						),
+					)
+					.map<ITaskData>((task) => ({
+						...task,
+						executionTime: 0,
+						executionStatus: 'running',
+					})),
+			);
 
-	const merged = {
+			return [nodeName, mergedTasks];
+		}),
+	);
+
+	return {
 		...response,
 		data: {
 			...response.data,
 			resultData: {
 				...response.data.resultData,
-				runData: Object.fromEntries(
-					nodeNames.map<[string, ITaskData[]]>((nodeName) => {
-						const tasks = response.data?.resultData.runData[nodeName] ?? [];
-						const mergedTasks = tasks.concat(
-							(startData[nodeName] ?? [])
-								.filter((task) =>
-									// To remove duplicate runs, we check start time in addition to execution index
-									// because nodes such as Wait and Form emits multiple websocket events with
-									// different execution index for a single run
-									tasks.every(
-										(t) => t.startTime < task.startTime && t.executionIndex !== task.executionIndex,
-									),
-								)
-								.map<ITaskData>((task) => ({
-									...task,
-									executionTime: 0,
-									executionStatus: 'running',
-								})),
-						);
-
-						return [nodeName, mergedTasks];
-					}),
-				),
+				runData,
 			},
 		},
 	};
-
-	return merged;
 }
