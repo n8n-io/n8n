@@ -1,4 +1,4 @@
-import { TestRunRepository, TestCaseExecutionRepository } from '@n8n/db';
+import { TestRunRepository, TestCaseExecutionRepository, WorkflowRepository } from '@n8n/db';
 import type { User, TestRun } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ErrorReporter, Logger } from 'n8n-core';
@@ -361,7 +361,7 @@ export class TestRunnerService {
 		let testRunEndStatusForTelemetry;
 
 		const abortSignal = abortController.signal;
-		const { manager: dbManager } = this.executionRepository;
+		const { manager: dbManager } = this.testRunRepository;
 
 		try {
 			// Update test run status
@@ -594,7 +594,7 @@ export class TestRunnerService {
 			abortController.abort();
 			this.abortControllers.delete(testRunId);
 		} else {
-			const { manager: dbManager } = this.executionRepository;
+			const { manager: dbManager } = this.testRunRepository;
 			// If there is no abort controller - just mark the test run and all its pending test case executions as cancelled
 			await dbManager.transaction(async (trx) => {
 				await this.testRunRepository.markAsCancelled(testRunId, trx);
