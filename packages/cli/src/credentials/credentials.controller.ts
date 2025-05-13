@@ -26,7 +26,6 @@ import { deepCopy } from 'n8n-workflow';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { z } from 'zod';
 
-import * as Db from '@/db';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -317,7 +316,8 @@ export class CredentialsController {
 		let amountRemoved: number | null = null;
 		let newShareeIds: string[] = [];
 
-		await Db.transaction(async (trx) => {
+		const { manager: dbManager } = this.sharedCredentialsRepository;
+		await dbManager.transaction(async (trx) => {
 			const currentProjectIds = credential.shared
 				.filter((sc) => sc.role === 'credential:user')
 				.map((sc) => sc.projectId);

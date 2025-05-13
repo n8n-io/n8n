@@ -29,7 +29,6 @@ import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
 import { CredentialTypes } from '@/credential-types';
 import { createCredentialsFromCredentialsEntity } from '@/credentials-helper';
 import { UserRepository } from '@/databases/repositories/user.repository';
-import * as Db from '@/db';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ExternalHooks } from '@/external-hooks';
@@ -406,7 +405,8 @@ export class CredentialsService {
 
 		await this.externalHooks.run('credentials.create', [encryptedData]);
 
-		const result = await Db.transaction(async (transactionManager) => {
+		const { manager: dbManager } = this.credentialsRepository;
+		const result = await dbManager.transaction(async (transactionManager) => {
 			const savedCredential = await transactionManager.save<CredentialsEntity>(newCredential);
 
 			savedCredential.data = newCredential.data;

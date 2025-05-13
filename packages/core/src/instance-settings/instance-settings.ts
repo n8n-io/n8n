@@ -1,3 +1,4 @@
+import { InstanceSettingsConfig } from '@n8n/config';
 import { Memoized } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { createHash, randomBytes } from 'crypto';
@@ -8,7 +9,6 @@ import path from 'path';
 
 import { Logger } from '@/logging/logger';
 
-import { InstanceSettingsConfig } from './instance-settings-config';
 import { WorkerMissingEncryptionKey } from './worker-missing-encryption-key.error';
 
 const nanoid = customAlphabet(ALPHABET, 16);

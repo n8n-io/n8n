@@ -19,7 +19,7 @@ import type { AbstractServer } from '@/abstract-server';
 import config from '@/config';
 import { N8N_VERSION, N8N_RELEASE_DATE, inDevelopment, inTest } from '@/constants';
 import * as CrashJournal from '@/crash-journal';
-import * as Db from '@/db';
+import { DbConnection } from '@/databases/db-connection';
 import { getDataDeduplicationService } from '@/deduplication';
 import { DeprecationService } from '@/deprecation/deprecation.service';
 import { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.service.ee';
@@ -41,6 +41,8 @@ import { WorkflowHistoryManager } from '@/workflows/workflow-history.ee/workflow
 
 export abstract class BaseCommand extends Command {
 	protected logger = Container.get(Logger);
+
+	protected dbConnection = Container.get(DbConnection);
 
 	protected errorReporter: ErrorReporter;
 
@@ -122,9 +124,12 @@ export abstract class BaseCommand extends Command {
 		this.nodeTypes = Container.get(NodeTypes);
 		await Container.get(LoadNodesAndCredentials).init();
 
-		await Db.init().catch(
-			async (error: Error) => await this.exitWithCrash('There was an error initializing DB', error),
-		);
+		await this.dbConnection
+			.init()
+			.catch(
+				async (error: Error) =>
+					await this.exitWithCrash('There was an error initializing DB', error),
+			);
 
 		// This needs to happen after DB.init() or otherwise DB Connection is not
 		// available via the dependency Container that services depend on.
@@ -134,10 +139,12 @@ export abstract class BaseCommand extends Command {
 
 		await this.server?.init();
 
-		await Db.migrate().catch(
-			async (error: Error) =>
-				await this.exitWithCrash('There was an error running database migrations', error),
-		);
+		await this.dbConnection
+			.migrate()
+			.catch(
+				async (error: Error) =>
+					await this.exitWithCrash('There was an error running database migrations', error),
+			);
 
 		Container.get(DeprecationService).warn();
 
@@ -180,7 +187,7 @@ export abstract class BaseCommand extends Command {
 
 	protected async exitSuccessFully() {
 		try {
-			await Promise.all([CrashJournal.cleanup(), Db.close()]);
+			await Promise.all([CrashJournal.cleanup(), this.dbConnection.close()]);
 		} finally {
 			process.exit();
 		}
@@ -287,9 +294,9 @@ export abstract class BaseCommand extends Command {
 	async finally(error: Error | undefined) {
 		if (error?.message) this.logger.error(error.message);
 		if (inTest || this.id === 'start') return;
-		if (Db.connectionState.connected) {
+		if (this.dbConnection.connectionState.connected) {
 			await sleep(100); // give any in-flight query some time to finish
-			await Db.close();
+			await this.dbConnection.close();
 		}
 		const exitCode = error instanceof Errors.ExitError ? error.oclif.exit : error ? 1 : 0;
 		this.exit(exitCode);

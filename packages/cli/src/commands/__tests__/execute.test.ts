@@ -6,6 +6,7 @@ import { mock } from 'jest-mock-extended';
 import type { IRun } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
+import { DbConnection } from '@/databases/db-connection';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { DeprecationService } from '@/deprecation/deprecation.service';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
@@ -34,12 +35,9 @@ const posthogClient = mockInstance(PostHogClient);
 const telemetryEventRelay = mockInstance(TelemetryEventRelay);
 const externalHooks = mockInstance(ExternalHooks);
 
-jest.mock('@/db', () => ({
-	init: jest.fn().mockResolvedValue(undefined),
-	migrate: jest.fn().mockResolvedValue(undefined),
-	connectionState: { connected: false },
-	close: jest.fn().mockResolvedValue(undefined),
-}));
+const dbConnection = mockInstance(DbConnection);
+dbConnection.init.mockResolvedValue(undefined);
+dbConnection.migrate.mockResolvedValue(undefined);
 
 test('should start a task runner when task runners are enabled', async () => {
 	// arrange

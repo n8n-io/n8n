@@ -1,5 +1,6 @@
-import { Config, Env } from '@n8n/config';
 import path from 'node:path';
+
+import { Config, Env } from '../decorators';
 
 @Config
 export class InstanceSettingsConfig {

@@ -12,7 +12,6 @@ import { Logger } from 'n8n-core';
 import { type INode, type INodeCredentialsDetails, type IWorkflowBase } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import * as Db from '@/db';
 import { replaceInvalidCredentials } from '@/workflow-helpers';
 
 @Service()
@@ -47,7 +46,8 @@ export class ImportService {
 			if (hasInvalidCreds) await this.replaceInvalidCreds(workflow);
 		}
 
-		await Db.transaction(async (tx) => {
+		const { manager: dbManager } = this.credentialsRepository;
+		await dbManager.transaction(async (tx) => {
 			for (const workflow of workflows) {
 				if (workflow.active) {
 					workflow.active = false;

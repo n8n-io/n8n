@@ -2,20 +2,22 @@ import type { ExecutionsConfig } from '@n8n/config';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
+import type { DbConnection } from '@/databases/db-connection';
 import { mockLogger } from '@test/mocking';
 
 import { ExecutionsPruningService } from '../executions-pruning.service';
 
-jest.mock('@/db', () => ({
-	connectionState: { migrated: true },
-}));
-
 describe('PruningService', () => {
+	const dbConnection = mock<DbConnection>({
+		connectionState: { migrated: true },
+	});
+
 	describe('init', () => {
 		it('should start pruning on main instance that is the leader', () => {
 			const pruningService = new ExecutionsPruningService(
 				mockLogger(),
 				mock<InstanceSettings>({ isLeader: true, isMultiMain: true }),
+				dbConnection,
 				mock(),
 				mock(),
 				mock(),
@@ -31,6 +33,7 @@ describe('PruningService', () => {
 			const pruningService = new ExecutionsPruningService(
 				mockLogger(),
 				mock<InstanceSettings>({ isLeader: false, isMultiMain: true }),
+				dbConnection,
 				mock(),
 				mock(),
 				mock(),
@@ -48,6 +51,7 @@ describe('PruningService', () => {
 			const pruningService = new ExecutionsPruningService(
 				mockLogger(),
 				mock<InstanceSettings>({ isLeader: true, instanceType: 'main', isMultiMain: true }),
+				dbConnection,
 				mock(),
 				mock(),
 				mock<ExecutionsConfig>({ pruneData: true }),
@@ -60,6 +64,7 @@ describe('PruningService', () => {
 			const pruningService = new ExecutionsPruningService(
 				mockLogger(),
 				mock<InstanceSettings>({ isLeader: true, instanceType: 'main', isMultiMain: true }),
+				dbConnection,
 				mock(),
 				mock(),
 				mock<ExecutionsConfig>({ pruneData: false }),
@@ -72,6 +77,7 @@ describe('PruningService', () => {
 			const pruningService = new ExecutionsPruningService(
 				mockLogger(),
 				mock<InstanceSettings>({ isLeader: false, instanceType: 'worker', isMultiMain: true }),
+				dbConnection,
 				mock(),
 				mock(),
 				mock<ExecutionsConfig>({ pruneData: true }),
@@ -89,6 +95,7 @@ describe('PruningService', () => {
 					instanceType: 'main',
 					isMultiMain: true,
 				}),
+				dbConnection,
 				mock(),
 				mock(),
 				mock<ExecutionsConfig>({ pruneData: true }),
@@ -103,6 +110,7 @@ describe('PruningService', () => {
 			const pruningService = new ExecutionsPruningService(
 				mockLogger(),
 				mock<InstanceSettings>({ isLeader: true, instanceType: 'main', isMultiMain: true }),
+				dbConnection,
 				mock(),
 				mock(),
 				mock<ExecutionsConfig>({ pruneData: false }),
@@ -127,6 +135,7 @@ describe('PruningService', () => {
 			const pruningService = new ExecutionsPruningService(
 				mockLogger(),
 				mock<InstanceSettings>({ isLeader: true, instanceType: 'main', isMultiMain: true }),
+				dbConnection,
 				mock(),
 				mock(),
 				mock<ExecutionsConfig>({ pruneData: true }),

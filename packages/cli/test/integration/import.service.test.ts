@@ -21,7 +21,6 @@ import {
 	newWorkflow,
 } from './shared/db/workflows';
 import * as testDb from './shared/test-db';
-import { mockInstance } from '../shared/mocking';
 
 describe('ImportService', () => {
 	let importService: ImportService;
@@ -37,9 +36,7 @@ describe('ImportService', () => {
 
 		tagRepository = Container.get(TagRepository);
 
-		const credentialsRepository = mockInstance(CredentialsRepository);
-
-		credentialsRepository.find.mockResolvedValue([]);
+		const credentialsRepository = Container.get(CredentialsRepository);
 
 		importService = new ImportService(mock(), credentialsRepository, tagRepository);
 	});
