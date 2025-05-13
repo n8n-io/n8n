@@ -387,7 +387,6 @@ describe('NDV', () => {
 
 		ndv.getters.codeEditorFullscreen().type('{selectall}').type('{backspace}').type('foo()');
 		ndv.getters.codeEditorFullscreen().should('contain.text', 'foo()');
-		cy.wait(200); // allow change to emit before closing modal
 		ndv.getters.codeEditorDialog().find('.el-dialog__close').click();
 		ndv.getters.parameterInput('jsCode').get('.cm-content').should('contain.text', 'foo()');
 		ndv.actions.close();
@@ -400,9 +399,8 @@ describe('NDV', () => {
 			.codeEditorFullscreen()
 			.type('{selectall}')
 			.type('{backspace}')
-			.type('SELECT * FROM workflows');
+			.paste('SELECT * FROM workflows');
 		ndv.getters.codeEditorFullscreen().should('contain.text', 'SELECT * FROM workflows');
-		cy.wait(200);
 		ndv.getters.codeEditorDialog().find('.el-dialog__close').click();
 		ndv.getters
 			.parameterInput('query')
@@ -418,10 +416,8 @@ describe('NDV', () => {
 			.codeEditorFullscreen()
 			.type('{selectall}')
 			.type('{backspace}')
-			.type('<div>Hello World');
+			.type('<div>Hello World</div>');
 		ndv.getters.codeEditorFullscreen().should('contain.text', '<div>Hello World</div>');
-		cy.wait(200);
-
 		ndv.getters.codeEditorDialog().find('.el-dialog__close').click();
 		ndv.getters
 			.parameterInput('html')
