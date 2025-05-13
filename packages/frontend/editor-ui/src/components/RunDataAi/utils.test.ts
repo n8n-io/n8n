@@ -1320,7 +1320,7 @@ describe(createLogTree, () => {
 										executionIndex: 3,
 									}),
 									createTestTaskData({
-										startTime: Date.parse('2025-04-04T00:00:03.000Z'),
+										startTime: Date.parse('2025-04-04T00:00:02.000Z'),
 										executionIndex: 2,
 									}),
 								],
