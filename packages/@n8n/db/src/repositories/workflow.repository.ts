@@ -13,7 +13,6 @@ import type {
 import { PROJECT_ROOT } from 'n8n-workflow';
 
 import { FolderRepository } from './folder.repository';
-import type { Folder } from '../entities';
 import { WebhookEntity, TagEntity, WorkflowEntity, WorkflowTagMapping } from '../entities';
 import type {
 	ListQueryDb,
@@ -348,7 +347,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		baseData: WorkflowFolderUnionRow[],
 		extraData: {
 			workflows: ListQueryDb.Workflow.WithSharing[] | ListQueryDb.Workflow.Plain[];
-			folders: Folder[];
+			folders: FolderWithWorkflowAndSubFolderCount[];
 		},
 	): WorkflowFolderUnionFull[] {
 		const workflowsMap = new Map(extraData.workflows.map((workflow) => [workflow.id, workflow]));
