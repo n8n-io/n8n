@@ -25,7 +25,6 @@ import { DeprecationService } from '@/deprecation/deprecation.service';
 import { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.service.ee';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
-import { initExpressionEvaluator } from '@/expression-evaluator';
 import { ExternalHooks } from '@/external-hooks';
 import { ExternalSecretsManager } from '@/external-secrets.ee/external-secrets-manager.ee';
 import { License } from '@/license';
@@ -116,7 +115,6 @@ export abstract class BaseCommand extends Command {
 			serverName: deploymentName,
 			releaseDate: N8N_RELEASE_DATE,
 		});
-		initExpressionEvaluator();
 
 		process.once('SIGTERM', this.onTerminationSignal('SIGTERM'));
 		process.once('SIGINT', this.onTerminationSignal('SIGINT'));
