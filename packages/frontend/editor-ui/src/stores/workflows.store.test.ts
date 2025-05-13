@@ -11,7 +11,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { IExecutionResponse, INodeUi, IWorkflowDb, IWorkflowSettings } from '@/Interface';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
-import { SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
+import { deepCopy, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 import type {
 	IPinData,
 	ExecutionSummary,
@@ -656,6 +656,65 @@ describe('useWorkflowsStore', () => {
 			expect(workflowsStore.workflow.pinData).toEqual({
 				TestNode: [{ json: { test: true } }],
 				TestNode1: [{ json: { test: false } }],
+			});
+		});
+
+		it('should replace existing placeholder task data in new log view', () => {
+			settingsStore.settings = {
+				logsView: {
+					enabled: true,
+				},
+			} as FrontendSettings;
+			const successEventWithExecutionIndex = deepCopy(successEvent);
+			successEventWithExecutionIndex.data.executionIndex = 1;
+
+			const runWithExistingRunData = executionResponse;
+			runWithExistingRunData.data = {
+				resultData: {
+					runData: {
+						[successEventWithExecutionIndex.nodeName]: [
+							{
+								hints: [],
+								startTime: 1727867966633,
+								executionIndex: successEventWithExecutionIndex.data.executionIndex,
+								executionTime: 1,
+								source: [],
+								executionStatus: 'running',
+								data: {
+									main: [
+										[
+											{
+												json: {},
+												pairedItem: {
+													item: 0,
+												},
+											},
+										],
+									],
+								},
+							},
+						],
+					},
+				},
+			};
+			workflowsStore.setWorkflowExecutionData(runWithExistingRunData);
+
+			workflowsStore.nodesByName[successEvent.nodeName] = mock<INodeUi>({
+				type: 'n8n-nodes-base.manualTrigger',
+			});
+
+			// ACT
+			workflowsStore.updateNodeExecutionData(successEventWithExecutionIndex);
+
+			expect(workflowsStore.workflowExecutionData).toEqual({
+				...executionResponse,
+				data: {
+					resultData: {
+						runData: {
+							[successEvent.nodeName]: [successEventWithExecutionIndex.data],
+						},
+					},
+				},
 			});
 		});
 	});
