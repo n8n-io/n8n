@@ -1,5 +1,6 @@
+import { inProduction } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import type { BooleanLicenseFeature } from '@n8n/constants';
+import { type BooleanLicenseFeature } from '@n8n/constants';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
 import type { AccessScope, Controller, RateLimit } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
@@ -10,7 +11,7 @@ import { UnexpectedError } from 'n8n-workflow';
 import type { ZodClass } from 'zod-class';
 
 import { AuthService } from '@/auth/auth.service';
-import { inProduction, RESPONSE_ERROR_MESSAGES } from '@/constants';
+import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error';
 import { License } from '@/license';
 import { userHasScopes } from '@/permissions.ee/check-access';
