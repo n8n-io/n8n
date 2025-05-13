@@ -7,7 +7,7 @@
 			"typeVersion": 1,
 			"position": [0, 0],
 			"id": "0b4c0843-6007-4687-8e91-cf3b97cb0734",
-			"name": "When clicking ‘Test workflow’"
+			"name": "When clicking ‘Execute workflow’"
 		},
 		{
 			"parameters": {
@@ -36,7 +36,7 @@
 	],
 	"pinData": {},
 	"connections": {
-		"When clicking ‘Test workflow’": {
+		"When clicking ‘Execute workflow’": {
 			"main": [
 				[
 					{
