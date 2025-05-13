@@ -12,6 +12,7 @@ export { default as N8nCheckbox } from './N8nCheckbox';
 export { default as N8nCircleLoader } from './N8nCircleLoader';
 export { default as N8nColorPicker } from './N8nColorPicker';
 export { default as N8nDatatable } from './N8nDatatable';
+export { N8nDynamicRenderer } from './N8nDynamicRenderer';
 export { default as N8nFormBox } from './N8nFormBox';
 export { default as N8nFormInputs } from './N8nFormInputs';
 export { default as N8nFormInput } from './N8nFormInput';

@@ -3,6 +3,7 @@
 	"compilerOptions": {
 		"baseUrl": ".",
 		"rootDirs": [".", "../@n8n/composables/src", "../@n8n/chat/src", "../@n8n/design-system/src"],
+		"moduleResolution": "bundler",
 		"outDir": "dist",
 		"types": [
 			"vitest/globals",

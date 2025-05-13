@@ -1,6 +1,9 @@
 {
 	"type": "object",
 	"properties": {
+		"$schema": {
+			"type": "string"
+		},
 		"name": {
 			"type": "string"
 		},
@@ -96,10 +99,7 @@
 		"version",
 		"categories",
 		"entry",
-		"minSDKVersion",
-		"permissions",
-		"events",
-		"extends"
+		"minSDKVersion"
 	],
 	"additionalProperties": false,
 	"title": "N8nExtensionSchema",

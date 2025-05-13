@@ -1,19 +1,19 @@
 {
-  "name": "@n8n/n8n-extension-insights",
+  "name": "@n8n/n8n-extension-cloud",
   "version": "0.2.0",
   "type": "module",
   "files": [
     "dist",
-    "n8n.manifest.json",
+    "n8n-extension.manifest.json",
     "LICENSE",
     "README.md"
   ],
-  "main": "./n8n.manifest.json",
-  "module": "./n8n.manifest.json",
+  "main": "./n8n-extension.manifest.json",
+  "module": "./n8n-extension.manifest.json",
   "exports": {
     ".": {
-      "import": "./n8n.manifest.json",
-      "require": "./n8n.manifest.json"
+      "import": "./n8n-extension.manifest.json",
+      "require": "./n8n-extension.manifest.json"
     },
     "./backend": {
       "types": "./dist/backend/index.d.ts",

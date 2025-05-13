@@ -13,6 +13,7 @@ import { useInsightsStore } from '@/features/insights/insights.store';
 import { useToast } from '@/composables/useToast';
 import { useI18n } from '@/composables/useI18n';
 import SourceControlInitializationErrorMessage from '@/components/SourceControlInitializationErrorMessage.vue';
+import { useExtensionsStore } from '@/stores/extensions.store';
 
 let coreInitialized = false;
 let authenticatedFeaturesInitialized = false;
@@ -29,6 +30,7 @@ export async function initializeCore() {
 	const settingsStore = useSettingsStore();
 	const usersStore = useUsersStore();
 	const versionsStore = useVersionsStore();
+	const extensionsStore = useExtensionsStore();
 
 	await settingsStore.initialize();
 
@@ -39,6 +41,8 @@ export async function initializeCore() {
 
 		void versionsStore.checkForNewVersions();
 	}
+
+	void extensionsStore.initialize();
 
 	coreInitialized = true;
 }
