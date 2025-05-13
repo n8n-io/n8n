@@ -94,11 +94,13 @@ export class LoadNodesAndCredentials {
 			await this.loadNodesFromNodeModules(nodeModulesDir, '@n8n/n8n-nodes-langchain');
 		}
 
-		// Load nodes from any other `n8n-nodes-*` packages in the download directory
-		// This includes the community nodes
-		await this.loadNodesFromNodeModules(
-			path.join(this.instanceSettings.nodesDownloadDir, 'node_modules'),
-		);
+		if (!this.globalConfig.nodes.communityPackages.preventLoading) {
+			// Load nodes from any other `n8n-nodes-*` packages in the download directory
+			// This includes the community nodes
+			await this.loadNodesFromNodeModules(
+				path.join(this.instanceSettings.nodesDownloadDir, 'node_modules'),
+			);
+		}
 
 		await this.loadNodesFromCustomDirectories();
 		await this.postProcessLoaders();
@@ -317,8 +319,6 @@ export class LoadNodesAndCredentials {
 						} as INodeTypeBaseDescription)
 					: deepCopy(usableNode);
 			const wrapped = this.convertNodeToAiTool({ description }).description;
-			// TODO: Remove this when we support partial execution on all tool nodes
-			wrapped.usableAsTool = true;
 
 			this.types.nodes.push(wrapped);
 			this.known.nodes[wrapped.name] = { ...this.known.nodes[usableNode.name] };

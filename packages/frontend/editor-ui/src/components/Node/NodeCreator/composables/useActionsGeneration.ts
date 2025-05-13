@@ -193,7 +193,7 @@ function triggersCategory(nodeTypeDescription: INodeTypeDescription): ActionType
 function resourceCategories(nodeTypeDescription: INodeTypeDescription): ActionTypeDescription[] {
 	const transformedNodes: ActionTypeDescription[] = [];
 	const matchedProperties = nodeTypeDescription.properties.filter(
-		(property) => property.displayName?.toLowerCase() === 'resource',
+		(property) => property.name === 'resource',
 	);
 
 	matchedProperties.forEach((property) => {

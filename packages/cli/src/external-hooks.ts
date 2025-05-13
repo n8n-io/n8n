@@ -2,7 +2,7 @@ import type { FrontendSettings, UserUpdateRequestDto } from '@n8n/api-types';
 import type { ClientOAuth2Options } from '@n8n/client-oauth2';
 import { GlobalConfig } from '@n8n/config';
 import type { TagEntity, User, ICredentialsDb, PublicUser } from '@n8n/db';
-import { CredentialsRepository } from '@n8n/db';
+import { CredentialsRepository, SettingsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ErrorReporter, Logger } from 'n8n-core';
 import type { IRun, IWorkflowBase, Workflow, WorkflowExecuteMode } from 'n8n-workflow';
@@ -11,7 +11,6 @@ import type clientOAuth1 from 'oauth-1.0a';
 
 import type { AbstractServer } from '@/abstract-server';
 import type { Config } from '@/config';
-import { SettingsRepository } from '@/databases/repositories/settings.repository';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 
