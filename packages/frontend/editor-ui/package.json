@@ -38,7 +38,7 @@
     "@n8n/composables": "workspace:*",
     "@n8n/design-system": "workspace:*",
     "@n8n/sdk": "workspace:*",
-    "@n8n/n8n-extension-cloud": "workspace:*",
+    "@n8n/cloud": "workspace:*",
     "@n8n/permissions": "workspace:*",
     "@n8n/utils": "workspace:*",
     "@replit/codemirror-indentation-markers": "^6.5.3",

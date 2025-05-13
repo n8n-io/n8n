@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import type { ExtensionManifest } from '@n8n/sdk';
+import type { ModuleManifest } from '@n8n/sdk';
 import type { FrontendExtension, FrontendExtensionContext } from '@n8n/sdk/frontend';
 import { STORES } from '@/constants';
 import type { Component } from 'vue';
@@ -22,7 +22,7 @@ type ExtensionPoints = {
 export const useExtensionsStore = defineStore(STORES.EXTENSIONS, () => {
 	const rootStore = useRootStore();
 
-	const extensionManifests = ref<ExtensionManifest[]>([]);
+	const moduleManifests = ref<ModuleManifest[]>([]);
 	const extensionMetadata = reactive<Record<string, ExtensionMetadata>>({});
 	const extensionPoints = reactive<ExtensionPoints>({
 		views: {
@@ -32,7 +32,7 @@ export const useExtensionsStore = defineStore(STORES.EXTENSIONS, () => {
 		},
 	});
 
-	function createNamespaceString(manifest: ExtensionManifest) {
+	function createNamespaceString(manifest: ModuleManifest) {
 		return `${manifest.publisher}/${manifest.name}`;
 	}
 
@@ -44,7 +44,7 @@ export const useExtensionsStore = defineStore(STORES.EXTENSIONS, () => {
 		}
 	}
 
-	function registerExtensionPoints(manifest: ExtensionManifest) {
+	function registerExtensionPoints(manifest: ModuleManifest) {
 		const ns = createNamespaceString(manifest);
 
 		if (manifest.extends?.views.workflows.header) {
@@ -62,7 +62,7 @@ export const useExtensionsStore = defineStore(STORES.EXTENSIONS, () => {
 		};
 	}
 
-	function createExtensionContext(manifest: ExtensionManifest): FrontendExtensionContext {
+	function createExtensionContext(manifest: ModuleManifest): FrontendExtensionContext {
 		const context: FrontendExtensionContext = {};
 		const ns = createNamespaceString(manifest);
 
@@ -76,19 +76,19 @@ export const useExtensionsStore = defineStore(STORES.EXTENSIONS, () => {
 	async function initialize() {
 		await fetchExtensions();
 
-		const loadedExtensions = await Promise.all(extensionManifests.value.map(injectExtensionScript));
+		const loadedExtensions = await Promise.all(moduleManifests.value.map(injectExtensionScript));
 
-		loadedExtensions.forEach((extensionManifest, index) => {
-			const extensionContext = createExtensionContext(extensionManifest);
+		loadedExtensions.forEach((moduleManifest, index) => {
+			const extensionContext = createExtensionContext(moduleManifest);
 			const extensionModule = window.n8nFrontendExtensions[index];
 
 			extensionModule.setup(extensionContext);
 
-			registerExtensionPoints(extensionManifest);
+			registerExtensionPoints(moduleManifest);
 		});
 	}
 
-	async function injectExtensionScript(manifest: ExtensionManifest) {
+	async function injectExtensionScript(manifest: ModuleManifest) {
 		const source = `http://localhost:5678/assets/extensions/${manifest.publisher}/${manifest.name}/frontend.js`;
 		await injectScript(source);
 		return manifest;
@@ -114,14 +114,14 @@ export const useExtensionsStore = defineStore(STORES.EXTENSIONS, () => {
 		const extensions = await getExtensions(rootStore.restApiContext);
 
 		extensions.forEach((extension) => {
-			if (!extensionManifests.value.some((e) => e.name === extension.name)) {
-				extensionManifests.value.push(extension);
+			if (!moduleManifests.value.some((e) => e.name === extension.name)) {
+				moduleManifests.value.push(extension);
 			}
 		});
 	}
 
 	return {
-		extensionManifests,
+		moduleManifests,
 		extensionMetadata,
 		extensionPoints,
 		initialize,

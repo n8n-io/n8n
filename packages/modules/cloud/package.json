@@ -4,16 +4,16 @@
   "type": "module",
   "files": [
     "dist",
-    "n8n-extension.manifest.json",
+    "n8n-module.manifest.json",
     "LICENSE",
     "README.md"
   ],
-  "main": "./n8n-extension.manifest.json",
-  "module": "./n8n-extension.manifest.json",
+  "main": "./n8n-module.manifest.json",
+  "module": "./n8n-module.manifest.json",
   "exports": {
     ".": {
-      "import": "./n8n-extension.manifest.json",
-      "require": "./n8n-extension.manifest.json"
+      "import": "./n8n-module.manifest.json",
+      "require": "./n8n-module.manifest.json"
     },
     "./backend": {
       "types": "./dist/backend/index.d.ts",

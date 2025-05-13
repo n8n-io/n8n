@@ -1,4 +1,4 @@
-import { extensionManifestSchema } from '../src/schema';
+import { moduleManifestSchema } from '../src/schema';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 import { writeFile } from 'fs/promises';
 import { dirname, resolve } from 'path';
@@ -7,7 +7,7 @@ import { fileURLToPath } from 'url';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = resolve(__dirname, '..');
 
-const jsonSchema = zodToJsonSchema(extensionManifestSchema, {
+const jsonSchema = zodToJsonSchema(moduleManifestSchema, {
 	name: 'N8nExtensionSchema',
 	nameStrategy: 'title',
 });

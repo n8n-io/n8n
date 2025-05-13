@@ -1,7 +1,7 @@
 import type { IRestApiContext } from '@/Interface';
 import { get } from '@/utils/apiUtils';
-import type { ExtensionManifest } from '@n8n/sdk';
+import type { ModuleManifest } from '@n8n/sdk';
 
-export async function getExtensions(context: IRestApiContext): Promise<ExtensionManifest[]> {
+export async function getExtensions(context: IRestApiContext): Promise<ModuleManifest[]> {
 	return await get(context.baseUrl, '/extensions');
 }

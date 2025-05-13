@@ -3,7 +3,7 @@ import { z } from 'zod';
 /**
  * Schema for the extension configuration.
  */
-export const extensionManifestSchema = z.object({
+export const moduleManifestSchema = z.object({
 	/**
 	 * Allow setting the schema to validate the manifest file.
 	 */
@@ -23,21 +23,6 @@ export const extensionManifestSchema = z.object({
 	 * Description of the extension package.
 	 */
 	description: z.string(),
-
-	/**
-	 * Publisher of the extension.
-	 */
-	publisher: z.string(),
-
-	/**
-	 * Version of the extension package.
-	 */
-	version: z.string().optional(),
-
-	/**
-	 * Category the extension belongs to.
-	 */
-	categories: z.array(z.string()).optional(),
 
 	/**
 	 * Setup paths for backend and frontend code entry points.
@@ -106,4 +91,4 @@ export const extensionManifestSchema = z.object({
 		.optional(),
 });
 
-export type ExtensionManifest = z.infer<typeof extensionManifestSchema>;
+export type ModuleManifest = z.infer<typeof moduleManifestSchema>;

@@ -1,9 +1,8 @@
 {
 	"$schema": "https://raw.githubusercontent.com/n8n-io/n8n/refs/heads/master/packages/%40n8n/sdk/schema.json",
-	"name": "@n8n/cloud",
-	"publisher": "n8n",
+	"name": "cloud",
 	"displayName": "Cloud",
-	"description": "Extension for n8n Cloud",
+	"description": "Module for n8n Cloud",
 	"entry": {
 		"backend": "./dist/backend/index.js",
 		"frontend": "./dist/frontend/index.js"

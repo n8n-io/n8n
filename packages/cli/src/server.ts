@@ -1,9 +1,8 @@
 import { SecurityConfig } from '@n8n/config';
 import { Container, Service } from '@n8n/di';
-import type { ExtensionManifest } from '@n8n/sdk';
 import cookieParser from 'cookie-parser';
 import express from 'express';
-import { access as fsAccess, readFile } from 'fs/promises';
+import { access as fsAccess } from 'fs/promises';
 import helmet from 'helmet';
 import { isEmpty } from 'lodash';
 import { InstanceSettings } from 'n8n-core';
@@ -429,45 +428,6 @@ export class Server extends AbstractServer {
 					res.setHeader('Cache-Control', 'no-cache, must-revalidate');
 				}
 			};
-
-			const extensions = ['@n8n/n8n-extension-cloud'];
-			const loadedExtensions: ExtensionManifest[] = [];
-
-			for (const extension of extensions) {
-				const manifestJSON = await readFile(require.resolve(extension), 'utf-8');
-				const manifest = jsonParse<ExtensionManifest>(manifestJSON);
-
-				loadedExtensions.push(manifest);
-			}
-
-			const serveExtensions: express.RequestHandler = async (req, res) => {
-				res.status(200);
-				res.setHeader('Content-Type', 'application/json');
-				res.send(loadedExtensions);
-			};
-			this.app.use('/rest/extensions', serveExtensions);
-
-			const serveFrontendExtensions: express.RequestHandler = async (req, res) => {
-				const { publisher, name } = req.params;
-				const extension = loadedExtensions.find(
-					(e) => e.publisher === publisher && e.name === name,
-				);
-
-				if (!extension) {
-					res.sendStatus(404);
-					return;
-				}
-
-				const filePath = require.resolve(`@${publisher}/n8n-extension-${name}/frontend`);
-				if (filePath) {
-					try {
-						await fsAccess(filePath);
-						return res.sendFile(filePath, cacheOptions);
-					} catch {}
-				}
-				res.sendStatus(404);
-			};
-			this.app.use('/assets/extensions/:publisher/:name/frontend.js', serveFrontendExtensions);
 
 			this.app.use(
 				'/',
