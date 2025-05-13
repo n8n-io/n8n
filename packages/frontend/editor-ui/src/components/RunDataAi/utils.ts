@@ -12,9 +12,11 @@ import {
 	type ITaskDataConnections,
 	type NodeConnectionType,
 	type Workflow,
+	type ITaskStartedData,
 } from 'n8n-workflow';
 import { type LogEntrySelection } from '../CanvasChat/types/logs';
 import { isProxy, isReactive, isRef, toRaw } from 'vue';
+import { uniq } from 'lodash-es';
 
 export interface AIResult {
 	node: string;
@@ -517,4 +519,52 @@ function sortLogEntries<T extends { runData: ITaskData }>(a: T, b: T) {
 	}
 
 	return a.runData.startTime - b.runData.startTime;
+}
+
+export function mergeStartData(
+	startData: { [nodeName: string]: ITaskStartedData[] },
+	response: IExecutionResponse,
+): IExecutionResponse {
+	if (!response.data) {
+		return response;
+	}
+
+	const nodeNames = uniq(
+		Object.keys(startData).concat(Object.keys(response.data.resultData.runData)),
+	);
+
+	const merged = {
+		...response,
+		data: {
+			...response.data,
+			resultData: {
+				...response.data.resultData,
+				runData: Object.fromEntries(
+					nodeNames.map<[string, ITaskData[]]>((nodeName) => {
+						const tasks = response.data?.resultData.runData[nodeName] ?? [];
+						const mergedTasks = tasks.concat(
+							(startData[nodeName] ?? [])
+								.filter((task) =>
+									// To remove duplicate runs, we check start time in addition to execution index
+									// because nodes such as Wait and Form emits multiple websocket events with
+									// different execution index for a single run
+									tasks.every(
+										(t) => t.startTime < task.startTime && t.executionIndex !== task.executionIndex,
+									),
+								)
+								.map<ITaskData>((task) => ({
+									...task,
+									executionTime: 0,
+									executionStatus: 'running',
+								})),
+						);
+
+						return [nodeName, mergedTasks];
+					}),
+				),
+			},
+		},
+	};
+
+	return merged;
 }
