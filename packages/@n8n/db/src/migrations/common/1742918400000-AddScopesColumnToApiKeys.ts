@@ -1,10 +1,8 @@
 import type { GlobalRole } from '@n8n/permissions';
+import { getApiKeyScopesForRole } from '@n8n/permissions';
 
-// import { ApiKey } from '../../entities';
+import { ApiKey } from '../../entities';
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
-
-// @TODO: Move to permissions package
-// import { getApiKeyScopesForRole } from '@/public-api/permissions.ee';
 
 type ApiKeyWithRole = { id: string; role: GlobalRole };
 
@@ -27,10 +25,10 @@ export class AddScopesColumnToApiKeys1742918400000 implements ReversibleMigratio
 			`SELECT ${userApiKeysTable}.${idColumn} AS id, ${userTable}.${roleColumn} AS role FROM ${userApiKeysTable} JOIN ${userTable} ON ${userTable}.${idColumn} = ${userApiKeysTable}.${userIdColumn}`,
 		);
 
-		// for (const { id, role } of apiKeysWithRoles) {
-		// const scopes = getApiKeyScopesForRole(role);
-		// await queryRunner.manager.update(ApiKey, { id }, { scopes });
-		// }
+		for (const { id, role } of apiKeysWithRoles) {
+			const scopes = getApiKeyScopesForRole(role);
+			await queryRunner.manager.update(ApiKey, { id }, { scopes });
+		}
 	}
 
 	async down({ schemaBuilder: { dropColumns } }: MigrationContext) {

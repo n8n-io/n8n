@@ -1,4 +1,4 @@
-import type { ApiKeyScope } from '@n8n/permissions';
+import type { ApiKeyScope, GlobalRole } from './types.ee';
 
 export const OWNER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'user:read',
@@ -62,3 +62,20 @@ export const MEMBER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'credential:move',
 	'credential:delete',
 ];
+
+const MAP_ROLE_SCOPES: Record<GlobalRole, ApiKeyScope[]> = {
+	'global:owner': OWNER_API_KEY_SCOPES,
+	'global:admin': ADMIN_API_KEY_SCOPES,
+	'global:member': MEMBER_API_KEY_SCOPES,
+};
+
+export const getApiKeyScopesForRole = (role: GlobalRole) => {
+	return MAP_ROLE_SCOPES[role];
+};
+
+export const getOwnerOnlyApiKeyScopes = () => {
+	const ownerScopes = new Set<ApiKeyScope>(MAP_ROLE_SCOPES['global:owner']);
+	const memberScopes = new Set<ApiKeyScope>(MAP_ROLE_SCOPES['global:member']);
+	memberScopes.forEach((item) => ownerScopes.delete(item));
+	return Array.from(ownerScopes);
+};
