@@ -22,7 +22,7 @@ describe('Gong Node', () => {
 							{
 								parameters: {},
 								id: '416e4fc1-5055-4e61-854e-a6265256ac26',
-								name: "When clicking 'Test workflow'",
+								name: 'When clicking ‘Execute workflow’',
 								type: 'n8n-nodes-base.manualTrigger',
 								position: [820, 380],
 								typeVersion: 1,
@@ -76,7 +76,7 @@ describe('Gong Node', () => {
 							},
 						],
 						connections: {
-							"When clicking 'Test workflow'": {
+							'When clicking ‘Execute workflow’': {
 								main: [
 									[
 										{
@@ -154,7 +154,7 @@ describe('Gong Node', () => {
 							{
 								parameters: {},
 								id: '416e4fc1-5055-4e61-854e-a6265256ac26',
-								name: "When clicking 'Test workflow'",
+								name: 'When clicking ‘Execute workflow’',
 								type: 'n8n-nodes-base.manualTrigger',
 								position: [820, 380],
 								typeVersion: 1,
@@ -184,7 +184,7 @@ describe('Gong Node', () => {
 							},
 						],
 						connections: {
-							"When clicking 'Test workflow'": {
+							'When clicking ‘Execute workflow’': {
 								main: [
 									[
 										{
@@ -228,7 +228,7 @@ describe('Gong Node', () => {
 							{
 								parameters: {},
 								id: '416e4fc1-5055-4e61-854e-a6265256ac26',
-								name: "When clicking 'Test workflow'",
+								name: 'When clicking ‘Execute workflow’',
 								type: 'n8n-nodes-base.manualTrigger',
 								position: [820, 380],
 								typeVersion: 1,
@@ -274,7 +274,7 @@ describe('Gong Node', () => {
 							},
 						],
 						connections: {
-							"When clicking 'Test workflow'": {
+							'When clicking ‘Execute workflow’': {
 								main: [
 									[
 										{
@@ -352,7 +352,7 @@ describe('Gong Node', () => {
 							{
 								parameters: {},
 								id: '416e4fc1-5055-4e61-854e-a6265256ac26',
-								name: "When clicking 'Test workflow'",
+								name: 'When clicking ‘Execute workflow’',
 								type: 'n8n-nodes-base.manualTrigger',
 								position: [820, 380],
 								typeVersion: 1,
@@ -390,7 +390,7 @@ describe('Gong Node', () => {
 							},
 						],
 						connections: {
-							"When clicking 'Test workflow'": {
+							'When clicking ‘Execute workflow’': {
 								main: [
 									[
 										{
@@ -501,7 +501,7 @@ describe('Gong Node', () => {
 							{
 								parameters: {},
 								id: '416e4fc1-5055-4e61-854e-a6265256ac26',
-								name: "When clicking 'Test workflow'",
+								name: 'When clicking ‘Execute workflow’',
 								type: 'n8n-nodes-base.manualTrigger',
 								position: [820, 380],
 								typeVersion: 1,
@@ -526,7 +526,7 @@ describe('Gong Node', () => {
 							},
 						],
 						connections: {
-							"When clicking 'Test workflow'": {
+							'When clicking ‘Execute workflow’': {
 								main: [
 									[
 										{
@@ -575,7 +575,7 @@ describe('Gong Node', () => {
 							{
 								parameters: {},
 								id: '416e4fc1-5055-4e61-854e-a6265256ac26',
-								name: "When clicking 'Test workflow'",
+								name: 'When clicking ‘Execute workflow’',
 								type: 'n8n-nodes-base.manualTrigger',
 								position: [820, 380],
 								typeVersion: 1,
@@ -606,7 +606,7 @@ describe('Gong Node', () => {
 							},
 						],
 						connections: {
-							"When clicking 'Test workflow'": {
+							'When clicking ‘Execute workflow’': {
 								main: [
 									[
 										{
@@ -654,7 +654,7 @@ describe('Gong Node', () => {
 							{
 								parameters: {},
 								id: '416e4fc1-5055-4e61-854e-a6265256ac26',
-								name: "When clicking 'Test workflow'",
+								name: 'When clicking ‘Execute workflow’',
 								type: 'n8n-nodes-base.manualTrigger',
 								position: [820, 380],
 								typeVersion: 1,
@@ -681,7 +681,7 @@ describe('Gong Node', () => {
 							},
 						],
 						connections: {
-							"When clicking 'Test workflow'": {
+							'When clicking ‘Execute workflow’': {
 								main: [
 									[
 										{
@@ -738,7 +738,7 @@ describe('Gong Node', () => {
 							{
 								parameters: {},
 								id: '416e4fc1-5055-4e61-854e-a6265256ac26',
-								name: "When clicking 'Test workflow'",
+								name: 'When clicking ‘Execute workflow’',
 								type: 'n8n-nodes-base.manualTrigger',
 								position: [820, 380],
 								typeVersion: 1,
@@ -767,7 +767,7 @@ describe('Gong Node', () => {
 							},
 						],
 						connections: {
-							"When clicking 'Test workflow'": {
+							'When clicking ‘Execute workflow’': {
 								main: [
 									[
 										{
@@ -810,7 +810,7 @@ describe('Gong Node', () => {
 							{
 								parameters: {},
 								id: '416e4fc1-5055-4e61-854e-a6265256ac26',
-								name: "When clicking 'Test workflow'",
+								name: 'When clicking ‘Execute workflow’',
 								type: 'n8n-nodes-base.manualTrigger',
 								position: [820, 380],
 								typeVersion: 1,
@@ -841,7 +841,7 @@ describe('Gong Node', () => {
 							},
 						],
 						connections: {
-							"When clicking 'Test workflow'": {
+							'When clicking ‘Execute workflow’': {
 								main: [
 									[
 										{
@@ -906,7 +906,7 @@ describe('Gong Node', () => {
 							{
 								parameters: {},
 								id: '416e4fc1-5055-4e61-854e-a6265256ac26',
-								name: "When clicking 'Test workflow'",
+								name: 'When clicking ‘Execute workflow’',
 								type: 'n8n-nodes-base.manualTrigger',
 								position: [820, 380],
 								typeVersion: 1,
@@ -934,7 +934,7 @@ describe('Gong Node', () => {
 							},
 						],
 						connections: {
-							"When clicking 'Test workflow'": {
+							'When clicking ‘Execute workflow’': {
 								main: [
 									[
 										{
