@@ -3,6 +3,7 @@ import {
 	CredentialsRepository,
 	ProjectRelationRepository,
 	SharedWorkflowRepository,
+	WorkflowRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { snakeCase } from 'change-case';
@@ -14,7 +15,6 @@ import { get as pslGet } from 'psl';
 
 import config from '@/config';
 import { N8N_VERSION } from '@/constants';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { determineFinalExecutionStatus } from '@/execution-lifecycle/shared/shared-hook-functions';
