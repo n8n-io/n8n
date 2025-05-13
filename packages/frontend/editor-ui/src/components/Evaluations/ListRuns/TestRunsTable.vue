@@ -22,6 +22,9 @@ const locale = useI18n();
 // Combine test run statuses and finalResult to get the final status
 const runSummaries = computed(() => {
 	return props.runs.map(({ status, finalResult, errorDetails, ...run }) => {
+		if (status === 'completed' && finalResult && ['error', 'warning'].includes(finalResult)) {
+			status = 'warning';
+		}
 		return { ...run, status, finalResult, errorDetails };
 	});
 });
@@ -54,13 +57,7 @@ const runSummaries = computed(() => {
 						:color="statusDictionary[row.status].color"
 						class="mr-2xs"
 					/>
-					<template
-						v-if="
-							row.status === 'completed' &&
-							row.finalResult &&
-							['error', 'warning'].includes(row.finalResult)
-						"
-					>
+					<template v-if="row.status === 'warning'">
 						<N8nText color="warning" size="small" style="text-transform: none">
 							{{ locale.baseText(`evaluation.runDetail.error.partialCasesFailed`) }}
 						</N8nText>
