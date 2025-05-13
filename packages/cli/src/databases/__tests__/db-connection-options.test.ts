@@ -1,6 +1,5 @@
-import type { GlobalConfig } from '@n8n/config';
+import type { GlobalConfig, InstanceSettingsConfig } from '@n8n/config';
 import { mock } from 'jest-mock-extended';
-import type { InstanceSettings } from 'n8n-core';
 import path from 'path';
 
 import { DbConnectionOptions } from '../db-connection-options';
@@ -16,9 +15,9 @@ describe('DbConnectionOptions', () => {
 			maxQueryExecutionTime: 0,
 		},
 	});
-	const globalConfig = mock<GlobalConfig>({ database: dbConfig });
-	const instanceSettings = mock<InstanceSettings>();
-	const dbConnectionOptions = new DbConnectionOptions(globalConfig, instanceSettings);
+	const n8nFolder = '/test/n8n';
+	const instanceSettingsConfig = mock<InstanceSettingsConfig>({ n8nFolder });
+	const dbConnectionOptions = new DbConnectionOptions(dbConfig, instanceSettingsConfig);
 
 	beforeEach(() => jest.resetAllMocks());
 
@@ -52,8 +51,6 @@ describe('DbConnectionOptions', () => {
 					enableWAL: false,
 					executeVacuumOnStartup: false,
 				};
-				// @ts-expect-error readonly property
-				instanceSettings.n8nFolder = '/test/n8n';
 			});
 
 			it('should return SQLite connection options when type is sqlite', () => {
@@ -63,7 +60,7 @@ describe('DbConnectionOptions', () => {
 					type: 'sqlite',
 					enableWAL: false,
 					...commonOptions,
-					database: path.resolve('/test/n8n', 'test.sqlite'),
+					database: path.resolve(n8nFolder, 'test.sqlite'),
 					migrations: sqliteMigrations,
 				});
 			});
@@ -80,7 +77,7 @@ describe('DbConnectionOptions', () => {
 					acquireTimeout: 60_000,
 					destroyTimeout: 5_000,
 					...commonOptions,
-					database: path.resolve('/test/n8n', 'test.sqlite'),
+					database: path.resolve(n8nFolder, 'test.sqlite'),
 					migrations: sqliteMigrations,
 				});
 			});
@@ -194,8 +191,6 @@ describe('DbConnectionOptions', () => {
 			beforeEach(() => {
 				dbConfig.type = 'sqlite';
 				dbConfig.sqlite = mock<GlobalConfig['database']['sqlite']>({ database: 'test.sqlite' });
-				// @ts-expect-error readonly property
-				instanceSettings.n8nFolder = '/test/n8n';
 			});
 
 			it('should not configure logging by default', () => {

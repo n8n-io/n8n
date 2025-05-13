@@ -1,4 +1,4 @@
-import { DatabaseConfig } from '@n8n/config';
+import { DatabaseConfig, InstanceSettingsConfig } from '@n8n/config';
 import { entities } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { DataSourceOptions, LoggerOptions } from '@n8n/typeorm';
@@ -6,7 +6,6 @@ import type { MysqlConnectionOptions } from '@n8n/typeorm/driver/mysql/MysqlConn
 import type { PostgresConnectionOptions } from '@n8n/typeorm/driver/postgres/PostgresConnectionOptions';
 import type { SqliteConnectionOptions } from '@n8n/typeorm/driver/sqlite/SqliteConnectionOptions';
 import type { SqlitePooledConnectionOptions } from '@n8n/typeorm/driver/sqlite-pooled/SqlitePooledConnectionOptions';
-import { InstanceSettings } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
 import path from 'path';
 import type { TlsOptions } from 'tls';
@@ -24,7 +23,7 @@ import { subscribers } from './subscribers';
 export class DbConnectionOptions {
 	constructor(
 		private readonly config: DatabaseConfig,
-		private readonly instanceSettings: InstanceSettings,
+		private readonly instanceSettingsConfig: InstanceSettingsConfig,
 	) {}
 
 	getOverrides(dbType: 'postgresdb' | 'mysqldb') {
@@ -80,7 +79,7 @@ export class DbConnectionOptions {
 
 	private getSqliteConnectionOptions(): SqliteConnectionOptions | SqlitePooledConnectionOptions {
 		const { sqlite: sqliteConfig } = this.config;
-		const { n8nFolder } = this.instanceSettings;
+		const { n8nFolder } = this.instanceSettingsConfig;
 
 		const commonOptions = {
 			...this.getCommonOptions(),
