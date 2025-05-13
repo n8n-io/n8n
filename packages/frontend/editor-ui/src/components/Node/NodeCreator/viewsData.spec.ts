@@ -111,5 +111,14 @@ describe('viewsData', () => {
 
 			expect(AIView([])).toMatchSnapshot();
 		});
+
+		test('should return ai view without ai transform node if ask ai is not enabled and node is not in the list', () => {
+			vi.spyOn(posthogStore, 'isVariantEnabled').mockReturnValue(false);
+
+			const settingsStore = useSettingsStore();
+			vi.spyOn(settingsStore, 'isAskAiEnabled', 'get').mockReturnValue(false);
+
+			expect(AIView([])).toMatchSnapshot();
+		});
 	});
 });
