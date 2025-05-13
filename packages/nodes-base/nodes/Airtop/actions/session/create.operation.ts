@@ -5,10 +5,11 @@ import {
 	type INodeProperties,
 } from 'n8n-workflow';
 
+import { COUNTRIES } from '../../countries';
 import {
 	createSession,
 	validateProfileName,
-	validateProxyUrl,
+	validateProxy,
 	validateSaveProfileOnTermination,
 	validateTimeoutMinutes,
 } from '../../GenericFunctions';
@@ -21,6 +22,8 @@ const displayOptions = {
 		operation: ['create'],
 	},
 };
+
+const countryOptions = COUNTRIES.map(({ name, value }) => ({ name, value }));
 
 export const description: INodeProperties[] = [
 	{
@@ -45,6 +48,9 @@ export const description: INodeProperties[] = [
 		description: 'Minutes to wait before the session is terminated due to inactivity',
 		displayOptions,
 	},
+	/**
+	 * Proxy Configuration
+	 */
 	{
 		displayName: 'Proxy',
 		name: 'proxy',
@@ -63,12 +69,45 @@ export const description: INodeProperties[] = [
 				description: 'Use Airtop-provided proxy',
 			},
 			{
-				name: 'Custom',
-				value: 'custom',
-				description: 'Configure a custom proxy',
+				name: 'Proxy URL',
+				value: 'proxyUrl',
+				description: 'Use a proxy URL to configure the proxy',
 			},
 		],
 		displayOptions,
+	},
+	{
+		displayName: 'Proxy Configuration',
+		name: 'proxyConfig',
+		type: 'collection',
+		default: { country: 'US', sticky: true },
+		description: 'The Airtop-provided configuration to use for the proxy',
+		placeholder: 'Add Attribute',
+		options: [
+			{
+				displayName: 'Country',
+				name: 'country',
+				type: 'options',
+				default: 'US',
+				description:
+					'The country to use for the proxy. Not all countries are guaranteed to provide a proxy. Learn more <a href="https://docs.airtop.ai/api-reference/airtop-api/sessions/create#request.body.configuration.proxy.Proxy.Airtop-Proxy-Configuration.country" target="_blank">here</a>.',
+				options: countryOptions,
+			},
+			{
+				displayName: 'Keep Same IP',
+				name: 'sticky',
+				type: 'boolean',
+				default: true,
+				description:
+					'Whether to try to maintain the same IP address for the duration of the session. Airtop can guarantee that the same IP address will be available for up to a maximum of 30 minutes.',
+			},
+		],
+		displayOptions: {
+			show: {
+				...displayOptions.show,
+				proxy: ['integrated'],
+			},
+		},
 	},
 	{
 		displayName: 'Proxy URL',
@@ -76,11 +115,11 @@ export const description: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		description: 'The URL of the proxy to use',
+		validateType: 'string',
 		displayOptions: {
 			show: {
-				resource: ['session'],
-				operation: ['create'],
-				proxy: ['custom'],
+				...displayOptions.show,
+				proxy: ['proxyUrl'],
 			},
 		},
 	},
@@ -120,8 +159,7 @@ export async function execute(
 	const profileName = validateProfileName.call(this, index);
 	const timeoutMinutes = validateTimeoutMinutes.call(this, index);
 	const saveProfileOnTermination = validateSaveProfileOnTermination.call(this, index, profileName);
-	const proxyParam = this.getNodeParameter('proxy', index, 'none') as string;
-	const proxyUrl = validateProxyUrl.call(this, index, proxyParam);
+	const { proxy } = validateProxy.call(this, index);
 	const autoSolveCaptchas = this.getNodeParameter(
 		'additionalFields.autoSolveCaptchas',
 		index,
@@ -135,7 +173,7 @@ export async function execute(
 		configuration: {
 			profileName,
 			timeoutMinutes,
-			proxy: proxyParam === 'custom' ? proxyUrl : Boolean(proxyParam === 'integrated'),
+			proxy,
 			solveCaptcha: autoSolveCaptchas,
 			...(extensionIds.length > 0 ? { extensionIds } : {}),
 		},

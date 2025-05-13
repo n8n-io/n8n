@@ -27,7 +27,7 @@ export function validateRequiredStringField(
 	field: string,
 	fieldName: string,
 ) {
-	let value = this.getNodeParameter(field, index) as string;
+	let value = this.getNodeParameter(field, index, '') as string;
 	value = (value || '').trim();
 	const errorMessage = ERROR_MESSAGES.REQUIRED_PARAMETER.replace('{{field}}', fieldName);
 
@@ -158,34 +158,38 @@ export function validateUrl(this: IExecuteFunctions, index: number) {
 }
 
 /**
- * Validate the Proxy URL parameter
+ * Validate the Proxy configuration
  * @param this - The execution context
  * @param index - The index of the node
- * @param proxy - The value of the Proxy parameter
- * @returns The validated proxy URL
+ * @returns The validated proxy configuration
  */
-export function validateProxyUrl(this: IExecuteFunctions, index: number, proxy: string) {
-	let proxyUrl = this.getNodeParameter('proxyUrl', index, '') as string;
-	proxyUrl = (proxyUrl || '').trim();
+export function validateProxy(this: IExecuteFunctions, index: number) {
+	const proxyParam = this.getNodeParameter('proxy', index, '') as
+		| 'none'
+		| 'integrated'
+		| 'proxyUrl';
+	const proxyConfig = this.getNodeParameter('proxyConfig', index, '') as {
+		country: string;
+		sticky: boolean;
+	};
+	const isConfigEmpty = Object.keys(proxyConfig).length === 0;
 
-	// only validate proxyUrl if proxy is custom
-	if (proxy !== 'custom') {
-		return '';
+	if (proxyParam === 'integrated') {
+		return {
+			proxy: isConfigEmpty ? true : { ...proxyConfig },
+		};
 	}
 
-	if (!proxyUrl) {
-		throw new NodeOperationError(this.getNode(), ERROR_MESSAGES.PROXY_URL_REQUIRED, {
-			itemIndex: index,
-		});
+	// handle custom proxy configuration
+	if (proxyParam === 'proxyUrl') {
+		return {
+			proxy: validateRequiredStringField.call(this, index, 'proxyUrl', 'Proxy URL'),
+		};
 	}
 
-	if (!proxyUrl.startsWith('http')) {
-		throw new NodeOperationError(this.getNode(), ERROR_MESSAGES.PROXY_URL_INVALID, {
-			itemIndex: index,
-		});
-	}
-
-	return proxyUrl;
+	return {
+		proxy: false,
+	};
 }
 
 /**

@@ -12,6 +12,7 @@ import {
 	validateAirtopApiResponse,
 	validateSessionId,
 	validateUrl,
+	validateProxy,
 	validateRequiredStringField,
 	shouldCreateNewSession,
 	convertScreenshotToBinary,
@@ -355,6 +356,57 @@ describe('Test Airtop utils', () => {
 			expect(() => validateUrl.call(createMockExecuteFunction(nodeParameters), 0)).toThrow(
 				ERROR_MESSAGES.URL_INVALID,
 			);
+		});
+	});
+
+	describe('validateProxy', () => {
+		it('should validate intergated proxy', () => {
+			const nodeParameters = {
+				proxy: 'integrated',
+			};
+
+			const result = validateProxy.call(createMockExecuteFunction(nodeParameters), 0);
+			expect(result).toEqual({ proxy: true });
+		});
+
+		it('should validate proxyUrl', () => {
+			const nodeParameters = {
+				proxy: 'proxyUrl',
+				proxyUrl: 'http://example.com',
+			};
+
+			const result = validateProxy.call(createMockExecuteFunction(nodeParameters), 0);
+			expect(result).toEqual({ proxy: 'http://example.com' });
+		});
+
+		it('should throw error for empty proxyUrl', () => {
+			const nodeParameters = {
+				proxy: 'proxyUrl',
+				proxyUrl: '',
+			};
+
+			expect(() => validateProxy.call(createMockExecuteFunction(nodeParameters), 0)).toThrow(
+				ERROR_MESSAGES.REQUIRED_PARAMETER.replace('{{field}}', 'Proxy URL'),
+			);
+		});
+
+		it('should validate integrated proxy with config', () => {
+			const nodeParameters = {
+				proxy: 'integrated',
+				proxyConfig: { country: 'US', sticky: true },
+			};
+
+			const result = validateProxy.call(createMockExecuteFunction(nodeParameters), 0);
+			expect(result).toEqual({ proxy: { country: 'US', sticky: true } });
+		});
+
+		it('should validate none proxy', () => {
+			const nodeParameters = {
+				proxy: 'none',
+			};
+
+			const result = validateProxy.call(createMockExecuteFunction(nodeParameters), 0);
+			expect(result).toEqual({ proxy: false });
 		});
 	});
 

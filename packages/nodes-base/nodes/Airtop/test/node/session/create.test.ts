@@ -102,10 +102,11 @@ describe('Test Airtop, session create operation', () => {
 	/**
 	 * Proxy
 	 */
-	it('should create a session with integrated proxy', async () => {
+	it('should create a session with integrated proxy and empty config', async () => {
 		const nodeParameters = {
 			...baseNodeParameters,
 			proxy: 'integrated',
+			proxyConfig: {}, // simulate integrated proxy with empty config
 		};
 
 		const result = await create.execute.call(createMockExecuteFunction(nodeParameters), 0);
@@ -129,10 +130,38 @@ describe('Test Airtop, session create operation', () => {
 		]);
 	});
 
-	it('should create a session with custom proxy', async () => {
+	it('should create a session with integrated proxy and proxy configuration', async () => {
 		const nodeParameters = {
 			...baseNodeParameters,
-			proxy: 'custom',
+			proxy: 'integrated',
+			proxyConfig: { country: 'US', sticky: true },
+		};
+
+		const result = await create.execute.call(createMockExecuteFunction(nodeParameters), 0);
+
+		expect(transport.apiRequest).toHaveBeenCalledTimes(1);
+		expect(transport.apiRequest).toHaveBeenCalledWith('POST', '/sessions', {
+			configuration: {
+				profileName: 'test-profile',
+				solveCaptcha: false,
+				timeoutMinutes: 10,
+				proxy: { country: 'US', sticky: true },
+			},
+		});
+
+		expect(result).toEqual([
+			{
+				json: {
+					sessionId: 'test-session-123',
+				},
+			},
+		]);
+	});
+
+	it('should create a session with proxy URL', async () => {
+		const nodeParameters = {
+			...baseNodeParameters,
+			proxy: 'proxyUrl',
 			proxyUrl: 'http://proxy.example.com:8080',
 		};
 
@@ -157,26 +186,10 @@ describe('Test Airtop, session create operation', () => {
 		]);
 	});
 
-	it('should throw error when custom proxy URL is invalid', async () => {
-		const nodeParameters = {
-			resource: 'session',
-			operation: 'create',
-			profileName: 'test-profile',
-			timeoutMinutes: 10,
-			saveProfileOnTermination: false,
-			proxy: 'custom',
-			proxyUrl: 'invalid-url',
-		};
-
-		await expect(create.execute.call(createMockExecuteFunction(nodeParameters), 0)).rejects.toThrow(
-			ERROR_MESSAGES.PROXY_URL_INVALID,
-		);
-	});
-
 	it('should throw error when custom proxy URL is empty', async () => {
 		const nodeParameters = {
 			...baseNodeParameters,
-			proxy: 'custom',
+			proxy: 'proxyUrl',
 			proxyUrl: '',
 		};
 
