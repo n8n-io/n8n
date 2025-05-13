@@ -36,7 +36,7 @@
     "@types/xml2js": "catalog:"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "3.666.0",
+    "@aws-sdk/client-s3": "3.808.0",
     "@langchain/core": "catalog:",
     "@n8n/client-oauth2": "workspace:*",
     "@n8n/config": "workspace:*",

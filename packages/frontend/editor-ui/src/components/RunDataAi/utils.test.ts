@@ -8,9 +8,10 @@ import {
 } from '@/__tests__/mocks';
 import {
 	createAiData,
-	createLogEntries,
+	createLogTree,
 	deepToRaw,
 	findSelectedLogEntry,
+	getDefaultCollapsedEntries,
 	getTreeNodeData,
 	getTreeNodeDataV2,
 	mergeStartData,
@@ -25,6 +26,7 @@ import {
 import { type LogEntrySelection } from '../CanvasChat/types/logs';
 import { type IExecutionResponse } from '@/Interface';
 import { isReactive, reactive } from 'vue';
+import { createTestLogTreeCreationContext } from '../CanvasChat/__test__/data';
 
 describe(getTreeNodeData, () => {
 	it('should generate one node per execution', () => {
@@ -539,10 +541,11 @@ describe(getTreeNodeData, () => {
 describe(getTreeNodeDataV2, () => {
 	it('should generate one node per execution', () => {
 		const workflow = createTestWorkflowObject({
+			id: 'test-wf-id',
 			nodes: [
-				createTestNode({ name: 'A' }),
-				createTestNode({ name: 'B' }),
-				createTestNode({ name: 'C' }),
+				createTestNode({ name: 'A', id: 'test-node-id-a' }),
+				createTestNode({ name: 'B', id: 'test-node-id-b' }),
+				createTestNode({ name: 'C', id: 'test-node-id-c' }),
 			],
 			connections: {
 				B: { ai_tool: [[{ node: 'A', type: NodeConnectionTypes.AiTool, index: 0 }]] },
@@ -556,115 +559,66 @@ describe(getTreeNodeDataV2, () => {
 		const jsonB2 = { tokenUsage: { completionTokens: 4, promptTokens: 5, totalTokens: 6 } };
 		const jsonC1 = { tokenUsageEstimate: { completionTokens: 7, promptTokens: 8, totalTokens: 9 } };
 
-		expect(
-			getTreeNodeDataV2('A', createTestTaskData({}), workflow, {
-				A: [createTestTaskData({ startTime: Date.parse('2025-02-26T00:00:00.000Z') })],
-				B: [
-					createTestTaskData({
-						startTime: Date.parse('2025-02-26T00:00:01.000Z'),
-						data: { main: [[{ json: jsonB1 }]] },
-					}),
-					createTestTaskData({
-						startTime: Date.parse('2025-02-26T00:00:03.000Z'),
-						data: { main: [[{ json: jsonB2 }]] },
-					}),
-				],
-				C: [
-					createTestTaskData({
-						startTime: Date.parse('2025-02-26T00:00:02.000Z'),
-						data: { main: [[{ json: jsonC1 }]] },
-					}),
-					createTestTaskData({ startTime: Date.parse('2025-02-26T00:00:04.000Z') }),
-				],
-			}),
-		).toEqual([
-			{
-				depth: 0,
-				id: 'A:0',
-				node: expect.objectContaining({ name: 'A' }),
-				runIndex: 0,
-				runData: expect.objectContaining({ startTime: 0 }),
-				parent: undefined,
-				consumedTokens: {
-					completionTokens: 0,
-					promptTokens: 0,
-					totalTokens: 0,
-					isEstimate: false,
-				},
-				children: [
-					{
-						depth: 1,
-						id: 'B:0',
-						node: expect.objectContaining({ name: 'B' }),
-						runIndex: 0,
-						runData: expect.objectContaining({
-							startTime: Date.parse('2025-02-26T00:00:01.000Z'),
-						}),
-						parent: expect.objectContaining({ node: expect.objectContaining({ name: 'A' }) }),
-						consumedTokens: {
-							completionTokens: 1,
-							promptTokens: 2,
-							totalTokens: 3,
-							isEstimate: false,
-						},
-						children: [
-							{
-								children: [],
-								depth: 2,
-								id: 'C:0',
-								node: expect.objectContaining({ name: 'C' }),
-								runIndex: 0,
-								runData: expect.objectContaining({
-									startTime: Date.parse('2025-02-26T00:00:02.000Z'),
-								}),
-								parent: expect.objectContaining({ node: expect.objectContaining({ name: 'B' }) }),
-								consumedTokens: {
-									completionTokens: 7,
-									promptTokens: 8,
-									totalTokens: 9,
-									isEstimate: true,
-								},
-							},
-						],
-					},
-					{
-						depth: 1,
-						id: 'B:1',
-						node: expect.objectContaining({ name: 'B' }),
-						runIndex: 1,
-						runData: expect.objectContaining({
-							startTime: Date.parse('2025-02-26T00:00:03.000Z'),
-						}),
-						parent: expect.objectContaining({ node: expect.objectContaining({ name: 'A' }) }),
-						consumedTokens: {
-							completionTokens: 4,
-							promptTokens: 5,
-							totalTokens: 6,
-							isEstimate: false,
-						},
-						children: [
-							{
-								children: [],
-								depth: 2,
-								id: 'C:1',
-								node: expect.objectContaining({ name: 'C' }),
-								runIndex: 1,
-								runData: expect.objectContaining({
-									startTime: Date.parse('2025-02-26T00:00:04.000Z'),
-								}),
-								parent: expect.objectContaining({ node: expect.objectContaining({ name: 'B' }) }),
-								consumedTokens: {
-									completionTokens: 0,
-									promptTokens: 0,
-									totalTokens: 0,
-									isEstimate: false,
-								},
-							},
-						],
-					},
-				],
-			},
-		]);
+		const ctx = createTestLogTreeCreationContext(workflow, {
+			A: [createTestTaskData({ startTime: 1740528000000 })],
+			B: [
+				createTestTaskData({
+					startTime: 1740528000001,
+					data: { main: [[{ json: jsonB1 }]] },
+				}),
+				createTestTaskData({
+					startTime: 1740528000002,
+					data: { main: [[{ json: jsonB2 }]] },
+				}),
+			],
+			C: [
+				createTestTaskData({
+					startTime: 1740528000003,
+					data: { main: [[{ json: jsonC1 }]] },
+				}),
+				createTestTaskData({ startTime: 1740528000004 }),
+			],
+		});
+		const logTree = getTreeNodeDataV2('A', ctx.data.resultData.runData.A[0], undefined, ctx);
+
+		expect(logTree.length).toBe(1);
+
+		expect(logTree[0].id).toBe('test-wf-id:A:test-execution-id:0');
+		expect(logTree[0].depth).toBe(0);
+		expect(logTree[0].runIndex).toBe(0);
+		expect(logTree[0].parent).toBe(undefined);
+		expect(logTree[0].runData.startTime).toBe(1740528000000);
+		expect(logTree[0].children.length).toBe(2);
+
+		expect(logTree[0].children[0].id).toBe('test-wf-id:B:test-execution-id:0');
+		expect(logTree[0].children[0].depth).toBe(1);
+		expect(logTree[0].children[0].runIndex).toBe(0);
+		expect(logTree[0].children[0].parent?.node.name).toBe('A');
+		expect(logTree[0].children[0].runData.startTime).toBe(1740528000001);
+		expect(logTree[0].children[0].consumedTokens.isEstimate).toBe(false);
+		expect(logTree[0].children[0].consumedTokens.completionTokens).toBe(1);
+		expect(logTree[0].children[0].children.length).toBe(1);
+
+		expect(logTree[0].children[0].children[0].id).toBe('test-wf-id:C:test-execution-id:0');
+		expect(logTree[0].children[0].children[0].depth).toBe(2);
+		expect(logTree[0].children[0].children[0].runIndex).toBe(0);
+		expect(logTree[0].children[0].children[0].parent?.node.name).toBe('B');
+		expect(logTree[0].children[0].children[0].consumedTokens.isEstimate).toBe(true);
+		expect(logTree[0].children[0].children[0].consumedTokens.completionTokens).toBe(7);
+
+		expect(logTree[0].children[1].id).toBe('test-wf-id:B:test-execution-id:1');
+		expect(logTree[0].children[1].depth).toBe(1);
+		expect(logTree[0].children[1].runIndex).toBe(1);
+		expect(logTree[0].children[1].parent?.node.name).toBe('A');
+		expect(logTree[0].children[1].consumedTokens.isEstimate).toBe(false);
+		expect(logTree[0].children[1].consumedTokens.completionTokens).toBe(4);
+		expect(logTree[0].children[1].children.length).toBe(1);
+
+		expect(logTree[0].children[1].children[0].id).toBe('test-wf-id:C:test-execution-id:1');
+		expect(logTree[0].children[1].children[0].depth).toBe(2);
+		expect(logTree[0].children[1].children[0].runIndex).toBe(1);
+		expect(logTree[0].children[1].children[0].parent?.node.name).toBe('B');
+		expect(logTree[0].children[1].children[0].consumedTokens.completionTokens).toBe(0);
 	});
 
 	it('should filter node executions based on source node', () => {
@@ -715,13 +669,23 @@ describe(getTreeNodeDataV2, () => {
 		};
 
 		// Test for RootNode1 - should only show SharedSubNode with source RootNode1
-		const rootNode1Tree = getTreeNodeDataV2('RootNode1', runData.RootNode1[0], workflow, runData);
+		const rootNode1Tree = getTreeNodeDataV2(
+			'RootNode1',
+			runData.RootNode1[0],
+			undefined,
+			createTestLogTreeCreationContext(workflow, runData),
+		);
 		expect(rootNode1Tree[0].children.length).toBe(1);
 		expect(rootNode1Tree[0].children[0].node.name).toBe('SharedSubNode');
 		expect(rootNode1Tree[0].children[0].runIndex).toBe(0);
 
 		// Test for RootNode2 - should only show SharedSubNode with source RootNode2
-		const rootNode2Tree = getTreeNodeDataV2('RootNode2', runData.RootNode2[0], workflow, runData);
+		const rootNode2Tree = getTreeNodeDataV2(
+			'RootNode2',
+			runData.RootNode2[0],
+			undefined,
+			createTestLogTreeCreationContext(workflow, runData),
+		);
 		expect(rootNode2Tree[0].children.length).toBe(1);
 		expect(rootNode2Tree[0].children[0].node.name).toBe('SharedSubNode');
 		expect(rootNode2Tree[0].children[0].runIndex).toBe(1);
@@ -762,13 +726,23 @@ describe(getTreeNodeDataV2, () => {
 		};
 
 		// Test for run #1 of RootNode - should only show SubNode with source run index 0
-		const rootNode1Tree = getTreeNodeDataV2('RootNode', runData.RootNode[0], workflow, runData, 0);
+		const rootNode1Tree = getTreeNodeDataV2(
+			'RootNode',
+			runData.RootNode[0],
+			0,
+			createTestLogTreeCreationContext(workflow, runData),
+		);
 		expect(rootNode1Tree[0].children.length).toBe(1);
 		expect(rootNode1Tree[0].children[0].node.name).toBe('SubNode');
 		expect(rootNode1Tree[0].children[0].runIndex).toBe(0);
 
 		// Test for run #2 of RootNode - should only show SubNode with source run index 1
-		const rootNode2Tree = getTreeNodeDataV2('RootNode', runData.RootNode[1], workflow, runData, 1);
+		const rootNode2Tree = getTreeNodeDataV2(
+			'RootNode',
+			runData.RootNode[1],
+			1,
+			createTestLogTreeCreationContext(workflow, runData),
+		);
 		expect(rootNode2Tree[0].children.length).toBe(1);
 		expect(rootNode2Tree[0].children[0].node.name).toBe('SubNode');
 		expect(rootNode2Tree[0].children[0].runIndex).toBe(1);
@@ -803,7 +777,12 @@ describe(getTreeNodeDataV2, () => {
 		};
 
 		// Test for RootNode - should still show SubNode even without source info
-		const rootNodeTree = getTreeNodeDataV2('RootNode', runData.RootNode[0], workflow, runData);
+		const rootNodeTree = getTreeNodeDataV2(
+			'RootNode',
+			runData.RootNode[0],
+			undefined,
+			createTestLogTreeCreationContext(workflow, runData),
+		);
 		expect(rootNodeTree[0].children.length).toBe(1);
 		expect(rootNodeTree[0].children[0].node.name).toBe('SubNode');
 		expect(rootNodeTree[0].children[0].runIndex).toBe(0);
@@ -838,7 +817,12 @@ describe(getTreeNodeDataV2, () => {
 		};
 
 		// Test for RootNode - should still show SubNode even with empty source array
-		const rootNodeTree = getTreeNodeDataV2('RootNode', runData.RootNode[0], workflow, runData);
+		const rootNodeTree = getTreeNodeDataV2(
+			'RootNode',
+			runData.RootNode[0],
+			undefined,
+			createTestLogTreeCreationContext(workflow, runData),
+		);
 		expect(rootNodeTree[0].children.length).toBe(1);
 		expect(rootNodeTree[0].children[0].node.name).toBe('SubNode');
 		expect(rootNodeTree[0].children[0].runIndex).toBe(0);
@@ -860,7 +844,12 @@ describe(getTreeNodeDataV2, () => {
 			SubNode: [createTestTaskData({ executionIndex: 1, source: [null] })],
 		};
 
-		const rootNodeTree = getTreeNodeDataV2('RootNode', runData.RootNode[0], workflow, runData);
+		const rootNodeTree = getTreeNodeDataV2(
+			'RootNode',
+			runData.RootNode[0],
+			undefined,
+			createTestLogTreeCreationContext(workflow, runData),
+		);
 
 		expect(rootNodeTree[0].children.length).toBe(1);
 		expect(rootNodeTree[0].children[0].node.name).toBe('SubNode');
@@ -932,7 +921,12 @@ describe(getTreeNodeDataV2, () => {
 		};
 
 		// Test filtering for RootNode1
-		const rootNode1Tree = getTreeNodeDataV2('RootNode1', runData.RootNode1[0], workflow, runData);
+		const rootNode1Tree = getTreeNodeDataV2(
+			'RootNode1',
+			runData.RootNode1[0],
+			undefined,
+			createTestLogTreeCreationContext(workflow, runData),
+		);
 		expect(rootNode1Tree[0].children.length).toBe(1);
 		expect(rootNode1Tree[0].children[0].node.name).toBe('SharedSubNode');
 		expect(rootNode1Tree[0].children[0].runIndex).toBe(0);
@@ -941,7 +935,12 @@ describe(getTreeNodeDataV2, () => {
 		expect(rootNode1Tree[0].children[0].children[0].runIndex).toBe(0);
 
 		// Test filtering for RootNode2
-		const rootNode2Tree = getTreeNodeDataV2('RootNode2', runData.RootNode2[0], workflow, runData);
+		const rootNode2Tree = getTreeNodeDataV2(
+			'RootNode2',
+			runData.RootNode2[0],
+			undefined,
+			createTestLogTreeCreationContext(workflow, runData),
+		);
 		expect(rootNode2Tree[0].children.length).toBe(1);
 		expect(rootNode2Tree[0].children[0].node.name).toBe('SharedSubNode');
 		expect(rootNode2Tree[0].children[0].runIndex).toBe(1);
@@ -1022,7 +1021,12 @@ describe(getTreeNodeDataV2, () => {
 		};
 
 		// Test filtering for RootNode1 -> SubNodeA -> DeepNode
-		const rootNode1Tree = getTreeNodeDataV2('RootNode1', runData.RootNode1[0], workflow, runData);
+		const rootNode1Tree = getTreeNodeDataV2(
+			'RootNode1',
+			runData.RootNode1[0],
+			undefined,
+			createTestLogTreeCreationContext(workflow, runData),
+		);
 		expect(rootNode1Tree[0].children.length).toBe(1);
 		expect(rootNode1Tree[0].children[0].node.name).toBe('SubNodeA');
 		expect(rootNode1Tree[0].children[0].children.length).toBe(1);
@@ -1030,7 +1034,12 @@ describe(getTreeNodeDataV2, () => {
 		expect(rootNode1Tree[0].children[0].children[0].runIndex).toBe(0); // First DeepNode execution
 
 		// Test filtering for RootNode2 -> SubNodeB -> DeepNode
-		const rootNode2Tree = getTreeNodeDataV2('RootNode2', runData.RootNode2[0], workflow, runData);
+		const rootNode2Tree = getTreeNodeDataV2(
+			'RootNode2',
+			runData.RootNode2[0],
+			undefined,
+			createTestLogTreeCreationContext(workflow, runData),
+		);
 
 		expect(rootNode2Tree[0].children.length).toBe(1);
 		expect(rootNode2Tree[0].children[0].node.name).toBe('SubNodeB');
@@ -1044,13 +1053,10 @@ describe(getTreeNodeDataV2, () => {
 
 describe(findSelectedLogEntry, () => {
 	function find(state: LogEntrySelection, response: IExecutionResponse) {
-		return findSelectedLogEntry(state, {
-			...response,
-			tree: createLogEntries(
-				createTestWorkflowObject(response.workflowData),
-				response.data?.resultData.runData ?? {},
-			),
-		});
+		return findSelectedLogEntry(
+			state,
+			createLogTree(createTestWorkflowObject(response.workflowData), response),
+		);
 	}
 
 	describe('when log is not manually selected', () => {
@@ -1195,11 +1201,11 @@ describe(findSelectedLogEntry, () => {
 
 	describe('when log is manually selected', () => {
 		it('should return manually selected log', () => {
-			const nodeA = createTestNode({ name: 'A' });
 			const response = createTestWorkflowExecutionResponse({
+				id: 'my-exec-id',
 				workflowData: createTestWorkflow({
 					id: 'test-wf-id',
-					nodes: [nodeA, createTestNode({ name: 'B' })],
+					nodes: [createTestNode({ name: 'A' }), createTestNode({ name: 'B' })],
 				}),
 				data: {
 					resultData: {
@@ -1211,14 +1217,7 @@ describe(findSelectedLogEntry, () => {
 				},
 			});
 
-			const result = find(
-				{
-					type: 'selected',
-					workflowId: 'test-wf-id',
-					data: createTestLogEntry({ node: nodeA, runIndex: 0 }),
-				},
-				response,
-			);
+			const result = find({ type: 'selected', id: 'test-wf-id:A:my-exec-id:0' }, response);
 
 			expect(result).toEqual(
 				expect.objectContaining({ node: expect.objectContaining({ name: 'A' }), runIndex: 0 }),
@@ -1227,7 +1226,7 @@ describe(findSelectedLogEntry, () => {
 	});
 });
 
-describe(createLogEntries, () => {
+describe(createLogTree, () => {
 	it('should return root node log entries in ascending order of executionIndex', () => {
 		const workflow = createTestWorkflowObject({
 			nodes: [
@@ -1240,33 +1239,38 @@ describe(createLogEntries, () => {
 				C: { main: [[{ node: 'B', type: NodeConnectionTypes.Main, index: 0 }]] },
 			},
 		});
+		const execution = createTestWorkflowExecutionResponse({
+			data: {
+				resultData: {
+					runData: {
+						A: [
+							createTestTaskData({
+								startTime: Date.parse('2025-04-04T00:00:00.000Z'),
+								executionIndex: 0,
+							}),
+						],
+						B: [
+							createTestTaskData({
+								startTime: Date.parse('2025-04-04T00:00:01.000Z'),
+								executionIndex: 1,
+							}),
+						],
+						C: [
+							createTestTaskData({
+								startTime: Date.parse('2025-04-04T00:00:02.000Z'),
+								executionIndex: 3,
+							}),
+							createTestTaskData({
+								startTime: Date.parse('2025-04-04T00:00:02.000Z'),
+								executionIndex: 2,
+							}),
+						],
+					},
+				},
+			},
+		});
 
-		expect(
-			createLogEntries(workflow, {
-				A: [
-					createTestTaskData({
-						startTime: Date.parse('2025-04-04T00:00:00.000Z'),
-						executionIndex: 0,
-					}),
-				],
-				B: [
-					createTestTaskData({
-						startTime: Date.parse('2025-04-04T00:00:01.000Z'),
-						executionIndex: 1,
-					}),
-				],
-				C: [
-					createTestTaskData({
-						startTime: Date.parse('2025-04-04T00:00:02.000Z'),
-						executionIndex: 3,
-					}),
-					createTestTaskData({
-						startTime: Date.parse('2025-04-04T00:00:02.000Z'),
-						executionIndex: 2,
-					}),
-				],
-			}),
-		).toEqual([
+		expect(createLogTree(workflow, execution)).toEqual([
 			expect.objectContaining({ node: expect.objectContaining({ name: 'A' }), runIndex: 0 }),
 			expect.objectContaining({ node: expect.objectContaining({ name: 'B' }), runIndex: 0 }),
 			expect.objectContaining({ node: expect.objectContaining({ name: 'C' }), runIndex: 1 }),
@@ -1292,30 +1296,39 @@ describe(createLogEntries, () => {
 		});
 
 		expect(
-			createLogEntries(workflow, {
-				A: [
-					createTestTaskData({
-						startTime: Date.parse('2025-04-04T00:00:00.000Z'),
-						executionIndex: 0,
-					}),
-				],
-				B: [
-					createTestTaskData({
-						startTime: Date.parse('2025-04-04T00:00:01.000Z'),
-						executionIndex: 1,
-					}),
-				],
-				C: [
-					createTestTaskData({
-						startTime: Date.parse('2025-04-04T00:00:02.000Z'),
-						executionIndex: 3,
-					}),
-					createTestTaskData({
-						startTime: Date.parse('2025-04-04T00:00:02.000Z'),
-						executionIndex: 2,
-					}),
-				],
-			}),
+			createLogTree(
+				workflow,
+				createTestWorkflowExecutionResponse({
+					data: {
+						resultData: {
+							runData: {
+								A: [
+									createTestTaskData({
+										startTime: Date.parse('2025-04-04T00:00:00.000Z'),
+										executionIndex: 0,
+									}),
+								],
+								B: [
+									createTestTaskData({
+										startTime: Date.parse('2025-04-04T00:00:01.000Z'),
+										executionIndex: 1,
+									}),
+								],
+								C: [
+									createTestTaskData({
+										startTime: Date.parse('2025-04-04T00:00:02.000Z'),
+										executionIndex: 3,
+									}),
+									createTestTaskData({
+										startTime: Date.parse('2025-04-04T00:00:03.000Z'),
+										executionIndex: 2,
+									}),
+								],
+							},
+						},
+					},
+				}),
+			),
 		).toEqual([
 			expect.objectContaining({ node: expect.objectContaining({ name: 'A' }), runIndex: 0 }),
 			expect.objectContaining({
@@ -1336,10 +1349,90 @@ describe(createLogEntries, () => {
 				A: { main: [[{ node: 'B', type: NodeConnectionTypes.Main, index: 0 }]] },
 			},
 		});
+		const response = createTestWorkflowExecutionResponse({
+			data: {
+				resultData: {
+					runData: {
+						A: [createTestTaskData()],
+						B: [createTestTaskData()],
+					},
+				},
+			},
+		});
 
-		expect(
-			createLogEntries(workflow, { A: [createTestTaskData()], B: [createTestTaskData()] }),
-		).toEqual([expect.objectContaining({ node: expect.objectContaining({ name: 'A' }) })]);
+		expect(createLogTree(workflow, response)).toEqual([
+			expect.objectContaining({ node: expect.objectContaining({ name: 'A' }) }),
+		]);
+	});
+
+	it('should include runs of a sub execution', () => {
+		const workflow = createTestWorkflowObject({
+			id: 'root-workflow-id',
+			nodes: [createTestNode({ name: 'A' }), createTestNode({ name: 'B' })],
+			connections: {
+				A: { main: [[{ node: 'B', type: NodeConnectionTypes.Main, index: 0 }]] },
+			},
+		});
+		const subWorkflow = createTestWorkflowObject({
+			id: 'sub-workflow-id',
+			nodes: [createTestNode({ name: 'C' })],
+		});
+		const rootExecutionData = createTestWorkflowExecutionResponse({
+			id: 'root-exec-id',
+			data: {
+				resultData: {
+					runData: {
+						A: [createTestTaskData()],
+						B: [
+							createTestTaskData({
+								metadata: {
+									subExecution: { workflowId: 'sub-workflow-id', executionId: 'sub-exec-id' },
+								},
+							}),
+						],
+					},
+				},
+			},
+		});
+		const subExecutionData = {
+			resultData: { runData: { C: [createTestTaskData(), createTestTaskData()] } },
+		};
+		const logs = createLogTree(
+			workflow,
+			rootExecutionData,
+			{ 'sub-workflow-id': subWorkflow },
+			{ 'sub-exec-id': subExecutionData },
+		);
+
+		expect(logs).toHaveLength(2);
+
+		expect(logs[0].node.name).toBe('A');
+		expect(logs[0].depth).toBe(0);
+		expect(logs[0].workflow).toBe(workflow);
+		expect(logs[0].execution).toBe(rootExecutionData.data);
+		expect(logs[0].executionId).toBe('root-exec-id');
+		expect(logs[0].children).toHaveLength(0);
+
+		expect(logs[1].node.name).toBe('B');
+		expect(logs[1].depth).toBe(0);
+		expect(logs[1].workflow).toBe(workflow);
+		expect(logs[1].execution).toBe(rootExecutionData.data);
+		expect(logs[1].executionId).toBe('root-exec-id');
+		expect(logs[1].children).toHaveLength(2);
+
+		expect(logs[1].children[0].node.name).toBe('C');
+		expect(logs[1].children[0].depth).toBe(1);
+		expect(logs[1].children[0].workflow).toBe(subWorkflow);
+		expect(logs[1].children[0].execution).toBe(subExecutionData);
+		expect(logs[1].children[0].executionId).toBe('sub-exec-id');
+		expect(logs[1].children[0].children).toHaveLength(0);
+
+		expect(logs[1].children[1].node.name).toBe('C');
+		expect(logs[1].children[1].depth).toBe(1);
+		expect(logs[1].children[1].workflow).toBe(subWorkflow);
+		expect(logs[1].children[1].execution).toBe(subExecutionData);
+		expect(logs[1].children[1].executionId).toBe('sub-exec-id');
+		expect(logs[1].children[1].children).toHaveLength(0);
 	});
 });
 
@@ -1447,5 +1540,44 @@ describe(mergeStartData, () => {
 		const merged = mergeStartData(startData, response);
 
 		expect(merged.data?.resultData.runData.A).toEqual(response.data?.resultData.runData.A);
+	});
+});
+
+describe(getDefaultCollapsedEntries, () => {
+	it('should recursively find logs for runs with a sub execution and has no child logs', () => {
+		const entries = [
+			// Has sub execution and has no children
+			createTestLogEntry({
+				id: 'l0',
+				runData: createTestTaskData({
+					metadata: { subExecution: { workflowId: 'w0', executionId: 'e0' } },
+				}),
+				children: [],
+			}),
+			// Has no sub execution
+			createTestLogEntry({ id: 'l1' }),
+			// Has sub execution and has children
+			createTestLogEntry({
+				id: 'l2',
+				runData: createTestTaskData({
+					metadata: { subExecution: { workflowId: 'w0', executionId: 'e0' } },
+				}),
+				children: [
+					// Has no sub execution - nested
+					createTestLogEntry({ id: 'l3' }),
+					// Has sub execution and has no children - nested
+					createTestLogEntry({
+						id: 'l4',
+						runData: createTestTaskData({
+							metadata: {
+								subExecution: { workflowId: 'w0', executionId: 'e0' },
+							},
+						}),
+					}),
+				],
+			}),
+		];
+
+		expect(getDefaultCollapsedEntries(entries)).toEqual({ l0: true, l4: true });
 	});
 });
