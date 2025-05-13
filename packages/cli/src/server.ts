@@ -1,4 +1,5 @@
 import { SecurityConfig } from '@n8n/config';
+import { inDevelopment, inProduction } from '@n8n/constants';
 import { Container, Service } from '@n8n/di';
 import cookieParser from 'cookie-parser';
 import express from 'express';
@@ -11,15 +12,7 @@ import { resolve } from 'path';
 
 import { AbstractServer } from '@/abstract-server';
 import config from '@/config';
-import {
-	CLI_DIR,
-	EDITOR_UI_DIST_DIR,
-	inDevelopment,
-	inE2ETests,
-	inProduction,
-	N8N_VERSION,
-	Time,
-} from '@/constants';
+import { CLI_DIR, EDITOR_UI_DIST_DIR, inE2ETests, N8N_VERSION, Time } from '@/constants';
 import { ControllerRegistry } from '@/controller.registry';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';

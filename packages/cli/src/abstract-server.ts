@@ -1,4 +1,5 @@
 import { GlobalConfig } from '@n8n/config';
+import { inDevelopment, inTest } from '@n8n/constants';
 import { OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import compression from 'compression';
@@ -10,7 +11,7 @@ import isbot from 'isbot';
 import { Logger } from 'n8n-core';
 
 import config from '@/config';
-import { N8N_VERSION, TEMPLATES_DIR, inDevelopment, inTest } from '@/constants';
+import { N8N_VERSION, TEMPLATES_DIR } from '@/constants';
 import * as Db from '@/db';
 import { ExternalHooks } from '@/external-hooks';
 import { rawBodyReader, bodyParser, corsMiddleware } from '@/middlewares';

@@ -1,4 +1,5 @@
 import { GlobalConfig } from '@n8n/config';
+import { inTest } from '@n8n/constants';
 import type { User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { existsSync } from 'fs';
@@ -8,7 +9,6 @@ import { Logger } from 'n8n-core';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { join as pathJoin } from 'path';
 
-import { inTest } from '@/constants';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { EventService } from '@/events/event.service';

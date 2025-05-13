@@ -45,3 +45,9 @@ export const UNLIMITED_LICENSE_QUOTA = -1;
 
 export type BooleanLicenseFeature = (typeof LICENSE_FEATURES)[keyof typeof LICENSE_FEATURES];
 export type NumericLicenseFeature = (typeof LICENSE_QUOTAS)[keyof typeof LICENSE_QUOTAS];
+
+const { NODE_ENV } = process.env;
+
+export const inTest = NODE_ENV === 'test';
+export const inProduction = NODE_ENV === 'production';
+export const inDevelopment = !NODE_ENV || NODE_ENV === 'development';

@@ -1,4 +1,5 @@
 import { GlobalConfig } from '@n8n/config';
+import { inTest } from '@n8n/constants';
 import { Container } from '@n8n/di';
 import convict from 'convict';
 import { flatten } from 'flat';
@@ -8,7 +9,7 @@ import { Logger } from 'n8n-core';
 import { setGlobalState, UserError } from 'n8n-workflow';
 import assert from 'node:assert';
 
-import { inTest, inE2ETests } from '@/constants';
+import { inE2ETests } from '@/constants';
 
 if (inE2ETests) {
 	// Skip loading config from env variables in end-to-end tests
