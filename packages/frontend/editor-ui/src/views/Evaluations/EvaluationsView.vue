@@ -11,8 +11,6 @@ import { orderBy } from 'lodash-es';
 import N8nLink from '@n8n/design-system/components/N8nLink';
 import { useUsageStore } from '@/stores/usage.store';
 import EvaluationsPaywall from '@/components/Evaluations/Paywall/EvaluationsPaywall.vue';
-import { getResourcePermissions } from '@/permissions';
-import { useUsersStore } from '@/stores/users.store';
 
 const props = defineProps<{
 	name: string;
@@ -22,7 +20,7 @@ const locale = useI18n();
 const toast = useToast();
 const evaluationsStore = useEvaluationStore();
 const usageStore = useUsageStore();
-const usersStore = useUsersStore();
+// const usersStore = useUsersStore();
 
 const { isReady } = useAsyncState(
 	async () => {
@@ -63,26 +61,13 @@ const showWizard = computed(() => {
 	return !hasRuns.value;
 });
 
-const isCommunity = computed(() => usageStore.planName.toLowerCase() === 'community');
-
-const isCommunityEditionRegistered = computed(
-	() => usageStore.planName.toLowerCase() === 'registered community',
-);
-
 const evaluationsLicensed = computed(() => {
 	return usageStore.workflowsWithEvaluationsLimit !== 0;
 });
 
-const canUserRegisterCommunityPlus = computed(
-	() => getResourcePermissions(usersStore.currentUser?.globalScopes).community.register,
-);
-
-const evaluationsAvailable = computed(() => {
-	return (
-		usageStore.workflowsWithEvaluationsLimit === -1 ||
-		usageStore.workflowsWithEvaluationsLimit < usageStore.workflowsWithEvaluationsCount
-	);
-});
+// const canUserRegisterCommunityPlus = computed(
+// 	() => getResourcePermissions(usersStore.currentUser?.globalScopes).community.register,
+// );
 </script>
 
 <template>
@@ -140,7 +125,7 @@ const evaluationsAvailable = computed(() => {
 							referrerpolicy="strict-origin-when-cross-origin"
 							allowfullscreen
 						></iframe>
-						<SetupWizard @run-test="runTest" v-if="evaluationsLicensed" />
+						<SetupWizard v-if="evaluationsLicensed" @run-test="runTest" />
 						<EvaluationsPaywall v-else />
 					</div>
 				</div>

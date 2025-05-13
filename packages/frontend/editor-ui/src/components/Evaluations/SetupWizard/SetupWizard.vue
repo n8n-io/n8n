@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { useI18n } from '@/composables/useI18n';
-import { N8nText, N8nButton } from '@n8n/design-system';
+import { N8nText, N8nButton, N8nCallout } from '@n8n/design-system';
 import { ref, computed, watch } from 'vue';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { EVALUATION_DATASET_TRIGGER_NODE, PLACEHOLDER_EMPTY_WORKFLOW_ID, VIEWS } from '@/constants';
 import StepHeader from '../shared/StepHeader.vue';
 import { useRouter } from 'vue-router';
+import { useUsageStore } from '@/stores/usage.store';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
 defineEmits<{
@@ -15,6 +16,7 @@ defineEmits<{
 const router = useRouter();
 const locale = useI18n();
 const workflowsStore = useWorkflowsStore();
+const usageStore = useUsageStore();
 const pageRedirectionHelper = usePageRedirectionHelper();
 
 const datasetTriggerExist = computed(() => {
@@ -36,6 +38,13 @@ const evaluationSetOutputNodeExist = computed(() => {
 		(node) =>
 			node.type === 'n8n-nodes-base.evaluation' &&
 			(node.parameters.operation === 'setOutputs' || node.parameters.operation === undefined),
+	);
+});
+
+const evaluationsAvailable = computed(() => {
+	return (
+		usageStore.workflowsWithEvaluationsLimit === -1 ||
+		usageStore.workflowsWithEvaluationsCount < usageStore.workflowsWithEvaluationsLimit
 	);
 });
 
@@ -102,8 +111,8 @@ function navigateToWorkflow(
 	});
 }
 
-function onSeePlans() {
-	void pageRedirectionHelper.goToUpgrade('usage_page', 'open');
+function seePlans() {
+	void pageRedirectionHelper.goToUpgrade('evaluations', 'upgrade-evaluations');
 }
 </script>
 
@@ -185,7 +194,7 @@ function onSeePlans() {
 					@click="toggleStep(2)"
 				/>
 				<div v-if="activeStepIndex === 2" :class="$style.stepContent">
-					<ul :class="$style.bulletPoints">
+					<ul v-if="evaluationsAvailable" :class="$style.bulletPoints">
 						<li>
 							<N8nText size="small" color="text-base">
 								{{ locale.baseText('evaluations.setupWizard.step3.item1') }}
@@ -197,13 +206,20 @@ function onSeePlans() {
 							</N8nText>
 						</li>
 					</ul>
+					<N8nCallout v-else theme="warning" iconless>
+						{{ locale.baseText('evaluations.setupWizard.limitReached') }}
+					</N8nCallout>
 					<div :class="$style.actionButton">
 						<N8nButton
+							v-if="evaluationsAvailable"
 							size="small"
 							type="secondary"
 							@click="navigateToWorkflow('addEvaluationNode')"
 						>
 							{{ locale.baseText('evaluations.setupWizard.step3.button') }}
+						</N8nButton>
+						<N8nButton v-else size="small" @click="seePlans()">
+							{{ locale.baseText('generic.seePlans') }}
 						</N8nButton>
 						<N8nButton
 							size="small"
