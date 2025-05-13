@@ -4,6 +4,8 @@ import { usePostHog } from '@/stores/posthog.store';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 
+let posthogStore: ReturnType<typeof usePostHog>;
+
 describe('useActionsGenerator', () => {
 	const { generateMergedNodesAndActions } = useActionsGenerator();
 	const NODE_NAME = 'n8n-nodes-base.test';
@@ -28,7 +30,7 @@ describe('useActionsGenerator', () => {
 		const pinia = createTestingPinia({ stubActions: false });
 		setActivePinia(pinia);
 
-		const posthogStore = usePostHog();
+		posthogStore = usePostHog();
 
 		vi.spyOn(posthogStore, 'isVariantEnabled').mockReturnValue(true);
 	});
@@ -398,6 +400,49 @@ describe('useActionsGenerator', () => {
 						},
 					}),
 				],
+			});
+		});
+
+		it('should not return evaluation or evaluation trigger node if variant is not enabled', () => {
+			vi.spyOn(posthogStore, 'isVariantEnabled').mockReturnValue(false);
+
+			const node: INodeTypeDescription = {
+				...baseV2NodeWoProps,
+				properties: [
+					resourcePropertyWithUser,
+					{
+						displayName: 'Operation',
+						name: 'operation',
+						type: 'options',
+						noDataExpression: true,
+						displayOptions: {},
+						options: [
+							{
+								name: 'Get',
+								value: 'get',
+								description: 'Get description',
+							},
+						],
+						default: 'get',
+					},
+				],
+			};
+
+			const evalNode: INodeTypeDescription = {
+				...baseV2NodeWoProps,
+				name: 'n8n-nodes-base.evaluation',
+			};
+
+			const evalNodeTrigger: INodeTypeDescription = {
+				...baseV2NodeWoProps,
+				name: 'n8n-nodes-base.evaluationTrigger',
+			};
+
+			const { mergedNodes } = generateMergedNodesAndActions([node, evalNode, evalNodeTrigger], []);
+
+			mergedNodes.forEach((mergedNode) => {
+				expect(mergedNode.name).not.toEqual('n8n-nodes-base.evaluation');
+				expect(mergedNode.name).not.toEqual('n8n-nodes-base.evaluationTrigger');
 			});
 		});
 	});
