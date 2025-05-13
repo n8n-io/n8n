@@ -194,28 +194,11 @@ const isToolNode = computed(() => {
 
 const rootNodesParents = computed(() => {
 	if (!rootNode.value) return [];
-	const parents = props.workflow.getParentNodesByDepth(rootNode.value);
-
-	if (!isToolNode.value) {
-		return parents;
-	}
-
-	return [
-		...parents,
-		{
-			name: activeNode.value?.name,
-			indicies: [0],
-			depth: 0,
-		},
-	];
+	return props.workflow.getParentNodesByDepth(rootNode.value);
 });
 
 const currentNode = computed(() => {
 	if (isActiveNodeConfig.value) {
-		if (isToolNode.value && activeNode.value) {
-			return workflowsStore.getNodeByName(activeNode.value.name);
-		}
-
 		// if we're mapping node we want to show the output of the mapped node
 		if (mappedNode.value) {
 			return workflowsStore.getNodeByName(mappedNode.value);
@@ -384,6 +367,8 @@ function activatePane() {
 		:class="$style.runData"
 		:node="currentNode"
 		:nodes="isMappingMode ? rootNodesParents : parentNodes"
+		:root-node="rootNode"
+		:tool-node="isToolNode ? activeNode : null"
 		:workflow="workflow"
 		:run-index="isMappingMode ? 0 : runIndex"
 		:linked-runs="linkedRuns"

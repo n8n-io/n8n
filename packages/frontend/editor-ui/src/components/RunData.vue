@@ -15,6 +15,7 @@ import type {
 	NodeHint,
 	Workflow,
 	NodeConnectionType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 import {
 	parseErrorMetadata,
@@ -131,6 +132,8 @@ type Props = {
 	noDataInBranchMessage: string;
 	node?: INodeUi | null;
 	nodes?: IConnectedNode[];
+	toolNode?: INodeUi | null;
+	rootNode?: string | null;
 	linkedRuns?: boolean;
 	canLinkRuns?: boolean;
 	isExecuting?: boolean;
@@ -238,6 +241,7 @@ const telemetry = useTelemetry();
 const i18n = useI18n();
 
 const node = toRef(props, 'node');
+const toolNode = toRef(props, 'toolNode');
 
 const pinnedData = usePinnedData(node, {
 	runIndex: props.runIndex,
@@ -413,6 +417,13 @@ const inputDataPage = computed(() => {
 	return inputData.value.slice(offset, offset + pageSize.value);
 });
 const jsonData = computed(() => executionDataToJson(inputData.value));
+
+const rawfromAIToolInputData = computed(() =>
+	getRawfromAIToolInputData(props.runIndex, currentOutputIndex.value, NodeConnectionTypes.AiTool),
+);
+const fromAIToolInputData = computed(() => getFilteredData(rawfromAIToolInputData.value));
+const fromAIToolFromData = computed(() => executionDataToJson(fromAIToolInputData.value));
+
 const binaryData = computed(() => {
 	if (!node.value) {
 		return [];
@@ -736,12 +747,15 @@ onBeforeUnmount(() => {
 	ndvEventBus.off('setInputBranchIndex', setInputBranchIndex);
 });
 
-function getResolvedNodeOutputs() {
-	if (node.value && nodeType.value) {
-		const workflowNode = props.workflow.getNode(node.value.name);
+function getResolvedNodeOutputs(
+	nodeName: string | null,
+	nodeTypeDescription: INodeTypeDescription | null,
+) {
+	if (nodeName && nodeTypeDescription) {
+		const workflowNode = props.workflow.getNode(nodeName);
 
 		if (workflowNode) {
-			const outputs = NodeHelpers.getNodeOutputs(props.workflow, workflowNode, nodeType.value);
+			const outputs = NodeHelpers.getNodeOutputs(props.workflow, workflowNode, nodeTypeDescription);
 			return outputs;
 		}
 	}
@@ -1150,6 +1164,31 @@ function getRawInputData(
 	return inputData;
 }
 
+function getRawfromAIToolInputData(
+	runIndex: number,
+	outputIndex: number,
+	connectionType: NodeConnectionType = NodeConnectionTypes.Main,
+): INodeExecutionData[] {
+	let inputData: INodeExecutionData[] = [];
+
+	if (toolNode.value) {
+		inputData = nodeHelpers.getNodeInputData(
+			toolNode.value,
+			runIndex,
+			outputIndex,
+			props.paneType,
+			connectionType,
+			workflowExecution.value,
+		);
+	}
+
+	if (inputData.length === 0 || !Array.isArray(inputData)) {
+		return [];
+	}
+
+	return inputData;
+}
+
 function getPinDataOrLiveData(data: INodeExecutionData[]): INodeExecutionData[] {
 	if (pinnedData.data.value && !props.isProductionExecutionPreview) {
 		return Array.isArray(pinnedData.data.value)
@@ -1209,10 +1248,11 @@ function init() {
 	closeBinaryDataDisplay();
 	let outputTypes: NodeConnectionType[] = [];
 	if (node.value && nodeType.value) {
-		const outputs = getResolvedNodeOutputs();
+		const outputs = getResolvedNodeOutputs(node.value.name, nodeType.value);
 		outputTypes = NodeHelpers.getConnectionTypes(outputs);
 	}
 	connectionType.value = outputTypes.length === 0 ? NodeConnectionTypes.Main : outputTypes[0];
+
 	if (binaryData.value.length > 0) {
 		emit('displayModeChange', 'binary');
 	} else if (props.displayMode === 'binary') {
@@ -1278,7 +1318,7 @@ function getOutputName(outputIndex: number) {
 		return outputIndex + 1;
 	}
 
-	const outputs = getResolvedNodeOutputs();
+	const outputs = getResolvedNodeOutputs(node.value.name, nodeType.value);
 	const outputConfiguration = outputs?.[outputIndex] as INodeOutputConfiguration;
 
 	if (outputConfiguration && isObject(outputConfiguration)) {
@@ -1815,6 +1855,8 @@ defineExpose({ enterEditMode });
 			</div>
 
 			<Suspense v-else-if="hasNodeRun && displayMode === 'table' && node">
+				<!-- Both the Table and JSON components also need similar specifications
+				     to support having the fake AI agent node selectable from the list of nodes -->
 				<LazyRunDataTable
 					:node="node"
 					:input-data="inputDataPage"
@@ -1872,7 +1914,26 @@ defineExpose({ enterEditMode });
 					:class="$style.schema"
 					:compact="props.compact"
 					@clear:search="onSearchClear"
-				/>
+				>
+					<template v-if="!!toolNode" #debug>
+						<!-- We should probably implement a new component here
+						     that takes the toolNode and displays its schema, but uses the rootNode as its parent
+								 and has some special logic for rendering the pills differently -->
+						<LazyRunDataSchema
+							:nodes="[{ name: toolNode?.name ?? '', indicies: [0], depth: 0 }]"
+							:mapping-enabled="false"
+							:node="toolNode"
+							:data="fromAIToolFromData"
+							:pane-type="paneType"
+							:connection-type="NodeConnectionTypes.AiTool"
+							:output-index="currentOutputIndex"
+							:search="search"
+							:class="$style.schema"
+							:compact="props.compact"
+							@clear:search="onSearchClear"
+						/>
+					</template>
+				</LazyRunDataSchema>
 			</Suspense>
 
 			<div v-else-if="displayMode === 'binary' && binaryData.length === 0" :class="$style.center">

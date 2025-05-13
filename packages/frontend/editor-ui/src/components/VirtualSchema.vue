@@ -68,6 +68,10 @@ const props = withDefaults(defineProps<Props>(), {
 	compact: false,
 });
 
+defineSlots<{
+	debug: {};
+}>();
+
 const telemetry = useTelemetry();
 const i18n = useI18n();
 const ndvStore = useNDVStore();
@@ -409,6 +413,8 @@ const onDragEnd = (el: HTMLElement) => {
 				</i18n-t>
 			</N8nText>
 		</div>
+
+		<slot name="debug"></slot>
 
 		<Draggable
 			v-if="items.length"
