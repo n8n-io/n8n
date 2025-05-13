@@ -285,7 +285,12 @@ export class FolderService {
 
 	async getManyAndCount(projectId: string, options: ListQuery.Options) {
 		options.filter = { ...options.filter, projectId, isArchived: false };
-		return await this.folderRepository.getManyAndCount(options);
+		// eslint-disable-next-line prefer-const
+		let [folders, count] = await this.folderRepository.getManyAndCount(options);
+		if (options.select?.path) {
+			folders = await this.enrichFoldersWithPaths(folders);
+		}
+		return [folders, count];
 	}
 
 	private async enrichFoldersWithPaths(
