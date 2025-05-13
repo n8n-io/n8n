@@ -5,7 +5,7 @@ import type { InstanceSettings } from 'n8n-core';
 import { AssertionError } from 'node:assert';
 import * as http from 'node:http';
 
-import type { DBConnection } from '@/databases/db-connection';
+import type { DbConnection } from '@/databases/db-connection';
 import type { ExternalHooks } from '@/external-hooks';
 import type { PrometheusMetricsService } from '@/metrics/prometheus-metrics.service';
 import { bodyParser, rawBodyReader } from '@/middlewares';
@@ -31,7 +31,7 @@ describe('WorkerServer', () => {
 	const externalHooks = mock<ExternalHooks>();
 	const instanceSettings = mock<InstanceSettings>({ instanceType: 'worker' });
 	const prometheusMetricsService = mock<PrometheusMetricsService>();
-	const dbConnection = mock<DBConnection>();
+	const dbConnection = mock<DbConnection>();
 
 	const newWorkerServer = () =>
 		new WorkerServer(

@@ -5,7 +5,7 @@ import type { DataSourceOptions } from '@n8n/typeorm';
 import { DataSource as Connection } from '@n8n/typeorm';
 import { randomString } from 'n8n-workflow';
 
-import { DBConnection } from '@/databases/db-connection';
+import { DbConnection } from '@/databases/db-connection';
 import { DbConnectionOptions } from '@/databases/db-connection-options';
 
 export const testDbPrefix = 'n8n_test_';
@@ -34,13 +34,13 @@ export async function init() {
 		globalConfig.database.mysqldb.database = testDbName;
 	}
 
-	const dbConnection = Container.get(DBConnection);
+	const dbConnection = Container.get(DbConnection);
 	await dbConnection.init();
 	await dbConnection.migrate();
 }
 
 export function isReady() {
-	const { connectionState } = Container.get(DBConnection);
+	const { connectionState } = Container.get(DbConnection);
 	return connectionState.connected && connectionState.migrated;
 }
 
@@ -48,7 +48,7 @@ export function isReady() {
  * Drop test DB, closing bootstrap connection if existing.
  */
 export async function terminate() {
-	const dbConnection = Container.get(DBConnection);
+	const dbConnection = Container.get(DbConnection);
 	await dbConnection.close();
 	dbConnection.connectionState.connected = false;
 }

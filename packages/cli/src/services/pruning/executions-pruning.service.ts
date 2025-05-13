@@ -7,7 +7,7 @@ import { ensureError } from 'n8n-workflow';
 import { strict } from 'node:assert';
 
 import { Time } from '@/constants';
-import { DBConnection } from '@/databases/db-connection';
+import { DbConnection } from '@/databases/db-connection';
 
 /**
  * Responsible for deleting old executions from the database and deleting their
@@ -43,7 +43,7 @@ export class ExecutionsPruningService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly instanceSettings: InstanceSettings,
-		private readonly dbConnection: DBConnection,
+		private readonly dbConnection: DbConnection,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly binaryDataService: BinaryDataService,
 		private readonly executionsConfig: ExecutionsConfig,

@@ -16,7 +16,7 @@ type ConnectionState = {
 };
 
 @Service()
-export class DBConnection {
+export class DbConnection {
 	private dataSource: DataSource;
 
 	private pingTimer: NodeJS.Timer | undefined;

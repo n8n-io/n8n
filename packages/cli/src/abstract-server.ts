@@ -11,7 +11,7 @@ import { Logger } from 'n8n-core';
 
 import config from '@/config';
 import { N8N_VERSION, TEMPLATES_DIR, inDevelopment, inTest } from '@/constants';
-import { DBConnection } from '@/databases/db-connection';
+import { DbConnection } from '@/databases/db-connection';
 import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
 import { ExternalHooks } from '@/external-hooks';
 import { rawBodyReader, bodyParser, corsMiddleware } from '@/middlewares';
@@ -34,7 +34,7 @@ export abstract class AbstractServer {
 
 	protected globalConfig = Container.get(GlobalConfig);
 
-	protected dbConnection = Container.get(DBConnection);
+	protected dbConnection = Container.get(DbConnection);
 
 	protected sslKey: string;
 

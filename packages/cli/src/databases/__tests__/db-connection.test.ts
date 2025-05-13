@@ -3,7 +3,7 @@ import { mock, mockDeep } from 'jest-mock-extended';
 import type { ErrorReporter } from 'n8n-core';
 import { DbConnectionTimeoutError } from 'n8n-workflow';
 
-import { DBConnection } from '@/databases/db-connection';
+import { DbConnection } from '@/databases/db-connection';
 import type { DbConnectionOptions } from '@/databases/db-connection-options';
 import type { Migration } from '@/databases/types';
 import * as migrationHelper from '@/databases/utils/migration-helpers';
@@ -13,8 +13,8 @@ jest.mock('@n8n/typeorm', () => ({
 	...jest.requireActual('@n8n/typeorm'),
 }));
 
-describe('DBConnection', () => {
-	let dbConnection: DBConnection;
+describe('DbConnection', () => {
+	let dbConnection: DbConnection;
 	const migrations = [{ name: 'TestMigration1' }, { name: 'TestMigration2' }] as Migration[];
 	const errorReporter = mock<ErrorReporter>();
 	const dataSource = mockDeep<DataSource>({ options: { migrations } });
@@ -35,7 +35,7 @@ describe('DBConnection', () => {
 		connectionOptions.getOptions.mockReturnValue(postgresOptions);
 		(DataSource as jest.Mock) = jest.fn().mockImplementation(() => dataSource);
 
-		dbConnection = new DBConnection(errorReporter, connectionOptions);
+		dbConnection = new DbConnection(errorReporter, connectionOptions);
 	});
 
 	describe('init', () => {

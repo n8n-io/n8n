@@ -2,13 +2,13 @@ import type { ExecutionsConfig } from '@n8n/config';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
-import type { DBConnection } from '@/databases/db-connection';
+import type { DbConnection } from '@/databases/db-connection';
 import { mockLogger } from '@test/mocking';
 
 import { ExecutionsPruningService } from '../executions-pruning.service';
 
 describe('PruningService', () => {
-	const dbConnection = mock<DBConnection>({
+	const dbConnection = mock<DbConnection>({
 		connectionState: { migrated: true },
 	});
 

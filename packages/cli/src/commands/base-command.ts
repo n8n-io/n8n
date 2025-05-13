@@ -19,7 +19,7 @@ import type { AbstractServer } from '@/abstract-server';
 import config from '@/config';
 import { N8N_VERSION, N8N_RELEASE_DATE, inDevelopment, inTest } from '@/constants';
 import * as CrashJournal from '@/crash-journal';
-import { DBConnection } from '@/databases/db-connection';
+import { DbConnection } from '@/databases/db-connection';
 import { getDataDeduplicationService } from '@/deduplication';
 import { DeprecationService } from '@/deprecation/deprecation.service';
 import { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.service.ee';
@@ -42,7 +42,7 @@ import { WorkflowHistoryManager } from '@/workflows/workflow-history.ee/workflow
 export abstract class BaseCommand extends Command {
 	protected logger = Container.get(Logger);
 
-	protected dbConnection = Container.get(DBConnection);
+	protected dbConnection = Container.get(DbConnection);
 
 	protected errorReporter: ErrorReporter;
 
