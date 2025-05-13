@@ -1537,6 +1537,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 				openFormPopupWindow(testUrl);
 			}
 		} else {
+			// If we process items in paralell on subnodes we get several placeholder taskData items.
+			// We need to find and replace the item with the matching executionIndex and only append if we don't find anything matching.
 			const existingRunIndex = tasksData.findIndex(
 				(item) => item.executionIndex === data.executionIndex,
 			);
