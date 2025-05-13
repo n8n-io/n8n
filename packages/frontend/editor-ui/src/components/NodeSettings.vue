@@ -130,6 +130,8 @@ const node = computed(() => ndvStore.activeNode);
 
 const isTriggerNode = computed(() => !!node.value && nodeTypesStore.isTriggerNode(node.value.type));
 
+const isToolNode = computed(() => !!node.value && nodeTypesStore.isToolNode(node.value.type));
+
 const isExecutable = computed(() => {
 	if (props.nodeType && node.value) {
 		const workflowNode = currentWorkflowInstance.value.getNode(node.value.name);
@@ -140,7 +142,11 @@ const isExecutable = computed(() => {
 		);
 		const inputNames = NodeHelpers.getConnectionTypes(inputs);
 
-		if (!inputNames.includes(NodeConnectionTypes.Main) && !isTriggerNode.value) {
+		if (
+			!inputNames.includes(NodeConnectionTypes.Main) &&
+			!isToolNode.value &&
+			!isTriggerNode.value
+		) {
 			return false;
 		}
 	}

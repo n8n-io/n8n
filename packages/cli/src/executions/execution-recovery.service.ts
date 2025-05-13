@@ -1,3 +1,5 @@
+import type { IExecutionResponse } from '@n8n/db';
+import { ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { DateTime } from 'luxon';
 import { InstanceSettings, Logger } from 'n8n-core';
@@ -5,11 +7,9 @@ import { sleep } from 'n8n-workflow';
 import type { IRun, ITaskData } from 'n8n-workflow';
 
 import { ARTIFICIAL_TASK_DATA } from '@/constants';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { NodeCrashedError } from '@/errors/node-crashed.error';
 import { WorkflowCrashedError } from '@/errors/workflow-crashed.error';
 import { getLifecycleHooksForRegularMain } from '@/execution-lifecycle/execution-lifecycle-hooks';
-import type { IExecutionResponse } from '@/interfaces';
 import { Push } from '@/push';
 
 import type { EventMessageTypes } from '../eventbus/event-message-classes';
@@ -94,6 +94,7 @@ export class ExecutionRecoveryService {
 
 			const taskData: ITaskData = {
 				startTime: nodeStartedMessage.ts.toUnixInteger(),
+				executionIndex: 0,
 				executionTime: -1,
 				source: [null],
 			};

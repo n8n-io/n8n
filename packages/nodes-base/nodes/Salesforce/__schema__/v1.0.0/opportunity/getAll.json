@@ -11,7 +11,13 @@
                     "type": "string"
                 }
             }
+        },
+        "Id": {
+            "type": "string"
+        },
+        "Probability": {
+            "type": "integer"
         }
     },
-    "version": 1
+    "version": 3
 }

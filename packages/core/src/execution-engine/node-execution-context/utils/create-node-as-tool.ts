@@ -90,8 +90,6 @@ function getSchema(node: INode) {
  * @returns A string description for the node.
  */
 function makeDescription(node: INode, nodeType: INodeType): string {
-	const manualDescription = node.parameters.toolDescription as string;
-
 	if (node.parameters.descriptionType === 'auto') {
 		const resource = node.parameters.resource as string;
 		const operation = node.parameters.operation as string;
@@ -104,11 +102,19 @@ function makeDescription(node: INode, nodeType: INodeType): string {
 		}
 		return description.trim();
 	}
-	if (node.parameters.descriptionType === 'manual') {
-		return manualDescription ?? nodeType.description.description;
-	}
 
-	return nodeType.description.description;
+	// Users can define custom descriptions when `descriptionType` is manual or not included
+	// in the node's properties, e.g. when the node has neither `operation` or `resource`
+	return (node.parameters.toolDescription as string) ?? nodeType.description.description;
+}
+
+/**
+ * Converts a node name to a valid tool name by replacing special characters with underscores
+ * and collapsing consecutive underscores into a single one.
+ * This method is copied from `packages/@n8n/nodes-langchain/utils/helpers.ts`.
+ */
+export function nodeNameToToolName(node: INode): string {
+	return node.name.replace(/[\s.?!=+#@&*()[\]{}:;,<>\/\\'"^%$]/g, '_').replace(/_+/g, '_');
 }
 
 /**
@@ -119,7 +125,7 @@ function createTool(options: CreateNodeAsToolOptions) {
 	const { node, nodeType, handleToolInvocation } = options;
 	const schema = getSchema(node);
 	const description = makeDescription(node, nodeType);
-	const nodeName = node.name.replace(/ /g, '_');
+	const nodeName = nodeNameToToolName(node);
 	const name = nodeName || nodeType.description.name;
 
 	return new DynamicStructuredTool({

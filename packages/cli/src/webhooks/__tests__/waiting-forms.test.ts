@@ -1,11 +1,11 @@
+import type { IExecutionResponse } from '@n8n/db';
+import type { ExecutionRepository } from '@n8n/db';
 import type express from 'express';
 import { mock } from 'jest-mock-extended';
 import { FORM_NODE_TYPE, WAITING_FORMS_EXECUTION_STATUS, type Workflow } from 'n8n-workflow';
 
-import type { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { WaitingForms } from '@/webhooks/waiting-forms';
 
-import type { IExecutionResponse } from '../../interfaces';
 import type { WaitingWebhookRequest } from '../webhook.types';
 
 describe('WaitingForms', () => {
@@ -198,27 +198,6 @@ describe('WaitingForms', () => {
 
 			const result = waitingForms.findCompletionPage(workflow, runData, 'LastNode');
 			expect(result).toBe('Form2');
-		});
-
-		it('should mark as test form webhook when execution mode is manual', async () => {
-			jest
-				// @ts-expect-error Protected method
-				.spyOn(waitingForms, 'getWebhookExecutionData')
-				// @ts-expect-error Protected method
-				.mockResolvedValue(mock<IWebhookResponseCallbackData>());
-
-			const execution = mock<IExecutionResponse>({
-				finished: false,
-				mode: 'manual',
-				data: {
-					resultData: { lastNodeExecuted: 'someNode', error: undefined },
-				},
-			});
-			executionRepository.findSingleExecution.mockResolvedValue(execution);
-
-			await waitingForms.executeWebhook(mock<WaitingWebhookRequest>(), mock<express.Response>());
-
-			expect(execution.data.isTestWebhook).toBe(true);
 		});
 
 		it('should return status of execution if suffix is WAITING_FORMS_EXECUTION_STATUS', async () => {

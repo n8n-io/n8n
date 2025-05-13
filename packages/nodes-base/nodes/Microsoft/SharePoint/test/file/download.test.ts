@@ -1,22 +1,28 @@
-import { equalityTest, workflowToTests } from '@test/nodes/Helpers';
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
+
+import { credentials } from '../credentials';
 
 describe('Microsoft SharePoint Node', () => {
-	const workflows = ['nodes/Microsoft/SharePoint/test/file/download.workflow.json'];
-	const workflowTests = workflowToTests(workflows);
-
-	for (const workflow of workflowTests) {
-		workflow.nock = {
-			baseUrl: 'https://mydomain.sharepoint.com/_api/v2.0',
+	const { baseUrl } = credentials.microsoftSharePointOAuth2Api;
+	new NodeTestHarness().setupTests({
+		credentials,
+		workflowFiles: ['download.workflow.json'],
+		assertBinaryData: true,
+		nock: {
+			baseUrl,
 			mocks: [
 				{
 					method: 'get',
 					path: '/sites/site1/drive/items/item1/content',
 					statusCode: 200,
 					responseBody: {},
+					responseHeaders: {
+						'content-type': 'application/json',
+						'content-disposition':
+							"attachment; filename*=UTF-8''weird%20file%20%E2%82%AC%20name.json",
+					},
 				},
 			],
-		};
-
-		test(workflow.description, async () => await equalityTest(workflow));
-	}
+		},
+	});
 });

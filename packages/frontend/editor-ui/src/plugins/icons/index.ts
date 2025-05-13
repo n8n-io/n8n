@@ -132,6 +132,7 @@ import {
 	faSearchPlus,
 	faServer,
 	faScrewdriver,
+	faShare,
 	faSmile,
 	faSignInAlt,
 	faSignOutAlt,
@@ -190,6 +191,10 @@ import {
 	statusUnknown,
 	statusWarning,
 	faPopOut,
+	faJSON,
+	faSchema,
+	faBinary,
+	faText,
 } from './custom';
 import { faStickyNote } from '@fortawesome/free-regular-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
@@ -333,6 +338,7 @@ export const FontAwesomePlugin: Plugin = {
 		addIcon(faSearchPlus);
 		addIcon(faServer);
 		addIcon(faScrewdriver);
+		addIcon(faShare);
 		addIcon(faSmile);
 		addIcon(faSignInAlt);
 		addIcon(faSignOutAlt);
@@ -389,6 +395,10 @@ export const FontAwesomePlugin: Plugin = {
 		addIcon(statusWarning);
 
 		addIcon(faPopOut);
+		addIcon(faSchema);
+		addIcon(faJSON);
+		addIcon(faBinary);
+		addIcon(faText);
 
 		app.component('FontAwesomeIcon', FontAwesomeIcon);
 	},

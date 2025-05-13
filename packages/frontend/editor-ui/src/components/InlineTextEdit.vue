@@ -40,6 +40,15 @@ watch(
 	},
 );
 
+watch(
+	() => props.modelValue,
+	(value) => {
+		if (isDisabled.value) return;
+		newValue.value = value;
+	},
+	{ immediate: true },
+);
+
 function onInput(val: string) {
 	if (isDisabled.value) return;
 	newValue.value = val;
@@ -79,7 +88,7 @@ function onEscape() {
 </script>
 
 <template>
-	<span class="inline-edit" @keydown.stop>
+	<span :class="$style['inline-edit']" @keydown.stop>
 		<span v-if="isEditEnabled && !isDisabled">
 			<ExpandableInputEdit
 				v-model="newValue"
@@ -87,6 +96,7 @@ function onEscape() {
 				:maxlength="maxLength"
 				:autofocus="true"
 				:event-bus="inputBus"
+				data-test-id="inline-edit-input"
 				@update:model-value="onInput"
 				@esc="onEscape"
 				@blur="onBlur"
@@ -94,13 +104,25 @@ function onEscape() {
 			/>
 		</span>
 
-		<span v-else class="preview" @click="onClick">
+		<span v-else :class="$style.preview" @click="onClick">
 			<ExpandableInputPreview :model-value="previewValue || modelValue" />
 		</span>
 	</span>
 </template>
 
-<style lang="scss" scoped>
+<style lang="scss" module>
+/* Magic numbers here but this keeps preview and this input vertically aligned  */
+.inline-edit {
+	display: block;
+	height: 25px;
+
+	input {
+		display: block;
+		height: 27px;
+		min-height: 27px;
+	}
+}
+
 .preview {
 	cursor: pointer;
 }

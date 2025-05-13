@@ -29,6 +29,7 @@ export class CredentialsFlow {
 		const headers: Headers = { ...DEFAULT_HEADERS };
 		const body: CredentialsFlowBody = {
 			grant_type: 'client_credentials',
+			...(options.additionalBodyProperties ?? {}),
 		};
 
 		if (options.scopes !== undefined) {

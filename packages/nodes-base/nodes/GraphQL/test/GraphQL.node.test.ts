@@ -1,14 +1,10 @@
-/* eslint-disable n8n-nodes-base/node-filename-against-convention */
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import nock from 'nock';
-
-import { getWorkflowFilenames, initBinaryDataService, testWorkflows } from '@test/nodes/Helpers';
 
 describe('GraphQL Node', () => {
 	const baseUrl = 'https://api.n8n.io/';
 
 	beforeAll(async () => {
-		await initBinaryDataService();
-
 		nock(baseUrl)
 			.matchHeader('accept', 'application/json')
 			.matchHeader('content-type', 'application/json')
@@ -60,6 +56,5 @@ describe('GraphQL Node', () => {
 			});
 	});
 
-	const workflows = getWorkflowFilenames(__dirname);
-	testWorkflows(workflows);
+	new NodeTestHarness().setupTests();
 });

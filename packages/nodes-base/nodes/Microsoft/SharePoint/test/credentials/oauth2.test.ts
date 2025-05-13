@@ -1,56 +1,22 @@
-import type {
-	ICredentialDataDecryptedObject,
-	IDataObject,
-	IHttpRequestOptions,
-} from 'n8n-workflow';
-import nock from 'nock';
+import { CredentialsHelper } from '@nodes-testing/credentials-helper';
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 
-import { CredentialsHelper } from '@test/nodes/credentials-helper';
-import { equalityTest, workflowToTests } from '@test/nodes/Helpers';
+import { credentials } from '../credentials';
 
 describe('Microsoft SharePoint Node', () => {
-	const workflows = ['nodes/Microsoft/SharePoint/test/credentials/oauth2.workflow.json'];
-	const workflowTests = workflowToTests(workflows);
-
-	beforeAll(() => {
-		nock.disableNetConnect();
-
-		jest
-			.spyOn(CredentialsHelper.prototype, 'authenticate')
-			.mockImplementation(
-				async (
-					credentials: ICredentialDataDecryptedObject,
-					typeName: string,
-					requestParams: IHttpRequestOptions,
-				): Promise<IHttpRequestOptions> => {
-					if (typeName === 'microsoftSharePointOAuth2Api') {
-						return {
-							...requestParams,
-							headers: {
-								authorization: `bearer ${(credentials.oauthTokenData as IDataObject).access_token as string}`,
-							},
-						};
-					} else {
-						return requestParams;
-					}
-				},
-			);
-	});
-
-	afterAll(() => {
-		nock.restore();
-		jest.restoreAllMocks();
-	});
-
-	for (const workflow of workflowTests) {
-		workflow.nock = {
-			baseUrl: 'https://mydomain.sharepoint.com/_api/v2.0',
+	const { baseUrl } = credentials.microsoftSharePointOAuth2Api;
+	jest.spyOn(CredentialsHelper.prototype, 'getParentTypes').mockReturnValueOnce(['oAuth2Api']);
+	new NodeTestHarness().setupTests({
+		credentials,
+		workflowFiles: ['oauth2.workflow.json'],
+		nock: {
+			baseUrl,
 			mocks: [
 				{
 					method: 'get',
 					path: '/sites/site1/lists/list1?%24select=id%2Cname%2CdisplayName%2Cdescription%2CcreatedDateTime%2ClastModifiedDateTime%2CwebUrl',
 					statusCode: 200,
-					requestHeaders: { authorization: 'bearer ACCESSTOKEN' },
+					requestHeaders: { Authorization: 'Bearer ACCESSTOKEN' },
 					responseBody: {
 						'@odata.context':
 							'https://mydomain.sharepoint.com/sites/site1/_api/v2.0/$metadata#lists/$entity',
@@ -65,8 +31,6 @@ describe('Microsoft SharePoint Node', () => {
 					},
 				},
 			],
-		};
-
-		test(workflow.description, async () => await equalityTest(workflow));
-	}
+		},
+	});
 });

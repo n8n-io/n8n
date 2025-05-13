@@ -61,10 +61,12 @@
 			{
 				"binary": {
 					"data": {
+						"data": "e30=",
 						"fileExtension": "json",
 						"fileSize": "2 B",
 						"fileType": "json",
-						"mimeType": "application/json"
+						"mimeType": "application/json",
+						"fileName": "weird file € name.json"
 					}
 				},
 				"json": {}

@@ -1,17 +1,16 @@
 import type { SourceControlledFile } from '@n8n/api-types';
+import type { SharedCredentials } from '@n8n/db';
+import type { SharedWorkflow } from '@n8n/db';
+import type { FolderRepository } from '@n8n/db';
+import type { TagRepository } from '@n8n/db';
+import type { WorkflowTagMappingRepository } from '@n8n/db';
+import type { SharedCredentialsRepository } from '@n8n/db';
+import type { SharedWorkflowRepository } from '@n8n/db';
+import type { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock, captor } from 'jest-mock-extended';
 import { Cipher, type InstanceSettings } from 'n8n-core';
 import fsp from 'node:fs/promises';
-
-import type { SharedCredentials } from '@/databases/entities/shared-credentials';
-import type { SharedWorkflow } from '@/databases/entities/shared-workflow';
-import type { FolderRepository } from '@/databases/repositories/folder.repository';
-import type { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
-import type { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
-import type { TagRepository } from '@/databases/repositories/tag.repository';
-import type { WorkflowTagMappingRepository } from '@/databases/repositories/workflow-tag-mapping.repository';
-import type { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 
 import type { VariablesService } from '../../variables/variables.service.ee';
 import { SourceControlExportService } from '../source-control-export.service.ee';

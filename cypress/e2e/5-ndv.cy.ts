@@ -117,7 +117,7 @@ describe('NDV', () => {
 			.nodeRunErrorMessage()
 			.should(
 				'have.text',
-				"Using the item method doesn't work with pinned data in this scenario. Please unpin 'Break pairedItem chain' and try again.",
+				"Paired item data for item from node 'Break pairedItem chain' is unavailable. Ensure 'Break pairedItem chain' is providing the required output.",
 			);
 		ndv.getters
 			.nodeRunErrorDescription()
@@ -599,7 +599,8 @@ describe('NDV', () => {
 				cy.getByTestId(`add-subnode-${group.id}`).click();
 
 				cy.getByTestId('nodes-list-header').contains(group.title).should('exist');
-				nodeCreator.getters.getNthCreatorItem(1).click();
+				// Add HTTP Request tool
+				nodeCreator.getters.getNthCreatorItem(2).click();
 				getFloatingNodeByPosition('outputSub').should('exist');
 				getFloatingNodeByPosition('outputSub').click({ force: true });
 
@@ -610,7 +611,8 @@ describe('NDV', () => {
 					// Expand the subgroup
 					cy.getByTestId('subnode-connection-group-ai_tool').click();
 					cy.getByTestId(`add-subnode-${group.id}`).click();
-					nodeCreator.getters.getNthCreatorItem(1).click();
+					// Add HTTP Request tool
+					nodeCreator.getters.getNthCreatorItem(2).click();
 					getFloatingNodeByPosition('outputSub').click({ force: true });
 					cy.getByTestId('subnode-connection-group-ai_tool')
 						.findChildByTestId('floating-subnode')
@@ -619,7 +621,7 @@ describe('NDV', () => {
 			});
 
 			// Since language model has no credentials set, it should show an error
-			// Sinse code tool require alphanumeric tool name it would also show an error(2 errors, 1 for each tool node)
+			// Since HTTP Request tool requires URL it would also show an error(2 errors, 1 for each tool node)
 			cy.get('[class*=hasIssues]').should('have.length', 3);
 		});
 
@@ -702,11 +704,11 @@ describe('NDV', () => {
 
 		ndv.getters.outputTableRow(1).find('mark').should('have.text', '<lib');
 
-		ndv.getters.outputDisplayMode().find('label').eq(1).should('include.text', 'JSON');
+		ndv.getters.outputDisplayMode().find('label').eq(2).should('include.text', 'JSON');
 		ndv.getters
 			.outputDisplayMode()
 			.find('label')
-			.eq(1)
+			.eq(2)
 			.scrollIntoView()
 			.should('be.visible')
 			.click();
@@ -720,8 +722,8 @@ describe('NDV', () => {
 			);
 		ndv.getters.outputDataContainer().find('mark').should('have.text', '<lib');
 
-		ndv.getters.outputDisplayMode().find('label').eq(2).should('include.text', 'Schema');
-		ndv.getters.outputDisplayMode().find('label').eq(2).click({ force: true });
+		ndv.getters.outputDisplayMode().find('label').eq(0).should('include.text', 'Schema');
+		ndv.getters.outputDisplayMode().find('label').eq(0).click({ force: true });
 		ndv.getters
 			.outputDataContainer()
 			.findChildByTestId('run-data-schema-item-value')
@@ -747,7 +749,7 @@ describe('NDV', () => {
 		ndv.getters.backToCanvas().click();
 		workflowPage.actions.executeWorkflow();
 		// Manual tigger node should show success indicator
-		workflowPage.actions.openNode('When clicking ‘Test workflow’');
+		workflowPage.actions.openNode('When clicking ‘Execute workflow’');
 		ndv.getters.nodeRunSuccessIndicator().should('exist');
 		ndv.getters.nodeRunTooltipIndicator().should('exist');
 		// Code node should show error
@@ -914,7 +916,7 @@ describe('NDV', () => {
 			.should('contain.text', 'onlyOnItem3');
 	});
 
-	it('should keep search expanded after Test step node run', () => {
+	it('should keep search expanded after Execute step node run', () => {
 		cy.createFixtureWorkflow('Test_ndv_search.json');
 		workflowPage.actions.zoomToFit();
 		workflowPage.actions.executeWorkflow();

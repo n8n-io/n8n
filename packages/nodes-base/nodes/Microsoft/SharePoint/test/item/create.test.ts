@@ -1,12 +1,14 @@
-import { equalityTest, workflowToTests } from '@test/nodes/Helpers';
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
+
+import { credentials } from '../credentials';
 
 describe('Microsoft SharePoint Node', () => {
-	const workflows = ['nodes/Microsoft/SharePoint/test/item/create.workflow.json'];
-	const workflowTests = workflowToTests(workflows);
-
-	for (const workflow of workflowTests) {
-		workflow.nock = {
-			baseUrl: 'https://mydomain.sharepoint.com/_api/v2.0',
+	const { baseUrl } = credentials.microsoftSharePointOAuth2Api;
+	new NodeTestHarness().setupTests({
+		credentials,
+		workflowFiles: ['create.workflow.json'],
+		nock: {
+			baseUrl,
 			mocks: [
 				{
 					method: 'post',
@@ -100,8 +102,6 @@ describe('Microsoft SharePoint Node', () => {
 					},
 				},
 			],
-		};
-
-		test(workflow.description, async () => await equalityTest(workflow));
-	}
+		},
+	});
 });

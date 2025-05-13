@@ -1,4 +1,6 @@
 /* eslint-disable @typescript-eslint/no-loop-func */
+import type { User } from '@n8n/db';
+import { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { Flags } from '@oclif/core';
 import fs from 'fs';
@@ -10,13 +12,12 @@ import os from 'os';
 import { sep } from 'path';
 
 import { ActiveExecutions } from '@/active-executions';
-import type { User } from '@/databases/entities/user';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { OwnershipService } from '@/services/ownership.service';
 import { findCliWorkflowStart } from '@/utils';
 import { WorkflowRunner } from '@/workflow-runner';
 
 import { BaseCommand } from './base-command';
+import config from '../config';
 import type {
 	IExecutionResult,
 	INodeSpecialCase,
@@ -110,6 +111,8 @@ export class ExecuteBatch extends BaseCommand {
 	static aliases = ['executeBatch'];
 
 	override needsCommunityPackages = true;
+
+	override needsTaskRunner = true;
 
 	/**
 	 * Gracefully handles exit.
@@ -334,7 +337,6 @@ export class ExecuteBatch extends BaseCommand {
 		if (results.summary.failedExecutions > 0) {
 			this.exit(1);
 		}
-		this.exit(0);
 	}
 
 	mergeResults(results: IResult, retryResults: IResult) {
@@ -609,6 +611,13 @@ export class ExecuteBatch extends BaseCommand {
 			}
 		});
 
+		const workflowRunner = Container.get(WorkflowRunner);
+
+		if (config.getEnv('executions.mode') === 'queue') {
+			this.logger.warn('`executeBatch` does not support queue mode. Falling back to regular mode.');
+			workflowRunner.setExecutionMode('regular');
+		}
+
 		return await new Promise(async (resolve) => {
 			let gotCancel = false;
 
@@ -630,7 +639,7 @@ export class ExecuteBatch extends BaseCommand {
 					userId: ExecuteBatch.instanceOwner.id,
 				};
 
-				const executionId = await Container.get(WorkflowRunner).run(runData);
+				const executionId = await workflowRunner.run(runData);
 
 				const activeExecutions = Container.get(ActiveExecutions);
 				const data = await activeExecutions.getPostExecutePromise(executionId);

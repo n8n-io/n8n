@@ -6,7 +6,6 @@ import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { VIEWS } from '@/constants';
 import { type INodeUi } from '@/Interface';
-import { useCanvasStore } from '@/stores/canvas.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { ChatOptionsSymbol, ChatSymbol } from '@n8n/chat/constants';
@@ -18,10 +17,12 @@ import type { Ref } from 'vue';
 import { computed, provide, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { LOGS_PANEL_STATE } from '../types/logs';
+import { restoreChatHistory } from '@/components/CanvasChat/utils';
 
 interface ChatState {
 	currentSessionId: Ref<string>;
 	messages: Ref<ChatMessage[]>;
+	previousChatMessages: Ref<string[]>;
 	chatTriggerNode: Ref<INodeUi | null>;
 	connectedNode: Ref<INode | null>;
 	sendMessage: (message: string, files?: File[]) => Promise<void>;
@@ -29,10 +30,10 @@ interface ChatState {
 	displayExecution: (executionId: string) => void;
 }
 
-export function useChatState(isDisabled: Ref<boolean>, onWindowResize: () => void): ChatState {
+export function useChatState(isReadOnly: boolean): ChatState {
+	const locale = useI18n();
 	const workflowsStore = useWorkflowsStore();
 	const nodeTypesStore = useNodeTypesStore();
-	const canvasStore = useCanvasStore();
 	const router = useRouter();
 	const nodeHelpers = useNodeHelpers();
 	const { runWorkflow } = useRunWorkflow({ router });
@@ -40,25 +41,17 @@ export function useChatState(isDisabled: Ref<boolean>, onWindowResize: () => voi
 	const messages = ref<ChatMessage[]>([]);
 	const currentSessionId = ref<string>(uuid().replace(/-/g, ''));
 
-	const canvasNodes = computed(() => workflowsStore.allNodes);
-	const allConnections = computed(() => workflowsStore.allConnections);
+	const previousChatMessages = computed(() => workflowsStore.getPastChatMessages);
 	const logsPanelState = computed(() => workflowsStore.logsPanelState);
 	const workflow = computed(() => workflowsStore.getCurrentWorkflow());
 
 	// Initialize features with injected dependencies
-	const {
-		chatTriggerNode,
-		connectedNode,
-		allowFileUploads,
-		allowedFilesMimeTypes,
-		setChatTriggerNode,
-		setConnectedNode,
-	} = useChatTrigger({
-		workflow,
-		canvasNodes,
-		getNodeByName: workflowsStore.getNodeByName,
-		getNodeType: nodeTypesStore.getNodeType,
-	});
+	const { chatTriggerNode, connectedNode, allowFileUploads, allowedFilesMimeTypes } =
+		useChatTrigger({
+			workflow,
+			getNodeByName: workflowsStore.getNodeByName,
+			getNodeType: nodeTypesStore.getNodeType,
+		});
 
 	const { sendMessage, isLoading } = useChatMessaging({
 		chatTrigger: chatTriggerNode,
@@ -114,45 +107,21 @@ export function useChatState(isDisabled: Ref<boolean>, onWindowResize: () => voi
 		sendMessage,
 		currentSessionId,
 		isLoading,
-		isDisabled,
+		isDisabled: computed(() => isReadOnly),
 		allowFileUploads,
-		locale: useI18n(),
+		locale,
 	});
+
+	const restoredChatMessages = computed(() =>
+		restoreChatHistory(
+			workflowsStore.workflowExecutionData,
+			locale.baseText('chat.window.chat.response.empty'),
+		),
+	);
 
 	// Provide chat context
 	provide(ChatSymbol, chatConfig);
 	provide(ChatOptionsSymbol, chatOptions);
-
-	// Watchers
-	watch(
-		() => logsPanelState.value,
-		(state) => {
-			if (state !== LOGS_PANEL_STATE.CLOSED) {
-				setChatTriggerNode();
-				setConnectedNode();
-
-				setTimeout(() => {
-					onWindowResize();
-					chatEventBus.emit('focusInput');
-				}, 0);
-			}
-		},
-		{ immediate: true },
-	);
-
-	watch(
-		() => allConnections.value,
-		() => {
-			if (canvasStore.isLoading) return;
-			setTimeout(() => {
-				if (!chatTriggerNode.value) {
-					setChatTriggerNode();
-				}
-				setConnectedNode();
-			}, 0);
-		},
-		{ deep: true },
-	);
 
 	// This function creates a promise that resolves when the workflow execution completes
 	// It's used to handle the loading state while waiting for the workflow to finish
@@ -198,6 +167,10 @@ export function useChatState(isDisabled: Ref<boolean>, onWindowResize: () => voi
 		nodeHelpers.updateNodesExecutionIssues();
 		messages.value = [];
 		currentSessionId.value = uuid().replace(/-/g, '');
+
+		if (logsPanelState.value !== LOGS_PANEL_STATE.CLOSED) {
+			chatEventBus.emit('focusInput');
+		}
 	}
 
 	function displayExecution(executionId: string) {
@@ -210,7 +183,8 @@ export function useChatState(isDisabled: Ref<boolean>, onWindowResize: () => voi
 
 	return {
 		currentSessionId,
-		messages,
+		messages: computed(() => (isReadOnly ? restoredChatMessages.value : messages.value)),
+		previousChatMessages,
 		chatTriggerNode,
 		connectedNode,
 		sendMessage,

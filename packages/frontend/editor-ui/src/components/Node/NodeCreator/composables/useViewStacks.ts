@@ -6,6 +6,7 @@ import type {
 	SimplifiedNodeType,
 } from '@/Interface';
 import {
+	AI_CATEGORY_MCP_NODES,
 	AI_CATEGORY_ROOT_NODES,
 	AI_CATEGORY_TOOLS,
 	AI_CODE_NODE_TYPE,
@@ -23,6 +24,7 @@ import difference from 'lodash-es/difference';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 
 import {
+	extendItemsWithUUID,
 	flattenCreateElements,
 	groupItemsInSections,
 	isAINode,
@@ -42,11 +44,21 @@ import { AI_TRANSFORM_NODE_TYPE } from 'n8n-workflow';
 import type { NodeConnectionType, INodeInputFilter } from 'n8n-workflow';
 import { useCanvasStore } from '@/stores/canvas.store';
 import { useSettingsStore } from '@/stores/settings.store';
+
+export type CommunityNodeDetails = {
+	key: string;
+	title: string;
+	description: string;
+	packageName: string;
+	installed: boolean;
+	nodeIcon?: NodeIconSource;
+};
+
 import { useUIStore } from '@/stores/ui.store';
 import { type NodeIconSource } from '@/utils/nodeIcon';
 import { getThemedValue } from '@/utils/nodeTypesUtils';
 
-interface ViewStack {
+export interface ViewStack {
 	uuid?: string;
 	title?: string;
 	subtitle?: string;
@@ -56,20 +68,21 @@ interface ViewStack {
 	nodeIcon?: NodeIconSource;
 	rootView?: NodeFilterType;
 	activeIndex?: number;
-	transitionDirection?: 'in' | 'out';
+	transitionDirection?: 'in' | 'out' | 'none';
 	hasSearch?: boolean;
 	preventBack?: boolean;
 	items?: INodeCreateElement[];
 	baselineItems?: INodeCreateElement[];
 	searchItems?: SimplifiedNodeType[];
 	forceIncludeNodes?: string[];
-	mode?: 'actions' | 'nodes';
+	mode?: 'actions' | 'nodes' | 'community-node';
 	hideActions?: boolean;
 	baseFilter?: (item: INodeCreateElement) => boolean;
 	itemsMapper?: (item: INodeCreateElement) => INodeCreateElement;
 	actionsFilter?: (items: ActionTypeDescription[]) => ActionTypeDescription[];
 	panelClass?: string;
 	sections?: string[] | NodeViewItemSection[];
+	communityNodeDetails?: CommunityNodeDetails;
 }
 
 export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
@@ -149,12 +162,18 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		return viewStacks.value[viewStacks.value.length - 1];
 	}
 
+	function getAllNodeCreateElements() {
+		return nodeCreatorStore.mergedNodes.map((item) =>
+			transformNodeType(item),
+		) as NodeCreateElement[];
+	}
+
 	// Generate a delta between the global search results(all nodes) and the stack search results
 	const globalSearchItemsDiff = computed<INodeCreateElement[]>(() => {
 		const stack = getLastActiveStack();
 		if (!stack?.search || isAiSubcategoryView(stack)) return [];
 
-		const allNodes = nodeCreatorStore.mergedNodes.map((item) => transformNodeType(item));
+		const allNodes = getAllNodeCreateElements();
 		// Apply filtering for AI nodes if the current view is not the AI root view
 		const filteredNodes = isAiRootView(stack) ? allNodes : filterOutAiNodes(allNodes);
 
@@ -222,16 +241,17 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 			const aiSubNodes = difference(aiNodes, aiRootNodes);
 
 			aiSubNodes.forEach((node) => {
-				const section = node.properties.codex?.subcategories?.[AI_SUBCATEGORY]?.[0];
+				const subcategories = node.properties.codex?.subcategories ?? {};
+				const section = subcategories[AI_SUBCATEGORY]?.[0];
 
 				if (section) {
-					const subSection = node.properties.codex?.subcategories?.[section]?.[0];
+					const subSection = subcategories[section]?.[0];
 					const sectionKey = subSection ?? section;
 					const currentItems = sectionsMap.get(sectionKey)?.items ?? [];
-					const isSubnodesSection =
-						!node.properties.codex?.subcategories?.[AI_SUBCATEGORY].includes(
-							AI_CATEGORY_ROOT_NODES,
-						);
+					const isSubnodesSection = !(
+						subcategories[AI_SUBCATEGORY].includes(AI_CATEGORY_ROOT_NODES) ||
+						subcategories[AI_SUBCATEGORY].includes(AI_CATEGORY_MCP_NODES)
+					);
 
 					let title = section;
 					if (isSubnodesSection) {
@@ -415,14 +435,10 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		updateCurrentViewStack({ baselineItems: stackItems });
 	}
 
-	function extendItemsWithUUID(items: INodeCreateElement[]) {
-		return items.map((item) => ({
-			...item,
-			uuid: `${item.key}-${uuid()}`,
-		}));
-	}
-
-	function pushViewStack(stack: ViewStack, options: { resetStacks?: boolean } = {}) {
+	function pushViewStack(
+		stack: ViewStack,
+		options: { resetStacks?: boolean; transitionDirection?: 'in' | 'out' | 'none' } = {},
+	) {
 		if (options.resetStacks) {
 			resetViewStacks();
 		}
@@ -435,7 +451,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		viewStacks.value.push({
 			...stack,
 			uuid: newStackUuid,
-			transitionDirection: 'in',
+			transitionDirection: options.transitionDirection ?? 'in',
 			activeIndex: 0,
 		});
 		setStackBaselineItems();
@@ -478,5 +494,6 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		updateCurrentViewStack,
 		pushViewStack,
 		popViewStack,
+		getAllNodeCreateElements,
 	};
 });

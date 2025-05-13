@@ -1,6 +1,5 @@
+import { inTest } from '@n8n/backend-common';
 import { createContext, Script } from 'vm';
-
-import { inTest } from '@/constants';
 
 const context = createContext({ require });
 export const loadClassInIsolation = <T>(filePath: string, className: string) => {

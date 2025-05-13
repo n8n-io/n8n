@@ -4,9 +4,8 @@ import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
 
-import { FAKE_CREDENTIALS_DATA } from '@test/nodes/FakeCredentialsMap';
-
 import { MicrosoftSharePoint } from '../../MicrosoftSharePoint.node';
+import { credentials } from '../credentials';
 
 describe('Microsoft SharePoint Node', () => {
 	describe('List search', () => {
@@ -19,7 +18,7 @@ describe('Microsoft SharePoint Node', () => {
 			mockRequestWithAuthentication = jest.fn();
 			loadOptionsFunctions.helpers.httpRequestWithAuthentication = mockRequestWithAuthentication;
 			loadOptionsFunctions.getCredentials.mockResolvedValue(
-				FAKE_CREDENTIALS_DATA.microsoftSharePointOAuth2Api,
+				credentials.microsoftSharePointOAuth2Api,
 			);
 			node = new MicrosoftSharePoint();
 		});

@@ -35,13 +35,8 @@ import {
 } from 'vue-virtual-scroller';
 import MappingPill from './MappingPill.vue';
 
-import {
-	EnterpriseEditionFeature,
-	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
-	SCHEMA_PREVIEW_EXPERIMENT,
-} from '@/constants';
+import { EnterpriseEditionFeature, PLACEHOLDER_FILLED_AT_EXECUTION_TIME } from '@/constants';
 import useEnvironmentsStore from '@/stores/environments.ee.store';
-import { usePostHog } from '@/stores/posthog.store';
 import { useSchemaPreviewStore } from '@/stores/schemaPreview.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { isEmpty } from '@/utils/typesUtils';
@@ -56,12 +51,10 @@ type Props = {
 	node?: INodeUi | null;
 	data?: IDataObject[];
 	mappingEnabled?: boolean;
-	runIndex?: number;
-	outputIndex?: number;
-	totalRuns?: number;
 	paneType: 'input' | 'output';
 	connectionType?: NodeConnectionType;
 	search?: string;
+	compact?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -69,12 +62,10 @@ const props = withDefaults(defineProps<Props>(), {
 	distanceFromActive: 1,
 	node: null,
 	data: () => [],
-	runIndex: 0,
-	outputIndex: 0,
-	totalRuns: 1,
 	connectionType: NodeConnectionTypes.Main,
 	search: '',
 	mappingEnabled: false,
+	compact: false,
 });
 
 const telemetry = useTelemetry();
@@ -85,20 +76,27 @@ const workflowsStore = useWorkflowsStore();
 const schemaPreviewStore = useSchemaPreviewStore();
 const environmentsStore = useEnvironmentsStore();
 const settingsStore = useSettingsStore();
-const posthogStore = usePostHog();
+
 const { getSchemaForExecutionData, getSchemaForJsonSchema, getSchema, filterSchema } =
 	useDataSchema();
-const { closedNodes, flattenSchema, flattenMultipleSchemas, toggleLeaf, toggleNode } =
-	useFlattenSchema();
-const { getNodeInputData, getNodeTaskData } = useNodeHelpers();
+const { closedNodes, flattenSchema, flattenMultipleSchemas, toggleNode } = useFlattenSchema();
+const { getNodeInputData, getLastRunIndexWithData, hasNodeExecuted } = useNodeHelpers();
 
 const emit = defineEmits<{
 	'clear:search': [];
 }>();
 
 const scroller = ref<RecycleScrollerInstance>();
+const closedNodesBeforeSearch = ref(new Set<string>());
 
-const toggleNodeAndScrollTop = (id: string) => {
+const canDraggableDrop = computed(() => ndvStore.canDraggableDrop);
+const draggableStickyPosition = computed(() => ndvStore.draggableStickyPos);
+
+const toggleNodeExclusiveAndScrollTop = (id: string) => {
+	const isClosed = closedNodes.value.has(id);
+	if (isClosed) {
+		closedNodes.value = new Set(items.value.map((item) => item.id));
+	}
 	toggleNode(id);
 	scroller.value?.scrollToItem(0);
 };
@@ -106,18 +104,28 @@ const toggleNodeAndScrollTop = (id: string) => {
 const getNodeSchema = async (fullNode: INodeUi, connectedNode: IConnectedNode) => {
 	const pinData = workflowsStore.pinDataByNodeName(connectedNode.name);
 	const hasPinnedData = pinData ? pinData.length > 0 : false;
-	const isNodeExecuted = getNodeTaskData(fullNode, props.runIndex) !== null || hasPinnedData;
+	const isNodeExecuted = hasPinnedData || hasNodeExecuted(connectedNode.name);
+
 	const connectedOutputIndexes = connectedNode.indicies.length > 0 ? connectedNode.indicies : [0];
-	const nodeData = connectedOutputIndexes.map((outputIndex) =>
-		getNodeInputData(fullNode, props.runIndex, outputIndex, props.paneType, props.connectionType),
-	);
-	const hasBinary = nodeData.flat().some((data) => !isEmpty(data.binary));
-	const data = pinData ?? nodeData.map(executionDataToJson).flat();
+	const connectedOutputsWithData = connectedOutputIndexes
+		.map((outputIndex) => ({
+			outputIndex,
+			runIndex: getLastRunIndexWithData(fullNode.name, outputIndex, props.connectionType),
+		}))
+		.filter(({ runIndex }) => runIndex !== -1);
+	const nodeData = connectedOutputsWithData
+		.map(({ outputIndex, runIndex }) =>
+			getNodeInputData(fullNode, runIndex, outputIndex, props.paneType, props.connectionType),
+		)
+		.flat();
+	const hasBinary = nodeData.some((data) => !isEmpty(data.binary));
+	const data = pinData ?? executionDataToJson(nodeData);
+	const isDataEmpty = data.length === 0;
 
 	let schema = getSchemaForExecutionData(data);
 	let preview = false;
 
-	if (data.length === 0 && isSchemaPreviewEnabled.value) {
+	if (data.length === 0) {
 		const previewSchema = await getSchemaPreview(fullNode);
 		if (previewSchema.ok) {
 			schema = getSchemaForJsonSchema(previewSchema.result);
@@ -129,15 +137,13 @@ const getNodeSchema = async (fullNode: INodeUi, connectedNode: IConnectedNode) =
 		schema,
 		connectedOutputIndexes,
 		itemsCount: data.length,
+		runIndex: connectedOutputsWithData[0]?.runIndex ?? 0,
 		preview,
 		hasBinary,
 		isNodeExecuted,
+		isDataEmpty,
 	};
 };
-
-const isSchemaPreviewEnabled = computed(() =>
-	posthogStore.isVariantEnabled(SCHEMA_PREVIEW_EXPERIMENT.name, SCHEMA_PREVIEW_EXPERIMENT.variant),
-);
 
 const isVariablesEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Variables],
@@ -158,7 +164,7 @@ const contextSchema = computed(() => {
 		$workflow: pick(workflowsStore.workflow, ['id', 'name', 'active']),
 	};
 
-	return getSchema(schemaSource);
+	return filterSchema(getSchema(schemaSource), props.search);
 });
 
 const contextItems = computed(() => {
@@ -172,10 +178,13 @@ const contextItems = computed(() => {
 
 	if (closedNodes.value.has(header.id)) return [header];
 
-	const fields: Renders[] = flattenSchema({
-		schema: contextSchema.value,
-		depth: 1,
-	}).flatMap((renderItem) => {
+	const schema = contextSchema.value;
+
+	if (!schema) {
+		return [];
+	}
+
+	const fields: Renders[] = flattenSchema({ schema, depth: 1 }).flatMap((renderItem) => {
 		const isVars =
 			renderItem.type === 'item' && renderItem.depth === 1 && renderItem.title === '$vars';
 
@@ -209,7 +218,7 @@ const contextItems = computed(() => {
 
 const nodeSchema = asyncComputed(async () => {
 	const search = props.search;
-	if (props.data.length === 0 && isSchemaPreviewEnabled.value) {
+	if (props.data.length === 0) {
 		const previewSchema = await getSchemaPreview(props.node);
 		if (previewSchema.ok) {
 			return filterSchema(getSchemaForJsonSchema(previewSchema.result), search);
@@ -246,8 +255,16 @@ const nodesSchemas = asyncComputed<SchemaNode[]>(async () => {
 		const nodeType = nodeTypesStore.getNodeType(fullNode.type, fullNode.typeVersion);
 		if (!nodeType) continue;
 
-		const { schema, connectedOutputIndexes, itemsCount, preview, hasBinary, isNodeExecuted } =
-			await getNodeSchema(fullNode, node);
+		const {
+			schema,
+			connectedOutputIndexes,
+			itemsCount,
+			preview,
+			hasBinary,
+			isNodeExecuted,
+			isDataEmpty,
+			runIndex,
+		} = await getNodeSchema(fullNode, node);
 
 		const filteredSchema = filterSchema(schema, search);
 
@@ -263,6 +280,8 @@ const nodesSchemas = asyncComputed<SchemaNode[]>(async () => {
 			preview,
 			hasBinary,
 			isNodeExecuted,
+			isDataEmpty,
+			runIndex,
 		});
 	}
 
@@ -313,44 +332,54 @@ const noSearchResults = computed(() => {
 });
 
 watch(
-	() => props.search,
-	(newSearch) => {
-		if (!newSearch) return;
-		closedNodes.value.clear();
+	() => Boolean(props.search),
+	(hasSearch) => {
+		if (hasSearch) {
+			closedNodesBeforeSearch.value = new Set(closedNodes.value);
+			closedNodes.value.clear();
+		} else if (closedNodes.value.size === 0) {
+			closedNodes.value = closedNodesBeforeSearch.value;
+		}
 	},
 );
 
-// Variables & context items should be collapsed by default
-watch(
-	contextItems,
-	(currentContextItems) => {
-		currentContextItems
+// Collapse all nodes except the first
+const unwatchItems = watch(items, (newItems) => {
+	if (newItems.length < 2) return;
+	closedNodes.value = new Set(
+		newItems
 			.filter((item) => item.type === 'header')
-			.forEach((item) => {
-				closedNodes.value.add(item.id);
-			});
-	},
-	{ once: true, immediate: true },
-);
+			.slice(1)
+			.map((item) => item.id),
+	);
+	unwatchItems();
+});
 
-const onDragStart = () => {
+const onDragStart = (el: HTMLElement, data?: string) => {
+	ndvStore.draggableStartDragging({
+		type: 'mapping',
+		data: data ?? '',
+		dimensions: el?.getBoundingClientRect() ?? null,
+	});
 	ndvStore.resetMappingTelemetry();
 };
 
 const onDragEnd = (el: HTMLElement) => {
+	ndvStore.draggableStopDragging();
 	setTimeout(() => {
 		const mappingTelemetry = ndvStore.mappingTelemetry;
 		const parentNode = nodesSchemas.value.find(({ node }) => node.name === el.dataset.nodeName);
 
 		const isPreview = parentNode?.preview ?? false;
 		const hasCredential = !isEmpty(parentNode?.node.credentials);
+		const runIndex = Number(el.dataset.runIndex);
 
 		const telemetryPayload = {
 			src_node_type: el.dataset.nodeType,
 			src_field_name: el.dataset.name ?? '',
 			src_nodes_back: el.dataset.depth,
-			src_run_index: props.runIndex,
-			src_runs_total: props.totalRuns,
+			src_run_index: runIndex,
+			src_runs_total: runIndex,
 			src_field_nest_level: el.dataset.level ?? 0,
 			src_view: isPreview ? 'schema_preview' : 'schema',
 			src_has_credential: hasCredential,
@@ -367,7 +396,7 @@ const onDragEnd = (el: HTMLElement) => {
 </script>
 
 <template>
-	<div class="run-data-schema full-height">
+	<div :class="['run-data-schema', 'full-height', props.compact ? 'compact' : '']">
 		<div v-if="noSearchResults" class="no-results">
 			<N8nText tag="h3" size="large">{{ i18n.baseText('ndv.search.noNodeMatch.title') }}</N8nText>
 			<N8nText>
@@ -387,6 +416,8 @@ const onDragEnd = (el: HTMLElement) => {
 			type="mapping"
 			target-data-key="mappable"
 			:disabled="!mappingEnabled"
+			:can-drop="canDraggableDrop"
+			:sticky-position="draggableStickyPosition"
 			@dragstart="onDragStart"
 			@dragend="onDragEnd"
 		>
@@ -410,8 +441,8 @@ const onDragEnd = (el: HTMLElement) => {
 							v-if="item.type === 'header'"
 							v-bind="item"
 							:collapsed="closedNodes.has(item.id)"
-							@click:toggle="toggleLeaf(item.id)"
-							@click="toggleNodeAndScrollTop(item.id)"
+							@click:toggle="toggleNode(item.id)"
+							@click="toggleNodeExclusiveAndScrollTop(item.id)"
 						/>
 						<VirtualSchemaItem
 							v-else-if="item.type === 'item'"
@@ -420,7 +451,7 @@ const onDragEnd = (el: HTMLElement) => {
 							:draggable="mappingEnabled"
 							:collapsed="closedNodes.has(item.id)"
 							:highlight="ndvStore.highlightDraggables"
-							@click="toggleLeaf(item.id)"
+							@click="toggleNode(item.id)"
 						>
 						</VirtualSchemaItem>
 
@@ -447,13 +478,14 @@ const onDragEnd = (el: HTMLElement) => {
 								>
 									<template #link>
 										<NodeExecuteButton
-											:node-name="item.nodeName"
+											v-if="ndvStore.activeNodeName"
+											:node-name="ndvStore.activeNodeName"
 											:label="i18n.baseText('ndv.input.noOutputData.executePrevious')"
 											text
 											telemetry-source="inputs"
 											hide-icon
 											size="small"
-											class="execute-button"
+											:class="$style.executeButton"
 										/>
 									</template>
 								</i18n-t>
@@ -467,6 +499,12 @@ const onDragEnd = (el: HTMLElement) => {
 	</div>
 </template>
 
+<style lang="css" module>
+.executeButton {
+	padding: 0;
+}
+</style>
+
 <style lang="css" scoped>
 .full-height {
 	height: 100%;
@@ -479,6 +517,10 @@ const onDragEnd = (el: HTMLElement) => {
 .scroller {
 	padding: 0 var(--spacing-s);
 	padding-bottom: var(--spacing-2xl);
+
+	.compact & {
+		padding: 0 var(--spacing-2xs);
+	}
 }
 
 .no-results {
@@ -513,9 +555,5 @@ const onDragEnd = (el: HTMLElement) => {
 .empty-schema {
 	padding-bottom: var(--spacing-xs);
 	margin-left: calc((var(--spacing-xl) * var(--schema-level)));
-}
-
-.execute-button {
-	padding: 0;
 }
 </style>

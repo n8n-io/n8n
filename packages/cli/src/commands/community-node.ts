@@ -1,13 +1,9 @@
+import { type InstalledNodes, type InstalledPackages, type User } from '@n8n/db';
+import { CredentialsRepository, InstalledNodesRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { Flags } from '@oclif/core';
 
 import { CredentialsService } from '@/credentials/credentials.service';
-import { type InstalledNodes } from '@/databases/entities/installed-nodes';
-import { type InstalledPackages } from '@/databases/entities/installed-packages';
-import { type User } from '@/databases/entities/user';
-import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
-import { InstalledNodesRepository } from '@/databases/repositories/installed-nodes.repository';
-import { UserRepository } from '@/databases/repositories/user.repository';
 import { CommunityPackagesService } from '@/services/community-packages.service';
 
 import { BaseCommand } from './base-command';
