@@ -190,11 +190,11 @@ describe('Insights Transformers', () => {
 
 		it('should handle null deviation correctly', () => {
 			const summaryData: InsightsSummary = {
-				total: { value: 100, deviation: null },
-				failed: { value: 5, deviation: 1 },
-				timeSaved: { value: 30, deviation: null },
-				averageRunTime: { value: 2000, deviation: 500 },
-				failureRate: { value: 0.1, deviation: null },
+				total: { value: 100, deviation: null, unit: 'count' },
+				failed: { value: 5, deviation: 1, unit: 'count' },
+				timeSaved: { value: 30, deviation: null, unit: 'minute' },
+				averageRunTime: { value: 2000, deviation: 500, unit: 'millisecond' },
+				failureRate: { value: 0.1, deviation: null, unit: 'ratio' },
 			};
 
 			const expectedOutput = [
