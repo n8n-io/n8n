@@ -16,7 +16,6 @@ import {
 } from 'n8n-workflow';
 import { type LogEntrySelection } from '../CanvasChat/types/logs';
 import { isProxy, isReactive, isRef, toRaw } from 'vue';
-import { uniq } from 'lodash-es';
 
 export interface AIResult {
 	node: string;
@@ -597,9 +596,11 @@ export function mergeStartData(
 		return response;
 	}
 
-	const nodeNames = uniq(
-		Object.keys(startData).concat(Object.keys(response.data.resultData.runData)),
-	);
+	const nodeNames = [
+		...new Set(
+			Object.keys(startData).concat(Object.keys(response.data.resultData.runData)),
+		).values(),
+	];
 	const runData = Object.fromEntries(
 		nodeNames.map<[string, ITaskData[]]>((nodeName) => {
 			const tasks = response.data?.resultData.runData[nodeName] ?? [];
