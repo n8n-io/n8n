@@ -54,7 +54,6 @@ const { objectContaining, arrayContaining, any } = expect;
 const activeWorkflowManagerLike = mockInstance(ActiveWorkflowManager);
 
 let projectRepository: ProjectRepository;
-let projectService: ProjectService;
 
 beforeEach(async () => {
 	await testDb.truncate([
@@ -68,7 +67,6 @@ beforeEach(async () => {
 		'User',
 	]);
 	projectRepository = Container.get(ProjectRepository);
-	projectService = Container.get(ProjectService);
 	owner = await createOwner();
 	authOwnerAgent = testServer.authAgentFor(owner);
 	member = await createMember();
