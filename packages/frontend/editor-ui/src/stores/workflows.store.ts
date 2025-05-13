@@ -1533,6 +1533,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		const tasksData = workflowExecutionData.value.data!.resultData.runData[nodeName];
 		if (isNodeWaiting) {
 			tasksData.push(data);
+			workflowExecutionResultDataLastUpdate.value = Date.now();
+
 			if (
 				node.type === FORM_NODE_TYPE ||
 				(node.type === WAIT_NODE_TYPE && node.parameters.resume === 'form')
