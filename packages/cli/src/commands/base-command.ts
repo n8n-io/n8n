@@ -97,7 +97,7 @@ export abstract class BaseCommand extends Command {
 			}
 		}
 
-		Container.get(ModuleRegistry).initializeModules();
+		await Container.get(ModuleRegistry).initializeModules();
 
 		if (this.instanceSettings.isMultiMain) {
 			Container.get(MultiMainSetup).registerEventHandlers();

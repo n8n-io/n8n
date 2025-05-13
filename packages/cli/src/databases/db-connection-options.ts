@@ -1,5 +1,5 @@
 import { DatabaseConfig, InstanceSettingsConfig } from '@n8n/config';
-import { entities } from '@n8n/db';
+import { entities, subscribers } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { DataSourceOptions, LoggerOptions } from '@n8n/typeorm';
 import type { MysqlConnectionOptions } from '@n8n/typeorm/driver/mysql/MysqlConnectionOptions';
@@ -17,7 +17,6 @@ import { InsightsRaw } from '@/modules/insights/database/entities/insights-raw';
 import { mysqlMigrations } from './migrations/mysqldb';
 import { postgresMigrations } from './migrations/postgresdb';
 import { sqliteMigrations } from './migrations/sqlite';
-import { subscribers } from './subscribers';
 
 @Service()
 export class DbConnectionOptions {
