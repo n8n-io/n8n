@@ -3,8 +3,7 @@ jest.mock('n8n-workflow', () => ({
 	LoggerProxy: { init: jest.fn() },
 }));
 
-import type { GlobalConfig } from '@n8n/config';
-import type { InstanceSettingsConfig } from '@n8n/config';
+import type { GlobalConfig, InstanceSettingsConfig } from '@n8n/config';
 import { mock } from 'jest-mock-extended';
 import { LoggerProxy } from 'n8n-workflow';
 
