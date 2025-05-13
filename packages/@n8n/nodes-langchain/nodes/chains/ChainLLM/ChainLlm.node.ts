@@ -65,7 +65,7 @@ export class ChainLlm implements INodeType {
 		//  we unwrap the response and return the object directly as JSON
 		const shouldUnwrapObjects = this.getNode().typeVersion >= 1.6 || !!outputParser;
 
-		const batchSize = this.getNodeParameter('batching.batchSize', 0, 100) as number;
+		const batchSize = this.getNodeParameter('batching.batchSize', 0, 5) as number;
 		const delayBetweenBatches = this.getNodeParameter(
 			'batching.delayBetweenBatches',
 			0,
@@ -75,7 +75,6 @@ export class ChainLlm implements INodeType {
 		if (this.getNode().typeVersion >= 1.7 && batchSize > 1) {
 			// Process items in batches
 			for (let i = 0; i < items.length; i += batchSize) {
-				console.log('Processing item:', i, ' until ', i + batchSize);
 				const batch = items.slice(i, i + batchSize);
 				const batchPromises = batch.map(async (_item, batchItemIndex) => {
 					return await processItem(this, i + batchItemIndex);
@@ -109,7 +108,6 @@ export class ChainLlm implements INodeType {
 					}
 
 					const responses = promiseResult.value;
-					console.log(responses);
 					responses.forEach((response: unknown) => {
 						returnData.push({
 							json: formatResponse(response, shouldUnwrapObjects),
@@ -124,7 +122,6 @@ export class ChainLlm implements INodeType {
 		} else {
 			// Process each input item
 			for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-				console.log('Processing item:', itemIndex);
 				try {
 					const responses = await processItem(this, itemIndex);
 
