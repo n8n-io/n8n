@@ -2164,9 +2164,6 @@ export interface IRunExecutionData {
 	waitTill?: Date;
 	pushRef?: string;
 
-	/** Whether this execution was started by a test webhook call. */
-	isTestWebhook?: boolean;
-
 	/** Data needed for a worker to run a manual execution. */
 	manualData?: Pick<
 		IWorkflowExecutionDataProcess,
