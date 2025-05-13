@@ -38,7 +38,6 @@ export { ExecutionsConfig } from './configs/executions.config';
 export { LOG_SCOPES } from './configs/logging.config';
 export type { LogScope } from './configs/logging.config';
 export { WorkflowsConfig } from './configs/workflows.config';
-export { InstanceSettingsConfig } from './configs/instance-settings-config';
 export * from './custom-types';
 
 const protocolSchema = z.enum(['http', 'https']);
