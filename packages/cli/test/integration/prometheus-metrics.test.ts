@@ -1,11 +1,11 @@
 import { GlobalConfig } from '@n8n/config';
+import { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { parse as semverParse } from 'semver';
 import request, { type Response } from 'supertest';
 
 import config from '@/config';
 import { N8N_VERSION } from '@/constants';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { EventService } from '@/events/event.service';
 import { PrometheusMetricsService } from '@/metrics/prometheus-metrics.service';
 import { CacheService } from '@/services/cache/cache.service';
