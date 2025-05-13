@@ -435,6 +435,7 @@ describe('NDV', () => {
 			.type('{backspace}')
 			.type('{ "key": "value" }', { parseSpecialCharSequences: false });
 		ndv.getters.codeEditorFullscreen().should('contain.text', '{ "key": "value" }');
+		cy.wait(200);
 		ndv.getters.codeEditorDialog().find('.el-dialog__close').click();
 		ndv.getters
 			.parameterInput('jsonOutput')
