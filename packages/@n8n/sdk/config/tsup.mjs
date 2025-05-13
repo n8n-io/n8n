@@ -6,7 +6,7 @@ export function defineN8nExtensionTsupConfig() {
 			'src/backend/**/*.ts',
 			'!src/backend/**/*.test.ts',
 			'!src/backend/**/*.d.ts',
-			'!src/backend/__tests__**/*',
+			'!**/__tests__/**/*',
 		],
 		outDir: 'dist/backend',
 		format: ['cjs', 'esm'],
