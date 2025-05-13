@@ -91,6 +91,7 @@ export async function readSheet(
 			dataStartRowIndex,
 			lookupValues,
 			returnAllMatches,
+			nodeVersion,
 			combineFilters,
 		});
 	} else {

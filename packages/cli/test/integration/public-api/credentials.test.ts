@@ -1,9 +1,9 @@
 import type { User } from '@n8n/db';
 import { CredentialsRepository } from '@n8n/db';
+import { SharedCredentialsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { randomString } from 'n8n-workflow';
 
-import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import { createTeamProject } from '@test-integration/db/projects';
 
 import {

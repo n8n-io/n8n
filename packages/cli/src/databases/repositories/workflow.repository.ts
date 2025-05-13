@@ -287,7 +287,10 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			this.getWorkflowsAndFoldersCount(workflowIds, options),
 		]);
 
-		const { workflows, folders } = await this.fetchExtraData(workflowsAndFolders);
+		const isArchived =
+			typeof options.filter?.isArchived === 'boolean' ? options.filter.isArchived : undefined;
+
+		const { workflows, folders } = await this.fetchExtraData(workflowsAndFolders, isArchived);
 
 		const enrichedWorkflowsAndFolders = this.enrichDataWithExtras(workflowsAndFolders, {
 			workflows,
@@ -295,6 +298,22 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		});
 
 		return [enrichedWorkflowsAndFolders, count] as const;
+	}
+
+	async getAllWorkflowIdsInHierarchy(folderId: string, projectId: string): Promise<string[]> {
+		const subFolderIds = await this.folderRepository.getAllFolderIdsInHierarchy(
+			folderId,
+			projectId,
+		);
+
+		const query = this.createQueryBuilder('workflow');
+
+		this.applySelect(query, { id: true });
+		this.applyParentFolderFilter(query, { parentFolderIds: [folderId, ...subFolderIds] });
+
+		const workflowIds = (await query.getMany()).map((workflow) => workflow.id);
+
+		return workflowIds;
 	}
 
 	private getFolderIds(workflowsAndFolders: WorkflowFolderUnionRow[]) {
@@ -307,13 +326,16 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			.map((item) => item.id);
 	}
 
-	private async fetchExtraData(workflowsAndFolders: WorkflowFolderUnionRow[]) {
+	private async fetchExtraData(
+		workflowsAndFolders: WorkflowFolderUnionRow[],
+		isArchived?: boolean,
+	) {
 		const workflowIds = this.getWorkflowsIds(workflowsAndFolders);
 		const folderIds = this.getFolderIds(workflowsAndFolders);
 
 		const [workflows, folders] = await Promise.all([
 			this.getMany(workflowIds),
-			this.folderRepository.getMany({ filter: { folderIds } }),
+			this.folderRepository.getMany({ filter: { folderIds, isArchived } }),
 		]);
 
 		return { workflows, folders };
@@ -667,6 +689,13 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 								id: toFolderId,
 							},
 			},
+		);
+	}
+
+	async moveToFolder(workflowIds: string[], toFolderId: string) {
+		await this.update(
+			{ id: In(workflowIds) },
+			{ parentFolder: toFolderId === PROJECT_ROOT ? null : { id: toFolderId } },
 		);
 	}
 }

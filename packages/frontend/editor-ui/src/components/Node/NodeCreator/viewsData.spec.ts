@@ -7,6 +7,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { AIView } from './viewsData';
 import { mockNodeTypeDescription } from '@/__tests__/mocks';
 import { useTemplatesStore } from '@/stores/templates.store';
+import { usePostHog } from '@/stores/posthog.store';
 
 const getNodeType = vi.fn();
 
@@ -50,6 +51,10 @@ vi.mock('@/stores/nodeTypes.store', () => ({
 describe('viewsData', () => {
 	beforeAll(() => {
 		setActivePinia(createTestingPinia());
+
+		const posthogStore = usePostHog();
+		posthogStore.init();
+		vi.spyOn(posthogStore, 'isVariantEnabled').mockReturnValue(true);
 
 		const templatesStore = useTemplatesStore();
 

@@ -30,7 +30,7 @@ export const RESOURCES = {
 export const API_KEY_RESOURCES = {
 	tag: [...DEFAULT_OPERATIONS] as const,
 	workflow: [...DEFAULT_OPERATIONS, 'move', 'activate', 'deactivate'] as const,
-	variable: ['create', 'delete', 'list'] as const,
+	variable: DEFAULT_OPERATIONS,
 	securityAudit: ['generate'] as const,
 	project: ['create', 'update', 'delete', 'list'] as const,
 	user: ['read', 'list', 'create', 'changeRole', 'delete'] as const,

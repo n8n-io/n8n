@@ -7,7 +7,7 @@ import {
 } from 'n8n-workflow';
 
 import { GoogleSheet } from '../../Google/Sheet/v2/helpers/GoogleSheet';
-import { Evaluation } from '../Evaluation/Evaluation.node';
+import { Evaluation } from '../Evaluation/Evaluation.node.ee';
 
 describe('Test Evaluation', () => {
 	const sheetName = 'Sheet5';
@@ -186,7 +186,7 @@ describe('Test Evaluation', () => {
 						return { assignments: metrics };
 					}
 					if (param === 'operation') {
-						return 'setEvaluation';
+						return 'setMetrics';
 					}
 					return param;
 				}),

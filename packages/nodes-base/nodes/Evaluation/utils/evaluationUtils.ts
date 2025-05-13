@@ -86,7 +86,7 @@ export async function setOutput(this: IExecuteFunctions): Promise<INodeExecution
 	return [this.getInputData()];
 }
 
-export async function setEvaluation(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+export async function setMetrics(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	const items = this.getInputData();
 	const metrics: INodeExecutionData[] = [];
 
@@ -151,7 +151,7 @@ export async function checkIfEvaluating(this: IExecuteFunctions): Promise<INodeE
 
 	const evalTrigger = parentNodes.find((node) => node.type === 'n8n-nodes-base.evaluationTrigger');
 	const evalTriggerOutput = evalTrigger
-		? this.evaluateExpression(`{{ $('${evalTrigger?.name}').first() }}`, 0)
+		? this.evaluateExpression(`{{ $('${evalTrigger?.name}').isExecuted }}`, 0)
 		: undefined;
 
 	if (evalTriggerOutput) {
