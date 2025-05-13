@@ -11,6 +11,7 @@ import {
 	ProjectRelationRepository,
 	ProjectRepository,
 	TagRepository,
+	SharedWorkflowRepository,
 } from '@n8n/db';
 import {
 	Body,
@@ -33,7 +34,6 @@ import { Logger } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import * as Db from '@/db';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';

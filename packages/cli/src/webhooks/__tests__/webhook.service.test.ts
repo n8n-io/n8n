@@ -1,11 +1,11 @@
 import { WebhookEntity } from '@n8n/db';
+import type { WebhookRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { INode, INodeType, IWebhookData, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import { Workflow } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import config from '@/config';
-import type { WebhookRepository } from '@/databases/repositories/webhook.repository';
 import type { NodeTypes } from '@/node-types';
 import type { CacheService } from '@/services/cache/cache.service';
 import { WebhookService } from '@/webhooks/webhook.service';
