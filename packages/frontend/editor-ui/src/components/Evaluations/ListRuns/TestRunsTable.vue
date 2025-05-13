@@ -46,24 +46,28 @@ const runSummaries = computed(() => {
 			<template #id="{ row }">#{{ row.index }} </template>
 			<template #status="{ row }">
 				<div
-					style="display: inline-flex; gap: 8px; text-transform: capitalize; align-items: center"
+					style="display: inline-flex; gap: 12px; text-transform: capitalize; align-items: center"
 				>
-					<N8nText v-if="row.status === 'running'" color="secondary" class="mr-2xs">
+					<N8nText v-if="row.status === 'running'" color="secondary">
 						<AnimatedSpinner />
 					</N8nText>
 					<N8nIcon
 						v-else
 						:icon="statusDictionary[row.status].icon"
 						:color="statusDictionary[row.status].color"
-						class="mr-2xs"
 					/>
 					<template v-if="row.status === 'warning'">
-						<N8nText color="warning" size="small" style="text-transform: none">
+						<N8nText
+							color="warning"
+							size="small"
+							style="text-transform: none"
+							:class="[$style.alertText, $style.warningText]"
+						>
 							{{ locale.baseText(`evaluation.runDetail.error.partialCasesFailed`) }}
 						</N8nText>
 					</template>
 					<template v-else-if="row.status === 'error'">
-						<N8nTooltip placement="right" :show-after="300">
+						<N8nTooltip placement="top" :show-after="300">
 							<template #content>
 								{{
 									locale.baseText(`${getErrorBaseKey(row.errorCode)}` as BaseTextKey) ||
@@ -71,22 +75,12 @@ const runSummaries = computed(() => {
 								}}
 							</template>
 
-							<div
-								style="
-									display: inline-flex;
-									text-transform: none;
-									text-overflow: ellipsis;
-									overflow: hidden;
-									white-space: nowrap;
-								"
-							>
-								<N8nText size="small" color="danger">
-									{{
-										locale.baseText(`${getErrorBaseKey(row?.errorCode)}` as BaseTextKey) ||
-										locale.baseText(`${getErrorBaseKey('UNKNOWN_ERROR')}` as BaseTextKey)
-									}}
-								</N8nText>
-							</div>
+							<p :class="[$style.alertText, $style.errorText]">
+								{{
+									locale.baseText(`${getErrorBaseKey(row?.errorCode)}` as BaseTextKey) ||
+									locale.baseText(`${getErrorBaseKey('UNKNOWN_ERROR')}` as BaseTextKey)
+								}}
+							</p>
 						</N8nTooltip>
 					</template>
 					<template v-else>
@@ -103,5 +97,26 @@ const runSummaries = computed(() => {
 	display: flex;
 	flex-direction: column;
 	gap: 8px;
+}
+
+.alertText {
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
+	max-width: 100%;
+	text-overflow: ellipsis;
+	overflow: hidden;
+	white-space: normal;
+	word-break: break-word;
+	font-size: var(--font-size-2xs);
+	line-height: 1.25;
+}
+
+.warningText {
+	color: var(--color-warning);
+}
+
+.errorText {
+	color: var(--color-text-danger);
 }
 </style>
