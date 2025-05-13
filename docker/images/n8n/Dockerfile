@@ -14,8 +14,8 @@ RUN pnpm build
 RUN jq 'del(.pnpm.patchedDependencies)' package.json > package.json.tmp; mv package.json.tmp package.json
 RUN node .github/scripts/trim-fe-packageJson.js
 
-# Delete any source code, source-mapping, or typings
-RUN find . -type f -name "*.ts" -o -name "*.js.map" -o -name "*.vue" -o -name "tsconfig.json" -o -name "*.tsbuildinfo" | xargs rm -rf
+# Delete any source code or typings
+RUN find . -type f -name "*.ts" -o -name "*.vue" -o -name "tsconfig.json" -o -name "*.tsbuildinfo" | xargs rm -rf
 
 # Deploy the `n8n` package into /compiled
 RUN mkdir /compiled
