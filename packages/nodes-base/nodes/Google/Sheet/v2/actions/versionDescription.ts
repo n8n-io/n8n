@@ -1,8 +1,27 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import { NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
+import type { INodeProperties, INodeTypeDescription } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import * as sheet from './sheet/Sheet.resource';
 import * as spreadsheet from './spreadsheet/SpreadSheet.resource';
+
+export const authentication: INodeProperties = {
+	displayName: 'Authentication',
+	name: 'authentication',
+	type: 'options',
+	options: [
+		{
+			name: 'Service Account',
+			value: 'serviceAccount',
+		},
+		{
+			// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+			name: 'OAuth2 (recommended)',
+			value: 'oAuth2',
+		},
+	],
+	default: 'oAuth2',
+};
 
 export const versionDescription: INodeTypeDescription = {
 	displayName: 'Google Sheets',
@@ -57,23 +76,7 @@ export const versionDescription: INodeTypeDescription = {
 		},
 	],
 	properties: [
-		{
-			displayName: 'Authentication',
-			name: 'authentication',
-			type: 'options',
-			options: [
-				{
-					name: 'Service Account',
-					value: 'serviceAccount',
-				},
-				{
-					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-					name: 'OAuth2 (recommended)',
-					value: 'oAuth2',
-				},
-			],
-			default: 'oAuth2',
-		},
+		authentication,
 		{
 			displayName: 'Resource',
 			name: 'resource',
