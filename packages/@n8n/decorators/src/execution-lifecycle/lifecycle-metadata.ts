@@ -9,7 +9,7 @@ import type {
 	Workflow,
 } from 'n8n-workflow';
 
-import type { Class } from './types';
+import type { Class } from '../types';
 
 export type LifecycleHandlerClass = Class<
 	Record<string, (ctx: LifecycleContext) => Promise<void> | void>
