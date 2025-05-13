@@ -746,12 +746,6 @@ export const KEEP_AUTH_IN_NDV_FOR_NODES = [
 export const MAIN_AUTH_FIELD_NAME = 'authentication';
 export const NODE_RESOURCE_FIELD_NAME = 'resource';
 
-export const EVALUATION_TRIGGER = {
-	name: '031-evaluation-trigger',
-	control: 'control',
-	variant: 'variant',
-};
-
 export const CREDENTIAL_DOCS_EXPERIMENT = {
 	name: '024_credential_docs',
 	control: 'control',
