@@ -121,11 +121,11 @@ describe('Insights Transformers', () => {
 
 		it('should correctly transform InsightsSummary data and respect INSIGHTS_SUMMARY_ORDER', () => {
 			const summaryData: InsightsSummary = {
-				timeSaved: { value: 1200, deviation: 120 },
-				total: { value: 100, deviation: 10 },
-				failureRate: { value: 0.05, deviation: 0.01 },
-				averageRunTime: { value: 5000, deviation: 1000 },
-				failed: { value: 5, deviation: 1 },
+				timeSaved: { value: 1200, deviation: 120, unit: 'minute' },
+				total: { value: 100, deviation: 10, unit: 'count' },
+				failureRate: { value: 0.05, deviation: 0.01, unit: 'ratio' },
+				averageRunTime: { value: 5000, deviation: 1000, unit: 'millisecond' },
+				failed: { value: 5, deviation: 1, unit: 'count' },
 			};
 
 			const expectedOutput = [
