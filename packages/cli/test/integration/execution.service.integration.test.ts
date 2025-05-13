@@ -1,10 +1,10 @@
 import type { ExecutionSummaries } from '@n8n/db';
 import { ExecutionMetadataRepository } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
+import { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { ExecutionService } from '@/executions/execution.service';
 import { createTeamProject } from '@test-integration/db/projects';
 
