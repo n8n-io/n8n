@@ -13,11 +13,13 @@ import {
 	findSelectedLogEntry,
 	getTreeNodeData,
 	getTreeNodeDataV2,
+	mergeStartData,
 } from '@/components/RunDataAi/utils';
 import {
 	AGENT_LANGCHAIN_NODE_TYPE,
 	type ExecutionError,
 	type ITaskData,
+	type ITaskStartedData,
 	NodeConnectionTypes,
 } from 'n8n-workflow';
 import { type LogEntrySelection } from '../CanvasChat/types/logs';
@@ -1361,5 +1363,89 @@ describe(deepToRaw, () => {
 		expect(isReactive(raw.foo)).toBe(false);
 		expect(isReactive(raw.foo.bar)).toBe(false);
 		expect(isReactive(raw.bazz)).toBe(false);
+	});
+});
+
+describe(mergeStartData, () => {
+	it('should return unchanged execution response if start data is empty', () => {
+		const response = createTestWorkflowExecutionResponse({
+			data: {
+				resultData: {
+					runData: {
+						A: [createTestTaskData()],
+						B: [createTestTaskData(), createTestTaskData()],
+					},
+				},
+			},
+		});
+
+		expect(mergeStartData({}, response)).toEqual(response);
+	});
+
+	it('should add runs in start data to the execution response as running state', () => {
+		const response = createTestWorkflowExecutionResponse({
+			data: {
+				resultData: {
+					runData: {
+						A: [createTestTaskData({ startTime: 0, executionIndex: 0 })],
+						B: [
+							createTestTaskData({ startTime: 1, executionIndex: 1 }),
+							createTestTaskData({ startTime: 2, executionIndex: 2 }),
+						],
+					},
+				},
+			},
+		});
+		const startData: { [nodeName: string]: ITaskStartedData[] } = {
+			B: [{ startTime: 3, executionIndex: 3, source: [] }],
+			C: [{ startTime: 4, executionIndex: 4, source: [] }],
+		};
+		const merged = mergeStartData(startData, response);
+
+		expect(merged.data?.resultData.runData.A).toEqual(response.data?.resultData.runData.A);
+		expect(merged.data?.resultData.runData.B).toEqual([
+			response.data!.resultData.runData.B[0],
+			response.data!.resultData.runData.B[1],
+			{ ...startData.B[0], executionStatus: 'running', executionTime: 0 },
+		]);
+		expect(merged.data?.resultData.runData.C).toEqual([
+			{ ...startData.C[0], executionStatus: 'running', executionTime: 0 },
+		]);
+	});
+
+	it('should not add runs in start data if a run with the same executionIndex already exists in response', () => {
+		const response = createTestWorkflowExecutionResponse({
+			data: {
+				resultData: {
+					runData: {
+						A: [createTestTaskData({ executionIndex: 0 })],
+					},
+				},
+			},
+		});
+		const startData = {
+			A: [createTestTaskData({ executionIndex: 0 })],
+		};
+		const merged = mergeStartData(startData, response);
+
+		expect(merged.data?.resultData.runData.A).toEqual(response.data?.resultData.runData.A);
+	});
+
+	it('should not add runs in start data if a run for the same node with larger start time already exists in response', () => {
+		const response = createTestWorkflowExecutionResponse({
+			data: {
+				resultData: {
+					runData: {
+						A: [createTestTaskData({ startTime: 1, executionIndex: 1 })],
+					},
+				},
+			},
+		});
+		const startData = {
+			A: [createTestTaskData({ startTime: 0, executionIndex: 0 })],
+		};
+		const merged = mergeStartData(startData, response);
+
+		expect(merged.data?.resultData.runData.A).toEqual(response.data?.resultData.runData.A);
 	});
 });
