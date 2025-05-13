@@ -144,7 +144,7 @@ describe('LogsOverviewPanel', () => {
 		});
 		const aiAgentRow = (await rendered.findAllByRole('treeitem'))[0];
 
-		await fireEvent.click(within(aiAgentRow).getAllByLabelText('Test step')[0]);
+		await fireEvent.click(within(aiAgentRow).getAllByLabelText('Execute step')[0]);
 		await waitFor(() =>
 			expect(spyRun).toHaveBeenCalledWith(expect.objectContaining({ destinationNode: 'AI Agent' })),
 		);

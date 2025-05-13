@@ -23,7 +23,7 @@ describe('Logs', () => {
 		logs.getOverviewStatus().contains('Running').should('exist');
 
 		logs.getLogEntries().should('have.length', 4);
-		logs.getLogEntries().eq(0).should('contain.text', 'When clicking ‘Test workflow’');
+		logs.getLogEntries().eq(0).should('contain.text', 'When clicking ‘Execute workflow’');
 		logs.getLogEntries().eq(1).should('contain.text', 'Code');
 		logs.getLogEntries().eq(2).should('contain.text', 'Loop Over Items');
 		logs.getLogEntries().eq(3).should('contain.text', 'Wait');
