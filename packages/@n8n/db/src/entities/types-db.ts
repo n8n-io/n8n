@@ -277,7 +277,7 @@ export type FolderWithWorkflowAndSubFolderCount = Folder & {
 };
 
 export type FolderWithWorkflowAndSubFolderCountAndPath = FolderWithWorkflowAndSubFolderCount & {
-	path?: string;
+	path?: string[];
 };
 
 export type TestRunFinalResult = 'success' | 'error' | 'warning';

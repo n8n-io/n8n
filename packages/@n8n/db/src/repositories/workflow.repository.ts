@@ -13,7 +13,6 @@ import type {
 import { PROJECT_ROOT } from 'n8n-workflow';
 
 import { FolderRepository } from './folder.repository';
-import type { Folder } from '../entities';
 import { WebhookEntity, TagEntity, WorkflowEntity, WorkflowTagMapping } from '../entities';
 import type {
 	ListQueryDb,

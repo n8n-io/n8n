@@ -1,5 +1,9 @@
 import type { CreateFolderDto, DeleteFolderDto, UpdateFolderDto } from '@n8n/api-types';
-import type { User } from '@n8n/db';
+import type {
+	FolderWithWorkflowAndSubFolderCount,
+	FolderWithWorkflowAndSubFolderCountAndPath,
+	User,
+} from '@n8n/db';
 import { Folder, FolderTagMappingRepository, FolderRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
