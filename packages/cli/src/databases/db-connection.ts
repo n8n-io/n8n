@@ -77,6 +77,7 @@ export class DbConnection {
 
 		if (this.dataSource.isInitialized) {
 			await this.dataSource.destroy();
+			this.connectionState.connected = false;
 		}
 	}
 
@@ -92,6 +93,7 @@ export class DbConnection {
 			this.connectionState.connected = true;
 			return;
 		} catch (error) {
+			this.connectionState.connected = false;
 			this.errorReporter.error(error);
 		} finally {
 			this.scheduleNextPing();
