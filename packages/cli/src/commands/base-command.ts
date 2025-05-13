@@ -1,7 +1,7 @@
 import 'reflect-metadata';
-import { LicenseState } from '@n8n/backend-common';
+import { inDevelopment, inTest, LicenseState } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import { inDevelopment, inTest, LICENSE_FEATURES } from '@n8n/constants';
+import { LICENSE_FEATURES } from '@n8n/constants';
 import { Container } from '@n8n/di';
 import { Command, Errors } from '@oclif/core';
 import {

@@ -1,5 +1,5 @@
+import { inDevelopment, inProduction } from '@n8n/backend-common';
 import { SecurityConfig } from '@n8n/config';
-import { inDevelopment, inProduction } from '@n8n/constants';
 import { Container, Service } from '@n8n/di';
 import cookieParser from 'cookie-parser';
 import express from 'express';

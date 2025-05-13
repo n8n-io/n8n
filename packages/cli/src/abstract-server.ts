@@ -1,5 +1,5 @@
+import { inTest, inDevelopment } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import { inDevelopment, inTest } from '@n8n/constants';
 import { OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import compression from 'compression';

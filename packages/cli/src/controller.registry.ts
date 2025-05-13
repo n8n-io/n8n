@@ -1,5 +1,6 @@
+import { inProduction } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import { inProduction, type BooleanLicenseFeature } from '@n8n/constants';
+import { type BooleanLicenseFeature } from '@n8n/constants';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
 import type { AccessScope, Controller, RateLimit } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
