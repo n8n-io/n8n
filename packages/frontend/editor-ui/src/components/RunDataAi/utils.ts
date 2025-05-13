@@ -358,17 +358,7 @@ function getTreeNodeDataRecV2(
 					: [];
 			}),
 		)
-		.sort((a, b) => {
-			// Sort the data by execution index or start time
-			if (a.runData.executionIndex !== undefined && b.runData.executionIndex !== undefined) {
-				return a.runData.executionIndex - b.runData.executionIndex;
-			}
-
-			const aTime = a.runData.startTime ?? 0;
-			const bTime = b.runData.startTime ?? 0;
-
-			return aTime - bTime;
-		});
+		.sort(sortLogEntries);
 
 	treeNode.children = children;
 
@@ -423,28 +413,20 @@ export function createLogEntries(workflow: Workflow, runData: IRunData) {
 				? [] // skip sub nodes and disabled nodes
 				: taskData.map((task, runIndex) => ({
 						nodeName,
-						task,
+						runData: task,
 						runIndex,
 						nodeHasMultipleRuns: taskData.length > 1,
 					})),
 		)
-		.sort((a, b) => {
-			if (a.task.executionIndex !== undefined && b.task.executionIndex !== undefined) {
-				return a.task.executionIndex - b.task.executionIndex;
-			}
+		.sort(sortLogEntries);
 
-			return a.nodeName === b.nodeName
-				? a.runIndex - b.runIndex
-				: a.task.startTime - b.task.startTime;
-		});
-
-	return runs.flatMap(({ nodeName, runIndex, task, nodeHasMultipleRuns }) =>
+	return runs.flatMap((run) =>
 		getTreeNodeDataV2(
-			nodeName,
-			task,
+			run.nodeName,
+			run.runData,
 			workflow,
 			runData,
-			nodeHasMultipleRuns ? runIndex : undefined,
+			run.nodeHasMultipleRuns ? run.runIndex : undefined,
 		),
 	);
 }
@@ -525,4 +507,14 @@ export function flattenLogEntries(
 	}
 
 	return ret;
+}
+
+function sortLogEntries<T extends { runData: ITaskData }>(a: T, b: T) {
+	// We rely on execution index only when startTime is different
+	// Because it is reset to 0 when execution is waited, and therefore not necessarily unique
+	if (a.runData.startTime === b.runData.startTime) {
+		return a.runData.executionIndex - b.runData.executionIndex;
+	}
+
+	return a.runData.startTime - b.runData.startTime;
 }
