@@ -1,5 +1,5 @@
 import { GlobalConfig } from '@n8n/config';
-import { WorkflowEntity, ProjectRepository } from '@n8n/db';
+import { WorkflowEntity, ProjectRepository, TagRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In, Like, QueryFailedError } from '@n8n/typeorm';
@@ -10,8 +10,6 @@ import { v4 as uuid } from 'uuid';
 import { z } from 'zod';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { TagRepository } from '@/databases/repositories/tag.repository';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { addNodeIds, replaceInvalidCredentials } from '@/workflow-helpers';
@@ -82,7 +80,7 @@ export = {
 
 			const body = z.object({ destinationProjectId: z.string() }).parse(req.body);
 
-			await Container.get(EnterpriseWorkflowService).transferOne(
+			await Container.get(EnterpriseWorkflowService).transferWorkflow(
 				req.user,
 				workflowId,
 				body.destinationProjectId,

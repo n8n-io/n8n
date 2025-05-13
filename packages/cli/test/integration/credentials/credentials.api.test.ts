@@ -4,6 +4,7 @@ import type { User } from '@n8n/db';
 import type { ListQueryDb } from '@n8n/db';
 import { CredentialsRepository } from '@n8n/db';
 import { ProjectRepository } from '@n8n/db';
+import { SharedCredentialsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Scope } from '@sentry/node';
 import * as a from 'assert';
@@ -14,7 +15,6 @@ import { randomString } from 'n8n-workflow';
 
 import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
 import { CredentialsService } from '@/credentials/credentials.service';
-import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import { CredentialsTester } from '@/services/credentials-tester.service';
 
 import {

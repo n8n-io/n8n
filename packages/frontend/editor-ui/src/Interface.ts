@@ -43,6 +43,7 @@ import type {
 	IPersonalizationSurveyAnswersV4,
 	AnnotationVote,
 	ITaskData,
+	ISourceData,
 } from 'n8n-workflow';
 
 import type {
@@ -189,6 +190,7 @@ export interface IAiDataContent {
 	data: INodeExecutionData[] | null;
 	inOut: 'input' | 'output';
 	type: NodeConnectionType;
+	source?: Array<ISourceData | null>;
 	metadata: {
 		executionTime: number;
 		startTime: number;
@@ -214,6 +216,12 @@ export interface IStartRunData {
 	triggerToStartFrom?: {
 		name: string;
 		data?: ITaskData;
+	};
+	agentRequest?: {
+		query: NodeParameterValueType;
+		tool: {
+			name: NodeParameterValueType;
+		};
 	};
 }
 
@@ -1246,6 +1254,7 @@ export interface ITabBarItem {
 
 export interface IResourceLocatorResultExpanded extends INodeListSearchItems {
 	linkAlt?: string;
+	isArchived?: boolean;
 }
 
 export interface CurlToJSONResponse {

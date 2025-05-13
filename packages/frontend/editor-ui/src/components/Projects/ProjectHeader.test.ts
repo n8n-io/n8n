@@ -12,7 +12,7 @@ import { VIEWS } from '@/constants';
 import userEvent from '@testing-library/user-event';
 import { waitFor, within } from '@testing-library/vue';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useOverview } from '@/composables/useOverview';
+import { useProjectPages } from '@/composables/useProjectPages';
 
 const mockPush = vi.fn();
 vi.mock('vue-router', async () => {
@@ -31,9 +31,10 @@ vi.mock('vue-router', async () => {
 	};
 });
 
-vi.mock('@/composables/useOverview', () => ({
-	useOverview: vi.fn().mockReturnValue({
+vi.mock('@/composables/useProjectPages', () => ({
+	useProjectPages: vi.fn().mockReturnValue({
 		isOverviewSubPage: false,
+		isSharedSubPage: false,
 	}),
 }));
 
@@ -52,7 +53,7 @@ const renderComponent = createComponentRenderer(ProjectHeader, {
 let route: ReturnType<typeof router.useRoute>;
 let projectsStore: ReturnType<typeof mockedStore<typeof useProjectsStore>>;
 let settingsStore: ReturnType<typeof mockedStore<typeof useSettingsStore>>;
-let overview: ReturnType<typeof useOverview>;
+let projectPages: ReturnType<typeof useProjectPages>;
 
 describe('ProjectHeader', () => {
 	beforeEach(() => {
@@ -60,7 +61,7 @@ describe('ProjectHeader', () => {
 		route = router.useRoute();
 		projectsStore = mockedStore(useProjectsStore);
 		settingsStore = mockedStore(useSettingsStore);
-		overview = useOverview();
+		projectPages = useProjectPages();
 
 		projectsStore.teamProjectsLimit = -1;
 		settingsStore.settings.folders = { enabled: false };
@@ -71,19 +72,20 @@ describe('ProjectHeader', () => {
 	});
 
 	it('should not render title icon on overview page', async () => {
-		vi.spyOn(overview, 'isOverviewSubPage', 'get').mockReturnValue(true);
+		vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(true);
 		const { container } = renderComponent();
 
 		expect(container.querySelector('.fa-home')).not.toBeInTheDocument();
 	});
 
 	it('should render the correct icon', async () => {
-		vi.spyOn(overview, 'isOverviewSubPage', 'get').mockReturnValue(false);
+		vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(false);
 		const { container, rerender } = renderComponent();
 
+		// We no longer render icon for personal project
 		projectsStore.currentProject = { type: ProjectTypes.Personal } as Project;
 		await rerender({});
-		expect(container.querySelector('.fa-user')).toBeVisible();
+		expect(container.querySelector('.fa-user')).not.toBeInTheDocument();
 
 		const projectName = 'My Project';
 		projectsStore.currentProject = { name: projectName } as Project;
@@ -91,23 +93,55 @@ describe('ProjectHeader', () => {
 		expect(container.querySelector('.fa-layer-group')).toBeVisible();
 	});
 
-	it('should render the correct title and subtitle', async () => {
-		const { getByText, queryByText, rerender } = renderComponent();
-		const subtitle = 'All the workflows, credentials and executions you have access to';
+	it('Overview: should render the correct title and subtitle', async () => {
+		vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(true);
+		const { getByTestId, rerender } = renderComponent();
+		const overviewSubtitle = 'All the workflows, credentials and executions you have access to';
 
-		expect(getByText('Overview')).toBeVisible();
-		expect(getByText(subtitle)).toBeVisible();
+		await rerender({});
+
+		expect(getByTestId('project-name')).toHaveTextContent('Overview');
+		expect(getByTestId('project-subtitle')).toHaveTextContent(overviewSubtitle);
+	});
+
+	it('Shared with you: should render the correct title and subtitle', async () => {
+		vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(false);
+		vi.spyOn(projectPages, 'isSharedSubPage', 'get').mockReturnValue(true);
+		const { getByTestId, rerender } = renderComponent();
+		const sharedSubtitle = 'Workflows and credentials other users have shared with you';
+
+		await rerender({});
+
+		expect(getByTestId('project-name')).toHaveTextContent('Shared with you');
+		expect(getByTestId('project-subtitle')).toHaveTextContent(sharedSubtitle);
+	});
+
+	it('Personal: should render the correct title and subtitle', async () => {
+		vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(false);
+		vi.spyOn(projectPages, 'isSharedSubPage', 'get').mockReturnValue(false);
+		const { getByTestId, rerender } = renderComponent();
+		const personalSubtitle = 'Workflows and credentials owned by you';
 
 		projectsStore.currentProject = { type: ProjectTypes.Personal } as Project;
+
 		await rerender({});
-		expect(getByText('Personal')).toBeVisible();
-		expect(queryByText(subtitle)).not.toBeInTheDocument();
+
+		expect(getByTestId('project-name')).toHaveTextContent('Personal');
+		expect(getByTestId('project-subtitle')).toHaveTextContent(personalSubtitle);
+	});
+
+	it('Team project: should render the correct title and subtitle', async () => {
+		vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(false);
+		vi.spyOn(projectPages, 'isSharedSubPage', 'get').mockReturnValue(false);
+		const { getByTestId, queryByTestId, rerender } = renderComponent();
 
 		const projectName = 'My Project';
 		projectsStore.currentProject = { name: projectName } as Project;
+
 		await rerender({});
-		expect(getByText(projectName)).toBeVisible();
-		expect(queryByText(subtitle)).not.toBeInTheDocument();
+
+		expect(getByTestId('project-name')).toHaveTextContent(projectName);
+		expect(queryByTestId('project-subtitle')).not.toBeInTheDocument();
 	});
 
 	it('should overwrite default subtitle with slot', () => {
@@ -130,9 +164,9 @@ describe('ProjectHeader', () => {
 		renderComponent();
 
 		expect(projectTabsSpy).toHaveBeenCalledWith(
-			{
+			expect.objectContaining({
 				'show-settings': true,
-			},
+			}),
 			null,
 		);
 	});
@@ -143,9 +177,9 @@ describe('ProjectHeader', () => {
 		renderComponent();
 
 		expect(projectTabsSpy).toHaveBeenCalledWith(
-			{
+			expect.objectContaining({
 				'show-settings': false,
-			},
+			}),
 			null,
 		);
 	});
@@ -159,9 +193,9 @@ describe('ProjectHeader', () => {
 		renderComponent();
 
 		expect(projectTabsSpy).toHaveBeenCalledWith(
-			{
+			expect.objectContaining({
 				'show-settings': false,
-			},
+			}),
 			null,
 		);
 	});

@@ -1,4 +1,5 @@
 import { GlobalConfig } from '@n8n/config';
+import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type express from 'express';
 import promBundle from 'express-prom-bundle';
@@ -9,7 +10,6 @@ import semverParse from 'semver/functions/parse';
 
 import config from '@/config';
 import { N8N_VERSION, Time } from '@/constants';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import type { EventMessageTypes } from '@/eventbus';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { EventService } from '@/events/event.service';

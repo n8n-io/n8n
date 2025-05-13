@@ -15,14 +15,30 @@
                 }
             }
         },
-        "categories": {
-            "type": "array",
-            "items": {
-                "type": "string"
+        "completedDateTime": {
+            "type": "object",
+            "properties": {
+                "dateTime": {
+                    "type": "string"
+                },
+                "timeZone": {
+                    "type": "string"
+                }
             }
         },
         "createdDateTime": {
             "type": "string"
+        },
+        "dueDateTime": {
+            "type": "object",
+            "properties": {
+                "dateTime": {
+                    "type": "string"
+                },
+                "timeZone": {
+                    "type": "string"
+                }
+            }
         },
         "hasAttachments": {
             "type": "boolean"
@@ -46,5 +62,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

@@ -124,6 +124,7 @@ export class Server extends AbstractServer {
 
 		if (this.globalConfig.nodes.communityPackages.enabled) {
 			await import('@/controllers/community-packages.controller');
+			await import('@/controllers/community-node-types.controller');
 		}
 
 		if (inE2ETests) {
