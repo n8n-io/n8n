@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import type { ProjectRole } from '@n8n/permissions';
+import type { ProjectRole, TeamProjectRole } from '@n8n/permissions';
 import { computed, ref, watch, onBeforeMount, onMounted, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
 import { deepCopy } from 'n8n-workflow';
@@ -20,6 +20,7 @@ import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
 
 import { getAllIconNames } from '@/plugins/icons';
+import { UpdateProjectDto } from '@n8n/api-types';
 
 type FormDataDiff = {
 	name?: string;
@@ -192,12 +193,15 @@ const updateProject = async () => {
 		return;
 	}
 	try {
+		if (formData.value.relations.some((r) => r.role === 'project:personalOwner')) {
+			throw new Error('Invalid role selected for this project.');
+		}
 		await projectsStore.updateProject(projectsStore.currentProject.id, {
 			name: formData.value.name!,
 			icon: projectIcon.value,
 			relations: formData.value.relations.map((r: ProjectRelation) => ({
 				userId: r.id,
-				role: r.role,
+				role: r.role as TeamProjectRole,
 			})),
 		});
 		isDirty.value = false;
