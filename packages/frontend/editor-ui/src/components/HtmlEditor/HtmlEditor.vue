@@ -55,7 +55,6 @@ const emit = defineEmits<{
 }>();
 
 const htmlEditor = ref<HTMLElement>();
-const editorValue = ref<string>(props.modelValue);
 const extensions = computed(() => [
 	bracketMatching(),
 	n8nAutocompletion(),
@@ -84,7 +83,7 @@ const extensions = computed(() => [
 ]);
 const { editor: editorRef, readEditorValue } = useExpressionEditor({
 	editorRef: htmlEditor,
-	editorValue,
+	editorValue: () => props.modelValue,
 	extensions,
 	onChange: () => {
 		emit('update:model-value', readEditorValue());
