@@ -1514,7 +1514,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		const nodeNameTable: {
 			[key: string]: string;
 		} = {};
-		const newNodeNames = new Set<string>();
+		const newNodeNames = new Set<string>((data.nodes ?? []).map((node) => node.name));
 
 		if (!data.nodes) {
 			// No nodes to add
@@ -1554,9 +1554,10 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 
 			const localized = i18n.localizeNodeName(node.name, node.type);
 
+			newNodeNames.delete(oldName);
 			newName = uniqueNodeName(localized, Array.from(newNodeNames));
-
 			newNodeNames.add(newName);
+
 			nodeNameTable[oldName] = newName;
 
 			createNodes.push(node);
@@ -2007,6 +2008,15 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		workflowsStore.addToWorkflowMetadata({ templateId: `${id}` });
 	}
 
+	function tryToOpenSubworkflowInNewTab(nodeId: string): boolean {
+		const node = workflowsStore.getNodeById(nodeId);
+		if (!node) return false;
+		const subWorkflowId = NodeHelpers.getSubworkflowId(node);
+		if (!subWorkflowId) return false;
+		window.open(`${rootStore.baseUrl}workflow/${subWorkflowId}`, '_blank');
+		return true;
+	}
+
 	return {
 		lastClickPosition,
 		editableWorkflow,
@@ -2057,5 +2067,6 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		openExecution,
 		toggleChatOpen,
 		importTemplate,
+		tryToOpenSubworkflowInNewTab,
 	};
 }

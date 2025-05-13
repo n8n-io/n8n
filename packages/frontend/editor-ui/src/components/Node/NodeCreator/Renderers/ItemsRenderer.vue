@@ -9,7 +9,10 @@ import LabelItem from '../ItemTypes/LabelItem.vue';
 import ActionItem from '../ItemTypes/ActionItem.vue';
 import ViewItem from '../ItemTypes/ViewItem.vue';
 import LinkItem from '../ItemTypes/LinkItem.vue';
+import CommunityNodeItem from '../ItemTypes/CommunityNodeItem.vue';
 import CategorizedItemsRenderer from './CategorizedItemsRenderer.vue';
+
+import { useViewStacks } from '../composables/useViewStacks';
 
 export interface Props {
 	elements?: INodeCreateElement[];
@@ -33,8 +36,23 @@ const emit = defineEmits<{
 
 const renderedItems = ref<INodeCreateElement[]>([]);
 const renderAnimationRequest = ref<number>(0);
+const { activeViewStack } = useViewStacks();
 
 const activeItemId = computed(() => useKeyboardNavigation()?.activeItemId);
+
+const communityNode = computed(() => activeViewStack.mode === 'community-node');
+
+const isPreview = computed(() => {
+	return communityNode.value && !activeViewStack.communityNodeDetails?.installed;
+});
+
+const highlightActiveItem = computed(() => {
+	if (activeViewStack.communityNodeDetails && !activeViewStack.communityNodeDetails.installed) {
+		return false;
+	}
+
+	return true;
+});
 
 // Lazy render large items lists to prevent the browser from freezing
 // when loading many items.
@@ -145,9 +163,10 @@ watch(
 					ref="iteratorItems"
 					:class="{
 						clickable: !disabled,
-						[$style.active]: activeItemId === item.uuid,
-						[$style.iteratorItem]: true,
+						[$style.active]: activeItemId === item.uuid && highlightActiveItem,
+						[$style.iteratorItem]: !communityNode,
 						[$style[item.type]]: true,
+						[$style.preview]: isPreview,
 						// Borderless is only applied to views
 						[$style.borderless]: item.type === 'view' && item.properties.borderless === true,
 					}"
@@ -157,10 +176,13 @@ watch(
 					@click="wrappedEmit('selected', item)"
 				>
 					<LabelItem v-if="item.type === 'label'" :item="item" />
+
 					<SubcategoryItem v-if="item.type === 'subcategory'" :item="item.properties" />
 
+					<CommunityNodeItem v-if="communityNode" :is-preview="isPreview" />
+
 					<NodeItem
-						v-if="item.type === 'node'"
+						v-if="item.type === 'node' && !communityNode"
 						:node-type="item.properties"
 						:active="true"
 						:subcategory="item.subcategory"
@@ -281,5 +303,10 @@ watch(
 			content: none;
 		}
 	}
+}
+
+.preview {
+	pointer-events: none;
+	cursor: default;
 }
 </style>

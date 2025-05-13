@@ -18,10 +18,11 @@ const props = defineProps<{
 	data: LogEntry;
 	isSelected: boolean;
 	isReadOnly: boolean;
-	shouldShowConsumedTokens: boolean;
+	shouldShowTokenCountColumn: boolean;
 	isCompact: boolean;
 	latestInfo?: LatestNodeInfo;
 	expanded: boolean;
+	canOpenNdv: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -52,7 +53,11 @@ const startedAtText = computed(() => {
 });
 
 const subtreeConsumedTokens = computed(() =>
-	props.shouldShowConsumedTokens ? getSubtreeTotalConsumedTokens(props.data) : undefined,
+	props.shouldShowTokenCountColumn ? getSubtreeTotalConsumedTokens(props.data, false) : undefined,
+);
+
+const hasChildren = computed(
+	() => props.data.children.length > 0 || !!props.data.runData.metadata?.subExecution,
 );
 
 function isLastChild(level: number) {
@@ -170,6 +175,10 @@ watch(
 			size="medium"
 			icon="edit"
 			style="color: var(--color-text-base)"
+			:style="{
+				visibility: props.canOpenNdv ? '' : 'hidden',
+				color: 'var(--color-text-base)',
+			}"
 			:disabled="props.latestInfo?.deleted"
 			:class="$style.openNdvButton"
 			:aria-label="locale.baseText('logs.overview.body.open')"
@@ -190,12 +199,12 @@ watch(
 			@click.stop="emit('triggerPartialExecution', props.data)"
 		/>
 		<N8nButton
-			v-if="!isCompact || props.data.children.length > 0"
+			v-if="!isCompact || hasChildren"
 			type="secondary"
 			size="small"
 			:square="true"
 			:style="{
-				visibility: props.data.children.length === 0 ? 'hidden' : '',
+				visibility: hasChildren ? '' : 'hidden',
 				color: 'var(--color-text-base)', // give higher specificity than the style from the component itself
 			}"
 			:class="$style.toggleButton"

@@ -54,9 +54,10 @@ const {
 	displayExecution,
 } = useChatState(isOpen.value, props.isReadOnly);
 
-const { workflow, execution, hasChat, latestNodeNameById, resetExecutionData } = useExecutionData();
-const { flatLogEntries, toggleExpanded } = useExpand(execution);
-const { selected, select, selectNext, selectPrev } = useSelection(execution, flatLogEntries);
+const { entries, execution, hasChat, latestNodeNameById, resetExecutionData, loadSubExecution } =
+	useExecutionData();
+const { flatLogEntries, toggleExpanded } = useExpand(entries);
+const { selected, select, selectNext, selectPrev } = useSelection(entries, flatLogEntries);
 
 const isLogDetailsOpen = computed(() => isOpen.value && selected.value !== undefined);
 const isLogDetailsVisuallyOpen = computed(
@@ -162,6 +163,7 @@ async function handleOpenNdv(treeNode: LogEntry) {
 								:is-compact="isLogDetailsVisuallyOpen"
 								:selected="selected"
 								:execution="execution"
+								:entries="entries"
 								:latest-node-info="latestNodeNameById"
 								:flat-log-entries="flatLogEntries"
 								@click-header="onToggleOpen(true)"
@@ -169,6 +171,7 @@ async function handleOpenNdv(treeNode: LogEntry) {
 								@clear-execution-data="resetExecutionData"
 								@toggle-expanded="toggleExpanded"
 								@open-ndv="handleOpenNdv"
+								@load-sub-execution="loadSubExecution"
 							>
 								<template #actions>
 									<LogsPanelActions
@@ -179,14 +182,12 @@ async function handleOpenNdv(treeNode: LogEntry) {
 							</LogsOverviewPanel>
 						</N8nResizeWrapper>
 						<LogsDetailsPanel
-							v-if="isLogDetailsVisuallyOpen && selected && workflow && execution"
+							v-if="isLogDetailsVisuallyOpen && selected"
 							:class="$style.logDetails"
 							:is-open="isOpen"
 							:log-entry="selected"
-							:workflow="workflow"
-							:execution="execution"
 							:window="pipWindow"
-							:latest-info="latestNodeNameById[selected.node.id]"
+							:latest-info="latestNodeNameById[selected.id]"
 							:panels="canvasStore.logDetailsPanel"
 							@click-header="onToggleOpen(true)"
 							@toggle-input-open="canvasStore.toggleLogInputOpen"

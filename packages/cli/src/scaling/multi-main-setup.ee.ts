@@ -58,6 +58,7 @@ export class MultiMainSetup extends TypedEmitter<MultiMainEvents> {
 		}, this.globalConfig.multiMainSetup.interval * Time.seconds.toMilliseconds);
 	}
 
+	// @TODO: Use `@OnShutdown()` decorator
 	async shutdown() {
 		clearInterval(this.leaderCheckInterval);
 
@@ -117,7 +118,7 @@ export class MultiMainSetup extends TypedEmitter<MultiMainEvents> {
 		);
 
 		if (keySetSuccessfully) {
-			this.logger.debug(`[Instance ID ${hostId}] Leader is now this instance`);
+			this.logger.info(`[Instance ID ${hostId}] Leader is now this instance`);
 
 			this.instanceSettings.markAsLeader();
 

@@ -22,6 +22,7 @@ import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import { useCanvasStore } from '@/stores/canvas.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { deepCopy } from 'n8n-workflow';
+import { createTestTaskData } from '@/__tests__/mocks';
 
 describe('LogsPanel', () => {
 	const VIEWPORT_HEIGHT = 800;
@@ -220,7 +221,9 @@ describe('LogsPanel', () => {
 			finished: false,
 			startedAt: new Date('2025-04-20T12:34:50.000Z'),
 			stoppedAt: undefined,
-			data: { resultData: { runData: {} } },
+			data: {
+				resultData: { runData: { Chat: [createTestTaskData()] } },
+			},
 		});
 
 		const rendered = render();
@@ -236,10 +239,15 @@ describe('LogsPanel', () => {
 			data: { executionIndex: 0, startTime: Date.parse('2025-04-20T12:34:51.000Z'), source: [] },
 		});
 
-		const treeItem = within(await rendered.findByRole('treeitem'));
+		const lastTreeItem = await waitFor(() => {
+			const items = rendered.getAllByRole('treeitem');
 
-		expect(treeItem.getByText('AI Agent')).toBeInTheDocument();
-		expect(treeItem.getByText('Running')).toBeInTheDocument();
+			expect(items).toHaveLength(2);
+			return within(items[1]);
+		});
+
+		expect(lastTreeItem.getByText('AI Agent')).toBeInTheDocument();
+		expect(lastTreeItem.getByText('Running')).toBeInTheDocument();
 
 		workflowsStore.updateNodeExecutionData({
 			nodeName: 'AI Agent',
@@ -252,11 +260,11 @@ describe('LogsPanel', () => {
 				executionStatus: 'success',
 			},
 		});
-		expect(await treeItem.findByText('AI Agent')).toBeInTheDocument();
-		expect(treeItem.getByText('Success in 33ms')).toBeInTheDocument();
+		expect(await lastTreeItem.findByText('AI Agent')).toBeInTheDocument();
+		expect(lastTreeItem.getByText('Success in 33ms')).toBeInTheDocument();
 
 		workflowsStore.setWorkflowExecutionData({
-			...aiChatExecutionResponse,
+			...workflowsStore.workflowExecutionData!,
 			id: '1234',
 			status: 'success',
 			finished: true,

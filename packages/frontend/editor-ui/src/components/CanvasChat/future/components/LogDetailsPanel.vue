@@ -7,24 +7,20 @@ import { LOG_DETAILS_CONTENT, type LogDetailsContent } from '@/components/Canvas
 import NodeIcon from '@/components/NodeIcon.vue';
 import { useI18n } from '@/composables/useI18n';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { type Workflow } from 'n8n-workflow';
-import { type IExecutionResponse } from '@/Interface';
 import NodeName from '@/components/CanvasChat/future/components/NodeName.vue';
 import {
 	getSubtreeTotalConsumedTokens,
-	type LatestNodeInfo,
 	type LogEntry,
+	type LatestNodeInfo,
 } from '@/components/RunDataAi/utils';
 import { N8nButton, N8nResizeWrapper } from '@n8n/design-system';
 import { computed, useTemplateRef } from 'vue';
 
 const MIN_IO_PANEL_WIDTH = 200;
 
-const { isOpen, logEntry, workflow, execution, window, latestInfo, panels } = defineProps<{
+const { isOpen, logEntry, window, latestInfo, panels } = defineProps<{
 	isOpen: boolean;
 	logEntry: LogEntry;
-	workflow: Workflow;
-	execution: IExecutionResponse;
 	window?: Window;
 	latestInfo?: LatestNodeInfo;
 	panels: LogDetailsContent;
@@ -42,7 +38,7 @@ const locale = useI18n();
 const nodeTypeStore = useNodeTypesStore();
 
 const type = computed(() => nodeTypeStore.getNodeType(logEntry.node.type));
-const consumedTokens = computed(() => getSubtreeTotalConsumedTokens(logEntry));
+const consumedTokens = computed(() => getSubtreeTotalConsumedTokens(logEntry, false));
 const isTriggerNode = computed(() => type.value?.group.includes('trigger'));
 const container = useTemplateRef<HTMLElement>('container');
 const resizer = useResizablePanel('N8N_LOGS_INPUT_PANEL_WIDTH', {
@@ -145,8 +141,6 @@ function handleResizeEnd() {
 					pane-type="input"
 					:title="locale.baseText('logs.details.header.actions.input')"
 					:log-entry="logEntry"
-					:workflow="workflow"
-					:execution="execution"
 				/>
 			</N8nResizeWrapper>
 			<RunDataView
@@ -156,8 +150,6 @@ function handleResizeEnd() {
 				:class="$style.outputPanel"
 				:title="locale.baseText('logs.details.header.actions.output')"
 				:log-entry="logEntry"
-				:workflow="workflow"
-				:execution="execution"
 			/>
 		</div>
 	</div>

@@ -51,6 +51,7 @@ export const CREDENTIAL_SELECT_MODAL_KEY = 'selectCredential';
 export const DELETE_USER_MODAL_KEY = 'deleteUser';
 export const INVITE_USER_MODAL_KEY = 'inviteUser';
 export const DUPLICATE_MODAL_KEY = 'duplicate';
+export const IMPORT_WORKFLOW_URL_MODAL_KEY = 'importWorkflowUrl';
 export const TAGS_MANAGER_MODAL_KEY = 'tagsManager';
 export const ANNOTATION_TAGS_MANAGER_MODAL_KEY = 'annotationTagsManager';
 export const VERSIONS_MODAL_KEY = 'versions';
@@ -124,6 +125,7 @@ export const CALENDLY_TRIGGER_NODE_TYPE = 'n8n-nodes-base.calendlyTrigger';
 export const CODE_NODE_TYPE = 'n8n-nodes-base.code';
 export const AI_CODE_NODE_TYPE = '@n8n/n8n-nodes-langchain.code';
 export const AI_MCP_TOOL_NODE_TYPE = '@n8n/n8n-nodes-langchain.mcpClientTool';
+export const WIKIPEDIA_TOOL_NODE_TYPE = '@n8n/n8n-nodes-langchain.toolWikipedia';
 export const CRON_NODE_TYPE = 'n8n-nodes-base.cron';
 export const CLEARBIT_NODE_TYPE = 'n8n-nodes-base.clearbit';
 export const FILTER_NODE_TYPE = 'n8n-nodes-base.filter';
@@ -214,6 +216,7 @@ export const GITHUB_NODE_TYPE = 'n8n-nodes-base.github';
 export const SLACK_TRIGGER_NODE_TYPE = 'n8n-nodes-base.slackTrigger';
 export const TELEGRAM_TRIGGER_NODE_TYPE = 'n8n-nodes-base.telegramTrigger';
 export const FACEBOOK_LEAD_ADS_TRIGGER_NODE_TYPE = 'n8n-nodes-base.facebookLeadAdsTrigger';
+export const RESPOND_TO_WEBHOOK_NODE_TYPE = 'n8n-nodes-base.respondToWebhook';
 
 export const CREDENTIAL_ONLY_NODE_PREFIX = 'n8n-creds-base';
 export const CREDENTIAL_ONLY_HTTP_NODE_VERSION = 4.1;
@@ -794,6 +797,7 @@ export const NODE_TYPES_EXCLUDED_FROM_OUTPUT_NAME_APPEND = [
 	FILTER_NODE_TYPE,
 	SWITCH_NODE_TYPE,
 	REMOVE_DUPLICATES_NODE_TYPE,
+	RESPOND_TO_WEBHOOK_NODE_TYPE,
 ];
 
 type ClearOutgoingConnectonsEvents = {

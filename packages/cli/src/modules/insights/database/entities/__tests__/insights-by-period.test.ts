@@ -1,25 +1,5 @@
-import { Container } from '@n8n/di';
-
-import * as testDb from '@test-integration/test-db';
-
-import { InsightsRawRepository } from '../../repositories/insights-raw.repository';
 import { InsightsByPeriod } from '../insights-by-period';
 import type { PeriodUnit, TypeUnit } from '../insights-shared';
-
-let insightsRawRepository: InsightsRawRepository;
-
-beforeAll(async () => {
-	await testDb.init();
-	insightsRawRepository = Container.get(InsightsRawRepository);
-});
-
-beforeEach(async () => {
-	await insightsRawRepository.delete({});
-});
-
-afterAll(async () => {
-	await testDb.terminate();
-});
 
 describe('Insights By Period', () => {
 	test.each(['time_saved_min', 'runtime_ms', 'failure', 'success'] satisfies TypeUnit[])(

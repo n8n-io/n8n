@@ -15,7 +15,7 @@ import {
 } from '../../__test__/data';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { createTestWorkflowObject } from '@/__tests__/mocks';
-import { createLogEntries, flattenLogEntries } from '@/components/RunDataAi/utils';
+import { createLogTree, flattenLogEntries } from '@/components/RunDataAi/utils';
 
 describe('LogsOverviewPanel', () => {
 	let pinia: TestingPinia;
@@ -23,20 +23,15 @@ describe('LogsOverviewPanel', () => {
 	let pushConnectionStore: ReturnType<typeof mockedStore<typeof usePushConnectionStore>>;
 
 	function render(props: Partial<InstanceType<typeof LogsOverviewPanel>['$props']>) {
-		const logs = createLogEntries(
-			createTestWorkflowObject(aiChatWorkflow),
-			aiChatExecutionResponse.data?.resultData.runData ?? {},
-		);
+		const logs = createLogTree(createTestWorkflowObject(aiChatWorkflow), aiChatExecutionResponse);
 		const mergedProps: InstanceType<typeof LogsOverviewPanel>['$props'] = {
 			isOpen: false,
 			isReadOnly: false,
 			isCompact: false,
-			execution: {
-				...aiChatExecutionResponse,
-				tree: logs,
-			},
-			latestNodeInfo: {},
 			flatLogEntries: flattenLogEntries(logs, {}),
+			entries: logs,
+			latestNodeInfo: {},
+			execution: aiChatExecutionResponse,
 			...props,
 		};
 
@@ -72,7 +67,12 @@ describe('LogsOverviewPanel', () => {
 	});
 
 	it('should render empty text if there is no execution', () => {
-		const rendered = render({ isOpen: true, execution: undefined });
+		const rendered = render({
+			isOpen: true,
+			flatLogEntries: [],
+			entries: [],
+			execution: undefined,
+		});
 
 		expect(rendered.queryByTestId('logs-overview-empty')).toBeInTheDocument();
 	});
@@ -108,21 +108,19 @@ describe('LogsOverviewPanel', () => {
 	it('should trigger partial execution if the button is clicked', async () => {
 		const spyRun = vi.spyOn(workflowsStore, 'runWorkflow');
 
-		const logs = createLogEntries(
+		const logs = createLogTree(
 			createTestWorkflowObject(aiManualWorkflow),
-			aiManualExecutionResponse.data?.resultData.runData ?? {},
+			aiManualExecutionResponse,
 		);
 		const rendered = render({
 			isOpen: true,
-			execution: {
-				...aiManualExecutionResponse,
-				tree: logs,
-			},
+			execution: aiManualExecutionResponse,
+			entries: logs,
 			flatLogEntries: flattenLogEntries(logs, {}),
 		});
 		const aiAgentRow = (await rendered.findAllByRole('treeitem'))[0];
 
-		await fireEvent.click(within(aiAgentRow).getAllByLabelText('Test step')[0]);
+		await fireEvent.click(within(aiAgentRow).getAllByLabelText('Execute step')[0]);
 		await waitFor(() =>
 			expect(spyRun).toHaveBeenCalledWith(expect.objectContaining({ destinationNode: 'AI Agent' })),
 		);

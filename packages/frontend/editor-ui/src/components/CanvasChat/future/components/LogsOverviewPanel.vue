@@ -9,24 +9,33 @@ import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { useRouter } from 'vue-router';
 import ExecutionSummary from '@/components/CanvasChat/future/components/ExecutionSummary.vue';
 import {
-	type ExecutionLogViewData,
 	getSubtreeTotalConsumedTokens,
 	getTotalConsumedTokens,
 	type LatestNodeInfo,
 	type LogEntry,
 } from '@/components/RunDataAi/utils';
 import { useVirtualList } from '@vueuse/core';
+import { type IExecutionResponse } from '@/Interface';
 
-const { isOpen, isReadOnly, selected, isCompact, execution, latestNodeInfo, flatLogEntries } =
-	defineProps<{
-		isOpen: boolean;
-		selected?: LogEntry;
-		isReadOnly: boolean;
-		isCompact: boolean;
-		execution?: ExecutionLogViewData;
-		latestNodeInfo: Record<string, LatestNodeInfo>;
-		flatLogEntries: LogEntry[];
-	}>();
+const {
+	isOpen,
+	isReadOnly,
+	selected,
+	isCompact,
+	execution,
+	entries,
+	flatLogEntries,
+	latestNodeInfo,
+} = defineProps<{
+	isOpen: boolean;
+	selected?: LogEntry;
+	isReadOnly: boolean;
+	isCompact: boolean;
+	execution?: IExecutionResponse;
+	entries: LogEntry[];
+	flatLogEntries: LogEntry[];
+	latestNodeInfo: Record<string, LatestNodeInfo>;
+}>();
 
 const emit = defineEmits<{
 	clickHeader: [];
@@ -34,6 +43,7 @@ const emit = defineEmits<{
 	clearExecutionData: [];
 	openNdv: [LogEntry];
 	toggleExpanded: [LogEntry];
+	loadSubExecution: [LogEntry];
 }>();
 
 defineSlots<{ actions: {} }>();
@@ -42,22 +52,31 @@ const locale = useI18n();
 const router = useRouter();
 const runWorkflow = useRunWorkflow({ router });
 const isClearExecutionButtonVisible = useClearExecutionButtonVisible();
-const isEmpty = computed(() => execution === undefined);
+const isEmpty = computed(() => flatLogEntries.length === 0 || execution === undefined);
 const switchViewOptions = computed(() => [
 	{ label: locale.baseText('logs.overview.header.switch.overview'), value: 'overview' as const },
 	{ label: locale.baseText('logs.overview.header.switch.details'), value: 'details' as const },
 ]);
 const consumedTokens = computed(() =>
-	getTotalConsumedTokens(...(execution?.tree ?? []).map(getSubtreeTotalConsumedTokens)),
+	getTotalConsumedTokens(
+		...entries.map((entry) =>
+			getSubtreeTotalConsumedTokens(
+				entry,
+				false, // Exclude token usages from sub workflow which is loaded only after expanding the row
+			),
+		),
+	),
+);
+
+const shouldShowTokenCountColumn = computed(
+	() =>
+		consumedTokens.value.totalTokens > 0 ||
+		entries.some((entry) => getSubtreeTotalConsumedTokens(entry, true).totalTokens > 0),
 );
 const virtualList = useVirtualList(
 	toRef(() => flatLogEntries),
 	{ itemHeight: 32 },
 );
-
-function handleClickNode(clicked: LogEntry) {
-	emit('select', selected?.id === clicked.id ? undefined : clicked);
-}
 
 function handleSwitchView(value: 'overview' | 'details') {
 	emit('select', value === 'overview' ? undefined : flatLogEntries[0]);
@@ -107,7 +126,6 @@ watch(
 						type="secondary"
 						icon="trash"
 						icon-size="medium"
-						data-test-id="clear-execution-data-button"
 						:class="$style.clearButton"
 						@click.stop="emit('clearExecutionData')"
 						>{{ locale.baseText('logs.overview.header.actions.clearExecution') }}</N8nButton
@@ -122,7 +140,7 @@ watch(
 			data-test-id="logs-overview-body"
 		>
 			<N8nText
-				v-if="isEmpty"
+				v-if="isEmpty || execution === undefined"
 				tag="p"
 				size="medium"
 				color="text-base"
@@ -133,7 +151,6 @@ watch(
 			</N8nText>
 			<template v-else>
 				<ExecutionSummary
-					v-if="execution"
 					data-test-id="logs-overview-status"
 					:class="$style.summary"
 					:status="execution.status"
@@ -153,13 +170,14 @@ watch(
 							:is-read-only="isReadOnly"
 							:is-selected="data.id === selected?.id"
 							:is-compact="isCompact"
-							:should-show-consumed-tokens="consumedTokens.totalTokens > 0"
+							:should-show-token-count-column="shouldShowTokenCountColumn"
 							:latest-info="latestNodeInfo[data.node.id]"
 							:expanded="virtualList.list.value[index + 1]?.data.parent?.id === data.id"
+							:can-open-ndv="data.executionId === execution?.id"
 							@toggle-expanded="emit('toggleExpanded', data)"
 							@open-ndv="emit('openNdv', data)"
 							@trigger-partial-execution="handleTriggerPartialExecution"
-							@toggle-selected="handleClickNode"
+							@toggle-selected="emit('select', data)"
 						/>
 					</div>
 				</div>
