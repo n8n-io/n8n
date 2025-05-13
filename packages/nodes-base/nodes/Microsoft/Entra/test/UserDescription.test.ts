@@ -1076,8 +1076,6 @@ describe('Microsoft Entra Node', () => {
 								employeeId: 'employee-id-123',
 								employeeType: 'Contractor',
 								givenName: 'John',
-								employeeHireDate: null,
-								employeeLeaveDateTime: null,
 								employeeOrgData: {
 									costCenter: 'Cost Center 1',
 									division: 'Division 1',
