@@ -1,21 +1,27 @@
 <script setup lang="ts">
 import { useI18n } from '@/composables/useI18n';
-import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
+import { COMMUNITY_PLUS_ENROLLMENT_MODAL } from '@/constants';
+import { useUIStore } from '@/stores/ui.store';
 
-const pageRedirectionHelper = usePageRedirectionHelper();
 const i18n = useI18n();
+const uiStore = useUIStore();
 
 const goToUpgrade = async () => {
-	await pageRedirectionHelper.goToUpgrade('insights', 'upgrade-insights');
+	uiStore.openModalWithData({
+		name: COMMUNITY_PLUS_ENROLLMENT_MODAL,
+		data: {
+			customHeading: undefined,
+		},
+	});
 };
 </script>
 
 <template>
 	<n8n-action-box
 		data-test-id="evaluations-unlicensed"
-		heading="Register to enable evaluation"
-		description="Register your Community instance to unlock the evaluation feature"
-		button-text="Register instance"
+		:heading="i18n.baseText('evaluations.paywall.title')"
+		:description="i18n.baseText('evaluations.paywall.description')"
+		:button-text="i18n.baseText('evaluations.paywall.cta')"
 		@click="goToUpgrade"
 	></n8n-action-box>
 </template>
