@@ -141,6 +141,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const activeWorkflowExecution = ref<ExecutionSummary | null>(null);
 	const currentWorkflowExecutions = ref<ExecutionSummary[]>([]);
 	const workflowExecutionData = ref<IExecutionResponse | null>(null);
+	const workflowExecutionResultDataLastUpdate = ref<number>();
 	const workflowExecutionPairedItemMappings = ref<Record<string, Set<string>>>({});
 	const subWorkflowExecutionError = ref<Error | null>(null);
 	const executionWaitingForWebhook = ref(false);
@@ -866,6 +867,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}
 		workflowExecutionData.value = workflowResultData;
 		workflowExecutionPairedItemMappings.value = getPairedItemsMapping(workflowResultData);
+		workflowExecutionResultDataLastUpdate.value = Date.now();
 	}
 
 	function setWorkflowExecutionRunData(workflowResultData: IRunExecutionData) {
@@ -874,6 +876,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 				...workflowExecutionData.value,
 				data: workflowResultData,
 			};
+			workflowExecutionResultDataLastUpdate.value = Date.now();
 		}
 	}
 
@@ -1497,6 +1500,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 				executionTime: 0,
 				...data.data,
 			});
+			workflowExecutionResultDataLastUpdate.value = Date.now();
 		}
 	}
 
@@ -1537,13 +1541,21 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 				openFormPopupWindow(testUrl);
 			}
 		} else {
-			const status = tasksData[tasksData.length - 1]?.executionStatus ?? 'unknown';
+			// If we process items in paralell on subnodes we get several placeholder taskData items.
+			// We need to find and replace the item with the matching executionIndex and only append if we don't find anything matching.
+			const existingRunIndex = tasksData.findIndex(
+				(item) => item.executionIndex === data.executionIndex,
+			);
+			const index = existingRunIndex > -1 ? existingRunIndex : tasksData.length - 1;
+			const status = tasksData[index]?.executionStatus ?? 'unknown';
 
 			if ('waiting' === status || (settingsStore.isNewLogsEnabled && 'running' === status)) {
-				tasksData.splice(tasksData.length - 1, 1, data);
+				tasksData.splice(index, 1, data);
 			} else {
 				tasksData.push(data);
 			}
+
+			workflowExecutionResultDataLastUpdate.value = Date.now();
 
 			void trackNodeExecution(pushData);
 		}
@@ -1830,6 +1842,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		currentWorkflowExecutions,
 		workflowExecutionData,
 		workflowExecutionPairedItemMappings,
+		workflowExecutionResultDataLastUpdate,
 		activeExecutionId: readonlyActiveExecutionId,
 		previousExecutionId: readonlyPreviousExecutionId,
 		setActiveExecutionId,

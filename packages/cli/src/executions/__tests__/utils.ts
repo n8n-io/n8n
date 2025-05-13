@@ -13,7 +13,7 @@ export const setupMessages = (executionId: string, workflowName: string): EventM
 			payload: {
 				executionId,
 				workflowName,
-				nodeName: 'When clicking "Test workflow"',
+				nodeName: 'When clicking "Execute workflow"',
 				nodeType: 'n8n-nodes-base.manualTrigger',
 			},
 		}),
@@ -22,7 +22,7 @@ export const setupMessages = (executionId: string, workflowName: string): EventM
 			payload: {
 				executionId,
 				workflowName,
-				nodeName: 'When clicking "Test workflow"',
+				nodeName: 'When clicking "Execute workflow"',
 				nodeType: 'n8n-nodes-base.manualTrigger',
 			},
 		}),
