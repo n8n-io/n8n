@@ -1,16 +1,19 @@
 <script setup lang="ts">
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useUsageStore } from '@/stores/usage.store';
 import { useAsyncState } from '@vueuse/core';
-import { useRouter } from 'vue-router';
+// import { useRouter } from 'vue-router';
 
 const props = defineProps<{
 	name: string;
 }>();
 
-const router = useRouter();
+// const router = useRouter();
 const workflowsStore = useWorkflowsStore();
+const usageStore = useUsageStore();
 
 const { isReady } = useAsyncState(async () => {
+	await usageStore.getLicenseInfo();
 	const workflowId = props.name;
 	const isAlreadyInitialized = workflowsStore.workflow.id === workflowId;
 
