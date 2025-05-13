@@ -11,31 +11,44 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useRouter } from 'vue-router';
 import ExecutionSummary from '@/components/CanvasChat/future/components/ExecutionSummary.vue';
 import {
-	type ExecutionLogViewData,
+	getDefaultCollapsedEntries,
 	flattenLogEntries,
 	getSubtreeTotalConsumedTokens,
 	getTotalConsumedTokens,
+	hasSubExecution,
 	type LatestNodeInfo,
 	type LogEntry,
+	getDepth,
 } from '@/components/RunDataAi/utils';
 import { useVirtualList } from '@vueuse/core';
 import { ndvEventBus } from '@/event-bus';
+import { type IExecutionResponse } from '@/Interface';
 
-const { isOpen, isReadOnly, selected, isCompact, execution, latestNodeInfo, scrollToSelection } =
-	defineProps<{
-		isOpen: boolean;
-		selected?: LogEntry;
-		isReadOnly: boolean;
-		isCompact: boolean;
-		execution?: ExecutionLogViewData;
-		latestNodeInfo: Record<string, LatestNodeInfo>;
-		scrollToSelection: boolean;
-	}>();
+const {
+	isOpen,
+	isReadOnly,
+	selected,
+	isCompact,
+	execution,
+	entries,
+	latestNodeInfo,
+	scrollToSelection,
+} = defineProps<{
+	isOpen: boolean;
+	selected?: LogEntry;
+	isReadOnly: boolean;
+	isCompact: boolean;
+	entries: LogEntry[];
+	execution?: IExecutionResponse;
+	latestNodeInfo: Record<string, LatestNodeInfo>;
+	scrollToSelection: boolean;
+}>();
 
 const emit = defineEmits<{
 	clickHeader: [];
 	select: [LogEntry | undefined];
 	clearExecutionData: [];
+	loadSubExecution: [LogEntry];
 }>();
 
 defineSlots<{ actions: {} }>();
@@ -46,44 +59,62 @@ const router = useRouter();
 const runWorkflow = useRunWorkflow({ router });
 const ndvStore = useNDVStore();
 const isClearExecutionButtonVisible = useClearExecutionButtonVisible();
-const isEmpty = computed(() => execution === undefined);
+const isEmpty = computed(() => entries.length === 0 || execution === undefined);
 const switchViewOptions = computed(() => [
 	{ label: locale.baseText('logs.overview.header.switch.overview'), value: 'overview' as const },
 	{ label: locale.baseText('logs.overview.header.switch.details'), value: 'details' as const },
 ]);
 const consumedTokens = computed(() =>
-	getTotalConsumedTokens(...(execution?.tree ?? []).map(getSubtreeTotalConsumedTokens)),
+	getTotalConsumedTokens(
+		...entries.map((entry) =>
+			getSubtreeTotalConsumedTokens(
+				entry,
+				false, // Exclude token usages from sub workflow which is loaded only after expanding the row
+			),
+		),
+	),
 );
-const collapsedEntries = ref<Record<string, boolean>>({});
-const flatLogEntries = computed(() =>
-	flattenLogEntries(execution?.tree ?? [], collapsedEntries.value),
+const shouldShowTokenCountColumn = computed(
+	() =>
+		consumedTokens.value.totalTokens > 0 ||
+		entries.some((entry) => getSubtreeTotalConsumedTokens(entry, true).totalTokens > 0),
 );
+const manuallyCollapsedEntries = ref<Record<string, boolean>>({});
+const collapsedEntries = computed(() => ({
+	...getDefaultCollapsedEntries(entries),
+	...manuallyCollapsedEntries.value,
+}));
+const flatLogEntries = computed(() => flattenLogEntries(entries, collapsedEntries.value));
 const virtualList = useVirtualList(flatLogEntries, { itemHeight: 32 });
 
 function handleClickNode(clicked: LogEntry) {
-	if (selected?.node === clicked.node && selected?.runIndex === clicked.runIndex) {
+	if (selected?.id === clicked.id) {
 		emit('select', undefined);
 		return;
 	}
 
 	emit('select', clicked);
+
 	telemetry.track('User selected node in log view', {
 		node_type: clicked.node.type,
 		node_id: clicked.node.id,
 		execution_id: execution?.id,
 		workflow_id: execution?.workflowData.id,
+		subworkflow_depth: getDepth(clicked),
 	});
 }
 
 function handleSwitchView(value: 'overview' | 'details') {
-	emit(
-		'select',
-		value === 'overview' || (execution?.tree ?? []).length === 0 ? undefined : execution?.tree[0],
-	);
+	emit('select', value === 'overview' || entries.length === 0 ? undefined : entries[0]);
 }
 
-function handleToggleExpanded(treeNode: LogEntry) {
-	collapsedEntries.value[treeNode.id] = !collapsedEntries.value[treeNode.id];
+async function handleToggleExpanded(treeNode: LogEntry) {
+	if (hasSubExecution(treeNode) && treeNode.children.length === 0) {
+		emit('loadSubExecution', treeNode);
+		return;
+	}
+
+	manuallyCollapsedEntries.value[treeNode.id] = !collapsedEntries.value[treeNode.id];
 }
 
 async function handleOpenNdv(treeNode: LogEntry) {
@@ -109,10 +140,10 @@ async function handleTriggerPartialExecution(treeNode: LogEntry) {
 
 // Scroll selected row into view
 watch(
-	() => (scrollToSelection ? selected : undefined),
-	async (entry) => {
-		if (entry) {
-			const index = flatLogEntries.value.findIndex((e) => e.id === entry.id);
+	() => (scrollToSelection ? selected?.id : undefined),
+	async (selectedId) => {
+		if (selectedId) {
+			const index = flatLogEntries.value.findIndex((e) => e.id === selectedId);
 
 			if (index >= 0) {
 				// Wait for the node to be added to the list, and then scroll
@@ -155,7 +186,7 @@ watch(
 			data-test-id="logs-overview-body"
 		>
 			<N8nText
-				v-if="isEmpty"
+				v-if="isEmpty || execution === undefined"
 				tag="p"
 				size="medium"
 				color="text-base"
@@ -166,7 +197,6 @@ watch(
 			</N8nText>
 			<template v-else>
 				<ExecutionSummary
-					v-if="execution"
 					data-test-id="logs-overview-status"
 					:class="$style.summary"
 					:status="execution.status"
@@ -184,13 +214,12 @@ watch(
 							:key="index"
 							:data="data"
 							:is-read-only="isReadOnly"
-							:is-selected="
-								data.node.name === selected?.node.name && data.runIndex === selected?.runIndex
-							"
+							:is-selected="data.id === selected?.id"
 							:is-compact="isCompact"
-							:should-show-consumed-tokens="consumedTokens.totalTokens > 0"
+							:should-show-token-count-column="shouldShowTokenCountColumn"
 							:latest-info="latestNodeInfo[data.node.id]"
 							:expanded="!collapsedEntries[data.id]"
+							:can-open-ndv="data.executionId === execution?.id"
 							@click.stop="handleClickNode(data)"
 							@toggle-expanded="handleToggleExpanded"
 							@open-ndv="handleOpenNdv"

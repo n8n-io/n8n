@@ -16,7 +16,7 @@ import {
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { createTestWorkflowObject } from '@/__tests__/mocks';
-import { createLogEntries } from '@/components/RunDataAi/utils';
+import { createLogTree } from '@/components/RunDataAi/utils';
 
 describe('LogsOverviewPanel', () => {
 	let pinia: TestingPinia;
@@ -30,14 +30,9 @@ describe('LogsOverviewPanel', () => {
 			isReadOnly: false,
 			isCompact: false,
 			scrollToSelection: false,
-			execution: {
-				...aiChatExecutionResponse,
-				tree: createLogEntries(
-					createTestWorkflowObject(aiChatWorkflow),
-					aiChatExecutionResponse.data?.resultData.runData ?? {},
-				),
-			},
+			entries: createLogTree(createTestWorkflowObject(aiChatWorkflow), aiChatExecutionResponse),
 			latestNodeInfo: {},
+			execution: aiChatExecutionResponse,
 			...props,
 		};
 
@@ -75,7 +70,7 @@ describe('LogsOverviewPanel', () => {
 	});
 
 	it('should render empty text if there is no execution', () => {
-		const rendered = render({ isOpen: true, execution: undefined });
+		const rendered = render({ isOpen: true, entries: [], execution: undefined });
 
 		expect(rendered.queryByTestId('logs-overview-empty')).toBeInTheDocument();
 	});
@@ -134,13 +129,7 @@ describe('LogsOverviewPanel', () => {
 
 		const rendered = render({
 			isOpen: true,
-			execution: {
-				...aiManualExecutionResponse,
-				tree: createLogEntries(
-					createTestWorkflowObject(aiManualWorkflow),
-					aiManualExecutionResponse.data?.resultData.runData ?? {},
-				),
-			},
+			entries: createLogTree(createTestWorkflowObject(aiManualWorkflow), aiManualExecutionResponse),
 		});
 		const aiAgentRow = (await rendered.findAllByRole('treeitem'))[0];
 
