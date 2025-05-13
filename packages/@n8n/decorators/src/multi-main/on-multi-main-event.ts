@@ -1,12 +1,13 @@
 import { Container } from '@n8n/di';
 
-import { NonMethodError } from './errors';
-import type { EventHandlerClass, MultiMainEvent } from './multi-main-metadata';
+import type { MultiMainEvent } from './multi-main-metadata';
 import {
 	LEADER_TAKEOVER_EVENT_NAME,
 	LEADER_STEPDOWN_EVENT_NAME,
 	MultiMainMetadata,
 } from './multi-main-metadata';
+import { NonMethodError } from '../errors';
+import type { EventHandlerClass } from '../types';
 
 const OnMultiMainEvent =
 	(eventName: MultiMainEvent): MethodDecorator =>
