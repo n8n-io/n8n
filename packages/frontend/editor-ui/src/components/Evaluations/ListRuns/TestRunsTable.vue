@@ -22,11 +22,10 @@ const locale = useI18n();
 // Combine test run statuses and finalResult to get the final status
 const runSummaries = computed(() => {
 	return props.runs.map(({ status, finalResult, errorDetails, ...run }) => {
-		if (status === 'completed' && finalResult) {
-			return { ...run, status: finalResult };
+		if (status === 'completed' && finalResult && ['error', 'warning'].includes(finalResult)) {
+			status = 'warning';
 		}
-
-		return { ...run, status };
+		return { ...run, status, finalResult, errorDetails };
 	});
 });
 </script>
@@ -58,11 +57,17 @@ const runSummaries = computed(() => {
 						:color="statusDictionary[row.status].color"
 						class="mr-2xs"
 					/>
-					<template v-if="row.status === 'error'">
+					<template v-if="row.status === 'warning'">
+						<N8nText color="warning" size="small" style="text-transform: none">
+							{{ locale.baseText(`evaluation.runDetail.error.partialCasesFailed`) }}
+						</N8nText>
+					</template>
+					<template v-else-if="row.status === 'error'">
 						<N8nTooltip placement="right" :show-after="300">
 							<template #content>
 								{{
-									locale.baseText(`${getErrorBaseKey(row.errorCode)}` as BaseTextKey) || row.status
+									locale.baseText(`${getErrorBaseKey(row.errorCode)}` as BaseTextKey) ||
+									locale.baseText(`${getErrorBaseKey('UNKNOWN_ERROR')}` as BaseTextKey)
 								}}
 							</template>
 
@@ -77,8 +82,8 @@ const runSummaries = computed(() => {
 							>
 								<N8nText size="small" color="danger">
 									{{
-										locale.baseText(`${getErrorBaseKey(row?.errorCode)}` as BaseTextKey) ??
-										row?.errorCode
+										locale.baseText(`${getErrorBaseKey(row?.errorCode)}` as BaseTextKey) ||
+										locale.baseText(`${getErrorBaseKey('UNKNOWN_ERROR')}` as BaseTextKey)
 									}}
 								</N8nText>
 							</div>
