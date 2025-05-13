@@ -14,7 +14,7 @@ exports[`useContextMenu > Read-only mode > should return the correct actions whe
   {
     "disabled": true,
     "id": "execute",
-    "label": "Test step",
+    "label": "Execute step",
   },
   {
     "disabled": true,
@@ -205,7 +205,7 @@ exports[`useContextMenu > should include "Open Sub-workflow" action when node is
   {
     "disabled": false,
     "id": "execute",
-    "label": "Test step",
+    "label": "Execute step",
   },
   {
     "disabled": false,
@@ -327,7 +327,7 @@ exports[`useContextMenu > should return the correct actions opening the menu fro
   {
     "disabled": false,
     "id": "execute",
-    "label": "Test step",
+    "label": "Execute step",
   },
   {
     "disabled": false,
@@ -437,7 +437,7 @@ exports[`useContextMenu > should return the correct actions when right clicking 
   {
     "disabled": false,
     "id": "execute",
-    "label": "Test step",
+    "label": "Execute step",
   },
   {
     "disabled": false,
@@ -628,7 +628,7 @@ exports[`useContextMenu > should show "Open Sub-workflow" action (disabled) when
   {
     "disabled": false,
     "id": "execute",
-    "label": "Test step",
+    "label": "Execute step",
   },
   {
     "disabled": false,
@@ -750,7 +750,7 @@ exports[`useContextMenu > should show "Open Sub-workflow" action (enabled) when 
   {
     "disabled": false,
     "id": "execute",
-    "label": "Test step",
+    "label": "Execute step",
   },
   {
     "disabled": false,

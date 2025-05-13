@@ -144,7 +144,7 @@ describe('useContextMenu', () => {
 		expect(targetNodeIds.value).toEqual([basicChain.id]);
 	});
 
-	it('should disable test step option for sub-nodes (AI tool nodes)', () => {
+	it('should disable execute step option for sub-nodes (AI tool nodes)', () => {
 		const { open, isOpen, actions, targetNodeIds } = useContextMenu();
 		const subNode = nodeFactory({ type: 'n8n-nodes-base.hackerNewsTool' });
 		vi.spyOn(workflowsStore, 'getNodeById').mockReturnValue(subNode);
