@@ -1,7 +1,7 @@
 import type { ExecutionFinished } from '@n8n/api-types/push/execution';
 import { useUIStore } from '@/stores/ui.store';
 import type { IExecutionResponse } from '@/Interface';
-import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
+import { WORKFLOW_SETTINGS_MODAL_KEY, EVALUATION_DATASET_TRIGGER_NODE } from '@/constants';
 import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
 import {
 	clearPopupWindowState,
@@ -94,15 +94,32 @@ export async function executionFinished(
 		}
 	}
 
-	//console.log("data", execution);
+	// Implicit looping: This will re-trigger the evaluation trigger if it exists on a successful execution of the workflow.
 	if (execution.status === 'success' && execution.data?.startData?.destinationNode === undefined) {
-		// TODO we need a better way to find the actual triggering button, probably!
-		const button = Array.from(document.querySelectorAll('[data-test-id]')).filter((x) =>
-			(x as HTMLElement)?.dataset?.testId?.startsWith('execute-workflow-button-When clicking'),
-		)[0];
-		setTimeout(() => {
-			(button as HTMLElement)?.click();
-		}, 2);
+		// check if we have an evaluation trigger in our workflow and whether it has any run data
+		const evalTrigger = execution.workflowData.nodes.find(
+			(node) => node.type === EVALUATION_DATASET_TRIGGER_NODE,
+		);
+		const triggerRunData = evalTrigger
+			? execution?.data?.resultData?.runData[evalTrigger.name]
+			: undefined;
+
+		if (evalTrigger && triggerRunData !== undefined) {
+			const mainData = triggerRunData[0]?.data?.main[0];
+			const rowsLeft = mainData ? (mainData[0]?.json?._rowsLeft as number) : 0;
+
+			if (rowsLeft && rowsLeft > 0) {
+				// Find the button that belongs to the evaluation trigger, and click it.
+				const testId = `execute-workflow-button-${evalTrigger.name}`;
+				const button = Array.from(document.querySelectorAll('[data-test-id]')).filter((x) =>
+					(x as HTMLElement)?.dataset?.testId?.startsWith(testId),
+				)[0];
+
+				setTimeout(() => {
+					(button as HTMLElement)?.click();
+				}, 2);
+			}
+		}
 	}
 
 	const runExecutionData = getRunExecutionData(execution);
