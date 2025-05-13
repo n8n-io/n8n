@@ -1493,6 +1493,7 @@ export interface INodePropertyOptions {
 	description?: string;
 	routing?: INodePropertyRouting;
 	outputConnectionType?: NodeConnectionType;
+	inputSchema?: any;
 }
 
 export interface INodeListSearchItems extends INodePropertyOptions {
@@ -2314,6 +2315,7 @@ export interface IWorkflowExecutionDataProcess {
 		name: string;
 		data?: ITaskData;
 	};
+	agentRequest?: AiAgentRequest;
 }
 
 export interface ExecuteWorkflowOptions {
@@ -2352,6 +2354,14 @@ type AiEventPayload = {
 	workflowId?: string;
 	nodeType?: string;
 };
+
+// Used to transport an agent request for partial execution
+export interface AiAgentRequest {
+	query: string | INodeParameters;
+	tool: {
+		name: string;
+	};
+}
 
 export interface IWorkflowExecuteAdditionalData {
 	credentialsHelper: ICredentialsHelper;
