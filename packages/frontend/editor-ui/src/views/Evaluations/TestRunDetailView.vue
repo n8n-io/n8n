@@ -228,7 +228,7 @@ onMounted(async () => {
 				<div
 					style="
 						display: inline-flex;
-						gap: 8px;
+						gap: 12px;
 						text-transform: capitalize;
 						align-items: center;
 						max-width: 100%;
@@ -384,11 +384,16 @@ onMounted(async () => {
 }
 
 .errorText {
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
 	max-width: 100%;
 	text-overflow: ellipsis;
 	overflow: hidden;
-	white-space: nowrap;
+	white-space: normal;
+	word-break: break-word;
 	color: var(--color-text-danger);
-	font-size: var(--font-size-xs);
+	font-size: var(--font-size-2xs);
+	line-height: 1.25;
 }
 </style>
