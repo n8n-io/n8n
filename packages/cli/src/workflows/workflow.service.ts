@@ -1,11 +1,12 @@
 import { GlobalConfig } from '@n8n/config';
-import type { User, WorkflowEntity, ListQueryDb } from '@n8n/db';
+import type { User, WorkflowEntity, ListQueryDb, WorkflowFolderUnionFull } from '@n8n/db';
 import {
 	SharedWorkflow,
 	ExecutionRepository,
 	FolderRepository,
 	WorkflowTagMappingRepository,
 	SharedWorkflowRepository,
+	WorkflowRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
@@ -22,8 +23,6 @@ import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import config from '@/config';
-import type { WorkflowFolderUnionFull } from '@/databases/repositories/workflow.repository';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
