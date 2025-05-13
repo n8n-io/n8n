@@ -3,11 +3,11 @@ import { generateNanoId } from '@n8n/db';
 import { CredentialsRepository } from '@n8n/db';
 import { ExecutionDataRepository } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
+import { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { v4 as uuid } from 'uuid';
 
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { CREDENTIALS_REPORT } from '@/security-audit/constants';
 import { SecurityAuditService } from '@/security-audit/security-audit.service';
 

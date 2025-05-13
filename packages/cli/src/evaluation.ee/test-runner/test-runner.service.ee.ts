@@ -4,6 +4,7 @@ import {
 	TestCaseExecutionRepository,
 	TestMetricRepository,
 	TestRunRepository,
+	WorkflowRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { parse } from 'flatted';
@@ -23,7 +24,6 @@ import assert from 'node:assert';
 import { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
 import { EVALUATION_METRICS_NODE } from '@/constants';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { TestCaseExecutionError, TestRunError } from '@/evaluation.ee/test-runner/errors.ee';
 import { NodeTypes } from '@/node-types';
 import { Telemetry } from '@/telemetry';
