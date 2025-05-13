@@ -108,9 +108,15 @@ export function useExecutionData() {
 			() => workflowsStore.workflowExecutionResultDataLastUpdate,
 		],
 		useThrottleFn(
-			() => {
+			([executionId], [previousExecutionId]) => {
 				// Create deep copy to disable reactivity
 				execData.value = deepToRaw(workflowsStore.workflowExecutionData ?? undefined);
+
+				if (executionId !== previousExecutionId) {
+					// Reset sub workflow data when top-level execution changes
+					subWorkflowExecData.value = {};
+					subWorkflows.value = {};
+				}
 			},
 			updateInterval,
 			true,
