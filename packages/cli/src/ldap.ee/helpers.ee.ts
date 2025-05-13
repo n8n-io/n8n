@@ -4,6 +4,7 @@ import {
 	User,
 	AuthIdentityRepository,
 	AuthProviderSyncHistoryRepository,
+	UserRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { validate } from 'jsonschema';
@@ -12,7 +13,6 @@ import { Filter } from 'ldapts/filters/Filter';
 import { randomString } from 'n8n-workflow';
 
 import config from '@/config';
-import { UserRepository } from '@/databases/repositories/user.repository';
 import { License } from '@/license';
 
 import {
