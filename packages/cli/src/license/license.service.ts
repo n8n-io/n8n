@@ -1,10 +1,10 @@
 import type { User } from '@n8n/db';
+import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import axios, { AxiosError } from 'axios';
 import { Logger } from 'n8n-core';
 import { ensureError } from 'n8n-workflow';
 
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { EventService } from '@/events/event.service';
 import { License } from '@/license';

@@ -992,6 +992,7 @@ export type ISupplyDataFunctions = ExecuteFunctions.GetNodeParameterFn &
 		| 'sendMessageToUI'
 		| 'helpers'
 	> & {
+		getNextRunIndex(): number;
 		continueOnFail(): boolean;
 		evaluateExpression(expression: string, itemIndex: number): NodeParameterValueType;
 		getWorkflowDataProxy(itemIndex: number): IWorkflowDataProxyData;

@@ -12,6 +12,7 @@ import {
 	ProjectRepository,
 	TagRepository,
 	SharedWorkflowRepository,
+	WorkflowRepository,
 } from '@n8n/db';
 import {
 	Body,
@@ -34,8 +35,6 @@ import { Logger } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import * as Db from '@/db';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
@@ -135,8 +134,10 @@ export class WorkflowsController {
 			}
 		}
 
+		const { manager: dbManager } = this.projectRepository;
+
 		let project: Project | null;
-		const savedWorkflow = await Db.transaction(async (transactionManager) => {
+		const savedWorkflow = await dbManager.transaction(async (transactionManager) => {
 			const workflow = await transactionManager.save<WorkflowEntity>(newWorkflow);
 
 			const { projectId, parentFolderId } = req.body;
@@ -496,7 +497,8 @@ export class WorkflowsController {
 		}
 
 		let newShareeIds: string[] = [];
-		await Db.transaction(async (trx) => {
+		const { manager: dbManager } = this.projectRepository;
+		await dbManager.transaction(async (trx) => {
 			const currentPersonalProjectIDs = workflow.shared
 				.filter((sw) => sw.role === 'workflow:editor')
 				.map((sw) => sw.projectId);

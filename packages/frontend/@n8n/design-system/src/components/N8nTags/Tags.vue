@@ -77,6 +77,7 @@ const onExpand = () => {
 	flex-wrap: wrap;
 	align-items: center;
 	overflow-x: scroll;
+	gap: var(--spacing-4xs);
 
 	/* Hide scrollbar for Chrome, Safari and Opera */
 	&::-webkit-scrollbar {
@@ -88,9 +89,5 @@ const onExpand = () => {
 	scrollbar-width: none; /* Firefox */
 
 	margin-top: calc(var(--spacing-4xs) * -1); // Cancel out top margin of first tags row
-
-	* {
-		margin: var(--spacing-4xs) var(--spacing-4xs) 0 0;
-	}
 }
 </style>
