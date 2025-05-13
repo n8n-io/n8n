@@ -20,7 +20,7 @@ import assert from 'node:assert';
 
 import { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
-import { EVALUATION_DATASET_TRIGGER_NODE, EVALUATION_METRICS_NODE } from '@/constants';
+import { EVALUATION_DATASET_TRIGGER_NODE, EVALUATION_NODE } from '@/constants';
 import { TestCaseExecutionError, TestRunError } from '@/evaluation.ee/test-runner/errors.ee';
 import { checkNodeParameterNotEmpty } from '@/evaluation.ee/test-runner/utils.ee';
 import { Telemetry } from '@/telemetry';
@@ -237,7 +237,6 @@ export class TestRunnerService {
 			source: null,
 		});
 
-		// TODO: ideally we do not want this execution to appear in the executions list
 		const data: IWorkflowExecutionDataProcess = {
 			destinationNode: triggerNode.name,
 			executionMode: 'manual',
@@ -295,7 +294,9 @@ export class TestRunnerService {
 	 * Get the evaluation metrics nodes from a workflow.
 	 */
 	static getEvaluationMetricsNodes(workflow: IWorkflowBase) {
-		return workflow.nodes.filter((node) => node.type === EVALUATION_METRICS_NODE);
+		return workflow.nodes.filter(
+			(node) => node.type === EVALUATION_NODE && node.parameters.operation === 'setMetrics',
+		);
 	}
 
 	/**

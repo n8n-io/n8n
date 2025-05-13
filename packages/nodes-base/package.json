@@ -514,7 +514,6 @@
       "dist/nodes/ExecuteWorkflow/ExecuteWorkflow/ExecuteWorkflow.node.js",
       "dist/nodes/ExecuteWorkflow/ExecuteWorkflowTrigger/ExecuteWorkflowTrigger.node.js",
       "dist/nodes/ExecutionData/ExecutionData.node.js",
-      "dist/nodes/EvaluationMetrics/EvaluationMetrics.node.js",
       "dist/nodes/Facebook/FacebookGraphApi.node.js",
       "dist/nodes/Facebook/FacebookTrigger.node.js",
       "dist/nodes/FacebookLeadAds/FacebookLeadAdsTrigger.node.js",
