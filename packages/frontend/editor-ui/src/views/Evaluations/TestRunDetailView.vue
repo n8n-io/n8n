@@ -245,7 +245,7 @@ onMounted(async () => {
 									locale.baseText(`${getErrorBaseKey(row.errorCode)}` as BaseTextKey) || row.status
 								}}
 							</template>
-							<p :class="$style.errorText">
+							<p :class="$style.alertText">
 								{{
 									locale.baseText(`${getErrorBaseKey(row.errorCode)}` as BaseTextKey) || row.status
 								}}
@@ -383,7 +383,7 @@ onMounted(async () => {
 	line-height: 1;
 }
 
-.errorText {
+.alertText {
 	display: -webkit-box;
 	-webkit-line-clamp: 2;
 	-webkit-box-orient: vertical;
