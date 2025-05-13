@@ -1,12 +1,12 @@
 import { Container } from '@n8n/di';
 
-import { NonMethodError } from './errors';
 import type { LifecycleEvent, LifecycleHandlerClass } from './lifecycle-metadata';
 import { LifecycleMetadata } from './lifecycle-metadata';
+import { NonMethodError } from '../errors';
 
 /**
  * Decorator that registers a method to be called when a specific lifecycle event occurs.
- * For more information, see `execution-lifecyle-hooks.ts` in `cli` and `core`.
+ * For more information, see `execution-lifecycle-hooks.ts` in `cli` and `core`.
  *
  * @example
  *

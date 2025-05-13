@@ -1,6 +1,6 @@
 import { Container, Service } from '@n8n/di';
 
-import { NonMethodError } from '../errors';
+import { NonMethodError } from '../../errors';
 import { LifecycleMetadata } from '../lifecycle-metadata';
 import { OnLifecycleEvent } from '../on-lifecycle-event';
 
