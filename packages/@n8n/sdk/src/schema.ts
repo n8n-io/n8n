@@ -32,12 +32,12 @@ export const extensionManifestSchema = z.object({
 	/**
 	 * Version of the extension package.
 	 */
-	version: z.string(),
+	version: z.string().optional(),
 
 	/**
 	 * Category the extension belongs to.
 	 */
-	categories: z.array(z.string()),
+	categories: z.array(z.string()).optional(),
 
 	/**
 	 * Setup paths for backend and frontend code entry points.
@@ -46,17 +46,17 @@ export const extensionManifestSchema = z.object({
 		/**
 		 * Path to the backend entry file.
 		 */
-		backend: z.string(),
+		backend: z.string().optional(),
 		/**
 		 * Path to the frontend entry file.
 		 */
-		frontend: z.string(),
+		frontend: z.string().optional(),
 	}),
 
 	/**
 	 * Minimum SDK version required to run the extension.
 	 */
-	minSDKVersion: z.string(),
+	minSDKVersion: z.string().optional(),
 
 	/**
 	 * Permissions object specifying allowed access for frontend and backend.
@@ -87,17 +87,21 @@ export const extensionManifestSchema = z.object({
 			/**
 			 * Extends the views configuration.
 			 */
-			views: z.object({
-				/**
-				 * Extends the workflows view configuration.
-				 */
-				workflows: z.object({
+			views: z
+				.object({
 					/**
-					 * Header component for the workflows view.
+					 * Extends the workflows view configuration.
 					 */
-					header: z.string(),
-				}),
-			}),
+					workflows: z
+						.object({
+							/**
+							 * Header component for the workflows view.
+							 */
+							header: z.string().optional(),
+						})
+						.optional(),
+				})
+				.optional(),
 		})
 		.optional(),
 });
