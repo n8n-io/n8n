@@ -33,7 +33,7 @@ Access the editor at http://localhost:5678
 
 ## Building from Source
 
-For detailed instructions on building n8n from source, see the [BUILDING.md](docs/BUILDING.md) document.
+For detailed instructions on building n8n from source, see the [BUILDING-EXTENDED.md](docs/BUILDING-EXTENDED.md) document.
 
 ## Resources
 
