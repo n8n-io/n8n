@@ -4,12 +4,12 @@ import { ProjectRelationRepository } from '@n8n/db';
 import { ProjectRepository } from '@n8n/db';
 import { SharedCredentialsRepository } from '@n8n/db';
 import { SharedWorkflowRepository } from '@n8n/db';
+import { UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { v4 as uuid } from 'uuid';
 
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { UsersController } from '@/controllers/users.controller';
-import { UserRepository } from '@/databases/repositories/user.repository';
 import { ExecutionService } from '@/executions/execution.service';
 import { CacheService } from '@/services/cache/cache.service';
 import { Telemetry } from '@/telemetry';

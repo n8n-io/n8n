@@ -2,10 +2,10 @@ import { CredentialsEntity, SettingsRepository } from '@n8n/db';
 import { CredentialsRepository } from '@n8n/db';
 import { SharedCredentialsRepository } from '@n8n/db';
 import { SharedWorkflowRepository } from '@n8n/db';
+import { UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { Reset } from '@/commands/user-management/reset';
-import { UserRepository } from '@/databases/repositories/user.repository';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { NodeTypes } from '@/node-types';
 import { setupTestCommand } from '@test-integration/utils/test-command';

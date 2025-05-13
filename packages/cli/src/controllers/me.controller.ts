@@ -5,13 +5,13 @@ import {
 	UserUpdateRequestDto,
 } from '@n8n/api-types';
 import type { User, PublicUser } from '@n8n/db';
+import { UserRepository } from '@n8n/db';
 import { Body, Patch, Post, RestController } from '@n8n/decorators';
 import { plainToInstance } from 'class-transformer';
 import { Response } from 'express';
 import { Logger } from 'n8n-core';
 
 import { AuthService } from '@/auth/auth.service';
-import { UserRepository } from '@/databases/repositories/user.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InvalidMfaCodeError } from '@/errors/response-errors/invalid-mfa-code.error';
 import { EventService } from '@/events/event.service';

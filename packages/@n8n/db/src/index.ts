@@ -20,3 +20,4 @@ export { NoXss } from './utils/validators/no-xss.validator';
 export { NoUrl } from './utils/validators/no-url.validator';
 
 export * from './repositories';
+export * from './subscribers';

@@ -6,10 +6,9 @@ import {
 	SettingsRepository,
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
+	UserRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
-
-import { UserRepository } from '@/databases/repositories/user.repository';
 
 import { BaseCommand } from '../base-command';
 

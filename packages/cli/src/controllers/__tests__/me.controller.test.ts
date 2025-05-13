@@ -3,6 +3,7 @@ import type { User } from '@n8n/db';
 import type { PublicUser } from '@n8n/db';
 import { AuthUserRepository } from '@n8n/db';
 import { InvalidAuthTokenRepository } from '@n8n/db';
+import { UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
 import { mock, anyObject } from 'jest-mock-extended';
@@ -10,7 +11,6 @@ import jwt from 'jsonwebtoken';
 
 import { AUTH_COOKIE_NAME } from '@/constants';
 import { MeController } from '@/controllers/me.controller';
-import { UserRepository } from '@/databases/repositories/user.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InvalidMfaCodeError } from '@/errors/response-errors/invalid-mfa-code.error';
 import { EventService } from '@/events/event.service';

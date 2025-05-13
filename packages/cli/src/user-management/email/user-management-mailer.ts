@@ -1,5 +1,6 @@
 import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
+import { UserRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { existsSync } from 'fs';
 import { readFile } from 'fs/promises';
@@ -9,7 +10,6 @@ import type { IWorkflowBase } from 'n8n-workflow';
 import { join as pathJoin } from 'path';
 
 import { inTest } from '@/constants';
-import { UserRepository } from '@/databases/repositories/user.repository';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { EventService } from '@/events/event.service';
 import { UrlService } from '@/services/url.service';

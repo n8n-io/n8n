@@ -2,11 +2,11 @@ import { AuthIdentity } from '@n8n/db';
 import { type User } from '@n8n/db';
 import { AuthIdentityRepository } from '@n8n/db';
 import { AuthUserRepository } from '@n8n/db';
+import { UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { ApiKeyScope, GlobalRole } from '@n8n/permissions';
 import { hash } from 'bcryptjs';
 
-import { UserRepository } from '@/databases/repositories/user.repository';
 import { MfaService } from '@/mfa/mfa.service';
 import { TOTPService } from '@/mfa/totp.service';
 import { getApiKeyScopesForRole } from '@/public-api/permissions.ee';
