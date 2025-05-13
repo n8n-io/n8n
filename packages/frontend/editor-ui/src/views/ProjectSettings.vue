@@ -20,7 +20,6 @@ import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
 
 import { getAllIconNames } from '@/plugins/icons';
-import { UpdateProjectDto } from '@n8n/api-types';
 
 type FormDataDiff = {
 	name?: string;
