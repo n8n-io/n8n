@@ -151,9 +151,10 @@ watch(
 				<div v-else :class="$style.insightsContentWrapper">
 					<div
 						:class="[
-							$style.chartLoader,
+							$style.dataLoader,
 							{
-								[$style.isChartLoading]: insightsStore.charts.isLoading,
+								[$style.isDataLoading]:
+									insightsStore.charts.isLoading || insightsStore.table.isLoading,
 							},
 						]"
 					>
@@ -234,7 +235,7 @@ watch(
 	z-index: 1;
 }
 
-.chartLoader {
+.dataLoader {
 	position: absolute;
 	top: 0;
 	left: -100%;
@@ -247,7 +248,7 @@ watch(
 	gap: 9px;
 	z-index: 2;
 
-	&.isChartLoading {
+	&.isDataLoading {
 		transition: left 0s linear;
 		left: 0;
 		transition-delay: 0.5s;
