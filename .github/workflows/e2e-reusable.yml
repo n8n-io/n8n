@@ -17,11 +17,6 @@ on:
         required: false
         default: 'e2e/*'
         type: string
-      run-env:
-        description: 'Node env version to run tests with.'
-        required: false
-        default: 'browsers:node18.12.0-chrome107'
-        type: string
       record:
         description: 'Record test run.'
         required: false
@@ -99,7 +94,7 @@ jobs:
 
       - name: Cypress build
         if: steps.cache-build-artifacts.outputs.cache-hit != 'true'
-        uses: cypress-io/github-action@1b70233146622b69e789ccdd4f9452adc638d25a # v6.6.1
+        uses: cypress-io/github-action@0ee1130f05f69098ab5c560bd198fecf5a14d75b # v6.9.0
         with:
           # Disable running of tests within install job
           runTests: false
@@ -141,7 +136,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Cypress run
-        uses: cypress-io/github-action@1b70233146622b69e789ccdd4f9452adc638d25a # v6.6.1
+        uses: cypress-io/github-action@0ee1130f05f69098ab5c560bd198fecf5a14d75b # v6.9.0
         with:
           working-directory: cypress
           install: false
@@ -156,11 +151,10 @@ jobs:
           spec: '${{ inputs.spec }}'
         env:
           NODE_OPTIONS: --dns-result-order=ipv4first
-          CYPRESS_NODE_VIEW_VERSION: 2
           CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           E2E_TESTS: true
-          COMMIT_INFO_MESSAGE: 🌳 ${{ inputs.branch }} 🖥️ ${{ inputs.run-env }} 🤖 ${{ inputs.user }} 🗃️ ${{ inputs.spec }}
+          COMMIT_INFO_MESSAGE: 🌳 ${{ inputs.branch }} 🤖 ${{ inputs.user }} 🗃️ ${{ inputs.spec }}
           SHELL: /bin/sh
 
   # Check if all tests passed and set the output variable

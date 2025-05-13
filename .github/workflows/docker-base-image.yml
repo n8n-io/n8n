@@ -7,9 +7,8 @@ on:
         description: 'Node.js version to build this image with.'
         type: choice
         required: true
-        default: '20'
+        default: '22'
         options:
-          - '18'
           - '20'
           - '22'
 

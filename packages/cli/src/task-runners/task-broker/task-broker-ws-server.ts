@@ -31,7 +31,7 @@ type WsStatusCode = (typeof WsStatusCodes)[keyof typeof WsStatusCodes];
 export class TaskBrokerWsServer {
 	runnerConnections: Map<TaskRunner['id'], WebSocket> = new Map();
 
-	private heartbeatTimer: NodeJS.Timer | undefined;
+	private heartbeatTimer: NodeJS.Timeout | undefined;
 
 	constructor(
 		private readonly logger: Logger,

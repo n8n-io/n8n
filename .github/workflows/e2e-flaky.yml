@@ -34,7 +34,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '22'
           cache: 'pnpm'
 
       - name: Cache build artifacts
@@ -66,4 +66,3 @@ jobs:
           NODE_OPTIONS: --dns-result-order=ipv4first
           E2E_TESTS: true
           SHELL: /bin/sh
-          CYPRESS_NODE_VIEW_VERSION: 2

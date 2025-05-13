@@ -3,7 +3,7 @@
   "version": "1.93.0",
   "private": true,
   "engines": {
-    "node": ">=20.15",
+    "node": ">=22.14",
     "pnpm": ">=10.2.1"
   },
   "packageManager": "pnpm@10.2.1",
@@ -21,7 +21,6 @@
     "dev:fe": "run-p start \"dev:fe:editor --filter=@n8n/design-system\"",
     "dev:fe:editor": "turbo run dev --parallel --env-mode=loose --filter=n8n-editor-ui",
     "dev:e2e": "cd cypress && pnpm run test:e2e:dev",
-    "dev:e2e:v1": "cd cypress && pnpm run test:e2e:dev:v1",
     "debug:flaky:e2e": "cd cypress && pnpm run test:flaky",
     "dev:e2e:server": "run-p start dev:fe:editor",
     "clean": "turbo run clean --parallel",
@@ -79,7 +78,7 @@
       "sqlite3"
     ],
     "overrides": {
-      "@types/node": "^18.16.16",
+      "@types/node": "^20.17.46",
       "chokidar": "^4.0.1",
       "esbuild": "^0.24.0",
       "formidable": "3.5.1",

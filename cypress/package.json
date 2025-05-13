@@ -6,7 +6,6 @@
     "cypress:install": "cypress install",
     "test:e2e:ui": "scripts/run-e2e.js ui",
     "test:e2e:dev": "scripts/run-e2e.js dev",
-    "test:e2e:dev:v1": "scripts/run-e2e.js dev:v1",
     "test:e2e:all": "scripts/run-e2e.js all",
     "test:flaky": "scripts/run-e2e.js debugFlaky",
     "format": "biome format --write .",
@@ -24,14 +23,14 @@
     "n8n-workflow": "workspace:*"
   },
   "dependencies": {
-    "@ngneat/falso": "^7.2.0",
-    "@sinonjs/fake-timers": "^13.0.2",
-    "cypress": "^13.14.2",
+    "@ngneat/falso": "^7.3.0",
+    "@sinonjs/fake-timers": "^14.0.0",
+    "cypress": "^14.3.3",
     "cypress-otp": "^1.0.3",
-    "cypress-real-events": "^1.13.0",
+    "cypress-real-events": "^1.14.0",
     "flatted": "catalog:",
     "lodash": "catalog:",
     "nanoid": "catalog:",
-    "start-server-and-test": "^2.0.10"
+    "start-server-and-test": "^2.0.11"
   }
 }

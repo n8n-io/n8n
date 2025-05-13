@@ -12,7 +12,7 @@ on:
         description: Version of node to use.
         required: false
         type: string
-        default: 20.x
+        default: 22.x
       cacheKey:
         description: Cache key for modules and build artifacts.
         required: false
