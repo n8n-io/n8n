@@ -86,7 +86,7 @@
     "ts-essentials": "^7.0.3"
   },
   "dependencies": {
-    "@aws-sdk/client-secrets-manager": "3.666.0",
+    "@aws-sdk/client-secrets-manager": "3.808.0",
     "@azure/identity": "4.3.0",
     "@azure/keyvault-secrets": "4.8.0",
     "@google-cloud/secret-manager": "5.6.0",
