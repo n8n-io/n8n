@@ -3,7 +3,7 @@ import { Container, Service, type Constructable } from '@n8n/di';
 import { ModuleMetadata } from './module-metadata';
 
 export interface BaseN8nModule {
-	initialize?(): void;
+	initialize?(): void | Promise<void>;
 }
 
 export type Module = Constructable<BaseN8nModule>;

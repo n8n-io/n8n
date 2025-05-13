@@ -1,9 +1,9 @@
 import { Container } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
 
-import { DEFAULT_SHUTDOWN_PRIORITY } from './shutdown/constants';
+import { DEFAULT_SHUTDOWN_PRIORITY } from './constants';
 import { ShutdownRegistryMetadata } from './shutdown-registry-metadata';
-import type { ServiceClass } from './types';
+import type { ShutdownServiceClass } from './types';
 
 /**
  * Decorator that registers a method as a shutdown hook. The method will
@@ -27,7 +27,7 @@ import type { ServiceClass } from './types';
 export const OnShutdown =
 	(priority = DEFAULT_SHUTDOWN_PRIORITY): MethodDecorator =>
 	(prototype, propertyKey, descriptor) => {
-		const serviceClass = prototype.constructor as ServiceClass;
+		const serviceClass = prototype.constructor as ShutdownServiceClass;
 		const methodName = String(propertyKey);
 		// TODO: assert that serviceClass is decorated with @Service
 		if (typeof descriptor?.value === 'function') {

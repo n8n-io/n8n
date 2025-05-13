@@ -1,7 +1,7 @@
 import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
-import { HIGHEST_SHUTDOWN_PRIORITY, LOWEST_SHUTDOWN_PRIORITY } from './shutdown/constants';
+import { HIGHEST_SHUTDOWN_PRIORITY, LOWEST_SHUTDOWN_PRIORITY } from './constants';
 import type { ShutdownHandler } from './types';
 
 @Service()
