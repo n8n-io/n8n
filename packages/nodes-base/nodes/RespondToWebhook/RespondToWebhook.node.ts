@@ -22,6 +22,7 @@ import {
 } from 'n8n-workflow';
 import type { Readable } from 'stream';
 
+import { configuredOutputs } from './utils';
 import { formatPrivateKey, generatePairedItemData } from '../../utils/utilities';
 
 const respondWithProperty: INodeProperties = {
@@ -80,13 +81,13 @@ export class RespondToWebhook implements INodeType {
 		icon: { light: 'file:webhook.svg', dark: 'file:webhook.dark.svg' },
 		name: 'respondToWebhook',
 		group: ['transform'],
-		version: [1, 1.1, 1.2],
+		version: [1, 1.1, 1.2, 1.3],
 		description: 'Returns data for Webhook',
 		defaults: {
 			name: 'Respond to Webhook',
 		},
 		inputs: [NodeConnectionTypes.Main],
-		outputs: [NodeConnectionTypes.Main],
+		outputs: `={{(${configuredOutputs})($nodeVersion)}}`,
 		credentials: [
 			{
 				name: 'jwtAuth',
@@ -318,6 +319,8 @@ export class RespondToWebhook implements INodeType {
 			WAIT_NODE_TYPE,
 		];
 
+		let response: IN8nHttpFullResponse;
+
 		try {
 			if (nodeVersion >= 1.1) {
 				const connectedNodes = this.getParentNodes(this.getNode().name);
@@ -445,7 +448,7 @@ export class RespondToWebhook implements INodeType {
 				);
 			}
 
-			const response: IN8nHttpFullResponse = {
+			response = {
 				body: responseBody,
 				headers,
 				statusCode,
@@ -463,6 +466,10 @@ export class RespondToWebhook implements INodeType {
 			}
 
 			throw error;
+		}
+
+		if (nodeVersion >= 1.3) {
+			return [items, [{ json: { response } }]];
 		}
 
 		return [items];

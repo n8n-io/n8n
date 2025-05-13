@@ -41,7 +41,7 @@ describe('Editors', () => {
 			});
 			ndv.actions.close();
 
-			workflowPage.actions.openNode('When clicking ‘Test workflow’');
+			workflowPage.actions.openNode('When clicking ‘Execute workflow’');
 			ndv.actions.setPinnedData([{ table: 'test_table' }]);
 			ndv.actions.close();
 
