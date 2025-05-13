@@ -119,20 +119,6 @@ onMounted(async () => {
 
 <template>
 	<div :class="$style.container" data-test-id="test-definition-run-detail">
-		<n8n-callout
-			v-if="run?.status === 'error'"
-			theme="danger"
-			icon="exclamation-triangle"
-			class="mb-s"
-		>
-			<n8n-text size="small">
-				{{
-					locale.baseText(`${getErrorBaseKey(run?.errorCode)}` as BaseTextKey) ??
-					locale.baseText(`${getErrorBaseKey('UNKNOWN_ERROR')}` as BaseTextKey)
-				}}
-			</n8n-text>
-		</n8n-callout>
-
 		<div :class="$style.header">
 			<button :class="$style.backButton" @click="router.back()">
 				<i class="mr-xs"><font-awesome-icon icon="arrow-left" /></i>
@@ -155,6 +141,20 @@ onMounted(async () => {
 				</n8n-heading>
 			</button>
 		</div>
+		<n8n-callout
+			v-if="run?.status === 'error'"
+			theme="danger"
+			icon="exclamation-triangle"
+			class="mb-s"
+		>
+			<n8n-text size="small">
+				{{
+					locale.baseText(`${getErrorBaseKey(run?.errorCode)}` as BaseTextKey) ??
+					locale.baseText(`${getErrorBaseKey('UNKNOWN_ERROR')}` as BaseTextKey)
+				}}
+			</n8n-text>
+		</n8n-callout>
+
 		<el-scrollbar always :class="$style.scrollableSummary" class="mb-m">
 			<div style="display: flex">
 				<div :class="$style.summaryCard">
