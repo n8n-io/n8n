@@ -1275,6 +1275,42 @@ describe('GET /projects/:projectId/folders', () => {
 		expect(response.body.data[0].parentFolder).toBeUndefined();
 	});
 
+	test('should select path field when requested', async () => {
+		const folder1 = await createFolder(ownerProject, { name: 'Test Folder' });
+		const folder2 = await createFolder(ownerProject, {
+			name: 'Test Folder 2',
+			parentFolder: folder1,
+		});
+		const folder3 = await createFolder(ownerProject, {
+			name: 'Test Folder 3',
+			parentFolder: folder2,
+		});
+
+		const response = await authOwnerAgent
+			.get(
+				`/projects/${ownerProject.id}/folders?select=["id","path", "name"]&sortBy=updatedAt:desc`,
+			)
+			.expect(200);
+
+		expect(response.body.data[0]).toEqual({
+			id: expect.any(String),
+			name: 'Test Folder 3',
+			path: [folder1.name, folder2.name, folder3.name],
+		});
+
+		expect(response.body.data[1]).toEqual({
+			id: expect.any(String),
+			name: 'Test Folder 2',
+			path: [folder1.name, folder2.name],
+		});
+
+		expect(response.body.data[2]).toEqual({
+			id: expect.any(String),
+			name: 'Test Folder',
+			path: [folder1.name],
+		});
+	});
+
 	test('should combine multiple query parameters correctly', async () => {
 		const tag = await createTag({ name: 'important' });
 		const parentFolder = await createFolder(ownerProject, { name: 'Parent' });
