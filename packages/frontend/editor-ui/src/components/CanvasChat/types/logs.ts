@@ -1,9 +1,7 @@
-import { type LogEntry } from '@/components/RunDataAi/utils';
-
 export type LogEntrySelection =
 	| { type: 'initial' }
-	| { type: 'selected'; workflowId: string; data: LogEntry }
-	| { type: 'none'; workflowId: string };
+	| { type: 'selected'; id: string }
+	| { type: 'none' };
 
 export const LOGS_PANEL_STATE = {
 	CLOSED: 'closed',
