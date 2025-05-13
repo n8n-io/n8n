@@ -9,7 +9,6 @@ describe('@N8nModule Decorator', () => {
 	beforeEach(() => {
 		jest.resetAllMocks();
 
-		// Use the actual ModuleMetadata instance
 		moduleMetadata = new ModuleMetadata();
 		Container.set(ModuleMetadata, moduleMetadata);
 	});
@@ -20,10 +19,8 @@ describe('@N8nModule Decorator', () => {
 			initialize() {}
 		}
 
-		// Get the registered modules
 		const registeredModules = Array.from(moduleMetadata.getModules());
 
-		// Check that the module was registered
 		expect(registeredModules).toContain(TestModule);
 		expect(registeredModules).toHaveLength(1);
 	});
@@ -44,10 +41,8 @@ describe('@N8nModule Decorator', () => {
 			initialize() {}
 		}
 
-		// Get the registered modules
 		const registeredModules = Array.from(moduleMetadata.getModules());
 
-		// Check that all modules were registered
 		expect(registeredModules).toContain(FirstModule);
 		expect(registeredModules).toContain(SecondModule);
 		expect(registeredModules).toContain(ThirdModule);
@@ -58,10 +53,8 @@ describe('@N8nModule Decorator', () => {
 		@N8nModule()
 		class TestModule {}
 
-		// Get the registered modules
 		const registeredModules = Array.from(moduleMetadata.getModules());
 
-		// Check that the module was registered
 		expect(registeredModules).toContain(TestModule);
 		expect(registeredModules).toHaveLength(1);
 	});
@@ -76,14 +69,10 @@ describe('@N8nModule Decorator', () => {
 			}
 		}
 
-		// Get the registered modules
 		const registeredModules = Array.from(moduleMetadata.getModules());
 
-		// Check that the module was registered
 		expect(registeredModules).toContain(TestModule);
 
-		// If we want to test the initialize method, we'd need to implement
-		// a separate mechanism for calling module initializers
 		const moduleInstance = new TestModule();
 		await moduleInstance.initialize();
 
@@ -98,35 +87,10 @@ describe('@N8nModule Decorator', () => {
 			@N8nModule()
 			class SecondModule {}
 
-			// Get the registered modules
 			const registeredModules = Array.from(moduleMetadata.getModules());
 
-			// Verify specific modules
 			expect(registeredModules).toContain(FirstModule);
 			expect(registeredModules).toContain(SecondModule);
-		});
-
-		it('should prevent duplicate module registration', () => {
-			@N8nModule()
-			class TestModule {}
-
-			@N8nModule()
-			class TestModule2 {}
-
-			@N8nModule()
-			class TestModule3 {}
-
-			@N8nModule()
-			class TestModule3Duplicate {}
-
-			// This will register TestModule3 first
-			const registeredModules = Array.from(moduleMetadata.getModules());
-
-			expect(registeredModules).toHaveLength(4);
-			expect(registeredModules).toContain(TestModule);
-			expect(registeredModules).toContain(TestModule2);
-			expect(registeredModules).toContain(TestModule3);
-			expect(registeredModules).toContain(TestModule3Duplicate);
 		});
 	});
 
@@ -134,7 +98,6 @@ describe('@N8nModule Decorator', () => {
 		@N8nModule()
 		class TestModule {}
 
-		// Verify that the module is registered in the container
 		expect(Container.has(TestModule)).toBe(true);
 	});
 });

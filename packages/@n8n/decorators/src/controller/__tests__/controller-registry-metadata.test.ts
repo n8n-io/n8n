@@ -8,6 +8,8 @@ describe('ControllerRegistryMetadata', () => {
 		async testHandler() {
 			return 'test';
 		}
+
+		anotherHandler() {}
 	} as Controller;
 
 	const AnotherController = class AnotherController {
