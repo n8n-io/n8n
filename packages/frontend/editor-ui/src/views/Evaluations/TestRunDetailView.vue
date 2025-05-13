@@ -121,7 +121,7 @@ onMounted(async () => {
 	<div :class="$style.container" data-test-id="test-definition-run-detail">
 		<div :class="$style.header">
 			<button :class="$style.backButton" @click="router.back()">
-				<i class="mr-xs"><font-awesome-icon icon="arrow-left" /></i>
+				<font-awesome-icon icon="arrow-left" />
 				<n8n-heading size="large" :bold="true">{{
 					locale.baseText('evaluation.listRuns.runListHeader', {
 						interpolate: {
@@ -129,17 +129,17 @@ onMounted(async () => {
 						},
 					})
 				}}</n8n-heading>
-				<i class="ml-xs mr-xs"><font-awesome-icon icon="chevron-right" /></i>
-				<n8n-heading size="large" :bold="true">
-					{{
-						locale.baseText('evaluation.listRuns.testCasesListHeader', {
-							interpolate: {
-								index: testRunIndex + 1,
-							},
-						})
-					}}
-				</n8n-heading>
 			</button>
+			<span :class="$style.headerSeparator">/</span>
+			<n8n-heading size="large" :bold="true">
+				{{
+					locale.baseText('evaluation.listRuns.testCasesListHeader', {
+						interpolate: {
+							index: testRunIndex + 1,
+						},
+					})
+				}}
+			</n8n-heading>
 		</div>
 		<n8n-callout
 			v-if="run?.status === 'error'"
@@ -158,14 +158,16 @@ onMounted(async () => {
 		<el-scrollbar always :class="$style.scrollableSummary" class="mb-m">
 			<div style="display: flex">
 				<div :class="$style.summaryCard">
-					<N8nText size="small">
+					<N8nText size="small" :class="$style.summaryCardTitle">
 						{{ locale.baseText('evaluation.runDetail.totalCases') }}
 					</N8nText>
-					<N8nText size="xlarge" style="font-size: 32px" bold>{{ testCases.length }}</N8nText>
+					<N8nText size="xlarge" :class="$style.summaryCardContentLargeNumber" bold>{{
+						testCases.length
+					}}</N8nText>
 				</div>
 
 				<div :class="$style.summaryCard">
-					<N8nText size="small">
+					<N8nText size="small" :class="$style.summaryCardTitle">
 						{{ locale.baseText('evaluation.runDetail.ranAt') }}
 					</N8nText>
 					<div>
@@ -176,12 +178,12 @@ onMounted(async () => {
 				</div>
 
 				<div :class="$style.summaryCard">
-					<N8nText size="small">
+					<N8nText size="small" :class="$style.summaryCardTitle">
 						{{ locale.baseText('evaluation.listRuns.status') }}
 					</N8nText>
 					<N8nText
 						:color="statusDictionary[run?.status]?.color"
-						size="large"
+						size="medium"
 						:class="run?.status.toLowerCase()"
 						style="text-transform: capitalize"
 					>
@@ -191,12 +193,18 @@ onMounted(async () => {
 
 				<div v-for="(value, key) in metrics" :key="key" :class="$style.summaryCard">
 					<N8nTooltip :content="key" placement="top">
-						<N8nText size="small" style="text-overflow: ellipsis; overflow: hidden">
+						<N8nText
+							size="small"
+							:class="$style.summaryCardTitle"
+							style="text-overflow: ellipsis; overflow: hidden"
+						>
 							{{ key }}
 						</N8nText>
 					</N8nTooltip>
 
-					<N8nText size="xlarge" style="font-size: 32px" bold>{{ value.toFixed(2) }}</N8nText>
+					<N8nText size="xlarge" :class="$style.summaryCardContentLargeNumber" bold>{{
+						value.toFixed(2)
+					}}</N8nText>
 				</div>
 			</div>
 		</el-scrollbar>
@@ -218,37 +226,30 @@ onMounted(async () => {
 			</template>
 			<template #status="{ row }">
 				<div
-					style="display: inline-flex; gap: 8px; text-transform: capitalize; align-items: center"
+					style="
+						display: inline-flex;
+						gap: 8px;
+						text-transform: capitalize;
+						align-items: center;
+						max-width: 100%;
+					"
 				>
 					<N8nIcon
 						:icon="statusDictionary[row.status].icon"
 						:color="statusDictionary[row.status].color"
-						class="mr-2xs"
 					/>
 					<template v-if="row.status === 'error'">
-						<N8nTooltip placement="right" :show-after="300">
+						<N8nTooltip placement="top" :show-after="300">
 							<template #content>
 								{{
 									locale.baseText(`${getErrorBaseKey(row.errorCode)}` as BaseTextKey) || row.status
 								}}
 							</template>
-							<div
-								style="
-									display: inline-flex;
-									gap: 8px;
-									text-transform: none;
-									text-overflow: ellipsis;
-									overflow: hidden;
-									white-space: nowrap;
-								"
-							>
-								<N8nText size="small" color="danger">
-									{{
-										locale.baseText(`${getErrorBaseKey(row.errorCode)}` as BaseTextKey) ||
-										row.status
-									}}
-								</N8nText>
-							</div>
+							<p :class="$style.errorText">
+								{{
+									locale.baseText(`${getErrorBaseKey(row.errorCode)}` as BaseTextKey) || row.status
+								}}
+							</p>
 						</N8nTooltip>
 					</template>
 					<template v-else>
@@ -269,26 +270,37 @@ onMounted(async () => {
 	padding: var(--spacing-l) var(--spacing-2xl) 0;
 }
 
-.backButton {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing-s);
-	border: none;
-	background: none;
-	cursor: pointer;
-	color: var(--color-text-base);
-}
-
 .header {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-s);
+	gap: var(--spacing-2xs);
 	margin-bottom: var(--spacing-l);
 
 	.timestamp {
 		color: var(--color-text-base);
 		font-size: var(--font-size-s);
 	}
+}
+
+.backButton {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-3xs);
+	padding: 0;
+	border: none;
+	background: none;
+	cursor: pointer;
+	color: var(--color-text-base);
+	transition: color 0.1s ease-in-out;
+
+	&:hover {
+		color: var(--color-primary);
+	}
+}
+
+.headerSeparator {
+	font-size: var(--font-size-xl);
+	color: var(--color-text-light);
 }
 
 .summary {
@@ -338,6 +350,8 @@ onMounted(async () => {
 }
 
 .summaryCard {
+	height: 100px;
+	box-sizing: border-box;
 	padding: var(--spacing-s);
 	border-right: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
 	flex-basis: 169px;
@@ -351,5 +365,30 @@ onMounted(async () => {
 		border-top-left-radius: inherit;
 		border-bottom-left-radius: inherit;
 	}
+}
+
+.summaryCardTitle {
+	display: inline;
+	width: fit-content;
+	max-width: 100%;
+	flex-shrink: 0;
+	text-overflow: ellipsis;
+	overflow: hidden;
+	white-space: nowrap;
+	color: var(--color-text-base);
+}
+
+.summaryCardContentLargeNumber {
+	font-size: 32px;
+	line-height: 1;
+}
+
+.errorText {
+	max-width: 100%;
+	text-overflow: ellipsis;
+	overflow: hidden;
+	white-space: nowrap;
+	color: var(--color-text-danger);
+	font-size: var(--font-size-xs);
 }
 </style>
