@@ -1322,6 +1322,10 @@ export type UsageState = {
 				value: number;
 				warningThreshold: number; // hardcoded value in BE
 			};
+			workflowsHavingEvaluations: {
+				limit: number; // -1 for unlimited, from license
+				value: number;
+			};
 		};
 		license: {
 			planId: string; // community

@@ -23,6 +23,10 @@ const DEFAULT_STATE: UsageState = {
 				value: 0,
 				warningThreshold: 0.8,
 			},
+			workflowsHavingEvaluations: {
+				value: 0,
+				limit: 0,
+			},
 		},
 		license: {
 			planId: '',
@@ -41,6 +45,12 @@ export const useUsageStore = defineStore('usage', () => {
 	const planId = computed(() => state.data.license.planId);
 	const activeWorkflowTriggersLimit = computed(() => state.data.usage.activeWorkflowTriggers.limit);
 	const activeWorkflowTriggersCount = computed(() => state.data.usage.activeWorkflowTriggers.value);
+	const workflowsWithEvaluationsLimit = computed(
+		() => state.data.usage.workflowsHavingEvaluations.limit,
+	);
+	const workflowsWithEvaluationsCount = computed(
+		() => state.data.usage.workflowsHavingEvaluations.value,
+	);
 	const executionPercentage = computed(
 		() => (activeWorkflowTriggersCount.value / activeWorkflowTriggersLimit.value) * 100,
 	);
@@ -103,6 +113,8 @@ export const useUsageStore = defineStore('usage', () => {
 		planId,
 		activeWorkflowTriggersLimit,
 		activeWorkflowTriggersCount,
+		workflowsWithEvaluationsLimit,
+		workflowsWithEvaluationsCount,
 		executionPercentage,
 		instanceId,
 		managementToken,
