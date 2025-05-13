@@ -6,7 +6,7 @@ import { mock } from 'jest-mock-extended';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
-import type { IWebhookResponseCallbackData, WaitingWebhookRequest } from '@/webhooks/webhook.types';
+import type { WaitingWebhookRequest } from '@/webhooks/webhook.types';
 
 describe('WaitingWebhooks', () => {
 	const executionRepository = mock<ExecutionRepository>();
@@ -78,26 +78,5 @@ describe('WaitingWebhooks', () => {
 		 * Assert
 		 */
 		await expect(promise).rejects.toThrowError(ConflictError);
-	});
-
-	it('should mark as test webhook when execution mode is manual', async () => {
-		jest
-			// @ts-expect-error Protected method
-			.spyOn(waitingWebhooks, 'getWebhookExecutionData')
-			// @ts-expect-error Protected method
-			.mockResolvedValue(mock<IWebhookResponseCallbackData>());
-
-		const execution = mock<IExecutionResponse>({
-			finished: false,
-			mode: 'manual',
-			data: {
-				resultData: { lastNodeExecuted: 'someNode', error: undefined },
-			},
-		});
-		executionRepository.findSingleExecution.mockResolvedValue(execution);
-
-		await waitingWebhooks.executeWebhook(mock<WaitingWebhookRequest>(), mock<express.Response>());
-
-		expect(execution.data.isTestWebhook).toBe(true);
 	});
 });
