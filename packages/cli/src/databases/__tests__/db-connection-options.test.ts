@@ -3,12 +3,12 @@ import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import path from 'path';
 
-import { DBConnectionOptions } from '../db-connection-options';
+import { DbConnectionOptions } from '../db-connection-options';
 import { mysqlMigrations } from '../migrations/mysqldb';
 import { postgresMigrations } from '../migrations/postgresdb';
 import { sqliteMigrations } from '../migrations/sqlite';
 
-describe('DBConnectionOptions', () => {
+describe('DbConnectionOptions', () => {
 	const dbConfig = mock<GlobalConfig['database']>({
 		tablePrefix: 'test_prefix_',
 		logging: {
@@ -18,7 +18,7 @@ describe('DBConnectionOptions', () => {
 	});
 	const globalConfig = mock<GlobalConfig>({ database: dbConfig });
 	const instanceSettings = mock<InstanceSettings>();
-	const dbConnectionOptions = new DBConnectionOptions(globalConfig, instanceSettings);
+	const dbConnectionOptions = new DbConnectionOptions(globalConfig, instanceSettings);
 
 	beforeEach(() => jest.resetAllMocks());
 

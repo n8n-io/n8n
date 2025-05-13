@@ -6,7 +6,7 @@ import { DbConnectionTimeoutError, ensureError } from 'n8n-workflow';
 
 import { inTest } from '@/constants';
 
-import { DBConnectionOptions } from './db-connection-options';
+import { DbConnectionOptions } from './db-connection-options';
 import type { Migration } from './types';
 import { wrapMigration } from './utils/migration-helpers';
 
@@ -28,7 +28,7 @@ export class DBConnection {
 
 	constructor(
 		private readonly errorReporter: ErrorReporter,
-		private readonly connectionOptions: DBConnectionOptions,
+		private readonly connectionOptions: DbConnectionOptions,
 	) {
 		this.dataSource = new DataSource(this.options);
 		Container.set(DataSource, this.dataSource);

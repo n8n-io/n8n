@@ -4,7 +4,7 @@ import type { ErrorReporter } from 'n8n-core';
 import { DbConnectionTimeoutError } from 'n8n-workflow';
 
 import { DBConnection } from '@/databases/db-connection';
-import type { DBConnectionOptions } from '@/databases/db-connection-options';
+import type { DbConnectionOptions } from '@/databases/db-connection-options';
 import type { Migration } from '@/databases/types';
 import * as migrationHelper from '@/databases/utils/migration-helpers';
 
@@ -18,7 +18,7 @@ describe('DBConnection', () => {
 	const migrations = [{ name: 'TestMigration1' }, { name: 'TestMigration2' }] as Migration[];
 	const errorReporter = mock<ErrorReporter>();
 	const dataSource = mockDeep<DataSource>({ options: { migrations } });
-	const connectionOptions = mockDeep<DBConnectionOptions>();
+	const connectionOptions = mockDeep<DbConnectionOptions>();
 	const postgresOptions: DataSourceOptions = {
 		type: 'postgres',
 		host: 'localhost',

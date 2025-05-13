@@ -21,7 +21,7 @@ import { sqliteMigrations } from './migrations/sqlite';
 import { subscribers } from './subscribers';
 
 @Service()
-export class DBConnectionOptions {
+export class DbConnectionOptions {
 	constructor(
 		private readonly globalConfig: GlobalConfig,
 		private readonly instanceSettings: InstanceSettings,
