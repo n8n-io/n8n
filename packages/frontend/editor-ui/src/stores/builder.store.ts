@@ -1,6 +1,11 @@
 import { chatWithBuilder } from '@/api/ai';
 import type { VIEWS } from '@/constants';
-import { EDITABLE_CANVAS_VIEWS, STORES, WORKFLOW_BUILDER_EXPERIMENT } from '@/constants';
+import {
+	ASK_AI_SLIDE_OUT_DURATION_MS,
+	EDITABLE_CANVAS_VIEWS,
+	STORES,
+	WORKFLOW_BUILDER_EXPERIMENT,
+} from '@/constants';
 import type { ChatRequest } from '@/types/assistant.types';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
 import { defineStore } from 'pinia';
@@ -94,7 +99,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 				...uiStore.appGridDimensions,
 				width: window.innerWidth,
 			};
-		}, 250);
+		}, ASK_AI_SLIDE_OUT_DURATION_MS + 50);
 	}
 
 	function clearMessages() {
