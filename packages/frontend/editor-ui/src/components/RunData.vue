@@ -95,6 +95,7 @@ import RunDataItemCount from '@/components/RunDataItemCount.vue';
 import RunDataDisplayModeSelect from '@/components/RunDataDisplayModeSelect.vue';
 import RunDataPaginationBar from '@/components/RunDataPaginationBar.vue';
 import { parseAiContent } from '@/utils/aiUtils';
+import { usePostHog } from '@/stores/posthog.store';
 
 const LazyRunDataTable = defineAsyncComponent(
 	async () => await import('@/components/RunDataTable.vue'),
@@ -230,6 +231,7 @@ const sourceControlStore = useSourceControlStore();
 const rootStore = useRootStore();
 const uiStore = useUIStore();
 const schemaPreviewStore = useSchemaPreviewStore();
+const posthogStore = usePostHog();
 
 const toast = useToast();
 const route = useRoute();
@@ -2185,11 +2187,11 @@ defineExpose({ enterEditMode });
 	width: 300px;
 	overflow: hidden;
 	background-color: var(--color-foreground-xlight);
-	margin-right: var(--spacing-s);
-	margin-bottom: var(--spacing-s);
+	margin-right: var(--ndv-spacing);
+	margin-bottom: var(--ndv-spacing);
 	border-radius: var(--border-radius-base);
 	border: var(--border-base);
-	padding: var(--spacing-s);
+	padding: var(--ndv-spacing);
 }
 
 .binaryHeader {
@@ -2244,7 +2246,7 @@ defineExpose({ enterEditMode });
 
 	display: flex;
 	justify-content: center;
-	margin-bottom: var(--spacing-s);
+	margin-bottom: var(--ndv-spacing);
 }
 
 .editMode {
@@ -2252,8 +2254,8 @@ defineExpose({ enterEditMode });
 	display: flex;
 	flex-direction: column;
 	justify-content: stretch;
-	padding-left: var(--spacing-s);
-	padding-right: var(--spacing-s);
+	padding-left: var(--ndv-spacing);
+	padding-right: var(--ndv-spacing);
 }
 
 .editModeBody {
@@ -2269,8 +2271,8 @@ defineExpose({ enterEditMode });
 	width: 100%;
 	justify-content: space-between;
 	align-items: center;
-	padding-top: var(--spacing-s);
-	padding-bottom: var(--spacing-s);
+	padding-top: var(--ndv-spacing);
+	padding-bottom: var(--ndv-spacing);
 }
 
 .editModeFooterInfotip {
@@ -2283,7 +2285,7 @@ defineExpose({ enterEditMode });
 	display: flex;
 	justify-content: flex-end;
 	align-items: center;
-	margin-left: var(--spacing-s);
+	margin-left: var(--ndv-spacing);
 }
 
 .stretchVertically {
@@ -2297,8 +2299,8 @@ defineExpose({ enterEditMode });
 
 .hintCallout {
 	margin-bottom: var(--spacing-xs);
-	margin-left: var(--spacing-s);
-	margin-right: var(--spacing-s);
+	margin-left: var(--ndv-spacing);
+	margin-right: var(--ndv-spacing);
 
 	.compact & {
 		margin: 0 var(--spacing-2xs) var(--spacing-2xs) var(--spacing-2xs);
@@ -2306,7 +2308,7 @@ defineExpose({ enterEditMode });
 }
 
 .schema {
-	padding: 0 var(--spacing-s);
+	padding: 0 var(--ndv-spacing);
 }
 
 .search,

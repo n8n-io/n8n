@@ -33,7 +33,7 @@ import {
 import NodeTitle from '@/components/NodeTitle.vue';
 import ParameterInputList from '@/components/ParameterInputList.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
-import NodeSettingsTabs from '@/components/NodeSettingsTabs.vue';
+import NodeSettingsTabs, { type Tab } from '@/components/NodeSettingsTabs.vue';
 import NodeWebhooks from '@/components/NodeWebhooks.vue';
 import NDVSubConnections from '@/components/NDVSubConnections.vue';
 import NodeSettingsHeader from '@/components/NodeSettingsHeader.vue';
@@ -102,7 +102,7 @@ const externalHooks = useExternalHooks();
 const i18n = useI18n();
 
 const nodeValid = ref(true);
-const openPanel = ref<'params' | 'settings'>('params');
+const openPanel = ref<Tab>('params');
 const nodeValues = ref<INodeParameters>({
 	color: '#ff0000',
 	alwaysOutputData: false,
@@ -945,7 +945,7 @@ const openSettings = () => {
 	openPanel.value = 'settings';
 };
 
-const onTabSelect = (tab: 'params' | 'settings') => {
+const onTabSelect = (tab: Tab) => {
 	openPanel.value = tab;
 };
 

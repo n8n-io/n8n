@@ -1,7 +1,7 @@
-import { useActiveElement, useEventListener } from '@vueuse/core';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
-import type { MaybeRef, Ref } from 'vue';
-import { computed, unref } from 'vue';
+import { useActiveElement, useEventListener } from '@vueuse/core';
+import type { MaybeRefOrGetter } from 'vue';
+import { computed, toValue } from 'vue';
 
 type KeyMap = Record<string, (event: KeyboardEvent) => void>;
 
@@ -20,15 +20,15 @@ type KeyMap = Record<string, (event: KeyboardEvent) => void>;
  * ```
  */
 export const useKeybindings = (
-	keymap: Ref<KeyMap>,
+	keymap: MaybeRefOrGetter<KeyMap>,
 	options?: {
-		disabled: MaybeRef<boolean>;
+		disabled: MaybeRefOrGetter<boolean>;
 	},
 ) => {
 	const activeElement = useActiveElement();
 	const { isCtrlKeyPressed } = useDeviceSupport();
 
-	const isDisabled = computed(() => unref(options?.disabled));
+	const isDisabled = computed(() => toValue(options?.disabled));
 
 	const ignoreKeyPresses = computed(() => {
 		if (!activeElement.value) return false;
@@ -43,7 +43,7 @@ export const useKeybindings = (
 
 	const normalizedKeymap = computed(() =>
 		Object.fromEntries(
-			Object.entries(keymap.value).flatMap(([shortcut, handler]) => {
+			Object.entries(toValue(keymap)).flatMap(([shortcut, handler]) => {
 				const shortcuts = shortcut.split('|');
 				return shortcuts.map((s) => [normalizeShortcutString(s), handler]);
 			}),

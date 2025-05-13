@@ -860,7 +860,7 @@ watch(focusedMappableInput, (curr) => {
 
 .tableRightMargin {
 	// becomes necessary with large tables
-	width: var(--spacing-s);
+	width: var(--ndv-spacing);
 	border-right: none !important;
 	border-top: none !important;
 	border-bottom: none !important;

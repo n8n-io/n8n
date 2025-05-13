@@ -17,7 +17,6 @@ const enum FloatingNodePosition {
 const props = defineProps<Props>();
 const workflowsStore = useWorkflowsStore();
 const nodeTypesStore = useNodeTypesStore();
-const workflow = workflowsStore.getCurrentWorkflow();
 const emit = defineEmits<{
 	switchSelectedNode: [nodeName: string];
 }>();
@@ -66,7 +65,9 @@ function getINodesFromNames(names: string[]): NodeConfig[] {
 const connectedNodes = computed<
 	Record<FloatingNodePosition, Array<{ node: INodeUi; nodeType: INodeTypeDescription }>>
 >(() => {
+	const workflow = workflowsStore.getCurrentWorkflow();
 	const rootName = props.rootNode.name;
+
 	return {
 		[FloatingNodePosition.top]: getINodesFromNames(
 			workflow.getChildNodes(rootName, 'ALL_NON_MAIN'),

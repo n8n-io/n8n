@@ -6,6 +6,7 @@ import { jsonParse, NodeHelpers, NodeConnectionTypes } from 'n8n-workflow';
 import type {
 	IRunDataDisplayMode,
 	IUpdateInformation,
+	MainPanelType,
 	NodePanelType,
 	ResizeData,
 	TargetItem,
@@ -45,7 +46,7 @@ import { storeToRefs } from 'pinia';
 import { useStyles } from '@/composables/useStyles';
 import { getNodeIconSource } from '@/utils/nodeIcon';
 import { useThrottleFn } from '@vueuse/core';
-import { clamp } from 'lodash-es';
+import { useKeybindings } from '@/composables/useKeybindings';
 
 const emit = defineEmits<{
 	saveKeyboardShortcut: [event: KeyboardEvent];
@@ -104,13 +105,12 @@ const isInputPaneActive = ref(false);
 const isOutputPaneActive = ref(false);
 const isPairedItemHoveringEnabled = ref(true);
 const dialogRef = ref<HTMLDialogElement>();
-const mainPanelWidth = ref(1);
-const inputPanelWidth = ref(1);
-const outputPanelWidth = ref(1);
 const containerRect = ref<DOMRect>();
 const containerRef = ref<HTMLDivElement>();
+const mainPanelRef = ref<HTMLDivElement>();
+const panelWidth = ref({ left: 20, main: 60, right: 20 });
 
-//computed
+// computed
 
 const pushRef = computed(() => ndvStore.pushRef);
 
@@ -219,14 +219,6 @@ const showTriggerPanel = computed(() => {
 	);
 });
 
-const hasOutputConnection = computed(() => {
-	if (!activeNode.value) return false;
-	const outgoingConnections = workflowsStore.outgoingConnectionsByNodeName(activeNode.value.name);
-
-	// Check if there's at-least one output connection
-	return (Object.values(outgoingConnections)?.[0]?.[0] ?? []).length > 0;
-});
-
 const isExecutableTriggerNode = computed(() => {
 	if (!activeNodeType.value) return false;
 
@@ -316,11 +308,6 @@ const canLinkRuns = computed(
 
 const linked = computed(() => isLinkingEnabled.value && canLinkRuns.value);
 
-const gridColumns = computed(() => {
-	if (!hasInputPanel.value) return `${mainPanelWidth.value}fr ${outputPanelWidth.value}fr`;
-	return `${inputPanelWidth.value}fr ${mainPanelWidth.value}fr ${outputPanelWidth.value}fr`;
-});
-
 const outputPanelEditMode = computed(() => ndvStore.outputPanelEditMode);
 
 const isWorkflowRunning = computed(() => uiStore.isActionActive.workflowRunning);
@@ -363,14 +350,13 @@ const supportedResizeDirections = computed(() =>
 	hasInputPanel.value ? ['left', 'right'] : ['right'],
 );
 
-const mainPanelWidthPx = computed(() => fractionToPx(mainPanelWidth.value));
+const containerWidth = computed(() => containerRect.value?.width ?? MIN_MAIN_PANEL_WIDTH);
 
-const mainPanelCenter = computed(
-	() => fractionToPx(inputPanelWidth.value) + mainPanelWidthPx.value / 2,
-);
-
-const minMainPanelWidth = computed(() => pxToFraction(MIN_MAIN_PANEL_WIDTH));
-const minPanelWidth = computed(() => pxToFraction(MIN_PANEL_WIDTH));
+const currentNodePaneType = computed((): MainPanelType => {
+	if (!hasInputPanel.value) return 'inputless';
+	if (!isDraggable.value) return 'dragless';
+	return activeNodeType.value?.parameterPane ?? 'regular';
+});
 
 //methods
 
@@ -440,7 +426,8 @@ const onDragEnd = () => {
 		// example method for tracking
 		window_width: containerWidth.value,
 		start_position: mainPanelPosition.value,
-		end_position: (inputPanelWidth.value * containerWidth.value) / 3,
+		// TODO:
+		// end_position: mainPanelDimensions.value.relativeLeft,
 		node_type: activeNodeType.value ? activeNodeType.value.name : '',
 		push_ref: pushRef.value,
 		workflow_id: workflowsStore.workflowId,
@@ -537,6 +524,8 @@ const close = async () => {
 	ndvStore.resetNDVPushRef();
 };
 
+useKeybindings({ Escape: close });
+
 const trackRunChange = (run: number, pane: string) => {
 	telemetry.track('User changed ndv run dropdown', {
 		push_ref: pushRef.value,
@@ -607,72 +596,43 @@ const onRename = (name: string) => {
 	emit('renameNode', name);
 };
 
-const containerWidth = computed(() => containerRef.value?.clientWidth ?? 0);
-
 const onResize = (event: ResizeData) => {
-	if (!event) return;
-
-	// Calculate the new main panel width as a proportion
-	const newMainPanelWidth = pxToFraction(event.width);
+	console.log(event);
+	const deltaPercent = (event.dX / containerWidth.value) * 100;
+	const initialLeft = panelWidth.value.left;
+	const initialMain = panelWidth.value.main;
+	const initialRight = panelWidth.value.right;
 
 	if (event.direction === 'left') {
-		updatePanelWidths({
-			main: newMainPanelWidth,
-			input: GRID_FRACTION_TOTAL - newMainPanelWidth - outputPanelWidth.value,
-		});
-	}
-
-	if (event.direction === 'right') {
-		updatePanelWidths({
-			main: newMainPanelWidth,
-			output: GRID_FRACTION_TOTAL - newMainPanelWidth - inputPanelWidth.value,
-		});
+		const newLeft = Math.max(5, initialLeft + deltaPercent);
+		const newMain = Math.max(5, initialMain - deltaPercent);
+		console.log({ newMain, newLeft, panelWidth });
+		if (newLeft + newMain + initialRight <= 100) {
+			panelWidth.value.left = newLeft;
+			panelWidth.value.main = newMain;
+		}
+	} else if (event.direction === 'right') {
+		console.log(deltaPercent);
+		const newMain = Math.max(5, initialMain + deltaPercent);
+		const newRight = Math.max(5, initialRight - deltaPercent);
+		console.log({ newMain, newRight, panelWidth }, panelWidth.value.left + newMain + newRight);
+		if (panelWidth.value.left + newMain + newRight <= 100) {
+			panelWidth.value.main = newMain;
+			panelWidth.value.right = newRight;
+		}
 	}
 };
 
 const onResizeThrottled = useThrottleFn(onResize, 16);
 
 const onDrag = (position: XYPosition) => {
-	const diff = mainPanelCenter.value - position[0];
-	const containerOffset = containerRect.value?.x ?? 0;
-
-	updatePanelWidths({
-		input: inputPanelWidth.value - pxToFraction(diff + containerOffset),
-		output: outputPanelWidth.value + pxToFraction(diff + containerOffset),
-	});
-};
-
-const updatePanelWidths = ({
-	main,
-	input,
-	output,
-}: Partial<{ main: number; input: number; output: number }>) => {
-	if (input)
-		inputPanelWidth.value = clamp(
-			input,
-			minPanelWidth.value,
-			3 - mainPanelWidth.value - outputPanelWidth.value,
-		);
-	if (main)
-		mainPanelWidth.value = clamp(
-			main,
-			minMainPanelWidth.value,
-			3 - inputPanelWidth.value - outputPanelWidth.value,
-		);
-	if (output)
-		outputPanelWidth.value = clamp(
-			output,
-			minPanelWidth.value,
-			3 - mainPanelWidth.value - inputPanelWidth.value,
-		);
-};
-
-const fractionToPx = (fraction: number) => {
-	return (fraction * containerWidth.value) / GRID_FRACTION_TOTAL;
-};
-
-const pxToFraction = (px: number) => {
-	return (px / containerWidth.value) * GRID_FRACTION_TOTAL;
+	const deltaPercent = (position[0] / containerWidth.value) * 100;
+	const newLeft = Math.max(5, panelWidth.value.left + deltaPercent);
+	const newRight = Math.max(5, panelWidth.value.right - deltaPercent);
+	if (newLeft + panelWidth.value.main + newRight <= 100) {
+		panelWidth.value.left = newLeft;
+		panelWidth.value.right = newRight;
+	}
 };
 
 const handleChangeDisplayMode = (pane: NodePanelType, mode: IRunDataDisplayMode) => {
@@ -760,10 +720,39 @@ watch(inputNodeName, (nodeName) => {
 	}, 0);
 });
 
-watch(inputRun, (inputRun) => {
+watch(inputRun, (run) => {
 	setTimeout(() => {
-		ndvStore.setInputRunIndex(inputRun);
+		ndvStore.setInputRunIndex(run);
 	}, 0);
+});
+
+watch(mainPanelRef, (mainPanel) => {
+	if (!mainPanel) return;
+
+	// Based on https://github.com/unovue/reka-ui/blob/v2/packages/core/src/FocusScope/utils.ts
+	// Should use FocusScope here from Reka UI when we have it
+	function getTabbableCandidates(element: HTMLElement) {
+		const nodes: HTMLElement[] = [];
+		const walker = document.createTreeWalker(element, NodeFilter.SHOW_ELEMENT, {
+			acceptNode: (node: HTMLInputElement) => {
+				const isHiddenInput = node.tagName === 'INPUT' && node.type === 'hidden';
+				if (node.disabled || node.hidden || isHiddenInput) return NodeFilter.FILTER_SKIP;
+				// `.tabIndex` is not the same as the `tabindex` attribute. It works on the
+				// runtime's understanding of tabbability, so this automatically accounts
+				// for any kind of element that could be tabbed to.
+				return node.tabIndex >= 0 ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP;
+			},
+		});
+		while (walker.nextNode()) nodes.push(walker.currentNode as HTMLElement);
+		// we do not take into account the order of nodes with positive `tabIndex` as it
+		// hinders accessibility to have tab order different from visual order.
+		return nodes;
+	}
+
+	const firstFocusableElement = getTabbableCandidates(mainPanel)[0];
+	if (firstFocusableElement) {
+		firstFocusableElement.focus();
+	}
 });
 
 onMounted(() => {
@@ -783,20 +772,14 @@ onBeforeUnmount(() => {
 
 		<dialog
 			ref="dialogRef"
-			v-trap-focus
 			open
 			aria-modal="true"
 			data-test-id="ndv-modal"
 			:class="$style.dialog"
 			:style="{ zIndex: APP_Z_INDEXES.NDV }"
-			@keydown.escape="close"
 		>
 			<NDVFloatingNodes :root-node="activeNode" @switch-selected-node="onSwitchSelectedNode" />
-			<div
-				ref="containerRef"
-				:class="$style.container"
-				:style="{ gridTemplateColumns: gridColumns }"
-			>
+			<div ref="containerRef" :class="$style.container">
 				<NDVHeader
 					:class="$style.header"
 					:node-name="activeNode.name"
@@ -805,104 +788,114 @@ onBeforeUnmount(() => {
 					@close="close"
 					@rename="onRename"
 				/>
-				<div v-if="hasInputPanel" :class="$style.column">
-					<TriggerPanel
-						v-if="showTriggerPanel"
-						:node-name="activeNode.name"
-						:push-ref="pushRef"
-						@execute="onNodeExecute"
-						@activate="onWorkflowActivate"
-					/>
-					<InputPanel
-						v-else-if="!isTriggerNode"
-						:workflow="workflowObject"
-						:can-link-runs="canLinkRuns"
-						:run-index="inputRun"
-						:linked-runs="linked"
-						:current-node-name="inputNodeName"
-						:push-ref="pushRef"
-						:read-only="readOnly || hasForeignCredential"
-						:is-production-execution-preview="isProductionExecutionPreview"
-						:is-pane-active="isInputPaneActive"
-						:display-mode="inputPanelDisplayMode"
-						@activate-pane="activateInputPane"
-						@link-run="onLinkRunToInput"
-						@unlink-run="() => onUnlinkRun('input')"
-						@run-change="onRunInputIndexChange"
-						@open-settings="openSettings"
-						@change-input-node="onInputNodeChange"
-						@execute="onNodeExecute"
-						@table-mounted="onInputTableMounted"
-						@item-hover="onInputItemHover"
-						@search="onSearch"
-						@display-mode-change="handleChangeDisplayMode('input', $event)"
-					/>
-				</div>
-
-				<N8nResizeWrapper
-					:width="mainPanelWidthPx"
-					:supported-directions="supportedResizeDirections"
-					:grid-size="8"
-					outset
-					@resize="onResizeThrottled"
-					@resizestart="onDragStart"
-					@resizeend="onDragEnd"
-				>
-					<div :class="$style.main">
-						<PanelDragButtonV2
-							v-if="isDraggable"
-							:class="$style.draggable"
-							:can-move-left="true"
-							:can-move-right="true"
-							@drag="onDragThrottled"
-							@dragstart="onDragStart"
-							@dragend="onDragEnd"
-						/>
-						<NodeSettings
-							:event-bus="settingsEventBus"
-							:dragging="isDragging"
+				<main :class="$style.main">
+					<div
+						v-if="hasInputPanel"
+						:class="$style.column"
+						:style="{ width: `${panelWidth.left}%` }"
+					>
+						<TriggerPanel
+							v-if="showTriggerPanel"
+							:node-name="activeNode.name"
 							:push-ref="pushRef"
-							:node-type="activeNodeType"
-							:foreign-credentials="foreignCredentials"
-							:read-only="readOnly"
-							:block-u-i="blockUi && showTriggerPanel"
-							:executable="!readOnly"
-							:input-size="inputSize"
-							:class="$style.settings"
 							@execute="onNodeExecute"
-							@stop-execution="onStopExecution"
-							@redraw-required="redrawRequired = true"
 							@activate="onWorkflowActivate"
-							@switch-selected-node="onSwitchSelectedNode"
-							@open-connection-node-creator="onOpenConnectionNodeCreator"
+						/>
+						<InputPanel
+							v-else-if="!isTriggerNode"
+							:workflow="workflowObject"
+							:can-link-runs="canLinkRuns"
+							:run-index="inputRun"
+							:linked-runs="linked"
+							:current-node-name="inputNodeName"
+							:push-ref="pushRef"
+							:read-only="readOnly || hasForeignCredential"
+							:is-production-execution-preview="isProductionExecutionPreview"
+							:is-pane-active="isInputPaneActive"
+							:display-mode="inputPanelDisplayMode"
+							@activate-pane="activateInputPane"
+							@link-run="onLinkRunToInput"
+							@unlink-run="() => onUnlinkRun('input')"
+							@run-change="onRunInputIndexChange"
+							@open-settings="openSettings"
+							@change-input-node="onInputNodeChange"
+							@execute="onNodeExecute"
+							@table-mounted="onInputTableMounted"
+							@item-hover="onInputItemHover"
+							@search="onSearch"
+							@display-mode-change="handleChangeDisplayMode('input', $event)"
 						/>
 					</div>
-				</N8nResizeWrapper>
 
-				<OutputPanel
-					data-test-id="output-panel"
-					:workflow="workflowObject"
-					:can-link-runs="canLinkRuns"
-					:run-index="outputRun"
-					:linked-runs="linked"
-					:push-ref="pushRef"
-					:is-read-only="readOnly || hasForeignCredential"
-					:block-u-i="blockUi && isTriggerNode && !isExecutableTriggerNode"
-					:is-production-execution-preview="isProductionExecutionPreview"
-					:is-pane-active="isOutputPaneActive"
-					:display-mode="outputPanelDisplayMode"
-					:class="$style.column"
-					@activate-pane="activateOutputPane"
-					@link-run="onLinkRunToOutput"
-					@unlink-run="() => onUnlinkRun('output')"
-					@run-change="onRunOutputIndexChange"
-					@open-settings="openSettings"
-					@table-mounted="onOutputTableMounted"
-					@item-hover="onOutputItemHover"
-					@search="onSearch"
-					@execute="onNodeExecute"
-					@display-mode-change="handleChangeDisplayMode('output', $event)"
-				/>
+					<N8nResizeWrapper
+						:width="(panelWidth.main / 100) * containerWidth"
+						:min-width="MIN_PANEL_WIDTH"
+						:supported-directions="supportedResizeDirections"
+						:grid-size="8"
+						:class="$style.column"
+						:style="{ width: `${panelWidth.main}%` }"
+						outset
+						@resize="onResizeThrottled"
+						@resizestart="onDragStart"
+						@resizeend="onDragEnd"
+					>
+						<div ref="mainPanelRef" :class="$style.main">
+							<PanelDragButtonV2
+								v-if="isDraggable"
+								:class="$style.draggable"
+								:can-move-left="true"
+								:can-move-right="true"
+								@drag="onDragThrottled"
+								@dragstart="onDragStart"
+								@dragend="onDragEnd"
+							/>
+							<NodeSettings
+								:event-bus="settingsEventBus"
+								:dragging="isDragging"
+								:push-ref="pushRef"
+								:node-type="activeNodeType"
+								:foreign-credentials="foreignCredentials"
+								:read-only="readOnly"
+								:block-u-i="blockUi && showTriggerPanel"
+								:executable="!readOnly"
+								:input-size="inputSize"
+								:class="$style.settings"
+								@execute="onNodeExecute"
+								@stop-execution="onStopExecution"
+								@redraw-required="redrawRequired = true"
+								@activate="onWorkflowActivate"
+								@switch-selected-node="onSwitchSelectedNode"
+								@open-connection-node-creator="onOpenConnectionNodeCreator"
+							/>
+						</div>
+					</N8nResizeWrapper>
+
+					<OutputPanel
+						data-test-id="output-panel"
+						:workflow="workflowObject"
+						:can-link-runs="canLinkRuns"
+						:run-index="outputRun"
+						:linked-runs="linked"
+						:push-ref="pushRef"
+						:is-read-only="readOnly || hasForeignCredential"
+						:block-u-i="blockUi && isTriggerNode && !isExecutableTriggerNode"
+						:is-production-execution-preview="isProductionExecutionPreview"
+						:is-pane-active="isOutputPaneActive"
+						:display-mode="outputPanelDisplayMode"
+						:class="$style.column"
+						:style="{ width: `${panelWidth.right}%` }"
+						@activate-pane="activateOutputPane"
+						@link-run="onLinkRunToOutput"
+						@unlink-run="() => onUnlinkRun('output')"
+						@run-change="onRunOutputIndexChange"
+						@open-settings="openSettings"
+						@table-mounted="onOutputTableMounted"
+						@item-hover="onOutputItemHover"
+						@search="onSearch"
+						@execute="onNodeExecute"
+						@display-mode-change="handleChangeDisplayMode('output', $event)"
+					/>
+				</main>
 			</div>
 		</dialog>
 	</Teleport>
@@ -928,14 +921,13 @@ onBeforeUnmount(() => {
 	background: none;
 	padding: 0;
 	margin: 0;
+	display: flex;
 }
 
 .container {
-	display: grid;
-	height: 100%;
-	width: 100%;
-	grid-template-rows: 42px 1fr;
-	gap: 1px;
+	display: flex;
+	flex-direction: column;
+	flex-grow: 1;
 	background: var(--border-color-base);
 	border: var(--border-base);
 	border-radius: var(--border-radius-large);
@@ -943,12 +935,21 @@ onBeforeUnmount(() => {
 	color: var(--color-text-base);
 }
 
+.main {
+	width: 0;
+	flex-grow: 1;
+	display: flex;
+	align-items: stretch;
+}
+
 .column {
-	overflow: hidden;
+	+ .column {
+		border-left: var(--border-base);
+	}
 }
 
 .header {
-	grid-column: span 3;
+	border-bottom: var(--border-base);
 }
 
 .main {

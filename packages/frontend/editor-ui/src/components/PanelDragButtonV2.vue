@@ -65,11 +65,20 @@ const onDragStart = () => {
 	border-top-right-radius: var(--border-radius-base);
 
 	.arrow {
+		opacity: 0;
 		width: 7px;
 	}
 
 	.handle {
 		width: 11px;
+		transform: rotate(90deg);
+	}
+
+	&:hover,
+	&.dragging {
+		.arrow {
+			opacity: 1;
+		}
 	}
 }
 </style>

@@ -456,19 +456,18 @@ function activatePane() {
 						<template #description>
 							<i18n-t tag="span" keypath="ndv.input.noOutputData.v2.description">
 								<template #link>
-									<N8nTooltip :content="i18n.baseText('ndv.input.noOutputData.v2.tooltip')">
-										<NodeExecuteButton
-											text
-											hide-icon
-											transparent
-											:node-name="(isActiveNodeConfig ? rootNode : activeNode?.name) ?? ''"
-											:label="i18n.baseText('ndv.input.noOutputData.v2.action')"
-											:class="$style.link"
-											telemetry-source="inputs"
-											data-test-id="execute-previous-node"
-											@execute="onNodeExecute"
-										/>
-									</N8nTooltip>
+									<NodeExecuteButton
+										hide-icon
+										transparent
+										type="secondary"
+										:node-name="(isActiveNodeConfig ? rootNode : activeNode?.name) ?? ''"
+										:label="i18n.baseText('ndv.input.noOutputData.v2.action')"
+										:tooltip="i18n.baseText('ndv.input.noOutputData.v2.tooltip')"
+										tooltip-placement="bottom"
+										telemetry-source="inputs"
+										data-test-id="execute-previous-node"
+										@execute="onNodeExecute"
+									/>
 									<br />
 								</template>
 							</i18n-t>
@@ -681,12 +680,5 @@ function activatePane() {
 	letter-spacing: 3px;
 	font-size: var(--font-size-s);
 	font-weight: var(--font-weight-bold);
-}
-
-.link {
-	display: inline;
-	padding: 0;
-	font-size: var(--font-size-s);
-	font-weight: var(--font-weight-regular);
 }
 </style>

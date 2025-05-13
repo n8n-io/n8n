@@ -35,6 +35,12 @@ function onSave() {
 	isRenaming.value = false;
 }
 
+function onCancel(event: KeyboardEvent) {
+	event.stopPropagation();
+	isRenaming.value = false;
+	text.value = props.nodeName;
+}
+
 onClickOutside(inputRef, onSave);
 </script>
 
@@ -51,13 +57,17 @@ onClickOutside(inputRef, onSave);
 				size="small"
 				autosize
 				@keydown.enter="onSave"
+				@keydown.esc="onCancel"
 			/>
 			<p v-if="nodeName !== nodeTypeName && !isRenaming" :class="$style.subtitle">
 				{{ nodeTypeName }}
 			</p>
 		</div>
 
-		<N8nTooltip :content="i18n.baseText('ndv.close.tooltip')">
+		<N8nTooltip>
+			<template #content>
+				{{ i18n.baseText('ndv.close.tooltip') }}
+			</template>
 			<N8nIconButton icon="times" type="tertiary" @click="emit('close')" />
 		</N8nTooltip>
 	</header>

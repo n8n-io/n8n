@@ -28,9 +28,8 @@ defineSlots<{
 }
 
 .title {
-	font-size: var(--font-size-2xs);
+	font-size: var(--font-size-m);
 	font-weight: var(--font-weight-bold);
-	text-transform: uppercase;
 	color: var(--color-text-base);
 	margin: 0;
 }

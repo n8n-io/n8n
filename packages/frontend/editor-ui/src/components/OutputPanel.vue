@@ -429,9 +429,9 @@ const activatePane = () => {
 						>
 							<template #link>
 								<NodeExecuteButton
-									text
 									hide-icon
 									transparent
+									type="secondary"
 									:node-name="activeNode?.name ?? ''"
 									:label="
 										i18n.baseText(
@@ -440,10 +440,10 @@ const activatePane = () => {
 												: 'ndv.output.noOutputData.v2.action',
 										)
 									"
-									:class="$style.link"
 									telemetry-source="inputs"
 									@execute="emit('execute')"
 								/>
+								<br />
 							</template>
 						</i18n-t>
 					</template>

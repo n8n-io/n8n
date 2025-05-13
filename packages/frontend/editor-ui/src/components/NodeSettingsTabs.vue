@@ -15,8 +15,9 @@ import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
+import { N8nTabs } from '@n8n/design-system';
 
-export type Tab = 'settings' | 'params';
+export type Tab = 'settings' | 'params' | 'communityNode' | 'docs';
 type Props = {
 	modelValue?: Tab;
 	nodeType?: INodeTypeDescription | null;
@@ -81,8 +82,8 @@ const documentationUrl = computed(() => {
 	return `${BUILTIN_NODES_DOCS_URL}?${utmParams.toString()}`;
 });
 
-const options = computed<ITab[]>(() => {
-	const options: ITab[] = [
+const options = computed(() => {
+	const options: Array<ITab<Tab>> = [
 		{
 			label: i18n.baseText('nodeSettings.parameters'),
 			value: 'params',

@@ -53,7 +53,7 @@ const emit = defineEmits<{
 
 <style lang="scss" module>
 .header {
-	--spacing-bottom-tab: calc(var(--spacing-s) - 2px);
+	--spacing-bottom-tab: calc(var(--spacing-xs));
 	--font-size-tab: var(--font-size-2xs);
 	--color-tabs-arrow-buttons: var(--color-background-xlight);
 	--font-weight-tab: var(--font-weight-bold);
@@ -62,15 +62,12 @@ const emit = defineEmits<{
 	align-items: center;
 	height: 40px;
 	padding-right: var(--spacing-s);
-	padding-top: var(--spacing-2xs);
+
 	border-bottom: var(--border-base);
 }
 
 .tabs {
-	margin-top: var(--spacing-5xs);
-}
-
-.execute {
-	margin-bottom: var(--spacing-2xs);
+	padding-top: calc(var(--spacing-xs) + 1px);
+	height: 100%;
 }
 </style>
