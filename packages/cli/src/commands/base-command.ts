@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import { LicenseState } from '@n8n/backend-common';
+import { inDevelopment, inTest, LicenseState } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import { Container } from '@n8n/di';
@@ -17,7 +17,7 @@ import { ensureError, sleep, UserError } from 'n8n-workflow';
 
 import type { AbstractServer } from '@/abstract-server';
 import config from '@/config';
-import { N8N_VERSION, N8N_RELEASE_DATE, inDevelopment, inTest } from '@/constants';
+import { N8N_VERSION, N8N_RELEASE_DATE } from '@/constants';
 import * as CrashJournal from '@/crash-journal';
 import { DbConnection } from '@/databases/db-connection';
 import { getDataDeduplicationService } from '@/deduplication';

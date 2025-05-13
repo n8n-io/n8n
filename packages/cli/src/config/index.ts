@@ -1,3 +1,4 @@
+import { inTest } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import convict from 'convict';
@@ -8,7 +9,7 @@ import { Logger } from 'n8n-core';
 import { setGlobalState, UserError } from 'n8n-workflow';
 import assert from 'node:assert';
 
-import { inTest, inE2ETests } from '@/constants';
+import { inE2ETests } from '@/constants';
 
 const globalConfig = Container.get(GlobalConfig);
 

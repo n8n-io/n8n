@@ -1456,6 +1456,9 @@ importers:
       '@langchain/core':
         specifier: 'catalog:'
         version: 0.3.30(openai@4.78.1(encoding@0.1.13)(zod@3.24.1))
+      '@n8n/backend-common':
+        specifier: workspace:^
+        version: link:../@n8n/backend-common
       '@n8n/client-oauth2':
         specifier: workspace:*
         version: link:../@n8n/client-oauth2

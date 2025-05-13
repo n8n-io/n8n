@@ -18,9 +18,12 @@ jest.mock('ws', () => ({
 	Server: jest.fn(),
 }));
 jest.unmock('@/push');
-jest.mock('@/constants', () => ({
-	inProduction: true,
-}));
+jest.mock('@n8n/backend-common', () => {
+	return {
+		...jest.requireActual('@n8n/backend-common'),
+		inProduction: true,
+	};
+});
 
 describe('Push', () => {
 	const pushRef = 'valid-push-ref';
