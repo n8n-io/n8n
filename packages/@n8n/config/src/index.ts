@@ -30,6 +30,7 @@ import { WorkflowsConfig } from './configs/workflows.config';
 import { Config, Env, Nested } from './decorators';
 
 export { Config, Env, Nested } from './decorators';
+export { DatabaseConfig } from './configs/database.config';
 export { TaskRunnersConfig } from './configs/runners.config';
 export { SecurityConfig } from './configs/security.config';
 export { ExecutionsConfig } from './configs/executions.config';

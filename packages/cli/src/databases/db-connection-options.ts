@@ -1,4 +1,4 @@
-import { GlobalConfig } from '@n8n/config';
+import { DatabaseConfig } from '@n8n/config';
 import { entities } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { DataSourceOptions, LoggerOptions } from '@n8n/typeorm';
@@ -23,12 +23,12 @@ import { subscribers } from './subscribers';
 @Service()
 export class DbConnectionOptions {
 	constructor(
-		private readonly globalConfig: GlobalConfig,
+		private readonly config: DatabaseConfig,
 		private readonly instanceSettings: InstanceSettings,
 	) {}
 
 	getOverrides(dbType: 'postgresdb' | 'mysqldb') {
-		const dbConfig = this.globalConfig.database[dbType];
+		const dbConfig = this.config[dbType];
 		return {
 			database: dbConfig.database,
 			host: dbConfig.host,
@@ -39,7 +39,7 @@ export class DbConnectionOptions {
 	}
 
 	getOptions(): DataSourceOptions {
-		const { type: dbType } = this.globalConfig.database;
+		const { type: dbType } = this.config;
 		switch (dbType) {
 			case 'sqlite':
 				return this.getSqliteConnectionOptions();
@@ -54,7 +54,7 @@ export class DbConnectionOptions {
 	}
 
 	private getCommonOptions() {
-		const { tablePrefix: entityPrefix, logging: loggingConfig } = this.globalConfig.database;
+		const { tablePrefix: entityPrefix, logging: loggingConfig } = this.config;
 
 		let loggingOption: LoggerOptions = loggingConfig.enabled;
 		if (loggingOption) {
@@ -79,7 +79,7 @@ export class DbConnectionOptions {
 	}
 
 	private getSqliteConnectionOptions(): SqliteConnectionOptions | SqlitePooledConnectionOptions {
-		const { sqlite: sqliteConfig } = this.globalConfig.database;
+		const { sqlite: sqliteConfig } = this.config;
 		const { n8nFolder } = this.instanceSettings;
 
 		const commonOptions = {
@@ -107,7 +107,7 @@ export class DbConnectionOptions {
 	}
 
 	private getPostgresConnectionOptions(): PostgresConnectionOptions {
-		const { postgresdb: postgresConfig } = this.globalConfig.database;
+		const { postgresdb: postgresConfig } = this.config;
 		const {
 			ssl: { ca: sslCa, cert: sslCert, key: sslKey, rejectUnauthorized: sslRejectUnauthorized },
 		} = postgresConfig;
