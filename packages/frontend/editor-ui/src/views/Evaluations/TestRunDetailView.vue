@@ -32,6 +32,10 @@ const workflowName = computed(() => workflowsStore.getWorkflowById(workflowId.va
 
 const run = computed(() => evaluationStore.testRunsById[runId.value]);
 
+const runErrorDetails = computed(() => {
+	return run.value?.errorDetails as Record<string, string | number>;
+});
+
 const filteredTestCases = computed(() =>
 	orderBy(testCases.value, (record) => record.runAt, ['asc']).map((record, index) =>
 		Object.assign(record, { index: index + 1 }),
@@ -147,12 +151,14 @@ onMounted(async () => {
 			icon="exclamation-triangle"
 			class="mb-s"
 		>
-			<n8n-text size="small">
+			<N8nText size="small">
 				{{
-					locale.baseText(`${getErrorBaseKey(run?.errorCode)}` as BaseTextKey) ??
-					locale.baseText(`${getErrorBaseKey('UNKNOWN_ERROR')}` as BaseTextKey)
+					locale.baseText(
+						`${getErrorBaseKey(run?.errorCode)}` as BaseTextKey,
+						runErrorDetails ? { interpolate: runErrorDetails } : {},
+					) ?? locale.baseText(`${getErrorBaseKey('UNKNOWN_ERROR')}` as BaseTextKey)
 				}}
-			</n8n-text>
+			</N8nText>
 		</n8n-callout>
 
 		<el-scrollbar always :class="$style.scrollableSummary" class="mb-m">
