@@ -4,10 +4,6 @@ import { usePostHog } from '@/stores/posthog.store';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 
-vi.mock('@/stores/posthog.store', () => ({
-	usePostHog: vi.fn(),
-}));
-
 describe('useActionsGenerator', () => {
 	const { generateMergedNodesAndActions } = useActionsGenerator();
 	const NODE_NAME = 'n8n-nodes-base.test';
