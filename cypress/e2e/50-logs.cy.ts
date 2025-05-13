@@ -6,6 +6,7 @@ import * as workflow from '../composables/workflow';
 import Workflow_chat from '../fixtures/Workflow_ai_agent.json';
 import Workflow_if from '../fixtures/Workflow_if.json';
 import Workflow_loop from '../fixtures/Workflow_loop.json';
+import Workflow_wait_for_webhook from '../fixtures/Workflow_wait_for_webhook.json';
 
 describe('Logs', () => {
 	beforeEach(() => {
@@ -192,5 +193,43 @@ describe('Logs', () => {
 		executions.getLogEntries().eq(0).should('contain.text', 'When chat message received');
 		executions.getLogEntries().eq(1).should('contain.text', 'AI Agent');
 		executions.getLogEntries().eq(2).should('contain.text', 'E2E Chat Model');
+	});
+
+	it('should show logs for a workflow with a node that waits for webhook', () => {
+		workflow.navigateToNewWorkflowPage();
+		workflow.pasteWorkflow(Workflow_wait_for_webhook);
+		workflow.clickZoomToFit();
+		logs.openLogsPanel();
+
+		workflow.executeWorkflow();
+
+		workflow.getNodesWithSpinner().should('contain.text', 'Wait');
+		workflow.getWaitingNodes().should('contain.text', 'Wait');
+		logs.getLogEntries().should('have.length', 2);
+		logs.getLogEntries().eq(0).click(); // click selected row to deselect
+		logs.getLogEntries().eq(1).should('contain.text', 'Wait node');
+		logs.getLogEntries().eq(1).should('contain.text', 'Waiting');
+
+		workflow.openNode('Wait node');
+		ndv
+			.getOutputPanelDataContainer()
+			.find('a')
+			.should('have.attr', 'href')
+			.then((url) => {
+				cy.request(url as unknown as string).then((response) => {
+					expect(response.status).to.eq(200);
+				});
+			});
+		ndv.getBackToCanvasButton().click();
+
+		workflow.getNodesWithSpinner().should('not.exist');
+		workflow.getWaitingNodes().should('not.exist');
+		logs
+			.getOverviewStatus()
+			.contains(/Success in [\d\.]+m?s/)
+			.should('exist');
+		logs.getLogEntries().should('have.length', 2);
+		logs.getLogEntries().eq(1).should('contain.text', 'Wait node');
+		logs.getLogEntries().eq(1).should('contain.text', 'Success');
 	});
 });

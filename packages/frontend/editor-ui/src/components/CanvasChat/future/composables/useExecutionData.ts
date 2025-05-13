@@ -8,6 +8,7 @@ import { useThrottleFn } from '@vueuse/core';
 import {
 	createLogTree,
 	deepToRaw,
+	mergeStartData,
 	type LatestNodeInfo,
 	type LogEntry,
 } from '@/components/RunDataAi/utils';
@@ -106,11 +107,19 @@ export function useExecutionData() {
 			() => workflowsStore.workflowExecutionData?.workflowData.id,
 			() => workflowsStore.workflowExecutionData?.status,
 			() => workflowsStore.workflowExecutionResultDataLastUpdate,
+			() => workflowsStore.workflowExecutionStartedData,
 		],
 		useThrottleFn(
 			([executionId], [previousExecutionId]) => {
-				// Create deep copy to disable reactivity
-				execData.value = deepToRaw(workflowsStore.workflowExecutionData ?? undefined);
+				execData.value =
+					workflowsStore.workflowExecutionData === null
+						? undefined
+						: deepToRaw(
+								mergeStartData(
+									workflowsStore.workflowExecutionStartedData?.[1] ?? {},
+									workflowsStore.workflowExecutionData,
+								),
+							); // Create deep copy to disable reactivity
 
 				if (executionId !== previousExecutionId) {
 					// Reset sub workflow data when top-level execution changes
