@@ -1957,7 +1957,7 @@ onBeforeUnmount(() => {
 		@selection:end="onSelectionEnd"
 		@drag-and-drop="onDragAndDrop"
 		@tidy-up="onTidyUp"
-		@start-chat="startChat('shortcut')"
+		@start-chat="startChat()"
 	>
 		<Suspense>
 			<LazySetupWorkflowCredentialsButton :class="$style.setupCredentialsButtonWrapper" />

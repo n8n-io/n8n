@@ -2023,7 +2023,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		return data;
 	}
 
-	function startChat(source: 'node' | 'main' | 'shortcut') {
+	function startChat(source?: 'node' | 'main') {
 		const workflow = workflowsStore.getCurrentWorkflow();
 
 		canvasStore.toggleLogsPanelOpen(true);
