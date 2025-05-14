@@ -1,4 +1,4 @@
-import type { PreInitContext } from '../module-types'; // @TODO: Move to standalone package
+import type { PreInitContext } from '../module-types';
 
 /**
  * Only mains are entitled to collect insights because mains are
