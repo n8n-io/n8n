@@ -548,7 +548,7 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 			nodeType,
 		);
 
-		if (isToolNode) {
+		if (isToolNode.value) {
 			const { shouldUpdate, newDescription } = NodeHelpers.getToolDescription(
 				props.nodeType,
 				nodeParameters,
