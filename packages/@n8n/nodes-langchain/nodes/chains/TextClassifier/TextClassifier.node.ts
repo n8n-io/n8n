@@ -241,7 +241,6 @@ export class TextClassifier implements INodeType {
 				const batchPromises = batch.map(async (_item, batchItemIndex) => {
 					const itemIndex = i + batchItemIndex;
 					const item = items[itemIndex];
-					item.pairedItem = { item: itemIndex };
 
 					return await processItem(
 						this,
@@ -291,7 +290,6 @@ export class TextClassifier implements INodeType {
 		} else {
 			for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 				const item = items[itemIndex];
-				item.pairedItem = { item: itemIndex };
 
 				try {
 					const output = await processItem(
