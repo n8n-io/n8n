@@ -59,6 +59,7 @@ export class ManualExecutionService {
 		executionId: string,
 		pinData?: IPinData,
 	): PCancelable<IRun> {
+		console.log('Run manually with data: ', JSON.stringify(data, null, 2));
 		if (data.triggerToStartFrom?.data && data.startNodes) {
 			this.logger.debug(
 				`Execution ID ${executionId} had triggerToStartFrom. Starting from that trigger.`,

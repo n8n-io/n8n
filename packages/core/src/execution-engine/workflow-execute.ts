@@ -2093,7 +2093,10 @@ export class WorkflowExecute {
 					return fullRunData;
 				});
 
-			return await returnPromise.then(resolve);
+			return await returnPromise.then((result) => {
+				console.log('Return Promise result: ', JSON.stringify(result, null, 2));
+				return resolve(result);
+			});
 		});
 	}
 
