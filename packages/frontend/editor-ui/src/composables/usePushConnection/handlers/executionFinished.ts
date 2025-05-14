@@ -3,14 +3,16 @@ import { useUIStore } from '@/stores/ui.store';
 import type { IExecutionResponse } from '@/Interface';
 import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
 import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
-import { clearPopupWindowState, hasTrimmedData, hasTrimmedItem } from '@/utils/executionUtils';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useSettingsStore } from '@/stores/settings.store';
 import {
-	useWorkflowHelpers,
+	clearPopupWindowState,
+	hasTrimmedData,
+	hasTrimmedItem,
 	getExecutionErrorToastConfiguration,
 	getExecutionErrorMessage,
-} from '@/composables/useWorkflowHelpers';
+} from '@/utils/executionUtils';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { parse } from 'flatted';
 import { useToast } from '@/composables/useToast';
