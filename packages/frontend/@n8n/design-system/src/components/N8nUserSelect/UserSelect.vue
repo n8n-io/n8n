@@ -34,10 +34,6 @@ const filter = ref('');
 
 const filteredUsers = computed(() =>
 	props.users.filter((user) => {
-		if (user.isPendingUser || !user.email) {
-			return false;
-		}
-
 		if (props.ignoreIds.includes(user.id)) {
 			return false;
 		}
@@ -49,7 +45,7 @@ const filteredUsers = computed(() =>
 			}
 		}
 
-		return user.email.includes(filter.value);
+		return user.email?.includes(filter.value) ?? false;
 	}),
 );
 
