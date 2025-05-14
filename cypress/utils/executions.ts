@@ -1,4 +1,5 @@
 import { stringify } from 'flatted';
+import { pick } from 'lodash';
 import type {
 	IDataObject,
 	IRunData,
@@ -114,7 +115,7 @@ export function runMockWorkflowExecution({
 		cy.push('nodeExecuteBefore', {
 			executionId,
 			nodeName,
-			data: nodeRunData,
+			data: pick(nodeRunData, ['startTime', 'executionIndex', 'source', 'hints']),
 		});
 		cy.push('nodeExecuteAfter', {
 			executionId,
