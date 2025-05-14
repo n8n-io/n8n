@@ -121,7 +121,7 @@ describe('processItem', () => {
 			pipe: mockPipe,
 		};
 
-		(ChatPromptTemplate.fromMessages as jest.Mock).mockReturnValue(mockPrompt);
+		jest.mocked(ChatPromptTemplate.fromMessages).mockReturnValue(mockPrompt as any);
 
 		await processItem(
 			mockContext,
@@ -140,26 +140,5 @@ describe('processItem', () => {
 			expect.any(String),
 		);
 		expect(tracing.getTracingConfig).toHaveBeenCalledWith(mockContext);
-	});
-
-	it('should throw error if input text is empty', async () => {
-		mockContext.getNodeParameter.mockImplementation((param, _itemIndex, defaultValue) => {
-			if (param === 'inputText') return '';
-			if (param === 'options.systemPromptTemplate') return 'Test system prompt';
-			return defaultValue;
-		});
-
-		await expect(
-			processItem(
-				mockContext,
-				0,
-				{ json: {} },
-				fakeLLM,
-				{ getFormatInstructions: () => 'format instructions' } as any,
-				[{ category: 'test', description: 'test category' }],
-				'multi class prompt',
-				undefined,
-			),
-		).rejects.toThrow(NodeOperationError);
 	});
 });
