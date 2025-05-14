@@ -5,7 +5,6 @@ import { computed, ref } from 'vue';
 
 import RunsSection from '@/components/Evaluations/EditDefinition/sections/RunsSection.vue';
 import { useEvaluationStore } from '@/stores/evaluation.store.ee';
-import { useWorkflowsStore } from '@/stores/workflows.store';
 import { N8nButton, N8nText } from '@n8n/design-system';
 import { useAsyncState } from '@vueuse/core';
 import { orderBy } from 'lodash-es';
@@ -18,8 +17,6 @@ const props = defineProps<{
 const locale = useI18n();
 const toast = useToast();
 const evaluationsStore = useEvaluationStore();
-const workflowsStore = useWorkflowsStore();
-// const telemetry = useTelemetry();
 
 const { isReady } = useAsyncState(
 	async () => {
@@ -62,7 +59,7 @@ const showWizard = computed(() => {
 </script>
 
 <template>
-	<div v-if="isReady">
+	<div v-if="isReady" :class="{ [$style.topWrapperWizard]: showWizard }">
 		<div v-if="!showWizard" :class="$style.header">
 			<N8nTooltip v-if="!showWizard" :disabled="isRunTestEnabled" :placement="'left'">
 				<N8nButton
@@ -175,6 +172,8 @@ const showWizard = computed(() => {
 	display: flex;
 	max-width: 1024px;
 	margin-top: var(--spacing-2xl);
+	padding: 0;
+	flex-grow: 1;
 }
 
 .setupContent {
@@ -191,5 +190,12 @@ const showWizard = computed(() => {
 .arrowBack {
 	--button-hover-background-color: transparent;
 	border: 0;
+}
+
+.topWrapperWizard {
+	padding: 0;
+	display: flex;
+	justify-content: center;
+	flex-grow: 1;
 }
 </style>
