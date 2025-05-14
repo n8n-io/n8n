@@ -16,8 +16,11 @@ export async function setOutput(this: IExecuteFunctions): Promise<INodeExecution
 	const parentNodes = this.getParentNodes(evaluationNode.name);
 
 	const evalTrigger = parentNodes.find((node) => node.type === 'n8n-nodes-base.evaluationTrigger');
+	const evalTriggerOutput = evalTrigger
+		? this.evaluateExpression(`{{ $('${evalTrigger?.name}').isExecuted }}`, 0)
+		: undefined;
 
-	if (!evalTrigger) {
+	if (!evalTrigger || !evalTriggerOutput) {
 		this.addExecutionHints({
 			message: "No outputs were set since the execution didn't start from an evaluation trigger",
 			location: 'outputPane',
