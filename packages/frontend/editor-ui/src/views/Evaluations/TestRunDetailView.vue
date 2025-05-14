@@ -241,11 +241,11 @@ onMounted(async () => {
 									locale.baseText(`${getErrorBaseKey(row.errorCode)}` as BaseTextKey) || row.status
 								}}
 							</template>
-							<p :class="$style.alertText">
+							<N8nText color="danger">
 								{{
 									locale.baseText(`${getErrorBaseKey(row.errorCode)}` as BaseTextKey) || row.status
 								}}
-							</p>
+							</N8nText>
 						</N8nTooltip>
 					</template>
 					<template v-else>
