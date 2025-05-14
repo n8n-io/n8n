@@ -1,5 +1,4 @@
 import { Container } from '@n8n/di';
-import { UnexpectedError } from 'n8n-workflow';
 
 import { ModulesConfig } from '../modules.config';
 
@@ -10,42 +9,27 @@ describe('ModulesConfig', () => {
 		Container.reset();
 	});
 
-	it('should initialize with insights modules if no environment variable is set', () => {
-		const config = Container.get(ModulesConfig);
-		expect(config.modules).toEqual(['insights']);
-	});
-
-	it('should parse valid module names from environment variable', () => {
+	it('should allow enabling a valid module name', () => {
 		process.env.N8N_ENABLED_MODULES = 'insights';
 		const config = Container.get(ModulesConfig);
-		expect(config.modules).toEqual(['insights']);
+		expect(config.enabled).toEqual(['insights']);
 	});
 
-	it('should disable valid module names from environment variable', () => {
+	it('should allow disabling a valid module name', () => {
 		process.env.N8N_DISABLED_MODULES = 'insights';
 		const config = Container.get(ModulesConfig);
-		expect(config.modules).toEqual([]);
+		expect(config.disabled).toEqual(['insights']);
 	});
 
-	it('should throw UnexpectedError for invalid module names', () => {
+	it('should warn when enabling an invalid module name', () => {
 		process.env.N8N_ENABLED_MODULES = 'invalidModule';
-		expect(() => Container.get(ModulesConfig)).toThrow(UnexpectedError);
-	});
+		const consoleWarnMock = jest.spyOn(console, 'warn').mockImplementation();
+		Container.get(ModulesConfig);
 
-	it('should throw UnexpectedError if any module is both enabled and disabled', () => {
-		process.env.N8N_ENABLED_MODULES = 'insights';
-		process.env.N8N_DISABLED_MODULES = 'insights';
-		const config = Container.get(ModulesConfig);
-		expect(() => config.modules).toThrow(UnexpectedError);
-	});
+		expect(consoleWarnMock).toHaveBeenCalledWith(
+			expect.stringContaining('Invalid value for N8N_ENABLED_MODULES'),
+		);
 
-	it('should throw UnexpectedError if any enabled module name is invalid', () => {
-		process.env.N8N_ENABLED_MODULES = 'insights,invalidModule';
-		expect(() => Container.get(ModulesConfig)).toThrow(UnexpectedError);
-	});
-
-	it('should throw UnexpectedError if any disabled module name is invalid', () => {
-		process.env.N8N_DISABLED_MODULES = 'insights,invalidModule';
-		expect(() => Container.get(ModulesConfig)).toThrow(UnexpectedError);
+		consoleWarnMock.mockRestore();
 	});
 });
