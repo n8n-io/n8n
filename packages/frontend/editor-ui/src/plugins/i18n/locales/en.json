@@ -3150,6 +3150,8 @@
 	"evaluations.setupWizard.step3.item2": "Add a 'set metrics' operation to log the score",
 	"evaluations.setupWizard.step3.button": "Add 'Set metrics' node",
 	"evaluations.setupWizard.step3.skip": "Skip",
+	"evaluations.setupWizard.step3.notice": "Your plan supports custom metrics for one workflow only. {link}",
+	"evaluations.setupWizard.step3.notice.link": "See plans",
 	"evaluations.setupWizard.step4.title": "Run evaluation",
 	"evaluations.setupWizard.step4.button": "Run evaluation",
 	"evaluations.setupWizard.step4.altButton": "Run in editor",
