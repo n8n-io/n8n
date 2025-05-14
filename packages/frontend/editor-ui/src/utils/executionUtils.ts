@@ -270,6 +270,10 @@ export function executionRetryMessage(executionStatus: ExecutionStatus):
 	return undefined;
 }
 
+/**
+ * Returns the error message from the execution object if it exists,
+ * or a fallback error message otherwise
+ */
 export function getExecutionErrorMessage({
 	error,
 	lastNodeExecuted,
