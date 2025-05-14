@@ -245,6 +245,7 @@ export class SamlService {
 		tryFallback: boolean = false,
 	): Promise<SamlPreferences | undefined> {
 		await this.loadSamlify();
+		const previousMetadataUrl = this._samlPreferences.metadataUrl;
 		await this.loadPreferencesWithoutValidation(prefs);
 		if (prefs.metadataUrl) {
 			try {
@@ -254,19 +255,19 @@ export class SamlService {
 				} else {
 					// in this case the metadata url didn't produce a valid metadata for SAML
 					// therefore we are rejecting the change to it
-					throw new InvalidSamlMetadataUrlError();
+					throw new InvalidSamlMetadataUrlError(prefs.metadataUrl);
 				}
 			} catch (error) {
-				if (tryFallback) {
-					// we were not able to produce correct metadata from the URL, but
-					// in this case we don't care and try to fallback on the saved metadata in the
-					// database.
-					this.logger.warn(
-						'SAML initialization detected an invalid metadata URL in database. Trying to initialize from metadata in database if available.',
-					);
-				} else {
+				this._samlPreferences.metadataUrl = previousMetadataUrl;
+				if (!tryFallback) {
 					throw error;
 				}
+				// we were not able to produce correct metadata from the URL, but
+				// in this case we don't care and try to fallback on the saved metadata in the
+				// database.
+				this.logger.warn(
+					'SAML initialization detected an invalid metadata URL in database. Trying to initialize from metadata in database if available.',
+				);
 			}
 		} else if (prefs.metadata) {
 			const validationResult = await this.validator.validateMetadata(prefs.metadata);

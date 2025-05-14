@@ -1,16 +1,22 @@
 import { SettingsRepository } from '@n8n/db';
 import type { Settings } from '@n8n/db';
+import axios from 'axios';
 import type express from 'express';
 import { mock } from 'jest-mock-extended';
 import type { IdentityProviderInstance, ServiceProviderInstance } from 'samlify';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import * as samlHelpers from '@/sso.ee/saml/saml-helpers';
 import { SamlService } from '@/sso.ee/saml/saml.service.ee';
 import { mockInstance } from '@test/mocking';
 
 import { SAML_PREFERENCES_DB_KEY } from '../constants';
+import { InvalidSamlMetadataUrlError } from '../errors/invalid-saml-metadata-url.error';
 import { InvalidSamlMetadataError } from '../errors/invalid-saml-metadata.error';
 import { SamlValidator } from '../saml-validator';
+
+jest.mock('axios');
+const mockedAxios = axios as jest.Mocked<typeof axios>;
 
 const InvalidSamlSetting: Settings = {
 	loadOnStartup: true,
@@ -176,6 +182,20 @@ describe('SamlService', () => {
 	});
 
 	describe('init', () => {
+		test('calls `reset` if an InvalidSamlMetadataUrlError is thrown', async () => {
+			// ARRANGE
+			jest
+				.spyOn(samlService, 'loadFromDbAndApplySamlPreferences')
+				.mockRejectedValue(new InvalidSamlMetadataUrlError('https://www.google.com'));
+			jest.spyOn(samlService, 'reset');
+
+			// ACT
+			await samlService.init();
+
+			// ASSERT
+			expect(samlService.reset).toHaveBeenCalledTimes(1);
+		});
+
 		test('calls `reset` if an InvalidSamlMetadataError is thrown', async () => {
 			// ARRANGE
 			jest
@@ -270,6 +290,91 @@ describe('SamlService', () => {
 
 			// ACT && ASSERT
 			await samlService.loadFromDbAndApplySamlPreferences(true);
+		});
+	});
+
+	describe('setSamlPreferences', () => {
+		test('does throw `BadRequestError` when a metadata url is not a valid url', async () => {
+			await expect(
+				samlService.setSamlPreferences({
+					metadataUrl: 'NOT A VALID URL',
+				}),
+			).rejects.toThrowError(BadRequestError);
+		});
+
+		test('does not persist an invalid metadata url', async () => {
+			const metadataUrlTestData = 'TestDataThatShouldPersist';
+			await samlService.loadPreferencesWithoutValidation({
+				metadataUrl: metadataUrlTestData,
+			});
+
+			await expect(
+				samlService.setSamlPreferences({
+					metadataUrl: 'NOT A VALID URL',
+				}),
+			).rejects.toThrowError(BadRequestError);
+
+			expect(samlService.samlPreferences.metadataUrl).toBe(metadataUrlTestData);
+		});
+
+		test('does throw `BadRequestError` when a metadata url is not returning correct metadata', async () => {
+			mockedAxios.get.mockResolvedValue({ status: 200, data: 'NOT VALID SAML METADATA' });
+			await expect(
+				samlService.setSamlPreferences({
+					metadataUrl: 'https://www.some.url',
+				}),
+			).rejects.toThrowError(BadRequestError);
+		});
+
+		test('does not persist a metadata url, that is not returning correct metadata', async () => {
+			const metadataUrlTestData = 'TestDataThatShouldPersist';
+			await samlService.loadPreferencesWithoutValidation({
+				metadataUrl: metadataUrlTestData,
+			});
+
+			mockedAxios.get.mockResolvedValue({ status: 200, data: 'NOT VALID SAML METADATA' });
+			await expect(
+				samlService.setSamlPreferences({
+					metadataUrl: 'https://www.some.url',
+				}),
+			).rejects.toThrowError(BadRequestError);
+
+			expect(samlService.samlPreferences.metadataUrl).toBe(metadataUrlTestData);
+		});
+
+		test('does throw `InvalidSamlMetadataUrlError` when the metadata url does not return success on http call', async () => {
+			mockedAxios.get.mockResolvedValue({ status: 400, data: '' });
+			await expect(
+				samlService.setSamlPreferences({
+					metadataUrl: 'https://www.some.url',
+				}),
+			).rejects.toThrowError(InvalidSamlMetadataUrlError);
+		});
+
+		test('does not persist a metadata url, that is not returning success on http call', async () => {
+			const metadataUrlTestData = 'TestDataThatShouldPersist';
+			await samlService.loadPreferencesWithoutValidation({
+				metadataUrl: metadataUrlTestData,
+			});
+
+			mockedAxios.get.mockResolvedValue({ status: 400 });
+			await expect(
+				samlService.setSamlPreferences({
+					metadataUrl: 'https://www.some.url',
+				}),
+			).rejects.toThrowError(InvalidSamlMetadataUrlError);
+
+			expect(samlService.samlPreferences.metadataUrl).toBe(metadataUrlTestData);
+		});
+
+		test('does throw `InvalidSamlMetadataError` in case saml login is turned on and no valid metadata is available', async () => {
+			await samlService.loadPreferencesWithoutValidation({
+				metadata: 'not valid data',
+				loginEnabled: true,
+			});
+			await expect(samlService.setSamlPreferences({})).rejects.toThrowError(
+				InvalidSamlMetadataError,
+			);
 		});
 	});
 
