@@ -239,6 +239,7 @@ describe('UserSelect', () => {
 				ignoreIds: ['u1', 'u2'], // Exclude Alice and Bob
 			},
 		});
+
 		const selectInput = getByRole('combobox');
 		expect(selectInput).toBeInTheDocument();
 

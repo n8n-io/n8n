@@ -34,15 +34,11 @@ const filter = ref('');
 
 const filteredUsers = computed(() =>
 	props.users.filter((user) => {
-		if (!user.email) {
-			return false;
-		}
-
 		if (props.ignoreIds.includes(user.id)) {
 			return false;
 		}
 
-		if (user.fullName) {
+		if (user.fullName && user.email) {
 			const match = user.fullName.toLowerCase().includes(filter.value.toLowerCase());
 			if (match) {
 				return true;
