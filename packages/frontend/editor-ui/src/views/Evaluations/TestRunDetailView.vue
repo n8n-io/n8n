@@ -151,7 +151,7 @@ onMounted(async () => {
 			icon="exclamation-triangle"
 			class="mb-s"
 		>
-			<N8nText size="small">
+			<N8nText size="small" :class="$style.capitalized">
 				{{
 					locale.baseText(
 						`${getErrorBaseKey(run?.errorCode)}` as BaseTextKey,
@@ -236,12 +236,12 @@ onMounted(async () => {
 					/>
 					<template v-if="row.status === 'error'">
 						<N8nTooltip placement="top" :show-after="300">
-							<template #content>
+							<template #content :class="$style.capitalized">
 								{{
 									locale.baseText(`${getErrorBaseKey(row.errorCode)}` as BaseTextKey) || row.status
 								}}
 							</template>
-							<N8nText color="danger">
+							<N8nText color="danger" :class="$style.capitalized">
 								{{
 									locale.baseText(`${getErrorBaseKey(row.errorCode)}` as BaseTextKey) || row.status
 								}}
@@ -249,7 +249,7 @@ onMounted(async () => {
 						</N8nTooltip>
 					</template>
 					<template v-else>
-						<N8nText style="text-transform: capitalize">
+						<N8nText :class="$style.capitalized">
 							{{ row.status }}
 						</N8nText>
 					</template>
@@ -363,6 +363,13 @@ onMounted(async () => {
 		border-top-left-radius: inherit;
 		border-bottom-left-radius: inherit;
 	}
+}
+
+.capitalized {
+	text-transform: none;
+}
+.capitalized::first-letter {
+	text-transform: uppercase;
 }
 
 .summaryCardTitle {
