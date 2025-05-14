@@ -18,7 +18,7 @@ import { getLdapLoginLabel } from '@/ldap.ee/helpers.ee';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { InsightsService } from '@/modules/insights/insights.service';
-import { ModulesConfig } from '@/modules/modules.config';
+import { ModuleRegistry } from '@/modules/module-registry';
 import { isApiEnabled } from '@/public-api';
 import { PushConfig } from '@/push/push.config';
 import type { CommunityPackagesService } from '@/services/community-packages.service';
@@ -49,7 +49,7 @@ export class FrontendService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly urlService: UrlService,
 		private readonly securityConfig: SecurityConfig,
-		private readonly modulesConfig: ModulesConfig,
+		private readonly moduleRegistry: ModuleRegistry,
 		private readonly pushConfig: PushConfig,
 		private readonly binaryDataConfig: BinaryDataConfig,
 		private readonly insightsService: InsightsService,
@@ -248,7 +248,7 @@ export class FrontendService {
 				enabled: false,
 			},
 			insights: {
-				enabled: this.modulesConfig.modules.includes('insights'),
+				enabled: this.moduleRegistry.isActive('insights'),
 				summary: true,
 				dashboard: false,
 				dateRanges: [],
@@ -377,7 +377,7 @@ export class FrontendService {
 		}
 
 		Object.assign(this.settings.insights, {
-			enabled: this.modulesConfig.loadedModules.has('insights'),
+			enabled: this.moduleRegistry.isActive('insights'),
 			summary: this.licenseState.isInsightsSummaryLicensed(),
 			dashboard: this.licenseState.isInsightsDashboardLicensed(),
 			dateRanges: this.insightsService.getAvailableDateRanges(),

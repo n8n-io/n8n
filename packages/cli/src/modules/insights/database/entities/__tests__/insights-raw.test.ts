@@ -7,7 +7,7 @@ import * as testDb from '@test-integration/test-db';
 
 import { createMetadata, createRawInsightsEvent } from './db-utils';
 import { InsightsRawRepository } from '../../repositories/insights-raw.repository';
-import { InsightsRaw } from '../insights-raw';
+import { InsightsRaw } from '../insights-raw.entity';
 import type { TypeUnit } from '../insights-shared';
 
 let insightsRawRepository: InsightsRawRepository;

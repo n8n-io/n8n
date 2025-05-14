@@ -111,7 +111,7 @@ export class Worker extends BaseCommand {
 			}),
 		);
 
-		await this.loadModules();
+		await this.activateModules();
 	}
 
 	async initEventBus() {

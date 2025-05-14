@@ -1,4 +1,4 @@
-import { InsightsByPeriod } from '../insights-by-period';
+import { InsightsByPeriod } from '../insights-by-period.entity';
 import type { PeriodUnit, TypeUnit } from '../insights-shared';
 
 describe('Insights By Period', () => {

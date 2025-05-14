@@ -246,7 +246,7 @@ export class Start extends BaseCommand {
 			await this.generateStaticAssets();
 		}
 
-		await this.loadModules();
+		await this.activateModules();
 	}
 
 	async initOrchestration() {

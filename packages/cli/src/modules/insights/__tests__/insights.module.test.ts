@@ -20,14 +20,14 @@ describe('InsightsModule', () => {
 		it('should start background process if instance is main and leader', () => {
 			instanceSettings = mockInstance(InstanceSettings, { instanceType: 'main', isLeader: true });
 			const insightsModule = new InsightsModule(logger, insightsService, instanceSettings);
-			insightsModule.initialize();
+			insightsModule.init();
 			expect(insightsService.startTimers).toHaveBeenCalled();
 		});
 
 		it('should not start background process if instance is main but not leader', () => {
 			instanceSettings = mockInstance(InstanceSettings, { instanceType: 'main', isLeader: false });
 			const insightsModule = new InsightsModule(logger, insightsService, instanceSettings);
-			insightsModule.initialize();
+			insightsModule.init();
 			expect(insightsService.startTimers).not.toHaveBeenCalled();
 		});
 	});

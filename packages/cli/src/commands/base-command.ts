@@ -29,8 +29,8 @@ import { ExternalHooks } from '@/external-hooks';
 import { ExternalSecretsManager } from '@/external-secrets.ee/external-secrets-manager.ee';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { ModuleLoader } from '@/modules/module-loader';
 import { ModuleRegistry } from '@/modules/module-registry';
-import type { ModulePreInit } from '@/modules/modules.config';
 import { ModulesConfig } from '@/modules/modules.config';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
@@ -73,30 +73,8 @@ export abstract class BaseCommand extends Command {
 	/** Whether to init task runner (if enabled). */
 	protected needsTaskRunner = false;
 
-	protected async loadModules() {
-		for (const moduleName of this.modulesConfig.modules) {
-			let preInitModule: ModulePreInit | undefined;
-			try {
-				preInitModule = (await import(
-					`../modules/${moduleName}/${moduleName}.pre-init`
-				)) as ModulePreInit;
-			} catch {}
-
-			if (
-				!preInitModule ||
-				preInitModule.shouldLoadModule?.({
-					instance: this.instanceSettings,
-				})
-			) {
-				// register module in the registry for the dependency injection
-				await import(`../modules/${moduleName}/${moduleName}.module`);
-
-				this.modulesConfig.addLoadedModule(moduleName);
-				this.logger.debug(`Loaded module "${moduleName}"`);
-			}
-		}
-
-		await Container.get(ModuleRegistry).initializeModules();
+	protected async activateModules() {
+		await Container.get(ModuleRegistry).activateModules();
 
 		if (this.instanceSettings.isMultiMain) {
 			Container.get(MultiMainSetup).registerEventHandlers();
@@ -122,6 +100,9 @@ export abstract class BaseCommand extends Command {
 		this.nodeTypes = Container.get(NodeTypes);
 		await Container.get(LoadNodesAndCredentials).init();
 
+		await Container.get(ModuleLoader).loadModules();
+		// @TODO: Register entities of eligible modules
+
 		await this.dbConnection
 			.init()
 			.catch(
@@ -129,7 +110,7 @@ export abstract class BaseCommand extends Command {
 					await this.exitWithCrash('There was an error initializing DB', error),
 			);
 
-		// This needs to happen after DB.init() or otherwise DB Connection is not
+		// This needs to happen after DbConnection.init() or otherwise DB Connection is not
 		// available via the dependency Container that services depend on.
 		if (inDevelopment || inTest) {
 			this.shutdownService.validate();

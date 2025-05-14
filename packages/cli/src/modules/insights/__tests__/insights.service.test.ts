@@ -19,7 +19,7 @@ import {
 	createMetadata,
 	createRawInsightsEvents,
 } from '../database/entities/__tests__/db-utils';
-import type { InsightsRaw } from '../database/entities/insights-raw';
+import type { InsightsRaw } from '../database/entities/insights-raw.entity';
 import type { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository';
 import { InsightsCollectionService } from '../insights-collection.service';
 import { InsightsCompactionService } from '../insights-compaction.service';

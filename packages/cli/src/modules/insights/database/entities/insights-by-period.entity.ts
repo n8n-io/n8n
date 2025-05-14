@@ -9,7 +9,7 @@ import {
 } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
 
-import { InsightsMetadata } from './insights-metadata';
+import { InsightsMetadata } from './insights-metadata.entity';
 import type { PeriodUnit } from './insights-shared';
 import {
 	isValidPeriodNumber,

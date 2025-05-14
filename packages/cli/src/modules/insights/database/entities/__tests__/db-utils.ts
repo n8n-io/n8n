@@ -7,9 +7,9 @@ import type { IWorkflowBase } from 'n8n-workflow';
 import { InsightsByPeriodRepository } from '../../repositories/insights-by-period.repository';
 import { InsightsMetadataRepository } from '../../repositories/insights-metadata.repository';
 import { InsightsRawRepository } from '../../repositories/insights-raw.repository';
-import { InsightsByPeriod } from '../insights-by-period';
-import { InsightsMetadata } from '../insights-metadata';
-import { InsightsRaw } from '../insights-raw';
+import { InsightsByPeriod } from '../insights-by-period.entity';
+import { InsightsMetadata } from '../insights-metadata.entity';
+import { InsightsRaw } from '../insights-raw.entity';
 
 async function getWorkflowSharing(workflow: IWorkflowBase) {
 	return await Container.get(SharedWorkflowRepository).find({

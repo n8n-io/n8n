@@ -6,8 +6,8 @@ import { DateTime } from 'luxon';
 import { Logger } from 'n8n-core';
 import { UnexpectedError, type ExecutionStatus, type WorkflowExecuteMode } from 'n8n-workflow';
 
-import { InsightsMetadata } from '@/modules/insights/database/entities/insights-metadata';
-import { InsightsRaw } from '@/modules/insights/database/entities/insights-raw';
+import { InsightsMetadata } from '@/modules/insights/database/entities/insights-metadata.entity';
+import { InsightsRaw } from '@/modules/insights/database/entities/insights-raw.entity';
 
 import { InsightsMetadataRepository } from './database/repositories/insights-metadata.repository';
 import { InsightsRawRepository } from './database/repositories/insights-raw.repository';

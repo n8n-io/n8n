@@ -1,6 +1,7 @@
-import type { ModulePreInitContext } from '../modules.config';
+import type { PreInitContext } from '../module-types'; // @TODO: Move to standalone package
 
-export const shouldLoadModule = (ctx: ModulePreInitContext) =>
-	// Only main instance(s) should collect insights
-	// Because main instances are informed of all finished workflow executions, whatever the mode
-	ctx.instance.instanceType === 'main';
+/**
+ * Only mains are entitled to collect insights because mains are
+ * informed of all finished workflow executions, whatever the mode.
+ */
+export const shouldLoadModule = (ctx: PreInitContext) => ctx.instance.instanceType === 'main';

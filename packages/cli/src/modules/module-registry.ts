@@ -2,6 +2,7 @@ import type { LifecycleContext } from '@n8n/decorators';
 import { LifecycleMetadata, ModuleMetadata } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import type { ExecutionLifecycleHooks } from 'n8n-core';
+import { Logger } from 'n8n-core';
 import type {
 	IDataObject,
 	IRun,
@@ -11,18 +12,39 @@ import type {
 	IWorkflowBase,
 	Workflow,
 } from 'n8n-workflow';
+import assert from 'node:assert';
 
 @Service()
 export class ModuleRegistry {
 	constructor(
 		private readonly moduleMetadata: ModuleMetadata,
 		private readonly lifecycleMetadata: LifecycleMetadata,
-	) {}
+		private readonly logger: Logger,
+	) {
+		this.logger = this.logger.scoped('modules');
+	}
 
-	async initializeModules() {
-		for (const ModuleClass of this.moduleMetadata.getModules()) {
-			await Container.get(ModuleClass).initialize?.();
+	private readonly activated = new Set<string>();
+
+	isActive(moduleName: string) {
+		return this.activated.has(moduleName);
+	}
+
+	/** Initialize all modules whose classes are currently loaded in memory. */
+	async activateModules() {
+		for (const [moduleName, ModuleClass] of this.moduleMetadata.getModules()) {
+			try {
+				await Container.get(ModuleClass).init?.();
+				this.activated.add(moduleName);
+			} catch (error) {
+				assert(error instanceof Error);
+				this.logger.error(`Failed to init module "${moduleName}"`, { error });
+			}
 		}
+
+		const moduleNames = Array.from(this.activated);
+
+		this.logger.info(`Modules initialized: ${moduleNames.join(', ')}`, { moduleNames });
 	}
 
 	registerLifecycleHooks(hooks: ExecutionLifecycleHooks) {

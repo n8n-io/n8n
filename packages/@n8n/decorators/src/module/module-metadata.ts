@@ -1,16 +1,28 @@
 import { Service } from '@n8n/di';
 
-import type { Module } from './module';
+import type { ModuleClass } from './module';
 
 @Service()
 export class ModuleMetadata {
-	private readonly modules: Set<Module> = new Set();
+	private readonly modules: Map<string, ModuleClass> = new Map();
 
-	register(module: Module) {
-		this.modules.add(module);
+	register(name: string, cls: ModuleClass) {
+		this.modules.set(name, cls);
+	}
+
+	getModuleClass(name: string) {
+		return this.modules.get(name);
+	}
+
+	getModuleClasses() {
+		return this.modules.values();
 	}
 
 	getModules() {
-		return this.modules.keys();
+		return this.modules.entries();
+	}
+
+	clear(moduleName: string) {
+		this.modules.delete(moduleName);
 	}
 }

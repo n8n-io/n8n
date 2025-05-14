@@ -7,7 +7,7 @@ import { z } from 'zod';
 
 import { sql } from '@/utils/sql';
 
-import { InsightsByPeriod } from '../entities/insights-by-period';
+import { InsightsByPeriod } from '../entities/insights-by-period.entity';
 import type { PeriodUnit } from '../entities/insights-shared';
 import { PeriodUnitToNumber, TypeToNumber } from '../entities/insights-shared';
 

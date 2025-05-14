@@ -18,6 +18,7 @@ export const LOG_SCOPES = [
 	'task-runner',
 	'insights',
 	'workflow-activation',
+	'modules',
 ] as const;
 
 export type LogScope = (typeof LOG_SCOPES)[number];
@@ -87,6 +88,7 @@ export class LoggingConfig {
 	 * - `task-runner`
 	 * - `workflow-activation`
 	 * - `insights`
+	 * - `module-loader`
 	 *
 	 * @example
 	 * `N8N_LOG_SCOPES=license`

@@ -1,5 +1,5 @@
 import { DatabaseConfig, InstanceSettingsConfig } from '@n8n/config';
-import { entities, subscribers } from '@n8n/db';
+import { entities as coreEntities, subscribers } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { DataSourceOptions, LoggerOptions } from '@n8n/typeorm';
 import type { MysqlConnectionOptions } from '@n8n/typeorm/driver/mysql/MysqlConnectionOptions';
@@ -10,13 +10,12 @@ import { UserError } from 'n8n-workflow';
 import path from 'path';
 import type { TlsOptions } from 'tls';
 
-import { InsightsByPeriod } from '@/modules/insights/database/entities/insights-by-period';
-import { InsightsMetadata } from '@/modules/insights/database/entities/insights-metadata';
-import { InsightsRaw } from '@/modules/insights/database/entities/insights-raw';
-
 import { mysqlMigrations } from './migrations/mysqldb';
 import { postgresMigrations } from './migrations/postgresdb';
 import { sqliteMigrations } from './migrations/sqlite';
+
+// eslint-disable-next-line @typescript-eslint/ban-types
+type Entity = Function;
 
 @Service()
 export class DbConnectionOptions {
@@ -51,6 +50,12 @@ export class DbConnectionOptions {
 		}
 	}
 
+	private readonly entities: Entity[] = Object.values(coreEntities);
+
+	addEntities(entities: Entity[]) {
+		this.entities.push(...entities);
+	}
+
 	private getCommonOptions() {
 		const { tablePrefix: entityPrefix, logging: loggingConfig } = this.config;
 
@@ -66,7 +71,7 @@ export class DbConnectionOptions {
 
 		return {
 			entityPrefix,
-			entities: [...Object.values(entities), InsightsRaw, InsightsByPeriod, InsightsMetadata],
+			entities: this.entities,
 			subscribers: Object.values(subscribers),
 			migrationsTableName: `${entityPrefix}migrations`,
 			migrationsRun: false,

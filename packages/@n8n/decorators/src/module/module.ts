@@ -2,15 +2,31 @@ import { Container, Service, type Constructable } from '@n8n/di';
 
 import { ModuleMetadata } from './module-metadata';
 
-export interface BaseN8nModule {
-	initialize?(): void | Promise<void>;
+export interface ModuleInterface {
+	init?(): void | Promise<void>;
 }
 
-export type Module = Constructable<BaseN8nModule>;
+export type ModuleClass = Constructable<ModuleInterface>;
 
-export const N8nModule = (): ClassDecorator => (target) => {
-	Container.get(ModuleMetadata).register(target as unknown as Module);
+/**
+ * Decorator that registers in memory a module to be activated on startup.
+ *
+ * @example
+ *
+ * ```ts
+ * @Module()
+ * class FeatureModule extends ModuleInterface {
+ *   async init() {
+ *     // ...
+ *   }
+ * }
+ * ```
+ */
+export const Module =
+	(moduleName: string): ClassDecorator =>
+	(moduleClass) => {
+		Container.get(ModuleMetadata).register(moduleName, moduleClass as unknown as ModuleClass);
 
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-	return Service()(target);
-};
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+		return Service()(moduleClass);
+	};

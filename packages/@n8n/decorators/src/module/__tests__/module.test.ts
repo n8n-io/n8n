@@ -1,9 +1,9 @@
 import { Container } from '@n8n/di';
 
-import { N8nModule } from '../module';
+import { Module } from '../module';
 import { ModuleMetadata } from '../module-metadata';
 
-describe('@N8nModule Decorator', () => {
+describe('@Module Decorator', () => {
 	let moduleMetadata: ModuleMetadata;
 
 	beforeEach(() => {
@@ -14,34 +14,34 @@ describe('@N8nModule Decorator', () => {
 	});
 
 	it('should register module in ModuleMetadata', () => {
-		@N8nModule()
+		@Module('test')
 		class TestModule {
 			initialize() {}
 		}
 
-		const registeredModules = Array.from(moduleMetadata.getModules());
+		const registeredModules = Array.from(moduleMetadata.getModuleClasses());
 
 		expect(registeredModules).toContain(TestModule);
 		expect(registeredModules).toHaveLength(1);
 	});
 
 	it('should register multiple modules', () => {
-		@N8nModule()
+		@Module('first')
 		class FirstModule {
 			initialize() {}
 		}
 
-		@N8nModule()
+		@Module('second')
 		class SecondModule {
 			initialize() {}
 		}
 
-		@N8nModule()
+		@Module('third')
 		class ThirdModule {
 			initialize() {}
 		}
 
-		const registeredModules = Array.from(moduleMetadata.getModules());
+		const registeredModules = Array.from(moduleMetadata.getModuleClasses());
 
 		expect(registeredModules).toContain(FirstModule);
 		expect(registeredModules).toContain(SecondModule);
@@ -50,10 +50,10 @@ describe('@N8nModule Decorator', () => {
 	});
 
 	it('should work with modules without initialize method', () => {
-		@N8nModule()
+		@Module('test')
 		class TestModule {}
 
-		const registeredModules = Array.from(moduleMetadata.getModules());
+		const registeredModules = Array.from(moduleMetadata.getModuleClasses());
 
 		expect(registeredModules).toContain(TestModule);
 		expect(registeredModules).toHaveLength(1);
@@ -62,14 +62,14 @@ describe('@N8nModule Decorator', () => {
 	it('should support async initialize method', async () => {
 		const mockInitialize = jest.fn();
 
-		@N8nModule()
+		@Module('test')
 		class TestModule {
 			async initialize() {
 				mockInitialize();
 			}
 		}
 
-		const registeredModules = Array.from(moduleMetadata.getModules());
+		const registeredModules = Array.from(moduleMetadata.getModuleClasses());
 
 		expect(registeredModules).toContain(TestModule);
 
@@ -81,13 +81,13 @@ describe('@N8nModule Decorator', () => {
 
 	describe('ModuleMetadata', () => {
 		it('should allow retrieving and checking registered modules', () => {
-			@N8nModule()
+			@Module('first')
 			class FirstModule {}
 
-			@N8nModule()
+			@Module('second')
 			class SecondModule {}
 
-			const registeredModules = Array.from(moduleMetadata.getModules());
+			const registeredModules = Array.from(moduleMetadata.getModuleClasses());
 
 			expect(registeredModules).toContain(FirstModule);
 			expect(registeredModules).toContain(SecondModule);
@@ -95,7 +95,7 @@ describe('@N8nModule Decorator', () => {
 	});
 
 	it('should apply Service decorator', () => {
-		@N8nModule()
+		@Module('test')
 		class TestModule {}
 
 		expect(Container.has(TestModule)).toBe(true);
