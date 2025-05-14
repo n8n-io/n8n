@@ -55,7 +55,7 @@ describe('Test Evaluation', () => {
 						},
 						sheetName,
 						sheetMode: 'id',
-						operation: 'setOutput',
+						operation: 'setOutputs',
 					};
 					return mockParams[key] ?? fallbackValue;
 				},
@@ -80,7 +80,7 @@ describe('Test Evaluation', () => {
 						},
 						sheetName,
 						sheetMode: 'id',
-						operation: 'setOutput',
+						operation: 'setOutputs',
 					};
 					return mockParams[key] ?? fallbackValue;
 				},
@@ -117,7 +117,7 @@ describe('Test Evaluation', () => {
 						},
 						sheetName,
 						sheetMode: 'id',
-						operation: 'setOutput',
+						operation: 'setOutputs',
 					};
 					return mockParams[key] ?? fallbackValue;
 				},
@@ -144,7 +144,7 @@ describe('Test Evaluation', () => {
 						},
 						sheetName,
 						sheetMode: 'id',
-						operation: 'setOutput',
+						operation: 'setOutputs',
 					};
 					return mockParams[key] ?? fallbackValue;
 				},
