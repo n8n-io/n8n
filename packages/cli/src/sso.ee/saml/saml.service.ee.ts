@@ -265,8 +265,10 @@ export class SamlService {
 				// we were not able to produce correct metadata from the URL, but
 				// in this case we don't care and try to fallback on the saved metadata in the
 				// database.
-				this.logger.warn(
+				this.logger.error(
 					'SAML initialization detected an invalid metadata URL in database. Trying to initialize from metadata in database if available.',
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+					{ error },
 				);
 			}
 		} else if (prefs.metadata) {
