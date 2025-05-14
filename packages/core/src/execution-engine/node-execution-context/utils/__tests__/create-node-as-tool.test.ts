@@ -83,8 +83,6 @@ describe('createNodeAsTool', () => {
 
 	describe('Schema Creation and Parameter Handling', () => {
 		it('should create a schema based on fromAI arguments in nodeParameters', () => {
-			console.log('node.parameters', options.node.parameters);
-			console.log('nodeType.description', options.nodeType);
 			const tool = createNodeAsTool(options).response;
 
 			expect(tool.schema).toBeDefined();
