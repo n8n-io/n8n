@@ -1,3 +1,5 @@
+import type { Migration } from '@n8n/db';
+import * as migrationHelper from '@n8n/db';
 import { DataSource, type DataSourceOptions } from '@n8n/typeorm';
 import { mock, mockDeep } from 'jest-mock-extended';
 import type { ErrorReporter } from 'n8n-core';
@@ -5,8 +7,6 @@ import { DbConnectionTimeoutError } from 'n8n-workflow';
 
 import { DbConnection } from '@/databases/db-connection';
 import type { DbConnectionOptions } from '@/databases/db-connection-options';
-import type { Migration } from '@/databases/types';
-import * as migrationHelper from '@/databases/utils/migration-helpers';
 
 jest.mock('@n8n/typeorm', () => ({
 	DataSource: jest.fn(),

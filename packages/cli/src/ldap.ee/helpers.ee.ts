@@ -1,3 +1,4 @@
+import type { LdapConfig, ConnectionSecurity } from '@n8n/constants';
 import type { AuthProviderSyncHistory } from '@n8n/db';
 import {
 	AuthIdentity,
@@ -21,7 +22,6 @@ import {
 	LDAP_LOGIN_ENABLED,
 	LDAP_LOGIN_LABEL,
 } from './constants';
-import type { ConnectionSecurity, LdapConfig } from './types';
 
 /**
  *  Check whether the LDAP feature is disabled in the instance
