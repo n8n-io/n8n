@@ -6,6 +6,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { EVALUATION_DATASET_TRIGGER_NODE, PLACEHOLDER_EMPTY_WORKFLOW_ID, VIEWS } from '@/constants';
 import StepHeader from '../shared/StepHeader.vue';
 import { useRouter } from 'vue-router';
+import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
 defineEmits<{
 	runTest: [];
@@ -14,6 +15,7 @@ defineEmits<{
 const router = useRouter();
 const locale = useI18n();
 const workflowsStore = useWorkflowsStore();
+const pageRedirectionHelper = usePageRedirectionHelper();
 
 const datasetTriggerExist = computed(() => {
 	return workflowsStore.workflow.nodes.some(
@@ -98,6 +100,10 @@ function navigateToWorkflow(
 		params: { name: routeWorkflowId },
 		query: action ? { action } : undefined,
 	});
+}
+
+function onSeePlans() {
+	void pageRedirectionHelper.goToUpgrade('usage_page', 'open');
 }
 </script>
 
@@ -206,7 +212,13 @@ function navigateToWorkflow(
 					</div>
 					<div :class="$style.quotaNote">
 						<N8nText size="xsmall" color="text-base">
-							Your plan supports custom metrics for one workflow only. See plans
+							<i18n-t keypath="evaluations.setupWizard.step3.notice">
+								<template #link>
+									<a style="text-decoration: underline; color: inherit" @click="onSeePlans"
+										>{{ locale.baseText('evaluations.setupWizard.step3.notice.link') }}
+									</a>
+								</template>
+							</i18n-t>
 						</N8nText>
 					</div>
 				</div>
