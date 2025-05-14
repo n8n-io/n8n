@@ -76,7 +76,7 @@ const runSummaries = computed(() => {
 						:color="statusDictionary[row.status].color"
 					/>
 					<template v-if="row.status === 'warning'">
-						<N8nText color="warning" size="small" :class="[$style.alertText, $style.warningText]">
+						<N8nText color="warning" :class="[$style.alertText, $style.warningText]">
 							{{ locale.baseText(`evaluation.runDetail.error.partialCasesFailed`) }}
 						</N8nText>
 					</template>
@@ -126,7 +126,7 @@ const runSummaries = computed(() => {
 	overflow: hidden;
 	white-space: normal;
 	word-break: break-word;
-	font-size: var(--font-size-2xs);
+	// font-size: var(--font-size-2xs);
 	line-height: 1.25;
 	text-transform: none;
 }
