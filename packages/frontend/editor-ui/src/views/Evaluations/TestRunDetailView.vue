@@ -162,17 +162,6 @@ onMounted(async () => {
 				}}
 			</N8nText>
 		</n8n-callout>
-		<n8n-callout
-			v-else-if="run?.status === 'completed' && hasFailedTestCases"
-			theme="warning"
-			icon="exclamation-triangle"
-			class="mb-s"
-		>
-			<N8nText size="small" :class="$style.capitalized">
-				{{ locale.baseText(`evaluation.runDetail.error.partialCasesFailed`) }}
-			</N8nText>
-		</n8n-callout>
-
 		<el-scrollbar always :class="$style.scrollableSummary" class="mb-m">
 			<div style="display: flex">
 				<div :class="$style.summaryCard">
@@ -198,6 +187,14 @@ onMounted(async () => {
 						{{ locale.baseText('evaluation.listRuns.status') }}
 					</N8nText>
 					<N8nText
+						v-if="run?.status === 'completed' && hasFailedTestCases"
+						size="medium"
+						color="warning"
+					>
+						{{ locale.baseText(`evaluation.runDetail.error.partialCasesFailed`) }}
+					</N8nText>
+					<N8nText
+						v-else
 						:color="statusDictionary[run?.status]?.color"
 						size="medium"
 						:class="run?.status.toLowerCase()"
