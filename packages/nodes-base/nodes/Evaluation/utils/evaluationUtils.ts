@@ -1,4 +1,4 @@
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, UserError } from 'n8n-workflow';
 import type {
 	FieldType,
 	INodeParameters,
@@ -34,7 +34,9 @@ export async function setOutput(this: IExecuteFunctions): Promise<INodeExecution
 	}>;
 
 	if (outputFields.length === 0) {
-		return [];
+		throw new UserError('No outputs to set', {
+			description: 'Add outputs to write back to the Google Sheet using the ‘Add Output’ button',
+		});
 	}
 
 	const googleSheetInstance = getGoogleSheet.call(this);
