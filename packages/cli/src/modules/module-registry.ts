@@ -34,7 +34,7 @@ export class ModuleRegistry {
 	async activateModules() {
 		for (const [moduleName, ModuleClass] of this.moduleMetadata.getModules()) {
 			try {
-				await Container.get(ModuleClass).init?.();
+				await Container.get(ModuleClass).activate?.();
 				this.activated.add(moduleName);
 			} catch (error) {
 				assert(error instanceof Error);

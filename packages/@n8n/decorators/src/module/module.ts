@@ -3,7 +3,8 @@ import { Container, Service, type Constructable } from '@n8n/di';
 import { ModuleMetadata } from './module-metadata';
 
 export interface ModuleInterface {
-	init?(): void | Promise<void>;
+	/** Called when the module is activated to trigger its init routine, if any. */
+	activate?(): void | Promise<void>;
 }
 
 export type ModuleClass = Constructable<ModuleInterface>;
