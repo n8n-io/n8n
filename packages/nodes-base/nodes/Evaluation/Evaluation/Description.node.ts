@@ -63,6 +63,21 @@ export const setOutputProperties: INodeProperties[] = [
 	},
 ];
 
+export const setCheckIfEvaluatingProperties: INodeProperties[] = [
+	{
+		displayName:
+			'Routes to the ‘evaluation’ branch if the execution started from an evaluation trigger. Otherwise routes to the ‘normal’ branch.',
+		name: 'notice',
+		type: 'notice',
+		default: '',
+		displayOptions: {
+			show: {
+				operation: ['checkIfEvaluating'],
+			},
+		},
+	},
+];
+
 export const setMetricsProperties: INodeProperties[] = [
 	{
 		displayName:

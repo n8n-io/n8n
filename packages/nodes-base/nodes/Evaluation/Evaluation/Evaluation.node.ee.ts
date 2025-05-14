@@ -7,7 +7,11 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
-import { setMetricsProperties, setOutputProperties } from './Description.node';
+import {
+	setCheckIfEvaluatingProperties,
+	setMetricsProperties,
+	setOutputProperties,
+} from './Description.node';
 import { authentication } from '../../Google/Sheet/v2/actions/versionDescription';
 import { listSearch, loadOptions } from '../methods';
 import { checkIfEvaluating, setMetrics, setOutputs, setOutput } from '../utils/evaluationUtils';
@@ -75,6 +79,7 @@ export class Evaluation implements INodeType {
 			authentication,
 			...setOutputProperties,
 			...setMetricsProperties,
+			...setCheckIfEvaluatingProperties,
 		],
 	};
 
