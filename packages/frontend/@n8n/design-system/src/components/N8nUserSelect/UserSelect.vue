@@ -34,6 +34,10 @@ const filter = ref('');
 
 const filteredUsers = computed(() =>
 	props.users.filter((user) => {
+		if (!user.email) {
+			return false;
+		}
+
 		if (props.ignoreIds.includes(user.id)) {
 			return false;
 		}
@@ -98,6 +102,7 @@ const getLabel = (user: IUser) =>
 		</template>
 		<N8nOption
 			v-for="user in sortedUsers"
+			:id="`user-select-option-id-${user.id}`"
 			:key="user.id"
 			:value="user.id"
 			:class="$style.itemContainer"
