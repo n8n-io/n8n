@@ -40,12 +40,13 @@ const API_RESPONSE = {
 };
 
 describe('Test SlackV1, channel => create', () => {
-	nock('https://slack.com')
+	const slackNock = nock('https://slack.com')
 		.post('/api/conversations.create', {
 			name: 'test-channel',
 		})
 		.reply(200, API_RESPONSE);
 
+	afterAll(() => slackNock.done());
 	new NodeTestHarness().setupTests({
 		workflowFiles: ['create.workflow.json'],
 	});

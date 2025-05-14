@@ -30,7 +30,7 @@ const API_RESPONSE = {
 };
 
 describe('Test SlackV1, message => post', () => {
-	nock('https://slack.com')
+	const slackNock = nock('https://slack.com')
 		.post('/api/chat.postMessage', {
 			channel: 'C08514ZPKB8',
 			text: 'test message',
@@ -43,6 +43,7 @@ describe('Test SlackV1, message => post', () => {
 		})
 		.reply(200, API_RESPONSE);
 
+	afterAll(() => slackNock.done());
 	new NodeTestHarness().setupTests({
 		workflowFiles: ['post.workflow.json'],
 	});

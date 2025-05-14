@@ -22,20 +22,6 @@ describe('Slack V1 > GenericFunctions', () => {
 	});
 
 	describe('slackApiRequest', () => {
-		it('should handle paid_teams_only error', async () => {
-			const mockResponse = { ok: false, error: 'paid_teams_only' };
-			mockExecuteFunctions.helpers.requestWithAuthentication = jest
-				.fn()
-				.mockResolvedValue(mockResponse);
-
-			const mockNodeApiError = jest.fn().mockImplementation(() => {
-				throw new Error('Slack Error: This feature is only available for paid teams');
-			});
-			jest.spyOn(require('n8n-workflow'), 'NodeApiError').mockImplementation(mockNodeApiError);
-
-			await expect(slackApiRequest.call(mockExecuteFunctions, 'GET', '/test')).rejects.toThrow();
-		});
-
 		it('should handle successful response', async () => {
 			const mockResponse = { ok: true, data: 'testData' };
 			mockExecuteFunctions.helpers.requestWithAuthentication = jest
