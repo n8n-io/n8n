@@ -121,12 +121,6 @@ export class WaitingWebhooks implements IWebhookManager {
 
 		const lastNodeExecuted = execution.data.resultData.lastNodeExecuted as string;
 
-		/**
-		 * A manual execution resumed by a webhook call needs to be marked as such
-		 * so workers in scaling mode reuse the existing execution data.
-		 */
-		if (execution.mode === 'manual') execution.data.isTestWebhook = true;
-
 		return await this.getWebhookExecutionData({
 			execution,
 			req,

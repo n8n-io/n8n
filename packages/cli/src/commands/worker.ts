@@ -1,8 +1,9 @@
+import { inTest } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import { Flags, type Config } from '@oclif/core';
 
 import config from '@/config';
-import { N8N_VERSION, inTest } from '@/constants';
+import { N8N_VERSION } from '@/constants';
 import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-message-generic';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';

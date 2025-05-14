@@ -7,6 +7,7 @@ import type { ExecutionRepository } from '@n8n/db';
 import type { TestCaseExecutionRepository } from '@n8n/db';
 import type { TestMetricRepository } from '@n8n/db';
 import type { TestRunRepository } from '@n8n/db';
+import type { WorkflowRepository } from '@n8n/db';
 import type { SelectQueryBuilder } from '@n8n/typeorm';
 import { stringify } from 'flatted';
 import { readFileSync } from 'fs';
@@ -18,7 +19,6 @@ import path from 'path';
 
 import type { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
-import type { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { NodeTypes } from '@/node-types';
 import type { Telemetry } from '@/telemetry';
@@ -27,10 +27,6 @@ import { mockInstance, mockLogger } from '@test/mocking';
 import { mockNodeTypesData } from '@test-integration/utils/node-types-data';
 
 import { TestRunnerService } from '../test-runner.service.ee';
-
-jest.mock('@/db', () => ({
-	transaction: (cb: any) => cb(),
-}));
 
 const wfUnderTestJson = JSON.parse(
 	readFileSync(path.join(__dirname, './mock-data/workflow.under-test.json'), { encoding: 'utf-8' }),
@@ -231,7 +227,9 @@ async function mockLongExecutionPromise(data: IRun, delay: number): Promise<IRun
 }
 
 describe('TestRunnerService', () => {
-	const executionRepository = mock<ExecutionRepository>();
+	const executionRepository = mock<ExecutionRepository>({
+		manager: { transaction: (cb: any) => cb() },
+	});
 	const workflowRepository = mock<WorkflowRepository>();
 	const workflowRunner = mock<WorkflowRunner>();
 	const activeExecutions = mock<ActiveExecutions>();

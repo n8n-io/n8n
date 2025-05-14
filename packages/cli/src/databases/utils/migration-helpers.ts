@@ -1,3 +1,4 @@
+import { inTest } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { ObjectLiteral } from '@n8n/typeorm';
@@ -6,7 +7,6 @@ import { readFileSync, rmSync } from 'fs';
 import { InstanceSettings, Logger } from 'n8n-core';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
 
-import { inTest } from '@/constants';
 import { createSchemaBuilder } from '@/databases/dsl';
 import type { BaseMigration, Migration, MigrationContext, MigrationFn } from '@/databases/types';
 
