@@ -63,7 +63,7 @@ describe('chainExecutor', () => {
 			expect(parser).toBeInstanceOf(StringOutputParser);
 		});
 
-		it('should resurn NaiveJsonOutputParser for Anthropic models in thinking mode', () => {
+		it('should return NaiveJsonOutputParser for Anthropic models in thinking mode', () => {
 			const model = {
 				lc_kwargs: {
 					invocationKwargs: {
