@@ -60,7 +60,7 @@ const runSummaries = computed(() => {
 			:data="runSummaries"
 			:columns="styledColumns"
 			:default-sort="{ prop: 'runAt', order: 'descending' }"
-			@row-click="(row) => emit('rowClick', row)"
+			@row-click="(row) => (row.status !== 'error' ? emit('rowClick', row) : undefined)"
 		>
 			<template #id="{ row }">#{{ row.index }} </template>
 			<template #status="{ row }">
