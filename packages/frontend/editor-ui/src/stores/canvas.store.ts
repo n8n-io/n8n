@@ -13,7 +13,6 @@ import {
 	LOGS_PANEL_STATE,
 	type LogDetailsContent as LogDetailsPanel,
 } from '@/components/CanvasChat/types/logs';
-import { chatEventBus } from '@n8n/chat/event-buses';
 import { useTelemetry } from '@/composables/useTelemetry';
 
 export const useCanvasStore = defineStore('canvas', () => {
@@ -23,7 +22,6 @@ export const useCanvasStore = defineStore('canvas', () => {
 	const newNodeInsertPosition = ref<XYPosition | null>(null);
 	const panelHeight = ref(0);
 	const isLogsPanelOpen = useLocalStorage(LOCAL_STORAGE_LOGS_PANEL_OPEN, false);
-	const shouldFocusChatOnLogsPanelOpen = ref(true);
 	const preferPopOutLogsView = ref(false);
 	const logsPanelState = computed(() =>
 		isLogsPanelOpen.value
@@ -48,20 +46,8 @@ export const useCanvasStore = defineStore('canvas', () => {
 		panelHeight.value = height;
 	}
 
-	function toggleLogsPanelOpen(isOpen?: boolean, options?: { disableFocusChatInput?: boolean }) {
-		const newValue = isOpen ?? !isLogsPanelOpen.value;
-
-		shouldFocusChatOnLogsPanelOpen.value = !options?.disableFocusChatInput;
-
-		if (isLogsPanelOpen.value && newValue) {
-			if (shouldFocusChatOnLogsPanelOpen.value) {
-				// If panel is already open and focusing chat is preferred, just focus chat
-				chatEventBus.emit('focusInput');
-			}
-			return;
-		}
-
-		isLogsPanelOpen.value = newValue;
+	function toggleLogsPanelOpen(isOpen?: boolean) {
+		isLogsPanelOpen.value = isOpen ?? !isLogsPanelOpen.value;
 	}
 
 	function setPreferPoppedOutLogsView(value: boolean) {
@@ -108,7 +94,6 @@ export const useCanvasStore = defineStore('canvas', () => {
 		aiNodes,
 		panelHeight: computed(() => panelHeight.value),
 		logsPanelState: computed(() => logsPanelState.value),
-		preferFocusChatOnLogsPanelOpen: computed(() => shouldFocusChatOnLogsPanelOpen.value),
 		isLogsPanelOpen: computed(() => logsPanelState.value !== LOGS_PANEL_STATE.CLOSED),
 		logDetailsPanel: computed(() => logDetailsPanel.value),
 		setPanelHeight,

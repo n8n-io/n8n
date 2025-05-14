@@ -224,7 +224,7 @@ const {
 	editableWorkflow,
 	editableWorkflowObject,
 	lastClickPosition,
-	toggleChatOpen,
+	startChat,
 } = useCanvasOperations({ router });
 const { applyExecutionData } = useExecutionDebugging();
 useClipboard({ onPaste: onClipboardPaste });
@@ -1358,12 +1358,8 @@ const chatTriggerNodePinnedData = computed(() => {
 	return workflowsStore.pinDataByNodeName(chatTriggerNode.value.name);
 });
 
-async function onToggleChat() {
-	await toggleChatOpen('main');
-}
-
-async function onOpenChat() {
-	await toggleChatOpen('main', true);
+function onOpenChat() {
+	startChat('main');
 }
 
 /**
@@ -1933,10 +1929,9 @@ onBeforeUnmount(() => {
 		@update:node:parameters="onUpdateNodeParameters"
 		@update:node:inputs="onUpdateNodeInputs"
 		@update:node:outputs="onUpdateNodeOutputs"
-		@update:logs-open="canvasStore.toggleLogsPanelOpen($event, { disableFocusChatInput: true })"
+		@update:logs-open="canvasStore.toggleLogsPanelOpen($event)"
 		@update:logs:input-open="canvasStore.toggleLogInputOpen"
 		@update:logs:output-open="canvasStore.toggleLogOutputOpen"
-		@update:chat-open="canvasStore.toggleLogsPanelOpen($event)"
 		@open:sub-workflow="onOpenSubWorkflow"
 		@click:node="onClickNode"
 		@click:node:add="onClickNodeAdd"
@@ -1962,6 +1957,7 @@ onBeforeUnmount(() => {
 		@selection:end="onSelectionEnd"
 		@drag-and-drop="onDragAndDrop"
 		@tidy-up="onTidyUp"
+		@start-chat="startChat('shortcut')"
 	>
 		<Suspense>
 			<LazySetupWorkflowCredentialsButton :class="$style.setupCredentialsButtonWrapper" />
@@ -1976,18 +1972,25 @@ onBeforeUnmount(() => {
 				@mouseleave="onRunWorkflowButtonMouseLeave"
 				@click="runEntireWorkflow('main')"
 			/>
-			<KeyboardShortcutTooltip
-				v-if="containsChatTriggerNodes"
-				:label="i18n.baseText('chat.open')"
-				:shortcut="{ keys: ['c'] }"
-				:disabled="isLogsPanelOpen"
-			>
+			<template v-if="containsChatTriggerNodes">
 				<CanvasChatButton
-					:type="isLogsPanelOpen ? 'tertiary' : 'primary'"
-					:label="isLogsPanelOpen ? i18n.baseText('chat.hide') : i18n.baseText('chat.open')"
-					@click="onToggleChat"
+					v-if="isLogsPanelOpen"
+					type="tertiary"
+					:label="i18n.baseText('chat.hide')"
+					@click="canvasStore.toggleLogsPanelOpen(false)"
 				/>
-			</KeyboardShortcutTooltip>
+				<KeyboardShortcutTooltip
+					v-else
+					:label="i18n.baseText('chat.open')"
+					:shortcut="{ keys: ['c'] }"
+				>
+					<CanvasChatButton
+						type="primary"
+						:label="i18n.baseText('chat.open')"
+						@click="onOpenChat"
+					/>
+				</KeyboardShortcutTooltip>
+			</template>
 			<CanvasStopCurrentExecutionButton
 				v-if="isStopExecutionButtonVisible"
 				:stopping="isStoppingExecution"

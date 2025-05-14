@@ -39,7 +39,7 @@ const i18n = useI18n();
 const workflowsStore = useWorkflowsStore();
 const canvasStore = useCanvasStore();
 const { runEntireWorkflow } = useRunWorkflow({ router });
-const { toggleChatOpen } = useCanvasOperations({ router });
+const { startChat } = useCanvasOperations({ router });
 
 const isChatOpen = computed(() => canvasStore.isLogsPanelOpen);
 const isExecuting = computed(() => workflowsStore.isWorkflowRunning);
@@ -55,21 +55,31 @@ const testId = computed(() => `execute-workflow-button-${name}`);
 			</div>
 
 			<template v-if="!readOnly">
-				<KeyboardShortcutTooltip
-					v-if="type === CHAT_TRIGGER_NODE_TYPE"
-					:label="i18n.baseText('chat.open')"
-					:shortcut="{ keys: ['c'] }"
-					:disabled="isChatOpen"
-				>
+				<template v-if="type === CHAT_TRIGGER_NODE_TYPE">
 					<N8nButton
-						:type="isChatOpen ? 'secondary' : 'primary'"
+						v-if="isChatOpen"
+						type="secondary"
 						size="large"
 						:disabled="isExecuting"
 						:data-test-id="testId"
-						:label="isChatOpen ? i18n.baseText('chat.hide') : i18n.baseText('chat.open')"
-						@click.capture="toggleChatOpen('node')"
+						:label="i18n.baseText('chat.hide')"
+						@click.capture="canvasStore.toggleLogsPanelOpen(false)"
 					/>
-				</KeyboardShortcutTooltip>
+					<KeyboardShortcutTooltip
+						v-else
+						:label="i18n.baseText('chat.open')"
+						:shortcut="{ keys: ['c'] }"
+					>
+						<N8nButton
+							type="primary"
+							size="large"
+							:disabled="isExecuting"
+							:data-test-id="testId"
+							:label="i18n.baseText('chat.open')"
+							@click.capture="startChat('node')"
+						/>
+					</KeyboardShortcutTooltip>
+				</template>
 				<N8nButton
 					v-else
 					type="primary"

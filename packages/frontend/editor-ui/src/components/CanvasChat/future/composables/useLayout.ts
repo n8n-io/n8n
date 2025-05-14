@@ -75,7 +75,7 @@ export function useLayout(
 			return;
 		}
 
-		canvasStore.toggleLogsPanelOpen(open, { disableFocusChatInput: true });
+		canvasStore.toggleLogsPanelOpen(open);
 
 		telemetry.track('User toggled log view', {
 			new_state: wasOpen ? 'collapsed' : 'attached',

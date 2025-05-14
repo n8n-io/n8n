@@ -7,13 +7,12 @@ interface Props {
 	label: string;
 	shortcut?: KeyboardShortcut;
 	placement?: Placement;
-	disabled?: boolean;
 }
 withDefaults(defineProps<Props>(), { placement: 'top', shortcut: undefined });
 </script>
 
 <template>
-	<N8nTooltip :placement="placement" :show-after="500" :disabled="disabled">
+	<N8nTooltip :placement="placement" :show-after="500">
 		<template #content>
 			<div :class="$style.shortcut">
 				<div :class="$style.label">{{ label }}</div>

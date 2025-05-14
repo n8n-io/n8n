@@ -69,7 +69,6 @@ const emit = defineEmits<{
 	'update:node:parameters': [id: string, parameters: Record<string, unknown>];
 	'update:node:inputs': [id: string];
 	'update:node:outputs': [id: string];
-	'update:chat-open': [open?: boolean];
 	'update:logs-open': [open?: boolean];
 	'update:logs:input-open': [open?: boolean];
 	'update:logs:output-open': [open?: boolean];
@@ -104,6 +103,7 @@ const emit = defineEmits<{
 	'viewport:change': [viewport: ViewportTransform, dimensions: Dimensions];
 	'selection:end': [position: XYPosition];
 	'open:sub-workflow': [nodeId: string];
+	'start-chat': [];
 }>();
 
 const props = withDefaults(
@@ -312,7 +312,7 @@ const keyMap = computed(() => {
 		ctrl_enter: () => emit('run:workflow'),
 		ctrl_s: () => emit('save:workflow'),
 		shift_alt_t: async () => await onTidyUp({ source: 'keyboard-shortcut' }),
-		c: () => emit('update:chat-open'),
+		c: () => emit('start-chat'),
 	};
 	return fullKeymap;
 });

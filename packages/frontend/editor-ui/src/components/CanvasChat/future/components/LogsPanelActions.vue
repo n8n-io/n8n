@@ -24,13 +24,7 @@ const toggleButtonText = computed(() =>
 
 <template>
 	<div :class="$style.container">
-		<N8nTooltip
-			v-if="showPopOutButton"
-			:z-index="tooltipZIndex"
-			:content="popOutButtonText"
-			:show-after="500"
-			placement="top"
-		>
+		<N8nTooltip v-if="showPopOutButton" :z-index="tooltipZIndex" :content="popOutButtonText">
 			<N8nIconButton
 				icon="pop-out"
 				type="secondary"

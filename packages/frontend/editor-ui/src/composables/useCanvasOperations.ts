@@ -105,6 +105,7 @@ import { useUniqueNodeName } from '@/composables/useUniqueNodeName';
 import { isPresent } from '../utils/typesUtils';
 import { useProjectsStore } from '@/stores/projects.store';
 import type { CanvasLayoutEvent } from './useCanvasLayout';
+import { chatEventBus } from '@n8n/chat/event-buses';
 
 type AddNodeData = Partial<INodeUi> & {
 	type: string;
@@ -2022,10 +2023,10 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		return data;
 	}
 
-	async function toggleChatOpen(source: 'node' | 'main', isOpen?: boolean) {
+	function startChat(source: 'node' | 'main' | 'shortcut') {
 		const workflow = workflowsStore.getCurrentWorkflow();
 
-		canvasStore.toggleLogsPanelOpen(isOpen);
+		canvasStore.toggleLogsPanelOpen(true);
 
 		const payload = {
 			workflow_id: workflow.id,
@@ -2034,6 +2035,10 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 
 		void externalHooks.run('nodeView.onOpenChat', payload);
 		telemetry.track('User clicked chat open button', payload);
+
+		setTimeout(() => {
+			chatEventBus.emit('focusInput');
+		}, 0);
 	}
 
 	async function importTemplate({
@@ -2112,7 +2117,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		initializeWorkspace,
 		resolveNodeWebhook,
 		openExecution,
-		toggleChatOpen,
+		startChat,
 		importTemplate,
 		tryToOpenSubworkflowInNewTab,
 	};

@@ -127,8 +127,6 @@ watch(
 				<N8nTooltip
 					v-if="isClearExecutionButtonVisible"
 					:content="locale.baseText('logs.overview.header.actions.clearExecution.tooltip')"
-					:show-after="500"
-					placement="top"
 				>
 					<N8nButton
 						size="mini"
