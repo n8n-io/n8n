@@ -2645,7 +2645,7 @@ export interface ExecutionSummary {
 	retrySuccessId?: string | null;
 	waitTill?: Date;
 	createdAt: Date;
-	startedAt: Date;
+	startedAt: Date | null;
 	stoppedAt?: Date;
 	workflowId: string;
 	workflowName?: string;
