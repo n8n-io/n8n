@@ -336,11 +336,10 @@ async function initializeRoute(force = false) {
 			NODE_CREATOR_OPEN_SOURCES.ADD_EVALUATION_TRIGGER_BUTTON,
 		);
 	} else if (route.query.action === 'addEvaluationNode') {
-		nodeCreatorStore.openSelectiveNodeCreator({
-			connectionType: NodeConnectionTypes.Main,
-			node: '',
-			creatorView: 'AI',
-		});
+		nodeCreatorStore.openNodeCreatorForActions(
+			'n8n-nodes-base.evaluation',
+			NODE_CREATOR_OPEN_SOURCES.ADD_EVALUATION_NODE_BUTTON,
+		);
 	} else if (route.query.action === 'executeEvaluation') {
 		if (evaluationTriggerNode.value) {
 			void runEntireWorkflow('node', evaluationTriggerNode.value.name);
