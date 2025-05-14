@@ -747,12 +747,6 @@ export const KEEP_AUTH_IN_NDV_FOR_NODES = [
 export const MAIN_AUTH_FIELD_NAME = 'authentication';
 export const NODE_RESOURCE_FIELD_NAME = 'resource';
 
-export const CREDENTIAL_DOCS_EXPERIMENT = {
-	name: '024_credential_docs',
-	control: 'control',
-	variant: 'variant',
-};
-
 export const EASY_AI_WORKFLOW_EXPERIMENT = {
 	name: '026_easy_ai_workflow',
 	control: 'control',
@@ -772,7 +766,6 @@ export const WORKFLOW_BUILDER_EXPERIMENT = {
 };
 
 export const EXPERIMENTS_TO_TRACK = [
-	CREDENTIAL_DOCS_EXPERIMENT.name,
 	EASY_AI_WORKFLOW_EXPERIMENT.name,
 	AI_CREDITS_EXPERIMENT.name,
 	WORKFLOW_BUILDER_EXPERIMENT.name,

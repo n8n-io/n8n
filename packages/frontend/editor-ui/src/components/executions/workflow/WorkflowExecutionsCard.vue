@@ -108,9 +108,11 @@ function onRetryMenuItemSelect(action: string): void {
 						v-if="executionUIDetails.name === 'running'"
 						:color="isActive ? 'text-dark' : 'text-base'"
 						size="small"
+						data-test-id="execution-time-in-status"
 					>
 						{{ locale.baseText('executionDetails.runningTimeRunning') }}
-						<ExecutionsTime :start-time="execution.startedAt" />
+						<!-- Just here to make typescript happy, since `startedAt` will always be defined for running executions -->
+						<ExecutionsTime :start-time="execution.startedAt ?? execution.createdAt" />
 					</N8nText>
 					<N8nText
 						v-if="executionUIDetails.name === 'new' && execution.createdAt"
