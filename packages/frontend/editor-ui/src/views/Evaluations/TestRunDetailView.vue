@@ -70,7 +70,7 @@ const columns = computed(
 	(): Array<TestTableColumn<TestCaseExecutionRecord & { index: number }>> => [
 		{
 			prop: 'index',
-			width: 250,
+			width: 100,
 			label: locale.baseText('evaluation.runDetail.testCase'),
 			sortable: true,
 			formatter: (row: TestCaseExecutionRecord & { index: number }) => `#${row.index}`,
