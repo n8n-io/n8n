@@ -177,9 +177,7 @@ onMounted(async () => {
 						{{ locale.baseText('evaluation.runDetail.ranAt') }}
 					</N8nText>
 					<div>
-						<N8nText v-for="item in formattedTime" :key="item" size="medium" tag="div">
-							{{ item }}
-						</N8nText>
+						<N8nText size="medium"> {{ formattedTime.date }} {{ formattedTime.time }} </N8nText>
 					</div>
 				</div>
 
@@ -231,15 +229,7 @@ onMounted(async () => {
 				</div>
 			</template>
 			<template #status="{ row }">
-				<div
-					style="
-						display: inline-flex;
-						gap: 12px;
-						text-transform: capitalize;
-						align-items: center;
-						max-width: 100%;
-					"
-				>
+				<div style="display: inline-flex; gap: 12px; align-items: center; max-width: 100%">
 					<N8nIcon
 						:icon="statusDictionary[row.status].icon"
 						:color="statusDictionary[row.status].color"
@@ -251,15 +241,17 @@ onMounted(async () => {
 									locale.baseText(`${getErrorBaseKey(row.errorCode)}` as BaseTextKey) || row.status
 								}}
 							</template>
-							<p :class="$style.alertText">
+							<N8nText color="danger">
 								{{
 									locale.baseText(`${getErrorBaseKey(row.errorCode)}` as BaseTextKey) || row.status
 								}}
-							</p>
+							</N8nText>
 						</N8nTooltip>
 					</template>
 					<template v-else>
-						{{ row.status }}
+						<N8nText style="text-transform: capitalize">
+							{{ row.status }}
+						</N8nText>
 					</template>
 				</div>
 			</template>
