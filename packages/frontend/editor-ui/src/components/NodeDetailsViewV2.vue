@@ -644,7 +644,6 @@ const onResize = (event: ResizeData) => {
 		}
 	} else if (event.direction === 'right') {
 		const newRight = Math.max(minPanelWidthPercentage.value, initialRight - diffMain);
-		console.log(newMain, newRight, initialLeft);
 		if (initialLeft + newMain + newRight <= 100) {
 			panelWidth.value.main = newMain;
 			panelWidth.value.right = newRight;
