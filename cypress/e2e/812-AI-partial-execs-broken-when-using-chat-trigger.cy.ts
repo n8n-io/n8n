@@ -20,6 +20,8 @@ describe('AI-812-partial-execs-broken-when-using-chat-trigger', () => {
 		cy.createFixtureWorkflow('Test_chat_partial_execution.json');
 		clearNotifications();
 		clickZoomToFit();
+		openContextMenu('Edit Fields');
+		clickContextMenuAction('deselect_all');
 	});
 
 	// Check if the full execution still behaves as expected after the partial execution tests
