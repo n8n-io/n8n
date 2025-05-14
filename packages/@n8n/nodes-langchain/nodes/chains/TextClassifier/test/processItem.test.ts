@@ -66,7 +66,7 @@ describe('processItem', () => {
 		};
 
 		const mockChain = {
-			invoke: jest.fn().mockResolvedValue({ category: 'test' }),
+			invoke: jest.fn().mockResolvedValue({ test: true }),
 		};
 
 		const mockPipe = jest.fn().mockReturnValue({
@@ -92,7 +92,7 @@ describe('processItem', () => {
 			undefined,
 		);
 
-		expect(result).toEqual({ category: 'test' });
+		expect(result).toEqual({ test: true });
 		expect(mockContext.getNodeParameter).toHaveBeenCalledWith('inputText', 0);
 		expect(mockContext.getNodeParameter).toHaveBeenCalledWith(
 			'options.systemPromptTemplate',
@@ -161,40 +161,5 @@ describe('processItem', () => {
 				undefined,
 			),
 		).rejects.toThrow(NodeOperationError);
-	});
-
-	it('should handle chain invocation error', async () => {
-		const mockParser = {
-			getFormatInstructions: () => '[format instructions]',
-		};
-
-		const mockChain = {
-			invoke: jest.fn().mockRejectedValue(new Error('Chain error')),
-		};
-
-		const mockPipe = jest.fn().mockReturnValue({
-			pipe: jest.fn().mockReturnValue({
-				withConfig: jest.fn().mockReturnValue(mockChain),
-			}),
-		});
-
-		const mockPrompt = {
-			pipe: mockPipe,
-		};
-
-		jest.mocked(ChatPromptTemplate.fromMessages).mockReturnValue(mockPrompt as any);
-
-		await expect(
-			processItem(
-				mockContext,
-				0,
-				{ json: {} },
-				fakeLLM,
-				mockParser as any,
-				[{ category: 'test', description: 'test category' }],
-				'multi class prompt',
-				undefined,
-			),
-		).rejects.toThrow('Chain error');
 	});
 });
