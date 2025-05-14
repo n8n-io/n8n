@@ -31,7 +31,6 @@ export class EvaluationTrigger implements INodeType {
 		version: 4.6,
 		description: 'Run a test dataset through your workflow to check performance',
 		eventTriggerDescription: '',
-		maxNodes: 1,
 		defaults: {
 			name: 'When fetching a dataset row',
 		},
