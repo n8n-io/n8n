@@ -163,7 +163,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			let triggerToStartFrom: IStartRunData['triggerToStartFrom'];
 			if (
 				startNodeNames.length === 0 &&
-directParentNodes.length === 0 &&
+				directParentNodes.length === 0 &&
 				'destinationNode' in options &&
 				options.destinationNode !== undefined
 			) {
@@ -238,7 +238,8 @@ directParentNodes.length === 0 &&
 			const version = settingsStore.partialExecutionVersion;
 
 			// TODO: this will be redundant once we cleanup the partial execution v1
-			const startNodes: StartNodeData[] = sortNodesByYPosition(startNodeNames).map((name) => {
+			const startNodes: StartNodeData[] = sortNodesByYPosition(startNodeNames)
+				.map((name) => {
 					// Find for each start node the source data
 					let sourceData = get(runData, [name, 0, 'source', 0], null);
 					if (sourceData === null) {
