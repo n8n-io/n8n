@@ -177,9 +177,7 @@ onMounted(async () => {
 						{{ locale.baseText('evaluation.runDetail.ranAt') }}
 					</N8nText>
 					<div>
-						<N8nText v-for="item in formattedTime" :key="item" size="medium" tag="div">
-							{{ item }}
-						</N8nText>
+						<N8nText size="medium"> {{ formattedTime.date }} {{ formattedTime.time }} </N8nText>
 					</div>
 				</div>
 
