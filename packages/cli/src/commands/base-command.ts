@@ -101,7 +101,6 @@ export abstract class BaseCommand extends Command {
 		await Container.get(LoadNodesAndCredentials).init();
 
 		await Container.get(ModuleLoader).loadModules();
-		// @TODO: Register entities of eligible modules
 
 		await this.dbConnection
 			.init()
