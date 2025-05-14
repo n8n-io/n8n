@@ -11,9 +11,12 @@ import {
 } from 'n8n-core';
 import { MANUAL_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import type {
+	IExecuteData,
 	IPinData,
 	IRun,
 	IRunExecutionData,
+	IWaitingForExecution,
+	IWaitingForExecutionSource,
 	IWorkflowExecuteAdditionalData,
 	IWorkflowExecutionDataProcess,
 	Workflow,
@@ -72,13 +75,22 @@ export class ManualExecutionService {
 			});
 			const runData = { [data.triggerToStartFrom.name]: [data.triggerToStartFrom.data] };
 
-			const { nodeExecutionStack, waitingExecution, waitingExecutionSource } =
-				recreateNodeExecutionStack(
+			let nodeExecutionStack: IExecuteData[] = [];
+			let waitingExecution: IWaitingForExecution = {};
+			let waitingExecutionSource: IWaitingForExecutionSource = {};
+
+			if (data.destinationNode !== data.triggerToStartFrom.name) {
+				const recreatedStack = recreateNodeExecutionStack(
 					filterDisabledNodes(DirectedGraph.fromWorkflow(workflow)),
 					new Set(startNodes),
 					runData,
 					data.pinData ?? {},
 				);
+				nodeExecutionStack = recreatedStack.nodeExecutionStack;
+				waitingExecution = recreatedStack.waitingExecution;
+				waitingExecutionSource = recreatedStack.waitingExecutionSource;
+			}
+
 			const executionData: IRunExecutionData = {
 				resultData: { runData, pinData },
 				executionData: {
