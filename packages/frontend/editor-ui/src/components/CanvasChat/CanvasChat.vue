@@ -68,7 +68,7 @@ const {
 	sendMessage,
 	refreshSession,
 	displayExecution,
-} = useChatState(canvasStore.isLogsPanelOpen, false);
+} = useChatState(false);
 
 // Expose internal state for testing
 defineExpose({

@@ -52,7 +52,7 @@ const {
 	sendMessage,
 	refreshSession,
 	displayExecution,
-} = useChatState(isOpen.value, props.isReadOnly);
+} = useChatState(props.isReadOnly);
 
 const { entries, execution, hasChat, latestNodeNameById, resetExecutionData, loadSubExecution } =
 	useExecutionData();

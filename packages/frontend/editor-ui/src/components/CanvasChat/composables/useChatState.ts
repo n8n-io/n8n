@@ -17,6 +17,7 @@ import type { Ref } from 'vue';
 import { computed, provide, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { restoreChatHistory } from '@/components/CanvasChat/utils';
+import { useCanvasStore } from '@/stores/canvas.store';
 
 interface ChatState {
 	currentSessionId: Ref<string>;
@@ -29,10 +30,11 @@ interface ChatState {
 	displayExecution: (executionId: string) => void;
 }
 
-export function useChatState(isOpen: boolean, isReadOnly: boolean): ChatState {
+export function useChatState(isReadOnly: boolean): ChatState {
 	const locale = useI18n();
 	const workflowsStore = useWorkflowsStore();
 	const nodeTypesStore = useNodeTypesStore();
+	const canvasStore = useCanvasStore();
 	const router = useRouter();
 	const nodeHelpers = useNodeHelpers();
 	const { runWorkflow } = useRunWorkflow({ router });
@@ -166,7 +168,7 @@ export function useChatState(isOpen: boolean, isReadOnly: boolean): ChatState {
 		messages.value = [];
 		currentSessionId.value = uuid().replace(/-/g, '');
 
-		if (isOpen) {
+		if (canvasStore.isLogsPanelOpen) {
 			chatEventBus.emit('focusInput');
 		}
 	}
