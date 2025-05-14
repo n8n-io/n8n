@@ -17,7 +17,7 @@ describe('@Module Decorator', () => {
 	it('should register module in ModuleMetadata', () => {
 		@Module('test')
 		class TestModule {
-			initialize() {}
+			activate() {}
 		}
 
 		const registeredModules = Array.from(moduleMetadata.getModules()).map(([_, cls]) => cls);
@@ -29,17 +29,17 @@ describe('@Module Decorator', () => {
 	it('should register multiple modules', () => {
 		@Module('first')
 		class FirstModule {
-			initialize() {}
+			activate() {}
 		}
 
 		@Module('second')
 		class SecondModule {
-			initialize() {}
+			activate() {}
 		}
 
 		@Module('third')
 		class ThirdModule {
-			initialize() {}
+			activate() {}
 		}
 
 		const registeredModules = Array.from(moduleMetadata.getModules()).map(([_, cls]) => cls);
@@ -50,7 +50,7 @@ describe('@Module Decorator', () => {
 		expect(registeredModules).toHaveLength(3);
 	});
 
-	it('should work with modules without initialize method', () => {
+	it('should work with modules without activate method', () => {
 		@Module('test')
 		class TestModule {}
 
@@ -60,13 +60,13 @@ describe('@Module Decorator', () => {
 		expect(registeredModules).toHaveLength(1);
 	});
 
-	it('should support async initialize method', async () => {
-		const mockInitialize = jest.fn();
+	it('should support async activate method', async () => {
+		const mockactivate = jest.fn();
 
 		@Module('test')
 		class TestModule {
-			async initialize() {
-				mockInitialize();
+			async activate() {
+				mockactivate();
 			}
 		}
 
@@ -75,9 +75,9 @@ describe('@Module Decorator', () => {
 		expect(registeredModules).toContain(TestModule);
 
 		const moduleInstance = new TestModule();
-		await moduleInstance.initialize();
+		await moduleInstance.activate();
 
-		expect(mockInitialize).toHaveBeenCalled();
+		expect(mockactivate).toHaveBeenCalled();
 	});
 
 	it('should allow retrieving and checking registered modules', () => {
