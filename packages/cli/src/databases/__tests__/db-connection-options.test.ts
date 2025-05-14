@@ -1,11 +1,11 @@
 import type { GlobalConfig, InstanceSettingsConfig } from '@n8n/config';
+import { mysqlMigrations } from '@n8n/db';
+import { postgresMigrations } from '@n8n/db';
+import { sqliteMigrations } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import path from 'path';
 
 import { DbConnectionOptions } from '../db-connection-options';
-import { mysqlMigrations } from '../migrations/mysqldb';
-import { postgresMigrations } from '../migrations/postgresdb';
-import { sqliteMigrations } from '../migrations/sqlite';
 
 describe('DbConnectionOptions', () => {
 	const dbConfig = mock<GlobalConfig['database']>({
