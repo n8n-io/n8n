@@ -72,7 +72,7 @@ export class ModuleLoader {
 			check = (await import(preInitCheckPath)) as PreInitCheck;
 		} catch {
 			this.logger.debug(`Module "${moduleName}" has no pre-init check`);
-			return true; // no pre-init found
+			return true; // no pre-init exists
 		}
 
 		try {
