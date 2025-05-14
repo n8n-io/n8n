@@ -1,6 +1,7 @@
 import { Container } from '@n8n/di';
 
 import { Module } from '../module';
+import { ModuleAlreadyRegisteredError } from '../module-already-registered.error';
 import { ModuleMetadata } from '../module-metadata';
 
 describe('@Module Decorator', () => {
@@ -79,19 +80,17 @@ describe('@Module Decorator', () => {
 		expect(mockInitialize).toHaveBeenCalled();
 	});
 
-	describe('ModuleMetadata', () => {
-		it('should allow retrieving and checking registered modules', () => {
-			@Module('first')
-			class FirstModule {}
+	it('should allow retrieving and checking registered modules', () => {
+		@Module('first')
+		class FirstModule {}
 
-			@Module('second')
-			class SecondModule {}
+		@Module('second')
+		class SecondModule {}
 
-			const registeredModules = Array.from(moduleMetadata.getModules()).map(([_, cls]) => cls);
+		const registeredModules = Array.from(moduleMetadata.getModules()).map(([_, cls]) => cls);
 
-			expect(registeredModules).toContain(FirstModule);
-			expect(registeredModules).toContain(SecondModule);
-		});
+		expect(registeredModules).toContain(FirstModule);
+		expect(registeredModules).toContain(SecondModule);
 	});
 
 	it('should apply Service decorator', () => {
@@ -99,5 +98,21 @@ describe('@Module Decorator', () => {
 		class TestModule {}
 
 		expect(Container.has(TestModule)).toBe(true);
+	});
+
+	it('should refuse to register a module if the name is already taken', () => {
+		@Module('duplicate')
+		class FirstModule {}
+
+		expect(() => {
+			@Module('duplicate')
+			// @ts-expect-error Test
+			class SecondModule {}
+		}).toThrow(ModuleAlreadyRegisteredError);
+
+		const registeredModules = Array.from(moduleMetadata.getModules()).map(([_, cls]) => cls);
+
+		expect(registeredModules).toContain(FirstModule);
+		expect(registeredModules).toHaveLength(1);
 	});
 });
