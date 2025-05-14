@@ -6,6 +6,7 @@ import type {
 	INodeProperties,
 	INodeTypeDescription,
 	ITelemetryTrackProperties,
+	NodeConnectionType,
 	NodeParameterValue,
 	NodeParameterValueType,
 } from 'n8n-workflow';
@@ -102,6 +103,7 @@ export interface ExternalHooks {
 			ExternalHooksMethod<{
 				source?: string;
 				mode: string;
+				connectionType?: NodeConnectionType;
 				createNodeActive: boolean;
 			}>
 		>;
