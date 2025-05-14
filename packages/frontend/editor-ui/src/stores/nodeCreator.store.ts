@@ -109,6 +109,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 				setNodeCreatorState({
 					createNodeActive: true,
 					nodeCreatorView: creatorView,
+					connectionType,
 				});
 			} else if (connectionType && nodeData) {
 				openNodeCreatorForConnectingNode({
@@ -130,6 +131,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		source,
 		createNodeActive,
 		nodeCreatorView,
+		connectionType,
 	}: ToggleNodeCreatorOptions) {
 		if (!nodeCreatorView) {
 			nodeCreatorView =
@@ -148,6 +150,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		void externalHooks.run('nodeView.createNodeActiveChanged', {
 			source,
 			mode: getMode(nodeCreatorView),
+			connectionType,
 			createNodeActive,
 		});
 
@@ -155,6 +158,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 			onCreatorOpened({
 				source,
 				mode: getMode(nodeCreatorView),
+				connectionType,
 				workflow_id: workflowsStore.workflowId,
 			});
 		}
@@ -195,6 +199,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 			source: eventSource,
 			createNodeActive: true,
 			nodeCreatorView: isScopedConnection ? AI_UNCATEGORIZED_CATEGORY : nodeCreatorView,
+			connectionType: type,
 		});
 
 		// TODO: The animation is a bit glitchy because we're updating view stack immediately
@@ -264,16 +269,19 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 	function onCreatorOpened({
 		source,
 		mode,
+		connectionType,
 		workflow_id,
 	}: {
 		source?: string;
 		mode: string;
+		connectionType?: NodeConnectionType;
 		workflow_id?: string;
 	}) {
 		resetNodesPanelSession();
 		trackNodeCreatorEvent('User opened nodes panel', {
 			source,
 			mode,
+			connectionType,
 			workflow_id,
 		});
 	}
