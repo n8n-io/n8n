@@ -1606,21 +1606,16 @@ export function makeDescription(
 }
 
 /**
- * Determines whether a tool description should be updated and calculates the new description if needed.
- * This is used for nodes used as tools with a manual description type when their parameters change.
+ * Determines whether a tool description should be updated and returns the new description if needed.
+ * Returns undefined if no update is needed.
  */
 
-export const getToolDescription = (
+export const getUpdatedToolDescription = (
 	currentNodeType: INodeTypeDescription | null,
 	newParameters: INodeParameters | null,
 	currentParameters?: INodeParameters,
-): { shouldUpdate: boolean; newDescription: string | null } => {
-	const result: { shouldUpdate: boolean; newDescription: string | null } = {
-		shouldUpdate: false,
-		newDescription: null,
-	};
-
-	if (!currentNodeType) return result;
+) => {
+	if (!currentNodeType) return;
 
 	if (newParameters?.descriptionType === 'manual' && currentParameters) {
 		const previousDescription = makeDescription(currentParameters, currentNodeType);
@@ -1628,15 +1623,33 @@ export const getToolDescription = (
 
 		if (
 			newParameters.toolDescription === previousDescription ||
+			!newParameters.toolDescription?.toString().trim() ||
 			newParameters.toolDescription === currentNodeType.description
 		) {
-			result.shouldUpdate = true;
-			result.newDescription = newDescription;
+			return newDescription;
 		}
 	}
 
-	return result;
+	return;
 };
+
+/**
+ * Generates a tool description for a given node based on its parameters and type.
+ */
+export function getToolDescriptionForNode(node: INode, nodeType: INodeType): string {
+	let toolDescription;
+	if (
+		node.parameters.descriptionType === 'auto' ||
+		!node?.parameters.toolDescription?.toString().trim()
+	) {
+		toolDescription = makeDescription(node.parameters, nodeType.description);
+	} else if (node?.parameters.toolDescription) {
+		toolDescription = node.parameters.toolDescription;
+	} else {
+		toolDescription = nodeType.description.description;
+	}
+	return toolDescription as string;
+}
 
 /**
  * Attempts to retrieve the ID of a subworkflow from a execute workflow node.

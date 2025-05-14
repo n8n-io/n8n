@@ -98,21 +98,6 @@ export function nodeNameToToolName(node: INode): string {
 }
 
 /**
- * Generates a tool description for a given node based on its parameters and type.
- */
-function getToolDescription(node: INode, nodeType: INodeType): string {
-	let toolDescription;
-	if (node.parameters.descriptionType === 'auto') {
-		toolDescription = NodeHelpers.makeDescription(node.parameters, nodeType.description);
-	} else if (node?.parameters.toolDescription) {
-		toolDescription = node.parameters.toolDescription;
-	} else {
-		toolDescription = nodeType.description.description;
-	}
-	return toolDescription as string;
-}
-
-/**
  * Creates a DynamicStructuredTool from a node.
  * @returns A DynamicStructuredTool instance.
  */
@@ -120,7 +105,7 @@ function createTool(options: CreateNodeAsToolOptions) {
 	const { node, nodeType, handleToolInvocation } = options;
 
 	const schema = getSchema(node);
-	const description = getToolDescription(node, nodeType);
+	const description = NodeHelpers.getToolDescriptionForNode(node, nodeType);
 	const nodeName = nodeNameToToolName(node);
 	const name = nodeName || nodeType.description.name;
 
