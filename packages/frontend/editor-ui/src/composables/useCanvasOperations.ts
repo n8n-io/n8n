@@ -106,6 +106,7 @@ import { isPresent } from '../utils/typesUtils';
 import { useProjectsStore } from '@/stores/projects.store';
 import type { CanvasLayoutEvent } from './useCanvasLayout';
 import { chatEventBus } from '@n8n/chat/event-buses';
+import { isChatNode } from '@/components/CanvasChat/utils';
 
 type AddNodeData = Partial<INodeUi> & {
 	type: string;
@@ -2024,6 +2025,10 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 	}
 
 	function startChat(source?: 'node' | 'main') {
+		if (!workflowsStore.allNodes.some(isChatNode)) {
+			return;
+		}
+
 		const workflow = workflowsStore.getCurrentWorkflow();
 
 		canvasStore.toggleLogsPanelOpen(true);
