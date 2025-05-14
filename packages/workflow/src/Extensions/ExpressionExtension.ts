@@ -134,7 +134,7 @@ export const extendTransform = (expression: string): { code: string } | undefine
 				const chainNumber = currentChain;
 				currentChain += 1;
 
-				// This is to match our fork of tmpl
+				// This is to match behavior in our original expression evaluator (tmpl)
 				const globalIdentifier = types.builders.identifier(
 					// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 					typeof window !== 'object' ? 'global' : 'window',

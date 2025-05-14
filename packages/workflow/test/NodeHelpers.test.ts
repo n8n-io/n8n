@@ -4325,7 +4325,7 @@ describe('NodeHelpers', () => {
 				expected: true,
 			},
 			{
-				description: 'Should return false for node with only AiTool output and not a trigger',
+				description: 'Should return true for node with only AiTool output and not a trigger',
 				node: {
 					id: 'aiToolOutputNodeId',
 					name: 'AiToolOutputNode',
@@ -4345,10 +4345,10 @@ describe('NodeHelpers', () => {
 					outputs: [NodeConnectionTypes.AiTool], // Only AiTool output, no Main
 					properties: [],
 				},
-				expected: false,
+				expected: true,
 			},
 			{
-				description: 'Should return false for node with dynamic outputs set to AiTool only',
+				description: 'Should return true for node with dynamic outputs set to AiTool only',
 				node: {
 					id: 'dynamicAiToolNodeId',
 					name: 'DynamicAiToolNode',
@@ -4368,7 +4368,7 @@ describe('NodeHelpers', () => {
 					outputs: '={{["ai_tool"]}}', // Dynamic expression that resolves to AiTool only
 					properties: [],
 				},
-				expected: false,
+				expected: true,
 				mockReturnValue: [NodeConnectionTypes.AiTool],
 			},
 		];

@@ -1,3 +1,4 @@
+import { inTest } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Container, Service } from '@n8n/di';
 import glob from 'fast-glob';
@@ -29,13 +30,7 @@ import { deepCopy, NodeConnectionTypes, UnexpectedError, UserError } from 'n8n-w
 import path from 'path';
 import picocolors from 'picocolors';
 
-import {
-	CUSTOM_API_CALL_KEY,
-	CUSTOM_API_CALL_NAME,
-	inTest,
-	CLI_DIR,
-	inE2ETests,
-} from '@/constants';
+import { CUSTOM_API_CALL_KEY, CUSTOM_API_CALL_NAME, CLI_DIR, inE2ETests } from '@/constants';
 import { isContainedWithin } from '@/utils/path-util';
 
 @Service()
@@ -319,8 +314,6 @@ export class LoadNodesAndCredentials {
 						} as INodeTypeBaseDescription)
 					: deepCopy(usableNode);
 			const wrapped = this.convertNodeToAiTool({ description }).description;
-			// TODO: Remove this when we support partial execution on all tool nodes
-			wrapped.usableAsTool = true;
 
 			this.types.nodes.push(wrapped);
 			this.known.nodes[wrapped.name] = { ...this.known.nodes[usableNode.name] };

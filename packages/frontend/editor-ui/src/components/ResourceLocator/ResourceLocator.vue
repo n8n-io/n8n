@@ -18,19 +18,19 @@ import {
 	getMainAuthField,
 	hasOnlyListMode as hasOnlyListModeUtil,
 } from '@/utils/nodeTypesUtils';
-import { isResourceLocatorValue } from '@/utils/typeGuards';
 import stringify from 'fast-json-stable-stringify';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
-import type {
-	INode,
-	INodeListSearchItems,
-	INodeParameterResourceLocator,
-	INodeParameters,
-	INodeProperties,
-	INodePropertyMode,
-	INodePropertyModeTypeOptions,
-	NodeParameterValue,
+import {
+	isResourceLocatorValue,
+	type INode,
+	type INodeListSearchItems,
+	type INodeParameterResourceLocator,
+	type INodeParameters,
+	type INodeProperties,
+	type INodePropertyMode,
+	type INodePropertyModeTypeOptions,
+	type NodeParameterValue,
 } from 'n8n-workflow';
 import {
 	computed,

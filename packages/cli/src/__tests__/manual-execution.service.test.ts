@@ -76,7 +76,7 @@ describe('ManualExecutionService', () => {
 			const data = mock<IWorkflowExecutionDataProcess>();
 			const manualTrigger = mock<INode>({
 				type: 'n8n-nodes-base.manualTrigger',
-				name: 'When clicking ‘Test workflow’',
+				name: 'When clicking ‘Execute workflow’',
 			});
 
 			const workflow = mock<Workflow>({

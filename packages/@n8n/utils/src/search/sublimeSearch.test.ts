@@ -2,8 +2,13 @@ import topLevel from './snapshots/toplevel.snapshot.json';
 import { sublimeSearch } from './sublimeSearch';
 
 describe('sublimeSearch', () => {
-	describe('search finds at least one match', () => {
-		const testCases: Array<[string, string[]]> = [['agent', ['Magento 2', 'AI Agent']]];
+	describe('search finds specific matches first', () => {
+		// Note that this only tests the order of the specified matches
+		// Further results may appear after the listed ones
+		const testCases: Array<[string, string[]]> = [
+			['set', ['Edit Fields (Set)']],
+			['agent', ['AI Agent', 'Magento 2']],
+		];
 
 		test.each(testCases)(
 			'should return at least "$expectedOrder" for filter "$filter"',

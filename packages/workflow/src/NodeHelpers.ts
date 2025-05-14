@@ -6,6 +6,7 @@
 import get from 'lodash/get';
 import isEqual from 'lodash/isEqual';
 
+import { EXECUTE_WORKFLOW_NODE_TYPE } from './Constants';
 import { ApplicationError } from './errors/application.error';
 import { NodeConnectionTypes } from './Interfaces';
 import type {
@@ -40,6 +41,7 @@ import { validateFilterParameter } from './NodeParameters/FilterParameter';
 import {
 	isFilterValue,
 	isINodePropertyOptionsList,
+	isResourceLocatorValue,
 	isResourceMapperValue,
 	isValidResourceLocatorParameterValue,
 } from './type-guards';
@@ -1559,8 +1561,8 @@ export function isExecutable(workflow: Workflow, node: INode, nodeTypeData: INod
 	const outputNames = getConnectionTypes(outputs);
 	return (
 		outputNames.includes(NodeConnectionTypes.Main) ||
-		isTriggerNode(nodeTypeData) ||
-		nodeTypeData.usableAsTool === true
+		outputNames.includes(NodeConnectionTypes.AiTool) ||
+		isTriggerNode(nodeTypeData)
 	);
 }
 
@@ -1637,3 +1639,17 @@ export const getToolDescription = (
 
 	return result;
 };
+
+/**
+ * Attempts to retrieve the ID of a subworkflow from a execute workflow node.
+ */
+export function getSubworkflowId(node: INode): string | undefined {
+	if (
+		node &&
+		node.type === EXECUTE_WORKFLOW_NODE_TYPE &&
+		isResourceLocatorValue(node.parameters.workflowId)
+	) {
+		return node.parameters.workflowId.value as string;
+	}
+	return;
+}

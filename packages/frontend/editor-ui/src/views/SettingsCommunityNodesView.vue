@@ -36,7 +36,19 @@ const communityNodesStore = useCommunityNodesStore();
 const uiStore = useUIStore();
 const settingsStore = useSettingsStore();
 
+const getEmptyStateTitle = computed(() => {
+	if (!settingsStore.isUnverifiedPackagesEnabled) {
+		return i18n.baseText('settings.communityNodes.empty.verified.only.title');
+	}
+
+	return i18n.baseText('settings.communityNodes.empty.title');
+});
+
 const getEmptyStateDescription = computed(() => {
+	if (!settingsStore.isUnverifiedPackagesEnabled) {
+		return i18n.baseText('settings.communityNodes.empty.verified.only.description');
+	}
+
 	const packageCount = communityNodesStore.availablePackageCount;
 
 	return packageCount < PACKAGE_COUNT_THRESHOLD
@@ -53,9 +65,10 @@ const getEmptyStateDescription = computed(() => {
 			});
 });
 
-const getEmptyStateButtonText = computed(() =>
-	i18n.baseText('settings.communityNodes.empty.installPackageLabel'),
-);
+const getEmptyStateButtonText = computed(() => {
+	if (!settingsStore.isUnverifiedPackagesEnabled) return '';
+	return i18n.baseText('settings.communityNodes.empty.installPackageLabel');
+});
 
 const actionBoxConfig = computed(() => {
 	return {
@@ -163,9 +176,10 @@ onBeforeUnmount(() => {
 			:class="$style.actionBoxContainer"
 		>
 			<n8n-action-box
-				:heading="i18n.baseText('settings.communityNodes.empty.title')"
+				:heading="getEmptyStateTitle"
 				:description="getEmptyStateDescription"
 				:button-text="getEmptyStateButtonText"
+				:button-disabled="!settingsStore.isUnverifiedPackagesEnabled"
 				:callout-text="actionBoxConfig.calloutText"
 				:callout-theme="actionBoxConfig.calloutTheme"
 				@click:button="onClickEmptyStateButton"
