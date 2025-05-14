@@ -7,6 +7,7 @@ import {
 	REGULAR_NODE_CREATOR_VIEW,
 	TRIGGER_NODE_CREATOR_VIEW,
 	AI_UNCATEGORIZED_CATEGORY,
+	AI_EVALUATION,
 } from '@/constants';
 
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
@@ -126,6 +127,7 @@ watch(
 			[AI_NODE_CREATOR_VIEW]: AIView,
 			[AI_OTHERS_NODE_CREATOR_VIEW]: AINodesView,
 			[AI_UNCATEGORIZED_CATEGORY]: AINodesView,
+			[AI_EVALUATION]: AINodesView,
 		};
 
 		const itemKey = selectedView;

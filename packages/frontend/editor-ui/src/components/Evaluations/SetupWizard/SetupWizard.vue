@@ -198,7 +198,11 @@ function onSeePlans() {
 						</li>
 					</ul>
 					<div :class="$style.actionButton">
-						<N8nButton size="small" type="secondary" @click="navigateToWorkflow()">
+						<N8nButton
+							size="small"
+							type="secondary"
+							@click="navigateToWorkflow('addEvaluationNode')"
+						>
 							{{ locale.baseText('evaluations.setupWizard.step3.button') }}
 						</N8nButton>
 						<N8nButton
