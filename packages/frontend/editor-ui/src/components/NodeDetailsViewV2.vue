@@ -995,7 +995,7 @@ onBeforeUnmount(() => {
 		border-left: var(--border-base);
 	}
 
-	&:first-child div {
+	&:first-child > div {
 		border-bottom-left-radius: var(--border-radius-large);
 	}
 
