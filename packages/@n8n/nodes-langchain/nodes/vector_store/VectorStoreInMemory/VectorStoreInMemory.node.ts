@@ -1,5 +1,6 @@
+import type { Embeddings } from '@langchain/core/embeddings';
 import type { MemoryVectorStore } from 'langchain/vectorstores/memory';
-import type { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties, ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow';
 
 import { createVectorStoreNode } from '../shared/createVectorStoreNode/createVectorStoreNode';
 import { MemoryVectorStoreManager } from '../shared/MemoryManager/MemoryVectorStoreManager';
@@ -36,12 +37,68 @@ export class VectorStoreInMemory extends createVectorStoreNode<MemoryVectorStore
 		{
 			displayName: 'Memory Key',
 			name: 'memoryKey',
-			type: 'string',
-			default: 'vector_store_key',
 			description:
 				'The key to use to store the vector memory in the workflow data. The key will be prefixed with the workflow ID to avoid collisions.',
+			type: 'resourceLocator',
+			default: { mode: 'id', value: 'vector_store_key' },
+			required: true,
+			modes: [
+				{
+					displayName: 'ID',
+					name: 'id',
+					type: 'string',
+					placeholder: 'vector_store_key',
+				},
+				{
+					displayName: 'From List',
+					name: 'list',
+					type: 'list',
+					typeOptions: {
+						searchListMethod: 'vectorStoresSearch',
+						searchable: true,
+					},
+				},
+			],
 		},
 	],
+	methods: {
+		listSearch: {
+			async vectorStoresSearch(
+				this: ILoadOptionsFunctions,
+				filter?: string,
+				paginationToken?: string,
+			): Promise<INodeListSearchResult> {
+				const pageSize = 5;
+
+				const vectorStoreSingleton = MemoryVectorStoreManager.getInstance(
+					{} as Embeddings, // Real Embeddings are passed when executing the node
+					this.logger,
+				);
+
+				const searchOptions: INodeListSearchResult['results'] = vectorStoreSingleton
+					.getMemoryKeysList()
+					.map((key) => {
+						return {
+							name: key,
+							value: key,
+						};
+					});
+
+				let results = searchOptions;
+				if (filter) {
+					results = results.filter((option) => option.name.includes(filter));
+				}
+
+				const offset = paginationToken ? parseInt(paginationToken, 10) : 0;
+				results = results.slice(offset, offset + pageSize);
+
+				return {
+					results,
+					paginationToken: offset + pageSize,
+				};
+			},
+		},
+	},
 	insertFields,
 	loadFields: [],
 	retrieveFields: [],
