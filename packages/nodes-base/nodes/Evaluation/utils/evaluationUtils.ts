@@ -114,9 +114,13 @@ export async function setMetrics(this: IExecuteFunctions): Promise<INodeExecutio
 				}
 
 				if (isNaN(assignmentValue)) {
-					throw new NodeOperationError(this.getNode(), `"${assignment.name}" isn't a number`, {
-						description: `It’s currently '${assignment.value}'. Metrics must be numeric.`,
-					});
+					throw new NodeOperationError(
+						this.getNode(),
+						`Value for '${assignment.name}' isn't a number`,
+						{
+							description: `It’s currently '${assignment.value}'. Metrics must be numeric.`,
+						},
+					);
 				}
 
 				const { name, value } = validateEntry(
