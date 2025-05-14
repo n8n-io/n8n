@@ -25,17 +25,17 @@ const config = {
 	// This resolve the path mappings from the tsconfig relative to each jest.config.js
 	moduleNameMapper: compilerOptions?.paths
 		? pathsToModuleNameMapper(compilerOptions.paths, {
-				prefix: `<rootDir>${compilerOptions.baseUrl ? `/${compilerOptions.baseUrl.replace(/^\.\//, '')}` : ''}`,
-			})
+			prefix: `<rootDir>${compilerOptions.baseUrl ? `/${compilerOptions.baseUrl.replace(/^\.\//, '')}` : ''}`,
+		})
 		: {},
 	setupFilesAfterEnv: ['jest-expect-message'],
 	collectCoverage: isCoverageEnabled,
 	coverageReporters: ['text-summary', 'lcov', 'html-spa'],
-	collectCoverageFrom: ['src/**/*.ts'],
 	workerIdleMemoryLimit: '1MB',
 };
 
 if (process.env.CI === 'true') {
+	config.collectCoverageFrom = ['src/**/*.ts'];
 	config.reporters = ['default', 'jest-junit'];
 	config.coverageReporters = ['cobertura'];
 }
