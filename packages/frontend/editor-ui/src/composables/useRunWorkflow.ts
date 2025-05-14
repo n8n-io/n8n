@@ -175,6 +175,8 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				);
 				newRunData = { [options.triggerNode]: [options.nodeData] };
 				executedNode = options.triggerNode;
+			} else if (options.destinationNode) {
+				executedNode = options.destinationNode;
 			}
 
 			if (options.triggerNode) {
