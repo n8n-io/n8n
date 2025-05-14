@@ -10,10 +10,6 @@ export class ModuleMetadata {
 		this.modules.set(name, cls);
 	}
 
-	getModuleClasses() {
-		return this.modules.values();
-	}
-
 	getModules() {
 		return this.modules.entries();
 	}

@@ -19,7 +19,7 @@ describe('@Module Decorator', () => {
 			initialize() {}
 		}
 
-		const registeredModules = Array.from(moduleMetadata.getModuleClasses());
+		const registeredModules = Array.from(moduleMetadata.getModules()).map(([_, cls]) => cls);
 
 		expect(registeredModules).toContain(TestModule);
 		expect(registeredModules).toHaveLength(1);
@@ -41,7 +41,7 @@ describe('@Module Decorator', () => {
 			initialize() {}
 		}
 
-		const registeredModules = Array.from(moduleMetadata.getModuleClasses());
+		const registeredModules = Array.from(moduleMetadata.getModules()).map(([_, cls]) => cls);
 
 		expect(registeredModules).toContain(FirstModule);
 		expect(registeredModules).toContain(SecondModule);
@@ -53,7 +53,7 @@ describe('@Module Decorator', () => {
 		@Module('test')
 		class TestModule {}
 
-		const registeredModules = Array.from(moduleMetadata.getModuleClasses());
+		const registeredModules = Array.from(moduleMetadata.getModules()).map(([_, cls]) => cls);
 
 		expect(registeredModules).toContain(TestModule);
 		expect(registeredModules).toHaveLength(1);
@@ -69,7 +69,7 @@ describe('@Module Decorator', () => {
 			}
 		}
 
-		const registeredModules = Array.from(moduleMetadata.getModuleClasses());
+		const registeredModules = Array.from(moduleMetadata.getModules()).map(([_, cls]) => cls);
 
 		expect(registeredModules).toContain(TestModule);
 
@@ -87,7 +87,7 @@ describe('@Module Decorator', () => {
 			@Module('second')
 			class SecondModule {}
 
-			const registeredModules = Array.from(moduleMetadata.getModuleClasses());
+			const registeredModules = Array.from(moduleMetadata.getModules()).map(([_, cls]) => cls);
 
 			expect(registeredModules).toContain(FirstModule);
 			expect(registeredModules).toContain(SecondModule);
