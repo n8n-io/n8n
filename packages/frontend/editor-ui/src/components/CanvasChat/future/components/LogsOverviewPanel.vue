@@ -11,6 +11,7 @@ import ExecutionSummary from '@/components/CanvasChat/future/components/Executio
 import {
 	getSubtreeTotalConsumedTokens,
 	getTotalConsumedTokens,
+	hasSubExecution,
 	type LatestNodeInfo,
 	type LogEntry,
 } from '@/components/RunDataAi/utils';
@@ -80,6 +81,14 @@ const virtualList = useVirtualList(
 
 function handleSwitchView(value: 'overview' | 'details') {
 	emit('select', value === 'overview' ? undefined : flatLogEntries[0]);
+}
+
+function handleToggleExpanded(treeNode: LogEntry) {
+	if (hasSubExecution(treeNode) && treeNode.children.length === 0) {
+		emit('loadSubExecution', treeNode);
+		return;
+	}
+	emit('toggleExpanded', treeNode);
 }
 
 async function handleTriggerPartialExecution(treeNode: LogEntry) {
@@ -174,7 +183,7 @@ watch(
 							:latest-info="latestNodeInfo[data.node.id]"
 							:expanded="virtualList.list.value[index + 1]?.data.parent?.id === data.id"
 							:can-open-ndv="data.executionId === execution?.id"
-							@toggle-expanded="emit('toggleExpanded', data)"
+							@toggle-expanded="handleToggleExpanded(data)"
 							@open-ndv="emit('openNdv', data)"
 							@trigger-partial-execution="handleTriggerPartialExecution(data)"
 							@toggle-selected="emit('select', selected?.id === data.id ? undefined : data)"
