@@ -62,7 +62,7 @@ export class Evaluation implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'Set Output',
+						name: 'Set Outputs',
 						value: 'setOutput',
 					},
 					{
