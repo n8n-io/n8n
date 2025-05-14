@@ -9,7 +9,7 @@ import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
-import { NodeHelpers } from 'n8n-workflow';
+import { NodeHelpers, WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE } from 'n8n-workflow';
 import { computed, ref, watch } from 'vue';
 import { getMousePosition } from '../utils/nodeViewUtils';
 import { useI18n } from './useI18n';
@@ -70,9 +70,10 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 		if (targetNodes.value.length !== 1) return false;
 
 		const node = targetNodes.value[0];
-		if (node.type !== EXECUTE_WORKFLOW_NODE_TYPE) return false;
 
-		return NodeHelpers.getSubworkflowId(node);
+		if (!NodeHelpers.isNodeWithWorkflowSelector(node)) return false;
+
+		return !!NodeHelpers.getSubworkflowId(node);
 	});
 
 	const targetNodeIds = computed(() => {
@@ -236,7 +237,6 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 			].filter(Boolean) as ActionDropdownItem[];
 
 			if (nodes.length === 1) {
-				const isExecuteWorkflowNode = nodes[0].type === EXECUTE_WORKFLOW_NODE_TYPE;
 				const singleNodeActions: ActionDropdownItem[] = onlyStickies
 					? [
 							{
@@ -270,7 +270,7 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 							},
 						];
 
-				if (isExecuteWorkflowNode) {
+				if (NodeHelpers.isNodeWithWorkflowSelector(nodes[0])) {
 					singleNodeActions.push({
 						id: 'open_sub_workflow',
 						label: i18n.baseText('contextMenu.openSubworkflow'),
