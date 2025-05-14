@@ -1,4 +1,9 @@
-import type { IWorkflowData, IWorkflowDataUpdate, IWorkflowDb } from '@/Interface';
+import type {
+	IExecutionResponse,
+	IWorkflowData,
+	IWorkflowDataUpdate,
+	IWorkflowDb,
+} from '@/Interface';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import router from '@/router';
 import { createTestingPinia } from '@pinia/testing';
@@ -456,6 +461,261 @@ describe('useWorkflowHelpers', () => {
 		});
 	});
 	describe('executeData', () => {
+		it('should return empty execute data if no parent nodes', () => {
+			const { executeData } = useWorkflowHelpers({ router });
+
+			const parentNodes: string[] = [];
+			const currentNode = 'Set';
+			const inputName = 'main';
+			const runIndex = 0;
+
+			const result = executeData(parentNodes, currentNode, inputName, runIndex);
+
+			expect(result).toEqual({
+				node: {},
+				data: {},
+				source: null,
+			});
+		});
+
+		it('should return the correct execution data with one parent node', () => {
+			const { executeData } = useWorkflowHelpers({ router });
+
+			const parentNodes = ['Start'];
+			const currentNode = 'Set';
+			const inputName = 'main';
+			const runIndex = 0;
+			const jsonData = {
+				name: 'Test',
+			};
+			workflowsStore.getCurrentWorkflow.mockReturnValue({
+				connectionsByDestinationNode: {
+					Set: {
+						main: [
+							[
+								{ node: 'Start', index: 0, type: 'main' },
+								{ node: 'Set', index: 0, type: 'main' },
+							],
+						],
+					},
+				},
+			} as never);
+
+			workflowsStore.workflowExecutionData = {
+				data: {
+					resultData: {
+						runData: {
+							[parentNodes[0]]: [
+								{
+									startTime: 0,
+									executionTime: 0,
+									data: {
+										main: [
+											{
+												json: jsonData,
+												index: 0,
+											},
+										],
+									},
+									source: [],
+								},
+							],
+						},
+					},
+				},
+			} as unknown as IExecutionResponse;
+
+			const result = executeData(parentNodes, currentNode, inputName, runIndex);
+
+			expect(result).toEqual({
+				node: {},
+				data: {
+					main: [
+						{
+							index: 0,
+							json: jsonData,
+						},
+					],
+				},
+				source: {
+					main: [
+						{
+							previousNode: parentNodes[0],
+							previousNodeOutput: 0,
+							previousNodeRun: 0,
+						},
+					],
+				},
+			});
+		});
+
+		it('should return the correct execution data with multiple parent nodes, only one with execution data', () => {
+			const { executeData } = useWorkflowHelpers({ router });
+
+			const parentNodes = ['Parent A', 'Parent B'];
+			const currentNode = 'Set';
+			const inputName = 'main';
+			const runIndex = 0;
+			const jsonData = {
+				name: 'Test',
+			};
+			workflowsStore.getCurrentWorkflow.mockReturnValue({
+				connectionsByDestinationNode: {
+					Set: {
+						main: [
+							[
+								{ node: 'Start', index: 0, type: 'main' },
+								{ node: 'Set', index: 0, type: 'main' },
+							],
+						],
+					},
+				},
+			} as never);
+
+			workflowsStore.workflowExecutionData = {
+				data: {
+					resultData: {
+						runData: {
+							[parentNodes[1]]: [
+								{
+									startTime: 0,
+									executionTime: 0,
+									data: {
+										main: [
+											{
+												json: jsonData,
+												index: 0,
+											},
+										],
+									},
+									source: [],
+								},
+							],
+						},
+					},
+				},
+			} as unknown as IExecutionResponse;
+
+			const result = executeData(parentNodes, currentNode, inputName, runIndex);
+
+			expect(result).toEqual({
+				node: {},
+				data: {
+					main: [
+						{
+							index: 0,
+							json: jsonData,
+						},
+					],
+				},
+				source: {
+					main: [
+						{
+							previousNode: parentNodes[1],
+							previousNodeOutput: undefined,
+							previousNodeRun: 0,
+						},
+					],
+				},
+			});
+		});
+
+		it('should return the correct execution data with multiple parent nodes, all with execution data', () => {
+			const { executeData } = useWorkflowHelpers({ router });
+
+			const parentNodes = ['Parent A', 'Parent B'];
+			const currentNode = 'Set';
+			const inputName = 'main';
+			const runIndex = 0;
+
+			const jsonDataA = {
+				name: 'Test A',
+			};
+
+			const jsonDataB = {
+				name: 'Test B',
+			};
+
+			workflowsStore.getCurrentWorkflow.mockReturnValue({
+				connectionsByDestinationNode: {
+					Set: {
+						main: [
+							[
+								{ node: 'Parent A', index: 0, type: 'main' },
+								{ node: 'Set', index: 0, type: 'main' },
+							],
+							[
+								{ node: 'Parent B', index: 0, type: 'main' },
+								{ node: 'Set', index: 0, type: 'main' },
+							],
+						],
+					},
+				},
+			} as never);
+
+			workflowsStore.workflowExecutionData = {
+				data: {
+					resultData: {
+						runData: {
+							[parentNodes[0]]: [
+								{
+									startTime: 0,
+									executionTime: 0,
+									data: {
+										main: [
+											{
+												json: jsonDataA,
+												index: 0,
+											},
+										],
+									},
+									source: [],
+								},
+							],
+							[parentNodes[1]]: [
+								{
+									startTime: 0,
+									executionTime: 0,
+									data: {
+										main: [
+											{
+												json: jsonDataB,
+												index: 0,
+											},
+										],
+									},
+									source: [],
+								},
+							],
+						},
+					},
+				},
+			} as unknown as IExecutionResponse;
+
+			const result = executeData(parentNodes, currentNode, inputName, runIndex);
+
+			expect(result).toEqual({
+				node: {},
+				data: {
+					main: [
+						{
+							index: 0,
+							json: jsonDataA,
+						},
+					],
+				},
+				source: {
+					main: [
+						{
+							previousNode: parentNodes[0],
+							previousNodeOutput: 0,
+							previousNodeRun: 0,
+						},
+					],
+				},
+			});
+		});
+
 		it('should return data from pinnedWorkflowData if available', () => {
 			const { executeData } = useWorkflowHelpers({ router });
 
