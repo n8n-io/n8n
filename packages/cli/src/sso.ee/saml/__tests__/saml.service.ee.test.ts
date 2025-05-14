@@ -384,6 +384,16 @@ describe('SamlService', () => {
 				InvalidSamlMetadataError,
 			);
 		});
+
+		test('does throw `InvalidSamlMetadataError` in case saml login is turned on and the metadata is an empty string', async () => {
+			await samlService.loadPreferencesWithoutValidation({
+				metadata: '',
+				loginEnabled: true,
+			});
+			await expect(samlService.setSamlPreferences({})).rejects.toThrowError(
+				InvalidSamlMetadataError,
+			);
+		});
 	});
 
 	describe('reset', () => {
