@@ -72,12 +72,6 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { usePostHog } from '@/stores/posthog.store';
 import { computed } from 'vue';
 
-const posthogStore = usePostHog();
-
-const isEvaluationVariantEnabled = computed(() =>
-	posthogStore.isVariantEnabled(EVALUATION_TRIGGER.name, EVALUATION_TRIGGER.variant),
-);
-
 export interface NodeViewItemSection {
 	key: string;
 	title: string;
@@ -150,6 +144,11 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 	const i18n = useI18n();
 	const nodeTypesStore = useNodeTypesStore();
 	const templatesStore = useTemplatesStore();
+	const posthogStore = usePostHog();
+
+	const isEvaluationVariantEnabled = computed(() =>
+		posthogStore.isVariantEnabled(EVALUATION_TRIGGER.name, EVALUATION_TRIGGER.variant),
+	);
 
 	const evaluationNodeStore = nodeTypesStore.getNodeType('n8n-nodes-base.evaluation');
 	const evaluationNode =
@@ -353,18 +352,6 @@ export function TriggerView() {
 		title: i18n.baseText('nodeCreator.triggerHelperPanel.selectATrigger'),
 		subtitle: i18n.baseText('nodeCreator.triggerHelperPanel.selectATriggerDescription'),
 		items: [
-			{
-				key: 'n8n-nodes-base.evaluationTrigger',
-				type: 'node',
-				category: [CORE_NODES_CATEGORY],
-				properties: {
-					group: [],
-					name: 'n8n-nodes-base.evaluationTrigger',
-					displayName: 'Evaluation Trigger', // i18n.baseText('nodeCreator.triggerHelperPanel.manualTriggerDisplayName'),
-					description: 'Run to start evaluation', // i18n.baseText('nodeCreator.triggerHelperPanel.manualTriggerDescription'),
-					icon: 'fa:check-double',
-				},
-			},
 			{
 				key: MANUAL_TRIGGER_NODE_TYPE,
 				type: 'node',

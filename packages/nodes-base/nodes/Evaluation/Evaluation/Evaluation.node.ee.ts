@@ -7,7 +7,11 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
-import { setMetricsProperties, setOutputProperties } from './Description.node';
+import {
+	setCheckIfEvaluatingProperties,
+	setMetricsProperties,
+	setOutputProperties,
+} from './Description.node';
 import { authentication } from '../../Google/Sheet/v2/actions/versionDescription';
 import { listSearch, loadOptions } from '../methods';
 import { checkIfEvaluating, setMetrics, setOutputs, setOutput } from '../utils/evaluationUtils';
@@ -34,7 +38,7 @@ export class Evaluation implements INodeType {
 				displayOptions: {
 					show: {
 						authentication: ['serviceAccount'],
-						operation: ['setOutput'],
+						operation: ['setOutputs'],
 					},
 				},
 				testedBy: 'googleApiCredentialTest',
@@ -45,7 +49,7 @@ export class Evaluation implements INodeType {
 				displayOptions: {
 					show: {
 						authentication: ['oAuth2'],
-						operation: ['setOutput'],
+						operation: ['setOutputs'],
 					},
 				},
 			},
@@ -58,8 +62,8 @@ export class Evaluation implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'Set Output',
-						value: 'setOutput',
+						name: 'Set Outputs',
+						value: 'setOutputs',
 					},
 					{
 						name: 'Set Metrics',
@@ -70,11 +74,12 @@ export class Evaluation implements INodeType {
 						value: 'checkIfEvaluating',
 					},
 				],
-				default: 'setOutput',
+				default: 'setOutputs',
 			},
 			authentication,
 			...setOutputProperties,
 			...setMetricsProperties,
+			...setCheckIfEvaluatingProperties,
 		],
 	};
 
@@ -83,7 +88,7 @@ export class Evaluation implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const operation = this.getNodeParameter('operation', 0);
 
-		if (operation === 'setOutput') {
+		if (operation === 'setOutputs') {
 			return await setOutput.call(this);
 		} else if (operation === 'setMetrics') {
 			return await setMetrics.call(this);

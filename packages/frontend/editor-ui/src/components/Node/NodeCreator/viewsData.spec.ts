@@ -9,6 +9,8 @@ import { mockNodeTypeDescription } from '@/__tests__/mocks';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { usePostHog } from '@/stores/posthog.store';
 
+let posthogStore: ReturnType<typeof usePostHog>;
+
 const getNodeType = vi.fn();
 
 const aiTransformNode = mockNodeTypeDescription({ name: AI_TRANSFORM_NODE_TYPE });
@@ -52,8 +54,7 @@ describe('viewsData', () => {
 	beforeAll(() => {
 		setActivePinia(createTestingPinia());
 
-		const posthogStore = usePostHog();
-		posthogStore.init();
+		posthogStore = usePostHog();
 		vi.spyOn(posthogStore, 'isVariantEnabled').mockReturnValue(true);
 
 		const templatesStore = useTemplatesStore();
@@ -86,6 +87,15 @@ describe('viewsData', () => {
 		});
 
 		test('should return ai view without ai transform node if ask ai is not enabled', () => {
+			const settingsStore = useSettingsStore();
+			vi.spyOn(settingsStore, 'isAskAiEnabled', 'get').mockReturnValue(false);
+
+			expect(AIView([])).toMatchSnapshot();
+		});
+
+		test('should return ai view without ai transform node if ask ai is not enabled and node is not in the list', () => {
+			vi.spyOn(posthogStore, 'isVariantEnabled').mockReturnValue(false);
+
 			const settingsStore = useSettingsStore();
 			vi.spyOn(settingsStore, 'isAskAiEnabled', 'get').mockReturnValue(false);
 

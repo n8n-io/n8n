@@ -13,7 +13,7 @@ export const setOutputProperties: INodeProperties[] = [
 		...document,
 		displayOptions: {
 			show: {
-				operation: ['setOutput'],
+				operation: ['setOutputs'],
 			},
 		},
 	},
@@ -21,7 +21,7 @@ export const setOutputProperties: INodeProperties[] = [
 		...sheet,
 		displayOptions: {
 			show: {
-				operation: ['setOutput'],
+				operation: ['setOutputs'],
 			},
 		},
 	},
@@ -57,7 +57,22 @@ export const setOutputProperties: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				operation: ['setOutput'],
+				operation: ['setOutputs'],
+			},
+		},
+	},
+];
+
+export const setCheckIfEvaluatingProperties: INodeProperties[] = [
+	{
+		displayName:
+			'Routes to the ‘evaluation’ branch if the execution started from an evaluation trigger. Otherwise routes to the ‘normal’ branch.',
+		name: 'notice',
+		type: 'notice',
+		default: '',
+		displayOptions: {
+			show: {
+				operation: ['checkIfEvaluating'],
 			},
 		},
 	},
