@@ -342,6 +342,14 @@ describe('SamlService', () => {
 			expect(samlService.samlPreferences.metadataUrl).toBe(metadataUrlTestData);
 		});
 
+		test('does throw `InvalidSamlMetadataError` when a metadata url is not a valid url', async () => {
+			await expect(
+				samlService.setSamlPreferences({
+					metadata: 'NOT A VALID XML',
+				}),
+			).rejects.toThrowError(InvalidSamlMetadataError);
+		});
+
 		test('does throw `InvalidSamlMetadataUrlError` when the metadata url does not return success on http call', async () => {
 			mockedAxios.get.mockResolvedValue({ status: 400, data: '' });
 			await expect(
