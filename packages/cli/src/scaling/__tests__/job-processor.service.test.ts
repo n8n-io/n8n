@@ -53,7 +53,6 @@ describe('JobProcessor', () => {
 		);
 		const jobProcessor = new JobProcessor(
 			logger,
-			mock(),
 			executionRepository,
 			mock(),
 			mock(),
@@ -75,7 +74,6 @@ describe('JobProcessor', () => {
 					mode,
 					workflowData: { nodes: [] },
 					data: mock<IRunExecutionData>({
-						isTestWebhook: false,
 						executionData: undefined,
 					}),
 				}),
@@ -84,7 +82,6 @@ describe('JobProcessor', () => {
 			const manualExecutionService = mock<ManualExecutionService>();
 			const jobProcessor = new JobProcessor(
 				logger,
-				mock(),
 				executionRepository,
 				mock(),
 				mock(),
@@ -105,7 +102,6 @@ describe('JobProcessor', () => {
 			mode: 'manual',
 			workflowData: { nodes: [], pinData },
 			data: mock<IRunExecutionData>({
-				isTestWebhook: false,
 				resultData: {
 					runData: {
 						trigger: [mock<ITaskData>({ executionIndex: 1 })],
@@ -124,7 +120,6 @@ describe('JobProcessor', () => {
 		const manualExecutionService = mock<ManualExecutionService>();
 		const jobProcessor = new JobProcessor(
 			logger,
-			mock(),
 			executionRepository,
 			mock(),
 			mock(),
@@ -164,7 +159,6 @@ describe('JobProcessor', () => {
 
 			const executionRepository = mock<ExecutionRepository>();
 			const executionData = mock<IRunExecutionData>({
-				isTestWebhook: false,
 				startData: undefined,
 				executionData: {
 					nodeExecutionStack: [
@@ -188,7 +182,6 @@ describe('JobProcessor', () => {
 			const manualExecutionService = mock<ManualExecutionService>();
 			const jobProcessor = new JobProcessor(
 				logger,
-				mock(),
 				executionRepository,
 				mock(),
 				mock(),

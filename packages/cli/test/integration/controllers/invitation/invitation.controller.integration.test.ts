@@ -1,9 +1,9 @@
 import type { User } from '@n8n/db';
 import { ProjectRelationRepository } from '@n8n/db';
+import { UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { Not } from '@n8n/typeorm';
 
-import { UserRepository } from '@/databases/repositories/user.repository';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { PasswordUtility } from '@/services/password.utility';

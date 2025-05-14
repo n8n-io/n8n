@@ -1,13 +1,4 @@
 import { GlobalConfig } from '@n8n/config';
-import type { ListQueryDb, Folder, FolderWithWorkflowAndSubFolderCount } from '@n8n/db';
-import {
-	isStringArray,
-	WebhookEntity,
-	TagEntity,
-	WorkflowEntity,
-	WorkflowTagMapping,
-	FolderRepository,
-} from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, Repository, In, Like } from '@n8n/typeorm';
 import type {
@@ -21,7 +12,14 @@ import type {
 } from '@n8n/typeorm';
 import { PROJECT_ROOT } from 'n8n-workflow';
 
-import type { ListQuery } from '@/requests';
+import { FolderRepository } from './folder.repository';
+import { WebhookEntity, TagEntity, WorkflowEntity, WorkflowTagMapping } from '../entities';
+import type {
+	ListQueryDb,
+	FolderWithWorkflowAndSubFolderCount,
+	ListQuery,
+} from '../entities/types-db';
+import { isStringArray } from '../utils/is-string-array';
 
 type ResourceType = 'folder' | 'workflow';
 
@@ -192,6 +190,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 	}
 
 	private buildUnionQuery(
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		baseQuery: SelectQueryBuilder<any>,
 		options: {
 			sortByColumn: string;
@@ -213,7 +212,9 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 	}
 
 	private applySortingToUnionQuery(
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		query: SelectQueryBuilder<any>,
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		baseQuery: SelectQueryBuilder<any>,
 		options: { sortByColumn: string; sortByDirection: 'ASC' | 'DESC' },
 	) {
@@ -237,6 +238,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 	}
 
 	private applyPaginationToUnionQuery(
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		query: SelectQueryBuilder<any>,
 		pagination: { take?: number; skip: number },
 	) {
@@ -345,7 +347,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		baseData: WorkflowFolderUnionRow[],
 		extraData: {
 			workflows: ListQueryDb.Workflow.WithSharing[] | ListQueryDb.Workflow.Plain[];
-			folders: Folder[];
+			folders: FolderWithWorkflowAndSubFolderCount[];
 		},
 	): WorkflowFolderUnionFull[] {
 		const workflowsMap = new Map(extraData.workflows.map((workflow) => [workflow.id, workflow]));
