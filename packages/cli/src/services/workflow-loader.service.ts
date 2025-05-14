@@ -1,7 +1,6 @@
+import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { UnexpectedError, type IWorkflowBase, type IWorkflowLoader } from 'n8n-workflow';
-
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 
 @Service()
 export class WorkflowLoaderService implements IWorkflowLoader {

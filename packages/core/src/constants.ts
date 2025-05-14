@@ -1,8 +1,3 @@
-const { NODE_ENV } = process.env;
-export const inProduction = NODE_ENV === 'production';
-export const inDevelopment = !NODE_ENV || NODE_ENV === 'development';
-export const inTest = NODE_ENV === 'test';
-
 export const CUSTOM_EXTENSION_ENV = 'N8N_CUSTOM_EXTENSIONS';
 export const PLACEHOLDER_EMPTY_EXECUTION_ID = '__UNKNOWN__';
 export const PLACEHOLDER_EMPTY_WORKFLOW_ID = '__EMPTY__';

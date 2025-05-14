@@ -7,7 +7,7 @@
 			"typeVersion": 1,
 			"position": [-240, 260],
 			"id": "8a73e8c0-c2b8-4933-98e1-a2577b9f4902",
-			"name": "When clicking ‘Test workflow’"
+			"name": "When clicking ‘Execute workflow’"
 		},
 		{
 			"parameters": {
@@ -190,7 +190,7 @@
 		]
 	},
 	"connections": {
-		"When clicking ‘Test workflow’": {
+		"When clicking ‘Execute workflow’": {
 			"main": [
 				[
 					{

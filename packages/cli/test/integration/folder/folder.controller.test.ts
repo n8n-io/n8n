@@ -2,12 +2,12 @@ import type { Project, ProjectRole } from '@n8n/db';
 import type { User } from '@n8n/db';
 import { FolderRepository } from '@n8n/db';
 import { ProjectRepository } from '@n8n/db';
+import { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DateTime } from 'luxon';
 import { ApplicationError, PROJECT_ROOT } from 'n8n-workflow';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { mockInstance } from '@test/mocking';
 import {
 	getCredentialSharings,
@@ -1273,6 +1273,42 @@ describe('GET /projects/:projectId/folders', () => {
 		expect(response.body.data[0].createdAt).toBeUndefined();
 		expect(response.body.data[0].updatedAt).toBeUndefined();
 		expect(response.body.data[0].parentFolder).toBeUndefined();
+	});
+
+	test('should select path field when requested', async () => {
+		const folder1 = await createFolder(ownerProject, { name: 'Test Folder' });
+		const folder2 = await createFolder(ownerProject, {
+			name: 'Test Folder 2',
+			parentFolder: folder1,
+		});
+		const folder3 = await createFolder(ownerProject, {
+			name: 'Test Folder 3',
+			parentFolder: folder2,
+		});
+
+		const response = await authOwnerAgent
+			.get(
+				`/projects/${ownerProject.id}/folders?select=["id","path", "name"]&sortBy=updatedAt:desc`,
+			)
+			.expect(200);
+
+		expect(response.body.data[0]).toEqual({
+			id: expect.any(String),
+			name: 'Test Folder 3',
+			path: [folder1.name, folder2.name, folder3.name],
+		});
+
+		expect(response.body.data[1]).toEqual({
+			id: expect.any(String),
+			name: 'Test Folder 2',
+			path: [folder1.name, folder2.name],
+		});
+
+		expect(response.body.data[2]).toEqual({
+			id: expect.any(String),
+			name: 'Test Folder',
+			path: [folder1.name],
+		});
 	});
 
 	test('should combine multiple query parameters correctly', async () => {

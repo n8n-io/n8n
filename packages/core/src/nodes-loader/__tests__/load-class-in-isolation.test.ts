@@ -2,9 +2,12 @@ import vm from 'vm';
 
 import { loadClassInIsolation } from '../load-class-in-isolation';
 
-jest.mock('@/constants', () => ({
-	inTest: false,
-}));
+jest.mock('@n8n/backend-common', () => {
+	return {
+		...jest.requireActual('@n8n/backend-common'),
+		inTest: false,
+	};
+});
 
 describe('loadClassInIsolation', () => {
 	const filePath = '/path/to/TestClass.js';
