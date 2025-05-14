@@ -25,13 +25,13 @@ const locale = useI18n();
 
 const isLoading = ref(true);
 const testCases = ref<TestCaseExecutionRecord[]>([]);
+const hasFailedTestCases = ref<boolean>(false);
 
 const runId = computed(() => router.currentRoute.value.params.runId as string);
 const workflowId = computed(() => router.currentRoute.value.params.name as string);
 const workflowName = computed(() => workflowsStore.getWorkflowById(workflowId.value)?.name ?? '');
 
 const run = computed(() => evaluationStore.testRunsById[runId.value]);
-
 const runErrorDetails = computed(() => {
 	return run.value?.errorDetails as Record<string, string | number>;
 });
@@ -106,8 +106,10 @@ const fetchExecutionTestCases = async () => {
 			workflowId: workflowId.value,
 			runId: testRun.id,
 		});
-
 		testCases.value = testCaseEvaluationExecutions ?? [];
+		hasFailedTestCases.value = testCaseEvaluationExecutions?.some(
+			(testCase) => testCase.status === 'error',
+		);
 		await evaluationStore.fetchTestRuns(run.value.workflowId);
 	} catch (error) {
 		toast.showError(error, 'Failed to load run details');
@@ -158,6 +160,16 @@ onMounted(async () => {
 						runErrorDetails ? { interpolate: runErrorDetails } : {},
 					) ?? locale.baseText(`${getErrorBaseKey('UNKNOWN_ERROR')}` as BaseTextKey)
 				}}
+			</N8nText>
+		</n8n-callout>
+		<n8n-callout
+			v-else-if="run?.status === 'completed' && hasFailedTestCases"
+			theme="warning"
+			icon="exclamation-triangle"
+			class="mb-s"
+		>
+			<N8nText size="small" :class="$style.capitalized">
+				{{ locale.baseText(`evaluation.runDetail.error.partialCasesFailed`) }}
 			</N8nText>
 		</n8n-callout>
 
