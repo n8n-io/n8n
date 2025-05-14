@@ -23,6 +23,7 @@ import type {
 	IWorkflowSettings,
 	NodeParameterValue,
 	Workflow,
+	ExecutionError,
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeHelpers, WEBHOOK_NODE_TYPE } from 'n8n-workflow';
 
@@ -40,6 +41,8 @@ import type {
 	WorkflowTitleStatus,
 	XYPosition,
 } from '@/Interface';
+
+import { h } from 'vue';
 
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
@@ -68,6 +71,8 @@ import { useProjectsStore } from '@/stores/projects.store';
 import { useTagsStore } from '@/stores/tags.store';
 import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
 import { findWebhook } from '../api/webhooks';
+
+import NodeExecutionErrorMessage from '@/components/NodeExecutionErrorMessage.vue';
 
 export type ResolveParameterOptions = {
 	targetItem?: TargetItem;
@@ -436,6 +441,75 @@ export function executeData(
 	}
 
 	return executeData;
+}
+
+export function getExecutionErrorMessage({
+	error,
+	lastNodeExecuted,
+}: { error?: ExecutionError; lastNodeExecuted?: string }): string {
+	const i18n = useI18n();
+
+	let errorMessage: string;
+
+	if (lastNodeExecuted && error) {
+		errorMessage = error.message ?? error.description ?? '';
+	} else {
+		errorMessage = i18n.baseText('pushConnection.executionError', {
+			interpolate: { error: '!' },
+		});
+
+		if (error?.message) {
+			let nodeName: string | undefined;
+			if ('node' in error) {
+				nodeName = typeof error.node === 'string' ? error.node : error.node!.name;
+			}
+
+			const receivedError = nodeName ? `${nodeName}: ${error.message}` : error.message;
+			errorMessage = i18n.baseText('pushConnection.executionError', {
+				interpolate: {
+					error: `.${i18n.baseText('pushConnection.executionError.details', {
+						interpolate: {
+							details: receivedError,
+						},
+					})}`,
+				},
+			});
+		}
+	}
+
+	return errorMessage;
+}
+
+export function getExecutionErrorToastConfiguration({
+	error,
+	lastNodeExecuted,
+}: { error: ExecutionError; lastNodeExecuted?: string }) {
+	const message = getExecutionErrorMessage({ error, lastNodeExecuted });
+
+	if (error.name === 'SubworkflowOperationError') {
+		return { title: error.message, message: error.description ?? '' };
+	} else if (
+		(error.name === 'NodeOperationError' || error.name === 'NodeApiError') &&
+		error.functionality === 'configuration-node'
+	) {
+		// If the error is a configuration error of the node itself doesn't get executed so we can't use lastNodeExecuted for the title
+		const nodeErrorName = 'node' in error && error.node?.name ? error.node.name : '';
+
+		return {
+			title: nodeErrorName ? `Error in sub-node ‘${nodeErrorName}‘` : 'Problem executing workflow',
+			message: h(NodeExecutionErrorMessage, {
+				errorMessage: error.description ?? message,
+				nodeName: nodeErrorName,
+			}),
+		};
+	} else {
+		return {
+			title: lastNodeExecuted
+				? `Problem in node ‘${lastNodeExecuted}‘`
+				: 'Problem executing workflow',
+			message,
+		};
+	}
 }
 
 export function useWorkflowHelpers(options: { router: ReturnType<typeof useRouter> }) {
