@@ -175,10 +175,11 @@ describe('CanvasChat', () => {
 
 			return matchedNode;
 		});
-		workflowsStore.logsPanelState = LOGS_PANEL_STATE.ATTACHED;
 		workflowsStore.isLogsPanelOpen = true;
 		workflowsStore.getWorkflowExecution = mockWorkflowExecution as unknown as IExecutionResponse;
 		workflowsStore.getPastChatMessages = ['Previous message 1', 'Previous message 2'];
+
+		canvasStore.logsPanelState = LOGS_PANEL_STATE.ATTACHED;
 
 		nodeTypeStore.getNodeType = vi.fn().mockImplementation((nodeTypeName) => {
 			return mockNodeTypes.find((node) => node.name === nodeTypeName) ?? null;
@@ -198,7 +199,7 @@ describe('CanvasChat', () => {
 		});
 
 		it('should not render chat when panel is closed', async () => {
-			workflowsStore.logsPanelState = LOGS_PANEL_STATE.CLOSED;
+			canvasStore.logsPanelState = LOGS_PANEL_STATE.CLOSED;
 			const { queryByTestId } = renderComponent();
 			await waitFor(() => {
 				expect(queryByTestId('canvas-chat')).not.toBeInTheDocument();
