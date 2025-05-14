@@ -1,12 +1,12 @@
 import { GlobalConfig } from '@n8n/config';
 import type { InstalledNodes } from '@n8n/db';
 import type { InstalledPackages } from '@n8n/db';
+import { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import nock from 'nock';
 import { v4 as uuid } from 'uuid';
 
 import * as constants from '@/constants';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import type { Risk } from '@/security-audit/types';
 import { toReportTitle } from '@/security-audit/utils';
 

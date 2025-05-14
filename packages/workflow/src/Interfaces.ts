@@ -993,6 +993,7 @@ export type ISupplyDataFunctions = ExecuteFunctions.GetNodeParameterFn &
 		| 'sendMessageToUI'
 		| 'helpers'
 	> & {
+		getNextRunIndex(): number;
 		continueOnFail(): boolean;
 		evaluateExpression(expression: string, itemIndex: number): NodeParameterValueType;
 		getWorkflowDataProxy(itemIndex: number): IWorkflowDataProxyData;
@@ -2168,9 +2169,6 @@ export interface IRunExecutionData {
 	waitTill?: Date;
 	pushRef?: string;
 
-	/** Whether this execution was started by a test webhook call. */
-	isTestWebhook?: boolean;
-
 	/** Data needed for a worker to run a manual execution. */
 	manualData?: Pick<
 		IWorkflowExecutionDataProcess,
@@ -2880,8 +2878,6 @@ export interface ICheckProcessedContextData {
 		active: boolean;
 	};
 }
-
-export type ExpressionEvaluatorType = 'tmpl' | 'tournament';
 
 export type N8nAIProviderType = 'openai' | 'unknown';
 

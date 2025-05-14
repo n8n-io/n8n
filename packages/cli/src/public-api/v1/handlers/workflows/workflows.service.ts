@@ -6,13 +6,12 @@ import {
 	SharedWorkflow,
 	TagRepository,
 	SharedWorkflowRepository,
+	WorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Scope, WorkflowSharingRole } from '@n8n/permissions';
 import type { WorkflowId } from 'n8n-workflow';
 
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import * as Db from '@/db';
 import { License } from '@/license';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
@@ -67,7 +66,8 @@ export async function createWorkflow(
 	personalProject: Project,
 	role: WorkflowSharingRole,
 ): Promise<WorkflowEntity> {
-	return await Db.transaction(async (transactionManager) => {
+	const { manager: dbManager } = Container.get(SharedWorkflowRepository);
+	return await dbManager.transaction(async (transactionManager) => {
 		const newWorkflow = new WorkflowEntity();
 		Object.assign(newWorkflow, workflow);
 		const savedWorkflow = await transactionManager.save<WorkflowEntity>(newWorkflow);
@@ -122,8 +122,9 @@ export async function getWorkflowTags(workflowId: string) {
 	});
 }
 
-export async function updateTags(workflowId: string, newTags: string[]): Promise<any> {
-	await Db.transaction(async (transactionManager) => {
+export async function updateTags(workflowId: string, newTags: string[]): Promise<void> {
+	const { manager: dbManager } = Container.get(SharedWorkflowRepository);
+	await dbManager.transaction(async (transactionManager) => {
 		const oldTags = await transactionManager.findBy(WorkflowTagMapping, { workflowId });
 		if (oldTags.length > 0) {
 			await transactionManager.delete(WorkflowTagMapping, oldTags);

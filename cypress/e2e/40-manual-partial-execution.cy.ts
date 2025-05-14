@@ -28,8 +28,8 @@ describe('Manual partial execution', () => {
 
 		canvas.actions.openNode('Edit Fields');
 
-		cy.get('button').contains('Test step').click(); // create run data
-		cy.get('button').contains('Test step').click(); // use run data
+		cy.get('button').contains('Execute step').click(); // create run data
+		cy.get('button').contains('Execute step').click(); // use run data
 
 		ndv.actions.close();
 

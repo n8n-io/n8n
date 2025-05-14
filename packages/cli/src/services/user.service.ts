@@ -1,13 +1,12 @@
 import type { RoleChangeRequestDto } from '@n8n/api-types';
-import { User } from '@n8n/db';
 import type { PublicUser } from '@n8n/db';
+import { User, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { getGlobalScopes, type AssignableGlobalRole } from '@n8n/permissions';
 import { Logger } from 'n8n-core';
 import type { IUserSettings } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
 
-import { UserRepository } from '@/databases/repositories/user.repository';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { EventService } from '@/events/event.service';
 import type { Invitation } from '@/interfaces';

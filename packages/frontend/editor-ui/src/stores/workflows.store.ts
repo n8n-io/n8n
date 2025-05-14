@@ -55,6 +55,7 @@ import type {
 	ITaskData,
 	IWorkflowSettings,
 	INodeType,
+	ITaskStartedData,
 } from 'n8n-workflow';
 import {
 	deepCopy,
@@ -141,6 +142,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const activeWorkflowExecution = ref<ExecutionSummary | null>(null);
 	const currentWorkflowExecutions = ref<ExecutionSummary[]>([]);
 	const workflowExecutionData = ref<IExecutionResponse | null>(null);
+	const workflowExecutionStartedData =
+		ref<[executionId: string, data: { [nodeName: string]: ITaskStartedData[] }]>();
 	const workflowExecutionResultDataLastUpdate = ref<number>();
 	const workflowExecutionPairedItemMappings = ref<Record<string, Set<string>>>({});
 	const subWorkflowExecutionError = ref<Error | null>(null);
@@ -868,6 +871,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflowExecutionData.value = workflowResultData;
 		workflowExecutionPairedItemMappings.value = getPairedItemsMapping(workflowResultData);
 		workflowExecutionResultDataLastUpdate.value = Date.now();
+		workflowExecutionStartedData.value = undefined;
 	}
 
 	function setWorkflowExecutionRunData(workflowResultData: IRunExecutionData) {
@@ -877,6 +881,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 				data: workflowResultData,
 			};
 			workflowExecutionResultDataLastUpdate.value = Date.now();
+			workflowExecutionStartedData.value = undefined;
 		}
 	}
 
@@ -1484,24 +1489,19 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return testUrl;
 	}
 
-	function addNodeExecutionData(data: NodeExecuteBefore['data']): void {
-		if (settingsStore.isNewLogsEnabled) {
-			const node = getNodeByName(data.nodeName);
-			if (!node || !workflowExecutionData.value?.data) {
-				return;
-			}
+	function addNodeExecutionStartedData(data: NodeExecuteBefore['data']): void {
+		const currentData =
+			workflowExecutionStartedData.value?.[0] === data.executionId
+				? workflowExecutionStartedData.value?.[1]
+				: {};
 
-			if (workflowExecutionData.value.data.resultData.runData[data.nodeName] === undefined) {
-				workflowExecutionData.value.data.resultData.runData[data.nodeName] = [];
-			}
-
-			workflowExecutionData.value.data.resultData.runData[data.nodeName].push({
-				executionStatus: 'running',
-				executionTime: 0,
-				...data.data,
-			});
-			workflowExecutionResultDataLastUpdate.value = Date.now();
-		}
+		workflowExecutionStartedData.value = [
+			data.executionId,
+			{
+				...currentData,
+				[data.nodeName]: [...(currentData[data.nodeName] ?? []), data.data],
+			},
+		];
 	}
 
 	function updateNodeExecutionData(pushData: PushPayload<'nodeExecuteAfter'>): void {
@@ -1533,6 +1533,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		const tasksData = workflowExecutionData.value.data!.resultData.runData[nodeName];
 		if (isNodeWaiting) {
 			tasksData.push(data);
+			workflowExecutionResultDataLastUpdate.value = Date.now();
+
 			if (
 				node.type === FORM_NODE_TYPE ||
 				(node.type === WAIT_NODE_TYPE && node.parameters.resume === 'form')
@@ -1541,10 +1543,16 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 				openFormPopupWindow(testUrl);
 			}
 		} else {
-			const status = tasksData[tasksData.length - 1]?.executionStatus ?? 'unknown';
+			// If we process items in paralell on subnodes we get several placeholder taskData items.
+			// We need to find and replace the item with the matching executionIndex and only append if we don't find anything matching.
+			const existingRunIndex = tasksData.findIndex(
+				(item) => item.executionIndex === data.executionIndex,
+			);
+			const index = existingRunIndex > -1 ? existingRunIndex : tasksData.length - 1;
+			const status = tasksData[index]?.executionStatus ?? 'unknown';
 
 			if ('waiting' === status || (settingsStore.isNewLogsEnabled && 'running' === status)) {
-				tasksData.splice(tasksData.length - 1, 1, data);
+				tasksData.splice(index, 1, data);
 			} else {
 				tasksData.push(data);
 			}
@@ -1837,6 +1845,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflowExecutionData,
 		workflowExecutionPairedItemMappings,
 		workflowExecutionResultDataLastUpdate,
+		workflowExecutionStartedData,
 		activeExecutionId: readonlyActiveExecutionId,
 		previousExecutionId: readonlyPreviousExecutionId,
 		setActiveExecutionId,
@@ -1905,7 +1914,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		makeNewWorkflowShareable,
 		resetWorkflow,
 		resetState,
-		addNodeExecutionData,
+		addNodeExecutionStartedData,
 		addExecutingNode,
 		removeExecutingNode,
 		setWorkflowId,

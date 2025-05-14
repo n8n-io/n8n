@@ -38,6 +38,7 @@ import type {
 } from '@/Interface';
 import type {
 	Connection,
+	Dimensions,
 	ViewportTransform,
 	XYPosition as VueFlowXYPosition,
 } from '@vue-flow/core';
@@ -47,6 +48,7 @@ import type {
 	CanvasNode,
 	CanvasNodeMoveEvent,
 	ConnectStartEvent,
+	ViewportBoundaries,
 } from '@/types';
 import { CanvasNodeRenderType, CanvasConnectionMode } from '@/types';
 import {
@@ -662,7 +664,8 @@ function onToggleNodesDisabled(ids: string[]) {
 	toggleNodesDisabled(ids);
 }
 
-function onClickNode() {
+function onClickNode(_id: string, event: VueFlowXYPosition) {
+	lastClickPosition.value = [event.x, event.y];
 	closeNodeCreator();
 }
 
@@ -740,7 +743,10 @@ async function onClipboardPaste(plainTextData: string): Promise<void> {
 		return;
 	}
 
-	const result = await importWorkflowData(workflowData, 'paste', false);
+	const result = await importWorkflowData(workflowData, 'paste', {
+		importTags: false,
+		viewport: viewportBoundaries.value,
+	});
 	selectNodes(result.nodes?.map((node) => node.id) ?? []);
 }
 
@@ -757,7 +763,9 @@ async function onDuplicateNodes(ids: string[]) {
 		return;
 	}
 
-	const newIds = await duplicateNodes(ids);
+	const newIds = await duplicateNodes(ids, {
+		viewport: viewportBoundaries.value,
+	});
 
 	selectNodes(newIds);
 }
@@ -980,7 +988,9 @@ async function importWorkflowExact({ workflow: workflowData }: { workflow: IWork
 
 async function onImportWorkflowDataEvent(data: IDataObject) {
 	const workflowData = data.data as IWorkflowDataUpdate;
-	await importWorkflowData(workflowData, 'file');
+	await importWorkflowData(workflowData, 'file', {
+		viewport: viewportBoundaries.value,
+	});
 
 	fitView();
 	selectNodes(workflowData.nodes?.map((node) => node.id) ?? []);
@@ -997,7 +1007,9 @@ async function onImportWorkflowUrlEvent(data: IDataObject) {
 		return;
 	}
 
-	await importWorkflowData(workflowData, 'url');
+	await importWorkflowData(workflowData, 'url', {
+		viewport: viewportBoundaries.value,
+	});
 
 	fitView();
 	selectNodes(workflowData.nodes?.map((node) => node.id) ?? []);
@@ -1031,6 +1043,7 @@ async function onAddNodesAndConnections(
 	const addedNodes = await addNodes(nodes, {
 		dragAndDrop,
 		position,
+		viewport: viewportBoundaries.value,
 		trackHistory: true,
 		telemetry: true,
 	});
@@ -1571,10 +1584,24 @@ async function onSaveFromWithinExecutionDebug() {
  */
 
 const viewportTransform = ref<ViewportTransform>({ x: 0, y: 0, zoom: 1 });
+const viewportDimensions = ref<Dimensions>({ width: 0, height: 0 });
 
-function onViewportChange(event: ViewportTransform) {
-	viewportTransform.value = event;
-	uiStore.nodeViewOffsetPosition = [event.x, event.y];
+const viewportBoundaries = computed<ViewportBoundaries>(() => {
+	const { x, y, zoom } = viewportTransform.value;
+	const { width, height } = viewportDimensions.value;
+
+	const xMin = -x / zoom;
+	const yMin = -y / zoom;
+	const xMax = (width - x) / zoom;
+	const yMax = (height - y) / zoom;
+
+	return { xMin, yMin, xMax, yMax };
+});
+
+function onViewportChange(viewport: ViewportTransform, dimensions: Dimensions) {
+	viewportTransform.value = viewport;
+	viewportDimensions.value = dimensions;
+	uiStore.nodeViewOffsetPosition = [viewport.x, viewport.y];
 }
 
 function fitView() {
@@ -1589,9 +1616,13 @@ function selectNodes(ids: string[]) {
  * Mouse events
  */
 
-function onClickPane(position: CanvasNode['position']) {
+function onClickPane(position: VueFlowXYPosition) {
 	lastClickPosition.value = [position.x, position.y];
 	onSetNodeSelected();
+}
+
+function onSelectionEnd(position: VueFlowXYPosition) {
+	lastClickPosition.value = [position.x, position.y];
 }
 
 /**
@@ -1862,6 +1893,7 @@ onActivated(async () => {
 });
 
 onDeactivated(() => {
+	uiStore.closeModal(WORKFLOW_SETTINGS_MODAL_KEY);
 	removeUndoRedoEventBindings();
 });
 
@@ -1922,7 +1954,8 @@ onBeforeUnmount(() => {
 		@run:workflow="runEntireWorkflow('main')"
 		@save:workflow="onSaveWorkflow"
 		@create:workflow="onCreateWorkflow"
-		@viewport-change="onViewportChange"
+		@viewport:change="onViewportChange"
+		@selection:end="onSelectionEnd"
 		@drag-and-drop="onDragAndDrop"
 		@tidy-up="onTidyUp"
 	>

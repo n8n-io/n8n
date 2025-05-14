@@ -1,5 +1,11 @@
 import type { WorkflowEntity } from '@n8n/db';
-import { generateNanoId, ProjectRepository, SharedWorkflowRepository } from '@n8n/db';
+import {
+	generateNanoId,
+	ProjectRepository,
+	SharedWorkflowRepository,
+	WorkflowRepository,
+	UserRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { Flags } from '@oclif/core';
 import glob from 'fast-glob';
@@ -8,8 +14,6 @@ import type { IWorkflowBase, WorkflowId } from 'n8n-workflow';
 import { jsonParse, UserError } from 'n8n-workflow';
 
 import { UM_FIX_INSTRUCTION } from '@/constants';
-import { UserRepository } from '@/databases/repositories/user.repository';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import type { IWorkflowToImport } from '@/interfaces';
 import { ImportService } from '@/services/import.service';
 

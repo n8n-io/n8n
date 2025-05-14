@@ -444,7 +444,7 @@ describe('RunData', () => {
 					executionTime: 2,
 					source: [
 						{
-							previousNode: 'When clicking ‘Test workflow’',
+							previousNode: 'When clicking ‘Execute workflow’',
 						},
 					],
 					executionStatus: 'error',
@@ -475,7 +475,7 @@ describe('RunData', () => {
 		const testNodes = [
 			{
 				id: '1',
-				name: 'When clicking ‘Test workflow’',
+				name: 'When clicking ‘Execute workflow’',
 				type: 'n8n-nodes-base.manualTrigger',
 				typeVersion: 1,
 				position: [80, -180],
@@ -529,7 +529,7 @@ describe('RunData', () => {
 					executionTime: 2,
 					source: [
 						{
-							previousNode: 'When clicking ‘Test workflow’',
+							previousNode: 'When clicking ‘Execute workflow’',
 						},
 					],
 					executionStatus: 'error',
