@@ -50,7 +50,6 @@ import type {
 } from '@/types';
 import { CanvasNodeRenderType, CanvasConnectionMode } from '@/types';
 import {
-	AI_EVALUATION,
 	CHAT_TRIGGER_NODE_TYPE,
 	DRAG_EVENT_DATA_KEY,
 	EnterpriseEditionFeature,
@@ -70,7 +69,7 @@ import {
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { useExternalHooks } from '@/composables/useExternalHooks';
-import { NodeConnectionTypes, jsonParse } from 'n8n-workflow';
+import { NodeConnectionTypes, jsonParse, EVALUATION_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import type { NodeConnectionType, IDataObject, ExecutionSummary, IConnection } from 'n8n-workflow';
 import { useToast } from '@/composables/useToast';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -338,6 +337,10 @@ async function initializeRoute(force = false) {
 			node: '',
 			creatorView: 'AI',
 		});
+	} else if (route.query.action === 'executeEvaluation') {
+		if (evaluationTriggerNode.value) {
+			void runEntireWorkflow('node', evaluationTriggerNode.value.name);
+		}
 	}
 
 	const isAlreadyInitialized =
@@ -1366,6 +1369,13 @@ async function onToggleChat() {
 async function onOpenChat() {
 	await toggleChatOpen('main', true);
 }
+
+/**
+ * Evaluation
+ */
+const evaluationTriggerNode = computed(() => {
+	return editableWorkflow.value.nodes.find((node) => node.type === EVALUATION_TRIGGER_NODE_TYPE);
+});
 
 /**
  * History events
