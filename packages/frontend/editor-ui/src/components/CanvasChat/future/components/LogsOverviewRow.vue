@@ -26,10 +26,10 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-	toggleExpanded: [node: LogEntry];
-	toggleSelected: [node: LogEntry];
-	triggerPartialExecution: [node: LogEntry];
-	openNdv: [node: LogEntry];
+	toggleExpanded: [];
+	toggleSelected: [];
+	triggerPartialExecution: [];
+	openNdv: [];
 }>();
 
 const container = useTemplateRef('containerRef');
@@ -105,7 +105,7 @@ watch(
 			[$style.error]: isError,
 			[$style.selected]: props.isSelected,
 		}"
-		@click.stop="emit('toggleSelected', data)"
+		@click.stop="emit('toggleSelected')"
 	>
 		<template v-for="level in props.data.depth" :key="level">
 			<div
@@ -182,7 +182,7 @@ watch(
 			:disabled="props.latestInfo?.deleted"
 			:class="$style.openNdvButton"
 			:aria-label="locale.baseText('logs.overview.body.open')"
-			@click.stop="emit('openNdv', props.data)"
+			@click.stop="emit('openNdv')"
 		/>
 		<N8nIconButton
 			v-if="
@@ -196,7 +196,7 @@ watch(
 			:aria-label="locale.baseText('logs.overview.body.run')"
 			:class="[$style.partialExecutionButton, props.data.depth > 0 ? $style.unavailable : '']"
 			:disabled="props.latestInfo?.deleted || props.latestInfo?.disabled"
-			@click.stop="emit('triggerPartialExecution', props.data)"
+			@click.stop="emit('triggerPartialExecution')"
 		/>
 		<N8nButton
 			v-if="!isCompact || hasChildren"
@@ -209,7 +209,7 @@ watch(
 			}"
 			:class="$style.toggleButton"
 			:aria-label="locale.baseText('logs.overview.body.toggleRow')"
-			@click.stop="emit('toggleExpanded', props.data)"
+			@click.stop="emit('toggleExpanded')"
 		>
 			<N8nIcon size="medium" :icon="props.expanded ? 'chevron-down' : 'chevron-up'" />
 		</N8nButton>

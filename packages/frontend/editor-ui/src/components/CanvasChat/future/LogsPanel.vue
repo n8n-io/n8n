@@ -56,7 +56,7 @@ const {
 
 const { entries, execution, hasChat, latestNodeNameById, resetExecutionData, loadSubExecution } =
 	useExecutionData();
-const { flatLogEntries, toggleExpanded } = useExpand(entries.value);
+const { flatLogEntries, toggleExpanded } = useExpand(entries);
 const { selected, select, selectNext, selectPrev } = useSelection(
 	execution,
 	entries,
@@ -195,7 +195,7 @@ async function handleOpenNdv(treeNode: LogEntry) {
 							:panels="canvasStore.logDetailsPanel"
 							@click-header="onToggleOpen(true)"
 							@toggle-input-open="canvasStore.toggleLogInputOpen"
-							@toggle-output-open="canvasStore.toggleLogInputOpen"
+							@toggle-output-open="canvasStore.toggleLogOutputOpen"
 						>
 							<template #actions>
 								<LogsPanelActions v-if="isLogDetailsVisuallyOpen" v-bind="logsPanelActionsProps" />

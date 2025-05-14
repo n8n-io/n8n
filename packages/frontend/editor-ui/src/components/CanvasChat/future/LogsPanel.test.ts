@@ -348,4 +348,29 @@ describe('LogsPanel', () => {
 		expect(overview.queryByText('AI Agent')).toBeInTheDocument();
 		expect(overview.queryByText('AI Model')).toBeInTheDocument();
 	});
+
+	it('should toggle input and output panel when the button is clicked', async () => {
+		canvasStore.toggleLogsPanelOpen(true);
+		canvasStore.toggleLogInputOpen(false);
+		canvasStore.toggleLogOutputOpen(true);
+		workflowsStore.setWorkflow(aiChatWorkflow);
+		workflowsStore.setWorkflowExecutionData(aiChatExecutionResponse);
+
+		const rendered = render();
+
+		const header = within(rendered.getByTestId('log-details-header'));
+
+		expect(rendered.queryByTestId('log-details-input')).not.toBeInTheDocument();
+		expect(rendered.queryByTestId('log-details-output')).toBeInTheDocument();
+
+		await fireEvent.click(header.getByText('Input'));
+
+		expect(rendered.queryByTestId('log-details-input')).toBeInTheDocument();
+		expect(rendered.queryByTestId('log-details-output')).toBeInTheDocument();
+
+		await fireEvent.click(header.getByText('Output'));
+
+		expect(rendered.queryByTestId('log-details-input')).toBeInTheDocument();
+		expect(rendered.queryByTestId('log-details-output')).not.toBeInTheDocument();
+	});
 });

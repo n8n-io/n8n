@@ -1,4 +1,4 @@
-import { fireEvent, waitFor, within } from '@testing-library/vue';
+import { fireEvent, within } from '@testing-library/vue';
 import { renderComponent } from '@/__tests__/render';
 import LogDetailsPanel from './LogDetailsPanel.vue';
 import { createRouter, createWebHistory } from 'vue-router';
@@ -92,12 +92,10 @@ describe('LogDetailsPanel', () => {
 	});
 
 	it('should show name, run status, input, and output of the node', async () => {
-		localStorage.setItem('N8N_LOGS_DETAIL_PANEL_CONTENT', 'both');
-
 		const rendered = render({
 			isOpen: true,
 			logEntry: createLogEntry({ node: aiNode, runIndex: 0, runData: aiNodeRunData }),
-			panels: LOG_DETAILS_CONTENT.OUTPUT,
+			panels: LOG_DETAILS_CONTENT.BOTH,
 		});
 
 		const header = within(rendered.getByTestId('log-details-header'));
@@ -108,29 +106,6 @@ describe('LogDetailsPanel', () => {
 		expect(header.getByText('Success in 10ms')).toBeInTheDocument();
 		expect(await inputPanel.findByText('hey')).toBeInTheDocument();
 		expect(await outputPanel.findByText('Hello!')).toBeInTheDocument();
-	});
-
-	it('should toggle input and output panel when the button is clicked', async () => {
-		const rendered = render({
-			isOpen: true,
-			logEntry: createLogEntry({ node: aiNode, runIndex: 0, runData: aiNodeRunData }),
-			panels: LOG_DETAILS_CONTENT.OUTPUT,
-		});
-
-		const header = within(rendered.getByTestId('log-details-header'));
-
-		expect(rendered.queryByTestId('log-details-input')).not.toBeInTheDocument();
-		expect(rendered.queryByTestId('log-details-output')).toBeInTheDocument();
-
-		await fireEvent.click(header.getByText('Input'));
-
-		expect(rendered.queryByTestId('log-details-input')).toBeInTheDocument();
-		expect(rendered.queryByTestId('log-details-output')).toBeInTheDocument();
-
-		await fireEvent.click(header.getByText('Output'));
-
-		expect(rendered.queryByTestId('log-details-input')).toBeInTheDocument();
-		expect(rendered.queryByTestId('log-details-output')).not.toBeInTheDocument();
 	});
 
 	it('should close input panel by dragging the divider to the left end', async () => {
@@ -145,10 +120,7 @@ describe('LogDetailsPanel', () => {
 		window.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: 0, clientY: 0 }));
 		window.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, clientX: 0, clientY: 0 }));
 
-		await waitFor(() => {
-			expect(rendered.queryByTestId('log-details-input')).not.toBeInTheDocument();
-			expect(rendered.queryByTestId('log-details-output')).toBeInTheDocument();
-		});
+		expect(rendered.emitted()).toEqual({ toggleInputOpen: [[false]] });
 	});
 
 	it('should close output panel by dragging the divider to the right end', async () => {
@@ -163,9 +135,6 @@ describe('LogDetailsPanel', () => {
 		window.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: 1000, clientY: 0 }));
 		window.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, clientX: 1000, clientY: 0 }));
 
-		await waitFor(() => {
-			expect(rendered.queryByTestId('log-details-input')).toBeInTheDocument();
-			expect(rendered.queryByTestId('log-details-output')).not.toBeInTheDocument();
-		});
+		expect(rendered.emitted()).toEqual({ toggleOutputOpen: [[false]] });
 	});
 });

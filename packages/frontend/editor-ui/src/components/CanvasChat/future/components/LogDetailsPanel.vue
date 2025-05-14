@@ -57,7 +57,7 @@ function handleResizeEnd() {
 	}
 
 	if (resizer.isFullSize.value) {
-		emit('toggleInputOpen', true);
+		emit('toggleOutputOpen', false);
 	}
 
 	resizer.onResizeEnd();

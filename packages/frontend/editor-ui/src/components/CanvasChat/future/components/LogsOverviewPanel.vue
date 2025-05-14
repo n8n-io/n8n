@@ -176,8 +176,8 @@ watch(
 							:can-open-ndv="data.executionId === execution?.id"
 							@toggle-expanded="emit('toggleExpanded', data)"
 							@open-ndv="emit('openNdv', data)"
-							@trigger-partial-execution="handleTriggerPartialExecution"
-							@toggle-selected="emit('select', data)"
+							@trigger-partial-execution="handleTriggerPartialExecution(data)"
+							@toggle-selected="emit('select', selected?.id === data.id ? undefined : data)"
 						/>
 					</div>
 				</div>
