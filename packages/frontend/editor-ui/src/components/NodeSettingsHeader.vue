@@ -60,7 +60,7 @@ const emit = defineEmits<{
 
 	display: flex;
 	align-items: center;
-	height: 40px;
+	min-height: 40px;
 	padding-right: var(--spacing-s);
 
 	border-bottom: var(--border-base);

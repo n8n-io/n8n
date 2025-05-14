@@ -70,8 +70,7 @@ const props = withDefaults(
 );
 
 const MIN_MAIN_PANEL_WIDTH = 368;
-const MIN_PANEL_WIDTH = 320;
-const GRID_FRACTION_TOTAL = 3;
+const MIN_PANEL_WIDTH = 260;
 
 const ndvStore = useNDVStore();
 const externalHooks = useExternalHooks();
@@ -108,10 +107,9 @@ const dialogRef = ref<HTMLDialogElement>();
 const containerRect = ref<DOMRect>();
 const containerRef = ref<HTMLDivElement>();
 const mainPanelRef = ref<HTMLDivElement>();
-const panelWidth = ref({ left: 20, main: 60, right: 20 });
+const panelWidth = ref({ left: 40, main: 20, right: 40 });
 
 // computed
-
 const pushRef = computed(() => ndvStore.pushRef);
 
 const activeNodeType = computed(() => {
@@ -352,13 +350,48 @@ const supportedResizeDirections = computed(() =>
 
 const containerWidth = computed(() => containerRect.value?.width ?? MIN_MAIN_PANEL_WIDTH);
 
+const mainPanelWidthPixels = computed(() => percentageToPixels(panelWidth.value.main));
+
+const minMainPanelWidthPercentage = computed(() => pixelsToPercentage(MIN_MAIN_PANEL_WIDTH));
+const minPanelWidthPercentage = computed(() => pixelsToPercentage(MIN_PANEL_WIDTH));
+
 const currentNodePaneType = computed((): MainPanelType => {
 	if (!hasInputPanel.value) return 'inputless';
 	if (!isDraggable.value) return 'dragless';
 	return activeNodeType.value?.parameterPane ?? 'regular';
 });
 
+const defaultPanelSize = computed(() => {
+	switch (currentNodePaneType.value) {
+		case 'inputless': {
+			const main = pixelsToPercentage(420);
+			return { left: 0, main, right: 100 - main };
+		}
+		case 'wide': {
+			const main = pixelsToPercentage(640);
+			const panels = (100 - main) / 2;
+			return { left: panels, main, right: panels };
+		}
+		case 'dragless':
+		case 'unknown':
+		case 'regular':
+		default: {
+			const main = pixelsToPercentage(380);
+			const panels = (100 - main) / 2;
+			return { left: panels, main, right: panels };
+		}
+	}
+});
+
 //methods
+
+const percentageToPixels = (percentage: number) => {
+	return (percentage / 100) * containerWidth.value;
+};
+
+const pixelsToPercentage = (pixels: number) => {
+	return (pixels / containerWidth.value) * 100;
+};
 
 const setIsTooltipVisible = ({ isTooltipVisible }: DataPinningDiscoveryEvent) => {
 	pinDataDiscoveryTooltipVisible.value = isTooltipVisible;
@@ -435,7 +468,6 @@ const onDragEnd = () => {
 };
 
 const onDragStart = () => {
-	containerRect.value = containerRef.value?.getBoundingClientRect();
 	isDragging.value = true;
 };
 
@@ -597,49 +629,60 @@ const onRename = (name: string) => {
 };
 
 const onResize = (event: ResizeData) => {
-	console.log(event);
-	const deltaPercent = (event.dX / containerWidth.value) * 100;
+	const newMain = Math.max(minMainPanelWidthPercentage.value, pixelsToPercentage(event.width));
 	const initialLeft = panelWidth.value.left;
 	const initialMain = panelWidth.value.main;
 	const initialRight = panelWidth.value.right;
+	const diffMain = newMain - initialMain;
 
 	if (event.direction === 'left') {
-		const newLeft = Math.max(5, initialLeft + deltaPercent);
-		const newMain = Math.max(5, initialMain - deltaPercent);
-		console.log({ newMain, newLeft, panelWidth });
+		const newLeft = Math.max(minPanelWidthPercentage.value, initialLeft - diffMain);
 		if (newLeft + newMain + initialRight <= 100) {
 			panelWidth.value.left = newLeft;
 			panelWidth.value.main = newMain;
+			panelWidth.value.right = 100 - newLeft - newMain;
 		}
 	} else if (event.direction === 'right') {
-		console.log(deltaPercent);
-		const newMain = Math.max(5, initialMain + deltaPercent);
-		const newRight = Math.max(5, initialRight - deltaPercent);
-		console.log({ newMain, newRight, panelWidth }, panelWidth.value.left + newMain + newRight);
-		if (panelWidth.value.left + newMain + newRight <= 100) {
+		const newRight = Math.max(minPanelWidthPercentage.value, initialRight - diffMain);
+		console.log(newMain, newRight, initialLeft);
+		if (initialLeft + newMain + newRight <= 100) {
 			panelWidth.value.main = newMain;
 			panelWidth.value.right = newRight;
+			panelWidth.value.left = 100 - newRight - newMain;
 		}
 	}
 };
 
-const onResizeThrottled = useThrottleFn(onResize, 16);
+const onResizeThrottled = useThrottleFn(onResize, 16, true);
 
 const onDrag = (position: XYPosition) => {
-	const deltaPercent = (position[0] / containerWidth.value) * 100;
-	const newLeft = Math.max(5, panelWidth.value.left + deltaPercent);
-	const newRight = Math.max(5, panelWidth.value.right - deltaPercent);
-	if (newLeft + panelWidth.value.main + newRight <= 100) {
-		panelWidth.value.left = newLeft;
-		panelWidth.value.right = newRight;
+	const newLeft = Math.max(
+		minPanelWidthPercentage.value,
+		pixelsToPercentage(position[0]) - panelWidth.value.main / 2,
+	);
+	const newRight = Math.max(minPanelWidthPercentage.value, 100 - newLeft - panelWidth.value.main);
+
+	if (newLeft + panelWidth.value.main + newRight > 100) {
+		return;
 	}
+
+	panelWidth.value.left = newLeft;
+	panelWidth.value.right = newRight;
 };
 
 const handleChangeDisplayMode = (pane: NodePanelType, mode: IRunDataDisplayMode) => {
 	ndvStore.setPanelDisplayMode({ pane, mode });
 };
 
-const onDragThrottled = useThrottleFn(onDrag, 16);
+const onDragThrottled = useThrottleFn(onDrag, 16, true);
+
+const safePanelWidth = ({ left, main, right }: { left: number; main: number; right: number }) => {
+	return {
+		left: Math.max(hasInputPanel.value ? minPanelWidthPercentage.value : 0, left),
+		main: Math.max(minMainPanelWidthPercentage.value, main),
+		right: Math.max(minPanelWidthPercentage.value, right),
+	};
+};
 
 //watchers
 watch(
@@ -755,6 +798,13 @@ watch(mainPanelRef, (mainPanel) => {
 	}
 });
 
+watch(containerRef, (container) => {
+	if (container) {
+		containerRect.value = container.getBoundingClientRect();
+		panelWidth.value = safePanelWidth(defaultPanelSize.value);
+	}
+});
+
 onMounted(() => {
 	dialogRef.value?.show();
 	dataPinningEventBus.on('data-pinning-discovery', setIsTooltipVisible);
@@ -828,7 +878,7 @@ onBeforeUnmount(() => {
 					</div>
 
 					<N8nResizeWrapper
-						:width="(panelWidth.main / 100) * containerWidth"
+						:width="mainPanelWidthPixels"
 						:min-width="MIN_PANEL_WIDTH"
 						:supported-directions="supportedResizeDirections"
 						:grid-size="8"
@@ -931,7 +981,6 @@ onBeforeUnmount(() => {
 	background: var(--border-color-base);
 	border: var(--border-base);
 	border-radius: var(--border-radius-large);
-	overflow: hidden;
 	color: var(--color-text-base);
 }
 
@@ -946,10 +995,20 @@ onBeforeUnmount(() => {
 	+ .column {
 		border-left: var(--border-base);
 	}
+
+	&:first-child div {
+		border-bottom-left-radius: var(--border-radius-large);
+	}
+
+	&:last-child {
+		border-bottom-right-radius: var(--border-radius-large);
+	}
 }
 
 .header {
 	border-bottom: var(--border-base);
+	border-top-left-radius: var(--border-radius-large);
+	border-top-right-radius: var(--border-radius-large);
 }
 
 .main {
