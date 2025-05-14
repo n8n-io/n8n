@@ -1,4 +1,4 @@
-import { INodeType, NodeHelpers } from '@/index';
+import type { INodeType } from '@/index';
 import {
 	NodeConnectionTypes,
 	type NodeConnectionType,
