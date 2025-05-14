@@ -175,7 +175,7 @@ describe('CanvasChat', () => {
 
 			return matchedNode;
 		});
-		workflowsStore.isLogsPanelOpen = true;
+		canvasStore.isLogsPanelOpen = true;
 		workflowsStore.getWorkflowExecution = mockWorkflowExecution as unknown as IExecutionResponse;
 		workflowsStore.getPastChatMessages = ['Previous message 1', 'Previous message 2'];
 
@@ -389,7 +389,7 @@ describe('CanvasChat', () => {
 				isLoading: computed(() => false),
 			});
 
-			workflowsStore.logsPanelState = LOGS_PANEL_STATE.ATTACHED;
+			canvasStore.logsPanelState = LOGS_PANEL_STATE.ATTACHED;
 			workflowsStore.allowFileUploads = true;
 		});
 
@@ -545,13 +545,13 @@ describe('CanvasChat', () => {
 			renderComponent();
 
 			// Toggle logs panel
-			workflowsStore.isLogsPanelOpen = true;
+			canvasStore.isLogsPanelOpen = true;
 			await waitFor(() => {
 				expect(canvasStore.setPanelHeight).toHaveBeenCalled();
 			});
 
 			// Close chat panel
-			workflowsStore.logsPanelState = LOGS_PANEL_STATE.CLOSED;
+			canvasStore.logsPanelState = LOGS_PANEL_STATE.CLOSED;
 			await waitFor(() => {
 				expect(canvasStore.setPanelHeight).toHaveBeenCalledWith(0);
 			});
@@ -561,15 +561,15 @@ describe('CanvasChat', () => {
 			const { unmount, rerender } = renderComponent();
 
 			// Set initial state
-			workflowsStore.logsPanelState = LOGS_PANEL_STATE.ATTACHED;
-			workflowsStore.isLogsPanelOpen = true;
+			canvasStore.logsPanelState = LOGS_PANEL_STATE.ATTACHED;
+			canvasStore.isLogsPanelOpen = true;
 
 			// Unmount and remount
 			unmount();
 			await rerender({});
 
-			expect(workflowsStore.logsPanelState).toBe(LOGS_PANEL_STATE.ATTACHED);
-			expect(workflowsStore.isLogsPanelOpen).toBe(true);
+			expect(canvasStore.logsPanelState).toBe(LOGS_PANEL_STATE.ATTACHED);
+			expect(canvasStore.isLogsPanelOpen).toBe(true);
 		});
 	});
 

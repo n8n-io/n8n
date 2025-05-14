@@ -93,7 +93,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 		isLoading: loadingService.isLoading,
 		aiNodes,
 		panelHeight: computed(() => panelHeight.value),
-		logsPanelState: computed(() => logsPanelState.value),
+		logsPanelState,
 		isLogsPanelOpen: computed(() => logsPanelState.value !== LOGS_PANEL_STATE.CLOSED),
 		logDetailsPanel: computed(() => logDetailsPanel.value),
 		setPanelHeight,

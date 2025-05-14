@@ -15,6 +15,7 @@ import {
 } from '@/components/RunDataAi/utils';
 import { N8nButton, N8nResizeWrapper } from '@n8n/design-system';
 import { computed, useTemplateRef } from 'vue';
+import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
 
 const MIN_IO_PANEL_WIDTH = 200;
 
