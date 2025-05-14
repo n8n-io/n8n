@@ -16,8 +16,11 @@ export class InsightsModule implements ModuleInterface {
 		this.logger = this.logger.scoped('insights');
 	}
 
-	init() {
-		// only the leader is entitled to collect, compact and prune insights in DB
+	activate() {
+		/**
+		 * Only the leader is entitled to collect, compact and prune insights
+		 * so that only a single main operates on the DB.
+		 */
 		if (this.instanceSettings.isLeader) this.insightsService.startTimers();
 	}
 
