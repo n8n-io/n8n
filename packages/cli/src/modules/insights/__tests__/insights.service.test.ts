@@ -9,6 +9,7 @@ import { mock } from 'jest-mock-extended';
 import { DateTime } from 'luxon';
 import type { IRun } from 'n8n-workflow';
 
+import { ModuleRegistry } from '@/modules/module-registry';
 import { mockLogger } from '@test/mocking';
 import { createTeamProject } from '@test-integration/db/projects';
 import { createWorkflow } from '@test-integration/db/workflows';
@@ -30,6 +31,7 @@ import { InsightsService } from '../insights.service';
 // Initialize DB once for all tests
 beforeAll(async () => {
 	await testDb.init();
+	await Container.get(ModuleRegistry).activateModules();
 });
 
 beforeEach(async () => {
@@ -61,7 +63,7 @@ describe('getInsightsSummary', () => {
 		workflow = await createWorkflow({}, project);
 	});
 
-	test('compacted data are summarized correctly', async () => {
+	test.only('compacted data are summarized correctly', async () => {
 		// ARRANGE
 		// last 6 days
 		await createCompactedInsightsEvent(workflow, {

@@ -7,6 +7,7 @@ import { randomString } from 'n8n-workflow';
 
 import { DbConnection } from '@/databases/db-connection';
 import { DbConnectionOptions } from '@/databases/db-connection-options';
+import { ModuleLoader } from '@/modules/module-loader';
 
 export const testDbPrefix = 'n8n_test_';
 
@@ -34,6 +35,7 @@ export async function init() {
 		globalConfig.database.mysqldb.database = testDbName;
 	}
 
+	await Container.get(ModuleLoader).loadModules();
 	const dbConnection = Container.get(DbConnection);
 	await dbConnection.init();
 	await dbConnection.migrate();
