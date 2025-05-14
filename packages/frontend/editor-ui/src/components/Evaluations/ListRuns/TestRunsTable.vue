@@ -16,9 +16,23 @@ const props = defineProps<{
 	runs: Array<TestRunRecord & { index: number }>;
 	columns: Array<TestTableColumn<TestRunRecord & { index: number }>>;
 }>();
-
 const locale = useI18n();
-
+const styledColumns = computed(() => {
+	return props.columns.map((column) => {
+		if (column.prop === 'id') {
+			return {
+				...column,
+				width: '100px',
+			};
+		} else if (column.prop === 'runAt') {
+			return {
+				...column,
+				width: '150px',
+			};
+		}
+		return column;
+	});
+});
 // Combine test run statuses and finalResult to get the final status
 const runSummaries = computed(() => {
 	return props.runs.map(({ status, finalResult, errorDetails, ...run }) => {
@@ -44,7 +58,7 @@ const runSummaries = computed(() => {
 
 		<TestTableBase
 			:data="runSummaries"
-			:columns="columns"
+			:columns="styledColumns"
 			:default-sort="{ prop: 'runAt', order: 'descending' }"
 			@row-click="(row) => emit('rowClick', row)"
 		>
