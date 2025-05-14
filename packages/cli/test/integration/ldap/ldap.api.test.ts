@@ -1,3 +1,4 @@
+import { LDAP_DEFAULT_CONFIGURATION } from '@n8n/constants';
 import type { User } from '@n8n/db';
 import { AuthProviderSyncHistoryRepository } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
@@ -7,7 +8,6 @@ import type { Entry as LdapUser } from 'ldapts';
 import { Cipher } from 'n8n-core';
 
 import config from '@/config';
-import { LDAP_DEFAULT_CONFIGURATION } from '@/ldap.ee/constants';
 import { saveLdapSynchronization } from '@/ldap.ee/helpers.ee';
 import { LdapService } from '@/ldap.ee/ldap.service.ee';
 import {
