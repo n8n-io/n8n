@@ -125,6 +125,7 @@ describe('UserSelect', () => {
 		await waitFor(async () => {
 			const options = await getRenderedOptions();
 			expect(options.length).toBe(1);
+			expect(options[0]).toHaveAttribute('id', 'user-select-option-id-u1');
 		});
 
 		await userEvent.click(document.body);
@@ -133,6 +134,10 @@ describe('UserSelect', () => {
 		await waitFor(async () => {
 			const options = await getRenderedOptions();
 			expect(options.length).toBe(2); // Alice Smith, Dave Smith
+			expect(Array.from(options).map((o) => o.getAttribute('id'))).toEqual([
+				'user-select-option-id-u1',
+				'user-select-option-id-u4',
+			]); // Sorted by first name
 		});
 	});
 
@@ -147,6 +152,7 @@ describe('UserSelect', () => {
 		await waitFor(async () => {
 			const options = await getRenderedOptions();
 			expect(options.length).toBe(1);
+			expect(options[0]).toHaveAttribute('id', 'user-select-option-id-u1');
 		});
 
 		await userEvent.click(document.body);
@@ -165,7 +171,7 @@ describe('UserSelect', () => {
 		});
 	});
 
-	it('filters by full name and email match', async () => {
+	it('filters by full name and email and sorts by last name', async () => {
 		const specificUsers: IUser[] = [
 			{
 				id: 's1',
@@ -195,6 +201,10 @@ describe('UserSelect', () => {
 		await waitFor(async () => {
 			const options = await getRenderedOptions();
 			expect(options.length).toBe(2);
+			expect(Array.from(options).map((o) => o.getAttribute('id'))).toEqual([
+				'user-select-option-id-s2',
+				'user-select-option-id-s1',
+			]);
 		});
 	});
 
@@ -224,6 +234,7 @@ describe('UserSelect', () => {
 		await waitFor(async () => {
 			const options = await getRenderedOptions();
 			expect(options.length).toBe(1);
+			expect(options[0]).toHaveAttribute('id', 'user-select-option-id-u1');
 		});
 
 		await filterInput('No Email User'); // Try to filter by name
@@ -236,7 +247,7 @@ describe('UserSelect', () => {
 		const { getByRole } = renderComponent({
 			props: {
 				users: sampleUsers,
-				ignoreIds: ['u1', 'u2'], // Exclude Alice and Bob
+				ignoreIds: ['u1', 'u3'], // Exclude Alice and Bob
 			},
 		});
 
@@ -248,6 +259,15 @@ describe('UserSelect', () => {
 		await waitFor(async () => {
 			const options = await getRenderedOptions();
 			expect(options.length).toBe(5);
+		});
+
+		await userEvent.click(document.body);
+
+		await filterInput('smith'); // Would normally match Alice Smith (u1) and Dave Smith (u4)
+		await waitFor(async () => {
+			const options = await getRenderedOptions();
+			expect(options.length).toBe(1);
+			expect(options[0]).toHaveAttribute('id', 'user-select-option-id-u4'); // Only Dave Smith
 		});
 	});
 
