@@ -112,7 +112,9 @@ defineSlots<{
 		:data="localData"
 		:border="true"
 		:cell-class-name="$style.customCell"
-		:row-class-name="$style.customRow"
+		:row-class-name="
+			({ row }) => (row?.status === 'error' ? $style.customDisabledRow : $style.customRow)
+		"
 		scrollbar-always-on
 		@selection-change="handleSelectionChange"
 		@header-dragend="handleColumnResize"
@@ -181,6 +183,11 @@ defineSlots<{
 
 .customRow {
 	cursor: pointer;
+	--color-table-row-hover-background: var(--color-background-light);
+}
+
+.customDisabledRow {
+	cursor: default;
 	--color-table-row-hover-background: var(--color-background-light);
 }
 
