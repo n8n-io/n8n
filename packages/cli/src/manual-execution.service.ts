@@ -62,8 +62,7 @@ export class ManualExecutionService {
 		executionId: string,
 		pinData?: IPinData,
 	): PCancelable<IRun> {
-		console.log('Run manually with data: ', JSON.stringify(data, null, 2));
-		if (data.triggerToStartFrom?.data && data.startNodes) {
+		if (data.triggerToStartFrom?.data && data.startNodes?.length) {
 			this.logger.debug(
 				`Execution ID ${executionId} had triggerToStartFrom. Starting from that trigger.`,
 				{ executionId },
@@ -114,8 +113,7 @@ export class ManualExecutionService {
 			return workflowExecute.processRunExecutionData(workflow);
 		} else if (
 			data.runData === undefined ||
-			data.startNodes === undefined ||
-			data.startNodes.length === 0
+			(data.partialExecutionVersion !== 2 && (!data.startNodes || data.startNodes.length === 0))
 		) {
 			// Full Execution
 			// TODO: When the old partial execution logic is removed this block can
@@ -156,7 +154,13 @@ export class ManualExecutionService {
 			// Can execute without webhook so go on
 			const workflowExecute = new WorkflowExecute(additionalData, data.executionMode);
 
-			return workflowExecute.run(workflow, startNode, data.destinationNode, data.pinData);
+			return workflowExecute.run(
+				workflow,
+				startNode,
+				data.destinationNode,
+				data.pinData,
+				data.triggerToStartFrom,
+			);
 		} else {
 			// Partial Execution
 			this.logger.debug(`Execution ID ${executionId} is a partial execution.`, { executionId });
@@ -176,7 +180,7 @@ export class ManualExecutionService {
 				return workflowExecute.runPartialWorkflow(
 					workflow,
 					data.runData,
-					data.startNodes,
+					data.startNodes ?? [],
 					data.destinationNode,
 					data.pinData,
 				);
