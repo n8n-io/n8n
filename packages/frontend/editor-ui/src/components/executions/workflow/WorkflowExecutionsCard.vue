@@ -176,7 +176,7 @@ function onRetryMenuItemSelect(action: string): void {
 					<template #content>
 						<span>{{ locale.baseText('executionsList.evaluation') }}</span>
 					</template>
-					<FontAwesomeIcon :class="[$style.icon, $style.evaluation]" icon="tasks" />
+					<FontAwesomeIcon :class="[$style.icon, $style.evaluation]" icon="check-double" />
 				</N8nTooltip>
 			</div>
 		</router-link>
