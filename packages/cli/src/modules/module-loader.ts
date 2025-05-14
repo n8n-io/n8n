@@ -49,7 +49,7 @@ export class ModuleLoader {
 		return `../modules/${moduleName}/${moduleName}`;
 	}
 
-	/** Load all eligible module classes into memory. */
+	/** Load all eligible module into memory. To activate them, see `ModuleRegistry.activateModules()`. */
 	async loadModules() {
 		for (const moduleName of this.eligibleModules) {
 			const shouldLoad = await this.shouldLoad(moduleName);

@@ -30,7 +30,7 @@ export class ModuleRegistry {
 		return this.activated.has(moduleName);
 	}
 
-	/** Initialize all modules whose classes are currently loaded in memory. */
+	/** Activate all modules whose classes were loaded in memory via `ModuleLoader.loadModules()`. */
 	async activateModules() {
 		for (const [moduleName, ModuleClass] of this.moduleMetadata.getModules()) {
 			try {
