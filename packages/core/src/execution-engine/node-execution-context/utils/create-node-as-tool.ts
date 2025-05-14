@@ -103,14 +103,20 @@ export function nodeNameToToolName(node: INode): string {
  */
 function createTool(options: CreateNodeAsToolOptions) {
 	const { node, nodeType, handleToolInvocation } = options;
+
 	const schema = getSchema(node);
-	const description = NodeHelpers.makeDescription(node.parameters, nodeType.description);
+	const toolDescription =
+		typeof node.parameters.toolDescription === 'string'
+			? node.parameters.toolDescription
+			: undefined;
+
 	const nodeName = nodeNameToToolName(node);
 	const name = nodeName || nodeType.description.name;
 
 	return new DynamicStructuredTool({
 		name,
-		description,
+		description:
+			toolDescription ?? NodeHelpers.makeDescription(node.parameters, nodeType.description),
 		schema,
 		func: async (toolArgs: z.infer<typeof schema>) => await handleToolInvocation(toolArgs),
 	});
