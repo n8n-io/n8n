@@ -85,7 +85,9 @@ const toggleStep = (index: number) => {
 	activeStepIndex.value = index;
 };
 
-function navigateToWorkflow(action?: 'addEvaluationTrigger' | 'addEvaluationNode') {
+function navigateToWorkflow(
+	action?: 'addEvaluationTrigger' | 'addEvaluationNode' | 'executeEvaluation',
+) {
 	const routeWorkflowId =
 		workflowsStore.workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID
 			? 'new'
@@ -153,11 +155,6 @@ function navigateToWorkflow(action?: 'addEvaluationTrigger' | 'addEvaluationNode
 								{{ locale.baseText('evaluations.setupWizard.step2.item1') }}
 							</N8nText>
 						</li>
-						<li>
-							<N8nText size="small" color="text-base">
-								{{ locale.baseText('evaluations.setupWizard.step2.item2') }}
-							</N8nText>
-						</li>
 					</ul>
 					<div :class="$style.actionButton">
 						<N8nButton
@@ -207,6 +204,11 @@ function navigateToWorkflow(action?: 'addEvaluationTrigger' | 'addEvaluationNode
 							{{ locale.baseText('evaluations.setupWizard.step3.skip') }}
 						</N8nButton>
 					</div>
+					<div :class="$style.quotaNote">
+						<N8nText size="xsmall" color="text-base">
+							Your plan supports custom metrics for one workflow only. See plans
+						</N8nText>
+					</div>
 				</div>
 			</div>
 
@@ -219,16 +221,24 @@ function navigateToWorkflow(action?: 'addEvaluationTrigger' | 'addEvaluationNode
 					:is-active="activeStepIndex === 3"
 					@click="toggleStep(3)"
 				>
-					<div
-						v-if="activeStepIndex === 3"
-						:class="[$style.actionButton, $style.actionButtonInline]"
-					>
+					<div :class="[$style.actionButton, $style.actionButtonInline]">
 						<N8nButton
+							v-if="evaluationMetricNodeExist"
 							size="medium"
+							type="secondary"
 							:disabled="!datasetTriggerExist || !evaluationSetOutputNodeExist"
 							@click="$emit('runTest')"
 						>
 							{{ locale.baseText('evaluations.setupWizard.step4.button') }}
+						</N8nButton>
+						<N8nButton
+							v-else
+							size="medium"
+							type="secondary"
+							:disabled="!datasetTriggerExist || !evaluationSetOutputNodeExist"
+							@click="navigateToWorkflow('executeEvaluation')"
+						>
+							{{ locale.baseText('evaluations.setupWizard.step4.altButton') }}
 						</N8nButton>
 					</div>
 				</StepHeader>
@@ -253,14 +263,12 @@ function navigateToWorkflow(action?: 'addEvaluationTrigger' | 'addEvaluationNode
 }
 
 .stepContent {
-	padding: 0 0 0 calc(var(--spacing-m) + 28px);
+	padding: 0 0 0 calc(var(--spacing-xs) + 28px);
 	animation: slideDown 0.2s ease;
 }
 
 .bulletPoints {
-	list-style-type: disc;
-	list-style-position: inside;
-	margin-bottom: var(--spacing-m);
+	padding-left: var(--spacing-s);
 
 	li {
 		margin-bottom: var(--spacing-3xs);
@@ -279,6 +287,10 @@ function navigateToWorkflow(action?: 'addEvaluationTrigger' | 'addEvaluationNode
 
 .actionButtonInline {
 	margin: 0;
+}
+
+.quotaNote {
+	margin-top: var(--spacing-2xs);
 }
 
 @keyframes slideDown {
