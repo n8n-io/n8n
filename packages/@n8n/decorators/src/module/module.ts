@@ -10,14 +10,14 @@ export interface ModuleInterface {
 export type ModuleClass = Constructable<ModuleInterface>;
 
 /**
- * Decorator that registers in memory a module to be activated on startup.
+ * Decorator that registers in memory a module to be later activated on startup.
  *
  * @example
  *
  * ```ts
  * @Module()
  * class FeatureModule extends ModuleInterface {
- *   async init() {
+ *   async activate() {
  *     // ...
  *   }
  * }
