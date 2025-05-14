@@ -1620,11 +1620,9 @@ export const getToolDescription = (
 		newDescription: null,
 	};
 
-	if (
-		currentNodeType?.usableAsTool &&
-		newParameters?.descriptionType === 'manual' &&
-		currentParameters
-	) {
+	if (!currentNodeType) return result;
+
+	if (newParameters?.descriptionType === 'manual' && currentParameters) {
 		const previousDescription = makeDescription(currentParameters, currentNodeType);
 		const newDescription = makeDescription(newParameters, currentNodeType);
 
