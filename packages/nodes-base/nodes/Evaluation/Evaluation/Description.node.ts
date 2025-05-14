@@ -13,7 +13,7 @@ export const setOutputProperties: INodeProperties[] = [
 		...document,
 		displayOptions: {
 			show: {
-				operation: ['setOutput'],
+				operation: ['setOutputs'],
 			},
 		},
 	},
@@ -21,7 +21,7 @@ export const setOutputProperties: INodeProperties[] = [
 		...sheet,
 		displayOptions: {
 			show: {
-				operation: ['setOutput'],
+				operation: ['setOutputs'],
 			},
 		},
 	},
@@ -57,7 +57,7 @@ export const setOutputProperties: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				operation: ['setOutput'],
+				operation: ['setOutputs'],
 			},
 		},
 	},
