@@ -1,6 +1,7 @@
 import { mock } from 'jest-mock-extended';
 import {
 	NodeOperationError,
+	UserError,
 	type AssignmentCollectionValue,
 	type IExecuteFunctions,
 	type INodeTypes,
@@ -44,7 +45,7 @@ describe('Test Evaluation', () => {
 			return { sheetId: 1, title: sheetName };
 		});
 
-		test('should return empty if output values is empty', async () => {
+		test('should throw error if output values is empty', async () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation(
 				(key: string, _: number, fallbackValue?: string | number | boolean | object) => {
 					const mockParams: { [key: string]: unknown } = {
@@ -61,8 +62,9 @@ describe('Test Evaluation', () => {
 				},
 			);
 
-			const result = await new Evaluation().execute.call(mockExecuteFunctions);
-			expect(result).toEqual([]);
+			await expect(new Evaluation().execute.call(mockExecuteFunctions)).rejects.toThrow(
+				'No outputs to set',
+			);
 
 			expect(GoogleSheet.prototype.updateRows).not.toBeCalled();
 
