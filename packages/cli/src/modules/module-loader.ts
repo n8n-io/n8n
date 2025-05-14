@@ -129,4 +129,9 @@ export class ModuleLoader {
 			entityClassNames: entityClasses.map((c) => c.name),
 		});
 	}
+
+	/** For testing only. */
+	getEligible() {
+		return this.eligibleModules;
+	}
 }
