@@ -3104,7 +3104,7 @@
 	"evaluation.runDetail.error.unknownError": "An unknown error occurred",
 	"evaluation.runDetail.error.unknownError.solution": "View execution",
 	"evaluation.runDetail.error.noMetricsCollected": "No metrics collected",
-	"evaluation.runDetail.error.partialCasesFailed": "Some test cases failed to execute",
+	"evaluation.runDetail.error.partialCasesFailed": "Finished with errors",
 	"evaluation.runTest": "Run Test",
 	"evaluation.cancelTestRun": "Cancel Test Run",
 	"evaluation.notImplemented": "This feature is not implemented yet!",
