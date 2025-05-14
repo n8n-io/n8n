@@ -353,18 +353,6 @@ export function TriggerView() {
 		subtitle: i18n.baseText('nodeCreator.triggerHelperPanel.selectATriggerDescription'),
 		items: [
 			{
-				key: 'n8n-nodes-base.evaluationTrigger',
-				type: 'node',
-				category: [CORE_NODES_CATEGORY],
-				properties: {
-					group: [],
-					name: 'n8n-nodes-base.evaluationTrigger',
-					displayName: 'Evaluation Trigger', // i18n.baseText('nodeCreator.triggerHelperPanel.manualTriggerDisplayName'),
-					description: 'Run to start evaluation', // i18n.baseText('nodeCreator.triggerHelperPanel.manualTriggerDescription'),
-					icon: 'fa:check-double',
-				},
-			},
-			{
 				key: MANUAL_TRIGGER_NODE_TYPE,
 				type: 'node',
 				category: [CORE_NODES_CATEGORY],

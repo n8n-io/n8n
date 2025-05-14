@@ -2,7 +2,7 @@
 	"node": "n8n-nodes-base.evaluationTrigger",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": ["Utility"],
+	"categories": ["Development", "Core Nodes"],
 	"resources": {
 		"primaryDocumentation": [
 			{
@@ -10,5 +10,8 @@
 			}
 		],
 		"generic": []
+	},
+	"subcategories": {
+		"Core Nodes": ["Other Trigger Nodes"]
 	}
 }

@@ -29,13 +29,20 @@ export class EvaluationTrigger implements INodeType {
 		name: 'evaluationTrigger',
 		group: ['trigger'],
 		version: 4.6,
-		description: 'Run a test dataset through your workflow to check performance',
+		description: 'Run a dataset through your workflow to test performance',
 		eventTriggerDescription: '',
 		defaults: {
 			name: 'When fetching a dataset row',
 		},
 		inputs: [],
 		outputs: [NodeConnectionTypes.Main],
+		codex: {
+			categories: ['AI', 'Core Nodes'],
+			subcategories: {
+				AI: ['Model Context Protocol'],
+				'Core Nodes': ['Other Trigger Nodes'],
+			},
+		},
 		properties: [
 			{
 				displayName:
