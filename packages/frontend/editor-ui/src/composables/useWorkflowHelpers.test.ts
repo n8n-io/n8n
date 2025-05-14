@@ -8,7 +8,7 @@ import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
 import { useTagsStore } from '@/stores/tags.store';
 import { useUIStore } from '@/stores/ui.store';
 import { createTestWorkflow } from '@/__tests__/mocks';
-import { ITaskData, WEBHOOK_NODE_TYPE, type AssignmentCollectionValue } from 'n8n-workflow';
+import { WEBHOOK_NODE_TYPE, type AssignmentCollectionValue } from 'n8n-workflow';
 import * as apiWebhooks from '../api/webhooks';
 import { mockedStore } from '@/__tests__/utils';
 
