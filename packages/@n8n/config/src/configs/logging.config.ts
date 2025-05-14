@@ -88,7 +88,7 @@ export class LoggingConfig {
 	 * - `task-runner`
 	 * - `workflow-activation`
 	 * - `insights`
-	 * - `module-loader`
+	 * - `modules`
 	 *
 	 * @example
 	 * `N8N_LOG_SCOPES=license`
