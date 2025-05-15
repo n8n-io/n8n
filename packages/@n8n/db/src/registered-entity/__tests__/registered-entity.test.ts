@@ -16,22 +16,19 @@ describe('@RegisteredEntity decorator', () => {
 
 	it('should register an entity', () => {
 		@RegisteredEntity()
-		// @ts-expect-error Test
 		class TestEntity extends BaseEntity {}
 
-		expect(registeredEntityMetadata.getEntities()).toContain('TestEntity');
+		expect(registeredEntityMetadata.getEntities()).toContain(TestEntity);
 	});
 
 	it('should return all registered entities', () => {
 		@RegisteredEntity()
-		// @ts-expect-error Test
 		class TestEntity1 extends BaseEntity {}
 
 		@RegisteredEntity()
-		// @ts-expect-error Test
 		class TestEntity2 extends BaseEntity {}
 
-		expect(registeredEntityMetadata.getEntities()).toEqual(['TestEntity1', 'TestEntity2']);
+		expect(registeredEntityMetadata.getEntities()).toEqual([TestEntity1, TestEntity2]);
 	});
 
 	it('should refuse to register an entity if it does not extend BaseEntity', () => {
