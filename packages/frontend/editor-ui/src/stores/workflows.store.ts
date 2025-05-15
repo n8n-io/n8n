@@ -1555,7 +1555,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 				existingRunIndex > -1 && !hasWaitingItems ? existingRunIndex : tasksData.length - 1;
 			const status = tasksData[index]?.executionStatus ?? 'unknown';
 
-			if (status === 'waiting' || (settingsStore.isNewLogsEnabled && 'running' === status)) {
+			if ('waiting' === status || (settingsStore.isNewLogsEnabled && 'running' === status)) {
 				tasksData.splice(index, 1, data);
 			} else {
 				tasksData.push(data);

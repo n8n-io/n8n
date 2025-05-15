@@ -660,7 +660,7 @@ describe('useWorkflowsStore', () => {
 		});
 
 		it('should replace placeholder task data in waiting nodes correctly', () => {
-			const runWithExistingRunData = executionResponse;
+			const runWithExistingRunData = deepCopy(executionResponse);
 			runWithExistingRunData.data = {
 				resultData: {
 					runData: {
@@ -699,7 +699,7 @@ describe('useWorkflowsStore', () => {
 			workflowsStore.updateNodeExecutionData(successEvent);
 
 			expect(workflowsStore.workflowExecutionData).toEqual({
-				...executionResponse,
+				...runWithExistingRunData,
 				data: {
 					resultData: {
 						runData: {
