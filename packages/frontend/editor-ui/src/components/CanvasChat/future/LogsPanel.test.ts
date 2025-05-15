@@ -373,4 +373,19 @@ describe('LogsPanel', () => {
 		expect(rendered.queryByTestId('log-details-input')).toBeInTheDocument();
 		expect(rendered.queryByTestId('log-details-output')).not.toBeInTheDocument();
 	});
+
+	it('should allow to select previous and next row via keyboard shortcut', async () => {
+		canvasStore.toggleLogsPanelOpen(true);
+		workflowsStore.setWorkflow(aiChatWorkflow);
+		workflowsStore.setWorkflowExecutionData(aiChatExecutionResponse);
+
+		const rendered = render();
+		const overview = rendered.getByTestId('logs-overview');
+
+		expect(await rendered.findByRole('treeitem', { selected: true })).toHaveTextContent(/AI Model/);
+		await fireEvent.keyDown(overview, { key: 'K' });
+		expect(await rendered.findByRole('treeitem', { selected: true })).toHaveTextContent(/AI Agent/);
+		await fireEvent.keyDown(overview, { key: 'J' });
+		expect(await rendered.findByRole('treeitem', { selected: true })).toHaveTextContent(/AI Model/);
+	});
 });
