@@ -107,7 +107,7 @@ export async function setMetrics(this: IExecuteFunctions): Promise<INodeExecutio
 				const assignmentValue =
 					typeof assignment.value === 'number' ? assignment.value : Number(assignment.value);
 
-				if (!assignment.name || !isNaN(assignmentValue)) {
+				if (!assignment.name || isNaN(assignmentValue)) {
 					throw new NodeOperationError(this.getNode(), 'Metric name missing', {
 						description: 'Make sure each metric you define has a name',
 					});
