@@ -5,6 +5,11 @@ import { NotBaseEntityError } from './not-base-entity.error';
 import type { RegisteredEntityClass } from './registered-entity-metadata';
 import { RegisteredEntityMetadata } from './registered-entity-metadata';
 
+// eslint-disable-next-line @typescript-eslint/ban-types
+function isBaseEntityClass(value: Function): value is RegisteredEntityClass {
+	return value.prototype instanceof BaseEntity;
+}
+
 /**
  * Decorator that combines typeorm's `@Entity` with loading the entity class
  * in memory, so we can later register it when connecting to the DB.
@@ -22,13 +27,9 @@ import { RegisteredEntityMetadata } from './registered-entity-metadata';
 export const RegisteredEntity =
 	(name?: string): ClassDecorator =>
 	(entityClass) => {
-		if (!(entityClass.prototype instanceof BaseEntity)) {
-			throw new NotBaseEntityError(entityClass.name);
-		}
+		if (!isBaseEntityClass(entityClass)) throw new NotBaseEntityError(entityClass.name);
 
-		Container.get(RegisteredEntityMetadata).register(
-			entityClass as unknown as RegisteredEntityClass,
-		);
+		Container.get(RegisteredEntityMetadata).register(entityClass);
 
 		return Entity(name)(entityClass);
 	};
