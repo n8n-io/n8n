@@ -10,5 +10,6 @@
 			}
 		],
 		"generic": []
-	}
+	},
+	"alias": ["Test", "Metrics", "Evals", "Set Output", "Set Metrics"]
 }
