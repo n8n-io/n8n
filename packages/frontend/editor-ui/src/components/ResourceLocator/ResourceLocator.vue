@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ResourceLocatorRequestDto } from '@n8n/api-types';
+import type { ResourceLocatorRequestDto, ActionResultRequestDto } from '@n8n/api-types';
 import type { IResourceLocatorResultExpanded, IUpdateInformation } from '@/Interface';
 import DraggableTarget from '@/components/DraggableTarget.vue';
 import ExpressionParameterInput from '@/components/ExpressionParameterInput.vue';
@@ -345,6 +345,78 @@ const isContentOverride = computed(
 const showOverrideButton = computed(
 	() => canBeContentOverride.value && !isContentOverride.value && !props.isReadOnly,
 );
+
+const allowNewResources = computed(() => {
+	if (!props.node) {
+		return undefined;
+	}
+
+	const allowNewResource = getPropertyArgument(currentMode.value, 'allowNewResource') as string;
+
+	if (allowNewResource) {
+		const label = getPropertyArgument(currentMode.value, 'allowNewResourceLabel');
+
+		if (label) {
+			return {
+				label: label as string,
+			};
+		}
+	}
+
+	return undefined;
+});
+
+const onAddResourceClicked = computed(() => {
+	if (!props.node) {
+		return undefined;
+	}
+
+	const params = currentRequestParams.value;
+
+	const addNewResourceMethodName = getPropertyArgument(
+		currentMode.value,
+		'addNewResourceMedhod',
+	) as string;
+
+	if (addNewResourceMethodName) {
+		const resolvedNodeParameters = workflowHelpers.resolveRequiredParameters(
+			props.parameter,
+			params.parameters,
+		) as INodeParameters;
+
+		const addNewResourceMethod = async () => {
+			if (!props.node) {
+				return;
+			}
+
+			const requestParams: ActionResultRequestDto = {
+				nodeTypeAndVersion: {
+					name: props.node.type,
+					version: props.node.typeVersion,
+				},
+				path: props.path,
+				currentNodeParameters: resolvedNodeParameters,
+				credentials: props.node.credentials,
+				handler: addNewResourceMethodName,
+				payload: {
+					workflowId: workflowsStore.workflowId,
+					name: searchFilter.value,
+				},
+			};
+
+			const memoryKey = await nodeTypesStore.getNodeParameterActionResult(requestParams);
+
+			refreshList();
+			await loadResources();
+			searchFilter.value = '';
+			onListItemSelected(memoryKey as NodeParameterValue);
+		};
+
+		return addNewResourceMethod;
+	}
+
+	return undefined;
+});
 
 watch(currentQueryError, (curr, prev) => {
 	if (resourceDropdownVisible.value && curr && !prev) {
@@ -838,9 +910,11 @@ function removeOverride() {
 			:error-view="currentQueryError"
 			:width="width"
 			:event-bus="eventBus"
+			:allow-new-resources="allowNewResources"
 			@update:model-value="onListItemSelected"
 			@filter="onSearchFilter"
 			@load-more="loadResourcesDebounced"
+			@add-resource-click="onAddResourceClicked"
 		>
 			<template #error>
 				<div :class="$style.errorContainer" data-test-id="rlc-error-container">

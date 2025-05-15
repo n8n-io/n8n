@@ -1,6 +1,13 @@
 import type { Embeddings } from '@langchain/core/embeddings';
 import type { MemoryVectorStore } from 'langchain/vectorstores/memory';
-import type { INodeProperties, ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow';
+import {
+	type INodeProperties,
+	type ILoadOptionsFunctions,
+	type INodeListSearchResult,
+	type IDataObject,
+	type NodeParameterValueType,
+	ApplicationError,
+} from 'n8n-workflow';
 
 import { createVectorStoreNode } from '../shared/createVectorStoreNode/createVectorStoreNode';
 import { MemoryVectorStoreManager } from '../shared/MemoryManager/MemoryVectorStoreManager';
@@ -22,6 +29,8 @@ const insertFields: INodeProperties[] = [
 	},
 ];
 
+const DEFAULT_MEMORY_KEY = 'vector_store_key';
+
 export class VectorStoreInMemory extends createVectorStoreNode<MemoryVectorStore>({
 	meta: {
 		displayName: 'Simple Vector Store',
@@ -40,15 +49,9 @@ export class VectorStoreInMemory extends createVectorStoreNode<MemoryVectorStore
 			description:
 				'The key to use to store the vector memory in the workflow data. The key will be prefixed with the workflow ID to avoid collisions.',
 			type: 'resourceLocator',
-			default: { mode: 'id', value: 'vector_store_key' },
+			default: { mode: 'list', value: DEFAULT_MEMORY_KEY },
 			required: true,
 			modes: [
-				{
-					displayName: 'ID',
-					name: 'id',
-					type: 'string',
-					placeholder: 'vector_store_key',
-				},
 				{
 					displayName: 'From List',
 					name: 'list',
@@ -56,7 +59,16 @@ export class VectorStoreInMemory extends createVectorStoreNode<MemoryVectorStore
 					typeOptions: {
 						searchListMethod: 'vectorStoresSearch',
 						searchable: true,
+						allowNewResource: true,
+						allowNewResourceLabel: 'Create new vector store',
+						addNewResourceMedhod: 'createVectorStore',
 					},
+				},
+				{
+					displayName: 'Manual',
+					name: 'manual',
+					type: 'string',
+					placeholder: DEFAULT_MEMORY_KEY,
 				},
 			],
 		},
@@ -66,10 +78,7 @@ export class VectorStoreInMemory extends createVectorStoreNode<MemoryVectorStore
 			async vectorStoresSearch(
 				this: ILoadOptionsFunctions,
 				filter?: string,
-				paginationToken?: string,
 			): Promise<INodeListSearchResult> {
-				const pageSize = 5;
-
 				const vectorStoreSingleton = MemoryVectorStoreManager.getInstance(
 					{} as Embeddings, // Real Embeddings are passed when executing the node
 					this.logger,
@@ -89,13 +98,33 @@ export class VectorStoreInMemory extends createVectorStoreNode<MemoryVectorStore
 					results = results.filter((option) => option.name.includes(filter));
 				}
 
-				const offset = paginationToken ? parseInt(paginationToken, 10) : 0;
-				results = results.slice(offset, offset + pageSize);
-
 				return {
 					results,
-					paginationToken: offset + pageSize,
 				};
+			},
+		},
+		actionHandler: {
+			async createVectorStore(
+				this: ILoadOptionsFunctions,
+				payload: string | IDataObject | undefined,
+			): Promise<NodeParameterValueType> {
+				if (!payload || typeof payload === 'string') {
+					throw new ApplicationError('Invalid payload type');
+				}
+
+				const { workflowId, name } = payload;
+
+				const vectorStoreSingleton = MemoryVectorStoreManager.getInstance(
+					{} as Embeddings, // Real Embeddings are passed when executing the node
+					this.logger,
+				);
+
+				const memoryKey = !!name ? (name as string) : DEFAULT_MEMORY_KEY;
+				const prefixedMemoryKey = `${workflowId as string}__${memoryKey}`;
+
+				await vectorStoreSingleton.getVectorStore(prefixedMemoryKey);
+
+				return prefixedMemoryKey;
 			},
 		},
 	},

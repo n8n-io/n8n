@@ -1444,6 +1444,9 @@ export interface INodePropertyModeTypeOptions {
 	searchListMethod?: string; // Supported by: options
 	searchFilterRequired?: boolean;
 	searchable?: boolean;
+	allowNewResource?: boolean;
+	allowNewResourceLabel?: string;
+	addNewResourceMedhod?: string;
 }
 
 export interface INodePropertyMode {
