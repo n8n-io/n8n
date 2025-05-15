@@ -78,5 +78,6 @@ export function getChunkedFileContent(
 	binaryDataId: string | undefined,
 ) {
 	if (binaryDataId) return content;
-	return bufferToChunks(content as Buffer);
+	if (!Buffer.isBuffer(content)) return content;
+	return bufferToChunks(content);
 }
