@@ -61,6 +61,7 @@ const { selected, select, selectNext, selectPrev } = useSelection(
 	execution,
 	entries,
 	flatLogEntries,
+	toggleExpanded,
 );
 
 const isLogDetailsOpen = computed(() => isOpen.value && selected.value !== undefined);

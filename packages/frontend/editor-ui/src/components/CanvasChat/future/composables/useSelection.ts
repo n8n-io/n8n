@@ -1,5 +1,6 @@
 import type { LogEntrySelection } from '@/components/CanvasChat/types/logs';
 import {
+	findLogEntryRec,
 	findSelectedLogEntry,
 	getDepth,
 	getEntryAtRelativeIndex,
@@ -17,6 +18,7 @@ export function useSelection(
 	execution: ComputedRef<IExecutionResponse | undefined>,
 	tree: ComputedRef<LogEntry[]>,
 	flatLogEntries: ComputedRef<LogEntry[]>,
+	toggleExpand: (entry: LogEntry, expand?: boolean) => void,
 ) {
 	const telemetry = useTelemetry();
 	const manualLogEntrySelection = ref<LogEntrySelection>({ type: 'initial' });
@@ -73,25 +75,25 @@ export function useSelection(
 	watch(
 		[() => uiStore.lastSelectedNode, () => logsStore.isLogSelectionSyncedWithCanvas],
 		([selectedOnCanvas, shouldSync]) => {
-			if (!shouldSync || !selectedOnCanvas) {
+			if (!shouldSync || !selectedOnCanvas || selected.value?.node.name === selectedOnCanvas) {
 				return;
 			}
 
-			const selectedId =
-				manualLogEntrySelection.value.type === 'selected'
-					? manualLogEntrySelection.value.id
-					: undefined;
-			const selectedEntry = selectedId
-				? flatLogEntries.value.find((e) => e.id === selectedId)
-				: undefined;
+			const entry = findLogEntryRec((e) => e.node.name === selectedOnCanvas, tree.value);
 
-			if (selectedEntry?.node.name === selectedOnCanvas) {
+			if (!entry) {
 				return;
 			}
 
-			const entry = flatLogEntries.value.find((e) => e.node.name === selectedOnCanvas);
+			manualLogEntrySelection.value = { type: 'selected', id: entry.id };
 
-			manualLogEntrySelection.value = entry ? { type: 'selected', id: entry.id } : { type: 'none' };
+			let parent = entry.parent;
+
+			debugger;
+			while (parent !== undefined) {
+				toggleExpand(parent, true);
+				parent = parent.parent;
+			}
 		},
 		{ immediate: true },
 	);

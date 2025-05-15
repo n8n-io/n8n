@@ -396,7 +396,7 @@ describe('LogsPanel', () => {
 			expect(await findByRole('treeitem', { selected: true })).toHaveTextContent(/AI Model/);
 		});
 
-		it('should not select the selected node on canvas if sync is disabled', async () => {
+		it('should not select a log for the selected node on canvas if sync is disabled', async () => {
 			logsStore.toggleLogSelectionSync(false);
 
 			const { findByRole, rerender } = render();
@@ -407,7 +407,7 @@ describe('LogsPanel', () => {
 			expect(await findByRole('treeitem', { selected: true })).toHaveTextContent(/AI Model/);
 		});
 
-		it('should automatically select the selected node on canvas if sync is enabled', async () => {
+		it('should automatically select a log for the selected node on canvas if sync is enabled', async () => {
 			logsStore.toggleLogSelectionSync(true);
 
 			const { rerender, findByRole } = render();
@@ -416,6 +416,21 @@ describe('LogsPanel', () => {
 			uiStore.lastSelectedNode = 'AI Agent';
 			await rerender({});
 			expect(await findByRole('treeitem', { selected: true })).toHaveTextContent(/AI Agent/);
+		});
+
+		it('should automatically expand and select a log for the selected node on canvas if the log entry is collapsed', async () => {
+			logsStore.toggleLogSelectionSync(true);
+
+			const { rerender, findByRole, getByLabelText, findByText, queryByText } = render();
+
+			await fireEvent.click(await findByText('AI Agent'));
+			expect(await findByRole('treeitem', { selected: true })).toHaveTextContent(/AI Agent/);
+			await fireEvent.click(getByLabelText('Toggle row'));
+			await rerender({});
+			expect(queryByText(/AI Model/)).not.toBeInTheDocument();
+			uiStore.lastSelectedNode = 'AI Model';
+			await rerender({});
+			expect(await findByRole('treeitem', { selected: true })).toHaveTextContent(/AI Model/);
 		});
 	});
 });
