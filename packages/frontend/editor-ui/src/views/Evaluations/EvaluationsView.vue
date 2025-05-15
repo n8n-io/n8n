@@ -5,6 +5,7 @@ import { computed, ref } from 'vue';
 
 import RunsSection from '@/components/Evaluations/EditDefinition/sections/RunsSection.vue';
 import { useEvaluationStore } from '@/stores/evaluation.store.ee';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import { N8nButton, N8nText } from '@n8n/design-system';
 import { useAsyncState } from '@vueuse/core';
 import { orderBy } from 'lodash-es';
@@ -20,6 +21,7 @@ const locale = useI18n();
 const toast = useToast();
 const evaluationsStore = useEvaluationStore();
 const usageStore = useUsageStore();
+const workflowsStore = useWorkflowsStore();
 // const usersStore = useUsersStore();
 
 const { isReady } = useAsyncState(
@@ -38,6 +40,13 @@ const { isReady } = useAsyncState(
 const hasRuns = computed(() => runs.value.length > 0);
 
 const selectedMetric = ref<string>('');
+
+const evaluationMetricNodeExist = computed(() => {
+	return workflowsStore.workflow.nodes.some(
+		(node) =>
+			node.type === 'n8n-nodes-base.evaluation' && node.parameters.operation === 'setMetrics',
+	);
+});
 
 async function runTest() {
 	await evaluationsStore.startTestRun(props.name);
@@ -58,7 +67,7 @@ const isRunning = computed(() => runs.value.some((run) => run.status === 'runnin
 const isRunTestEnabled = computed(() => !isRunning.value);
 
 const showWizard = computed(() => {
-	return !hasRuns.value;
+	return !hasRuns.value || !evaluationMetricNodeExist.value;
 });
 
 const evaluationsLicensed = computed(() => {
@@ -91,9 +100,9 @@ const evaluationsLicensed = computed(() => {
 			</N8nTooltip>
 		</div>
 		<div :class="{ [$style.wrapper]: true, [$style.setupWrapper]: showWizard }">
-			<div :class="{ [$style.content]: true, [$style.contentWithRuns]: hasRuns }">
+			<div :class="$style.content">
 				<RunsSection
-					v-if="hasRuns"
+					v-if="!showWizard"
 					v-model:selectedMetric="selectedMetric"
 					:class="$style.runs"
 					:runs="runs"
