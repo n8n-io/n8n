@@ -154,7 +154,7 @@ describe('Evaluation Trigger Node', () => {
 				},
 			);
 
-			const result = await new EvaluationTrigger().execute.call(mockExecuteFunctions, 1);
+			const result = await new EvaluationTrigger().execute.call(mockExecuteFunctions, 2);
 
 			expect(result).toEqual([
 				[
@@ -181,7 +181,7 @@ describe('Evaluation Trigger Node', () => {
 				],
 			]);
 
-			expect(startingRow).toBe(1);
+			expect(startingRow).toBe(2);
 		});
 	});
 

@@ -134,7 +134,7 @@ export class EvaluationTrigger implements INodeType {
 				{},
 			);
 
-			const result = testRunnerResult.filter((row) => (row?.json?.row_number as number) >= maxRows);
+			const result = testRunnerResult.filter((row) => (row?.json?.row_number as number) <= maxRows);
 
 			return [result];
 		}
