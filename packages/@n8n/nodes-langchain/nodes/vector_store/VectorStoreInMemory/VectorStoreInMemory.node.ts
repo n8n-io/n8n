@@ -59,9 +59,10 @@ export class VectorStoreInMemory extends createVectorStoreNode<MemoryVectorStore
 					typeOptions: {
 						searchListMethod: 'vectorStoresSearch',
 						searchable: true,
-						allowNewResource: true,
-						allowNewResourceLabel: 'Create new vector store',
-						addNewResourceMedhod: 'createVectorStore',
+						allowNewResource: {
+							label: 'Create new vector store',
+							method: 'createVectorStore',
+						},
 					},
 				},
 				{

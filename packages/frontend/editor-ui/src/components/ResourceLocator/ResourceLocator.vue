@@ -351,19 +351,9 @@ const allowNewResources = computed(() => {
 		return undefined;
 	}
 
-	const allowNewResource = getPropertyArgument(currentMode.value, 'allowNewResource') as string;
-
-	if (allowNewResource) {
-		const label = getPropertyArgument(currentMode.value, 'allowNewResourceLabel');
-
-		if (label) {
-			return {
-				label: label as string,
-			};
-		}
-	}
-
-	return undefined;
+	return getPropertyArgument(currentMode.value, 'allowNewResource') as
+		| undefined
+		| { label: string; method: string };
 });
 
 const onAddResourceClicked = computed(() => {
@@ -371,18 +361,16 @@ const onAddResourceClicked = computed(() => {
 		return undefined;
 	}
 
-	const params = currentRequestParams.value;
-
-	const addNewResourceMethodName = getPropertyArgument(
-		currentMode.value,
-		'addNewResourceMedhod',
-	) as string;
-
-	if (addNewResourceMethodName) {
+	if (allowNewResources.value) {
+		const { method: addNewResourceMethodName } = allowNewResources.value;
 		const resolvedNodeParameters = workflowHelpers.resolveRequiredParameters(
 			props.parameter,
-			params.parameters,
-		) as INodeParameters;
+			currentRequestParams.value.parameters,
+		);
+
+		if (!resolvedNodeParameters || !addNewResourceMethodName) {
+			return undefined;
+		}
 
 		const addNewResourceMethod = async () => {
 			if (!props.node) {
@@ -525,7 +513,7 @@ function openResource(url: string) {
 function getPropertyArgument(
 	parameter: INodePropertyMode,
 	argumentName: keyof INodePropertyModeTypeOptions,
-): string | number | boolean | undefined {
+): string | number | boolean | undefined | { label: string; method: string } {
 	return parameter.typeOptions?.[argumentName];
 }
 
