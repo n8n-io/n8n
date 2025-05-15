@@ -35,13 +35,14 @@ export const INSTANCE_MEMBERS = [
 ];
 
 export const MANUAL_TRIGGER_NODE_NAME = 'Manual Trigger';
-export const MANUAL_TRIGGER_NODE_DISPLAY_NAME = 'When clicking ‘Test workflow’';
+export const MANUAL_TRIGGER_NODE_DISPLAY_NAME = 'When clicking ‘Execute workflow’';
 export const MANUAL_CHAT_TRIGGER_NODE_NAME = 'Chat Trigger';
 export const CHAT_TRIGGER_NODE_DISPLAY_NAME = 'When chat message received';
 export const SCHEDULE_TRIGGER_NODE_NAME = 'Schedule Trigger';
 export const CODE_NODE_NAME = 'Code';
 export const SET_NODE_NAME = 'Set';
 export const EDIT_FIELDS_SET_NODE_NAME = 'Edit Fields';
+export const LOOP_OVER_ITEMS_NODE_NAME = 'Loop Over Items';
 export const IF_NODE_NAME = 'If';
 export const MERGE_NODE_NAME = 'Merge';
 export const SWITCH_NODE_NAME = 'Switch';

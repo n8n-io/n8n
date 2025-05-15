@@ -1,0 +1,56 @@
+{
+	"total": 0,
+	"paging": {
+		"next": {
+			"link": "?after=NTI1Cg%3D%3D",
+			"after": "NTI1Cg%3D%3D"
+		}
+	},
+	"results": [
+		{
+			"createdAt": "2025-04-16T18:54:48.554Z",
+			"archived": false,
+			"archivedAt": "2025-04-16T18:54:48.554Z",
+			"propertiesWithHistory": {
+				"additionalProp1": [
+					{
+						"sourceId": "string",
+						"sourceType": "string",
+						"sourceLabel": "string",
+						"updatedByUserId": 0,
+						"value": "string",
+						"timestamp": "2025-04-16T18:54:48.554Z"
+					}
+				],
+				"additionalProp2": [
+					{
+						"sourceId": "string",
+						"sourceType": "string",
+						"sourceLabel": "string",
+						"updatedByUserId": 0,
+						"value": "string",
+						"timestamp": "2025-04-16T18:54:48.554Z"
+					}
+				],
+				"additionalProp3": [
+					{
+						"sourceId": "string",
+						"sourceType": "string",
+						"sourceLabel": "string",
+						"updatedByUserId": 0,
+						"value": "string",
+						"timestamp": "2025-04-16T18:54:48.554Z"
+					}
+				]
+			},
+			"id": "512",
+			"objectWriteTraceId": "string",
+			"properties": {
+				"email": "mark.s@lumon.industries",
+				"lastname": "S.",
+				"firstname": "Mark"
+			},
+			"updatedAt": "2025-04-16T18:54:48.554Z"
+		}
+	]
+}

@@ -1,17 +1,19 @@
+import type { User } from '@n8n/db';
+import { FolderRepository } from '@n8n/db';
+import { ProjectRelationRepository } from '@n8n/db';
+import { ProjectRepository } from '@n8n/db';
+import { SharedCredentialsRepository } from '@n8n/db';
+import { SharedWorkflowRepository } from '@n8n/db';
+import { UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { v4 as uuid } from 'uuid';
 
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { UsersController } from '@/controllers/users.controller';
-import type { User } from '@/databases/entities/user';
-import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
-import { UserRepository } from '@/databases/repositories/user.repository';
 import { ExecutionService } from '@/executions/execution.service';
 import { CacheService } from '@/services/cache/cache.service';
 import { Telemetry } from '@/telemetry';
+import { createFolder } from '@test-integration/db/folders';
 
 import { SUCCESS_RESPONSE_BODY } from './shared/constants';
 import {
@@ -382,7 +384,7 @@ describe('DELETE /users/:id', () => {
 		expect(credential).toBeNull();
 	});
 
-	test('should delete user and team relations and transfer their personal resources', async () => {
+	test('should delete user and team relations and transfer their personal resources to user', async () => {
 		//
 		// ARRANGE
 		//
@@ -458,6 +460,13 @@ describe('DELETE /users/:id', () => {
 			getPersonalProject(transferee),
 		]);
 
+		await Promise.all([
+			createFolder(memberPersonalProject, { name: 'folder1' }),
+			createFolder(memberPersonalProject, { name: 'folder2' }),
+			createFolder(transfereePersonalProject, { name: 'folder3' }),
+			createFolder(transfereePersonalProject, { name: 'folder1' }),
+		]);
+
 		const deleteSpy = jest.spyOn(Container.get(CacheService), 'deleteMany');
 
 		//
@@ -485,6 +494,7 @@ describe('DELETE /users/:id', () => {
 		const projectRelationRepository = Container.get(ProjectRelationRepository);
 		const sharedWorkflowRepository = Container.get(SharedWorkflowRepository);
 		const sharedCredentialsRepository = Container.get(SharedCredentialsRepository);
+		const folderRepository = Container.get(FolderRepository);
 
 		await Promise.all([
 			// user, their personal project and their relationship to the team project is gone
@@ -574,6 +584,100 @@ describe('DELETE /users/:id', () => {
 				}),
 			).resolves.not.toBeNull(),
 		]);
+
+		// Assert that the folders have been transferred
+
+		const transfereeFolders = await folderRepository.findBy({
+			homeProject: { id: transfereePersonalProject.id },
+		});
+
+		const deletedUserFolders = await folderRepository.findBy({
+			homeProject: { id: memberPersonalProject.id },
+		});
+
+		expect(transfereeFolders).toHaveLength(4);
+		expect(transfereeFolders.map((folder) => folder.name)).toEqual(
+			expect.arrayContaining(['folder1', 'folder2', 'folder3', 'folder1']),
+		);
+
+		expect(deletedUserFolders).toHaveLength(0);
+	});
+
+	test('should delete user and transfer their personal resources to team project', async () => {
+		//
+		// ARRANGE
+		//
+		const memberToDelete = await createMember();
+
+		const teamProject = await createTeamProject('test project', owner);
+
+		const memberPersonalProject = await getPersonalProject(memberToDelete);
+
+		const memberToDeleteWorkflow = await createWorkflow({ name: 'workflow1' }, memberToDelete);
+		const memberToDeleteCredential = await saveCredential(randomCredentialPayload(), {
+			user: memberToDelete,
+			role: 'credential:owner',
+		});
+
+		await Promise.all([
+			createFolder(memberPersonalProject, { name: 'folder1' }),
+			createFolder(memberPersonalProject, { name: 'folder2' }),
+			createFolder(teamProject, { name: 'folder3' }),
+			createFolder(teamProject, { name: 'folder1' }),
+		]);
+
+		const deleteSpy = jest.spyOn(Container.get(CacheService), 'deleteMany');
+
+		//
+		// ACT
+		//
+		await ownerAgent
+			.delete(`/users/${memberToDelete.id}`)
+			.query({ transferId: teamProject.id })
+			.expect(200);
+
+		//
+		// ASSERT
+		//
+
+		deleteSpy.mockClear();
+
+		const sharedWorkflowRepository = Container.get(SharedWorkflowRepository);
+		const sharedCredentialRepository = Container.get(SharedCredentialsRepository);
+		const folderRepository = Container.get(FolderRepository);
+		const userRepository = Container.get(UserRepository);
+
+		// assert member has been deleted
+		const user = await userRepository.findOneBy({ id: memberToDelete.id });
+		expect(user).toBeNull();
+
+		// assert the workflow has been transferred
+		const memberToDeleteWorkflowProjectOwner =
+			await sharedWorkflowRepository.getWorkflowOwningProject(memberToDeleteWorkflow.id);
+
+		expect(memberToDeleteWorkflowProjectOwner?.id).toBe(teamProject.id);
+
+		// assert the credential has been transferred
+		const memberToDeleteCredentialProjectOwner =
+			await sharedCredentialRepository.findCredentialOwningProject(memberToDeleteCredential.id);
+
+		expect(memberToDeleteCredentialProjectOwner?.id).toBe(teamProject.id);
+
+		// assert that the folders have been transferred
+		const transfereeFolders = await folderRepository.findBy({
+			homeProject: { id: teamProject.id },
+		});
+
+		const deletedUserFolders = await folderRepository.findBy({
+			homeProject: { id: memberPersonalProject.id },
+		});
+
+		expect(transfereeFolders).toHaveLength(4);
+		expect(transfereeFolders.map((folder) => folder.name)).toEqual(
+			expect.arrayContaining(['folder1', 'folder2', 'folder3', 'folder1']),
+		);
+
+		expect(deletedUserFolders).toHaveLength(0);
 	});
 
 	test('should fail to delete self', async () => {

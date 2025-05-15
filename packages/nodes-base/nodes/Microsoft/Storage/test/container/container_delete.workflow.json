@@ -1,0 +1,48 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "99f866fa-f63c-477d-a0d0-48fbdb8a344a",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"operation": "delete",
+				"container": { "__rl": true, "mode": "list", "value": "mycontainer" },
+				"requestOptions": {}
+			},
+			"type": "n8n-nodes-base.azureStorage",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"id": "ab1b6258-5c75-4893-90bf-ef591264420c",
+			"name": "Azure Storage",
+			"credentials": {
+				"azureStorageSharedKeyApi": {
+					"id": "VPmcFM58eDDexWQL",
+					"name": "Azure Storage Shared Key account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [[{ "node": "Azure Storage", "type": "main", "index": 0 }]]
+		}
+	},
+	"pinData": {
+		"Azure Storage": [
+			{
+				"json": {
+					"contentLength": 0,
+					"requestId": "ca3a8907-601e-0050-1929-723410000000",
+					"server": "Windows-Azure-Blob/1.0 Microsoft-HTTPAPI/2.0",
+					"version": "2020-10-02",
+					"date": "Wed, 29 Jan 2025 08:38:21 GMT"
+				}
+			}
+		]
+	}
+}

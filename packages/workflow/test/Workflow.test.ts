@@ -1,6 +1,6 @@
 import { mock } from 'jest-mock-extended';
 
-import { NodeConnectionType } from '@/Interfaces';
+import { NodeConnectionTypes } from '@/Interfaces';
 import type { IConnection } from '@/Interfaces';
 import type {
 	IBinaryKeyData,
@@ -65,7 +65,7 @@ describe('Workflow', () => {
 					[
 						{
 							node: 'Set',
-							type: NodeConnectionType.Main,
+							type: NodeConnectionTypes.Main,
 							index: 0,
 						},
 					],
@@ -76,7 +76,7 @@ describe('Workflow', () => {
 					[
 						{
 							node: 'Set1',
-							type: NodeConnectionType.Main,
+							type: NodeConnectionTypes.Main,
 							index: 0,
 						},
 					],
@@ -135,21 +135,21 @@ describe('Workflow', () => {
 					[
 						{
 							node: 'Set1',
-							type: NodeConnectionType.Main,
+							type: NodeConnectionTypes.Main,
 							index: 0,
 						},
 					],
 					[
 						{
 							node: 'Set',
-							type: NodeConnectionType.Main,
+							type: NodeConnectionTypes.Main,
 							index: 0,
 						},
 					],
 					[
 						{
 							node: 'Set',
-							type: NodeConnectionType.Main,
+							type: NodeConnectionTypes.Main,
 							index: 0,
 						},
 					],
@@ -160,7 +160,7 @@ describe('Workflow', () => {
 					[
 						{
 							node: 'Set2',
-							type: NodeConnectionType.Main,
+							type: NodeConnectionTypes.Main,
 							index: 0,
 						},
 					],
@@ -171,7 +171,7 @@ describe('Workflow', () => {
 					[
 						{
 							node: 'Set2',
-							type: NodeConnectionType.Main,
+							type: NodeConnectionTypes.Main,
 							index: 0,
 						},
 					],
@@ -235,7 +235,7 @@ describe('Workflow', () => {
 					[
 						{
 							node: 'Set',
-							type: NodeConnectionType.Main,
+							type: NodeConnectionTypes.Main,
 							index: 0,
 						},
 					],
@@ -243,7 +243,7 @@ describe('Workflow', () => {
 					[
 						{
 							node: 'Switch',
-							type: NodeConnectionType.Main,
+							type: NodeConnectionTypes.Main,
 							index: 0,
 						},
 					],
@@ -254,7 +254,7 @@ describe('Workflow', () => {
 					[
 						{
 							node: 'Set1',
-							type: NodeConnectionType.Main,
+							type: NodeConnectionTypes.Main,
 							index: 0,
 						},
 					],
@@ -265,12 +265,12 @@ describe('Workflow', () => {
 					[
 						{
 							node: 'Set1',
-							type: NodeConnectionType.Main,
+							type: NodeConnectionTypes.Main,
 							index: 0,
 						},
 						{
 							node: 'Switch',
-							type: NodeConnectionType.Main,
+							type: NodeConnectionTypes.Main,
 							index: 0,
 						},
 					],
@@ -281,7 +281,7 @@ describe('Workflow', () => {
 					[
 						{
 							node: 'Set1',
-							type: NodeConnectionType.Main,
+							type: NodeConnectionTypes.Main,
 							index: 0,
 						},
 					],
@@ -324,7 +324,7 @@ describe('Workflow', () => {
 					[
 						{
 							node: 'AINode',
-							type: NodeConnectionType.AiAgent,
+							type: NodeConnectionTypes.AiAgent,
 							index: 0,
 						},
 					],
@@ -335,7 +335,7 @@ describe('Workflow', () => {
 					[
 						{
 							node: 'Set1',
-							type: NodeConnectionType.Main,
+							type: NodeConnectionTypes.Main,
 							index: 0,
 						},
 					],
@@ -869,7 +869,7 @@ describe('Workflow', () => {
 								[
 									{
 										node: 'Node2',
-										type: NodeConnectionType.Main,
+										type: NodeConnectionTypes.Main,
 										index: 0,
 									},
 								],
@@ -900,7 +900,7 @@ describe('Workflow', () => {
 								[
 									{
 										node: 'Node2',
-										type: NodeConnectionType.Main,
+										type: NodeConnectionTypes.Main,
 										index: 0,
 									},
 								],
@@ -936,7 +936,7 @@ describe('Workflow', () => {
 								[
 									{
 										node: 'Node2',
-										type: NodeConnectionType.Main,
+										type: NodeConnectionTypes.Main,
 										index: 0,
 									},
 								],
@@ -967,7 +967,7 @@ describe('Workflow', () => {
 								[
 									{
 										node: 'Node2New',
-										type: NodeConnectionType.Main,
+										type: NodeConnectionTypes.Main,
 										index: 0,
 									},
 								],
@@ -1024,7 +1024,7 @@ describe('Workflow', () => {
 								[
 									{
 										node: 'Node3',
-										type: NodeConnectionType.Main,
+										type: NodeConnectionTypes.Main,
 										index: 0,
 									},
 								],
@@ -1035,12 +1035,12 @@ describe('Workflow', () => {
 								[
 									{
 										node: 'Node3',
-										type: NodeConnectionType.Main,
+										type: NodeConnectionTypes.Main,
 										index: 0,
 									},
 									{
 										node: 'Node5',
-										type: NodeConnectionType.Main,
+										type: NodeConnectionTypes.Main,
 										index: 0,
 									},
 								],
@@ -1051,12 +1051,12 @@ describe('Workflow', () => {
 								[
 									{
 										node: 'Node4',
-										type: NodeConnectionType.Main,
+										type: NodeConnectionTypes.Main,
 										index: 0,
 									},
 									{
 										node: 'Node5',
-										type: NodeConnectionType.Main,
+										type: NodeConnectionTypes.Main,
 										index: 0,
 									},
 								],
@@ -1108,7 +1108,7 @@ describe('Workflow', () => {
 								[
 									{
 										node: 'Node3New',
-										type: NodeConnectionType.Main,
+										type: NodeConnectionTypes.Main,
 										index: 0,
 									},
 								],
@@ -1119,12 +1119,12 @@ describe('Workflow', () => {
 								[
 									{
 										node: 'Node3New',
-										type: NodeConnectionType.Main,
+										type: NodeConnectionTypes.Main,
 										index: 0,
 									},
 									{
 										node: 'Node5',
-										type: NodeConnectionType.Main,
+										type: NodeConnectionTypes.Main,
 										index: 0,
 									},
 								],
@@ -1135,12 +1135,12 @@ describe('Workflow', () => {
 								[
 									{
 										node: 'Node4',
-										type: NodeConnectionType.Main,
+										type: NodeConnectionTypes.Main,
 										index: 0,
 									},
 									{
 										node: 'Node5',
-										type: NodeConnectionType.Main,
+										type: NodeConnectionTypes.Main,
 										index: 0,
 									},
 								],
@@ -1720,7 +1720,7 @@ describe('Workflow', () => {
 							[
 								{
 									node: 'Node2',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -1731,7 +1731,7 @@ describe('Workflow', () => {
 							[
 								{
 									node: 'Node3',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -1742,7 +1742,7 @@ describe('Workflow', () => {
 							[
 								{
 									node: 'Node2',
-									type: NodeConnectionType.Main,
+									type: NodeConnectionTypes.Main,
 									index: 0,
 								},
 							],
@@ -1765,6 +1765,7 @@ describe('Workflow', () => {
 									],
 									startTime: 1,
 									executionTime: 1,
+									executionIndex: 0,
 									data: {
 										main: [
 											[
@@ -1843,6 +1844,7 @@ describe('Workflow', () => {
 							{
 								startTime: 1,
 								executionTime: 1,
+								executionIndex: 0,
 								data: {
 									main: [
 										[
@@ -2083,10 +2085,10 @@ describe('Workflow', () => {
 
 			const connections = {
 				Node1: {
-					main: [[{ node: 'TargetNode', type: NodeConnectionType.Main, index: 0 }]],
+					main: [[{ node: 'TargetNode', type: NodeConnectionTypes.Main, index: 0 }]],
 				},
 				Node2: {
-					main: [[{ node: 'TargetNode', type: NodeConnectionType.Main, index: 0 }]],
+					main: [[{ node: 'TargetNode', type: NodeConnectionTypes.Main, index: 0 }]],
 				},
 			};
 
@@ -2109,10 +2111,10 @@ describe('Workflow', () => {
 
 			const connections = {
 				Node1: {
-					main: [[{ node: 'TargetNode', type: NodeConnectionType.Main, index: 0 }]],
+					main: [[{ node: 'TargetNode', type: NodeConnectionTypes.Main, index: 0 }]],
 				},
 				Node2: {
-					main: [[{ node: 'TargetNode', type: NodeConnectionType.Main, index: 0 }]],
+					main: [[{ node: 'TargetNode', type: NodeConnectionTypes.Main, index: 0 }]],
 				},
 			};
 
@@ -2137,12 +2139,12 @@ describe('Workflow', () => {
 			const connections = {
 				Node3: {
 					main: [
-						[{ node: 'Node1', type: NodeConnectionType.Main, index: 0 }],
-						[{ node: 'Node2', type: NodeConnectionType.Main, index: 0 }],
+						[{ node: 'Node1', type: NodeConnectionTypes.Main, index: 0 }],
+						[{ node: 'Node2', type: NodeConnectionTypes.Main, index: 0 }],
 					],
 				},
 				TargetNode: {
-					main: [[{ node: 'Node3', type: NodeConnectionType.Main, index: 0 }]],
+					main: [[{ node: 'Node3', type: NodeConnectionTypes.Main, index: 0 }]],
 				},
 			};
 
@@ -2165,10 +2167,10 @@ describe('Workflow', () => {
 
 			const connections = {
 				Node1: {
-					main: [[{ node: 'TargetNode', type: NodeConnectionType.Main, index: 0 }]],
+					main: [[{ node: 'TargetNode', type: NodeConnectionTypes.Main, index: 0 }]],
 				},
 				Node2: {
-					main: [[], [{ node: 'TargetNode', type: NodeConnectionType.Main, index: 1 }]],
+					main: [[], [{ node: 'TargetNode', type: NodeConnectionTypes.Main, index: 1 }]],
 				},
 			};
 
@@ -2194,13 +2196,13 @@ describe('Workflow', () => {
 
 			const connections = {
 				Node1: {
-					main: [[{ node: 'Node2', type: NodeConnectionType.Main, index: 0 }]],
+					main: [[{ node: 'Node2', type: NodeConnectionTypes.Main, index: 0 }]],
 				},
 				Node2: {
-					main: [[{ node: 'Node1', type: NodeConnectionType.Main, index: 0 }]],
+					main: [[{ node: 'Node1', type: NodeConnectionTypes.Main, index: 0 }]],
 				},
 				TargetNode: {
-					main: [[{ node: 'Node1', type: NodeConnectionType.Main, index: 0 }]],
+					main: [[{ node: 'Node1', type: NodeConnectionTypes.Main, index: 0 }]],
 				},
 			};
 
@@ -2222,10 +2224,10 @@ describe('Workflow', () => {
 
 			const connections = {
 				Node1: {
-					main: [[{ node: 'NonExistentNode', type: NodeConnectionType.Main, index: 0 }]],
+					main: [[{ node: 'NonExistentNode', type: NodeConnectionTypes.Main, index: 0 }]],
 				},
 				TargetNode: {
-					main: [[{ node: 'NonExistentNode', type: NodeConnectionType.Main, index: 0 }]],
+					main: [[{ node: 'NonExistentNode', type: NodeConnectionTypes.Main, index: 0 }]],
 				},
 			};
 
@@ -2248,10 +2250,10 @@ describe('Workflow', () => {
 
 			const connections = {
 				Node1: {
-					main: [[{ node: 'TargetNode', type: NodeConnectionType.Main, index: 0 }]],
+					main: [[{ node: 'TargetNode', type: NodeConnectionTypes.Main, index: 0 }]],
 				},
 				NonExistentNode: {
-					main: [[{ node: 'TargetNode', type: NodeConnectionType.Main, index: 0 }]],
+					main: [[{ node: 'TargetNode', type: NodeConnectionTypes.Main, index: 0 }]],
 				},
 			};
 
@@ -2325,7 +2327,7 @@ describe('Workflow', () => {
 			const result = SIMPLE_WORKFLOW.getNodeConnectionIndexes(
 				'Set',
 				'Start',
-				NodeConnectionType.Main,
+				NodeConnectionTypes.Main,
 				0,
 			);
 			expect(result).toBeUndefined();

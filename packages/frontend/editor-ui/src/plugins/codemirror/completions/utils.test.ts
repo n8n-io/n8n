@@ -5,7 +5,7 @@ import { CompletionContext, insertCompletionText } from '@codemirror/autocomplet
 import { javascriptLanguage } from '@codemirror/lang-javascript';
 import { EditorState } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
-import { NodeConnectionType, type IConnections } from 'n8n-workflow';
+import { NodeConnectionTypes, type IConnections } from 'n8n-workflow';
 import type { MockInstance } from 'vitest';
 import { autocompletableNodeNames, expressionWithFirstItem, stripExcessParens } from './utils';
 
@@ -83,13 +83,13 @@ describe('completion utils', () => {
 			];
 			const connections = {
 				[nodes[0].name]: {
-					[NodeConnectionType.Main]: [
-						[{ node: nodes[1].name, type: NodeConnectionType.Main, index: 0 }],
+					[NodeConnectionTypes.Main]: [
+						[{ node: nodes[1].name, type: NodeConnectionTypes.Main, index: 0 }],
 					],
 				},
 				[nodes[1].name]: {
-					[NodeConnectionType.Main]: [
-						[{ node: nodes[2].name, type: NodeConnectionType.Main, index: 0 }],
+					[NodeConnectionTypes.Main]: [
+						[{ node: nodes[2].name, type: NodeConnectionTypes.Main, index: 0 }],
 					],
 				},
 			};
@@ -116,13 +116,13 @@ describe('completion utils', () => {
 			];
 			const connections: IConnections = {
 				[nodes[0].name]: {
-					[NodeConnectionType.Main]: [
-						[{ node: nodes[1].name, type: NodeConnectionType.Main, index: 0 }],
+					[NodeConnectionTypes.Main]: [
+						[{ node: nodes[1].name, type: NodeConnectionTypes.Main, index: 0 }],
 					],
 				},
 				[nodes[2].name]: {
-					[NodeConnectionType.AiMemory]: [
-						[{ node: nodes[1].name, type: NodeConnectionType.AiMemory, index: 0 }],
+					[NodeConnectionTypes.AiMemory]: [
+						[{ node: nodes[1].name, type: NodeConnectionTypes.AiMemory, index: 0 }],
 					],
 				},
 			};

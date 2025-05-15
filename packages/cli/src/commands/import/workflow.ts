@@ -1,3 +1,11 @@
+import type { WorkflowEntity } from '@n8n/db';
+import {
+	generateNanoId,
+	ProjectRepository,
+	SharedWorkflowRepository,
+	WorkflowRepository,
+	UserRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { Flags } from '@oclif/core';
 import glob from 'fast-glob';
@@ -6,24 +14,14 @@ import type { IWorkflowBase, WorkflowId } from 'n8n-workflow';
 import { jsonParse, UserError } from 'n8n-workflow';
 
 import { UM_FIX_INSTRUCTION } from '@/constants';
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
-import { UserRepository } from '@/databases/repositories/user.repository';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import { generateNanoId } from '@/databases/utils/generators';
 import type { IWorkflowToImport } from '@/interfaces';
 import { ImportService } from '@/services/import.service';
 
 import { BaseCommand } from '../base-command';
 
-function assertHasWorkflowsToImport(workflows: unknown): asserts workflows is IWorkflowToImport[] {
-	if (!Array.isArray(workflows)) {
-		throw new UserError(
-			'File does not seem to contain workflows. Make sure the workflows are contained in an array.',
-		);
-	}
-
+function assertHasWorkflowsToImport(
+	workflows: unknown[],
+): asserts workflows is IWorkflowToImport[] {
 	for (const workflow of workflows) {
 		if (
 			typeof workflow !== 'object' ||
@@ -185,30 +183,28 @@ export class ImportWorkflowsCommand extends BaseCommand {
 			path = path.replace(/\\/g, '/');
 		}
 
+		const workflowRepository = Container.get(WorkflowRepository);
+
 		if (separate) {
 			const files = await glob('*.json', {
 				cwd: path,
 				absolute: true,
 			});
-			const workflowInstances = files.map((file) => {
+			return files.map((file) => {
 				const workflow = jsonParse<IWorkflowToImport>(fs.readFileSync(file, { encoding: 'utf8' }));
 				if (!workflow.id) {
 					workflow.id = generateNanoId();
 				}
-
-				const workflowInstance = Container.get(WorkflowRepository).create(workflow);
-
-				return workflowInstance;
+				return workflowRepository.create(workflow);
 			});
-
-			return workflowInstances;
 		} else {
-			const workflows = jsonParse<IWorkflowToImport[]>(fs.readFileSync(path, { encoding: 'utf8' }));
+			const workflows = jsonParse<IWorkflowToImport | IWorkflowToImport[]>(
+				fs.readFileSync(path, { encoding: 'utf8' }),
+			);
+			const workflowsArray = Array.isArray(workflows) ? workflows : [workflows];
+			assertHasWorkflowsToImport(workflowsArray);
 
-			const workflowInstances = workflows.map((w) => Container.get(WorkflowRepository).create(w));
-			assertHasWorkflowsToImport(workflows);
-
-			return workflowInstances;
+			return workflowRepository.create(workflowsArray);
 		}
 	}
 

@@ -7,6 +7,7 @@ import { getValueByPath } from '../../utils';
 import N8nOption from '../N8nOption';
 import N8nPagination from '../N8nPagination';
 import N8nSelect from '../N8nSelect';
+import N8nTableBase from '../TableBase';
 
 const ALL_ROWS = -1;
 
@@ -81,7 +82,7 @@ function getThStyle(column: DatatableColumn) {
 
 <template>
 	<div class="datatable datatableWrapper" v-bind="$attrs">
-		<table>
+		<N8nTableBase>
 			<thead>
 				<tr>
 					<th
@@ -106,7 +107,7 @@ function getThStyle(column: DatatableColumn) {
 					</slot>
 				</template>
 			</tbody>
-		</table>
+		</N8nTableBase>
 
 		<div class="pagination">
 			<N8nPagination
@@ -142,65 +143,6 @@ function getThStyle(column: DatatableColumn) {
 </template>
 
 <style lang="scss" scoped>
-:deep(table) {
-	border: 1px solid var(--color-foreground-base);
-	border-collapse: separate;
-	overflow: hidden;
-	border-spacing: 0;
-	border-radius: 10px;
-	text-align: left;
-	width: 100%;
-	background-color: var(--color-background-xlight);
-	table-layout: fixed;
-
-	th {
-		font-size: var(--font-size-2xs);
-		font-weight: var(--font-weight-regular);
-		padding: 10px 8px;
-	}
-
-	td {
-		font-size: var(--font-size-s);
-		padding: 3px 8px;
-		height: 47px;
-		width: auto;
-		&:first-child {
-			padding-left: 16px;
-		}
-		&:last-child {
-			padding-right: 16px;
-		}
-	}
-
-	th,
-	td {
-		vertical-align: middle;
-		border-bottom: 1px solid var(--color-foreground-base);
-		white-space: nowrap;
-		text-overflow: ellipsis;
-		overflow: hidden;
-
-		&:last-child {
-			border-right: none;
-		}
-	}
-
-	tbody {
-		tr {
-			&:hover {
-				background-color: var(--color-background-light);
-			}
-
-			&:last-child {
-				th,
-				td {
-					border-bottom: none;
-				}
-			}
-		}
-	}
-}
-
 .datatableWrapper {
 	display: block;
 	width: 100%;

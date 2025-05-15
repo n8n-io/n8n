@@ -1,5 +1,5 @@
 import { ref } from 'vue';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import { useNodeConnections } from '@/composables/useNodeConnections';
 import type { CanvasNodeData } from '@/types';
 import { CanvasConnectionMode } from '@/types';
@@ -13,10 +13,10 @@ describe('useNodeConnections', () => {
 	describe('mainInputs', () => {
 		it('should return main inputs when provided with main inputs', () => {
 			const inputs = ref<CanvasNodeData['inputs']>([
-				{ type: NodeConnectionType.Main, index: 0 },
-				{ type: NodeConnectionType.Main, index: 1 },
-				{ type: NodeConnectionType.Main, index: 2 },
-				{ type: NodeConnectionType.AiAgent, index: 0 },
+				{ type: NodeConnectionTypes.Main, index: 0 },
+				{ type: NodeConnectionTypes.Main, index: 1 },
+				{ type: NodeConnectionTypes.Main, index: 2 },
+				{ type: NodeConnectionTypes.AiAgent, index: 0 },
 			]);
 			const outputs = ref<CanvasNodeData['outputs']>([]);
 
@@ -34,9 +34,9 @@ describe('useNodeConnections', () => {
 	describe('nonMainInputs', () => {
 		it('should return non-main inputs when provided with non-main inputs', () => {
 			const inputs = ref<CanvasNodeData['inputs']>([
-				{ type: NodeConnectionType.Main, index: 0 },
-				{ type: NodeConnectionType.AiAgent, index: 0 },
-				{ type: NodeConnectionType.AiAgent, index: 1 },
+				{ type: NodeConnectionTypes.Main, index: 0 },
+				{ type: NodeConnectionTypes.AiAgent, index: 0 },
+				{ type: NodeConnectionTypes.AiAgent, index: 1 },
 			]);
 			const outputs = ref<CanvasNodeData['outputs']>([]);
 
@@ -54,9 +54,9 @@ describe('useNodeConnections', () => {
 	describe('requiredNonMainInputs', () => {
 		it('should return required non-main inputs when provided with required non-main inputs', () => {
 			const inputs = ref<CanvasNodeData['inputs']>([
-				{ type: NodeConnectionType.Main, index: 0 },
-				{ type: NodeConnectionType.AiAgent, required: true, index: 0 },
-				{ type: NodeConnectionType.AiAgent, required: false, index: 1 },
+				{ type: NodeConnectionTypes.Main, index: 0 },
+				{ type: NodeConnectionTypes.AiAgent, required: true, index: 0 },
+				{ type: NodeConnectionTypes.AiAgent, required: false, index: 1 },
 			]);
 			const outputs = ref<CanvasNodeData['outputs']>([]);
 
@@ -77,9 +77,9 @@ describe('useNodeConnections', () => {
 			const outputs = ref<CanvasNodeData['outputs']>([]);
 			const connections = ref<CanvasNodeData['connections']>({
 				[CanvasConnectionMode.Input]: {
-					[NodeConnectionType.Main]: [
-						[{ node: 'node1', type: NodeConnectionType.Main, index: 0 }],
-						[{ node: 'node2', type: NodeConnectionType.Main, index: 0 }],
+					[NodeConnectionTypes.Main]: [
+						[{ node: 'node1', type: NodeConnectionTypes.Main, index: 0 }],
+						[{ node: 'node2', type: NodeConnectionTypes.Main, index: 0 }],
 					],
 				},
 				[CanvasConnectionMode.Output]: {},
@@ -93,7 +93,7 @@ describe('useNodeConnections', () => {
 
 			expect(mainInputConnections.value.length).toBe(2);
 			expect(mainInputConnections.value).toEqual(
-				connections.value[CanvasConnectionMode.Input][NodeConnectionType.Main],
+				connections.value[CanvasConnectionMode.Input][NodeConnectionTypes.Main],
 			);
 		});
 	});
@@ -102,10 +102,10 @@ describe('useNodeConnections', () => {
 		it('should return main outputs when provided with main outputs', () => {
 			const inputs = ref<CanvasNodeData['inputs']>([]);
 			const outputs = ref<CanvasNodeData['outputs']>([
-				{ type: NodeConnectionType.Main, index: 0 },
-				{ type: NodeConnectionType.Main, index: 1 },
-				{ type: NodeConnectionType.Main, index: 2 },
-				{ type: NodeConnectionType.AiAgent, index: 0 },
+				{ type: NodeConnectionTypes.Main, index: 0 },
+				{ type: NodeConnectionTypes.Main, index: 1 },
+				{ type: NodeConnectionTypes.Main, index: 2 },
+				{ type: NodeConnectionTypes.AiAgent, index: 0 },
 			]);
 
 			const { mainOutputs } = useNodeConnections({
@@ -123,9 +123,9 @@ describe('useNodeConnections', () => {
 		it('should return non-main outputs when provided with non-main outputs', () => {
 			const inputs = ref<CanvasNodeData['inputs']>([]);
 			const outputs = ref<CanvasNodeData['outputs']>([
-				{ type: NodeConnectionType.Main, index: 0 },
-				{ type: NodeConnectionType.AiAgent, index: 0 },
-				{ type: NodeConnectionType.AiAgent, index: 1 },
+				{ type: NodeConnectionTypes.Main, index: 0 },
+				{ type: NodeConnectionTypes.AiAgent, index: 0 },
+				{ type: NodeConnectionTypes.AiAgent, index: 1 },
 			]);
 
 			const { nonMainOutputs } = useNodeConnections({
@@ -146,9 +146,9 @@ describe('useNodeConnections', () => {
 			const connections = ref<CanvasNodeData['connections']>({
 				[CanvasConnectionMode.Input]: {},
 				[CanvasConnectionMode.Output]: {
-					[NodeConnectionType.Main]: [
-						[{ node: 'node1', type: NodeConnectionType.Main, index: 0 }],
-						[{ node: 'node2', type: NodeConnectionType.Main, index: 0 }],
+					[NodeConnectionTypes.Main]: [
+						[{ node: 'node1', type: NodeConnectionTypes.Main, index: 0 }],
+						[{ node: 'node2', type: NodeConnectionTypes.Main, index: 0 }],
 					],
 				},
 			});
@@ -161,7 +161,7 @@ describe('useNodeConnections', () => {
 
 			expect(mainOutputConnections.value.length).toBe(2);
 			expect(mainOutputConnections.value).toEqual(
-				connections.value[CanvasConnectionMode.Output][NodeConnectionType.Main],
+				connections.value[CanvasConnectionMode.Output][NodeConnectionTypes.Main],
 			);
 		});
 	});
@@ -182,12 +182,12 @@ describe('useNodeConnections', () => {
 				target: 'node1',
 				sourceHandle: createCanvasConnectionHandleString({
 					mode: CanvasConnectionMode.Output,
-					type: NodeConnectionType.Main,
+					type: NodeConnectionTypes.Main,
 					index: 0,
 				}),
 				targetHandle: createCanvasConnectionHandleString({
 					mode: CanvasConnectionMode.Input,
-					type: NodeConnectionType.Main,
+					type: NodeConnectionTypes.Main,
 					index: 0,
 				}),
 			};
@@ -200,12 +200,12 @@ describe('useNodeConnections', () => {
 				target: 'node2',
 				sourceHandle: createCanvasConnectionHandleString({
 					mode: CanvasConnectionMode.Output,
-					type: NodeConnectionType.Main,
+					type: NodeConnectionTypes.Main,
 					index: 0,
 				}),
 				targetHandle: createCanvasConnectionHandleString({
 					mode: CanvasConnectionMode.Output,
-					type: NodeConnectionType.Main,
+					type: NodeConnectionTypes.Main,
 					index: 0,
 				}),
 			};
@@ -218,12 +218,12 @@ describe('useNodeConnections', () => {
 				target: 'node2',
 				sourceHandle: createCanvasConnectionHandleString({
 					mode: CanvasConnectionMode.Output,
-					type: NodeConnectionType.Main,
+					type: NodeConnectionTypes.Main,
 					index: 0,
 				}),
 				targetHandle: createCanvasConnectionHandleString({
 					mode: CanvasConnectionMode.Input,
-					type: NodeConnectionType.AiMemory,
+					type: NodeConnectionTypes.AiMemory,
 					index: 0,
 				}),
 			};
@@ -236,12 +236,12 @@ describe('useNodeConnections', () => {
 				target: 'node2',
 				sourceHandle: createCanvasConnectionHandleString({
 					mode: CanvasConnectionMode.Output,
-					type: NodeConnectionType.Main,
+					type: NodeConnectionTypes.Main,
 					index: 0,
 				}),
 				targetHandle: createCanvasConnectionHandleString({
 					mode: CanvasConnectionMode.Input,
-					type: NodeConnectionType.Main,
+					type: NodeConnectionTypes.Main,
 					index: 0,
 				}),
 			};

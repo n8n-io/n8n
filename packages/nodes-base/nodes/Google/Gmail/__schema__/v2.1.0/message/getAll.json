@@ -1,30 +1,13 @@
 {
     "type": "object",
     "properties": {
-        "id": {
+        "From": {
             "type": "string"
-        },
-        "threadId": {
-            "type": "string"
-        },
-        "sizeEstimate": {
-            "type": "integer"
-        },
-        "snippet": {
-            "type": "string"
-        },
-        "payload": {
-            "type": "object",
-            "properties": {
-                "mimeType": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "mimeType"
-            ]
         },
         "historyId": {
+            "type": "string"
+        },
+        "id": {
             "type": "string"
         },
         "internalDate": {
@@ -41,26 +24,32 @@
                     "name": {
                         "type": "string"
                     }
-                },
-                "required": [
-                    "id",
-                    "name"
-                ]
+                }
             }
+        },
+        "payload": {
+            "type": "object",
+            "properties": {
+                "mimeType": {
+                    "type": "string"
+                }
+            }
+        },
+        "sizeEstimate": {
+            "type": "integer"
+        },
+        "snippet": {
+            "type": "string"
         },
         "Subject": {
             "type": "string"
         },
-        "From": {
+        "threadId": {
             "type": "string"
         },
         "To": {
             "type": "string"
         }
     },
-    "required": [
-        "id",
-        "threadId",
-        "sizeEstimate"
-    ]
+    "version": 3
 }

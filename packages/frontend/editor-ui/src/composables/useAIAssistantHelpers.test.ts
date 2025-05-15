@@ -398,6 +398,7 @@ const testWorkflow: IWorkflowDb = {
 	id: 'MokOcBHON6KkPq6Y',
 	name: 'My Sub-Workflow 3',
 	active: false,
+	isArchived: false,
 	createdAt: -1,
 	updatedAt: -1,
 	connections: {
@@ -456,10 +457,11 @@ const testWorkflow: IWorkflowDb = {
 
 const testExecutionData: IRunExecutionData['resultData'] = {
 	runData: {
-		'When clicking ‘Test workflow’': [
+		'When clicking ‘Execute workflow’': [
 			{
 				hints: [],
 				startTime: 1732882780588,
+				executionIndex: 0,
 				executionTime: 4,
 				source: [],
 				executionStatus: 'success',
@@ -481,10 +483,11 @@ const testExecutionData: IRunExecutionData['resultData'] = {
 			{
 				hints: [],
 				startTime: 1732882780593,
+				executionIndex: 1,
 				executionTime: 0,
 				source: [
 					{
-						previousNode: 'When clicking ‘Test workflow’',
+						previousNode: 'When clicking ‘Execute workflow’',
 					},
 				],
 				executionStatus: 'success',

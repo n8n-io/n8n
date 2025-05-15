@@ -1,5 +1,5 @@
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type INode,
 	type INodeProperties,
 	type INodeTypeDescription,
@@ -91,8 +91,8 @@ export const EXECUTE_WORKFLOW_NODE_TYPE_TEST: INodeTypeDescription = {
 	subtitle: '={{"Workflow: " + $parameter["workflowId"]}}',
 	description: 'Execute another workflow',
 	defaults: { name: 'Execute Workflow', color: '#ff6d5a' },
-	inputs: [NodeConnectionType.Main],
-	outputs: [NodeConnectionType.Main],
+	inputs: [NodeConnectionTypes.Main],
+	outputs: [NodeConnectionTypes.Main],
 	properties: [
 		{
 			displayName: 'Operation',

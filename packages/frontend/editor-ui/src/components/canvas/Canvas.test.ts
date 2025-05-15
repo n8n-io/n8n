@@ -5,9 +5,10 @@ import Canvas from '@/components/canvas/Canvas.vue';
 import { createPinia, setActivePinia } from 'pinia';
 import type { CanvasConnection, CanvasNode } from '@/types';
 import { createCanvasConnection, createCanvasNodeElement } from '@/__tests__/data';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import type { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useVueFlow } from '@vue-flow/core';
+import { SIMULATE_NODE_TYPE } from '@/constants';
 
 const matchMedia = global.window.matchMedia;
 // @ts-expect-error Initialize window object
@@ -59,7 +60,7 @@ describe('Canvas', () => {
 				data: {
 					outputs: [
 						{
-							type: NodeConnectionType.Main,
+							type: NodeConnectionTypes.Main,
 							index: 0,
 						},
 					],
@@ -72,7 +73,7 @@ describe('Canvas', () => {
 				data: {
 					inputs: [
 						{
-							type: NodeConnectionType.Main,
+							type: NodeConnectionTypes.Main,
 							index: 0,
 						},
 					],
@@ -271,6 +272,32 @@ describe('Canvas', () => {
 			expect(patternCanvas).toBeInTheDocument();
 			expect(patternCanvas?.innerHTML).toContain('<path');
 			expect(patternCanvas?.innerHTML).not.toContain('<circle');
+		});
+	});
+
+	describe('simulate', () => {
+		it('should render simulate node', async () => {
+			const nodes = [
+				createCanvasNodeElement({
+					id: '1',
+					label: 'Node',
+					position: { x: 200, y: 200 },
+					data: {
+						type: SIMULATE_NODE_TYPE,
+						typeVersion: 1,
+					},
+				}),
+			];
+
+			const { container } = renderComponent({
+				props: {
+					nodes,
+				},
+			});
+
+			await waitFor(() => expect(container.querySelectorAll('.vue-flow__node')).toHaveLength(1));
+
+			expect(container.querySelector('.icon')).toBeInTheDocument();
 		});
 	});
 });

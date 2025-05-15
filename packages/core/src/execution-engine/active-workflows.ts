@@ -211,9 +211,17 @@ export class ActiveWorkflows {
 	}
 
 	async removeAllTriggerAndPollerBasedWorkflows() {
-		for (const workflowId of Object.keys(this.activeWorkflows)) {
+		const activeWorkflowIds = Object.keys(this.activeWorkflows);
+
+		if (activeWorkflowIds.length === 0) return;
+
+		for (const workflowId of activeWorkflowIds) {
 			await this.remove(workflowId);
 		}
+
+		this.logger.debug('Deactivated all trigger- and poller-based workflows', {
+			workflowIds: activeWorkflowIds,
+		});
 	}
 
 	private async closeTrigger(response: ITriggerResponse, workflowId: string) {

@@ -1,8 +1,6 @@
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
-import { HumanMessage } from '@langchain/core/messages';
-import { SystemMessagePromptTemplate, ChatPromptTemplate } from '@langchain/core/prompts';
 import { OutputFixingParser, StructuredOutputParser } from 'langchain/output_parsers';
-import { NodeOperationError, NodeConnectionType } from 'n8n-workflow';
+import { NodeOperationError, NodeConnectionTypes, sleep } from 'n8n-workflow';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -13,7 +11,9 @@ import type {
 } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { getTracingConfig } from '@utils/tracing';
+import { getBatchingOptionFields } from '@utils/sharedFields';
+
+import { processItem } from './processItem';
 
 const SYSTEM_PROMPT_TEMPLATE =
 	"Please classify the text provided by the user into one of the following categories: {categories}, and use the provided formatting instructions below. Don't explain, and only output the json.";
@@ -22,9 +22,9 @@ const configuredOutputs = (parameters: INodeParameters) => {
 	const categories = ((parameters.categories as IDataObject)?.categories as IDataObject[]) ?? [];
 	const fallback = (parameters.options as IDataObject)?.fallback as string;
 	const ret = categories.map((cat) => {
-		return { type: NodeConnectionType.Main, displayName: cat.category };
+		return { type: 'main', displayName: cat.category };
 	});
-	if (fallback === 'other') ret.push({ type: NodeConnectionType.Main, displayName: 'Other' });
+	if (fallback === 'other') ret.push({ type: 'main', displayName: 'Other' });
 	return ret;
 };
 
@@ -35,7 +35,7 @@ export class TextClassifier implements INodeType {
 		icon: 'fa:tags',
 		iconColor: 'black',
 		group: ['transform'],
-		version: 1,
+		version: [1, 1.1],
 		description: 'Classify your text into distinct categories',
 		codex: {
 			categories: ['AI'],
@@ -54,11 +54,11 @@ export class TextClassifier implements INodeType {
 			name: 'Text Classifier',
 		},
 		inputs: [
-			{ displayName: '', type: NodeConnectionType.Main },
+			{ displayName: '', type: NodeConnectionTypes.Main },
 			{
 				displayName: 'Model',
 				maxConnections: 1,
-				type: NodeConnectionType.AiLanguageModel,
+				type: NodeConnectionTypes.AiLanguageModel,
 				required: true,
 			},
 		],
@@ -158,6 +158,11 @@ export class TextClassifier implements INodeType {
 						description:
 							'Whether to enable auto-fixing (may trigger an additional LLM call if output is broken)',
 					},
+					getBatchingOptionFields({
+						show: {
+							'@version': [{ _cnd: { gte: 1.1 } }],
+						},
+					}),
 				],
 			},
 		],
@@ -165,9 +170,15 @@ export class TextClassifier implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
+		const batchSize = this.getNodeParameter('options.batching.batchSize', 0, 5) as number;
+		const delayBetweenBatches = this.getNodeParameter(
+			'options.batching.delayBetweenBatches',
+			0,
+			0,
+		) as number;
 
 		const llm = (await this.getInputConnectionData(
-			NodeConnectionType.AiLanguageModel,
+			NodeConnectionTypes.AiLanguageModel,
 			0,
 		)) as BaseLanguageModel;
 
@@ -223,52 +234,91 @@ export class TextClassifier implements INodeType {
 			{ length: categories.length + (fallback === 'other' ? 1 : 0) },
 			(_) => [],
 		);
-		for (let itemIdx = 0; itemIdx < items.length; itemIdx++) {
-			const item = items[itemIdx];
-			item.pairedItem = { item: itemIdx };
-			const input = this.getNodeParameter('inputText', itemIdx) as string;
-			const inputPrompt = new HumanMessage(input);
 
-			const systemPromptTemplateOpt = this.getNodeParameter(
-				'options.systemPromptTemplate',
-				itemIdx,
-				SYSTEM_PROMPT_TEMPLATE,
-			) as string;
-			const systemPromptTemplate = SystemMessagePromptTemplate.fromTemplate(
-				`${systemPromptTemplateOpt ?? SYSTEM_PROMPT_TEMPLATE}
-{format_instructions}
-${multiClassPrompt}
-${fallbackPrompt}`,
-			);
+		if (this.getNode().typeVersion >= 1.1 && batchSize > 1) {
+			for (let i = 0; i < items.length; i += batchSize) {
+				const batch = items.slice(i, i + batchSize);
+				const batchPromises = batch.map(async (_item, batchItemIndex) => {
+					const itemIndex = i + batchItemIndex;
+					const item = items[itemIndex];
 
-			const messages = [
-				await systemPromptTemplate.format({
-					categories: categories.map((cat) => cat.category).join(', '),
-					format_instructions: parser.getFormatInstructions(),
-				}),
-				inputPrompt,
-			];
-			const prompt = ChatPromptTemplate.fromMessages(messages);
-			const chain = prompt.pipe(llm).pipe(parser).withConfig(getTracingConfig(this));
-
-			try {
-				const output = await chain.invoke(messages);
-
-				categories.forEach((cat, idx) => {
-					if (output[cat.category]) returnData[idx].push(item);
+					return await processItem(
+						this,
+						itemIndex,
+						item,
+						llm,
+						parser,
+						categories,
+						multiClassPrompt,
+						fallbackPrompt,
+					);
 				});
-				if (fallback === 'other' && output.fallback) returnData[returnData.length - 1].push(item);
-			} catch (error) {
-				if (this.continueOnFail()) {
-					returnData[0].push({
-						json: { error: error.message },
-						pairedItem: { item: itemIdx },
-					});
 
-					continue;
+				const batchResults = await Promise.allSettled(batchPromises);
+
+				batchResults.forEach((response, batchItemIndex) => {
+					const index = i + batchItemIndex;
+					if (response.status === 'rejected') {
+						const error = response.reason as Error;
+						if (this.continueOnFail()) {
+							returnData[0].push({
+								json: { error: error.message },
+								pairedItem: { item: index },
+							});
+							return;
+						} else {
+							throw new NodeOperationError(this.getNode(), error.message);
+						}
+					} else {
+						const output = response.value;
+						const item = items[index];
+
+						categories.forEach((cat, idx) => {
+							if (output[cat.category]) returnData[idx].push(item);
+						});
+
+						if (fallback === 'other' && output.fallback)
+							returnData[returnData.length - 1].push(item);
+					}
+				});
+
+				// Add delay between batches if not the last batch
+				if (i + batchSize < items.length && delayBetweenBatches > 0) {
+					await sleep(delayBetweenBatches);
 				}
+			}
+		} else {
+			for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+				const item = items[itemIndex];
 
-				throw error;
+				try {
+					const output = await processItem(
+						this,
+						itemIndex,
+						item,
+						llm,
+						parser,
+						categories,
+						multiClassPrompt,
+						fallbackPrompt,
+					);
+
+					categories.forEach((cat, idx) => {
+						if (output[cat.category]) returnData[idx].push(item);
+					});
+					if (fallback === 'other' && output.fallback) returnData[returnData.length - 1].push(item);
+				} catch (error) {
+					if (this.continueOnFail()) {
+						returnData[0].push({
+							json: { error: error.message },
+							pairedItem: { item: itemIndex },
+						});
+
+						continue;
+					}
+
+					throw error;
+				}
 			}
 		}
 

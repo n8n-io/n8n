@@ -1,10 +1,10 @@
+import { CredentialsEntity } from '@n8n/db';
+import { CredentialsRepository } from '@n8n/db';
+import { SharedWorkflowRepository } from '@n8n/db';
+import { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 
-import { CredentialsEntity } from '@/databases/entities/credentials-entity';
-import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { Telemetry } from '@/telemetry';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 import { mockInstance } from '@test/mocking';
@@ -35,11 +35,14 @@ describe('EnterpriseWorkflowService', () => {
 			mock(),
 			mock(),
 			mock(),
+			mock(),
+			mock(),
+			mock(),
 		);
 	});
 
 	afterEach(async () => {
-		await testDb.truncate(['Workflow']);
+		await testDb.truncate(['WorkflowEntity']);
 		jest.restoreAllMocks();
 	});
 

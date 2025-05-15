@@ -1,6 +1,6 @@
 import { snakeCase } from 'change-case';
 import set from 'lodash/set';
-import { NodeApiError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
@@ -53,8 +53,8 @@ export class HubspotV2 implements INodeType {
 				name: 'HubSpot',
 			},
 			usableAsTool: true,
-			inputs: [NodeConnectionType.Main],
-			outputs: [NodeConnectionType.Main],
+			inputs: [NodeConnectionTypes.Main],
+			outputs: [NodeConnectionTypes.Main],
 			credentials: [
 				{
 					name: 'hubspotApi',
@@ -1671,7 +1671,11 @@ export class HubspotV2 implements INodeType {
 								}
 								//@ts-ignore
 								if (body.filterGroups.length > 3) {
-									throw new NodeOperationError(this.getNode(), 'You can only have 3 filter groups');
+									throw new NodeOperationError(
+										this.getNode(),
+										'You can only have 3 filter groups',
+										{ itemIndex: i },
+									);
 								}
 							}
 
@@ -2566,7 +2570,11 @@ export class HubspotV2 implements INodeType {
 								}
 								//@ts-ignore
 								if (body.filterGroups.length > 3) {
-									throw new NodeOperationError(this.getNode(), 'You can only have 3 filter groups');
+									throw new NodeOperationError(
+										this.getNode(),
+										'You can only have 3 filter groups',
+										{ itemIndex: i },
+									);
 								}
 							}
 

@@ -99,6 +99,17 @@ describe('useGlobalEntityCreation', () => {
 			expect(menu.value[0].submenu?.length).toBe(4);
 			expect(menu.value[1].submenu?.length).toBe(4);
 		});
+
+		it('disables project creation item if user has no rbac permission', () => {
+			const projectsStore = mockedStore(useProjectsStore);
+			projectsStore.canCreateProjects = true;
+			projectsStore.isTeamProjectFeatureEnabled = true;
+			projectsStore.hasPermissionToCreateProjects = false;
+
+			const { menu, projectsLimitReachedMessage } = useGlobalEntityCreation();
+			expect(menu.value[2].disabled).toBeTruthy();
+			expect(projectsLimitReachedMessage.value).toContain('Your current role does not allow you');
+		});
 	});
 
 	describe('handleSelect()', () => {
@@ -115,6 +126,7 @@ describe('useGlobalEntityCreation', () => {
 			const projectsStore = mockedStore(useProjectsStore);
 			projectsStore.isTeamProjectFeatureEnabled = true;
 			projectsStore.canCreateProjects = true;
+			projectsStore.hasPermissionToCreateProjects = true;
 			projectsStore.createProject.mockResolvedValueOnce({ name: 'test', id: '1' } as Project);
 
 			const { handleSelect } = useGlobalEntityCreation();
@@ -132,6 +144,7 @@ describe('useGlobalEntityCreation', () => {
 			const projectsStore = mockedStore(useProjectsStore);
 			projectsStore.isTeamProjectFeatureEnabled = true;
 			projectsStore.canCreateProjects = true;
+			projectsStore.hasPermissionToCreateProjects = true;
 			projectsStore.createProject.mockRejectedValueOnce(new Error('error'));
 
 			const { handleSelect } = useGlobalEntityCreation();
@@ -162,6 +175,7 @@ describe('useGlobalEntityCreation', () => {
 		const projectsStore = mockedStore(useProjectsStore);
 		projectsStore.isTeamProjectFeatureEnabled = true;
 		projectsStore.teamProjectsLimit = 10;
+		projectsStore.hasPermissionToCreateProjects = true;
 
 		settingsStore.isCloudDeployment = true;
 		const { projectsLimitReachedMessage, upgradeLabel } = useGlobalEntityCreation();

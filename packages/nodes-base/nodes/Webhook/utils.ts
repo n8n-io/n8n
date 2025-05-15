@@ -1,6 +1,6 @@
 import basicAuth from 'basic-auth';
 import jwt from 'jsonwebtoken';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 import type {
 	IWebhookFunctions,
 	INodeExecutionData,
@@ -65,14 +65,14 @@ export const configuredOutputs = (parameters: WebhookParameters) => {
 	if (!Array.isArray(httpMethod))
 		return [
 			{
-				type: `${NodeConnectionType.Main}`,
+				type: 'main',
 				displayName: httpMethod,
 			},
 		];
 
 	const outputs = httpMethod.map((method) => {
 		return {
-			type: `${NodeConnectionType.Main}`,
+			type: 'main',
 			displayName: method,
 		};
 	});
@@ -206,6 +206,20 @@ export async function validateWebhookAuthentication(
 
 		if (providedAuth.name !== expectedAuth.user || providedAuth.pass !== expectedAuth.password) {
 			// Provided authentication data is wrong
+			throw new WebhookAuthorizationError(403);
+		}
+	} else if (authentication === 'bearerAuth') {
+		let expectedAuth: ICredentialDataDecryptedObject | undefined;
+		try {
+			expectedAuth = await ctx.getCredentials<ICredentialDataDecryptedObject>('httpBearerAuth');
+		} catch {}
+
+		const expectedToken = expectedAuth?.token as string;
+		if (!expectedToken) {
+			throw new WebhookAuthorizationError(500, 'No authentication data defined on node!');
+		}
+
+		if (headers.authorization !== `Bearer ${expectedToken}`) {
 			throw new WebhookAuthorizationError(403);
 		}
 	} else if (authentication === 'headerAuth') {

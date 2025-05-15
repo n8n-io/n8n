@@ -8,6 +8,7 @@ import type { ChatMessage } from '@n8n/chat/types';
 
 defineProps<{
 	messages: ChatMessage[];
+	emptyText?: string;
 }>();
 
 defineSlots<{
@@ -29,7 +30,19 @@ watch(
 );
 </script>
 <template>
-	<div class="chat-messages-list">
+	<div
+		v-if="emptyText && initialMessages.length === 0 && messages.length === 0"
+		class="empty-container"
+	>
+		<div class="empty" data-test-id="chat-messages-empty">
+			<N8nIcon icon="comment" size="large" class="emptyIcon" />
+			<N8nText tag="p" size="medium" color="text-base">
+				{{ emptyText }}
+			</N8nText>
+		</div>
+	</div>
+
+	<div v-else class="chat-messages-list">
 		<Message
 			v-for="initialMessage in initialMessages"
 			:key="initialMessage.id"
@@ -52,5 +65,46 @@ watch(
 	margin-top: auto;
 	display: block;
 	padding: var(--chat--messages-list--padding);
+}
+
+.empty-container {
+	container-type: size;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+
+	p {
+		max-width: 16em;
+		margin: 0;
+	}
+}
+
+.empty {
+	text-align: center;
+	color: var(--color-text-base);
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: var(--spacing-xs);
+	padding-inline: var(--spacing-m);
+	padding-bottom: var(--spacing-l);
+	overflow: hidden;
+}
+
+.emptyIcon {
+	zoom: 2.5;
+	color: var(--color-button-secondary-border);
+}
+
+@container (height < 150px) {
+	.empty {
+		flex-direction: row;
+		text-align: left;
+	}
+
+	.emptyIcon {
+		zoom: 1.5;
+	}
 }
 </style>

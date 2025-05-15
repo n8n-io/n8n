@@ -1,14 +1,13 @@
+import type { Project } from '@n8n/db';
+import type { IExecutionResponse } from '@n8n/db';
+import type { ExecutionRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import type { IRun, IWorkflowBase } from 'n8n-workflow';
 import { createDeferredPromise } from 'n8n-workflow';
 
 import type { ActiveExecutions } from '@/active-executions';
-import type { Project } from '@/databases/entities/project';
-import type { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import type { IExecutionResponse } from '@/interfaces';
 import type { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
-import { OrchestrationService } from '@/services/orchestration.service';
 import type { OwnershipService } from '@/services/ownership.service';
 import { WaitTracker } from '@/wait-tracker';
 import type { WorkflowRunner } from '@/workflow-runner';
@@ -22,7 +21,6 @@ describe('WaitTracker', () => {
 	const workflowRunner = mock<WorkflowRunner>();
 	const executionRepository = mock<ExecutionRepository>();
 	const multiMainSetup = mock<MultiMainSetup>();
-	const orchestrationService = new OrchestrationService(mock(), multiMainSetup, mock());
 	const instanceSettings = mock<InstanceSettings>({ isLeader: true, isMultiMain: false });
 
 	const project = mock<Project>({ id: 'projectId' });
@@ -46,7 +44,6 @@ describe('WaitTracker', () => {
 			ownershipService,
 			activeExecutions,
 			workflowRunner,
-			orchestrationService,
 			instanceSettings,
 		);
 		multiMainSetup.on.mockReturnThis();
@@ -235,7 +232,6 @@ describe('WaitTracker', () => {
 				ownershipService,
 				activeExecutions,
 				workflowRunner,
-				orchestrationService,
 				mock<InstanceSettings>({ isLeader: false, isMultiMain: false }),
 			);
 

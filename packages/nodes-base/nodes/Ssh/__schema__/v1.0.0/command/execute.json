@@ -1,20 +1,18 @@
 {
     "type": "object",
     "properties": {
+        "code": {
+            "type": "integer"
+        },
         "signal": {
             "type": "null"
         },
-        "stdout": {
+        "stderr": {
             "type": "string"
         },
-        "stderr": {
+        "stdout": {
             "type": "string"
         }
     },
-    "required": [
-        "code",
-        "signal",
-        "stdout",
-        "stderr"
-    ]
+    "version": 3
 }

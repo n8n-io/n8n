@@ -24,14 +24,6 @@ describe('EvaluationMetrics', () => {
 		);
 	});
 
-	test('should throw when missing values', () => {
-		const testMetricNames = new Set(['metric1', 'metric2']);
-		const metrics = new EvaluationMetrics(testMetricNames);
-
-		expect(() => metrics.addResults({ metric1: 1 })).toThrow('METRICS_MISSING');
-		expect(() => metrics.addResults({ metric2: 0.2 })).toThrow('METRICS_MISSING');
-	});
-
 	test('should handle empty metrics', () => {
 		const testMetricNames = new Set(['metric1', 'metric2']);
 		const metrics = new EvaluationMetrics(testMetricNames);

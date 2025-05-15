@@ -20,7 +20,8 @@ import {
 	ApplicationError,
 	createDeferredPromise,
 	createEnvProviderState,
-	NodeConnectionType,
+	jsonParse,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
 import { BaseExecuteContext } from './base-execute-context';
@@ -173,7 +174,7 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 		);
 	}
 
-	getInputData(inputIndex = 0, connectionType = NodeConnectionType.Main) {
+	getInputData(inputIndex = 0, connectionType = NodeConnectionTypes.Main) {
 		if (!this.inputData.hasOwnProperty(connectionType)) {
 			// Return empty array because else it would throw error when nothing is connected to input
 			return [];
@@ -183,7 +184,10 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 
 	logNodeOutput(...args: unknown[]): void {
 		if (this.mode === 'manual') {
-			this.sendMessageToUI(...args);
+			const parsedLogArgs = args.map((arg) =>
+				typeof arg === 'string' ? jsonParse(arg, { fallbackValue: arg }) : arg,
+			);
+			this.sendMessageToUI(...parsedLogArgs);
 			return;
 		}
 

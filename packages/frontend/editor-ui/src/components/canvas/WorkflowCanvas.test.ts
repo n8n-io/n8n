@@ -14,6 +14,15 @@ import {
 	defaultNodeDescriptions,
 } from '@/__tests__/mocks';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import * as vueuse from '@vueuse/core';
+
+vi.mock('@vueuse/core', async () => {
+	const actual = await vi.importActual('@vueuse/core');
+	return {
+		...actual,
+		throttledRef: vi.fn(actual.throttledRef as typeof vueuse.throttledRef),
+	};
+});
 
 const renderComponent = createComponentRenderer(WorkflowCanvas, {
 	props: {
@@ -142,5 +151,24 @@ describe('WorkflowCanvas', () => {
 
 		expect(container.querySelector(`[data-id="${nodes[0].id}"]`)).toBeInTheDocument();
 		expect(container.querySelector(`[data-id="${fallbackNodes[0].id}"]`)).not.toBeInTheDocument();
+	});
+
+	describe('debouncing behavior', () => {
+		it('should configure debouncing with delay when executing', async () => {
+			renderComponent({
+				props: {
+					executing: true,
+				},
+			});
+
+			expect(vueuse.throttledRef).toHaveBeenCalledTimes(2);
+
+			// Find calls related to our specific debouncing logic
+			const calls = vi.mocked(vueuse.throttledRef).mock.calls;
+			const executingCalls = calls.filter((call) => call[1] === 200);
+
+			expect(executingCalls.length).toBeGreaterThanOrEqual(2);
+			expect(executingCalls[0][1]).toBe(200);
+		});
 	});
 });

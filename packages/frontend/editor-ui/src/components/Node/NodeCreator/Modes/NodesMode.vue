@@ -18,21 +18,29 @@ import {
 } from '@/constants';
 
 import type { BaseTextKey } from '@/plugins/i18n';
-import { useRootStore } from '@/stores/root.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 
 import { TriggerView, RegularView, AIView, AINodesView } from '../viewsData';
-import { flattenCreateElements, transformNodeType } from '../utils';
+import {
+	flattenCreateElements,
+	filterAndSearchNodes,
+	prepareCommunityNodeDetailsViewStack,
+	transformNodeType,
+} from '../utils';
 import { useViewStacks } from '../composables/useViewStacks';
 import { useKeyboardNavigation } from '../composables/useKeyboardNavigation';
 import ItemsRenderer from '../Renderers/ItemsRenderer.vue';
 import CategorizedItemsRenderer from '../Renderers/CategorizedItemsRenderer.vue';
 import NoResults from '../Panel/NoResults.vue';
 import { useI18n } from '@/composables/useI18n';
-import { getNodeIcon, getNodeIconColor, getNodeIconUrl } from '@/utils/nodeTypesUtils';
-import { useUIStore } from '@/stores/ui.store';
+
+import { getNodeIconSource } from '@/utils/nodeIcon';
+
 import { useActions } from '../composables/useActions';
 import { SEND_AND_WAIT_OPERATION, type INodeParameters } from 'n8n-workflow';
+
+import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 export interface Props {
 	rootView: 'trigger' | 'action';
@@ -43,19 +51,38 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
-const uiStore = useUIStore();
-const rootStore = useRootStore();
 
 const { mergedNodes, actions, onSubcategorySelected } = useNodeCreatorStore();
-const { pushViewStack, popViewStack } = useViewStacks();
+const { pushViewStack, popViewStack, isAiSubcategoryView } = useViewStacks();
 const { setAddedNodeActionParameters } = useActions();
 
 const { registerKeyHook } = useKeyboardNavigation();
 
 const activeViewStack = computed(() => useViewStacks().activeViewStack);
+
 const globalSearchItemsDiff = computed(() => useViewStacks().globalSearchItemsDiff);
 
-function getFilteredActions(node: NodeCreateElement) {
+const communityNodesAndActions = computed(() => useNodeTypesStore().communityNodesAndActions);
+
+const moreFromCommunity = computed(() => {
+	return filterAndSearchNodes(
+		communityNodesAndActions.value.mergedNodes,
+		activeViewStack.value.search ?? '',
+		isAiSubcategoryView(activeViewStack.value),
+	);
+});
+
+const isSearchResultEmpty = computed(() => {
+	return (
+		(activeViewStack.value.items || []).length === 0 &&
+		globalSearchItemsDiff.value.length + moreFromCommunity.value.length === 0
+	);
+});
+
+function getFilteredActions(
+	node: NodeCreateElement,
+	actions: Record<string, ActionTypeDescription[]>,
+) {
 	const nodeActions = actions?.[node.key] || [];
 	if (activeViewStack.value.subcategory === HITL_SUBCATEGORY) {
 		return getHumanInTheLoopActions(nodeActions);
@@ -83,20 +110,16 @@ function onSelected(item: INodeCreateElement) {
 		const infoKey = `nodeCreator.subcategoryInfos.${subcategoryKey}` as BaseTextKey;
 		const info = i18n.baseText(infoKey);
 		const extendedInfo = info !== infoKey ? { info } : {};
+		const nodeIcon = item.properties.icon
+			? ({ type: 'icon', name: item.properties.icon } as const)
+			: undefined;
 
 		pushViewStack({
 			subcategory: item.key,
 			mode: 'nodes',
 			title,
+			nodeIcon,
 			...extendedInfo,
-			...(item.properties.icon
-				? {
-						nodeIcon: {
-							icon: item.properties.icon,
-							iconType: 'icon',
-						},
-					}
-				: {}),
 			...(item.properties.panelClass ? { panelClass: item.properties.panelClass } : {}),
 			rootView: activeViewStack.value.rootView,
 			forceIncludeNodes: item.properties.forceIncludeNodes,
@@ -111,7 +134,23 @@ function onSelected(item: INodeCreateElement) {
 	}
 
 	if (item.type === 'node') {
-		const nodeActions = getFilteredActions(item);
+		let nodeActions = getFilteredActions(item, actions);
+
+		if (isCommunityPackageName(item.key) && !activeViewStack.value.communityNodeDetails) {
+			if (!nodeActions.length) {
+				nodeActions = getFilteredActions(item, communityNodesAndActions.value.actions);
+			}
+
+			const viewStack = prepareCommunityNodeDetailsViewStack(
+				item,
+				getNodeIconSource(item.properties),
+				activeViewStack.value.rootView,
+				nodeActions,
+			);
+
+			pushViewStack(viewStack);
+			return;
+		}
 
 		// If there is only one action, use it
 		if (nodeActions.length === 1) {
@@ -130,11 +169,6 @@ function onSelected(item: INodeCreateElement) {
 			return;
 		}
 
-		const iconUrl = getNodeIconUrl(item.properties, uiStore.appliedTheme);
-		const icon = iconUrl
-			? rootStore.baseUrl + iconUrl
-			: getNodeIcon(item.properties, uiStore.appliedTheme)?.split(':')[1];
-
 		const transformedActions = nodeActions?.map((a) =>
 			transformNodeType(a, item.properties.displayName, 'action'),
 		);
@@ -142,12 +176,7 @@ function onSelected(item: INodeCreateElement) {
 		pushViewStack({
 			subcategory: item.properties.displayName,
 			title: item.properties.displayName,
-			nodeIcon: {
-				color: getNodeIconColor(item.properties),
-				icon,
-				iconType: iconUrl ? 'file' : 'icon',
-			},
-
+			nodeIcon: getNodeIconSource(item.properties),
 			rootView: activeViewStack.value.rootView,
 			hasSearch: true,
 			mode: 'actions',
@@ -194,7 +223,7 @@ function subcategoriesMapper(item: INodeCreateElement) {
 	if (item.type !== 'node') return item;
 
 	const hasTriggerGroup = item.properties.group.includes('trigger');
-	const nodeActions = getFilteredActions(item);
+	const nodeActions = getFilteredActions(item, actions);
 	const hasActions = nodeActions.length > 0;
 
 	if (hasTriggerGroup && hasActions) {
@@ -215,7 +244,7 @@ function baseSubcategoriesFilter(item: INodeCreateElement): boolean {
 	if (item.type !== 'node') return false;
 
 	const hasTriggerGroup = item.properties.group.includes('trigger');
-	const nodeActions = getFilteredActions(item);
+	const nodeActions = getFilteredActions(item, actions);
 	const hasActions = nodeActions.length > 0;
 
 	const isTriggerRootView = activeViewStack.value.rootView === TRIGGER_NODE_CREATOR_VIEW;
@@ -234,6 +263,7 @@ function onKeySelect(activeItemId: string) {
 	const mergedItems = flattenCreateElements([
 		...(activeViewStack.value.items ?? []),
 		...(globalSearchItemsDiff.value ?? []),
+		...(moreFromCommunity.value ?? []),
 	]);
 
 	const item = mergedItems.find((i) => i.uuid === activeItemId);
@@ -264,10 +294,7 @@ registerKeyHook('MainViewArrowLeft', {
 			:class="$style.items"
 			@selected="onSelected"
 		>
-			<template
-				v-if="(activeViewStack.items || []).length === 0 && globalSearchItemsDiff.length === 0"
-				#empty
-			>
+			<template v-if="isSearchResultEmpty" #empty>
 				<NoResults
 					:root-view="activeViewStack.rootView"
 					show-icon
@@ -277,12 +304,24 @@ registerKeyHook('MainViewArrowLeft', {
 				/>
 			</template>
 		</ItemsRenderer>
+
 		<!-- Results in other categories -->
 		<CategorizedItemsRenderer
 			v-if="globalSearchItemsDiff.length > 0"
 			:elements="globalSearchItemsDiff"
 			:category="i18n.baseText('nodeCreator.categoryNames.otherCategories')"
 			@selected="onSelected"
+			:expanded="true"
+		>
+		</CategorizedItemsRenderer>
+
+		<!-- Results in community nodes -->
+		<CategorizedItemsRenderer
+			v-if="moreFromCommunity.length > 0"
+			:elements="moreFromCommunity"
+			:category="i18n.baseText('nodeCreator.categoryNames.moreFromCommunity')"
+			@selected="onSelected"
+			:expanded="true"
 		>
 		</CategorizedItemsRenderer>
 	</span>

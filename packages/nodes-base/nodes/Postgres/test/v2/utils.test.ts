@@ -1,4 +1,4 @@
-import type { IDataObject, INode } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INode } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import pgPromise from 'pg-promise';
 
@@ -18,6 +18,7 @@ import {
 	convertValuesToJsonWithPgp,
 	hasJsonDataTypeInSchema,
 	evaluateExpression,
+	addExecutionHints,
 } from '../../v2/helpers/utils';
 
 const node: INode = {
@@ -146,15 +147,15 @@ describe('Test PostgresV2, parsePostgresError', () => {
 
 	it('should update message with syntax error', () => {
 		// eslint-disable-next-line n8n-local-rules/no-unneeded-backticks
-		const errorMessage = String.raw`syntax error at or near "seelect"`;
+		const errorMessage = String.raw`syntax error at or near "select"`;
 		const error = new Error();
 		error.message = errorMessage;
 
 		const parsedError = parsePostgresError(node, error, [
-			{ query: 'seelect * from my_table', values: [] },
+			{ query: 'select * from my_table', values: [] },
 		]);
 		expect(parsedError).toBeDefined();
-		expect(parsedError.message).toEqual('Syntax error at line 1 near "seelect"');
+		expect(parsedError.message).toEqual('Syntax error at line 1 near "select"');
 		expect(parsedError instanceof NodeOperationError).toEqual(true);
 	});
 });
@@ -201,7 +202,7 @@ describe('Test PostgresV2, addWhereClauses', () => {
 		expect(updatedValues).toEqual(['public', 'my_table', 'id', '1', 'foo', 'select 2']);
 	});
 
-	it('should ignore incorect combine conition ad use AND', () => {
+	it('should ignore incorrect combine condition ad use AND', () => {
 		const query = 'SELECT * FROM $1:name.$2:name';
 		const values = ['public', 'my_table'];
 		const whereClauses = [
@@ -246,7 +247,7 @@ describe('Test PostgresV2, addSortRules', () => {
 		expect(updatedQuery).toEqual('SELECT * FROM $1:name.$2:name ORDER BY $3:name DESC');
 		expect(updatedValues).toEqual(['public', 'my_table', 'id']);
 	});
-	it('should ignore incorect direction', () => {
+	it('should ignore incorrect direction', () => {
 		const query = 'SELECT * FROM $1:name.$2:name';
 		const values = ['public', 'my_table'];
 		const sortRules = [{ column: 'id', direction: 'SELECT * FROM my_table' }];
@@ -340,7 +341,7 @@ describe('Test PostgresV2, replaceEmptyStringsByNulls', () => {
 });
 
 describe('Test PostgresV2, prepareItem', () => {
-	it('should convert fixedColections values to object', () => {
+	it('should convert fixedCollection values to object', () => {
 		const values = [
 			{
 				column: 'id',
@@ -428,36 +429,47 @@ describe('Test PostgresV2, hasJsonDataType', () => {
 });
 
 describe('Test PostgresV2, convertValuesToJsonWithPgp', () => {
-	it('should use pgp to properly convert values to JSON', () => {
-		const pgp = pgPromise();
-		const pgpJsonSpy = jest.spyOn(pgp.as, 'json');
+	const pgp = pgPromise();
+	const pgpJsonSpy = jest.spyOn(pgp.as, 'json');
+	const schema: ColumnInfo[] = [
+		{ column_name: 'data', data_type: 'json', is_nullable: 'YES' },
+		{ column_name: 'id', data_type: 'integer', is_nullable: 'NO' },
+	];
 
-		const schema: ColumnInfo[] = [
-			{ column_name: 'data', data_type: 'json', is_nullable: 'YES' },
-			{ column_name: 'id', data_type: 'integer', is_nullable: 'NO' },
-		];
-		const values = [
-			{
-				value: { data: [], id: 1 },
-				expected: { data: '[]', id: 1 },
-			},
-			{
-				value: { data: [0], id: 1 },
-				expected: { data: '[0]', id: 1 },
-			},
-			{
-				value: { data: { key: 2 }, id: 1 },
-				expected: { data: '{"key":2}', id: 1 },
-			},
-		];
+	beforeEach(() => {
+		pgpJsonSpy.mockClear();
+	});
 
-		values.forEach((value) => {
-			const data = value.value.data;
-
-			expect(convertValuesToJsonWithPgp(pgp, schema, value.value)).toEqual(value.expected);
-			expect(value.value).toEqual(value.expected);
+	it.each([
+		{
+			value: { data: [], id: 1 },
+			expected: { data: '[]', id: 1 },
+		},
+		{
+			value: { data: [0], id: 1 },
+			expected: { data: '[0]', id: 1 },
+		},
+		{
+			value: { data: { key: 2 }, id: 1 },
+			expected: { data: '{"key":2}', id: 1 },
+		},
+		{
+			value: { data: null, id: 1 },
+			expected: { data: null, id: 1 },
+			shouldSkipPgp: true,
+		},
+		{
+			value: { data: undefined, id: 1 },
+			expected: { data: undefined, id: 1 },
+			shouldSkipPgp: true,
+		},
+	])('should convert $value.data to json correctly', ({ value, expected, shouldSkipPgp }) => {
+		const data = value.data;
+		expect(convertValuesToJsonWithPgp(pgp, schema, value)).toEqual(expected);
+		expect(value).toEqual(expected);
+		if (!shouldSkipPgp) {
 			expect(pgpJsonSpy).toHaveBeenCalledWith(data, true);
-		});
+		}
 	});
 });
 
@@ -532,6 +544,41 @@ describe('Test PostgresV2, convertArraysToPostgresFormat', () => {
 			int_array: '{1,2,5}',
 			text_array: '{"one","t\\"w\\"o"}',
 			bool_array: '{"true","false"}',
+		});
+	});
+});
+
+describe('Test PostgresV2, addExecutionHints', () => {
+	it('should add batching insert hint to executeQuery operation', () => {
+		const context = {
+			getNodeParameter: (parameterName: string) => {
+				if (parameterName === 'options.queryBatching') {
+					return 'single';
+				}
+				if (parameterName === 'query') {
+					return 'INSERT INTO my_test_table VALUES (`{{ $json.name }}`)';
+				}
+			},
+			addExecutionHints: jest.fn(),
+		} as unknown as IExecuteFunctions;
+
+		addExecutionHints(context, [{ json: {} }, { json: {} }], 'executeQuery', false);
+		expect(context.addExecutionHints).toHaveBeenCalledWith({
+			message:
+				"Inserts were batched for performance. If you need to preserve item matching, consider changing 'Query batching' to 'Independent' in the options.",
+			location: 'outputPane',
+		});
+	});
+	it('should add run per item hint to select operation', () => {
+		const context = {
+			addExecutionHints: jest.fn(),
+		} as unknown as IExecuteFunctions;
+
+		addExecutionHints(context, [{ json: {} }, { json: {} }], 'select', false);
+		expect(context.addExecutionHints).toHaveBeenCalledWith({
+			location: 'outputPane',
+			message:
+				"This node ran 2 times, once for each input item. To run for the first item only, enable 'execute once' in the node settings",
 		});
 	});
 });

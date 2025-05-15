@@ -3,9 +3,8 @@ import { getServiceTokenData } from 'infisical-node/lib/api/serviceTokenData';
 import { populateClientWorkspaceConfigsHelper } from 'infisical-node/lib/helpers/key';
 import { UnexpectedError, type IDataObject, type INodeProperties } from 'n8n-workflow';
 
-import type { SecretsProvider, SecretsProviderSettings, SecretsProviderState } from '@/interfaces';
-
 import { EXTERNAL_SECRETS_NAME_REGEX } from '../constants';
+import type { SecretsProvider, SecretsProviderSettings, SecretsProviderState } from '../types';
 
 export interface InfisicalSettings {
 	token: string;

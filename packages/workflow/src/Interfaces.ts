@@ -571,6 +571,8 @@ export interface IGetNodeParameterOptions {
 	extractValue?: boolean;
 	// get raw value of parameter with unresolved expressions
 	rawExpressions?: boolean;
+	// skip validation of parameter
+	skipValidation?: boolean;
 }
 
 namespace ExecuteFunctions {
@@ -690,6 +692,7 @@ export interface BinaryHelperFunctions {
 	binaryToString(body: Buffer | Readable, encoding?: BufferEncoding): Promise<string>;
 	getBinaryPath(binaryDataId: string): string;
 	getBinaryStream(binaryDataId: string, chunkSize?: number): Promise<Readable>;
+	createBinarySignedUrl(binaryData: IBinaryData, expiresIn?: string): string;
 	getBinaryMetadata(binaryDataId: string): Promise<{
 		fileName?: string;
 		mimeType?: string;
@@ -700,6 +703,16 @@ export interface BinaryHelperFunctions {
 export type DeduplicationScope = 'node' | 'workflow';
 export type DeduplicationItemTypes = string | number;
 export type DeduplicationMode = 'entries' | 'latestIncrementalKey' | 'latestDate';
+
+export interface IProcessedDataLatest {
+	mode: DeduplicationMode;
+	data: DeduplicationItemTypes;
+}
+
+export interface IProcessedDataEntries {
+	mode: DeduplicationMode;
+	data: DeduplicationItemTypes[];
+}
 
 export interface IDeduplicationOutput {
 	new: DeduplicationItemTypes[];
@@ -979,6 +992,7 @@ export type ISupplyDataFunctions = ExecuteFunctions.GetNodeParameterFn &
 		| 'sendMessageToUI'
 		| 'helpers'
 	> & {
+		getNextRunIndex(): number;
 		continueOnFail(): boolean;
 		evaluateExpression(expression: string, itemIndex: number): NodeParameterValueType;
 		getWorkflowDataProxy(itemIndex: number): IWorkflowDataProxyData;
@@ -1132,6 +1146,7 @@ export interface INode {
 	credentials?: INodeCredentials;
 	webhookId?: string;
 	extendsCredential?: string;
+	rewireOutputLogTo?: NodeConnectionType;
 }
 
 export interface IPinData {
@@ -1352,6 +1367,8 @@ export type FilterTypeOptions = {
 
 export type AssignmentTypeOptions = Partial<{
 	hideType?: boolean; // visible by default
+	defaultType?: FieldType | 'string';
+	disableType?: boolean; // visible by default
 }>;
 
 export type DisplayCondition =
@@ -1374,6 +1391,7 @@ export interface IDisplayOptions {
 	};
 	show?: {
 		'@version'?: Array<number | DisplayCondition>;
+		'@tool'?: boolean[];
 		[key: string]: Array<NodeParameterValue | DisplayCondition> | undefined;
 	};
 
@@ -1475,6 +1493,7 @@ export interface INodePropertyOptions {
 	description?: string;
 	routing?: INodePropertyRouting;
 	outputConnectionType?: NodeConnectionType;
+	inputSchema?: any;
 }
 
 export interface INodeListSearchItems extends INodePropertyOptions {
@@ -1699,6 +1718,8 @@ export type IconRef = `fa:${string}` | `node:${string}.${string}`;
 export type IconFile = `file:${string}.png` | `file:${string}.svg`;
 export type Icon = IconRef | Themed<IconFile>;
 
+type NodeGroupType = 'input' | 'output' | 'organization' | 'schedule' | 'transform' | 'trigger';
+
 export interface INodeTypeBaseDescription {
 	displayName: string;
 	name: string;
@@ -1706,7 +1727,7 @@ export interface INodeTypeBaseDescription {
 	iconColor?: ThemeIconColor;
 	iconUrl?: Themed<string>;
 	badgeIconUrl?: Themed<string>;
-	group: string[];
+	group: NodeGroupType[];
 	description: string;
 	documentationUrl?: string;
 	subtitle?: string;
@@ -1721,10 +1742,22 @@ export interface INodeTypeBaseDescription {
 	hidden?: true;
 
 	/**
-	 * Whether the node will be wrapped for tool-use by AI Agents
+	 * Whether the node will be wrapped for tool-use by AI Agents,
+	 * optionally replacing provided parts of the description
 	 */
-	usableAsTool?: true;
+	usableAsTool?: true | UsableAsToolDescription;
 }
+
+/**
+ * NodeDescription entries that replace the base node entries when
+ * the node is used as a tool
+ *
+ * Note that the new codex is hardcoded and may not behave as expected
+ * without additional changes to the implementation.
+ */
+export type UsableAsToolDescription = {
+	replacements?: Partial<Omit<INodeTypeBaseDescription, 'usableAsTool'>>;
+};
 
 export interface INodePropertyRouting {
 	operations?: IN8nRequestOperations; // Should be changed, does not sound right
@@ -1824,36 +1857,38 @@ export interface IPostReceiveSort extends IPostReceiveBase {
 	};
 }
 
-export const enum NodeConnectionType {
-	AiAgent = 'ai_agent',
-	AiChain = 'ai_chain',
-	AiDocument = 'ai_document',
-	AiEmbedding = 'ai_embedding',
-	AiLanguageModel = 'ai_languageModel',
-	AiMemory = 'ai_memory',
-	AiOutputParser = 'ai_outputParser',
-	AiRetriever = 'ai_retriever',
-	AiTextSplitter = 'ai_textSplitter',
-	AiTool = 'ai_tool',
-	AiVectorStore = 'ai_vectorStore',
-	Main = 'main',
-}
+export const NodeConnectionTypes = {
+	AiAgent: 'ai_agent',
+	AiChain: 'ai_chain',
+	AiDocument: 'ai_document',
+	AiEmbedding: 'ai_embedding',
+	AiLanguageModel: 'ai_languageModel',
+	AiMemory: 'ai_memory',
+	AiOutputParser: 'ai_outputParser',
+	AiRetriever: 'ai_retriever',
+	AiTextSplitter: 'ai_textSplitter',
+	AiTool: 'ai_tool',
+	AiVectorStore: 'ai_vectorStore',
+	Main: 'main',
+} as const;
 
-export type AINodeConnectionType = Exclude<NodeConnectionType, NodeConnectionType.Main>;
+export type NodeConnectionType = (typeof NodeConnectionTypes)[keyof typeof NodeConnectionTypes];
+
+export type AINodeConnectionType = Exclude<NodeConnectionType, typeof NodeConnectionTypes.Main>;
 
 export const nodeConnectionTypes: NodeConnectionType[] = [
-	NodeConnectionType.AiAgent,
-	NodeConnectionType.AiChain,
-	NodeConnectionType.AiDocument,
-	NodeConnectionType.AiEmbedding,
-	NodeConnectionType.AiLanguageModel,
-	NodeConnectionType.AiMemory,
-	NodeConnectionType.AiOutputParser,
-	NodeConnectionType.AiRetriever,
-	NodeConnectionType.AiTextSplitter,
-	NodeConnectionType.AiTool,
-	NodeConnectionType.AiVectorStore,
-	NodeConnectionType.Main,
+	NodeConnectionTypes.AiAgent,
+	NodeConnectionTypes.AiChain,
+	NodeConnectionTypes.AiDocument,
+	NodeConnectionTypes.AiEmbedding,
+	NodeConnectionTypes.AiLanguageModel,
+	NodeConnectionTypes.AiMemory,
+	NodeConnectionTypes.AiOutputParser,
+	NodeConnectionTypes.AiRetriever,
+	NodeConnectionTypes.AiTextSplitter,
+	NodeConnectionTypes.AiTool,
+	NodeConnectionTypes.AiVectorStore,
+	NodeConnectionTypes.Main,
 ];
 
 export interface INodeInputFilter {
@@ -1969,7 +2004,7 @@ export interface IWebhookDescription {
 	responseMode?: WebhookResponseMode | string;
 	responseData?: WebhookResponseData | string;
 	restartWebhook?: boolean;
-	isForm?: boolean;
+	nodeType?: 'webhook' | 'form' | 'mcp';
 	ndvHideUrl?: string | boolean; // If true the webhook will not be displayed in the editor
 	ndvHideMethod?: string | boolean; // If true the method will not be displayed in the editor
 }
@@ -2072,6 +2107,11 @@ export type KnownNodesAndCredentials = {
 	credentials: Record<string, CredentialLoadingDetails>;
 };
 
+export interface LoadedNodesAndCredentials {
+	nodes: INodeTypeData;
+	credentials: ICredentialTypeData;
+}
+
 export interface LoadedClass<T> {
 	sourcePath: string;
 	type: T;
@@ -2124,9 +2164,6 @@ export interface IRunExecutionData {
 	waitTill?: Date;
 	pushRef?: string;
 
-	/** Whether this execution was started by a test webhook call. */
-	isTestWebhook?: boolean;
-
 	/** Data needed for a worker to run a manual execution. */
 	manualData?: Pick<
 		IWorkflowExecutionDataProcess,
@@ -2156,16 +2193,22 @@ export interface ITaskMetadata {
 	subExecutionsCount?: number;
 }
 
-// The data that gets returned when a node runs
-export interface ITaskData {
+/** The data that gets returned when a node execution starts */
+export interface ITaskStartedData {
 	startTime: number;
+	/** This index tracks the order in which nodes are executed */
+	executionIndex: number;
+	source: Array<ISourceData | null>; // Is an array as nodes have multiple inputs
+	hints?: NodeExecutionHint[];
+}
+
+/** The data that gets returned when a node execution ends */
+export interface ITaskData extends ITaskStartedData {
 	executionTime: number;
 	executionStatus?: ExecutionStatus;
 	data?: ITaskDataConnections;
 	inputOverride?: ITaskDataConnections;
 	error?: ExecutionError;
-	hints?: NodeExecutionHint[];
-	source: Array<ISourceData | null>; // Is an array as nodes have multiple inputs
 	metadata?: ITaskMetadata;
 }
 
@@ -2218,6 +2261,7 @@ export interface IWorkflowBase {
 	id: string;
 	name: string;
 	active: boolean;
+	isArchived: boolean;
 	createdAt: Date;
 	startedAt?: Date;
 	updatedAt: Date;
@@ -2264,6 +2308,7 @@ export interface IWorkflowExecutionDataProcess {
 		name: string;
 		data?: ITaskData;
 	};
+	agentRequest?: AiAgentRequest;
 }
 
 export interface ExecuteWorkflowOptions {
@@ -2303,6 +2348,14 @@ type AiEventPayload = {
 	nodeType?: string;
 };
 
+// Used to transport an agent request for partial execution
+export interface AiAgentRequest {
+	query: string | INodeParameters;
+	tool: {
+		name: string;
+	};
+}
+
 export interface IWorkflowExecuteAdditionalData {
 	credentialsHelper: ICredentialsHelper;
 	executeWorkflow: (
@@ -2312,6 +2365,7 @@ export interface IWorkflowExecuteAdditionalData {
 	) => Promise<ExecuteWorkflowData>;
 	executionId?: string;
 	restartExecutionId?: string;
+	currentNodeExecutionIndex: number;
 	httpResponse?: express.Response;
 	httpRequest?: express.Request;
 	restApiUrl: string;
@@ -2384,6 +2438,7 @@ export interface IWorkflowSettings {
 	saveExecutionProgress?: 'DEFAULT' | boolean;
 	executionTimeout?: number;
 	executionOrder?: 'v0' | 'v1';
+	timeSavedPerExecution?: number;
 }
 
 export interface WorkflowFEMeta {
@@ -2400,11 +2455,14 @@ export interface WorkflowTestData {
 		};
 	};
 	output: {
+		assertBinaryData?: boolean;
 		nodeExecutionOrder?: string[];
+		nodeExecutionStack?: IExecuteData[];
 		testAllOutputs?: boolean;
 		nodeData: {
 			[key: string]: any[][];
 		};
+		error?: string;
 	};
 	nock?: {
 		baseUrl: string;
@@ -2422,6 +2480,7 @@ export interface WorkflowTestData {
 		mode: WorkflowExecuteMode;
 		input: INodeExecutionData;
 	};
+	credentials?: Record<string, ICredentialDataDecryptedObject>;
 }
 
 export type LogLevel = (typeof LOG_LEVELS)[number];
@@ -2586,7 +2645,7 @@ export interface ExecutionSummary {
 	retrySuccessId?: string | null;
 	waitTill?: Date;
 	createdAt: Date;
-	startedAt: Date;
+	startedAt: Date | null;
 	stoppedAt?: Date;
 	workflowId: string;
 	workflowName?: string;
@@ -2622,7 +2681,7 @@ export interface ResourceMapperFields {
 export interface WorkflowInputsData {
 	fields: ResourceMapperField[];
 	dataMode: string;
-	subworkflowInfo?: { id?: string };
+	subworkflowInfo?: { workflowId?: string; triggerId?: string };
 }
 
 export interface ResourceMapperField {
@@ -2812,8 +2871,6 @@ export interface ICheckProcessedContextData {
 		active: boolean;
 	};
 }
-
-export type ExpressionEvaluatorType = 'tmpl' | 'tournament';
 
 export type N8nAIProviderType = 'openai' | 'unknown';
 

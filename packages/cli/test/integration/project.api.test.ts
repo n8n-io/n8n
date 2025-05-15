@@ -1,18 +1,17 @@
-import type { ProjectRole } from '@n8n/api-types';
+import type { Project } from '@n8n/db';
+import { FolderRepository } from '@n8n/db';
+import { ProjectRelationRepository } from '@n8n/db';
+import { ProjectRepository } from '@n8n/db';
+import { SharedCredentialsRepository } from '@n8n/db';
+import { SharedWorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type { Scope } from '@n8n/permissions';
+import { getRoleScopes, type GlobalRole, type ProjectRole, type Scope } from '@n8n/permissions';
 import { EntityNotFoundError } from '@n8n/typeorm';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import type { Project } from '@/databases/entities/project';
-import type { GlobalRole } from '@/databases/entities/user';
-import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { getWorkflowById } from '@/public-api/v1/handlers/workflows/workflows.service';
 import { CacheService } from '@/services/cache/cache.service';
-import { RoleService } from '@/services/role.service';
+import { createFolder } from '@test-integration/db/folders';
 
 import {
 	getCredentialById,
@@ -390,7 +389,7 @@ describe('POST /projects/', () => {
 			await findProject(respProject.id);
 		}).not.toThrow();
 		expect(resp.body.data.role).toBe('project:admin');
-		for (const scope of Container.get(RoleService).getRoleScopes('project:admin')) {
+		for (const scope of getRoleScopes('project:admin')) {
 			expect(resp.body.data.scopes).toContain(scope);
 		}
 	});
@@ -1048,7 +1047,7 @@ describe('DELETE /project/:projectId', () => {
 			.expect(404);
 	});
 
-	test('migrates workflows and credentials to another project if `migrateToProject` is passed', async () => {
+	test('migrates folders, workflows and credentials to another project if `migrateToProject` is passed', async () => {
 		//
 		// ARRANGE
 		//
@@ -1070,6 +1069,11 @@ describe('DELETE /project/:projectId', () => {
 		await shareWorkflowWithProjects(ownedWorkflow, [
 			{ project: otherProject, role: 'workflow:editor' },
 		]);
+
+		await createFolder(projectToBeDeleted, { name: 'folder1' });
+		await createFolder(projectToBeDeleted, { name: 'folder2' });
+		await createFolder(targetProject, { name: 'folder1' });
+		await createFolder(otherProject, { name: 'folder3' });
 
 		//
 		// ACT
@@ -1128,6 +1132,22 @@ describe('DELETE /project/:projectId', () => {
 				role: 'credential:user',
 			}),
 		).resolves.toBeDefined();
+
+		// folders are in the target project
+		const foldersInTargetProject = await Container.get(FolderRepository).findBy({
+			homeProject: { id: targetProject.id },
+		});
+
+		const foldersInDeletedProject = await Container.get(FolderRepository).findBy({
+			homeProject: { id: projectToBeDeleted.id },
+		});
+
+		expect(foldersInDeletedProject).toHaveLength(0);
+
+		expect(foldersInTargetProject).toHaveLength(3);
+		expect(foldersInTargetProject.map((f) => f.name)).toEqual(
+			expect.arrayContaining(['folder1', 'folder1', 'folder2']),
+		);
 	});
 
 	// This test is testing behavior that is explicitly not enabled right now,

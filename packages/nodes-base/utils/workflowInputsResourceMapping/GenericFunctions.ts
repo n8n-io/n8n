@@ -96,7 +96,12 @@ export function getFieldEntries(context: IWorkflowNodeContext): {
 	if (Array.isArray(result)) {
 		const dataMode = String(inputSource);
 		const workflow = context.getWorkflow();
-		return { fields: result, dataMode, subworkflowInfo: { id: workflow.id } };
+		const node = context.getNode();
+		return {
+			fields: result,
+			dataMode,
+			subworkflowInfo: { workflowId: workflow.id, triggerId: node.id },
+		};
 	}
 	throw new NodeOperationError(context.getNode(), result);
 }
@@ -137,10 +142,11 @@ export function getCurrentWorkflowInputData(this: IExecuteFunctions | ISupplyDat
 	} else {
 		const removedKeys = new Set(schema.filter((x) => x.removed).map((x) => x.displayName));
 
-		const filteredInputData: INodeExecutionData[] = inputData.map((item, index) => ({
+		const filteredInputData: INodeExecutionData[] = inputData.map(({ json, binary }, index) => ({
 			index,
 			pairedItem: { item: index },
-			json: _.pickBy(item.json, (_v, key) => !removedKeys.has(key)),
+			json: _.pickBy(json, (_v, key) => !removedKeys.has(key)),
+			binary,
 		}));
 
 		return filteredInputData;
@@ -153,7 +159,7 @@ export async function loadWorkflowInputMappings(
 	const nodeLoadContext = await this.getWorkflowNodeContext(EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE);
 	let fields: ResourceMapperField[] = [];
 	let dataMode: string = PASSTHROUGH;
-	let subworkflowInfo: { id?: string } | undefined;
+	let subworkflowInfo: { workflowId?: string; triggerId?: string } | undefined;
 
 	if (nodeLoadContext) {
 		const fieldValues = getFieldEntries(nodeLoadContext);

@@ -113,6 +113,8 @@ const { t } = useI18n();
 }
 .tooltipIcon {
 	margin-left: var(--spacing-3xs);
+	color: var(--color-text-base);
+	font-size: var(--font-size-2xs);
 }
 .panelArrow {
 	font-size: var(--font-size-2xs);
@@ -126,7 +128,7 @@ const { t } = useI18n();
 	margin-right: var(--node-icon-margin-right, var(--spacing-s));
 }
 .name {
-	font-weight: var(--node-creator-name-weight, var(--font-weight-bold));
+	font-weight: var(--node-creator-name-weight, var(--font-weight-medium));
 	font-size: var(--node-creator-name-size, var(--font-size-s));
 	line-height: 1.115rem;
 }
@@ -134,7 +136,7 @@ const { t } = useI18n();
 	margin-top: var(--spacing-5xs);
 	font-size: var(--font-size-2xs);
 	line-height: 1rem;
-	font-weight: 400;
+	font-weight: var(--font-weight-regular);
 	color: var(--node-creator-description-colos, var(--color-text-base));
 }
 

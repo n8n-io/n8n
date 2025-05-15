@@ -3,6 +3,9 @@ import 'fake-indexeddb/auto';
 import { configure } from '@testing-library/vue';
 import 'core-js/proposals/set-methods-v2';
 
+// Avoid tests failing because of difference between local and GitHub actions timezone
+process.env.TZ = 'UTC';
+
 configure({ testIdAttribute: 'data-test-id' });
 
 window.ResizeObserver =
@@ -103,4 +106,9 @@ Object.defineProperty(window, 'Worker', {
 Object.defineProperty(window, 'DataTransfer', {
 	writable: true,
 	value: DataTransfer,
+});
+
+Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', {
+	writable: true,
+	value: vi.fn(),
 });

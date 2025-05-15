@@ -1,15 +1,12 @@
 {
     "type": "object",
     "properties": {
-        "entity_id": {
-            "type": "string"
-        },
-        "state": {
-            "type": "string"
-        },
         "attributes": {
             "type": "object",
             "properties": {
+                "device_class": {
+                    "type": "string"
+                },
                 "friendly_name": {
                     "type": "string"
                 },
@@ -18,14 +15,19 @@
                 },
                 "unit_of_measurement": {
                     "type": "string"
-                },
-                "device_class": {
+                }
+            }
+        },
+        "context": {
+            "type": "object",
+            "properties": {
+                "id": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "friendly_name"
-            ]
+            }
+        },
+        "entity_id": {
+            "type": "string"
         },
         "last_changed": {
             "type": "string"
@@ -36,26 +38,9 @@
         "last_updated": {
             "type": "string"
         },
-        "context": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "id",
-                "parent_id",
-                "user_id"
-            ]
+        "state": {
+            "type": "string"
         }
     },
-    "required": [
-        "entity_id",
-        "state",
-        "attributes",
-        "last_changed",
-        "last_updated",
-        "context"
-    ]
+    "version": 1
 }

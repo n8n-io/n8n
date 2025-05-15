@@ -1,55 +1,47 @@
 {
     "type": "object",
     "properties": {
-        "id": {
+        "date": {
             "type": "string"
         },
-        "threadId": {
-            "type": "string"
-        },
-        "sizeEstimate": {
-            "type": "integer"
-        },
-        "labelIds": {
-            "type": "array",
-            "items": {
-                "type": "string"
+        "from": {
+            "type": "object",
+            "properties": {
+                "html": {
+                    "type": "string"
+                },
+                "text": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "address": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
             }
         },
         "headers": {
             "type": "object",
             "properties": {
-                "delivered-to": {
-                    "type": "string"
-                },
-                "received": {
-                    "type": "string"
-                },
-                "x-google-smtp-source": {
-                    "type": "string"
-                },
-                "x-received": {
-                    "type": "string"
-                },
-                "arc-seal": {
+                "arc-authentication-results": {
                     "type": "string"
                 },
                 "arc-message-signature": {
                     "type": "string"
                 },
-                "arc-authentication-results": {
-                    "type": "string"
-                },
-                "return-path": {
-                    "type": "string"
-                },
-                "received-spf": {
+                "arc-seal": {
                     "type": "string"
                 },
                 "authentication-results": {
-                    "type": "string"
-                },
-                "dkim-signature": {
                     "type": "string"
                 },
                 "content-type": {
@@ -58,30 +50,67 @@
                 "date": {
                     "type": "string"
                 },
-                "mime-version": {
+                "delivered-to": {
                     "type": "string"
                 },
-                "to": {
+                "dkim-signature": {
                     "type": "string"
                 },
-                "subject": {
+                "from": {
                     "type": "string"
                 },
                 "message-id": {
                     "type": "string"
                 },
-                "from": {
+                "mime-version": {
+                    "type": "string"
+                },
+                "received": {
+                    "type": "string"
+                },
+                "received-spf": {
+                    "type": "string"
+                },
+                "return-path": {
+                    "type": "string"
+                },
+                "subject": {
+                    "type": "string"
+                },
+                "to": {
+                    "type": "string"
+                },
+                "x-gm-message-state": {
+                    "type": "string"
+                },
+                "x-google-dkim-signature": {
+                    "type": "string"
+                },
+                "x-google-smtp-source": {
+                    "type": "string"
+                },
+                "x-received": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "content-type",
-                "date",
-                "mime-version",
-                "subject",
-                "message-id",
-                "from"
-            ]
+            }
+        },
+        "id": {
+            "type": "string"
+        },
+        "labelIds": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "messageId": {
+            "type": "string"
+        },
+        "sizeEstimate": {
+            "type": "integer"
+        },
+        "subject": {
+            "type": "string"
         },
         "text": {
             "type": "string"
@@ -89,15 +118,18 @@
         "textAsHtml": {
             "type": "string"
         },
-        "subject": {
-            "type": "string"
-        },
-        "date": {
+        "threadId": {
             "type": "string"
         },
         "to": {
             "type": "object",
             "properties": {
+                "html": {
+                    "type": "string"
+                },
+                "text": {
+                    "type": "string"
+                },
                 "value": {
                     "type": "array",
                     "items": {
@@ -109,62 +141,11 @@
                             "name": {
                                 "type": "string"
                             }
-                        },
-                        "required": [
-                            "address",
-                            "name"
-                        ]
+                        }
                     }
-                },
-                "html": {
-                    "type": "string"
-                },
-                "text": {
-                    "type": "string"
                 }
-            },
-            "required": [
-                "value",
-                "html",
-                "text"
-            ]
-        },
-        "from": {
-            "type": "object",
-            "properties": {
-                "value": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "address": {
-                                "type": "string"
-                            },
-                            "name": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "address",
-                            "name"
-                        ]
-                    }
-                },
-                "html": {
-                    "type": "string"
-                },
-                "text": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "value",
-                "html",
-                "text"
-            ]
-        },
-        "messageId": {
-            "type": "string"
+            }
         }
-    }
+    },
+    "version": 3
 }

@@ -1,3 +1,5 @@
+import type { User, Variables } from '@n8n/db';
+
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { createOwnerWithApiKey } from '@test-integration/db/users';
 import { createVariable, getVariableOrFail } from '@test-integration/db/variables';
@@ -6,7 +8,9 @@ import { setupTestServer } from '@test-integration/utils';
 import * as testDb from '../shared/test-db';
 
 describe('Variables in Public API', () => {
+	let owner: User;
 	const testServer = setupTestServer({ endpointGroups: ['publicApi'] });
+	const licenseErrorMessage = new FeatureNotLicensedError('feat:variables').message;
 
 	beforeAll(async () => {
 		await testDb.init();
@@ -14,6 +18,8 @@ describe('Variables in Public API', () => {
 
 	beforeEach(async () => {
 		await testDb.truncate(['Variables', 'User']);
+
+		owner = await createOwnerWithApiKey();
 	});
 
 	describe('GET /variables', () => {
@@ -22,7 +28,6 @@ describe('Variables in Public API', () => {
 			 * Arrange
 			 */
 			testServer.license.enable('feat:variables');
-			const owner = await createOwnerWithApiKey();
 			const variables = await Promise.all([createVariable(), createVariable(), createVariable()]);
 
 			/**
@@ -46,12 +51,6 @@ describe('Variables in Public API', () => {
 
 		it('if not licensed, should reject', async () => {
 			/**
-			 * Arrange
-			 */
-
-			const owner = await createOwnerWithApiKey();
-
-			/**
 			 * Act
 			 */
 			const response = await testServer.publicApiAgentFor(owner).get('/variables');
@@ -60,10 +59,7 @@ describe('Variables in Public API', () => {
 			 * Assert
 			 */
 			expect(response.status).toBe(403);
-			expect(response.body).toHaveProperty(
-				'message',
-				new FeatureNotLicensedError('feat:variables').message,
-			);
+			expect(response.body).toHaveProperty('message', licenseErrorMessage);
 		});
 	});
 
@@ -73,7 +69,6 @@ describe('Variables in Public API', () => {
 			 * Arrange
 			 */
 			testServer.license.enable('feat:variables');
-			const owner = await createOwnerWithApiKey();
 			const variablePayload = { key: 'key', value: 'value' };
 
 			/**
@@ -97,7 +92,6 @@ describe('Variables in Public API', () => {
 			/**
 			 * Arrange
 			 */
-			const owner = await createOwnerWithApiKey();
 			const variablePayload = { key: 'key', value: 'value' };
 
 			/**
@@ -112,21 +106,52 @@ describe('Variables in Public API', () => {
 			 * Assert
 			 */
 			expect(response.status).toBe(403);
-			expect(response.body).toHaveProperty(
-				'message',
-				new FeatureNotLicensedError('feat:variables').message,
-			);
+			expect(response.body).toHaveProperty('message', licenseErrorMessage);
+		});
+	});
+
+	describe('PUT /variables/:id', () => {
+		const variablePayload = { key: 'updatedKey', value: 'updatedValue' };
+		let variable: Variables;
+		beforeEach(async () => {
+			variable = await createVariable();
+		});
+
+		it('if licensed, should update a variable', async () => {
+			testServer.license.enable('feat:variables');
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.put(`/variables/${variable.id}`)
+				.send(variablePayload);
+
+			expect(response.status).toBe(204);
+			const updatedVariable = await getVariableOrFail(variable.id);
+			expect(updatedVariable).toEqual(expect.objectContaining(variablePayload));
+		});
+
+		it('if not licensed, should reject', async () => {
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.put(`/variables/${variable.id}`)
+				.send(variablePayload);
+
+			expect(response.status).toBe(403);
+			expect(response.body).toHaveProperty('message', licenseErrorMessage);
 		});
 	});
 
 	describe('DELETE /variables/:id', () => {
+		let variable: Variables;
+		beforeEach(async () => {
+			variable = await createVariable();
+		});
+
 		it('if licensed, should delete a variable', async () => {
 			/**
 			 * Arrange
 			 */
 			testServer.license.enable('feat:variables');
-			const owner = await createOwnerWithApiKey();
-			const variable = await createVariable();
 
 			/**
 			 * Act
@@ -144,12 +169,6 @@ describe('Variables in Public API', () => {
 
 		it('if not licensed, should reject', async () => {
 			/**
-			 * Arrange
-			 */
-			const owner = await createOwnerWithApiKey();
-			const variable = await createVariable();
-
-			/**
 			 * Act
 			 */
 			const response = await testServer
@@ -160,10 +179,7 @@ describe('Variables in Public API', () => {
 			 * Assert
 			 */
 			expect(response.status).toBe(403);
-			expect(response.body).toHaveProperty(
-				'message',
-				new FeatureNotLicensedError('feat:variables').message,
-			);
+			expect(response.body).toHaveProperty('message', licenseErrorMessage);
 		});
 	});
 });

@@ -5,7 +5,7 @@ import type {
 } from '@langchain/textsplitters';
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
@@ -60,10 +60,10 @@ export class TextSplitterRecursiveCharacterTextSplitter implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.AiTextSplitter],
+		outputs: [NodeConnectionTypes.AiTextSplitter],
 		outputNames: ['Text Splitter'],
 		properties: [
-			getConnectionHintNoticeField([NodeConnectionType.AiDocument]),
+			getConnectionHintNoticeField([NodeConnectionTypes.AiDocument]),
 			{
 				displayName: 'Chunk Size',
 				name: 'chunkSize',

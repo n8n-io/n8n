@@ -1,10 +1,10 @@
 {
     "type": "object",
     "properties": {
-        "id": {
+        "historyId": {
             "type": "string"
         },
-        "historyId": {
+        "id": {
             "type": "string"
         },
         "messages": {
@@ -12,30 +12,13 @@
             "items": {
                 "type": "object",
                 "properties": {
-                    "id": {
+                    "From": {
                         "type": "string"
-                    },
-                    "threadId": {
-                        "type": "string"
-                    },
-                    "snippet": {
-                        "type": "string"
-                    },
-                    "payload": {
-                        "type": "object",
-                        "properties": {
-                            "mimeType": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "mimeType"
-                        ]
-                    },
-                    "sizeEstimate": {
-                        "type": "integer"
                     },
                     "historyId": {
+                        "type": "string"
+                    },
+                    "id": {
                         "type": "string"
                     },
                     "internalDate": {
@@ -52,35 +35,35 @@
                                 "name": {
                                     "type": "string"
                                 }
-                            },
-                            "required": [
-                                "id",
-                                "name"
-                            ]
+                            }
                         }
                     },
-                    "To": {
+                    "payload": {
+                        "type": "object",
+                        "properties": {
+                            "mimeType": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "sizeEstimate": {
+                        "type": "integer"
+                    },
+                    "snippet": {
                         "type": "string"
                     },
                     "Subject": {
                         "type": "string"
                     },
-                    "From": {
+                    "threadId": {
+                        "type": "string"
+                    },
+                    "To": {
                         "type": "string"
                     }
-                },
-                "required": [
-                    "id",
-                    "threadId",
-                    "snippet",
-                    "payload",
-                    "sizeEstimate",
-                    "historyId",
-                    "internalDate",
-                    "To",
-                    "From"
-                ]
+                }
             }
         }
-    }
+    },
+    "version": 3
 }

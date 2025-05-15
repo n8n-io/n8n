@@ -4,6 +4,7 @@ import type { PropType } from 'vue';
 
 import type { IN8nButton } from '@n8n/design-system/types';
 
+import { useInjectTooltipAppendTo } from '../../composables/useTooltipAppendTo';
 import N8nButton from '../N8nButton';
 
 export type Justify =
@@ -37,10 +38,16 @@ const props = defineProps({
 defineOptions({
 	inheritAttrs: false,
 });
+
+const appendTo = useInjectTooltipAppendTo();
 </script>
 
 <template>
-	<ElTooltip v-bind="{ ...props, ...$attrs }" :popper-class="props.popperClass ?? 'n8n-tooltip'">
+	<ElTooltip
+		v-bind="{ ...props, ...$attrs }"
+		:append-to="props.appendTo ?? appendTo"
+		:popper-class="props.popperClass ?? 'n8n-tooltip'"
+	>
 		<slot />
 		<template #content>
 			<slot name="content">

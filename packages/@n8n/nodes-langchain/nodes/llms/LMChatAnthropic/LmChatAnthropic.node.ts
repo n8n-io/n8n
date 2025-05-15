@@ -3,7 +3,7 @@
 import { ChatAnthropic } from '@langchain/anthropic';
 import type { LLMResult } from '@langchain/core/outputs';
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type INodePropertyOptions,
 	type INodeProperties,
 	type ISupplyDataFunctions,
@@ -109,7 +109,7 @@ export class LmChatAnthropic implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.AiLanguageModel],
+		outputs: [NodeConnectionTypes.AiLanguageModel],
 		outputNames: ['Model'],
 		credentials: [
 			{
@@ -118,7 +118,7 @@ export class LmChatAnthropic implements INodeType {
 			},
 		],
 		properties: [
-			getConnectionHintNoticeField([NodeConnectionType.AiChain, NodeConnectionType.AiChain]),
+			getConnectionHintNoticeField([NodeConnectionTypes.AiChain, NodeConnectionTypes.AiChain]),
 			{
 				...modelField,
 				displayOptions: {
@@ -266,8 +266,10 @@ export class LmChatAnthropic implements INodeType {
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const credentials = await this.getCredentials('anthropicApi');
-
+		const credentials = await this.getCredentials<{ url?: string; apiKey?: string }>(
+			'anthropicApi',
+		);
+		const baseURL = credentials.url ?? 'https://api.anthropic.com';
 		const version = this.getNode().typeVersion;
 		const modelName =
 			version >= 1.3
@@ -317,8 +319,9 @@ export class LmChatAnthropic implements INodeType {
 		}
 
 		const model = new ChatAnthropic({
-			anthropicApiKey: credentials.apiKey as string,
+			anthropicApiKey: credentials.apiKey,
 			modelName,
+			anthropicApiUrl: baseURL,
 			maxTokens: options.maxTokensToSample,
 			temperature: options.temperature,
 			topK: options.topK,

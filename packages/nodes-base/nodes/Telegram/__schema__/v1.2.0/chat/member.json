@@ -7,46 +7,37 @@
         "result": {
             "type": "object",
             "properties": {
+                "is_anonymous": {
+                    "type": "boolean"
+                },
+                "status": {
+                    "type": "string"
+                },
                 "user": {
                     "type": "object",
                     "properties": {
+                        "first_name": {
+                            "type": "string"
+                        },
                         "id": {
                             "type": "integer"
                         },
                         "is_bot": {
                             "type": "boolean"
                         },
-                        "first_name": {
+                        "language_code": {
                             "type": "string"
                         },
-                        "language_code": {
+                        "last_name": {
                             "type": "string"
                         },
                         "username": {
                             "type": "string"
                         }
-                    },
-                    "required": [
-                        "id",
-                        "is_bot",
-                        "first_name"
-                    ]
-                },
-                "status": {
-                    "type": "string"
-                },
-                "is_anonymous": {
-                    "type": "boolean"
+                    }
                 }
-            },
-            "required": [
-                "user",
-                "status"
-            ]
+            }
         }
     },
-    "required": [
-        "ok",
-        "result"
-    ]
+    "version": 3
 }

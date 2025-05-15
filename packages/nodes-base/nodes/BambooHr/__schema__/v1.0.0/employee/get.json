@@ -1,14 +1,27 @@
 {
     "type": "object",
     "properties": {
-        "1357": {
+        "canUploadPhoto": {
+            "type": "boolean"
+        },
+        "displayName": {
+            "type": "string"
+        },
+        "firstName": {
             "type": "string"
         },
         "id": {
             "type": "string"
+        },
+        "lastName": {
+            "type": "string"
+        },
+        "photoUploaded": {
+            "type": "boolean"
+        },
+        "photoUrl": {
+            "type": "string"
         }
     },
-    "required": [
-        "id"
-    ]
+    "version": 2
 }

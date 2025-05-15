@@ -1,132 +1,90 @@
 {
     "type": "object",
     "properties": {
-        "id": {
-            "type": "integer"
-        },
-        "date": {
-            "type": "string"
-        },
-        "date_gmt": {
-            "type": "string"
-        },
-        "guid": {
-            "type": "object",
-            "properties": {
-                "rendered": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "rendered"
-            ]
-        },
-        "modified": {
-            "type": "string"
-        },
-        "modified_gmt": {
-            "type": "string"
-        },
-        "slug": {
-            "type": "string"
-        },
-        "status": {
-            "type": "string"
-        },
-        "type": {
-            "type": "string"
-        },
-        "link": {
-            "type": "string"
-        },
-        "title": {
-            "type": "object",
-            "properties": {
-                "rendered": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "rendered"
-            ]
-        },
-        "content": {
-            "type": "object",
-            "properties": {
-                "rendered": {
-                    "type": "string"
-                },
-                "protected": {
-                    "type": "boolean"
-                }
-            },
-            "required": [
-                "rendered",
-                "protected"
-            ]
-        },
-        "excerpt": {
-            "type": "object",
-            "properties": {
-                "rendered": {
-                    "type": "string"
-                },
-                "protected": {
-                    "type": "boolean"
-                }
-            },
-            "required": [
-                "rendered",
-                "protected"
-            ]
-        },
-        "author": {
-            "type": "integer"
-        },
-        "featured_media": {
-            "type": "integer"
-        },
-        "comment_status": {
-            "type": "string"
-        },
-        "ping_status": {
-            "type": "string"
-        },
-        "sticky": {
-            "type": "boolean"
-        },
-        "template": {
-            "type": "string"
-        },
-        "format": {
-            "type": "string"
-        },
-        "meta": {
-            "type": "object",
-            "properties": {
-                "footnotes": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "footnotes"
-            ]
-        },
-        "categories": {
-            "type": "array",
-            "items": {
-                "type": "integer"
-            }
-        },
-        "tags": {
-            "type": "array",
-            "items": {
-                "type": "integer"
-            }
-        },
         "_links": {
             "type": "object",
             "properties": {
+                "about": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "href": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "author": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "embeddable": {
+                                "type": "boolean"
+                            },
+                            "href": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "collection": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "href": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "curies": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "href": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            },
+                            "templated": {
+                                "type": "boolean"
+                            }
+                        }
+                    }
+                },
+                "predecessor-version": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "href": {
+                                "type": "string"
+                            },
+                            "id": {
+                                "type": "integer"
+                            }
+                        }
+                    }
+                },
+                "replies": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "embeddable": {
+                                "type": "boolean"
+                            },
+                            "href": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
                 "self": {
                     "type": "array",
                     "items": {
@@ -144,79 +102,9 @@
                                             "type": "string"
                                         }
                                     }
-                                },
-                                "required": [
-                                    "allow"
-                                ]
+                                }
                             }
-                        },
-                        "required": [
-                            "href"
-                        ]
-                    }
-                },
-                "collection": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "href": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "href"
-                        ]
-                    }
-                },
-                "about": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "href": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "href"
-                        ]
-                    }
-                },
-                "author": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "embeddable": {
-                                "type": "boolean"
-                            },
-                            "href": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "embeddable",
-                            "href"
-                        ]
-                    }
-                },
-                "replies": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "embeddable": {
-                                "type": "boolean"
-                            },
-                            "href": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "embeddable",
-                            "href"
-                        ]
+                        }
                     }
                 },
                 "version-history": {
@@ -230,29 +118,7 @@
                             "href": {
                                 "type": "string"
                             }
-                        },
-                        "required": [
-                            "count",
-                            "href"
-                        ]
-                    }
-                },
-                "predecessor-version": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "id": {
-                                "type": "integer"
-                            },
-                            "href": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "id",
-                            "href"
-                        ]
+                        }
                     }
                 },
                 "wp:attachment": {
@@ -263,10 +129,21 @@
                             "href": {
                                 "type": "string"
                             }
-                        },
-                        "required": [
-                            "href"
-                        ]
+                        }
+                    }
+                },
+                "wp:featuredmedia": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "embeddable": {
+                                "type": "boolean"
+                            },
+                            "href": {
+                                "type": "string"
+                            }
+                        }
                     }
                 },
                 "wp:term": {
@@ -274,56 +151,126 @@
                     "items": {
                         "type": "object",
                         "properties": {
-                            "taxonomy": {
-                                "type": "string"
-                            },
                             "embeddable": {
                                 "type": "boolean"
                             },
                             "href": {
                                 "type": "string"
-                            }
-                        },
-                        "required": [
-                            "taxonomy",
-                            "embeddable",
-                            "href"
-                        ]
-                    }
-                },
-                "curies": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "name": {
-                                "type": "string"
                             },
-                            "href": {
+                            "taxonomy": {
                                 "type": "string"
-                            },
-                            "templated": {
-                                "type": "boolean"
                             }
-                        },
-                        "required": [
-                            "name",
-                            "href",
-                            "templated"
-                        ]
+                        }
                     }
                 }
-            },
-            "required": [
-                "self",
-                "collection",
-                "about",
-                "replies",
-                "version-history",
-                "wp:attachment",
-                "wp:term",
-                "curies"
-            ]
+            }
+        },
+        "author": {
+            "type": "integer"
+        },
+        "categories": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            }
+        },
+        "comment_status": {
+            "type": "string"
+        },
+        "content": {
+            "type": "object",
+            "properties": {
+                "protected": {
+                    "type": "boolean"
+                },
+                "rendered": {
+                    "type": "string"
+                }
+            }
+        },
+        "date": {
+            "type": "string"
+        },
+        "date_gmt": {
+            "type": "string"
+        },
+        "excerpt": {
+            "type": "object",
+            "properties": {
+                "protected": {
+                    "type": "boolean"
+                },
+                "rendered": {
+                    "type": "string"
+                }
+            }
+        },
+        "featured_media": {
+            "type": "integer"
+        },
+        "format": {
+            "type": "string"
+        },
+        "guid": {
+            "type": "object",
+            "properties": {
+                "rendered": {
+                    "type": "string"
+                }
+            }
+        },
+        "id": {
+            "type": "integer"
+        },
+        "link": {
+            "type": "string"
+        },
+        "meta": {
+            "type": "object",
+            "properties": {
+                "footnotes": {
+                    "type": "string"
+                }
+            }
+        },
+        "modified": {
+            "type": "string"
+        },
+        "modified_gmt": {
+            "type": "string"
+        },
+        "ping_status": {
+            "type": "string"
+        },
+        "slug": {
+            "type": "string"
+        },
+        "status": {
+            "type": "string"
+        },
+        "sticky": {
+            "type": "boolean"
+        },
+        "tags": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            }
+        },
+        "template": {
+            "type": "string"
+        },
+        "title": {
+            "type": "object",
+            "properties": {
+                "rendered": {
+                    "type": "string"
+                }
+            }
+        },
+        "type": {
+            "type": "string"
         }
-    }
+    },
+    "version": 2
 }

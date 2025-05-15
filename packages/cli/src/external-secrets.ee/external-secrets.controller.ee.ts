@@ -1,15 +1,29 @@
-import { Response } from 'express';
+import { Get, Post, RestController, GlobalScope, Middleware } from '@n8n/decorators';
+import { Request, Response, NextFunction } from 'express';
 
-import { Get, Post, RestController, GlobalScope } from '@/decorators';
-import { ExternalSecretsProviderNotFoundError } from '@/errors/external-secrets-provider-not-found.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { ExternalSecretsRequest } from '@/requests';
 
+import { ExternalSecretsProviders } from './external-secrets-providers.ee';
 import { ExternalSecretsService } from './external-secrets.service.ee';
+import { ExternalSecretsRequest } from './types';
 
 @RestController('/external-secrets')
 export class ExternalSecretsController {
-	constructor(private readonly secretsService: ExternalSecretsService) {}
+	constructor(
+		private readonly secretsService: ExternalSecretsService,
+		private readonly secretsProviders: ExternalSecretsProviders,
+	) {}
+
+	@Middleware()
+	validateProviderName(req: Request, _: Response, next: NextFunction) {
+		if ('provider' in req.params) {
+			const { provider } = req.params;
+			if (!this.secretsProviders.hasProvider(provider)) {
+				throw new NotFoundError(`Could not find provider "${provider}"`);
+			}
+		}
+		next();
+	}
 
 	@Get('/providers')
 	@GlobalScope('externalSecretsProvider:list')
@@ -21,48 +35,27 @@ export class ExternalSecretsController {
 	@GlobalScope('externalSecretsProvider:read')
 	async getProvider(req: ExternalSecretsRequest.GetProvider) {
 		const providerName = req.params.provider;
-		try {
-			return this.secretsService.getProvider(providerName);
-		} catch (e) {
-			if (e instanceof ExternalSecretsProviderNotFoundError) {
-				throw new NotFoundError(`Could not find provider "${e.providerName}"`);
-			}
-			throw e;
-		}
+		return this.secretsService.getProvider(providerName);
 	}
 
 	@Post('/providers/:provider/test')
 	@GlobalScope('externalSecretsProvider:read')
 	async testProviderSettings(req: ExternalSecretsRequest.TestProviderSettings, res: Response) {
 		const providerName = req.params.provider;
-		try {
-			const result = await this.secretsService.testProviderSettings(providerName, req.body);
-			if (result.success) {
-				res.statusCode = 200;
-			} else {
-				res.statusCode = 400;
-			}
-			return result;
-		} catch (e) {
-			if (e instanceof ExternalSecretsProviderNotFoundError) {
-				throw new NotFoundError(`Could not find provider "${e.providerName}"`);
-			}
-			throw e;
+		const result = await this.secretsService.testProviderSettings(providerName, req.body);
+		if (result.success) {
+			res.statusCode = 200;
+		} else {
+			res.statusCode = 400;
 		}
+		return result;
 	}
 
 	@Post('/providers/:provider')
 	@GlobalScope('externalSecretsProvider:create')
 	async setProviderSettings(req: ExternalSecretsRequest.SetProviderSettings) {
 		const providerName = req.params.provider;
-		try {
-			await this.secretsService.saveProviderSettings(providerName, req.body, req.user.id);
-		} catch (e) {
-			if (e instanceof ExternalSecretsProviderNotFoundError) {
-				throw new NotFoundError(`Could not find provider "${e.providerName}"`);
-			}
-			throw e;
-		}
+		await this.secretsService.saveProviderSettings(providerName, req.body, req.user.id);
 		return {};
 	}
 
@@ -70,14 +63,7 @@ export class ExternalSecretsController {
 	@GlobalScope('externalSecretsProvider:update')
 	async setProviderConnected(req: ExternalSecretsRequest.SetProviderConnected) {
 		const providerName = req.params.provider;
-		try {
-			await this.secretsService.saveProviderConnected(providerName, req.body.connected);
-		} catch (e) {
-			if (e instanceof ExternalSecretsProviderNotFoundError) {
-				throw new NotFoundError(`Could not find provider "${e.providerName}"`);
-			}
-			throw e;
-		}
+		await this.secretsService.saveProviderConnected(providerName, req.body.connected);
 		return {};
 	}
 
@@ -85,20 +71,13 @@ export class ExternalSecretsController {
 	@GlobalScope('externalSecretsProvider:sync')
 	async updateProvider(req: ExternalSecretsRequest.UpdateProvider, res: Response) {
 		const providerName = req.params.provider;
-		try {
-			const resp = await this.secretsService.updateProvider(providerName);
-			if (resp) {
-				res.statusCode = 200;
-			} else {
-				res.statusCode = 400;
-			}
-			return { updated: resp };
-		} catch (e) {
-			if (e instanceof ExternalSecretsProviderNotFoundError) {
-				throw new NotFoundError(`Could not find provider "${e.providerName}"`);
-			}
-			throw e;
+		const resp = await this.secretsService.updateProvider(providerName);
+		if (resp) {
+			res.statusCode = 200;
+		} else {
+			res.statusCode = 400;
 		}
+		return { updated: resp };
 	}
 
 	@Get('/secrets')

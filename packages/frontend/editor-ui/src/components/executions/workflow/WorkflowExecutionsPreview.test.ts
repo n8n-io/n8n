@@ -11,6 +11,14 @@ import type { ExecutionSummaryWithScopes, IWorkflowDb } from '@/Interface';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
+import type { FrontendSettings } from '@n8n/api-types';
+
+const showMessage = vi.fn();
+const showError = vi.fn();
+const showToast = vi.fn();
+vi.mock('@/composables/useToast', () => ({
+	useToast: () => ({ showMessage, showError, showToast }),
+}));
 
 const routes = [
 	{ path: '/', name: 'home', component: { template: '<div></div>' } },
@@ -41,7 +49,9 @@ const generateUndefinedNullOrString = () => {
 	}
 };
 
-const executionDataFactory = (): ExecutionSummaryWithScopes => ({
+const executionDataFactory = (
+	tags: Array<{ id: string; name: string }> = [],
+): ExecutionSummaryWithScopes => ({
 	id: faker.string.uuid(),
 	finished: faker.datatype.boolean(),
 	mode: faker.helpers.arrayElement(['manual', 'trigger']),
@@ -55,6 +65,7 @@ const executionDataFactory = (): ExecutionSummaryWithScopes => ({
 	retryOf: generateUndefinedNullOrString(),
 	retrySuccessId: generateUndefinedNullOrString(),
 	scopes: ['workflow:update'],
+	annotation: { tags, vote: 'up' },
 });
 
 const renderComponent = createComponentRenderer(WorkflowExecutionsPreview, {
@@ -89,7 +100,7 @@ describe('WorkflowExecutionsPreview.vue', () => {
 			settingsStore.settings.enterprise = {
 				...(settingsStore.settings.enterprise ?? {}),
 				[EnterpriseEditionFeature.DebugInEditor]: availability,
-			};
+			} as FrontendSettings['enterprise'];
 
 			workflowsStore.workflowsById[executionData.workflowId] = { scopes } as IWorkflowDb;
 

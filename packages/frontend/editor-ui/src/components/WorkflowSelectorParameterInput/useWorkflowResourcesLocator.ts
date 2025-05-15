@@ -56,6 +56,7 @@ export function useWorkflowResourcesLocator(router: Router) {
 			name: getWorkflowName(workflow.id),
 			value: workflow.id,
 			url: getWorkflowUrl(workflow.id),
+			isArchived: workflow.isArchived,
 		};
 	}
 

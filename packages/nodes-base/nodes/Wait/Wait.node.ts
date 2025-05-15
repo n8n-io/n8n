@@ -1,4 +1,3 @@
-import { DateTime } from 'luxon';
 import type {
 	IExecuteFunctions,
 	INodeExecutionData,
@@ -8,10 +7,11 @@ import type {
 	IWebhookFunctions,
 } from 'n8n-workflow';
 import {
-	NodeOperationError,
-	NodeConnectionType,
+	NodeConnectionTypes,
 	WAIT_INDEFINITELY,
 	FORM_TRIGGER_NODE_TYPE,
+	tryToParseDateTime,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../utils/utilities';
@@ -239,8 +239,8 @@ export class Wait extends Webhook {
 			name: 'Wait',
 			color: '#804050',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: credentialsProperty(this.authPropertyName),
 		webhooks: [
 			{
@@ -256,7 +256,7 @@ export class Wait extends Webhook {
 				path: webhookPath,
 				restartWebhook: true,
 				isFullPath: true,
-				isForm: true,
+				nodeType: 'form',
 			},
 			{
 				name: 'default',
@@ -266,7 +266,7 @@ export class Wait extends Webhook {
 				path: webhookPath,
 				restartWebhook: true,
 				isFullPath: true,
-				isForm: true,
+				nodeType: 'form',
 			},
 		],
 		properties: [
@@ -506,20 +506,17 @@ export class Wait extends Webhook {
 			// a number of seconds added to the current timestamp
 			waitTill = new Date(new Date().getTime() + waitAmount);
 		} else {
-			const dateTimeStr = context.getNodeParameter('dateTime', 0) as string;
+			try {
+				const dateTimeStrRaw = context.getNodeParameter('dateTime', 0);
+				const parsedDateTime = tryToParseDateTime(dateTimeStrRaw, context.getTimezone());
 
-			if (isNaN(Date.parse(dateTimeStr))) {
+				waitTill = parsedDateTime.toUTC().toJSDate();
+			} catch (e) {
 				throw new NodeOperationError(
 					context.getNode(),
 					'[Wait node] Cannot put execution to wait because `dateTime` parameter is not a valid date. Please pick a specific date and time to wait until.',
 				);
 			}
-
-			waitTill = DateTime.fromFormat(dateTimeStr, "yyyy-MM-dd'T'HH:mm:ss", {
-				zone: context.getTimezone(),
-			})
-				.toUTC()
-				.toJSDate();
 		}
 
 		const waitValue = Math.max(waitTill.getTime() - new Date().getTime(), 0);

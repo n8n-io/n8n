@@ -20,8 +20,13 @@ import type {
 
 import { computed, ref } from 'vue';
 import { transformNodeType } from '@/components/Node/NodeCreator/utils';
-import type { IDataObject, INodeInputConfiguration, NodeParameterValueType } from 'n8n-workflow';
-import { NodeConnectionType, NodeHelpers } from 'n8n-workflow';
+import type {
+	IDataObject,
+	INodeInputConfiguration,
+	NodeParameterValueType,
+	NodeConnectionType,
+} from 'n8n-workflow';
+import { NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -65,6 +70,10 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		mergedNodes.value = nodes;
 	}
 
+	function removeNodeFromMergedNodes(nodeName: string) {
+		mergedNodes.value = mergedNodes.value.filter((n) => n.name !== nodeName);
+	}
+
 	function setActions(nodes: ActionsRecord<typeof mergedNodes.value>) {
 		actions.value = nodes;
 	}
@@ -100,6 +109,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 				setNodeCreatorState({
 					createNodeActive: true,
 					nodeCreatorView: creatorView,
+					connectionType,
 				});
 			} else if (connectionType && nodeData) {
 				openNodeCreatorForConnectingNode({
@@ -121,6 +131,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		source,
 		createNodeActive,
 		nodeCreatorView,
+		connectionType,
 	}: ToggleNodeCreatorOptions) {
 		if (!nodeCreatorView) {
 			nodeCreatorView =
@@ -139,6 +150,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		void externalHooks.run('nodeView.createNodeActiveChanged', {
 			source,
 			mode: getMode(nodeCreatorView),
+			connectionType,
 			createNodeActive,
 		});
 
@@ -146,6 +158,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 			onCreatorOpened({
 				source,
 				mode: getMode(nodeCreatorView),
+				connectionType,
 				workflow_id: workflowsStore.workflowId,
 			});
 		}
@@ -181,11 +194,12 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		uiStore.lastInteractedWithNodeId = sourceNode.id;
 
 		const isOutput = mode === CanvasConnectionMode.Output;
-		const isScopedConnection = type !== NodeConnectionType.Main;
+		const isScopedConnection = type !== NodeConnectionTypes.Main;
 		setNodeCreatorState({
 			source: eventSource,
 			createNodeActive: true,
 			nodeCreatorView: isScopedConnection ? AI_UNCATEGORIZED_CATEGORY : nodeCreatorView,
+			connectionType: type,
 		});
 
 		// TODO: The animation is a bit glitchy because we're updating view stack immediately
@@ -255,16 +269,19 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 	function onCreatorOpened({
 		source,
 		mode,
+		connectionType,
 		workflow_id,
 	}: {
 		source?: string;
 		mode: string;
+		connectionType?: NodeConnectionType;
 		workflow_id?: string;
 	}) {
 		resetNodesPanelSession();
 		trackNodeCreatorEvent('User opened nodes panel', {
 			source,
 			mode,
+			connectionType,
 			workflow_id,
 		});
 	}
@@ -385,16 +402,17 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		showScrim,
 		mergedNodes,
 		actions,
+		allNodeCreatorNodes,
 		setShowScrim,
 		setSelectedView,
 		setOpenSource,
 		setActions,
 		setMergeNodes,
+		removeNodeFromMergedNodes,
 		setNodeCreatorState,
 		openSelectiveNodeCreator,
 		openNodeCreatorForConnectingNode,
 		openNodeCreatorForTriggerNodes,
-		allNodeCreatorNodes,
 		onCreatorOpened,
 		onNodeFilterChanged,
 		onCategoryExpanded,

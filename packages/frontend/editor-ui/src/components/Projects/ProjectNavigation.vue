@@ -6,6 +6,7 @@ import { VIEWS } from '@/constants';
 import { useProjectsStore } from '@/stores/projects.store';
 import type { ProjectListItem } from '@/types/projects.types';
 import { useGlobalEntityCreation } from '@/composables/useGlobalEntityCreation';
+import { useSettingsStore } from '@/stores/settings.store';
 
 type Props = {
 	collapsed: boolean;
@@ -15,11 +16,14 @@ type Props = {
 const props = defineProps<Props>();
 
 const locale = useI18n();
-const projectsStore = useProjectsStore();
 const globalEntityCreation = useGlobalEntityCreation();
+
+const projectsStore = useProjectsStore();
+const settingsStore = useSettingsStore();
 
 const isCreatingProject = computed(() => globalEntityCreation.isCreatingProject.value);
 const displayProjects = computed(() => globalEntityCreation.displayProjects.value);
+const isFoldersFeatureEnabled = computed(() => settingsStore.isFoldersFeatureEnabled);
 
 const home = computed<IMenuItem>(() => ({
 	id: 'home',
@@ -27,6 +31,15 @@ const home = computed<IMenuItem>(() => ({
 	icon: 'home',
 	route: {
 		to: { name: VIEWS.HOMEPAGE },
+	},
+}));
+
+const shared = computed<IMenuItem>(() => ({
+	id: 'shared',
+	label: locale.baseText('projects.menu.shared'),
+	icon: 'share',
+	route: {
+		to: { name: VIEWS.SHARED_WITH_ME },
 	},
 }));
 
@@ -69,6 +82,22 @@ const showAddFirstProject = computed(
 				mode="tabs"
 				data-test-id="project-home-menu-item"
 			/>
+			<N8nMenuItem
+				v-if="projectsStore.isTeamProjectFeatureEnabled || isFoldersFeatureEnabled"
+				:item="personalProject"
+				:compact="props.collapsed"
+				:active-tab="projectsStore.projectNavActiveId"
+				mode="tabs"
+				data-test-id="project-personal-menu-item"
+			/>
+			<N8nMenuItem
+				v-if="projectsStore.isTeamProjectFeatureEnabled || isFoldersFeatureEnabled"
+				:item="shared"
+				:compact="props.collapsed"
+				:active-tab="projectsStore.projectNavActiveId"
+				mode="tabs"
+				data-test-id="project-shared-menu-item"
+			/>
 		</ElMenu>
 		<hr v-if="projectsStore.isTeamProjectFeatureEnabled" class="mt-m mb-m" />
 		<N8nText
@@ -78,28 +107,27 @@ const showAddFirstProject = computed(
 			bold
 		>
 			<span>{{ locale.baseText('projects.menu.title') }}</span>
-			<N8nButton
-				v-if="projectsStore.canCreateProjects"
-				icon="plus"
-				text
-				data-test-id="project-plus-button"
-				:disabled="isCreatingProject"
-				:class="$style.plusBtn"
-				@click="globalEntityCreation.createProject"
-			/>
+			<N8nTooltip
+				placement="right"
+				:disabled="projectsStore.hasPermissionToCreateProjects"
+				:content="locale.baseText('projects.create.permissionDenied')"
+			>
+				<N8nButton
+					v-if="projectsStore.canCreateProjects"
+					icon="plus"
+					text
+					data-test-id="project-plus-button"
+					:disabled="isCreatingProject || !projectsStore.hasPermissionToCreateProjects"
+					:class="$style.plusBtn"
+					@click="globalEntityCreation.createProject"
+				/>
+			</N8nTooltip>
 		</N8nText>
 		<ElMenu
-			v-if="projectsStore.isTeamProjectFeatureEnabled"
+			v-if="projectsStore.isTeamProjectFeatureEnabled || isFoldersFeatureEnabled"
 			:collapse="props.collapsed"
 			:class="$style.projectItems"
 		>
-			<N8nMenuItem
-				:item="personalProject"
-				:compact="props.collapsed"
-				:active-tab="projectsStore.projectNavActiveId"
-				mode="tabs"
-				data-test-id="project-personal-menu-item"
-			/>
 			<N8nMenuItem
 				v-for="project in displayProjects"
 				:key="project.id"
@@ -113,22 +141,28 @@ const showAddFirstProject = computed(
 				data-test-id="project-menu-item"
 			/>
 		</ElMenu>
-		<N8nButton
-			v-if="showAddFirstProject"
-			:class="[
-				$style.addFirstProjectBtn,
-				{
-					[$style.collapsed]: props.collapsed,
-				},
-			]"
-			:disabled="isCreatingProject"
-			type="secondary"
-			icon="plus"
-			data-test-id="add-first-project-button"
-			@click="globalEntityCreation.createProject"
+		<N8nTooltip
+			placement="right"
+			:disabled="projectsStore.hasPermissionToCreateProjects"
+			:content="locale.baseText('projects.create.permissionDenied')"
 		>
-			{{ locale.baseText('projects.menu.addFirstProject') }}
-		</N8nButton>
+			<N8nButton
+				v-if="showAddFirstProject"
+				:class="[
+					$style.addFirstProjectBtn,
+					{
+						[$style.collapsed]: props.collapsed,
+					},
+				]"
+				:disabled="isCreatingProject || !projectsStore.hasPermissionToCreateProjects"
+				type="secondary"
+				icon="plus"
+				data-test-id="add-first-project-button"
+				@click="globalEntityCreation.createProject"
+			>
+				<span>{{ locale.baseText('projects.menu.addFirstProject') }}</span>
+			</N8nButton>
+		</N8nTooltip>
 		<hr v-if="projectsStore.isTeamProjectFeatureEnabled" class="mb-m" />
 	</div>
 </template>
@@ -140,6 +174,7 @@ const showAddFirstProject = computed(
 	width: 100%;
 	overflow: hidden;
 	align-items: start;
+	gap: var(--spacing-3xs);
 	&:hover {
 		.plusBtn {
 			display: block;
@@ -194,6 +229,7 @@ const showAddFirstProject = computed(
 	&.collapsed {
 		> span:last-child {
 			display: none;
+			margin: 0 var(--spacing-s) var(--spacing-m);
 		}
 	}
 }

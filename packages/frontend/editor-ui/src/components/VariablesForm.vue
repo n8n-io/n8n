@@ -1,8 +1,8 @@
 <script lang="ts" setup>
 import type { EnvironmentVariable, Rule, RuleGroup } from '@/Interface';
 import { useI18n } from '@/composables/useI18n';
-import { computed, ref, reactive, toRaw } from 'vue';
-import { N8nFormInput, N8nButton } from '@n8n/design-system';
+import { N8nButton, N8nFormInput } from '@n8n/design-system';
+import { computed, reactive, ref, toRaw } from 'vue';
 import VariablesUsageBadge from './VariablesUsageBadge.vue';
 
 const props = defineProps<{
@@ -113,11 +113,6 @@ const handleSubmit = () => {
 </template>
 
 <style lang="scss" scoped>
-.key-cell,
-.value-cell {
-	vertical-align: top;
-}
-
 .value-cell {
 	width: 100%;
 	max-width: 50%;

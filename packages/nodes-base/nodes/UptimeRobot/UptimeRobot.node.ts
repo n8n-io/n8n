@@ -6,7 +6,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { alertContactFields, alertContactOperations } from './AlertContactDescription';
 import { uptimeRobotApiRequest } from './GenericFunctions';
@@ -30,8 +30,8 @@ export class UptimeRobot implements INodeType {
 			name: 'UptimeRobot',
 		},
 		usableAsTool: true,
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'uptimeRobotApi',

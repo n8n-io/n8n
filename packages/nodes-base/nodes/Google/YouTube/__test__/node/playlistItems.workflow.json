@@ -1,0 +1,412 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 200],
+			"id": "31e68280-caac-4297-bb03-ca6d548b459e",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"resource": "playlistItem",
+				"operation": "getAll",
+				"playlistId": "PLXXXXFAKEPLAYLISTID01",
+				"limit": 3,
+				"options": {}
+			},
+			"type": "n8n-nodes-base.youTube",
+			"typeVersion": 1,
+			"position": [220, -100],
+			"id": "790afd1a-f8b5-4bc1-b839-9658ee112890",
+			"name": "YouTube",
+			"credentials": {
+				"youTubeOAuth2Api": {
+					"id": "62",
+					"name": "YouTube OAuth2 creds"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [440, -100],
+			"id": "84ef4be3-8c98-449f-ba1e-b08d1492435e",
+			"name": "Playlist Item Get All"
+		},
+		{
+			"parameters": {
+				"resource": "playlistItem",
+				"operation": "get",
+				"playlistItemId": "fakePlaylistItemId1",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.youTube",
+			"typeVersion": 1,
+			"position": [220, 100],
+			"id": "e3c6f615-7fc1-48cd-a365-25ba425eb62a",
+			"name": "YouTube1",
+			"credentials": {
+				"youTubeOAuth2Api": {
+					"id": "62",
+					"name": "YouTube OAuth2 creds"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [440, 100],
+			"id": "2bf72f15-3ca8-4ceb-a558-0fc7426ef564",
+			"name": "Playlist Item Get"
+		},
+		{
+			"parameters": {
+				"resource": "playlistItem",
+				"playlistId": "PLXXXXFAKEPLAYLISTID01",
+				"videoId": "FAKEVIDID1",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.youTube",
+			"typeVersion": 1,
+			"position": [220, 300],
+			"id": "1a84eae4-fd43-445c-8c2b-c5846c1fa427",
+			"name": "YouTube2",
+			"credentials": {
+				"youTubeOAuth2Api": {
+					"id": "62",
+					"name": "YouTube OAuth2 creds"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [440, 300],
+			"id": "91cef9b3-843d-4ae9-b946-f2bc705cc528",
+			"name": "Playlist Item Add"
+		},
+		{
+			"parameters": {
+				"resource": "playlistItem",
+				"operation": "delete",
+				"playlistItemId": "UExWUDRtV2RxbGFhNWlwZEJRWXZVaFgyNk9RTENJRlV2cS41NkI0NEY2RDEwNTU3Q0M2",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.youTube",
+			"typeVersion": 1,
+			"position": [220, 500],
+			"id": "829b494e-2a4e-4ec5-a3e2-2dabeed9ea0b",
+			"name": "YouTube3",
+			"credentials": {
+				"youTubeOAuth2Api": {
+					"id": "62",
+					"name": "YouTube OAuth2 creds"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [440, 500],
+			"id": "3195a72c-b8bd-4d85-ba37-d24df23b1761",
+			"name": "Playlist Item Delete"
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "YouTube",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "YouTube1",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "YouTube3",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "YouTube2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"YouTube": {
+			"main": [
+				[
+					{
+						"node": "Playlist Item Get All",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"YouTube1": {
+			"main": [
+				[
+					{
+						"node": "Playlist Item Get",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"YouTube2": {
+			"main": [
+				[
+					{
+						"node": "Playlist Item Add",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"YouTube3": {
+			"main": [
+				[
+					{
+						"node": "Playlist Item Delete",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Playlist Item Get All": [
+			{
+				"json": {
+					"kind": "youtube#playlistItem",
+					"etag": "etag1",
+					"id": "fakePlaylistItemId1",
+					"snippet": {
+						"publishedAt": "2023-02-12T11:15:49Z",
+						"channelId": "UCXXXXCHANNELID01",
+						"title": "Video Title 1",
+						"description": "This is a fake video description for testing.",
+						"thumbnails": {
+							"default": { "url": "https://example.com/thumb1.jpg", "width": 120, "height": 90 },
+							"medium": { "url": "https://example.com/thumb1.jpg", "width": 320, "height": 180 },
+							"high": { "url": "https://example.com/thumb1.jpg", "width": 480, "height": 360 },
+							"standard": { "url": "https://example.com/thumb1.jpg", "width": 640, "height": 480 },
+							"maxres": { "url": "https://example.com/thumb1.jpg", "width": 1280, "height": 720 }
+						},
+						"channelTitle": "Fake Channel 1",
+						"playlistId": "PLXXXXFAKEPLAYLISTID01",
+						"position": 0,
+						"resourceId": {
+							"kind": "youtube#video",
+							"videoId": "FAKEVIDID1"
+						},
+						"videoOwnerChannelTitle": "FakeOwner1",
+						"videoOwnerChannelId": "UCOWNERCHANNELID01"
+					},
+					"contentDetails": {
+						"videoId": "FAKEVIDID1",
+						"videoPublishedAt": "2023-01-13T00:00:09Z"
+					},
+					"status": {
+						"privacyStatus": "public"
+					}
+				}
+			},
+			{
+				"json": {
+					"kind": "youtube#playlistItem",
+					"etag": "etag2",
+					"id": "fakePlaylistItemId2",
+					"snippet": {
+						"publishedAt": "2023-02-12T11:16:16Z",
+						"channelId": "UCXXXXCHANNELID02",
+						"title": "Video Title 2",
+						"description": "Another test video description.",
+						"thumbnails": {
+							"default": { "url": "https://example.com/thumb2.jpg", "width": 120, "height": 90 },
+							"medium": { "url": "https://example.com/thumb2.jpg", "width": 320, "height": 180 },
+							"high": { "url": "https://example.com/thumb2.jpg", "width": 480, "height": 360 },
+							"standard": { "url": "https://example.com/thumb2.jpg", "width": 640, "height": 480 },
+							"maxres": { "url": "https://example.com/thumb2.jpg", "width": 1280, "height": 720 }
+						},
+						"channelTitle": "Fake Channel 2",
+						"playlistId": "PLXXXXFAKEPLAYLISTID02",
+						"position": 1,
+						"resourceId": {
+							"kind": "youtube#video",
+							"videoId": "FAKEVIDID2"
+						},
+						"videoOwnerChannelTitle": "FakeOwner2",
+						"videoOwnerChannelId": "UCOWNERCHANNELID02"
+					},
+					"contentDetails": {
+						"videoId": "FAKEVIDID2",
+						"videoPublishedAt": "2016-06-23T11:41:12Z"
+					},
+					"status": {
+						"privacyStatus": "public"
+					}
+				}
+			},
+			{
+				"json": {
+					"kind": "youtube#playlistItem",
+					"etag": "etag3",
+					"id": "fakePlaylistItemId3",
+					"snippet": {
+						"publishedAt": "2023-02-12T11:18:13Z",
+						"channelId": "UCXXXXCHANNELID03",
+						"title": "Video Title 3",
+						"description": "Yet another placeholder video description.",
+						"thumbnails": {
+							"default": { "url": "https://example.com/thumb3.jpg", "width": 120, "height": 90 },
+							"medium": { "url": "https://example.com/thumb3.jpg", "width": 320, "height": 180 },
+							"high": { "url": "https://example.com/thumb3.jpg", "width": 480, "height": 360 },
+							"standard": { "url": "https://example.com/thumb3.jpg", "width": 640, "height": 480 },
+							"maxres": { "url": "https://example.com/thumb3.jpg", "width": 1280, "height": 720 }
+						},
+						"channelTitle": "Fake Channel 3",
+						"playlistId": "PLXXXXFAKEPLAYLISTID03",
+						"position": 2,
+						"resourceId": {
+							"kind": "youtube#video",
+							"videoId": "FAKEVIDID3"
+						},
+						"videoOwnerChannelTitle": "FakeOwner3",
+						"videoOwnerChannelId": "UCOWNERCHANNELID03"
+					},
+					"contentDetails": {
+						"videoId": "FAKEVIDID3",
+						"videoPublishedAt": "2017-02-18T17:18:00Z"
+					},
+					"status": {
+						"privacyStatus": "public"
+					}
+				}
+			}
+		],
+		"Playlist Item Get": [
+			{
+				"json": {
+					"kind": "youtube#playlistItem",
+					"etag": "etag1",
+					"id": "fakePlaylistItemId1",
+					"snippet": {
+						"publishedAt": "2023-02-12T11:15:49Z",
+						"channelId": "UCXXXXCHANNELID01",
+						"title": "Video Title 1",
+						"description": "This is a fake video description for testing.",
+						"thumbnails": {
+							"default": {
+								"url": "https://example.com/thumb1.jpg",
+								"width": 120,
+								"height": 90
+							},
+							"medium": {
+								"url": "https://example.com/thumb1.jpg",
+								"width": 320,
+								"height": 180
+							},
+							"high": {
+								"url": "https://example.com/thumb1.jpg",
+								"width": 480,
+								"height": 360
+							},
+							"standard": {
+								"url": "https://example.com/thumb1.jpg",
+								"width": 640,
+								"height": 480
+							},
+							"maxres": {
+								"url": "https://example.com/thumb1.jpg",
+								"width": 1280,
+								"height": 720
+							}
+						},
+						"channelTitle": "Fake Channel 1",
+						"playlistId": "PLXXXXFAKEPLAYLISTID01",
+						"position": 0,
+						"resourceId": {
+							"kind": "youtube#video",
+							"videoId": "FAKEVIDID1"
+						},
+						"videoOwnerChannelTitle": "FakeOwner1",
+						"videoOwnerChannelId": "UCOWNERCHANNELID01"
+					},
+					"contentDetails": {
+						"videoId": "FAKEVIDID1",
+						"videoPublishedAt": "2023-01-13T00:00:09Z"
+					},
+					"status": {
+						"privacyStatus": "public"
+					}
+				}
+			}
+		],
+		"Playlist Item Add": [
+			{
+				"json": {
+					"kind": "youtube#playlistItem",
+					"etag": "etag1",
+					"id": "fakePlaylistItemId1",
+					"snippet": {
+						"publishedAt": "2023-02-12T11:15:49Z",
+						"channelId": "UCXXXXCHANNELID01",
+						"title": "Video Title 1",
+						"description": "This is a fake video description for testing.",
+						"thumbnails": {
+							"default": { "url": "https://example.com/thumb1.jpg", "width": 120, "height": 90 },
+							"medium": { "url": "https://example.com/thumb1.jpg", "width": 320, "height": 180 },
+							"high": { "url": "https://example.com/thumb1.jpg", "width": 480, "height": 360 },
+							"standard": { "url": "https://example.com/thumb1.jpg", "width": 640, "height": 480 },
+							"maxres": { "url": "https://example.com/thumb1.jpg", "width": 1280, "height": 720 }
+						},
+						"channelTitle": "Fake Channel 1",
+						"playlistId": "PLXXXXFAKEPLAYLISTID01",
+						"position": 0,
+						"resourceId": {
+							"kind": "youtube#video",
+							"videoId": "FAKEVIDID1"
+						},
+						"videoOwnerChannelTitle": "FakeOwner1",
+						"videoOwnerChannelId": "UCOWNERCHANNELID01"
+					},
+					"contentDetails": {
+						"videoId": "FAKEVIDID1",
+						"videoPublishedAt": "2023-01-13T00:00:09Z"
+					},
+					"status": {
+						"privacyStatus": "public"
+					}
+				}
+			}
+		],
+		"Playlist Item Delete": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		]
+	},
+	"meta": {
+		"templateCredsSetupCompleted": true,
+		"instanceId": "27cc9b56542ad45b38725555722c50a1c3fee1670bbb67980558314ee08517c4"
+	}
+}
