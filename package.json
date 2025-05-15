@@ -7,6 +7,9 @@
     "pnpm": ">=10.2.1"
   },
   "packageManager": "pnpm@10.2.1",
+  "dependencies": {
+    "mongodb": "6.11.0"
+  },
   "scripts": {
     "prepare": "node scripts/prepare.mjs",
     "preinstall": "node scripts/block-npm-install.js",
