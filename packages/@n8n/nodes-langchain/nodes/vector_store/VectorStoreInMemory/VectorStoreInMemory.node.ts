@@ -119,7 +119,7 @@ export class VectorStoreInMemory extends createVectorStoreNode<MemoryVectorStore
 				filter?: string,
 			): Promise<INodeListSearchResult> {
 				const vectorStoreSingleton = MemoryVectorStoreManager.getInstance(
-					{} as Embeddings, // Real Embeddings are passed when executing the node
+					{} as Embeddings, // Real Embeddings are provided when executing the node
 					this.logger,
 				);
 
@@ -154,7 +154,7 @@ export class VectorStoreInMemory extends createVectorStoreNode<MemoryVectorStore
 				const { name } = payload;
 
 				const vectorStoreSingleton = MemoryVectorStoreManager.getInstance(
-					{} as Embeddings, // Real Embeddings are passed when executing the node
+					{} as Embeddings, // Real Embeddings are provided when executing the node
 					this.logger,
 				);
 

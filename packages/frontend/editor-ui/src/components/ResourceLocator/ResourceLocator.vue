@@ -397,17 +397,18 @@ const onAddResourceClicked = computed(() => {
 				credentials: props.node.credentials,
 				handler: addNewResourceMethodName,
 				payload: {
-					workflowId: workflowsStore.workflowId,
 					name: searchFilter.value,
 				},
 			};
 
-			const memoryKey = await nodeTypesStore.getNodeParameterActionResult(requestParams);
+			const newResource = (await nodeTypesStore.getNodeParameterActionResult(
+				requestParams,
+			)) as NodeParameterValue;
 
 			refreshList();
 			await loadResources();
 			searchFilter.value = '';
-			onListItemSelected(memoryKey as NodeParameterValue);
+			onListItemSelected(newResource);
 		};
 
 		return addNewResourceMethod;

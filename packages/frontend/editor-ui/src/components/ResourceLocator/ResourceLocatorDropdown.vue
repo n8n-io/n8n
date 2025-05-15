@@ -253,7 +253,7 @@ defineExpose({ isWithinDropdown });
 				v-if="allowNewResources.label"
 				key="addResourceKey"
 				ref="itemsRef"
-				data-test-id="rlc-item"
+				data-test-id="rlc-item-add-resource"
 				:class="{
 					[$style.resourceItem]: true,
 					[$style.hovering]: hoverIndex === 0,
