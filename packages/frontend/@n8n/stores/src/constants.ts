@@ -30,4 +30,4 @@ export const STORES = {
 	TEST_DEFINITION: 'testDefinition',
 	FOLDERS: 'folders',
 	MODULES: 'modules',
-};
+} as const;
