@@ -1,4 +1,4 @@
-import { isObjectLiteral } from 'n8n-core';
+import { isObjectLiteral } from '@n8n/backend-common';
 import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
 
 import type { MigrationContext, IrreversibleMigration } from '../migration-types';
