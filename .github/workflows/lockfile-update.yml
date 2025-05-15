@@ -1,0 +1,41 @@
+name: 🔒 Update pnpm lockfile
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  update-lockfile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: 'pnpm'
+
+      - name: Install dependencies (generate lockfile)
+        run: |
+          npm install -g pnpm
+          pnpm install
+
+      - name: Commit & push lockfile if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add pnpm-lock.yaml
+          if ! git diff --staged --quiet; then
+            git commit -m "chore: update pnpm-lock.yaml [ci skip]"
+            git push
+          else
+            echo "Lockfile up-to-date."
+          fi
