@@ -484,7 +484,6 @@ export class LoadNodesAndCredentials {
 					typeOptions: { rows: 2 },
 					description:
 						'Explain to the LLM what this tool does, a good, specific description would allow LLMs to produce expected results much more often',
-					placeholder: `e.g. ${item.description.description}`,
 				};
 
 				item.description.properties.unshift(descProp);
