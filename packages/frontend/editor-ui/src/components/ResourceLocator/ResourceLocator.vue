@@ -366,56 +366,48 @@ const allowNewResources = computed(() => {
 	};
 });
 
-const onAddResourceClicked = computed(() => {
-	if (!props.node) {
-		return undefined;
+const handleAddResourceClick = async () => {
+	if (!props.node || !allowNewResources.value) {
+		return;
 	}
 
-	if (allowNewResources.value) {
-		const { method: addNewResourceMethodName } = allowNewResources.value;
-		const resolvedNodeParameters = workflowHelpers.resolveRequiredParameters(
-			props.parameter,
-			currentRequestParams.value.parameters,
-		);
+	const { method: addNewResourceMethodName } = allowNewResources.value;
+	const resolvedNodeParameters = workflowHelpers.resolveRequiredParameters(
+		props.parameter,
+		currentRequestParams.value.parameters,
+	);
 
-		if (!resolvedNodeParameters || !addNewResourceMethodName) {
-			return undefined;
-		}
-
-		const addNewResourceMethod = async () => {
-			if (!props.node) {
-				return;
-			}
-
-			const requestParams: ActionResultRequestDto = {
-				nodeTypeAndVersion: {
-					name: props.node.type,
-					version: props.node.typeVersion,
-				},
-				path: props.path,
-				currentNodeParameters: resolvedNodeParameters,
-				credentials: props.node.credentials,
-				handler: addNewResourceMethodName,
-				payload: {
-					name: searchFilter.value,
-				},
-			};
-
-			const newResource = (await nodeTypesStore.getNodeParameterActionResult(
-				requestParams,
-			)) as NodeParameterValue;
-
-			refreshList();
-			await loadResources();
-			searchFilter.value = '';
-			onListItemSelected(newResource);
-		};
-
-		return addNewResourceMethod;
+	if (!resolvedNodeParameters || !addNewResourceMethodName) {
+		return;
 	}
 
-	return undefined;
-});
+	const requestParams: ActionResultRequestDto = {
+		nodeTypeAndVersion: {
+			name: props.node.type,
+			version: props.node.typeVersion,
+		},
+		path: props.path,
+		currentNodeParameters: resolvedNodeParameters,
+		credentials: props.node.credentials,
+		handler: addNewResourceMethodName,
+		payload: {
+			name: searchFilter.value,
+		},
+	};
+
+	const newResource = (await nodeTypesStore.getNodeParameterActionResult(
+		requestParams,
+	)) as NodeParameterValue;
+
+	refreshList();
+	await loadResources();
+	searchFilter.value = '';
+	onListItemSelected(newResource);
+};
+
+const onAddResourceClicked = computed(() =>
+	allowNewResources.value ? handleAddResourceClick : undefined,
+);
 
 watch(currentQueryError, (curr, prev) => {
 	if (resourceDropdownVisible.value && curr && !prev) {
