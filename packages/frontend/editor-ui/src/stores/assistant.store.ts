@@ -4,6 +4,7 @@ import {
 	EDITABLE_CANVAS_VIEWS,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	CREDENTIAL_EDIT_MODAL_KEY,
+	ASK_AI_SLIDE_OUT_DURATION_MS,
 } from '@/constants';
 import { STORES } from '@n8n/stores';
 import type { ChatRequest } from '@/types/assistant.types';
@@ -147,6 +148,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	function closeChat() {
 		chatWindowOpen.value = false;
 		// Looks smoother if we wait for slide animation to finish before updating the grid width
+		// Has to wait for longer than SlideTransition duration
 		setTimeout(() => {
 			uiStore.appGridDimensions = {
 				...uiStore.appGridDimensions,
@@ -156,7 +158,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			if (isSessionEnded.value) {
 				resetAssistantChat();
 			}
-		}, 200);
+		}, ASK_AI_SLIDE_OUT_DURATION_MS + 50);
 	}
 
 	function addAssistantMessages(newMessages: ChatRequest.MessageResponse[], id: string) {
