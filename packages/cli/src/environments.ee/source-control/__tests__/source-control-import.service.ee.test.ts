@@ -1,4 +1,4 @@
-import type { WorkflowEntity } from '@n8n/db';
+import { User, type WorkflowEntity } from '@n8n/db';
 import type { FolderRepository } from '@n8n/db';
 import type { WorkflowRepository } from '@n8n/db';
 import * as fastGlob from 'fast-glob';
@@ -8,8 +8,15 @@ import fsp from 'node:fs/promises';
 
 import { SourceControlImportService } from '../source-control-import.service.ee';
 import type { ExportableFolder } from '../types/exportable-folders';
+import type { SourceControlContext } from '../types/source-control-context';
 
 jest.mock('fast-glob');
+
+const globalAdminContext: SourceControlContext = {
+	user: Object.assign(new User(), {
+		role: 'global:admin',
+	}),
+};
 
 describe('SourceControlImportService', () => {
 	const workflowRepository = mock<WorkflowRepository>();
@@ -53,7 +60,7 @@ describe('SourceControlImportService', () => {
 
 			fsReadFile.mockResolvedValue(JSON.stringify(mockWorkflowData));
 
-			const result = await service.getRemoteVersionIdsFromFiles();
+			const result = await service.getRemoteVersionIdsFromFiles(globalAdminContext);
 			expect(fsReadFile).toHaveBeenCalledWith(mockWorkflowFile, { encoding: 'utf8' });
 
 			expect(result).toHaveLength(1);
@@ -71,7 +78,7 @@ describe('SourceControlImportService', () => {
 
 			fsReadFile.mockResolvedValue('{}');
 
-			const result = await service.getRemoteVersionIdsFromFiles();
+			const result = await service.getRemoteVersionIdsFromFiles(globalAdminContext);
 
 			expect(result).toHaveLength(0);
 		});
@@ -215,7 +222,7 @@ describe('SourceControlImportService', () => {
 
 			workflowRepository.find.mockResolvedValue(mockWorkflows);
 
-			const result = await service.getLocalVersionIdsFromDb();
+			const result = await service.getLocalVersionIdsFromDb(globalAdminContext);
 
 			expect(result[0].updatedAt).toBe(now.toISOString());
 		});

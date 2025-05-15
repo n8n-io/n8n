@@ -41,6 +41,7 @@ import type { ImportResult } from './types/import-result';
 import type { SourceControlGetStatus } from './types/source-control-get-status';
 import type { SourceControlPreferences } from './types/source-control-preferences';
 import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
+import { SourceControlContext } from './types/source-control-context';
 
 @Service()
 export class SourceControlService {
@@ -486,13 +487,17 @@ export class SourceControlService {
 		// fetch and reset hard first
 		await this.resetWorkfolder();
 
+		const context: SourceControlContext = {
+			user,
+		};
+
 		const {
 			wfRemoteVersionIds,
 			wfLocalVersionIds,
 			wfMissingInLocal,
 			wfMissingInRemote,
 			wfModifiedInEither,
-		} = await this.getStatusWorkflows(options, sourceControlledFiles);
+		} = await this.getStatusWorkflows(options, context, sourceControlledFiles);
 
 		const { credMissingInLocal, credMissingInRemote, credModifiedInEither } =
 			await this.getStatusCredentials(options, sourceControlledFiles);
@@ -555,10 +560,13 @@ export class SourceControlService {
 
 	private async getStatusWorkflows(
 		options: SourceControlGetStatus,
+		context: SourceControlContext,
 		sourceControlledFiles: SourceControlledFile[],
 	) {
-		const wfRemoteVersionIds = await this.sourceControlImportService.getRemoteVersionIdsFromFiles();
-		const wfLocalVersionIds = await this.sourceControlImportService.getLocalVersionIdsFromDb();
+		const wfRemoteVersionIds =
+			await this.sourceControlImportService.getRemoteVersionIdsFromFiles(context);
+		const wfLocalVersionIds =
+			await this.sourceControlImportService.getLocalVersionIdsFromDb(context);
 
 		const wfMissingInLocal = wfRemoteVersionIds.filter(
 			(remote) => wfLocalVersionIds.findIndex((local) => local.id === remote.id) === -1,
