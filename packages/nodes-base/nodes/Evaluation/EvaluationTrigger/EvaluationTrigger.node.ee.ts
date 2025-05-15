@@ -40,7 +40,7 @@ export class EvaluationTrigger implements INodeType {
 		properties: [
 			{
 				displayName:
-					'Pulls a test dataset from a Google Sheet. The workflow will run once for each row, in sequence. Tips for wiring this node up [here].',
+					'Pulls a test dataset from a Google Sheet. The workflow will run once for each row, in sequence. Tips for wiring this node up <a href="https://docs.n8n.io/advanced-ai/evaluations/tips-and-common-issues/#combining-multiple-triggers">here</a>.',
 				name: 'notice',
 				type: 'notice',
 				default: '',

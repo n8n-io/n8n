@@ -81,7 +81,7 @@ export const setCheckIfEvaluatingProperties: INodeProperties[] = [
 export const setMetricsProperties: INodeProperties[] = [
 	{
 		displayName:
-			"Calculate the score(s) for the evaluation, then map them into this node. They will be displayed in the ‘evaluations’ tab, not the Google Sheet. <a href='https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.evaluationmetric/' target='_blank'>View metric examples</a>",
+			"Calculate the score(s) for the evaluation, then map them into this node. They will be displayed in the ‘evaluations’ tab, not the Google Sheet. <a href='https://docs.n8n.io/advanced-ai/evaluations/metric-based-evaluations/#2-calculate-metrics' target='_blank'>View metric examples</a>",
 		name: 'notice',
 		type: 'notice',
 		default: '',
