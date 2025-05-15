@@ -397,3 +397,7 @@ export function clickContextMenuAction(action: string) {
 export function openExecutions() {
 	cy.getByTestId('radio-button-executions').click();
 }
+
+export function clickClearExecutionDataButton() {
+	cy.getByTestId('clear-execution-data-button').click();
+}
