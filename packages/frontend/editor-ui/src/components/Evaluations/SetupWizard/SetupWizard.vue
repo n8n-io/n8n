@@ -35,7 +35,7 @@ const evaluationSetOutputNodeExist = computed(() => {
 		// FIXME: handle default operation properly
 		(node) =>
 			node.type === 'n8n-nodes-base.evaluation' &&
-			(node.parameters.operation === 'setOutput' || node.parameters.operation === undefined),
+			(node.parameters.operation === 'setOutputs' || node.parameters.operation === undefined),
 	);
 });
 
