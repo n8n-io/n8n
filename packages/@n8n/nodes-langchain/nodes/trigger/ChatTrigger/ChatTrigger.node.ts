@@ -563,7 +563,7 @@ ${cssVariables}
 				return {
 					webhookResponse: { data: messages },
 				};
-			} else if (options?.loadPreviousSession === 'notSupported') {
+			} else if (!options?.loadPreviousSession || options?.loadPreviousSession === 'notSupported') {
 				// If messages of a previous session should not be loaded, simply return an empty array
 				return {
 					webhookResponse: { data: [] },
