@@ -8,14 +8,14 @@ import { NodeConnectionType } from 'n8n-workflow';
 
 export class UnderstandTechChat implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'UnderstandTech Chat',
+		displayName: 'Understand Tech Chat',
 		name: 'understandTechChat',
 		icon: 'file:understandtech_logo.svg',
 		group: ['transform'],
 		version: 1,
 		description: 'Chat with a model in UnderstandTech',
 		defaults: {
-			name: 'UnderstandTech Chat',
+			name: 'Understand Tech Chat',
 			color: '#772953',
 		},
 		inputs: [NodeConnectionType.Main],
