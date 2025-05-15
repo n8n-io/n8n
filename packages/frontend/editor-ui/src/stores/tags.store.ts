@@ -9,9 +9,9 @@ import { useWorkflowsStore } from './workflows.store';
 const apiMapping = {
 	[STORES.TAGS]: createTagsApi('/tags'),
 	[STORES.ANNOTATION_TAGS]: createTagsApi('/annotation-tags'),
-};
+} as const;
 
-const createTagsStore = (id: STORES.TAGS | STORES.ANNOTATION_TAGS) => {
+const createTagsStore = (id: typeof STORES.TAGS | typeof STORES.ANNOTATION_TAGS) => {
 	const tagsApi = apiMapping[id];
 
 	return defineStore(
