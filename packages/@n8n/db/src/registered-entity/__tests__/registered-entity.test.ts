@@ -10,7 +10,6 @@ describe('@RegisteredEntity decorator', () => {
 	let registeredEntityMetadata: RegisteredEntityMetadata;
 
 	beforeEach(() => {
-		// Reset the metadata container before each test
 		registeredEntityMetadata = new RegisteredEntityMetadata();
 		Container.set(RegisteredEntityMetadata, registeredEntityMetadata);
 	});
