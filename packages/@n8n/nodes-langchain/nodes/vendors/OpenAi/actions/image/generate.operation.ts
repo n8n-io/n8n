@@ -221,6 +221,11 @@ const properties: INodeProperties[] = [
 				type: 'boolean',
 				default: false,
 				description: 'Whether to return image URL(s) instead of binary file(s)',
+				displayOptions: {
+					hide: {
+						'/model': ['gpt-image-1'],
+					},
+				},
 			},
 			{
 				displayName: 'Put Output in Field',
