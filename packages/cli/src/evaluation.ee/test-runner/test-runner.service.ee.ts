@@ -82,6 +82,10 @@ export class TestRunnerService {
 		) {
 			throw new TestRunError('EVALUATION_TRIGGER_NOT_CONFIGURED', { node_name: triggerNode.name });
 		}
+
+		if (triggerNode?.disabled) {
+			throw new TestRunError('EVALUATION_TRIGGER_DISABLED');
+		}
 	}
 
 	/**
