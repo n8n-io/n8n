@@ -69,6 +69,7 @@ export function useSelection(
 		syncSelectionToCanvasIfEnabled(nextEntry);
 	}
 
+	// Synchronize selection from canvas
 	watch(
 		[() => uiStore.lastSelectedNode, () => logsStore.isLogSelectionSyncedWithCanvas],
 		([selectedOnCanvas, shouldSync]) => {
