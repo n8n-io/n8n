@@ -28,3 +28,4 @@ export { postgresMigrations } from './migrations/postgresdb';
 
 export { wrapMigration } from './migrations/migration-helpers';
 export * from './migrations/migration-types';
+export * from './registered-entity';
