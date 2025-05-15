@@ -1722,6 +1722,7 @@
 	"resourceLocator.mode.list.openUrl": "Open URL",
 	"resourceLocator.mode.list.placeholder": "Choose...",
 	"resourceLocator.mode.list.searchRequired": "Enter a search term to show results",
+	"resourceLocator.mode.list.addNewResource.vectorStoreInMemory": "Create new in-memory vector store",
 	"resourceLocator.modeSelector.placeholder": "Mode...",
 	"resourceLocator.openSpecificResource": "Open {entity} in {appName}",
 	"resourceLocator.openResource": "Open in {appName}",

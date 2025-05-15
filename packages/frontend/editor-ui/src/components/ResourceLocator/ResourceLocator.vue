@@ -55,6 +55,7 @@ import {
 } from '../../utils/fromAIOverrideUtils';
 import { N8nNotice } from '@n8n/design-system';
 import { completeExpressionSyntax } from '@/utils/expressions';
+import type { BaseTextKey } from '@/plugins/i18n';
 
 /**
  * Regular expression to check if the error message contains credential-related phrases.
@@ -351,9 +352,18 @@ const allowNewResources = computed(() => {
 		return undefined;
 	}
 
-	return getPropertyArgument(currentMode.value, 'allowNewResource') as
-		| undefined
-		| { label: string; method: string };
+	const addNewResourceOptions = getPropertyArgument(currentMode.value, 'allowNewResource') as
+		| { label: BaseTextKey; method: string }
+		| undefined;
+
+	if (!addNewResourceOptions) {
+		return undefined;
+	}
+
+	return {
+		label: i18n.baseText(addNewResourceOptions.label),
+		method: addNewResourceOptions.method,
+	};
 });
 
 const onAddResourceClicked = computed(() => {

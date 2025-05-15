@@ -6,6 +6,8 @@ import {
 	type INodeListSearchResult,
 	type IDataObject,
 	type NodeParameterValueType,
+	type IExecuteFunctions,
+	type ISupplyDataFunctions,
 	ApplicationError,
 } from 'n8n-workflow';
 
@@ -31,10 +33,28 @@ const insertFields: INodeProperties[] = [
 
 const DEFAULT_MEMORY_KEY = 'vector_store_key';
 
+function getMemoryKey(context: IExecuteFunctions | ISupplyDataFunctions, itemIndex: number) {
+	const node = context.getNode();
+	if (node.typeVersion <= 1.1) {
+		const memoryKeyParam = context.getNodeParameter('memoryKey', itemIndex) as string;
+		const workflowId = context.getWorkflow().id;
+
+		return `${workflowId}__${memoryKeyParam}`;
+	} else {
+		const memoryKeyParam = context.getNodeParameter('memoryKey', itemIndex) as {
+			mode: string;
+			value: string;
+		};
+
+		return memoryKeyParam.value;
+	}
+}
+
 export class VectorStoreInMemory extends createVectorStoreNode<MemoryVectorStore>({
 	meta: {
 		displayName: 'Simple Vector Store',
 		name: 'vectorStoreInMemory',
+		version: [1, 1.1, 1.2],
 		description:
 			"Work with your data in a Simple Vector Store. Don't use this for production usage.",
 		icon: 'fa:database',
@@ -46,11 +66,29 @@ export class VectorStoreInMemory extends createVectorStoreNode<MemoryVectorStore
 		{
 			displayName: 'Memory Key',
 			name: 'memoryKey',
+			type: 'string',
+			default: DEFAULT_MEMORY_KEY,
 			description:
 				'The key to use to store the vector memory in the workflow data. The key will be prefixed with the workflow ID to avoid collisions.',
+			displayOptions: {
+				show: {
+					'@version': [{ _cnd: { lte: 1.1 } }],
+				},
+			},
+		},
+		{
+			displayName: 'Memory Key',
+			name: 'memoryKey',
 			type: 'resourceLocator',
-			default: { mode: 'list', value: DEFAULT_MEMORY_KEY },
 			required: true,
+			default: { mode: 'list', value: DEFAULT_MEMORY_KEY },
+			description:
+				'The key to use to store the vector memory in the workflow data. These keys are shared between workflows.',
+			displayOptions: {
+				show: {
+					'@version': [{ _cnd: { gte: 1.2 } }],
+				},
+			},
 			modes: [
 				{
 					displayName: 'From List',
@@ -60,14 +98,14 @@ export class VectorStoreInMemory extends createVectorStoreNode<MemoryVectorStore
 						searchListMethod: 'vectorStoresSearch',
 						searchable: true,
 						allowNewResource: {
-							label: 'Create new vector store',
+							label: 'resourceLocator.mode.list.addNewResource.vectorStoreInMemory',
 							method: 'createVectorStore',
 						},
 					},
 				},
 				{
 					displayName: 'Manual',
-					name: 'manual',
+					name: 'id',
 					type: 'string',
 					placeholder: DEFAULT_MEMORY_KEY,
 				},
@@ -113,7 +151,7 @@ export class VectorStoreInMemory extends createVectorStoreNode<MemoryVectorStore
 					throw new ApplicationError('Invalid payload type');
 				}
 
-				const { workflowId, name } = payload;
+				const { name } = payload;
 
 				const vectorStoreSingleton = MemoryVectorStoreManager.getInstance(
 					{} as Embeddings, // Real Embeddings are passed when executing the node
@@ -121,11 +159,9 @@ export class VectorStoreInMemory extends createVectorStoreNode<MemoryVectorStore
 				);
 
 				const memoryKey = !!name ? (name as string) : DEFAULT_MEMORY_KEY;
-				const prefixedMemoryKey = `${workflowId as string}__${memoryKey}`;
+				await vectorStoreSingleton.getVectorStore(memoryKey);
 
-				await vectorStoreSingleton.getVectorStore(prefixedMemoryKey);
-
-				return prefixedMemoryKey;
+				return memoryKey;
 			},
 		},
 	},
@@ -133,18 +169,16 @@ export class VectorStoreInMemory extends createVectorStoreNode<MemoryVectorStore
 	loadFields: [],
 	retrieveFields: [],
 	async getVectorStoreClient(context, _filter, embeddings, itemIndex) {
-		const workflowId = context.getWorkflow().id;
-		const memoryKey = context.getNodeParameter('memoryKey', itemIndex) as string;
+		const memoryKey = getMemoryKey(context, itemIndex);
 		const vectorStoreSingleton = MemoryVectorStoreManager.getInstance(embeddings, context.logger);
 
-		return await vectorStoreSingleton.getVectorStore(`${workflowId}__${memoryKey}`);
+		return await vectorStoreSingleton.getVectorStore(memoryKey);
 	},
 	async populateVectorStore(context, embeddings, documents, itemIndex) {
-		const memoryKey = context.getNodeParameter('memoryKey', itemIndex) as string;
+		const memoryKey = getMemoryKey(context, itemIndex);
 		const clearStore = context.getNodeParameter('clearStore', itemIndex) as boolean;
-		const workflowId = context.getWorkflow().id;
 		const vectorStoreInstance = MemoryVectorStoreManager.getInstance(embeddings, context.logger);
 
-		await vectorStoreInstance.addDocuments(`${workflowId}__${memoryKey}`, documents, clearStore);
+		await vectorStoreInstance.addDocuments(memoryKey, documents, clearStore);
 	},
 }) {}
