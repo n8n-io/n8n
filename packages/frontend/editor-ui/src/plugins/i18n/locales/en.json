@@ -1513,7 +1513,7 @@
 	"contextMenu.open": "Open...",
 	"contextMenu.test": "Execute step",
 	"contextMenu.rename": "Rename",
-	"contextMenu.openSubworkflow": "Open Sub-workflow",
+	"contextMenu.openSubworkflow": "Go to Sub-workflow",
 	"contextMenu.copy": "Copy | Copy {count} {subject}",
 	"contextMenu.deactivate": "Deactivate | Deactivate {count} {subject}",
 	"contextMenu.activate": "Activate | Activate {count} nodes",
