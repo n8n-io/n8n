@@ -317,7 +317,9 @@ export function getExecutionErrorToastConfiguration({
 
 	if (error.name === 'SubworkflowOperationError') {
 		return { title: error.message, message: error.description ?? '' };
-	} else if (
+	}
+
+	if (
 		(error.name === 'NodeOperationError' || error.name === 'NodeApiError') &&
 		error.functionality === 'configuration-node'
 	) {
@@ -331,12 +333,12 @@ export function getExecutionErrorToastConfiguration({
 				nodeName: nodeErrorName,
 			}),
 		};
-	} else {
-		return {
-			title: lastNodeExecuted
-				? `Problem in node ‘${lastNodeExecuted}‘`
-				: 'Problem executing workflow',
-			message,
-		};
 	}
+
+	return {
+		title: lastNodeExecuted
+			? `Problem in node ‘${lastNodeExecuted}‘`
+			: 'Problem executing workflow',
+		message,
+	};
 }
