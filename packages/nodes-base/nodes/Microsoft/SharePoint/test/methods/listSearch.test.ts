@@ -1,5 +1,3 @@
-/* eslint-disable n8n-local-rules/no-plain-errors */
-/* eslint-disable n8n-nodes-base/node-param-display-name-miscased */
 import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
@@ -35,7 +33,7 @@ describe('Microsoft SharePoint Node', () => {
 					{
 						'@odata.etag': '"{70EC0A2F-6C3E-425F-BBE2-1D4E758F90EE},1"',
 						id: '01SPEVVYBPBLWHAPTML5BLXYQ5JZ2Y7EHO',
-						name: 'folder1',
+						name: 'Folder1',
 					},
 					{
 						'@odata.etag': '"{10F06786-5AAF-434A-8A4E-3ED44DE4A987},6"',
@@ -135,7 +133,7 @@ describe('Microsoft SharePoint Node', () => {
 					{
 						'@odata.etag': '"{529A466D-D708-4857-B771-24F467546A2A},1"',
 						id: '01SPEVVYDNI2NFECGXK5ELO4JE6RTVI2RK',
-						name: 'folder2',
+						name: 'Folder2',
 						folder: {
 							childCount: 1,
 							view: {},
@@ -144,7 +142,7 @@ describe('Microsoft SharePoint Node', () => {
 					{
 						'@odata.etag': '"{A3B2AE2A-2099-4194-A38B-EC7182CA3000},1"',
 						id: '01SPEVVYBKV2ZKHGJASRA2HC7MOGBMUMAA',
-						name: 'folder1',
+						name: 'Folder1',
 						folder: {
 							childCount: 7,
 							view: {},
@@ -174,11 +172,11 @@ describe('Microsoft SharePoint Node', () => {
 			expect(listSearchResult).toEqual({
 				results: [
 					{
-						name: 'folder1',
+						name: 'Folder1',
 						value: '01SPEVVYBKV2ZKHGJASRA2HC7MOGBMUMAA',
 					},
 					{
-						name: 'folder2',
+						name: 'Folder2',
 						value: '01SPEVVYDNI2NFECGXK5ELO4JE6RTVI2RK',
 					},
 				],
@@ -193,7 +191,7 @@ describe('Microsoft SharePoint Node', () => {
 					{
 						'@odata.etag': '"{A3B2AE2A-2099-4194-A38B-EC7182CA3000},1"',
 						id: '01SPEVVYBKV2ZKHGJASRA2HC7MOGBMUMAA',
-						name: 'folder1',
+						name: 'Folder1',
 						folder: {
 							childCount: 7,
 							view: {},
@@ -217,7 +215,7 @@ describe('Microsoft SharePoint Node', () => {
 			expect(listSearchResult).toEqual({
 				results: [
 					{
-						name: 'folder1',
+						name: 'Folder1',
 						value: '01SPEVVYBKV2ZKHGJASRA2HC7MOGBMUMAA',
 					},
 				],
