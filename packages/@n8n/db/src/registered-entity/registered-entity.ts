@@ -6,8 +6,8 @@ import type { RegisteredEntityClass } from './registered-entity-metadata';
 import { RegisteredEntityMetadata } from './registered-entity-metadata';
 
 /**
- * Decorator that combines typeorm's `@Entity` with loading it in memory,
- * so we can dynamically register module entities with typeorm.
+ * Decorator that combines typeorm's `@Entity` with loading the entity class
+ * in memory, so we can later register it when connecting to the DB.
  *
  * @param name Optional name for the entity, passed to typeorm's `@Entity` decorator
  *
