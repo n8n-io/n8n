@@ -6,7 +6,7 @@
 import get from 'lodash/get';
 import isEqual from 'lodash/isEqual';
 
-import { EXECUTE_WORKFLOW_NODE_TYPE } from './Constants';
+import { EXECUTE_WORKFLOW_NODE_TYPE, WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE } from './Constants';
 import { ApplicationError } from './errors/application.error';
 import { NodeConnectionTypes } from './Interfaces';
 import type {
@@ -1565,15 +1565,15 @@ export function isExecutable(workflow: Workflow, node: INode, nodeTypeData: INod
 	);
 }
 
+export function isNodeWithWorkflowSelector(node: INode) {
+	return [EXECUTE_WORKFLOW_NODE_TYPE, WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE].includes(node.type);
+}
+
 /**
  * Attempts to retrieve the ID of a subworkflow from a execute workflow node.
  */
 export function getSubworkflowId(node: INode): string | undefined {
-	if (
-		node &&
-		node.type === EXECUTE_WORKFLOW_NODE_TYPE &&
-		isResourceLocatorValue(node.parameters.workflowId)
-	) {
+	if (isNodeWithWorkflowSelector(node) && isResourceLocatorValue(node.parameters.workflowId)) {
 		return node.parameters.workflowId.value as string;
 	}
 	return;
