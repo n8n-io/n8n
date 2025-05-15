@@ -25,6 +25,10 @@ describe('createNodeAsTool', () => {
 		description: {
 			name: 'TestNode',
 			description: 'Test node description',
+			defaults: {
+				name: 'Test Node',
+			},
+			properties: [],
 		},
 	});
 	const node = mock<INode>({ name: 'Test_Node' });
@@ -54,9 +58,7 @@ describe('createNodeAsTool', () => {
 
 			expect(tool).toBeDefined();
 			expect(tool.name).toBe('Test_Node');
-			expect(tool.description).toBe(
-				'Test node description\n Resource: testResource\n Operation: testOperation',
-			);
+			expect(tool.description).toBe('testOperation testResource in Test Node');
 			expect(tool.schema).toBeDefined();
 		});
 
