@@ -33,6 +33,7 @@ export class EvaluationTrigger implements INodeType {
 		eventTriggerDescription: '',
 		defaults: {
 			name: 'When fetching a dataset row',
+			color: '#c3c9d5',
 		},
 		inputs: [],
 		outputs: [NodeConnectionTypes.Main],

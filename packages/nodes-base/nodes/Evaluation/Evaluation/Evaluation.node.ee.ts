@@ -28,6 +28,7 @@ export class Evaluation implements INodeType {
 		subtitle: '={{$parameter["operation"]}}',
 		defaults: {
 			name: 'Evaluation',
+			color: '#c3c9d5',
 		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: `={{(${setOutputs})($parameter)}}`,
