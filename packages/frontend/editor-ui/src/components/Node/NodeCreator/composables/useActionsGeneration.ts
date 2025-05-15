@@ -21,7 +21,6 @@ import { i18n } from '@/plugins/i18n';
 import { getCredentialOnlyNodeType } from '@/utils/credentialOnlyNodes';
 import { formatTriggerActionName } from '../utils';
 import { usePostHog } from '@/stores/posthog.store';
-import { computed } from 'vue';
 
 const PLACEHOLDER_RECOMMENDED_ACTION_KEY = 'placeholder_recommended';
 

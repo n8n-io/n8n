@@ -70,7 +70,6 @@ import type { BaseTextKey } from '@/plugins/i18n';
 import { camelCase } from 'lodash-es';
 import { useSettingsStore } from '@/stores/settings.store';
 import { usePostHog } from '@/stores/posthog.store';
-import { computed } from 'vue';
 
 export interface NodeViewItemSection {
 	key: string;
