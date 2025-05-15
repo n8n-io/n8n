@@ -1,5 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-param-display-name-miscased */
-
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
 
 import { searchUsers, searchGroups, searchGroupsForUser } from '../../methods/listSearch';

@@ -1,15 +1,10 @@
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import nock from 'nock';
 
-import { getWorkflowFilenames, testWorkflows } from '../../../../../test/nodes/Helpers';
 import { BASE_URL, CURRENT_VERSION } from '../../helpers/constants';
 
 describe('AWS IAM -  Update Group', () => {
-	const workflows = getWorkflowFilenames(__dirname).filter((filename) =>
-		filename.includes('update.workflow.json'),
-	);
-
 	beforeEach(() => {
-		nock.cleanAll();
 		nock(BASE_URL)
 			.persist()
 			.defaultReplyHeaders({ 'Content-Type': 'application/x-amz-json-1.1' })
@@ -28,5 +23,14 @@ describe('AWS IAM -  Update Group', () => {
 			});
 	});
 
-	testWorkflows(workflows);
+	new NodeTestHarness().setupTests({
+		workflowFiles: ['update.workflow.json'],
+		credentials: {
+			aws: {
+				region: 'eu-central-1',
+				accessKeyId: 'test',
+				secretAccessKey: 'test',
+			},
+		},
+	});
 });

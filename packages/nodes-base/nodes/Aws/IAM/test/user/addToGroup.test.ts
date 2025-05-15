@@ -1,13 +1,9 @@
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import nock from 'nock';
 
-import { getWorkflowFilenames, testWorkflows } from '../../../../../test/nodes/Helpers';
 import { CURRENT_VERSION } from '../../helpers/constants';
 
 describe('AWS IAM - Add User to Group', () => {
-	const workflows = getWorkflowFilenames(__dirname).filter((filename) =>
-		filename.includes('addToGroup.workflow.json'),
-	);
-
 	beforeEach(() => {
 		const baseUrl = 'https://iam.amazonaws.com/';
 		nock.cleanAll();
@@ -29,5 +25,14 @@ describe('AWS IAM - Add User to Group', () => {
 			});
 	});
 
-	testWorkflows(workflows);
+	new NodeTestHarness().setupTests({
+		workflowFiles: ['addToGroup.workflow.json'],
+		credentials: {
+			aws: {
+				region: 'eu-central-1',
+				accessKeyId: 'test',
+				secretAccessKey: 'test',
+			},
+		},
+	});
 });

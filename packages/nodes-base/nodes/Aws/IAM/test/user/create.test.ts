@@ -1,13 +1,9 @@
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import nock from 'nock';
 
-import { getWorkflowFilenames, testWorkflows } from '../../../../../test/nodes/Helpers';
 import { BASE_URL, CURRENT_VERSION } from '../../helpers/constants';
 
 describe('AWS IAM - Create user', () => {
-	const workflows = getWorkflowFilenames(__dirname).filter((filename) =>
-		filename.includes('create.workflow.json'),
-	);
-
 	beforeEach(() => {
 		nock.cleanAll();
 		nock(BASE_URL)
@@ -38,5 +34,14 @@ describe('AWS IAM - Create user', () => {
 			});
 	});
 
-	testWorkflows(workflows);
+	new NodeTestHarness().setupTests({
+		workflowFiles: ['create.workflow.json'],
+		credentials: {
+			aws: {
+				region: 'eu-central-1',
+				accessKeyId: 'test',
+				secretAccessKey: 'test',
+			},
+		},
+	});
 });

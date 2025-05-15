@@ -178,8 +178,7 @@ export async function validateUserPath(
 	}
 
 	if (requestOptions.body && typeof requestOptions.body === 'object') {
-		// @ts-expect-error The if statement ensures that there is body
-		requestOptions.body.PathPrefix = formattedPrefix;
+		Object.assign(requestOptions.body, { PathPrefix: formattedPrefix });
 	}
 
 	const options: IHttpRequestOptions = {
@@ -261,8 +260,7 @@ export async function validatePermissionsBoundary(
 		}
 
 		if (requestOptions.body) {
-			// @ts-expect-error The if statement ensures that there is body
-			requestOptions.body.PermissionsBoundary = permissionsBoundary;
+			Object.assign(requestOptions.body, { PermissionsBoundary: permissionsBoundary });
 		} else {
 			requestOptions.body = {
 				PermissionsBoundary: permissionsBoundary,
