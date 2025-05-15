@@ -246,6 +246,79 @@ const getAllOperation: INodeProperties[] = [
 				description: 'Include only workflows with these tags',
 				hint: 'Comma separated list of tags (empty value is ignored)',
 			},
+			{
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				default: '',
+				routing: {
+					request: {
+						qs: {
+							name: '={{ $value }}',
+						},
+					},
+				},
+			},
+			{
+				displayName: 'Project ID',
+				name: 'projectId',
+				type: 'string',
+				default: '',
+				routing: {
+					request: {
+						qs: {
+							projectId: '={{ $value }}',
+						},
+					},
+				},
+			},
+			{
+				displayName: 'Exclude Pinned Data',
+				name: 'excludePinnedData',
+				description: 'Whether to exclude pinned data from the response',
+				type: 'boolean',
+				default: false,
+				routing: {
+					request: {
+						qs: {
+							excludePinnedData: '={{ $value }}',
+						},
+					},
+				},
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				description: 'Max number of results to return',
+				type: 'number',
+				default: 100,
+				typeOptions: {
+					minValue: 1,
+					maxValue: 250,
+				},
+				routing: {
+					request: {
+						qs: {
+							limit: '={{ $value }}',
+						},
+					},
+				},
+			},
+			{
+				displayName: 'Cursor',
+				name: 'cursor',
+				description:
+					'Paginate by setting the cursor parameter to the nextCursor attribute returned by the previous request\'s response. Default value fetches the first "page" of the collection. See pagination for more detail.',
+				type: 'string',
+				default: '',
+				routing: {
+					request: {
+						qs: {
+							cursor: '={{ $value }}',
+						},
+					},
+				},
+			},
 		],
 	},
 ];
