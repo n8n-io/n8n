@@ -2,7 +2,7 @@ import { defineStore } from 'pinia';
 import { hasScope as genericHasScope } from '@n8n/permissions';
 import type { ScopeOptions, Scope, Resource } from '@n8n/permissions';
 import { ref } from 'vue';
-import { STORES } from '@/constants';
+import { STORES } from '@n8n/stores';
 import type { IRole } from '@/Interface';
 
 export const useRBACStore = defineStore(STORES.RBAC, () => {
