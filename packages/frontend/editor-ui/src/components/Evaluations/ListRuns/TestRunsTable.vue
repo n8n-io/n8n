@@ -24,7 +24,8 @@ const styledColumns = computed(() => {
 				...column,
 				width: '100px',
 			};
-		} else if (column.prop === 'runAt') {
+		}
+		if (column.prop === 'runAt') {
 			return {
 				...column,
 				width: '150px',
@@ -83,22 +84,22 @@ const runSummaries = computed(() => {
 					<template v-else-if="row.status === 'error'">
 						<N8nTooltip placement="top" :show-after="300">
 							<template #content>
-								{{
-									locale.baseText(
-										`${getErrorBaseKey(row.errorCode)}` as BaseTextKey,
-										row.errorDetails ? { interpolate: row.errorDetails } : {},
-									) || locale.baseText('evaluation.runDetail.error.unknownError')
-								}}
+								<i18n-t :keypath="`${getErrorBaseKey(row.errorCode)}`">
+									<template #description>
+										{{ locale.baseText(`${getErrorBaseKey(row.errorCode)}.description`) }}
+									</template>
+								</i18n-t>
 							</template>
 
-							<p :class="[$style.alertText, $style.errorText]">
-								{{
-									locale.baseText(
-										`${getErrorBaseKey(row?.errorCode)}` as BaseTextKey,
-										row.errorDetails ? { interpolate: row.errorDetails } : {},
-									) || locale.baseText('evaluation.runDetail.error.unknownError')
-								}}
-							</p>
+							<N8nText :class="[$style.alertText, $style.errorText]">
+								<i18n-t :keypath="`${getErrorBaseKey(row.errorCode)}`">
+									<template #description>
+										<p :class="$style.grayText">
+											{{ locale.baseText(`${getErrorBaseKey(row.errorCode)}.description`) }}
+										</p>
+									</template>
+								</i18n-t>
+							</N8nText>
 						</N8nTooltip>
 					</template>
 					<template v-else>
@@ -115,6 +116,10 @@ const runSummaries = computed(() => {
 	display: flex;
 	flex-direction: column;
 	gap: 8px;
+}
+
+.grayText {
+	color: var(--color-text-light);
 }
 
 .alertText {
