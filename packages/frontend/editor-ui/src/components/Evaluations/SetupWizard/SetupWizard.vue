@@ -111,7 +111,7 @@ function navigateToWorkflow(
 	});
 }
 
-function seePlans() {
+function onSeePlans() {
 	void pageRedirectionHelper.goToUpgrade('evaluations', 'upgrade-evaluations');
 }
 </script>
@@ -218,7 +218,7 @@ function seePlans() {
 						>
 							{{ locale.baseText('evaluations.setupWizard.step3.button') }}
 						</N8nButton>
-						<N8nButton v-else size="small" @click="seePlans()">
+						<N8nButton v-else size="small" @click="onSeePlans">
 							{{ locale.baseText('generic.seePlans') }}
 						</N8nButton>
 						<N8nButton
