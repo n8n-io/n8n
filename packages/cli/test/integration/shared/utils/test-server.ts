@@ -3,6 +3,7 @@ import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import cookieParser from 'cookie-parser';
 import express from 'express';
+import { InstanceSettings } from 'n8n-core';
 import type superagent from 'superagent';
 import request from 'supertest';
 import { URL } from 'url';
@@ -294,7 +295,9 @@ export const setupTestServer = ({
 						await import('@/controllers/folder.controller');
 
 					case 'insights':
-						await import('@/modules/insights/insights.controller');
+						const { shouldLoadModule } = await import('@/modules/insights/insights.pre-init');
+						shouldLoadModule({ instance: Container.get(InstanceSettings) });
+						await import('@/modules/insights/insights.module');
 				}
 			}
 

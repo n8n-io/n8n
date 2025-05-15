@@ -1,5 +1,5 @@
 import { GlobalConfig } from '@n8n/config';
-import type { entities } from '@n8n/db';
+import type { EntityName as BaseEntityName } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { DataSourceOptions } from '@n8n/typeorm';
 import { DataSource as Connection } from '@n8n/typeorm';
@@ -53,7 +53,7 @@ export async function terminate() {
 	dbConnection.connectionState.connected = false;
 }
 
-type EntityName = keyof typeof entities | 'InsightsRaw' | 'InsightsByPeriod' | 'InsightsMetadata';
+type EntityName = BaseEntityName | 'InsightsRaw' | 'InsightsByPeriod' | 'InsightsMetadata';
 
 /**
  * Truncate specific DB tables in a test DB.

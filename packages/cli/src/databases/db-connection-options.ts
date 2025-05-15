@@ -1,10 +1,10 @@
 import { DatabaseConfig, InstanceSettingsConfig } from '@n8n/config';
 import {
-	entities,
 	subscribers,
 	mysqlMigrations,
 	postgresMigrations,
 	sqliteMigrations,
+	EntityRegistry,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { DataSourceOptions, LoggerOptions } from '@n8n/typeorm';
@@ -16,15 +16,12 @@ import { UserError } from 'n8n-workflow';
 import path from 'path';
 import type { TlsOptions } from 'tls';
 
-import { InsightsByPeriod } from '@/modules/insights/database/entities/insights-by-period';
-import { InsightsMetadata } from '@/modules/insights/database/entities/insights-metadata';
-import { InsightsRaw } from '@/modules/insights/database/entities/insights-raw';
-
 @Service()
 export class DbConnectionOptions {
 	constructor(
 		private readonly config: DatabaseConfig,
 		private readonly instanceSettingsConfig: InstanceSettingsConfig,
+		private readonly entityRegistry: EntityRegistry,
 	) {}
 
 	getOverrides(dbType: 'postgresdb' | 'mysqldb') {
@@ -66,9 +63,10 @@ export class DbConnectionOptions {
 			}
 		}
 
+		const { registered: entities } = this.entityRegistry;
 		return {
 			entityPrefix,
-			entities: [...Object.values(entities), InsightsRaw, InsightsByPeriod, InsightsMetadata],
+			entities,
 			subscribers: Object.values(subscribers),
 			migrationsTableName: `${entityPrefix}migrations`,
 			migrationsRun: false,

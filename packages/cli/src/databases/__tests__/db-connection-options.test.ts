@@ -1,5 +1,5 @@
 import type { GlobalConfig, InstanceSettingsConfig } from '@n8n/config';
-import { mysqlMigrations } from '@n8n/db';
+import { type EntityRegistry, mysqlMigrations } from '@n8n/db';
 import { postgresMigrations } from '@n8n/db';
 import { sqliteMigrations } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
@@ -17,13 +17,18 @@ describe('DbConnectionOptions', () => {
 	});
 	const n8nFolder = '/test/n8n';
 	const instanceSettingsConfig = mock<InstanceSettingsConfig>({ n8nFolder });
-	const dbConnectionOptions = new DbConnectionOptions(dbConfig, instanceSettingsConfig);
+	const entityRegistry = mock<EntityRegistry>();
+	const dbConnectionOptions = new DbConnectionOptions(
+		dbConfig,
+		instanceSettingsConfig,
+		entityRegistry,
+	);
 
 	beforeEach(() => jest.resetAllMocks());
 
 	const commonOptions = {
 		entityPrefix: 'test_prefix_',
-		entities: expect.any(Array),
+		entities: entityRegistry.registered,
 		subscribers: expect.any(Array),
 		migrationsTableName: 'test_prefix_migrations',
 		migrationsRun: false,

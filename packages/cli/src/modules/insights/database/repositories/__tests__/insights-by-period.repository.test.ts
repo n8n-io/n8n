@@ -1,3 +1,4 @@
+import { EntityRegistry } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DateTime } from 'luxon';
 
@@ -7,10 +8,13 @@ import { createWorkflow } from '@test-integration/db/workflows';
 import * as testDb from '@test-integration/test-db';
 
 import { createCompactedInsightsEvent, createMetadata } from '../../entities/__tests__/db-utils';
+import { InsightsByPeriod } from '../../entities/insights-by-period';
+import { InsightsMetadata } from '../../entities/insights-metadata';
 import { InsightsByPeriodRepository } from '../insights-by-period.repository';
 
 describe('InsightsByPeriodRepository', () => {
 	beforeAll(async () => {
+		Container.get(EntityRegistry).registerEntities(InsightsMetadata, InsightsByPeriod);
 		await testDb.init();
 	});
 
