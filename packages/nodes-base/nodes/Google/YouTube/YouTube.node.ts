@@ -13,14 +13,17 @@ import type { Readable } from 'stream';
 import { isoCountryCodes } from '@utils/ISOCountryCodes';
 
 import { channelFields, channelOperations } from './ChannelDescription';
-import { googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
+import {
+	getChunkedFileContent,
+	googleApiRequest,
+	googleApiRequestAllItems,
+	UPLOAD_CHUNK_SIZE,
+} from './GenericFunctions';
 import { playlistFields, playlistOperations } from './PlaylistDescription';
 import { playlistItemFields, playlistItemOperations } from './PlaylistItemDescription';
 import { videoCategoryFields, videoCategoryOperations } from './VideoCategoryDescription';
 import { videoFields, videoOperations } from './VideoDescription';
 import { validateAndSetDate } from '../GenericFunctions';
-
-const UPLOAD_CHUNK_SIZE = 1024 * 1024;
 
 export class YouTube implements INodeType {
 	description: INodeTypeDescription = {
@@ -899,7 +902,7 @@ export class YouTube implements INodeType {
 
 						let uploadId;
 						let offset = 0;
-						for await (const chunk of fileContent) {
+						for await (const chunk of getChunkedFileContent(fileContent, binaryData.id)) {
 							const nextOffset = offset + Number(chunk.length);
 							try {
 								const response = await this.helpers.httpRequest({
