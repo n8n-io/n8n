@@ -3085,6 +3085,7 @@
 	"evaluation.listRuns.error.unknownError.description": "Click for more details",
 	"evaluation.listRuns.error.evaluationTriggerNotFound": "Evaluation trigger missing",
 	"evaluation.listRuns.error.evaluationTriggerNotConfigured": "Evaluation trigger is not configured",
+	"evaluation.listRuns.error.evaluationTriggerDisabled": "Evaluation trigger is disabled",
 	"evaluation.listRuns.error.setOutputsNodeNotFound": "No 'Set outputs' node in workflow",
 	"evaluation.listRuns.error.setOutputsNodeNotConfigured": "'Set outputs' node is not configured",
 	"evaluation.listRuns.error.setMetricsNodeNotFound": "No 'Set metrics' node in workflow",
