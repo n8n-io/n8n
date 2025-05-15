@@ -335,12 +335,13 @@ export function useActionsGenerator() {
 	) {
 		const posthogStore = usePostHog();
 
-		const isEvaluationVariantEnabled = computed(() =>
-			posthogStore.isVariantEnabled(EVALUATION_TRIGGER.name, EVALUATION_TRIGGER.variant),
+		const isEvaluationVariantEnabled = posthogStore.isVariantEnabled(
+			EVALUATION_TRIGGER.name,
+			EVALUATION_TRIGGER.variant,
 		);
 
-		const visibleNodeTypes = [...nodeTypes].filter((node) => {
-			if (isEvaluationVariantEnabled.value) {
+		const visibleNodeTypes = nodeTypes.filter((node) => {
+			if (isEvaluationVariantEnabled) {
 				return true;
 			}
 			return (

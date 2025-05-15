@@ -63,7 +63,7 @@ import { useI18n } from '@/composables/useI18n';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import type { SimplifiedNodeType } from '@/Interface';
 import type { INodeTypeDescription, Themed } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { EVALUATION_TRIGGER_NODE_TYPE, NodeConnectionTypes } from 'n8n-workflow';
 import type { NodeConnectionType } from 'n8n-workflow';
 import { useTemplatesStore } from '@/stores/templates.store';
 import type { BaseTextKey } from '@/plugins/i18n';
@@ -146,15 +146,14 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 	const templatesStore = useTemplatesStore();
 	const posthogStore = usePostHog();
 
-	const isEvaluationVariantEnabled = computed(() =>
-		posthogStore.isVariantEnabled(EVALUATION_TRIGGER.name, EVALUATION_TRIGGER.variant),
+	const isEvaluationVariantEnabled = posthogStore.isVariantEnabled(
+		EVALUATION_TRIGGER.name,
+		EVALUATION_TRIGGER.variant,
 	);
 
 	const evaluationNodeStore = nodeTypesStore.getNodeType('n8n-nodes-base.evaluation');
 	const evaluationNode =
-		isEvaluationVariantEnabled.value && evaluationNodeStore
-			? [getNodeView(evaluationNodeStore)]
-			: [];
+		isEvaluationVariantEnabled && evaluationNodeStore ? [getNodeView(evaluationNodeStore)] : [];
 
 	const chainNodes = getAiNodesBySubcategory(nodeTypesStore.allLatestNodeTypes, AI_CATEGORY_CHAINS);
 	const agentNodes = getAiNodesBySubcategory(nodeTypesStore.allLatestNodeTypes, AI_CATEGORY_AGENTS);
@@ -440,12 +439,12 @@ export function TriggerView() {
 				},
 			},
 			{
-				key: 'n8n-nodes-base.evaluationTrigger',
+				key: EVALUATION_TRIGGER_NODE_TYPE,
 				type: 'node',
 				category: [CORE_NODES_CATEGORY],
 				properties: {
 					group: [],
-					name: 'n8n-nodes-base.evaluationTrigger',
+					name: EVALUATION_TRIGGER_NODE_TYPE,
 					displayName: 'Evaluation Trigger',
 					description: 'Run a dataset through your workflow to test performance',
 					icon: 'fa:check-double',

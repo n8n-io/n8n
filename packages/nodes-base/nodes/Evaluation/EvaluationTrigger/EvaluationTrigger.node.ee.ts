@@ -16,7 +16,7 @@ import {
 	getGoogleSheet,
 	getResults,
 	getRowsLeft,
-	getRowsLeftFilteredResults,
+	getNumberOfRowsLeftFiltered,
 	getSheet,
 } from '../utils/evaluationTriggerUtils';
 
@@ -134,9 +134,9 @@ export class EvaluationTrigger implements INodeType {
 				{},
 			);
 
-			testRunnerResult.filter((row) => (row?.json?.row_number as number) >= maxRows);
+			const result = testRunnerResult.filter((row) => (row?.json?.row_number as number) >= maxRows);
 
-			return [testRunnerResult];
+			return [result];
 		}
 
 		const hasFilter = this.getNodeParameter('filtersUI.values', 0, []) as ILookupValues[];
@@ -151,7 +151,7 @@ export class EvaluationTrigger implements INodeType {
 				throw new NodeOperationError(this.getNode(), 'No row found');
 			}
 
-			const rowsLeft = await getRowsLeftFilteredResults.call(
+			const rowsLeft = await getNumberOfRowsLeftFiltered.call(
 				this,
 				googleSheetInstance,
 				googleSheet.title,

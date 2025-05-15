@@ -60,7 +60,7 @@ export async function getFilteredResults(
 	return operationResult.filter((row) => (row?.json?.row_number as number) <= endingRow);
 }
 
-export async function getRowsLeftFilteredResults(
+export async function getNumberOfRowsLeftFiltered(
 	this: IExecuteFunctions,
 	googleSheet: GoogleSheet,
 	sheetName: string,
