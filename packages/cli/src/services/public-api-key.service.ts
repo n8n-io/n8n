@@ -12,7 +12,7 @@ import { TokenExpiredError } from 'jsonwebtoken';
 import type { OpenAPIV3 } from 'openapi-types';
 
 import { EventService } from '@/events/event.service';
-import type { AuthenticatedRequest } from '@/requests';
+import type { PublicApiAuthenticatedRequest } from '@/requests';
 
 import { JwtService } from './jwt.service';
 
@@ -106,7 +106,7 @@ export class PublicApiKeyService {
 
 	getAuthMiddleware(version: string) {
 		return async (
-			req: AuthenticatedRequest,
+			req: PublicApiAuthenticatedRequest,
 			_scopes: unknown,
 			schema: OpenAPIV3.ApiKeySecurityScheme,
 		): Promise<boolean> => {

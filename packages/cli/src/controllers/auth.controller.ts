@@ -1,6 +1,6 @@
 import { LoginRequestDto, ResolveSignupTokenQueryDto } from '@n8n/api-types';
-import type { User, PublicUser } from '@n8n/db';
-import { UserRepository } from '@n8n/db';
+import type { PublicUser, User } from '@n8n/db';
+import { UserRepository, AuthUserRepository } from '@n8n/db';
 import { Body, Get, Post, Query, RestController } from '@n8n/decorators';
 import { isEmail } from 'class-validator';
 import { Response } from 'express';
@@ -33,6 +33,7 @@ export class AuthController {
 		private readonly userService: UserService,
 		private readonly license: License,
 		private readonly userRepository: UserRepository,
+		private readonly authUserRepository: AuthUserRepository,
 		private readonly eventService: EventService,
 		private readonly postHog?: PostHogClient,
 	) {}
@@ -95,14 +96,16 @@ export class AuthController {
 				}
 			}
 
-			this.authService.issueCookie(res, user, req.browserId);
+			const authUser = await this.authUserRepository.findOneByOrFail({ id: user.id });
+
+			this.authService.issueCookie(res, authUser, req.browserId);
 
 			this.eventService.emit('user-logged-in', {
 				user,
 				authenticationMethod: usedAuthenticationMethod,
 			});
 
-			return await this.userService.toPublic(user, { posthog: this.postHog, withScopes: true });
+			return await this.userService.toPublic(authUser, { posthog: this.postHog, withScopes: true });
 		}
 		this.eventService.emit('user-login-failed', {
 			authenticationMethod: usedAuthenticationMethod,

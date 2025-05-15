@@ -1,5 +1,5 @@
 import { DismissBannerRequestDto, OwnerSetupRequestDto } from '@n8n/api-types';
-import { SettingsRepository, UserRepository } from '@n8n/db';
+import { AuthUserRepository, SettingsRepository, UserRepository } from '@n8n/db';
 import { Body, GlobalScope, Post, RestController } from '@n8n/decorators';
 import { Response } from 'express';
 import { Logger } from 'n8n-core';
@@ -26,7 +26,7 @@ export class OwnerController {
 		private readonly userService: UserService,
 		private readonly passwordUtility: PasswordUtility,
 		private readonly postHog: PostHogClient,
-		private readonly userRepository: UserRepository,
+		private readonly authRepository: AuthUserRepository,
 	) {}
 
 	/**
@@ -44,7 +44,7 @@ export class OwnerController {
 			throw new BadRequestError('Instance owner already setup');
 		}
 
-		let owner = await this.userRepository.findOneOrFail({
+		let owner = await this.authRepository.findOneOrFail({
 			where: { role: 'global:owner' },
 		});
 		owner.email = email;
@@ -55,7 +55,7 @@ export class OwnerController {
 		// TODO: move XSS validation out into the DTO class
 		await validateEntity(owner);
 
-		owner = await this.userRepository.save(owner, { transaction: false });
+		owner = await this.authRepository.save(owner, { transaction: false });
 
 		this.logger.info('Owner was set up successfully');
 

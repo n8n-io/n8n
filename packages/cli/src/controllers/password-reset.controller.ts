@@ -3,7 +3,7 @@ import {
 	ForgotPasswordRequestDto,
 	ResolvePasswordTokenQueryDto,
 } from '@n8n/api-types';
-import { UserRepository } from '@n8n/db';
+import { AuthUserRepository } from '@n8n/db';
 import { Body, Get, Post, Query, RestController } from '@n8n/decorators';
 import { hasGlobalScope } from '@n8n/permissions';
 import { Response } from 'express';
@@ -37,7 +37,7 @@ export class PasswordResetController {
 		private readonly mfaService: MfaService,
 		private readonly license: License,
 		private readonly passwordUtility: PasswordUtility,
-		private readonly userRepository: UserRepository,
+		private readonly authRepository: AuthUserRepository,
 		private readonly eventService: EventService,
 	) {}
 
@@ -62,7 +62,7 @@ export class PasswordResetController {
 		const { email } = payload;
 
 		// User should just be able to reset password if one is already present
-		const user = await this.userRepository.findNonShellUser(email);
+		const user = await this.authRepository.findNonShellUser(email);
 		if (!user) {
 			this.logger.debug('No user found in the system');
 			return;

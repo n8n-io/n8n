@@ -1,5 +1,5 @@
 import { UserUpdateRequestDto } from '@n8n/api-types';
-import type { User } from '@n8n/db';
+import type { AuthUser, User } from '@n8n/db';
 import type { PublicUser } from '@n8n/db';
 import { AuthUserRepository } from '@n8n/db';
 import { InvalidAuthTokenRepository } from '@n8n/db';
@@ -29,8 +29,8 @@ describe('MeController', () => {
 	const eventService = mockInstance(EventService);
 	const userService = mockInstance(UserService);
 	const userRepository = mockInstance(UserRepository);
+	const authUserRepository = mockInstance(AuthUserRepository);
 	const mockMfaService = mockInstance(MfaService);
-	mockInstance(AuthUserRepository);
 	mockInstance(InvalidAuthTokenRepository);
 	mockInstance(License).isWithinUsersLimit.mockReturnValue(true);
 	const controller = Container.get(MeController);
@@ -50,12 +50,23 @@ describe('MeController', () => {
 				firstName: 'John',
 				lastName: 'Potato',
 			});
-			const req = mock<AuthenticatedRequest>({ user, browserId });
+
+			const req = mock<AuthenticatedRequest>();
+			req.user = user;
+			req.browserId = browserId;
 			const res = mock<Response>();
-			userRepository.findOneByOrFail.mockResolvedValue(user);
-			userRepository.findOneOrFail.mockResolvedValue(user);
+
 			jest.spyOn(jwt, 'sign').mockImplementation(() => 'signed-token');
 			userService.toPublic.mockResolvedValue({} as unknown as PublicUser);
+
+			const authUser = mock<AuthUser>({
+				...user,
+				mfaSecret: 'secret',
+				mfaRecoveryCodes: ['code1', 'code2'],
+			});
+
+			authUserRepository.findOneOrFail.mockResolvedValue(authUser);
+			userRepository.findOneByOrFail.mockResolvedValue(user);
 
 			await controller.updateCurrentUser(req, res, payload);
 

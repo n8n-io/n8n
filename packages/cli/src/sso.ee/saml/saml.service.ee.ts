@@ -1,6 +1,6 @@
 import type { SamlPreferences } from '@n8n/api-types';
-import type { Settings, User } from '@n8n/db';
-import { SettingsRepository, UserRepository } from '@n8n/db';
+import type { AuthUser, Settings } from '@n8n/db';
+import { SettingsRepository, UserRepository, AuthUserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import axios from 'axios';
 import type express from 'express';
@@ -80,6 +80,7 @@ export class SamlService {
 		private readonly validator: SamlValidator,
 		private readonly userRepository: UserRepository,
 		private readonly settingsRepository: SettingsRepository,
+		private readonly authUserRepository: AuthUserRepository,
 	) {}
 
 	async init(): Promise<void> {
@@ -188,14 +189,14 @@ export class SamlService {
 		req: express.Request,
 		binding: SamlLoginBinding,
 	): Promise<{
-		authenticatedUser: User | undefined;
+		authenticatedUser: AuthUser | undefined;
 		attributes: SamlUserAttributes;
 		onboardingRequired: boolean;
 	}> {
 		const attributes = await this.getAttributesFromLoginResponse(req, binding);
 		if (attributes.email) {
 			const lowerCasedEmail = attributes.email.toLowerCase();
-			const user = await this.userRepository.findOne({
+			const user = await this.authUserRepository.findOne({
 				where: { email: lowerCasedEmail },
 				relations: ['authIdentities'],
 			});

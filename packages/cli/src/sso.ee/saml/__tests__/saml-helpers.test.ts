@@ -1,15 +1,13 @@
 import type { AuthIdentity } from '@n8n/db';
-import { generateNanoId } from '@n8n/db';
-import { User } from '@n8n/db';
+import { AuthUser, AuthUserRepository, generateNanoId } from '@n8n/db';
 import { AuthIdentityRepository } from '@n8n/db';
-import { UserRepository } from '@n8n/db';
 
 import * as helpers from '@/sso.ee/saml/saml-helpers';
 import type { SamlUserAttributes } from '@/sso.ee/saml/types';
 import { mockInstance } from '@test/mocking';
 
-const userRepository = mockInstance(UserRepository);
 mockInstance(AuthIdentityRepository);
+const authUserRepository = mockInstance(AuthUserRepository);
 
 describe('sso/saml/samlHelpers', () => {
 	describe('updateUserFromSamlAttributes', () => {
@@ -21,10 +19,10 @@ describe('sso/saml/samlHelpers', () => {
 			//
 			// ARRANGE
 			//
-			const user = Object.assign(new User(), {
+			const user = Object.assign(new AuthUser(), {
 				id: generateNanoId(),
 				authIdentities: [] as AuthIdentity[],
-			} as User);
+			} as AuthUser);
 			const samlUserAttributes: SamlUserAttributes = {
 				firstName: 'Nathan',
 				lastName: 'Nathaniel',
@@ -32,7 +30,7 @@ describe('sso/saml/samlHelpers', () => {
 				userPrincipalName: 'Huh?',
 			};
 
-			userRepository.save.mockImplementationOnce(async (user) => user as User);
+			authUserRepository.save.mockImplementationOnce(async (user) => user as AuthUser);
 
 			//
 			// ACT
@@ -42,7 +40,7 @@ describe('sso/saml/samlHelpers', () => {
 			//
 			// ASSERT
 			//
-			expect(userRepository.save).toHaveBeenCalledWith(
+			expect(authUserRepository.save).toHaveBeenCalledWith(
 				{
 					...user,
 					firstName: samlUserAttributes.firstName,
@@ -50,7 +48,7 @@ describe('sso/saml/samlHelpers', () => {
 				},
 				{ transaction: false },
 			);
-			expect(userRepository.update).not.toHaveBeenCalled();
+			expect(authUserRepository.update).not.toHaveBeenCalled();
 		});
 	});
 });

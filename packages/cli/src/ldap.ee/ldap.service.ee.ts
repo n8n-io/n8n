@@ -1,7 +1,7 @@
 import type { LdapConfig } from '@n8n/constants';
 import { LDAP_FEATURE_NAME } from '@n8n/constants';
 import { SettingsRepository } from '@n8n/db';
-import type { User, RunningMode, SyncStatus } from '@n8n/db';
+import type { User, RunningMode, SyncStatus, AuthUser } from '@n8n/db';
 import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { QueryFailedError } from '@n8n/typeorm';
@@ -395,8 +395,8 @@ export class LdapService {
 		adUsers: LdapUser[],
 		localAdUsers: string[],
 	): {
-		usersToCreate: Array<[string, User]>;
-		usersToUpdate: Array<[string, User]>;
+		usersToCreate: Array<[string, AuthUser]>;
+		usersToUpdate: Array<[string, AuthUser]>;
 		usersToDisable: string[];
 	} {
 		return {
@@ -410,7 +410,7 @@ export class LdapService {
 	private getUsersToCreate(
 		remoteAdUsers: LdapUser[],
 		localLdapIds: string[],
-	): Array<[string, User]> {
+	): Array<[string, AuthUser]> {
 		return remoteAdUsers
 			.filter((adUser) => !localLdapIds.includes(adUser[this.config.ldapIdAttribute] as string))
 			.map((adUser) => mapLdapUserToDbUser(adUser, this.config, true));
@@ -420,7 +420,7 @@ export class LdapService {
 	private getUsersToUpdate(
 		remoteAdUsers: LdapUser[],
 		localLdapIds: string[],
-	): Array<[string, User]> {
+	): Array<[string, AuthUser]> {
 		return remoteAdUsers
 			.filter((adUser) => localLdapIds.includes(adUser[this.config.ldapIdAttribute] as string))
 			.map((adUser) => mapLdapUserToDbUser(adUser, this.config));

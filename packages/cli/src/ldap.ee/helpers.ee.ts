@@ -1,11 +1,12 @@
 import type { LdapConfig, ConnectionSecurity } from '@n8n/constants';
-import type { AuthProviderSyncHistory } from '@n8n/db';
+import type { AuthProviderSyncHistory, User } from '@n8n/db';
 import {
 	AuthIdentity,
-	User,
 	AuthIdentityRepository,
 	AuthProviderSyncHistoryRepository,
 	UserRepository,
+	AuthUserRepository,
+	AuthUser,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { validate } from 'jsonschema';
@@ -96,8 +97,8 @@ export const getAuthIdentityByLdapId = async (
 	});
 };
 
-export const getUserByEmail = async (email: string): Promise<User | null> => {
-	return await Container.get(UserRepository).findOne({
+export const getUserByEmail = async (email: string): Promise<AuthUser | null> => {
+	return await Container.get(AuthUserRepository).findOne({
 		where: { email },
 	});
 };
@@ -150,8 +151,8 @@ export const mapLdapUserToDbUser = (
 	ldapUser: LdapUser,
 	ldapConfig: LdapConfig,
 	toCreate = false,
-): [string, User] => {
-	const user = new User();
+): [string, AuthUser] => {
+	const user = new AuthUser();
 	const [ldapId, data] = mapLdapAttributesToUser(ldapUser, ldapConfig);
 	Object.assign(user, data);
 	if (toCreate) {
@@ -170,16 +171,16 @@ export const mapLdapUserToDbUser = (
  * Update "ToDisableUsers" in the database
  */
 export const processUsers = async (
-	toCreateUsers: Array<[string, User]>,
-	toUpdateUsers: Array<[string, User]>,
+	toCreateUsers: Array<[string, AuthUser]>,
+	toUpdateUsers: Array<[string, AuthUser]>,
 	toDisableUsers: string[],
 ): Promise<void> => {
-	const userRepository = Container.get(UserRepository);
-	const { manager: dbManager } = userRepository;
+	const authUserRepository = Container.get(AuthUserRepository);
+	const { manager: dbManager } = authUserRepository;
 	await dbManager.transaction(async (transactionManager) => {
 		return await Promise.all([
 			...toCreateUsers.map(async ([ldapId, user]) => {
-				const { user: savedUser } = await userRepository.createUserWithProject(
+				const { user: savedUser } = await authUserRepository.createUserWithProject(
 					user,
 					transactionManager,
 				);
@@ -192,7 +193,7 @@ export const processUsers = async (
 				});
 				if (authIdentity?.userId) {
 					await transactionManager.update(
-						User,
+						AuthUser,
 						{ id: authIdentity.userId },
 						{ email: user.email, firstName: user.firstName, lastName: user.lastName },
 					);
@@ -203,7 +204,7 @@ export const processUsers = async (
 					providerId: ldapId,
 				});
 				if (authIdentity?.userId) {
-					const user = await transactionManager.findOneBy(User, { id: authIdentity.userId });
+					const user = await transactionManager.findOneBy(AuthUser, { id: authIdentity.userId });
 
 					if (user) {
 						user.disabled = true;
@@ -273,7 +274,7 @@ export const createLdapAuthIdentity = async (user: User, ldapId: string) => {
 };
 
 export const createLdapUserOnLocalDb = async (data: Partial<User>, ldapId: string) => {
-	const { user } = await Container.get(UserRepository).createUserWithProject({
+	const { user } = await Container.get(AuthUserRepository).createUserWithProject({
 		password: randomString(8),
 		role: 'global:member',
 		...data,
