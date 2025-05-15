@@ -1,7 +1,6 @@
 import { mock } from 'jest-mock-extended';
 import {
 	NodeOperationError,
-	UserError,
 	type AssignmentCollectionValue,
 	type IExecuteFunctions,
 	type INodeTypes,
