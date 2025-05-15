@@ -194,7 +194,7 @@ function onSeePlans() {
 					@click="toggleStep(2)"
 				/>
 				<div v-if="activeStepIndex === 2" :class="$style.stepContent">
-					<ul v-if="evaluationsAvailable" :class="$style.bulletPoints">
+					<ul v-if="evaluationsAvailable || evaluationMetricNodeExist" :class="$style.bulletPoints">
 						<li>
 							<N8nText size="small" color="text-base">
 								{{ locale.baseText('evaluations.setupWizard.step3.item1') }}
@@ -211,7 +211,7 @@ function onSeePlans() {
 					</N8nCallout>
 					<div :class="$style.actionButton">
 						<N8nButton
-							v-if="evaluationsAvailable"
+							v-if="evaluationsAvailable || evaluationMetricNodeExist"
 							size="small"
 							type="secondary"
 							@click="navigateToWorkflow('addEvaluationNode')"
@@ -230,7 +230,10 @@ function onSeePlans() {
 							{{ locale.baseText('evaluations.setupWizard.step3.skip') }}
 						</N8nButton>
 					</div>
-					<div :class="$style.quotaNote">
+					<div
+						v-if="usageStore.workflowsWithEvaluationsLimit !== -1 && evaluationsAvailable"
+						:class="$style.quotaNote"
+					>
 						<N8nText size="xsmall" color="text-base">
 							<i18n-t keypath="evaluations.setupWizard.step3.notice">
 								<template #link>
