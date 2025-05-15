@@ -34,7 +34,7 @@ import type {
 	ViewportTransform,
 	XYPosition,
 } from '@vue-flow/core';
-import { MarkerType, PanelPosition, useVueFlow, VueFlow } from '@vue-flow/core';
+import { getRectOfNodes, MarkerType, PanelPosition, useVueFlow, VueFlow } from '@vue-flow/core';
 import { MiniMap } from '@vue-flow/minimap';
 import { onKeyDown, onKeyUp, useThrottleFn } from '@vueuse/core';
 import { NodeConnectionTypes } from 'n8n-workflow';
@@ -143,6 +143,7 @@ const {
 	zoomIn,
 	zoomOut,
 	zoomTo,
+	setCenter,
 	setInteractive,
 	elementsSelectable,
 	project,
@@ -402,9 +403,22 @@ function onSelectNode() {
 	emit('update:node:selected', lastSelectedNode.value?.id);
 }
 
-function onSelectNodes({ ids }: CanvasEventBusEvents['nodes:select']) {
+function onSelectNodes({ ids, panIntoView }: CanvasEventBusEvents['nodes:select']) {
 	clearSelectedNodes();
 	addSelectedNodes(ids.map(findNode).filter(isPresent));
+
+	if (panIntoView) {
+		const node = ids.map(findNode).filter(isPresent)[0];
+
+		if (node) {
+			const rect = getRectOfNodes([node]);
+
+			void setCenter(rect.x + rect.width / 2, rect.y + rect.height / 2, {
+				duration: 250,
+				zoom: viewport.value.zoom,
+			});
+		}
+	}
 }
 
 function onToggleNodeEnabled(id: string) {

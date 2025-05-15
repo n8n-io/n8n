@@ -69,10 +69,12 @@ const isLogDetailsVisuallyOpen = computed(
 );
 const logsPanelActionsProps = computed<InstanceType<typeof LogsPanelActions>['$props']>(() => ({
 	isOpen: isOpen.value,
+	isSyncSelectionEnabled: logsStore.isLogSelectionSyncedWithCanvas,
 	showToggleButton: !isPoppedOut.value,
 	showPopOutButton: canPopOut.value && !isPoppedOut.value,
 	onPopOut,
 	onToggleOpen,
+	onToggleSyncSelection: logsStore.toggleLogSelectionSync,
 }));
 
 function handleResizeOverviewPanelEnd() {
