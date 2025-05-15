@@ -14,7 +14,7 @@ import {
 import { mockedStore } from '@/__tests__/utils';
 import { useSettingsStore } from '@/stores/settings.store';
 import { type FrontendSettings } from '@n8n/api-types';
-import { LOG_DETAILS_CONTENT } from '../../types/logs';
+import { LOG_DETAILS_PANEL_STATE } from '../../types/logs';
 import type { LogEntry } from '@/components/RunDataAi/utils';
 
 describe('LogDetailsPanel', () => {
@@ -95,7 +95,7 @@ describe('LogDetailsPanel', () => {
 		const rendered = render({
 			isOpen: true,
 			logEntry: createLogEntry({ node: aiNode, runIndex: 0, runData: aiNodeRunData }),
-			panels: LOG_DETAILS_CONTENT.BOTH,
+			panels: LOG_DETAILS_PANEL_STATE.BOTH,
 		});
 
 		const header = within(rendered.getByTestId('log-details-header'));
@@ -112,7 +112,7 @@ describe('LogDetailsPanel', () => {
 		const rendered = render({
 			isOpen: true,
 			logEntry: createLogEntry({ node: aiNode, runIndex: 0, runData: aiNodeRunData }),
-			panels: LOG_DETAILS_CONTENT.BOTH,
+			panels: LOG_DETAILS_PANEL_STATE.BOTH,
 		});
 
 		await fireEvent.mouseDown(rendered.getByTestId('resize-handle'));
@@ -127,7 +127,7 @@ describe('LogDetailsPanel', () => {
 		const rendered = render({
 			isOpen: true,
 			logEntry: createLogEntry({ node: aiNode, runIndex: 0, runData: aiNodeRunData }),
-			panels: LOG_DETAILS_CONTENT.BOTH,
+			panels: LOG_DETAILS_PANEL_STATE.BOTH,
 		});
 
 		await fireEvent.mouseDown(rendered.getByTestId('resize-handle'));

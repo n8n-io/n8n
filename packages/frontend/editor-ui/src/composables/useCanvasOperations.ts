@@ -107,6 +107,7 @@ import { useProjectsStore } from '@/stores/projects.store';
 import type { CanvasLayoutEvent } from './useCanvasLayout';
 import { chatEventBus } from '@n8n/chat/event-buses';
 import { isChatNode } from '@/components/CanvasChat/utils';
+import { useLogsStore } from '@/stores/logs.store';
 
 type AddNodeData = Partial<INodeUi> & {
 	type: string;
@@ -148,6 +149,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 	const nodeCreatorStore = useNodeCreatorStore();
 	const executionsStore = useExecutionsStore();
 	const projectsStore = useProjectsStore();
+	const logsStore = useLogsStore();
 
 	const i18n = useI18n();
 	const toast = useToast();
@@ -2031,7 +2033,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 
 		const workflow = workflowsStore.getCurrentWorkflow();
 
-		canvasStore.toggleLogsPanelOpen(true);
+		logsStore.toggleOpen(true);
 
 		const payload = {
 			workflow_id: workflow.id,

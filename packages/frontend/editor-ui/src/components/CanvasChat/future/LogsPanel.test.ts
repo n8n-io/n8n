@@ -19,10 +19,10 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { LOGS_PANEL_STATE } from '../types/logs';
 import { IN_PROGRESS_EXECUTION_ID } from '@/constants';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
-import { useCanvasStore } from '@/stores/canvas.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { deepCopy } from 'n8n-workflow';
 import { createTestTaskData } from '@/__tests__/mocks';
+import { useLogsStore } from '@/stores/logs.store';
 
 describe('LogsPanel', () => {
 	const VIEWPORT_HEIGHT = 800;
@@ -31,7 +31,7 @@ describe('LogsPanel', () => {
 	let settingsStore: ReturnType<typeof mockedStore<typeof useSettingsStore>>;
 	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
 	let nodeTypeStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
-	let canvasStore: ReturnType<typeof mockedStore<typeof useCanvasStore>>;
+	let logsStore: ReturnType<typeof mockedStore<typeof useLogsStore>>;
 	let ndvStore: ReturnType<typeof mockedStore<typeof useNDVStore>>;
 
 	function render() {
@@ -59,8 +59,8 @@ describe('LogsPanel', () => {
 		workflowsStore = mockedStore(useWorkflowsStore);
 		workflowsStore.setWorkflowExecutionData(null);
 
-		canvasStore = mockedStore(useCanvasStore);
-		canvasStore.toggleLogsPanelOpen(false);
+		logsStore = mockedStore(useLogsStore);
+		logsStore.toggleOpen(false);
 
 		nodeTypeStore = mockedStore(useNodeTypesStore);
 		nodeTypeStore.setNodeTypes(nodeTypes);
@@ -170,11 +170,11 @@ describe('LogsPanel', () => {
 	});
 
 	it('should open itself by pulling up the resizer', async () => {
-		canvasStore.toggleLogsPanelOpen(false);
+		logsStore.toggleOpen(false);
 
 		const rendered = render();
 
-		expect(canvasStore.logsPanelState).toBe(LOGS_PANEL_STATE.CLOSED);
+		expect(logsStore.state).toBe(LOGS_PANEL_STATE.CLOSED);
 		expect(rendered.queryByTestId('logs-overview-body')).not.toBeInTheDocument();
 
 		await fireEvent.mouseDown(rendered.getByTestId('resize-handle'));
@@ -183,17 +183,17 @@ describe('LogsPanel', () => {
 		window.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, clientX: 0, clientY: 0 }));
 
 		await waitFor(() => {
-			expect(canvasStore.logsPanelState).toBe(LOGS_PANEL_STATE.ATTACHED);
+			expect(logsStore.state).toBe(LOGS_PANEL_STATE.ATTACHED);
 			expect(rendered.queryByTestId('logs-overview-body')).toBeInTheDocument();
 		});
 	});
 
 	it('should close itself by pulling down the resizer', async () => {
-		canvasStore.toggleLogsPanelOpen(true);
+		logsStore.toggleOpen(true);
 
 		const rendered = render();
 
-		expect(canvasStore.logsPanelState).toBe(LOGS_PANEL_STATE.ATTACHED);
+		expect(logsStore.state).toBe(LOGS_PANEL_STATE.ATTACHED);
 		expect(rendered.queryByTestId('logs-overview-body')).toBeInTheDocument();
 
 		await fireEvent.mouseDown(rendered.getByTestId('resize-handle'));
@@ -206,13 +206,13 @@ describe('LogsPanel', () => {
 		);
 
 		await waitFor(() => {
-			expect(canvasStore.logsPanelState).toBe(LOGS_PANEL_STATE.CLOSED);
+			expect(logsStore.state).toBe(LOGS_PANEL_STATE.CLOSED);
 			expect(rendered.queryByTestId('logs-overview-body')).not.toBeInTheDocument();
 		});
 	});
 
 	it('should reflect changes to execution data in workflow store if execution is in progress', async () => {
-		canvasStore.toggleLogsPanelOpen(true);
+		logsStore.toggleOpen(true);
 		workflowsStore.setWorkflow(aiChatWorkflow);
 		workflowsStore.setWorkflowExecutionData({
 			...aiChatExecutionResponse,
@@ -280,7 +280,7 @@ describe('LogsPanel', () => {
 		const router = useRouter();
 		const operations = useCanvasOperations({ router });
 
-		canvasStore.toggleLogsPanelOpen(true);
+		logsStore.toggleOpen(true);
 		workflowsStore.setWorkflow(deepCopy(aiChatWorkflow));
 		workflowsStore.setWorkflowExecutionData({
 			...aiChatExecutionResponse,
@@ -304,7 +304,7 @@ describe('LogsPanel', () => {
 	});
 
 	it('should open NDV if the button is clicked', async () => {
-		canvasStore.toggleLogsPanelOpen(true);
+		logsStore.toggleOpen(true);
 		workflowsStore.setWorkflow(aiChatWorkflow);
 		workflowsStore.setWorkflowExecutionData(aiChatExecutionResponse);
 
@@ -323,7 +323,7 @@ describe('LogsPanel', () => {
 	});
 
 	it('should toggle subtree when chevron icon button is pressed', async () => {
-		canvasStore.toggleLogsPanelOpen(true);
+		logsStore.toggleOpen(true);
 		workflowsStore.setWorkflow(aiChatWorkflow);
 		workflowsStore.setWorkflowExecutionData(aiChatExecutionResponse);
 
@@ -350,9 +350,9 @@ describe('LogsPanel', () => {
 	});
 
 	it('should toggle input and output panel when the button is clicked', async () => {
-		canvasStore.toggleLogsPanelOpen(true);
-		canvasStore.toggleLogInputOpen(false);
-		canvasStore.toggleLogOutputOpen(true);
+		logsStore.toggleOpen(true);
+		logsStore.toggleInputOpen(false);
+		logsStore.toggleOutputOpen(true);
 		workflowsStore.setWorkflow(aiChatWorkflow);
 		workflowsStore.setWorkflowExecutionData(aiChatExecutionResponse);
 
@@ -375,7 +375,7 @@ describe('LogsPanel', () => {
 	});
 
 	it('should allow to select previous and next row via keyboard shortcut', async () => {
-		canvasStore.toggleLogsPanelOpen(true);
+		logsStore.toggleOpen(true);
 		workflowsStore.setWorkflow(aiChatWorkflow);
 		workflowsStore.setWorkflowExecutionData(aiChatExecutionResponse);
 

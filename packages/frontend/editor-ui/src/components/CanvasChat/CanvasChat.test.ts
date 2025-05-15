@@ -16,7 +16,6 @@ import { ChatOptionsSymbol, ChatSymbol } from '@n8n/chat/constants';
 import { chatEventBus } from '@n8n/chat/event-buses';
 
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useCanvasStore } from '@/stores/canvas.store';
 import * as useChatMessaging from './composables/useChatMessaging';
 import * as useChatTrigger from './composables/useChatTrigger';
 import { useToast } from '@/composables/useToast';
@@ -25,6 +24,7 @@ import type { IExecutionResponse, INodeUi } from '@/Interface';
 import type { ChatMessage } from '@n8n/chat/types';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { LOGS_PANEL_STATE } from './types/logs';
+import { useLogsStore } from '@/stores/logs.store';
 
 vi.mock('@/composables/useToast', () => {
 	const showMessage = vi.fn();
@@ -139,7 +139,7 @@ describe('CanvasChat', () => {
 	});
 
 	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
-	let canvasStore: ReturnType<typeof mockedStore<typeof useCanvasStore>>;
+	let logsStore: ReturnType<typeof mockedStore<typeof useLogsStore>>;
 	let nodeTypeStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
 
 	beforeEach(() => {
@@ -160,7 +160,7 @@ describe('CanvasChat', () => {
 		setActivePinia(pinia);
 
 		workflowsStore = mockedStore(useWorkflowsStore);
-		canvasStore = mockedStore(useCanvasStore);
+		logsStore = mockedStore(useLogsStore);
 		nodeTypeStore = mockedStore(useNodeTypesStore);
 
 		// Setup default mocks
@@ -175,11 +175,11 @@ describe('CanvasChat', () => {
 
 			return matchedNode;
 		});
-		canvasStore.isLogsPanelOpen = true;
+		logsStore.isOpen = true;
 		workflowsStore.getWorkflowExecution = mockWorkflowExecution as unknown as IExecutionResponse;
 		workflowsStore.getPastChatMessages = ['Previous message 1', 'Previous message 2'];
 
-		canvasStore.logsPanelState = LOGS_PANEL_STATE.ATTACHED;
+		logsStore.state = LOGS_PANEL_STATE.ATTACHED;
 
 		nodeTypeStore.getNodeType = vi.fn().mockImplementation((nodeTypeName) => {
 			return mockNodeTypes.find((node) => node.name === nodeTypeName) ?? null;
@@ -199,7 +199,7 @@ describe('CanvasChat', () => {
 		});
 
 		it('should not render chat when panel is closed', async () => {
-			canvasStore.logsPanelState = LOGS_PANEL_STATE.CLOSED;
+			logsStore.state = LOGS_PANEL_STATE.CLOSED;
 			const { queryByTestId } = renderComponent();
 			await waitFor(() => {
 				expect(queryByTestId('canvas-chat')).not.toBeInTheDocument();
@@ -364,7 +364,7 @@ describe('CanvasChat', () => {
 				{ coords: { clientX: 0, clientY: 100 } },
 			]);
 
-			expect(canvasStore.setPanelHeight).toHaveBeenCalled();
+			expect(logsStore.setHeight).toHaveBeenCalled();
 		});
 
 		it('should persist resize dimensions', () => {
@@ -389,7 +389,7 @@ describe('CanvasChat', () => {
 				isLoading: computed(() => false),
 			});
 
-			canvasStore.logsPanelState = LOGS_PANEL_STATE.ATTACHED;
+			logsStore.state = LOGS_PANEL_STATE.ATTACHED;
 			workflowsStore.allowFileUploads = true;
 		});
 
@@ -545,15 +545,15 @@ describe('CanvasChat', () => {
 			renderComponent();
 
 			// Toggle logs panel
-			canvasStore.isLogsPanelOpen = true;
+			logsStore.isOpen = true;
 			await waitFor(() => {
-				expect(canvasStore.setPanelHeight).toHaveBeenCalled();
+				expect(logsStore.setHeight).toHaveBeenCalled();
 			});
 
 			// Close chat panel
-			canvasStore.logsPanelState = LOGS_PANEL_STATE.CLOSED;
+			logsStore.state = LOGS_PANEL_STATE.CLOSED;
 			await waitFor(() => {
-				expect(canvasStore.setPanelHeight).toHaveBeenCalledWith(0);
+				expect(logsStore.setHeight).toHaveBeenCalledWith(0);
 			});
 		});
 
@@ -561,15 +561,15 @@ describe('CanvasChat', () => {
 			const { unmount, rerender } = renderComponent();
 
 			// Set initial state
-			canvasStore.logsPanelState = LOGS_PANEL_STATE.ATTACHED;
-			canvasStore.isLogsPanelOpen = true;
+			logsStore.state = LOGS_PANEL_STATE.ATTACHED;
+			logsStore.isOpen = true;
 
 			// Unmount and remount
 			unmount();
 			await rerender({});
 
-			expect(canvasStore.logsPanelState).toBe(LOGS_PANEL_STATE.ATTACHED);
-			expect(canvasStore.isLogsPanelOpen).toBe(true);
+			expect(logsStore.state).toBe(LOGS_PANEL_STATE.ATTACHED);
+			expect(logsStore.isOpen).toBe(true);
 		});
 	});
 

@@ -4,7 +4,7 @@ import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import { useI18n } from '@/composables/useI18n';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { CHAT_TRIGGER_NODE_TYPE } from '@/constants';
-import { useCanvasStore } from '@/stores/canvas.store';
+import { useLogsStore } from '@/stores/logs.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { N8nButton } from '@n8n/design-system';
 import { computed, useCssModule } from 'vue';
@@ -37,11 +37,11 @@ const containerClass = computed(() => ({
 const router = useRouter();
 const i18n = useI18n();
 const workflowsStore = useWorkflowsStore();
-const canvasStore = useCanvasStore();
+const logsStore = useLogsStore();
 const { runEntireWorkflow } = useRunWorkflow({ router });
 const { startChat } = useCanvasOperations({ router });
 
-const isChatOpen = computed(() => canvasStore.isLogsPanelOpen);
+const isChatOpen = computed(() => logsStore.isOpen);
 const isExecuting = computed(() => workflowsStore.isWorkflowRunning);
 const testId = computed(() => `execute-workflow-button-${name}`);
 </script>
@@ -63,7 +63,7 @@ const testId = computed(() => `execute-workflow-button-${name}`);
 						:disabled="isExecuting"
 						:data-test-id="testId"
 						:label="i18n.baseText('chat.hide')"
-						@click.capture="canvasStore.toggleLogsPanelOpen(false)"
+						@click.capture="logsStore.toggleOpen(false)"
 					/>
 					<KeyboardShortcutTooltip
 						v-else

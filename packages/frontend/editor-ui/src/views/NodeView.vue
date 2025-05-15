@@ -122,6 +122,7 @@ import { useFoldersStore } from '@/stores/folders.store';
 import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
 import { useAgentRequestStore } from '@/stores/agentRequest.store';
 import { needsAgentInput } from '@/utils/nodes/nodeTransforms';
+import { useLogsStore } from '@/stores/logs.store';
 
 defineOptions({
 	name: 'NodeView',
@@ -175,6 +176,7 @@ const templatesStore = useTemplatesStore();
 const builderStore = useBuilderStore();
 const foldersStore = useFoldersStore();
 const agentRequestStore = useAgentRequestStore();
+const logsStore = useLogsStore();
 
 const canvasEventBus = createEventBus<CanvasEventBusEvents>();
 
@@ -272,7 +274,7 @@ const keyBindingsEnabled = computed(() => {
 	return !ndvStore.activeNode && uiStore.activeModals.length === 0;
 });
 
-const isLogsPanelOpen = computed(() => canvasStore.isLogsPanelOpen);
+const isLogsPanelOpen = computed(() => logsStore.isOpen);
 
 /**
  * Initialization
@@ -1929,9 +1931,9 @@ onBeforeUnmount(() => {
 		@update:node:parameters="onUpdateNodeParameters"
 		@update:node:inputs="onUpdateNodeInputs"
 		@update:node:outputs="onUpdateNodeOutputs"
-		@update:logs-open="canvasStore.toggleLogsPanelOpen($event)"
-		@update:logs:input-open="canvasStore.toggleLogInputOpen"
-		@update:logs:output-open="canvasStore.toggleLogOutputOpen"
+		@update:logs-open="logsStore.toggleOpen($event)"
+		@update:logs:input-open="logsStore.toggleInputOpen"
+		@update:logs:output-open="logsStore.toggleOutputOpen"
 		@open:sub-workflow="onOpenSubWorkflow"
 		@click:node="onClickNode"
 		@click:node:add="onClickNodeAdd"
@@ -1977,7 +1979,7 @@ onBeforeUnmount(() => {
 					v-if="isLogsPanelOpen"
 					type="tertiary"
 					:label="i18n.baseText('chat.hide')"
-					@click="canvasStore.toggleLogsPanelOpen(false)"
+					@click="logsStore.toggleOpen(false)"
 				/>
 				<KeyboardShortcutTooltip
 					v-else

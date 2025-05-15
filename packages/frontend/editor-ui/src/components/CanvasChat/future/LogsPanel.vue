@@ -9,11 +9,11 @@ import LogsPanelActions from '@/components/CanvasChat/future/components/LogsPane
 import { useLayout } from '@/components/CanvasChat/future/composables/useLayout';
 import { useExecutionData } from '@/components/CanvasChat/future/composables/useExecutionData';
 import { type LogEntry } from '@/components/RunDataAi/utils';
-import { useCanvasStore } from '@/stores/canvas.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { ndvEventBus } from '@/event-bus';
 import { useSelection } from '@/components/CanvasChat/future/composables/useSelection';
 import { useExpand } from '@/components/CanvasChat/future/composables/useExpand';
+import { useLogsStore } from '@/stores/logs.store';
 
 const props = withDefaults(defineProps<{ isReadOnly?: boolean }>(), { isReadOnly: false });
 
@@ -22,7 +22,7 @@ const logsContainer = useTemplateRef('logsContainer');
 const pipContainer = useTemplateRef('pipContainer');
 const pipContent = useTemplateRef('pipContent');
 
-const canvasStore = useCanvasStore();
+const logsStore = useLogsStore();
 const ndvStore = useNDVStore();
 
 const {
@@ -192,10 +192,10 @@ async function handleOpenNdv(treeNode: LogEntry) {
 							:log-entry="selected"
 							:window="pipWindow"
 							:latest-info="latestNodeNameById[selected.id]"
-							:panels="canvasStore.logDetailsPanel"
+							:panels="logsStore.detailsState"
 							@click-header="onToggleOpen(true)"
-							@toggle-input-open="canvasStore.toggleLogInputOpen"
-							@toggle-output-open="canvasStore.toggleLogOutputOpen"
+							@toggle-input-open="logsStore.toggleInputOpen"
+							@toggle-output-open="logsStore.toggleOutputOpen"
 						>
 							<template #actions>
 								<LogsPanelActions v-if="isLogDetailsVisuallyOpen" v-bind="logsPanelActionsProps" />

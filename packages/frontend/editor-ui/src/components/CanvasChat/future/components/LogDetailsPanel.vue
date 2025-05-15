@@ -3,7 +3,10 @@ import ExecutionSummary from '@/components/CanvasChat/future/components/Executio
 import PanelHeader from '@/components/CanvasChat/future/components/PanelHeader.vue';
 import RunDataView from '@/components/CanvasChat/future/components/RunDataView.vue';
 import { useResizablePanel } from '@/components/CanvasChat/future/composables/useResizablePanel';
-import { LOG_DETAILS_CONTENT, type LogDetailsContent } from '@/components/CanvasChat/types/logs';
+import {
+	LOG_DETAILS_PANEL_STATE,
+	type LogDetailsPanelState,
+} from '@/components/CanvasChat/types/logs';
 import NodeIcon from '@/components/NodeIcon.vue';
 import { useI18n } from '@/composables/useI18n';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -24,7 +27,7 @@ const { isOpen, logEntry, window, latestInfo, panels } = defineProps<{
 	logEntry: LogEntry;
 	window?: Window;
 	latestInfo?: LatestNodeInfo;
-	panels: LogDetailsContent;
+	panels: LogDetailsPanelState;
 }>();
 
 const emit = defineEmits<{
@@ -50,7 +53,7 @@ const resizer = useResizablePanel('N8N_LOGS_INPUT_PANEL_WIDTH', {
 	allowCollapse: true,
 	allowFullSize: true,
 });
-const shouldResize = computed(() => panels === LOG_DETAILS_CONTENT.BOTH);
+const shouldResize = computed(() => panels === LOG_DETAILS_PANEL_STATE.BOTH);
 
 function handleResizeEnd() {
 	if (resizer.isCollapsed.value) {
@@ -98,7 +101,7 @@ function handleResizeEnd() {
 						<N8nButton
 							size="mini"
 							type="secondary"
-							:class="panels === LOG_DETAILS_CONTENT.OUTPUT ? '' : $style.pressed"
+							:class="panels === LOG_DETAILS_PANEL_STATE.OUTPUT ? '' : $style.pressed"
 							@click.stop="emit('toggleInputOpen')"
 						>
 							{{ locale.baseText('logs.details.header.actions.input') }}
@@ -111,7 +114,7 @@ function handleResizeEnd() {
 						<N8nButton
 							size="mini"
 							type="secondary"
-							:class="panels === LOG_DETAILS_CONTENT.INPUT ? '' : $style.pressed"
+							:class="panels === LOG_DETAILS_PANEL_STATE.INPUT ? '' : $style.pressed"
 							@click.stop="emit('toggleOutputOpen')"
 						>
 							{{ locale.baseText('logs.details.header.actions.output') }}
@@ -123,7 +126,7 @@ function handleResizeEnd() {
 		</PanelHeader>
 		<div v-if="isOpen" :class="$style.content" data-test-id="logs-details-body">
 			<N8nResizeWrapper
-				v-if="!isTriggerNode && panels !== LOG_DETAILS_CONTENT.OUTPUT"
+				v-if="!isTriggerNode && panels !== LOG_DETAILS_PANEL_STATE.OUTPUT"
 				:class="{
 					[$style.inputResizer]: true,
 					[$style.collapsed]: resizer.isCollapsed.value,
@@ -145,7 +148,7 @@ function handleResizeEnd() {
 				/>
 			</N8nResizeWrapper>
 			<RunDataView
-				v-if="isTriggerNode || panels !== LOG_DETAILS_CONTENT.INPUT"
+				v-if="isTriggerNode || panels !== LOG_DETAILS_PANEL_STATE.INPUT"
 				data-test-id="log-details-output"
 				pane-type="output"
 				:class="$style.outputPanel"

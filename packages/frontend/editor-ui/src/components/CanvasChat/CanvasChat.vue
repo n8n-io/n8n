@@ -9,16 +9,16 @@ import ChatLogsPanel from './components/ChatLogsPanel.vue';
 import { useResize } from './composables/useResize';
 
 // Types
-import { useCanvasStore } from '@/stores/canvas.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { usePiPWindow } from '@/components/CanvasChat/composables/usePiPWindow';
 import { N8nResizeWrapper } from '@n8n/design-system';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useChatState } from '@/components/CanvasChat/composables/useChatState';
 import { LOGS_PANEL_STATE } from '@/components/CanvasChat/types/logs';
+import { useLogsStore } from '@/stores/logs.store';
 
 const workflowsStore = useWorkflowsStore();
-const canvasStore = useCanvasStore();
+const logsStore = useLogsStore();
 
 // Component state
 const container = ref<HTMLElement>();
@@ -28,7 +28,7 @@ const pipContent = useTemplateRef('pipContent');
 // Computed properties
 const workflow = computed(() => workflowsStore.getCurrentWorkflow());
 
-const chatPanelState = computed(() => canvasStore.logsPanelState);
+const chatPanelState = computed(() => logsStore.state);
 const resultData = computed(() => workflowsStore.getWorkflowRunData);
 
 const telemetry = useTelemetry();
@@ -55,7 +55,7 @@ const { canPopOut, isPoppedOut, pipWindow } = usePiPWindow({
 		}
 
 		telemetry.track('User toggled log view', { new_state: 'attached' });
-		canvasStore.setPreferPoppedOutLogsView(false);
+		logsStore.setPreferPoppedOut(false);
 	},
 });
 
@@ -78,18 +78,18 @@ defineExpose({
 });
 
 const closePanel = () => {
-	canvasStore.toggleLogsPanelOpen(false);
+	logsStore.toggleOpen(false);
 };
 
 function onPopOut() {
 	telemetry.track('User toggled log view', { new_state: 'floating' });
-	canvasStore.toggleLogsPanelOpen(true);
-	canvasStore.setPreferPoppedOutLogsView(true);
+	logsStore.toggleOpen(true);
+	logsStore.setPreferPoppedOut(true);
 }
 
 // Watchers
 watchEffect(() => {
-	canvasStore.setPanelHeight(chatPanelState.value === LOGS_PANEL_STATE.ATTACHED ? height.value : 0);
+	logsStore.setHeight(chatPanelState.value === LOGS_PANEL_STATE.ATTACHED ? height.value : 0);
 });
 
 watch(
