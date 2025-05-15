@@ -1217,6 +1217,15 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 				},
 			};
 		}
+
+		Object.values(workflowExecutionData.value?.data?.resultData.runData ?? {})
+			.map((taskData) => taskData.map((task) => task.source).flat())
+			.flat()
+			.filter((source) => source?.previousNode === nameData.old)
+			.forEach((source) => {
+				if (!source) return;
+				source.previousNode = nameData.new;
+			});
 	}
 
 	function setParentFolder(folder: IWorkflowDb['parentFolder']) {
