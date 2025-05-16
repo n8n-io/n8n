@@ -157,7 +157,7 @@ export const waitingNodeTooltip = (node: INodeUi | null | undefined) => {
 		}
 		if (resume) {
 			if (!['webhook', 'form'].includes(resume as string)) {
-				return i18n.baseText('ndv.output.waitNodeWaiting');
+				return i18n.baseText('ndv.output.waitNodeWaiting.description.timer');
 			}
 
 			const { webhookSuffix } = (node.parameters.options ?? {}) as { webhookSuffix: string };
@@ -168,12 +168,12 @@ export const waitingNodeTooltip = (node: INodeUi | null | undefined) => {
 
 			if (resume === 'form') {
 				resumeUrl = `${useRootStore().formWaitingUrl}/${useWorkflowsStore().activeExecutionId}${suffix}`;
-				message = i18n.baseText('ndv.output.waitNodeWaitingForFormSubmission');
+				message = i18n.baseText('ndv.output.waitNodeWaiting.description.form');
 			}
 
 			if (resume === 'webhook') {
 				resumeUrl = `${useRootStore().webhookWaitingUrl}/${useWorkflowsStore().activeExecutionId}${suffix}`;
-				message = i18n.baseText('ndv.output.waitNodeWaitingForWebhook');
+				message = i18n.baseText('ndv.output.waitNodeWaiting.description.webhook');
 			}
 
 			if (message && resumeUrl) {
@@ -182,7 +182,7 @@ export const waitingNodeTooltip = (node: INodeUi | null | undefined) => {
 		}
 
 		if (node?.type === FORM_NODE_TYPE) {
-			const message = i18n.baseText('ndv.output.waitNodeWaitingForFormSubmission');
+			const message = i18n.baseText('ndv.output.waitNodeWaiting.description.form');
 			const resumeUrl = `${useRootStore().formWaitingUrl}/${useWorkflowsStore().activeExecutionId}`;
 			return `${message}<a href="${resumeUrl}" target="_blank">${resumeUrl}</a>`;
 		}
