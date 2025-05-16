@@ -31,6 +31,8 @@ describe('N8nSelectableList', () => {
 		await fireEvent.click(wrapper.getByTestId('selectable-list-remove-slot-propA'));
 
 		expect(wrapper.queryByTestId('selectable-list-slot-propA')).not.toBeInTheDocument();
+		expect(wrapper.emitted('removeItem')).toHaveLength(1);
+		expect(wrapper.emitted('removeItem')[0]).toEqual(['propA']);
 	});
 
 	it('renders multiple elements with some pre-selected', () => {
