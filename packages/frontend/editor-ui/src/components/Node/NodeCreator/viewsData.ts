@@ -358,7 +358,7 @@ export function TriggerView() {
 				properties: {
 					group: [],
 					name: EVALUATION_TRIGGER_NODE_TYPE,
-					displayName: 'Evaluation Trigger',
+					displayName: 'When running evaluation',
 					description: 'Run a dataset through your workflow to test performance',
 					icon: 'fa:check-double',
 				},

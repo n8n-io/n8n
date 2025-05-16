@@ -54,9 +54,10 @@ export class EvaluationTrigger implements INodeType {
 			authentication,
 			{
 				...document,
+				displayName: 'Document Containing Dataset',
 				hint: 'Example dataset format <a href="https://docs.google.com/spreadsheets/d/1vD_IdeFUg7sHsK9okL6Doy1rGOkWTnPJV3Dro4FBUsY/edit?gid=0#gid=0">here</a>',
 			},
-			sheet,
+			{ ...sheet, displayName: 'Sheet Containing Dataset' },
 			{
 				displayName: 'Limit Rows',
 				name: 'limitRows',
@@ -76,6 +77,9 @@ export class EvaluationTrigger implements INodeType {
 			},
 			readFilter,
 		],
+		codex: {
+			alias: ['Test', 'Metrics', 'Evals', 'Set Output', 'Set Metrics'],
+		},
 		credentials: [
 			{
 				name: 'googleApi',
