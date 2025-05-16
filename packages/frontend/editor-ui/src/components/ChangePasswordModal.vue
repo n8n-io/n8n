@@ -7,7 +7,7 @@ import { useUsersStore } from '@/stores/users.store';
 import { createFormEventBus } from '@n8n/design-system/utils';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type { IFormInputs, IFormInput } from '@/Interface';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 
 const config = ref<IFormInputs | null>(null);
 const formBus = createFormEventBus();

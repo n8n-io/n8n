@@ -4,7 +4,7 @@ import type { IBinaryData, IRunData } from 'n8n-workflow';
 import BinaryDataDisplayEmbed from '@/components/BinaryDataDisplayEmbed.vue';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 
 const props = defineProps<{
 	displayData: IBinaryData;

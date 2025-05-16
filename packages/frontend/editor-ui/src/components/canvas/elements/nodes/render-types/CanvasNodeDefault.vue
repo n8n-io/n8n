@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { computed, ref, useCssModule, watch } from 'vue';
 import { useNodeConnections } from '@/composables/useNodeConnections';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useCanvasNode } from '@/composables/useCanvasNode';
 import { NODE_INSERT_SPACER_BETWEEN_INPUT_GROUPS } from '@/constants';
 import type { CanvasNodeDefaultRender } from '@/types';

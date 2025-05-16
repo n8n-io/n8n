@@ -3,7 +3,7 @@
  * @TODO Remove this notice when Canvas V2 is the only one in use
  */
 
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { Ref } from 'vue';
@@ -305,7 +305,7 @@ export function useCanvasMapping({
 					const nodeName = i18n.shortNodeType(nodeTypeDescription.name);
 					const { eventTriggerDescription } = nodeTypeDescription;
 					acc[node.id] = i18n
-						.nodeText()
+						.nodeText(nodeTypeDescription.name)
 						.eventTriggerDescription(nodeName, eventTriggerDescription ?? '');
 				} else {
 					acc[node.id] = i18n.baseText('node.waitingForYouToCreateAnEventIn', {

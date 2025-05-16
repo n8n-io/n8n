@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { N8nBadge, N8nButton, N8nText } from '@n8n/design-system';
 import { computed } from 'vue';
 

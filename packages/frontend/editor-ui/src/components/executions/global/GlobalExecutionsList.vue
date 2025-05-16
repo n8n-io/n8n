@@ -2,7 +2,7 @@
 import ConcurrentExecutionsHeader from '@/components/executions/ConcurrentExecutionsHeader.vue';
 import ExecutionsFilter from '@/components/executions/ExecutionsFilter.vue';
 import GlobalExecutionsListItem from '@/components/executions/global/GlobalExecutionsListItem.vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useMessage } from '@/composables/useMessage';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { useTelemetry } from '@/composables/useTelemetry';

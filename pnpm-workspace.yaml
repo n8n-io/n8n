@@ -58,6 +58,7 @@ catalogs:
     vitest: ^3.1.3
     vitest-mock-extended: ^3.1.0
     vue: ^3.5.13
+    vue-i18n: ^11.1.2
     vue-router: ^4.5.0
     vue-tsc: ^2.2.8
     vue-markdown-render: ^2.2.1

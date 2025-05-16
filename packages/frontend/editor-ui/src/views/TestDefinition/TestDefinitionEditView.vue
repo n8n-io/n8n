@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useTestDefinitionForm } from '@/components/TestDefinition/composables/useTestDefinitionForm';
 import { useDebounce } from '@/composables/useDebounce';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
 import { NODE_PINNING_MODAL_KEY, VIEWS } from '@/constants';

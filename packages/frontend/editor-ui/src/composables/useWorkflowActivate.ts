@@ -12,7 +12,7 @@ import { useRouter } from 'vue-router';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { ref } from 'vue';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 

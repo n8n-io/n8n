@@ -9,7 +9,7 @@ import type { IWorkflowSettings } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 
 interface IWorkflowSaveSettings {
 	saveFailedExecutions: boolean;

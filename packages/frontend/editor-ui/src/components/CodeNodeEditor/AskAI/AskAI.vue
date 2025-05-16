@@ -12,7 +12,7 @@ import type { INodeUi, Schema } from '@/Interface';
 import { generateCodeForPrompt } from '@/api/ai';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useDataSchema } from '@/composables/useDataSchema';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
 import { useNDVStore } from '@/stores/ndv.store';

@@ -4,7 +4,7 @@ import { API_KEY_CREATE_OR_EDIT_MODAL_KEY, EnterpriseEditionFeature } from '@/co
 import { computed, onMounted, ref } from 'vue';
 import { useUIStore } from '@/stores/ui.store';
 import { createEventBus } from '@n8n/utils/event-bus';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useApiKeysStore } from '@/stores/apiKeys.store';

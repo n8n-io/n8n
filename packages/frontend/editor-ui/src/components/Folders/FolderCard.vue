@@ -3,7 +3,7 @@ import { computed, ref } from 'vue';
 import { FOLDER_LIST_ITEM_ACTIONS } from './constants';
 import type { FolderResource } from '../layouts/ResourcesListLayout.vue';
 import { ProjectTypes, type Project } from '@/types/projects.types';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useRoute, useRouter } from 'vue-router';
 import { VIEWS } from '@/constants';
 import type { UserAction } from '@/Interface';

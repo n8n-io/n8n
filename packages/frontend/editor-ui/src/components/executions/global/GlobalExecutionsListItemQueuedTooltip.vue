@@ -1,6 +1,6 @@
 <script lang="ts" setup="">
 import type { ExecutionStatus } from 'n8n-workflow';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 
 const props = defineProps<{
 	status: ExecutionStatus;

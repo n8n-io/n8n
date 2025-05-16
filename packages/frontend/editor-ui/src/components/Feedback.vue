@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 
 const emit = defineEmits<{
 	'update:modelValue': [feedback: 'positive' | 'negative'];

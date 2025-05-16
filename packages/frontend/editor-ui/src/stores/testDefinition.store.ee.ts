@@ -11,7 +11,7 @@ import { usePostHog } from './posthog.store';
 import { WORKFLOW_EVALUATION_EXPERIMENT } from '@/constants';
 import { STORES } from '@n8n/stores';
 import { useAnnotationTagsStore } from './tags.store';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 
 type FieldIssue = { field: string; message: string };
 

@@ -24,7 +24,7 @@ import { nodeViewEventBus } from '@/event-bus';
 import { usePinnedData } from '@/composables/usePinnedData';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { useRouter } from 'vue-router';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { type IUpdateInformation } from '@/Interface';
 import { generateCodeForAiTransform } from '@/components/ButtonParameter/utils';

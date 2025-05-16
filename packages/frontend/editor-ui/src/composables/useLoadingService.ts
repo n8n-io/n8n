@@ -1,5 +1,5 @@
 import { ref, computed } from 'vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { ElLoading as Loading } from 'element-plus';
 
 interface LoadingService {

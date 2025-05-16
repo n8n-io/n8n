@@ -5,7 +5,7 @@ import { MODAL_CONFIRM } from '@/constants';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useToast } from '@/composables/useToast';
 import { useLoadingService } from '@/composables/useLoadingService';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useMessage } from '@/composables/useMessage';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import CopyInput from '@/components/CopyInput.vue';

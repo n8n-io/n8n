@@ -25,7 +25,7 @@ import ItemsRenderer from '../Renderers/ItemsRenderer.vue';
 import CategorizedItemsRenderer from '../Renderers/CategorizedItemsRenderer.vue';
 import { type IDataObject } from 'n8n-workflow';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import OrderSwitcher from './../OrderSwitcher.vue';
 import { isNodePreviewKey } from '../utils';
