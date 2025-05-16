@@ -1,5 +1,5 @@
 import { setActivePinia, createPinia } from 'pinia';
-import { useAgentRequestStore } from './agentRequest.store';
+import { useAgentRequestStore } from './useAgentRequestStore';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { nextTick } from 'vue';
 
