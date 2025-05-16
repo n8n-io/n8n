@@ -200,6 +200,16 @@ createChat({
 - **Default**: `''`
 - **Description**: A comma-separated list of allowed MIME types for file uploads. Only applicable if `allowFileUploads` is set to `true`. If left empty, all file types are allowed. For example: `'image/*,application/pdf'`.
 
+### `sessionKeySource`
+- **Type**: `() => string`
+- **Default**: `undefined`
+- **Description**: A function that returns a custom session key to be used for the chat session. If not provided, the session key will be retrieved from localStorage or generated using UUID.
+
+### `onSessionKeyLoaded`
+- **Type**: `(sessionKey: string) => void`
+- **Default**: `undefined`
+- **Description**: A callback function that is called when a session key is loaded. The session key is passed as an argument to the callback.
+
 ## Customization
 The Chat window is entirely customizable using CSS variables.
 
