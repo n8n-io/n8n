@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import type { ITelemetrySettings } from '@n8n/api-types';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useProjectsStore } from '@/stores/projects.store';

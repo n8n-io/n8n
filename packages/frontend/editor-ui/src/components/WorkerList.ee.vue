@@ -7,7 +7,7 @@ import { useOrchestrationStore } from '@/stores/orchestration.store';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { usePushConnection } from '@/composables/usePushConnection';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useTelemetry } from '@/composables/useTelemetry';
 import WorkerCard from './Workers/WorkerCard.ee.vue';
 

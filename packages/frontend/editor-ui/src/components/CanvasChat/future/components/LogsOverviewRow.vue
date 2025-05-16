@@ -4,10 +4,10 @@ import { N8nButton, N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { upperFirst } from 'lodash-es';
 import { useI18n } from '@/composables/useI18n';
-import ConsumedTokenCountText from '@/components/CanvasChat/future/components/ConsumedTokenCountText.vue';
+import LogsViewConsumedTokenCountText from '@/components/CanvasChat/future/components/LogsViewConsumedTokenCountText.vue';
 import { I18nT } from 'vue-i18n';
 import { toDayMonth, toTime } from '@/utils/formatters/dateFormatter';
-import NodeName from '@/components/CanvasChat/future/components/NodeName.vue';
+import LogsViewNodeName from '@/components/CanvasChat/future/components/LogsViewNodeName.vue';
 import {
 	getSubtreeTotalConsumedTokens,
 	type LatestNodeInfo,
@@ -118,7 +118,7 @@ watch(
 		</template>
 		<div :class="$style.background" :style="{ '--indent-depth': props.data.depth }" />
 		<NodeIcon :node-type="type" :size="16" :class="$style.icon" />
-		<NodeName
+		<LogsViewNodeName
 			:class="$style.name"
 			:latest-name="latestInfo?.name ?? props.data.node.name"
 			:name="props.data.node.name"
@@ -154,7 +154,7 @@ watch(
 			size="small"
 			:class="$style.consumedTokens"
 		>
-			<ConsumedTokenCountText
+			<LogsViewConsumedTokenCountText
 				v-if="
 					subtreeConsumedTokens.totalTokens > 0 &&
 					(props.data.children.length === 0 || !props.expanded)

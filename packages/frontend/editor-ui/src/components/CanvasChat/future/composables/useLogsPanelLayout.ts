@@ -8,10 +8,10 @@ import { LOGS_PANEL_STATE } from '../../types/logs';
 import { usePiPWindow } from '../../composables/usePiPWindow';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { watch } from 'vue';
-import { useResizablePanel } from './useResizablePanel';
+import { useResizablePanel } from '../../../../composables/useResizablePanel';
 import { useLogsStore } from '@/stores/logs.store';
 
-export function useLayout(
+export function useLogsPanelLayout(
 	pipContainer: Readonly<ShallowRef<HTMLElement | null>>,
 	pipContent: Readonly<ShallowRef<HTMLElement | null>>,
 	container: Readonly<ShallowRef<HTMLElement | null>>,

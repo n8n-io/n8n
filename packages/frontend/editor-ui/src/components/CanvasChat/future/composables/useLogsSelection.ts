@@ -14,7 +14,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { watch } from 'vue';
 import { computed, ref, type ComputedRef } from 'vue';
 
-export function useSelection(
+export function useLogsSelection(
 	execution: ComputedRef<IExecutionResponse | undefined>,
 	tree: ComputedRef<LogEntry[]>,
 	flatLogEntries: ComputedRef<LogEntry[]>,

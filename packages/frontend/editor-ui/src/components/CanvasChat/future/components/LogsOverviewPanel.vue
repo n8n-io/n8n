@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import PanelHeader from '@/components/CanvasChat/future/components/PanelHeader.vue';
+import LogsPanelHeader from '@/components/CanvasChat/future/components/LogsPanelHeader.vue';
 import { useClearExecutionButtonVisible } from '@/composables/useClearExecutionButtonVisible';
 import { useI18n } from '@/composables/useI18n';
 import { N8nButton, N8nRadioButtons, N8nText, N8nTooltip } from '@n8n/design-system';
@@ -7,7 +7,7 @@ import { computed, nextTick, toRef, watch } from 'vue';
 import LogsOverviewRow from '@/components/CanvasChat/future/components/LogsOverviewRow.vue';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { useRouter } from 'vue-router';
-import ExecutionSummary from '@/components/CanvasChat/future/components/ExecutionSummary.vue';
+import LogsViewExecutionSummary from '@/components/CanvasChat/future/components/LogsViewExecutionSummary.vue';
 import {
 	getSubtreeTotalConsumedTokens,
 	getTotalConsumedTokens,
@@ -118,7 +118,7 @@ watch(
 
 <template>
 	<div :class="$style.container" data-test-id="logs-overview">
-		<PanelHeader
+		<LogsPanelHeader
 			:title="locale.baseText('logs.overview.header.title')"
 			data-test-id="logs-overview-header"
 			@click="emit('clickHeader')"
@@ -141,7 +141,7 @@ watch(
 				</N8nTooltip>
 				<slot name="actions" />
 			</template>
-		</PanelHeader>
+		</LogsPanelHeader>
 		<div
 			v-if="isOpen"
 			:class="[$style.content, isEmpty ? $style.empty : '']"
@@ -158,7 +158,7 @@ watch(
 				{{ locale.baseText('logs.overview.body.empty.message') }}
 			</N8nText>
 			<template v-else>
-				<ExecutionSummary
+				<LogsViewExecutionSummary
 					data-test-id="logs-overview-status"
 					:class="$style.summary"
 					:status="execution.status"

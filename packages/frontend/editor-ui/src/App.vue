@@ -11,7 +11,7 @@ import AskAssistantFloatingButton from '@/components/AskAssistant/Chat/AskAssist
 import AssistantsHub from '@/components/AskAssistant/AssistantsHub.vue';
 import { loadLanguage } from '@/plugins/i18n';
 import { APP_MODALS_ELEMENT_ID, HIRING_BANNER, VIEWS } from '@/constants';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useAssistantStore } from '@/stores/assistant.store';
 import { useBuilderStore } from '@/stores/builder.store';
 import { useUIStore } from '@/stores/ui.store';

@@ -12,7 +12,7 @@ import type { ExecutionFilterType, ExecutionsQueryFilter, INodeUi } from '@/Inte
 import { isEmpty } from '@/utils/typesUtils';
 import { FORM_NODE_TYPE, FORM_TRIGGER_NODE_TYPE, GITHUB_NODE_TYPE } from '../constants';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { i18n } from '@/plugins/i18n';
 import { h } from 'vue';
 import NodeExecutionErrorMessage from '@/components/NodeExecutionErrorMessage.vue';
