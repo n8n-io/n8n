@@ -1190,10 +1190,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 		// If node has any WorkflowResultData rename also that one that the data
 		// does still get displayed also after node got renamed
-		if (
-			workflowExecutionData.value?.data &&
-			workflowExecutionData.value.data.resultData.runData.hasOwnProperty(nameData.old)
-		) {
+		if (workflowExecutionData.value?.data?.resultData.runData[nameData.old]) {
 			workflowExecutionData.value.data.resultData.runData[nameData.new] =
 				workflowExecutionData.value.data.resultData.runData[nameData.old];
 			delete workflowExecutionData.value.data.resultData.runData[nameData.old];
