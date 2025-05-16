@@ -2975,24 +2975,6 @@ describe('useCanvasOperations', () => {
 		});
 	});
 
-	describe('toggleChatOpen', () => {
-		it('should invoke workflowsStore#toggleLogsPanelOpen with 2nd argument passed through as 1st argument', async () => {
-			const workflowsStore = mockedStore(useWorkflowsStore);
-			const { toggleChatOpen } = useCanvasOperations({ router });
-
-			workflowsStore.getCurrentWorkflow.mockReturnValue(createTestWorkflowObject());
-
-			await toggleChatOpen('main');
-			expect(workflowsStore.toggleLogsPanelOpen).toHaveBeenCalledWith(undefined);
-
-			await toggleChatOpen('main', true);
-			expect(workflowsStore.toggleLogsPanelOpen).toHaveBeenCalledWith(true);
-
-			await toggleChatOpen('main', false);
-			expect(workflowsStore.toggleLogsPanelOpen).toHaveBeenCalledWith(false);
-		});
-	});
-
 	describe('importTemplate', () => {
 		it('should import template to canvas', async () => {
 			const projectsStore = mockedStore(useProjectsStore);
