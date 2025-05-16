@@ -179,57 +179,78 @@ export class MongoDb implements INodeType {
 		if (operation === 'find') {
 			for (let i = 0; i < itemsLength; i++) {
 				try {
-					const queryParameter = JSON.parse(
-						this.getNodeParameter('query', i) as string,
-					) as IDataObject;
-
-					if (queryParameter._id && typeof queryParameter._id === 'string') {
-						queryParameter._id = new ObjectId(queryParameter._id);
+				const queryParameter = JSON.parse(
+					this.getNodeParameter('query', i) as string,
+				) as IDataObject;
+			
+				// Función para procesar el objeto y convertir valores con formato ObjectId(...) PZ
+				const convertObjectIdStrings = (obj: IDataObject): IDataObject => {
+					const result: IDataObject = {};
+					for (const [key, value] of Object.entries(obj)) {
+					if (typeof value === 'string' && /^ObjectId\([0-9a-fA-F]{24}\)$/.test(value)) {
+						// Extraer el ID hexadecimal dentro de "ObjectId(...)"
+						const id = value.match(/^ObjectId\(([0-9a-fA-F]{24})\)$/)?.[1];
+						if (id) {
+						result[key] = new ObjectId(id);
+						} else {
+						result[key] = value;
+						}
+					} else if (typeof value === 'object' && value !== null) {
+						// Recursivamente procesar objetos anidados
+						result[key] = convertObjectIdStrings(value as IDataObject);
+					} else {
+						// Mantener otros valores sin cambios
+						result[key] = value;
 					}
-
-					let query = mdb
-						.collection(this.getNodeParameter('collection', i) as string)
-						.find(queryParameter as unknown as Document);
-
-					const options = this.getNodeParameter('options', i);
-					const limit = options.limit as number;
-					const skip = options.skip as number;
-					const projection =
-						options.projection && (JSON.parse(options.projection as string) as Document);
-					const sort = options.sort && (JSON.parse(options.sort as string) as Sort);
-
-					if (skip > 0) {
-						query = query.skip(skip);
 					}
-					if (limit > 0) {
-						query = query.limit(limit);
-					}
-					if (sort && Object.keys(sort).length !== 0 && sort.constructor === Object) {
-						query = query.sort(sort);
-					}
-
-					if (
-						projection &&
-						Object.keys(projection).length !== 0 &&
-						projection.constructor === Object
-					) {
-						query = query.project(projection);
-					}
-
-					const queryResult = await query.toArray();
-
-					for (const entry of queryResult) {
-						returnData.push({ json: entry, pairedItem: fallbackPairedItems ?? [{ item: i }] });
-					}
+					return result;
+				};
+			
+				// Aplicar la conversión a queryParameter
+				const processedQuery = convertObjectIdStrings(queryParameter);
+			
+				let query = mdb
+					.collection(this.getNodeParameter('collection', i) as string)
+					.find(processedQuery as unknown as Document);
+			
+				const options = this.getNodeParameter('options', i);
+				const limit = options.limit as number;
+				const skip = options.skip as number;
+				const projection =
+					options.projection && (JSON.parse(options.projection as string) as Document);
+				const sort = options.sort && (JSON.parse(options.sort as string) as Sort);
+			
+				if (skip > 0) {
+					query = query.skip(skip);
+				}
+				if (limit > 0) {
+					query = query.limit(limit);
+				}
+				if (sort && Object.keys(sort).length !== 0 && sort.constructor === Object) {
+					query = query.sort(sort);
+				}
+				if (
+					projection &&
+					Object.keys(projection).length !== 0 &&
+					projection.constructor === Object
+				) {
+					query = query.project(projection);
+				}
+			
+				const queryResult = await query.toArray();
+			
+				for (const entry of queryResult) {
+					returnData.push({ json: entry, pairedItem: fallbackPairedItems ?? [{ item: i }] });
+				}
 				} catch (error) {
-					if (this.continueOnFail()) {
-						returnData.push({
-							json: { error: (error as JsonObject).message },
-							pairedItem: fallbackPairedItems ?? [{ item: i }],
-						});
-						continue;
-					}
-					throw error;
+				if (this.continueOnFail()) {
+					returnData.push({
+					json: { error: (error as JsonObject).message },
+					pairedItem: fallbackPairedItems ?? [{ item: i }],
+					});
+					continue;
+				}
+				throw error;
 				}
 			}
 		}
