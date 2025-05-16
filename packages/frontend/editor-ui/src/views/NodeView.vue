@@ -71,7 +71,7 @@ import {
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { useExternalHooks } from '@/composables/useExternalHooks';
-import { NodeConnectionTypes, jsonParse } from 'n8n-workflow';
+import { NodeConnectionTypes, jsonParse, EVALUATION_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import type { NodeConnectionType, IDataObject, ExecutionSummary, IConnection } from 'n8n-workflow';
 import { useToast } from '@/composables/useToast';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -328,6 +328,22 @@ async function initializeRoute(force = false) {
 			query: { ...route.query, action: undefined },
 		});
 		return;
+	}
+
+	// Open node panel if the route has a corresponding action
+	if (route.query.action === 'addEvaluationTrigger') {
+		nodeCreatorStore.openNodeCreatorForTriggerNodes(
+			NODE_CREATOR_OPEN_SOURCES.ADD_EVALUATION_TRIGGER_BUTTON,
+		);
+	} else if (route.query.action === 'addEvaluationNode') {
+		nodeCreatorStore.openNodeCreatorForActions(
+			'n8n-nodes-base.evaluation',
+			NODE_CREATOR_OPEN_SOURCES.ADD_EVALUATION_NODE_BUTTON,
+		);
+	} else if (route.query.action === 'executeEvaluation') {
+		if (evaluationTriggerNode.value) {
+			void runEntireWorkflow('node', evaluationTriggerNode.value.name);
+		}
 	}
 
 	const isAlreadyInitialized =
@@ -1363,6 +1379,13 @@ const chatTriggerNodePinnedData = computed(() => {
 function onOpenChat() {
 	startChat('main');
 }
+
+/**
+ * Evaluation
+ */
+const evaluationTriggerNode = computed(() => {
+	return editableWorkflow.value.nodes.find((node) => node.type === EVALUATION_TRIGGER_NODE_TYPE);
+});
 
 /**
  * History events

@@ -1,0 +1,120 @@
+{
+	"nodes": [
+		{
+			"parameters": {
+				"documentId": {
+					"__rl": true,
+					"value": "1oqFpPgEPTGDw7BPkp1SfPXq3Cb3Hyr1SROtf-Ec4zvA",
+					"mode": "id"
+				},
+				"sheetName": {
+					"__rl": true,
+					"value": "={{ 1770944864 }}",
+					"mode": "id"
+				},
+				"limitRows": true,
+				"maxRows": 3
+			},
+			"type": "n8n-nodes-base.evaluationTrigger",
+			"typeVersion": 4.6,
+			"position": [-420, 760],
+			"id": "af6b44e7-f6db-4c3e-8978-ac175eaa74b6",
+			"name": "Evaluation Trigger",
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "jxkDDD4FYFxW5o7W",
+					"name": "Google Sheets account 2"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"documentId": {
+					"__rl": true,
+					"value": "1oqFpPgEPTGDw7BPkp1SfPXq3Cb3Hyr1SROtf-Ec4zvA",
+					"mode": "list",
+					"cachedResultName": "lol",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1oqFpPgEPTGDw7BPkp1SfPXq3Cb3Hyr1SROtf-Ec4zvA/edit?usp=drivesdk"
+				},
+				"sheetName": {
+					"__rl": true,
+					"value": 1770944864,
+					"mode": "list",
+					"cachedResultName": "Sheet4",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1oqFpPgEPTGDw7BPkp1SfPXq3Cb3Hyr1SROtf-Ec4zvA/edit#gid=1770944864"
+				},
+				"outputs": {
+					"values": [
+						{
+							"outputName": "result",
+							"outputValue": "3"
+						},
+						{
+							"outputName": "lol",
+							"outputValue": "5666666"
+						}
+					]
+				}
+			},
+			"type": "n8n-nodes-base.evaluation",
+			"typeVersion": 4.6,
+			"position": [-160, 760],
+			"id": "b93f9936-9c30-43ac-8d68-3c89dca1f788",
+			"name": "Evaluation",
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "jxkDDD4FYFxW5o7W",
+					"name": "Google Sheets account 2"
+				}
+			}
+		}
+	],
+	"connections": {
+		"Evaluation Trigger": {
+			"main": [
+				[
+					{
+						"node": "Evaluation",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Evaluation": {
+			"main": [[]]
+		}
+	},
+	"pinData": {
+		"Evaluation Trigger": [
+			{
+				"row_number": 3,
+				"food": 10,
+				"baz": "b",
+				"lol": "c",
+				"hi": "d",
+				"heh": "e",
+				"meh": "f",
+				"haha": "g",
+				"_rowsLeft": 1
+			}
+		],
+		"Evaluation": [
+			{
+				"row_number": 3,
+				"food": 10,
+				"baz": "b",
+				"lol": "c",
+				"hi": "d",
+				"heh": "e",
+				"meh": "f",
+				"haha": "g",
+				"_rowsLeft": 1
+			}
+		]
+	},
+	"meta": {
+		"templateCredsSetupCompleted": true,
+		"instanceId": "ee90fdf8d57662f949e6c691dc07fa0fd2f66e1eee28ed82ef06658223e67255"
+	}
+}

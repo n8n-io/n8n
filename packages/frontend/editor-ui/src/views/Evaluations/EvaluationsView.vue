@@ -1,0 +1,247 @@
+<script setup lang="ts">
+import { useI18n } from '@/composables/useI18n';
+
+import { computed, ref, onMounted } from 'vue';
+import { EVALUATION_DATASET_TRIGGER_NODE } from '@/constants';
+import RunsSection from '@/components/Evaluations/EditDefinition/sections/RunsSection.vue';
+import { useEvaluationStore } from '@/stores/evaluation.store.ee';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { N8nButton, N8nText } from '@n8n/design-system';
+import { orderBy } from 'lodash-es';
+import N8nLink from '@n8n/design-system/components/N8nLink';
+import { useUsageStore } from '@/stores/usage.store';
+import EvaluationsPaywall from '@/components/Evaluations/Paywall/EvaluationsPaywall.vue';
+
+const props = defineProps<{
+	name: string;
+}>();
+
+const locale = useI18n();
+const telemetry = useTelemetry();
+const evaluationsStore = useEvaluationStore();
+const usageStore = useUsageStore();
+const workflowsStore = useWorkflowsStore();
+// const usersStore = useUsersStore();
+
+const hasRuns = computed(() => runs.value.length > 0);
+
+const selectedMetric = ref<string>('');
+
+async function runTest() {
+	await evaluationsStore.startTestRun(props.name);
+	await evaluationsStore.fetchTestRuns(props.name);
+}
+
+const runs = computed(() => {
+	const testRuns = Object.values(evaluationsStore.testRunsById ?? {}).filter(
+		({ workflowId }) => workflowId === props.name,
+	);
+
+	return orderBy(testRuns, (record) => new Date(record.runAt), ['asc']).map((record, index) =>
+		Object.assign(record, { index: index + 1 }),
+	);
+});
+
+const isRunning = computed(() => runs.value.some((run) => run.status === 'running'));
+const isRunTestEnabled = computed(() => !isRunning.value);
+
+const showWizard = computed(() => {
+	return !hasRuns.value;
+});
+
+const evaluationsLicensed = computed(() => {
+	return usageStore.workflowsWithEvaluationsLimit !== 0;
+});
+
+const datasetTriggerExist = computed(() => {
+	return workflowsStore.workflow.nodes.some(
+		(node) => node.type === EVALUATION_DATASET_TRIGGER_NODE,
+	);
+});
+
+const evaluationMetricNodeExist = computed(() => {
+	return workflowsStore.workflow.nodes.some(
+		(node) =>
+			node.type === 'n8n-nodes-base.evaluation' && node.parameters.operation === 'setMetrics',
+	);
+});
+
+const evaluationSetOutputNodeExist = computed(() => {
+	return workflowsStore.workflow.nodes.some(
+		// FIXME: handle default operation properly
+		(node) =>
+			node.type === 'n8n-nodes-base.evaluation' &&
+			(node.parameters.operation === 'setOutputs' || node.parameters.operation === undefined),
+	);
+});
+
+const evaluationsQuotaExceeded = computed(() => {
+	return (
+		usageStore.workflowsWithEvaluationsLimit !== -1 &&
+		usageStore.workflowsWithEvaluationsCount >= usageStore.workflowsWithEvaluationsLimit &&
+		!hasRuns.value
+	);
+});
+
+onMounted(() => {
+	telemetry.track('User viewed tests tab', {
+		workflow_id: props.name,
+		test_type: 'evaluation',
+		view: showWizard.value ? 'setup' : 'overview',
+		...(showWizard.value
+			? {
+					trigger_set_up: datasetTriggerExist.value,
+					output_set_up: evaluationSetOutputNodeExist.value,
+					metrics_set_up: evaluationMetricNodeExist.value,
+					quota_reached: evaluationsQuotaExceeded.value,
+				}
+			: {
+					run_count: runs.value.length,
+				}),
+	});
+});
+</script>
+
+<template>
+	<div :class="{ [$style.topWrapperWizard]: showWizard }">
+		<div v-if="!showWizard" :class="$style.header">
+			<N8nTooltip v-if="!showWizard" :disabled="isRunTestEnabled" :placement="'left'">
+				<N8nButton
+					:disabled="!isRunTestEnabled"
+					:class="$style.runTestButton"
+					size="small"
+					data-test-id="run-test-button"
+					:label="locale.baseText('evaluation.runTest')"
+					type="primary"
+					@click="runTest"
+				/>
+				<template #content>
+					<template v-if="isRunning">
+						{{ locale.baseText('evaluation.testIsRunning') }}
+					</template>
+				</template>
+			</N8nTooltip>
+		</div>
+		<div :class="{ [$style.wrapper]: true, [$style.setupWrapper]: showWizard }">
+			<div :class="$style.content">
+				<RunsSection
+					v-if="!showWizard"
+					v-model:selectedMetric="selectedMetric"
+					:class="$style.runs"
+					:runs="runs"
+					:workflow-id="props.name"
+				/>
+
+				<div v-if="showWizard" :class="$style.setupContent">
+					<div :class="$style.setupHeader">
+						<N8nText size="large" color="text-dark" tag="h3" bold>
+							{{ locale.baseText('evaluations.setupWizard.title') }}
+						</N8nText>
+						<N8nText tag="p" size="small" color="text-base" :class="$style.description">
+							{{ locale.baseText('evaluations.setupWizard.description') }}
+							<N8nLink size="small" href="https://google.com/">{{
+								locale.baseText('evaluations.setupWizard.moreInfo')
+							}}</N8nLink>
+						</N8nText>
+					</div>
+
+					<div :class="$style.config">
+						<iframe
+							style="min-width: 500px"
+							width="500"
+							height="280"
+							src="https://www.youtube.com/embed/ZCuL2e4zC_4"
+							title="n8n: Flexible AI Workflow Automation for Technical Teams [2025]"
+							frameborder="0"
+							allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+							referrerpolicy="strict-origin-when-cross-origin"
+							allowfullscreen
+						></iframe>
+						<SetupWizard v-if="evaluationsLicensed" @run-test="runTest" />
+						<EvaluationsPaywall v-else />
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</template>
+
+<style module lang="scss">
+.content {
+	display: flex;
+	justify-content: center;
+	gap: var(--spacing-m);
+	padding-bottom: var(--spacing-m);
+}
+
+.config {
+	display: flex;
+	flex-direction: row;
+	gap: var(--spacing-l);
+}
+
+.header {
+	display: flex;
+	justify-content: end;
+	align-items: center;
+	padding: var(--spacing-m) var(--spacing-l);
+	padding-left: 27px;
+	padding-bottom: 8px;
+	position: sticky;
+	top: 0;
+	left: 0;
+	background-color: var(--color-background-light);
+	z-index: 2;
+}
+
+.setupHeader {
+	//margin-bottom: var(--spacing-l);
+}
+
+.setupDescription {
+	margin-top: var(--spacing-2xs);
+
+	ul {
+		li {
+			margin-top: var(--spacing-2xs);
+		}
+	}
+}
+
+.wrapper {
+	padding: 0 var(--spacing-l);
+	padding-left: 58px;
+}
+
+.setupWrapper {
+	display: flex;
+	max-width: 1024px;
+	margin-top: var(--spacing-2xl);
+	padding: 0;
+	flex-grow: 1;
+}
+
+.setupContent {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing-l);
+}
+
+.description {
+	max-width: 600px;
+	margin-bottom: 20px;
+}
+
+.arrowBack {
+	--button-hover-background-color: transparent;
+	border: 0;
+}
+
+.topWrapperWizard {
+	padding: 0;
+	display: flex;
+	justify-content: center;
+	flex-grow: 1;
+}
+</style>

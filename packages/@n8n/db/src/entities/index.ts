@@ -23,8 +23,6 @@ import { SharedCredentials } from './shared-credentials';
 import { SharedWorkflow } from './shared-workflow';
 import { TagEntity } from './tag-entity';
 import { TestCaseExecution } from './test-case-execution.ee';
-import { TestDefinition } from './test-definition.ee';
-import { TestMetric } from './test-metric.ee';
 import { TestRun } from './test-run.ee';
 import { User } from './user';
 import { Variables } from './variables';
@@ -65,8 +63,6 @@ export {
 	AnnotationTagEntity,
 	ExecutionAnnotation,
 	AnnotationTagMapping,
-	TestDefinition,
-	TestMetric,
 	TestRun,
 	TestCaseExecution,
 	ExecutionEntity,
@@ -103,8 +99,6 @@ export const entities = {
 	AnnotationTagEntity,
 	ExecutionAnnotation,
 	AnnotationTagMapping,
-	TestDefinition,
-	TestMetric,
 	TestRun,
 	TestCaseExecution,
 	ExecutionEntity,

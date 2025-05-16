@@ -222,6 +222,45 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		});
 	}
 
+	function openNodeCreatorForActions(node: string, eventSource?: NodeCreatorOpenSource) {
+		const actionNode = allNodeCreatorNodes.value.find((i) => i.key === node);
+
+		if (!actionNode) {
+			return;
+		}
+
+		const nodeActions = actions.value[actionNode.key];
+
+		const transformedActions = nodeActions?.map((a) =>
+			transformNodeType(a, actionNode.properties.displayName, 'action'),
+		);
+
+		ndvStore.activeNodeName = null;
+		setSelectedView(REGULAR_NODE_CREATOR_VIEW);
+		setNodeCreatorState({
+			source: eventSource,
+			createNodeActive: true,
+			nodeCreatorView: REGULAR_NODE_CREATOR_VIEW,
+		});
+
+		setTimeout(() => {
+			useViewStacks().pushViewStack(
+				{
+					subcategory: '*',
+					title: actionNode.properties.displayName,
+					nodeIcon: {
+						type: 'icon',
+						name: 'check-double',
+					},
+					rootView: 'Regular',
+					mode: 'actions',
+					items: transformedActions,
+				},
+				{ resetStacks: true },
+			);
+		});
+	}
+
 	function getNodeCreatorFilter(nodeName: string, outputType?: NodeConnectionType) {
 		let filter;
 		const workflow = workflowsStore.getCurrentWorkflow();
@@ -413,6 +452,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		openSelectiveNodeCreator,
 		openNodeCreatorForConnectingNode,
 		openNodeCreatorForTriggerNodes,
+		openNodeCreatorForActions,
 		onCreatorOpened,
 		onNodeFilterChanged,
 		onCategoryExpanded,
