@@ -305,7 +305,7 @@ export function useCanvasMapping({
 					const nodeName = i18n.shortNodeType(nodeTypeDescription.name);
 					const { eventTriggerDescription } = nodeTypeDescription;
 					acc[node.id] = i18n
-						.nodeText()
+						.nodeText(nodeTypeDescription.name)
 						.eventTriggerDescription(nodeName, eventTriggerDescription ?? '');
 				} else {
 					acc[node.id] = i18n.baseText('node.waitingForYouToCreateAnEventIn', {

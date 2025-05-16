@@ -16,6 +16,7 @@ import {
 import { useTelemetry } from '@/composables/useTelemetry';
 
 import { propertyNameFromExpression } from '../../utils/mappingUtils';
+import { storeToRefs } from 'pinia';
 
 const AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT = 'codeGeneratedForPrompt';
 
@@ -31,7 +32,8 @@ export type Props = {
 };
 const props = defineProps<Props>();
 
-const { activeNode } = useNDVStore();
+const ndvStore = useNDVStore();
+const { activeNode } = storeToRefs(ndvStore);
 
 const i18n = useI18n();
 
@@ -57,7 +59,7 @@ const isSubmitEnabled = computed(() => {
 	return true;
 });
 const promptUpdated = computed(() => {
-	const lastPrompt = activeNode?.parameters[AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT] as string;
+	const lastPrompt = activeNode.value?.parameters[AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT] as string;
 	if (!lastPrompt) return false;
 	return lastPrompt.trim() !== prompt.value.trim();
 });
@@ -81,7 +83,7 @@ async function onSubmit() {
 	const action: string | NodePropertyAction | undefined =
 		props.parameter.typeOptions?.buttonConfig?.action;
 
-	if (!action || !activeNode) return;
+	if (!action || !activeNode.value) return;
 
 	if (typeof action === 'string') {
 		switch (action) {
@@ -196,8 +198,8 @@ async function updateCursorPositionOnMouseMove(event: MouseEvent, activeDrop: bo
 	<div>
 		<n8n-input-label
 			v-if="hasInputField"
-			:label="i18n.nodeText().inputLabelDisplayName(parameter, path)"
-			:tooltip-text="i18n.nodeText().inputLabelDescription(parameter, path)"
+			:label="i18n.nodeText(activeNode?.type).inputLabelDisplayName(parameter, path)"
+			:tooltip-text="i18n.nodeText(activeNode?.type).inputLabelDescription(parameter, path)"
 			:bold="false"
 			size="small"
 			color="text-dark"

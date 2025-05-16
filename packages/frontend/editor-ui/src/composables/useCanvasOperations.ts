@@ -1087,7 +1087,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 	}
 
 	function resolveNodeName(node: INodeUi) {
-		const localizedName = i18n.localizeNodeName(node.name, node.type);
+		const localizedName = i18n.localizeNodeName(rootStore.defaultLocale, node.name, node.type);
 
 		node.name = uniqueNodeName(localizedName);
 	}
@@ -1579,7 +1579,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 
 			oldName = node.name;
 
-			const localized = i18n.localizeNodeName(node.name, node.type);
+			const localized = i18n.localizeNodeName(rootStore.defaultLocale, node.name, node.type);
 
 			newNodeNames.delete(oldName);
 			newName = uniqueNodeName(localized, Array.from(newNodeNames));
