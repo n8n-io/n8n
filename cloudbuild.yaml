@@ -1,6 +1,8 @@
 steps:
-  # Build the container image
+  # Build the container image with BuildKit enabled
   - name: 'gcr.io/cloud-builders/docker'
+    env:
+      - 'DOCKER_BUILDKIT=1'
     args: ['build', '-t', 'gcr.io/$PROJECT_ID/n8n:$COMMIT_SHA', '-t', 'gcr.io/$PROJECT_ID/n8n:latest', '-f', 'docker/images/n8n/Dockerfile', '.']
 
   # Push the container image to Container Registry
@@ -26,7 +28,7 @@ steps:
       - '--min-instances=2'
       - '--max-instances=4'
       - '--cpu-throttling=false'
-      - '--set-env-vars=DB_TYPE=postgresdb,DB_POSTGRESDB_DATABASE=n8n,DB_POSTGRESDB_USER=n8n_user,DB_POSTGRESDB_PASSWORD=n8n_password'
+      - '--set-env-vars=DB_TYPE=postgresdb,DB_POSTGRESDB_DATABASE=n8n,DB_POSTGRESDB_USER=n8n_user,DB_POSTGRESDB_PASSWORD=phygtl_N8N_password'
       - '--add-cloudsql-instances=silver-bridge-381702:us-west1:phygtl-proto'
 
 timeout: 1800s  # 30 minutes
