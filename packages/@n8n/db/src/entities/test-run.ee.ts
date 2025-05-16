@@ -3,9 +3,9 @@ import type { IDataObject } from 'n8n-workflow';
 
 import { DateTimeColumn, JsonColumn, WithTimestampsAndStringId } from './abstract-entity';
 import type { TestCaseExecution } from './test-case-execution.ee';
-import { WorkflowEntity } from './workflow-entity';
 import { AggregatedTestRunMetrics } from './types-db';
 import type { TestRunErrorCode, TestRunFinalResult } from './types-db';
+import { WorkflowEntity } from './workflow-entity';
 
 export type TestRunStatus = 'new' | 'running' | 'completed' | 'error' | 'cancelled';
 
