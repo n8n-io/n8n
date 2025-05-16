@@ -134,9 +134,6 @@ export class WorkflowsController {
 			}
 		}
 
-		// Check and save if the workflow has evaluation
-		newWorkflow.hasEvaluation = WorkflowHelpers.countEvaluationMetricNodes(newWorkflow) > 0 ? 1 : 0;
-
 		const { manager: dbManager } = this.projectRepository;
 
 		let project: Project | null;
@@ -369,9 +366,6 @@ export class WorkflowsController {
 				req.user,
 			);
 		}
-
-		// Check and save if the workflow has evaluation
-		updateData.hasEvaluation = WorkflowHelpers.countEvaluationMetricNodes(updateData) > 0 ? 1 : 0;
 
 		const updatedWorkflow = await this.workflowService.update(
 			req.user,
