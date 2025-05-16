@@ -41,7 +41,7 @@ import { WorkflowHistoryManager } from '@/workflows/workflow-history.ee/workflow
 export abstract class BaseCommand extends Command {
 	protected logger = Container.get(Logger);
 
-	protected dbConnection = Container.get(DbConnection);
+	protected dbConnection: DbConnection;
 
 	protected errorReporter: ErrorReporter;
 
@@ -72,6 +72,26 @@ export abstract class BaseCommand extends Command {
 
 	/** Whether to init task runner (if enabled). */
 	protected needsTaskRunner = false;
+
+	protected async loadEntities() {
+		for (const moduleName of this.modulesConfig.modules) {
+			let preInitModule: ModulePreInit | undefined;
+			try {
+				preInitModule = (await import(
+					`../modules/${moduleName}/${moduleName}.pre-init`
+				)) as ModulePreInit;
+			} catch {}
+
+			if (
+				!preInitModule ||
+				preInitModule.shouldLoadModule?.({
+					instance: this.instanceSettings,
+				})
+			) {
+				await import(`../modules/${moduleName}/${moduleName}.entities`);
+			}
+		}
+	}
 
 	protected async loadModules() {
 		for (const moduleName of this.modulesConfig.modules) {
@@ -104,6 +124,7 @@ export abstract class BaseCommand extends Command {
 	}
 
 	async init(): Promise<void> {
+		this.dbConnection = Container.get(DbConnection);
 		this.errorReporter = Container.get(ErrorReporter);
 
 		const { backendDsn, environment, deploymentName } = this.globalConfig.sentry;

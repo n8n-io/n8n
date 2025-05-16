@@ -25,7 +25,8 @@ import * as testDb from '@test-integration/test-db';
 import { InsightsCollectionService } from '../insights-collection.service';
 import { InsightsConfig } from '../insights.config';
 
-// Initialize DB once for all tests
+import '../insights.entities';
+
 beforeAll(async () => {
 	await testDb.init();
 });
