@@ -1,0 +1,215 @@
+{
+  "createdAt": "2021-03-24T13:20:07.626Z",
+  "updatedAt": "2021-03-24T13:33:51.181Z",
+  "id": "150",
+  "name": "PostHog:Event:create:Identity:create:Alias:create:Track:page screen",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ],
+      "id": "74887071-8225-4c30-8b67-c3bc2cbbbb3c"
+    },
+    {
+      "parameters": {
+        "eventName": "=Event{{Date.now()}}",
+        "distinctId": "={{Date.now()}}",
+        "additionalFields": {
+          "propertiesUi": {
+            "propertyValues": [
+              {
+                "key": "name",
+                "value": "test"
+              }
+            ]
+          },
+          "timestamp": "={{(new Date()).toISOString()}}"
+        }
+      },
+      "name": "PostHog",
+      "type": "n8n-nodes-base.postHog",
+      "typeVersion": 1,
+      "position": [
+        500,
+        150
+      ],
+      "credentials": {
+        "postHogApi": {
+          "id": "121",
+          "name": "PostHog API"
+        }
+      },
+      "id": "73600be8-3dde-4dea-a1d0-cea020c02acf"
+    },
+    {
+      "parameters": {
+        "resource": "identity",
+        "distinctId": "={{Date.now()}}",
+        "additionalFields": {
+          "propertiesUi": {
+            "propertyValues": [
+              {
+                "key": "name",
+                "value": "identity test"
+              },
+              {
+                "key": "email",
+                "value": "=fake{{Date.now()}}@gmail.com"
+              }
+            ]
+          },
+          "timestamp": "={{Date.now()}}"
+        }
+      },
+      "name": "PostHog1",
+      "type": "n8n-nodes-base.postHog",
+      "typeVersion": 1,
+      "position": [
+        500,
+        300
+      ],
+      "credentials": {
+        "postHogApi": {
+          "id": "121",
+          "name": "PostHog API"
+        }
+      },
+      "id": "dd146375-b44f-445a-a2a4-fbaeb9028b0c"
+    },
+    {
+      "parameters": {
+        "resource": "alias",
+        "alias": "=Alias{{Date.now()}}",
+        "distinctId": "={{Date.now()}}",
+        "additionalFields": {
+          "contextUi": {
+            "contextValues": [
+              {
+                "key": "name",
+                "value": "Aliastest"
+              }
+            ]
+          },
+          "timestamp": "={{Date.now()}}"
+        }
+      },
+      "name": "PostHog2",
+      "type": "n8n-nodes-base.postHog",
+      "typeVersion": 1,
+      "position": [
+        500,
+        450
+      ],
+      "credentials": {
+        "postHogApi": {
+          "id": "121",
+          "name": "PostHog API"
+        }
+      },
+      "id": "cb1f2644-f1a7-46b0-950e-de720819b2b7"
+    },
+    {
+      "parameters": {
+        "resource": "track",
+        "name": "=TrackPage{{Date.now()}}",
+        "distinctId": "={{Date.now()}}",
+        "additionalFields": {
+          "category": "landing",
+          "timestamp": "={{Date.now()}}"
+        }
+      },
+      "name": "PostHog3",
+      "type": "n8n-nodes-base.postHog",
+      "typeVersion": 1,
+      "position": [
+        500,
+        600
+      ],
+      "credentials": {
+        "postHogApi": {
+          "id": "121",
+          "name": "PostHog API"
+        }
+      },
+      "id": "88973d09-036b-41c3-a24c-d799ef0354e2"
+    },
+    {
+      "parameters": {
+        "resource": "track",
+        "operation": "screen",
+        "name": "=TrackScreen{{Date.now()}}",
+        "distinctId": "={{Date.now()}}",
+        "additionalFields": {
+          "category": "registration",
+          "timestamp": "={{Date.now()}}"
+        }
+      },
+      "name": "PostHog4",
+      "type": "n8n-nodes-base.postHog",
+      "typeVersion": 1,
+      "position": [
+        650,
+        600
+      ],
+      "credentials": {
+        "postHogApi": {
+          "id": "121",
+          "name": "PostHog API"
+        }
+      },
+      "id": "2677f5a4-9a15-41f2-a8c0-ea42f269f57b"
+    }
+  ],
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "PostHog",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "PostHog1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "PostHog2",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "PostHog3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PostHog3": {
+      "main": [
+        [
+          {
+            "node": "PostHog4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": null,
+  "triggerCount": 0,
+  "tags": []
+}
