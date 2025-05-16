@@ -87,7 +87,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-secrets-manager": "3.808.0",
-    "@azure/identity": "4.3.0",
+    "@azure/identity": "4.4.1",
     "@azure/keyvault-secrets": "4.8.0",
     "@google-cloud/secret-manager": "5.6.0",
     "@n8n/api-types": "workspace:*",
