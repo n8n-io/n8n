@@ -158,7 +158,19 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 			includeParentFolder = false,
 			em = this.manager,
 		} = options;
-
+		console.log({
+			where: {
+				workflowId,
+				...where,
+			},
+			relations: {
+				workflow: {
+					shared: { project: { projectRelations: { user: true } } },
+					tags: includeTags,
+					parentFolder: includeParentFolder,
+				},
+			},
+		});
 		return await em.findOne(SharedWorkflow, {
 			where: {
 				workflowId,
