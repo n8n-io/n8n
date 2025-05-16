@@ -1,6 +1,6 @@
-# @n8n/stores
+# @n8n/i18n
 
-A collection of Pinia stores that provide common data-related functionality across n8n's Front-End packages.
+A package for managing internationalization (i18n) in n8n's Frontend codebase. It provides a structured way to handle translations and localization, ensuring that the application can be easily adapted to different languages and regions.
 
 ## Table of Contents
 
@@ -10,10 +10,13 @@ A collection of Pinia stores that provide common data-related functionality acro
 
 ## Features
 
-- **Composable State Management**: Share and reuse stateful logic across multiple Vue components using Pinia stores.
-- **Consistent Patterns**: Promote uniform state handling and best practices throughout the front-end codebase.
-- **Easy Extensibility**: Add or modify stores as project requirements evolve, supporting scalable development.
-- **Composition API Support**: Designed to work seamlessly with Vue's Composition API for modern, maintainable code.
+- **Translation Management**: Simplifies the process of managing translations for different languages.
+- **Localization Support**: Provides tools to adapt the application for different regions and cultures.
+- **Easy Integration**: Seamlessly integrates with n8n's Frontend codebase, making it easy to implement and use.
+- **Reusable Base Text**: Allows for the definition of reusable base text strings, reducing redundancy in translations.
+- **Pluralization and Interpolation**: Supports pluralization and interpolation in base text strings, making it flexible for various use cases.
+- **Versioned Nodes Support**: Facilitates the management of translations for nodes in versioned directories, ensuring consistency across different versions.
+- **Documentation**: Comprehensive documentation to help developers understand and utilize the package effectively.
 
 ## Contributing
 
