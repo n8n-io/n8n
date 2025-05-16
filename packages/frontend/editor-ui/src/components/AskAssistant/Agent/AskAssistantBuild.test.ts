@@ -27,7 +27,7 @@ vi.mock('@/composables/useTelemetry', () => ({
 }));
 
 // Mock i18n
-vi.mock('@/composables/useI18n', () => ({
+vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
 		baseText: (key: string) => key,
 	}),

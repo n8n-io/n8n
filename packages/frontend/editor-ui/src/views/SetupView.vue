@@ -3,7 +3,7 @@ import { reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { useToast } from '@/composables/useToast';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';

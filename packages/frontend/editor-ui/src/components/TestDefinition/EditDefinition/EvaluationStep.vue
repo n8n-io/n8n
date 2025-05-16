@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { type Modifier, detectOverflow } from '@popperjs/core';
 import { N8nInfoTip, N8nText, N8nTooltip } from '@n8n/design-system';
 import { computed, ref, useCssModule } from 'vue';

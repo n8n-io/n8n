@@ -3,7 +3,7 @@ import { computed, nextTick, useTemplateRef, watch } from 'vue';
 import { N8nButton, N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { upperFirst } from 'lodash-es';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import LogsViewConsumedTokenCountText from '@/components/CanvasChat/future/components/LogsViewConsumedTokenCountText.vue';
 import { I18nT } from 'vue-i18n';
 import { toDayMonth, toTime } from '@/utils/formatters/dateFormatter';

@@ -2,7 +2,7 @@
 import { ref, computed, onMounted, h } from 'vue';
 import { truncate } from '@n8n/utils/string/truncate';
 import type { ICredentialsResponse, IUsedCredential, IWorkflowDb } from '@/Interface';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/stores/ui.store';
 import { useProjectsStore } from '@/stores/projects.store';
 import Modal from '@/components/Modal.vue';

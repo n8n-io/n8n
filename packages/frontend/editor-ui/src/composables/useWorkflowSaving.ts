@@ -2,7 +2,7 @@ import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 import { useUIStore } from '@/stores/ui.store';
 import type { NavigationGuardNext, useRouter } from 'vue-router';
 import { useMessage } from './useMessage';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import {
 	MODAL_CANCEL,
 	MODAL_CLOSE,

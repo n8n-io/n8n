@@ -3,7 +3,7 @@ import Canvas from '@/components/canvas/Canvas.vue';
 import CanvasNode from '@/components/canvas/elements/nodes/CanvasNode.vue';
 import { useCanvasMapping } from '@/composables/useCanvasMapping';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';

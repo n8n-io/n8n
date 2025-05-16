@@ -7,7 +7,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import type { IWorkflowDataUpdate } from '@/Interface';
 import { nodeViewEventBus } from '@/event-bus';
 import { v4 as uuid } from 'uuid';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { STICKY_NODE_TYPE } from '@/constants';
 
 const emit = defineEmits<{

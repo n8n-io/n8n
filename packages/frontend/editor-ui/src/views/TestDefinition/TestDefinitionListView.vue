@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import EmptyState from '@/components/TestDefinition/ListDefinition/EmptyState.vue';
 import TestItem from '@/components/TestDefinition/ListDefinition/TestItem.vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
 import { MODAL_CONFIRM, VIEWS } from '@/constants';

@@ -6,7 +6,7 @@ import { deepCopy } from 'n8n-workflow';
 import { N8nFormInput } from '@n8n/design-system';
 import { useUsersStore } from '@/stores/users.store';
 import type { IUser } from '@/Interface';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useProjectsStore } from '@/stores/projects.store';
 import type { ProjectIcon, Project, ProjectRelation } from '@/types/projects.types';
 import { useToast } from '@/composables/useToast';

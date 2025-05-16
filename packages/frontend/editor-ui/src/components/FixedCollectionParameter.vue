@@ -7,7 +7,7 @@ import { deepCopy, isINodePropertyCollectionList } from 'n8n-workflow';
 import { get } from 'lodash-es';
 
 import { computed, ref, watch, onBeforeMount } from 'vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import {
 	N8nIconButton,
 	N8nSelect,

@@ -5,7 +5,7 @@ import type { IBinaryData } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
 import VueJsonPretty from 'vue-json-pretty';
 import RunDataHtml from '@/components/RunDataHtml.vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 
 const props = defineProps<{
 	binaryData: IBinaryData;

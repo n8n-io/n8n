@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router';
 import type { IFormBoxConfig } from '@n8n/design-system';
 import AuthView from '@/views/AuthView.vue';
 import { VIEWS } from '@/constants';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/composables/useToast';
 import { useSSOStore } from '@/stores/sso.store';
 

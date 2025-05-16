@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import type { IRunDataDisplayMode } from '@/Interface';
 import type { ITaskMetadata } from 'n8n-workflow';
 import { computed } from 'vue';

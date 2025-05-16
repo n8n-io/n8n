@@ -7,7 +7,7 @@ import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
 import { deepCopy, defaultMessageEventBusDestinationOptions } from 'n8n-workflow';
 import type { BaseTextKey } from '@/plugins/i18n';
 import type { EventBus } from '@n8n/utils/event-bus';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { assert } from '@n8n/utils/assert';
 
 const DESTINATION_LIST_ITEM_ACTIONS = {

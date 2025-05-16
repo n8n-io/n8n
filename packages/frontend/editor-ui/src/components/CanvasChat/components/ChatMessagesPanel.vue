@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ChatMessage, ChatMessageText } from '@n8n/chat/types';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import MessagesList from '@n8n/chat/components/MessagesList.vue';
 import MessageOptionTooltip from './MessageOptionTooltip.vue';
 import MessageOptionAction from './MessageOptionAction.vue';

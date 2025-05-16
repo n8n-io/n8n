@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import AuthView from './AuthView.vue';
 import type { IFormBoxConfig } from '@/Interface';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/composables/useToast';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';

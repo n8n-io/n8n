@@ -8,7 +8,7 @@ import type { INode, INodeTypeDescription } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
 import { computed, ref, watch } from 'vue';
 import { getMousePosition } from '../utils/nodeViewUtils';
-import { useI18n } from './useI18n';
+import { useI18n } from '@n8n/i18n';
 import { usePinnedData } from './usePinnedData';
 import { isPresent } from '../utils/typesUtils';
 import { getResourcePermissions } from '@/permissions';

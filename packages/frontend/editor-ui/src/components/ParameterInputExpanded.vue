@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { IUpdateInformation } from '@/Interface';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { isValueExpression as isValueExpressionUtil } from '@/utils/nodeTypesUtils';

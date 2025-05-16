@@ -2,7 +2,7 @@
 import { ref } from 'vue';
 import Modal from '../Modal.vue';
 import { PROMPT_MFA_CODE_MODAL_KEY } from '@/constants';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { promptMfaCodeBus } from '@/event-bus';
 import type { IFormInputs } from '@/Interface';
 import { createFormEventBus } from '@n8n/design-system/utils';

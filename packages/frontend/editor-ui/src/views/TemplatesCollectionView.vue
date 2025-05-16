@@ -13,7 +13,7 @@ import { isFullTemplatesCollection } from '@/utils/templates/typeGuards';
 import { useRoute, useRouter } from 'vue-router';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 
 const externalHooks = useExternalHooks();
 const templatesStore = useTemplatesStore();

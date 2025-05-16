@@ -8,7 +8,7 @@ import {
 	type LogDetailsPanelState,
 } from '@/components/CanvasChat/types/logs';
 import NodeIcon from '@/components/NodeIcon.vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import LogsViewNodeName from '@/components/CanvasChat/future/components/LogsViewNodeName.vue';
 import {

@@ -11,6 +11,8 @@ import {
 	insertOptionsAndValues,
 } from './utils';
 
+export * from './composables';
+
 export const i18nInstance = createI18n({
 	locale: 'en',
 	fallbackLocale: 'en',
@@ -434,3 +436,7 @@ export function addHeaders(headers: INodeTranslationHeaders, language: string) {
 }
 
 export const i18n: I18nClass = new I18nClass();
+
+export function useI18n() {
+	return i18n;
+}

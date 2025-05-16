@@ -7,7 +7,7 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { usePostHog } from '@/stores/posthog.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/composables/useToast';
 import type { INodeProperties } from 'n8n-workflow';
 
@@ -16,7 +16,7 @@ vi.mock('@/stores/workflows.store');
 vi.mock('@/stores/posthog.store');
 vi.mock('@n8n/stores/useRootStore');
 vi.mock('@/api/ai');
-vi.mock('@/composables/useI18n');
+vi.mock('@n8n/i18n');
 vi.mock('@/composables/useToast');
 
 describe('ButtonParameter', () => {

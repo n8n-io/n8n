@@ -5,7 +5,7 @@ import type { ITag } from '@/Interface';
 import { MAX_TAG_NAME_LENGTH } from '@/constants';
 import { N8nOption, N8nSelect } from '@n8n/design-system';
 import type { EventBus } from '@n8n/utils/event-bus';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { v4 as uuid } from 'uuid';
 import { useToast } from '@/composables/useToast';
 

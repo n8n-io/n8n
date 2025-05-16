@@ -36,7 +36,7 @@ import {
 
 import type { NodeViewItem, NodeViewItemSection } from '@/components/Node/NodeCreator/viewsData';
 import { AINodesView } from '@/components/Node/NodeCreator/viewsData';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useKeyboardNavigation } from './useKeyboardNavigation';
 
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';

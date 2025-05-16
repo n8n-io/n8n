@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { CHAT_TRIGGER_NODE_TYPE } from '@/constants';
 import { useLogsStore } from '@/stores/logs.store';

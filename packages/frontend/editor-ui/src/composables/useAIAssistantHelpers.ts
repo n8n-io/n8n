@@ -16,7 +16,7 @@ import type { ChatRequest } from '@/types/assistant.types';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useDataSchema } from './useDataSchema';
 import { AI_ASSISTANT_MAX_CONTENT_LENGTH, VIEWS } from '@/constants';
-import { useI18n } from './useI18n';
+import { useI18n } from '@n8n/i18n';
 import type { IWorkflowDb } from '@/Interface';
 import { getObjectSizeInKB } from '@/utils/objectUtils';
 

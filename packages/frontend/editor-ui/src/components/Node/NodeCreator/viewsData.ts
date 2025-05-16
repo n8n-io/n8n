@@ -59,7 +59,7 @@ import {
 	HUMAN_IN_THE_LOOP_CATEGORY,
 	EVALUATION_TRIGGER,
 } from '@/constants';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import type { SimplifiedNodeType } from '@/Interface';
 import type { INodeTypeDescription, Themed } from 'n8n-workflow';

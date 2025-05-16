@@ -7,7 +7,7 @@ import type { IFormBoxConfig } from '@/Interface';
 import { VIEWS } from '@/constants';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useRoute, useRouter } from 'vue-router';
 
 const uiStore = useUIStore();

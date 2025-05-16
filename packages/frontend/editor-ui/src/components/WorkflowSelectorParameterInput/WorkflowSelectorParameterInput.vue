@@ -10,7 +10,7 @@ import type {
 	NodeParameterValue,
 	ResourceLocatorModes,
 } from 'n8n-workflow';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import ResourceLocatorDropdown from '@/components/ResourceLocator/ResourceLocatorDropdown.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
 import { onClickOutside } from '@vueuse/core';

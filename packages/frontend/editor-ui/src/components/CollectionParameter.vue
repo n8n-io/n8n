@@ -14,7 +14,7 @@ import { get } from 'lodash-es';
 
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { storeToRefs } from 'pinia';
 
 const selectedOption = ref<string | undefined>(undefined);

@@ -2,7 +2,7 @@
 import N8nTooltip from '@n8n/design-system/components/N8nTooltip';
 import type { BaseTextKey } from '@/plugins/i18n';
 import type { TestTableColumn } from '@/components/TestDefinition/shared/TestTableBase.vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useRouter } from 'vue-router';
 
 defineProps<{

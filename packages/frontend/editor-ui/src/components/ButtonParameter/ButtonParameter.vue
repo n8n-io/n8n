@@ -3,7 +3,7 @@ import { type INodeProperties, type NodePropertyAction } from 'n8n-workflow';
 import type { INodeUi, IUpdateInformation } from '@/Interface';
 import { ref, computed, onMounted } from 'vue';
 import { N8nButton, N8nInput, N8nTooltip } from '@n8n/design-system/components';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/composables/useToast';
 import { useNDVStore } from '@/stores/ndv.store';
 import {

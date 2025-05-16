@@ -4,7 +4,7 @@ import EvaluationStep from '@/components/TestDefinition/EditDefinition/Evaluatio
 import NodesPinning from '@/components/TestDefinition/EditDefinition/NodesPinning.vue';
 import WorkflowSelector from '@/components/TestDefinition/EditDefinition/WorkflowSelector.vue';
 import type { EditableFormState, EvaluationFormState } from '@/components/TestDefinition/types';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useMessage } from '@/composables/useMessage';
 import { NODE_PINNING_MODAL_KEY } from '@/constants';
 import type { ITag } from '@/Interface';

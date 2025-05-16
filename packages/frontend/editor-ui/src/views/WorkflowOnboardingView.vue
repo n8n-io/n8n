@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useLoadingService } from '@/composables/useLoadingService';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { VIEWS } from '@/constants';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';

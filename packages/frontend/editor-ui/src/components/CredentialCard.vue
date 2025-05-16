@@ -10,7 +10,7 @@ import { useCredentialsStore } from '@/stores/credentials.store';
 import TimeAgo from '@/components/TimeAgo.vue';
 import { useProjectsStore } from '@/stores/projects.store';
 import ProjectCardBadge from '@/components/Projects/ProjectCardBadge.vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { ResourceType } from '@/utils/projects.utils';
 import type { CredentialsResource } from './layouts/ResourcesListLayout.vue';
 
