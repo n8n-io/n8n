@@ -15,7 +15,7 @@ import {
 import { parse } from 'flatted';
 import { useToast } from '@/composables/useToast';
 
-export function useExecutionData() {
+export function useLogsExecutionData() {
 	const nodeHelpers = useNodeHelpers();
 	const workflowsStore = useWorkflowsStore();
 	const toast = useToast();

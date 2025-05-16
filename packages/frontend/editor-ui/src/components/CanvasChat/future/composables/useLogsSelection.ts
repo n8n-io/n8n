@@ -9,7 +9,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import type { IExecutionResponse } from '@/Interface';
 import { computed, ref, type ComputedRef } from 'vue';
 
-export function useSelection(
+export function useLogsSelection(
 	execution: ComputedRef<IExecutionResponse | undefined>,
 	tree: ComputedRef<LogEntry[]>,
 	flatLogEntries: ComputedRef<LogEntry[]>,

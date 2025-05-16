@@ -1,7 +1,7 @@
 import { flattenLogEntries, type LogEntry } from '@/components/RunDataAi/utils';
 import { computed, ref, type ComputedRef } from 'vue';
 
-export function useExpand(entries: ComputedRef<LogEntry[]>) {
+export function useLogsTreeExpand(entries: ComputedRef<LogEntry[]>) {
 	const collapsedEntries = ref<Record<string, boolean>>({});
 	const flatLogEntries = computed(() => flattenLogEntries(entries.value, collapsedEntries.value));
 

@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import ExecutionSummary from '@/components/CanvasChat/future/components/ExecutionSummary.vue';
-import PanelHeader from '@/components/CanvasChat/future/components/PanelHeader.vue';
-import RunDataView from '@/components/CanvasChat/future/components/RunDataView.vue';
-import { useResizablePanel } from '@/components/CanvasChat/future/composables/useResizablePanel';
+import LogsViewExecutionSummary from '@/components/CanvasChat/future/components/LogsViewExecutionSummary.vue';
+import LogsPanelHeader from '@/components/CanvasChat/future/components/LogsPanelHeader.vue';
+import LogsViewRunData from '@/components/CanvasChat/future/components/LogsViewRunData.vue';
+import { useResizablePanel } from '@/composables/useResizablePanel';
 import {
 	LOG_DETAILS_PANEL_STATE,
 	type LogDetailsPanelState,
@@ -10,7 +10,7 @@ import {
 import NodeIcon from '@/components/NodeIcon.vue';
 import { useI18n } from '@/composables/useI18n';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import NodeName from '@/components/CanvasChat/future/components/NodeName.vue';
+import LogsViewNodeName from '@/components/CanvasChat/future/components/LogsViewNodeName.vue';
 import {
 	getSubtreeTotalConsumedTokens,
 	type LogEntry,
@@ -70,7 +70,7 @@ function handleResizeEnd() {
 
 <template>
 	<div ref="container" :class="$style.container" data-test-id="log-details">
-		<PanelHeader
+		<LogsPanelHeader
 			data-test-id="log-details-header"
 			:class="$style.header"
 			@click="emit('clickHeader')"
@@ -78,12 +78,12 @@ function handleResizeEnd() {
 			<template #title>
 				<div :class="$style.title">
 					<NodeIcon :node-type="type" :size="16" :class="$style.icon" />
-					<NodeName
+					<LogsViewNodeName
 						:latest-name="latestInfo?.name ?? logEntry.node.name"
 						:name="logEntry.node.name"
 						:is-deleted="latestInfo?.deleted ?? false"
 					/>
-					<ExecutionSummary
+					<LogsViewExecutionSummary
 						v-if="isOpen"
 						:class="$style.executionSummary"
 						:status="logEntry.runData.executionStatus ?? 'unknown'"
@@ -123,7 +123,7 @@ function handleResizeEnd() {
 				</div>
 				<slot name="actions" />
 			</template>
-		</PanelHeader>
+		</LogsPanelHeader>
 		<div v-if="isOpen" :class="$style.content" data-test-id="logs-details-body">
 			<N8nResizeWrapper
 				v-if="!isTriggerNode && panels !== LOG_DETAILS_PANEL_STATE.OUTPUT"
@@ -140,14 +140,14 @@ function handleResizeEnd() {
 				@resize="resizer.onResize"
 				@resizeend="handleResizeEnd"
 			>
-				<RunDataView
+				<LogsViewRunData
 					data-test-id="log-details-input"
 					pane-type="input"
 					:title="locale.baseText('logs.details.header.actions.input')"
 					:log-entry="logEntry"
 				/>
 			</N8nResizeWrapper>
-			<RunDataView
+			<LogsViewRunData
 				v-if="isTriggerNode || panels !== LOG_DETAILS_PANEL_STATE.INPUT"
 				data-test-id="log-details-output"
 				pane-type="output"

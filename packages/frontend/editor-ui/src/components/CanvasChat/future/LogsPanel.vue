@@ -6,13 +6,13 @@ import LogsOverviewPanel from '@/components/CanvasChat/future/components/LogsOve
 import ChatMessagesPanel from '@/components/CanvasChat/components/ChatMessagesPanel.vue';
 import LogsDetailsPanel from '@/components/CanvasChat/future/components/LogDetailsPanel.vue';
 import LogsPanelActions from '@/components/CanvasChat/future/components/LogsPanelActions.vue';
-import { useLayout } from '@/components/CanvasChat/future/composables/useLayout';
-import { useExecutionData } from '@/components/CanvasChat/future/composables/useExecutionData';
+import { useLogsPanelLayout } from '@/components/CanvasChat/future/composables/useLogsPanelLayout';
+import { useLogsExecutionData } from '@/components/CanvasChat/future/composables/useLogsExecutionData';
 import { type LogEntry } from '@/components/RunDataAi/utils';
 import { useNDVStore } from '@/stores/ndv.store';
 import { ndvEventBus } from '@/event-bus';
-import { useSelection } from '@/components/CanvasChat/future/composables/useSelection';
-import { useExpand } from '@/components/CanvasChat/future/composables/useExpand';
+import { useLogsSelection } from '@/components/CanvasChat/future/composables/useLogsSelection';
+import { useLogsTreeExpand } from '@/components/CanvasChat/future/composables/useLogsTreeExpand';
 import { useLogsStore } from '@/stores/logs.store';
 
 const props = withDefaults(defineProps<{ isReadOnly?: boolean }>(), { isReadOnly: false });
@@ -43,7 +43,7 @@ const {
 	onChatPanelResizeEnd,
 	onOverviewPanelResize,
 	onOverviewPanelResizeEnd,
-} = useLayout(pipContainer, pipContent, container, logsContainer);
+} = useLogsPanelLayout(pipContainer, pipContent, container, logsContainer);
 
 const {
 	currentSessionId,
@@ -55,9 +55,9 @@ const {
 } = useChatState(props.isReadOnly);
 
 const { entries, execution, hasChat, latestNodeNameById, resetExecutionData, loadSubExecution } =
-	useExecutionData();
-const { flatLogEntries, toggleExpanded } = useExpand(entries);
-const { selected, select, selectNext, selectPrev } = useSelection(
+	useLogsExecutionData();
+const { flatLogEntries, toggleExpanded } = useLogsTreeExpand(entries);
+const { selected, select, selectNext, selectPrev } = useLogsSelection(
 	execution,
 	entries,
 	flatLogEntries,
