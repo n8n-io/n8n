@@ -81,8 +81,8 @@ describe('getHttpProxyAgent', () => {
 
 		const agent = getHttpProxyAgent();
 
-		// Should use HTTP_PROXY as it has highest priority
-		expect(HttpsProxyAgent).toHaveBeenCalledWith('http://http-proxy.example.com:8080');
-		expect(agent).toEqual({ proxyUrl: 'http://http-proxy.example.com:8080' });
+		// Should use HTTPS_PROXY as it has highest priority now
+		expect(HttpsProxyAgent).toHaveBeenCalledWith('http://https-proxy.example.com:8080');
+		expect(agent).toEqual({ proxyUrl: 'http://https-proxy.example.com:8080' });
 	});
 });
