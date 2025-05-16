@@ -6,22 +6,19 @@ import {
 } from '../../composables/useResize';
 import { LOGS_PANEL_STATE } from '../../types/logs';
 import { usePiPWindow } from '../../composables/usePiPWindow';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useCanvasStore } from '@/stores/canvas.store';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { watch } from 'vue';
-import { useResizablePanel } from './useResizablePanel';
+import { useResizablePanel } from '../../../../composables/useResizablePanel';
+import { useLogsStore } from '@/stores/logs.store';
 
-export function useLayout(
+export function useLogsPanelLayout(
 	pipContainer: Readonly<ShallowRef<HTMLElement | null>>,
 	pipContent: Readonly<ShallowRef<HTMLElement | null>>,
 	container: Readonly<ShallowRef<HTMLElement | null>>,
 	logsContainer: Readonly<ShallowRef<HTMLElement | null>>,
 ) {
-	const canvasStore = useCanvasStore();
+	const logsStore = useLogsStore();
 	const telemetry = useTelemetry();
-	const workflowsStore = useWorkflowsStore();
-	const panelState = computed(() => workflowsStore.logsPanelState);
 
 	const resizer = useResizablePanel(LOCAL_STORAGE_PANEL_HEIGHT, {
 		container: document.body,
@@ -49,9 +46,9 @@ export function useLayout(
 	});
 
 	const isOpen = computed(() =>
-		panelState.value === LOGS_PANEL_STATE.CLOSED
-			? resizer.isResizing.value && resizer.size.value > 0
-			: !resizer.isCollapsed.value,
+		logsStore.isOpen
+			? !resizer.isCollapsed.value
+			: resizer.isResizing.value && resizer.size.value > 0,
 	);
 	const isCollapsingDetailsPanel = computed(() => overviewPanelResizer.isFullSize.value);
 
@@ -60,25 +57,25 @@ export function useLayout(
 		initialWidth: window.document.body.offsetWidth * 0.8,
 		container: pipContainer,
 		content: pipContent,
-		shouldPopOut: computed(() => panelState.value === LOGS_PANEL_STATE.FLOATING),
+		shouldPopOut: computed(() => logsStore.state === LOGS_PANEL_STATE.FLOATING),
 		onRequestClose: () => {
 			if (!isOpen.value) {
 				return;
 			}
 
 			telemetry.track('User toggled log view', { new_state: 'attached' });
-			workflowsStore.setPreferPoppedOutLogsView(false);
+			logsStore.setPreferPoppedOut(false);
 		},
 	});
 
 	function handleToggleOpen(open?: boolean) {
-		const wasOpen = panelState.value !== LOGS_PANEL_STATE.CLOSED;
+		const wasOpen = logsStore.isOpen;
 
 		if (open === wasOpen) {
 			return;
 		}
 
-		workflowsStore.toggleLogsPanelOpen(open);
+		logsStore.toggleOpen(open);
 
 		telemetry.track('User toggled log view', {
 			new_state: wasOpen ? 'collapsed' : 'attached',
@@ -87,12 +84,12 @@ export function useLayout(
 
 	function handlePopOut() {
 		telemetry.track('User toggled log view', { new_state: 'floating' });
-		workflowsStore.toggleLogsPanelOpen(true);
-		workflowsStore.setPreferPoppedOutLogsView(true);
+		logsStore.toggleOpen(true);
+		logsStore.setPreferPoppedOut(true);
 	}
 
 	function handleResizeEnd() {
-		if (panelState.value === LOGS_PANEL_STATE.CLOSED && !resizer.isCollapsed.value) {
+		if (!logsStore.isOpen && !resizer.isCollapsed.value) {
 			handleToggleOpen(true);
 		}
 
@@ -104,9 +101,9 @@ export function useLayout(
 	}
 
 	watch(
-		[panelState, resizer.size],
+		[() => logsStore.state, resizer.size],
 		([state, height]) => {
-			canvasStore.setPanelHeight(
+			logsStore.setHeight(
 				state === LOGS_PANEL_STATE.FLOATING
 					? 0
 					: state === LOGS_PANEL_STATE.ATTACHED
