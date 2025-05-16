@@ -1062,11 +1062,11 @@ describe('useWorkflowsStore', () => {
 			expect(workflowsStore.nodeMetadata[nodeName]).not.toBeDefined();
 			expect(workflowsStore.nodeMetadata[newName]).toEqual({});
 			expect(
-				workflowsStore.workflowExecutionData.data.resultData.runData[nodeName],
+				workflowsStore.workflowExecutionData?.data?.resultData.runData[nodeName],
 			).not.toBeDefined();
-			expect(workflowsStore.workflowExecutionData.data.resultData.runData[newName]).toBeDefined();
+			expect(workflowsStore.workflowExecutionData?.data?.resultData.runData[newName]).toBeDefined();
 			expect(
-				workflowsStore.workflowExecutionData.data.resultData.runData['Edit Fields'][0].source,
+				workflowsStore.workflowExecutionData?.data?.resultData.runData['Edit Fields'][0].source,
 			).toEqual([
 				{
 					previousNode: newName,
