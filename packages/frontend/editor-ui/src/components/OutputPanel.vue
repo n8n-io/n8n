@@ -402,7 +402,9 @@ const activatePane = () => {
 		</template>
 
 		<template #node-waiting>
-			<N8nText :bold="true" color="text-dark" size="large">Waiting for input</N8nText>
+			<N8nText :bold="true" color="text-dark" size="large">
+				{{ i18n.baseText('ndv.output.waitNodeWaiting.title') }}
+			</N8nText>
 			<N8nText v-n8n-html="waitingNodeTooltip(node)"></N8nText>
 		</template>
 
