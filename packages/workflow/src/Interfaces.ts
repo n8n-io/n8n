@@ -917,6 +917,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 		getNodeOutputs(): INodeOutputConfiguration[];
 		putExecutionToWait(waitTill: Date): Promise<void>;
 		sendMessageToUI(message: any): void;
+		sendChatMessage(message: string): void;
 		sendResponse(response: IExecuteResponsePromiseData): void;
 
 		// TODO: Make this one then only available in the new config one
@@ -1585,6 +1586,10 @@ export interface INodeType {
 	description: INodeTypeDescription;
 	supplyData?(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData>;
 	execute?(this: IExecuteFunctions): Promise<NodeOutput>;
+	onMessage?(
+		context: IExecuteFunctions,
+		data: IDataObject,
+	): Promise<NodeOutput>;
 	poll?(this: IPollFunctions): Promise<INodeExecutionData[][] | null>;
 	trigger?(this: ITriggerFunctions): Promise<ITriggerResponse | undefined>;
 	webhook?(this: IWebhookFunctions): Promise<IWebhookResponseData>;
@@ -2368,6 +2373,7 @@ export interface IWorkflowExecuteAdditionalData {
 	currentNodeExecutionIndex: number;
 	httpResponse?: express.Response;
 	httpRequest?: express.Request;
+	getChatConnection?: (executionId: string | undefined) => WebSocket | undefined;
 	restApiUrl: string;
 	instanceBaseUrl: string;
 	setExecutionStatus?: (status: ExecutionStatus) => void;
@@ -2412,6 +2418,7 @@ export type WorkflowExecuteMode =
 	| 'retry'
 	| 'trigger'
 	| 'webhook'
+	| 'chat'
 	| 'evaluation';
 
 export type WorkflowActivateMode =
