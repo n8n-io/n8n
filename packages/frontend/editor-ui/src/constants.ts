@@ -691,39 +691,6 @@ export const CURL_IMPORT_NODES_PROTOCOLS: { [key: string]: string } = {
 	imaps: 'IMAP',
 };
 
-export const enum STORES {
-	COMMUNITY_NODES = 'communityNodes',
-	ROOT = 'root',
-	SETTINGS = 'settings',
-	UI = 'ui',
-	USERS = 'users',
-	WORKFLOWS = 'workflows',
-	WORKFLOWS_V2 = 'workflowsV2',
-	WORKFLOWS_EE = 'workflowsEE',
-	EXECUTIONS = 'executions',
-	NDV = 'ndv',
-	TEMPLATES = 'templates',
-	NODE_TYPES = 'nodeTypes',
-	CREDENTIALS = 'credentials',
-	TAGS = 'tags',
-	ANNOTATION_TAGS = 'annotationTags',
-	VERSIONS = 'versions',
-	NODE_CREATOR = 'nodeCreator',
-	WEBHOOKS = 'webhooks',
-	HISTORY = 'history',
-	CLOUD_PLAN = 'cloudPlan',
-	RBAC = 'rbac',
-	PUSH = 'push',
-	COLLABORATION = 'collaboration',
-	ASSISTANT = 'assistant',
-	BUILDER = 'builder',
-	BECOME_TEMPLATE_CREATOR = 'becomeTemplateCreator',
-	PROJECTS = 'projects',
-	API_KEYS = 'apiKeys',
-	TEST_DEFINITION = 'testDefinition',
-	FOLDERS = 'folders',
-}
-
 export const enum SignInType {
 	LDAP = 'ldap',
 	EMAIL = 'email',
@@ -835,10 +802,6 @@ export const ALLOWED_HTML_TAGS = [
 export const CLOUD_CHANGE_PLAN_PAGE = window.location.host.includes('stage-app.n8n.cloud')
 	? 'https://stage-app.n8n.cloud/account/change-plan'
 	: 'https://app.n8n.cloud/account/change-plan';
-
-export const CLOUD_BASE_URL_STAGING = 'https://stage-api.n8n.cloud';
-
-export const CLOUD_BASE_URL_PRODUCTION = 'https://api.n8n.cloud';
 
 export const CLOUD_TRIAL_CHECK_INTERVAL = 5000;
 

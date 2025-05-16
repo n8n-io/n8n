@@ -4,7 +4,7 @@ import type { ICredentialDataDecryptedObject, ICredentialType } from 'n8n-workfl
 import { createTestingPinia } from '@pinia/testing';
 import type { RenderOptions } from '@/__tests__/render';
 import { createComponentRenderer } from '@/__tests__/render';
-import { STORES } from '@/constants';
+import { STORES } from '@n8n/stores';
 
 const defaultRenderOptions: RenderOptions = {
 	pinia: createTestingPinia({
