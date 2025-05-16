@@ -168,7 +168,6 @@ export class TestRunnerService {
 
 		const data: IWorkflowExecutionDataProcess = {
 			executionMode: 'evaluation',
-			runData: {},
 			pinData,
 			workflowData: workflow,
 			userId: metadata.userId,
