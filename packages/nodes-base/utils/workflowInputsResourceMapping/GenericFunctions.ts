@@ -27,6 +27,18 @@ import {
 const SUPPORTED_TYPES = TYPE_OPTIONS.map((x) => x.value);
 
 function parseJsonSchema(schema: JSONSchema7): FieldValueOption[] | string {
+	if (schema.type !== 'object') {
+		if (schema.type === undefined) {
+			return 'Invalid JSON schema. Missing key `type` in schema';
+		}
+
+		if (Array.isArray(schema.type)) {
+			return `Invalid JSON schema type. Only object type is supported, but got an array of types: ${schema.type.join(', ')}`;
+		}
+
+		return `Invalid JSON schema type. Only object type is supported, but got ${schema.type}`;
+	}
+
 	if (!schema?.properties) {
 		return 'Invalid JSON schema. Missing key `properties` in schema';
 	}
