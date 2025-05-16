@@ -1,5 +1,13 @@
 import type { SourceControlledFile } from '@n8n/api-types';
-import { Variables, Project, TagEntity, User, WorkflowTagMapping, WorkflowEntity } from '@n8n/db';
+import {
+	Variables,
+	Project,
+	TagEntity,
+	User,
+	WorkflowTagMapping,
+	WorkflowEntity,
+	Folder,
+} from '@n8n/db';
 import {
 	SharedCredentials,
 	CredentialsRepository,
@@ -82,7 +90,7 @@ export class SourceControlImportService {
 		);
 	}
 
-	private async buildRemoteWorkflowFilter(
+	private async buildRemoteProjectFilter(
 		context: SourceControlContext,
 	): Promise<Project[] | undefined> {
 		if (context.user.role === 'global:admin' || context.user.role === 'global:owner') {
@@ -102,10 +110,26 @@ export class SourceControlImportService {
 		});
 	}
 
-	private getProjectFilter(context: SourceControlContext): FindOptionsWhere<Project> {
+	private async buildRemoteWorkflowFilter(
+		context: SourceControlContext,
+	): Promise<WorkflowEntity[] | undefined> {
 		if (context.user.role === 'global:admin' || context.user.role === 'global:owner') {
 			// In case the user is a global admin or owner, we don't need a filter
-			return {};
+			return;
+		}
+
+		return await this.workflowRepository.find({
+			select: {
+				id: true,
+			},
+			where: this.getWorkflowFilter(context),
+		});
+	}
+
+	private getProjectFilter(context: SourceControlContext): FindOptionsWhere<Project> | undefined {
+		if (context.user.role === 'global:admin' || context.user.role === 'global:owner') {
+			// In case the user is a global admin or owner, we don't need a filter
+			return undefined;
 		}
 
 		return {
@@ -117,18 +141,49 @@ export class SourceControlImportService {
 		};
 	}
 
-	private getWorkflowFilter(context: SourceControlContext): FindOptionsWhere<WorkflowEntity> {
+	private getFolderFilter(context: SourceControlContext): FindOptionsWhere<Folder> | undefined {
 		if (context.user.role === 'global:admin' || context.user.role === 'global:owner') {
 			// In case the user is a global admin or owner, we don't need a filter
-			return {};
+			return undefined;
+		}
+
+		// We build a filter to only select folder, that belong to a team project
+		// that the user is an admin off
+		return {
+			homeProject: this.getProjectFilter(context),
+		};
+	}
+
+	private getWorkflowFilter(
+		context: SourceControlContext,
+	): FindOptionsWhere<WorkflowEntity> | undefined {
+		if (context.user.role === 'global:admin' || context.user.role === 'global:owner') {
+			// In case the user is a global admin or owner, we don't need a filter
+			return undefined;
 		}
 
 		// We build a filter to only select workflows, that belong to a team project
 		// that the user is an admin off
 		return {
-			parentFolder: {
-				homeProject: this.getProjectFilter(context),
+			shared: {
+				role: 'workflow:owner',
+				project: this.getProjectFilter(context),
 			},
+		};
+	}
+
+	private getWorkflowTagMappingFilter(
+		context: SourceControlContext,
+	): FindOptionsWhere<WorkflowTagMapping> | undefined {
+		if (context.user.role === 'global:admin' || context.user.role === 'global:owner') {
+			// In case the user is a global admin or owner, we don't need a filter
+			return undefined;
+		}
+
+		// We build a filter to only select workflows, that belong to a team project
+		// that the user is an admin off
+		return {
+			workflows: this.getWorkflowFilter(context),
 		};
 	}
 
@@ -140,7 +195,7 @@ export class SourceControlImportService {
 			absolute: true,
 		});
 
-		const workflowFilter = await this.buildRemoteWorkflowFilter(context);
+		const workflowFilter = await this.buildRemoteProjectFilter(context);
 
 		const remoteWorkflowFilesParsed = await Promise.all(
 			remoteWorkflowFiles.map(async (file) => {
@@ -285,7 +340,7 @@ export class SourceControlImportService {
 		return await this.variablesService.getAllCached();
 	}
 
-	async getRemoteFoldersAndMappingsFromFile(): Promise<{
+	async getRemoteFoldersAndMappingsFromFile(context: SourceControlContext): Promise<{
 		folders: ExportableFolder[];
 	}> {
 		const foldersFile = await glob(SOURCE_CONTROL_FOLDERS_EXPORT_FILE, {
@@ -299,12 +354,21 @@ export class SourceControlImportService {
 			}>(await fsReadFile(foldersFile[0], { encoding: 'utf8' }), {
 				fallbackValue: { folders: [] },
 			});
+
+			const workflowFilter = await this.buildRemoteProjectFilter(context);
+
+			if (workflowFilter) {
+				mappedFolders.folders = mappedFolders.folders.filter((folder) =>
+					workflowFilter.some((project) => project.id === folder.homeProjectId),
+				);
+			}
+
 			return mappedFolders;
 		}
 		return { folders: [] };
 	}
 
-	async getLocalFoldersAndMappingsFromDb(): Promise<{
+	async getLocalFoldersAndMappingsFromDb(context: SourceControlContext): Promise<{
 		folders: ExportableFolder[];
 	}> {
 		const localFolders = await this.folderRepository.find({
@@ -317,6 +381,7 @@ export class SourceControlImportService {
 				parentFolder: { id: true },
 				homeProject: { id: true },
 			},
+			where: this.getFolderFilter(context),
 		});
 
 		return {
@@ -331,7 +396,7 @@ export class SourceControlImportService {
 		};
 	}
 
-	async getRemoteTagsAndMappingsFromFile(): Promise<{
+	async getRemoteTagsAndMappingsFromFile(context: SourceControlContext): Promise<{
 		tags: TagEntity[];
 		mappings: WorkflowTagMapping[];
 	}> {
@@ -345,12 +410,21 @@ export class SourceControlImportService {
 				await fsReadFile(tagsFile[0], { encoding: 'utf8' }),
 				{ fallbackValue: { tags: [], mappings: [] } },
 			);
+
+			const workflowFilter = await this.buildRemoteWorkflowFilter(context);
+
+			if (workflowFilter) {
+				mappedTags.mappings = mappedTags.mappings.filter((mapping) =>
+					workflowFilter.some((workflow) => workflow.id === mapping.workflowId),
+				);
+			}
+
 			return mappedTags;
 		}
 		return { tags: [], mappings: [] };
 	}
 
-	async getLocalTagsAndMappingsFromDb(): Promise<{
+	async getLocalTagsAndMappingsFromDb(context: SourceControlContext): Promise<{
 		tags: TagEntity[];
 		mappings: WorkflowTagMapping[];
 	}> {
@@ -359,6 +433,7 @@ export class SourceControlImportService {
 		});
 		const localMappings = await this.workflowTagMappingRepository.find({
 			select: ['workflowId', 'tagId'],
+			where: this.getWorkflowTagMappingFilter(context),
 		});
 		return { tags: localTags, mappings: localMappings };
 	}

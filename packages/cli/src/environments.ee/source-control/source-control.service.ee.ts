@@ -482,6 +482,15 @@ export class SourceControlService {
 	async getStatus(user: User, options: SourceControlGetStatus) {
 		await this.sanityCheck();
 
+		if (
+			options.direction === 'pull' &&
+			user.role !== 'global:admin' &&
+			user.role !== 'global:owner'
+		) {
+			// A pull is only allowed by global admins or owners
+			return [];
+		}
+
 		const sourceControlledFiles: SourceControlledFile[] = [];
 
 		// fetch and reset hard first
@@ -500,7 +509,7 @@ export class SourceControlService {
 		} = await this.getStatusWorkflows(options, context, sourceControlledFiles);
 
 		const { credMissingInLocal, credMissingInRemote, credModifiedInEither } =
-			await this.getStatusCredentials(options, sourceControlledFiles);
+			await this.getStatusCredentials(options, context, sourceControlledFiles);
 
 		const { varMissingInLocal, varMissingInRemote, varModifiedInEither } =
 			await this.getStatusVariables(options, sourceControlledFiles);
@@ -514,7 +523,7 @@ export class SourceControlService {
 		} = await this.getStatusTagsMappings(options, sourceControlledFiles);
 
 		const { foldersMissingInLocal, foldersMissingInRemote, foldersModifiedInEither } =
-			await this.getStatusFoldersMapping(options, sourceControlledFiles);
+			await this.getStatusFoldersMapping(options, context, sourceControlledFiles);
 
 		// #region Tracking Information
 		if (options.direction === 'push') {
@@ -662,6 +671,7 @@ export class SourceControlService {
 
 	private async getStatusCredentials(
 		options: SourceControlGetStatus,
+		context: SourceControlContext,
 		sourceControlledFiles: SourceControlledFile[],
 	) {
 		const credRemoteIds = await this.sourceControlImportService.getRemoteCredentialsFromFiles();
@@ -909,6 +919,7 @@ export class SourceControlService {
 
 	private async getStatusFoldersMapping(
 		options: SourceControlGetStatus,
+		context: SourceControlContext,
 		sourceControlledFiles: SourceControlledFile[],
 	) {
 		const lastUpdatedFolder = await this.folderRepository.find({
@@ -918,9 +929,9 @@ export class SourceControlService {
 		});
 
 		const foldersMappingsRemote =
-			await this.sourceControlImportService.getRemoteFoldersAndMappingsFromFile();
+			await this.sourceControlImportService.getRemoteFoldersAndMappingsFromFile(context);
 		const foldersMappingsLocal =
-			await this.sourceControlImportService.getLocalFoldersAndMappingsFromDb();
+			await this.sourceControlImportService.getLocalFoldersAndMappingsFromDb(context);
 
 		const foldersMissingInLocal = foldersMappingsRemote.folders.filter(
 			(remote) => foldersMappingsLocal.folders.findIndex((local) => local.id === remote.id) === -1,

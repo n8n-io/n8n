@@ -1,5 +1,5 @@
 import type { SourceControlledFile } from '@n8n/api-types';
-import { CredentialsRepository } from '@n8n/db';
+import { CredentialsRepository, Project, User, WorkflowEntity, WorkflowRepository } from '@n8n/db';
 import { FolderRepository } from '@n8n/db';
 import { ProjectRepository } from '@n8n/db';
 import { SharedCredentialsRepository } from '@n8n/db';
@@ -17,8 +17,9 @@ import type { ExportableCredential } from '@/environments.ee/source-control/type
 
 import { mockInstance } from '../../shared/mocking';
 import { saveCredential } from '../shared/db/credentials';
-import { createTeamProject, getPersonalProject } from '../shared/db/projects';
+import { createTeamProject, getPersonalProject, linkUserToProject } from '../shared/db/projects';
 import { createMember, getGlobalOwner } from '../shared/db/users';
+import { createWorkflow } from '../shared/db/workflows';
 import { randomCredentialPayload } from '../shared/random';
 import * as testDb from '../shared/test-db';
 
@@ -29,6 +30,7 @@ describe('SourceControlImportService', () => {
 	let userRepository: UserRepository;
 	let folderRepository: FolderRepository;
 	let service: SourceControlImportService;
+	let workflowRepository: WorkflowRepository;
 
 	const cipher = mockInstance(Cipher);
 
@@ -40,6 +42,7 @@ describe('SourceControlImportService', () => {
 		sharedCredentialsRepository = Container.get(SharedCredentialsRepository);
 		userRepository = Container.get(UserRepository);
 		folderRepository = Container.get(FolderRepository);
+		workflowRepository = Container.get(WorkflowRepository);
 		service = new SourceControlImportService(
 			mock(),
 			mock(),
@@ -52,7 +55,7 @@ describe('SourceControlImportService', () => {
 			sharedCredentialsRepository,
 			userRepository,
 			mock(),
-			mock(),
+			workflowRepository,
 			mock(),
 			mock(),
 			mock(),
@@ -70,6 +73,108 @@ describe('SourceControlImportService', () => {
 
 	afterAll(async () => {
 		await testDb.terminate();
+	});
+
+	describe('getLocalFoldersAndMappingsFromDb()', () => {
+		// TODO: make test cases for folders from DB!
+	});
+
+	describe('getLocalVersionIdsFromDb()', () => {
+		let instanceOwner: User;
+		let projectAdmin: User;
+		let projectMember: User;
+		let teamProjectA: Project;
+		let teamProjectB: Project;
+		let teamAWorkflows: WorkflowEntity[];
+		let teamBWorkflows: WorkflowEntity[];
+		let instanceOwnerWorkflows: WorkflowEntity[];
+		let projectAdminWorkflows: WorkflowEntity[];
+		let projectMemberWorkflows: WorkflowEntity[];
+
+		beforeAll(async () => {
+			[instanceOwner, projectAdmin, projectMember, teamProjectA, teamProjectB] = await Promise.all([
+				getGlobalOwner(),
+				createMember(),
+				createMember(),
+				createTeamProject(),
+				createTeamProject(),
+			]);
+
+			await linkUserToProject(projectAdmin, teamProjectA, 'project:admin');
+			await linkUserToProject(projectMember, teamProjectA, 'project:editor');
+			await linkUserToProject(projectAdmin, teamProjectB, 'project:editor');
+			await linkUserToProject(projectMember, teamProjectB, 'project:editor');
+
+			teamAWorkflows = await Promise.all([
+				await createWorkflow({}, teamProjectA),
+				await createWorkflow({}, teamProjectA),
+				await createWorkflow({}, teamProjectA),
+			]);
+
+			teamBWorkflows = await Promise.all([
+				await createWorkflow({}, teamProjectB),
+				await createWorkflow({}, teamProjectB),
+				await createWorkflow({}, teamProjectB),
+			]);
+
+			instanceOwnerWorkflows = await Promise.all([
+				await createWorkflow({}, instanceOwner),
+				await createWorkflow({}, instanceOwner),
+				await createWorkflow({}, instanceOwner),
+			]);
+
+			projectAdminWorkflows = await Promise.all([
+				await createWorkflow({}, projectAdmin),
+				await createWorkflow({}, projectAdmin),
+				await createWorkflow({}, projectAdmin),
+			]);
+
+			projectMemberWorkflows = await Promise.all([
+				await createWorkflow({}, projectMember),
+				await createWorkflow({}, projectMember),
+				await createWorkflow({}, projectMember),
+			]);
+		});
+
+		describe('if user is an instance owner', () => {
+			it('should get all available workflows on the instance', async () => {
+				let versions = await service.getLocalVersionIdsFromDb({
+					user: instanceOwner,
+				});
+
+				expect(new Set(versions.map((v) => v.id))).toEqual(
+					new Set([
+						...teamAWorkflows.map((w) => w.id),
+						...teamBWorkflows.map((w) => w.id),
+						...instanceOwnerWorkflows.map((w) => w.id),
+						...projectAdminWorkflows.map((w) => w.id),
+						...projectMemberWorkflows.map((w) => w.id),
+					]),
+				);
+			});
+		});
+
+		describe('if user is a project admin of a team project', () => {
+			it('should only get all available workflows from the team project', async () => {
+				let versions = await service.getLocalVersionIdsFromDb({
+					user: projectAdmin,
+				});
+
+				expect(new Set(versions.map((v) => v.id))).toEqual(
+					new Set([...teamAWorkflows.map((w) => w.id)]),
+				);
+			});
+		});
+
+		describe('if user is a project member of a team project', () => {
+			it('should not get any workflows', async () => {
+				let versions = await service.getLocalVersionIdsFromDb({
+					user: projectMember,
+				});
+
+				expect(new Set(versions.map((v) => v.id))).toEqual(new Set([]));
+			});
+		});
 	});
 
 	describe('importCredentialsFromWorkFolder()', () => {
