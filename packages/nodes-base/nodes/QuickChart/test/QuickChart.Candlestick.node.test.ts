@@ -14,9 +14,9 @@ describe('Test QuickChart Node for Candlestick chart', () => {
 
 	const tests: WorkflowTestData[] = [
 		{
-			description: 'nodes/QuickChart/test/QuickChart-candlestick.workflow.json',
+			description: 'nodes/QuickChart/test/QuickChart.Candlestick.workflow.json',
 			input: {
-				workflowData: testHarness.readWorkflowJSON('QuickChart-candlestick.workflow.json'),
+				workflowData: testHarness.readWorkflowJSON('QuickChart.Candlestick.workflow.json'),
 			},
 			output: {
 				nodeData: {
