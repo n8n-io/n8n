@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { useI18n } from '@/composables/useI18n';
-import { useToast } from '@/composables/useToast';
-import { computed, ref } from 'vue';
 
+import { computed, ref, onMounted } from 'vue';
+import { EVALUATION_DATASET_TRIGGER_NODE } from '@/constants';
 import RunsSection from '@/components/Evaluations/EditDefinition/sections/RunsSection.vue';
 import { useEvaluationStore } from '@/stores/evaluation.store.ee';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useTelemetry } from '@/composables/useTelemetry';
 import { N8nButton, N8nText } from '@n8n/design-system';
-import { useAsyncState } from '@vueuse/core';
 import { orderBy } from 'lodash-es';
 import N8nLink from '@n8n/design-system/components/N8nLink';
 import { useUsageStore } from '@/stores/usage.store';
@@ -18,35 +18,15 @@ const props = defineProps<{
 }>();
 
 const locale = useI18n();
-const toast = useToast();
+const telemetry = useTelemetry();
 const evaluationsStore = useEvaluationStore();
 const usageStore = useUsageStore();
 const workflowsStore = useWorkflowsStore();
 // const usersStore = useUsersStore();
 
-const { isReady } = useAsyncState(
-	async () => {
-		await evaluationsStore.fetchTestRuns(props.name);
-
-		return [];
-	},
-	[],
-	{
-		onError: (error) => toast.showError(error, locale.baseText('evaluation.list.loadError')),
-		shallow: false,
-	},
-);
-
 const hasRuns = computed(() => runs.value.length > 0);
 
 const selectedMetric = ref<string>('');
-
-const evaluationMetricNodeExist = computed(() => {
-	return workflowsStore.workflow.nodes.some(
-		(node) =>
-			node.type === 'n8n-nodes-base.evaluation' && node.parameters.operation === 'setMetrics',
-	);
-});
 
 async function runTest() {
 	await evaluationsStore.startTestRun(props.name);
@@ -74,13 +54,57 @@ const evaluationsLicensed = computed(() => {
 	return usageStore.workflowsWithEvaluationsLimit !== 0;
 });
 
-// const canUserRegisterCommunityPlus = computed(
-// 	() => getResourcePermissions(usersStore.currentUser?.globalScopes).community.register,
-// );
+const datasetTriggerExist = computed(() => {
+	return workflowsStore.workflow.nodes.some(
+		(node) => node.type === EVALUATION_DATASET_TRIGGER_NODE,
+	);
+});
+
+const evaluationMetricNodeExist = computed(() => {
+	return workflowsStore.workflow.nodes.some(
+		(node) =>
+			node.type === 'n8n-nodes-base.evaluation' && node.parameters.operation === 'setMetrics',
+	);
+});
+
+const evaluationSetOutputNodeExist = computed(() => {
+	return workflowsStore.workflow.nodes.some(
+		// FIXME: handle default operation properly
+		(node) =>
+			node.type === 'n8n-nodes-base.evaluation' &&
+			(node.parameters.operation === 'setOutputs' || node.parameters.operation === undefined),
+	);
+});
+
+const evaluationsQuotaExceeded = computed(() => {
+	return (
+		usageStore.workflowsWithEvaluationsLimit !== -1 &&
+		usageStore.workflowsWithEvaluationsCount >= usageStore.workflowsWithEvaluationsLimit &&
+		!hasRuns.value
+	);
+});
+
+onMounted(() => {
+	telemetry.track('User viewed tests tab', {
+		workflow_id: props.name,
+		test_type: 'evaluation',
+		view: showWizard.value ? 'setup' : 'overview',
+		...(showWizard.value
+			? {
+					trigger_set_up: datasetTriggerExist.value,
+					output_set_up: evaluationSetOutputNodeExist.value,
+					metrics_set_up: evaluationMetricNodeExist.value,
+					quota_reached: evaluationsQuotaExceeded.value,
+				}
+			: {
+					run_count: runs.value.length,
+				}),
+	});
+});
 </script>
 
 <template>
-	<div v-if="isReady" :class="{ [$style.topWrapperWizard]: showWizard }">
+	<div :class="{ [$style.topWrapperWizard]: showWizard }">
 		<div v-if="!showWizard" :class="$style.header">
 			<N8nTooltip v-if="!showWizard" :disabled="isRunTestEnabled" :placement="'left'">
 				<N8nButton
