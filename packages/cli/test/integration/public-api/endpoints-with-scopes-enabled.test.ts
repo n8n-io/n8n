@@ -6,10 +6,10 @@ import { TagRepository } from '@n8n/db';
 import { SharedCredentialsRepository } from '@n8n/db';
 import { SharedWorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { getOwnerOnlyApiKeyScopes } from '@n8n/permissions';
 import { randomString } from 'n8n-workflow';
 import validator from 'validator';
 
-import { getOwnerOnlyApiKeyScopes } from '@/public-api/permissions.ee';
 import { affixRoleToSaveCredential, createCredentials } from '@test-integration/db/credentials';
 import { createErrorExecution, createSuccessfulExecution } from '@test-integration/db/executions';
 import { createTeamProject, getProjectByNameOrFail } from '@test-integration/db/projects';

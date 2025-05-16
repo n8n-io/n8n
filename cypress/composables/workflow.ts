@@ -120,6 +120,18 @@ export function getNodeByName(name: string) {
 	);
 }
 
+export function getNodesWithSpinner() {
+	return cy
+		.getByTestId('canvas-node')
+		.filter((_, el) => Cypress.$(el).find('[data-icon=sync-alt]').length > 0);
+}
+
+export function getWaitingNodes() {
+	return cy
+		.getByTestId('canvas-node')
+		.filter((_, el) => Cypress.$(el).find('[data-icon=clock]').length > 0);
+}
+
 export function getNodeRenderedTypeByName(name: string) {
 	return cy.ifCanvasVersion(
 		() => getNodeByName(name),
@@ -384,4 +396,8 @@ export function clickContextMenuAction(action: string) {
 
 export function openExecutions() {
 	cy.getByTestId('radio-button-executions').click();
+}
+
+export function clickClearExecutionDataButton() {
+	cy.getByTestId('clear-execution-data-button').click();
 }

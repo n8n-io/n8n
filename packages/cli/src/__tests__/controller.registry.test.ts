@@ -1,6 +1,9 @@
-jest.mock('@/constants', () => ({
-	inProduction: true,
-}));
+jest.mock('@n8n/backend-common', () => {
+	return {
+		...jest.requireActual('@n8n/backend-common'),
+		inProduction: true,
+	};
+});
 
 import type { GlobalConfig } from '@n8n/config';
 import { ControllerRegistryMetadata } from '@n8n/decorators';

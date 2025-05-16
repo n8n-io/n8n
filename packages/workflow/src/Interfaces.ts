@@ -2164,9 +2164,6 @@ export interface IRunExecutionData {
 	waitTill?: Date;
 	pushRef?: string;
 
-	/** Whether this execution was started by a test webhook call. */
-	isTestWebhook?: boolean;
-
 	/** Data needed for a worker to run a manual execution. */
 	manualData?: Pick<
 		IWorkflowExecutionDataProcess,
@@ -2590,6 +2587,7 @@ export interface INodeGraphItem {
 	workflow_id?: string; //@n8n/n8n-nodes-langchain.toolWorkflow and n8n-nodes-base.executeWorkflow
 	runs?: number;
 	items_total?: number;
+	metric_names?: string[];
 }
 
 export interface INodeNameIndex {
@@ -2600,6 +2598,7 @@ export interface INodesGraphResult {
 	nodeGraph: INodesGraph;
 	nameIndices: INodeNameIndex;
 	webhookNodeNames: string[];
+	evaluationTriggerNodeNames: string[];
 }
 
 export interface FeatureFlags {
@@ -2648,7 +2647,7 @@ export interface ExecutionSummary {
 	retrySuccessId?: string | null;
 	waitTill?: Date;
 	createdAt: Date;
-	startedAt: Date;
+	startedAt: Date | null;
 	stoppedAt?: Date;
 	workflowId: string;
 	workflowName?: string;
@@ -2874,8 +2873,6 @@ export interface ICheckProcessedContextData {
 		active: boolean;
 	};
 }
-
-export type ExpressionEvaluatorType = 'tmpl' | 'tournament';
 
 export type N8nAIProviderType = 'openai' | 'unknown';
 

@@ -39,7 +39,7 @@ export async function createExecution(
 		finished: finished ?? true,
 		mode: mode ?? 'manual',
 		createdAt: new Date(),
-		startedAt: startedAt ?? new Date(),
+		startedAt: startedAt === undefined ? new Date() : startedAt,
 		...(workflow !== undefined && { workflowId: workflow.id }),
 		stoppedAt: stoppedAt ?? new Date(),
 		waitTill: waitTill ?? null,

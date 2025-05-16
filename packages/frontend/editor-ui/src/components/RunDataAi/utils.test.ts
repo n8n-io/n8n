@@ -14,11 +14,13 @@ import {
 	getDefaultCollapsedEntries,
 	getTreeNodeData,
 	getTreeNodeDataV2,
+	mergeStartData,
 } from '@/components/RunDataAi/utils';
 import {
 	AGENT_LANGCHAIN_NODE_TYPE,
 	type ExecutionError,
 	type ITaskData,
+	type ITaskStartedData,
 	NodeConnectionTypes,
 } from 'n8n-workflow';
 import { type LogEntrySelection } from '../CanvasChat/types/logs';
@@ -1259,7 +1261,7 @@ describe(createLogTree, () => {
 								executionIndex: 3,
 							}),
 							createTestTaskData({
-								startTime: Date.parse('2025-04-04T00:00:03.000Z'),
+								startTime: Date.parse('2025-04-04T00:00:02.000Z'),
 								executionIndex: 2,
 							}),
 						],
@@ -1318,7 +1320,7 @@ describe(createLogTree, () => {
 										executionIndex: 3,
 									}),
 									createTestTaskData({
-										startTime: Date.parse('2025-04-04T00:00:03.000Z'),
+										startTime: Date.parse('2025-04-04T00:00:02.000Z'),
 										executionIndex: 2,
 									}),
 								],
@@ -1432,6 +1434,69 @@ describe(createLogTree, () => {
 		expect(logs[1].children[1].executionId).toBe('sub-exec-id');
 		expect(logs[1].children[1].children).toHaveLength(0);
 	});
+
+	it('should include all runs of sub nodes in sub execution under correct parent run', () => {
+		const workflow = createTestWorkflowObject({
+			id: 'root-workflow-id',
+			nodes: [createTestNode({ name: 'A' })],
+		});
+		const subWorkflow = createTestWorkflowObject({
+			id: 'sub-workflow-id',
+			nodes: [createTestNode({ name: 'B' }), createTestNode({ name: 'C' })],
+			connections: {
+				C: {
+					[NodeConnectionTypes.AiLanguageModel]: [
+						[{ node: 'B', type: NodeConnectionTypes.AiLanguageModel, index: 0 }],
+					],
+				},
+			},
+		});
+		const rootExecutionData = createTestWorkflowExecutionResponse({
+			id: 'root-exec-id',
+			data: {
+				resultData: {
+					runData: {
+						A: [
+							createTestTaskData({
+								metadata: {
+									subExecution: { workflowId: 'sub-workflow-id', executionId: 'sub-exec-id' },
+								},
+							}),
+						],
+					},
+				},
+			},
+		});
+		const subExecutionData = {
+			resultData: {
+				runData: {
+					B: [createTestTaskData(), createTestTaskData()],
+					C: [
+						createTestTaskData({ source: [{ previousNode: 'B', previousNodeRun: 0 }] }),
+						createTestTaskData({ source: [{ previousNode: 'B', previousNodeRun: 1 }] }),
+						createTestTaskData({ source: [{ previousNode: 'B', previousNodeRun: 1 }] }),
+					],
+				},
+			},
+		};
+		const logs = createLogTree(
+			workflow,
+			rootExecutionData,
+			{ 'sub-workflow-id': subWorkflow },
+			{ 'sub-exec-id': subExecutionData },
+		);
+
+		expect(logs).toHaveLength(1);
+		expect(logs[0].node.name).toBe('A');
+		expect(logs[0].children).toHaveLength(2);
+		expect(logs[0].children[0].node.name).toBe('B');
+		expect(logs[0].children[0].children).toHaveLength(1);
+		expect(logs[0].children[0].children[0].node.name).toBe('C');
+		expect(logs[0].children[1].node.name).toBe('B');
+		expect(logs[0].children[1].children).toHaveLength(2);
+		expect(logs[0].children[1].children[0].node.name).toBe('C');
+		expect(logs[0].children[1].children[1].node.name).toBe('C');
+	});
 });
 
 describe(deepToRaw, () => {
@@ -1454,6 +1519,90 @@ describe(deepToRaw, () => {
 		expect(isReactive(raw.foo)).toBe(false);
 		expect(isReactive(raw.foo.bar)).toBe(false);
 		expect(isReactive(raw.bazz)).toBe(false);
+	});
+});
+
+describe(mergeStartData, () => {
+	it('should return unchanged execution response if start data is empty', () => {
+		const response = createTestWorkflowExecutionResponse({
+			data: {
+				resultData: {
+					runData: {
+						A: [createTestTaskData()],
+						B: [createTestTaskData(), createTestTaskData()],
+					},
+				},
+			},
+		});
+
+		expect(mergeStartData({}, response)).toEqual(response);
+	});
+
+	it('should add runs in start data to the execution response as running state', () => {
+		const response = createTestWorkflowExecutionResponse({
+			data: {
+				resultData: {
+					runData: {
+						A: [createTestTaskData({ startTime: 0, executionIndex: 0 })],
+						B: [
+							createTestTaskData({ startTime: 1, executionIndex: 1 }),
+							createTestTaskData({ startTime: 2, executionIndex: 2 }),
+						],
+					},
+				},
+			},
+		});
+		const startData: { [nodeName: string]: ITaskStartedData[] } = {
+			B: [{ startTime: 3, executionIndex: 3, source: [] }],
+			C: [{ startTime: 4, executionIndex: 4, source: [] }],
+		};
+		const merged = mergeStartData(startData, response);
+
+		expect(merged.data?.resultData.runData.A).toEqual(response.data?.resultData.runData.A);
+		expect(merged.data?.resultData.runData.B).toEqual([
+			response.data!.resultData.runData.B[0],
+			response.data!.resultData.runData.B[1],
+			{ ...startData.B[0], executionStatus: 'running', executionTime: 0 },
+		]);
+		expect(merged.data?.resultData.runData.C).toEqual([
+			{ ...startData.C[0], executionStatus: 'running', executionTime: 0 },
+		]);
+	});
+
+	it('should not add runs in start data if a run with the same executionIndex already exists in response', () => {
+		const response = createTestWorkflowExecutionResponse({
+			data: {
+				resultData: {
+					runData: {
+						A: [createTestTaskData({ executionIndex: 0 })],
+					},
+				},
+			},
+		});
+		const startData = {
+			A: [createTestTaskData({ executionIndex: 0 })],
+		};
+		const merged = mergeStartData(startData, response);
+
+		expect(merged.data?.resultData.runData.A).toEqual(response.data?.resultData.runData.A);
+	});
+
+	it('should not add runs in start data if a run for the same node with larger start time already exists in response', () => {
+		const response = createTestWorkflowExecutionResponse({
+			data: {
+				resultData: {
+					runData: {
+						A: [createTestTaskData({ startTime: 1, executionIndex: 1 })],
+					},
+				},
+			},
+		});
+		const startData = {
+			A: [createTestTaskData({ startTime: 0, executionIndex: 0 })],
+		};
+		const merged = mergeStartData(startData, response);
+
+		expect(merged.data?.resultData.runData.A).toEqual(response.data?.resultData.runData.A);
 	});
 });
 

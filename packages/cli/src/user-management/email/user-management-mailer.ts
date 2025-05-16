@@ -1,3 +1,4 @@
+import { inTest } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
@@ -9,7 +10,6 @@ import { Logger } from 'n8n-core';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { join as pathJoin } from 'path';
 
-import { inTest } from '@/constants';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { EventService } from '@/events/event.service';
 import { UrlService } from '@/services/url.service';

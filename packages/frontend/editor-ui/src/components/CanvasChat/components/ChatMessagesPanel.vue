@@ -10,8 +10,9 @@ import ChatInput from '@n8n/chat/components/Input.vue';
 import { watch, computed, ref } from 'vue';
 import { useClipboard } from '@/composables/useClipboard';
 import { useToast } from '@/composables/useToast';
-import PanelHeader from '@/components/CanvasChat/future/components/PanelHeader.vue';
+import LogsPanelHeader from '@/components/CanvasChat/future/components/LogsPanelHeader.vue';
 import { N8nButton, N8nIconButton, N8nTooltip } from '@n8n/design-system';
+import { useSettingsStore } from '@/stores/settings.store';
 
 interface Props {
 	pastChatMessages: string[];
@@ -40,6 +41,7 @@ const emit = defineEmits<{
 const clipboard = useClipboard();
 const locale = useI18n();
 const toast = useToast();
+const settingsStore = useSettingsStore();
 
 const previousMessageIndex = ref(0);
 
@@ -140,7 +142,7 @@ async function copySessionId() {
 watch(
 	() => props.isOpen,
 	(isOpen) => {
-		if (isOpen) {
+		if (isOpen && !settingsStore.isNewLogsEnabled) {
 			setTimeout(() => {
 				chatEventBus.emit('focusInput');
 			}, 0);
@@ -151,8 +153,13 @@ watch(
 </script>
 
 <template>
-	<div :class="$style.chat" data-test-id="workflow-lm-chat-dialog">
-		<PanelHeader
+	<div
+		:class="$style.chat"
+		data-test-id="workflow-lm-chat-dialog"
+		class="ignore-key-press-canvas"
+		tabindex="0"
+	>
+		<LogsPanelHeader
 			v-if="isNewLogsEnabled"
 			data-test-id="chat-header"
 			:title="locale.baseText('chat.window.title')"
@@ -191,7 +198,7 @@ watch(
 					/>
 				</N8nTooltip>
 			</template>
-		</PanelHeader>
+		</LogsPanelHeader>
 		<header v-else :class="$style.chatHeader">
 			<span :class="$style.chatTitle">{{ locale.baseText('chat.window.title') }}</span>
 			<div :class="$style.session">
