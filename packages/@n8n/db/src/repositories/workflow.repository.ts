@@ -1,6 +1,6 @@
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { DataSource, Repository, In, Like, MoreThan } from '@n8n/typeorm';
+import { DataSource, Repository, In, Like } from '@n8n/typeorm';
 import type {
 	SelectQueryBuilder,
 	UpdateResult,
@@ -129,31 +129,13 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 	}
 
 	async getWorkflowsWithEvaluationCount() {
-		const totalWorkflowCount = await this.count({
-			where: {
-				hasEvaluation: MoreThan(0),
-			},
-		});
+		// Count workflows having test runs
+		const totalWorkflowCount = await this.createQueryBuilder('workflow')
+			.innerJoin('workflow.testRuns', 'testrun')
+			.distinct(true)
+			.getCount();
 
 		return totalWorkflowCount ?? 0;
-	}
-
-	async updateWorkflowHasEvaluation(id: string, hasEvaluation: boolean): Promise<UpdateResult> {
-		const qb = this.createQueryBuilder('workflow');
-		const dbType = this.globalConfig.database.type;
-		return await qb
-			.update()
-			.set({
-				hasEvaluation: Number(hasEvaluation),
-				updatedAt: () => {
-					if (['mysqldb', 'mariadb'].includes(dbType)) {
-						return 'updatedAt';
-					}
-					return '"updatedAt"';
-				},
-			})
-			.where('id = :id', { id })
-			.execute();
 	}
 
 	private buildBaseUnionQuery(workflowIds: string[], options: ListQuery.Options = {}) {

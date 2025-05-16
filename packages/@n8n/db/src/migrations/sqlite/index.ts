@@ -172,7 +172,6 @@ const sqliteMigrations: Migration[] = [
 	AddWorkflowArchivedColumn1745934666076,
 	DropRoleTable1745934666077,
 	ClearEvaluation1745322634000,
-	AddEvaluationUsageColumnToWorkflows1747062417125,
 ];
 
 export { sqliteMigrations };

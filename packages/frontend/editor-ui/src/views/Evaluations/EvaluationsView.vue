@@ -67,7 +67,7 @@ const isRunning = computed(() => runs.value.some((run) => run.status === 'runnin
 const isRunTestEnabled = computed(() => !isRunning.value);
 
 const showWizard = computed(() => {
-	return !hasRuns.value || !evaluationMetricNodeExist.value;
+	return !hasRuns.value;
 });
 
 const evaluationsLicensed = computed(() => {
