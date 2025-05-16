@@ -45,6 +45,7 @@
     "@vitejs/plugin-vue": "catalog:frontend",
     "@vue/tsconfig": "catalog:frontend",
     "@vueuse/core": "catalog:frontend",
+    "pinia": "catalog:frontend",
     "vue": "catalog:frontend",
     "tsup": "catalog:",
     "typescript": "catalog:frontend",
@@ -54,6 +55,7 @@
   },
   "peerDependencies": {
     "@vueuse/core": "catalog:frontend",
+    "pinia": "catalog:frontend",
     "vue": "catalog:frontend"
   },
   "license": "See LICENSE.md file in the root of the repository"
