@@ -42,7 +42,9 @@ const hiddenBreadcrumbsItemsAsync = ref<Promise<PathItem[]>>(new Promise(() => {
 // This will be used to filter out items that are already visible in the breadcrumbs
 const visibleIds = ref<Set<string>>(new Set());
 
-const currentProject = computed(() => projectsStore.currentProject);
+const currentProject = computed(
+	() => projectsStore.currentProject ?? projectsStore.personalProject,
+);
 
 const projectName = computed(() => {
 	if (currentProject.value?.type === ProjectTypes.Personal) {
