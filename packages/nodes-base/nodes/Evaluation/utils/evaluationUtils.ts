@@ -107,12 +107,6 @@ export async function setMetrics(this: IExecuteFunctions): Promise<INodeExecutio
 				const assignmentValue =
 					typeof assignment.value === 'number' ? assignment.value : Number(assignment.value);
 
-				if (!assignment.name || isNaN(assignmentValue)) {
-					throw new NodeOperationError(this.getNode(), 'Metric name missing', {
-						description: 'Make sure each metric you define has a name',
-					});
-				}
-
 				if (isNaN(assignmentValue)) {
 					throw new NodeOperationError(
 						this.getNode(),
@@ -121,6 +115,12 @@ export async function setMetrics(this: IExecuteFunctions): Promise<INodeExecutio
 							description: `It’s currently '${assignment.value}'. Metrics must be numeric.`,
 						},
 					);
+				}
+
+				if (!assignment.name || isNaN(assignmentValue)) {
+					throw new NodeOperationError(this.getNode(), 'Metric name missing', {
+						description: 'Make sure each metric you define has a name',
+					});
 				}
 
 				const { name, value } = validateEntry(
