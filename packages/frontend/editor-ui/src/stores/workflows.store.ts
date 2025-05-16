@@ -1219,8 +1219,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}
 
 		Object.values(workflowExecutionData.value?.data?.resultData.runData ?? {})
-			.map((taskData) => taskData.map((task) => task.source).flat())
-			.flat()
+			.flatMap((taskData) => taskData.map((task) => task.source).flat())
 			.forEach((source) => {
 				if (!source || source.previousNode !== nameData.old) return;
 				source.previousNode = nameData.new;
