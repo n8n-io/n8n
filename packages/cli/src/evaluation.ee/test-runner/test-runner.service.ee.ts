@@ -101,7 +101,6 @@ export class TestRunnerService {
 		const data: IWorkflowExecutionDataProcess = {
 			...startNodesData,
 			executionMode: 'evaluation',
-			runData: {},
 			// pinData,
 			workflowData: workflow,
 			userId: metadata.userId,
