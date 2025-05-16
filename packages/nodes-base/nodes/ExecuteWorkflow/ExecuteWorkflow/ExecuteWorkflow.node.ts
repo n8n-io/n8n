@@ -318,7 +318,7 @@ export class ExecuteWorkflow implements INodeType {
 								},
 							},
 						);
-						const workflowResult = executionResult.data as INodeExecutionData[][];
+						const workflowResult = (executionResult.data as INodeExecutionData[][]) ?? [];
 
 						for (const [outputIndex, outputData] of workflowResult.entries()) {
 							for (const item of outputData) {
@@ -367,11 +367,11 @@ export class ExecuteWorkflow implements INodeType {
 					}
 				} catch (error) {
 					if (this.continueOnFail()) {
-						if (returnData[i] === undefined) {
-							returnData[i] = [];
+						if (returnData[0] === undefined) {
+							returnData[0] = [];
 						}
 						const metadata = parseErrorMetadata(error);
-						returnData[i].push({
+						returnData[0].push({
 							json: { error: error.message },
 							pairedItem: { item: i },
 							metadata,
@@ -425,7 +425,7 @@ export class ExecuteWorkflow implements INodeType {
 					return [items];
 				}
 
-				const workflowResult = executionResult.data as INodeExecutionData[][];
+				const workflowResult = (executionResult.data as INodeExecutionData[][]) ?? [];
 
 				const fallbackPairedItemData = generatePairedItemData(items.length);
 
