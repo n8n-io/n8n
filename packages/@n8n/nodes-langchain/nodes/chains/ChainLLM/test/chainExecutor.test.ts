@@ -62,6 +62,20 @@ describe('chainExecutor', () => {
 			const parser = chainExecutor.getOutputParserForLLM(regularModel);
 			expect(parser).toBeInstanceOf(StringOutputParser);
 		});
+
+		it('should return NaiveJsonOutputParser for Anthropic models in thinking mode', () => {
+			const model = {
+				lc_kwargs: {
+					invocationKwargs: {
+						thinking: {
+							type: 'enabled',
+						},
+					},
+				},
+			};
+			const parser = chainExecutor.getOutputParserForLLM(model as unknown as BaseChatModel);
+			expect(parser).toBeInstanceOf(NaiveJsonOutputParser);
+		});
 	});
 
 	describe('NaiveJsonOutputParser', () => {

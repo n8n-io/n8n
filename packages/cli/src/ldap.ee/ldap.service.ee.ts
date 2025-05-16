@@ -1,3 +1,5 @@
+import type { LdapConfig } from '@n8n/constants';
+import { LDAP_FEATURE_NAME } from '@n8n/constants';
 import { SettingsRepository } from '@n8n/db';
 import type { User, RunningMode, SyncStatus } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -20,12 +22,7 @@ import {
 	setCurrentAuthenticationMethod,
 } from '@/sso.ee/sso-helpers';
 
-import {
-	BINARY_AD_ATTRIBUTES,
-	LDAP_FEATURE_NAME,
-	LDAP_LOGIN_ENABLED,
-	LDAP_LOGIN_LABEL,
-} from './constants';
+import { BINARY_AD_ATTRIBUTES, LDAP_LOGIN_ENABLED, LDAP_LOGIN_LABEL } from './constants';
 import {
 	createFilter,
 	deleteAllLdapIdentities,
@@ -41,7 +38,6 @@ import {
 	saveLdapSynchronization,
 	validateLdapConfigurationSchema,
 } from './helpers.ee';
-import type { LdapConfig } from './types';
 
 @Service()
 export class LdapService {
