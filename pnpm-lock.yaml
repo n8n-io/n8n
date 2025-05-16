@@ -2289,8 +2289,8 @@ importers:
         specifier: 4.4.0
         version: 4.4.0(encoding@0.1.13)
       amqplib:
-        specifier: 0.10.3
-        version: 0.10.3
+        specifier: 0.10.6
+        version: 0.10.6
       aws4:
         specifier: 1.11.0
         version: 1.11.0
@@ -7086,8 +7086,8 @@ packages:
   alien-signals@1.0.4:
     resolution: {integrity: sha512-DJqqQD3XcsaQcQ1s+iE2jDUZmmQpXwHiR6fCAim/w87luaW+vmLY8fMlrdkmRwzaFXhkxf3rqPCR59tKVv1MDw==}
 
-  amqplib@0.10.3:
-    resolution: {integrity: sha512-UHmuSa7n8vVW/a5HGh2nFPqAEr8+cD4dEZ6u9GjP91nHfr1a54RyAKyra7Sb5NH7NBKOUlyQSMXIp0qAixKexw==}
+  amqplib@0.10.6:
+    resolution: {integrity: sha512-TGZJ/Q6PO0ns/a72zw/d3FI0ywqY7oMqTbRzji2/AsoA/1frIhIOuVoqZMapDt6XFppbbdT0NEzd9dYwmKI0rQ==}
     engines: {node: '>=10'}
 
   ansi-colors@4.1.3:
@@ -20224,11 +20224,10 @@ snapshots:
 
   alien-signals@1.0.4: {}
 
-  amqplib@0.10.3:
+  amqplib@0.10.6:
     dependencies:
       '@acuminous/bitsyntax': 0.1.2
       buffer-more-ints: 1.0.0
-      readable-stream: 1.1.14
       url-parse: 1.5.10
     transitivePeerDependencies:
       - supports-color
