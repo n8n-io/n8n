@@ -163,6 +163,7 @@ watch(
 					:class="$style.summary"
 					:status="execution.status"
 					:consumed-tokens="consumedTokens"
+					:start-time="+new Date(execution.startedAt)"
 					:time-took="
 						execution.startedAt && execution.stoppedAt
 							? +new Date(execution.stoppedAt) - +new Date(execution.startedAt)
