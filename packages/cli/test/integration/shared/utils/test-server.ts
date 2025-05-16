@@ -1,5 +1,5 @@
 import { LicenseState } from '@n8n/backend-common';
-import type { User } from '@n8n/db';
+import type { AuthUser, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import cookieParser from 'cookie-parser';
 import express from 'express';
@@ -47,7 +47,7 @@ function prefix(pathSegment: string) {
 const browserId = 'test-browser-id';
 function createAgent(
 	app: express.Application,
-	options?: { auth: boolean; user?: User; noRest?: boolean },
+	options?: { auth: boolean; user?: AuthUser; noRest?: boolean },
 ) {
 	const agent = request.agent(app);
 

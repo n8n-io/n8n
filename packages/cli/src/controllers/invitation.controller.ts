@@ -1,6 +1,6 @@
 import { AcceptInvitationRequestDto, InviteUsersRequestDto } from '@n8n/api-types';
 import type { User } from '@n8n/db';
-import { UserRepository } from '@n8n/db';
+import { UserRepository, AuthUserRepository } from '@n8n/db';
 import { Post, GlobalScope, RestController, Body, Param } from '@n8n/decorators';
 import { Response } from 'express';
 import { Logger } from 'n8n-core';
@@ -29,6 +29,7 @@ export class InvitationController {
 		private readonly license: License,
 		private readonly passwordUtility: PasswordUtility,
 		private readonly userRepository: UserRepository,
+		private readonly authRepository: AuthUserRepository,
 		private readonly postHog: PostHogClient,
 		private readonly eventService: EventService,
 	) {}
@@ -128,7 +129,9 @@ export class InvitationController {
 
 		const updatedUser = await this.userRepository.save(invitee, { transaction: false });
 
-		this.authService.issueCookie(res, updatedUser, req.browserId);
+		const authUser = await this.authRepository.findOneByOrFail({ id: invitee.id });
+
+		this.authService.issueCookie(res, authUser, req.browserId);
 
 		this.eventService.emit('user-signed-up', {
 			user: updatedUser,
@@ -136,12 +139,12 @@ export class InvitationController {
 			wasDisabledLdapUser: false,
 		});
 
-		const publicInvitee = await this.userService.toPublic(invitee);
+		const publicInvitee = await this.userService.toPublic(authUser);
 
 		await this.externalHooks.run('user.profile.update', [invitee.email, publicInvitee]);
 		await this.externalHooks.run('user.password.update', [invitee.email, invitee.password]);
 
-		return await this.userService.toPublic(updatedUser, {
+		return await this.userService.toPublic(authUser, {
 			posthog: this.postHog,
 			withScopes: true,
 		});

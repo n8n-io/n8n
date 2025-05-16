@@ -1,6 +1,6 @@
 import type { SamlAcsDto, SamlPreferences } from '@n8n/api-types';
-import type { User } from '@n8n/db';
-import { AuthIdentity, AuthIdentityRepository, UserRepository } from '@n8n/db';
+import type { AuthUser } from '@n8n/db';
+import { AuthIdentity, AuthIdentityRepository, AuthUserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { randomString } from 'n8n-workflow';
 import type { FlowResult } from 'samlify/types/src/flow';
@@ -72,11 +72,13 @@ export const isSamlPreferences = (candidate: unknown): candidate is SamlPreferen
 	);
 };
 
-export async function createUserFromSamlAttributes(attributes: SamlUserAttributes): Promise<User> {
+export async function createUserFromSamlAttributes(
+	attributes: SamlUserAttributes,
+): Promise<AuthUser> {
 	const randomPassword = randomString(18);
-	const userRepository = Container.get(UserRepository);
-	return await userRepository.manager.transaction(async (trx) => {
-		const { user } = await userRepository.createUserWithProject(
+	const authUserRepository = Container.get(AuthUserRepository);
+	return await authUserRepository.manager.transaction(async (trx) => {
+		const { user } = await authUserRepository.createUserWithProject(
 			{
 				email: attributes.email.toLowerCase(),
 				firstName: attributes.firstName,
@@ -101,9 +103,9 @@ export async function createUserFromSamlAttributes(attributes: SamlUserAttribute
 }
 
 export async function updateUserFromSamlAttributes(
-	user: User,
+	user: AuthUser,
 	attributes: SamlUserAttributes,
-): Promise<User> {
+): Promise<AuthUser> {
 	if (!attributes.email) throw new AuthError('Email is required to update user');
 	if (!user) throw new AuthError('User not found');
 	let samlAuthIdentity = user?.authIdentities.find((e) => e.providerType === 'saml');
@@ -119,7 +121,7 @@ export async function updateUserFromSamlAttributes(
 	await Container.get(AuthIdentityRepository).save(samlAuthIdentity, { transaction: false });
 	user.firstName = attributes.firstName;
 	user.lastName = attributes.lastName;
-	const resultUser = await Container.get(UserRepository).save(user, { transaction: false });
+	const resultUser = await Container.get(AuthUserRepository).save(user, { transaction: false });
 	if (!resultUser) throw new AuthError('Could not create User');
 	return resultUser;
 }

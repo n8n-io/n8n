@@ -8,6 +8,7 @@ import {
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
 	UserRepository,
+	AuthUserRepository,
 } from '@n8n/db';
 import {
 	GlobalScope,
@@ -52,6 +53,7 @@ export class UsersController {
 		private readonly projectService: ProjectService,
 		private readonly eventService: EventService,
 		private readonly folderService: FolderService,
+		private readonly authUserRepository: AuthUserRepository,
 	) {}
 
 	static ERROR_MESSAGES = {
@@ -98,7 +100,7 @@ export class UsersController {
 
 		const findManyOptions = await this.userRepository.toFindManyOptions(listQueryOptions);
 
-		const users = await this.userRepository.find(findManyOptions);
+		const users = await this.authUserRepository.find(findManyOptions);
 
 		const publicUsers: Array<Partial<PublicUser>> = await Promise.all(
 			users.map(
@@ -115,9 +117,10 @@ export class UsersController {
 	@Get('/:id/password-reset-link')
 	@GlobalScope('user:resetPassword')
 	async getUserPasswordResetLink(req: UserRequest.PasswordResetLink) {
-		const user = await this.userRepository.findOneOrFail({
+		const user = await this.authUserRepository.findOneOrFail({
 			where: { id: req.params.id },
 		});
+
 		if (!user) {
 			throw new NotFoundError('User not found');
 		}
@@ -166,7 +169,7 @@ export class UsersController {
 
 		const { transferId } = req.query;
 
-		const userToDelete = await this.userRepository.findOneBy({ id: idToDelete });
+		const userToDelete = await this.authUserRepository.findOneBy({ id: idToDelete });
 
 		if (!userToDelete) {
 			throw new NotFoundError(

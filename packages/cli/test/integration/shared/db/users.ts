@@ -1,4 +1,4 @@
-import { AuthIdentity } from '@n8n/db';
+import { AuthIdentity, AuthUser } from '@n8n/db';
 import { type User } from '@n8n/db';
 import { AuthIdentityRepository } from '@n8n/db';
 import { AuthUserRepository } from '@n8n/db';
@@ -50,7 +50,7 @@ export async function createLdapUser(attributes: Partial<User>, ldapId: string):
 
 export async function createUserWithMfaEnabled(
 	data: { numberOfRecoveryCodes: number } = { numberOfRecoveryCodes: 10 },
-) {
+): Promise<{ user: AuthUser; rawPassword: string; rawSecret: string; rawRecoveryCodes: string[] }> {
 	const email = randomEmail();
 	const password = randomValidPassword();
 
@@ -79,7 +79,11 @@ export async function createUserWithMfaEnabled(
 	});
 
 	return {
-		user,
+		user: {
+			...user,
+			mfaSecret: encryptedSecret,
+			mfaRecoveryCodes: encryptedRecoveryCodes,
+		} as AuthUser,
 		rawPassword: password,
 		rawSecret: secret,
 		rawRecoveryCodes: recoveryCodes,

@@ -1,5 +1,5 @@
 import type { ProjectIcon, ProjectType } from '@n8n/api-types';
-import type { Variables, Project, User, ListQueryDb, WorkflowHistory } from '@n8n/db';
+import type { Variables, Project, User, ListQueryDb, WorkflowHistory, AuthUser } from '@n8n/db';
 import type { AssignableGlobalRole, GlobalRole, ProjectRole, Scope } from '@n8n/permissions';
 import type express from 'express';
 import type {
@@ -30,11 +30,20 @@ export type AuthenticatedRequest<
 	RequestBody = {},
 	RequestQuery = {},
 > = Omit<APIRequest<RouteParams, ResponseBody, RequestBody, RequestQuery>, 'user' | 'cookies'> & {
-	user: User;
+	user: AuthUser;
 	cookies: Record<string, string | undefined>;
 	headers: express.Request['headers'] & {
 		'push-ref': string;
 	};
+};
+
+export type PublicApiAuthenticatedRequest<
+	RouteParams = {},
+	ResponseBody = {},
+	RequestBody = {},
+	RequestQuery = {},
+> = Omit<APIRequest<RouteParams, ResponseBody, RequestBody, RequestQuery>, 'user'> & {
+	user: User;
 };
 
 export namespace ListQuery {

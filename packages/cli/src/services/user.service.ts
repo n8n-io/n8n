@@ -1,5 +1,5 @@
 import type { RoleChangeRequestDto } from '@n8n/api-types';
-import type { PublicUser } from '@n8n/db';
+import type { AuthUser, PublicUser } from '@n8n/db';
 import { User, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { getGlobalScopes, type AssignableGlobalRole } from '@n8n/permissions';
@@ -55,7 +55,7 @@ export class UserService {
 	}
 
 	async toPublic(
-		user: User,
+		user: AuthUser,
 		options?: {
 			withInviteUrl?: boolean;
 			inviterId?: string;
@@ -63,7 +63,7 @@ export class UserService {
 			withScopes?: boolean;
 		},
 	) {
-		const { password, updatedAt, authIdentities, ...rest } = user;
+		const { password, updatedAt, authIdentities, mfaSecret, mfaRecoveryCodes, ...rest } = user;
 
 		const ldapIdentity = authIdentities?.find((i) => i.providerType === 'ldap');
 

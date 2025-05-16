@@ -5,8 +5,9 @@ import {
 	UserUpdateRequestDto,
 } from '@n8n/api-types';
 import type { User, PublicUser } from '@n8n/db';
-import { UserRepository } from '@n8n/db';
+import { UserRepository, AuthUserRepository } from '@n8n/db';
 import { Body, Patch, Post, RestController } from '@n8n/decorators';
+import { Container } from '@n8n/di';
 import { plainToInstance } from 'class-transformer';
 import { Response } from 'express';
 import { Logger } from 'n8n-core';
@@ -33,6 +34,7 @@ export class MeController {
 		private readonly userService: UserService,
 		private readonly passwordUtility: PasswordUtility,
 		private readonly userRepository: UserRepository,
+		private readonly authRepository: AuthUserRepository,
 		private readonly eventService: EventService,
 		private readonly mfaService: MfaService,
 	) {}
@@ -77,8 +79,10 @@ export class MeController {
 		await this.externalHooks.run('user.profile.beforeUpdate', [userId, currentEmail, payload]);
 
 		const preUpdateUser = await this.userRepository.findOneByOrFail({ id: userId });
+
 		await this.userService.update(userId, payload);
-		const user = await this.userRepository.findOneOrFail({
+
+		const user = await this.authRepository.findOneOrFail({
 			where: { id: userId },
 		});
 
@@ -91,7 +95,7 @@ export class MeController {
 			(key) => key in payload && payload[key] !== preUpdateUser[key],
 		);
 
-		this.eventService.emit('user-updated', { user, fieldsChanged });
+		this.eventService.emit('user-updated', { user: preUpdateUser, fieldsChanged });
 
 		const publicUser = await this.userService.toPublic(user);
 
@@ -152,9 +156,12 @@ export class MeController {
 		user.password = await this.passwordUtility.hash(newPassword);
 
 		const updatedUser = await this.userRepository.save(user, { transaction: false });
+
 		this.logger.info('Password updated successfully', { userId: user.id });
 
-		this.authService.issueCookie(res, updatedUser, req.browserId);
+		const authUser = await this.authRepository.findOneOrFail({ where: { id: user.id } });
+
+		this.authService.issueCookie(res, authUser, req.browserId);
 
 		this.eventService.emit('user-updated', { user: updatedUser, fieldsChanged: ['password'] });
 

@@ -1,5 +1,5 @@
 import { GlobalConfig } from '@n8n/config';
-import { User } from '@n8n/db';
+import { AuthUser, User } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import { v4 as uuid } from 'uuid';
@@ -20,7 +20,7 @@ describe('UserService', () => {
 	const userRepository = mockInstance(UserRepository);
 	const userService = new UserService(mock(), userRepository, mock(), urlService, mock(), mock());
 
-	const commonMockUser = Object.assign(new User(), {
+	const commonMockUser = Object.assign(new AuthUser(), {
 		id: uuid(),
 		password: 'passwordHash',
 	});
@@ -58,8 +58,8 @@ describe('UserService', () => {
 		});
 
 		it('should add invite URL if requested', async () => {
-			const firstUser = Object.assign(new User(), { id: uuid() });
-			const secondUser = Object.assign(new User(), { id: uuid(), isPending: true });
+			const firstUser = Object.assign(new AuthUser(), { id: uuid() });
+			const secondUser = Object.assign(new AuthUser(), { id: uuid(), isPending: true });
 
 			const withoutUrl = await userService.toPublic(secondUser);
 			const withUrl = await userService.toPublic(secondUser, {

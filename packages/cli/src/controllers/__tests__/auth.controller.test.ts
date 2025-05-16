@@ -1,6 +1,6 @@
 import type { LoginRequestDto } from '@n8n/api-types';
-import type { User } from '@n8n/db';
-import { UserRepository } from '@n8n/db';
+import type { AuthUser, User } from '@n8n/db';
+import { AuthUserRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
@@ -13,7 +13,7 @@ import { EventService } from '@/events/event.service';
 import { License } from '@/license';
 import { MfaService } from '@/mfa/mfa.service';
 import { PostHogClient } from '@/posthog';
-import type { AuthenticatedRequest } from '@/requests';
+import type { AuthlessRequest } from '@/requests';
 import { UserService } from '@/services/user.service';
 import { mockInstance } from '@test/mocking';
 
@@ -32,6 +32,7 @@ describe('AuthController', () => {
 	mockInstance(UserRepository);
 	mockInstance(PostHogClient);
 	mockInstance(License);
+	const authUserRepository = mockInstance(AuthUserRepository);
 	const controller = Container.get(AuthController);
 	const userService = Container.get(UserService);
 	const authService = Container.get(AuthService);
@@ -44,19 +45,30 @@ describe('AuthController', () => {
 
 			const browserId = '1';
 
-			const member = mock<User>({
+			const userData: Partial<User> = {
 				id: '123',
 				role: 'global:member',
 				mfaEnabled: false,
-			});
+			};
+
+			const member = mock<User>(userData);
+
+			const userAuthData: Partial<AuthUser> = {
+				id: userData.id,
+				role: userData.role,
+				mfaEnabled: userData.mfaEnabled,
+				mfaSecret: null,
+				mfaRecoveryCodes: [],
+			};
+
+			const memberAuth = mock<AuthUser>(userAuthData);
 
 			const body = mock<LoginRequestDto>({
 				emailOrLdapLoginId: 'non email',
 				password: 'password',
 			});
 
-			const req = mock<AuthenticatedRequest>({
-				user: member,
+			const req = mock<AuthlessRequest>({
 				body,
 				browserId,
 			});
@@ -66,6 +78,8 @@ describe('AuthController', () => {
 			mockedAuth.handleEmailLogin.mockResolvedValue(member);
 
 			mockedAuth.handleLdapLogin.mockResolvedValue(member);
+
+			authUserRepository.findOneByOrFail.mockResolvedValue(memberAuth);
 
 			config.set('userManagement.authenticationMethod', 'ldap');
 
@@ -84,13 +98,13 @@ describe('AuthController', () => {
 				body.password,
 			);
 
-			expect(authService.issueCookie).toHaveBeenCalledWith(res, member, browserId);
+			expect(authService.issueCookie).toHaveBeenCalledWith(res, memberAuth, browserId);
 			expect(eventsService.emit).toHaveBeenCalledWith('user-logged-in', {
 				user: member,
 				authenticationMethod: 'ldap',
 			});
 
-			expect(userService.toPublic).toHaveBeenCalledWith(member, {
+			expect(userService.toPublic).toHaveBeenCalledWith(memberAuth, {
 				posthog: postHog,
 				withScopes: true,
 			});

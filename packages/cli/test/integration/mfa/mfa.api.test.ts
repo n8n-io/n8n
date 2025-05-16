@@ -165,15 +165,18 @@ describe('Enable MFA setup', () => {
 describe('Disable MFA setup', () => {
 	test('POST /disable should disable login with MFA', async () => {
 		const { user, rawSecret } = await createUserWithMfaEnabled();
+		console.log(user);
 		const mfaCode = new TOTPService().generateTOTP(rawSecret);
 
-		await testServer
+		const response = await testServer
 			.authAgentFor(user)
 			.post('/mfa/disable')
 			.send({
 				mfaCode,
 			})
 			.expect(200);
+
+		console.log(response.body);
 
 		const dbUser = await Container.get(AuthUserRepository).findOneOrFail({
 			where: { id: user.id },

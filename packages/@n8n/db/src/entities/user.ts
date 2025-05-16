@@ -25,7 +25,7 @@ import { lowerCaser, objectRetriever } from '../utils/transformers';
 import { NoUrl } from '../utils/validators/no-url.validator';
 import { NoXss } from '../utils/validators/no-xss.validator';
 
-@Entity()
+@Entity({ name: 'user' })
 export class User extends WithTimestamps implements IUser, AuthPrincipal {
 	@PrimaryGeneratedColumn('uuid')
 	id: string;
