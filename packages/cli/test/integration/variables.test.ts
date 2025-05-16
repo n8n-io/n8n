@@ -1,10 +1,8 @@
 import type { Variables } from '@n8n/db';
-import { generateNanoId } from '@n8n/db';
-import { VariablesRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { CacheService } from '@/services/cache/cache.service';
+import { createVariable, getVariableById, getVariableByKey } from '@test-integration/db/variables';
 
 import { createOwner, createUser } from './shared/db/users';
 import * as testDb from './shared/test-db';
@@ -16,32 +14,6 @@ let authMemberAgent: SuperAgentTest;
 
 const testServer = utils.setupTestServer({ endpointGroups: ['variables'] });
 const license = testServer.license;
-
-async function createVariable(key: string, value: string) {
-	const result = await Container.get(VariablesRepository).save({
-		id: generateNanoId(),
-		key,
-		value,
-	});
-	await Container.get(VariablesService).updateCache();
-	return result;
-}
-
-async function getVariableByKey(key: string) {
-	return await Container.get(VariablesRepository).findOne({
-		where: {
-			key,
-		},
-	});
-}
-
-async function getVariableById(id: string) {
-	return await Container.get(VariablesRepository).findOne({
-		where: {
-			id,
-		},
-	});
-}
 
 beforeAll(async () => {
 	const owner = await createOwner();
