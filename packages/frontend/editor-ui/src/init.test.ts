@@ -2,7 +2,7 @@ import { useUsersStore } from '@/stores/users.store';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { initializeAuthenticatedFeatures, initializeCore } from '@/init';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
@@ -20,7 +20,7 @@ vi.mock('@/stores/users.store', () => ({
 	useUsersStore: vi.fn().mockReturnValue({ initialize: vi.fn() }),
 }));
 
-vi.mock('@/stores/root.store', () => ({
+vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: vi.fn(),
 }));
 
