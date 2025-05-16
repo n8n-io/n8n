@@ -151,7 +151,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-sso-oidc": "3.808.0",
-    "@azure/identity": "4.3.0",
+    "@azure/identity": "4.4.1",
     "@getzep/zep-cloud": "1.0.12",
     "@getzep/zep-js": "0.9.0",
     "@google-ai/generativelanguage": "2.6.0",
