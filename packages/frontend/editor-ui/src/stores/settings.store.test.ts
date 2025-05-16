@@ -24,12 +24,6 @@ vi.mock('@/api/events', () => ({
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: vi.fn(() => ({
 		restApiContext: {},
-		setVersionCli: vi.fn(),
-	})),
-}));
-
-vi.mock('@n8n/stores/useRootStore', () => ({
-	useRootStore: vi.fn(() => ({
 		setUrlBaseWebhook: vi.fn(),
 		setUrlBaseEditor: vi.fn(),
 		setEndpointForm: vi.fn(),
