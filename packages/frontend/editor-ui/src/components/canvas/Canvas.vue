@@ -19,7 +19,7 @@ import type {
 	CanvasNodeData,
 } from '@/types';
 import { CanvasNodeRenderType } from '@/types';
-import { getMousePosition, GRID_SIZE } from '@/utils/nodeViewUtils';
+import { updateViewportToContainNodes, getMousePosition, GRID_SIZE } from '@/utils/nodeViewUtils';
 import { isPresent } from '@/utils/typesUtils';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useShortKeyPress } from '@n8n/composables/useShortKeyPress';
@@ -34,7 +34,7 @@ import type {
 	ViewportTransform,
 	XYPosition,
 } from '@vue-flow/core';
-import { getRectOfNodes, MarkerType, PanelPosition, useVueFlow, VueFlow } from '@vue-flow/core';
+import { MarkerType, PanelPosition, useVueFlow, VueFlow } from '@vue-flow/core';
 import { MiniMap } from '@vue-flow/minimap';
 import { onKeyDown, onKeyUp, useThrottleFn } from '@vueuse/core';
 import { NodeConnectionTypes } from 'n8n-workflow';
@@ -143,7 +143,6 @@ const {
 	zoomIn,
 	zoomOut,
 	zoomTo,
-	setCenter,
 	setInteractive,
 	elementsSelectable,
 	project,
@@ -408,16 +407,15 @@ function onSelectNodes({ ids, panIntoView }: CanvasEventBusEvents['nodes:select'
 	addSelectedNodes(ids.map(findNode).filter(isPresent));
 
 	if (panIntoView) {
-		const node = ids.map(findNode).filter(isPresent)[0];
+		const nodes = ids.map(findNode).filter(isPresent);
 
-		if (node) {
-			const rect = getRectOfNodes([node]);
-
-			void setCenter(rect.x + rect.width / 2, rect.y + rect.height / 2, {
-				duration: 250,
-				zoom: viewport.value.zoom,
-			});
+		if (nodes.length === 0) {
+			return;
 		}
+
+		const newViewport = updateViewportToContainNodes(viewport.value, dimensions.value, nodes, 100);
+
+		void setViewport(newViewport, { duration: 200 });
 	}
 }
 

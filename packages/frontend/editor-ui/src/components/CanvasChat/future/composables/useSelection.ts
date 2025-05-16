@@ -89,7 +89,6 @@ export function useSelection(
 
 			let parent = entry.parent;
 
-			debugger;
 			while (parent !== undefined) {
 				toggleExpand(parent, true);
 				parent = parent.parent;

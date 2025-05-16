@@ -19,6 +19,13 @@ import type {
 import { NodeHelpers, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 import type { RouteLocation } from 'vue-router';
 import type { ViewportBoundaries } from '@/types';
+import {
+	getRectOfNodes,
+	type Dimensions,
+	type GraphNode,
+	type Rect,
+	type ViewportTransform,
+} from '@vue-flow/core';
 
 /*
  * Canvas constants and functions
@@ -530,3 +537,59 @@ export const getNodeViewTab = (route: RouteLocation): string | null => {
 	}
 	return null;
 };
+
+export function getBounds(
+	{ x, y, zoom }: ViewportTransform,
+	{ width, height }: Dimensions,
+): ViewportBoundaries {
+	const xMin = -x / zoom;
+	const yMin = -y / zoom;
+	const xMax = (width - x) / zoom;
+	const yMax = (height - y) / zoom;
+
+	return { xMin, yMin, xMax, yMax };
+}
+
+function addPadding({ x, y, width, height }: Rect, amount: number): Rect {
+	return {
+		x: x - amount,
+		y: y - amount,
+		width: width + amount * 2,
+		height: height + amount * 2,
+	};
+}
+
+export function updateViewportToContainNodes(
+	viewport: ViewportTransform,
+	dimensions: Dimensions,
+	nodes: GraphNode[],
+	padding: number,
+): ViewportTransform {
+	if (nodes.length === 0) {
+		return viewport;
+	}
+
+	const zoom = viewport.zoom;
+	const rect = addPadding(getRectOfNodes(nodes), padding / zoom);
+	const { xMax, xMin, yMax, yMin } = getBounds(viewport, dimensions);
+	const rectRight = rect.x + rect.width;
+	const rectBottom = rect.y + rect.height;
+	const dx =
+		(rect.x <= xMin && rectRight >= xMax) || (rect.x >= xMin && rectRight <= xMax)
+			? 0
+			: rect.x < xMin
+				? xMin - rect.x
+				: xMax - rectRight;
+	const dy =
+		(rect.y <= yMin && rectBottom >= yMax) || (rect.y >= yMin && rectBottom <= yMax)
+			? 0
+			: rect.y < yMin
+				? yMin - rect.y
+				: yMax - rectBottom;
+
+	return {
+		x: viewport.x + dx * zoom,
+		y: viewport.y + dy * zoom,
+		zoom,
+	};
+}

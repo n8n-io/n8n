@@ -96,7 +96,7 @@ import { sourceControlEventBus } from '@/event-bus/source-control';
 import { useTagsStore } from '@/stores/tags.store';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { useNDVStore } from '@/stores/ndv.store';
-import { getNodesWithNormalizedPosition, getNodeViewTab } from '@/utils/nodeViewUtils';
+import { getBounds, getNodesWithNormalizedPosition, getNodeViewTab } from '@/utils/nodeViewUtils';
 import CanvasStopCurrentExecutionButton from '@/components/canvas/elements/buttons/CanvasStopCurrentExecutionButton.vue';
 import CanvasStopWaitingForWebhookButton from '@/components/canvas/elements/buttons/CanvasStopWaitingForWebhookButton.vue';
 import CanvasClearExecutionDataButton from '@/components/canvas/elements/buttons/CanvasClearExecutionDataButton.vue';
@@ -1581,17 +1581,9 @@ async function onSaveFromWithinExecutionDebug() {
 const viewportTransform = ref<ViewportTransform>({ x: 0, y: 0, zoom: 1 });
 const viewportDimensions = ref<Dimensions>({ width: 0, height: 0 });
 
-const viewportBoundaries = computed<ViewportBoundaries>(() => {
-	const { x, y, zoom } = viewportTransform.value;
-	const { width, height } = viewportDimensions.value;
-
-	const xMin = -x / zoom;
-	const yMin = -y / zoom;
-	const xMax = (width - x) / zoom;
-	const yMax = (height - y) / zoom;
-
-	return { xMin, yMin, xMax, yMax };
-});
+const viewportBoundaries = computed<ViewportBoundaries>(() =>
+	getBounds(viewportTransform.value, viewportDimensions.value),
+);
 
 function onViewportChange(viewport: ViewportTransform, dimensions: Dimensions) {
 	viewportTransform.value = viewport;
