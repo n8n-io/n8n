@@ -52,7 +52,10 @@ export class EvaluationTrigger implements INodeType {
 				default: '',
 			},
 			authentication,
-			document,
+			{
+				...document,
+				hint: 'Example dataset format <a href="https://docs.google.com/spreadsheets/d/1vD_IdeFUg7sHsK9okL6Doy1rGOkWTnPJV3Dro4FBUsY/edit?gid=0#gid=0">here</a>',
+			},
 			sheet,
 			{
 				displayName: 'Limit Rows',
