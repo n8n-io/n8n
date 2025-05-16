@@ -70,3 +70,57 @@ Want to shape the future of automation? Check out our [job posts](https://n8n.io
 **Short answer:** It means "nodemation" and is pronounced as n-eight-n.
 
 **Long answer:** "I get that question quite often (more often than I expected) so I decided it is probably best to answer it here. While looking for a good name for the project with a free domain I realized very quickly that all the good ones I could think of were already taken. So, in the end, I chose nodemation. 'node-' in the sense that it uses a Node-View and that it uses Node.js and '-mation' for 'automation' which is what the project is supposed to help with. However, I did not like how long the name was and I could not imagine writing something that long every time in the CLI. That is when I then ended up on 'n8n'." - **Jan Oberhauser, Founder and CEO, n8n.io**
+
+## Trusted-Header SSO Authentication
+
+This fork implements a "trusted-header" SSO flow that integrates with reverse proxies like Traefik, Nginx, or Apache. When enabled, n8n will trust the `X-Forwarded-User` header to authenticate users, bypassing the traditional login screen.
+
+### How It Works
+
+1. A reverse proxy authenticates users using your preferred method (OIDC, SAML, basic auth, etc.)
+2. After successful authentication, the proxy adds the `X-Forwarded-User: user@example.com` header to requests
+3. n8n verifies this header, auto-provisions users if needed, and establishes a session
+4. Users are immediately redirected to the Studio UI without seeing a login screen
+
+### Key Features
+
+- **Auto-provisioning**: New users are automatically created with the "member" role
+- **Header-based authentication**: No password needed for users created through SSO
+- **Seamless user experience**: Users go directly to the n8n interface without a login screen
+- **Existing users supported**: Password-based login remains available for existing users
+
+### Setup with Traefik
+
+Add the following to your Docker Compose file:
+
+```yaml
+services:
+  n8n:
+    # ... other n8n configuration ...
+    labels:
+      - "traefik.http.routers.editor.middlewares=forwardAuth@file"
+
+  traefik:
+    # ... traefik configuration ...
+    volumes:
+      - ./traefik/dynamic.yml:/etc/traefik/dynamic/conf.yml
+```
+
+In your `traefik/dynamic.yml`:
+
+```yaml
+http:
+  middlewares:
+    forwardAuth:
+      forwardAuth:
+        address: "http://n8n:5678/rest/sso/login"
+        trustForwardHeader: true
+```
+
+### Security Considerations
+
+1. **Important**: The trusted header implementation requires that all traffic to n8n passes through your authenticated proxy. Direct access to n8n would allow unauthenticated access.
+
+2. Set up proper network segmentation so that only the reverse proxy can access n8n directly.
+
+3. The n8n instance should ideally not be exposed directly to the internet.

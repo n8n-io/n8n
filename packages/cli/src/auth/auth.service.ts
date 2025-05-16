@@ -50,6 +50,7 @@ export class AuthService {
 	) {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		this.authMiddleware = this.authMiddleware.bind(this);
+		this.trustedHeaderAuthMiddleware = this.trustedHeaderAuthMiddleware.bind(this);
 
 		const restEndpoint = globalConfig.endpoints.rest;
 		this.skipBrowserIdCheckEndpoints = [
@@ -250,5 +251,79 @@ export class AuthService {
 	/** How many **seconds** is an issued JWT valid for */
 	get jwtExpiration() {
 		return config.get('userManagement.jwtSessionDurationHours') * Time.hours.toSeconds;
+	}
+
+	/**
+	 * Middleware that checks for the X-Forwarded-User header and establishes a session
+	 * for trusted SSO header-based authentication from a reverse proxy.
+	 */
+	async trustedHeaderAuthMiddleware(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+		// First try normal cookie-based authentication
+		const token = req.cookies[AUTH_COOKIE_NAME];
+		if (token) {
+			try {
+				const isInvalid = await this.invalidAuthTokenRepository.existsBy({ token });
+				if (isInvalid) throw new AuthError('Unauthorized');
+				req.user = await this.resolveJwt(token, req, res);
+				next();
+				return;
+			} catch (error) {
+				if (error instanceof JsonWebTokenError || error instanceof AuthError) {
+					this.clearCookie(res);
+				} else {
+					throw error;
+				}
+			}
+		}
+
+		// If no valid cookie, check for the trusted header
+		const userEmail = req.header('X-Forwarded-User');
+		if (userEmail) {
+			try {
+				// Look up the user by email
+				let user = await this.userRepository.findOne({
+					where: { email: userEmail.toLowerCase() },
+					relations: ['authIdentities'],
+				});
+
+				// Auto-provision user if they don't exist
+				if (!user) {
+					this.logger.info(`Auto-provisioning user from SSO header: ${userEmail}`);
+
+					// Check user limit before creating
+					const isWithinUsersLimit = this.license.isWithinUsersLimit();
+					if (!isWithinUsersLimit) {
+						this.logger.warn(`User limit reached, cannot auto-provision: ${userEmail}`);
+						throw new ForbiddenError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
+					}
+
+					// Create the user with default "member" role and trustedSSO=true
+					const { user: newUser } = await this.userRepository.createUserWithProject({
+						email: userEmail.toLowerCase(),
+						role: 'global:member',
+						firstName: userEmail.split('@')[0], // Use part before @ as firstName
+						lastName: '',
+						trustedSSO: true,
+					});
+
+					user = newUser;
+				}
+
+				// Issue a JWT session cookie for this user
+				this.issueCookie(res, user, req.browserId);
+				req.user = user;
+				next();
+				return;
+			} catch (error) {
+				this.logger.error('Error in trusted header authentication', {
+					error: (error as Error).message,
+					email: userEmail,
+				});
+				throw error;
+			}
+		}
+
+		// No cookie, no header - unauthorized
+		res.status(401).json({ status: 'error', message: 'Unauthorized' });
 	}
 }

@@ -87,6 +87,9 @@ export class User extends WithTimestamps implements IUser, AuthPrincipal {
 	@Column({ type: Boolean, default: false })
 	disabled: boolean;
 
+	@Column({ type: Boolean, default: false })
+	trustedSSO: boolean;
+
 	@BeforeInsert()
 	@BeforeUpdate()
 	preUpsertHook(): void {

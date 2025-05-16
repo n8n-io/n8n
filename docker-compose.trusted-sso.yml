@@ -1,0 +1,76 @@
+version: '3.8'
+
+services:
+  traefik:
+    image: traefik:v2.10
+    container_name: traefik
+    command:
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.file.directory=/etc/traefik/dynamic"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--api.dashboard=true"
+      - "--api.insecure=true"  # For demo only, use secure in production
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"  # Traefik dashboard
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik/dynamic.yml:/etc/traefik/dynamic/conf.yml:ro
+      # For SSL in production, uncomment:
+      # - ./traefik/certificates:/etc/traefik/certificates:ro
+
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: n8n
+    restart: always
+    environment:
+      - N8N_HOST=${N8N_HOST:-localhost}
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=${N8N_PROTOCOL:-http}
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_DATABASE=n8n
+      - DB_POSTGRESDB_USER=n8n
+      - DB_POSTGRESDB_PASSWORD=n8n
+      - N8N_PUSH_BACKEND=websocket
+      # Not exposing directly to public via base URL (Traefik handles that)
+      - GENERIC_TIMEZONE=${GENERIC_TIMEZONE:-UTC}
+    volumes:
+      - n8n_storage:/home/node/.n8n
+    depends_on:
+      - postgres
+    labels:
+      - "traefik.enable=true"
+      # HTTP Router
+      - "traefik.http.routers.n8n.rule=Host(`n8n.example.com`)"
+      - "traefik.http.routers.n8n.entrypoints=web"
+      # Add this to apply the forwardAuth middleware
+      - "traefik.http.routers.n8n.middlewares=forwardAuth@file"
+      # Service
+      - "traefik.http.services.n8n.loadbalancer.server.port=5678"
+
+  postgres:
+    image: postgres:13
+    container_name: postgres
+    restart: always
+    environment:
+      - POSTGRES_USER=n8n
+      - POSTGRES_PASSWORD=n8n
+      - POSTGRES_DB=n8n
+      - POSTGRES_NON_ROOT_USER=n8n_user
+      - POSTGRES_NON_ROOT_PASSWORD=n8n_pass
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: pg_isready -U n8n
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+  n8n_storage:

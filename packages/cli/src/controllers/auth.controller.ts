@@ -44,6 +44,10 @@ export class AuthController {
 		res: Response,
 		@Body payload: LoginRequestDto,
 	): Promise<PublicUser | undefined> {
+		// Note: This endpoint is deprecated when using Trusted-Header SSO
+		// If you're using Trusted-Header SSO, authentication happens via the X-Forwarded-User header
+		// and this endpoint will not be used.
+
 		const { emailOrLdapLoginId, password, mfaCode, mfaRecoveryCode } = payload;
 
 		let user: User | undefined;
@@ -119,6 +123,27 @@ export class AuthController {
 			posthog: this.postHog,
 			withScopes: true,
 		});
+	}
+
+	/**
+	 * SSO login endpoint for Trusted-Header authentication
+	 * This endpoint is used by the reverse proxy to authenticate users
+	 * Once authenticated, the user is redirected to the Studio UI
+	 */
+	@Get('/sso/login', { skipAuth: true })
+	async ssoLogin(req: AuthenticatedRequest, res: Response) {
+		// If the user is already authenticated, redirect to the Studio UI
+		// The trustedHeaderAuthMiddleware has already set the cookie
+
+		// Redirect to the main UI
+		const uiUrl = '/'; // Default to root
+
+		this.logger.debug('SSO login successful, redirecting to UI', {
+			userId: req.user?.id,
+			email: req.user?.email,
+		});
+
+		return res.redirect(302, uiUrl);
 	}
 
 	/** Validate invite token to enable invitee to set up their account */

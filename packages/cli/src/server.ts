@@ -435,6 +435,16 @@ export class Server extends AbstractServer {
 		} else {
 			this.app.use('/', express.static(staticCacheDir, cacheOptions));
 		}
+
+		// Apply trusted header auth middleware to SSO login route
+		this.app.use(`/${this.restEndpoint}/sso/login`, this.authService.trustedHeaderAuthMiddleware);
+
+		// Apply trusted header auth middleware to Studio routes
+		this.app.use('/studio', this.authService.trustedHeaderAuthMiddleware);
+
+		// Keep the existing auth middleware for other routes
+		// Usually it's something like:
+		// this.app.use(`/${this.restEndpoint}`, this.authService.authMiddleware);
 	}
 
 	protected setupPushServer(): void {

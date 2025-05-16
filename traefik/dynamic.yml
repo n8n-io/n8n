@@ -1,0 +1,43 @@
+http:
+  middlewares:
+    # ForwardAuth middleware for n8n Trusted-Header SSO
+    forwardAuth:
+      forwardAuth:
+        address: "http://n8n:5678/rest/sso/login"
+        trustForwardHeader: true
+        authResponseHeaders:
+          - "X-Forwarded-User"
+
+    # Example Basic Auth middleware (optional - for demonstration)
+    basicAuth:
+      basicAuth:
+        users:
+          - "admin:$apr1$H6uskkkW$IgXLP6ewTrSuBkTrqE8wj/"  # admin:password (bcrypt hash)
+          - "user:$apr1$d9hr9HBB$4HxwgUir3HP4EsggP/QNo0"   # user:password (bcrypt hash)
+
+  routers:
+    # N8n router with authentication
+    n8n:
+      rule: "Host(`n8n.example.com`)"
+      service: n8n
+      entryPoints:
+        - web
+        - websecure
+      middlewares:
+        - basicAuth  # First authenticate with Basic Auth
+        - forwardAuth  # Then forward auth to n8n for session creation
+      tls:
+        certResolver: letsencrypt
+
+  services:
+    n8n:
+      loadBalancer:
+        servers:
+          - url: "http://n8n:5678"
+
+# TLS certificates configuration (optional)
+tls:
+  options:
+    default:
+      minVersion: VersionTLS12
+      sniStrict: true
