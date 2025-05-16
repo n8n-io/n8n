@@ -6,7 +6,7 @@ import type { INodeProperties, INodePropertyCollection, INodePropertyOptions } f
 import type { INodeTranslationHeaders } from '@/Interface';
 import { useUIStore } from '@/stores/ui.store';
 import { useNDVStore } from '@/stores/ndv.store';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import englishBaseText from './locales/en.json';
 import {
 	deriveMiddleKey,

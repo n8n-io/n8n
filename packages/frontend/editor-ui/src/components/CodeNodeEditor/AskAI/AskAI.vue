@@ -16,7 +16,7 @@ import { useI18n } from '@/composables/useI18n';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
 import { useNDVStore } from '@/stores/ndv.store';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { executionDataToJson } from '@/utils/nodeTypesUtils';
 import {

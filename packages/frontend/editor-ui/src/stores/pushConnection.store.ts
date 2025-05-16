@@ -2,9 +2,9 @@ import { defineStore } from 'pinia';
 import { computed, ref, watch } from 'vue';
 import type { PushMessage } from '@n8n/api-types';
 
-import { STORES } from '@/constants';
+import { STORES } from '@n8n/stores';
 import { useSettingsStore } from './settings.store';
-import { useRootStore } from './root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useWebSocketClient } from '@/push-connection/useWebSocketClient';
 import { useEventSourceClient } from '@/push-connection/useEventSourceClient';
 

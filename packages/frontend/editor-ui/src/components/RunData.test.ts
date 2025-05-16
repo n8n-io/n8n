@@ -2,7 +2,8 @@ import { createTestWorkflowObject, defaultNodeDescriptions } from '@/__tests__/m
 import { createComponentRenderer } from '@/__tests__/render';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import RunData from '@/components/RunData.vue';
-import { SET_NODE_TYPE, STORES } from '@/constants';
+import { STORES } from '@n8n/stores';
+import { SET_NODE_TYPE } from '@/constants';
 import type { INodeUi, IRunDataDisplayMode, NodePanelType } from '@/Interface';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createTestingPinia } from '@pinia/testing';

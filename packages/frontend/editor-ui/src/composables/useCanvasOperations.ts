@@ -24,6 +24,7 @@ import { type PinDataSource, usePinnedData } from '@/composables/usePinnedData';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { getExecutionErrorToastConfiguration } from '@/utils/executionUtils';
 import {
 	EnterpriseEditionFeature,
 	FORM_TRIGGER_NODE_TYPE,
@@ -47,7 +48,7 @@ import { useHistoryStore } from '@/stores/history.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useTagsStore } from '@/stores/tags.store';
 import { useUIStore } from '@/stores/ui.store';
@@ -105,6 +106,9 @@ import { useUniqueNodeName } from '@/composables/useUniqueNodeName';
 import { isPresent } from '../utils/typesUtils';
 import { useProjectsStore } from '@/stores/projects.store';
 import type { CanvasLayoutEvent } from './useCanvasLayout';
+import { chatEventBus } from '@n8n/chat/event-buses';
+import { isChatNode } from '@/components/CanvasChat/utils';
+import { useLogsStore } from '@/stores/logs.store';
 
 type AddNodeData = Partial<INodeUi> & {
 	type: string;
@@ -146,6 +150,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 	const nodeCreatorStore = useNodeCreatorStore();
 	const executionsStore = useExecutionsStore();
 	const projectsStore = useProjectsStore();
+	const logsStore = useLogsStore();
 
 	const i18n = useI18n();
 	const toast = useToast();
@@ -2009,6 +2014,14 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 			throw new Error(`Execution with id "${executionId}" could not be found!`);
 		}
 
+		if (data.status === 'error' && data.data?.resultData.error) {
+			const { title, message } = getExecutionErrorToastConfiguration({
+				error: data.data.resultData.error,
+				lastNodeExecuted: data.data.resultData.lastNodeExecuted,
+			});
+			toast.showMessage({ title, message, type: 'error', duration: 0 });
+		}
+
 		initializeWorkspace(data.workflowData);
 
 		workflowsStore.setWorkflowExecutionData(data);
@@ -2022,10 +2035,14 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		return data;
 	}
 
-	async function toggleChatOpen(source: 'node' | 'main', isOpen?: boolean) {
+	function startChat(source?: 'node' | 'main') {
+		if (!workflowsStore.allNodes.some(isChatNode)) {
+			return;
+		}
+
 		const workflow = workflowsStore.getCurrentWorkflow();
 
-		workflowsStore.toggleLogsPanelOpen(isOpen);
+		logsStore.toggleOpen(true);
 
 		const payload = {
 			workflow_id: workflow.id,
@@ -2034,6 +2051,10 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 
 		void externalHooks.run('nodeView.onOpenChat', payload);
 		telemetry.track('User clicked chat open button', payload);
+
+		setTimeout(() => {
+			chatEventBus.emit('focusInput');
+		}, 0);
 	}
 
 	async function importTemplate({
@@ -2112,7 +2133,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		initializeWorkspace,
 		resolveNodeWebhook,
 		openExecution,
-		toggleChatOpen,
+		startChat,
 		importTemplate,
 		tryToOpenSubworkflowInNewTab,
 	};

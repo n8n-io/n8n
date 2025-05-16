@@ -35,6 +35,8 @@ export const tryToParseString = (value: unknown): string => {
 };
 export const tryToParseAlphanumericString = (value: unknown): string => {
 	const parsed = tryToParseString(value);
+	// We do not allow special characters, only letters, numbers and underscore
+	// Numbers not allowed as the first character
 	const regex = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
 	if (!regex.test(parsed)) {
 		throw new ApplicationError('Value is not a valid alphanumeric string', { extra: { value } });
