@@ -344,6 +344,26 @@ export function AINodesView(_nodes: SimplifiedNodeType[]): NodeView {
 
 export function TriggerView() {
 	const i18n = useI18n();
+	const posthogStore = usePostHog();
+	const isEvaluationVariantEnabled = posthogStore.isVariantEnabled(
+		EVALUATION_TRIGGER.name,
+		EVALUATION_TRIGGER.variant,
+	);
+
+	const evaluationTriggerNode = isEvaluationVariantEnabled
+		? {
+				key: EVALUATION_TRIGGER_NODE_TYPE,
+				type: 'node',
+				category: [CORE_NODES_CATEGORY],
+				properties: {
+					group: [],
+					name: EVALUATION_TRIGGER_NODE_TYPE,
+					displayName: 'Evaluation Trigger',
+					description: 'Run a dataset through your workflow to test performance',
+					icon: 'fa:check-double',
+				},
+			}
+		: null;
 
 	const view: NodeView = {
 		value: TRIGGER_NODE_CREATOR_VIEW,
@@ -437,18 +457,7 @@ export function TriggerView() {
 					icon: 'fa:comments',
 				},
 			},
-			{
-				key: EVALUATION_TRIGGER_NODE_TYPE,
-				type: 'node',
-				category: [CORE_NODES_CATEGORY],
-				properties: {
-					group: [],
-					name: EVALUATION_TRIGGER_NODE_TYPE,
-					displayName: 'Evaluation Trigger',
-					description: 'Run a dataset through your workflow to test performance',
-					icon: 'fa:check-double',
-				},
-			},
+			...(evaluationTriggerNode ? [evaluationTriggerNode] : []),
 			{
 				type: 'subcategory',
 				key: OTHER_TRIGGER_NODES_SUBCATEGORY,
