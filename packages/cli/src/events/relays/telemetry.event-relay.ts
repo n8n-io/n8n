@@ -9,7 +9,7 @@ import { Service } from '@n8n/di';
 import { snakeCase } from 'change-case';
 import { BinaryDataConfig, InstanceSettings } from 'n8n-core';
 import type { ExecutionStatus, INodesGraphResult, ITelemetryTrackProperties } from 'n8n-workflow';
-import { TelemetryHelpers } from 'n8n-workflow';
+import { EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, TelemetryHelpers } from 'n8n-workflow';
 import os from 'node:os';
 import { get as pslGet } from 'psl';
 
@@ -729,6 +729,7 @@ export class TelemetryEventRelay extends EventRelay {
 					sharing_role: userRole,
 					credential_type: null,
 					is_managed: false,
+					eval_rows_left: null,
 					...TelemetryHelpers.resolveAIMetrics(workflow.nodes, this.nodeTypes),
 				};
 
@@ -738,6 +739,17 @@ export class TelemetryEventRelay extends EventRelay {
 					});
 					manualExecEventProperties.node_graph_string = JSON.stringify(nodeGraphResult.nodeGraph);
 				}
+
+				runData.data.startData?.startNodes?.forEach((startNode) => {
+					const nodeName = startNode.name;
+					const node = TelemetryHelpers.getNodeTypeForName(workflow, nodeName);
+
+					if (node?.type === EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE) {
+						// how can i get the return value?
+						// how can i make sure it's executed?
+						manualExecEventProperties.eval_rows_left = '_rowsLeft';
+					}
+				});
 
 				if (runData.data.startData?.destinationNode) {
 					const credentialsData = TelemetryHelpers.extractLastExecutedNodeCredentialData(runData);
