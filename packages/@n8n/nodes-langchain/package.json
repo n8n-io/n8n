@@ -194,6 +194,7 @@
     "form-data": "catalog:",
     "generate-schema": "2.6.0",
     "html-to-text": "9.0.5",
+    "https-proxy-agent": "^7.0.6",
     "jsdom": "23.0.1",
     "langchain": "0.3.11",
     "lodash": "catalog:",
