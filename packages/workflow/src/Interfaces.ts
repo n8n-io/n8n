@@ -2597,6 +2597,7 @@ export interface INodesGraphResult {
 	nodeGraph: INodesGraph;
 	nameIndices: INodeNameIndex;
 	webhookNodeNames: string[];
+	evaluationTriggerNodeNames: string[];
 }
 
 export interface FeatureFlags {

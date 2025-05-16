@@ -3,6 +3,7 @@ import {
 	AI_TRANSFORM_NODE_TYPE,
 	CHAIN_LLM_LANGCHAIN_NODE_TYPE,
 	CHAIN_SUMMARIZATION_LANGCHAIN_NODE_TYPE,
+	EVALUATION_TRIGGER_NODE_TYPE,
 	EXECUTE_WORKFLOW_NODE_TYPE,
 	FREE_AI_CREDITS_ERROR_TYPE,
 	FREE_AI_CREDITS_USED_ALL_CREDITS_ERROR_CODE,
@@ -178,6 +179,7 @@ export function generateNodesGraph(
 	};
 	const nameIndices: INodeNameIndex = {};
 	const webhookNodeNames: string[] = [];
+	const evaluationTriggerNodeNames: string[] = [];
 
 	const notes = (workflow.nodes ?? []).filter((node) => node.type === STICKY_NODE_TYPE);
 	const otherNodes = (workflow.nodes ?? []).filter((node) => node.type !== STICKY_NODE_TYPE);
@@ -367,6 +369,8 @@ export function generateNodesGraph(
 			if (node.parameters?.workflowId) {
 				nodeItem.workflow_id = node.parameters?.workflowId as string;
 			}
+		} else if (node.type === EVALUATION_TRIGGER_NODE_TYPE) {
+			evaluationTriggerNodeNames.push(node.name);
 		} else {
 			try {
 				const nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
@@ -484,7 +488,7 @@ export function generateNodesGraph(
 		});
 	});
 
-	return { nodeGraph, nameIndices, webhookNodeNames };
+	return { nodeGraph, nameIndices, webhookNodeNames, evaluationTriggerNodeNames };
 }
 
 export function extractLastExecutedNodeCredentialData(
