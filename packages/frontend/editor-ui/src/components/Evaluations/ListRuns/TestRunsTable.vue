@@ -85,18 +85,40 @@ const runSummaries = computed(() => {
 						<N8nTooltip placement="top" :show-after="300">
 							<template #content>
 								<i18n-t :keypath="`${getErrorBaseKey(row.errorCode)}`">
-									<template #description>
-										{{ locale.baseText(`${getErrorBaseKey(row.errorCode)}.description`) && '. ' }}
-										{{ locale.baseText(`${getErrorBaseKey(row.errorCode)}.description`) }}
+									<template
+										v-if="
+											locale.exists(`${getErrorBaseKey(row.errorCode)}.description` as BaseTextKey)
+										"
+										#description
+									>
+										{{
+											locale.baseText(
+												`${getErrorBaseKey(row.errorCode)}.description` as BaseTextKey,
+											) && '. '
+										}}
+										{{
+											locale.baseText(
+												`${getErrorBaseKey(row.errorCode)}.description` as BaseTextKey,
+											)
+										}}
 									</template>
 								</i18n-t>
 							</template>
 
 							<N8nText :class="[$style.alertText, $style.errorText]">
 								<i18n-t :keypath="`${getErrorBaseKey(row.errorCode)}`">
-									<template #description>
+									<template
+										v-if="
+											locale.exists(`${getErrorBaseKey(row.errorCode)}.description` as BaseTextKey)
+										"
+										#description
+									>
 										<p :class="$style.grayText">
-											{{ locale.baseText(`${getErrorBaseKey(row.errorCode)}.description`) }}
+											{{
+												locale.baseText(
+													`${getErrorBaseKey(row.errorCode)}.description` as BaseTextKey,
+												)
+											}}
 										</p>
 									</template>
 								</i18n-t>
