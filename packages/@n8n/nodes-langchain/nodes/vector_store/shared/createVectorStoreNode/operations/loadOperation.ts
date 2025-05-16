@@ -34,6 +34,11 @@ export async function handleLoadOperation<T extends VectorStore = VectorStore>(
 			itemIndex,
 			true,
 		) as boolean;
+		const includeDocumentId = context.getNodeParameter(
+			'includeDocumentId',
+			itemIndex,
+			true,
+		) as boolean;
 
 		// Embed the prompt to prepare for vector similarity search
 		const embeddedPrompt = await embeddings.embedQuery(prompt);
@@ -46,6 +51,7 @@ export async function handleLoadOperation<T extends VectorStore = VectorStore>(
 			const document = {
 				pageContent: doc.pageContent,
 				...(includeDocumentMetadata ? { metadata: doc.metadata } : {}),
+				...(includeDocumentId ? { id: doc.id } : {}),
 			};
 
 			return {
