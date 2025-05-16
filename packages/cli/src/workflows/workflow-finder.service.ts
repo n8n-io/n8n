@@ -37,7 +37,7 @@ export class WorkflowFinderService {
 				},
 			};
 		}
-		console.log(options.em);
+
 		const sharedWorkflow = await this.sharedWorkflowRepository.findWorkflowWithOptions(workflowId, {
 			where,
 			includeTags: options.includeTags,
