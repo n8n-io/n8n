@@ -135,6 +135,11 @@ export class SamlService {
 			});
 		}
 
+		const binding = this.identityProviderInstance.entityMeta.getSingleSignOnService('redirect');
+		if (typeof binding !== 'string') {
+			throw new InvalidSamlMetadataError('only SAML redirect binding is supported.');
+		}
+
 		return this.identityProviderInstance;
 	}
 
