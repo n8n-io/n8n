@@ -7,9 +7,6 @@ import type {
 	IRequestOptions,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
-import type { Readable } from 'stream';
-
-export const UPLOAD_CHUNK_SIZE = 1024 * 1024;
 
 export async function googleApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
@@ -65,19 +62,4 @@ export async function googleApiRequestAllItems(
 	} while (responseData.nextPageToken !== undefined && responseData.nextPageToken !== '');
 
 	return returnData;
-}
-
-async function* bufferToChunks(buffer: Buffer) {
-	for (let j = 0; j < buffer.length; j += UPLOAD_CHUNK_SIZE) {
-		yield Buffer.from(buffer.subarray(j, j + UPLOAD_CHUNK_SIZE));
-	}
-}
-
-export function getChunkedFileContent(
-	content: Buffer | Readable,
-	binaryDataId: string | undefined,
-) {
-	if (binaryDataId) return content;
-	if (!Buffer.isBuffer(content)) return content;
-	return bufferToChunks(content);
 }

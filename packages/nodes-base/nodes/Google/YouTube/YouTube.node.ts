@@ -8,22 +8,19 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { NodeConnectionTypes, BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
-import type { Readable } from 'stream';
+import { Readable } from 'stream';
 
 import { isoCountryCodes } from '@utils/ISOCountryCodes';
 
 import { channelFields, channelOperations } from './ChannelDescription';
-import {
-	getChunkedFileContent,
-	googleApiRequest,
-	googleApiRequestAllItems,
-	UPLOAD_CHUNK_SIZE,
-} from './GenericFunctions';
+import { googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
 import { playlistFields, playlistOperations } from './PlaylistDescription';
 import { playlistItemFields, playlistItemOperations } from './PlaylistItemDescription';
 import { videoCategoryFields, videoCategoryOperations } from './VideoCategoryDescription';
 import { videoFields, videoOperations } from './VideoDescription';
 import { validateAndSetDate } from '../GenericFunctions';
+
+const UPLOAD_CHUNK_SIZE = 1024 * 1024;
 
 export class YouTube implements INodeType {
 	description: INodeTypeDescription = {
@@ -842,7 +839,7 @@ export class YouTube implements INodeType {
 
 						let mimeType: string;
 						let contentLength: number;
-						let fileContent: Buffer | Readable;
+						let fileContent: Readable;
 
 						if (binaryData.id) {
 							// Stream data in 256KB chunks, and upload the via the resumable upload api
@@ -851,8 +848,9 @@ export class YouTube implements INodeType {
 							contentLength = metadata.fileSize;
 							mimeType = metadata.mimeType ?? binaryData.mimeType;
 						} else {
-							fileContent = Buffer.from(binaryData.data, BINARY_ENCODING);
-							contentLength = fileContent.length;
+							const buffer = Buffer.from(binaryData.data, BINARY_ENCODING);
+							fileContent = Readable.from(buffer);
+							contentLength = buffer.length;
 							mimeType = binaryData.mimeType;
 						}
 
@@ -902,7 +900,7 @@ export class YouTube implements INodeType {
 
 						let uploadId;
 						let offset = 0;
-						for await (const chunk of getChunkedFileContent(fileContent, binaryData.id)) {
+						for await (const chunk of fileContent) {
 							const nextOffset = offset + Number(chunk.length);
 							try {
 								const response = await this.helpers.httpRequest({
