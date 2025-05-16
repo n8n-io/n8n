@@ -86,6 +86,7 @@ const runSummaries = computed(() => {
 							<template #content>
 								<i18n-t :keypath="`${getErrorBaseKey(row.errorCode)}`">
 									<template #description>
+										{{ locale.baseText(`${getErrorBaseKey(row.errorCode)}.description`) && '. ' }}
 										{{ locale.baseText(`${getErrorBaseKey(row.errorCode)}.description`) }}
 									</template>
 								</i18n-t>
