@@ -76,6 +76,9 @@ export class EvaluationTrigger implements INodeType {
 			},
 			readFilter,
 		],
+		codex: {
+			alias: ['Test', 'Metrics', 'Evals', 'Set Output', 'Set Metrics'],
+		},
 		credentials: [
 			{
 				name: 'googleApi',
