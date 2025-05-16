@@ -2742,7 +2742,7 @@ describe('useCanvasOperations', () => {
 
 			expect(workflowsStore.setWorkflowPinData).toHaveBeenCalledWith({});
 		});
-		it('should show an error notifications for failed executions', async () => {
+		it('should show an error notification for failed executions', async () => {
 			const workflowsStore = mockedStore(useWorkflowsStore);
 			const { openExecution } = useCanvasOperations({ router });
 			const toast = useToast();
