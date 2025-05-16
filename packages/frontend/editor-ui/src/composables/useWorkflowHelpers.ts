@@ -48,7 +48,7 @@ import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { get } from 'lodash-es';
 
 import { useEnvironmentsStore } from '@/stores/environments.ee.store';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useTemplatesStore } from '@/stores/templates.store';

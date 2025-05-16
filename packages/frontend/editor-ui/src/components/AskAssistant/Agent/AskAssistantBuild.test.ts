@@ -10,7 +10,7 @@ import { faker } from '@faker-js/faker';
 import AskAssistantBuild from './AskAssistantBuild.vue';
 import { useBuilderStore } from '@/stores/builder.store';
 import { mockedStore } from '@/__tests__/utils';
-import { STORES } from '@/constants';
+import { STORES } from '@n8n/stores';
 
 vi.mock('@/event-bus', () => ({
 	nodeViewEventBus: {

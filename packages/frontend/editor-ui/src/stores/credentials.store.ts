@@ -9,7 +9,8 @@ import type {
 } from '@/Interface';
 import * as credentialsApi from '@/api/credentials';
 import * as credentialsEeApi from '@/api/credentials.ee';
-import { EnterpriseEditionFeature, STORES } from '@/constants';
+import { EnterpriseEditionFeature } from '@/constants';
+import { STORES } from '@n8n/stores';
 import { i18n } from '@/plugins/i18n';
 import type { ProjectSharingData } from '@/types/projects.types';
 import { makeRestApiRequest } from '@/utils/apiUtils';
@@ -24,7 +25,7 @@ import type {
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { useNodeTypesStore } from './nodeTypes.store';
-import { useRootStore } from './root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from './settings.store';
 import * as aiApi from '@/api/ai';
 
