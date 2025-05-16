@@ -4,6 +4,7 @@ import isPlainObject from 'lodash/isPlainObject';
 import set from 'lodash/set';
 import {
 	deepCopy,
+	setSafeObjectProperty,
 	type ICredentialDataDecryptedObject,
 	type IDataObject,
 	type INodeExecutionData,
@@ -48,7 +49,7 @@ function redact<T = unknown>(obj: T, secrets: string[]): T {
 		return obj.map((item) => redact(item, secrets)) as T;
 	} else if (isObject(obj)) {
 		for (const [key, value] of Object.entries(obj)) {
-			(obj as IDataObject)[key] = redact(value, secrets);
+			setSafeObjectProperty(obj, key, redact(value, secrets));
 		}
 	}
 
