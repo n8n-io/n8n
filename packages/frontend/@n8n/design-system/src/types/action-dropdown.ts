@@ -1,7 +1,7 @@
 import type { KeyboardShortcut } from '@n8n/design-system/types/keyboardshortcut';
 
-export interface ActionDropdownItem<T> {
-	id: T;
+export interface ActionDropdownItem {
+	id: string;
 	label: string;
 	badge?: string;
 	badgeProps?: Record<string, unknown>;
@@ -10,5 +10,4 @@ export interface ActionDropdownItem<T> {
 	disabled?: boolean;
 	shortcut?: KeyboardShortcut;
 	customClass?: string;
-	checked?: boolean;
 }

@@ -1,4 +1,4 @@
-<script lang="ts" setup generic="T extends string = string">
+<script lang="ts" setup>
 // This component is visually similar to the ActionToggle component
 // but it offers more options when it comes to dropdown items styling
 // (supports icons, separators, custom styling and all options provided
@@ -16,8 +16,8 @@ import { N8nKeyboardShortcut } from '../N8nKeyboardShortcut';
 
 const TRIGGER = ['click', 'hover'] as const;
 
-interface ActionDropdownProps<T extends string = string> {
-	items: Array<ActionDropdownItem<T>>;
+interface ActionDropdownProps {
+	items: ActionDropdownItem[];
 	placement?: Placement;
 	activatorIcon?: string;
 	activatorSize?: IconSize;
@@ -28,7 +28,7 @@ interface ActionDropdownProps<T extends string = string> {
 	disabled?: boolean;
 }
 
-const props = withDefaults(defineProps<ActionDropdownProps<T>>(), {
+const props = withDefaults(defineProps<ActionDropdownProps>(), {
 	placement: 'bottom',
 	activatorIcon: 'ellipsis-h',
 	activatorSize: 'medium',
@@ -43,7 +43,7 @@ const attrs = useAttrs();
 const testIdPrefix = attrs['data-test-id'];
 
 const $style = useCssModule();
-const getItemClasses = (item: ActionDropdownItem<T>): Record<string, boolean> => {
+const getItemClasses = (item: ActionDropdownItem): Record<string, boolean> => {
 	return {
 		[$style.itemContainer]: true,
 		[$style.disabled]: !!item.disabled,
@@ -53,7 +53,7 @@ const getItemClasses = (item: ActionDropdownItem<T>): Record<string, boolean> =>
 };
 
 const emit = defineEmits<{
-	select: [action: T];
+	select: [action: string];
 	visibleChange: [open: boolean];
 }>();
 const elementDropdown = ref<InstanceType<typeof ElDropdown>>();
@@ -62,7 +62,7 @@ const popperClass = computed(
 	() => `${$style.shadow}${props.hideArrow ? ` ${$style.hideArrow}` : ''}`,
 );
 
-const onSelect = (action: T) => emit('select', action);
+const onSelect = (action: string) => emit('select', action);
 const onVisibleChange = (open: boolean) => emit('visibleChange', open);
 
 const onButtonBlur = (event: FocusEvent) => {
@@ -117,7 +117,6 @@ defineExpose({ open, close });
 							<span :class="$style.label">
 								{{ item.label }}
 							</span>
-							<N8nIcon v-if="item.checked" icon="check" :size="iconSize" />
 							<span v-if="item.badge">
 								<N8nBadge theme="primary" size="xsmall" v-bind="item.badgeProps">
 									{{ item.badge }}

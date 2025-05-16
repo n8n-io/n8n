@@ -35,7 +35,7 @@ const menuItems = computed(() => [
 	...(showPopOutButton ? [{ id: 'popOut' as const, label: popOutButtonText.value }] : []),
 ]);
 
-function handleSelectMenuItem(selected: 'toggleSyncSelection' | 'popOut') {
+function handleSelectMenuItem(selected: string) {
 	// This switch looks redundant, but needed to pass type checker
 	switch (selected) {
 		case 'popOut':
