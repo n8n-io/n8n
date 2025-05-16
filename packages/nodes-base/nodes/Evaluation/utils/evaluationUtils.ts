@@ -25,7 +25,7 @@ export async function setOutput(this: IExecuteFunctions): Promise<INodeExecution
 			message: "No outputs were set since the execution didn't start from an evaluation trigger",
 			location: 'outputPane',
 		});
-		return [];
+		return [this.getInputData()];
 	}
 
 	const outputFields = this.getNodeParameter('outputs.values', 0, []) as Array<{
