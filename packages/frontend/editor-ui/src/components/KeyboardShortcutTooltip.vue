@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { KeyboardShortcut } from '@/Interface';
+import { N8nKeyboardShortcut, N8nTooltip } from '@n8n/design-system';
 import type { Placement } from 'element-plus';
 
 interface Props {
@@ -11,15 +12,15 @@ withDefaults(defineProps<Props>(), { placement: 'top', shortcut: undefined });
 </script>
 
 <template>
-	<n8n-tooltip :placement="placement" :show-after="500">
+	<N8nTooltip :placement="placement" :show-after="500">
 		<template #content>
 			<div :class="$style.shortcut">
 				<div :class="$style.label">{{ label }}</div>
-				<n8n-keyboard-shortcut v-if="shortcut" v-bind="shortcut" />
+				<N8nKeyboardShortcut v-if="shortcut" v-bind="shortcut" />
 			</div>
 		</template>
 		<slot />
-	</n8n-tooltip>
+	</N8nTooltip>
 </template>
 
 <style lang="scss" module>

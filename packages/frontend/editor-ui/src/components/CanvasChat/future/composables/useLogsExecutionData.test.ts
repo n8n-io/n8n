@@ -1,5 +1,5 @@
 import { setActivePinia } from 'pinia';
-import { useExecutionData } from './useExecutionData';
+import { useLogsExecutionData } from './useLogsExecutionData';
 import { waitFor } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
@@ -18,7 +18,7 @@ import { useToast } from '@/composables/useToast';
 
 vi.mock('@/composables/useToast');
 
-describe(useExecutionData, () => {
+describe(useLogsExecutionData, () => {
 	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
 	let nodeTypeStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
 
@@ -72,7 +72,7 @@ describe(useExecutionData, () => {
 				}),
 			);
 
-			const { loadSubExecution, entries } = useExecutionData();
+			const { loadSubExecution, entries } = useLogsExecutionData();
 
 			expect(entries.value).toHaveLength(2);
 			expect(entries.value[1].children).toHaveLength(0);
@@ -101,7 +101,7 @@ describe(useExecutionData, () => {
 				new Error('test execution fetch fail'),
 			);
 
-			const { loadSubExecution, entries } = useExecutionData();
+			const { loadSubExecution, entries } = useLogsExecutionData();
 
 			await loadSubExecution(entries.value[1]);
 			await waitFor(() => expect(showErrorSpy).toHaveBeenCalled());
