@@ -154,12 +154,6 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 	const evaluationNode =
 		isEvaluationVariantEnabled && evaluationNodeStore ? [getNodeView(evaluationNodeStore)] : [];
 
-	const evaluationNodeStore = nodeTypesStore.getNodeType('n8n-nodes-base.evaluation');
-	const evaluationNode = evaluationNodeStore ? [getNodeView(evaluationNodeStore)] : [];
-
-	const evaluationNodeStore = nodeTypesStore.getNodeType('n8n-nodes-base.evaluation');
-	const evaluationNode = evaluationNodeStore ? [getNodeView(evaluationNodeStore)] : [];
-
 	const chainNodes = getAiNodesBySubcategory(nodeTypesStore.allLatestNodeTypes, AI_CATEGORY_CHAINS);
 	const agentNodes = getAiNodesBySubcategory(nodeTypesStore.allLatestNodeTypes, AI_CATEGORY_AGENTS);
 

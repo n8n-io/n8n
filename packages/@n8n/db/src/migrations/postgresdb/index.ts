@@ -87,7 +87,6 @@ import { AddWorkflowStatisticsRootCount1745587087521 } from '../common/174558708
 import { AddWorkflowArchivedColumn1745934666076 } from '../common/1745934666076-AddWorkflowArchivedColumn';
 import { DropRoleTable1745934666077 } from '../common/1745934666077-DropRoleTable';
 import type { Migration } from '../migration-types';
-import { AddEvaluationUsageColumnToWorkflows1747062417125 } from '../common/1747062417125-AddEvaluationUsageColumnToWorkflows';
 
 export const postgresMigrations: Migration[] = [
 	InitialMigration1587669153312,

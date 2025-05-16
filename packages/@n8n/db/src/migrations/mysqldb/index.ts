@@ -86,7 +86,6 @@ import { ClearEvaluation1745322634000 } from '../common/1745322634000-CleanEvalu
 import { AddWorkflowStatisticsRootCount1745587087521 } from '../common/1745587087521-AddWorkflowStatisticsRootCount';
 import { AddWorkflowArchivedColumn1745934666076 } from '../common/1745934666076-AddWorkflowArchivedColumn';
 import { DropRoleTable1745934666077 } from '../common/1745934666077-DropRoleTable';
-import { AddEvaluationUsageColumnToWorkflows1747062417125 } from '../common/1747062417125-AddEvaluationUsageColumnToWorkflows';
 import type { Migration } from '../migration-types';
 import { UpdateParentFolderIdColumn1740445074052 } from '../mysqldb/1740445074052-UpdateParentFolderIdColumn';
 
