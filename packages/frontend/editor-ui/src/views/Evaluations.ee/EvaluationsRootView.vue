@@ -2,14 +2,17 @@
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useUsageStore } from '@/stores/usage.store';
 import { useAsyncState } from '@vueuse/core';
-import { PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
+import { EVALUATION_DATASET_TRIGGER_NODE, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
+import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
 import { useI18n } from '@/composables/useI18n';
 import { useRouter } from 'vue-router';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useEvaluationStore } from '@/stores/evaluation.store.ee';
-import { computed } from 'vue';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+
+import { computed, onMounted } from 'vue';
 import { N8nLink, N8nText } from '@n8n/design-system';
 import EvaluationsPaywall from '@/components/Evaluations.ee/Paywall/EvaluationsPaywall.vue';
 import SetupWizard from '@/components/Evaluations.ee/SetupWizard/SetupWizard.vue';
@@ -21,6 +24,8 @@ const props = defineProps<{
 const workflowsStore = useWorkflowsStore();
 const usageStore = useUsageStore();
 const evaluationStore = useEvaluationStore();
+const nodeTypesStore = useNodeTypesStore();
+const telemetry = useTelemetry();
 const router = useRouter();
 const toast = useToast();
 const locale = useI18n();
@@ -32,12 +37,17 @@ const evaluationsLicensed = computed(() => {
 	return usageStore.workflowsWithEvaluationsLimit !== 0;
 });
 
-const showWizard = computed(() => {
-	const runs = Object.values(evaluationStore.testRunsById ?? {}).filter(
+const runs = computed(() => {
+	return Object.values(evaluationStore.testRunsById ?? {}).filter(
 		({ workflowId }) => workflowId === props.name,
 	);
-	return runs.length === 0;
 });
+
+const hasRuns = computed(() => {
+	return runs.value.length > 0;
+});
+
+const showWizard = computed(() => !hasRuns.value);
 
 // Method to run a test - will be used by the SetupWizard component
 async function runTest() {
@@ -53,6 +63,54 @@ async function runTest() {
 		toast.showError(error, locale.baseText('evaluation.listRuns.error.cantFetchTestRuns'));
 	}
 }
+
+const datasetTriggerExist = computed(() => {
+	return workflowsStore.workflow.nodes.some(
+		(node) => node.type === EVALUATION_DATASET_TRIGGER_NODE,
+	);
+});
+
+const evaluationMetricNodeExist = computed(() => {
+	return workflowsStore.workflow.nodes.some(
+		(node) =>
+			node.type === 'n8n-nodes-base.evaluation' && node.parameters.operation === 'setMetrics',
+	);
+});
+
+const evaluationSetOutputNodeExist = computed(() => {
+	return workflowsStore.workflow.nodes.some(
+		// FIXME: handle default operation properly
+		(node) =>
+			node.type === 'n8n-nodes-base.evaluation' &&
+			(node.parameters.operation === 'setOutputs' || node.parameters.operation === undefined),
+	);
+});
+
+const evaluationsQuotaExceeded = computed(() => {
+	return (
+		usageStore.workflowsWithEvaluationsLimit !== -1 &&
+		usageStore.workflowsWithEvaluationsCount >= usageStore.workflowsWithEvaluationsLimit &&
+		!hasRuns.value
+	);
+});
+
+onMounted(() => {
+	telemetry.track('User viewed tests tab', {
+		workflow_id: props.name,
+		test_type: 'evaluation',
+		view: showWizard.value ? 'setup' : 'overview',
+		...(showWizard.value
+			? {
+				trigger_set_up: datasetTriggerExist.value,
+				output_set_up: evaluationSetOutputNodeExist.value,
+				metrics_set_up: evaluationMetricNodeExist.value,
+				quota_reached: evaluationsQuotaExceeded.value,
+			}
+			: {
+				run_count: runs.value.length,
+			}),
+	});
+});
 
 const { isReady } = useAsyncState(async () => {
 	try {
