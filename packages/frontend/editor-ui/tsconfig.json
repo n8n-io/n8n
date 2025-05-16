@@ -14,6 +14,7 @@
 			"@n8n/composables*": ["../@n8n/composables/src*"],
 			"@n8n/chat*": ["../@n8n/chat/src*"],
 			"@n8n/design-system*": ["../@n8n/design-system/src*"],
+			"@n8n/stores*": ["../@n8n/stores/src*"],
 			"@n8n/api-types*": ["../../@n8n/api-types/src*"],
 			"@n8n/utils*": ["../../@n8n/utils/src*"]
 		},

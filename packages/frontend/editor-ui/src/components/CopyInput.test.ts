@@ -1,7 +1,7 @@
 import { merge } from 'lodash-es';
 
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
-import { STORES } from '@/constants';
+import { STORES } from '@n8n/stores';
 
 import { createTestingPinia } from '@pinia/testing';
 import CopyInput from '@/components/CopyInput.vue';

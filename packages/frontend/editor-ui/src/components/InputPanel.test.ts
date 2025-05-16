@@ -1,7 +1,7 @@
 import { createTestNode, createTestWorkflow, createTestWorkflowObject } from '@/__tests__/mocks';
 import { createComponentRenderer } from '@/__tests__/render';
 import InputPanel, { type Props } from '@/components/InputPanel.vue';
-import { STORES } from '@/constants';
+import { STORES } from '@n8n/stores';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createTestingPinia } from '@pinia/testing';
 import { waitFor } from '@testing-library/vue';

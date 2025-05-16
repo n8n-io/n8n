@@ -28,7 +28,7 @@ import {
 	SINGLE_WEBHOOK_TRIGGERS,
 } from '@/constants';
 
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { displayForm } from '@/utils/executionUtils';
 import { useExternalHooks } from '@/composables/useExternalHooks';
