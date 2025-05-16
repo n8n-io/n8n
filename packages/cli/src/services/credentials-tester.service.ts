@@ -3,6 +3,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
+import { isObjectLiteral } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import get from 'lodash/get';
@@ -12,7 +13,6 @@ import {
 	ExecuteContext,
 	Logger,
 	RoutingNode,
-	isObjectLiteral,
 } from 'n8n-core';
 import type {
 	ICredentialsDecrypted,
