@@ -9,6 +9,8 @@ export interface ExportableWorkflow {
 	connections: IConnections;
 	settings?: IWorkflowSettings;
 	triggerCount: number;
-	versionId: string;
+	versionId?: string;
 	owner: ResourceOwner;
+	parentFolderId: string | null;
+	isArchived: boolean;
 }

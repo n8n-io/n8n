@@ -1,4 +1,5 @@
-import type { MockedNodeItem } from '@/databases/entities/test-definition.ee';
+import type { MockedNodeItem } from '@n8n/db';
+
 import type { AuthenticatedRequest, ListQuery } from '@/requests';
 
 // ----------------------------------
@@ -38,36 +39,13 @@ export declare namespace TestDefinitionsRequest {
 	type Delete = AuthenticatedRequest<RouteParams.TestId>;
 
 	type Run = AuthenticatedRequest<RouteParams.TestId>;
-}
 
-// ----------------------------------
-//             /test-definitions/:testDefinitionId/metrics
-// ----------------------------------
-
-export declare namespace TestMetricsRequest {
-	namespace RouteParams {
-		type TestDefinitionId = {
-			testDefinitionId: string;
-		};
-
-		type TestMetricId = {
-			id: string;
-		};
-	}
-
-	type GetOne = AuthenticatedRequest<RouteParams.TestDefinitionId & RouteParams.TestMetricId>;
-
-	type GetMany = AuthenticatedRequest<RouteParams.TestDefinitionId>;
-
-	type Create = AuthenticatedRequest<RouteParams.TestDefinitionId, {}, { name: string }>;
-
-	type Patch = AuthenticatedRequest<
-		RouteParams.TestDefinitionId & RouteParams.TestMetricId,
+	type ExampleEvaluationInput = AuthenticatedRequest<
+		RouteParams.TestId,
 		{},
-		{ name: string }
+		{},
+		{ annotationTagId: string }
 	>;
-
-	type Delete = AuthenticatedRequest<RouteParams.TestDefinitionId & RouteParams.TestMetricId>;
 }
 
 // ----------------------------------
@@ -92,4 +70,8 @@ export declare namespace TestRunsRequest {
 	type GetOne = AuthenticatedRequest<RouteParams.TestId & RouteParams.TestRunId>;
 
 	type Delete = AuthenticatedRequest<RouteParams.TestId & RouteParams.TestRunId>;
+
+	type Cancel = AuthenticatedRequest<RouteParams.TestId & RouteParams.TestRunId>;
+
+	type GetCases = AuthenticatedRequest<RouteParams.TestId & RouteParams.TestRunId>;
 }

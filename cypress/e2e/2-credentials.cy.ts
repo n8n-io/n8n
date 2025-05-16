@@ -1,5 +1,6 @@
 import { type ICredentialType } from 'n8n-workflow';
 
+import * as credentialsComposables from '../composables/credentialsComposables';
 import { getCredentialSaveButton, saveCredential } from '../composables/modals/credential-modal';
 import {
 	AGENT_NODE_NAME,
@@ -31,7 +32,7 @@ function createNotionCredential() {
 	workflowPage.actions.addNodeToCanvas(NOTION_NODE_NAME);
 	workflowPage.actions.openNode(NOTION_NODE_NAME);
 	workflowPage.getters.nodeCredentialsSelect().click();
-	getVisibleSelect().find('li').last().click();
+	workflowPage.getters.nodeCredentialsCreateOption().click();
 	credentialsModal.actions.fillCredentialsForm();
 	cy.get('body').type('{esc}');
 	workflowPage.actions.deleteNode(NOTION_NODE_NAME);
@@ -45,7 +46,7 @@ function deleteSelectedCredential() {
 
 describe('Credentials', () => {
 	beforeEach(() => {
-		cy.visit(credentialsPage.url);
+		credentialsComposables.loadCredentialsPage(credentialsPage.url);
 	});
 
 	it('should create a new credential using empty state', () => {
@@ -79,7 +80,7 @@ describe('Credentials', () => {
 		workflowPage.getters.canvasNodes().last().click();
 		cy.get('body').type('{enter}');
 		workflowPage.getters.nodeCredentialsSelect().click();
-		getVisibleSelect().find('li').last().click();
+		workflowPage.getters.nodeCredentialsCreateOption().click();
 		credentialsModal.getters.credentialsEditModal().should('be.visible');
 		credentialsModal.getters.credentialAuthTypeRadioButtons().should('have.length', 2);
 		credentialsModal.getters.credentialAuthTypeRadioButtons().first().click();
@@ -99,7 +100,7 @@ describe('Credentials', () => {
 		cy.get('body').type('{enter}');
 		workflowPage.getters.nodeCredentialsSelect().click();
 		// Add oAuth credentials
-		getVisibleSelect().find('li').last().click();
+		workflowPage.getters.nodeCredentialsCreateOption().click();
 		credentialsModal.getters.credentialsEditModal().should('be.visible');
 		credentialsModal.getters.credentialAuthTypeRadioButtons().should('have.length', 2);
 		credentialsModal.getters.credentialAuthTypeRadioButtons().first().click();
@@ -107,14 +108,13 @@ describe('Credentials', () => {
 		cy.get('.el-message-box').find('button').contains('Close').click();
 		workflowPage.getters.nodeCredentialsSelect().click();
 		// Add Service account credentials
-		getVisibleSelect().find('li').last().click();
+		workflowPage.getters.nodeCredentialsCreateOption().click();
 		credentialsModal.getters.credentialsEditModal().should('be.visible');
 		credentialsModal.getters.credentialAuthTypeRadioButtons().should('have.length', 2);
 		credentialsModal.getters.credentialAuthTypeRadioButtons().last().click();
 		credentialsModal.actions.fillCredentialsForm();
-		// Both (+ the 'Create new' option) should be in the dropdown
 		workflowPage.getters.nodeCredentialsSelect().click();
-		getVisibleSelect().find('li').should('have.length.greaterThan', 2);
+		getVisibleSelect().find('li').should('have.length', 3);
 	});
 
 	it('should correctly render required and optional credentials', () => {
@@ -130,13 +130,13 @@ describe('Credentials', () => {
 		workflowPage.getters.nodeCredentialsSelect().should('have.length', 2);
 
 		workflowPage.getters.nodeCredentialsSelect().first().click();
-		getVisibleSelect().find('li').contains('Create New Credential').click();
+		workflowPage.getters.nodeCredentialsCreateOption().first().click();
 		// This one should show auth type selector
 		credentialsModal.getters.credentialAuthTypeRadioButtons().should('have.length', 2);
 		cy.get('body').type('{esc}');
 
 		workflowPage.getters.nodeCredentialsSelect().last().click();
-		getVisibleSelect().find('li').contains('Create New Credential').click();
+		workflowPage.getters.nodeCredentialsCreateOption().last().click();
 		// This one should not show auth type selector
 		credentialsModal.getters.credentialsAuthTypeSelector().should('not.exist');
 	});
@@ -148,7 +148,7 @@ describe('Credentials', () => {
 		workflowPage.getters.canvasNodes().last().click();
 		cy.get('body').type('{enter}');
 		workflowPage.getters.nodeCredentialsSelect().click();
-		getVisibleSelect().find('li').last().click();
+		workflowPage.getters.nodeCredentialsCreateOption().click();
 		credentialsModal.getters.credentialsAuthTypeSelector().should('not.exist');
 		credentialsModal.actions.fillCredentialsForm();
 		workflowPage.getters
@@ -164,7 +164,7 @@ describe('Credentials', () => {
 		workflowPage.getters.canvasNodes().last().click();
 		cy.get('body').type('{enter}');
 		workflowPage.getters.nodeCredentialsSelect().click();
-		getVisibleSelect().find('li').last().click();
+		workflowPage.getters.nodeCredentialsCreateOption().click();
 		credentialsModal.actions.fillCredentialsForm();
 		workflowPage.getters
 			.nodeCredentialsSelect()
@@ -189,7 +189,7 @@ describe('Credentials', () => {
 		workflowPage.getters.canvasNodes().last().click();
 		cy.get('body').type('{enter}');
 		workflowPage.getters.nodeCredentialsSelect().click();
-		getVisibleSelect().find('li').last().click();
+		workflowPage.getters.nodeCredentialsCreateOption().click();
 		credentialsModal.actions.fillCredentialsForm();
 		workflowPage.getters.nodeCredentialsEditButton().click();
 		credentialsModal.getters.credentialsEditModal().should('be.visible');
@@ -232,7 +232,7 @@ describe('Credentials', () => {
 		cy.getByTestId('credential-select').click();
 		cy.contains('Adalo API').click();
 		workflowPage.getters.nodeCredentialsSelect().click();
-		getVisibleSelect().find('li').last().click();
+		workflowPage.getters.nodeCredentialsCreateOption().click();
 		credentialsModal.actions.fillCredentialsForm();
 		workflowPage.getters.nodeCredentialsEditButton().click();
 		credentialsModal.getters.credentialsEditModal().should('be.visible');
@@ -296,7 +296,7 @@ describe('Credentials', () => {
 
 		workflowPage.getters.nodeCredentialsSelect().should('exist');
 		workflowPage.getters.nodeCredentialsSelect().click();
-		getVisibleSelect().find('li').last().click();
+		workflowPage.getters.nodeCredentialsCreateOption().click();
 		credentialsModal.actions.fillCredentialsForm();
 		workflowPage.getters
 			.nodeCredentialsSelect()
@@ -325,7 +325,7 @@ describe('Credentials', () => {
 		workflowPage.actions.addNodeToCanvas('Slack', true, true, 'Get a channel');
 		workflowPage.getters.nodeCredentialsSelect().should('exist');
 		workflowPage.getters.nodeCredentialsSelect().click();
-		getVisibleSelect().find('li').last().click();
+		workflowPage.getters.nodeCredentialsCreateOption().click();
 		credentialsModal.getters.credentialAuthTypeRadioButtons().first().click();
 		nodeDetailsView.getters.copyInput().should('not.exist');
 	});

@@ -1,15 +1,14 @@
 import { TaskRunnersConfig } from '@n8n/config';
+import { OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { Logger } from 'n8n-core';
 import * as a from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import * as process from 'node:process';
 
-import { OnShutdown } from '@/decorators/on-shutdown';
-
-import { TaskRunnerAuthService } from './auth/task-runner-auth.service';
 import { forwardToLogger } from './forward-to-logger';
 import { NodeProcessOomDetector } from './node-process-oom-detector';
+import { TaskBrokerAuthService } from './task-broker/auth/task-broker-auth.service';
 import { TaskRunnerLifecycleEvents } from './task-runner-lifecycle-events';
 import { TypedEmitter } from '../typed-emitter';
 
@@ -52,22 +51,26 @@ export class TaskRunnerProcess extends TypedEmitter<TaskRunnerProcessEventMap> {
 
 	private logger: Logger;
 
+	/** Environment variables inherited by the child process from the current environment. */
 	private readonly passthroughEnvVars = [
 		'PATH',
+		'HOME', // So home directory can be resolved correctly
 		'GENERIC_TIMEZONE',
 		'NODE_FUNCTION_ALLOW_BUILTIN',
 		'NODE_FUNCTION_ALLOW_EXTERNAL',
 		'N8N_SENTRY_DSN',
+		'N8N_RUNNERS_ALLOW_PROTOTYPE_MUTATION',
 		// Metadata about the environment
 		'N8N_VERSION',
 		'ENVIRONMENT',
 		'DEPLOYMENT_NAME',
+		'NODE_PATH',
 	] as const;
 
 	constructor(
 		logger: Logger,
 		private readonly runnerConfig: TaskRunnersConfig,
-		private readonly authService: TaskRunnerAuthService,
+		private readonly authService: TaskBrokerAuthService,
 		private readonly runnerLifecycleEvents: TaskRunnerLifecycleEvents,
 	) {
 		super();
@@ -106,9 +109,13 @@ export class TaskRunnerProcess extends TypedEmitter<TaskRunnerProcessEventMap> {
 	startNode(grantToken: string, taskBrokerUri: string) {
 		const startScript = require.resolve('@n8n/task-runner/start');
 
-		return spawn('node', [startScript], {
-			env: this.getProcessEnvVars(grantToken, taskBrokerUri),
-		});
+		return spawn(
+			'node',
+			['--disallow-code-generation-from-strings', '--disable-proto=delete', startScript],
+			{
+				env: this.getProcessEnvVars(grantToken, taskBrokerUri),
+			},
+		);
 	}
 
 	@OnShutdown()
@@ -165,6 +172,8 @@ export class TaskRunnerProcess extends TypedEmitter<TaskRunnerProcessEventMap> {
 			N8N_RUNNERS_TASK_BROKER_URI: taskBrokerUri,
 			N8N_RUNNERS_MAX_PAYLOAD: this.runnerConfig.maxPayload.toString(),
 			N8N_RUNNERS_MAX_CONCURRENCY: this.runnerConfig.maxConcurrency.toString(),
+			N8N_RUNNERS_TASK_TIMEOUT: this.runnerConfig.taskTimeout.toString(),
+			N8N_RUNNERS_HEARTBEAT_INTERVAL: this.runnerConfig.heartbeatInterval.toString(),
 			...this.getPassthroughEnvVars(),
 		};
 

@@ -16,12 +16,101 @@ import {
 	WAIT_NODE_TYPE,
 	jsonParse,
 } from 'n8n-workflow';
+import sanitize from 'sanitize-html';
 
 import type { FormTriggerData, FormTriggerInput } from './interfaces';
 import { FORM_TRIGGER_AUTHENTICATION_PROPERTY } from './interfaces';
 import { getResolvables } from '../../utils/utilities';
 import { WebhookAuthorizationError } from '../Webhook/error';
 import { validateWebhookAuthentication } from '../Webhook/utils';
+
+export function sanitizeHtml(text: string) {
+	return sanitize(text, {
+		allowedTags: [
+			'b',
+			'div',
+			'i',
+			'iframe',
+			'img',
+			'video',
+			'source',
+			'em',
+			'strong',
+			'a',
+			'h1',
+			'h2',
+			'h3',
+			'h4',
+			'h5',
+			'h6',
+			'u',
+			'sub',
+			'sup',
+			'code',
+			'pre',
+			'span',
+			'br',
+			'ul',
+			'ol',
+			'li',
+			'p',
+		],
+		allowedAttributes: {
+			a: ['href', 'target', 'rel'],
+			img: ['src', 'alt', 'width', 'height'],
+			video: ['*'],
+			iframe: ['*'],
+			source: ['*'],
+		},
+		transformTags: {
+			iframe: sanitize.simpleTransform('iframe', {
+				sandbox: '',
+				referrerpolicy: 'strict-origin-when-cross-origin',
+				allow: 'fullscreen; autoplay; encrypted-media',
+			}),
+		},
+	});
+}
+
+export const prepareFormFields = (context: IWebhookFunctions, fields: FormFieldsParameter) => {
+	return fields.map((field) => {
+		if (field.fieldType === 'html') {
+			let { html } = field;
+
+			if (!html) return field;
+
+			for (const resolvable of getResolvables(html)) {
+				html = html.replace(resolvable, context.evaluateExpression(resolvable) as string);
+			}
+
+			field.html = sanitizeHtml(html);
+		}
+
+		if (field.fieldType === 'hiddenField') {
+			field.fieldLabel = field.fieldName as string;
+		}
+
+		return field;
+	});
+};
+
+export function sanitizeCustomCss(css: string | undefined): string | undefined {
+	if (!css) return undefined;
+
+	// Use sanitize-html with custom settings for CSS
+	return sanitize(css, {
+		allowedTags: [], // No HTML tags allowed
+		allowedAttributes: {}, // No attributes allowed
+		// This ensures we're only keeping the text content
+		// which should be the CSS, while removing any HTML/script tags
+	});
+}
+
+export function createDescriptionMetadata(description: string) {
+	return description === ''
+		? 'n8n form'
+		: description.replace(/^\s*\n+|<\/?[^>]+(>|$)/g, '').slice(0, 150);
+}
 
 export function prepareFormData({
 	formTitle,
@@ -36,6 +125,7 @@ export function prepareFormData({
 	useResponseData,
 	appendAttribution = true,
 	buttonLabel,
+	customCss,
 }: {
 	formTitle: string;
 	formDescription: string;
@@ -49,8 +139,8 @@ export function prepareFormData({
 	appendAttribution?: boolean;
 	buttonLabel?: string;
 	formSubmittedHeader?: string;
+	customCss?: string;
 }) {
-	const validForm = formFields.length > 0;
 	const utm_campaign = instanceId ? `&utm_campaign=${instanceId}` : '';
 	const n8nWebsiteLink = `https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger${utm_campaign}`;
 
@@ -60,9 +150,9 @@ export function prepareFormData({
 
 	const formData: FormTriggerData = {
 		testRun,
-		validForm,
 		formTitle,
 		formDescription,
+		formDescriptionMetadata: createDescriptionMetadata(formDescription),
 		formSubmittedHeader,
 		formSubmittedText,
 		n8nWebsiteLink,
@@ -70,6 +160,7 @@ export function prepareFormData({
 		useResponseData,
 		appendAttribution,
 		buttonLabel,
+		dangerousCustomCss: sanitizeCustomCss(customCss),
 	};
 
 	if (redirectUrl) {
@@ -77,10 +168,6 @@ export function prepareFormData({
 			redirectUrl = `http://${redirectUrl}`;
 		}
 		formData.redirectUrl = redirectUrl;
-	}
-
-	if (!validForm) {
-		return formData;
 	}
 
 	for (const [index, field] of formFields.entries()) {
@@ -112,6 +199,14 @@ export function prepareFormData({
 			input.selectOptions = fieldOptions.map((e) => e.option);
 		} else if (fieldType === 'textarea') {
 			input.isTextarea = true;
+		} else if (fieldType === 'html') {
+			input.isHtml = true;
+			input.html = field.html as string;
+		} else if (fieldType === 'hiddenField') {
+			input.isHidden = true;
+			input.hiddenName = field.fieldName as string;
+			input.hiddenValue =
+				input.defaultValue === '' ? (field.fieldValue as string) : input.defaultValue;
 		} else {
 			input.isInput = true;
 			input.type = fieldType as 'text' | 'number' | 'date' | 'email';
@@ -123,9 +218,10 @@ export function prepareFormData({
 	return formData;
 }
 
-const checkResponseModeConfiguration = (context: IWebhookFunctions) => {
+export const validateResponseModeConfiguration = (context: IWebhookFunctions) => {
 	const responseMode = context.getNodeParameter('responseMode', 'onReceived') as string;
 	const connectedNodes = context.getChildNodes(context.getNode().name);
+	const nodeVersion = context.getNode().typeVersion;
 
 	const isRespondToWebhookConnected = connectedNodes.some(
 		(node) => node.type === 'n8n-nodes-base.respondToWebhook',
@@ -142,7 +238,7 @@ const checkResponseModeConfiguration = (context: IWebhookFunctions) => {
 		);
 	}
 
-	if (isRespondToWebhookConnected && responseMode !== 'responseNode') {
+	if (isRespondToWebhookConnected && responseMode !== 'responseNode' && nodeVersion <= 2.1) {
 		throw new NodeOperationError(
 			context.getNode(),
 			new Error(`${context.getNode().name} node not correctly configured`),
@@ -152,7 +248,62 @@ const checkResponseModeConfiguration = (context: IWebhookFunctions) => {
 			},
 		);
 	}
+
+	if (isRespondToWebhookConnected && nodeVersion > 2.1) {
+		throw new NodeOperationError(
+			context.getNode(),
+			new Error(
+				'The "Respond to Webhook" node is not supported in workflows initiated by the "n8n Form Trigger"',
+			),
+			{
+				description:
+					'To configure your response, add an "n8n Form" node and set the "Page Type" to "Form Ending"',
+			},
+		);
+	}
 };
+
+export function addFormResponseDataToReturnItem(
+	returnItem: INodeExecutionData,
+	formFields: FormFieldsParameter,
+	bodyData: IDataObject,
+) {
+	for (const [index, field] of formFields.entries()) {
+		const key = `field-${index}`;
+		const name = field.fieldLabel ?? field.fieldName;
+		let value = bodyData[key] ?? null;
+
+		if (value === null) {
+			returnItem.json[name] = null;
+			continue;
+		}
+
+		if (field.fieldType === 'html') {
+			if (field.elementName) {
+				returnItem.json[field.elementName] = value;
+			}
+			continue;
+		}
+
+		if (field.fieldType === 'number') {
+			value = Number(value);
+		}
+		if (field.fieldType === 'text') {
+			value = String(value).trim();
+		}
+		if (field.multiselect && typeof value === 'string') {
+			value = jsonParse(value);
+		}
+		if (field.fieldType === 'date' && value && field.formatDate !== '') {
+			value = DateTime.fromFormat(String(value), 'yyyy-mm-dd').toFormat(field.formatDate as string);
+		}
+		if (field.fieldType === 'file' && field.multipleFiles && !Array.isArray(value)) {
+			value = [value];
+		}
+
+		returnItem.json[name] = value;
+	}
+}
 
 export async function prepareFormReturnItem(
 	context: IWebhookFunctions,
@@ -211,45 +362,18 @@ export async function prepareFormReturnItem(
 		}
 	}
 
-	for (const [index, field] of formFields.entries()) {
-		const key = `field-${index}`;
-		let value = bodyData[key] ?? null;
-
-		if (value === null) {
-			returnItem.json[field.fieldLabel] = null;
-			continue;
-		}
-
-		if (field.fieldType === 'number') {
-			value = Number(value);
-		}
-		if (field.fieldType === 'text') {
-			value = String(value).trim();
-		}
-		if (field.multiselect && typeof value === 'string') {
-			value = jsonParse(value);
-		}
-		if (field.fieldType === 'date' && value && field.formatDate !== '') {
-			value = DateTime.fromFormat(String(value), 'yyyy-mm-dd').toFormat(field.formatDate as string);
-		}
-		if (field.fieldType === 'file' && field.multipleFiles && !Array.isArray(value)) {
-			value = [value];
-		}
-
-		returnItem.json[field.fieldLabel] = value;
-	}
+	addFormResponseDataToReturnItem(returnItem, formFields, bodyData);
 
 	const timezone = useWorkflowTimezone ? context.getTimezone() : 'UTC';
 	returnItem.json.submittedAt = DateTime.now().setZone(timezone).toISO();
 
 	returnItem.json.formMode = mode;
 
-	const workflowStaticData = context.getWorkflowStaticData('node');
 	if (
-		Object.keys(workflowStaticData || {}).length &&
-		context.getNode().type === FORM_TRIGGER_NODE_TYPE
+		context.getNode().type === FORM_TRIGGER_NODE_TYPE &&
+		Object.keys(context.getRequestObject().query || {}).length
 	) {
-		returnItem.json.formQueryParameters = workflowStaticData;
+		returnItem.json.formQueryParameters = context.getRequestObject().query;
 	}
 
 	return returnItem;
@@ -267,6 +391,7 @@ export function renderForm({
 	redirectUrl,
 	appendAttribution,
 	buttonLabel,
+	customCss,
 }: {
 	context: IWebhookFunctions;
 	res: Response;
@@ -279,6 +404,7 @@ export function renderForm({
 	redirectUrl?: string;
 	appendAttribution?: boolean;
 	buttonLabel?: string;
+	customCss?: string;
 }) {
 	formDescription = (formDescription || '').replace(/\\n/g, '\n').replace(/<br>/g, '\n');
 	const instanceId = context.getInstanceId();
@@ -289,10 +415,6 @@ export function renderForm({
 
 	if (context.getNode().type === FORM_TRIGGER_NODE_TYPE) {
 		query = context.getRequestObject().query as IDataObject;
-		const workflowStaticData = context.getWorkflowStaticData('node');
-		for (const key of Object.keys(query)) {
-			workflowStaticData[key] = query[key];
-		}
 	} else if (context.getNode().type === FORM_NODE_TYPE) {
 		const parentNodes = context.getParentNodes(context.getNode().name);
 		const trigger = parentNodes.find(
@@ -309,6 +431,8 @@ export function renderForm({
 		} catch (error) {}
 	}
 
+	formFields = prepareFormFields(context, formFields);
+
 	const data = prepareFormData({
 		formTitle,
 		formDescription,
@@ -321,10 +445,18 @@ export function renderForm({
 		useResponseData,
 		appendAttribution,
 		buttonLabel,
+		customCss,
 	});
 
 	res.render('form-trigger', data);
 }
+
+export const isFormConnected = (nodes: NodeTypeAndVersion[]) => {
+	return nodes.some(
+		(n) =>
+			n.type === FORM_NODE_TYPE || (n.type === WAIT_NODE_TYPE && n.parameters?.resume === 'form'),
+	);
+};
 
 export async function formWebhook(
 	context: IWebhookFunctions,
@@ -344,6 +476,7 @@ export async function formWebhook(
 		useWorkflowTimezone?: boolean;
 		appendAttribution?: boolean;
 		buttonLabel?: string;
+		customCss?: string;
 	};
 	const res = context.getResponseObject();
 	const req = context.getRequestObject();
@@ -366,15 +499,16 @@ export async function formWebhook(
 
 	const mode = context.getMode() === 'manual' ? 'test' : 'production';
 	const formFields = context.getNodeParameter('formFields.values', []) as FormFieldsParameter;
+
 	const method = context.getRequestObject().method;
 
-	checkResponseModeConfiguration(context);
+	validateResponseModeConfiguration(context);
 
 	//Show the form on GET request
 	if (method === 'GET') {
 		const formTitle = context.getNodeParameter('formTitle', '') as string;
-		const formDescription = context.getNodeParameter('formDescription', '') as string;
-		const responseMode = context.getNodeParameter('responseMode', '') as string;
+		const formDescription = sanitizeHtml(context.getNodeParameter('formDescription', '') as string);
+		let responseMode = context.getNodeParameter('responseMode', '') as string;
 
 		let formSubmittedText;
 		let redirectUrl;
@@ -402,15 +536,14 @@ export async function formWebhook(
 			buttonLabel = options.buttonLabel;
 		}
 
-		if (!redirectUrl && node.type !== FORM_TRIGGER_NODE_TYPE) {
-			const connectedNodes = context.getChildNodes(context.getNode().name);
-			const hasNextPage = connectedNodes.some(
-				(n) => n.type === FORM_NODE_TYPE || n.type === WAIT_NODE_TYPE,
-			);
+		const connectedNodes = context.getChildNodes(context.getNode().name, {
+			includeNodeParameters: true,
+		});
+		const hasNextPage = isFormConnected(connectedNodes);
 
-			if (hasNextPage) {
-				redirectUrl = context.evaluateExpression('{{ $execution.resumeFormUrl }}') as string;
-			}
+		if (hasNextPage) {
+			redirectUrl = undefined;
+			responseMode = 'responseNode';
 		}
 
 		renderForm({
@@ -425,6 +558,7 @@ export async function formWebhook(
 			redirectUrl,
 			appendAttribution,
 			buttonLabel,
+			customCss: options.customCss,
 		});
 
 		return {

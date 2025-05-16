@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import { GlobalConfig } from '@n8n/config';
+import { LICENSE_FEATURES } from '@n8n/constants';
+import { ExecutionRepository, SettingsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { Flags } from '@oclif/core';
 import glob from 'fast-glob';
@@ -14,20 +15,18 @@ import { pipeline } from 'stream/promises';
 import { ActiveExecutions } from '@/active-executions';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import config from '@/config';
-import { EDITOR_UI_DIST_DIR, LICENSE_FEATURES } from '@/constants';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import { SettingsRepository } from '@/databases/repositories/settings.repository';
+import { EDITOR_UI_DIST_DIR } from '@/constants';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { EventService } from '@/events/event.service';
 import { ExecutionService } from '@/executions/execution.service';
-import { License } from '@/license';
+import { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { PubSubHandler } from '@/scaling/pubsub/pubsub-handler';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { Server } from '@/server';
-import { OrchestrationService } from '@/services/orchestration.service';
 import { OwnershipService } from '@/services/ownership.service';
-import { PruningService } from '@/services/pruning/pruning.service';
+import { ExecutionsPruningService } from '@/services/pruning/executions-pruning.service';
 import { UrlService } from '@/services/url.service';
 import { WaitTracker } from '@/wait-tracker';
 import { WorkflowRunner } from '@/workflow-runner';
@@ -69,11 +68,15 @@ export class Start extends BaseCommand {
 
 	override needsCommunityPackages = true;
 
+	override needsTaskRunner = true;
+
+	private getEditorUrl = () => Container.get(UrlService).getInstanceBaseUrl();
+
 	/**
 	 * Opens the UI in browser
 	 */
 	private openBrowser() {
-		const editorUrl = Container.get(UrlService).baseUrl;
+		const editorUrl = this.getEditorUrl();
 
 		open(editorUrl, { wait: true }).catch(() => {
 			this.logger.info(
@@ -96,12 +99,17 @@ export class Start extends BaseCommand {
 
 			Container.get(WaitTracker).stopTracking();
 
-			await this.externalHooks?.run('n8n.stop', []);
+			await this.externalHooks?.run('n8n.stop');
 
 			await this.activeWorkflowManager.removeAllTriggerAndPollerBasedWorkflows();
 
 			if (this.instanceSettings.isMultiMain) {
-				await Container.get(OrchestrationService).shutdown();
+				await Container.get(MultiMainSetup).shutdown();
+			}
+
+			if (config.getEnv('executions.mode') === 'queue') {
+				Container.get(Publisher).shutdown();
+				Container.get(Subscriber).shutdown();
 			}
 
 			Container.get(EventService).emit('instance-stopped');
@@ -192,18 +200,28 @@ export class Start extends BaseCommand {
 		await super.init();
 		this.activeWorkflowManager = Container.get(ActiveWorkflowManager);
 
-		this.instanceSettings.setMultiMainEnabled(
-			config.getEnv('executions.mode') === 'queue' && this.globalConfig.multiMainSetup.enabled,
-		);
+		const isMultiMainEnabled =
+			config.getEnv('executions.mode') === 'queue' && this.globalConfig.multiMainSetup.enabled;
+
+		this.instanceSettings.setMultiMainEnabled(isMultiMainEnabled);
+
+		/**
+		 * We temporarily license multi-main to allow it to set instance role,
+		 * which is needed by license init. Once the license is initialized,
+		 * the actual value will be used for the license check.
+		 */
+		if (isMultiMainEnabled) this.instanceSettings.setMultiMainLicensed(true);
+
+		if (config.getEnv('executions.mode') === 'regular') {
+			this.instanceSettings.markAsLeader();
+		} else {
+			await this.initOrchestration();
+		}
+
 		await this.initLicense();
 
-		await this.initOrchestration();
-		this.logger.debug('Orchestration init complete');
-
-		if (!this.globalConfig.license.autoRenewalEnabled && this.instanceSettings.isLeader) {
-			this.logger.warn(
-				'Automatic license renewal is disabled. The license will not renew automatically, and access to licensed features may be lost!',
-			);
+		if (isMultiMainEnabled && !this.license.isMultiMainLicensed()) {
+			throw new FeatureNotLicensedError(LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES);
 		}
 
 		Container.get(WaitTracker).init();
@@ -219,34 +237,20 @@ export class Start extends BaseCommand {
 		this.initWorkflowHistory();
 		this.logger.debug('Workflow history init complete');
 
+		if (!isMultiMainEnabled) {
+			await this.cleanupTestRunner();
+			this.logger.debug('Test runner cleanup complete');
+		}
+
 		if (!this.globalConfig.endpoints.disableUi) {
 			await this.generateStaticAssets();
 		}
 
-		const { taskRunners: taskRunnerConfig } = this.globalConfig;
-		if (taskRunnerConfig.enabled) {
-			const { TaskRunnerModule } = await import('@/task-runners/task-runner-module');
-			const taskRunnerModule = Container.get(TaskRunnerModule);
-			await taskRunnerModule.start();
-		}
+		await this.loadModules();
 	}
 
 	async initOrchestration() {
-		if (config.getEnv('executions.mode') === 'regular') {
-			this.instanceSettings.markAsLeader();
-			return;
-		}
-
-		if (
-			Container.get(GlobalConfig).multiMainSetup.enabled &&
-			!Container.get(License).isMultipleMainInstancesLicensed()
-		) {
-			throw new FeatureNotLicensedError(LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES);
-		}
-
-		const orchestrationService = Container.get(OrchestrationService);
-
-		await orchestrationService.init();
+		Container.get(Publisher);
 
 		Container.get(PubSubHandler).init();
 
@@ -254,19 +258,11 @@ export class Start extends BaseCommand {
 		await subscriber.subscribe('n8n.commands');
 		await subscriber.subscribe('n8n.worker-response');
 
-		this.logger.scoped(['scaling', 'pubsub']).debug('Pubsub setup completed');
-
-		if (this.instanceSettings.isSingleMain) return;
-
-		orchestrationService.multiMainSetup
-			.on('leader-stepdown', async () => {
-				await this.license.reinit(); // to disable renewal
-				await this.activeWorkflowManager.removeAllTriggerAndPollerBasedWorkflows();
-			})
-			.on('leader-takeover', async () => {
-				await this.license.reinit(); // to enable renewal
-				await this.activeWorkflowManager.addAllTriggerAndPollerBasedWorkflows();
-			});
+		if (this.instanceSettings.isMultiMain) {
+			await Container.get(MultiMainSetup).init();
+		} else {
+			this.instanceSettings.markAsLeader();
+		}
 	}
 
 	async run() {
@@ -318,7 +314,7 @@ export class Start extends BaseCommand {
 
 		await this.server.start();
 
-		Container.get(PruningService).init();
+		Container.get(ExecutionsPruningService).init();
 
 		if (config.getEnv('executions.mode') === 'regular') {
 			await this.runEnqueuedExecutions();
@@ -327,7 +323,8 @@ export class Start extends BaseCommand {
 		// Start to get active workflows and run their triggers
 		await this.activeWorkflowManager.init();
 
-		const editorUrl = Container.get(UrlService).baseUrl;
+		const editorUrl = this.getEditorUrl();
+
 		this.log(`\nEditor is now accessible via:\n${editorUrl}`);
 
 		// Allow to open n8n editor by pressing "o"

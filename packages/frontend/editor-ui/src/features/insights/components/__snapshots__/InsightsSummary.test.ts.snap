@@ -1,0 +1,202 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`InsightsSummary > should render the summary correctly 1`] = `
+"<div class="insights">
+  <ul data-test-id="insights-summary-tabs"></ul>
+</div>"
+`;
+
+exports[`InsightsSummary > should render the summary correctly 2`] = `
+"<div class="insights">
+  <ul data-test-id="insights-summary-tabs">
+    <li data-test-id="insights-summary-tab-total"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Prod. executions</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 7 days</small><span><em>525 <i></i></em><small class="positive"><span class="n8n-text compact size-medium regular n8n-icon icon positive icon positive n8n-icon icon positive icon positive"><svg class="svg-inline--fa fa-caret-up fa-w-10 medium" aria-hidden="true" focusable="false" data-prefix="fas" data-icon="caret-up" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><path class="" fill="currentColor" d="M288.662 352H31.338c-17.818 0-26.741-21.543-14.142-34.142l128.662-128.662c7.81-7.81 20.474-7.81 28.284 0l128.662 128.662c12.6 12.599 3.676 34.142-14.142 34.142z"></path></svg></span><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 85%</span>
+        <!--teleport start-->
+        <!--teleport end--></small></span>
+      </a>
+      <!--teleport start-->
+      <!--teleport end-->
+    </li>
+    <li data-test-id="insights-summary-tab-failed"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Failed prod. executions</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 7 days</small><span><em>14 <i></i></em><small class="negative"><span class="n8n-text compact size-medium regular n8n-icon icon negative icon negative n8n-icon icon negative icon negative"><svg class="svg-inline--fa fa-caret-up fa-w-10 medium" aria-hidden="true" focusable="false" data-prefix="fas" data-icon="caret-up" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><path class="" fill="currentColor" d="M288.662 352H31.338c-17.818 0-26.741-21.543-14.142-34.142l128.662-128.662c7.81-7.81 20.474-7.81 28.284 0l128.662 128.662c12.6 12.599 3.676 34.142-14.142 34.142z"></path></svg></span><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 3%</span>
+        <!--teleport start-->
+        <!--teleport end--></small></span>
+      </a>
+      <!--teleport start-->
+      <!--teleport end-->
+    </li>
+    <li data-test-id="insights-summary-tab-failureRate"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Failure rate</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 7 days</small><span><em>1.9 <i>%</i></em><small class="positive"><span class="n8n-text compact size-medium regular n8n-icon icon positive icon positive n8n-icon icon positive icon positive"><svg class="svg-inline--fa fa-caret-down fa-w-10 medium" aria-hidden="true" focusable="false" data-prefix="fas" data-icon="caret-down" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><path class="" fill="currentColor" d="M31.3 192h257.3c17.8 0 26.7 21.5 14.1 34.1L174.1 354.8c-7.8 7.8-20.5 7.8-28.3 0L17.2 226.1C4.6 213.5 13.5 192 31.3 192z"></path></svg></span><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 0.8pp</span>
+        <!--teleport start-->
+        <!--teleport end--></small></span>
+      </a>
+      <!--teleport start-->
+      <!--teleport end-->
+    </li>
+    <li data-test-id="insights-summary-tab-timeSaved"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Time saved</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 7 days</small><span><em>55.56 <i>h</i></em><small class="negative"><span class="n8n-text compact size-medium regular n8n-icon icon negative icon negative n8n-icon icon negative icon negative"><svg class="svg-inline--fa fa-caret-down fa-w-10 medium" aria-hidden="true" focusable="false" data-prefix="fas" data-icon="caret-down" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><path class="" fill="currentColor" d="M31.3 192h257.3c17.8 0 26.7 21.5 14.1 34.1L174.1 354.8c-7.8 7.8-20.5 7.8-28.3 0L17.2 226.1C4.6 213.5 13.5 192 31.3 192z"></path></svg></span><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 5.16h</span>
+        <!--teleport start-->
+        <!--teleport end--></small></span>
+      </a>
+      <!--teleport start-->
+      <!--teleport end-->
+    </li>
+    <li data-test-id="insights-summary-tab-averageRunTime"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Run time (avg.)</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 7 days</small><span><em>2.5 <i>s</i></em><small class="neutral"><span class="n8n-text compact size-medium regular n8n-icon icon neutral icon neutral n8n-icon icon neutral icon neutral"><svg class="svg-inline--fa fa-caret-down fa-w-10 medium" aria-hidden="true" focusable="false" data-prefix="fas" data-icon="caret-down" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><path class="" fill="currentColor" d="M31.3 192h257.3c17.8 0 26.7 21.5 14.1 34.1L174.1 354.8c-7.8 7.8-20.5 7.8-28.3 0L17.2 226.1C4.6 213.5 13.5 192 31.3 192z"></path></svg></span><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 0.5s</span>
+        <!--teleport start-->
+        <!--teleport end--></small></span>
+      </a>
+      <!--teleport start-->
+      <!--teleport end-->
+    </li>
+  </ul>
+</div>"
+`;
+
+exports[`InsightsSummary > should render the summary correctly 3`] = `
+"<div class="insights">
+  <ul data-test-id="insights-summary-tabs">
+    <li data-test-id="insights-summary-tab-total"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Prod. executions</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 7 days</small><span><em>525 <i></i></em><small class="positive"><span class="n8n-text compact size-medium regular n8n-icon icon positive icon positive n8n-icon icon positive icon positive"><svg class="svg-inline--fa fa-caret-up fa-w-10 medium" aria-hidden="true" focusable="false" data-prefix="fas" data-icon="caret-up" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><path class="" fill="currentColor" d="M288.662 352H31.338c-17.818 0-26.741-21.543-14.142-34.142l128.662-128.662c7.81-7.81 20.474-7.81 28.284 0l128.662 128.662c12.6 12.599 3.676 34.142-14.142 34.142z"></path></svg></span><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 85%</span>
+        <!--teleport start-->
+        <!--teleport end--></small></span>
+      </a>
+      <!--teleport start-->
+      <!--teleport end-->
+    </li>
+    <li data-test-id="insights-summary-tab-failed"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Failed prod. executions</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 7 days</small><span><em>14 <i></i></em><small class="negative"><span class="n8n-text compact size-medium regular n8n-icon icon negative icon negative n8n-icon icon negative icon negative"><svg class="svg-inline--fa fa-caret-up fa-w-10 medium" aria-hidden="true" focusable="false" data-prefix="fas" data-icon="caret-up" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><path class="" fill="currentColor" d="M288.662 352H31.338c-17.818 0-26.741-21.543-14.142-34.142l128.662-128.662c7.81-7.81 20.474-7.81 28.284 0l128.662 128.662c12.6 12.599 3.676 34.142-14.142 34.142z"></path></svg></span><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 3%</span>
+        <!--teleport start-->
+        <!--teleport end--></small></span>
+      </a>
+      <!--teleport start-->
+      <!--teleport end-->
+    </li>
+    <li data-test-id="insights-summary-tab-failureRate"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Failure rate</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 7 days</small><span><em>1.9 <i>%</i></em><small class="positive"><span class="n8n-text compact size-medium regular n8n-icon icon positive icon positive n8n-icon icon positive icon positive"><svg class="svg-inline--fa fa-caret-down fa-w-10 medium" aria-hidden="true" focusable="false" data-prefix="fas" data-icon="caret-down" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><path class="" fill="currentColor" d="M31.3 192h257.3c17.8 0 26.7 21.5 14.1 34.1L174.1 354.8c-7.8 7.8-20.5 7.8-28.3 0L17.2 226.1C4.6 213.5 13.5 192 31.3 192z"></path></svg></span><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 0.8pp</span>
+        <!--teleport start-->
+        <!--teleport end--></small></span>
+      </a>
+      <!--teleport start-->
+      <!--teleport end-->
+    </li>
+    <li data-test-id="insights-summary-tab-timeSaved"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Time saved</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 7 days</small><span class="empty"><em>--</em><small><span class="n8n-text compact size-medium regular n8n-icon icon el-tooltip__trigger el-tooltip__trigger icon el-tooltip__trigger el-tooltip__trigger n8n-icon icon el-tooltip__trigger el-tooltip__trigger icon el-tooltip__trigger el-tooltip__trigger"><svg class="svg-inline--fa fa-info-circle fa-w-16 medium" aria-hidden="true" focusable="false" data-prefix="fas" data-icon="info-circle" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path class="" fill="currentColor" d="M256 8C119.043 8 8 119.083 8 256c0 136.997 111.043 248 248 248s248-111.003 248-248C504 119.083 392.957 8 256 8zm0 110c23.196 0 42 18.804 42 42s-18.804 42-42 42-42-18.804-42-42 18.804-42 42-42zm56 254c0 6.627-5.373 12-12 12h-88c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h12v-64h-12c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h64c6.627 0 12 5.373 12 12v100h12c6.627 0 12 5.373 12 12v24z"></path></svg></span>
+        <!--teleport start-->
+        <!--teleport end--></small></span>
+      </a>
+      <!--teleport start-->
+      <!--teleport end-->
+    </li>
+    <li data-test-id="insights-summary-tab-averageRunTime"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Run time (avg.)</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 7 days</small><span><em>2.5 <i>s</i></em><small class="neutral"><span class="n8n-text compact size-medium regular n8n-icon icon neutral icon neutral n8n-icon icon neutral icon neutral"><svg class="svg-inline--fa fa-caret-down fa-w-10 medium" aria-hidden="true" focusable="false" data-prefix="fas" data-icon="caret-down" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><path class="" fill="currentColor" d="M31.3 192h257.3c17.8 0 26.7 21.5 14.1 34.1L174.1 354.8c-7.8 7.8-20.5 7.8-28.3 0L17.2 226.1C4.6 213.5 13.5 192 31.3 192z"></path></svg></span><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 0.5s</span>
+        <!--teleport start-->
+        <!--teleport end--></small></span>
+      </a>
+      <!--teleport start-->
+      <!--teleport end-->
+    </li>
+  </ul>
+</div>"
+`;
+
+exports[`InsightsSummary > should render the summary correctly 4`] = `
+"<div class="insights">
+  <ul data-test-id="insights-summary-tabs">
+    <li data-test-id="insights-summary-tab-total"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Prod. executions</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 7 days</small><span><em>525 <i></i></em><small class="negative"><span class="n8n-text compact size-medium regular n8n-icon icon negative icon negative n8n-icon icon negative icon negative"><svg class="svg-inline--fa fa-caret-down fa-w-10 medium" aria-hidden="true" focusable="false" data-prefix="fas" data-icon="caret-down" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><path class="" fill="currentColor" d="M31.3 192h257.3c17.8 0 26.7 21.5 14.1 34.1L174.1 354.8c-7.8 7.8-20.5 7.8-28.3 0L17.2 226.1C4.6 213.5 13.5 192 31.3 192z"></path></svg></span><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 2%</span>
+        <!--teleport start-->
+        <!--teleport end--></small></span>
+      </a>
+      <!--teleport start-->
+      <!--teleport end-->
+    </li>
+    <li data-test-id="insights-summary-tab-failed"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Failed prod. executions</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 7 days</small><span><em>14 <i></i></em><small class="positive"><span class="n8n-text compact size-medium regular n8n-icon icon positive icon positive n8n-icon icon positive icon positive"><svg class="svg-inline--fa fa-caret-down fa-w-10 medium" aria-hidden="true" focusable="false" data-prefix="fas" data-icon="caret-down" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><path class="" fill="currentColor" d="M31.3 192h257.3c17.8 0 26.7 21.5 14.1 34.1L174.1 354.8c-7.8 7.8-20.5 7.8-28.3 0L17.2 226.1C4.6 213.5 13.5 192 31.3 192z"></path></svg></span><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 3%</span>
+        <!--teleport start-->
+        <!--teleport end--></small></span>
+      </a>
+      <!--teleport start-->
+      <!--teleport end-->
+    </li>
+    <li data-test-id="insights-summary-tab-failureRate"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Failure rate</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 7 days</small><span><em>1.9 <i>%</i></em><small class="negative"><span class="n8n-text compact size-medium regular n8n-icon icon negative icon negative n8n-icon icon negative icon negative"><svg class="svg-inline--fa fa-caret-up fa-w-10 medium" aria-hidden="true" focusable="false" data-prefix="fas" data-icon="caret-up" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><path class="" fill="currentColor" d="M288.662 352H31.338c-17.818 0-26.741-21.543-14.142-34.142l128.662-128.662c7.81-7.81 20.474-7.81 28.284 0l128.662 128.662c12.6 12.599 3.676 34.142-14.142 34.142z"></path></svg></span><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 0.8pp</span>
+        <!--teleport start-->
+        <!--teleport end--></small></span>
+      </a>
+      <!--teleport start-->
+      <!--teleport end-->
+    </li>
+    <li data-test-id="insights-summary-tab-timeSaved"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Time saved</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 7 days</small><span><em>55.56 <i>h</i></em><small class="neutral"><span class="n8n-text compact size-medium regular n8n-icon icon neutral icon neutral n8n-icon icon neutral icon neutral"><svg class="svg-inline--fa fa-caret-right fa-w-6 medium" aria-hidden="true" focusable="false" data-prefix="fas" data-icon="caret-right" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 512"><path class="" fill="currentColor" d="M0 384.662V127.338c0-17.818 21.543-26.741 34.142-14.142l128.662 128.662c7.81 7.81 7.81 20.474 0 28.284L34.142 398.804C21.543 411.404 0 402.48 0 384.662z"></path></svg></span><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 0h</span>
+        <!--teleport start-->
+        <!--teleport end--></small></span>
+      </a>
+      <!--teleport start-->
+      <!--teleport end-->
+    </li>
+    <li data-test-id="insights-summary-tab-averageRunTime"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Run time (avg.)</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 7 days</small><span><em>2.5 <i>s</i></em><small class="neutral"><span class="n8n-text compact size-medium regular n8n-icon icon neutral icon neutral n8n-icon icon neutral icon neutral"><svg class="svg-inline--fa fa-caret-up fa-w-10 medium" aria-hidden="true" focusable="false" data-prefix="fas" data-icon="caret-up" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><path class="" fill="currentColor" d="M288.662 352H31.338c-17.818 0-26.741-21.543-14.142-34.142l128.662-128.662c7.81-7.81 20.474-7.81 28.284 0l128.662 128.662c12.6 12.599 3.676 34.142-14.142 34.142z"></path></svg></span><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 0.5s</span>
+        <!--teleport start-->
+        <!--teleport end--></small></span>
+      </a>
+      <!--teleport start-->
+      <!--teleport end-->
+    </li>
+  </ul>
+</div>"
+`;
+
+exports[`InsightsSummary > should render the summary correctly 5`] = `
+"<div class="insights">
+  <ul data-test-id="insights-summary-tabs">
+    <li data-test-id="insights-summary-tab-total"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Prod. executions</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 7 days</small><span><em>525 <i></i></em><!--v-if--></span></a>
+      <!--teleport start-->
+      <!--teleport end-->
+    </li>
+    <li data-test-id="insights-summary-tab-failed"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Failed prod. executions</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 7 days</small><span><em>14 <i></i></em><!--v-if--></span></a>
+      <!--teleport start-->
+      <!--teleport end-->
+    </li>
+    <li data-test-id="insights-summary-tab-failureRate"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Failure rate</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 7 days</small><span><em>1.9 <i>%</i></em><!--v-if--></span></a>
+      <!--teleport start-->
+      <!--teleport end-->
+    </li>
+    <li data-test-id="insights-summary-tab-timeSaved"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Time saved</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 7 days</small><span><em>55.56 <i>h</i></em><!--v-if--></span></a>
+      <!--teleport start-->
+      <!--teleport end-->
+    </li>
+    <li data-test-id="insights-summary-tab-averageRunTime"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Run time (avg.)</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 7 days</small><span><em>2.5 <i>s</i></em><!--v-if--></span></a>
+      <!--teleport start-->
+      <!--teleport end-->
+    </li>
+  </ul>
+</div>"
+`;
+
+exports[`InsightsSummary > should render the summary correctly 6`] = `
+"<div class="insights">
+  <ul data-test-id="insights-summary-tabs">
+    <li data-test-id="insights-summary-tab-total"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Prod. executions</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 7 days</small><span><em>0 <i></i></em><small class="neutral"><span class="n8n-text compact size-medium regular n8n-icon icon neutral icon neutral n8n-icon icon neutral icon neutral"><svg class="svg-inline--fa fa-caret-right fa-w-6 medium" aria-hidden="true" focusable="false" data-prefix="fas" data-icon="caret-right" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 512"><path class="" fill="currentColor" d="M0 384.662V127.338c0-17.818 21.543-26.741 34.142-14.142l128.662 128.662c7.81 7.81 7.81 20.474 0 28.284L34.142 398.804C21.543 411.404 0 402.48 0 384.662z"></path></svg></span><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 0%</span>
+        <!--teleport start-->
+        <!--teleport end--></small></span>
+      </a>
+      <!--teleport start-->
+      <!--teleport end-->
+    </li>
+    <li data-test-id="insights-summary-tab-failed"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Failed prod. executions</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 7 days</small><span><em>0 <i></i></em><small class="neutral"><span class="n8n-text compact size-medium regular n8n-icon icon neutral icon neutral n8n-icon icon neutral icon neutral"><svg class="svg-inline--fa fa-caret-right fa-w-6 medium" aria-hidden="true" focusable="false" data-prefix="fas" data-icon="caret-right" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 512"><path class="" fill="currentColor" d="M0 384.662V127.338c0-17.818 21.543-26.741 34.142-14.142l128.662 128.662c7.81 7.81 7.81 20.474 0 28.284L34.142 398.804C21.543 411.404 0 402.48 0 384.662z"></path></svg></span><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 0%</span>
+        <!--teleport start-->
+        <!--teleport end--></small></span>
+      </a>
+      <!--teleport start-->
+      <!--teleport end-->
+    </li>
+    <li data-test-id="insights-summary-tab-failureRate"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Failure rate</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 7 days</small><span><em>0 <i>%</i></em><small class="neutral"><span class="n8n-text compact size-medium regular n8n-icon icon neutral icon neutral n8n-icon icon neutral icon neutral"><svg class="svg-inline--fa fa-caret-right fa-w-6 medium" aria-hidden="true" focusable="false" data-prefix="fas" data-icon="caret-right" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 512"><path class="" fill="currentColor" d="M0 384.662V127.338c0-17.818 21.543-26.741 34.142-14.142l128.662 128.662c7.81 7.81 7.81 20.474 0 28.284L34.142 398.804C21.543 411.404 0 402.48 0 384.662z"></path></svg></span><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 0pp</span>
+        <!--teleport start-->
+        <!--teleport end--></small></span>
+      </a>
+      <!--teleport start-->
+      <!--teleport end-->
+    </li>
+    <li data-test-id="insights-summary-tab-timeSaved"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Time saved</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 7 days</small><span class="empty"><em>--</em><small><span class="n8n-text compact size-medium regular n8n-icon icon el-tooltip__trigger el-tooltip__trigger icon el-tooltip__trigger el-tooltip__trigger n8n-icon icon el-tooltip__trigger el-tooltip__trigger icon el-tooltip__trigger el-tooltip__trigger"><svg class="svg-inline--fa fa-info-circle fa-w-16 medium" aria-hidden="true" focusable="false" data-prefix="fas" data-icon="info-circle" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path class="" fill="currentColor" d="M256 8C119.043 8 8 119.083 8 256c0 136.997 111.043 248 248 248s248-111.003 248-248C504 119.083 392.957 8 256 8zm0 110c23.196 0 42 18.804 42 42s-18.804 42-42 42-42-18.804-42-42 18.804-42 42-42zm56 254c0 6.627-5.373 12-12 12h-88c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h12v-64h-12c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h64c6.627 0 12 5.373 12 12v100h12c6.627 0 12 5.373 12 12v24z"></path></svg></span>
+        <!--teleport start-->
+        <!--teleport end--></small></span>
+      </a>
+      <!--teleport start-->
+      <!--teleport end-->
+    </li>
+    <li data-test-id="insights-summary-tab-averageRunTime"><a to="[object Object]" exact-active-class="activeTab" class="el-tooltip__trigger"><strong><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> Run time (avg.)</span><!--teleport start--><!--teleport end--></strong><small class="days">Last 7 days</small><span><em>0 <i>s</i></em><small class="neutral"><span class="n8n-text compact size-medium regular n8n-icon icon neutral icon neutral n8n-icon icon neutral icon neutral"><svg class="svg-inline--fa fa-caret-right fa-w-6 medium" aria-hidden="true" focusable="false" data-prefix="fas" data-icon="caret-right" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 512"><path class="" fill="currentColor" d="M0 384.662V127.338c0-17.818 21.543-26.741 34.142-14.142l128.662 128.662c7.81 7.81 7.81 20.474 0 28.284L34.142 398.804C21.543 411.404 0 402.48 0 384.662z"></path></svg></span><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"> 0s</span>
+        <!--teleport start-->
+        <!--teleport end--></small></span>
+      </a>
+      <!--teleport start-->
+      <!--teleport end-->
+    </li>
+  </ul>
+</div>"
+`;

@@ -95,3 +95,13 @@ export const AI_TRANSFORM_JS_CODE = 'jsCode';
  * in `cli` package.
  */
 export const TRIMMED_TASK_DATA_CONNECTIONS_KEY = '__isTrimmedManualExecutionDataItem';
+
+export const OPEN_AI_API_CREDENTIAL_TYPE = 'openAiApi';
+export const FREE_AI_CREDITS_ERROR_TYPE = 'free_ai_credits_request_error';
+export const FREE_AI_CREDITS_USED_ALL_CREDITS_ERROR_CODE = 400;
+
+export const FROM_AI_AUTO_GENERATED_MARKER = '/*n8n-auto-generated-fromAI-override*/';
+
+export const PROJECT_ROOT = '0';
+
+export const WAITING_FORMS_EXECUTION_STATUS = 'n8n-execution-status';

@@ -1,10 +1,9 @@
 import merge from 'lodash/merge';
-import {
-	NodeExecutionOutput,
-	type IExecuteFunctions,
-	type INodeExecutionData,
-	type INodeProperties,
-	type IPairedItemData,
+import type {
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeProperties,
+	IPairedItemData,
 } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
@@ -82,15 +81,10 @@ export async function execute(
 	} else {
 		numEntries = Math.min(...inputsData.map((input) => input.length), preferred.length);
 		if (numEntries === 0) {
-			return new NodeExecutionOutput(
-				[returnData],
-				[
-					{
-						message:
-							'Consider enabling "Include Any Unpaired Items" in options or check your inputs',
-					},
-				],
-			);
+			this.addExecutionHints({
+				message: 'Consider enabling "Include Any Unpaired Items" in options or check your inputs',
+			});
+			return [returnData];
 		}
 	}
 

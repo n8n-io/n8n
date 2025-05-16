@@ -1,0 +1,67 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [120, 700],
+			"id": "0e76b314-4994-4141-975f-9614c6094c80",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"operation": "get",
+				"userId": {
+					"__rl": true,
+					"value": "112507770188715252026",
+					"mode": "list",
+					"cachedResultName": "NewOne22 User22"
+				}
+			},
+			"type": "n8n-nodes-base.gSuiteAdmin",
+			"typeVersion": 1,
+			"position": [120, 1100],
+			"id": "b39d3a72-6e81-4219-82eb-f39d99eace16",
+			"name": "Get User",
+			"credentials": {
+				"gSuiteAdminOAuth2Api": {
+					"id": "OXfPMaggXFJ0RLkw",
+					"name": "Google Workspace Admin account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Get User",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Get User": [
+			{
+				"json": {
+					"kind": "admin#directory#user",
+					"id": "112507770188715252026",
+					"primaryEmail": "new@example.com",
+					"name": {
+						"givenName": "New One",
+						"familyName": "User",
+						"fullName": "New One User"
+					},
+					"isAdmin": false,
+					"lastLoginTime": "1970-01-01T00:00:00.000Z",
+					"creationTime": "2024-12-20T20:48:53.000Z",
+					"suspended": true
+				}
+			}
+		]
+	}
+}

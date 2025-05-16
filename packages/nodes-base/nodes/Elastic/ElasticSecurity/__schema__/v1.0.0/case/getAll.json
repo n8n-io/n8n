@@ -1,0 +1,95 @@
+{
+    "type": "object",
+    "properties": {
+        "assignees": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "uid": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "category": {
+            "type": "null"
+        },
+        "connector": {
+            "type": "object",
+            "properties": {
+                "fields": {
+                    "type": "null"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "created_at": {
+            "type": "string"
+        },
+        "created_by": {
+            "type": "object",
+            "properties": {
+                "profile_uid": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "description": {
+            "type": "string"
+        },
+        "external_service": {
+            "type": "null"
+        },
+        "id": {
+            "type": "string"
+        },
+        "owner": {
+            "type": "string"
+        },
+        "settings": {
+            "type": "object",
+            "properties": {
+                "syncAlerts": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "severity": {
+            "type": "string"
+        },
+        "status": {
+            "type": "string"
+        },
+        "tags": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "title": {
+            "type": "string"
+        },
+        "totalAlerts": {
+            "type": "integer"
+        },
+        "totalComment": {
+            "type": "integer"
+        },
+        "version": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

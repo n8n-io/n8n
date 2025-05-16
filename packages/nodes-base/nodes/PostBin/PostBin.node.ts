@@ -1,5 +1,5 @@
 import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { binFields, binOperations } from './BinDescription';
 import { requestFields, requestOperations } from './RequestDescription';
@@ -16,11 +16,12 @@ export class PostBin implements INodeType {
 		defaults: {
 			name: 'PostBin',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [],
 		requestDefaults: {
-			baseURL: 'https://www.toptal.com',
+			baseURL: 'https://www.postb.in',
 		},
 		properties: [
 			{

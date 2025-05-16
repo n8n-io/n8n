@@ -41,7 +41,7 @@ describe('Editors', () => {
 			});
 			ndv.actions.close();
 
-			workflowPage.actions.openNode('When clicking ‘Test workflow’');
+			workflowPage.actions.openNode('When clicking ‘Execute workflow’');
 			ndv.actions.setPinnedData([{ table: 'test_table' }]);
 			ndv.actions.close();
 
@@ -49,7 +49,8 @@ describe('Editors', () => {
 			ndv.getters
 				.sqlEditorContainer()
 				.find('.cm-content')
-				.type('SELECT * FROM {{ $json.table }}', { parseSpecialCharSequences: false });
+				// }} is inserted automatically by bracket matching
+				.type('SELECT * FROM {{ $json.table', { parseSpecialCharSequences: false });
 			workflowPage.getters
 				.inlineExpressionEditorOutput()
 				.should('have.text', 'SELECT * FROM test_table');
@@ -108,6 +109,40 @@ describe('Editors', () => {
 				.type('{esc}');
 			ndv.actions.close();
 			workflowPage.getters.isWorkflowSaved().should('not.be.true');
+		});
+
+		it('should allow switching between SQL editors in connected nodes', () => {
+			workflowPage.actions.addInitialNodeToCanvas('Postgres', {
+				action: 'Execute a SQL query',
+				keepNdvOpen: true,
+			});
+			ndv.getters
+				.sqlEditorContainer()
+				.click()
+				.find('.cm-content')
+				.paste('SELECT * FROM `firstTable`');
+			ndv.actions.close();
+
+			workflowPage.actions.addNodeToCanvas('Postgres', true, true, 'Execute a SQL query');
+			ndv.getters
+				.sqlEditorContainer()
+				.click()
+				.find('.cm-content')
+				.paste('SELECT * FROM `secondTable`');
+			ndv.actions.close();
+
+			workflowPage.actions.openNode('Postgres');
+			ndv.actions.clickFloatingNode('Postgres1');
+			ndv.getters
+				.sqlEditorContainer()
+				.find('.cm-content')
+				.should('have.text', 'SELECT * FROM `secondTable`');
+
+			ndv.actions.clickFloatingNode('Postgres');
+			ndv.getters
+				.sqlEditorContainer()
+				.find('.cm-content')
+				.should('have.text', 'SELECT * FROM `firstTable`');
 		});
 	});
 
@@ -171,6 +206,39 @@ describe('Editors', () => {
 				.type('{esc}');
 			ndv.actions.close();
 			workflowPage.getters.isWorkflowSaved().should('not.be.true');
+		});
+
+		it('should allow switching between HTML editors in connected nodes', () => {
+			workflowPage.actions.addInitialNodeToCanvas('HTML', {
+				action: 'Generate HTML template',
+				keepNdvOpen: true,
+			});
+			ndv.getters
+				.htmlEditorContainer()
+				.click()
+				.find('.cm-content')
+				.type('{selectall}')
+				.paste('<div>First</div>');
+			ndv.actions.close();
+
+			workflowPage.actions.addNodeToCanvas('HTML', true, true, 'Generate HTML template');
+			ndv.getters
+				.htmlEditorContainer()
+				.click()
+				.find('.cm-content')
+				.type('{selectall}')
+				.paste('<div>Second</div>');
+			ndv.actions.close();
+
+			workflowPage.actions.openNode('HTML');
+			ndv.actions.clickFloatingNode('HTML1');
+			ndv.getters
+				.htmlEditorContainer()
+				.find('.cm-content')
+				.should('have.text', '<div>Second</div>');
+
+			ndv.actions.clickFloatingNode('HTML');
+			ndv.getters.htmlEditorContainer().find('.cm-content').should('have.text', '<div>First</div>');
 		});
 	});
 });

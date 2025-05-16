@@ -1,28 +1,25 @@
-import { Container, Service } from '@n8n/di';
+import type { Variables } from '@n8n/db';
+import { generateNanoId, VariablesRepository } from '@n8n/db';
+import { Service } from '@n8n/di';
 
-import type { Variables } from '@/databases/entities/variables';
-import { VariablesRepository } from '@/databases/repositories/variables.repository';
-import { generateNanoId } from '@/databases/utils/generators';
 import { VariableCountLimitReachedError } from '@/errors/variable-count-limit-reached.error';
 import { VariableValidationError } from '@/errors/variable-validation.error';
 import { EventService } from '@/events/event.service';
+import { License } from '@/license';
 import { CacheService } from '@/services/cache/cache.service';
-
-import { canCreateNewVariable } from './environment-helpers';
 
 @Service()
 export class VariablesService {
 	constructor(
-		protected cacheService: CacheService,
-		protected variablesRepository: VariablesRepository,
+		private readonly cacheService: CacheService,
+		private readonly variablesRepository: VariablesRepository,
 		private readonly eventService: EventService,
+		private readonly license: License,
 	) {}
 
 	async getAllCached(state?: 'empty'): Promise<Variables[]> {
 		let variables = await this.cacheService.get('variables', {
-			async refreshFn() {
-				return await Container.get(VariablesService).findAll();
-			},
+			refreshFn: async () => await this.findAll(),
 		});
 
 		if (variables === undefined) {
@@ -77,7 +74,7 @@ export class VariablesService {
 	}
 
 	async create(variable: Omit<Variables, 'id'>): Promise<Variables> {
-		if (!canCreateNewVariable(await this.getCount())) {
+		if (!this.canCreateNewVariable(await this.getCount())) {
 			throw new VariableCountLimitReachedError('Variables limit reached');
 		}
 		this.validateVariable(variable);
@@ -99,5 +96,18 @@ export class VariablesService {
 		await this.variablesRepository.update(id, variable);
 		await this.updateCache();
 		return (await this.getCached(id))!;
+	}
+
+	private canCreateNewVariable(variableCount: number): boolean {
+		if (!this.license.isVariablesEnabled()) {
+			return false;
+		}
+		// This defaults to -1 which is what we want if we've enabled
+		// variables via the config
+		const limit = this.license.getVariablesLimit();
+		if (limit === -1) {
+			return true;
+		}
+		return limit > variableCount;
 	}
 }

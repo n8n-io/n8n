@@ -1,8 +1,7 @@
+import { UNKNOWN_ERROR_DESCRIPTION, UNKNOWN_ERROR_MESSAGE } from '@/Constants';
 import { NodeOperationError } from '@/errors';
 import { NodeApiError } from '@/errors/node-api.error';
 import type { INode, JsonObject } from '@/Interfaces';
-
-import { UNKNOWN_ERROR_DESCRIPTION, UNKNOWN_ERROR_MESSAGE } from '../src/Constants';
 
 const node: INode = {
 	id: '1',

@@ -1,0 +1,63 @@
+{
+    "type": "object",
+    "properties": {
+        "dealId": {
+            "type": "integer"
+        },
+        "isDeleted": {
+            "type": "boolean"
+        },
+        "portalId": {
+            "type": "integer"
+        },
+        "properties": {
+            "type": "object",
+            "properties": {
+                "dealname": {
+                    "type": "object",
+                    "properties": {
+                        "source": {
+                            "type": "string"
+                        },
+                        "sourceId": {
+                            "type": "string"
+                        },
+                        "timestamp": {
+                            "type": "integer"
+                        },
+                        "value": {
+                            "type": "string"
+                        },
+                        "versions": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "source": {
+                                        "type": "string"
+                                    },
+                                    "sourceId": {
+                                        "type": "string"
+                                    },
+                                    "timestamp": {
+                                        "type": "integer"
+                                    },
+                                    "updatedByUserId": {
+                                        "type": "integer"
+                                    },
+                                    "value": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "version": 3
+}

@@ -8,9 +8,12 @@ jest.mock('fs');
 const mockFs = mock<typeof fs>();
 fs.readFileSync = mockFs.readFileSync;
 
+const consoleWarnMock = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
 describe('GlobalConfig', () => {
 	beforeEach(() => {
 		Container.reset();
+		jest.clearAllMocks();
 	});
 
 	const originalEnv = process.env;
@@ -18,16 +21,18 @@ describe('GlobalConfig', () => {
 		process.env = originalEnv;
 	});
 
-	// deepCopy for diff to show plain objects
-	// eslint-disable-next-line n8n-local-rules/no-json-parse-json-stringify
-	const deepCopy = <T>(obj: T): T => JSON.parse(JSON.stringify(obj));
-
 	const defaultConfig: GlobalConfig = {
 		path: '/',
 		host: 'localhost',
 		port: 5678,
 		listen_address: '0.0.0.0',
 		protocol: 'http',
+		auth: {
+			cookie: {
+				samesite: 'lax',
+				secure: true,
+			},
+		},
 		database: {
 			logging: {
 				enabled: false,
@@ -107,15 +112,17 @@ describe('GlobalConfig', () => {
 				maxFileSizeInKB: 10240,
 			},
 		},
-		externalSecrets: {
-			preferGet: false,
-			updateInterval: 300,
+		externalHooks: {
+			files: [],
 		},
 		nodes: {
 			communityPackages: {
 				enabled: true,
 				registry: 'https://registry.npmjs.org',
 				reinstallMissing: false,
+				unverifiedEnabled: true,
+				verifiedEnabled: true,
+				preventLoading: false,
 			},
 			errorTriggerType: 'n8n-nodes-base.errorTrigger',
 			include: [],
@@ -135,22 +142,10 @@ describe('GlobalConfig', () => {
 			endpoint: 'https://api.n8n.io/api/versions/',
 			infoUrl: 'https://docs.n8n.io/hosting/installation/updating/',
 		},
-		externalStorage: {
-			s3: {
-				host: '',
-				bucket: {
-					name: '',
-					region: '',
-				},
-				credentials: {
-					accessKey: '',
-					accessSecret: '',
-				},
-			},
-		},
 		workflows: {
 			defaultName: 'My workflow',
 			callerPolicyDefaultOption: 'workflowsFromSameOwner',
+			activationBatchSize: 1,
 		},
 		endpoints: {
 			metrics: {
@@ -168,6 +163,7 @@ describe('GlobalConfig', () => {
 				includeApiStatusCodeLabel: false,
 				includeQueueMetrics: false,
 				queueMetricsInterval: 20,
+				activeWorkflowCountInterval: 60,
 			},
 			additionalNonUIRoutes: '',
 			disableProductionWebhooksOnMainProcess: false,
@@ -175,6 +171,8 @@ describe('GlobalConfig', () => {
 			form: 'form',
 			formTest: 'form-test',
 			formWaiting: 'form-waiting',
+			mcp: 'mcp',
+			mcpTest: 'mcp-test',
 			payloadSizeMax: 16,
 			formDataFileSizeMax: 200,
 			rest: 'rest',
@@ -209,6 +207,7 @@ describe('GlobalConfig', () => {
 					username: '',
 					clusterNodes: '',
 					tls: false,
+					dualStack: false,
 				},
 				gracefulShutdownTimeout: 30,
 				prefix: 'bull',
@@ -229,13 +228,15 @@ describe('GlobalConfig', () => {
 			maxPayload: 1024 * 1024 * 1024,
 			port: 5679,
 			maxOldSpaceSize: '',
-			maxConcurrency: 5,
-			taskTimeout: 60,
+			maxConcurrency: 10,
+			taskTimeout: 300,
 			heartbeatInterval: 30,
 		},
 		sentry: {
 			backendDsn: '',
 			frontendDsn: '',
+			environment: '',
+			deploymentName: '',
 		},
 		logging: {
 			level: 'info',
@@ -260,7 +261,7 @@ describe('GlobalConfig', () => {
 		license: {
 			serverUrl: 'https://license.n8n.io/v1',
 			autoRenewalEnabled: true,
-			autoRenewOffset: 60 * 60 * 72,
+			detachFloatingOnShutdown: true,
 			activationKey: '',
 			tenantId: 1,
 			cert: '',
@@ -269,6 +270,7 @@ describe('GlobalConfig', () => {
 			restrictFileAccessTo: '',
 			blockFileAccessToN8nFiles: true,
 			daysAbandonedWorkflow: 90,
+			contentSecurityPolicy: '{}',
 		},
 		executions: {
 			pruneData: true,
@@ -292,12 +294,22 @@ describe('GlobalConfig', () => {
 		aiAssistant: {
 			baseUrl: '',
 		},
+		tags: {
+			disabled: false,
+		},
+		partialExecutions: {
+			version: 2,
+		},
+		workflowHistory: {
+			enabled: true,
+			pruneTime: -1,
+		},
 	};
 
 	it('should use all default values when no env variables are defined', () => {
 		process.env = {};
 		const config = Container.get(GlobalConfig);
-		expect(deepCopy(config)).toEqual(defaultConfig);
+		expect(structuredClone(config)).toEqual(defaultConfig);
 		expect(mockFs.readFileSync).not.toHaveBeenCalled();
 	});
 
@@ -312,7 +324,7 @@ describe('GlobalConfig', () => {
 			N8N_TEMPLATES_ENABLED: '0',
 		};
 		const config = Container.get(GlobalConfig);
-		expect(deepCopy(config)).toEqual({
+		expect(structuredClone(config)).toEqual({
 			...defaultConfig,
 			database: {
 				logging: defaultConfig.database.logging,
@@ -353,7 +365,7 @@ describe('GlobalConfig', () => {
 		mockFs.readFileSync.calledWith(passwordFile, 'utf8').mockReturnValueOnce('password-from-file');
 
 		const config = Container.get(GlobalConfig);
-		expect(deepCopy(config)).toEqual({
+		expect(structuredClone(config)).toEqual({
 			...defaultConfig,
 			database: {
 				...defaultConfig.database,
@@ -364,5 +376,37 @@ describe('GlobalConfig', () => {
 			},
 		});
 		expect(mockFs.readFileSync).toHaveBeenCalled();
+	});
+
+	it('should handle invalid numbers', () => {
+		process.env = {
+			DB_LOGGING_MAX_EXECUTION_TIME: 'abcd',
+		};
+		const config = Container.get(GlobalConfig);
+		expect(config.database.logging.maxQueryExecutionTime).toEqual(0);
+		expect(consoleWarnMock).toHaveBeenCalledWith(
+			'Invalid number value for DB_LOGGING_MAX_EXECUTION_TIME: abcd',
+		);
+	});
+
+	describe('string unions', () => {
+		it('on invalid value, should warn and fall back to default value', () => {
+			process.env = {
+				N8N_RUNNERS_MODE: 'non-existing-mode',
+				N8N_RUNNERS_ENABLED: 'true',
+				DB_TYPE: 'postgresdb',
+			};
+
+			const globalConfig = Container.get(GlobalConfig);
+			expect(globalConfig.taskRunners.mode).toEqual('internal');
+			expect(consoleWarnMock).toHaveBeenCalledWith(
+				expect.stringContaining(
+					"Invalid value for N8N_RUNNERS_MODE - Invalid enum value. Expected 'internal' | 'external', received 'non-existing-mode'. Falling back to default value.",
+				),
+			);
+
+			expect(globalConfig.taskRunners.enabled).toEqual(true);
+			expect(globalConfig.database.type).toEqual('postgresdb');
+		});
 	});
 });

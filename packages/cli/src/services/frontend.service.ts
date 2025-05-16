@@ -1,22 +1,26 @@
 import type { FrontendSettings, ITelemetrySettings } from '@n8n/api-types';
-import { GlobalConfig, FrontendConfig, SecurityConfig } from '@n8n/config';
+import { LicenseState } from '@n8n/backend-common';
+import { GlobalConfig, SecurityConfig } from '@n8n/config';
+import { LICENSE_FEATURES } from '@n8n/constants';
 import { Container, Service } from '@n8n/di';
 import { createWriteStream } from 'fs';
 import { mkdir } from 'fs/promises';
 import uniq from 'lodash/uniq';
-import { InstanceSettings, Logger } from 'n8n-core';
+import { BinaryDataConfig, InstanceSettings, Logger } from 'n8n-core';
 import type { ICredentialType, INodeTypeBaseDescription } from 'n8n-workflow';
 import path from 'path';
 
 import config from '@/config';
-import { inE2ETests, LICENSE_FEATURES, N8N_VERSION } from '@/constants';
+import { inE2ETests, N8N_VERSION } from '@/constants';
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
-import { getVariablesLimit } from '@/environments.ee/variables/environment-helpers';
 import { getLdapLoginLabel } from '@/ldap.ee/helpers.ee';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { InsightsService } from '@/modules/insights/insights.service';
+import { ModulesConfig } from '@/modules/modules.config';
 import { isApiEnabled } from '@/public-api';
+import { PushConfig } from '@/push/push.config';
 import type { CommunityPackagesService } from '@/services/community-packages.service';
 import { getSamlLoginLabel } from '@/sso.ee/saml/saml-helpers';
 import { getCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
@@ -45,7 +49,11 @@ export class FrontendService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly urlService: UrlService,
 		private readonly securityConfig: SecurityConfig,
-		private readonly frontendConfig: FrontendConfig,
+		private readonly modulesConfig: ModulesConfig,
+		private readonly pushConfig: PushConfig,
+		private readonly binaryDataConfig: BinaryDataConfig,
+		private readonly insightsService: InsightsService,
+		private readonly licenseState: LicenseState,
 	) {
 		loadNodesAndCredentials.addPostProcessor(async () => await this.generateTypes());
 		void this.generateTypes();
@@ -87,6 +95,8 @@ export class FrontendService {
 			endpointForm: this.globalConfig.endpoints.form,
 			endpointFormTest: this.globalConfig.endpoints.formTest,
 			endpointFormWaiting: this.globalConfig.endpoints.formWaiting,
+			endpointMcp: this.globalConfig.endpoints.mcp,
+			endpointMcpTest: this.globalConfig.endpoints.mcpTest,
 			endpointWebhook: this.globalConfig.endpoints.webhook,
 			endpointWebhookTest: this.globalConfig.endpoints.webhookTest,
 			endpointWebhookWaiting: this.globalConfig.endpoints.webhookWaiting,
@@ -100,12 +110,12 @@ export class FrontendService {
 			timezone: this.globalConfig.generic.timezone,
 			urlBaseWebhook: this.urlService.getWebhookBaseUrl(),
 			urlBaseEditor: instanceBaseUrl,
-			binaryDataMode: config.getEnv('binaryDataManager.mode'),
+			binaryDataMode: this.binaryDataConfig.mode,
 			nodeJsVersion: process.version.replace(/^v/, ''),
 			versionCli: N8N_VERSION,
 			concurrency: config.getEnv('executions.concurrency.productionLimit'),
 			authCookie: {
-				secure: config.getEnv('secure_cookie'),
+				secure: this.globalConfig.auth.cookie.secure,
 			},
 			releaseChannel: this.globalConfig.generic.releaseChannel,
 			oauthCallbackUrls: {
@@ -154,7 +164,7 @@ export class FrontendService {
 					enabled: !this.globalConfig.publicApi.swaggerUiDisabled,
 				},
 			},
-			workflowTagsDisabled: config.getEnv('workflowTagsDisabled'),
+			workflowTagsDisabled: this.globalConfig.tags.disabled,
 			logLevel: this.globalConfig.logging.level,
 			hiringBannerEnabled: config.getEnv('hiringBanner.enabled'),
 			aiAssistant: {
@@ -165,8 +175,10 @@ export class FrontendService {
 				host: this.globalConfig.templates.host,
 			},
 			executionMode: config.getEnv('executions.mode'),
-			pushBackend: config.getEnv('push.backend'),
+			isMultiMain: this.instanceSettings.isMultiMain,
+			pushBackend: this.pushConfig.backend,
 			communityNodesEnabled: this.globalConfig.nodes.communityPackages.enabled,
+			unverifiedCommunityNodesEnabled: this.globalConfig.nodes.communityPackages.unverifiedEnabled,
 			deployment: {
 				type: config.getEnv('deployment.type'),
 			},
@@ -190,6 +202,7 @@ export class FrontendService {
 				workflowHistory: false,
 				workerView: false,
 				advancedPermissions: false,
+				apiKeyScopes: false,
 				projects: {
 					team: {
 						limit: 0,
@@ -206,9 +219,6 @@ export class FrontendService {
 			},
 			variables: {
 				limit: 0,
-			},
-			expressions: {
-				evaluator: config.getEnv('expression.evaluator'),
 			},
 			banners: {
 				dismissed: [],
@@ -232,8 +242,20 @@ export class FrontendService {
 			security: {
 				blockFileAccessToN8nFiles: this.securityConfig.blockFileAccessToN8nFiles,
 			},
-			betaFeatures: this.frontendConfig.betaFeatures,
 			easyAIWorkflowOnboarded: false,
+			partialExecution: this.globalConfig.partialExecutions,
+			folders: {
+				enabled: false,
+			},
+			insights: {
+				enabled: this.modulesConfig.modules.includes('insights'),
+				summary: true,
+				dashboard: false,
+				dateRanges: [],
+			},
+			logsView: {
+				enabled: false,
+			},
 		};
 	}
 
@@ -282,8 +304,8 @@ export class FrontendService {
 			this.settings.easyAIWorkflowOnboarded = false;
 		}
 
-		const isS3Selected = config.getEnv('binaryDataManager.mode') === 's3';
-		const isS3Available = config.getEnv('binaryDataManager.availableModes').includes('s3');
+		const isS3Selected = this.binaryDataConfig.mode === 's3';
+		const isS3Available = this.binaryDataConfig.availableModes.includes('s3');
 		const isS3Licensed = this.license.isBinaryDataS3Licensed();
 		const isAiAssistantEnabled = this.license.isAiAssistantEnabled();
 		const isAskAiEnabled = this.license.isAskAiEnabled();
@@ -302,13 +324,14 @@ export class FrontendService {
 			variables: this.license.isVariablesEnabled(),
 			sourceControl: this.license.isSourceControlLicensed(),
 			externalSecrets: this.license.isExternalSecretsEnabled(),
-			showNonProdBanner: this.license.isFeatureEnabled(LICENSE_FEATURES.SHOW_NON_PROD_BANNER),
+			showNonProdBanner: this.license.isLicensed(LICENSE_FEATURES.SHOW_NON_PROD_BANNER),
 			debugInEditor: this.license.isDebugInEditorLicensed(),
 			binaryDataS3: isS3Available && isS3Selected && isS3Licensed,
 			workflowHistory:
-				this.license.isWorkflowHistoryLicensed() && config.getEnv('workflowHistory.enabled'),
+				this.license.isWorkflowHistoryLicensed() && this.globalConfig.workflowHistory.enabled,
 			workerView: this.license.isWorkerViewLicensed(),
 			advancedPermissions: this.license.isAdvancedPermissionsLicensed(),
+			apiKeyScopes: this.license.isApiKeyScopesEnabled(),
 		});
 
 		if (this.license.isLdapEnabled()) {
@@ -326,10 +349,10 @@ export class FrontendService {
 		}
 
 		if (this.license.isVariablesEnabled()) {
-			this.settings.variables.limit = getVariablesLimit();
+			this.settings.variables.limit = this.license.getVariablesLimit();
 		}
 
-		if (this.license.isWorkflowHistoryLicensed() && config.getEnv('workflowHistory.enabled')) {
+		if (this.globalConfig.workflowHistory.enabled && this.license.isWorkflowHistoryLicensed()) {
 			Object.assign(this.settings.workflowHistory, {
 				pruneTime: getWorkflowHistoryPruneTime(),
 				licensePruneTime: getWorkflowHistoryLicensePruneTime(),
@@ -353,13 +376,24 @@ export class FrontendService {
 			this.settings.aiCredits.credits = this.license.getAiCredits();
 		}
 
+		Object.assign(this.settings.insights, {
+			enabled: this.modulesConfig.loadedModules.has('insights'),
+			summary: this.licenseState.isInsightsSummaryLicensed(),
+			dashboard: this.licenseState.isInsightsDashboardLicensed(),
+			dateRanges: this.insightsService.getAvailableDateRanges(),
+		});
+
 		this.settings.mfa.enabled = config.get('mfa.enabled');
 
 		this.settings.executionMode = config.getEnv('executions.mode');
 
-		this.settings.binaryDataMode = config.getEnv('binaryDataManager.mode');
+		this.settings.binaryDataMode = this.binaryDataConfig.mode;
 
 		this.settings.enterprise.projects.team.limit = this.license.getTeamProjectLimit();
+
+		this.settings.folders.enabled = this.license.isFoldersEnabled();
+
+		this.settings.logsView.enabled = config.get('logs_view.enabled');
 
 		return this.settings;
 	}

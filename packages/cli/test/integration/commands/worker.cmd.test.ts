@@ -16,9 +16,8 @@ import { Push } from '@/push';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { ScalingService } from '@/scaling/scaling.service';
-import { OrchestrationService } from '@/services/orchestration.service';
+import { TaskBrokerServer } from '@/task-runners/task-broker/task-broker-server';
 import { TaskRunnerProcess } from '@/task-runners/task-runner-process';
-import { TaskRunnerServer } from '@/task-runners/task-runner-server';
 import { Telemetry } from '@/telemetry';
 import { setupTestCommand } from '@test-integration/utils/test-command';
 
@@ -35,8 +34,7 @@ const license = mockInstance(License, { loadCertStr: async () => '' });
 const messageEventBus = mockInstance(MessageEventBus);
 const logStreamingEventRelay = mockInstance(LogStreamingEventRelay);
 const scalingService = mockInstance(ScalingService);
-const orchestrationService = mockInstance(OrchestrationService);
-const taskRunnerServer = mockInstance(TaskRunnerServer);
+const taskBrokerServer = mockInstance(TaskBrokerServer);
 const taskRunnerProcess = mockInstance(TaskRunnerProcess);
 mockInstance(Publisher);
 mockInstance(Subscriber);
@@ -58,9 +56,8 @@ test('worker initializes all its components', async () => {
 	expect(scalingService.setupQueue).toHaveBeenCalledTimes(1);
 	expect(scalingService.setupWorker).toHaveBeenCalledTimes(1);
 	expect(logStreamingEventRelay.init).toHaveBeenCalledTimes(1);
-	expect(orchestrationService.init).toHaveBeenCalledTimes(1);
 	expect(messageEventBus.send).toHaveBeenCalledTimes(1);
-	expect(taskRunnerServer.start).toHaveBeenCalledTimes(1);
+	expect(taskBrokerServer.start).toHaveBeenCalledTimes(1);
 	expect(taskRunnerProcess.start).toHaveBeenCalledTimes(1);
 
 	expect(config.getEnv('executions.mode')).toBe('queue');

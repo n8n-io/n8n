@@ -1,6 +1,14 @@
+import { isObject } from 'lodash';
 import set from 'lodash/set';
+import { DateTime, Duration, Interval } from 'luxon';
 import { getAdditionalKeys } from 'n8n-core';
-import { WorkflowDataProxy, Workflow, ObservableObject } from 'n8n-workflow';
+import {
+	WorkflowDataProxy,
+	Workflow,
+	ObservableObject,
+	Expression,
+	jsonStringify,
+} from 'n8n-workflow';
 import type {
 	CodeExecutionMode,
 	IWorkflowExecuteAdditionalData,
@@ -18,8 +26,7 @@ import type {
 	IWorkflowDataProxyData,
 } from 'n8n-workflow';
 import * as a from 'node:assert';
-import { inspect } from 'node:util';
-import { runInNewContext, type Context } from 'node:vm';
+import { type Context, createContext, runInContext } from 'node:vm';
 
 import type { MainConfig } from '@/config/main-config';
 import { UnsupportedFunctionError } from '@/js-task-runner/errors/unsupported-function.error';
@@ -97,12 +104,58 @@ export class JsTaskRunner extends TaskRunner {
 		const { jsRunnerConfig } = config;
 
 		const parseModuleAllowList = (moduleList: string) =>
-			moduleList === '*' ? null : new Set(moduleList.split(',').map((x) => x.trim()));
+			moduleList === '*'
+				? '*'
+				: new Set(
+						moduleList
+							.split(',')
+							.map((x) => x.trim())
+							.filter((x) => x !== ''),
+					);
+
+		const allowedBuiltInModules = parseModuleAllowList(jsRunnerConfig.allowedBuiltInModules ?? '');
+		const allowedExternalModules = parseModuleAllowList(
+			jsRunnerConfig.allowedExternalModules ?? '',
+		);
 
 		this.requireResolver = createRequireResolver({
-			allowedBuiltInModules: parseModuleAllowList(jsRunnerConfig.allowedBuiltInModules ?? ''),
-			allowedExternalModules: parseModuleAllowList(jsRunnerConfig.allowedExternalModules ?? ''),
+			allowedBuiltInModules,
+			allowedExternalModules,
 		});
+
+		this.preventPrototypePollution(allowedExternalModules, jsRunnerConfig.allowPrototypeMutation);
+	}
+
+	private preventPrototypePollution(
+		allowedExternalModules: Set<string> | '*',
+		allowPrototypeMutation: boolean,
+	) {
+		if (allowedExternalModules instanceof Set) {
+			// This is a workaround to enable the allowed external libraries to mutate
+			// prototypes directly. For example momentjs overrides .toString() directly
+			// on the Moment.prototype, which doesn't work if Object.prototype has been
+			// frozen. This works as long as the overrides are done when the library is
+			// imported.
+			for (const module of allowedExternalModules) {
+				require(module);
+			}
+		}
+
+		// Freeze globals if needed
+		if (!allowPrototypeMutation) {
+			Object.getOwnPropertyNames(globalThis)
+				// @ts-expect-error globalThis does not have string in index signature
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access
+				.map((name) => globalThis[name])
+				.filter((value) => typeof value === 'function')
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access
+				.forEach((fn) => Object.freeze(fn.prototype));
+		}
+
+		// Freeze internal classes
+		[Workflow, Expression, WorkflowDataProxy, DateTime, Interval, Duration]
+			.map((constructor) => constructor.prototype)
+			.forEach(Object.freeze);
 	}
 
 	async executeTask(
@@ -158,10 +211,8 @@ export class JsTaskRunner extends TaskRunner {
 
 	private getNativeVariables() {
 		return {
-			// Exposed Node.js globals in vm2
+			// Exposed Node.js globals
 			Buffer,
-			Function,
-			eval,
 			setTimeout,
 			setInterval,
 			setImmediate,
@@ -205,8 +256,11 @@ export class JsTaskRunner extends TaskRunner {
 
 				signal.addEventListener('abort', abortHandler, { once: true });
 
-				const taskResult = runInNewContext(
-					`globalThis.global = globalThis; module.exports = async function VmCodeWrapper() {${settings.code}\n}()`,
+				const preventPrototypeManipulation =
+					'Object.getPrototypeOf = () => ({}); Reflect.getPrototypeOf = () => ({}); Object.setPrototypeOf = () => false; Reflect.setPrototypeOf = () => false;';
+
+				const taskResult = runInContext(
+					`globalThis.global = globalThis; ${preventPrototypeManipulation}; module.exports = async function VmCodeWrapper() {${settings.code}\n}()`,
 					context,
 					{ timeout: this.taskTimeout * 1000 },
 				) as Promise<TaskResultData['result']>;
@@ -255,10 +309,12 @@ export class JsTaskRunner extends TaskRunner {
 			? settings.chunk.startIndex + settings.chunk.count
 			: inputItems.length;
 
+		const context = this.buildContext(taskId, workflow, data.node);
+
 		for (let index = chunkStartIdx; index < chunkEndIdx; index++) {
-			const item = inputItems[index];
 			const dataProxy = this.createDataProxy(data, workflow, index);
-			const context = this.buildContext(taskId, workflow, data.node, dataProxy, { item });
+
+			Object.assign(context, dataProxy, { item: inputItems[index] });
 
 			try {
 				let result = await new Promise<INodeExecutionData | undefined>((resolve, reject) => {
@@ -268,7 +324,7 @@ export class JsTaskRunner extends TaskRunner {
 
 					signal.addEventListener('abort', abortHandler);
 
-					const taskResult = runInNewContext(
+					const taskResult = runInContext(
 						`module.exports = async function VmCodeWrapper() {${settings.code}\n}()`,
 						context,
 						{ timeout: this.taskTimeout * 1000 },
@@ -448,7 +504,11 @@ export class JsTaskRunner extends TaskRunner {
 			// Send log output back to the main process. It will take care of forwarding
 			// it to the UI or printing to console.
 			log: (...args: unknown[]) => {
-				const formattedLogArgs = args.map((arg) => inspect(arg));
+				const formattedLogArgs = args.map((arg) => {
+					if (isObject(arg) && '__isExecutionContext' in arg) return '[[ExecutionContext]]';
+					if (typeof arg === 'string') return `'${arg}'`;
+					return jsonStringify(arg, { replaceCircularRefs: true });
+				});
 				void this.makeRpcCall(taskId, 'logNodeOutput', formattedLogArgs);
 			},
 		};
@@ -463,15 +523,15 @@ export class JsTaskRunner extends TaskRunner {
 	 * @param dataProxy The data proxy object that provides access to built-ins
 	 * @param additionalProperties Additional properties to add to the context
 	 */
-	private buildContext(
+	buildContext(
 		taskId: string,
 		workflow: Workflow,
 		node: INode,
-		dataProxy: IWorkflowDataProxyData,
+		dataProxy?: IWorkflowDataProxyData,
 		additionalProperties: Record<string, unknown> = {},
 	): Context {
-		const context: Context = {
-			[inspect.custom]: () => '[[ExecutionContext]]',
+		return createContext({
+			__isExecutionContext: true,
 			require: this.requireResolver,
 			module: {},
 			console: this.buildCustomConsole(taskId),
@@ -480,8 +540,6 @@ export class JsTaskRunner extends TaskRunner {
 			...dataProxy,
 			...this.buildRpcCallObject(taskId),
 			...additionalProperties,
-		};
-
-		return context;
+		});
 	}
 }

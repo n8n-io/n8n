@@ -5,9 +5,9 @@ import { NodeOperationError, type INodeProperties } from 'n8n-workflow';
 
 import { metadataFilterField } from '@utils/sharedFields';
 
-import { createVectorStoreNode } from '../shared/createVectorStoreNode';
+import { createVectorStoreNode } from '../shared/createVectorStoreNode/createVectorStoreNode';
+import { pineconeIndexSearch } from '../shared/createVectorStoreNode/methods/listSearch';
 import { pineconeIndexRLC } from '../shared/descriptions';
-import { pineconeIndexSearch } from '../shared/methods/listSearch';
 
 const sharedFields: INodeProperties[] = [pineconeIndexRLC];
 
@@ -51,7 +51,7 @@ const insertFields: INodeProperties[] = [
 	},
 ];
 
-export class VectorStorePinecone extends createVectorStoreNode({
+export class VectorStorePinecone extends createVectorStoreNode<PineconeStore>({
 	meta: {
 		displayName: 'Pinecone Vector Store',
 		name: 'vectorStorePinecone',

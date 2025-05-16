@@ -1,7 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
 import { AIMessage, SystemMessage, HumanMessage, type BaseMessage } from '@langchain/core/messages';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -92,11 +92,11 @@ export class MemoryManager implements INodeType {
 		inputs: [
 			{
 				displayName: '',
-				type: NodeConnectionType.Main,
+				type: NodeConnectionTypes.Main,
 			},
 			{
 				displayName: 'Memory',
-				type: NodeConnectionType.AiMemory,
+				type: NodeConnectionTypes.AiMemory,
 				required: true,
 				maxConnections: 1,
 			},
@@ -105,7 +105,7 @@ export class MemoryManager implements INodeType {
 		outputs: [
 			{
 				displayName: '',
-				type: NodeConnectionType.Main,
+				type: NodeConnectionTypes.Main,
 			},
 		],
 		properties: [
@@ -297,7 +297,7 @@ export class MemoryManager implements INodeType {
 		const items = this.getInputData();
 		const mode = this.getNodeParameter('mode', 0, 'load') as 'load' | 'insert' | 'delete';
 		const memory = (await this.getInputConnectionData(
-			NodeConnectionType.AiMemory,
+			NodeConnectionTypes.AiMemory,
 			0,
 		)) as BaseChatMemory;
 

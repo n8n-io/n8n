@@ -285,7 +285,7 @@ export async function execute(
 			valuesLength = valuesLength + 1;
 			values.push(column);
 		});
-		const onConflict = ` ON CONFLICT (${conflictColumns.join(',')}) DO UPDATE `;
+		const onConflict = ` ON CONFLICT (${conflictColumns.join(',')})`;
 
 		const insertQuery = `INSERT INTO $1:name.$2:name($${valuesLength}:name) VALUES($${valuesLength}:csv)${onConflict}`;
 		valuesLength = valuesLength + 1;
@@ -300,7 +300,9 @@ export async function execute(
 			values.push(column, item[column] as string);
 		}
 
-		let query = `${insertQuery} SET ${updates.join(', ')}`;
+		const updateQuery =
+			updates?.length > 0 ? ` DO UPDATE  SET ${updates.join(', ')}` : ' DO NOTHING ';
+		let query = `${insertQuery}${updateQuery}`;
 
 		const outputColumns = this.getNodeParameter('options.outputColumns', i, ['*']) as string[];
 

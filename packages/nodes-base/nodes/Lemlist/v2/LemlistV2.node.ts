@@ -8,7 +8,7 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	type INodeTypeBaseDescription,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
 import {
@@ -37,8 +37,9 @@ const versionDescription: INodeTypeDescription = {
 	defaults: {
 		name: 'Lemlist',
 	},
-	inputs: [NodeConnectionType.Main],
-	outputs: [NodeConnectionType.Main],
+	usableAsTool: true,
+	inputs: [NodeConnectionTypes.Main],
+	outputs: [NodeConnectionTypes.Main],
 	credentials: [
 		{
 			name: 'lemlistApi',

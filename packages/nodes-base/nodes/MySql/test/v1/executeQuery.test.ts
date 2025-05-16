@@ -1,60 +1,21 @@
-import type { INodeTypes } from 'n8n-workflow';
-import nock from 'nock';
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
+import { mock } from 'jest-mock-extended';
+import type { Connection, QueryResult } from 'mysql2/promise';
 
-import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
-import { getResultNodeData, setup, workflowToTests } from '@test/nodes/Helpers';
-import type { WorkflowTestData } from '@test/nodes/types';
-
-const queryMock = jest.fn(async function () {
-	return [{ success: true }];
-});
-
-jest.mock('../../v1/GenericFunctions', () => {
-	const originalModule = jest.requireActual('../../v1/GenericFunctions');
-	return {
-		...originalModule,
-		createConnection: jest.fn(async function () {
-			return {
-				query: queryMock,
-				end: jest.fn(),
-			};
-		}),
-	};
-});
+const mockConnection = mock<Connection>();
+const createConnection = jest.fn().mockReturnValue(mockConnection);
+jest.mock('mysql2/promise', () => ({ createConnection }));
 
 describe('Test MySqlV1, executeQuery', () => {
-	const workflows = ['nodes/MySql/test/v1/executeQuery.workflow.json'];
-	const tests = workflowToTests(workflows);
+	mockConnection.query.mockResolvedValue([{ success: true } as unknown as QueryResult, []]);
 
-	beforeAll(() => {
-		nock.disableNetConnect();
+	new NodeTestHarness().setupTests({
+		workflowFiles: ['executeQuery.workflow.json'],
+		customAssertions() {
+			expect(mockConnection.query).toHaveBeenCalledTimes(1);
+			expect(mockConnection.query).toHaveBeenCalledWith(
+				"select * from family_parents where (parent_email = 'parent1@mail.com' or parent_email = 'parent2@mail.com') and parent_email <> '';",
+			);
+		},
 	});
-
-	afterAll(() => {
-		nock.restore();
-		jest.unmock('../../v1/GenericFunctions');
-	});
-
-	const nodeTypes = setup(tests);
-
-	const testNode = async (testData: WorkflowTestData, types: INodeTypes) => {
-		const { result } = await executeWorkflow(testData, types);
-
-		const resultNodeData = getResultNodeData(result, testData);
-
-		resultNodeData.forEach(({ nodeName, resultData }) => {
-			return expect(resultData).toEqual(testData.output.nodeData[nodeName]);
-		});
-
-		expect(queryMock).toHaveBeenCalledTimes(1);
-		expect(queryMock).toHaveBeenCalledWith(
-			"select * from family_parents where (parent_email = 'parent1@mail.com' or parent_email = 'parent2@mail.com') and parent_email <> '';",
-		);
-
-		expect(result.finished).toEqual(true);
-	};
-
-	for (const testData of tests) {
-		test(testData.description, async () => await testNode(testData, nodeTypes));
-	}
 });

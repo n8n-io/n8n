@@ -1,3 +1,9 @@
+import type { SourceControlledFile } from '@n8n/api-types';
+import { CredentialsRepository } from '@n8n/db';
+import { FolderRepository } from '@n8n/db';
+import { ProjectRepository } from '@n8n/db';
+import { SharedCredentialsRepository } from '@n8n/db';
+import { UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { Cipher } from 'n8n-core';
@@ -6,12 +12,8 @@ import * as utils from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import fsp from 'node:fs/promises';
 
-import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import { SourceControlImportService } from '@/environments.ee/source-control/source-control-import.service.ee';
 import type { ExportableCredential } from '@/environments.ee/source-control/types/exportable-credential';
-import type { SourceControlledFile } from '@/environments.ee/source-control/types/source-controlled-file';
 
 import { mockInstance } from '../../shared/mocking';
 import { saveCredential } from '../shared/db/credentials';
@@ -21,24 +23,47 @@ import { randomCredentialPayload } from '../shared/random';
 import * as testDb from '../shared/test-db';
 
 describe('SourceControlImportService', () => {
+	let credentialsRepository: CredentialsRepository;
+	let projectRepository: ProjectRepository;
+	let sharedCredentialsRepository: SharedCredentialsRepository;
+	let userRepository: UserRepository;
+	let folderRepository: FolderRepository;
 	let service: SourceControlImportService;
+
 	const cipher = mockInstance(Cipher);
 
 	beforeAll(async () => {
+		await testDb.init();
+
+		credentialsRepository = Container.get(CredentialsRepository);
+		projectRepository = Container.get(ProjectRepository);
+		sharedCredentialsRepository = Container.get(SharedCredentialsRepository);
+		userRepository = Container.get(UserRepository);
+		folderRepository = Container.get(FolderRepository);
 		service = new SourceControlImportService(
 			mock(),
 			mock(),
 			mock(),
 			mock(),
+			credentialsRepository,
+			projectRepository,
 			mock(),
+			mock(),
+			sharedCredentialsRepository,
+			userRepository,
+			mock(),
+			mock(),
+			mock(),
+			mock(),
+			mock(),
+			mock(),
+			folderRepository,
 			mock<InstanceSettings>({ n8nFolder: '/some-path' }),
 		);
-
-		await testDb.init();
 	});
 
 	afterEach(async () => {
-		await testDb.truncate(['Credentials', 'SharedCredentials']);
+		await testDb.truncate(['CredentialsEntity', 'SharedCredentials']);
 
 		jest.restoreAllMocks();
 	});
@@ -75,7 +100,7 @@ describe('SourceControlImportService', () => {
 
 				const personalProject = await getPersonalProject(member);
 
-				const sharing = await Container.get(SharedCredentialsRepository).findOneBy({
+				const sharing = await sharedCredentialsRepository.findOneBy({
 					credentialsId: CREDENTIAL_ID,
 					projectId: personalProject.id,
 					role: 'credential:owner',
@@ -112,7 +137,7 @@ describe('SourceControlImportService', () => {
 
 				const personalProject = await getPersonalProject(importingUser);
 
-				const sharing = await Container.get(SharedCredentialsRepository).findOneBy({
+				const sharing = await sharedCredentialsRepository.findOneBy({
 					credentialsId: CREDENTIAL_ID,
 					projectId: personalProject.id,
 					role: 'credential:owner',
@@ -149,7 +174,7 @@ describe('SourceControlImportService', () => {
 
 				const personalProject = await getPersonalProject(importingUser);
 
-				const sharing = await Container.get(SharedCredentialsRepository).findOneBy({
+				const sharing = await sharedCredentialsRepository.findOneBy({
 					credentialsId: CREDENTIAL_ID,
 					projectId: personalProject.id,
 					role: 'credential:owner',
@@ -190,7 +215,7 @@ describe('SourceControlImportService', () => {
 
 			const personalProject = await getPersonalProject(importingUser);
 
-			const sharing = await Container.get(SharedCredentialsRepository).findOneBy({
+			const sharing = await sharedCredentialsRepository.findOneBy({
 				credentialsId: CREDENTIAL_ID,
 				projectId: personalProject.id,
 				role: 'credential:owner',
@@ -223,7 +248,7 @@ describe('SourceControlImportService', () => {
 			cipher.encrypt.mockReturnValue('some-encrypted-data');
 
 			{
-				const project = await Container.get(ProjectRepository).findOne({
+				const project = await projectRepository.findOne({
 					where: [
 						{
 							id: '1234-asdf',
@@ -241,7 +266,7 @@ describe('SourceControlImportService', () => {
 				importingUser.id,
 			);
 
-			const sharing = await Container.get(SharedCredentialsRepository).findOne({
+			const sharing = await sharedCredentialsRepository.findOne({
 				where: {
 					credentialsId: CREDENTIAL_ID,
 					role: 'credential:owner',
@@ -288,7 +313,7 @@ describe('SourceControlImportService', () => {
 				importingUser.id,
 			);
 
-			const sharing = await Container.get(SharedCredentialsRepository).findOneBy({
+			const sharing = await sharedCredentialsRepository.findOneBy({
 				credentialsId: CREDENTIAL_ID,
 				projectId: project.id,
 				role: 'credential:owner',
@@ -332,7 +357,7 @@ describe('SourceControlImportService', () => {
 			);
 
 			await expect(
-				Container.get(SharedCredentialsRepository).findBy({
+				sharedCredentialsRepository.findBy({
 					credentialsId: credential.id,
 				}),
 			).resolves.toMatchObject([
@@ -342,7 +367,7 @@ describe('SourceControlImportService', () => {
 				},
 			]);
 			await expect(
-				Container.get(CredentialsRepository).findBy({
+				credentialsRepository.findBy({
 					id: credential.id,
 				}),
 			).resolves.toMatchObject([

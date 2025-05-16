@@ -1,4 +1,6 @@
-import type { AuthenticationMethod } from '@n8n/api-types';
+import type { AuthenticationMethod, ProjectRelation } from '@n8n/api-types';
+import type { AuthProviderType, User, IWorkflowDb } from '@n8n/db';
+import type { GlobalRole } from '@n8n/permissions';
 import type {
 	IPersonalizationSurveyAnswersV4,
 	IRun,
@@ -6,10 +8,7 @@ import type {
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
 
-import type { AuthProviderType } from '@/databases/entities/auth-identity';
-import type { ProjectRole } from '@/databases/entities/project-relation';
-import type { GlobalRole, User } from '@/databases/entities/user';
-import type { IWorkflowDb } from '@/interfaces';
+import type { ConcurrencyQueueType } from '@/concurrency/concurrency-control.service';
 
 import type { AiEventMap } from './ai.event-map';
 
@@ -64,6 +63,18 @@ export type RelayEventMap = {
 	};
 
 	'workflow-deleted': {
+		user: UserLike;
+		workflowId: string;
+		publicApi: boolean;
+	};
+
+	'workflow-archived': {
+		user: UserLike;
+		workflowId: string;
+		publicApi: boolean;
+	};
+
+	'workflow-unarchived': {
 		user: UserLike;
 		workflowId: string;
 		publicApi: boolean;
@@ -338,6 +349,7 @@ export type RelayEventMap = {
 
 	'execution-throttled': {
 		executionId: string;
+		type: ConcurrencyQueueType;
 	};
 
 	'execution-started-during-bootup': {
@@ -351,10 +363,7 @@ export type RelayEventMap = {
 	'team-project-updated': {
 		userId: string;
 		role: GlobalRole;
-		members: Array<{
-			userId: string;
-			role: ProjectRole;
-		}>;
+		members: ProjectRelation[];
 		projectId: string;
 	};
 
@@ -383,12 +392,14 @@ export type RelayEventMap = {
 	};
 
 	'source-control-user-started-pull-ui': {
+		userId?: string;
 		workflowUpdates: number;
 		workflowConflicts: number;
 		credConflicts: number;
 	};
 
 	'source-control-user-finished-pull-ui': {
+		userId?: string;
 		workflowUpdates: number;
 	};
 
@@ -398,6 +409,7 @@ export type RelayEventMap = {
 	};
 
 	'source-control-user-started-push-ui': {
+		userId?: string;
 		workflowsEligible: number;
 		workflowsEligibleWithConflicts: number;
 		credsEligible: number;
@@ -406,6 +418,7 @@ export type RelayEventMap = {
 	};
 
 	'source-control-user-finished-push-ui': {
+		userId: string;
 		workflowsEligible: number;
 		workflowsPushed: number;
 		credsPushed: number;

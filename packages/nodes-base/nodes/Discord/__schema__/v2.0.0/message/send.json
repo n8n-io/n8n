@@ -1,0 +1,170 @@
+{
+    "type": "object",
+    "properties": {
+        "attachments": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "content_scan_version": {
+                        "type": "integer"
+                    },
+                    "content_type": {
+                        "type": "string"
+                    },
+                    "filename": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "proxy_url": {
+                        "type": "string"
+                    },
+                    "size": {
+                        "type": "integer"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "url": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "author": {
+            "type": "object",
+            "properties": {
+                "accent_color": {
+                    "type": "null"
+                },
+                "avatar_decoration_data": {
+                    "type": "null"
+                },
+                "banner_color": {
+                    "type": "null"
+                },
+                "bot": {
+                    "type": "boolean"
+                },
+                "clan": {
+                    "type": "null"
+                },
+                "collectibles": {
+                    "type": "null"
+                },
+                "discriminator": {
+                    "type": "string"
+                },
+                "flags": {
+                    "type": "integer"
+                },
+                "global_name": {
+                    "type": "null"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "primary_guild": {
+                    "type": "null"
+                },
+                "public_flags": {
+                    "type": "integer"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "channel_id": {
+            "type": "string"
+        },
+        "content": {
+            "type": "string"
+        },
+        "edited_timestamp": {
+            "type": "null"
+        },
+        "embeds": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "color": {
+                        "type": "integer"
+                    },
+                    "content_scan_version": {
+                        "type": "integer"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "flags": {
+            "type": "integer"
+        },
+        "id": {
+            "type": "string"
+        },
+        "mention_everyone": {
+            "type": "boolean"
+        },
+        "mentions": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "avatar_decoration_data": {
+                        "type": "null"
+                    },
+                    "clan": {
+                        "type": "null"
+                    },
+                    "collectibles": {
+                        "type": "null"
+                    },
+                    "discriminator": {
+                        "type": "string"
+                    },
+                    "flags": {
+                        "type": "integer"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "primary_guild": {
+                        "type": "null"
+                    },
+                    "public_flags": {
+                        "type": "integer"
+                    },
+                    "username": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "pinned": {
+            "type": "boolean"
+        },
+        "timestamp": {
+            "type": "string"
+        },
+        "tts": {
+            "type": "boolean"
+        },
+        "type": {
+            "type": "integer"
+        }
+    },
+    "version": 1
+}

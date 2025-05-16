@@ -9,7 +9,8 @@ import type {
 	IDataObject,
 	ResourceMapperField,
 	ILocalLoadOptionsFunctions,
-	ResourceMapperFields,
+	WorkflowInputsData,
+	IExecuteFunctions,
 	ISupplyDataFunctions,
 } from 'n8n-workflow';
 import { jsonParse, NodeOperationError, EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE } from 'n8n-workflow';
@@ -65,7 +66,11 @@ function parseJsonExample(context: IWorkflowNodeContext): JSONSchema7 {
 	return generateSchemaFromExample(json) as JSONSchema7;
 }
 
-export function getFieldEntries(context: IWorkflowNodeContext): FieldValueOption[] {
+export function getFieldEntries(context: IWorkflowNodeContext): {
+	dataMode: WorkflowInputsData['dataMode'];
+	fields: FieldValueOption[];
+	subworkflowInfo?: WorkflowInputsData['subworkflowInfo'];
+} {
 	const inputSource = context.getNodeParameter(INPUT_SOURCE, 0, PASSTHROUGH);
 	let result: FieldValueOption[] | string = 'Internal Error: Invalid input source';
 	try {
@@ -89,15 +94,24 @@ export function getFieldEntries(context: IWorkflowNodeContext): FieldValueOption
 	}
 
 	if (Array.isArray(result)) {
-		return result;
+		const dataMode = String(inputSource);
+		const workflow = context.getWorkflow();
+		const node = context.getNode();
+		return {
+			fields: result,
+			dataMode,
+			subworkflowInfo: { workflowId: workflow.id, triggerId: node.id },
+		};
 	}
 	throw new NodeOperationError(context.getNode(), result);
 }
 
-export function getWorkflowInputValues(this: ISupplyDataFunctions): INodeExecutionData[] {
+export function getWorkflowInputValues(
+	this: IExecuteFunctions | ISupplyDataFunctions,
+): INodeExecutionData[] {
 	const inputData = this.getInputData();
 
-	return inputData.map((item, itemIndex) => {
+	return inputData.map(({ json, binary }, itemIndex) => {
 		const itemFieldValues = this.getNodeParameter(
 			'workflowInputs.value',
 			itemIndex,
@@ -106,18 +120,19 @@ export function getWorkflowInputValues(this: ISupplyDataFunctions): INodeExecuti
 
 		return {
 			json: {
-				...item.json,
+				...json,
 				...itemFieldValues,
 			},
 			index: itemIndex,
 			pairedItem: {
 				item: itemIndex,
 			},
+			binary,
 		};
 	});
 }
 
-export function getCurrentWorkflowInputData(this: ISupplyDataFunctions) {
+export function getCurrentWorkflowInputData(this: IExecuteFunctions | ISupplyDataFunctions) {
 	const inputData: INodeExecutionData[] = getWorkflowInputValues.call(this);
 
 	const schema = this.getNodeParameter('workflowInputs.schema', 0, []) as ResourceMapperField[];
@@ -127,10 +142,11 @@ export function getCurrentWorkflowInputData(this: ISupplyDataFunctions) {
 	} else {
 		const removedKeys = new Set(schema.filter((x) => x.removed).map((x) => x.displayName));
 
-		const filteredInputData: INodeExecutionData[] = inputData.map((item, index) => ({
+		const filteredInputData: INodeExecutionData[] = inputData.map(({ json, binary }, index) => ({
 			index,
 			pairedItem: { item: index },
-			json: _.pickBy(item.json, (_v, key) => !removedKeys.has(key)),
+			json: _.pickBy(json, (_v, key) => !removedKeys.has(key)),
+			binary,
 		}));
 
 		return filteredInputData;
@@ -139,14 +155,18 @@ export function getCurrentWorkflowInputData(this: ISupplyDataFunctions) {
 
 export async function loadWorkflowInputMappings(
 	this: ILocalLoadOptionsFunctions,
-): Promise<ResourceMapperFields> {
+): Promise<WorkflowInputsData> {
 	const nodeLoadContext = await this.getWorkflowNodeContext(EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE);
 	let fields: ResourceMapperField[] = [];
+	let dataMode: string = PASSTHROUGH;
+	let subworkflowInfo: { workflowId?: string; triggerId?: string } | undefined;
 
 	if (nodeLoadContext) {
 		const fieldValues = getFieldEntries(nodeLoadContext);
+		dataMode = fieldValues.dataMode;
+		subworkflowInfo = fieldValues.subworkflowInfo;
 
-		fields = fieldValues.map((currentWorkflowInput) => {
+		fields = fieldValues.fields.map((currentWorkflowInput) => {
 			const field: ResourceMapperField = {
 				id: currentWorkflowInput.name,
 				displayName: currentWorkflowInput.name,
@@ -163,5 +183,5 @@ export async function loadWorkflowInputMappings(
 			return field;
 		});
 	}
-	return { fields };
+	return { fields, dataMode, subworkflowInfo };
 }

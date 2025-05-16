@@ -1,10 +1,10 @@
-const sharedOptions = require('@n8n_io/eslint-config/shared');
+const sharedOptions = require('@n8n/eslint-config/shared');
 
 /**
  * @type {import('@types/eslint').ESLint.ConfigData}
  */
 module.exports = {
-	extends: ['@n8n_io/eslint-config/node'],
+	extends: ['@n8n/eslint-config/node'],
 
 	...sharedOptions(__dirname),
 
@@ -47,7 +47,12 @@ module.exports = {
 			},
 		},
 		{
-			files: ['./src/databases/**/*.ts', './test/**/*.ts', './src/**/__tests__/**/*.ts'],
+			files: [
+				'./src/databases/**/*.ts',
+				'./src/modules/**/*.ts',
+				'./test/**/*.ts',
+				'./src/**/__tests__/**/*.ts',
+			],
 			rules: {
 				'n8n-local-rules/misplaced-n8n-typeorm-import': 'off',
 			},

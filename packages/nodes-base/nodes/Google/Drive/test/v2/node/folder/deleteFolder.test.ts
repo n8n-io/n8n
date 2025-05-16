@@ -1,5 +1,3 @@
-import nock from 'nock';
-
 import * as deleteFolder from '../../../../v2/actions/folder/deleteFolder.operation';
 import * as transport from '../../../../v2/transport';
 import { createMockExecuteFunction, driveNode } from '../helpers';
@@ -15,15 +13,6 @@ jest.mock('../../../../v2/transport', () => {
 });
 
 describe('test GoogleDriveV2: folder deleteFolder', () => {
-	beforeAll(() => {
-		nock.disableNetConnect();
-	});
-
-	afterAll(() => {
-		nock.restore();
-		jest.unmock('../../../../v2/transport');
-	});
-
 	it('should be called with PATCH', async () => {
 		const nodeParameters = {
 			resource: 'folder',

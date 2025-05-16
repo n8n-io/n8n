@@ -1,0 +1,21 @@
+{
+    "type": "object",
+    "properties": {
+        "archived": {
+            "type": "boolean"
+        },
+        "id": {
+            "type": "string"
+        },
+        "settings_str": {
+            "type": "string"
+        },
+        "title": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

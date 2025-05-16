@@ -1,10 +1,5 @@
-import type { IHttpRequestMethods, INodeTypes, WorkflowTestData } from 'n8n-workflow';
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import nock from 'nock';
-
-import { getResultNodeData, setup, workflowToTests } from '@test/nodes/Helpers';
-
-import { executeWorkflow } from '../../../../../../test/nodes/ExecuteWorkflow';
-import * as genericFunctions from '../../../../V2/GenericFunctions';
 
 const API_RESPONSE = {
 	ok: true,
@@ -51,61 +46,21 @@ const API_RESPONSE = {
 	message_timestamp: '1734322671.726339',
 };
 
-jest.mock('../../../../V2/GenericFunctions', () => {
-	const originalModule = jest.requireActual('../../../../V2/GenericFunctions');
-	return {
-		...originalModule,
-		slackApiRequest: jest.fn(async function (method: IHttpRequestMethods) {
-			if (method === 'POST') {
-				return API_RESPONSE;
-			}
-		}),
-	};
-});
-
 describe('Test SlackV2, message => post', () => {
-	const workflows = ['nodes/Slack/test/v2/node/message/post.workflow.json'];
-	const tests = workflowToTests(workflows);
+	nock('https://slack.com')
+		.post('/api/chat.postMessage', {
+			channel: 'C08514ZPKB8',
+			icon_emoji: '😁',
+			includeLinkToWorkflow: false,
+			link_names: true,
+			mrkdwn: true,
+			text: 'test message',
+			unfurl_links: true,
+			unfurl_media: true,
+		})
+		.reply(200, API_RESPONSE);
 
-	beforeAll(() => {
-		nock.disableNetConnect();
+	new NodeTestHarness().setupTests({
+		workflowFiles: ['post.workflow.json'],
 	});
-
-	afterAll(() => {
-		nock.restore();
-		jest.unmock('../../../../V2/GenericFunctions');
-	});
-
-	const nodeTypes = setup(tests);
-
-	const testNode = async (testData: WorkflowTestData, types: INodeTypes) => {
-		const { result } = await executeWorkflow(testData, types);
-
-		const resultNodeData = getResultNodeData(result, testData);
-
-		resultNodeData.forEach(({ nodeName, resultData }) => {
-			return expect(resultData).toEqual(testData.output.nodeData[nodeName]);
-		});
-
-		expect(genericFunctions.slackApiRequest).toHaveBeenCalledTimes(1);
-		expect(genericFunctions.slackApiRequest).toHaveBeenCalledWith(
-			'POST',
-			'/chat.postMessage',
-			{
-				channel: 'C08514ZPKB8',
-				icon_emoji: '😁',
-				includeLinkToWorkflow: false,
-				link_names: true,
-				mrkdwn: true,
-				text: 'test message',
-				unfurl_links: true,
-				unfurl_media: true,
-			},
-			{},
-		);
-	};
-
-	for (const testData of tests) {
-		test(testData.description, async () => await testNode(testData, nodeTypes));
-	}
 });

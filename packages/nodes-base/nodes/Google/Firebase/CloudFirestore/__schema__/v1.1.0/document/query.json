@@ -1,0 +1,24 @@
+{
+    "type": "object",
+    "properties": {
+        "_createTime": {
+            "type": "string"
+        },
+        "_id": {
+            "type": "string"
+        },
+        "_name": {
+            "type": "string"
+        },
+        "_updateTime": {
+            "type": "string"
+        },
+        "chat_id": {
+            "type": "string"
+        },
+        "lastInteraction": {
+            "type": "string"
+        }
+    },
+    "version": 2
+}

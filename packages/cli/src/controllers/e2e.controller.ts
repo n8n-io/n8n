@@ -1,4 +1,8 @@
 import type { PushMessage } from '@n8n/api-types';
+import type { BooleanLicenseFeature, NumericLicenseFeature } from '@n8n/constants';
+import { LICENSE_FEATURES, LICENSE_QUOTAS, UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
+import { AuthUserRepository, SettingsRepository, UserRepository } from '@n8n/db';
+import { Patch, Post, RestController } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { Request } from 'express';
 import { Logger } from 'n8n-core';
@@ -6,13 +10,8 @@ import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import config from '@/config';
-import { LICENSE_FEATURES, LICENSE_QUOTAS, UNLIMITED_LICENSE_QUOTA, inE2ETests } from '@/constants';
-import { AuthUserRepository } from '@/databases/repositories/auth-user.repository';
-import { SettingsRepository } from '@/databases/repositories/settings.repository';
-import { UserRepository } from '@/databases/repositories/user.repository';
-import { Patch, Post, RestController } from '@/decorators';
+import { inE2ETests } from '@/constants';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import type { BooleanLicenseFeature, NumericLicenseFeature } from '@/interfaces';
 import type { FeatureReturnType } from '@/license';
 import { License } from '@/license';
 import { MfaService } from '@/mfa/mfa.service';
@@ -101,15 +100,43 @@ export class E2EController {
 		[LICENSE_FEATURES.COMMUNITY_NODES_CUSTOM_REGISTRY]: false,
 		[LICENSE_FEATURES.ASK_AI]: false,
 		[LICENSE_FEATURES.AI_CREDITS]: false,
+		[LICENSE_FEATURES.FOLDERS]: false,
+		[LICENSE_FEATURES.INSIGHTS_VIEW_SUMMARY]: false,
+		[LICENSE_FEATURES.INSIGHTS_VIEW_DASHBOARD]: false,
+		[LICENSE_FEATURES.INSIGHTS_VIEW_HOURLY_DATA]: false,
+		[LICENSE_FEATURES.API_KEY_SCOPES]: false,
 	};
 
-	private numericFeatures: Record<NumericLicenseFeature, number> = {
+	private static readonly numericFeaturesDefaults: Record<NumericLicenseFeature, number> = {
 		[LICENSE_QUOTAS.TRIGGER_LIMIT]: -1,
 		[LICENSE_QUOTAS.VARIABLES_LIMIT]: -1,
 		[LICENSE_QUOTAS.USERS_LIMIT]: -1,
 		[LICENSE_QUOTAS.WORKFLOW_HISTORY_PRUNE_LIMIT]: -1,
 		[LICENSE_QUOTAS.TEAM_PROJECT_LIMIT]: 0,
 		[LICENSE_QUOTAS.AI_CREDITS]: 0,
+		[LICENSE_QUOTAS.INSIGHTS_MAX_HISTORY_DAYS]: 7,
+		[LICENSE_QUOTAS.INSIGHTS_RETENTION_MAX_AGE_DAYS]: 30,
+		[LICENSE_QUOTAS.INSIGHTS_RETENTION_PRUNE_INTERVAL_DAYS]: 180,
+	};
+
+	private numericFeatures: Record<NumericLicenseFeature, number> = {
+		[LICENSE_QUOTAS.TRIGGER_LIMIT]:
+			E2EController.numericFeaturesDefaults[LICENSE_QUOTAS.TRIGGER_LIMIT],
+		[LICENSE_QUOTAS.VARIABLES_LIMIT]:
+			E2EController.numericFeaturesDefaults[LICENSE_QUOTAS.VARIABLES_LIMIT],
+		[LICENSE_QUOTAS.USERS_LIMIT]: E2EController.numericFeaturesDefaults[LICENSE_QUOTAS.USERS_LIMIT],
+		[LICENSE_QUOTAS.WORKFLOW_HISTORY_PRUNE_LIMIT]:
+			E2EController.numericFeaturesDefaults[LICENSE_QUOTAS.WORKFLOW_HISTORY_PRUNE_LIMIT],
+		[LICENSE_QUOTAS.TEAM_PROJECT_LIMIT]:
+			E2EController.numericFeaturesDefaults[LICENSE_QUOTAS.TEAM_PROJECT_LIMIT],
+		[LICENSE_QUOTAS.AI_CREDITS]: E2EController.numericFeaturesDefaults[LICENSE_QUOTAS.AI_CREDITS],
+
+		[LICENSE_QUOTAS.INSIGHTS_MAX_HISTORY_DAYS]:
+			E2EController.numericFeaturesDefaults[LICENSE_QUOTAS.INSIGHTS_MAX_HISTORY_DAYS],
+		[LICENSE_QUOTAS.INSIGHTS_RETENTION_MAX_AGE_DAYS]:
+			E2EController.numericFeaturesDefaults[LICENSE_QUOTAS.INSIGHTS_RETENTION_MAX_AGE_DAYS],
+		[LICENSE_QUOTAS.INSIGHTS_RETENTION_PRUNE_INTERVAL_DAYS]:
+			E2EController.numericFeaturesDefaults[LICENSE_QUOTAS.INSIGHTS_RETENTION_PRUNE_INTERVAL_DAYS],
 	};
 
 	constructor(
@@ -124,8 +151,7 @@ export class E2EController {
 		private readonly userRepository: UserRepository,
 		private readonly authUserRepository: AuthUserRepository,
 	) {
-		license.isFeatureEnabled = (feature: BooleanLicenseFeature) =>
-			this.enabledFeatures[feature] ?? false;
+		license.isLicensed = (feature: BooleanLicenseFeature) => this.enabledFeatures[feature] ?? false;
 
 		// Ugly hack to satisfy biome parser
 		const getFeatureValue = <T extends keyof FeatureReturnType>(
@@ -137,7 +163,7 @@ export class E2EController {
 				return UNLIMITED_LICENSE_QUOTA as FeatureReturnType[T];
 			}
 		};
-		license.getFeatureValue = getFeatureValue;
+		license.getValue = getFeatureValue;
 
 		license.getPlanName = () => 'Enterprise';
 	}
@@ -180,6 +206,11 @@ export class E2EController {
 	private resetFeatures() {
 		for (const feature of Object.keys(this.enabledFeatures)) {
 			this.enabledFeatures[feature as BooleanLicenseFeature] = false;
+		}
+
+		for (const feature of Object.keys(this.numericFeatures)) {
+			this.numericFeatures[feature as NumericLicenseFeature] =
+				E2EController.numericFeaturesDefaults[feature as NumericLicenseFeature];
 		}
 	}
 

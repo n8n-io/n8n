@@ -5,7 +5,7 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import { metadataFilterField } from '@utils/sharedFields';
 
-import { createVectorStoreNode } from '../shared/createVectorStoreNode';
+import { createVectorStoreNode } from '../shared/createVectorStoreNode/createVectorStoreNode';
 
 const embeddingDimensions: INodeProperties = {
 	displayName: 'Embedding Dimensions',
@@ -46,7 +46,7 @@ const retrieveFields: INodeProperties[] = [
 	},
 ];
 
-export class VectorStoreZep extends createVectorStoreNode({
+export class VectorStoreZep extends createVectorStoreNode<ZepVectorStore | ZepCloudVectorStore>({
 	meta: {
 		displayName: 'Zep Vector Store',
 		name: 'vectorStoreZep',

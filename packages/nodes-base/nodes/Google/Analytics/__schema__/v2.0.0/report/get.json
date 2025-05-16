@@ -1,0 +1,12 @@
+{
+    "type": "object",
+    "properties": {
+        "date": {
+            "type": "string"
+        },
+        "sessions": {
+            "type": "string"
+        }
+    },
+    "version": 2
+}

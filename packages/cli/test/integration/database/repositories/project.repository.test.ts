@@ -1,9 +1,8 @@
+import { AuthIdentity } from '@n8n/db';
+import { ProjectRepository } from '@n8n/db';
+import { UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { EntityNotFoundError } from '@n8n/typeorm';
-
-import { AuthIdentity } from '@/databases/entities/auth-identity';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { UserRepository } from '@/databases/repositories/user.repository';
 
 import { createTeamProject } from '../../shared/db/projects';
 import { createMember, createOwner } from '../../shared/db/users';
@@ -15,7 +14,7 @@ describe('ProjectRepository', () => {
 	});
 
 	beforeEach(async () => {
-		await testDb.truncate(['User', 'Workflow', 'Project']);
+		await testDb.truncate(['User', 'WorkflowEntity', 'Project']);
 	});
 
 	afterAll(async () => {

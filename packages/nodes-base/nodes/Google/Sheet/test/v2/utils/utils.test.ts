@@ -335,6 +335,7 @@ describe('Test Google Sheets, lookupValues', () => {
 			],
 			returnAllMatches: true,
 			combineFilters: 'OR',
+			nodeVersion: 4.5,
 		});
 
 		expect(result).toBeDefined();
@@ -397,6 +398,7 @@ describe('Test Google Sheets, lookupValues', () => {
 			],
 			returnAllMatches: true,
 			combineFilters: 'AND',
+			nodeVersion: 4.5,
 		});
 
 		expect(result).toBeDefined();
@@ -457,6 +459,27 @@ describe('Test Google Sheets, checkForSchemaChanges', () => {
 				{ id: 'text' },
 			] as ResourceMapperField[]),
 		).toThrow("Column names were updated after the node's setup");
+	});
+
+	it('should filter out empty columns  without throwing an error', async () => {
+		const node: INode = {
+			id: '1',
+			name: 'Google Sheets',
+			typeVersion: 4.4,
+			type: 'n8n-nodes-base.googleSheets',
+			position: [60, 760],
+			parameters: {
+				operation: 'append',
+			},
+		};
+
+		expect(() =>
+			checkForSchemaChanges(node, ['', '', 'id', 'name', 'data'], [
+				{ id: 'id' },
+				{ id: 'name' },
+				{ id: 'data' },
+			] as ResourceMapperField[]),
+		).not.toThrow();
 	});
 });
 

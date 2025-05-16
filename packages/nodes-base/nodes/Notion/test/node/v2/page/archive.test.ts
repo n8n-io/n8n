@@ -1,7 +1,5 @@
-import type { IHttpRequestMethods } from 'n8n-workflow';
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import nock from 'nock';
-
-import { equalityTest, setup, workflowToTests } from '@test/nodes/Helpers';
 
 const API_RESPONSE = {
 	object: 'page',
@@ -62,34 +60,12 @@ const API_RESPONSE = {
 	request_id: 'ce91abaa-261f-43c3-9237-57c0f28af682',
 };
 
-jest.mock('../../../../shared/GenericFunctions', () => {
-	const originalModule = jest.requireActual('../../../../shared/GenericFunctions');
-	return {
-		...originalModule,
-		notionApiRequest: jest.fn(async function (method: IHttpRequestMethods) {
-			if (method === 'PATCH') {
-				return API_RESPONSE;
-			}
-		}),
-	};
-});
-
 describe('Test NotionV2, page => archive', () => {
-	const workflows = ['nodes/Notion/test/node/v2/page/archive.workflow.json'];
-	const tests = workflowToTests(workflows);
+	nock('https://api.notion.com')
+		.patch('/v1/pages/15bfb9cb4cf081c7aab4c5855b8cb6c3', { archived: true })
+		.reply(200, API_RESPONSE);
 
-	beforeAll(() => {
-		nock.disableNetConnect();
+	new NodeTestHarness().setupTests({
+		workflowFiles: ['archive.workflow.json'],
 	});
-
-	afterAll(() => {
-		nock.restore();
-		jest.unmock('../../../../shared/GenericFunctions');
-	});
-
-	const nodeTypes = setup(tests);
-
-	for (const testData of tests) {
-		test(testData.description, async () => await equalityTest(testData, nodeTypes));
-	}
 });

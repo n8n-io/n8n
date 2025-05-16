@@ -1,5 +1,5 @@
 import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, UserError } from 'n8n-workflow';
 
 import { cellFormat, handlingExtraData, locationDefine } from './commonDescription';
 import type { GoogleSheet } from '../../helpers/GoogleSheet';
@@ -320,7 +320,7 @@ export async function execute(
 			const valueToMatchOn =
 				nodeVersion < 4
 					? (this.getNodeParameter('valueToMatchOn', i, '') as string)
-					: (this.getNodeParameter(`columns.value[${columnsToMatchOn[0]}]`, i, '') as string);
+					: (this.getNodeParameter(`columns.value["${columnsToMatchOn[0]}"]`, i, '') as string);
 
 			if (valueToMatchOn === '') {
 				throw new NodeOperationError(
@@ -369,6 +369,15 @@ export async function execute(
 				}
 				// Setting empty values to empty string so that they are not ignored by the API
 				Object.keys(mappingValues).forEach((key) => {
+					if (
+						key === 'row_number' &&
+						(mappingValues[key] === null || mappingValues[key] === undefined)
+					) {
+						throw new UserError(
+							'Column to match on (row_number) is not defined. Since the field is used to determine the row to update, it needs to have a value set.',
+						);
+					}
+
 					if (mappingValues[key] === undefined || mappingValues[key] === null) {
 						mappingValues[key] = '';
 					}

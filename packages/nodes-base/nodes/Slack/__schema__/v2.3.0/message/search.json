@@ -1,0 +1,110 @@
+{
+    "type": "object",
+    "properties": {
+        "blocks": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "block_id": {
+                        "type": "string"
+                    },
+                    "elements": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "elements": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "properties": {
+                                            "text": {
+                                                "type": "string"
+                                            },
+                                            "type": {
+                                                "type": "string"
+                                            },
+                                            "user_id": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    }
+                                },
+                                "type": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "type": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "channel": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "is_channel": {
+                    "type": "boolean"
+                },
+                "is_ext_shared": {
+                    "type": "boolean"
+                },
+                "is_group": {
+                    "type": "boolean"
+                },
+                "is_im": {
+                    "type": "boolean"
+                },
+                "is_mpim": {
+                    "type": "boolean"
+                },
+                "is_org_shared": {
+                    "type": "boolean"
+                },
+                "is_pending_ext_shared": {
+                    "type": "boolean"
+                },
+                "is_private": {
+                    "type": "boolean"
+                },
+                "is_shared": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "iid": {
+            "type": "string"
+        },
+        "no_reactions": {
+            "type": "boolean"
+        },
+        "permalink": {
+            "type": "string"
+        },
+        "team": {
+            "type": "string"
+        },
+        "text": {
+            "type": "string"
+        },
+        "ts": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string"
+        },
+        "username": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

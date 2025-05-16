@@ -1,5 +1,5 @@
 import { Service } from '@n8n/di';
-import { LoadOptionsContext, RoutingNode, LocalLoadOptionsContext } from 'n8n-core';
+import { LoadOptionsContext, RoutingNode, LocalLoadOptionsContext, ExecuteContext } from 'n8n-core';
 import type {
 	ILoadOptions,
 	ILoadOptionsFunctions,
@@ -19,8 +19,9 @@ import type {
 	NodeParameterValueType,
 	IDataObject,
 	ILocalLoadOptionsFunctions,
+	IExecuteData,
 } from 'n8n-workflow';
-import { Workflow, ApplicationError } from 'n8n-workflow';
+import { Workflow, UnexpectedError } from 'n8n-workflow';
 
 import { NodeTypes } from '@/node-types';
 
@@ -90,7 +91,7 @@ export class DynamicNodeParametersService {
 			// requiring a baseURL to be defined can at least not a random server be called.
 			// In the future this code has to get improved that it does not use the request information from
 			// the request rather resolves it via the parameter-path and nodeType data.
-			throw new ApplicationError(
+			throw new UnexpectedError(
 				'Node type does not exist or does not have "requestDefaults.baseURL" defined!',
 				{ tags: { nodeType: nodeType.description.name } },
 			);
@@ -103,17 +104,8 @@ export class DynamicNodeParametersService {
 		const workflow = this.getWorkflow(nodeTypeAndVersion, currentNodeParameters, credentials);
 		const node = workflow.nodes['Temp-Node'];
 
-		const routingNode = new RoutingNode(
-			workflow,
-			node,
-			connectionInputData,
-			runExecutionData ?? null,
-			additionalData,
-			mode,
-		);
-
 		// Create copy of node-type with the single property we want to get the data off
-		const tempNode: INodeType = {
+		const tempNodeType: INodeType = {
 			...nodeType,
 			...{
 				description: {
@@ -135,18 +127,32 @@ export class DynamicNodeParametersService {
 			main: [[{ json: {} }]],
 		};
 
-		const optionsData = await routingNode.runNode(inputData, runIndex, tempNode, {
+		const executeData: IExecuteData = {
 			node,
 			source: null,
 			data: {},
-		});
+		};
+		const executeFunctions = new ExecuteContext(
+			workflow,
+			node,
+			additionalData,
+			mode,
+			runExecutionData,
+			runIndex,
+			connectionInputData,
+			inputData,
+			executeData,
+			[],
+		);
+		const routingNode = new RoutingNode(executeFunctions, tempNodeType);
+		const optionsData = await routingNode.runNode();
 
 		if (optionsData?.length === 0) {
 			return [];
 		}
 
 		if (!Array.isArray(optionsData)) {
-			throw new ApplicationError('The returned data is not an array');
+			throw new UnexpectedError('The returned data is not an array');
 		}
 
 		return optionsData[0].map((item) => item.json) as unknown as INodePropertyOptions[];
@@ -252,7 +258,7 @@ export class DynamicNodeParametersService {
 	): NodeMethod {
 		const method = nodeType.methods?.[type]?.[methodName] as NodeMethod;
 		if (typeof method !== 'function') {
-			throw new ApplicationError('Node type does not have method defined', {
+			throw new UnexpectedError('Node type does not have method defined', {
 				tags: { nodeType: nodeType.description.name },
 				extra: { methodName },
 			});

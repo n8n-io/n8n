@@ -8,7 +8,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { checklistFields, checklistOperations } from './ChecklistDescription';
 import { checklistItemFields, checklistItemOperations } from './ChecklistItemDescription';
@@ -40,8 +40,9 @@ export class ClickUp implements INodeType {
 		defaults: {
 			name: 'ClickUp',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'clickUpApi',

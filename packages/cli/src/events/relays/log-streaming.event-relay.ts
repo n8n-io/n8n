@@ -1,7 +1,7 @@
+import { Redactable } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type { IWorkflowBase } from 'n8n-workflow';
 
-import { Redactable } from '@/decorators/redactable';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
@@ -20,6 +20,8 @@ export class LogStreamingEventRelay extends EventRelay {
 		this.setupListeners({
 			'workflow-created': (event) => this.workflowCreated(event),
 			'workflow-deleted': (event) => this.workflowDeleted(event),
+			'workflow-archived': (event) => this.workflowArchived(event),
+			'workflow-unarchived': (event) => this.workflowUnarchived(event),
 			'workflow-saved': (event) => this.workflowSaved(event),
 			'workflow-pre-execute': (event) => this.workflowPreExecute(event),
 			'workflow-post-execute': (event) => this.workflowPostExecute(event),
@@ -82,6 +84,22 @@ export class LogStreamingEventRelay extends EventRelay {
 	private workflowDeleted({ user, workflowId }: RelayEventMap['workflow-deleted']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.workflow.deleted',
+			payload: { ...user, workflowId },
+		});
+	}
+
+	@Redactable()
+	private workflowArchived({ user, workflowId }: RelayEventMap['workflow-archived']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.workflow.archived',
+			payload: { ...user, workflowId },
+		});
+	}
+
+	@Redactable()
+	private workflowUnarchived({ user, workflowId }: RelayEventMap['workflow-unarchived']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.workflow.unarchived',
 			payload: { ...user, workflowId },
 		});
 	}
@@ -385,10 +403,10 @@ export class LogStreamingEventRelay extends EventRelay {
 
 	// #region Execution
 
-	private executionThrottled({ executionId }: RelayEventMap['execution-throttled']) {
+	private executionThrottled({ executionId, type }: RelayEventMap['execution-throttled']) {
 		void this.eventBus.sendExecutionEvent({
 			eventName: 'n8n.execution.throttled',
-			payload: { executionId },
+			payload: { executionId, type },
 		});
 	}
 

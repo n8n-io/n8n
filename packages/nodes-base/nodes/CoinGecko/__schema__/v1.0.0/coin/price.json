@@ -1,0 +1,16 @@
+{
+    "type": "object",
+    "properties": {
+        "nacho-the-kat": {
+            "type": "object",
+            "properties": {
+                "usd": {
+                    "type": "number"
+                }
+            },
+            "required": [
+                "usd"
+            ]
+        }
+    }
+}

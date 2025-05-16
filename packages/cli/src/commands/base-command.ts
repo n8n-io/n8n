@@ -1,8 +1,11 @@
 import 'reflect-metadata';
+import { inDevelopment, inTest, LicenseState } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
+import { LICENSE_FEATURES } from '@n8n/constants';
 import { Container } from '@n8n/di';
 import { Command, Errors } from '@oclif/core';
 import {
+	BinaryDataConfig,
 	BinaryDataService,
 	InstanceSettings,
 	Logger,
@@ -10,29 +13,35 @@ import {
 	DataDeduplicationService,
 	ErrorReporter,
 } from 'n8n-core';
-import { ApplicationError, ensureError, sleep } from 'n8n-workflow';
+import { ensureError, sleep, UserError } from 'n8n-workflow';
 
 import type { AbstractServer } from '@/abstract-server';
 import config from '@/config';
-import { LICENSE_FEATURES, inDevelopment, inTest } from '@/constants';
+import { N8N_VERSION, N8N_RELEASE_DATE } from '@/constants';
 import * as CrashJournal from '@/crash-journal';
-import * as Db from '@/db';
+import { DbConnection } from '@/databases/db-connection';
 import { getDataDeduplicationService } from '@/deduplication';
 import { DeprecationService } from '@/deprecation/deprecation.service';
+import { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.service.ee';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
-import { initExpressionEvaluator } from '@/expression-evaluator';
 import { ExternalHooks } from '@/external-hooks';
 import { ExternalSecretsManager } from '@/external-secrets.ee/external-secrets-manager.ee';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { ModuleRegistry } from '@/modules/module-registry';
+import type { ModulePreInit } from '@/modules/modules.config';
+import { ModulesConfig } from '@/modules/modules.config';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
+import { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { WorkflowHistoryManager } from '@/workflows/workflow-history.ee/workflow-history-manager.ee';
 
 export abstract class BaseCommand extends Command {
 	protected logger = Container.get(Logger);
+
+	protected dbConnection = Container.get(DbConnection);
 
 	protected errorReporter: ErrorReporter;
 
@@ -50,6 +59,8 @@ export abstract class BaseCommand extends Command {
 
 	protected readonly globalConfig = Container.get(GlobalConfig);
 
+	protected readonly modulesConfig = Container.get(ModulesConfig);
+
 	/**
 	 * How long to wait for graceful shutdown before force killing the process.
 	 */
@@ -59,13 +70,51 @@ export abstract class BaseCommand extends Command {
 	/** Whether to init community packages (if enabled) */
 	protected needsCommunityPackages = false;
 
+	/** Whether to init task runner (if enabled). */
+	protected needsTaskRunner = false;
+
+	protected async loadModules() {
+		for (const moduleName of this.modulesConfig.modules) {
+			let preInitModule: ModulePreInit | undefined;
+			try {
+				preInitModule = (await import(
+					`../modules/${moduleName}/${moduleName}.pre-init`
+				)) as ModulePreInit;
+			} catch {}
+
+			if (
+				!preInitModule ||
+				preInitModule.shouldLoadModule?.({
+					instance: this.instanceSettings,
+				})
+			) {
+				// register module in the registry for the dependency injection
+				await import(`../modules/${moduleName}/${moduleName}.module`);
+
+				this.modulesConfig.addLoadedModule(moduleName);
+				this.logger.debug(`Loaded module "${moduleName}"`);
+			}
+		}
+
+		await Container.get(ModuleRegistry).initializeModules();
+
+		if (this.instanceSettings.isMultiMain) {
+			Container.get(MultiMainSetup).registerEventHandlers();
+		}
+	}
+
 	async init(): Promise<void> {
 		this.errorReporter = Container.get(ErrorReporter);
-		await this.errorReporter.init(
-			this.instanceSettings.instanceType,
-			this.globalConfig.sentry.backendDsn,
-		);
-		initExpressionEvaluator();
+
+		const { backendDsn, environment, deploymentName } = this.globalConfig.sentry;
+		await this.errorReporter.init({
+			serverType: this.instanceSettings.instanceType,
+			dsn: backendDsn,
+			environment,
+			release: `n8n@${N8N_VERSION}`,
+			serverName: deploymentName,
+			releaseDate: N8N_RELEASE_DATE,
+		});
 
 		process.once('SIGTERM', this.onTerminationSignal('SIGTERM'));
 		process.once('SIGINT', this.onTerminationSignal('SIGINT'));
@@ -73,9 +122,12 @@ export abstract class BaseCommand extends Command {
 		this.nodeTypes = Container.get(NodeTypes);
 		await Container.get(LoadNodesAndCredentials).init();
 
-		await Db.init().catch(
-			async (error: Error) => await this.exitWithCrash('There was an error initializing DB', error),
-		);
+		await this.dbConnection
+			.init()
+			.catch(
+				async (error: Error) =>
+					await this.exitWithCrash('There was an error initializing DB', error),
+			);
 
 		// This needs to happen after DB.init() or otherwise DB Connection is not
 		// available via the dependency Container that services depend on.
@@ -85,12 +137,16 @@ export abstract class BaseCommand extends Command {
 
 		await this.server?.init();
 
-		await Db.migrate().catch(
-			async (error: Error) =>
-				await this.exitWithCrash('There was an error running database migrations', error),
-		);
+		await this.dbConnection
+			.migrate()
+			.catch(
+				async (error: Error) =>
+					await this.exitWithCrash('There was an error running database migrations', error),
+			);
 
 		Container.get(DeprecationService).warn();
+
+		if (process.env.EXECUTIONS_PROCESS === 'own') process.exit(-1);
 
 		if (
 			config.getEnv('executions.mode') === 'queue' &&
@@ -105,6 +161,11 @@ export abstract class BaseCommand extends Command {
 		if (communityPackages.enabled && this.needsCommunityPackages) {
 			const { CommunityPackagesService } = await import('@/services/community-packages.service');
 			await Container.get(CommunityPackagesService).checkForMissingPackages();
+		}
+
+		if (this.needsTaskRunner && this.globalConfig.taskRunners.enabled) {
+			const { TaskRunnerModule } = await import('@/task-runners/task-runner-module');
+			await Container.get(TaskRunnerModule).start();
 		}
 
 		// TODO: remove this after the cyclic dependencies around the event-bus are resolved
@@ -124,7 +185,7 @@ export abstract class BaseCommand extends Command {
 
 	protected async exitSuccessFully() {
 		try {
-			await Promise.all([CrashJournal.cleanup(), Db.close()]);
+			await Promise.all([CrashJournal.cleanup(), this.dbConnection.close()]);
 		} finally {
 			process.exit();
 		}
@@ -137,95 +198,32 @@ export abstract class BaseCommand extends Command {
 	}
 
 	async initObjectStoreService() {
-		const isSelected = config.getEnv('binaryDataManager.mode') === 's3';
-		const isAvailable = config.getEnv('binaryDataManager.availableModes').includes('s3');
+		const binaryDataConfig = Container.get(BinaryDataConfig);
+		const isSelected = binaryDataConfig.mode === 's3';
+		const isAvailable = binaryDataConfig.availableModes.includes('s3');
 
-		if (!isSelected && !isAvailable) return;
+		if (!isSelected) return;
 
 		if (isSelected && !isAvailable) {
-			throw new ApplicationError(
+			throw new UserError(
 				'External storage selected but unavailable. Please make external storage available by adding "s3" to `N8N_AVAILABLE_BINARY_DATA_MODES`.',
 			);
 		}
 
-		const isLicensed = Container.get(License).isFeatureEnabled(LICENSE_FEATURES.BINARY_DATA_S3);
-
-		if (isSelected && isAvailable && isLicensed) {
-			this.logger.debug(
-				'License found for external storage - object store to init in read-write mode',
+		const isLicensed = Container.get(License).isLicensed(LICENSE_FEATURES.BINARY_DATA_S3);
+		if (!isLicensed) {
+			this.logger.error(
+				'No license found for S3 storage. \n Either set `N8N_DEFAULT_BINARY_DATA_MODE` to something else, or upgrade to a license that supports this feature.',
 			);
-
-			await this._initObjectStoreService();
-
-			return;
+			return this.exit(1);
 		}
 
-		if (isSelected && isAvailable && !isLicensed) {
-			this.logger.debug(
-				'No license found for external storage - object store to init with writes blocked. To enable writes, please upgrade to a license that supports this feature.',
-			);
-
-			await this._initObjectStoreService({ isReadOnly: true });
-
-			return;
-		}
-
-		if (!isSelected && isAvailable) {
-			this.logger.debug(
-				'External storage unselected but available - object store to init with writes unused',
-			);
-
-			await this._initObjectStoreService();
-
-			return;
-		}
-	}
-
-	private async _initObjectStoreService(options = { isReadOnly: false }) {
-		const objectStoreService = Container.get(ObjectStoreService);
-
-		const { host, bucket, credentials } = this.globalConfig.externalStorage.s3;
-
-		if (host === '') {
-			throw new ApplicationError(
-				'External storage host not configured. Please set `N8N_EXTERNAL_STORAGE_S3_HOST`.',
-			);
-		}
-
-		if (bucket.name === '') {
-			throw new ApplicationError(
-				'External storage bucket name not configured. Please set `N8N_EXTERNAL_STORAGE_S3_BUCKET_NAME`.',
-			);
-		}
-
-		if (bucket.region === '') {
-			throw new ApplicationError(
-				'External storage bucket region not configured. Please set `N8N_EXTERNAL_STORAGE_S3_BUCKET_REGION`.',
-			);
-		}
-
-		if (credentials.accessKey === '') {
-			throw new ApplicationError(
-				'External storage access key not configured. Please set `N8N_EXTERNAL_STORAGE_S3_ACCESS_KEY`.',
-			);
-		}
-
-		if (credentials.accessSecret === '') {
-			throw new ApplicationError(
-				'External storage access secret not configured. Please set `N8N_EXTERNAL_STORAGE_S3_ACCESS_SECRET`.',
-			);
-		}
-
-		this.logger.debug('Initializing object store service');
-
+		this.logger.debug('License found for external storage - Initializing object store service');
 		try {
-			await objectStoreService.init(host, bucket, credentials);
-			objectStoreService.setReadonly(options.isReadOnly);
-
+			await Container.get(ObjectStoreService).init();
 			this.logger.debug('Object store init completed');
 		} catch (e) {
 			const error = e instanceof Error ? e : new Error(`${e}`);
-
 			this.logger.debug('Object store init failed', { error });
 		}
 	}
@@ -239,8 +237,7 @@ export abstract class BaseCommand extends Command {
 			process.exit(1);
 		}
 
-		const binaryDataConfig = config.getEnv('binaryDataManager');
-		await Container.get(BinaryDataService).init(binaryDataConfig);
+		await Container.get(BinaryDataService).init();
 	}
 
 	protected async initDataDeduplicationService() {
@@ -256,6 +253,8 @@ export abstract class BaseCommand extends Command {
 	async initLicense(): Promise<void> {
 		this.license = Container.get(License);
 		await this.license.init();
+
+		Container.get(LicenseState).setLicenseProvider(this.license);
 
 		const { activationKey } = this.globalConfig.license;
 
@@ -286,11 +285,16 @@ export abstract class BaseCommand extends Command {
 		Container.get(WorkflowHistoryManager).init();
 	}
 
+	async cleanupTestRunner() {
+		await Container.get(TestRunnerService).cleanupIncompleteRuns();
+	}
+
 	async finally(error: Error | undefined) {
+		if (error?.message) this.logger.error(error.message);
 		if (inTest || this.id === 'start') return;
-		if (Db.connectionState.connected) {
+		if (this.dbConnection.connectionState.connected) {
 			await sleep(100); // give any in-flight query some time to finish
-			await Db.close();
+			await this.dbConnection.close();
 		}
 		const exitCode = error instanceof Errors.ExitError ? error.oclif.exit : error ? 1 : 0;
 		this.exit(exitCode);
@@ -315,6 +319,8 @@ export abstract class BaseCommand extends Command {
 			this.shutdownService.shutdown();
 
 			await this.shutdownService.waitForShutdown();
+
+			await this.errorReporter.shutdown();
 
 			await this.stopProcess();
 

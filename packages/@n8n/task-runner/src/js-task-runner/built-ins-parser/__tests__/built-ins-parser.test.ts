@@ -144,6 +144,23 @@ describe('BuiltInsParser', () => {
 		);
 	});
 
+	describe('$items(...)', () => {
+		it('should mark input as needed when $items() is used without arguments', () => {
+			const state = parseAndExpectOk('$items()');
+			expect(state).toEqual(new BuiltInsParserState({ needs$input: true }));
+		});
+
+		it('should require the given node when $items() is used with a static value', () => {
+			const state = parseAndExpectOk('$items("nodeName")');
+			expect(state).toEqual(new BuiltInsParserState({ neededNodeNames: new Set(['nodeName']) }));
+		});
+
+		it('should require all nodes when $items() is used with a variable', () => {
+			const state = parseAndExpectOk('var n = "name"; $items(n)');
+			expect(state).toEqual(new BuiltInsParserState({ needsAllNodes: true, needs$input: true }));
+		});
+	});
+
 	describe('$node', () => {
 		it('should require all nodes when $node is used', () => {
 			const state = parseAndExpectOk('return $node["name"];');
@@ -253,6 +270,7 @@ describe('BuiltInsParser', () => {
 				'$node',
 				'$self',
 				'$parameter',
+				'$rawParameter',
 				'$prevNode',
 				'$runIndex',
 				'$mode',
@@ -277,6 +295,7 @@ describe('BuiltInsParser', () => {
 				'$thisRunIndex',
 				'$nodeVersion',
 				'$nodeId',
+				'$agentInfo',
 				'$webhookId',
 			]);
 		});

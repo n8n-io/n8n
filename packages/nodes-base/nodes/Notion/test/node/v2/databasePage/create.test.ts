@@ -1,7 +1,5 @@
-import type { IHttpRequestMethods } from 'n8n-workflow';
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import nock from 'nock';
-
-import { equalityTest, setup, workflowToTests } from '@test/nodes/Helpers';
 
 const API_RESPONSE = {
 	object: 'page',
@@ -62,54 +60,47 @@ const API_RESPONSE = {
 	request_id: '1416702d-daa8-4f8d-9be3-c55fe52486b5',
 };
 
-jest.mock('../../../../shared/GenericFunctions', () => {
-	const originalModule = jest.requireActual('../../../../shared/GenericFunctions');
-	return {
-		...originalModule,
-		notionApiRequest: jest.fn(async function (method: IHttpRequestMethods) {
-			if (method === 'GET') {
-				return {
-					properties: {
-						Tags: {
-							id: '%40~Tp',
-							name: 'Tags',
-							type: 'multi_select',
-							multi_select: {
-								options: [],
-							},
-						},
-						Name: {
-							id: 'title',
-							name: 'Name',
-							type: 'title',
-							title: {},
-						},
-					},
-				};
-			}
-			if (method === 'POST') {
-				return API_RESPONSE;
-			}
-		}),
-	};
-});
-
 describe('Test NotionV2, databasePage => create', () => {
-	const workflows = ['nodes/Notion/test/node/v2/databasePage/create.workflow.json'];
-	const tests = workflowToTests(workflows);
+	nock('https://api.notion.com')
+		.get('/v1/databases/138fb9cb-4cf0-804c-8663-d8ecdd5e692f')
+		.reply(200, {
+			properties: {
+				Tags: {
+					id: '%40~Tp',
+					name: 'Tags',
+					type: 'multi_select',
+					multi_select: {
+						options: [],
+					},
+				},
+				Name: {
+					id: 'title',
+					name: 'Name',
+					type: 'title',
+					title: {},
+				},
+			},
+		})
+		.post('/v1/pages', {
+			parent: { database_id: '138fb9cb-4cf0-804c-8663-d8ecdd5e692f' },
+			properties: { Name: { title: [{ text: { content: 'new name 1' } }] } },
+			children: [
+				{
+					object: 'block',
+					type: 'paragraph',
+					paragraph: { text: [{ text: { content: 'new text' } }] },
+				},
+				{
+					object: 'block',
+					type: 'toggle',
+					toggle: { text: [{ text: { content: 'new toggle' } }] },
+				},
+			],
+			icon: { emoji: '😗' },
+		})
+		.reply(200, API_RESPONSE);
 
-	beforeAll(() => {
-		nock.disableNetConnect();
+	new NodeTestHarness().setupTests({
+		workflowFiles: ['create.workflow.json'],
 	});
-
-	afterAll(() => {
-		nock.restore();
-		jest.unmock('../../../../shared/GenericFunctions');
-	});
-
-	const nodeTypes = setup(tests);
-
-	for (const testData of tests) {
-		test(testData.description, async () => await equalityTest(testData, nodeTypes));
-	}
 });

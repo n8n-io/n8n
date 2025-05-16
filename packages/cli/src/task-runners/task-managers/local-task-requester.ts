@@ -2,10 +2,10 @@ import { Container, Service } from '@n8n/di';
 import type { RequesterMessage } from '@n8n/task-runner';
 
 import { NodeTypes } from '@/node-types';
+import type { RequesterMessageCallback } from '@/task-runners/task-broker/task-broker.service';
+import { TaskBroker } from '@/task-runners/task-broker/task-broker.service';
 
 import { TaskRequester } from './task-requester';
-import type { RequesterMessageCallback } from '../task-broker.service';
-import { TaskBroker } from '../task-broker.service';
 
 @Service()
 export class LocalTaskRequester extends TaskRequester {

@@ -1,0 +1,29 @@
+{
+    "type": "object",
+    "properties": {
+        "Full_Name": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "Last_Name": {
+            "type": "string"
+        },
+        "Owner": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "version": 2
+}
