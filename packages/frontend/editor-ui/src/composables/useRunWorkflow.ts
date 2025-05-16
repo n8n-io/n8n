@@ -42,6 +42,7 @@ import { useTelemetry } from './useTelemetry';
 import { useSettingsStore } from '@/stores/settings.store';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { useNodeDirtiness } from '@/composables/useNodeDirtiness';
+import { useCanvasOperations } from './useCanvasOperations';
 import { useAgentRequestStore } from '@/stores/agentRequest.store';
 
 export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof useRouter> }) {
@@ -59,6 +60,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 	const workflowsStore = useWorkflowsStore();
 	const executionsStore = useExecutionsStore();
 	const { dirtinessByName } = useNodeDirtiness();
+	const { startChat } = useCanvasOperations({ router: useRunWorkflowOpts.router });
 
 	function sortNodesByYPosition(nodes: string[]) {
 		return [...nodes].sort((a, b) => {
@@ -204,7 +206,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 					// and halt the execution
 					if (!chatHasInputData && !chatHasPinData) {
 						workflowsStore.chatPartialExecutionDestinationNode = options.destinationNode;
-						workflowsStore.toggleLogsPanelOpen(true);
+						startChat();
 						return;
 					}
 				}
