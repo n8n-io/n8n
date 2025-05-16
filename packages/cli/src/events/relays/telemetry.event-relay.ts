@@ -9,7 +9,11 @@ import { Service } from '@n8n/di';
 import { snakeCase } from 'change-case';
 import { BinaryDataConfig, InstanceSettings } from 'n8n-core';
 import type { ExecutionStatus, INodesGraphResult, ITelemetryTrackProperties } from 'n8n-workflow';
-import { EVALUATION_TRIGGER_NODE_TYPE, EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, TelemetryHelpers } from 'n8n-workflow';
+import {
+	EVALUATION_TRIGGER_NODE_TYPE,
+	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+	TelemetryHelpers,
+} from 'n8n-workflow';
 import os from 'node:os';
 import { get as pslGet } from 'psl';
 
@@ -741,8 +745,8 @@ export class TelemetryEventRelay extends EventRelay {
 				}
 
 				nodeGraphResult.evaluationTriggerNodeNames.forEach((name) => {
-					const rowsLeft = runData.data.resultData.runData[name]?.[0]?.data?.main?.[0]?.[0]
-					?.json?._rowsLeft;
+					const rowsLeft =
+						runData.data.resultData.runData[name]?.[0]?.data?.main?.[0]?.[0]?.json?._rowsLeft;
 
 					if (typeof rowsLeft === 'number') {
 						manualExecEventProperties.eval_rows_left = rowsLeft;

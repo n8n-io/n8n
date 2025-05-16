@@ -2587,6 +2587,7 @@ export interface INodeGraphItem {
 	workflow_id?: string; //@n8n/n8n-nodes-langchain.toolWorkflow and n8n-nodes-base.executeWorkflow
 	runs?: number;
 	items_total?: number;
+	metric_names?: string[];
 }
 
 export interface INodeNameIndex {
