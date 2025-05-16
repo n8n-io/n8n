@@ -135,6 +135,9 @@ The following environment variables support file input:
 - DB_POSTGRESDB_PORT_FILE
 - DB_POSTGRESDB_USER_FILE
 - DB_POSTGRESDB_SCHEMA_FILE
+- DB_POSTGRESDB_SSL_CA_FILE
+- DB_POSTGRESDB_SSL_CERT_FILE
+- DB_POSTGRESDB_SSL_KEY_FILE
 
 ## Example server setups
 
