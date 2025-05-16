@@ -202,12 +202,15 @@ describe('RespondToWebhook Node', () => {
 			});
 			mockExecuteFunctions.sendResponse.mockReturnValue();
 
-			await expect(respondToWebhook.execute.call(mockExecuteFunctions)).resolves.not.toThrow();
+			const result = await respondToWebhook.execute.call(mockExecuteFunctions);
 			expect(mockExecuteFunctions.sendResponse).toHaveBeenCalledWith({
 				body: inputItems.map((item) => item.json),
 				headers: {},
 				statusCode: 200,
 			});
+			expect(result).toHaveLength(1);
+			expect(result[0]).toHaveLength(2);
+			expect(result[0]).toEqual(inputItems);
 		});
 
 		it('should correctly return binary', async () => {
@@ -258,6 +261,53 @@ describe('RespondToWebhook Node', () => {
 				],
 			]);
 			expect(mockExecuteFunctions.sendResponse).not.toHaveBeenCalled();
+		});
+
+		it('should have two outputs in version 1.3', async () => {
+			const inputItems = [{ json: { index: 0, input: true } }, { json: { index: 1, input: true } }];
+			mockExecuteFunctions.getInputData.mockReturnValue(inputItems);
+			mockExecuteFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: 1.3 }));
+			mockExecuteFunctions.getParentNodes.mockReturnValue([
+				mock<NodeTypeAndVersion>({ type: WAIT_NODE_TYPE }),
+			]);
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName) => {
+				if (paramName === 'respondWith') return 'redirect';
+				if (paramName === 'redirectURL') return 'n8n.io';
+				if (paramName === 'options') return {};
+			});
+			mockExecuteFunctions.sendResponse.mockReturnValue();
+
+			const result = await respondToWebhook.execute.call(mockExecuteFunctions);
+
+			expect(result).toHaveLength(2);
+			expect(result).toEqual([
+				[
+					{
+						json: {
+							index: 0,
+							input: true,
+						},
+					},
+					{
+						json: {
+							index: 1,
+							input: true,
+						},
+					},
+				],
+				[
+					{
+						json: {
+							response: {
+								headers: {
+									location: 'n8n.io',
+								},
+								statusCode: 307,
+							},
+						},
+					},
+				],
+			]);
 		});
 	});
 });

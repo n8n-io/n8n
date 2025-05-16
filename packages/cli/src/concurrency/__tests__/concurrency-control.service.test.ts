@@ -1,3 +1,4 @@
+import type { ExecutionRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { WorkflowExecuteMode as ExecutionMode } from 'n8n-workflow';
 
@@ -8,7 +9,6 @@ import {
 	ConcurrencyControlService,
 } from '@/concurrency/concurrency-control.service';
 import config from '@/config';
-import type { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { InvalidConcurrencyLimitError } from '@/errors/invalid-concurrency-limit.error';
 import type { EventService } from '@/events/event.service';
 import type { Telemetry } from '@/telemetry';

@@ -33,7 +33,7 @@ export const useInsightsStore = defineStore('insights', () => {
 			return transformInsightsSummary(raw);
 		},
 		[],
-		{ immediate: false },
+		{ immediate: false, resetOnExecute: false },
 	);
 
 	const summary = useAsyncState(
@@ -42,7 +42,7 @@ export const useInsightsStore = defineStore('insights', () => {
 			return transformInsightsSummary(raw);
 		},
 		[],
-		{ immediate: false },
+		{ immediate: false, resetOnExecute: false },
 	);
 
 	const charts = useAsyncState(
@@ -50,7 +50,7 @@ export const useInsightsStore = defineStore('insights', () => {
 			return await insightsApi.fetchInsightsByTime(rootStore.restApiContext, filter);
 		},
 		[],
-		{ immediate: false },
+		{ immediate: false, resetOnExecute: false },
 	);
 
 	const table = useAsyncState(
@@ -61,7 +61,7 @@ export const useInsightsStore = defineStore('insights', () => {
 			count: 0,
 			data: [],
 		},
-		{ resetOnExecute: false, immediate: false },
+		{ immediate: false, resetOnExecute: false },
 	);
 
 	const dateRanges = computed(() => settingsStore.settings.insights.dateRanges);

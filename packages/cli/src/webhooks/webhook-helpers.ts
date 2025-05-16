@@ -7,6 +7,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 import { GlobalConfig } from '@n8n/config';
+import type { Project } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type express from 'express';
 import get from 'lodash/get';
@@ -43,13 +44,10 @@ import {
 	UnexpectedError,
 	WAIT_NODE_TYPE,
 } from 'n8n-workflow';
-import assert from 'node:assert';
 import { finished } from 'stream/promises';
 
 import { ActiveExecutions } from '@/active-executions';
-import config from '@/config';
 import { MCP_TRIGGER_NODE_TYPE } from '@/constants';
-import type { Project } from '@/databases/entities/project';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
@@ -636,15 +634,6 @@ export async function executeWebhook(
 				executionId,
 				workflow,
 			);
-		}
-
-		if (
-			config.getEnv('executions.mode') === 'queue' &&
-			process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true' &&
-			runData.executionMode === 'manual'
-		) {
-			assert(runData.executionData);
-			runData.executionData.isTestWebhook = true;
 		}
 
 		// Start now to run the workflow

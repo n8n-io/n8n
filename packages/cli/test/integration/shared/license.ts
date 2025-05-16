@@ -1,3 +1,4 @@
+import type { LicenseProvider, LicenseState } from '@n8n/backend-common';
 import type { BooleanLicenseFeature, NumericLicenseFeature } from '@n8n/constants';
 
 import type { License } from '@/license';
@@ -17,8 +18,17 @@ export class LicenseMocker {
 	private _defaultQuotas: Map<NumericLicenseFeature, number> = new Map();
 
 	mock(license: License) {
-		license.isFeatureEnabled = this.isFeatureEnabled.bind(this);
-		license.getFeatureValue = this.getFeatureValue.bind(this);
+		license.isLicensed = this.isFeatureEnabled.bind(this);
+		license.getValue = this.getFeatureValue.bind(this);
+	}
+
+	mockLicenseState(licenseState: LicenseState) {
+		const licenseProvider: LicenseProvider = {
+			isLicensed: this.isFeatureEnabled.bind(this),
+			getValue: this.getFeatureValue.bind(this),
+		};
+
+		licenseState.setLicenseProvider(licenseProvider);
 	}
 
 	reset() {

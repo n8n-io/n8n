@@ -1,3 +1,5 @@
+import { inTest } from '@n8n/backend-common';
+import { InstanceSettingsConfig } from '@n8n/config';
 import { Memoized } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { createHash, randomBytes } from 'crypto';
@@ -8,7 +10,6 @@ import path from 'path';
 
 import { Logger } from '@/logging/logger';
 
-import { InstanceSettingsConfig } from './instance-settings-config';
 import { WorkerMissingEncryptionKey } from './worker-missing-encryption-key.error';
 
 const nanoid = customAlphabet(ALPHABET, 16);
@@ -26,8 +27,6 @@ type Settings = ReadOnlySettings & WritableSettings;
 type InstanceRole = 'unset' | 'leader' | 'follower';
 
 export type InstanceType = 'main' | 'webhook' | 'worker';
-
-const inTest = process.env.NODE_ENV === 'test';
 
 @Service()
 export class InstanceSettings {

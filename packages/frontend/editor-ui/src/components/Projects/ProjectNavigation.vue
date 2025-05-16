@@ -23,7 +23,6 @@ const settingsStore = useSettingsStore();
 
 const isCreatingProject = computed(() => globalEntityCreation.isCreatingProject.value);
 const displayProjects = computed(() => globalEntityCreation.displayProjects.value);
-// TODO: Once we remove the feature flag, we can remove this computed property
 const isFoldersFeatureEnabled = computed(() => settingsStore.isFoldersFeatureEnabled);
 
 const home = computed<IMenuItem>(() => ({
@@ -32,6 +31,15 @@ const home = computed<IMenuItem>(() => ({
 	icon: 'home',
 	route: {
 		to: { name: VIEWS.HOMEPAGE },
+	},
+}));
+
+const shared = computed<IMenuItem>(() => ({
+	id: 'shared',
+	label: locale.baseText('projects.menu.shared'),
+	icon: 'share',
+	route: {
+		to: { name: VIEWS.SHARED_WITH_ME },
 	},
 }));
 
@@ -74,6 +82,22 @@ const showAddFirstProject = computed(
 				mode="tabs"
 				data-test-id="project-home-menu-item"
 			/>
+			<N8nMenuItem
+				v-if="projectsStore.isTeamProjectFeatureEnabled || isFoldersFeatureEnabled"
+				:item="personalProject"
+				:compact="props.collapsed"
+				:active-tab="projectsStore.projectNavActiveId"
+				mode="tabs"
+				data-test-id="project-personal-menu-item"
+			/>
+			<N8nMenuItem
+				v-if="projectsStore.isTeamProjectFeatureEnabled || isFoldersFeatureEnabled"
+				:item="shared"
+				:compact="props.collapsed"
+				:active-tab="projectsStore.projectNavActiveId"
+				mode="tabs"
+				data-test-id="project-shared-menu-item"
+			/>
 		</ElMenu>
 		<hr v-if="projectsStore.isTeamProjectFeatureEnabled" class="mt-m mb-m" />
 		<N8nText
@@ -104,13 +128,6 @@ const showAddFirstProject = computed(
 			:collapse="props.collapsed"
 			:class="$style.projectItems"
 		>
-			<N8nMenuItem
-				:item="personalProject"
-				:compact="props.collapsed"
-				:active-tab="projectsStore.projectNavActiveId"
-				mode="tabs"
-				data-test-id="project-personal-menu-item"
-			/>
 			<N8nMenuItem
 				v-for="project in displayProjects"
 				:key="project.id"

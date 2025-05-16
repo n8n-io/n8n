@@ -1,8 +1,8 @@
+import type { User } from '@n8n/db';
+import type { ApiKey } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 
-import type { ApiKey } from '@/databases/entities/api-key';
-import type { User } from '@/databases/entities/user';
 import { EventService } from '@/events/event.service';
 import type { AuthenticatedRequest } from '@/requests';
 import { PublicApiKeyService } from '@/services/public-api-key.service';

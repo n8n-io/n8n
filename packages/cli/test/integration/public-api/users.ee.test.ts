@@ -1,7 +1,7 @@
+import type { User } from '@n8n/db';
 import { v4 as uuid } from 'uuid';
 import validator from 'validator';
 
-import type { User } from '@/databases/entities/user';
 import { License } from '@/license';
 import { createTeamProject, linkUserToProject } from '@test-integration/db/projects';
 
@@ -24,7 +24,13 @@ mockInstance(License, {
 const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
 
 beforeEach(async () => {
-	await testDb.truncate(['SharedCredentials', 'SharedWorkflow', 'Workflow', 'Credentials', 'User']);
+	await testDb.truncate([
+		'SharedCredentials',
+		'SharedWorkflow',
+		'WorkflowEntity',
+		'CredentialsEntity',
+		'User',
+	]);
 });
 
 describe('With license unlimited quota:users', () => {

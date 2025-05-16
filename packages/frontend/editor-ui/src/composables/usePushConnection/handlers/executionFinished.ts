@@ -3,7 +3,13 @@ import { useUIStore } from '@/stores/ui.store';
 import type { IExecutionResponse } from '@/Interface';
 import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
 import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
-import { clearPopupWindowState, hasTrimmedData, hasTrimmedItem } from '@/utils/executionUtils';
+import {
+	clearPopupWindowState,
+	hasTrimmedData,
+	hasTrimmedItem,
+	getExecutionErrorToastConfiguration,
+	getExecutionErrorMessage,
+} from '@/utils/executionUtils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
@@ -13,18 +19,8 @@ import { useToast } from '@/composables/useToast';
 import type { useRouter } from 'vue-router';
 import { useI18n } from '@/composables/useI18n';
 import { TelemetryHelpers } from 'n8n-workflow';
-import type {
-	IWorkflowBase,
-	NodeError,
-	NodeOperationError,
-	SubworkflowOperationError,
-	ExpressionError,
-	IDataObject,
-	IRunExecutionData,
-} from 'n8n-workflow';
+import type { IWorkflowBase, ExpressionError, IDataObject, IRunExecutionData } from 'n8n-workflow';
 import { codeNodeEditorEventBus, globalLinkActionsEventBus } from '@/event-bus';
-import { h } from 'vue';
-import NodeExecutionErrorMessage from '@/components/NodeExecutionErrorMessage.vue';
 import { getTriggerNodeServiceName } from '@/utils/nodeTypesUtils';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
@@ -32,7 +28,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 export type SimplifiedExecution = Pick<
 	IExecutionResponse,
-	'workflowId' | 'workflowData' | 'data' | 'status' | 'startedAt' | 'stoppedAt'
+	'workflowId' | 'workflowData' | 'data' | 'status' | 'startedAt' | 'stoppedAt' | 'id'
 >;
 
 /**
@@ -74,9 +70,10 @@ export async function executionFinished(
 	let successToastAlreadyShown = false;
 	let execution: SimplifiedExecution | undefined;
 	if (data.rawData) {
-		const { workflowId, status, rawData } = data;
+		const { executionId, workflowId, status, rawData } = data;
 
 		execution = {
+			id: executionId,
 			workflowId,
 			workflowData: workflowsStore.workflow,
 			data: parse(rawData),
@@ -125,6 +122,7 @@ export async function fetchExecutionData(
 		}
 
 		return {
+			id: executionId,
 			workflowId: executionResponse.workflowId,
 			workflowData: workflowsStore.workflow,
 			data: parse(executionResponse.data as unknown as string),
@@ -163,45 +161,6 @@ export function getRunExecutionData(execution: SimplifiedExecution): IRunExecuti
 }
 
 /**
- * Returns the error message from the execution object if it exists,
- * or a fallback error message otherwise
- */
-export function getExecutionError(execution: SimplifiedExecution): string {
-	const error = execution.data?.resultData.error;
-	const i18n = useI18n();
-
-	let errorMessage: string;
-
-	if (execution.data?.resultData.lastNodeExecuted && error) {
-		errorMessage = error.message ?? error.description ?? '';
-	} else {
-		errorMessage = i18n.baseText('pushConnection.executionError', {
-			interpolate: { error: '!' },
-		});
-
-		if (error?.message) {
-			let nodeName: string | undefined;
-			if ('node' in error) {
-				nodeName = typeof error.node === 'string' ? error.node : error.node!.name;
-			}
-
-			const receivedError = nodeName ? `${nodeName}: ${error.message}` : error.message;
-			errorMessage = i18n.baseText('pushConnection.executionError', {
-				interpolate: {
-					error: `.${i18n.baseText('pushConnection.executionError.details', {
-						interpolate: {
-							details: receivedError,
-						},
-					})}`,
-				},
-			});
-		}
-	}
-
-	return errorMessage;
-}
-
-/**
  * Returns the error message for the execution run data if the execution status is crashed or canceled,
  * or a fallback error message otherwise
  */
@@ -218,7 +177,10 @@ export function getRunDataExecutedErrorMessage(execution: SimplifiedExecution) {
 		});
 	}
 
-	return getExecutionError(execution);
+	return getExecutionErrorMessage({
+		error: execution.data?.resultData.error,
+		lastNodeExecuted: execution.data?.resultData.lastNodeExecuted,
+	});
 }
 
 /**
@@ -267,7 +229,6 @@ export function handleExecutionFinishedWithErrorOrCanceled(
 	const workflowsStore = useWorkflowsStore();
 	const workflowHelpers = useWorkflowHelpers(options);
 	const workflowObject = workflowsStore.getCurrentWorkflow();
-	const runDataExecutedErrorMessage = getRunDataExecutedErrorMessage(execution);
 
 	workflowHelpers.setDocumentTitle(workflowObject.name as string, 'ERROR');
 
@@ -313,62 +274,19 @@ export function handleExecutionFinishedWithErrorOrCanceled(
 		});
 	}
 
-	if (runExecutionData.resultData.error?.name === 'SubworkflowOperationError') {
-		const error = runExecutionData.resultData.error as SubworkflowOperationError;
-
-		workflowsStore.subWorkflowExecutionError = error;
-
-		toast.showMessage({
-			title: error.message,
-			message: error.description,
-			type: 'error',
-			duration: 0,
-		});
-	} else if (
-		(runExecutionData.resultData.error?.name === 'NodeOperationError' ||
-			runExecutionData.resultData.error?.name === 'NodeApiError') &&
-		(runExecutionData.resultData.error as NodeError).functionality === 'configuration-node'
-	) {
-		// If the error is a configuration error of the node itself doesn't get executed so we can't use lastNodeExecuted for the title
-		let title: string;
-		const nodeError = runExecutionData.resultData.error as NodeOperationError;
-		if (nodeError.node.name) {
-			title = `Error in sub-node ‘${nodeError.node.name}‘`;
-		} else {
-			title = 'Problem executing workflow';
-		}
-
-		toast.showMessage({
-			title,
-			message: h(NodeExecutionErrorMessage, {
-				errorMessage: nodeError?.description ?? runDataExecutedErrorMessage,
-				nodeName: nodeError.node.name,
-			}),
-			type: 'error',
-			duration: 0,
-		});
-	} else {
+	if (execution.status === 'canceled') {
 		// Do not show the error message if the workflow got canceled
-		if (execution.status === 'canceled') {
-			toast.showMessage({
-				title: i18n.baseText('nodeView.showMessage.stopExecutionTry.title'),
-				type: 'success',
-			});
-		} else {
-			let title: string;
-			if (runExecutionData.resultData.lastNodeExecuted) {
-				title = `Problem in node ‘${runExecutionData.resultData.lastNodeExecuted}‘`;
-			} else {
-				title = 'Problem executing workflow';
-			}
+		toast.showMessage({
+			title: i18n.baseText('nodeView.showMessage.stopExecutionTry.title'),
+			type: 'success',
+		});
+	} else if (execution.data?.resultData.error) {
+		const { message, title } = getExecutionErrorToastConfiguration({
+			error: execution.data.resultData.error,
+			lastNodeExecuted: execution.data?.resultData.lastNodeExecuted,
+		});
 
-			toast.showMessage({
-				title,
-				message: runDataExecutedErrorMessage,
-				type: 'error',
-				duration: 0,
-			});
-		}
+		toast.showMessage({ title, message, type: 'error', duration: 0 });
 	}
 }
 
@@ -450,7 +368,6 @@ export function handleExecutionFinishedWithOther(
 export function setRunExecutionData(
 	execution: SimplifiedExecution,
 	runExecutionData: IRunExecutionData,
-	normalize = true,
 ) {
 	const workflowsStore = useWorkflowsStore();
 	const nodeHelpers = useNodeHelpers();
@@ -467,13 +384,12 @@ export function setRunExecutionData(
 
 	workflowsStore.executingNode.length = 0;
 
-	if (normalize) {
-		// As a temporary workaround for https://linear.app/n8n/issue/PAY-2762,
-		// remove runs that is still 'running' status when execution is finished
-		removeRunningTaskData(execution as IExecutionResponse);
-	}
-
-	workflowsStore.setWorkflowExecutionData(workflowExecution as IExecutionResponse);
+	workflowsStore.setWorkflowExecutionData({
+		...workflowExecution,
+		status: execution.status,
+		id: execution.id,
+		stoppedAt: execution.stoppedAt,
+	} as IExecutionResponse);
 	workflowsStore.setWorkflowExecutionRunData(runExecutionData);
 	workflowsStore.setActiveExecutionId(undefined);
 
@@ -504,23 +420,4 @@ export function setRunExecutionData(
 
 	const lineNumber = runExecutionData.resultData?.error?.lineNumber;
 	codeNodeEditorEventBus.emit('highlightLine', lineNumber ?? 'last');
-}
-
-function removeRunningTaskData(execution: IExecutionResponse): void {
-	if (execution.data) {
-		execution.data = {
-			...execution.data,
-			resultData: {
-				...execution.data.resultData,
-				runData: Object.fromEntries(
-					Object.entries(execution.data.resultData.runData)
-						.map(([nodeName, runs]) => [
-							nodeName,
-							runs.filter((run) => run.executionStatus !== 'running'),
-						])
-						.filter(([, runs]) => runs.length > 0),
-				),
-			},
-		};
-	}
 }

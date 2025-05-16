@@ -1,5 +1,5 @@
 import { ShutdownRegistryMetadata } from '@n8n/decorators';
-import type { ServiceClass } from '@n8n/decorators/src/types';
+import type { ShutdownServiceClass } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type { ErrorReporter } from 'n8n-core';
@@ -29,7 +29,7 @@ describe('ShutdownService', () => {
 	describe('shutdown', () => {
 		it('should signal shutdown', () => {
 			shutdownService.register(10, {
-				serviceClass: MockComponent as unknown as ServiceClass,
+				serviceClass: MockComponent as unknown as ShutdownServiceClass,
 				methodName: 'onShutdown',
 			});
 			shutdownService.shutdown();
@@ -51,12 +51,12 @@ describe('ShutdownService', () => {
 			jest.spyOn(mockService, 'onShutdownLowPrio').mockImplementation(() => order.push('low'));
 
 			shutdownService.register(100, {
-				serviceClass: MockService as unknown as ServiceClass,
+				serviceClass: MockService as unknown as ShutdownServiceClass,
 				methodName: 'onShutdownHighPrio',
 			});
 
 			shutdownService.register(10, {
-				serviceClass: MockService as unknown as ServiceClass,
+				serviceClass: MockService as unknown as ShutdownServiceClass,
 				methodName: 'onShutdownLowPrio',
 			});
 
@@ -68,7 +68,7 @@ describe('ShutdownService', () => {
 		it('should throw error if shutdown is already in progress', () => {
 			shutdownService.register(10, {
 				methodName: 'onShutdown',
-				serviceClass: MockComponent as unknown as ServiceClass,
+				serviceClass: MockComponent as unknown as ShutdownServiceClass,
 			});
 			shutdownService.shutdown();
 			expect(() => shutdownService.shutdown()).toThrow('App is already shutting down');
@@ -80,7 +80,7 @@ describe('ShutdownService', () => {
 				throw componentError;
 			});
 			shutdownService.register(10, {
-				serviceClass: MockComponent as unknown as ServiceClass,
+				serviceClass: MockComponent as unknown as ShutdownServiceClass,
 				methodName: 'onShutdown',
 			});
 			shutdownService.shutdown();
@@ -100,7 +100,7 @@ describe('ShutdownService', () => {
 	describe('waitForShutdown', () => {
 		it('should wait for shutdown', async () => {
 			shutdownService.register(10, {
-				serviceClass: MockComponent as unknown as ServiceClass,
+				serviceClass: MockComponent as unknown as ShutdownServiceClass,
 				methodName: 'onShutdown',
 			});
 			shutdownService.shutdown();
@@ -117,7 +117,7 @@ describe('ShutdownService', () => {
 	describe('isShuttingDown', () => {
 		it('should return true if app is shutting down', () => {
 			shutdownService.register(10, {
-				serviceClass: MockComponent as unknown as ServiceClass,
+				serviceClass: MockComponent as unknown as ShutdownServiceClass,
 				methodName: 'onShutdown',
 			});
 			shutdownService.shutdown();
@@ -136,7 +136,7 @@ describe('ShutdownService', () => {
 			}
 
 			shutdownService.register(10, {
-				serviceClass: UnregisteredComponent as unknown as ServiceClass,
+				serviceClass: UnregisteredComponent as unknown as ShutdownServiceClass,
 				methodName: 'onShutdown',
 			});
 
@@ -149,7 +149,7 @@ describe('ShutdownService', () => {
 			class TestComponent {}
 
 			shutdownService.register(10, {
-				serviceClass: TestComponent as unknown as ServiceClass,
+				serviceClass: TestComponent as unknown as ShutdownServiceClass,
 				methodName: 'onShutdown',
 			});
 

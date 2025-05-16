@@ -1,4 +1,14 @@
-import { generateOffsets, getGenericHints, getNewNodePosition } from './nodeViewUtils';
+import {
+	getLeftMostNode,
+	getTopMostNode,
+	getRightMostNode,
+	getBottomMostNode,
+	getNodesGroupSize,
+	generateOffsets,
+	getGenericHints,
+	getNewNodePosition,
+	NODE_SIZE,
+} from './nodeViewUtils';
 import type { INode, INodeTypeDescription, INodeExecutionData, Workflow } from 'n8n-workflow';
 import type { INodeUi, XYPosition } from '@/Interface';
 import { NodeHelpers, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
@@ -241,7 +251,7 @@ describe('getNewNodePosition', () => {
 		];
 		const newPosition: XYPosition = [100, 100];
 		const result = getNewNodePosition(nodes, newPosition);
-		expect(result).toEqual([180, 180]);
+		expect(result).toEqual([220, 220]);
 	});
 
 	it('should skip nodes in the conflict allowlist', () => {
@@ -259,8 +269,10 @@ describe('getNewNodePosition', () => {
 		];
 		const newPosition: XYPosition = [100, 100];
 		const movePosition: XYPosition = [50, 50];
-		const result = getNewNodePosition(nodes, newPosition, movePosition);
-		expect(result).toEqual([200, 200]);
+		const result = getNewNodePosition(nodes, newPosition, {
+			offset: movePosition,
+		});
+		expect(result).toEqual([220, 220]);
 	});
 
 	it('should handle multiple conflicts correctly', () => {
@@ -270,6 +282,118 @@ describe('getNewNodePosition', () => {
 		];
 		const newPosition: XYPosition = [100, 100];
 		const result = getNewNodePosition(nodes, newPosition);
-		expect(result).toEqual([220, 220]);
+		expect(result).toEqual([280, 280]);
+	});
+});
+
+const testNodes: INode[] = [
+	createTestNode({ id: 'a', position: [0, 0] }),
+	createTestNode({ id: 'b', position: [100, 50] }),
+	createTestNode({ id: 'c', position: [50, 100] }),
+	createTestNode({ id: 'd', position: [-20, -10] }),
+];
+
+describe('getLeftMostNode', () => {
+	it('should return the leftmost node', () => {
+		const left = getLeftMostNode(testNodes);
+		expect(left).toEqual(testNodes[3]);
+	});
+
+	it('should handle a single node', () => {
+		const single = [testNodes[0]];
+		expect(getLeftMostNode(single)).toEqual(testNodes[0]);
+	});
+
+	it('should handle nodes with equal positions', () => {
+		const equalNodes: INode[] = [
+			createTestNode({ id: 'x', position: [10, 20] }),
+			createTestNode({ id: 'y', position: [10, 20] }),
+		];
+		expect(getLeftMostNode(equalNodes)).toEqual(equalNodes[0]);
+	});
+});
+
+describe('getRightMostNode', () => {
+	it('should return the rightmost node', () => {
+		const right = getRightMostNode(testNodes);
+		expect(right).toEqual(testNodes[1]);
+	});
+
+	it('should handle a single node', () => {
+		const single = [testNodes[0]];
+		expect(getRightMostNode(single)).toEqual(testNodes[0]);
+	});
+
+	it('should handle nodes with equal positions', () => {
+		const equalNodes: INode[] = [
+			createTestNode({ id: 'x', position: [10, 20] }),
+			createTestNode({ id: 'y', position: [10, 20] }),
+		];
+		expect(getRightMostNode(equalNodes)).toEqual(equalNodes[0]);
+	});
+});
+
+describe('getTopMostNode', () => {
+	it('should return the topmost node', () => {
+		const top = getTopMostNode(testNodes);
+		expect(top).toEqual(testNodes[3]);
+	});
+
+	it('should handle a single node', () => {
+		const single = [testNodes[0]];
+		expect(getTopMostNode(single)).toEqual(testNodes[0]);
+	});
+
+	it('should handle nodes with equal positions', () => {
+		const equalNodes: INode[] = [
+			createTestNode({ id: 'x', position: [10, 20] }),
+			createTestNode({ id: 'y', position: [10, 20] }),
+		];
+		expect(getTopMostNode(equalNodes)).toEqual(equalNodes[0]);
+	});
+});
+
+describe('getBottomMostNode', () => {
+	it('should return the bottommost node', () => {
+		const bottom = getBottomMostNode(testNodes);
+		expect(bottom).toEqual(testNodes[2]);
+	});
+
+	it('should handle a single node', () => {
+		const single = [testNodes[0]];
+		expect(getBottomMostNode(single)).toEqual(testNodes[0]);
+	});
+
+	it('should handle nodes with equal positions', () => {
+		const equalNodes: INode[] = [
+			createTestNode({ id: 'x', position: [10, 20] }),
+			createTestNode({ id: 'y', position: [10, 20] }),
+		];
+		expect(getBottomMostNode(equalNodes)).toEqual(equalNodes[0]);
+	});
+});
+
+describe('getNodesGroupSize', () => {
+	it('calculates the group size correctly', () => {
+		const [width, height] = getNodesGroupSize(testNodes);
+		expect(width).toBe(Math.abs(100 - -20) + NODE_SIZE);
+		expect(height).toBe(Math.abs(-10 - 100) + NODE_SIZE);
+	});
+
+	it('should handle a single node', () => {
+		const single = [testNodes[0]];
+		const [w, h] = getNodesGroupSize(single);
+		expect(w).toBe(NODE_SIZE);
+		expect(h).toBe(NODE_SIZE);
+	});
+
+	it('should handle nodes with equal positions', () => {
+		const equalNodes: INode[] = [
+			createTestNode({ id: 'x', position: [10, 20] }),
+			createTestNode({ id: 'y', position: [10, 20] }),
+		];
+		const [we, he] = getNodesGroupSize(equalNodes);
+		expect(we).toBe(NODE_SIZE);
+		expect(he).toBe(NODE_SIZE);
 	});
 });

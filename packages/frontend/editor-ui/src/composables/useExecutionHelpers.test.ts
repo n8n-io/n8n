@@ -2,6 +2,7 @@ import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { i18n } from '@/plugins/i18n';
 import { convertToDisplayDate } from '@/utils/formatters/dateFormatter';
+import { mock } from 'vitest-mock-extended';
 
 const { resolve, track } = vi.hoisted(() => ({
 	resolve: vi.fn(),
@@ -48,6 +49,21 @@ describe('useExecutionHelpers()', () => {
 				expect(uiDetails.runningTime).toEqual('0s');
 			},
 		);
+
+		it('use `createdAt` if `startedAt` is null', async () => {
+			const date = new Date('2025-01-01T00:00:00.000Z');
+			const execution = mock<ExecutionSummary>({
+				id: '1',
+				startedAt: null,
+				createdAt: date,
+				stoppedAt: date,
+				status: 'error',
+			});
+			const { getUIDetails } = useExecutionHelpers();
+			const uiDetails = getUIDetails(execution);
+
+			expect(uiDetails.startTime).toEqual('Jan 1, 00:00:00');
+		});
 	});
 
 	describe('formatDate()', () => {

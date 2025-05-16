@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import { mock } from 'jest-mock-extended';
 import { type INodeTypeBaseDescription, type ITriggerFunctions } from 'n8n-workflow';
 

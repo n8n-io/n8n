@@ -25,7 +25,7 @@ export function useExecutionHelpers() {
 		const status = {
 			name: 'unknown',
 			createdAt: execution.createdAt?.toString() ?? '',
-			startTime: formatDate(execution.startedAt),
+			startTime: formatDate(execution.startedAt ?? execution.createdAt),
 			label: 'Status unknown',
 			runningTime: '',
 			showTimestamp: true,

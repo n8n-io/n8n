@@ -36,7 +36,7 @@
 			"typeVersion": 1,
 			"position": [0, 0],
 			"id": "de1e7acf-12d8-4e56-ba42-709ffb397db2",
-			"name": "When clicking ‘Test workflow’"
+			"name": "When clicking ‘Execute workflow’"
 		},
 		{
 			"parameters": {
@@ -69,7 +69,7 @@
 				]
 			]
 		},
-		"When clicking ‘Test workflow’": {
+		"When clicking ‘Execute workflow’": {
 			"main": [
 				[
 					{
@@ -82,7 +82,7 @@
 		}
 	},
 	"pinData": {
-		"When clicking ‘Test workflow’": [
+		"When clicking ‘Execute workflow’": [
 			{
 				"a": 1
 			},

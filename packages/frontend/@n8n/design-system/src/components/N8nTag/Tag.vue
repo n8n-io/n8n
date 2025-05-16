@@ -20,7 +20,7 @@ withDefaults(defineProps<TagProps>(), {
 .tag {
 	min-width: max-content;
 	padding: 1px var(--spacing-4xs);
-	color: var(--color-text-dark);
+	color: var(--color-text-base);
 	background-color: var(--color-background-base);
 	border-radius: var(--border-radius-base);
 	font-size: var(--font-size-2xs);

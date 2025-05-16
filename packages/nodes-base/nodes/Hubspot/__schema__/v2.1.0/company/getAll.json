@@ -45,6 +45,9 @@
                                     "timestamp": {
                                         "type": "integer"
                                     },
+                                    "updatedByUserId": {
+                                        "type": "integer"
+                                    },
                                     "useTimestampAsPersistenceTimestamp": {
                                         "type": "boolean"
                                     },
@@ -73,5 +76,5 @@
             }
         }
     },
-    "version": 2
+    "version": 3
 }

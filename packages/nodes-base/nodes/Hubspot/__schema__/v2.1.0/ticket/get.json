@@ -45,13 +45,13 @@
                                     "persistenceTimestamp": {
                                         "type": "integer"
                                     },
+                                    "requestId": {
+                                        "type": "string"
+                                    },
                                     "source": {
                                         "type": "string"
                                     },
                                     "sourceId": {
-                                        "type": "string"
-                                    },
-                                    "sourceLabel": {
                                         "type": "string"
                                     },
                                     "sourceVid": {
@@ -74,5 +74,5 @@
             }
         }
     },
-    "version": 2
+    "version": 3
 }

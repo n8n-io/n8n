@@ -1,9 +1,18 @@
 {
     "type": "object",
     "properties": {
+        "contact_address_complete": {
+            "type": "string"
+        },
+        "display_name": {
+            "type": "string"
+        },
         "id": {
             "type": "integer"
+        },
+        "is_company": {
+            "type": "boolean"
         }
     },
-    "version": 1
+    "version": 2
 }

@@ -132,7 +132,7 @@ export class ErrorReporter {
 			beforeSend: this.beforeSend.bind(this) as NodeOptions['beforeSend'],
 			integrations: (integrations) => [
 				...integrations.filter(({ name }) => enabledIntegrations.includes(name)),
-				rewriteFramesIntegration({ root: process.cwd() }),
+				rewriteFramesIntegration({ root: '/' }),
 				requestDataIntegration({
 					include: {
 						cookies: false,

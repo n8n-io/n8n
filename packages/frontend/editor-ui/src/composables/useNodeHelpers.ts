@@ -2,7 +2,7 @@ import { ref } from 'vue';
 import { useHistoryStore } from '@/stores/history.store';
 import { CUSTOM_API_CALL_KEY, PLACEHOLDER_FILLED_AT_EXECUTION_TIME } from '@/constants';
 
-import { NodeHelpers, ExpressionEvaluatorProxy, NodeConnectionTypes } from 'n8n-workflow';
+import { NodeHelpers, NodeConnectionTypes } from 'n8n-workflow';
 import type {
 	INodeProperties,
 	INodeCredentialDescription,
@@ -30,7 +30,6 @@ import type {
 
 import type {
 	ICredentialsResponse,
-	IExecutionResponse,
 	INodeUi,
 	INodeUpdatePropertiesInformation,
 	NodePanelType,
@@ -38,7 +37,6 @@ import type {
 
 import { isString } from '@/utils/typeGuards';
 import { isObject } from '@/utils/objectUtils';
-import { useSettingsStore } from '@/stores/settings.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
@@ -543,12 +541,12 @@ export function useNodeHelpers() {
 		}
 	}
 
-	function getNodeTaskData(nodeName: string, runIndex = 0, execution?: IExecutionResponse) {
+	function getNodeTaskData(nodeName: string, runIndex = 0, execution?: IRunExecutionData) {
 		return getAllNodeTaskData(nodeName, execution)?.[runIndex] ?? null;
 	}
 
-	function getAllNodeTaskData(nodeName: string, execution?: IExecutionResponse) {
-		const runData = execution?.data?.resultData.runData ?? workflowsStore.getWorkflowRunData;
+	function getAllNodeTaskData(nodeName: string, execution?: IRunExecutionData) {
+		const runData = execution?.resultData.runData ?? workflowsStore.getWorkflowRunData;
 
 		return runData?.[nodeName] ?? null;
 	}
@@ -580,7 +578,7 @@ export function useNodeHelpers() {
 		outputIndex = 0,
 		paneType: NodePanelType = 'output',
 		connectionType: NodeConnectionType = NodeConnectionTypes.Main,
-		execution?: IExecutionResponse,
+		execution?: IRunExecutionData,
 	): INodeExecutionData[] {
 		if (!node) return [];
 		const taskData = getNodeTaskData(node.name, runIndex, execution);
@@ -703,9 +701,6 @@ export function useNodeHelpers() {
 
 		if (nodeType?.subtitle !== undefined) {
 			try {
-				ExpressionEvaluatorProxy.setEvaluator(
-					useSettingsStore().settings.expressions?.evaluator ?? 'tmpl',
-				);
 				return workflow.expression.getSimpleParameterValue(
 					data,
 					nodeType.subtitle,

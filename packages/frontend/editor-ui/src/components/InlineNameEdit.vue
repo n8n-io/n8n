@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, ref, withDefaults } from 'vue';
+import { nextTick, ref } from 'vue';
 import { useToast } from '@/composables/useToast';
 import { onClickOutside } from '@vueuse/core';
 

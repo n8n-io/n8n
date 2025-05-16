@@ -199,6 +199,11 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 				setCurrentProject(null);
 			}
 
+			if (newRoute?.path?.includes('shared')) {
+				projectNavActiveId.value = 'shared';
+				setCurrentProject(null);
+			}
+
 			if (newRoute?.path?.includes('workflow/')) {
 				if (currentProjectId.value) {
 					projectNavActiveId.value = currentProjectId.value;

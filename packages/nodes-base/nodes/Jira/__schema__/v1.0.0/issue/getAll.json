@@ -7,64 +7,78 @@
         "fields": {
             "type": "object",
             "properties": {
-                "assignee": {
+                "created": {
+                    "type": "string"
+                },
+                "issuetype": {
                     "type": "object",
                     "properties": {
-                        "accountId": {
+                        "avatarId": {
+                            "type": "integer"
+                        },
+                        "description": {
                             "type": "string"
                         },
-                        "accountType": {
+                        "entityId": {
                             "type": "string"
                         },
-                        "active": {
-                            "type": "boolean"
+                        "hierarchyLevel": {
+                            "type": "integer"
                         },
-                        "avatarUrls": {
-                            "type": "object",
-                            "properties": {
-                                "16x16": {
-                                    "type": "string"
-                                },
-                                "24x24": {
-                                    "type": "string"
-                                },
-                                "32x32": {
-                                    "type": "string"
-                                },
-                                "48x48": {
-                                    "type": "string"
-                                }
-                            }
-                        },
-                        "displayName": {
+                        "iconUrl": {
                             "type": "string"
                         },
-                        "emailAddress": {
+                        "id": {
+                            "type": "string"
+                        },
+                        "name": {
                             "type": "string"
                         },
                         "self": {
                             "type": "string"
                         },
-                        "timeZone": {
+                        "subtask": {
+                            "type": "boolean"
+                        }
+                    }
+                },
+                "labels": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "priority": {
+                    "type": "object",
+                    "properties": {
+                        "iconUrl": {
+                            "type": "string"
+                        },
+                        "id": {
+                            "type": "string"
+                        },
+                        "name": {
+                            "type": "string"
+                        },
+                        "self": {
                             "type": "string"
                         }
                     }
                 },
-                "created": {
-                    "type": "string"
-                },
-                "reporter": {
+                "progress": {
                     "type": "object",
                     "properties": {
-                        "accountId": {
-                            "type": "string"
+                        "progress": {
+                            "type": "integer"
                         },
-                        "accountType": {
-                            "type": "string"
-                        },
-                        "active": {
-                            "type": "boolean"
-                        },
+                        "total": {
+                            "type": "integer"
+                        }
+                    }
+                },
+                "project": {
+                    "type": "object",
+                    "properties": {
                         "avatarUrls": {
                             "type": "object",
                             "properties": {
@@ -82,17 +96,23 @@
                                 }
                             }
                         },
-                        "displayName": {
+                        "id": {
                             "type": "string"
                         },
-                        "emailAddress": {
+                        "key": {
+                            "type": "string"
+                        },
+                        "name": {
+                            "type": "string"
+                        },
+                        "projectTypeKey": {
                             "type": "string"
                         },
                         "self": {
                             "type": "string"
                         },
-                        "timeZone": {
-                            "type": "string"
+                        "simplified": {
+                            "type": "boolean"
                         }
                     }
                 },
@@ -151,5 +171,5 @@
             "type": "string"
         }
     },
-    "version": 2
+    "version": 3
 }

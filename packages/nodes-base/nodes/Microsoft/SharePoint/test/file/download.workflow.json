@@ -1,0 +1,76 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "37ab6212-d506-4b53-b63e-14b6a2a05907",
+			"name": "When clicking ‘Test workflow’"
+		},
+		{
+			"parameters": {
+				"site": {
+					"__rl": true,
+					"value": "site1",
+					"mode": "list",
+					"cachedResultName": "site1"
+				},
+				"folder": {
+					"__rl": true,
+					"value": "folder1",
+					"mode": "list",
+					"cachedResultName": "folder1"
+				},
+				"file": {
+					"__rl": true,
+					"value": "item1",
+					"mode": "list",
+					"cachedResultName": "file.json"
+				},
+				"requestOptions": {}
+			},
+			"type": "n8n-nodes-base.microsoftSharePoint",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"id": "f9037af8-4f52-4f9f-b8ae-de860f890792",
+			"name": "Microsoft SharePoint",
+			"credentials": {
+				"microsoftSharePointOAuth2Api": {
+					"id": "cXXnMCWyk397M5qJ",
+					"name": "Microsoft SharePoint account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking ‘Test workflow’": {
+			"main": [
+				[
+					{
+						"node": "Microsoft SharePoint",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Microsoft SharePoint": [
+			{
+				"binary": {
+					"data": {
+						"data": "e30=",
+						"fileExtension": "json",
+						"fileSize": "2 B",
+						"fileType": "json",
+						"mimeType": "application/json",
+						"fileName": "weird file € name.json"
+					}
+				},
+				"json": {}
+			}
+		]
+	}
+}

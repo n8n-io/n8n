@@ -1,6 +1,5 @@
+import { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 
 import {
 	createWorkflowWithTrigger,
@@ -15,7 +14,7 @@ describe('WorkflowRepository', () => {
 	});
 
 	beforeEach(async () => {
-		await testDb.truncate(['Workflow']);
+		await testDb.truncate(['WorkflowEntity']);
 	});
 
 	afterAll(async () => {

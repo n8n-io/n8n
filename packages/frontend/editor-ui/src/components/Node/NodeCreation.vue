@@ -88,14 +88,20 @@ function nodeTypeSelected(nodeTypes: string[]) {
 	closeNodeCreator(true);
 }
 
-onMounted(() => {
+function setWrapperRect() {
 	wrapperBoundingRect.value = wrapperRef.value?.getBoundingClientRect();
+}
+
+onMounted(() => {
+	setWrapperRect();
 
 	document.addEventListener('mousemove', onMouseMove);
+	window.addEventListener('resize', setWrapperRect);
 });
 
 onBeforeUnmount(() => {
 	document.removeEventListener('mousemove', onMouseMove);
+	window.removeEventListener('resize', setWrapperRect);
 });
 </script>
 

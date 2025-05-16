@@ -1,0 +1,56 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [120, 700],
+			"id": "0e76b314-4994-4141-975f-9614c6094c80",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"operation": "delete",
+				"userId": {
+					"__rl": true,
+					"value": "114393134535981252212",
+					"mode": "list",
+					"cachedResultName": "NewOne22 User22"
+				}
+			},
+			"type": "n8n-nodes-base.gSuiteAdmin",
+			"typeVersion": 1,
+			"position": [120, 1100],
+			"id": "39f9a9c0-2ea5-45b2-a346-55017dfa4e43",
+			"name": "Delete User",
+			"credentials": {
+				"gSuiteAdminOAuth2Api": {
+					"id": "OXfPMaggXFJ0RLkw",
+					"name": "Google Workspace Admin account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Delete User",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Delete User": [
+			{
+				"json": {
+					"deleted": true
+				}
+			}
+		]
+	}
+}

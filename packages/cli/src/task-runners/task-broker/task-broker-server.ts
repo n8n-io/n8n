@@ -1,3 +1,4 @@
+import { inTest } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import compression from 'compression';
@@ -11,7 +12,6 @@ import type { AddressInfo, Socket } from 'node:net';
 import { parse as parseUrl } from 'node:url';
 import { Server as WSServer } from 'ws';
 
-import { inTest } from '@/constants';
 import { bodyParser, rawBodyReader } from '@/middlewares';
 import { send } from '@/response-helper';
 import { TaskBrokerAuthController } from '@/task-runners/task-broker/auth/task-broker-auth.controller';

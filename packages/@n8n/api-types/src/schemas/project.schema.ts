@@ -1,3 +1,4 @@
+import { projectRoleSchema } from '@n8n/permissions';
 import { z } from 'zod';
 
 export const projectNameSchema = z.string().min(1).max(255);
@@ -10,14 +11,6 @@ export const projectIconSchema = z.object({
 	value: z.string().min(1),
 });
 export type ProjectIcon = z.infer<typeof projectIconSchema>;
-
-export const projectRoleSchema = z.enum([
-	'project:personalOwner', // personalOwner is only used for personal projects
-	'project:admin',
-	'project:editor',
-	'project:viewer',
-]);
-export type ProjectRole = z.infer<typeof projectRoleSchema>;
 
 export const projectRelationSchema = z.object({
 	userId: z.string(),

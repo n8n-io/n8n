@@ -39,6 +39,7 @@ export class ToolWorkflowV2 implements INodeType {
 		const description = this.getNodeParameter('description', itemIndex) as string;
 
 		const tool = await workflowToolService.createTool({
+			ctx: this,
 			name,
 			description,
 			itemIndex,

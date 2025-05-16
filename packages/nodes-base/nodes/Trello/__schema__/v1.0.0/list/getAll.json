@@ -4,6 +4,9 @@
         "closed": {
             "type": "boolean"
         },
+        "color": {
+            "type": "null"
+        },
         "datasource": {
             "type": "object",
             "properties": {
@@ -21,6 +24,9 @@
         "name": {
             "type": "string"
         },
+        "softLimit": {
+            "type": "null"
+        },
         "subscribed": {
             "type": "boolean"
         },
@@ -28,5 +34,5 @@
             "type": "null"
         }
     },
-    "version": 2
+    "version": 3
 }

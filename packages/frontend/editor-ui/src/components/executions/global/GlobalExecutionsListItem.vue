@@ -130,7 +130,7 @@ const formattedStoppedAtDate = computed(() => {
 	return props.execution.stoppedAt
 		? locale.displayTimer(
 				new Date(props.execution.stoppedAt).getTime() -
-					new Date(props.execution.startedAt).getTime(),
+					new Date(props.execution.startedAt ?? props.execution.createdAt).getTime(),
 				true,
 			)
 		: '';
@@ -233,11 +233,11 @@ async function handleActionItemClick(commandData: Command) {
 		<td>
 			{{ formattedStartedAtDate }}
 		</td>
-		<td>
+		<td data-test-id="execution-time">
 			<template v-if="formattedStoppedAtDate">
 				{{ formattedStoppedAtDate }}
 			</template>
-			<ExecutionsTime v-else :start-time="execution.startedAt" />
+			<ExecutionsTime v-else :start-time="execution.startedAt ?? execution.createdAt" />
 		</td>
 		<td>
 			<span v-if="execution.id">{{ execution.id }}</span>

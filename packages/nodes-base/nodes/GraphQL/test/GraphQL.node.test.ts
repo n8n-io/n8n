@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import nock from 'nock';
 

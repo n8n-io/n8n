@@ -94,6 +94,7 @@ describe('generateNodesGraph', () => {
 			id: 'NfV4GV9aQTifSLc2',
 			name: 'My workflow 26',
 			active: false,
+			isArchived: false,
 			nodes: [
 				{
 					parameters: {},
@@ -157,6 +158,7 @@ describe('generateNodesGraph', () => {
 			id: 'NfV4GV9aQTifSLc2',
 			name: 'My workflow 26',
 			active: false,
+			isArchived: false,
 			nodes: [],
 			connections: {},
 			settings: { executionOrder: 'v1' },
@@ -198,6 +200,7 @@ describe('generateNodesGraph', () => {
 			id: 'NfV4GV9aQTifSLc2',
 			name: 'My workflow 26',
 			active: false,
+			isArchived: false,
 			nodes: [
 				{
 					parameters: {},
@@ -263,6 +266,7 @@ describe('generateNodesGraph', () => {
 			id: 'NfV4GV9aQTifSLc2',
 			name: 'My workflow 26',
 			active: false,
+			isArchived: false,
 			nodes: [
 				{
 					parameters: {},
@@ -339,6 +343,7 @@ describe('generateNodesGraph', () => {
 			id: 'NfV4GV9aQTifSLc2',
 			name: 'My workflow 26',
 			active: false,
+			isArchived: false,
 			nodes: [
 				{
 					parameters: {},
@@ -799,7 +804,7 @@ describe('generateNodesGraph', () => {
 				{
 					parameters: {},
 					id: 'fe69383c-e418-4f98-9c0e-924deafa7f93',
-					name: 'When clicking ‘Test workflow’',
+					name: 'When clicking ‘Execute workflow’',
 					type: 'n8n-nodes-base.manualTrigger',
 					typeVersion: 1,
 					position: [540, 220],
@@ -824,7 +829,7 @@ describe('generateNodesGraph', () => {
 				},
 			],
 			connections: {
-				'When clicking ‘Test workflow’': {
+				'When clicking ‘Execute workflow’': {
 					main: [
 						[
 							{
@@ -890,7 +895,7 @@ describe('generateNodesGraph', () => {
 				is_pinned: false,
 			},
 			nameIndices: {
-				'When clicking ‘Test workflow’': '0',
+				'When clicking ‘Execute workflow’': '0',
 				Chain: '1',
 				Model: '2',
 			},

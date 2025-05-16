@@ -1,4 +1,6 @@
 /* eslint-disable @typescript-eslint/no-loop-func */
+import type { User } from '@n8n/db';
+import { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { Flags } from '@oclif/core';
 import fs from 'fs';
@@ -10,8 +12,6 @@ import os from 'os';
 import { sep } from 'path';
 
 import { ActiveExecutions } from '@/active-executions';
-import type { User } from '@/databases/entities/user';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { OwnershipService } from '@/services/ownership.service';
 import { findCliWorkflowStart } from '@/utils';
 import { WorkflowRunner } from '@/workflow-runner';
@@ -111,6 +111,8 @@ export class ExecuteBatch extends BaseCommand {
 	static aliases = ['executeBatch'];
 
 	override needsCommunityPackages = true;
+
+	override needsTaskRunner = true;
 
 	/**
 	 * Gracefully handles exit.
@@ -335,7 +337,6 @@ export class ExecuteBatch extends BaseCommand {
 		if (results.summary.failedExecutions > 0) {
 			this.exit(1);
 		}
-		this.exit(0);
 	}
 
 	mergeResults(results: IResult, retryResults: IResult) {

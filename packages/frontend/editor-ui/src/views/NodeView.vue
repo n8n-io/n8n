@@ -38,6 +38,7 @@ import type {
 } from '@/Interface';
 import type {
 	Connection,
+	Dimensions,
 	ViewportTransform,
 	XYPosition as VueFlowXYPosition,
 } from '@vue-flow/core';
@@ -47,6 +48,7 @@ import type {
 	CanvasNode,
 	CanvasNodeMoveEvent,
 	ConnectStartEvent,
+	ViewportBoundaries,
 } from '@/types';
 import { CanvasNodeRenderType, CanvasConnectionMode } from '@/types';
 import {
@@ -118,8 +120,8 @@ import { LOGS_PANEL_STATE } from '@/components/CanvasChat/types/logs';
 import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
 import { useBuilderStore } from '@/stores/builder.store';
 import { useFoldersStore } from '@/stores/folders.store';
-import { useParameterOverridesStore } from '@/stores/parameterOverrides.store';
-import { hasFromAiExpressions } from '@/utils/nodes/nodeTransforms';
+import { useAgentRequestStore } from '@/stores/agentRequest.store';
+import { needsAgentInput } from '@/utils/nodes/nodeTransforms';
 
 defineOptions({
 	name: 'NodeView',
@@ -172,7 +174,7 @@ const ndvStore = useNDVStore();
 const templatesStore = useTemplatesStore();
 const builderStore = useBuilderStore();
 const foldersStore = useFoldersStore();
-const parameterOverridesStore = useParameterOverridesStore();
+const agentRequestStore = useAgentRequestStore();
 
 const canvasEventBus = createEventBus<CanvasEventBusEvents>();
 
@@ -213,6 +215,7 @@ const {
 	setNodeActiveByName,
 	clearNodeActive,
 	addConnections,
+	tryToOpenSubworkflowInNewTab,
 	importWorkflowData,
 	fetchWorkflowDataFromUrl,
 	resetWorkspace,
@@ -258,7 +261,8 @@ const isCanvasReadOnly = computed(() => {
 	return (
 		isDemoRoute.value ||
 		isReadOnlyEnvironment.value ||
-		!(workflowPermissions.value.update ?? projectPermissions.value.workflow.update)
+		!(workflowPermissions.value.update ?? projectPermissions.value.workflow.update) ||
+		editableWorkflow.value.isArchived
 	);
 });
 
@@ -379,12 +383,11 @@ async function initializeWorkspaceForNewWorkflow() {
 
 	const parentFolderId = route.query.parentFolderId as string | undefined;
 
-	await workflowsStore.getNewWorkflowData(
+	await workflowsStore.getNewWorkflowDataAndMakeShareable(
 		undefined,
 		projectsStore.currentProjectId,
 		parentFolderId,
 	);
-	workflowsStore.makeNewWorkflowShareable();
 
 	if (projectsStore.currentProjectId) {
 		await fetchAndSetProject(projectsStore.currentProjectId);
@@ -661,12 +664,25 @@ function onToggleNodesDisabled(ids: string[]) {
 	toggleNodesDisabled(ids);
 }
 
-function onClickNode() {
+function onClickNode(_id: string, event: VueFlowXYPosition) {
+	lastClickPosition.value = [event.x, event.y];
 	closeNodeCreator();
 }
 
-function onSetNodeActivated(id: string) {
+function onSetNodeActivated(id: string, event?: MouseEvent) {
+	// Handle Ctrl/Cmd + Double Click case
+	if (event?.metaKey || event?.ctrlKey) {
+		const didOpen = tryToOpenSubworkflowInNewTab(id);
+		if (didOpen) {
+			return;
+		}
+	}
+
 	setNodeActive(id);
+}
+
+function onOpenSubWorkflow(id: string) {
+	tryToOpenSubworkflowInNewTab(id);
 }
 
 function onSetNodeDeactivated() {
@@ -727,7 +743,10 @@ async function onClipboardPaste(plainTextData: string): Promise<void> {
 		return;
 	}
 
-	const result = await importWorkflowData(workflowData, 'paste', false);
+	const result = await importWorkflowData(workflowData, 'paste', {
+		importTags: false,
+		viewport: viewportBoundaries.value,
+	});
 	selectNodes(result.nodes?.map((node) => node.id) ?? []);
 }
 
@@ -744,7 +763,9 @@ async function onDuplicateNodes(ids: string[]) {
 		return;
 	}
 
-	const newIds = await duplicateNodes(ids);
+	const newIds = await duplicateNodes(ids, {
+		viewport: viewportBoundaries.value,
+	});
 
 	selectNodes(newIds);
 }
@@ -759,8 +780,9 @@ function onPinNodes(ids: string[], source: PinDataSource) {
 
 async function onSaveWorkflow() {
 	const workflowIsSaved = !uiStore.stateIsDirty;
+	const workflowIsArchived = workflowsStore.workflow.isArchived;
 
-	if (workflowIsSaved) {
+	if (workflowIsSaved || workflowIsArchived) {
 		return;
 	}
 	const saved = await workflowHelpers.saveCurrentWorkflow();
@@ -966,7 +988,9 @@ async function importWorkflowExact({ workflow: workflowData }: { workflow: IWork
 
 async function onImportWorkflowDataEvent(data: IDataObject) {
 	const workflowData = data.data as IWorkflowDataUpdate;
-	await importWorkflowData(workflowData, 'file');
+	await importWorkflowData(workflowData, 'file', {
+		viewport: viewportBoundaries.value,
+	});
 
 	fitView();
 	selectNodes(workflowData.nodes?.map((node) => node.id) ?? []);
@@ -983,7 +1007,9 @@ async function onImportWorkflowUrlEvent(data: IDataObject) {
 		return;
 	}
 
-	await importWorkflowData(workflowData, 'url');
+	await importWorkflowData(workflowData, 'url', {
+		viewport: viewportBoundaries.value,
+	});
 
 	fitView();
 	selectNodes(workflowData.nodes?.map((node) => node.id) ?? []);
@@ -1017,6 +1043,7 @@ async function onAddNodesAndConnections(
 	const addedNodes = await addNodes(nodes, {
 		dragAndDrop,
 		position,
+		viewport: viewportBoundaries.value,
 		trackHistory: true,
 		telemetry: true,
 	});
@@ -1165,7 +1192,7 @@ async function onRunWorkflowToNode(id: string) {
 	const node = workflowsStore.getNodeById(id);
 	if (!node) return;
 
-	if (hasFromAiExpressions(node) && nodeTypesStore.isNodesAsToolNode(node.type)) {
+	if (needsAgentInput(node) && nodeTypesStore.isToolNode(node.type)) {
 		uiStore.openModalWithData({
 			name: FROM_AI_PARAMETERS_MODAL_KEY,
 			data: {
@@ -1174,7 +1201,7 @@ async function onRunWorkflowToNode(id: string) {
 		});
 	} else {
 		trackRunWorkflowToNode(node);
-		parameterOverridesStore.clearParameterOverrides(workflowsStore.workflowId, node.id);
+		agentRequestStore.clearAgentRequests(workflowsStore.workflowId, node.id);
 
 		void runWorkflow({ destinationNode: node.name, source: 'Node.executeNode' });
 	}
@@ -1557,10 +1584,24 @@ async function onSaveFromWithinExecutionDebug() {
  */
 
 const viewportTransform = ref<ViewportTransform>({ x: 0, y: 0, zoom: 1 });
+const viewportDimensions = ref<Dimensions>({ width: 0, height: 0 });
 
-function onViewportChange(event: ViewportTransform) {
-	viewportTransform.value = event;
-	uiStore.nodeViewOffsetPosition = [event.x, event.y];
+const viewportBoundaries = computed<ViewportBoundaries>(() => {
+	const { x, y, zoom } = viewportTransform.value;
+	const { width, height } = viewportDimensions.value;
+
+	const xMin = -x / zoom;
+	const yMin = -y / zoom;
+	const xMax = (width - x) / zoom;
+	const yMax = (height - y) / zoom;
+
+	return { xMin, yMin, xMax, yMax };
+});
+
+function onViewportChange(viewport: ViewportTransform, dimensions: Dimensions) {
+	viewportTransform.value = viewport;
+	viewportDimensions.value = dimensions;
+	uiStore.nodeViewOffsetPosition = [viewport.x, viewport.y];
 }
 
 function fitView() {
@@ -1575,9 +1616,13 @@ function selectNodes(ids: string[]) {
  * Mouse events
  */
 
-function onClickPane(position: CanvasNode['position']) {
+function onClickPane(position: VueFlowXYPosition) {
 	lastClickPosition.value = [position.x, position.y];
 	onSetNodeSelected();
+}
+
+function onSelectionEnd(position: VueFlowXYPosition) {
+	lastClickPosition.value = [position.x, position.y];
 }
 
 /**
@@ -1848,6 +1893,7 @@ onActivated(async () => {
 });
 
 onDeactivated(() => {
+	uiStore.closeModal(WORKFLOW_SETTINGS_MODAL_KEY);
 	removeUndoRedoEventBindings();
 });
 
@@ -1887,6 +1933,7 @@ onBeforeUnmount(() => {
 		@update:node:parameters="onUpdateNodeParameters"
 		@update:node:inputs="onUpdateNodeInputs"
 		@update:node:outputs="onUpdateNodeOutputs"
+		@open:sub-workflow="onOpenSubWorkflow"
 		@click:node="onClickNode"
 		@click:node:add="onClickNodeAdd"
 		@run:node="onRunWorkflowToNode"
@@ -1907,7 +1954,8 @@ onBeforeUnmount(() => {
 		@run:workflow="runEntireWorkflow('main')"
 		@save:workflow="onSaveWorkflow"
 		@create:workflow="onCreateWorkflow"
-		@viewport-change="onViewportChange"
+		@viewport:change="onViewportChange"
+		@selection:end="onSelectionEnd"
 		@drag-and-drop="onDragAndDrop"
 		@tidy-up="onTidyUp"
 	>

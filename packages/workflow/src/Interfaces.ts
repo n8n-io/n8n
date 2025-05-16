@@ -992,6 +992,7 @@ export type ISupplyDataFunctions = ExecuteFunctions.GetNodeParameterFn &
 		| 'sendMessageToUI'
 		| 'helpers'
 	> & {
+		getNextRunIndex(): number;
 		continueOnFail(): boolean;
 		evaluateExpression(expression: string, itemIndex: number): NodeParameterValueType;
 		getWorkflowDataProxy(itemIndex: number): IWorkflowDataProxyData;
@@ -1492,6 +1493,7 @@ export interface INodePropertyOptions {
 	description?: string;
 	routing?: INodePropertyRouting;
 	outputConnectionType?: NodeConnectionType;
+	inputSchema?: any;
 }
 
 export interface INodeListSearchItems extends INodePropertyOptions {
@@ -2162,9 +2164,6 @@ export interface IRunExecutionData {
 	waitTill?: Date;
 	pushRef?: string;
 
-	/** Whether this execution was started by a test webhook call. */
-	isTestWebhook?: boolean;
-
 	/** Data needed for a worker to run a manual execution. */
 	manualData?: Pick<
 		IWorkflowExecutionDataProcess,
@@ -2262,6 +2261,7 @@ export interface IWorkflowBase {
 	id: string;
 	name: string;
 	active: boolean;
+	isArchived: boolean;
 	createdAt: Date;
 	startedAt?: Date;
 	updatedAt: Date;
@@ -2308,6 +2308,7 @@ export interface IWorkflowExecutionDataProcess {
 		name: string;
 		data?: ITaskData;
 	};
+	agentRequest?: AiAgentRequest;
 }
 
 export interface ExecuteWorkflowOptions {
@@ -2346,6 +2347,14 @@ type AiEventPayload = {
 	workflowId?: string;
 	nodeType?: string;
 };
+
+// Used to transport an agent request for partial execution
+export interface AiAgentRequest {
+	query: string | INodeParameters;
+	tool: {
+		name: string;
+	};
+}
 
 export interface IWorkflowExecuteAdditionalData {
 	credentialsHelper: ICredentialsHelper;
@@ -2636,7 +2645,7 @@ export interface ExecutionSummary {
 	retrySuccessId?: string | null;
 	waitTill?: Date;
 	createdAt: Date;
-	startedAt: Date;
+	startedAt: Date | null;
 	stoppedAt?: Date;
 	workflowId: string;
 	workflowName?: string;
@@ -2862,8 +2871,6 @@ export interface ICheckProcessedContextData {
 		active: boolean;
 	};
 }
-
-export type ExpressionEvaluatorType = 'tmpl' | 'tournament';
 
 export type N8nAIProviderType = 'openai' | 'unknown';
 

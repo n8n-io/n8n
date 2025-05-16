@@ -6,7 +6,7 @@
 			"typeVersion": 1,
 			"position": [0, 0],
 			"id": "99f866fa-f63c-477d-a0d0-48fbdb8a344a",
-			"name": "When clicking ‘Test workflow’"
+			"name": "When clicking ‘Execute workflow’"
 		},
 		{
 			"parameters": {
@@ -31,7 +31,7 @@
 		}
 	],
 	"connections": {
-		"When clicking ‘Test workflow’": {
+		"When clicking ‘Execute workflow’": {
 			"main": [[{ "node": "Azure Storage", "type": "main", "index": 0 }]]
 		}
 	},

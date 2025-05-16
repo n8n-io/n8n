@@ -1,4 +1,4 @@
-import type { ExpressionEvaluatorType, LogLevel, WorkflowSettings } from 'n8n-workflow';
+import type { LogLevel, WorkflowSettings } from 'n8n-workflow';
 
 import { type InsightsDateRange } from './schemas/insights.schema';
 
@@ -111,6 +111,7 @@ export interface FrontendSettings {
 	isMultiMain: boolean;
 	pushBackend: 'sse' | 'websocket';
 	communityNodesEnabled: boolean;
+	unverifiedCommunityNodesEnabled: boolean;
 	aiAssistant: {
 		enabled: boolean;
 	};
@@ -155,9 +156,6 @@ export interface FrontendSettings {
 	};
 	variables: {
 		limit: number;
-	};
-	expressions: {
-		evaluator: ExpressionEvaluatorType;
 	};
 	mfa: {
 		enabled: boolean;

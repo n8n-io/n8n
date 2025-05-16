@@ -22,7 +22,7 @@ describe('createPinData', () => {
 		const mockedNodes = [
 			{
 				id: '72256d90-3a67-4e29-b032-47df4e5768af',
-				name: 'When clicking ‘Test workflow’',
+				name: 'When clicking ‘Execute workflow’',
 			},
 		];
 
@@ -30,7 +30,7 @@ describe('createPinData', () => {
 
 		expect(pinData).toEqual(
 			expect.objectContaining({
-				'When clicking ‘Test workflow’': expect.anything(),
+				'When clicking ‘Execute workflow’': expect.anything(),
 			}),
 		);
 	});
@@ -46,7 +46,7 @@ describe('createPinData', () => {
 	test('should create pin data for all mocked nodes', () => {
 		const mockedNodes = [
 			{
-				id: '72256d90-3a67-4e29-b032-47df4e5768af', // 'When clicking ‘Test workflow’'
+				id: '72256d90-3a67-4e29-b032-47df4e5768af', // 'When clicking ‘Execute workflow’'
 			},
 			{
 				id: '319f29bc-1dd4-4122-b223-c584752151a4', // 'Edit Fields'
@@ -60,7 +60,7 @@ describe('createPinData', () => {
 
 		expect(pinData).toEqual(
 			expect.objectContaining({
-				'When clicking ‘Test workflow’': expect.anything(),
+				'When clicking ‘Execute workflow’': expect.anything(),
 				'Edit Fields': expect.anything(),
 				Code: expect.anything(),
 			}),

@@ -130,9 +130,7 @@ const node = computed(() => ndvStore.activeNode);
 
 const isTriggerNode = computed(() => !!node.value && nodeTypesStore.isTriggerNode(node.value.type));
 
-const isNodesAsToolNode = computed(
-	() => !!node.value && nodeTypesStore.isNodesAsToolNode(node.value.type),
-);
+const isToolNode = computed(() => !!node.value && nodeTypesStore.isToolNode(node.value.type));
 
 const isExecutable = computed(() => {
 	if (props.nodeType && node.value) {
@@ -146,7 +144,7 @@ const isExecutable = computed(() => {
 
 		if (
 			!inputNames.includes(NodeConnectionTypes.Main) &&
-			!isNodesAsToolNode.value &&
+			!isToolNode.value &&
 			!isTriggerNode.value
 		) {
 			return false;
@@ -499,6 +497,7 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 			_node,
 			nodeType,
 		);
+
 		const oldNodeParameters = Object.assign({}, nodeParameters);
 
 		// Copy the data because it is the data of vuex so make sure that
@@ -548,6 +547,18 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 			_node,
 			nodeType,
 		);
+
+		if (isToolNode.value) {
+			const updatedDescription = NodeHelpers.getUpdatedToolDescription(
+				props.nodeType,
+				nodeParameters,
+				node.value?.parameters,
+			);
+
+			if (updatedDescription && nodeParameters) {
+				nodeParameters.toolDescription = updatedDescription;
+			}
+		}
 
 		for (const key of Object.keys(nodeParameters as object)) {
 			if (nodeParameters && nodeParameters[key] !== null && nodeParameters[key] !== undefined) {

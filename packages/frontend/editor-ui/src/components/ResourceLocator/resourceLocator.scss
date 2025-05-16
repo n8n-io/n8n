@@ -87,6 +87,10 @@ $--mode-selector-width: 92px;
 		right: var(--input-override-width);
 	}
 
+	.backgroundWithIssuesAndShowResourceLink {
+		right: 47px;
+	}
+
 	&.multipleModes {
 		.inputContainer {
 			display: flex;

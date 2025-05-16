@@ -24,27 +24,16 @@
                 "type": "string"
             }
         },
-        "ccRecipients": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "emailAddress": {
-                        "type": "object",
-                        "properties": {
-                            "address": {
-                                "type": "string"
-                            },
-                            "name": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "conversationId": {
             "type": "string"
+        },
+        "flag": {
+            "type": "object",
+            "properties": {
+                "flagStatus": {
+                    "type": "string"
+                }
+            }
         },
         "from": {
             "type": "object",
@@ -68,6 +57,34 @@
         "id": {
             "type": "string"
         },
+        "importance": {
+            "type": "string"
+        },
+        "isRead": {
+            "type": "boolean"
+        },
+        "receivedDateTime": {
+            "type": "string"
+        },
+        "replyTo": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "emailAddress": {
+                        "type": "object",
+                        "properties": {
+                            "address": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "sender": {
             "type": "object",
             "properties": {
@@ -83,6 +100,9 @@
                     }
                 }
             }
+        },
+        "subject": {
+            "type": "string"
         },
         "toRecipients": {
             "type": "array",
@@ -104,5 +124,5 @@
             }
         }
     },
-    "version": 2
+    "version": 3
 }

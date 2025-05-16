@@ -7,7 +7,7 @@ import ResourcesListLayout, {
 import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useI18n } from '@/composables/useI18n';
-import { useOverview } from '@/composables/useOverview';
+import { useProjectPages } from '@/composables/useProjectPages';
 import { useTelemetry } from '@/composables/useTelemetry';
 import {
 	CREDENTIAL_EDIT_MODAL_KEY,
@@ -28,6 +28,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { listenForModalChanges, useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
+import type { Project } from '@/types/projects.types';
 import { isCredentialsResource } from '@/utils/typeGuards';
 import { N8nCheckbox } from '@n8n/design-system';
 import { pickBy } from 'lodash-es';
@@ -54,7 +55,7 @@ const route = useRoute();
 const router = useRouter();
 const telemetry = useTelemetry();
 const i18n = useI18n();
-const overview = useOverview();
+const overview = useProjectPages();
 
 type Filters = BaseFilters & { type?: string[]; setupNeeded?: boolean };
 const updateFilter = (state: Filters) => {
@@ -110,6 +111,10 @@ const projectPermissions = computed(() =>
 		projectsStore.currentProject?.scopes ?? projectsStore.personalProject?.scopes,
 	),
 );
+
+const personalProject = computed<Project | null>(() => {
+	return projectsStore.personalProject;
+});
 
 const setRouteCredentialId = (credentialId?: string) => {
 	void router.replace({ params: { credentialId }, query: route.query });
@@ -182,7 +187,11 @@ const initialize = async () => {
 		useSettingsStore().isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Variables];
 
 	const loadPromises = [
-		credentialsStore.fetchAllCredentials(route?.params?.projectId as string | undefined),
+		credentialsStore.fetchAllCredentials(
+			route?.params?.projectId as string | undefined,
+			true,
+			overview.isSharedSubPage,
+		),
 		credentialsStore.fetchCredentialTypes(false),
 		externalSecretsStore.fetchAllSecrets(),
 		nodeTypesStore.loadNodeTypesIfNotLoaded(),
@@ -304,7 +313,13 @@ onMounted(() => {
 			</div>
 		</template>
 		<template #empty>
+			<EmptySharedSectionActionBox
+				v-if="overview.isSharedSubPage && personalProject"
+				:personal-project="personalProject"
+				resource-type="credentials"
+			/>
 			<n8n-action-box
+				v-else
 				data-test-id="empty-resources-list"
 				emoji="👋"
 				:heading="

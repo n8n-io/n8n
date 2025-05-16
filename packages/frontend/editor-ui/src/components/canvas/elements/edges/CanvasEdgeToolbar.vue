@@ -63,6 +63,7 @@ function onDelete() {
 	align-items: center;
 	gap: var(--spacing-2xs);
 	pointer-events: all;
+	padding: var(--spacing-l);
 }
 </style>
 

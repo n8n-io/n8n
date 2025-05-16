@@ -77,6 +77,14 @@ export class DeprecationService {
 			message: 'This environment variable is internal and should not be set.',
 		},
 		{
+			envVar: 'N8N_EXPRESSION_EVALUATOR',
+			message: `n8n has replaced \`tmpl\` with \`tournament\` as expression evaluator. ${SAFE_TO_REMOVE}`,
+		},
+		{
+			envVar: 'N8N_EXPRESSION_REPORT_DIFFERENCE',
+			message: `n8n has replaced \`tmpl\` with \`tournament\` as expression evaluator. ${SAFE_TO_REMOVE}`,
+		},
+		{
 			envVar: 'EXECUTIONS_PROCESS',
 			message: SAFE_TO_REMOVE,
 			checkValue: (value: string | undefined) => value !== undefined && value !== 'own',

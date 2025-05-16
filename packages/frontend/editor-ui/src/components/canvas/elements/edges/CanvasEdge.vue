@@ -35,7 +35,7 @@ const connectionType = computed(() =>
 
 const delayedHovered = ref(props.hovered);
 const delayedHoveredSetTimeoutRef = ref<NodeJS.Timeout | null>(null);
-const delayedHoveredTimeout = 300;
+const delayedHoveredTimeout = 600;
 
 watch(
 	() => props.hovered,

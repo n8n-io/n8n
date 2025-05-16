@@ -6,8 +6,9 @@ export interface ExpressionText {
 export interface ExpressionCode {
 	type: 'code';
 	text: string;
-	// tmpl has different behaviours if the last expression
-	// doesn't close itself.
+
+	// This is to match behavior in our original expression evaluator (tmpl),
+	// which has different behaviours if the last expression doesn't close itself.
 	hasClosingBrackets: boolean;
 }
 

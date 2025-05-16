@@ -79,7 +79,7 @@
         220
       ],
       "id": "c773e03a-a260-4e02-ae80-6b473ea03398",
-      "name": "When clicking ‘Test workflow’"
+      "name": "When clicking ‘Execute workflow’"
     },
     {
       "parameters": {
@@ -153,7 +153,7 @@
         ]
       ]
     },
-    "When clicking ‘Test workflow’": {
+    "When clicking ‘Execute workflow’": {
       "main": [
         [
           {

@@ -10,15 +10,9 @@
         "id": {
             "type": "string"
         },
-        "mailNickname": {
-            "type": "string"
-        },
-        "securityIdentifier": {
-            "type": "string"
-        },
         "userPrincipalName": {
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

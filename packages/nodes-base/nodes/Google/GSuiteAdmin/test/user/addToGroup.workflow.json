@@ -1,0 +1,60 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [120, 700],
+			"id": "0e76b314-4994-4141-975f-9614c6094c80",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"operation": "addToGroup",
+				"userId": {
+					"__rl": true,
+					"value": "114393134535981252528",
+					"mode": "list",
+					"cachedResultName": "NewOne User"
+				},
+				"groupId": {
+					"__rl": true,
+					"value": "01302m922pmp3e4",
+					"mode": "list",
+					"cachedResultName": "new"
+				}
+			},
+			"type": "n8n-nodes-base.gSuiteAdmin",
+			"typeVersion": 1,
+			"position": [80, 1100],
+			"id": "b0c8042f-4ce1-41f1-9d14-876d5cac3ccf",
+			"name": "Add To Group",
+			"credentials": {
+				"gSuiteAdminOAuth2Api": {
+					"id": "OXfPMaggXFJ0RLkw",
+					"name": "Google Workspace Admin account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Add To Group",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Add To Group": [
+			{
+				"json": { "added": true }
+			}
+		]
+	}
+}

@@ -4,7 +4,7 @@
  */
 
 const SEQUENTIAL_BONUS = 60; // bonus for adjacent matches
-const SEPARATOR_BONUS = 30; // bonus if match occurs after a separator
+const SEPARATOR_BONUS = 38; // bonus if match occurs after a separator
 const CAMEL_BONUS = 30; // bonus if match is uppercase and prev is lower
 const FIRST_LETTER_BONUS = 15; // bonus if the first letter is matched
 

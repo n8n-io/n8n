@@ -2,7 +2,6 @@ import {
 	projectNameSchema,
 	projectTypeSchema,
 	projectIconSchema,
-	projectRoleSchema,
 	projectRelationSchema,
 } from '../project.schema';
 
@@ -53,19 +52,6 @@ describe('project.schema', () => {
 			},
 		])('should validate $name', ({ value, expected }) => {
 			const result = projectIconSchema.safeParse(value);
-			expect(result.success).toBe(expected);
-		});
-	});
-
-	describe('projectRoleSchema', () => {
-		test.each([
-			{ name: 'valid role: project:personalOwner', value: 'project:personalOwner', expected: true },
-			{ name: 'valid role: project:admin', value: 'project:admin', expected: true },
-			{ name: 'valid role: project:editor', value: 'project:editor', expected: true },
-			{ name: 'valid role: project:viewer', value: 'project:viewer', expected: true },
-			{ name: 'invalid role', value: 'invalid-role', expected: false },
-		])('should validate $name', ({ value, expected }) => {
-			const result = projectRoleSchema.safeParse(value);
 			expect(result.success).toBe(expected);
 		});
 	});

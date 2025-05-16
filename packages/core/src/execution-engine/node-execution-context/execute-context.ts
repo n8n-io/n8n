@@ -20,6 +20,7 @@ import {
 	ApplicationError,
 	createDeferredPromise,
 	createEnvProviderState,
+	jsonParse,
 	NodeConnectionTypes,
 } from 'n8n-workflow';
 
@@ -183,7 +184,10 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 
 	logNodeOutput(...args: unknown[]): void {
 		if (this.mode === 'manual') {
-			this.sendMessageToUI(...args);
+			const parsedLogArgs = args.map((arg) =>
+				typeof arg === 'string' ? jsonParse(arg, { fallbackValue: arg }) : arg,
+			);
+			this.sendMessageToUI(...parsedLogArgs);
 			return;
 		}
 

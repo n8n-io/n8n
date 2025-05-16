@@ -1,9 +1,9 @@
+import { TestCaseExecutionRepository, TestRunRepository } from '@n8n/db';
 import { Delete, Get, Post, RestController } from '@n8n/decorators';
 import express from 'express';
 import { InstanceSettings } from 'n8n-core';
+import { UnexpectedError } from 'n8n-workflow';
 
-import { TestCaseExecutionRepository } from '@/databases/repositories/test-case-execution.repository.ee';
-import { TestRunRepository } from '@/databases/repositories/test-run.repository.ee';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { NotImplementedError } from '@/errors/response-errors/not-implemented.error';
@@ -79,7 +79,12 @@ export class TestRunsController {
 
 		await this.getTestDefinition(req);
 
-		return await this.testRunRepository.getTestRunSummaryById(testDefinitionId, id);
+		try {
+			return await this.testRunRepository.getTestRunSummaryById(testDefinitionId, id);
+		} catch (error) {
+			if (error instanceof UnexpectedError) throw new NotFoundError(error.message);
+			throw error;
+		}
 	}
 
 	@Get('/:testDefinitionId/runs/:id/cases')

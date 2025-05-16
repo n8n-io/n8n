@@ -4,4 +4,5 @@ module.exports = {
 	transform: {
 		'^.+\\.ts$': ['ts-jest', { isolatedModules: false }],
 	},
+	coveragePathIgnorePatterns: ['index.ts'],
 };

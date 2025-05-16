@@ -31,10 +31,32 @@ export class Snowflake implements ICredentialType {
 				'The default virtual warehouse to use for the session after connecting. Used for performing queries, loading data, etc.',
 		},
 		{
+			displayName: 'Authentication',
+			name: 'authentication',
+			type: 'options',
+			options: [
+				{
+					name: 'Password',
+					value: 'password',
+				},
+				{
+					name: 'Key-Pair',
+					value: 'keyPair',
+				},
+			],
+			default: 'password',
+			description: 'The way to authenticate with Snowflake',
+		},
+		{
 			displayName: 'Username',
 			name: 'username',
 			type: 'string',
 			default: '',
+			displayOptions: {
+				show: {
+					authentication: ['password'],
+				},
+			},
 		},
 		{
 			displayName: 'Password',
@@ -44,6 +66,28 @@ export class Snowflake implements ICredentialType {
 				password: true,
 			},
 			default: '',
+			displayOptions: {
+				show: {
+					authentication: ['password'],
+				},
+			},
+		},
+		{
+			displayName: 'Private Key',
+			name: 'privateKey',
+			type: 'string',
+			typeOptions: {
+				password: true,
+				rows: 4,
+			},
+			default: '',
+			required: true,
+			displayOptions: {
+				show: {
+					authentication: ['keyPair'],
+				},
+			},
+			description: 'Private PEM key for Key-pair authentication with Snowflake',
 		},
 		{
 			displayName: 'Schema',

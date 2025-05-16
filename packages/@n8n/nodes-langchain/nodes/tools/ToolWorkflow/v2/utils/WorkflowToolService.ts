@@ -60,17 +60,21 @@ export class WorkflowToolService {
 
 	// Creates the tool based on the provided parameters
 	async createTool({
+		ctx,
 		name,
 		description,
 		itemIndex,
 	}: {
+		ctx: ISupplyDataFunctions;
 		name: string;
 		description: string;
 		itemIndex: number;
 	}): Promise<DynamicTool | DynamicStructuredTool> {
-		let runIndex = 0;
 		// Handler for the tool execution, will be called when the tool is executed
 		// This function will execute the sub-workflow and return the response
+		// We get the runIndex from the context to handle multiple executions
+		// of the same tool when the tool is used in a loop or in a parallel execution.
+		let runIndex: number = ctx.getNextRunIndex();
 		const toolHandler = async (
 			query: string | IDataObject,
 			runManager?: CallbackManagerForToolRun,

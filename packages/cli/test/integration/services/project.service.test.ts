@@ -1,9 +1,8 @@
-import type { ProjectRole } from '@n8n/api-types';
+import { ProjectRelationRepository } from '@n8n/db';
+import { ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type { Scope } from '@n8n/permissions';
+import type { ProjectRole, Scope } from '@n8n/permissions';
 
-import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { ProjectService } from '@/services/project.service.ee';
 
 import { createMember } from '../shared/db/users';

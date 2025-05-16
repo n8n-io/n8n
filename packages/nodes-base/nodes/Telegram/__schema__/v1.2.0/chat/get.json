@@ -10,6 +10,29 @@
                 "accent_color_id": {
                     "type": "integer"
                 },
+                "accepted_gift_types": {
+                    "type": "object",
+                    "properties": {
+                        "limited_gifts": {
+                            "type": "boolean"
+                        },
+                        "premium_subscription": {
+                            "type": "boolean"
+                        },
+                        "unique_gifts": {
+                            "type": "boolean"
+                        },
+                        "unlimited_gifts": {
+                            "type": "boolean"
+                        }
+                    }
+                },
+                "active_usernames": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "can_send_gift": {
                     "type": "boolean"
                 },
@@ -24,9 +47,12 @@
                 },
                 "type": {
                     "type": "string"
+                },
+                "username": {
+                    "type": "string"
                 }
             }
         }
     },
-    "version": 2
+    "version": 3
 }

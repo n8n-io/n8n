@@ -1,18 +1,12 @@
-import type { ProjectIcon, ProjectRole, ProjectType } from '@n8n/api-types';
-import type { Variables } from '@n8n/db';
-import type { AssignableRole, GlobalRole, Scope } from '@n8n/permissions';
+import type { ProjectIcon, ProjectType } from '@n8n/api-types';
+import type { Variables, Project, User, ListQueryDb, WorkflowHistory } from '@n8n/db';
+import type { AssignableGlobalRole, GlobalRole, ProjectRole, Scope } from '@n8n/permissions';
 import type express from 'express';
 import type {
 	ICredentialDataDecryptedObject,
 	INodeCredentialTestRequest,
 	IPersonalizationSurveyAnswersV4,
 } from 'n8n-workflow';
-
-import type { Project } from '@/databases/entities/project';
-import type { User } from '@/databases/entities/user';
-import type { WorkflowHistory } from '@/databases/entities/workflow-history';
-
-import type { ListQueryDb } from './types-db';
 
 export type APIRequest<
 	RouteParams = {},
@@ -143,7 +137,7 @@ export declare namespace UserRequest {
 			email: string;
 			inviteAcceptUrl?: string;
 			emailSent: boolean;
-			role: AssignableRole;
+			role: AssignableGlobalRole;
 		};
 		error?: string;
 	};
@@ -223,7 +217,7 @@ export declare namespace AnnotationTagsRequest {
 export declare namespace NodeRequest {
 	type GetAll = AuthenticatedRequest;
 
-	type Post = AuthenticatedRequest<{}, {}, { name?: string }>;
+	type Post = AuthenticatedRequest<{}, {}, { name?: string; verify?: boolean; version?: string }>;
 
 	type Delete = AuthenticatedRequest<{}, {}, {}, { name: string }>;
 
@@ -298,7 +292,7 @@ export declare namespace ProjectRequest {
 	type ProjectWithRelations = {
 		id: string;
 		name: string | undefined;
-		icon: ProjectIcon;
+		icon: ProjectIcon | null;
 		type: ProjectType;
 		relations: ProjectRelationResponse[];
 		scopes: Scope[];

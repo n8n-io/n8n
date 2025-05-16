@@ -8,8 +8,8 @@
 			},
 			"type": "n8n-nodes-base.scheduleTrigger",
 			"typeVersion": 1.2,
-			"position": [-900, 60],
-			"id": "e6b8fc7c-442e-4283-a0cd-604dc7c9e816",
+			"position": [0, 0],
+			"id": "4c4f02e3-f0cc-4e1a-b084-9888dd75ccaf",
 			"name": "Schedule Trigger"
 		},
 		{
@@ -38,8 +38,8 @@
 			},
 			"type": "n8n-nodes-base.if",
 			"typeVersion": 2.2,
-			"position": [-460, 135],
-			"id": "f5c96b5b-9e22-4348-a258-fdb0417f5ff5",
+			"position": [660, 80],
+			"id": "3273dcdb-845c-43cc-8ed0-ffaef7b68b1c",
 			"name": "If"
 		},
 		{
@@ -58,8 +58,8 @@
 			},
 			"type": "n8n-nodes-base.set",
 			"typeVersion": 3.4,
-			"position": [-240, 60],
-			"id": "2a6fc40d-5d8c-4c35-bf53-ee910267619f",
+			"position": [880, 0],
+			"id": "0522012f-fe99-41e0-ba19-7e18f22758d9",
 			"name": "Edit Fields"
 		},
 		{
@@ -68,9 +68,20 @@
 			},
 			"type": "n8n-nodes-base.code",
 			"typeVersion": 2,
-			"position": [-680, 60],
-			"id": "12ae07e7-be34-43b6-806b-4c24be169ee6",
+			"position": [440, 0],
+			"id": "268c2da4-23c8-46c5-8992-37a92b8e4aad",
 			"name": "Code"
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [220, 0],
+			"id": "0e2d1621-607d-4d53-98a3-07afc0d6230d",
+			"name": "Edit Fields1",
+			"disabled": true
 		}
 	],
 	"connections": {
@@ -78,7 +89,7 @@
 			"main": [
 				[
 					{
-						"node": "Code",
+						"node": "Edit Fields1",
 						"type": "main",
 						"index": 0
 					}
@@ -118,10 +129,21 @@
 					}
 				]
 			]
+		},
+		"Edit Fields1": {
+			"main": [
+				[
+					{
+						"node": "Code",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
 		}
 	},
 	"pinData": {},
 	"meta": {
-		"instanceId": "db1f26b45a71ad9a8df79dde8d35bf1be13616c3b23eb55be8ecf642dd31500c"
+		"instanceId": "ddb4b2493e5f30d4af3bb43dd3c9acf1f60cbaa91c89e84d2967725474533c77"
 	}
 }

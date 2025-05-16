@@ -1,8 +1,7 @@
+import { CredentialsEntity } from '@n8n/db';
+import { Project } from '@n8n/db';
+import { User } from '@n8n/db';
 import { randomInt } from 'n8n-workflow';
-
-import { CredentialsEntity } from '@/databases/entities/credentials-entity';
-import { Project } from '@/databases/entities/project';
-import { User } from '@/databases/entities/user';
 
 import {
 	randomCredentialPayload,

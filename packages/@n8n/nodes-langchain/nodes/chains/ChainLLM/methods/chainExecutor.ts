@@ -38,6 +38,18 @@ export function isModelWithResponseFormat(
 	);
 }
 
+export function isModelInThinkingMode(
+	llm: BaseLanguageModel,
+): llm is BaseLanguageModel & { lc_kwargs: { invocationKwargs: { thinking: { type: string } } } } {
+	return (
+		'lc_kwargs' in llm &&
+		'invocationKwargs' in llm.lc_kwargs &&
+		typeof llm.lc_kwargs.invocationKwargs === 'object' &&
+		'thinking' in llm.lc_kwargs.invocationKwargs &&
+		llm.lc_kwargs.invocationKwargs.thinking.type === 'enabled'
+	);
+}
+
 /**
  * Type guard to check if the LLM has a format property(Ollama)
  */
@@ -58,6 +70,10 @@ export function getOutputParserForLLM(
 	}
 
 	if (isModelWithFormat(llm) && llm.format === 'json') {
+		return new NaiveJsonOutputParser();
+	}
+
+	if (isModelInThinkingMode(llm)) {
 		return new NaiveJsonOutputParser();
 	}
 

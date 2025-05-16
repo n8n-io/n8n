@@ -8,7 +8,7 @@ import http from 'node:http';
 import type { Server } from 'node:http';
 
 import { CredentialsOverwrites } from '@/credentials-overwrites';
-import * as Db from '@/db';
+import { DbConnection } from '@/databases/db-connection';
 import { CredentialsOverwritesAlreadySetError } from '@/errors/credentials-overwrites-already-set.error';
 import { NonJsonBodyError } from '@/errors/non-json-body.error';
 import { ExternalHooks } from '@/external-hooks';
@@ -49,6 +49,7 @@ export class WorkerServer {
 	constructor(
 		private readonly globalConfig: GlobalConfig,
 		private readonly logger: Logger,
+		private readonly dbConnection: DbConnection,
 		private readonly credentialsOverwrites: CredentialsOverwrites,
 		private readonly externalHooks: ExternalHooks,
 		private readonly instanceSettings: InstanceSettings,
@@ -122,9 +123,10 @@ export class WorkerServer {
 	}
 
 	private async readiness(_req: express.Request, res: express.Response) {
+		const { connectionState } = this.dbConnection;
 		const isReady =
-			Db.connectionState.connected &&
-			Db.connectionState.migrated &&
+			connectionState.connected &&
+			connectionState.migrated &&
 			this.redisClientService.isConnected();
 
 		return isReady

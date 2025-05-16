@@ -34,22 +34,18 @@ const filter = ref('');
 
 const filteredUsers = computed(() =>
 	props.users.filter((user) => {
-		if (user.isPendingUser || !user.email) {
-			return false;
-		}
-
 		if (props.ignoreIds.includes(user.id)) {
 			return false;
 		}
 
-		if (user.fullName) {
+		if (user.fullName && user.email) {
 			const match = user.fullName.toLowerCase().includes(filter.value.toLowerCase());
 			if (match) {
 				return true;
 			}
 		}
 
-		return user.email.includes(filter.value);
+		return user.email?.includes(filter.value) ?? false;
 	}),
 );
 
@@ -102,6 +98,7 @@ const getLabel = (user: IUser) =>
 		</template>
 		<N8nOption
 			v-for="user in sortedUsers"
+			:id="`user-select-option-id-${user.id}`"
 			:key="user.id"
 			:value="user.id"
 			:class="$style.itemContainer"

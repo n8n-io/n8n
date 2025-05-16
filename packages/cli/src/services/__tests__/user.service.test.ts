@@ -1,9 +1,9 @@
 import { GlobalConfig } from '@n8n/config';
+import { User } from '@n8n/db';
+import { UserRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import { v4 as uuid } from 'uuid';
 
-import { User } from '@/databases/entities/user';
-import { UserRepository } from '@/databases/repositories/user.repository';
 import { UrlService } from '@/services/url.service';
 import { UserService } from '@/services/user.service';
 import { mockInstance } from '@test/mocking';

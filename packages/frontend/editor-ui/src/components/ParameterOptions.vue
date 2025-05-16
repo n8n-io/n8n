@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { useI18n } from '@/composables/useI18n';
-import type { INodeProperties, NodeParameterValueType } from 'n8n-workflow';
-import { isResourceLocatorValue } from '@/utils/typeGuards';
+import {
+	isResourceLocatorValue,
+	type INodeProperties,
+	type NodeParameterValueType,
+} from 'n8n-workflow';
 import { isValueExpression } from '@/utils/nodeTypesUtils';
 import { computed } from 'vue';
 import { useNDVStore } from '@/stores/ndv.store';

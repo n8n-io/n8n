@@ -1,10 +1,10 @@
+import type { User } from '@n8n/db';
 import type { Application } from 'express';
 import { captor, mock } from 'jest-mock-extended';
 import type { Server, ServerResponse } from 'node:http';
 import type { Socket } from 'node:net';
 import { type WebSocket, Server as WSServer } from 'ws';
 
-import type { User } from '@/databases/entities/user';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { Push } from '@/push';
 import { SSEPush } from '@/push/sse.push';
@@ -18,9 +18,12 @@ jest.mock('ws', () => ({
 	Server: jest.fn(),
 }));
 jest.unmock('@/push');
-jest.mock('@/constants', () => ({
-	inProduction: true,
-}));
+jest.mock('@n8n/backend-common', () => {
+	return {
+		...jest.requireActual('@n8n/backend-common'),
+		inProduction: true,
+	};
+});
 
 describe('Push', () => {
 	const pushRef = 'valid-push-ref';

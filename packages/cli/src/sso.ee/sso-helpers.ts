@@ -1,8 +1,7 @@
+import { SettingsRepository, type AuthProviderType } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import config from '@/config';
-import type { AuthProviderType } from '@/databases/entities/auth-identity';
-import { SettingsRepository } from '@/databases/repositories/settings.repository';
 
 /**
  * Only one authentication method can be active at a time. This function sets

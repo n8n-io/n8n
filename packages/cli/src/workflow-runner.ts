@@ -2,6 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-shadow */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
+import { ExecutionRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import type { ExecutionLifecycleHooks } from 'n8n-core';
 import { ErrorReporter, InstanceSettings, Logger, WorkflowExecute } from 'n8n-core';
@@ -19,7 +20,6 @@ import PCancelable from 'p-cancelable';
 
 import { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
 import { MaxStalledCountError } from '@/errors/max-stalled-count.error';
 import {

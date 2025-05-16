@@ -1,4 +1,5 @@
-import { NodeConnectionTypes, type INodeProperties } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
+import type { IDisplayOptions, INodeProperties } from 'n8n-workflow';
 
 export const metadataFilterField: INodeProperties = {
 	displayName: 'Metadata Filter',
@@ -39,6 +40,38 @@ export function getTemplateNoticeField(templateId: number): INodeProperties {
 		name: 'notice',
 		type: 'notice',
 		default: '',
+	};
+}
+
+export function getBatchingOptionFields(
+	displayOptions: IDisplayOptions | undefined,
+	defaultBatchSize: number = 5,
+): INodeProperties {
+	return {
+		displayName: 'Batch Processing',
+		name: 'batching',
+		type: 'collection',
+		placeholder: 'Add Batch Processing Option',
+		description: 'Batch processing options for rate limiting',
+		default: {},
+		options: [
+			{
+				displayName: 'Batch Size',
+				name: 'batchSize',
+				default: defaultBatchSize,
+				type: 'number',
+				description:
+					'How many items to process in parallel. This is useful for rate limiting, but might impact the log output ordering.',
+			},
+			{
+				displayName: 'Delay Between Batches',
+				name: 'delayBetweenBatches',
+				default: 0,
+				type: 'number',
+				description: 'Delay in milliseconds between batches. This is useful for rate limiting.',
+			},
+		],
+		displayOptions,
 	};
 }
 

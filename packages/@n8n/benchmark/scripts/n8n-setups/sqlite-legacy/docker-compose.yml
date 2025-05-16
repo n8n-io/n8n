@@ -12,6 +12,8 @@ services:
     environment:
       - N8N_DIAGNOSTICS_ENABLED=false
       - N8N_USER_FOLDER=/n8n
+      # Disable Insights
+      - N8N_DISABLED_MODULES=insights
     ports:
       - 5678:5678
     volumes:

@@ -16,6 +16,7 @@ import type {
 	Workflow,
 	WorkflowExecuteMode,
 	NodeConnectionType,
+	ISourceData,
 } from 'n8n-workflow';
 import { createDeferredPromise, NodeConnectionTypes } from 'n8n-workflow';
 
@@ -42,6 +43,8 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 
 	readonly getNodeParameter: ISupplyDataFunctions['getNodeParameter'];
 
+	readonly parentNode?: INode;
+
 	constructor(
 		workflow: Workflow,
 		node: INode,
@@ -55,6 +58,7 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 		executeData: IExecuteData,
 		private readonly closeFunctions: CloseFunction[],
 		abortSignal?: AbortSignal,
+		parentNode?: INode,
 	) {
 		super(
 			workflow,
@@ -68,6 +72,8 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 			executeData,
 			abortSignal,
 		);
+
+		this.parentNode = parentNode;
 
 		this.helpers = {
 			createDeferredPromise,
@@ -126,6 +132,7 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 			this.executeData,
 			this.closeFunctions,
 			this.abortSignal,
+			this.parentNode,
 		);
 		context.addInputData(NodeConnectionTypes.AiTool, replacements.inputData);
 		return context;
@@ -160,16 +167,18 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 		return super.getInputItems(inputIndex, connectionType) ?? [];
 	}
 
+	getNextRunIndex(): number {
+		const nodeName = this.node.name;
+		return this.runExecutionData.resultData.runData[nodeName]?.length ?? 0;
+	}
+
 	/** @deprecated create a context object with inputData for every runIndex */
 	addInputData(
 		connectionType: AINodeConnectionType,
 		data: INodeExecutionData[][],
 	): { index: number } {
 		const nodeName = this.node.name;
-		let currentNodeRunIndex = 0;
-		if (this.runExecutionData.resultData.runData.hasOwnProperty(nodeName)) {
-			currentNodeRunIndex = this.runExecutionData.resultData.runData[nodeName].length;
-		}
+		const currentNodeRunIndex = this.getNextRunIndex();
 
 		this.addExecutionDataFunctions(
 			'input',
@@ -230,13 +239,17 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 		} = this;
 
 		let taskData: ITaskData | undefined;
+		const source: ISourceData[] = this.parentNode
+			? [{ previousNode: this.parentNode.name, previousNodeRun: sourceNodeRunIndex }]
+			: [];
+
 		if (type === 'input') {
 			taskData = {
 				startTime: Date.now(),
 				executionTime: 0,
 				executionIndex: additionalData.currentNodeExecutionIndex++,
 				executionStatus: 'running',
-				source: [null],
+				source,
 			};
 		} else {
 			// At the moment we expect that there is always an input sent before the output
@@ -249,6 +262,7 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 				return;
 			}
 			taskData.metadata = metadata;
+			taskData.source = source;
 		}
 		taskData = taskData!;
 

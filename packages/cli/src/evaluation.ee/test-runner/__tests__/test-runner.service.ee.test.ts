@@ -1,24 +1,24 @@
+import type { User } from '@n8n/db';
+import type { ExecutionEntity } from '@n8n/db';
+import type { TestDefinition } from '@n8n/db';
+import type { TestMetric } from '@n8n/db';
+import type { TestRun } from '@n8n/db';
+import type { ExecutionRepository } from '@n8n/db';
+import type { TestCaseExecutionRepository } from '@n8n/db';
+import type { TestMetricRepository } from '@n8n/db';
+import type { TestRunRepository } from '@n8n/db';
+import type { WorkflowRepository } from '@n8n/db';
 import type { SelectQueryBuilder } from '@n8n/typeorm';
 import { stringify } from 'flatted';
 import { readFileSync } from 'fs';
 import { mock, mockDeep } from 'jest-mock-extended';
 import type { ErrorReporter } from 'n8n-core';
-import type { ExecutionError, GenericValue, IRun } from 'n8n-workflow';
 import type { ITaskData } from 'n8n-workflow';
+import type { ExecutionError, GenericValue, IRun } from 'n8n-workflow';
 import path from 'path';
 
 import type { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
-import type { ExecutionEntity } from '@/databases/entities/execution-entity';
-import type { TestDefinition } from '@/databases/entities/test-definition.ee';
-import type { TestMetric } from '@/databases/entities/test-metric.ee';
-import type { TestRun } from '@/databases/entities/test-run.ee';
-import type { User } from '@/databases/entities/user';
-import type { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import type { TestCaseExecutionRepository } from '@/databases/repositories/test-case-execution.repository.ee';
-import type { TestMetricRepository } from '@/databases/repositories/test-metric.repository.ee';
-import type { TestRunRepository } from '@/databases/repositories/test-run.repository.ee';
-import type { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { NodeTypes } from '@/node-types';
 import type { Telemetry } from '@/telemetry';
@@ -27,10 +27,6 @@ import { mockInstance, mockLogger } from '@test/mocking';
 import { mockNodeTypesData } from '@test-integration/utils/node-types-data';
 
 import { TestRunnerService } from '../test-runner.service.ee';
-
-jest.mock('@/db', () => ({
-	transaction: (cb: any) => cb(),
-}));
 
 const wfUnderTestJson = JSON.parse(
 	readFileSync(path.join(__dirname, './mock-data/workflow.under-test.json'), { encoding: 'utf-8' }),
@@ -113,7 +109,7 @@ function mockExecutionData() {
 		data: {
 			resultData: {
 				runData: {
-					'When clicking ‘Test workflow’': mock<ITaskData[]>(),
+					'When clicking ‘Execute workflow’': mock<ITaskData[]>(),
 				},
 				// error is an optional prop, but jest-mock-extended will mock it by default,
 				// which affects the code logic. So, we need to explicitly set it to undefined.
@@ -231,7 +227,9 @@ async function mockLongExecutionPromise(data: IRun, delay: number): Promise<IRun
 }
 
 describe('TestRunnerService', () => {
-	const executionRepository = mock<ExecutionRepository>();
+	const executionRepository = mock<ExecutionRepository>({
+		manager: { transaction: (cb: any) => cb() },
+	});
 	const workflowRepository = mock<WorkflowRepository>();
 	const workflowRunner = mock<WorkflowRunner>();
 	const activeExecutions = mock<ActiveExecutions>();
@@ -395,8 +393,9 @@ describe('TestRunnerService', () => {
 			expect.objectContaining({
 				executionMode: 'evaluation',
 				pinData: {
-					'When clicking ‘Test workflow’':
-						executionDataJson.resultData.runData['When clicking ‘Test workflow’'][0].data.main[0],
+					'When clicking ‘Execute workflow’':
+						executionDataJson.resultData.runData['When clicking ‘Execute workflow’'][0].data
+							.main[0],
 				},
 				workflowData: expect.objectContaining({
 					id: 'workflow-under-test-id',
@@ -677,14 +676,15 @@ describe('TestRunnerService', () => {
 			expect.objectContaining({
 				executionMode: 'evaluation',
 				pinData: {
-					'When clicking ‘Test workflow’':
-						executionDataJson.resultData.runData['When clicking ‘Test workflow’'][0].data.main[0],
+					'When clicking ‘Execute workflow’':
+						executionDataJson.resultData.runData['When clicking ‘Execute workflow’'][0].data
+							.main[0],
 				},
 				workflowData: expect.objectContaining({
 					id: 'workflow-under-test-id',
 				}),
 				triggerToStartFrom: expect.objectContaining({
-					name: 'When clicking ‘Test workflow’',
+					name: 'When clicking ‘Execute workflow’',
 				}),
 			}),
 		);
@@ -714,7 +714,7 @@ describe('TestRunnerService', () => {
 		expect(startNodesData).toEqual({
 			startNodes: expect.arrayContaining([expect.objectContaining({ name: 'NoOp' })]),
 			triggerToStartFrom: expect.objectContaining({
-				name: 'When clicking ‘Test workflow’',
+				name: 'When clicking ‘Execute workflow’',
 			}),
 		});
 	});
@@ -996,8 +996,9 @@ describe('TestRunnerService', () => {
 			expect.objectContaining({
 				executionMode: 'evaluation',
 				pinData: {
-					'When clicking ‘Test workflow’':
-						executionDataJson.resultData.runData['When clicking ‘Test workflow’'][0].data.main[0],
+					'When clicking ‘Execute workflow’':
+						executionDataJson.resultData.runData['When clicking ‘Execute workflow’'][0].data
+							.main[0],
 				},
 				workflowData: expect.objectContaining({
 					id: 'workflow-under-test-id',
@@ -1104,8 +1105,9 @@ describe('TestRunnerService', () => {
 			expect.objectContaining({
 				executionMode: 'evaluation',
 				pinData: {
-					'When clicking ‘Test workflow’':
-						executionDataJson.resultData.runData['When clicking ‘Test workflow’'][0].data.main[0],
+					'When clicking ‘Execute workflow’':
+						executionDataJson.resultData.runData['When clicking ‘Execute workflow’'][0].data
+							.main[0],
 				},
 				workflowData: expect.objectContaining({
 					id: 'workflow-under-test-id',
