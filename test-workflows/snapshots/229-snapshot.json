@@ -1,0 +1,664 @@
+{
+  "data": {
+    "startData": {},
+    "resultData": {
+      "runData": {
+        "Start": [
+          {
+            "startTime": 1747343995588,
+            "executionIndex": 0,
+            "source": [],
+            "hints": [],
+            "executionTime": 0,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {},
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Google Drive11": [
+          {
+            "startTime": 1747343995588,
+            "executionIndex": 1,
+            "source": [
+              {
+                "previousNode": "Start"
+              }
+            ],
+            "hints": [],
+            "executionTime": 700,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "id": "1QBrItvwcOaEONfCcfDHPpdK_BLTEtBNA",
+                      "name": "testFolder"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Google Drive14": [
+          {
+            "startTime": 1747343996288,
+            "executionIndex": 2,
+            "source": [
+              {
+                "previousNode": "Start"
+              }
+            ],
+            "hints": [],
+            "executionTime": 1739,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "kind": "drive#file",
+                      "id": "1MMAfuJxKmbuzT_JWF98PjJCPxXnxykMW",
+                      "name": "testFile",
+                      "mimeType": "text/plain"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Google Drive3": [
+          {
+            "startTime": 1747343998027,
+            "executionIndex": 3,
+            "source": [
+              {
+                "previousNode": "Start"
+              }
+            ],
+            "hints": [],
+            "executionTime": 1616,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "kind": "drive#file",
+                      "id": "1KbJrxtMCxK4fFq8Cd0_-66dxnW5kSzDN",
+                      "name": "testFile",
+                      "mimeType": "text/plain"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Google Drive": [
+          {
+            "startTime": 1747343999643,
+            "executionIndex": 4,
+            "source": [
+              {
+                "previousNode": "Start"
+              }
+            ],
+            "hints": [],
+            "executionTime": 536,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "id": "1X-5udmSom0Xew6oE2g7Glrd9t7u6srsN",
+                      "name": "testFolder"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Google Drive12": [
+          {
+            "startTime": 1747344000179,
+            "executionIndex": 5,
+            "source": [
+              {
+                "previousNode": "Google Drive11"
+              }
+            ],
+            "hints": [],
+            "executionTime": 601,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "kind": "drive#permission",
+                      "id": "anyoneWithLink",
+                      "type": "anyone",
+                      "role": "reader",
+                      "allowFileDiscovery": false
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Google Drive15": [
+          {
+            "startTime": 1747344000780,
+            "executionIndex": 6,
+            "source": [
+              {
+                "previousNode": "Google Drive14"
+              }
+            ],
+            "hints": [],
+            "executionTime": 686,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "kind": "drive#permission",
+                      "id": "anyoneWithLink",
+                      "type": "anyone",
+                      "role": "reader",
+                      "allowFileDiscovery": false
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Google Drive4": [
+          {
+            "startTime": 1747344001466,
+            "executionIndex": 7,
+            "source": [
+              {
+                "previousNode": "Google Drive3"
+              }
+            ],
+            "hints": [],
+            "executionTime": 543,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "kind": "drive#permission",
+                      "id": "anyoneWithLink",
+                      "type": "anyone",
+                      "role": "reader",
+                      "allowFileDiscovery": false
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Google Drive1": [
+          {
+            "startTime": 1747344002009,
+            "executionIndex": 8,
+            "source": [
+              {
+                "previousNode": "Google Drive"
+              }
+            ],
+            "hints": [],
+            "executionTime": 614,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "kind": "drive#permission",
+                      "id": "anyoneWithLink",
+                      "type": "anyone",
+                      "role": "reader",
+                      "allowFileDiscovery": false
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Google Drive13": [
+          {
+            "startTime": 1747344002623,
+            "executionIndex": 9,
+            "source": [
+              {
+                "previousNode": "Google Drive12"
+              }
+            ],
+            "hints": [],
+            "executionTime": 464,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "fileId": "1QBrItvwcOaEONfCcfDHPpdK_BLTEtBNA",
+                      "success": true
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Google Drive16": [
+          {
+            "startTime": 1747344003087,
+            "executionIndex": 10,
+            "source": [
+              {
+                "previousNode": "Google Drive15"
+              }
+            ],
+            "hints": [],
+            "executionTime": 428,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "id": "1YNeDnFJOaq3mDazf8Ezm3V3K-aIKdmugke2m89Qf3dg",
+                      "name": "oupa"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Google Drive5": [
+          {
+            "startTime": 1747344003515,
+            "executionIndex": 11,
+            "source": [
+              {
+                "previousNode": "Google Drive4"
+              }
+            ],
+            "hints": [],
+            "executionTime": 430,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "id": "1YNeDnFJOaq3mDazf8Ezm3V3K-aIKdmugke2m89Qf3dg",
+                      "name": "oupa"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Google Drive2": [
+          {
+            "startTime": 1747344003945,
+            "executionIndex": 12,
+            "source": [
+              {
+                "previousNode": "Google Drive1"
+              }
+            ],
+            "hints": [],
+            "executionTime": 450,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "fileId": "1X-5udmSom0Xew6oE2g7Glrd9t7u6srsN",
+                      "success": true
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Google Drive17": [
+          {
+            "startTime": 1747344004395,
+            "executionIndex": 13,
+            "source": [
+              {
+                "previousNode": "Google Drive16"
+              }
+            ],
+            "hints": [],
+            "executionTime": 933,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "id": "1YNeDnFJOaq3mDazf8Ezm3V3K-aIKdmugke2m89Qf3dg",
+                      "name": "oupa"
+                    },
+                    "binary": {
+                      "data": {
+                        "mimeType": "text/plain",
+                        "fileType": "text",
+                        "fileExtension": "txt",
+                        "data": "VGVzdCBGaWxlIENvbnRlbnQ=",
+                        "fileName": "testFile",
+                        "fileSize": "17 B"
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Google Drive6": [
+          {
+            "startTime": 1747344005328,
+            "executionIndex": 14,
+            "source": [
+              {
+                "previousNode": "Google Drive5"
+              }
+            ],
+            "hints": [],
+            "executionTime": 913,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "id": "1YNeDnFJOaq3mDazf8Ezm3V3K-aIKdmugke2m89Qf3dg",
+                      "name": "oupa"
+                    },
+                    "binary": {
+                      "data": {
+                        "mimeType": "text/plain",
+                        "fileType": "text",
+                        "fileExtension": "txt",
+                        "data": "VGVzdCBGaWxlIENvbnRlbnQ=",
+                        "fileName": "testFile",
+                        "fileSize": "17 B"
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Google Drive18": [
+          {
+            "startTime": 1747344006241,
+            "executionIndex": 15,
+            "source": [
+              {
+                "previousNode": "Google Drive17"
+              }
+            ],
+            "hints": [],
+            "executionTime": 881,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "kind": "drive#file",
+                      "id": "1tJSggHaGcdtLmpE_ZVkm_aYBShbeh1d-",
+                      "name": "testFile",
+                      "mimeType": "text/plain"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Google Drive7": [
+          {
+            "startTime": 1747344007122,
+            "executionIndex": 16,
+            "source": [
+              {
+                "previousNode": "Google Drive6"
+              }
+            ],
+            "hints": [],
+            "executionTime": 746,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "kind": "drive#file",
+                      "id": "1qkiRpLoY_9OrJmfq_ykRfFfy6xEXU1uW",
+                      "name": "testFile",
+                      "mimeType": "text/plain"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Google Drive19": [
+          {
+            "startTime": 1747344007868,
+            "executionIndex": 17,
+            "source": [
+              {
+                "previousNode": "Google Drive18"
+              }
+            ],
+            "hints": [],
+            "executionTime": 475,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "fileId": "1MMAfuJxKmbuzT_JWF98PjJCPxXnxykMW",
+                      "success": true
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Google Drive8": [
+          {
+            "startTime": 1747344008344,
+            "executionIndex": 18,
+            "source": [
+              {
+                "previousNode": "Google Drive7"
+              }
+            ],
+            "hints": [],
+            "executionTime": 485,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "fileId": "1KbJrxtMCxK4fFq8Cd0_-66dxnW5kSzDN",
+                      "success": true
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Google Drive10": [
+          {
+            "startTime": 1747344008829,
+            "executionIndex": 19,
+            "source": [
+              {
+                "previousNode": "Google Drive19"
+              }
+            ],
+            "hints": [],
+            "executionTime": 431,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "fileId": "1tJSggHaGcdtLmpE_ZVkm_aYBShbeh1d-",
+                      "success": true
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Google Drive9": [
+          {
+            "startTime": 1747344009260,
+            "executionIndex": 20,
+            "source": [
+              {
+                "previousNode": "Google Drive8"
+              }
+            ],
+            "hints": [],
+            "executionTime": 520,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "fileId": "1qkiRpLoY_9OrJmfq_ykRfFfy6xEXU1uW",
+                      "success": true
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ]
+      },
+      "lastNodeExecuted": "Google Drive9"
+    },
+    "executionData": {
+      "contextData": {},
+      "nodeExecutionStack": [],
+      "metadata": {},
+      "waitingExecution": {},
+      "waitingExecutionSource": {}
+    }
+  },
+  "mode": "cli",
+  "startedAt": "2025-05-15T21:19:55.587Z",
+  "stoppedAt": "2025-05-15T21:20:09.780Z",
+  "status": "running",
+  "finished": true
+}

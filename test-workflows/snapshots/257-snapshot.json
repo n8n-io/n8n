@@ -1,0 +1,734 @@
+{
+  "data": {
+    "startData": {},
+    "resultData": {
+      "runData": {
+        "When clicking \"Test workflow\"": [
+          {
+            "startTime": 1747344001514,
+            "executionIndex": 0,
+            "source": [],
+            "hints": [],
+            "executionTime": 0,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {},
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Simple Memory": [
+          {
+            "startTime": 1747344001519,
+            "executionTime": 0,
+            "executionIndex": 2,
+            "executionStatus": "success",
+            "source": [
+              {
+                "previousNode": "AI Agent",
+                "previousNodeRun": 0
+              }
+            ],
+            "data": {
+              "ai_memory": [
+                [
+                  {
+                    "json": {
+                      "action": "loadMemoryVariables",
+                      "chatHistory": [
+                        "json array"
+                      ]
+                    }
+                  }
+                ]
+              ]
+            },
+            "inputOverride": {
+              "ai_memory": [
+                [
+                  {
+                    "json": {
+                      "action": "loadMemoryVariables",
+                      "values": {
+                        "input": "What time is my check-in?",
+                        "system_message": "You are a helpful assistant",
+                        "formatting_instructions": "IMPORTANT: For your response to user, you MUST use the `format_final_json_response` tool with your complete answer formatted according to the required schema. Do not attempt to format the JSON manually - always use this tool. Your response will be rejected if it is not properly formatted through this tool. Only use this tool once you are ready to provide your final answer."
+                      }
+                    }
+                  }
+                ]
+              ]
+            },
+            "metadata": {
+              "subRun": [
+                {
+                  "node": "Simple Memory",
+                  "runIndex": 0
+                },
+                {
+                  "node": "Simple Memory",
+                  "runIndex": 1
+                },
+                {
+                  "node": "Simple Memory",
+                  "runIndex": 2
+                },
+                {
+                  "node": "Simple Memory",
+                  "runIndex": 3
+                }
+              ]
+            }
+          },
+          {
+            "startTime": 1747344006541,
+            "executionTime": 0,
+            "executionIndex": 6,
+            "executionStatus": "success",
+            "source": [
+              {
+                "previousNode": "AI Agent",
+                "previousNodeRun": 0
+              }
+            ],
+            "data": {
+              "ai_memory": [
+                [
+                  {
+                    "json": {
+                      "action": "saveContext",
+                      "chatHistory": [
+                        "json array"
+                      ]
+                    }
+                  }
+                ]
+              ]
+            },
+            "inputOverride": {
+              "ai_memory": [
+                [
+                  {
+                    "json": {
+                      "action": "saveContext",
+                      "input": {
+                        "input": "What time is my check-in?",
+                        "system_message": "You are a helpful assistant",
+                        "formatting_instructions": "IMPORTANT: For your response to user, you MUST use the `format_final_json_response` tool with your complete answer formatted according to the required schema. Do not attempt to format the JSON manually - always use this tool. Your response will be rejected if it is not properly formatted through this tool. Only use this tool once you are ready to provide your final answer."
+                      },
+                      "output": {
+                        "input": "What time is my check-in?",
+                        "system_message": "You are a helpful assistant",
+                        "formatting_instructions": "IMPORTANT: For your response to user, you MUST use the `format_final_json_response` tool with your complete answer formatted according to the required schema. Do not attempt to format the JSON manually - always use this tool. Your response will be rejected if it is not properly formatted through this tool. Only use this tool once you are ready to provide your final answer.",
+                        "chat_history": [],
+                        "output": {
+                          "resolution": "I don't have access to your reservation or booking information. To help you find your check-in time, could you please provide more details about what type of check-in you're referring to (hotel, flight, appointment, etc.) and any booking reference or confirmation number you might have? With that information, I can better assist you or direct you to the appropriate resource.",
+                          "reasoning": "The user is asking about a check-in time, which could refer to a hotel reservation, flight, appointment, or similar scheduled event. However, I don't have access to any specific reservation systems or the user's personal calendar information. Without additional context about what type of check-in they're referring to and specific booking details, I cannot provide the requested information."
+                        }
+                      }
+                    }
+                  }
+                ]
+              ]
+            }
+          },
+          {
+            "startTime": 1747344006544,
+            "executionTime": 0,
+            "executionIndex": 8,
+            "executionStatus": "success",
+            "source": [
+              {
+                "previousNode": "AI Agent1",
+                "previousNodeRun": 0
+              }
+            ],
+            "data": {
+              "ai_memory": [
+                [
+                  {
+                    "json": {
+                      "action": "loadMemoryVariables",
+                      "chatHistory": [
+                        "json array"
+                      ]
+                    }
+                  }
+                ]
+              ]
+            },
+            "inputOverride": {
+              "ai_memory": [
+                [
+                  {
+                    "json": {
+                      "action": "loadMemoryVariables",
+                      "values": {
+                        "input": "What time is my check-in?",
+                        "system_message": "You are a helpful assistant",
+                        "formatting_instructions": "IMPORTANT: For your response to user, you MUST use the `format_final_json_response` tool with your complete answer formatted according to the required schema. Do not attempt to format the JSON manually - always use this tool. Your response will be rejected if it is not properly formatted through this tool. Only use this tool once you are ready to provide your final answer."
+                      }
+                    }
+                  }
+                ]
+              ]
+            }
+          },
+          {
+            "startTime": 1747344010996,
+            "executionTime": 0,
+            "executionIndex": 12,
+            "executionStatus": "success",
+            "source": [
+              {
+                "previousNode": "AI Agent1",
+                "previousNodeRun": 0
+              }
+            ],
+            "data": {
+              "ai_memory": [
+                [
+                  {
+                    "json": {
+                      "action": "saveContext",
+                      "chatHistory": [
+                        "json array"
+                      ]
+                    }
+                  }
+                ]
+              ]
+            },
+            "inputOverride": {
+              "ai_memory": [
+                [
+                  {
+                    "json": {
+                      "action": "saveContext",
+                      "input": {
+                        "input": "What time is my check-in?",
+                        "system_message": "You are a helpful assistant",
+                        "formatting_instructions": "IMPORTANT: For your response to user, you MUST use the `format_final_json_response` tool with your complete answer formatted according to the required schema. Do not attempt to format the JSON manually - always use this tool. Your response will be rejected if it is not properly formatted through this tool. Only use this tool once you are ready to provide your final answer."
+                      },
+                      "output": {
+                        "input": "What time is my check-in?",
+                        "system_message": "You are a helpful assistant",
+                        "formatting_instructions": "IMPORTANT: For your response to user, you MUST use the `format_final_json_response` tool with your complete answer formatted according to the required schema. Do not attempt to format the JSON manually - always use this tool. Your response will be rejected if it is not properly formatted through this tool. Only use this tool once you are ready to provide your final answer.",
+                        "chat_history": [
+                          {
+                            "lc": 1,
+                            "type": "constructor",
+                            "id": [
+                              "langchain_core",
+                              "messages",
+                              "HumanMessage"
+                            ],
+                            "kwargs": {
+                              "content": "What time is my check-in?",
+                              "additional_kwargs": {},
+                              "response_metadata": {}
+                            }
+                          },
+                          {
+                            "lc": 1,
+                            "type": "constructor",
+                            "id": [
+                              "langchain_core",
+                              "messages",
+                              "AIMessage"
+                            ],
+                            "kwargs": {
+                              "content": "{\"output\":{\"resolution\":\"I don't have access to your reservation or booking information. To help you find your check-in time, could you please provide more details about what type of check-in you're referring to (hotel, flight, appointment, etc.) and any booking reference or confirmation number you might have? With that information, I can better assist you or direct you to the appropriate resource.\",\"reasoning\":\"The user is asking about a check-in time, which could refer to a hotel reservation, flight, appointment, or similar scheduled event. However, I don't have access to any specific reservation systems or the user's personal calendar information. Without additional context about what type of check-in they're referring to and specific booking details, I cannot provide the requested information.\"}}",
+                              "tool_calls": [],
+                              "invalid_tool_calls": [],
+                              "additional_kwargs": {},
+                              "response_metadata": {}
+                            }
+                          }
+                        ],
+                        "output": {
+                          "resolution": "I don't have access to your reservation or booking information. To help you find your check-in time, could you please provide more details about what type of check-in you're referring to (hotel, flight, appointment, etc.) and any booking reference or confirmation number you might have? With that information, I can better assist you or direct you to the appropriate resource.",
+                          "reasoning": "The user is asking about a check-in time, but I don't have access to any reservation systems, personal calendars, or booking information. Without specific details about what type of check-in they're referring to (hotel, flight, appointment, etc.) and relevant booking information, I cannot provide the requested information. I need to ask for clarification to properly assist."
+                        }
+                      }
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Anthropic Chat Model": [
+          {
+            "startTime": 1747344001520,
+            "executionTime": 5020,
+            "executionIndex": 3,
+            "executionStatus": "success",
+            "source": [
+              {
+                "previousNode": "AI Agent",
+                "previousNodeRun": 0
+              }
+            ],
+            "data": {
+              "ai_languageModel": [
+                [
+                  {
+                    "json": {
+                      "response": {
+                        "object": true
+                      },
+                      "tokenUsageEstimate": {
+                        "object": true
+                      }
+                    }
+                  }
+                ]
+              ]
+            },
+            "inputOverride": {
+              "ai_languageModel": [
+                [
+                  {
+                    "json": {
+                      "messages": [
+                        "System: You are a helpful assistant\n\nIMPORTANT: For your response to user, you MUST use the `format_final_json_response` tool with your complete answer formatted according to the required schema. Do not attempt to format the JSON manually - always use this tool. Your response will be rejected if it is not properly formatted through this tool. Only use this tool once you are ready to provide your final answer.\nHuman: What time is my check-in?"
+                      ],
+                      "estimatedTokens": 90,
+                      "options": {
+                        "anthropic_api_key": {
+                          "lc": 1,
+                          "type": "secret",
+                          "id": [
+                            "ANTHROPIC_API_KEY"
+                          ]
+                        },
+                        "model": "claude-3-7-sonnet-20250219",
+                        "anthropic_api_url": "https://api.anthropic.com",
+                        "max_tokens": 2048,
+                        "temperature": 1,
+                        "top_k": -1,
+                        "top_p": -1,
+                        "invocation_kwargs": {},
+                        "api_key": {
+                          "lc": 1,
+                          "type": "secret",
+                          "id": [
+                            "ANTHROPIC_API_KEY"
+                          ]
+                        }
+                      }
+                    }
+                  }
+                ]
+              ]
+            },
+            "metadata": {
+              "subRun": [
+                {
+                  "node": "Anthropic Chat Model",
+                  "runIndex": 0
+                },
+                {
+                  "node": "Anthropic Chat Model",
+                  "runIndex": 1
+                }
+              ]
+            }
+          },
+          {
+            "startTime": 1747344006545,
+            "executionTime": 4451,
+            "executionIndex": 9,
+            "executionStatus": "success",
+            "source": [
+              {
+                "previousNode": "AI Agent1",
+                "previousNodeRun": 0
+              }
+            ],
+            "data": {
+              "ai_languageModel": [
+                [
+                  {
+                    "json": {
+                      "response": {
+                        "object": true
+                      },
+                      "tokenUsageEstimate": {
+                        "object": true
+                      }
+                    }
+                  }
+                ]
+              ]
+            },
+            "inputOverride": {
+              "ai_languageModel": [
+                [
+                  {
+                    "json": {
+                      "messages": [
+                        "System: You are a helpful assistant\n\nIMPORTANT: For your response to user, you MUST use the `format_final_json_response` tool with your complete answer formatted according to the required schema. Do not attempt to format the JSON manually - always use this tool. Your response will be rejected if it is not properly formatted through this tool. Only use this tool once you are ready to provide your final answer.\nHuman: What time is my check-in?\nAI: {\"output\":{\"resolution\":\"I don't have access to your reservation or booking information. To help you find your check-in time, could you please provide more details about what type of check-in you're referring to (hotel, flight, appointment, etc.) and any booking reference or confirmation number you might have? With that information, I can better assist you or direct you to the appropriate resource.\",\"reasoning\":\"The user is asking about a check-in time, which could refer to a hotel reservation, flight, appointment, or similar scheduled event. However, I don't have access to any specific reservation systems or the user's personal calendar information. Without additional context about what type of check-in they're referring to and specific booking details, I cannot provide the requested information.\"}}\nHuman: What time is my check-in?"
+                      ],
+                      "estimatedTokens": 251,
+                      "options": {
+                        "anthropic_api_key": {
+                          "lc": 1,
+                          "type": "secret",
+                          "id": [
+                            "ANTHROPIC_API_KEY"
+                          ]
+                        },
+                        "model": "claude-3-7-sonnet-20250219",
+                        "anthropic_api_url": "https://api.anthropic.com",
+                        "max_tokens": 2048,
+                        "temperature": 1,
+                        "top_k": -1,
+                        "top_p": -1,
+                        "invocation_kwargs": {},
+                        "api_key": {
+                          "lc": 1,
+                          "type": "secret",
+                          "id": [
+                            "ANTHROPIC_API_KEY"
+                          ]
+                        }
+                      }
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Auto-fixing Output Parser": [
+          {
+            "startTime": 1747344006540,
+            "executionTime": 1,
+            "executionIndex": 4,
+            "executionStatus": "success",
+            "source": [
+              {
+                "previousNode": "AI Agent",
+                "previousNodeRun": 0
+              }
+            ],
+            "data": {
+              "ai_outputParser": [
+                [
+                  {
+                    "json": {
+                      "action": "parse",
+                      "response": {
+                        "object": true
+                      }
+                    }
+                  }
+                ]
+              ]
+            },
+            "inputOverride": {
+              "ai_outputParser": [
+                [
+                  {
+                    "json": {
+                      "action": "parse",
+                      "text": "{\"output\":{\"reasoning\":\"The user is asking about a check-in time, which could refer to a hotel reservation, flight, appointment, or similar scheduled event. However, I don't have access to any specific reservation systems or the user's personal calendar information. Without additional context about what type of check-in they're referring to and specific booking details, I cannot provide the requested information.\",\"resolution\":\"I don't have access to your reservation or booking information. To help you find your check-in time, could you please provide more details about what type of check-in you're referring to (hotel, flight, appointment, etc.) and any booking reference or confirmation number you might have? With that information, I can better assist you or direct you to the appropriate resource.\"}}"
+                    }
+                  }
+                ]
+              ]
+            },
+            "metadata": {
+              "subRun": [
+                {
+                  "node": "Auto-fixing Output Parser",
+                  "runIndex": 0
+                },
+                {
+                  "node": "Auto-fixing Output Parser",
+                  "runIndex": 1
+                }
+              ]
+            }
+          },
+          {
+            "startTime": 1747344010996,
+            "executionTime": 0,
+            "executionIndex": 10,
+            "executionStatus": "success",
+            "source": [
+              {
+                "previousNode": "AI Agent1",
+                "previousNodeRun": 0
+              }
+            ],
+            "data": {
+              "ai_outputParser": [
+                [
+                  {
+                    "json": {
+                      "action": "parse",
+                      "response": {
+                        "object": true
+                      }
+                    }
+                  }
+                ]
+              ]
+            },
+            "inputOverride": {
+              "ai_outputParser": [
+                [
+                  {
+                    "json": {
+                      "action": "parse",
+                      "text": "{\"output\":{\"reasoning\":\"The user is asking about a check-in time, but I don't have access to any reservation systems, personal calendars, or booking information. Without specific details about what type of check-in they're referring to (hotel, flight, appointment, etc.) and relevant booking information, I cannot provide the requested information. I need to ask for clarification to properly assist.\",\"resolution\":\"I don't have access to your reservation or booking information. To help you find your check-in time, could you please provide more details about what type of check-in you're referring to (hotel, flight, appointment, etc.) and any booking reference or confirmation number you might have? With that information, I can better assist you or direct you to the appropriate resource.\"}}"
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Structured Output Parser": [
+          {
+            "startTime": 1747344006540,
+            "executionTime": 1,
+            "executionIndex": 5,
+            "executionStatus": "success",
+            "source": [
+              {
+                "previousNode": "Auto-fixing Output Parser",
+                "previousNodeRun": 0
+              }
+            ],
+            "data": {
+              "ai_outputParser": [
+                [
+                  {
+                    "json": {
+                      "action": "parse",
+                      "response": {
+                        "object": true
+                      }
+                    }
+                  }
+                ]
+              ]
+            },
+            "inputOverride": {
+              "ai_outputParser": [
+                [
+                  {
+                    "json": {
+                      "action": "parse",
+                      "text": "{\"output\":{\"reasoning\":\"The user is asking about a check-in time, which could refer to a hotel reservation, flight, appointment, or similar scheduled event. However, I don't have access to any specific reservation systems or the user's personal calendar information. Without additional context about what type of check-in they're referring to and specific booking details, I cannot provide the requested information.\",\"resolution\":\"I don't have access to your reservation or booking information. To help you find your check-in time, could you please provide more details about what type of check-in you're referring to (hotel, flight, appointment, etc.) and any booking reference or confirmation number you might have? With that information, I can better assist you or direct you to the appropriate resource.\"}}"
+                    }
+                  }
+                ]
+              ]
+            },
+            "metadata": {
+              "subRun": [
+                {
+                  "node": "Structured Output Parser",
+                  "runIndex": 0
+                },
+                {
+                  "node": "Structured Output Parser",
+                  "runIndex": 1
+                }
+              ]
+            }
+          },
+          {
+            "startTime": 1747344010996,
+            "executionTime": 0,
+            "executionIndex": 11,
+            "executionStatus": "success",
+            "source": [
+              {
+                "previousNode": "Auto-fixing Output Parser",
+                "previousNodeRun": 0
+              }
+            ],
+            "data": {
+              "ai_outputParser": [
+                [
+                  {
+                    "json": {
+                      "action": "parse",
+                      "response": {
+                        "object": true
+                      }
+                    }
+                  }
+                ]
+              ]
+            },
+            "inputOverride": {
+              "ai_outputParser": [
+                [
+                  {
+                    "json": {
+                      "action": "parse",
+                      "text": "{\"output\":{\"reasoning\":\"The user is asking about a check-in time, but I don't have access to any reservation systems, personal calendars, or booking information. Without specific details about what type of check-in they're referring to (hotel, flight, appointment, etc.) and relevant booking information, I cannot provide the requested information. I need to ask for clarification to properly assist.\",\"resolution\":\"I don't have access to your reservation or booking information. To help you find your check-in time, could you please provide more details about what type of check-in you're referring to (hotel, flight, appointment, etc.) and any booking reference or confirmation number you might have? With that information, I can better assist you or direct you to the appropriate resource.\"}}"
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "AI Agent": [
+          {
+            "startTime": 1747344001514,
+            "executionIndex": 1,
+            "source": [
+              {
+                "previousNode": "When clicking \"Test workflow\""
+              }
+            ],
+            "hints": [],
+            "executionTime": 5027,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "output": {
+                        "object": true
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "AI Agent1": [
+          {
+            "startTime": 1747344006541,
+            "executionIndex": 7,
+            "source": [
+              {
+                "previousNode": "AI Agent"
+              }
+            ],
+            "hints": [],
+            "executionTime": 4455,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "output": {
+                        "object": true
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ]
+      },
+      "lastNodeExecuted": "AI Agent1"
+    },
+    "executionData": {
+      "contextData": {},
+      "nodeExecutionStack": [],
+      "metadata": {
+        "Simple Memory": [
+          {
+            "subRun": [
+              {
+                "node": "Simple Memory",
+                "runIndex": 0
+              },
+              {
+                "node": "Simple Memory",
+                "runIndex": 1
+              },
+              {
+                "node": "Simple Memory",
+                "runIndex": 2
+              },
+              {
+                "node": "Simple Memory",
+                "runIndex": 3
+              }
+            ]
+          }
+        ],
+        "Anthropic Chat Model": [
+          {
+            "subRun": [
+              {
+                "node": "Anthropic Chat Model",
+                "runIndex": 0
+              },
+              {
+                "node": "Anthropic Chat Model",
+                "runIndex": 1
+              }
+            ]
+          }
+        ],
+        "Structured Output Parser": [
+          {
+            "subRun": [
+              {
+                "node": "Structured Output Parser",
+                "runIndex": 0
+              },
+              {
+                "node": "Structured Output Parser",
+                "runIndex": 1
+              }
+            ]
+          }
+        ],
+        "Auto-fixing Output Parser": [
+          {
+            "subRun": [
+              {
+                "node": "Auto-fixing Output Parser",
+                "runIndex": 0
+              },
+              {
+                "node": "Auto-fixing Output Parser",
+                "runIndex": 1
+              }
+            ]
+          }
+        ]
+      },
+      "waitingExecution": {},
+      "waitingExecutionSource": {}
+    }
+  },
+  "mode": "cli",
+  "startedAt": "2025-05-15T21:20:01.514Z",
+  "stoppedAt": "2025-05-15T21:20:10.996Z",
+  "status": "running",
+  "finished": true
+}

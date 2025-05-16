@@ -1,0 +1,58 @@
+name: Test Workflow migration
+
+on:
+  push:
+    branches:
+      - CAT-789-migrate-workflow-tests
+
+jobs:
+  build_and_test:
+    name: Install, Build, and Test Workflows
+    runs-on: blacksmith-2vcpu-ubuntu-2204
+    timeout-minutes: 10
+
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - name: Setup Environment and Build Project
+        uses: ./.github/actions/setup-and-build
+        with:
+          node-version: '22.x'
+          cache-suffix: 'workflow-test'
+
+      - name: Install OS dependencies
+        run: |
+          sudo apt update -y
+          echo 'tzdata tzdata/Areas select Europe' | sudo debconf-set-selections
+          echo 'tzdata tzdata/Zones/Europe select Paris' | sudo debconf-set-selections
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends graphicsmagick
+          sudo apt-get clean
+          sudo rm -rf /var/lib/apt/lists/*
+
+      - name: Import credentials
+        run: ./packages/cli/bin/n8n import:credentials --input=test-workflows/credentials.json
+        env:
+          N8N_ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
+
+      - name: Import workflows
+        run: ./packages/cli/bin/n8n import:workflow --separate --input=test-workflows/workflows
+        env:
+          N8N_ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
+
+      - name: Copy static assets
+        run: |
+          mkdir -p /tmp/testData/pdfs # Ensure target directory exists
+          cp assets/n8n-logo.png /tmp/n8n-logo.png
+          cp assets/n8n-screenshot.png /tmp/n8n-screenshot.png
+          cp test-workflows/testData/pdfs/*.pdf /tmp/testData/pdfs/
+
+      - name: Run tests
+        id: tests
+        run: ./packages/cli/bin/n8n executeBatch --shallow --skipList=test-workflows/skipList.json --githubWorkflow --shortOutput --concurrency=16 --compare=test-workflows/snapshots
+        env:
+          N8N_ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
+          SKIP_STATISTICS_EVENTS: "true"
+          DB_SQLITE_POOL_SIZE: "4"
+          N8N_SENTRY_DSN: ${{ secrets.CI_SENTRY_DSN }}

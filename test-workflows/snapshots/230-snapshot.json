@@ -1,0 +1,79 @@
+{
+  "data": {
+    "startData": {},
+    "resultData": {
+      "runData": {
+        "When clicking \"Execute Workflow\"": [
+          {
+            "startTime": 1747343995774,
+            "executionIndex": 0,
+            "source": [],
+            "hints": [],
+            "executionTime": 0,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {},
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "VirusTotal HTTP Request": [
+          {
+            "startTime": 1747343995774,
+            "executionIndex": 1,
+            "source": [
+              {
+                "previousNode": "When clicking \"Execute Workflow\""
+              }
+            ],
+            "hints": [
+              {
+                "message": "To split the contents of ‘data’ into separate items for easier processing, add a ‘Split Out’ node after this one",
+                "location": "outputPane"
+              }
+            ],
+            "executionTime": 383,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "data": [
+                        "json array"
+                      ]
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ]
+      },
+      "lastNodeExecuted": "VirusTotal HTTP Request"
+    },
+    "executionData": {
+      "contextData": {},
+      "nodeExecutionStack": [],
+      "metadata": {},
+      "waitingExecution": {},
+      "waitingExecutionSource": {}
+    }
+  },
+  "mode": "cli",
+  "startedAt": "2025-05-15T21:19:55.773Z",
+  "stoppedAt": "2025-05-15T21:19:56.157Z",
+  "status": "running",
+  "finished": true
+}

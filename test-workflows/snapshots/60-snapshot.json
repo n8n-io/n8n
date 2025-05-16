@@ -1,0 +1,426 @@
+{
+  "data": {
+    "startData": {},
+    "resultData": {
+      "runData": {
+        "Start": [
+          {
+            "hints": [],
+            "startTime": 1734619806689,
+            "executionTime": 0,
+            "source": [],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {},
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Taiga": [
+          {
+            "hints": [],
+            "startTime": 1734619806690,
+            "executionTime": 895,
+            "source": [
+              {
+                "previousNode": "Start"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "tags": [
+                        "json array"
+                      ],
+                      "due_date": {
+                        "object": true
+                      },
+                      "due_date_reason": "",
+                      "due_date_status": "not_set",
+                      "attachments": [
+                        "json array"
+                      ],
+                      "project": 399742,
+                      "project_extra_info": {
+                        "object": true
+                      },
+                      "status": 2801529,
+                      "status_extra_info": {
+                        "object": true
+                      },
+                      "assigned_to": {
+                        "object": true
+                      },
+                      "assigned_to_extra_info": {
+                        "object": true
+                      },
+                      "owner": 470482,
+                      "owner_extra_info": {
+                        "object": true
+                      },
+                      "is_watcher": false,
+                      "total_watchers": 0,
+                      "is_voter": false,
+                      "total_voters": 0,
+                      "id": 1880291,
+                      "ref": 1927,
+                      "severity": 1996617,
+                      "priority": 1201587,
+                      "type": 1206845,
+                      "milestone": {
+                        "object": true
+                      },
+                      "created_date": "2024-12-19T14:50:07.433Z",
+                      "modified_date": "2024-12-19T14:50:07.438Z",
+                      "finished_date": {
+                        "object": true
+                      },
+                      "subject": "Test",
+                      "external_reference": {
+                        "object": true
+                      },
+                      "version": 1,
+                      "watchers": [
+                        "json array"
+                      ],
+                      "is_blocked": false,
+                      "blocked_note": "",
+                      "is_closed": false,
+                      "comment": "",
+                      "generated_user_stories": {
+                        "object": true
+                      },
+                      "blocked_note_html": "",
+                      "description": "TestIssue",
+                      "description_html": "<p>TestIssue</p>"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Taiga1": [
+          {
+            "hints": [],
+            "startTime": 1734619807585,
+            "executionTime": 1712,
+            "source": [
+              {
+                "previousNode": "Taiga"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "tags": [
+                        "json array"
+                      ],
+                      "due_date": {
+                        "object": true
+                      },
+                      "due_date_reason": "",
+                      "due_date_status": "not_set",
+                      "attachments": [
+                        "json array"
+                      ],
+                      "project": 399742,
+                      "project_extra_info": {
+                        "object": true
+                      },
+                      "status": 2801529,
+                      "status_extra_info": {
+                        "object": true
+                      },
+                      "assigned_to": {
+                        "object": true
+                      },
+                      "assigned_to_extra_info": {
+                        "object": true
+                      },
+                      "owner": 470482,
+                      "owner_extra_info": {
+                        "object": true
+                      },
+                      "is_watcher": false,
+                      "total_watchers": 0,
+                      "is_voter": false,
+                      "total_voters": 0,
+                      "id": 1880291,
+                      "ref": 1927,
+                      "severity": 1996617,
+                      "priority": 1201587,
+                      "type": 1206845,
+                      "milestone": {
+                        "object": true
+                      },
+                      "created_date": "2024-12-19T14:50:07.433Z",
+                      "modified_date": "2024-12-19T14:50:09.170Z",
+                      "finished_date": {
+                        "object": true
+                      },
+                      "subject": "UpdatedTest",
+                      "external_reference": {
+                        "object": true
+                      },
+                      "version": 2,
+                      "watchers": [
+                        "json array"
+                      ],
+                      "is_blocked": false,
+                      "blocked_note": "",
+                      "is_closed": false,
+                      "comment": "",
+                      "generated_user_stories": {
+                        "object": true
+                      },
+                      "blocked_note_html": "",
+                      "description": "TestIssue",
+                      "description_html": "<p>TestIssue</p>"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Taiga2": [
+          {
+            "hints": [],
+            "startTime": 1734619809297,
+            "executionTime": 847,
+            "source": [
+              {
+                "previousNode": "Taiga1"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "tags": [
+                        "json array"
+                      ],
+                      "due_date": {
+                        "object": true
+                      },
+                      "due_date_reason": "",
+                      "due_date_status": "not_set",
+                      "attachments": [
+                        "json array"
+                      ],
+                      "project": 399742,
+                      "project_extra_info": {
+                        "object": true
+                      },
+                      "status": 2801529,
+                      "status_extra_info": {
+                        "object": true
+                      },
+                      "assigned_to": {
+                        "object": true
+                      },
+                      "assigned_to_extra_info": {
+                        "object": true
+                      },
+                      "owner": 470482,
+                      "owner_extra_info": {
+                        "object": true
+                      },
+                      "is_watcher": false,
+                      "total_watchers": 0,
+                      "is_voter": false,
+                      "total_voters": 0,
+                      "id": 1880291,
+                      "ref": 1927,
+                      "severity": 1996617,
+                      "priority": 1201587,
+                      "type": 1206845,
+                      "milestone": {
+                        "object": true
+                      },
+                      "created_date": "2024-12-19T14:50:07.433Z",
+                      "modified_date": "2024-12-19T14:50:09.170Z",
+                      "finished_date": {
+                        "object": true
+                      },
+                      "subject": "UpdatedTest",
+                      "external_reference": {
+                        "object": true
+                      },
+                      "version": 2,
+                      "watchers": [
+                        "json array"
+                      ],
+                      "is_blocked": false,
+                      "blocked_note": "",
+                      "is_closed": false,
+                      "comment": "",
+                      "generated_user_stories": {
+                        "object": true
+                      },
+                      "blocked_note_html": "",
+                      "description": "TestIssue",
+                      "description_html": "<p>TestIssue</p>",
+                      "neighbors": {
+                        "object": true
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Taiga3": [
+          {
+            "hints": [],
+            "startTime": 1734619810144,
+            "executionTime": 918,
+            "source": [
+              {
+                "previousNode": "Taiga2"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "tags": [
+                        "json array"
+                      ],
+                      "due_date": {
+                        "object": true
+                      },
+                      "due_date_reason": "",
+                      "due_date_status": "not_set",
+                      "attachments": [
+                        "json array"
+                      ],
+                      "project": 399742,
+                      "project_extra_info": {
+                        "object": true
+                      },
+                      "status": 2801529,
+                      "status_extra_info": {
+                        "object": true
+                      },
+                      "assigned_to": {
+                        "object": true
+                      },
+                      "assigned_to_extra_info": {
+                        "object": true
+                      },
+                      "owner": 470482,
+                      "owner_extra_info": {
+                        "object": true
+                      },
+                      "is_watcher": false,
+                      "total_watchers": 0,
+                      "is_voter": false,
+                      "total_voters": 0,
+                      "id": 1880291,
+                      "ref": 1927,
+                      "severity": 1996617,
+                      "priority": 1201587,
+                      "type": 1206845,
+                      "milestone": {
+                        "object": true
+                      },
+                      "created_date": "2024-12-19T14:50:07.433Z",
+                      "modified_date": "2024-12-19T14:50:09.170Z",
+                      "finished_date": {
+                        "object": true
+                      },
+                      "subject": "UpdatedTest",
+                      "external_reference": {
+                        "object": true
+                      },
+                      "version": 2,
+                      "watchers": [
+                        "json array"
+                      ],
+                      "is_blocked": false,
+                      "blocked_note": "",
+                      "is_closed": false
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Taiga4": [
+          {
+            "hints": [],
+            "startTime": 1734619811062,
+            "executionTime": 997,
+            "source": [
+              {
+                "previousNode": "Taiga3"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "success": true
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ]
+      },
+      "lastNodeExecuted": "Taiga4"
+    },
+    "executionData": {
+      "contextData": {},
+      "nodeExecutionStack": [],
+      "metadata": {},
+      "waitingExecution": {},
+      "waitingExecutionSource": {}
+    }
+  },
+  "mode": "cli",
+  "startedAt": "2024-12-19T14:50:06.689Z",
+  "stoppedAt": "2024-12-19T14:50:12.059Z",
+  "status": "running",
+  "finished": true
+}

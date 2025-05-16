@@ -1,0 +1,301 @@
+{
+  "data": {
+    "startData": {},
+    "resultData": {
+      "runData": {
+        "Start": [
+          {
+            "startTime": 1678116858549,
+            "executionTime": 1,
+            "source": [],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {},
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Set": [
+          {
+            "startTime": 1678116858551,
+            "executionTime": 0,
+            "source": [
+              {
+                "previousNode": "Start"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "boolean": true,
+                      "number": 3
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Google Cloud Firestore5": [
+          {
+            "startTime": 1678116858552,
+            "executionTime": 728,
+            "source": [
+              {
+                "previousNode": "Start"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "name": "FixedCollection"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Google Cloud Firestore": [
+          {
+            "startTime": 1678116859281,
+            "executionTime": 207,
+            "source": [
+              {
+                "previousNode": "Set"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "_name": "projects/fixedtestproject/databases/(default)/documents/FixedCollection/YNjhZsY4raBDR2lfdZZ0",
+                      "_id": "YNjhZsY4raBDR2lfdZZ0",
+                      "_createTime": "2023-03-06T15:34:19.490782Z",
+                      "_updateTime": "2023-03-06T15:34:19.490782Z",
+                      "number": "3",
+                      "boolean": true
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Google Cloud Firestore1": [
+          {
+            "startTime": 1678116859488,
+            "executionTime": 190,
+            "source": [
+              {
+                "previousNode": "Google Cloud Firestore"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "_name": "projects/fixedtestproject/databases/(default)/documents/FixedCollection/YNjhZsY4raBDR2lfdZZ0",
+                      "_id": "YNjhZsY4raBDR2lfdZZ0",
+                      "_createTime": "2023-03-06T15:34:19.490782Z",
+                      "_updateTime": "2023-03-06T15:34:19.490782Z",
+                      "boolean": true,
+                      "number": "3"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Set1": [
+          {
+            "startTime": 1678116859678,
+            "executionTime": 1,
+            "source": [
+              {
+                "previousNode": "Google Cloud Firestore1"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "boolean": true,
+                      "number": 100
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Google Cloud Firestore2": [
+          {
+            "startTime": 1678116859679,
+            "executionTime": 205,
+            "source": [
+              {
+                "previousNode": "Set1"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "updateTime": "2021-05-10T08:20:43.439586Z",
+                      "status": {
+                        "object": true
+                      },
+                      "boolean": true,
+                      "number": 100
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Google Cloud Firestore3": [
+          {
+            "startTime": 1678116859884,
+            "executionTime": 216,
+            "source": [
+              {
+                "previousNode": "Google Cloud Firestore2"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "_name": "projects/fixedtestproject/databases/(default)/documents/FixedCollection/5xovkMwha8R2fHwT9HiW",
+                      "_id": "5xovkMwha8R2fHwT9HiW",
+                      "_createTime": "2021-05-12T15:31:35.922541Z",
+                      "_updateTime": "2021-05-12T15:31:35.922541Z",
+                      "number": "3",
+                      "boolean": true
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Google Cloud Firestore4": [
+          {
+            "startTime": 1678116860100,
+            "executionTime": 258,
+            "source": [
+              {
+                "previousNode": "Google Cloud Firestore3"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "_name": "projects/fixedtestproject/databases/(default)/documents/FixedCollection/undefined",
+                      "_id": "undefined",
+                      "_createTime": "2021-05-10T08:20:43.439586Z",
+                      "_updateTime": "2021-05-10T08:20:43.439586Z",
+                      "number": "100"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Google Cloud Firestore6": [
+          {
+            "startTime": 1678116860359,
+            "executionTime": 246,
+            "source": [
+              {
+                "previousNode": "Google Cloud Firestore4"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "success": true
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ]
+      },
+      "lastNodeExecuted": "Google Cloud Firestore6"
+    },
+    "executionData": {
+      "contextData": {},
+      "nodeExecutionStack": [],
+      "waitingExecution": {},
+      "waitingExecutionSource": {}
+    }
+  },
+  "mode": "cli",
+  "startedAt": "2023-03-06T15:34:18.548Z",
+  "stoppedAt": "2023-03-06T15:34:20.605Z",
+  "status": "running",
+  "finished": true
+}

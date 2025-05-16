@@ -1,0 +1,116 @@
+{
+  "createdAt": "2024-03-04T20:32:15.867Z",
+  "updatedAt": "2024-03-13T13:43:09.000Z",
+  "id": "239",
+  "name": "Agent:PlanAndExecute",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "model": "gpt-4-turbo-preview",
+        "options": {
+          "temperature": 0
+        }
+      },
+      "id": "9ecb9fc6-c634-4915-ae30-f4a40679200c",
+      "name": "OpenAI Chat Model3",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [
+        1020,
+        760
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "Zak03cqeLUOsgkFI",
+          "name": "OpenAi account"
+        }
+      },
+      "notes": "IGNORED_PROPERTIES=messages"
+    },
+    {
+      "parameters": {},
+      "id": "28f13be4-fc17-4e04-8518-bf98272ea7b7",
+      "name": "Calculator3",
+      "type": "@n8n/n8n-nodes-langchain.toolCalculator",
+      "typeVersion": 1,
+      "position": [
+        1180,
+        780
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "ebd19bad-5412-4e5b-9cbc-92d85e98f517",
+      "name": "When clicking \"Test workflow\"",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        760,
+        620
+      ]
+    },
+    {
+      "parameters": {
+        "agent": "planAndExecuteAgent",
+        "promptType": "define",
+        "text": "What is the result of 30 + (10002200 / 100)? Only respond with a number.",
+        "options": {}
+      },
+      "id": "1b397e30-5061-44dd-b6fc-c7100c8c791d",
+      "name": "AI Agent3",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.4,
+      "position": [
+        1000,
+        620
+      ]
+    }
+  ],
+  "connections": {
+    "OpenAI Chat Model3": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent3",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculator3": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent3",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When clicking \"Test workflow\"": {
+      "main": [
+        [
+          {
+            "node": "AI Agent3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {},
+  "versionId": "d420104e-1ac2-45a5-b173-e97a7726178f",
+  "triggerCount": 0,
+  "tags": []
+}

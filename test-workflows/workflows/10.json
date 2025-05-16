@@ -1,0 +1,325 @@
+{
+  "createdAt": "2021-02-15T13:56:59.611Z",
+  "updatedAt": "2021-06-04T14:37:01.395Z",
+  "id": "10",
+  "name": "PagerDuty:incident:create get update getAll:incidentNote:create getAll:User:get:LogEntry:getAll get",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [
+        240,
+        260
+      ],
+      "id": "91f3c321-72a4-4c04-8e51-ec3a7c775462"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "title": "Test",
+        "serviceId": "PO5XHDI",
+        "email": "nodeqa@n8n.io",
+        "additionalFields": {}
+      },
+      "name": "PagerDuty",
+      "type": "n8n-nodes-base.pagerDuty",
+      "typeVersion": 1,
+      "position": [
+        400,
+        260
+      ],
+      "credentials": {
+        "pagerDutyOAuth2Api": {
+          "id": "123",
+          "name": "PagerDuty OAuth2 API creds"
+        }
+      },
+      "id": "92f2a4d8-4860-4edf-92e4-ea14671bad92"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "operation": "get",
+        "incidentId": "={{$json[\"id\"]}}"
+      },
+      "name": "PagerDuty1",
+      "type": "n8n-nodes-base.pagerDuty",
+      "typeVersion": 1,
+      "position": [
+        550,
+        260
+      ],
+      "credentials": {
+        "pagerDutyOAuth2Api": {
+          "id": "123",
+          "name": "PagerDuty OAuth2 API creds"
+        }
+      },
+      "id": "0af4d8fa-8392-46ce-8d04-cfcb0fcff52b"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "operation": "update",
+        "incidentId": "={{$json[\"id\"]}}",
+        "email": "nodeqa@n8n.io",
+        "updateFields": {
+          "status": "acknowledged"
+        }
+      },
+      "name": "PagerDuty2",
+      "type": "n8n-nodes-base.pagerDuty",
+      "typeVersion": 1,
+      "position": [
+        870,
+        260
+      ],
+      "credentials": {
+        "pagerDutyOAuth2Api": {
+          "id": "123",
+          "name": "PagerDuty OAuth2 API creds"
+        }
+      },
+      "id": "843cc5d1-4302-4d75-b78e-14479b2a5dc7"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "operation": "getAll",
+        "limit": 1,
+        "options": {}
+      },
+      "name": "PagerDuty3",
+      "type": "n8n-nodes-base.pagerDuty",
+      "typeVersion": 1,
+      "position": [
+        1030,
+        260
+      ],
+      "credentials": {
+        "pagerDutyOAuth2Api": {
+          "id": "123",
+          "name": "PagerDuty OAuth2 API creds"
+        }
+      },
+      "id": "903bd6db-f3ab-45d8-bd05-0f387a5e08bd"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "incidentNote",
+        "incidentId": "={{$json[\"id\"]}}",
+        "content": "Simple note for an incident",
+        "email": "nodeqa@n8n.io"
+      },
+      "name": "PagerDuty4",
+      "type": "n8n-nodes-base.pagerDuty",
+      "typeVersion": 1,
+      "position": [
+        720,
+        350
+      ],
+      "credentials": {
+        "pagerDutyOAuth2Api": {
+          "id": "123",
+          "name": "PagerDuty OAuth2 API creds"
+        }
+      },
+      "id": "37deab31-9ff9-4dd4-9f21-edcdaa13532c"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "incidentNote",
+        "operation": "getAll",
+        "incidentId": "={{$json[\"id\"]}}",
+        "limit": 1
+      },
+      "name": "PagerDuty5",
+      "type": "n8n-nodes-base.pagerDuty",
+      "typeVersion": 1,
+      "position": [
+        720,
+        160
+      ],
+      "credentials": {
+        "pagerDutyOAuth2Api": {
+          "id": "123",
+          "name": "PagerDuty OAuth2 API creds"
+        }
+      },
+      "id": "e3df7b5a-1abc-4af9-b5a8-725d1339b127"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "user",
+        "userId": "PT0VVWO"
+      },
+      "name": "PagerDuty6",
+      "type": "n8n-nodes-base.pagerDuty",
+      "typeVersion": 1,
+      "position": [
+        400,
+        110
+      ],
+      "credentials": {
+        "pagerDutyOAuth2Api": {
+          "id": "123",
+          "name": "PagerDuty OAuth2 API creds"
+        }
+      },
+      "id": "25539887-c45a-4859-bc73-6173ef47e07e"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "logEntry",
+        "operation": "getAll",
+        "limit": 1,
+        "options": {}
+      },
+      "name": "PagerDuty7",
+      "type": "n8n-nodes-base.pagerDuty",
+      "typeVersion": 1,
+      "position": [
+        400,
+        540
+      ],
+      "credentials": {
+        "pagerDutyOAuth2Api": {
+          "id": "123",
+          "name": "PagerDuty OAuth2 API creds"
+        }
+      },
+      "notes": "IGNORED_PROPERTIES=event_details,assignees",
+      "id": "7f565cd4-e409-4d23-8914-6f887457d14a"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "logEntry",
+        "logEntryId": "={{$node[\"PagerDuty\"].json[\"first_trigger_log_entry\"][\"id\"]}}"
+      },
+      "name": "PagerDuty8",
+      "type": "n8n-nodes-base.pagerDuty",
+      "typeVersion": 1,
+      "position": [
+        730,
+        540
+      ],
+      "credentials": {
+        "pagerDutyOAuth2Api": {
+          "id": "123",
+          "name": "PagerDuty OAuth2 API creds"
+        }
+      },
+      "id": "9bfda961-967d-43dd-8089-a3af7d26084a"
+    },
+    {
+      "parameters": {
+        "functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(500);\n\n// Output data\nreturn items;"
+      },
+      "name": "Sleep 0.5 second1",
+      "type": "n8n-nodes-base.function",
+      "position": [
+        560,
+        540
+      ],
+      "typeVersion": 1,
+      "id": "f3501dee-890b-46c6-9306-6ebb1cc7d21f"
+    }
+  ],
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "PagerDuty",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "PagerDuty7",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "PagerDuty6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PagerDuty": {
+      "main": [
+        [
+          {
+            "node": "PagerDuty1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Sleep 0.5 second1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PagerDuty1": {
+      "main": [
+        [
+          {
+            "node": "PagerDuty4",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "PagerDuty5",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "PagerDuty2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PagerDuty2": {
+      "main": [
+        [
+          {
+            "node": "PagerDuty3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sleep 0.5 second1": {
+      "main": [
+        [
+          {
+            "node": "PagerDuty8",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": null,
+  "triggerCount": 0,
+  "tags": []
+}

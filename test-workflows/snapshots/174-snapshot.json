@@ -1,0 +1,305 @@
+{
+  "data": {
+    "startData": {},
+    "resultData": {
+      "runData": {
+        "Start": [
+          {
+            "startTime": 1747343994838,
+            "executionIndex": 0,
+            "source": [],
+            "hints": [],
+            "executionTime": 0,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {},
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Set id & email": [
+          {
+            "startTime": 1747343994838,
+            "executionIndex": 1,
+            "source": [
+              {
+                "previousNode": "Start"
+              }
+            ],
+            "hints": [],
+            "executionTime": 6,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "id": 989,
+                      "email": "fake1747343994844@email.com"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Vero": [
+          {
+            "startTime": 1747343994844,
+            "executionIndex": 2,
+            "source": [
+              {
+                "previousNode": "Set id & email"
+              }
+            ],
+            "hints": [],
+            "executionTime": 423,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "status": 200,
+                      "message": "Success."
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Vero1": [
+          {
+            "startTime": 1747343995267,
+            "executionIndex": 3,
+            "source": [
+              {
+                "previousNode": "Vero"
+              }
+            ],
+            "hints": [],
+            "executionTime": 506,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "status": 200,
+                      "message": "Success."
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Vero2": [
+          {
+            "startTime": 1747343995773,
+            "executionIndex": 4,
+            "source": [
+              {
+                "previousNode": "Vero1"
+              }
+            ],
+            "hints": [],
+            "executionTime": 462,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "status": 200,
+                      "message": "Success."
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Vero3": [
+          {
+            "startTime": 1747343996235,
+            "executionIndex": 5,
+            "source": [
+              {
+                "previousNode": "Vero2"
+              }
+            ],
+            "hints": [],
+            "executionTime": 696,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "status": 200,
+                      "message": "Success."
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Vero4": [
+          {
+            "startTime": 1747343996931,
+            "executionIndex": 6,
+            "source": [
+              {
+                "previousNode": "Vero3"
+              }
+            ],
+            "hints": [],
+            "executionTime": 531,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "status": 200,
+                      "message": "Success."
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Vero5": [
+          {
+            "startTime": 1747343997462,
+            "executionIndex": 7,
+            "source": [
+              {
+                "previousNode": "Vero4"
+              }
+            ],
+            "hints": [],
+            "executionTime": 379,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "status": 200,
+                      "message": "Success."
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Vero7": [
+          {
+            "startTime": 1747343997841,
+            "executionIndex": 8,
+            "source": [
+              {
+                "previousNode": "Vero5"
+              }
+            ],
+            "hints": [],
+            "executionTime": 419,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "status": 200,
+                      "message": "Success."
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Vero6": [
+          {
+            "startTime": 1747343998260,
+            "executionIndex": 9,
+            "source": [
+              {
+                "previousNode": "Vero7"
+              }
+            ],
+            "hints": [],
+            "executionTime": 439,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "status": 200,
+                      "message": "Success."
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ]
+      },
+      "lastNodeExecuted": "Vero6"
+    },
+    "executionData": {
+      "contextData": {},
+      "nodeExecutionStack": [],
+      "metadata": {},
+      "waitingExecution": {},
+      "waitingExecutionSource": {}
+    }
+  },
+  "mode": "cli",
+  "startedAt": "2025-05-15T21:19:54.838Z",
+  "stoppedAt": "2025-05-15T21:19:58.699Z",
+  "status": "running",
+  "finished": true
+}

@@ -1,0 +1,62 @@
+name: 'Setup Environment and Build Project'
+description: 'Sets up Node.js with pnpm, using a sticky disk for the pnpm store, installs dependencies, enables Turborepo caching, and builds the project.'
+
+inputs:
+  node-version:
+    description: 'Node.js version to use.'
+    required: false
+    default: '22.x'
+  enable-caching:
+    description: 'Master flag to enable/disable all caching (pnpm store on sticky disk, Turborepo, and dist folders).'
+    required: false
+    default: 'true'
+  cache-suffix:
+    description: 'Suffix to add to the dist folder cache key.'
+    required: false
+    default: 'build'
+
+runs:
+  using: "composite"
+  steps:
+    - name: Setup pnpm CLI
+      uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
+      with:
+        run_install: false
+
+    - name: Get pnpm store path
+      id: pnpm_store_path_step
+      shell: bash
+      run: echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
+
+    - name: Mount pnpm store on sticky disk
+      if: inputs.enable-caching == 'true'
+      uses: useblacksmith/stickydisk@v1
+      with:
+        key: ${{ github.repository }}-pnpm-store-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
+        path: ${{ steps.pnpm_store_path_step.outputs.STORE_PATH }}
+
+    - name: Setup Node.js
+      uses: useblacksmith/setup-node@v5
+      with:
+        node-version: ${{ inputs.node-version }}
+
+    - name: Install dependencies
+      run: pnpm install --frozen-lockfile
+      shell: bash
+      env:
+        PNPM_STORE_PATH: ${{ steps.pnpm_store_path_step.outputs.STORE_PATH }}
+
+    - name: Configure Turborepo Cache
+      if: inputs.enable-caching == 'true'
+      uses: useblacksmith/caching-for-turbo@v1
+
+    - name: Build packages
+      run: pnpm build
+      shell: bash
+
+    - name: Cache 'dist' folders
+      if: inputs.enable-caching == 'true'
+      uses: useblacksmith/cache@v5
+      with:
+        path: ./packages/**/dist
+        key: ${{ github.sha }}:${{ inputs.cache-suffix }}

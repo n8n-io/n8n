@@ -1,0 +1,794 @@
+{
+  "createdAt": "2021-02-16T14:22:05.872Z",
+  "updatedAt": "2021-07-15T13:45:13.306Z",
+  "id": "19",
+  "name": "SentryIo:Organization:create get getAll update:Team:create get getAll update delete:Project:create getAll get update delete:Issue:getAll get update:Event:getAll get:Release:create get getAll update delete",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [
+        210,
+        580
+      ],
+      "id": "3ae6a472-ef2b-4e70-b1b8-34f11865656a"
+    },
+    {
+      "parameters": {
+        "resource": "organization",
+        "operation": "create",
+        "name": "=Org{{Date.now()}}",
+        "agreeTerms": true,
+        "additionalFields": {}
+      },
+      "name": "Sentry.io",
+      "type": "n8n-nodes-base.sentryIo",
+      "typeVersion": 1,
+      "position": [
+        420,
+        300
+      ],
+      "credentials": {
+        "sentryIoApi": {
+          "id": "10",
+          "name": "sentry io token"
+        }
+      },
+      "id": "3b9b06b9-024b-411b-b074-b5d26419c178"
+    },
+    {
+      "parameters": {
+        "resource": "organization",
+        "organizationSlug": "={{$node[\"Sentry.io\"].json[\"slug\"]}}"
+      },
+      "name": "Sentry.io1",
+      "type": "n8n-nodes-base.sentryIo",
+      "typeVersion": 1,
+      "position": [
+        610,
+        300
+      ],
+      "credentials": {
+        "sentryIoApi": {
+          "id": "10",
+          "name": "sentry io token"
+        }
+      },
+      "id": "214cd123-0b74-4e6b-b70b-fc715226309b"
+    },
+    {
+      "parameters": {
+        "resource": "organization",
+        "operation": "getAll",
+        "limit": 1,
+        "additionalFields": {}
+      },
+      "name": "Sentry.io2",
+      "type": "n8n-nodes-base.sentryIo",
+      "typeVersion": 1,
+      "position": [
+        980,
+        300
+      ],
+      "credentials": {
+        "sentryIoApi": {
+          "id": "10",
+          "name": "sentry io token"
+        }
+      },
+      "id": "b39920cd-5e8e-4cb7-a5f6-781665b22b53"
+    },
+    {
+      "parameters": {
+        "resource": "team",
+        "operation": "create",
+        "organizationSlug": "n8n-iq",
+        "name": "=Team{{Date.now()}}",
+        "additionalFields": {}
+      },
+      "name": "Sentry.io3",
+      "type": "n8n-nodes-base.sentryIo",
+      "typeVersion": 1,
+      "position": [
+        420,
+        140
+      ],
+      "credentials": {
+        "sentryIoApi": {
+          "id": "10",
+          "name": "sentry io token"
+        }
+      },
+      "id": "9f460480-4b55-4f2d-b0ab-7e1f1dc1e974"
+    },
+    {
+      "parameters": {
+        "resource": "team",
+        "organizationSlug": "n8n-iq",
+        "teamSlug": "={{$node[\"Sentry.io3\"].json[\"slug\"]}}"
+      },
+      "name": "Sentry.io4",
+      "type": "n8n-nodes-base.sentryIo",
+      "typeVersion": 1,
+      "position": [
+        580,
+        140
+      ],
+      "credentials": {
+        "sentryIoApi": {
+          "id": "10",
+          "name": "sentry io token"
+        }
+      },
+      "id": "c095b56c-c87b-41e4-9dd1-a529b963dd47"
+    },
+    {
+      "parameters": {
+        "resource": "team",
+        "operation": "getAll",
+        "organizationSlug": "n8n-iq",
+        "limit": 1
+      },
+      "name": "Sentry.io5",
+      "type": "n8n-nodes-base.sentryIo",
+      "typeVersion": 1,
+      "position": [
+        930,
+        140
+      ],
+      "credentials": {
+        "sentryIoApi": {
+          "id": "10",
+          "name": "sentry io token"
+        }
+      },
+      "id": "83e5e140-a7fa-497a-9154-84b33f1f43a7"
+    },
+    {
+      "parameters": {
+        "resource": "project",
+        "operation": "getAll",
+        "limit": 1
+      },
+      "name": "Sentry.io6",
+      "type": "n8n-nodes-base.sentryIo",
+      "typeVersion": 1,
+      "position": [
+        590,
+        470
+      ],
+      "credentials": {
+        "sentryIoApi": {
+          "id": "10",
+          "name": "sentry io token"
+        }
+      },
+      "id": "674a3f1a-9812-43b9-b95b-e3de0106df02"
+    },
+    {
+      "parameters": {
+        "resource": "project",
+        "organizationSlug": "n8n-iq",
+        "projectSlug": "={{$node[\"Sentry.io22\"].json[\"slug\"]}}"
+      },
+      "name": "Sentry.io7",
+      "type": "n8n-nodes-base.sentryIo",
+      "typeVersion": 1,
+      "position": [
+        780,
+        470
+      ],
+      "credentials": {
+        "sentryIoApi": {
+          "id": "10",
+          "name": "sentry io token"
+        }
+      },
+      "id": "78b758fd-29a0-4444-b8b6-128e942b1075"
+    },
+    {
+      "parameters": {
+        "resource": "issue",
+        "issueId": "={{$json[\"id\"]}}"
+      },
+      "name": "Sentry.io8",
+      "type": "n8n-nodes-base.sentryIo",
+      "typeVersion": 1,
+      "position": [
+        610,
+        630
+      ],
+      "credentials": {
+        "sentryIoApi": {
+          "id": "10",
+          "name": "sentry io token"
+        }
+      },
+      "id": "15c4106f-e73e-492f-8ea4-bfcfbd15ae6d"
+    },
+    {
+      "parameters": {
+        "resource": "issue",
+        "operation": "getAll",
+        "organizationSlug": "n8n-iq",
+        "projectSlug": "javascript",
+        "limit": 1,
+        "additionalFields": {}
+      },
+      "name": "Sentry.io9",
+      "type": "n8n-nodes-base.sentryIo",
+      "typeVersion": 1,
+      "position": [
+        430,
+        630
+      ],
+      "credentials": {
+        "sentryIoApi": {
+          "id": "10",
+          "name": "sentry io token"
+        }
+      },
+      "id": "ee504fe3-dec7-4225-8ba9-3e978f5186aa"
+    },
+    {
+      "parameters": {
+        "resource": "issue",
+        "operation": "update",
+        "issueId": "={{$json[\"id\"]}}",
+        "additionalFields": {
+          "isBookmarked": "={{!$json[\"isBookmarked\"]}}"
+        }
+      },
+      "name": "Sentry.io10",
+      "type": "n8n-nodes-base.sentryIo",
+      "typeVersion": 1,
+      "position": [
+        780,
+        630
+      ],
+      "credentials": {
+        "sentryIoApi": {
+          "id": "10",
+          "name": "sentry io token"
+        }
+      },
+      "id": "33d3a8d7-1f90-47ab-b890-f3689bb2c4c2"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "organizationSlug": "n8n-iq",
+        "projectSlug": "javascript",
+        "full": false,
+        "limit": 1
+      },
+      "name": "Sentry.io11",
+      "type": "n8n-nodes-base.sentryIo",
+      "typeVersion": 1,
+      "position": [
+        430,
+        780
+      ],
+      "credentials": {
+        "sentryIoApi": {
+          "id": "10",
+          "name": "sentry io token"
+        }
+      },
+      "id": "9bb47894-f507-49da-9b4e-5b69629bbfcf"
+    },
+    {
+      "parameters": {
+        "organizationSlug": "n8n-iq",
+        "projectSlug": "javascript",
+        "eventId": "={{$json[\"id\"]}}"
+      },
+      "name": "Sentry.io12",
+      "type": "n8n-nodes-base.sentryIo",
+      "typeVersion": 1,
+      "position": [
+        610,
+        780
+      ],
+      "credentials": {
+        "sentryIoApi": {
+          "id": "10",
+          "name": "sentry io token"
+        }
+      },
+      "id": "b99e1b5d-f5c9-448b-84fe-f14fadda556b"
+    },
+    {
+      "parameters": {
+        "resource": "release",
+        "operation": "create",
+        "organizationSlug": "n8n-iq",
+        "version": "={{Date.now().toString()}}",
+        "url": "http://n8n.io",
+        "projects": "={{[$node[\"Sentry.io22\"].json[\"slug\"]]}}",
+        "additionalFields": {}
+      },
+      "name": "Sentry.io13",
+      "type": "n8n-nodes-base.sentryIo",
+      "typeVersion": 1,
+      "position": [
+        1100,
+        530
+      ],
+      "credentials": {
+        "sentryIoApi": {
+          "id": "10",
+          "name": "sentry io token"
+        }
+      },
+      "id": "c20a70e0-852e-4e75-9ea5-52196890f619"
+    },
+    {
+      "parameters": {
+        "resource": "release",
+        "organizationSlug": "n8n-iq",
+        "version": "={{$node[\"Sentry.io13\"].json[\"shortVersion\"]}}"
+      },
+      "name": "Sentry.io14",
+      "type": "n8n-nodes-base.sentryIo",
+      "typeVersion": 1,
+      "position": [
+        1260,
+        530
+      ],
+      "credentials": {
+        "sentryIoApi": {
+          "id": "10",
+          "name": "sentry io token"
+        }
+      },
+      "id": "b962d75f-256b-4e10-9da0-750913bf4b21"
+    },
+    {
+      "parameters": {
+        "resource": "release",
+        "operation": "getAll",
+        "organizationSlug": "n8n-iq",
+        "limit": 1,
+        "additionalFields": {}
+      },
+      "name": "Sentry.io15",
+      "type": "n8n-nodes-base.sentryIo",
+      "typeVersion": 1,
+      "position": [
+        1440,
+        530
+      ],
+      "credentials": {
+        "sentryIoApi": {
+          "id": "10",
+          "name": "sentry io token"
+        }
+      },
+      "id": "253e52a4-18a3-4ce8-b3a9-f9ece3eb6230"
+    },
+    {
+      "parameters": {
+        "resource": "team",
+        "operation": "update",
+        "organizationSlug": "n8n-iq",
+        "teamSlug": "={{$node[\"Sentry.io3\"].json[\"slug\"]}}",
+        "updateFields": {}
+      },
+      "name": "Sentry.io16",
+      "type": "n8n-nodes-base.sentryIo",
+      "typeVersion": 1,
+      "position": [
+        750,
+        140
+      ],
+      "credentials": {
+        "sentryIoApi": {
+          "id": "10",
+          "name": "sentry io token"
+        }
+      },
+      "id": "8e6fe7c5-6475-4404-87e4-20441ddb887f"
+    },
+    {
+      "parameters": {
+        "resource": "team",
+        "operation": "delete",
+        "organizationSlug": "n8n-iq",
+        "teamSlug": "={{$node[\"Sentry.io3\"].json[\"slug\"]}}"
+      },
+      "name": "Sentry.io17",
+      "type": "n8n-nodes-base.sentryIo",
+      "typeVersion": 1,
+      "position": [
+        1100,
+        140
+      ],
+      "credentials": {
+        "sentryIoApi": {
+          "id": "10",
+          "name": "sentry io token"
+        }
+      },
+      "id": "860e3e1b-139d-487b-8cfc-cc141044c446"
+    },
+    {
+      "parameters": {
+        "resource": "organization",
+        "operation": "update",
+        "organization_slug": "={{$node[\"Sentry.io\"].json[\"slug\"]}}",
+        "updateFields": {}
+      },
+      "name": "Sentry.io18",
+      "type": "n8n-nodes-base.sentryIo",
+      "typeVersion": 1,
+      "position": [
+        790,
+        300
+      ],
+      "credentials": {
+        "sentryIoApi": {
+          "id": "10",
+          "name": "sentry io token"
+        }
+      },
+      "id": "9265dc47-fd2c-458e-991c-ff781cf7fbcd"
+    },
+    {
+      "parameters": {
+        "resource": "project",
+        "operation": "update",
+        "organizationSlug": "n8n-iq",
+        "projectSlug": "={{$node[\"Sentry.io6\"].json[\"slug\"]}}",
+        "updateFields": {}
+      },
+      "name": "Sentry.io19",
+      "type": "n8n-nodes-base.sentryIo",
+      "typeVersion": 1,
+      "position": [
+        950,
+        470
+      ],
+      "credentials": {
+        "sentryIoApi": {
+          "id": "10",
+          "name": "sentry io token"
+        }
+      },
+      "id": "60e51eaa-b5a3-4871-9514-462c11b9b640"
+    },
+    {
+      "parameters": {
+        "resource": "release",
+        "operation": "update",
+        "organizationSlug": "n8n-iq",
+        "version": "={{$node[\"Sentry.io13\"].json[\"shortVersion\"]}}",
+        "updateFields": {}
+      },
+      "name": "Sentry.io20",
+      "type": "n8n-nodes-base.sentryIo",
+      "typeVersion": 1,
+      "position": [
+        1600,
+        530
+      ],
+      "credentials": {
+        "sentryIoApi": {
+          "id": "10",
+          "name": "sentry io token"
+        }
+      },
+      "id": "0c4c5b23-1127-4dc4-be96-50ccca58c89e"
+    },
+    {
+      "parameters": {
+        "resource": "release",
+        "operation": "delete",
+        "organizationSlug": "n8n-iq",
+        "version": "={{$node[\"Sentry.io13\"].json[\"shortVersion\"]}}"
+      },
+      "name": "Sentry.io21",
+      "type": "n8n-nodes-base.sentryIo",
+      "typeVersion": 1,
+      "position": [
+        1750,
+        530
+      ],
+      "credentials": {
+        "sentryIoApi": {
+          "id": "10",
+          "name": "sentry io token"
+        }
+      },
+      "id": "61a5111f-5290-429a-9513-c26789af0bd6"
+    },
+    {
+      "parameters": {
+        "resource": "project",
+        "operation": "create",
+        "organizationSlug": "n8n-iq",
+        "teamSlug": "n8nteam",
+        "name": "=ProjectTest{{Date.now()}}",
+        "additionalFields": {}
+      },
+      "name": "Sentry.io22",
+      "type": "n8n-nodes-base.sentryIo",
+      "typeVersion": 1,
+      "position": [
+        430,
+        470
+      ],
+      "credentials": {
+        "sentryIoApi": {
+          "id": "10",
+          "name": "sentry io token"
+        }
+      },
+      "id": "dc68e4b1-7874-4f7a-b44f-5222ae7fe47e"
+    },
+    {
+      "parameters": {
+        "resource": "project",
+        "operation": "delete",
+        "organizationSlug": "n8n-iq",
+        "projectSlug": "={{$node[\"Sentry.io22\"].json[\"slug\"]}}"
+      },
+      "name": "Sentry.io23",
+      "type": "n8n-nodes-base.sentryIo",
+      "typeVersion": 1,
+      "position": [
+        1900,
+        480
+      ],
+      "credentials": {
+        "sentryIoApi": {
+          "id": "10",
+          "name": "sentry io token"
+        }
+      },
+      "id": "8143174a-4e94-4e6b-a75f-080c71f08227"
+    }
+  ],
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Sentry.io",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Sentry.io3",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Sentry.io22",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sentry.io": {
+      "main": [
+        [
+          {
+            "node": "Sentry.io1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sentry.io1": {
+      "main": [
+        [
+          {
+            "node": "Sentry.io18",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sentry.io3": {
+      "main": [
+        [
+          {
+            "node": "Sentry.io4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sentry.io4": {
+      "main": [
+        [
+          {
+            "node": "Sentry.io16",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sentry.io6": {
+      "main": [
+        [
+          {
+            "node": "Sentry.io7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sentry.io8": {
+      "main": [
+        [
+          {
+            "node": "Sentry.io10",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sentry.io9": {
+      "main": [
+        [
+          {
+            "node": "Sentry.io8",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sentry.io11": {
+      "main": [
+        [
+          {
+            "node": "Sentry.io12",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sentry.io13": {
+      "main": [
+        [
+          {
+            "node": "Sentry.io14",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sentry.io14": {
+      "main": [
+        [
+          {
+            "node": "Sentry.io15",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sentry.io16": {
+      "main": [
+        [
+          {
+            "node": "Sentry.io5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sentry.io5": {
+      "main": [
+        [
+          {
+            "node": "Sentry.io17",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sentry.io18": {
+      "main": [
+        [
+          {
+            "node": "Sentry.io2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sentry.io7": {
+      "main": [
+        [
+          {
+            "node": "Sentry.io19",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sentry.io19": {
+      "main": [
+        [
+          {
+            "node": "Sentry.io13",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sentry.io15": {
+      "main": [
+        [
+          {
+            "node": "Sentry.io20",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sentry.io20": {
+      "main": [
+        [
+          {
+            "node": "Sentry.io21",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sentry.io22": {
+      "main": [
+        [
+          {
+            "node": "Sentry.io6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sentry.io21": {
+      "main": [
+        [
+          {
+            "node": "Sentry.io23",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": null,
+  "triggerCount": 0,
+  "tags": []
+}

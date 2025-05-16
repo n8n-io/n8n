@@ -245,12 +245,10 @@ export class ExecuteBatch extends BaseCommand {
 		if (flags.skipList !== undefined) {
 			if (fs.existsSync(flags.skipList)) {
 				const contents = fs.readFileSync(flags.skipList, { encoding: 'utf-8' });
-				skipIds.push(
-					...contents
-						.trimEnd()
-						.split(',')
-						.filter((id) => re.exec(id)),
-				);
+				const parsedSkipList = JSON.parse(contents);
+				parsedSkipList.forEach((item: { workflowId: string }) => {
+					skipIds.push(item.workflowId);
+				});
 			} else {
 				this.logger.error('Skip list file not found. Exiting.');
 				return;
