@@ -3,17 +3,18 @@ import { DateTime, Settings } from 'luxon';
 import { getValueDescription, tryToParseDateTime, validateFieldType } from '@/TypeValidation';
 
 describe('Type Validation', () => {
-	describe('tryToParseAlphanumericString', () => {
-		it('should validate and parse alphanumeric strings', () => {
-			const VALID_STRINGS = ['abc123', 'ABC123', 'abc_123', '_abc123', '123abc', 'abcABC123_'];
-
-			VALID_STRINGS.forEach((value) => {
-				expect(validateFieldType('test', value, 'string-alphanumeric')).toEqual({
+	describe('string-alphanumeric', () => {
+		test('should validate and parse alphanumeric strings, not starting with a number', () => {
+			const VALID_STRINGS = ['abc123', 'ABC123', 'abc_123', '_abc123', 'abcABC123_'];
+			VALID_STRINGS.forEach((value) =>
+				expect(validateFieldType('string', value, 'string-alphanumeric')).toEqual({
 					valid: true,
 					newValue: value,
-				});
-			});
+				}),
+			);
+		});
 
+		test('should not validate non-alphanumeric strings, or starting with a number', () => {
 			const INVALID_STRINGS = [
 				'abc-123',
 				'abc 123',
@@ -26,11 +27,12 @@ describe('Type Validation', () => {
 				'abc(123)',
 				'bπc123',
 				'πι',
+				'123abc', // Cannot start with number
+				'456_abc', // Cannot start with number
 			];
-
-			INVALID_STRINGS.forEach((value) => {
-				expect(validateFieldType('test', value, 'string-alphanumeric').valid).toBe(false);
-			});
+			INVALID_STRINGS.forEach((value) =>
+				expect(validateFieldType('string', value, 'string-alphanumeric').valid).toBe(false),
+			);
 		});
 	});
 	describe('Dates', () => {
