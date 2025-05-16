@@ -911,6 +911,7 @@
     "lossless-json": "1.0.5",
     "luxon": "catalog:",
     "mailparser": "3.6.7",
+    "mammoth": "1.9.0",
     "minifaker": "1.34.1",
     "moment-timezone": "0.5.37",
     "mongodb": "6.11.0",

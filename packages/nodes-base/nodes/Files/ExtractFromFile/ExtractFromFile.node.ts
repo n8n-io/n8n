@@ -6,6 +6,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
+import * as document from './actions/documents.operations';
 import * as moveTo from './actions/moveTo.operation';
 import * as pdf from './actions/pdf.operation';
 import * as spreadsheet from './actions/spreadsheet.operation';
@@ -37,6 +38,12 @@ export class ExtractFromFile implements INodeType {
 						value: 'csv',
 						action: 'Extract from CSV',
 						description: 'Transform a CSV file into output items',
+					},
+					{
+						name: 'Extract From DOCX',
+						value: 'docx',
+						action: 'Extract from DOCX',
+						description: 'Extract the content of a Word document',
 					},
 					{
 						name: 'Extract From HTML',
@@ -110,6 +117,7 @@ export class ExtractFromFile implements INodeType {
 			...spreadsheet.description,
 			...moveTo.description,
 			...pdf.description,
+			...document.description,
 		],
 	};
 
@@ -118,6 +126,9 @@ export class ExtractFromFile implements INodeType {
 		const operation = this.getNodeParameter('operation', 0);
 		let returnData: INodeExecutionData[] = [];
 
+		if (document.operations.includes(operation)) {
+			returnData = await document.execute.call(this, items);
+		}
 		if (spreadsheet.operations.includes(operation)) {
 			returnData = await spreadsheet.execute.call(this, items, 'operation');
 		}
