@@ -12,24 +12,6 @@ steps:
   - name: 'gcr.io/cloud-builders/docker'
     args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/n8n/n8n:latest']
 
-  # Deploy container image to Cloud Run
-  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
-    entrypoint: gcloud
-    args:
-      - 'run'
-      - 'deploy'
-      - 'n8n'
-      - '--image=us-central1-docker.pkg.dev/$PROJECT_ID/n8n/n8n:$COMMIT_SHA'
-      - '--region=us-central1'
-      - '--platform=managed'
-      - '--allow-unauthenticated'
-      - '--cpu=2'
-      - '--memory=4Gi'
-      - '--min-instances=2'
-      - '--max-instances=4'
-      - '--set-env-vars=DB_TYPE=postgresdb,DB_POSTGRESDB_DATABASE=n8n,DB_POSTGRESDB_USER=n8n_user,N8N_PORT=8080'
-      - '--add-cloudsql-instances=silver-bridge-381702:us-west1:phygtl-proto'
-
 timeout: 1800s  # 30 minutes
 
 images:
