@@ -61,6 +61,7 @@ const { selected, select, selectNext, selectPrev } = useLogsSelection(
 	execution,
 	entries,
 	flatLogEntries,
+	toggleExpanded,
 );
 
 const isLogDetailsOpen = computed(() => isOpen.value && selected.value !== undefined);
@@ -69,10 +70,12 @@ const isLogDetailsVisuallyOpen = computed(
 );
 const logsPanelActionsProps = computed<InstanceType<typeof LogsPanelActions>['$props']>(() => ({
 	isOpen: isOpen.value,
+	isSyncSelectionEnabled: logsStore.isLogSelectionSyncedWithCanvas,
 	showToggleButton: !isPoppedOut.value,
 	showPopOutButton: canPopOut.value && !isPoppedOut.value,
 	onPopOut,
 	onToggleOpen,
+	onToggleSyncSelection: logsStore.toggleLogSelectionSync,
 }));
 
 function handleResizeOverviewPanelEnd() {
