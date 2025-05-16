@@ -41,6 +41,15 @@ const isScriptingNode = (nodeName: string, workflow: Workflow) => {
 	return node && SCRIPTING_NODE_TYPES.includes(node.type);
 };
 
+const PAIRED_ITEM_METHOD = {
+	PAIRED_ITEM: 'pairedItem',
+	ITEM_MATCHING: 'itemMatching',
+	ITEM: 'item',
+	$GET_PAIRED_ITEM: '$getPairedItem',
+} as const;
+
+type PairedItemMethod = (typeof PAIRED_ITEM_METHOD)[keyof typeof PAIRED_ITEM_METHOD];
+
 export class WorkflowDataProxy {
 	private runExecutionData: IRunExecutionData | null;
 
@@ -784,7 +793,7 @@ export class WorkflowDataProxy {
 
 		const createMissingPairedItemError = (
 			nodeCause: string,
-			usedMethodName: 'itemMatching' | 'pairedItem' | 'item' | '$getPairedItem' = 'pairedItem',
+			usedMethodName: PairedItemMethod = PAIRED_ITEM_METHOD.PAIRED_ITEM,
 		) => {
 			const pinData = getPinDataIfManualExecution(that.workflow, nodeCause, that.mode);
 			const message = pinData
@@ -817,221 +826,192 @@ export class WorkflowDataProxy {
 			});
 		};
 
-		// eslint-disable-next-line complexity
+		function createBranchNotFoundError(node: string, item: number, cause?: string) {
+			return createExpressionError('Branch not found', {
+				messageTemplate: 'Paired item references non-existent branch',
+				functionality: 'pairedItem',
+				nodeCause: cause,
+				functionOverrides: { message: 'Invalid branch reference' },
+				description: `Item ${item} in node ${node} references a branch that doesn't exist.`,
+				type: 'paired_item_invalid_info',
+			});
+		}
+
+		function createPairedItemNotFound(destNode: string, cause?: string) {
+			return createExpressionError('Paired item resolution failed', {
+				messageTemplate: 'Unable to find paired item source',
+				functionality: 'pairedItem',
+				nodeCause: cause,
+				functionOverrides: { message: 'Data not found' },
+				description: `Could not trace back to node '${destNode}'`,
+				type: 'paired_item_no_info',
+				moreInfoLink: true,
+			});
+		}
+
+		function createPairedItemMultipleItemsFound(destNode: string, itemIndex: number) {
+			return createExpressionError('Multiple matches found', {
+				messageTemplate: `Multiple matching items for item [${itemIndex}]`,
+				functionality: 'pairedItem',
+				functionOverrides: { message: 'Multiple matches' },
+				nodeCause: destNode,
+				descriptionKey: isScriptingNode(destNode, that.workflow)
+					? 'pairedItemMultipleMatchesCodeNode'
+					: 'pairedItemMultipleMatches',
+				type: 'paired_item_multiple_matches',
+			});
+		}
+
+		function normalizeInputs(
+			pairedItem: IPairedItemData,
+			sourceData: ISourceData | null,
+		): [IPairedItemData, ISourceData | null] {
+			if (typeof pairedItem === 'number') {
+				pairedItem = { item: pairedItem };
+			}
+			const finalSource = pairedItem.sourceOverwrite || sourceData;
+			return [pairedItem, finalSource];
+		}
+
+		function pinDataToTask(pinData: INodeExecutionData[] | undefined): ITaskData | undefined {
+			if (!pinData) return undefined;
+			return {
+				data: { main: [pinData] },
+				startTime: 0,
+				executionTime: 0,
+				executionIndex: 0,
+				source: [],
+			};
+		}
+
+		function getTaskData(source: ISourceData): ITaskData | undefined {
+			return (
+				that.runExecutionData?.resultData?.runData?.[source.previousNode]?.[
+					source.previousNodeRun || 0
+				] ??
+				pinDataToTask(getPinDataIfManualExecution(that.workflow, source.previousNode, that.mode))
+			);
+		}
+
+		function getNodeOutput(
+			taskData: ITaskData | undefined,
+			source: ISourceData,
+			nodeCause?: string,
+		): INodeExecutionData[] {
+			const outputIndex = source.previousNodeOutput || 0;
+			const outputs = taskData?.data?.main?.[outputIndex];
+			if (!outputs) {
+				throw createExpressionError('Can’t get data for expression', {
+					messageTemplate: 'Missing output data',
+					functionOverrides: { message: 'Missing output' },
+					nodeCause,
+					description: `Expected output #${outputIndex} from node ${source.previousNode}`,
+					type: 'internal',
+				});
+			}
+			return outputs;
+		}
+
+		function resolveMultiplePairings(
+			pairings: IPairedItemData[],
+			source: ISourceData[],
+			destinationNode: string,
+			method: PairedItemMethod,
+			itemIndex: number,
+		): INodeExecutionData {
+			const results = pairings
+				.map((pairing) => {
+					try {
+						const input = pairing.input || 0;
+						if (input >= source.length) {
+							// Could not resolve pairedItem as the defined node input does not exist on source.previousNode.
+							return null;
+						}
+						// eslint-disable-next-line @typescript-eslint/no-use-before-define
+						return getPairedItem(destinationNode, source[input], pairing, method);
+					} catch {
+						return null;
+					}
+				})
+				.filter(Boolean) as INodeExecutionData[];
+
+			if (results.length === 1) return results[0];
+
+			const allSame = results.every((r) => r === results[0]);
+			if (allSame) return results[0];
+
+			throw createPairedItemMultipleItemsFound(destinationNode, itemIndex);
+		}
+
+		/**
+		 * Attempts to find the execution data for a specific paired item
+		 * by traversing the node execution ancestry chain.
+		 */
 		const getPairedItem = (
 			destinationNodeName: string,
 			incomingSourceData: ISourceData | null,
-			pairedItem: IPairedItemData,
-			usedMethodName: 'pairedItem' | 'itemMatching' | 'item' | '$getPairedItem' = '$getPairedItem',
+			initialPairedItem: IPairedItemData,
+			usedMethodName: PairedItemMethod = PAIRED_ITEM_METHOD.$GET_PAIRED_ITEM,
 		): INodeExecutionData | null => {
-			let taskData: ITaskData | undefined;
-
-			let sourceData: ISourceData | null = incomingSourceData;
-
-			if (pairedItem.sourceOverwrite) {
-				sourceData = pairedItem.sourceOverwrite;
-			}
-
-			if (typeof pairedItem === 'number') {
-				pairedItem = {
-					item: pairedItem,
-				};
-			}
+			// Step 1: Normalize inputs
+			const [pairedItem, sourceData] = normalizeInputs(initialPairedItem, incomingSourceData);
 
 			let currentPairedItem = pairedItem;
-
+			let currentSource = sourceData;
 			let nodeBeforeLast: string | undefined;
 
-			while (sourceData !== null && destinationNodeName !== sourceData.previousNode) {
-				const runIndex = sourceData?.previousNodeRun || 0;
-				const previousNodeOutput = sourceData.previousNodeOutput || 0;
-				taskData =
-					that.runExecutionData?.resultData?.runData?.[sourceData.previousNode]?.[runIndex];
+			// Step 2: Traverse ancestry to find correct node
+			while (currentSource && currentSource.previousNode !== destinationNodeName) {
+				const taskData = getTaskData(currentSource);
 
-				if (taskData?.data?.main && previousNodeOutput >= taskData.data.main.length) {
-					throw createExpressionError('Can’t get data for expression', {
-						messageTemplate: 'Can’t get data for expression under ‘%%PARAMETER%%’ field',
-						functionOverrides: {
-							message: 'Can’t get data',
-						},
-						nodeCause: nodeBeforeLast,
-						description: 'Apologies, this is an internal error. See details for more information',
-						causeDetailed: 'Referencing a non-existent output on a node, problem with source data',
-						type: 'internal',
-					});
+				const outputData = getNodeOutput(taskData, currentSource, nodeBeforeLast);
+				const sourceArray = taskData?.source.filter((s): s is ISourceData => s !== null) ?? [];
+
+				const item = outputData[currentPairedItem.item];
+				if (item?.pairedItem === undefined) {
+					throw createMissingPairedItemError(currentSource.previousNode, usedMethodName);
 				}
 
-				const previousNodeOutputData =
-					taskData?.data?.main?.[previousNodeOutput] ??
-					getPinDataIfManualExecution(that.workflow, sourceData.previousNode, that.mode) ??
-					[];
-				const source = taskData?.source ?? [];
-
-				if (pairedItem.item >= previousNodeOutputData.length) {
-					throw createInvalidPairedItemError({
-						nodeName: sourceData.previousNode,
-					});
+				// Multiple pairings? Recurse over all
+				if (Array.isArray(item.pairedItem)) {
+					return resolveMultiplePairings(
+						item.pairedItem,
+						sourceArray,
+						destinationNodeName,
+						usedMethodName,
+						currentPairedItem.item,
+					);
 				}
 
-				const itemPreviousNode: INodeExecutionData = previousNodeOutputData[pairedItem.item];
+				// Follow single paired item
+				currentPairedItem =
+					typeof item.pairedItem === 'number' ? { item: item.pairedItem } : item.pairedItem;
 
-				if (itemPreviousNode.pairedItem === undefined) {
-					throw createMissingPairedItemError(sourceData.previousNode, usedMethodName);
+				const inputIndex = currentPairedItem.input || 0;
+				if (inputIndex >= sourceArray.length) {
+					if (sourceArray.length === 0) throw createNoConnectionError(destinationNodeName);
+					throw createBranchNotFoundError(
+						currentSource.previousNode,
+						currentPairedItem.item,
+						nodeBeforeLast,
+					);
 				}
 
-				if (Array.isArray(itemPreviousNode.pairedItem)) {
-					// Item is based on multiple items so check all of them
-					const results = itemPreviousNode.pairedItem
-
-						.map((item) => {
-							try {
-								const itemInput = item.input || 0;
-								if (itemInput >= source.length) {
-									// `Could not resolve pairedItem as the defined node input '${itemInput}' does not exist on node '${sourceData!.previousNode}'.`
-									// Actual error does not matter as it gets caught below and `null` will be returned
-									throw new ApplicationError('Not found');
-								}
-
-								return getPairedItem(destinationNodeName, source[itemInput], item, usedMethodName);
-							} catch (error) {
-								// Means pairedItem could not be found
-								return null;
-							}
-						})
-						.filter((result) => result !== null && result !== undefined);
-
-					if (results.length !== 1) {
-						// Check if the results are all the same
-						const firstResult = results[0];
-						if (results.every((result) => result === firstResult)) {
-							// All results are the same so return the first one
-							return firstResult;
-						}
-
-						throw createExpressionError('Invalid expression', {
-							messageTemplate: `Multiple matching items for expression [item ${
-								currentPairedItem.item || 0
-							}]`,
-							functionality: 'pairedItem',
-							functionOverrides: {
-								message: `Multiple matching items for code [item ${currentPairedItem.item || 0}]`,
-							},
-							nodeCause: destinationNodeName,
-							descriptionKey: isScriptingNode(destinationNodeName, that.workflow)
-								? 'pairedItemMultipleMatchesCodeNode'
-								: 'pairedItemMultipleMatches',
-							type: 'paired_item_multiple_matches',
-						});
-					}
-
-					return results[0];
-				}
-
-				currentPairedItem = pairedItem;
-
-				// pairedItem is not an array
-				if (typeof itemPreviousNode.pairedItem === 'number') {
-					pairedItem = {
-						item: itemPreviousNode.pairedItem,
-					};
-				} else {
-					pairedItem = itemPreviousNode.pairedItem;
-				}
-
-				const itemInput = pairedItem.input || 0;
-				if (itemInput >= source.length) {
-					if (source.length === 0) {
-						// A trigger node got reached, so looks like that that item can not be resolved
-						throw createNoConnectionError(destinationNodeName);
-					}
-
-					throw createExpressionError('Can’t get data for expression', {
-						messageTemplate: 'Can’t get data for expression under ‘%%PARAMETER%%’ field',
-						functionality: 'pairedItem',
-						functionOverrides: {
-							message: 'Can’t get data',
-						},
-						nodeCause: nodeBeforeLast,
-						description: `In node ‘<strong>${sourceData.previousNode}</strong>’, output item ${
-							currentPairedItem.item || 0
-						} of ${
-							sourceData.previousNodeRun
-								? `of run ${(sourceData.previousNodeRun || 0).toString()} `
-								: ''
-						}points to a branch that doesn’t exist.`,
-						type: 'paired_item_invalid_info',
-					});
-				}
-
-				nodeBeforeLast = sourceData.previousNode;
-				sourceData = source[pairedItem.input || 0] || null;
-
-				if (pairedItem.sourceOverwrite) {
-					sourceData = pairedItem.sourceOverwrite;
-				}
+				nodeBeforeLast = currentSource.previousNode;
+				currentSource = currentPairedItem.sourceOverwrite || sourceArray[inputIndex];
 			}
 
-			if (sourceData === null) {
-				throw createExpressionError('Can’t get data for expression', {
-					messageTemplate: 'Can’t get data for expression under ‘%%PARAMETER%%’ field',
-					functionality: 'pairedItem',
-					functionOverrides: {
-						message: 'Can’t get data',
-					},
-					nodeCause: nodeBeforeLast,
-					description: 'Could not resolve, probably no pairedItem exists',
-					type: 'paired_item_no_info',
-					moreInfoLink: true,
-				});
+			// Step 3: Final node reached — fetch paired item
+			if (!currentSource) throw createPairedItemNotFound(destinationNodeName, nodeBeforeLast);
+
+			const finalTaskData = getTaskData(currentSource);
+			const finalOutputData = getNodeOutput(finalTaskData, currentSource);
+
+			if (currentPairedItem.item >= finalOutputData.length) {
+				throw createInvalidPairedItemError({ nodeName: currentSource.previousNode });
 			}
 
-			taskData =
-				that.runExecutionData!.resultData.runData[sourceData.previousNode]?.[
-					sourceData?.previousNodeRun || 0
-				];
-
-			if (!taskData) {
-				const pinData = getPinDataIfManualExecution(
-					that.workflow,
-					sourceData.previousNode,
-					that.mode,
-				);
-
-				if (pinData) {
-					taskData = {
-						data: {
-							main: [pinData],
-						},
-						startTime: 0,
-						executionTime: 0,
-						executionIndex: 0,
-						source: [],
-					};
-				}
-			}
-
-			const previousNodeOutput = sourceData.previousNodeOutput || 0;
-			if (previousNodeOutput >= taskData.data!.main.length) {
-				throw createExpressionError('Can’t get data for expression', {
-					messageTemplate: 'Can’t get data for expression under ‘%%PARAMETER%%’ field',
-					functionality: 'pairedItem',
-					functionOverrides: {
-						message: 'Can’t get data',
-					},
-					nodeCause: sourceData.previousNode,
-					description: 'Item points to a node output which does not exist',
-					causeDetailed: `The sourceData points to a node output ‘${previousNodeOutput}‘ which does not exist on node ‘${sourceData.previousNode}‘ (output node did probably supply a wrong one)`,
-					type: 'paired_item_invalid_info',
-				});
-			}
-
-			if (pairedItem.item >= taskData.data!.main[previousNodeOutput]!.length) {
-				throw createInvalidPairedItemError({
-					nodeName: sourceData.previousNode,
-				});
-			}
-
-			return taskData.data!.main[previousNodeOutput]![pairedItem.item];
+			return finalOutputData[currentPairedItem.item];
 		};
 
 		const handleFromAi = (
@@ -1114,10 +1094,10 @@ export class WorkflowDataProxy {
 						has: () => true,
 						ownKeys() {
 							return [
-								'pairedItem',
+								PAIRED_ITEM_METHOD.PAIRED_ITEM,
 								'isExecuted',
-								'itemMatching',
-								'item',
+								PAIRED_ITEM_METHOD.ITEM_MATCHING,
+								PAIRED_ITEM_METHOD.ITEM,
 								'first',
 								'last',
 								'all',
@@ -1134,7 +1114,11 @@ export class WorkflowDataProxy {
 								);
 							}
 
-							if (property === 'pairedItem' || property === 'itemMatching' || property === 'item') {
+							if (
+								property === PAIRED_ITEM_METHOD.PAIRED_ITEM ||
+								property === PAIRED_ITEM_METHOD.ITEM_MATCHING ||
+								property === PAIRED_ITEM_METHOD.ITEM
+							) {
 								// Before resolving the pairedItem make sure that the requested node comes in the
 								// graph before the current one
 								const activeNode = that.workflow.getNode(that.activeNodeName);
@@ -1153,7 +1137,7 @@ export class WorkflowDataProxy {
 
 								const pairedItemMethod = (itemIndex?: number) => {
 									if (itemIndex === undefined) {
-										if (property === 'itemMatching') {
+										if (property === PAIRED_ITEM_METHOD.ITEM_MATCHING) {
 											throw createExpressionError('Missing item index for .itemMatching()', {
 												itemIndex,
 											});
@@ -1220,7 +1204,7 @@ export class WorkflowDataProxy {
 									return getPairedItem(nodeName, sourceData, pairedItem, property);
 								};
 
-								if (property === 'item') {
+								if (property === PAIRED_ITEM_METHOD.ITEM) {
 									return pairedItemMethod();
 								}
 								return pairedItemMethod;
