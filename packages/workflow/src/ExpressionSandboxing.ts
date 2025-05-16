@@ -1,8 +1,8 @@
 import { type ASTAfterHook, astBuilders as b, astVisit } from '@n8n/tournament';
 
 import { ExpressionError } from './errors';
+import { isSafeObjectProperty } from './utils';
 
-const forbiddenMembers = ['__proto__', 'prototype', 'constructor', 'getPrototypeOf'];
 export const sanitizerName = '__sanitize';
 const sanitizerIdentifier = b.identifier(sanitizerName);
 
@@ -20,14 +20,14 @@ export const PrototypeSanitizer: ASTAfterHook = (ast, dataNode) => {
 					);
 				}
 
-				if (forbiddenMembers.includes(node.property.name)) {
+				if (!isSafeObjectProperty(node.property.name)) {
 					throw new ExpressionError(
 						`Cannot access "${node.property.name}" due to security concerns`,
 					);
 				}
 			} else if (node.property.type === 'StringLiteral' || node.property.type === 'Literal') {
 				// Check any static strings against our forbidden list
-				if (forbiddenMembers.includes(node.property.value as string)) {
+				if (!isSafeObjectProperty(node.property.value as string)) {
 					throw new ExpressionError(
 						`Cannot access "${node.property.value as string}" due to security concerns`,
 					);
@@ -52,7 +52,7 @@ export const PrototypeSanitizer: ASTAfterHook = (ast, dataNode) => {
 };
 
 export const sanitizer = (value: unknown): unknown => {
-	if (forbiddenMembers.includes(value as string)) {
+	if (!isSafeObjectProperty(value as string)) {
 		throw new ExpressionError(`Cannot access "${value as string}" due to security concerns`);
 	}
 	return value;

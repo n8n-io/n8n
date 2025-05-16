@@ -35,6 +35,8 @@ export {
 	updateDisplayOptions,
 	randomInt,
 	randomString,
+	isSafeObjectProperty,
+	setSafeObjectProperty,
 } from './utils';
 export {
 	isINodeProperties,
