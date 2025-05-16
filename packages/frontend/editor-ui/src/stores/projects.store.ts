@@ -47,10 +47,8 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 		() =>
 			(route.params?.projectId as string | undefined) ??
 			(route.query?.projectId as string | undefined) ??
-			currentProject.value?.id ??
-			personalProject?.value?.id,
+			currentProject.value?.id,
 	);
-	const currentProjectGetter = computed(() => currentProject.value ?? personalProject.value);
 	const isProjectHome = computed(() => route.path.includes('home'));
 	const personalProjects = computed(() =>
 		projects.value.filter((p) => p.type === ProjectTypes.Personal),
@@ -228,7 +226,7 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 		availableProjects,
 		myProjects,
 		personalProject,
-		currentProject: currentProjectGetter,
+		currentProject,
 		currentProjectId,
 		isProjectHome,
 		personalProjects,
