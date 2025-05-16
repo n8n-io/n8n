@@ -4,6 +4,7 @@ import {
 	AI_CATEGORY_TOOLS,
 	AI_SUBCATEGORY,
 	CUSTOM_API_CALL_KEY,
+	EVALUATION_TRIGGER,
 	HTTP_REQUEST_NODE_TYPE,
 } from '@/constants';
 import { memoize, startCase } from 'lodash-es';
@@ -19,6 +20,7 @@ import { i18n } from '@/plugins/i18n';
 
 import { getCredentialOnlyNodeType } from '@/utils/credentialOnlyNodes';
 import { formatTriggerActionName } from '../utils';
+import { usePostHog } from '@/stores/posthog.store';
 
 const PLACEHOLDER_RECOMMENDED_ACTION_KEY = 'placeholder_recommended';
 
@@ -330,7 +332,23 @@ export function useActionsGenerator() {
 		nodeTypes: INodeTypeDescription[],
 		httpOnlyCredentials: ICredentialType[],
 	) {
-		const visibleNodeTypes = [...nodeTypes];
+		const posthogStore = usePostHog();
+
+		const isEvaluationVariantEnabled = posthogStore.isVariantEnabled(
+			EVALUATION_TRIGGER.name,
+			EVALUATION_TRIGGER.variant,
+		);
+
+		const visibleNodeTypes = nodeTypes.filter((node) => {
+			if (isEvaluationVariantEnabled) {
+				return true;
+			}
+			return (
+				node.name !== 'n8n-nodes-base.evaluation' &&
+				node.name !== 'n8n-nodes-base.evaluationTrigger'
+			);
+		});
+
 		const actions: ActionsRecord<typeof mergedNodes> = {};
 		const mergedNodes: SimplifiedNodeType[] = [];
 		visibleNodeTypes
