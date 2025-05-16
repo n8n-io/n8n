@@ -3,14 +3,14 @@ steps:
   - name: 'gcr.io/cloud-builders/docker'
     env:
       - 'DOCKER_BUILDKIT=1'
-    args: ['build', '-t', 'gcr.io/$PROJECT_ID/n8n:$COMMIT_SHA', '-t', 'gcr.io/$PROJECT_ID/n8n:latest', '-f', 'docker/images/n8n/Dockerfile', '.']
+    args: ['build', '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/n8n/n8n:$COMMIT_SHA', '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/n8n/n8n:latest', '-f', 'docker/images/n8n/Dockerfile', '.']
 
-  # Push the container image to Container Registry
+  # Push the container image to Artifact Registry
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'gcr.io/$PROJECT_ID/n8n:$COMMIT_SHA']
+    args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/n8n/n8n:$COMMIT_SHA']
 
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'gcr.io/$PROJECT_ID/n8n:latest']
+    args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/n8n/n8n:latest']
 
   # Deploy container image to Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
@@ -19,7 +19,7 @@ steps:
       - 'run'
       - 'deploy'
       - 'n8n'
-      - '--image=gcr.io/$PROJECT_ID/n8n:$COMMIT_SHA'
+      - '--image=us-central1-docker.pkg.dev/$PROJECT_ID/n8n/n8n:$COMMIT_SHA'
       - '--region=us-central1'
       - '--platform=managed'
       - '--allow-unauthenticated'
@@ -34,5 +34,5 @@ steps:
 timeout: 1800s  # 30 minutes
 
 images:
-  - 'gcr.io/$PROJECT_ID/n8n:$COMMIT_SHA'
-  - 'gcr.io/$PROJECT_ID/n8n:latest'
+  - 'us-central1-docker.pkg.dev/$PROJECT_ID/n8n/n8n:$COMMIT_SHA'
+  - 'us-central1-docker.pkg.dev/$PROJECT_ID/n8n/n8n:latest'
