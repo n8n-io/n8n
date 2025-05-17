@@ -961,13 +961,30 @@ export function getNodeWebhookPath(
 	if (restartWebhook === true) {
 		return path;
 	}
+
 	if (node.webhookId === undefined) {
-		webhookPath = `${workflowId}/${encodeURIComponent(node.name.toLowerCase())}/${path}`;
+		webhookPath = `${workflowId}/${encodeURIComponent(node.name.toLowerCase())}`;
+		if (path && path.trim() !== '') {
+			webhookPath += `/${path.startsWith('/') ? path.substring(1) : path}`;
+		}
 	} else {
 		if (isFullPath === true) {
-			return path;
+			if (path === node.webhookId || path === '' || path === undefined) {
+				webhookPath = node.webhookId;
+			} else {
+				webhookPath = `${node.webhookId}/${path.startsWith('/') ? path.substring(1) : path}`;
+			}
+		} else {
+			if (path === node.webhookId || path === '' || path === undefined) {
+				webhookPath = node.webhookId;
+			} else {
+				webhookPath = `${node.webhookId}/${path.startsWith('/') ? path.substring(1) : path}`;
+			}
 		}
-		webhookPath = `${node.webhookId}/${path}`;
+	}
+
+	if (webhookPath.endsWith('/') && webhookPath !== '/') {
+		webhookPath = webhookPath.slice(0, -1);
 	}
 	return webhookPath;
 }
