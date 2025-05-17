@@ -4,7 +4,7 @@ import type { WorkflowEntity, IWorkflowDb } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import { chunk } from 'lodash';
+import { chunk, cloneDeep, isEqual } from 'lodash';
 import {
 	ActiveWorkflows,
 	ErrorReporter,
@@ -34,6 +34,7 @@ import {
 	WorkflowActivationError,
 	WebhookPathTakenError,
 	UnexpectedError,
+	NodeHelpers,
 } from 'n8n-workflow';
 import { strict } from 'node:assert';
 
@@ -162,42 +163,97 @@ export class ActiveWorkflowManager {
 
 		if (webhooks.length === 0) return false;
 
-		for (const webhookData of webhooks) {
+		for (const webhookData_orig of webhooks) {
+			const webhookData = cloneDeep(webhookData_orig); // Clone to modify safely
+
 			const node = workflow.getNode(webhookData.node) as INode;
-			node.name = webhookData.node;
+			const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 
-			path = webhookData.path;
+			this.logger.info(`[ADDWEBHOOKS_INFO] Node "${node.name}" (ID: ${node.id}) parameters before processing: ${JSON.stringify(node.parameters)}`);
+			this.logger.info(`[ADDWEBHOOKS_INFO] webhookData for node "${node.name}": method=${webhookData.httpMethod}, path=${webhookData.path}`);
 
-			const webhook = this.webhookService.createWebhook({
+			let pathToUseForRegistration = webhookData.path;
+
+			// Logic to potentially update node.parameters.path and pathToUseForRegistration
+			if (nodeType?.description.defaults?.name === 'Webhook') {
+				// Ensure node.parameters exists. If API sends a node without a parameters object.
+				node.parameters = node.parameters || {};
+
+				// Apply known defaults if not present, to make the in-memory object more complete
+				// before comparison with the DB state. Based on Webhook/description.ts
+				if (node.parameters.httpMethod === undefined) node.parameters.httpMethod = 'GET';
+				if (node.parameters.authentication === undefined) node.parameters.authentication = 'none';
+				if (node.parameters.responseMode === undefined) node.parameters.responseMode = 'onReceived';
+				if (node.parameters.responseCode === undefined) node.parameters.responseCode = 200;
+				if (node.parameters.options === undefined) node.parameters.options = {};
+				// Path default is '', which we handle specifically below.
+
+				// Ensure webhookId exists for the node.
+				if (!node.webhookId) {
+					node.webhookId = node.id; // Assign node.id as webhookId
+					this.logger.info(
+						`[ADDWEBHOOKS_WEBHOOKID_ASSIGN] Node "${node.name}" (ID: ${node.id}) had no webhookId. Assigned node.id as webhookId: "${node.webhookId}".`,
+					);
+					workflow.staticData = workflow.staticData || {};
+					// No need to mark nodesParametersChanged here yet, the path assignment will do it if needed
+				}
+
+				// Update node.parameters.path if it's empty or different from node.webhookId.
+				if (node.parameters.path === '' || node.parameters.path === undefined || node.parameters.path !== node.webhookId) {
+					const oldPath = node.parameters.path;
+					node.parameters.path = node.webhookId; // Set parameters.path to the webhookId
+					pathToUseForRegistration = node.webhookId;
+					webhookData.path = pathToUseForRegistration;
+
+					this.logger.info(
+						`[ADDWEBHOOKS_PATH_UPDATE] Node "${node.name}" (ID: ${node.id}) parameters.path updated from "${oldPath === undefined ? 'undefined' : oldPath}" to "${node.parameters.path}". Registering with path: "${pathToUseForRegistration}".`,
+					);
+					
+					workflow.staticData = workflow.staticData || {};
+					workflow.staticData.nodesParametersChanged = true; // Mark for saving updated node parameters
+				} else {
+					pathToUseForRegistration = node.parameters.path;
+					webhookData.path = pathToUseForRegistration;
+					this.logger.info(
+						`[ADDWEBHOOKS_PATH_CONFIRM] Node "${node.name}" (ID: ${node.id}) parameters.path ("${node.parameters.path}") is already set or correctly matches webhookId. Registering with path: "${pathToUseForRegistration}".`,
+					);
+				}
+			}
+
+			// Ensure leading/trailing slashes are handled consistently
+			if (pathToUseForRegistration.startsWith('/')) {
+				pathToUseForRegistration = pathToUseForRegistration.slice(1);
+			}
+			if (pathToUseForRegistration.endsWith('/')) {
+				pathToUseForRegistration = pathToUseForRegistration.slice(0, -1);
+			}
+
+			const methodForRegistration = webhookData.httpMethod;
+
+			const webhookToStore = this.webhookService.createWebhook({
 				workflowId: webhookData.workflowId,
-				webhookPath: path,
+				webhookPath: pathToUseForRegistration,
 				node: node.name,
-				method: webhookData.httpMethod,
+				method: methodForRegistration,
 			});
 
-			if (webhook.webhookPath.startsWith('/')) {
-				webhook.webhookPath = webhook.webhookPath.slice(1);
-			}
-			if (webhook.webhookPath.endsWith('/')) {
-				webhook.webhookPath = webhook.webhookPath.slice(0, -1);
-			}
-
-			if ((path.startsWith(':') || path.includes('/:')) && node.webhookId) {
-				webhook.webhookId = node.webhookId;
-				webhook.pathLength = webhook.webhookPath.split('/').length;
+			// Handle webhookId for dynamic paths for the object to be stored
+			if ((pathToUseForRegistration.startsWith(':') || pathToUseForRegistration.includes(':/')) && node.webhookId) {
+				webhookToStore.webhookId = node.webhookId;
+				webhookToStore.pathLength = pathToUseForRegistration.split('/').length;
 			}
 
 			try {
-				// TODO: this should happen in a transaction, that way we don't need to manually remove this in `catch`
-				await this.webhookService.storeWebhook(webhook);
-				await this.webhookService.createWebhookIfNotExists(workflow, webhookData, mode, activation);
+				await this.webhookService.storeWebhook(webhookToStore); // Stores based on pathToUseForRegistration (node.id)
+				// Pass the potentially modified webhookData (with updated path) to createWebhookIfNotExists
+				await this.webhookService.createWebhookIfNotExists(workflow, webhookData, mode, activation); // webhookData.path is node.id
+
+				// ***** NEW: Populate cache immediately after storing and creating/checking external webhook *****
+				await this.webhookService.populateCache(); 
+				this.logger.info(`[ADDWEBHOOKS_CACHE_POPULATED] Webhook cache populated immediately after store/create for node "${node.name}", path "${webhookData.path}".`);
+
 			} catch (error) {
 				if (activation === 'init' && error.name === 'QueryFailedError') {
-					// n8n does not remove the registered webhooks on exit.
-					// This means that further initializations will always fail
-					// when inserting to database. This is why we ignore this error
-					// as it's expected to happen.
-
 					continue;
 				}
 
@@ -206,27 +262,182 @@ export class ActiveWorkflowManager {
 				} catch (error1) {
 					this.errorReporter.error(error1);
 					this.logger.error(
-						`Could not remove webhooks of workflow "${workflow.id}" because of error: "${error1.message}"`,
+						`Could not remove webhooks of workflow "${workflow.id}" because of error: "${(error1 as Error).message}"`,
 					);
 				}
 
-				// if it's a workflow from the insert
-				// TODO check if there is standard error code for duplicate key violation that works
-				// with all databases
 				if (error instanceof Error && error.name === 'QueryFailedError') {
-					error = new WebhookPathTakenError(webhook.node, error);
-				} else if (error.detail) {
+					error = new WebhookPathTakenError(webhookToStore.node, error);
+				} else if ((error as any).detail) {
 					// it's a error running the webhook methods (checkExists, create)
 					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					error.message = error.detail;
+					(error as any).message = (error as any).detail;
 				}
 
 				throw error;
 			}
-		}
-		await this.webhookService.populateCache();
+		} // End of for...of webhooks loop
 
+		// The main populateCache was here. It's now moved into the loop for more immediate updates.
+		// await this.webhookService.populateCache();
+
+
+		if (webhooks.length > 0 ) {
+			if (workflow.staticData?.nodesParametersChanged) {
+				this.logger.info(`[ADDWEBHOOKS_SAVE_FLAG_TRIGGERED] Workflow "${workflow.id}" nodesParametersChanged flag was true. Proceeding with DB update.`);
+				delete workflow.staticData.nodesParametersChanged; // Clear flag immediately
+
+				const entityToUpdate = await this.workflowRepository.findById(workflow.id);
+				if (entityToUpdate) {
+					// Log state of WebhookTrigger from fresh entity
+					const webhookNodeForLog = entityToUpdate.nodes.find(n => n.name === 'WebhookTrigger' && n.type === 'n8n-nodes-base.webhook');
+					if (webhookNodeForLog) {
+						this.logger.info(`[ADDWEBHOOKS_FRESH_ENTITY_PARAMS] Fresh DB WebhookTrigger (${webhookNodeForLog.id}) params: ${JSON.stringify(webhookNodeForLog.parameters)}`);
+						this.logger.info(`[ADDWEBHOOKS_FRESH_ENTITY_WEBHOOKID] Fresh DB WebhookTrigger (${webhookNodeForLog.id}) webhookId: "${webhookNodeForLog.webhookId}"`);
+					} else {
+						this.logger.warn(`[ADDWEBHOOKS_FRESH_ENTITY] WebhookTrigger node not found in fresh entity for initial logging.`);
+					}
+
+					// Log the structure of workflow.nodes and entityToUpdate.nodes
+					this.logger.info(`[ADDWEBHOOKS_DEBUG] workflow.nodes keys: ${Object.keys(workflow.nodes).join(', ')}`);
+					this.logger.info(`[ADDWEBHOOKS_DEBUG] entityToUpdate.nodes count: ${entityToUpdate.nodes.length}`);
+					for (const dbNode of entityToUpdate.nodes) {
+						this.logger.info(`[ADDWEBHOOKS_DEBUG] DB entity node: id=${dbNode.id}, name=${dbNode.name}, type=${dbNode.type}`);
+					}
+
+					let anActualSaveOccurred = false;
+					// We iterate through the nodes of the 'workflow' object (in-memory, modified)
+					// and apply their state to 'entityToUpdate' (from DB).
+					for (const nodeKey in workflow.nodes) {
+						const sourceNodeInMemory = workflow.nodes[nodeKey]; // Has our desired parameters and webhookId
+						
+						// First try to find by ID, then try by name + type if ID doesn't match
+						let targetNodeInDbEntity = entityToUpdate.nodes.find(n => n.id === nodeKey);
+						
+						if (!targetNodeInDbEntity) {
+							// If not found by key, try to find by node ID and name
+							targetNodeInDbEntity = entityToUpdate.nodes.find(n => 
+								(n.id === sourceNodeInMemory.id || n.name === sourceNodeInMemory.name) && 
+								n.type === sourceNodeInMemory.type
+							);
+							
+							if (targetNodeInDbEntity) {
+								this.logger.info(`[ADDWEBHOOKS_DEBUG] Found node by name+type instead of key. Key: "${nodeKey}", Found node: id=${targetNodeInDbEntity.id}, name=${targetNodeInDbEntity.name}`);
+							}
+						}
+
+						// We are interested ONLY in Webhook nodes for this specific parameters.path and webhookId update logic
+						const nodeType = this.nodeTypes.getByNameAndVersion(sourceNodeInMemory.type, sourceNodeInMemory.typeVersion);
+						if (nodeType?.description.defaults?.name === 'Webhook') {
+							if (targetNodeInDbEntity) {
+								this.logger.info(`[ADDWEBHOOKS_COMPARE] Processing webhook node "${sourceNodeInMemory.name}" (ID: ${sourceNodeInMemory.id})`);
+								
+								const currentDbParams = targetNodeInDbEntity.parameters || {}; // Use || {} for safer default
+								const desiredParams = sourceNodeInMemory.parameters || {};   // Use || {} for safer default
+
+								const currentDbWebhookId = targetNodeInDbEntity.webhookId;
+								const desiredWebhookId = sourceNodeInMemory.webhookId; // This should be node.id
+
+								this.logger.info(`[ADDWEBHOOKS_COMPARE] Comparing node "${sourceNodeInMemory.name}" (ID: ${sourceNodeInMemory.id})`);
+								this.logger.info(`[ADDWEBHOOKS_COMPARE_PARAMS] Current DB Params (raw from entity): ${JSON.stringify(targetNodeInDbEntity.parameters)}`);
+								this.logger.info(`[ADDWEBHOOKS_COMPARE_PARAMS] Desired In-Memory Params (raw from sourceNode): ${JSON.stringify(sourceNodeInMemory.parameters)}`);
+								this.logger.info(`[ADDWEBHOOKS_COMPARE_PARAMS] currentDbParams (processed for isEqual): ${JSON.stringify(currentDbParams)}`);
+								this.logger.info(`[ADDWEBHOOKS_COMPARE_PARAMS] desiredParams (processed for isEqual): ${JSON.stringify(desiredParams)}`);
+								const paramsAreEqual = isEqual(cloneDeep(currentDbParams), cloneDeep(desiredParams)); // cloneDeep before isEqual for safety
+								this.logger.info(`[ADDWEBHOOKS_COMPARE_PARAMS] Result of isEqual for params: ${paramsAreEqual}`);
+								
+								let nodeSpecificChange = false;
+								if (!paramsAreEqual) { // cloneDeep before isEqual for safety
+									targetNodeInDbEntity.parameters = cloneDeep(desiredParams); // Assign the modified parameters
+									this.logger.info(`[ADDWEBHOOKS_PARAM_CHANGE_APPLIED] Node "${sourceNodeInMemory.name}" (ID: ${sourceNodeInMemory.id}) parameters updated in entityToUpdate.`);
+									nodeSpecificChange = true;
+								}
+
+								this.logger.info(`[ADDWEBHOOKS_COMPARE_WEBHOOKID] Current DB WebhookID: "${currentDbWebhookId}" (type: ${typeof currentDbWebhookId})`);
+								this.logger.info(`[ADDWEBHOOKS_COMPARE_WEBHOOKID] Desired In-Memory WebhookID: "${desiredWebhookId}" (type: ${typeof desiredWebhookId})`);
+								const webhookIdsAreEqual = (currentDbWebhookId === desiredWebhookId);
+								this.logger.info(`[ADDWEBHOOKS_COMPARE_WEBHOOKID] Result of '===' for webhookIds: ${webhookIdsAreEqual}`);
+
+								if (!webhookIdsAreEqual) {
+									targetNodeInDbEntity.webhookId = desiredWebhookId; // Assign the modified webhookId
+									this.logger.info(`[ADDWEBHOOKS_WEBHOOKID_CHANGE_APPLIED] Node "${sourceNodeInMemory.name}" (ID: ${sourceNodeInMemory.id}) webhookId updated in entityToUpdate.`);
+									nodeSpecificChange = true;
+								}
+                                if (nodeSpecificChange) {
+                                    anActualSaveOccurred = true; // Mark that we have made changes to entityToUpdate
+                                }
+							} else {
+								this.logger.warn(`[ADDWEBHOOKS_COMPARE_WARN] Node "${sourceNodeInMemory.name}" (ID: ${sourceNodeInMemory.id}) from in-memory workflow not found in fresh DB entity.nodes.`);
+							}
+						}
+					}
+
+					if (anActualSaveOccurred) {
+						await this.workflowRepository.save(entityToUpdate);
+						this.logger.info(`[ADDWEBHOOKS_SAVE_DB_SUCCESS] Successfully saved entityToUpdate for workflow "${workflow.id}" to database due to nodesParametersChanged flag and detected modifications.`);
+						
+						// --- Cache refresh logic (similar to previous, ensure it fits your actual methods) ---
+						const reloadedWorkflowEntity = await this.workflowRepository.findById(workflow.id);
+						if (reloadedWorkflowEntity) {
+							const reloadedWorkflowInstance = new Workflow({
+                                id: reloadedWorkflowEntity.id,
+                                name: reloadedWorkflowEntity.name,
+                                nodes: reloadedWorkflowEntity.nodes,
+                                connections: reloadedWorkflowEntity.connections,
+                                active: reloadedWorkflowEntity.active,
+                                nodeTypes: this.nodeTypes,
+                                staticData: reloadedWorkflowEntity.staticData,
+                                settings: reloadedWorkflowEntity.settings,
+                            });
+							
+							if (this.activeWorkflows.isActive(reloadedWorkflowEntity.id)) {
+								await this.activeWorkflows.remove(reloadedWorkflowEntity.id);
+							}
+							
+							const hasTriggersOrPollers = reloadedWorkflowInstance.getTriggerNodes().length > 0 || reloadedWorkflowInstance.getPollNodes().length > 0;
+							if (hasTriggersOrPollers && this.shouldAddTriggersAndPollers()) {
+								try {
+									const additionalDataForCache = await WorkflowExecuteAdditionalData.getBase();
+									await this.activeWorkflows.add(
+										reloadedWorkflowEntity.id,
+										reloadedWorkflowInstance,
+										additionalDataForCache,
+										'trigger', 
+										'update',  
+										this.getExecuteTriggerFunctions(reloadedWorkflowEntity, additionalDataForCache, 'trigger', 'update'),
+										this.getExecutePollFunctions(reloadedWorkflowEntity, additionalDataForCache, 'trigger', 'update')
+									);
+									this.logger.info(`[ADDWEBHOOKS_CACHE_REFRESH_SUCCESS] Post-save cache refresh (trigger/poller) for workflow "${workflow.id}".`);
+								} catch (cacheAddError) {
+									this.logger.error(`[ADDWEBHOOKS_CACHE_REFRESH_ERROR] Error re-adding workflow ${workflow.id} to activeWorkflows cache: ${cacheAddError.message}`);
+								}
+							} else {
+								this.logger.info(`[ADDWEBHOOKS_CACHE_REFRESH_INFO] Workflow "${workflow.id}" is webhook-only or instance not leader; trigger/poller cache refresh skipped.`);
+							}
+						}
+                        // --- End cache refresh logic ---
+					} else {
+						this.logger.info(`[ADDWEBHOOKS_SAVE_FLAG_NO_EFFECTIVE_CHANGES] nodesParametersChanged was true, but no differences were applied to DB entity for workflow "${workflow.id}". This might indicate an issue if changes were expected.`);
+					}
+				} else {
+					this.logger.warn(`[ADDWEBHOOKS_SAVE_FLAG_ENTITY_NOT_FOUND] Workflow entity with ID "${workflow.id}" not found for saving when nodesParametersChanged was true.`);
+				}
+			}
+
+			// Ensure the entire staticData object is saved if it was modified or if other parts of it might have changed.
+			if (workflow.staticData) {
+				this.logger.info(`[ADDWEBHOOKS_SAVE_STATIC_DATA] Attempting to save workflow.staticData for workflow "${workflow.id}".`);
+				try {
 		await this.workflowStaticDataService.saveStaticData(workflow);
+					this.logger.info(`[ADDWEBHOOKS_SAVE_STATIC_DATA] Successfully saved workflow.staticData for workflow "${workflow.id}".`);
+				} catch (staticDataSaveError) {
+					 this.logger.error(`[ADDWEBHOOKS_SAVE_STATIC_DATA] Error saving workflow.staticData for workflow "${workflow.id}": ${(staticDataSaveError as Error).message}`);
+				}
+			}
+		}
+
+		// The main populateCache was here. It's now moved into the loop for more immediate updates.
+		// await this.webhookService.populateCache();
 
 		this.logger.debug(`Added webhooks for workflow "${workflow.name}" (ID ${workflow.id})`, {
 			workflowId: workflow.id,
@@ -570,12 +781,12 @@ export class ActiveWorkflowManager {
 			workflow = new Workflow({
 				id: dbWorkflow.id,
 				name: dbWorkflow.name,
-				nodes: dbWorkflow.nodes,
-				connections: dbWorkflow.connections,
+				nodes: cloneDeep(dbWorkflow.nodes),
+				connections: cloneDeep(dbWorkflow.connections),
 				active: dbWorkflow.active,
 				nodeTypes: this.nodeTypes,
-				staticData: dbWorkflow.staticData,
-				settings: dbWorkflow.settings,
+				staticData: cloneDeep(dbWorkflow.staticData),
+				settings: cloneDeep(dbWorkflow.settings),
 			});
 
 			const canBeActivated = this.checkIfWorkflowCanBeActivated(workflow, STARTING_NODES);
