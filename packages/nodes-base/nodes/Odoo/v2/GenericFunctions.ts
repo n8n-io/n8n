@@ -220,7 +220,10 @@ export function processBasicFilters(value: IOdooFilterOperations) {
 	});
 }
 
-export function processCustomFilters(value: string) {
+export function processCustomFilters(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	value: string,
+) {
 	const cleanedValue = value
 		.replace(/\n/g, '')
 		.replace(/\s+/g, ' ')
@@ -233,7 +236,7 @@ export function processCustomFilters(value: string) {
 	try {
 		return JSON.parse(cleanedValue);
 	} catch (error) {
-		throw new ApplicationError();
+		throw new NodeApiError(this.getNode(), { message: `Invalid JSON format: ${error}` });
 	}
 }
 
