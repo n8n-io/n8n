@@ -1,27 +1,104 @@
-import type { INodeTypeBaseDescription, IVersionedNodeType } from 'n8n-workflow';
-import { VersionedNodeType } from 'n8n-workflow';
+import { capitalCase } from 'change-case';
+import type {
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
+	IDataObject,
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
+	INodeCredentialTestResult,
+	INodeExecutionData,
+	INodePropertyOptions,
+	INodeType,
+	INodeTypeBaseDescription,
+	INodeTypeDescription,
+	IRequestOptions,
+} from 'n8n-workflow';
+import { deepCopy, NodeConnectionTypes, randomInt } from 'n8n-workflow';
 
-import { OdooV1 } from './v1/OdooV1.node';
-import { OdooV2 } from './v2/OdooV2.node';
+import {
+	contactDescription,
+	contactOperations,
+	customResourceDescription,
+	customResourceOperations,
+	noteDescription,
+	noteOperations,
+	opportunityDescription,
+	opportunityOperations,
+} from './descriptions';
+import type { IOdooFilterOperations } from './GenericFunctions';
+import {
+	odooCreate,
+	odooDelete,
+	odooGet,
+	odooGetAll,
+	odooGetDBName,
+	odooGetModelFields,
+	odooGetUserID,
+	odooJSONRPCRequest,
+	odooUpdate,
+	processNameValueFields,
+} from './GenericFunctions';
 
-export class Odoo extends VersionedNodeType {
-	constructor() {
-		const baseDescription: INodeTypeBaseDescription = {
-			displayName: 'Odoo',
-			name: 'odoo',
-			icon: 'file:odoo.svg',
-			group: ['transform'],
-			subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-			description: 'Consume Odoo API',
-			defaultVersion: 2,
-		};
+export class OdooV1 implements INodeType {
+	description: INodeTypeDescription = {
+		displayName: 'Odoo',
+		name: 'odoo',
+		icon: 'file:odoo.svg',
+		group: ['transform'],
+		version: 1,
+		description: 'Consume Odoo API',
+		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
+		defaults: {
+			name: 'Odoo',
+		},
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
+		credentials: [
+			{
+				name: 'odooApi',
+				required: true,
+				testedBy: 'odooApiTest',
+			},
+		],
+		properties: [
+			{
+				displayName: 'Resource',
+				name: 'resource',
+				type: 'options',
+				default: 'contact',
+				noDataExpression: true,
+				options: [
+					{
+						name: 'Contact',
+						value: 'contact',
+					},
+					{
+						name: 'Custom Resource',
+						value: 'custom',
+					},
+					{
+						name: 'Note',
+						value: 'note',
+					},
+					{
+						name: 'Opportunity',
+						value: 'opportunity',
+					},
+				],
+			},
 
-		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
-			1: new OdooV1(baseDescription),
-			2: new OdooV2(baseDescription),
-		};
-		super(baseDescription, nodeVersions);
-	}
+			...customResourceOperations,
+			...customResourceDescription,
+			...opportunityOperations,
+			...opportunityDescription,
+			...contactOperations,
+			...contactDescription,
+			...noteOperations,
+			...noteDescription,
+		],
+	};
+
 	methods = {
 		loadOptions: {
 			async getModelFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
@@ -172,6 +249,7 @@ export class Odoo extends VersionedNodeType {
 
 					const options: IRequestOptions = {
 						headers: {
+							'User-Agent': 'n8n',
 							Connection: 'keep-alive',
 							Accept: '*/*',
 							'Content-Type': 'application/json',
@@ -206,6 +284,13 @@ export class Odoo extends VersionedNodeType {
 			},
 		},
 	};
+
+	constructor(baseDescription: INodeTypeBaseDescription) {
+		this.description = {
+			...this.description,
+			...baseDescription,
+		};
+	}
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		let items = this.getInputData();
