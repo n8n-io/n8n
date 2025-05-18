@@ -3,8 +3,8 @@ import type {
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-	JsonObject,
 	IRequestOptions,
+	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError, randomInt } from 'n8n-workflow';
 
