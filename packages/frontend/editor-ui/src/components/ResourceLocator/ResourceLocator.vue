@@ -353,7 +353,7 @@ const allowNewResources = computed(() => {
 	}
 
 	const addNewResourceOptions = getPropertyArgument(currentMode.value, 'allowNewResource') as
-		| { label: BaseTextKey; method: string }
+		| { label: BaseTextKey; method: string; defaultName: string }
 		| undefined;
 
 	if (!addNewResourceOptions) {
@@ -361,7 +361,11 @@ const allowNewResources = computed(() => {
 	}
 
 	return {
-		label: i18n.baseText(addNewResourceOptions.label),
+		label: i18n.baseText(addNewResourceOptions.label, {
+			interpolate: {
+				resourceName: !!searchFilter.value ? searchFilter.value : addNewResourceOptions.defaultName,
+			},
+		}),
 		method: addNewResourceOptions.method,
 	};
 });
@@ -516,7 +520,7 @@ function openResource(url: string) {
 function getPropertyArgument(
 	parameter: INodePropertyMode,
 	argumentName: keyof INodePropertyModeTypeOptions,
-): string | number | boolean | undefined | { label: string; method: string } {
+): string | number | boolean | undefined | { label: string; method: string; defaultName: string } {
 	return parameter.typeOptions?.[argumentName];
 }
 
