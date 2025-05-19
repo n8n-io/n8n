@@ -36,6 +36,14 @@
 					"__rl": true,
 					"value": "mock",
 					"mode": "list"
+				},
+				"outputs": {
+					"values": [
+						{
+							"outputName": "reply",
+							"outputValue": "test"
+						}
+					]
 				}
 			},
 			"type": "n8n-nodes-base.evaluation",
