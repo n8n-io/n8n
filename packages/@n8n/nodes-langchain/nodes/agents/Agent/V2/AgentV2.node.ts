@@ -75,6 +75,7 @@ function getInputs(hasOutputParser?: boolean): Array<NodeConnectionType | INodeI
 					'@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
 					'@n8n/n8n-nodes-langchain.lmChatDeepSeek',
 					'@n8n/n8n-nodes-langchain.lmChatOpenRouter',
+					'@n8n/n8n-nodes-langchain.lmChatAIMLAPI',
 					'@n8n/n8n-nodes-langchain.lmChatXAiGrok',
 				],
 			},

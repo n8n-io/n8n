@@ -11862,6 +11862,41 @@
 		"type": "node"
 	},
 	{
+		"uuid": "e4bf67cd-2213-4475-aec5-ff93afc4b4eb",
+		"key": "@n8n/n8n-nodes-langchain.lmChatAIMLAPI",
+		"subcategory": "*",
+		"properties": {
+			"displayName": "AIMLAPI Chat Model",
+			"defaults": {
+				"name": "AIMLAPI Chat Model"
+			},
+			"description": "For advanced usage with an AI chain",
+			"name": "@n8n/n8n-nodes-langchain.lmChatAIMLAPI",
+			"group": ["transform"],
+			"iconUrl": {
+				"light": "icons/@n8n/n8n-nodes-langchain/dist/nodes/llms/lmChatAIMLAPI/aimlapi.svg",
+				"dark": "icons/@n8n/n8n-nodes-langchain/dist/nodes/llms/lmChatAIMLAPI/aimlapi.dark.svg"
+			},
+			"outputs": ["ai_languageModel"],
+			"codex": {
+				"categories": ["AI"],
+				"subcategories": {
+					"AI": ["Language Models", "Root Nodes"],
+					"Language Models": ["Chat Models (Recommended)"]
+				},
+				"resources": {
+					"primaryDocumentation": [
+						{
+							"url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmChatAIMLAPI/"
+						}
+					]
+				}
+			}
+		},
+		"type": "node"
+	},
+
+	{
 		"uuid": "b6cc7994-94fc-4a3d-958b-490a8f53ff28",
 		"key": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
 		"subcategory": "*",
