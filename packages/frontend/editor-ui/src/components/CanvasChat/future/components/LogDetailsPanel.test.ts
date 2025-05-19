@@ -108,6 +108,24 @@ describe('LogDetailsPanel', () => {
 		expect(await outputPanel.findByText('Hello!')).toBeInTheDocument();
 	});
 
+	it('should show a message in the output panel and data in the input panel when node is running', async () => {
+		const rendered = render({
+			isOpen: true,
+			logEntry: createLogEntry({
+				node: aiNode,
+				runIndex: 0,
+				runData: { ...aiNodeRunData, executionStatus: 'running' },
+			}),
+			panels: LOG_DETAILS_PANEL_STATE.BOTH,
+		});
+
+		const inputPanel = within(rendered.getByTestId('log-details-input'));
+		const outputPanel = within(rendered.getByTestId('log-details-output'));
+
+		expect(await inputPanel.findByText('hey')).toBeInTheDocument();
+		expect(await outputPanel.findByText('Executing node...')).toBeInTheDocument();
+	});
+
 	it('should close input panel by dragging the divider to the left end', async () => {
 		const rendered = render({
 			isOpen: true,
