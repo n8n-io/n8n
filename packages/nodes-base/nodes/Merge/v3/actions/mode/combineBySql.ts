@@ -17,6 +17,10 @@ import { getResolvables, updateDisplayOptions } from '@utils/utilities';
 import { numberInputsProperty } from '../../helpers/descriptions';
 import { modifySelectQuery, rowToExecutionData } from '../../helpers/utils';
 
+type OperationOptions = {
+	emptyQueryResult: 'success' | 'empty';
+};
+
 export const properties: INodeProperties[] = [
 	numberInputsProperty,
 	{
@@ -32,6 +36,33 @@ export const properties: INodeProperties[] = [
 			rows: 5,
 			editor: 'sqlEditor',
 		},
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add option',
+		default: {},
+		options: [
+			{
+				displayName: 'Empty Query Result',
+				name: 'emptyQueryResult',
+				type: 'options',
+				description:
+					'What to return as operation result if the query executed successfully but returned no results',
+				options: [
+					{
+						name: 'Confirmation of Success',
+						value: 'success',
+					},
+					{
+						name: 'Empty Result',
+						value: 'empty',
+					},
+				],
+				default: 'success',
+			},
+		],
 	},
 ];
 
@@ -61,6 +92,7 @@ async function executeSelectWithMappedPairedItems(
 	node: INode,
 	inputsData: INodeExecutionData[][],
 	query: string,
+	options: OperationOptions,
 ): Promise<INodeExecutionData[][]> {
 	const returnData: INodeExecutionData[] = [];
 
@@ -95,7 +127,7 @@ async function executeSelectWithMappedPairedItems(
 			}
 		}
 
-		if (!returnData.length) {
+		if (!returnData.length && options.emptyQueryResult !== 'empty') {
 			returnData.push({ json: { success: true } });
 		}
 	} catch (error) {
@@ -114,6 +146,7 @@ export async function execute(
 	const node = this.getNode();
 	const returnData: INodeExecutionData[] = [];
 	const pairedItem: IPairedItemData[] = [];
+	const options = this.getNodeParameter('options', 0) as OperationOptions;
 
 	let query = this.getNodeParameter('query', 0) as string;
 
@@ -125,7 +158,7 @@ export async function execute(
 
 	if (isSelectQuery) {
 		try {
-			return await executeSelectWithMappedPairedItems(node, inputsData, query);
+			return await executeSelectWithMappedPairedItems(node, inputsData, query, options);
 		} catch (error) {
 			Container.get(ErrorReporter).error(error, {
 				extra: {
@@ -199,7 +232,7 @@ export async function execute(
 			}
 		}
 
-		if (!returnData.length) {
+		if (!returnData.length && options.emptyQueryResult !== 'empty') {
 			returnData.push({ json: { success: true }, pairedItem });
 		}
 	} catch (error) {
