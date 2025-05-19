@@ -1,4 +1,4 @@
-import { Project, ProjectRepository, User, WorkflowEntity } from '@n8n/db';
+import { Project, type ProjectRepository, User, WorkflowEntity } from '@n8n/db';
 import type { FolderRepository } from '@n8n/db';
 import type { WorkflowRepository } from '@n8n/db';
 import * as fastGlob from 'fast-glob';

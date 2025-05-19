@@ -2,10 +2,14 @@ import type { SourceControlledFile } from '@n8n/api-types';
 import {
 	CredentialsEntity,
 	CredentialsRepository,
+	Folder,
 	Project,
+	TagEntity,
+	TagRepository,
 	User,
 	WorkflowEntity,
 	WorkflowRepository,
+	WorkflowTagMappingRepository,
 } from '@n8n/db';
 import { FolderRepository } from '@n8n/db';
 import { ProjectRepository } from '@n8n/db';
@@ -32,6 +36,9 @@ import { randomCredentialPayload } from '../shared/random';
 import * as testDb from '../shared/test-db';
 import { IWorkflowToImport } from '@/interfaces';
 import { SourceControlContext } from '@/environments.ee/source-control/types/source-control-context';
+import { createFolder } from '@test-integration/db/folders';
+import { assignTagToWorkflow, createTag } from '@test-integration/db/tags';
+import { ExportableTags } from '@/environments.ee/source-control/types/exportable-tags';
 
 jest.mock('fast-glob');
 
@@ -43,6 +50,8 @@ describe('SourceControlImportService', () => {
 	let folderRepository: FolderRepository;
 	let service: SourceControlImportService;
 	let workflowRepository: WorkflowRepository;
+	let tagRepository: TagRepository;
+	let workflowTagMappingRepository: WorkflowTagMappingRepository;
 
 	const cipher = mockInstance(Cipher);
 
@@ -55,6 +64,8 @@ describe('SourceControlImportService', () => {
 		userRepository = Container.get(UserRepository);
 		folderRepository = Container.get(FolderRepository);
 		workflowRepository = Container.get(WorkflowRepository);
+		tagRepository = Container.get(TagRepository);
+		workflowTagMappingRepository = Container.get(WorkflowTagMappingRepository);
 		service = new SourceControlImportService(
 			mock(),
 			mock(),
@@ -62,13 +73,13 @@ describe('SourceControlImportService', () => {
 			mock(),
 			credentialsRepository,
 			projectRepository,
-			mock(),
+			tagRepository,
 			mock(),
 			sharedCredentialsRepository,
 			userRepository,
 			mock(),
 			workflowRepository,
-			mock(),
+			workflowTagMappingRepository,
 			mock(),
 			mock(),
 			mock(),
@@ -85,10 +96,6 @@ describe('SourceControlImportService', () => {
 
 	afterAll(async () => {
 		await testDb.terminate();
-	});
-
-	describe('getLocalFoldersAndMappingsFromDb()', () => {
-		// TODO: make test cases for folders from DB!
 	});
 
 	describe('getRemoteVersionIdsFromFiles()', () => {
@@ -547,7 +554,7 @@ describe('SourceControlImportService', () => {
 		let teamACredentials: CredentialsEntity[];
 		let teamBCredentials: CredentialsEntity[];
 
-		beforeAll(async () => {
+		beforeEach(async () => {
 			[instanceOwner, projectAdmin, projectMember, teamProjectA, teamProjectB] = await Promise.all([
 				getGlobalOwner(),
 				createMember(),
@@ -616,38 +623,449 @@ describe('SourceControlImportService', () => {
 			]);
 		});
 
-		describe('if user is an instance owner', () => {
-			it('should get all available credentials on the instance', async () => {
-				let versions = await service.getLocalCredentialsFromDb({
-					user: instanceOwner,
-				});
-
-				expect(new Set(versions.map((v) => v.id))).toEqual(
-					new Set([...teamACredentials.map((w) => w.id), ...teamBCredentials.map((w) => w.id)]),
-				);
+		it('should get all available credentials on the instance, for an instance owner', async () => {
+			let versions = await service.getLocalCredentialsFromDb({
+				user: instanceOwner,
 			});
+
+			expect(new Set(versions.map((v) => v.id))).toEqual(
+				new Set([...teamACredentials.map((w) => w.id), ...teamBCredentials.map((w) => w.id)]),
+			);
 		});
 
-		describe('if user is a project admin of a team project', () => {
-			it.only('should only get all available credentials from the team project', async () => {
-				let versions = await service.getLocalCredentialsFromDb({
-					user: projectAdmin,
-				});
-
-				expect(new Set(versions.map((v) => v.id))).toEqual(
-					new Set([...teamACredentials.map((w) => w.id)]),
-				);
+		it('should only get all available credentials from the team project, for a project admin', async () => {
+			let versions = await service.getLocalCredentialsFromDb({
+				user: projectAdmin,
 			});
+
+			expect(new Set(versions.map((v) => v.id))).toEqual(
+				new Set([...teamACredentials.map((w) => w.id)]),
+			);
 		});
 
-		describe('if user is a project member of a team project', () => {
-			it('should not get any workflows', async () => {
-				let versions = await service.getLocalCredentialsFromDb({
-					user: projectMember,
-				});
-
-				expect(versions).toBeEmptyArray();
+		it('should not get any workflows, for a project member', async () => {
+			let versions = await service.getLocalCredentialsFromDb({
+				user: projectMember,
 			});
+
+			expect(versions).toBeEmptyArray();
+		});
+	});
+
+	describe('getLocalFoldersAndMappingsFromDb()', () => {
+		let instanceOwner: User;
+		let projectAdmin: User;
+		let projectMember: User;
+		let teamProjectA: Project;
+		let teamProjectB: Project;
+		let foldersProjectA: Folder[];
+		let foldersProjectB: Folder[];
+
+		beforeAll(async () => {
+			[instanceOwner, projectAdmin, projectMember, teamProjectA, teamProjectB] = await Promise.all([
+				getGlobalOwner(),
+				createMember(),
+				createMember(),
+				createTeamProject(),
+				createTeamProject(),
+			]);
+
+			await linkUserToProject(projectAdmin, teamProjectA, 'project:admin');
+			await linkUserToProject(projectMember, teamProjectA, 'project:editor');
+			await linkUserToProject(projectAdmin, teamProjectB, 'project:editor');
+			await linkUserToProject(projectMember, teamProjectB, 'project:editor');
+
+			foldersProjectA = await Promise.all([
+				await createFolder(teamProjectA, {
+					name: 'folder1',
+				}),
+				await createFolder(teamProjectA, {
+					name: 'folder2',
+				}),
+				await createFolder(teamProjectA, {
+					name: 'folder3',
+				}),
+			]);
+
+			foldersProjectA.push(
+				await createFolder(teamProjectA, {
+					name: 'folder1.1',
+					parentFolder: foldersProjectA[0],
+				}),
+			);
+
+			foldersProjectB = await Promise.all([
+				await createFolder(teamProjectB, {
+					name: 'folder1',
+				}),
+				await createFolder(teamProjectB, {
+					name: 'folder2',
+				}),
+				await createFolder(teamProjectB, {
+					name: 'folder3',
+				}),
+			]);
+		});
+
+		it('should get all available folders on the instance, for an instance owner', async () => {
+			let folders = await service.getLocalFoldersAndMappingsFromDb({
+				user: instanceOwner,
+			});
+
+			expect(new Set(folders.folders.map((v) => v.id))).toEqual(
+				new Set([...foldersProjectA.map((w) => w.id), ...foldersProjectB.map((w) => w.id)]),
+			);
+		});
+
+		it('should only get all available folders from the team project, for a project admin', async () => {
+			let versions = await service.getLocalFoldersAndMappingsFromDb({
+				user: projectAdmin,
+			});
+
+			expect(new Set(versions.folders.map((v) => v.id))).toEqual(
+				new Set([...foldersProjectA.map((w) => w.id)]),
+			);
+		});
+
+		it('should not get any folders, for a project member', async () => {
+			let versions = await service.getLocalFoldersAndMappingsFromDb({
+				user: projectMember,
+			});
+
+			expect(versions.folders).toBeEmptyArray();
+		});
+	});
+
+	describe('getRemoteTagsAndMappingsFromFile()', () => {
+		const mockTagsFile = '/mock/tags.json';
+
+		const mockTagData: {
+			tags: Array<{ id: string; name: string }>;
+			mappings: Array<{ workflowId: string; tagId: string }>;
+		} = {
+			tags: [
+				{
+					id: 'tag1',
+					name: 'Tag 1',
+				},
+				{
+					id: 'tag2',
+					name: 'Tag 2',
+				},
+				{
+					id: 'tag3',
+					name: 'Tag 3',
+				},
+			],
+			mappings: [
+				{
+					tagId: 'tag1',
+					workflowId: 'wf1',
+				},
+				{
+					tagId: 'tag2',
+					workflowId: 'wf2',
+				},
+				{
+					tagId: 'tag3',
+					workflowId: 'wf3',
+				},
+				{
+					tagId: 'tag1',
+					workflowId: 'wf4',
+				},
+				{
+					tagId: 'tag2',
+					workflowId: 'wf5',
+				},
+			],
+		};
+
+		const globMock = fastGlob.default as unknown as jest.Mock<Promise<string[]>, string[]>;
+		const fsReadFile = jest.spyOn(fsp, 'readFile');
+
+		let globalAdmin: User;
+		let globalOwner: User;
+		let globalMember: User;
+		let teamAdmin: User;
+		let team1: Project;
+		let team2: Project;
+		let workflowTeam1: WorkflowEntity[];
+		let workflowTeam2: WorkflowEntity[];
+
+		beforeEach(async () => {
+			[globalAdmin, globalOwner, globalMember, teamAdmin] = await Promise.all([
+				createAdmin(),
+				createOwner(),
+				createMember(),
+				createMember(),
+			]);
+
+			globMock.mockResolvedValue([mockTagsFile]);
+
+			fsReadFile.mockResolvedValue(JSON.stringify(mockTagData));
+
+			[team1, team2] = await Promise.all([
+				await createTeamProject('Team 1', teamAdmin),
+				await createTeamProject('Team 2'),
+			]);
+
+			workflowTeam1 = await Promise.all([
+				await createWorkflow(
+					{
+						id: 'wf1',
+						name: 'Workflow 1',
+					},
+					team1,
+				),
+				await createWorkflow(
+					{
+						id: 'wf2',
+						name: 'Workflow 2',
+					},
+					team1,
+				),
+				await createWorkflow(
+					{
+						id: 'wf3',
+						name: 'Workflow 3',
+					},
+					team1,
+				),
+			]);
+
+			workflowTeam2 = await Promise.all([
+				await createWorkflow(
+					{
+						id: 'wf4',
+						name: 'Workflow 4',
+					},
+					team2,
+				),
+				await createWorkflow(
+					{
+						id: 'wf5',
+						name: 'Workflow 5',
+					},
+					team2,
+				),
+				await createWorkflow(
+					{
+						id: 'wf6',
+						name: 'Workflow 6',
+					},
+					team2,
+				),
+			]);
+		});
+
+		beforeEach(async () => {});
+
+		it('should show all remote tags and all remote mappings for instance admins', async () => {
+			const result = await service.getRemoteTagsAndMappingsFromFile({
+				user: globalAdmin,
+			});
+
+			expect(new Set(result.tags.map((r) => r.id))).toEqual(
+				new Set(mockTagData.tags.map((t) => t.id)),
+			);
+			expect(new Set(result.mappings)).toEqual(new Set(mockTagData.mappings));
+		});
+
+		it('should show all remote tags and all remote mappings for instance owners', async () => {
+			const result = await service.getRemoteTagsAndMappingsFromFile({
+				user: globalOwner,
+			});
+
+			expect(new Set(result.tags.map((r) => r.id))).toEqual(
+				new Set(mockTagData.tags.map((t) => t.id)),
+			);
+			expect(new Set(result.mappings)).toEqual(new Set(mockTagData.mappings));
+		});
+
+		it('should return all remote tags and no remote mappings for instance members', async () => {
+			const result = await service.getRemoteTagsAndMappingsFromFile({
+				user: globalMember,
+			});
+
+			expect(new Set(result.tags.map((r) => r.id))).toEqual(
+				new Set(mockTagData.tags.map((t) => t.id)),
+			);
+			expect(result.mappings).toBeEmptyArray();
+		});
+
+		it('should return all remote tags and only remote mappings for in scope team for team admin', async () => {
+			const result = await service.getRemoteTagsAndMappingsFromFile({
+				user: teamAdmin,
+			});
+
+			console.log('Result', result);
+
+			expect(new Set(result.tags.map((r) => r.id))).toEqual(
+				new Set(mockTagData.tags.map((t) => t.id)),
+			);
+			expect(new Set(result.mappings)).toEqual(
+				new Set(
+					mockTagData.mappings.filter((mapping) =>
+						workflowTeam1.some((wf) => wf.id === mapping.workflowId),
+					),
+				),
+			);
+		});
+	});
+
+	describe('getLocalTagsAndMappingsFromDb()', () => {
+		let instanceOwner: User;
+		let projectAdmin: User;
+		let projectMember: User;
+		let teamProjectA: Project;
+		let teamProjectB: Project;
+		let tags: TagEntity[];
+		let workflowsProjectA: WorkflowEntity[];
+		let workflowsProjectB: WorkflowEntity[];
+		let mappings: Array<[TagEntity, WorkflowEntity]>;
+
+		beforeAll(async () => {
+			[instanceOwner, projectAdmin, projectMember, teamProjectA, teamProjectB] = await Promise.all([
+				getGlobalOwner(),
+				createMember(),
+				createMember(),
+				createTeamProject(),
+				createTeamProject(),
+			]);
+
+			await linkUserToProject(projectAdmin, teamProjectA, 'project:admin');
+			await linkUserToProject(projectMember, teamProjectA, 'project:editor');
+			await linkUserToProject(projectAdmin, teamProjectB, 'project:editor');
+			await linkUserToProject(projectMember, teamProjectB, 'project:editor');
+
+			tags = await Promise.all([
+				await createTag({
+					name: 'tag1',
+				}),
+				await createTag({
+					name: 'tag2',
+				}),
+				await createTag({
+					name: 'tag3',
+				}),
+			]);
+
+			workflowsProjectA = await Promise.all([
+				await createWorkflow(
+					{
+						id: 'workflow1',
+						name: 'Workflow 1',
+					},
+					teamProjectA,
+				),
+				await createWorkflow(
+					{
+						id: 'workflow2',
+						name: 'Workflow 2',
+					},
+					teamProjectA,
+				),
+				await createWorkflow(
+					{
+						id: 'workflow3',
+						name: 'Workflow 3',
+					},
+					teamProjectA,
+				),
+			]);
+
+			workflowsProjectB = await Promise.all([
+				await createWorkflow(
+					{
+						id: 'workflow4',
+						name: 'Workflow 4',
+					},
+					teamProjectB,
+				),
+				await createWorkflow(
+					{
+						id: 'workflow5',
+						name: 'Workflow 5',
+					},
+					teamProjectB,
+				),
+				await createWorkflow(
+					{
+						id: 'workflow6',
+						name: 'Workflow 6',
+					},
+					teamProjectB,
+				),
+			]);
+
+			mappings = [
+				[tags[0], workflowsProjectA[0]],
+				[tags[1], workflowsProjectA[0]],
+				[tags[0], workflowsProjectA[1]],
+				[tags[0], workflowsProjectB[0]],
+				[tags[1], workflowsProjectB[1]],
+				[tags[2], workflowsProjectB[2]],
+			];
+
+			await Promise.all(
+				mappings.map(async ([tag, workflow]) => await assignTagToWorkflow(tag, workflow)),
+			);
+		});
+
+		it('should get all available tags and mappings on the instance, for an instance owner', async () => {
+			let result = await service.getLocalTagsAndMappingsFromDb({
+				user: instanceOwner,
+			});
+
+			expect(new Set(result.tags.map((v) => v.id))).toEqual(new Set([...tags.map((w) => w.id)]));
+			expect(
+				new Set(
+					result.mappings.map((m) => {
+						return [m.tagId, m.workflowId];
+					}),
+				),
+			).toEqual(
+				new Set(
+					mappings.map(([tag, workflow]) => {
+						return [tag.id, workflow.id];
+					}),
+				),
+			);
+		});
+
+		it('should only get all available tags and only mappings from the team project, for a project admin', async () => {
+			let result = await service.getLocalTagsAndMappingsFromDb({
+				user: projectAdmin,
+			});
+
+			expect(new Set(result.tags.map((v) => v.id))).toEqual(new Set([...tags.map((w) => w.id)]));
+
+			expect(
+				new Set(
+					result.mappings.map((m) => {
+						return [m.tagId, m.workflowId];
+					}),
+				),
+			).toEqual(
+				new Set(
+					mappings
+						.filter((w) => workflowsProjectA.includes(w[1]))
+						.map(([tag, workflow]) => {
+							return [tag.id, workflow.id];
+						}),
+				),
+			);
+		});
+
+		it('should get all available tags but no mappings, for a project member', async () => {
+			let result = await service.getLocalTagsAndMappingsFromDb({
+				user: projectMember,
+			});
+
+			expect(new Set(result.tags.map((v) => v.id))).toEqual(new Set([...tags.map((w) => w.id)]));
+
+			expect(result.mappings).toBeEmptyArray();
 		});
 	});
 

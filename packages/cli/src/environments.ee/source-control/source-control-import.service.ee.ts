@@ -1,5 +1,5 @@
 import type { SourceControlledFile } from '@n8n/api-types';
-import {
+import type {
 	Variables,
 	Project,
 	TagEntity,
@@ -24,7 +24,7 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import { FindOptionsWhere, In } from '@n8n/typeorm';
+import { type FindOptionsWhere, In } from '@n8n/typeorm';
 import glob from 'fast-glob';
 import { Credentials, ErrorReporter, InstanceSettings, Logger } from 'n8n-core';
 import { jsonParse, ensureError, UserError, UnexpectedError } from 'n8n-workflow';
@@ -54,6 +54,7 @@ import type { ResourceOwner } from './types/resource-owner';
 import type { SourceControlContext } from './types/source-control-context';
 import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
 import { VariablesService } from '../variables/variables.service.ee';
+import { ExportableTags } from './types/exportable-tags';
 
 @Service()
 export class SourceControlImportService {
@@ -439,17 +440,14 @@ export class SourceControlImportService {
 		};
 	}
 
-	async getRemoteTagsAndMappingsFromFile(context: SourceControlContext): Promise<{
-		tags: TagEntity[];
-		mappings: WorkflowTagMapping[];
-	}> {
+	async getRemoteTagsAndMappingsFromFile(context: SourceControlContext): Promise<ExportableTags> {
 		const tagsFile = await glob(SOURCE_CONTROL_TAGS_EXPORT_FILE, {
 			cwd: this.gitFolder,
 			absolute: true,
 		});
 		if (tagsFile.length > 0) {
 			this.logger.debug(`Importing tags from file ${tagsFile[0]}`);
-			const mappedTags = jsonParse<{ tags: TagEntity[]; mappings: WorkflowTagMapping[] }>(
+			const mappedTags = jsonParse<ExportableTags>(
 				await fsReadFile(tagsFile[0], { encoding: 'utf8' }),
 				{ fallbackValue: { tags: [], mappings: [] } },
 			);
