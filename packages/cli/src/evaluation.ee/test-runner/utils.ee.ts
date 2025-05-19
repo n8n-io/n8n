@@ -1,13 +1,5 @@
 import assert from 'assert';
-import { mapValues } from 'lodash';
-import type {
-	IRunExecutionData,
-	IPinData,
-	IWorkflowBase,
-	IRunData,
-	ITaskData,
-	INode,
-} from 'n8n-workflow';
+import type { IRunExecutionData, IPinData, IWorkflowBase } from 'n8n-workflow';
 
 import { TestCaseExecutionError } from '@/evaluation.ee/test-runner/errors.ee';
 
@@ -72,44 +64,4 @@ export function getPastExecutionTriggerNode(executionData: IRunExecutionData) {
 		const data = executionData.resultData.runData[nodeName];
 		return !data[0].source || data[0].source.length === 0 || data[0].source[0] === null;
 	});
-}
-
-/**
- * Function to check if the node is root node or sub-node.
- * Sub-node is a node which does not have the main output (the only exception is Stop and Error node)
- */
-function isSubNode(node: INode, nodeData: ITaskData[]) {
-	return (
-		!node.type.endsWith('stopAndError') &&
-		nodeData.some((nodeRunData) => !(nodeRunData.data && 'main' in nodeRunData.data))
-	);
-}
-
-/**
- * Transform execution data and workflow data into a more user-friendly format to supply to evaluation workflow
- */
-function formatExecutionData(data: IRunData, workflow: IWorkflowBase) {
-	const formattedData = {} as Record<string, any>;
-
-	for (const [nodeName, nodeData] of Object.entries(data)) {
-		const node = workflow.nodes.find((n) => n.name === nodeName);
-
-		assert(node, `Node "${nodeName}" not found in the workflow`);
-
-		const rootNode = !isSubNode(node, nodeData);
-
-		const runs = nodeData.map((nodeRunData) => ({
-			executionTime: nodeRunData.executionTime,
-			rootNode,
-			output: nodeRunData.data
-				? mapValues(nodeRunData.data, (connections) =>
-						connections.map((singleOutputData) => singleOutputData?.map((item) => item.json) ?? []),
-					)
-				: null,
-		}));
-
-		formattedData[node.id] = { nodeName, runs };
-	}
-
-	return formattedData;
 }
