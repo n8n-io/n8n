@@ -1,7 +1,6 @@
+import { TestRunRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { Logger } from 'n8n-core';
-
-import { TestRunRepository } from '@/databases/repositories/test-run.repository.ee';
 
 /**
  * This service is responsible for cleaning up pending Test Runs on application startup.
