@@ -1,4 +1,4 @@
-import type { AuthUser, SettingsRepository } from '@n8n/db';
+import type { SettingsRepository, User } from '@n8n/db';
 import type { CredentialsRepository } from '@n8n/db';
 import type { WorkflowRepository } from '@n8n/db';
 import type { UserRepository } from '@n8n/db';
@@ -15,7 +15,7 @@ import type { UserService } from '@/services/user.service';
 jest.mock('@rudderstack/rudder-sdk-node');
 
 describe('HooksService', () => {
-	const mockedUser = mock<AuthUser>();
+	const mockedUser = mock<User>();
 	const userService = mock<UserService>();
 	const authService = mock<AuthService>();
 	const userRepository = mock<UserRepository>();
