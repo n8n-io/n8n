@@ -17,15 +17,12 @@ const node = computed(() => workflow.value.getNode(name.value));
 </script>
 
 <template>
-	<div>
+	<div :class="$style.settingIcons">
 		<N8nTooltip v-if="node?.alwaysOutputData">
 			<template #content>
 				{{ i18n.baseText('node.settings.alwaysOutputData') }}
 			</template>
-			<div
-				data-test-id="canvas-node-status-always-output-data"
-				:class="[$style.status, $style.pinnedData]"
-			>
+			<div data-test-id="canvas-node-status-always-output-data" :class="[$style.settingIcon]">
 				<AlwaysOutputData />
 			</div>
 		</N8nTooltip>
@@ -33,10 +30,7 @@ const node = computed(() => workflow.value.getNode(name.value));
 			<template #content>
 				{{ i18n.baseText('node.settings.executeOnce') }}
 			</template>
-			<div
-				data-test-id="canvas-node-status-execute-once"
-				:class="[$style.status, $style.pinnedData]"
-			>
+			<div data-test-id="canvas-node-status-execute-once" :class="[$style.settingIcon]">
 				<ExecuteOnce />
 			</div>
 		</N8nTooltip>
@@ -44,10 +38,7 @@ const node = computed(() => workflow.value.getNode(name.value));
 			<template #content>
 				{{ i18n.baseText('node.settings.retriesOnFailure') }}
 			</template>
-			<div
-				data-test-id="canvas-node-status-retry-on-fail"
-				:class="[$style.status, $style.pinnedData]"
-			>
+			<div data-test-id="canvas-node-status-retry-on-fail" :class="[$style.settingIcon]">
 				<RetryOnFail />
 			</div>
 		</N8nTooltip>
@@ -57,10 +48,7 @@ const node = computed(() => workflow.value.getNode(name.value));
 			<template #content>
 				{{ i18n.baseText('node.settings.continuesOnError') }}
 			</template>
-			<div
-				data-test-id="canvas-node-status-continue-on-error"
-				:class="[$style.status, $style.pinnedData]"
-			>
+			<div data-test-id="canvas-node-status-continue-on-error" :class="[$style.settingIcon]">
 				<ContinuesOnError />
 			</div>
 		</N8nTooltip>
@@ -68,29 +56,22 @@ const node = computed(() => workflow.value.getNode(name.value));
 </template>
 
 <style lang="scss" module>
-.status {
+.settingIcons {
 	display: flex;
+	justify-content: center;
 	align-items: center;
+	position: absolute;
+	bottom: var(--canvas-node--status-icons-offset);
+	left: var(--canvas-node--status-icons-offset);
+	display: flex;
 	gap: var(--spacing-5xs);
 }
-.runData {
-	font-weight: 600;
-	color: var(--color-success);
-}
-.waiting {
-	color: var(--color-secondary);
-}
-.pinnedData {
-	color: var(--color-text-light);
-	font-size: var(--font-size-xs);
-}
-.running {
-	width: calc(100% - 2 * var(--canvas-node--status-icons-offset));
-	height: calc(100% - 2 * var(--canvas-node--status-icons-offset));
+.settingIcon {
+	width: 14px;
+	height: 14px;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	font-size: 3.75em;
-	color: hsla(var(--color-primary-h), var(--color-primary-s), var(--color-primary-l), 0.7);
+	color: var(--color-text-light);
 }
 </style>

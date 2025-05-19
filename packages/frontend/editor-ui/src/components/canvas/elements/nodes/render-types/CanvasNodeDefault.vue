@@ -151,30 +151,33 @@ function onActivate(event: MouseEvent) {
 		@contextmenu="openContextMenu"
 		@dblclick.stop="onActivate"
 	>
-		<CanvasNodeTooltip v-if="renderOptions.tooltip" :visible="showTooltip" />
-		<NodeIcon
-			:icon-source="iconSource"
-			:size="iconSize"
-			:shrink="false"
-			:disabled="isDisabled"
-			:class="$style.icon"
-		/>
-		<NodeIcon :icon-source="iconSource" :size="iconSize" :shrink="false" :disabled="isDisabled" />
-		<CanvasNodeSettingsIcons
-			v-if="!isDisabled && !(hasPinnedData && !nodeHelpers.isProductionExecutionPreview.value)"
-			:class="$style.settingsIcons"
-		/>
-		<CanvasNodeDisabledStrikeThrough v-if="isStrikethroughVisible" />
-		<div :class="$style.description">
-			<div v-if="label" :class="$style.label">
-				{{ label }}
+		<ExperimentalCanvasNodeSettings v-if="nodeSettingsZoom !== undefined" :node-id="id" />
+		<template v-else>
+			<CanvasNodeTooltip v-if="renderOptions.tooltip" :visible="showTooltip" />
+			<NodeIcon
+				:icon-source="iconSource"
+				:size="iconSize"
+				:shrink="false"
+				:disabled="isDisabled"
+				:class="$style.icon"
+			/>
+			<NodeIcon :icon-source="iconSource" :size="iconSize" :shrink="false" :disabled="isDisabled" />
+			<CanvasNodeSettingsIcons
+				v-if="!isDisabled && !(hasPinnedData && !nodeHelpers.isProductionExecutionPreview.value)"
+			/>
+			<CanvasNodeStatusIcons v-if="!isDisabled" :class="$style.statusIcons" />
+			<CanvasNodeDisabledStrikeThrough v-if="isStrikethroughVisible" />
+			<div :class="$style.description">
+				<div v-if="label" :class="$style.label">
+					{{ label }}
+				</div>
+				<div v-if="isDisabled" :class="$style.disabledLabel">
+					({{ i18n.baseText('node.disabled') }})
+				</div>
+				<div v-if="subtitle" :class="$style.subtitle">{{ subtitle }}</div>
 			</div>
-			<div v-if="isDisabled" :class="$style.disabledLabel">
-				({{ i18n.baseText('node.disabled') }})
-			</div>
-			<div v-if="subtitle" :class="$style.subtitle">{{ subtitle }}</div>
-		</div>
-		<CanvasNodeStatusIcons v-if="!isDisabled" :class="$style.statusIcons" />
+			<CanvasNodeStatusIcons v-if="!isDisabled" :class="$style.statusIcons" />
+		</template>
 	</div>
 </template>
 
@@ -365,10 +368,5 @@ function onActivate(event: MouseEvent) {
 	flex-shrink: 0;
 }
 .settingsIcons {
-	position: absolute;
-	bottom: var(--canvas-node--status-icons-offset);
-	left: var(--canvas-node--status-icons-offset);
-	display: flex;
-	gap: var(--spacing-4xs);
 }
 </style>
