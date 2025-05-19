@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { VALID_EMAIL_REGEX, NPS_SURVEY_MODAL_KEY } from '@/constants';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import ModalDrawer from '@/components/ModalDrawer.vue';
 import { useToast } from '@/composables/useToast';
 import { useI18n } from '@/composables/useI18n';

@@ -5,7 +5,8 @@ import { useUsersStore } from '@/stores/users.store';
 import { createComponentRenderer } from '@/__tests__/render';
 import { useProjectsStore } from '@/stores/projects.store';
 import { createTestingPinia } from '@pinia/testing';
-import { STORES, VIEWS } from '@/constants';
+import { VIEWS } from '@/constants';
+import { STORES } from '@n8n/stores';
 import { mockedStore, waitAllPromises } from '@/__tests__/utils';
 import type { IUser, WorkflowListResource } from '@/Interface';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
@@ -15,6 +16,8 @@ import { useTagsStore } from '@/stores/tags.store';
 import { createRouter, createWebHistory } from 'vue-router';
 import * as usersApi from '@/api/users';
 import { useFoldersStore } from '@/stores/folders.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useProjectPages } from '@/composables/useProjectPages';
 
 vi.mock('@/api/projects.api');
 vi.mock('@/api/users');
@@ -22,6 +25,12 @@ vi.mock('@/api/sourceControl');
 vi.mock('@/composables/useGlobalEntityCreation', () => ({
 	useGlobalEntityCreation: () => ({
 		menu: [],
+	}),
+}));
+vi.mock('@/composables/useProjectPages', () => ({
+	useProjectPages: vi.fn().mockReturnValue({
+		isOverviewSubPage: false,
+		isSharedSubPage: false,
 	}),
 }));
 
@@ -47,6 +56,8 @@ vi.mock('@/api/usage', () => ({
 let pinia: ReturnType<typeof createTestingPinia>;
 let foldersStore: ReturnType<typeof mockedStore<typeof useFoldersStore>>;
 let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
+let settingsStore: ReturnType<typeof mockedStore<typeof useSettingsStore>>;
+let projectPages: ReturnType<typeof useProjectPages>;
 
 const renderComponent = createComponentRenderer(WorkflowsView, {
 	global: {
@@ -55,7 +66,12 @@ const renderComponent = createComponentRenderer(WorkflowsView, {
 });
 
 const initialState = {
-	[STORES.SETTINGS]: { settings: { enterprise: { sharing: false }, folders: { enabled: false } } },
+	[STORES.SETTINGS]: {
+		settings: {
+			enterprise: { sharing: false, projects: { team: { limit: 5 } } },
+			folders: { enabled: false },
+		},
+	},
 };
 
 describe('WorkflowsView', () => {
@@ -65,12 +81,15 @@ describe('WorkflowsView', () => {
 		pinia = createTestingPinia({ initialState });
 		foldersStore = mockedStore(useFoldersStore);
 		workflowsStore = mockedStore(useWorkflowsStore);
+		settingsStore = mockedStore(useSettingsStore);
 
 		workflowsStore.fetchWorkflowsPage.mockResolvedValue([]);
 		workflowsStore.fetchActiveWorkflows.mockResolvedValue([]);
 
 		foldersStore.totalWorkflowCount = 0;
 		foldersStore.fetchTotalWorkflowsAndFoldersCount.mockResolvedValue(0);
+
+		projectPages = useProjectPages();
 	});
 
 	describe('should show empty state', () => {
@@ -133,6 +152,48 @@ describe('WorkflowsView', () => {
 		});
 	});
 
+	describe('fetch workflow options', () => {
+		it('should not fetch folders for overview page', async () => {
+			workflowsStore.fetchWorkflowsPage.mockResolvedValue([]);
+			settingsStore.isFoldersFeatureEnabled = true;
+			vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(true);
+			vi.spyOn(projectPages, 'isSharedSubPage', 'get').mockReturnValue(false);
+
+			renderComponent({ pinia });
+			await waitAllPromises();
+
+			expect(workflowsStore.fetchWorkflowsPage).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.any(Number),
+				expect.any(Number),
+				expect.any(String),
+				expect.any(Object),
+				false,
+				expect.any(Boolean),
+			);
+		});
+
+		it('should send proper API parameters for "Shared with you" page', async () => {
+			workflowsStore.fetchWorkflowsPage.mockResolvedValue([]);
+			settingsStore.isFoldersFeatureEnabled = true;
+			vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(false);
+			vi.spyOn(projectPages, 'isSharedSubPage', 'get').mockReturnValue(true);
+
+			renderComponent({ pinia });
+			await waitAllPromises();
+
+			expect(workflowsStore.fetchWorkflowsPage).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.any(Number),
+				expect.any(Number),
+				expect.any(String),
+				expect.any(Object),
+				false, // No folders
+				true, // onlySharedWithMe = true
+			);
+		});
+	});
+
 	describe('filters', () => {
 		it('should set tag filter based on query parameters', async () => {
 			await router.replace({ query: { tags: 'test-tag' } });
@@ -156,7 +217,9 @@ describe('WorkflowsView', () => {
 				expect.any(String),
 				expect.objectContaining({
 					tags: [TEST_TAG.name],
+					isArchived: false,
 				}),
+				false, // No folders if tag filter is set
 				expect.any(Boolean),
 			);
 		});
@@ -176,7 +239,9 @@ describe('WorkflowsView', () => {
 				expect.any(String),
 				expect.objectContaining({
 					name: 'one',
+					isArchived: false,
 				}),
+				expect.any(Boolean),
 				expect.any(Boolean),
 			);
 		});
@@ -196,7 +261,9 @@ describe('WorkflowsView', () => {
 				expect.any(String),
 				expect.objectContaining({
 					active: true,
+					isArchived: false,
 				}),
+				false, // No folders if active filter is set
 				expect.any(Boolean),
 			);
 		});
@@ -216,7 +283,30 @@ describe('WorkflowsView', () => {
 				expect.any(String),
 				expect.objectContaining({
 					active: false,
+					isArchived: false,
 				}),
+				false,
+				expect.any(Boolean),
+			);
+		});
+
+		it('should unset isArchived filter based on query parameters', async () => {
+			await router.replace({ query: { showArchived: 'true' } });
+
+			workflowsStore.fetchWorkflowsPage.mockResolvedValue([]);
+
+			renderComponent({ pinia });
+			await waitAllPromises();
+
+			expect(workflowsStore.fetchWorkflowsPage).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.any(Number),
+				expect.any(Number),
+				expect.any(String),
+				expect.objectContaining({
+					isArchived: undefined,
+				}),
+				false, // No folders if active filter is set
 				expect.any(Boolean),
 			);
 		});
@@ -299,6 +389,7 @@ describe('Folders', () => {
 		createdAt: new Date().toISOString(),
 		updatedAt: new Date().toISOString(),
 		active: true,
+		isArchived: false,
 		versionId: '1',
 		homeProject: {
 			id: '1',

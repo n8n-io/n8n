@@ -1,8 +1,8 @@
 import { generateNanoId } from '@n8n/db';
 import { AuthIdentity } from '@n8n/db';
 import { User } from '@n8n/db';
+import { UserRepository } from '@n8n/db';
 
-import { UserRepository } from '@/databases/repositories/user.repository';
 import * as helpers from '@/ldap.ee/helpers.ee';
 import { mockInstance } from '@test/mocking';
 

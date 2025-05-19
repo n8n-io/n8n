@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import type { ProjectRole } from '@n8n/permissions';
 import { computed, ref, watch, onBeforeMount, onMounted, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
 import { deepCopy } from 'n8n-workflow';
@@ -13,7 +14,6 @@ import { VIEWS } from '@/constants';
 import ProjectDeleteDialog from '@/components/Projects/ProjectDeleteDialog.vue';
 import ProjectRoleUpgradeDialog from '@/components/Projects/ProjectRoleUpgradeDialog.vue';
 import { useRolesStore } from '@/stores/roles.store';
-import type { ProjectRole } from '@/types/roles.types';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
@@ -275,6 +275,19 @@ watch(
 	{ immediate: true },
 );
 
+// Add users property to the relation objects,
+// So that N8nUsersList has access to the full user data
+const relationUsers = computed(() =>
+	formData.value.relations.map((relation: ProjectRelation) => {
+		const user = usersStore.usersById[relation.id];
+		if (!user) return relation as ProjectRelation & IUser;
+		return {
+			...user,
+			...relation,
+		};
+	}),
+);
+
 onBeforeMount(async () => {
 	await usersStore.fetchUsers();
 });
@@ -333,7 +346,7 @@ onMounted(() => {
 				</N8nUserSelect>
 				<N8nUsersList
 					:actions="[]"
-					:users="formData.relations"
+					:users="relationUsers"
 					:current-user-id="usersStore.currentUser?.id"
 					:delete-label="i18n.baseText('workflows.shareModal.list.delete')"
 				>

@@ -19,9 +19,9 @@ export class ModuleRegistry {
 		private readonly lifecycleMetadata: LifecycleMetadata,
 	) {}
 
-	initializeModules() {
+	async initializeModules() {
 		for (const ModuleClass of this.moduleMetadata.getModules()) {
-			Container.get(ModuleClass).initialize?.();
+			await Container.get(ModuleClass).initialize?.();
 		}
 	}
 

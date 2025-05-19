@@ -25,7 +25,6 @@ import {
 import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, toRef, watch } from 'vue';
 
 import type {
-	IExecutionResponse,
 	INodeUi,
 	INodeUpdatePropertiesInformation,
 	IRunDataDisplayMode,
@@ -43,7 +42,6 @@ import {
 	MAX_DISPLAY_DATA_SIZE,
 	MAX_DISPLAY_DATA_SIZE_SCHEMA_VIEW,
 	NODE_TYPES_EXCLUDED_FROM_OUTPUT_NAME_APPEND,
-	SCHEMA_PREVIEW_EXPERIMENT,
 	TEST_PIN_DATA,
 } from '@/constants';
 
@@ -63,7 +61,7 @@ import { useToast } from '@/composables/useToast';
 import { dataPinningEventBus, ndvEventBus } from '@/event-bus';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { executionDataToJson } from '@/utils/nodeTypesUtils';
@@ -90,7 +88,6 @@ import { useRoute } from 'vue-router';
 import { useUIStore } from '@/stores/ui.store';
 import { useSchemaPreviewStore } from '@/stores/schemaPreview.store';
 import { asyncComputed } from '@vueuse/core';
-import { usePostHog } from '@/stores/posthog.store';
 import ViewSubExecution from './ViewSubExecution.vue';
 import RunDataItemCount from '@/components/RunDataItemCount.vue';
 import RunDataDisplayModeSelect from '@/components/RunDataDisplayModeSelect.vue';
@@ -123,7 +120,7 @@ export type EnterEditModeArgs = {
 
 type Props = {
 	workflow: Workflow;
-	workflowExecution?: IExecutionResponse;
+	workflowExecution?: IRunExecutionData;
 	runIndex: number;
 	tooMuchDataTitle: string;
 	executingMessage: string;
@@ -231,7 +228,6 @@ const sourceControlStore = useSourceControlStore();
 const rootStore = useRootStore();
 const uiStore = useUIStore();
 const schemaPreviewStore = useSchemaPreviewStore();
-const posthogStore = usePostHog();
 
 const toast = useToast();
 const route = useRoute();
@@ -250,11 +246,12 @@ const { isSubNodeType } = useNodeType({
 	node,
 });
 
+const isArchivedWorkflow = computed(() => workflowsStore.workflow.isArchived);
 const isReadOnlyRoute = computed(() => route.meta.readOnlyCanvas === true);
 const isWaitNodeWaiting = computed(() => {
 	return (
 		node.value?.name &&
-		workflowExecution.value?.data?.resultData?.runData?.[node.value?.name]?.[props.runIndex]
+		workflowExecution.value?.resultData?.runData?.[node.value?.name]?.[props.runIndex]
 			?.executionStatus === 'waiting'
 	);
 });
@@ -341,13 +338,13 @@ const executionHints = computed(() => {
 });
 
 const workflowExecution = computed(
-	() => props.workflowExecution ?? workflowsStore.getWorkflowExecution ?? undefined,
+	() => props.workflowExecution ?? workflowsStore.getWorkflowExecution?.data ?? undefined,
 );
 const workflowRunData = computed(() => {
 	if (workflowExecution.value === undefined) {
 		return null;
 	}
-	const executionData: IRunExecutionData | undefined = workflowExecution.value?.data;
+	const executionData: IRunExecutionData | undefined = workflowExecution.value;
 	if (executionData?.resultData) {
 		return executionData.resultData.runData;
 	}
@@ -549,7 +546,8 @@ const pinButtonDisabled = computed(
 		(!rawInputData.value.length && !pinnedData.hasData.value) ||
 		!!binaryData.value?.length ||
 		isReadOnlyRoute.value ||
-		readOnlyEnv.value,
+		readOnlyEnv.value ||
+		isArchivedWorkflow.value,
 );
 
 const activeTaskMetadata = computed((): ITaskMetadata | null => {
@@ -583,13 +581,7 @@ const hasInputOverwrite = computed((): boolean => {
 const isSchemaPreviewEnabled = computed(
 	() =>
 		props.paneType === 'input' &&
-		!(nodeType.value?.codex?.categories ?? []).some(
-			(category) => category === CORE_NODES_CATEGORY,
-		) &&
-		posthogStore.isVariantEnabled(
-			SCHEMA_PREVIEW_EXPERIMENT.name,
-			SCHEMA_PREVIEW_EXPERIMENT.variant,
-		),
+		!(nodeType.value?.codex?.categories ?? []).some((category) => category === CORE_NODES_CATEGORY),
 );
 
 const hasPreviewSchema = asyncComputed(async () => {
@@ -787,7 +779,7 @@ function getNodeHints(): NodeHint[] {
 
 			if (workflowNode) {
 				const nodeHints = nodeHelpers.getNodeHints(props.workflow, workflowNode, nodeType.value, {
-					runExecutionData: workflowExecution.value?.data ?? null,
+					runExecutionData: workflowExecution.value ?? null,
 					runIndex: props.runIndex,
 					connectionInputData: parentNodeOutputData.value,
 				});
@@ -847,7 +839,13 @@ function showPinDataDiscoveryTooltip(value: IDataObject[]) {
 
 	const pinDataDiscoveryFlag = useStorage(LOCAL_STORAGE_PIN_DATA_DISCOVERY_NDV_FLAG).value;
 
-	if (value && value.length > 0 && !isReadOnlyRoute.value && !pinDataDiscoveryFlag) {
+	if (
+		value &&
+		value.length > 0 &&
+		!isReadOnlyRoute.value &&
+		!isArchivedWorkflow.value &&
+		!pinDataDiscoveryFlag
+	) {
 		pinDataDiscoveryComplete();
 
 		setTimeout(() => {
@@ -1367,7 +1365,7 @@ defineExpose({ enterEditMode });
 			data-test-id="ndv-pinned-data-callout"
 		>
 			{{ i18n.baseText('runData.pindata.thisDataIsPinned') }}
-			<span v-if="!isReadOnlyRoute && !readOnlyEnv" class="ml-4xs">
+			<span v-if="!isReadOnlyRoute && !isArchivedWorkflow && !readOnlyEnv" class="ml-4xs">
 				<N8nLink
 					theme="secondary"
 					size="small"

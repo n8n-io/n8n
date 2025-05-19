@@ -9,23 +9,15 @@ export const useCanvasStore = defineStore('canvas', () => {
 	const loadingService = useLoadingService();
 
 	const newNodeInsertPosition = ref<XYPosition | null>(null);
-	const panelHeight = ref(0);
-
 	const nodes = computed<INodeUi[]>(() => workflowStore.allNodes);
 	const aiNodes = computed<INodeUi[]>(() =>
 		nodes.value.filter((node) => node.type.includes('langchain')),
 	);
 
-	function setPanelHeight(height: number) {
-		panelHeight.value = height;
-	}
-
 	return {
 		newNodeInsertPosition,
 		isLoading: loadingService.isLoading,
 		aiNodes,
-		panelHeight: computed(() => panelHeight.value),
-		setPanelHeight,
 		startLoading: loadingService.startLoading,
 		setLoadingText: loadingService.setLoadingText,
 		stopLoading: loadingService.stopLoading,

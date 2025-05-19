@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { STORES } from '@/constants';
+import { STORES } from '@n8n/stores';
 import type {
 	ChangeLocationSearchResult,
 	FolderCreateResponse,
@@ -7,7 +7,7 @@ import type {
 	FolderTreeResponseItem,
 } from '@/Interface';
 import * as workflowsApi from '@/api/workflows';
-import { useRootStore } from './root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { ref } from 'vue';
 import { useI18n } from '@/composables/useI18n';
 import type { DragTarget, DropTarget } from '@/composables/useFolders';
@@ -98,7 +98,7 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 	async function fetchTotalWorkflowsAndFoldersCount(projectId?: string): Promise<number> {
 		const { count } = await workflowsApi.getWorkflowsAndFolders(
 			rootStore.restApiContext,
-			{ projectId },
+			{ projectId, isArchived: false },
 			{ skip: 0, take: 1 },
 			true,
 		);

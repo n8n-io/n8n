@@ -2,7 +2,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import WorkflowExecutionsCard from '@/components/executions/workflow/WorkflowExecutionsCard.vue';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
-import { STORES } from '@/constants';
+import { STORES } from '@n8n/stores';
 
 vi.mock('vue-router', () => ({
 	useRoute: () => ({
@@ -171,5 +171,30 @@ describe('WorkflowExecutionsCard', () => {
 		const executionTimeElement = getByTestId('execution-time');
 		expect(executionTimeElement).toBeVisible();
 		expect(executionTimeElement.textContent).toBe('27 Sep - Starting soon');
+	});
+
+	afterEach(() => {
+		vitest.useRealTimers();
+	});
+
+	test('uses `createdAt` to calculate running time if `startedAt` is undefined', () => {
+		const createdAt = new Date('2024-09-27T12:00:00Z');
+		const now = new Date('2024-09-27T12:30:00Z');
+		vitest.useFakeTimers({ now });
+		const props = {
+			execution: {
+				id: '1',
+				mode: 'webhook',
+				status: 'running',
+				createdAt: createdAt.toISOString(),
+			},
+			workflowPermissions: { execute: true },
+		};
+
+		const { getByTestId } = renderComponent({ props });
+
+		const executionTimeElement = getByTestId('execution-time-in-status');
+		expect(executionTimeElement).toBeVisible();
+		expect(executionTimeElement.textContent).toBe('for -1727438401s');
 	});
 });

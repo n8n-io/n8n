@@ -1,7 +1,7 @@
 import { GlobalConfig } from '@n8n/config';
 import { Container, Service } from '@n8n/di';
 import type { SelectQueryBuilder } from '@n8n/typeorm';
-import { DataSource, Repository } from '@n8n/typeorm';
+import { DataSource, LessThanOrEqual, Repository } from '@n8n/typeorm';
 import { DateTime } from 'luxon';
 import { z } from 'zod';
 
@@ -41,13 +41,19 @@ const aggregatedInsightsByWorkflowParser = z
 
 const aggregatedInsightsByTimeParser = z
 	.object({
-		periodStart: z
-			.union([z.date(), z.string()])
-			.transform((value) =>
-				value instanceof Date
-					? value.toISOString()
-					: DateTime.fromSQL(value.toString(), { zone: 'utc' }).toISO(),
-			),
+		periodStart: z.union([z.date(), z.string()]).transform((value) => {
+			if (value instanceof Date) {
+				return value.toISOString();
+			}
+
+			const parsedDatetime = DateTime.fromSQL(value.toString(), { zone: 'utc' });
+			if (parsedDatetime.isValid) {
+				return parsedDatetime.toISO();
+			}
+
+			// fallback on native date parsing
+			return new Date(value).toISOString();
+		}),
 		runTime: z.union([z.number(), z.string()]).transform((value) => Number(value)),
 		succeeded: z.union([z.number(), z.string()]).transform((value) => Number(value)),
 		failed: z.union([z.number(), z.string()]).transform((value) => Number(value)),
@@ -57,6 +63,8 @@ const aggregatedInsightsByTimeParser = z
 
 @Service()
 export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
+	private isRunningCompaction = false;
+
 	constructor(dataSource: DataSource) {
 		super(InsightsByPeriod, dataSource.manager);
 	}
@@ -171,73 +179,83 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		 */
 		periodUnitToCompactInto: PeriodUnit;
 	}): Promise<number> {
-		// Create temp table that only exists in this transaction for rows to compact
-		const getBatchAndStoreInTemporaryTable = sql`
-			CREATE TEMPORARY TABLE rows_to_compact AS
-			${sourceBatchQuery.getSql()};
-		`;
+		// Skip compaction if the process is already running
+		if (this.isRunningCompaction) {
+			return 0;
+		}
+		this.isRunningCompaction = true;
 
-		const countBatch = sql`
-			SELECT COUNT(*) ${this.escapeField('rowsInBatch')} FROM rows_to_compact;
-		`;
+		try {
+			// Create temp table that only exists in this transaction for rows to compact
+			const getBatchAndStoreInTemporaryTable = sql`
+				CREATE TEMPORARY TABLE rows_to_compact AS
+				${sourceBatchQuery.getSql()};
+			`;
 
-		const targetColumnNamesStr = ['metaId', 'type', 'periodUnit', 'periodStart']
-			.map((param) => this.escapeField(param))
-			.join(', ');
-		const targetColumnNamesWithValue = `${targetColumnNamesStr}, value`;
+			const countBatch = sql`
+				SELECT COUNT(*) ${this.escapeField('rowsInBatch')} FROM rows_to_compact;
+			`;
 
-		// Function to get the aggregation query
-		const aggregationQuery = this.getAggregationQuery(periodUnitToCompactInto);
+			const targetColumnNamesStr = ['metaId', 'type', 'periodUnit', 'periodStart']
+				.map((param) => this.escapeField(param))
+				.join(', ');
+			const targetColumnNamesWithValue = `${targetColumnNamesStr}, value`;
 
-		// Insert or update aggregated data
-		const insertQueryBase = sql`
-			INSERT INTO ${this.metadata.tableName}
-				(${targetColumnNamesWithValue})
-			${aggregationQuery.getSql()}
-		`;
+			// Function to get the aggregation query
+			const aggregationQuery = this.getAggregationQuery(periodUnitToCompactInto);
 
-		// Database-specific duplicate key logic
-		let deduplicateQuery: string;
-		if (dbType === 'mysqldb' || dbType === 'mariadb') {
-			deduplicateQuery = sql`
+			// Insert or update aggregated data
+			const insertQueryBase = sql`
+				INSERT INTO ${this.metadata.tableName}
+					(${targetColumnNamesWithValue})
+				${aggregationQuery.getSql()}
+			`;
+
+			// Database-specific duplicate key logic
+			let deduplicateQuery: string;
+			if (dbType === 'mysqldb' || dbType === 'mariadb') {
+				deduplicateQuery = sql`
 				ON DUPLICATE KEY UPDATE value = value + VALUES(value)`;
-		} else {
-			deduplicateQuery = sql`
+			} else {
+				deduplicateQuery = sql`
 				ON CONFLICT(${targetColumnNamesStr})
 				DO UPDATE SET value = ${this.metadata.tableName}.value + excluded.value
 				RETURNING *`;
+			}
+
+			const upsertEvents = sql`
+				${insertQueryBase}
+				${deduplicateQuery}
+			`;
+
+			// Delete the processed rows
+			const deleteBatch = sql`
+				DELETE FROM ${sourceTableName}
+				WHERE id IN (SELECT id FROM rows_to_compact);
+			`;
+
+			// Clean up
+			const dropTemporaryTable = sql`
+				DROP TABLE rows_to_compact;
+			`;
+
+			const result = await this.manager.transaction(async (trx) => {
+				await trx.query(getBatchAndStoreInTemporaryTable);
+
+				await trx.query<Array<{ type: any; value: number }>>(upsertEvents);
+
+				const rowsInBatch = await trx.query<[{ rowsInBatch: number | string }]>(countBatch);
+
+				await trx.query(deleteBatch);
+				await trx.query(dropTemporaryTable);
+
+				return Number(rowsInBatch[0].rowsInBatch);
+			});
+
+			return result;
+		} finally {
+			this.isRunningCompaction = false;
 		}
-
-		const upsertEvents = sql`
-			${insertQueryBase}
-			${deduplicateQuery}
-		`;
-
-		// Delete the processed rows
-		const deleteBatch = sql`
-			DELETE FROM ${sourceTableName}
-			WHERE id IN (SELECT id FROM rows_to_compact);
-		`;
-
-		// Clean up
-		const dropTemporaryTable = sql`
-			DROP TABLE rows_to_compact;
-		`;
-
-		const result = await this.manager.transaction(async (trx) => {
-			await trx.query(getBatchAndStoreInTemporaryTable);
-
-			await trx.query<Array<{ type: any; value: number }>>(upsertEvents);
-
-			const rowsInBatch = await trx.query<[{ rowsInBatch: number | string }]>(countBatch);
-
-			await trx.query(deleteBatch);
-			await trx.query(dropTemporaryTable);
-
-			return Number(rowsInBatch[0].rowsInBatch);
-		});
-
-		return result;
 	}
 
 	private getAgeLimitQuery(maxAgeInDays: number) {
@@ -369,11 +387,20 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 			])
 			.innerJoin('date_range', 'date_range', '1=1')
 			.where(`${this.escapeField('periodStart')} >= date_range.start_date`)
-			.addGroupBy(this.getPeriodStartExpr(periodUnit))
+			.groupBy(this.getPeriodStartExpr(periodUnit))
 			.orderBy(this.getPeriodStartExpr(periodUnit), 'ASC');
 
 		const rawRows = await rawRowsQuery.getRawMany();
 
 		return aggregatedInsightsByTimeParser.parse(rawRows);
+	}
+
+	async pruneOldData(maxAgeInDays: number): Promise<{ affected: number | null | undefined }> {
+		const thresholdDate = DateTime.now().minus({ days: maxAgeInDays }).startOf('day').toJSDate();
+		const result = await this.delete({
+			periodStart: LessThanOrEqual(thresholdDate),
+		});
+
+		return { affected: result.affected };
 	}
 }

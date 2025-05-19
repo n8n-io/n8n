@@ -1,6 +1,9 @@
 {
     "type": "object",
     "properties": {
+        "app_id": {
+            "type": "string"
+        },
         "blocks": {
             "type": "array",
             "items": {
@@ -24,6 +27,9 @@
                                             },
                                             "type": {
                                                 "type": "string"
+                                            },
+                                            "user_id": {
+                                                "type": "string"
                                             }
                                         }
                                     }
@@ -40,10 +46,50 @@
                 }
             }
         },
-        "client_msg_id": {
+        "bot_id": {
             "type": "string"
         },
-        "subtype": {
+        "bot_profile": {
+            "type": "object",
+            "properties": {
+                "app_id": {
+                    "type": "string"
+                },
+                "deleted": {
+                    "type": "boolean"
+                },
+                "icons": {
+                    "type": "object",
+                    "properties": {
+                        "image_36": {
+                            "type": "string"
+                        },
+                        "image_48": {
+                            "type": "string"
+                        },
+                        "image_72": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "team_id": {
+                    "type": "string"
+                },
+                "updated": {
+                    "type": "integer"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "client_msg_id": {
             "type": "string"
         },
         "team": {
@@ -62,5 +108,5 @@
             "type": "string"
         }
     },
-    "version": 2
+    "version": 3
 }

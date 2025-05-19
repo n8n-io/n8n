@@ -137,12 +137,6 @@ export class WaitingForms extends WaitingWebhooks {
 			}
 		}
 
-		/**
-		 * A manual execution resumed by a webhook call needs to be marked as such
-		 * so workers in scaling mode reuse the existing execution data.
-		 */
-		if (execution.mode === 'manual') execution.data.isTestWebhook = true;
-
 		return await this.getWebhookExecutionData({
 			execution,
 			req,

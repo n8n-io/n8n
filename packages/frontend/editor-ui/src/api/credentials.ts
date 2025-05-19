@@ -30,11 +30,13 @@ export async function getAllCredentials(
 	context: IRestApiContext,
 	filter?: object,
 	includeScopes?: boolean,
+	onlySharedWithMe?: boolean,
 ): Promise<ICredentialsResponse[]> {
 	return await makeRestApiRequest(context, 'GET', '/credentials', {
 		...(includeScopes ? { includeScopes } : {}),
 		includeData: true,
 		...(filter ? { filter } : {}),
+		...(onlySharedWithMe ? { onlySharedWithMe } : {}),
 	});
 }
 

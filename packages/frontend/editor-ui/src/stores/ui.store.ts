@@ -17,7 +17,6 @@ import {
 	MFA_SETUP_MODAL_KEY,
 	PERSONALIZATION_MODAL_KEY,
 	NODE_PINNING_MODAL_KEY,
-	STORES,
 	TAGS_MANAGER_MODAL_KEY,
 	ANNOTATION_TAGS_MANAGER_MODAL_KEY,
 	NPS_SURVEY_MODAL_KEY,
@@ -41,7 +40,9 @@ import {
 	MOVE_FOLDER_MODAL_KEY,
 	WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY,
 	FROM_AI_PARAMETERS_MODAL_KEY,
+	IMPORT_WORKFLOW_URL_MODAL_KEY,
 } from '@/constants';
+import { STORES } from '@n8n/stores';
 import type {
 	INodeUi,
 	XYPosition,
@@ -54,7 +55,7 @@ import type {
 	AppliedThemeOption,
 } from '@/Interface';
 import { defineStore } from 'pinia';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
@@ -126,6 +127,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 				SETUP_CREDENTIALS_MODAL_KEY,
 				PROJECT_MOVE_RESOURCE_MODAL,
 				NEW_ASSISTANT_SESSION_MODAL,
+				IMPORT_WORKFLOW_URL_MODAL_KEY,
 			].map((modalKey) => [modalKey, { open: false }]),
 		),
 		[DELETE_USER_MODAL_KEY]: {
@@ -197,6 +199,12 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			open: false,
 			data: {
 				nodeName: undefined,
+			},
+		},
+		[IMPORT_WORKFLOW_URL_MODAL_KEY]: {
+			open: false,
+			data: {
+				url: '',
 			},
 		},
 	});

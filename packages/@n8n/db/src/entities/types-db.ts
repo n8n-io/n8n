@@ -269,15 +269,15 @@ export const enum StatisticsNames {
 	dataLoaded = 'data_loaded',
 }
 
-export type CredentialSharingRole = 'credential:owner' | 'credential:user';
-
-export type WorkflowSharingRole = 'workflow:owner' | 'workflow:editor';
-
 export type AuthProviderType = 'ldap' | 'email' | 'saml'; // | 'google';
 
 export type FolderWithWorkflowAndSubFolderCount = Folder & {
-	workflowCount: boolean;
-	subFolderCount: number;
+	workflowCount?: boolean;
+	subFolderCount?: number;
+};
+
+export type FolderWithWorkflowAndSubFolderCountAndPath = FolderWithWorkflowAndSubFolderCount & {
+	path?: string[];
 };
 
 export type TestRunFinalResult = 'success' | 'error' | 'warning';
