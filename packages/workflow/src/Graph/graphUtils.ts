@@ -207,7 +207,10 @@ export function parseExtractableSubgraphSelection(
 	// 0-1 Input nodes
 	const inputEdges = getInputEdges(graphIds, adjacencyList);
 	const inputNodes = new Set(inputEdges.filter((x) => x[1].type === 'main').map((x) => x[1].node));
-	const rootNodes = getRootNodes(graphIds, adjacencyList);
+	let rootNodes = getRootNodes(graphIds, adjacencyList);
+
+	// this enables supporting cases where we have one input and a loop back to it from within the selection
+	if (rootNodes.size === 0 && inputNodes.size === 1) rootNodes = inputNodes;
 	for (const inputNode of difference(inputNodes, rootNodes).values()) {
 		errors.push({
 			errorCode: 'Input Edge To Non-Root Node',
@@ -225,7 +228,11 @@ export function parseExtractableSubgraphSelection(
 	// 0-1 Output nodes
 	const outputEdges = getOutputEdges(graphIds, adjacencyList);
 	const outputNodes = new Set(outputEdges.filter((x) => x[1].type === 'main').map((x) => x[0]));
-	const leafNodes = getLeafNodes(graphIds, adjacencyList);
+	let leafNodes = getLeafNodes(graphIds, adjacencyList);
+	// If we have no leaf nodes, and only one output node, we can tolerate this output node
+	// TODO this doesn't make any sense, what would even return from the sub-workflow??
+	if (leafNodes.size === 0 && outputNodes.size === 1) leafNodes = outputNodes;
+
 	for (const outputNode of difference(outputNodes, leafNodes).values()) {
 		errors.push({
 			errorCode: 'Output Edge From Non-Leaf Node',

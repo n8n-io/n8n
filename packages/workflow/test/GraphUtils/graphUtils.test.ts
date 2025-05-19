@@ -259,7 +259,7 @@ describe('graphUtils', () => {
 			]);
 		});
 
-		it('should allow loop within selection', () => {
+		it('should allow loop with node itself', () => {
 			const graphIds = new Set(['A']);
 			const adjacencyList = new Map<string, Set<IConnection>>([
 				['A', new Set([makeConnection('A')])],
@@ -268,7 +268,7 @@ describe('graphUtils', () => {
 			const result = parseExtractableSubgraphSelection(graphIds, adjacencyList);
 			expect(result).toEqual({ start: undefined, end: undefined });
 		});
-		it('should allow loop within selection with input and output', () => {
+		it('should allow loop with node itself with input and output', () => {
 			const graphIds = new Set(['B']);
 			const adjacencyList = new Map<string, Set<IConnection>>([
 				['A', new Set([makeConnection('B')])],
@@ -277,6 +277,58 @@ describe('graphUtils', () => {
 
 			const result = parseExtractableSubgraphSelection(graphIds, adjacencyList);
 			expect(result).toEqual({ start: 'B', end: 'B' });
+		});
+		it('should allow loop within selection', () => {
+			const graphIds = new Set(['A', 'B', 'C']);
+			const adjacencyList = new Map<string, Set<IConnection>>([
+				['A', new Set([makeConnection('B')])],
+				['B', new Set([makeConnection('C')])],
+				['C', new Set([makeConnection('A')])],
+			]);
+
+			const result = parseExtractableSubgraphSelection(graphIds, adjacencyList);
+			expect(result).toEqual({ start: undefined, end: undefined });
+		});
+		it('should allow loop within selection with input', () => {
+			const graphIds = new Set(['A', 'B', 'C']);
+			const adjacencyList = new Map<string, Set<IConnection>>([
+				['A', new Set([makeConnection('B')])],
+				['B', new Set([makeConnection('C')])],
+				['C', new Set([makeConnection('A')])],
+				['D', new Set([makeConnection('B')])],
+			]);
+
+			const result = parseExtractableSubgraphSelection(graphIds, adjacencyList);
+			expect(result).toEqual({ start: 'B', end: undefined });
+		});
+		it('should allow loop within selection with two inputs', () => {
+			const graphIds = new Set(['A', 'B', 'C']);
+			const adjacencyList = new Map<string, Set<IConnection>>([
+				['A', new Set([makeConnection('B')])],
+				['B', new Set([makeConnection('C')])],
+				['C', new Set([makeConnection('A')])],
+				['D', new Set([makeConnection('B')])],
+				['E', new Set([makeConnection('B')])],
+			]);
+
+			const result = parseExtractableSubgraphSelection(graphIds, adjacencyList);
+			expect(result).toEqual({ start: 'B', end: undefined });
+		});
+		it('should not allow loop within selection with inputs to different nodes', () => {
+			const graphIds = new Set(['A', 'B', 'C']);
+			const adjacencyList = new Map<string, Set<IConnection>>([
+				['A', new Set([makeConnection('B')])],
+				['B', new Set([makeConnection('C')])],
+				['C', new Set([makeConnection('A')])],
+				['D', new Set([makeConnection('B')])],
+				['E', new Set([makeConnection('C')])],
+			]);
+
+			const result = parseExtractableSubgraphSelection(graphIds, adjacencyList);
+			expect(result).toEqual([
+				{ errorCode: 'Input Edge To Non-Root Node', node: 'B' },
+				{ errorCode: 'Input Edge To Non-Root Node', node: 'C' },
+			]);
 		});
 	});
 	describe('hasPath', () => {
