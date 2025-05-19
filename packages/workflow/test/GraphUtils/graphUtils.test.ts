@@ -31,7 +31,7 @@ describe('graphUtils', () => {
 			]);
 
 			const result = getInputEdges(graphIds, adjacencyList);
-			expect(result).toEqual([['A', 'B']]);
+			expect(result).toEqual([['A', makeConnection('B')]]);
 		});
 
 		it('should return an empty array if there are no input edges', () => {
@@ -56,7 +56,7 @@ describe('graphUtils', () => {
 			]);
 
 			const result = getOutputEdges(graphIds, adjacencyList);
-			expect(result).toEqual([['B', 'C']]);
+			expect(result).toEqual([['B', makeConnection('C')]]);
 		});
 
 		it('should return an empty array if there are no output edges', () => {
@@ -78,7 +78,7 @@ describe('graphUtils', () => {
 			]);
 
 			const result = getRootNodes(graphIds, adjacencyList);
-			expect(result).toEqual(new Set([makeConnection('A'), makeConnection('C')]));
+			expect(result).toEqual(new Set(['A', 'C']));
 		});
 
 		it('should return all nodes if there are no incoming edges', () => {
@@ -124,7 +124,7 @@ describe('graphUtils', () => {
 			]);
 
 			const result = parseExtractableSubgraphSelection(graphIds, adjacencyList);
-			expect(result).toMatchObject({ start: 'A' });
+			expect(result).toEqual({ start: 'A', end: undefined });
 		});
 
 		it('should return successfully for multiple edges into single input node', () => {
@@ -137,7 +137,7 @@ describe('graphUtils', () => {
 			]);
 
 			const result = parseExtractableSubgraphSelection(graphIds, adjacencyList);
-			expect(result).toMatchObject({ start: 'A' });
+			expect(result).toEqual({ start: 'A', end: undefined });
 		});
 
 		it('should return successfully for multiple edges from single output nodes', () => {
@@ -148,7 +148,7 @@ describe('graphUtils', () => {
 			]);
 
 			const result = parseExtractableSubgraphSelection(graphIds, adjacencyList);
-			expect(result).toMatchObject({});
+			expect(result).toEqual({ start: undefined, end: 'B' });
 		});
 
 		it('should return errors for input edge to non-root node', () => {
@@ -192,7 +192,7 @@ describe('graphUtils', () => {
 			]);
 
 			const result = parseExtractableSubgraphSelection(graphIds, adjacencyList);
-			expect(result).toMatchObject({});
+			expect(result).toEqual({ start: 'A', end: undefined });
 		});
 
 		it('should return an error for multiple root nodes with inputs', () => {
@@ -208,7 +208,7 @@ describe('graphUtils', () => {
 			expect(result).toEqual([
 				{
 					errorCode: 'Multiple Input Nodes',
-					nodes: new Set([makeConnection('A'), makeConnection('B')]),
+					nodes: new Set(['A', 'B']),
 				},
 			]);
 		});
@@ -221,7 +221,7 @@ describe('graphUtils', () => {
 			]);
 
 			const result = parseExtractableSubgraphSelection(graphIds, adjacencyList);
-			expect(result).toMatchObject({});
+			expect(result).toEqual({ start: undefined, end: 'C' });
 		});
 
 		it('should return an error for multiple leaf nodes with outputs', () => {
@@ -236,7 +236,7 @@ describe('graphUtils', () => {
 			expect(result).toEqual([
 				{
 					errorCode: 'Multiple Output Nodes',
-					nodes: new Set([makeConnection('B'), makeConnection('C')]),
+					nodes: new Set(['B', 'C']),
 				},
 			]);
 		});
@@ -257,6 +257,26 @@ describe('graphUtils', () => {
 					end: 'A',
 				},
 			]);
+		});
+
+		it('should allow loop within selection', () => {
+			const graphIds = new Set(['A']);
+			const adjacencyList = new Map<string, Set<IConnection>>([
+				['A', new Set([makeConnection('A')])],
+			]);
+
+			const result = parseExtractableSubgraphSelection(graphIds, adjacencyList);
+			expect(result).toEqual({ start: undefined, end: undefined });
+		});
+		it('should allow loop within selection with input and output', () => {
+			const graphIds = new Set(['B']);
+			const adjacencyList = new Map<string, Set<IConnection>>([
+				['A', new Set([makeConnection('B')])],
+				['B', new Set([makeConnection('B'), makeConnection('C')])],
+			]);
+
+			const result = parseExtractableSubgraphSelection(graphIds, adjacencyList);
+			expect(result).toEqual({ start: 'B', end: 'B' });
 		});
 	});
 	describe('hasPath', () => {

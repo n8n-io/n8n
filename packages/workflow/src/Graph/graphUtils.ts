@@ -107,7 +107,9 @@ export function getRootNodes(graphIds: Set<string>, adjacencyList: AdjacencyList
 		innerNodes = union(
 			innerNodes,
 			new Set(
-				[...(adjacencyList.get(nodeId) ?? [])].filter((x) => x.type === 'main').map((x) => x.node),
+				[...(adjacencyList.get(nodeId) ?? [])]
+					.filter((x) => x.type === 'main' && x.node !== nodeId)
+					.map((x) => x.node),
 			),
 		);
 	}
@@ -118,7 +120,16 @@ export function getRootNodes(graphIds: Set<string>, adjacencyList: AdjacencyList
 export function getLeafNodes(graphIds: Set<string>, adjacencyList: AdjacencyList): Set<string> {
 	const result = new Set<string>();
 	for (const nodeId of graphIds) {
-		if (intersection(adjacencyList.get(nodeId) ?? new Set(), graphIds).size === 0) {
+		if (
+			intersection(
+				new Set(
+					[...(adjacencyList.get(nodeId) ?? [])]
+						.filter((x) => x.type === 'main' && x.node !== nodeId)
+						.map((x) => x.node),
+				),
+				graphIds,
+			).size === 0
+		) {
 			result.add(nodeId);
 		}
 	}
