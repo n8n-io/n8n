@@ -3,8 +3,8 @@ import type {
 	PushWorkFolderRequestDto,
 	SourceControlledFile,
 } from '@n8n/api-types';
-import { Variables, TagEntity, User } from '@n8n/db';
-import { FolderRepository, TagRepository } from '@n8n/db';
+import type { Variables, TagEntity } from '@n8n/db';
+import { FolderRepository, TagRepository, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { writeFileSync } from 'fs';
 import { Logger } from 'n8n-core';
@@ -38,10 +38,10 @@ import { SourceControlPreferencesService } from './source-control-preferences.se
 import type { ExportableCredential } from './types/exportable-credential';
 import type { ExportableFolder } from './types/exportable-folders';
 import type { ImportResult } from './types/import-result';
+import type { SourceControlContext } from './types/source-control-context';
 import type { SourceControlGetStatus } from './types/source-control-get-status';
 import type { SourceControlPreferences } from './types/source-control-preferences';
 import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
-import { SourceControlContext } from './types/source-control-context';
 
 const GlobalAccessContext: SourceControlContext = {
 	user: Object.assign(new User(), {
@@ -680,8 +680,9 @@ export class SourceControlService {
 		context: SourceControlContext,
 		sourceControlledFiles: SourceControlledFile[],
 	) {
-		const credRemoteIds = await this.sourceControlImportService.getRemoteCredentialsFromFiles();
-		const credLocalIds = await this.sourceControlImportService.getLocalCredentialsFromDb();
+		const credRemoteIds =
+			await this.sourceControlImportService.getRemoteCredentialsFromFiles(context);
+		const credLocalIds = await this.sourceControlImportService.getLocalCredentialsFromDb(context);
 
 		const credMissingInLocal = credRemoteIds.filter(
 			(remote) => credLocalIds.findIndex((local) => local.id === remote.id) === -1,

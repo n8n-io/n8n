@@ -50,11 +50,11 @@ import {
 import { getCredentialExportPath, getWorkflowExportPath } from './source-control-helper.ee';
 import type { ExportableCredential } from './types/exportable-credential';
 import type { ExportableFolder } from './types/exportable-folders';
+import type { ExportableTags } from './types/exportable-tags';
 import type { ResourceOwner } from './types/resource-owner';
 import type { SourceControlContext } from './types/source-control-context';
 import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
 import { VariablesService } from '../variables/variables.service.ee';
-import { ExportableTags } from './types/exportable-tags';
 
 @Service()
 export class SourceControlImportService {

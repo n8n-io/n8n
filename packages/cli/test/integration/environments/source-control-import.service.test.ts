@@ -899,8 +899,6 @@ describe('SourceControlImportService', () => {
 				user: teamAdmin,
 			});
 
-			console.log('Result', result);
-
 			expect(new Set(result.tags.map((r) => r.id))).toEqual(
 				new Set(mockTagData.tags.map((t) => t.id)),
 			);
