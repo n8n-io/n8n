@@ -1,6 +1,6 @@
 {
   "name": "@n8n/n8n-nodes-langchain",
-  "version": "1.92.0",
+  "version": "1.93.0",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -133,7 +133,8 @@
       "dist/nodes/vector_store/VectorStoreSupabaseLoad/VectorStoreSupabaseLoad.node.js",
       "dist/nodes/vector_store/VectorStoreZep/VectorStoreZep.node.js",
       "dist/nodes/vector_store/VectorStoreZepInsert/VectorStoreZepInsert.node.js",
-      "dist/nodes/vector_store/VectorStoreZepLoad/VectorStoreZepLoad.node.js"
+      "dist/nodes/vector_store/VectorStoreZepLoad/VectorStoreZepLoad.node.js",
+      "dist/nodes/ToolExecutor/ToolExecutor.node.js"
     ]
   },
   "devDependencies": {
@@ -149,7 +150,7 @@
     "tsup": "catalog:"
   },
   "dependencies": {
-    "@aws-sdk/client-sso-oidc": "3.666.0",
+    "@aws-sdk/client-sso-oidc": "3.808.0",
     "@azure/identity": "4.3.0",
     "@getzep/zep-cloud": "1.0.12",
     "@getzep/zep-js": "0.9.0",
@@ -193,6 +194,7 @@
     "form-data": "catalog:",
     "generate-schema": "2.6.0",
     "html-to-text": "9.0.5",
+    "https-proxy-agent": "^7.0.6",
     "jsdom": "23.0.1",
     "langchain": "0.3.11",
     "lodash": "catalog:",

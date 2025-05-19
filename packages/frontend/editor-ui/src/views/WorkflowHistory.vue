@@ -18,7 +18,7 @@ import { useWorkflowHistoryStore } from '@/stores/workflowHistory.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { telemetry } from '@/plugins/telemetry';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { getResourcePermissions } from '@/permissions';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
@@ -329,9 +329,16 @@ watchEffect(async () => {
 </script>
 <template>
 	<div :class="$style.view">
-		<n8n-heading :class="$style.header" tag="h2" size="medium">
-			{{ activeWorkflow?.name }}
-		</n8n-heading>
+		<div :class="$style.header">
+			<n8n-heading tag="h2" size="medium">
+				{{ activeWorkflow?.name }}
+			</n8n-heading>
+			<span v-if="activeWorkflow?.isArchived">
+				<N8nBadge class="ml-s" theme="tertiary" bold data-test-id="workflow-archived-tag">
+					{{ i18n.baseText('workflows.item.archived') }}
+				</N8nBadge>
+			</span>
+		</div>
 		<div :class="$style.corner">
 			<n8n-heading tag="h2" size="medium" bold>
 				{{ i18n.baseText('workflowHistory.title') }}

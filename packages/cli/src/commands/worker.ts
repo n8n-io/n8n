@@ -1,16 +1,17 @@
+import { inTest } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import { Flags, type Config } from '@oclif/core';
 
 import config from '@/config';
-import { N8N_VERSION, inTest } from '@/constants';
+import { N8N_VERSION } from '@/constants';
 import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-message-generic';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { PubSubHandler } from '@/scaling/pubsub/pubsub-handler';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import type { ScalingService } from '@/scaling/scaling.service';
 import type { WorkerServerEndpointsConfig } from '@/scaling/worker-server';
-import { OrchestrationService } from '@/services/orchestration.service';
 
 import { BaseCommand } from './base-command';
 
@@ -127,12 +128,10 @@ export class Worker extends BaseCommand {
 	 * The subscription connection adds a handler to handle the command messages
 	 */
 	async initOrchestration() {
-		await Container.get(OrchestrationService).init();
+		Container.get(Publisher);
 
 		Container.get(PubSubHandler).init();
 		await Container.get(Subscriber).subscribe('n8n.commands');
-
-		this.logger.scoped(['scaling', 'pubsub']).debug('Pubsub setup completed');
 	}
 
 	async setConcurrency() {

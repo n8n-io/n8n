@@ -3,7 +3,7 @@ import { defineStore } from 'pinia';
 import { useAsyncState } from '@vueuse/core';
 import type { ListInsightsWorkflowQueryDto, InsightsDateRange } from '@n8n/api-types';
 import * as insightsApi from '@/features/insights/insights.api';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { transformInsightsSummary } from '@/features/insights/insights.utils';
@@ -33,7 +33,7 @@ export const useInsightsStore = defineStore('insights', () => {
 			return transformInsightsSummary(raw);
 		},
 		[],
-		{ immediate: false },
+		{ immediate: false, resetOnExecute: false },
 	);
 
 	const summary = useAsyncState(
@@ -42,7 +42,7 @@ export const useInsightsStore = defineStore('insights', () => {
 			return transformInsightsSummary(raw);
 		},
 		[],
-		{ immediate: false },
+		{ immediate: false, resetOnExecute: false },
 	);
 
 	const charts = useAsyncState(
@@ -50,7 +50,7 @@ export const useInsightsStore = defineStore('insights', () => {
 			return await insightsApi.fetchInsightsByTime(rootStore.restApiContext, filter);
 		},
 		[],
-		{ immediate: false },
+		{ immediate: false, resetOnExecute: false },
 	);
 
 	const table = useAsyncState(
@@ -61,7 +61,7 @@ export const useInsightsStore = defineStore('insights', () => {
 			count: 0,
 			data: [],
 		},
-		{ resetOnExecute: false, immediate: false },
+		{ immediate: false, resetOnExecute: false },
 	);
 
 	const dateRanges = computed(() => settingsStore.settings.insights.dateRanges);

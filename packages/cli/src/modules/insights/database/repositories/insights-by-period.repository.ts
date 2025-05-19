@@ -1,7 +1,7 @@
 import { GlobalConfig } from '@n8n/config';
 import { Container, Service } from '@n8n/di';
 import type { SelectQueryBuilder } from '@n8n/typeorm';
-import { DataSource, Repository } from '@n8n/typeorm';
+import { DataSource, LessThanOrEqual, Repository } from '@n8n/typeorm';
 import { DateTime } from 'luxon';
 import { z } from 'zod';
 
@@ -41,13 +41,19 @@ const aggregatedInsightsByWorkflowParser = z
 
 const aggregatedInsightsByTimeParser = z
 	.object({
-		periodStart: z
-			.union([z.date(), z.string()])
-			.transform((value) =>
-				value instanceof Date
-					? value.toISOString()
-					: DateTime.fromSQL(value.toString(), { zone: 'utc' }).toISO(),
-			),
+		periodStart: z.union([z.date(), z.string()]).transform((value) => {
+			if (value instanceof Date) {
+				return value.toISOString();
+			}
+
+			const parsedDatetime = DateTime.fromSQL(value.toString(), { zone: 'utc' });
+			if (parsedDatetime.isValid) {
+				return parsedDatetime.toISO();
+			}
+
+			// fallback on native date parsing
+			return new Date(value).toISOString();
+		}),
 		runTime: z.union([z.number(), z.string()]).transform((value) => Number(value)),
 		succeeded: z.union([z.number(), z.string()]).transform((value) => Number(value)),
 		failed: z.union([z.number(), z.string()]).transform((value) => Number(value)),
@@ -381,11 +387,20 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 			])
 			.innerJoin('date_range', 'date_range', '1=1')
 			.where(`${this.escapeField('periodStart')} >= date_range.start_date`)
-			.addGroupBy(this.getPeriodStartExpr(periodUnit))
+			.groupBy(this.getPeriodStartExpr(periodUnit))
 			.orderBy(this.getPeriodStartExpr(periodUnit), 'ASC');
 
 		const rawRows = await rawRowsQuery.getRawMany();
 
 		return aggregatedInsightsByTimeParser.parse(rawRows);
+	}
+
+	async pruneOldData(maxAgeInDays: number): Promise<{ affected: number | null | undefined }> {
+		const thresholdDate = DateTime.now().minus({ days: maxAgeInDays }).startOf('day').toJSDate();
+		const result = await this.delete({
+			periodStart: LessThanOrEqual(thresholdDate),
+		});
+
+		return { affected: result.affected };
 	}
 }

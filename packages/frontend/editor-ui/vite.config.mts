@@ -36,6 +36,10 @@ const alias = [
 		replacement: resolve(packagesDir, 'frontend', '@n8n', 'design-system', 'src$1'),
 	},
 	{
+		find: /^@n8n\/stores(.+)$/,
+		replacement: resolve(packagesDir, 'frontend', '@n8n', 'stores', 'src$1'),
+	},
+	{
 		find: /^@n8n\/utils(.+)$/,
 		replacement: resolve(packagesDir, '@n8n', 'utils', 'src$1'),
 	},

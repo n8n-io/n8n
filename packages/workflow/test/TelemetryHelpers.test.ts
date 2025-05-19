@@ -148,6 +148,7 @@ describe('generateNodesGraph', () => {
 			},
 			nameIndices: { 'When clicking "Execute Workflow"': '0', 'Google Sheets': '1' },
 			webhookNodeNames: [],
+			evaluationTriggerNodeNames: [],
 		});
 	});
 
@@ -175,6 +176,7 @@ describe('generateNodesGraph', () => {
 			},
 			nameIndices: {},
 			webhookNodeNames: [],
+			evaluationTriggerNodeNames: [],
 		});
 	});
 
@@ -190,6 +192,7 @@ describe('generateNodesGraph', () => {
 			},
 			nameIndices: {},
 			webhookNodeNames: [],
+			evaluationTriggerNodeNames: [],
 		});
 	});
 
@@ -256,6 +259,7 @@ describe('generateNodesGraph', () => {
 			},
 			nameIndices: { 'When clicking "Execute Workflow"': '0', 'Google Sheets': '1' },
 			webhookNodeNames: [],
+			evaluationTriggerNodeNames: [],
 		});
 	});
 
@@ -333,6 +337,7 @@ describe('generateNodesGraph', () => {
 			},
 			nameIndices: { 'When clicking "Execute Workflow"': '0', 'Google Sheets': '1' },
 			webhookNodeNames: [],
+			evaluationTriggerNodeNames: [],
 		});
 	});
 
@@ -388,6 +393,7 @@ describe('generateNodesGraph', () => {
 			versionId: '70b92d94-0e9a-4b41-9976-a654df420af5',
 		};
 		expect(generateNodesGraph(workflow, nodeTypes)).toEqual({
+			evaluationTriggerNodeNames: [],
 			nodeGraph: {
 				node_types: ['n8n-nodes-base.manualTrigger', 'test.googleSheets'],
 				node_connections: [{ start: '0', end: '1' }],
@@ -451,6 +457,7 @@ describe('generateNodesGraph', () => {
 				notes: {},
 			},
 			webhookNodeNames: [],
+			evaluationTriggerNodeNames: [],
 		});
 	});
 
@@ -474,6 +481,7 @@ describe('generateNodesGraph', () => {
 			pinData: {},
 		};
 		expect(generateNodesGraph(workflow, nodeTypes)).toEqual({
+			evaluationTriggerNodeNames: [],
 			nodeGraph: {
 				node_types: ['n8n-nodes-base.webhook'],
 				node_connections: [],
@@ -520,6 +528,7 @@ describe('generateNodesGraph', () => {
 			pinData: {},
 		};
 		expect(generateNodesGraph(workflow, nodeTypes)).toEqual({
+			evaluationTriggerNodeNames: [],
 			nodeGraph: {
 				node_types: ['n8n-nodes-base.httpRequest'],
 				node_connections: [],
@@ -574,6 +583,7 @@ describe('generateNodesGraph', () => {
 			pinData: {},
 		};
 		expect(generateNodesGraph(workflow, nodeTypes)).toEqual({
+			evaluationTriggerNodeNames: [],
 			nodeGraph: {
 				node_types: ['n8n-nodes-base.httpRequest'],
 				node_connections: [],
@@ -635,6 +645,7 @@ describe('generateNodesGraph', () => {
 				},
 				nameIndices: { 'Merge Node V3': '0' },
 				webhookNodeNames: [],
+				evaluationTriggerNodeNames: [],
 			},
 		},
 		{
@@ -673,6 +684,7 @@ describe('generateNodesGraph', () => {
 				},
 				nameIndices: { 'Merge Node V3': '0' },
 				webhookNodeNames: [],
+				evaluationTriggerNodeNames: [],
 			},
 		},
 		{
@@ -713,6 +725,7 @@ describe('generateNodesGraph', () => {
 				},
 				nameIndices: { 'Merge Node V3': '0' },
 				webhookNodeNames: [],
+				evaluationTriggerNodeNames: [],
 			},
 		},
 	])('should return graph with merge v3 node', ({ workflow, expected, isCloudDeployment }) => {
@@ -755,6 +768,7 @@ describe('generateNodesGraph', () => {
 			},
 			nameIndices: { 'HTTP Request V1': '0' },
 			webhookNodeNames: [],
+			evaluationTriggerNodeNames: [],
 		});
 	});
 
@@ -795,6 +809,7 @@ describe('generateNodesGraph', () => {
 			},
 			nameIndices: { 'HTTP Request v4 with defaults': '0' },
 			webhookNodeNames: [],
+			evaluationTriggerNodeNames: [],
 		});
 	});
 
@@ -804,7 +819,7 @@ describe('generateNodesGraph', () => {
 				{
 					parameters: {},
 					id: 'fe69383c-e418-4f98-9c0e-924deafa7f93',
-					name: 'When clicking ‘Test workflow’',
+					name: 'When clicking ‘Execute workflow’',
 					type: 'n8n-nodes-base.manualTrigger',
 					typeVersion: 1,
 					position: [540, 220],
@@ -829,7 +844,7 @@ describe('generateNodesGraph', () => {
 				},
 			],
 			connections: {
-				'When clicking ‘Test workflow’': {
+				'When clicking ‘Execute workflow’': {
 					main: [
 						[
 							{
@@ -895,11 +910,12 @@ describe('generateNodesGraph', () => {
 				is_pinned: false,
 			},
 			nameIndices: {
-				'When clicking ‘Test workflow’': '0',
+				'When clicking ‘Execute workflow’': '0',
 				Chain: '1',
 				Model: '2',
 			},
 			webhookNodeNames: [],
+			evaluationTriggerNodeNames: [],
 		});
 	});
 
@@ -1012,6 +1028,7 @@ describe('generateNodesGraph', () => {
 				notes: {},
 			},
 			webhookNodeNames: [],
+			evaluationTriggerNodeNames: [],
 		});
 	});
 });

@@ -5,6 +5,13 @@ import {
 	CredentialsRepository,
 	FolderRepository,
 	ProjectRepository,
+	TagRepository,
+	VariablesRepository,
+	WorkflowTagMappingRepository,
+	SharedCredentialsRepository,
+	SharedWorkflowRepository,
+	WorkflowRepository,
+	UserRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
@@ -17,13 +24,6 @@ import path from 'path';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CredentialsService } from '@/credentials/credentials.service';
-import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
-import { TagRepository } from '@/databases/repositories/tag.repository';
-import { UserRepository } from '@/databases/repositories/user.repository';
-import { VariablesRepository } from '@/databases/repositories/variables.repository';
-import { WorkflowTagMappingRepository } from '@/databases/repositories/workflow-tag-mapping.repository';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import type { IWorkflowToImport } from '@/interfaces';
 import { isUniqueConstraintError } from '@/response-helper';
 import { TagService } from '@/services/tag.service';

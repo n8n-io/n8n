@@ -1,4 +1,4 @@
-import { SharedWorkflow } from '@n8n/db';
+import { SharedWorkflowRepository } from '@n8n/db';
 import { OnLifecycleEvent, type WorkflowExecuteAfterContext } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { In } from '@n8n/typeorm';
@@ -6,10 +6,11 @@ import { DateTime } from 'luxon';
 import { Logger } from 'n8n-core';
 import { UnexpectedError, type ExecutionStatus, type WorkflowExecuteMode } from 'n8n-workflow';
 
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { InsightsMetadata } from '@/modules/insights/database/entities/insights-metadata';
 import { InsightsRaw } from '@/modules/insights/database/entities/insights-raw';
 
+import { InsightsMetadataRepository } from './database/repositories/insights-metadata.repository';
+import { InsightsRawRepository } from './database/repositories/insights-raw.repository';
 import { InsightsConfig } from './insights.config';
 
 const shouldSkipStatus: Record<ExecutionStatus, boolean> = {
@@ -64,6 +65,8 @@ export class InsightsCollectionService {
 
 	constructor(
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
+		private readonly insightsRawRepository: InsightsRawRepository,
+		private readonly insightsMetadataRepository: InsightsMetadataRepository,
 		private readonly insightsConfig: InsightsConfig,
 		private readonly logger: Logger,
 	) {
@@ -159,62 +162,60 @@ export class InsightsCollectionService {
 			workflowIdNames.set(event.workflowId, event.workflowName);
 		}
 
-		await this.sharedWorkflowRepository.manager.transaction(async (trx) => {
-			const sharedWorkflows = await trx.find(SharedWorkflow, {
-				where: { workflowId: In([...workflowIdNames.keys()]), role: 'workflow:owner' },
-				relations: { project: true },
-			});
-
-			// Upsert metadata for the workflows that are not already in the cache or have
-			// different project or workflow names
-			const metadataToUpsert = sharedWorkflows.reduce((acc, workflow) => {
-				const cachedMetadata = this.cachedMetadata.get(workflow.workflowId);
-				if (
-					!cachedMetadata ||
-					cachedMetadata.projectId !== workflow.projectId ||
-					cachedMetadata.projectName !== workflow.project.name ||
-					cachedMetadata.workflowName !== workflowIdNames.get(workflow.workflowId)
-				) {
-					const metadata = new InsightsMetadata();
-					metadata.projectId = workflow.projectId;
-					metadata.projectName = workflow.project.name;
-					metadata.workflowId = workflow.workflowId;
-					metadata.workflowName = workflowIdNames.get(workflow.workflowId)!;
-
-					acc.push(metadata);
-				}
-				return acc;
-			}, [] as InsightsMetadata[]);
-
-			await trx.upsert(InsightsMetadata, metadataToUpsert, ['workflowId']);
-
-			const upsertMetadata = await trx.findBy(InsightsMetadata, {
-				workflowId: In(metadataToUpsert.map((m) => m.workflowId)),
-			});
-			for (const metadata of upsertMetadata) {
-				this.cachedMetadata.set(metadata.workflowId, metadata);
-			}
-
-			const events: InsightsRaw[] = [];
-			for (const event of insightsRawToInsertBuffer) {
-				const insight = new InsightsRaw();
-				const metadata = this.cachedMetadata.get(event.workflowId);
-				if (!metadata) {
-					// could not find shared workflow for this insight (not supposed to happen)
-					throw new UnexpectedError(
-						`Could not find shared workflow for insight with workflowId ${event.workflowId}`,
-					);
-				}
-				insight.metaId = metadata.metaId;
-				insight.type = event.type;
-				insight.value = event.value;
-				insight.timestamp = event.timestamp;
-
-				events.push(insight);
-			}
-
-			await trx.insert(InsightsRaw, events);
+		const sharedWorkflows = await this.sharedWorkflowRepository.find({
+			where: { workflowId: In([...workflowIdNames.keys()]), role: 'workflow:owner' },
+			relations: { project: true },
 		});
+
+		// Upsert metadata for the workflows that are not already in the cache or have
+		// different project or workflow names
+		const metadataToUpsert = sharedWorkflows.reduce((acc, workflow) => {
+			const cachedMetadata = this.cachedMetadata.get(workflow.workflowId);
+			if (
+				!cachedMetadata ||
+				cachedMetadata.projectId !== workflow.projectId ||
+				cachedMetadata.projectName !== workflow.project.name ||
+				cachedMetadata.workflowName !== workflowIdNames.get(workflow.workflowId)
+			) {
+				const metadata = new InsightsMetadata();
+				metadata.projectId = workflow.projectId;
+				metadata.projectName = workflow.project.name;
+				metadata.workflowId = workflow.workflowId;
+				metadata.workflowName = workflowIdNames.get(workflow.workflowId)!;
+
+				acc.push(metadata);
+			}
+			return acc;
+		}, [] as InsightsMetadata[]);
+
+		await this.insightsMetadataRepository.upsert(metadataToUpsert, ['workflowId']);
+
+		const upsertMetadata = await this.insightsMetadataRepository.findBy({
+			workflowId: In(metadataToUpsert.map((m) => m.workflowId)),
+		});
+		for (const metadata of upsertMetadata) {
+			this.cachedMetadata.set(metadata.workflowId, metadata);
+		}
+
+		const events: InsightsRaw[] = [];
+		for (const event of insightsRawToInsertBuffer) {
+			const insight = new InsightsRaw();
+			const metadata = this.cachedMetadata.get(event.workflowId);
+			if (!metadata) {
+				// could not find shared workflow for this insight (not supposed to happen)
+				throw new UnexpectedError(
+					`Could not find shared workflow for insight with workflowId ${event.workflowId}`,
+				);
+			}
+			insight.metaId = metadata.metaId;
+			insight.type = event.type;
+			insight.value = event.value;
+			insight.timestamp = event.timestamp;
+
+			events.push(insight);
+		}
+
+		await this.insightsRawRepository.insert(events);
 	}
 
 	async flushEvents() {

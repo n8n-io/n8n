@@ -1,11 +1,14 @@
 import type { CredentialsEntity } from '@n8n/db';
-import { User, CredentialsRepository, ProjectRepository } from '@n8n/db';
+import {
+	User,
+	CredentialsRepository,
+	ProjectRepository,
+	SettingsRepository,
+	SharedCredentialsRepository,
+	SharedWorkflowRepository,
+	UserRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
-
-import { SettingsRepository } from '@/databases/repositories/settings.repository';
-import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
-import { UserRepository } from '@/databases/repositories/user.repository';
 
 import { BaseCommand } from '../base-command';
 

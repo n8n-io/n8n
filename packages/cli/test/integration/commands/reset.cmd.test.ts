@@ -1,12 +1,11 @@
-import { CredentialsEntity } from '@n8n/db';
+import { CredentialsEntity, SettingsRepository } from '@n8n/db';
 import { CredentialsRepository } from '@n8n/db';
+import { SharedCredentialsRepository } from '@n8n/db';
+import { SharedWorkflowRepository } from '@n8n/db';
+import { UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { Reset } from '@/commands/user-management/reset';
-import { SettingsRepository } from '@/databases/repositories/settings.repository';
-import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
-import { UserRepository } from '@/databases/repositories/user.repository';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { NodeTypes } from '@/node-types';
 import { setupTestCommand } from '@test-integration/utils/test-command';

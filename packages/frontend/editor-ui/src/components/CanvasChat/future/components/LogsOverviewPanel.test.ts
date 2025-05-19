@@ -14,30 +14,24 @@ import {
 	aiManualWorkflow,
 } from '../../__test__/data';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
-import { useNDVStore } from '@/stores/ndv.store';
 import { createTestWorkflowObject } from '@/__tests__/mocks';
-import { createLogEntries } from '@/components/RunDataAi/utils';
+import { createLogTree, flattenLogEntries } from '@/components/RunDataAi/utils';
 
 describe('LogsOverviewPanel', () => {
 	let pinia: TestingPinia;
 	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
 	let pushConnectionStore: ReturnType<typeof mockedStore<typeof usePushConnectionStore>>;
-	let ndvStore: ReturnType<typeof mockedStore<typeof useNDVStore>>;
 
 	function render(props: Partial<InstanceType<typeof LogsOverviewPanel>['$props']>) {
+		const logs = createLogTree(createTestWorkflowObject(aiChatWorkflow), aiChatExecutionResponse);
 		const mergedProps: InstanceType<typeof LogsOverviewPanel>['$props'] = {
 			isOpen: false,
 			isReadOnly: false,
 			isCompact: false,
-			scrollToSelection: false,
-			execution: {
-				...aiChatExecutionResponse,
-				tree: createLogEntries(
-					createTestWorkflowObject(aiChatWorkflow),
-					aiChatExecutionResponse.data?.resultData.runData ?? {},
-				),
-			},
+			flatLogEntries: flattenLogEntries(logs, {}),
+			entries: logs,
 			latestNodeInfo: {},
+			execution: aiChatExecutionResponse,
 			...props,
 		};
 
@@ -64,8 +58,6 @@ describe('LogsOverviewPanel', () => {
 
 		pushConnectionStore = mockedStore(usePushConnectionStore);
 		pushConnectionStore.isConnected = true;
-
-		ndvStore = mockedStore(useNDVStore);
 	});
 
 	it('should not render body if the panel is not open', () => {
@@ -75,7 +67,12 @@ describe('LogsOverviewPanel', () => {
 	});
 
 	it('should render empty text if there is no execution', () => {
-		const rendered = render({ isOpen: true, execution: undefined });
+		const rendered = render({
+			isOpen: true,
+			flatLogEntries: [],
+			entries: [],
+			execution: undefined,
+		});
 
 		expect(rendered.queryByTestId('logs-overview-empty')).toBeInTheDocument();
 	});
@@ -106,69 +103,26 @@ describe('LogsOverviewPanel', () => {
 		expect(row2.queryByText('in 1.777s')).toBeInTheDocument();
 		expect(row2.queryByText('Started 00:00:00.003, 26 Mar')).toBeInTheDocument();
 		expect(row2.queryByText('555 Tokens')).toBeInTheDocument();
-
-		// collapse tree
-		await fireEvent.click(row1.getAllByLabelText('Toggle row')[0]);
-		await waitFor(() => expect(tree.queryAllByRole('treeitem')).toHaveLength(1));
-	});
-
-	it('should open NDV if the button is clicked', async () => {
-		const rendered = render({
-			isOpen: true,
-		});
-		const aiAgentRow = (await rendered.findAllByRole('treeitem'))[0];
-
-		expect(ndvStore.activeNodeName).toBe(null);
-		expect(ndvStore.output.run).toBe(undefined);
-
-		await fireEvent.click(within(aiAgentRow).getAllByLabelText('Open...')[0]);
-
-		await waitFor(() => {
-			expect(ndvStore.activeNodeName).toBe('AI Agent');
-			expect(ndvStore.output.run).toBe(0);
-		});
 	});
 
 	it('should trigger partial execution if the button is clicked', async () => {
 		const spyRun = vi.spyOn(workflowsStore, 'runWorkflow');
 
+		const logs = createLogTree(
+			createTestWorkflowObject(aiManualWorkflow),
+			aiManualExecutionResponse,
+		);
 		const rendered = render({
 			isOpen: true,
-			execution: {
-				...aiManualExecutionResponse,
-				tree: createLogEntries(
-					createTestWorkflowObject(aiManualWorkflow),
-					aiManualExecutionResponse.data?.resultData.runData ?? {},
-				),
-			},
+			execution: aiManualExecutionResponse,
+			entries: logs,
+			flatLogEntries: flattenLogEntries(logs, {}),
 		});
 		const aiAgentRow = (await rendered.findAllByRole('treeitem'))[0];
 
-		await fireEvent.click(within(aiAgentRow).getAllByLabelText('Test step')[0]);
+		await fireEvent.click(within(aiAgentRow).getAllByLabelText('Execute step')[0]);
 		await waitFor(() =>
 			expect(spyRun).toHaveBeenCalledWith(expect.objectContaining({ destinationNode: 'AI Agent' })),
 		);
-	});
-
-	it('should toggle subtree when chevron icon button is pressed', async () => {
-		const rendered = render({ isOpen: true });
-
-		await waitFor(() => expect(rendered.queryAllByRole('treeitem')).toHaveLength(2));
-		expect(rendered.queryByText('AI Agent')).toBeInTheDocument();
-		expect(rendered.queryByText('AI Model')).toBeInTheDocument();
-
-		// Close subtree of AI Agent
-		await fireEvent.click(rendered.getAllByLabelText('Toggle row')[0]);
-
-		await waitFor(() => expect(rendered.queryAllByRole('treeitem')).toHaveLength(1));
-		expect(rendered.queryByText('AI Agent')).toBeInTheDocument();
-		expect(rendered.queryByText('AI Model')).not.toBeInTheDocument();
-
-		// Re-open subtree of AI Agent
-		await fireEvent.click(rendered.getAllByLabelText('Toggle row')[0]);
-
-		await waitFor(() => expect(rendered.queryAllByRole('treeitem')).toHaveLength(2));
-		expect(rendered.queryByText('AI Agent')).toBeInTheDocument();
-		expect(rendered.queryByText('AI Model')).toBeInTheDocument();
 	});
 });

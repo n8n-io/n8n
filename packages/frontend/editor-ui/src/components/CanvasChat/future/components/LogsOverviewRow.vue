@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, nextTick, useTemplateRef, watch } from 'vue';
 import { N8nButton, N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { upperFirst } from 'lodash-es';
 import { useI18n } from '@/composables/useI18n';
-import ConsumedTokenCountText from '@/components/CanvasChat/future/components/ConsumedTokenCountText.vue';
+import LogsViewConsumedTokenCountText from '@/components/CanvasChat/future/components/LogsViewConsumedTokenCountText.vue';
 import { I18nT } from 'vue-i18n';
 import { toDayMonth, toTime } from '@/utils/formatters/dateFormatter';
-import NodeName from '@/components/CanvasChat/future/components/NodeName.vue';
+import LogsViewNodeName from '@/components/CanvasChat/future/components/LogsViewNodeName.vue';
 import {
 	getSubtreeTotalConsumedTokens,
 	type LatestNodeInfo,
@@ -18,18 +18,21 @@ const props = defineProps<{
 	data: LogEntry;
 	isSelected: boolean;
 	isReadOnly: boolean;
-	shouldShowConsumedTokens: boolean;
+	shouldShowTokenCountColumn: boolean;
 	isCompact: boolean;
 	latestInfo?: LatestNodeInfo;
 	expanded: boolean;
+	canOpenNdv: boolean;
 }>();
 
 const emit = defineEmits<{
-	toggleExpanded: [node: LogEntry];
-	triggerPartialExecution: [node: LogEntry];
-	openNdv: [node: LogEntry];
+	toggleExpanded: [];
+	toggleSelected: [];
+	triggerPartialExecution: [];
+	openNdv: [];
 }>();
 
+const container = useTemplateRef('containerRef');
 const locale = useI18n();
 const nodeTypeStore = useNodeTypesStore();
 const type = computed(() => nodeTypeStore.getNodeType(props.data.node.type));
@@ -50,7 +53,11 @@ const startedAtText = computed(() => {
 });
 
 const subtreeConsumedTokens = computed(() =>
-	props.shouldShowConsumedTokens ? getSubtreeTotalConsumedTokens(props.data) : undefined,
+	props.shouldShowTokenCountColumn ? getSubtreeTotalConsumedTokens(props.data, false) : undefined,
+);
+
+const hasChildren = computed(
+	() => props.data.children.length > 0 || !!props.data.runData.metadata?.subExecution,
 );
 
 function isLastChild(level: number) {
@@ -70,12 +77,26 @@ function isLastChild(level: number) {
 		(data?.node === lastSibling?.node && data?.runIndex === lastSibling?.runIndex)
 	);
 }
+
+// Focus when selected: For scrolling into view and for keyboard navigation to work
+watch(
+	() => props.isSelected,
+	(isSelected) => {
+		void nextTick(() => {
+			if (isSelected) {
+				container.value?.focus();
+			}
+		});
+	},
+	{ immediate: true },
+);
 </script>
 
 <template>
 	<div
+		ref="containerRef"
 		role="treeitem"
-		tabindex="0"
+		tabindex="-1"
 		:aria-expanded="props.data.children.length > 0 && props.expanded"
 		:aria-selected="props.isSelected"
 		:class="{
@@ -84,6 +105,7 @@ function isLastChild(level: number) {
 			[$style.error]: isError,
 			[$style.selected]: props.isSelected,
 		}"
+		@click.stop="emit('toggleSelected')"
 	>
 		<template v-for="level in props.data.depth" :key="level">
 			<div
@@ -96,7 +118,7 @@ function isLastChild(level: number) {
 		</template>
 		<div :class="$style.background" :style="{ '--indent-depth': props.data.depth }" />
 		<NodeIcon :node-type="type" :size="16" :class="$style.icon" />
-		<NodeName
+		<LogsViewNodeName
 			:class="$style.name"
 			:latest-name="latestInfo?.name ?? props.data.node.name"
 			:name="props.data.node.name"
@@ -132,7 +154,7 @@ function isLastChild(level: number) {
 			size="small"
 			:class="$style.consumedTokens"
 		>
-			<ConsumedTokenCountText
+			<LogsViewConsumedTokenCountText
 				v-if="
 					subtreeConsumedTokens.totalTokens > 0 &&
 					(props.data.children.length === 0 || !props.expanded)
@@ -153,10 +175,14 @@ function isLastChild(level: number) {
 			size="medium"
 			icon="edit"
 			style="color: var(--color-text-base)"
+			:style="{
+				visibility: props.canOpenNdv ? '' : 'hidden',
+				color: 'var(--color-text-base)',
+			}"
 			:disabled="props.latestInfo?.deleted"
 			:class="$style.openNdvButton"
 			:aria-label="locale.baseText('logs.overview.body.open')"
-			@click.stop="emit('openNdv', props.data)"
+			@click.stop="emit('openNdv')"
 		/>
 		<N8nIconButton
 			v-if="
@@ -170,20 +196,20 @@ function isLastChild(level: number) {
 			:aria-label="locale.baseText('logs.overview.body.run')"
 			:class="[$style.partialExecutionButton, props.data.depth > 0 ? $style.unavailable : '']"
 			:disabled="props.latestInfo?.deleted || props.latestInfo?.disabled"
-			@click.stop="emit('triggerPartialExecution', props.data)"
+			@click.stop="emit('triggerPartialExecution')"
 		/>
 		<N8nButton
-			v-if="!isCompact || props.data.children.length > 0"
+			v-if="!isCompact || hasChildren"
 			type="secondary"
 			size="small"
 			:square="true"
 			:style="{
-				visibility: props.data.children.length === 0 ? 'hidden' : '',
+				visibility: hasChildren ? '' : 'hidden',
 				color: 'var(--color-text-base)', // give higher specificity than the style from the component itself
 			}"
 			:class="$style.toggleButton"
 			:aria-label="locale.baseText('logs.overview.body.toggleRow')"
-			@click.stop="emit('toggleExpanded', props.data)"
+			@click.stop="emit('toggleExpanded')"
 		>
 			<N8nIcon size="medium" :icon="props.expanded ? 'chevron-down' : 'chevron-up'" />
 		</N8nButton>

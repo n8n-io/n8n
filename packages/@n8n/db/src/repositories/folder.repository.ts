@@ -4,32 +4,31 @@ import { DataSource, Repository } from '@n8n/typeorm';
 import { PROJECT_ROOT } from 'n8n-workflow';
 
 import { Folder, FolderTagMapping, TagEntity } from '../entities';
-import type { FolderWithWorkflowAndSubFolderCount, ListQuery } from '../entities/types-db';
+import type { FolderWithWorkflowAndSubFolderCountAndPath, ListQuery } from '../entities/types-db';
 
 @Service()
-export class FolderRepository extends Repository<FolderWithWorkflowAndSubFolderCount> {
+export class FolderRepository extends Repository<Folder> {
 	constructor(dataSource: DataSource) {
 		super(Folder, dataSource.manager);
 	}
 
-	async getManyAndCount(
-		options: ListQuery.Options = {},
-	): Promise<[FolderWithWorkflowAndSubFolderCount[], number]> {
+	async getManyAndCount(options: ListQuery.Options = {}) {
 		const query = this.getManyQuery(options);
-		return await query.getManyAndCount();
+		return (await query.getManyAndCount()) as unknown as [
+			FolderWithWorkflowAndSubFolderCountAndPath[],
+			number,
+		];
 	}
 
-	async getMany(options: ListQuery.Options = {}): Promise<FolderWithWorkflowAndSubFolderCount[]> {
+	async getMany(options: ListQuery.Options = {}) {
 		const query = this.getManyQuery(options);
-		return await query.getMany();
+		return (await query.getMany()) as unknown as FolderWithWorkflowAndSubFolderCountAndPath[];
 	}
 
-	getManyQuery(
-		options: ListQuery.Options = {},
-	): SelectQueryBuilder<FolderWithWorkflowAndSubFolderCount> {
+	getManyQuery(options: ListQuery.Options = {}): SelectQueryBuilder<Folder> {
 		const query = this.createQueryBuilder('folder');
 
-		this.applySelections(query, options.select);
+		this.applySelections(query, options.select, options.filter);
 		this.applyFilters(query, options.filter);
 		this.applySorting(query, options.sortBy);
 		this.applyPagination(query, options);
@@ -38,22 +37,42 @@ export class FolderRepository extends Repository<FolderWithWorkflowAndSubFolderC
 	}
 
 	private applySelections(
-		query: SelectQueryBuilder<FolderWithWorkflowAndSubFolderCount>,
-		select?: Record<string, boolean>,
+		query: SelectQueryBuilder<Folder>,
+		select?: ListQuery.Options['select'],
+		filter?: ListQuery.Options['filter'],
 	): void {
 		if (select) {
-			this.applyCustomSelect(query, select);
+			this.applyCustomSelect(query, select, filter);
 		} else {
-			this.applyDefaultSelect(query);
+			this.applyDefaultSelect(query, filter);
 		}
 	}
 
-	private applyDefaultSelect(query: SelectQueryBuilder<FolderWithWorkflowAndSubFolderCount>): void {
+	private applyWorkflowCountSelect(
+		query: SelectQueryBuilder<Folder>,
+		filter?: ListQuery.Options['filter'],
+	): void {
+		if (typeof filter?.isArchived === 'boolean') {
+			query.loadRelationCountAndMap('folder.workflowCount', 'folder.workflows', 'workflow', (qb) =>
+				qb.andWhere('workflow.isArchived = :isArchived', {
+					isArchived: filter.isArchived,
+				}),
+			);
+		} else {
+			query.loadRelationCountAndMap('folder.workflowCount', 'folder.workflows');
+		}
+	}
+
+	private applyDefaultSelect(
+		query: SelectQueryBuilder<Folder>,
+		filter?: ListQuery.Options['filter'],
+	): void {
+		this.applyWorkflowCountSelect(query, filter);
+
 		query
 			.leftJoinAndSelect('folder.homeProject', 'homeProject')
 			.leftJoinAndSelect('folder.parentFolder', 'parentFolder')
 			.leftJoinAndSelect('folder.tags', 'tags')
-			.loadRelationCountAndMap('folder.workflowCount', 'folder.workflows')
 			.loadRelationCountAndMap('folder.subFolderCount', 'folder.subFolders')
 			.select([
 				'folder',
@@ -64,27 +83,29 @@ export class FolderRepository extends Repository<FolderWithWorkflowAndSubFolderC
 	}
 
 	private applyCustomSelect(
-		query: SelectQueryBuilder<FolderWithWorkflowAndSubFolderCount>,
-		select?: Record<string, boolean>,
+		query: SelectQueryBuilder<Folder>,
+		select?: ListQuery.Options['select'],
+		filter?: ListQuery.Options['filter'],
 	): void {
 		const selections = ['folder.id'];
 
 		this.addBasicFields(selections, select);
-		this.addRelationFields(query, selections, select);
+		this.addRelationFields(query, selections, select, filter);
 
 		query.select(selections);
 	}
 
-	private addBasicFields(selections: string[], select?: Record<string, boolean>): void {
+	private addBasicFields(selections: string[], select?: ListQuery.Options['select']): void {
 		if (select?.name) selections.push('folder.name');
 		if (select?.createdAt) selections.push('folder.createdAt');
 		if (select?.updatedAt) selections.push('folder.updatedAt');
 	}
 
 	private addRelationFields(
-		query: SelectQueryBuilder<FolderWithWorkflowAndSubFolderCount>,
+		query: SelectQueryBuilder<Folder>,
 		selections: string[],
-		select?: Record<string, boolean>,
+		select?: ListQuery.Options['select'],
+		filter?: ListQuery.Options['filter'],
 	): void {
 		if (select?.project) {
 			query.leftJoin('folder.homeProject', 'homeProject');
@@ -102,7 +123,7 @@ export class FolderRepository extends Repository<FolderWithWorkflowAndSubFolderC
 		}
 
 		if (select?.workflowCount) {
-			query.loadRelationCountAndMap('folder.workflowCount', 'folder.workflows');
+			this.applyWorkflowCountSelect(query, filter);
 		}
 
 		if (select?.subFolderCount) {
@@ -125,7 +146,7 @@ export class FolderRepository extends Repository<FolderWithWorkflowAndSubFolderC
 	}
 
 	private applyFilters(
-		query: SelectQueryBuilder<FolderWithWorkflowAndSubFolderCount>,
+		query: SelectQueryBuilder<Folder>,
 		filter?: ListQuery.Options['filter'],
 	): void {
 		if (!filter) return;
@@ -142,7 +163,7 @@ export class FolderRepository extends Repository<FolderWithWorkflowAndSubFolderC
 	}
 
 	private applyBasicFilters(
-		query: SelectQueryBuilder<FolderWithWorkflowAndSubFolderCount>,
+		query: SelectQueryBuilder<Folder>,
 		filter: ListQuery.Options['filter'],
 	): void {
 		if (filter?.folderIds && Array.isArray(filter.folderIds)) {
@@ -174,10 +195,7 @@ export class FolderRepository extends Repository<FolderWithWorkflowAndSubFolderC
 		}
 	}
 
-	private applyTagsFilter(
-		query: SelectQueryBuilder<FolderWithWorkflowAndSubFolderCount>,
-		tags?: string[],
-	): void {
+	private applyTagsFilter(query: SelectQueryBuilder<Folder>, tags?: string[]): void {
 		if (!Array.isArray(tags) || tags.length === 0) return;
 
 		const subQuery = this.createTagsSubQuery(query, tags);
@@ -189,7 +207,7 @@ export class FolderRepository extends Repository<FolderWithWorkflowAndSubFolderC
 	}
 
 	private createTagsSubQuery(
-		query: SelectQueryBuilder<FolderWithWorkflowAndSubFolderCount>,
+		query: SelectQueryBuilder<Folder>,
 		tags: string[],
 	): SelectQueryBuilder<FolderTagMapping> {
 		return query
@@ -204,10 +222,7 @@ export class FolderRepository extends Repository<FolderWithWorkflowAndSubFolderC
 			});
 	}
 
-	private applySorting(
-		query: SelectQueryBuilder<FolderWithWorkflowAndSubFolderCount>,
-		sortBy?: string,
-	): void {
+	private applySorting(query: SelectQueryBuilder<Folder>, sortBy?: string): void {
 		if (!sortBy) {
 			query.orderBy('folder.updatedAt', 'DESC');
 			return;
@@ -223,7 +238,7 @@ export class FolderRepository extends Repository<FolderWithWorkflowAndSubFolderC
 	}
 
 	private applySortingByField(
-		query: SelectQueryBuilder<FolderWithWorkflowAndSubFolderCount>,
+		query: SelectQueryBuilder<Folder>,
 		field: string,
 		direction: 'DESC' | 'ASC',
 	): void {
@@ -236,10 +251,7 @@ export class FolderRepository extends Repository<FolderWithWorkflowAndSubFolderC
 		}
 	}
 
-	private applyPagination(
-		query: SelectQueryBuilder<FolderWithWorkflowAndSubFolderCount>,
-		options: ListQuery.Options,
-	): void {
+	private applyPagination(query: SelectQueryBuilder<Folder>, options: ListQuery.Options): void {
 		if (options?.take) {
 			query.skip(options.skip ?? 0).take(options.take);
 		}
@@ -298,7 +310,7 @@ export class FolderRepository extends Repository<FolderWithWorkflowAndSubFolderC
 	}
 
 	private applyExcludeFolderFilter(
-		query: SelectQueryBuilder<FolderWithWorkflowAndSubFolderCount>,
+		query: SelectQueryBuilder<Folder>,
 		excludeFolderIdAndDescendants: string,
 	): void {
 		// Exclude the specific folder by ID
@@ -372,5 +384,56 @@ export class FolderRepository extends Repository<FolderWithWorkflowAndSubFolderC
 		// Execute the query and extract IDs
 		const result = await query.getRawMany<{ id: string }>();
 		return result.map((row) => row.id);
+	}
+
+	async getFolderPathsToRoot(folderIds: string[]): Promise<Map<string, string[]>> {
+		if (!folderIds.length) {
+			return new Map();
+		}
+
+		// Base query: select all root folders
+		const baseQuery = this.createQueryBuilder('folder')
+			.select([
+				'folder.id as id',
+				'folder.name as name',
+				'folder.parentFolderId as parentFolderId',
+				'CONCAT(folder.name) as path',
+				'1 as level',
+			])
+			.where('folder.parentFolderId IS NULL');
+
+		const recursiveQuery = this.createQueryBuilder('child')
+			.select([
+				'child.id as id',
+				'child.name as name',
+				'child.parentFolderId as parentFolderId',
+				"CONCAT(parent.path, '/', child.name) as path",
+				'parent.level + 1 as level',
+			])
+			.innerJoin('folder_paths', 'parent', 'child.parentFolderId = parent.id');
+
+		const mainQuery = this.createQueryBuilder()
+			.addCommonTableExpression(
+				`${baseQuery.getQuery()} UNION ALL ${recursiveQuery.getQuery()}`,
+				'folder_paths',
+				{ recursive: true },
+			)
+			.select('fp.id as folder_id, fp.path as folder_path')
+			.from('folder_paths', 'fp')
+			.where('fp.id IN (:...folderIds)', { folderIds });
+
+		const results = await mainQuery.getRawMany<{
+			folder_id: string;
+			folder_path: string;
+		}>();
+
+		const pathMap = new Map<string, string[]>();
+
+		for (const row of results) {
+			const pathNames = row.folder_path.split('/');
+			pathMap.set(row.folder_id, pathNames);
+		}
+
+		return pathMap;
 	}
 }
