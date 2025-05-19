@@ -659,6 +659,56 @@ describe('useWorkflowsStore', () => {
 			});
 		});
 
+		it('should replace placeholder task data in waiting nodes correctly', () => {
+			const runWithExistingRunData = deepCopy(executionResponse);
+			runWithExistingRunData.data = {
+				resultData: {
+					runData: {
+						[successEvent.nodeName]: [
+							{
+								hints: [],
+								startTime: 1727867966633,
+								executionIndex: 2,
+								executionTime: 1,
+								source: [],
+								executionStatus: 'waiting',
+								data: {
+									main: [
+										[
+											{
+												json: {},
+												pairedItem: {
+													item: 0,
+												},
+											},
+										],
+									],
+								},
+							},
+						],
+					},
+				},
+			};
+			workflowsStore.setWorkflowExecutionData(runWithExistingRunData);
+
+			workflowsStore.nodesByName[successEvent.nodeName] = mock<INodeUi>({
+				type: 'n8n-nodes-base.manualTrigger',
+			});
+
+			// ACT
+			workflowsStore.updateNodeExecutionData(successEvent);
+
+			expect(workflowsStore.workflowExecutionData).toEqual({
+				...runWithExistingRunData,
+				data: {
+					resultData: {
+						runData: {
+							[successEvent.nodeName]: [successEvent.data],
+						},
+					},
+				},
+			});
+		});
 		it('should replace existing placeholder task data in new log view', () => {
 			settingsStore.settings = {
 				logsView: {
@@ -988,6 +1038,176 @@ describe('useWorkflowsStore', () => {
 				'POST',
 				`/workflows/${workflowId}/unarchive`,
 			);
+		});
+	});
+
+	describe('renameNodeSelectedAndExecution', () => {
+		it('should rename node and update execution data', () => {
+			const nodeName = 'Rename me';
+			const newName = 'Renamed';
+
+			workflowsStore.workflowExecutionData = {
+				data: {
+					resultData: {
+						runData: {
+							"When clicking 'Test workflow'": [
+								{
+									startTime: 1747389900668,
+									executionIndex: 0,
+									source: [],
+									hints: [],
+									executionTime: 1,
+									executionStatus: 'success',
+									data: {},
+								},
+							],
+							[nodeName]: [
+								{
+									startTime: 1747389900670,
+									executionIndex: 2,
+									source: [
+										{
+											previousNode: "When clicking 'Test workflow'",
+										},
+									],
+									hints: [],
+									executionTime: 1,
+									executionStatus: 'success',
+									data: {},
+								},
+							],
+							'Edit Fields': [
+								{
+									startTime: 1747389900671,
+									executionIndex: 3,
+									source: [
+										{
+											previousNode: nodeName,
+										},
+									],
+									hints: [],
+									executionTime: 3,
+									executionStatus: 'success',
+									data: {},
+								},
+							],
+						},
+						pinData: {
+							[nodeName]: [
+								{
+									json: {
+										foo: 'bar',
+									},
+									pairedItem: [
+										{
+											item: 0,
+											sourceOverwrite: {
+												previousNode: "When clicking 'Test workflow'",
+											},
+										},
+									],
+								},
+							],
+							'Edit Fields': [
+								{
+									json: {
+										bar: 'foo',
+									},
+									pairedItem: {
+										item: 1,
+										sourceOverwrite: {
+											previousNode: nodeName,
+										},
+									},
+								},
+							],
+						},
+						lastNodeExecuted: 'Edit Fields',
+					},
+				},
+			} as unknown as IExecutionResponse;
+
+			workflowsStore.addNode({
+				parameters: {},
+				id: '554c7ff4-7ee2-407c-8931-e34234c5056a',
+				name: nodeName,
+				type: 'n8n-nodes-base.set',
+				position: [680, 180],
+				typeVersion: 3.4,
+			});
+
+			workflowsStore.workflow.pinData = {
+				[nodeName]: [
+					{
+						json: {
+							foo: 'bar',
+						},
+						pairedItem: {
+							item: 2,
+							sourceOverwrite: {
+								previousNode: "When clicking 'Test workflow'",
+							},
+						},
+					},
+				],
+				'Edit Fields': [
+					{
+						json: {
+							bar: 'foo',
+						},
+						pairedItem: [
+							{
+								item: 3,
+								sourceOverwrite: {
+									previousNode: nodeName,
+								},
+							},
+						],
+					},
+				],
+			};
+
+			workflowsStore.renameNodeSelectedAndExecution({ old: nodeName, new: newName });
+
+			expect(workflowsStore.nodeMetadata[nodeName]).not.toBeDefined();
+			expect(workflowsStore.nodeMetadata[newName]).toEqual({});
+			expect(
+				workflowsStore.workflowExecutionData?.data?.resultData.runData[nodeName],
+			).not.toBeDefined();
+			expect(workflowsStore.workflowExecutionData?.data?.resultData.runData[newName]).toBeDefined();
+			expect(
+				workflowsStore.workflowExecutionData?.data?.resultData.runData['Edit Fields'][0].source,
+			).toEqual([
+				{
+					previousNode: newName,
+				},
+			]);
+			expect(
+				workflowsStore.workflowExecutionData?.data?.resultData.pinData?.[nodeName],
+			).not.toBeDefined();
+			expect(
+				workflowsStore.workflowExecutionData?.data?.resultData.pinData?.[newName],
+			).toBeDefined();
+			expect(
+				workflowsStore.workflowExecutionData?.data?.resultData.pinData?.['Edit Fields'][0]
+					.pairedItem,
+			).toEqual({
+				item: 1,
+				sourceOverwrite: {
+					previousNode: newName,
+				},
+			});
+
+			expect(workflowsStore.workflow.pinData?.[nodeName]).not.toBeDefined();
+			expect(workflowsStore.workflow.pinData?.[newName]).toBeDefined();
+			expect(workflowsStore.workflow.pinData?.['Edit Fields'][0].pairedItem).toEqual([
+				{
+					item: 3,
+					sourceOverwrite: {
+						previousNode: newName,
+					},
+				},
+			]);
 		});
 	});
 });

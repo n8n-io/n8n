@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 import { ref, watch, computed } from 'vue';
 import { useRoute } from 'vue-router';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import * as projectsApi from '@/api/projects.api';
 import * as workflowsEEApi from '@/api/workflows.ee';
 import * as credentialsEEApi from '@/api/credentials.ee';
@@ -11,7 +11,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { hasPermission } from '@/utils/rbac/permissions';
 import type { IWorkflowDb } from '@/Interface';
 import { useCredentialsStore } from '@/stores/credentials.store';
-import { STORES } from '@/constants';
+import { STORES } from '@n8n/stores';
 import { useUsersStore } from '@/stores/users.store';
 import { getResourcePermissions } from '@/permissions';
 import type { CreateProjectDto, UpdateProjectDto } from '@n8n/api-types';

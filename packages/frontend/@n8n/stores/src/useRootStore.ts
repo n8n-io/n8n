@@ -1,13 +1,40 @@
-import { CLOUD_BASE_URL_PRODUCTION, CLOUD_BASE_URL_STAGING, STORES } from '@/constants';
-import type { RootState } from '@/Interface';
 import { randomString, setGlobalState } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 
+import { STORES } from './constants';
+
 const { VUE_APP_URL_BASE_API } = import.meta.env;
 
+export type RootStoreState = {
+	baseUrl: string;
+	restEndpoint: string;
+	defaultLocale: string;
+	endpointForm: string;
+	endpointFormTest: string;
+	endpointFormWaiting: string;
+	endpointMcp: string;
+	endpointMcpTest: string;
+	endpointWebhook: string;
+	endpointWebhookTest: string;
+	endpointWebhookWaiting: string;
+	timezone: string;
+	executionTimeout: number;
+	maxExecutionTimeout: number;
+	versionCli: string;
+	oauthCallbackUrls: object;
+	n8nMetadata: {
+		[key: string]: string | number | undefined;
+	};
+	pushRef: string;
+	urlBaseWebhook: string;
+	urlBaseEditor: string;
+	instanceId: string;
+	binaryDataMode: 'default' | 'filesystem' | 's3';
+};
+
 export const useRootStore = defineStore(STORES.ROOT, () => {
-	const state = ref<RootState>({
+	const state = ref<RootStoreState>({
 		baseUrl: VUE_APP_URL_BASE_API ?? window.BASE_PATH,
 		restEndpoint:
 			!window.REST_ENDPOINT || window.REST_ENDPOINT === '{{REST_ENDPOINT}}'
@@ -85,13 +112,6 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 
 	const timezone = computed(() => state.value.timezone);
 
-	const restCloudApiContext = computed(() => ({
-		baseUrl: window.location.host.includes('stage-app.n8n.cloud')
-			? CLOUD_BASE_URL_STAGING
-			: CLOUD_BASE_URL_PRODUCTION,
-		pushRef: '',
-	}));
-
 	const restApiContext = computed(() => ({
 		baseUrl: restUrl.value,
 		pushRef: state.value.pushRef,
@@ -103,75 +123,75 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 	// #region Methods
 	// ---------------------------------------------------------------------------
 
-	const setUrlBaseWebhook = (urlBaseWebhook: string) => {
-		const url = urlBaseWebhook.endsWith('/') ? urlBaseWebhook : `${urlBaseWebhook}/`;
+	const setUrlBaseWebhook = (value: string) => {
+		const url = value.endsWith('/') ? value : `${value}/`;
 		state.value.urlBaseWebhook = url;
 	};
 
-	const setUrlBaseEditor = (urlBaseEditor: string) => {
-		const url = urlBaseEditor.endsWith('/') ? urlBaseEditor : `${urlBaseEditor}/`;
+	const setUrlBaseEditor = (value: string) => {
+		const url = value.endsWith('/') ? value : `${value}/`;
 		state.value.urlBaseEditor = url;
 	};
 
-	const setEndpointForm = (endpointForm: string) => {
-		state.value.endpointForm = endpointForm;
+	const setEndpointForm = (value: string) => {
+		state.value.endpointForm = value;
 	};
 
-	const setEndpointFormTest = (endpointFormTest: string) => {
-		state.value.endpointFormTest = endpointFormTest;
+	const setEndpointFormTest = (value: string) => {
+		state.value.endpointFormTest = value;
 	};
 
-	const setEndpointFormWaiting = (endpointFormWaiting: string) => {
-		state.value.endpointFormWaiting = endpointFormWaiting;
+	const setEndpointFormWaiting = (value: string) => {
+		state.value.endpointFormWaiting = value;
 	};
 
-	const setEndpointWebhook = (endpointWebhook: string) => {
-		state.value.endpointWebhook = endpointWebhook;
+	const setEndpointWebhook = (value: string) => {
+		state.value.endpointWebhook = value;
 	};
 
-	const setEndpointWebhookTest = (endpointWebhookTest: string) => {
-		state.value.endpointWebhookTest = endpointWebhookTest;
+	const setEndpointWebhookTest = (value: string) => {
+		state.value.endpointWebhookTest = value;
 	};
 
-	const setEndpointWebhookWaiting = (endpointWebhookWaiting: string) => {
-		state.value.endpointWebhookWaiting = endpointWebhookWaiting;
+	const setEndpointWebhookWaiting = (value: string) => {
+		state.value.endpointWebhookWaiting = value;
 	};
 
-	const setTimezone = (timezone: string) => {
-		state.value.timezone = timezone;
-		setGlobalState({ defaultTimezone: timezone });
+	const setTimezone = (value: string) => {
+		state.value.timezone = value;
+		setGlobalState({ defaultTimezone: value });
 	};
 
-	const setExecutionTimeout = (executionTimeout: number) => {
-		state.value.executionTimeout = executionTimeout;
+	const setExecutionTimeout = (value: number) => {
+		state.value.executionTimeout = value;
 	};
 
-	const setMaxExecutionTimeout = (maxExecutionTimeout: number) => {
-		state.value.maxExecutionTimeout = maxExecutionTimeout;
+	const setMaxExecutionTimeout = (value: number) => {
+		state.value.maxExecutionTimeout = value;
 	};
 
-	const setVersionCli = (version: string) => {
-		state.value.versionCli = version;
+	const setVersionCli = (value: string) => {
+		state.value.versionCli = value;
 	};
 
-	const setInstanceId = (instanceId: string) => {
-		state.value.instanceId = instanceId;
+	const setInstanceId = (value: string) => {
+		state.value.instanceId = value;
 	};
 
-	const setOauthCallbackUrls = (urls: RootState['oauthCallbackUrls']) => {
-		state.value.oauthCallbackUrls = urls;
+	const setOauthCallbackUrls = (value: RootStoreState['oauthCallbackUrls']) => {
+		state.value.oauthCallbackUrls = value;
 	};
 
-	const setN8nMetadata = (metadata: RootState['n8nMetadata']) => {
-		state.value.n8nMetadata = metadata;
+	const setN8nMetadata = (value: RootStoreState['n8nMetadata']) => {
+		state.value.n8nMetadata = value;
 	};
 
-	const setDefaultLocale = (locale: string) => {
-		state.value.defaultLocale = locale;
+	const setDefaultLocale = (value: string) => {
+		state.value.defaultLocale = value;
 	};
 
-	const setBinaryDataMode = (binaryDataMode: RootState['binaryDataMode']) => {
-		state.value.binaryDataMode = binaryDataMode;
+	const setBinaryDataMode = (value: RootStoreState['binaryDataMode']) => {
+		state.value.binaryDataMode = value;
 	};
 
 	// #endregion
@@ -187,7 +207,6 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 		webhookTestUrl,
 		webhookWaitingUrl,
 		restUrl,
-		restCloudApiContext,
 		restApiContext,
 		urlBaseEditor,
 		versionCli,

@@ -1,27 +1,21 @@
 <script setup lang="ts">
-import PanelHeader from '@/components/CanvasChat/future/components/PanelHeader.vue';
+import LogsPanelHeader from '@/components/CanvasChat/future/components/LogsPanelHeader.vue';
 import { useClearExecutionButtonVisible } from '@/composables/useClearExecutionButtonVisible';
 import { useI18n } from '@/composables/useI18n';
 import { N8nButton, N8nRadioButtons, N8nText, N8nTooltip } from '@n8n/design-system';
-import { ref, computed, nextTick, watch } from 'vue';
-import { useTelemetry } from '@/composables/useTelemetry';
+import { computed, nextTick, toRef, watch } from 'vue';
 import LogsOverviewRow from '@/components/CanvasChat/future/components/LogsOverviewRow.vue';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
-import { useNDVStore } from '@/stores/ndv.store';
 import { useRouter } from 'vue-router';
-import ExecutionSummary from '@/components/CanvasChat/future/components/ExecutionSummary.vue';
+import LogsViewExecutionSummary from '@/components/CanvasChat/future/components/LogsViewExecutionSummary.vue';
 import {
-	getDefaultCollapsedEntries,
-	flattenLogEntries,
 	getSubtreeTotalConsumedTokens,
 	getTotalConsumedTokens,
 	hasSubExecution,
 	type LatestNodeInfo,
 	type LogEntry,
-	getDepth,
 } from '@/components/RunDataAi/utils';
 import { useVirtualList } from '@vueuse/core';
-import { ndvEventBus } from '@/event-bus';
 import { type IExecutionResponse } from '@/Interface';
 
 const {
@@ -31,35 +25,35 @@ const {
 	isCompact,
 	execution,
 	entries,
+	flatLogEntries,
 	latestNodeInfo,
-	scrollToSelection,
 } = defineProps<{
 	isOpen: boolean;
 	selected?: LogEntry;
 	isReadOnly: boolean;
 	isCompact: boolean;
-	entries: LogEntry[];
 	execution?: IExecutionResponse;
+	entries: LogEntry[];
+	flatLogEntries: LogEntry[];
 	latestNodeInfo: Record<string, LatestNodeInfo>;
-	scrollToSelection: boolean;
 }>();
 
 const emit = defineEmits<{
 	clickHeader: [];
 	select: [LogEntry | undefined];
 	clearExecutionData: [];
+	openNdv: [LogEntry];
+	toggleExpanded: [LogEntry];
 	loadSubExecution: [LogEntry];
 }>();
 
 defineSlots<{ actions: {} }>();
 
 const locale = useI18n();
-const telemetry = useTelemetry();
 const router = useRouter();
 const runWorkflow = useRunWorkflow({ router });
-const ndvStore = useNDVStore();
 const isClearExecutionButtonVisible = useClearExecutionButtonVisible();
-const isEmpty = computed(() => entries.length === 0 || execution === undefined);
+const isEmpty = computed(() => flatLogEntries.length === 0 || execution === undefined);
 const switchViewOptions = computed(() => [
 	{ label: locale.baseText('logs.overview.header.switch.overview'), value: 'overview' as const },
 	{ label: locale.baseText('logs.overview.header.switch.details'), value: 'details' as const },
@@ -74,60 +68,27 @@ const consumedTokens = computed(() =>
 		),
 	),
 );
+
 const shouldShowTokenCountColumn = computed(
 	() =>
 		consumedTokens.value.totalTokens > 0 ||
 		entries.some((entry) => getSubtreeTotalConsumedTokens(entry, true).totalTokens > 0),
 );
-const manuallyCollapsedEntries = ref<Record<string, boolean>>({});
-const collapsedEntries = computed(() => ({
-	...getDefaultCollapsedEntries(entries),
-	...manuallyCollapsedEntries.value,
-}));
-const flatLogEntries = computed(() => flattenLogEntries(entries, collapsedEntries.value));
-const virtualList = useVirtualList(flatLogEntries, { itemHeight: 32 });
-
-function handleClickNode(clicked: LogEntry) {
-	if (selected?.id === clicked.id) {
-		emit('select', undefined);
-		return;
-	}
-
-	emit('select', clicked);
-
-	telemetry.track('User selected node in log view', {
-		node_type: clicked.node.type,
-		node_id: clicked.node.id,
-		execution_id: execution?.id,
-		workflow_id: execution?.workflowData.id,
-		subworkflow_depth: getDepth(clicked),
-	});
-}
+const virtualList = useVirtualList(
+	toRef(() => flatLogEntries),
+	{ itemHeight: 32 },
+);
 
 function handleSwitchView(value: 'overview' | 'details') {
-	emit('select', value === 'overview' || entries.length === 0 ? undefined : entries[0]);
+	emit('select', value === 'overview' ? undefined : flatLogEntries[0]);
 }
 
-async function handleToggleExpanded(treeNode: LogEntry) {
+function handleToggleExpanded(treeNode: LogEntry) {
 	if (hasSubExecution(treeNode) && treeNode.children.length === 0) {
 		emit('loadSubExecution', treeNode);
 		return;
 	}
-
-	manuallyCollapsedEntries.value[treeNode.id] = !collapsedEntries.value[treeNode.id];
-}
-
-async function handleOpenNdv(treeNode: LogEntry) {
-	ndvStore.setActiveNodeName(treeNode.node.name);
-
-	await nextTick(() => {
-		const source = treeNode.runData.source[0];
-		const inputBranch = source?.previousNodeOutput ?? 0;
-
-		ndvEventBus.emit('updateInputNodeName', source?.previousNode);
-		ndvEventBus.emit('setInputBranchIndex', inputBranch);
-		ndvStore.setOutputRunIndex(treeNode.runIndex);
-	});
+	emit('toggleExpanded', treeNode);
 }
 
 async function handleTriggerPartialExecution(treeNode: LogEntry) {
@@ -140,10 +101,10 @@ async function handleTriggerPartialExecution(treeNode: LogEntry) {
 
 // Scroll selected row into view
 watch(
-	() => (scrollToSelection ? selected?.id : undefined),
-	async (selectedId) => {
-		if (selectedId) {
-			const index = flatLogEntries.value.findIndex((e) => e.id === selectedId);
+	() => selected,
+	async (selection) => {
+		if (selection && virtualList.list.value.every((e) => e.data.id !== selection.id)) {
+			const index = flatLogEntries.findIndex((e) => e.id === selection?.id);
 
 			if (index >= 0) {
 				// Wait for the node to be added to the list, and then scroll
@@ -157,7 +118,7 @@ watch(
 
 <template>
 	<div :class="$style.container" data-test-id="logs-overview">
-		<PanelHeader
+		<LogsPanelHeader
 			:title="locale.baseText('logs.overview.header.title')"
 			data-test-id="logs-overview-header"
 			@click="emit('clickHeader')"
@@ -180,7 +141,7 @@ watch(
 				</N8nTooltip>
 				<slot name="actions" />
 			</template>
-		</PanelHeader>
+		</LogsPanelHeader>
 		<div
 			v-if="isOpen"
 			:class="[$style.content, isEmpty ? $style.empty : '']"
@@ -197,7 +158,7 @@ watch(
 				{{ locale.baseText('logs.overview.body.empty.message') }}
 			</N8nText>
 			<template v-else>
-				<ExecutionSummary
+				<LogsViewExecutionSummary
 					data-test-id="logs-overview-status"
 					:class="$style.summary"
 					:status="execution.status"
@@ -219,12 +180,12 @@ watch(
 							:is-compact="isCompact"
 							:should-show-token-count-column="shouldShowTokenCountColumn"
 							:latest-info="latestNodeInfo[data.node.id]"
-							:expanded="!collapsedEntries[data.id]"
+							:expanded="virtualList.list.value[index + 1]?.data.parent?.id === data.id"
 							:can-open-ndv="data.executionId === execution?.id"
-							@click.stop="handleClickNode(data)"
-							@toggle-expanded="handleToggleExpanded"
-							@open-ndv="handleOpenNdv"
-							@trigger-partial-execution="handleTriggerPartialExecution"
+							@toggle-expanded="handleToggleExpanded(data)"
+							@open-ndv="emit('openNdv', data)"
+							@trigger-partial-execution="handleTriggerPartialExecution(data)"
+							@toggle-selected="emit('select', selected?.id === data.id ? undefined : data)"
 						/>
 					</div>
 				</div>
