@@ -32,6 +32,9 @@ export class Evaluation implements INodeType {
 		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: `={{(${setOutputs})($parameter)}}`,
+		codex: {
+			alias: ['Test', 'Metrics', 'Evals', 'Set Output', 'Set Metrics'],
+		},
 		credentials: [
 			{
 				name: 'googleApi',
