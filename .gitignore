@@ -24,3 +24,5 @@ CHANGELOG-*.md
 build-storybook.log
 *.junit.xml
 junit.xml
+n8n-package
+n8n-package.zip

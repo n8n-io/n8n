@@ -401,9 +401,11 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 	};
 
 	const getCredentialTranslation = async (credentialType: string): Promise<object> => {
-		return await makeRestApiRequest(rootStore.restApiContext, 'GET', '/credential-translation', {
-			credentialType,
-		});
+		return (
+			(await makeRestApiRequest(rootStore.restApiContext, 'GET', '/credential-translation', {
+				credentialType,
+			})) || {}
+		);
 	};
 
 	const claimFreeAiCredits = async (projectId?: string): Promise<ICredentialsResponse> => {

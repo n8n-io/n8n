@@ -10,7 +10,7 @@ type Samesite = z.infer<typeof samesiteSchema>;
 class CookieConfig {
 	/** This sets the `Secure` flag on n8n auth cookie */
 	@Env('N8N_SECURE_COOKIE')
-	secure: boolean = true;
+	secure: boolean = false;
 
 	/** This sets the `Samesite` flag on n8n auth cookie */
 	@Env('N8N_SAMESITE_COOKIE', samesiteSchema)

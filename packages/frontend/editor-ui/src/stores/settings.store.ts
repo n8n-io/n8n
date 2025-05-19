@@ -258,7 +258,32 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	const getSettings = async () => {
 		const rootStore = useRootStore();
 		const fetchedSettings = await settingsApi.getSettings(rootStore.restApiContext);
-		setSettings(fetchedSettings);
+		setSettings({
+			...fetchedSettings,
+			enterprise: {
+				sharing: true,
+				ldap: true,
+				saml: true,
+				logStreaming: true,
+				advancedExecutionFilters: true,
+				variables: true,
+				sourceControl: true,
+				auditLogs: true,
+				externalSecrets: true,
+				showNonProdBanner: false,
+				debugInEditor: true,
+				binaryDataS3: true,
+				workflowHistory: true,
+				workerView: true,
+				advancedPermissions: true,
+				apiKeyScopes: true,
+				projects: {
+					team: {
+						limit: -1,
+					},
+				},
+			},
+		});
 		settings.value.communityNodesEnabled = fetchedSettings.communityNodesEnabled;
 		settings.value.unverifiedCommunityNodesEnabled =
 			fetchedSettings.unverifiedCommunityNodesEnabled;

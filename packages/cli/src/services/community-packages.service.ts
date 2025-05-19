@@ -5,10 +5,11 @@ import { InstalledPackagesRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import axios from 'axios';
 import { exec } from 'child_process';
-import { mkdir, readFile, writeFile } from 'fs/promises';
+import { mkdir, readFile, writeFile, rm } from 'fs/promises';
 import type { PackageDirectoryLoader } from 'n8n-core';
 import { InstanceSettings, Logger } from 'n8n-core';
 import { UnexpectedError, UserError, type PublicInstalledPackage } from 'n8n-workflow';
+import path from 'path';
 import { promisify } from 'util';
 
 import {
@@ -473,7 +474,8 @@ export class CommunityPackagesService {
 
 			await asyncExec(`npm install ${this.getNpmInstallArgs()}`, { cwd: packageDirectory });
 		} finally {
-			await asyncExec(`rm ${tarballName}`, { cwd: downloadFolder });
+			const tarballPath = path.join(downloadFolder, tarballName);
+			await rm(tarballPath, { force: true });
 		}
 
 		return packageDirectory;
@@ -481,6 +483,6 @@ export class CommunityPackagesService {
 
 	private async deletePackageDirectory(packageName: string) {
 		const packageDirectory = this.resolvePackageDirectory(packageName);
-		await asyncExec(`rm -rf ${packageDirectory}`);
+		await rm(packageDirectory, { recursive: true, force: true });
 	}
 }
