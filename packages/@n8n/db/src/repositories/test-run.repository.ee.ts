@@ -31,8 +31,8 @@ export class TestRunRepository extends Repository<TestRun> {
 			},
 		});
 
-		return testRun;
-		// return await this.save(testRun);
+		// return testRun;
+		return await this.save(testRun);
 	}
 
 	async markAsRunning(id: string) {
@@ -66,10 +66,10 @@ export class TestRunRepository extends Repository<TestRun> {
 		);
 	}
 
-	async getMany(_workflowId: string, options: ListQuery.Options) {
+	async getMany(workflowId: string, options: ListQuery.Options) {
 		// FIXME: optimize fetching final result of each test run
 		const findManyOptions: FindManyOptions<TestRun> = {
-			// where: { workflow: { id: workflowId } },
+			where: { workflow: { id: workflowId } },
 			order: { createdAt: 'DESC' },
 			relations: ['testCaseExecutions'],
 		};

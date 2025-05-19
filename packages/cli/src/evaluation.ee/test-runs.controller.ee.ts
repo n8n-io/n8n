@@ -10,6 +10,7 @@ import { NotImplementedError } from '@/errors/response-errors/not-implemented.er
 import { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.service.ee';
 import { TestRunsRequest } from '@/evaluation.ee/test-runs.types.ee';
 import { listQueryMiddleware } from '@/middlewares';
+import { getSharedWorkflowIds } from '@/public-api/v1/handlers/workflows/workflows.service';
 import { Telemetry } from '@/telemetry';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -30,7 +31,13 @@ export class TestRunsController {
 	private async getTestRun(
 		req: TestRunsRequest.GetOne | TestRunsRequest.Delete | TestRunsRequest.Cancel,
 	) {
-		const { id: testRunId } = req.params;
+		const { id: testRunId, workflowId } = req.params;
+
+		const sharedWorkflowsIds = await getSharedWorkflowIds(req.user, ['workflow:read']);
+
+		if (!sharedWorkflowsIds.length || (workflowId && !sharedWorkflowsIds.includes(workflowId))) {
+			throw new NotFoundError('Test run not found');
+		}
 
 		const testRun = await this.testRunRepository.findOne({
 			where: { id: testRunId },
@@ -53,6 +60,7 @@ export class TestRunsController {
 		const { id } = req.params;
 
 		try {
+			await this.getTestRun(req); // FIXME: do not fetch test run twice
 			return await this.testRunRepository.getTestRunSummaryById(id);
 		} catch (error) {
 			if (error instanceof UnexpectedError) throw new NotFoundError(error.message);

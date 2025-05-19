@@ -36,7 +36,7 @@ beforeEach(async () => {
 	otherWorkflow = await createWorkflow({ name: 'other-workflow' });
 });
 
-describe('GET /evaluation/test-definitions/:testDefinitionId/runs', () => {
+describe('GET /workflows/:workflowId/test-runs', () => {
 	test('should retrieve empty list of test runs', async () => {
 		const resp = await authOwnerAgent.get(`/workflows/${workflowUnderTest.id}/test-runs`);
 
@@ -60,7 +60,7 @@ describe('GET /evaluation/test-definitions/:testDefinitionId/runs', () => {
 	// 	expect(resp.statusCode).toBe(404);
 	// });
 
-	test('should retrieve list of runs for a test definition', async () => {
+	test('should retrieve list of runs for a workflow', async () => {
 		const testRunRepository = Container.get(TestRunRepository);
 		const testRun = await testRunRepository.createTestRun(workflowUnderTest.id);
 
@@ -114,8 +114,8 @@ describe('GET /evaluation/test-definitions/:testDefinitionId/runs', () => {
 	});
 });
 
-describe('GET /evaluation/test-definitions/:testDefinitionId/runs/:id', () => {
-	test('should retrieve test run for a test definition', async () => {
+describe('GET /workflows/:workflowId/test-runs/:id', () => {
+	test('should retrieve specific test run for a workflow', async () => {
 		const testRunRepository = Container.get(TestRunRepository);
 		const testRun = await testRunRepository.createTestRun(workflowUnderTest.id);
 
@@ -223,7 +223,7 @@ describe('POST /evaluation/test-definitions/:testDefinitionId/runs/:id/cancel', 
 		jest.spyOn(testRunRepository, 'markAsCancelled');
 
 		const resp = await authOwnerAgent.post(
-			`/workflows/${workflowUnderTest.id}/runs/${testRun.id}/cancel`,
+			`/workflows/${workflowUnderTest.id}/test-runs/${testRun.id}/cancel`,
 		);
 
 		expect(resp.statusCode).toBe(202);
@@ -246,12 +246,12 @@ describe('POST /evaluation/test-definitions/:testDefinitionId/runs/:id/cancel', 
 		expect(resp.statusCode).toBe(404);
 	});
 
-	test('should return 404 if user does not have access to test definition', async () => {
+	test('should return 404 if user does not have access to the workflow', async () => {
 		const testRunRepository = Container.get(TestRunRepository);
-		const testRun = await testRunRepository.createTestRun(workflowUnderTest.id);
+		const testRun = await testRunRepository.createTestRun(otherWorkflow.id);
 
 		const resp = await authOwnerAgent.post(
-			`/workflows/${workflowUnderTest.id}/test-runs/${testRun.id}/cancel`,
+			`/workflows/${otherWorkflow.id}/test-runs/${testRun.id}/cancel`,
 		);
 
 		expect(resp.statusCode).toBe(404);
