@@ -1,6 +1,5 @@
 import type { Settings, CredentialsEntity, User, WorkflowEntity, AuthUser } from '@n8n/db';
 import {
-	AuthUserRepository,
 	CredentialsRepository,
 	WorkflowRepository,
 	SettingsRepository,
@@ -31,7 +30,6 @@ export class HooksService {
 		private readonly settingsRepository: SettingsRepository,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly credentialsRepository: CredentialsRepository,
-		private readonly authUserRepository: AuthUserRepository,
 	) {}
 
 	/**
@@ -55,7 +53,7 @@ export class HooksService {
 	 * 2. To know when to update the user's profile also in cloud
 	 */
 	async findOneUser(filter: FindOneOptions<AuthUser>) {
-		return await this.authUserRepository.findOne(filter);
+		return await this.userRepository.findOne(filter);
 	}
 
 	/**
