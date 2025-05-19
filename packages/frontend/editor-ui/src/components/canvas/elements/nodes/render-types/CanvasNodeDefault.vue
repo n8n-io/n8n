@@ -6,6 +6,13 @@ import { useCanvasNode } from '@/composables/useCanvasNode';
 import { NODE_INSERT_SPACER_BETWEEN_INPUT_GROUPS } from '@/constants';
 import type { CanvasNodeDefaultRender } from '@/types';
 import { useCanvas } from '@/composables/useCanvas';
+import { useVueFlow } from '@vue-flow/core';
+import { useCanvasOperations } from '@/composables/useCanvasOperations';
+import { useRouter } from 'vue-router';
+import NodeSettings from '@/components/NodeSettings.vue';
+import { createEventBus } from '@n8n/utils/event-bus';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 
 const $style = useCssModule();
 const i18n = useI18n();
@@ -48,6 +55,12 @@ const {
 
 const renderOptions = computed(() => render.value.options as CanvasNodeDefaultRender['options']);
 
+const { editableWorkflow } = useCanvasOperations({ router: useRouter() });
+
+const vf = useVueFlow({ id: editableWorkflow.value.id });
+
+const isZoomedIn = computed(() => vf.viewport.value.zoom > 2);
+
 const classes = computed(() => {
 	return {
 		[$style.node]: true,
@@ -62,6 +75,7 @@ const classes = computed(() => {
 		[$style.configuration]: renderOptions.value.configuration,
 		[$style.trigger]: renderOptions.value.trigger,
 		[$style.warning]: renderOptions.value.dirtiness !== undefined,
+		[$style.isZoomedIn]: isZoomedIn.value,
 	};
 });
 
@@ -133,6 +147,17 @@ function openContextMenu(event: MouseEvent) {
 function onActivate(event: MouseEvent) {
 	emit('activate', id.value, event);
 }
+const settingsEventBus = createEventBus();
+const nodeTypesStore = useNodeTypesStore();
+const workflowsStore = useWorkflowsStore();
+
+const activeNode = computed(() => workflowsStore.getNodeById(id.value));
+const activeNodeType = computed(() => {
+	if (activeNode.value) {
+		return nodeTypesStore.getNodeType(activeNode.value.type, activeNode.value.typeVersion);
+	}
+	return null;
+});
 </script>
 
 <template>
@@ -143,19 +168,35 @@ function onActivate(event: MouseEvent) {
 		@contextmenu="openContextMenu"
 		@dblclick.stop="onActivate"
 	>
-		<CanvasNodeTooltip v-if="renderOptions.tooltip" :visible="showTooltip" />
-		<NodeIcon :icon-source="iconSource" :size="iconSize" :shrink="false" :disabled="isDisabled" />
-		<CanvasNodeStatusIcons v-if="!isDisabled" :class="$style.statusIcons" />
-		<CanvasNodeDisabledStrikeThrough v-if="isStrikethroughVisible" />
-		<div :class="$style.description">
-			<div v-if="label" :class="$style.label">
-				{{ label }}
-			</div>
-			<div v-if="isDisabled" :class="$style.disabledLabel">
-				({{ i18n.baseText('node.disabled') }})
-			</div>
-			<div v-if="subtitle" :class="$style.subtitle">{{ subtitle }}</div>
+		<div v-if="isZoomedIn">
+			<NodeSettings
+				:event-bus="settingsEventBus"
+				:dragging="false"
+				:active-node="activeNode"
+				:node-type="activeNodeType"
+				push-ref=""
+				:foreign-credentials="[]"
+				:read-only="false"
+				:block-u-i="false"
+				:executable="false"
+				:input-size="0"
+			/>
 		</div>
+		<template v-else>
+			<CanvasNodeTooltip v-if="renderOptions.tooltip" :visible="showTooltip" />
+			<NodeIcon :icon-source="iconSource" :size="iconSize" :shrink="false" :disabled="isDisabled" />
+			<CanvasNodeStatusIcons v-if="!isDisabled" :class="$style.statusIcons" />
+			<CanvasNodeDisabledStrikeThrough v-if="isStrikethroughVisible" />
+			<div :class="$style.description">
+				<div v-if="label" :class="$style.label">
+					{{ label }}
+				</div>
+				<div v-if="isDisabled" :class="$style.disabledLabel">
+					({{ i18n.baseText('node.disabled') }})
+				</div>
+				<div v-if="subtitle" :class="$style.subtitle">{{ subtitle }}</div>
+			</div>
+		</template>
 	</div>
 </template>
 
@@ -191,6 +232,20 @@ function onActivate(event: MouseEvent) {
 	&.trigger {
 		border-radius: var(--trigger-node--border-radius) var(--border-radius-large)
 			var(--border-radius-large) var(--trigger-node--border-radius);
+	}
+
+	&.isZoomedIn {
+		/*margin-top: calc(var(--canvas-node--width) * 0.8);*/
+		height: calc(var(--canvas-node--height) * 2.4);
+		width: calc(var(--canvas-node--width) * 1.6);
+		align-items: flex-start;
+		justify-content: stretch;
+		overflow: hidden;
+
+		& > * {
+			zoom: 0.5;
+			width: 100% !important;
+		}
 	}
 
 	/**
