@@ -1,9 +1,10 @@
-import type { MigrationContext, IrreversibleMigration } from '@/databases/types';
+import type { MigrationContext, IrreversibleMigration } from '../migration-types';
+
 const testRunTableName = 'test_run';
 const testCaseExecutionTableName = 'test_case_execution';
 export class ClearEvaluation1745322634000 implements IrreversibleMigration {
 	async up({
-		schemaBuilder: { dropTable, column, createTable, dropForeignKey },
+		schemaBuilder: { dropTable, column, createTable },
 		queryRunner,
 		tablePrefix,
 		isSqlite,

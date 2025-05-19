@@ -63,8 +63,6 @@ export {
 	AnnotationTagEntity,
 	ExecutionAnnotation,
 	AnnotationTagMapping,
-	TestDefinition,
-	TestMetric,
 	TestRun,
 	TestCaseExecution,
 	ExecutionEntity,
