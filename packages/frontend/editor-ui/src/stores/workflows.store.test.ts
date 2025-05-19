@@ -1042,7 +1042,36 @@ describe('useWorkflowsStore', () => {
 								},
 							],
 						},
-						pinData: {},
+						pinData: {
+							[nodeName]: [
+								{
+									json: {
+										foo: 'bar',
+									},
+									pairedItem: [
+										{
+											item: 0,
+											sourceOverwrite: {
+												previousNode: "When clicking 'Test workflow'",
+											},
+										},
+									],
+								},
+							],
+							'Edit Fields': [
+								{
+									json: {
+										bar: 'foo',
+									},
+									pairedItem: {
+										item: 1,
+										sourceOverwrite: {
+											previousNode: nodeName,
+										},
+									},
+								},
+							],
+						},
 						lastNodeExecuted: 'Edit Fields',
 					},
 				},
@@ -1057,6 +1086,37 @@ describe('useWorkflowsStore', () => {
 				typeVersion: 3.4,
 			});
 
+			workflowsStore.workflow.pinData = {
+				[nodeName]: [
+					{
+						json: {
+							foo: 'bar',
+						},
+						pairedItem: {
+							item: 2,
+							sourceOverwrite: {
+								previousNode: "When clicking 'Test workflow'",
+							},
+						},
+					},
+				],
+				'Edit Fields': [
+					{
+						json: {
+							bar: 'foo',
+						},
+						pairedItem: [
+							{
+								item: 3,
+								sourceOverwrite: {
+									previousNode: nodeName,
+								},
+							},
+						],
+					},
+				],
+			};
+
 			workflowsStore.renameNodeSelectedAndExecution({ old: nodeName, new: newName });
 
 			expect(workflowsStore.nodeMetadata[nodeName]).not.toBeDefined();
@@ -1070,6 +1130,32 @@ describe('useWorkflowsStore', () => {
 			).toEqual([
 				{
 					previousNode: newName,
+				},
+			]);
+			expect(
+				workflowsStore.workflowExecutionData?.data?.resultData.pinData?.[nodeName],
+			).not.toBeDefined();
+			expect(
+				workflowsStore.workflowExecutionData?.data?.resultData.pinData?.[newName],
+			).toBeDefined();
+			expect(
+				workflowsStore.workflowExecutionData?.data?.resultData.pinData?.['Edit Fields'][0]
+					.pairedItem,
+			).toEqual({
+				item: 1,
+				sourceOverwrite: {
+					previousNode: newName,
+				},
+			});
+
+			expect(workflowsStore.workflow.pinData?.[nodeName]).not.toBeDefined();
+			expect(workflowsStore.workflow.pinData?.[newName]).toBeDefined();
+			expect(workflowsStore.workflow.pinData?.['Edit Fields'][0].pairedItem).toEqual([
+				{
+					item: 3,
+					sourceOverwrite: {
+						previousNode: newName,
+					},
 				},
 			]);
 		});
