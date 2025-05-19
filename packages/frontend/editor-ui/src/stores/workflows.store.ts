@@ -1180,13 +1180,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 		// If node has any WorkflowResultData rename also that one that the data
 		// does still get displayed also after node got renamed
-		if (
-			workflowExecutionData.value?.data &&
-			workflowExecutionData.value.data.resultData.runData.hasOwnProperty(nameData.old)
-		) {
-			workflowExecutionData.value.data.resultData.runData[nameData.new] =
-				workflowExecutionData.value.data.resultData.runData[nameData.old];
-			delete workflowExecutionData.value.data.resultData.runData[nameData.old];
+		const runData = workflowExecutionData.value?.data?.resultData?.runData;
+		if (runData?.[nameData.old]) {
+			runData[nameData.new] = runData[nameData.old];
+			delete runData[nameData.old];
 		}
 
 		// In case the renamed node was last selected set it also there with the new name
@@ -1197,7 +1194,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		const { [nameData.old]: removed, ...rest } = nodeMetadata.value;
 		nodeMetadata.value = { ...rest, [nameData.new]: nodeMetadata.value[nameData.old] };
 
-		if (workflow.value.pinData && workflow.value.pinData.hasOwnProperty(nameData.old)) {
+		if (workflow.value.pinData?.[nameData.old]) {
 			const { [nameData.old]: renamed, ...restPinData } = workflow.value.pinData;
 			workflow.value = {
 				...workflow.value,
@@ -1207,6 +1204,38 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 				},
 			};
 		}
+
+		const resultData = workflowExecutionData.value?.data?.resultData;
+		if (resultData?.pinData?.[nameData.old]) {
+			resultData.pinData[nameData.new] = resultData.pinData[nameData.old];
+			delete resultData.pinData[nameData.old];
+		}
+
+		// Update the name in pinData
+		Object.values(workflow.value.pinData ?? {})
+			.concat(Object.values(workflowExecutionData.value?.data?.resultData.pinData ?? {}))
+			.flatMap((executionData) =>
+				executionData.flatMap((nodeExecution) =>
+					Array.isArray(nodeExecution.pairedItem)
+						? nodeExecution.pairedItem
+						: [nodeExecution.pairedItem],
+				),
+			)
+			.forEach((pairedItem) => {
+				if (
+					typeof pairedItem === 'number' ||
+					pairedItem?.sourceOverwrite?.previousNode !== nameData.old
+				)
+					return;
+				pairedItem.sourceOverwrite.previousNode = nameData.new;
+			});
+
+		Object.values(workflowExecutionData.value?.data?.resultData.runData ?? {})
+			.flatMap((taskData) => taskData.flatMap((task) => task.source))
+			.forEach((source) => {
+				if (!source || source.previousNode !== nameData.old) return;
+				source.previousNode = nameData.new;
+			});
 	}
 
 	function setParentFolder(folder: IWorkflowDb['parentFolder']) {
@@ -1538,7 +1567,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			const existingRunIndex = tasksData.findIndex(
 				(item) => item.executionIndex === data.executionIndex,
 			);
-			const index = existingRunIndex > -1 ? existingRunIndex : tasksData.length - 1;
+
+			// For waiting nodes always replace the last item as executionIndex will always be different
+			const hasWaitingItems = tasksData.some((it) => it.executionStatus === 'waiting');
+			const index =
+				existingRunIndex > -1 && !hasWaitingItems ? existingRunIndex : tasksData.length - 1;
 			const status = tasksData[index]?.executionStatus ?? 'unknown';
 
 			if ('waiting' === status || (settingsStore.isNewLogsEnabled && 'running' === status)) {

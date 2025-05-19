@@ -73,7 +73,7 @@
     "lodash-es": "^4.17.21",
     "luxon": "catalog:",
     "n8n-workflow": "workspace:*",
-    "pinia": "^2.2.4",
+    "pinia": "catalog:frontend",
     "prettier": "^3.3.3",
     "qrcode.vue": "^3.3.4",
     "stream-browserify": "^3.0.0",

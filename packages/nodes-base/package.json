@@ -882,7 +882,7 @@
     "@n8n/imap": "workspace:*",
     "@n8n/vm2": "3.9.25",
     "alasql": "4.4.0",
-    "amqplib": "0.10.3",
+    "amqplib": "0.10.6",
     "aws4": "1.11.0",
     "basic-auth": "catalog:",
     "change-case": "4.1.2",

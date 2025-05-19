@@ -1,4 +1,4 @@
-import { type INodeParameters, type NodeParameterValueType } from 'n8n-workflow';
+import type { INodeParameters, NodeParameterValueType } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { ref, watch } from 'vue';
 
