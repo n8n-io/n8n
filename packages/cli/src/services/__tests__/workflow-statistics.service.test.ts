@@ -184,7 +184,7 @@ describe('WorkflowStatisticsService', () => {
 				startedAt: new Date(),
 			};
 			const emitSpy = jest.spyOn(Container.get(EventService), 'emit');
-			const updateSettingsSpy = jest.spyOn(Container.get(UserService), 'updateSettings');
+			const updateSettingsSpy = jest.spyOn(userService, 'updateSettings');
 
 			// ACT
 			await workflowStatisticsService.workflowExecutionCompleted(workflow, runData);
@@ -214,7 +214,7 @@ describe('WorkflowStatisticsService', () => {
 				startedAt: new Date(),
 			};
 			const emitSpy = jest.spyOn(Container.get(EventService), 'emit');
-			const updateSettingsSpy = jest.spyOn(Container.get(UserService), 'updateSettings');
+			const updateSettingsSpy = jest.spyOn(userService, 'updateSettings');
 
 			// ACT
 			await workflowStatisticsService.workflowExecutionCompleted(workflow, runData);
@@ -251,7 +251,6 @@ describe('WorkflowStatisticsService', () => {
 		let eventService: EventService;
 		let fakeUser: User;
 		let fakeProject: Project;
-		let fakeWorkflow: IWorkflowDb & WorkflowEntity;
 		let ownershipService: OwnershipService;
 		let entityManager: EntityManager;
 		let userService: UserService;
@@ -260,7 +259,6 @@ describe('WorkflowStatisticsService', () => {
 		beforeAll(() => {
 			fakeUser = mock<User>({ id: 'abcde-fghij' });
 			fakeProject = mock<Project>({ id: '12345-67890', type: 'personal' });
-			fakeWorkflow = mock<IWorkflowDb & WorkflowEntity>({ id: '1' });
 			ownershipService = mockInstance(OwnershipService);
 			userService = mockInstance(UserService);
 			const globalConfig = Container.get(GlobalConfig);
