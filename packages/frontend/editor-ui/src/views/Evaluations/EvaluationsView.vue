@@ -116,7 +116,7 @@ const evaluationsLicensed = computed(() => {
 						</N8nText>
 						<N8nText tag="p" size="small" color="text-base" :class="$style.description">
 							{{ locale.baseText('evaluations.setupWizard.description') }}
-							<N8nLink size="small" href="https://google.com/">{{
+							<N8nLink size="small" href="https://docs.n8n.io/advanced-ai/evaluations/overview">{{
 								locale.baseText('evaluations.setupWizard.moreInfo')
 							}}</N8nLink>
 						</N8nText>
@@ -127,8 +127,8 @@ const evaluationsLicensed = computed(() => {
 							style="min-width: 500px"
 							width="500"
 							height="280"
-							src="https://www.youtube.com/embed/ZCuL2e4zC_4"
-							title="n8n: Flexible AI Workflow Automation for Technical Teams [2025]"
+							src="https://www.youtube.com/embed/5LlF196PKaE"
+							title="n8n Evaluation quickstart"
 							frameborder="0"
 							allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
 							referrerpolicy="strict-origin-when-cross-origin"
