@@ -1207,11 +1207,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 		const resultData = workflowExecutionData.value?.data?.resultData;
 		if (resultData?.pinData?.[nameData.old]) {
-			const { [nameData.old]: renamed, ...restPinData } = resultData.pinData;
-			resultData.pinData = {
-				...restPinData,
-				[nameData.new]: renamed,
-			};
+			resultData.pinData[nameData.new] = resultData.pinData[nameData.old];
+			delete resultData.pinData[nameData.old];
 		}
 
 		// Update the name in pinData
