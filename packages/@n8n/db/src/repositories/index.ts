@@ -3,7 +3,6 @@ export { AnnotationTagRepository } from './annotation-tag.repository.ee';
 export { ApiKeyRepository } from './api-key.repository';
 export { AuthIdentityRepository } from './auth-identity.repository';
 export { AuthProviderSyncHistoryRepository } from './auth-provider-sync-history.repository';
-export { AuthUserRepository } from './auth-user.repository';
 export { CredentialsRepository } from './credentials.repository';
 export { ExecutionAnnotationRepository } from './execution-annotation.repository';
 export { ExecutionDataRepository } from './execution-data.repository';
