@@ -11,8 +11,6 @@ import {
 	insertOptionsAndValues,
 } from './utils';
 
-export * from './composables';
-
 export const i18nInstance = createI18n({
 	locale: 'en',
 	fallbackLocale: 'en',
