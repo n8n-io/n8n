@@ -1299,7 +1299,7 @@
 	"nodeCreator.triggerHelperPanel.whatHappensNext": "What happens next?",
 	"nodeCreator.triggerHelperPanel.selectATrigger": "What triggers this workflow?",
 	"nodeCreator.triggerHelperPanel.selectATriggerDescription": "A trigger is a step that starts your workflow",
-	"nodeCreator.triggerHelperPanel.workflowTriggerDisplayName": "When Executed by Another Workflow",
+	"nodeCreator.triggerHelperPanel.workflowTriggerDisplayName": "When executed by another workflow",
 	"nodeCreator.triggerHelperPanel.workflowTriggerDescription": "Runs the flow when called by the Execute Workflow node from a different workflow",
 	"nodeCreator.aiPanel.aiNodes": "AI Nodes",
 	"nodeCreator.aiPanel.aiOtherNodes": "Other AI Nodes",
