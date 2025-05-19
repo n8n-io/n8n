@@ -82,6 +82,12 @@ export async function configurePostgres(
 			});
 		}
 
+		if (options.preservePostgresTypes?.length) {
+			options.preservePostgresTypes.forEach((type) => {
+				pgp.pg.types.setTypeParser(type, (value: string) => value);
+			});
+		}
+
 		if (options.largeNumbersOutput === 'numbers') {
 			pgp.pg.types.setTypeParser(20, (value: string) => {
 				return parseInt(value, 10);
