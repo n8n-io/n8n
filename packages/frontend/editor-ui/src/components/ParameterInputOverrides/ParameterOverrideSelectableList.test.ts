@@ -2,9 +2,9 @@ import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
 import ParameterOverrideSelectableList from './ParameterOverrideSelectableList.vue';
 import { createTestingPinia } from '@pinia/testing';
-import { STORES } from '@/constants';
 import { ref } from 'vue';
 import { createAppModals } from '@/__tests__/utils';
+import { STORES } from '@n8n/stores';
 
 vi.mock('vue-router', () => {
 	return {
