@@ -659,6 +659,56 @@ describe('useWorkflowsStore', () => {
 			});
 		});
 
+		it('should replace placeholder task data in waiting nodes correctly', () => {
+			const runWithExistingRunData = deepCopy(executionResponse);
+			runWithExistingRunData.data = {
+				resultData: {
+					runData: {
+						[successEvent.nodeName]: [
+							{
+								hints: [],
+								startTime: 1727867966633,
+								executionIndex: 2,
+								executionTime: 1,
+								source: [],
+								executionStatus: 'waiting',
+								data: {
+									main: [
+										[
+											{
+												json: {},
+												pairedItem: {
+													item: 0,
+												},
+											},
+										],
+									],
+								},
+							},
+						],
+					},
+				},
+			};
+			workflowsStore.setWorkflowExecutionData(runWithExistingRunData);
+
+			workflowsStore.nodesByName[successEvent.nodeName] = mock<INodeUi>({
+				type: 'n8n-nodes-base.manualTrigger',
+			});
+
+			// ACT
+			workflowsStore.updateNodeExecutionData(successEvent);
+
+			expect(workflowsStore.workflowExecutionData).toEqual({
+				...runWithExistingRunData,
+				data: {
+					resultData: {
+						runData: {
+							[successEvent.nodeName]: [successEvent.data],
+						},
+					},
+				},
+			});
+		});
 		it('should replace existing placeholder task data in new log view', () => {
 			settingsStore.settings = {
 				logsView: {
