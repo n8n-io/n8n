@@ -1,78 +1,118 @@
 {
-	"name": "Workflow Under Test",
 	"nodes": [
 		{
-			"parameters": {},
-			"type": "n8n-nodes-base.manualTrigger",
-			"typeVersion": 1,
-			"position": [-80, 0],
-			"id": "72256d90-3a67-4e29-b032-47df4e5768af",
-			"name": "When clicking ‘Execute workflow’"
+			"parameters": {
+				"documentId": {
+					"__rl": true,
+					"value": "mock",
+					"mode": "list"
+				},
+				"sheetName": {
+					"__rl": true,
+					"value": "mock",
+					"mode": "list"
+				}
+			},
+			"type": "n8n-nodes-base.evaluationTrigger",
+			"typeVersion": 4.6,
+			"position": [0, 0],
+			"id": "3c9068ec-4880-4fbe-a1c8-f7a1cb3f13e9",
+			"name": "When fetching a dataset row",
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "mock",
+					"name": "Google Sheets account"
+				}
+			}
 		},
 		{
 			"parameters": {
-				"assignments": {
+				"documentId": {
+					"__rl": true,
+					"value": "mock",
+					"mode": "list"
+				},
+				"sheetName": {
+					"__rl": true,
+					"value": "mock",
+					"mode": "list"
+				}
+			},
+			"type": "n8n-nodes-base.evaluation",
+			"typeVersion": 4.6,
+			"position": [440, 0],
+			"id": "9e0be4fb-faa3-4344-ba80-e18ceb1d22f1",
+			"name": "Set Outputs",
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "mock",
+					"name": "Google Sheets account"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"id": "335047aa-fb77-43a1-8135-873d34e7ccc1",
+			"name": "No Operation, do nothing"
+		},
+		{
+			"parameters": {
+				"operation": "setMetrics",
+				"metrics": {
 					"assignments": [
 						{
-							"id": "acfeecbe-443c-4220-b63b-d44d69216902",
-							"name": "foo",
-							"value": "bar",
-							"type": "string"
+							"name": "test",
+							"value": 0,
+							"type": "number",
+							"id": "cc598090-09c8-489d-84d5-e7b9ee5576b5"
 						}
 					]
-				},
-				"options": {}
+				}
 			},
-			"type": "n8n-nodes-base.set",
-			"typeVersion": 3.4,
-			"position": [140, 0],
-			"id": "319f29bc-1dd4-4122-b223-c584752151a4",
-			"name": "Edit Fields"
-		},
-		{
-			"parameters": {
-				"jsCode": "for (const item of $input.all()) {\n  item.json.random = Math.random();\n}\n\nreturn $input.all();"
-			},
-			"type": "n8n-nodes-base.code",
-			"typeVersion": 2,
-			"position": [380, 0],
-			"id": "d2474215-63af-40a4-a51e-0ea30d762621",
-			"name": "Code"
+			"type": "n8n-nodes-base.evaluation",
+			"typeVersion": 4.6,
+			"position": [660, 0],
+			"id": "7a795bad-08e1-4e5c-bfe4-2c43129b6da5",
+			"name": "Set Metrics"
 		}
 	],
 	"connections": {
-		"When clicking ‘Execute workflow’": {
+		"When fetching a dataset row": {
 			"main": [
 				[
 					{
-						"node": "Edit Fields",
+						"node": "No Operation, do nothing",
 						"type": "main",
 						"index": 0
 					}
 				]
 			]
 		},
-		"Edit Fields": {
+		"Set Outputs": {
 			"main": [
 				[
 					{
-						"node": "Wait",
+						"node": "Set Metrics",
 						"type": "main",
 						"index": 0
 					}
 				]
 			]
 		},
-		"Wait": {
+		"No Operation, do nothing": {
 			"main": [
 				[
 					{
-						"node": "Code",
+						"node": "Set Outputs",
 						"type": "main",
 						"index": 0
 					}
 				]
 			]
 		}
-	}
+	},
+	"pinData": {}
 }
