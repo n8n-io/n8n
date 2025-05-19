@@ -2408,6 +2408,38 @@ describe('useCanvasOperations', () => {
 			expect(workflowsStore.workflow.connections[node1.name]).toBeUndefined();
 		});
 
+		it('should delete all incoming connections from a node', () => {
+			setActivePinia(createTestingPinia({ stubActions: false }));
+
+			const workflowsStore = useWorkflowsStore();
+			const { deleteConnectionsByNodeId } = useCanvasOperations({ router });
+
+			const node1 = createTestNode({ id: 'node1', name: 'Node 1' });
+			const node2 = createTestNode({ id: 'node2', name: 'Node 2' });
+
+			workflowsStore.setNodes([node1, node2]);
+			workflowsStore.setConnections({
+				[node1.name]: {
+					[NodeConnectionTypes.Main]: [
+						[
+							{ node: node2.name, type: NodeConnectionTypes.Main, index: 0 },
+							{ node: node2.name, type: NodeConnectionTypes.Main, index: 1 },
+						],
+					],
+				},
+			});
+
+			expect(
+				workflowsStore.workflow.connections[node1.name][NodeConnectionTypes.Main][0],
+			).toHaveLength(2);
+
+			deleteConnectionsByNodeId(node2.id);
+
+			expect(
+				workflowsStore.workflow.connections[node1.name][NodeConnectionTypes.Main][0],
+			).toHaveLength(0);
+		});
+
 		it('should not delete connections if node ID does not exist', () => {
 			const workflowsStore = mockedStore(useWorkflowsStore);
 			const { deleteConnectionsByNodeId } = useCanvasOperations({ router });

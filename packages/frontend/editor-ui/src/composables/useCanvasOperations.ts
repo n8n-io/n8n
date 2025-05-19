@@ -1221,7 +1221,9 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 			for (const type of Object.keys(connections[nodeName])) {
 				for (const index of Object.keys(connections[nodeName][type])) {
 					const connectionsToDelete = connections[nodeName][type][parseInt(index, 10)] ?? [];
-					for (const connectionIndex of Object.keys(connectionsToDelete)) {
+
+					// Process highest index first with reverse() because the item gets removed in the loop, affecting index
+					for (const connectionIndex of Object.keys(connectionsToDelete).reverse()) {
 						const connectionData = connectionsToDelete[parseInt(connectionIndex, 10)];
 						if (!connectionData) {
 							continue;
