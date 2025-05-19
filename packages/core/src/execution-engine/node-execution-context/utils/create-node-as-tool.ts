@@ -1,10 +1,10 @@
 import { DynamicStructuredTool } from '@langchain/core/tools';
-import type { IDataObject, INode, INodeType, FromAIArgument } from 'n8n-workflow';
+import type { FromAIArgument, IDataObject, INode, INodeType } from 'n8n-workflow';
 import {
-	generateZodSchema,
+	generateZodSchemaExtended,
+	NodeHelpers,
 	NodeOperationError,
 	traverseNodeParameters,
-	NodeHelpers,
 } from 'n8n-workflow';
 import { z } from 'zod';
 
@@ -26,7 +26,7 @@ export type CreateNodeAsToolOptions = {
  * @throws {NodeOperationError} When parameter keys are invalid or when duplicate keys have inconsistent definitions
  * @returns {z.ZodObject} A Zod schema object representing the structure and validation rules for the node parameters
  */
-function getSchema(node: INode) {
+function getSchema(node: INode, nodeType: INodeType) {
 	const collectedArguments: FromAIArgument[] = [];
 	try {
 		traverseNodeParameters(node.parameters, collectedArguments);
@@ -81,7 +81,7 @@ function getSchema(node: INode) {
 
 	// Generate Zod schema from unique arguments
 	const schemaObj = uniqueArguments.reduce((acc: Record<string, z.ZodTypeAny>, placeholder) => {
-		acc[placeholder.key] = generateZodSchema(placeholder);
+		acc[placeholder.key] = generateZodSchemaExtended(nodeType, placeholder);
 		return acc;
 	}, {});
 
@@ -104,7 +104,7 @@ export function nodeNameToToolName(node: INode): string {
 function createTool(options: CreateNodeAsToolOptions) {
 	const { node, nodeType, handleToolInvocation } = options;
 
-	const schema = getSchema(node);
+	const schema = getSchema(node, nodeType);
 	const description = NodeHelpers.getToolDescriptionForNode(node, nodeType);
 	const nodeName = nodeNameToToolName(node);
 	const name = nodeName || nodeType.description.name;

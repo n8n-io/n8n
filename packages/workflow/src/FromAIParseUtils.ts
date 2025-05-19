@@ -1,5 +1,7 @@
+/* eslint-disable complexity */
 import { z } from 'zod';
 
+import { INodePropertyOptions, INodeType } from '.';
 import { jsonParse } from './utils';
 
 /**
@@ -99,6 +101,85 @@ export function generateZodSchema(placeholder: FromAIArgument): z.ZodTypeAny {
 
 	if (placeholder.defaultValue !== undefined) {
 		schema = schema.default(placeholder.defaultValue);
+	}
+
+	return schema;
+}
+
+export function generateZodSchemaExtended(
+	nodeType: INodeType,
+	placeholder: FromAIArgument,
+): z.ZodTypeAny {
+	let schema;
+	const parameter = nodeType.description.properties.find((param) => {
+		if (
+			param.name === placeholder.key ||
+			param.displayName === placeholder.key.replace(/_/g, ' ')
+		) {
+			return true;
+		}
+
+		return false;
+	});
+
+	if (!parameter) {
+		throw new ParseError(
+			`Parameter ${placeholder.key} not found in node type ${nodeType.description.name}`,
+		);
+	}
+
+	switch (parameter.type) {
+		case 'dateTime':
+			schema = z.string();
+			break;
+
+		case 'string':
+			schema = z.string();
+			break;
+
+		case 'number':
+			schema = z.number();
+			if (parameter.typeOptions?.minValue !== undefined) {
+				schema = schema.min(parameter.typeOptions.minValue);
+			}
+			if (parameter.typeOptions?.maxValue !== undefined) {
+				schema = schema.max(parameter.typeOptions.maxValue);
+			}
+
+			break;
+
+		case 'fixedCollection':
+		case 'collection':
+		case 'options':
+		case 'multiOptions':
+			const enumValues = parameter.options!.map(
+				(option) => (option as INodePropertyOptions).value,
+			) as [string, ...string[]];
+			if (Array.isArray(parameter.default)) {
+				schema = z.array(z.enum(enumValues));
+			} else {
+				schema = z.enum(enumValues);
+			}
+
+			break;
+
+		default:
+			schema = generateZodSchema(placeholder);
+	}
+
+	schema = schema.describe(
+		schema.description ??
+			(placeholder.description?.length
+				? placeholder.description
+				: (parameter.description ?? 'No description provided')),
+	);
+
+	if (placeholder.defaultValue !== undefined) {
+		schema = schema.default(placeholder.defaultValue);
+	}
+
+	if (parameter.required !== true) {
+		schema = schema.nullable();
 	}
 
 	return schema;
