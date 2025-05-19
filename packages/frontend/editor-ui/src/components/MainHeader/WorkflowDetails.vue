@@ -680,7 +680,7 @@ const onBreadcrumbsItemSelected = (item: PathItem) => {
 				>
 					<template #append>
 						<span
-							v-if="projectsStore.currentProject || projectsStore.personalProject"
+							v-if="projectsStore.currentProject ?? projectsStore.personalProject"
 							:class="$style['path-separator']"
 							>/</span
 						>
