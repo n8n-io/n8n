@@ -8,7 +8,7 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { NodeConnectionTypes, BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
-import type { Readable } from 'stream';
+import { Readable } from 'stream';
 
 import { isoCountryCodes } from '@utils/ISOCountryCodes';
 
@@ -839,7 +839,7 @@ export class YouTube implements INodeType {
 
 						let mimeType: string;
 						let contentLength: number;
-						let fileContent: Buffer | Readable;
+						let fileContent: Readable;
 
 						if (binaryData.id) {
 							// Stream data in 256KB chunks, and upload the via the resumable upload api
@@ -848,8 +848,9 @@ export class YouTube implements INodeType {
 							contentLength = metadata.fileSize;
 							mimeType = metadata.mimeType ?? binaryData.mimeType;
 						} else {
-							fileContent = Buffer.from(binaryData.data, BINARY_ENCODING);
-							contentLength = fileContent.length;
+							const buffer = Buffer.from(binaryData.data, BINARY_ENCODING);
+							fileContent = Readable.from(buffer);
+							contentLength = buffer.length;
 							mimeType = binaryData.mimeType;
 						}
 
