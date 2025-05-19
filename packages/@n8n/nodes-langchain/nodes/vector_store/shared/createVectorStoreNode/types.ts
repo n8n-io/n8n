@@ -20,7 +20,6 @@ export interface NodeMeta {
 	displayName: string;
 	name: string;
 	description: string;
-	version?: number[];
 	docsUrl: string;
 	icon: Icon;
 	iconColor?: ThemeIconColor;

@@ -54,7 +54,6 @@ export class VectorStoreInMemory extends createVectorStoreNode<MemoryVectorStore
 	meta: {
 		displayName: 'Simple Vector Store',
 		name: 'vectorStoreInMemory',
-		version: [1, 1.1, 1.2],
 		description:
 			"Work with your data in a Simple Vector Store. Don't use this for production usage.",
 		icon: 'fa:database',
@@ -99,6 +98,7 @@ export class VectorStoreInMemory extends createVectorStoreNode<MemoryVectorStore
 						searchable: true,
 						allowNewResource: {
 							label: 'resourceLocator.mode.list.addNewResource.vectorStoreInMemory',
+							defaultName: DEFAULT_MEMORY_KEY,
 							method: 'createVectorStore',
 						},
 					},

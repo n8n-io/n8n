@@ -1446,6 +1446,7 @@ export interface INodePropertyModeTypeOptions {
 	searchable?: boolean;
 	allowNewResource?: {
 		label: string;
+		defaultName: string;
 		method: string;
 	};
 }
