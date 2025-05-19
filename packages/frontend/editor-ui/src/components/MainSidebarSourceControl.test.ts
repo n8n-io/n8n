@@ -11,11 +11,13 @@ import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useRBACStore } from '@/stores/rbac.store';
 import { createComponentRenderer } from '@/__tests__/render';
+import { useProjectsStore } from '@/stores/projects.store';
 
 let pinia: ReturnType<typeof createTestingPinia>;
 let sourceControlStore: ReturnType<typeof useSourceControlStore>;
 let uiStore: ReturnType<typeof useUIStore>;
 let rbacStore: ReturnType<typeof useRBACStore>;
+let projectStore: ReturnType<typeof useProjectsStore>;
 
 const showMessage = vi.fn();
 const showError = vi.fn();
@@ -38,6 +40,7 @@ describe('MainSidebarSourceControl', () => {
 		});
 
 		rbacStore = useRBACStore(pinia);
+		projectStore = useProjectsStore(pinia);
 		vi.spyOn(rbacStore, 'hasScope').mockReturnValue(true);
 
 		sourceControlStore = useSourceControlStore();
@@ -58,8 +61,47 @@ describe('MainSidebarSourceControl', () => {
 		expect(getByTestId('main-sidebar-source-control')).toBeEmptyDOMElement();
 	});
 
+	describe('when connected as project admin', () => {
+		beforeEach(() => {
+			vi.spyOn(rbacStore, 'hasScope').mockReturnValue(false);
+			vi.spyOn(sourceControlStore, 'preferences', 'get').mockReturnValue({
+				branchName: 'main',
+				branches: [],
+				repositoryUrl: '',
+				branchReadOnly: false,
+				branchColor: '#5296D6',
+				connected: true,
+				publicKey: '',
+			});
+			projectStore.myProjects = [
+				{
+					id: '1',
+					name: 'Test Project',
+					type: 'team',
+					scopes: ['sourceControl:push'],
+					icon: { type: 'emoji', value: '🚀' },
+					createdAt: '2023-01-01T00:00:00Z',
+					updatedAt: '2023-01-01T00:00:00Z',
+					role: 'project:admin',
+				},
+			];
+		});
+
+		it('should render the appropriate content', async () => {
+			const { getByTestId, queryByTestId } = renderComponent({
+				pinia,
+				props: { isCollapsed: false },
+			});
+			expect(getByTestId('main-sidebar-source-control-connected')).toBeInTheDocument();
+			expect(queryByTestId('main-sidebar-source-control-setup')).not.toBeInTheDocument();
+			expect(queryByTestId('main-sidebar-source-control-push')).toBeInTheDocument();
+			expect(queryByTestId('main-sidebar-source-control-pull')).not.toBeInTheDocument();
+		});
+	});
+
 	describe('when connected', () => {
 		beforeEach(() => {
+			vi.spyOn(rbacStore, 'hasScope').mockReturnValue(true);
 			vi.spyOn(sourceControlStore, 'preferences', 'get').mockReturnValue({
 				branchName: 'main',
 				branches: [],
