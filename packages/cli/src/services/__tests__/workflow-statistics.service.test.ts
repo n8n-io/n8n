@@ -1,7 +1,6 @@
 import { GlobalConfig } from '@n8n/config';
-import type { Project } from '@n8n/db';
+import type { IWorkflowDb, Project, WorkflowEntity } from '@n8n/db';
 import type { User } from '@n8n/db';
-import type { WorkflowStatistics } from '@n8n/db';
 import { WorkflowStatisticsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import {
@@ -12,7 +11,6 @@ import {
 } from '@n8n/typeorm';
 import { mocked } from 'jest-mock';
 import { mock } from 'jest-mock-extended';
-import type { IWorkflowBase } from 'n8n-workflow';
 import {
 	type ExecutionStatus,
 	type INode,
@@ -21,68 +19,45 @@ import {
 } from 'n8n-workflow';
 
 import config from '@/config';
-import type { EventService } from '@/events/event.service';
+import { EventService } from '@/events/event.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { UserService } from '@/services/user.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { mockInstance } from '@test/mocking';
+import { getPersonalProject } from '@test-integration/db/projects';
+import { createUser } from '@test-integration/db/users';
+import { createWorkflow } from '@test-integration/db/workflows';
+
+import * as testDb from '../../../test/integration/shared/test-db';
 
 describe('WorkflowStatisticsService', () => {
-	const fakeUser = mock<User>({ id: 'abcde-fghij' });
-	const fakeProject = mock<Project>({ id: '12345-67890', type: 'personal' });
-	const fakeWorkflow = mock<IWorkflowBase>({ id: '1' });
-	const ownershipService = mockInstance(OwnershipService);
-	const userService = mockInstance(UserService);
-	const globalConfig = Container.get(GlobalConfig);
-	const dbType = globalConfig.database.type;
-
-	const entityManager = mock<EntityManager>();
-	const dataSource = mock<DataSource>({
-		manager: entityManager,
-		getMetadata: () =>
-			mock<EntityMetadata>({
-				tableName: 'workflow_statistics',
-			}),
-		driver: { escape: jest.fn((id) => id) },
-	});
-	Object.assign(entityManager, { connection: dataSource });
-
-	globalConfig.diagnostics.enabled = true;
-	config.set('deployment.type', 'n8n-testing');
-	mocked(ownershipService.getWorkflowProjectCached).mockResolvedValue(fakeProject);
-	mocked(ownershipService.getPersonalProjectOwnerCached).mockResolvedValue(fakeUser);
-	const updateSettingsMock = jest.spyOn(userService, 'updateSettings').mockImplementation();
-
-	const eventService = mock<EventService>();
-	const workflowStatisticsService = new WorkflowStatisticsService(
-		mock(),
-		new WorkflowStatisticsRepository(dataSource, globalConfig),
-		ownershipService,
-		userService,
-		eventService,
-	);
-
-	beforeEach(() => {
-		jest.clearAllMocks();
-	});
-
-	const mockDBCall = (count = 1) => {
-		if (dbType === 'sqlite') {
-			entityManager.findOne.mockResolvedValueOnce(mock<WorkflowStatistics>({ count }));
-		} else {
-			const result = dbType === 'postgresdb' ? [{ count }] : { affectedRows: count };
-			entityManager.query.mockImplementationOnce(async (query) =>
-				query.startsWith('INSERT INTO') ? result : null,
-			);
-		}
-	};
-
 	describe('workflowExecutionCompleted', () => {
+		let workflowStatisticsService: WorkflowStatisticsService;
+		let workflowStatisticsRepository: WorkflowStatisticsRepository;
+		let userService: UserService;
+		let user: User;
+		let personalProject: Project;
+		let workflow: IWorkflowDb & WorkflowEntity;
+
+		beforeAll(async () => {
+			await testDb.init();
+			workflowStatisticsService = Container.get(WorkflowStatisticsService);
+			workflowStatisticsRepository = Container.get(WorkflowStatisticsRepository);
+			userService = Container.get(UserService);
+			user = await createUser();
+			personalProject = await getPersonalProject(user);
+			workflow = await createWorkflow({}, user);
+		});
+
+		beforeEach(async () => {
+			jest.restoreAllMocks();
+			await testDb.truncate(['WorkflowStatistics']);
+		});
+
 		test.each<WorkflowExecuteMode>(['cli', 'error', 'retry', 'trigger', 'webhook', 'evaluation'])(
-			'should upsert with root executions for execution mode %s',
+			'should upsert `count` and `rootCount` for execution mode %s',
 			async (mode) => {
-				mockDBCall();
-				// Call the function with a production success result, ensure metrics hook gets called
+				// ARRANGE
 				const runData: IRun = {
 					finished: true,
 					status: 'success',
@@ -91,44 +66,58 @@ describe('WorkflowStatisticsService', () => {
 					startedAt: new Date(),
 				};
 
-				await workflowStatisticsService.workflowExecutionCompleted(fakeWorkflow, runData);
-				expect(entityManager.query).toHaveReturnedTimes(1);
-				expect(entityManager.query).toHaveBeenNthCalledWith(1, expect.any(String), [
-					1,
-					expect.any(String),
-					'1',
-					1,
-				]);
+				// ACT
+				await workflowStatisticsService.workflowExecutionCompleted(workflow, runData);
+				await workflowStatisticsService.workflowExecutionCompleted(workflow, runData);
+
+				// ASSERT
+				const statistics = await workflowStatisticsRepository.find();
+				expect(statistics).toHaveLength(1);
+				expect(statistics[0]).toMatchObject({
+					count: 2,
+					rootCount: 2,
+					latestEvent: expect.any(Date),
+					name: 'production_success',
+					workflowId: workflow.id,
+				});
 			},
 		);
 
 		test.each<WorkflowExecuteMode>(['manual', 'integrated', 'internal'])(
-			'should upsert without root executions for execution mode %s',
+			'should upsert `count`, but not `rootCount` for execution mode %s',
 			async (mode) => {
-				mockDBCall();
+				// ARRANGE
 				const runData: IRun = {
 					finished: true,
+					// use `success` to make sure it would upsert if it were not for the
+					// mode used
 					status: 'success',
 					data: { resultData: { runData: {} } },
 					mode,
 					startedAt: new Date(),
 				};
 
-				await workflowStatisticsService.workflowExecutionCompleted(fakeWorkflow, runData);
-				expect(entityManager.query).toHaveReturnedTimes(1);
-				expect(entityManager.query).toHaveBeenNthCalledWith(1, expect.any(String), [
-					0,
-					expect.any(String),
-					'1',
-					0,
-				]);
+				// ACT
+				await workflowStatisticsService.workflowExecutionCompleted(workflow, runData);
+				await workflowStatisticsService.workflowExecutionCompleted(workflow, runData);
+
+				// ASSERT
+				const statistics = await workflowStatisticsRepository.find();
+				expect(statistics).toHaveLength(1);
+				expect(statistics[0]).toMatchObject({
+					count: 2,
+					rootCount: 0,
+					latestEvent: expect.any(Date),
+					name: mode === 'manual' ? 'manual_success' : 'production_success',
+					workflowId: workflow.id,
+				});
 			},
 		);
 
 		test.each<ExecutionStatus>(['success', 'crashed', 'error'])(
-			'should upsert with root executions for execution status %s',
+			'should upsert `count` and `rootCount` for execution status %s',
 			async (status) => {
-				mockDBCall();
+				// ARRANGE
 				const runData: IRun = {
 					finished: true,
 					status,
@@ -137,120 +126,178 @@ describe('WorkflowStatisticsService', () => {
 					startedAt: new Date(),
 				};
 
-				await workflowStatisticsService.workflowExecutionCompleted(fakeWorkflow, runData);
-				expect(entityManager.query).toHaveReturnedTimes(1);
-				expect(entityManager.query).toHaveBeenNthCalledWith(1, expect.any(String), [
-					1,
-					expect.any(String),
-					'1',
-					1,
-				]);
+				// ACT
+				await workflowStatisticsService.workflowExecutionCompleted(workflow, runData);
+				await workflowStatisticsService.workflowExecutionCompleted(workflow, runData);
+
+				// ASSERT
+				const statistics = await workflowStatisticsRepository.find();
+				expect(statistics).toHaveLength(1);
+				expect(statistics[0]).toMatchObject({
+					count: 2,
+					rootCount: 2,
+					latestEvent: expect.any(Date),
+					name: status === 'success' ? 'production_success' : 'production_error',
+					workflowId: workflow.id,
+				});
 			},
 		);
 
 		test.each<ExecutionStatus>(['canceled', 'new', 'running', 'unknown', 'waiting'])(
-			'should upsert without root executions for execution status %s',
+			'should upsert `count`, but not `rootCount` for execution status %s',
 			async (status) => {
-				mockDBCall();
+				// ARRANGE
 				const runData: IRun = {
 					finished: true,
 					status,
 					data: { resultData: { runData: {} } },
+					// use `trigger` to make sure it would upsert if it were not for the
+					// status used
 					mode: 'trigger',
 					startedAt: new Date(),
 				};
 
-				await workflowStatisticsService.workflowExecutionCompleted(fakeWorkflow, runData);
-				expect(entityManager.query).toHaveReturnedTimes(1);
-				expect(entityManager.query).toHaveBeenNthCalledWith(1, expect.any(String), [
-					0,
-					expect.any(String),
-					'1',
-					0,
-				]);
+				// ACT
+				await workflowStatisticsService.workflowExecutionCompleted(workflow, runData);
+				await workflowStatisticsService.workflowExecutionCompleted(workflow, runData);
+
+				// ASSERT
+				const statistics = await workflowStatisticsRepository.find();
+				expect(statistics).toHaveLength(1);
+				expect(statistics[0]).toMatchObject({
+					count: 2,
+					rootCount: 0,
+					latestEvent: expect.any(Date),
+					name: 'production_error',
+					workflowId: workflow.id,
+				});
 			},
 		);
 
-		test('should create metrics for production successes', async () => {
-			// Call the function with a production success result, ensure metrics hook gets called
-			const workflow = {
-				id: '1',
-				name: '',
-				active: false,
-				isArchived: false,
-				createdAt: new Date(),
-				updatedAt: new Date(),
-				nodes: [],
-				connections: {},
-			};
+		test('updates user settings and emit first-production-workflow-succeeded', async () => {
+			// ARRANGE
 			const runData: IRun = {
 				finished: true,
 				status: 'success',
 				data: { resultData: { runData: {} } },
-				mode: 'internal' as WorkflowExecuteMode,
+				mode: 'internal',
 				startedAt: new Date(),
 			};
-			mockDBCall();
+			const emitSpy = jest.spyOn(Container.get(EventService), 'emit');
+			const updateSettingsSpy = jest.spyOn(Container.get(UserService), 'updateSettings');
 
+			// ACT
 			await workflowStatisticsService.workflowExecutionCompleted(workflow, runData);
-			expect(updateSettingsMock).toHaveBeenCalledTimes(1);
-			expect(eventService.emit).toHaveBeenCalledWith('first-production-workflow-succeeded', {
-				projectId: fakeProject.id,
+
+			// ASSERT
+			expect(updateSettingsSpy).toHaveBeenCalledTimes(1);
+			expect(updateSettingsSpy).toHaveBeenCalledWith(user.id, {
+				firstSuccessfulWorkflowId: workflow.id,
+				userActivated: true,
+				userActivatedAt: runData.startedAt.getTime(),
+			});
+			expect(emitSpy).toHaveBeenCalledTimes(1);
+			expect(emitSpy).toHaveBeenCalledWith('first-production-workflow-succeeded', {
+				projectId: personalProject.id,
 				workflowId: workflow.id,
-				userId: fakeUser.id,
+				userId: user.id,
 			});
 		});
 
-		test('should only create metrics for production successes', async () => {
-			mockDBCall();
-			// Call the function with a non production success result, ensure metrics hook is never called
-			const workflow = {
-				id: '1',
-				name: '',
-				active: false,
-				isArchived: false,
-				createdAt: new Date(),
-				updatedAt: new Date(),
-				nodes: [],
-				connections: {},
-			};
+		test('does not update user settings and does not emit first-production-workflow-succeeded for failing executions', async () => {
+			// ARRANGE
 			const runData: IRun = {
 				finished: false,
 				status: 'error',
 				data: { resultData: { runData: {} } },
-				mode: 'internal' as WorkflowExecuteMode,
+				mode: 'internal',
 				startedAt: new Date(),
 			};
+			const emitSpy = jest.spyOn(Container.get(EventService), 'emit');
+			const updateSettingsSpy = jest.spyOn(Container.get(UserService), 'updateSettings');
+
+			// ACT
 			await workflowStatisticsService.workflowExecutionCompleted(workflow, runData);
-			expect(eventService.emit).not.toHaveBeenCalled();
+
+			// ASSERT
+			expect(updateSettingsSpy).not.toHaveBeenCalled();
+			expect(emitSpy).not.toHaveBeenCalled();
 		});
 
-		test('should not send metrics for updated entries', async () => {
-			// Call the function with a fail insert, ensure update is called *and* metrics aren't sent
-			const workflow = {
-				id: '1',
-				name: '',
-				active: false,
-				isArchived: false,
-				createdAt: new Date(),
-				updatedAt: new Date(),
-				nodes: [],
-				connections: {},
-			};
+		test('does not update user settings and does not emit first-production-workflow-succeeded for successive executions', async () => {
+			// ARRANGE
 			const runData: IRun = {
 				finished: true,
 				status: 'success',
 				data: { resultData: { runData: {} } },
-				mode: 'internal' as WorkflowExecuteMode,
+				mode: 'internal',
 				startedAt: new Date(),
 			};
-			mockDBCall(2);
 			await workflowStatisticsService.workflowExecutionCompleted(workflow, runData);
-			expect(eventService.emit).not.toHaveBeenCalled();
+			const emitSpy = jest.spyOn(Container.get(EventService), 'emit');
+			const updateSettingsSpy = jest.spyOn(Container.get(UserService), 'updateSettings');
+
+			// ACT
+			await workflowStatisticsService.workflowExecutionCompleted(workflow, runData);
+
+			// ASSERT
+			expect(updateSettingsSpy).not.toHaveBeenCalled();
+			expect(emitSpy).not.toHaveBeenCalled();
 		});
 	});
 
 	describe('nodeFetchedData', () => {
+		let workflowStatisticsService: WorkflowStatisticsService;
+		let eventService: EventService;
+		let fakeUser: User;
+		let fakeProject: Project;
+		let fakeWorkflow: IWorkflowDb & WorkflowEntity;
+		let ownershipService: OwnershipService;
+		let entityManager: EntityManager;
+		let userService: UserService;
+		let workflowStatisticsRepository: WorkflowStatisticsRepository;
+
+		beforeAll(() => {
+			fakeUser = mock<User>({ id: 'abcde-fghij' });
+			fakeProject = mock<Project>({ id: '12345-67890', type: 'personal' });
+			fakeWorkflow = mock<IWorkflowDb & WorkflowEntity>({ id: '1' });
+			ownershipService = mockInstance(OwnershipService);
+			userService = mockInstance(UserService);
+			const globalConfig = Container.get(GlobalConfig);
+
+			entityManager = mock<EntityManager>();
+			const dataSource = mock<DataSource>({
+				manager: entityManager,
+				getMetadata: () =>
+					mock<EntityMetadata>({
+						tableName: 'workflow_statistics',
+					}),
+				driver: { escape: jest.fn((id) => id) },
+			});
+			Object.assign(entityManager, { connection: dataSource });
+			eventService = mock<EventService>();
+			workflowStatisticsRepository = new WorkflowStatisticsRepository(dataSource, globalConfig);
+			workflowStatisticsService = new WorkflowStatisticsService(
+				mock(),
+				workflowStatisticsRepository,
+				ownershipService,
+				userService,
+				eventService,
+			);
+			globalConfig.diagnostics.enabled = true;
+			config.set('deployment.type', 'n8n-testing');
+			mocked(ownershipService.getWorkflowProjectCached).mockResolvedValue(fakeProject);
+			mocked(ownershipService.getPersonalProjectOwnerCached).mockResolvedValue(fakeUser);
+		});
+
+		afterAll(() => {
+			jest.resetAllMocks();
+		});
+
+		beforeEach(() => {
+			jest.clearAllMocks();
+		});
+
 		test('should create metrics when the db is updated', async () => {
 			// Call the function with a production success result, ensure metrics hook gets called
 			const workflowId = '1';
@@ -274,7 +321,7 @@ describe('WorkflowStatisticsService', () => {
 
 		test('should emit event with no `userId` if workflow is owned by team project', async () => {
 			const workflowId = '123';
-			ownershipService.getPersonalProjectOwnerCached.mockResolvedValueOnce(null);
+			mocked(ownershipService.getPersonalProjectOwnerCached).mockResolvedValueOnce(null);
 			const node = mock<INode>({ id: '123', type: 'n8n-nodes-base.noOp', credentials: {} });
 
 			await workflowStatisticsService.nodeFetchedData(workflowId, node);
@@ -319,7 +366,9 @@ describe('WorkflowStatisticsService', () => {
 
 		test('should not send metrics for entries that already have the flag set', async () => {
 			// Fetch data for workflow 2 which is set up to not be altered in the mocks
-			entityManager.insert.mockRejectedValueOnce(new QueryFailedError('', undefined, new Error()));
+			mocked(entityManager.insert).mockRejectedValueOnce(
+				new QueryFailedError('', undefined, new Error()),
+			);
 			const workflowId = '1';
 			const node = {
 				id: 'abcde',
