@@ -57,7 +57,6 @@ export {
 	WorkflowTagMapping,
 	FolderTagMapping,
 	AuthProviderSyncHistory,
-	AuthUser,
 	WorkflowHistory,
 	ExecutionData,
 	ExecutionMetadata,
