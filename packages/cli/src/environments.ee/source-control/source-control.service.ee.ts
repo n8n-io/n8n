@@ -3,7 +3,7 @@ import type {
 	PushWorkFolderRequestDto,
 	SourceControlledFile,
 } from '@n8n/api-types';
-import type { Variables, TagEntity, User } from '@n8n/db';
+import { Variables, TagEntity, User } from '@n8n/db';
 import { FolderRepository, TagRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { writeFileSync } from 'fs';
@@ -42,6 +42,12 @@ import type { SourceControlGetStatus } from './types/source-control-get-status';
 import type { SourceControlPreferences } from './types/source-control-preferences';
 import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
 import { SourceControlContext } from './types/source-control-context';
+
+const GlobalAccessContext: SourceControlContext = {
+	user: Object.assign(new User(), {
+		role: 'global:admin',
+	}),
+};
 
 @Service()
 export class SourceControlService {
@@ -520,7 +526,7 @@ export class SourceControlService {
 			tagsModifiedInEither,
 			mappingsMissingInLocal,
 			mappingsMissingInRemote,
-		} = await this.getStatusTagsMappings(options, sourceControlledFiles);
+		} = await this.getStatusTagsMappings(options, context, sourceControlledFiles);
 
 		const { foldersMissingInLocal, foldersMissingInRemote, foldersModifiedInEither } =
 			await this.getStatusFoldersMapping(options, context, sourceControlledFiles);
@@ -825,6 +831,7 @@ export class SourceControlService {
 
 	private async getStatusTagsMappings(
 		options: SourceControlGetStatus,
+		context: SourceControlContext,
 		sourceControlledFiles: SourceControlledFile[],
 	) {
 		const lastUpdatedTag = await this.tagRepository.find({
@@ -834,8 +841,9 @@ export class SourceControlService {
 		});
 
 		const tagMappingsRemote =
-			await this.sourceControlImportService.getRemoteTagsAndMappingsFromFile();
-		const tagMappingsLocal = await this.sourceControlImportService.getLocalTagsAndMappingsFromDb();
+			await this.sourceControlImportService.getRemoteTagsAndMappingsFromFile(context);
+		const tagMappingsLocal =
+			await this.sourceControlImportService.getLocalTagsAndMappingsFromDb(context);
 
 		const tagsMissingInLocal = tagMappingsRemote.tags.filter(
 			(remote) => tagMappingsLocal.tags.findIndex((local) => local.id === remote.id) === -1,

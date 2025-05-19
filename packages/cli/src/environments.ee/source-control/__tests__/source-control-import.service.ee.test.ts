@@ -103,7 +103,7 @@ describe('SourceControlImportService', () => {
 
 			fsReadFile.mockResolvedValue(JSON.stringify(mockCredentialData));
 
-			const result = await service.getRemoteCredentialsFromFiles();
+			const result = await service.getRemoteCredentialsFromFiles(globalAdminContext);
 
 			expect(result).toHaveLength(1);
 			expect(result[0]).toEqual(
@@ -119,7 +119,7 @@ describe('SourceControlImportService', () => {
 			globMock.mockResolvedValue(['/mock/invalid.json']);
 			fsReadFile.mockResolvedValue('{}');
 
-			const result = await service.getRemoteCredentialsFromFiles();
+			const result = await service.getRemoteCredentialsFromFiles(globalAdminContext);
 
 			expect(result).toHaveLength(0);
 		});

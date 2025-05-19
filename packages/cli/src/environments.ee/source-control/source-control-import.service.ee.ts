@@ -7,6 +7,7 @@ import {
 	WorkflowTagMapping,
 	WorkflowEntity,
 	Folder,
+	CredentialsEntity,
 } from '@n8n/db';
 import {
 	SharedCredentials,
@@ -172,6 +173,24 @@ export class SourceControlImportService {
 		};
 	}
 
+	private getCredentialFilter(
+		context: SourceControlContext,
+	): FindOptionsWhere<CredentialsEntity> | undefined {
+		if (context.user.role === 'global:admin' || context.user.role === 'global:owner') {
+			// In case the user is a global admin or owner, we don't need a filter
+			return undefined;
+		}
+
+		// We build a filter to only select workflows, that belong to a team project
+		// that the user is an admin off
+		return {
+			shared: {
+				role: 'credential:owner',
+				project: this.getProjectFilter(context),
+			},
+		};
+	}
+
 	private getWorkflowTagMappingFilter(
 		context: SourceControlContext,
 	): FindOptionsWhere<WorkflowTagMapping> | undefined {
@@ -283,13 +302,16 @@ export class SourceControlImportService {
 		}) as SourceControlWorkflowVersionId[];
 	}
 
-	async getRemoteCredentialsFromFiles(): Promise<
-		Array<ExportableCredential & { filename: string }>
-	> {
+	async getRemoteCredentialsFromFiles(
+		context: SourceControlContext,
+	): Promise<Array<ExportableCredential & { filename: string }>> {
 		const remoteCredentialFiles = await glob('*.json', {
 			cwd: this.credentialExportFolder,
 			absolute: true,
 		});
+
+		const workflowFilter = await this.buildRemoteProjectFilter(context);
+
 		const remoteCredentialFilesParsed = await Promise.all(
 			remoteCredentialFiles.map(async (file) => {
 				this.logger.debug(`Parsing credential file ${file}`);
@@ -299,6 +321,24 @@ export class SourceControlImportService {
 				if (!remote?.id) {
 					return undefined;
 				}
+
+				if (workflowFilter) {
+					// If we need to apply the filter
+					if (
+						!workflowFilter.some((project) => {
+							if (typeof remote.ownedBy === 'object') {
+								if (remote.ownedBy?.type === 'team') {
+									return project.id === remote.ownedBy?.teamId;
+								}
+							}
+							return false;
+						})
+					) {
+						// If the workflow file does not match our workflow filter, we skip it
+						return undefined;
+					}
+				}
+
 				return {
 					...remote,
 					filename: getCredentialExportPath(remote.id, this.credentialExportFolder),
@@ -310,9 +350,12 @@ export class SourceControlImportService {
 		>;
 	}
 
-	async getLocalCredentialsFromDb(): Promise<Array<ExportableCredential & { filename: string }>> {
+	async getLocalCredentialsFromDb(
+		context: SourceControlContext,
+	): Promise<Array<ExportableCredential & { filename: string }>> {
 		const localCredentials = await this.credentialsRepository.find({
 			select: ['id', 'name', 'type'],
+			where: this.getCredentialFilter(context),
 		});
 		return localCredentials.map((local) => ({
 			id: local.id,
