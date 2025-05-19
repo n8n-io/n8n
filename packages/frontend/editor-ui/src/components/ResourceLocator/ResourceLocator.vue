@@ -352,16 +352,17 @@ const allowNewResources = computed(() => {
 		return undefined;
 	}
 
-	const addNewResourceOptions = getPropertyArgument(currentMode.value, 'allowNewResource') as
-		| { label: BaseTextKey; method: string; defaultName: string }
-		| undefined;
+	const addNewResourceOptions = getPropertyArgument(
+		currentMode.value,
+		'allowNewResource',
+	) as INodePropertyModeTypeOptions['allowNewResource'];
 
 	if (!addNewResourceOptions) {
 		return undefined;
 	}
 
 	return {
-		label: i18n.baseText(addNewResourceOptions.label, {
+		label: i18n.baseText(addNewResourceOptions.label as BaseTextKey, {
 			interpolate: {
 				resourceName: !!searchFilter.value ? searchFilter.value : addNewResourceOptions.defaultName,
 			},
@@ -520,7 +521,7 @@ function openResource(url: string) {
 function getPropertyArgument(
 	parameter: INodePropertyMode,
 	argumentName: keyof INodePropertyModeTypeOptions,
-): string | number | boolean | undefined | { label: string; method: string; defaultName: string } {
+): string | number | boolean | undefined | INodePropertyModeTypeOptions['allowNewResource'] {
 	return parameter.typeOptions?.[argumentName];
 }
 

@@ -63,6 +63,7 @@ export const TEST_PARAMETER_ADD_RESOURCE: INodeProperties = {
 				allowNewResource: {
 					label: 'resourceLocator.mode.list.addNewResource.vectorStoreInMemory',
 					method: 'testAddResource',
+					defaultName: 'test',
 				},
 			},
 		},
