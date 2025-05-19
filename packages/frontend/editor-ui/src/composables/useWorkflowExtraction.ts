@@ -92,31 +92,32 @@ export function useWorkflowExtraction() {
 		}
 		const { start, end } = selection;
 
-		const isSinglePut = (
+		const isSingleIO = (
 			nodeName: string | undefined,
-			fn: (
+			getIOs: (
 				...x: Parameters<typeof NodeHelpers.getNodeInputs>
 			) => ReturnType<typeof NodeHelpers.getNodeInputs>,
 		) => {
-			if (nodeName) {
-				const node = workflowsStore.getNodeByName(nodeName);
-				if (node) {
-					const nodeType = useNodeTypesStore().getNodeType(node.type, node.typeVersion);
-					if (nodeType) {
-						const outputs = fn(workflowsStore.getCurrentWorkflow(), node, nodeType);
-						if (
-							outputs.filter((x) => (typeof x === 'string' ? x === 'main' : x.type === 'main'))
-								.length > 1
-						) {
-							return false;
-						}
-					}
+			if (!nodeName) {
+				return true;
+			}
+			const node = workflowsStore.getNodeByName(nodeName);
+			if (!node) {
+				return true;
+			}
+			const nodeType = useNodeTypesStore().getNodeType(node.type, node.typeVersion);
+			if (nodeType) {
+				const ios = getIOs(workflowsStore.getCurrentWorkflow(), node, nodeType);
+				if (
+					ios.filter((x) => (typeof x === 'string' ? x === 'main' : x.type === 'main')).length > 1
+				) {
+					return false;
 				}
 			}
 			return true;
 		};
 
-		if (start && !isSinglePut(start, NodeHelpers.getNodeInputs)) {
+		if (start && !isSingleIO(start, NodeHelpers.getNodeInputs)) {
 			showError(
 				i18n.baseText('workflowExtraction.error.inputNodeHasMultipleInputBranches', {
 					interpolate: { node: start },
@@ -124,7 +125,7 @@ export function useWorkflowExtraction() {
 			);
 			return false;
 		}
-		if (end && !isSinglePut(end, NodeHelpers.getNodeOutputs)) {
+		if (end && !isSingleIO(end, NodeHelpers.getNodeOutputs)) {
 			showError(
 				i18n.baseText('workflowExtraction.error.outputNodeHasMultipleOutputBranches', {
 					interpolate: { node: end },
@@ -180,10 +181,12 @@ export function useWorkflowExtraction() {
 
 		let startNodeName = 'Start';
 		while (allNodeNames.includes(startNodeName)) startNodeName += '_1';
+		debugger;
 		const { nodes, variables } = extractReferencesInNodeExpressions(
 			subGraph,
 			allNodeNames,
 			startNodeName,
+			start,
 		);
 		const newWorkflowName = 'My Sub-workflow';
 

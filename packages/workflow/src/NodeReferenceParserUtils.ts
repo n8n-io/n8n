@@ -19,7 +19,7 @@ class LazyRegExp {
 }
 
 type ExpressionMapping = {
-	nodeNameInExpression: string; // 'abc';
+	nodeNameInExpression: null | string; // 'abc';
 	originalExpression: string; // "$('abc').first().def.ghi";
 	replacementPrefix: string; //  "$('Start').first()";
 	replacementName: string; // "def_ghi";
@@ -141,24 +141,48 @@ function convertToUniqueJsDotName(nodeName: string, allNodeNames: string[]) {
 
 function convertDataAccessorName(name: string): string {
 	const [fnName, maybeDigits] = name.split('(');
-	if (fnName !== 'itemMatching') return fnName;
+	switch (fnName.toLowerCase()) {
+		case 'item':
+			return fnName;
+		case 'first':
+		case 'last':
+			return `${fnName}Item`;
+		case 'all':
+			return `${fnName}Items`;
+	}
 
 	// use the digits without the )
-	return `${fnName}_${maybeDigits?.slice(0, -1) ?? 'invalid'}`;
+	return `${fnName}_${maybeDigits?.slice(0, -1) ?? 'unknown'}`;
 }
 
 function parseExpressionMapping(
 	isolatedExpression: string,
-	nodeNameInExpression: string,
-	nodeNamePlainJs: string,
+	nodeNameInExpression: string | null,
+	nodeNamePlainJs: string | null,
 	startNodeName: string,
 ): ExpressionMapping | null {
 	const splitExpr = isolatedExpression.split('.');
 
 	// This supports literal . used in the node name
-	const dotsInName = nodeNameInExpression.split('').filter((x) => x === '.').length;
+	const dotsInName = nodeNameInExpression?.split('').filter((x) => x === '.').length ?? 0;
 	const exprStart = splitExpr.slice(0, dotsInName + 1).join('.');
 	const parts = splitExpr.slice(dotsInName + 1);
+
+	// The calling code is expected to only handle $json expressions for the root node
+	// As these are invalid conversions for inner nodes
+	if (exprStart === '$json') {
+		let partsIdx = 0;
+		for (; partsIdx < parts.length; ++partsIdx) {
+			if (!DOT_REFERENCEABLE_JS_VARIABLE.test(parts[partsIdx])) break;
+		}
+
+		return {
+			nodeNameInExpression: null,
+			originalExpression: `${exprStart}.${parts.slice(0, partsIdx + 1).join('.')}`, // $json.valid.until, but not ['x'] after
+			replacementPrefix: `${exprStart}`, // $json
+			replacementName: `${parts.slice(0, partsIdx).join('_')}`, // valid_until
+		};
+	}
 
 	if (parts.length === 0) {
 		// If a node is referenced by name without any accessor we return a proxy that stringifies as an empty object
@@ -167,6 +191,9 @@ function parseExpressionMapping(
 		// So lets just abort porting this and don't touch it
 		return null;
 	}
+	// Handling `all()` is very awkward since we need to pass the value as a single parameter but
+	// can't do `$('Start').all() since it would be a different node's all
+	const accessorPrefix = parts[0] === 'all()' ? 'first()' : parts[0];
 
 	if (ITEM_TO_DATA_ACCESSORS.some((x) => parts[0].match(x))) {
 		if (parts.length === 1) {
@@ -177,8 +204,8 @@ function parseExpressionMapping(
 			return {
 				nodeNameInExpression,
 				originalExpression: `${exprStart}.${parts[0]}`, // $('abc').first()
-				replacementPrefix: `$('${startNodeName}').${parts[0]}`, //  $('Start').first()
-				replacementName: `${nodeNamePlainJs}_${convertDataAccessorName(originalName)}`, // nodeName_first, nodeName_itemMatching_20
+				replacementPrefix: `$('${startNodeName}').${accessorPrefix}`, //  $('Start').first()
+				replacementName: `${nodeNamePlainJs}_${convertDataAccessorName(originalName)}`, // nodeName_firstItem, nodeName_itemMatching_20
 			};
 		} else {
 			if (DATA_ACCESSORS.some((x) => parts[1] === x)) {
@@ -186,25 +213,24 @@ function parseExpressionMapping(
 				for (; partsIdx < parts.length; ++partsIdx) {
 					if (!DOT_REFERENCEABLE_JS_VARIABLE.test(parts[partsIdx])) break;
 				}
-				// Use a separate name for anything except item
-				// The alternative is to differentiate accessors later on to deduplicate names
-				// Which would first add the nodeName and then `_1` until unique
+				// Use a separate name for anything except item to avoid users confusing their e.g. first() variables
 				const replacementPostfix =
 					parts[0] === 'item' ? '' : `_${convertDataAccessorName(parts[0])}`;
 				return {
 					nodeNameInExpression,
 					originalExpression: `${exprStart}.${parts.slice(0, partsIdx + 1).join('.')}`, // $('abc').item.json.valid.until, but not ['x'] after
-					replacementPrefix: `$('${startNodeName}').${parts[0]}.${parts[1]}`, // $('Start').item.json
+					replacementPrefix: `$('${startNodeName}').${accessorPrefix}.${parts[1]}`, // $('Start').item.json
 					replacementName: parts.slice(2, partsIdx).join('_') + replacementPostfix, // valid_until, or valid_until_first
 				};
 			} else {
 				// this case covers any normal ObjectExtensions functions called on the ITEM_TO_DATA_ACCESSORS entry
-				// e.g. $('nodeName').first().toJsonObject().randomJSFunction()
+				// e.g. $('nodeName').first().toJsonObject().randomJSFunction() or $('nodeName').all().map(x => ({...x, a: 3 }))
+
 				return {
 					nodeNameInExpression,
 					originalExpression: `${exprStart}.${parts[0]}`, // $('abc').first()
-					replacementPrefix: `$('${startNodeName}').${parts[0]}.json`, //  $('Start').first().json.
-					replacementName: `${nodeNamePlainJs}_${parts[0].split('(')[0]}`, // nodeName_first
+					replacementPrefix: `$('${startNodeName}').${accessorPrefix}.json`, //  $('Start').first().json.
+					replacementName: `${nodeNamePlainJs}_${convertDataAccessorName(parts[0])}`, // nodeName_first
 				};
 			}
 		}
@@ -229,6 +255,23 @@ function parseExpressionMapping(
 	return null;
 }
 
+function getCandidate(expression: string, startIndex: number, endIndex: number) {
+	const firstPartException = ITEM_TO_DATA_ACCESSORS.map((x) =>
+		x.exec(expression.slice(endIndex)),
+	).filter((x) => x !== null);
+
+	// Note that by choosing match 0 we use `itemMatching` matches over `item`
+	// matches by relying on the order in ITEM_TO_DATA_ACCESSORS
+	const after_accessor_idx = endIndex + (firstPartException[0]?.[0].length ?? -1) + 1;
+	const after_accessor = expression.slice(after_accessor_idx);
+	const firstInvalidCharMatch = INVALID_JS_DOT_PATH.exec(after_accessor);
+
+	// we should at least find the }} closing the JS expressions in valid cases
+	if (!firstInvalidCharMatch) return null;
+
+	return expression.slice(startIndex, after_accessor_idx + firstInvalidCharMatch.index);
+}
+
 function parseCandidateMatch(
 	match: RegExpExecArray,
 	expression: string,
@@ -243,29 +286,20 @@ function parseCandidateMatch(
 
 	if (!nodeNames.includes(nodeNameInExpression)) return null;
 
-	const firstPartException = ITEM_TO_DATA_ACCESSORS.map((x) =>
-		x.exec(expression.slice(endIndex)),
-	).filter((x) => x !== null);
-
-	// Note that by choosing match 0 we use `itemMatching` matches over `item`
-	// matches by relying on the order in ITEM_TO_DATA_ACCESSORS
-	const after_accessor_idx = endIndex + (firstPartException[0]?.[0].length ?? -1) + 1;
-	const after_accessor = expression.slice(after_accessor_idx);
-	const firstInvalidCharMatch = INVALID_JS_DOT_PATH.exec(after_accessor);
-
-	// we should at least find the }} closing the JS expressions in valid cases
-	if (!firstInvalidCharMatch) return null;
-
-	const candidate = expression.slice(startIndex, after_accessor_idx + firstInvalidCharMatch.index);
-	const data = parseExpressionMapping(
+	const candidate = getCandidate(expression, startIndex, endIndex);
+	if (candidate === null) return null;
+	return parseExpressionMapping(
 		candidate,
 		nodeNameInExpression,
 		convertToUniqueJsDotName(nodeNameInExpression, nodeNames),
 		startNodeName,
 	);
+}
 
-	if (data !== null) return { ...data, nodeNameInExpression };
-	else return null;
+function parse$jsonMatch(match: RegExpExecArray, expression: string, startNodeName: string) {
+	const candidate = getCandidate(expression, match.index, match[0].length);
+	if (candidate === null) return;
+	return parseExpressionMapping(candidate, null, null, startNodeName);
 }
 
 function parseReferencingExpressions(
@@ -273,6 +307,7 @@ function parseReferencingExpressions(
 	nodeRegexps: Array<readonly [string, LazyRegExp]>,
 	nodeNames: string[],
 	startNodeName: string,
+	parse$json: boolean,
 ): ExpressionMapping[] {
 	const result: ExpressionMapping[] = [];
 
@@ -287,6 +322,12 @@ function parseReferencingExpressions(
 		);
 	}
 
+	if (parse$json && expression.includes('$json')) {
+		for (const match of expression.matchAll(/\$json/gi)) {
+			const res = parse$jsonMatch(match, expression, startNodeName);
+			if (res) result.push(res);
+		}
+	}
 	return result;
 }
 
@@ -339,7 +380,7 @@ function resolveDuplicates(data: ExpressionMapping[], allNodeNames: string[]) {
 		// This covers a realistic case where two nodes have the same path, e.g.
 		//    $('original input').item.json.path.to.url
 		//    $('some time later in the workflow').item.json.path.to.url
-		if (hasKeyAndCollides(key())) {
+		if (hasKeyAndCollides(key()) && nodeNameInExpression) {
 			replacementName = `${convertToUniqueJsDotName(nodeNameInExpression, allNodeNames)}_${replacementName}`;
 		}
 		// This covers all other theoretical cases, like where `${nodeName}_${variable}` might clash with another variable name
@@ -372,12 +413,12 @@ function applyExtractMappingToNode(node: INode, parameterExtractMapping: Paramet
 		if (typeof parameters !== 'object' || parameters === null) {
 			if (Array.isArray(mapping) && typeof parameters === 'string') {
 				for (const mapper of mapping) {
-					const changed: string = parameters.replaceAll(
+					if (!parameters.includes(mapper.originalExpression)) continue;
+					parameters = parameters.replaceAll(
 						mapper.originalExpression,
 						`${mapper.replacementPrefix}.${mapper.replacementName}`,
 					);
-					if (changed !== parameters) usedMappings.push(mapper);
-					parameters = changed;
+					usedMappings.push(mapper);
 				}
 			}
 			return parameters;
@@ -428,14 +469,15 @@ function applyCanonicalMapping(
 export function extractReferencesInNodeExpressions(
 	subGraph: INode[],
 	nodeNames: string[],
-	startNodeName: string,
+	insertedStartName: string,
+	graphRootName?: string,
 ) {
 	////
 	// STEP 1 - Validate input invariants
 	////
-	if (nodeNames.includes(startNodeName))
+	if (nodeNames.includes(insertedStartName))
 		throw new OperationalError(
-			`StartNodeName ${startNodeName} already exists in nodeNames: ${JSON.stringify(nodeNames)}`,
+			`StartNodeName ${insertedStartName} already exists in nodeNames: ${JSON.stringify(nodeNames)}`,
 		);
 
 	const subGraphNames = subGraph.map((x) => x.name);
@@ -473,7 +515,13 @@ export function extractReferencesInNodeExpressions(
 
 	for (const node of subGraph) {
 		const [parameterMapping, allMappings] = applyParameterMapping(node.parameters, (s) =>
-			parseReferencingExpressions(s, nodeRegexps, nodeNames, startNodeName),
+			parseReferencingExpressions(
+				s,
+				nodeRegexps,
+				nodeNames,
+				insertedStartName,
+				node.name === graphRootName,
+			),
 		);
 		recMapByNode.set(node.name, parameterMapping);
 		allData.push(...allMappings);
@@ -485,7 +533,8 @@ export function extractReferencesInNodeExpressions(
 
 	const subGraphNodeNames = new Set(subGraphNames);
 	const dataFromOutsideSubgraph = allData.filter(
-		(x) => !subGraphNodeNames.has(x.nodeNameInExpression),
+		// `nodeNameInExpression` being absent implies direct access via `$json` or `$binary`
+		(x) => !x.nodeNameInExpression || !subGraphNodeNames.has(x.nodeNameInExpression),
 	);
 	const { originalExpressionMap, triggerArgumentMap } = resolveDuplicates(
 		dataFromOutsideSubgraph,
