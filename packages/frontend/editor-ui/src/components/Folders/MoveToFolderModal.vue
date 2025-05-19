@@ -3,8 +3,9 @@ import { useI18n } from '@/composables/useI18n';
 import { MOVE_FOLDER_MODAL_KEY } from '@/constants';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useUIStore } from '@/stores/ui.store';
-import { type EventBus } from '@n8n/utils/event-bus';
+import { type EventBus, createEventBus } from '@n8n/utils/event-bus';
 import { computed, ref } from 'vue';
+import MoveToFolderDropdown from './MoveToFolderDropdown.vue';
 
 /**
  * This modal is used to move a resource (folder or workflow) to a different folder.
@@ -26,6 +27,8 @@ type Props = {
 const props = defineProps<Props>();
 
 const i18n = useI18n();
+const modalBus = createEventBus();
+const moveToFolderDropdown = ref<InstanceType<typeof MoveToFolderDropdown>>();
 
 const projectsStore = useProjectsStore();
 const uiStore = useUIStore();
@@ -70,13 +73,24 @@ const onSubmit = () => {
 	}
 	uiStore.closeModal(MOVE_FOLDER_MODAL_KEY);
 };
+
+modalBus.on('opened', () => {
+	moveToFolderDropdown.value?.focusOnInput();
+});
 </script>
 
 <template>
-	<Modal :name="modalName" :title="title" width="500" :class="$style.container">
+	<Modal
+		:name="modalName"
+		:title="title"
+		width="500"
+		:class="$style.container"
+		:event-bus="modalBus"
+	>
 		<template #content>
 			<MoveToFolderDropdown
 				v-if="projectsStore.currentProject"
+				ref="moveToFolderDropdown"
 				:current-folder-id="currentFolder?.id"
 				:current-project-id="projectsStore.currentProject?.id"
 				:parent-folder-id="props.data.resource.parentFolderId"

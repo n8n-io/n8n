@@ -23,6 +23,7 @@ type Props = {
 const props = withDefaults(defineProps<Props>(), {
 	currentFolderId: '',
 	parentFolderId: '',
+	onOpen: () => {},
 });
 
 const emit = defineEmits<{
@@ -61,10 +62,6 @@ const projectIcon = computed<ItemProjectIcon>(() => {
 });
 
 const fetchAvailableLocations = async (query?: string) => {
-	if (!query) {
-		availableLocations.value = [];
-		return;
-	}
 	loading.value = true;
 	const folders = await foldersStore.fetchFoldersAvailableForMove(
 		props.currentProjectId,
@@ -76,12 +73,8 @@ const fetchAvailableLocations = async (query?: string) => {
 	} else {
 		availableLocations.value = folders.filter((folder) => folder.id !== props.parentFolderId);
 	}
-	// Finally add project root if project name contains query (only if folder is not already in root)
-	if (
-		projectName.value &&
-		projectName.value.toLowerCase().includes(query.toLowerCase()) &&
-		props.parentFolderId !== ''
-	) {
+	// Finally always add project root to the results (if folder is not already in root)
+	if (projectName.value && props.parentFolderId !== '') {
 		availableLocations.value.unshift({
 			id: props.currentProjectId,
 			name: i18n.baseText('folders.move.project.root.name', {
@@ -97,6 +90,12 @@ const fetchAvailableLocations = async (query?: string) => {
 	loading.value = false;
 };
 
+onMounted(() => {
+	// Fetch available locations when the component is mounted without any query
+	// to populate the dropdown with the initial list of all other folders in the project.
+	void fetchAvailableLocations();
+});
+
 const onFolderSelected = (folderId: string) => {
 	const selectedFolder = availableLocations.value.find((folder) => folder.id === folderId);
 	if (!selectedFolder) {
@@ -109,8 +108,15 @@ const onFolderSelected = (folderId: string) => {
 	});
 };
 
-onMounted(() => {
-	void setTimeout(() => moveFolderDropdown.value?.focusOnInput());
+function focusOnInput() {
+	// To make the dropdown automatically open focused and positioned correctly
+	// we must wait till the modal opening animation is done. ElModal triggers an 'opened' event
+	// when the animation is done, and once that happens, we can focus on the input.
+	moveFolderDropdown.value?.focusOnInput();
+}
+
+defineExpose({
+	focusOnInput,
 });
 </script>
 

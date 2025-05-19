@@ -146,6 +146,7 @@ export async function getProjectFolders(
 		excludeFolderIdAndDescendants?: string;
 		name?: string;
 	},
+	select?: string[],
 ): Promise<ChangeLocationSearchResult[]> {
 	const res = await getFullApiResponse<ChangeLocationSearchResult[]>(
 		context,
@@ -154,6 +155,7 @@ export async function getProjectFolders(
 		{
 			...(filter ? { filter } : {}),
 			...(options ? options : {}),
+			...(select ? { select: JSON.stringify(select) } : {}),
 		},
 	);
 	return res.data;

@@ -141,14 +141,31 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 				excludeFolderIdAndDescendants: folderId,
 				name: filter?.name ? filter.name : undefined,
 			},
+			[
+				'id',
+				'name',
+				'createdAt',
+				'updatedAt',
+				'project',
+				'tags',
+				'parentFolder',
+				'workflowCount',
+				'subFolderCount',
+				'path',
+			],
 		);
+
 		const forCache: FolderShortInfo[] = folders.map((folder) => ({
 			id: folder.id,
 			name: folder.name,
 			parentFolder: folder.parentFolder?.id,
 		}));
 		cacheFolders(forCache);
-		return folders;
+
+		return folders.map((folder) => ({
+			...folder,
+			resource: 'folder',
+		}));
 	}
 
 	async function moveFolder(
