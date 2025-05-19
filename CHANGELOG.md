@@ -1,3 +1,17 @@
+# [1.95.0](https://github.com/FilippoMilesi/n8n/compare/n8n@1.94.0...n8n@1.95.0) (2025-05-19)
+
+
+### Bug Fixes
+
+* **editor:** Handle Loop node execution data preview correctly when inserting a node  ([#15351](https://github.com/FilippoMilesi/n8n/issues/15351)) ([5967c13](https://github.com/FilippoMilesi/n8n/commit/5967c131654d5d8e87633fba9181af5ed571539b))
+
+
+### Features
+
+* **nodes-base-form:** Added "Show Headers" option ([00cb54d](https://github.com/FilippoMilesi/n8n/commit/00cb54d17b956771777d466a1c46a79039737ab8))
+
+
+
 # [1.94.0](https://github.com/n8n-io/n8n/compare/n8n@1.93.0...n8n@1.94.0) (2025-05-19)
 
 
