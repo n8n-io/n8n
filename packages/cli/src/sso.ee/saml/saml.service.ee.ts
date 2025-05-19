@@ -7,7 +7,7 @@ import type express from 'express';
 import https from 'https';
 import { Logger } from 'n8n-core';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
-import type { IdentityProviderInstance, ServiceProviderInstance } from 'samlify';
+import { Constants, type IdentityProviderInstance, type ServiceProviderInstance } from 'samlify';
 import type { BindingContext, PostBindingContext } from 'samlify/types/src/entity';
 
 import { AuthError } from '@/errors/response-errors/auth.error';
@@ -135,10 +135,7 @@ export class SamlService {
 			});
 		}
 
-		const binding = this.identityProviderInstance.entityMeta.getSingleSignOnService('redirect');
-		if (typeof binding !== 'string') {
-			throw new InvalidSamlMetadataError('only SAML redirect binding is supported.');
-		}
+		this.validator.validateIdentiyProvider(this.identityProviderInstance);
 
 		return this.identityProviderInstance;
 	}
