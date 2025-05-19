@@ -413,7 +413,7 @@ describe(updateViewportToContainNodes, () => {
 		expect(result).toEqual({ x: 0, y: 0, zoom: 2 });
 	});
 
-	it('should return updated viewport with minimum amount of coordination change to contain given node if it is outside of northwest end of the viewport', () => {
+	it('should return updated viewport with minimal position change to include node outside northwest edge', () => {
 		const result = updateViewportToContainNodes(
 			{ x: 0, y: 0, zoom: 2 },
 			{ width: 1000, height: 800 },
@@ -429,7 +429,7 @@ describe(updateViewportToContainNodes, () => {
 		expect(result).toEqual({ x: 20, y: 40, zoom: 2 });
 	});
 
-	it('should return updated viewport with minimum amount of coordination change to contain given node if it is outside of southeast end of the viewport', () => {
+	it('should return updated viewport with minimal position change to include node outside southeast edge', () => {
 		const result = updateViewportToContainNodes(
 			{ x: 0, y: 0, zoom: 2 },
 			{ width: 1000, height: 800 },
