@@ -50,10 +50,10 @@ export class TestRunnerService {
 		workflow: IWorkflowBase,
 	): Pick<IWorkflowExecutionDataProcess, 'triggerToStartFrom'> {
 		// Find the dataset trigger node
-		// TODO: replace with dataset trigger node
 		const triggerNode = workflow.nodes.find(
-			(node) => node.type === 'n8n-nodes-base.executeWorkflowTrigger',
+			(node) => node.type === 'n8n-nodes-base.evaluationTrigger',
 		);
+
 		if (!triggerNode) {
 			// TODO: Change error
 			throw new TestCaseExecutionError('TRIGGER_NO_LONGER_EXISTS');
@@ -87,6 +87,17 @@ export class TestRunnerService {
 		// Prepare the data to run the workflow
 		// Evaluation executions should run the same way as manual,
 		// because they need pinned data and partial execution logic
+
+		// Initialize the incoming data
+		// const nodeExecutionStack: IExecuteData[] = [];
+		// nodeExecutionStack.push({
+		// 	node: startNodesData.triggerToStartFrom.name as INode,
+		// 	data: {
+		// 		main: [[{ json: { test: 123 } }]],
+		// 	},
+		// 	source: null,
+		// });
+
 		const data: IWorkflowExecutionDataProcess = {
 			...startNodesData,
 			executionMode: 'evaluation',
@@ -95,6 +106,27 @@ export class TestRunnerService {
 			workflowData: workflow,
 			userId: metadata.userId,
 			partialExecutionVersion: 2,
+			// executionData: {
+			// 	startData: {
+			// 		// startNodes: startNodesData.startNodes,
+			// 	},
+			// 	resultData: {
+			// 		// pinData,
+			// 		runData: {},
+			// 	},
+			// 	executionData: {
+			// 		contextData: {},
+			// 		metadata: {},
+			// 		nodeExecutionStack,
+			// 		waitingExecution: {},
+			// 		waitingExecutionSource: {},
+			// 	},
+			// 	manualData: {
+			// 		userId: metadata.userId,
+			// 		partialExecutionVersion: 2,
+			// 		triggerToStartFrom: startNodesData.triggerToStartFrom,
+			// 	},
+			// },
 		};
 
 		// When in queue mode, we need to pass additional data to the execution
@@ -164,7 +196,6 @@ export class TestRunnerService {
 		assert(workflow, 'Workflow not found');
 
 		// 0. Create new Test Run
-		// TODO: Check that createTestRun takes workflowId as an argument
 		const testRun = await this.testRunRepository.createTestRun(workflowId);
 		assert(testRun, 'Unable to create a test run');
 
@@ -209,8 +240,7 @@ export class TestRunnerService {
 			// 2. Run over all the test cases
 
 			// Update test run status
-			// TODO: mark test run as running
-			// await this.testRunRepository.markAsRunning(testRun.id);
+			await this.testRunRepository.markAsRunning(testRun.id);
 
 			this.telemetry.track('User ran test', {
 				user_id: user.id,
@@ -256,14 +286,26 @@ export class TestRunnerService {
 					// In case of a permission check issue, the test case execution will be undefined.
 					// If that happens, or if the test case execution produced an error, mark the test case as failed.
 					if (!testCaseExecution || testCaseExecution.data.resultData.error) {
-						// TODO: add failed test case execution to DB
+						// Save the failed test case execution in DB
+						await this.testCaseExecutionRepository.insert({
+							testRun: {
+								id: testRun.id,
+							},
+							status: 'error',
+							errorCode: 'FAILED_TO_EXECUTE_WORKFLOW',
+							metrics: {},
+						});
 						continue;
 					}
 
-					// TODO: extract metrics
-
 					// Create a new test case execution in DB
-					// TODO: add successful test case execution to DB
+					await this.testCaseExecutionRepository.insert({
+						testRun: {
+							id: testRun.id,
+						},
+						status: 'success',
+						metrics: addedMetrics,
+					});
 				} catch (e) {
 					// FIXME: this is a temporary log
 					this.logger.error('Test case execution failed', {
@@ -274,9 +316,22 @@ export class TestRunnerService {
 
 					// In case of an unexpected error save it as failed test case execution and continue with the next test case
 					if (e instanceof TestCaseExecutionError) {
-						// TODO: add failed test case execution to DB
+						await this.testCaseExecutionRepository.insert({
+							testRun: {
+								id: testRun.id,
+							},
+							status: 'error',
+							errorCode: e.code,
+							errorDetails: e.extra as IDataObject,
+						});
 					} else {
-						// TODO: add failed test case execution to DB
+						await this.testCaseExecutionRepository.insert({
+							testRun: {
+								id: testRun.id,
+							},
+							status: 'error',
+							errorCode: 'UNKNOWN_ERROR',
+						});
 
 						// Report unexpected errors
 						this.errorReporter.error(e);
@@ -287,8 +342,7 @@ export class TestRunnerService {
 			// Mark the test run as completed or cancelled
 			if (abortSignal.aborted) {
 				await dbManager.transaction(async (trx) => {
-					// TODO: mark test run as cancelled
-					// await this.testRunRepository.markAsCancelled(testRun.id, trx);
+					await this.testRunRepository.markAsCancelled(testRun.id, trx);
 					await this.testCaseExecutionRepository.markAllPendingAsCancelled(testRun.id, trx);
 
 					testRunEndStatusForTelemetry = 'cancelled';
@@ -298,7 +352,7 @@ export class TestRunnerService {
 
 				this.logger.debug('Aggregated metrics', aggregatedMetrics);
 
-				// TODO: mark test run as completed in DB and save metrics
+				await this.testRunRepository.markAsCompleted(testRun.id, aggregatedMetrics);
 
 				this.logger.debug('Test run finished', { workflowId, testRunId: testRun.id });
 
@@ -312,16 +366,16 @@ export class TestRunnerService {
 				});
 
 				await dbManager.transaction(async (trx) => {
-					// TODO: mark test run as cancelled in DB
+					await this.testRunRepository.markAsCancelled(testRun.id, trx);
 					await this.testCaseExecutionRepository.markAllPendingAsCancelled(testRun.id, trx);
 				});
 
 				testRunEndStatusForTelemetry = 'cancelled';
 			} else if (e instanceof TestRunError) {
-				// TODO: mark test run as error
+				await this.testRunRepository.markAsError(testRun.id, e.code, e.extra as IDataObject);
 				testRunEndStatusForTelemetry = 'error';
 			} else {
-				// TODO: mark test run as error
+				await this.testRunRepository.markAsError(testRun.id, 'UNKNOWN_ERROR');
 				testRunEndStatusForTelemetry = 'error';
 				throw e;
 			}
@@ -359,7 +413,7 @@ export class TestRunnerService {
 
 			// If there is no abort controller - just mark the test run and all its' pending test case executions as cancelled
 			await dbManager.transaction(async (trx) => {
-				// TODO: mark test run as cancelled in DB
+				await this.testRunRepository.markAsCancelled(testRunId, trx);
 				await this.testCaseExecutionRepository.markAllPendingAsCancelled(testRunId, trx);
 			});
 		}
