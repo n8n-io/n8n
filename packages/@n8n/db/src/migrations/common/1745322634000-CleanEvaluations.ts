@@ -12,8 +12,8 @@ export class ClearEvaluation1745322634000 implements IrreversibleMigration {
 		isMysql,
 	}: MigrationContext) {
 		// Drop test_metric, test_definition
-		await dropTable('test_case_execution');
-		await dropTable('test_run');
+		await dropTable(testCaseExecutionTableName);
+		await dropTable(testRunTableName);
 		await dropTable('test_metric');
 		if (isSqlite) {
 			await queryRunner.query(`DROP TABLE IF EXISTS ${tablePrefix}test_definition;`);

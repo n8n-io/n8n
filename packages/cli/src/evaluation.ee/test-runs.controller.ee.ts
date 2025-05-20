@@ -1,4 +1,4 @@
-import { TestCaseExecutionRepository, TestRunRepository } from '@n8n/db';
+import { TestCaseExecutionRepository, TestRunRepository, User } from '@n8n/db';
 import { Delete, Get, Post, RestController } from '@n8n/decorators';
 import express from 'express';
 import { InstanceSettings } from 'n8n-core';
@@ -28,12 +28,8 @@ export class TestRunsController {
 	/**
 	 * Get the test run (or just check that it exists and the user has access to it)
 	 */
-	private async getTestRun(
-		req: TestRunsRequest.GetOne | TestRunsRequest.Delete | TestRunsRequest.Cancel,
-	) {
-		const { id: testRunId, workflowId } = req.params;
-
-		const sharedWorkflowsIds = await getSharedWorkflowIds(req.user, ['workflow:read']);
+	private async getTestRun(testRunId: string, workflowId: string, user: User) {
+		const sharedWorkflowsIds = await getSharedWorkflowIds(user, ['workflow:read']);
 
 		if (!sharedWorkflowsIds.length || (workflowId && !sharedWorkflowsIds.includes(workflowId))) {
 			throw new NotFoundError('Test run not found');
@@ -60,7 +56,7 @@ export class TestRunsController {
 		const { id } = req.params;
 
 		try {
-			await this.getTestRun(req); // FIXME: do not fetch test run twice
+			await this.getTestRun(req.params.id, req.params.workflowId, req.user); // FIXME: do not fetch test run twice
 			return await this.testRunRepository.getTestRunSummaryById(id);
 		} catch (error) {
 			if (error instanceof UnexpectedError) throw new NotFoundError(error.message);
@@ -70,7 +66,7 @@ export class TestRunsController {
 
 	@Get('/:workflowId/test-runs/:id/cases')
 	async getTestCases(req: TestRunsRequest.GetCases) {
-		await this.getTestRun(req);
+		await this.getTestRun(req.params.id, req.params.workflowId, req.user);
 
 		return await this.testCaseExecutionRepository.find({
 			where: { testRun: { id: req.params.id } },
@@ -82,7 +78,7 @@ export class TestRunsController {
 		const { id: testRunId } = req.params;
 
 		// Check test run exist
-		await this.getTestRun(req);
+		await this.getTestRun(req.params.id, req.params.workflowId, req.user);
 
 		await this.testRunRepository.delete({ id: testRunId });
 
@@ -100,7 +96,7 @@ export class TestRunsController {
 		const { id: testRunId } = req.params;
 
 		// Check test definition and test run exist
-		const testRun = await this.getTestRun(req);
+		const testRun = await this.getTestRun(req.params.id, req.params.workflowId, req.user);
 
 		if (this.testRunnerService.canBeCancelled(testRun)) {
 			const message = `The test run "${testRunId}" cannot be cancelled`;
