@@ -106,9 +106,13 @@ jobs:
         env:
           DOCKER_BUILD_SUMMARY: false
         with:
-          context: ./docker/images/n8n
+          context: .
+          file: docker/images/n8n/Dockerfile
           build-args: |
             N8N_VERSION=${{ needs.publish-to-npm.outputs.release }}
+            N8N_RELEASE_TYPE=stable
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
           platforms: linux/amd64,linux/arm64
           provenance: false
           push: true

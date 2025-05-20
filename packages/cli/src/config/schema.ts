@@ -279,21 +279,6 @@ export const schema = {
 		},
 	},
 
-	expression: {
-		evaluator: {
-			doc: 'Expression evaluator to use',
-			format: ['tmpl', 'tournament'] as const,
-			default: 'tournament',
-			env: 'N8N_EXPRESSION_EVALUATOR',
-		},
-		reportDifference: {
-			doc: 'Whether to report differences in the evaluator outputs',
-			format: Boolean,
-			default: false,
-			env: 'N8N_EXPRESSION_REPORT_DIFFERENCE',
-		},
-	},
-
 	proxy_hops: {
 		format: Number,
 		default: 0,
@@ -304,7 +289,7 @@ export const schema = {
 	logs_view: {
 		enabled: {
 			format: Boolean,
-			default: false,
+			default: true,
 			env: 'N8N_ENABLE_LOGS_VIEW',
 			doc: 'Temporary env variable to enable logs view',
 		},

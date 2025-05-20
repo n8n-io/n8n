@@ -1,4 +1,5 @@
 import type { PushMessage } from '@n8n/api-types';
+import { inProduction } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
@@ -11,7 +12,7 @@ import { parse as parseUrl } from 'url';
 import { Server as WSServer } from 'ws';
 
 import { AuthService } from '@/auth/auth.service';
-import { inProduction, TRIMMED_TASK_DATA_CONNECTIONS } from '@/constants';
+import { TRIMMED_TASK_DATA_CONNECTIONS } from '@/constants';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { TypedEmitter } from '@/typed-emitter';

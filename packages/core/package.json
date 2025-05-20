@@ -1,6 +1,6 @@
 {
   "name": "n8n-core",
-  "version": "1.92.0",
+  "version": "1.93.0",
   "description": "Core functionality of n8n",
   "main": "dist/index",
   "types": "dist/index.d.ts",
@@ -38,6 +38,7 @@
   "dependencies": {
     "@aws-sdk/client-s3": "3.808.0",
     "@langchain/core": "catalog:",
+    "@n8n/backend-common": "workspace:^",
     "@n8n/client-oauth2": "workspace:*",
     "@n8n/config": "workspace:*",
     "@n8n/decorators": "workspace:*",

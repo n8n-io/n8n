@@ -868,7 +868,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	private toSummary(execution: {
 		id: number | string;
 		createdAt?: Date | string;
-		startedAt?: Date | string;
+		startedAt: Date | string | null;
 		stoppedAt?: Date | string;
 		waitTill?: Date | string | null;
 	}): ExecutionSummary {
@@ -967,7 +967,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			if (lastId) qb.andWhere('execution.id < :lastId', { lastId });
 
 			if (query.order?.startedAt === 'DESC') {
-				qb.orderBy({ 'execution.startedAt': 'DESC' });
+				qb.orderBy({ 'COALESCE(execution.startedAt, execution.createdAt)': 'DESC' });
 			} else if (query.order?.top) {
 				qb.orderBy(`(CASE WHEN execution.status = '${query.order.top}' THEN 0 ELSE 1 END)`);
 			} else {

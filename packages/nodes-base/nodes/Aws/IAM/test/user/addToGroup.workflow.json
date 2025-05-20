@@ -1,0 +1,78 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-40, -120],
+			"id": "7da2ce49-9a9d-4240-b082-ff1b12d101b1",
+			"name": "When clicking ‘Test workflow’"
+		},
+		{
+			"parameters": {
+				"operation": "addToGroup",
+				"user": {
+					"__rl": true,
+					"value": "Jonas",
+					"mode": "list",
+					"cachedResultName": "Jonas"
+				},
+				"group": {
+					"__rl": true,
+					"value": "GroupNameUpdated2",
+					"mode": "list",
+					"cachedResultName": "GroupNameUpdated2"
+				},
+				"requestOptions": {}
+			},
+			"type": "n8n-nodes-base.awsIam",
+			"typeVersion": 1,
+			"position": [160, -120],
+			"id": "982d8c6e-e94a-414c-90ba-35743676eef8",
+			"name": "addToGroup",
+			"credentials": {
+				"aws": {
+					"id": "exampleId",
+					"name": "AWS US EAST"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"addToGroup": [
+			{
+				"json": {
+					"AddUserToGroupResponse": {
+						"ResponseMetadata": {
+							"RequestId": "8192250c-9225-4903-af62-a521ce939968"
+						}
+					}
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Test workflow’": {
+			"main": [
+				[
+					{
+						"node": "addToGroup",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "2e9e5c7a-705f-49a7-83db-397f1bb48798",
+	"meta": {
+		"templateCredsSetupCompleted": true,
+		"instanceId": "26f38eb23ad84214537831cfef4032299ffac994ff18d5cb72e82d31ac4ceac4"
+	},
+	"id": "0qqycx08fTBpfbC9",
+	"tags": []
+}

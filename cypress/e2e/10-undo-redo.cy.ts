@@ -218,6 +218,7 @@ describe('Undo/Redo', () => {
 		WorkflowPage.getters.nodeConnections().should('have.length', 1);
 		cy.get(WorkflowPage.getters.getEndpointSelector('input', 'Switch')).should('have.length', 1);
 
+		cy.wait(1000); // Clipboard paste is throttled
 		cy.fixture('Test_workflow_form_switch.json').then((data) => {
 			cy.get('body').paste(JSON.stringify(data));
 		});

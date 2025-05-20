@@ -1,3 +1,4 @@
+import { LDAP_FEATURE_NAME, LDAP_DEFAULT_CONFIGURATION } from '@n8n/constants';
 import {
 	AuthIdentityRepository,
 	AuthProviderSyncHistoryRepository,
@@ -16,7 +17,6 @@ import { UserError } from 'n8n-workflow';
 
 import { UM_FIX_INSTRUCTION } from '@/constants';
 import { CredentialsService } from '@/credentials/credentials.service';
-import { LDAP_DEFAULT_CONFIGURATION, LDAP_FEATURE_NAME } from '@/ldap.ee/constants';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import { BaseCommand } from '../base-command';
