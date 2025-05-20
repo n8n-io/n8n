@@ -7,6 +7,7 @@ import type {
 	FolderTreeResponseItem,
 } from '@/Interface';
 import * as workflowsApi from '@/api/workflows';
+import * as workflowsEEApi from '@/api/workflows.ee';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { ref } from 'vue';
 import { useI18n } from '@/composables/useI18n';
@@ -176,12 +177,26 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 		await workflowsApi.moveFolder(rootStore.restApiContext, projectId, folderId, parentFolderId);
 		// Update the cache after moving the folder
 		delete breadcrumbsCache.value[folderId];
-		if (parentFolderId) {
-			const folder = breadcrumbsCache.value[folderId];
-			if (folder) {
-				folder.parentFolder = parentFolderId;
-			}
-		}
+	}
+
+	async function moveFolderToProject(
+		projectId: string,
+		folderId: string,
+		destinationProjectId: string,
+		destinationParentFolderId?: string,
+		shareCredentials?: string[],
+	): Promise<void> {
+		await workflowsEEApi.moveFolderToProject(
+			rootStore.restApiContext,
+			projectId,
+			folderId,
+			destinationProjectId,
+			destinationParentFolderId,
+			shareCredentials,
+		);
+
+		// Update the cache after moving the folder
+		delete breadcrumbsCache.value[folderId];
 	}
 
 	async function fetchFolderContent(
@@ -297,6 +312,7 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 		fetchProjectFolders,
 		fetchFoldersAvailableForMove,
 		moveFolder,
+		moveFolderToProject,
 		fetchFolderContent,
 		getHiddenBreadcrumbsItems,
 		draggedElement,

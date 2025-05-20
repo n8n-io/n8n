@@ -373,7 +373,6 @@ export type BaseFolderItem = BaseResource & {
 	subFolderCount: number;
 	parentFolder?: ResourceParentFolder;
 	homeProject?: ProjectSharingData;
-	sharedWithProjects?: ProjectSharingData[];
 	tags?: ITag[];
 };
 

@@ -41,7 +41,7 @@ const availableLocations = ref<ChangeLocationSearchResult[]>([]);
 const loading = ref(false);
 
 const currentProject = computed(() => {
-	return projectsStore.currentProject;
+	return projectsStore.projects.find((project) => project.id === props.currentProjectId);
 });
 
 const projectName = computed(() => {
@@ -64,7 +64,10 @@ const fetchAvailableLocations = async (query?: string) => {
 		availableLocations.value = folders.filter((folder) => folder.id !== props.parentFolderId);
 	}
 	// Finally always add project root to the results (if folder is not already in root)
-	if (projectName.value && props.parentFolderId !== '') {
+	if (
+		projectName.value &&
+		(props.parentFolderId !== '' || props.currentProjectId !== projectsStore.currentProject?.id)
+	) {
 		availableLocations.value.unshift({
 			id: props.currentProjectId,
 			name: i18n.baseText('folders.move.project.root.name', {

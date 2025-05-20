@@ -120,6 +120,7 @@ const moveResource = async () => {
 			props.data.resourceType,
 			props.data.resource.id,
 			selectedProject.value.id,
+			undefined,
 			shareUsedCredentials.value ? shareableCredentials.value.map((c) => c.id) : undefined,
 		);
 		closeModal();

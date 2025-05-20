@@ -282,7 +282,6 @@ const workflowListResources = computed<Resource[]>(() => {
 				createdAt: resource.createdAt.toString(),
 				updatedAt: resource.updatedAt.toString(),
 				homeProject: resource.homeProject,
-				sharedWithProjects: resource.sharedWithProjects,
 				workflowCount: resource.workflowCount,
 				subFolderCount: resource.subFolderCount,
 				parentFolder: resource.parentFolder,
@@ -435,7 +434,9 @@ onMounted(async () => {
 	workflowListEventBus.on('workflow-duplicated', fetchWorkflows);
 	workflowListEventBus.on('folder-deleted', onFolderDeleted);
 	workflowListEventBus.on('folder-moved', moveFolder);
+	workflowListEventBus.on('folder-transferred', onFolderTransferred);
 	workflowListEventBus.on('workflow-moved', onWorkflowMoved);
+	workflowListEventBus.on('workflow-transferred', onWorkflowTransferred);
 });
 
 onBeforeUnmount(() => {
@@ -443,7 +444,9 @@ onBeforeUnmount(() => {
 	workflowListEventBus.off('workflow-duplicated', fetchWorkflows);
 	workflowListEventBus.off('folder-deleted', onFolderDeleted);
 	workflowListEventBus.off('folder-moved', moveFolder);
+	workflowListEventBus.off('folder-transferred', onFolderTransferred);
 	workflowListEventBus.off('workflow-moved', onWorkflowMoved);
+	workflowListEventBus.off('workflow-transferred', onWorkflowTransferred);
 });
 
 /**
@@ -1082,7 +1085,6 @@ const createFolder = async (
 							createdAt: newFolder.createdAt,
 							updatedAt: newFolder.updatedAt,
 							homeProject: projectsStore.currentProject as ProjectSharingData,
-							sharedWithProjects: [],
 							workflowCount: 0,
 							subFolderCount: 0,
 						},
@@ -1222,10 +1224,61 @@ const moveFolder = async (payload: {
 	}
 };
 
+const onFolderTransferred = async (payload: {
+	folder: { id: string; name: string };
+	projectId: string;
+	destinationProjectId: string;
+	newParent: { id: string; name: string; type: 'folder' | 'project' };
+	shareCredentials?: string[];
+}) => {
+	const destinationParentFolderId =
+		payload.newParent.type === 'project' ? undefined : payload.newParent.id;
+
+	await foldersStore.moveFolderToProject(
+		payload.projectId,
+		payload.folder.id,
+		payload.destinationProjectId,
+		destinationParentFolderId,
+		payload.shareCredentials,
+	);
+
+	const isCurrentFolder = currentFolderId.value === payload.folder.id;
+	const newFolderURL = router.resolve({
+		name: VIEWS.PROJECTS_FOLDERS,
+		params: {
+			projectId: payload.destinationProjectId,
+			folderId: destinationParentFolderId,
+		},
+	}).href;
+
+	if (isCurrentFolder) {
+		// If we just moved the current folder, automatically navigate to the new folder
+		void router.push(newFolderURL);
+	} else {
+		// Else show success message and update the list
+		toast.showToast({
+			title: i18n.baseText('folders.move.success.title'),
+			message: i18n.baseText('folders.move.success.message', {
+				interpolate: { folderName: payload.folder.name, newFolderName: payload.newParent.name },
+			}),
+			onClick: (event: MouseEvent | undefined) => {
+				if (event?.target instanceof HTMLAnchorElement) {
+					event.preventDefault();
+					void router.push(newFolderURL);
+				}
+			},
+			type: 'success',
+		});
+
+		await fetchWorkflows();
+	}
+};
+
 const moveWorkflowToFolder = async (payload: {
 	id: string;
 	name: string;
 	parentFolderId?: string;
+	sharedWithProjects?: ProjectSharingData[];
 }) => {
 	if (showRegisteredCommunityCTA.value) {
 		uiStore.openModalWithData({
@@ -1240,9 +1293,53 @@ const moveWorkflowToFolder = async (payload: {
 			id: payload.id,
 			name: payload.name,
 			parentFolderId: payload.parentFolderId,
+			sharedWithProjects: payload.sharedWithProjects,
 		},
 		workflowListEventBus,
 	);
+};
+
+const onWorkflowTransferred = async (payload: {
+	projectId: string;
+	workflow: { id: string; name: string; oldParentId: string };
+	newParent: { id: string; name: string; type: 'folder' | 'project' };
+	shareCredentials?: string[];
+}) => {
+	const parentFolderId = payload.newParent.type === 'project' ? undefined : payload.newParent.id;
+
+	await projectsStore.moveResourceToProject(
+		'workflow',
+		payload.workflow.id,
+		payload.projectId,
+		parentFolderId,
+		payload.shareCredentials,
+	);
+
+	await fetchWorkflows();
+
+	try {
+		toast.showToast({
+			title: i18n.baseText('folders.move.workflow.success.title'),
+			message: i18n.baseText('folders.move.workflow.success.message', {
+				interpolate: { workflowName: payload.workflow.name, newFolderName: payload.newParent.name },
+			}),
+			onClick: (event: MouseEvent | undefined) => {
+				if (event?.target instanceof HTMLAnchorElement) {
+					event.preventDefault();
+					void router.push({
+						name: VIEWS.PROJECTS_FOLDERS,
+						params: {
+							projectId: route.params.projectId,
+							folderId: payload.newParent.type === 'project' ? undefined : payload.newParent.id,
+						},
+					});
+				}
+			},
+			type: 'success',
+		});
+	} catch (error) {
+		toast.showError(error, i18n.baseText('folders.move.workflow.error.title'));
+	}
 };
 
 const onWorkflowMoved = async (payload: {
