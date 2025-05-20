@@ -205,6 +205,7 @@ const parameters = computed(() => {
 const parametersSetting = computed(() => parameters.value.filter((item) => item.isNodeSetting));
 
 const parametersNoneSetting = computed(() =>
+	// The connection hint notice is visually hidden via CSS in NodeDetails.vue when the node has output connections
 	parameters.value.filter((item) => !item.isNodeSetting),
 );
 
