@@ -2,7 +2,7 @@ import { h, nextTick } from 'vue';
 import { RouterLink } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { type SourceControlledFile, SOURCE_CONTROL_FILE_STATUS } from '@n8n/api-types';
-import type { BaseTextKey } from '@/plugins/i18n';
+import type { BaseTextKey } from '@n8n/i18n';
 import { VIEWS } from '@/constants';
 import { groupBy } from 'lodash-es';
 import type { useToast } from '@/composables/useToast';

@@ -66,7 +66,7 @@ import type { INodeTypeDescription, Themed } from 'n8n-workflow';
 import { EVALUATION_TRIGGER_NODE_TYPE, NodeConnectionTypes } from 'n8n-workflow';
 import type { NodeConnectionType } from 'n8n-workflow';
 import { useTemplatesStore } from '@/stores/templates.store';
-import type { BaseTextKey } from '@/plugins/i18n';
+import type { BaseTextKey } from '@n8n/i18n';
 import { camelCase } from 'lodash-es';
 import { useSettingsStore } from '@/stores/settings.store';
 import { usePostHog } from '@/stores/posthog.store';

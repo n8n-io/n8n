@@ -7,7 +7,7 @@ import { N8nButton, N8nInput, N8nTooltip } from '@n8n/design-system/components';
 import { randomInt } from 'n8n-workflow';
 import type { CodeExecutionMode, INodeExecutionData } from 'n8n-workflow';
 
-import type { BaseTextKey } from '@/plugins/i18n';
+import type { BaseTextKey } from '@n8n/i18n';
 import type { INodeUi, Schema } from '@/Interface';
 import { generateCodeForPrompt } from '@/api/ai';
 import { useTelemetry } from '@/composables/useTelemetry';

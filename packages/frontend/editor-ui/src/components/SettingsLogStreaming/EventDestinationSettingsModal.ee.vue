@@ -35,7 +35,7 @@ import { useMessage } from '@/composables/useMessage';
 import { useUIStore } from '@/stores/ui.store';
 import { hasPermission } from '@/utils/rbac/permissions';
 import { destinationToFakeINodeUi } from '@/components/SettingsLogStreaming/Helpers.ee';
-import type { BaseTextKey } from '@/plugins/i18n';
+import type { BaseTextKey } from '@n8n/i18n';
 import InlineNameEdit from '@/components/InlineNameEdit.vue';
 import SaveButton from '@/components/SaveButton.vue';
 import EventSelection from '@/components/SettingsLogStreaming/EventSelection.ee.vue';

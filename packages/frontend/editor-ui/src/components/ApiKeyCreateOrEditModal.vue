@@ -9,7 +9,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useApiKeysStore } from '@/stores/apiKeys.store';
 import { useToast } from '@/composables/useToast';
-import type { BaseTextKey } from '@/plugins/i18n';
+import type { BaseTextKey } from '@n8n/i18n';
 import { N8nText } from '@n8n/design-system';
 import { DateTime } from 'luxon';
 import type { ApiKey, ApiKeyWithRawValue, CreateApiKeyRequestDto } from '@n8n/api-types';

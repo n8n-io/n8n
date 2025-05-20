@@ -33,7 +33,7 @@ import {
 	WEBHOOK_NODE_TYPE,
 } from '@/constants';
 
-import type { BaseTextKey } from '@/plugins/i18n';
+import type { BaseTextKey } from '@n8n/i18n';
 import type { Telemetry } from '@/plugins/telemetry';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';

@@ -5,7 +5,7 @@ import TestTableBase from '@/components/TestDefinition/shared/TestTableBase.vue'
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/composables/useToast';
 import { VIEWS } from '@/constants';
-import type { BaseTextKey } from '@/plugins/i18n';
+import type { BaseTextKey } from '@n8n/i18n';
 import { useTestDefinitionStore } from '@/stores/testDefinition.store.ee';
 import { convertToDisplayDate } from '@/utils/typesUtils';
 import { N8nActionToggle, N8nButton, N8nText, N8nTooltip } from '@n8n/design-system';

@@ -20,7 +20,7 @@ import {
 	NEW_ASSISTANT_SESSION_MODAL,
 } from '@/constants';
 import type { PermissionsRecord } from '@/permissions';
-import { addCredentialTranslation } from '@/plugins/i18n';
+import { addCredentialTranslation } from '@n8n/i18n';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useRootStore } from '@n8n/stores/useRootStore';

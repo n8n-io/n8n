@@ -17,7 +17,7 @@ import {
 	HITL_SUBCATEGORY,
 } from '@/constants';
 
-import type { BaseTextKey } from '@/plugins/i18n';
+import type { BaseTextKey } from '@n8n/i18n';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 
 import { TriggerView, RegularView, AIView, AINodesView } from '../viewsData';

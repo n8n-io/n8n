@@ -2,7 +2,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { useViewStacks } from '../composables/useViewStacks';
 import { useUsersStore } from '@/stores/users.store';
-import { i18n } from '@/plugins/i18n';
+import { i18n } from '@n8n/i18n';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCommunityNodesStore } from '@/stores/communityNodes.store';
 import { captureException } from '@sentry/vue';

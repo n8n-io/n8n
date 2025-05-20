@@ -1,7 +1,7 @@
 <script lang="ts">
 import { ElCheckbox as Checkbox, type CheckboxValueType } from 'element-plus';
 import { mapStores } from 'pinia';
-import type { BaseTextKey } from '@/plugins/i18n';
+import type { BaseTextKey } from '@n8n/i18n';
 import { useLogStreamingStore } from '@/stores/logStreaming.store';
 import { defineComponent } from 'vue';
 import { useI18n } from '@n8n/i18n';
