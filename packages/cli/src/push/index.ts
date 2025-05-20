@@ -142,8 +142,8 @@ export class Push extends TypedEmitter<PushEvents> {
 
 		if (!pushRef) {
 			connectionError = 'The query parameter "pushRef" is missing!';
-		} else if (expectedOriginResult.success === false) {
-			this.logger.warn(`Origin header is missing`);
+		} else if (!expectedOriginResult.success) {
+			this.logger.warn('Origin header is missing');
 
 			connectionError = 'Invalid origin!';
 		} else if (inProduction && headers.origin !== expectedOriginResult.expectedOrigin) {

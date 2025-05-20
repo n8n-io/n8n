@@ -1,5 +1,6 @@
 import type { Application } from 'express';
 import { captor, mock } from 'jest-mock-extended';
+import type { Logger } from 'n8n-core';
 import type { Server, ServerResponse } from 'node:http';
 import type { Socket } from 'node:net';
 import { type WebSocket, Server as WSServer } from 'ws';
@@ -13,7 +14,6 @@ import { WebSocketPush } from '@/push/websocket.push';
 import { mockInstance } from '@test/mocking';
 
 import type { PushConfig } from '../push.config';
-import { Logger } from 'n8n-core';
 
 jest.mock('ws', () => ({
 	Server: jest.fn(),
