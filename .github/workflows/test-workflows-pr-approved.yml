@@ -9,17 +9,12 @@ permissions:
   pull-requests: read
 
 jobs:
-  run_tests_after_approval:
+  run_workflow_tests_after_approval:
     name: Run Tests on Approved PR
     if: github.event.review.state == 'approved'
-    runs-on: blacksmith-2vcpu-ubuntu-2204
-    timeout-minutes: 10
-
-    steps:
-      - name: Call Reusable Test Workflow on Approved PR
-        uses: ./.github/workflows/test-workflows-callable.yml
-        with:
-          git_ref: ${{ github.event.pull_request.head.sha }}
-          send_webhook_report: true
-          pr_number: ${{ github.event.pull_request.number }}
-        secrets: inherit
+    uses: ./.github/workflows/test-workflows-callable.yml
+    with:
+      git_ref: ${{ github.event.pull_request.head.sha }}
+      send_webhook_report: true
+      pr_number: ${{ github.event.pull_request.number }}
+    secrets: inherit
