@@ -3,8 +3,13 @@ import type {
 	PushWorkFolderRequestDto,
 	SourceControlledFile,
 } from '@n8n/api-types';
-import type { Variables, TagEntity } from '@n8n/db';
-import { FolderRepository, TagRepository, User } from '@n8n/db';
+import {
+	type Variables,
+	type TagEntity,
+	FolderRepository,
+	TagRepository,
+	type User,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import { writeFileSync } from 'fs';
 import { Logger } from 'n8n-core';
@@ -38,7 +43,7 @@ import { SourceControlPreferencesService } from './source-control-preferences.se
 import type { ExportableCredential } from './types/exportable-credential';
 import type { ExportableFolder } from './types/exportable-folders';
 import type { ImportResult } from './types/import-result';
-import type { SourceControlContext } from './types/source-control-context';
+import { SourceControlContext } from './types/source-control-context';
 import type { SourceControlGetStatus } from './types/source-control-get-status';
 import type { SourceControlPreferences } from './types/source-control-preferences';
 import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
@@ -482,6 +487,7 @@ export class SourceControlService {
 	async getStatus(user: User, options: SourceControlGetStatus) {
 		await this.sanityCheck();
 
+		// TODO: check for a better query based on the scopes
 		if (
 			options.direction === 'pull' &&
 			user.role !== 'global:admin' &&
@@ -496,9 +502,7 @@ export class SourceControlService {
 		// fetch and reset hard first
 		await this.resetWorkfolder();
 
-		const context: SourceControlContext = {
-			user,
-		};
+		const context = new SourceControlContext(user);
 
 		const {
 			wfRemoteVersionIds,
@@ -572,10 +576,22 @@ export class SourceControlService {
 		context: SourceControlContext,
 		sourceControlledFiles: SourceControlledFile[],
 	) {
+		// TODO: We need to check the case where it exists in the DB (out of scope) but is in GIT
 		const wfRemoteVersionIds =
 			await this.sourceControlImportService.getRemoteVersionIdsFromFiles(context);
 		const wfLocalVersionIds =
 			await this.sourceControlImportService.getLocalVersionIdsFromDb(context);
+
+		let outOfScopeWF: SourceControlWorkflowVersionId[] = [];
+
+		if (!context.accessToAllProjects()) {
+			// we need to query for all wf in the DB to hide possible deletions,
+			// when a wf went out of scope locally
+			outOfScopeWF = await this.sourceControlImportService.getAllLocalVersionIdsFromDb();
+			outOfScopeWF = outOfScopeWF.filter(
+				(wf) => !wfLocalVersionIds.some((local) => local.id === wf.id),
+			);
+		}
 
 		const wfMissingInLocal = wfRemoteVersionIds.filter(
 			(remote) => wfLocalVersionIds.findIndex((local) => local.id === remote.id) === -1,
@@ -622,16 +638,21 @@ export class SourceControlService {
 		});
 
 		wfMissingInLocal.forEach((item) => {
-			sourceControlledFiles.push({
-				id: item.id,
-				name: item.name ?? 'Workflow',
-				type: 'workflow',
-				status: options.direction === 'push' ? 'deleted' : 'created',
-				location: options.direction === 'push' ? 'local' : 'remote',
-				conflict: false,
-				file: item.filename,
-				updatedAt: item.updatedAt ?? new Date().toISOString(),
-			});
+			// If we have out of scope workflows, these are workflows, that are not
+			// visible locally, but exists locally but are available in remote
+			// we skip them and hide them from deletion from the user.
+			if (!outOfScopeWF.some((outOfScope) => outOfScope.id === item.id)) {
+				sourceControlledFiles.push({
+					id: item.id,
+					name: item.name ?? 'Workflow',
+					type: 'workflow',
+					status: options.direction === 'push' ? 'deleted' : 'created',
+					location: options.direction === 'push' ? 'local' : 'remote',
+					conflict: false,
+					file: item.filename,
+					updatedAt: item.updatedAt ?? new Date().toISOString(),
+				});
+			}
 		});
 
 		wfMissingInRemote.forEach((item) => {

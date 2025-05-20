@@ -95,7 +95,7 @@ export class SourceControlImportService {
 	private async buildRemoteProjectFilter(
 		context: SourceControlContext,
 	): Promise<Project[] | undefined> {
-		if (context.user.role === 'global:admin' || context.user.role === 'global:owner') {
+		if (context.accessToAllProjects()) {
 			// In case the user is a global admin or owner, we don't need a filter
 			return;
 		}
@@ -115,7 +115,7 @@ export class SourceControlImportService {
 	private async buildRemoteWorkflowFilter(
 		context: SourceControlContext,
 	): Promise<WorkflowEntity[] | undefined> {
-		if (context.user.role === 'global:admin' || context.user.role === 'global:owner') {
+		if (context.accessToAllProjects()) {
 			// In case the user is a global admin or owner, we don't need a filter
 			return;
 		}
@@ -129,9 +129,9 @@ export class SourceControlImportService {
 	}
 
 	private getProjectFilter(context: SourceControlContext): FindOptionsWhere<Project> | undefined {
-		if (context.user.role === 'global:admin' || context.user.role === 'global:owner') {
+		if (context.accessToAllProjects()) {
 			// In case the user is a global admin or owner, we don't need a filter
-			return undefined;
+			return;
 		}
 
 		return {
@@ -144,9 +144,9 @@ export class SourceControlImportService {
 	}
 
 	private getFolderFilter(context: SourceControlContext): FindOptionsWhere<Folder> | undefined {
-		if (context.user.role === 'global:admin' || context.user.role === 'global:owner') {
+		if (context.accessToAllProjects()) {
 			// In case the user is a global admin or owner, we don't need a filter
-			return undefined;
+			return;
 		}
 
 		// We build a filter to only select folder, that belong to a team project
@@ -159,9 +159,9 @@ export class SourceControlImportService {
 	private getWorkflowFilter(
 		context: SourceControlContext,
 	): FindOptionsWhere<WorkflowEntity> | undefined {
-		if (context.user.role === 'global:admin' || context.user.role === 'global:owner') {
+		if (context.accessToAllProjects()) {
 			// In case the user is a global admin or owner, we don't need a filter
-			return undefined;
+			return;
 		}
 
 		// We build a filter to only select workflows, that belong to a team project
@@ -177,9 +177,9 @@ export class SourceControlImportService {
 	private getCredentialFilter(
 		context: SourceControlContext,
 	): FindOptionsWhere<CredentialsEntity> | undefined {
-		if (context.user.role === 'global:admin' || context.user.role === 'global:owner') {
+		if (context.accessToAllProjects()) {
 			// In case the user is a global admin or owner, we don't need a filter
-			return undefined;
+			return;
 		}
 
 		// We build a filter to only select workflows, that belong to a team project
@@ -195,9 +195,9 @@ export class SourceControlImportService {
 	private getWorkflowTagMappingFilter(
 		context: SourceControlContext,
 	): FindOptionsWhere<WorkflowTagMapping> | undefined {
-		if (context.user.role === 'global:admin' || context.user.role === 'global:owner') {
+		if (context.accessToAllProjects()) {
 			// In case the user is a global admin or owner, we don't need a filter
-			return undefined;
+			return;
 		}
 
 		// We build a filter to only select workflows, that belong to a team project
@@ -254,6 +254,50 @@ export class SourceControlImportService {
 		return remoteWorkflowFilesParsed.filter(
 			(e): e is SourceControlWorkflowVersionId => e !== undefined,
 		);
+	}
+
+	async getAllLocalVersionIdsFromDb(): Promise<SourceControlWorkflowVersionId[]> {
+		const localWorkflows = await this.workflowRepository.find({
+			relations: {
+				parentFolder: {
+					homeProject: {
+						projectRelations: true,
+					},
+				},
+			},
+			select: {
+				id: true,
+				versionId: true,
+				name: true,
+				updatedAt: true,
+				parentFolder: {
+					id: true,
+				},
+			},
+		});
+		return localWorkflows.map((local) => {
+			let updatedAt: Date;
+			if (local.updatedAt instanceof Date) {
+				updatedAt = local.updatedAt;
+			} else {
+				this.errorReporter.warn('updatedAt is not a Date', {
+					extra: {
+						type: typeof local.updatedAt,
+						value: local.updatedAt,
+					},
+				});
+				updatedAt = isNaN(Date.parse(local.updatedAt)) ? new Date() : new Date(local.updatedAt);
+			}
+			return {
+				id: local.id,
+				versionId: local.versionId,
+				name: local.name,
+				localId: local.id,
+				parentFolderId: local.parentFolder?.id ?? null,
+				filename: getWorkflowExportPath(local.id, this.workflowExportFolder),
+				updatedAt: updatedAt.toISOString(),
+			};
+		}) as SourceControlWorkflowVersionId[];
 	}
 
 	async getLocalVersionIdsFromDb(

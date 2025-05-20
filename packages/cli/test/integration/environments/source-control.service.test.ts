@@ -681,6 +681,7 @@ describe('SourceControlService', () => {
 							projectAdminScope.workflows[1],
 							projectAScope.workflows[0],
 							projectBScope.workflows[0],
+							movedOutOfScopeWorkflow,
 						]
 							.map((wf) => wf.id)
 							.some((id) => wf.id === id);
@@ -694,7 +695,7 @@ describe('SourceControlService', () => {
 
 					// The created workflows‚
 					expect(new Set(deletedWorkflows.map((wf) => wf.id))).toEqual(
-						new Set([deletedInScopeWorkflow.id, movedOutOfScopeWorkflow.id]),
+						new Set([deletedInScopeWorkflow.id]),
 					);
 
 					const newWorkflows = result.filter(

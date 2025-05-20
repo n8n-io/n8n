@@ -8,21 +8,21 @@ import fsp from 'node:fs/promises';
 
 import { SourceControlImportService } from '../source-control-import.service.ee';
 import type { ExportableFolder } from '../types/exportable-folders';
-import type { SourceControlContext } from '../types/source-control-context';
+import { SourceControlContext } from '../types/source-control-context';
 
 jest.mock('fast-glob');
 
-const globalAdminContext: SourceControlContext = {
-	user: Object.assign(new User(), {
+const globalAdminContext = new SourceControlContext(
+	Object.assign(new User(), {
 		role: 'global:admin',
 	}),
-};
+);
 
-const globalMemberContext: SourceControlContext = {
-	user: Object.assign(new User(), {
+const globalMemberContext = new SourceControlContext(
+	Object.assign(new User(), {
 		role: 'global:member',
 	}),
-};
+);
 
 describe('SourceControlImportService', () => {
 	const workflowRepository = mock<WorkflowRepository>();

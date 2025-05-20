@@ -26,6 +26,7 @@ import fsp from 'node:fs/promises';
 
 import { SourceControlImportService } from '@/environments.ee/source-control/source-control-import.service.ee';
 import type { ExportableCredential } from '@/environments.ee/source-control/types/exportable-credential';
+import { SourceControlContext } from '@/environments.ee/source-control/types/source-control-context';
 import type { IWorkflowToImport } from '@/interfaces';
 import { createFolder } from '@test-integration/db/folders';
 import { assignTagToWorkflow, createTag } from '@test-integration/db/tags';
@@ -219,9 +220,9 @@ describe('SourceControlImportService', () => {
 		});
 
 		it('should show all remote workflows for instance admins', async () => {
-			const result = await service.getRemoteVersionIdsFromFiles({
-				user: globalAdmin,
-			});
+			const result = await service.getRemoteVersionIdsFromFiles(
+				new SourceControlContext(globalAdmin),
+			);
 
 			expect(new Set(result.map((r) => r.id))).toEqual(
 				new Set(
@@ -237,9 +238,9 @@ describe('SourceControlImportService', () => {
 		});
 
 		it('should show all remote workflows for instance owners', async () => {
-			const result = await service.getRemoteVersionIdsFromFiles({
-				user: globalOwner,
-			});
+			const result = await service.getRemoteVersionIdsFromFiles(
+				new SourceControlContext(globalOwner),
+			);
 
 			expect(new Set(result.map((r) => r.id))).toEqual(
 				new Set(
@@ -255,17 +256,17 @@ describe('SourceControlImportService', () => {
 		});
 
 		it('should return no remote workflows for instance members', async () => {
-			const result = await service.getRemoteVersionIdsFromFiles({
-				user: globalMember,
-			});
+			const result = await service.getRemoteVersionIdsFromFiles(
+				new SourceControlContext(globalMember),
+			);
 
 			expect(result).toBeEmptyArray();
 		});
 
 		it('should return only remote workflows that belong to team project', async () => {
-			const result = await service.getRemoteVersionIdsFromFiles({
-				user: teamAdmin,
-			});
+			const result = await service.getRemoteVersionIdsFromFiles(
+				new SourceControlContext(teamAdmin),
+			);
 
 			expect(new Set(result.map((r) => r.id))).toEqual(
 				new Set([mockWorkflow2Data, mockWorkflow5Data].map((r) => r.id)),
@@ -332,9 +333,9 @@ describe('SourceControlImportService', () => {
 
 		describe('if user is an instance owner', () => {
 			it('should get all available workflows on the instance', async () => {
-				let versions = await service.getLocalVersionIdsFromDb({
-					user: instanceOwner,
-				});
+				let versions = await service.getLocalVersionIdsFromDb(
+					new SourceControlContext(instanceOwner),
+				);
 
 				expect(new Set(versions.map((v) => v.id))).toEqual(
 					new Set([
@@ -350,9 +351,9 @@ describe('SourceControlImportService', () => {
 
 		describe('if user is a project admin of a team project', () => {
 			it('should only get all available workflows from the team project', async () => {
-				let versions = await service.getLocalVersionIdsFromDb({
-					user: projectAdmin,
-				});
+				let versions = await service.getLocalVersionIdsFromDb(
+					new SourceControlContext(projectAdmin),
+				);
 
 				expect(new Set(versions.map((v) => v.id))).toEqual(
 					new Set([...teamAWorkflows.map((w) => w.id)]),
@@ -362,9 +363,9 @@ describe('SourceControlImportService', () => {
 
 		describe('if user is a project member of a team project', () => {
 			it('should not get any workflows', async () => {
-				let versions = await service.getLocalVersionIdsFromDb({
-					user: projectMember,
-				});
+				let versions = await service.getLocalVersionIdsFromDb(
+					new SourceControlContext(projectMember),
+				);
 
 				expect(versions).toBeEmptyArray();
 			});
@@ -489,9 +490,9 @@ describe('SourceControlImportService', () => {
 		});
 
 		it('should show all remote credentials for instance admins', async () => {
-			const result = await service.getRemoteCredentialsFromFiles({
-				user: globalAdmin,
-			});
+			const result = await service.getRemoteCredentialsFromFiles(
+				new SourceControlContext(globalAdmin),
+			);
 
 			expect(new Set(result.map((r) => r.id))).toEqual(
 				new Set(
@@ -507,9 +508,9 @@ describe('SourceControlImportService', () => {
 		});
 
 		it('should show all remote credentials for instance owners', async () => {
-			const result = await service.getRemoteCredentialsFromFiles({
-				user: globalOwner,
-			});
+			const result = await service.getRemoteCredentialsFromFiles(
+				new SourceControlContext(globalOwner),
+			);
 
 			expect(new Set(result.map((r) => r.id))).toEqual(
 				new Set(
@@ -525,17 +526,17 @@ describe('SourceControlImportService', () => {
 		});
 
 		it('should return no remote credentials for instance members', async () => {
-			const result = await service.getRemoteCredentialsFromFiles({
-				user: globalMember,
-			});
+			const result = await service.getRemoteCredentialsFromFiles(
+				new SourceControlContext(globalMember),
+			);
 
 			expect(result).toBeEmptyArray();
 		});
 
 		it('should return only remote credentials that belong to team project', async () => {
-			const result = await service.getRemoteCredentialsFromFiles({
-				user: teamAdmin,
-			});
+			const result = await service.getRemoteCredentialsFromFiles(
+				new SourceControlContext(teamAdmin),
+			);
 
 			expect(new Set(result.map((r) => r.id))).toEqual(
 				new Set([mockCredential2Data, mockCredential5Data].map((r) => r.id)),
@@ -622,9 +623,9 @@ describe('SourceControlImportService', () => {
 		});
 
 		it('should get all available credentials on the instance, for an instance owner', async () => {
-			let versions = await service.getLocalCredentialsFromDb({
-				user: instanceOwner,
-			});
+			let versions = await service.getLocalCredentialsFromDb(
+				new SourceControlContext(instanceOwner),
+			);
 
 			expect(new Set(versions.map((v) => v.id))).toEqual(
 				new Set([...teamACredentials.map((w) => w.id), ...teamBCredentials.map((w) => w.id)]),
@@ -632,9 +633,9 @@ describe('SourceControlImportService', () => {
 		});
 
 		it('should only get all available credentials from the team project, for a project admin', async () => {
-			let versions = await service.getLocalCredentialsFromDb({
-				user: projectAdmin,
-			});
+			let versions = await service.getLocalCredentialsFromDb(
+				new SourceControlContext(projectAdmin),
+			);
 
 			expect(new Set(versions.map((v) => v.id))).toEqual(
 				new Set([...teamACredentials.map((w) => w.id)]),
@@ -642,9 +643,9 @@ describe('SourceControlImportService', () => {
 		});
 
 		it('should not get any workflows, for a project member', async () => {
-			let versions = await service.getLocalCredentialsFromDb({
-				user: projectMember,
-			});
+			let versions = await service.getLocalCredentialsFromDb(
+				new SourceControlContext(projectMember),
+			);
 
 			expect(versions).toBeEmptyArray();
 		});
@@ -706,9 +707,9 @@ describe('SourceControlImportService', () => {
 		});
 
 		it('should get all available folders on the instance, for an instance owner', async () => {
-			let folders = await service.getLocalFoldersAndMappingsFromDb({
-				user: instanceOwner,
-			});
+			let folders = await service.getLocalFoldersAndMappingsFromDb(
+				new SourceControlContext(instanceOwner),
+			);
 
 			expect(new Set(folders.folders.map((v) => v.id))).toEqual(
 				new Set([...foldersProjectA.map((w) => w.id), ...foldersProjectB.map((w) => w.id)]),
@@ -716,9 +717,9 @@ describe('SourceControlImportService', () => {
 		});
 
 		it('should only get all available folders from the team project, for a project admin', async () => {
-			let versions = await service.getLocalFoldersAndMappingsFromDb({
-				user: projectAdmin,
-			});
+			let versions = await service.getLocalFoldersAndMappingsFromDb(
+				new SourceControlContext(projectAdmin),
+			);
 
 			expect(new Set(versions.folders.map((v) => v.id))).toEqual(
 				new Set([...foldersProjectA.map((w) => w.id)]),
@@ -726,9 +727,9 @@ describe('SourceControlImportService', () => {
 		});
 
 		it('should not get any folders, for a project member', async () => {
-			let versions = await service.getLocalFoldersAndMappingsFromDb({
-				user: projectMember,
-			});
+			let versions = await service.getLocalFoldersAndMappingsFromDb(
+				new SourceControlContext(projectMember),
+			);
 
 			expect(versions.folders).toBeEmptyArray();
 		});
@@ -859,9 +860,9 @@ describe('SourceControlImportService', () => {
 		beforeEach(async () => {});
 
 		it('should show all remote tags and all remote mappings for instance admins', async () => {
-			const result = await service.getRemoteTagsAndMappingsFromFile({
-				user: globalAdmin,
-			});
+			const result = await service.getRemoteTagsAndMappingsFromFile(
+				new SourceControlContext(globalAdmin),
+			);
 
 			expect(new Set(result.tags.map((r) => r.id))).toEqual(
 				new Set(mockTagData.tags.map((t) => t.id)),
@@ -870,9 +871,9 @@ describe('SourceControlImportService', () => {
 		});
 
 		it('should show all remote tags and all remote mappings for instance owners', async () => {
-			const result = await service.getRemoteTagsAndMappingsFromFile({
-				user: globalOwner,
-			});
+			const result = await service.getRemoteTagsAndMappingsFromFile(
+				new SourceControlContext(globalOwner),
+			);
 
 			expect(new Set(result.tags.map((r) => r.id))).toEqual(
 				new Set(mockTagData.tags.map((t) => t.id)),
@@ -881,9 +882,9 @@ describe('SourceControlImportService', () => {
 		});
 
 		it('should return all remote tags and no remote mappings for instance members', async () => {
-			const result = await service.getRemoteTagsAndMappingsFromFile({
-				user: globalMember,
-			});
+			const result = await service.getRemoteTagsAndMappingsFromFile(
+				new SourceControlContext(globalMember),
+			);
 
 			expect(new Set(result.tags.map((r) => r.id))).toEqual(
 				new Set(mockTagData.tags.map((t) => t.id)),
@@ -892,9 +893,9 @@ describe('SourceControlImportService', () => {
 		});
 
 		it('should return all remote tags and only remote mappings for in scope team for team admin', async () => {
-			const result = await service.getRemoteTagsAndMappingsFromFile({
-				user: teamAdmin,
-			});
+			const result = await service.getRemoteTagsAndMappingsFromFile(
+				new SourceControlContext(teamAdmin),
+			);
 
 			expect(new Set(result.tags.map((r) => r.id))).toEqual(
 				new Set(mockTagData.tags.map((t) => t.id)),
@@ -1009,9 +1010,9 @@ describe('SourceControlImportService', () => {
 		});
 
 		it('should get all available tags and mappings on the instance, for an instance owner', async () => {
-			let result = await service.getLocalTagsAndMappingsFromDb({
-				user: instanceOwner,
-			});
+			let result = await service.getLocalTagsAndMappingsFromDb(
+				new SourceControlContext(instanceOwner),
+			);
 
 			expect(new Set(result.tags.map((v) => v.id))).toEqual(new Set([...tags.map((w) => w.id)]));
 			expect(
@@ -1030,9 +1031,9 @@ describe('SourceControlImportService', () => {
 		});
 
 		it('should only get all available tags and only mappings from the team project, for a project admin', async () => {
-			let result = await service.getLocalTagsAndMappingsFromDb({
-				user: projectAdmin,
-			});
+			let result = await service.getLocalTagsAndMappingsFromDb(
+				new SourceControlContext(projectAdmin),
+			);
 
 			expect(new Set(result.tags.map((v) => v.id))).toEqual(new Set([...tags.map((w) => w.id)]));
 
@@ -1054,9 +1055,9 @@ describe('SourceControlImportService', () => {
 		});
 
 		it('should get all available tags but no mappings, for a project member', async () => {
-			let result = await service.getLocalTagsAndMappingsFromDb({
-				user: projectMember,
-			});
+			let result = await service.getLocalTagsAndMappingsFromDb(
+				new SourceControlContext(projectMember),
+			);
 
 			expect(new Set(result.tags.map((v) => v.id))).toEqual(new Set([...tags.map((w) => w.id)]));
 
