@@ -145,6 +145,11 @@ export class DatabaseConfig {
 	@Env('DB_TYPE', dbTypeSchema)
 	type: DbType = 'sqlite';
 
+	/**
+	 * Is true if the default sqlite data source of TypeORM is used, as opposed
+	 * to any other (e.g. postgres)
+	 * This also returns false if n8n's new pooled sqlite data source is used.
+	 */
 	get isLegacySqlite() {
 		return this.type === 'sqlite' && this.sqlite.poolSize === 0;
 	}
