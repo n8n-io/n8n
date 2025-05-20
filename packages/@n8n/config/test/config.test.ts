@@ -311,7 +311,7 @@ describe('GlobalConfig', () => {
 		process.env = {};
 		const config = Container.get(GlobalConfig);
 		// Makes sure the objects are structurally equal while respecting getters,
-		// which `toEqual` and `toEqual` does not do.
+		// which `toEqual` and `toBe` does not do.
 		expect(defaultConfig).toMatchObject(config);
 		expect(config).toMatchObject(defaultConfig);
 		expect(mockFs.readFileSync).not.toHaveBeenCalled();
@@ -380,7 +380,7 @@ describe('GlobalConfig', () => {
 			},
 		};
 		// Makes sure the objects are structurally equal while respecting getters,
-		// which `toEqual` and `toEqual` does not do.
+		// which `toEqual` and `toBe` does not do.
 		expect(config).toMatchObject(expected);
 		expect(expected).toMatchObject(config);
 		expect(mockFs.readFileSync).toHaveBeenCalled();
