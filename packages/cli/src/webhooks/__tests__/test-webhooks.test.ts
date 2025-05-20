@@ -1,3 +1,4 @@
+import { generateNanoId } from '@n8n/db';
 import type * as express from 'express';
 import { mock } from 'jest-mock-extended';
 import type { ITaskData, IWorkflowBase } from 'n8n-workflow';
@@ -8,7 +9,6 @@ import {
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { generateNanoId } from '@/databases/utils/generators';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
 import type {

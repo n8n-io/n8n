@@ -1,6 +1,15 @@
-import { BaseEntity, Column, Entity, PrimaryGeneratedColumn } from '@n8n/typeorm';
+import { DateTimeColumn } from '@n8n/db';
+import {
+	BaseEntity,
+	Column,
+	Entity,
+	JoinColumn,
+	ManyToOne,
+	PrimaryGeneratedColumn,
+} from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
 
+import { InsightsMetadata } from './insights-metadata';
 import type { PeriodUnit } from './insights-shared';
 import {
 	isValidPeriodNumber,
@@ -10,7 +19,6 @@ import {
 	PeriodUnitToNumber,
 	TypeToNumber,
 } from './insights-shared';
-import { datetimeColumnType } from '../../../../databases/entities/abstract-entity';
 
 @Entity()
 export class InsightsByPeriod extends BaseEntity {
@@ -19,6 +27,10 @@ export class InsightsByPeriod extends BaseEntity {
 
 	@Column()
 	metaId: number;
+
+	@ManyToOne(() => InsightsMetadata)
+	@JoinColumn({ name: 'metaId' })
+	metadata: InsightsMetadata;
 
 	@Column({ name: 'type', type: 'int' })
 	private type_: number;
@@ -57,6 +69,6 @@ export class InsightsByPeriod extends BaseEntity {
 		this.periodUnit_ = PeriodUnitToNumber[value];
 	}
 
-	@Column({ type: datetimeColumnType })
+	@DateTimeColumn()
 	periodStart: Date;
 }

@@ -483,19 +483,16 @@ describe('Execution', () => {
 		cy.intercept('POST', '/rest/workflows/**/run?**').as('workflowRun');
 
 		workflowPage.getters
-			.canvasNodeByName('do something with them')
+			.canvasNodeByName('Process The Data')
 			.findChildByTestId('execute-node-button')
 			.click({ force: true });
 
 		cy.wait('@workflowRun').then((interception) => {
 			expect(interception.request.body).to.have.property('runData').that.is.an('object');
-			const expectedKeys = [
-				'When clicking ‘Test workflow’',
-				'fetch 5 random users',
-				'do something with them',
-			];
 
-			const { runData } = interception.request.body as Record<string, object>;
+			const expectedKeys = ['Start Manually', 'Edit Fields', 'Process The Data'];
+
+			const { runData } = interception.request.body;
 			expect(Object.keys(runData)).to.have.lengthOf(expectedKeys.length);
 			expect(runData).to.include.all.keys(expectedKeys);
 		});

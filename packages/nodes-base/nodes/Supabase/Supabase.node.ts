@@ -52,6 +52,24 @@ export class Supabase implements INodeType {
 		],
 		properties: [
 			{
+				displayName: 'Use Custom Schema',
+				name: 'useCustomSchema',
+				type: 'boolean',
+				default: false,
+				noDataExpression: true,
+				description:
+					'Whether to use a database schema different from the default "public" schema (requires schema exposure in the <a href="https://supabase.com/docs/guides/api/using-custom-schemas?queryGroups=language&language=curl#exposing-custom-schemas">Supabase API</a>)',
+			},
+			{
+				displayName: 'Schema',
+				name: 'schema',
+				type: 'string',
+				default: 'public',
+				description: 'Name of database schema to use for table',
+				noDataExpression: false,
+				displayOptions: { show: { useCustomSchema: [true] } },
+			},
+			{
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',

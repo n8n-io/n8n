@@ -1,0 +1,20 @@
+[
+	{
+		"attributes": {
+			"type": "Account",
+			"url": "/services/data/v59.0/sobjects/Account/id1"
+		},
+		"Id": "id1",
+		"Name": "Account 1",
+		"Type": "Customer - Direct"
+	},
+	{
+		"attributes": {
+			"type": "Account",
+			"url": "/services/data/v59.0/sobjects/Account/id2"
+		},
+		"Id": "id2",
+		"Name": "Account 2",
+		"Type": "Customer - Direct"
+	}
+]

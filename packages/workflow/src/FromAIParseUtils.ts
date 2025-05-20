@@ -315,3 +315,22 @@ export function traverseNodeParameters(payload: unknown, collectedArgs: FromAIAr
 		Object.values(payload).forEach((value) => traverseNodeParameters(value, collectedArgs));
 	}
 }
+
+export function traverseNodeParametersWithParamNames(
+	payload: unknown,
+	collectedArgs: Map<string, FromAIArgument>,
+	name?: string,
+) {
+	if (typeof payload === 'string') {
+		const fromAICalls = extractFromAICalls(payload);
+		fromAICalls.forEach((call) => collectedArgs.set(name as string, call));
+	} else if (Array.isArray(payload)) {
+		payload.forEach((item: unknown, index: number) =>
+			traverseNodeParametersWithParamNames(item, collectedArgs, name + `[${index}]`),
+		);
+	} else if (typeof payload === 'object' && payload !== null) {
+		for (const [key, value] of Object.entries(payload)) {
+			traverseNodeParametersWithParamNames(value, collectedArgs, name ? name + '.' + key : key);
+		}
+	}
+}

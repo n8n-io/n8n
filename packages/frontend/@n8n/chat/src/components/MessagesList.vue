@@ -34,7 +34,7 @@ watch(
 		v-if="emptyText && initialMessages.length === 0 && messages.length === 0"
 		class="empty-container"
 	>
-		<div class="empty">
+		<div class="empty" data-test-id="chat-messages-empty">
 			<N8nIcon icon="comment" size="large" class="emptyIcon" />
 			<N8nText tag="p" size="medium" color="text-base">
 				{{ emptyText }}

@@ -1,6 +1,10 @@
 import { createResource } from '../composables/create';
 import { setCredentialValues } from '../composables/modals/credential-modal';
-import { clickCreateNewCredential, selectResourceLocatorItem } from '../composables/ndv';
+import {
+	clickCreateNewCredential,
+	getNdvContainer,
+	selectResourceLocatorItem,
+} from '../composables/ndv';
 import * as projects from '../composables/projects';
 import {
 	EDIT_FIELDS_SET_NODE_NAME,
@@ -295,14 +299,11 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			workflowPage.actions.saveWorkflowOnButtonClick();
 			workflowPage.actions.addNodeToCanvas('Execute Workflow', true, true);
 
-			cy.window().then((win) => {
-				cy.stub(win, 'open').callsFake((url) => {
-					cy.visit(url);
-				});
-			});
+			cy.window().then((win) => cy.stub(win, 'open').callsFake((url) => cy.visit(url)));
 
 			selectResourceLocatorItem('workflowId', 0, 'Create a');
-
+			// Need to wait for the trigger node to auto-open after a delay
+			getNdvContainer().should('be.visible');
 			cy.get('body').type('{esc}');
 			workflowPage.actions.addNodeToCanvas(NOTION_NODE_NAME, true, true);
 			clickCreateNewCredential();

@@ -86,10 +86,9 @@ export class Publisher {
 
 	// @TODO: The following methods are not pubsub-specific. Consider a dedicated client for multi-main setup.
 
-	async setIfNotExists(key: string, value: string) {
-		const success = await this.client.setnx(key, value);
-
-		return !!success;
+	async setIfNotExists(key: string, value: string, ttl: number) {
+		const result = await this.client.set(key, value, 'EX', ttl, 'NX');
+		return result === 'OK';
 	}
 
 	async setExpiration(key: string, ttl: number) {

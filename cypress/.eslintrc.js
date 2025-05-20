@@ -26,9 +26,15 @@ module.exports = {
 		'@typescript-eslint/no-use-before-define': 'off',
 		'@typescript-eslint/promise-function-async': 'off',
 		'n8n-local-rules/no-uncaught-json-parse': 'off',
-
 		'cypress/no-assigning-return-values': 'warn',
 		'cypress/no-unnecessary-waiting': 'warn',
 		'cypress/unsafe-to-chain-command': 'warn',
+		'import/no-extraneous-dependencies': [
+			'error',
+			{
+				devDependencies: ['**/cypress/**'],
+				optionalDependencies: false,
+			},
+		],
 	},
 };

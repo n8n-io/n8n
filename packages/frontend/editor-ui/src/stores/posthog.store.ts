@@ -3,7 +3,7 @@ import { ref } from 'vue';
 import { defineStore } from 'pinia';
 import { useStorage } from '@/composables/useStorage';
 import { useUsersStore } from '@/stores/users.store';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@/stores/settings.store';
 import type { FeatureFlags, IDataObject } from 'n8n-workflow';
 import { EXPERIMENTS_TO_TRACK, LOCAL_STORAGE_EXPERIMENT_OVERRIDES } from '@/constants';

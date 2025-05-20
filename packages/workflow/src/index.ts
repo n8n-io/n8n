@@ -1,5 +1,4 @@
 import * as LoggerProxy from './LoggerProxy';
-export * as ExpressionEvaluatorProxy from './ExpressionEvaluatorProxy';
 import * as NodeHelpers from './NodeHelpers';
 import * as ObservableObject from './ObservableObject';
 import * as TelemetryHelpers from './TelemetryHelpers';
@@ -36,6 +35,8 @@ export {
 	updateDisplayOptions,
 	randomInt,
 	randomString,
+	isSafeObjectProperty,
+	setSafeObjectProperty,
 } from './utils';
 export {
 	isINodeProperties,
@@ -45,6 +46,7 @@ export {
 	isINodePropertyCollectionList,
 	isINodePropertyOptionsList,
 	isResourceMapperValue,
+	isResourceLocatorValue,
 	isFilterValue,
 } from './type-guards';
 

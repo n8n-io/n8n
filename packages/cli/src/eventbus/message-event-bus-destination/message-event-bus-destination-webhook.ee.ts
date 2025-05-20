@@ -14,7 +14,7 @@ import type {
 } from 'n8n-workflow';
 
 import { CredentialsHelper } from '@/credentials-helper';
-import * as SecretsHelpers from '@/external-secrets.ee/external-secrets-helper.ee';
+import { SecretsHelper } from '@/secrets-helpers.ee';
 
 import { MessageEventBusDestination } from './message-event-bus-destination.ee';
 import { eventMessageGenericDestinationTestEvent } from '../event-message-classes/event-message-generic';
@@ -102,7 +102,9 @@ export class MessageEventBusDestinationWebhook
 		const foundCredential = Object.entries(this.credentials).find((e) => e[0] === credentialType);
 		if (foundCredential) {
 			const credentialsDecrypted = await this.credentialsHelper?.getDecrypted(
-				{ secretsHelpers: SecretsHelpers } as unknown as IWorkflowExecuteAdditionalData,
+				{
+					secretsHelpers: Container.get(SecretsHelper),
+				} as unknown as IWorkflowExecuteAdditionalData,
 				foundCredential[1],
 				foundCredential[0],
 				'internal',

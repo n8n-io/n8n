@@ -238,7 +238,6 @@ describe('Send and Wait utils tests', () => {
 
 			expect(mockRender).toHaveBeenCalledWith('form-trigger', {
 				testRun: false,
-				validForm: true,
 				formTitle: '',
 				formDescription: 'Test message',
 				formDescriptionMetadata: 'Test message',
@@ -317,7 +316,6 @@ describe('Send and Wait utils tests', () => {
 
 			expect(mockRender).toHaveBeenCalledWith('form-trigger', {
 				testRun: false,
-				validForm: true,
 				formTitle: 'Test title',
 				formDescription: 'Test description',
 				formDescriptionMetadata: 'Test description',
@@ -343,6 +341,7 @@ describe('Send and Wait utils tests', () => {
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
 				method: 'POST',
 			} as any);
+			mockWebhookFunctions.getNode.mockReturnValue({} as any);
 
 			mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
 				const params: { [key: string]: any } = {

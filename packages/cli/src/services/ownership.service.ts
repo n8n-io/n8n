@@ -1,12 +1,12 @@
+import type { Project, User, ListQueryDb } from '@n8n/db';
+import {
+	ProjectRelationRepository,
+	ProjectRepository,
+	SharedWorkflowRepository,
+	UserRepository,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import type { Project } from '@/databases/entities/project';
-import type { User } from '@/databases/entities/user';
-import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
-import { UserRepository } from '@/databases/repositories/user.repository';
-import type { ListQuery } from '@/requests';
 import { CacheService } from '@/services/cache/cache.service';
 
 @Service()
@@ -57,18 +57,20 @@ export class OwnershipService {
 	}
 
 	addOwnedByAndSharedWith(
-		rawWorkflow: ListQuery.Workflow.WithSharing,
-	): ListQuery.Workflow.WithOwnedByAndSharedWith;
+		rawWorkflow: ListQueryDb.Workflow.WithSharing,
+	): ListQueryDb.Workflow.WithOwnedByAndSharedWith;
 	addOwnedByAndSharedWith(
-		rawCredential: ListQuery.Credentials.WithSharing,
-	): ListQuery.Credentials.WithOwnedByAndSharedWith;
+		rawCredential: ListQueryDb.Credentials.WithSharing,
+	): ListQueryDb.Credentials.WithOwnedByAndSharedWith;
 	addOwnedByAndSharedWith(
-		rawEntity: ListQuery.Workflow.WithSharing | ListQuery.Credentials.WithSharing,
-	): ListQuery.Workflow.WithOwnedByAndSharedWith | ListQuery.Credentials.WithOwnedByAndSharedWith {
+		rawEntity: ListQueryDb.Workflow.WithSharing | ListQueryDb.Credentials.WithSharing,
+	):
+		| ListQueryDb.Workflow.WithOwnedByAndSharedWith
+		| ListQueryDb.Credentials.WithOwnedByAndSharedWith {
 		const shared = rawEntity.shared;
 		const entity = rawEntity as
-			| ListQuery.Workflow.WithOwnedByAndSharedWith
-			| ListQuery.Credentials.WithOwnedByAndSharedWith;
+			| ListQueryDb.Workflow.WithOwnedByAndSharedWith
+			| ListQueryDb.Credentials.WithOwnedByAndSharedWith;
 
 		Object.assign(entity, {
 			homeProject: null,

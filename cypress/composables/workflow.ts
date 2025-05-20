@@ -120,6 +120,18 @@ export function getNodeByName(name: string) {
 	);
 }
 
+export function getNodesWithSpinner() {
+	return cy
+		.getByTestId('canvas-node')
+		.filter((_, el) => Cypress.$(el).find('[data-icon=sync-alt]').length > 0);
+}
+
+export function getWaitingNodes() {
+	return cy
+		.getByTestId('canvas-node')
+		.filter((_, el) => Cypress.$(el).find('[data-icon=clock]').length > 0);
+}
+
 export function getNodeRenderedTypeByName(name: string) {
 	return cy.ifCanvasVersion(
 		() => getNodeByName(name),
@@ -133,7 +145,7 @@ export function getWorkflowHistoryCloseButton() {
 
 export function disableNode(name: string) {
 	const target = getNodeByName(name);
-	target.rightclick(name ? 'center' : 'topLeft', { force: true });
+	target.trigger('contextmenu');
 	cy.getByTestId('context-menu-item-toggle_activation').click();
 }
 
@@ -182,9 +194,32 @@ export function getZoomToFitButton() {
 	return cy.getByTestId('zoom-to-fit');
 }
 
+export function getNodeIssuesByName(nodeName: string) {
+	return getCanvasNodes()
+		.filter(`:contains(${nodeName})`)
+		.should('have.length.greaterThan', 0)
+		.findChildByTestId('node-issues');
+}
+
 /**
  * Actions
  */
+
+export function executeWorkflow() {
+	cy.get('[data-test-id="execute-workflow-button"]').click();
+}
+
+export function waitForSuccessBannerToAppear() {
+	cy.contains(/(Workflow|Node) executed successfully/, { timeout: 4000 }).should('be.visible');
+}
+
+export function executeWorkflowAndWait(waitForSuccessBannerToDisappear = true) {
+	executeWorkflow();
+	waitForSuccessBannerToAppear();
+	if (waitForSuccessBannerToDisappear) {
+		cy.contains('Workflow executed successfully', { timeout: 10000 }).should('not.exist');
+	}
+}
 
 export function addNodeToCanvas(
 	nodeDisplayName: string,
@@ -357,4 +392,12 @@ export function openContextMenu(
 
 export function clickContextMenuAction(action: string) {
 	getContextMenuAction(action).click({ force: true });
+}
+
+export function openExecutions() {
+	cy.getByTestId('radio-button-executions').click();
+}
+
+export function clickClearExecutionDataButton() {
+	cy.getByTestId('clear-execution-data-button').click();
 }

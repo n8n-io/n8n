@@ -56,7 +56,7 @@ const emit = defineEmits<{
 	run: [id: string];
 	select: [id: string, selected: boolean];
 	toggle: [id: string];
-	activate: [id: string];
+	activate: [id: string, event: MouseEvent];
 	deactivate: [id: string];
 	'open:contextmenu': [id: string, event: MouseEvent, source: 'node-button' | 'node-right-click'];
 	update: [id: string, parameters: Record<string, unknown>];
@@ -240,8 +240,8 @@ function onDisabledToggle() {
 	emit('toggle', props.id);
 }
 
-function onActivate() {
-	emit('activate', props.id);
+function onActivate(id: string, event: MouseEvent) {
+	emit('activate', id, event);
 }
 
 function onDeactivate() {
@@ -287,6 +287,10 @@ provide(CanvasNodeKey, {
 	readOnly,
 	eventBus: canvasNodeEventBus,
 });
+
+const hasToolbar = computed(
+	() => ![CanvasNodeRenderType.AddNodes, CanvasNodeRenderType.AIPrompt].includes(renderType.value),
+);
 
 const showToolbar = computed(() => {
 	const target = contextMenu.target.value;
@@ -373,7 +377,7 @@ onBeforeUnmount(() => {
 		</template>
 
 		<CanvasNodeToolbar
-			v-else
+			v-else-if="hasToolbar"
 			data-test-id="canvas-node-toolbar"
 			:read-only="readOnly"
 			:class="$style.canvasNodeToolbar"
@@ -390,6 +394,7 @@ onBeforeUnmount(() => {
 			@move="onMove"
 			@update="onUpdate"
 			@open:contextmenu="onOpenContextMenuFromNode"
+			@delete="onDelete"
 		/>
 
 		<CanvasNodeTrigger

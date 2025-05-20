@@ -1,7 +1,7 @@
 import { h } from 'vue';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useUsersStore } from '@/stores/users.store';
@@ -100,12 +100,16 @@ export async function initializeAuthenticatedFeatures(
 			console.error('Failed to initialize cloud plan store:', e);
 		}
 	}
+
+	if (insightsStore.isSummaryEnabled) {
+		void insightsStore.weeklySummary.execute();
+	}
+
 	await Promise.all([
 		projectsStore.getMyProjects(),
 		projectsStore.getPersonalProject(),
 		projectsStore.getProjectsCount(),
 		rolesStore.fetchRoles(),
-		insightsStore.summary.execute(),
 	]);
 
 	authenticatedFeaturesInitialized = true;

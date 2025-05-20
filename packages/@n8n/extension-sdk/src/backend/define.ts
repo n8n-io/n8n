@@ -1,5 +1,5 @@
-import type { BackendModule } from './types.ts';
+import type { BackendExtension } from './types.ts';
 
-export function defineBackendModule(module: BackendModule): BackendModule {
-	return module;
+export function defineBackendExtension(extension: BackendExtension): BackendExtension {
+	return extension;
 }

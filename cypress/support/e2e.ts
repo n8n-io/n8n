@@ -1,7 +1,10 @@
+import registerCypressGrep from '@cypress/grep/src/support';
 import cloneDeep from 'lodash/cloneDeep';
 import merge from 'lodash/merge';
 
 import { settings } from './commands';
+
+registerCypressGrep();
 
 before(() => {
 	cy.resetDatabase();

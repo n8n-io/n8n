@@ -8,6 +8,7 @@
     "test:e2e:dev": "scripts/run-e2e.js dev",
     "test:e2e:dev:v1": "scripts/run-e2e.js dev:v1",
     "test:e2e:all": "scripts/run-e2e.js all",
+    "test:flaky": "scripts/run-e2e.js debugFlaky",
     "format": "biome format --write .",
     "format:check": "biome ci .",
     "lint": "eslint . --quiet",
@@ -16,6 +17,7 @@
     "start": "cd ..; pnpm start"
   },
   "devDependencies": {
+    "@cypress/grep": "^4.1.0",
     "@n8n/api-types": "workspace:*",
     "@types/lodash": "catalog:",
     "eslint-plugin-cypress": "^3.5.0",

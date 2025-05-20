@@ -13,7 +13,7 @@ import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper
 import { useUIStore } from '@/stores/ui.store';
 import { useApiKeysStore } from '@/stores/apiKeys.store';
 import { storeToRefs } from 'pinia';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
@@ -28,7 +28,7 @@ const telemetry = useTelemetry();
 
 const loading = ref(false);
 const apiKeysStore = useApiKeysStore();
-const { getAndCacheApiKeys, deleteApiKey } = apiKeysStore;
+const { getAndCacheApiKeys, deleteApiKey, getApiKeyAvailableScopes } = apiKeysStore;
 const { apiKeysSortByCreationDate } = storeToRefs(apiKeysStore);
 const { isSwaggerUIEnabled, publicApiPath, publicApiLatestVersion } = settingsStore;
 const { baseUrl } = useRootStore();
@@ -55,17 +55,17 @@ onMounted(async () => {
 
 	if (!isPublicApiEnabled) return;
 
-	await getApiKeys();
+	await getApiKeysAndScopes();
 });
 
 function onUpgrade() {
 	void goToUpgrade('settings-n8n-api', 'upgrade-api', 'redirect');
 }
 
-async function getApiKeys() {
+async function getApiKeysAndScopes() {
 	try {
 		loading.value = true;
-		await getAndCacheApiKeys();
+		await Promise.all([getAndCacheApiKeys(), getApiKeyAvailableScopes()]);
 	} catch (error) {
 		showError(error, i18n.baseText('settings.api.view.error'));
 	} finally {

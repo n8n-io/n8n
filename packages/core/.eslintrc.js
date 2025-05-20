@@ -12,7 +12,7 @@ module.exports = {
 		project: './tsconfig.json',
 	},
 
-	ignorePatterns: ['bin/*.js'],
+	ignorePatterns: ['bin/*.js', 'nodes-testing/*.ts'],
 
 	rules: {
 		complexity: 'error',

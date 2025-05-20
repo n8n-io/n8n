@@ -97,7 +97,7 @@ describe('Cloud', () => {
 		it('should show default instructions if free AI credits experiment is control', () => {
 			window.localStorage.setItem(
 				'N8N_EXPERIMENT_OVERRIDES',
-				JSON.stringify({ '027_free_openai_calls': 'control', '026_easy_ai_workflow': 'variant' }),
+				JSON.stringify({ '026_easy_ai_workflow': 'variant' }),
 			);
 
 			cy.visit(workflowsPage.url);
@@ -108,27 +108,7 @@ describe('Cloud', () => {
 				.stickies()
 				.eq(0)
 				.should(($el) => {
-					expect($el).contains.text('Set up your OpenAI credentials in the OpenAI Model node');
-				});
-		});
-
-		it('should show updated instructions if free AI credits experiment is variant', () => {
-			window.localStorage.setItem(
-				'N8N_EXPERIMENT_OVERRIDES',
-				JSON.stringify({ '027_free_openai_calls': 'variant', '026_easy_ai_workflow': 'variant' }),
-			);
-
-			cy.visit(workflowsPage.url);
-
-			cy.getByTestId('easy-ai-workflow-card').click();
-
-			workflowPage.getters
-				.stickies()
-				.eq(0)
-				.should(($el) => {
-					expect($el).contains.text(
-						`Claim your free ${NUMBER_OF_AI_CREDITS} OpenAI calls in the OpenAI model node`,
-					);
+					expect($el).contains.text('Start by saying');
 				});
 		});
 	});

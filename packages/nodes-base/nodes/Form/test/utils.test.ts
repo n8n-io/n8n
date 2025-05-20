@@ -1,3 +1,4 @@
+import type { Request } from 'express';
 import { mock } from 'jest-mock-extended';
 import { DateTime } from 'luxon';
 import type {
@@ -203,7 +204,6 @@ describe('FormTrigger, formWebhook', () => {
 				'https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger&utm_campaign=instanceId',
 			testRun: true,
 			useResponseData: false,
-			validForm: true,
 		});
 	});
 
@@ -250,7 +250,6 @@ describe('FormTrigger, formWebhook', () => {
 					'https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger&utm_campaign=instanceId',
 				testRun: true,
 				useResponseData: false,
-				validForm: true,
 			});
 		}
 	});
@@ -353,7 +352,6 @@ describe('FormTrigger, prepareFormData', () => {
 
 		expect(result).toEqual({
 			testRun: false,
-			validForm: true,
 			formTitle: 'Test Form',
 			formDescription: 'This is a test form',
 			formDescriptionMetadata: 'This is a test form',
@@ -455,7 +453,6 @@ describe('FormTrigger, prepareFormData', () => {
 
 		expect(result).toEqual({
 			testRun: true,
-			validForm: true,
 			formTitle: 'Test Form',
 			formDescription: 'This is a test form',
 			formDescriptionMetadata: 'This is a test form',
@@ -515,7 +512,6 @@ describe('FormTrigger, prepareFormData', () => {
 			query: {},
 		});
 
-		expect(result.validForm).toBe(false);
 		expect(result.formFields).toEqual([]);
 	});
 
@@ -608,6 +604,7 @@ jest.mock('luxon', () => ({
 
 describe('prepareFormReturnItem', () => {
 	const mockContext = mock<IWebhookFunctions>({
+		getRequestObject: jest.fn().mockReturnValue({ method: 'GET', query: {} }),
 		nodeHelpers: mock({
 			copyBinaryFile: jest.fn().mockResolvedValue({}),
 		}),
@@ -740,13 +737,35 @@ describe('prepareFormReturnItem', () => {
 		expect(DateTime.now().setZone).toHaveBeenCalledWith('America/New_York');
 	});
 
-	it('should include workflow static data for form trigger node', async () => {
+	it('should not include workflow static data for form trigger node', async () => {
 		const staticData = { queryParam: 'value' };
 		mockContext.getWorkflowStaticData.mockReturnValue(staticData);
 
 		const result = await prepareFormReturnItem(mockContext, [], 'test');
 
-		expect(result.json.formQueryParameters).toEqual(staticData);
+		expect(result.json.formQueryParameters).toBeUndefined();
+	});
+
+	it('should include query parameters if present and is trigger node', async () => {
+		mockContext.getRequestObject.mockReturnValue({
+			method: 'POST',
+			query: { param: 'value' },
+		} as unknown as Request);
+
+		const result = await prepareFormReturnItem(mockContext, [], 'test');
+
+		expect(result.json.formQueryParameters).toEqual({ param: 'value' });
+	});
+
+	it('should not include query parameters if empty', async () => {
+		mockContext.getRequestObject.mockReturnValue({
+			method: 'POST',
+			query: {},
+		} as unknown as Request);
+
+		const result = await prepareFormReturnItem(mockContext, [], 'test');
+
+		expect(result.json.formQueryParameters).toBeUndefined();
 	});
 
 	it('should return html if field name is set', async () => {

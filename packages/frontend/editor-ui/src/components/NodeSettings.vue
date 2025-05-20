@@ -6,6 +6,7 @@ import type {
 	INodeProperties,
 	NodeConnectionType,
 	NodeParameterValue,
+	INodeCredentialDescription,
 } from 'n8n-workflow';
 import {
 	NodeHelpers,
@@ -130,6 +131,8 @@ const node = computed(() => ndvStore.activeNode);
 
 const isTriggerNode = computed(() => !!node.value && nodeTypesStore.isTriggerNode(node.value.type));
 
+const isToolNode = computed(() => !!node.value && nodeTypesStore.isToolNode(node.value.type));
+
 const isExecutable = computed(() => {
 	if (props.nodeType && node.value) {
 		const workflowNode = currentWorkflowInstance.value.getNode(node.value.name);
@@ -140,7 +143,11 @@ const isExecutable = computed(() => {
 		);
 		const inputNames = NodeHelpers.getConnectionTypes(inputs);
 
-		if (!inputNames.includes(NodeConnectionTypes.Main) && !isTriggerNode.value) {
+		if (
+			!inputNames.includes(NodeConnectionTypes.Main) &&
+			!isToolNode.value &&
+			!isTriggerNode.value
+		) {
 			return false;
 		}
 	}
@@ -198,7 +205,22 @@ const parameters = computed(() => {
 const parametersSetting = computed(() => parameters.value.filter((item) => item.isNodeSetting));
 
 const parametersNoneSetting = computed(() =>
+	// The connection hint notice is visually hidden via CSS in NodeDetails.vue when the node has output connections
 	parameters.value.filter((item) => !item.isNodeSetting),
+);
+
+const isDisplayingCredentials = computed(
+	() =>
+		credentialsStore
+			.getCredentialTypesNodeDescriptions('', props.nodeType)
+			.filter((credentialTypeDescription) => displayCredentials(credentialTypeDescription)).length >
+		0,
+);
+
+const showNoParametersNotice = computed(
+	() =>
+		!isDisplayingCredentials.value &&
+		parametersNoneSetting.value.filter((item) => item.type !== 'notice').length === 0,
 );
 
 const outputPanelEditMode = computed(() => ndvStore.outputPanelEditMode);
@@ -337,7 +359,7 @@ const removeMismatchedOptionValues = (
 			);
 		}
 
-		if (!hasValidOptions && displayParameter(nodeParameterValues, prop, node.value)) {
+		if (!hasValidOptions && displayParameter(nodeParameterValues, prop, node.value, nodeType)) {
 			unset(nodeParameterValues as object, prop.name);
 		}
 	});
@@ -395,6 +417,7 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 			false,
 			false,
 			_node,
+			nodeType,
 		);
 
 		const oldNodeParameters = Object.assign({}, nodeParameters);
@@ -453,6 +476,7 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 			true,
 			false,
 			_node,
+			nodeType,
 		);
 
 		for (const key of Object.keys(nodeParameters as object)) {
@@ -487,7 +511,9 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 			false,
 			false,
 			_node,
+			nodeType,
 		);
+
 		const oldNodeParameters = Object.assign({}, nodeParameters);
 
 		// Copy the data because it is the data of vuex so make sure that
@@ -535,7 +561,20 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 			true,
 			false,
 			_node,
+			nodeType,
 		);
+
+		if (isToolNode.value) {
+			const updatedDescription = NodeHelpers.getUpdatedToolDescription(
+				props.nodeType,
+				nodeParameters,
+				node.value?.parameters,
+			);
+
+			if (updatedDescription && nodeParameters) {
+				nodeParameters.toolDescription = updatedDescription;
+			}
+		}
 
 		for (const key of Object.keys(nodeParameters as object)) {
 			if (nodeParameters && nodeParameters[key] !== null && nodeParameters[key] !== undefined) {
@@ -934,6 +973,18 @@ onBeforeUnmount(() => {
 	importCurlEventBus.off('setHttpNodeParameters', setHttpNodeParameters);
 	ndvEventBus.off('updateParameterValue', valueChanged);
 });
+
+function displayCredentials(credentialTypeDescription: INodeCredentialDescription): boolean {
+	if (credentialTypeDescription.displayOptions === undefined) {
+		// If it is not defined no need to do a proper check
+		return true;
+	}
+
+	return (
+		!!node.value &&
+		nodeHelpers.displayParameter(node.value.parameters, credentialTypeDescription, '', node.value)
+	);
+}
 </script>
 
 <template>
@@ -1054,7 +1105,7 @@ onBeforeUnmount(() => {
 						@blur="onParameterBlur"
 					/>
 				</ParameterInputList>
-				<div v-if="parametersNoneSetting.length === 0" class="no-parameters">
+				<div v-if="showNoParametersNotice" class="no-parameters">
 					<n8n-text>
 						{{ i18n.baseText('nodeSettings.thisNodeDoesNotHaveAnyParameters') }}
 					</n8n-text>

@@ -1,3 +1,4 @@
+import { inDevelopment, inProduction } from '@n8n/backend-common';
 import { SecurityConfig } from '@n8n/config';
 import { Container, Service } from '@n8n/di';
 import cookieParser from 'cookie-parser';
@@ -11,17 +12,9 @@ import { resolve } from 'path';
 
 import { AbstractServer } from '@/abstract-server';
 import config from '@/config';
-import {
-	CLI_DIR,
-	EDITOR_UI_DIST_DIR,
-	inDevelopment,
-	inE2ETests,
-	inProduction,
-	N8N_VERSION,
-	Time,
-} from '@/constants';
+import { CLI_DIR, EDITOR_UI_DIST_DIR, inE2ETests, N8N_VERSION, Time } from '@/constants';
+import { ControllerRegistry } from '@/controller.registry';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
-import { ControllerRegistry } from '@/decorators';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { EventService } from '@/events/event.service';
 import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
@@ -31,7 +24,7 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { handleMfaDisable, isMfaFeatureEnabled } from '@/mfa/helpers';
 import { PostHogClient } from '@/posthog';
 import { isApiEnabled, loadPublicApiVersions } from '@/public-api';
-import { setupPushServer, setupPushHandler, Push } from '@/push';
+import { Push } from '@/push';
 import type { APIRequest } from '@/requests';
 import * as ResponseHelper from '@/response-helper';
 import type { FrontendService } from '@/services/frontend.service';
@@ -69,6 +62,7 @@ import '@/evaluation.ee/test-definitions.controller.ee';
 import '@/evaluation.ee/test-runs.controller.ee';
 import '@/workflows/workflow-history.ee/workflow-history.controller.ee';
 import '@/workflows/workflows.controller';
+import '@/webhooks/webhooks.controller';
 
 @Service()
 export class Server extends AbstractServer {
@@ -123,6 +117,7 @@ export class Server extends AbstractServer {
 
 		if (this.globalConfig.nodes.communityPackages.enabled) {
 			await import('@/controllers/community-packages.controller');
+			await import('@/controllers/community-node-types.controller');
 		}
 
 		if (inE2ETests) {
@@ -207,9 +202,10 @@ export class Server extends AbstractServer {
 		this.app.use(cookieParser());
 
 		const { restEndpoint, app } = this;
-		setupPushHandler(restEndpoint, app);
 
 		const push = Container.get(Push);
+		push.setupPushHandler(restEndpoint, app);
+
 		if (push.isBidirectional) {
 			const { CollaborationService } = await import('@/collaboration/collaboration.service');
 
@@ -311,19 +307,25 @@ export class Server extends AbstractServer {
 		const cacheOptions = inE2ETests || inDevelopment ? {} : { maxAge };
 		const { staticCacheDir } = Container.get(InstanceSettings);
 		if (frontendService) {
-			const serveIcons: express.RequestHandler = async (req, res) => {
-				// eslint-disable-next-line prefer-const
-				let { scope, packageName } = req.params;
-				if (scope) packageName = `@${scope}/${packageName}`;
-				const filePath = this.loadNodesAndCredentials.resolveIcon(packageName, req.originalUrl);
-				if (filePath) {
-					try {
-						await fsAccess(filePath);
-						return res.sendFile(filePath, cacheOptions);
-					} catch {}
-				}
-				res.sendStatus(404);
-			};
+			this.app.use(
+				[
+					'/icons/{@:scope/}:packageName/*path/*file.svg',
+					'/icons/{@:scope/}:packageName/*path/*file.png',
+				],
+				async (req, res) => {
+					// eslint-disable-next-line prefer-const
+					let { scope, packageName } = req.params;
+					if (scope) packageName = `@${scope}/${packageName}`;
+					const filePath = this.loadNodesAndCredentials.resolveIcon(packageName, req.originalUrl);
+					if (filePath) {
+						try {
+							await fsAccess(filePath);
+							return res.sendFile(filePath, { maxAge, dotfiles: 'allow' });
+						} catch {}
+					}
+					res.sendStatus(404);
+				},
+			);
 
 			const serveSchemas: express.RequestHandler = async (req, res) => {
 				const { node, version, resource, operation } = req.params;
@@ -342,10 +344,7 @@ export class Server extends AbstractServer {
 				}
 				res.sendStatus(404);
 			};
-
-			this.app.use('/icons/@:scope/:packageName/*/*.(svg|png)', serveIcons);
-			this.app.use('/icons/:packageName/*/*.(svg|png)', serveIcons);
-			this.app.use('/schemas/:node/:version/:resource?/:operation?.json', serveSchemas);
+			this.app.use('/schemas/:node/:version{/:resource}{/:operation}.json', serveSchemas);
 
 			const isTLSEnabled =
 				this.globalConfig.protocol === 'https' && !!(this.sslKey && this.sslCert);
@@ -440,6 +439,6 @@ export class Server extends AbstractServer {
 
 	protected setupPushServer(): void {
 		const { restEndpoint, server, app } = this;
-		setupPushServer(restEndpoint, server, app);
+		Container.get(Push).setupPushServer(restEndpoint, server, app);
 	}
 }

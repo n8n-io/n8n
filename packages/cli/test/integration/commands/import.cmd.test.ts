@@ -14,7 +14,7 @@ mockInstance(LoadNodesAndCredentials);
 const command = setupTestCommand(ImportWorkflowsCommand);
 
 beforeEach(async () => {
-	await testDb.truncate(['Workflow', 'SharedWorkflow', 'User']);
+	await testDb.truncate(['WorkflowEntity', 'SharedWorkflow', 'User']);
 });
 
 test('import:workflow should import active workflow and deactivate it', async () => {

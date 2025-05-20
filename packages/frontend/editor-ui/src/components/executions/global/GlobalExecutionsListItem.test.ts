@@ -108,7 +108,7 @@ describe('GlobalExecutionsListItem', () => {
 		});
 
 		expect(
-			getByText(`1 Jan, 2022, ${DateTime.fromJSDate(new Date(testDate)).toFormat('HH')}:00:00`),
+			getByText(`Jan 1, 2022, ${DateTime.fromJSDate(new Date(testDate)).toFormat('HH')}:00:00`),
 		).toBeInTheDocument();
 	});
 
@@ -156,5 +156,49 @@ describe('GlobalExecutionsListItem', () => {
 		});
 
 		expect(globalExecutionsListItemQueuedTooltipRenderSpy).toHaveBeenCalled();
+	});
+
+	afterEach(() => {
+		vitest.useRealTimers();
+	});
+
+	it('uses `createdAt` to calculate running time if `startedAt` is undefined', async () => {
+		const createdAt = new Date('2024-09-27T12:00:00Z');
+		const now = new Date('2024-09-27T12:30:00Z');
+		vitest.useFakeTimers({ now });
+		const { getByTestId } = renderComponent({
+			props: {
+				execution: { status: 'running', id: 123, workflowName: 'Test Workflow', createdAt },
+				workflowPermissions: {},
+				concurrencyCap: 5,
+			},
+		});
+
+		const executionTimeElement = getByTestId('execution-time');
+		expect(executionTimeElement).toBeVisible();
+		expect(executionTimeElement.textContent).toBe('-1727438401s');
+	});
+
+	it('uses `createdAt` to calculate running time if `startedAt` is undefined and `stoppedAt` is defined', async () => {
+		const createdAt = new Date('2024-09-27T12:00:00Z');
+		const now = new Date('2024-09-27T12:30:00Z');
+		vitest.useFakeTimers({ now });
+		const { getByTestId } = renderComponent({
+			props: {
+				execution: {
+					status: 'running',
+					id: 123,
+					workflowName: 'Test Workflow',
+					createdAt,
+					stoppedAt: now,
+				},
+				workflowPermissions: {},
+				concurrencyCap: 5,
+			},
+		});
+
+		const executionTimeElement = getByTestId('execution-time');
+		expect(executionTimeElement).toBeVisible();
+		expect(executionTimeElement.textContent).toBe('30:00m');
 	});
 });

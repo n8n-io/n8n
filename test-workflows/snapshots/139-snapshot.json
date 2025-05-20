@@ -1,0 +1,1081 @@
+{
+  "data": {
+    "startData": {},
+    "resultData": {
+      "runData": {
+        "Start": [
+          {
+            "startTime": 1676891410936,
+            "executionTime": 0,
+            "source": [],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {},
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Shopify": [
+          {
+            "startTime": 1676891410937,
+            "executionTime": 1041,
+            "source": [
+              {
+                "previousNode": "Start"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "id": 7841209778338,
+                      "title": "Product1676891410950",
+                      "body_html": {
+                        "object": true
+                      },
+                      "vendor": "nodeqa",
+                      "product_type": "",
+                      "created_at": "2023-02-20T12:10:11+01:00",
+                      "handle": "product1676891410950",
+                      "updated_at": "2023-02-20T12:10:11+01:00",
+                      "published_at": "2023-02-20T12:10:11+01:00",
+                      "template_suffix": {
+                        "object": true
+                      },
+                      "status": "active",
+                      "published_scope": "web",
+                      "tags": "",
+                      "admin_graphql_api_id": "gid://shopify/Product/7841209778338",
+                      "variants": [
+                        "json array"
+                      ],
+                      "options": [
+                        "json array"
+                      ],
+                      "images": [
+                        "json array"
+                      ],
+                      "image": {
+                        "object": true
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Shopify5": [
+          {
+            "startTime": 1676891411978,
+            "executionTime": 1231,
+            "source": [
+              {
+                "previousNode": "Shopify"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "id": 5468425748642,
+                      "admin_graphql_api_id": "gid://shopify/Order/5468425748642",
+                      "app_id": 5034533,
+                      "browser_ip": {
+                        "object": true
+                      },
+                      "buyer_accepts_marketing": false,
+                      "cancel_reason": {
+                        "object": true
+                      },
+                      "cancelled_at": {
+                        "object": true
+                      },
+                      "cart_token": {
+                        "object": true
+                      },
+                      "checkout_id": {
+                        "object": true
+                      },
+                      "checkout_token": {
+                        "object": true
+                      },
+                      "closed_at": {
+                        "object": true
+                      },
+                      "confirmed": true,
+                      "contact_email": "fake1676891411979@gmail.com",
+                      "created_at": "2023-02-20T12:10:12+01:00",
+                      "currency": "EUR",
+                      "current_subtotal_price": "101.00",
+                      "current_subtotal_price_set": {
+                        "object": true
+                      },
+                      "current_total_discounts": "0.00",
+                      "current_total_discounts_set": {
+                        "object": true
+                      },
+                      "current_total_duties_set": {
+                        "object": true
+                      },
+                      "current_total_price": "101.00",
+                      "current_total_price_set": {
+                        "object": true
+                      },
+                      "current_total_tax": "0.00",
+                      "current_total_tax_set": {
+                        "object": true
+                      },
+                      "customer_locale": {
+                        "object": true
+                      },
+                      "device_id": {
+                        "object": true
+                      },
+                      "discount_codes": [
+                        "json array"
+                      ],
+                      "email": "fake1676891411979@gmail.com",
+                      "estimated_taxes": false,
+                      "financial_status": "paid",
+                      "fulfillment_status": {
+                        "object": true
+                      },
+                      "gateway": "",
+                      "landing_site": {
+                        "object": true
+                      },
+                      "landing_site_ref": {
+                        "object": true
+                      },
+                      "location_id": {
+                        "object": true
+                      },
+                      "name": "#1459",
+                      "note": {
+                        "object": true
+                      },
+                      "note_attributes": [
+                        "json array"
+                      ],
+                      "number": 459,
+                      "order_number": 1459,
+                      "order_status_url": "https://nodeqa.myshopify.com/55417208994/orders/596116053fc1733011dffefadd82db64/authenticate?key=448c588adb1bc7e54b87b243e1c8ac74",
+                      "original_total_duties_set": {
+                        "object": true
+                      },
+                      "payment_gateway_names": [
+                        "json array"
+                      ],
+                      "phone": {
+                        "object": true
+                      },
+                      "presentment_currency": "EUR",
+                      "processed_at": "2023-02-20T12:10:12+01:00",
+                      "processing_method": "",
+                      "reference": {
+                        "object": true
+                      },
+                      "referring_site": {
+                        "object": true
+                      },
+                      "source_identifier": {
+                        "object": true
+                      },
+                      "source_name": "5034533",
+                      "source_url": {
+                        "object": true
+                      },
+                      "subtotal_price": "101.00",
+                      "subtotal_price_set": {
+                        "object": true
+                      },
+                      "tags": "test",
+                      "tax_lines": [
+                        "json array"
+                      ],
+                      "taxes_included": false,
+                      "test": true,
+                      "token": "596116053fc1733011dffefadd82db64",
+                      "total_discounts": "0.00",
+                      "total_discounts_set": {
+                        "object": true
+                      },
+                      "total_line_items_price": "101.00",
+                      "total_line_items_price_set": {
+                        "object": true
+                      },
+                      "total_outstanding": "101.00",
+                      "total_price": "101.00",
+                      "total_price_set": {
+                        "object": true
+                      },
+                      "total_price_usd": "108.02",
+                      "total_shipping_price_set": {
+                        "object": true
+                      },
+                      "total_tax": "0.00",
+                      "total_tax_set": {
+                        "object": true
+                      },
+                      "total_tip_received": "0.00",
+                      "total_weight": 0,
+                      "updated_at": "2023-02-20T12:10:12+01:00",
+                      "user_id": {
+                        "object": true
+                      },
+                      "customer": {
+                        "object": true
+                      },
+                      "discount_applications": [
+                        "json array"
+                      ],
+                      "fulfillments": [
+                        "json array"
+                      ],
+                      "line_items": [
+                        "json array"
+                      ],
+                      "payment_terms": {
+                        "object": true
+                      },
+                      "refunds": [
+                        "json array"
+                      ],
+                      "shipping_lines": [
+                        "json array"
+                      ]
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Shopify6": [
+          {
+            "startTime": 1676891413209,
+            "executionTime": 610,
+            "source": [
+              {
+                "previousNode": "Shopify5"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "id": 5468425748642,
+                      "admin_graphql_api_id": "gid://shopify/Order/5468425748642",
+                      "app_id": 5034533,
+                      "browser_ip": {
+                        "object": true
+                      },
+                      "buyer_accepts_marketing": false,
+                      "cancel_reason": {
+                        "object": true
+                      },
+                      "cancelled_at": {
+                        "object": true
+                      },
+                      "cart_token": {
+                        "object": true
+                      },
+                      "checkout_id": {
+                        "object": true
+                      },
+                      "checkout_token": {
+                        "object": true
+                      },
+                      "closed_at": {
+                        "object": true
+                      },
+                      "confirmed": true,
+                      "contact_email": "updatedfake1676891411979@gmail.com",
+                      "created_at": "2023-02-20T12:10:12+01:00",
+                      "currency": "EUR",
+                      "current_subtotal_price": "101.00",
+                      "current_subtotal_price_set": {
+                        "object": true
+                      },
+                      "current_total_discounts": "0.00",
+                      "current_total_discounts_set": {
+                        "object": true
+                      },
+                      "current_total_duties_set": {
+                        "object": true
+                      },
+                      "current_total_price": "101.00",
+                      "current_total_price_set": {
+                        "object": true
+                      },
+                      "current_total_tax": "0.00",
+                      "current_total_tax_set": {
+                        "object": true
+                      },
+                      "customer_locale": {
+                        "object": true
+                      },
+                      "device_id": {
+                        "object": true
+                      },
+                      "discount_codes": [
+                        "json array"
+                      ],
+                      "email": "updatedfake1676891411979@gmail.com",
+                      "estimated_taxes": false,
+                      "financial_status": "paid",
+                      "fulfillment_status": {
+                        "object": true
+                      },
+                      "gateway": "",
+                      "landing_site": {
+                        "object": true
+                      },
+                      "landing_site_ref": {
+                        "object": true
+                      },
+                      "location_id": {
+                        "object": true
+                      },
+                      "name": "#1459",
+                      "note": {
+                        "object": true
+                      },
+                      "note_attributes": [
+                        "json array"
+                      ],
+                      "number": 459,
+                      "order_number": 1459,
+                      "order_status_url": "https://nodeqa.myshopify.com/55417208994/orders/596116053fc1733011dffefadd82db64/authenticate?key=448c588adb1bc7e54b87b243e1c8ac74",
+                      "original_total_duties_set": {
+                        "object": true
+                      },
+                      "payment_gateway_names": [
+                        "json array"
+                      ],
+                      "phone": {
+                        "object": true
+                      },
+                      "presentment_currency": "EUR",
+                      "processed_at": "2023-02-20T12:10:12+01:00",
+                      "processing_method": "",
+                      "reference": {
+                        "object": true
+                      },
+                      "referring_site": {
+                        "object": true
+                      },
+                      "source_identifier": {
+                        "object": true
+                      },
+                      "source_name": "5034533",
+                      "source_url": {
+                        "object": true
+                      },
+                      "subtotal_price": "101.00",
+                      "subtotal_price_set": {
+                        "object": true
+                      },
+                      "tags": "test",
+                      "tax_lines": [
+                        "json array"
+                      ],
+                      "taxes_included": false,
+                      "test": true,
+                      "token": "596116053fc1733011dffefadd82db64",
+                      "total_discounts": "0.00",
+                      "total_discounts_set": {
+                        "object": true
+                      },
+                      "total_line_items_price": "101.00",
+                      "total_line_items_price_set": {
+                        "object": true
+                      },
+                      "total_outstanding": "101.00",
+                      "total_price": "101.00",
+                      "total_price_set": {
+                        "object": true
+                      },
+                      "total_price_usd": "108.02",
+                      "total_shipping_price_set": {
+                        "object": true
+                      },
+                      "total_tax": "0.00",
+                      "total_tax_set": {
+                        "object": true
+                      },
+                      "total_tip_received": "0.00",
+                      "total_weight": 0,
+                      "updated_at": "2023-02-20T12:10:13+01:00",
+                      "user_id": {
+                        "object": true
+                      },
+                      "customer": {
+                        "object": true
+                      },
+                      "discount_applications": [
+                        "json array"
+                      ],
+                      "fulfillments": [
+                        "json array"
+                      ],
+                      "line_items": [
+                        "json array"
+                      ],
+                      "payment_terms": {
+                        "object": true
+                      },
+                      "refunds": [
+                        "json array"
+                      ],
+                      "shipping_lines": [
+                        "json array"
+                      ]
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Shopify7": [
+          {
+            "startTime": 1676891413820,
+            "executionTime": 526,
+            "source": [
+              {
+                "previousNode": "Shopify6"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "id": 5468425748642,
+                      "admin_graphql_api_id": "gid://shopify/Order/5468425748642",
+                      "app_id": 5034533,
+                      "browser_ip": {
+                        "object": true
+                      },
+                      "buyer_accepts_marketing": false,
+                      "cancel_reason": {
+                        "object": true
+                      },
+                      "cancelled_at": {
+                        "object": true
+                      },
+                      "cart_token": {
+                        "object": true
+                      },
+                      "checkout_id": {
+                        "object": true
+                      },
+                      "checkout_token": {
+                        "object": true
+                      },
+                      "closed_at": {
+                        "object": true
+                      },
+                      "confirmed": true,
+                      "contact_email": "updatedfake1676891411979@gmail.com",
+                      "created_at": "2023-02-20T12:10:12+01:00",
+                      "currency": "EUR",
+                      "current_subtotal_price": "101.00",
+                      "current_subtotal_price_set": {
+                        "object": true
+                      },
+                      "current_total_discounts": "0.00",
+                      "current_total_discounts_set": {
+                        "object": true
+                      },
+                      "current_total_duties_set": {
+                        "object": true
+                      },
+                      "current_total_price": "101.00",
+                      "current_total_price_set": {
+                        "object": true
+                      },
+                      "current_total_tax": "0.00",
+                      "current_total_tax_set": {
+                        "object": true
+                      },
+                      "customer_locale": {
+                        "object": true
+                      },
+                      "device_id": {
+                        "object": true
+                      },
+                      "discount_codes": [
+                        "json array"
+                      ],
+                      "email": "updatedfake1676891411979@gmail.com",
+                      "estimated_taxes": false,
+                      "financial_status": "paid",
+                      "fulfillment_status": {
+                        "object": true
+                      },
+                      "gateway": "",
+                      "landing_site": {
+                        "object": true
+                      },
+                      "landing_site_ref": {
+                        "object": true
+                      },
+                      "location_id": {
+                        "object": true
+                      },
+                      "name": "#1459",
+                      "note": {
+                        "object": true
+                      },
+                      "note_attributes": [
+                        "json array"
+                      ],
+                      "number": 459,
+                      "order_number": 1459,
+                      "order_status_url": "https://nodeqa.myshopify.com/55417208994/orders/596116053fc1733011dffefadd82db64/authenticate?key=448c588adb1bc7e54b87b243e1c8ac74",
+                      "original_total_duties_set": {
+                        "object": true
+                      },
+                      "payment_gateway_names": [
+                        "json array"
+                      ],
+                      "phone": {
+                        "object": true
+                      },
+                      "presentment_currency": "EUR",
+                      "processed_at": "2023-02-20T12:10:12+01:00",
+                      "processing_method": "",
+                      "reference": {
+                        "object": true
+                      },
+                      "referring_site": {
+                        "object": true
+                      },
+                      "source_identifier": {
+                        "object": true
+                      },
+                      "source_name": "5034533",
+                      "source_url": {
+                        "object": true
+                      },
+                      "subtotal_price": "101.00",
+                      "subtotal_price_set": {
+                        "object": true
+                      },
+                      "tags": "test",
+                      "tax_lines": [
+                        "json array"
+                      ],
+                      "taxes_included": false,
+                      "test": true,
+                      "token": "596116053fc1733011dffefadd82db64",
+                      "total_discounts": "0.00",
+                      "total_discounts_set": {
+                        "object": true
+                      },
+                      "total_line_items_price": "101.00",
+                      "total_line_items_price_set": {
+                        "object": true
+                      },
+                      "total_outstanding": "101.00",
+                      "total_price": "101.00",
+                      "total_price_set": {
+                        "object": true
+                      },
+                      "total_price_usd": "108.02",
+                      "total_shipping_price_set": {
+                        "object": true
+                      },
+                      "total_tax": "0.00",
+                      "total_tax_set": {
+                        "object": true
+                      },
+                      "total_tip_received": "0.00",
+                      "total_weight": 0,
+                      "updated_at": "2023-02-20T12:10:13+01:00",
+                      "user_id": {
+                        "object": true
+                      },
+                      "customer": {
+                        "object": true
+                      },
+                      "discount_applications": [
+                        "json array"
+                      ],
+                      "fulfillments": [
+                        "json array"
+                      ],
+                      "line_items": [
+                        "json array"
+                      ],
+                      "payment_terms": {
+                        "object": true
+                      },
+                      "refunds": [
+                        "json array"
+                      ],
+                      "shipping_lines": [
+                        "json array"
+                      ]
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Shopify8": [
+          {
+            "startTime": 1676891414347,
+            "executionTime": 328,
+            "source": [
+              {
+                "previousNode": "Shopify7"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "id": 5468425748642,
+                      "admin_graphql_api_id": "gid://shopify/Order/5468425748642",
+                      "app_id": 5034533,
+                      "browser_ip": {
+                        "object": true
+                      },
+                      "buyer_accepts_marketing": false,
+                      "cancel_reason": {
+                        "object": true
+                      },
+                      "cancelled_at": {
+                        "object": true
+                      },
+                      "cart_token": {
+                        "object": true
+                      },
+                      "checkout_id": {
+                        "object": true
+                      },
+                      "checkout_token": {
+                        "object": true
+                      },
+                      "closed_at": {
+                        "object": true
+                      },
+                      "confirmed": true,
+                      "contact_email": "updatedfake1676891411979@gmail.com",
+                      "created_at": "2023-02-20T12:10:12+01:00",
+                      "currency": "EUR",
+                      "current_subtotal_price": "101.00",
+                      "current_subtotal_price_set": {
+                        "object": true
+                      },
+                      "current_total_discounts": "0.00",
+                      "current_total_discounts_set": {
+                        "object": true
+                      },
+                      "current_total_duties_set": {
+                        "object": true
+                      },
+                      "current_total_price": "101.00",
+                      "current_total_price_set": {
+                        "object": true
+                      },
+                      "current_total_tax": "0.00",
+                      "current_total_tax_set": {
+                        "object": true
+                      },
+                      "customer_locale": {
+                        "object": true
+                      },
+                      "device_id": {
+                        "object": true
+                      },
+                      "discount_codes": [
+                        "json array"
+                      ],
+                      "email": "updatedfake1676891411979@gmail.com",
+                      "estimated_taxes": false,
+                      "financial_status": "paid",
+                      "fulfillment_status": {
+                        "object": true
+                      },
+                      "gateway": "",
+                      "landing_site": {
+                        "object": true
+                      },
+                      "landing_site_ref": {
+                        "object": true
+                      },
+                      "location_id": {
+                        "object": true
+                      },
+                      "name": "#1459",
+                      "note": {
+                        "object": true
+                      },
+                      "note_attributes": [
+                        "json array"
+                      ],
+                      "number": 459,
+                      "order_number": 1459,
+                      "order_status_url": "https://nodeqa.myshopify.com/55417208994/orders/596116053fc1733011dffefadd82db64/authenticate?key=448c588adb1bc7e54b87b243e1c8ac74",
+                      "original_total_duties_set": {
+                        "object": true
+                      },
+                      "payment_gateway_names": [
+                        "json array"
+                      ],
+                      "phone": {
+                        "object": true
+                      },
+                      "presentment_currency": "EUR",
+                      "processed_at": "2023-02-20T12:10:12+01:00",
+                      "processing_method": "",
+                      "reference": {
+                        "object": true
+                      },
+                      "referring_site": {
+                        "object": true
+                      },
+                      "source_identifier": {
+                        "object": true
+                      },
+                      "source_name": "5034533",
+                      "source_url": {
+                        "object": true
+                      },
+                      "subtotal_price": "101.00",
+                      "subtotal_price_set": {
+                        "object": true
+                      },
+                      "tags": "test",
+                      "tax_lines": [
+                        "json array"
+                      ],
+                      "taxes_included": false,
+                      "test": true,
+                      "token": "596116053fc1733011dffefadd82db64",
+                      "total_discounts": "0.00",
+                      "total_discounts_set": {
+                        "object": true
+                      },
+                      "total_line_items_price": "101.00",
+                      "total_line_items_price_set": {
+                        "object": true
+                      },
+                      "total_outstanding": "101.00",
+                      "total_price": "101.00",
+                      "total_price_set": {
+                        "object": true
+                      },
+                      "total_price_usd": "108.02",
+                      "total_shipping_price_set": {
+                        "object": true
+                      },
+                      "total_tax": "0.00",
+                      "total_tax_set": {
+                        "object": true
+                      },
+                      "total_tip_received": "0.00",
+                      "total_weight": 0,
+                      "updated_at": "2023-02-20T12:10:13+01:00",
+                      "user_id": {
+                        "object": true
+                      },
+                      "customer": {
+                        "object": true
+                      },
+                      "discount_applications": [
+                        "json array"
+                      ],
+                      "fulfillments": [
+                        "json array"
+                      ],
+                      "line_items": [
+                        "json array"
+                      ],
+                      "payment_terms": {
+                        "object": true
+                      },
+                      "refunds": [
+                        "json array"
+                      ],
+                      "shipping_lines": [
+                        "json array"
+                      ]
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Shopify9": [
+          {
+            "startTime": 1676891414676,
+            "executionTime": 588,
+            "source": [
+              {
+                "previousNode": "Shopify8"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "success": true
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Shopify1": [
+          {
+            "startTime": 1676891415264,
+            "executionTime": 715,
+            "source": [
+              {
+                "previousNode": "Shopify9"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "id": 7841209778338,
+                      "title": "UpdatedProduct1676891410950",
+                      "body_html": {
+                        "object": true
+                      },
+                      "vendor": "nodeqa",
+                      "product_type": "",
+                      "created_at": "2023-02-20T12:10:11+01:00",
+                      "handle": "product1676891410950",
+                      "updated_at": "2023-02-20T12:10:15+01:00",
+                      "published_at": "2023-02-20T12:10:11+01:00",
+                      "template_suffix": {
+                        "object": true
+                      },
+                      "status": "active",
+                      "published_scope": "web",
+                      "tags": "",
+                      "admin_graphql_api_id": "gid://shopify/Product/7841209778338",
+                      "variants": [
+                        "json array"
+                      ],
+                      "options": [
+                        "json array"
+                      ],
+                      "images": [
+                        "json array"
+                      ],
+                      "image": {
+                        "object": true
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Shopify2": [
+          {
+            "startTime": 1676891415979,
+            "executionTime": 355,
+            "source": [
+              {
+                "previousNode": "Shopify1"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "id": 7841209778338,
+                      "title": "UpdatedProduct1676891410950",
+                      "body_html": {
+                        "object": true
+                      },
+                      "vendor": "nodeqa",
+                      "product_type": "",
+                      "created_at": "2023-02-20T12:10:11+01:00",
+                      "handle": "product1676891410950",
+                      "updated_at": "2023-02-20T12:10:15+01:00",
+                      "published_at": "2023-02-20T12:10:11+01:00",
+                      "template_suffix": {
+                        "object": true
+                      },
+                      "status": "active",
+                      "published_scope": "web",
+                      "tags": "",
+                      "admin_graphql_api_id": "gid://shopify/Product/7841209778338",
+                      "variants": [
+                        "json array"
+                      ],
+                      "options": [
+                        "json array"
+                      ],
+                      "images": [
+                        "json array"
+                      ],
+                      "image": {
+                        "object": true
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Shopify3": [
+          {
+            "startTime": 1676891416334,
+            "executionTime": 319,
+            "source": [
+              {
+                "previousNode": "Shopify2"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "id": 6940369715362,
+                      "title": "Beanie",
+                      "body_html": {
+                        "object": true
+                      },
+                      "vendor": "nodeqa",
+                      "product_type": "Accessories",
+                      "created_at": "2021-07-19T18:05:28+01:00",
+                      "handle": "beanie",
+                      "updated_at": "2021-08-31T19:36:01+01:00",
+                      "published_at": "2021-07-19T18:05:28+01:00",
+                      "template_suffix": {
+                        "object": true
+                      },
+                      "status": "active",
+                      "published_scope": "web",
+                      "tags": "",
+                      "admin_graphql_api_id": "gid://shopify/Product/6940369715362",
+                      "variants": [
+                        "json array"
+                      ],
+                      "options": [
+                        "json array"
+                      ],
+                      "images": [
+                        "json array"
+                      ],
+                      "image": {
+                        "object": true
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Shopify4": [
+          {
+            "startTime": 1676891416653,
+            "executionTime": 939,
+            "source": [
+              {
+                "previousNode": "Shopify3"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "success": true
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ]
+      },
+      "lastNodeExecuted": "Shopify4"
+    },
+    "executionData": {
+      "contextData": {},
+      "nodeExecutionStack": [],
+      "waitingExecution": {},
+      "waitingExecutionSource": {}
+    }
+  },
+  "mode": "cli",
+  "startedAt": "2023-02-20T11:10:10.928Z",
+  "stoppedAt": "2023-02-20T11:10:17.592Z",
+  "status": "running",
+  "finished": true
+}

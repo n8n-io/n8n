@@ -109,7 +109,6 @@ describe('FormTrigger', () => {
 				'https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger&utm_campaign=instanceId',
 			testRun: true,
 			useResponseData: false,
-			validForm: true,
 		});
 
 		expect(responseData).toEqual({ noWebhookResponse: true });

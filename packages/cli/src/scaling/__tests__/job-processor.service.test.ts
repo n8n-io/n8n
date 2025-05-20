@@ -1,16 +1,19 @@
+import type { IExecutionResponse } from '@n8n/db';
+import type { ExecutionRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
-import type { Logger } from 'n8n-core';
+import type { WorkflowExecute as ActualWorkflowExecute } from 'n8n-core';
+import { type Logger } from 'n8n-core';
 import { mockInstance } from 'n8n-core/test/utils';
-import type { IRunExecutionData, WorkflowExecuteMode } from 'n8n-workflow/src';
+import type { IPinData, ITaskData, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
+import { Workflow, type IRunExecutionData, type WorkflowExecuteMode } from 'n8n-workflow';
 
 import { CredentialsHelper } from '@/credentials-helper';
-import type { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { ExternalHooks } from '@/external-hooks';
-import type { IExecutionResponse } from '@/interfaces';
 import type { ManualExecutionService } from '@/manual-execution.service';
 import { SecretsHelper } from '@/secrets-helpers.ee';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
+import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 import { JobProcessor } from '../job-processor';
@@ -25,6 +28,19 @@ mockInstance(WorkflowStaticDataService);
 mockInstance(WorkflowStatisticsService);
 mockInstance(ExternalHooks);
 
+const processRunExecutionDataMock = jest.fn();
+jest.mock('n8n-core', () => {
+	const original = jest.requireActual('n8n-core');
+
+	// Mock class constructor and prototype methods
+	return {
+		...original,
+		WorkflowExecute: jest.fn().mockImplementation(() => ({
+			processRunExecutionData: processRunExecutionDataMock,
+		})),
+	};
+});
+
 const logger = mock<Logger>({
 	scoped: jest.fn().mockImplementation(() => logger),
 });
@@ -37,7 +53,6 @@ describe('JobProcessor', () => {
 		);
 		const jobProcessor = new JobProcessor(
 			logger,
-			mock(),
 			executionRepository,
 			mock(),
 			mock(),
@@ -59,7 +74,7 @@ describe('JobProcessor', () => {
 					mode,
 					workflowData: { nodes: [] },
 					data: mock<IRunExecutionData>({
-						isTestWebhook: false,
+						executionData: undefined,
 					}),
 				}),
 			);
@@ -67,7 +82,6 @@ describe('JobProcessor', () => {
 			const manualExecutionService = mock<ManualExecutionService>();
 			const jobProcessor = new JobProcessor(
 				logger,
-				mock(),
 				executionRepository,
 				mock(),
 				mock(),
@@ -78,6 +92,108 @@ describe('JobProcessor', () => {
 			await jobProcessor.processJob(mock<Job>());
 
 			expect(manualExecutionService.runManually).toHaveBeenCalledTimes(1);
+		},
+	);
+
+	it('should pass additional data for partial executions to run', async () => {
+		const executionRepository = mock<ExecutionRepository>();
+		const pinData: IPinData = { pinned: [] };
+		const execution = mock<IExecutionResponse>({
+			mode: 'manual',
+			workflowData: { nodes: [], pinData },
+			data: mock<IRunExecutionData>({
+				resultData: {
+					runData: {
+						trigger: [mock<ITaskData>({ executionIndex: 1 })],
+						node: [mock<ITaskData>({ executionIndex: 3 }), mock<ITaskData>({ executionIndex: 4 })],
+					},
+					pinData,
+				},
+				executionData: undefined,
+			}),
+		});
+		executionRepository.findSingleExecution.mockResolvedValue(execution);
+
+		const additionalData = mock<IWorkflowExecuteAdditionalData>();
+		jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
+
+		const manualExecutionService = mock<ManualExecutionService>();
+		const jobProcessor = new JobProcessor(
+			logger,
+			executionRepository,
+			mock(),
+			mock(),
+			mock(),
+			manualExecutionService,
+		);
+
+		const executionId = 'execution-id';
+		await jobProcessor.processJob(mock<Job>({ data: { executionId, loadStaticData: false } }));
+
+		expect(WorkflowExecuteAdditionalData.getBase).toHaveBeenCalledWith(
+			undefined,
+			undefined,
+			undefined,
+		);
+
+		expect(manualExecutionService.runManually).toHaveBeenCalledWith(
+			expect.objectContaining({
+				executionMode: 'manual',
+			}),
+			expect.any(Workflow),
+			additionalData,
+			executionId,
+			pinData,
+		);
+	});
+
+	it.each(['manual', 'evaluation', 'trigger'] satisfies WorkflowExecuteMode[])(
+		'should use workflowExecute to process a job with mode %p with execution data',
+		async (mode) => {
+			const { WorkflowExecute } = await import('n8n-core');
+			// Type it correctly so we can use mock methods later
+			const MockedWorkflowExecute = WorkflowExecute as jest.MockedClass<
+				typeof ActualWorkflowExecute
+			>;
+			MockedWorkflowExecute.mockClear();
+
+			const executionRepository = mock<ExecutionRepository>();
+			const executionData = mock<IRunExecutionData>({
+				startData: undefined,
+				executionData: {
+					nodeExecutionStack: [
+						{
+							node: { name: 'node-name' },
+						},
+					],
+				},
+			});
+			executionRepository.findSingleExecution.mockResolvedValue(
+				mock<IExecutionResponse>({
+					mode,
+					workflowData: { nodes: [] },
+					data: executionData,
+				}),
+			);
+
+			const additionalData = mock<IWorkflowExecuteAdditionalData>();
+			jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
+
+			const manualExecutionService = mock<ManualExecutionService>();
+			const jobProcessor = new JobProcessor(
+				logger,
+				executionRepository,
+				mock(),
+				mock(),
+				mock(),
+				manualExecutionService,
+			);
+
+			await jobProcessor.processJob(mock<Job>());
+
+			// Assert the constructor and method were called
+			expect(MockedWorkflowExecute).toHaveBeenCalledWith(additionalData, mode, executionData);
+			expect(processRunExecutionDataMock).toHaveBeenCalled();
 		},
 	);
 });

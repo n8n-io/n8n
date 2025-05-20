@@ -1,13 +1,21 @@
+import { Config, Env } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type { SSHCredentials } from 'n8n-workflow';
 import { createHash } from 'node:crypto';
 import { Client, type ConnectConfig } from 'ssh2';
 
+@Config
+class SSHClientsConfig {
+	/** How many seconds before an idle SSH tunnel is closed */
+	@Env('N8N_SSH_TUNNEL_IDLE_TIMEOUT')
+	idleTimeout: number = 5 * 60;
+}
+
 @Service()
 export class SSHClientsManager {
 	readonly clients = new Map<string, { client: Client; lastUsed: Date }>();
 
-	constructor() {
+	constructor(private readonly config: SSHClientsConfig) {
 		// Close all SSH connections when the process exits
 		process.on('exit', () => this.onShutdown());
 
@@ -67,7 +75,7 @@ export class SSHClientsManager {
 
 		const now = Date.now();
 		for (const [hash, { client, lastUsed }] of clients.entries()) {
-			if (now - lastUsed.getTime() > 5 * 60 * 1000) {
+			if (now - lastUsed.getTime() > this.config.idleTimeout * 1000) {
 				client.end();
 				clients.delete(hash);
 			}

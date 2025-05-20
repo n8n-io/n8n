@@ -10,7 +10,7 @@ import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { ndvEventBus } from '@/event-bus';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import {
@@ -18,19 +18,19 @@ import {
 	getMainAuthField,
 	hasOnlyListMode as hasOnlyListModeUtil,
 } from '@/utils/nodeTypesUtils';
-import { isResourceLocatorValue } from '@/utils/typeGuards';
 import stringify from 'fast-json-stable-stringify';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
-import type {
-	INode,
-	INodeListSearchItems,
-	INodeParameterResourceLocator,
-	INodeParameters,
-	INodeProperties,
-	INodePropertyMode,
-	INodePropertyModeTypeOptions,
-	NodeParameterValue,
+import {
+	isResourceLocatorValue,
+	type INode,
+	type INodeListSearchItems,
+	type INodeParameterResourceLocator,
+	type INodeParameters,
+	type INodeProperties,
+	type INodePropertyMode,
+	type INodePropertyModeTypeOptions,
+	type NodeParameterValue,
 } from 'n8n-workflow';
 import {
 	computed,
@@ -54,6 +54,7 @@ import {
 	type FromAIOverride,
 } from '../../utils/fromAIOverrideUtils';
 import { N8nNotice } from '@n8n/design-system';
+import { completeExpressionSyntax } from '@/utils/expressions';
 
 /**
  * Regular expression to check if the error message contains credential-related phrases.
@@ -355,10 +356,12 @@ watch(currentQueryError, (curr, prev) => {
 
 watch(
 	() => props.isValueExpression,
-	(newValue) => {
+	async (newValue) => {
 		if (newValue) {
 			switchFromListMode();
 		}
+		await nextTick();
+		inputRef.value?.focus();
 	},
 );
 
@@ -516,6 +519,8 @@ function onInputChange(value: NodeParameterValue): void {
 		if (resource?.url) {
 			params.cachedResultUrl = resource.url;
 		}
+	} else {
+		params.value = completeExpressionSyntax(value);
 	}
 	emit('update:modelValue', params);
 }

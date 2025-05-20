@@ -1,106 +1,126 @@
 <script setup lang="ts">
-import PanelHeader from '@/components/CanvasChat/future/components/PanelHeader.vue';
+import LogsPanelHeader from '@/components/CanvasChat/future/components/LogsPanelHeader.vue';
 import { useClearExecutionButtonVisible } from '@/composables/useClearExecutionButtonVisible';
 import { useI18n } from '@/composables/useI18n';
-import { useNodeHelpers } from '@/composables/useNodeHelpers';
-import { useWorkflowsStore } from '@/stores/workflows.store';
 import { N8nButton, N8nRadioButtons, N8nText, N8nTooltip } from '@n8n/design-system';
-import { computed, ref } from 'vue';
-import { ElTree, type TreeNode as ElTreeNode } from 'element-plus';
+import { computed, nextTick, toRef, watch } from 'vue';
+import LogsOverviewRow from '@/components/CanvasChat/future/components/LogsOverviewRow.vue';
+import { useRunWorkflow } from '@/composables/useRunWorkflow';
+import { useRouter } from 'vue-router';
+import LogsViewExecutionSummary from '@/components/CanvasChat/future/components/LogsViewExecutionSummary.vue';
 import {
-	createAiData,
 	getSubtreeTotalConsumedTokens,
 	getTotalConsumedTokens,
-	getTreeNodeData,
-	type TreeNode,
+	hasSubExecution,
+	type LatestNodeInfo,
+	type LogEntry,
 } from '@/components/RunDataAi/utils';
-import { type INodeUi } from '@/Interface';
-import { upperFirst } from 'lodash-es';
-import { useTelemetry } from '@/composables/useTelemetry';
-import ConsumedTokenCountText from '@/components/CanvasChat/future/components/ConsumedTokenCountText.vue';
+import { useVirtualList } from '@vueuse/core';
+import { type IExecutionResponse } from '@/Interface';
 
-const { node, isOpen } = defineProps<{ isOpen: boolean; node: INodeUi | null }>();
+const {
+	isOpen,
+	isReadOnly,
+	selected,
+	isCompact,
+	execution,
+	entries,
+	flatLogEntries,
+	latestNodeInfo,
+} = defineProps<{
+	isOpen: boolean;
+	selected?: LogEntry;
+	isReadOnly: boolean;
+	isCompact: boolean;
+	execution?: IExecutionResponse;
+	entries: LogEntry[];
+	flatLogEntries: LogEntry[];
+	latestNodeInfo: Record<string, LatestNodeInfo>;
+}>();
 
-const emit = defineEmits<{ clickHeader: [] }>();
+const emit = defineEmits<{
+	clickHeader: [];
+	select: [LogEntry | undefined];
+	clearExecutionData: [];
+	openNdv: [LogEntry];
+	toggleExpanded: [LogEntry];
+	loadSubExecution: [LogEntry];
+}>();
 
 defineSlots<{ actions: {} }>();
 
 const locale = useI18n();
-const telemetry = useTelemetry();
-const workflowsStore = useWorkflowsStore();
-const nodeHelpers = useNodeHelpers();
+const router = useRouter();
+const runWorkflow = useRunWorkflow({ router });
 const isClearExecutionButtonVisible = useClearExecutionButtonVisible();
-const workflow = computed(() => workflowsStore.getCurrentWorkflow());
-const executionTree = computed<TreeNode[]>(() =>
-	node
-		? getTreeNodeData(
-				node.name,
-				workflow.value,
-				createAiData(node.name, workflow.value, workflowsStore.getWorkflowResultDataByNodeName),
-			)
-		: [],
-);
-const isEmpty = computed(() => workflowsStore.workflowExecutionData === null);
-const switchViewOptions = computed<Array<{ label: string; value: string }>>(() => [
-	{ label: locale.baseText('logs.overview.header.switch.details'), value: 'details' },
-	{ label: locale.baseText('logs.overview.header.switch.overview'), value: 'overview' },
+const isEmpty = computed(() => flatLogEntries.length === 0 || execution === undefined);
+const switchViewOptions = computed(() => [
+	{ label: locale.baseText('logs.overview.header.switch.overview'), value: 'overview' as const },
+	{ label: locale.baseText('logs.overview.header.switch.details'), value: 'details' as const },
 ]);
-const executionStatusText = computed(() => {
-	const execution = workflowsStore.workflowExecutionData;
-
-	if (!execution) {
-		return undefined;
-	}
-
-	if (execution.startedAt && execution.stoppedAt) {
-		return locale.baseText('logs.overview.body.summaryText', {
-			interpolate: {
-				status: upperFirst(execution.status),
-				time: locale.displayTimer(
-					+new Date(execution.stoppedAt) - +new Date(execution.startedAt),
-					true,
-				),
-			},
-		});
-	}
-
-	return upperFirst(execution.status);
-});
 const consumedTokens = computed(() =>
-	getTotalConsumedTokens(...executionTree.value.map(getSubtreeTotalConsumedTokens)),
+	getTotalConsumedTokens(
+		...entries.map((entry) =>
+			getSubtreeTotalConsumedTokens(
+				entry,
+				false, // Exclude token usages from sub workflow which is loaded only after expanding the row
+			),
+		),
+	),
 );
 
-const selectedRun = ref<{ node: string; runIndex: number } | undefined>(undefined);
+const shouldShowTokenCountColumn = computed(
+	() =>
+		consumedTokens.value.totalTokens > 0 ||
+		entries.some((entry) => getSubtreeTotalConsumedTokens(entry, true).totalTokens > 0),
+);
+const virtualList = useVirtualList(
+	toRef(() => flatLogEntries),
+	{ itemHeight: 32 },
+);
 
-function onClearExecutionData() {
-	workflowsStore.setWorkflowExecutionData(null);
-	nodeHelpers.updateNodesExecutionIssues();
+function handleSwitchView(value: 'overview' | 'details') {
+	emit('select', value === 'overview' ? undefined : flatLogEntries[0]);
 }
 
-function handleClickNode(clicked: TreeNode) {
-	if (selectedRun.value?.node === clicked.node && selectedRun.value.runIndex === clicked.runIndex) {
-		selectedRun.value = undefined;
+function handleToggleExpanded(treeNode: LogEntry) {
+	if (hasSubExecution(treeNode) && treeNode.children.length === 0) {
+		emit('loadSubExecution', treeNode);
 		return;
 	}
-
-	selectedRun.value = { node: clicked.node, runIndex: clicked.runIndex };
-	telemetry.track('User selected node in log view', {
-		node_type: workflowsStore.nodesByName[clicked.node].type,
-		node_id: workflowsStore.nodesByName[clicked.node].id,
-		execution_id: workflowsStore.workflowExecutionData?.id,
-		workflow_id: workflow.value.id,
-	});
+	emit('toggleExpanded', treeNode);
 }
 
-function handleToggleExpanded(treeNode: ElTreeNode) {
-	treeNode.expanded = !treeNode.expanded;
+async function handleTriggerPartialExecution(treeNode: LogEntry) {
+	const latestName = latestNodeInfo[treeNode.node.id]?.name ?? treeNode.node.name;
+
+	if (latestName) {
+		await runWorkflow.runWorkflow({ destinationNode: latestName });
+	}
 }
+
+// Scroll selected row into view
+watch(
+	() => selected,
+	async (selection) => {
+		if (selection && virtualList.list.value.every((e) => e.data.id !== selection.id)) {
+			const index = flatLogEntries.findIndex((e) => e.id === selection?.id);
+
+			if (index >= 0) {
+				// Wait for the node to be added to the list, and then scroll
+				await nextTick(() => virtualList.scrollTo(index));
+			}
+		}
+	},
+	{ immediate: true },
+);
 </script>
 
 <template>
-	<div :class="$style.container">
-		<PanelHeader
+	<div :class="$style.container" data-test-id="logs-overview">
+		<LogsPanelHeader
 			:title="locale.baseText('logs.overview.header.title')"
+			data-test-id="logs-overview-header"
 			@click="emit('clickHeader')"
 		>
 			<template #actions>
@@ -113,64 +133,78 @@ function handleToggleExpanded(treeNode: ElTreeNode) {
 						type="secondary"
 						icon="trash"
 						icon-size="medium"
-						@click.stop="onClearExecutionData"
+						data-test-id="clear-execution-data-button"
+						:class="$style.clearButton"
+						@click.stop="emit('clearExecutionData')"
 						>{{ locale.baseText('logs.overview.header.actions.clearExecution') }}</N8nButton
 					>
 				</N8nTooltip>
 				<slot name="actions" />
 			</template>
-		</PanelHeader>
-		<div v-if="isOpen" :class="[$style.content, isEmpty ? $style.empty : '']">
-			<N8nText v-if="isEmpty" tag="p" size="medium" color="text-base" :class="$style.emptyText">
+		</LogsPanelHeader>
+		<div
+			v-if="isOpen"
+			:class="[$style.content, isEmpty ? $style.empty : '']"
+			data-test-id="logs-overview-body"
+		>
+			<N8nText
+				v-if="isEmpty || execution === undefined"
+				tag="p"
+				size="medium"
+				color="text-base"
+				:class="$style.emptyText"
+				data-test-id="logs-overview-empty"
+			>
 				{{ locale.baseText('logs.overview.body.empty.message') }}
 			</N8nText>
-			<div v-else :class="$style.scrollable">
-				<N8nText
-					v-if="executionStatusText !== undefined"
-					tag="div"
-					color="text-light"
-					size="small"
+			<template v-else>
+				<LogsViewExecutionSummary
+					data-test-id="logs-overview-status"
 					:class="$style.summary"
-				>
-					<span>{{ executionStatusText }}</span>
-					<ConsumedTokenCountText
-						v-if="consumedTokens.totalTokens > 0"
-						:consumed-tokens="consumedTokens"
-					/>
-				</N8nText>
-				<ElTree
-					v-if="executionTree.length > 0"
-					:class="$style.tree"
-					:indent="0"
-					:data="executionTree"
-					:expand-on-click-node="false"
-					:default-expand-all="true"
-					@node-click="handleClickNode"
-				>
-					<template #default="{ node: elTreeNode, data }">
-						<LogsOverviewRow
-							:data="data"
-							:node="elTreeNode"
-							:is-selected="
-								data.node === selectedRun?.node && data.runIndex === selectedRun?.runIndex
-							"
-							:should-show-consumed-tokens="consumedTokens.totalTokens > 0"
-							@toggle-expanded="handleToggleExpanded"
-						/>
-					</template>
-				</ElTree>
-				<N8nRadioButtons
-					size="medium"
-					:class="$style.switchViewButtons"
-					:model-value="selectedRun ? 'details' : 'overview'"
-					:options="switchViewOptions"
+					:status="execution.status"
+					:consumed-tokens="consumedTokens"
+					:start-time="+new Date(execution.startedAt)"
+					:time-took="
+						execution.startedAt && execution.stoppedAt
+							? +new Date(execution.stoppedAt) - +new Date(execution.startedAt)
+							: undefined
+					"
 				/>
-			</div>
+				<div :class="$style.tree" v-bind="virtualList.containerProps">
+					<div v-bind="virtualList.wrapperProps.value" role="tree">
+						<LogsOverviewRow
+							v-for="{ data, index } of virtualList.list.value"
+							:key="index"
+							:data="data"
+							:is-read-only="isReadOnly"
+							:is-selected="data.id === selected?.id"
+							:is-compact="isCompact"
+							:should-show-token-count-column="shouldShowTokenCountColumn"
+							:latest-info="latestNodeInfo[data.node.id]"
+							:expanded="virtualList.list.value[index + 1]?.data.parent?.id === data.id"
+							:can-open-ndv="data.executionId === execution?.id"
+							@toggle-expanded="handleToggleExpanded(data)"
+							@open-ndv="emit('openNdv', data)"
+							@trigger-partial-execution="handleTriggerPartialExecution(data)"
+							@toggle-selected="emit('select', selected?.id === data.id ? undefined : data)"
+						/>
+					</div>
+				</div>
+				<N8nRadioButtons
+					size="small-medium"
+					:class="$style.switchViewButtons"
+					:model-value="selected ? 'details' : 'overview'"
+					:options="switchViewOptions"
+					@update:model-value="handleSwitchView"
+				/>
+			</template>
 		</div>
 	</div>
 </template>
 
 <style lang="scss" module>
+@import '@/styles/variables';
+
 .container {
 	flex-grow: 1;
 	flex-shrink: 1;
@@ -178,6 +212,13 @@ function handleToggleExpanded(treeNode: ElTreeNode) {
 	flex-direction: column;
 	align-items: stretch;
 	overflow: hidden;
+	background-color: var(--color-foreground-xlight);
+}
+
+.clearButton {
+	border: none;
+	color: var(--color-text-light);
+	gap: var(--spacing-5xs);
 }
 
 .content {
@@ -200,29 +241,14 @@ function handleToggleExpanded(treeNode: ElTreeNode) {
 	text-align: center;
 }
 
-.scrollable {
-	padding: var(--spacing-2xs);
-	flex-grow: 1;
-	flex-shrink: 1;
-	overflow: auto;
-}
-
 .summary {
-	display: flex;
-	align-items: center;
-	padding-block: var(--spacing-2xs);
-
-	& > * {
-		padding-inline: var(--spacing-2xs);
-	}
-
-	& > *:not(:last-child) {
-		border-right: var(--border-base);
-	}
+	padding: var(--spacing-2xs);
 }
 
 .tree {
-	margin-top: var(--spacing-2xs);
+	padding: 0 var(--spacing-2xs) var(--spacing-2xs) var(--spacing-2xs);
+
+	scroll-padding-block: var(--spacing-3xs);
 
 	& :global(.el-icon) {
 		display: none;
@@ -231,8 +257,17 @@ function handleToggleExpanded(treeNode: ElTreeNode) {
 
 .switchViewButtons {
 	position: absolute;
+	z-index: 10; /* higher than log entry rows background */
 	right: 0;
 	top: 0;
-	margin: var(--spacing-2xs);
+	margin: var(--spacing-4xs) var(--spacing-2xs);
+	visibility: hidden;
+	opacity: 0;
+	transition: opacity 0.3s $ease-out-expo;
+
+	.content:hover & {
+		visibility: visible;
+		opacity: 1;
+	}
 }
 </style>

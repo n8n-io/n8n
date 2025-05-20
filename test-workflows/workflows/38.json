@@ -1,0 +1,90 @@
+{
+  "createdAt": "2021-02-18T09:13:09.580Z",
+  "updatedAt": "2021-02-18T09:13:09.580Z",
+  "id": "38",
+  "name": "Medium:Post:create:Publication:getall",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ],
+      "id": "fc3fb55c-91d4-4865-8bed-bb672fcf6ed8"
+    },
+    {
+      "parameters": {
+        "title": "=Medium node TestQA Draft {{ (new Date()).toGMTString()}}",
+        "contentFormat": "markdown",
+        "content": "=# QA test Draft Content\n\n#### {{ (new Date()).toGMTString()}}",
+        "additionalFields": {
+          "publishStatus": "draft"
+        }
+      },
+      "name": "Medium",
+      "type": "n8n-nodes-base.medium",
+      "typeVersion": 1,
+      "position": [
+        500,
+        250
+      ],
+      "credentials": {
+        "mediumApi": {
+          "id": "20",
+          "name": "Medium token"
+        }
+      },
+      "id": "0c6e0d0c-76e4-4ae0-b97f-ef501bae351c"
+    },
+    {
+      "parameters": {
+        "resource": "publication",
+        "operation": "getAll",
+        "limit": 1
+      },
+      "name": "Medium1",
+      "type": "n8n-nodes-base.medium",
+      "typeVersion": 1,
+      "position": [
+        500,
+        400
+      ],
+      "credentials": {
+        "mediumApi": {
+          "id": "20",
+          "name": "Medium token"
+        }
+      },
+      "id": "a4561f3e-650c-4960-8688-97a4272189a1"
+    }
+  ],
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Medium",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Medium1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": null,
+  "triggerCount": 0,
+  "tags": []
+}

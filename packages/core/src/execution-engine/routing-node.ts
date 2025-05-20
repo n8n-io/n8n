@@ -829,8 +829,16 @@ export class RoutingNode {
 		};
 		let basePath = path ? `${path}.` : '';
 
-		const { node } = this.context;
-		if (!NodeHelpers.displayParameter(node.parameters, nodeProperties, node, node.parameters)) {
+		const { node, nodeType } = this.context;
+		if (
+			!NodeHelpers.displayParameter(
+				node.parameters,
+				nodeProperties,
+				node,
+				nodeType.description,
+				node.parameters,
+			)
+		) {
 			return undefined;
 		}
 		if (nodeProperties.routing) {

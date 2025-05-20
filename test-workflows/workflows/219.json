@@ -1,0 +1,393 @@
+{
+  "createdAt": "2021-06-25T06:08:38.364Z",
+  "updatedAt": "2021-07-08T15:34:23.744Z",
+  "id": "219",
+  "name": "Automizy:List:create get update getAll delete:Contact:create get update getAll delete",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [
+        270,
+        380
+      ],
+      "id": "b4a081a6-9a54-4e52-8e77-18d8d3df627c"
+    },
+    {
+      "parameters": {
+        "resource": "list",
+        "name": "=List{{Date.now()}}"
+      },
+      "name": "Automizy",
+      "type": "n8n-nodes-base.automizy",
+      "typeVersion": 1,
+      "position": [
+        440,
+        380
+      ],
+      "credentials": {
+        "automizyApi": {
+          "id": "212",
+          "name": "Automizy API creds"
+        }
+      },
+      "id": "b1dceb9d-e1b8-4b55-9e64-158a2b8729cb"
+    },
+    {
+      "parameters": {
+        "resource": "list",
+        "operation": "get",
+        "listId": "={{$node[\"Automizy\"].json[\"id\"]}}"
+      },
+      "name": "Automizy1",
+      "type": "n8n-nodes-base.automizy",
+      "typeVersion": 1,
+      "position": [
+        640,
+        380
+      ],
+      "credentials": {
+        "automizyApi": {
+          "id": "212",
+          "name": "Automizy API creds"
+        }
+      },
+      "id": "2c8e8668-1982-443f-8047-4291009cb7a9"
+    },
+    {
+      "parameters": {
+        "resource": "list",
+        "operation": "update",
+        "listId": "={{$node[\"Automizy\"].json[\"id\"]}}",
+        "name": "=UpdatedList{{Date.now()}}"
+      },
+      "name": "Automizy2",
+      "type": "n8n-nodes-base.automizy",
+      "typeVersion": 1,
+      "position": [
+        790,
+        380
+      ],
+      "credentials": {
+        "automizyApi": {
+          "id": "212",
+          "name": "Automizy API creds"
+        }
+      },
+      "id": "3fd15d30-4310-4556-86d8-d065af81e1f8"
+    },
+    {
+      "parameters": {
+        "resource": "list",
+        "operation": "getAll",
+        "limit": 1,
+        "additionalFields": {
+          "direction": "desc",
+          "fields": "id,name",
+          "sortBy": "name"
+        }
+      },
+      "name": "Automizy3",
+      "type": "n8n-nodes-base.automizy",
+      "typeVersion": 1,
+      "position": [
+        940,
+        380
+      ],
+      "credentials": {
+        "automizyApi": {
+          "id": "212",
+          "name": "Automizy API creds"
+        }
+      },
+      "id": "c1fbd84b-5857-4309-948e-514684bdeb9a"
+    },
+    {
+      "parameters": {
+        "resource": "list",
+        "operation": "delete",
+        "listId": "={{$node[\"Automizy\"].json[\"id\"]}}"
+      },
+      "name": "Automizy4",
+      "type": "n8n-nodes-base.automizy",
+      "typeVersion": 1,
+      "position": [
+        1090,
+        380
+      ],
+      "credentials": {
+        "automizyApi": {
+          "id": "212",
+          "name": "Automizy API creds"
+        }
+      },
+      "id": "35dd2b7a-d40d-4714-a689-b0c8983538df"
+    },
+    {
+      "parameters": {
+        "email": "=fakeemail{{Date.now()}}@gmail.com",
+        "listId": "={{$node[\"Automizy\"].json[\"id\"]}}",
+        "additionalFields": {
+          "customFieldsUi": {
+            "customFieldsValues": [
+              {
+                "key": 3,
+                "value": "=Company{{Date.now()}}"
+              },
+              {
+                "key": 1,
+                "value": "=Firstname{{Date.now()}}"
+              },
+              {
+                "key": 2,
+                "value": "=Second{{Date.now()}}"
+              },
+              {
+                "key": 4,
+                "value": "=Position{{Date.now()}}"
+              }
+            ]
+          },
+          "status": "ACTIVE",
+          "tags": [
+            "test"
+          ]
+        }
+      },
+      "name": "Automizy5",
+      "type": "n8n-nodes-base.automizy",
+      "typeVersion": 1,
+      "position": [
+        590,
+        530
+      ],
+      "credentials": {
+        "automizyApi": {
+          "id": "212",
+          "name": "Automizy API creds"
+        }
+      },
+      "id": "f5681b6a-76c6-464c-bdfe-778fc2ebdec3"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "contactId": "={{$node[\"Automizy5\"].json[\"id\"]}}"
+      },
+      "name": "Automizy6",
+      "type": "n8n-nodes-base.automizy",
+      "typeVersion": 1,
+      "position": [
+        740,
+        530
+      ],
+      "credentials": {
+        "automizyApi": {
+          "id": "212",
+          "name": "Automizy API creds"
+        }
+      },
+      "id": "23c3ebef-deab-48bf-a0f6-bdbb172d3634"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "email": "={{$node[\"Automizy5\"].json[\"email\"]}}",
+        "updateFields": {
+          "customFieldsUi": {
+            "customFieldsValues": [
+              {
+                "key": 3,
+                "value": "UpdatedCompany"
+              }
+            ]
+          },
+          "removeTags": [
+            "test"
+          ],
+          "status": "BANNED"
+        }
+      },
+      "name": "Automizy7",
+      "type": "n8n-nodes-base.automizy",
+      "typeVersion": 1,
+      "position": [
+        890,
+        530
+      ],
+      "credentials": {
+        "automizyApi": {
+          "id": "212",
+          "name": "Automizy API creds"
+        }
+      },
+      "id": "2c376196-e422-411f-b84d-9a6e86898061"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "listId": "={{$node[\"Automizy\"].json[\"id\"]}}",
+        "limit": 1,
+        "additionalFields": {
+          "fields": "id,status"
+        }
+      },
+      "name": "Automizy8",
+      "type": "n8n-nodes-base.automizy",
+      "typeVersion": 1,
+      "position": [
+        1040,
+        530
+      ],
+      "credentials": {
+        "automizyApi": {
+          "id": "212",
+          "name": "Automizy API creds"
+        }
+      },
+      "id": "dcef5e3c-3ae9-49c9-81cf-70197ae5cf9f"
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "contactId": "={{$node[\"Automizy5\"].json[\"id\"]}}"
+      },
+      "name": "Automizy9",
+      "type": "n8n-nodes-base.automizy",
+      "typeVersion": 1,
+      "position": [
+        1190,
+        530
+      ],
+      "credentials": {
+        "automizyApi": {
+          "id": "212",
+          "name": "Automizy API creds"
+        }
+      },
+      "id": "9e848425-9b56-497d-bc56-a934e80ec686"
+    }
+  ],
+  "connections": {
+    "Automizy": {
+      "main": [
+        [
+          {
+            "node": "Automizy5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Automizy1": {
+      "main": [
+        [
+          {
+            "node": "Automizy2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Automizy2": {
+      "main": [
+        [
+          {
+            "node": "Automizy3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Automizy3": {
+      "main": [
+        [
+          {
+            "node": "Automizy4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Automizy5": {
+      "main": [
+        [
+          {
+            "node": "Automizy6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Automizy6": {
+      "main": [
+        [
+          {
+            "node": "Automizy7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Automizy7": {
+      "main": [
+        [
+          {
+            "node": "Automizy8",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Automizy8": {
+      "main": [
+        [
+          {
+            "node": "Automizy9",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Automizy9": {
+      "main": [
+        [
+          {
+            "node": "Automizy1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Automizy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": null,
+  "triggerCount": 0,
+  "tags": []
+}

@@ -4,7 +4,7 @@ import type { MockedStore } from '@/__tests__/utils';
 import WorkflowExecutionsSidebar from '@/components/executions/workflow/WorkflowExecutionsSidebar.vue';
 import { useSettingsStore } from '@/stores/settings.store';
 import { mockedStore, SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
-import { STORES } from '@/constants';
+import { STORES } from '@n8n/stores';
 import { merge } from 'lodash-es';
 import { expect, it } from 'vitest';
 

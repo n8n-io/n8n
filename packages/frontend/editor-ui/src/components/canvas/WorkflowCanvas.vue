@@ -8,7 +8,7 @@ import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type { CanvasEventBusEvents } from '@/types';
 import { useVueFlow } from '@vue-flow/core';
-import { debouncedRef } from '@vueuse/core';
+import { throttledRef } from '@vueuse/core';
 
 defineOptions({
 	inheritAttrs: false,
@@ -61,8 +61,8 @@ onNodesInitialized(() => {
 	}
 });
 
-const mappedNodesDebounced = debouncedRef(mappedNodes, 200, { maxWait: 50 });
-const mappedConnectionsDebounced = debouncedRef(mappedConnections, 200, { maxWait: 50 });
+const mappedNodesThrottled = throttledRef(mappedNodes, 200);
+const mappedConnectionsThrottled = throttledRef(mappedConnections, 200);
 </script>
 
 <template>
@@ -71,8 +71,8 @@ const mappedConnectionsDebounced = debouncedRef(mappedConnections, 200, { maxWai
 			<Canvas
 				v-if="workflow"
 				:id="id"
-				:nodes="executing ? mappedNodesDebounced : mappedNodes"
-				:connections="executing ? mappedConnectionsDebounced : mappedConnections"
+				:nodes="executing ? mappedNodesThrottled : mappedNodes"
+				:connections="executing ? mappedConnectionsThrottled : mappedConnections"
 				:event-bus="eventBus"
 				:read-only="readOnly"
 				v-bind="$attrs"

@@ -4,6 +4,7 @@ import { useToast } from '@/composables/useToast';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
+	MCP_TRIGGER_NODE_TYPE,
 	OPEN_URL_PANEL_TRIGGER_NODE_TYPES,
 	PRODUCTION_ONLY_TRIGGER_NODE_TYPES,
 } from '@/constants';
@@ -31,7 +32,7 @@ const isMinimized = ref(
 	props.nodeTypeDescription &&
 		!OPEN_URL_PANEL_TRIGGER_NODE_TYPES.includes(props.nodeTypeDescription.name),
 );
-const showUrlFor = ref('test');
+const showUrlFor = ref<'test' | 'production'>('test');
 
 const isProductionOnly = computed(() => {
 	return (
@@ -93,6 +94,18 @@ const baseText = computed(() => {
 				productionUrl: i18n.baseText('nodeWebhooks.productionUrl'),
 				copyTitle: i18n.baseText('nodeWebhooks.showMessage.title.formTrigger'),
 				copyMessage: i18n.baseText('nodeWebhooks.showMessage.message.formTrigger'),
+			};
+
+		case MCP_TRIGGER_NODE_TYPE:
+			return {
+				toggleTitle: i18n.baseText('nodeWebhooks.webhookUrls.mcpTrigger'),
+				clickToDisplay: i18n.baseText('nodeWebhooks.clickToDisplayWebhookUrls.mcpTrigger'),
+				clickToHide: i18n.baseText('nodeWebhooks.clickToHideWebhookUrls.mcpTrigger'),
+				clickToCopy: i18n.baseText('nodeWebhooks.clickToCopyWebhookUrls.mcpTrigger'),
+				testUrl: i18n.baseText('nodeWebhooks.testUrl'),
+				productionUrl: i18n.baseText('nodeWebhooks.productionUrl'),
+				copyTitle: i18n.baseText('nodeWebhooks.showMessage.title.mcpTrigger'),
+				copyMessage: undefined,
 			};
 
 		default:

@@ -5,7 +5,8 @@ import type {
 	ResourceMapperFieldsRequestDto,
 } from '@n8n/api-types';
 import * as nodeTypesApi from '@/api/nodeTypes';
-import { HTTP_REQUEST_NODE_TYPE, STORES, CREDENTIAL_ONLY_HTTP_NODE_VERSION } from '@/constants';
+import { HTTP_REQUEST_NODE_TYPE, CREDENTIAL_ONLY_HTTP_NODE_VERSION } from '@/constants';
+import { STORES } from '@n8n/stores';
 import type { NodeTypesByTypeNameAndVersion } from '@/Interface';
 import { addHeaders, addNodeTranslation } from '@/plugins/i18n';
 import { omit } from '@/utils/typesUtils';
@@ -21,21 +22,34 @@ import type {
 import { NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { useCredentialsStore } from './credentials.store';
-import { useRootStore } from './root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import * as utils from '@/utils/credentialOnlyNodes';
 import { groupNodeTypesByNameAndType } from '@/utils/nodeTypes/nodeTypeTransforms';
 import { computed, ref } from 'vue';
+import { useActionsGenerator } from '../components/Node/NodeCreator/composables/useActionsGeneration';
+import { removePreviewToken } from '../components/Node/NodeCreator/utils';
+import { useSettingsStore } from '@/stores/settings.store';
 
 export type NodeTypesStore = ReturnType<typeof useNodeTypesStore>;
 
 export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 	const nodeTypes = ref<NodeTypesByTypeNameAndVersion>({});
 
+	const communityPreviews = ref<INodeTypeDescription[]>([]);
+
 	const rootStore = useRootStore();
+
+	const actionsGenerator = useActionsGenerator();
+
+	const settingsStore = useSettingsStore();
 
 	// ---------------------------------------------------------------------------
 	// #region Computed
 	// ---------------------------------------------------------------------------
+
+	const communityNodesAndActions = computed(() => {
+		return actionsGenerator.generateMergedNodesAndActions(communityPreviews.value, []);
+	});
 
 	const allNodeTypes = computed(() => {
 		return Object.values(nodeTypes.value).reduce<INodeTypeDescription[]>(
@@ -119,6 +133,22 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		return (nodeTypeName: string) => {
 			const nodeType = getNodeType.value(nodeTypeName);
 			return !!(nodeType && nodeType.group.includes('trigger'));
+		};
+	});
+
+	const isToolNode = computed(() => {
+		return (nodeTypeName: string) => {
+			const nodeType = getNodeType.value(nodeTypeName);
+			if (nodeType?.outputs && Array.isArray(nodeType.outputs)) {
+				const outputTypes = nodeType.outputs.map(
+					(output: NodeConnectionType | INodeOutputConfiguration) =>
+						typeof output === 'string' ? output : output.type,
+				);
+
+				return outputTypes.includes(NodeConnectionTypes.AiTool);
+			} else {
+				return nodeType?.outputs.includes(NodeConnectionTypes.AiTool);
+			}
 		};
 	});
 
@@ -262,14 +292,22 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		return nodesInformation;
 	};
 
-	const getFullNodesProperties = async (nodesToBeFetched: INodeTypeNameVersion[]) => {
+	const getFullNodesProperties = async (
+		nodesToBeFetched: INodeTypeNameVersion[],
+		replaceNodeTypes = true,
+	) => {
 		const credentialsStore = useCredentialsStore();
 		await credentialsStore.fetchCredentialTypes(true);
-		await getNodesInformation(nodesToBeFetched);
+		if (replaceNodeTypes) {
+			await getNodesInformation(nodesToBeFetched);
+		}
 	};
 
 	const getNodeTypes = async () => {
 		const nodeTypes = await nodeTypesApi.getNodeTypes(rootStore.baseUrl);
+
+		await fetchCommunityNodePreviews();
+
 		if (nodeTypes.length) {
 			setNodeTypes(nodeTypes);
 		}
@@ -317,6 +355,34 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		return await nodeTypesApi.getNodeParameterActionResult(rootStore.restApiContext, sendData);
 	};
 
+	const fetchCommunityNodePreviews = async () => {
+		if (!settingsStore.isCommunityNodesFeatureEnabled) {
+			return;
+		}
+		try {
+			communityPreviews.value = await nodeTypesApi.fetchCommunityNodeTypes(
+				rootStore.restApiContext,
+			);
+		} catch (error) {
+			communityPreviews.value = [];
+		}
+	};
+
+	const getCommunityNodeAttributes = async (nodeName: string) => {
+		if (!settingsStore.isCommunityNodesFeatureEnabled) {
+			return null;
+		}
+
+		try {
+			return await nodeTypesApi.fetchCommunityNodeAttributes(
+				rootStore.restApiContext,
+				removePreviewToken(nodeName),
+			);
+		} catch (error) {
+			return null;
+		}
+	};
+
 	// #endregion
 
 	return {
@@ -328,12 +394,14 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		getCredentialOnlyNodeType,
 		isConfigNode,
 		isTriggerNode,
+		isToolNode,
 		isCoreNodeType,
 		visibleNodeTypes,
 		nativelyNumberSuffixedDefaults,
 		visibleNodeTypesByOutputConnectionTypeNames,
 		visibleNodeTypesByInputConnectionTypeNames,
 		isConfigurableNode,
+		communityNodesAndActions,
 		getResourceMapperFields,
 		getLocalResourceMapperFields,
 		getNodeParameterActionResult,
@@ -346,5 +414,6 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		getNodeTranslationHeaders,
 		setNodeTypes,
 		removeNodeTypes,
+		getCommunityNodeAttributes,
 	};
 });

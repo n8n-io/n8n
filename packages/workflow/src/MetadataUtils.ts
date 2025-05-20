@@ -27,5 +27,8 @@ export function parseErrorMetadata(error: unknown): ISubWorkflowMetadata | undef
 	if (hasKey(error, 'errorResponse')) {
 		return parseErrorResponseWorkflowMetadata(error.errorResponse);
 	}
-	return undefined;
+
+	// This accounts for cases where the backend attaches the properties on plain errors
+	// e.g. from custom nodes throwing literal `Error` or `ApplicationError` objects directly
+	return parseErrorResponseWorkflowMetadata(error);
 }

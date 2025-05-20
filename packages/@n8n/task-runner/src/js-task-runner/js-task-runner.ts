@@ -1,7 +1,14 @@
+import { isObject } from 'lodash';
 import set from 'lodash/set';
 import { DateTime, Duration, Interval } from 'luxon';
 import { getAdditionalKeys } from 'n8n-core';
-import { WorkflowDataProxy, Workflow, ObservableObject, Expression } from 'n8n-workflow';
+import {
+	WorkflowDataProxy,
+	Workflow,
+	ObservableObject,
+	Expression,
+	jsonStringify,
+} from 'n8n-workflow';
 import type {
 	CodeExecutionMode,
 	IWorkflowExecuteAdditionalData,
@@ -19,7 +26,6 @@ import type {
 	IWorkflowDataProxyData,
 } from 'n8n-workflow';
 import * as a from 'node:assert';
-import { inspect } from 'node:util';
 import { type Context, createContext, runInContext } from 'node:vm';
 
 import type { MainConfig } from '@/config/main-config';
@@ -117,10 +123,13 @@ export class JsTaskRunner extends TaskRunner {
 			allowedExternalModules,
 		});
 
-		this.preventPrototypePollution(allowedExternalModules);
+		this.preventPrototypePollution(allowedExternalModules, jsRunnerConfig.allowPrototypeMutation);
 	}
 
-	private preventPrototypePollution(allowedExternalModules: Set<string> | '*') {
+	private preventPrototypePollution(
+		allowedExternalModules: Set<string> | '*',
+		allowPrototypeMutation: boolean,
+	) {
 		if (allowedExternalModules instanceof Set) {
 			// This is a workaround to enable the allowed external libraries to mutate
 			// prototypes directly. For example momentjs overrides .toString() directly
@@ -132,8 +141,8 @@ export class JsTaskRunner extends TaskRunner {
 			}
 		}
 
-		// Freeze globals, except for Jest
-		if (process.env.NODE_ENV !== 'test') {
+		// Freeze globals if needed
+		if (!allowPrototypeMutation) {
 			Object.getOwnPropertyNames(globalThis)
 				// @ts-expect-error globalThis does not have string in index signature
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access
@@ -300,10 +309,12 @@ export class JsTaskRunner extends TaskRunner {
 			? settings.chunk.startIndex + settings.chunk.count
 			: inputItems.length;
 
+		const context = this.buildContext(taskId, workflow, data.node);
+
 		for (let index = chunkStartIdx; index < chunkEndIdx; index++) {
-			const item = inputItems[index];
 			const dataProxy = this.createDataProxy(data, workflow, index);
-			const context = this.buildContext(taskId, workflow, data.node, dataProxy, { item });
+
+			Object.assign(context, dataProxy, { item: inputItems[index] });
 
 			try {
 				let result = await new Promise<INodeExecutionData | undefined>((resolve, reject) => {
@@ -493,7 +504,11 @@ export class JsTaskRunner extends TaskRunner {
 			// Send log output back to the main process. It will take care of forwarding
 			// it to the UI or printing to console.
 			log: (...args: unknown[]) => {
-				const formattedLogArgs = args.map((arg) => inspect(arg));
+				const formattedLogArgs = args.map((arg) => {
+					if (isObject(arg) && '__isExecutionContext' in arg) return '[[ExecutionContext]]';
+					if (typeof arg === 'string') return `'${arg}'`;
+					return jsonStringify(arg, { replaceCircularRefs: true });
+				});
 				void this.makeRpcCall(taskId, 'logNodeOutput', formattedLogArgs);
 			},
 		};
@@ -512,11 +527,11 @@ export class JsTaskRunner extends TaskRunner {
 		taskId: string,
 		workflow: Workflow,
 		node: INode,
-		dataProxy: IWorkflowDataProxyData,
+		dataProxy?: IWorkflowDataProxyData,
 		additionalProperties: Record<string, unknown> = {},
 	): Context {
 		return createContext({
-			[inspect.custom]: () => '[[ExecutionContext]]',
+			__isExecutionContext: true,
 			require: this.requireResolver,
 			module: {},
 			console: this.buildCustomConsole(taskId),

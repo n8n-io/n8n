@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { STORES } from '@/constants';
+import { STORES } from '@n8n/stores';
 import type {
 	ChangeLocationSearchResult,
 	FolderCreateResponse,
@@ -7,15 +7,24 @@ import type {
 	FolderTreeResponseItem,
 } from '@/Interface';
 import * as workflowsApi from '@/api/workflows';
-import { useRootStore } from './root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { ref } from 'vue';
 import { useI18n } from '@/composables/useI18n';
+import type { DragTarget, DropTarget } from '@/composables/useFolders';
+import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
+
+const BREADCRUMBS_MIN_LOADING_TIME = 300;
 
 export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 	const rootStore = useRootStore();
 	const i18n = useI18n();
 
 	const totalWorkflowCount = ref<number>(0);
+
+	// Resource that is currently being dragged
+	const draggedElement = ref<DragTarget | null>(null);
+	// Only folders and projects can be drop targets
+	const activeDropTarget = ref<DropTarget | null>(null);
 
 	/**
 	 * Cache visited folders so we can build breadcrumbs paths without fetching them from the server
@@ -89,7 +98,7 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 	async function fetchTotalWorkflowsAndFoldersCount(projectId?: string): Promise<number> {
 		const { count } = await workflowsApi.getWorkflowsAndFolders(
 			rootStore.restApiContext,
-			{ projectId },
+			{ projectId, isArchived: false },
 			{ skip: 0, take: 1 },
 			true,
 		);
@@ -174,31 +183,22 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 	async function getHiddenBreadcrumbsItems(
 		project: { id: string; name: string },
 		folderId: string,
+		options?: {
+			addLinks?: boolean;
+		},
 	) {
+		const startTime = Date.now();
 		const path = await getFolderPath(project.id, folderId);
 
-		if (path.length === 0) {
-			// Even when path is empty, include the project item
-			return [
-				{
-					id: project.id,
-					label: project.name,
-				},
-				{
-					id: '-1',
-					label: i18n.baseText('folders.breadcrumbs.noTruncated.message'),
-				},
-			];
-		}
-
 		// Process a folder and all its nested children recursively
-		const processFolderWithChildren = (
-			folder: FolderTreeResponseItem,
-		): Array<{ id: string; label: string }> => {
-			const result = [
+		const processFolderWithChildren = (folder: FolderTreeResponseItem): PathItem[] => {
+			const result: PathItem[] = [
 				{
 					id: folder.id,
 					label: folder.name,
+					href: options?.addLinks
+						? `/projects/${project.id}/folders/${folder.id}/workflows`
+						: undefined,
 				},
 			];
 
@@ -206,10 +206,13 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 			if (folder.children?.length) {
 				const childItems = folder.children.flatMap((child) => {
 					// Add this child
-					const childResult = [
+					const childResult: PathItem[] = [
 						{
 							id: child.id,
 							label: child.name,
+							href: options?.addLinks
+								? `/projects/${project.id}/folders/${child.id}/workflows`
+								: undefined,
 						},
 					];
 
@@ -223,18 +226,44 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 
 				result.push(...childItems);
 			}
-
 			return result;
 		};
 
-		// Start with the project item, then add all processed folders
-		return [
-			{
-				id: project.id,
-				label: project.name,
-			},
-			...path.flatMap(processFolderWithChildren),
-		];
+		// Prepare the result
+		let result;
+		if (path.length === 0) {
+			// Even when path is empty, include the project item
+			result = [
+				{
+					id: project.id,
+					label: project.name,
+				},
+				{
+					id: '-1',
+					label: i18n.baseText('folders.breadcrumbs.noTruncated.message'),
+				},
+			];
+		} else {
+			// Start with the project item, then add all processed folders
+			result = [
+				{
+					id: project.id,
+					label: project.name,
+				},
+				...path.flatMap(processFolderWithChildren),
+			];
+		}
+
+		// Calculate how much time has elapsed
+		const elapsedTime = Date.now() - startTime;
+		const remainingTime = Math.max(0, BREADCRUMBS_MIN_LOADING_TIME - elapsedTime);
+
+		// Add a delay if needed to ensure minimum loading time
+		if (remainingTime > 0) {
+			await new Promise((resolve) => setTimeout(resolve, remainingTime));
+		}
+
+		return result;
 	}
 
 	return {
@@ -253,5 +282,7 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 		moveFolder,
 		fetchFolderContent,
 		getHiddenBreadcrumbsItems,
+		draggedElement,
+		activeDropTarget,
 	};
 });

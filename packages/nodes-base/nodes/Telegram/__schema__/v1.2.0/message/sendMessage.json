@@ -21,9 +21,6 @@
                         },
                         "type": {
                             "type": "string"
-                        },
-                        "username": {
-                            "type": "string"
                         }
                     }
                 },
@@ -76,5 +73,5 @@
             }
         }
     },
-    "version": 1
+    "version": 2
 }

@@ -3,7 +3,7 @@ import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { faker } from '@faker-js/faker';
 import ExecutionsFilter from '@/components/executions/ExecutionsFilter.vue';
-import { STORES } from '@/constants';
+import { STORES } from '@n8n/stores';
 import type { IWorkflowShortResponse, ExecutionFilterType } from '@/Interface';
 import { createComponentRenderer } from '@/__tests__/render';
 import * as telemetryModule from '@/composables/useTelemetry';
