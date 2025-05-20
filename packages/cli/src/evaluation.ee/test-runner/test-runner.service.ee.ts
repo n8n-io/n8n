@@ -60,31 +60,7 @@ export class TestRunnerService {
 	 * Finds the dataset trigger node in the workflow
 	 */
 	private findTriggerNode(workflow: IWorkflowBase) {
-		const triggerNode = workflow.nodes.find(
-			(node) => node.type === EVALUATION_DATASET_TRIGGER_NODE,
-		);
-
-		if (!triggerNode) {
-			// TODO: Change error
-			throw new TestCaseExecutionError('TRIGGER_NO_LONGER_EXISTS');
-		}
-
-		return triggerNode;
-	}
-
-	/**
-	 * Prepares the start nodes and trigger node data props for the `workflowRunner.run` method input.
-	 */
-	private getStartNodesData(
-		workflow: IWorkflowBase,
-	): Pick<IWorkflowExecutionDataProcess, 'triggerToStartFrom'> {
-		const triggerNode = this.findTriggerNode(workflow);
-
-		return {
-			triggerToStartFrom: {
-				name: triggerNode.name,
-			},
-		};
+		return workflow.nodes.find((node) => node.type === EVALUATION_DATASET_TRIGGER_NODE);
 	}
 
 	/**
@@ -102,31 +78,26 @@ export class TestRunnerService {
 			return;
 		}
 
-		const startNodesData = this.getStartNodesData(workflow);
+		// Create pin data from the past execution data
+		// const pinData = createPinData(
+		// 	workflow,
+		// 	mockedNodes,
+		// 	pastExecutionData,
+		// 	pastExecutionWorkflowData,
+		// );
 
 		// Prepare the data to run the workflow
 		// Evaluation executions should run the same way as manual,
 		// because they need pinned data and partial execution logic
 
 		const triggerNode = this.findTriggerNode(workflow);
+		assert(triggerNode);
 
 		const pinData = {
 			[triggerNode.name]: [testCase],
 		};
 
-		// Initialize the input data for dataset trigger
-		const nodeExecutionStack: IExecuteData[] = [];
-		nodeExecutionStack.push({
-			// node: startNodesData.triggerToStartFrom.name as INode,
-			node: triggerNode,
-			data: {
-				main: [[{ json: { test: 123 } }]],
-			},
-			source: null,
-		});
-
 		const data: IWorkflowExecutionDataProcess = {
-			...startNodesData,
 			executionMode: 'evaluation',
 			pinData,
 			workflowData: workflow,
@@ -143,15 +114,20 @@ export class TestRunnerService {
 				executionData: {
 					contextData: {},
 					metadata: {},
-					nodeExecutionStack,
+					nodeExecutionStack: [],
 					waitingExecution: {},
 					waitingExecutionSource: {},
 				},
 				manualData: {
 					userId: metadata.userId,
 					partialExecutionVersion: 2,
-					triggerToStartFrom: startNodesData.triggerToStartFrom,
+					triggerToStartFrom: {
+						name: triggerNode.name,
+					},
 				},
+			},
+			triggerToStartFrom: {
+				name: triggerNode.name,
 			},
 		};
 
@@ -169,7 +145,9 @@ export class TestRunnerService {
 				manualData: {
 					userId: metadata.userId,
 					partialExecutionVersion: 2,
-					triggerToStartFrom: startNodesData.triggerToStartFrom,
+					triggerToStartFrom: {
+						name: triggerNode.name,
+					},
 				},
 			};
 		}
@@ -196,13 +174,15 @@ export class TestRunnerService {
 	 * to get the whole dataset.
 	 */
 	private async runDatasetTrigger(workflow: IWorkflowBase, metadata: TestRunMetadata) {
-		const startNodesData = this.getStartNodesData(workflow);
-
 		// Prepare the data to run the workflow
 		// Evaluation executions should run the same way as manual,
 		// because they need pinned data and partial execution logic
 
 		const triggerNode = this.findTriggerNode(workflow);
+
+		if (!triggerNode) {
+			throw new TestRunError('EVALUATION_TRIGGER_NOT_FOUND');
+		}
 
 		// Initialize the input data for dataset trigger
 		// Provide a flag indicating that we want to get the whole dataset
@@ -217,11 +197,19 @@ export class TestRunnerService {
 
 		// TODO: ideally we do not want this execution to appear in the executions list
 		const data: IWorkflowExecutionDataProcess = {
-			...startNodesData,
 			destinationNode: triggerNode.name,
 			executionMode: 'manual',
 			runData: {},
-			workflowData: workflow,
+			workflowData: {
+				...workflow,
+				settings: {
+					...workflow.settings,
+					saveManualExecutions: false,
+					saveDataErrorExecution: 'none',
+					saveDataSuccessExecution: 'none',
+					saveExecutionProgress: false,
+				},
+			},
 			userId: metadata.userId,
 			partialExecutionVersion: 2,
 			executionData: {
@@ -241,8 +229,13 @@ export class TestRunnerService {
 				manualData: {
 					userId: metadata.userId,
 					partialExecutionVersion: 2,
-					triggerToStartFrom: startNodesData.triggerToStartFrom,
+					triggerToStartFrom: {
+						name: triggerNode.name,
+					},
 				},
+			},
+			triggerToStartFrom: {
+				name: triggerNode.name,
 			},
 		};
 
@@ -268,20 +261,23 @@ export class TestRunnerService {
 	 */
 	private extractDatasetTriggerOutput(execution: IRun, workflow: IWorkflowBase) {
 		const triggerNode = this.findTriggerNode(workflow);
+		assert(triggerNode);
 
-		const triggerOutput = execution.data.resultData.runData[triggerNode.name][0];
+		const triggerOutputData = execution.data.resultData.runData[triggerNode.name][0];
+		const triggerOutput = triggerOutputData?.data?.main?.[0];
+
 		if (!triggerOutput) {
-			// TODO: Change error
-			throw new TestRunError('UNKNOWN_ERROR');
+			throw new TestRunError('TEST_CASES_NOT_FOUND');
 		}
 
-		return triggerOutput.data?.main?.[0];
+		return triggerOutput;
 	}
 
 	/**
 	 * Evaluation result is collected from all Evaluation Metrics nodes
 	 */
 	private extractEvaluationResult(execution: IRun, workflow: IWorkflowBase): IDataObject {
+		// TODO: Do not fail if not all metric nodes were executed
 		const metricsNodes = TestRunnerService.getEvaluationMetricsNodes(workflow);
 		const metricsRunData = metricsNodes.flatMap(
 			(node) => execution.data.resultData.runData[node.name],
@@ -322,6 +318,9 @@ export class TestRunnerService {
 		const { manager: dbManager } = this.testRunRepository;
 
 		try {
+			// Update test run status
+			await this.testRunRepository.markAsRunning(testRun.id);
+
 			///
 			// 1. Make test cases list
 			///
@@ -333,16 +332,10 @@ export class TestRunnerService {
 				datasetFetchExecution,
 				workflow,
 			);
-			assert(datasetTriggerOutput);
 
 			const testCases = datasetTriggerOutput.map((items) => ({ json: items.json }));
 
 			this.logger.debug('Found test cases', { count: testCases.length });
-
-			if (testCases.length === 0) {
-				// TODO: Change error
-				throw new TestRunError('PAST_EXECUTIONS_NOT_FOUND');
-			}
 
 			// Add all past executions mappings to the test run.
 			// This will be used to track the status of each test case and keep the connection between test run and all related executions (past, current, and evaluation).
@@ -352,9 +345,6 @@ export class TestRunnerService {
 			// );
 
 			// 2. Run over all the test cases
-
-			// Update test run status
-			await this.testRunRepository.markAsRunning(testRun.id);
 
 			this.telemetry.track('User ran test', {
 				user_id: user.id,
@@ -401,12 +391,6 @@ export class TestRunnerService {
 
 					this.logger.debug('Test case execution finished');
 
-					const { addedMetrics } = metrics.addResults(
-						this.extractEvaluationResult(testCaseExecution, workflow),
-					);
-
-					this.logger.debug('Test case metrics extracted', addedMetrics);
-
 					// In case of a permission check issue, the test case execution will be undefined.
 					// If that happens, or if the test case execution produced an error, mark the test case as failed.
 					if (!testCaseExecution || testCaseExecution.data.resultData.error) {
@@ -422,6 +406,12 @@ export class TestRunnerService {
 						});
 						continue;
 					}
+
+					const { addedMetrics } = metrics.addResults(
+						this.extractEvaluationResult(testCaseExecution, workflow),
+					);
+
+					this.logger.debug('Test case metrics extracted', addedMetrics);
 
 					// Create a new test case execution in DB
 					await this.testCaseExecutionRepository.createTestCaseExecution({

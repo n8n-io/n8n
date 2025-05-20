@@ -137,7 +137,7 @@ describe('TestRunnerService', () => {
 			expect(result.name).toBe('Dataset Trigger');
 		});
 
-		test('should throw an error when no trigger node is found', () => {
+		test('should return undefined when no trigger node is found', () => {
 			// Setup a test workflow without a trigger node
 			const workflowWithoutTrigger = mock<IWorkflowBase>({
 				nodes: [
@@ -161,18 +161,9 @@ describe('TestRunnerService', () => {
 				connections: {},
 			});
 
-			// Expect the method to throw an error
-			expect(() => {
-				(testRunnerService as any).findTriggerNode(workflowWithoutTrigger);
-			}).toThrow(TestCaseExecutionError);
-
-			// Verify the error has the correct code
-			try {
-				(testRunnerService as any).findTriggerNode(workflowWithoutTrigger);
-			} catch (error) {
-				expect(error).toBeInstanceOf(TestCaseExecutionError);
-				expect(error.code).toBe('TRIGGER_NO_LONGER_EXISTS');
-			}
+			// Call the function and expect undefined result
+			const result = (testRunnerService as any).findTriggerNode(workflowWithoutTrigger);
+			expect(result).toBeUndefined();
 		});
 
 		test('should work with the actual workflow.under-test.json', () => {
@@ -281,7 +272,7 @@ describe('TestRunnerService', () => {
 				(testRunnerService as any).extractDatasetTriggerOutput(execution, workflow);
 			} catch (error) {
 				expect(error).toBeInstanceOf(TestRunError);
-				expect(error.code).toBe('UNKNOWN_ERROR');
+				expect(error.code).toBe('TEST_CASES_NOT_FOUND');
 			}
 		});
 
