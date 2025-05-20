@@ -4,6 +4,7 @@ import { type LogEntry } from '@/components/RunDataAi/utils';
 import { useI18n } from '@/composables/useI18n';
 import { type IRunDataDisplayMode, type NodePanelType } from '@/Interface';
 import { useNDVStore } from '@/stores/ndv.store';
+import { waitingNodeTooltip } from '@/utils/executionUtils';
 import { N8nLink, N8nText } from '@n8n/design-system';
 import { computed, ref } from 'vue';
 import { I18nT } from 'vue-i18n';
@@ -42,6 +43,12 @@ const runDataProps = computed<
 		overrideOutputs: [source.previousNodeOutput ?? 0],
 	};
 });
+const isExecuting = computed(
+	() =>
+		paneType === 'output' &&
+		(logEntry.runData.executionStatus === 'running' ||
+			logEntry.runData.executionStatus === 'waiting'),
+);
 
 function handleClickOpenNdv() {
 	ndvStore.setActiveNodeName(logEntry.node.name);
@@ -69,6 +76,7 @@ function handleChangeDisplayMode(value: IRunDataDisplayMode) {
 		:disable-hover-highlight="true"
 		:display-mode="displayMode"
 		:disable-ai-content="logEntry.depth === 0"
+		:is-executing="isExecuting"
 		table-header-bg-color="light"
 		@display-mode-change="handleChangeDisplayMode"
 	>
@@ -82,6 +90,13 @@ function handleChangeDisplayMode(value: IRunDataDisplayMode) {
 			<N8nText :bold="true" color="text-dark" size="large">
 				{{ locale.baseText('ndv.output.noOutputData.title') }}
 			</N8nText>
+		</template>
+
+		<template #node-waiting>
+			<N8nText :bold="true" color="text-dark" size="large">
+				{{ locale.baseText('ndv.output.waitNodeWaiting.title') }}
+			</N8nText>
+			<N8nText v-n8n-html="waitingNodeTooltip(logEntry.node)"></N8nText>
 		</template>
 
 		<template v-if="isMultipleInput" #content>
