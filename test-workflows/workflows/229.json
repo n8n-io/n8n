@@ -1,0 +1,731 @@
+{
+  "createdAt": "2022-09-23T13:17:35.393Z",
+  "updatedAt": "2022-09-23T13:17:42.056Z",
+  "id": "229",
+  "name": "GoogleDrive:Folder:create share delete:File:upload share list download copy delete copy (RL)",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [
+        250,
+        450
+      ],
+      "id": "af503bcd-fa8c-4eaa-9c50-632c7692c6e8"
+    },
+    {
+      "parameters": {
+        "resource": "folder",
+        "name": "testFolder",
+        "options": {}
+      },
+      "name": "Google Drive",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 1,
+      "position": [
+        500,
+        290
+      ],
+      "id": "8b134518-c868-4ea9-8811-0a687f2485af",
+      "credentials": {
+        "googleApi": {
+          "id": "196",
+          "name": "Google API creds"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "folder",
+        "operation": "share",
+        "fileId": "={{$node[\"Google Drive\"].json[\"id\"]}}",
+        "permissionsUi": {
+          "permissionsValues": {
+            "role": "reader",
+            "type": "anyone"
+          }
+        },
+        "options": {}
+      },
+      "name": "Google Drive1",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 1,
+      "position": [
+        670,
+        290
+      ],
+      "id": "b31303e6-a55d-4844-b829-35ec7b5ecfef",
+      "credentials": {
+        "googleApi": {
+          "id": "196",
+          "name": "Google API creds"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "folder",
+        "operation": "delete",
+        "fileId": "={{$node[\"Google Drive\"].json[\"id\"]}}"
+      },
+      "name": "Google Drive2",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 1,
+      "position": [
+        830,
+        290
+      ],
+      "id": "6868f66e-f772-4219-b633-774b1c2b621f",
+      "credentials": {
+        "googleApi": {
+          "id": "196",
+          "name": "Google API creds"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fileContent": "Test File Content",
+        "name": "testFile",
+        "options": {}
+      },
+      "name": "Google Drive3",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 1,
+      "position": [
+        500,
+        460
+      ],
+      "id": "5a748249-c5e0-4d69-93dc-175b9f8d6416",
+      "credentials": {
+        "googleApi": {
+          "id": "196",
+          "name": "Google API creds"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "share",
+        "fileId": "={{$node[\"Google Drive3\"].json[\"id\"]}}",
+        "permissionsUi": {
+          "permissionsValues": {
+            "role": "reader",
+            "type": "anyone"
+          }
+        },
+        "options": {}
+      },
+      "name": "Google Drive4",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 1,
+      "position": [
+        660,
+        460
+      ],
+      "id": "de39ddca-a217-4c46-b4d9-52a7eba74223",
+      "credentials": {
+        "googleApi": {
+          "id": "196",
+          "name": "Google API creds"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "list",
+        "limit": 1,
+        "options": {}
+      },
+      "name": "Google Drive5",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 1,
+      "position": [
+        820,
+        460
+      ],
+      "id": "46ef5f25-0096-4ee9-9930-ad476fcd0cb3",
+      "credentials": {
+        "googleApi": {
+          "id": "196",
+          "name": "Google API creds"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": "={{$node[\"Google Drive3\"].json[\"id\"]}}",
+        "options": {}
+      },
+      "name": "Google Drive6",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 1,
+      "position": [
+        960,
+        460
+      ],
+      "id": "a169ecfe-389b-41a3-8e27-e1f8e85afbc9",
+      "credentials": {
+        "googleApi": {
+          "id": "196",
+          "name": "Google API creds"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "copy",
+        "fileId": "={{$node[\"Google Drive3\"].json[\"id\"]}}",
+        "options": {}
+      },
+      "name": "Google Drive7",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 1,
+      "position": [
+        1100,
+        460
+      ],
+      "id": "f4a9acb4-c943-4e96-b830-6081a55ef14b",
+      "credentials": {
+        "googleApi": {
+          "id": "196",
+          "name": "Google API creds"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "fileId": "={{$node[\"Google Drive3\"].json[\"id\"]}}"
+      },
+      "name": "Google Drive8",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 1,
+      "position": [
+        1240,
+        460
+      ],
+      "id": "b8dcbf39-f49f-4a58-8101-8effab64eb3e",
+      "credentials": {
+        "googleApi": {
+          "id": "196",
+          "name": "Google API creds"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "fileId": "={{$node[\"Google Drive7\"].json[\"id\"]}}"
+      },
+      "name": "Google Drive9",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 1,
+      "position": [
+        1380,
+        460
+      ],
+      "id": "bea4ea40-6bd8-4378-a0b0-ad17b9bd237f",
+      "credentials": {
+        "googleApi": {
+          "id": "196",
+          "name": "Google API creds"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Legacy mode",
+        "height": 494.0510948905113,
+        "width": 1240.9160583941607
+      },
+      "id": "4a46fffc-779d-4d3e-865c-dd165caf1b0e",
+      "name": "Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        340,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "fileId": {
+          "__rl": true,
+          "value": "={{$node[\"Google Drive18\"].json[\"id\"]}}",
+          "mode": "id"
+        }
+      },
+      "name": "Google Drive10",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 1,
+      "position": [
+        1400,
+        980
+      ],
+      "id": "b93f0486-16e4-4d59-9894-7e57cabb3a29",
+      "credentials": {
+        "googleApi": {
+          "id": "196",
+          "name": "Google API creds"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "folder",
+        "name": "testFolder",
+        "options": {}
+      },
+      "name": "Google Drive11",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 1,
+      "position": [
+        520,
+        820
+      ],
+      "id": "9785352c-2a2d-4ca1-baa7-0a310fd04413",
+      "credentials": {
+        "googleApi": {
+          "id": "196",
+          "name": "Google API creds"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "folder",
+        "operation": "share",
+        "fileId": {
+          "__rl": true,
+          "value": "={{$node[\"Google Drive11\"].json[\"id\"]}}",
+          "mode": "id"
+        },
+        "permissionsUi": {
+          "permissionsValues": {
+            "role": "reader",
+            "type": "anyone"
+          }
+        },
+        "options": {}
+      },
+      "name": "Google Drive12",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 1,
+      "position": [
+        680,
+        820
+      ],
+      "id": "a3fba084-d9c2-4311-a893-f2280313a784",
+      "credentials": {
+        "googleApi": {
+          "id": "196",
+          "name": "Google API creds"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "folder",
+        "operation": "delete",
+        "fileId": {
+          "__rl": true,
+          "value": "={{$node[\"Google Drive11\"].json[\"id\"]}}",
+          "mode": "id"
+        }
+      },
+      "name": "Google Drive13",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 1,
+      "position": [
+        840,
+        820
+      ],
+      "id": "2f78286f-efd2-4284-b5d4-7f58abebf896",
+      "credentials": {
+        "googleApi": {
+          "id": "196",
+          "name": "Google API creds"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fileContent": "Test File Content",
+        "name": "testFile",
+        "options": {}
+      },
+      "name": "Google Drive14",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 1,
+      "position": [
+        520,
+        980
+      ],
+      "id": "c85b7694-685b-4fb3-bd63-46c2d5099c2e",
+      "credentials": {
+        "googleApi": {
+          "id": "196",
+          "name": "Google API creds"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "share",
+        "fileId": {
+          "__rl": true,
+          "value": "={{$node[\"Google Drive14\"].json[\"id\"]}}",
+          "mode": "id"
+        },
+        "permissionsUi": {
+          "permissionsValues": {
+            "role": "reader",
+            "type": "anyone"
+          }
+        },
+        "options": {}
+      },
+      "name": "Google Drive15",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 1,
+      "position": [
+        680,
+        980
+      ],
+      "id": "be2a8cd4-1e04-47cf-8073-109b7f7af275",
+      "credentials": {
+        "googleApi": {
+          "id": "196",
+          "name": "Google API creds"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "list",
+        "limit": 1,
+        "options": {}
+      },
+      "name": "Google Drive16",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 1,
+      "position": [
+        840,
+        980
+      ],
+      "id": "47d4441f-8694-46fa-8100-8b9119782ec1",
+      "credentials": {
+        "googleApi": {
+          "id": "196",
+          "name": "Google API creds"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{$node[\"Google Drive14\"].json[\"id\"]}}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "name": "Google Drive17",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 1,
+      "position": [
+        980,
+        980
+      ],
+      "id": "e4717e9d-3336-4654-9a1c-9839d6e52f92",
+      "credentials": {
+        "googleApi": {
+          "id": "196",
+          "name": "Google API creds"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "copy",
+        "fileId": {
+          "__rl": true,
+          "value": "={{$node[\"Google Drive14\"].json[\"id\"]}}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "name": "Google Drive18",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 1,
+      "position": [
+        1120,
+        980
+      ],
+      "id": "91da5b53-a560-49dd-aac0-fe16f6c5fc09",
+      "credentials": {
+        "googleApi": {
+          "id": "196",
+          "name": "Google API creds"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "fileId": {
+          "__rl": true,
+          "value": "={{$node[\"Google Drive14\"].json[\"id\"]}}",
+          "mode": "id"
+        }
+      },
+      "name": "Google Drive19",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 1,
+      "position": [
+        1260,
+        980
+      ],
+      "id": "560163a2-ece9-48c4-a3c2-bdc8387626c1",
+      "credentials": {
+        "googleApi": {
+          "id": "196",
+          "name": "Google API creds"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## With new RL mode",
+        "height": 494.0510948905113,
+        "width": 1240.9160583941607
+      },
+      "id": "3c49a1f7-7b5a-42fd-9b27-0b80f853e879",
+      "name": "Note1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        340,
+        680
+      ]
+    }
+  ],
+  "connections": {
+    "Google Drive": {
+      "main": [
+        [
+          {
+            "node": "Google Drive1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Drive1": {
+      "main": [
+        [
+          {
+            "node": "Google Drive2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Google Drive11",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Google Drive14",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Google Drive3",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Google Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Drive3": {
+      "main": [
+        [
+          {
+            "node": "Google Drive4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Drive4": {
+      "main": [
+        [
+          {
+            "node": "Google Drive5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Drive5": {
+      "main": [
+        [
+          {
+            "node": "Google Drive6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Drive6": {
+      "main": [
+        [
+          {
+            "node": "Google Drive7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Drive7": {
+      "main": [
+        [
+          {
+            "node": "Google Drive8",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Drive8": {
+      "main": [
+        [
+          {
+            "node": "Google Drive9",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Drive11": {
+      "main": [
+        [
+          {
+            "node": "Google Drive12",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Drive12": {
+      "main": [
+        [
+          {
+            "node": "Google Drive13",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Drive14": {
+      "main": [
+        [
+          {
+            "node": "Google Drive15",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Drive15": {
+      "main": [
+        [
+          {
+            "node": "Google Drive16",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Drive16": {
+      "main": [
+        [
+          {
+            "node": "Google Drive17",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Drive17": {
+      "main": [
+        [
+          {
+            "node": "Google Drive18",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Drive18": {
+      "main": [
+        [
+          {
+            "node": "Google Drive19",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Drive19": {
+      "main": [
+        [
+          {
+            "node": "Google Drive10",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "staticData": null,
+  "meta": null,
+  "pinData": {},
+  "versionId": null,
+  "triggerCount": 0,
+  "tags": []
+}
