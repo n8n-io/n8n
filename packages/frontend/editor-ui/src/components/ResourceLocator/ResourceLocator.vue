@@ -352,12 +352,9 @@ const allowNewResources = computed(() => {
 		return undefined;
 	}
 
-	const addNewResourceOptions = getPropertyArgument(
-		currentMode.value,
-		'allowNewResource',
-	) as INodePropertyModeTypeOptions['allowNewResource'];
+	const addNewResourceOptions = getPropertyArgument(currentMode.value, 'allowNewResource');
 
-	if (!addNewResourceOptions) {
+	if (!addNewResourceOptions || typeof addNewResourceOptions !== 'object') {
 		return undefined;
 	}
 
@@ -521,7 +518,7 @@ function openResource(url: string) {
 function getPropertyArgument(
 	parameter: INodePropertyMode,
 	argumentName: keyof INodePropertyModeTypeOptions,
-): string | number | boolean | undefined | INodePropertyModeTypeOptions['allowNewResource'] {
+): string | number | boolean | INodePropertyModeTypeOptions['allowNewResource'] | undefined {
 	return parameter.typeOptions?.[argumentName];
 }
 
