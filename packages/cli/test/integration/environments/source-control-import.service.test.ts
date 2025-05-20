@@ -1,13 +1,13 @@
 import type { SourceControlledFile } from '@n8n/api-types';
 import {
-	CredentialsEntity,
+	type CredentialsEntity,
 	CredentialsRepository,
-	Folder,
-	Project,
-	TagEntity,
+	type Folder,
+	type Project,
+	type TagEntity,
 	TagRepository,
-	User,
-	WorkflowEntity,
+	type User,
+	type WorkflowEntity,
 	WorkflowRepository,
 	WorkflowTagMappingRepository,
 } from '@n8n/db';
@@ -26,6 +26,9 @@ import fsp from 'node:fs/promises';
 
 import { SourceControlImportService } from '@/environments.ee/source-control/source-control-import.service.ee';
 import type { ExportableCredential } from '@/environments.ee/source-control/types/exportable-credential';
+import type { IWorkflowToImport } from '@/interfaces';
+import { createFolder } from '@test-integration/db/folders';
+import { assignTagToWorkflow, createTag } from '@test-integration/db/tags';
 
 import { mockInstance } from '../../shared/mocking';
 import { createCredentials, saveCredential } from '../shared/db/credentials';
@@ -34,11 +37,6 @@ import { createAdmin, createMember, createOwner, getGlobalOwner } from '../share
 import { createWorkflow } from '../shared/db/workflows';
 import { randomCredentialPayload } from '../shared/random';
 import * as testDb from '../shared/test-db';
-import { IWorkflowToImport } from '@/interfaces';
-import { SourceControlContext } from '@/environments.ee/source-control/types/source-control-context';
-import { createFolder } from '@test-integration/db/folders';
-import { assignTagToWorkflow, createTag } from '@test-integration/db/tags';
-import { ExportableTags } from '@/environments.ee/source-control/types/exportable-tags';
 
 jest.mock('fast-glob');
 
@@ -791,7 +789,6 @@ describe('SourceControlImportService', () => {
 		let team1: Project;
 		let team2: Project;
 		let workflowTeam1: WorkflowEntity[];
-		let workflowTeam2: WorkflowEntity[];
 
 		beforeEach(async () => {
 			[globalAdmin, globalOwner, globalMember, teamAdmin] = await Promise.all([
@@ -834,7 +831,7 @@ describe('SourceControlImportService', () => {
 				),
 			]);
 
-			workflowTeam2 = await Promise.all([
+			await Promise.all([
 				await createWorkflow(
 					{
 						id: 'wf4',

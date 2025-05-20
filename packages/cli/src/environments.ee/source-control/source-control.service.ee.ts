@@ -43,12 +43,6 @@ import type { SourceControlGetStatus } from './types/source-control-get-status';
 import type { SourceControlPreferences } from './types/source-control-preferences';
 import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
 
-const GlobalAccessContext: SourceControlContext = {
-	user: Object.assign(new User(), {
-		role: 'global:admin',
-	}),
-};
-
 @Service()
 export class SourceControlService {
 	/** Path to SSH private key in filesystem. */

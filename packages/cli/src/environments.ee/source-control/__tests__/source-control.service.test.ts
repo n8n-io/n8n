@@ -141,6 +141,7 @@ describe('SourceControlService', () => {
 		it('conflict depends on the value of `direction`', async () => {
 			// ARRANGE
 			const user = mock<User>();
+			user.role = 'global:admin';
 
 			// Define a credential that does only exist locally.
 			// Pulling this would delete it so it should be marked as a conflict.
