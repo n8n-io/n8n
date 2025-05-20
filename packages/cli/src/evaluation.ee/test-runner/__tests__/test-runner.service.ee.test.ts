@@ -5,13 +5,13 @@ import type { WorkflowRepository } from '@n8n/db';
 import { readFileSync } from 'fs';
 import { mock } from 'jest-mock-extended';
 import type { ErrorReporter } from 'n8n-core';
-import type { ITaskData, IWorkflowBase } from 'n8n-workflow';
-import type { ExecutionError, IRun } from 'n8n-workflow';
+import type { IWorkflowBase } from 'n8n-workflow';
+import type { IRun } from 'n8n-workflow';
 import path from 'path';
 
 import type { ActiveExecutions } from '@/active-executions';
 import { EVALUATION_DATASET_TRIGGER_NODE } from '@/constants';
-import { TestCaseExecutionError, TestRunError } from '@/evaluation.ee/test-runner/errors.ee';
+import { TestRunError } from '@/evaluation.ee/test-runner/errors.ee';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowRunner } from '@/workflow-runner';
@@ -23,31 +23,6 @@ import { TestRunnerService } from '../test-runner.service.ee';
 const wfUnderTestJson = JSON.parse(
 	readFileSync(path.join(__dirname, './mock-data/workflow.under-test.json'), { encoding: 'utf-8' }),
 );
-
-function mockExecutionData() {
-	return mock<IRun>({
-		data: {
-			resultData: {
-				runData: {
-					'When clicking ‘Execute workflow’': mock<ITaskData[]>(),
-				},
-				// error is an optional prop, but jest-mock-extended will mock it by default,
-				// which affects the code logic. So, we need to explicitly set it to undefined.
-				error: undefined,
-			},
-		},
-	});
-}
-
-function mockErrorExecutionData() {
-	return mock<IRun>({
-		data: {
-			resultData: {
-				error: mock<ExecutionError>(),
-			},
-		},
-	});
-}
 
 const errorReporter = mock<ErrorReporter>();
 const logger = mockLogger();
