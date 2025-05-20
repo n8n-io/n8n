@@ -13,3 +13,4 @@ export { combineScopes } from './utilities/combineScopes.ee';
 export { rolesWithScope } from './utilities/rolesWithScope.ee';
 export { getGlobalScopes } from './utilities/getGlobalScopes.ee';
 export { getRoleScopes } from './utilities/getRoleScopes.ee';
+export * from './public-api-permissions.ee';

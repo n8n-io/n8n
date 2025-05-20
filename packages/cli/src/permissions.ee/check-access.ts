@@ -1,13 +1,10 @@
 import type { User } from '@n8n/db';
-import { ProjectRepository } from '@n8n/db';
+import { ProjectRepository, SharedCredentialsRepository, SharedWorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { hasGlobalScope, rolesWithScope, type Scope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
-
-import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 
 /**
  * Check if a user has the required scopes. The check can be:

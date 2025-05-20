@@ -6,13 +6,16 @@ import type {
 	INode,
 	IPinData,
 	IRunData,
+	ExecutionError,
 } from 'n8n-workflow';
 import type { ExecutionFilterType, ExecutionsQueryFilter, INodeUi } from '@/Interface';
 import { isEmpty } from '@/utils/typesUtils';
 import { FORM_NODE_TYPE, FORM_TRIGGER_NODE_TYPE, GITHUB_NODE_TYPE } from '../constants';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { i18n } from '@/plugins/i18n';
+import { h } from 'vue';
+import NodeExecutionErrorMessage from '@/components/NodeExecutionErrorMessage.vue';
 
 export function getDefaultExecutionFilters(): ExecutionFilterType {
 	return {
@@ -154,7 +157,7 @@ export const waitingNodeTooltip = (node: INodeUi | null | undefined) => {
 		}
 		if (resume) {
 			if (!['webhook', 'form'].includes(resume as string)) {
-				return i18n.baseText('ndv.output.waitNodeWaiting');
+				return i18n.baseText('ndv.output.waitNodeWaiting.description.timer');
 			}
 
 			const { webhookSuffix } = (node.parameters.options ?? {}) as { webhookSuffix: string };
@@ -165,12 +168,12 @@ export const waitingNodeTooltip = (node: INodeUi | null | undefined) => {
 
 			if (resume === 'form') {
 				resumeUrl = `${useRootStore().formWaitingUrl}/${useWorkflowsStore().activeExecutionId}${suffix}`;
-				message = i18n.baseText('ndv.output.waitNodeWaitingForFormSubmission');
+				message = i18n.baseText('ndv.output.waitNodeWaiting.description.form');
 			}
 
 			if (resume === 'webhook') {
 				resumeUrl = `${useRootStore().webhookWaitingUrl}/${useWorkflowsStore().activeExecutionId}${suffix}`;
-				message = i18n.baseText('ndv.output.waitNodeWaitingForWebhook');
+				message = i18n.baseText('ndv.output.waitNodeWaiting.description.webhook');
 			}
 
 			if (message && resumeUrl) {
@@ -179,7 +182,7 @@ export const waitingNodeTooltip = (node: INodeUi | null | undefined) => {
 		}
 
 		if (node?.type === FORM_NODE_TYPE) {
-			const message = i18n.baseText('ndv.output.waitNodeWaitingForFormSubmission');
+			const message = i18n.baseText('ndv.output.waitNodeWaiting.description.form');
 			const resumeUrl = `${useRootStore().formWaitingUrl}/${useWorkflowsStore().activeExecutionId}`;
 			return `${message}<a href="${resumeUrl}" target="_blank">${resumeUrl}</a>`;
 		}
@@ -265,4 +268,77 @@ export function executionRetryMessage(executionStatus: ExecutionStatus):
 	}
 
 	return undefined;
+}
+
+/**
+ * Returns the error message from the execution object if it exists,
+ * or a fallback error message otherwise
+ */
+export function getExecutionErrorMessage({
+	error,
+	lastNodeExecuted,
+}: { error?: ExecutionError; lastNodeExecuted?: string }): string {
+	let errorMessage: string;
+
+	if (lastNodeExecuted && error) {
+		errorMessage = error.message ?? error.description ?? '';
+	} else {
+		errorMessage = i18n.baseText('pushConnection.executionError', {
+			interpolate: { error: '!' },
+		});
+
+		if (error?.message) {
+			let nodeName: string | undefined;
+			if ('node' in error) {
+				nodeName = typeof error.node === 'string' ? error.node : error.node?.name;
+			}
+
+			const receivedError = nodeName ? `${nodeName}: ${error.message}` : error.message;
+			errorMessage = i18n.baseText('pushConnection.executionError', {
+				interpolate: {
+					error: `.${i18n.baseText('pushConnection.executionError.details', {
+						interpolate: {
+							details: receivedError,
+						},
+					})}`,
+				},
+			});
+		}
+	}
+
+	return errorMessage;
+}
+
+export function getExecutionErrorToastConfiguration({
+	error,
+	lastNodeExecuted,
+}: { error: ExecutionError; lastNodeExecuted?: string }) {
+	const message = getExecutionErrorMessage({ error, lastNodeExecuted });
+
+	if (error.name === 'SubworkflowOperationError') {
+		return { title: error.message, message: error.description ?? '' };
+	}
+
+	if (
+		(error.name === 'NodeOperationError' || error.name === 'NodeApiError') &&
+		error.functionality === 'configuration-node'
+	) {
+		// If the error is a configuration error of the node itself doesn't get executed so we can't use lastNodeExecuted for the title
+		const nodeErrorName = 'node' in error && error.node?.name ? error.node.name : '';
+
+		return {
+			title: nodeErrorName ? `Error in sub-node ‘${nodeErrorName}‘` : 'Problem executing workflow',
+			message: h(NodeExecutionErrorMessage, {
+				errorMessage: error.description ?? message,
+				nodeName: nodeErrorName,
+			}),
+		};
+	}
+
+	return {
+		title: lastNodeExecuted
+			? `Problem in node ‘${lastNodeExecuted}‘`
+			: 'Problem executing workflow',
+		message,
+	};
 }

@@ -256,6 +256,8 @@ export function createTestTaskData(partialData: Partial<ITaskData> = {}): ITaskD
 }
 
 export function createTestLogEntry(data: Partial<LogEntry> = {}): LogEntry {
+	const executionId = data.executionId ?? 'test-execution-id';
+
 	return {
 		node: createTestNode(),
 		runIndex: 0,
@@ -264,6 +266,9 @@ export function createTestLogEntry(data: Partial<LogEntry> = {}): LogEntry {
 		children: [],
 		consumedTokens: { completionTokens: 0, totalTokens: 0, promptTokens: 0, isEstimate: false },
 		depth: 0,
+		workflow: createTestWorkflowObject(),
+		executionId,
+		execution: createTestWorkflowExecutionResponse({ id: executionId }).data!,
 		...data,
 	};
 }

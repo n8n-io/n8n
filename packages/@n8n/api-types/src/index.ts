@@ -5,6 +5,7 @@ export type * from './scaling';
 export type * from './frontend-settings';
 export type * from './user';
 export type * from './api-keys';
+export type * from './community-node-types';
 
 export type { Collaborator } from './push/collaboration';
 export type { HeartbeatMessage } from './push/heartbeat';

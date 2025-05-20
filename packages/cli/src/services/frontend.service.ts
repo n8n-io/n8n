@@ -178,6 +178,7 @@ export class FrontendService {
 			isMultiMain: this.instanceSettings.isMultiMain,
 			pushBackend: this.pushConfig.backend,
 			communityNodesEnabled: this.globalConfig.nodes.communityPackages.enabled,
+			unverifiedCommunityNodesEnabled: this.globalConfig.nodes.communityPackages.unverifiedEnabled,
 			deployment: {
 				type: config.getEnv('deployment.type'),
 			},
@@ -218,9 +219,6 @@ export class FrontendService {
 			},
 			variables: {
 				limit: 0,
-			},
-			expressions: {
-				evaluator: config.getEnv('expression.evaluator'),
 			},
 			banners: {
 				dismissed: [],

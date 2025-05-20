@@ -50,7 +50,7 @@ describe('OpenAI Workflow', () => {
 			workflowData: testHarness.readWorkflowJSON('list-assistants.workflow.json'),
 		},
 		output: {
-			nodeExecutionOrder: ['When clicking ‘Test workflow’', 'OpenAI'],
+			nodeExecutionOrder: ['When clicking ‘Execute workflow’', 'OpenAI'],
 			nodeData: {
 				OpenAI: [
 					assistants.map((assistant) => ({

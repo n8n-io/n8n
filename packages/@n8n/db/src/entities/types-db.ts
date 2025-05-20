@@ -272,8 +272,12 @@ export const enum StatisticsNames {
 export type AuthProviderType = 'ldap' | 'email' | 'saml'; // | 'google';
 
 export type FolderWithWorkflowAndSubFolderCount = Folder & {
-	workflowCount: boolean;
-	subFolderCount: number;
+	workflowCount?: boolean;
+	subFolderCount?: number;
+};
+
+export type FolderWithWorkflowAndSubFolderCountAndPath = FolderWithWorkflowAndSubFolderCount & {
+	path?: string[];
 };
 
 export type TestRunFinalResult = 'success' | 'error' | 'warning';

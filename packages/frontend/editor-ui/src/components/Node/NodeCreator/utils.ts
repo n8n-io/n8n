@@ -5,6 +5,8 @@ import type {
 	SimplifiedNodeType,
 	INodeCreateElement,
 	SectionCreateElement,
+	ActionTypeDescription,
+	NodeFilterType,
 } from '@/Interface';
 import {
 	AI_CATEGORY_AGENTS,
@@ -25,6 +27,10 @@ import * as changeCase from 'change-case';
 
 import { useSettingsStore } from '@/stores/settings.store';
 import { SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
+import type { NodeIconSource } from '../../../utils/nodeIcon';
+import type { CommunityNodeDetails, ViewStack } from './composables/useViewStacks';
+
+const COMMUNITY_NODE_TYPE_PREVIEW_TOKEN = '-preview';
 
 export function transformNodeType(
 	node: SimplifiedNodeType,
@@ -221,3 +227,76 @@ export const formatTriggerActionName = (actionPropertyName: string) => {
 	}
 	return changeCase.noCase(name);
 };
+
+export const removePreviewToken = (key: string) =>
+	key.replace(COMMUNITY_NODE_TYPE_PREVIEW_TOKEN, '');
+
+export const isNodePreviewKey = (key = '') => key.includes(COMMUNITY_NODE_TYPE_PREVIEW_TOKEN);
+
+export function extendItemsWithUUID(items: INodeCreateElement[]) {
+	return items.map((item) => ({
+		...item,
+		uuid: `${item.key}-${uuidv4()}`,
+	}));
+}
+
+export const filterAndSearchNodes = (
+	mergedNodes: SimplifiedNodeType[],
+	search: string,
+	isAgentSubcategory: boolean,
+) => {
+	if (!search || isAgentSubcategory) return [];
+
+	const vettedNodes = mergedNodes.map((item) => transformNodeType(item)) as NodeCreateElement[];
+
+	const searchResult: INodeCreateElement[] = extendItemsWithUUID(
+		searchNodes(search || '', vettedNodes),
+	);
+
+	return searchResult;
+};
+
+export function prepareCommunityNodeDetailsViewStack(
+	item: NodeCreateElement,
+	nodeIcon: NodeIconSource | undefined,
+	rootView: NodeFilterType | undefined,
+	nodeActions: ActionTypeDescription[] = [],
+): ViewStack {
+	const installed = !isNodePreviewKey(item.key);
+	const packageName = removePreviewToken(item.key.split('.')[0]);
+
+	const communityNodeDetails: CommunityNodeDetails = {
+		title: item.properties.displayName,
+		description: item.properties.description,
+		key: item.key,
+		nodeIcon,
+		installed,
+		packageName,
+	};
+
+	if (nodeActions.length) {
+		const transformedActions = nodeActions?.map((a) =>
+			transformNodeType(a, item.properties.displayName, 'action'),
+		);
+
+		return {
+			subcategory: item.properties.displayName,
+			title: i18n.baseText('nodeSettings.communityNodeDetails.title'),
+			rootView,
+			hasSearch: false,
+			mode: 'actions',
+			items: transformedActions,
+			communityNodeDetails,
+		};
+	}
+
+	return {
+		subcategory: item.properties.displayName,
+		title: i18n.baseText('nodeSettings.communityNodeDetails.title'),
+		rootView,
+		hasSearch: false,
+		items: [item],
+		mode: 'community-node',
+		communityNodeDetails,
+	};
+}

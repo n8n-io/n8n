@@ -267,7 +267,7 @@ describe('Workflow Actions', () => {
 			.should('have.class', 'is-disabled');
 	});
 
-	it('should archive workflow and then delete it', () => {
+	it('should archive nonactive workflow and then delete it', () => {
 		WorkflowPage.actions.saveWorkflowOnButtonClick();
 		WorkflowPage.getters.archivedTag().should('not.exist');
 
@@ -275,7 +275,6 @@ describe('Workflow Actions', () => {
 		WorkflowPage.getters.workflowMenu().should('be.visible');
 		WorkflowPage.getters.workflowMenu().click();
 		WorkflowPage.getters.workflowMenuItemArchive().click();
-		WorkflowPage.actions.acceptConfirmModal();
 
 		successToast().should('exist');
 		cy.url().should('include', WorkflowPages.url);
@@ -295,8 +294,11 @@ describe('Workflow Actions', () => {
 		cy.url().should('include', WorkflowPages.url);
 	});
 
-	it('should archive workflow and then unarchive it', () => {
+	it('should archive active workflow and then delete it', () => {
+		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.saveWorkflowOnButtonClick();
+		WorkflowPage.actions.activateWorkflow();
+		WorkflowPage.getters.isWorkflowActivated();
 		WorkflowPage.getters.archivedTag().should('not.exist');
 
 		// Archive the workflow
@@ -304,6 +306,35 @@ describe('Workflow Actions', () => {
 		WorkflowPage.getters.workflowMenu().click();
 		WorkflowPage.getters.workflowMenuItemArchive().click();
 		WorkflowPage.actions.acceptConfirmModal();
+
+		successToast().should('exist');
+		cy.url().should('include', WorkflowPages.url);
+
+		// Return back to the workflow
+		cy.go('back');
+
+		WorkflowPage.getters.archivedTag().should('be.visible');
+		WorkflowPage.getters.nodeCreatorPlusButton().should('not.exist');
+		WorkflowPage.getters.isWorkflowDeactivated();
+
+		// Delete the workflow
+		WorkflowPage.getters.workflowMenu().should('be.visible');
+		WorkflowPage.getters.workflowMenu().click();
+		WorkflowPage.getters.workflowMenuItemDelete().click();
+		WorkflowPage.actions.acceptConfirmModal();
+		successToast().should('exist');
+		cy.url().should('include', WorkflowPages.url);
+	});
+
+	it('should archive nonactive workflow and then unarchive it', () => {
+		WorkflowPage.actions.saveWorkflowOnButtonClick();
+		WorkflowPage.getters.archivedTag().should('not.exist');
+
+		// Archive the workflow
+		WorkflowPage.getters.workflowMenu().should('be.visible');
+		WorkflowPage.getters.workflowMenu().click();
+		WorkflowPage.getters.workflowMenuItemArchive().click();
+
 		successToast().should('exist');
 		cy.url().should('include', WorkflowPages.url);
 

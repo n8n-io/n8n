@@ -1,6 +1,6 @@
-import { mock } from 'jest-mock-extended';
+import type { Settings, SettingsRepository } from '@n8n/db';
+import { captor, mock } from 'jest-mock-extended';
 
-import type { SettingsRepository } from '@/databases/repositories/settings.repository';
 import type { License } from '@/license';
 import {
 	AnotherDummyProvider,
@@ -11,6 +11,7 @@ import {
 } from '@test/external-secrets/utils';
 import { mockCipher, mockLogger } from '@test/mocking';
 
+import { EXTERNAL_SECRETS_DB_KEY } from '../constants';
 import { ExternalSecretsManager } from '../external-secrets-manager.ee';
 import type { ExternalSecretsSettings } from '../types';
 
@@ -44,9 +45,9 @@ describe('External Secrets Manager', () => {
 		});
 
 		license.isExternalSecretsEnabled.mockReturnValue(true);
-		settingsRepo.getEncryptedSecretsProviderSettings.mockImplementation(async () =>
-			JSON.stringify(settings),
-		);
+		settingsRepo.findByKey
+			.calledWith(EXTERNAL_SECRETS_DB_KEY)
+			.mockImplementation(async () => mock<Settings>({ value: JSON.stringify(settings) }));
 
 		manager = new ExternalSecretsManager(
 			mockLogger(),
@@ -251,7 +252,7 @@ describe('External Secrets Manager', () => {
 
 	describe('setProviderSettings', () => {
 		test('should save provider settings', async () => {
-			const settingsSpy = jest.spyOn(settingsRepo, 'saveEncryptedSecretsProviderSettings');
+			const settingsSpy = jest.spyOn(settingsRepo, 'upsert');
 
 			await manager.init();
 
@@ -259,7 +260,9 @@ describe('External Secrets Manager', () => {
 				test: 'value',
 			});
 
-			expect(JSON.parse(settingsSpy.mock.calls[0][0])).toEqual(
+			const settingsCaptor = captor<Settings>();
+			expect(settingsSpy).toHaveBeenCalledWith(settingsCaptor, ['key']);
+			expect(JSON.parse(settingsCaptor.value.value)).toEqual(
 				expect.objectContaining({
 					dummy: {
 						connected: true,

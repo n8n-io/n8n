@@ -3,6 +3,7 @@ import type {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	INodeProperties,
 	IPollFunctions,
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
@@ -20,6 +21,113 @@ import { sheetsSearch, spreadSheetsSearch } from './v2/methods/listSearch';
 import { getSheetHeaderRowAndSkipEmpty } from './v2/methods/loadOptions';
 import { apiRequest } from './v2/transport';
 import { GOOGLE_DRIVE_FILE_URL_REGEX, GOOGLE_SHEETS_SHEET_URL_REGEX } from '../constants';
+
+export const document: INodeProperties = {
+	displayName: 'Document',
+	name: 'documentId',
+	type: 'resourceLocator',
+	default: { mode: 'list', value: '' },
+	required: true,
+	modes: [
+		{
+			displayName: 'From List',
+			name: 'list',
+			type: 'list',
+			typeOptions: {
+				searchListMethod: 'spreadSheetsSearch',
+				searchable: true,
+			},
+		},
+		{
+			displayName: 'By URL',
+			name: 'url',
+			type: 'string',
+			extractValue: {
+				type: 'regex',
+				regex: GOOGLE_DRIVE_FILE_URL_REGEX,
+			},
+			validation: [
+				{
+					type: 'regex',
+					properties: {
+						regex: GOOGLE_DRIVE_FILE_URL_REGEX,
+						errorMessage: 'Not a valid Google Drive File URL',
+					},
+				},
+			],
+		},
+		{
+			displayName: 'By ID',
+			name: 'id',
+			type: 'string',
+			validation: [
+				{
+					type: 'regex',
+					properties: {
+						regex: '[a-zA-Z0-9\\-_]{2,}',
+						errorMessage: 'Not a valid Google Drive File ID',
+					},
+				},
+			],
+			url: '=https://docs.google.com/spreadsheets/d/{{$value}}/edit',
+		},
+	],
+};
+
+export const sheet: INodeProperties = {
+	displayName: 'Sheet',
+	name: 'sheetName',
+	type: 'resourceLocator',
+	default: { mode: 'list', value: '' },
+	// default: '', //empty string set to progresivly reveal fields
+	required: true,
+	typeOptions: {
+		loadOptionsDependsOn: ['documentId.value'],
+	},
+	modes: [
+		{
+			displayName: 'From List',
+			name: 'list',
+			type: 'list',
+			typeOptions: {
+				searchListMethod: 'sheetsSearch',
+				searchable: false,
+			},
+		},
+		{
+			displayName: 'By URL',
+			name: 'url',
+			type: 'string',
+			extractValue: {
+				type: 'regex',
+				regex: GOOGLE_SHEETS_SHEET_URL_REGEX,
+			},
+			validation: [
+				{
+					type: 'regex',
+					properties: {
+						regex: GOOGLE_SHEETS_SHEET_URL_REGEX,
+						errorMessage: 'Not a valid Sheet URL',
+					},
+				},
+			],
+		},
+		{
+			displayName: 'By ID',
+			name: 'id',
+			type: 'string',
+			validation: [
+				{
+					type: 'regex',
+					properties: {
+						regex: '((gid=)?[0-9]{1,})',
+						errorMessage: 'Not a valid Sheet ID',
+					},
+				},
+			],
+		},
+	],
+};
 
 export class GoogleSheetsTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -62,111 +170,8 @@ export class GoogleSheetsTrigger implements INodeType {
 				],
 				default: 'triggerOAuth2',
 			},
-			{
-				displayName: 'Document',
-				name: 'documentId',
-				type: 'resourceLocator',
-				default: { mode: 'list', value: '' },
-				required: true,
-				modes: [
-					{
-						displayName: 'From List',
-						name: 'list',
-						type: 'list',
-						typeOptions: {
-							searchListMethod: 'spreadSheetsSearch',
-							searchable: true,
-						},
-					},
-					{
-						displayName: 'By URL',
-						name: 'url',
-						type: 'string',
-						extractValue: {
-							type: 'regex',
-							regex: GOOGLE_DRIVE_FILE_URL_REGEX,
-						},
-						validation: [
-							{
-								type: 'regex',
-								properties: {
-									regex: GOOGLE_DRIVE_FILE_URL_REGEX,
-									errorMessage: 'Not a valid Google Drive File URL',
-								},
-							},
-						],
-					},
-					{
-						displayName: 'By ID',
-						name: 'id',
-						type: 'string',
-						validation: [
-							{
-								type: 'regex',
-								properties: {
-									regex: '[a-zA-Z0-9\\-_]{2,}',
-									errorMessage: 'Not a valid Google Drive File ID',
-								},
-							},
-						],
-						url: '=https://docs.google.com/spreadsheets/d/{{$value}}/edit',
-					},
-				],
-			},
-			{
-				displayName: 'Sheet',
-				name: 'sheetName',
-				type: 'resourceLocator',
-				default: { mode: 'list', value: '' },
-				// default: '', //empty string set to progresivly reveal fields
-				required: true,
-				typeOptions: {
-					loadOptionsDependsOn: ['documentId.value'],
-				},
-				modes: [
-					{
-						displayName: 'From List',
-						name: 'list',
-						type: 'list',
-						typeOptions: {
-							searchListMethod: 'sheetsSearch',
-							searchable: false,
-						},
-					},
-					{
-						displayName: 'By URL',
-						name: 'url',
-						type: 'string',
-						extractValue: {
-							type: 'regex',
-							regex: GOOGLE_SHEETS_SHEET_URL_REGEX,
-						},
-						validation: [
-							{
-								type: 'regex',
-								properties: {
-									regex: GOOGLE_SHEETS_SHEET_URL_REGEX,
-									errorMessage: 'Not a valid Sheet URL',
-								},
-							},
-						],
-					},
-					{
-						displayName: 'By ID',
-						name: 'id',
-						type: 'string',
-						validation: [
-							{
-								type: 'regex',
-								properties: {
-									regex: '((gid=)?[0-9]{1,})',
-									errorMessage: 'Not a valid Sheet ID',
-								},
-							},
-						],
-					},
-				],
-			},
+			document,
+			sheet,
 			{
 				displayName: 'Trigger On',
 				name: 'event',

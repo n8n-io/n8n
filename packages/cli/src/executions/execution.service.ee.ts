@@ -1,7 +1,7 @@
 import type { WorkflowWithSharingsAndCredentials, IExecutionResponse } from '@n8n/db';
+import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import type { IExecutionFlattedResponse } from '@/interfaces';
 
 import { ExecutionService } from './execution.service';

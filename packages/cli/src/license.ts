@@ -7,6 +7,7 @@ import {
 	type BooleanLicenseFeature,
 	type NumericLicenseFeature,
 } from '@n8n/constants';
+import { SettingsRepository } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import type { TEntitlement, TFeatures, TLicenseBlock } from '@n8n_io/license-sdk';
@@ -14,7 +15,6 @@ import { LicenseManager } from '@n8n_io/license-sdk';
 import { InstanceSettings, Logger } from 'n8n-core';
 
 import config from '@/config';
-import { SettingsRepository } from '@/databases/repositories/settings.repository';
 import { LicenseMetricsService } from '@/metrics/license-metrics.service';
 
 import { N8N_VERSION, SETTINGS_LICENSE_CERT_KEY, Time } from './constants';
@@ -407,21 +407,6 @@ export class License implements LicenseProvider {
 	/** @deprecated Use `LicenseState` instead. */
 	getWorkflowHistoryPruneLimit() {
 		return this.getValue(LICENSE_QUOTAS.WORKFLOW_HISTORY_PRUNE_LIMIT) ?? UNLIMITED_LICENSE_QUOTA;
-	}
-
-	/** @deprecated Use `LicenseState` instead. */
-	getInsightsMaxHistory() {
-		return this.getValue(LICENSE_QUOTAS.INSIGHTS_MAX_HISTORY_DAYS) ?? 7;
-	}
-
-	/** @deprecated Use `LicenseState` instead. */
-	getInsightsRetentionMaxAge() {
-		return this.getValue(LICENSE_QUOTAS.INSIGHTS_RETENTION_MAX_AGE_DAYS) ?? 180;
-	}
-
-	/** @deprecated Use `LicenseState` instead. */
-	getInsightsRetentionPruneInterval() {
-		return this.getValue(LICENSE_QUOTAS.INSIGHTS_RETENTION_PRUNE_INTERVAL_DAYS) ?? 24;
 	}
 
 	/** @deprecated Use `LicenseState` instead. */

@@ -1,5 +1,5 @@
-import { ProjectRelationRepository } from '@n8n/db';
 import type { User } from '@n8n/db';
+import { ProjectRelationRepository, SharedWorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
 	hasGlobalScope,
@@ -11,7 +11,6 @@ import {
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { RoleService } from '@/services/role.service';
 
 export type ShareWorkflowOptions =

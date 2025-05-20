@@ -1,7 +1,8 @@
 import type { WebhookEntity } from '@n8n/db';
+import { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
-import { Logger } from 'n8n-core';
+import { InstanceSettings } from 'n8n-core';
 import { FormTrigger } from 'n8n-nodes-base/nodes/Form/FormTrigger.node';
 import { ScheduleTrigger } from 'n8n-nodes-base/nodes/Schedule/ScheduleTrigger.node';
 import { NodeApiError, Workflow } from 'n8n-workflow';
@@ -14,7 +15,6 @@ import type {
 
 import { ActiveExecutions } from '@/active-executions';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { ExecutionService } from '@/executions/execution.service';
 import { ExternalHooks } from '@/external-hooks';
 import { NodeTypes } from '@/node-types';
@@ -32,7 +32,6 @@ import * as utils from './shared/utils/';
 import { mockInstance } from '../shared/mocking';
 
 mockInstance(ActiveExecutions);
-mockInstance(Logger);
 mockInstance(Push);
 mockInstance(SecretsHelper);
 mockInstance(ExecutionService);
@@ -67,6 +66,7 @@ beforeAll(async () => {
 	const owner = await createOwner();
 	createActiveWorkflow = async () => await createWorkflow({ active: true }, owner);
 	createInactiveWorkflow = async () => await createWorkflow({ active: false }, owner);
+	Container.get(InstanceSettings).markAsLeader();
 });
 
 afterEach(async () => {

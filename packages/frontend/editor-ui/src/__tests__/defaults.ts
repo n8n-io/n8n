@@ -11,6 +11,7 @@ export const defaultSettings: FrontendSettings = {
 	},
 	allowedModules: {},
 	communityNodesEnabled: false,
+	unverifiedCommunityNodesEnabled: true,
 	defaultLocale: '',
 	endpointForm: '',
 	endpointFormTest: '',
@@ -42,9 +43,6 @@ export const defaultSettings: FrontendSettings = {
 				limit: 1,
 			},
 		},
-	},
-	expressions: {
-		evaluator: 'tournament',
 	},
 	executionMode: 'regular',
 	isMultiMain: false,

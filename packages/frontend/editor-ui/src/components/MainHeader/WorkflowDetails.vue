@@ -6,11 +6,11 @@ import {
 	MODAL_CONFIRM,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	SOURCE_CONTROL_PUSH_MODAL_KEY,
-	VALID_WORKFLOW_IMPORT_URL_REGEX,
 	VIEWS,
 	WORKFLOW_MENU_ACTIONS,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_SHARE_MODAL_KEY,
+	IMPORT_WORKFLOW_URL_MODAL_KEY,
 } from '@/constants';
 import ShortenName from '@/components/ShortenName.vue';
 import WorkflowTagsContainer from '@/components/WorkflowTagsContainer.vue';
@@ -23,7 +23,7 @@ import BreakpointsObserver from '@/components/BreakpointsObserver.vue';
 import WorkflowHistoryButton from '@/components/MainHeader/WorkflowHistoryButton.vue';
 import CollaborationPane from '@/components/MainHeader/CollaborationPane.vue';
 
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useTagsStore } from '@/stores/tags.store';
@@ -476,24 +476,7 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.IMPORT_FROM_URL: {
-			try {
-				const promptResponse = await message.prompt(
-					locale.baseText('mainSidebar.prompt.workflowUrl') + ':',
-					locale.baseText('mainSidebar.prompt.importWorkflowFromUrl') + ':',
-					{
-						confirmButtonText: locale.baseText('mainSidebar.prompt.import'),
-						cancelButtonText: locale.baseText('mainSidebar.prompt.cancel'),
-						inputErrorMessage: locale.baseText('mainSidebar.prompt.invalidUrl'),
-						inputPattern: VALID_WORKFLOW_IMPORT_URL_REGEX,
-					},
-				);
-
-				if (promptResponse.action === 'cancel') {
-					return;
-				}
-
-				nodeViewEventBus.emit('importWorkflowUrl', { url: promptResponse.value });
-			} catch (e) {}
+			uiStore.openModal(IMPORT_WORKFLOW_URL_MODAL_KEY);
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.IMPORT_FROM_FILE: {
@@ -535,24 +518,26 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.ARCHIVE: {
-			const archiveConfirmed = await message.confirm(
-				locale.baseText('mainSidebar.confirmMessage.workflowArchive.message', {
-					interpolate: { workflowName: props.name },
-				}),
-				locale.baseText('mainSidebar.confirmMessage.workflowArchive.headline'),
-				{
-					type: 'warning',
-					confirmButtonText: locale.baseText(
-						'mainSidebar.confirmMessage.workflowArchive.confirmButtonText',
-					),
-					cancelButtonText: locale.baseText(
-						'mainSidebar.confirmMessage.workflowArchive.cancelButtonText',
-					),
-				},
-			);
+			if (props.active) {
+				const archiveConfirmed = await message.confirm(
+					locale.baseText('mainSidebar.confirmMessage.workflowArchive.message', {
+						interpolate: { workflowName: props.name },
+					}),
+					locale.baseText('mainSidebar.confirmMessage.workflowArchive.headline'),
+					{
+						type: 'warning',
+						confirmButtonText: locale.baseText(
+							'mainSidebar.confirmMessage.workflowArchive.confirmButtonText',
+						),
+						cancelButtonText: locale.baseText(
+							'mainSidebar.confirmMessage.workflowArchive.cancelButtonText',
+						),
+					},
+				);
 
-			if (archiveConfirmed !== MODAL_CONFIRM) {
-				return;
+				if (archiveConfirmed !== MODAL_CONFIRM) {
+					return;
+				}
 			}
 
 			try {
@@ -694,7 +679,11 @@ const onBreadcrumbsItemSelected = (item: PathItem) => {
 					@item-selected="onBreadcrumbsItemSelected"
 				>
 					<template #append>
-						<span v-if="projectsStore.currentProject" :class="$style['path-separator']">/</span>
+						<span
+							v-if="projectsStore.currentProject ?? projectsStore.personalProject"
+							:class="$style['path-separator']"
+							>/</span
+						>
 						<ShortenName :name="name" :limit="value" :custom="true" test-id="workflow-name-input">
 							<template #default="{ shortenedName }">
 								<InlineTextEdit
