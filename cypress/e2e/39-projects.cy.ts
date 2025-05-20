@@ -3,7 +3,7 @@ import { setCredentialValues } from '../composables/modals/credential-modal';
 import {
 	clickCreateNewCredential,
 	getNdvContainer,
-	selectResourceLocatorItem,
+	selectResourceLocatorAddResourceItem,
 } from '../composables/ndv';
 import * as projects from '../composables/projects';
 import {
@@ -301,7 +301,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 
 			cy.window().then((win) => cy.stub(win, 'open').callsFake((url) => cy.visit(url)));
 
-			selectResourceLocatorItem('workflowId', 0, 'Create a');
+			selectResourceLocatorAddResourceItem('workflowId', 'Create a');
 			// Need to wait for the trigger node to auto-open after a delay
 			getNdvContainer().should('be.visible');
 			cy.get('body').type('{esc}');
