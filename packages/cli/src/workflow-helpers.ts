@@ -179,12 +179,3 @@ export async function getVariables(): Promise<IDataObject> {
 		}, {} as IDataObject),
 	);
 }
-
-export function countEvaluationMetricNodes(workflow: IWorkflowBase): number {
-	return workflow.nodes.reduce((acc, node) => {
-		if (node.type === 'n8n-nodes-base.evaluation' && node.parameters.operation === 'setMetrics') {
-			return acc + 1;
-		}
-		return acc;
-	}, 0);
-}
