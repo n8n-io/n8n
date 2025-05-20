@@ -20,7 +20,10 @@ import { isEmpty, isPresent } from '@/utils/typesUtils';
 import type {
 	ICredentialsDecrypted,
 	ICredentialType,
+	INodeCredentialDescription,
 	INodeCredentialTestResult,
+	INodeTypeDescription,
+	NodeParameterValueType,
 } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
@@ -298,6 +301,19 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		return await credentialsApi.getCredentialData(rootStore.restApiContext, id);
 	};
 
+	const getCredentialTypesNodeDescriptions: (
+		overrideCredType: NodeParameterValueType,
+		nodeType: INodeTypeDescription | null,
+	) => INodeCredentialDescription[] = (overrideCredType, nodeType) => {
+		if (typeof overrideCredType !== 'string') return [];
+
+		const credType = getCredentialTypeByName.value(overrideCredType);
+
+		if (credType) return [credType];
+
+		return nodeType?.credentials ? nodeType.credentials : [];
+	};
+
 	const createNewCredential = async (
 		data: ICredentialsDecrypted,
 		projectId?: string,
@@ -444,6 +460,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		createNewCredential,
 		updateCredential,
 		getCredentialData,
+		getCredentialTypesNodeDescriptions,
 		oAuth1Authorize,
 		oAuth2Authorize,
 		getNewCredentialName,
