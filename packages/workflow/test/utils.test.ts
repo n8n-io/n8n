@@ -9,6 +9,8 @@ import {
 	randomInt,
 	randomString,
 	hasKey,
+	isSafeObjectProperty,
+	setSafeObjectProperty,
 } from '@/utils';
 
 describe('isObjectEmpty', () => {
@@ -364,5 +366,31 @@ describe('hasKey', () => {
 			const z: Expect<Equal<typeof x, unknown>> = true;
 			z;
 		}
+	});
+});
+
+describe('isSafeObjectProperty', () => {
+	it.each([
+		['__proto__', false],
+		['prototype', false],
+		['constructor', false],
+		['getPrototypeOf', false],
+		['safeKey', true],
+		['anotherKey', true],
+		['toString', true],
+	])('should return %s for key "%s"', (key, expected) => {
+		expect(isSafeObjectProperty(key)).toBe(expected);
+	});
+});
+
+describe('setSafeObjectProperty', () => {
+	it.each([
+		['safeKey', 123, { safeKey: 123 }],
+		['__proto__', 456, {}],
+		['constructor', 'test', {}],
+	])('should set property "%s" safely', (key, value, expected) => {
+		const obj: Record<string, unknown> = {};
+		setSafeObjectProperty(obj, key, value);
+		expect(obj).toEqual(expected);
 	});
 });
