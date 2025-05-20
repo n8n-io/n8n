@@ -443,7 +443,9 @@ describe('POST /projects/', () => {
 			testServer.license.setQuota('quota:maxTeamProjects', 3);
 			const ownerUser = await createOwner();
 			const ownerAgent = testServer.authAgentFor(ownerUser);
-			expect(await Container.get(ProjectRepository).count({ where: { type: 'team' } })).toBe(0);
+			await expect(
+				Container.get(ProjectRepository).count({ where: { type: 'team' } }),
+			).resolves.toBe(0);
 
 			await Promise.all([
 				ownerAgent.post('/projects/').send({ name: 'Test Team Project 1' }),
@@ -454,7 +456,9 @@ describe('POST /projects/', () => {
 				ownerAgent.post('/projects/').send({ name: 'Test Team Project 6' }),
 			]);
 
-			expect(await Container.get(ProjectRepository).count({ where: { type: 'team' } })).toBe(3);
+			await expect(
+				Container.get(ProjectRepository).count({ where: { type: 'team' } }),
+			).resolves.toBe(3);
 		});
 	}
 });
