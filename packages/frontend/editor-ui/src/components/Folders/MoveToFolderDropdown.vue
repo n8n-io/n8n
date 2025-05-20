@@ -3,9 +3,9 @@ import { useI18n } from '@/composables/useI18n';
 import type { ChangeLocationSearchResult } from '@/Interface';
 import { useFoldersStore } from '@/stores/folders.store';
 import { useProjectsStore } from '@/stores/projects.store';
-import { type ProjectIcon as ItemProjectIcon, ProjectTypes } from '@/types/projects.types';
+import { ProjectTypes } from '@/types/projects.types';
 import { N8nSelect } from '@n8n/design-system';
-import { computed, onMounted, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 /**
  * This component is used to select a folder to move a resource (folder or workflow) to.
@@ -51,16 +51,6 @@ const projectName = computed(() => {
 	return currentProject.value?.name;
 });
 
-const projectIcon = computed<ItemProjectIcon>(() => {
-	const defaultIcon: ItemProjectIcon = { type: 'icon', value: 'layer-group' };
-	if (currentProject.value?.type === ProjectTypes.Personal) {
-		return { type: 'icon', value: 'user' };
-	} else if (currentProject.value?.type === ProjectTypes.Team) {
-		return currentProject.value.icon ?? defaultIcon;
-	}
-	return defaultIcon;
-});
-
 const fetchAvailableLocations = async (query?: string) => {
 	loading.value = true;
 	const folders = await foldersStore.fetchFoldersAvailableForMove(
@@ -91,11 +81,14 @@ const fetchAvailableLocations = async (query?: string) => {
 	loading.value = false;
 };
 
-onMounted(() => {
-	// Fetch available locations when the component is mounted without any query
-	// to populate the dropdown with the initial list of all other folders in the project.
-	void fetchAvailableLocations();
-});
+watch(
+	() => [props.currentProjectId, props.currentFolderId, props.parentFolderId],
+	() => {
+		availableLocations.value = [];
+		void fetchAvailableLocations();
+	},
+	{ immediate: true },
+);
 
 const onFolderSelected = (folderId: string) => {
 	const selectedFolder = availableLocations.value.find((folder) => folder.id === folderId);
@@ -134,8 +127,8 @@ const separator = computed(() => {
 			:remote="true"
 			:remote-method="fetchAvailableLocations"
 			:loading="loading"
-			:placeholder="i18n.baseText('folders.move.modal.select.placeholder')"
-			:no-data-text="i18n.baseText('folders.move.modal.no.data.label')"
+			:placeholder="i18n.baseText('folders.move.modal.folder.placeholder')"
+			:no-data-text="i18n.baseText('folders.move.modal.folder.noData.label')"
 			option-label="name"
 			option-value="id"
 			@update:model-value="onFolderSelected"
@@ -185,6 +178,7 @@ const separator = computed(() => {
 <style module lang="scss">
 .move-folder-dropdown {
 	display: flex;
+	padding-top: var(--spacing-2xs) !important;
 }
 
 .folder-select-item {
@@ -219,7 +213,7 @@ li {
 }
 
 .item {
-	max-width: var(--spacing-3xl);
+	max-width: var(--spacing-4xl);
 }
 
 .item.current span {

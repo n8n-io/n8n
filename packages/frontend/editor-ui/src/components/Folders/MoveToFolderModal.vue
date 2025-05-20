@@ -1,10 +1,12 @@
 <script lang="ts" setup>
 import { useI18n } from '@/composables/useI18n';
 import { MOVE_FOLDER_MODAL_KEY } from '@/constants';
+import { useFoldersStore } from '@/stores/folders.store';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useUIStore } from '@/stores/ui.store';
 import { type EventBus, createEventBus } from '@n8n/utils/event-bus';
-import { computed, ref } from 'vue';
+import type { ProjectListItem, ProjectSharingData } from '@/types/projects.types';
+import { computed, ref, watch } from 'vue';
 import MoveToFolderDropdown from './MoveToFolderDropdown.vue';
 
 /**
@@ -30,10 +32,18 @@ const i18n = useI18n();
 const modalBus = createEventBus();
 const moveToFolderDropdown = ref<InstanceType<typeof MoveToFolderDropdown>>();
 
+const foldersStore = useFoldersStore();
 const projectsStore = useProjectsStore();
 const uiStore = useUIStore();
 
 const selectedFolder = ref<{ id: string; name: string } | null>(null);
+const selectedProject = ref<ProjectSharingData | null>(projectsStore.currentProject ?? null);
+const workflowCount = ref(0);
+const subFolderCount = ref(0);
+
+const projects = computed<ProjectListItem[]>(() => {
+	return projectsStore.projects;
+});
 
 const title = computed(() => {
 	return i18n.baseText('folders.move.modal.title', {
@@ -50,6 +60,28 @@ const currentFolder = computed(() => {
 		name: props.data.resource.name,
 	};
 });
+
+const fetchCurrentFolderContents = async () => {
+	if (!currentFolder.value || !projectsStore.currentProject) {
+		return;
+	}
+
+	const { totalWorkflows, totalSubFolders } = await foldersStore.fetchFolderContent(
+		projectsStore.currentProject.id,
+		currentFolder.value.id,
+	);
+
+	workflowCount.value = totalWorkflows;
+	subFolderCount.value = totalSubFolders;
+};
+
+watch(
+	() => [currentFolder, selectedProject],
+	() => {
+		void fetchCurrentFolderContents();
+	},
+	{ immediate: true },
+);
 
 const onFolderSelected = (payload: { id: string; name: string; type: string }) => {
 	selectedFolder.value = payload;
@@ -77,6 +109,40 @@ const onSubmit = () => {
 modalBus.on('opened', () => {
 	moveToFolderDropdown.value?.focusOnInput();
 });
+
+const descriptionMessage = computed(() => {
+	let folderText = '';
+	let workflowText = '';
+	if (subFolderCount.value > 0) {
+		folderText = i18n.baseText('folders.move.modal.folder.count', {
+			interpolate: { count: subFolderCount.value },
+		});
+	}
+	if (workflowCount.value > 0) {
+		workflowText = i18n.baseText('folders.move.modal.workflow.count', {
+			interpolate: { count: workflowCount.value },
+		});
+	}
+	if (subFolderCount.value > 0 && workflowCount.value > 0) {
+		folderText += ` ${i18n.baseText('folder.and.workflow.separator')} `;
+	}
+	return i18n.baseText('folders.move.modal.description', {
+		interpolate: {
+			folders: folderText,
+			workflows: workflowText,
+		},
+	});
+});
+
+// const projectIcon = computed<ItemProjectIcon>(() => {
+// 	const defaultIcon: ItemProjectIcon = { type: 'icon', value: 'layer-group' };
+// 	if (currentProject.value?.type === ProjectTypes.Personal) {
+// 		return { type: 'icon', value: 'user' };
+// 	} else if (currentProject.value?.type === ProjectTypes.Team) {
+// 		return currentProject.value.icon ?? defaultIcon;
+// 	}
+// 	return defaultIcon;
+// });
 </script>
 
 <template>
@@ -89,28 +155,37 @@ modalBus.on('opened', () => {
 	>
 		<template #content>
 			<p
-				v-if="props.data.resourceType === 'folder'"
+				v-if="props.data.resourceType === 'folder' && (workflowCount > 0 || subFolderCount > 0)"
 				:class="$style.description"
 				data-test-id="move-folder-description"
 			>
-				{{
-					i18n.baseText('folders.move.modal.description', {
-						interpolate: {
-							workflowCount: 0,
-							subFolderCount: 0,
-						},
-					})
-				}}
+				{{ descriptionMessage }}
 			</p>
-			<MoveToFolderDropdown
-				v-if="projectsStore.currentProject"
-				ref="moveToFolderDropdown"
-				:current-folder-id="currentFolder?.id"
-				:current-project-id="projectsStore.currentProject?.id"
-				:parent-folder-id="props.data.resource.parentFolderId"
-				:exclude-only-parent="props.data.resourceType === 'workflow'"
-				@location:selected="onFolderSelected"
-			/>
+			<div :class="$style.project">
+				<n8n-text color="text-dark">
+					{{ i18n.baseText('folders.move.modal.project.label') }}
+				</n8n-text>
+				<ProjectSharing
+					v-model="selectedProject"
+					class="pt-2xs"
+					:projects="projects"
+					:placeholder="i18n.baseText('folders.move.modal.project.placeholder')"
+				/>
+			</div>
+			<div>
+				<n8n-text color="text-dark">{{
+					i18n.baseText('folders.move.modal.folder.label')
+				}}</n8n-text>
+				<MoveToFolderDropdown
+					v-if="selectedProject"
+					ref="moveToFolderDropdown"
+					:current-folder-id="currentFolder?.id"
+					:current-project-id="selectedProject.id"
+					:parent-folder-id="props.data.resource.parentFolderId"
+					:exclude-only-parent="props.data.resourceType === 'workflow'"
+					@location:selected="onFolderSelected"
+				/>
+			</div>
 		</template>
 		<template #footer="{ close }">
 			<div :class="$style.footer">
@@ -143,6 +218,10 @@ modalBus.on('opened', () => {
 .description {
 	font-size: var(--font-size-s);
 	margin: var(--spacing-s) 0;
+}
+
+.project {
+	margin-bottom: var(--spacing-s);
 }
 
 .footer {
