@@ -116,7 +116,7 @@ export class I18nClass {
 	/**
 	 * Namespace for methods to render text in the credentials details modal.
 	 */
-	credText(credentialType: string) {
+	credText(credentialType: string | null) {
 		const credentialPrefix = `n8n-nodes-base.credentials.${credentialType}`;
 		const context = this;
 
@@ -200,7 +200,7 @@ export class I18nClass {
 	 * Namespace for methods to render text in the node details view,
 	 * except for `eventTriggerDescription`.
 	 */
-	nodeText(activeNodeType?: string) {
+	nodeText(activeNodeType?: string | null) {
 		const nodeType = activeNodeType ? this.shortNodeType(activeNodeType) : ''; // unused in eventTriggerDescription
 		const initialKey = `n8n-nodes-base.nodes.${nodeType}.nodeView`;
 		const context = this;

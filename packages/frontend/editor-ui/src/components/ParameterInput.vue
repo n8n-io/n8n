@@ -71,7 +71,6 @@ import { completeExpressionSyntax, shouldConvertToExpression } from '@/utils/exp
 import { isPresent } from '@/utils/typesUtils';
 import CssEditor from './CssEditor/CssEditor.vue';
 import { useUIStore } from '@/stores/ui.store';
-import { storeToRefs } from 'pinia';
 
 type Picker = { $emit: (arg0: string, arg1: Date) => void };
 
