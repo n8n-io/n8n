@@ -191,6 +191,6 @@ export class LicenseState {
 	}
 
 	getMaxWorkflowsWithEvaluations() {
-		return this.getValue('quota:evaluations:maxWorkflows') ?? 1;
+		return this.getValue('quota:evaluations:maxWorkflows') ?? 0;
 	}
 }
