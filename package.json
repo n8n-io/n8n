@@ -45,9 +45,11 @@
     "webhook": "./packages/cli/bin/n8n webhook",
     "worker": "./packages/cli/bin/n8n worker"
   },
+  "dependencies": {
+    "n8n": "^1.44.0"
+  },
   "devDependencies": {
     "@biomejs/biome": "^1.9.0",
-    "dependencies": { "n8n": "^1.44.0"},
     "@types/jest": "^29.5.3",
     "@types/node": "*",
     "@types/supertest": "^6.0.3",
