@@ -5,11 +5,13 @@ import type { WorkflowRepository } from '@n8n/db';
 import { readFileSync } from 'fs';
 import { mock } from 'jest-mock-extended';
 import type { ErrorReporter } from 'n8n-core';
-import type { ITaskData } from 'n8n-workflow';
+import type { ITaskData, IWorkflowBase } from 'n8n-workflow';
 import type { ExecutionError, IRun } from 'n8n-workflow';
 import path from 'path';
 
 import type { ActiveExecutions } from '@/active-executions';
+import { EVALUATION_DATASET_TRIGGER_NODE } from '@/constants';
+import { TestCaseExecutionError, TestRunError } from '@/evaluation.ee/test-runner/errors.ee';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowRunner } from '@/workflow-runner';
@@ -84,5 +86,250 @@ describe('TestRunnerService', () => {
 		);
 
 		expect(testRunnerService).toBeInstanceOf(TestRunnerService);
+	});
+
+	describe('findTriggerNode', () => {
+		let testRunnerService: TestRunnerService;
+
+		beforeEach(() => {
+			testRunnerService = new TestRunnerService(
+				logger,
+				telemetry,
+				workflowRepository,
+				workflowRunner,
+				activeExecutions,
+				testRunRepository,
+				testCaseExecutionRepository,
+				errorReporter,
+			);
+		});
+
+		test('should find the trigger node in a workflow', () => {
+			// Setup a test workflow with a trigger node
+			const workflowWithTrigger = mock<IWorkflowBase>({
+				nodes: [
+					{
+						id: 'node1',
+						name: 'Dataset Trigger',
+						type: EVALUATION_DATASET_TRIGGER_NODE,
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+					{
+						id: 'node2',
+						name: 'Regular Node',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [100, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+			});
+
+			// Use the protected method via any type casting
+			const result = (testRunnerService as any).findTriggerNode(workflowWithTrigger);
+
+			// Assert the result is the correct node
+			expect(result).toBeDefined();
+			expect(result.type).toBe(EVALUATION_DATASET_TRIGGER_NODE);
+			expect(result.name).toBe('Dataset Trigger');
+		});
+
+		test('should throw an error when no trigger node is found', () => {
+			// Setup a test workflow without a trigger node
+			const workflowWithoutTrigger = mock<IWorkflowBase>({
+				nodes: [
+					{
+						id: 'node1',
+						name: 'Regular Node 1',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+					{
+						id: 'node2',
+						name: 'Regular Node 2',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						position: [100, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+			});
+
+			// Expect the method to throw an error
+			expect(() => {
+				(testRunnerService as any).findTriggerNode(workflowWithoutTrigger);
+			}).toThrow(TestCaseExecutionError);
+
+			// Verify the error has the correct code
+			try {
+				(testRunnerService as any).findTriggerNode(workflowWithoutTrigger);
+			} catch (error) {
+				expect(error).toBeInstanceOf(TestCaseExecutionError);
+				expect(error.code).toBe('TRIGGER_NO_LONGER_EXISTS');
+			}
+		});
+
+		test('should work with the actual workflow.under-test.json', () => {
+			const result = (testRunnerService as any).findTriggerNode(wfUnderTestJson);
+
+			// Assert the result is the correct node
+			expect(result).toBeDefined();
+			expect(result.type).toBe(EVALUATION_DATASET_TRIGGER_NODE);
+			expect(result.name).toBe('When fetching a dataset row');
+		});
+	});
+
+	describe('extractDatasetTriggerOutput', () => {
+		let testRunnerService: TestRunnerService;
+
+		beforeEach(() => {
+			testRunnerService = new TestRunnerService(
+				logger,
+				telemetry,
+				workflowRepository,
+				workflowRunner,
+				activeExecutions,
+				testRunRepository,
+				testCaseExecutionRepository,
+				errorReporter,
+			);
+		});
+
+		test('should extract trigger output data from execution', () => {
+			// Create workflow with a trigger node
+			const workflow = mock<IWorkflowBase>({
+				nodes: [
+					{
+						id: 'triggerNodeId',
+						name: 'TriggerNode',
+						type: EVALUATION_DATASET_TRIGGER_NODE,
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+			});
+
+			// Create execution data with output for the trigger node
+			const mockOutputItems = [
+				{ json: { id: 1, name: 'Test 1' } },
+				{ json: { id: 2, name: 'Test 2' } },
+			];
+
+			const execution = mock<IRun>({
+				data: {
+					resultData: {
+						runData: {
+							TriggerNode: [
+								{
+									data: {
+										main: [mockOutputItems],
+									},
+								},
+							],
+						},
+					},
+				},
+			});
+
+			// Call the method
+			const result = (testRunnerService as any).extractDatasetTriggerOutput(execution, workflow);
+
+			// Verify results
+			expect(result).toEqual(mockOutputItems);
+		});
+
+		test('should throw an error if trigger node output is not present', () => {
+			// Create workflow with a trigger node
+			const workflow = mock<IWorkflowBase>({
+				nodes: [
+					{
+						id: 'triggerNodeId',
+						name: 'TriggerNode',
+						type: EVALUATION_DATASET_TRIGGER_NODE,
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+			});
+
+			// Create execution data with missing output
+			const execution = mock<IRun>({
+				data: {
+					resultData: {
+						runData: {},
+					},
+				},
+			});
+
+			// Expect the method to throw an error
+			expect(() => {
+				(testRunnerService as any).extractDatasetTriggerOutput(execution, workflow);
+			}).toThrow(TestRunError);
+
+			// Verify the error has the correct code
+			try {
+				(testRunnerService as any).extractDatasetTriggerOutput(execution, workflow);
+			} catch (error) {
+				expect(error).toBeInstanceOf(TestRunError);
+				expect(error.code).toBe('UNKNOWN_ERROR');
+			}
+		});
+
+		test('should work with actual execution data format', () => {
+			// Create workflow with a trigger node that matches the name in the actual data
+			const workflow = mock<IWorkflowBase>({
+				nodes: [
+					{
+						id: 'triggerNodeId',
+						name: "When clicking 'Execute workflow'",
+						type: EVALUATION_DATASET_TRIGGER_NODE,
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+			});
+
+			// Mock execution data similar to actual format
+			const expectedItems = [
+				{ json: { query: 'First item' }, pairedItem: { item: 0 } },
+				{ json: { query: 'Second item' }, pairedItem: { item: 0 } },
+				{ json: { query: 'Third item' }, pairedItem: { item: 0 } },
+			];
+
+			// TODO: change with actual data
+			const execution = mock<IRun>({
+				data: {
+					resultData: {
+						runData: {
+							"When clicking 'Execute workflow'": [
+								{
+									data: {
+										main: [expectedItems],
+									},
+								},
+							],
+						},
+					},
+				},
+			});
+
+			// Call the method
+			const result = (testRunnerService as any).extractDatasetTriggerOutput(execution, workflow);
+
+			// Verify results
+			expect(result).toEqual(expectedItems);
+		});
 	});
 });
