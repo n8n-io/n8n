@@ -32,6 +32,7 @@
     "@testing-library/user-event": "catalog:frontend",
     "@testing-library/vue": "catalog:frontend",
     "@vitejs/plugin-vue": "catalog:frontend",
+    "@vitest/coverage-v8": "catalog:frontend",
     "@vue/tsconfig": "catalog:frontend",
     "@vueuse/core": "catalog:frontend",
     "vue": "catalog:frontend",
