@@ -206,7 +206,7 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 				id: 'select_all',
 				divided: true,
 				label: i18n.baseText('contextMenu.selectAll'),
-				shortcut: { metaKey: true, keys: ['A'] },
+				shortcut: { metaKey: true, keys: ['S'] },
 				disabled: nodes.length === workflowsStore.allNodes.length,
 			},
 			{
@@ -221,7 +221,7 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 				id: 'extract_sub_workflow',
 				divided: true,
 				label: i18n.baseText('contextMenu.extract', { adjustToNumber: nodes.length }),
-				shortcut: { metaKey: true, shiftKey: true, keys: ['G'] },
+				shortcut: { shiftKey: true, metaKey: true, keys: ['X'] },
 				// disabled: !isExtractableSelectionValid.value,
 			},
 		];

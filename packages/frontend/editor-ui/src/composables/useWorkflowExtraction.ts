@@ -13,15 +13,16 @@ import {
 import { computed, nextTick } from 'vue';
 import { useToast } from './useToast';
 import { useRouter } from 'vue-router';
-import { VIEWS } from '@/constants';
+import { VIEWS, WORKFLOW_EXTRACTION_NAME_MODAL_KEY } from '@/constants';
 import { useHistoryStore } from '@/stores/history.store';
 import { useCanvasOperations } from './useCanvasOperations';
 
-import type { IWorkflowDataCreate, IWorkflowDb } from '@/Interface';
+import type { INodeUi, IWorkflowDataCreate, IWorkflowDb } from '@/Interface';
 import { useI18n } from '@/composables/useI18n';
 import { PUSH_NODES_OFFSET } from '@/utils/nodeViewUtils';
 import { useUIStore } from '@/stores/ui.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useTelemetry } from './useTelemetry';
 
 export const SUBWORKFLOW_TRIGGER_ID = 'c155762a-8fe7-4141-a639-df2372f30060';
 const CANVAS_HISTORY_OPTIONS = {
@@ -37,6 +38,7 @@ export function useWorkflowExtraction() {
 	const historyStore = useHistoryStore();
 	const canvasOperations = useCanvasOperations({ router });
 	const i18n = useI18n();
+	const telemetry = useTelemetry();
 
 	const adjacencyList = computed(() => buildAdjacencyList(workflowsStore.workflow.connections));
 
@@ -138,10 +140,7 @@ export function useWorkflowExtraction() {
 		return !Array.isArray(selection);
 	}
 
-	async function tryExtractNodesIntoSubworkflow(
-		nodeIds: string[],
-		connections: IConnections,
-	): Promise<boolean> {
+	function tryExtractNodesIntoSubworkflow(nodeIds: string[], connections: IConnections): boolean {
 		const subGraph = nodeIds
 			.map(workflowsStore.getNodeById)
 			.filter((x) => x !== undefined && x !== null);
@@ -158,14 +157,29 @@ export function useWorkflowExtraction() {
 			return false;
 		}
 
-		const allNodeNames = workflowsStore.workflow.nodes.map((x) => x.name);
+		const selection = getExtractableSelection(new Set(subGraph.map((x) => x.name)));
 
-		const selectionResult = getExtractableSelection(new Set(subGraph.map((x) => x.name)));
+		if (!checkExtractableSelectionValidity(selection)) return false;
 
-		if (!checkExtractableSelectionValidity(selectionResult)) return false;
+		uiStore.openModalWithData({
+			name: WORKFLOW_EXTRACTION_NAME_MODAL_KEY,
+			data: { connections, subGraph, selection },
+		});
+		return true;
+	}
 
-		const { start, end } = selectionResult;
+	async function extractNodesIntoSubworkflow(
+		selection: ExtractableSubgraphData,
+		subGraph: INodeUi[],
+		connections: IConnections,
+		newWorkflowName: string,
+	) {
+		const { start, end } = selection;
 		const currentWorkflow = workflowsStore.getCurrentWorkflow();
+		const allNodeNames = workflowsStore.workflow.nodes.map((x) => x.name);
+		let startNodeName = 'Start';
+		while (allNodeNames.includes(startNodeName)) startNodeName += '_1';
+
 		const beforeStartNodes = start
 			? currentWorkflow
 					.getParentNodes(start, 'main', 1)
@@ -179,16 +193,12 @@ export function useWorkflowExtraction() {
 					.filter((x) => x !== null)
 			: [];
 
-		let startNodeName = 'Start';
-		while (allNodeNames.includes(startNodeName)) startNodeName += '_1';
-		debugger;
 		const { nodes, variables } = extractReferencesInNodeExpressions(
 			subGraph,
 			allNodeNames,
 			startNodeName,
 			start,
 		);
-		const newWorkflowName = 'My Sub-workflow';
 
 		let executeWorkflowNodeName = `Call ${newWorkflowName}`;
 		while (allNodeNames.includes(executeWorkflowNodeName)) executeWorkflowNodeName += '_1';
@@ -373,32 +383,29 @@ export function useWorkflowExtraction() {
 				});
 		}
 
-		for (const id of nodeIds) {
+		for (const node of subGraph) {
 			await nextTick();
-			canvasOperations.deleteNode(id, CANVAS_HISTORY_OPTIONS);
+			canvasOperations.deleteNode(node.id, CANVAS_HISTORY_OPTIONS);
 		}
 		uiStore.stateIsDirty = true;
 		historyStore.stopRecordingUndo();
 
-		return false;
+		return true;
 	}
 
 	async function extractWorkflow(nodeIds: string[]) {
 		const success = tryExtractNodesIntoSubworkflow(nodeIds, workflowsStore.workflow.connections);
-		// should we auto open or post the link in a notification instead?
-		trackExtractWorkflow();
+		if (success) trackExtractWorkflow(nodeIds.length);
 	}
 
-	function trackExtractWorkflow() {
-		// telemetry.track(
-		// 	'User tidied up canvas',
-		// 	{
-		// 		source,
-		// 		target,
-		// 		nodes_count: result.nodes.length,
-		// 	},
-		// 	{ withPostHog: true },
-		// );
+	function trackExtractWorkflow(nodeCount: number) {
+		telemetry.track(
+			'User converted nodes to sub-workflow',
+			{
+				node_count: nodeCount,
+			},
+			{ withPostHog: true },
+		);
 	}
 
 	return {
@@ -406,5 +413,6 @@ export function useWorkflowExtraction() {
 		extractWorkflow,
 		getExtractableSelection,
 		tryExtractNodesIntoSubworkflow,
+		extractNodesIntoSubworkflow,
 	};
 }

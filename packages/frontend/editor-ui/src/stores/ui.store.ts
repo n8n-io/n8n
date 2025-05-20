@@ -41,6 +41,7 @@ import {
 	WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY,
 	FROM_AI_PARAMETERS_MODAL_KEY,
 	IMPORT_WORKFLOW_URL_MODAL_KEY,
+	WORKFLOW_EXTRACTION_NAME_MODAL_KEY,
 } from '@/constants';
 import { STORES } from '@n8n/stores';
 import type {
@@ -205,6 +206,12 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			open: false,
 			data: {
 				url: '',
+			},
+		},
+		[WORKFLOW_EXTRACTION_NAME_MODAL_KEY]: {
+			open: false,
+			data: {
+				workflowName: '',
 			},
 		},
 	});
