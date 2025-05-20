@@ -8,6 +8,11 @@ describe('DatabaseConfig', () => {
 		jest.clearAllMocks();
 	});
 
+	test('`isLegacySqlite` defaults to true', () => {
+		const databaseConfig = Container.get(DatabaseConfig);
+		expect(databaseConfig.isLegacySqlite).toBe(true);
+	});
+
 	test.each(['mariadb', 'mysqldb', 'postgresdb'] satisfies Array<DatabaseConfig['type']>)(
 		'`isLegacySqlite` returns false if dbType is `%s`',
 		(dbType) => {
