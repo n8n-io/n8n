@@ -345,12 +345,12 @@ export class TestRunnerService {
 				}
 
 				this.logger.debug('Running test case');
+				const runAt = new Date();
 
 				try {
 					const testCaseMetadata = {
 						...testRunMetadata,
 					};
-
 					// Run the test case and wait for it to finish
 					const testCaseResult = await this.runTestCase(
 						workflow,
@@ -383,23 +383,26 @@ export class TestRunnerService {
 						});
 						continue;
 					}
+					const completedAt = new Date();
 
 					const { addedMetrics } = metrics.addResults(
 						this.extractEvaluationResult(testCaseExecution, workflow),
 					);
 
 					this.logger.debug('Test case metrics extracted', addedMetrics);
-
 					// Create a new test case execution in DB
 					await this.testCaseExecutionRepository.createTestCaseExecution({
 						executionId: testCaseExecutionId,
 						testRun: {
 							id: testRun.id,
 						},
+						runAt,
+						completedAt,
 						status: 'success',
 						metrics: addedMetrics,
 					});
 				} catch (e) {
+					const completedAt = new Date();
 					// FIXME: this is a temporary log
 					this.logger.error('Test case execution failed', {
 						workflowId,
@@ -413,6 +416,8 @@ export class TestRunnerService {
 							testRun: {
 								id: testRun.id,
 							},
+							runAt,
+							completedAt,
 							status: 'error',
 							errorCode: e.code,
 							errorDetails: e.extra as IDataObject,
@@ -422,6 +427,8 @@ export class TestRunnerService {
 							testRun: {
 								id: testRun.id,
 							},
+							runAt,
+							completedAt,
 							status: 'error',
 							errorCode: 'UNKNOWN_ERROR',
 						});
