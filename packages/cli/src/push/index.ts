@@ -136,8 +136,6 @@ export class Push extends TypedEmitter<PushEvents> {
 			headers,
 		} = req;
 
-		const inProduction = true;
-
 		let connectionError = '';
 
 		const expectedOriginResult = this.constructExpectedOrigin(req);
