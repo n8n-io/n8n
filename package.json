@@ -48,7 +48,9 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.0",
-    "@n8n/eslint-config": "workspace:*",
+    "dependencies": {
+  "n8n": "^1.44.0"
+}
     "@types/jest": "^29.5.3",
     "@types/node": "*",
     "@types/supertest": "^6.0.3",
