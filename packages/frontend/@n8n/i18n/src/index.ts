@@ -11,6 +11,8 @@ import {
 	insertOptionsAndValues,
 } from './utils';
 
+export * from './types';
+
 export const i18nInstance = createI18n({
 	locale: 'en',
 	fallbackLocale: 'en',
