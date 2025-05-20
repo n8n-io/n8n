@@ -71,7 +71,7 @@ onMounted(() => {
 				ref="inputRef"
 				v-model="workflowName"
 				name="key"
-				:label="i18n.baseText('workflowExtraction.modal.workflowName')"
+				label=""
 				max-length="128"
 				focus-initially
 				@enter="onSubmit"

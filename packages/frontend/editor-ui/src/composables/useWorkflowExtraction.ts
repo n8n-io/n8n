@@ -47,6 +47,7 @@ export function useWorkflowExtraction() {
 			type: 'error',
 			message,
 			title: i18n.baseText('workflowExtraction.error.failure'),
+			duration: 0,
 		});
 	}
 
@@ -71,7 +72,7 @@ export function useWorkflowExtraction() {
 				});
 			case 'Multiple Output Nodes':
 				return i18n.baseText('workflowExtraction.error.selectionGraph.multipleOutputNodes', {
-					interpolate: { node: [...result.nodes].map((x) => `'${x}'`).join(', ') },
+					interpolate: { nodes: [...result.nodes].map((x) => `'${x}'`).join(', ') },
 				});
 			case 'No Continuous Path From Root To Leaf In Selection':
 				return i18n.baseText(
@@ -87,7 +88,12 @@ export function useWorkflowExtraction() {
 		if (Array.isArray(selection)) {
 			showError(
 				i18n.baseText('workflowExtraction.error.selectionGraph.listHeader', {
-					interpolate: { body: selection.map(extractableErrorResultToMessage).join('\n') },
+					interpolate: {
+						body: selection
+							.map(extractableErrorResultToMessage)
+							.map((x) => `- ${x}`)
+							.join('<br>'),
+					},
 				}),
 			);
 			return false;
