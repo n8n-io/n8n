@@ -1,7 +1,7 @@
 import { escapeRegExp, mapValues, isEqual, cloneDeep } from 'lodash';
 
 import { OperationalError } from './errors';
-import type { INode, INodeParameters, NodeParameterValueType } from './Interfaces';
+import type { INode, NodeParameterValueType } from './Interfaces';
 
 class LazyRegExp {
 	private regExp?: RegExp;
@@ -437,10 +437,6 @@ function applyExtractMappingToNode(node: INode, parameterExtractMapping: Paramet
 			return parameters;
 		}
 
-		if (Array.isArray(parameters) && typeof mapping === 'object' && !Array.isArray(mapping)) {
-			return parameters.map((x, i) => applyMapping(x, mapping[i]) as INodeParameters);
-		}
-
 		return mapValues(parameters, (v, k) => applyMapping(v, mapping[k])) as NodeParameterValueType;
 	};
 
@@ -479,7 +475,7 @@ export function extractReferencesInNodeExpressions(
 	subGraph: INode[],
 	nodeNames: string[],
 	insertedStartName: string,
-	graphRootName?: string,
+	graphInputNodeName?: string,
 ) {
 	////
 	// STEP 1 - Validate input invariants
@@ -529,7 +525,7 @@ export function extractReferencesInNodeExpressions(
 				nodeRegexps,
 				nodeNames,
 				insertedStartName,
-				node.name === graphRootName,
+				node.name === graphInputNodeName,
 			),
 		);
 		recMapByNode.set(node.name, parameterMapping);
