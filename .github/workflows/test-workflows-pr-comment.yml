@@ -1,0 +1,78 @@
+name: Test Workflows on PR Comment
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  pull-requests: read
+  contents: read
+
+jobs:
+  trigger_tests_on_comment:
+    name: Handle /test-workflows command
+    if: github.event.issue.pull_request && startsWith(github.event.comment.body, '/test-workflows')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check User Permission and Get PR Details
+        id: pr_check
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          result-encoding: json
+          script: |
+            const commenter = context.actor;
+            const issue = context.issue;
+            let hasPermission = false;
+            let prDetails = null;
+
+            try {
+              const { data: permissions } = await github.rest.repos.getCollaboratorPermissionLevel({
+                owner: issue.owner,
+                repo: issue.repo,
+                username: commenter
+              });
+
+              const allowedPermissions = ['admin', 'write', 'maintain'];
+              if (allowedPermissions.includes(permissions.permission)) {
+                console.log(`User @${commenter} has '${permissions.permission}' permission.`);
+                hasPermission = true;
+              } else {
+                core.setFailed(`User @${commenter} does not have sufficient permissions (admin/write/maintain) to trigger workflows.`);
+              }
+            } catch (error) {
+              core.setFailed(`Could not verify permissions for @${commenter}: ${error.message}`);
+            }
+
+            if (!hasPermission) {
+              return { permission_granted: false };
+            }
+
+            const prNumber = issue.number;
+            try {
+              const { data: pr } = await github.rest.pulls.get({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: prNumber,
+              });
+              prDetails = {
+                head_sha: pr.head.sha,
+                pr_number_string: prNumber.toString()
+              };
+              console.log(`Workspaceed PR details: SHA - ${prDetails.head_sha}, PR Number - ${prDetails.pr_number_string}`);
+            } catch (error) {
+              core.setFailed(`Failed to fetch PR details for PR #${prNumber}: ${error.message}`);
+              return { permission_granted: true, pr_fetch_error: true };
+            }
+
+            return { permission_granted: true, ...prDetails };
+
+      - name: Call Reusable Test Workflow
+        if: steps.pr_check.outcome == 'success' && fromJson(steps.pr_check.outputs.result).permission_granted == true && fromJson(steps.pr_check.outputs.result).head_sha
+        uses: ./.github/workflows/test-workflows-callable.yml
+        with:
+          git_ref: ${{ fromJson(steps.pr_check.outputs.result).head_sha }}
+          send_webhook_report: true
+          pr_number: ${{ fromJson(steps.pr_check.outputs.result).pr_number_string }}
+        secrets: inherit
