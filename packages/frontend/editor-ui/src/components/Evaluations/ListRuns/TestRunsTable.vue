@@ -16,24 +16,28 @@ const props = defineProps<{
 	runs: Array<TestRunRecord & { index: number }>;
 	columns: Array<TestTableColumn<TestRunRecord & { index: number }>>;
 }>();
+
 const locale = useI18n();
 const styledColumns = computed(() => {
 	return props.columns.map((column) => {
 		if (column.prop === 'id') {
 			return {
 				...column,
-				width: '100px',
+				width: 100,
 			};
 		}
+
 		if (column.prop === 'runAt') {
 			return {
 				...column,
-				width: '150px',
+				width: 150,
 			};
 		}
+
 		return column;
 	});
 });
+
 // Combine test run statuses and finalResult to get the final status
 const runSummaries = computed(() => {
 	return props.runs.map(({ status, finalResult, errorDetails, ...run }) => {
