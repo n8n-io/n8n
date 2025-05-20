@@ -13,6 +13,7 @@ import NodeSettings from '@/components/NodeSettings.vue';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useDebounce } from '@vueuse/core';
 
 const $style = useCssModule();
 const i18n = useI18n();
@@ -58,9 +59,10 @@ const renderOptions = computed(() => render.value.options as CanvasNodeDefaultRe
 const { editableWorkflow } = useCanvasOperations({ router: useRouter() });
 
 const vf = useVueFlow({ id: editableWorkflow.value.id });
+const rawZoom = computed(() => vf.viewport.value.zoom);
+const zoom = useDebounce(rawZoom, 100);
 
-const isZoomedIn = computed(() => vf.viewport.value.zoom > 2);
-
+const isZoomedIn = computed(() => zoom.value > 1.6);
 const classes = computed(() => {
 	return {
 		[$style.node]: true,
@@ -93,6 +95,7 @@ const styles = computed(() => {
 		stylesObject['--configurable-node--input-count'] = nonMainInputs.value.length + spacerCount;
 	}
 
+	stylesObject['--zoom'] = zoom.value;
 	stylesObject['--canvas-node--main-input-count'] = mainInputs.value.length;
 	stylesObject['--canvas-node--main-output-count'] = mainOutputs.value.length;
 
@@ -244,7 +247,7 @@ const activeNodeType = computed(() => {
 		border-radius: var(--border-radius-large) !important;
 
 		& > * {
-			zoom: 0.4;
+			zoom: calc(1 / var(--zoom, 1));
 			width: 100% !important;
 		}
 	}
