@@ -24,7 +24,7 @@ on:
       CI_SENTRY_DSN:
         description: 'Sentry DSN for CI test runs.'
         required: false
-      RESULTS_WEBHOOK_URL:
+      WORKFLOW_TESTS_RESULT_DESTINATION:
         description: 'Webhook URL to send test results to (if enabled).'
         required: false
 
@@ -96,7 +96,7 @@ jobs:
         if: inputs.send_webhook_report == true
         shell: bash
         env:
-          WEBHOOK_URL: ${{ secrets.RESULTS_WEBHOOK_URL }}
+          WEBHOOK_URL: ${{ secrets.WORKFLOW_TESTS_RESULT_DESTINATION }}
           TEST_RESULTS_FILE: ./test-results.json
           GH_REPOSITORY: ${{ github.repository }}
           GH_RUN_ID: ${{ github.run_id }}
