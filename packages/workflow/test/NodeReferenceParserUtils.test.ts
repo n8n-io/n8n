@@ -192,6 +192,62 @@ describe('NodeReferenceParserUtils', () => {
 				},
 			]);
 		});
+		it('should not handle standalone node references', () => {
+			nodes = [makeNode('B', ['$("D")'])];
+			nodeNames = ['B', 'D'];
+
+			const result = extractReferencesInNodeExpressions(nodes, nodeNames, startNodeName, 'B');
+			expect([...result.variables.entries()]).toEqual([]);
+			expect(result.nodes).toEqual([
+				{
+					name: 'B',
+					parameters: { p0: '={{ $("D") }}' },
+				},
+			]);
+		});
+		it('should not handle invalid node references', () => {
+			nodes = [makeNode('B', ['$("D)'])];
+			nodeNames = ['B', 'D'];
+
+			const result = extractReferencesInNodeExpressions(nodes, nodeNames, startNodeName);
+			expect([...result.variables.entries()]).toEqual([]);
+			expect(result.nodes).toEqual([
+				{
+					name: 'B',
+					parameters: { p0: '={{ $("D) }}' },
+				},
+			]);
+		});
+		it('should not handle new fields on the node', () => {
+			nodes = [makeNode('B', ['$("D").thisIsNotAField.json.x.y.z'])];
+			nodeNames = ['B', 'D'];
+
+			const result = extractReferencesInNodeExpressions(nodes, nodeNames, startNodeName);
+			expect([...result.variables.entries()]).toEqual([]);
+			expect(result.nodes).toEqual([
+				{
+					name: 'B',
+					parameters: { p0: '={{ $("D").thisIsNotAField.json.x.y.z }}' },
+				},
+			]);
+		});
+		it('should handle $json in graphInputNodeName only', () => {
+			nodes = [makeNode('B', ['$json.a.b.c_d["e"]["f"]']), makeNode('C', ['$json.x.y.z'])];
+			nodeNames = ['A', 'B', 'C'];
+
+			const result = extractReferencesInNodeExpressions(nodes, nodeNames, startNodeName, 'B');
+			expect([...result.variables.entries()]).toEqual([['a_b_c_d', '$json.a.b.c_d']]);
+			expect(result.nodes).toEqual([
+				{
+					name: 'B',
+					parameters: { p0: '={{ $json.a_b_c_d["e"]["f"] }}' },
+				},
+				{
+					name: 'C',
+					parameters: { p0: '={{ $json.x.y.z }}' },
+				},
+			]);
+		});
 		it('should support different node accessor patterns', () => {
 			nodes = [
 				makeNode('N', ['$("A").item.json.myField']),
