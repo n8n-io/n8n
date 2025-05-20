@@ -1,13 +1,22 @@
 <script lang="ts" setup>
+import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from '@/composables/useI18n';
 import { MOVE_FOLDER_MODAL_KEY } from '@/constants';
 import { useFoldersStore } from '@/stores/folders.store';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useUIStore } from '@/stores/ui.store';
+import { useCredentialsStore } from '@/stores/credentials.store';
 import { type EventBus, createEventBus } from '@n8n/utils/event-bus';
-import type { ProjectListItem, ProjectSharingData } from '@/types/projects.types';
-import { computed, ref, watch } from 'vue';
+import {
+	ProjectTypes,
+	type ProjectListItem,
+	type ProjectSharingData,
+} from '@/types/projects.types';
+import type { ICredentialsResponse, IUsedCredential } from '@/Interface';
+import { getResourcePermissions } from '@/permissions';
 import MoveToFolderDropdown from './MoveToFolderDropdown.vue';
+import { ResourceType } from '@/utils/projects.utils';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 
 /**
  * This modal is used to move a resource (folder or workflow) to a different folder.
@@ -35,19 +44,66 @@ const moveToFolderDropdown = ref<InstanceType<typeof MoveToFolderDropdown>>();
 const foldersStore = useFoldersStore();
 const projectsStore = useProjectsStore();
 const uiStore = useUIStore();
+const credentialsStore = useCredentialsStore();
+const workflowsStore = useWorkflowsStore();
 
 const selectedFolder = ref<{ id: string; name: string } | null>(null);
 const selectedProject = ref<ProjectSharingData | null>(projectsStore.currentProject ?? null);
+const isPersonalProject = computed(() => {
+	return selectedProject.value?.type === ProjectTypes.Personal;
+});
+const isOwnPersonalProject = computed(() => {
+	return (
+		selectedProject.value?.type === ProjectTypes.Personal &&
+		selectedProject.value.id === projectsStore.personalProject?.id
+	);
+});
+
 const workflowCount = ref(0);
 const subFolderCount = ref(0);
+
+const shareUsedCredentials = ref(false);
+const usedCredentials = ref<IUsedCredential[]>([]);
+const allCredentials = ref<ICredentialsResponse[]>([]);
+const shareableCredentials = computed(() =>
+	allCredentials.value.filter(
+		(credential) =>
+			getResourcePermissions(credential.scopes).credential.share &&
+			usedCredentials.value.find((uc) => uc.id === credential.id),
+	),
+);
+const unShareableCredentials = computed(() =>
+	usedCredentials.value.reduce(
+		(acc, uc) => {
+			const credential = credentialsStore.getCredentialById(uc.id);
+			const credentialPermissions = getResourcePermissions(credential?.scopes).credential;
+			if (!credentialPermissions.share) {
+				if (credentialPermissions.read) {
+					acc.push(credential);
+				} else {
+					acc.push(uc);
+				}
+			}
+			return acc;
+		},
+		[] as Array<IUsedCredential | ICredentialsResponse>,
+	),
+);
 
 const projects = computed<ProjectListItem[]>(() => {
 	return projectsStore.projects;
 });
 
+const resourceTypeLabel = computed(() => {
+	return i18n.baseText(`generic.${props.data.resourceType}`).toLowerCase();
+});
+
 const title = computed(() => {
 	return i18n.baseText('folders.move.modal.title', {
-		interpolate: { folderName: props.data.resource.name },
+		interpolate: {
+			folderName: props.data.resource.name,
+			resourceTypeLabel: resourceTypeLabel.value,
+		},
 	});
 });
 
@@ -143,6 +199,20 @@ const descriptionMessage = computed(() => {
 // 	}
 // 	return defaultIcon;
 // });
+
+const isResourceWorkflow = computed(() => props.data.resourceType === ResourceType.Workflow);
+
+onMounted(async () => {
+	if (isResourceWorkflow.value) {
+		const [workflow, credentials] = await Promise.all([
+			workflowsStore.fetchWorkflow(props.data.resource.id),
+			credentialsStore.fetchAllCredentials(),
+		]);
+
+		usedCredentials.value = workflow?.usedCredentials ?? [];
+		allCredentials.value = credentials ?? [];
+	}
+});
 </script>
 
 <template>
@@ -172,19 +242,89 @@ const descriptionMessage = computed(() => {
 					:placeholder="i18n.baseText('folders.move.modal.project.placeholder')"
 				/>
 			</div>
+			<template v-if="selectedProject && (!isPersonalProject || isOwnPersonalProject)">
+				<div>
+					<n8n-text color="text-dark">
+						{{ i18n.baseText('folders.move.modal.folder.label') }}
+					</n8n-text>
+					<MoveToFolderDropdown
+						ref="moveToFolderDropdown"
+						:current-folder-id="currentFolder?.id"
+						:current-project-id="selectedProject.id"
+						:parent-folder-id="props.data.resource.parentFolderId"
+						:exclude-only-parent="props.data.resourceType === 'workflow'"
+						@location:selected="onFolderSelected"
+					/>
+				</div>
+			</template>
 			<div>
-				<n8n-text color="text-dark">{{
-					i18n.baseText('folders.move.modal.folder.label')
-				}}</n8n-text>
-				<MoveToFolderDropdown
-					v-if="selectedProject"
-					ref="moveToFolderDropdown"
-					:current-folder-id="currentFolder?.id"
-					:current-project-id="selectedProject.id"
-					:parent-folder-id="props.data.resource.parentFolderId"
-					:exclude-only-parent="props.data.resourceType === 'workflow'"
-					@location:selected="onFolderSelected"
-				/>
+				<N8nText>
+					<i18n-t keypath="projects.move.resource.modal.message.sharingNote">
+						<template #note
+							><strong>{{
+								i18n.baseText('projects.move.resource.modal.message.note')
+							}}</strong></template
+						>
+						<template #resourceTypeLabel>{{ resourceTypeLabel }}</template>
+					</i18n-t>
+					<!-- <span
+						v-if="props.data.resource.sharedWithProjects?.length ?? 0 > 0"
+						:class="$style.textBlock"
+					>
+						{{
+							i18n.baseText('projects.move.resource.modal.message.sharingInfo', {
+								adjustToNumber: props.data.resource.sharedWithProjects?.length,
+								interpolate: {
+									count: props.data.resource.sharedWithProjects?.length ?? 0,
+								},
+							})
+						}}
+					</span> -->
+					<N8nCheckbox
+						v-if="shareableCredentials.length"
+						v-model="shareUsedCredentials"
+						:class="$style.textBlock"
+						data-test-id="project-move-resource-modal-checkbox-all"
+					>
+						<i18n-t keypath="projects.move.resource.modal.message.usedCredentials">
+							<template #usedCredentials>
+								<N8nTooltip placement="top">
+									<span :class="$style.tooltipText">
+										{{
+											i18n.baseText('projects.move.resource.modal.message.usedCredentials.number', {
+												adjustToNumber: shareableCredentials.length,
+												interpolate: { count: shareableCredentials.length },
+											})
+										}}
+									</span>
+									<template #content>
+										<ProjectMoveResourceModalCredentialsList
+											:current-project-id="projectsStore.currentProjectId"
+											:credentials="shareableCredentials"
+										/>
+									</template>
+								</N8nTooltip>
+							</template>
+						</i18n-t>
+					</N8nCheckbox>
+					<span v-if="unShareableCredentials.length" :class="$style.textBlock">
+						<i18n-t keypath="projects.move.resource.modal.message.unAccessibleCredentials.note">
+							<template #credentials>
+								<N8nTooltip placement="top">
+									<span :class="$style.tooltipText">{{
+										i18n.baseText('projects.move.resource.modal.message.unAccessibleCredentials')
+									}}</span>
+									<template #content>
+										<ProjectMoveResourceModalCredentialsList
+											:current-project-id="projectsStore.currentProjectId"
+											:credentials="unShareableCredentials"
+										/>
+									</template>
+								</N8nTooltip>
+							</template>
+						</i18n-t>
+					</span>
+				</N8nText>
 			</div>
 		</template>
 		<template #footer="{ close }">
@@ -198,7 +338,13 @@ const descriptionMessage = computed(() => {
 				/>
 				<n8n-button
 					:disabled="!selectedFolder"
-					:label="i18n.baseText('folders.move.modal.confirm')"
+					:label="
+						i18n.baseText('folders.move.modal.confirm', {
+							interpolate: {
+								resourceTypeLabel: resourceTypeLabel,
+							},
+						})
+					"
 					float="right"
 					data-test-id="confirm-move-folder-button"
 					@click="onSubmit"

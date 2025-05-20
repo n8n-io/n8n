@@ -1236,7 +1236,11 @@ const moveWorkflowToFolder = async (payload: {
 	}
 	uiStore.openMoveToFolderModal(
 		'workflow',
-		{ id: payload.id, name: payload.name, parentFolderId: payload.parentFolderId },
+		{
+			id: payload.id,
+			name: payload.name,
+			parentFolderId: payload.parentFolderId,
+		},
 		workflowListEventBus,
 	);
 };
