@@ -236,14 +236,15 @@ const activeNodeType = computed(() => {
 
 	&.isZoomedIn {
 		/*margin-top: calc(var(--canvas-node--width) * 0.8);*/
-		height: calc(var(--canvas-node--height) * 2.4);
-		width: calc(var(--canvas-node--width) * 1.6);
+		height: calc(var(--canvas-node--height) * 2.4) !important;
+		width: calc(var(--canvas-node--width) * 1.6) !important;
 		align-items: flex-start;
 		justify-content: stretch;
-		overflow: hidden;
+		overflow: auto;
+		border-radius: var(--border-radius-large) !important;
 
 		& > * {
-			zoom: 0.5;
+			zoom: 0.4;
 			width: 100% !important;
 		}
 	}
