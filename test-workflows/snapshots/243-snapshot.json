@@ -1,0 +1,305 @@
+{
+  "data": {
+    "startData": {},
+    "resultData": {
+      "runData": {
+        "When clicking \"Test workflow\"": [
+          {
+            "startTime": 1747343997730,
+            "executionIndex": 0,
+            "source": [],
+            "hints": [],
+            "executionTime": 0,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {},
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "OpenAI Chat Model2": [
+          {
+            "startTime": 1747343997733,
+            "executionTime": 1117,
+            "executionIndex": 2,
+            "executionStatus": "success",
+            "source": [
+              {
+                "previousNode": "AI Agent2",
+                "previousNodeRun": 0
+              }
+            ],
+            "data": {
+              "ai_languageModel": [
+                [
+                  {
+                    "json": {
+                      "response": {
+                        "object": true
+                      },
+                      "tokenUsage": {
+                        "object": true
+                      }
+                    }
+                  }
+                ]
+              ]
+            },
+            "inputOverride": {
+              "ai_languageModel": [
+                [
+                  {
+                    "json": {
+                      "messages": [
+                        "System: Answer the following questions as best you can. You have access to the following tools:\n\ncalculator: Useful for getting the result of a math expression. The input to this tool should be a valid mathematical expression that could be executed by a simple calculator.\n\nThe way you use the tools is by specifying a json blob, denoted below by $JSON_BLOB\nSpecifically, this $JSON_BLOB should have a \"action\" key (with the name of the tool to use) and a \"action_input\" key (with the input to the tool going here). \nThe $JSON_BLOB should only contain a SINGLE action, do NOT return a list of multiple actions. Here is an example of a valid $JSON_BLOB:\n\n```\n{\n  \"action\": \"calculator\",\n  \"action_input\": \"1 + 2\"\n}\n```\n\nALWAYS use the following format:\n\nQuestion: the input question you must answer\nThought: you should always think about what to do\nAction: \n```\n$JSON_BLOB\n```\nObservation: the result of the action\n... (this Thought/Action/Observation can repeat N times)\nThought: I now know the final answer\nFinal Answer: the final answer to the original input question\n\nBegin! Reminder to always use the exact characters `Final Answer` when responding.\nHuman: What is the result of 30 + (10002200 / 100)? Only respond with a number.\n\n"
+                      ],
+                      "estimatedTokens": 294,
+                      "options": {
+                        "openai_api_key": {
+                          "lc": 1,
+                          "type": "secret",
+                          "id": [
+                            "OPENAI_API_KEY"
+                          ]
+                        },
+                        "model": "gpt-4o-mini",
+                        "temperature": 0,
+                        "timeout": 60000,
+                        "max_retries": 2,
+                        "configuration": {
+                          "baseURL": "https://api.openai.com/v1"
+                        },
+                        "model_kwargs": {}
+                      }
+                    }
+                  }
+                ]
+              ]
+            },
+            "metadata": {
+              "subRun": [
+                {
+                  "node": "OpenAI Chat Model2",
+                  "runIndex": 0
+                },
+                {
+                  "node": "OpenAI Chat Model2",
+                  "runIndex": 1
+                }
+              ]
+            }
+          },
+          {
+            "startTime": 1747343998855,
+            "executionTime": 811,
+            "executionIndex": 4,
+            "executionStatus": "success",
+            "source": [
+              {
+                "previousNode": "AI Agent2",
+                "previousNodeRun": 0
+              }
+            ],
+            "data": {
+              "ai_languageModel": [
+                [
+                  {
+                    "json": {
+                      "response": {
+                        "object": true
+                      },
+                      "tokenUsage": {
+                        "object": true
+                      }
+                    }
+                  }
+                ]
+              ]
+            },
+            "inputOverride": {
+              "ai_languageModel": [
+                [
+                  {
+                    "json": {
+                      "messages": [
+                        "System: Answer the following questions as best you can. You have access to the following tools:\n\ncalculator: Useful for getting the result of a math expression. The input to this tool should be a valid mathematical expression that could be executed by a simple calculator.\n\nThe way you use the tools is by specifying a json blob, denoted below by $JSON_BLOB\nSpecifically, this $JSON_BLOB should have a \"action\" key (with the name of the tool to use) and a \"action_input\" key (with the input to the tool going here). \nThe $JSON_BLOB should only contain a SINGLE action, do NOT return a list of multiple actions. Here is an example of a valid $JSON_BLOB:\n\n```\n{\n  \"action\": \"calculator\",\n  \"action_input\": \"1 + 2\"\n}\n```\n\nALWAYS use the following format:\n\nQuestion: the input question you must answer\nThought: you should always think about what to do\nAction: \n```\n$JSON_BLOB\n```\nObservation: the result of the action\n... (this Thought/Action/Observation can repeat N times)\nThought: I now know the final answer\nFinal Answer: the final answer to the original input question\n\nBegin! Reminder to always use the exact characters `Final Answer` when responding.\nHuman: What is the result of 30 + (10002200 / 100)? Only respond with a number.\n\nThis was your previous work (but I haven't seen any of it! I only see what you return as final answer):\nQuestion: What is the result of 30 + (10002200 / 100)?\nThought: I need to calculate the division first and then add 30 to the result.\nAction: \n```\n{\n  \"action\": \"calculator\",\n  \"action_input\": \"30 + (10002200 / 100)\"\n}\n```\n\nObservation: 100052\nThought:"
+                      ],
+                      "estimatedTokens": 394,
+                      "options": {
+                        "openai_api_key": {
+                          "lc": 1,
+                          "type": "secret",
+                          "id": [
+                            "OPENAI_API_KEY"
+                          ]
+                        },
+                        "model": "gpt-4o-mini",
+                        "temperature": 0,
+                        "timeout": 60000,
+                        "max_retries": 2,
+                        "configuration": {
+                          "baseURL": "https://api.openai.com/v1"
+                        },
+                        "model_kwargs": {}
+                      }
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Calculator2": [
+          {
+            "startTime": 1747343998851,
+            "executionTime": 2,
+            "executionIndex": 3,
+            "executionStatus": "success",
+            "source": [
+              {
+                "previousNode": "AI Agent2",
+                "previousNodeRun": 0
+              }
+            ],
+            "data": {
+              "ai_tool": [
+                [
+                  {
+                    "json": {
+                      "response": "100052"
+                    }
+                  }
+                ]
+              ]
+            },
+            "inputOverride": {
+              "ai_tool": [
+                [
+                  {
+                    "json": {
+                      "query": "30 + (10002200 / 100)"
+                    }
+                  }
+                ]
+              ]
+            },
+            "metadata": {
+              "subRun": [
+                {
+                  "node": "Calculator2",
+                  "runIndex": 0
+                }
+              ]
+            }
+          }
+        ],
+        "AI Agent2": [
+          {
+            "startTime": 1747343997730,
+            "executionIndex": 1,
+            "source": [
+              {
+                "previousNode": "When clicking \"Test workflow\""
+              }
+            ],
+            "hints": [],
+            "executionTime": 1936,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "output": "100052",
+                      "intermediateSteps": [
+                        "json array"
+                      ]
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Edit Fields2": [
+          {
+            "startTime": 1747343999666,
+            "executionIndex": 5,
+            "source": [
+              {
+                "previousNode": "AI Agent2"
+              }
+            ],
+            "hints": [],
+            "executionTime": 3,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "calculator_called": true,
+                      "has_correct_output": "true"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ]
+      },
+      "lastNodeExecuted": "Edit Fields2"
+    },
+    "executionData": {
+      "contextData": {},
+      "nodeExecutionStack": [],
+      "metadata": {
+        "OpenAI Chat Model2": [
+          {
+            "subRun": [
+              {
+                "node": "OpenAI Chat Model2",
+                "runIndex": 0
+              },
+              {
+                "node": "OpenAI Chat Model2",
+                "runIndex": 1
+              }
+            ]
+          }
+        ],
+        "Calculator2": [
+          {
+            "subRun": [
+              {
+                "node": "Calculator2",
+                "runIndex": 0
+              }
+            ]
+          }
+        ]
+      },
+      "waitingExecution": {},
+      "waitingExecutionSource": {}
+    }
+  },
+  "mode": "cli",
+  "startedAt": "2025-05-15T21:19:57.730Z",
+  "stoppedAt": "2025-05-15T21:19:59.669Z",
+  "status": "running",
+  "finished": true
+}

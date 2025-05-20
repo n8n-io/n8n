@@ -139,6 +139,32 @@ function getAiNodesBySubcategory(nodes: INodeTypeDescription[], subcategory: str
 		.sort((a, b) => a.properties.displayName.localeCompare(b.properties.displayName));
 }
 
+function getEvaluationNode(
+	nodeTypesStore: ReturnType<typeof useNodeTypesStore>,
+	isEvaluationVariantEnabled: boolean,
+) {
+	const evaluationNodeStore = nodeTypesStore.getNodeType('n8n-nodes-base.evaluation');
+
+	if (!isEvaluationVariantEnabled || !evaluationNodeStore) {
+		return [];
+	}
+
+	const evaluationNode = getNodeView(evaluationNodeStore);
+
+	return [
+		{
+			...evaluationNode,
+			properties: {
+				...evaluationNode.properties,
+				defaults: {
+					name: 'Evaluation',
+					color: '#c3c9d5',
+				},
+			},
+		},
+	];
+}
+
 export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 	const i18n = useI18n();
 	const nodeTypesStore = useNodeTypesStore();
@@ -150,9 +176,7 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 		EVALUATION_TRIGGER.variant,
 	);
 
-	const evaluationNodeStore = nodeTypesStore.getNodeType('n8n-nodes-base.evaluation');
-	const evaluationNode =
-		isEvaluationVariantEnabled && evaluationNodeStore ? [getNodeView(evaluationNodeStore)] : [];
+	const evaluationNode = getEvaluationNode(nodeTypesStore, isEvaluationVariantEnabled);
 
 	const chainNodes = getAiNodesBySubcategory(nodeTypesStore.allLatestNodeTypes, AI_CATEGORY_CHAINS);
 	const agentNodes = getAiNodesBySubcategory(nodeTypesStore.allLatestNodeTypes, AI_CATEGORY_AGENTS);
@@ -344,6 +368,30 @@ export function AINodesView(_nodes: SimplifiedNodeType[]): NodeView {
 
 export function TriggerView() {
 	const i18n = useI18n();
+	const posthogStore = usePostHog();
+	const isEvaluationVariantEnabled = posthogStore.isVariantEnabled(
+		EVALUATION_TRIGGER.name,
+		EVALUATION_TRIGGER.variant,
+	);
+
+	const evaluationTriggerNode = isEvaluationVariantEnabled
+		? {
+				key: EVALUATION_TRIGGER_NODE_TYPE,
+				type: 'node',
+				category: [CORE_NODES_CATEGORY],
+				properties: {
+					group: [],
+					name: EVALUATION_TRIGGER_NODE_TYPE,
+					displayName: 'When running evaluation',
+					description: 'Run a dataset through your workflow to test performance',
+					icon: 'fa:check-double',
+					defaults: {
+						name: 'Evaluation',
+						color: '#c3c9d5',
+					},
+				},
+			}
+		: null;
 
 	const view: NodeView = {
 		value: TRIGGER_NODE_CREATOR_VIEW,
@@ -437,18 +485,7 @@ export function TriggerView() {
 					icon: 'fa:comments',
 				},
 			},
-			{
-				key: EVALUATION_TRIGGER_NODE_TYPE,
-				type: 'node',
-				category: [CORE_NODES_CATEGORY],
-				properties: {
-					group: [],
-					name: EVALUATION_TRIGGER_NODE_TYPE,
-					displayName: 'Evaluation Trigger',
-					description: 'Run a dataset through your workflow to test performance',
-					icon: 'fa:check-double',
-				},
-			},
+			...(evaluationTriggerNode ? [evaluationTriggerNode] : []),
 			{
 				type: 'subcategory',
 				key: OTHER_TRIGGER_NODES_SUBCATEGORY,
