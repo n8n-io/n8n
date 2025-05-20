@@ -1,4 +1,4 @@
-import { escapeRegExp, mapValues, isEqual } from 'lodash';
+import { escapeRegExp, mapValues, isEqual, cloneDeep } from 'lodash';
 
 import { OperationalError } from './errors';
 import type { INode, INodeParameters, NodeParameterValueType } from './Interfaces';
@@ -560,7 +560,10 @@ export function extractReferencesInNodeExpressions(
 	const allUsedMappings = [];
 	const output = [];
 	for (const node of subGraph) {
-		const { result, usedMappings } = applyExtractMappingToNode(node, recMapByNode.get(node.name));
+		const { result, usedMappings } = applyExtractMappingToNode(
+			cloneDeep(node),
+			recMapByNode.get(node.name),
+		);
 		allUsedMappings.push(...usedMappings);
 		output.push(result);
 	}
