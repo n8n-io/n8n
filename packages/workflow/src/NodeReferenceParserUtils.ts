@@ -165,8 +165,9 @@ function parseExpressionMapping(
 
 	// This supports literal . used in the node name
 	const dotsInName = nodeNameInExpression?.split('').filter((x) => x === '.').length ?? 0;
-	const exprStart = splitExpr.slice(0, dotsInName + 1).join('.');
-	const parts = splitExpr.slice(dotsInName + 1);
+	const dotInAccessorsOffset = isolatedExpression.startsWith('$node.') ? 1 : 0;
+	const exprStart = splitExpr.slice(0, dotInAccessorsOffset + dotsInName + 1).join('.');
+	const parts = splitExpr.slice(dotInAccessorsOffset + dotsInName + 1);
 
 	// The calling code is expected to only handle $json expressions for the root node
 	// As these are invalid conversions for inner nodes
@@ -220,28 +221,28 @@ function parseExpressionMapping(
 					nodeNameInExpression,
 					originalExpression: `${exprStart}.${parts.slice(0, partsIdx + 1).join('.')}`, // $('abc').item.json.valid.until, but not ['x'] after
 					replacementPrefix: `$('${startNodeName}').${accessorPrefix}.${parts[1]}`, // $('Start').item.json
-					replacementName: parts.slice(2, partsIdx).join('_') + replacementPostfix, // valid_until, or valid_until_first
+					replacementName: parts.slice(2, partsIdx).join('_') + replacementPostfix, // valid_until, or valid_until_firstItem
 				};
 			} else {
 				// this case covers any normal ObjectExtensions functions called on the ITEM_TO_DATA_ACCESSORS entry
 				// e.g. $('nodeName').first().toJsonObject().randomJSFunction() or $('nodeName').all().map(x => ({...x, a: 3 }))
-
 				return {
 					nodeNameInExpression,
 					originalExpression: `${exprStart}.${parts[0]}`, // $('abc').first()
 					replacementPrefix: `$('${startNodeName}').${accessorPrefix}.json`, //  $('Start').first().json.
-					replacementName: `${nodeNamePlainJs}_${convertDataAccessorName(parts[0])}`, // nodeName_first
+					replacementName: `${nodeNamePlainJs}_${convertDataAccessorName(parts[0])}`, // nodeName_firstItem
 				};
 			}
 		}
 	}
 
+	// This covers specific metadata functions available on nodes
 	const itemAccessorMatch = ITEM_ACCESSORS.flatMap((x) => (x === parts[0] ? x : []))[0];
 	if (itemAccessorMatch !== undefined) {
 		return {
 			nodeNameInExpression,
 			originalExpression: `${exprStart}.${parts[0]}`, // $('abc').isExecuted
-			replacementPrefix: `$('${startNodeName}').${parts[0]}`, //  $('Start').isExecuted
+			replacementPrefix: `$('${startNodeName}').first().json`, //  $('Start').first()
 			replacementName: `${nodeNamePlainJs}_${parts[0]}`, // nodeName_isExecuted
 		};
 	}
@@ -255,7 +256,8 @@ function parseExpressionMapping(
 	return null;
 }
 
-function getCandidate(expression: string, startIndex: number, endIndex: number) {
+// find `$('NodeName').item.json.path.to.x` in `{{ $('NodeName').item.json.path.to.x[someFunction()] }}`
+function extractExpressionCandidate(expression: string, startIndex: number, endIndex: number) {
 	const firstPartException = ITEM_TO_DATA_ACCESSORS.map((x) =>
 		x.exec(expression.slice(endIndex)),
 	).filter((x) => x !== null);
@@ -272,6 +274,8 @@ function getCandidate(expression: string, startIndex: number, endIndex: number) 
 	return expression.slice(startIndex, after_accessor_idx + firstInvalidCharMatch.index);
 }
 
+// Parse a given regex accessor match (e.g. `$('nodeName')`, `$node['nodeName']`)
+// and extract a potential ExpressionMapping
 function parseCandidateMatch(
 	match: RegExpExecArray,
 	expression: string,
@@ -286,7 +290,7 @@ function parseCandidateMatch(
 
 	if (!nodeNames.includes(nodeNameInExpression)) return null;
 
-	const candidate = getCandidate(expression, startIndex, endIndex);
+	const candidate = extractExpressionCandidate(expression, startIndex, endIndex);
 	if (candidate === null) return null;
 	return parseExpressionMapping(
 		candidate,
@@ -296,12 +300,14 @@ function parseCandidateMatch(
 	);
 }
 
+// Handle matches of form `$json.path.to.value`, which is necessary for the selection input node
 function parse$jsonMatch(match: RegExpExecArray, expression: string, startNodeName: string) {
-	const candidate = getCandidate(expression, match.index, match[0].length);
+	const candidate = extractExpressionCandidate(expression, match.index, match[0].length);
 	if (candidate === null) return;
 	return parseExpressionMapping(candidate, null, null, startNodeName);
 }
 
+// Parse all references to other nodes in `expression` and return them as `ExpressionMappings`
 function parseReferencingExpressions(
 	expression: string,
 	nodeRegexps: Array<readonly [string, LazyRegExp]>,
@@ -331,6 +337,7 @@ function parseReferencingExpressions(
 	return result;
 }
 
+// Recursively apply `mapper` to all expressions in `parameterValue`
 function applyParameterMapping(
 	parameterValue: NodeParameterValueType,
 	mapper: (s: string) => ExpressionMapping[],
@@ -359,8 +366,9 @@ function applyParameterMapping(
 	return [result, allMappings];
 }
 
+// Ensure all expressions have a unique variable name
 function resolveDuplicates(data: ExpressionMapping[], allNodeNames: string[]) {
-	// Map from resulting variableName to the expressionData
+	// Map from candidate variableName to its expressionData
 	const triggerArgumentMap = new Map<string, ExpressionMapping>();
 	const originalExpressionMap = new Map<string, string>();
 
@@ -401,7 +409,7 @@ function resolveDuplicates(data: ExpressionMapping[], allNodeNames: string[]) {
 	};
 }
 
-// Recursively loop through the nodeProperties and apply `parameterExtractMapping` where applicable
+// Recursively loop through the nodeProperties and apply `parameterExtractMapping` where defined
 function applyExtractMappingToNode(node: INode, parameterExtractMapping: ParameterExtractMapping) {
 	const usedMappings: ExpressionMapping[] = [];
 
@@ -441,13 +449,14 @@ function applyExtractMappingToNode(node: INode, parameterExtractMapping: Paramet
 	return { result: { ...node, parameters } as INode, usedMappings };
 }
 
+// Recursively find the finalized mapping for provisional mappings
 function applyCanonicalMapping(
 	mapping: ParameterExtractMapping,
 	getCanonicalData: (m: ExpressionMapping) => ExpressionMapping | undefined,
 ): ParameterExtractMapping {
 	if (!mapping) return;
 	if (Array.isArray(mapping)) {
-		// Sort by longest so that we don't replace part of a longer expression
+		// Sort by longest so that we don't accidentally replace part of a longer expression
 		return mapping
 			.map(getCanonicalData)
 			.filter((x) => x !== undefined)
@@ -545,8 +554,8 @@ export function extractReferencesInNodeExpressions(
 	// STEP 5 - Apply canonical mappings to nodes and track created variables
 	////
 
-	// triggerArgumentMap[originalExpressionMap[originalExpression]] returns the canonical object
-	// These should not be undefined at this stage
+	// triggerArgumentMap[originalExpressionMap[originalExpression]] returns its canonical object
+	// These should never be undefined at this stage
 	const getCanonicalData = (e: ExpressionMapping) => {
 		const key = originalExpressionMap.get(e.originalExpression);
 		if (!key) return undefined;

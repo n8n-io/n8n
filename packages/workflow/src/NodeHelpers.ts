@@ -8,7 +8,7 @@ import isEqual from 'lodash/isEqual';
 
 import { EXECUTE_WORKFLOW_NODE_TYPE, WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE } from './Constants';
 import { ApplicationError } from './errors/application.error';
-import { nodeConnectionTypes, NodeConnectionTypes } from './Interfaces';
+import { NodeConnectionTypes } from './Interfaces';
 import type {
 	FieldType,
 	IContextObject,

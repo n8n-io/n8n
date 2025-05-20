@@ -101,8 +101,8 @@ const emit = defineEmits<{
 	'drag-and-drop': [position: XYPosition, event: DragEvent];
 	'tidy-up': [CanvasLayoutEvent];
 	'viewport:change': [viewport: ViewportTransform, dimensions: Dimensions];
-	'open:sub-workflow': [nodeId: string];
 	'selection:end': [position: XYPosition];
+	'open:sub-workflow': [nodeId: string];
 	'start-chat': [];
 	'extract-workflow': [ids: string[]];
 }>();

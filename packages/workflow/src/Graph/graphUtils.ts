@@ -230,7 +230,8 @@ export function parseExtractableSubgraphSelection(
 	const outputNodes = new Set(outputEdges.filter((x) => x[1].type === 'main').map((x) => x[0]));
 	let leafNodes = getLeafNodes(graphIds, adjacencyList);
 	// If we have no leaf nodes, and only one output node, we can tolerate this output node
-	// TODO this doesn't make any sense, what would even return from the sub-workflow??
+	// and connect to it.
+	// Note that this is fairly theoretical, as return semantics in this case are not well-defined.
 	if (leafNodes.size === 0 && outputNodes.size === 1) leafNodes = outputNodes;
 
 	for (const outputNode of difference(outputNodes, leafNodes).values()) {
@@ -258,6 +259,6 @@ export function parseExtractableSubgraphSelection(
 			end,
 		});
 	}
-	console.log(errors, start, end);
+
 	return errors.length > 0 ? errors : { start, end };
 }

@@ -34,8 +34,8 @@ export type ContextMenuAction =
 	| 'add_node'
 	| 'add_sticky'
 	| 'change_color'
-	| 'tidy_up'
 	| 'open_sub_workflow'
+	| 'tidy_up'
 	| 'extract_sub_workflow';
 
 const position = ref<XYPosition>([0, 0]);
@@ -85,55 +85,6 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 	const targetNodes = computed(() =>
 		targetNodeIds.value.map((nodeId) => workflowsStore.getNodeById(nodeId)).filter(isPresent),
 	);
-
-	// const extractableSelectionResult = computed(() =>
-	// 	workflowExtraction.getExtractableSelection(new Set(targetNodes.value.map((x) => x.name))),
-	// );
-
-	// const isExtractableSelectionValid = computed(() => {
-	// 	if (workflowTriggerSelected.value) return false;
-
-	// 	const selection = extractableSelectionResult.value;
-
-	// 	if (Array.isArray(selection)) return false;
-
-	// 	const { start, end } = selection;
-
-	// 	const isSinglePut = (
-	// 		nodeName: string | undefined,
-	// 		fn: (
-	// 			...x: Parameters<typeof NodeHelpers.getNodeInputs>
-	// 		) => ReturnType<typeof NodeHelpers.getNodeInputs>,
-	// 	) => {
-	// 		if (nodeName) {
-	// 			const node = workflowsStore.getNodeByName(nodeName);
-	// 			if (node) {
-	// 				const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
-	// 				if (nodeType) {
-	// 					const outputs = fn(workflowsStore.getCurrentWorkflow(), node, nodeType);
-	// 					debugger;
-	// 					if (
-	// 						outputs.filter((x) => (typeof x === 'string' ? x === 'main' : x.type === 'main'))
-	// 							.length > 1
-	// 					) {
-	// 						return false;
-	// 					}
-	// 				}
-	// 			}
-	// 		}
-	// 		return true;
-	// 	};
-
-	// 	if (!isSinglePut(start, NodeHelpers.getNodeInputs)) return false;
-	// 	if (!isSinglePut(end, NodeHelpers.getNodeOutputs)) return false;
-
-	// 	// Returns an array of errors
-	// 	return !Array.isArray(selection);
-	// });
-
-	// const workflowTriggerSelected = computed(() =>
-	// 	targetNodes.value.some((x) => x.type === EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE),
-	// );
 
 	const canAddNodeOfType = (nodeType: INodeTypeDescription) => {
 		const sameTypeNodes = workflowsStore.allNodes.filter((n) => n.type === nodeType.name);
@@ -206,7 +157,7 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 				id: 'select_all',
 				divided: true,
 				label: i18n.baseText('contextMenu.selectAll'),
-				shortcut: { metaKey: true, keys: ['S'] },
+				shortcut: { metaKey: true, keys: ['A'] },
 				disabled: nodes.length === workflowsStore.allNodes.length,
 			},
 			{
@@ -222,7 +173,6 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 				divided: true,
 				label: i18n.baseText('contextMenu.extract', { adjustToNumber: nodes.length }),
 				shortcut: { shiftKey: true, metaKey: true, keys: ['X'] },
-				// disabled: !isExtractableSelectionValid.value,
 			},
 		];
 
