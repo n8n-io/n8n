@@ -31,7 +31,7 @@ export class TestRunsController {
 	private async getTestRun(testRunId: string, workflowId: string, user: User) {
 		const sharedWorkflowsIds = await getSharedWorkflowIds(user, ['workflow:read']);
 
-		if (!sharedWorkflowsIds.length || (workflowId && !sharedWorkflowsIds.includes(workflowId))) {
+		if (!sharedWorkflowsIds.includes(workflowId)) {
 			throw new NotFoundError('Test run not found');
 		}
 
