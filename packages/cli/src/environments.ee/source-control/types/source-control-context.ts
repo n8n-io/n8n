@@ -1,13 +1,5 @@
-import type {
-	CredentialsEntity,
-	Folder,
-	Project,
-	User,
-	WorkflowEntity,
-	WorkflowTagMapping,
-} from '@n8n/db';
+import type { User } from '@n8n/db';
 import { hasGlobalScope } from '@n8n/permissions';
-import type { FindOptionsWhere } from '@n8n/typeorm';
 
 export class SourceControlContext {
 	constructor(private readonly userInternal: User) {}
