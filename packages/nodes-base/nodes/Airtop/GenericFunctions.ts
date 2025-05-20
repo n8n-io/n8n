@@ -9,7 +9,7 @@ import {
 	MIN_TIMEOUT_MINUTES,
 	MAX_TIMEOUT_MINUTES,
 	SESSION_STATUS,
-	SESSION_CREATION_TIMEOUT,
+	OPERATION_TIMEOUT,
 } from './constants';
 import { apiRequest } from './transport';
 import type { IAirtopResponse, IAirtopSessionResponse } from './transport/types';
@@ -363,7 +363,7 @@ export function shouldCreateNewSession(this: IExecuteFunctions, index: number) {
 export async function createSession(
 	this: IExecuteFunctions,
 	parameters: IDataObject,
-	timeout = SESSION_CREATION_TIMEOUT,
+	timeout = OPERATION_TIMEOUT,
 ): Promise<{ sessionId: string }> {
 	// Request session creation
 	const response = (await apiRequest.call(

@@ -5,7 +5,7 @@ import {
 	NodeApiError,
 } from 'n8n-workflow';
 
-import { ERROR_MESSAGES, FILL_FORM_TIMEOUT } from '../../constants';
+import { ERROR_MESSAGES, OPERATION_TIMEOUT } from '../../constants';
 import {
 	validateRequiredStringField,
 	validateSessionAndWindowId,
@@ -38,7 +38,7 @@ export const description: INodeProperties[] = [
 export async function execute(
 	this: IExecuteFunctions,
 	index: number,
-	timeout = FILL_FORM_TIMEOUT,
+	timeout = OPERATION_TIMEOUT,
 ): Promise<INodeExecutionData[]> {
 	const { sessionId, windowId } = validateSessionAndWindowId.call(this, index);
 	const formData = validateRequiredStringField.call(this, index, 'formData', 'Form Data');

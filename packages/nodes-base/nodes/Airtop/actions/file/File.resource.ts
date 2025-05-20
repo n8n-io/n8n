@@ -3,8 +3,10 @@ import type { INodeProperties } from 'n8n-workflow';
 import * as deleteFile from './delete.operation';
 import * as get from './get.operation';
 import * as getMany from './getMany.operation';
+import * as load from './load.operation';
+import * as upload from './upload.operation';
 
-export { deleteFile, get, getMany };
+export { deleteFile, get, getMany, upload, load };
 
 export const description: INodeProperties[] = [
 	{
@@ -19,6 +21,12 @@ export const description: INodeProperties[] = [
 		},
 		options: [
 			{
+				name: 'Delete',
+				value: 'deleteFile',
+				description: 'Delete an uploaded file',
+				action: 'Delete a file',
+			},
+			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a details of an uploaded file',
@@ -31,15 +39,23 @@ export const description: INodeProperties[] = [
 				action: 'Get many files',
 			},
 			{
-				name: 'Delete',
-				value: 'deleteFile',
-				description: 'Delete an uploaded file',
-				action: 'Delete a file',
+				name: 'Load',
+				value: 'load',
+				description: 'Load a file into a session',
+				action: 'Load a file',
+			},
+			{
+				name: 'Upload',
+				value: 'upload',
+				description: 'Upload a file into a session',
+				action: 'Upload a file',
 			},
 		],
 		default: 'getMany',
 	},
-	...getMany.description,
-	...get.description,
 	...deleteFile.description,
+	...get.description,
+	...getMany.description,
+	...load.description,
+	...upload.description,
 ];

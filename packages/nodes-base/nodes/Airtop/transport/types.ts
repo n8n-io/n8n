@@ -66,3 +66,13 @@ export interface IAirtopInteractionRequest extends IDataObject {
 export interface IAirtopNodeExecutionData extends INodeExecutionData {
 	json: IAirtopResponse;
 }
+
+export interface IAirtopServerEvent {
+	event: string;
+	eventData: {
+		error?: string;
+	};
+	fileId?: string;
+	status?: string;
+	downloadUrl?: string;
+}
