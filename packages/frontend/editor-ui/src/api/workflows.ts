@@ -1,5 +1,5 @@
 import type {
-	ChangeLocationSearchResult,
+	ChangeLocationSearchResponseItem,
 	FolderCreateResponse,
 	FolderTreeResponseItem,
 	IExecutionResponse,
@@ -147,8 +147,8 @@ export async function getProjectFolders(
 		name?: string;
 	},
 	select?: string[],
-): Promise<ChangeLocationSearchResult[]> {
-	const res = await getFullApiResponse<ChangeLocationSearchResult[]>(
+): Promise<ChangeLocationSearchResponseItem[]> {
+	const res = await getFullApiResponse<ChangeLocationSearchResponseItem[]>(
 		context,
 		'GET',
 		`/projects/${projectId}/folders`,

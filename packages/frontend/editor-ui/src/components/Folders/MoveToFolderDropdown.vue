@@ -85,6 +85,7 @@ const fetchAvailableLocations = async (query?: string) => {
 			updatedAt: '',
 			workflowCount: 0,
 			subFolderCount: 0,
+			path: [],
 		});
 	}
 	loading.value = false;
@@ -118,6 +119,10 @@ function focusOnInput() {
 defineExpose({
 	focusOnInput,
 });
+
+const separator = computed(() => {
+	return '/';
+});
 </script>
 
 <template>
@@ -146,16 +151,31 @@ defineExpose({
 				data-test-id="move-to-folder-option"
 			>
 				<div :class="$style['folder-select-item']">
-					<ProjectIcon
-						v-if="location.resource === 'project' && currentProject"
-						:class="$style['folder-icon']"
-						:icon="projectIcon"
-						:border-less="true"
-						size="mini"
-						color="text-dark"
-					/>
-					<n8n-icon v-else :class="$style['folder-icon']" icon="folder" />
-					<span :class="$style['folder-name']"> {{ location.name }}</span>
+					<ul :class="$style.list">
+						<li v-if="location.resource === 'project'" :class="$style.current">
+							{{ location.name }}
+						</li>
+						<li v-if="location.path.length" :class="$style.separator">
+							{{ separator }}
+						</li>
+						<template v-for="(fragment, index) in location.path" :key="`${location.id}-${index}`">
+							<li
+								:class="{
+									[$style.item]: true,
+									[$style.current]: index === location.path.length - 1,
+								}"
+								:title="fragment"
+								:data-resourceid="fragment"
+								data-test-id="breadcrumbs-item"
+								data-target="folder-breadcrumb-item"
+							>
+								<n8n-text>{{ fragment }}</n8n-text>
+							</li>
+							<li v-if="index !== location.path.length - 1" :class="$style.separator">
+								{{ separator }}
+							</li>
+						</template>
+					</ul>
 				</div>
 			</N8nOption>
 		</N8nSelect>
@@ -174,10 +194,40 @@ defineExpose({
 	max-width: 90%;
 	overflow: hidden;
 	white-space: nowrap;
+}
 
-	.folder-name {
-		text-overflow: ellipsis;
-		overflow: hidden;
-	}
+.list {
+	display: flex;
+	list-style: none;
+	align-items: center;
+}
+
+li {
+	padding: var(--spacing-4xs) var(--spacing-5xs) var(--spacing-5xs);
+}
+
+.item,
+.item * {
+	display: block;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+
+	color: var(--color-text-light);
+	font-size: var(--font-size-s);
+	line-height: var(--font-line-height-xsmall);
+}
+
+.item {
+	max-width: var(--spacing-3xl);
+}
+
+.item.current span {
+	color: var(--color-text-dark);
+}
+
+.separator {
+	font-size: var(--font-size-s);
+	color: var(--color-foreground-light);
 }
 </style>

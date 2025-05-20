@@ -88,6 +88,20 @@ modalBus.on('opened', () => {
 		:event-bus="modalBus"
 	>
 		<template #content>
+			<p
+				v-if="props.data.resourceType === 'folder'"
+				:class="$style.description"
+				data-test-id="move-folder-description"
+			>
+				{{
+					i18n.baseText('folders.move.modal.description', {
+						interpolate: {
+							workflowCount: 0,
+							subFolderCount: 0,
+						},
+					})
+				}}
+			</p>
 			<MoveToFolderDropdown
 				v-if="projectsStore.currentProject"
 				ref="moveToFolderDropdown"
@@ -97,13 +111,6 @@ modalBus.on('opened', () => {
 				:exclude-only-parent="props.data.resourceType === 'workflow'"
 				@location:selected="onFolderSelected"
 			/>
-			<p
-				v-if="props.data.resourceType === 'folder'"
-				:class="$style.description"
-				data-test-id="move-folder-description"
-			>
-				{{ i18n.baseText('folders.move.modal.description') }}
-			</p>
 		</template>
 		<template #footer="{ close }">
 			<div :class="$style.footer">
