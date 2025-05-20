@@ -216,7 +216,13 @@ export function resolveParameter<T = IDataObject>(
 	) {
 		runIndexCurrent = workflowRunData[contextNode!.name].length - 1;
 	}
-	let _executeData = executeData(parentNode, contextNode!.name, inputName, runIndexCurrent);
+	let _executeData = executeData(
+		parentNode,
+		contextNode!.name,
+		inputName,
+		runIndexCurrent,
+		runIndexParent,
+	);
 
 	if (!_executeData.source) {
 		// fallback to parent's run index for multi-output case
@@ -354,12 +360,15 @@ export function executeData(
 	currentNode: string,
 	inputName: string,
 	runIndex: number,
+	parentRunIndex?: number,
 ): IExecuteData {
 	const executeData = {
 		node: {},
 		data: {},
 		source: null,
 	} as IExecuteData;
+
+	parentRunIndex = parentRunIndex ?? runIndex;
 
 	const workflowsStore = useWorkflowsStore();
 
@@ -386,15 +395,15 @@ export function executeData(
 
 		if (
 			!workflowRunData[parentNodeName] ||
-			workflowRunData[parentNodeName].length <= runIndex ||
-			!workflowRunData[parentNodeName][runIndex] ||
-			!workflowRunData[parentNodeName][runIndex].hasOwnProperty('data') ||
-			workflowRunData[parentNodeName][runIndex].data === undefined ||
-			!workflowRunData[parentNodeName][runIndex].data.hasOwnProperty(inputName)
+			workflowRunData[parentNodeName].length <= parentRunIndex ||
+			!workflowRunData[parentNodeName][parentRunIndex] ||
+			!workflowRunData[parentNodeName][parentRunIndex].hasOwnProperty('data') ||
+			workflowRunData[parentNodeName][parentRunIndex].data === undefined ||
+			!workflowRunData[parentNodeName][parentRunIndex].data?.hasOwnProperty(inputName)
 		) {
 			executeData.data = {};
 		} else {
-			executeData.data = workflowRunData[parentNodeName][runIndex].data!;
+			executeData.data = workflowRunData[parentNodeName][parentRunIndex].data!;
 			if (workflowRunData[currentNode] && workflowRunData[currentNode][runIndex]) {
 				executeData.source = {
 					[inputName]: workflowRunData[currentNode][runIndex].source,
@@ -427,6 +436,7 @@ export function executeData(
 						{
 							previousNode: parentNodeName,
 							previousNodeOutput,
+							previousNodeRun: parentRunIndex,
 						},
 					],
 				};
