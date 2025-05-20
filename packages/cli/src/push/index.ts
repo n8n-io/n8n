@@ -99,6 +99,35 @@ export class Push extends TypedEmitter<PushEvents> {
 		);
 	}
 
+	/**
+	 * Construct the expected origin out of the host and forward headers.
+	 * If `x-forwarded-host` and `x-forwarded-proto` are both defined they take
+	 * precedence over `host`.
+	 * If they are not both defined then `host` is used and the protocol is
+	 * inferred from `origin`.
+	 */
+	private constructExpectedOrigin(req: SSEPushRequest | WebSocketPushRequest) {
+		const headers = req.headers;
+
+		if (headers.origin) {
+			const forwardedHost =
+				typeof headers['x-forwarded-host'] === 'string' ? headers['x-forwarded-host'] : undefined;
+			const forwardedProto =
+				typeof headers['x-forwarded-proto'] === 'string' ? headers['x-forwarded-proto'] : undefined;
+			const allForwardHeadersAreDefined = forwardedHost && forwardedProto;
+			const host = allForwardHeadersAreDefined ? forwardedHost : headers.host;
+			const proto = allForwardHeadersAreDefined
+				? forwardedProto
+				: headers.origin?.startsWith('https://')
+					? 'https'
+					: 'http';
+
+			return { success: true, expectedOrigin: `${proto}://${host}` } as const;
+		} else {
+			return { success: false } as const;
+		}
+	}
+
 	handleRequest(req: SSEPushRequest | WebSocketPushRequest, res: PushResponse) {
 		const {
 			ws,
@@ -107,33 +136,31 @@ export class Push extends TypedEmitter<PushEvents> {
 			headers,
 		} = req;
 
-		let connectionError = '';
-		// Support for proxies: prefer X-Forwarded headers if present
-		const forwardedHost = headers['x-forwarded-host'] as string | undefined;
-		const forwardedProto = headers['x-forwarded-proto'] as string | undefined;
-		const host = forwardedHost || headers.host;
-		const proto = forwardedProto || (headers.origin?.startsWith('https://') ? 'https' : 'http');
-		const expectedOrigin = `${proto}://${host}`;
+		const inProduction = true;
 
-        this.logger.debug(`The Host header is "${headers.host}"`);
-        this.logger.debug(`The Origin header is "${headers.origin}"`);
-        this.logger.debug(`The X-Forwarded-Host header is "${forwardedHost}"`);
-        this.logger.debug(`The X-Forwarded-Proto header is "${forwardedProto}"`);
-        this.logger.debug(`The Expected Origin is "${expectedOrigin}"`);
-        if (headers.origin === expectedOrigin) {
-            this.logger.debug('Origin header matches the expected origin.');
-        } else {
-            this.logger.error(
-                `Origin header does NOT match the expected origin. (Origin: "${headers.origin}", Expected: "${expectedOrigin}")`,
-            );
-        }
+		let connectionError = '';
+
+		const expectedOriginResult = this.constructExpectedOrigin(req);
 
 		if (!pushRef) {
 			connectionError = 'The query parameter "pushRef" is missing!';
-		} else if (
-			inProduction &&
-			headers.origin !== expectedOrigin
-		) {
+		} else if (expectedOriginResult.success === false) {
+			this.logger.warn(`Origin header is missing`);
+
+			connectionError = 'Invalid origin!';
+		} else if (inProduction && headers.origin !== expectedOriginResult.expectedOrigin) {
+			this.logger.warn(
+				`Origin header does NOT match the expected origin. (Origin: "${headers.origin}", Expected: "${expectedOriginResult.expectedOrigin}")`,
+				{
+					expectedOrigin: expectedOriginResult.expectedOrigin,
+					headers: {
+						host: req.headers.host,
+						origin: req.headers.origin,
+						['x-forwarded-proto']: req.headers['x-forwarded-proto'],
+						['x-forwarded-host']: req.headers['x-forwarded-host'],
+					},
+				},
+			);
 			connectionError = 'Invalid origin!';
 		}
 
