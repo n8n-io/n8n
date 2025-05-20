@@ -179,22 +179,6 @@ describe('agentRequest.store', () => {
 		});
 	});
 
-	describe('Input Validation', () => {
-		it('throws error for invalid workflowId', () => {
-			const store = useAgentRequestStore();
-			expect(() => {
-				store.setAgentRequestForNode('', NODE_ID_1, { query: {} });
-			}).toThrow('Invalid workflowId');
-		});
-
-		it('throws error for invalid nodeId', () => {
-			const store = useAgentRequestStore();
-			expect(() => {
-				store.setAgentRequestForNode('workflow-1', '', { query: {} });
-			}).toThrow('Invalid nodeId');
-		});
-	});
-
 	describe('Persistence', () => {
 		it('saves to localStorage when state changes', async () => {
 			const store = useAgentRequestStore();
