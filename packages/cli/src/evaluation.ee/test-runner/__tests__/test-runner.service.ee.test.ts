@@ -276,6 +276,53 @@ describe('TestRunnerService', () => {
 			}
 		});
 
+		test('should throw an error if trigger node output is empty list', () => {
+			// Create workflow with a trigger node
+			const workflow = mock<IWorkflowBase>({
+				nodes: [
+					{
+						id: 'triggerNodeId',
+						name: 'TriggerNode',
+						type: EVALUATION_DATASET_TRIGGER_NODE,
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+			});
+
+			// Create execution data with missing output
+			const execution = mock<IRun>({
+				data: {
+					resultData: {
+						runData: {
+							TriggerNode: [
+								{
+									data: {
+										main: [[]], // Empty list
+									},
+								},
+							],
+						},
+					},
+				},
+			});
+
+			// Expect the method to throw an error
+			expect(() => {
+				(testRunnerService as any).extractDatasetTriggerOutput(execution, workflow);
+			}).toThrow(TestRunError);
+
+			// Verify the error has the correct code
+			try {
+				(testRunnerService as any).extractDatasetTriggerOutput(execution, workflow);
+			} catch (error) {
+				expect(error).toBeInstanceOf(TestRunError);
+				expect(error.code).toBe('TEST_CASES_NOT_FOUND');
+			}
+		});
+
 		test('should work with actual execution data format', () => {
 			// Create workflow with a trigger node that matches the name in the actual data
 			const workflow = mock<IWorkflowBase>({
