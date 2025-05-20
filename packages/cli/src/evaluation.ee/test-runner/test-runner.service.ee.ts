@@ -9,12 +9,13 @@ import type {
 	IWorkflowBase,
 	IWorkflowExecutionDataProcess,
 	IExecuteData,
+	INodeExecutionData,
 } from 'n8n-workflow';
 import assert from 'node:assert';
 
 import { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
-import { EVALUATION_METRICS_NODE } from '@/constants';
+import { EVALUATION_DATASET_TRIGGER_NODE, EVALUATION_METRICS_NODE } from '@/constants';
 import { TestCaseExecutionError, TestRunError } from '@/evaluation.ee/test-runner/errors.ee';
 import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
@@ -26,7 +27,13 @@ export interface TestRunMetadata {
 	userId: string;
 }
 
+export interface TestCaseExecutionResult {
+	executionData: IRun;
+	executionId: string;
+}
+
 /**
+ * TODO: update description
  * This service orchestrates the running of test cases.
  * It uses the test definitions to find
  * past executions, creates pin data from them,
@@ -50,14 +57,11 @@ export class TestRunnerService {
 	) {}
 
 	/**
-	 * Prepares the start nodes and trigger node data props for the `workflowRunner.run` method input.
+	 * Finds the dataset trigger node in the workflow
 	 */
-	private getStartNodesData(
-		workflow: IWorkflowBase,
-	): Pick<IWorkflowExecutionDataProcess, 'triggerToStartFrom'> {
-		// Find the dataset trigger node
+	private findTriggerNode(workflow: IWorkflowBase) {
 		const triggerNode = workflow.nodes.find(
-			(node) => node.type === 'n8n-nodes-base.evaluationTrigger',
+			(node) => node.type === EVALUATION_DATASET_TRIGGER_NODE,
 		);
 
 		if (!triggerNode) {
@@ -65,24 +69,34 @@ export class TestRunnerService {
 			throw new TestCaseExecutionError('TRIGGER_NO_LONGER_EXISTS');
 		}
 
-		const triggerToStartFrom = {
-			name: triggerNode.name,
-		};
+		return triggerNode;
+	}
+
+	/**
+	 * Prepares the start nodes and trigger node data props for the `workflowRunner.run` method input.
+	 */
+	private getStartNodesData(
+		workflow: IWorkflowBase,
+	): Pick<IWorkflowExecutionDataProcess, 'triggerToStartFrom'> {
+		const triggerNode = this.findTriggerNode(workflow);
 
 		return {
-			triggerToStartFrom,
+			triggerToStartFrom: {
+				name: triggerNode.name,
+			},
 		};
 	}
 
 	/**
-	 * Runs a test case with the given pin data.
+	 * Runs a test case with the given input
 	 * Waits for the workflow under test to finish execution.
 	 */
 	private async runTestCase(
 		workflow: IWorkflowBase,
 		metadata: TestRunMetadata,
+		testCase: INodeExecutionData,
 		abortSignal: AbortSignal,
-	): Promise<[string, IRun | undefined] | undefined> {
+	): Promise<TestCaseExecutionResult | undefined> {
 		// Do not run if the test run is cancelled
 		if (abortSignal.aborted) {
 			return;
@@ -94,12 +108,13 @@ export class TestRunnerService {
 		// Evaluation executions should run the same way as manual,
 		// because they need pinned data and partial execution logic
 
-		const triggerNode = workflow.nodes.find(
-			(node) => node.type === 'n8n-nodes-base.evaluationTrigger',
-		);
-		assert(triggerNode);
+		const triggerNode = this.findTriggerNode(workflow);
 
-		// Initialize the incoming data
+		const pinData = {
+			[triggerNode.name]: [testCase],
+		};
+
+		// Initialize the input data for dataset trigger
 		const nodeExecutionStack: IExecuteData[] = [];
 		nodeExecutionStack.push({
 			// node: startNodesData.triggerToStartFrom.name as INode,
@@ -113,7 +128,7 @@ export class TestRunnerService {
 		const data: IWorkflowExecutionDataProcess = {
 			...startNodesData,
 			executionMode: 'evaluation',
-			// pinData,
+			pinData,
 			workflowData: workflow,
 			userId: metadata.userId,
 			partialExecutionVersion: 2,
@@ -169,9 +184,76 @@ export class TestRunnerService {
 		});
 
 		// Wait for the execution to finish
+		const executionData = await this.activeExecutions.getPostExecutePromise(executionId);
+
+		assert(executionData);
+
+		return { executionId, executionData };
+	}
+
+	/**
+	 * This method creates a partial workflow execution to run the dataset trigger only
+	 * to get the whole dataset.
+	 */
+	private async runDatasetTrigger(workflow: IWorkflowBase, metadata: TestRunMetadata) {
+		const startNodesData = this.getStartNodesData(workflow);
+
+		// Prepare the data to run the workflow
+		// Evaluation executions should run the same way as manual,
+		// because they need pinned data and partial execution logic
+
+		const triggerNode = this.findTriggerNode(workflow);
+
+		// Initialize the input data for dataset trigger
+		// Provide a flag indicating that we want to get the whole dataset
+		const nodeExecutionStack: IExecuteData[] = [];
+		nodeExecutionStack.push({
+			node: triggerNode,
+			data: {
+				main: [[{ json: { requestDataset: true } }]],
+			},
+			source: null,
+		});
+
+		// TODO: ideally we do not want this execution to appear in the executions list
+		const data: IWorkflowExecutionDataProcess = {
+			...startNodesData,
+			destinationNode: triggerNode.name,
+			executionMode: 'manual',
+			runData: {},
+			workflowData: workflow,
+			userId: metadata.userId,
+			partialExecutionVersion: 2,
+			executionData: {
+				startData: {
+					destinationNode: triggerNode.name,
+				},
+				resultData: {
+					runData: {},
+				},
+				executionData: {
+					contextData: {},
+					metadata: {},
+					nodeExecutionStack,
+					waitingExecution: {},
+					waitingExecutionSource: {},
+				},
+				manualData: {
+					userId: metadata.userId,
+					partialExecutionVersion: 2,
+					triggerToStartFrom: startNodesData.triggerToStartFrom,
+				},
+			},
+		};
+
+		// Trigger the workflow under test with mocked data
+		const executionId = await this.workflowRunner.run(data);
+		assert(executionId);
+
+		// Wait for the execution to finish
 		const executePromise = this.activeExecutions.getPostExecutePromise(executionId);
 
-		return [executionId, await executePromise];
+		return await executePromise;
 	}
 
 	/**
@@ -184,18 +266,16 @@ export class TestRunnerService {
 	/**
 	 * Extract the dataset trigger output
 	 */
-	private extractDatasetTriggerOutput(execution: IRun, workflow: IWorkflowBase): IDataObject {
-		const triggerNode = workflow.nodes.find(
-			(node) => node.type === 'n8n-nodes-base.dummyDatasetTrigger',
-		);
-		assert(triggerNode);
+	private extractDatasetTriggerOutput(execution: IRun, workflow: IWorkflowBase) {
+		const triggerNode = this.findTriggerNode(workflow);
 
 		const triggerOutput = execution.data.resultData.runData[triggerNode.name][0];
 		if (!triggerOutput) {
+			// TODO: Change error
 			throw new TestRunError('UNKNOWN_ERROR');
 		}
 
-		return triggerOutput.data?.main?.[0]?.[0]?.json ?? {};
+		return triggerOutput.data?.main?.[0];
 	}
 
 	/**
@@ -213,7 +293,7 @@ export class TestRunnerService {
 	}
 
 	/**
-	 * Creates a new test run for the given test definition.
+	 * Creates a new test run for the given workflow
 	 */
 	async runTest(user: User, workflowId: string): Promise<void> {
 		this.logger.debug('Starting new test run', { workflowId });
@@ -246,15 +326,23 @@ export class TestRunnerService {
 			// 1. Make test cases list
 			///
 
-			// TODO: Get the test cases from the dataset trigger node
-			// const testCases = [{ id: 1 }];
+			const datasetFetchExecution = await this.runDatasetTrigger(workflow, testRunMetadata);
+			assert(datasetFetchExecution);
 
-			// this.logger.debug('Found test cases', { count: testCases.length });
+			const datasetTriggerOutput = this.extractDatasetTriggerOutput(
+				datasetFetchExecution,
+				workflow,
+			);
+			assert(datasetTriggerOutput);
 
-			// if (testCases.length === 0) {
-			// 	// TODO: Change error
-			// 	throw new TestRunError('PAST_EXECUTIONS_NOT_FOUND');
-			// }
+			const testCases = datasetTriggerOutput.map((items) => ({ json: items.json }));
+
+			this.logger.debug('Found test cases', { count: testCases.length });
+
+			if (testCases.length === 0) {
+				// TODO: Change error
+				throw new TestRunError('PAST_EXECUTIONS_NOT_FOUND');
+			}
 
 			// Add all past executions mappings to the test run.
 			// This will be used to track the status of each test case and keep the connection between test run and all related executions (past, current, and evaluation).
@@ -281,11 +369,10 @@ export class TestRunnerService {
 			// 2. Run over all the test cases
 			///
 
-			while (true) {
+			for (const testCase of testCases) {
 				if (abortSignal.aborted) {
 					this.logger.debug('Test run was cancelled', {
 						workflowId,
-						// stoppedOn: pastExecutionId,
 					});
 					break;
 				}
@@ -298,11 +385,17 @@ export class TestRunnerService {
 					};
 
 					// Run the test case and wait for it to finish
-					const [testCaseExecutionId, testCaseExecution] = (await this.runTestCase(
+					const testCaseResult = await this.runTestCase(
 						workflow,
 						testCaseMetadata,
+						testCase,
 						abortSignal,
-					)) ?? [undefined, undefined];
+					);
+					assert(testCaseResult);
+
+					const { executionId: testCaseExecutionId, executionData: testCaseExecution } =
+						testCaseResult;
+
 					assert(testCaseExecution);
 					assert(testCaseExecutionId);
 
@@ -339,19 +432,6 @@ export class TestRunnerService {
 						status: 'success',
 						metrics: addedMetrics,
 					});
-
-					// Check if there are more test cases left
-					const datasetTriggerOutput = this.extractDatasetTriggerOutput(
-						testCaseExecution,
-						workflow,
-					);
-
-					console.log('Dataset trigger output', datasetTriggerOutput);
-
-					if (!datasetTriggerOutput.hasMore) {
-						this.logger.debug('No more test cases left');
-						break;
-					}
 				} catch (e) {
 					// FIXME: this is a temporary log
 					this.logger.error('Test case execution failed', {
