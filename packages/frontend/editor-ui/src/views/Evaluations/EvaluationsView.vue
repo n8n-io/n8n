@@ -5,7 +5,6 @@ import { computed, ref } from 'vue';
 
 import RunsSection from '@/components/Evaluations/EditDefinition/sections/RunsSection.vue';
 import { useEvaluationStore } from '@/stores/evaluation.store.ee';
-import { useWorkflowsStore } from '@/stores/workflows.store';
 import { N8nButton, N8nText } from '@n8n/design-system';
 import { useAsyncState } from '@vueuse/core';
 import { orderBy } from 'lodash-es';
@@ -21,8 +20,6 @@ const locale = useI18n();
 const toast = useToast();
 const evaluationsStore = useEvaluationStore();
 const usageStore = useUsageStore();
-const workflowsStore = useWorkflowsStore();
-// const usersStore = useUsersStore();
 
 const { isReady } = useAsyncState(
 	async () => {
@@ -40,13 +37,6 @@ const { isReady } = useAsyncState(
 const hasRuns = computed(() => runs.value.length > 0);
 
 const selectedMetric = ref<string>('');
-
-const evaluationMetricNodeExist = computed(() => {
-	return workflowsStore.workflow.nodes.some(
-		(node) =>
-			node.type === 'n8n-nodes-base.evaluation' && node.parameters.operation === 'setMetrics',
-	);
-});
 
 async function runTest() {
 	await evaluationsStore.startTestRun(props.name);
