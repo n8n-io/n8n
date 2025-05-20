@@ -35,8 +35,8 @@ const currentBranch = computed(() => {
 	return sourceControlStore.preferences.branchName;
 });
 
-// Check if the user has permission to push at least one project
-const hasProjectPushScope = computed(() => {
+// Check if the user has permission to push for at least one project
+const hasPushPermission = computed(() => {
 	return (
 		hasPermission(['rbac'], { rbac: { scope: 'sourceControl:push' } }) ||
 		projectStore.myProjects.some(
@@ -53,7 +53,7 @@ const hasPullPermission = computed(() => {
 const sourceControlAvailable = computed(
 	() =>
 		sourceControlStore.isEnterpriseSourceControlEnabled &&
-		(hasPullPermission.value || hasProjectPushScope.value),
+		(hasPullPermission.value || hasPushPermission.value),
 );
 
 async function pushWorkfolder() {
@@ -133,21 +133,25 @@ async function pullWorkfolder() {
 			</span>
 			<div :class="{ 'pt-xs': !isCollapsed }">
 				<n8n-tooltip
-					v-if="hasPullPermission"
-					:disabled="!isCollapsed"
+					:disabled="!isCollapsed && hasPullPermission"
 					:show-after="tooltipOpenDelay"
-					placement="right"
+					:placement="isCollapsed ? 'right' : 'top'"
 				>
 					<template #content>
 						<div>
-							{{ i18n.baseText('settings.sourceControl.button.pull') }}
+							{{
+								!hasPullPermission
+									? i18n.baseText('settings.sourceControl.button.pull.forbidden')
+									: i18n.baseText('settings.sourceControl.button.pull')
+							}}
 						</div>
 					</template>
 					<n8n-button
 						:class="{
 							'mr-2xs': !isCollapsed,
-							'mb-2xs': isCollapsed && !sourceControlStore.preferences.branchReadOnly,
+							'mb-2xs': isCollapsed,
 						}"
+						:disabled="!hasPullPermission"
 						data-test-id="main-sidebar-source-control-pull"
 						icon="arrow-down"
 						type="tertiary"
@@ -158,19 +162,25 @@ async function pullWorkfolder() {
 					/>
 				</n8n-tooltip>
 				<n8n-tooltip
-					v-if="!sourceControlStore.preferences.branchReadOnly && hasProjectPushScope"
-					:disabled="!isCollapsed"
+					:disabled="
+						!isCollapsed && !sourceControlStore.preferences.branchReadOnly && hasPushPermission
+					"
 					:show-after="tooltipOpenDelay"
-					placement="right"
+					:placement="isCollapsed ? 'right' : 'top'"
 				>
 					<template #content>
 						<div>
-							{{ i18n.baseText('settings.sourceControl.button.push') }}
+							{{
+								sourceControlStore.preferences.branchReadOnly || !hasPushPermission
+									? i18n.baseText('settings.sourceControl.button.push.forbidden')
+									: i18n.baseText('settings.sourceControl.button.push')
+							}}
 						</div>
 					</template>
 					<n8n-button
 						:square="isCollapsed"
 						:label="isCollapsed ? '' : i18n.baseText('settings.sourceControl.button.push')"
+						:disabled="sourceControlStore.preferences.branchReadOnly || !hasPushPermission"
 						data-test-id="main-sidebar-source-control-push"
 						icon="arrow-up"
 						type="tertiary"

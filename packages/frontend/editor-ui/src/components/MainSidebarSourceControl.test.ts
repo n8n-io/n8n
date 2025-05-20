@@ -94,8 +94,33 @@ describe('MainSidebarSourceControl', () => {
 			});
 			expect(getByTestId('main-sidebar-source-control-connected')).toBeInTheDocument();
 			expect(queryByTestId('main-sidebar-source-control-setup')).not.toBeInTheDocument();
-			expect(queryByTestId('main-sidebar-source-control-push')).toBeInTheDocument();
-			expect(queryByTestId('main-sidebar-source-control-pull')).not.toBeInTheDocument();
+
+			const pushButton = queryByTestId('main-sidebar-source-control-push');
+			expect(pushButton).toBeInTheDocument();
+			expect(pushButton).not.toBeDisabled();
+
+			const pullButton = queryByTestId('main-sidebar-source-control-pull');
+			expect(pullButton).toBeInTheDocument();
+			expect(pullButton).toBeDisabled();
+		});
+
+		it('should disable push button if branch is read-only', async () => {
+			vi.spyOn(sourceControlStore, 'preferences', 'get').mockReturnValue({
+				branchName: 'main',
+				branches: [],
+				repositoryUrl: '',
+				branchReadOnly: true,
+				branchColor: '#5296D6',
+				connected: true,
+				publicKey: '',
+			});
+
+			const { getByTestId } = renderComponent({
+				pinia,
+				props: { isCollapsed: false },
+			});
+			const pushButton = getByTestId('main-sidebar-source-control-push');
+			expect(pushButton).toBeDisabled();
 		});
 	});
 
@@ -120,6 +145,32 @@ describe('MainSidebarSourceControl', () => {
 			});
 			expect(getByTestId('main-sidebar-source-control-connected')).toBeInTheDocument();
 			expect(queryByTestId('main-sidebar-source-control-setup')).not.toBeInTheDocument();
+
+			const pushButton = queryByTestId('main-sidebar-source-control-push');
+			expect(pushButton).toBeInTheDocument();
+			expect(pushButton).not.toBeDisabled();
+
+			const pullButton = queryByTestId('main-sidebar-source-control-pull');
+			expect(pullButton).toBeInTheDocument();
+			expect(pullButton).not.toBeDisabled();
+		});
+
+		it('should disable push button if branch is read-only', async () => {
+			vi.spyOn(sourceControlStore, 'preferences', 'get').mockReturnValue({
+				branchName: 'main',
+				branches: [],
+				repositoryUrl: '',
+				branchReadOnly: true,
+				branchColor: '#5296D6',
+				connected: true,
+				publicKey: '',
+			});
+			const { getByTestId } = renderComponent({
+				pinia,
+				props: { isCollapsed: false },
+			});
+			const pushButton = getByTestId('main-sidebar-source-control-push');
+			expect(pushButton).toBeDisabled();
 		});
 
 		it('should show toast error if pull response http status code is not 409', async () => {

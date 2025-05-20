@@ -2146,6 +2146,8 @@
 	"settings.sourceControl.sync.prompt.error": "Please enter a commit message",
 	"settings.sourceControl.button.push": "Push",
 	"settings.sourceControl.button.pull": "Pull",
+	"settings.sourceControl.button.pull.forbidden": "Only the instance owner or instance admins can pull changes",
+	"settings.sourceControl.button.push.forbidden": "You can't push changes from a protected instance",
 	"settings.sourceControl.modals.push.title": "Commit and push changes",
 	"settings.sourceControl.modals.push.description": "The following will be committed: ",
 	"settings.sourceControl.modals.push.description.learnMore": "More info",
