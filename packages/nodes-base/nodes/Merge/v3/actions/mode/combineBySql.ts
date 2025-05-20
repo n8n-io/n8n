@@ -48,11 +48,10 @@ export const properties: INodeProperties[] = [
 				displayName: 'Empty Query Result',
 				name: 'emptyQueryResult',
 				type: 'options',
-				description:
-					'What to return as operation result if the query executed successfully but returned no results',
+				description: 'What to return if the query executed successfully but returned no results',
 				options: [
 					{
-						name: 'Confirmation of Success',
+						name: 'Success',
 						value: 'success',
 					},
 					{
@@ -60,9 +59,14 @@ export const properties: INodeProperties[] = [
 						value: 'empty',
 					},
 				],
-				default: 'success',
+				default: 'empty',
 			},
 		],
+		displayOptions: {
+			show: {
+				'@version': [3.2],
+			},
+		},
 	},
 ];
 
@@ -92,7 +96,7 @@ async function executeSelectWithMappedPairedItems(
 	node: INode,
 	inputsData: INodeExecutionData[][],
 	query: string,
-	options: OperationOptions,
+	returnSuccessItemIfEmpty: boolean,
 ): Promise<INodeExecutionData[][]> {
 	const returnData: INodeExecutionData[] = [];
 
@@ -127,7 +131,7 @@ async function executeSelectWithMappedPairedItems(
 			}
 		}
 
-		if (!returnData.length && options.emptyQueryResult !== 'empty') {
+		if (!returnData.length && returnSuccessItemIfEmpty) {
 			returnData.push({ json: { success: true } });
 		}
 	} catch (error) {
@@ -146,7 +150,7 @@ export async function execute(
 	const node = this.getNode();
 	const returnData: INodeExecutionData[] = [];
 	const pairedItem: IPairedItemData[] = [];
-	const options = this.getNodeParameter('options', 0) as OperationOptions;
+	const options = this.getNodeParameter('options', 0, {}) as OperationOptions;
 
 	let query = this.getNodeParameter('query', 0) as string;
 
@@ -155,10 +159,17 @@ export async function execute(
 	}
 
 	const isSelectQuery = node.typeVersion >= 3.1 ? query.toLowerCase().startsWith('select') : false;
+	const returnSuccessItemIfEmpty =
+		node.typeVersion <= 3.1 ? true : options.emptyQueryResult === 'success';
 
 	if (isSelectQuery) {
 		try {
-			return await executeSelectWithMappedPairedItems(node, inputsData, query, options);
+			return await executeSelectWithMappedPairedItems(
+				node,
+				inputsData,
+				query,
+				returnSuccessItemIfEmpty,
+			);
 		} catch (error) {
 			Container.get(ErrorReporter).error(error, {
 				extra: {
@@ -232,7 +243,7 @@ export async function execute(
 			}
 		}
 
-		if (!returnData.length && options.emptyQueryResult !== 'empty') {
+		if (!returnData.length && returnSuccessItemIfEmpty) {
 			returnData.push({ json: { success: true }, pairedItem });
 		}
 	} catch (error) {
