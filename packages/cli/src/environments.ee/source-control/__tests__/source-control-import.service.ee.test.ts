@@ -7,6 +7,7 @@ import { type InstanceSettings } from 'n8n-core';
 import fsp from 'node:fs/promises';
 
 import { SourceControlImportService } from '../source-control-import.service.ee';
+import type { SourceControlScopedService } from '../source-control-scoped.service';
 import type { ExportableFolder } from '../types/exportable-folders';
 import { SourceControlContext } from '../types/source-control-context';
 
@@ -28,6 +29,7 @@ describe('SourceControlImportService', () => {
 	const workflowRepository = mock<WorkflowRepository>();
 	const folderRepository = mock<FolderRepository>();
 	const projectRepository = mock<ProjectRepository>();
+	const sourceControlScopedService = mock<SourceControlScopedService>();
 	const service = new SourceControlImportService(
 		mock(),
 		mock(),
@@ -47,6 +49,7 @@ describe('SourceControlImportService', () => {
 		mock(),
 		folderRepository,
 		mock<InstanceSettings>({ n8nFolder: '/mock/n8n' }),
+		sourceControlScopedService,
 	);
 
 	const globMock = fastGlob.default as unknown as jest.Mock<Promise<string[]>, string[]>;
@@ -297,7 +300,7 @@ describe('SourceControlImportService', () => {
 				],
 			};
 
-			projectRepository.find.mockResolvedValue([
+			sourceControlScopedService.getAdminProjectsFromContext.mockResolvedValue([
 				Object.assign(new Project(), {
 					id: 'project1',
 				}),

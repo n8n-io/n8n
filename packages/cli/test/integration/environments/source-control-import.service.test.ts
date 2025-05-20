@@ -25,6 +25,7 @@ import { nanoid } from 'nanoid';
 import fsp from 'node:fs/promises';
 
 import { SourceControlImportService } from '@/environments.ee/source-control/source-control-import.service.ee';
+import { SourceControlScopedService } from '@/environments.ee/source-control/source-control-scoped.service';
 import type { ExportableCredential } from '@/environments.ee/source-control/types/exportable-credential';
 import { SourceControlContext } from '@/environments.ee/source-control/types/source-control-context';
 import type { IWorkflowToImport } from '@/interfaces';
@@ -51,6 +52,7 @@ describe('SourceControlImportService', () => {
 	let workflowRepository: WorkflowRepository;
 	let tagRepository: TagRepository;
 	let workflowTagMappingRepository: WorkflowTagMappingRepository;
+	let sourceControlScopedService: SourceControlScopedService;
 
 	const cipher = mockInstance(Cipher);
 
@@ -65,6 +67,7 @@ describe('SourceControlImportService', () => {
 		workflowRepository = Container.get(WorkflowRepository);
 		tagRepository = Container.get(TagRepository);
 		workflowTagMappingRepository = Container.get(WorkflowTagMappingRepository);
+		sourceControlScopedService = Container.get(SourceControlScopedService);
 		service = new SourceControlImportService(
 			mock(),
 			mock(),
@@ -84,6 +87,7 @@ describe('SourceControlImportService', () => {
 			mock(),
 			folderRepository,
 			mock<InstanceSettings>({ n8nFolder: '/some-path' }),
+			sourceControlScopedService,
 		);
 	});
 

@@ -588,9 +588,14 @@ export class SourceControlService {
 			);
 		}
 
-		const wfMissingInLocal = wfRemoteVersionIds.filter(
-			(remote) => wfLocalVersionIds.findIndex((local) => local.id === remote.id) === -1,
-		);
+		const wfMissingInLocal = wfRemoteVersionIds
+			.filter((remote) => wfLocalVersionIds.findIndex((local) => local.id === remote.id) === -1)
+			.filter(
+				// If we have out of scope workflows, these are workflows, that are not
+				// visible locally, but exists locally but are available in remote
+				// we skip them and hide them from deletion from the user.
+				(remote) => !outOfScopeWF.some((outOfScope) => outOfScope.id === remote.id),
+			);
 
 		const wfMissingInRemote = wfLocalVersionIds.filter(
 			(local) => wfRemoteVersionIds.findIndex((remote) => remote.id === local.id) === -1,
@@ -633,21 +638,16 @@ export class SourceControlService {
 		});
 
 		wfMissingInLocal.forEach((item) => {
-			// If we have out of scope workflows, these are workflows, that are not
-			// visible locally, but exists locally but are available in remote
-			// we skip them and hide them from deletion from the user.
-			if (!outOfScopeWF.some((outOfScope) => outOfScope.id === item.id)) {
-				sourceControlledFiles.push({
-					id: item.id,
-					name: item.name ?? 'Workflow',
-					type: 'workflow',
-					status: options.direction === 'push' ? 'deleted' : 'created',
-					location: options.direction === 'push' ? 'local' : 'remote',
-					conflict: false,
-					file: item.filename,
-					updatedAt: item.updatedAt ?? new Date().toISOString(),
-				});
-			}
+			sourceControlledFiles.push({
+				id: item.id,
+				name: item.name ?? 'Workflow',
+				type: 'workflow',
+				status: options.direction === 'push' ? 'deleted' : 'created',
+				location: options.direction === 'push' ? 'local' : 'remote',
+				conflict: false,
+				file: item.filename,
+				updatedAt: item.updatedAt ?? new Date().toISOString(),
+			});
 		});
 
 		wfMissingInRemote.forEach((item) => {
