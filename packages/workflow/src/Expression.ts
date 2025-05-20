@@ -125,9 +125,8 @@ export class Expression {
 
 		// Is an expression
 
-		// Remove the equal sign
-
-		parameterValue = parameterValue.substr(1);
+		// Remove the equal sign, trim whitespace
+		parameterValue = parameterValue.substr(1).trim();
 
 		// Generate a data proxy which allows to query workflow data
 		const dataProxy = new WorkflowDataProxy(
