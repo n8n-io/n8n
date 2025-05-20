@@ -487,12 +487,9 @@ export class SourceControlService {
 	async getStatus(user: User, options: SourceControlGetStatus) {
 		await this.sanityCheck();
 
-		// TODO: check for a better query based on the scopes
-		if (
-			options.direction === 'pull' &&
-			user.role !== 'global:admin' &&
-			user.role !== 'global:owner'
-		) {
+		const context = new SourceControlContext(user);
+
+		if (options.direction === 'pull' && !context.accessToAllProjects()) {
 			// A pull is only allowed by global admins or owners
 			return [];
 		}
@@ -501,8 +498,6 @@ export class SourceControlService {
 
 		// fetch and reset hard first
 		await this.resetWorkfolder();
-
-		const context = new SourceControlContext(user);
 
 		const {
 			wfRemoteVersionIds,
