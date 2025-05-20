@@ -288,6 +288,8 @@ function parseCandidateMatch(
 	// [fullMatch, "$('", "nodeName", "')"]
 	const nodeNameInExpression = match[2];
 
+	// This should be invalid in theory, since the regex matches should only act
+	// on known node names
 	if (!nodeNames.includes(nodeNameInExpression)) return null;
 
 	const candidate = extractExpressionCandidate(expression, startIndex, endIndex);

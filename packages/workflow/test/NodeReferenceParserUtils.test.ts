@@ -205,6 +205,20 @@ describe('NodeReferenceParserUtils', () => {
 				},
 			]);
 		});
+
+		it('should not handle reference to non-existent node', () => {
+			nodes = [makeNode('B', ['$("E").item.json.x'])];
+			nodeNames = ['B'];
+
+			const result = extractReferencesInNodeExpressions(nodes, nodeNames, startNodeName, 'B');
+			expect([...result.variables.entries()]).toEqual([]);
+			expect(result.nodes).toEqual([
+				{
+					name: 'B',
+					parameters: { p0: '={{ $("E").item.json.x }}' },
+				},
+			]);
+		});
 		it('should not handle invalid node references', () => {
 			nodes = [makeNode('B', ['$("D)'])];
 			nodeNames = ['B', 'D'];
