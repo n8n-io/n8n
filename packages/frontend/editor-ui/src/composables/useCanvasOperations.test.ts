@@ -43,9 +43,9 @@ import {
 	FORM_TRIGGER_NODE_TYPE,
 	SET_NODE_TYPE,
 	STICKY_NODE_TYPE,
-	STORES,
 	WEBHOOK_NODE_TYPE,
 } from '@/constants';
+import { STORES } from '@n8n/stores';
 import type { Connection } from '@vue-flow/core';
 import { useClipboard } from '@/composables/useClipboard';
 import { createCanvasConnectionHandleString } from '@/utils/canvasUtils';
@@ -53,6 +53,7 @@ import { nextTick } from 'vue';
 import { useProjectsStore } from '@/stores/projects.store';
 import type { CanvasLayoutEvent } from './useCanvasLayout';
 import { useTelemetry } from './useTelemetry';
+import { useToast } from '@/composables/useToast';
 
 vi.mock('vue-router', async (importOriginal) => {
 	const actual = await importOriginal<{}>();
@@ -85,6 +86,21 @@ vi.mock('@/composables/useTelemetry', () => {
 	const track = vi.fn();
 	return {
 		useTelemetry: () => ({ track }),
+	};
+});
+
+vi.mock('@/composables/useToast', () => {
+	const showMessage = vi.fn();
+	const showError = vi.fn();
+	const showToast = vi.fn();
+	return {
+		useToast: () => {
+			return {
+				showMessage,
+				showError,
+				showToast,
+			};
+		},
 	};
 });
 
@@ -2726,6 +2742,39 @@ describe('useCanvasOperations', () => {
 
 			expect(workflowsStore.setWorkflowPinData).toHaveBeenCalledWith({});
 		});
+		it('should show an error notification for failed executions', async () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const { openExecution } = useCanvasOperations({ router });
+			const toast = useToast();
+
+			const executionId = '123';
+			const executionData: IExecutionResponse = {
+				id: executionId,
+				finished: true,
+				status: 'error',
+				startedAt: new Date(),
+				createdAt: new Date(),
+				workflowData: createTestWorkflow(),
+				mode: 'manual',
+				data: {
+					resultData: {
+						error: { message: 'Crashed', node: { name: 'Step1' } },
+						lastNodeExecuted: 'Last Node',
+					},
+				} as IExecutionResponse['data'],
+			};
+
+			workflowsStore.getExecution.mockResolvedValue(executionData);
+
+			await openExecution(executionId);
+
+			expect(toast.showMessage).toHaveBeenCalledWith({
+				duration: 0,
+				message: 'Crashed',
+				title: 'Problem in node ‘Last Node‘',
+				type: 'error',
+			});
+		});
 	});
 
 	describe('connectAdjacentNodes', () => {
@@ -2923,24 +2972,6 @@ describe('useCanvasOperations', () => {
 			connectAdjacentNodes(nodeB.id);
 
 			expect(workflowsStore.addConnection).not.toHaveBeenCalled();
-		});
-	});
-
-	describe('toggleChatOpen', () => {
-		it('should invoke workflowsStore#toggleLogsPanelOpen with 2nd argument passed through as 1st argument', async () => {
-			const workflowsStore = mockedStore(useWorkflowsStore);
-			const { toggleChatOpen } = useCanvasOperations({ router });
-
-			workflowsStore.getCurrentWorkflow.mockReturnValue(createTestWorkflowObject());
-
-			await toggleChatOpen('main');
-			expect(workflowsStore.toggleLogsPanelOpen).toHaveBeenCalledWith(undefined);
-
-			await toggleChatOpen('main', true);
-			expect(workflowsStore.toggleLogsPanelOpen).toHaveBeenCalledWith(true);
-
-			await toggleChatOpen('main', false);
-			expect(workflowsStore.toggleLogsPanelOpen).toHaveBeenCalledWith(false);
 		});
 	});
 

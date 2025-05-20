@@ -25,7 +25,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
 import { waitFor } from '@testing-library/vue';
-import { useAgentRequestStore } from '@/stores/agentRequest.store';
+import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
 
 vi.mock('@/stores/workflows.store', () => {
 	const storeState: Partial<ReturnType<typeof useWorkflowsStore>> & {
@@ -357,6 +357,64 @@ describe('useRunWorkflow({ router })', () => {
 
 			const result = await runWorkflow({});
 			expect(result).toEqual(mockExecutionResponse);
+		});
+
+		it('should exclude destinationNode from startNodes when provided', async () => {
+			// ARRANGE
+			const mockExecutionResponse = { executionId: '123' };
+			const { runWorkflow } = useRunWorkflow({ router });
+			const dataCaptor = captor<IStartRunData>();
+
+			const parentNodeName = 'parentNode';
+			const destinationNodeName = 'destinationNode';
+
+			// Mock workflow with parent-child relationship
+			const workflow = {
+				name: 'Test Workflow',
+				id: 'workflowId',
+				getParentNodes: vi.fn().mockImplementation((nodeName: string) => {
+					if (nodeName === destinationNodeName) {
+						return [parentNodeName];
+					}
+					return [];
+				}),
+				nodes: {
+					[parentNodeName]: createTestNode({ name: parentNodeName }),
+					[destinationNodeName]: createTestNode({ name: destinationNodeName }),
+				},
+			} as unknown as Workflow;
+
+			vi.mocked(pushConnectionStore).isConnected = true;
+			vi.mocked(workflowsStore).runWorkflow.mockResolvedValue(mockExecutionResponse);
+			vi.mocked(workflowsStore).nodesIssuesExist = false;
+			vi.mocked(workflowHelpers).getCurrentWorkflow.mockReturnValue(workflow);
+			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue({
+				id: 'workflowId',
+				nodes: [],
+			} as unknown as IWorkflowData);
+
+			vi.mocked(workflowsStore).getWorkflowRunData = {
+				[parentNodeName]: [
+					{
+						startTime: 1,
+						executionTime: 0,
+						source: [],
+						data: { main: [[{ json: { test: 'data' } }]] },
+					},
+				],
+			} as unknown as IRunData;
+
+			// ACT
+			await runWorkflow({ destinationNode: destinationNodeName });
+
+			// ASSERT
+			expect(workflowsStore.runWorkflow).toHaveBeenCalledTimes(1);
+			expect(workflowsStore.runWorkflow).toHaveBeenCalledWith(dataCaptor);
+
+			const startNodes = dataCaptor.value.startNodes ?? [];
+			const destinationInStartNodes = startNodes.some((node) => node.name === destinationNodeName);
+
+			expect(destinationInStartNodes).toBe(false);
 		});
 
 		it('should send dirty nodes for partial executions v2', async () => {

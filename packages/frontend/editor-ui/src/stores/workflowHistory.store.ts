@@ -9,7 +9,7 @@ import type {
 	WorkflowVersionId,
 } from '@/types/workflowHistory';
 import * as whApi from '@/api/workflowHistory';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { getNewWorkflow } from '@/api/workflows';

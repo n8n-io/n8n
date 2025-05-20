@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
 import { useI18n } from '@/composables/useI18n';
 import { useStyles } from '@/composables/useStyles';
 import { N8nIconButton, N8nTooltip } from '@n8n/design-system';
@@ -33,7 +34,12 @@ const toggleButtonText = computed(() =>
 				@click.stop="emit('popOut')"
 			/>
 		</N8nTooltip>
-		<N8nTooltip v-if="showToggleButton" :z-index="tooltipZIndex" :content="toggleButtonText">
+		<KeyboardShortcutTooltip
+			v-if="showToggleButton"
+			:label="locales.baseText('generic.shortcutHint')"
+			:shortcut="{ keys: ['l'] }"
+			:z-index="tooltipZIndex"
+		>
 			<N8nIconButton
 				type="secondary"
 				size="small"
@@ -43,7 +49,7 @@ const toggleButtonText = computed(() =>
 				style="color: var(--color-text-base)"
 				@click.stop="emit('toggleOpen')"
 			/>
-		</N8nTooltip>
+		</KeyboardShortcutTooltip>
 	</div>
 </template>
 

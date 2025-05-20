@@ -970,33 +970,6 @@ export interface WorkflowsState {
 	isInDebugMode?: boolean;
 }
 
-export interface RootState {
-	baseUrl: string;
-	restEndpoint: string;
-	defaultLocale: string;
-	endpointForm: string;
-	endpointFormTest: string;
-	endpointFormWaiting: string;
-	endpointMcp: string;
-	endpointMcpTest: string;
-	endpointWebhook: string;
-	endpointWebhookTest: string;
-	endpointWebhookWaiting: string;
-	timezone: string;
-	executionTimeout: number;
-	maxExecutionTimeout: number;
-	versionCli: string;
-	oauthCallbackUrls: object;
-	n8nMetadata: {
-		[key: string]: string | number | undefined;
-	};
-	pushRef: string;
-	urlBaseWebhook: string;
-	urlBaseEditor: string;
-	instanceId: string;
-	binaryDataMode: 'default' | 'filesystem' | 's3';
-}
-
 export interface NodeMetadataMap {
 	[nodeName: string]: INodeMetadata;
 }
@@ -1547,6 +1520,7 @@ export type ToggleNodeCreatorOptions = {
 	source?: NodeCreatorOpenSource;
 	nodeCreatorView?: NodeFilterType;
 	hasAddedNodes?: boolean;
+	connectionType?: NodeConnectionType;
 };
 
 export type AppliedThemeOption = 'light' | 'dark';
