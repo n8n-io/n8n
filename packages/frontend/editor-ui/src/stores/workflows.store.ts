@@ -1567,7 +1567,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			const existingRunIndex = tasksData.findIndex(
 				(item) => item.executionIndex === data.executionIndex,
 			);
-			const index = existingRunIndex > -1 ? existingRunIndex : tasksData.length - 1;
+
+			// For waiting nodes always replace the last item as executionIndex will always be different
+			const hasWaitingItems = tasksData.some((it) => it.executionStatus === 'waiting');
+			const index =
+				existingRunIndex > -1 && !hasWaitingItems ? existingRunIndex : tasksData.length - 1;
 			const status = tasksData[index]?.executionStatus ?? 'unknown';
 
 			if ('waiting' === status || (settingsStore.isNewLogsEnabled && 'running' === status)) {

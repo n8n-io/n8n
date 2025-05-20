@@ -127,7 +127,7 @@ describe('Test Evaluation', () => {
 
 			const result = await new Evaluation().execute.call(mockExecuteFunctions);
 
-			expect(result).toEqual([]);
+			expect(result).toEqual([[{ json: {} }]]);
 
 			expect(GoogleSheet.prototype.updateRows).not.toBeCalled();
 
