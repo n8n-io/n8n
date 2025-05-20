@@ -1,0 +1,91 @@
+{
+  "createdAt": "2024-03-04T20:43:29.800Z",
+  "updatedAt": "2024-03-04T20:43:37.000Z",
+  "id": "245",
+  "name": "BasicLLMChain:AwsBedrockChat",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "model": "amazon.titan-text-lite-v1",
+        "options": {
+          "temperature": 0
+        }
+      },
+      "id": "6610aac2-0d86-4d20-a625-072403cc1d15",
+      "name": "AWS Bedrock Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAwsBedrock",
+      "typeVersion": 1,
+      "position": [
+        680,
+        600
+      ],
+      "credentials": {
+        "aws": {
+          "id": "124",
+          "name": "AWS creds"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "9e52b4d5-5e83-4d6a-a31e-e9408728bb77",
+      "name": "When clicking \"Test workflow\"",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        460,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "How much is 1+1? Only provide the numerical answer without any other text.\n"
+      },
+      "id": "8899ab4b-9fab-4c92-8e17-7601117fc3fc",
+      "name": "AWS Bedrock Chat",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.5,
+      "position": [
+        660,
+        460
+      ]
+    }
+  ],
+  "connections": {
+    "AWS Bedrock Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AWS Bedrock Chat",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When clicking \"Test workflow\"": {
+      "main": [
+        [
+          {
+            "node": "AWS Bedrock Chat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {},
+  "versionId": "ed68041a-90c9-4900-8307-74bede290f62",
+  "triggerCount": 0,
+  "tags": []
+}

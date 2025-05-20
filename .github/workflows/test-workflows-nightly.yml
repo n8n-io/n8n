@@ -1,0 +1,45 @@
+name: Test Workflows Nightly and Manual
+
+on:
+  schedule:
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      git_ref_to_test:
+        description: 'The Git ref (branch, tag, or SHA) to run tests against.'
+        required: true
+        type: string
+        default: 'master'
+
+permissions:
+  contents: read
+
+jobs:
+  run_tests:
+    name: Run Workflow Tests
+    runs-on: blacksmith-2vcpu-ubuntu-2204
+    timeout-minutes: 10
+
+    steps:
+      - name: Determine Git Ref for Testing
+        id: determine_ref
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "schedule" ]]; then
+            echo "EFFECTIVE_GIT_REF=master" >> $GITHUB_OUTPUT
+            echo "Scheduled run: Using 'master' branch."
+          elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "EFFECTIVE_GIT_REF=${{ github.event.inputs.git_ref_to_test }}" >> $GITHUB_OUTPUT
+            echo "Manual dispatch: Using ref '${{ github.event.inputs.git_ref_to_test }}'."
+          else
+            echo "EFFECTIVE_GIT_REF=master" >> $GITHUB_OUTPUT
+            echo "Warning: Unknown event type '${{ github.event_name }}', defaulting to 'master'."
+          fi
+
+      - name: Call Reusable Test Workflow
+        uses: ./.github/workflows/run-test-workflows.yml
+        with:
+          git_ref: ${{ steps.determine_ref.outputs.EFFECTIVE_GIT_REF }}
+          send_webhook_report: false
+          pr_number: ''
+        secrets: inherit
