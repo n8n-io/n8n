@@ -1,3 +1,4 @@
+import { LicenseState } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -26,6 +27,7 @@ export class LicenseService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly license: License,
+		private readonly licenseState: LicenseState,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly urlService: UrlService,
 		private readonly eventService: EventService,
@@ -33,6 +35,8 @@ export class LicenseService {
 
 	async getLicenseData() {
 		const triggerCount = await this.workflowRepository.getActiveTriggerCount();
+		const workflowsWithEvaluationsCount =
+			await this.workflowRepository.getWorkflowsWithEvaluationCount();
 		const mainPlan = this.license.getMainPlan();
 
 		return {
@@ -41,6 +45,10 @@ export class LicenseService {
 					value: triggerCount,
 					limit: this.license.getTriggerLimit(),
 					warningThreshold: 0.8,
+				},
+				workflowsHavingEvaluations: {
+					value: workflowsWithEvaluationsCount,
+					limit: 1, //this.licenseState.getMaxWorkflowsWithEvaluations(),
 				},
 			},
 			license: {
