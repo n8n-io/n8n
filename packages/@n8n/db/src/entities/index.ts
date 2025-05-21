@@ -3,7 +3,6 @@ import { AnnotationTagMapping } from './annotation-tag-mapping.ee';
 import { ApiKey } from './api-key';
 import { AuthIdentity } from './auth-identity';
 import { AuthProviderSyncHistory } from './auth-provider-sync-history';
-import { AuthUser } from './auth-user';
 import { CredentialsEntity } from './credentials-entity';
 import { EventDestinations } from './event-destinations';
 import { ExecutionAnnotation } from './execution-annotation.ee';
@@ -58,7 +57,6 @@ export {
 	WorkflowTagMapping,
 	FolderTagMapping,
 	AuthProviderSyncHistory,
-	AuthUser,
 	WorkflowHistory,
 	ExecutionData,
 	ExecutionMetadata,
@@ -96,7 +94,6 @@ export const entities = {
 	WorkflowTagMapping,
 	FolderTagMapping,
 	AuthProviderSyncHistory,
-	AuthUser,
 	WorkflowHistory,
 	ExecutionData,
 	ExecutionMetadata,
