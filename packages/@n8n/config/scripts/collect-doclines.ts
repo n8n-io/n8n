@@ -72,7 +72,7 @@ function toEnumValues(schemaNode: Node) {
  * 		"defaultValue": "lax",
  * 		"type": "enum",
  * 		"enumValues": ["strict", "lax", "none"],
- * 		"sections": ["auth"]
+ * 		"sections": ["auth", "security"]
  * 	}
  * }
  * ```
@@ -84,7 +84,11 @@ function collectDoclines() {
 		description: string;
 		defaultValue: string;
 		type: string;
-		sections: [];
+
+		/** Picked up from @sections JSDoc tag */
+		sections: string[];
+
+		/** Only if `type` is `enum` */
 		enumValues?: string[];
 	}
 
@@ -124,7 +128,20 @@ function collectDoclines() {
 
 				if (jsDocs.length === 0) continue;
 
-				const description = jsDocs[0].getDescription().trim();
+				const jsDoc = jsDocs[0];
+				const description = jsDoc.getDescription().trim();
+				let sections: string[] = [];
+
+				const sectionsTag = jsDoc.getTags().find((tag) => tag.getTagName() === 'sections');
+				if (sectionsTag) {
+					const sectionsText = sectionsTag.getCommentText()?.trim();
+					if (sectionsText) {
+						sections = sectionsText
+							.split(',')
+							.map((s) => s.trim())
+							.filter((s) => s.length > 0);
+					}
+				}
 
 				const initializer = classField.getInitializer();
 
@@ -154,7 +171,7 @@ function collectDoclines() {
 					description,
 					defaultValue,
 					type: propertyType,
-					sections: [], // @TODO
+					sections,
 				};
 
 				if (enumValues) entry.enumValues = enumValues;
