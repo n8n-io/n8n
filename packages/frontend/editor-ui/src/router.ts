@@ -53,6 +53,8 @@ const SetupWorkflowFromTemplateView = async () =>
 	await import('@/views/SetupWorkflowFromTemplateView/SetupWorkflowFromTemplateView.vue');
 const TemplatesSearchView = async () => await import('@/views/TemplatesSearchView.vue');
 const VariablesView = async () => await import('@/views/VariablesView.vue');
+const StoresView = async () => await import('@/views/StoresView.vue');
+const StoreView = async () => await import('@/views/StoreView.vue');
 const SettingsUsageAndPlan = async () => await import('./views/SettingsUsageAndPlan.vue');
 const SettingsSso = async () => await import('./views/SettingsSso.vue');
 const SignoutView = async () => await import('@/views/SignoutView.vue');
@@ -202,6 +204,24 @@ export const routes: RouteRecordRaw[] = [
 		name: VIEWS.VARIABLES,
 		components: {
 			default: VariablesView,
+			sidebar: MainSidebar,
+		},
+		meta: { middleware: ['authenticated'] },
+	},
+	{
+		path: '/stores',
+		name: VIEWS.STORES,
+		components: {
+			default: StoresView,
+			sidebar: MainSidebar,
+		},
+		meta: { middleware: ['authenticated'] },
+	},
+	{
+		path: '/stores/:id',
+		name: VIEWS.STORE,
+		components: {
+			default: StoreView,
 			sidebar: MainSidebar,
 		},
 		meta: { middleware: ['authenticated'] },

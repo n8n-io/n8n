@@ -105,6 +105,14 @@ const mainMenuItems = computed(() => [
 		route: { to: { name: VIEWS.VARIABLES } },
 	},
 	{
+		id: 'stores',
+		icon: 'database',
+		label: i18n.baseText('mainSidebar.stores'),
+		customIconSize: 'medium',
+		position: 'bottom',
+		route: { to: { name: VIEWS.STORES } },
+	},
+	{
 		id: 'insights',
 		icon: 'chart-bar',
 		label: 'Insights',

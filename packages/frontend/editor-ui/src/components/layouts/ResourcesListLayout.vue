@@ -18,7 +18,7 @@ import type { BaseFolderItem, BaseResource, ITag, ResourceParentFolder } from '@
 import { isSharedResource, isResourceSortableByDate } from '@/utils/typeGuards';
 import { useN8nLocalStorage } from '@/composables/useN8nLocalStorage';
 
-type ResourceKeyType = 'credentials' | 'workflows' | 'variables' | 'folders';
+type ResourceKeyType = 'credentials' | 'workflows' | 'variables' | 'folders' | 'stores';
 
 export type FolderResource = BaseFolderItem & {
 	resourceType: 'folder';
@@ -44,6 +44,13 @@ export type VariableResource = BaseResource & {
 	value?: string;
 };
 
+export type StoreResource = BaseResource & {
+	resourceType: 'store';
+	updatedAt: string;
+	createdAt: string;
+	fieldCount: number;
+};
+
 export type CredentialsResource = BaseResource & {
 	resourceType: 'credential';
 	updatedAt: string;
@@ -56,7 +63,12 @@ export type CredentialsResource = BaseResource & {
 	needsSetup: boolean;
 };
 
-export type Resource = WorkflowResource | FolderResource | CredentialsResource | VariableResource;
+export type Resource =
+	| WorkflowResource
+	| FolderResource
+	| CredentialsResource
+	| VariableResource
+	| StoreResource;
 
 export type BaseFilters = {
 	search: string;
@@ -719,8 +731,8 @@ defineExpose({
 						:item-size="itemSize()"
 						item-key="id"
 					>
-						<template #default="{ item, updateItemSize }">
-							<slot :data="item" :update-item-size="updateItemSize" />
+						<template #default="{ item, index }">
+							<slot name="item" :item="item" :index="index" />
 						</template>
 					</n8n-recycle-scroller>
 					<!-- PAGINATED LIST -->
