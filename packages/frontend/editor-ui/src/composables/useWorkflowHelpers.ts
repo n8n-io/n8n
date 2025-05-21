@@ -62,7 +62,7 @@ import { useCanvasStore } from '@/stores/canvas.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { tryToParseNumber } from '@/utils/typesUtils';
 import { useI18n } from '@/composables/useI18n';
-import type { useRouter } from 'vue-router';
+import { useRouter } from 'vue-router';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useTagsStore } from '@/stores/tags.store';
@@ -79,384 +79,20 @@ export type ResolveParameterOptions = {
 	contextNodeName?: string;
 };
 
-export function resolveParameter<T = IDataObject>(
-	parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
-	opts: ResolveParameterOptions = {},
-): T | null {
-	let itemIndex = opts?.targetItem?.itemIndex || 0;
-
-	const workflow = getCurrentWorkflow();
-
-	const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
-		$execution: {
-			id: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
-			mode: 'test',
-			resumeUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
-			resumeFormUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
-		},
-		$vars: useEnvironmentsStore().variablesAsObject,
-
-		// deprecated
-		$executionId: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
-		$resumeWebhookUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
-
-		...opts.additionalKeys,
-	};
-
-	if (opts.isForCredential) {
-		// node-less expression resolution
-		return workflow.expression.getParameterValue(
-			parameter,
-			null,
-			0,
-			itemIndex,
-			'',
-			[],
-			'manual',
-			additionalKeys,
-			undefined,
-			false,
-			undefined,
-			'',
-		) as T;
-	}
-
-	const inputName = NodeConnectionTypes.Main;
-
-	const activeNode =
-		useNDVStore().activeNode ?? useWorkflowsStore().getNodeByName(opts.contextNodeName || '');
-	let contextNode = activeNode;
-
-	if (activeNode) {
-		contextNode = workflow.getParentMainInputNode(activeNode);
-	}
-
-	const workflowRunData = useWorkflowsStore().getWorkflowRunData;
-	let parentNode = workflow.getParentNodes(contextNode!.name, inputName, 1);
-	const executionData = useWorkflowsStore().getWorkflowExecution;
-
-	let runIndexParent = opts?.inputRunIndex ?? 0;
-	const nodeConnection = workflow.getNodeConnectionIndexes(contextNode!.name, parentNode[0]);
-	if (opts.targetItem && opts?.targetItem?.nodeName === contextNode!.name && executionData) {
-		const sourceItems = getSourceItems(executionData, opts.targetItem);
-		if (!sourceItems.length) {
-			return null;
-		}
-		parentNode = [sourceItems[0].nodeName];
-		runIndexParent = sourceItems[0].runIndex;
-		itemIndex = sourceItems[0].itemIndex;
-		if (nodeConnection) {
-			nodeConnection.sourceIndex = sourceItems[0].outputIndex;
-		}
-	} else {
-		parentNode = opts.inputNodeName ? [opts.inputNodeName] : parentNode;
-		if (nodeConnection) {
-			nodeConnection.sourceIndex = opts.inputBranchIndex ?? nodeConnection.sourceIndex;
-		}
-
-		if (opts?.inputRunIndex === undefined && workflowRunData !== null && parentNode.length) {
-			const firstParentWithWorkflowRunData = parentNode.find(
-				(parentNodeName) => workflowRunData[parentNodeName],
-			);
-			if (firstParentWithWorkflowRunData) {
-				runIndexParent = workflowRunData[firstParentWithWorkflowRunData].length - 1;
-			}
-		}
-	}
-
-	let _connectionInputData = connectionInputData(
-		parentNode,
-		contextNode!.name,
-		inputName,
-		runIndexParent,
-		nodeConnection,
-	);
-
-	if (_connectionInputData === null && contextNode && activeNode?.name !== contextNode.name) {
-		// For Sub-Nodes connected to Trigger-Nodes use the data of the root-node
-		// (Gets for example used by the Memory connected to the Chat-Trigger-Node)
-		const _executeData = executeData([contextNode.name], contextNode.name, inputName, 0);
-		_connectionInputData = get(_executeData, ['data', inputName, 0], null);
-	}
-
-	let runExecutionData: IRunExecutionData;
-	if (!executionData?.data) {
-		runExecutionData = {
-			resultData: {
-				runData: {},
-			},
-		};
-	} else {
-		runExecutionData = executionData.data;
-	}
-
-	if (_connectionInputData === null) {
-		_connectionInputData = [];
-	}
-
-	if (activeNode?.type === HTTP_REQUEST_NODE_TYPE) {
-		const EMPTY_RESPONSE = { statusCode: 200, headers: {}, body: {} };
-		const EMPTY_REQUEST = { headers: {}, body: {}, qs: {} };
-		// Add $request,$response,$pageCount for HTTP Request-Nodes as it is used
-		// in pagination expressions
-		additionalKeys.$pageCount = 0;
-		additionalKeys.$response = get(
-			executionData,
-			['data', 'executionData', 'contextData', `node:${activeNode.name}`, 'response'],
-			EMPTY_RESPONSE,
-		);
-		additionalKeys.$request = EMPTY_REQUEST;
-	}
-
-	let runIndexCurrent = opts?.targetItem?.runIndex ?? 0;
-	if (
-		opts?.targetItem === undefined &&
-		workflowRunData !== null &&
-		workflowRunData[contextNode!.name]
-	) {
-		runIndexCurrent = workflowRunData[contextNode!.name].length - 1;
-	}
-	let _executeData = executeData(
-		parentNode,
-		contextNode!.name,
-		inputName,
-		runIndexCurrent,
-		runIndexParent,
-	);
-
-	if (!_executeData.source) {
-		// fallback to parent's run index for multi-output case
-		_executeData = executeData(parentNode, contextNode!.name, inputName, runIndexParent);
-	}
-
-	return workflow.expression.getParameterValue(
-		parameter,
-		runExecutionData,
-		runIndexCurrent,
-		itemIndex,
-		activeNode!.name,
-		_connectionInputData,
-		'manual',
-		additionalKeys,
-		_executeData,
-		false,
-		{},
-		contextNode!.name,
-	) as T;
-}
-
-export function resolveRequiredParameters(
-	currentParameter: INodeProperties,
-	parameters: INodeParameters,
-	opts: {
-		targetItem?: TargetItem;
-		inputNodeName?: string;
-		inputRunIndex?: number;
-		inputBranchIndex?: number;
+export function useWorkflowHelpers(
+	options: {
+		router?: ReturnType<typeof useRouter>;
+		workflowsStore?: ReturnType<typeof useWorkflowsStore>;
 	} = {},
-): IDataObject | null {
-	const loadOptionsDependsOn = new Set(currentParameter?.typeOptions?.loadOptionsDependsOn ?? []);
-
-	const resolvedParameters = Object.fromEntries(
-		Object.entries(parameters).map(([name, parameter]): [string, IDataObject | null] => {
-			const required = loadOptionsDependsOn.has(name);
-
-			if (required) {
-				return [name, resolveParameter(parameter as NodeParameterValue, opts)];
-			} else {
-				try {
-					return [name, resolveParameter(parameter as NodeParameterValue, opts)];
-				} catch (error) {
-					// ignore any expressions errors for non required parameters
-					return [name, null];
-				}
-			}
-		}),
-	);
-
-	return resolvedParameters;
-}
-
-function getCurrentWorkflow(copyData?: boolean): Workflow {
-	return useWorkflowsStore().getCurrentWorkflow(copyData);
-}
-
-function getConnectedNodes(
-	direction: 'upstream' | 'downstream',
-	workflow: Workflow,
-	nodeName: string,
-): string[] {
-	let checkNodes: string[];
-	if (direction === 'downstream') {
-		checkNodes = workflow.getChildNodes(nodeName);
-	} else if (direction === 'upstream') {
-		checkNodes = workflow.getParentNodes(nodeName);
-	} else {
-		throw new Error(`The direction "${direction}" is not supported!`);
-	}
-
-	// Find also all nodes which are connected to the child nodes via a non-main input
-	let connectedNodes: string[] = [];
-	checkNodes.forEach((checkNode) => {
-		connectedNodes = [
-			...connectedNodes,
-			checkNode,
-			...workflow.getParentNodes(checkNode, 'ALL_NON_MAIN'),
-		];
-	});
-
-	// Remove duplicates
-	return [...new Set(connectedNodes)];
-}
-
-// Returns a workflow instance.
-function getWorkflow(nodes: INodeUi[], connections: IConnections, copyData?: boolean): Workflow {
-	return useWorkflowsStore().getWorkflow(nodes, connections, copyData);
-}
-
-function getNodeTypes(): INodeTypes {
-	return useWorkflowsStore().getNodeTypes();
-}
-
-// Returns connectionInputData to be able to execute an expression.
-function connectionInputData(
-	parentNode: string[],
-	currentNode: string,
-	inputName: string,
-	runIndex: number,
-	nodeConnection: INodeConnection = { sourceIndex: 0, destinationIndex: 0 },
-): INodeExecutionData[] | null {
-	let connectionInputData: INodeExecutionData[] | null = null;
-	const _executeData = executeData(parentNode, currentNode, inputName, runIndex);
-	if (parentNode.length) {
-		if (
-			!Object.keys(_executeData.data).length ||
-			_executeData.data[inputName].length <= nodeConnection.sourceIndex
-		) {
-			connectionInputData = [];
-		} else {
-			connectionInputData = _executeData.data[inputName][nodeConnection.sourceIndex];
-
-			if (connectionInputData !== null) {
-				// Update the pairedItem information on items
-				connectionInputData = connectionInputData.map((item, itemIndex) => {
-					return {
-						...item,
-						pairedItem: {
-							item: itemIndex,
-							input: nodeConnection.destinationIndex,
-						},
-					};
-				});
-			}
-		}
-	}
-
-	return connectionInputData;
-}
-
-export function executeData(
-	parentNodes: string[],
-	currentNode: string,
-	inputName: string,
-	runIndex: number,
-	parentRunIndex?: number,
-): IExecuteData {
-	const executeData = {
-		node: {},
-		data: {},
-		source: null,
-	} as IExecuteData;
-
-	parentRunIndex = parentRunIndex ?? runIndex;
-
-	const workflowsStore = useWorkflowsStore();
-
-	// Find the parent node which has data
-	for (const parentNodeName of parentNodes) {
-		if (workflowsStore.shouldReplaceInputDataWithPinData) {
-			const parentPinData = workflowsStore.pinnedWorkflowData![parentNodeName];
-
-			// populate `executeData` from `pinData`
-
-			if (parentPinData) {
-				executeData.data = { main: [parentPinData] };
-				executeData.source = { main: [{ previousNode: parentNodeName }] };
-
-				return executeData;
-			}
-		}
-
-		// populate `executeData` from `runData`
-		const workflowRunData = workflowsStore.getWorkflowRunData;
-		if (workflowRunData === null) {
-			return executeData;
-		}
-
-		if (
-			!workflowRunData[parentNodeName] ||
-			workflowRunData[parentNodeName].length <= parentRunIndex ||
-			!workflowRunData[parentNodeName][parentRunIndex] ||
-			!workflowRunData[parentNodeName][parentRunIndex].hasOwnProperty('data') ||
-			workflowRunData[parentNodeName][parentRunIndex].data === undefined ||
-			!workflowRunData[parentNodeName][parentRunIndex].data?.hasOwnProperty(inputName)
-		) {
-			executeData.data = {};
-		} else {
-			executeData.data = workflowRunData[parentNodeName][parentRunIndex].data!;
-			if (workflowRunData[currentNode] && workflowRunData[currentNode][runIndex]) {
-				executeData.source = {
-					[inputName]: workflowRunData[currentNode][runIndex].source,
-				};
-			} else {
-				const workflow = getCurrentWorkflow();
-
-				let previousNodeOutput: number | undefined;
-				// As the node can be connected through either of the outputs find the correct one
-				// and set it to make pairedItem work on not executed nodes
-				if (workflow.connectionsByDestinationNode[currentNode]?.main) {
-					mainConnections: for (const mainConnections of workflow.connectionsByDestinationNode[
-						currentNode
-					].main) {
-						for (const connection of mainConnections ?? []) {
-							if (
-								connection.type === NodeConnectionTypes.Main &&
-								connection.node === parentNodeName
-							) {
-								previousNodeOutput = connection.index;
-								break mainConnections;
-							}
-						}
-					}
-				}
-
-				// The current node did not get executed in UI yet so build data manually
-				executeData.source = {
-					[inputName]: [
-						{
-							previousNode: parentNodeName,
-							previousNodeOutput,
-							previousNodeRun: parentRunIndex,
-						},
-					],
-				};
-			}
-			return executeData;
-		}
-	}
-
-	return executeData;
-}
-
-export function useWorkflowHelpers(options: { router: ReturnType<typeof useRouter> }) {
-	const router = options.router;
+) {
+	const router = options.router ?? useRouter();
 	const nodeTypesStore = useNodeTypesStore();
 	const rootStore = useRootStore();
 	const templatesStore = useTemplatesStore();
-	const workflowsStore = useWorkflowsStore();
+	const workflowsStore = options.workflowsStore ?? useWorkflowsStore();
 	const workflowsEEStore = useWorkflowsEEStore();
 	const uiStore = useUIStore();
-	const nodeHelpers = useNodeHelpers();
+	const nodeHelpers = useNodeHelpers({ workflowsStore });
 	const projectsStore = useProjectsStore();
 	const tagsStore = useTagsStore();
 
@@ -465,6 +101,375 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 	const i18n = useI18n();
 	const telemetry = useTelemetry();
 	const documentTitle = useDocumentTitle();
+
+	function resolveParameter<T = IDataObject>(
+		parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
+		opts: ResolveParameterOptions = {},
+	): T | null {
+		let itemIndex = opts?.targetItem?.itemIndex || 0;
+
+		const workflow = getCurrentWorkflow();
+
+		const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
+			$execution: {
+				id: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+				mode: 'test',
+				resumeUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+				resumeFormUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+			},
+			$vars: useEnvironmentsStore().variablesAsObject,
+
+			// deprecated
+			$executionId: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+			$resumeWebhookUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+
+			...opts.additionalKeys,
+		};
+
+		if (opts.isForCredential) {
+			// node-less expression resolution
+			return workflow.expression.getParameterValue(
+				parameter,
+				null,
+				0,
+				itemIndex,
+				'',
+				[],
+				'manual',
+				additionalKeys,
+				undefined,
+				false,
+				undefined,
+				'',
+			) as T;
+		}
+
+		const inputName = NodeConnectionTypes.Main;
+
+		const activeNode =
+			useNDVStore().activeNode ?? workflowsStore.getNodeByName(opts.contextNodeName || '');
+		let contextNode = activeNode;
+
+		if (activeNode) {
+			contextNode = workflow.getParentMainInputNode(activeNode);
+		}
+
+		const workflowRunData = workflowsStore.getWorkflowRunData;
+		let parentNode = workflow.getParentNodes(contextNode!.name, inputName, 1);
+		const executionData = workflowsStore.getWorkflowExecution;
+
+		let runIndexParent = opts?.inputRunIndex ?? 0;
+		const nodeConnection = workflow.getNodeConnectionIndexes(contextNode!.name, parentNode[0]);
+		if (opts.targetItem && opts?.targetItem?.nodeName === contextNode!.name && executionData) {
+			const sourceItems = getSourceItems(executionData, opts.targetItem);
+			if (!sourceItems.length) {
+				return null;
+			}
+			parentNode = [sourceItems[0].nodeName];
+			runIndexParent = sourceItems[0].runIndex;
+			itemIndex = sourceItems[0].itemIndex;
+			if (nodeConnection) {
+				nodeConnection.sourceIndex = sourceItems[0].outputIndex;
+			}
+		} else {
+			parentNode = opts.inputNodeName ? [opts.inputNodeName] : parentNode;
+			if (nodeConnection) {
+				nodeConnection.sourceIndex = opts.inputBranchIndex ?? nodeConnection.sourceIndex;
+			}
+
+			if (opts?.inputRunIndex === undefined && workflowRunData !== null && parentNode.length) {
+				const firstParentWithWorkflowRunData = parentNode.find(
+					(parentNodeName) => workflowRunData[parentNodeName],
+				);
+				if (firstParentWithWorkflowRunData) {
+					runIndexParent = workflowRunData[firstParentWithWorkflowRunData].length - 1;
+				}
+			}
+		}
+
+		let _connectionInputData = connectionInputData(
+			parentNode,
+			contextNode!.name,
+			inputName,
+			runIndexParent,
+			nodeConnection,
+		);
+
+		if (_connectionInputData === null && contextNode && activeNode?.name !== contextNode.name) {
+			// For Sub-Nodes connected to Trigger-Nodes use the data of the root-node
+			// (Gets for example used by the Memory connected to the Chat-Trigger-Node)
+			const _executeData = executeData([contextNode.name], contextNode.name, inputName, 0);
+			_connectionInputData = get(_executeData, ['data', inputName, 0], null);
+		}
+
+		let runExecutionData: IRunExecutionData;
+		if (!executionData?.data) {
+			runExecutionData = {
+				resultData: {
+					runData: {},
+				},
+			};
+		} else {
+			runExecutionData = executionData.data;
+		}
+
+		if (_connectionInputData === null) {
+			_connectionInputData = [];
+		}
+
+		if (activeNode?.type === HTTP_REQUEST_NODE_TYPE) {
+			const EMPTY_RESPONSE = { statusCode: 200, headers: {}, body: {} };
+			const EMPTY_REQUEST = { headers: {}, body: {}, qs: {} };
+			// Add $request,$response,$pageCount for HTTP Request-Nodes as it is used
+			// in pagination expressions
+			additionalKeys.$pageCount = 0;
+			additionalKeys.$response = get(
+				executionData,
+				['data', 'executionData', 'contextData', `node:${activeNode.name}`, 'response'],
+				EMPTY_RESPONSE,
+			);
+			additionalKeys.$request = EMPTY_REQUEST;
+		}
+
+		let runIndexCurrent = opts?.targetItem?.runIndex ?? 0;
+		if (
+			opts?.targetItem === undefined &&
+			workflowRunData !== null &&
+			workflowRunData[contextNode!.name]
+		) {
+			runIndexCurrent = workflowRunData[contextNode!.name].length - 1;
+		}
+		let _executeData = executeData(
+			parentNode,
+			contextNode!.name,
+			inputName,
+			runIndexCurrent,
+			runIndexParent,
+		);
+
+		if (!_executeData.source) {
+			// fallback to parent's run index for multi-output case
+			_executeData = executeData(parentNode, contextNode!.name, inputName, runIndexParent);
+		}
+
+		return workflow.expression.getParameterValue(
+			parameter,
+			runExecutionData,
+			runIndexCurrent,
+			itemIndex,
+			activeNode!.name,
+			_connectionInputData,
+			'manual',
+			additionalKeys,
+			_executeData,
+			false,
+			{},
+			contextNode!.name,
+		) as T;
+	}
+
+	function resolveRequiredParameters(
+		currentParameter: INodeProperties,
+		parameters: INodeParameters,
+		opts: {
+			targetItem?: TargetItem;
+			inputNodeName?: string;
+			inputRunIndex?: number;
+			inputBranchIndex?: number;
+		} = {},
+	): IDataObject | null {
+		const loadOptionsDependsOn = new Set(currentParameter?.typeOptions?.loadOptionsDependsOn ?? []);
+
+		const resolvedParameters = Object.fromEntries(
+			Object.entries(parameters).map(([name, parameter]): [string, IDataObject | null] => {
+				const required = loadOptionsDependsOn.has(name);
+
+				if (required) {
+					return [name, resolveParameter(parameter as NodeParameterValue, opts)];
+				} else {
+					try {
+						return [name, resolveParameter(parameter as NodeParameterValue, opts)];
+					} catch (error) {
+						// ignore any expressions errors for non required parameters
+						return [name, null];
+					}
+				}
+			}),
+		);
+
+		return resolvedParameters;
+	}
+
+	function getCurrentWorkflow(copyData?: boolean): Workflow {
+		return workflowsStore.getCurrentWorkflow(copyData);
+	}
+
+	function getConnectedNodes(
+		direction: 'upstream' | 'downstream',
+		workflow: Workflow,
+		nodeName: string,
+	): string[] {
+		let checkNodes: string[];
+		if (direction === 'downstream') {
+			checkNodes = workflow.getChildNodes(nodeName);
+		} else if (direction === 'upstream') {
+			checkNodes = workflow.getParentNodes(nodeName);
+		} else {
+			throw new Error(`The direction "${direction}" is not supported!`);
+		}
+
+		// Find also all nodes which are connected to the child nodes via a non-main input
+		let connectedNodes: string[] = [];
+		checkNodes.forEach((checkNode) => {
+			connectedNodes = [
+				...connectedNodes,
+				checkNode,
+				...workflow.getParentNodes(checkNode, 'ALL_NON_MAIN'),
+			];
+		});
+
+		// Remove duplicates
+		return [...new Set(connectedNodes)];
+	}
+
+	// Returns a workflow instance.
+	function getWorkflow(nodes: INodeUi[], connections: IConnections, copyData?: boolean): Workflow {
+		return workflowsStore.getWorkflow(nodes, connections, copyData);
+	}
+
+	function getNodeTypes(): INodeTypes {
+		return workflowsStore.getNodeTypes();
+	}
+
+	// Returns connectionInputData to be able to execute an expression.
+	function connectionInputData(
+		parentNode: string[],
+		currentNode: string,
+		inputName: string,
+		runIndex: number,
+		nodeConnection: INodeConnection = { sourceIndex: 0, destinationIndex: 0 },
+	): INodeExecutionData[] | null {
+		let connectionInputData: INodeExecutionData[] | null = null;
+		const _executeData = executeData(parentNode, currentNode, inputName, runIndex);
+		if (parentNode.length) {
+			if (
+				!Object.keys(_executeData.data).length ||
+				_executeData.data[inputName].length <= nodeConnection.sourceIndex
+			) {
+				connectionInputData = [];
+			} else {
+				connectionInputData = _executeData.data[inputName][nodeConnection.sourceIndex];
+
+				if (connectionInputData !== null) {
+					// Update the pairedItem information on items
+					connectionInputData = connectionInputData.map((item, itemIndex) => {
+						return {
+							...item,
+							pairedItem: {
+								item: itemIndex,
+								input: nodeConnection.destinationIndex,
+							},
+						};
+					});
+				}
+			}
+		}
+
+		return connectionInputData;
+	}
+
+	function executeData(
+		parentNodes: string[],
+		currentNode: string,
+		inputName: string,
+		runIndex: number,
+		parentRunIndex?: number,
+	): IExecuteData {
+		const executeData = {
+			node: {},
+			data: {},
+			source: null,
+		} as IExecuteData;
+
+		parentRunIndex = parentRunIndex ?? runIndex;
+
+		const workflowsStore = useWorkflowsStore();
+
+		// Find the parent node which has data
+		for (const parentNodeName of parentNodes) {
+			if (workflowsStore.shouldReplaceInputDataWithPinData) {
+				const parentPinData = workflowsStore.pinnedWorkflowData![parentNodeName];
+
+				// populate `executeData` from `pinData`
+
+				if (parentPinData) {
+					executeData.data = { main: [parentPinData] };
+					executeData.source = { main: [{ previousNode: parentNodeName }] };
+
+					return executeData;
+				}
+			}
+
+			// populate `executeData` from `runData`
+			const workflowRunData = workflowsStore.getWorkflowRunData;
+			if (workflowRunData === null) {
+				return executeData;
+			}
+
+			if (
+				!workflowRunData[parentNodeName] ||
+				workflowRunData[parentNodeName].length <= parentRunIndex ||
+				!workflowRunData[parentNodeName][parentRunIndex] ||
+				!workflowRunData[parentNodeName][parentRunIndex].hasOwnProperty('data') ||
+				workflowRunData[parentNodeName][parentRunIndex].data === undefined ||
+				!workflowRunData[parentNodeName][parentRunIndex].data?.hasOwnProperty(inputName)
+			) {
+				executeData.data = {};
+			} else {
+				executeData.data = workflowRunData[parentNodeName][parentRunIndex].data!;
+				if (workflowRunData[currentNode] && workflowRunData[currentNode][runIndex]) {
+					executeData.source = {
+						[inputName]: workflowRunData[currentNode][runIndex].source,
+					};
+				} else {
+					const workflow = getCurrentWorkflow();
+
+					let previousNodeOutput: number | undefined;
+					// As the node can be connected through either of the outputs find the correct one
+					// and set it to make pairedItem work on not executed nodes
+					if (workflow.connectionsByDestinationNode[currentNode]?.main) {
+						mainConnections: for (const mainConnections of workflow.connectionsByDestinationNode[
+							currentNode
+						].main) {
+							for (const connection of mainConnections ?? []) {
+								if (
+									connection.type === NodeConnectionTypes.Main &&
+									connection.node === parentNodeName
+								) {
+									previousNodeOutput = connection.index;
+									break mainConnections;
+								}
+							}
+						}
+					}
+
+					// The current node did not get executed in UI yet so build data manually
+					executeData.source = {
+						[inputName]: [
+							{
+								previousNode: parentNodeName,
+								previousNodeOutput,
+								previousNodeRun: parentRunIndex,
+							},
+						],
+					};
+				}
+				return executeData;
+			}
+		}
+
+		return executeData;
+	}
 
 	const setDocumentTitle = (workflowName: string, status: WorkflowTitleStatus) => {
 		let icon = '⚠️';

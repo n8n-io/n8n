@@ -1,7 +1,8 @@
 import { isObject } from 'lodash-es';
 import type { AssignmentValue, IDataObject } from 'n8n-workflow';
-import { resolveParameter } from '@/composables/useWorkflowHelpers';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { v4 as uuid } from 'uuid';
+import { useRouter } from 'vue-router';
 
 export function inferAssignmentType(value: unknown): string {
 	if (typeof value === 'boolean') return 'boolean';
@@ -14,7 +15,7 @@ export function inferAssignmentType(value: unknown): string {
 
 export function typeFromExpression(expression: string): string {
 	try {
-		const resolved = resolveParameter(`=${expression}`);
+		const resolved = useWorkflowHelpers({ router: useRouter() }).resolveParameter(`=${expression}`);
 		return inferAssignmentType(resolved);
 	} catch (error) {
 		return 'string';

@@ -56,7 +56,6 @@ import type {
 } from '@/Interface';
 import { defineStore } from 'pinia';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { dismissBannerPermanently } from '@/api/ui';
@@ -244,7 +243,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const lastCancelledConnectionPosition = ref<XYPosition | undefined>();
 
 	const settingsStore = useSettingsStore();
-	const workflowsStore = useWorkflowsStore();
 	const rootStore = useRootStore();
 	const userStore = useUsersStore();
 
@@ -315,21 +313,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 				},
 			},
 		} as const;
-	});
-
-	const getLastSelectedNode = computed(() => {
-		if (lastSelectedNode.value) {
-			return workflowsStore.getNodeByName(lastSelectedNode.value);
-		}
-		return null;
-	});
-
-	const lastInteractedWithNode = computed(() => {
-		if (lastInteractedWithNodeId.value) {
-			return workflowsStore.getNodeById(lastInteractedWithNodeId.value);
-		}
-
-		return null;
 	});
 
 	const isVersionsOpen = computed(() => {
@@ -650,7 +633,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		appGridDimensions,
 		appliedTheme,
 		contextBasedTranslationKeys,
-		getLastSelectedNode,
 		isVersionsOpen,
 		isModalActiveById,
 		isReadOnlyView,
@@ -669,7 +651,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		lastInteractedWithNodeConnection,
 		lastInteractedWithNodeHandle,
 		lastInteractedWithNodeId,
-		lastInteractedWithNode,
 		lastCancelledConnectionPosition,
 		nodeViewOffsetPosition,
 		nodeViewMoveInProgress,

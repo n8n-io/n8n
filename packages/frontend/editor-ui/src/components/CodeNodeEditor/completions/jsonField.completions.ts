@@ -9,7 +9,7 @@ import type { IPinData, IRunData, IDataObject } from 'n8n-workflow';
 function useJsonFieldCompletions() {
 	const i18n = useI18n();
 	const ndvStore = useNDVStore();
-	const workflowsStore = useWorkflowsStore();
+	const workflowsStore = useWorkflowsStore(); // @singleton
 
 	/**
 	 * - Complete `x.first().json.` to `.field`.
@@ -253,7 +253,7 @@ function useJsonFieldCompletions() {
 			nodeName = quotedNodeName.replace(/^"/, '').replace(/"$/, '');
 		}
 
-		const pinData: IPinData | undefined = useWorkflowsStore().pinnedWorkflowData;
+		const pinData: IPinData | undefined = useWorkflowsStore().pinnedWorkflowData; // @singleton
 
 		const nodePinData = pinData?.[nodeName];
 
@@ -269,7 +269,7 @@ function useJsonFieldCompletions() {
 			} catch {}
 		}
 
-		const runData: IRunData | null = useWorkflowsStore().getWorkflowRunData;
+		const runData: IRunData | null = useWorkflowsStore().getWorkflowRunData; // @singleton
 
 		const nodeRunData = runData?.[nodeName];
 

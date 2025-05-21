@@ -4,7 +4,7 @@ import {
 	SPLIT_IN_BATCHES_NODE_TYPE,
 } from '@/constants';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { resolveParameter, useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useUIStore } from '@/stores/ui.store';
 import {
@@ -171,7 +171,7 @@ export function hasNoParams(toResolve: string) {
 
 export function resolveAutocompleteExpression(expression: string) {
 	const ndvStore = useNDVStore();
-	return resolveParameter(
+	return useWorkflowHelpers({ router: useRouter() }).resolveParameter(
 		expression,
 		ndvStore.isInputParentOfActiveNode
 			? {

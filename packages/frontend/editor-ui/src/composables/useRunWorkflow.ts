@@ -45,8 +45,12 @@ import { useNodeDirtiness } from '@/composables/useNodeDirtiness';
 import { useCanvasOperations } from './useCanvasOperations';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
 
-export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof useRouter> }) {
-	const nodeHelpers = useNodeHelpers();
+export function useRunWorkflow(useRunWorkflowOpts: {
+	router: ReturnType<typeof useRouter>;
+	workflowsStore?: ReturnType<typeof useWorkflowsStore>;
+}) {
+	const workflowsStore = useRunWorkflowOpts.workflowsStore ?? useWorkflowsStore();
+	const nodeHelpers = useNodeHelpers({ workflowsStore });
 	const workflowHelpers = useWorkflowHelpers({ router: useRunWorkflowOpts.router });
 	const i18n = useI18n();
 	const toast = useToast();
@@ -57,10 +61,9 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 
 	const rootStore = useRootStore();
 	const pushConnectionStore = usePushConnectionStore();
-	const workflowsStore = useWorkflowsStore();
 	const executionsStore = useExecutionsStore();
-	const { dirtinessByName } = useNodeDirtiness();
-	const { startChat } = useCanvasOperations({ router: useRunWorkflowOpts.router });
+	const { dirtinessByName } = useNodeDirtiness({ workflowsStore });
+	const { startChat } = useCanvasOperations({ router: useRunWorkflowOpts.router, workflowsStore });
 
 	function sortNodesByYPosition(nodes: string[]) {
 		return [...nodes].sort((a, b) => {

@@ -30,13 +30,15 @@ interface ChatState {
 	displayExecution: (executionId: string) => void;
 }
 
-export function useChatState(isReadOnly: boolean): ChatState {
+export function useChatState(
+	isReadOnly: boolean,
+	workflowsStore: ReturnType<typeof useWorkflowsStore>,
+): ChatState {
 	const locale = useI18n();
-	const workflowsStore = useWorkflowsStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const logsStore = useLogsStore();
 	const router = useRouter();
-	const nodeHelpers = useNodeHelpers();
+	const nodeHelpers = useNodeHelpers({ workflowsStore });
 	const { runWorkflow } = useRunWorkflow({ router });
 
 	const messages = ref<ChatMessage[]>([]);

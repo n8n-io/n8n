@@ -17,7 +17,7 @@ export function useBaseCompletions(
 	language: string,
 ) {
 	const i18n = useI18n();
-	const workflowsStore = useWorkflowsStore();
+	const workflowsStore = useWorkflowsStore(); // @singleton
 
 	const itemCompletions = (context: CompletionContext): CompletionResult | null => {
 		const preCursor = context.matchBefore(/i\w*/);

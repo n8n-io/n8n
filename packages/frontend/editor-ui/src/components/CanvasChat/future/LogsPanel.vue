@@ -14,8 +14,12 @@ import { ndvEventBus } from '@/event-bus';
 import { useLogsSelection } from '@/components/CanvasChat/future/composables/useLogsSelection';
 import { useLogsTreeExpand } from '@/components/CanvasChat/future/composables/useLogsTreeExpand';
 import { useLogsStore } from '@/stores/logs.store';
+import type { useWorkflowsStore } from '@/stores/workflows.store';
 
-const props = withDefaults(defineProps<{ isReadOnly?: boolean }>(), { isReadOnly: false });
+const props = withDefaults(
+	defineProps<{ isReadOnly?: boolean; workflowsStore: ReturnType<typeof useWorkflowsStore> }>(),
+	{ isReadOnly: false },
+);
 
 const container = useTemplateRef('container');
 const logsContainer = useTemplateRef('logsContainer');
@@ -52,10 +56,10 @@ const {
 	sendMessage,
 	refreshSession,
 	displayExecution,
-} = useChatState(props.isReadOnly);
+} = useChatState(props.isReadOnly, props.workflowsStore);
 
 const { entries, execution, hasChat, latestNodeNameById, resetExecutionData, loadSubExecution } =
-	useLogsExecutionData();
+	useLogsExecutionData({ workflowsStore: props.workflowsStore });
 const { flatLogEntries, toggleExpanded } = useLogsTreeExpand(entries);
 const { selected, select, selectNext, selectPrev } = useLogsSelection(
 	execution,

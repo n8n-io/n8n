@@ -57,11 +57,15 @@ declare namespace HttpRequestNode {
 	}
 }
 
-export function useNodeHelpers() {
+export function useNodeHelpers(
+	options: {
+		workflowsStore?: ReturnType<typeof useWorkflowsStore>;
+	} = {},
+) {
 	const credentialsStore = useCredentialsStore();
 	const historyStore = useHistoryStore();
 	const nodeTypesStore = useNodeTypesStore();
-	const workflowsStore = useWorkflowsStore();
+	const workflowsStore = options.workflowsStore ?? useWorkflowsStore();
 	const i18n = useI18n();
 	const canvasStore = useCanvasStore();
 

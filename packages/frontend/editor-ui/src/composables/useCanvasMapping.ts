@@ -5,7 +5,7 @@
 
 import { useI18n } from '@/composables/useI18n';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import type { useWorkflowsStore } from '@/stores/workflows.store';
 import type { Ref } from 'vue';
 import { computed } from 'vue';
 import type {
@@ -64,16 +64,17 @@ export function useCanvasMapping({
 	nodes,
 	connections,
 	workflowObject,
+	workflowsStore,
 }: {
 	nodes: Ref<INodeUi[]>;
 	connections: Ref<IConnections>;
 	workflowObject: Ref<Workflow>;
+	workflowsStore: ReturnType<typeof useWorkflowsStore>;
 }) {
 	const i18n = useI18n();
-	const workflowsStore = useWorkflowsStore();
 	const nodeTypesStore = useNodeTypesStore();
-	const nodeHelpers = useNodeHelpers();
-	const { dirtinessByName } = useNodeDirtiness();
+	const nodeHelpers = useNodeHelpers({ workflowsStore });
+	const { dirtinessByName } = useNodeDirtiness({ workflowsStore });
 
 	function createStickyNoteRenderType(node: INodeUi): CanvasNodeStickyNoteRender {
 		return {

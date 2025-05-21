@@ -5,10 +5,14 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { computed } from 'vue';
 
 const { isNewLogsEnabled } = useSettingsStore();
-const workflowsStore = useWorkflowsStore();
+const workflowsStore = useWorkflowsStore(); // @singleton
 const hasExecutionData = computed(() => workflowsStore.workflowExecutionData);
 </script>
 
 <template>
-	<LogsPanel v-if="isNewLogsEnabled && hasExecutionData" :is-read-only="true" />
+	<LogsPanel
+		v-if="isNewLogsEnabled && hasExecutionData"
+		:is-read-only="true"
+		:workflows-store="workflowsStore"
+	/>
 </template>

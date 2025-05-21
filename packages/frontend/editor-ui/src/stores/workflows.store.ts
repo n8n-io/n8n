@@ -32,6 +32,8 @@ import type {
 	IWorkflowTemplateNode,
 	IWorkflowDataCreate,
 	WorkflowListResource,
+	WorkflowTitleStatus,
+	IWorkflowData,
 } from '@/Interface';
 import { defineStore } from 'pinia';
 import type {
@@ -85,15 +87,14 @@ import type { ProjectSharingData } from '@/types/projects.types';
 import type { PushPayload } from '@n8n/api-types';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
-import { useRouter } from 'vue-router';
 import { useSettingsStore } from './settings.store';
 import { clearPopupWindowState, openFormPopupWindow } from '@/utils/executionUtils';
-import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useUsersStore } from '@/stores/users.store';
 import { updateCurrentUserSettings } from '@/api/users';
 import { useExecutingNode } from '@/composables/useExecutingNode';
 import type { NodeExecuteBefore } from '@n8n/api-types/push/execution';
 import { useLogsStore } from './logs.store';
+import { useDocumentTitle } from '@/composables/useDocumentTitle';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
@@ -120,14 +121,11 @@ const createEmptyWorkflow = (): IWorkflowDb => ({
 let cachedWorkflowKey: string | null = '';
 let cachedWorkflow: Workflow | null = null;
 
-export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
+export const makeWorkflowsStore = () => {
 	const uiStore = useUIStore();
 	const telemetry = useTelemetry();
-	const router = useRouter();
-	const workflowHelpers = useWorkflowHelpers({ router });
 	const settingsStore = useSettingsStore();
 	const rootStore = useRootStore();
-	const nodeHelpers = useNodeHelpers();
 	const usersStore = useUsersStore();
 	const logsStore = useLogsStore();
 
@@ -1249,7 +1247,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflow.value.nodes = nodes;
 		nodes.forEach((node) => {
 			if (!node.id) {
-				nodeHelpers.assignNodeId(node);
+				const id = window.crypto.randomUUID();
+				node.id = id;
 			}
 
 			if (node.extendsCredential) {
@@ -1477,6 +1476,38 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}
 	}
 
+	async function getWorkflowDataToSave() {
+		const workflowNodes = allNodes;
+		const workflowConnections = allConnections;
+
+		let nodeData;
+
+		const nodes: INode[] = [];
+		for (let nodeIndex = 0; nodeIndex < workflowNodes.value.length; nodeIndex++) {
+			nodeData = useWorkflowHelpers().getNodeDataToSave(workflowNodes.value[nodeIndex]); // @singleton
+
+			nodes.push(nodeData);
+		}
+
+		const data: IWorkflowData = {
+			name: workflowName.value,
+			nodes,
+			pinData: pinnedWorkflowData.value,
+			connections: workflowConnections.value,
+			active: isWorkflowActive.value,
+			settings: workflow.value.settings,
+			tags: workflowTags.value,
+			versionId: workflow.value.versionId,
+			meta: workflow.value.meta,
+		};
+
+		if (workflowId.value !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+			data.id = workflowId.value;
+		}
+
+		return data;
+	}
+
 	async function trackNodeExecution(pushData: PushPayload<'nodeExecuteAfter'>): Promise<void> {
 		const nodeName = pushData.nodeName;
 
@@ -1490,13 +1521,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 					node_type_version: node?.typeVersion,
 					node_id: node?.id,
 					node_graph_string: JSON.stringify(
-						TelemetryHelpers.generateNodesGraph(
-							await workflowHelpers.getWorkflowDataToSave(),
-							workflowHelpers.getNodeTypes(),
-							{
-								isCloudDeployment: settingsStore.isCloudDeployment,
-							},
-						).nodeGraph,
+						TelemetryHelpers.generateNodesGraph(await getWorkflowDataToSave(), getNodeTypes(), {
+							isCloudDeployment: settingsStore.isCloudDeployment,
+						}).nodeGraph,
 					),
 				},
 				{ withPostHog: true },
@@ -1649,6 +1676,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return response && unflattenExecutionData(response);
 	}
 
+	const containsNodeFromPackage = (workflow: IWorkflowDb, packageName: string) => {
+		return workflow.nodes.some((node) => node.type.startsWith(packageName));
+	};
+
 	/**
 	 * Creates a new workflow with the provided data.
 	 * Ensures that the new workflow is not active upon creation.
@@ -1671,10 +1702,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			sendData as unknown as IDataObject,
 		);
 
-		const isAIWorkflow = workflowHelpers.containsNodeFromPackage(
-			newWorkflow,
-			AI_NODES_PACKAGE_NAME,
-		);
+		const isAIWorkflow = containsNodeFromPackage(newWorkflow, AI_NODES_PACKAGE_NAME);
 		if (isAIWorkflow && !usersStore.isEasyAIWorkflowOnboardingDone) {
 			await updateCurrentUserSettings(rootStore.restApiContext, {
 				easyAIWorkflowOnboarded: true,
@@ -1702,7 +1730,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		);
 
 		if (
-			workflowHelpers.containsNodeFromPackage(updatedWorkflow, AI_NODES_PACKAGE_NAME) &&
+			containsNodeFromPackage(updatedWorkflow, AI_NODES_PACKAGE_NAME) &&
 			!usersStore.isEasyAIWorkflowOnboardingDone
 		) {
 			await updateCurrentUserSettings(rootStore.restApiContext, {
@@ -1837,12 +1865,21 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	//
 	// End Canvas V2 Functions
 	//
+	const setDocumentTitle = (status: WorkflowTitleStatus) => {
+		let icon = '⚠️';
+		if (status === 'EXECUTING') {
+			icon = '🔄';
+		} else if (status === 'IDLE') {
+			icon = '▶️';
+		}
+		useDocumentTitle().set(`${icon} ${workflowName.value}`);
+	};
 
 	function markExecutionAsStopped() {
 		setActiveExecutionId(undefined);
 		clearNodeExecutionQueue();
 		executionWaitingForWebhook.value = false;
-		workflowHelpers.setDocumentTitle(workflowName.value, 'IDLE');
+		setDocumentTitle('IDLE');
 
 		clearPopupWindowState();
 
@@ -2007,4 +2044,14 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		getNewWorkflowDataAndMakeShareable,
 		totalWorkflowCount,
 	};
-});
+};
+
+export function cloneStore(workflowId: string) {
+	const store = defineStore(STORES.WORKFLOWS + workflowId, makeWorkflowsStore)();
+	store.workflowsById = useWorkflowsStore().workflowsById;
+	store.setWorkflowId(workflowId);
+
+	return store;
+}
+
+export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, makeWorkflowsStore);

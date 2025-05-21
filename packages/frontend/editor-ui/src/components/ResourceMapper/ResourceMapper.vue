@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { ResourceMapperFieldsRequestDto } from '@n8n/api-types';
 import type { IUpdateInformation } from '@/Interface';
-import { resolveRequiredParameters } from '@/composables/useWorkflowHelpers';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import type {
 	INode,
@@ -301,7 +301,7 @@ const createRequestParams = (methodName: string) => {
 			name: props.node.type,
 			version: props.node.typeVersion,
 		},
-		currentNodeParameters: resolveRequiredParameters(
+		currentNodeParameters: useWorkflowHelpers().resolveRequiredParameters(
 			props.parameter,
 			props.node.parameters,
 		) as INodeParameters,

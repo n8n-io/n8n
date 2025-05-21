@@ -34,12 +34,14 @@ import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { isEqual } from 'lodash-es';
 import CanvasNodeTrigger from '@/components/canvas/elements/nodes/render-types/parts/CanvasNodeTrigger.vue';
+import type { useWorkflowsStore } from '@/stores/workflows.store';
 
 type Props = NodeProps<CanvasNodeData> & {
 	readOnly?: boolean;
 	eventBus?: EventBus<CanvasEventBusEvents>;
 	hovered?: boolean;
 	nearbyHovered?: boolean;
+	workflowsStore: ReturnType<typeof useWorkflowsStore>;
 };
 
 const slots = defineSlots<{
@@ -381,6 +383,7 @@ onBeforeUnmount(() => {
 			data-test-id="canvas-node-toolbar"
 			:read-only="readOnly"
 			:class="$style.canvasNodeToolbar"
+			:workflows-store="props.workflowsStore"
 			@delete="onDelete"
 			@toggle="onDisabledToggle"
 			@run="onRun"
@@ -406,6 +409,7 @@ onBeforeUnmount(() => {
 			:hovered="nearbyHovered"
 			:disabled="isDisabled"
 			:read-only="readOnly"
+			:workflows-store="props.workflowsStore"
 			:class="$style.trigger"
 		/>
 	</div>

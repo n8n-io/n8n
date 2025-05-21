@@ -5,7 +5,7 @@ import { useCanvasNode } from '@/composables/useCanvasNode';
 import { CanvasNodeRenderType } from '@/types';
 import { useCanvas } from '@/composables/useCanvas';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import type { useWorkflowsStore } from '@/stores/workflows.store';
 
 const emit = defineEmits<{
 	delete: [];
@@ -17,6 +17,7 @@ const emit = defineEmits<{
 
 const props = defineProps<{
 	readOnly?: boolean;
+	workflowsStore: ReturnType<typeof useWorkflowsStore>;
 }>();
 
 const $style = useCssModule();
@@ -25,10 +26,9 @@ const i18n = useI18n();
 const { isExecuting } = useCanvas();
 const { isDisabled, render, name } = useCanvasNode();
 
-const workflowsStore = useWorkflowsStore();
 const nodeTypesStore = useNodeTypesStore();
 
-const node = computed(() => !!name.value && workflowsStore.getNodeByName(name.value));
+const node = computed(() => !!name.value && props.workflowsStore.getNodeByName(name.value));
 const isToolNode = computed(() => !!node.value && nodeTypesStore.isToolNode(node.value.type));
 
 const nodeDisabledTitle = computed(() => {

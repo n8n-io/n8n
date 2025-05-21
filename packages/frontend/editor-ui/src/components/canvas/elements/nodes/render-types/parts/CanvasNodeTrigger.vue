@@ -5,7 +5,7 @@ import { useI18n } from '@/composables/useI18n';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { CHAT_TRIGGER_NODE_TYPE } from '@/constants';
 import { useLogsStore } from '@/stores/logs.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import type { useWorkflowsStore } from '@/stores/workflows.store';
 import { N8nButton } from '@n8n/design-system';
 import { computed, useCssModule } from 'vue';
 import { useRouter } from 'vue-router';
@@ -17,6 +17,7 @@ const {
 	disabled,
 	readOnly,
 	class: cls,
+	workflowsStore,
 } = defineProps<{
 	name: string;
 	type: string;
@@ -24,6 +25,7 @@ const {
 	disabled?: boolean;
 	readOnly?: boolean;
 	class?: string;
+	workflowsStore: ReturnType<typeof useWorkflowsStore>;
 }>();
 
 const style = useCssModule();
@@ -36,10 +38,9 @@ const containerClass = computed(() => ({
 
 const router = useRouter();
 const i18n = useI18n();
-const workflowsStore = useWorkflowsStore();
 const logsStore = useLogsStore();
-const { runEntireWorkflow } = useRunWorkflow({ router });
-const { startChat } = useCanvasOperations({ router });
+const { runEntireWorkflow } = useRunWorkflow({ router, workflowsStore });
+const { startChat } = useCanvasOperations({ router, workflowsStore });
 
 const isChatOpen = computed(() => logsStore.isOpen);
 const isExecuting = computed(() => workflowsStore.isWorkflowRunning);

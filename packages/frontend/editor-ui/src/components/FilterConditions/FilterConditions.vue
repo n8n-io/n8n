@@ -21,8 +21,9 @@ import { useI18n } from '@/composables/useI18n';
 import { useDebounce } from '@/composables/useDebounce';
 import Condition from './Condition.vue';
 import CombinatorSelect from './CombinatorSelect.vue';
-import { resolveParameter } from '@/composables/useWorkflowHelpers';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import Draggable from 'vuedraggable';
+import { useRouter } from 'vue-router';
 
 interface Props {
 	parameter: INodeProperties;
@@ -96,7 +97,9 @@ watch(
 		try {
 			newOptions = {
 				...DEFAULT_FILTER_OPTIONS,
-				...resolveParameter(typeOptions as unknown as NodeParameterValue),
+				...useWorkflowHelpers({ router: useRouter() }).resolveParameter(
+					typeOptions as unknown as NodeParameterValue,
+				),
 			};
 		} catch (error) {}
 

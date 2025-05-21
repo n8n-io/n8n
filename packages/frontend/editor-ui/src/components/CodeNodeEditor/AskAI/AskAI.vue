@@ -79,7 +79,7 @@ function getErrorMessageByStatusCode(statusCode: number) {
 
 function getParentNodes() {
 	const activeNode = useNDVStore().activeNode;
-	const { getCurrentWorkflow, getNodeByName } = useWorkflowsStore();
+	const { getCurrentWorkflow, getNodeByName } = useWorkflowsStore(); // @singleton
 	const workflow = getCurrentWorkflow();
 
 	if (!activeNode || !workflow) return [];

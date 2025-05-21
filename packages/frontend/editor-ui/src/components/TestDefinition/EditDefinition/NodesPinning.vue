@@ -6,21 +6,27 @@ import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import type { useWorkflowsStore } from '@/stores/workflows.store';
 import type { CanvasConnectionPort, CanvasNodeData } from '@/types';
 import { N8nButton, N8nHeading, N8nSpinner, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useVueFlow } from '@vue-flow/core';
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
-const workflowsStore = useWorkflowsStore();
+const props = defineProps<{
+	workflowsStore: ReturnType<typeof useWorkflowsStore>;
+}>();
+
 const nodeTypesStore = useNodeTypesStore();
 const route = useRoute();
 const router = useRouter();
 const locale = useI18n();
 const telemetry = useTelemetry();
 
-const { resetWorkspace, initializeWorkspace } = useCanvasOperations({ router });
+const { resetWorkspace, initializeWorkspace } = useCanvasOperations({
+	router,
+	workflowsStore: props.workflowsStore,
+});
 
 const uuid = crypto.randomUUID();
 
@@ -31,8 +37,8 @@ const isLoading = ref(false);
 
 const workflowId = computed(() => route.params.name as string);
 const testId = computed(() => route.params.testId as string);
-const workflow = computed(() => workflowsStore.getWorkflowById(workflowId.value));
-const workflowObject = computed(() => workflowsStore.getCurrentWorkflow(true));
+const workflow = computed(() => props.workflowsStore.getWorkflowById(workflowId.value));
+const workflowObject = computed(() => props.workflowsStore.getCurrentWorkflow(true));
 const canvasId = computed(() => `${uuid}-${testId.value}`);
 
 const { onNodesInitialized, fitView, zoomTo, onNodeClick, viewport } = useVueFlow({
@@ -45,15 +51,16 @@ const { nodes: mappedNodes, connections: mappedConnections } = useCanvasMapping(
 	nodes,
 	connections,
 	workflowObject,
+	workflowsStore: props.workflowsStore,
 });
 
 async function loadData() {
 	isLoading.value = true;
-	workflowsStore.resetState();
+	props.workflowsStore.resetState();
 	resetWorkspace();
 	await Promise.all([
 		nodeTypesStore.getNodeTypes(),
-		workflowsStore.fetchWorkflow(workflowId.value),
+		props.workflowsStore.fetchWorkflow(workflowId.value),
 	]);
 
 	// remove editor pinned data
@@ -159,6 +166,7 @@ onMounted(loadData);
 							[$style.isTrigger]: nodeTypesStore.isTriggerNode(nodeProps.data.type),
 							[$style.mockNode]: true,
 						}"
+						:workflows-store="props.workflowsStore"
 					>
 						<template #toolbar="{ data, outputs, inputs }">
 							<div

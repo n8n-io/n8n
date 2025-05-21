@@ -9,7 +9,7 @@ import ChatLogsPanel from './components/ChatLogsPanel.vue';
 import { useResize } from './composables/useResize';
 
 // Types
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import type { useWorkflowsStore } from '@/stores/workflows.store';
 import { usePiPWindow } from '@/components/CanvasChat/composables/usePiPWindow';
 import { N8nResizeWrapper } from '@n8n/design-system';
 import { useTelemetry } from '@/composables/useTelemetry';
@@ -17,7 +17,8 @@ import { useChatState } from '@/components/CanvasChat/composables/useChatState';
 import { LOGS_PANEL_STATE } from '@/components/CanvasChat/types/logs';
 import { useLogsStore } from '@/stores/logs.store';
 
-const workflowsStore = useWorkflowsStore();
+const { workflowsStore } = defineProps<{ workflowsStore: ReturnType<typeof useWorkflowsStore> }>();
+
 const logsStore = useLogsStore();
 
 // Component state
@@ -68,7 +69,7 @@ const {
 	sendMessage,
 	refreshSession,
 	displayExecution,
-} = useChatState(false);
+} = useChatState(false, workflowsStore);
 
 // Expose internal state for testing
 defineExpose({

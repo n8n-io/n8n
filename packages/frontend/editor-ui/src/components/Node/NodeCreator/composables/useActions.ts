@@ -42,7 +42,6 @@ import { useExternalHooks } from '@/composables/useExternalHooks';
 
 import { sortNodeCreateElements, transformNodeType } from '../utils';
 import { useI18n } from '@/composables/useI18n';
-import { useCanvasStore } from '@/stores/canvas.store';
 
 export const useActions = () => {
 	const nodeCreatorStore = useNodeCreatorStore();
@@ -220,7 +219,8 @@ export const useActions = () => {
 
 	// AI-226: Prepend LLM Chain node when adding a language model
 	function shouldPrependLLMChain(addedNodes: AddedNode[]): boolean {
-		const canvasHasAINodes = useCanvasStore().aiNodes.length > 0;
+		const canvasHasAINodes =
+			useWorkflowsStore().allNodes.filter((node) => node.type.includes('langchain')).length > 0;
 		if (canvasHasAINodes) return false;
 
 		return addedNodes.some((node) => {

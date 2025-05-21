@@ -54,6 +54,7 @@ import CanvasArrowHeadMarker from './elements/edges/CanvasArrowHeadMarker.vue';
 import Edge from './elements/edges/CanvasEdge.vue';
 import Node from './elements/nodes/CanvasNode.vue';
 import { useViewportAutoAdjust } from '@/components/canvas/composables/useViewportAutoAdjust';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 
 const $style = useCssModule();
 
@@ -117,6 +118,7 @@ const props = withDefaults(
 		executing?: boolean;
 		keyBindings?: boolean;
 		loading?: boolean;
+		workflowsStore: ReturnType<typeof useWorkflowsStore>;
 	}>(),
 	{
 		id: 'canvas',
@@ -857,6 +859,7 @@ provide(CanvasKey, {
 					:event-bus="eventBus"
 					:hovered="nodesHoveredById[nodeProps.id]"
 					:nearby-hovered="nodeProps.id === hoveredTriggerNode.id.value"
+					:workflows-store="props.workflowsStore"
 					@delete="onDeleteNode"
 					@run="onRunNode"
 					@select="onSelectNode"

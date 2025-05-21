@@ -136,9 +136,14 @@ type AddNodeOptions = AddNodesBaseOptions & {
 	isAutoAdd?: boolean;
 };
 
-export function useCanvasOperations({ router }: { router: ReturnType<typeof useRouter> }) {
+export function useCanvasOperations({
+	router,
+	workflowsStore = useWorkflowsStore(),
+}: {
+	router: ReturnType<typeof useRouter>;
+	workflowsStore: ReturnType<typeof useWorkflowsStore>;
+}) {
 	const rootStore = useRootStore();
-	const workflowsStore = useWorkflowsStore();
 	const credentialsStore = useCredentialsStore();
 	const historyStore = useHistoryStore();
 	const uiStore = useUIStore();
@@ -155,7 +160,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 	const i18n = useI18n();
 	const toast = useToast();
 	const workflowHelpers = useWorkflowHelpers({ router });
-	const nodeHelpers = useNodeHelpers();
+	const nodeHelpers = useNodeHelpers({ workflowsStore });
 	const telemetry = useTelemetry();
 	const externalHooks = useExternalHooks();
 	const clipboard = useClipboard();
@@ -167,6 +172,14 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 
 	const editableWorkflow = computed(() => workflowsStore.workflow);
 	const editableWorkflowObject = computed(() => workflowsStore.getCurrentWorkflow());
+
+	const lastInteractedWithNode = computed(() => {
+		if (uiStore.lastInteractedWithNodeId) {
+			return workflowsStore.getNodeById(uiStore.lastInteractedWithNodeId);
+		}
+
+		return null;
+	});
 
 	const triggerNodes = computed<INodeUi[]>(() => {
 		return workflowsStore.workflowTriggerNodes;
@@ -701,12 +714,11 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 	}
 
 	function createConnectionToLastInteractedWithNode(node: INodeUi, options: AddNodeOptions = {}) {
-		const lastInteractedWithNode = uiStore.lastInteractedWithNode;
-		if (!lastInteractedWithNode) {
+		if (!lastInteractedWithNode.value) {
 			return;
 		}
 
-		const lastInteractedWithNodeId = lastInteractedWithNode.id;
+		const lastInteractedWithNodeId = lastInteractedWithNode.value.id;
 		const lastInteractedWithNodeConnection = uiStore.lastInteractedWithNodeConnection;
 		const lastInteractedWithNodeHandle = uiStore.lastInteractedWithNodeHandle;
 
@@ -800,9 +812,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 			is_auto_add: options.isAutoAdd,
 			workflow_id: workflowsStore.workflowId,
 			drag_and_drop: options.dragAndDrop,
-			input_node_type: uiStore.lastInteractedWithNode
-				? uiStore.lastInteractedWithNode.type
-				: undefined,
+			input_node_type: lastInteractedWithNode.value ? lastInteractedWithNode.value.type : undefined,
 		});
 	}
 
@@ -907,7 +917,6 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		// - clicking the plus button of a node handle
 		// - dragging an edge / connection of a node handle
 		// - selecting a node, adding a node via the node creator
-		const lastInteractedWithNode = uiStore.lastInteractedWithNode;
 		// Available when clicking the plus button of a node edge / connection
 		const lastInteractedWithNodeConnection = uiStore.lastInteractedWithNodeConnection;
 		// Available when dragging an edge / connection from a node
@@ -931,13 +940,13 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 			});
 		}
 
-		if (lastInteractedWithNode) {
+		if (lastInteractedWithNode.value) {
 			const lastInteractedWithNodeTypeDescription = nodeTypesStore.getNodeType(
-				lastInteractedWithNode.type,
-				lastInteractedWithNode.typeVersion,
+				lastInteractedWithNode.value.type,
+				lastInteractedWithNode.value.typeVersion,
 			);
 			const lastInteractedWithNodeObject = editableWorkflowObject.value.getNode(
-				lastInteractedWithNode.name,
+				lastInteractedWithNode.value.name,
 			);
 
 			const newNodeInsertPosition = uiStore.lastCancelledConnectionPosition;
@@ -990,7 +999,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 					// Compute the y offset for the new node based on the number of main outputs of the source node
 					// and shift the downstream nodes accordingly
 
-					shiftDownstreamNodesPosition(lastInteractedWithNode.name, PUSH_NODES_OFFSET, {
+					shiftDownstreamNodesPosition(lastInteractedWithNode.value.name, PUSH_NODES_OFFSET, {
 						trackHistory: true,
 					});
 				}
@@ -1039,11 +1048,11 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 					);
 
 					position = [
-						lastInteractedWithNode.position[0] +
+						lastInteractedWithNode.value.position[0] +
 							(CONFIGURABLE_NODE_SIZE[0] / lastInteractedWithNodeWidthDivisions) *
 								(scopedConnectionIndex + 1) -
 							nodeSize[0] / 2,
-						lastInteractedWithNode.position[1] + PUSH_NODES_OFFSET,
+						lastInteractedWithNode.value.position[1] + PUSH_NODES_OFFSET,
 					];
 				} else {
 					// When the node has only main outputs, mixed outputs, or no outputs at all
@@ -1059,8 +1068,8 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 
 					// If a node is active then add the new node directly after the current one
 					position = [
-						lastInteractedWithNode.position[0] + pushOffset,
-						lastInteractedWithNode.position[1] + yOffset,
+						lastInteractedWithNode.value.position[0] + pushOffset,
+						lastInteractedWithNode.value.position[1] + yOffset,
 					];
 				}
 			}

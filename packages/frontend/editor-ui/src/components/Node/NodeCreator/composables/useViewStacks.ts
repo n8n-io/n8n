@@ -42,7 +42,6 @@ import { useKeyboardNavigation } from './useKeyboardNavigation';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { AI_TRANSFORM_NODE_TYPE } from 'n8n-workflow';
 import type { NodeConnectionType, INodeInputFilter } from 'n8n-workflow';
-import { useCanvasStore } from '@/stores/canvas.store';
 import { useSettingsStore } from '@/stores/settings.store';
 
 export type CommunityNodeDetails = {
@@ -57,6 +56,7 @@ export type CommunityNodeDetails = {
 import { useUIStore } from '@/stores/ui.store';
 import { type NodeIconSource } from '@/utils/nodeIcon';
 import { getThemedValue } from '@/utils/nodeTypesUtils';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 
 export interface ViewStack {
 	uuid?: string;
@@ -102,7 +102,8 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 
 		if (stack.search && searchBaseItems.value) {
 			let searchBase: INodeCreateElement[] = searchBaseItems.value;
-			const canvasHasAINodes = useCanvasStore().aiNodes.length > 0;
+			const canvasHasAINodes =
+				useWorkflowsStore().allNodes.filter((node) => node.type.includes('langchain')).length > 0;
 
 			if (searchBaseItems.value.length === 0) {
 				searchBase = flattenCreateElements(stack.baselineItems ?? []);
@@ -233,7 +234,8 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 
 	function groupIfAiNodes(items: INodeCreateElement[], sortAlphabetically = true) {
 		const aiNodes = items.filter((node): node is NodeCreateElement => isAINode(node));
-		const canvasHasAINodes = useCanvasStore().aiNodes.length > 0;
+		const canvasHasAINodes =
+			useWorkflowsStore().allNodes.filter((node) => node.type.includes('langchain')).length > 0;
 
 		if (aiNodes.length > 0 && (canvasHasAINodes || isAiRootView(getLastActiveStack()))) {
 			const sectionsMap = new Map<string, NodeViewItemSection>();

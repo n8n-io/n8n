@@ -1,4 +1,4 @@
-import { resolveParameter } from '@/composables/useWorkflowHelpers';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { i18n } from '@/plugins/i18n';
 import { isExpression } from '@/utils/expressions';
 import {
@@ -14,6 +14,7 @@ import {
 import { OPERATORS_BY_ID, type FilterOperatorId } from './constants';
 import type { ConditionResult, FilterOperator } from './types';
 import { DateTime } from 'luxon';
+import { useRouter } from 'vue-router';
 
 export const getFilterOperator = (key: string) =>
 	OPERATORS_BY_ID[key as FilterOperatorId] as FilterOperator;
@@ -87,7 +88,7 @@ export const resolveCondition = ({
 	index?: number;
 }): ConditionResult => {
 	try {
-		const resolved = resolveParameter(
+		const resolved = useWorkflowHelpers({ router: useRouter() }).resolveParameter(
 			condition as unknown as NodeParameterValue,
 		) as FilterConditionValue;
 

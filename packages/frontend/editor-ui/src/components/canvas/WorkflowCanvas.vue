@@ -9,6 +9,7 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import type { CanvasEventBusEvents } from '@/types';
 import { useVueFlow } from '@vue-flow/core';
 import { throttledRef } from '@vueuse/core';
+import type { useWorkflowsStore } from '@/stores/workflows.store';
 
 defineOptions({
 	inheritAttrs: false,
@@ -24,6 +25,7 @@ const props = withDefaults(
 		eventBus?: EventBus<CanvasEventBusEvents>;
 		readOnly?: boolean;
 		executing?: boolean;
+		workflowsStore: ReturnType<typeof useWorkflowsStore>;
 	}>(),
 	{
 		id: 'canvas',
@@ -51,6 +53,7 @@ const { nodes: mappedNodes, connections: mappedConnections } = useCanvasMapping(
 	nodes,
 	connections,
 	workflowObject,
+	workflowsStore: props.workflowsStore,
 });
 
 const initialFitViewDone = ref(false); // Workaround for https://github.com/bcakmakoglu/vue-flow/issues/1636
@@ -75,6 +78,7 @@ const mappedConnectionsThrottled = throttledRef(mappedConnections, 200);
 				:connections="executing ? mappedConnectionsThrottled : mappedConnections"
 				:event-bus="eventBus"
 				:read-only="readOnly"
+				:workflows-store="props.workflowsStore"
 				v-bind="$attrs"
 			/>
 		</div>

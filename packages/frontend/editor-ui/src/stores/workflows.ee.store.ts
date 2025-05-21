@@ -13,14 +13,13 @@ import { computed } from 'vue';
 export const useWorkflowsEEStore = defineStore(STORES.WORKFLOWS_EE, () => {
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
-	const workflowStore = useWorkflowsStore();
 
 	const getWorkflowOwnerName = computed(() => {
 		return (
 			workflowId: string,
 			fallback = i18n.baseText('workflows.shareModal.info.sharee.fallback'),
 		): string => {
-			const workflow = workflowStore.getWorkflowById(workflowId);
+			const workflow = useWorkflowsStore().getWorkflowById(workflowId);
 			const { name, email } = splitName(workflow?.homeProject?.name ?? '');
 			return name ? (email ? `${name} (${email})` : name) : (email ?? fallback);
 		};

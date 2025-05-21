@@ -115,9 +115,11 @@ function findLoop(
 /**
  * Determines the subgraph that is affected by changes made after the last (partial) execution
  */
-export function useNodeDirtiness() {
+export function useNodeDirtiness(options: {
+	workflowsStore?: ReturnType<typeof useWorkflowsStore>;
+}) {
 	const historyStore = useHistoryStore();
-	const workflowsStore = useWorkflowsStore();
+	const workflowsStore = options.workflowsStore ?? useWorkflowsStore();
 	const settingsStore = useSettingsStore();
 
 	function getParentSubNodes(nodeName: string) {
