@@ -4,7 +4,7 @@ import {
 	UpdateDatastoreDto,
 	AddDatastoreRecordsDto,
 } from '@n8n/api-types';
-import { Body, Delete, Get, GlobalScope, Patch, Post, RestController } from '@n8n/decorators';
+import { Body, Delete, Get, Patch, Post, RestController } from '@n8n/decorators';
 import { Request, Response } from 'express';
 
 import { AuthenticatedRequest } from '@/requests';
@@ -97,17 +97,10 @@ export class DatastoreController {
 		return res.status(400).json(result.error);
 	}
 
-	// @Post('/:id/records')
+	@Get('/:id/records', { skipAuth: true })
 	// @GlobalScope('datastore:write-record')
-	// async writeRecords(
-	// 	req: AuthenticatedRequest<{ id: string }>,
-	// 	_res: Response,
-	// 	@Body payload: { records: Array<Record<string, unknown>> },
-	// ) {
-	// 	const updatedDatastore = await this.datastoreService.writeRecords(
-	// 		req.params.id,
-	// 		payload.records,
-	// 	);
-	// 	return updatedDatastore;
-	// }
+	async getRecords(req: Request<{ id: string }>, _res: Response) {
+		const records = await this.datastoreService.getRecords(req.params.id);
+		return records;
+	}
 }
