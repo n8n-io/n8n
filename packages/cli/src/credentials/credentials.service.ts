@@ -711,6 +711,14 @@ export class CredentialsService {
 		return await this.createCredential({ ...dto, isManaged: true }, user);
 	}
 
+	async updateLastConnectedAt(credentialId: string): Promise<void> {
+		if (!credentialId) return;
+
+		await this.credentialsRepository.update(credentialId, {
+			lastConnectedAt: new Date(),
+		});
+	}
+
 	private async createCredential(opts: CreateCredentialOptions, user: User) {
 		const encryptedCredential = this.createEncryptedData({
 			id: null,

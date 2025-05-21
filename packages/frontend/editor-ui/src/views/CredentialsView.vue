@@ -89,6 +89,7 @@ const allCredentials = computed<Resource[]>(() =>
 		value: '',
 		updatedAt: credential.updatedAt,
 		createdAt: credential.createdAt,
+		lastConnectedAt: credential.lastConnectedAt ?? '',
 		homeProject: credential.homeProject,
 		scopes: credential.scopes,
 		sharedWithProjects: credential.sharedWithProjects,
@@ -97,7 +98,7 @@ const allCredentials = computed<Resource[]>(() =>
 		type: credential.type,
 	})),
 );
-
+console.log(allCredentials.value);
 const allCredentialTypes = computed<ICredentialType[]>(() => credentialsStore.allCredentialTypes);
 
 const credentialTypesById = computed<ICredentialTypeMap>(

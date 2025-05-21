@@ -223,6 +223,8 @@ export abstract class ICredentialsHelper {
 		data: ICredentialDataDecryptedObject,
 	): Promise<void>;
 
+	abstract updateLastConnectedAt(credentialId: string): Promise<void>;
+
 	abstract getCredentialsProperties(type: string): INodeProperties[];
 }
 

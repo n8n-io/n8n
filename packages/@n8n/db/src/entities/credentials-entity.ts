@@ -36,6 +36,9 @@ export class CredentialsEntity extends WithTimestampsAndStringId implements ICre
 	@Column({ default: false })
 	isManaged: boolean;
 
+	@Column({ type: 'datetime', nullable: true })
+	lastConnectedAt?: Date;
+
 	toJSON() {
 		const { shared, ...rest } = this;
 		return rest;

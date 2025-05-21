@@ -151,7 +151,11 @@ function moveResource() {
 					>{{ locale.baseText('credentials.item.updated') }} <TimeAgo :date="data.updatedAt" /> |
 				</span>
 				<span v-show="data"
-					>{{ locale.baseText('credentials.item.created') }} {{ formattedCreatedAtDate }}
+					>{{ locale.baseText('credentials.item.created') }} {{ formattedCreatedAtDate }} |
+				</span>
+				<span v-show="data"
+					>{{ locale.baseText('credentials.item.lastConnectedAt') }}
+					<TimeAgo :date="data.lastConnectedAt" />
 				</span>
 			</n8n-text>
 		</div>

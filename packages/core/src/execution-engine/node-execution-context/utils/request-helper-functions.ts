@@ -1200,6 +1200,7 @@ export async function requestOAuth1(
 		});
 }
 
+// eslint-disable-next-line complexity
 export async function httpRequestWithAuthentication(
 	this: IAllExecuteFunctions,
 	credentialsType: string,
@@ -1221,10 +1222,18 @@ export async function httpRequestWithAuthentication(
 		const parentTypes = additionalData.credentialsHelper.getParentTypes(credentialsType);
 
 		if (parentTypes.includes('oAuth1Api')) {
-			return await requestOAuth1.call(this, credentialsType, requestOptions, true);
+			const result = await requestOAuth1.call(this, credentialsType, requestOptions, true);
+			const credential: IDataObject = node?.credentials?.[
+				credentialsType
+			] as unknown as IDataObject;
+			const credentialId: string | null = credential?.id?.toString() ?? null;
+			if (credentialId) {
+				additionalData.credentialsHelper.updateLastConnectedAt(credentialId);
+			}
+			return result;
 		}
 		if (parentTypes.includes('oAuth2Api')) {
-			return await requestOAuth2.call(
+			const result = await requestOAuth2.call(
 				this,
 				credentialsType,
 				requestOptions,
@@ -1233,6 +1242,14 @@ export async function httpRequestWithAuthentication(
 				additionalCredentialOptions?.oauth2,
 				true,
 			);
+			const credential: IDataObject = node?.credentials?.[
+				credentialsType
+			] as unknown as IDataObject;
+			const credentialId: string | null = credential?.id?.toString() ?? null;
+			if (credentialId) {
+				additionalData.credentialsHelper.updateLastConnectedAt(credentialId);
+			}
+			return result;
 		}
 
 		if (additionalCredentialOptions?.credentialsDecrypted) {
@@ -1271,7 +1288,13 @@ export async function httpRequestWithAuthentication(
 			workflow,
 			node,
 		);
-		return await httpRequest(requestOptions);
+		const result = await httpRequest(requestOptions);
+		const credential: IDataObject = node?.credentials?.[credentialsType] as unknown as IDataObject;
+		const credentialId: string | null = credential?.id?.toString() ?? null;
+		if (credentialId) {
+			additionalData.credentialsHelper.updateLastConnectedAt(credentialId);
+		}
+		return result;
 	} catch (error) {
 		// if there is a pre authorization method defined and
 		// the method failed due to unauthorized request
@@ -1305,7 +1328,15 @@ export async function httpRequestWithAuthentication(
 					);
 				}
 				// retry the request
-				return await httpRequest(requestOptions);
+				const result = await httpRequest(requestOptions);
+				const credential: IDataObject = node?.credentials?.[
+					credentialsType
+				] as unknown as IDataObject;
+				const credentialId: string | null = credential?.id?.toString() ?? null;
+				if (credentialId) {
+					additionalData.credentialsHelper.updateLastConnectedAt(credentialId);
+				}
+				return result;
 			} catch (error) {
 				throw new NodeApiError(this.getNode(), error);
 			}
@@ -1316,6 +1347,7 @@ export async function httpRequestWithAuthentication(
 }
 
 /** @deprecated use httpRequestWithAuthentication */
+// eslint-disable-next-line complexity
 export async function requestWithAuthentication(
 	this: IAllExecuteFunctions,
 	credentialsType: string,
@@ -1334,10 +1366,18 @@ export async function requestWithAuthentication(
 		const parentTypes = additionalData.credentialsHelper.getParentTypes(credentialsType);
 
 		if (credentialsType === 'oAuth1Api' || parentTypes.includes('oAuth1Api')) {
-			return await requestOAuth1.call(this, credentialsType, requestOptions, false);
+			const result = await requestOAuth1.call(this, credentialsType, requestOptions, false);
+			const credential: IDataObject = node?.credentials?.[
+				credentialsType
+			] as unknown as IDataObject;
+			const credentialId: string | null = credential?.id?.toString() ?? null;
+			if (credentialId) {
+				additionalData.credentialsHelper.updateLastConnectedAt(credentialId);
+			}
+			return result;
 		}
 		if (credentialsType === 'oAuth2Api' || parentTypes.includes('oAuth2Api')) {
-			return await requestOAuth2.call(
+			const result = await requestOAuth2.call(
 				this,
 				credentialsType,
 				requestOptions,
@@ -1346,6 +1386,14 @@ export async function requestWithAuthentication(
 				additionalCredentialOptions?.oauth2,
 				false,
 			);
+			const credential: IDataObject = node?.credentials?.[
+				credentialsType
+			] as unknown as IDataObject;
+			const credentialId: string | null = credential?.id?.toString() ?? null;
+			if (credentialId) {
+				additionalData.credentialsHelper.updateLastConnectedAt(credentialId);
+			}
+			return result;
 		}
 
 		if (additionalCredentialOptions?.credentialsDecrypted) {
@@ -1386,7 +1434,13 @@ export async function requestWithAuthentication(
 			workflow,
 			node,
 		)) as IRequestOptions;
-		return await proxyRequestToAxios(workflow, additionalData, node, requestOptions);
+		const result = await proxyRequestToAxios(workflow, additionalData, node, requestOptions);
+		const credential: IDataObject = node?.credentials?.[credentialsType] as unknown as IDataObject;
+		const credentialId: string | null = credential?.id?.toString() ?? null;
+		if (credentialId) {
+			additionalData.credentialsHelper.updateLastConnectedAt(credentialId);
+		}
+		return result;
 	} catch (error) {
 		try {
 			if (credentialsDecrypted !== undefined) {
@@ -1411,7 +1465,15 @@ export async function requestWithAuthentication(
 						node,
 					)) as IRequestOptions;
 					// retry the request
-					return await proxyRequestToAxios(workflow, additionalData, node, requestOptions);
+					const result = await proxyRequestToAxios(workflow, additionalData, node, requestOptions);
+					const credential: IDataObject = node?.credentials?.[
+						credentialsType
+					] as unknown as IDataObject;
+					const credentialId: string | null = credential?.id?.toString() ?? null;
+					if (credentialId) {
+						additionalData.credentialsHelper.updateLastConnectedAt(credentialId);
+					}
+					return result;
 				}
 			}
 			throw error;

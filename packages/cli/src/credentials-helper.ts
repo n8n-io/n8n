@@ -448,6 +448,14 @@ export class CredentialsHelper extends ICredentialsHelper {
 		await this.credentialsRepository.update(findQuery, newCredentialsData);
 	}
 
+	async updateLastConnectedAt(credentialId: string): Promise<void> {
+		if (!credentialId) return;
+
+		await this.credentialsRepository.update(credentialId, {
+			lastConnectedAt: new Date(),
+		});
+	}
+
 	async credentialCanUseExternalSecrets(nodeCredential: INodeCredentialsDetails): Promise<boolean> {
 		if (!nodeCredential.id) {
 			return false;

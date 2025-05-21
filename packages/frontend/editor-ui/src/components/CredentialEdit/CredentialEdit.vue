@@ -92,6 +92,7 @@ const isSaved = ref(false);
 const loading = ref(false);
 const showValidationWarning = ref(false);
 const testedSuccessfully = ref(false);
+const lastConnectedAt = ref<string | null>(null);
 const isRetesting = ref(false);
 const hasUserSpecifiedName = ref(false);
 const isSharedWithChanged = ref(false);
@@ -649,6 +650,7 @@ async function testCredential(credentialDetails: ICredentialsDecrypted) {
 	} else {
 		authError.value = '';
 		testedSuccessfully.value = true;
+		lastConnectedAt.value = new Date().toLocaleString(); //result.lastConnectedAt;
 	}
 
 	scrollToTop();
@@ -1144,6 +1146,7 @@ function resetCredentialData(): void {
 						:show-validation-warning="showValidationWarning"
 						:auth-error="authError"
 						:tested-successfully="testedSuccessfully"
+						:last-connected-at="lastConnectedAt"
 						:is-o-auth-type="isOAuthType"
 						:is-o-auth-connected="isOAuthConnected"
 						:is-retesting="isRetesting"

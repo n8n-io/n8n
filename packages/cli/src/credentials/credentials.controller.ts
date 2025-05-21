@@ -162,7 +162,12 @@ export class CredentialsController {
 			);
 		}
 
-		return await this.credentialsService.test(req.user.id, mergedCredentials);
+		const result = await this.credentialsService.test(req.user.id, mergedCredentials);
+		if (result.status === 'OK' && credentials.id) {
+			await this.credentialsService.updateLastConnectedAt(credentials.id);
+		}
+
+		return result;
 	}
 
 	@Post('/')

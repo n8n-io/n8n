@@ -45,6 +45,7 @@ type Props = {
 	showValidationWarning?: boolean;
 	authError?: string;
 	testedSuccessfully?: boolean;
+	lastConnectedAt?: string;
 	isOAuthType?: boolean;
 	allOAuth2BasePropertiesOverridden?: boolean;
 	isOAuthConnected?: boolean;
@@ -284,6 +285,11 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 				v-show="testedSuccessfully && !showValidationWarning"
 				theme="success"
 				:message="i18n.baseText('credentialEdit.credentialConfig.connectionTestedSuccessfully')"
+				:details="
+					i18n.baseText('credentialEdit.credentialConfig.lastConnectedAt', {
+						interpolate: { lastConnectedAt: lastConnectedAt },
+					})
+				"
 				:button-label="i18n.baseText('credentialEdit.credentialConfig.retry')"
 				:button-loading-label="i18n.baseText('credentialEdit.credentialConfig.retrying')"
 				:button-title="i18n.baseText('credentialEdit.credentialConfig.retryCredentialTest')"

@@ -19,6 +19,9 @@ const i18n = useI18n();
 
 const defaultLocale = computed(() => rootStore.defaultLocale);
 const formatted = computed(() => {
+	if (!props.date) {
+		return 'Unknown';
+	}
 	const text = format(props.date, defaultLocale.value);
 
 	if (!props.capitalize) {
@@ -29,7 +32,12 @@ const formatted = computed(() => {
 });
 
 const convertDate = computed(() => {
+	console.log('before', props.date, !props.date, typeof props.date);
+	if (!props.date) {
+		return '';
+	}
 	const date = new Date(props.date);
+	console.log('date', date);
 	const epoch = date.getTime();
 	return convertToHumanReadableDate(epoch);
 });
