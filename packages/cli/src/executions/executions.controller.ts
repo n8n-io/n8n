@@ -86,8 +86,12 @@ export class ExecutionsController {
 			return { nodeData: [] };
 		}
 
-		// TODO: pagination
-		return await this.executionService.getNodeData(req.query.nodeId, req.query.workflowId);
+		return await this.executionService.getNodeData(
+			req.query.nodeId,
+			req.query.workflowId,
+			req.query.limit,
+			req.query.skip,
+		);
 	}
 
 	@Get('/:id')

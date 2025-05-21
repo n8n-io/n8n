@@ -23,6 +23,8 @@ export declare namespace ExecutionRequest {
 		type GetNodeData = {
 			workflowId: string;
 			nodeId: string;
+			limit: number;
+			skip: number;
 		};
 	}
 

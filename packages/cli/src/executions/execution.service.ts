@@ -538,6 +538,9 @@ export class ExecutionService {
 			order: {
 				startedAt: 'DESC',
 			},
+			// this pagination is not ideal,
+			// since not all executions we get
+			// can contain the requested node
 			take,
 			skip,
 			relations: {
@@ -553,24 +556,24 @@ export class ExecutionService {
 		}
 
 		const nodeName = executionsWithNode[0].workflow.nodes.find((n) => n.id === nodeId)!.name;
-		const executeDataParsed = executionsWithNode.map(
-			(e) => parse(e.executionData.data) as IRunExecutionData,
-		);
-		const nodeExecutionData = executeDataParsed
-			.map((e) => e.resultData.runData[nodeName])
-			.filter((e) => e);
+		const nodeExecutionData = executionsWithNode
+			.map((e) => ({
+				data: (parse(e.executionData.data) as IRunExecutionData).resultData.runData[nodeName],
+				startedAt: e.startedAt,
+			}))
+			.filter((e) => e.data);
 		if (nodeExecutionData.length === 0) {
 			return [];
 		}
 
-		// TODO: check if this is correct
 		// it is assumed this is only used with nodes with one `main` output
-		const nodeData = nodeExecutionData
-			// not sure why `n` and `main` are arrays
-			.map((n) => n[0].data?.main[0]?.map((i) => i.json));
-
-		return nodeData.map((n) => ({
-			items: n,
-		}));
+		return (
+			nodeExecutionData
+				// not sure why `n` and `main` are arrays
+				.map((n) => ({
+					items: n.data[0].data?.main[0]?.map((i) => i.json),
+					startedAt: n.startedAt,
+				}))
+		);
 	}
 }
