@@ -238,25 +238,6 @@ async function onRoleChange(user: IUser, newRoleName: UpdateGlobalRolePayload['n
 		showError(e, i18n.baseText('settings.users.userReinviteError'));
 	}
 }
-
-async function onUpdateConnected(value: boolean) {
-	// try {
-	// 	saving.value = true;
-	// 	if (props.beforeUpdate) {
-	// 		const result = await props.beforeUpdate(value);
-	// 		if (!result) {
-	// 			saving.value = false;
-	// 			return;
-	// 		}
-	// 	}
-	// 	await externalSecretsStore.updateProviderConnected(props.provider.name, value);
-	// 	emit('change', value);
-	// } catch (error) {
-	// 	toast.showError(error, 'Error');
-	// } finally {
-	// 	saving.value = false;
-	// }
-}
 </script>
 
 <template>
@@ -303,6 +284,9 @@ async function onUpdateConnected(value: boolean) {
 				</template>
 			</i18n-t>
 		</n8n-notice>
+
+		<n8n-notice :content="i18n.baseText('settings.personal.mfa.enforced')" theme="info" />
+
 		<!-- If there's more than 1 user it means the account quota was more than 1 in the past. So we need to allow instance owner to be able to delete users and transfer workflows.
 		-->
 		<div
