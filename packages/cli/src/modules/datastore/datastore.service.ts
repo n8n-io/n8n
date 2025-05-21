@@ -3,6 +3,7 @@ import type {
 	CreateDatastoreFieldDto,
 	UpdateDatastoreDto,
 } from '@n8n/api-types';
+import { generateNanoId } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { createResultError, createResultOk, type Result } from 'n8n-workflow';
 import { z } from 'zod';
@@ -207,13 +208,13 @@ export class DatastoreService {
 
 		const columns = datastore.fields.map((field) => field.name);
 		const values = records.map((record) => {
-			return columns.map((column) => record[column] ?? null);
+			return [generateNanoId(), ...columns.map((column) => record[column] ?? null)];
 		});
 
 		const rowPlaceholders = values.map((row) => `(${row.map(() => '?').join(', ')})`).join(', ');
 
 		await this.datastoreRepository.manager.query(
-			`INSERT INTO ${this.toTableName(datastore.id)} (${columns.join(', ')}) VALUES ${rowPlaceholders}`,
+			`INSERT INTO ${this.toTableName(datastore.id)} (id, ${columns.join(', ')}) VALUES ${rowPlaceholders}`,
 			values.flat(),
 		);
 
