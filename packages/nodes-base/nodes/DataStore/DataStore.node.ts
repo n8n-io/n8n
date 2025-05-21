@@ -94,7 +94,7 @@ export class DataStore implements INodeType {
 					const type = field.type as keyof FieldTypeMap;
 
 					fields.push({
-						id: field.id as string,
+						id: field.name as string,
 						displayName: field.name as string,
 						required: false,
 						defaultMatch: false,
@@ -194,7 +194,7 @@ export class DataStore implements INodeType {
 						const response = (await this.helpers.httpRequest({
 							method: 'POST',
 							url: baseUrl + `/datastores/${tableId}/records`,
-							body: { records: data },
+							body: { records: [data] },
 						})) as IDataObject;
 
 						returnData.push({
@@ -209,9 +209,9 @@ export class DataStore implements INodeType {
 						const response = (await this.helpers.httpRequest({
 							method: 'GET',
 							url: baseUrl + `/datastores/${tableId}/records`,
-						})) as IDataObject[];
+						})) as { data: IDataObject[] };
 
-						(response ?? []).forEach((item) => {
+						(response?.data ?? []).forEach((item) => {
 							returnData.push({
 								json: item,
 							});
