@@ -120,6 +120,23 @@ export function applyAccessPatterns(expression: string, previousName: string, ne
 	return expression;
 }
 
+export function extractNodeNames(expression: string, nodeNames: string[]) {
+	const referencedNodeName: string[] = [];
+	for (const nodeName of nodeNames) {
+		const escapedOldName = backslashEscape(nodeName);
+
+		for (const pattern of ACCESS_PATTERNS) {
+			if (expression.includes(pattern.checkPattern)) {
+				if (new RegExp(pattern.replacePattern(escapedOldName), 'g').test(expression)) {
+					referencedNodeName.push(nodeName);
+				}
+			}
+		}
+	}
+
+	return referencedNodeName;
+}
+
 function convertToUniqueJsDotName(nodeName: string, allNodeNames: string[]) {
 	let jsLegal = nodeName
 		.replaceAll(' ', '_')
@@ -276,7 +293,7 @@ function extractExpressionCandidate(expression: string, startIndex: number, endI
 
 // Parse a given regex accessor match (e.g. `$('nodeName')`, `$node['nodeName']`)
 // and extract a potential ExpressionMapping
-function parseCandidateMatch(
+export function parseCandidateMatch(
 	match: RegExpExecArray,
 	expression: string,
 	nodeNames: string[],
@@ -310,7 +327,7 @@ function parse$jsonMatch(match: RegExpExecArray, expression: string, startNodeNa
 }
 
 // Parse all references to other nodes in `expression` and return them as `ExpressionMappings`
-function parseReferencingExpressions(
+export function parseReferencingExpressions(
 	expression: string,
 	nodeRegexps: Array<readonly [string, LazyRegExp]>,
 	nodeNames: string[],

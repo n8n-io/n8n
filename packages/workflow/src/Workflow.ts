@@ -2,6 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-for-in-array */
+import { getExpressionCode } from '@n8n/tournament/dist/ExpressionBuilder';
 import {
 	MANUAL_CHAT_TRIGGER_LANGCHAIN_NODE_TYPE,
 	NODES_WITH_RENAMABLE_CONTENT,
@@ -31,7 +32,7 @@ import type {
 } from './Interfaces';
 import { NodeConnectionTypes } from './Interfaces';
 import * as NodeHelpers from './NodeHelpers';
-import { applyAccessPatterns } from './NodeReferenceParserUtils';
+import { applyAccessPatterns, extractNodeNames } from './NodeReferenceParserUtils';
 import * as ObservableObject from './ObservableObject';
 
 function dedupe<T>(arr: T[]): T[] {
@@ -322,6 +323,45 @@ export class Workflow {
 		return this.pinData ? this.pinData[nodeName] : undefined;
 	}
 
+	getExpressions(parameterValue: NodeParameterValueType, result: string[] = []) {
+		if (!parameterValue) {
+			return result;
+		}
+
+		if (typeof parameterValue !== 'object') {
+			// Reached the actual value
+			if (typeof parameterValue === 'string' && parameterValue.charAt(0) === '=') {
+				result.push(parameterValue);
+			}
+
+			return result;
+		}
+
+		if (Array.isArray(parameterValue)) {
+			for (const currentValue of parameterValue) {
+				this.getExpressions(currentValue, result);
+			}
+
+			return result;
+		}
+
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const returnData: any = {};
+
+		for (const parameterName of Object.keys(parameterValue || {})) {
+			returnData[parameterName] = this.getExpressions(
+				parameterValue[parameterName as keyof typeof parameterValue],
+				result,
+			);
+		}
+
+		return result;
+	}
+
+	getReferencedNodeNames(expression: string) {
+		return extractNodeNames(expression, Object.keys(this.nodes));
+	}
+
 	renameNodeInParameterValue(
 		parameterValue: NodeParameterValueType,
 		currentName: string,
@@ -360,6 +400,7 @@ export class Workflow {
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		const returnData: any = {};
 
+		// TODO: not sure what this is for
 		for (const parameterName of Object.keys(parameterValue || {})) {
 			returnData[parameterName] = this.renameNodeInParameterValue(
 				parameterValue![parameterName as keyof typeof parameterValue],
