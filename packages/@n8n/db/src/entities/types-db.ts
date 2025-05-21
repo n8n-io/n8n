@@ -114,6 +114,7 @@ export interface PublicUser {
 	isOwner?: boolean;
 	featureFlags?: FeatureFlags; // External type from n8n-workflow
 	lastActiveAt?: Date | null;
+	mfaAuthenticated?: boolean;
 }
 
 export type UserSettings = Pick<User, 'id' | 'settings'>;

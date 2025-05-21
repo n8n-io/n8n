@@ -67,7 +67,7 @@ export class OwnerController {
 
 		this.logger.debug('Setting isInstanceOwnerSetUp updated successfully');
 
-		this.authService.issueCookie(res, owner, req.browserId);
+		this.authService.issueCookie(res, owner, req.usedMfa, req.browserId);
 
 		this.eventService.emit('instance-owner-setup', { userId: owner.id });
 

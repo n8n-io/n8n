@@ -8,5 +8,8 @@ import { AuthService } from './auth.service';
 // DO NOT DELETE until the hooks have been updated
 /** @deprecated Use `AuthService` instead */
 export function issueCookie(res: Response, user: User) {
-	return Container.get(AuthService).issueCookie(res, user);
+	// TODO: The information on user has mfa enabled here, is missing!!
+	// This could be a security problem!!
+	// This is in just for the hackmation!!
+	return Container.get(AuthService).issueCookie(res, user, user.mfaEnabled);
 }

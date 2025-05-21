@@ -97,14 +97,19 @@ export class AuthController {
 				}
 			}
 
-			this.authService.issueCookie(res, user, req.browserId);
+			// If user.mfaEnabled is enabled we checked for the MFA code, therefore it was used during this login execution
+			this.authService.issueCookie(res, user, user.mfaEnabled, req.browserId);
 
 			this.eventService.emit('user-logged-in', {
 				user,
 				authenticationMethod: usedAuthenticationMethod,
 			});
 
-			return await this.userService.toPublic(user, { posthog: this.postHog, withScopes: true });
+			return await this.userService.toPublic(user, {
+				posthog: this.postHog,
+				withScopes: true,
+				mfaAuthenticated: user.mfaEnabled,
+			});
 		}
 		this.eventService.emit('user-login-failed', {
 			authenticationMethod: usedAuthenticationMethod,
@@ -120,6 +125,7 @@ export class AuthController {
 		return await this.userService.toPublic(req.user, {
 			posthog: this.postHog,
 			withScopes: true,
+			mfaAuthenticated: req.usedMfa,
 		});
 	}
 
