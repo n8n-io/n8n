@@ -45,4 +45,4 @@ jobs:
           provenance: false
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/n8n-base:${{ github.event.inputs.node_version }}
+            ghcr.io/${{ github.repository_owner }}/n8n-base:${{ github.event.inputs.node_version }}-${{ steps.sha.outputs.short_sha }}
