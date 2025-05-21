@@ -79,7 +79,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { getCredentialOnlyNodeTypeName } from '@/utils/credentialOnlyNodes';
 import { i18n } from '@/plugins/i18n';
 
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useProjectsStore } from '@/stores/projects.store';
 import type { ProjectSharingData } from '@/types/projects.types';
 import type { PushPayload } from '@n8n/api-types';
@@ -94,6 +94,7 @@ import { updateCurrentUserSettings } from '@/api/users';
 import { useExecutingNode } from '@/composables/useExecutingNode';
 import type { NodeExecuteBefore } from '@n8n/api-types/push/execution';
 import { useLogsStore } from './logs.store';
+import { useCollaborationStore } from './collaboration.store';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
@@ -130,6 +131,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const nodeHelpers = useNodeHelpers();
 	const usersStore = useUsersStore();
 	const logsStore = useLogsStore();
+	// const collaborationStore = useCollaborationStore();
 
 	const version = computed(() => settingsStore.partialExecutionVersion);
 	const workflow = ref<IWorkflowDb>(createEmptyWorkflow());
@@ -1285,6 +1287,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			const node = workflow.value.nodes[nodeIndex];
 			const changed = !isEqual(pick(node, Object.keys(nodeData)), nodeData);
 			Object.assign(node, nodeData);
+			for (const [k, v] of Object.entries(nodeData)) {
+				useCollaborationStore().updateNodeProperty(node.id, k as keyof INodeUi, v);
+			}
 			return changed;
 		}
 		return false;

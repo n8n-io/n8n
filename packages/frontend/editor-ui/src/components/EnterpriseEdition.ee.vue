@@ -24,7 +24,6 @@ const canAccess = computed(() =>
 
 <template>
 	<div>
-		<slot v-if="canAccess" />
-		<slot v-else name="fallback" />
+		<slot />
 	</div>
 </template>
