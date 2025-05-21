@@ -16,6 +16,8 @@ import { UserError } from 'n8n-workflow';
 import path from 'path';
 import type { TlsOptions } from 'tls';
 
+import { Datastore } from '@/modules/datastore/database/entities/datastore';
+import { DatastoreField } from '@/modules/datastore/database/entities/datastore-field';
 import { InsightsByPeriod } from '@/modules/insights/database/entities/insights-by-period';
 import { InsightsMetadata } from '@/modules/insights/database/entities/insights-metadata';
 import { InsightsRaw } from '@/modules/insights/database/entities/insights-raw';
@@ -68,7 +70,14 @@ export class DbConnectionOptions {
 
 		return {
 			entityPrefix,
-			entities: [...Object.values(entities), InsightsRaw, InsightsByPeriod, InsightsMetadata],
+			entities: [
+				...Object.values(entities),
+				InsightsRaw,
+				InsightsByPeriod,
+				InsightsMetadata,
+				Datastore,
+				DatastoreField,
+			],
 			subscribers: Object.values(subscribers),
 			migrationsTableName: `${entityPrefix}migrations`,
 			migrationsRun: false,

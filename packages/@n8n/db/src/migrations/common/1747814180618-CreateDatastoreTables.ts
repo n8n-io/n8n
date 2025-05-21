@@ -8,7 +8,7 @@ export class CreateDatastoreTables1747814180618 implements ReversibleMigration {
 		await createTable(datastoreTableName).withColumns(
 			column('id').varchar(36).primary.notNull,
 			column('name').varchar(128).notNull,
-		);
+		).withTimestamps;
 
 		await createTable(datastoreFieldTableName)
 			.withColumns(
@@ -20,7 +20,7 @@ export class CreateDatastoreTables1747814180618 implements ReversibleMigration {
 				tableName: datastoreTableName,
 				columnName: 'id',
 				onDelete: 'CASCADE',
-			});
+			}).withTimestamps;
 	}
 
 	async down({ schemaBuilder: { dropTable } }: MigrationContext) {
