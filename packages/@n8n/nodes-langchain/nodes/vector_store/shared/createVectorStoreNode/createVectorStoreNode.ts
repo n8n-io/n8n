@@ -25,6 +25,9 @@ import {
 import type { NodeOperationMode, VectorStoreNodeConstructorArgs } from './types';
 // Import utility functions
 import { transformDescriptionForOperationMode, getOperationModeOptions } from './utils';
+import { result } from 'lodash';
+import { BaseDocumentCompressor } from '@langchain/core/retrievers/document_compressors';
+import { DocumentInterface } from '@langchain/core/documents';
 
 // Import operation handlers
 
@@ -66,7 +69,12 @@ export const createVectorStoreNode = <T extends VectorStore = VectorStore>(
 			inputs: `={{
 			((parameters) => {
 				const mode = parameters?.mode;
+				const useReranker = parameters?.useReranker;
 				const inputs = [{ displayName: "Embedding", type: "${NodeConnectionTypes.AiEmbedding}", required: true, maxConnections: 1}]
+
+				if (['load', 'retrieve', 'retrieve-as-tool'].includes(mode) && useReranker) {
+					inputs.push({ displayName: "Reranker", type: "${NodeConnectionTypes.AiReranker}", required: true, maxConnections: 1})
+				}
 
 				if (mode === 'retrieve-as-tool') {
 					return inputs;
@@ -198,6 +206,18 @@ export const createVectorStoreNode = <T extends VectorStore = VectorStore>(
 						},
 					},
 				},
+				{
+					displayName: 'Rerank Results',
+					name: 'useReranker',
+					type: 'boolean',
+					default: false,
+					description: 'Whether or not to rerank results',
+					displayOptions: {
+						show: {
+							mode: ['load', 'retrieve', 'retrieve-as-tool'],
+						},
+					},
+				},
 				// ID is always used for update operation
 				{
 					displayName: 'ID',
@@ -229,7 +249,6 @@ export const createVectorStoreNode = <T extends VectorStore = VectorStore>(
 		 */
 		async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 			const mode = this.getNodeParameter('mode', 0) as NodeOperationMode;
-
 			// Get the embeddings model connected to this node
 			const embeddings = (await this.getInputConnectionData(
 				NodeConnectionTypes.AiEmbedding,
@@ -244,6 +263,19 @@ export const createVectorStoreNode = <T extends VectorStore = VectorStore>(
 				for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 					const docs = await handleLoadOperation(this, args, embeddings, itemIndex);
 					resultData.push(...docs);
+				}
+
+				// If reranker is used, rerank the documents
+				const useReranker = this.getNodeParameter('useReranker', 0) as boolean;
+				if (useReranker) {
+					const reranker = (await this.getInputConnectionData(
+						NodeConnectionTypes.AiReranker,
+						0,
+					)) as BaseDocumentCompressor;
+					const query = this.getNodeParameter('prompt', 0) as string;
+					const docs = resultData.map((doc) => doc.json.document as DocumentInterface);
+					const rerankedDocuments = await reranker.compressDocuments(docs, query);
+					return [rerankedDocuments.map((doc) => ({ json: { document: doc } }))];
 				}
 
 				return [resultData];
