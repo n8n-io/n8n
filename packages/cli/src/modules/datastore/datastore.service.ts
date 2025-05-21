@@ -234,8 +234,9 @@ export class DatastoreService {
 			throw new NotFoundError(`Datastore with ID ${datastoreId} not found`);
 		}
 
+		const columns = datastore.fields.map((field) => field.name);
 		return await this.datastoreRepository.manager.query(
-			`SELECT (${datastore.fields.map((field) => field.name).join(', ')}) FROM ${this.toTableName(datastore.id)}`,
+			`SELECT ${columns.join(', ')} FROM ${this.toTableName(datastore.id)}`,
 		);
 	}
 
