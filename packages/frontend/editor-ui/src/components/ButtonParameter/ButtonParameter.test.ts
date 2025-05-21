@@ -16,7 +16,16 @@ vi.mock('@/stores/workflows.store');
 vi.mock('@/stores/posthog.store');
 vi.mock('@n8n/stores/useRootStore');
 vi.mock('@/api/ai');
-vi.mock('@n8n/i18n');
+vi.mock('@n8n/i18n', async (importOriginal) => ({
+	...(await importOriginal()),
+	useI18n: () => ({
+		baseText: vi.fn().mockReturnValue('Mocked Text'),
+		nodeText: () => ({
+			inputLabelDisplayName: vi.fn().mockReturnValue('Mocked Display Name'),
+			inputLabelDescription: vi.fn().mockReturnValue('Mocked Description'),
+		}),
+	}),
+}));
 vi.mock('@/composables/useToast');
 
 describe('ButtonParameter', () => {
@@ -64,14 +73,6 @@ describe('ButtonParameter', () => {
 		vi.mocked(useRootStore).mockReturnValue({
 			versionCli: '1.0.0',
 			pushRef: 'testPushRef',
-		} as any);
-
-		vi.mocked(useI18n).mockReturnValue({
-			baseText: vi.fn().mockReturnValue('Mocked Text'),
-			nodeText: () => ({
-				inputLabelDisplayName: vi.fn().mockReturnValue('Mocked Display Name'),
-				inputLabelDescription: vi.fn().mockReturnValue('Mocked Description'),
-			}),
 		} as any);
 
 		vi.mocked(useToast).mockReturnValue({

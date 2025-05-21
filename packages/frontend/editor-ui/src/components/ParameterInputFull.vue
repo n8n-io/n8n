@@ -71,7 +71,7 @@ const forceShowExpression = ref(false);
 const ndvStore = useNDVStore();
 const telemetry = useTelemetry();
 
-const { activeNode } = storeToRefs(ndvStore);
+const activeNode = computed(() => ndvStore.activeNode);
 const fromAIOverride = ref<FromAIOverride | null>(makeOverrideValue(props, activeNode.value));
 
 const canBeContentOverride = computed(() => {

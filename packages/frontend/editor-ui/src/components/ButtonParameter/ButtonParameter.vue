@@ -33,7 +33,7 @@ export type Props = {
 const props = defineProps<Props>();
 
 const ndvStore = useNDVStore();
-const { activeNode } = storeToRefs(ndvStore);
+const activeNode = computed(() => ndvStore.activeNode);
 
 const i18n = useI18n();
 
