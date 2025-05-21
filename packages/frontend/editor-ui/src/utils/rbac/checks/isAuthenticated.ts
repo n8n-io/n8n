@@ -1,4 +1,5 @@
 import { useUsersStore } from '@/stores/users.store';
+import { useSettingsStore } from '@/stores/settings.store';
 import type { RBACPermissionCheck, AuthenticatedPermissionOptions } from '@/types/rbac';
 
 export const isAuthenticated: RBACPermissionCheck<AuthenticatedPermissionOptions> = (options) => {
@@ -10,14 +11,18 @@ export const isAuthenticated: RBACPermissionCheck<AuthenticatedPermissionOptions
 	return !!usersStore.currentUser;
 };
 
-export const isAuthenticatedWithMfa: RBACPermissionCheck<AuthenticatedPermissionOptions> = (
-	options,
-) => {
+export const shouldEnableMfa: RBACPermissionCheck<AuthenticatedPermissionOptions> = (options) => {
 	if (options?.bypass?.()) {
 		return true;
 	}
 
-	// TODO: Implement MFA check
+	// Had user got MFA enabled?
 	const usersStore = useUsersStore();
-	return !!usersStore.currentUser;
+	const hasUserEnabledMfa = usersStore.currentUser?.mfaEnabled ?? false;
+
+	// Are we enforcing MFA?
+	const settingsStore = useSettingsStore();
+	const isMfaEnforced = settingsStore.settings.mfa.enforced;
+
+	return !hasUserEnabledMfa && isMfaEnforced;
 };
