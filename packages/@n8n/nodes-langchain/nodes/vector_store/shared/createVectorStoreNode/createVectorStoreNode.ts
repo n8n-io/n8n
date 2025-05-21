@@ -266,19 +266,6 @@ export const createVectorStoreNode = <T extends VectorStore = VectorStore>(
 					resultData.push(...docs);
 				}
 
-				// If reranker is used, rerank the documents
-				const useReranker = this.getNodeParameter('useReranker', 0) as boolean;
-				if (useReranker) {
-					const reranker = (await this.getInputConnectionData(
-						NodeConnectionTypes.AiReranker,
-						0,
-					)) as BaseDocumentCompressor;
-					const query = this.getNodeParameter('prompt', 0) as string;
-					const docs = resultData.map((doc) => doc.json.document as DocumentInterface);
-					const rerankedDocuments = await reranker.compressDocuments(docs, query);
-					return [rerankedDocuments.map((doc) => ({ json: { document: doc } }))];
-				}
-
 				return [resultData];
 			}
 
