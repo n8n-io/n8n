@@ -16,6 +16,7 @@ export interface ContentDescriptor {
 }
 
 export interface SplitPane {
+	id: string;
 	readonly nodeType: 'split';
 	weights: number[];
 	direction: SplitDirection;
@@ -23,8 +24,17 @@ export interface SplitPane {
 }
 
 export interface LeafPane {
+	id: string;
 	readonly nodeType: 'leaf';
 	content: ContentDescriptor;
 }
 
 export type PaneNode = SplitPane | LeafPane;
+
+export function isSplitPane(node: PaneNode): node is SplitPane {
+	return node.nodeType === 'split';
+}
+
+export function isLeafPane(node: PaneNode): node is LeafPane {
+	return node.nodeType === 'leaf';
+}

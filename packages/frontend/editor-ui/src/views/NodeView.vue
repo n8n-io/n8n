@@ -151,6 +151,11 @@ const props = withDefaults(defineProps<NodeViewProps>(), {
 	workflowsStoreImpl: () => useWorkflowsStore(),
 });
 
+defineSlots<{
+	close(): void;
+	split(): void;
+}>();
+
 const $style = useCssModule();
 const router = useRouter();
 const route = useRoute();
@@ -2039,6 +2044,12 @@ onBeforeUnmount(() => {
 					{{ i18n.baseText('readOnlyEnv.cantEditOrRun') }}
 				</N8nCallout>
 
+				<template v-if="$slots.close">
+					<slot name="close" />
+				</template>
+				<template v-if="$slots.split">
+					<slot name="split" />
+				</template>
 				<Suspense>
 					<LazyNodeCreation
 						v-if="!isCanvasReadOnly"

@@ -8,6 +8,10 @@ import NodeView from '@/views/NodeView.vue';
 const props = defineProps({
 	node: { type: Object as PropType<PaneNode>, required: true },
 });
+defineEmits<{
+	close: [id: string];
+	split: [id: string, direction: SplitDirection];
+}>();
 
 const isSplit = computed(() => props.node.nodeType === 'split');
 const splitNode = computed(() => (isSplit.value ? (props.node as SplitPane) : null));
@@ -74,7 +78,11 @@ function startDrag(idx: number, event: MouseEvent) {
 		<template v-if="isSplit">
 			<template v-for="(child, idx) in splitNode!.children" :key="idx">
 				<div :style="{ flex: `${flexValues[idx]} 1 0%` }" class="$style.wrapper">
-					<Pane :node="child" />
+					<Pane
+						:node="child"
+						@close="(id) => $emit('close', id)"
+						@split="(id, direction) => $emit('split', id, direction)"
+					/>
 				</div>
 
 				<div
@@ -91,7 +99,33 @@ function startDrag(idx: number, event: MouseEvent) {
 		</template>
 
 		<template v-else-if="workflowId">
-			<NodeView :stop-time="true" :workflows-store-impl="cloneStore(workflowId)" />
+			<NodeView :stop-time="true" :workflows-store-impl="cloneStore(workflowId)">
+				<template #close>
+					<n8n-icon-button
+						:class="$style.close"
+						type="secondary"
+						icon="times"
+						aria-label="Close"
+						@click="$emit('close', node.id)"
+					/>
+				</template>
+				<template #split>
+					<n8n-icon-button
+						:class="$style.splitVertical"
+						type="secondary"
+						icon="arrow-right"
+						aria-label="Split"
+						@click="$emit('split', node.id, SplitDirection.Vertical)"
+					/>
+					<n8n-icon-button
+						:class="$style.splitHorizontal"
+						type="secondary"
+						icon="arrow-down"
+						aria-label="Split"
+						@click="$emit('split', node.id, SplitDirection.Horizontal)"
+					/>
+				</template>
+			</NodeView>
 		</template>
 	</div>
 </template>
@@ -128,5 +162,24 @@ function startDrag(idx: number, event: MouseEvent) {
 .resizerHorizontal {
 	height: 5px;
 	cursor: row-resize;
+}
+.close {
+	position: absolute;
+	left: var(--spacing-s);
+	top: var(--spacing-s);
+	z-index: var(--z-index-ask-assistant-floating-button);
+}
+
+.splitVertical {
+	position: absolute;
+	left: var(--spacing-s);
+	top: calc(var(--spacing-s) + 40px);
+	z-index: var(--z-index-ask-assistant-floating-button);
+}
+.splitHorizontal {
+	position: absolute;
+	left: var(--spacing-s);
+	top: calc(var(--spacing-s) + 80px);
+	z-index: var(--z-index-ask-assistant-floating-button);
 }
 </style>
