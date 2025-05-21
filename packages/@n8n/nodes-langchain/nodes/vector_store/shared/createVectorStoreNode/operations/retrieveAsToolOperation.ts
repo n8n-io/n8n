@@ -65,14 +65,8 @@ export async function handleRetrieveAsToolOperation<T extends VectorStore = Vect
 						NodeConnectionTypes.AiReranker,
 						0,
 					)) as BaseDocumentCompressor;
-					const docs = documents.map(([doc]) => {
-						delete doc.metadata.relevanceScore;
-						return doc;
-					});
-
-					console.log('docs', docs);
+					const docs = documents.map(([doc]) => doc);
 					const rerankedDocuments = await reranker.compressDocuments(docs, input);
-					console.log('rerankedDocuments', rerankedDocuments);
 					documents = rerankedDocuments.map((doc) => {
 						const { relevanceScore } = doc.metadata;
 						return [doc, relevanceScore];
