@@ -3,6 +3,25 @@ import * as path from 'node:path';
 import type { PropertyDeclaration, Type as TsMorphType } from 'ts-morph';
 import { Project, Node } from 'ts-morph';
 
+type EnvVars = Record<string, EnvVarEntry>;
+
+interface EnvVarEntry {
+	description: string;
+	defaultValue: string | number | boolean | null;
+	type: string;
+
+	/** Picked up from @sections JSDoc tag */
+	sections: string[];
+
+	/** Only if `type` is `enum` */
+	enumValues?: string[];
+}
+
+const project = new Project({
+	tsConfigFilePath: path.resolve(__dirname, '../tsconfig.json'),
+	skipAddingFilesFromTsConfig: true,
+});
+
 function isStringUnion(type: TsMorphType): boolean {
 	return type.isUnion() && type.getUnionTypes().every((t) => t.isStringLiteral());
 }
@@ -77,25 +96,8 @@ function toEnumValues(schemaNode: Node) {
  * }
  * ```
  */
-function collectDoclines() {
-	const doclines: Record<string, object> = {};
-
-	interface DoclineEntry {
-		description: string;
-		defaultValue: string | number | boolean | null; // MODIFIED HERE
-		type: string;
-
-		/** Picked up from @sections JSDoc tag */
-		sections: string[];
-
-		/** Only if `type` is `enum` */
-		enumValues?: string[];
-	}
-
-	const project = new Project({
-		tsConfigFilePath: path.resolve(__dirname, '../tsconfig.json'),
-		skipAddingFilesFromTsConfig: true,
-	});
+function collectEnvVarsJson() {
+	const doclines: EnvVars = {};
 
 	project.addSourceFilesAtPaths('src/configs/**/*.ts');
 	project.addSourceFilesAtPaths('src/index.ts');
@@ -160,7 +162,7 @@ function collectDoclines() {
 				}
 
 				let propertyType = getPropertyType(classField);
-				let enumValues: DoclineEntry['enumValues'];
+				let enumValues: EnvVarEntry['enumValues'];
 
 				if (args.length > 1) {
 					const envVarSchemaArg = args[1];
@@ -172,7 +174,7 @@ function collectDoclines() {
 					enumValues = extractedEnumValues;
 				}
 
-				const entry: DoclineEntry = {
+				const entry: EnvVarEntry = {
 					description,
 					defaultValue,
 					type: propertyType,
@@ -189,11 +191,57 @@ function collectDoclines() {
 	return doclines;
 }
 
-const doclines = collectDoclines();
-const OUTPUT_PATH = path.resolve(__dirname, '../config-doclines.json');
+function capitalize(s: string): string {
+	if (!s) return '';
+	return s.charAt(0).toUpperCase() + s.slice(1);
+}
 
-fs.mkdirSync(path.dirname(OUTPUT_PATH), { recursive: true });
-fs.writeFileSync(OUTPUT_PATH, JSON.stringify(doclines, null, 2));
+export function toMarkdownTable(doclines: EnvVars): string {
+	let table = '';
+	table += '| Variable | Type  | Default  | Description |\n';
+	table += '| :------- | :---- | :------- | :---------- |\n';
 
-console.log(doclines);
-console.info(`Config doclines written to ${OUTPUT_PATH}`);
+	const sortedEnvVars = Object.keys(doclines).sort();
+
+	// @TODO: Display enum variants?
+
+	for (const envVarName of sortedEnvVars) {
+		const row = doclines[envVarName];
+		const varNameMd = `\`${envVarName}\``;
+		const typeMd = capitalize(row.type);
+
+		const defaultMd = String(row.defaultValue);
+
+		// make description single-line for table cell
+		const descriptionMd = row.description.replace(/\|/g, '\\|').replace(/\r\n|\r|\n/g, ' ');
+
+		table += `| ${varNameMd} | ${typeMd} | ${defaultMd} | ${descriptionMd} |\n`;
+	}
+
+	return table;
+}
+
+const json = collectEnvVarsJson();
+const markdown = toMarkdownTable(json);
+
+const output = {
+	json,
+	markdown,
+};
+
+const isCI = process.env.CI === 'true';
+
+if (isCI) {
+	console.log(JSON.stringify(output, null, 2));
+} else {
+	const JSON_PATH = path.resolve(__dirname, '../env-vars.json');
+	const MARKDOWN_PATH = path.resolve(__dirname, '../env-vars.md');
+
+	fs.mkdirSync(path.dirname(JSON_PATH), { recursive: true });
+	fs.writeFileSync(JSON_PATH, JSON.stringify(json, null, 2));
+	fs.writeFileSync(MARKDOWN_PATH, markdown);
+
+	console.log(json);
+	console.info(`Env vars json written to ${JSON_PATH}`);
+	console.info(`Env vars markdown written to ${MARKDOWN_PATH}`);
+}
