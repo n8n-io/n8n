@@ -41,7 +41,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	});
 	const ldap = ref({ loginLabel: '', loginEnabled: false });
 	const saml = ref({ loginLabel: '', loginEnabled: false });
-	const mfa = ref({ enabled: false });
+	const mfa = ref({ enabled: false, enforced: false });
 	const folders = ref({ enabled: false });
 
 	const saveDataErrorExecution = ref<WorkflowSettings.SaveDataExecution>('all');
