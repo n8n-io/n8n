@@ -154,7 +154,7 @@ export class DataStore implements INodeType {
 						const id = this.getNodeParameter('tableId', i, '', { extractValue: true }) as string;
 						const response = (await this.helpers.httpRequest({
 							method: 'GET',
-							url: `https://mishakret.app.n8n.cloud/webhook/657be5c2-bd0f-4bd0-88b8-4dd925b8732a/datastore/${id}`,
+							url: `https://nikhilkuriakose.app.n8n.cloud/webhook/78e49f0d-75bb-4307-b3f8-0cfedc38b28c/datastore/${id}`,
 						})) as IDataObject;
 
 						returnData.push({
@@ -210,9 +210,6 @@ export class DataStore implements INodeType {
 							url: `https://nikhilkuriakose.app.n8n.cloud/webhook/78e49f0d-75bb-4307-b3f8-0cfedc38b28c/datastore/${tableId}/records`,
 						})) as IDataObject[];
 
-						// returnData.push({
-						// 	json: response,
-						// });
 						(response ?? []).forEach((item) => {
 							returnData.push({
 								json: item,
