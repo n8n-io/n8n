@@ -1,6 +1,30 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import type { PropertyDeclaration } from 'ts-morph';
 import { Project, Node } from 'ts-morph';
+
+function getPropertyType(classField: PropertyDeclaration) {
+	const type = classField.getType();
+
+	if (type.isBoolean()) return 'boolean';
+	if (type.isArray()) return 'array';
+
+	if (
+		type.isNumber() ||
+		(type.isUnion() && type.getUnionTypes().every((t) => t.isNumberLiteral()))
+	) {
+		return 'number';
+	}
+
+	if (
+		type.isString() ||
+		(type.isUnion() && type.getUnionTypes().every((t) => t.isStringLiteral()))
+	) {
+		return 'string';
+	}
+
+	return 'string';
+}
 
 /**
  * Collect doclines from all config classes, i.e. descriptions of env vars decorated with `@Env`.
@@ -9,7 +33,10 @@ import { Project, Node } from 'ts-morph';
  * ```json
  * {
  *   "N8N_AUTH_COOKIE_SAMESITE": {
- * 		"description": "This sets the `Samesite` flag on n8n auth cookie"
+ * 		"description": "This sets the `Samesite` flag on n8n auth cookie",
+ * 		"defaultValue": "'lax'",
+ * 		"type": "string",
+ * 		"sections": []
  * 	}
  * }
  * ```
@@ -54,7 +81,16 @@ function collectDoclines() {
 
 				const description = jsDocs[0].getDescription().trim();
 
-				if (description) doclines[envVarName] = { description };
+				const defaultValue = classField.getInitializer()?.getText() ?? null;
+
+				const type = getPropertyType(classField);
+
+				doclines[envVarName] = {
+					description,
+					type,
+					defaultValue,
+					sections: [],
+				};
 			}
 		}
 	}
@@ -62,8 +98,8 @@ function collectDoclines() {
 	return doclines;
 }
 
-const OUTPUT_PATH = path.resolve(__dirname, '../config-doclines.json'); // config package root
 const doclines = collectDoclines();
+const OUTPUT_PATH = path.resolve(__dirname, '../config-doclines.json');
 
 fs.mkdirSync(path.dirname(OUTPUT_PATH), { recursive: true });
 fs.writeFileSync(OUTPUT_PATH, JSON.stringify(doclines, null, 2));
