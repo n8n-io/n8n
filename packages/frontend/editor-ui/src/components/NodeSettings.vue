@@ -26,7 +26,6 @@ import type {
 
 import { COMMUNITY_NODES_INSTALLATION_DOCS_URL, CUSTOM_NODES_DOCS_URL } from '@/constants';
 
-import NodeTitle from '@/components/NodeTitle.vue';
 import ParameterInputList from '@/components/ParameterInputList.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
 import NodeSettingsTabs from '@/components/NodeSettingsTabs.vue';
@@ -51,6 +50,7 @@ import { importCurlEventBus, ndvEventBus } from '@/event-bus';
 import { ProjectTypes } from '@/types/projects.types';
 import { updateDynamicConnections } from '@/utils/nodeSettingsUtils';
 import FreeAiCreditsCallout from '@/components/FreeAiCreditsCallout.vue';
+import { N8nInlineRename } from '@n8n/design-system';
 
 const props = withDefaults(
 	defineProps<{
@@ -804,6 +804,8 @@ const credentialSelected = (updateInformation: INodeUpdatePropertiesInformation)
 };
 
 const nameChanged = (name: string) => {
+	console.log('nameChanged', name);
+	console.log('node', node.value);
 	if (node.value) {
 		historyStore.pushCommandToUndo(new RenameNodeCommand(node.value.name, name, Date.now()));
 	}
@@ -997,14 +999,12 @@ function displayCredentials(credentialTypeDescription: INodeCredentialDescriptio
 	>
 		<div :class="$style.header">
 			<div class="header-side-menu">
-				<NodeTitle
+				<N8nInlineRename
 					v-if="node"
-					class="node-name"
-					:model-value="node.name"
-					:node-type="nodeType"
 					:read-only="isReadOnly"
+					:model-value="node.name"
 					@update:model-value="nameChanged"
-				></NodeTitle>
+				/>
 				<div v-if="isExecutable">
 					<NodeExecuteButton
 						v-if="!blockUI && node && nodeValid"

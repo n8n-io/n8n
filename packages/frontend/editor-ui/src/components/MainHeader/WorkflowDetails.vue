@@ -2,7 +2,6 @@
 import {
 	DUPLICATE_MODAL_KEY,
 	EnterpriseEditionFeature,
-	MAX_WORKFLOW_NAME_LENGTH,
 	MODAL_CONFIRM,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	SOURCE_CONTROL_PUSH_MODAL_KEY,
@@ -18,7 +17,6 @@ import PushConnectionTracker from '@/components/PushConnectionTracker.vue';
 import WorkflowActivator from '@/components/WorkflowActivator.vue';
 import SaveButton from '@/components/SaveButton.vue';
 import WorkflowTagsDropdown from '@/components/WorkflowTagsDropdown.vue';
-import InlineTextEdit from '@/components/InlineTextEdit.vue';
 import BreakpointsObserver from '@/components/BreakpointsObserver.vue';
 import WorkflowHistoryButton from '@/components/MainHeader/WorkflowHistoryButton.vue';
 import CollaborationPane from '@/components/MainHeader/CollaborationPane.vue';
@@ -59,6 +57,7 @@ import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper
 import { ProjectTypes } from '@/types/projects.types';
 import { useFoldersStore } from '@/stores/folders.store';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
+import { N8nInlineRename } from '@n8n/design-system';
 
 const props = defineProps<{
 	readOnly?: boolean;
@@ -686,18 +685,9 @@ const onBreadcrumbsItemSelected = (item: PathItem) => {
 						>
 						<ShortenName :name="name" :limit="value" :custom="true" test-id="workflow-name-input">
 							<template #default="{ shortenedName }">
-								<InlineTextEdit
+								<N8nInlineRename
 									:model-value="name"
-									:preview-value="shortenedName"
-									:is-edit-enabled="isNameEditEnabled"
-									:max-length="MAX_WORKFLOW_NAME_LENGTH"
-									:disabled="
-										readOnly || isArchived || (!isNewWorkflow && !workflowPermissions.update)
-									"
-									placeholder="Enter workflow name"
-									class="name"
-									@toggle="onNameToggle"
-									@submit="onNameSubmit"
+									@update:model-value="(value) => onNameSubmit({ name: value, onSubmit: () => {} })"
 								/>
 							</template>
 						</ShortenName>

@@ -1,6 +1,7 @@
 <script lang="ts" setup>
+import { useElementSize } from '@vueuse/core';
 import { EditableArea, EditableInput, EditablePreview, EditableRoot } from 'reka-ui';
-import { ref } from 'vue';
+import { ref, useTemplateRef } from 'vue';
 
 type Props = {
 	modelValue: string;
@@ -12,6 +13,8 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const newValue = ref(props.modelValue);
+const preview = useTemplateRef('preview');
+const { width } = useElementSize(preview);
 
 const emit = defineEmits<{
 	'update:model-value': [value: string];
@@ -24,81 +27,55 @@ function onSubmit() {
 function onInput(value: string) {
 	newValue.value = value;
 }
+
+const temp = ref(props.modelValue);
+
+function onChange(e: string) {
+	console.log(width.value);
+	console.log(e);
+	temp.value = e.replace(/\s/g, '.'); // force input to expand on space chars];
+}
 </script>
 
 <template>
-	<div style="width: 250px">
-		<EditableRoot
-			placeholder="Enter text..."
-			class="EditableRoot"
-			:model-value="newValue"
-			auto-resize
-			select-on-focus
-			@submit="onSubmit"
-			@update:model-value="onInput"
-		>
-			<EditableArea class="EditableArea">
-				<EditablePreview />
-				<EditableInput />
-			</EditableArea>
-		</EditableRoot>
-	</div>
+	<EditableRoot
+		:model-value="newValue"
+		submit-mode="both"
+		:class="$style.inlineRenameRoot"
+		:readonly="readOnly"
+		select-on-focus
+		auto-resize
+		@submit="onSubmit"
+		@update:model-value="onInput"
+	>
+		<EditableArea :class="$style.inlineRenameArea">
+			<span ref="preview" :class="$style.hidden">
+				{{ temp }}
+			</span>
+			<EditablePreview :class="$style.inlineRenamePreview" />
+			<EditableInput :style="{ width: `${width}px` }" @input="(e) => onChange(e.target.value)" />
+		</EditableArea>
+	</EditableRoot>
 </template>
 
-<style lang="scss" scoped>
-.EditableRoot {
-	display: flex;
-	flex-direction: column;
-	gap: 1rem;
+<style lang="scss" module>
+.inlineRenameArea {
+	cursor: text;
+	width: fit-content;
 }
 
-.EditableArea {
-	color: var(--white);
-	width: 250px;
+.inlineRenameArea[data-focused] {
+	background-color: var(--color-primary);
 }
 
-.EditableWrapper {
-	display: flex;
-	gap: 1rem;
+.inlineRenamePreview {
+	width: fit-content;
 }
 
-.EditableSubmitTrigger {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	border-radius: 0.25rem;
-	font-weight: 500;
-	font-size: 0.9375rem;
-	padding: 0.9375rem 1.25rem;
-	height: 2.1875rem;
-	background-color: var(--grass8);
-	color: var(--white);
-	box-shadow:
-		0px 2px 1.25rem rgba(0, 0, 0, 0.07),
-		0px 2px 1.25rem rgba(0, 0, 0, 0.07);
-	outline: none;
-	transition:
-		background-color 0.2s,
-		box-shadow 0.2s;
-}
-
-.EditableTrigger {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	border-radius: 0.25rem;
-	font-weight: 500;
-	font-size: 0.9375rem;
-	padding: 0.9375rem 1.25rem;
-	height: 2.1875rem;
-	background-color: var(--white);
-	color: var(--grass11);
-	box-shadow:
-		0px 2px 1.25rem rgba(0, 0, 0, 0.07),
-		0px 2px 1.25rem rgba(0, 0, 0, 0.07);
-	outline: none;
-	transition:
-		background-color 0.2s,
-		box-shadow 0.2s;
+.hidden {
+	position: absolute;
+	top: 0;
+	visibility: hidden;
+	white-space: nowrap;
 }
 </style>
