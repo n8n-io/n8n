@@ -28,5 +28,21 @@ export const rowOperations: INodeProperties = {
 };
 
 export const rowDescriptions: INodeProperties[] = [
+	{
+		displayName: 'Row Payload',
+		name: 'text',
+		type: 'string',
+		default: '',
+		placeholder: 'Add in your row payload as JSON',
+		typeOptions: {
+			rows: 4,
+		},
+		displayOptions: {
+			show: {
+				resource: ['row'],
+				operation: ['add'],
+			},
+		},
+	},
 	{ ...tableRLC, displayOptions: { show: { resource: ['row'] } } },
 ];
