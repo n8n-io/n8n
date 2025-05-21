@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { InstanceSettings } from '@/instance-settings';
 
 const binaryDataModesSchema = z.enum(['default', 'filesystem', 's3']);
+type AvailableModes = z.infer<typeof binaryDataModesSchema>;
 
 const availableModesSchema = z
 	.string()
@@ -16,7 +17,7 @@ const availableModesSchema = z
 export class BinaryDataConfig {
 	/** Available modes of binary data storage, as comma separated strings. */
 	@Env('N8N_AVAILABLE_BINARY_DATA_MODES', availableModesSchema)
-	availableModes: z.infer<typeof availableModesSchema> = ['filesystem'];
+	availableModes: AvailableModes[] = ['filesystem'];
 
 	/** Storage mode for binary data. */
 	@Env('N8N_DEFAULT_BINARY_DATA_MODE', binaryDataModesSchema)
