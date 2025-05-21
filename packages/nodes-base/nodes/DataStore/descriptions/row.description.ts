@@ -31,12 +31,9 @@ export const rowDescriptions: INodeProperties[] = [
 	{
 		displayName: 'Row Payload',
 		name: 'text',
-		type: 'string',
-		default: '',
-		placeholder: 'Add in your row payload as JSON',
-		typeOptions: {
-			rows: 4,
-		},
+		type: 'json',
+		description: 'The row payload to add to the table in JSON format',
+		default: '{}',
 		displayOptions: {
 			show: {
 				resource: ['row'],
