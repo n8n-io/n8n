@@ -393,7 +393,7 @@ export const routes: RouteRecordRaw[] = [
 		path: '/workflow/:name/:nodeId?',
 		name: VIEWS.WORKFLOW,
 		components: {
-			default: NodeView,
+			default: WindowManagerView,
 			header: MainHeader,
 			sidebar: MainSidebar,
 			footer: CanvasChatSwitch,

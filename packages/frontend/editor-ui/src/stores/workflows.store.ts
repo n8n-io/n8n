@@ -935,7 +935,6 @@ export const makeWorkflowsStore = () => {
 	}
 
 	function setWorkflow(value: IWorkflowDb): void {
-		debugger;
 		workflow.value = {
 			...value,
 			...(!value.hasOwnProperty('active') ? { active: false } : {}),

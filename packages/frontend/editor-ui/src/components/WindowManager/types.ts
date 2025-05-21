@@ -17,14 +17,13 @@ export interface ContentDescriptor {
 
 export interface SplitPane {
 	readonly nodeType: 'split';
-	rect: Rect;
+	weights: number[];
 	direction: SplitDirection;
 	children: PaneNode[];
 }
 
 export interface LeafPane {
 	readonly nodeType: 'leaf';
-	rect: Rect;
 	content: ContentDescriptor;
 }
 
