@@ -9,6 +9,7 @@ export interface IUser {
 	inviteAcceptUrl?: string;
 	disabled: boolean;
 	signInType: string;
+	mfaEnabled?: boolean;
 }
 
 export interface UserAction {
