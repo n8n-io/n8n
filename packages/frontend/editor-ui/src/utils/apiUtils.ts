@@ -114,6 +114,13 @@ export async function request(config: {
 		}
 
 		const errorResponseData = error.response?.data;
+		if (errorResponseData?.mfaRequired === true) {
+			console.log('Redirecting to personal settings');
+			if (window.location.pathname !== '/settings/personal') {
+				window.location.search = '';
+				window.location.pathname = '/settings/personal';
+			}
+		}
 		if (errorResponseData?.message !== undefined) {
 			if (errorResponseData.name === 'NodeApiError') {
 				errorResponseData.httpStatusCode = error.response.status;
@@ -170,8 +177,9 @@ export async function makeRestApiRequest<T>(
 		data,
 	});
 
-	// @ts-ignore all cli rest api endpoints return data wrapped in `data` key
-	return response.data as T;
+	if (response)
+		// @ts-ignore all cli rest api endpoints return data wrapped in `data` key
+		return response.data as T;
 }
 
 export async function get(

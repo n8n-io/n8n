@@ -137,7 +137,7 @@ export class MFAController {
 		this.authService.issueCookie(res, updatedUser, false, req.browserId);
 	}
 
-	@Post('/verify', { rateLimit: true })
+	@Post('/verify', { rateLimit: true, allowSkipMFA: true })
 	async verifyMFA(req: MFA.Verify) {
 		const { id } = req.user;
 		const { mfaCode } = req.body;
