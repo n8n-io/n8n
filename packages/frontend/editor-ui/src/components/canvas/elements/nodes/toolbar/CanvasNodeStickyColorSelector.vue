@@ -40,17 +40,19 @@ function showPopover() {
 }
 
 function changeColor(index: number) {
+	debugger;
 	if (index === 8) {
 		// [ria] apply custom color when selecting 8th option
 		emit('update', customStickyColor.value);
 	} else {
 		emit('update', index);
+		// hidePopover();
 	}
-	hidePopover();
 }
 
 // [ria] to update and use custom color in the UI store
 function onColorPickerChange(value: string) {
+	debugger;
 	customStickyColor.value = value;
 	if (renderOptions.value.color === 8 || typeof renderOptions.value.color === 'string') {
 		emit('update', value);
@@ -83,7 +85,7 @@ onBeforeUnmount(() => {
 	<N8nPopover
 		v-model:visible="isPopoverVisible"
 		effect="dark"
-		trigger="click"
+		trigger="manual"
 		placement="top"
 		:popper-class="$style.popover"
 		:popper-style="{ width: '208px' }"
@@ -96,13 +98,14 @@ onBeforeUnmount(() => {
 				:class="$style.option"
 				data-test-id="change-sticky-color"
 				:title="i18n.baseText('node.changeColor')"
+				@click="showPopover"
 			>
 				<FontAwesomeIcon icon="palette" />
 			</div>
 		</template>
-		<div :class="$style.content">
+		<div :class="$style.content" @click.stop>
 			<!-- original fixed color options (1-7) -->
-			<div :class="$style.presetColors">
+			<div :class="$style.presetColors" @click.stop>
 				<div
 					v-for="color in colors.slice(0, 7)"
 					:key="color"
@@ -112,24 +115,19 @@ onBeforeUnmount(() => {
 						$style[`sticky-color-${color}`],
 						renderOptions.color === color ? $style.selected : '',
 					]"
-					@click="changeColor(color)"
+					@click.stop="changeColor(color)"
 				></div>
 			</div>
 			<!-- custom color (8th option) -->
-			<div :class="$style.customColorOption">
-				<div
-					:class="[
-						$style.color,
-						$style.customColor,
-						renderOptions.color === 8 || typeof renderOptions.color === 'string'
-							? $style.selected
-							: '',
-					]"
-					:style="{ backgroundColor: customStickyColor }"
-					@click="changeColor(8)"
-				></div>
-				<div :class="$style.colorPickerContainer">
-					<N8nColorPicker v-model="customStickyColor" size="small" @change="onColorPickerChange" />
+			<div :class="$style.customColorOption" @click.stop>
+				<div :class="$style.colorPickerContainer" @click.stop>
+					<N8nColorPicker
+						v-model="customStickyColor"
+						size="small"
+						:show-input="false"
+						@update:modelValue="onColorPickerChange"
+						@click.stop
+					/>
 				</div>
 			</div>
 		</div>
