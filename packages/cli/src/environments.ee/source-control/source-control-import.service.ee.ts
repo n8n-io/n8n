@@ -105,18 +105,17 @@ export class SourceControlImportService {
 
 		const remoteWorkflowFilesParsed = remoteWorkflowsRead
 			.filter((remote) => {
-				return remote?.id;
-			})
-			.filter((remote) => {
-				if (Array.isArray(accessibleProjects) && remote.owner.type === 'team') {
-					const teamId = remote.owner.teamId;
-					if (!accessibleProjects.some((project) => project.id === teamId)) {
-						// The workflow `remote` does not belong to a project, that the context has access to
-						return false;
-					}
-				} else if (Array.isArray(accessibleProjects) && remote.owner.type === 'personal') {
-					// When filters apply, we don't support personal projects
+				if (!remote?.id) {
 					return false;
+				}
+				if (Array.isArray(accessibleProjects)) {
+					const owner = remote.owner;
+					// The workflow `remote` belongs not to a project, that the context has access to
+					return (
+						typeof owner === 'object' &&
+						owner?.type === 'team' &&
+						accessibleProjects.some((project) => project.id === owner.teamId)
+					);
 				}
 				return true;
 			})
@@ -238,26 +237,17 @@ export class SourceControlImportService {
 
 		const remoteCredentialFilesParsed = remoteCredentialFilesRead
 			.filter((remote) => {
-				return remote?.id;
-			})
-			.filter((remote) => {
-				if (
-					Array.isArray(accessibleProjects) &&
-					typeof remote.ownedBy === 'object' &&
-					remote.ownedBy?.type === 'team'
-				) {
-					const projectId = remote.ownedBy?.teamId;
-					if (!accessibleProjects.some((project) => project.id === projectId)) {
-						// The credential `remote` belongs not to a project, that the context has access to
-						return false;
-					}
-				} else if (
-					Array.isArray(accessibleProjects) &&
-					typeof remote.ownedBy === 'object' &&
-					remote.ownedBy?.type === 'personal'
-				) {
-					// When filters apply, we don't support personal projects
+				if (!remote?.id) {
 					return false;
+				}
+				if (Array.isArray(accessibleProjects)) {
+					const owner = remote.ownedBy;
+					// The credential `remote` belongs not to a project, that the context has access to
+					return (
+						typeof owner === 'object' &&
+						owner?.type === 'team' &&
+						accessibleProjects.some((project) => project.id === owner.teamId)
+					);
 				}
 				return true;
 			})
