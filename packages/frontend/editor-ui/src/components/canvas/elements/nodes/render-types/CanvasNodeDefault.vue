@@ -50,18 +50,17 @@ const {
 
 const collaborationStore = useCollaborationStore();
 const renderOptions = computed(() => render.value.options as CanvasNodeDefaultRender['options']);
-const selectUserColor = computed(
-	() =>
-		collaborationStore.collaborators.find(
-			(c) => !c.isSelf && c.selectedNodeName === node?.data.value.name,
-		)?.color,
+const selectByOther = computed(() =>
+	collaborationStore.collaborators.find(
+		(c) => !c.isSelf && c.selectedNodeName === node?.data.value.name,
+	),
 );
 
 const classes = computed(() => {
 	return {
 		[$style.node]: true,
 		[$style.selected]: isSelected.value,
-		[$style.selectedByOther]: selectUserColor.value !== undefined,
+		[$style.selectedByOther]: selectByOther.value !== undefined,
 		[$style.disabled]: isDisabled.value,
 		[$style.success]: hasRunData.value,
 		[$style.error]: hasIssues.value,
@@ -91,8 +90,9 @@ const styles = computed(() => {
 
 	stylesObject['--canvas-node--main-input-count'] = mainInputs.value.length;
 	stylesObject['--canvas-node--main-output-count'] = mainOutputs.value.length;
+	stylesObject['--select-user-bg-color'] = selectByOther.value?.color ?? '';
 	stylesObject['--select-user-color'] =
-		selectUserColor.value?.replace('hsl(', 'hsla(').replace(')', ',.2)') ?? '';
+		selectByOther.value?.color.replace('hsl(', 'hsla(').replace(')', ',.2)') ?? '';
 
 	return stylesObject;
 });
@@ -152,6 +152,7 @@ function onActivate(event: MouseEvent) {
 		:class="classes"
 		:style="styles"
 		:data-test-id="dataTestId"
+		:data-selecting-user-name="selectByOther?.user.firstName"
 		@contextmenu="openContextMenu"
 		@dblclick.stop="onActivate"
 	>
@@ -279,6 +280,18 @@ function onActivate(event: MouseEvent) {
 	}
 	&.selectedByOther {
 		box-shadow: 0 0 0 8px var(--select-user-color);
+
+		&:after {
+			position: absolute;
+			left: -10px;
+			bottom: calc(100% + 12px);
+			content: attr(data-selecting-user-name);
+			background-color: var(--select-user-bg-color);
+			padding: 4px 8px;
+			border-radius: 4px;
+			font-size: 0.7em;
+			color: white;
+		}
 	}
 
 	&.success {
