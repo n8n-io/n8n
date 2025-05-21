@@ -4,7 +4,7 @@ import type {
 	UpdateDatastoreDto,
 } from '@n8n/api-types';
 import { Service } from '@n8n/di';
-import { createResultOk, type Result } from 'n8n-workflow';
+import { createResultError, createResultOk, type Result } from 'n8n-workflow';
 import { z } from 'zod';
 import type { ZodTypeAny } from 'zod';
 
@@ -95,7 +95,7 @@ export class DatastoreService {
 		// TODO : make sure to sanitize the table name and column names to avoid SQL injection
 		const tableName = this.toTableName(datastore.id);
 		const columnsFields = savedFields.map(
-			(field) => `\`${field.id}\` ${dataStoreFieldTypeToSql(field.type)}`,
+			(field) => `\`${field.name}\` ${dataStoreFieldTypeToSql(field.type)}`,
 		);
 
 		await this.datastoreRepository.manager.query(
@@ -153,7 +153,7 @@ export class DatastoreService {
 		);
 
 		await this.datastoreRepository.manager.query(
-			`ALTER TABLE ${this.toTableName(datastore.id)} ADD COLUMN ${newField.id} ${dataStoreFieldTypeToSql(newField.type)}`,
+			`ALTER TABLE ${this.toTableName(datastore.id)} ADD COLUMN ${newField.name} ${dataStoreFieldTypeToSql(newField.type)}`,
 		);
 
 		return newField;
@@ -198,22 +198,45 @@ export class DatastoreService {
 
 		const schema = z.array(buildZodSchema(datastore.fields));
 
-		// WIP:
-		// const parsedRecord = schema.safeParse(records);
-		// if (!parsedRecord.success) {
-		// 	return createResultError(parsedRecord.error.errors[0]);
-		// }
+		const parsedRecord = schema.safeParse(records);
+		if (!parsedRecord.success) {
+			return createResultError(parsedRecord.error.errors[0]);
+		}
 
-		// const columns = datastore.fields.map((field) => field.id);
+		// {id: 1, name: 'John', age: 30}, {id: 2, age: 25, name: 'Jane'}
 
-		// const rowPlaceholders = values.map((row) => `(${row.map(() => '?').join(', ')})`).join(', ');
+		const columns = datastore.fields.map((field) => field.name);
+		const values = records.map((record) => {
+			return columns.map((column) => record[column] ?? null);
+		});
 
-		// const result = await this.datastoreRepository.manager.query(
-		// 	`INSERT INTO ${this.toTableName(datastore.id)} (${columns.join(', ')}) VALUES ${rowPlaceholders}`,
-		// 	values,
-		// );
+		const rowPlaceholders = values.map((row) => `(${row.map(() => '?').join(', ')})`).join(', ');
+
+		await this.datastoreRepository.manager.query(
+			`INSERT INTO ${this.toTableName(datastore.id)} (${columns.join(', ')}) VALUES ${rowPlaceholders}`,
+			values.flat(),
+		);
 
 		return createResultOk(null);
+	}
+
+	async getRecords(datastoreId: string): Promise<Array<Record<string, unknown>>> {
+		const datastore = await this.datastoreRepository.findOne({
+			where: {
+				id: datastoreId,
+			},
+			relations: {
+				fields: true,
+			},
+		});
+
+		if (!datastore) {
+			throw new NotFoundError(`Datastore with ID ${datastoreId} not found`);
+		}
+
+		return await this.datastoreRepository.manager.query(
+			`SELECT (${datastore.fields.map((field) => field.name).join(', ')}) FROM ${this.toTableName(datastore.id)}`,
+		);
 	}
 
 	toTableName(datastoreId: string): string {
