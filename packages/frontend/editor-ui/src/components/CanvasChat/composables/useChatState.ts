@@ -39,7 +39,7 @@ export function useChatState(
 	const logsStore = useLogsStore();
 	const router = useRouter();
 	const nodeHelpers = useNodeHelpers({ workflowsStore });
-	const { runWorkflow } = useRunWorkflow({ router });
+	const { runWorkflow } = useRunWorkflow({ router, workflowsStore });
 
 	const messages = ref<ChatMessage[]>([]);
 	const currentSessionId = ref<string>(uuid().replace(/-/g, ''));

@@ -157,6 +157,7 @@ onMounted(loadData);
 			:connections="mappedConnections"
 			:show-bug-reporting-button="false"
 			:read-only="true"
+			:workflows-store="props.workflowsStore"
 		>
 			<template #node="{ nodeProps }">
 				<N8nTooltip placement="top" v-bind="tooltipProps(nodeProps.data)">

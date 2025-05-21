@@ -36,7 +36,7 @@ const modalBus = createEventBus();
 const workflowsStore = useWorkflowsStore();
 const nodeTypesStore = useNodeTypesStore();
 const router = useRouter();
-const { runWorkflow } = useRunWorkflow({ router });
+const { runWorkflow } = useRunWorkflow({ router, workflowsStore });
 const agentRequestStore = useAgentRequestStore();
 
 const node = computed(() =>

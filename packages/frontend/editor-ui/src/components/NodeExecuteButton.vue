@@ -14,7 +14,7 @@ import {
 	AI_TRANSFORM_NODE_TYPE,
 	type INodeTypeDescription,
 } from 'n8n-workflow';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import type { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useMessage } from '@/composables/useMessage';
@@ -46,6 +46,7 @@ const props = withDefaults(
 		transparent?: boolean;
 		hideIcon?: boolean;
 		tooltip?: string;
+		workflowsStore: ReturnType<typeof useWorkflowsStore>;
 	}>(),
 	{
 		disabled: false,
@@ -67,9 +68,9 @@ const lastPopupCountUpdate = ref(0);
 const codeGenerationInProgress = ref(false);
 
 const router = useRouter();
-const { runWorkflow, stopCurrentExecution } = useRunWorkflow({ router });
+const workflowsStore = props.workflowsStore;
+const { runWorkflow, stopCurrentExecution } = useRunWorkflow({ router, workflowsStore });
 
-const workflowsStore = useWorkflowsStore();
 const externalHooks = useExternalHooks();
 const toast = useToast();
 const ndvStore = useNDVStore();

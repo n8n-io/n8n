@@ -55,6 +55,7 @@ const { nodes: mappedNodes, connections: mappedConnections } = useCanvasMapping(
 	workflowObject,
 	workflowsStore: props.workflowsStore,
 });
+console.log(mappedNodes.value);
 
 const initialFitViewDone = ref(false); // Workaround for https://github.com/bcakmakoglu/vue-flow/issues/1636
 onNodesInitialized(() => {

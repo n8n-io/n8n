@@ -17,6 +17,7 @@ import {
 } from '@/components/RunDataAi/utils';
 import { useVirtualList } from '@vueuse/core';
 import { type IExecutionResponse } from '@/Interface';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 
 const {
 	isOpen,
@@ -49,10 +50,11 @@ const emit = defineEmits<{
 
 defineSlots<{ actions: {} }>();
 
+const workflowsStore = useWorkflowsStore(); // @singleton
 const locale = useI18n();
 const router = useRouter();
-const runWorkflow = useRunWorkflow({ router });
-const isClearExecutionButtonVisible = useClearExecutionButtonVisible();
+const runWorkflow = useRunWorkflow({ router, workflowsStore });
+const isClearExecutionButtonVisible = useClearExecutionButtonVisible({ workflowsStore });
 const isEmpty = computed(() => flatLogEntries.length === 0 || execution === undefined);
 const switchViewOptions = computed(() => [
 	{ label: locale.baseText('logs.overview.header.switch.overview'), value: 'overview' as const },

@@ -935,6 +935,7 @@ export const makeWorkflowsStore = () => {
 	}
 
 	function setWorkflow(value: IWorkflowDb): void {
+		debugger;
 		workflow.value = {
 			...value,
 			...(!value.hasOwnProperty('active') ? { active: false } : {}),
@@ -2046,12 +2047,13 @@ export const makeWorkflowsStore = () => {
 	};
 };
 
-export function cloneStore(workflowId: string) {
-	const store = defineStore(STORES.WORKFLOWS + workflowId, makeWorkflowsStore)();
-	store.workflowsById = useWorkflowsStore().workflowsById;
-	store.setWorkflowId(workflowId);
+export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, makeWorkflowsStore);
+
+export function cloneStore(workflowId: string): ReturnType<typeof useWorkflowsStore> {
+	const store = defineStore((STORES.WORKFLOWS + workflowId) as 'workflows', makeWorkflowsStore)();
+	void store
+		.fetchWorkflow(workflowId)
+		.then(() => store.setWorkflow(store.workflowsById[workflowId]));
 
 	return store;
 }
-
-export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, makeWorkflowsStore);

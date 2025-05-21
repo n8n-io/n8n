@@ -17,7 +17,7 @@ import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import { executionRetryMessage } from '@/utils/executionUtils';
 
 const executionsStore = useExecutionsStore();
-const workflowsStore = useWorkflowsStore();
+const workflowsStore = useWorkflowsStore(); // @singleton
 const nodeTypesStore = useNodeTypesStore();
 const i18n = useI18n();
 const telemetry = useTelemetry();
@@ -26,7 +26,7 @@ const router = useRouter();
 const toast = useToast();
 const { callDebounced } = useDebounce();
 
-const { initializeWorkspace } = useCanvasOperations({ router });
+const { initializeWorkspace } = useCanvasOperations({ router, workflowsStore });
 
 const loading = ref(false);
 const loadingMore = ref(false);

@@ -6,8 +6,9 @@ import { useCanvasNode } from '@/composables/useCanvasNode';
 import { useI18n } from '@/composables/useI18n';
 import { CanvasNodeDirtiness, CanvasNodeRenderType } from '@/types';
 import { N8nTooltip } from '@n8n/design-system';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 
-const nodeHelpers = useNodeHelpers();
+const nodeHelpers = useNodeHelpers({ workflowsStore: useWorkflowsStore() }); // @singleton
 const i18n = useI18n();
 
 const {

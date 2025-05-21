@@ -138,7 +138,7 @@ type AddNodeOptions = AddNodesBaseOptions & {
 
 export function useCanvasOperations({
 	router,
-	workflowsStore = useWorkflowsStore(),
+	workflowsStore,
 }: {
 	router: ReturnType<typeof useRouter>;
 	workflowsStore: ReturnType<typeof useWorkflowsStore>;
@@ -159,7 +159,7 @@ export function useCanvasOperations({
 
 	const i18n = useI18n();
 	const toast = useToast();
-	const workflowHelpers = useWorkflowHelpers({ router });
+	const workflowHelpers = useWorkflowHelpers({ router, workflowsStore });
 	const nodeHelpers = useNodeHelpers({ workflowsStore });
 	const telemetry = useTelemetry();
 	const externalHooks = useExternalHooks();

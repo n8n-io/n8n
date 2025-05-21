@@ -79,7 +79,9 @@ const { connectingHandle } = useCanvas();
   Toolbar slot classes
 */
 const nodeClasses = ref<string[]>([]);
-const inputs = computed(() => props.data.inputs);
+const inputs = computed(() => {
+	return props.data.inputs;
+});
 const outputs = computed(() => props.data.outputs);
 const connections = computed(() => props.data.connections);
 const {

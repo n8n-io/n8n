@@ -6,15 +6,17 @@ import { useRoute, useRouter } from 'vue-router';
 import { useCanvasOperations } from './useCanvasOperations';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
-export function useClearExecutionButtonVisible() {
+export function useClearExecutionButtonVisible(options: {
+	workflowsStore: ReturnType<typeof useWorkflowsStore>;
+}) {
 	const route = useRoute();
 	const sourceControlStore = useSourceControlStore();
-	const workflowsStore = useWorkflowsStore();
+	const workflowsStore = options.workflowsStore;
 	const workflowExecutionData = computed(() => workflowsStore.workflowExecutionData);
 	const isWorkflowRunning = computed(() => workflowsStore.isWorkflowRunning);
 	const isReadOnlyRoute = computed(() => !!route?.meta?.readOnlyCanvas);
 	const router = useRouter();
-	const { editableWorkflow } = useCanvasOperations({ router });
+	const { editableWorkflow } = useCanvasOperations({ router, workflowsStore });
 	const nodeTypesStore = useNodeTypesStore();
 	const isReadOnlyEnvironment = computed(() => sourceControlStore.preferences.branchReadOnly);
 	const allTriggerNodesDisabled = computed(() =>
