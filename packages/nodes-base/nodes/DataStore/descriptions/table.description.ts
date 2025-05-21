@@ -104,7 +104,7 @@ export const tableDescriptions: INodeProperties[] = [
 							},
 							{
 								name: 'Date',
-								value: 'date',
+								value: 'dateTime',
 							},
 						],
 						default: 'string',

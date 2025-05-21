@@ -60,13 +60,13 @@ export class DataStore implements INodeType {
 	methods = {
 		listSearch: {
 			async tableSearch(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
-				const response =
-					((await this.helpers.httpRequest({
-						method: 'GET',
-						url: 'https://mishakret.app.n8n.cloud/webhook/datastore',
-					})) as IDataObject[]) ?? [];
+				const baseUrl = this.getRestApiUrl();
+				const response = (await this.helpers.httpRequest({
+					method: 'GET',
+					url: baseUrl + '/datastores',
+				})) as { data: IDataObject[] };
 
-				const results = response.map((row: IDataObject) => {
+				const results = (response?.data ?? []).map((row: IDataObject) => {
 					return {
 						name: row.name as string,
 						value: row.id as string,
@@ -81,21 +81,21 @@ export class DataStore implements INodeType {
 		resourceMapping: {
 			async getColumns(this: ILoadOptionsFunctions): Promise<ResourceMapperFields> {
 				const id = this.getNodeParameter('tableId', '', { extractValue: true }) as string;
+				const baseUrl = this.getRestApiUrl();
 
-				const response =
-					((await this.helpers.httpRequest({
-						method: 'GET',
-						url: `https://mishakret.app.n8n.cloud/webhook/657be5c2-bd0f-4bd0-88b8-4dd925b8732a/datastores/${id}/columns`,
-					})) as IDataObject[]) ?? [];
+				const response = (await this.helpers.httpRequest({
+					method: 'GET',
+					url: baseUrl + `/datastores/${id}`,
+				})) as { data: { fields: IDataObject[] } };
 
 				const fields: ResourceMapperField[] = [];
 
-				for (const column of response) {
-					const type = column.type as keyof FieldTypeMap;
+				for (const field of response?.data?.fields ?? []) {
+					const type = field.type as keyof FieldTypeMap;
 
 					fields.push({
-						id: column.id as string,
-						displayName: column.name as string,
+						id: field.id as string,
+						displayName: field.name as string,
 						required: false,
 						defaultMatch: false,
 						display: true,
@@ -112,7 +112,7 @@ export class DataStore implements INodeType {
 
 	async execute(this: IExecuteFunctions) {
 		const items = this.getInputData();
-		// console.log(this.getRestApiUrl());
+		const baseUrl = this.getRestApiUrl();
 
 		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
@@ -124,14 +124,14 @@ export class DataStore implements INodeType {
 				if (resource === 'table') {
 					if (operation === 'create') {
 						const name = this.getNodeParameter('name', i, '') as string;
-						const columns = this.getNodeParameter('columns.values', i, '');
+						const fields = this.getNodeParameter('columns.values', i, '');
 
 						const response = (await this.helpers.httpRequest({
 							method: 'POST',
-							url: 'https://mishakret.app.n8n.cloud/webhook/datastore',
+							url: baseUrl + '/datastores',
 							body: {
 								name,
-								columns,
+								fields,
 							},
 						})) as IDataObject;
 
@@ -142,10 +142,10 @@ export class DataStore implements INodeType {
 					if (operation === 'getAll') {
 						const response = (await this.helpers.httpRequest({
 							method: 'GET',
-							url: 'https://mishakret.app.n8n.cloud/webhook/datastore',
-						})) as IDataObject[];
+							url: baseUrl + '/datastores',
+						})) as { data: IDataObject[] };
 
-						(response ?? []).forEach((item) => {
+						(response?.data ?? []).forEach((item) => {
 							returnData.push({
 								json: item,
 							});
@@ -155,7 +155,7 @@ export class DataStore implements INodeType {
 						const id = this.getNodeParameter('tableId', i, '', { extractValue: true }) as string;
 						const response = (await this.helpers.httpRequest({
 							method: 'GET',
-							url: `https://nikhilkuriakose.app.n8n.cloud/webhook/78e49f0d-75bb-4307-b3f8-0cfedc38b28c/datastore/${id}`,
+							url: baseUrl + '/datastores/' + id,
 						})) as IDataObject;
 
 						returnData.push({
@@ -166,7 +166,7 @@ export class DataStore implements INodeType {
 						const id = this.getNodeParameter('tableId', i, '', { extractValue: true }) as string;
 						const response = (await this.helpers.httpRequest({
 							method: 'DELETE',
-							url: `https://mishakret.app.n8n.cloud/webhook/657be5c2-bd0f-4bd0-88b8-4dd925b8732a/datastore/${id}`,
+							url: baseUrl + '/datastores/' + id,
 						})) as IDataObject;
 
 						returnData.push({
@@ -192,9 +192,9 @@ export class DataStore implements INodeType {
 						}
 
 						const response = (await this.helpers.httpRequest({
-							method: 'PUT',
-							url: `https://nikhilkuriakose.app.n8n.cloud/webhook/78e49f0d-75bb-4307-b3f8-0cfedc38b28c/datastore/${tableId}/record`,
-							body: data,
+							method: 'POST',
+							url: baseUrl + `/datastores/${tableId}/records`,
+							body: { records: data },
 						})) as IDataObject;
 
 						returnData.push({
@@ -208,7 +208,7 @@ export class DataStore implements INodeType {
 
 						const response = (await this.helpers.httpRequest({
 							method: 'GET',
-							url: `https://nikhilkuriakose.app.n8n.cloud/webhook/78e49f0d-75bb-4307-b3f8-0cfedc38b28c/datastore/${tableId}/records`,
+							url: baseUrl + `/datastores/${tableId}/records`,
 						})) as IDataObject[];
 
 						(response ?? []).forEach((item) => {
