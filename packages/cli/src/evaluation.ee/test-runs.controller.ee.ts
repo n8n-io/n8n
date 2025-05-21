@@ -1,4 +1,5 @@
-import { TestCaseExecutionRepository, TestRunRepository, User } from '@n8n/db';
+import { TestCaseExecutionRepository, TestRunRepository } from '@n8n/db';
+import type { User } from '@n8n/db';
 import { Delete, Get, Post, RestController } from '@n8n/decorators';
 import express from 'express';
 import { InstanceSettings } from 'n8n-core';
