@@ -1,18 +1,6 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-const tableIdProperty: INodeProperties = {
-	displayName: 'Table ID',
-	name: 'tableId',
-	type: 'string',
-	default: '',
-	required: true,
-	displayOptions: {
-		show: {
-			resource: ['table'],
-			operation: ['delete', 'get', 'update'],
-		},
-	},
-};
+import { tableRLC } from './common.descriptions';
 
 export const tableOperations: INodeProperties = {
 	displayName: 'Operation',
@@ -40,16 +28,16 @@ export const tableOperations: INodeProperties = {
 			value: 'get',
 			action: 'Get a table',
 		},
-		// {
-		// 	name: 'Get Many',
-		// 	value: 'getAll',
-		// 	action: 'Get many table',
-		// },
 		{
-			name: 'Update',
-			value: 'update',
-			action: 'Update a table',
+			name: 'Get Many',
+			value: 'getAll',
+			action: 'Get many table',
 		},
+		// {
+		// 	name: 'Update',
+		// 	value: 'update',
+		// 	action: 'Update a table',
+		// },
 	],
 	default: 'create',
 };
@@ -125,10 +113,17 @@ export const tableDescriptions: INodeProperties[] = [
 						],
 						default: 'stringValue',
 					},
+					{
+						displayName: 'Required',
+						name: 'required',
+						type: 'boolean',
+						default: false,
+						requiresDataPath: 'single',
+					},
 				],
 			},
 		],
 	},
 
-	tableIdProperty,
+	{ ...tableRLC, displayOptions: { show: { resource: ['table'], operation: ['delete', 'get'] } } },
 ];

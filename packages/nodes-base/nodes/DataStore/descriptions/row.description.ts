@@ -1,5 +1,7 @@
 import type { INodeProperties } from 'n8n-workflow';
 
+import { tableRLC } from './common.descriptions';
+
 export const rowOperations: INodeProperties = {
 	displayName: 'Operation',
 	name: 'operation',
@@ -26,13 +28,15 @@ export const rowOperations: INodeProperties = {
 			value: 'get',
 			action: 'Get a table',
 		},
-		{
-			name: 'Update',
-			value: 'update',
-			action: 'Update a table',
-		},
+		// {
+		// 	name: 'Update',
+		// 	value: 'update',
+		// 	action: 'Update a table',
+		// },
 	],
 	default: 'create',
 };
 
-export const rowDescriptions: INodeProperties[] = [];
+export const rowDescriptions: INodeProperties[] = [
+	{ ...tableRLC, displayOptions: { show: { resource: ['row'] } } },
+];

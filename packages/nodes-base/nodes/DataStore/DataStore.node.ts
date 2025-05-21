@@ -1,4 +1,13 @@
-import type { IExecuteFunctions, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
+	INodeExecutionData,
+	INodeListSearchResult,
+	INodeType,
+	INodeTypeDescription,
+	JsonObject,
+} from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { rowDescriptions, rowOperations } from './descriptions/row.description';
@@ -45,7 +54,107 @@ export class DataStore implements INodeType {
 		],
 	};
 
+	methods = {
+		listSearch: {
+			async tableSearch(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
+				const response =
+					((await this.helpers.httpRequest({
+						method: 'GET',
+						url: 'https://mishakret.app.n8n.cloud/webhook/datastore',
+					})) as IDataObject[]) ?? [];
+
+				const results = response.map((row: IDataObject) => {
+					return {
+						name: row.name as string,
+						value: row.id as string,
+					};
+				});
+
+				return {
+					results,
+				};
+			},
+		},
+	};
+
 	async execute(this: IExecuteFunctions) {
-		return [];
+		const items = this.getInputData();
+
+		const returnData: INodeExecutionData[] = [];
+		const length = items.length;
+		const resource = this.getNodeParameter('resource', 0, 'table');
+		const operation = this.getNodeParameter('operation', 0, 'create');
+
+		for (let i = 0; i < length; i++) {
+			try {
+				if (resource === 'table') {
+					if (operation === 'create') {
+						const name = this.getNodeParameter('name', i, '') as string;
+						const columns = this.getNodeParameter('columns.values', i, '');
+
+						const response = (await this.helpers.httpRequest({
+							method: 'POST',
+							url: 'https://mishakret.app.n8n.cloud/webhook/datastore',
+							body: {
+								name,
+								columns,
+							},
+						})) as IDataObject;
+
+						returnData.push({
+							json: response,
+						});
+					}
+					if (operation === 'getAll') {
+						const response = (await this.helpers.httpRequest({
+							method: 'GET',
+							url: 'https://mishakret.app.n8n.cloud/webhook/datastore',
+						})) as IDataObject[];
+
+						(response ?? []).forEach((item) => {
+							returnData.push({
+								json: item,
+							});
+						});
+					}
+					if (operation === 'get') {
+						const id = this.getNodeParameter('tableId', i, '', { extractValue: true }) as string;
+						const response = (await this.helpers.httpRequest({
+							method: 'GET',
+							url: `https://mishakret.app.n8n.cloud/webhook/657be5c2-bd0f-4bd0-88b8-4dd925b8732a/datastore/${id}`,
+						})) as IDataObject;
+
+						returnData.push({
+							json: response,
+						});
+					}
+					if (operation === 'delete') {
+						const id = this.getNodeParameter('tableId', i, '', { extractValue: true }) as string;
+						const response = (await this.helpers.httpRequest({
+							method: 'DELETE',
+							url: `https://mishakret.app.n8n.cloud/webhook/657be5c2-bd0f-4bd0-88b8-4dd925b8732a/datastore/${id}`,
+						})) as IDataObject;
+
+						returnData.push({
+							json: response,
+						});
+					}
+				}
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({
+						json: {
+							error: (error as JsonObject).message,
+						},
+						pairedItem: {
+							item: i,
+						},
+					});
+					continue;
+				}
+				throw error;
+			}
+		}
+		return [returnData];
 	}
 }
