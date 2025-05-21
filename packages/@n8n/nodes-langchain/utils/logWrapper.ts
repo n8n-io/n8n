@@ -19,7 +19,12 @@ import type {
 	ITaskMetadata,
 	NodeConnectionType,
 } from 'n8n-workflow';
-import { NodeOperationError, NodeConnectionTypes, parseErrorMetadata } from 'n8n-workflow';
+import {
+	NodeOperationError,
+	NodeConnectionTypes,
+	parseErrorMetadata,
+	deepCopy,
+} from 'n8n-workflow';
 
 import { logAiEvent, isToolsInstance, isBaseChatMemory, isBaseChatMessageHistory } from './helpers';
 import { N8nBinaryLoader } from './N8nBinaryLoader';
@@ -298,9 +303,10 @@ export function logWrapper<
 					};
 				}
 			}
+
 			if (originalInstance instanceof BaseDocumentCompressor) {
 				if (prop === 'compressDocuments' && 'compressDocuments' in target) {
-					return async (query: string, documents: Document[]): Promise<Document[]> => {
+					return async (documents: Document[], query: string): Promise<Document[]> => {
 						connectionType = NodeConnectionTypes.AiReranker;
 						const { index } = executeFunctions.addInputData(connectionType, [
 							[{ json: { query, documents } }],
@@ -311,12 +317,14 @@ export function logWrapper<
 							connectionType,
 							currentNodeRunIndex: index,
 							method: target[prop],
-							arguments: [query, documents],
+							// compressDocuments mutates the original object
+							// messing up the input data logging
+							arguments: [deepCopy(documents), query],
 						})) as Document[];
 
 						logAiEvent(executeFunctions, 'ai-document-reranked');
 						executeFunctions.addOutputData(connectionType, index, [
-							response.map((doc) => ({ json: { doc } })),
+							response.map((document) => ({ json: { document } })),
 						]);
 						return response;
 					};
