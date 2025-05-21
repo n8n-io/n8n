@@ -1,0 +1,170 @@
+version: '3.8'
+
+services:
+  n8n-main:
+    image: n8nio/n8n
+    restart: always
+    ports:
+      - "${N8N_PORT:-5678}:5678"
+    environment:
+      - N8N_HOST=${N8N_HOST:-localhost}
+      - N8N_PORT=${N8N_PORT:-5678}
+      - N8N_PROTOCOL=${N8N_PROTOCOL:-http}
+      - NODE_ENV=${NODE_ENV:-production}
+      - EXECUTIONS_MODE=main
+      - TZ=${TZ:-America/New_York}
+      # Supabase/Postgres Connection
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=${SUPABASE_HOST}
+      - DB_POSTGRESDB_PORT=${SUPABASE_PORT:-5432}
+      - DB_POSTGRESDB_DATABASE=${SUPABASE_DB_NAME}
+      - DB_POSTGRESDB_USER=${SUPABASE_DB_USER}
+      - DB_POSTGRESDB_PASSWORD=${SUPABASE_DB_PASSWORD}
+      - DB_POSTGRESDB_SSL=${SUPABASE_DB_SSL:-require} # Supabase typically requires SSL
+      # Redis Cloud Connection
+      - QUEUE_BULL_REDIS_HOST=${REDIS_HOST}
+      - QUEUE_BULL_REDIS_PORT=${REDIS_PORT:-6379}
+      - QUEUE_BULL_REDIS_PASSWORD=${REDIS_PASSWORD}
+      - CACHE_MODE=redis
+      - CACHE_REDIS_HOST=${REDIS_HOST}
+      - CACHE_REDIS_PORT=${REDIS_PORT:-6379}
+      - CACHE_REDIS_PASSWORD=${REDIS_PASSWORD}
+      # n8n User Authentication (replace with Supabase Auth integration later if desired)
+      - N8N_BASIC_AUTH_ACTIVE=${N8N_BASIC_AUTH_ACTIVE:-true}
+      - N8N_BASIC_AUTH_USER=${N8N_BASIC_AUTH_USER}
+      - N8N_BASIC_AUTH_PASSWORD=${N8N_BASIC_AUTH_PASSWORD}
+      # Encryption Key (generate a strong random key)
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
+      # Other settings
+      - GENERIC_TIMEZONE=${TZ:-America/New_York}
+      - N8N_EMAIL_MODE=smtp # Required for user management features like password reset
+      - N8N_EMAIL_SMTP_HOST=${SMTP_HOST}
+      - N8N_EMAIL_SMTP_PORT=${SMTP_PORT}
+      - N8N_EMAIL_SMTP_USER=${SMTP_USER}
+      - N8N_EMAIL_SMTP_PASS=${SMTP_PASS}
+      - N8N_EMAIL_SMTP_SENDER=${SMTP_SENDER}
+      - N8N_EMAIL_SMTP_SSL=${SMTP_SSL:-true}
+
+    volumes:
+      - n8n_data:/home/node/.n8n
+    depends_on:
+      - qdrant
+    networks:
+      - internal
+
+  n8n-worker:
+    image: n8nio/n8n
+    restart: always
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - EXECUTIONS_MODE=queue
+      - EXECUTIONS_PROCESS=worker
+      - TZ=${TZ:-America/New_York}
+      # Supabase/Postgres Connection
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=${SUPABASE_HOST}
+      - DB_POSTGRESDB_PORT=${SUPABASE_PORT:-5432}
+      - DB_POSTGRESDB_DATABASE=${SUPABASE_DB_NAME}
+      - DB_POSTGRESDB_USER=${SUPABASE_DB_USER}
+      - DB_POSTGRESDB_PASSWORD=${SUPABASE_DB_PASSWORD}
+      - DB_POSTGRESDB_SSL=${SUPABASE_DB_SSL:-require}
+      # Redis Cloud Connection (Essential for queue mode)
+      - QUEUE_BULL_REDIS_HOST=${REDIS_HOST}
+      - QUEUE_BULL_REDIS_PORT=${REDIS_PORT:-6379}
+      - QUEUE_BULL_REDIS_PASSWORD=${REDIS_PASSWORD}
+      - CACHE_MODE=redis
+      - CACHE_REDIS_HOST=${REDIS_HOST}
+      - CACHE_REDIS_PORT=${REDIS_PORT:-6379}
+      - CACHE_REDIS_PASSWORD=${REDIS_PASSWORD}
+      # Encryption Key (must be same as main instance)
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
+      # Other settings
+      - GENERIC_TIMEZONE=${TZ:-America/New_York}
+    volumes:
+      - n8n_data:/home/node/.n8n # Workers might need access to workflow files, depending on setup
+    depends_on:
+      - n8n-main # Ensures main instance starts first, good for migrations etc.
+      - qdrant
+    networks:
+      - internal
+
+  n8n-webhook:
+    image: n8nio/n8n
+    restart: always
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - EXECUTIONS_MODE=queue
+      - EXECUTIONS_PROCESS=webhook
+      - TZ=${TZ:-America/New_York}
+      # Supabase/Postgres Connection
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=${SUPABASE_HOST}
+      - DB_POSTGRESDB_PORT=${SUPABASE_PORT:-5432}
+      - DB_POSTGRESDB_DATABASE=${SUPABASE_DB_NAME}
+      - DB_POSTGRESDB_USER=${SUPABASE_DB_USER}
+      - DB_POSTGRESDB_PASSWORD=${SUPABASE_DB_PASSWORD}
+      - DB_POSTGRESDB_SSL=${SUPABASE_DB_SSL:-require}
+      # Redis Cloud Connection (Essential for queue mode)
+      - QUEUE_BULL_REDIS_HOST=${REDIS_HOST}
+      - QUEUE_BULL_REDIS_PORT=${REDIS_PORT:-6379}
+      - QUEUE_BULL_REDIS_PASSWORD=${REDIS_PASSWORD}
+      - CACHE_MODE=redis
+      - CACHE_REDIS_HOST=${REDIS_HOST}
+      - CACHE_REDIS_PORT=${REDIS_PORT:-6379}
+      - CACHE_REDIS_PASSWORD=${REDIS_PASSWORD}
+      # Encryption Key (must be same as main instance)
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
+      # Webhook specific settings (if any, N8N_TUNNEL_SUBDOMAIN for example if using tunnel)
+      # Other settings
+      - GENERIC_TIMEZONE=${TZ:-America/New_York}
+    volumes:
+      - n8n_data:/home/node/.n8n
+    depends_on:
+      - n8n-main
+      - qdrant
+    networks:
+      - internal
+    # Webhooks are usually exposed via the main n8n instance or a reverse proxy
+    # If direct access is needed, uncomment and configure ports:
+    # ports:
+    #   - "5679:5678" 
+
+  qdrant:
+    image: qdrant/qdrant
+    restart: always
+    ports:
+      - "6333:6333" # gRPC
+      - "6334:6334" # REST
+    volumes:
+      - qdrant_data:/qdrant/storage
+    environment:
+      # Qdrant specific config if needed, e.g. QDRANT_API_KEY for enterprise
+      - QDRANT__SERVICE__API_KEY=${QDRANT_API_KEY} # Example if API key is used
+    networks:
+      - internal
+
+  embedding-service:
+    image: vectorai/sentence-transformers-fastapi:latest
+    restart: always
+    environment:
+      # - MODEL_NAME=sentence-transformers/all-MiniLM-L6-v2 # Some images might use this
+      - PORT=8001 # Port inside the container
+    ports:
+      - "${EMBEDDING_PORT:-8001}:8001"
+    networks:
+      - internal
+    # Add a healthcheck if the image documentation provides one
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health/"] # Common health check endpoint
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+volumes:
+  n8n_data:
+  qdrant_data:
+
+networks:
+  internal:
+    driver: bridge
