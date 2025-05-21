@@ -27,6 +27,6 @@ jobs:
       - name: Send to docs workflow
         run: |
           curl -u docsWorkflows:${{ secrets.N8N_WEBHOOK_DOCS_PASSWORD }} \
-            --request POST 'https://internal.users.n8n.cloud/webhook/PENDING' \
+            --request POST 'https://internal.users.n8n.cloud/webhook/update-env-vars' \
             --header 'Content-Type: application/json' \
             --data "$(cat env-vars-output.json)"
