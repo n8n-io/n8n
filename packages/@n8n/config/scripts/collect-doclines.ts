@@ -82,7 +82,7 @@ function collectDoclines() {
 
 	interface DoclineEntry {
 		description: string;
-		defaultValue: string;
+		defaultValue: string | number | boolean | null; // MODIFIED HERE
 		type: string;
 
 		/** Picked up from @sections JSDoc tag */
@@ -145,14 +145,19 @@ function collectDoclines() {
 
 				const initializer = classField.getInitializer();
 
-				if (!initializer || !Node.isStringLiteral(initializer)) continue;
+				let defaultValue: string | number | boolean | null = null;
 
-				const tsMorphType = classField.getType();
+				if (!initializer) continue;
 
-				const defaultValue =
-					tsMorphType.isString() || isStringUnion(tsMorphType)
-						? initializer.getLiteralValue() // prevent quote wrapping "'value'"
-						: initializer.getText();
+				if (Node.isStringLiteral(initializer) || Node.isNumericLiteral(initializer)) {
+					defaultValue = initializer.getLiteralValue();
+				} else if (Node.isTrueLiteral(initializer)) {
+					defaultValue = true;
+				} else if (Node.isFalseLiteral(initializer)) {
+					defaultValue = false;
+				} else {
+					defaultValue = initializer.getText();
+				}
 
 				let propertyType = getPropertyType(classField);
 				let enumValues: DoclineEntry['enumValues'];
