@@ -1032,7 +1032,15 @@ export async function requestOAuth2(
 					});
 				}
 
-				return await this.helpers.httpRequest(refreshedRequestOption);
+				const result = await this.helpers.httpRequest(refreshedRequestOption);
+				const credential: IDataObject = node?.credentials?.[
+					credentialsType
+				] as unknown as IDataObject;
+				const credentialId: string | null = credential?.id?.toString() ?? null;
+				if (credentialId) {
+					additionalData.credentialsHelper.updateLastConnectedAt(credentialId);
+				}
+				return result;
 			}
 			throw error;
 		});
@@ -1052,6 +1060,13 @@ export async function requestOAuth2(
 				response.statusCode === tokenExpiredStatusCode
 			) {
 				throw response;
+			}
+			const credential: IDataObject = node?.credentials?.[
+				credentialsType
+			] as unknown as IDataObject;
+			const credentialId: string | null = credential?.id?.toString() ?? null;
+			if (credentialId) {
+				additionalData.credentialsHelper.updateLastConnectedAt(credentialId);
 			}
 			return response;
 		})
@@ -1119,7 +1134,15 @@ export async function requestOAuth2(
 					});
 				}
 
-				return await this.helpers.request(newRequestOptions as IRequestOptions);
+				const result = await this.helpers.request(newRequestOptions as IRequestOptions);
+				const credential: IDataObject = node?.credentials?.[
+					credentialsType
+				] as unknown as IDataObject;
+				const credentialId: string | null = credential?.id?.toString() ?? null;
+				if (credentialId) {
+					additionalData.credentialsHelper.updateLastConnectedAt(credentialId);
+				}
+				return result;
 			}
 
 			// Unknown error so simply throw it
