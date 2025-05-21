@@ -2892,7 +2892,7 @@
 	"settings.personal.mfa.toast.disabledMfa.message": "You will no longer need your authenticator app when signing in",
 	"settings.personal.mfa.toast.disabledMfa.error.message": "Error disabling two-factor authentication",
 	"settings.personal.mfa.toast.canEnableMfa.title": "MFA pre-requisite failed",
-	"settings.personal.mfa.enforced": "The settings on this instance require you to set up 2FA. Please enable it to continue working in this instance.",
+	"settings.personal.mfa.enforced": "The settings on this instance <strong>require you to set up 2FA</strong>. Please enable it to continue working in this instance.",
 	"settings.mfa.toast.noRecoveryCodeLeft.title": "No 2FA recovery codes remaining",
 	"settings.mfa.toast.noRecoveryCodeLeft.message": "You have used all of your recovery codes. Disable then re-enable two-factor authentication to generate new codes. <a href='/settings/personal' target='_blank' >Open settings</a>",
 	"sso.login.divider": "or",
