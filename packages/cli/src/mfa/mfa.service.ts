@@ -34,7 +34,14 @@ export class MfaService {
 	}
 
 	async enforceMFA(value: boolean) {
-		await this.settingsRepository.update({ key: MFA_ENFORCE_SETTING }, { value: `${value}` });
+		await this.settingsRepository.upsert(
+			{
+				key: MFA_ENFORCE_SETTING,
+				value: `${value}`,
+				loadOnStartup: true,
+			},
+			['key'],
+		);
 		this.enforceMFAValue = value;
 	}
 
