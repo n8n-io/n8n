@@ -1,23 +1,37 @@
-import { UserRepository } from '@n8n/db';
+import { SettingsRepository, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { Cipher } from 'n8n-core';
 import { v4 as uuid } from 'uuid';
 
+import config from '@/config';
 import { InvalidMfaCodeError } from '@/errors/response-errors/invalid-mfa-code.error';
 import { InvalidMfaRecoveryCodeError } from '@/errors/response-errors/invalid-mfa-recovery-code-error';
 
+import { MFA_ENFORCE_SETTING } from './constants';
 import { TOTPService } from './totp.service';
 
 @Service()
 export class MfaService {
+	private enforceMFAValue: boolean = false;
+
 	constructor(
 		private userRepository: UserRepository,
+		private settingsRepository: SettingsRepository,
 		public totp: TOTPService,
 		private cipher: Cipher,
 	) {}
 
 	generateRecoveryCodes(n = 10) {
 		return Array.from(Array(n)).map(() => uuid());
+	}
+
+	async enforceMFA(value: boolean) {
+		await this.settingsRepository.update({ key: MFA_ENFORCE_SETTING }, { value: `${value}` });
+		this.enforceMFAValue = value;
+	}
+
+	isMFAEnforced() {
+		return this.enforceMFAValue;
 	}
 
 	async saveSecretAndRecoveryCodes(userId: string, secret: string, recoveryCodes: string[]) {
