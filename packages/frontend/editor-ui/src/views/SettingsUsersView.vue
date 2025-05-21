@@ -236,6 +236,25 @@ async function onRoleChange(user: IUser, newRoleName: UpdateGlobalRolePayload['n
 		showError(e, i18n.baseText('settings.users.userReinviteError'));
 	}
 }
+
+async function onUpdateConnected(value: boolean) {
+	// try {
+	// 	saving.value = true;
+	// 	if (props.beforeUpdate) {
+	// 		const result = await props.beforeUpdate(value);
+	// 		if (!result) {
+	// 			saving.value = false;
+	// 			return;
+	// 		}
+	// 	}
+	// 	await externalSecretsStore.updateProviderConnected(props.provider.name, value);
+	// 	emit('change', value);
+	// } catch (error) {
+	// 	toast.showError(error, 'Error');
+	// } finally {
+	// 	saving.value = false;
+	// }
+}
 </script>
 
 <template>
@@ -259,6 +278,17 @@ async function onRoleChange(user: IUser, newRoleName: UpdateGlobalRolePayload['n
 				</n8n-tooltip>
 			</div>
 		</div>
+		<!-- <div>
+			<el-switch
+				:model-value="provider.connected"
+				:title="MarcTest"
+				:disabled="disabled"
+				data-test-id="settings-enforce-mfa"
+				@update:model-value="onUpdateConnected"
+			>
+			</el-switch>
+		</div> -->
+
 		<div v-if="!settingsStore.isBelowUserQuota" :class="$style.setupInfoContainer">
 			<n8n-action-box
 				:heading="
