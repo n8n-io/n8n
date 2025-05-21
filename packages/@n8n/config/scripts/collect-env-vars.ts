@@ -22,6 +22,10 @@ const project = new Project({
 	skipAddingFilesFromTsConfig: true,
 });
 
+// ----------------------------------
+//             utils
+// ----------------------------------
+
 function isStringUnion(type: TsMorphType): boolean {
 	return type.isUnion() && type.getUnionTypes().every((t) => t.isStringLiteral());
 }
@@ -80,6 +84,15 @@ function toEnumValues(schemaNode: Node) {
 	return values.length > 0 ? values : undefined;
 }
 
+function capitalize(s: string) {
+	if (s === '') return s;
+	return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+// ----------------------------------
+//              json
+// ----------------------------------
+
 /**
  * Collect doclines from all config classes, i.e. descriptions of env vars decorated with `@Env`.
  *
@@ -96,7 +109,7 @@ function toEnumValues(schemaNode: Node) {
  * }
  * ```
  */
-function collectEnvVarsJson() {
+function collectJson() {
 	const doclines: EnvVars = {};
 
 	project.addSourceFilesAtPaths('src/configs/**/*.ts');
@@ -192,10 +205,9 @@ function collectEnvVarsJson() {
 	return doclines;
 }
 
-function capitalize(s: string): string {
-	if (!s) return '';
-	return s.charAt(0).toUpperCase() + s.slice(1);
-}
+// ----------------------------------
+//             markdown
+// ----------------------------------
 
 export function toMarkdownTable(doclines: EnvVars): string {
 	let table = '';
@@ -222,7 +234,11 @@ export function toMarkdownTable(doclines: EnvVars): string {
 	return table;
 }
 
-const json = collectEnvVarsJson();
+// ----------------------------------
+//             script
+// ----------------------------------
+
+const json = collectJson();
 const markdown = toMarkdownTable(json);
 
 const output = {
