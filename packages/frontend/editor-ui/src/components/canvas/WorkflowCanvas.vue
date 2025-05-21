@@ -1,14 +1,14 @@
 <script setup lang="ts">
-import Canvas from '@/components/canvas/Canvas.vue';
-import { computed, ref, toRef, useCssModule } from 'vue';
-import type { Workflow } from 'n8n-workflow';
 import type { IWorkflowDb } from '@/Interface';
+import Canvas from '@/components/canvas/Canvas.vue';
 import { useCanvasMapping } from '@/composables/useCanvasMapping';
+import type { CanvasEventBusEvents } from '@/types';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
-import type { CanvasEventBusEvents } from '@/types';
-import { useVueFlow } from '@vue-flow/core';
+import { useVueFlow, type DefaultEdge } from '@vue-flow/core';
 import { throttledRef } from '@vueuse/core';
+import type { Workflow } from 'n8n-workflow';
+import { computed, ref, toRef, useCssModule } from 'vue';
 
 defineOptions({
 	inheritAttrs: false,
@@ -53,6 +53,58 @@ const { nodes: mappedNodes, connections: mappedConnections } = useCanvasMapping(
 	workflowObject,
 });
 
+const showExpressionReference = ref(false);
+
+const connectedExpressions = computed(() => {
+	const nodeNameIdMap = new Map<string, string>();
+
+	const expressionConnections = mappedNodes.value.reduce((acc, node) => {
+		if (!node.data) return acc;
+
+		const iNode = workflowObject.value.getNode(node.data.name);
+
+		if (!iNode) return acc;
+		nodeNameIdMap.set(node.data.name, node.id);
+
+		const sourceNodeNames = new Set(workflowObject.value.getReferencedNodeNamesFromNode(iNode));
+
+		acc.set(node.id, sourceNodeNames);
+		return acc;
+	}, new Map<string, Set<string>>());
+
+	return expressionConnections
+		.entries()
+		.reduce<DefaultEdge[]>((acc, [targetNodeId, sourceNodeNames]) => {
+			sourceNodeNames.values().forEach((nodeName) => {
+				const id = nodeNameIdMap.get(nodeName);
+
+				if (!id) return;
+
+				acc.push({
+					id: `${id}->${targetNodeId}`,
+					source: id,
+					target: targetNodeId,
+					type: 'expression-edge',
+					data: {
+						source: {
+							type: 'expression-connection',
+						},
+						references: [...sourceNodeNames.values()],
+					},
+					animated: true,
+				});
+			});
+			return acc;
+		}, []);
+});
+
+const allConnections = computed(() => {
+	if (!showExpressionReference.value) {
+		return mappedConnections.value;
+	}
+	return mappedConnections.value.concat(connectedExpressions.value);
+});
+
 const initialFitViewDone = ref(false); // Workaround for https://github.com/bcakmakoglu/vue-flow/issues/1636
 onNodesInitialized(() => {
 	if (!initialFitViewDone.value || props.showFallbackNodes) {
@@ -62,7 +114,7 @@ onNodesInitialized(() => {
 });
 
 const mappedNodesThrottled = throttledRef(mappedNodes, 200);
-const mappedConnectionsThrottled = throttledRef(mappedConnections, 200);
+const mappedConnectionsThrottled = throttledRef(allConnections, 200);
 </script>
 
 <template>
@@ -72,10 +124,11 @@ const mappedConnectionsThrottled = throttledRef(mappedConnections, 200);
 				v-if="workflow"
 				:id="id"
 				:nodes="executing ? mappedNodesThrottled : mappedNodes"
-				:connections="executing ? mappedConnectionsThrottled : mappedConnections"
+				:connections="executing ? mappedConnectionsThrottled : allConnections"
 				:event-bus="eventBus"
 				:read-only="readOnly"
 				v-bind="$attrs"
+				@show-expression-reference="showExpressionReference = !showExpressionReference"
 			/>
 		</div>
 		<slot />

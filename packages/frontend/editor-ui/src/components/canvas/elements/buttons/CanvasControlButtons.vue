@@ -22,6 +22,7 @@ const emit = defineEmits<{
 	'zoom-out': [];
 	'zoom-to-fit': [];
 	'tidy-up': [];
+	'show-expression-reference': [];
 }>();
 
 const i18n = useI18n();
@@ -46,6 +47,10 @@ function onZoomToFit() {
 
 function onTidyUp() {
 	emit('tidy-up');
+}
+
+function showExpressionsReference() {
+	emit('show-expression-reference');
 }
 </script>
 <template>
@@ -109,6 +114,16 @@ function onTidyUp() {
 				<TidyUpIcon />
 			</N8nButton>
 		</KeyboardShortcutTooltip>
+		<N8nButton
+			square
+			type="tertiary"
+			size="large"
+			data-test-id="expression-reference-button"
+			:class="$style.iconButton"
+			@click="showExpressionsReference"
+		>
+			{}
+		</N8nButton>
 	</Controls>
 </template>
 

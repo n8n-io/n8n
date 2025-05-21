@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { useViewportAutoAdjust } from '@/components/canvas/composables/useViewportAutoAdjust';
 import ContextMenu from '@/components/ContextMenu/ContextMenu.vue';
 import type { CanvasLayoutEvent, CanvasLayoutSource } from '@/composables/useCanvasLayout';
 import { useCanvasLayout } from '@/composables/useCanvasLayout';
@@ -14,9 +15,9 @@ import type {
 	CanvasConnection,
 	CanvasEventBusEvents,
 	CanvasNode,
+	CanvasNodeData,
 	CanvasNodeMoveEvent,
 	ConnectStartEvent,
-	CanvasNodeData,
 } from '@/types';
 import { CanvasNodeRenderType } from '@/types';
 import { getMousePosition, GRID_SIZE } from '@/utils/nodeViewUtils';
@@ -52,8 +53,8 @@ import {
 import CanvasBackground from './elements/background/CanvasBackground.vue';
 import CanvasArrowHeadMarker from './elements/edges/CanvasArrowHeadMarker.vue';
 import Edge from './elements/edges/CanvasEdge.vue';
+import CanvasExpressionEdge from './elements/edges/CanvasExpressionEdge.vue';
 import Node from './elements/nodes/CanvasNode.vue';
-import { useViewportAutoAdjust } from '@/components/canvas/composables/useViewportAutoAdjust';
 
 const $style = useCssModule();
 
@@ -880,6 +881,10 @@ provide(CanvasKey, {
 			</slot>
 		</template>
 
+		<template #edge-expression-edge="edgeProps">
+			<CanvasExpressionEdge v-bind="edgeProps" :marker-end="`url(#${arrowHeadMarkerId})`" />
+		</template>
+
 		<template #edge-canvas-edge="edgeProps">
 			<Edge
 				v-bind="edgeProps"
@@ -930,6 +935,7 @@ provide(CanvasKey, {
 			@zoom-out="onZoomOut"
 			@reset-zoom="onResetZoom"
 			@tidy-up="onTidyUp({ source: 'canvas-button' })"
+			@show-expression-reference="emit('show-expression-reference')"
 		/>
 
 		<Suspense>
