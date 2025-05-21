@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { computed, defineProps, type PropType } from 'vue';
 import type { PaneNode, LeafPane, SplitPane } from '@/components/WindowManager/types';
+import { SplitDirection } from '@/components/WindowManager/types';
 import { cloneStore } from '@/stores/workflows.store';
 import NodeView from '@/views/NodeView.vue';
 
@@ -25,6 +26,41 @@ const flexValues = computed(() => {
 	}
 	return Array(children.length).fill(100);
 });
+
+function startDrag(idx: number, event: MouseEvent) {
+	if (!splitNode.value) return;
+
+	const container = (event.currentTarget as HTMLElement).parentElement as HTMLElement;
+	const isHorizontal = splitNode.value.direction === SplitDirection.Horizontal;
+
+	const total = isHorizontal ? container.clientWidth : container.clientHeight;
+	const startClient = isHorizontal ? event.clientX : event.clientY;
+	const weight1Start = splitNode.value.weights[idx];
+	const weight2Start = splitNode.value.weights[idx + 1];
+
+	function onMove(moveEvent: MouseEvent) {
+		if (!splitNode.value) return;
+
+		const current = isHorizontal ? moveEvent.clientX : moveEvent.clientY;
+		const delta = current - startClient;
+		const weightChange = delta / total;
+
+		const weight1 = weight1Start + weightChange;
+		const weight2 = weight2Start - weightChange;
+
+		splitNode.value.weights[idx] = weight1;
+		splitNode.value.weights[idx + 1] = weight2;
+	}
+
+	function stopDrag() {
+		document.removeEventListener('mousemove', onMove);
+		document.removeEventListener('mouseup', stopDrag);
+	}
+
+	document.addEventListener('mousemove', onMove);
+	document.addEventListener('mouseup', stopDrag);
+	event.preventDefault();
+}
 </script>
 
 <template>
@@ -36,14 +72,22 @@ const flexValues = computed(() => {
 		}"
 	>
 		<template v-if="isSplit">
-			<div
-				v-for="(child, idx) in splitNode!.children"
-				:key="idx"
-				:style="{ flex: `${flexValues[idx]} 1 0%` }"
-				class="$style.wrapper"
-			>
-				<Pane :node="child" />
-			</div>
+			<template v-for="(child, idx) in splitNode!.children" :key="idx">
+				<div :style="{ flex: `${flexValues[idx]} 1 0%` }" class="$style.wrapper">
+					<Pane :node="child" />
+				</div>
+
+				<div
+					v-if="idx < splitNode!.children.length - 1"
+					:class="[
+						$style.resizer,
+						splitNode!.direction === 'horizontal'
+							? $style.resizerVertical
+							: $style.resizerHorizontal,
+					]"
+					@mousedown="startDrag(idx, $event)"
+				/>
+			</template>
 		</template>
 
 		<template v-else-if="workflowId">
@@ -69,5 +113,20 @@ const flexValues = computed(() => {
 	min-width: 0;
 	min-height: 0;
 	display: flex;
+}
+.resizer {
+	background: var(--color-background-xlight);
+	transition: background 0.2s;
+	&:hover {
+		background: var(--color-primary);
+	}
+}
+.resizerVertical {
+	width: 5px;
+	cursor: col-resize;
+}
+.resizerHorizontal {
+	height: 5px;
+	cursor: row-resize;
 }
 </style>
