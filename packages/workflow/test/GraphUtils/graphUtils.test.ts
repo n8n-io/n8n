@@ -1,4 +1,4 @@
-import type { IConnection, NodeConnectionType } from '@/index';
+import type { IConnection, IConnections, NodeConnectionType } from '@/index';
 
 import {
 	getInputEdges,
@@ -7,6 +7,7 @@ import {
 	getLeafNodes,
 	parseExtractableSubgraphSelection,
 	hasPath,
+	buildAdjacencyList,
 } from '../../src/Graph/graphUtils';
 
 function makeConnection(
@@ -412,6 +413,73 @@ describe('graphUtils', () => {
 
 			const result = hasPath('A', 'A', adjacencyList);
 			expect(result).toBe(true);
+		});
+	});
+	describe('buildAdjacencyList', () => {
+		it('should build an adjacency list from connections by source node', () => {
+			const connectionsBySourceNode: IConnections = {
+				A: {
+					main: [
+						[
+							{ node: 'B', index: 0, type: 'main' },
+							{ node: 'C', index: 1, type: 'main' },
+						],
+					],
+				},
+				B: {
+					main: [[{ node: 'D', index: 0, type: 'main' }]],
+				},
+			};
+
+			const result = buildAdjacencyList(connectionsBySourceNode);
+
+			expect(result).toEqual(
+				new Map<string, Set<IConnection>>([
+					['A', new Set([makeConnection('B', 0), makeConnection('C', 1)])],
+					['B', new Set([makeConnection('D', 0)])],
+				]),
+			);
+		});
+
+		it('should handle an empty connections object', () => {
+			const connectionsBySourceNode = {};
+
+			const result = buildAdjacencyList(connectionsBySourceNode);
+
+			expect(result).toEqual(new Map());
+		});
+
+		it('should handle connections with multiple types', () => {
+			const connectionsBySourceNode: IConnections = {
+				A: {
+					main: [[{ node: 'B', index: 0, type: 'main' }]],
+					ai_tool: [[{ node: 'C', index: 1, type: 'ai_tool' }]],
+				},
+			};
+
+			const result = buildAdjacencyList(connectionsBySourceNode);
+
+			expect(result).toEqual(
+				new Map<string, Set<IConnection>>([
+					['A', new Set([makeConnection('B', 0, 'main'), makeConnection('C', 1, 'ai_tool')])],
+				]),
+			);
+		});
+
+		it('should handle connections with multiple indices', () => {
+			const connectionsBySourceNode: IConnections = {
+				A: {
+					main: [[{ node: 'B', index: 0, type: 'main' }], [{ node: 'C', index: 1, type: 'main' }]],
+				},
+			};
+
+			const result = buildAdjacencyList(connectionsBySourceNode);
+
+			expect(result).toEqual(
+				new Map<string, Set<IConnection>>([
+					['A', new Set([makeConnection('B', 0), makeConnection('C', 1)])],
+				]),
+			);
 		});
 	});
 });

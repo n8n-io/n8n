@@ -49,8 +49,6 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 	const nodeTypesStore = useNodeTypesStore();
 	const workflowsStore = useWorkflowsStore();
 	const sourceControlStore = useSourceControlStore();
-	const workflowExtraction = useWorkflowExtraction();
-
 	const i18n = useI18n();
 
 	const workflowPermissions = computed(

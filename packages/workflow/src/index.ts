@@ -56,6 +56,7 @@ export {
 	buildAdjacencyList,
 	type ExtractableErrorResult,
 	type ExtractableSubgraphData,
+	type IConnectionAdjacencyList as AdjacencyList,
 } from './Graph/graphUtils';
 export { NativeMethods } from './NativeMethods';
 export * from './NodeParameters/FilterParameter';

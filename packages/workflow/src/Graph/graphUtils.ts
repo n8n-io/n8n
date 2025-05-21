@@ -33,14 +33,14 @@ export type ExtractableErrorResult =
 	| OutputEdgeFromNonLeafNode
 	| NoContinuousPathFromRootToLeaf;
 
-type AdjacencyList = Map<string, Set<IConnection>>;
+export type IConnectionAdjacencyList = Map<string, Set<IConnection>>;
 
 /**
  * Find all edges leading into the graph described in `graphIds`.
  */
 export function getInputEdges(
 	graphIds: Set<string>,
-	adjacencyList: AdjacencyList,
+	adjacencyList: IConnectionAdjacencyList,
 ): Array<[string, IConnection]> {
 	const result: Array<[string, IConnection]> = [];
 	for (const [from, tos] of adjacencyList.entries()) {
@@ -61,7 +61,7 @@ export function getInputEdges(
  */
 export function getOutputEdges(
 	graphIds: Set<string>,
-	adjacencyList: AdjacencyList,
+	adjacencyList: IConnectionAdjacencyList,
 ): Array<[string, IConnection]> {
 	const result: Array<[string, IConnection]> = [];
 	for (const [from, tos] of adjacencyList.entries()) {
@@ -100,7 +100,10 @@ function difference<T>(minuend: Set<T>, subtrahend: Set<T>): Set<T> {
 	return result;
 }
 
-export function getRootNodes(graphIds: Set<string>, adjacencyList: AdjacencyList): Set<string> {
+export function getRootNodes(
+	graphIds: Set<string>,
+	adjacencyList: IConnectionAdjacencyList,
+): Set<string> {
 	// Inner nodes are all nodes with an incoming edge from another node in the graph
 	let innerNodes = new Set<string>();
 	for (const nodeId of graphIds) {
@@ -117,7 +120,10 @@ export function getRootNodes(graphIds: Set<string>, adjacencyList: AdjacencyList
 	return difference(graphIds, innerNodes);
 }
 
-export function getLeafNodes(graphIds: Set<string>, adjacencyList: AdjacencyList): Set<string> {
+export function getLeafNodes(
+	graphIds: Set<string>,
+	adjacencyList: IConnectionAdjacencyList,
+): Set<string> {
 	const result = new Set<string>();
 	for (const nodeId of graphIds) {
 		if (
@@ -136,7 +142,7 @@ export function getLeafNodes(graphIds: Set<string>, adjacencyList: AdjacencyList
 	return result;
 }
 
-export function hasPath(start: string, end: string, adjacencyList: AdjacencyList) {
+export function hasPath(start: string, end: string, adjacencyList: IConnectionAdjacencyList) {
 	const seen = new Set<string>();
 	const paths: string[] = [start];
 	while (true) {
@@ -161,7 +167,9 @@ export type ExtractableSubgraphData = {
 	end?: string;
 };
 
-export function buildAdjacencyList(connectionsBySourceNode: IConnections): AdjacencyList {
+export function buildAdjacencyList(
+	connectionsBySourceNode: IConnections,
+): IConnectionAdjacencyList {
 	const result = new Map<string, Set<IConnection>>();
 	const addOrCreate = (k: string, v: IConnection) =>
 		result.set(k, union(result.get(k) ?? new Set(), new Set([v])));
@@ -200,7 +208,7 @@ export function buildAdjacencyList(connectionsBySourceNode: IConnections): Adjac
  */
 export function parseExtractableSubgraphSelection(
 	graphIds: Set<string>,
-	adjacencyList: AdjacencyList,
+	adjacencyList: IConnectionAdjacencyList,
 ): ExtractableSubgraphData | ExtractableErrorResult[] {
 	const errors: ExtractableErrorResult[] = [];
 
