@@ -66,23 +66,25 @@ export class DatastoreService {
 	}
 
 	async createDatastore(createDatastore: CreateDatastoreDto): Promise<Datastore> {
-		const datastore = await this.datastoreRepository.save({
-			name: createDatastore.name,
-		});
+		const datastore = await this.datastoreRepository.save(
+			this.datastoreRepository.create({ name: createDatastore.name }),
+		);
 		const fields = createDatastore.fields.map((field) => ({
 			...field,
 			datastoreId: datastore.id,
 		}));
 
-		await this.datastoreFieldRepository.insert(fields);
+		for (const field of fields) {
+			await this.datastoreFieldRepository.save(this.datastoreFieldRepository.create(field));
+		}
 
-		// TODO : make sure to parametrize the table name and column names to avoid SQL injection
-		const columnsFields = fields.map((field) => `?? ${columnTypeMapping(field.type)}`);
+		// TODO : make sure to sanitize the table name and column names to avoid SQL injection
+		const tableName = `datastore_${datastore.id}`;
+		const columnsFields = fields.map(
+			(field) => `\`${field.name}\` ${columnTypeMapping(field.type)}`,
+		);
 		await this.datastoreRepository.manager.query(
-			`CREATE TABLE IF NOT EXISTS ?? (id VARCHAR(36) PRIMARY KEY) ${
-				columnsFields.length > 0 ? `, ${columnsFields.join(', ')}` : ''
-			}`,
-			[`datastore_${datastore.id}`, ...fields.map((field) => field.name)],
+			`CREATE TABLE IF NOT EXISTS \`${tableName}\` (id VARCHAR(36) PRIMARY KEY${columnsFields.length > 0 ? `, ${columnsFields.join(', ')}` : ''})`,
 		);
 
 		return datastore;
