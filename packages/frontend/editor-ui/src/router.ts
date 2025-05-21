@@ -21,6 +21,7 @@ import { tryToParseNumber } from '@/utils/typesUtils';
 import { projectsRoutes } from '@/routes/projects.routes';
 import { insightsRoutes } from '@/features/insights/insights.router';
 import TestDefinitionRunDetailView from './views/TestDefinition/TestDefinitionRunDetailView.vue';
+import WindowManagerView from './views/WindowManagerView.vue';
 
 const ChangePasswordView = async () => await import('./views/ChangePasswordView.vue');
 const ErrorView = async () => await import('./views/ErrorView.vue');
@@ -358,7 +359,7 @@ export const routes: RouteRecordRaw[] = [
 		path: '/workflow/new',
 		name: VIEWS.NEW_WORKFLOW,
 		components: {
-			default: NodeView,
+			default: WindowManagerView,
 			header: MainHeader,
 			sidebar: MainSidebar,
 			footer: CanvasChatSwitch,
