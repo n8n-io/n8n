@@ -31,6 +31,7 @@ export type AuthenticatedRequest<
 	RequestQuery = {},
 > = Omit<APIRequest<RouteParams, ResponseBody, RequestBody, RequestQuery>, 'user' | 'cookies'> & {
 	user: User;
+	usedMfa: boolean;
 	cookies: Record<string, string | undefined>;
 	headers: express.Request['headers'] & {
 		'push-ref': string;
