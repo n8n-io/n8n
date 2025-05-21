@@ -59,6 +59,8 @@ spec:
               value: "5678"
             - name: WEBHOOK_URL
               value: "http://192.168.68.120:30567"
+            - name: NODE_FUNCTION_ALLOW_EXTERNAL
+              value: "node-fetch"
           image: ghcr.io/ozlevka/n8n:v0.0.3
           name: n8n
           ports:
