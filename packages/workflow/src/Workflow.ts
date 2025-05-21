@@ -362,6 +362,25 @@ export class Workflow {
 		return extractNodeNames(expression, Object.keys(this.nodes));
 	}
 
+	getReferencedNodeNamesFromNode(node: INode) {
+		const referencedNodeNames: string[] = [];
+		console.log('node.name', node.name);
+		for (const [key, value] of Object.entries(node.parameters)) {
+			console.log('key', key);
+			console.log('value', value);
+
+			const expressions = this.getExpressions(value);
+			console.log('expressions', expressions);
+
+			for (const expression of expressions) {
+				referencedNodeNames.push(...this.getReferencedNodeNames(expression));
+				console.log('referencedNodeNames', referencedNodeNames);
+			}
+		}
+
+		return referencedNodeNames;
+	}
+
 	renameNodeInParameterValue(
 		parameterValue: NodeParameterValueType,
 		currentName: string,
