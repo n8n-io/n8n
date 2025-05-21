@@ -220,7 +220,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		canDrop: false,
 		stickyPosition: null,
 	});
-
 	const stateIsDirty = ref<boolean>(false);
 	const lastSelectedNode = ref<string | null>(null);
 	const lastSelectedNodeOutputIndex = ref<number | null>(null);

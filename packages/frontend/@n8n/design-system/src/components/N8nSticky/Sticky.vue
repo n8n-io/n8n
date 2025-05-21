@@ -30,10 +30,20 @@ const resWidth = computed((): number => {
 
 const inputName = computed(() => (props.id ? `${props.id}-input` : undefined));
 
+// [ria] implement custom colors here
 const styles = computed((): { height: string; width: string } => ({
 	height: `${resHeight.value}px`,
 	width: `${resWidth.value}px`,
 }));
+
+const backgroundColorStyles = computed(() => {
+	if (typeof props.backgroundColor === 'string') {
+		return {
+			'--color-sticky-background': props.backgroundColor,
+		};
+	}
+	return {};
+});
 
 const shouldShowFooter = computed((): boolean => resHeight.value > 100 && resWidth.value > 155);
 
@@ -81,9 +91,9 @@ const onInputScroll = (event: WheelEvent) => {
 			'n8n-sticky': true,
 			[$style.sticky]: true,
 			[$style.clickable]: !isResizing,
-			[$style[`color-${backgroundColor}`]]: true,
+			[$style[`color-${backgroundColor}`]]: typeof backgroundColor === 'number', // [ria] here
 		}"
-		:style="styles"
+		:style="[styles, backgroundColorStyles]"
 		@keydown.prevent
 	>
 		<div v-show="!editMode" :class="$style.wrapper" @dblclick.stop="onDoubleClick">

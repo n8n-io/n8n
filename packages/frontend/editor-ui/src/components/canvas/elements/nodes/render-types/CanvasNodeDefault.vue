@@ -65,6 +65,7 @@ const classes = computed(() => {
 	};
 });
 
+// [ria] we can make dynamic colors using styles
 const styles = computed(() => {
 	const stylesObject: Record<string, string | number> = {};
 

@@ -23,7 +23,11 @@ const $style = useCssModule();
 
 const { id, isSelected, isReadOnly, render, eventBus } = useCanvasNode();
 
-const renderOptions = computed(() => render.value.options as CanvasNodeStickyNoteRender['options']);
+const renderOptions = computed(() => render.value.options as CanvasNodeStickyNoteRender['options']); // [ria] here
+
+const updateStickyColor = (color: number | string) => {
+	emit('update', { color });
+};
 
 const classes = computed(() => ({
 	[$style.sticky]: true,
@@ -95,6 +99,7 @@ onBeforeUnmount(() => {
 	eventBus.value?.off('update:node:activated', onActivate);
 });
 </script>
+
 <template>
 	<NodeResizer
 		:min-height="80"

@@ -93,7 +93,7 @@ export type CanvasNodeStickyNoteRender = {
 	options: Partial<{
 		width: number;
 		height: number;
-		color: number;
+		color: number | string; // [ria] account for custom hex color selection
 		content: string;
 	}>;
 };

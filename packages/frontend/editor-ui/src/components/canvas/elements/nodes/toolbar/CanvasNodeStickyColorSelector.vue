@@ -2,20 +2,32 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useI18n } from '@/composables/useI18n';
 import { useCanvasNode } from '@/composables/useCanvasNode';
+import { useUIStore } from '@/stores/ui.store'; // [ria] uses UIStore to store custom hex color selection
 import type { CanvasNodeStickyNoteRender } from '@/types';
+import { N8nColorPicker } from '@n8n/design-system';
 
 const emit = defineEmits<{
-	update: [color: number];
+	update: [color: number | string]; // [ria] string for custom hex color selection
 }>();
 
 const i18n = useI18n();
+const uiStore = useUIStore(); // [ria] initialize UIStore to store custom hex color selection
 
 const { render, eventBus } = useCanvasNode();
 const renderOptions = computed(() => render.value.options as CanvasNodeStickyNoteRender['options']);
 
 const autoHideTimeout = ref<NodeJS.Timeout | null>(null);
 
-const colors = computed(() => Array.from({ length: 7 }).map((_, index) => index + 1));
+// [ria] get or initialize custom color from UI store
+const customStickyColor = computed({
+	get: () => uiStore.customStickyColor, // [ria] maybe use default color here
+	set: (color: string) => {
+		uiStore.customStickyColor = color;
+	},
+});
+
+// [ria] keep standard fixed colors
+const colors = computed(() => Array.from({ length: 7 }).map((_, index) => index + 1)); // [ria] need to make changes here
 
 const isPopoverVisible = defineModel<boolean>('visible');
 
@@ -28,8 +40,21 @@ function showPopover() {
 }
 
 function changeColor(index: number) {
-	emit('update', index);
+	if (index === 8) {
+		// [ria] apply custom color when selecting 8th option
+		emit('update', customStickyColor.value);
+	} else {
+		emit('update', index);
+	}
 	hidePopover();
+}
+
+// [ria] to update and use custom color in the UI store
+function onColorPickerChange(value: string) {
+	customStickyColor.value = value;
+	if (renderOptions.value.color === 8 || typeof renderOptions.value.color === 'string') {
+		emit('update', value);
+	}
 }
 
 function onMouseEnter() {
@@ -76,17 +101,37 @@ onBeforeUnmount(() => {
 			</div>
 		</template>
 		<div :class="$style.content">
-			<div
-				v-for="color in colors"
-				:key="color"
-				data-test-id="color"
-				:class="[
-					$style.color,
-					$style[`sticky-color-${color}`],
-					renderOptions.color === color ? $style.selected : '',
-				]"
-				@click="changeColor(color)"
-			></div>
+			<!-- original fixed color options (1-7) -->
+			<div :class="$style.presetColors">
+				<div
+					v-for="color in colors.slice(0, 7)"
+					:key="color"
+					data-test-id="color"
+					:class="[
+						$style.color,
+						$style[`sticky-color-${color}`],
+						renderOptions.color === color ? $style.selected : '',
+					]"
+					@click="changeColor(color)"
+				></div>
+			</div>
+			<!-- custom color (8th option) -->
+			<div :class="$style.customColorOption">
+				<div
+					:class="[
+						$style.color,
+						$style.customColor,
+						renderOptions.color === 8 || typeof renderOptions.color === 'string'
+							? $style.selected
+							: '',
+					]"
+					:style="{ backgroundColor: customStickyColor }"
+					@click="changeColor(8)"
+				></div>
+				<div :class="$style.colorPickerContainer">
+					<N8nColorPicker v-model="customStickyColor" size="small" @change="onColorPickerChange" />
+				</div>
+			</div>
 		</div>
 	</N8nPopover>
 </template>
@@ -105,9 +150,29 @@ onBeforeUnmount(() => {
 	gap: var(--spacing-2xs);
 }
 
+.presetColors {
+	display: flex;
+	flex-direction: row;
+	width: fit-content;
+	gap: var(--spacing-2xs);
+}
+
+.customColorOption {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-2xs);
+	margin-top: var(--spacing-2xs);
+	padding-top: var(--spacing-2xs);
+	border-top: 1px solid var(--color-foreground-light);
+}
+
+.colorPickerContainer {
+	flex-grow: 1;
+}
+
 .color {
-	width: 20px;
-	height: 20px;
+	width: 24px;
+	height: 24px;
 	border-width: 1px;
 	border-style: solid;
 	border-color: var(--color-foreground-xdark);
@@ -148,6 +213,9 @@ onBeforeUnmount(() => {
 
 	&.sticky-color-7 {
 		--color-sticky-background: var(--color-sticky-background-7);
+	}
+	&.customColor {
+		flex-shrink: 0;
 	}
 }
 
