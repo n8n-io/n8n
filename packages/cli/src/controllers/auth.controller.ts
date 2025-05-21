@@ -118,7 +118,9 @@ export class AuthController {
 	}
 
 	/** Check if the user is already logged in */
-	@Get('/login')
+	@Get('/login', {
+		allowSkipMFA: true,
+	})
 	async currentUser(req: AuthenticatedRequest): Promise<PublicUser> {
 		return await this.userService.toPublic(req.user, {
 			posthog: this.postHog,
