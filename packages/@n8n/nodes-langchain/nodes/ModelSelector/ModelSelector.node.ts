@@ -4,10 +4,69 @@ import {
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
 	type SupplyData,
+    NodeOperationError,
+    ILoadOptionsFunctions,
+    INodeProperties,
+    INodeParameters,
 } from 'n8n-workflow';
 
-import { configuredInputs } from './helpers/util';
 
+
+function configuredInputs(parameters: INodeParameters): INodeOutputConfiguration[] {
+	return Array.from({ length: (parameters.numberInputs as number) || 2 }, (_, i) => ({
+		type: 'ai_languageModel',
+		displayName: `Model ${(i + 1).toString()}`,
+	}));
+};
+
+export const numberInputsProperty: INodeProperties = {
+	displayName: 'Number of Inputs',
+	name: 'numberInputs',
+	type: 'options',
+	noDataExpression: true,
+	default: 2,
+	options: [
+		{
+			name: '2',
+			value: 2,
+		},
+		{
+			name: '3',
+			value: 3,
+		},
+		{
+			name: '4',
+			value: 4,
+		},
+		{
+			name: '5',
+			value: 5,
+		},
+		{
+			name: '6',
+			value: 6,
+		},
+		{
+			name: '7',
+			value: 7,
+		},
+		{
+			name: '8',
+			value: 8,
+		},
+		{
+			name: '9',
+			value: 9,
+		},
+		{
+			name: '10',
+			value: 10,
+		},
+	],
+	validateType: 'number',
+	description:
+		'The number of data inputs you want to merge. The node waits for all connected inputs to be executed.',
+};
 export class ModelSelector implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Model Selector',
@@ -18,41 +77,130 @@ export class ModelSelector implements INodeType {
 		},
 		version: 1,
 		group: ['transform'],
-		description: 'Selects one of the models connected to this node based on the input data',
-		inputs: `={{(${configuredInputs})($parameter)}}`,
+		description: 'Selects one of the models connected to this node based on workflow data',
+			inputs: `={{
+				((parameters) => {
+					${configuredInputs.toString()};
+					return configuredInputs(parameters)
+				})($parameter)
+			}}`,
 		outputs: [NodeConnectionTypes.AiLanguageModel],
 		requiredInputs: 1,
 		properties: [
+			numberInputsProperty,
 			{
-				displayName: 'Model Index',
-				name: 'modelIndex',
-				type: 'number',
-				required: true,
-				default: 0,
-			},
-			{
-				displayName: 'Number Of Models',
-				name: 'numberInputs',
-				type: 'number',
-				required: true,
-				default: 2,
+				displayName: 'Rules',
+				name: 'rules',
+				placeholder: 'Add Rule',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+					sortable: true,
+				},
+				description: 'Rules to map workflow data to specific models',
+				default: {},
+				options: [
+					{
+						displayName: 'Rule',
+						name: 'rule',
+						values: [
+							{
+								displayName: 'Model',
+								name: 'modelIndex',
+								type: 'options',
+								description: 'Choose from the list',
+								required: true,
+								default: '1',
+								typeOptions: {
+									loadOptionsMethod: 'getModels',
+								},
+							},
+							{
+								displayName: 'Conditions',
+								name: 'conditions',
+								placeholder: 'Add Condition',
+								type: 'filter',
+								default: {},
+								typeOptions: {
+									filter: {
+										caseSensitive: true,
+										typeValidation: 'strict',
+										version: 2,
+									},
+								},
+								description: 'Conditions that must be met to select this model',
+							},
+						],
+					},
+				],
 			},
 		],
 	};
 
+	methods = {
+		loadOptions: {
+			async getModels(this: ILoadOptionsFunctions) {
+				const numberInputs = this.getCurrentNodeParameter('numberInputs') as number;
+
+				return Array.from({ length: numberInputs ?? 2 }, (_, i) => ({
+					value: i+1,
+					name: `Model ${(i + 1).toString()}`,
+				}));
+			},
+		},
+	};
+
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const index = this.getNodeParameter('modelIndex', 0, 0) as number;
 		const models = (await this.getInputConnectionData(
 			NodeConnectionTypes.AiLanguageModel,
 			itemIndex,
 		)) as unknown[];
 
-		const pass = this.getNodeParameter('conditions', itemIndex, false, {
-			extractValue: true,
-		}) as boolean;
-		models.reverse(); // Reverse indices to get oldest to newest
-		return {
-			response: models[index],
-		};
+		if (!models || models.length === 0) {
+			throw new NodeOperationError(this.getNode(), 'No models connected', {
+				itemIndex,
+				description: 'No models found in input connections'
+			});
+		}
+		models.reverse();
+
+		const rules = this.getNodeParameter('rules.rule', itemIndex, []) as any[];
+
+		if (!rules || rules.length === 0) {
+			throw new NodeOperationError(this.getNode(), 'No rules defined', {
+				itemIndex,
+				description: 'At least one rule must be defined to select a model'
+			});
+		}
+
+		// Evaluate each rule
+		for (let i = 0; i < rules.length; i++) {
+			const rule = rules[i];
+			const modelIndex = parseInt(rule.modelIndex as string, 10);
+
+			// Check if model index is valid
+			if (modelIndex < 1 || modelIndex > models.length) {
+				throw new NodeOperationError(this.getNode(), `Invalid model index ${modelIndex}`, {
+					itemIndex,
+					description: `Model index must be between 1 and ${models.length}`
+				});
+			}
+
+			// Evaluate conditions using n8n's built-in evaluation
+			const conditionsMet = this.getNodeParameter(`rules.rule[${i}].conditions`, itemIndex, false, {
+				extractValue: true,
+			}) as boolean;
+
+			if (conditionsMet) {
+				return {
+					response: models[modelIndex - 1]
+				};
+			}
+		}
+
+		throw new NodeOperationError(this.getNode(), 'No matching rule found', {
+			itemIndex,
+			description: 'None of the defined rules matched the workflow data'
+		});
 	}
 }
