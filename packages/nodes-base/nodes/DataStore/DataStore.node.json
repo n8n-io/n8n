@@ -1,0 +1,25 @@
+{
+	"node": "n8n-nodes-base.dataStore",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"details": "Data Store",
+	"categories": ["Development", "Core Nodes"],
+	"resources": {
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.dataStore/"
+			}
+		],
+		"generic": [
+			{
+				"label": "How to build a low-code, self-hosted URL shortener in 3 steps",
+				"icon": "🔗",
+				"url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/"
+			}
+		]
+	},
+	"alias": ["data", "sheet"],
+	"subcategories": {
+		"Core Nodes": ["Data Transformation"]
+	}
+}
