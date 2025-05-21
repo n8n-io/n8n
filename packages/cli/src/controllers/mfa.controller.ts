@@ -25,7 +25,7 @@ export class MFAController {
 			// MFA set up for them self. We are forbidding this, to
 			// help the user not lock them selfs out.
 			throw new BadRequestError(
-				'Cannot enforce MFA when current user does not have MFA enabled and used.',
+				'You must enable two-factor authentication on your own account before enforcing it for all users',
 			);
 		}
 		await this.mfaService.enforceMFA(req.body.enforce);
