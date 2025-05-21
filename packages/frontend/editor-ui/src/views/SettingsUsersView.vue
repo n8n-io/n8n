@@ -244,7 +244,9 @@ async function onUpdateMfaEnforced(value: boolean) {
 		await usersStore.updateEnforceMfa(value);
 		showToast({
 			type: 'success',
-			title: i18n.baseText('settings.personal.mfa.enforce.success.title'),
+			title: value
+				? i18n.baseText('settings.personal.mfa.enforce.enabled.title')
+				: i18n.baseText('settings.personal.mfa.enforce.disabled.title'),
 			message: value
 				? i18n.baseText('settings.personal.mfa.enforce.enabled.message')
 				: i18n.baseText('settings.personal.mfa.enforce.disabled.message'),
