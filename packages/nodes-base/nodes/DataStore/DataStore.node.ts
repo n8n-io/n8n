@@ -140,6 +140,27 @@ export class DataStore implements INodeType {
 						});
 					}
 				}
+				if (resource === 'row') {
+					if (operation === 'get') {
+						const tableId = this.getNodeParameter('tableId', i, '', {
+							extractValue: true,
+						}) as string;
+
+						const response = (await this.helpers.httpRequest({
+							method: 'GET',
+							url: `https://nikhilkuriakose.app.n8n.cloud/webhook/78e49f0d-75bb-4307-b3f8-0cfedc38b28c/datastore/${tableId}/records`,
+						})) as IDataObject[];
+
+						// returnData.push({
+						// 	json: response,
+						// });
+						(response ?? []).forEach((item) => {
+							returnData.push({
+								json: item,
+							});
+						});
+					}
+				}
 			} catch (error) {
 				if (this.continueOnFail()) {
 					returnData.push({

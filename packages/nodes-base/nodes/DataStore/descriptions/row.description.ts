@@ -14,27 +14,17 @@ export const rowOperations: INodeProperties = {
 	},
 	options: [
 		{
-			name: 'Create',
-			value: 'create',
-			action: 'Create a table',
+			name: 'Add',
+			value: 'add',
+			action: 'Add a row to a table',
 		},
 		{
-			name: 'Delete',
-			value: 'delete',
-			action: 'Delete a table',
-		},
-		{
-			name: 'Get',
+			name: 'Get All',
 			value: 'get',
-			action: 'Get a table',
+			action: 'Gets all rows from a table',
 		},
-		// {
-		// 	name: 'Update',
-		// 	value: 'update',
-		// 	action: 'Update a table',
-		// },
 	],
-	default: 'create',
+	default: 'add',
 };
 
 export const rowDescriptions: INodeProperties[] = [
