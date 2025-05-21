@@ -16,6 +16,7 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { License } from '@/license';
 import { JwtService } from '@/services/jwt.service';
 import { UrlService } from '@/services/url.service';
+import { MfaService } from '@/mfa/mfa.service';
 
 interface AuthJwtPayload {
 	/** User Id */
@@ -50,6 +51,7 @@ export class AuthService {
 		private readonly urlService: UrlService,
 		private readonly userRepository: UserRepository,
 		private readonly invalidAuthTokenRepository: InvalidAuthTokenRepository,
+		private readonly mfaService: MfaService,
 	) {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		// this.authMiddleware = this.authMiddleware.bind(this);
@@ -80,7 +82,7 @@ export class AuthService {
 					req.user = user;
 					req.usedMfa = info.usedMfa;
 					// TODO: read mfaEnforced from configuration
-					const mfaEnforced = true;
+					const mfaEnforced = this.mfaService.isMFAEnforced();
 					if (mfaEnforced && !info.usedMfa && !allowSkipMFA) {
 						if (user.mfaEnabled) {
 							throw new AuthError('MFA not used during authentication');

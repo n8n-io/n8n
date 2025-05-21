@@ -19,7 +19,10 @@ export class MFAController {
 
 	@Post('/enforce-mfa')
 	@GlobalScope('user:update')
-	async enforceMFA(req: AuthenticatedRequest) {}
+	async enforceMFA(req: MFA.Enforce) {
+		await this.mfaService.enforceMFA(req.body.enforce);
+		return;
+	}
 
 	@Post('/can-enable', {
 		allowSkipMFA: true,

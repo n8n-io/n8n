@@ -3,7 +3,6 @@ import { Service } from '@n8n/di';
 import { Cipher } from 'n8n-core';
 import { v4 as uuid } from 'uuid';
 
-import config from '@/config';
 import { InvalidMfaCodeError } from '@/errors/response-errors/invalid-mfa-code.error';
 import { InvalidMfaRecoveryCodeError } from '@/errors/response-errors/invalid-mfa-recovery-code-error';
 
@@ -19,10 +18,19 @@ export class MfaService {
 		private settingsRepository: SettingsRepository,
 		public totp: TOTPService,
 		private cipher: Cipher,
-	) {}
+	) {
+		void this.loadMFASettings();
+	}
 
 	generateRecoveryCodes(n = 10) {
 		return Array.from(Array(n)).map(() => uuid());
+	}
+
+	private async loadMFASettings() {
+		const value = await this.settingsRepository.findByKey(MFA_ENFORCE_SETTING);
+		if (value) {
+			this.enforceMFAValue = value.value === 'true';
+		}
 	}
 
 	async enforceMFA(value: boolean) {
