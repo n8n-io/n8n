@@ -19,6 +19,7 @@ import { isValueExpression, parseResourceMapperFieldName } from '@/utils/nodeTyp
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { computed, useTemplateRef } from 'vue';
+import { type YjsCollaborator } from '@/stores/collaboration.store';
 
 type Props = {
 	parameter: INodeProperties;
@@ -42,6 +43,7 @@ type Props = {
 	label?: IParameterLabel;
 	eventBus?: EventBus;
 	canBeOverridden?: boolean;
+	focusUser?: YjsCollaborator;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -157,7 +159,14 @@ defineExpose({
 </script>
 
 <template>
-	<div :class="$style.parameterInput" data-test-id="parameter-input">
+	<div
+		:class="[$style.parameterInput, props.focusUser ? $style.focusUser : '']"
+		data-test-id="parameter-input"
+		:style="{ '--user-color': props.focusUser?.color }"
+	>
+		<div v-if="focusUser" :style="{ backgroundColor: focusUser.color }" :class="$style.focusName">
+			{{ focusUser.user.firstName }}
+		</div>
 		<ParameterInput
 			ref="param"
 			:input-size="inputSize"
@@ -213,6 +222,28 @@ defineExpose({
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing-4xs);
+	position: relative;
+}
+
+.focusUser {
+	border: 1px solid var(--user-color);
+	margin: -1px;
+	border-radius: 4px;
+
+	& * {
+		border-width: 0px !important;
+	}
+}
+
+.focusName {
+	padding: 4px 4px 8px 4px;
+	border-radius: 4px;
+	font-size: 0.7em;
+	color: white;
+	position: absolute;
+	bottom: calc(100% - 4px);
+	right: 0;
+	z-index: 0;
 }
 
 .hovering {

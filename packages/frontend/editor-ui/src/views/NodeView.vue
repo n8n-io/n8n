@@ -1911,28 +1911,45 @@ onBeforeUnmount(() => {
 });
 
 const collaborationStore = useCollaborationStore();
-const { project, viewport } = useVueFlow(editableWorkflow.value.id);
+const { viewport } = useVueFlow(editableWorkflow.value.id);
 const collaborators = computed(() =>
 	collaborationStore.collaborators.map((c) => {
 		return {
 			...c,
 			cursor: c.cursor
 				? {
-						x: c.cursor.x / viewport.value.zoom + 0,
-						y: c.cursor.y / viewport.value.zoom + 0,
+						x: c.cursor.x * viewport.value.zoom + viewport.value.x + 64,
+						y: c.cursor.y * viewport.value.zoom + viewport.value.y + 64,
 					}
 				: undefined,
 		};
 	}),
 );
 
-onMounted(() => {
-	const handleMouseMove = (ev: MouseEvent) => {
-		const projected = project({ x: ev.clientX, y: ev.clientY });
-		collaborationStore.notifyMuseMove(projected);
-	};
+const handleMouseMove = (ev: MouseEvent) => {
+	if (!(ev.target instanceof HTMLElement)) {
+		return;
+	}
 
+	const rect = ev.target.closest('[data-test-id=canvas]')?.getBoundingClientRect();
+
+	if (!rect) {
+		return;
+	}
+
+	const projected = {
+		x: (ev.clientX - rect.x - viewport.value.x) / viewport.value.zoom,
+		y: (ev.clientY - rect.y - viewport.value.y) / viewport.value.zoom,
+	};
+	collaborationStore.notifyMuseMove(projected);
+};
+
+onMounted(() => {
 	document.addEventListener('mousemove', handleMouseMove);
+});
+
+onBeforeUnmount(() => {
+	document.removeEventListener('mousemove', handleMouseMove);
 });
 </script>
 

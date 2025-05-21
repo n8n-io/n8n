@@ -28,6 +28,7 @@ import {
 	updateFromAIOverrideValues,
 } from '../utils/fromAIOverrideUtils';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { useCollaborationStore } from '@/stores/collaboration.store';
 
 type Props = {
 	parameter: INodeProperties;
@@ -96,6 +97,13 @@ const isDropDisabled = computed(
 		isResourceLocator.value ||
 		isExpression.value,
 );
+const collaborationStore = useCollaborationStore();
+const focusUser = computed(() =>
+	collaborationStore.collaborators.find(
+		(c) => !c.isSelf && c.selectedParameterName === props.parameter.name,
+	),
+);
+
 const isExpression = computed(() => isValueExpression(props.parameter, props.value));
 const showExpressionSelector = computed(() => {
 	if (isResourceLocator.value) {
@@ -119,6 +127,7 @@ function onFocus() {
 		ndvStore.setMappableNDVInputFocus(props.parameter.displayName);
 	}
 	ndvStore.setFocusedInputPath(props.path ?? '');
+	collaborationStore.notifyFocus(props.parameter.name, true);
 }
 
 function onBlur() {
@@ -131,6 +140,7 @@ function onBlur() {
 	}
 	ndvStore.setFocusedInputPath('');
 	emit('blur');
+	collaborationStore.notifyFocus(props.parameter.name, false);
 }
 
 function onMenuExpanded(expanded: boolean) {
@@ -352,6 +362,7 @@ function removeOverride(clearField = false) {
 				<div v-else>
 					<ParameterInputWrapper
 						ref="parameterInputWrapper"
+						:focus-user="focusUser"
 						:parameter="parameter"
 						:model-value="value"
 						:path="path"

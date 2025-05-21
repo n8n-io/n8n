@@ -26,6 +26,7 @@ export interface YjsCollaborator extends Collaborator {
 		y: number;
 	};
 	selectedNodeName?: string;
+	selectedParameterName?: string;
 }
 
 /**
@@ -132,10 +133,16 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 
 		provider.value.awareness.on('change', () => {
 			const states = provider.value?.awareness.getStates() ?? new Map();
-			collaborators.value = [...states.values()].map((s) => ({
-				...s.cursor,
-				isSelf: s.cursor.id === ydoc.value.clientID,
-			})) as YjsCollaborator[];
+			collaborators.value = [...states.values()].flatMap((s) =>
+				s.cursor
+					? [
+							{
+								...s.cursor,
+								isSelf: s.cursor.id === ydoc.value.clientID,
+							},
+						]
+					: [],
+			) as YjsCollaborator[];
 		});
 
 		const workflows = ydoc.value.getMap<IWorkflowDb>('workflows');
@@ -189,8 +196,6 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 			return;
 		}
 
-		console.log(8888, cursor);
-
 		provider.value?.awareness.setLocalStateField('cursor', {
 			id: ydoc.value.clientID,
 			user: usersStore.currentUser,
@@ -199,6 +204,22 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 			isSelf: true,
 			cursor,
 			selectedNodeName: uiStore.lastSelectedNode ?? undefined,
+		} as YjsCollaborator);
+	};
+
+	const notifyFocus = (name: string, isFocused: boolean) => {
+		// TODO: translate to canvas coordinate
+		if (!usersStore.currentUser) {
+			return;
+		}
+
+		provider.value?.awareness.setLocalStateField('cursor', {
+			id: ydoc.value.clientID,
+			user: usersStore.currentUser,
+			lastSeen: new Date().toISOString(),
+			color: myColor.value,
+			isSelf: true,
+			selectedParameterName: isFocused ? name : undefined,
 		} as YjsCollaborator);
 	};
 
@@ -211,5 +232,6 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 		startHeartbeat,
 		stopHeartbeat,
 		notifyMuseMove,
+		notifyFocus,
 	};
 });
