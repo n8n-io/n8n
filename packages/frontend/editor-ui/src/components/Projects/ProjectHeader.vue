@@ -52,6 +52,8 @@ const projectName = computed(() => {
 	}
 });
 
+const projectDescription = computed(() => projectsStore.currentProject?.description);
+
 const projectPermissions = computed(
 	() => getResourcePermissions(projectsStore.currentProject?.scopes).project,
 );
@@ -212,6 +214,9 @@ const onSelect = (action: string) => {
 					</ProjectCreateResource>
 				</N8nTooltip>
 			</div>
+		</div>
+		<div v-if="projectDescription" :class="$style.projectDescription">
+			<N8nText data-test-id="project-description">{{ projectDescription }}</N8nText>
 		</div>
 		<slot></slot>
 		<div :class="$style.actions">
