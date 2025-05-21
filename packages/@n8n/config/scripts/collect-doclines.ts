@@ -3,7 +3,7 @@ import * as path from 'node:path';
 import type { PropertyDeclaration } from 'ts-morph';
 import { Project, Node } from 'ts-morph';
 
-function getPropertyType(classField: PropertyDeclaration) {
+function getPropertyType(classField: PropertyDeclaration): string {
 	const type = classField.getType();
 
 	if (type.isBoolean()) return 'boolean';
@@ -26,6 +26,45 @@ function getPropertyType(classField: PropertyDeclaration) {
 	return 'string';
 }
 
+function toEnumValues(schemaNode: Node) {
+	if (!Node.isIdentifier(schemaNode)) return;
+
+	const symbol = schemaNode.getSymbol();
+
+	if (!symbol) return;
+
+	const declarations = symbol.getDeclarations();
+
+	if (declarations.length === 0) return;
+
+	const varDeclarationNode = declarations[0];
+
+	if (!Node.isVariableDeclaration(varDeclarationNode)) return;
+
+	const varInitializer = varDeclarationNode.getInitializer();
+
+	if (!varInitializer || !Node.isCallExpression(varInitializer)) return;
+
+	const expressionText = varInitializer.getExpression().getText();
+
+	if (!expressionText.endsWith('.enum')) return;
+
+	const enumCallArgs = varInitializer.getArguments();
+
+	if (enumCallArgs.length === 0) return;
+
+	const arrayLiteralNode = enumCallArgs[0];
+
+	if (!Node.isArrayLiteralExpression(arrayLiteralNode)) return;
+
+	const values = arrayLiteralNode
+		.getElements()
+		.filter(Node.isStringLiteral)
+		.map((el) => el.getLiteralValue());
+
+	return values.length > 0 ? values : undefined;
+}
+
 /**
  * Collect doclines from all config classes, i.e. descriptions of env vars decorated with `@Env`.
  *
@@ -35,7 +74,8 @@ function getPropertyType(classField: PropertyDeclaration) {
  *   "N8N_AUTH_COOKIE_SAMESITE": {
  * 		"description": "This sets the `Samesite` flag on n8n auth cookie",
  * 		"defaultValue": "'lax'",
- * 		"type": "string",
+ * 		"type": "enum",
+ * 		"enumValues": ["strict", "lax", "none"],
  * 		"sections": []
  * 	}
  * }
@@ -44,6 +84,14 @@ function getPropertyType(classField: PropertyDeclaration) {
 function collectDoclines() {
 	const doclines: Record<string, object> = {};
 
+	interface DoclineEntry {
+		description: string;
+		defaultValue: string | null;
+		type: string;
+		sections: [];
+		enumValues?: string[];
+	}
+
 	const project = new Project({
 		tsConfigFilePath: path.resolve(__dirname, '../tsconfig.json'),
 		skipAddingFilesFromTsConfig: true,
@@ -51,6 +99,7 @@ function collectDoclines() {
 
 	project.addSourceFilesAtPaths('src/configs/**/*.ts');
 	project.addSourceFilesAtPaths('src/index.ts');
+	// @TODO: Also search in cli and core
 
 	for (const sourceFile of project.getSourceFiles()) {
 		for (const classDeclaration of sourceFile.getClasses()) {
@@ -69,11 +118,11 @@ function collectDoclines() {
 
 				if (args.length === 0) continue;
 
-				const zerothArg = args[0];
+				const envVarNameArg = args[0];
 
-				if (!Node.isStringLiteral(zerothArg)) continue;
+				if (!Node.isStringLiteral(envVarNameArg)) continue;
 
-				const envVarName = zerothArg.getLiteralValue();
+				const envVarName = envVarNameArg.getLiteralValue();
 
 				const jsDocs = classField.getJsDocs();
 
@@ -81,16 +130,32 @@ function collectDoclines() {
 
 				const description = jsDocs[0].getDescription().trim();
 
-				const defaultValue = classField.getInitializer()?.getText() ?? null;
+				const initializer = classField.getInitializer();
+				const defaultValue = initializer?.getText() ?? null;
 
-				const type = getPropertyType(classField);
+				let propertyType = getPropertyType(classField);
+				let enumValues: DoclineEntry['enumValues'];
 
-				doclines[envVarName] = {
+				if (args.length > 1) {
+					const envVarSchemaArg = args[1];
+					const extractedEnumValues = toEnumValues(envVarSchemaArg);
+
+					if (!extractedEnumValues) continue;
+
+					propertyType = 'enum';
+					enumValues = extractedEnumValues;
+				}
+
+				const entry: DoclineEntry = {
 					description,
-					type,
 					defaultValue,
-					sections: [],
+					type: propertyType,
+					sections: [], // @TODO
 				};
+
+				if (enumValues) entry.enumValues = enumValues;
+
+				doclines[envVarName] = entry;
 			}
 		}
 	}
