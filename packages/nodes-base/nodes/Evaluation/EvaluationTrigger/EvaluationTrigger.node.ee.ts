@@ -186,9 +186,14 @@ export class EvaluationTrigger implements INodeType {
 			);
 
 			if (currentRow === undefined) {
+				const prevStartingRow = startingRow;
+
 				startingRow = 2;
 
-				throw new NodeOperationError(this.getNode(), 'No row found');
+				throw new NodeOperationError(
+					this.getNode(),
+					`No row found\starting row: ${prevStartingRow}\nallRows length: ${allRows.length}\ncurrentRow: ${currentRow}`,
+				);
 			}
 
 			currentRow.json._rowsLeft = rowsLeft;
