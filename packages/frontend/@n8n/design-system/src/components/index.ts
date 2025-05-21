@@ -60,3 +60,4 @@ export { default as N8nIconPicker } from './N8nIconPicker';
 export { default as N8nBreadcrumbs } from './N8nBreadcrumbs';
 export { default as N8nTableBase } from './TableBase';
 export { default as N8nDataTableServer } from './N8nDataTableServer';
+export { default as N8nInlineRename } from './N8nInlineRename';
