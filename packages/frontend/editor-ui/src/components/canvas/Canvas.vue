@@ -54,6 +54,7 @@ import CanvasArrowHeadMarker from './elements/edges/CanvasArrowHeadMarker.vue';
 import Edge from './elements/edges/CanvasEdge.vue';
 import Node from './elements/nodes/CanvasNode.vue';
 import { useViewportAutoAdjust } from '@/components/canvas/composables/useViewportAutoAdjust';
+import { useCollaborationStore } from '@/stores/collaboration.store';
 
 const $style = useCssModule();
 

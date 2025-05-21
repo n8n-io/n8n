@@ -17,6 +17,17 @@ import { deepToRaw } from '@/components/RunDataAi/utils';
 
 const HEARTBEAT_INTERVAL = 5 * TIME.MINUTE;
 
+export interface YjsCollaborator extends Collaborator {
+	id: number;
+	color: string;
+	isSelf: boolean;
+	cursor?: {
+		x: number;
+		y: number;
+	};
+	selectedNodeName?: string;
+}
+
 /**
  * Store for tracking active users for workflows. I.e. to show
  * who is collaboratively viewing/editing the workflow at the same time.
@@ -27,6 +38,8 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 	const usersStore = useUsersStore();
 	const uiStore = useUIStore();
 	const ydoc = ref(new Y.Doc());
+	const provider = ref<WebsocketProvider>();
+	const myColor = ref(`hsl(${Math.floor(Math.random() * 360)}, 70%, 50%)`);
 
 	const route = useRoute();
 	const { addBeforeUnloadEventBindings, removeBeforeUnloadEventBindings, addBeforeUnloadHandler } =
@@ -42,7 +55,7 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 		}
 	});
 
-	const collaborators = ref<Collaborator[]>([]);
+	const collaborators = ref<YjsCollaborator[]>([]);
 
 	const heartbeatTimer = ref<number | null>(null);
 
@@ -70,7 +83,7 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 				event.type === 'collaboratorsChanged' &&
 				event.data.workflowId === workflowsStore.workflowId
 			) {
-				collaborators.value = event.data.collaborators;
+				// collaborators.value = event.data.collaborators;
 			}
 		});
 
@@ -105,20 +118,25 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 		if (workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID) return;
 		pushStore.send({ type: 'workflowClosed', workflowId });
 
-		collaborators.value = collaborators.value.filter(
-			({ user }) => user.id !== usersStore.currentUserId,
-		);
+		// collaborators.value = collaborators.value.filter(
+		// 	({ user }) => user.id !== usersStore.currentUserId,
+		// );
 	}
 
-	const isInitialized = ref(false);
-
 	function initYjs() {
-		if (isInitialized.value) {
+		if (provider.value) {
 			return;
 		}
 
-		isInitialized.value = true;
-		new WebsocketProvider('ws://localhost:1234', 'collabo!!!', ydoc.value);
+		provider.value = new WebsocketProvider('ws://localhost:1234', 'collabo!!!', ydoc.value);
+
+		provider.value.awareness.on('change', () => {
+			const states = provider.value?.awareness.getStates() ?? new Map();
+			collaborators.value = [...states.values()].map((s) => ({
+				...s.cursor,
+				isSelf: s.cursor.id === ydoc.value.clientID,
+			})) as YjsCollaborator[];
+		});
 
 		const workflows = ydoc.value.getMap<IWorkflowDb>('workflows');
 
@@ -150,6 +168,40 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 		{ immediate: true, deep: true },
 	);
 
+	watch([() => usersStore.currentUser, () => uiStore.lastSelectedNode], ([user, selected]) => {
+		if (!user) {
+			return;
+		}
+
+		provider.value?.awareness.setLocalStateField('cursor', {
+			id: ydoc.value.clientID,
+			user,
+			isSelf: true,
+			lastSeen: new Date().toISOString(),
+			color: myColor.value,
+			selectedNodeName: selected ?? undefined,
+		} as YjsCollaborator);
+	});
+
+	const notifyMuseMove = (cursor: { x: number; y: number }) => {
+		// TODO: translate to canvas coordinate
+		if (!usersStore.currentUser) {
+			return;
+		}
+
+		console.log(8888, cursor);
+
+		provider.value?.awareness.setLocalStateField('cursor', {
+			id: ydoc.value.clientID,
+			user: usersStore.currentUser,
+			lastSeen: new Date().toISOString(),
+			color: myColor.value,
+			isSelf: true,
+			cursor,
+			selectedNodeName: uiStore.lastSelectedNode ?? undefined,
+		} as YjsCollaborator);
+	};
+
 	onMounted(initYjs);
 
 	return {
@@ -158,5 +210,6 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 		terminate,
 		startHeartbeat,
 		stopHeartbeat,
+		notifyMuseMove,
 	};
 });

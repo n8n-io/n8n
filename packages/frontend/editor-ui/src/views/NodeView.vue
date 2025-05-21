@@ -36,11 +36,12 @@ import type {
 	WorkflowDataWithTemplateId,
 	XYPosition,
 } from '@/Interface';
-import type {
-	Connection,
-	Dimensions,
-	ViewportTransform,
-	XYPosition as VueFlowXYPosition,
+import {
+	useVueFlow,
+	type Connection,
+	type Dimensions,
+	type ViewportTransform,
+	type XYPosition as VueFlowXYPosition,
 } from '@vue-flow/core';
 import type {
 	CanvasConnectionCreateData,
@@ -123,6 +124,7 @@ import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
 import { needsAgentInput } from '@/utils/nodes/nodeTransforms';
 import { useLogsStore } from '@/stores/logs.store';
+import { useCollaborationStore } from '@/stores/collaboration.store';
 
 defineOptions({
 	name: 'NodeView',
@@ -1907,6 +1909,31 @@ onBeforeUnmount(() => {
 		pushConnectionStore.pushDisconnect();
 	}
 });
+
+const collaborationStore = useCollaborationStore();
+const { project, viewport } = useVueFlow(editableWorkflow.value.id);
+const collaborators = computed(() =>
+	collaborationStore.collaborators.map((c) => {
+		return {
+			...c,
+			cursor: c.cursor
+				? {
+						x: c.cursor.x / viewport.value.zoom + 0,
+						y: c.cursor.y / viewport.value.zoom + 0,
+					}
+				: undefined,
+		};
+	}),
+);
+
+onMounted(() => {
+	const handleMouseMove = (ev: MouseEvent) => {
+		const projected = project({ x: ev.clientX, y: ev.clientY });
+		collaborationStore.notifyMuseMove(projected);
+	};
+
+	document.addEventListener('mousemove', handleMouseMove);
+});
 </script>
 
 <template>
@@ -2042,10 +2069,54 @@ onBeforeUnmount(() => {
 				:renaming="renamingActive"
 			-->
 		</Suspense>
+		<template v-for="c of collaborators" :key="c.id">
+			<div
+				v-if="c.cursor && !c.isSelf"
+				:class="$style.collaborator"
+				:style="{ top: `${c.cursor.y}px`, left: `${c.cursor.x}px`, backgroundColor: c.color }"
+			>
+				<div>
+					<svg
+						width="14"
+						height="14"
+						viewBox="0 0 14 14"
+						fill="none"
+						xmlns="http://www.w3.org/2000/svg"
+					>
+						<path
+							fill-rule="evenodd"
+							clip-rule="evenodd"
+							d="M0.0310717 0.580348L5.31406 13.7359C5.46363 14.1096 6.00261 14.0785 6.1122 13.6946H6.11289L7.79603 7.79821L13.6932 6.11421C14.0758 6.00529 14.1213 5.45728 13.7118 5.30633L0.580328 0.031635C0.235023 -0.107606 -0.10608 0.23776 0.0310717 0.580348Z"
+							:fill="c.color"
+						/>
+					</svg>
+
+					{{ c.user.firstName }}
+				</div>
+			</div>
+		</template>
 	</WorkflowCanvas>
 </template>
 
 <style lang="scss" module>
+.collaborator {
+	position: fixed;
+	z-index: 1000;
+	padding: 4px 8px;
+	border-radius: 4px;
+	font-size: 0.7em;
+	color: white;
+
+	& div {
+		position: relative;
+	}
+
+	& svg {
+		position: absolute;
+		right: calc(100% + 6px);
+		bottom: 100%;
+	}
+}
 .executionButtons {
 	position: absolute;
 	display: flex;

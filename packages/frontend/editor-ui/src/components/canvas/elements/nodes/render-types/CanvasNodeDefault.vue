@@ -6,6 +6,7 @@ import { useCanvasNode } from '@/composables/useCanvasNode';
 import { NODE_INSERT_SPACER_BETWEEN_INPUT_GROUPS } from '@/constants';
 import type { CanvasNodeDefaultRender } from '@/types';
 import { useCanvas } from '@/composables/useCanvas';
+import { useCollaborationStore } from '@/stores/collaboration.store';
 
 const $style = useCssModule();
 const i18n = useI18n();
@@ -18,6 +19,7 @@ const emit = defineEmits<{
 const { initialized, viewport } = useCanvas();
 const {
 	id,
+	node,
 	label,
 	subtitle,
 	inputs,
@@ -46,12 +48,20 @@ const {
 	connections,
 });
 
+const collaborationStore = useCollaborationStore();
 const renderOptions = computed(() => render.value.options as CanvasNodeDefaultRender['options']);
+const selectUserColor = computed(
+	() =>
+		collaborationStore.collaborators.find(
+			(c) => !c.isSelf && c.selectedNodeName === node?.data.value.name,
+		)?.color,
+);
 
 const classes = computed(() => {
 	return {
 		[$style.node]: true,
 		[$style.selected]: isSelected.value,
+		[$style.selectedByOther]: selectUserColor.value !== undefined,
 		[$style.disabled]: isDisabled.value,
 		[$style.success]: hasRunData.value,
 		[$style.error]: hasIssues.value,
@@ -81,6 +91,8 @@ const styles = computed(() => {
 
 	stylesObject['--canvas-node--main-input-count'] = mainInputs.value.length;
 	stylesObject['--canvas-node--main-output-count'] = mainOutputs.value.length;
+	stylesObject['--select-user-color'] =
+		selectUserColor.value?.replace('hsl(', 'hsla(').replace(')', ',.2)') ?? '';
 
 	return stylesObject;
 });
@@ -264,6 +276,9 @@ function onActivate(event: MouseEvent) {
 
 	&.selected {
 		box-shadow: 0 0 0 8px var(--color-canvas-selected-transparent);
+	}
+	&.selectedByOther {
+		box-shadow: 0 0 0 8px var(--select-user-color);
 	}
 
 	&.success {
