@@ -6,6 +6,7 @@ import { Embeddings } from '@langchain/core/embeddings';
 import type { InputValues, MemoryVariables, OutputValues } from '@langchain/core/memory';
 import type { BaseMessage } from '@langchain/core/messages';
 import { BaseRetriever } from '@langchain/core/retrievers';
+import { BaseDocumentCompressor } from '@langchain/core/retrievers/document_compressors';
 import type { StructuredTool, Tool } from '@langchain/core/tools';
 import { VectorStore } from '@langchain/core/vectorstores';
 import { TextSplitter } from '@langchain/textsplitters';
@@ -102,6 +103,7 @@ export function logWrapper<
 		| BaseChatMemory
 		| BaseChatMessageHistory
 		| BaseRetriever
+		| BaseDocumentCompressor
 		| Embeddings
 		| Document[]
 		| Document
@@ -292,6 +294,30 @@ export function logWrapper<
 						})) as number[];
 						logAiEvent(executeFunctions, 'ai-query-embedded');
 						executeFunctions.addOutputData(connectionType, index, [[{ json: { response } }]]);
+						return response;
+					};
+				}
+			}
+			if (originalInstance instanceof BaseDocumentCompressor) {
+				if (prop === 'compressDocuments' && 'compressDocuments' in target) {
+					return async (query: string, documents: Document[]): Promise<Document[]> => {
+						connectionType = NodeConnectionTypes.AiReranker;
+						const { index } = executeFunctions.addInputData(connectionType, [
+							[{ json: { query, documents } }],
+						]);
+
+						const response = (await callMethodAsync.call(target, {
+							executeFunctions,
+							connectionType,
+							currentNodeRunIndex: index,
+							method: target[prop],
+							arguments: [query, documents],
+						})) as Document[];
+
+						logAiEvent(executeFunctions, 'ai-document-reranked');
+						executeFunctions.addOutputData(connectionType, index, [
+							response.map((doc) => ({ json: { doc } })),
+						]);
 						return response;
 					};
 				}
