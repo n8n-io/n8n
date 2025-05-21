@@ -362,6 +362,8 @@ onBeforeUnmount(() => {
 						</n8n-link>
 					</n8n-text>
 				</div>
+				<n8n-notice v-if="mfaDisabled" :content="i18n.baseText('settings.personal.mfa.enforced')" />
+
 				<n8n-button
 					v-if="mfaDisabled"
 					:class="$style.button"

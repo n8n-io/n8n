@@ -238,6 +238,25 @@ async function onRoleChange(user: IUser, newRoleName: UpdateGlobalRolePayload['n
 		showError(e, i18n.baseText('settings.users.userReinviteError'));
 	}
 }
+
+async function onUpdateConnected(value: boolean) {
+	// try {
+	// 	saving.value = true;
+	// 	if (props.beforeUpdate) {
+	// 		const result = await props.beforeUpdate(value);
+	// 		if (!result) {
+	// 			saving.value = false;
+	// 			return;
+	// 		}
+	// 	}
+	// 	await externalSecretsStore.updateProviderConnected(props.provider.name, value);
+	// 	emit('change', value);
+	// } catch (error) {
+	// 	toast.showError(error, 'Error');
+	// } finally {
+	// 	saving.value = false;
+	// }
+}
 </script>
 
 <template>
