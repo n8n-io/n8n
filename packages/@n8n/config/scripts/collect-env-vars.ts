@@ -101,7 +101,8 @@ function collectEnvVarsJson() {
 
 	project.addSourceFilesAtPaths('src/configs/**/*.ts');
 	project.addSourceFilesAtPaths('src/index.ts');
-	// @TODO: Also search in cli and core
+	project.addSourceFilesAtPaths('../../cli/src/**/*.config.ts');
+	project.addSourceFilesAtPaths('../../core/src/**/*.config.ts');
 
 	for (const sourceFile of project.getSourceFiles()) {
 		for (const classDeclaration of sourceFile.getClasses()) {
