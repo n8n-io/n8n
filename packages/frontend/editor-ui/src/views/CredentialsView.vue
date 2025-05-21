@@ -57,7 +57,11 @@ const telemetry = useTelemetry();
 const i18n = useI18n();
 const overview = useProjectPages();
 
-type Filters = BaseFilters & { type?: string[]; setupNeeded?: boolean };
+type Filters = BaseFilters & {
+	type?: string[];
+	setupNeeded?: boolean;
+	showUnknownLastConnectedAt?: boolean;
+};
 const updateFilter = (state: Filters) => {
 	void router.replace({ query: pickBy(state) as LocationQueryRaw });
 };
@@ -69,6 +73,7 @@ const onSearchUpdated = (search: string) => {
 const filters = ref<Filters>({
 	...route.query,
 	setupNeeded: route.query.setupNeeded?.toString() === 'true',
+	showUnknownLastConnectedAt: route.query.showUnknownLastConnectedAt?.toString() === 'true',
 } as Filters);
 const loading = ref(false);
 
@@ -155,6 +160,10 @@ const onFilter = (resource: Resource, newFilters: BaseFilters, matches: boolean)
 
 	if (filtersToApply.setupNeeded) {
 		matches = matches && resource.needsSetup;
+	}
+
+	if (filtersToApply.showUnknownLastConnectedAt) {
+		matches = matches && resource.lastConnectedAt === '';
 	}
 
 	return matches;
@@ -311,6 +320,12 @@ onMounted(() => {
 					@update:model-value="setKeyValue('setupNeeded', $event)"
 				>
 				</N8nCheckbox>
+				<N8nCheckbox
+					:label="i18n.baseText('credentials.filters.lastConnectedUnknown')"
+					data-test-id="credential-filter-last-connected-unknown"
+					:model-value="filters.showUnknownLastConnectedAt"
+					@update:model-value="setKeyValue('showUnknownLastConnectedAt', $event)"
+				/>
 			</div>
 		</template>
 		<template #empty>

@@ -657,6 +657,7 @@
 	"credentials.filters.status": "Status",
 	"credentials.filters.active": "Some credentials may be hidden since filters are applied.",
 	"credentials.filters.active.reset": "Remove filters",
+	"credentials.filters.lastConnectedUnknown": "Last Connected: Unknown",
 	"credentials.sort.lastUpdated": "Sort by last updated",
 	"credentials.sort.lastCreated": "Sort by last created",
 	"credentials.sort.nameAsc": "Sort by name (A-Z)",
