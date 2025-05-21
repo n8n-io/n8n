@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, inject } from 'vue';
 import TitledList from '@/components/TitledList.vue';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useCanvasNode } from '@/composables/useCanvasNode';
@@ -7,8 +7,11 @@ import { useI18n } from '@/composables/useI18n';
 import { CanvasNodeDirtiness, CanvasNodeRenderType } from '@/types';
 import { N8nTooltip } from '@n8n/design-system';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { WORKFLOWS_STORE_KEY } from '@/constants';
 
-const nodeHelpers = useNodeHelpers({ workflowsStore: useWorkflowsStore() }); // @singleton
+const nodeHelpers = useNodeHelpers({
+	workflowsStore: inject<ReturnType<typeof useWorkflowsStore>>(WORKFLOWS_STORE_KEY)!,
+}); // @singleton
 const i18n = useI18n();
 
 const {

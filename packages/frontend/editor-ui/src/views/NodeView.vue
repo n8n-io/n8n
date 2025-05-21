@@ -12,6 +12,7 @@ import {
 	watch,
 	h,
 	onBeforeUnmount,
+	provide,
 } from 'vue';
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
 import WorkflowCanvas from '@/components/canvas/WorkflowCanvas.vue';
@@ -67,6 +68,7 @@ import {
 	VALID_WORKFLOW_IMPORT_URL_REGEX,
 	VIEWS,
 	WORKFLOW_SETTINGS_MODAL_KEY,
+	WORKFLOWS_STORE_KEY,
 } from '@/constants';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
@@ -149,9 +151,12 @@ export interface NodeViewProps {
 
 const props = withDefaults(defineProps<NodeViewProps>(), {
 	stopTime: false,
-	workflowsStoreImpl: useWorkflowsStore() as never,
+	workflowsStoreImpl: () => useWorkflowsStore(),
 	workflowIds: (p) => [], //Object.keys(p.workflowsStoreImpl.workflowsById),
 });
+
+const workflowsStore = props.workflowsStoreImpl;
+provide(WORKFLOWS_STORE_KEY, workflowsStore);
 
 const $style = useCssModule();
 const router = useRouter();
@@ -162,7 +167,6 @@ const externalHooks = useExternalHooks();
 const toast = useToast();
 const message = useMessage();
 const documentTitle = useDocumentTitle();
-const workflowsStore = props.workflowsStoreImpl;
 const workflowHelpers = useWorkflowHelpers({ router, workflowsStore });
 const nodeHelpers = useNodeHelpers({ workflowsStore });
 

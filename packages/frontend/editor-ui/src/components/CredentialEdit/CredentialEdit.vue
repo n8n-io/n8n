@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, inject, onMounted, ref } from 'vue';
 
 import type {
 	ICredentialsDecryptedResponse,
@@ -28,7 +28,12 @@ import SaveButton from '@/components/SaveButton.vue';
 import { useMessage } from '@/composables/useMessage';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useToast } from '@/composables/useToast';
-import { CREDENTIAL_EDIT_MODAL_KEY, EnterpriseEditionFeature, MODAL_CONFIRM } from '@/constants';
+import {
+	CREDENTIAL_EDIT_MODAL_KEY,
+	EnterpriseEditionFeature,
+	MODAL_CONFIRM,
+	WORKFLOWS_STORE_KEY,
+} from '@/constants';
 import { getResourcePermissions } from '@/permissions';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -65,7 +70,7 @@ const credentialsStore = useCredentialsStore();
 const ndvStore = useNDVStore();
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
-const workflowsStore = useWorkflowsStore();
+const workflowsStore = inject<ReturnType<typeof useWorkflowsStore>>(WORKFLOWS_STORE_KEY)!;
 const nodeTypesStore = useNodeTypesStore();
 const projectsStore = useProjectsStore();
 

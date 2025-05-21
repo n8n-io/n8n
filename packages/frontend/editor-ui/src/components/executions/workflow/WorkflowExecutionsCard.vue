@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue';
+import { computed, inject, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import type { IExecutionUIData } from '@/composables/useExecutionHelpers';
-import { EnterpriseEditionFeature, VIEWS } from '@/constants';
+import { EnterpriseEditionFeature, VIEWS, WORKFLOWS_STORE_KEY } from '@/constants';
 import ExecutionsTime from '@/components/executions/ExecutionsTime.vue';
 import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
 import type { ExecutionSummary } from 'n8n-workflow';
@@ -28,7 +28,7 @@ const route = useRoute();
 const locale = useI18n();
 
 const executionHelpers = useExecutionHelpers();
-const workflowsStore = useWorkflowsStore();
+const workflowsStore = inject<ReturnType<typeof useWorkflowsStore>>(WORKFLOWS_STORE_KEY)!;
 const settingsStore = useSettingsStore();
 
 const isAdvancedExecutionFilterEnabled = computed(

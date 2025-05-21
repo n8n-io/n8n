@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, inject } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { PLACEHOLDER_EMPTY_WORKFLOW_ID, VIEWS } from '@/constants';
+import { PLACEHOLDER_EMPTY_WORKFLOW_ID, VIEWS, WORKFLOWS_STORE_KEY } from '@/constants';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import WorkflowExecutionsInfoAccordion from './WorkflowExecutionsInfoAccordion.vue';
@@ -12,7 +12,7 @@ const route = useRoute();
 const locale = useI18n();
 
 const uiStore = useUIStore();
-const workflowsStore = useWorkflowsStore();
+const workflowsStore = inject<ReturnType<typeof useWorkflowsStore>>(WORKFLOWS_STORE_KEY)!;
 
 const executionCount = computed(() => workflowsStore.currentWorkflowExecutions.length);
 const containsTrigger = computed(() => workflowsStore.workflowTriggerNodes.length > 0);

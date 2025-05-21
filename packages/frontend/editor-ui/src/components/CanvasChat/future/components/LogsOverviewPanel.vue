@@ -3,7 +3,7 @@ import LogsPanelHeader from '@/components/CanvasChat/future/components/LogsPanel
 import { useClearExecutionButtonVisible } from '@/composables/useClearExecutionButtonVisible';
 import { useI18n } from '@/composables/useI18n';
 import { N8nButton, N8nRadioButtons, N8nText, N8nTooltip } from '@n8n/design-system';
-import { computed, nextTick, toRef, watch } from 'vue';
+import { computed, inject, nextTick, toRef, watch } from 'vue';
 import LogsOverviewRow from '@/components/CanvasChat/future/components/LogsOverviewRow.vue';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { useRouter } from 'vue-router';
@@ -18,6 +18,7 @@ import {
 import { useVirtualList } from '@vueuse/core';
 import { type IExecutionResponse } from '@/Interface';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { WORKFLOWS_STORE_KEY } from '@/constants';
 
 const {
 	isOpen,

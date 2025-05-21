@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeMount, watch } from 'vue';
+import { computed, inject, onBeforeMount, watch } from 'vue';
 
 import { getAppNameFromCredType, isCommunityPackageName } from '@/utils/nodeTypesUtils';
 import type {
@@ -18,6 +18,7 @@ import {
 	DOCS_DOMAIN,
 	EnterpriseEditionFeature,
 	NEW_ASSISTANT_SESSION_MODAL,
+	WORKFLOWS_STORE_KEY,
 } from '@/constants';
 import type { PermissionsRecord } from '@/permissions';
 import { addCredentialTranslation } from '@/plugins/i18n';
@@ -73,7 +74,7 @@ const credentialsStore = useCredentialsStore();
 const ndvStore = useNDVStore();
 const rootStore = useRootStore();
 const uiStore = useUIStore();
-const workflowsStore = useWorkflowsStore();
+const workflowsStore = inject<ReturnType<typeof useWorkflowsStore>>(WORKFLOWS_STORE_KEY)!;
 const assistantStore = useAssistantStore();
 
 const i18n = useI18n();

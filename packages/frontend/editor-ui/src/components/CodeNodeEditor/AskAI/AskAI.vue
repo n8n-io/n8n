@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, inject } from 'vue';
 import { snakeCase } from 'lodash-es';
 import { useSessionStorage } from '@vueuse/core';
 
@@ -23,6 +23,7 @@ import {
 	ASK_AI_MAX_PROMPT_LENGTH,
 	ASK_AI_MIN_PROMPT_LENGTH,
 	ASK_AI_LOADING_DURATION_MS,
+	WORKFLOWS_STORE_KEY,
 } from '@/constants';
 import type { AskAiRequest } from '@/types/assistant.types';
 
@@ -79,7 +80,8 @@ function getErrorMessageByStatusCode(statusCode: number) {
 
 function getParentNodes() {
 	const activeNode = useNDVStore().activeNode;
-	const { getCurrentWorkflow, getNodeByName } = useWorkflowsStore(); // @singleton
+	const { getCurrentWorkflow, getNodeByName } =
+		inject<ReturnType<typeof useWorkflowsStore>>(WORKFLOWS_STORE_KEY)!; // @singleton
 	const workflow = getCurrentWorkflow();
 
 	if (!activeNode || !workflow) return [];

@@ -11,6 +11,8 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { format } from 'prettier';
 import jsParser from 'prettier/plugins/babel';
 import * as estree from 'prettier/plugins/estree';
+import { inject, provide } from 'vue';
+import { WORKFLOWS_STORE_KEY } from '@/constants';
 
 export type TextareaRowData = {
 	rows: string[];
@@ -19,7 +21,9 @@ export type TextareaRowData = {
 
 export function getParentNodes() {
 	const activeNode = useNDVStore().activeNode;
-	const { getCurrentWorkflow, getNodeByName } = useWorkflowsStore(); // @singleton
+
+	const { getCurrentWorkflow, getNodeByName } =
+		inject<ReturnType<typeof useWorkflowsStore>>(WORKFLOWS_STORE_KEY)!; // @singleton
 	const workflow = getCurrentWorkflow();
 
 	if (!activeNode || !workflow) return [];

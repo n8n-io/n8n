@@ -16,9 +16,9 @@ import { parse } from 'flatted';
 import { useToast } from '@/composables/useToast';
 
 export function useLogsExecutionData(options: {
-	workflowsStore?: ReturnType<typeof useWorkflowsStore>;
+	workflowsStore: ReturnType<typeof useWorkflowsStore>;
 }) {
-	const workflowsStore = options.workflowsStore ?? useWorkflowsStore();
+	const workflowsStore = options.workflowsStore;
 	const nodeHelpers = useNodeHelpers({ workflowsStore });
 	const toast = useToast();
 

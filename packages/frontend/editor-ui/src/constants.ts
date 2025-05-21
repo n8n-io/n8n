@@ -919,6 +919,8 @@ export const IsInPiPWindowSymbol = 'IsInPipWindow' as unknown as InjectionKey<
 	MaybeRefOrGetter<boolean>
 >;
 
+export const WORKFLOWS_STORE_KEY = 'workflowsStore';
+
 /** Auth */
 export const BROWSER_ID_STORAGE_KEY = 'n8n-browserId';
 
