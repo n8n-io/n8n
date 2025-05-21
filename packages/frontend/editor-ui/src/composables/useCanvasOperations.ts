@@ -1462,6 +1462,58 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 	}
 
 	/**
+	 * Pivot points
+	 */
+
+	function addPivotPoint(connection: Connection, position: XYPosition) {
+		const sourceNode = workflowsStore.getNodeById(connection.source);
+		const targetNode = workflowsStore.getNodeById(connection.target);
+		if (!sourceNode || !targetNode) {
+			return;
+		}
+
+		const mappedConnection = mapCanvasConnectionToLegacyConnection(
+			sourceNode,
+			targetNode,
+			connection,
+		);
+
+		workflowsStore.addPivotPoint(mappedConnection, position);
+	}
+
+	function deletePivotPoint(connection: Connection, pivotId: string) {
+		const sourceNode = workflowsStore.getNodeById(connection.source);
+		const targetNode = workflowsStore.getNodeById(connection.target);
+		if (!sourceNode || !targetNode) {
+			return;
+		}
+
+		const mappedConnection = mapCanvasConnectionToLegacyConnection(
+			sourceNode,
+			targetNode,
+			connection,
+		);
+
+		workflowsStore.removePivotPoint(mappedConnection, pivotId);
+	}
+
+	function updatePivotPoint(connection: Connection, pivotId: string, position: XYPosition) {
+		const sourceNode = workflowsStore.getNodeById(connection.source);
+		const targetNode = workflowsStore.getNodeById(connection.target);
+		if (!sourceNode || !targetNode) {
+			return;
+		}
+
+		const mappedConnection = mapCanvasConnectionToLegacyConnection(
+			sourceNode,
+			targetNode,
+			connection,
+		);
+
+		workflowsStore.updatePivotPoint(mappedConnection, pivotId, position);
+	}
+
+	/**
 	 * Workspace operations
 	 */
 
@@ -2124,6 +2176,9 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		deleteConnectionsByNodeId,
 		revalidateNodeInputConnections,
 		revalidateNodeOutputConnections,
+		addPivotPoint,
+		deletePivotPoint,
+		updatePivotPoint,
 		isConnectionAllowed,
 		filterConnectionsByNodes,
 		connectAdjacentNodes,

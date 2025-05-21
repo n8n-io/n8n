@@ -223,6 +223,9 @@ const {
 	resetWorkspace,
 	initializeWorkspace,
 	openExecution,
+	addPivotPoint,
+	deletePivotPoint,
+	updatePivotPoint,
 	editableWorkflow,
 	editableWorkflowObject,
 	lastClickPosition,
@@ -965,6 +968,34 @@ function onDeleteConnection(connection: Connection) {
 
 function onRevertDeleteConnection({ connection }: { connection: [IConnection, IConnection] }) {
 	revertDeleteConnection(connection);
+}
+
+/**
+ * Pivots
+ */
+
+function onCreatePivotPoint(connection: Connection, position: VueFlowXYPosition) {
+	if (!checkIfEditingIsAllowed()) {
+		return;
+	}
+
+	addPivotPoint(connection, [position.x, position.y]);
+}
+
+function onDeletePivotPoint(connection: Connection, pivotId: string) {
+	if (!checkIfEditingIsAllowed()) {
+		return;
+	}
+
+	deletePivotPoint(connection, pivotId);
+}
+
+function onUpdatePivotPoint(connection: Connection, pivotId: string, position: VueFlowXYPosition) {
+	if (!checkIfEditingIsAllowed()) {
+		return;
+	}
+
+	updatePivotPoint(connection, pivotId, [position.x, position.y]);
 }
 
 /**
@@ -1955,6 +1986,8 @@ onBeforeUnmount(() => {
 		@run:workflow="runEntireWorkflow('main')"
 		@save:workflow="onSaveWorkflow"
 		@create:workflow="onCreateWorkflow"
+		@create:pivot="onCreatePivotPoint"
+		@delete:pivot="onDeletePivotPoint"
 		@viewport:change="onViewportChange"
 		@selection:end="onSelectionEnd"
 		@drag-and-drop="onDragAndDrop"

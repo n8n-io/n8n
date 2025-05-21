@@ -67,6 +67,8 @@ export interface IOAuth2Options {
 	keyToIncludeInAccessTokenHeader?: string;
 }
 
+export type NodeConnectionPivotPoint = { id: string; position: [number, number] };
+
 export interface IConnection {
 	// The node the connection is to
 	node: string;
@@ -76,6 +78,9 @@ export interface IConnection {
 
 	// The output/input-index of destination node (if node has multiple inputs/outputs of the same type)
 	index: number;
+
+	// The pivot point of the connection, used to render custom connection lines
+	pivots?: NodeConnectionPivotPoint[];
 }
 
 export type ExecutionError =

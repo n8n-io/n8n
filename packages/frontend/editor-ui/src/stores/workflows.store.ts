@@ -32,6 +32,7 @@ import type {
 	IWorkflowTemplateNode,
 	IWorkflowDataCreate,
 	WorkflowListResource,
+	XYPosition,
 } from '@/Interface';
 import { defineStore } from 'pinia';
 import type {
@@ -94,6 +95,7 @@ import { updateCurrentUserSettings } from '@/api/users';
 import { useExecutingNode } from '@/composables/useExecutingNode';
 import type { NodeExecuteBefore } from '@n8n/api-types/push/execution';
 import { useLogsStore } from './logs.store';
+import { nanoid } from 'nanoid';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
@@ -1175,6 +1177,57 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}
 	}
 
+	function addPivotPoint(connection: IConnection[], position: XYPosition) {
+		const source =
+			workflow.value.connections[connection[0].node][connection[0].type][connection[0].index];
+		if (!source) {
+			return;
+		}
+
+		const target = source.find((item) => item.node === connection[1].node);
+		if (!target) {
+			return;
+		}
+
+		target.pivots = target.pivots || [];
+		target.pivots.push({ id: nanoid(), position });
+	}
+
+	function removePivotPoint(connection: IConnection[], pivotId: string) {
+		const source =
+			workflow.value.connections[connection[0].node][connection[0].type][connection[0].index];
+		if (!source) {
+			return;
+		}
+
+		const target = source.find((item) => item.node === connection[1].node);
+		if (!target) {
+			return;
+		}
+
+		target.pivots = target.pivots?.filter((pivot) => pivot.id !== pivotId);
+	}
+
+	function updatePivotPoint(connection: IConnection[], pivotId: string, position: XYPosition) {
+		const source =
+			workflow.value.connections[connection[0].node][connection[0].type][connection[0].index];
+		if (!source) {
+			return;
+		}
+
+		const target = source.find((item) => item.node === connection[1].node);
+		if (!target) {
+			return;
+		}
+
+		const pivot = target.pivots?.find((pivot) => pivot.id === pivotId);
+		if (!pivot) {
+			return;
+		}
+
+		pivot.position = position;
+	}
+
 	function renameNodeSelectedAndExecution(nameData: { old: string; new: string }): void {
 		uiStore.stateIsDirty = true;
 
@@ -1966,6 +2019,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		removeConnection,
 		removeAllConnections,
 		removeAllNodeConnection,
+		addPivotPoint,
+		removePivotPoint,
+		updatePivotPoint,
 		renameNodeSelectedAndExecution,
 		resetAllNodesIssues,
 		updateNodeAtIndex,

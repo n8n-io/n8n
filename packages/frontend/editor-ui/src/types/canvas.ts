@@ -1,5 +1,10 @@
 /* eslint-disable @typescript-eslint/no-redundant-type-constituents */
-import type { ExecutionStatus, INodeConnections, NodeConnectionType } from 'n8n-workflow';
+import type {
+	ExecutionStatus,
+	INodeConnections,
+	NodeConnectionPivotPoint,
+	NodeConnectionType,
+} from 'n8n-workflow';
 import type {
 	DefaultEdge,
 	Node,
@@ -13,6 +18,7 @@ import type { ComputedRef, Ref } from 'vue';
 import type { EventBus } from '@n8n/utils/event-bus';
 import type { CanvasLayoutSource } from '@/composables/useCanvasLayout';
 import type { NodeIconSource } from '../utils/nodeIcon';
+import type { Position as VueFlowXYPosition } from '@vue-flow/core';
 
 export const enum CanvasConnectionMode {
 	Input = 'inputs',
@@ -143,6 +149,7 @@ export interface CanvasConnectionData {
 	target: CanvasConnectionPort;
 	status?: 'success' | 'error' | 'pinned' | 'running';
 	maxConnections?: number;
+	pivots?: NodeConnectionPivotPoint[];
 }
 
 export type CanvasConnection = DefaultEdge<CanvasConnectionData>;
@@ -163,6 +170,7 @@ export interface CanvasInjectionData {
 	isExecuting: Ref<boolean | undefined>;
 	connectingHandle: Ref<ConnectStartEvent | undefined>;
 	viewport: Ref<ViewportTransform>;
+	getProjectedPosition: (event?: MouseEvent | TouchEvent) => VueFlowXYPosition;
 }
 
 export type CanvasNodeEventBusEvents = {

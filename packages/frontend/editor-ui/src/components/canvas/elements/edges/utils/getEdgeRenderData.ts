@@ -1,6 +1,6 @@
-import type { EdgeProps } from '@vue-flow/core';
+import type { EdgeProps, XYPosition } from '@vue-flow/core';
 import { getBezierPath, getSmoothStepPath, Position } from '@vue-flow/core';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionPivotPoint, NodeConnectionTypes } from 'n8n-workflow';
 import type { NodeConnectionType } from 'n8n-workflow';
 
 const EDGE_PADDING_BOTTOM = 130;
@@ -17,12 +17,50 @@ export function getEdgeRenderData(
 	>,
 	{
 		connectionType = NodeConnectionTypes.Main,
+		pivots = [],
 	}: {
 		connectionType?: NodeConnectionType;
+		pivots?: NodeConnectionPivotPoint[];
 	} = {},
 ) {
 	const { targetX, targetY, sourceX, sourceY, sourcePosition, targetPosition } = props;
 	const isConnectorStraight = sourceY === targetY;
+
+	if (pivots.length > 0) {
+		const segmentsWithPivots = [...pivots, { id: 'target', position: [targetX, targetY] }].map(
+			(point, index) => {
+				const [currentX, currentY] = point.position;
+				const prevX = pivots[index - 1]?.position[0] ?? sourceX;
+				const prevY = pivots[index - 1]?.position[1] ?? sourceY;
+
+				return {
+					sourceX: prevX,
+					sourceY: prevY,
+					targetX: currentX,
+					targetY: currentY,
+					sourcePosition: Position.Right,
+					targetPosition: Position.Left,
+				};
+			},
+		);
+
+		return {
+			segments: segmentsWithPivots.map((pivot) =>
+				getSmoothStepPath({
+					sourceX: pivot.sourceX,
+					sourceY: pivot.sourceY,
+					targetX: pivot.targetX,
+					targetY: pivot.targetY,
+					sourcePosition: pivot.sourcePosition,
+					targetPosition: pivot.targetPosition,
+					borderRadius: EDGE_BORDER_RADIUS,
+					offset: EDGE_PADDING_X,
+				}),
+			),
+			labelPosition: [segmentsWithPivots[0].targetX, segmentsWithPivots[0].targetY],
+			isConnectorStraight,
+		};
+	}
 
 	if (!isRightOfSourceHandle(sourceX, targetX) || connectionType !== NodeConnectionTypes.Main) {
 		const segment = getBezierPath(props);

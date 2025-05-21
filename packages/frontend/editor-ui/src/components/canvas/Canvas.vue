@@ -104,6 +104,8 @@ const emit = defineEmits<{
 	'selection:end': [position: XYPosition];
 	'open:sub-workflow': [nodeId: string];
 	'start-chat': [];
+	'create:pivot': [connection: Connection, position: XYPosition];
+	'delete:pivot': [connection: Connection, id: string];
 }>();
 
 const props = withDefaults(
@@ -471,6 +473,18 @@ function onClickConnectionAdd(connection: Connection) {
 const arrowHeadMarkerId = ref('custom-arrow-head');
 
 /**
+ * Pivot points
+ */
+
+function onCreatePivot(connection: Connection, event: MouseEvent) {
+	emit('create:pivot', connection, getProjectedPosition(event));
+}
+
+function onDeletePivot(connection: Connection, id: string) {
+	emit('delete:pivot', connection, id);
+}
+
+/**
  * Edge and Nodes Hovering
  */
 
@@ -809,6 +823,7 @@ provide(CanvasKey, {
 	isExecuting,
 	initialized,
 	viewport,
+	getProjectedPosition,
 });
 </script>
 
@@ -886,6 +901,8 @@ provide(CanvasKey, {
 				:bring-to-front="edgesBringToFrontById[edgeProps.id]"
 				@add="onClickConnectionAdd"
 				@delete="onDeleteConnection"
+				@create:pivot="onCreatePivot"
+				@delete:pivot="onDeletePivot"
 				@update:label:hovered="onUpdateEdgeLabelHovered(edgeProps.id, $event)"
 			/>
 		</template>

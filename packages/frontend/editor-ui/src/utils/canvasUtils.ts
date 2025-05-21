@@ -34,6 +34,7 @@ export function mapLegacyConnectionsToCanvasConnections(
 					const toId = nodes.find((node) => node.name === toNodeName)?.id ?? '';
 					const toConnectionType = toPort.type as NodeConnectionType;
 					const toIndex = toPort.index;
+					const pivots = toPort.pivots ?? [];
 
 					const sourceHandle = createCanvasConnectionHandleString({
 						mode: CanvasConnectionMode.Output,
@@ -62,6 +63,7 @@ export function mapLegacyConnectionsToCanvasConnections(
 							sourceHandle,
 							targetHandle,
 							data: {
+								pivots,
 								source: {
 									node: fromNodeName,
 									index: fromIndex,

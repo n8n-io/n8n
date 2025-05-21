@@ -4,14 +4,18 @@ import type { CanvasConnectionData } from '@/types';
 import { isValidNodeConnectionType } from '@/utils/typeGuards';
 import type { Connection, EdgeProps } from '@vue-flow/core';
 import { BaseEdge, EdgeLabelRenderer } from '@vue-flow/core';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionPivotPoint, NodeConnectionTypes } from 'n8n-workflow';
 import { computed, ref, toRef, useCssModule, watch } from 'vue';
 import CanvasEdgeToolbar from './CanvasEdgeToolbar.vue';
 import { getEdgeRenderData } from './utils';
+import { useCanvas } from '@/composables/useCanvas';
 
 const emit = defineEmits<{
 	add: [connection: Connection];
 	delete: [connection: Connection];
+	'create:pivot': [connection: Connection, event: MouseEvent];
+	'delete:pivot': [connection: Connection, pivotId: string];
+	'update:pivot': [connection: Connection, pivotId: string, position: [number, number]];
 	'update:label:hovered': [hovered: boolean];
 }>();
 
@@ -22,6 +26,8 @@ export type CanvasEdgeProps = EdgeProps<CanvasConnectionData> & {
 };
 
 const props = defineProps<CanvasEdgeProps>();
+
+const { getProjectedPosition } = useCanvas();
 
 const data = toRef(props, 'data');
 
@@ -103,8 +109,11 @@ const edgeToolbarClasses = computed(() => ({
 	selected: props.selected,
 }));
 
+const pivots = computed(() => props.data.pivots);
+
 const renderData = computed(() =>
 	getEdgeRenderData(props, {
+		pivots: pivots.value,
 		connectionType: connectionType.value,
 	}),
 );
@@ -135,6 +144,50 @@ function onEdgeLabelMouseEnter() {
 function onEdgeLabelMouseLeave() {
 	emit('update:label:hovered', false);
 }
+
+/**
+ * Handle pivot point events
+ */
+
+function onPivotCreate(event: MouseEvent) {
+	if (!pivots.value || pivots.value.length > 0) {
+		return;
+	}
+
+	event.stopPropagation();
+
+	emit('create:pivot', connection.value, event);
+}
+
+function onPivotDelete(pivot: NodeConnectionPivotPoint, event: MouseEvent) {
+	event.stopPropagation();
+
+	emit('delete:pivot', connection.value, pivot.id);
+}
+
+function onPivotMouseDown(pivot: NodeConnectionPivotPoint, event: MouseEvent) {
+	if (event.button !== 0) {
+		return;
+	}
+
+	event.stopPropagation();
+
+	function onMouseMove(event: MouseEvent) {
+		const { x, y } = getProjectedPosition(event);
+		pivot.position[0] = x;
+		pivot.position[1] = y;
+	}
+
+	function onMouseUp() {
+		// emit('update:pivot', connection.value, pivot.id, [x, y]);
+
+		document.removeEventListener('mousemove', onMouseMove);
+		document.removeEventListener('mouseup', onMouseUp);
+	}
+
+	document.addEventListener('mousemove', onMouseMove);
+	document.addEventListener('mouseup', onMouseUp);
+}
 </script>
 
 <template>
@@ -142,6 +195,7 @@ function onEdgeLabelMouseLeave() {
 		data-test-id="edge"
 		:data-source-node-name="data.source?.node"
 		:data-target-node-name="data.target?.node"
+		@dblclick="onPivotCreate"
 	>
 		<BaseEdge
 			v-for="(segment, index) in segments"
@@ -152,6 +206,16 @@ function onEdgeLabelMouseLeave() {
 			:path="segment[0]"
 			:marker-end="markerEnd"
 			:interaction-width="40"
+		/>
+		<circle
+			v-for="(pivot, index) in pivots"
+			:key="index"
+			:class="$style.pivotPoint"
+			:cx="pivot.position[0]"
+			:cy="pivot.position[1]"
+			r="10"
+			@mousedown="onPivotMouseDown(pivot, $event)"
+			@dblclick="onPivotDelete(pivot, $event)"
 		/>
 	</g>
 
@@ -179,6 +243,7 @@ function onEdgeLabelMouseLeave() {
 
 <style lang="scss" module>
 .edge {
+	pointer-events: all;
 	transition:
 		stroke 0.3s ease,
 		fill 0.3s ease;
@@ -186,6 +251,7 @@ function onEdgeLabelMouseLeave() {
 
 .edgeLabelWrapper {
 	transform: translateY(calc(var(--spacing-xs) * -1));
+	top: -30px;
 	position: absolute;
 }
 
@@ -197,5 +263,9 @@ function onEdgeLabelMouseLeave() {
 		var(--color-canvas-background-l),
 		0.85
 	);
+}
+
+.pivotPoint {
+	pointer-events: all;
 }
 </style>
