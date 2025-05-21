@@ -157,6 +157,9 @@ export function generateZodSchemaExtended(
 			) as [string, ...string[]];
 			if (Array.isArray(parameter.default)) {
 				schema = z.array(z.enum(enumValues));
+				if (parameter.typeOptions?.multipleValues === false) {
+					schema = schema.max(1);
+				}
 			} else {
 				schema = z.enum(enumValues);
 			}
