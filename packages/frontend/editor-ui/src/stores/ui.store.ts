@@ -233,6 +233,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const bannerStack = ref<BannerName[]>([]);
 	const pendingNotificationsForViews = ref<{ [key in VIEWS]?: NotificationOptions[] }>({});
 	const processingExecutionResults = ref<boolean>(false);
+	const customStickyColor = ref<string>('#63D1F3'); // Default color for custom sticky notes
 
 	const appGridDimensions = ref<{ width: number; height: number }>({ width: 0, height: 0 });
 
@@ -645,10 +646,18 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		processingExecutionResults.value = value;
 	};
 
+	/**
+	 * [ria] Updates the custom sticky color in the store
+	 */
+	const updateStickyColor = (color: string) => {
+		customStickyColor.value = color;
+	};
+
 	return {
 		appGridDimensions,
 		appliedTheme,
 		contextBasedTranslationKeys,
+		customStickyColor,
 		getLastSelectedNode,
 		isVersionsOpen,
 		isModalActiveById,
@@ -720,6 +729,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		setProcessingExecutionResults,
 		openDeleteFolderModal,
 		openMoveToFolderModal,
+		updateStickyColor,
 	};
 });
 
