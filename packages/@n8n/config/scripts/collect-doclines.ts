@@ -1,27 +1,23 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import type { PropertyDeclaration } from 'ts-morph';
+import type { PropertyDeclaration, Type as TsMorphType } from 'ts-morph';
 import { Project, Node } from 'ts-morph';
 
-function getPropertyType(classField: PropertyDeclaration): string {
+function isStringUnion(type: TsMorphType): boolean {
+	return type.isUnion() && type.getUnionTypes().every((t) => t.isStringLiteral());
+}
+
+function isNumberUnion(type: TsMorphType): boolean {
+	return type.isUnion() && type.getUnionTypes().every((t) => t.isNumberLiteral());
+}
+
+function getPropertyType(classField: PropertyDeclaration) {
 	const type = classField.getType();
 
 	if (type.isBoolean()) return 'boolean';
 	if (type.isArray()) return 'array';
-
-	if (
-		type.isNumber() ||
-		(type.isUnion() && type.getUnionTypes().every((t) => t.isNumberLiteral()))
-	) {
-		return 'number';
-	}
-
-	if (
-		type.isString() ||
-		(type.isUnion() && type.getUnionTypes().every((t) => t.isStringLiteral()))
-	) {
-		return 'string';
-	}
+	if (type.isNumber() || isNumberUnion(type)) return 'number';
+	if (type.isString() || isStringUnion(type)) return 'string';
 
 	return 'string';
 }
@@ -73,10 +69,10 @@ function toEnumValues(schemaNode: Node) {
  * {
  *   "N8N_AUTH_COOKIE_SAMESITE": {
  * 		"description": "This sets the `Samesite` flag on n8n auth cookie",
- * 		"defaultValue": "'lax'",
+ * 		"defaultValue": "lax",
  * 		"type": "enum",
  * 		"enumValues": ["strict", "lax", "none"],
- * 		"sections": []
+ * 		"sections": ["auth"]
  * 	}
  * }
  * ```
@@ -86,7 +82,7 @@ function collectDoclines() {
 
 	interface DoclineEntry {
 		description: string;
-		defaultValue: string | null;
+		defaultValue: string;
 		type: string;
 		sections: [];
 		enumValues?: string[];
@@ -131,7 +127,15 @@ function collectDoclines() {
 				const description = jsDocs[0].getDescription().trim();
 
 				const initializer = classField.getInitializer();
-				const defaultValue = initializer?.getText() ?? null;
+
+				if (!initializer || !Node.isStringLiteral(initializer)) continue;
+
+				const tsMorphType = classField.getType();
+
+				const defaultValue =
+					tsMorphType.isString() || isStringUnion(tsMorphType)
+						? initializer.getLiteralValue() // prevent quote wrapping "'value'"
+						: initializer.getText();
 
 				let propertyType = getPropertyType(classField);
 				let enumValues: DoclineEntry['enumValues'];
