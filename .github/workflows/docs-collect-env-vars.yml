@@ -1,0 +1,32 @@
+name: Docs - Collect env vars
+
+on:
+  workflow_dispatch:
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a # v4.2.0
+        with:
+          node-version: 20.x
+
+      - name: Setup corepack and pnpm
+        run: |
+          npm i -g corepack@0.31
+          corepack enable
+
+      - run: pnpm install --filter @n8n/config...
+
+      - name: Collect env vars
+        run: pnpm run --filter @n8n/config collect-env-vars > env-vars-output.json
+
+      - name: Send to docs workflow
+        run: |
+          curl -u docsWorkflows:${{ secrets.N8N_WEBHOOK_DOCS_PASSWORD }} \
+            --request POST 'https://internal.users.n8n.cloud/webhook/PENDING' \
+            --header 'Content-Type: application/json' \
+            --data "$(cat env-vars-output.json)"
