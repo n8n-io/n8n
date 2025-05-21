@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { ref } from 'vue';
+import { onMounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import type { Collaborator } from '@n8n/api-types';
 import * as Y from 'yjs';
@@ -13,7 +13,7 @@ import { useUsersStore } from '@/stores/users.store';
 import { useUIStore } from '@/stores/ui.store';
 import type { IWorkflowDb } from '@/Interface';
 import { WebsocketProvider } from 'y-websocket';
-import type { INode } from 'n8n-workflow';
+import { deepToRaw } from '@/components/RunDataAi/utils';
 
 const HEARTBEAT_INTERVAL = 5 * TIME.MINUTE;
 
@@ -26,7 +26,6 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 	const workflowsStore = useWorkflowsStore();
 	const usersStore = useUsersStore();
 	const uiStore = useUIStore();
-	const isLocalUpdate = ref(false);
 	const ydoc = ref(new Y.Doc());
 
 	const route = useRoute();
@@ -78,7 +77,7 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 		addBeforeUnloadEventBindings();
 		notifyWorkflowOpened();
 		startHeartbeat();
-		initYjs(workflowsStore.workflow);
+		initYjs();
 	}
 
 	function terminate() {
@@ -111,68 +110,47 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 		);
 	}
 
-	function initYjs(workflow: IWorkflowDb) {
-		console.log('[CollaborationStore]', 'initializing...');
-		// For this PoC, we are using websocket connection
-		// If we want to enable offline ediing,
-		// we can include indexDB or localStorage
-		// And Yjs should take care of syncing between them
-		const wsProvider = new WebsocketProvider(
-			'ws://localhost:1234',
-			`workflow:${workflow.id}`,
-			ydoc.value,
-		);
+	const isInitialized = ref(false);
 
-		// Setup Yjs shared document that contains workflow data
-		const metadata = ydoc.value.getMap('metadata');
-		metadata.set('name', workflow.name);
-		metadata.set('active', workflow.active);
+	function initYjs() {
+		if (isInitialized.value) {
+			return;
+		}
 
-		// Add nodes to the document
-		const nodes = ydoc.value.getMap('nodes');
+		isInitialized.value = true;
+		new WebsocketProvider('ws://localhost:1234', 'collabo!!!', ydoc.value);
 
-		workflow.nodes.forEach((node) => {
-			// We will use Y.Map as a shared type for each node
-			const nodeMap = new Y.Map();
-			Object.entries(node).forEach(([key, value]) => {
-				// Each node property is an entry in this map
-				// TODO: Figure out how to properly represent `parameters`
-				nodeMap.set(key, value);
-			});
-			nodes.set(node.id, nodeMap);
-		});
+		const workflows = ydoc.value.getMap<IWorkflowDb>('workflows');
 
-		// TODO: Add connections and the rest of workflow properties
-		// Observe changes and update UI when shared document
-		// is updated by someone else
-		// For PoC, we observe only node changes
-		nodes.observeDeep((events) => {
-			// Don't update if the change is coming from me
-			if (isLocalUpdate.value) {
-				return;
-			}
+		workflows.observeDeep((events, tx) => {
 			events.forEach((event) => {
 				if (event.target instanceof Y.Map) {
-					const updatedNode = event.target.toJSON();
-					const nodeIndex = workflowsStore.workflow.nodes.findIndex(
-						(node) => node.id === updatedNode.id,
-					);
-					// Update the actual node in workflow
-					workflowsStore.updateNodeAtIndex(nodeIndex, updatedNode);
+					const updatedWorkflows = event.target.toJSON();
+
+					for (const [k, v] of Object.entries(updatedWorkflows)) {
+						if (
+							k === workflowsStore.workflowId &&
+							JSON.stringify(workflowsStore.workflow) !== JSON.stringify(v)
+						) {
+							workflowsStore.setWorkflow(v as IWorkflowDb);
+						}
+					}
 				}
 			});
 		});
 	}
 
-	function updateNodeProperty<K extends keyof INode>(nodeId: string, property: K, value: unknown) {
-		isLocalUpdate.value = true;
-		const nodes = ydoc.value.getMap('nodes');
-		const node = nodes.get(nodeId);
-		if (node) {
-			node.set(property, value);
-		}
-		isLocalUpdate.value = false;
-	}
+	watch(
+		() => workflowsStore.workflow,
+		(wf) => {
+			const workflows = ydoc.value.getMap<IWorkflowDb>('workflows');
+
+			workflows.set(workflowsStore.workflow.id, deepToRaw(wf));
+		},
+		{ immediate: true, deep: true },
+	);
+
+	onMounted(initYjs);
 
 	return {
 		collaborators,
@@ -180,6 +158,5 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 		terminate,
 		startHeartbeat,
 		stopHeartbeat,
-		updateNodeProperty,
 	};
 });
