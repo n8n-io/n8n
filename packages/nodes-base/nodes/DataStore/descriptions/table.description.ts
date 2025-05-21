@@ -92,26 +92,22 @@ export const tableDescriptions: INodeProperties[] = [
 						options: [
 							{
 								name: 'String',
-								value: 'stringValue',
+								value: 'string',
 							},
 							{
 								name: 'Number',
-								value: 'numberValue',
+								value: 'number',
 							},
 							{
 								name: 'Boolean',
-								value: 'booleanValue',
+								value: 'boolean',
 							},
 							{
-								name: 'Array',
-								value: 'arrayValue',
-							},
-							{
-								name: 'Object',
-								value: 'objectValue',
+								name: 'Date',
+								value: 'date',
 							},
 						],
-						default: 'stringValue',
+						default: 'string',
 					},
 					{
 						displayName: 'Required',

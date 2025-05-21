@@ -112,6 +112,7 @@ export class DataStore implements INodeType {
 
 	async execute(this: IExecuteFunctions) {
 		const items = this.getInputData();
+		// console.log(this.getRestApiUrl());
 
 		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
