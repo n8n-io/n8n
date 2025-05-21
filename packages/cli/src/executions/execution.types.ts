@@ -18,6 +18,12 @@ export declare namespace ExecutionRequest {
 		};
 
 		type GetOne = { unflattedResponse: 'true' | 'false' };
+
+		// TODO: add pagination
+		type GetNodeData = {
+			workflowId: string;
+			nodeId: string;
+		};
 	}
 
 	namespace BodyParams {
@@ -44,6 +50,8 @@ export declare namespace ExecutionRequest {
 	};
 
 	type GetOne = AuthenticatedRequest<RouteParams.ExecutionId, {}, {}, QueryParams.GetOne>;
+
+	type GetNodeData = AuthenticatedRequest<{}, {}, {}, QueryParams.GetNodeData>;
 
 	type Delete = AuthenticatedRequest<{}, {}, BodyParams.DeleteFilter>;
 

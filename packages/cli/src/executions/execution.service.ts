@@ -13,6 +13,7 @@ import {
 	WorkflowRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { parse } from 'flatted';
 import { validate as jsonSchemaValidate } from 'jsonschema';
 import { Logger } from 'n8n-core';
 import type {
@@ -527,5 +528,49 @@ export class ExecutionService {
 		if (updateData.tags) {
 			await this.annotationTagMappingRepository.overwriteTags(annotation.id, updateData.tags);
 		}
+	}
+
+	async getNodeData(nodeId: string, workflowId: string, take: number = 10, skip: number = 0) {
+		const executions = await this.executionRepository.find({
+			where: {
+				workflowId,
+			},
+			order: {
+				startedAt: 'DESC',
+			},
+			take,
+			skip,
+			relations: {
+				executionData: true,
+				workflow: true,
+			},
+		});
+		const executionsWithNode = executions.filter((e) =>
+			e.workflow.nodes.some((n) => n.id === nodeId),
+		);
+		if (executionsWithNode.length === 0) {
+			return [];
+		}
+
+		const nodeName = executionsWithNode[0].workflow.nodes.find((n) => n.id === nodeId)!.name;
+		const executeDataParsed = executionsWithNode.map(
+			(e) => parse(e.executionData.data) as IRunExecutionData,
+		);
+		const nodeExecutionData = executeDataParsed
+			.map((e) => e.resultData.runData[nodeName])
+			.filter((e) => e);
+		if (nodeExecutionData.length === 0) {
+			return [];
+		}
+
+		// TODO: check if this is correct
+		// it is assumed this is only used with nodes with one `main` output
+		const nodeData = nodeExecutionData
+			// not sure why `n` and `main` are arrays
+			.map((n) => n[0].data?.main[0]?.map((i) => i.json));
+
+		return nodeData.map((n) => ({
+			items: n,
+		}));
 	}
 }

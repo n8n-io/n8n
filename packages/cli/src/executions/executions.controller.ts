@@ -75,6 +75,21 @@ export class ExecutionsController {
 		return executions;
 	}
 
+	@Get('/node-data')
+	async getNodeData(req: ExecutionRequest.GetNodeData) {
+		const accessibleWorkflowIds = await this.getAccessibleWorkflowIds(req.user, 'workflow:read');
+		if (
+			accessibleWorkflowIds.length === 0 ||
+			// TODO: is there a way to handle this better?
+			!accessibleWorkflowIds.includes(req.query.workflowId)
+		) {
+			return { nodeData: [] };
+		}
+
+		// TODO: pagination
+		return await this.executionService.getNodeData(req.query.nodeId, req.query.workflowId);
+	}
+
 	@Get('/:id')
 	async getOne(req: ExecutionRequest.GetOne) {
 		if (!isPositiveInteger(req.params.id)) {
