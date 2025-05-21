@@ -345,14 +345,8 @@ export class Workflow {
 			return result;
 		}
 
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const returnData: any = {};
-
 		for (const parameterName of Object.keys(parameterValue || {})) {
-			returnData[parameterName] = this.getExpressions(
-				parameterValue[parameterName as keyof typeof parameterValue],
-				result,
-			);
+			this.getExpressions(parameterValue[parameterName as keyof typeof parameterValue], result);
 		}
 
 		return result;
@@ -364,18 +358,16 @@ export class Workflow {
 
 	getReferencedNodeNamesFromNode(node: INode) {
 		const referencedNodeNames: string[] = [];
-		console.log('node.name', node.name);
-		for (const [key, value] of Object.entries(node.parameters)) {
-			console.log('key', key);
-			console.log('value', value);
-
+		for (const [_key, value] of Object.entries(node.parameters)) {
 			const expressions = this.getExpressions(value);
-			console.log('expressions', expressions);
 
 			for (const expression of expressions) {
 				referencedNodeNames.push(...this.getReferencedNodeNames(expression));
-				console.log('referencedNodeNames', referencedNodeNames);
 			}
+		}
+
+		if (NODES_WITH_RENAMABLE_CONTENT.has(node.type) && typeof node.parameters.jsCode === 'string') {
+			referencedNodeNames.push(...this.getReferencedNodeNames(node.parameters.jsCode));
 		}
 
 		return referencedNodeNames;
