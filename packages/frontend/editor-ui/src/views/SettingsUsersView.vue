@@ -238,6 +238,21 @@ async function onRoleChange(user: IUser, newRoleName: UpdateGlobalRolePayload['n
 		showError(e, i18n.baseText('settings.users.userReinviteError'));
 	}
 }
+
+async function onUpdateMfaEnforced(value: boolean) {
+	try {
+		await usersStore.updateEnforceMfa(value);
+		showToast({
+			type: 'success',
+			title: i18n.baseText('settings.personal.mfa.enforce.success.title'),
+			message: value
+				? i18n.baseText('settings.personal.mfa.enforce.enabled.message')
+				: i18n.baseText('settings.personal.mfa.enforce.disabled.message'),
+		});
+	} catch (error) {
+		showError(error, i18n.baseText('settings.personal.mfa.enforce.error'));
+	}
+}
 </script>
 
 <template>
@@ -285,7 +300,17 @@ async function onRoleChange(user: IUser, newRoleName: UpdateGlobalRolePayload['n
 			</i18n-t>
 		</n8n-notice>
 
-		<n8n-notice :content="i18n.baseText('settings.personal.mfa.enforced')" theme="info" />
+		<n8n-notice theme="info">
+			<el-switch
+				:model-value="settingsStore.settings.mfa.enforced"
+				size="large"
+				data-test-id="enable-force-mfa"
+				@update:model-value="onUpdateMfaEnforced"
+			/>
+			<n8n-text class="ml-xs">{{
+				i18n.baseText('settings.personal.mfa.enforce.message')
+			}}</n8n-text>
+		</n8n-notice>
 
 		<!-- If there's more than 1 user it means the account quota was more than 1 in the past. So we need to allow instance owner to be able to delete users and transfer workflows.
 		-->
