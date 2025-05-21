@@ -1,4 +1,5 @@
 import type {
+	FieldTypeMap,
 	IDataObject,
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
@@ -7,6 +8,8 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 	JsonObject,
+	ResourceMapperField,
+	ResourceMapperFields,
 } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
@@ -75,6 +78,36 @@ export class DataStore implements INodeType {
 				};
 			},
 		},
+		resourceMapping: {
+			async getColumns(this: ILoadOptionsFunctions): Promise<ResourceMapperFields> {
+				const id = this.getNodeParameter('tableId', '', { extractValue: true }) as string;
+
+				const response =
+					((await this.helpers.httpRequest({
+						method: 'GET',
+						url: `https://mishakret.app.n8n.cloud/webhook/657be5c2-bd0f-4bd0-88b8-4dd925b8732a/datastores/${id}/columns`,
+					})) as IDataObject[]) ?? [];
+
+				const fields: ResourceMapperField[] = [];
+
+				for (const column of response) {
+					const type = column.type as keyof FieldTypeMap;
+
+					fields.push({
+						id: column.id as string,
+						displayName: column.name as string,
+						required: false,
+						defaultMatch: false,
+						display: true,
+						type,
+						readOnly: false,
+						removed: false,
+					});
+				}
+
+				return { fields };
+			},
+		},
 	};
 
 	async execute(this: IExecuteFunctions) {
@@ -141,6 +174,32 @@ export class DataStore implements INodeType {
 					}
 				}
 				if (resource === 'row') {
+					if (operation === 'add') {
+						const dataMode = this.getNodeParameter('columns.mappingMode', 0) as string;
+						const tableId = this.getNodeParameter('tableId', i, '', {
+							extractValue: true,
+						}) as string;
+
+						let data: IDataObject;
+
+						if (dataMode === 'autoMapInputData') {
+							data = items[i].json;
+						} else {
+							const fields = this.getNodeParameter('columns.value', i, {}) as IDataObject;
+
+							data = fields;
+						}
+
+						const response = (await this.helpers.httpRequest({
+							method: 'PUT',
+							url: `https://nikhilkuriakose.app.n8n.cloud/webhook/78e49f0d-75bb-4307-b3f8-0cfedc38b28c/datastore/${tableId}/record`,
+							body: data,
+						})) as IDataObject;
+
+						returnData.push({
+							json: response,
+						});
+					}
 					if (operation === 'get') {
 						const tableId = this.getNodeParameter('tableId', i, '', {
 							extractValue: true,

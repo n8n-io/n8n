@@ -1,6 +1,6 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-import { tableRLC } from './common.descriptions';
+import { columnsRMC, tableRLC } from './common.descriptions';
 
 export const rowOperations: INodeProperties = {
 	displayName: 'Operation',
@@ -29,4 +29,5 @@ export const rowOperations: INodeProperties = {
 
 export const rowDescriptions: INodeProperties[] = [
 	{ ...tableRLC, displayOptions: { show: { resource: ['row'] } } },
+	{ ...columnsRMC, displayOptions: { show: { resource: ['row'], operation: ['add'] } } },
 ];

@@ -23,3 +23,28 @@ export const tableRLC: INodeProperties = {
 		},
 	],
 };
+
+export const columnsRMC: INodeProperties = {
+	displayName: 'Columns',
+	name: 'columns',
+	type: 'resourceMapper',
+	default: {
+		mappingMode: 'defineBelow',
+		value: null,
+	},
+	noDataExpression: true,
+	required: true,
+	typeOptions: {
+		loadOptionsDependsOn: ['tableId.value'],
+		resourceMapper: {
+			resourceMapperMethod: 'getColumns',
+			mode: 'add',
+			fieldWords: {
+				singular: 'column',
+				plural: 'columns',
+			},
+			addAllFields: true,
+			multiKeyMatch: true,
+		},
+	},
+};
