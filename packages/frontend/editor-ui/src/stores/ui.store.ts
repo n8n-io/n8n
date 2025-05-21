@@ -233,7 +233,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const bannerStack = ref<BannerName[]>([]);
 	const pendingNotificationsForViews = ref<{ [key in VIEWS]?: NotificationOptions[] }>({});
 	const processingExecutionResults = ref<boolean>(false);
-	const customStickyColor = ref<string>('#63D1F3'); // Default color for custom sticky notes
+	const customStickyColor = ref<string>('hsl(194, 88%, 67%)'); // Default color for custom sticky notes (HSL format)
 
 	const appGridDimensions = ref<{ width: number; height: number }>({ width: 0, height: 0 });
 

@@ -38,8 +38,29 @@ const styles = computed((): { height: string; width: string } => ({
 
 const backgroundColorStyles = computed(() => {
 	if (typeof props.backgroundColor === 'string') {
+		// If the color is in HSL format (starts with 'hsl')
+		if (props.backgroundColor.startsWith('hsl')) {
+			// Extract HSL values for easier manipulation
+			const hslMatch = props.backgroundColor.match(/hsl\(([^,]+),\s*([^,]+)%,\s*([^)]+)%\)/);
+			if (hslMatch) {
+				const h = hslMatch[1]; // hue
+				const s = hslMatch[2]; // saturation
+				const l = parseInt(hslMatch[3], 10); // lightness
+
+				// Create darker border color by reducing lightness by 15%
+				const borderLightness = Math.max(0, l - 15);
+
+				return {
+					'--color-sticky-background': props.backgroundColor,
+					'--color-sticky-border': `hsl(${h}, ${s}%, ${borderLightness}%)`,
+				};
+			}
+		}
+
+		// Fallback for non-HSL colors or if parsing fails
 		return {
 			'--color-sticky-background': props.backgroundColor,
+			'--color-sticky-border': props.backgroundColor, // Same color as background as fallback
 		};
 	}
 	return {};
@@ -91,7 +112,8 @@ const onInputScroll = (event: WheelEvent) => {
 			'n8n-sticky': true,
 			[$style.sticky]: true,
 			[$style.clickable]: !isResizing,
-			[$style[`color-${backgroundColor}`]]: typeof backgroundColor === 'number', // [ria] here
+			[$style[`color-${backgroundColor}`]]: typeof backgroundColor === 'number',
+			[$style.customColor]: typeof backgroundColor === 'string',
 		}"
 		:style="[styles, backgroundColorStyles]"
 		@keydown.prevent
@@ -207,6 +229,11 @@ const onInputScroll = (event: WheelEvent) => {
 .color-7 {
 	--color-sticky-background: var(--color-sticky-background-7);
 	--color-sticky-border: var(--color-sticky-border-7);
+}
+
+.customColor {
+	/* Custom colors handled via inline styles */
+	/* Border color is handled in backgroundColorStyles computed property */
 }
 </style>
 

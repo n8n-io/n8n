@@ -2,32 +2,30 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useI18n } from '@/composables/useI18n';
 import { useCanvasNode } from '@/composables/useCanvasNode';
-import { useUIStore } from '@/stores/ui.store'; // [ria] uses UIStore to store custom hex color selection
+// No longer needing UI store as we're using local state
 import type { CanvasNodeStickyNoteRender } from '@/types';
 import { N8nColorPicker } from '@n8n/design-system';
 
 const emit = defineEmits<{
-	update: [color: number | string]; // [ria] string for custom hex color selection
+	update: [color: number | string]; // [ria] string for custom color selection
 }>();
 
 const i18n = useI18n();
-const uiStore = useUIStore(); // [ria] initialize UIStore to store custom hex color selection
 
 const { render, eventBus } = useCanvasNode();
 const renderOptions = computed(() => render.value.options as CanvasNodeStickyNoteRender['options']);
 
 const autoHideTimeout = ref<NodeJS.Timeout | null>(null);
 
-// [ria] get or initialize custom color from UI store
-const customStickyColor = computed({
-	get: () => uiStore.customStickyColor, // [ria] maybe use default color here
-	set: (color: string) => {
-		uiStore.customStickyColor = color;
-	},
-});
+// Local state for color picker
+const localStickyColor = ref(
+	renderOptions.value.color && typeof renderOptions.value.color === 'string'
+		? renderOptions.value.color
+		: 'hsl(194, 88%, 67%)',
+); // Default color if none set
 
-// [ria] keep standard fixed colors
-const colors = computed(() => Array.from({ length: 7 }).map((_, index) => index + 1)); // [ria] need to make changes here
+// Generate array of numbers 1-7 for the standard fixed colors
+const colors = computed(() => Array.from({ length: 7 }).map((_, index) => index + 1));
 
 const isPopoverVisible = defineModel<boolean>('visible');
 
@@ -40,23 +38,20 @@ function showPopover() {
 }
 
 function changeColor(index: number) {
-	debugger;
 	if (index === 8) {
-		// [ria] apply custom color when selecting 8th option
-		emit('update', customStickyColor.value);
+		// Apply custom color when selecting 8th option
+		emit('update', localStickyColor.value);
 	} else {
 		emit('update', index);
-		// hidePopover();
 	}
 }
 
-// [ria] to update and use custom color in the UI store
+// Handle color picker change events
 function onColorPickerChange(value: string) {
-	debugger;
-	customStickyColor.value = value;
-	if (renderOptions.value.color === 8 || typeof renderOptions.value.color === 'string') {
-		emit('update', value);
-	}
+	console.log('onColorPickerChange called with value:', value);
+	localStickyColor.value = value;
+	// Always emit the update with the HSL color directly
+	emit('update', value);
 }
 
 function onMouseEnter() {
@@ -88,7 +83,7 @@ onBeforeUnmount(() => {
 		trigger="manual"
 		placement="top"
 		:popper-class="$style.popover"
-		:popper-style="{ width: '208px' }"
+		:popper-style="{ width: '240px' }"
 		:teleported="true"
 		@before-enter="onMouseEnter"
 		@after-leave="onMouseLeave"
@@ -122,10 +117,13 @@ onBeforeUnmount(() => {
 			<div :class="$style.customColorOption" @click.stop>
 				<div :class="$style.colorPickerContainer" @click.stop>
 					<N8nColorPicker
-						v-model="customStickyColor"
+						v-model="localStickyColor"
 						size="small"
 						:show-input="false"
+						:color-format="'hsl'"
 						@update:modelValue="onColorPickerChange"
+						@change="onColorPickerChange"
+						@active-change="onColorPickerChange"
 						@click.stop
 					/>
 				</div>
