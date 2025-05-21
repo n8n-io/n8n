@@ -1,7 +1,7 @@
 import 'reflect-metadata';
+import { inDevelopment, inTest, LicenseState } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
-import { ModuleRegistry } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { Command, Errors } from '@oclif/core';
 import {
@@ -17,19 +17,19 @@ import { ensureError, sleep, UserError } from 'n8n-workflow';
 
 import type { AbstractServer } from '@/abstract-server';
 import config from '@/config';
-import { N8N_VERSION, N8N_RELEASE_DATE, inDevelopment, inTest } from '@/constants';
+import { N8N_VERSION, N8N_RELEASE_DATE } from '@/constants';
 import * as CrashJournal from '@/crash-journal';
-import * as Db from '@/db';
+import { DbConnection } from '@/databases/db-connection';
 import { getDataDeduplicationService } from '@/deduplication';
 import { DeprecationService } from '@/deprecation/deprecation.service';
 import { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.service.ee';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
-import { initExpressionEvaluator } from '@/expression-evaluator';
 import { ExternalHooks } from '@/external-hooks';
 import { ExternalSecretsManager } from '@/external-secrets.ee/external-secrets-manager.ee';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { ModuleRegistry } from '@/modules/module-registry';
 import type { ModulePreInit } from '@/modules/modules.config';
 import { ModulesConfig } from '@/modules/modules.config';
 import { NodeTypes } from '@/node-types';
@@ -40,6 +40,8 @@ import { WorkflowHistoryManager } from '@/workflows/workflow-history.ee/workflow
 
 export abstract class BaseCommand extends Command {
 	protected logger = Container.get(Logger);
+
+	protected dbConnection = Container.get(DbConnection);
 
 	protected errorReporter: ErrorReporter;
 
@@ -68,6 +70,9 @@ export abstract class BaseCommand extends Command {
 	/** Whether to init community packages (if enabled) */
 	protected needsCommunityPackages = false;
 
+	/** Whether to init task runner (if enabled). */
+	protected needsTaskRunner = false;
+
 	protected async loadModules() {
 		for (const moduleName of this.modulesConfig.modules) {
 			let preInitModule: ModulePreInit | undefined;
@@ -80,7 +85,6 @@ export abstract class BaseCommand extends Command {
 			if (
 				!preInitModule ||
 				preInitModule.shouldLoadModule?.({
-					database: this.globalConfig.database,
 					instance: this.instanceSettings,
 				})
 			) {
@@ -92,7 +96,7 @@ export abstract class BaseCommand extends Command {
 			}
 		}
 
-		Container.get(ModuleRegistry).initializeModules();
+		await Container.get(ModuleRegistry).initializeModules();
 
 		if (this.instanceSettings.isMultiMain) {
 			Container.get(MultiMainSetup).registerEventHandlers();
@@ -111,7 +115,6 @@ export abstract class BaseCommand extends Command {
 			serverName: deploymentName,
 			releaseDate: N8N_RELEASE_DATE,
 		});
-		initExpressionEvaluator();
 
 		process.once('SIGTERM', this.onTerminationSignal('SIGTERM'));
 		process.once('SIGINT', this.onTerminationSignal('SIGINT'));
@@ -119,9 +122,12 @@ export abstract class BaseCommand extends Command {
 		this.nodeTypes = Container.get(NodeTypes);
 		await Container.get(LoadNodesAndCredentials).init();
 
-		await Db.init().catch(
-			async (error: Error) => await this.exitWithCrash('There was an error initializing DB', error),
-		);
+		await this.dbConnection
+			.init()
+			.catch(
+				async (error: Error) =>
+					await this.exitWithCrash('There was an error initializing DB', error),
+			);
 
 		// This needs to happen after DB.init() or otherwise DB Connection is not
 		// available via the dependency Container that services depend on.
@@ -131,10 +137,12 @@ export abstract class BaseCommand extends Command {
 
 		await this.server?.init();
 
-		await Db.migrate().catch(
-			async (error: Error) =>
-				await this.exitWithCrash('There was an error running database migrations', error),
-		);
+		await this.dbConnection
+			.migrate()
+			.catch(
+				async (error: Error) =>
+					await this.exitWithCrash('There was an error running database migrations', error),
+			);
 
 		Container.get(DeprecationService).warn();
 
@@ -155,6 +163,11 @@ export abstract class BaseCommand extends Command {
 			await Container.get(CommunityPackagesService).checkForMissingPackages();
 		}
 
+		if (this.needsTaskRunner && this.globalConfig.taskRunners.enabled) {
+			const { TaskRunnerModule } = await import('@/task-runners/task-runner-module');
+			await Container.get(TaskRunnerModule).start();
+		}
+
 		// TODO: remove this after the cyclic dependencies around the event-bus are resolved
 		Container.get(MessageEventBus);
 
@@ -172,7 +185,7 @@ export abstract class BaseCommand extends Command {
 
 	protected async exitSuccessFully() {
 		try {
-			await Promise.all([CrashJournal.cleanup(), Db.close()]);
+			await Promise.all([CrashJournal.cleanup(), this.dbConnection.close()]);
 		} finally {
 			process.exit();
 		}
@@ -197,7 +210,7 @@ export abstract class BaseCommand extends Command {
 			);
 		}
 
-		const isLicensed = Container.get(License).isFeatureEnabled(LICENSE_FEATURES.BINARY_DATA_S3);
+		const isLicensed = Container.get(License).isLicensed(LICENSE_FEATURES.BINARY_DATA_S3);
 		if (!isLicensed) {
 			this.logger.error(
 				'No license found for S3 storage. \n Either set `N8N_DEFAULT_BINARY_DATA_MODE` to something else, or upgrade to a license that supports this feature.',
@@ -241,6 +254,8 @@ export abstract class BaseCommand extends Command {
 		this.license = Container.get(License);
 		await this.license.init();
 
+		Container.get(LicenseState).setLicenseProvider(this.license);
+
 		const { activationKey } = this.globalConfig.license;
 
 		if (activationKey) {
@@ -277,9 +292,9 @@ export abstract class BaseCommand extends Command {
 	async finally(error: Error | undefined) {
 		if (error?.message) this.logger.error(error.message);
 		if (inTest || this.id === 'start') return;
-		if (Db.connectionState.connected) {
+		if (this.dbConnection.connectionState.connected) {
 			await sleep(100); // give any in-flight query some time to finish
-			await Db.close();
+			await this.dbConnection.close();
 		}
 		const exitCode = error instanceof Errors.ExitError ? error.oclif.exit : error ? 1 : 0;
 		this.exit(exitCode);

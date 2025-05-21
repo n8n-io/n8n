@@ -10,9 +10,9 @@ import { useExternalHooks } from './useExternalHooks';
 import { VIEWS } from '@/constants';
 import type { ApplicationError } from 'n8n-workflow';
 import { useStyles } from './useStyles';
-import { useCanvasStore } from '@/stores/canvas.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useNDVStore } from '@/stores/ndv.store';
+import { useLogsStore } from '@/stores/logs.store';
 
 export interface NotificationErrorWithNodeAndDescription extends ApplicationError {
 	node: {
@@ -31,7 +31,7 @@ export function useToast() {
 	const i18n = useI18n();
 	const settingsStore = useSettingsStore();
 	const { APP_Z_INDEXES } = useStyles();
-	const canvasStore = useCanvasStore();
+	const logsStore = useLogsStore();
 	const ndvStore = useNDVStore();
 
 	function showMessage(messageData: Partial<NotificationOptions>, track = true) {
@@ -41,7 +41,7 @@ export function useToast() {
 			zIndex: APP_Z_INDEXES.TOASTS, // above NDV and modal overlays
 			offset:
 				(settingsStore.isAiAssistantEnabled ? 64 : 0) +
-				(ndvStore.activeNode === null ? canvasStore.panelHeight : 0),
+				(ndvStore.activeNode === null ? logsStore.height : 0),
 			appendTo: '#app-grid',
 			customClass: 'content-toast',
 		};

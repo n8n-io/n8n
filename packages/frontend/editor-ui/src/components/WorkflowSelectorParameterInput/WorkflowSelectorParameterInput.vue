@@ -142,6 +142,10 @@ const placeholder = computed(() => {
 	return i18n.baseText('resourceLocator.id.placeholder');
 });
 
+const showOpenResourceLink = computed(() => {
+	return !props.isValueExpression && props.modelValue.value;
+});
+
 function setWidth() {
 	const containerRef = container.value as HTMLElement | undefined;
 	if (containerRef) {
@@ -294,7 +298,7 @@ const onAddResourceClicked = async () => {
 			}"
 			:width="width"
 			:event-bus="eventBus"
-			:value="modelValue"
+			:model-value="modelValue.value"
 			@update:model-value="onListItemSelected"
 			@filter="onSearchFilter"
 			@load-more="populateNextWorkflowsPage"
@@ -313,7 +317,13 @@ const onAddResourceClicked = async () => {
 					[$style.multipleModes]: true,
 				}"
 			>
-				<div :class="$style.background"></div>
+				<div
+					:class="{
+						[$style.background]: true,
+						[$style.backgroundWithIssuesAndShowResourceLink]:
+							showOpenResourceLink && parameterIssues?.length,
+					}"
+				/>
 				<div :class="$style.modeSelector">
 					<n8n-select
 						:model-value="selectedMode"
@@ -402,7 +412,11 @@ const onAddResourceClicked = async () => {
 						:issues="parameterIssues"
 						:class="$style['parameter-issues']"
 					/>
-					<div v-if="!isValueExpression && modelValue.value" :class="$style.openResourceLink">
+					<div
+						v-if="showOpenResourceLink"
+						:class="$style.openResourceLink"
+						data-test-id="rlc-open-resource-link"
+					>
 						<n8n-link theme="text" @click.stop="openWorkflow()">
 							<font-awesome-icon icon="external-link-alt" :title="'Open resource link'" />
 						</n8n-link>

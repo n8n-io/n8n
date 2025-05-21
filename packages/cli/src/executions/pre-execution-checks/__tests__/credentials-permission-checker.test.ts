@@ -1,9 +1,9 @@
+import type { Project } from '@n8n/db';
+import type { User } from '@n8n/db';
+import type { SharedCredentialsRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { INode } from 'n8n-workflow';
 
-import type { Project } from '@/databases/entities/project';
-import type { User } from '@/databases/entities/user';
-import type { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { ProjectService } from '@/services/project.service.ee';
 
@@ -95,9 +95,7 @@ describe('CredentialsPermissionChecker', () => {
 	});
 
 	it('should skip credential checks if the home project owner has global scope', async () => {
-		const projectOwner = mock<User>({
-			hasGlobalScope: (scope) => scope === 'credential:list',
-		});
+		const projectOwner = mock<User>({ role: 'global:owner' });
 		ownershipService.getPersonalProjectOwnerCached.mockResolvedValueOnce(projectOwner);
 
 		await expect(permissionChecker.check(workflowId, [node])).resolves.not.toThrow();

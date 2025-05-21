@@ -1,0 +1,117 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [120, 700],
+			"id": "0e76b314-4994-4141-975f-9614c6094c80",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"operation": "update",
+				"userId": {
+					"__rl": true,
+					"value": "101071249467630629404",
+					"mode": "list",
+					"cachedResultName": "NewOne22 User22"
+				},
+				"updateFields": {
+					"archived": true,
+					"firstName": "test",
+					"lastName": "new",
+					"phoneUi": {
+						"phoneValues": [
+							{
+								"type": "assistant",
+								"value": "123",
+								"primary": true
+							}
+						]
+					},
+					"primaryEmail": "one@example.com",
+					"emailUi": {
+						"emailValues": [
+							{
+								"type": "home",
+								"address": "newone@example.com"
+							}
+						]
+					}
+				}
+			},
+			"type": "n8n-nodes-base.gSuiteAdmin",
+			"typeVersion": 1,
+			"position": [140, 1100],
+			"id": "b4cd1391-cfdc-4f36-8c2f-f18a9ad4f795",
+			"name": "Update User",
+			"credentials": {
+				"gSuiteAdminOAuth2Api": {
+					"id": "OXfPMaggXFJ0RLkw",
+					"name": "Google Workspace Admin account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Update User",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Update User": [
+			{
+				"json": {
+					"kind": "admin#directory#user",
+					"id": "101071249467630629404",
+					"etag": "\"example\"",
+					"primaryEmail": "one@example.com",
+					"name": {
+						"givenName": "test",
+						"familyName": "new"
+					},
+					"isAdmin": false,
+					"isDelegatedAdmin": false,
+					"lastLoginTime": "1970-01-01T00:00:00.000Z",
+					"creationTime": "2025-03-26T21:28:53.000Z",
+					"agreedToTerms": false,
+					"suspended": false,
+					"archived": false,
+					"changePasswordAtNextLogin": false,
+					"ipWhitelisted": false,
+					"emails": [
+						{
+							"address": "newone@example.com",
+							"type": "home"
+						}
+					],
+					"phones": [
+						{
+							"value": "123",
+							"primary": true,
+							"type": "assistant"
+						}
+					],
+					"aliases": ["new22@example.com"],
+					"nonEditableAliases": ["new22@example.com.test-google-a.com"],
+					"customerId": "C0442hnz1",
+					"orgUnitPath": "/",
+					"isMailboxSetup": false,
+					"includeInGlobalAddressList": true,
+					"thumbnailPhotoUrl": "//example",
+					"thumbnailPhotoEtag": "\"example\"",
+					"recoveryEmail": ""
+				}
+			}
+		]
+	}
+}

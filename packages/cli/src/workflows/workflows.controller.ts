@@ -4,6 +4,16 @@ import {
 	TransferWorkflowBodyDto,
 } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
+import type { Project } from '@n8n/db';
+import {
+	SharedWorkflow,
+	WorkflowEntity,
+	ProjectRelationRepository,
+	ProjectRepository,
+	TagRepository,
+	SharedWorkflowRepository,
+	WorkflowRepository,
+} from '@n8n/db';
 import {
 	Body,
 	Delete,
@@ -25,15 +35,6 @@ import { Logger } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import type { Project } from '@/databases/entities/project';
-import { SharedWorkflow } from '@/databases/entities/shared-workflow';
-import { WorkflowEntity } from '@/databases/entities/workflow-entity';
-import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
-import { TagRepository } from '@/databases/repositories/tag.repository';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import * as Db from '@/db';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
@@ -133,8 +134,10 @@ export class WorkflowsController {
 			}
 		}
 
+		const { manager: dbManager } = this.projectRepository;
+
 		let project: Project | null;
-		const savedWorkflow = await Db.transaction(async (transactionManager) => {
+		const savedWorkflow = await dbManager.transaction(async (transactionManager) => {
 			const workflow = await transactionManager.save<WorkflowEntity>(newWorkflow);
 
 			const { projectId, parentFolderId } = req.body;
@@ -327,7 +330,7 @@ export class WorkflowsController {
 			workflowId,
 			req.user,
 			['workflow:read'],
-			{ includeTags: !this.globalConfig.tags.disabled },
+			{ includeTags: !this.globalConfig.tags.disabled, includeParentFolder: true },
 		);
 
 		if (!workflow) {
@@ -380,21 +383,61 @@ export class WorkflowsController {
 
 	@Delete('/:workflowId')
 	@ProjectScope('workflow:delete')
-	async delete(req: WorkflowRequest.Delete) {
-		const { workflowId } = req.params;
-
+	async delete(req: AuthenticatedRequest, _res: Response, @Param('workflowId') workflowId: string) {
 		const workflow = await this.workflowService.delete(req.user, workflowId);
 		if (!workflow) {
 			this.logger.warn('User attempted to delete a workflow without permissions', {
 				workflowId,
 				userId: req.user.id,
 			});
-			throw new BadRequestError(
-				'Could not delete the workflow - you can only remove workflows owned by you',
+			throw new ForbiddenError(
+				'Could not delete the workflow - workflow was not found in your projects',
 			);
 		}
 
 		return true;
+	}
+
+	@Post('/:workflowId/archive')
+	@ProjectScope('workflow:delete')
+	async archive(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('workflowId') workflowId: string,
+	) {
+		const workflow = await this.workflowService.archive(req.user, workflowId);
+		if (!workflow) {
+			this.logger.warn('User attempted to archive a workflow without permissions', {
+				workflowId,
+				userId: req.user.id,
+			});
+			throw new ForbiddenError(
+				'Could not archive the workflow - workflow was not found in your projects',
+			);
+		}
+
+		return workflow;
+	}
+
+	@Post('/:workflowId/unarchive')
+	@ProjectScope('workflow:delete')
+	async unarchive(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('workflowId') workflowId: string,
+	) {
+		const workflow = await this.workflowService.unarchive(req.user, workflowId);
+		if (!workflow) {
+			this.logger.warn('User attempted to unarchive a workflow without permissions', {
+				workflowId,
+				userId: req.user.id,
+			});
+			throw new ForbiddenError(
+				'Could not unarchive the workflow - workflow was not found in your projects',
+			);
+		}
+
+		return workflow;
 	}
 
 	@Post('/:workflowId/run')
@@ -454,7 +497,8 @@ export class WorkflowsController {
 		}
 
 		let newShareeIds: string[] = [];
-		await Db.transaction(async (trx) => {
+		const { manager: dbManager } = this.projectRepository;
+		await dbManager.transaction(async (trx) => {
 			const currentPersonalProjectIDs = workflow.shared
 				.filter((sw) => sw.role === 'workflow:editor')
 				.map((sw) => sw.projectId);
@@ -506,7 +550,7 @@ export class WorkflowsController {
 		@Param('workflowId') workflowId: string,
 		@Body body: TransferWorkflowBodyDto,
 	) {
-		return await this.enterpriseWorkflowService.transferOne(
+		return await this.enterpriseWorkflowService.transferWorkflow(
 			req.user,
 			workflowId,
 			body.destinationProjectId,

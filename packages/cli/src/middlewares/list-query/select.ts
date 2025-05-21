@@ -1,7 +1,7 @@
 import type { RequestHandler } from 'express';
 
+import type { ListQuery } from '@/requests';
 import * as ResponseHelper from '@/response-helper';
-import type { ListQuery } from '@/types-db';
 import { toError } from '@/utils';
 
 import { CredentialsSelect } from './dtos/credentials.select.dto';

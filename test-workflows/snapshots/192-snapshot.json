@@ -1,0 +1,729 @@
+{
+  "data": {
+    "startData": {},
+    "resultData": {
+      "runData": {
+        "Start": [
+          {
+            "startTime": 1676891419969,
+            "executionTime": 0,
+            "source": [],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {},
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Mattermost": [
+          {
+            "startTime": 1676891419970,
+            "executionTime": 146,
+            "source": [
+              {
+                "previousNode": "Start"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "id": "67chhkzc1f8s8fc598jdc6z6nr",
+                      "create_at": 1676891420092,
+                      "update_at": 1676891420092,
+                      "delete_at": 0,
+                      "team_id": "y1p853gfspdrxre5oextbii7wh",
+                      "type": "O",
+                      "display_name": "TestChannel1676891419984",
+                      "name": "testchannel1676891419984",
+                      "header": "",
+                      "purpose": "",
+                      "last_post_at": 0,
+                      "total_msg_count": 0,
+                      "extra_update_at": 0,
+                      "creator_id": "fo4frgcntiy6jfc63wor76kxpy",
+                      "scheme_id": {
+                        "object": true
+                      },
+                      "props": {
+                        "object": true
+                      },
+                      "group_constrained": {
+                        "object": true
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Mattermost13": [
+          {
+            "startTime": 1676891420116,
+            "executionTime": 208,
+            "source": [
+              {
+                "previousNode": "Start"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "id": "o9f9bza4nj8hbp7xjy1ef9h1ny",
+                      "create_at": 1676891420220,
+                      "update_at": 1676891420220,
+                      "delete_at": 0,
+                      "username": "username1676891420116",
+                      "auth_data": "",
+                      "auth_service": "email",
+                      "email": "fake1676891420117@test.com",
+                      "nickname": "",
+                      "first_name": "",
+                      "last_name": "",
+                      "position": "",
+                      "roles": "system_user",
+                      "notify_props": {
+                        "object": true
+                      },
+                      "last_password_update": 1676891420220,
+                      "locale": "en",
+                      "timezone": {
+                        "object": true
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Mattermost1": [
+          {
+            "startTime": 1676891420324,
+            "executionTime": 102,
+            "source": [
+              {
+                "previousNode": "Mattermost"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "channel_id": "67chhkzc1f8s8fc598jdc6z6nr",
+                      "user_id": "4yp7tpa3sbgk9qrf38egttbioo",
+                      "roles": "channel_user",
+                      "last_viewed_at": 0,
+                      "msg_count": 0,
+                      "mention_count": 0,
+                      "notify_props": {
+                        "object": true
+                      },
+                      "last_update_at": 1676891420440,
+                      "scheme_guest": false,
+                      "scheme_user": true,
+                      "scheme_admin": false,
+                      "explicit_roles": ""
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Mattermost14": [
+          {
+            "startTime": 1676891420426,
+            "executionTime": 72,
+            "source": [
+              {
+                "previousNode": "Mattermost13"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "id": "o9f9bza4nj8hbp7xjy1ef9h1ny",
+                      "create_at": 1676891420220,
+                      "update_at": 1676891420220,
+                      "delete_at": 0,
+                      "username": "username1676891420116",
+                      "auth_data": "",
+                      "auth_service": "email",
+                      "email": "fake1676891420117@test.com",
+                      "nickname": "",
+                      "first_name": "",
+                      "last_name": "",
+                      "position": "",
+                      "roles": "system_user",
+                      "locale": "en",
+                      "timezone": {
+                        "object": true
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Mattermost7": [
+          {
+            "startTime": 1676891420499,
+            "executionTime": 110,
+            "source": [
+              {
+                "previousNode": "Mattermost1"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "id": "fjpkzppmfjysmpnps1shmzxoxy",
+                      "create_at": 1676891420598,
+                      "update_at": 1676891420598,
+                      "edit_at": 0,
+                      "delete_at": 0,
+                      "is_pinned": false,
+                      "user_id": "fo4frgcntiy6jfc63wor76kxpy",
+                      "channel_id": "67chhkzc1f8s8fc598jdc6z6nr",
+                      "root_id": "",
+                      "parent_id": "",
+                      "original_id": "",
+                      "message": "Message1676891420501",
+                      "type": "",
+                      "props": {
+                        "object": true
+                      },
+                      "hashtags": "",
+                      "pending_post_id": "",
+                      "reply_count": 0,
+                      "metadata": {
+                        "object": true
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Mattermost15": [
+          {
+            "startTime": 1676891420610,
+            "executionTime": 71,
+            "source": [
+              {
+                "previousNode": "Mattermost14"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "id": "o9f9bza4nj8hbp7xjy1ef9h1ny",
+                      "create_at": 1676891420220,
+                      "update_at": 1676891420220,
+                      "delete_at": 0,
+                      "username": "username1676891420116",
+                      "auth_data": "",
+                      "auth_service": "email",
+                      "email": "fake1676891420117@test.com",
+                      "nickname": "",
+                      "first_name": "",
+                      "last_name": "",
+                      "position": "",
+                      "roles": "system_user",
+                      "locale": "en",
+                      "timezone": {
+                        "object": true
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Mattermost8": [
+          {
+            "startTime": 1676891420682,
+            "executionTime": 67,
+            "source": [
+              {
+                "previousNode": "Mattermost7"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "id": "q1oq5ibknjnx5j53ig9dppo88c",
+                      "create_at": 1676891420775,
+                      "update_at": 0,
+                      "edit_at": 0,
+                      "delete_at": 0,
+                      "is_pinned": false,
+                      "user_id": "fo4frgcntiy6jfc63wor76kxpy",
+                      "channel_id": "67chhkzc1f8s8fc598jdc6z6nr",
+                      "root_id": "",
+                      "parent_id": "",
+                      "original_id": "",
+                      "message": "EpheMessage1676891420683",
+                      "type": "system_ephemeral",
+                      "props": {
+                        "object": true
+                      },
+                      "hashtags": "",
+                      "pending_post_id": "",
+                      "reply_count": 0,
+                      "metadata": {
+                        "object": true
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Mattermost16": [
+          {
+            "startTime": 1676891420750,
+            "executionTime": 132,
+            "source": [
+              {
+                "previousNode": "Mattermost15"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "id": "hp6pnfry6tfr8nsjbsowcpunah",
+                      "create_at": 1619769670089,
+                      "update_at": 1619769670089,
+                      "delete_at": 0,
+                      "username": "channelexport",
+                      "auth_data": "",
+                      "auth_service": "",
+                      "email": "channelexport@localhost",
+                      "nickname": "",
+                      "first_name": "Channel Export Bot",
+                      "last_name": "",
+                      "position": "",
+                      "roles": "system_user",
+                      "locale": "en",
+                      "timezone": {
+                        "object": true
+                      },
+                      "is_bot": true,
+                      "bot_description": "A bot account created by the channel export plugin."
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Mattermost10": [
+          {
+            "startTime": 1676891420883,
+            "executionTime": 82,
+            "source": [
+              {
+                "previousNode": "Mattermost8"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "user_id": "fo4frgcntiy6jfc63wor76kxpy",
+                      "post_id": "fjpkzppmfjysmpnps1shmzxoxy",
+                      "emoji_name": "rocket",
+                      "create_at": 1676891420884
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Mattermost17": [
+          {
+            "startTime": 1676891420966,
+            "executionTime": 87,
+            "source": [
+              {
+                "previousNode": "Mattermost16"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "status": "OK"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Mattermost11": [
+          {
+            "startTime": 1676891421054,
+            "executionTime": 73,
+            "source": [
+              {
+                "previousNode": "Mattermost10"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "user_id": "fo4frgcntiy6jfc63wor76kxpy",
+                      "post_id": "fjpkzppmfjysmpnps1shmzxoxy",
+                      "emoji_name": "rocket",
+                      "create_at": 1676891420884
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Mattermost18": [
+          {
+            "startTime": 1676891421127,
+            "executionTime": 91,
+            "source": [
+              {
+                "previousNode": "Mattermost17"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "status": "OK"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Mattermost12": [
+          {
+            "startTime": 1676891421219,
+            "executionTime": 81,
+            "source": [
+              {
+                "previousNode": "Mattermost11"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "status": "OK"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Mattermost9": [
+          {
+            "startTime": 1676891421300,
+            "executionTime": 85,
+            "source": [
+              {
+                "previousNode": "Mattermost12"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "status": "OK"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Mattermost2": [
+          {
+            "startTime": 1676891421385,
+            "executionTime": 154,
+            "source": [
+              {
+                "previousNode": "Mattermost9"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "id": "fo4frgcntiy6jfc63wor76kxpy",
+                      "create_at": 1619770719466,
+                      "update_at": 1624374690399,
+                      "delete_at": 0,
+                      "username": "nodeqa",
+                      "auth_data": "",
+                      "auth_service": "",
+                      "email": "nodeqa@test.com",
+                      "nickname": "",
+                      "first_name": "",
+                      "last_name": "",
+                      "position": "",
+                      "roles": "system_admin system_user",
+                      "locale": "en",
+                      "timezone": {
+                        "object": true
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Mattermost3": [
+          {
+            "startTime": 1676891421540,
+            "executionTime": 76,
+            "source": [
+              {
+                "previousNode": "Mattermost2"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "channel_id": "67chhkzc1f8s8fc598jdc6z6nr",
+                      "member_count": 2,
+                      "guest_count": 0,
+                      "pinnedpost_count": 0
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Mattermost4": [
+          {
+            "startTime": 1676891421616,
+            "executionTime": 92,
+            "source": [
+              {
+                "previousNode": "Mattermost3"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "status": "OK"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Mattermost5": [
+          {
+            "startTime": 1676891421708,
+            "executionTime": 90,
+            "source": [
+              {
+                "previousNode": "Mattermost4"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "id": "67chhkzc1f8s8fc598jdc6z6nr",
+                      "create_at": 1676891420092,
+                      "update_at": 1676891421730,
+                      "delete_at": 0,
+                      "team_id": "y1p853gfspdrxre5oextbii7wh",
+                      "type": "O",
+                      "display_name": "TestChannel1676891419984",
+                      "name": "testchannel1676891419984",
+                      "header": "",
+                      "purpose": "",
+                      "last_post_at": 1676891421719,
+                      "total_msg_count": 2,
+                      "extra_update_at": 0,
+                      "creator_id": "fo4frgcntiy6jfc63wor76kxpy",
+                      "scheme_id": {
+                        "object": true
+                      },
+                      "props": {
+                        "object": true
+                      },
+                      "group_constrained": {
+                        "object": true
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Mattermost6": [
+          {
+            "startTime": 1676891421799,
+            "executionTime": 103,
+            "source": [
+              {
+                "previousNode": "Mattermost5"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "status": "OK"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ]
+      },
+      "lastNodeExecuted": "Mattermost6"
+    },
+    "executionData": {
+      "contextData": {},
+      "nodeExecutionStack": [],
+      "waitingExecution": {},
+      "waitingExecutionSource": {}
+    }
+  },
+  "mode": "cli",
+  "startedAt": "2023-02-20T11:10:19.966Z",
+  "stoppedAt": "2023-02-20T11:10:21.902Z",
+  "status": "running",
+  "finished": true
+}

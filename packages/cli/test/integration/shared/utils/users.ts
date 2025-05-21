@@ -1,5 +1,5 @@
-import type { User } from '@/databases/entities/user';
-import type { PublicUser } from '@/types-db';
+import type { User } from '@n8n/db';
+import type { PublicUser } from '@n8n/db';
 
 export const validateUser = (user: PublicUser) => {
 	expect(typeof user.id).toBe('string');

@@ -6,6 +6,7 @@
 import get from 'lodash/get';
 import isEqual from 'lodash/isEqual';
 
+import { EXECUTE_WORKFLOW_NODE_TYPE, WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE } from './Constants';
 import { ApplicationError } from './errors/application.error';
 import { NodeConnectionTypes } from './Interfaces';
 import type {
@@ -39,6 +40,8 @@ import type {
 import { validateFilterParameter } from './NodeParameters/FilterParameter';
 import {
 	isFilterValue,
+	isINodePropertyOptionsList,
+	isResourceLocatorValue,
 	isResourceMapperValue,
 	isValidResourceLocatorParameterValue,
 } from './type-guards';
@@ -1556,5 +1559,108 @@ export function isTriggerNode(nodeTypeData: INodeTypeDescription) {
 export function isExecutable(workflow: Workflow, node: INode, nodeTypeData: INodeTypeDescription) {
 	const outputs = getNodeOutputs(workflow, node, nodeTypeData);
 	const outputNames = getConnectionTypes(outputs);
-	return outputNames.includes(NodeConnectionTypes.Main) || isTriggerNode(nodeTypeData);
+	return (
+		outputNames.includes(NodeConnectionTypes.Main) ||
+		outputNames.includes(NodeConnectionTypes.AiTool) ||
+		isTriggerNode(nodeTypeData)
+	);
+}
+
+export function isNodeWithWorkflowSelector(node: INode) {
+	return [EXECUTE_WORKFLOW_NODE_TYPE, WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE].includes(node.type);
+}
+
+/**
+ * Generates a human-readable description for a node based on its parameters and type definition.
+ *
+ * This function creates a descriptive string that represents what the node does,
+ * based on its resource, operation, and node type information. The description is
+ * formatted in one of the following ways:
+ *
+ * 1. "{action} in {displayName}" if the operation has a defined action
+ * 2. "{operation} {resource} in {displayName}" if resource and operation exist
+ * 3. The node type's description field as a fallback
+ */
+export function makeDescription(
+	nodeParameters: INodeParameters,
+	nodeTypeDescription: INodeTypeDescription,
+): string {
+	let description = '';
+	const resource = nodeParameters.resource as string;
+	const operation = nodeParameters.operation as string;
+	const nodeTypeOperation = nodeTypeDescription.properties.find(
+		(p) => p.name === 'operation' && p.displayOptions?.show?.resource?.includes(resource),
+	);
+
+	if (nodeTypeOperation?.options && isINodePropertyOptionsList(nodeTypeOperation.options)) {
+		const foundOperation = nodeTypeOperation.options.find((option) => option.value === operation);
+		if (foundOperation?.action) {
+			description = `${foundOperation.action} in ${nodeTypeDescription.defaults.name}`;
+			return description;
+		}
+	}
+
+	if (!description && resource && operation) {
+		description = `${operation} ${resource} in ${nodeTypeDescription.defaults.name}`;
+	} else {
+		description = nodeTypeDescription.description;
+	}
+
+	return description;
+}
+
+/**
+ * Determines whether a tool description should be updated and returns the new description if needed.
+ * Returns undefined if no update is needed.
+ */
+
+export const getUpdatedToolDescription = (
+	currentNodeType: INodeTypeDescription | null,
+	newParameters: INodeParameters | null,
+	currentParameters?: INodeParameters,
+) => {
+	if (!currentNodeType) return;
+
+	if (newParameters?.descriptionType === 'manual' && currentParameters) {
+		const previousDescription = makeDescription(currentParameters, currentNodeType);
+		const newDescription = makeDescription(newParameters, currentNodeType);
+
+		if (
+			newParameters.toolDescription === previousDescription ||
+			!newParameters.toolDescription?.toString().trim() ||
+			newParameters.toolDescription === currentNodeType.description
+		) {
+			return newDescription;
+		}
+	}
+
+	return;
+};
+
+/**
+ * Generates a tool description for a given node based on its parameters and type.
+ */
+export function getToolDescriptionForNode(node: INode, nodeType: INodeType): string {
+	let toolDescription;
+	if (
+		node.parameters.descriptionType === 'auto' ||
+		!node?.parameters.toolDescription?.toString().trim()
+	) {
+		toolDescription = makeDescription(node.parameters, nodeType.description);
+	} else if (node?.parameters.toolDescription) {
+		toolDescription = node.parameters.toolDescription;
+	} else {
+		toolDescription = nodeType.description.description;
+	}
+	return toolDescription as string;
+}
+
+/**
+ * Attempts to retrieve the ID of a subworkflow from a execute workflow node.
+ */
+export function getSubworkflowId(node: INode): string | undefined {
+	if (isNodeWithWorkflowSelector(node) && isResourceLocatorValue(node.parameters.workflowId)) {
+		return node.parameters.workflowId.value as string;
+	}
+	return;
 }

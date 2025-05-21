@@ -19,4 +19,6 @@ export class CredentialsGetManyRequestQuery extends Z.class({
 	 * This switches `includeScopes` to true to be able to check for the scopes
 	 */
 	includeData: booleanFromString.optional(),
+
+	onlySharedWithMe: booleanFromString.optional(),
 }) {}

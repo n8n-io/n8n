@@ -1,10 +1,10 @@
 import { DateTime } from 'luxon';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
-import { STORES } from '@/constants';
+import { STORES } from '@n8n/stores';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { useStorage } from '@/composables/useStorage';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { getBecomeCreatorCta } from '@/api/ctas';
 
 const LOCAL_STORAGE_KEY = 'N8N_BECOME_TEMPLATE_CREATOR_CTA_DISMISSED_AT';

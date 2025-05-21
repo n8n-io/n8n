@@ -1,9 +1,8 @@
 import { heartbeatMessageSchema } from '@n8n/api-types';
+import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
 import type WebSocket from 'ws';
-
-import type { User } from '@/databases/entities/user';
 
 import { AbstractPush } from './abstract.push';
 

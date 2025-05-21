@@ -1,8 +1,10 @@
+import { LicenseState } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 
 import type { AuthenticatedRequest } from '@/requests';
 import { mockInstance } from '@test/mocking';
+import { LicenseMocker } from '@test-integration/license';
 import * as testDb from '@test-integration/test-db';
 
 import { TypeToNumber } from '../database/entities/insights-shared';
@@ -12,6 +14,7 @@ import { InsightsController } from '../insights.controller';
 // Initialize DB once for all tests
 beforeAll(async () => {
 	await testDb.init();
+	new LicenseMocker().mockLicenseState(Container.get(LicenseState));
 });
 
 // Terminate DB once after all tests complete

@@ -1,9 +1,7 @@
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
-import { HumanMessage } from '@langchain/core/messages';
-import { ChatPromptTemplate, SystemMessagePromptTemplate } from '@langchain/core/prompts';
 import type { JSONSchema7 } from 'json-schema';
 import { OutputFixingParser, StructuredOutputParser } from 'langchain/output_parsers';
-import { jsonParse, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { jsonParse, NodeConnectionTypes, NodeOperationError, sleep } from 'n8n-workflow';
 import type {
 	INodeType,
 	INodeTypeDescription,
@@ -15,14 +13,12 @@ import type { z } from 'zod';
 
 import { inputSchemaField, jsonSchemaExampleField, schemaTypeField } from '@utils/descriptions';
 import { convertJsonSchemaToZod, generateSchema } from '@utils/schemaParsing';
-import { getTracingConfig } from '@utils/tracing';
+import { getBatchingOptionFields } from '@utils/sharedFields';
 
+import { SYSTEM_PROMPT_TEMPLATE } from './constants';
 import { makeZodSchemaFromAttributes } from './helpers';
+import { processItem } from './processItem';
 import type { AttributeDefinition } from './types';
-
-const SYSTEM_PROMPT_TEMPLATE = `You are an expert extraction algorithm.
-Only extract relevant information from the text.
-If you do not know the value of an attribute asked to extract, you may omit the attribute's value.`;
 
 export class InformationExtractor implements INodeType {
 	description: INodeTypeDescription = {
@@ -31,7 +27,7 @@ export class InformationExtractor implements INodeType {
 		icon: 'fa:project-diagram',
 		iconColor: 'black',
 		group: ['transform'],
-		version: 1,
+		version: [1, 1.1],
 		description: 'Extract information from text in a structured format',
 		codex: {
 			alias: ['NER', 'parse', 'parsing', 'JSON', 'data extraction', 'structured'],
@@ -213,6 +209,11 @@ export class InformationExtractor implements INodeType {
 							rows: 6,
 						},
 					},
+					getBatchingOptionFields({
+						show: {
+							'@version': [{ _cnd: { gte: 1.1 } }],
+						},
+					}),
 				],
 			},
 		],
@@ -265,38 +266,59 @@ export class InformationExtractor implements INodeType {
 		}
 
 		const resultData: INodeExecutionData[] = [];
-		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-			const input = this.getNodeParameter('text', itemIndex) as string;
-			const inputPrompt = new HumanMessage(input);
+		const batchSize = this.getNodeParameter('options.batching.batchSize', 0, 5) as number;
+		const delayBetweenBatches = this.getNodeParameter(
+			'options.batching.delayBetweenBatches',
+			0,
+			0,
+		) as number;
+		if (this.getNode().typeVersion >= 1.1 && batchSize >= 1) {
+			// Batch processing
+			for (let i = 0; i < items.length; i += batchSize) {
+				const batch = items.slice(i, i + batchSize);
+				const batchPromises = batch.map(async (_item, batchItemIndex) => {
+					const itemIndex = i + batchItemIndex;
+					return await processItem(this, itemIndex, llm, parser);
+				});
 
-			const options = this.getNodeParameter('options', itemIndex, {}) as {
-				systemPromptTemplate?: string;
-			};
+				const batchResults = await Promise.allSettled(batchPromises);
 
-			const systemPromptTemplate = SystemMessagePromptTemplate.fromTemplate(
-				`${options.systemPromptTemplate ?? SYSTEM_PROMPT_TEMPLATE}
-{format_instructions}`,
-			);
+				batchResults.forEach((response, index) => {
+					if (response.status === 'rejected') {
+						const error = response.reason as Error;
+						if (this.continueOnFail()) {
+							resultData.push({
+								json: { error: error.message },
+								pairedItem: { item: i + index },
+							});
+							return;
+						} else {
+							throw new NodeOperationError(this.getNode(), error.message);
+						}
+					}
+					const output = response.value;
+					resultData.push({ json: { output } });
+				});
 
-			const messages = [
-				await systemPromptTemplate.format({
-					format_instructions: parser.getFormatInstructions(),
-				}),
-				inputPrompt,
-			];
-			const prompt = ChatPromptTemplate.fromMessages(messages);
-			const chain = prompt.pipe(llm).pipe(parser).withConfig(getTracingConfig(this));
-
-			try {
-				const output = await chain.invoke(messages);
-				resultData.push({ json: { output } });
-			} catch (error) {
-				if (this.continueOnFail()) {
-					resultData.push({ json: { error: error.message }, pairedItem: { item: itemIndex } });
-					continue;
+				// Add delay between batches if not the last batch
+				if (i + batchSize < items.length && delayBetweenBatches > 0) {
+					await sleep(delayBetweenBatches);
 				}
+			}
+		} else {
+			// Sequential processing
+			for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+				try {
+					const output = await processItem(this, itemIndex, llm, parser);
+					resultData.push({ json: { output } });
+				} catch (error) {
+					if (this.continueOnFail()) {
+						resultData.push({ json: { error: error.message }, pairedItem: { item: itemIndex } });
+						continue;
+					}
 
-				throw error;
+					throw error;
+				}
 			}
 		}
 

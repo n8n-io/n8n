@@ -1,18 +1,27 @@
+import type { Project, ProjectRole } from '@n8n/db';
+import type { User } from '@n8n/db';
+import { FolderRepository } from '@n8n/db';
+import { ProjectRepository } from '@n8n/db';
+import { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DateTime } from 'luxon';
-import { PROJECT_ROOT } from 'n8n-workflow';
+import { ApplicationError, PROJECT_ROOT } from 'n8n-workflow';
 
-import type { Project } from '@/databases/entities/project';
-import type { User } from '@/databases/entities/user';
-import { FolderRepository } from '@/databases/repositories/folder.repository';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { mockInstance } from '@test/mocking';
+import {
+	getCredentialSharings,
+	saveCredential,
+	shareCredentialWithProjects,
+	shareCredentialWithUsers,
+} from '@test-integration/db/credentials';
 import { createFolder } from '@test-integration/db/folders';
 import { createTag } from '@test-integration/db/tags';
-import { createWorkflow } from '@test-integration/db/workflows';
+import { createWorkflow, getWorkflowSharing } from '@test-integration/db/workflows';
+import { randomCredentialPayload } from '@test-integration/random';
 
 import { createTeamProject, getPersonalProject, linkUserToProject } from '../shared/db/projects';
-import { createOwner, createMember } from '../shared/db/users';
+import { createOwner, createMember, createUser, createAdmin } from '../shared/db/users';
 import * as testDb from '../shared/test-db';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
@@ -23,6 +32,7 @@ let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
 let ownerProject: Project;
 let memberProject: Project;
+let admin: User;
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['folder'],
@@ -32,8 +42,10 @@ let projectRepository: ProjectRepository;
 let folderRepository: FolderRepository;
 let workflowRepository: WorkflowRepository;
 
+const activeWorkflowManager = mockInstance(ActiveWorkflowManager);
+
 beforeEach(async () => {
-	await testDb.truncate(['Folder', 'SharedWorkflow', 'Tag', 'Project', 'ProjectRelation']);
+	await testDb.truncate(['Folder', 'SharedWorkflow', 'TagEntity', 'Project', 'ProjectRelation']);
 
 	projectRepository = Container.get(ProjectRepository);
 	folderRepository = Container.get(FolderRepository);
@@ -46,6 +58,7 @@ beforeEach(async () => {
 
 	ownerProject = await getPersonalProject(owner);
 	memberProject = await getPersonalProject(member);
+	admin = await createAdmin();
 });
 
 describe('POST /projects/:projectId/folders', () => {
@@ -744,7 +757,7 @@ describe('DELETE /projects/:projectId/folders/:folderId', () => {
 		expect(folderInDb).toBeNull();
 	});
 
-	test('should delete folder, all child folders, and contained workflows when no transfer folder is specified', async () => {
+	test('should delete folder, all child folders, and archive and move contained workflows to project root when no transfer folder is specified', async () => {
 		const project = await createTeamProject('test', owner);
 		const rootFolder = await createFolder(project, { name: 'Root' });
 		const childFolder = await createFolder(project, {
@@ -753,9 +766,8 @@ describe('DELETE /projects/:projectId/folders/:folderId', () => {
 		});
 
 		// Create workflows in the folders
-		const workflow1 = await createWorkflow({ parentFolder: rootFolder }, owner);
-
-		const workflow2 = await createWorkflow({ parentFolder: childFolder }, owner);
+		const workflow1 = await createWorkflow({ parentFolder: rootFolder, active: false }, owner);
+		const workflow2 = await createWorkflow({ parentFolder: childFolder, active: true }, owner);
 
 		await authOwnerAgent.delete(`/projects/${project.id}/folders/${rootFolder.id}`);
 
@@ -767,10 +779,24 @@ describe('DELETE /projects/:projectId/folders/:folderId', () => {
 		expect(childFolderInDb).toBeNull();
 
 		// Check workflows
-		const workflow1InDb = await workflowRepository.findOneBy({ id: workflow1.id });
-		const workflow2InDb = await workflowRepository.findOneBy({ id: workflow2.id });
-		expect(workflow1InDb).toBeNull();
-		expect(workflow2InDb).toBeNull();
+
+		const workflow1InDb = await workflowRepository.findOne({
+			where: { id: workflow1.id },
+			relations: ['parentFolder'],
+		});
+		expect(workflow1InDb).not.toBeNull();
+		expect(workflow1InDb?.isArchived).toBe(true);
+		expect(workflow1InDb?.parentFolder).toBe(null);
+		expect(workflow1InDb?.active).toBe(false);
+
+		const workflow2InDb = await workflowRepository.findOne({
+			where: { id: workflow2.id },
+			relations: ['parentFolder'],
+		});
+		expect(workflow2InDb).not.toBeNull();
+		expect(workflow2InDb?.isArchived).toBe(true);
+		expect(workflow2InDb?.parentFolder).toBe(null);
+		expect(workflow2InDb?.active).toBe(false);
 	});
 
 	test('should transfer folder contents when transferToFolderId is specified', async () => {
@@ -1249,6 +1275,42 @@ describe('GET /projects/:projectId/folders', () => {
 		expect(response.body.data[0].parentFolder).toBeUndefined();
 	});
 
+	test('should select path field when requested', async () => {
+		const folder1 = await createFolder(ownerProject, { name: 'Test Folder' });
+		const folder2 = await createFolder(ownerProject, {
+			name: 'Test Folder 2',
+			parentFolder: folder1,
+		});
+		const folder3 = await createFolder(ownerProject, {
+			name: 'Test Folder 3',
+			parentFolder: folder2,
+		});
+
+		const response = await authOwnerAgent
+			.get(
+				`/projects/${ownerProject.id}/folders?select=["id","path", "name"]&sortBy=updatedAt:desc`,
+			)
+			.expect(200);
+
+		expect(response.body.data[0]).toEqual({
+			id: expect.any(String),
+			name: 'Test Folder 3',
+			path: [folder1.name, folder2.name, folder3.name],
+		});
+
+		expect(response.body.data[1]).toEqual({
+			id: expect.any(String),
+			name: 'Test Folder 2',
+			path: [folder1.name, folder2.name],
+		});
+
+		expect(response.body.data[2]).toEqual({
+			id: expect.any(String),
+			name: 'Test Folder',
+			path: [folder1.name],
+		});
+	});
+
 	test('should combine multiple query parameters correctly', async () => {
 		const tag = await createTag({ name: 'important' });
 		const parentFolder = await createFolder(ownerProject, { name: 'Parent' });
@@ -1293,6 +1355,23 @@ describe('GET /projects/:projectId/folders', () => {
 		expect(response.body.data.map((f: any) => f.name).sort()).toEqual(
 			['Owner Folder 1', 'Owner Folder 2'].sort(),
 		);
+	});
+
+	test('should include workflow count', async () => {
+		const folder = await createFolder(ownerProject, { name: 'Test Folder' });
+		await createWorkflow({ parentFolder: folder, isArchived: false }, ownerProject);
+		await createWorkflow({ parentFolder: folder, isArchived: false }, ownerProject);
+		// Not included in the count
+		await createWorkflow({ parentFolder: folder, isArchived: true }, ownerProject);
+
+		const response = await authOwnerAgent
+			.get(`/projects/${ownerProject.id}/folders`)
+			.query({ filter: '{ "name": "test" }' })
+			.expect(200);
+
+		expect(response.body.count).toBe(1);
+		expect(response.body.data).toHaveLength(1);
+		expect(response.body.data[0].workflowCount).toEqual(2);
 	});
 });
 
@@ -1345,6 +1424,11 @@ describe('GET /projects/:projectId/folders/content', () => {
 		await createWorkflow({ parentFolder: personalFolder1 }, ownerProject);
 		await createWorkflow({ parentFolder: personalProjectSubfolder1 }, ownerProject);
 		await createWorkflow({ parentFolder: personalProjectSubfolder2 }, ownerProject);
+		// Not included in the count
+		await createWorkflow(
+			{ parentFolder: personalProjectSubfolder2, isArchived: true },
+			ownerProject,
+		);
 
 		const response = await authOwnerAgent
 			.get(`/projects/${ownerProject.id}/folders/${personalFolder1.id}/content`)
@@ -1352,5 +1436,807 @@ describe('GET /projects/:projectId/folders/content', () => {
 
 		expect(response.body.data.totalWorkflows).toBe(3);
 		expect(response.body.data.totalSubFolders).toBe(2);
+	});
+});
+
+describe('PUT /projects/:projectId/folders/:folderId/transfer', () => {
+	test('cannot transfer into the same project', async () => {
+		const sourceProject = await createTeamProject('source project', member);
+		const destinationProject = await createTeamProject('Team Project', member);
+
+		const sourceFolder1 = await createFolder(sourceProject, { name: 'Source Folder 1' });
+
+		await createWorkflow({ active: true, parentFolder: sourceFolder1 }, destinationProject);
+
+		await testServer
+			.authAgentFor(member)
+			.put(`/projects/${sourceProject.id}/folders/${sourceFolder1.id}/transfer`)
+			.send({ destinationProjectId: destinationProject.id, destinationParentFolderId: '0' })
+			.expect(400);
+	});
+
+	test('cannot transfer somebody elses folder', async () => {
+		const sourceProject = await createTeamProject('source project', member);
+		const sourceFolder1 = await createFolder(sourceProject, { name: 'Source Folder 1' });
+		await createWorkflow({ parentFolder: sourceFolder1 }, owner);
+
+		const destinationProject = await createTeamProject('Team Project', admin);
+		const destinationFolder1 = await createFolder(destinationProject, { name: 'Source Folder 1' });
+
+		await testServer
+			.authAgentFor(member)
+			.put(`/projects/${sourceProject.id}/folders/${sourceFolder1.id}/transfer`)
+			.send({
+				destinationProjectId: destinationProject.id,
+				destinationParentFolderId: destinationFolder1,
+			})
+			.expect(400);
+	});
+
+	test("cannot transfer if you're not a member of the destination project", async () => {
+		const sourceProject = await getPersonalProject(member);
+		const destinationProject = await createTeamProject('Team Project', owner);
+
+		const sourceFolder1 = await createFolder(sourceProject, { name: 'Source Folder 1' });
+
+		await createWorkflow({ active: true }, destinationProject);
+
+		await testServer
+			.authAgentFor(member)
+			.put(`/projects/${sourceProject.id}/folders/${sourceFolder1.id}/transfer`)
+			.send({ destinationProjectId: destinationProject.id, destinationParentFolderId: '0' })
+			.expect(404);
+	});
+
+	test.each<ProjectRole>(['project:editor', 'project:viewer'])(
+		'%ss cannot transfer workflows',
+		async (projectRole) => {
+			//
+			// ARRANGE
+			//
+			const sourceProject = await createTeamProject();
+			await linkUserToProject(member, sourceProject, projectRole);
+
+			const sourceFolder1 = await createFolder(sourceProject, { name: 'Source Folder 1' });
+
+			await createWorkflow({}, sourceProject);
+
+			const destinationProject = await createTeamProject();
+			await linkUserToProject(member, destinationProject, 'project:admin');
+
+			//
+			// ACT & ASSERT
+			//
+			await testServer
+				.authAgentFor(member)
+				.put(`/projects/${sourceProject.id}/folders/${sourceFolder1.id}/transfer`)
+				.send({ destinationProjectId: destinationProject.id, destinationParentFolderId: '0' })
+				.expect(403);
+		},
+	);
+
+	test.each<
+		[
+			// user role
+			'owners' | 'admins',
+			// source project type
+			'team' | 'personal',
+			// destination project type
+			'team' | 'personal',
+			// actor
+			() => User,
+			// source project
+			() => Promise<Project> | Project,
+			// destination project
+			() => Promise<Project> | Project,
+		]
+	>([
+		// owner
+		[
+			'owners',
+			'team',
+			'team',
+			() => owner,
+			async () => await createTeamProject('Source Project'),
+			async () => await createTeamProject('Destination Project'),
+		],
+		[
+			'owners',
+			'team',
+			'personal',
+			() => owner,
+			async () => await createTeamProject('Source Project'),
+			() => memberProject,
+		],
+		[
+			'owners',
+			'personal',
+			'team',
+			() => owner,
+			() => memberProject,
+			async () => await createTeamProject('Destination Project'),
+		],
+
+		// admin
+		[
+			'admins',
+			'team',
+			'team',
+			() => admin,
+			async () => await createTeamProject('Source Project'),
+			async () => await createTeamProject('Destination Project'),
+		],
+		[
+			'admins',
+			'team',
+			'personal',
+			() => admin,
+			async () => await createTeamProject('Source Project'),
+			() => memberProject,
+		],
+		[
+			'admins',
+			'personal',
+			'team',
+			() => admin,
+			() => memberProject,
+			async () => await createTeamProject('Destination Project'),
+		],
+	])(
+		'global %s can transfer workflows from a %s project to a %s project',
+		async (
+			_roleName,
+			_sourceProjectName,
+			_destinationProjectName,
+			getActor,
+			getSourceProject,
+			getDestinationProject,
+		) => {
+			// ARRANGE
+			const actor = getActor();
+			const sourceProject = await getSourceProject();
+			const destinationProject = await getDestinationProject();
+			const sourceFolder1 = await createFolder(sourceProject, { name: 'Source Folder 1' });
+			const workflow = await createWorkflow({ parentFolder: sourceFolder1 }, sourceProject);
+
+			// ACT
+			const response = await testServer
+				.authAgentFor(actor)
+				.put(`/projects/${sourceProject.id}/folders/${sourceFolder1.id}/transfer`)
+				.send({ destinationProjectId: destinationProject.id, destinationParentFolderId: '0' })
+				.expect(200);
+
+			// ASSERT
+			expect(response.body).toEqual({});
+
+			const allSharings = await getWorkflowSharing(workflow);
+			expect(allSharings).toHaveLength(1);
+			expect(allSharings[0]).toMatchObject({
+				projectId: destinationProject.id,
+				workflowId: workflow.id,
+				role: 'workflow:owner',
+			});
+		},
+	);
+
+	test('owner transfers folder from project they are not part of, e.g. test global cred sharing scope', async () => {
+		// ARRANGE
+		const admin = await createUser({ role: 'global:admin' });
+		const sourceProject = await createTeamProject('source project', admin);
+		const destinationProject = await createTeamProject('destination project', member);
+		const sourceFolder1 = await createFolder(sourceProject, { name: 'Source Folder 1' });
+		const sourceFolder2 = await createFolder(sourceProject, {
+			name: 'Source Folder 2',
+			parentFolder: sourceFolder1,
+		});
+
+		const workflow1 = await createWorkflow({ parentFolder: sourceFolder1 }, sourceProject);
+		const workflow2 = await createWorkflow({ parentFolder: sourceFolder2 }, sourceProject);
+
+		const credential = await saveCredential(randomCredentialPayload(), {
+			project: sourceProject,
+			role: 'credential:owner',
+		});
+
+		// ACT
+		await testServer
+			.authAgentFor(owner)
+			.put(`/projects/${sourceProject.id}/folders/${sourceFolder1.id}/transfer`)
+			.send({
+				destinationProjectId: destinationProject.id,
+				destinationParentFolderId: '0',
+				shareCredentials: [credential.id],
+			})
+			.expect(200);
+
+		// ASSERT
+		const workflow1Sharing = await getWorkflowSharing(workflow1);
+		expect(workflow1Sharing).toHaveLength(1);
+		expect(workflow1Sharing[0]).toMatchObject({
+			projectId: destinationProject.id,
+			workflowId: workflow1.id,
+			role: 'workflow:owner',
+		});
+
+		const workflow2Sharing = await getWorkflowSharing(workflow2);
+		expect(workflow2Sharing).toHaveLength(1);
+		expect(workflow2Sharing[0]).toMatchObject({
+			projectId: destinationProject.id,
+			workflowId: workflow2.id,
+			role: 'workflow:owner',
+		});
+
+		const sourceFolderInDb = await folderRepository.findOne({
+			where: { id: sourceFolder1.id },
+			relations: ['parentFolder', 'homeProject'],
+		});
+		expect(sourceFolderInDb).toBeDefined();
+		expect(sourceFolderInDb?.parentFolder).toBeNull();
+		expect(sourceFolderInDb?.homeProject.id).toBe(destinationProject.id);
+
+		const sourceFolder2InDb = await folderRepository.findOne({
+			where: { id: sourceFolder2.id },
+			relations: ['parentFolder', 'homeProject'],
+		});
+
+		expect(sourceFolder2InDb).toBeDefined();
+		expect(sourceFolder2InDb?.parentFolder?.id).toBe(sourceFolder1.id);
+		expect(sourceFolder2InDb?.homeProject.id).toBe(destinationProject.id);
+
+		const allCredentialSharings = await getCredentialSharings(credential);
+		expect(allCredentialSharings).toHaveLength(2);
+		expect(allCredentialSharings).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					projectId: sourceProject.id,
+					credentialsId: credential.id,
+					role: 'credential:owner',
+				}),
+				expect.objectContaining({
+					projectId: destinationProject.id,
+					credentialsId: credential.id,
+					role: 'credential:user',
+				}),
+			]),
+		);
+	});
+
+	test('admin transfers folder from project they are not part of, e.g. test global cred sharing scope', async () => {
+		// ARRANGE
+		const admin = await createUser({ role: 'global:admin' });
+		const sourceProject = await createTeamProject('source project', owner);
+		const destinationProject = await createTeamProject('destination project', owner);
+		const sourceFolder1 = await createFolder(sourceProject, { name: 'Source Folder 1' });
+		const sourceFolder2 = await createFolder(sourceProject, {
+			name: 'Source Folder 2',
+			parentFolder: sourceFolder1,
+		});
+
+		const workflow1 = await createWorkflow({ parentFolder: sourceFolder1 }, sourceProject);
+		const workflow2 = await createWorkflow({ parentFolder: sourceFolder2 }, sourceProject);
+
+		const credential = await saveCredential(randomCredentialPayload(), {
+			project: sourceProject,
+			role: 'credential:owner',
+		});
+
+		// ACT
+		await testServer
+			.authAgentFor(admin)
+			.put(`/projects/${sourceProject.id}/folders/${sourceFolder1.id}/transfer`)
+			.send({
+				destinationProjectId: destinationProject.id,
+				destinationParentFolderId: '0',
+				shareCredentials: [credential.id],
+			})
+			.expect(200);
+
+		// ASSERT
+		const workflow1Sharing = await getWorkflowSharing(workflow1);
+		expect(workflow1Sharing).toHaveLength(1);
+		expect(workflow1Sharing[0]).toMatchObject({
+			projectId: destinationProject.id,
+			workflowId: workflow1.id,
+			role: 'workflow:owner',
+		});
+
+		const workflow2Sharing = await getWorkflowSharing(workflow2);
+		expect(workflow2Sharing).toHaveLength(1);
+		expect(workflow2Sharing[0]).toMatchObject({
+			projectId: destinationProject.id,
+			workflowId: workflow2.id,
+			role: 'workflow:owner',
+		});
+
+		const sourceFolderInDb = await folderRepository.findOne({
+			where: { id: sourceFolder1.id },
+			relations: ['parentFolder', 'homeProject'],
+		});
+		expect(sourceFolderInDb).toBeDefined();
+		expect(sourceFolderInDb?.parentFolder).toBeNull();
+		expect(sourceFolderInDb?.homeProject.id).toBe(destinationProject.id);
+
+		const sourceFolder2InDb = await folderRepository.findOne({
+			where: { id: sourceFolder2.id },
+			relations: ['parentFolder', 'homeProject'],
+		});
+
+		expect(sourceFolder2InDb).toBeDefined();
+		expect(sourceFolder2InDb?.parentFolder?.id).toBe(sourceFolder1.id);
+		expect(sourceFolder2InDb?.homeProject.id).toBe(destinationProject.id);
+
+		const allCredentialSharings = await getCredentialSharings(credential);
+		expect(allCredentialSharings).toHaveLength(2);
+		expect(allCredentialSharings).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					projectId: sourceProject.id,
+					credentialsId: credential.id,
+					role: 'credential:owner',
+				}),
+				expect.objectContaining({
+					projectId: destinationProject.id,
+					credentialsId: credential.id,
+					role: 'credential:user',
+				}),
+			]),
+		);
+	});
+
+	test('member transfers folder from personal project to team project and one workflow contains a credential that they can use but not share', async () => {
+		// ARRANGE
+		const ownerPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(owner.id);
+		const sourceProject = await projectRepository.getPersonalProjectForUserOrFail(member.id);
+		const destinationProject = await createTeamProject('destination project', member);
+		const sourceFolder1 = await createFolder(sourceProject, { name: 'Source Folder 1' });
+		const sourceFolder2 = await createFolder(sourceProject, {
+			name: 'Source Folder 2',
+			parentFolder: sourceFolder1,
+		});
+
+		const workflow1 = await createWorkflow({ parentFolder: sourceFolder1 }, sourceProject);
+		const workflow2 = await createWorkflow({ parentFolder: sourceFolder2 }, sourceProject);
+
+		const credential = await saveCredential(randomCredentialPayload(), {
+			user: owner,
+			role: 'credential:owner',
+		});
+
+		await shareCredentialWithUsers(credential, [member]);
+
+		// ACT
+		await testServer
+			.authAgentFor(member)
+			.put(`/projects/${sourceProject.id}/folders/${sourceFolder1.id}/transfer`)
+			.send({
+				destinationProjectId: destinationProject.id,
+				destinationParentFolderId: '0',
+				shareCredentials: [credential.id],
+			})
+			.expect(200);
+
+		// ASSERT
+		const workflow1Sharing = await getWorkflowSharing(workflow1);
+		expect(workflow1Sharing).toHaveLength(1);
+		expect(workflow1Sharing[0]).toMatchObject({
+			projectId: destinationProject.id,
+			workflowId: workflow1.id,
+			role: 'workflow:owner',
+		});
+
+		const workflow2Sharing = await getWorkflowSharing(workflow2);
+		expect(workflow2Sharing).toHaveLength(1);
+		expect(workflow2Sharing[0]).toMatchObject({
+			projectId: destinationProject.id,
+			workflowId: workflow2.id,
+			role: 'workflow:owner',
+		});
+
+		const sourceFolderInDb = await folderRepository.findOne({
+			where: { id: sourceFolder1.id },
+			relations: ['parentFolder', 'homeProject'],
+		});
+		expect(sourceFolderInDb).toBeDefined();
+		expect(sourceFolderInDb?.parentFolder).toBeNull();
+		expect(sourceFolderInDb?.homeProject.id).toBe(destinationProject.id);
+
+		const sourceFolder2InDb = await folderRepository.findOne({
+			where: { id: sourceFolder2.id },
+			relations: ['parentFolder', 'homeProject'],
+		});
+
+		expect(sourceFolder2InDb).toBeDefined();
+		expect(sourceFolder2InDb?.parentFolder?.id).toBe(sourceFolder1.id);
+		expect(sourceFolder2InDb?.homeProject.id).toBe(destinationProject.id);
+
+		const allCredentialSharings = await getCredentialSharings(credential);
+		expect(allCredentialSharings).toHaveLength(2);
+		expect(allCredentialSharings).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					projectId: ownerPersonalProject.id,
+					credentialsId: credential.id,
+					role: 'credential:owner',
+				}),
+				expect.objectContaining({
+					projectId: sourceProject.id,
+					credentialsId: credential.id,
+					role: 'credential:user',
+				}),
+			]),
+		);
+	});
+
+	test('member transfers folder from their personal project to another team project in which they have editor role', async () => {
+		// ARRANGE
+		const sourceProject = await projectRepository.getPersonalProjectForUserOrFail(member.id);
+		const destinationProject = await createTeamProject('destination project');
+		const sourceFolder1 = await createFolder(sourceProject, { name: 'Source Folder 1' });
+		const sourceFolder2 = await createFolder(sourceProject, {
+			name: 'Source Folder 2',
+			parentFolder: sourceFolder1,
+		});
+
+		const workflow1 = await createWorkflow({ parentFolder: sourceFolder1 }, sourceProject);
+		const workflow2 = await createWorkflow({ parentFolder: sourceFolder2 }, sourceProject);
+
+		const credential = await saveCredential(randomCredentialPayload(), {
+			project: sourceProject,
+			role: 'credential:owner',
+		});
+
+		await linkUserToProject(member, destinationProject, 'project:editor');
+
+		// ACT
+		await testServer
+			.authAgentFor(member)
+			.put(`/projects/${sourceProject.id}/folders/${sourceFolder1.id}/transfer`)
+			.send({
+				destinationProjectId: destinationProject.id,
+				destinationParentFolderId: '0',
+				shareCredentials: [credential.id],
+			})
+			.expect(200);
+
+		// ASSERT
+		const workflow1Sharing = await getWorkflowSharing(workflow1);
+		expect(workflow1Sharing).toHaveLength(1);
+		expect(workflow1Sharing[0]).toMatchObject({
+			projectId: destinationProject.id,
+			workflowId: workflow1.id,
+			role: 'workflow:owner',
+		});
+
+		const workflow2Sharing = await getWorkflowSharing(workflow2);
+		expect(workflow2Sharing).toHaveLength(1);
+		expect(workflow2Sharing[0]).toMatchObject({
+			projectId: destinationProject.id,
+			workflowId: workflow2.id,
+			role: 'workflow:owner',
+		});
+
+		const sourceFolderInDb = await folderRepository.findOne({
+			where: { id: sourceFolder1.id },
+			relations: ['parentFolder', 'homeProject'],
+		});
+		expect(sourceFolderInDb).toBeDefined();
+		expect(sourceFolderInDb?.parentFolder).toBeNull();
+		expect(sourceFolderInDb?.homeProject.id).toBe(destinationProject.id);
+
+		const sourceFolder2InDb = await folderRepository.findOne({
+			where: { id: sourceFolder2.id },
+			relations: ['parentFolder', 'homeProject'],
+		});
+
+		expect(sourceFolder2InDb).toBeDefined();
+		expect(sourceFolder2InDb?.parentFolder?.id).toBe(sourceFolder1.id);
+		expect(sourceFolder2InDb?.homeProject.id).toBe(destinationProject.id);
+
+		const allCredentialSharings = await getCredentialSharings(credential);
+		expect(allCredentialSharings).toHaveLength(2);
+		expect(allCredentialSharings).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					projectId: sourceProject.id,
+					credentialsId: credential.id,
+					role: 'credential:owner',
+				}),
+				expect.objectContaining({
+					projectId: destinationProject.id,
+					credentialsId: credential.id,
+					role: 'credential:user',
+				}),
+			]),
+		);
+	});
+
+	test('member transfers folder from a team project as project admin to another team project in which they have editor role', async () => {
+		// ARRANGE
+		const sourceProject = await createTeamProject('source project', member);
+		const destinationProject = await createTeamProject('destination project');
+		const sourceFolder1 = await createFolder(sourceProject, { name: 'Source Folder 1' });
+		const sourceFolder2 = await createFolder(sourceProject, {
+			name: 'Source Folder 2',
+			parentFolder: sourceFolder1,
+		});
+
+		const workflow1 = await createWorkflow({ parentFolder: sourceFolder1 }, sourceProject);
+		const workflow2 = await createWorkflow({ parentFolder: sourceFolder2 }, sourceProject);
+
+		const credential = await saveCredential(randomCredentialPayload(), {
+			project: sourceProject,
+			role: 'credential:owner',
+		});
+
+		await linkUserToProject(member, destinationProject, 'project:editor');
+
+		// ACT
+		await testServer
+			.authAgentFor(member)
+			.put(`/projects/${sourceProject.id}/folders/${sourceFolder1.id}/transfer`)
+			.send({
+				destinationProjectId: destinationProject.id,
+				destinationParentFolderId: '0',
+				shareCredentials: [credential.id],
+			})
+			.expect(200);
+
+		// ASSERT
+		const workflow1Sharing = await getWorkflowSharing(workflow1);
+		expect(workflow1Sharing).toHaveLength(1);
+		expect(workflow1Sharing[0]).toMatchObject({
+			projectId: destinationProject.id,
+			workflowId: workflow1.id,
+			role: 'workflow:owner',
+		});
+
+		const workflow2Sharing = await getWorkflowSharing(workflow2);
+		expect(workflow2Sharing).toHaveLength(1);
+		expect(workflow2Sharing[0]).toMatchObject({
+			projectId: destinationProject.id,
+			workflowId: workflow2.id,
+			role: 'workflow:owner',
+		});
+
+		const sourceFolderInDb = await folderRepository.findOne({
+			where: { id: sourceFolder1.id },
+			relations: ['parentFolder', 'homeProject'],
+		});
+		expect(sourceFolderInDb).toBeDefined();
+		expect(sourceFolderInDb?.parentFolder).toBeNull();
+		expect(sourceFolderInDb?.homeProject.id).toBe(destinationProject.id);
+
+		const sourceFolder2InDb = await folderRepository.findOne({
+			where: { id: sourceFolder2.id },
+			relations: ['parentFolder', 'homeProject'],
+		});
+
+		expect(sourceFolder2InDb).toBeDefined();
+		expect(sourceFolder2InDb?.parentFolder?.id).toBe(sourceFolder1.id);
+		expect(sourceFolder2InDb?.homeProject.id).toBe(destinationProject.id);
+
+		const allCredentialSharings = await getCredentialSharings(credential);
+		expect(allCredentialSharings).toHaveLength(2);
+		expect(allCredentialSharings).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					projectId: sourceProject.id,
+					credentialsId: credential.id,
+					role: 'credential:owner',
+				}),
+				expect.objectContaining({
+					projectId: destinationProject.id,
+					credentialsId: credential.id,
+					role: 'credential:user',
+				}),
+			]),
+		);
+	});
+
+	test('member transfers workflow from a team project as project admin to another team project in which they have editor role but cannot share the credential that is only shared into the source project', async () => {
+		// ARRANGE
+		const sourceProject = await createTeamProject('source project', member);
+		const destinationProject = await createTeamProject('destination project');
+		const ownerProject = await getPersonalProject(owner);
+
+		const sourceFolder1 = await createFolder(sourceProject, { name: 'Source Folder 1' });
+		const sourceFolder2 = await createFolder(sourceProject, {
+			name: 'Source Folder 2',
+			parentFolder: sourceFolder1,
+		});
+
+		const workflow1 = await createWorkflow({ parentFolder: sourceFolder1 }, sourceProject);
+		const workflow2 = await createWorkflow({ parentFolder: sourceFolder2 }, sourceProject);
+
+		const credential = await saveCredential(randomCredentialPayload(), {
+			user: owner,
+			role: 'credential:owner',
+		});
+
+		await linkUserToProject(member, destinationProject, 'project:editor');
+		await shareCredentialWithProjects(credential, [sourceProject]);
+
+		// ACT
+		await testServer
+			.authAgentFor(member)
+			.put(`/projects/${sourceProject.id}/folders/${sourceFolder1.id}/transfer`)
+			.send({
+				destinationProjectId: destinationProject.id,
+				destinationParentFolderId: '0',
+				shareCredentials: [credential.id],
+			})
+			.expect(200);
+
+		// ASSERT
+		const workflow1Sharing = await getWorkflowSharing(workflow1);
+		expect(workflow1Sharing).toHaveLength(1);
+		expect(workflow1Sharing[0]).toMatchObject({
+			projectId: destinationProject.id,
+			workflowId: workflow1.id,
+			role: 'workflow:owner',
+		});
+
+		const workflow2Sharing = await getWorkflowSharing(workflow2);
+		expect(workflow2Sharing).toHaveLength(1);
+		expect(workflow2Sharing[0]).toMatchObject({
+			projectId: destinationProject.id,
+			workflowId: workflow2.id,
+			role: 'workflow:owner',
+		});
+
+		const sourceFolderInDb = await folderRepository.findOne({
+			where: { id: sourceFolder1.id },
+			relations: ['parentFolder', 'homeProject'],
+		});
+		expect(sourceFolderInDb).toBeDefined();
+		expect(sourceFolderInDb?.parentFolder).toBeNull();
+		expect(sourceFolderInDb?.homeProject.id).toBe(destinationProject.id);
+
+		const sourceFolder2InDb = await folderRepository.findOne({
+			where: { id: sourceFolder2.id },
+			relations: ['parentFolder', 'homeProject'],
+		});
+
+		expect(sourceFolder2InDb).toBeDefined();
+		expect(sourceFolder2InDb?.parentFolder?.id).toBe(sourceFolder1.id);
+		expect(sourceFolder2InDb?.homeProject.id).toBe(destinationProject.id);
+
+		const allCredentialSharings = await getCredentialSharings(credential);
+		expect(allCredentialSharings).toHaveLength(2);
+		expect(allCredentialSharings).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					projectId: ownerProject.id,
+					credentialsId: credential.id,
+					role: 'credential:owner',
+				}),
+				expect.objectContaining({
+					projectId: sourceProject.id,
+					credentialsId: credential.id,
+					role: 'credential:user',
+				}),
+			]),
+		);
+	});
+
+	test('member transfers workflow from a team project as project admin to another team project in which they have editor role but cannot share all the credentials', async () => {
+		// ARRANGE
+		const sourceProject = await createTeamProject('source project', member);
+		const destinationProject = await createTeamProject('destination project');
+
+		const sourceFolder1 = await createFolder(sourceProject, { name: 'Source Folder 1' });
+		const sourceFolder2 = await createFolder(sourceProject, {
+			name: 'Source Folder 2',
+			parentFolder: sourceFolder1,
+		});
+
+		const workflow1 = await createWorkflow({ parentFolder: sourceFolder1 }, sourceProject);
+		const workflow2 = await createWorkflow({ parentFolder: sourceFolder2 }, sourceProject);
+
+		const credential = await saveCredential(randomCredentialPayload(), {
+			project: sourceProject,
+			role: 'credential:owner',
+		});
+
+		const ownersCredential = await saveCredential(randomCredentialPayload(), {
+			user: owner,
+			role: 'credential:owner',
+		});
+
+		await linkUserToProject(member, destinationProject, 'project:editor');
+
+		// ACT
+		await testServer
+			.authAgentFor(member)
+			.put(`/projects/${sourceProject.id}/folders/${sourceFolder1.id}/transfer`)
+			.send({
+				destinationProjectId: destinationProject.id,
+				destinationParentFolderId: '0',
+				shareCredentials: [credential.id, ownersCredential.id],
+			})
+			.expect(200);
+
+		// ASSERT
+		const workflow1Sharing = await getWorkflowSharing(workflow1);
+		expect(workflow1Sharing).toHaveLength(1);
+		expect(workflow1Sharing[0]).toMatchObject({
+			projectId: destinationProject.id,
+			workflowId: workflow1.id,
+			role: 'workflow:owner',
+		});
+
+		const workflow2Sharing = await getWorkflowSharing(workflow2);
+		expect(workflow2Sharing).toHaveLength(1);
+		expect(workflow2Sharing[0]).toMatchObject({
+			projectId: destinationProject.id,
+			workflowId: workflow2.id,
+			role: 'workflow:owner',
+		});
+
+		const sourceFolderInDb = await folderRepository.findOne({
+			where: { id: sourceFolder1.id },
+			relations: ['parentFolder', 'homeProject'],
+		});
+		expect(sourceFolderInDb).toBeDefined();
+		expect(sourceFolderInDb?.parentFolder).toBeNull();
+		expect(sourceFolderInDb?.homeProject.id).toBe(destinationProject.id);
+
+		const sourceFolder2InDb = await folderRepository.findOne({
+			where: { id: sourceFolder2.id },
+			relations: ['parentFolder', 'homeProject'],
+		});
+
+		expect(sourceFolder2InDb).toBeDefined();
+		expect(sourceFolder2InDb?.parentFolder?.id).toBe(sourceFolder1.id);
+		expect(sourceFolder2InDb?.homeProject.id).toBe(destinationProject.id);
+
+		const allCredentialSharings = await getCredentialSharings(credential);
+		expect(allCredentialSharings).toHaveLength(2);
+		expect(allCredentialSharings).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					projectId: sourceProject.id,
+					credentialsId: credential.id,
+					role: 'credential:owner',
+				}),
+				expect.objectContaining({
+					projectId: destinationProject.id,
+					credentialsId: credential.id,
+					role: 'credential:user',
+				}),
+			]),
+		);
+	});
+
+	test('returns a 500 if the workflow cannot be activated due to an unknown error', async () => {
+		//
+		// ARRANGE
+		//
+
+		const sourceProject = await createTeamProject('source project', member);
+		const destinationProject = await createTeamProject('Team Project', member);
+
+		const sourceFolder1 = await createFolder(sourceProject, { name: 'Source Folder 1' });
+		const sourceFolder2 = await createFolder(sourceProject, {
+			name: 'Source Folder 2',
+			parentFolder: sourceFolder1,
+		});
+
+		await createWorkflow({ active: true, parentFolder: sourceFolder1 }, sourceProject);
+		await createWorkflow({ parentFolder: sourceFolder2 }, sourceProject);
+
+		activeWorkflowManager.add.mockRejectedValue(new ApplicationError('Oh no!'));
+
+		//
+		// ACT & ASSERT
+		//
+		await testServer
+			.authAgentFor(member)
+			.put(`/projects/${sourceProject.id}/folders/${sourceFolder1.id}/transfer`)
+			.send({
+				destinationProjectId: destinationProject.id,
+				destinationParentFolderId: '0',
+			})
+			.expect(500);
 	});
 });

@@ -1,7 +1,7 @@
+import { VariablesRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
 
-import { VariablesRepository } from '@/databases/repositories/variables.repository';
 import { VariablesController } from '@/environments.ee/variables/variables.controller.ee';
 import type { PaginatedRequest } from '@/public-api/types';
 import type { VariablesRequest } from '@/requests';
@@ -25,6 +25,15 @@ export = {
 			await Container.get(VariablesController).createVariable(req);
 
 			res.status(201).send();
+		},
+	],
+	updateVariable: [
+		isLicensed('feat:variables'),
+		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'variable:update' }),
+		async (req: VariablesRequest.Update, res: Response) => {
+			await Container.get(VariablesController).updateVariable(req);
+
+			res.status(204).send();
 		},
 	],
 	deleteVariable: [

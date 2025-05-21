@@ -383,9 +383,12 @@ describe('Canvas Node Manipulation and Navigation', () => {
 			WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
 			WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 			WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
+			WorkflowPage.getters.zoomOutButton().click();
+			WorkflowPage.getters.zoomOutButton().click();
 			WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 			WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
-			// At this point last added node should be off-screen
+			WorkflowPage.getters.zoomInButton().click();
+			WorkflowPage.getters.zoomInButton().click();
 			WorkflowPage.getters.canvasNodes().last().should('not.be.visible');
 			WorkflowPage.getters.zoomToFitButton().click();
 			WorkflowPage.getters.canvasNodes().last().should('be.visible');

@@ -1,4 +1,17 @@
 import { GlobalConfig } from '@n8n/config';
+import type {
+	User,
+	CreateExecutionPayload,
+	ExecutionSummaries,
+	IExecutionResponse,
+	IGetExecutionsQueryFilter,
+} from '@n8n/db';
+import {
+	ExecutionAnnotationRepository,
+	ExecutionRepository,
+	AnnotationTagMappingRepository,
+	WorkflowRepository,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import { validate as jsonSchemaValidate } from 'jsonschema';
 import { Logger } from 'n8n-core';
@@ -22,12 +35,6 @@ import {
 import { ActiveExecutions } from '@/active-executions';
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import config from '@/config';
-import type { User } from '@/databases/entities/user';
-import { AnnotationTagMappingRepository } from '@/databases/repositories/annotation-tag-mapping.repository.ee';
-import { ExecutionAnnotationRepository } from '@/databases/repositories/execution-annotation.repository';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import type { IGetExecutionsQueryFilter } from '@/databases/repositories/execution.repository';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
 import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error';
 import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error';
@@ -36,7 +43,6 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { IExecutionFlattedResponse } from '@/interfaces';
 import { License } from '@/license';
 import { NodeTypes } from '@/node-types';
-import type { CreateExecutionPayload, ExecutionSummaries, IExecutionResponse } from '@/types-db';
 import { WaitTracker } from '@/wait-tracker';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';

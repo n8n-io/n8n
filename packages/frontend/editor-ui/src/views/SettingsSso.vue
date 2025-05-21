@@ -7,7 +7,7 @@ import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
 const IdentityProviderSettingsType = {
@@ -86,6 +86,7 @@ const getSamlConfig = async () => {
 
 const onSave = async () => {
 	try {
+		validateInput();
 		const config =
 			ipsType.value === IdentityProviderSettingsType.URL
 				? { metadataUrl: metadataUrl.value }
@@ -129,6 +130,25 @@ const onTest = async () => {
 		}
 	} catch (error) {
 		toast.showError(error, 'error');
+	}
+};
+
+const validateInput = () => {
+	if (ipsType.value === IdentityProviderSettingsType.URL) {
+		// In case the user wants to set the metadata url we want to be sure that
+		// the provided url is at least a valid http, https url.
+		try {
+			const parsedUrl = new URL(metadataUrl.value);
+			// We allow http and https URLs for now, because we want to avoid a theoretical breaking
+			// change, this should be restricted to only allow https when switching to V2.
+			if (parsedUrl.protocol !== 'https:' && parsedUrl.protocol !== 'http:') {
+				// The content of this error is never seen by the user, because the catch clause
+				// below catches it and translates it to a more general error message.
+				throw new Error('The provided protocol is not supported');
+			}
+		} catch (error) {
+			throw new Error(i18n.baseText('settings.sso.settings.ips.url.invalid'));
+		}
 	}
 };
 

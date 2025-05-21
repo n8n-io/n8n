@@ -31,6 +31,7 @@ export interface ClientOAuth2Options {
 	scopesSeparator?: ',' | ' ';
 	authorizationGrants?: string[];
 	state?: string;
+	additionalBodyProperties?: Record<string, any>;
 	body?: Record<string, any>;
 	query?: qs.ParsedUrlQuery;
 	ignoreSSLIssues?: boolean;

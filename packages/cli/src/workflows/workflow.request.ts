@@ -6,10 +6,10 @@ import type {
 	StartNodeData,
 	ITaskData,
 	IWorkflowBase,
+	AiAgentRequest,
 } from 'n8n-workflow';
 
-import type { AuthenticatedRequest } from '@/requests';
-import type { ListQuery } from '@/types-db';
+import type { AuthenticatedRequest, ListQuery } from '@/requests';
 
 export declare namespace WorkflowRequest {
 	type CreateUpdatePayload = Partial<{
@@ -36,6 +36,7 @@ export declare namespace WorkflowRequest {
 			name: string;
 			data?: ITaskData;
 		};
+		agentRequest?: AiAgentRequest;
 	};
 
 	type Create = AuthenticatedRequest<{}, {}, CreateUpdatePayload>;
@@ -54,8 +55,6 @@ export declare namespace WorkflowRequest {
 	> & {
 		listQueryOptions: ListQuery.Options;
 	};
-
-	type Delete = Get;
 
 	type Update = AuthenticatedRequest<
 		{ workflowId: string },

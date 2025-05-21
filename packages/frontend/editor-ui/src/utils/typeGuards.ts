@@ -1,5 +1,4 @@
 import type {
-	INodeParameterResourceLocator,
 	INodeTypeDescription,
 	NodeConnectionType,
 	TriggerPanelDefinition,
@@ -26,10 +25,6 @@ import type {
 export const checkExhaustive = (value: never): never => {
 	throw new Error(`Unhandled value: ${value}`);
 };
-
-export function isResourceLocatorValue(value: unknown): value is INodeParameterResourceLocator {
-	return Boolean(typeof value === 'object' && value && 'mode' in value && 'value' in value);
-}
 
 export function isNotNull<T>(value: T | null): value is T {
 	return value !== null;

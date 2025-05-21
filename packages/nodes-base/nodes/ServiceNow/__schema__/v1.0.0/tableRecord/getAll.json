@@ -16,9 +16,6 @@
         "sys_created_on": {
             "type": "string"
         },
-        "sys_id": {
-            "type": "string"
-        },
         "sys_mod_count": {
             "type": "string"
         },
@@ -32,5 +29,5 @@
             "type": "string"
         }
     },
-    "version": 2
+    "version": 3
 }

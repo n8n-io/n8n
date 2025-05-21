@@ -25,7 +25,6 @@ import {
 import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, toRef, watch } from 'vue';
 
 import type {
-	IExecutionResponse,
 	INodeUi,
 	INodeUpdatePropertiesInformation,
 	IRunDataDisplayMode,
@@ -43,7 +42,6 @@ import {
 	MAX_DISPLAY_DATA_SIZE,
 	MAX_DISPLAY_DATA_SIZE_SCHEMA_VIEW,
 	NODE_TYPES_EXCLUDED_FROM_OUTPUT_NAME_APPEND,
-	SCHEMA_PREVIEW_EXPERIMENT,
 	TEST_PIN_DATA,
 } from '@/constants';
 
@@ -63,7 +61,7 @@ import { useToast } from '@/composables/useToast';
 import { dataPinningEventBus, ndvEventBus } from '@/event-bus';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { executionDataToJson } from '@/utils/nodeTypesUtils';
@@ -90,11 +88,11 @@ import { useRoute } from 'vue-router';
 import { useUIStore } from '@/stores/ui.store';
 import { useSchemaPreviewStore } from '@/stores/schemaPreview.store';
 import { asyncComputed } from '@vueuse/core';
-import { usePostHog } from '@/stores/posthog.store';
 import ViewSubExecution from './ViewSubExecution.vue';
 import RunDataItemCount from '@/components/RunDataItemCount.vue';
 import RunDataDisplayModeSelect from '@/components/RunDataDisplayModeSelect.vue';
 import RunDataPaginationBar from '@/components/RunDataPaginationBar.vue';
+import { parseAiContent } from '@/utils/aiUtils';
 
 const LazyRunDataTable = defineAsyncComponent(
 	async () => await import('@/components/RunDataTable.vue'),
@@ -109,6 +107,9 @@ const LazyRunDataSchema = defineAsyncComponent(
 const LazyRunDataHtml = defineAsyncComponent(
 	async () => await import('@/components/RunDataHtml.vue'),
 );
+const LazyRunDataAi = defineAsyncComponent(
+	async () => await import('@/components/RunDataParsedAiContent.vue'),
+);
 const LazyRunDataSearch = defineAsyncComponent(
 	async () => await import('@/components/RunDataSearch.vue'),
 );
@@ -119,12 +120,13 @@ export type EnterEditModeArgs = {
 
 type Props = {
 	workflow: Workflow;
-	workflowExecution?: IExecutionResponse;
+	workflowExecution?: IRunExecutionData;
 	runIndex: number;
 	tooMuchDataTitle: string;
 	executingMessage: string;
 	pushRef?: string;
 	paneType: NodePanelType;
+	displayMode: IRunDataDisplayMode;
 	noDataInBranchMessage: string;
 	node?: INodeUi | null;
 	nodes?: IConnectedNode[];
@@ -145,6 +147,7 @@ type Props = {
 	compact?: boolean;
 	tableHeaderBgColor?: 'base' | 'light';
 	disableHoverHighlight?: boolean;
+	disableAiContent?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -166,6 +169,7 @@ const props = withDefaults(defineProps<Props>(), {
 	compact: false,
 	tableHeaderBgColor: 'base',
 	workflowExecution: undefined,
+	disableAiContent: false,
 });
 
 defineSlots<{
@@ -198,6 +202,7 @@ const emit = defineEmits<{
 			avgRowHeight: number;
 		},
 	];
+	displayModeChange: [IRunDataDisplayMode];
 }>();
 
 const connectionType = ref<NodeConnectionType>(NodeConnectionTypes.Main);
@@ -223,7 +228,6 @@ const sourceControlStore = useSourceControlStore();
 const rootStore = useRootStore();
 const uiStore = useUIStore();
 const schemaPreviewStore = useSchemaPreviewStore();
-const posthogStore = usePostHog();
 
 const toast = useToast();
 const route = useRoute();
@@ -236,22 +240,18 @@ const node = toRef(props, 'node');
 
 const pinnedData = usePinnedData(node, {
 	runIndex: props.runIndex,
-	displayMode:
-		props.paneType === 'input' ? ndvStore.inputPanelDisplayMode : ndvStore.outputPanelDisplayMode,
+	displayMode: props.displayMode,
 });
 const { isSubNodeType } = useNodeType({
 	node,
 });
 
-const displayMode = computed(() =>
-	props.paneType === 'input' ? ndvStore.inputPanelDisplayMode : ndvStore.outputPanelDisplayMode,
-);
-
+const isArchivedWorkflow = computed(() => workflowsStore.workflow.isArchived);
 const isReadOnlyRoute = computed(() => route.meta.readOnlyCanvas === true);
 const isWaitNodeWaiting = computed(() => {
 	return (
 		node.value?.name &&
-		workflowExecution.value?.data?.resultData?.runData?.[node.value?.name]?.[props.runIndex]
+		workflowExecution.value?.resultData?.runData?.[node.value?.name]?.[props.runIndex]
 			?.executionStatus === 'waiting'
 	);
 });
@@ -263,7 +263,7 @@ const nodeType = computed(() => {
 	return nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion);
 });
 
-const isSchemaView = computed(() => displayMode.value === 'schema');
+const isSchemaView = computed(() => props.displayMode === 'schema');
 const isSearchInSchemaView = computed(() => isSchemaView.value && !!search.value);
 const hasMultipleInputNodes = computed(() => props.paneType === 'input' && props.nodes.length > 0);
 const displaysMultipleNodes = computed(() => isSchemaView.value && hasMultipleInputNodes.value);
@@ -338,13 +338,13 @@ const executionHints = computed(() => {
 });
 
 const workflowExecution = computed(
-	() => props.workflowExecution ?? workflowsStore.getWorkflowExecution ?? undefined,
+	() => props.workflowExecution ?? workflowsStore.getWorkflowExecution?.data ?? undefined,
 );
 const workflowRunData = computed(() => {
 	if (workflowExecution.value === undefined) {
 		return null;
 	}
-	const executionData: IRunExecutionData | undefined = workflowExecution.value?.data;
+	const executionData: IRunExecutionData | undefined = workflowExecution.value;
 	if (executionData?.resultData) {
 		return executionData.resultData.runData;
 	}
@@ -546,7 +546,8 @@ const pinButtonDisabled = computed(
 		(!rawInputData.value.length && !pinnedData.hasData.value) ||
 		!!binaryData.value?.length ||
 		isReadOnlyRoute.value ||
-		readOnlyEnv.value,
+		readOnlyEnv.value ||
+		isArchivedWorkflow.value,
 );
 
 const activeTaskMetadata = computed((): ITaskMetadata | null => {
@@ -580,13 +581,7 @@ const hasInputOverwrite = computed((): boolean => {
 const isSchemaPreviewEnabled = computed(
 	() =>
 		props.paneType === 'input' &&
-		!(nodeType.value?.codex?.categories ?? []).some(
-			(category) => category === CORE_NODES_CATEGORY,
-		) &&
-		posthogStore.isVariantEnabled(
-			SCHEMA_PREVIEW_EXPERIMENT.name,
-			SCHEMA_PREVIEW_EXPERIMENT.variant,
-		),
+		!(nodeType.value?.codex?.categories ?? []).some((category) => category === CORE_NODES_CATEGORY),
 );
 
 const hasPreviewSchema = asyncComputed(async () => {
@@ -616,6 +611,14 @@ const itemsCountProps = computed<InstanceType<typeof RunDataItemCount>['$props']
 	unfilteredDataCount: unfilteredDataCount.value,
 	subExecutionsCount: activeTaskMetadata.value?.subExecutionsCount,
 }));
+
+const parsedAiContent = computed(() =>
+	props.disableAiContent ? [] : parseAiContent(rawInputData.value, connectionType.value),
+);
+
+const hasParsedAiContent = computed(() =>
+	parsedAiContent.value.some((prr) => prr.parsedContent?.parsed),
+);
 
 function setInputBranchIndex(value: number) {
 	if (props.paneType === 'input') {
@@ -659,9 +662,9 @@ watch(jsonData, (data: IDataObject[], prevData: IDataObject[]) => {
 });
 
 watch(binaryData, (newData, prevData) => {
-	if (newData.length && !prevData.length && displayMode.value !== 'binary') {
+	if (newData.length && !prevData.length && props.displayMode !== 'binary') {
 		switchToBinary();
-	} else if (!newData.length && displayMode.value === 'binary') {
+	} else if (!newData.length && props.displayMode === 'binary') {
 		onDisplayModeChange('table');
 	}
 });
@@ -676,6 +679,17 @@ watch(currentOutputIndex, (branchIndex: number) => {
 watch(search, (newSearch) => {
 	emit('search', newSearch);
 });
+
+// Switch to AI display mode if it's most suitable
+watch(
+	hasParsedAiContent,
+	(hasAiContent) => {
+		if (hasAiContent && props.displayMode !== 'ai') {
+			emit('displayModeChange', 'ai');
+		}
+	},
+	{ immediate: true },
+);
 
 onMounted(() => {
 	init();
@@ -765,7 +779,7 @@ function getNodeHints(): NodeHint[] {
 
 			if (workflowNode) {
 				const nodeHints = nodeHelpers.getNodeHints(props.workflow, workflowNode, nodeType.value, {
-					runExecutionData: workflowExecution.value?.data ?? null,
+					runExecutionData: workflowExecution.value ?? null,
 					runIndex: props.runIndex,
 					connectionInputData: parentNodeOutputData.value,
 				});
@@ -825,7 +839,13 @@ function showPinDataDiscoveryTooltip(value: IDataObject[]) {
 
 	const pinDataDiscoveryFlag = useStorage(LOCAL_STORAGE_PIN_DATA_DISCOVERY_NDV_FLAG).value;
 
-	if (value && value.length > 0 && !isReadOnlyRoute.value && !pinDataDiscoveryFlag) {
+	if (
+		value &&
+		value.length > 0 &&
+		!isReadOnlyRoute.value &&
+		!isArchivedWorkflow.value &&
+		!pinDataDiscoveryFlag
+	) {
 		pinDataDiscoveryComplete();
 
 		setTimeout(() => {
@@ -869,7 +889,7 @@ function enterEditMode({ origin }: EnterEditModeArgs) {
 		push_ref: props.pushRef,
 		run_index: props.runIndex,
 		is_output_present: hasNodeRun.value || pinnedData.hasData.value,
-		view: !hasNodeRun.value && !pinnedData.hasData.value ? 'undefined' : displayMode.value,
+		view: !hasNodeRun.value && !pinnedData.hasData.value ? 'undefined' : props.displayMode,
 		is_data_pinned: pinnedData.hasData.value,
 	});
 }
@@ -912,7 +932,7 @@ function onExitEditMode({ type }: { type: 'save' | 'cancel' }) {
 		node_type: activeNode.value?.type,
 		push_ref: props.pushRef,
 		run_index: props.runIndex,
-		view: displayMode.value,
+		view: props.displayMode,
 		type,
 	});
 }
@@ -927,7 +947,7 @@ async function onTogglePinData({ source }: { source: PinDataSource | UnpinDataSo
 			node_type: activeNode.value?.type,
 			push_ref: props.pushRef,
 			run_index: props.runIndex,
-			view: !hasNodeRun.value && !pinnedData.hasData.value ? 'none' : displayMode.value,
+			view: !hasNodeRun.value && !pinnedData.hasData.value ? 'none' : props.displayMode,
 		};
 
 		void externalHooks.run('runData.onTogglePinData', telemetryPayload);
@@ -1046,8 +1066,8 @@ function onPageSizeChange(newPageSize: number) {
 }
 
 function onDisplayModeChange(newDisplayMode: IRunDataDisplayMode) {
-	const previous = displayMode.value;
-	ndvStore.setPanelDisplayMode({ pane: props.paneType, mode: newDisplayMode });
+	const previous = props.displayMode;
+	emit('displayModeChange', newDisplayMode);
 
 	if (!userEnabledShowData.value) updateShowData();
 
@@ -1193,15 +1213,9 @@ function init() {
 	}
 	connectionType.value = outputTypes.length === 0 ? NodeConnectionTypes.Main : outputTypes[0];
 	if (binaryData.value.length > 0) {
-		ndvStore.setPanelDisplayMode({
-			pane: props.paneType,
-			mode: 'binary',
-		});
-	} else if (displayMode.value === 'binary') {
-		ndvStore.setPanelDisplayMode({
-			pane: props.paneType,
-			mode: 'schema',
-		});
+		emit('displayModeChange', 'binary');
+	} else if (props.displayMode === 'binary') {
+		emit('displayModeChange', 'schema');
 	}
 }
 
@@ -1317,10 +1331,7 @@ function setDisplayMode() {
 		activeNode.value.parameters.operation === 'generateHtmlTemplate';
 
 	if (shouldDisplayHtml) {
-		ndvStore.setPanelDisplayMode({
-			pane: 'output',
-			mode: 'html',
-		});
+		emit('displayModeChange', 'html');
 	}
 }
 
@@ -1354,7 +1365,7 @@ defineExpose({ enterEditMode });
 			data-test-id="ndv-pinned-data-callout"
 		>
 			{{ i18n.baseText('runData.pindata.thisDataIsPinned') }}
-			<span v-if="!isReadOnlyRoute && !readOnlyEnv" class="ml-4xs">
+			<span v-if="!isReadOnlyRoute && !isArchivedWorkflow && !readOnlyEnv" class="ml-4xs">
 				<N8nLink
 					theme="secondary"
 					size="small"
@@ -1426,6 +1437,7 @@ defineExpose({ enterEditMode });
 						activeNode?.type === HTML_NODE_TYPE &&
 						activeNode.parameters.operation === 'generateHtmlTemplate'
 					"
+					:has-renderable-data="hasParsedAiContent"
 					@change="onDisplayModeChange"
 				/>
 
@@ -1625,7 +1637,12 @@ defineExpose({ enterEditMode });
 				"
 				:class="$style.stretchVertically"
 			>
-				<NodeErrorView :error="subworkflowExecutionError" :class="$style.errorDisplay" />
+				<NodeErrorView
+					:compact="compact"
+					:error="subworkflowExecutionError"
+					:class="$style.errorDisplay"
+					show-details
+				/>
 			</div>
 
 			<div v-else-if="isWaitNodeWaiting" :class="$style.center">
@@ -1687,7 +1704,7 @@ defineExpose({ enterEditMode });
 						v-if="workflowRunErrorAsNodeError"
 						:error="workflowRunErrorAsNodeError"
 						:class="$style.inlineError"
-						compact
+						:compact="compact"
 					/>
 					<slot name="content"></slot>
 				</div>
@@ -1695,6 +1712,8 @@ defineExpose({ enterEditMode });
 					v-else-if="workflowRunErrorAsNodeError"
 					:error="workflowRunErrorAsNodeError"
 					:class="$style.dataDisplay"
+					:compact="compact"
+					show-details
 				/>
 			</div>
 
@@ -1833,6 +1852,10 @@ defineExpose({ enterEditMode });
 
 			<Suspense v-else-if="hasNodeRun && isPaneTypeOutput && displayMode === 'html'">
 				<LazyRunDataHtml :input-html="inputHtml" />
+			</Suspense>
+
+			<Suspense v-else-if="hasNodeRun && displayMode === 'ai'">
+				<LazyRunDataAi render-type="rendered" :compact="compact" :content="parsedAiContent" />
 			</Suspense>
 
 			<Suspense v-else-if="(hasNodeRun || hasPreviewSchema) && isSchemaView">

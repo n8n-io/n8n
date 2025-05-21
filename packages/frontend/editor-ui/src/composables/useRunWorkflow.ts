@@ -16,8 +16,8 @@ import type {
 	IDataObject,
 	IWorkflowBase,
 } from 'n8n-workflow';
-
 import { NodeConnectionTypes, TelemetryHelpers } from 'n8n-workflow';
+import { retry } from '@n8n/utils/retry';
 
 import { useToast } from '@/composables/useToast';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
@@ -28,8 +28,7 @@ import {
 	SINGLE_WEBHOOK_TRIGGERS,
 } from '@/constants';
 
-import { useRootStore } from '@/stores/root.store';
-import { useUIStore } from '@/stores/ui.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { displayForm } from '@/utils/executionUtils';
 import { useExternalHooks } from '@/composables/useExternalHooks';
@@ -43,6 +42,8 @@ import { useTelemetry } from './useTelemetry';
 import { useSettingsStore } from '@/stores/settings.store';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { useNodeDirtiness } from '@/composables/useNodeDirtiness';
+import { useCanvasOperations } from './useCanvasOperations';
+import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
 
 export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof useRouter> }) {
 	const nodeHelpers = useNodeHelpers();
@@ -52,13 +53,28 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 	const telemetry = useTelemetry();
 	const externalHooks = useExternalHooks();
 	const settingsStore = useSettingsStore();
+	const agentRequestStore = useAgentRequestStore();
 
 	const rootStore = useRootStore();
 	const pushConnectionStore = usePushConnectionStore();
-	const uiStore = useUIStore();
 	const workflowsStore = useWorkflowsStore();
 	const executionsStore = useExecutionsStore();
 	const { dirtinessByName } = useNodeDirtiness();
+	const { startChat } = useCanvasOperations({ router: useRunWorkflowOpts.router });
+
+	function sortNodesByYPosition(nodes: string[]) {
+		return [...nodes].sort((a, b) => {
+			const nodeA = workflowsStore.getNodeByName(a)?.position ?? [0, 0];
+			const nodeB = workflowsStore.getNodeByName(b)?.position ?? [0, 0];
+
+			const nodeAYPosition = nodeA[1];
+			const nodeBYPosition = nodeB[1];
+
+			if (nodeAYPosition === nodeBYPosition) return 0;
+
+			return nodeAYPosition > nodeBYPosition ? 1 : -1;
+		});
+	}
 
 	// Starts to execute a workflow on server
 	async function runWorkflowApi(runData: IStartRunData): Promise<IExecutionPushResponse> {
@@ -70,26 +86,25 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 
 		workflowsStore.subWorkflowExecutionError = null;
 
-		uiStore.addActiveAction('workflowRunning');
+		// Set the execution as started, but still waiting for the execution to be retrieved
+		workflowsStore.setActiveExecutionId(null);
 
 		let response: IExecutionPushResponse;
-
 		try {
 			response = await workflowsStore.runWorkflow(runData);
 		} catch (error) {
-			uiStore.removeActiveAction('workflowRunning');
+			workflowsStore.setActiveExecutionId(undefined);
 			throw error;
 		}
 
-		if (
-			response.executionId !== undefined &&
-			workflowsStore.previousExecutionId !== response.executionId
-		) {
+		const workflowExecutionIdIsNew = workflowsStore.previousExecutionId !== response.executionId;
+		const workflowExecutionIdIsPending = workflowsStore.activeExecutionId === null;
+		if (response.executionId && workflowExecutionIdIsNew && workflowExecutionIdIsPending) {
 			workflowsStore.setActiveExecutionId(response.executionId);
 		}
 
-		if (response.waitingForWebhook === true && useWorkflowsStore().nodesIssuesExist) {
-			uiStore.removeActiveAction('workflowRunning');
+		if (response.waitingForWebhook === true && workflowsStore.nodesIssuesExist) {
+			workflowsStore.setActiveExecutionId(undefined);
 			throw new Error(i18n.baseText('workflowRun.showError.resolveOutstandingIssues'));
 		}
 
@@ -106,11 +121,11 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 		nodeData?: ITaskData;
 		source?: string;
 	}): Promise<IExecutionPushResponse | undefined> {
-		const workflow = workflowHelpers.getCurrentWorkflow();
-
-		if (uiStore.isActionActive.workflowRunning) {
+		if (workflowsStore.activeExecutionId) {
 			return;
 		}
+
+		const workflow = workflowHelpers.getCurrentWorkflow();
 
 		toast.clearAllStickyNotifications();
 
@@ -150,6 +165,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			let triggerToStartFrom: IStartRunData['triggerToStartFrom'];
 			if (
 				startNodeNames.length === 0 &&
+				directParentNodes.length === 0 &&
 				'destinationNode' in options &&
 				options.destinationNode !== undefined
 			) {
@@ -161,6 +177,8 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				);
 				newRunData = { [options.triggerNode]: [options.nodeData] };
 				executedNode = options.triggerNode;
+			} else if (options.destinationNode) {
+				executedNode = options.destinationNode;
 			}
 
 			if (options.triggerNode) {
@@ -188,7 +206,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 					// and halt the execution
 					if (!chatHasInputData && !chatHasPinData) {
 						workflowsStore.chatPartialExecutionDestinationNode = options.destinationNode;
-						workflowsStore.toggleLogsPanelOpen(true);
+						startChat();
 						return;
 					}
 				}
@@ -224,24 +242,35 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			const version = settingsStore.partialExecutionVersion;
 
 			// TODO: this will be redundant once we cleanup the partial execution v1
-			const startNodes: StartNodeData[] = startNodeNames.map((name) => {
-				// Find for each start node the source data
-				let sourceData = get(runData, [name, 0, 'source', 0], null);
-				if (sourceData === null) {
-					const parentNodes = workflow.getParentNodes(name, NodeConnectionTypes.Main, 1);
-					const executeData = workflowHelpers.executeData(
-						parentNodes,
+			const startNodes: StartNodeData[] = sortNodesByYPosition(startNodeNames)
+				.map((name) => {
+					// Find for each start node the source data
+					let sourceData = get(runData, [name, 0, 'source', 0], null);
+					if (sourceData === null) {
+						const parentNodes = workflow.getParentNodes(name, NodeConnectionTypes.Main, 1);
+						const executeData = workflowHelpers.executeData(
+							parentNodes,
+							name,
+							NodeConnectionTypes.Main,
+							0,
+						);
+						sourceData = get(executeData, ['source', NodeConnectionTypes.Main, 0], null);
+					}
+					return {
 						name,
-						NodeConnectionTypes.Main,
-						0,
-					);
-					sourceData = get(executeData, ['source', NodeConnectionTypes.Main, 0], null);
-				}
-				return {
-					name,
-					sourceData,
-				};
-			});
+						sourceData,
+					};
+				})
+				// If a destination node is specified and it has chat parent, we don't want to include it in the start nodes
+				.filter((node) => {
+					if (
+						options.destinationNode &&
+						workflowsStore.checkIfNodeHasChatParent(options.destinationNode)
+					) {
+						return node.name !== options.destinationNode;
+					}
+					return true;
+				});
 
 			const singleWebhookTrigger = triggers.find((node) =>
 				SINGLE_WEBHOOK_TRIGGERS.includes(node.type),
@@ -281,6 +310,19 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 
 			if ('destinationNode' in options) {
 				startRunData.destinationNode = options.destinationNode;
+				const nodeId = workflowsStore.getNodeByName(options.destinationNode as string)?.id;
+				if (workflow.id && nodeId && version === 2) {
+					const agentRequest = agentRequestStore.generateAgentRequest(workflow.id, nodeId);
+
+					if (agentRequest) {
+						startRunData.agentRequest = {
+							query: agentRequest.query ?? {},
+							tool: {
+								name: agentRequest.toolName ?? '',
+							},
+						};
+					}
+				}
 			}
 
 			if (startRunData.runData) {
@@ -358,6 +400,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 
 			return runWorkflowApiResponse;
 		} catch (error) {
+			workflowsStore.setWorkflowExecutionData(null);
 			workflowHelpers.setDocumentTitle(workflow.name as string, 'ERROR');
 			toast.showError(error, i18n.baseText('workflowRun.showError.title'));
 			return undefined;
@@ -417,7 +460,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 
 	async function stopCurrentExecution() {
 		const executionId = workflowsStore.activeExecutionId;
-		if (executionId === null) {
+		if (!executionId) {
 			return;
 		}
 
@@ -455,15 +498,18 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			}
 		} finally {
 			// Wait for websocket event to update the execution status to 'canceled'
-			for (let i = 0; i < 100; i++) {
-				if (workflowsStore.workflowExecutionData?.status !== 'running') {
-					break;
-				}
+			await retry(
+				async () => {
+					if (workflowsStore.workflowExecutionData?.status !== 'running') {
+						workflowsStore.markExecutionAsStopped();
+						return true;
+					}
 
-				await new Promise(requestAnimationFrame);
-			}
-
-			workflowsStore.markExecutionAsStopped();
+					return false;
+				},
+				250,
+				10,
+			);
 		}
 	}
 
@@ -505,5 +551,6 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 		runWorkflowApi,
 		stopCurrentExecution,
 		stopWaitingForWebhook,
+		sortNodesByYPosition,
 	};
 }

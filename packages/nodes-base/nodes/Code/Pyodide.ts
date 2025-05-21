@@ -14,8 +14,11 @@ export async function LoadPyodide(packageCacheDir: string): Promise<PyodideInter
 			indexURL,
 			packageCacheDir,
 			jsglobals: {
-				Object,
 				console,
+				fetch,
+				AbortController,
+				AbortSignal,
+				Object,
 				XMLHttpRequest,
 			},
 		});

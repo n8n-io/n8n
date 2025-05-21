@@ -156,7 +156,7 @@ onBeforeUnmount(() => {
 					<el-tag
 						:title="tag.name"
 						type="info"
-						size="small"
+						size="mini"
 						:class="{ hoverable }"
 						:disable-transitions="true"
 					>

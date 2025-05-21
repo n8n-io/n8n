@@ -1,9 +1,9 @@
+import { InstalledPackages } from '@n8n/db';
+import { InstalledNodesRepository } from '@n8n/db';
+import { InstalledPackagesRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { NODE_PACKAGE_PREFIX } from '@/constants';
-import { InstalledPackages } from '@/databases/entities/installed-packages';
-import { InstalledNodesRepository } from '@/databases/repositories/installed-nodes.repository';
-import { InstalledPackagesRepository } from '@/databases/repositories/installed-packages.repository';
 
 import { COMMUNITY_NODE_VERSION, COMMUNITY_PACKAGE_VERSION } from '../constants';
 import { randomName } from '../random';

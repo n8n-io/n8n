@@ -6,11 +6,11 @@ import {
 	MODAL_CONFIRM,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	SOURCE_CONTROL_PUSH_MODAL_KEY,
-	VALID_WORKFLOW_IMPORT_URL_REGEX,
 	VIEWS,
 	WORKFLOW_MENU_ACTIONS,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_SHARE_MODAL_KEY,
+	IMPORT_WORKFLOW_URL_MODAL_KEY,
 } from '@/constants';
 import ShortenName from '@/components/ShortenName.vue';
 import WorkflowTagsContainer from '@/components/WorkflowTagsContainer.vue';
@@ -23,7 +23,7 @@ import BreakpointsObserver from '@/components/BreakpointsObserver.vue';
 import WorkflowHistoryButton from '@/components/MainHeader/WorkflowHistoryButton.vue';
 import CollaborationPane from '@/components/MainHeader/CollaborationPane.vue';
 
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useTagsStore } from '@/stores/tags.store';
@@ -69,6 +69,7 @@ const props = defineProps<{
 	scopes: IWorkflowDb['scopes'];
 	active: IWorkflowDb['active'];
 	currentFolder?: FolderShortInfo;
+	isArchived: IWorkflowDb['isArchived'];
 }>();
 
 const $style = useCssModule();
@@ -144,14 +145,20 @@ const workflowMenuItems = computed<ActionDropdownItem[]>(() => {
 			label: locale.baseText('menuActions.download'),
 			disabled: !onWorkflowPage.value,
 		},
-		{
+	];
+
+	if (!props.readOnly && !props.isArchived) {
+		actions.push({
 			id: WORKFLOW_MENU_ACTIONS.RENAME,
 			label: locale.baseText('generic.rename'),
 			disabled: !onWorkflowPage.value || workflowPermissions.value.update !== true,
-		},
-	];
+		});
+	}
 
-	if ((workflowPermissions.value.delete && !props.readOnly) || isNewWorkflow.value) {
+	if (
+		(workflowPermissions.value.delete === true && !props.readOnly && !props.isArchived) ||
+		isNewWorkflow.value
+	) {
 		actions.unshift({
 			id: WORKFLOW_MENU_ACTIONS.DUPLICATE,
 			label: locale.baseText('menuActions.duplicate'),
@@ -190,14 +197,29 @@ const workflowMenuItems = computed<ActionDropdownItem[]>(() => {
 		disabled: !onWorkflowPage.value || isNewWorkflow.value,
 	});
 
-	if ((workflowPermissions.value.delete && !props.readOnly) || isNewWorkflow.value) {
-		actions.push({
-			id: WORKFLOW_MENU_ACTIONS.DELETE,
-			label: locale.baseText('menuActions.delete'),
-			disabled: !onWorkflowPage.value || isNewWorkflow.value,
-			customClass: $style.deleteItem,
-			divided: true,
-		});
+	if ((workflowPermissions.value.delete === true && !props.readOnly) || isNewWorkflow.value) {
+		if (props.isArchived) {
+			actions.push({
+				id: WORKFLOW_MENU_ACTIONS.UNARCHIVE,
+				label: locale.baseText('menuActions.unarchive'),
+				disabled: !onWorkflowPage.value || isNewWorkflow.value,
+			});
+			actions.push({
+				id: WORKFLOW_MENU_ACTIONS.DELETE,
+				label: locale.baseText('menuActions.delete'),
+				disabled: !onWorkflowPage.value || isNewWorkflow.value,
+				customClass: $style.deleteItem,
+				divided: true,
+			});
+		} else {
+			actions.push({
+				id: WORKFLOW_MENU_ACTIONS.ARCHIVE,
+				label: locale.baseText('menuActions.archive'),
+				disabled: !onWorkflowPage.value || isNewWorkflow.value,
+				customClass: $style.deleteItem,
+				divided: true,
+			});
+		}
 	}
 
 	return actions;
@@ -454,24 +476,7 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.IMPORT_FROM_URL: {
-			try {
-				const promptResponse = await message.prompt(
-					locale.baseText('mainSidebar.prompt.workflowUrl') + ':',
-					locale.baseText('mainSidebar.prompt.importWorkflowFromUrl') + ':',
-					{
-						confirmButtonText: locale.baseText('mainSidebar.prompt.import'),
-						cancelButtonText: locale.baseText('mainSidebar.prompt.cancel'),
-						inputErrorMessage: locale.baseText('mainSidebar.prompt.invalidUrl'),
-						inputPattern: VALID_WORKFLOW_IMPORT_URL_REGEX,
-					},
-				);
-
-				if (promptResponse.action === 'cancel') {
-					return;
-				}
-
-				nodeViewEventBus.emit('importWorkflowUrl', { url: promptResponse.value });
-			} catch (e) {}
+			uiStore.openModal(IMPORT_WORKFLOW_URL_MODAL_KEY);
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.IMPORT_FROM_FILE: {
@@ -512,6 +517,58 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 			uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
 			break;
 		}
+		case WORKFLOW_MENU_ACTIONS.ARCHIVE: {
+			if (props.active) {
+				const archiveConfirmed = await message.confirm(
+					locale.baseText('mainSidebar.confirmMessage.workflowArchive.message', {
+						interpolate: { workflowName: props.name },
+					}),
+					locale.baseText('mainSidebar.confirmMessage.workflowArchive.headline'),
+					{
+						type: 'warning',
+						confirmButtonText: locale.baseText(
+							'mainSidebar.confirmMessage.workflowArchive.confirmButtonText',
+						),
+						cancelButtonText: locale.baseText(
+							'mainSidebar.confirmMessage.workflowArchive.cancelButtonText',
+						),
+					},
+				);
+
+				if (archiveConfirmed !== MODAL_CONFIRM) {
+					return;
+				}
+			}
+
+			try {
+				await workflowsStore.archiveWorkflow(props.id);
+			} catch (error) {
+				toast.showError(error, locale.baseText('generic.archiveWorkflowError'));
+				return;
+			}
+
+			uiStore.stateIsDirty = false;
+			toast.showMessage({
+				title: locale.baseText('mainSidebar.showMessage.handleArchive.title', {
+					interpolate: { workflowName: props.name },
+				}),
+				type: 'success',
+			});
+
+			await router.push({ name: VIEWS.WORKFLOWS });
+
+			break;
+		}
+		case WORKFLOW_MENU_ACTIONS.UNARCHIVE: {
+			await workflowsStore.unarchiveWorkflow(props.id);
+			toast.showMessage({
+				title: locale.baseText('mainSidebar.showMessage.handleUnarchive.title', {
+					interpolate: { workflowName: props.name },
+				}),
+				type: 'success',
+			});
+			break;
+		}
 		case WORKFLOW_MENU_ACTIONS.DELETE: {
 			const deleteConfirmed = await message.confirm(
 				locale.baseText('mainSidebar.confirmMessage.workflowDelete.message', {
@@ -543,7 +600,9 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 			// Reset tab title since workflow is deleted.
 			documentTitle.reset();
 			toast.showMessage({
-				title: locale.baseText('mainSidebar.showMessage.handleSelect1.title'),
+				title: locale.baseText('mainSidebar.showMessage.handleSelect1.title', {
+					interpolate: { workflowName: props.name },
+				}),
 				type: 'success',
 			});
 
@@ -620,7 +679,11 @@ const onBreadcrumbsItemSelected = (item: PathItem) => {
 					@item-selected="onBreadcrumbsItemSelected"
 				>
 					<template #append>
-						<span v-if="projectsStore.currentProject" :class="$style['path-separator']">/</span>
+						<span
+							v-if="projectsStore.currentProject ?? projectsStore.personalProject"
+							:class="$style['path-separator']"
+							>/</span
+						>
 						<ShortenName :name="name" :limit="value" :custom="true" test-id="workflow-name-input">
 							<template #default="{ shortenedName }">
 								<InlineTextEdit
@@ -628,7 +691,9 @@ const onBreadcrumbsItemSelected = (item: PathItem) => {
 									:preview-value="shortenedName"
 									:is-edit-enabled="isNameEditEnabled"
 									:max-length="MAX_WORKFLOW_NAME_LENGTH"
-									:disabled="readOnly || (!isNewWorkflow && !workflowPermissions.update)"
+									:disabled="
+										readOnly || isArchived || (!isNewWorkflow && !workflowPermissions.update)
+									"
 									placeholder="Enter workflow name"
 									class="name"
 									@toggle="onNameToggle"
@@ -641,42 +706,62 @@ const onBreadcrumbsItemSelected = (item: PathItem) => {
 			</template>
 		</BreakpointsObserver>
 
-		<span v-if="settingsStore.areTagsEnabled" class="tags" data-test-id="workflow-tags-container">
-			<WorkflowTagsDropdown
-				v-if="isTagsEditEnabled && !readOnly && (isNewWorkflow || workflowPermissions.update)"
-				ref="dropdown"
-				v-model="appliedTagIds"
-				:event-bus="tagsEventBus"
-				:placeholder="i18n.baseText('workflowDetails.chooseOrCreateATag')"
-				class="tags-edit"
-				data-test-id="workflow-tags-dropdown"
-				@blur="onTagsBlur"
-				@esc="onTagsEditEsc"
-			/>
-			<div
-				v-else-if="
-					(tags ?? []).length === 0 && !readOnly && (isNewWorkflow || workflowPermissions.update)
-				"
-			>
-				<span class="add-tag clickable" data-test-id="new-tag-link" @click="onTagsEditEnable">
-					+ {{ i18n.baseText('workflowDetails.addTag') }}
-				</span>
-			</div>
-			<WorkflowTagsContainer
-				v-else
-				:key="id"
-				:tag-ids="workflowTagIds"
-				:clickable="true"
-				:responsive="true"
-				data-test-id="workflow-tags"
-				@click="onTagsEditEnable"
-			/>
+		<span class="tags" data-test-id="workflow-tags-container">
+			<template v-if="settingsStore.areTagsEnabled">
+				<WorkflowTagsDropdown
+					v-if="
+						isTagsEditEnabled &&
+						!(readOnly || isArchived) &&
+						(isNewWorkflow || workflowPermissions.update)
+					"
+					ref="dropdown"
+					v-model="appliedTagIds"
+					:event-bus="tagsEventBus"
+					:placeholder="i18n.baseText('workflowDetails.chooseOrCreateATag')"
+					class="tags-edit"
+					data-test-id="workflow-tags-dropdown"
+					@blur="onTagsBlur"
+					@esc="onTagsEditEsc"
+				/>
+				<div
+					v-else-if="
+						(tags ?? []).length === 0 &&
+						!(readOnly || isArchived) &&
+						(isNewWorkflow || workflowPermissions.update)
+					"
+				>
+					<span class="add-tag clickable" data-test-id="new-tag-link" @click="onTagsEditEnable">
+						+ {{ i18n.baseText('workflowDetails.addTag') }}
+					</span>
+				</div>
+				<WorkflowTagsContainer
+					v-else
+					:key="id"
+					:tag-ids="workflowTagIds"
+					:clickable="true"
+					:responsive="true"
+					data-test-id="workflow-tags"
+					@click="onTagsEditEnable"
+				/>
+			</template>
+
+			<span class="archived">
+				<N8nBadge
+					v-if="isArchived"
+					class="ml-3xs"
+					theme="tertiary"
+					bold
+					data-test-id="workflow-archived-tag"
+				>
+					{{ locale.baseText('workflows.item.archived') }}
+				</N8nBadge>
+			</span>
 		</span>
-		<span v-else class="tags"></span>
 
 		<PushConnectionTracker class="actions">
 			<span :class="`activator ${$style.group}`">
 				<WorkflowActivator
+					:is-archived="isArchived"
 					:workflow-active="active"
 					:workflow-id="id"
 					:workflow-permissions="workflowPermissions"
@@ -726,10 +811,13 @@ const onBreadcrumbsItemSelected = (item: PathItem) => {
 					type="primary"
 					:saved="!uiStore.stateIsDirty && !isNewWorkflow"
 					:disabled="
-						isWorkflowSaving || readOnly || (!isNewWorkflow && !workflowPermissions.update)
+						isWorkflowSaving ||
+						readOnly ||
+						isArchived ||
+						(!isNewWorkflow && !workflowPermissions.update)
 					"
 					:is-saving="isWorkflowSaving"
-					:with-shortcut="!readOnly && workflowPermissions.update"
+					:with-shortcut="!readOnly && !isArchived && workflowPermissions.update"
 					:shortcut-tooltip="i18n.baseText('saveWorkflowButton.hint')"
 					data-test-id="workflow-save-button"
 					@click="onSaveButtonClick"
@@ -812,6 +900,14 @@ $--header-spacing: 20px;
 	min-width: 100px;
 	width: 100%;
 	max-width: 460px;
+}
+
+.archived {
+	display: flex;
+	align-items: center;
+	width: 100%;
+	flex: 1;
+	margin-right: $--header-spacing;
 }
 
 .actions {

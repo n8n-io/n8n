@@ -110,7 +110,7 @@ export const SUPPORT_CHAT_TEST_PAYLOAD: ChatRequest.RequestPayload = {
 				name: '🧪 Assistant context test',
 				active: false,
 				connections: {
-					'When clicking ‘Test workflow’': {
+					'When clicking ‘Execute workflow’': {
 						main: [
 							[
 								{
@@ -154,7 +154,7 @@ export const SUPPORT_CHAT_TEST_PAYLOAD: ChatRequest.RequestPayload = {
 							notice: '',
 						},
 						id: 'c457ff96-3b0c-4dbc-b47f-dc88396a46ae',
-						name: 'When clicking ‘Test workflow’',
+						name: 'When clicking ‘Execute workflow’',
 						type: 'n8n-nodes-base.manualTrigger',
 						position: [-60, 200],
 						typeVersion: 1,
@@ -274,7 +274,7 @@ export const SUPPORT_CHAT_TEST_PAYLOAD: ChatRequest.RequestPayload = {
 			},
 			executionData: {
 				runData: {
-					'When clicking ‘Test workflow’': [
+					'When clicking ‘Execute workflow’': [
 						{
 							hints: [],
 							startTime: 1737540693122,
@@ -292,7 +292,7 @@ export const SUPPORT_CHAT_TEST_PAYLOAD: ChatRequest.RequestPayload = {
 							executionTime: 2,
 							source: [
 								{
-									previousNode: 'When clicking ‘Test workflow’',
+									previousNode: 'When clicking ‘Execute workflow’',
 								},
 							],
 							executionStatus: 'success',

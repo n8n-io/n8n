@@ -3,8 +3,8 @@ import { validateSync } from 'class-validator';
 import type { RequestHandler } from 'express';
 import { UnexpectedError } from 'n8n-workflow';
 
+import type { ListQuery } from '@/requests';
 import * as ResponseHelper from '@/response-helper';
-import type { ListQuery } from '@/types-db';
 import { toError } from '@/utils';
 
 import { WorkflowSorting } from './dtos/workflow.sort-by.dto';

@@ -3,19 +3,18 @@ import {
 	type InsightsDateRange,
 	INSIGHTS_DATE_RANGE_KEYS,
 } from '@n8n/api-types';
+import { LicenseState } from '@n8n/backend-common';
 import { OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { Logger } from 'n8n-core';
-import type { ExecutionLifecycleHooks } from 'n8n-core';
-import { UserError, type IRun } from 'n8n-workflow';
-
-import { License } from '@/license';
+import { UserError } from 'n8n-workflow';
 
 import type { PeriodUnit, TypeUnit } from './database/entities/insights-shared';
 import { NumberToType } from './database/entities/insights-shared';
 import { InsightsByPeriodRepository } from './database/repositories/insights-by-period.repository';
 import { InsightsCollectionService } from './insights-collection.service';
 import { InsightsCompactionService } from './insights-compaction.service';
+import { InsightsPruningService } from './insights-pruning.service';
 
 const keyRangeToDays: Record<InsightsDateRange['key'], number> = {
 	day: 1,
@@ -33,30 +32,33 @@ export class InsightsService {
 		private readonly insightsByPeriodRepository: InsightsByPeriodRepository,
 		private readonly compactionService: InsightsCompactionService,
 		private readonly collectionService: InsightsCollectionService,
-		private readonly license: License,
+		private readonly pruningService: InsightsPruningService,
+		private readonly licenseState: LicenseState,
 		private readonly logger: Logger,
-	) {}
-
-	startBackgroundProcess() {
-		this.compactionService.startCompactionTimer();
-		this.collectionService.startFlushingTimer();
-		this.logger.debug('Started compaction and flushing schedulers');
+	) {
+		this.logger = this.logger.scoped('insights');
 	}
 
-	stopBackgroundProcess() {
+	startTimers() {
+		this.compactionService.startCompactionTimer();
+		this.collectionService.startFlushingTimer();
+		if (this.pruningService.isPruningEnabled) {
+			this.pruningService.startPruningTimer();
+		}
+		this.logger.debug('Started compaction, flushing and pruning schedulers');
+	}
+
+	stopTimers() {
 		this.compactionService.stopCompactionTimer();
 		this.collectionService.stopFlushingTimer();
-		this.logger.debug('Stopped compaction and flushing schedulers');
+		this.pruningService.stopPruningTimer();
+		this.logger.debug('Stopped compaction, flushing and pruning schedulers');
 	}
 
 	@OnShutdown()
 	async shutdown() {
 		await this.collectionService.shutdown();
-		this.compactionService.stopCompactionTimer();
-	}
-
-	async workflowExecuteAfterHandler(ctx: ExecutionLifecycleHooks, fullRunData: IRun) {
-		await this.collectionService.workflowExecuteAfterHandler(ctx, fullRunData);
+		this.stopTimers();
 	}
 
 	async getInsightsSummary({
@@ -200,15 +202,15 @@ export class InsightsService {
 	 */
 	getAvailableDateRanges(): InsightsDateRange[] {
 		const maxHistoryInDays =
-			this.license.getInsightsMaxHistory() === -1
+			this.licenseState.getInsightsMaxHistory() === -1
 				? Number.MAX_SAFE_INTEGER
-				: this.license.getInsightsMaxHistory();
-		const isHourlyDateEnabled = this.license.isInsightsHourlyDataEnabled();
+				: this.licenseState.getInsightsMaxHistory();
+		const isHourlyDateLicensed = this.licenseState.isInsightsHourlyDataLicensed();
 
 		return INSIGHTS_DATE_RANGE_KEYS.map((key) => ({
 			key,
 			licensed:
-				key === 'day' ? (isHourlyDateEnabled ?? false) : maxHistoryInDays >= keyRangeToDays[key],
+				key === 'day' ? (isHourlyDateLicensed ?? false) : maxHistoryInDays >= keyRangeToDays[key],
 			granularity: key === 'day' ? 'hour' : keyRangeToDays[key] <= 30 ? 'day' : 'week',
 		}));
 	}
