@@ -1,0 +1,11 @@
+{
+	"extends": "@n8n/typescript-config/tsconfig.common.json",
+	"compilerOptions": {
+		"outDir": "dist",
+		"rootDir": ".",
+		"strictPropertyInitialization": false,
+		"emitDecoratorMetadata": true,
+		"experimentalDecorators": true
+	},
+	"include": ["src/**/*.ts", "scripts/**/*.ts"]
+}

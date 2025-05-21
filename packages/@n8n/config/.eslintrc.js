@@ -15,5 +15,14 @@ module.exports = {
 				'n8n-local-rules/no-untyped-config-class-field': 'error',
 			},
 		},
+		{
+			files: ['scripts/**/*.ts'],
+			parserOptions: {
+				project: ['./tsconfig.scripts.json'],
+			},
+			rules: {
+				'import/no-extraneous-dependencies': 'off',
+			},
+		},
 	],
 };

@@ -6,13 +6,15 @@
     "dev": "pnpm watch",
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json",
+    "build:scripts": "tsc -p tsconfig.scripts.json",
     "format": "biome format --write src test",
     "format:check": "biome ci src test",
     "lint": "eslint .",
     "lintfix": "eslint . --fix",
     "watch": "tsc -p tsconfig.build.json --watch",
     "test": "jest",
-    "test:dev": "jest --watch"
+    "test:dev": "jest --watch",
+    "collect-doclines": "ts-node --project tsconfig.scripts.json scripts/collect-doclines.ts"
   },
   "main": "dist/index.js",
   "module": "src/index.ts",
@@ -26,6 +28,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@n8n/typescript-config": "workspace:*"
+    "@n8n/typescript-config": "workspace:*",
+    "ts-morph": "^26.0.0"
   }
 }
