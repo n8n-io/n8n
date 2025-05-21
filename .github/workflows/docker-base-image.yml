@@ -32,6 +32,13 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Set image tags
+        id: tags
+        run: |
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          echo "tags=ghcr.io/${{ github.repository_owner }}/n8n-base:${{ github.event.inputs.node_version }}-${SHORT_SHA}" >> $GITHUB_OUTPUT
+          echo "Using tags: ghcr.io/${{ github.repository_owner }}/n8n-base:${{ github.event.inputs.node_version }}-${SHORT_SHA}"
+
       - name: Build
         uses: docker/build-push-action@b32b51a8eda65d6793cd0494a773d4f6bcef32dc # v6.11.0
         env:
@@ -44,5 +51,4 @@ jobs:
           platforms: linux/amd64,linux/arm64
           provenance: false
           push: true
-          tags: |
-            ghcr.io/${{ github.repository_owner }}/n8n-base:${{ github.event.inputs.node_version }}-${{ steps.sha.outputs.short_sha }}
+          tags: ${{ steps.tags.outputs.tags }}
