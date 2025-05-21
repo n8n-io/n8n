@@ -4,16 +4,18 @@ import type {
 	UpdateDatastoreDto,
 } from '@n8n/api-types';
 import { Service } from '@n8n/di';
-import { OperationalError } from 'n8n-workflow';
-import type { ZodTypeAny } from 'zod';
+import { createResultOk, type Result } from 'n8n-workflow';
 import { z } from 'zod';
+import type { ZodTypeAny } from 'zod';
 
+import { Datastore } from './database/entities/datastore';
 import type { DatastoreField } from './database/entities/datastore-field';
 import { DatastoreFieldRepository } from './database/repositories/datastore-field.repository';
 import { DatastoreRepository } from './database/repositories/datastore.repository';
-import type { Datastore, DatastoreFieldType } from './datastore.types';
+import type { DatastoreFieldType } from './datastore.types';
+import { NotFoundError } from '../../errors/response-errors/not-found.error';
 
-const columnTypeMapping = (type: DatastoreFieldType) => {
+const dataStoreFieldTypeToSql = (type: DatastoreFieldType) => {
 	switch (type) {
 		case 'string':
 			return 'VARCHAR(255)';
@@ -24,11 +26,11 @@ const columnTypeMapping = (type: DatastoreFieldType) => {
 		case 'date':
 			return 'DATETIME';
 		default:
-			throw new OperationalError(`Unsupported field type: ${type as string}`);
+			throw new NotFoundError(`Unsupported field type: ${type as string}`);
 	}
 };
 
-const typeMap = (fieldType: DatastoreFieldType) => {
+const dataStoreFieldTypeToZod = (fieldType: DatastoreFieldType) => {
 	switch (fieldType) {
 		case 'string':
 			return z.string();
@@ -39,8 +41,16 @@ const typeMap = (fieldType: DatastoreFieldType) => {
 		case 'date':
 			return z.date();
 		default:
-			throw new OperationalError(`Unsupported field type: ${fieldType as string}`);
+			throw new NotFoundError(`Unsupported field type: ${fieldType as string}`);
 	}
+};
+
+const buildZodSchema = (fields: DatastoreField[]) => {
+	const shape: Record<string, ZodTypeAny> = {};
+	for (const field of fields) {
+		shape[field.name] = dataStoreFieldTypeToZod(field.type) ?? z.any();
+	}
+	return z.object(shape);
 };
 
 @Service()
@@ -56,13 +66,17 @@ export class DatastoreService {
 				fields: true,
 			},
 		});
-		return datastores.map((datastore) => ({
-			...datastore,
-			fields: datastore.fields.map((field) => ({
-				...field,
-				type: field.type as DatastoreFieldType,
-			})),
-		}));
+		return datastores;
+	}
+
+	async getDatastore(id: string): Promise<Datastore | null> {
+		const datastore = await this.datastoreRepository.findOne({
+			where: { id },
+			relations: {
+				fields: true,
+			},
+		});
+		return datastore;
 	}
 
 	async createDatastore(createDatastore: CreateDatastoreDto): Promise<Datastore> {
@@ -74,15 +88,16 @@ export class DatastoreService {
 			datastoreId: datastore.id,
 		}));
 
-		for (const field of fields) {
-			await this.datastoreFieldRepository.save(this.datastoreFieldRepository.create(field));
-		}
+		const savedFields = await this.datastoreFieldRepository.save(
+			fields.map((field) => this.datastoreFieldRepository.create(field)),
+		);
 
 		// TODO : make sure to sanitize the table name and column names to avoid SQL injection
-		const tableName = `datastore_${datastore.id}`;
-		const columnsFields = fields.map(
-			(field) => `\`${field.name}\` ${columnTypeMapping(field.type)}`,
+		const tableName = this.toTableName(datastore.id);
+		const columnsFields = savedFields.map(
+			(field) => `\`${field.id}\` ${dataStoreFieldTypeToSql(field.type)}`,
 		);
+
 		await this.datastoreRepository.manager.query(
 			`CREATE TABLE IF NOT EXISTS \`${tableName}\` (id VARCHAR(36) PRIMARY KEY${columnsFields.length > 0 ? `, ${columnsFields.join(', ')}` : ''})`,
 		);
@@ -90,100 +105,118 @@ export class DatastoreService {
 		return datastore;
 	}
 
-	async updateDatastore(datastoreId: string, updateDatastore: UpdateDatastoreDto): Promise<void> {
-		await this.datastoreRepository.update(
+	async updateDatastore(
+		datastoreId: string,
+		updateDatastore: UpdateDatastoreDto,
+	): Promise<Datastore> {
+		const result = await this.datastoreRepository.update(
 			{ id: datastoreId },
 			{
 				name: updateDatastore.name,
 			},
 		);
+
+		if (!result.affected) {
+			throw new NotFoundError('Datastore not found');
+		}
+
+		return await this.datastoreRepository.findOneByOrFail({ id: datastoreId });
 	}
 
 	async deleteDatastore(datastoreId: string): Promise<void> {
 		const datastore = await this.datastoreRepository.findOneByOrFail({
 			id: datastoreId,
 		});
+
 		if (!datastore) {
-			throw new OperationalError(`Datastore with ID ${datastoreId} not found`);
+			throw new NotFoundError(`Datastore with ID "${datastoreId}" not found`);
 		}
-		await this.datastoreRepository.manager.query('DROP TABLE IF EXISTS ??', [
-			`datastore_${datastore.id}`,
-		]);
-		await this.datastoreRepository.delete({ id: datastoreId });
+
+		await this.datastoreRepository.manager.transaction(async (tx) => {
+			await tx.delete(Datastore, { id: datastoreId });
+			await tx.query(`DROP TABLE IF EXISTS ${this.toTableName(datastore.id)}`);
+		});
 	}
 
-	async addField(datastoreId: string, field: CreateDatastoreFieldDto): Promise<void> {
+	async addField(datastoreId: string, field: CreateDatastoreFieldDto): Promise<DatastoreField> {
 		const datastore = await this.datastoreRepository.findOneByOrFail({
 			id: datastoreId,
 		});
 		if (!datastore) {
-			throw new OperationalError(`Datastore with ID ${datastoreId} not found`);
+			throw new NotFoundError(`Datastore with ID ${datastoreId} not found`);
 		}
-		const newField = await this.datastoreFieldRepository.save({
-			...field,
-			datastoreId: datastore.id,
-		});
-		await this.datastoreRepository.manager.query(
-			`ALTER TABLE ?? ADD COLUMN ?? ${columnTypeMapping(newField.type)}`,
-			[`datastore_${datastore.id}`, newField.name],
+		const newField = await this.datastoreFieldRepository.save(
+			this.datastoreFieldRepository.create({
+				...field,
+				datastoreId: datastore.id,
+			}),
 		);
+
+		await this.datastoreRepository.manager.query(
+			`ALTER TABLE ${this.toTableName(datastore.id)} ADD COLUMN ${newField.id} ${dataStoreFieldTypeToSql(newField.type)}`,
+		);
+
+		return newField;
 	}
 
 	async deleteField(datastoreId: string, fieldId: string): Promise<void> {
-		const datastore = await this.datastoreRepository.findOneByOrFail({
+		const datastore = await this.datastoreRepository.findOneBy({
 			id: datastoreId,
 		});
 		if (!datastore) {
-			throw new OperationalError(`Datastore with ID ${datastoreId} not found`);
+			throw new NotFoundError(`Datastore with ID ${datastoreId} not found`);
 		}
-		const field = await this.datastoreFieldRepository.findOneByOrFail({
+		const field = await this.datastoreFieldRepository.findOneBy({
 			id: fieldId,
 			datastoreId: datastore.id,
 		});
 		if (!field) {
-			throw new OperationalError(`Field with ID ${fieldId} not found in datastore ${datastoreId}`);
+			throw new NotFoundError(`Field with ID ${fieldId} not found in datastore ${datastoreId}`);
 		}
-		await this.datastoreRepository.manager.query('ALTER TABLE ?? DROP COLUMN ??', [
-			`datastore_${datastore.id}`,
-			field.name,
-		]);
+		await this.datastoreRepository.manager.query(
+			`ALTER TABLE ${this.toTableName(datastore.id)} DROP COLUMN ${field.id}`,
+		);
 		await this.datastoreFieldRepository.delete({ id: fieldId });
 	}
 
-	async writeRecords(datastoreId: string, records: Array<Record<string, unknown>>): Promise<void> {
-		const datastore = await this.datastoreRepository.findOneByOrFail({
-			id: datastoreId,
+	async writeRecords(
+		datastoreId: string,
+		records: Array<Record<string, unknown>>,
+	): Promise<Result<null, z.ZodIssue>> {
+		const datastore = await this.datastoreRepository.findOne({
+			where: {
+				id: datastoreId,
+			},
+			relations: {
+				fields: true,
+			},
 		});
 
 		if (!datastore) {
-			throw new OperationalError(`Datastore with ID ${datastoreId} not found`);
+			throw new NotFoundError(`Datastore with ID ${datastoreId} not found`);
 		}
 
-		const columns = Object.keys(records[0]);
-		const buildZodSchema = (fields: DatastoreField[]) => {
-			const shape: Record<string, ZodTypeAny> = {};
-			for (const field of fields) {
-				shape[field.name] = typeMap(field.type) ?? z.any();
-			}
-			return z.object(shape);
-		};
+		const schema = z.array(buildZodSchema(datastore.fields));
 
-		const schema = buildZodSchema(datastore.fields);
-		records.map((record) => {
-			const parsedRecord = schema.safeParse(record);
-			if (!parsedRecord.success) {
-				const errors = parsedRecord.error.errors.map((error) => error.message).join(', ');
-				throw new OperationalError(`Invalid record: ${errors}`);
-			}
-			return parsedRecord.data;
-		});
+		// WIP:
+		// const parsedRecord = schema.safeParse(records);
+		// if (!parsedRecord.success) {
+		// 	return createResultError(parsedRecord.error.errors[0]);
+		// }
 
-		const values = records.map((record) => columns.map((column) => record[column]));
+		// const columns = datastore.fields.map((field) => field.id);
 
-		await this.datastoreRepository.manager.query('INSERT INTO ?? (??) VALUES ?', [
-			`datastore_${datastore.id}`,
-			columns,
-			values,
-		]);
+		// const rowPlaceholders = values.map((row) => `(${row.map(() => '?').join(', ')})`).join(', ');
+
+		// const result = await this.datastoreRepository.manager.query(
+		// 	`INSERT INTO ${this.toTableName(datastore.id)} (${columns.join(', ')}) VALUES ${rowPlaceholders}`,
+		// 	values,
+		// );
+
+		return createResultOk(null);
+	}
+
+	toTableName(datastoreId: string): string {
+		return `datastore_${datastoreId}`;
 	}
 }

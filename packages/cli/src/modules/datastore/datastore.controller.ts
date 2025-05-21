@@ -1,11 +1,18 @@
-import { CreateDatastoreDto, CreateDatastoreFieldDto, UpdateDatastoreDto } from '@n8n/api-types';
+import {
+	CreateDatastoreDto,
+	CreateDatastoreFieldDto,
+	UpdateDatastoreDto,
+	AddDatastoreRecordsDto,
+} from '@n8n/api-types';
 import { Body, Delete, Get, GlobalScope, Patch, Post, RestController } from '@n8n/decorators';
+import { Response } from 'express';
 
 import { AuthenticatedRequest } from '@/requests';
 
 import { DatastoreService } from './datastore.service';
+import { NotFoundError } from '../../errors/response-errors/not-found.error';
 
-@RestController('/datastore')
+@RestController('/datastores')
 export class DatastoreController {
 	constructor(private readonly datastoreService: DatastoreService) {}
 
@@ -14,6 +21,17 @@ export class DatastoreController {
 	async getDatastores(_req: AuthenticatedRequest, _res: Response) {
 		const datastores = await this.datastoreService.getDatastores();
 		return datastores;
+	}
+
+	@Get('/:id')
+	@GlobalScope('datastore:read')
+	async getDatastore(req: AuthenticatedRequest<{ id: string }>, _res: Response) {
+		const dataStore = await this.datastoreService.getDatastore(req.params.id);
+
+		if (!dataStore) {
+			throw new NotFoundError(`Datastore with ID "${req.params.id}" not found`);
+		}
+		return dataStore;
 	}
 
 	@Delete('/:id')
@@ -59,24 +77,37 @@ export class DatastoreController {
 	@Delete('/:id/columns/:columnId')
 	@GlobalScope('datastore:update')
 	async deleteColumn(req: AuthenticatedRequest<{ id: string; columnId: string }>, _res: Response) {
-		const updatedDatastore = await this.datastoreService.deleteField(
-			req.params.id,
-			req.params.columnId,
-		);
-		return updatedDatastore;
+		await this.datastoreService.deleteField(req.params.id, req.params.columnId);
+		return { success: true };
 	}
 
 	@Post('/:id/records')
 	@GlobalScope('datastore:write-record')
 	async writeRecords(
 		req: AuthenticatedRequest<{ id: string }>,
-		_res: Response,
-		@Body payload: { records: Array<Record<string, unknown>> },
+		res: Response,
+		@Body payload: AddDatastoreRecordsDto,
 	) {
-		const updatedDatastore = await this.datastoreService.writeRecords(
-			req.params.id,
-			payload.records,
-		);
-		return updatedDatastore;
+		const result = await this.datastoreService.writeRecords(req.params.id, payload.records);
+
+		if (result.ok) {
+			return { success: true };
+		}
+
+		return res.status(400).json(result.error);
 	}
+
+	// @Post('/:id/records')
+	// @GlobalScope('datastore:write-record')
+	// async writeRecords(
+	// 	req: AuthenticatedRequest<{ id: string }>,
+	// 	_res: Response,
+	// 	@Body payload: { records: Array<Record<string, unknown>> },
+	// ) {
+	// 	const updatedDatastore = await this.datastoreService.writeRecords(
+	// 		req.params.id,
+	// 		payload.records,
+	// 	);
+	// 	return updatedDatastore;
+	// }
 }

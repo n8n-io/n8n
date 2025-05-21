@@ -73,3 +73,4 @@ export { PaginationDto } from './pagination/pagination.dto';
 export { CreateDatastoreDto } from './datastore/create-datastore.dto';
 export { UpdateDatastoreDto } from './datastore/update-datastore.dto';
 export { CreateDatastoreFieldDto } from './datastore/create-datastore-field.dto';
+export { AddDatastoreRecordsDto } from './datastore/add-datastore-records.dto';
