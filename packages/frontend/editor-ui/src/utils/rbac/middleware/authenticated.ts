@@ -13,17 +13,17 @@ export const authenticatedMiddleware: RouterMiddleware<AuthenticatedPermissionOp
 	const redirect =
 		to.query.redirect ?? encodeURIComponent(`${window.location.pathname}${window.location.search}`);
 
-	// If MFA is not enabled, and the instance enforces MFA, redirect to personal settings
-	const mfaNeeded = shouldEnableMfa(options);
-	if (mfaNeeded) {
-		if (window.location.pathname !== '/settings/personal') {
-			return next({ name: VIEWS.PERSONAL_SETTINGS, query: { redirect } });
-		}
-		return;
-	}
-
 	const valid = isAuthenticated(options);
 	if (!valid) {
 		return next({ name: VIEWS.SIGNIN, query: { redirect } });
+	}
+
+	// If MFA is not enabled, and the instance enforces MFA, redirect to personal settings
+	const mfaNeeded = shouldEnableMfa(options);
+	if (mfaNeeded) {
+		if (to.path !== '/settings/personal') {
+			return next({ name: VIEWS.PERSONAL_SETTINGS, query: { redirect } });
+		}
+		return;
 	}
 };

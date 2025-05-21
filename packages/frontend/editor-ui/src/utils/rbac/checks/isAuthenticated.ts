@@ -18,7 +18,7 @@ export const shouldEnableMfa: RBACPermissionCheck<AuthenticatedPermissionOptions
 
 	// Had user got MFA enabled?
 	const usersStore = useUsersStore();
-	const hasUserEnabledMfa = usersStore.currentUser?.mfaEnabled ?? false;
+	const hasUserEnabledMfa = usersStore.currentUser?.mfaAuthenticated ?? false;
 
 	// Are we enforcing MFA?
 	const settingsStore = useSettingsStore();
