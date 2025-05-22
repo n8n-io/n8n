@@ -7,12 +7,11 @@ import MessageOptionAction from './MessageOptionAction.vue';
 import { chatEventBus } from '@n8n/chat/event-buses';
 import type { ArrowKeyDownPayload } from '@n8n/chat/components/Input.vue';
 import ChatInput from '@n8n/chat/components/Input.vue';
-import { watch, computed, ref } from 'vue';
+import { computed, ref } from 'vue';
 import { useClipboard } from '@/composables/useClipboard';
 import { useToast } from '@/composables/useToast';
 import LogsPanelHeader from '@/features/logs/components/LogsPanelHeader.vue';
 import { N8nButton, N8nIconButton, N8nTooltip } from '@n8n/design-system';
-import { useSettingsStore } from '@/stores/settings.store';
 
 interface Props {
 	pastChatMessages: string[];
@@ -21,13 +20,11 @@ interface Props {
 	showCloseButton?: boolean;
 	isOpen?: boolean;
 	isReadOnly?: boolean;
-	isNewLogsEnabled?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
 	isOpen: true,
 	isReadOnly: false,
-	isNewLogsEnabled: false,
 });
 
 const emit = defineEmits<{
@@ -41,7 +38,6 @@ const emit = defineEmits<{
 const clipboard = useClipboard();
 const locale = useI18n();
 const toast = useToast();
-const settingsStore = useSettingsStore();
 
 const previousMessageIndex = ref(0);
 
@@ -138,18 +134,6 @@ async function copySessionId() {
 		type: 'success',
 	});
 }
-
-watch(
-	() => props.isOpen,
-	(isOpen) => {
-		if (isOpen && !settingsStore.isNewLogsEnabled) {
-			setTimeout(() => {
-				chatEventBus.emit('focusInput');
-			}, 0);
-		}
-	},
-	{ immediate: true },
-);
 </script>
 
 <template>
@@ -160,7 +144,6 @@ watch(
 		tabindex="0"
 	>
 		<LogsPanelHeader
-			v-if="isNewLogsEnabled"
 			data-test-id="chat-header"
 			:title="locale.baseText('chat.window.title')"
 			@click="emit('clickHeader')"
@@ -199,49 +182,11 @@ watch(
 				</N8nTooltip>
 			</template>
 		</LogsPanelHeader>
-		<header v-else :class="$style.chatHeader">
-			<span :class="$style.chatTitle">{{ locale.baseText('chat.window.title') }}</span>
-			<div :class="$style.session">
-				<span>{{ locale.baseText('chat.window.session.title') }}</span>
-				<N8nTooltip placement="left">
-					<template #content>
-						{{ sessionId }}
-					</template>
-					<span
-						:class="[$style.sessionId, clipboard.isSupported.value ? $style.copyable : '']"
-						data-test-id="chat-session-id"
-						@click="clipboard.isSupported.value ? copySessionId() : null"
-						>{{ sessionId }}</span
-					>
-				</N8nTooltip>
-				<N8nIconButton
-					:class="$style.headerButton"
-					data-test-id="refresh-session-button"
-					outline
-					type="secondary"
-					size="mini"
-					icon="undo"
-					:title="locale.baseText('chat.window.session.reset')"
-					@click="onRefreshSession"
-				/>
-				<N8nIconButton
-					v-if="showCloseButton"
-					:class="$style.headerButton"
-					outline
-					type="secondary"
-					size="mini"
-					icon="times"
-					@click="emit('close')"
-				/>
-			</div>
-		</header>
 		<main v-if="isOpen" :class="$style.chatBody">
 			<MessagesList
 				:messages="messages"
 				:class="$style.messages"
-				:empty-text="
-					isNewLogsEnabled ? locale.baseText('chat.window.chat.emptyChatMessage.v2') : undefined
-				"
+				:empty-text="locale.baseText('chat.window.chat.emptyChatMessage.v2')"
 			>
 				<template #beforeMessage="{ message }">
 					<MessageOptionTooltip

@@ -56,7 +56,6 @@ describe('LogsPanel', () => {
 		setActivePinia(pinia);
 
 		settingsStore = mockedStore(useSettingsStore);
-		settingsStore.isNewLogsEnabled = true;
 
 		workflowsStore = mockedStore(useWorkflowsStore);
 		workflowsStore.setWorkflowExecutionData(null);
