@@ -565,6 +565,25 @@ export function updateViewportToContainNodes(
 	nodes: GraphNode[],
 	padding: number,
 ): ViewportTransform {
+	function computeDelta(start: number, end: number, min: number, max: number) {
+		if (start >= min && end <= max) {
+			// Both ends are already in the range, no need for adjustment
+			return 0;
+		}
+
+		if (start < min) {
+			if (end > max) {
+				// Neither end is in the range, in this case we don't make
+				// any adjustment (for now; we could adjust zoom to fit in viewport)
+				return 0;
+			}
+
+			return min - start;
+		}
+
+		return max - end;
+	}
+
 	if (nodes.length === 0) {
 		return viewport;
 	}
@@ -572,20 +591,8 @@ export function updateViewportToContainNodes(
 	const zoom = viewport.zoom;
 	const rect = addPadding(getRectOfNodes(nodes), padding / zoom);
 	const { xMax, xMin, yMax, yMin } = getBounds(viewport, dimensions);
-	const rectRight = rect.x + rect.width;
-	const rectBottom = rect.y + rect.height;
-	const dx =
-		(rect.x <= xMin && rectRight >= xMax) || (rect.x >= xMin && rectRight <= xMax)
-			? 0
-			: rect.x < xMin
-				? xMin - rect.x
-				: xMax - rectRight;
-	const dy =
-		(rect.y <= yMin && rectBottom >= yMax) || (rect.y >= yMin && rectBottom <= yMax)
-			? 0
-			: rect.y < yMin
-				? yMin - rect.y
-				: yMax - rectBottom;
+	const dx = computeDelta(rect.x, rect.x + rect.width, xMin, xMax);
+	const dy = computeDelta(rect.y, rect.y + rect.height, yMin, yMax);
 
 	return {
 		x: viewport.x + dx * zoom,
