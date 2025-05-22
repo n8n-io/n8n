@@ -33,13 +33,13 @@ export interface TestCaseExecutionResult {
 }
 
 /**
- * TODO: update description
- * This service orchestrates the running of test cases.
- * It uses the test definitions to find
- * past executions, creates pin data from them,
- * and runs the workflow-under-test with the pin data.
- * After the workflow-under-test finishes, it runs the evaluation workflow
- * with the original and new run data, and collects the metrics.
+ * This service orchestrates the running of evaluations.
+ * It makes a partial execution of the workflow under test to get the dataset
+ * by running the evaluation trigger node only and capturing the output.
+ * Then it iterates over test cases (the items of a list produced by evaluation trigger node)
+ * and runs the workflow under test with each test case as input.
+ * After running each test case, it collects the metrics from the evaluation nodes output.
+ * After all test cases are run, it aggregates the metrics and saves them to the database.
  */
 @Service()
 export class TestRunnerService {
