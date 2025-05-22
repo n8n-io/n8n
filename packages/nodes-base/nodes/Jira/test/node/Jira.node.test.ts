@@ -7,9 +7,12 @@ import { Jira } from '../../Jira.node';
 
 jest.mock('../../GenericFunctions', () => ({
 	jiraSoftwareCloudApiRequest: jest.fn().mockResolvedValue({ issues: [] }),
+	jiraSoftwareCloudApiRequestAllItems: jest.fn().mockResolvedValue([]),
 }));
 
 const jiraSoftwareCloudApiRequestMock = GenericFunctions.jiraSoftwareCloudApiRequest as jest.Mock;
+const jiraSoftwareCloudApiRequestAllItems =
+	GenericFunctions.jiraSoftwareCloudApiRequestAllItems as jest.Mock;
 
 describe('Jira Node', () => {
 	let jiraNode: Jira;
@@ -146,6 +149,63 @@ describe('Jira Node', () => {
 				expect.objectContaining({
 					jql: 'project = TEST',
 				}),
+			);
+		});
+
+		it('should call old endpoint for the self-hosted version with return all = false', async () => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((parameterName: string) => {
+				switch (parameterName) {
+					case 'resource':
+						return 'issue';
+					case 'operation':
+						return 'getAll';
+					case 'jiraVersion':
+						return 'server';
+					case 'returnAll':
+						return false;
+					case 'limit':
+						return 10;
+					case 'options':
+						return {};
+					default:
+						return null;
+				}
+			});
+
+			await jiraNode.execute.call(executeFunctionsMock);
+
+			expect(jiraSoftwareCloudApiRequestMock).toHaveBeenCalledWith(
+				'/api/2/search',
+				'POST',
+				expect.anything(),
+			);
+		});
+
+		it('should call old endpoint for the self-hosted version with return all = true', async () => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((parameterName: string) => {
+				switch (parameterName) {
+					case 'resource':
+						return 'issue';
+					case 'operation':
+						return 'getAll';
+					case 'jiraVersion':
+						return 'server';
+					case 'returnAll':
+						return true;
+					case 'options':
+						return {};
+					default:
+						return null;
+				}
+			});
+
+			await jiraNode.execute.call(executeFunctionsMock);
+
+			expect(jiraSoftwareCloudApiRequestAllItems).toHaveBeenCalledWith(
+				'issues',
+				'/api/2/search',
+				'POST',
+				expect.anything(),
 			);
 		});
 	});
