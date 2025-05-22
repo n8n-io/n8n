@@ -21,6 +21,7 @@ import { i18n } from '@/plugins/i18n';
 import { getCredentialOnlyNodeType } from '@/utils/credentialOnlyNodes';
 import { formatTriggerActionName } from '../utils';
 import { usePostHog } from '@/stores/posthog.store';
+import { useUsageStore } from '@/stores/usage.store';
 
 const PLACEHOLDER_RECOMMENDED_ACTION_KEY = 'placeholder_recommended';
 
@@ -333,13 +334,14 @@ export function useActionsGenerator() {
 		httpOnlyCredentials: ICredentialType[],
 	) {
 		const posthogStore = usePostHog();
+		const usageStore = useUsageStore();
 
-		const isEvaluationFeatureEnabled = posthogStore.isFeatureEnabled(
-			WORKFLOW_EVALUATION_EXPERIMENT,
-		);
+		const isEvaluationEnabled =
+			posthogStore.isFeatureEnabled(WORKFLOW_EVALUATION_EXPERIMENT) &&
+			usageStore.workflowsWithEvaluationsLimit !== 0;
 
 		const visibleNodeTypes = nodeTypes.filter((node) => {
-			if (isEvaluationFeatureEnabled) {
+			if (isEvaluationEnabled) {
 				return true;
 			}
 			return (
