@@ -52,8 +52,6 @@ const projectName = computed(() => {
 	}
 });
 
-const projectDescription = computed(() => projectsStore.currentProject?.description);
-
 const projectPermissions = computed(
 	() => getResourcePermissions(projectsStore.currentProject?.scopes).project,
 );
@@ -164,7 +162,10 @@ const subtitle = computed(() => {
 		return i18n.baseText('projects.header.shared.subtitle');
 	} else if (isPersonalProject.value) {
 		return i18n.baseText('projects.header.personal.subtitle');
+	} else if (projectPages.isProjectsSubPage) {
+		return projectsStore.currentProject?.description;
 	}
+
 	return null;
 });
 
@@ -215,9 +216,6 @@ const onSelect = (action: string) => {
 				</N8nTooltip>
 			</div>
 		</div>
-		<div v-if="projectDescription" :class="$style.projectDescription">
-			<N8nText data-test-id="project-description">{{ projectDescription }}</N8nText>
-		</div>
 		<slot></slot>
 		<div :class="$style.actions">
 			<ProjectTabs
@@ -230,8 +228,7 @@ const onSelect = (action: string) => {
 </template>
 
 <style lang="scss" module>
-.projectHeader,
-.projectDescription {
+.projectHeader {
 	display: flex;
 	align-items: flex-start;
 	justify-content: space-between;

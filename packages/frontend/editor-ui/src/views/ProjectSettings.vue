@@ -351,19 +351,19 @@ onMounted(() => {
 			</fieldset>
 			<fieldset>
 				<label for="projectDescription">{{ i18n.baseText('projects.settings.description') }}</label>
-				<div>
-					<N8nFormInput
-						id="projectDescription"
-						v-model="formData.description"
-						label=""
-						type="text"
-						name="description"
-						data-test-id="project-settings-description-input"
-						@enter="onSubmit"
-						@input="onTextInput"
-						@validate="isValid = $event"
-					/>
-				</div>
+				<N8nFormInput
+					id="projectDescription"
+					v-model="formData.description"
+					label=""
+					name="description"
+					type="textarea"
+					:maxlength="512"
+					:autosize="true"
+					data-test-id="project-settings-description-input"
+					@enter="onSubmit"
+					@input="onTextInput"
+					@validate="isValid = $event"
+				/>
 			</fieldset>
 			<fieldset>
 				<label for="projectMembers">{{ i18n.baseText('projects.settings.projectMembers') }}</label>
