@@ -1,22 +1,18 @@
 <script setup lang="ts">
 import { useI18n } from '@/composables/useI18n';
-import { useToast } from '@/composables/useToast';
 import { computed, ref } from 'vue';
 
 import RunsSection from '@/components/Evaluations/EditDefinition/sections/RunsSection.vue';
 import { useEvaluationStore } from '@/stores/evaluation.store.ee';
 import { N8nButton } from '@n8n/design-system';
 import { orderBy } from 'lodash-es';
-import { useRouter } from 'vue-router';
 
 const props = defineProps<{
 	name: string;
 }>();
 
 const locale = useI18n();
-const toast = useToast();
 const evaluationsStore = useEvaluationStore();
-const router = useRouter();
 
 const selectedMetric = ref<string>('');
 
