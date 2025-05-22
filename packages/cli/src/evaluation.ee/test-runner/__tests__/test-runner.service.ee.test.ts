@@ -34,13 +34,24 @@ describe('TestRunnerService', () => {
 	const activeExecutions = mock<ActiveExecutions>();
 	const testRunRepository = mock<TestRunRepository>();
 	const testCaseExecutionRepository = mock<TestCaseExecutionRepository>();
+	let testRunnerService: TestRunnerService;
 
-	// const mockNodeTypes = mockInstance(NodeTypes);
 	mockInstance(LoadNodesAndCredentials, {
 		loadedNodes: mockNodeTypesData(['manualTrigger', 'set', 'if', 'code', 'evaluation']),
 	});
 
 	beforeEach(() => {
+		testRunnerService = new TestRunnerService(
+			logger,
+			telemetry,
+			workflowRepository,
+			workflowRunner,
+			activeExecutions,
+			testRunRepository,
+			testCaseExecutionRepository,
+			errorReporter,
+		);
+
 		testRunRepository.createTestRun.mockResolvedValue(mock<TestRun>({ id: 'test-run-id' }));
 	});
 
@@ -64,21 +75,6 @@ describe('TestRunnerService', () => {
 	});
 
 	describe('findTriggerNode', () => {
-		let testRunnerService: TestRunnerService;
-
-		beforeEach(() => {
-			testRunnerService = new TestRunnerService(
-				logger,
-				telemetry,
-				workflowRepository,
-				workflowRunner,
-				activeExecutions,
-				testRunRepository,
-				testCaseExecutionRepository,
-				errorReporter,
-			);
-		});
-
 		test('should find the trigger node in a workflow', () => {
 			// Setup a test workflow with a trigger node
 			const workflowWithTrigger = mock<IWorkflowBase>({
@@ -152,21 +148,6 @@ describe('TestRunnerService', () => {
 	});
 
 	describe('extractDatasetTriggerOutput', () => {
-		let testRunnerService: TestRunnerService;
-
-		beforeEach(() => {
-			testRunnerService = new TestRunnerService(
-				logger,
-				telemetry,
-				workflowRepository,
-				workflowRunner,
-				activeExecutions,
-				testRunRepository,
-				testCaseExecutionRepository,
-				errorReporter,
-			);
-		});
-
 		test('should extract trigger output data from execution', () => {
 			// Create workflow with a trigger node
 			const workflow = mock<IWorkflowBase>({
@@ -347,20 +328,7 @@ describe('TestRunnerService', () => {
 	});
 
 	describe('runDatasetTrigger', () => {
-		let testRunnerService: TestRunnerService;
-
 		beforeEach(() => {
-			testRunnerService = new TestRunnerService(
-				logger,
-				telemetry,
-				workflowRepository,
-				workflowRunner,
-				activeExecutions,
-				testRunRepository,
-				testCaseExecutionRepository,
-				errorReporter,
-			);
-
 			// Setup mock execution response
 			const mockExecutionId = 'mock-execution-id';
 			const mockExecutionData = mock<IRun>({
@@ -521,20 +489,7 @@ describe('TestRunnerService', () => {
 	});
 
 	describe('runTestCase', () => {
-		let testRunnerService: TestRunnerService;
-
 		beforeEach(() => {
-			testRunnerService = new TestRunnerService(
-				logger,
-				telemetry,
-				workflowRepository,
-				workflowRunner,
-				activeExecutions,
-				testRunRepository,
-				testCaseExecutionRepository,
-				errorReporter,
-			);
-
 			// Setup mock execution response
 			const mockExecutionId = 'mock-execution-id';
 			const mockExecutionData = mock<IRun>({
