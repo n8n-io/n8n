@@ -1824,6 +1824,7 @@
 	"runData.panel.actions.collapse": "Collapse panel",
 	"runData.panel.actions.open": "Open panel",
 	"runData.panel.actions.popOut": "Pop out panel",
+	"runData.panel.actions.sync": "Sync selection with canvas",
 	"saveButton.save": "@:_reusableBaseText.save",
 	"saveButton.saved": "Saved",
 	"saveWorkflowButton.hint": "Save workflow",
