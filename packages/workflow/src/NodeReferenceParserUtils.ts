@@ -443,7 +443,6 @@ function applyExtractMappingToNode(node: INode, parameterExtractMapping: Paramet
 			return parameters;
 		}
 
-		// TODO Add test case for this
 		if (Array.isArray(parameters) && typeof mapping === 'object' && !Array.isArray(mapping)) {
 			return parameters.map((x, i) => applyMapping(x, mapping[i]) as INodeParameters);
 		}

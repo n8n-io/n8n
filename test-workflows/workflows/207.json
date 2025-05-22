@@ -1,0 +1,531 @@
+{
+  "createdAt": "2021-05-17T22:14:56.419Z",
+  "updatedAt": "2021-05-18T07:56:45.273Z",
+  "id": "207",
+  "name": "Keap:EcommerceOrder:create get getAll delete:EcommerceProduct:create get getAll delete:Email:createRecord getAll:File:upload getAll delete",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ],
+      "id": "71dbf38c-e75d-48af-b045-fa5e0e30d2a5"
+    },
+    {
+      "parameters": {
+        "resource": "ecommerceProduct",
+        "productName": "=Producct_{{(new Date).toISOString()}}",
+        "additionalFields": {}
+      },
+      "name": "Keap",
+      "type": "n8n-nodes-base.keap",
+      "typeVersion": 1,
+      "position": [
+        650,
+        180
+      ],
+      "credentials": {
+        "keapOAuth2Api": {
+          "id": "178",
+          "name": "Keap OAuth2 API creds"
+        }
+      },
+      "id": "e5a3ddc7-1681-4d8e-b841-9a4d052519e3"
+    },
+    {
+      "parameters": {
+        "resource": "ecommerceProduct",
+        "operation": "get",
+        "productId": "={{$node[\"Keap\"].json[\"id\"]}}"
+      },
+      "name": "Keap1",
+      "type": "n8n-nodes-base.keap",
+      "typeVersion": 1,
+      "position": [
+        810,
+        180
+      ],
+      "credentials": {
+        "keapOAuth2Api": {
+          "id": "178",
+          "name": "Keap OAuth2 API creds"
+        }
+      },
+      "id": "ac092a34-c9c2-49fe-af12-9ba28a1274f2"
+    },
+    {
+      "parameters": {
+        "resource": "ecommerceProduct",
+        "operation": "getAll",
+        "limit": 1,
+        "filters": {}
+      },
+      "name": "Keap2",
+      "type": "n8n-nodes-base.keap",
+      "typeVersion": 1,
+      "position": [
+        970,
+        180
+      ],
+      "credentials": {
+        "keapOAuth2Api": {
+          "id": "178",
+          "name": "Keap OAuth2 API creds"
+        }
+      },
+      "id": "a54a5785-8586-4df5-91e6-24877ea0f1c5"
+    },
+    {
+      "parameters": {
+        "resource": "ecommerceProduct",
+        "operation": "delete",
+        "productId": "={{$node[\"Keap\"].json[\"id\"]}}"
+      },
+      "name": "Keap3",
+      "type": "n8n-nodes-base.keap",
+      "typeVersion": 1,
+      "position": [
+        1120,
+        180
+      ],
+      "credentials": {
+        "keapOAuth2Api": {
+          "id": "178",
+          "name": "Keap OAuth2 API creds"
+        }
+      },
+      "id": "1afec710-031b-4a72-9164-4bb166d06000"
+    },
+    {
+      "parameters": {
+        "resource": "email",
+        "sentToAddress": "test@gmail.com",
+        "sentFromAddress": "fromtest@gmail.com",
+        "additionalFields": {}
+      },
+      "name": "Keap4",
+      "type": "n8n-nodes-base.keap",
+      "typeVersion": 1,
+      "position": [
+        650,
+        350
+      ],
+      "credentials": {
+        "keapOAuth2Api": {
+          "id": "178",
+          "name": "Keap OAuth2 API creds"
+        }
+      },
+      "id": "d2463a1b-c677-4d81-a69f-f6db3a72a1dc"
+    },
+    {
+      "parameters": {
+        "resource": "email",
+        "operation": "getAll",
+        "limit": 1,
+        "filters": {}
+      },
+      "name": "Keap5",
+      "type": "n8n-nodes-base.keap",
+      "typeVersion": 1,
+      "position": [
+        800,
+        350
+      ],
+      "credentials": {
+        "keapOAuth2Api": {
+          "id": "178",
+          "name": "Keap OAuth2 API creds"
+        }
+      },
+      "id": "b1f2a62a-5479-4f5c-a569-1d6140dad42c"
+    },
+    {
+      "parameters": {
+        "resource": "email",
+        "operation": "send",
+        "userId": 1,
+        "contactIds": "={{$node[\"Keap7\"].json[\"id\"]}},",
+        "subject": "Test",
+        "additionalFields": {
+          "addressField": "node8qa@gmail.com,",
+          "plainContent": "Text content"
+        }
+      },
+      "name": "Keap6",
+      "type": "n8n-nodes-base.keap",
+      "typeVersion": 1,
+      "position": [
+        950,
+        350
+      ],
+      "credentials": {
+        "keapOAuth2Api": {
+          "id": "178",
+          "name": "Keap OAuth2 API creds"
+        }
+      },
+      "disabled": true,
+      "id": "90739296-0d0d-44db-8a7e-904d0d39018d"
+    },
+    {
+      "parameters": {
+        "resource": "contact",
+        "additionalFields": {},
+        "emailsUi": {
+          "emailsValues": [
+            {
+              "field": "EMAIL1",
+              "email": "node8qa@gmail.com"
+            }
+          ]
+        }
+      },
+      "name": "Keap7",
+      "type": "n8n-nodes-base.keap",
+      "typeVersion": 1,
+      "position": [
+        490,
+        280
+      ],
+      "credentials": {
+        "keapOAuth2Api": {
+          "id": "178",
+          "name": "Keap OAuth2 API creds"
+        }
+      },
+      "id": "9fc45e7d-9070-4517-99a2-c22d9ce3e5dd"
+    },
+    {
+      "parameters": {
+        "resource": "ecommerceOrder",
+        "contactId": "={{$node[\"Keap7\"].json[\"id\"]}}",
+        "orderDate": "2021-05-18T07:35:03.000Z",
+        "orderTitle": "=Title{{Date.now()}}",
+        "orderType": "offline",
+        "additionalFields": {},
+        "orderItemsUi": {
+          "orderItemsValues": [
+            {
+              "description": "testing",
+              "price": 6,
+              "product ID": "={{$node[\"Keap\"].json[\"id\"]}}",
+              "quantity": 3
+            }
+          ]
+        }
+      },
+      "name": "Keap8",
+      "type": "n8n-nodes-base.keap",
+      "typeVersion": 1,
+      "position": [
+        810,
+        30
+      ],
+      "credentials": {
+        "keapOAuth2Api": {
+          "id": "178",
+          "name": "Keap OAuth2 API creds"
+        }
+      },
+      "id": "17058118-db69-4fab-baa7-19aa39562b94"
+    },
+    {
+      "parameters": {
+        "resource": "ecommerceOrder",
+        "operation": "get",
+        "orderId": "={{$node[\"Keap8\"].json[\"id\"]}}"
+      },
+      "name": "Keap9",
+      "type": "n8n-nodes-base.keap",
+      "typeVersion": 1,
+      "position": [
+        970,
+        30
+      ],
+      "credentials": {
+        "keapOAuth2Api": {
+          "id": "178",
+          "name": "Keap OAuth2 API creds"
+        }
+      },
+      "id": "6d4cf1c3-e89c-4fb9-8868-718c23734cd9"
+    },
+    {
+      "parameters": {
+        "resource": "ecommerceOrder",
+        "operation": "getAll",
+        "limit": 1,
+        "options": {}
+      },
+      "name": "Keap10",
+      "type": "n8n-nodes-base.keap",
+      "typeVersion": 1,
+      "position": [
+        1130,
+        30
+      ],
+      "credentials": {
+        "keapOAuth2Api": {
+          "id": "178",
+          "name": "Keap OAuth2 API creds"
+        }
+      },
+      "id": "fc63b45d-7b7c-4ac1-bddc-7061065d607e"
+    },
+    {
+      "parameters": {
+        "resource": "ecommerceOrder",
+        "operation": "delete",
+        "orderId": "={{$node[\"Keap8\"].json[\"id\"]}}"
+      },
+      "name": "Keap11",
+      "type": "n8n-nodes-base.keap",
+      "typeVersion": 1,
+      "position": [
+        1290,
+        30
+      ],
+      "credentials": {
+        "keapOAuth2Api": {
+          "id": "178",
+          "name": "Keap OAuth2 API creds"
+        }
+      },
+      "id": "4b41db09-652f-4f92-8dba-72c48d9f5403"
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "operation": "upload",
+        "fileAssociation": "contact",
+        "contactId": "={{$node[\"Keap7\"].json[\"id\"]}}",
+        "fileName": "test.csv",
+        "fileData": "IyB0aGlzIGlzIGEgdGVzdCBmaWxl"
+      },
+      "name": "Keap12",
+      "type": "n8n-nodes-base.keap",
+      "typeVersion": 1,
+      "position": [
+        650,
+        520
+      ],
+      "credentials": {
+        "keapOAuth2Api": {
+          "id": "178",
+          "name": "Keap OAuth2 API creds"
+        }
+      },
+      "id": "267fe3f8-4cee-46f5-b430-e925e491a838"
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "operation": "getAll",
+        "limit": 1,
+        "filters": {}
+      },
+      "name": "Keap13",
+      "type": "n8n-nodes-base.keap",
+      "typeVersion": 1,
+      "position": [
+        810,
+        520
+      ],
+      "credentials": {
+        "keapOAuth2Api": {
+          "id": "178",
+          "name": "Keap OAuth2 API creds"
+        }
+      },
+      "id": "810f3780-5787-4642-ab29-ede18374d118"
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "fileId": "={{$node[\"Keap12\"].json[\"file_descriptor\"][\"id\"]}}"
+      },
+      "name": "Keap14",
+      "type": "n8n-nodes-base.keap",
+      "typeVersion": 1,
+      "position": [
+        970,
+        520
+      ],
+      "credentials": {
+        "keapOAuth2Api": {
+          "id": "178",
+          "name": "Keap OAuth2 API creds"
+        }
+      },
+      "id": "35001fb2-12f4-4fcb-91a3-87057ba15d4c"
+    }
+  ],
+  "connections": {
+    "Keap": {
+      "main": [
+        [
+          {
+            "node": "Keap8",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Keap1": {
+      "main": [
+        [
+          {
+            "node": "Keap2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Keap2": {
+      "main": [
+        [
+          {
+            "node": "Keap3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Keap4": {
+      "main": [
+        [
+          {
+            "node": "Keap5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Keap5": {
+      "main": [
+        [
+          {
+            "node": "Keap6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Keap7": {
+      "main": [
+        [
+          {
+            "node": "Keap",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Keap4",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Keap12",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Keap8": {
+      "main": [
+        [
+          {
+            "node": "Keap9",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Keap9": {
+      "main": [
+        [
+          {
+            "node": "Keap10",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Keap10": {
+      "main": [
+        [
+          {
+            "node": "Keap11",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Keap11": {
+      "main": [
+        [
+          {
+            "node": "Keap1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Keap7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Keap12": {
+      "main": [
+        [
+          {
+            "node": "Keap13",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Keap13": {
+      "main": [
+        [
+          {
+            "node": "Keap14",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": null,
+  "triggerCount": 0,
+  "tags": []
+}

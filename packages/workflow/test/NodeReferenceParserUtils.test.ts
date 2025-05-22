@@ -245,7 +245,10 @@ describe('NodeReferenceParserUtils', () => {
 				},
 			]);
 		});
+<<<<<<< HEAD
 		//https://raw.githubusercontent.com/{{ $json.org }}/{{ $json.repo }}/refs/heads/master/package.json
+=======
+>>>>>>> origin/master
 		it('should handle $json in graphInputNodeName only', () => {
 			nodes = [makeNode('B', ['$json.a.b.c_d["e"]["f"]']), makeNode('C', ['$json.x.y.z'])];
 			nodeNames = ['A', 'B', 'C'];

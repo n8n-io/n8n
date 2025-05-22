@@ -74,9 +74,6 @@ const TEST_RUN: TestRunRecord = {
 	updatedAt: '2024-01-01',
 	runAt: '2024-01-01',
 	completedAt: '2024-01-01',
-	failedCases: 0,
-	totalCases: 1,
-	passedCases: 1,
 };
 
 describe('testDefinition.store.ee', () => {
