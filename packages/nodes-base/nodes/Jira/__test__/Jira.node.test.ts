@@ -2,14 +2,17 @@ import type { DeepMockProxy } from 'jest-mock-extended';
 import { mockDeep } from 'jest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
 
-import * as GenericFunctions from '../../GenericFunctions';
-import { Jira } from '../../Jira.node';
+import * as GenericFunctions from '../GenericFunctions';
+import { Jira } from '../Jira.node';
 
-jest.mock('../../GenericFunctions', () => ({
+jest.mock('../GenericFunctions', () => ({
 	jiraSoftwareCloudApiRequest: jest.fn().mockResolvedValue({ issues: [] }),
+	jiraSoftwareCloudApiRequestAllItems: jest.fn().mockResolvedValue([]),
 }));
 
 const jiraSoftwareCloudApiRequestMock = GenericFunctions.jiraSoftwareCloudApiRequest as jest.Mock;
+const jiraSoftwareCloudApiRequestAllItems =
+	GenericFunctions.jiraSoftwareCloudApiRequestAllItems as jest.Mock;
 
 describe('Jira Node', () => {
 	let jiraNode: Jira;
@@ -148,5 +151,98 @@ describe('Jira Node', () => {
 				}),
 			);
 		});
+
+		it('should call new endpoint for the cloud version with return all = true', async () => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((parameterName: string) => {
+				switch (parameterName) {
+					case 'resource':
+						return 'issue';
+					case 'operation':
+						return 'getAll';
+					case 'jiraVersion':
+						return 'cloud';
+					case 'returnAll':
+						return true;
+					case 'options':
+						return {};
+					default:
+						return null;
+				}
+			});
+
+			await jiraNode.execute.call(executeFunctionsMock);
+
+			expect(jiraSoftwareCloudApiRequestAllItems).toHaveBeenCalledWith(
+				'issues',
+				'/api/2/search/jql',
+				'POST',
+				expect.anything(),
+				{},
+				'token',
+			);
+		});
+
+		it.each([['server'], ['serverPat']])(
+			'should call old endpoint for the self-hosted version with return all = false',
+			async (jiraVersion: string) => {
+				executeFunctionsMock.getNodeParameter.mockImplementation((parameterName: string) => {
+					switch (parameterName) {
+						case 'resource':
+							return 'issue';
+						case 'operation':
+							return 'getAll';
+						case 'jiraVersion':
+							return jiraVersion;
+						case 'returnAll':
+							return false;
+						case 'limit':
+							return 10;
+						case 'options':
+							return {};
+						default:
+							return null;
+					}
+				});
+
+				await jiraNode.execute.call(executeFunctionsMock);
+
+				expect(jiraSoftwareCloudApiRequestMock).toHaveBeenCalledWith(
+					'/api/2/search',
+					'POST',
+					expect.anything(),
+				);
+			},
+		);
+
+		it.each([['server'], ['serverPat']])(
+			'should call old endpoint for the self-hosted version with return all = true',
+			async (jiraVersion: string) => {
+				executeFunctionsMock.getNodeParameter.mockImplementation((parameterName: string) => {
+					switch (parameterName) {
+						case 'resource':
+							return 'issue';
+						case 'operation':
+							return 'getAll';
+						case 'jiraVersion':
+							return jiraVersion;
+						case 'returnAll':
+							return true;
+						case 'options':
+							return {};
+						default:
+							return null;
+					}
+				});
+
+				await jiraNode.execute.call(executeFunctionsMock);
+
+				expect(jiraSoftwareCloudApiRequestAllItems).toHaveBeenCalledWith(
+					'issues',
+					'/api/2/search',
+					'POST',
+					expect.anything(),
+				);
+			},
+		);
 	});
 });
