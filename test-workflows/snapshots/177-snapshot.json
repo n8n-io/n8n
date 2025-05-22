@@ -1,0 +1,1047 @@
+{
+  "data": {
+    "startData": {},
+    "resultData": {
+      "runData": {
+        "Start": [
+          {
+            "hints": [],
+            "startTime": 1726655392049,
+            "executionTime": 0,
+            "source": [],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {},
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "uProc1": [
+          {
+            "hints": [],
+            "startTime": 1726655392049,
+            "executionTime": 210,
+            "source": [
+              {
+                "previousNode": "Start"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "result": true,
+                      "message": {
+                        "object": true
+                      },
+                      "status": "completed",
+                      "params": {
+                        "object": true
+                      },
+                      "normalized": false,
+                      "criteria": "10032",
+                      "time": 6,
+                      "price": 0,
+                      "real_price": 0.001,
+                      "processor": "check-creditcard-checksum",
+                      "total_rows": 1,
+                      "balance": 50.4815
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "uProc2": [
+          {
+            "hints": [],
+            "startTime": 1726655392259,
+            "executionTime": 135,
+            "source": [
+              {
+                "previousNode": "uProc1"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "result": true,
+                      "message": {
+                        "object": true
+                      },
+                      "status": "completed",
+                      "params": {
+                        "object": true
+                      },
+                      "normalized": false,
+                      "criteria": "10032",
+                      "time": 2,
+                      "price": 0,
+                      "real_price": 0.001,
+                      "processor": "get-creditcard-type",
+                      "total_rows": 1,
+                      "balance": 50.4815
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "uProc3": [
+          {
+            "hints": [],
+            "startTime": 1726655392394,
+            "executionTime": 145,
+            "source": [
+              {
+                "previousNode": "uProc2"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "result": false,
+                      "message": {
+                        "object": true
+                      },
+                      "status": "completed",
+                      "params": {
+                        "object": true
+                      },
+                      "normalized": false,
+                      "criteria": "10032",
+                      "time": 2,
+                      "price": 0,
+                      "real_price": 0.0015,
+                      "processor": "check-bank-account-valid-es",
+                      "total_rows": 1,
+                      "balance": 50.4815
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "uProc4": [
+          {
+            "hints": [],
+            "startTime": 1726655392539,
+            "executionTime": 172,
+            "source": [
+              {
+                "previousNode": "uProc3"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "result": true,
+                      "message": {
+                        "object": true
+                      },
+                      "status": "completed",
+                      "params": {
+                        "object": true
+                      },
+                      "normalized": false,
+                      "criteria": "10032",
+                      "time": 2,
+                      "price": 0,
+                      "real_price": 0.0015,
+                      "processor": "check-bank-bic-valid",
+                      "total_rows": 1,
+                      "balance": 50.4815
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "uProc5": [
+          {
+            "hints": [],
+            "startTime": 1726655392711,
+            "executionTime": 134,
+            "source": [
+              {
+                "previousNode": "uProc4"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "result": false,
+                      "message": {
+                        "object": true
+                      },
+                      "status": "completed",
+                      "params": {
+                        "object": true
+                      },
+                      "normalized": false,
+                      "criteria": "10032",
+                      "time": 2,
+                      "price": 0,
+                      "real_price": 0.003,
+                      "processor": "get-bank-iban-by-account",
+                      "total_rows": 1,
+                      "balance": 50.4815
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "uProc6": [
+          {
+            "hints": [],
+            "startTime": 1726655392845,
+            "executionTime": 181,
+            "source": [
+              {
+                "previousNode": "uProc5"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "result": false,
+                      "message": {
+                        "object": true
+                      },
+                      "status": "completed",
+                      "params": {
+                        "object": true
+                      },
+                      "normalized": false,
+                      "criteria": "10032",
+                      "time": 2,
+                      "price": 0,
+                      "real_price": 0.003,
+                      "processor": "get-bank-iban-lookup",
+                      "total_rows": 1,
+                      "balance": 50.4815
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "uProc7": [
+          {
+            "hints": [],
+            "startTime": 1726655393026,
+            "executionTime": 5276,
+            "source": [
+              {
+                "previousNode": "uProc6"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "result": false,
+                      "message": {
+                        "object": true
+                      },
+                      "status": "completed",
+                      "params": {
+                        "object": true
+                      },
+                      "normalized": false,
+                      "criteria": "10032",
+                      "time": 2,
+                      "price": 0,
+                      "real_price": 0.0015,
+                      "processor": "check-bank-iban-valid",
+                      "total_rows": 1,
+                      "balance": 50.4815
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "uProc8": [
+          {
+            "hints": [],
+            "startTime": 1726655398302,
+            "executionTime": 329,
+            "source": [
+              {
+                "previousNode": "uProc7"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "result": true,
+                      "message": {
+                        "object": true
+                      },
+                      "status": "completed",
+                      "params": {
+                        "object": true
+                      },
+                      "normalized": false,
+                      "criteria": "10040",
+                      "time": 2,
+                      "price": 0,
+                      "real_price": 0.001,
+                      "processor": "get-currency-by-country",
+                      "total_rows": 1,
+                      "balance": 50.4815
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "uProc9": [
+          {
+            "hints": [],
+            "startTime": 1726655398631,
+            "executionTime": 753,
+            "source": [
+              {
+                "previousNode": "uProc8"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "result": true,
+                      "message": {
+                        "object": true
+                      },
+                      "status": "completed",
+                      "params": {
+                        "object": true
+                      },
+                      "normalized": false,
+                      "criteria": "10040",
+                      "time": 2,
+                      "price": 0,
+                      "real_price": 0.001,
+                      "processor": "get-currency-by-country-isocode",
+                      "total_rows": 1,
+                      "balance": 50.4815
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "uProc10": [
+          {
+            "hints": [],
+            "startTime": 1726655399384,
+            "executionTime": 187,
+            "source": [
+              {
+                "previousNode": "uProc9"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "result": false,
+                      "message": {
+                        "object": true
+                      },
+                      "status": "completed",
+                      "params": {
+                        "object": true
+                      },
+                      "normalized": false,
+                      "criteria": "10040",
+                      "time": 2,
+                      "price": 0,
+                      "real_price": 0,
+                      "processor": "get-currency-by-ip",
+                      "total_rows": 1,
+                      "balance": 50.4815
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "uProc11": [
+          {
+            "hints": [],
+            "startTime": 1726655399571,
+            "executionTime": 164,
+            "source": [
+              {
+                "previousNode": "uProc10"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "result": false,
+                      "message": {
+                        "object": true
+                      },
+                      "status": "completed",
+                      "params": {
+                        "object": true
+                      },
+                      "normalized": false,
+                      "criteria": "10040",
+                      "time": 2,
+                      "price": 0,
+                      "real_price": 0,
+                      "processor": "get-currency-by-isocode",
+                      "total_rows": 1,
+                      "balance": 50.4815
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "uProc12": [
+          {
+            "hints": [],
+            "startTime": 1726655399735,
+            "executionTime": 197,
+            "source": [
+              {
+                "previousNode": "uProc11"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "result": true,
+                      "message": {
+                        "object": true
+                      },
+                      "status": "completed",
+                      "params": {
+                        "object": true
+                      },
+                      "normalized": false,
+                      "criteria": "10040",
+                      "time": 8,
+                      "price": 0.002,
+                      "real_price": 0.002,
+                      "processor": "get-currency-converted-between-isocode-date",
+                      "total_rows": 1,
+                      "balance": 50.4795
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "uProc13": [
+          {
+            "hints": [],
+            "startTime": 1726655399932,
+            "executionTime": 205,
+            "source": [
+              {
+                "previousNode": "uProc12"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "result": false,
+                      "message": {
+                        "object": true
+                      },
+                      "params": {
+                        "object": true
+                      },
+                      "processor": "get-currency-list-by-country",
+                      "total_rows": 1,
+                      "balance": {
+                        "object": true
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "uProc14": [
+          {
+            "hints": [],
+            "startTime": 1726655400137,
+            "executionTime": 5150,
+            "source": [
+              {
+                "previousNode": "uProc13"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "result": false,
+                      "message": [
+                        "json array"
+                      ],
+                      "status": "completed",
+                      "params": {
+                        "object": true
+                      },
+                      "normalized": false,
+                      "criteria": "10040",
+                      "time": 2,
+                      "price": 0,
+                      "real_price": 0,
+                      "processor": "get-currency-list-by-ip",
+                      "total_rows": 0,
+                      "balance": 50.4815
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "uProc15": [
+          {
+            "hints": [],
+            "startTime": 1726655405287,
+            "executionTime": 183,
+            "source": [
+              {
+                "previousNode": "uProc14"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "result": false,
+                      "message": [
+                        "json array"
+                      ],
+                      "status": "completed",
+                      "params": {
+                        "object": true
+                      },
+                      "normalized": false,
+                      "criteria": "10040",
+                      "time": 2,
+                      "price": 0,
+                      "real_price": 0,
+                      "processor": "get-currency-list-by-isocode",
+                      "total_rows": 0,
+                      "balance": 50.4815
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "uProc16": [
+          {
+            "hints": [],
+            "startTime": 1726655405470,
+            "executionTime": 152,
+            "source": [
+              {
+                "previousNode": "uProc15"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "result": false,
+                      "message": {
+                        "object": true
+                      },
+                      "status": "completed",
+                      "params": {
+                        "object": true
+                      },
+                      "normalized": false,
+                      "criteria": "10040",
+                      "time": 2,
+                      "price": 0,
+                      "real_price": 0.001,
+                      "processor": "check-currency-valid-iso",
+                      "total_rows": 1,
+                      "balance": 50.4815
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "uProc17": [
+          {
+            "hints": [],
+            "startTime": 1726655405623,
+            "executionTime": 153,
+            "source": [
+              {
+                "previousNode": "uProc16"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "result": true,
+                      "message": {
+                        "object": true
+                      },
+                      "status": "completed",
+                      "params": {
+                        "object": true
+                      },
+                      "normalized": false,
+                      "criteria": "10040",
+                      "time": 2,
+                      "price": 0,
+                      "real_price": 0.005,
+                      "processor": "get-vat-by-address",
+                      "total_rows": 1,
+                      "balance": 50.4815
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "uProc18": [
+          {
+            "hints": [],
+            "startTime": 1726655405776,
+            "executionTime": 5176,
+            "source": [
+              {
+                "previousNode": "uProc17"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "result": true,
+                      "message": {
+                        "object": true
+                      },
+                      "status": "completed",
+                      "params": {
+                        "object": true
+                      },
+                      "normalized": false,
+                      "criteria": "10040",
+                      "time": 2,
+                      "price": 0,
+                      "real_price": 0.005,
+                      "processor": "get-vat-by-coordinates",
+                      "total_rows": 1,
+                      "balance": 50.4815
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "uProc19": [
+          {
+            "hints": [],
+            "startTime": 1726655410952,
+            "executionTime": 148,
+            "source": [
+              {
+                "previousNode": "uProc18"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "result": false,
+                      "message": {
+                        "object": true
+                      },
+                      "status": "completed",
+                      "params": {
+                        "object": true
+                      },
+                      "normalized": false,
+                      "criteria": "10040",
+                      "time": 1,
+                      "price": 0,
+                      "real_price": 0,
+                      "processor": "get-vat-by-ip",
+                      "total_rows": 1,
+                      "balance": 50.4815
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "uProc20": [
+          {
+            "hints": [],
+            "startTime": 1726655411101,
+            "executionTime": 152,
+            "source": [
+              {
+                "previousNode": "uProc19"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "result": true,
+                      "message": {
+                        "object": true
+                      },
+                      "status": "completed",
+                      "params": {
+                        "object": true
+                      },
+                      "normalized": false,
+                      "criteria": "10040",
+                      "time": 2,
+                      "price": 0,
+                      "real_price": 0.005,
+                      "processor": "get-vat-by-isocode",
+                      "total_rows": 1,
+                      "balance": 50.4815
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "uProc21": [
+          {
+            "hints": [],
+            "startTime": 1726655411253,
+            "executionTime": 148,
+            "source": [
+              {
+                "previousNode": "uProc20"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "result": false,
+                      "message": {
+                        "object": true
+                      },
+                      "status": "completed",
+                      "params": {
+                        "object": true
+                      },
+                      "normalized": false,
+                      "criteria": "10063",
+                      "time": 2,
+                      "price": 0,
+                      "real_price": 0.005,
+                      "processor": "get-vat-by-number",
+                      "total_rows": 1,
+                      "balance": 50.4815
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "uProc22": [
+          {
+            "hints": [],
+            "startTime": 1726655411401,
+            "executionTime": 158,
+            "source": [
+              {
+                "previousNode": "uProc21"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "result": true,
+                      "message": {
+                        "object": true
+                      },
+                      "status": "completed",
+                      "params": {
+                        "object": true
+                      },
+                      "normalized": false,
+                      "criteria": "10040",
+                      "time": 2,
+                      "price": 0,
+                      "real_price": 0.005,
+                      "processor": "get-vat-by-phone",
+                      "total_rows": 1,
+                      "balance": 50.4815
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "uProc23": [
+          {
+            "hints": [],
+            "startTime": 1726655411559,
+            "executionTime": 5173,
+            "source": [
+              {
+                "previousNode": "uProc22"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "result": false,
+                      "message": {
+                        "object": true
+                      },
+                      "status": "completed",
+                      "params": {
+                        "object": true
+                      },
+                      "normalized": false,
+                      "criteria": "10040",
+                      "time": 2,
+                      "price": 0,
+                      "real_price": 0,
+                      "processor": "get-vat-by-zipcode",
+                      "total_rows": 1,
+                      "balance": 50.4815
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "uProc24": [
+          {
+            "hints": [],
+            "startTime": 1726655416732,
+            "executionTime": 144,
+            "source": [
+              {
+                "previousNode": "uProc23"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "result": true,
+                      "message": {
+                        "object": true
+                      },
+                      "status": "completed",
+                      "params": {
+                        "object": true
+                      },
+                      "normalized": false,
+                      "criteria": "10063",
+                      "time": 2,
+                      "price": 0,
+                      "real_price": 0.0025,
+                      "processor": "check-vat-exist",
+                      "total_rows": 1,
+                      "balance": 50.4815
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ]
+      },
+      "lastNodeExecuted": "uProc24"
+    },
+    "executionData": {
+      "contextData": {},
+      "nodeExecutionStack": [],
+      "metadata": {},
+      "waitingExecution": {},
+      "waitingExecutionSource": {}
+    }
+  },
+  "mode": "cli",
+  "startedAt": "2024-09-18T10:29:52.046Z",
+  "stoppedAt": "2024-09-18T10:30:16.876Z",
+  "status": "running",
+  "finished": true
+}
