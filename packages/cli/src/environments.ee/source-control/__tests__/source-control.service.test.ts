@@ -15,6 +15,7 @@ import { SourceControlService } from '@/environments.ee/source-control/source-co
 import type { SourceControlImportService } from '../source-control-import.service.ee';
 import type { ExportableCredential } from '../types/exportable-credential';
 import type { SourceControlWorkflowVersionId } from '../types/source-control-workflow-version-id';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
 describe('SourceControlService', () => {
 	const preferencesService = new SourceControlPreferencesService(
@@ -242,6 +243,21 @@ describe('SourceControlService', () => {
 
 			expect(pullResult.find((i) => i.type === 'folders')).toHaveProperty('conflict', true);
 			expect(pushResult.find((i) => i.type === 'folders')).toHaveProperty('conflict', false);
+		});
+
+		it('should throw `ForbiddenError` if direction is pull and user is not allowed to globally pull', async () => {
+			// ARRANGE
+			const user = mock<User>();
+			user.role = 'global:member';
+
+			// ACT
+			await expect(
+				sourceControlService.getStatus(user, {
+					direction: 'pull',
+					verbose: false,
+					preferLocalVersion: false,
+				}),
+			).rejects.toThrowError(ForbiddenError);
 		});
 	});
 });
