@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: n8n-node
+    env: node
+    plan: free
+    region: oregon
+    buildCommand: npm install
+    startCommand: npx n8n
+    envVars:
+      - key: N8N_BASIC_AUTH_ACTIVE
+        value: "true"
+      - key: N8N_BASIC_AUTH_USER
+        value: "admin"
+      - key: N8N_BASIC_AUTH_PASSWORD
+        value: "admin123"
+      - key: N8N_ENCRYPTION_KEY
+        generateValue: true
+      - key: N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS
+        value: "true"
