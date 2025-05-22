@@ -135,7 +135,7 @@ export const useEvaluationStore = defineStore(
 			// Computed
 			isLoading,
 			isFeatureEnabled,
-			testRunsByTestId: testRunsByWorkflowId,
+			testRunsByWorkflowId,
 
 			// Methods
 			fetchTestCaseExecutions,

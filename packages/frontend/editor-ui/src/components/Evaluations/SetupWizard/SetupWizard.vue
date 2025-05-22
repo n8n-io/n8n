@@ -22,7 +22,7 @@ const usageStore = useUsageStore();
 const pageRedirectionHelper = usePageRedirectionHelper();
 
 const hasRuns = computed(() => {
-	return evaluationsStore.testRunsById[workflowsStore.workflow.id]?.length > 0;
+	return evaluationsStore.testRunsByWorkflowId[workflowsStore.workflow.id]?.length > 0;
 });
 
 const datasetTriggerExist = computed(() => {
