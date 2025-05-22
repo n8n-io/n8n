@@ -1,12 +1,12 @@
 import type { User } from '@n8n/db';
 import { ProjectRepository } from '@n8n/db';
 import { TestRunRepository } from '@n8n/db';
-import { TestCaseExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mockInstance } from 'n8n-core/test/utils';
 import type { IWorkflowBase } from 'n8n-workflow';
 
 import { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.service.ee';
+import { createTestRun, createTestCaseExecution } from '@test-integration/db/evaluation';
 import { createUserShell } from '@test-integration/db/users';
 import { createWorkflow } from '@test-integration/db/workflows';
 import * as testDb from '@test-integration/test-db';
@@ -32,7 +32,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['TestRun', 'WorkflowEntity', 'SharedWorkflow']);
+	await testDb.truncate(['TestRun', 'TestCaseExecution', 'WorkflowEntity', 'SharedWorkflow']);
 
 	testRunRepository = Container.get(TestRunRepository);
 
@@ -278,22 +278,18 @@ describe('POST /workflows/:workflowId/test-runs/:id/cancel', () => {
 
 describe('GET /workflows/:workflowId/test-runs/:id/test-cases', () => {
 	test('should retrieve test cases for a specific test run', async () => {
-		const testCaseExecutionRepository = Container.get(TestCaseExecutionRepository);
-
 		// Create a test run
-		const testRun = await testRunRepository.createTestRun(workflowUnderTest.id);
+		const testRun = await createTestRun(workflowUnderTest.id);
 
 		// Create some test case executions for this test run
-		await testCaseExecutionRepository.createTestCaseExecution({
-			testRun: { id: testRun.id },
+		await createTestCaseExecution(testRun.id, {
 			status: 'success',
 			runAt: new Date(),
 			completedAt: new Date(),
 			metrics: { accuracy: 0.95 },
 		});
 
-		await testCaseExecutionRepository.createTestCaseExecution({
-			testRun: { id: testRun.id },
+		await createTestCaseExecution(testRun.id, {
 			status: 'error',
 			errorCode: 'UNKNOWN_ERROR',
 			runAt: new Date(),
@@ -318,7 +314,7 @@ describe('GET /workflows/:workflowId/test-runs/:id/test-cases', () => {
 
 	test('should return empty array when no test cases exist for a test run', async () => {
 		// Create a test run with no test cases
-		const testRun = await testRunRepository.createTestRun(workflowUnderTest.id);
+		const testRun = await createTestRun(workflowUnderTest.id);
 
 		const resp = await authOwnerAgent.get(
 			`/workflows/${workflowUnderTest.id}/test-runs/${testRun.id}/test-cases`,
@@ -337,7 +333,7 @@ describe('GET /workflows/:workflowId/test-runs/:id/test-cases', () => {
 	});
 
 	test('should return 404 if user does not have access to the workflow', async () => {
-		const testRun = await testRunRepository.createTestRun(otherWorkflow.id);
+		const testRun = await createTestRun(otherWorkflow.id);
 
 		const resp = await authOwnerAgent.get(
 			`/workflows/${otherWorkflow.id}/test-runs/${testRun.id}/test-cases`,
@@ -361,12 +357,9 @@ describe('GET /workflows/:workflowId/test-runs/:id/test-cases', () => {
 		expect(sharingResponse.statusCode).toBe(200);
 
 		// Create a test run with test cases
-		const testCaseExecutionRepository = Container.get(TestCaseExecutionRepository);
+		const testRun = await createTestRun(workflowUnderTest.id);
 
-		const testRun = await testRunRepository.createTestRun(workflowUnderTest.id);
-
-		await testCaseExecutionRepository.createTestCaseExecution({
-			testRun: { id: testRun.id },
+		await createTestCaseExecution(testRun.id, {
 			status: 'success',
 			runAt: new Date(),
 			completedAt: new Date(),
