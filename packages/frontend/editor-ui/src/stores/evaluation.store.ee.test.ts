@@ -119,7 +119,7 @@ describe('evaluation.store.ee', () => {
 				run2: { ...TEST_RUN, id: 'run2', workflowId: '2' },
 			};
 
-			const runs = store.testRunsByTestId['1'];
+			const runs = store.testRunsByWorkflowId['1'];
 
 			expect(runs).toEqual([TEST_RUN]);
 		});
