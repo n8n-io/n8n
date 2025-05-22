@@ -15,7 +15,7 @@ export async function processItem(
 	parser: OutputFixingParser<object>,
 ) {
 	const input = ctx.getNodeParameter('text', itemIndex) as string;
-	if (!input) {
+	if (!input?.trim()) {
 		throw new NodeOperationError(ctx.getNode(), `Text for item ${itemIndex} is not defined`, {
 			itemIndex,
 		});

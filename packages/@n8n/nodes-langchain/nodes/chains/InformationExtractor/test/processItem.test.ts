@@ -66,10 +66,15 @@ describe('processItem', () => {
 		expect(result).toEqual({ name: 'John', age: 30 });
 	});
 
-	it('should throw error if input is undefined', async () => {
+	it('should throw error if input is undefined or empty', async () => {
 		const mockExecuteFunctions = {
-			getNodeParameter: (param: string) => {
-				if (param === 'text') return undefined;
+			getNodeParameter: (param: string, itemIndex: number) => {
+				if (param === 'text') {
+					if (itemIndex === 0) return undefined;
+					if (itemIndex === 1) return '';
+					if (itemIndex === 2) return ' ';
+					return null;
+				}
 				if (param === 'options') return {};
 				return undefined;
 			},
@@ -82,9 +87,11 @@ describe('processItem', () => {
 			StructuredOutputParser.fromZodSchema(makeZodSchemaFromAttributes(mockPersonAttributes)),
 		);
 
-		await expect(processItem(mockExecuteFunctions as any, 0, llm, parser)).rejects.toThrow(
-			NodeOperationError,
-		);
+		for (let itemIndex = 0; itemIndex < 4; itemIndex++) {
+			await expect(
+				processItem(mockExecuteFunctions as any, itemIndex, llm, parser),
+			).rejects.toThrow(NodeOperationError);
+		}
 	});
 
 	it('should use custom system prompt template if provided', async () => {
