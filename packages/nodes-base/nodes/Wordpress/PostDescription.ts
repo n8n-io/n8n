@@ -166,7 +166,7 @@ export const postFields: INodeProperties[] = [
 					},
 				],
 				default: 'open',
-				description: 'If the a message should be send to announce the post',
+				description: 'Whether or not the post can be pinged',
 			},
 			{
 				displayName: 'Format',
@@ -215,7 +215,7 @@ export const postFields: INodeProperties[] = [
 					},
 				],
 				default: 'standard',
-				description: 'Whether or not comments are open on the post',
+				description: 'The format for the post. Choose from the list.',
 			},
 			{
 				displayName: 'Sticky',
@@ -445,7 +445,7 @@ export const postFields: INodeProperties[] = [
 					},
 				],
 				default: 'open',
-				description: 'Whether or not comments are open on the post',
+				description: 'Whether or not the post can be pinged',
 			},
 			{
 				displayName: 'Format',
@@ -494,7 +494,7 @@ export const postFields: INodeProperties[] = [
 					},
 				],
 				default: 'standard',
-				description: 'The format of the post',
+				description: 'The format for the post. Choose from the list.',
 			},
 			{
 				displayName: 'Sticky',
